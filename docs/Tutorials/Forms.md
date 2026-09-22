@@ -61,7 +61,7 @@ Select `lblResult` and set its **Font** property. Click the `...` button next to
 
 Double-click the `cmdConvert` button in the designer. The IDE switches to the Code Editor and creates a shell for the button's Click event:
 
-```tb
+```tb check_build
 Private Sub cmdConvert_Click()
 
 End Sub

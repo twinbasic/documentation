@@ -58,7 +58,7 @@ End CoClass
 
 A more complete example showing a custom-constructor coclass paired with a private implementing class. The coclass `Foo` is what consumers see and instantiate; the actual implementation `FooImpl` is hidden:
 
-```tb
+```tb check_build
 [InterfaceId("016BC30A-A8E0-4AAF-93AE-13BD838A149E")]
 Public Interface IFoo
     Sub Foo()

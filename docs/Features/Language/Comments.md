@@ -20,7 +20,7 @@ a comment until:
 
 ### Example
 
-```tb
+```tb check_build
 ' Single-line comment using the apostrophe
 
 Sub Greet(ByVal name As String /* in */)

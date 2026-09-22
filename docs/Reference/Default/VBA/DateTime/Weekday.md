@@ -50,7 +50,7 @@ If the [**Calendar**](Calendar) property setting is Gregorian, the returned inte
 
 This example uses the **Weekday** function to obtain the day of the week from a specified date.
 
-```tb
+```tb check_build
 Dim MyDate, MyWeekDay
 MyDate = #February 12, 1969#    ' Assign a date.
 MyWeekDay = Weekday(MyDate)     ' MyWeekDay contains 4 because

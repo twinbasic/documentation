@@ -15,7 +15,7 @@ An alias is an alternative name for a User-Defined Type, intrinsic type, or inte
 
 With intrinsic types, or if you have a type such as:
 
-```tb
+```tb check_build
 Public Type POINT
     x As Long
     y As Long

@@ -10,7 +10,7 @@ has_toc: false
 
 A read-only snapshot of an installed service's current state as reported by the SCM. Typically obtained via [**Services.QueryStateOfService**](Services#querystateofservice); can also be constructed directly with **New ServiceState**(*ServiceName*).
 
-```tb
+```tb check_build
 Dim state As ServiceState
 Set state = Services.QueryStateOfService("MyService")
 
@@ -44,7 +44,7 @@ Three failure modes raise run-time error **5** with a descriptive message:
 
 Wrap the constructor in `On Error Resume Next` when the caller needs to distinguish "service is running" from "service is not installed":
 
-```tb
+```tb check_build
 Private Function GetStateText(ByVal serviceName As String) As String
     On Error Resume Next
     Dim state As ServiceState
@@ -136,7 +136,7 @@ The value is the Win32 process identifier (`dwProcessId`) as reported by `QueryS
 
 Use **ProcessId** as a quick "is the service alive?" check in preference to string-comparing [**CurrentStateText**](#currentstatetext):
 
-```tb
+```tb check_build
 Dim state As ServiceState
 Set state = Services.QueryStateOfService("MyService")
 If state.ProcessId <> 0 Then
@@ -188,7 +188,7 @@ The SCM uses [**CheckPoint**](#checkpoint) and **WaitHint** together to decide w
 
 This example reads the wait hint and check point for a service currently in a pending state and prints a progress summary.
 
-```tb
+```tb check_build
 Dim state As ServiceState
 Set state = Services.QueryStateOfService("MyService")
 

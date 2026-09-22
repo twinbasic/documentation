@@ -22,7 +22,7 @@ The editor runs as a local web app under a virtual hostname; the preview pane is
 
 Monaco uses modern JavaScript features that don't exist in older Chromium versions. The sample checks at startup and warns if the loaded runtime is too old:
 
-```tb
+```tb check_build
 If WebView.CefMajorVersion < 109 Then
     MsgBox "Sorry, Monaco is not supported by this old version of CEF."
 End If
@@ -75,7 +75,7 @@ window.chrome.webview.addEventListener('message', (event) => {
 
 Drop two `CefBrowser` controls on a form --- `WebView` (the editor) and `WebViewPreview` (the renderer). The `Ready` handler deploys the assets, registers the virtual host, and navigates:
 
-```tb
+```tb check_build
 Private localPath As String
 
 Private Sub WebView_Ready() Handles WebView.Ready
@@ -96,7 +96,7 @@ The two controls share a single helper browser process --- the first **CefBrowse
 
 Once Monaco has finished loading, the bootstrap script listens for a `message` event containing the HTML to seed the editor with. Fire that message after the editor's [**NavigationComplete**](../../tB/Packages/CEF/CefBrowser/#navigationcomplete):
 
-```tb
+```tb check_build
 Private Sub WebView_NavigationComplete( _
         ByVal IsSuccess As Boolean, ByVal WebErrorStatus As Long) _
         Handles WebView.NavigationComplete
@@ -119,7 +119,7 @@ The `If` guard at the top is important --- [**NavigationComplete**](../../tB/Pac
 
 Every keystroke in Monaco fires its `onDidChangeModelContent` callback, which `postMessage`s the new content back to BASIC. That arrives as the [**JsMessage**](../../tB/Packages/CEF/CefBrowser/#jsmessage) event --- feed it straight into the preview:
 
-```tb
+```tb check_build
 Private Sub WebView_JsMessage(ByVal Message As Variant) Handles WebView.JsMessage
     WebViewPreview.NavigateToString(Message)
 End Sub
@@ -131,7 +131,7 @@ That's it --- the preview pane re-renders on every edit.
 
 A reasonable fraction of users will run the application on a machine where the CEF runtime ZIP has not been installed. The [**Error**](../../tB/Packages/CEF/CefBrowser/#error) event reports this case with the exact path the control searched:
 
-```tb
+```tb check_build
 Private Sub WebView_Error(ByVal code As Long, ByVal msg As String) _
         Handles WebView.Error
     MsgBox "Failed to initialize the CEF control." & vbCrLf & vbCrLf & _

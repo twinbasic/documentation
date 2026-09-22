@@ -10,7 +10,7 @@ has_toc: false
 
 A **DriveListBox** is a Win32 native drop-down combo control that auto-populates with the drives reported by the operating system. The user picks one from the list; code reads the chosen drive through [**Drive**](#drive) and typically forwards it to a [**DirListBox**](../DirListBox) (whose [**Path**](../DirListBox/#path) it can be assigned to directly) to build a file picker alongside a [**FileListBox**](../FileListBox). The control is normally placed on a **Form** or **UserControl** at design time. The default property is [**Drive**](#drive) and the default event is [**Change**](#change).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     Drive1.Drive = "C:"
     Dir1.Path = Drive1.Drive
@@ -45,7 +45,7 @@ Reading [**Drive**](#drive) returns the *displayed text* of the currently select
 
 Assigning to [**Drive**](#drive) looks only at the **first character** of the value and selects the entry whose drive letter matches (case-insensitively, by prefix). Anything after the first character is ignored, so `"C"`, `"C:"`, and `"C:\Windows"` all select the **C:** drive. If no entry matches the letter --- e.g. when the requested drive is not currently attached --- the assignment is silently ignored, leaving the previous selection in place. Assigning a value that matches the current selection does not raise [**Change**](#change); assigning a different value does.
 
-```tb
+```tb check_build
 Drive1.Drive = "D"          ' select drive D if present, else no-op
 Debug.Print Drive1.Drive    ' "d: [Backup]"  (the displayed text)
 ```

@@ -14,7 +14,7 @@ The **ContainedControls** object is a collection that exposes the controls place
 
 The collection is read-only: items cannot be added or removed through it, and the indexer returns existing controls only. To use it, the **UserControl**'s **ControlContainer** property must have been set to **True** at design time.
 
-```tb
+```tb check_build
 ' Inside the UserControl that hosts other controls.
 Private Sub UserControl_Resize()
     Dim ctl As Object
@@ -51,7 +51,8 @@ Syntax: *object*.**Item(** *index* **)**
 
 **Item** is the default member of **ContainedControls**, so the following lines are equivalent:
 
-```tb
+```tb check_build
+Dim ctl As Control
 Set ctl = UserControl.ContainedControls.Item(1)
 Set ctl = UserControl.ContainedControls(1)
 ```
@@ -62,7 +63,7 @@ The result is typed as **Object** because the consumer may have placed any kind 
 
 A **ContainedControls** object can be iterated with the [**For Each...Next**](../../../Core/For-Each-Next) statement, which yields each control in turn, in the order the consumer added them. The hidden `_NewEnum` member supplies the enumerator and is not called directly from user code.
 
-```tb
+```tb check_build
 Dim ctl As Object
 For Each ctl In UserControl.ContainedControls
     Debug.Print TypeName(ctl)

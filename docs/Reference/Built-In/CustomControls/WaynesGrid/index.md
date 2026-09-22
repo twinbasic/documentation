@@ -37,7 +37,7 @@ End Sub
 
 The six [**CellRenderingOptions**](CellRenderingOptions) sub-objects ([**ColumnHeaderOptions**](#columnheaderoptions), [**RowHeaderOptions**](#rowheaderoptions), [**CellOptions**](#celloptions), [**HoverCellOptions**](#hovercelloptions), [**SelectedCellOptions**](#selectedcelloptions), [**MultiSelectCellOptions**](#multiselectcelloptions)) control the grid's visual style. A typical setup gives headers a gradient, body cells left-aligned text with a small left-padding indent, and the selected cell a contrasting border:
 
-```tb
+```tb check_build
 With Grid1.ColumnHeaderOptions
     .Fill.SetSimplePattern &HE0E0E0, &HC0C0C0, _
             Pattern:=tbGradientNorthToSouth

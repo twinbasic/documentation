@@ -18,7 +18,7 @@ Syntax: **Sqr(** *number* **)**
 
 This example uses the **Sqr** function to calculate the square root of a number.
 
-```tb
+```tb check_build
 Dim MySqr
 MySqr = Sqr(4)     ' Returns 2.
 MySqr = Sqr(23)    ' Returns 4.79583152331272.

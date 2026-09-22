@@ -38,7 +38,7 @@ Any number of [**Continue Do**](Continue) statements may be placed anywhere in t
 
 This example shows how **Do...Loop** statements can be used. The inner **Do...Loop** statement loops 10 times, asks the user if it should keep going, sets the value of the flag to **False** when they select **No**, and exits prematurely by using the **Exit Do** statement. The outer loop exits immediately upon checking the value of the flag.
 
-```tb
+```tb check_build
 Public Sub LoopExample()
     Dim Check As Boolean, Counter As Long, Total As Long
     Check = True: Counter = 0: Total = 0 ' Initialize variables.
@@ -67,25 +67,27 @@ There are two ways to use the **While** keyword to check a condition in a **Do..
 
 In the following `ChkFirstWhile` procedure, the condition is checked before entering the loop. If `myNum` is set to 9 instead of 20, the statements inside the loop will never run. In the `ChkLastWhile` procedure, the statements inside the loop run only once before the condition becomes **False**.
 
-```tb
-Sub ChkFirstWhile() 
-    counter = 0 
-    myNum = 20 
-    Do While myNum > 10 
-        myNum = myNum - 1 
-        counter = counter + 1 
-    Loop 
-    MsgBox "The loop made " & counter & " repetitions." 
-End Sub 
- 
-Sub ChkLastWhile() 
-    counter = 0 
-    myNum = 9 
-    Do 
-        myNum = myNum - 1 
-        counter = counter + 1 
-    Loop While myNum > 10 
-    MsgBox "The loop made " & counter & " repetitions." 
+```tb check_build
+Sub ChkFirstWhile()
+    Dim counter As Long, myNum As Long
+    counter = 0
+    myNum = 20
+    Do While myNum > 10
+        myNum = myNum - 1
+        counter = counter + 1
+    Loop
+    MsgBox "The loop made " & counter & " repetitions."
+End Sub
+
+Sub ChkLastWhile()
+    Dim counter As Long, myNum As Long
+    counter = 0
+    myNum = 9
+    Do
+        myNum = myNum - 1
+        counter = counter + 1
+    Loop While myNum > 10
+    MsgBox "The loop made " & counter & " repetitions."
 End Sub
 ```
 
@@ -93,25 +95,27 @@ End Sub
 
 There are two ways to use the **Until** keyword to check a condition in a **Do...Loop** statement. The condition can be checked before entering the loop (as shown in the `ChkFirstUntil` procedure), or after the loop has run at least once (as shown in the `ChkLastUntil` procedure). Looping continues while the condition remains **False**.
 
-```tb
-Sub ChkFirstUntil() 
-    counter = 0 
-    myNum = 20 
-    Do Until myNum = 10 
-        myNum = myNum - 1 
-        counter = counter + 1 
-    Loop 
-    MsgBox "The loop made " & counter & " repetitions." 
-End Sub 
- 
-Sub ChkLastUntil() 
-    counter = 0 
-    myNum = 1 
-    Do 
-        myNum = myNum + 1 
-        counter = counter + 1 
-    Loop Until myNum = 10 
-    MsgBox "The loop made " & counter & " repetitions." 
+```tb check_build
+Sub ChkFirstUntil()
+    Dim counter As Long, myNum As Long
+    counter = 0
+    myNum = 20
+    Do Until myNum = 10
+        myNum = myNum - 1
+        counter = counter + 1
+    Loop
+    MsgBox "The loop made " & counter & " repetitions."
+End Sub
+
+Sub ChkLastUntil()
+    Dim counter As Long, myNum As Long
+    counter = 0
+    myNum = 1
+    Do
+        myNum = myNum + 1
+        counter = counter + 1
+    Loop Until myNum = 10
+    MsgBox "The loop made " & counter & " repetitions."
 End Sub
 ```
 
@@ -121,16 +125,17 @@ The [**Exit Do**](Exit) statement exits a **Do...Loop** from inside. For example
 
 In the following example `myNum` is assigned a value that creates an endless loop. The **If...Then...Else** statement checks for this condition, and then exits, preventing endless looping.
 
-```tb
-Sub ExitExample() 
-    counter = 0 
-    myNum = 9 
-    Do Until myNum = 10 
-        myNum = myNum - 1 
-        counter = counter + 1 
-        If myNum < 10 Then Exit Do 
-    Loop 
-    MsgBox "The loop made " & counter & " repetitions." 
+```tb check_build
+Sub ExitExample()
+    Dim counter As Long, myNum As Long
+    counter = 0
+    myNum = 9
+    Do Until myNum = 10
+        myNum = myNum - 1
+        counter = counter + 1
+        If myNum < 10 Then Exit Do
+    Loop
+    MsgBox "The loop made " & counter & " repetitions."
 End Sub
 ```
 

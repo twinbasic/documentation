@@ -14,6 +14,6 @@ A **Long**-compatible type alias used wherever a 32-bit ABGR colour value is exp
 
 To write a fully-opaque colour, OR-in the opaque alpha mask: `&HFF000000 Or vbBlue`. The convenience setters [**FillColorPoints.SetSolidColor**](../Styles/Fill#setsolidcolor) and [**Borders.SetSimpleBorder**](../Styles/Borders#setsimpleborder) take a normal three-byte **Long** colour and apply the opaque mask automatically; only the `*RGBA` variants take a raw **ColorRGBA**.
 
-```tb
+```tb check_build
 Dim translucentRed As ColorRGBA = &H800000FF&    ' 50% alpha, full red
 ```

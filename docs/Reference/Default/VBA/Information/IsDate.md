@@ -22,7 +22,7 @@ The range of valid dates is January 1, 100 A.D. through December 31, 9999 A.D.
 
 This example uses **IsDate** to determine whether an expression is recognized as a date or time value.
 
-```tb
+```tb check_build
 Dim MyVar As Variant
 Dim MyCheck As Boolean
 MyVar = "04/28/2014"                  ' Valid date.

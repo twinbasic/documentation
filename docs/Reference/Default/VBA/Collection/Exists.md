@@ -25,7 +25,7 @@ Key comparison is governed by the [**KeyCompareMode**](KeyCompareMode) property.
 
 ### Example
 
-```tb
+```tb check_build
 Dim MyCollection As New Collection
 MyCollection.Add "alpha", Key:="a"
 MyCollection.Add "beta",  Key:="b"

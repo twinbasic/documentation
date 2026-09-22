@@ -26,7 +26,7 @@ The **Line Input #** statement reads from a file one character at a time until i
 
 This example uses the **Line Input #** statement to read a line from a sequential file and assign it to a variable. This example assumes that `TESTFILE` is a text file with a few lines of sample data.
 
-```tb
+```tb check_build
 Dim TextLine
 Open "TESTFILE" For Input As #1 ' Open file.
 Do While Not EOF(1) ' Loop until end of file.

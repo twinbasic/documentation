@@ -45,7 +45,7 @@ When converting from a **Byte** array in ANSI format to a string, use the **StrC
 
 This example uses the **StrConv** function to convert a Unicode string to an ANSI string.
 
-```tb
+```tb check_build
 Dim i As Long
 Dim x() As Byte
 x = StrConv("ABCDEFG", vbFromUnicode)    ' Convert string.

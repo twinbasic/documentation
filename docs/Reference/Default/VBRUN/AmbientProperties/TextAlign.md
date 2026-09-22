@@ -27,7 +27,7 @@ A control that displays text and does not have its own alignment explicitly set 
 
 This example responds to a **TextAlign** change and repaints the control with the updated alignment.
 
-```tb
+```tb check_build
 Private Sub UserControl_AmbientChanged(PropertyName As String)
     Select Case PropertyName
         Case "TextAlign"

@@ -30,7 +30,7 @@ MyApp /switch arg1 arg2
 
 This example uses **Command** to retrieve the command-line arguments and split them into an array.
 
-```tb
+```tb check_build
 Function GetCommandLine(Optional MaxArgs As Variant) As Variant
     Dim Ch As String, CmdLine As String, CmdLnLen As Long
     Dim InArg As Boolean, I As Long, NumArgs As Long

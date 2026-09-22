@@ -23,20 +23,23 @@ If *object1* and *object2* both refer to the same object, *result* is **True**; 
 
 Two variables can be made to refer to the same object in several ways. In the following example, A has been set to refer to the same object as B:
 
-```tb
+```tb check_build
+Dim A As Object, B As Object
 Set A = B
 ```
 
 The following example makes A and B refer to the same object as C:
 
-```tb
+```tb check_build
+Dim A As Object, B As Object, C As Object
 Set A = C
 Set B = C
 ```
 
 A reference compared against **Nothing** with **Is** tells whether the reference is unassigned:
 
-```tb
+```tb check_build
+Dim MyObject As Object
 If MyObject Is Nothing Then
     Debug.Print "MyObject has not been assigned."
 End If
@@ -56,7 +59,7 @@ For the negation of an identity test, twinBASIC also provides the [**IsNot**](Is
 
 This example uses the **Is** operator to compare two object references.
 
-```tb
+```tb check_build
 Dim MyObject, YourObject, ThisObject, OtherObject, ThatObject, MyCheck
 Set YourObject = MyObject    ' Assign object references.
 Set ThisObject = MyObject

@@ -26,7 +26,7 @@ Write routines to handle typical errors. When programming with an object, the ob
 
 This example uses the **HelpContext** property of the **Err** object to show the Help topic for the `Overflow` error.
 
-```tb
+```tb check_build
 Dim msg As String
 Err.Clear
 On Error Resume Next

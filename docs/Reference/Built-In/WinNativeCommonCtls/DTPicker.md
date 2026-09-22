@@ -10,7 +10,7 @@ has_toc: false
 
 A **DTPicker** is a date / time picker control. The inline field shows the current date or time formatted per [**Format**](#format); clicking the dropdown arrow opens a [**MonthView**](MonthView)-style calendar for picking a new date, and dismissing the calendar updates [**Value**](#value).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     DTPicker1.Format = dtpShortDate
     DTPicker1.MinDate = DateSerial(2020, 1, 1)

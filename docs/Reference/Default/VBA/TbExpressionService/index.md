@@ -22,7 +22,7 @@ It is exposed as one class and two interfaces:
 
 Create a **TbExpressionService**, register at least one binder, then call [**Compile**](Compile) to get back an [**ITbExpression**](#itbexpression-interface). The same compiled expression can be evaluated as many times as needed, so reuse it whenever the source text doesn't change.
 
-```tb
+```tb check_build
 Sub Demo()
     Dim Service As TbExpressionService = New TbExpressionService
     Service.AddStdLibraryBinder()                       ' enable Sin, Sqr, Len, ...
@@ -38,7 +38,7 @@ Anything beyond the standard library --- application objects, configuration valu
 
 The simplest form is [**AddCustomBinderObject**](AddCustomBinderObject), which takes a name and an object and exposes the object's public members under that name. Pass the **IsAppObject** flag to make the object behave like an Office host's **Application**: its members become reachable both qualified (`Report.Title`) and unqualified (`Title`).
 
-```tb
+```tb check_build
 Sub UseCustomObject()
     Dim Service As TbExpressionService = New TbExpressionService
     Service.AddStdLibraryBinder()

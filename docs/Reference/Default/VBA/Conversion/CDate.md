@@ -28,7 +28,7 @@ Use the **IsDate** function to determine whether *expression* can be converted t
 
 This example uses the **CDate** function to convert a string to a **Date**. In general, hard-coding dates and times as strings (as shown in this example) is not recommended. Use date literals and time literals, such as `#2/12/1969#` and `#4:45:23 PM#`, instead.
 
-```tb
+```tb check_build
 Dim MyDate, MyShortDate, MyTime, MyShortTime
 MyDate = "February 12, 1969"             ' Define date.
 MyShortDate = CDate(MyDate)              ' Convert to Date data type.

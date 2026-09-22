@@ -12,7 +12,7 @@ One value inside an [**HtmlEventProperties**](HtmlEventProperties) event bag ---
 
 Almost always written in shorthand --- neither **HtmlEventProperty** nor its parent [**HtmlEventProperties**](HtmlEventProperties) is typically named in addin code; the compiler resolves chains like `eventInfo.target.id` through their default-members. Unlike [**HtmlElementProperty**](HtmlElementProperty), [**Value**](#value) is **read-only** --- event payloads are an inbound signal from the DOM, not an outbound property setter.
 
-```tb
+```tb check_build
 Private Sub MyButtonKeyUp(ByVal eventInfo As HtmlEventProperties)
     If eventInfo.key = "Enter" Then
         Dim entered As String = eventInfo.target.value

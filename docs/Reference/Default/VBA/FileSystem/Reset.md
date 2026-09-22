@@ -19,7 +19,7 @@ The **Reset** statement closes all active files opened by the [Open](../../Core/
 
 This example uses the **Reset** statement to close all open files and write the contents of all file buffers to disk.
 
-```tb
+```tb check_build
 Dim FileNumber
 For FileNumber = 1 To 5    ' Loop 5 times.
     Open "TEST" & FileNumber For Output As #FileNumber

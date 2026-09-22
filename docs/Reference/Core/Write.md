@@ -39,7 +39,7 @@ Unlike the [**Print #**](Print) statement, the **Write #** statement inserts com
 
 This example uses the **Write #** statement to write raw data to a sequential file.
 
-```tb
+```tb check_build
 Open "TESTFILE" For Output As #1    ' Open file for output.
 Write #1, "Hello World", 234    ' Write comma-delimited data.
 Write #1, ' Write blank line.

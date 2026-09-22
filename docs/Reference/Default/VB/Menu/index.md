@@ -59,7 +59,7 @@ mnuFilePrint.ShortcutId = vbShortcutCtrlP
 
 twinBASIC extends the classic VB6 menu with optional 16×16 (or arbitrary-sized) icons drawn beside the caption. Assign a **StdPicture** to [**Picture**](#picture) and the bitmap is rendered to the left of the caption text. When the supplied picture is a multi-resolution `.ico`, [**IconSizeX**](#iconsizex) and [**IconSizeY**](#iconsizey) pick which embedded image to use; left at `0` (the default), the picture is loaded at its natural size.
 
-```tb
+```tb check_build
 Set mnuFileSave.Picture = LoadResPicture("MNU_SAVE", vbResBitmap)
 mnuFileSave.IconSizeX = 16
 mnuFileSave.IconSizeY = 16

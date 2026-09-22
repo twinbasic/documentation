@@ -20,7 +20,7 @@ This tutorial covers all three, with the matching JavaScript side shown next to 
 
 [**AddObject**](../../tB/Packages/WebView2/WebView2/#addobject) publishes a BASIC class instance under `chrome.webview.hostObjects.<Name>`. Define a small class with public methods or properties:
 
-```tb
+```tb check_build
 Class MyCalculator
     Public Function MultiplyByTen(ByVal Value As Long) As Long
         Return Value * 10
@@ -30,7 +30,7 @@ End Class
 
 Register it once the control is ready:
 
-```tb
+```tb check_build
 Private Sub WebView_Ready() Handles WebView.Ready
     WebView.AddObject "myCalculator", New MyCalculator
 End Sub
@@ -48,7 +48,7 @@ async function testHostCalculator() {
 
 To trigger the JS function from BASIC, call [**ExecuteScript**](../../tB/Packages/WebView2/WebView2/#executescript):
 
-```tb
+```tb check_build
 Private Sub btnTest_Click() Handles btnTest.Click
     WebView.ExecuteScript("testHostCalculator()")
 End Sub
@@ -64,7 +64,7 @@ Messages are values that travel in either direction. Use them for notifications 
 
 [**PostWebMessage**](../../tB/Packages/WebView2/WebView2/#postwebmessage) sends a value to the page; the page receives it through a `message` event on `window.chrome.webview`:
 
-```tb
+```tb check_build
 WebView.PostWebMessage "Hello from twinBASIC!"
 ```
 
@@ -86,7 +86,7 @@ function sendHostAMessage() {
 }
 ```
 
-```tb
+```tb check_build
 Private Sub WebView_JsMessage(ByVal Message As Variant) _
         Handles WebView.JsMessage
     Debug.Print "Page sent: "; Message
@@ -117,7 +117,7 @@ function multiplyTheseNumbers(a, b) {
 
 BASIC can call it and read the result on the same line:
 
-```tb
+```tb check_build
 Dim product As Long = WebView.JsRun("multiplyTheseNumbers", 5, 6)
 Debug.Print product   ' 30
 ```
@@ -126,7 +126,7 @@ The call blocks for up to [**JsCallTimeOutSeconds**](../../tB/Packages/WebView2/
 
 ### JsRunAsync (asynchronous)
 
-```tb
+```tb check_build
 Private Sub btnRun_Click() Handles btnRun.Click
     WebView.JsRunAsync "multiplyTheseNumbers", 5, 6
 End Sub
@@ -146,7 +146,7 @@ The return value of [**JsRunAsync**](../../tB/Packages/WebView2/WebView2/#jsruna
 
 ### ExecuteScript (fire-and-forget)
 
-```tb
+```tb check_build
 WebView.ExecuteScript "startTimer()"
 ```
 

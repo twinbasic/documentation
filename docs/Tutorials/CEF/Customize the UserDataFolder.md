@@ -19,7 +19,7 @@ A few situations where the default goes wrong:
 
 In every one of these, override the default by assigning [**EnvironmentOptions.UserDataFolder**](../../tB/Packages/CEF/CefBrowser/EnvironmentOptions#userdatafolder) during the control's [**Create**](../../tB/Packages/CEF/CefBrowser/#create) event:
 
-```tb
+```tb check_build
 Private Sub CefBrowser1_Create()
     CefBrowser1.EnvironmentOptions.UserDataFolder = _
         Environ$("APPDATA") & "\MyApp\CEF\"
@@ -38,7 +38,7 @@ A single user-data folder cannot be opened by two CEF processes at once --- the 
 
 When a collision is detected and [**UserDataFolder**](../../tB/Packages/CEF/CefBrowser/EnvironmentOptions#userdatafolder) is left at its default, the control automatically retries with the next `instance-N` sub-folder. When the host has explicitly set a path, the lock failure instead appears as a CEF initialisation error (*"CEF cache path already locked by another process"*) --- handle it in the [**Error**](../../tB/Packages/CEF/CefBrowser/#error) event:
 
-```tb
+```tb check_build
 Private Sub CefBrowser1_Error(ByVal code As Long, ByVal msg As String)
     If InStr(msg, "already locked") > 0 Then
         MsgBox "Another copy of this application is already running. " & _

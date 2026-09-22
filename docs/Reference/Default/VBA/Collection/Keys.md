@@ -22,7 +22,7 @@ Only items that were added with a **Key** argument appear in the returned array.
 
 ### Example
 
-```tb
+```tb check_build
 Dim col As New Collection
 col.Add "Athens",   Key:="a"
 col.Add "Belgrade", Key:="b"

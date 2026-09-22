@@ -22,7 +22,7 @@ Syntax: **IsEmpty(** *expression* **)**
 
 This example uses **IsEmpty** to determine whether a variable has been initialized.
 
-```tb
+```tb check_build
 Dim MyVar As Variant
 Dim MyCheck As Boolean
 MyCheck = IsEmpty(MyVar)              ' True — uninitialised.

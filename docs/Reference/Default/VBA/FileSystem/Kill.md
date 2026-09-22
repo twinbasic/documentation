@@ -27,7 +27,7 @@ An error occurs when **Kill** is used to delete an open file.
 
 This example uses the **Kill** statement to delete a file from a disk.
 
-```tb
+```tb check_build
 ' Assume TESTFILE is a file containing some data.
 Kill "TestFile"   ' Delete file.
 

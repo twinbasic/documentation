@@ -10,7 +10,7 @@ has_toc: false
 
 One DOM element inside a tool window --- every node in the rendered HTML tree is reachable as an **HtmlElement**, starting from [**ToolWindow.RootDomElement**](ToolWindow#rootdomelement) and traversing down through [**ChildDomElements**](#childdomelements). Inline overlays inside a code pane (created with [**CodeEditor.AddMonacoWidget**](CodeEditor#addmonacowidget)) also appear as **HtmlElement** instances and behave identically.
 
-```tb
+```tb check_build
 With myToolWindow.RootDomElement.ChildDomElements.Add("greeting", "h1")
     With .Properties
         .style.textAlign = "center"

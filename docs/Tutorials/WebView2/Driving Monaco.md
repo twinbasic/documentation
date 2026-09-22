@@ -63,7 +63,7 @@ window.chrome.webview.addEventListener('message', (event) => {
 
 Drop two `WebView2` controls on a form --- `WebView` (the editor) and `WebViewPreview` (the renderer). The `Ready` handler deploys the assets, registers the virtual host, and navigates:
 
-```tb
+```tb check_build
 Private localPath As String
 
 Private Sub WebView_Ready() Handles WebView.Ready
@@ -82,7 +82,7 @@ End Sub
 
 Once Monaco has finished loading, the bootstrap script listens for a `message` event containing the HTML to seed the editor with. Fire that message after the editor's [**NavigationComplete**](../../tB/Packages/WebView2/WebView2/#navigationcomplete):
 
-```tb
+```tb check_build
 Private Sub WebView_NavigationComplete( _
         ByVal IsSuccess As Boolean, ByVal WebErrorStatus As Long) _
         Handles WebView.NavigationComplete
@@ -101,7 +101,7 @@ End Sub
 
 Every keystroke in Monaco fires its `onDidChangeModelContent` callback, which `postMessage`s the new content back to BASIC. That arrives as the [**JsMessage**](../../tB/Packages/WebView2/WebView2/#jsmessage) event --- feed it straight into the preview:
 
-```tb
+```tb check_build
 Private Sub WebView_JsMessage(ByVal Message As Variant) Handles WebView.JsMessage
     WebViewPreview.NavigateToString(Message)
 End Sub
@@ -113,7 +113,7 @@ That's it --- the preview pane re-renders on every edit.
 
 A reasonable fraction of users will run the application on a machine where the WebView2 Evergreen runtime isn't installed. The [**Error**](../../tB/Packages/WebView2/WebView2/#error) event reports this case as Win32 error code `&H80070002` (`ERROR_FILE_NOT_FOUND`):
 
-```tb
+```tb check_build
 Private Sub WebView_Error(ByVal code As Long, ByVal msg As String) _
         Handles WebView.Error
     Const ERROR_FILE_NOT_FOUND As Long = &H80070002

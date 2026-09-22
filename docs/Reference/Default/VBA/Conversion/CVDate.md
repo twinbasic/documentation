@@ -22,7 +22,7 @@ The return type is **Variant** (**Date**). An error occurs if *expression* canno
 
 ### Example
 
-```tb
+```tb check_build
 Dim dateString As String
 dateString = "February 28, 1998"
 MsgBox "Date value of " & dateString & " is " & CVDate(dateString)

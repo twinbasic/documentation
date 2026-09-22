@@ -41,7 +41,7 @@ The picture is read directly from the file passed to **LoadPicture**, or --- whe
 
 A **PictureBox** owns its own device context, addressable through [**hDC**](#hdc), and supports the full VB6 vector-drawing surface: [**Cls**](#cls), [**Line**](#line), [**Circle**](#circle), [**PSet**](#pset), [**Print**](#print), and [**PaintPicture**](#paintpicture). Pen and brush attributes come from [**ForeColor**](#forecolor), [**BackColor**](#backcolor), [**FillColor**](#fillcolor), [**FillStyle**](#fillstyle), [**DrawWidth**](#drawwidth), [**DrawMode**](#drawmode), and [**DrawStyle**](#drawstyle). [**CurrentX**](#currentx) and [**CurrentY**](#currenty) track the current "graphics pen" position so that subsequent calls can omit the starting coordinates.
 
-```tb
+```tb check_build
 picCanvas.Line (10, 10)-Step(100, 50), vbBlue, BF   ' filled rectangle
 picCanvas.Circle (200, 100), 40, vbGreen            ' circle
 picCanvas.CurrentX = 10 : picCanvas.CurrentY = 100

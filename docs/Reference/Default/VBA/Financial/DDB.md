@@ -38,7 +38,7 @@ Depreciation / *period* = ((*cost* - *salvage*) * *factor*) / *life*
 
 This example uses the **DDB** function to return the depreciation of an asset for a specified period given the initial cost (`InitCost`), the salvage value at the end of the asset's useful life (`SalvageVal`), the total life of the asset in years (`LifeTime`), and the period in years for which the depreciation is calculated (`Depr`).
 
-```tb
+```tb check_build
 Dim Fmt, InitCost, SalvageVal, MonthLife, LifeTime, DepYear, Depr
 Const YRMOS = 12    ' Number of months in a year.
 Fmt = "###,##0.00"

@@ -14,7 +14,7 @@ The **ParentControls** object is the collection of other controls that live in t
 
 By default each item is returned wrapped in its host **Extender** --- the container's per-control adapter that adds layout properties (**Top**, **Left**, **Tag**, **Visible**, **Name**, and so on) on top of the control's own interface. Set [**ParentControlsType**](#parentcontrolstype) to **vbNoExtender** to receive the bare controls instead. The collection itself is read-only: items cannot be added or removed through it.
 
-```tb
+```tb check_build
 ' Inside a UserControl: print the name and type of every sibling control.
 Dim ctl As Object
 For Each ctl In UserControl.ParentControls
@@ -49,7 +49,8 @@ Syntax: *object*.**Item(** *index* **)**
 
 **Item** is the default member of **ParentControls**, so the following lines are equivalent:
 
-```tb
+```tb check_build
+Dim ctl As Control
 Set ctl = UserControl.ParentControls.Item(1)
 Set ctl = UserControl.ParentControls(1)
 ```
@@ -80,7 +81,7 @@ Changing **ParentControlsType** affects subsequent reads from [**Item**](#item) 
 
 A **ParentControls** object can be iterated with the [**For Each...Next**](../../../Core/For-Each-Next) statement, which yields each sibling control in turn, in the order the host returns them. The hidden `_NewEnum` member supplies the enumerator and is not called directly from user code.
 
-```tb
+```tb check_build
 Dim ctl As Object
 For Each ctl In UserControl.ParentControls
     Debug.Print ctl.Name

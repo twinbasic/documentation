@@ -49,7 +49,7 @@ The **Or** operator performs a bitwise comparison of identically positioned bits
 
 This example uses the **Or** operator to perform logical disjunction on two expressions.
 
-```tb
+```tb check_build
 Dim A, B, C, D, MyCheck
 A = 10: B = 8: C = 6: D = Null    ' Initialize variables.
 MyCheck = A > B Or B > C    ' Returns True.

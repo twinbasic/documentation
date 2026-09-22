@@ -29,7 +29,7 @@ The hint affects only keyed items (those added with a **Key** argument); items a
 
 ### Example
 
-```tb
+```tb check_build
 Dim Big As New Collection
 Big.KeyCountHint = 100000   ' We expect about 100k keyed items.
 

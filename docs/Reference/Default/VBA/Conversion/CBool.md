@@ -26,7 +26,7 @@ The data-type conversion functions document code by showing that the result of s
 
 This example uses the **CBool** function to convert an expression to a **Boolean**.
 
-```tb
+```tb check_build
 Dim A, B, Check
 A = 5: B = 5             ' Initialize variables.
 Check = CBool(A = B)     ' Check contains True.

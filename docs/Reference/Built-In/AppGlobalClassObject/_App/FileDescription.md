@@ -21,7 +21,7 @@ Syntax: *object*.**FileDescription**
 
 This example displays the file description in a message box.
 
-```tb
+```tb check_build
 MsgBox "File description: " & App.FileDescription
 ```
 

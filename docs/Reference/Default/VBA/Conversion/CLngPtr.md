@@ -26,7 +26,7 @@ When the fractional part is exactly `0.5`, **CLngPtr** always rounds it to the n
 
 This example uses the **CLngPtr** function to convert an expression to a **LongPtr**.
 
-```tb
+```tb check_build
 Dim num As Variant
 num = 1234567890
 MsgBox "LongPtr value of " & num & " is " & CLngPtr(num)

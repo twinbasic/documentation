@@ -36,7 +36,7 @@ Prefer **&** over [**+**](Plus) for joining strings: **+** is also the addition 
 
 `x &= y` is the twinBASIC shorthand for `x = x & y`. *y* is converted to **String** before being appended; if both sides are already **String**, the result stays **String**. **&=** is a statement, not an expression --- it does not produce a value.
 
-```tb
+```tb check_build
 Dim Path As String = "C:\Users"
 Path &= "\Public"               ' Path is now "C:\Users\Public".
 Path &= "\Documents"            ' Path is now "C:\Users\Public\Documents".
@@ -46,7 +46,7 @@ Path &= "\Documents"            ' Path is now "C:\Users\Public\Documents".
 
 This example uses the **&** operator to force string concatenation.
 
-```tb
+```tb check_build
 Dim MyStr
 MyStr = "Hello" & " World"          ' Returns "Hello World".
 MyStr = "Check " & 123 & " Check"   ' Returns "Check 123 Check".

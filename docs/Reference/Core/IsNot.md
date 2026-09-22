@@ -35,7 +35,7 @@ This reads more naturally than the equivalent `If Not (MyObject Is Nothing) Then
 
 ### Example
 
-```tb
+```tb check_build
 Dim A As Object, B As Object, C As Object
 Set A = New Collection
 Set B = A          ' B refers to the same object as A.

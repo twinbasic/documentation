@@ -52,7 +52,7 @@ The *compare* argument can have the following values:
 
 This example uses **InStrRev** to find the last occurrence of a substring.
 
-```tb
+```tb check_build
 Debug.Print InStrRev("a.b.c", ".")       ' 4  — last dot
 Debug.Print InStrRev("a.b.c", ".", 3)    ' 2  — last dot at or before position 3
 Debug.Print InStrRev("a.b.c", "x")       ' 0  — not found

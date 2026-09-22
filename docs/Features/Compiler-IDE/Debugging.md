@@ -15,7 +15,7 @@ New to the debugging experience is a trace logging feature that automatically cr
 
 ![The Project Settings page showing the Compilation: Trace Flags and Compilation: Trace Output options](../Images/4fc2bf99-2bec-4943-837d-21038d791574.png)
 
-```tb
+```tb check_build
 Public Sub ProcessOrder(ByVal orderId As Long)
     Debug.TracePrint "ProcessOrder called, orderId=" & CStr(orderId)
     ' ... processing ...
@@ -26,7 +26,7 @@ End Sub
 
 [**Debug.Cls**](../../tB/Modules/Debug#cls) empties the [Debug Console](../../tB/IDE/Project/DebugConsole) from code, the same as its *Clear Debug Console* button. Calling it as a run begins separates that run's output from the previous one, which is the difference between reading a log and scrolling for where it started:
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     Debug.Cls
     Debug.Print "--- run starting ---"

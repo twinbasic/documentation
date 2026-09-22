@@ -14,7 +14,7 @@ The return value is a **VbArchitecture** constant: **vbArchWin32** for a 32-bit 
 
 ### Example
 
-```tb
+```tb check_build
 If ProcessorArchitecture() = vbArchWin64 Then
     Debug.Print "Running as 64-bit"
 Else

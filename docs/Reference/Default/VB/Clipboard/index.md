@@ -86,7 +86,7 @@ Syntax: *object*.**GetFormat**( *Format* )
 *Format*
 : *required* A member of [**ClipboardConstants**](../../VBRUN/Constants/ClipboardConstants) --- the format to probe for.
 
-```tb
+```tb check_build
 If Clipboard.GetFormat(vbCFFiles) Then
     ' The clipboard holds a file list (e.g. from Explorer copy)
 End If
@@ -102,7 +102,7 @@ Syntax: *object*.**GetText**( [ *Format* ] )
 *Format*
 : *optional* A member of [**ClipboardConstants**](../../VBRUN/Constants/ClipboardConstants) selecting which text format to retrieve: **vbCFText** (default), **vbCFUnicodeText**, **vbCFRTF**, or **vbCFLink**.
 
-```tb
+```tb check_build
 Dim s As String
 s = Clipboard.GetText()                  ' plain text
 Dim rtf As String
@@ -138,7 +138,7 @@ Syntax: *object*.**SetText** *Str* [, *Format* ]
 *Format*
 : *optional* A member of [**ClipboardConstants**](../../VBRUN/Constants/ClipboardConstants) --- **vbCFText** (default), **vbCFUnicodeText**, **vbCFRTF**, or **vbCFLink**.
 
-```tb
+```tb check_build
 Clipboard.Clear
 Clipboard.SetText "Plain text"
 Clipboard.SetText "{\rtf1 \b Bold \b0 plain.}", vbCFRTF   ' add an RTF alternative

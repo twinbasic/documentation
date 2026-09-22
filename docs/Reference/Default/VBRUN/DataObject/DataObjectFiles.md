@@ -63,7 +63,8 @@ Syntax: *object*.**Item(** *Index* **)**
 
 **Item** is the default member of **DataObjectFiles**, so the following lines are equivalent:
 
-```tb
+```tb check_build
+Dim path As String
 path = Data.Files.Item(1)
 path = Data.Files(1)
 ```
@@ -84,7 +85,7 @@ Syntax: *object*.**Remove** *Index*
 
 A **DataObjectFiles** object can be iterated with the [**For Each...Next**](../../../Core/For-Each-Next) statement, which yields each path in turn, in insertion order. The hidden `_NewEnum` member supplies the enumerator and is not called directly from user code.
 
-```tb
+```tb check_build
 Dim Path As Variant
 For Each Path In Data.Files
     Debug.Print Path
@@ -95,7 +96,7 @@ Next Path
 
 This example iterates the file paths in a **DataObjectFiles** collection received from a shell drag-and-drop.
 
-```tb
+```tb check_build
 Private Sub Form1_OLEDragDrop(Data As DataObject, Effect As Long, _
                                Button As Integer, Shift As Integer, _
                                X As Single, Y As Single)

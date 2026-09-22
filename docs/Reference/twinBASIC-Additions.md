@@ -66,7 +66,7 @@ See [Attributes](../tB/Core/Attributes) for the full list, including `[DllExport
 
 Variables can be initialised at the point of declaration:
 
-```tb
+```tb check_build
 Dim total As Long = 0
 Dim greeting As String = "Hello"
 Dim items() As String = Array("a", "b", "c")

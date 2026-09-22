@@ -28,7 +28,7 @@ Syntax: **RGBA(** *red* **,** *green* **,** *blue* **,** *alpha* **)**
 
 This example uses **RGBA** to build a semi-transparent red.
 
-```tb
+```tb check_build
 Dim TranslucentRed As Long
 TranslucentRed = RGBA(255, 0, 0, 128)
 ```

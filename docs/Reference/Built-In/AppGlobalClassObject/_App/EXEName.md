@@ -21,7 +21,7 @@ For a compiled executable named `MyProject.exe`, **EXEName** returns `"MyProject
 
 This example shows the executable name in a message box.
 
-```tb
+```tb check_build
 MsgBox "Running as: " & App.EXEName
 ```
 

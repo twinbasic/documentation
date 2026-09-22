@@ -53,7 +53,7 @@ Array(a, _, b) = Array(1, 2, 3)
 
 This example uses the **Array** function to return a **Variant** containing an array.
 
-```tb
+```tb check_build
 Dim MyWeek As Variant
 Dim MyDay As Variant
 MyWeek = Array("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")

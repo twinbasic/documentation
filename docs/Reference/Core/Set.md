@@ -30,7 +30,7 @@ The [**Dim**](Dim), [**Private**](Private), [**Public**](Public), [**ReDim**](Re
 
 The following example illustrates how **Dim** is used to declare an array with the type `Form1`. No instance of `Form1` actually exists. **Set** then assigns references to new instances of `Form1` to the `myChildForms` variable. Such code might be used to create child forms in an MDI application.
 
-```tb
+```tb check_build
 Dim myChildForms(1 To 4) As Form1
 Set myChildForms(1) = New Form1
 Set myChildForms(2) = New Form1
@@ -44,7 +44,7 @@ Generally, when **Set** is used to assign an object reference to a variable, no 
 
 This example uses the **Set** statement to assign object references to variables. *YourObject* is assumed to be a valid object with a **Text** property.
 
-```tb
+```tb check_build
 Dim YourObject, MyObject, MyStr
 Set MyObject = YourObject    ' Assign object reference.
 ' MyObject and YourObject refer to the same object.

@@ -19,7 +19,10 @@ The value is the *PropertyName* argument that was passed to **UserControl.AsyncR
 
 This example uses **PropertyName** to route the completed read to the correct property.
 
-```tb
+```tb check_build
+' The control's own backing field for the "Data" property.
+Private mData As Variant
+
 Private Sub UserControl_AsyncReadComplete(AsyncProp As AsyncProperty)
     Select Case AsyncProp.PropertyName
         Case "Picture"

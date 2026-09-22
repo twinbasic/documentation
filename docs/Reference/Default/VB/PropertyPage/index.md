@@ -122,7 +122,7 @@ Whether child controls are clipped out of the page's drawing region during paint
 
 The collection of every control hosted by this page, indexable by control name or zero-based position. **Default property.** Read-only --- controls are added to the collection by the runtime, not by user code.
 
-```tb
+```tb check_build inherits=PropertyPage
 Dim ctrl As Control
 For Each ctrl In Me.Controls
     ctrl.Enabled = False

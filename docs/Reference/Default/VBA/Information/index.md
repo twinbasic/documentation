@@ -13,7 +13,7 @@ The **Information** module groups together standalone procedures for asking ques
 
 The `Is...` family of functions test whether an expression has a particular state or subtype, returning a **Boolean**: [**IsArray**](IsArray), [**IsArrayInitialized**](IsArrayInitialized), [**IsDate**](IsDate), [**IsEmpty**](IsEmpty), [**IsError**](IsError), [**IsMissing**](IsMissing), [**IsNull**](IsNull), [**IsNumeric**](IsNumeric), and [**IsObject**](IsObject). For richer queries, [**VarType**](VarType) returns the [**VbVarType**](../Constants/VbVarType) enumeration value identifying the subtype of a **Variant**, and [**TypeName**](TypeName) returns its name as a **String**.
 
-```tb
+```tb check_build
 Dim v As Variant
 v = "1/1/2000"
 Debug.Print IsDate(v)        ' True
@@ -25,7 +25,7 @@ Debug.Print TypeName(v)      ' "String"
 
 [**LBound**](LBound) and [**UBound**](UBound) return the smallest and largest valid subscript for a chosen dimension of an array. With a single argument they report on the first dimension; pass an explicit *Dimension* index to query a multidimensional array.
 
-```tb
+```tb check_build
 Dim Grid(1 To 4, 0 To 9) As Long
 Debug.Print LBound(Grid)        ' 1   — first dimension lower bound
 Debug.Print UBound(Grid)        ' 4   — first dimension upper bound
@@ -37,7 +37,7 @@ Debug.Print UBound(Grid, 2)     ' 9   — second dimension upper bound
 
 [**Array**](Array) creates a **Variant** array from a comma-separated list of values; the lower bound follows the source file's **Option Base** setting. As a special form, the same name doubles as a destructuring `Property Let` for unpacking an array on the right-hand side into individual variables on the left.
 
-```tb
+```tb check_build
 Dim a As Variant = Array("one", "two", "three")
 Dim x As Variant, y As Variant, z As Variant
 Array(x, y, z) = a              ' destructuring assignment
@@ -47,7 +47,7 @@ Array(x, y, z) = a              ' destructuring assignment
 
 Three functions return raw addresses for use with API calls or unsafe interop: [**ObjPtr**](ObjPtr) for an object's COM identity, [**StrPtr**](StrPtr) for the underlying buffer of a **String**, and [**VarPtr**](VarPtr) for any variable. The result is a **LongPtr** valid only while the underlying object, string, or variable stays alive --- taking a pointer never holds a reference of its own. To read or write the memory at a known address, pair these with the [**GetMem**](../HiddenModule/GetMem4) / [**PutMem**](../HiddenModule/PutMem4) family from the [(Default)](../HiddenModule/) module.
 
-```tb
+```tb check_build
 Dim n As Long = &H12345678
 Dim Bytes(0 To 3) As Byte
 vbaCopyBytes 4, VarPtr(Bytes(0)), VarPtr(n)
@@ -58,7 +58,7 @@ Debug.Print Hex(Bytes(0))        ' "78" — little-endian
 
 [**RGB**](RGB) and [**RGBA**](RGBA) build a 32-bit colour value from individual red, green, blue, and (optionally) alpha components; [**RGB_R**](RGB_R), [**RGB_G**](RGB_G), [**RGB_B**](RGB_B), and [**RGBA_A**](RGBA_A) extract those components back out. [**QBColor**](QBColor) returns the RGB value of one of the sixteen QuickBASIC colour indexes, and [**TranslateColor**](TranslateColor) converts an OLE colour value (which may reference an entry in the system palette) into a plain RGB colour.
 
-```tb
+```tb check_build
 Dim C As Long
 C = RGB(255, 100, 150)
 Debug.Print RGB_R(C)         ' 255

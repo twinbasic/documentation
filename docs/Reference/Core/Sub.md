@@ -114,7 +114,7 @@ A procedure can use a variable that is not explicitly declared in the procedure,
 
 This example uses the **Sub** statement to define the name, arguments, and code that form the body of a **Sub** procedure.
 
-```tb
+```tb check_build
 ' Sub procedure definition.
 ' Sub procedure with two arguments.
 Sub SubComputeArea(Length As Double, TheWidth As Double)

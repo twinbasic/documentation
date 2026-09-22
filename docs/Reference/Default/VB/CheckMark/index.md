@@ -12,7 +12,7 @@ A **CheckMark** is a windowless control that draws a single check glyph --- chec
 
 The default property is [**Value**](#value) and the default event is [**Click**](#click).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     Check1.Value = vbUnchecked
 End Sub
@@ -37,7 +37,7 @@ End Sub
 
 A user click toggles **Value** between **vbChecked** and **vbUnchecked** only. The grey state is reachable from code --- assign **vbGrayed** to **Value** to display it.
 
-```tb
+```tb check_build
 Check1.Value = vbGrayed     ' show the indeterminate state
 ```
 

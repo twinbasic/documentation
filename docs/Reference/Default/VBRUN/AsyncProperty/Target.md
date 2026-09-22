@@ -19,7 +19,7 @@ The value is the *Target* argument that was passed to **UserControl.AsyncRead** 
 
 This example logs the URL being fetched for each pending read.
 
-```tb
+```tb check_build
 Private Sub UserControl_AsyncReadProgress(AsyncProp As AsyncProperty)
     Debug.Print "Fetching " & AsyncProp.PropertyName & " from: " & AsyncProp.Target
 End Sub

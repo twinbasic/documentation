@@ -10,7 +10,7 @@ has_toc: false
 
 A **Printers** object is a read-only collection of every printer installed on the system. It is exposed through the implicit **Printers** global --- there is no user-callable constructor --- and yields a [**Printer**](../Printer/) for each device, keyed by its **DeviceName**. Use it to enumerate the installed devices, or to switch the active printer with `Set Printer = Printers(name)`.
 
-```tb
+```tb check_build
 Dim p As Printer
 For Each p In Printers
     Debug.Print p.DeviceName, p.DriverName, p.Port

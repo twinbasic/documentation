@@ -13,7 +13,7 @@ Holds the host's pre-creation configuration for the underlying WebView2 environm
 
 The fields below take effect only while the WebView2 environment is being constructed --- that is, *before or during* the control's [**Create**](.#create) event. Assigning them after that point has no effect on the live environment.
 
-```tb
+```tb check_build
 Private Sub WebView21_Create()
     WebView21.EnvironmentOptions.UserDataFolder = _
         Environ$("APPDATA") & "\MyApp\WebView2\"

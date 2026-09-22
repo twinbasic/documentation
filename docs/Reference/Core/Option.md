@@ -104,13 +104,13 @@ Without the **Option Explicit** statement, and when the [**Option Explicit On**]
 ### Example of use at module level
 {: .no_toc }
 
-```tb
+```tb check_build expect-error=TB5079
 Module MyModule
-    Option Explicit ' Force explicit variable declaration. 
-	Dim MyVar ' Declare variable. 
+    Option Explicit ' Force explicit variable declaration.
+    Dim MyVar ' Declare variable.
     Sub Example()
-		MyInt = 10 ' Undeclared variable generates error. 
-		MyVar = 10 ' Declared variable does not generate error. 
+        MyInt = 10 ' Undeclared variable generates error.
+        MyVar = 10 ' Declared variable does not generate error.
     End Sub
 End Module
 ```
@@ -147,7 +147,7 @@ The **Option Compare** statement specifies the [string comparison](../Gloss#stri
 
 This example uses the **Option Compare** statement to set the default string comparison method. The **Option Compare** statement is used at the module level only.
 
-```tb
+```tb check_build
 Module ModBin
 	' Set the string comparison method to Binary. 
 	Option Compare Binary ' That is, "AAA" is less than "aaa". 
@@ -173,7 +173,7 @@ When a module contains **Option Private Module**, the public parts, for example,
 > [!NOTE]
 > **Option Private** is a more verbose way of making modules or classes private to the package. An equivalent effect in a less verbose fashion is obtained with [**Private**](Private) statement as follows:
 >
-> ```tb
+> ```tb check_build
 > Private Module MyModule
 >     ' ...
 > End Module 
@@ -188,7 +188,7 @@ When a module contains **Option Private Module**, the public parts, for example,
 
 This example demonstrates the **Option Private** statement, which is used at module level to indicate that the entire module is private. With **Option Private Module**, module-level parts not declared **Private** are available to other modules in the project, but not to other projects or applications.
 
-```tb
+```tb check_build
 Module MyModule
     Option Private Module ' Indicates that the module is private.
 End Module    

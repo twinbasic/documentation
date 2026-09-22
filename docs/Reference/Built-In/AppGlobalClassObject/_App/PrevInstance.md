@@ -23,7 +23,7 @@ The detection is based on the executable's file name and path, consistent with t
 
 This example prevents a second instance of the application from running.
 
-```tb
+```tb check_build
 Sub Main()
     If App.PrevInstance Then
         MsgBox "Another instance of " & App.EXEName & " is already running.", vbExclamation

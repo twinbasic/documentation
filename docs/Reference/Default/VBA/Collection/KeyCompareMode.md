@@ -34,7 +34,7 @@ The default comparison mode is **vbTextCompare**. Changing the comparison mode r
 
 ### Example
 
-```tb
+```tb check_build
 Dim col As New Collection
 
 ' Default mode is binary (case-sensitive).

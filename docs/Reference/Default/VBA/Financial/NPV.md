@@ -31,7 +31,7 @@ The **NPV** function is similar to the [**PV**](PV) function (present value) exc
 
 This example uses the **NPV** function to return the net present value for a series of cash flows contained in the array `Values()`. `RetRate` represents the fixed internal rate of return.
 
-```tb
+```tb check_build
 Dim Fmt, Guess, RetRate, NetPVal, Msg
 Static Values(5) As Double    ' Set up array.
 Fmt = "###,##0.00"    ' Define money format.

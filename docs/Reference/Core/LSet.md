@@ -36,7 +36,7 @@ If *string* is longer than *stringvar*, **LSet** places only the leftmost charac
 
 This example uses the **LSet** statement to left-align a string within a string variable. Although **LSet** can also be used to copy a variable of one user-defined type to another variable of a different but compatible user-defined type, this practice is not recommended; due to the varying implementations of data structures among platforms, such a use of **LSet** can't be guaranteed to be portable.
 
-```tb
+```tb check_build
 Dim MyString
 MyString = "0123456789" ' Initialize string.
 LSet MyString = "<-Left" ' MyString contains "<-Left    ".

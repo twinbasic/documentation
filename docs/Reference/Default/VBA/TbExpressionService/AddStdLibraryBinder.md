@@ -21,7 +21,7 @@ A new **TbExpressionService** has no binders registered. Without at least one bi
 
 ### Example
 
-```tb
+```tb check_build
 Dim Service As TbExpressionService = New TbExpressionService
 Service.AddStdLibraryBinder()
 

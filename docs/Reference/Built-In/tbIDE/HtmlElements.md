@@ -10,7 +10,7 @@ has_toc: false
 
 A child-element collection on an [**HtmlElement**](HtmlElement). Reached through [**HtmlElement.ChildDomElements**](HtmlElement#childdomelements). Use [**Add**](#add) to create new children and [**Item**](#item) to look one up by ID after the fact.
 
-```tb
+```tb check_build
 With myToolWindow.RootDomElement
     With .ChildDomElements.Add("header", "h1")
         .Properties.innerText = "Hello"

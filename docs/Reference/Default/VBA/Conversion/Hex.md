@@ -33,7 +33,7 @@ For the opposite of **Hex**, precede a hexadecimal value with **&H**. For exampl
 
 This example uses the **Hex** function to return the hexadecimal value of a number.
 
-```tb
+```tb check_build
 Dim MyHex
 MyHex = Hex(5)      ' Returns "5".
 MyHex = Hex(10)     ' Returns "A".

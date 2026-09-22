@@ -10,7 +10,7 @@ has_toc: false
 
 A **DirListBox** is a Win32 native list control that displays the directory tree for a single path: the ancestors of the current folder are shown above (each with a closed-folder icon, indented by depth), and the immediate subdirectories of the current folder appear below (each with an open-folder icon at full indent). Double-clicking an entry navigates into it, raising a [**Change**](#change) event. The control is normally placed on a **Form** or **UserControl** at design time alongside a [**DriveListBox**](../DriveListBox) and a [**FileListBox**](../FileListBox), connecting their **Change** events together to build a complete file picker. The default property is [**Path**](#path) and the default event is [**Change**](#change).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     Drive1.Drive = "C:\"
     Dir1.Path = Drive1.Drive
@@ -43,7 +43,7 @@ Activating an entry --- by double-clicking, or by an external caller assigning *
 
 [**ListCount**](#listcount) is the number of subdirectories of the current folder (it does *not* include the ancestor entries shown above). [**List**](#list) is indexed from zero through `ListCount - 1` and returns the *full path* of the corresponding subdirectory --- convenient when iterating from code:
 
-```tb
+```tb check_build
 Dim i As Long
 For i = 0 To Dir1.ListCount - 1
     Debug.Print Dir1.List(i)

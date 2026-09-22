@@ -20,7 +20,7 @@ The `$`-suffixed form returns a **String**; the unsuffixed form returns a **Vari
 
 This example uses the **Trim** function to strip both leading and trailing spaces from a string variable.
 
-```tb
+```tb check_build
 Dim MyString, TrimString
 MyString = "  <-Trim->  "        ' Initialize string.
 TrimString = Trim(MyString)      ' TrimString = "<-Trim->".

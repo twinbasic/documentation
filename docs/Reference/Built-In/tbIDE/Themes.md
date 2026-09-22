@@ -10,7 +10,7 @@ has_toc: false
 
 The IDE's active-theme state --- reached through [**Host.Themes**](Host#themes). Pair with the [**Host.OnChangedTheme**](Host#onchangedtheme) event to refresh any colour-sensitive elements the addin draws inside its tool windows.
 
-```tb
+```tb check_build
 Private Sub Host_OnProjectLoaded()
     ApplyThemeColors                      ' set initial colours based on the current theme
 End Sub

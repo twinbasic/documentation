@@ -26,7 +26,7 @@ The sign of the *number* argument determines the return value of the **Sgn** fun
 
 This example uses the **Sgn** function to determine the sign of a number.
 
-```tb
+```tb check_build
 Dim MyVar1, MyVar2, MyVar3, MySign
 MyVar1 = 12: MyVar2 = -2.4: MyVar3 = 0
 MySign = Sgn(MyVar1)    ' Returns 1.

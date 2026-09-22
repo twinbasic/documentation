@@ -44,7 +44,7 @@ Here, *upperbound* is the highest number in the range, and *lowerbound* is the l
 
 This example uses the **Rnd** function to generate a random integer value from 1 to 6.
 
-```tb
+```tb check_build
 Dim MyValue As Integer
 MyValue = Int((6 * Rnd) + 1)    ' Generate random value between 1 and 6.
 ```

@@ -87,7 +87,7 @@ offline_exclude:
 # .pem, a scratch .md with no frontmatter all used to publish straight
 # through it. builder/publish-policy.mjs is the allowlist that decides
 # what may reach a published tree, enforced unconditionally inside the
-# build; see WIP.md's "The publish allowlist". What belongs here is the
+# build; see WIP.Build.md's "The publish allowlist". What belongs here is the
 # noise a contributor should not have to see refused: source files that
 # sit beside the pages they produce (.scss, .dot, .af) and the build's
 # own output trees.

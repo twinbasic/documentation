@@ -553,7 +553,7 @@ const TASKS = {
   },
 
   // Pre-renders the config-only chrome (SVG sprites, header, search footer,
-  // mermaid script, favicon, GA). No nav-tree dependency -- runs after
+  // favicon, GA). No nav-tree dependency -- runs after
   // discover in parallel with nav. dispatch assembles the final initData
   // by merging this with the sidebar from nav.
   buildInit: {

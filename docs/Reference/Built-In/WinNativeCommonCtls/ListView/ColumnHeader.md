@@ -13,7 +13,7 @@ A **ColumnHeader** represents a single column in a [**ListView**](.) running in 
 
 The class is tagged `[COMCreatable(False)]` --- user code accesses **ColumnHeader** instances through the parent [**ListView**](.)'s [**ColumnHeaders**](ColumnHeaders) collection.
 
-```tb
+```tb check_build
 With ListView1.ColumnHeaders
     .Add , "name", "Name", 150
     .Add , "size", "Size",  80, lvwColumnRight

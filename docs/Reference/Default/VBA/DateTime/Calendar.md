@@ -27,7 +27,7 @@ The **Calendar** property can only be set programmatically. The setting of **Cal
 
 This example sets the calendar type to Hijri.
 
-```tb
+```tb check_build
 Calendar = vbCalHijri
 ```
 

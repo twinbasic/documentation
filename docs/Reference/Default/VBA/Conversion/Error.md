@@ -28,7 +28,7 @@ Examine the property settings of the **Err** object to identify the most recent 
 
 This example uses the **Error** function to print error messages that correspond to the specified error numbers.
 
-```tb
+```tb check_build
 Private Sub PrintError()
     Dim ErrorNumber As Long, count As Long
     count = 1: ErrorNumber = 1

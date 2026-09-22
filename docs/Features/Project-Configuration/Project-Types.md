@@ -15,7 +15,7 @@ While it was possible to accomplish this via hacks previously, tB offers it as a
 
 Standard DLLs in twinBASIC can still specify a startup point; each export will then check if this code has run yet, and if not, run it.
 
-```tb
+```tb check_build
 [DllExport]
 Public Function Add(ByVal a As Long, ByVal b As Long) As Long
     Add = a + b

@@ -431,6 +431,101 @@ Diagram exports carry the font with them. The Download / Copy SVG and PNG button
 
 **Do not hand-edit a diagram's `.svg`.** It is a build artifact: the `.dot` beside it is the source, and the next build overwrites your edit. Changing the face is the edit that looks most harmless and is not --- Graphviz sizes each box to the text it measured, so a diagram whose labels are painted in a font the layout never saw has text hanging outside its boxes. `check.bat` fails on that; see [Diagrams](#diagrams) below.
 
+## Checking that a sample compiles
+
+Nothing in the ordinary build looks inside a code fence. The link check, the accessibility
+scan and the code-region gate all pass over a twinBASIC sample that the compiler would
+refuse --- two such samples shipped, one of them a flagship example on a package page, and
+every gate was green over both.
+
+A sample can ask to be compiled. Add `check_build` to its fence:
+
+````markdown
+```tb check_build
+Dim greeting As String
+greeting = "Hello"
+Debug.Print greeting
+```
+````
+
+Then run it, which needs a twinBASIC install and Windows:
+
+    examples.bat --only "^Reference/Core"
+
+**The marker never reaches the page.** The renderer takes the first word of a fence's info
+string as the language and discards the rest, so a marked fence produces byte-identical
+HTML to an unmarked one. Nothing in the built site, the search index or the PDF can tell
+the difference.
+
+**Mark a sample that is complete, and leave the rest alone.** Most fences on this site are
+not programs --- a statement run with an elision in it, a signature with no body, a syntax
+skeleton with `<placeholders>`. Those are good documentation and there is nothing for a
+compiler to say about them. Roughly a third of the corpus is in that state, which is why
+this is opt-in: a gate that demanded every fence compile would need hundreds of exceptions
+on the first day.
+
+The tool works out what to build around a sample --- a whole `Class` goes in a file of its
+own, procedures and declarations go in a generated module, loose statements go in a
+generated `Sub`. Three keys override it when it guesses wrong, and one flag asks for more:
+
+| In the fence | Means |
+|---|---|
+| `check_build` | Compile this sample. |
+| `check_run` | Compile it and run it, capturing what it prints. *Not implemented yet --- such a fence is compiled only, and the run says so.* |
+| `hidden` | Context for the page's other samples that the reader never sees. Implies `check_build`. See below. |
+| `slot=file` / `slot=module` / `slot=sub` / `slot=class` / `slot=method` | What to generate around it, when the inference is wrong. `class` and `method` are the same two shapes inside a `Class` rather than a `Module`, for code-behind. The report always names the slot it used, so a wrong guess reads as a wrong guess. |
+| `inherits=<class>` | The sample is code-behind *of* something --- `inherits=Form`, `inherits=MDIForm`. The wrapper becomes a `Class` that inherits it, so `Me.Caption` resolves against the real type. |
+| `project=<name>` | Which template project to build into. The default follows the page: a page under `Reference/Built-In/` gets the one that references every package. |
+| `projname=<name>` | Build these samples **as one project**, for a page that presents one program in pieces --- a function in one fence and the tests for it in the next three. Every sample sharing the name is compiled together and nothing else is compiled with them. |
+| `expect-error=<code>` | This sample is *meant* not to compile --- it is showing what goes wrong --- and the run fails if it compiles. |
+
+A sample that assumes a control on a form is fine: the templates declare `Text1`,
+`ListView1`, `CefBrowser1` and the others, exactly as a reader's own project would, so what
+gets checked is the part the sample is actually claiming.
+
+**`Me` and `WithEvents` are read as declarations of intent.** Neither is legal in a standard
+module --- the compiler says so in as many words --- so a fence using either is class
+code-behind, and the tool wraps it in a `Class` without being told. What it cannot guess is
+*which* class, so a sample reaching a member of the thing it is code-behind of ---
+`Me.Caption`, `Me.Arrange` --- needs `inherits=` to say.
+
+### A page can carry its own context
+
+A fence marked `hidden` is compiled with the page's other samples and **rendered to
+nothing**: it is absent from the page, the search index, the offline mirror and the PDF.
+
+It is for the declarations a sample assumes but no reader needs to read --- a class the
+page describes in prose but never lists, an API `Declare`, a control instance only this
+page uses. Putting them in a hidden fence keeps them beside the samples that need them,
+in one file, instead of in a template shared by every other page on the site.
+
+````markdown
+```tb hidden
+' The reader's own session class; the package never sees the type.
+Class ClientSession
+    Public Sub HandleMessage(ByRef Data() As Byte)
+    End Sub
+End Class
+```
+````
+
+Use it for context, not for hiding a sample. A hidden fence is still compiled, so it is
+checked like everything else --- but nobody can read it, and a fence nobody can read is
+not documentation.
+
+**A sample that needs another sample needs `projname`.** Samples are packed several to a
+generated project, so one can sometimes see another's declarations by luck --- and luck
+changes with what else is being checked, which makes a page pass one run and fail the next.
+Naming the group says the dependency out loud, and the tool then refuses a group that is
+only half marked rather than reporting a missing symbol in the sample that is fine.
+
+**A mistyped marker is caught.** `check_bild` renders identically to no marker at all, so a
+sample carrying one would simply never be compiled; the tool reports an unrecognised token
+rather than skipping it in silence.
+
+[Tools and Scripts](Tools#check-examples) covers running it --- the census and survey
+modes, the flags, and what the report means.
+
 ## Bullet lists, dashes, and parentheses
 
 Most bullets on this site are a term, a dash, and a description, and which dash

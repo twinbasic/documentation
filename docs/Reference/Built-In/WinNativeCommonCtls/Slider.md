@@ -10,7 +10,7 @@ has_toc: false
 
 A **Slider** is a trackbar control --- a horizontal or vertical channel with a draggable thumb that lets the user pick a value between [**Min**](#min) and [**Max**](#max). Optional tick marks, a floating value tip, and a highlighted selection range round out the control.
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     Slider1.Min = 0
     Slider1.Max = 100

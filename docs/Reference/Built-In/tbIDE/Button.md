@@ -10,7 +10,7 @@ has_toc: false
 
 An addin-created toolbar button. Returned by [**Toolbar.AddButton**](Toolbar#addbutton); held via `WithEvents` to receive [**OnClick**](#onclick) notifications. The button's [**Caption**](#caption) and [**IconData**](#icondata) are mutable at run time --- the caption can reflect a state, or the icon can reflect a toggle.
 
-```tb
+```tb check_build
 Private WithEvents RefreshButton As Button
 
 Private Sub Host_OnProjectLoaded()

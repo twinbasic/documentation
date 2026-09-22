@@ -12,7 +12,7 @@ A code-pane editor --- the specific [**Editor**](Editor) kind the IDE returns wh
 
 A **CodeEditor** is reached by casting an [**Editor**](Editor) --- `Host.ActiveEditors(0)` returns an [**Editor**](Editor) that, for a code pane, is also a **CodeEditor**:
 
-```tb
+```tb check_build
 If TypeOf Host.ActiveEditors(0) Is CodeEditor Then
     Dim codeEditor As CodeEditor = Host.ActiveEditors(0)
     codeEditor.SelectedText = "' commented out by an addin" & vbCrLf & codeEditor.SelectedText

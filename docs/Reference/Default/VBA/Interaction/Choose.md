@@ -28,7 +28,7 @@ If *index* is 1, **Choose** returns *choice-1*; if *index* is 2, it returns *cho
 
 This example uses **Choose** to map a 1-based option index to a name.
 
-```tb
+```tb check_build
 Function GetChoice(Ind As Integer) As String
     GetChoice = Choose(Ind, "Speedy", "United", "Federal")
 End Function

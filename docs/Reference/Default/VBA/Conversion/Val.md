@@ -24,13 +24,13 @@ However, the function recognizes the radix prefixes `&O` (for octal) and `&H` (f
 
 The following returns the value `1615198`:
 
-```tb
+```tb check_build
 Val("    1615 198th Street N.E.")
 ```
 
 In the following code, **Val** returns the decimal value `-1` for the hexadecimal value shown:
 
-```tb
+```tb check_build
 Val("&HFFFF")
 ```
 
@@ -44,7 +44,7 @@ Val("&HFFFF")
 
 This example uses the **Val** function to return the numbers contained in a string.
 
-```tb
+```tb check_build
 Dim MyValue
 MyValue = Val("2457")        ' Returns 2457.
 MyValue = Val(" 2 45 7")     ' Returns 2457.

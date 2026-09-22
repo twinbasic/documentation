@@ -23,7 +23,7 @@ When using a custom (private) clipboard format, register it with the system thro
 
 ### Example
 
-```tb
+```tb check_build
 Dim Data As New DataObject
 Data.SetData "Hello, world!", vbCFText
 Data.SetData LoadPicture("logo.bmp"), vbCFBitmap

@@ -24,7 +24,7 @@ Note that implicit conversion of an **Error** is not allowed. For example, the r
 
 This example uses the **CVErr** function to return a **Variant** whose **VarType** is **vbError** (10). The user-defined function `CalculateDouble` returns an error if the argument passed to it isn't a number. Use **CVErr** to return user-defined errors from user-defined procedures or to defer handling of a run-time error. Use the **IsError** function to test whether the value represents an error.
 
-```tb
+```tb check_build
 ' Call CalculateDouble with an error-producing argument.
 Sub Test()
     Debug.Print CalculateDouble("345.45robert")

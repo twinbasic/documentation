@@ -14,7 +14,7 @@ A **Collection** is an ordered set of items that can be referred to as a unit. T
 
 A collection is created with **New**, populated with [**Add**](Add), and reduced with [**Remove**](Remove) (one item at a time) or [**Clear**](Clear) (every item at once). When the variable referring to the collection goes out of scope, or is set to **Nothing**, the collection --- together with any object references it holds --- is released.
 
-```tb
+```tb check_build
 Sub Demo()
     Dim Cars As Collection
     Set Cars = New Collection
@@ -38,7 +38,7 @@ End Sub
 
 A **Collection** can be iterated with the [**For Each...Next**](../../Core/For-Each-Next) statement, which yields each item in turn in insertion order, regardless of whether the item was added with a key. To iterate over the keys instead, fetch them with [**Keys**](Keys); to take a snapshot of the values as an array (for example, when the collection may be modified during iteration), use [**Items**](Items).
 
-```tb
+```tb check_build
 Dim Numbers As New Collection
 Numbers.Add 10
 Numbers.Add 20

@@ -19,7 +19,7 @@ Some Windows notification messages --- such as **WM_COMMAND**, **WM_NOTIFY**, an
 
 This example caches the ambient **MessageReflect** flag so the control knows whether to handle reflected messages.
 
-```tb
+```tb check_build
 Private mMessageReflect As Boolean
 
 Private Sub UserControl_AmbientChanged(PropertyName As String)

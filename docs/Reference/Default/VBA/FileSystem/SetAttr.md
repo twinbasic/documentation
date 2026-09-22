@@ -37,7 +37,7 @@ A run-time error occurs when setting the attributes of an open file.
 
 This example uses the **SetAttr** statement to set attributes for a file.
 
-```tb
+```tb check_build
 SetAttr "TESTFILE", vbHidden    ' Set hidden attribute.
 SetAttr "TESTFILE", vbHidden + vbReadOnly    ' Set hidden and read-only attributes.
 ```

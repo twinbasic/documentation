@@ -33,7 +33,7 @@ The functions [**Asc**, **AscB**, and **AscW**](Asc) are the opposite of **Chr**
 
 This example uses the **Chr** function to return the character associated with the specified character code.
 
-```tb
+```tb check_build
 Dim MyChar
 MyChar = Chr(65)    ' Returns A.
 MyChar = Chr(97)    ' Returns a.

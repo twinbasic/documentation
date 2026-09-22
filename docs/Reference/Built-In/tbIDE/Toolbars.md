@@ -10,7 +10,7 @@ has_toc: false
 
 The collection of IDE toolbars. Reached through [**Host.Toolbars**](Host#toolbars). Currently a single toolbar --- `Host.Toolbars(0)` --- but the collection interface allows future IDE versions to add more.
 
-```tb
+```tb check_build
 With Host.Toolbars(0)
     .AddSplitter
     Set Button1 = .AddButton("MyAddIn.Button1", "Refresh")

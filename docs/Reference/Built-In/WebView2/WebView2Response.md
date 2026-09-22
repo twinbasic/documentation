@@ -12,7 +12,7 @@ The response side of a [**WebResourceRequested**](WebView2/#webresourcerequested
 
 If the event handler does not touch the response (no property is written), the runtime falls through to its normal fetch --- the pending request continues unchanged.
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     WebView21.AddWebResourceRequestedFilter "https://api.example.com/*", wv2All
 End Sub

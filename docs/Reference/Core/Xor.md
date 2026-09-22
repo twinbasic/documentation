@@ -44,7 +44,7 @@ The **Xor** operator performs a bitwise comparison of identically positioned bit
 
 This example uses the **Xor** operator to perform logical exclusion on two expressions.
 
-```tb
+```tb check_build
 Dim A, B, C, D, MyCheck
 A = 10: B = 8: C = 6: D = Null    ' Initialize variables.
 MyCheck = A > B Xor B > C         ' Returns False.

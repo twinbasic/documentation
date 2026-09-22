@@ -22,7 +22,7 @@ The address is written directly with no bounds or alignment check. Writing to an
 
 This example writes a single byte to a buffer and reads it back.
 
-```tb
+```tb check_build
 Dim buf As LongPtr = AllocMem(4)
 PutMem1 buf, &HFF
 Dim b As Byte

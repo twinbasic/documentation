@@ -27,7 +27,7 @@ The **IRR** function uses the order of values within the array to interpret the 
 
 In this example, the **IRR** function returns the internal rate of return for a series of 5 cash flows contained in the array `Values()`. The first array element is a negative cash flow representing business start-up costs. The remaining four cash flows represent positive cash flows for the subsequent 4 years. `Guess` is the estimated internal rate of return.
 
-```tb
+```tb check_build
 Dim Guess, Fmt, RetRate, Msg
 Static Values(5) As Double    ' Set up array.
 Guess = .1    ' Guess starts at 10 percent.

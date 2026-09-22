@@ -19,7 +19,7 @@ The default control on a form is the one activated when the user presses **Enter
 
 This example responds to a **DisplayAsDefault** change and triggers a repaint to update the button border.
 
-```tb
+```tb check_build
 Private Sub UserControl_AmbientChanged(PropertyName As String)
     Select Case PropertyName
         Case "DisplayAsDefault"

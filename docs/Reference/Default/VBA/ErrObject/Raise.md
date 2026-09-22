@@ -34,7 +34,7 @@ All of the arguments are optional except *number*. When **Raise** is called with
 
 This example uses the **Raise** method of the **Err** object to generate an error from inside an Automation object with the programmatic ID `MyProj.MyObject`.
 
-```tb
+```tb check_build
 Const MyContextID As Long = 1010407    ' Define a constant for the contextID.
 
 Function TestName(ByVal CurrentName As String, ByVal NewName As String)

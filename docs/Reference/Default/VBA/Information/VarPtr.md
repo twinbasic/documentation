@@ -21,7 +21,7 @@ Pass the result to an API function that needs a raw address, or pass it to one o
 
 ### Example
 
-```tb
+```tb check_build
 Dim n As Long
 n = &H12345678
 

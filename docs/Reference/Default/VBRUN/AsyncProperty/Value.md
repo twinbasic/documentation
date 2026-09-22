@@ -23,7 +23,7 @@ Syntax: *object*.**Value**
 
 This example reads **Value** in the completion event and assigns the result to the control's **Picture** property.
 
-```tb
+```tb check_build
 Private Sub UserControl_AsyncReadComplete(AsyncProp As AsyncProperty)
     If AsyncProp.PropertyName = "Picture" Then
         Set UserControl.Picture = AsyncProp.Value    ' Value is an IPictureDisp

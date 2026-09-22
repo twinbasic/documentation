@@ -19,7 +19,7 @@ The return value is the green component in the range 0--255.
 
 This example extracts the green component from a colour built with **RGB**.
 
-```tb
+```tb check_build
 Dim MyColor As Long
 Dim GreenComponent As Integer
 MyColor = RGB(75, 125, 255)

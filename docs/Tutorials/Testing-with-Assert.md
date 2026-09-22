@@ -26,11 +26,11 @@ All three compile out of release builds: every member is tagged `[DebugOnly(True
 
 The most commonly used members are:
 
-- `Exact.AreEqual expected, actual` -- fails if the two values differ
-- `Exact.IsTrue condition` -- fails if the condition is `False`
-- `Exact.IsFalse condition` -- fails if the condition is `True`
-- `Exact.Fail message` -- unconditionally records a failure
-- `Exact.Succeed` -- explicitly records a pass (useful at the end of conditional paths)
+- `Assert.Exact.AreEqual expected, actual` -- fails if the two values differ
+- `Assert.Exact.IsTrue condition` -- fails if the condition is `False`
+- `Assert.Exact.IsFalse condition` -- fails if the condition is `True`
+- `Assert.Exact.Fail message` -- unconditionally records a failure
+- `Assert.Exact.Succeed` -- explicitly records a pass (useful at the end of conditional paths)
 
 Each failing assertion records the source location, the expected and actual values, and the optional message string. Results appear in the **Debug Console** pane.
 
@@ -42,7 +42,7 @@ Open **Project → References** (Ctrl+T) → **Available Packages** and tick **A
 
 Add a standard **Module** to the project (right-click the project in the Project Explorer, then **Add → Module**). Name it `StringUtils`. Add the following function:
 
-```tb
+```tb check_build projname=padleft-tests
 ' Pads s on the left with padChar until it reaches totalWidth characters.
 ' If s is already at or beyond totalWidth, it is returned unchanged.
 Public Function PadLeft(ByVal s As String, _
@@ -62,35 +62,35 @@ End Function
 
 Add a second module, `TestStringUtils`. Each test is a `Public Sub` that exercises one aspect of the function. Keep each Sub short --- ideally one logical scenario per Sub, named to describe what it checks.
 
-```tb
+```tb check_build projname=padleft-tests
 Public Sub TestPadLeft_Normal()
     ' Three spaces prefix "hi" to reach width 5
-    Exact.AreEqual "   hi", PadLeft("hi", 5)
+    Assert.Exact.AreEqual "   hi", PadLeft("hi", 5)
 End Sub
 
 Public Sub TestPadLeft_CustomPadChar()
     ' Zero-pad to width 5
-    Exact.AreEqual "00042", PadLeft("42", 5, "0")
+    Assert.Exact.AreEqual "00042", PadLeft("42", 5, "0")
 End Sub
 
 Public Sub TestPadLeft_AtWidth()
     ' Already at width -- no change
-    Exact.AreEqual "hello", PadLeft("hello", 5)
+    Assert.Exact.AreEqual "hello", PadLeft("hello", 5)
 End Sub
 
 Public Sub TestPadLeft_ExceedsWidth()
     ' Already longer than width -- not truncated
-    Exact.AreEqual "toolong", PadLeft("toolong", 5)
+    Assert.Exact.AreEqual "toolong", PadLeft("toolong", 5)
 End Sub
 
 Public Sub TestPadLeft_EmptyString()
     ' Empty input -- result is all padding
-    Exact.AreEqual "   ", PadLeft("", 3)
+    Assert.Exact.AreEqual "   ", PadLeft("", 3)
 End Sub
 
 Public Sub TestPadLeft_SingleChar()
     ' Width of 1, input already 1 char -- no change
-    Exact.AreEqual "x", PadLeft("x", 1)
+    Assert.Exact.AreEqual "x", PadLeft("x", 1)
 End Sub
 ```
 
@@ -106,7 +106,7 @@ There are two ways to run a test Sub:
 
 To run all tests in a batch, add a runner Sub that calls each test in sequence:
 
-```tb
+```tb check_build projname=padleft-tests
 Public Sub RunAllTests()
     TestPadLeft_Normal
     TestPadLeft_CustomPadChar
@@ -124,12 +124,12 @@ Place the cursor inside `RunAllTests` and press **F5** (or click **▶ Run** in 
 
 Sometimes a function should raise an error for bad input. Test that with `On Error Resume Next` and `Err.Number`:
 
-```tb
+```tb check_build projname=padleft-tests
 Public Sub TestPadLeft_ZeroWidth()
     ' A width of 0 is technically valid -- the string is returned unchanged
     ' if it is already zero-length, and unchanged otherwise.
-    Exact.AreEqual "hi", PadLeft("hi", 0)
-    Exact.AreEqual "", PadLeft("", 0)
+    Assert.Exact.AreEqual "hi", PadLeft("hi", 0)
+    Assert.Exact.AreEqual "", PadLeft("", 0)
 End Sub
 ```
 
@@ -140,7 +140,7 @@ Public Sub TestSomethingThatShouldRaise()
     On Error Resume Next
     SomeFunctionThatRaises 0    ' call that should fail
     If Err.Number = 0 Then
-        Exact.Fail "expected an error, but none was raised"
+        Assert.Exact.Fail "expected an error, but none was raised"
     End If
     On Error GoTo 0
 End Sub
@@ -150,10 +150,10 @@ End Sub
 
 Use **Exact** by default --- its strictest comparison semantics prevent tests from passing for the wrong reason. Switch to **Strict** or **Permissive** when the code under test is intentionally case-insensitive or when you are comparing values that should be equal regardless of numeric type:
 
-```tb
+```tb check_build
 ' Exact would fail because "hello" ≠ "Hello" (case differs)
-Strict.AreEqual "HELLO", LCase$("HELLO")  ' fails -- "hello" ≠ "HELLO"
-Permissive.AreEqual "HELLO", LCase$("HELLO")  ' passes -- case-insensitive
+Assert.Strict.AreEqual "HELLO", LCase$("HELLO")  ' fails -- "hello" ≠ "HELLO"
+Assert.Permissive.AreEqual "HELLO", LCase$("HELLO")  ' passes -- case-insensitive
 ```
 
 The three modules are documented in full at:

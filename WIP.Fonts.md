@@ -33,7 +33,7 @@ node scripts/build_dot_metrics.mjs      # or --check, which fails if stale
 Forgetting is not silent. Stale widths move the boxes, and
 `scripts/check_dot_fit.mjs` --- in `check.bat` and in the PR checks workflow (`checks.yml`, though not the deploy workflow) --- fails as soon as a
 label outgrows one. See [Teaching Graphviz what Inter
-measures](WIP.md#teaching-graphviz-what-inter-measures).
+measures](WIP.Typography.md#teaching-graphviz-what-inter-measures).
 
 `opsz` is pinned and `wght` is not. Keeping the optical-size axis costs ~70 KB
 per face in `gvar`/`CFF2` delta data --- more than trimming the character set

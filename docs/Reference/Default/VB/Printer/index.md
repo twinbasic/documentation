@@ -12,7 +12,7 @@ A **Printer** object encapsulates one Windows printer device, exposing a drawing
 
 A print job begins implicitly the first time the application calls a drawing or text method on the **Printer** ([**Print**](#print), [**Line**](#line), [**Circle**](#circle), [**PSet**](#pset), [**PaintPicture**](#paintpicture), …), and is finalised by [**EndDoc**](#enddoc). [**NewPage**](#newpage) advances to a fresh page within the same job; [**KillDoc**](#killdoc) aborts the job without finishing the current page.
 
-```tb
+```tb check_build
 Printer.FontSize = 12
 Printer.Print "Hello, world!"
 Printer.NewPage
@@ -29,7 +29,7 @@ User code never instantiates a **Printer** directly --- the class is marked `[CO
 
 twinBASIC exposes a single implicit **Printer** object, accessible by name from anywhere in user code, plus a [**Printers**](../Printers/) collection enumerating every printer installed on the system:
 
-```tb
+```tb check_build
 Dim p As Printer
 For Each p In Printers
     Debug.Print p.DeviceName, p.DriverName, p.Port
@@ -40,7 +40,7 @@ By default the implicit **Printer** has [**TrackDefault**](#trackdefault) **True
 
 The entries returned by [**Printers**](../Printers/) are immutable --- assigning to one of their properties raises run-time error 383 (*Property is read-only*), and the document-control methods raise error 438 (*Object doesn't support this property or method*). To print to one of them, copy it onto the implicit **Printer** with **Set**:
 
-```tb
+```tb check_build
 Set Printer = Printers("HP LaserJet")
 Printer.Orientation = vbPRORLandscape
 Printer.Print "Hello on landscape paper."
@@ -65,7 +65,7 @@ The methods that manage the job --- [**EndDoc**](#enddoc), [**KillDoc**](#killdo
 
 A **Printer** has its own coordinate system, configured through [**ScaleMode**](#scalemode), the [**Scale\***](#scaleleft) properties, and [**Scale**](#scale). The default mode is **vbTwips**, with the surface spanning the physical paper area. Drawing primitives consume coordinates in the current units; [**ScaleX**](#scalex) and [**ScaleY**](#scaley) convert distances between any two scale modes without changing the active one.
 
-```tb
+```tb check_build
 Printer.ScaleMode = vbInches
 Printer.Line (0.5, 0.5)-(8, 10.5), vbBlack, B   ' 1/2-inch margin rectangle
 ```
@@ -74,7 +74,7 @@ Printer.Line (0.5, 0.5)-(8, 10.5), vbBlack, B   ' 1/2-inch margin rectangle
 
 Assigning a path to [**OutputFile**](#outputfile) **before** the job starts redirects the raw spool output to that file instead of the printer device. The file holds the printer-driver-specific bytes that would otherwise be sent over the port --- typically a `.prn` file that can later be copied to a port with the **COPY /B** command.
 
-```tb
+```tb check_build
 Printer.OutputFile = "C:\Spool\report.prn"
 Printer.Print "Captured to file"
 Printer.EndDoc

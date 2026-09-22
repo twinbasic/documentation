@@ -17,7 +17,7 @@ The value identifies the source unit --- the **Module**, **Class**, **Form**, or
 
 ### Example
 
-```tb
+```tb check_build
 Public Sub Log(Message As String)
     Debug.Print CurrentComponentName() & ": " & Message
 End Sub

@@ -94,7 +94,7 @@ Where `IFoo` and `IBar` are interfaces defined with the `Interface` syntax descr
 
 ## Custom Constructor Example
 
-```tb
+```tb check_build
 [InterfaceId("016BC30A-A8E0-4AAF-93AE-13BD838A149E")]
 Public Interface IFoo
     Sub Foo()

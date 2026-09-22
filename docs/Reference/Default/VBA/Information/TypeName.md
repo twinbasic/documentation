@@ -44,7 +44,7 @@ If *varname* is an array, the returned string can be any of the strings above (o
 
 This example uses **TypeName** to return information about a variable.
 
-```tb
+```tb check_build
 Dim NullVar As Variant, MyType As String
 Dim StrVar As String, IntVar As Integer, CurVar As Currency
 Dim ArrayVar(1 To 5) As Integer

@@ -31,13 +31,13 @@ Syntax:
 
 Use the **Private** statement to declare the data type of a variable. For example, the following statement declares a variable as an **Integer**:
 
-```tb
+```tb check_build
 Private NumberOfEmployees As Integer
 ```
 
 A **Private** statement can also declare the object type of a variable. The following statement declares a variable for a new instance of the [**Collection**](../Modules/Collection/) class:
 
-```tb
+```tb check_build
 Private X As New Collection
 ```
 
@@ -58,7 +58,7 @@ The **Private** keyword is also used as a procedure modifier on **[Sub](Sub)**, 
 
 This example shows the **Private** statement being used at the module level to declare variables as private; that is, they are available only to the module in which they are declared.
 
-```tb
+```tb check_build
 Private Number As Integer ' Private Integer variable.
 Private NameArray(1 To 5) As String ' Private array variable.
 ' Multiple declarations, two Variants and one Integer, all Private.

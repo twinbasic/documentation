@@ -15,7 +15,7 @@ Newly-constructed **WaynesButtonState** objects pre-set their **BackgroundFill**
 
 The type itself is `Private Class` --- instances are accessed only through the **WaynesButton.…State** properties, and a variable typed as **WaynesButtonState** cannot be declared from outside the package.
 
-```tb
+```tb check_build
 With btnGo.NormalState
     .BackgroundFill.ColorPoints.SetSolidColor vbBlue
     .TextRendering.Fill.ColorPoints.SetSolidColor vbWhite

@@ -31,7 +31,7 @@ Syntax: *object*.**LogEvent** *LogBuffer*, *EventType*
 
 This example writes an informational entry to the application log.
 
-```tb
+```tb check_build
 App.StartLogging "C:\Logs\MyApp.log", vbLogToFile
 App.LogEvent "Application started.", vbLogEventTypeInformation
 ```

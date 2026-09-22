@@ -25,7 +25,7 @@ When *character* is a number greater than 255, **String** converts the number to
 
 This example uses the **String** function to return repeating character strings of the length specified.
 
-```tb
+```tb check_build
 Dim MyString
 MyString = String(5, "*")       ' Returns "*****".
 MyString = String(5, 42)        ' Returns "*****".

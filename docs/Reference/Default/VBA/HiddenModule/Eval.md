@@ -19,7 +19,7 @@ For repeated evaluation of the same source, or for expressions that need to see 
 
 ### Example
 
-```tb
+```tb check_build
 Debug.Print Eval("2 * (Sqr(2) + 1)")    ' 4.82842712474619
 Debug.Print Eval("UCase(""hello"")")     ' "HELLO"
 ```

@@ -88,7 +88,7 @@ MySub3(Of, Single)(22%)             ' Invalid: unused U can't be omitted as it's
 
 In this example, the invocations of the generic **First** and **Last** subs don't need to explicitly provide type argument values using the  *type-argument-list*, i.e. **(Of** ... **)**, since they can be deduced from the argument types.
 
-```tb
+```tb check_build
 Public Function First(Of T)(Array() As T) As T
     If IsArrayInitialized(Array) Then Return Array(LBound(Array))
 End Function
@@ -106,7 +106,7 @@ End Sub
 
 Without the generic syntax, the procedure would have had to be written for every type *T* it's used on. In the example below, that would be `T=String` and `T=Integer`:
 
-```tb
+```tb check_build
 Public Function First(Array() As String) As String
     If IsArrayInitialized(Array) Then Return Array(LBound(Array))
 End Function
@@ -251,7 +251,7 @@ End Sub
 
 While generic UDTs don't support member procedures yet in twinBASIC, the data members are supported:
 
-```tb
+```tb check_build
 Type ListU(Of T)
     value() As T
 End Type

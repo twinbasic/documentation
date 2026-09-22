@@ -33,13 +33,13 @@ The **Public** statement can't be used in a class module to declare a fixed-leng
 
 Use the **Public** statement to declare the data type of a variable. For example, the following statement declares a variable as an **Integer**:
 
-```tb
+```tb check_build
 Public NumberOfEmployees As Integer
 ```
 
 Also use a **Public** statement to declare the object type of a variable. The following statement declares a variable for a new instance of the [**Collection**](../Modules/Collection/) class:
 
-```tb
+```tb check_build
 Public X As New Collection
 ```
 
@@ -57,7 +57,7 @@ The **Public** keyword is also used as a procedure modifier on **[Sub](Sub)**, *
 
 This example uses the **Public** statement at the module level (General section) of a standard module to explicitly declare variables as public; that is, they are available to all procedures in all modules in all applications unless **Option Private Module** is in effect.
 
-```tb
+```tb check_build
 Public Number As Integer ' Public Integer variable.
 Public NameArray(1 To 5) As String ' Public array variable.
 ' Multiple declarations, two Variants and one Integer, all Public.

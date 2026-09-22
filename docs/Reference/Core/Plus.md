@@ -64,7 +64,7 @@ If one or both expressions are **Null** expressions, *result* is **Null**. If bo
 
 `x += y` is the twinBASIC shorthand for `x = x + y`. The left-hand side is evaluated once; the result follows the same type-promotion and **Null** / **Empty** rules described above. Like all of twinBASIC's compound-assignment operators, **+=** is a statement, not an expression --- it does not produce a value.
 
-```tb
+```tb check_build
 Dim Total As Long = 0
 Total += 5                      ' Total is now 5.
 Total += 7                      ' Total is now 12.
@@ -77,7 +77,7 @@ Greeting += ", world"           ' Greeting is now "Hello, world".
 
 This example uses the **+** operator to sum numbers. The **+** operator can also be used to concatenate strings, but to eliminate ambiguity use the [**&**](Concat) operator instead.
 
-```tb
+```tb check_build
 Dim MyNumber, Var1, Var2
 MyNumber = 2 + 2                ' Returns 4.
 MyNumber = 4257.04 + 98112      ' Returns 102369.04.

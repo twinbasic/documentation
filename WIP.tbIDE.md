@@ -25,7 +25,7 @@ Module MainModule
 End Module
 ```
 
-The returned object must implement the [`AddIn`](#addin) interface (a single read-only `Name` property). The IDE releases the object when the addin is disabled or the IDE shuts down. Every sample uses this exact `tbCreateCompilerAddin` skeleton — surface it on the index landing as the canonical entry point.
+The returned object must implement the [`AddIn`](#public-user-facing-surface) interface (a single read-only `Name` property, declared in `Addin.twin`). The IDE releases the object when the addin is disabled or the IDE shuts down. Every sample uses this exact `tbCreateCompilerAddin` skeleton — surface it on the index landing as the canonical entry point.
 
 ## Public user-facing surface
 

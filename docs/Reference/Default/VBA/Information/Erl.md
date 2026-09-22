@@ -20,7 +20,7 @@ If the statement that raised the error has no preceding line number, **Erl** ret
 
 This example uses **Erl** to log the line number where a run-time error was raised.
 
-```tb
+```tb check_build
 Sub Demo()
     On Error GoTo Handler
 100:    Dim x As Double

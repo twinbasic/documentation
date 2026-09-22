@@ -17,7 +17,7 @@ The values are written into the procedure's machine code at the spot where **Emi
 
 ### Example
 
-```tb
+```tb check_build
 ' mov eax, 0x12345678  — emit the opcode + a 32-bit immediate.
 EmitAny(CByte(&HB8), CLng(&H12345678))
 ```

@@ -29,7 +29,7 @@ Syntax: **Debug.Print** [ *outputlist* ]
 
 The console is monospaced, so a zone here is 14 characters wide and zones begin at columns 0, 14, 28 and so on. An expression that reaches the end of its zone pushes the next one into the zone after.
 
-```tb
+```tb check_build
 Debug.Print                       ' a blank line
 Debug.Print "value: "; 42         ' value: 42
 Debug.Print "left", "right"       ' right starts at column 14
@@ -51,7 +51,7 @@ Syntax: **Debug.TracePrint** [ *outputlist* ]
 
 Where the message goes is a project setting rather than a property of the call: *Compilation: Trace Output* selects the debug console or a file, and *Compilation: Trace Flags* selects what is traced. **Tracing works in a compiled executable as well as under the IDE**, which is the reason to prefer it over **Print** for anything you want to diagnose on a machine that has no IDE on it. See [Debugging Features](../../Features/Compiler-IDE/Debugging).
 
-```tb
+```tb check_build
 Public Sub ProcessOrder(ByVal orderId As Long)
     Debug.TracePrint "ProcessOrder called, orderId=" & CStr(orderId)
 End Sub
@@ -66,7 +66,7 @@ Syntax: **Debug.Cls**
 
 This is the programmatic form of the console's own *Clear Debug Console* button. Call it at the start of a run to separate that run's output from the previous one.
 
-```tb
+```tb check_build
 Debug.Cls
 Debug.Print "--- run starting ---"
 ```
@@ -86,7 +86,7 @@ Syntax: **Debug.Assert** *booleanexpression*
 
 Use it to state something the surrounding code relies on, so a violated assumption stops at the line that states it rather than further away.
 
-```tb
+```tb check_build
 Public Function Average(values() As Double) As Double
     Debug.Assert IsArrayInitialized(values)
     Dim i As Long, total As Double

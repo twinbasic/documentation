@@ -63,7 +63,7 @@ Case "everything", "nuts" To "soup", TestItem
 
 This example uses the **Select Case** statement to evaluate the value of a variable. The second **Case** clause contains the value of the variable being evaluated, and therefore only the statement associated with it is executed.
 
-```tb
+```tb check_build
 Dim Number
 Number = 8    ' Initialize variable.
 Select Case Number    ' Evaluate Number.

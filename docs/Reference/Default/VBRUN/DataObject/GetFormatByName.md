@@ -23,7 +23,7 @@ The result is **True** if the **DataObject** can produce a value in *Format*, **
 
 ### Example
 
-```tb
+```tb check_build
 If Data.GetFormatByName("HTML Format") Then
     Dim Html As String
     Html = Data.GetDataByName("HTML Format")

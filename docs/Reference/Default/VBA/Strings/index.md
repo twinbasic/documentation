@@ -13,7 +13,7 @@ The **Strings** module groups together the runtime's text-processing primitives 
 
 [**Len**](Len) returns the number of characters in a string, or --- when given a non-string variable --- the number of bytes the variable occupies. [**Asc**](Asc) returns the character code of a string's first character; [**Chr**](Chr) is its inverse, building a single-character string from a code point. The `W` variants ([**AscW**](Asc), [**ChrW**](Chr)) work in Unicode regardless of the system code page.
 
-```tb
+```tb check_build
 Debug.Print Len("Hello")            ' 5
 Debug.Print Asc("A")                ' 65
 Debug.Print Chr(65)                 ' "A"
@@ -23,7 +23,7 @@ Debug.Print Chr(65)                 ' "A"
 
 [**StrComp**](StrComp) compares two strings and returns -1, 0, or 1 to report which is greater (or equal). [**InStr**](InStr) and [**InStrRev**](InStrRev) return the position of one string inside another, scanning forward from a chosen start position or backward from one. All three accept an optional *compare* argument controlling whether the comparison is case-sensitive (**vbBinaryCompare**), case-insensitive (**vbTextCompare**), or governed by the surrounding [**Option Compare**](../../Core/Option) setting (**vbUseCompareOption**). Note that **InStrRev** swaps the order of the haystack and needle arguments relative to **InStr**.
 
-```tb
+```tb check_build
 Debug.Print InStr("Hello, world", "o")           ' 5  (first match, forward)
 Debug.Print InStrRev("Hello, world", "o")        ' 9  (first match, reverse)
 Debug.Print StrComp("ABC", "abc", vbTextCompare) ' 0  (equal under text compare)
@@ -33,7 +33,7 @@ Debug.Print StrComp("ABC", "abc", vbTextCompare) ' 0  (equal under text compare)
 
 [**Left**](Left), [**Mid**](Mid), and [**Right**](Right) extract a substring from the start, middle, or end of a string. **Mid** doubles as an l-value via the [**Mid =**](../../Core/Mid-equals) statement, which writes characters back into a string in place. [**Space**](Space) returns a run of spaces and [**String**](String) returns a run of any chosen character --- both useful for padding fixed-width output. [**LTrim**](LTrim), [**RTrim**](RTrim), and [**Trim**](Trim) strip leading, trailing, or both kinds of whitespace from a string.
 
-```tb
+```tb check_build
 Dim S As String
 S = "  Hello, world  "
 Debug.Print "[" & Trim(S) & "]"     ' "[Hello, world]"
@@ -45,7 +45,7 @@ Debug.Print String(3, "*") & " " & Space(2) & "!"   ' "***   !"
 
 [**LCase**](LCase) and [**UCase**](UCase) fold a string to lowercase or uppercase. [**StrReverse**](StrReverse) reverses the character order. [**StrConv**](StrConv) bundles a wider set of conversions --- case folding, proper-casing, narrow/wide and Hiragana/Katakana mapping for DBCS locales, and Unicode-to-ANSI byte-array round-tripping --- selected by an additive flag argument.
 
-```tb
+```tb check_build
 Debug.Print UCase("Hello")               ' "HELLO"
 Debug.Print StrReverse("Hello")          ' "olleH"
 Debug.Print StrConv("hello world", vbProperCase)   ' "Hello World"
@@ -55,7 +55,7 @@ Debug.Print StrConv("hello world", vbProperCase)   ' "Hello World"
 
 [**Split**](Split) breaks a string apart at a delimiter into a zero-based array of substrings; [**Join**](Join) reverses the operation, gluing an array back together with a chosen separator between elements. [**Replace**](Replace) substitutes one substring for another across a string, optionally limited to a fixed number of replacements or starting from a given offset. [**Filter**](Filter) reduces a string array to only those elements that contain --- or, with *include* set to **False**, do not contain --- a chosen substring.
 
-```tb
+```tb check_build
 Dim Parts() As String
 Parts = Split("red,green,blue", ",")
 Debug.Print Join(Parts, " / ")              ' "red / green / blue"
@@ -66,7 +66,7 @@ Debug.Print Replace("red,green,blue", ",", "; ")  ' "red; green; blue"
 
 [**Format**](Format) is the general-purpose formatter: it takes any expression --- number, date, or string --- together with a named or user-defined format string, and returns the rendered text. The four named-formatter functions [**FormatCurrency**](FormatCurrency), [**FormatNumber**](FormatNumber), [**FormatPercent**](FormatPercent), and [**FormatDateTime**](FormatDateTime) wrap the most common cases with explicit parameters in place of a format string, so the call site reads as the intent rather than as a recipe. [**MonthName**](MonthName) and [**WeekdayName**](WeekdayName) return the localised name (or abbreviation) of a month or day of the week, given its numeric index.
 
-```tb
+```tb check_build
 Debug.Print Format(1234.5, "#,##0.00")         ' "1,234.50"
 Debug.Print FormatCurrency(1234.5)             ' "$1,234.50"   (US locale)
 Debug.Print FormatDateTime(Now, vbLongDate)    ' "Saturday, May 9, 2026"

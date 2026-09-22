@@ -45,7 +45,7 @@ For files opened in **Random** mode, the following rules apply:
 
 - If the variable being read into is a dynamic array, **Get** reads a descriptor whose length equals 2 plus 8 times the number of dimensions, that is, `2 + 8 * NumberOfDimensions`. The record length specified by the **Len** clause in the **Open** statement must be greater than or equal to the sum of all the bytes required to read the array data and the array descriptor. For example, the following array declaration requires 118 bytes when the array is written to disk.
 
-  ```tb
+  ```tb check_build
   Dim MyArray(1 To 5, 1 To 10) As Integer
   ```
 
@@ -65,7 +65,8 @@ For files opened in **Binary** mode, all of the **Random** rules apply, except:
 
 - **Get** reads variable-length strings that aren't elements of user-defined types without expecting the 2-byte length descriptor. The number of bytes read equals the number of characters already in the string. For example, the following statements read 10 bytes from file number 1:
 
-  ```tb
+  ```tb check_build
+  Dim VarString As String
   VarString = String(10, " ")
   Get #1, , VarString
   ```

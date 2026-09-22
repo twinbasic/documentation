@@ -36,7 +36,7 @@ When **New** is used with **Set**, an instance is created immediately, and the r
 
 Implicit creation via **New** in a declaration. The instance of [**Collection**](../Modules/Collection/) is created on first use, not at the **Dim** line.
 
-```tb
+```tb check_build
 Dim X As New Collection
 ' No instance exists yet.
 X.Add "first" ' First reference - instance is created here.
@@ -44,7 +44,7 @@ X.Add "first" ' First reference - instance is created here.
 
 Explicit creation via **Set ... = New**. The instance is created at the **Set** line. This is the more common form, since the moment of construction is visible at the call site.
 
-```tb
+```tb check_build
 Dim Forms(1 To 4) As Form1
 Dim i As Long
 For i = 1 To 4

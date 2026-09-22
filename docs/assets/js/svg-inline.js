@@ -75,7 +75,7 @@
   // element's computed styles rather than guessed from the markup, so a
   // family inherited from the page counts and one that is merely named in an
   // unused rule does not. Italic is checked separately because it is a
-  // second 200 KB and only the Mermaid diagrams use it.
+  // second 200 KB and only the two Monaco diagrams use it.
   function facesUsedBy(svg) {
     var wanted = {};
     var nodes = svg.querySelectorAll("*");
@@ -272,10 +272,11 @@
   // This cannot render every diagram, and the failure is worth handling
   // rather than leaving as an uncaught throw. Chromium taints a canvas that
   // has had an SVG containing <foreignObject> drawn into it, and a tainted
-  // canvas refuses toBlob() with a SecurityError. The Mermaid exports put
-  // every label in a foreignObject, so PNG export of those two diagrams has
-  // never worked -- it threw inside an onload handler, where nothing
-  // surfaced it and the click simply appeared to do nothing. Say so instead.
+  // canvas refuses toBlob() with a SecurityError. Every diagram is Graphviz
+  // DOT now, which emits plain <text>, so all of them rasterise -- but a
+  // hand-authored SVG could reintroduce a foreignObject, and the throw lands
+  // inside an onload handler where nothing surfaces it and the click simply
+  // appears to do nothing. Say so instead.
   function rasterise(svg, data, action, filename) {
     var url = URL.createObjectURL(new Blob([data], { type: "image/svg+xml;charset=utf-8" }));
     var img = new Image();

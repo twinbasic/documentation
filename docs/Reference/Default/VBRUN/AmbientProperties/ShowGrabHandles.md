@@ -19,7 +19,7 @@ Grab handles are the small squares drawn on the corners and edges of a selected 
 
 This example responds to a **ShowGrabHandles** change and repaints the control to show or hide the handles.
 
-```tb
+```tb check_build
 Private Sub UserControl_AmbientChanged(PropertyName As String)
     Select Case PropertyName
         Case "ShowGrabHandles"

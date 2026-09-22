@@ -21,7 +21,8 @@ Syntax:
 
 The modulus, or remainder, operator divides *number1* by *number2* (rounding floating-point numbers to integers) and returns only the remainder as *result*. For example, in the following expression, A (*result*) equals 5:
 
-```tb
+```tb check_build
+Dim A As Long
 A = 19 Mod 6.7
 ```
 
@@ -33,7 +34,7 @@ However, if any operand is **Null**, *result* is **Null**. Any operand that is *
 
 This example uses the **Mod** operator to divide two numbers and return only the remainder. If either number is a floating-point number, it is first rounded to an integer.
 
-```tb
+```tb check_build
 Dim MyResult
 MyResult = 10 Mod 5     ' Returns 0.
 MyResult = 10 Mod 3     ' Returns 1.

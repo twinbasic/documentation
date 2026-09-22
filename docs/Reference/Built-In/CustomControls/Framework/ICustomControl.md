@@ -15,7 +15,7 @@ The framework calls **Initialize** once after the control has been constructed a
 
 The eight concrete `Waynes...` classes in the package all implement this interface, together with an inherited mixin base class that supplies the standard layout and name members.
 
-```tb
+```tb check_build
 Class MyControl
     Implements CustomControls.ICustomControl
 

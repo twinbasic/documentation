@@ -37,7 +37,7 @@ The *firstdayofweek* argument can have the following values:
 
 This example uses **WeekdayName** to return the full and abbreviated name of a weekday.
 
-```tb
+```tb check_build
 Debug.Print WeekdayName(2)          ' "Monday" (vbSunday = first day of week)
 Debug.Print WeekdayName(2, True)    ' "Mon"
 Debug.Print WeekdayName(1)          ' "Sunday"

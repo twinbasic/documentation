@@ -1,0 +1,34 @@
+' The browser shell's stage set -- the CEF half.
+'
+' This template is a DELTA over `packages`: check_examples.mjs's TEMPLATE_BASE
+' names the base, and only the files that differ live here. The one that
+' differs is this one.
+'
+' Why a template of its own, rather than one more block in the shared stage:
+' Tutorials/CEF/Building a browser shell.md and its WebView2 twin are the same
+' application written against two different browser controls, and both say
+' "Drop a control onto a Form and rename it `WebView`". One name, two types, on
+' pages that would otherwise share a project -- so no single stage set can
+' carry it. The templates split, the name does not.
+'
+' Not WithEvents. A handler binds to a WithEvents variable declared in the SAME
+' module, and every sample is generated into a module of its own, so a
+' WithEvents here would bind nothing -- the two samples that are event handlers
+' report TB5019 either way and are excerpts rather than programs.
+
+Module tbxStageBrowser
+
+    Public WebView As CefBrowser
+    Public WebViewPreview As CefBrowser
+
+    Public AddressBar As TextBox
+
+    Public btnBack As CommandButton
+    Public btnForward As CommandButton
+    Public btnRefresh As CommandButton
+    Public btnZoomIn As CommandButton
+    Public btnZoomOut As CommandButton
+    Public btnPDF As CommandButton
+    Public btnDevTools As CommandButton
+
+End Module

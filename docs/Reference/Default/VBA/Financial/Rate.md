@@ -39,7 +39,7 @@ For all arguments, cash paid out (such as deposits to savings) is represented by
 
 This example uses the **Rate** function to calculate the interest rate of a loan given the total number of payments (`TotPmts`), the amount of the loan payment (`Payment`), the present value or principal of the loan (`PVal`), the future value of the loan (`FVal`), a number that indicates whether the payment is due at the beginning or end of the payment period (`PayType`), and an approximation of the expected interest rate (`Guess`).
 
-```tb
+```tb check_build
 Dim Fmt, FVal, Guess, PVal, Payment, TotPmts, PayType, APR
 Const ENDPERIOD = 0, BEGINPERIOD = 1    ' When payments are made.
 Fmt = "##0.00"    ' Define percentage format.

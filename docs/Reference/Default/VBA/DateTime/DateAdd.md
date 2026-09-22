@@ -44,7 +44,7 @@ To add days to *date*, use Day of Year ("y"), Day ("d"), or Weekday ("w").
 
 **DateAdd** won't return an invalid date. The following example adds one month to January 31:
 
-```tb
+```tb check_build
 DateAdd("m", 1, "31-Jan-95")
 ```
 
@@ -62,7 +62,7 @@ If the [**Calendar**](Calendar) property setting is Gregorian, the supplied date
 
 This example takes a date and, using the **DateAdd** function, displays a corresponding date a specified number of months in the future.
 
-```tb
+```tb check_build
 Dim FirstDate As Date
 Dim IntervalType As String
 Dim Number As Integer

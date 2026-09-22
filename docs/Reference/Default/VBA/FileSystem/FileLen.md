@@ -25,7 +25,7 @@ If the specified file is open when the **FileLen** function is called, the value
 
 This example uses the **FileLen** function to return the length of a file in bytes. For purposes of this example, assume that `TESTFILE` is a file containing some data.
 
-```tb
+```tb check_build
 Dim MySize
 MySize = FileLen("TESTFILE")    ' Returns file length (bytes).
 ```

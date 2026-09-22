@@ -182,7 +182,7 @@ Whether the **UserControl** acts as a container that can host other ActiveX cont
 
 The collection of every child control hosted by this **UserControl**, indexable by control name or zero-based position. Read-only --- controls are added to the collection by the runtime, not by user code.
 
-```tb
+```tb check_build
 Dim ctrl As Control
 For Each ctrl In UserControl.Controls
     ctrl.Enabled = False
@@ -466,7 +466,7 @@ Whether the [**PreKeyDown**](#prekeydown) and [**PreKeyUp**](#prekeyup) events a
 
 An array of **String** **CLSID**s identifying the [**PropertyPage**](../PropertyPage) classes the host should offer through the **(Custom)** entry on the property browser. Read at the host's `ISpecifyPropertyPages::GetPages` call. Order matters --- the array order is the tab order in the property-sheet dialog.
 
-```tb
+```tb check_build
 Private Sub UserControl_Initialize()
     ReDim PropertyPages(0 To 1)
     PropertyPages(0) = "{<clsid-of-the-general-page>}"

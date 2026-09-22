@@ -17,7 +17,7 @@ An **Editor** returned by the IDE is castable to the specific editor kind for th
 
 Use `TypeOf` to test before casting:
 
-```tb
+```tb check_build
 If Host.ActiveEditors.Count > 0 Then
     If TypeOf Host.ActiveEditors(0) Is CodeEditor Then
         Dim codeEditor As CodeEditor = Host.ActiveEditors(0)

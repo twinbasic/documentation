@@ -34,7 +34,7 @@ You can drag the button to reposition it, or drag its handles to resize it. For 
 
 Double-click the button in the designer. The IDE switches to the Code Editor and generates a skeleton for the button's **Click** event:
 
-```tb
+```tb check_build
 Private Sub Command1_Click()
 
 End Sub
@@ -42,13 +42,13 @@ End Sub
 
 Place your cursor on the blank line inside the Sub and type:
 
-```tb
+```tb check_build
 MsgBox "Hello, World!"
 ```
 
 The complete handler looks like this:
 
-```tb
+```tb check_build
 Private Sub Command1_Click()
     MsgBox "Hello, World!"
 End Sub

@@ -19,7 +19,7 @@ The return value is the alpha (opacity) component in the range 0--255: **0** is 
 
 This example extracts the alpha component from a colour built with **RGBA**.
 
-```tb
+```tb check_build
 Dim MyColor As Long
 Dim AlphaComponent As Integer
 MyColor = RGBA(255, 0, 0, 128)

@@ -33,7 +33,7 @@ The return type is **String**. The result depends on the type of *expression*:
 
 This example uses the **CStr** function to convert a numeric value to a **String**.
 
-```tb
+```tb check_build
 Dim MyDouble, MyString
 MyDouble = 437.324                       ' MyDouble is a Double.
 MyString = CStr(MyDouble)                ' MyString contains "437.324".

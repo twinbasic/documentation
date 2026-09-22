@@ -25,7 +25,7 @@ Syntax: *object*.**LastBuildPath**
 
 This example prints the last build path to the debug console.
 
-```tb
+```tb check_build
 Debug.Print "Last build: " & App.LastBuildPath
 ```
 

@@ -21,7 +21,7 @@ The value is taken from the Product Name field in the project's version informat
 
 This example shows the product name in a message box.
 
-```tb
+```tb check_build
 MsgBox "Product: " & App.ProductName
 ```
 

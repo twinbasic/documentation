@@ -49,7 +49,7 @@ The **And** operator performs a bitwise comparison of identically positioned bit
 
 This example uses the **And** operator to perform a logical conjunction on two expressions.
 
-```tb
+```tb check_build
 Dim A, B, C, D, MyCheck
 A = 10: B = 8: C = 6: D = Null    ' Initialize variables.
 MyCheck = A > B And B > C         ' Returns True.

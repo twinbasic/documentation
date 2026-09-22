@@ -27,7 +27,7 @@ The bytes are packed into the result without any character-set translation; the 
 
 ### Example
 
-```tb
+```tb check_build
 Dim Bytes As Variant
 Open "data.bin" For Binary Access Read As #1
 Bytes = InputB(LOF(1), 1)            ' Read the whole file as bytes.

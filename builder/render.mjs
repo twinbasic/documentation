@@ -378,6 +378,14 @@ export function createMarkdownIt(ctx) {
     highlight: ctx.highlighter ? (code, lang) => ctx.highlighter.render(code, lang) : undefined,
   });
 
+  // `hidden` as a whitespace-separated token anywhere after the language.
+  // Matched against the raw info string rather than parsed with
+  // scripts/lib/tb-fences.mjs's parseInfo: builder/ must not depend on
+  // scripts/, and this is the one token of that markup the renderer cares
+  // about. The word has to stand alone, or a language called `hidden-x` or a
+  // key like `id=hidden` would suppress a fence the author meant to publish.
+  const HIDDEN_FENCE_RE = /^\S+(?:\s+\S+)*?\s+hidden(?:\s|$)/;
+
   // Override the fence renderer so our highlight callback's wrapper HTML
   // (which starts with <div, not <pre>) is used verbatim. Without this,
   // markdown-it's default fence rule wraps it in another <pre><code>.
@@ -391,6 +399,13 @@ export function createMarkdownIt(ctx) {
   md.renderer.rules.fence = (tokens, idx, options) => {
     const tok = tokens[idx];
     const lang = tok.info ? tok.info.trim().split(/\s+/)[0] : "";
+    // A fence marked `hidden` is context for the compile gate, not content:
+    // scripts/check_examples.mjs builds it with the page's other samples so
+    // that the declarations a sample assumes can live beside it rather than in
+    // a shared template, and the reader never sees it. Emitting nothing here
+    // keeps it out of the HTML, and therefore out of the search index, the
+    // offline mirror and the PDF book, all of which read the rendered string.
+    if (HIDDEN_FENCE_RE.test(tok.info ?? "")) return "";
     const html = options.highlight(tok.content, lang);
     if (tok.level > 0 || tok.meta?.nestedInBlock) {
       return html.replace(/<\/div><\/div>$/, "</div>\n</div>") + "\n";
@@ -1225,10 +1240,11 @@ function configureFootnotes(md) {
 // below its chapter with no h2 between (WCAG 1.3.1, best practice).
 //
 // The house style is deprecated -- new content uses `##` for sections (see the
-// page template in WIP.md). This rule is a migration bridge: it repairs the
-// legacy pages at build time so they are not all edited at once (diff churn),
-// and it self-retires per page as each is rewritten to use `##` (a page with a
-// real h2 no longer matches the trigger). Fixing it here also keeps the
+// page template in WIP.Authoring.md). This rule is a migration bridge: it
+// repairs the legacy pages at build time so they are not all edited at once
+// (diff churn), and it self-retires per page as each is rewritten to use
+// `##` (a page with a real h2 no longer matches the trigger). Fixing it here
+// also keeps the
 // markdown untouched and GitHub keeps its `###`. Deliberately narrow, per the maintainer's rule: fire ONLY on a page
 // that uses h1 and h3 but no h2 -- the unambiguous house-style shape. A page
 // that already uses h2 is left exactly as authored (its levels are the

@@ -25,7 +25,7 @@ Equivalent to a [**vbaCopyBytes**](vbaCopyBytes) followed by a memory clear of t
 
 This example copies four bytes from one buffer to another, then confirms the source is zeroed.
 
-```tb
+```tb check_build
 Dim src As LongPtr = AllocMem(8)
 Dim dst As LongPtr = AllocMem(8)
 PutMem4 src, &H12345678

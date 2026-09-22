@@ -12,7 +12,7 @@ has_toc: false
 
 The **Hyperlink** object lets a control or form ask its container to navigate to a target document, the way clicking a link in a browser would. It is used from a control's code through the host's **Hyperlink** property --- for example **UserControl.Hyperlink** --- and works in containers that participate in browser-style navigation (Internet Explorer, Office binders, and a few other hyperlink-aware hosts). When the host does not support hyperlink navigation, the runtime falls back to launching the system's default handler for the target.
 
-```tb
+```tb check_build
 Private Sub HelpButton_Click()
     UserControl.Hyperlink.NavigateTo "https://docs.twinbasic.com/"
 End Sub

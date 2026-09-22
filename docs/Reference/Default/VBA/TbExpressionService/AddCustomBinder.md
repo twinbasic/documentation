@@ -26,7 +26,7 @@ The engine calls [**Bind**](Bind) on each registered custom binder during compil
 
 This example registers a class instance as both a property source (via [**AddCustomBinderObject**](AddCustomBinderObject) with [**IsAppObject**](./#IsAppObject)) and a custom binder. Bare symbols in the expression are first looked up as members of `Me` via the property source; whatever isn't matched there falls through to `Me.Bind`, which can resolve it dynamically --- for example, against a live recordset.
 
-```tb
+```tb check_build
 ' Inside a class that does: Implements ITbCustomBinder
 Dim Service As TbExpressionService = New TbExpressionService
 Service.AddStdLibraryBinder()

@@ -15,7 +15,7 @@ The mutable HTTP-request-header collection for a navigation or a web-resource re
 
 The collection is enumerable: a `For Each` loop yields one [**WebView2Header**](WebView2Header) per entry.
 
-```tb
+```tb check_build
 Private Sub WebView21_NavigationStarting( _
         ByVal Uri As String, _
         ByVal IsUserInitiated As Boolean, _

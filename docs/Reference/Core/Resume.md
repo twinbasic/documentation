@@ -29,7 +29,7 @@ Using a **Resume** statement anywhere except in an error-handling routine raises
 
 This example uses the **Resume** statement to end error handling in a procedure, and then resume execution with the statement that caused the error. Error number 55 is generated to illustrate using the **Resume** statement.
 
-```tb
+```tb check_build
 Sub ResumeStatementDemo()
     On Error GoTo ErrorHandler ' Enable error-handling routine.
     Open "TESTFILE" For Output As #1 ' Open file for output.

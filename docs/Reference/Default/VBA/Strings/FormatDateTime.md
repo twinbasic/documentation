@@ -31,7 +31,7 @@ The *namedFormat* argument has the following settings:
 
 This example uses **FormatDateTime** to display a date value in several formats.
 
-```tb
+```tb check_build
 Dim d As Date
 d = #2026-05-29#
 Debug.Print FormatDateTime(d, vbLongDate)     ' e.g. "Friday, May 29, 2026"

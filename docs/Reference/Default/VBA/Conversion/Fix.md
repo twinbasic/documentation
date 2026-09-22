@@ -29,7 +29,7 @@ The return value has the same type as *number*.
 
 This example illustrates how the **Fix** function returns the integer portion of a number. For a negative number argument, the **Fix** function returns the first negative integer greater than or equal to the number.
 
-```tb
+```tb check_build
 Dim MyNumber
 MyNumber = Fix(99.2)     ' Returns 99.
 MyNumber = Fix(-99.8)    ' Returns -99.

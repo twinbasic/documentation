@@ -34,7 +34,7 @@ The three-argument form is the inline conditional: it returns *truepart* when *e
 
 ### Example
 
-```tb
+```tb check_build
 Dim Divisor As Long
 Divisor = 0
 

@@ -22,7 +22,7 @@ To convert degrees to radians, multiply degrees by pi/180. To convert radians to
 
 This example uses the **Tan** function to return the tangent of an angle.
 
-```tb
+```tb check_build
 Dim MyAngle, MyCotangent
 MyAngle = 1.3    ' Define angle in radians.
 MyCotangent = 1 / Tan(MyAngle)    ' Calculate cotangent.

@@ -150,7 +150,7 @@ Visual Basic may rearrange arithmetic expressions to increase internal efficienc
 
 This example uses the **Function** statement to declare the name, arguments, and code that form the body of a **Function** procedure. The last example uses hard-typed, initialized **Optional** arguments.
 
-```tb
+```tb check_build
 ' The following user-defined function returns the square root of the 
 ' argument passed to it. 
 Function CalculateSquareRoot(NumberArg As Double) As Double 
@@ -164,7 +164,7 @@ End Function
 
 Using the **ParamArray** keyword enables a function to accept a variable number of arguments. In the following definition, it is passed by value.
 
-```tb
+```tb check_build
 Function CalcSum(ByVal FirstArg As Integer, ParamArray OtherArgs()) 
   Dim ReturnValue 
   ' If the function is invoked as follows: 
@@ -177,7 +177,7 @@ End Function
 
 **Optional** arguments can have default values and types other than **Variant**.
 
-```tb
+```tb check_build
 ' If a function's arguments are defined as follows: 
 Function MyFunc(MyStr As String,Optional MyArg1 As _
  Integer = 5,Optional MyArg2 = "Dolly") 

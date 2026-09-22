@@ -27,7 +27,7 @@ Key comparison is governed by the [**KeyCompareMode**](KeyCompareMode) property.
 
 This example uses the **Remove** method to remove every object from a **Collection** named `MyClasses`. Because items are reindexed automatically, the first item is removed on each iteration of the loop.
 
-```tb
+```tb check_build
 Dim Num As Long, MyClasses As Collection
 Set MyClasses = New Collection
 ' ... assume MyClasses has been populated ...

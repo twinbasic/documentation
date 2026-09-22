@@ -47,7 +47,8 @@
 // WHAT WILL BREAK IT.  An @hpcc-js/wasm-graphviz bump that changes the table.
 // That is deliberate: `locateTimesFamily()` asserts an exact match against
 // the Times AFM widths and an exact hit count, so a bump fails loudly instead
-// of silently reverting to Times metrics. See WIP.md, "Diagrams".
+// of silently reverting to Times metrics. See WIP.Typography.md, "Teaching
+// Graphviz what Inter measures".
 
 import { createRequire } from "node:module";
 

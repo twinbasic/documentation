@@ -13,7 +13,7 @@ The **ColumnHeaders** collection is the entry point for managing the columns of 
 
 The class is tagged `[COMCreatable(False)]` --- user code accesses **ColumnHeaders** through the parent [**ListView**](.) control's [**ColumnHeaders**](.#columnheaders) property.
 
-```tb
+```tb check_build
 With ListView1.ColumnHeaders
     .Add , "name", "Name", 150
     .Add , "size", "Size",  80, lvwColumnRight

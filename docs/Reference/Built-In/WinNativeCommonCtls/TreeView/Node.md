@@ -13,7 +13,7 @@ A **Node** is a single entry in a [**TreeView**](.)'s [**Nodes**](Nodes) collect
 
 The class is tagged `[COMCreatable(False)]` --- user code accesses **Node** instances through the parent [**TreeView**](.)'s [**Nodes**](Nodes) collection or through navigation properties on other nodes.
 
-```tb
+```tb check_build
 Dim root As Node = TreeView1.Nodes.Add(, , "root", "My Computer")
 Dim drive As Node = TreeView1.Nodes.Add(root, tvwChild, "c", "C: drive")
 drive.Bold = True

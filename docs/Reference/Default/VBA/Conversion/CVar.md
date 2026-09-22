@@ -22,7 +22,7 @@ The return type is **Variant**.
 
 This example uses the **CVar** function to convert an expression to a **Variant**.
 
-```tb
+```tb check_build
 Dim MyInt, MyVar
 MyInt = 4534                             ' MyInt is an Integer.
 MyVar = CVar(MyInt & 000)                ' MyVar contains the string "4534000".

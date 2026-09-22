@@ -15,7 +15,7 @@ The largest group is the family of **C**-prefixed functions, one per intrinsic d
 
 Beyond their narrowing or widening behaviour, the C-prefix functions are *locale-aware* --- they honour the current decimal separator and short date format --- which makes them the right choice for parsing values that originated as user input. They also serve as documentation: writing `CLng(x)` makes the intended type of an intermediate result explicit even where the surrounding context would coerce *x* implicitly.
 
-```tb
+```tb check_build
 Dim Amount As Currency
 Amount = CCur("1,234.56")        ' parses with the local decimal separator
 ```
@@ -26,7 +26,7 @@ Two further constructors return a **Variant** whose subtype is fixed: [**CVDate*
 
 [**CType**](CType) is a twinBASIC extension that takes its target type as a generic parameter, written `CType(Of `*type*`)(`*value*`)`. It plays the same role as the C-prefix functions but for any type known to the compiler, which makes it the standard cast for **Enum** values, interfaces, and user-defined types where no fixed-name function exists. **CType** doubles as a pointer-to-UDT cast --- see [Enhanced Pointer Functionality](../../../Features/Language/Pointers#ctypeof-type).
 
-```tb
+```tb check_build
 Dim day As VbDayOfWeek
 day = CType(Of VbDayOfWeek)(1)
 ```
@@ -35,7 +35,7 @@ day = CType(Of VbDayOfWeek)(1)
 
 [**Int**](Int) and [**Fix**](Fix) both discard the fractional part of a number, but they round in opposite directions for negative input. **Int** rounds toward negative infinity, so `Int(-8.4)` is `-9`; **Fix** truncates toward zero, so `Fix(-8.4)` is `-8`. For positive values the two coincide. Neither changes the data type of its argument, in contrast to [**CInt**](CInt) and [**CLng**](CLng), which both round and narrow to a specific integer type.
 
-```tb
+```tb check_build
 Debug.Print Int(-8.4)            ' -9
 Debug.Print Fix(-8.4)            ' -8
 ```
@@ -46,7 +46,7 @@ Debug.Print Fix(-8.4)            ' -8
 
 These five functions are *culture-invariant* --- they always use the period (`.`) as the decimal separator and never read or write a thousands separator --- which makes them appropriate for round-tripping through a fixed file format or wire protocol. For locale-aware conversion to and from text, use [**CStr**](CStr) and [**CDbl**](CDbl) (or [**CDec**](CDec)) instead.
 
-```tb
+```tb check_build
 Debug.Print Hex(255)             ' "FF"
 Debug.Print Oct(8)               ' "10"
 Debug.Print Val("&HFF")          ' 255

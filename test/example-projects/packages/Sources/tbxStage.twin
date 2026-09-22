@@ -1,0 +1,66 @@
+' The stage set for the package documentation -- see the console template's copy
+' of this file for why it exists and why the list is written out rather than
+' inferred.
+'
+' The VB half is the same; the rest are the control instances the
+' Reference/Built-In and Tutorials pages assume on their forms.
+
+Module tbxStage
+
+    Public Form1 As Form
+    Public UserForm1 As Form
+    Public UserForm2 As Form
+
+    Public Text1 As TextBox
+    Public Text2 As TextBox
+    Public TextBox1 As TextBox
+
+    Public Label1 As Label
+    Public Timer1 As Timer
+    Public Command1 As CommandButton
+    Public Frame1 As Frame
+    Public Picture1 As PictureBox
+    Public PictureBox1 As PictureBox
+
+    ' Browser controls -- CEF and WebView2.
+    Public CefBrowser1 As CefBrowser
+    Public WebView21 As WebView2
+
+    ' Windows Native Common Controls.
+    Public DTPicker1 As DTPicker
+    Public ImageList1 As ImageList
+    Public ListView1 As ListView
+    Public MonthView1 As MonthView
+    Public ProgressBar1 As ProgressBar
+    Public Slider1 As Slider
+    Public TreeView1 As TreeView
+    Public UpDown1 As UpDown
+
+    ' The VB controls the package pages put on their forms alongside the
+    ' package's own, named as those pages name them.
+    Public List1 As ListBox
+    Public lblStatus As Label
+    Public lblClock As Label
+    Public lstNamedPipes As ListBox
+    Public MyForm As Form
+
+    ' CustomControls -- the Waynes... instances the reference pages assume.
+    Public btnGo As WaynesButton
+    Public Grid1 As WaynesGrid
+    Public txtName As WaynesTextBox
+    Public sldProgress As WaynesSlider
+    Public sldVolume As WaynesSlider
+
+    ' tbIDE. An addin reaches the IDE through a Host, and opens tool windows;
+    ' both are what the addin SDK's pages are written against.
+    Public Host As tbIDE.Host
+    Public myToolWindow As tbIDE.ToolWindow
+    Public myWindow As tbIDE.ToolWindow
+
+    ' An addin keeps the toolbar buttons it created, so that its handlers can
+    ' reach them later; the Toolbar and Toolbars pages name theirs this way.
+    Public Button1 As tbIDE.Button
+    Public Button2 As tbIDE.Button
+    Public MyButton As tbIDE.Button
+
+End Module

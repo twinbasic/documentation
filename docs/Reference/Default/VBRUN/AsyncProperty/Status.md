@@ -19,7 +19,7 @@ The value is a short message such as `"Finding resource"`, `"Connecting"`, or `"
 
 This example displays the human-readable status string in a label during a download.
 
-```tb
+```tb check_build
 Private Sub UserControl_AsyncReadProgress(AsyncProp As AsyncProperty)
     lblStatus.Caption = AsyncProp.Status
 End Sub

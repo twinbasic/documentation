@@ -19,7 +19,7 @@ The Locale ID (LCID) is a 32-bit Windows identifier that names a language and a 
 
 This example caches the ambient **LocaleID** for use when formatting numbers and dates.
 
-```tb
+```tb check_build
 Private mLocaleID As Long
 
 Private Sub UserControl_AmbientChanged(PropertyName As String)

@@ -19,7 +19,7 @@ The bytes are written into the procedure's machine code at the spot where **Emit
 
 A naked **InterlockedIncrement** that adds one to *Addend* atomically.
 
-```tb
+```tb check_build
 Public Function InlineInterlockedIncrement CDecl Naked(Addend As Long) As Long
     #If Win64 Then
         Emit(&Hb8, &H01, &H00, &H00, &H00) ' mov    eax,0x1

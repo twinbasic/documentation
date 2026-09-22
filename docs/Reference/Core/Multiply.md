@@ -41,7 +41,7 @@ If one or both expressions are **Null** expressions, *result* is **Null**. If an
 
 `x *= y` is the twinBASIC shorthand for `x = x * y`. The left-hand side is evaluated once; the result follows the same type-promotion and **Null** / **Empty** rules described above. **\*=** is a statement, not an expression --- it does not produce a value.
 
-```tb
+```tb check_build
 Dim Value As Long = 3
 Value *= 4                      ' Value is now 12.
 Value *= 2                      ' Value is now 24.
@@ -51,7 +51,7 @@ Value *= 2                      ' Value is now 24.
 
 This example uses the **\*** operator to multiply two numbers.
 
-```tb
+```tb check_build
 Dim MyValue
 MyValue = 2 * 2                 ' Returns 4.
 MyValue = 459.35 * 334.90       ' Returns 153836.315.

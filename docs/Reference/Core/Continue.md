@@ -30,7 +30,7 @@ While
 
 This example uses **Continue For** to skip processing of certain characters of the string.
 
-```tb
+```tb check_build
 Dim i%, ch$, text$
 For i = 1 To 10
     ch = Mid$(text, i, 1)

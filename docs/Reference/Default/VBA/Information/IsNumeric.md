@@ -24,7 +24,7 @@ Syntax: **IsNumeric(** *expression* **)**
 
 This example uses **IsNumeric** to determine whether a variable can be evaluated as a number.
 
-```tb
+```tb check_build
 Dim MyVar As Variant
 Dim MyCheck As Boolean
 MyVar = "53"

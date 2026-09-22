@@ -112,7 +112,7 @@ Allows custom logic for creating and returning a new instance of the coclass' im
 
 Example:
 
-```tb
+```tb check_build
 [CoClassId("7980D953-10BF-478C-93BB-DD0093315D96")]
 [CoClassCustomConstructor("FooFactory.CreateFoo")]
 [COMCreatable(True)]
@@ -374,7 +374,7 @@ The value is a **String** whose content is Markdown. The IDE renders it when it 
 
 The packages that ship with twinBASIC follow a consistent shape, shown here on `CurrentProjectName` from the VBA package's `Compilation` module:
 
-```tb
+```tb check_build
 [Description("Retrieves the name of the current project as a literal string.  " & vbCrLf & _
              "### Syntax" & vbCrLf & _
              "`projectName = CurrentProjectName()`  " & vbCrLf & _
@@ -434,7 +434,7 @@ Applicable to: [procedures](../Gloss#procedure) and constants in a module.
 
 It's possible to export a function or constant from standard modules. The compiler rejects the attribute on a module-level variable. Example:
 
-```tb
+```tb check_build
 [DllExport]
 Public Const MyExportedSymbol As Long = &H00000001
 ```
@@ -635,7 +635,7 @@ Keeps the delegate's **Friend** members private to the delegating class. A plain
 
 The attribute belongs on the `Via` form of the statement only. A plain **Implements** does not take it, and [**WithDispatchForwarding**](#withdispatchforwarding) --- which does --- is not accepted on the `Via` form.
 
-```tb
+```tb check_build
 Public Class CVehicle
     Public Sub Honk()
     End Sub
@@ -832,7 +832,7 @@ Then, there should be a `/Resources/MESSAGETABLE/Strings.json` file with followi
 
 The result is as-if we hand-typed the following **Enum** definition:
 
-```tb
+```tb check_build
 Enum EVENTS
     service_started = -1073610751
 End Enum
@@ -884,7 +884,7 @@ Supplies an implementation for an interface prototype without a class behind it:
 
 The [App](../Packages/AppGlobalClassObject/) object is built this way, each of its properties naming a procedure in a private module:
 
-```tb
+```tb check_build
 Public Interface _App Extends stdole.IUnknown
     [RedirectToStaticImplementation("InternalStuff.GetAppPath")]
     Property Get Path() As String
@@ -1029,7 +1029,7 @@ Applicable to: [procedure](../Gloss#procedure) definition in a module.
 ## TestFixture  (optional Bool)
 {: #testfixture }
 
-Syntax: **[TestFixture **[ **( True** \| **False )** ] **]**
+Syntax: **[TestFixture** [ **( True** \| **False )** ] **]**
 
 Applicable to: [**Module**](Module)
 

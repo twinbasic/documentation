@@ -36,7 +36,7 @@ The logical opposite of the [`Is`](../../tB/Core/Is) operator for testing object
 
 ## Examples
 
-```tb
+```tb check_build
 Dim n As Long = &HFF
 Dim shifted As Long = n << 4   ' result: &HFF0
 

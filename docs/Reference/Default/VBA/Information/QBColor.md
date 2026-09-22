@@ -35,7 +35,7 @@ The *color* argument represents colour values used by earlier versions of Basic 
 
 This example uses **QBColor** to set a form's background colour from a numeric colour code.
 
-```tb
+```tb check_build
 Sub ChangeBackColor(ByVal ColorCode As Integer, ByVal MyForm As Form)
     MyForm.BackColor = QBColor(ColorCode)
 End Sub

@@ -13,7 +13,7 @@ The **ListItems** collection is the entry point for managing the rows of a [**Li
 
 The class is tagged `[COMCreatable(False)]` --- user code accesses **ListItems** through the parent [**ListView**](.) control's [**ListItems**](.#listitems) property.
 
-```tb
+```tb check_build
 With ListView1.ListItems
     .Add , "doc1", "Report.docx"
     .Add , "doc2", "Budget.xlsx"

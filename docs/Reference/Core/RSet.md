@@ -27,7 +27,7 @@ If *stringvar* is longer than *string*, **RSet** replaces any leftover character
 
 This example uses the **RSet** statement to right-align a string within a string variable.
 
-```tb
+```tb check_build
 Dim MyString
 MyString = "0123456789"   ' Initialize string.
 RSet MyString = "Right->" ' MyString contains "   Right->".

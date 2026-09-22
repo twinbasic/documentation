@@ -10,7 +10,7 @@ has_toc: false
 
 The collection of editors active in the IDE --- accessible through [**Host.ActiveEditors**](Host#activeeditors). The IDE currently exposes exactly one active editor at a time, but the collection interface allows future versions to expose more. The most common operations are `Host.ActiveEditors(0)` (the active editor) and [**Open**](#open) (jump to a file at a given line / column).
 
-```tb
+```tb check_build
 ' Read the selection out of the currently-focused code pane:
 If Host.ActiveEditors.Count > 0 Then
     If TypeOf Host.ActiveEditors(0) Is CodeEditor Then

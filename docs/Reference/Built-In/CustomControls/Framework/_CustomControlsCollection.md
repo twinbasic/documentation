@@ -66,7 +66,7 @@ Syntax: *object*.**Remove** *IndexOrName*
 
 A `For Each` loop over the collection produces every hosted control in turn. The hidden `_NewEnum` member (DispId -4) provides the enumerator; application code does not call it directly.
 
-```tb
+```tb check_build
 Dim ctl As Object
 For Each ctl In MyForm.Controls
     Debug.Print ctl.Name

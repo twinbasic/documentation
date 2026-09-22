@@ -10,7 +10,7 @@ has_toc: false
 
 A handle into the IDE's virtual file system --- the abstraction that lets an addin traverse and read source files without touching the on-disk paths. The **FileSystem** is reached through [**Host.FileSystem**](Host#filesystem). For the more common per-project case, [**Host.CurrentProject.RootFolder**](Project#rootfolder) is also a [**Folder**](Folder) and is usually the right entry point --- the global **FileSystem** matters when an addin needs to address files outside the project's own root.
 
-```tb
+```tb check_build
 Dim item As FileSystemItem = Host.FileSystem.ResolvePath("twinbasic:/Sources/MainModule.twin")
 ```
 

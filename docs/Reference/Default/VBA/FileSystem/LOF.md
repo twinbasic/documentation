@@ -23,7 +23,7 @@ Syntax: **LOF(** *filenumber* **)**
 
 This example uses the **LOF** function to determine the size of an open file. This example assumes that `TESTFILE` is a text file containing sample data.
 
-```tb
+```tb check_build
 Dim FileLength
 Open "TESTFILE" For Input As #1    ' Open file.
 FileLength = LOF(1)    ' Get length of file.

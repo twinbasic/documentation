@@ -19,7 +19,7 @@ The `&H`, `&O`, and `&B` literals can all be grouped using an underscore, for ex
 
 ## Example
 
-```tb
+```tb check_build
 Dim flags  As Long     = &B1010                       ' 10 in decimal
 Dim perms  As Long     = &O17                         ' 15 in decimal
 Dim colour As Long     = &HFF                         ' 255 in decimal

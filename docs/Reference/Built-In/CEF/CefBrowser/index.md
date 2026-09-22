@@ -12,7 +12,7 @@ A **CefBrowser** is a twinBASIC control that hosts the Chromium Embedded Framewo
 
 The control spawns a separate browser process the first time it is used in a session and communicates with it across an IPC channel; many properties and methods raise *"CefBrowser control is not ready"* (run-time error 5) when called before the [**Ready**](#ready) event has fired.
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     CefBrowser1.Navigate "https://www.twinbasic.com"
 End Sub
@@ -186,7 +186,7 @@ The overall page zoom factor, where `1.0` is 100%. **Double**. Default: `1.0` (d
 > [!NOTE]
 > Because the value reads as `0.0` until the browser is ready, arithmetic that multiplies the current value silently starts from zero unless the host clamps it to `1` first:
 >
-> ```tb
+> ```tb check_build
 > If CefBrowser1.ZoomFactor = 0 Then CefBrowser1.ZoomFactor = 1
 > CefBrowser1.ZoomFactor *= 1.1   ' 110% on first click, 121% on second, …
 > ```
@@ -250,7 +250,7 @@ Syntax: *object*.**JsRun** ( *FuncName*, [ *args* ] ) **As Variant**
 *args*
 : *optional* Any number of **Variant** arguments. Each is JSON-encoded before being passed to the function.
 
-```tb
+```tb check_build
 ' Calls the page-side function `multiplyTheseNumbers(a, b)` and waits for the result.
 Dim product As Long = CefBrowser1.JsRun("multiplyTheseNumbers", 5, 6)
 Debug.Print product   ' 30
@@ -272,7 +272,7 @@ Syntax: *object*.**JsRunAsync** *FuncName*, [ *args* ]
 *args*
 : *optional* Any number of **Variant** arguments, JSON-encoded as in [**JsRun**](#jsrun).
 
-```tb
+```tb check_build
 Private Sub btnRun_Click()
     CefBrowser1.JsRunAsync "multiplyTheseNumbers", 5, 6
 End Sub
@@ -375,7 +375,7 @@ Syntax: *object*.**PrintToPdf** *outputPath* [, *Orientation* [, *ScaleFactor* [
 *FooterUri*
 : *optional* A **Variant** **String**. When provided, overrides the URL printed in the footer. Otherwise the live document URL is used.
 
-```tb
+```tb check_build
 Private Sub btnPDF_Click()
     Dim outputPath As String
     outputPath = Environ$("USERPROFILE") & "\Documents\cefDemo.pdf"
@@ -407,7 +407,7 @@ Syntax: *object*.**SetVirtualHostNameToFolderMapping** *hostName*, *folderPath*
 *folderPath*
 : *required* A **String** with the absolute path of the folder whose contents should be served under that hostname. Must end with a trailing path separator.
 
-```tb
+```tb check_build
 Private Sub CefBrowser1_Ready()
     CefBrowser1.SetVirtualHostNameToFolderMapping _
         "my.app", App.Path & "\web\"
@@ -446,7 +446,7 @@ Raised when the CEF runtime fails to launch --- most commonly because `libcef.dl
 
 Syntax: *object*\_**Error**( *code* **As Long**, *msg* **As String** )
 
-```tb
+```tb check_build
 Private Sub CefBrowser1_Error(ByVal code As Long, ByVal msg As String)
     MsgBox "CEF error " & Hex$(code) & ": " & msg, vbExclamation, "CEF"
 End Sub
@@ -466,7 +466,7 @@ Raised when JavaScript on the page calls `window.chrome.webview.postMessage(valu
 
 Syntax: *object*\_**JsMessage**( *Message* **As Variant** )
 
-```tb
+```tb check_build
 Private Sub CefBrowser1_JsMessage(ByVal Message As Variant)
     Debug.Print "From page: "; Message
     CefBrowser1.PostWebMessage "Hello from BASIC"
@@ -505,7 +505,7 @@ Syntax: *object*\_**NavigationStarting**( *Uri* **As String**, *IsUserInitiated*
 *Cancel*
 : Set to **True** to abort the navigation.
 
-```tb
+```tb check_build
 Private Sub CefBrowser1_NavigationStarting( _
         ByVal Uri As String, ByVal IsUserInitiated As Boolean, _
         ByVal IsRedirected As Boolean, ByVal RequestHeaders As Object, _
@@ -545,7 +545,7 @@ Syntax: *object*\_**SourceChanged**( *IsNewDocument* **As Boolean** )
 *IsNewDocument*
 : **True** when the change reflects a fresh document load (rather than a same-document fragment / `history.pushState` update).
 
-```tb
+```tb check_build
 Private Sub CefBrowser1_SourceChanged(ByVal IsNewDocument As Boolean)
     AddressBar.Text = CefBrowser1.DocumentURL
 End Sub

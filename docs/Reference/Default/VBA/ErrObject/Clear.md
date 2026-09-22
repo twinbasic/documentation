@@ -25,7 +25,7 @@ Use **Clear** to explicitly reset the **Err** object after an error has been han
 
 This example uses **Err.Clear** to reset the **Err** object's numeric properties to zero and its string properties to zero-length strings between iterations of a loop. If **Clear** were omitted, the error message dialog box would be displayed on every iteration after an error first occurred --- whether or not the next calculation actually generated an error.
 
-```tb
+```tb check_build
 Dim result(10) As Integer    ' Declare an array whose elements 
                              ' will overflow.
 Dim idx As Long

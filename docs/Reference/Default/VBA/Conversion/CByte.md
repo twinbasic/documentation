@@ -22,7 +22,7 @@ The return type is **Byte**. If *expression* is outside the range of a **Byte**,
 
 This example uses the **CByte** function to convert an expression to a **Byte**.
 
-```tb
+```tb check_build
 Dim MyDouble, MyByte
 MyDouble = 125.5678          ' MyDouble is a Double.
 MyByte = CByte(MyDouble)     ' MyByte contains 126.

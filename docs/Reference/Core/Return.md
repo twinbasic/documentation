@@ -47,7 +47,7 @@ End Sub
 
 Returning from a **GoSub** subroutine --- bare **Return** here resumes execution at the statement following the **GoSub**. See [**GoSub...Return**](GoSub-Return) for the full pattern.
 
-```tb
+```tb check_build
 Sub GosubDemo()
     Dim Num As Double
     Num = 10

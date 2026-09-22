@@ -6,8 +6,8 @@
 // recover from. Browser-process commands -- `Page.handleJavaScriptDialog`
 // among them -- keep working on a raw connection.
 //
-// Used by scripts/tbbuild.mjs. See WIP.md, "Compiling a twinBASIC project
-// without the IDE in front of you".
+// Used by scripts/tbbuild.mjs. See WIP.Harness.md, "Compiling a twinBASIC
+// project without the IDE in front of you".
 
 /**
  * Attach to a DevTools page target.

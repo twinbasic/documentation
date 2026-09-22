@@ -24,7 +24,7 @@ The return type is **Single**. If *expression* is outside the range of a **Singl
 
 This example uses the **CSng** function to convert values to a **Single**.
 
-```tb
+```tb check_build
 Dim MyDouble1, MyDouble2, MySingle1, MySingle2
 ' MyDouble1, MyDouble2 are Doubles.
 MyDouble1 = 75.3421115: MyDouble2 = 75.3421555

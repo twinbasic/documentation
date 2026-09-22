@@ -52,7 +52,7 @@ The **InStrB** function is used with byte data contained in a string. Instead of
 
 This example uses the **InStr** function to return the position of the first occurrence of one string within another.
 
-```tb
+```tb check_build
 Dim SearchString, SearchChar, MyPos
 SearchString = "XXpXXpXXPXXP"    ' String to search in.
 SearchChar = "P"                 ' Search for "P".

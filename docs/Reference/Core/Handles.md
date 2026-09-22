@@ -37,7 +37,7 @@ The classic naming convention is unaffected: a procedure literally named `*objec
 
 A descriptively named handler for a form's `Load` event:
 
-```tb
+```tb check_build
 Private Sub OnLoad() Handles Form.Load
     Debug.Print "Form is loading."
 End Sub

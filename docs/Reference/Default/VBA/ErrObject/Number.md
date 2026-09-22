@@ -18,7 +18,7 @@ Syntax:
 
 When returning a user-defined error from an object, set **Err.Number** by adding the chosen error code to the [**vbObjectError**](../Constants/#vbObjectError) constant. For example, the following code returns 1051 as an error code:
 
-```tb
+```tb check_build
 Err.Raise Number:=vbObjectError + 1051, Source:="SomeClass"
 ```
 
@@ -26,7 +26,7 @@ Err.Raise Number:=vbObjectError + 1051, Source:="SomeClass"
 
 The first example illustrates a typical use of the **Number** property in an error-handling routine.
 
-```tb
+```tb check_build
 Sub Demo()
     On Error GoTo Handler
 
@@ -48,7 +48,7 @@ The second example examines the **Number** property of the **Err** object to det
 
 The constant **vbObjectError** is a very large negative number that an object adds to its own error code to indicate that the error is server-defined; subtracting it from **Err.Number** strips it back out. If the error is object-defined, the base number is left in `myError`, which is displayed in a message box along with the original source of the error. If **Err.Number** represents a built-in error, the built-in error number is displayed instead.
 
-```tb
+```tb check_build
 Dim myError As Long, msg As String
 ' Strip off the constant added by the object to indicate one of its own errors.
 myError = Err.Number - vbObjectError

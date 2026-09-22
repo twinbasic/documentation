@@ -40,13 +40,13 @@ Variables declared with **Dim** at the module level are available to all procedu
 
 Use the **Dim** statement at the module or procedure level to declare the data type of a variable. For example, the following statement declares a variable as an **Integer**.
 
-```tb
+```tb check_build
 Dim NumberOfEmployees As Integer 
 ```
 
 Also use a **Dim** statement to declare the object type of a variable. The following declares a variable for a new instance of the [**Collection**](../Modules/Collection/) class.
 
-```tb
+```tb check_build
 Dim X As New Collection
 ```
 
@@ -62,7 +62,7 @@ By convention, a **Dim** statement inside a procedure is placed at the beginning
 
 This example shows the **Dim** statement used to declare variables. It also shows the **Dim** statement used to declare arrays. The default lower bound for array subscripts is 0 and can be overridden at the module level by using the **Option Base** statement.
 
-```tb
+```tb check_build
 ' AnyValue and MyValue are declared as Variant by default with values 
 ' set to Empty. 
 Dim AnyValue, MyValue 

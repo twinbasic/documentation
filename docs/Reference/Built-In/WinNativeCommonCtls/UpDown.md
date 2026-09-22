@@ -10,7 +10,7 @@ has_toc: false
 
 An **UpDown** is a small spin control --- a pair of up / down arrow buttons that adjust an internal [**Value**](#value) by [**Increment**](#increment) on each click. Often paired with an external textbox or label to display the current value.
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     UpDown1.Min = 0
     UpDown1.Max = 100

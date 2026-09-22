@@ -13,7 +13,7 @@ The **Compilation** module groups together intrinsics that report on how --- and
 
 [**CompilerVersion**](CompilerVersion) returns the build number of the twinBASIC compiler that produced the running code, and [**ProcessorArchitecture**](ProcessorArchitecture) returns a [**VbArchitecture**](../Constants/VbArchitecture) constant --- **vbArchWin32** or **vbArchWin64** --- identifying whether the binary was built for 32-bit or 64-bit execution. Together they characterise *which* compiler emitted the running code and *what kind* of process it is running in.
 
-```tb
+```tb check_build
 Debug.Print "twinBASIC build #" & CompilerVersion()
 If ProcessorArchitecture() = vbArchWin64 Then
     Debug.Print "64-bit process"
@@ -28,7 +28,7 @@ The `Current...` family records the source location of the call site as a litera
 
 Because each value is fixed at compile time, wrapping a call in a helper records the *helper's* name rather than its caller's. These intrinsics are most useful in diagnostic output --- logging, tracing, assertions --- where they replace hard-coded identifier strings that would otherwise drift as code is renamed.
 
-```tb
+```tb check_build
 Public Sub Log(Message As String)
     Debug.Print CurrentProjectName() & "!" & _
                 CurrentComponentName() & "." & _

@@ -19,7 +19,7 @@ The pointer is invalid after the call returns. Passing a pointer that did not co
 
 This example allocates a buffer, uses it, and then releases it with **FreeMem**.
 
-```tb
+```tb check_build
 Dim buf As LongPtr = AllocMem(256)
 ' ... write and read buf ...
 FreeMem buf    ' release the block; buf is invalid after this point

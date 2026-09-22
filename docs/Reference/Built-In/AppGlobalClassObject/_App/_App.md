@@ -12,7 +12,7 @@ The interface implemented by the global **App** object, which exposes informatio
 
 **App** is a predeclared global object of type **App** (a `CoClass` that implements **_App**). It is available in every twinBASIC project without any declaration or instantiation. All members are accessed through the `App` global:
 
-```tb
+```tb check_build
 Debug.Print App.EXEName
 Debug.Print App.Major & "." & App.Minor & "." & App.Revision
 ```

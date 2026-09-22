@@ -24,7 +24,7 @@ When generating a user-defined error, assign a short description of the error to
 
 This example assigns a user-defined message to the **Description** property of the **Err** object.
 
-```tb
+```tb check_build
 Err.Description = "It was not possible to access an object necessary " _
     & "for this operation."
 ```

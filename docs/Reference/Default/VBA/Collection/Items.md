@@ -24,7 +24,7 @@ The **Items** method is useful when passing the collection's contents to a proce
 
 ### Example
 
-```tb
+```tb check_build
 Dim col As New Collection
 col.Add "Athens"
 col.Add "Belgrade"

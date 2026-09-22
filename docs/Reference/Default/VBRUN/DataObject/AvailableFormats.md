@@ -20,7 +20,7 @@ Each element of the returned collection is a [**DataObjectFormat**](DataObjectFo
 
 ### Example
 
-```tb
+```tb check_build
 Dim F As DataObjectFormat
 For Each F In Data.AvailableFormats
     Debug.Print F.Name, F.FormatType

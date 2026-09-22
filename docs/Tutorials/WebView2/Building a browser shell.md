@@ -20,7 +20,7 @@ Drop a [**WebView2**](../../tB/Packages/WebView2/WebView2/) control onto a Form 
 
 The bare-bones navigation methods --- [**Navigate**](../../tB/Packages/WebView2/WebView2/#navigate), [**GoBack**](../../tB/Packages/WebView2/WebView2/#goback), [**GoForward**](../../tB/Packages/WebView2/WebView2/#goforward), [**Reload**](../../tB/Packages/WebView2/WebView2/#reload) --- are one-liners:
 
-```tb
+```tb check_build
 Private Sub btnBack_Click() Handles btnBack.Click
     WebView.GoBack()
 End Sub
@@ -36,7 +36,7 @@ End Sub
 
 To make the back / forward buttons follow the actual history state, sync them against [**CanGoBack**](../../tB/Packages/WebView2/WebView2/#cangoback) and [**CanGoForward**](../../tB/Packages/WebView2/WebView2/#cangoforward) after every navigation:
 
-```tb
+```tb check_build
 Private Sub WebView_NavigationComplete( _
         ByVal IsSuccess As Boolean, ByVal WebErrorStatus As Long) _
         Handles WebView.NavigationComplete
@@ -49,7 +49,7 @@ End Sub
 
 Pressing **Enter** in the address bar triggers a navigation. The reverse direction --- keeping the visible URL in sync with the page --- is the [**SourceChanged**](../../tB/Packages/WebView2/WebView2/#sourcechanged) event, which fires whenever [**DocumentURL**](../../tB/Packages/WebView2/WebView2/#documenturl) changes (including same-document `history.pushState` updates):
 
-```tb
+```tb check_build
 Private Sub AddressBar_KeyDown(KeyCode As Integer, Shift As Integer) _
         Handles AddressBar.KeyDown
     If KeyCode = vbKeyReturn Then WebView.Navigate AddressBar.Text
@@ -67,7 +67,7 @@ End Sub
 
 [**ZoomFactor**](../../tB/Packages/WebView2/WebView2/#zoomfactor) is a **Double** --- `1.0` is 100%, `1.5` is 150%. The design-time default is `0`, meaning *"don't override Edge's default of 1.0"* --- so multiplying by `1.1` from cold gives `0`, not `1.1`. Clamp to `1` before scaling:
 
-```tb
+```tb check_build
 Private Sub btnZoomIn_Click() Handles btnZoomIn.Click
     If WebView.ZoomFactor = 0 Then WebView.ZoomFactor = 1
     WebView.ZoomFactor *= 1.1
@@ -83,7 +83,7 @@ End Sub
 
 [**PrintToPdf**](../../tB/Packages/WebView2/WebView2/#printtopdf) saves the current document to disk asynchronously --- the result arrives as [**PrintToPdfCompleted**](../../tB/Packages/WebView2/WebView2/#printtopdfcompleted) or [**PrintToPdfFailed**](../../tB/Packages/WebView2/WebView2/#printtopdffailed):
 
-```tb
+```tb check_build
 Private Sub btnPDF_Click() Handles btnPDF.Click
     Dim outputPath As String = _
         Environ$("USERPROFILE") & "\Documents\page.pdf"
@@ -99,7 +99,7 @@ End Sub
 
 Both windows are one-shot --- call the matching method and Edge opens the window in its own process:
 
-```tb
+```tb check_build
 Private Sub btnDevTools_Click() Handles btnDevTools.Click
     WebView.OpenDevToolsWindow()
 End Sub

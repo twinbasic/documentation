@@ -28,7 +28,7 @@ An error occurs when **RmDir** is used on a directory or folder containing files
 
 This example uses the **RmDir** statement to remove an existing directory or folder.
 
-```tb
+```tb check_build
 ' Assume that MYDIR is an empty directory or folder.
 RmDir "MYDIR"   ' Remove MYDIR.
 ```

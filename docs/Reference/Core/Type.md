@@ -56,7 +56,7 @@ User-defined types are often used with data records, which frequently consist of
 
 The following example shows the use of fixed-size arrays in a user-defined type:
 
-```tb
+```tb check_build
 Type StateData
     CityCode (1 To 100) As Integer    ' Declare a static array.
     County As String * 30
@@ -73,7 +73,7 @@ When a fixed-size array is declared within a user-defined type, its dimensions m
 
 This example uses the **Type** statement to define a user-defined data type. The **Type** statement is used at the module level only. If it appears in a class module, a **Type** statement must be preceded by the keyword **Private**.
 
-```tb
+```tb check_build
 Type EmployeeRecord    ' Create user-defined type.
     ID As Integer    ' Define elements of data type.
     Name As String * 20
@@ -120,7 +120,7 @@ h.BringWindowToTop()  ' Passes h as the first argument to the API.
 
 **Custom packing.** The [**PackingAlignment**](Attributes#packingalignment) type-level attribute controls alignment of the UDT's fields. The default packing places each field at a multiple of its own size (with trailing padding so the total size is a multiple of the largest field). Setting `[PackingAlignment(1)]` packs fields with no padding --- matching `#pragma pack(push, 1)` in C.
 
-```tb
+```tb check_build
 [PackingAlignment(2)]
 Private Type MyUDT
     x As Integer
@@ -131,7 +131,7 @@ End Type
 
 **Generic types.** A type variable list `(Of T)` after the *varname* makes the **Type** generic. Element types may then reference the type variables. Member procedures are not yet supported on generic UDTs.
 
-```tb
+```tb check_build
 Type ListU(Of T)
     value() As T
 End Type

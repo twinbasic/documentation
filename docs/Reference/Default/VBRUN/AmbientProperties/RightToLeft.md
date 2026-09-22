@@ -19,7 +19,7 @@ The property is **True** when the host is rendering its UI for a right-to-left l
 
 This example responds to a **RightToLeft** change and triggers a repaint to mirror the layout.
 
-```tb
+```tb check_build
 Private Sub UserControl_AmbientChanged(PropertyName As String)
     Select Case PropertyName
         Case "RightToLeft"

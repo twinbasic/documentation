@@ -38,7 +38,7 @@ BOOL GetCursorPos(LPPOINT lpPoint);
 
 A twinBASIC translation:
 
-```tb
+```tb check_build
 Private Type POINT
     x As Long
     y As Long
@@ -69,7 +69,7 @@ The Timer fires its `Timer` event every 100 milliseconds. Each firing will call 
 
 Open the Code Editor for `Form1`. At the top of the module, before any procedures, add the UDT and the Declare:
 
-```tb
+```tb check_build
 Private Type POINT
     x As Long
     y As Long
@@ -111,7 +111,7 @@ Press **F5**. Move the mouse over the form. The label updates ten times per seco
 
 When a Win32 function returns a failure code, the extended error information is available through `GetLastError` --- another kernel32 function:
 
-```tb
+```tb check_build
 Private Declare PtrSafe Function GetLastError Lib "kernel32" () As Long
 ```
 
@@ -151,7 +151,7 @@ A Declare that uses `Long` for a handle type compiles and runs in 32-bit mode bu
 
 ### Example: GetForegroundWindow
 
-```tb
+```tb check_build
 Private Declare PtrSafe Function GetForegroundWindow Lib "user32" () As LongPtr
 
 Private Sub ShowActiveWindow()
@@ -169,7 +169,7 @@ Most Win32 text-related functions come in two variants: an ANSI version (suffix 
 
 Specify the Unicode function name in the `Alias` clause when the unaliased name would resolve to the ANSI variant:
 
-```tb
+```tb check_build
 ' Without Alias, the linker resolves to the ANSI variant on some systems.
 ' Alias forces the Unicode variant explicitly:
 Private Declare PtrSafe Function GetWindowText Lib "user32" _

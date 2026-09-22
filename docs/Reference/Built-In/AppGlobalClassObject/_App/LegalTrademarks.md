@@ -21,7 +21,7 @@ The value is taken from the **Legal Trademarks** field in the project's version 
 
 This example displays the legal trademarks string in a message box.
 
-```tb
+```tb check_build
 If Len(App.LegalTrademarks) > 0 Then
     MsgBox App.LegalTrademarks
 End If

@@ -22,7 +22,7 @@ Returns a **LongPtr** holding the `HINSTANCE` of the current process module. Thi
 
 This example passes the application instance handle to the Win32 `LoadIcon` API.
 
-```tb
+```tb check_build
 Private Declare PtrSafe Function LoadIcon Lib "user32" Alias "LoadIconA" ( _
     ByVal hInstance As LongPtr, _
     ByVal lpIconName As String) As LongPtr

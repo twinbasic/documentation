@@ -107,7 +107,7 @@ Syntax: *host*.**ShowMessageBox**( *Prompt*, *Buttons*, *Title* ) **As Long**
 *Title*
 : *required* The dialog's title-bar text. **String**.
 
-```tb
+```tb check_build
 Select Case Host.ShowMessageBox("Save changes before closing?", _
                                  "Save|Discard|Cancel", "Confirm")
     Case 0: ' Save
@@ -139,7 +139,7 @@ Fires once the IDE has finished loading the project and is ready to accept exten
 
 Syntax: *host*_**OnProjectLoaded**()
 
-```tb
+```tb check_build
 Private Sub Host_OnProjectLoaded()
     With Host.Toolbars(0)
         .AddSplitter

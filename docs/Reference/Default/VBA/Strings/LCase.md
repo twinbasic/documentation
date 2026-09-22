@@ -22,7 +22,7 @@ Only uppercase letters are converted to lowercase; all lowercase letters and non
 
 This example uses the **LCase** function to return a lowercase version of a string.
 
-```tb
+```tb check_build
 Dim UpperCase, LowerCase
 UpperCase = "Hello World 1234"    ' String to convert.
 LowerCase = LCase(UpperCase)      ' Returns "hello world 1234".

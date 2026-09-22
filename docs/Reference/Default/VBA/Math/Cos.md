@@ -22,7 +22,7 @@ To convert degrees to radians, multiply degrees by pi/180. To convert radians to
 
 This example uses the **Cos** function to return the cosine of an angle.
 
-```tb
+```tb check_build
 Dim MyAngle, MySecant
 MyAngle = 1.3    ' Define angle in radians.
 MySecant = 1 / Cos(MyAngle)    ' Calculate secant.

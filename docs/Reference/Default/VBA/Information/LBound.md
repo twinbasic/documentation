@@ -43,7 +43,7 @@ The default lower bound for any dimension is either 0 or 1, depending on the **O
 
 This example uses **LBound** to return the smallest available subscript for the indicated dimension of an array.
 
-```tb
+```tb check_build
 Dim Lower As Long
 Dim MyArray(1 To 10, 5 To 15, 10 To 20)    ' Multidimensional array.
 Dim AnyArray(10)

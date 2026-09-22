@@ -41,7 +41,7 @@ Multiple expressions may be separated by either a space or a semicolon; a space 
 
 A comma advances to the next [print zone](../Gloss#print-zone) --- a column every 14 character widths. Because a number is written with a leading space where its sign would go and a trailing space after the value, a positive number in the first zone begins at column 1 rather than column 0:
 
-```tb
+```tb check_build
 Debug.Print 1, 2, 3
 ' writes:  1             2             3
 ```
@@ -68,7 +68,7 @@ For **Boolean** data, either `True` or `False` is written. The keywords are not 
 
 This example uses the **Print #** statement to write data to a file.
 
-```tb
+```tb check_build
 Open "TESTFILE" For Output As #1 ' Open file for output.
 Print #1, "This is a test" ' Print text to file.
 Print #1, ' Print blank line to file.

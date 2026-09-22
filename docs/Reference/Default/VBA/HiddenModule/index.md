@@ -19,7 +19,7 @@ The pointer functions [**ObjPtr**](../Information/ObjPtr), [**StrPtr**](../Infor
 
 Memory at a known address is read and written one machine word at a time with the **GetMem*** / **PutMem*** family --- [**GetMem1**](GetMem1), [**GetMem2**](GetMem2), [**GetMem4**](GetMem4), [**GetMem8**](GetMem8), and [**GetMemPtr**](GetMemPtr) for reads, with matching [**PutMem1**](PutMem1), [**PutMem2**](PutMem2), [**PutMem4**](PutMem4), [**PutMem8**](PutMem8), and [**PutMemPtr**](PutMemPtr). [**vbaCopyBytes**](vbaCopyBytes) and [**vbaCopyBytesZero**](vbaCopyBytesZero) move blocks; [**AllocMem**](AllocMem) and [**FreeMem**](FreeMem) manage heap allocations. The pointer constructors that feed these helpers --- [**ObjPtr**](../Information/ObjPtr), [**StrPtr**](../Information/StrPtr), [**VarPtr**](../Information/VarPtr) --- live in [**Information**](../Information/).
 
-```tb
+```tb check_build
 Dim Buffer As LongPtr = AllocMem(16)
 PutMem4 Buffer, &HDEADBEEF
 Dim Magic As Long
@@ -112,7 +112,7 @@ The **IGetMessageHook** interface hooks into the Windows message stream for a ch
 
 The interface inherits directly from **stdole.IUnknown** (it is not dispatch-based), and the callbacks supplied to **RegisterMessage** are typed as [**GetMessageHookHelper.GetMessageHandler**](#getmessagehandler).
 
-```tb
+```tb check_build inherits=Form
 Const WM_LBUTTONDOWN = &H201
 
 Sub Demo()
@@ -152,7 +152,7 @@ The **GetMessageHookHelper** module is a small companion to [**IGetMessageHook**
 
 A copy of the Windows `MSG` structure, passed by reference into a [**GetMessageHandler**](#getmessagehandler) callback.
 
-```tb
+```tb check_build
 Type HookMSG
     hwnd As LongPtr             ' Window the message is destined for.
     message As Long             ' The WM_* identifier.
@@ -167,7 +167,7 @@ End Type
 
 A 2D point with **Long** coordinates, used by [**HookMSG**](#hookmsg) to hold the cursor position.
 
-```tb
+```tb check_build
 Type HookPOINT
     x As Long
     y As Long
@@ -178,6 +178,6 @@ End Type
 
 The callback signature accepted by [**IGetMessageHook.RegisterMessage**](RegisterMessage). Returning zero generally lets the message continue normal processing.
 
-```tb
+```tb check_build
 Public Delegate Function GetMessageHandler (ByRef msg As HookMSG) As LongPtr
 ```

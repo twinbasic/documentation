@@ -11,7 +11,7 @@ has_toc: false
 
 The four corners of a rendered region. Each corner is an independent [**Corner**](#corner-class) sub-object --- the shape and radius can vary corner by corner --- letting a control round one corner while notching another. Accessed as `<state>.Corners`, [**CellRenderingOptions.Corners**](../WaynesGrid/CellRenderingOptions#corners), and the slider's `<sliderState>.BackgroundCorners` / `BlockCorners`.
 
-```tb
+```tb check_build
 With btnGo.NormalState.Corners
     .SetAll tbCurve, 12       ' all four corners 12px rounded
     .TopRight.Shape = tbNotched

@@ -12,7 +12,7 @@ has_toc: false
 
 There is exactly one **Global** per process and it is not creatable from user code: no `New Global`, no public coclass to instantiate. The runtime publishes it via the IDE's special `[AppObject]` mechanism, and the compiler maps unqualified references to its members.
 
-```tb
+```tb check_build
 ' All four of these resolve to a method/property on Global:
 Dim p As StdPicture
 Set p = LoadPicture(App.Path & "\splash.png")
@@ -45,7 +45,7 @@ These properties are cached references --- repeated reads return the same object
 
 The collection also supports `For Each` enumeration:
 
-```tb
+```tb check_build
 Dim f As Form
 For Each f In Forms
     Debug.Print f.Name, f.Caption
@@ -54,7 +54,7 @@ Next
 
 A common idiom is closing every open form at shutdown --- note that unloading shrinks the collection, so iterate backwards or by index from the top down:
 
-```tb
+```tb check_build
 Dim i As Long
 For i = Forms.Count - 1 To 0 Step -1
     Unload Forms(i)
@@ -124,7 +124,8 @@ Syntax: **Load** *object*
 *object*
 : *required* The default instance of a form class (`Form1`), an explicit form reference, or a control-array element (`Command1(3)`).
 
-```tb
+```tb check_build
+Dim frm As Form
 Load Form2                        ' instantiates and runs Form_Load, but Form2 stays hidden
 Set frm = Forms("Form2")          ' the new instance now exists in Forms
 ```
@@ -148,7 +149,7 @@ Syntax: **LoadPicture**( [ *FileName* [, *Size* [, *ColorDepth* [, *X* [, *Y* ] 
 *X*, *Y*
 : *optional* Width and height overrides used when *Size* is **vbLPCustom**, in pixels.
 
-```tb
+```tb check_build
 Set imgLogo.Picture = LoadPicture(App.Path & "\logo.png")
 Set imgLogo.Picture = LoadPicture()        ' clears the picture
 ```
@@ -212,7 +213,7 @@ Syntax: **Unload** *object*
 *object*
 : *required* The default instance of a form class, an explicit form reference, or a control-array element.
 
-```tb
+```tb check_build
 Unload Me                         ' close the current form
 Unload Forms(0)                   ' close whichever form is at the head of the list
 ```

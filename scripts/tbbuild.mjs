@@ -40,8 +40,8 @@
 //
 // Written for the Reference/Attributes.md applicability probes -- see
 // scripts/gen_attribute_probes.mjs -- but it does not know anything about
-// them. See WIP.md, "Compiling a twinBASIC project without the IDE in front
-// of you".
+// them. See WIP.Harness.md, "Compiling a twinBASIC project without the IDE in
+// front of you".
 import { spawn, execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
@@ -226,6 +226,19 @@ c.on((m) => {
 // Counts and rows are read in ONE evaluate. Read separately they raced: a run
 // reported two diagnostics beside a zero error count, because the background
 // compile finished between the two calls.
+//
+// `crash` reads the DEBUG CONSOLE, and it is not an extra: the status-bar watch
+// below MISSES a compiler crash, which is the worst failure this script has,
+// because a crashed compile reports zero of everything and exits 0. Measured on
+// a 275-file project -- twice, reproducibly -- against quarters of the same
+// project that reported 129, 0, 294 and 448 errors. The IDE writes
+// "NATIVE EXCEPTION: ACCESS_VIOLATION" and "restarting from MEMORY" to the
+// console, restarts the compiler three times, and then leaves the status at
+// OPERATIONAL with the counters at zero, which is byte-identical to a clean
+// build. The status does flap to UNAVAILABLE on the way, but the whole
+// crash-restart cycle takes about 1.3 s and this loop samples at 1 Hz, so
+// `drops` never reaches its threshold. The console is the only record that
+// cannot be missed by sampling: nothing removes an entry from it.
 const probe = () => c.evaluate(`JSON.stringify({
   st: document.getElementById("compilerStatus")?.textContent ?? "",
   e: document.getElementById("errorCount")?.textContent ?? "",
@@ -233,6 +246,17 @@ const probe = () => c.evaluate(`JSON.stringify({
   h: document.getElementById("hintCount")?.textContent ?? "",
   i: document.getElementById("infoCount")?.textContent ?? "",
   p: typeof projectFilePath !== "undefined" ? projectFilePath : null,
+  crash: (() => {
+    if (typeof debugConsoleContent === "undefined" || !debugConsoleContent ||
+        !debugConsoleContent.dataNodes) return null;
+    let n = 0; const files = [];
+    for (const entry of debugConsoleContent.dataNodes) {
+      if (entry.indexOf("NATIVE EXCEPTION") >= 0) n++;
+      const m = /ParsingFileStart, ([^<\\s]+)/.exec(entry);
+      if (m && files.indexOf(m[1]) < 0) files.push(m[1]);
+    }
+    return n ? { n: n, files: files } : null;
+  })(),
   rows: (() => {
     const out = [];
     if (typeof problemsPanel === "undefined" || !problemsPanel) return out;
@@ -293,21 +317,44 @@ const probe = () => c.evaluate(`JSON.stringify({
 // twinBASIC runs the compiler in the same process as user code, so a project
 // can take it down; the IDE then restarts it, three times, before giving up.
 // Watching the status leave OPERATIONAL after it has reached it turns that
-// from a silent two-minute wait into a reported result.
+// from a silent two-minute wait into a reported result -- but only when the
+// sampling happens to catch it, which is why the console check above exists and
+// is what actually decides this.
 const t0 = Date.now();
-let last = null, stable = 0, loaded = false, seenUp = false, drops = 0;
+let last = null, stable = 0, loaded = false, seenUp = false, drops = 0, crash = null;
 while (Date.now() - t0 < timeout) {
   await sleep(1000);
   let s;
   try { s = await probe(); } catch { continue; }
   const v = JSON.parse(s);
   if (!loaded) { if (v.p && norm(v.p) === norm(proj)) loaded = true; else continue; }
+  if (v.crash) {
+    // The IDE's FIRST exception line carries no thread dump; the file being
+    // parsed is only named in the dump that comes with the restart about a
+    // second later. Catching the crash on sight and reporting it without that
+    // name is a correct result nobody can act on, so give the IDE one more
+    // moment and take whatever it has then.
+    crash = v.crash;
+    if (!crash.files?.length) {
+      await sleep(2000);
+      try { crash = JSON.parse(await probe()).crash ?? crash; } catch { /* keep what we have */ }
+    }
+    break;
+  }
   const up = v.st === "tB Services: OPERATIONAL";
   if (up) seenUp = true; else if (seenUp && ++drops >= 2) break;
   if (up && s === last) { if (++stable >= 5) break; } else stable = 0;
   last = s;
 }
 
+// A crash is reported by the file the compiler died parsing, because in a batch
+// of generated probes that name is the whole answer: it says which sample to
+// take out, and a caller bisecting the batch has somewhere to start.
+if (crash) {
+  die(4, `the compiler crashed ${crash.n}x -- this project takes it down` +
+    (crash.files?.length ? `\nlast parsing: ${crash.files.join(", ")}` : "") +
+    "\n(read the IDE's DEBUG CONSOLE with --keep for the exception detail)");
+}
 if (drops >= 2) {
   die(4, `the compiler restarted ${drops}x -- this project crashes it\nlast status: ${last}`);
 }

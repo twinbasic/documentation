@@ -12,7 +12,7 @@ A **Line** is a windowless lightweight control that draws a single straight line
 
 A **Line** is positioned by its two endpoints, [**X1**](#x1) / [**Y1**](#y1) and [**X2**](#x2) / [**Y2**](#y2), rather than by a `Left` / `Top` / `Width` / `Height` rectangle. The default property is [**Visible**](#visible) and the default event is [**Initialize**](#initialize).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     linUnderHeading.X1 = 120 :  linUnderHeading.Y1 = 320
     linUnderHeading.X2 = 4800 : linUnderHeading.Y2 = 320

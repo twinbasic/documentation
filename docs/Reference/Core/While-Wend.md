@@ -40,7 +40,7 @@ Any number of [**Continue While**](Continue) statements may be placed anywhere i
 
 This example uses the **While...Wend** statement to increment a counter variable. The statements in the loop are executed as long as the condition evaluates to **True**.
 
-```tb
+```tb check_build
 Dim Counter
 Counter = 0 ' Initialize variable.
 While Counter < 20 ' Test value of Counter.

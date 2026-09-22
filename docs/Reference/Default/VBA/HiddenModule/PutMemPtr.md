@@ -22,7 +22,7 @@ The number of bytes written matches the host's pointer width --- four bytes in 3
 
 This example stores a pointer in a buffer and reads it back.
 
-```tb
+```tb check_build
 Dim buf As LongPtr = AllocMem(8)    ' large enough for a pointer on any platform
 Dim target As Long = 42
 PutMemPtr buf, VarPtr(target)       ' store the address of target

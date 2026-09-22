@@ -4,7 +4,7 @@
   "private": true,
   "description": "twinBASIC documentation source, tbdocs static-site builder, and PDF book pipeline.",
   "devDependencies": {
-    "@hpcc-js/wasm-graphviz": "^1.21",
+    "@hpcc-js/wasm-graphviz": "^1.29.1",
     "acorn": "^8.0",
     "acorn-walk": "^8.0",
     "axe-core": "4.13.0",

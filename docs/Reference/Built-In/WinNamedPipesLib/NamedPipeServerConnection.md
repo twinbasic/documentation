@@ -12,7 +12,33 @@ One server-side per-client connection. A [**NamedPipeServer**](NamedPipeServer) 
 
 The class is tagged `[COMCreatable(False)]` and its constructor takes a package-private interface --- reach instances only through [**NamedPipeServer**](NamedPipeServer) events. Connection-lifecycle and message events come through the parent [**NamedPipeServer**](NamedPipeServer); this class holds the per-connection data and methods only.
 
-```tb
+```tb hidden
+' Context for the samples on this page: the reader's own command dispatcher.
+Public Sub ProcessCommand(ByVal Command As String)
+End Sub
+
+' The connection an event handler would have been handed.
+Public Connection As NamedPipeServerConnection
+```
+
+```tb hidden
+' Context for the samples on this page: the per-connection session object the
+' CustomData slot carries. It is the READER's class, not the package's -- the
+' point of CustomData is that the package never sees the type -- so the members
+' here are just the ones these samples call.
+[COMCreatable(False)]
+Class ClientSession
+    Public RemoteId As LongPtr
+    Public Sub HandleMessage(ByRef Data() As Byte)
+    End Sub
+    Public Sub HandleReply(ByRef Data() As Byte)
+    End Sub
+    Public Sub Cleanup()
+    End Sub
+End Class
+```
+
+```tb check_build
 Private Sub server_ClientConnected(Connection As NamedPipeServerConnection)
     ' attach per-client state through the CustomData slot
     Connection.CustomData = New ClientSession
@@ -51,7 +77,7 @@ The package never reads or writes this field. Its purpose is to avoid the need f
 
 This example attaches a session object to each new connection and uses it to route incoming messages and clean up on disconnect.
 
-```tb
+```tb check_build
 Private Sub server_ClientConnected(Connection As NamedPipeServerConnection)
     Dim session As New ClientSession
     session.RemoteId = Connection.Handle
@@ -106,7 +132,7 @@ Consumer code reads **IsConnected** to guard against writing to a connection tha
 
 This example checks **IsConnected** before sending a reply, guarding against the case where the client has dropped between the time the message arrived and the time the handler runs.
 
-```tb
+```tb check_build
 Private Sub server_ClientMessageReceived( _
         Connection As NamedPipeServerConnection, _
         ByRef Cookie As Variant, _
@@ -153,7 +179,7 @@ Internally, **AsyncClose** calls `CancelIoEx` on the pipe handle to abort any pe
 
 This example closes a specific client connection from the server side when a shutdown command is received.
 
-```tb
+```tb check_build
 Private Sub server_ClientMessageReceived( _
         Connection As NamedPipeServerConnection, _
         ByRef Cookie As Variant, _
@@ -194,7 +220,7 @@ When [**ContinuouslyReadFromPipe**](NamedPipeServer#continuouslyreadfrompipe) is
 
 This example shows the back-pressure pattern: [**ContinuouslyReadFromPipe**](NamedPipeServer#continuouslyreadfrompipe) is set to **False** and the event handler calls **AsyncRead** explicitly to receive the next message after processing the current one.
 
-```tb
+```tb check_build
 Private WithEvents server As NamedPipeServer
 
 Private Sub Form_Load()
@@ -241,7 +267,7 @@ Returns immediately; the actual transmission runs through the IOCP loop. The com
 > [!WARNING]
 > The send path copies *Data* into a fixed-size per-completion buffer. A payload larger than [**NamedPipeServer.MessageBufferSize**](NamedPipeServer#messagebuffersize) (default **131072** bytes) overruns that buffer without a bounds check --- likely a crash or heap corruption rather than a clean error. Raise **MessageBufferSize** above the largest expected message before calling [**NamedPipeServer.Start**](NamedPipeServer#start); the value is read once at that point and propagated to every per-connection buffer.
 
-```tb
+```tb check_build
 ' Reply to a request using the PropertyBag convention:
 Dim reply As New PropertyBag
 reply.WriteProperty "ResponseCommandID", "WHAT_TIME_IS_IT"

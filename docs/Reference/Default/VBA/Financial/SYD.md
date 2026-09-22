@@ -29,7 +29,7 @@ The *life* and *period* arguments must be expressed in the same units. For examp
 
 This example uses the **SYD** function to return the depreciation of an asset for a specified period given the asset's initial cost (`InitCost`), the salvage value at the end of the asset's useful life (`SalvageVal`), and the total life of the asset in years (`LifeTime`). The period in years for which the depreciation is calculated is `PDepr`.
 
-```tb
+```tb check_build
 Dim Fmt, InitCost, SalvageVal, MonthLife, LifeTime, DepYear, PDepr
 Const YEARMONTHS = 12    ' Number of months in a year.
 Fmt = "###,##0.00"    ' Define money format.

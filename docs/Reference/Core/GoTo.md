@@ -24,7 +24,7 @@ Syntax:
 
 This example uses the **GoTo** statement to branch to line labels within a procedure.
 
-```tb
+```tb check_build
 Sub GotoStatementDemo()
     Dim Number, MyString
     Number = 1 ' Initialize variable.

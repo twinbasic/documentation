@@ -30,7 +30,7 @@ The method maps to the Win32 show-window operation on the form's HWND. Applicati
 
 A custom form class casts the [**CustomControlContext**](CustomControlContext) it receives in [**ICustomForm.Initialize**](ICustomForm#initialize) to [**CustomFormContext**](CustomFormContext) and stores it; it then exposes its own **Show** method that delegates here:
 
-```tb
+```tb check_build
 Private m_Context As CustomControls.CustomFormContext
 
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomFormContext) _

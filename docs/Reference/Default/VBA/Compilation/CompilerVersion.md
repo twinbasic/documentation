@@ -14,7 +14,7 @@ The return value is a **Long** identifying the compiler that produced the runnin
 
 ### Example
 
-```tb
+```tb check_build
 Debug.Print "Built with twinBASIC compiler build #" & CompilerVersion()
 ```
 

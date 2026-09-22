@@ -13,7 +13,7 @@ The form-class counterpart to [**CustomControlContext**](CustomControlContext). 
 
 A custom form class receives a [**CustomFormContext**](CustomFormContext) through its [**ICustomForm.Initialize**](ICustomForm#initialize) method. It stores that reference and delegates its own **Show** and **Close** methods to the corresponding context methods. The underlying COM interface is [**_CustomFormContext**](_CustomFormContext).
 
-```tb
+```tb check_build
 Private m_Context As CustomControls.CustomFormContext
 
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomFormContext) _

@@ -26,7 +26,7 @@ Using **Name** on an open file produces an error. An open file must be closed be
 
 This example uses the **Name** statement to rename a file. For purposes of this example, assume that the directories or folders that are specified already exist.
 
-```tb
+```tb check_build
 Dim oldName, newName
 oldName = "OLDFILE": newName = "NEWFILE" ' Define file names.
 Name oldName As newName ' Rename file.

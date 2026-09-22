@@ -13,7 +13,7 @@ A **ListImage** is one picture inside an [**ImageList**](.)'s [**ListImages**](L
 
 The class is tagged `[COMCreatable(False)]` --- user code never instantiates a **ListImage** directly; the [**ListImages**](ListImages) collection creates them as part of its **Add** method.
 
-```tb
+```tb check_build
 Dim img As ListImage = ImageList1.ListImages.Add(, "open", LoadPicture("open.ico"))
 img.Tag = "Open document command"
 ```

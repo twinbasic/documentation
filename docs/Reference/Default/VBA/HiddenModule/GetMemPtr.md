@@ -20,7 +20,7 @@ The number of bytes read matches the host's pointer width --- four bytes in 32-b
 
 ### Example
 
-```tb
+```tb check_build
 ' Read the IUnknown vtable pointer of a Collection instance.
 Dim c As Collection = New Collection
 Dim vtbl As LongPtr

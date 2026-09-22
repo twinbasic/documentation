@@ -29,7 +29,7 @@ The functions [**Chr**, **ChrB**, and **ChrW**](Chr) are the opposite of **Asc**
 
 This example uses the **Asc** function to return a character code corresponding to the first letter in the string.
 
-```tb
+```tb check_build
 Dim MyNumber
 MyNumber = Asc("A")        ' Returns 65.
 MyNumber = Asc("a")        ' Returns 97.

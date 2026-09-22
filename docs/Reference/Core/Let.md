@@ -33,7 +33,7 @@ Assigning an expression of one numeric type to a variable of a different numeric
 
 This example assigns the values of expressions to variables by using the explicit **Let** statement.
 
-```tb
+```tb check_build
 Dim MyStr, MyInt
 ' The following variable assignments use the Let statement.
 Let MyStr = "Hello World"
@@ -42,7 +42,7 @@ Let MyInt = 5
 
 The following are the same assignments without the **Let** statement.
 
-```tb
+```tb check_build
 Dim MyStr, MyInt
 MyStr = "Hello World"
 MyInt = 5

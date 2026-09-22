@@ -39,7 +39,7 @@ The assigned path is used by the runtime when a Help request is made, for exampl
 
 This example assigns a Help file path at startup and then opens it on a specific topic.
 
-```tb
+```tb check_build
 Sub Main()
     App.HelpFile = App.Path & "\MyApp.chm"
 End Sub

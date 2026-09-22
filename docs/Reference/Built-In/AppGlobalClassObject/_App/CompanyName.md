@@ -21,7 +21,7 @@ The value is taken from the Company Name field in the project's version informat
 
 This example shows the company name in a message box.
 
-```tb
+```tb check_build
 MsgBox "Company: " & App.CompanyName
 ```
 

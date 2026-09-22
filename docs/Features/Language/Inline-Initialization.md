@@ -23,7 +23,7 @@ Dim cMC As cMyClass = New cMyClass(customConstructorArgs)
 
 You now no longer need a separate `Dim` statement for counter variables:
 
-```tb
+```tb check_build
 For i As Long = 0 To 10
     '...
 Next

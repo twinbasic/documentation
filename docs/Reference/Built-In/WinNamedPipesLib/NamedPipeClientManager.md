@@ -12,7 +12,13 @@ The client-side coordinator. Owns a Windows I/O Completion Port and a pool of wo
 
 Configure the public fields (all four have reasonable defaults), call [**Connect**](#connect) for each pipe the application wants to dial, and respond to the [**NamedPipeClientConnection**](NamedPipeClientConnection) events. The first [**Connect**](#connect) lazily creates the completion port and starts the worker threads; subsequent calls reuse them.
 
-```tb
+```tb hidden
+' Context for the samples on this page: the manager an excerpt below uses
+' without showing where it came from.
+Public manager As NamedPipeClientManager
+```
+
+```tb check_build
 Private manager As NamedPipeClientManager
 Private WithEvents connection As NamedPipeClientConnection
 
@@ -130,7 +136,7 @@ Named pipes can appear and disappear at any time as their server processes start
 
 ### Example
 
-```tb
+```tb check_build
 Dim names As Collection = manager.FindNamedPipes("MyService_*")
 Dim name As Variant
 For Each name In names

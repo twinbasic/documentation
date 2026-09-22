@@ -23,7 +23,7 @@ When running inside the twinBASIC IDE, **Path** returns the directory containing
 
 This example constructs a full path to a data file located in the same directory as the executable.
 
-```tb
+```tb check_build
 Dim dataFile As String
 dataFile = App.Path & "\data.json"
 Debug.Print "Data file: " & dataFile

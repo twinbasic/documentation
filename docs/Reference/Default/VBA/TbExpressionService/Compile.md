@@ -28,7 +28,7 @@ If *expression* is malformed, or references a symbol that no registered binder c
 
 ### Example
 
-```tb
+```tb check_build
 Dim Service As TbExpressionService = New TbExpressionService
 Service.AddStdLibraryBinder()
 

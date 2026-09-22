@@ -25,6 +25,6 @@ Syntax: **ChDrive** *drive*
 
 This example uses the **ChDrive** statement to change the current drive. 
 
-```tb
+```tb check_build
 ChDrive "D"   ' Make "D" the current drive.
 ```

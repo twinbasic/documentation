@@ -41,7 +41,7 @@ The *compare* argument settings are:
 
 This example uses the **StrComp** function to return the results of a string comparison. If the third argument is 1, a textual comparison is performed; if the third argument is 0 or omitted, a binary comparison is performed.
 
-```tb
+```tb check_build
 Dim MyStr1, MyStr2, MyComp
 MyStr1 = "ABCD": MyStr2 = "abcd"      ' Define variables.
 MyComp = StrComp(MyStr1, MyStr2, 1)   ' Returns 0.

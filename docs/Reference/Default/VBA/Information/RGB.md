@@ -41,7 +41,7 @@ The following table lists some standard colours and the red, green, and blue val
 
 This example uses **RGB** to construct several colour values.
 
-```tb
+```tb check_build
 Dim Red As Long, RGBValue As Long, I As Long
 Red = RGB(255, 0, 0)                  ' Pure red.
 I = 75

@@ -13,7 +13,7 @@ The colour or gradient that paints a region --- background of a control, body of
 
 A single solid colour is just a one-stop fill: call [**ColorPoints.SetSolidColor**](#setsolidcolor) with a `Long` colour, or [**SetSimplePattern**](#setsimplepattern) on the parent **Fill** for a two-colour gradient.
 
-```tb
+```tb check_build
 btnGo.NormalState.BackgroundFill.ColorPoints.SetSolidColor vbBlue
 btnGo.HoverState.BackgroundFill.SetSimplePattern vbBlue, vbWhite, _
         Pattern:=tbGradientNorthToSouth

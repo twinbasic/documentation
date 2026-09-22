@@ -10,7 +10,7 @@ has_toc: false
 
 A **ComboBox** is a Win32 native control that combines an edit field with a drop-down list of items, letting the user either type a value or pick one from the list. The control is normally placed on a **Form** or **UserControl** at design time. The default property is [**Text**](#text) and the default event is [**Change**](#change).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     With Combo1
         .AddItem "Apple"
@@ -44,7 +44,7 @@ Changing **Style** at run time recreates the underlying window (the existing lis
 
 Items are held inside the OS combo-box control; the [**List**](#list) and [**ItemData**](#itemdata) arrays are projections onto that storage. Items are added with [**AddItem**](#additem), removed with [**RemoveItem**](#removeitem), and the whole list is cleared with [**Clear**](#clear). After each [**AddItem**](#additem) call, [**NewIndex**](#newindex) reports the position the item was inserted at --- useful when [**Sorted**](#sorted) is **True** and the position is not predictable from the call.
 
-```tb
+```tb check_build
 Combo1.Sorted = True
 Combo1.AddItem "Cherry"
 Combo1.AddItem "Apple"          ' Inserted at index 0 — Combo1.NewIndex = 0

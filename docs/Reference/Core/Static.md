@@ -30,13 +30,13 @@ Use the **Static** statement in nonstatic procedures to explicitly declare varia
 
 Use a **Static** statement within a procedure to declare the data type of a variable that retains its value between procedure calls. For example, the following statement declares a fixed-size array of integers:
 
-```tb
+```tb check_build
 Static EmployeeNumber(200) As Integer
 ```
 
 The following statement declares a variable for a new instance of the [**Collection**](../Modules/Collection/) class:
 
-```tb
+```tb check_build
 Static X As New Collection
 ```
 
@@ -55,7 +55,7 @@ By convention, **Static** statements within a procedure are placed at the beginn
 
 This example uses the **Static** statement to retain the value of a variable for as long as the module code is running.
 
-```tb
+```tb check_build
 ' Function definition.
 Function KeepTotal(Number)
     ' Only the variable Accumulate preserves its value between calls.
@@ -66,7 +66,9 @@ End Function
 
 ' Static function definition.
 Static Function MyFunction(Arg1, Arg2, Arg3)
-    ' All local variables preserve value between function calls.
+    ' All local variables preserve value between function calls, so neither of
+    ' these needs the Static keyword the way Accumulate above does.
+    Dim Accumulate, Half
     Accumulate = Arg1 + Arg2 + Arg3
     Half = Accumulate / 2
     MyFunction = Half
