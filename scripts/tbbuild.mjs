@@ -108,6 +108,14 @@ if (proj && !/\.twinproj$/i.test(proj)) {
       : "  tbbuild takes a packed project file."));
   process.exit(2);
 }
+// A path that merely ENDS in .twinproj gets the same treatment, because the
+// IDE's behaviour is identical: it launches, the renderer answers CDP, and
+// the project is never reported open. Checking the extension alone still left
+// a typo'd or deleted path costing the full timeout.
+if (proj && !existsSync(proj)) {
+  console.error(`no such project: ${proj}`);
+  process.exit(2);
+}
 if (!IDE) {
   console.error("no twinBASIC IDE found: pass --ide <twinBASIC.exe>, set TB_IDE, " +
     "or unpack a twinBASIC_IDE_BETA_<n> folder on your Desktop");
