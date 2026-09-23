@@ -12,7 +12,7 @@ The root API the IDE passes to every addin. The DLL receives a **Host** as the a
 
 Typically held via `WithEvents` so the addin can subscribe to lifecycle events:
 
-```tb
+```tb check_build
 Private WithEvents Host As Host
 
 Public Sub New(ByVal Host As Host)

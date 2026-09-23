@@ -12,7 +12,7 @@ A **Label** is a windowless lightweight control for displaying read-only text. L
 
 The default property is [**Caption**](#caption) and the default event is [**Click**](#click).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     lblName.Caption  = "&Name:"            ' Alt+N forwards focus to the next control
     lblName.AutoSize = True
@@ -41,7 +41,7 @@ For text the user can edit (or that needs to take focus), use [**TextBox**](../T
 
 Labels do not take focus themselves, but they participate in keyboard-mnemonic routing. With [**UseMnemonic**](#usemnemonic) **True** (the default), an ampersand in [**Caption**](#caption) marks the next character as a mnemonic --- pressing **Alt+** that character moves the focus to the *next focusable control in tab order* after the label. Use `&&` to display a literal ampersand. Set [**UseMnemonic**](#usemnemonic) to **False** to disable the special handling and have ampersands rendered verbatim.
 
-```tb
+```tb check_build
 lblName.Caption = "&Name:"           ' Alt+N → next control (typically txtName)
 lblHelp.Caption = "Use && to escape" ' renders as: Use & to escape
 ```

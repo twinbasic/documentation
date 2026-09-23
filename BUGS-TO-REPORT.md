@@ -147,3 +147,46 @@ designer `_className` in the two `.tbreport` files and no sample handles
 samples. The pages documenting `New Border`, `Dim descriptor As ElementDescriptor` and a
 `ControlsSection` handler were all written from the packages' sources, and none of them
 compiled in a default project.
+
+---
+
+## `Err.Raise` rejects `HelpContext` as a named argument, while its three siblings work
+
+**Build:** BETA 983
+**Severity:** VBA-compatible code that names the fifth argument does not compile, and the
+diagnostic does not say which name was wrong.
+
+```
+Dim myHelpFile As String, myHelpContext As Long
+Err.Raise vbObjectError + 894, Source:="MyApp.MyClass", _
+          Description:="Was not able to complete your task", _
+          HelpFile:=myHelpFile, HelpContext:=myHelpContext
+```
+
+```
+TB5090 unrecognized named argument
+```
+
+**What does work**, each verified on its own: the same call with `Source:=`,
+`Description:=` and `HelpFile:=` named and the fifth argument dropped compiles, and so does
+the fully positional form `Err.Raise vbObjectError + 894, myObjectID, "...", myHelpFile,
+myHelpContext`. So the parameter exists and accepts a **Long**; only its *name* is
+unrecognised. `HelpContextID:=` is rejected as well, so this is not simply a different
+spelling to discover --- and the compiler binary's only `HelpContextID` strings belong to
+project settings, not to a signature.
+
+**Why it matters:** `HelpContext` is what VBA itself names that parameter. Read out of the
+VBA type library on the machine this was found on --- `VBE7.DLL` 7.01.1158, VBA7.1, via
+`LoadTypeLibEx` and `ITypeInfo::GetNames` on `_ErrObject`:
+
+```
+Raise(Number, Source, Description, HelpFile, HelpContext)
+```
+
+All five names are exactly the ones the failing call uses, and the call is Microsoft's own
+`Err.Source` example, named arguments and all --- so the code twinBASIC rejects is the code
+a VBA developer is most likely to have copied. Four of the five names are accepted here;
+only the fifth is not.
+
+**Found by** `scripts/check_examples.mjs` over `Reference/Default/VBA/ErrObject/Source.md`,
+whose sample was written in the named form. The page uses the positional form now.

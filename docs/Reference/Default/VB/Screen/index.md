@@ -59,7 +59,7 @@ End Sub
 
 [**FontCount**](#fontcount) is the number of fonts the OS reports for the current display context; [**Fonts**](#fonts)(*Index*) returns the name of the font at *Index* --- `0` to `FontCount - 1`. Together they let an application build a font-picker without going through the Win32 `EnumFontFamilies` API.
 
-```tb
+```tb check_build
 Dim i As Integer
 For i = 0 To Screen.FontCount - 1
     cboFonts.AddItem Screen.Fonts(i)

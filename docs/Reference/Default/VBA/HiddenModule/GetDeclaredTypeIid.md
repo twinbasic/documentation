@@ -19,7 +19,8 @@ Useful when calling [**vbaCastObj**](vbaCastObj) or any API that takes an interf
 
 ### Example
 
-```tb
+```tb check_build
+Dim SomeObj As Object
 Dim Iid As String = GetDeclaredTypeIid(Of stdole.IPicture)()
 Dim AsPic As IUnknown = vbaCastObj(SomeObj, Iid)
 ```

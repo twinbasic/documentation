@@ -29,7 +29,21 @@ This is the standard "short-circuit OR". It is useful when *expression2* is more
 
 Skipping an expensive lookup when a cheaper test already proves the condition:
 
-```tb
+```tb hidden
+' Context for the samples on this page: the cache helpers they call. All three
+' belong to the reader's program rather than to the language.
+Public Function IsCached(ByVal Key As String) As Boolean
+End Function
+
+Public Function FetchFromDisk(ByVal Key As String) As Boolean
+End Function
+
+Public Sub Process(ByVal Key As String)
+End Sub
+```
+
+```tb check_build
+Dim key As String
 If IsCached(key) OrElse FetchFromDisk(key) Then
     ' FetchFromDisk is only called when IsCached returned False.
     Process key
@@ -38,7 +52,8 @@ End If
 
 Compare with the equivalent code using **Or**, which would always call `FetchFromDisk` even when the cached lookup already succeeded:
 
-```tb
+```tb check_build
+Dim key As String
 ' Inefficient - FetchFromDisk runs even when IsCached returned True.
 If IsCached(key) Or FetchFromDisk(key) Then
     Process key

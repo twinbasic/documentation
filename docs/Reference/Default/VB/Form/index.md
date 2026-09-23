@@ -64,7 +64,7 @@ Closing a form goes through both **QueryUnload** *and* **Unload**, so either can
 
 [**Show**](#show) makes the form visible. It accepts an optional [**FormShowConstants**](../../VBRUN/Constants/FormShowConstants) argument: **vbModeless** (default --- the call returns immediately and the user can interact with other forms) or **vbModal** (the call blocks until the form is closed, and other forms in the application become unresponsive). MDI child forms cannot be shown modally; attempting to do so raises run-time error 404.
 
-```tb
+```tb check_build
 dlgOptions.Show vbModal, Me      ' modal, owned by the calling form
 ```
 

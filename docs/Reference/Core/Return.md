@@ -28,17 +28,25 @@ Syntax:
 
 Returning a value from a **Function** by using **Return** *expression*:
 
-```tb
+```tb check_build
 Function Square(N As Double) As Double
     Return N * N
 End Function
 
-Debug.Print Square(7)   ' 49
+Sub Demo()
+    Debug.Print Square(7)   ' 49
+End Sub
 ```
 
 Exiting a **Sub** early --- note the use of **Exit Sub**, not bare **Return**:
 
-```tb
+```tb hidden
+' Context for the sample below: the module-level flag it tests, which belongs to
+' the reader's program rather than to the language.
+Public LoggingEnabled As Boolean
+```
+
+```tb check_build
 Sub LogIfEnabled(ByVal Message As String)
     If Not LoggingEnabled Then Exit Sub
     Debug.Print Now & ": " & Message

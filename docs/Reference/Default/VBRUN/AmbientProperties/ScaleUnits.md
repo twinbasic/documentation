@@ -19,7 +19,7 @@ Common values include `"Twip"`, `"Pixel"`, `"Inch"`, `"Centimeter"`, `"Millimete
 
 This example responds to a **ScaleUnits** change and updates a label in the control's property sheet.
 
-```tb
+```tb check_build
 Private Sub UserControl_AmbientChanged(PropertyName As String)
     Select Case PropertyName
         Case "ScaleUnits"

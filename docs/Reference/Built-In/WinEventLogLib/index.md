@@ -30,7 +30,7 @@ A typical use has three stages:
 2. **Register** once, with administrator rights, at install time. Construct an [**EventLog**](EventLog) instance and call [**Register**](EventLog#register); this writes the source key under `HKLM\SYSTEM\CurrentControlSet\Services\EventLog\Application\<LogName>` and points the registry's **EventMessageFile** and **CategoryMessageFile** entries at the running EXE. Without this step, the Event Viewer shows *"The description for Event ID X cannot be found"* for every entry.
 3. **Log** at runtime, without elevation. Construct the same [**EventLog**](EventLog) with the same *LogName* and call [**LogSuccess**](EventLog#logsuccess) or [**LogFailure**](EventLog#logfailure) whenever the application has something to report.
 
-```tb
+```tb check_build
 Public Enum MyEventIds
     StartupOk       = 1000
     StartupFailed   = 1001
@@ -44,13 +44,15 @@ End Enum
 
 ' One-time install step (requires admin):
 Sub Install()
-    Dim Log As New EventLog(Of MyEventIds, MyCategories)("MyService")
+    Dim Log As EventLog(Of MyEventIds, MyCategories)
+    Set Log = New EventLog(Of MyEventIds, MyCategories)("MyService")
     Log.Register
 End Sub
 
 ' Runtime use (no admin required):
 Sub OnServiceStart()
-    Dim Log As New EventLog(Of MyEventIds, MyCategories)("MyService")
+    Dim Log As EventLog(Of MyEventIds, MyCategories)
+    Set Log = New EventLog(Of MyEventIds, MyCategories)("MyService")
     Log.LogSuccess StartupOk, General, "Service started", App.ModulePath
 End Sub
 ```
@@ -132,7 +134,8 @@ The compiler reads the JSON at build time and populates each enum body --- `Enum
 Once the JSON, the enum stubs, and the registry entries written by [**Register**](EventLog#register) are in place, a runtime call
 
 ```tb
-Dim Log As New EventLog(Of MESSAGETABLE.EVENTS, MESSAGETABLE.CATEGORIES)("Application\" & CurrentComponentName)
+Dim Log As EventLog(Of MESSAGETABLE.EVENTS, MESSAGETABLE.CATEGORIES)
+Set Log = New EventLog(Of MESSAGETABLE.EVENTS, MESSAGETABLE.CATEGORIES)("Application\" & CurrentComponentName)
 Log.LogSuccess service_started, status_changed, "MyService"
 ```
 

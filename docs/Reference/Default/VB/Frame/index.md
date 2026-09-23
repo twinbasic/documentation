@@ -14,7 +14,7 @@ A frame cannot itself receive the input focus. The mnemonic marker (`&`) in its 
 
 The default property is [**Caption**](#caption) and the default event is [**Click**](#click).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     fraOutput.Caption = "&Output format"
     optHTML.Caption     = "&HTML"

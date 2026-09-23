@@ -28,7 +28,8 @@ If *procname* doesn't match any event declared on *object*, or the supplied arit
 
 ### Example
 
-```tb
+```tb check_build
+Dim MyControl As Object
 RaiseEventByName2 MyControl, "ValueChanged", "First argument", 123, True
 ```
 

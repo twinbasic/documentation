@@ -25,7 +25,7 @@ If *object1* and *object2* refer to *different* objects (or one of them is **Not
 
 The most common use is testing that an object reference has been assigned:
 
-```tb
+```tb check_build
 If MyObject IsNot Nothing Then
     ' Use MyObject.
 End If

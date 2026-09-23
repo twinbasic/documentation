@@ -30,12 +30,12 @@ This example assigns the programmatic ID of an Automation object to the variable
 
 When handling errors, do not rely on the **Source** property (or any **Err** properties other than [**Number**](Number)) for control flow. The intended use of properties other than **Number** is to display detailed information to an end user when an error cannot be handled.
 
-```tb
+```tb check_build
 Dim myObjectID As String, myHelpFile As String, myHelpContext As Long
 myObjectID = "MyApp.MyClass"
-Err.Raise Number:=vbObjectError + 894, Source:=myObjectID, _
-          Description:="Was not able to complete your task", _
-          HelpFile:=myHelpFile, HelpContext:=myHelpContext
+Err.Raise vbObjectError + 894, myObjectID, _
+          "Was not able to complete your task", _
+          myHelpFile, myHelpContext
 ```
 
 ### See Also

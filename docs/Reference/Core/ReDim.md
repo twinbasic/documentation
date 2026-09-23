@@ -56,8 +56,9 @@ The **ReDim** statement acts as a declarative statement if the variable it decla
 
 This example uses the **ReDim** statement to allocate and reallocate storage space for dynamic-array variables. It assumes the **Option Base** is **1**.
 
-```tb
+```tb check_build
 Dim MyArray() As Integer ' Declare dynamic array.
+Dim I As Integer
 ReDim MyArray(5) ' Allocate 5 elements.
 For I = 1 To 5 ' Loop 5 times.
     MyArray(I) = I ' Initialize array.

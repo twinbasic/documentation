@@ -37,7 +37,7 @@ End Sub
 - An ampersand (`&`) marks the next character as a keyboard mnemonic --- pressing **Alt + that letter** while the menu is open invokes the item, and the letter is underlined in the rendered menu. Use `&&` to display a literal ampersand.
 - A Caption consisting of a single hyphen (`"-"`) renders the item as a horizontal separator bar between the surrounding entries. Separator items still receive their own [**Click**](#click) events if invoked programmatically, but the user cannot reach them with the keyboard or mouse.
 
-```tb
+```tb check_build
 mnuFileNew.Caption    = "&New"          ' Alt+N while File is open
 mnuFileSep1.Caption   = "-"             ' separator bar
 mnuFileSaveAs.Caption = "Save &As..."   ' Alt+A
@@ -47,7 +47,7 @@ mnuFileSaveAs.Caption = "Save &As..."   ' Alt+A
 
 [**ShortcutId**](#shortcutid) binds a keyboard accelerator to the menu item. It is typed as [**ShortcutConstants**](../../VBRUN/Constants/ShortcutConstants) --- **vbShortcutNone** disables the accelerator, **vbShortcutCtrlS** binds **Ctrl+S**, and so on across the function-key, **Shift+**, and **Ctrl+** ranges. When set, the Win32 runtime appends the corresponding text after a tab character in the rendered Caption --- `Save\tCtrl+S` --- so the shortcut appears right-aligned in the menu, the conventional way.
 
-```tb
+```tb check_build
 mnuFileSave.ShortcutId = vbShortcutCtrlS
 mnuFilePrint.ShortcutId = vbShortcutCtrlP
 ```

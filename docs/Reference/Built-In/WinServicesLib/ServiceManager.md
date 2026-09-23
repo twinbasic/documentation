@@ -65,7 +65,16 @@ Syntax (Let): *manager*.**AutoInitializeCOM** = *value*
 
 The default **True** is appropriate for most services: it ensures that in-process COM objects and late-bound automation objects work without extra setup. Set to **False** when a different apartment model is required --- for example, a service that creates a Multi-Threaded Apartment (MTA) so that multiple worker threads can share COM objects directly:
 
-```tb
+```tb hidden
+' Context for the sample below: the two COM apartment calls it makes, which a
+' service declares for itself -- the package does not re-export them.
+Public Declare PtrSafe Function CoInitializeEx Lib "ole32" ( _
+        ByVal pvReserved As LongPtr, ByVal dwCoInit As Long) As Long
+Public Declare PtrSafe Sub CoUninitialize Lib "ole32" ()
+Public Const COINIT_MULTITHREADED As Long = &H0
+```
+
+```tb check_build
 Sub EntryPoint(ByVal ServiceManager As ServiceManager) _
         Implements ITbService.EntryPoint
     ' AutoInitializeCOM was set to False during configuration,

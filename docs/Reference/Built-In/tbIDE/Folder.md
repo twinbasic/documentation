@@ -49,7 +49,9 @@ Number of items currently in the folder. **Long**, read-only.
 
 Useful when traversing the project for source-search purposes --- an addin that searches user code will usually want to *skip* the package sources:
 
-```tb
+```tb check_build
+Dim folder As tbIDE.Folder
+Dim searchInsidePackages As Boolean
 If folder.IsPackagesFolder And Not searchInsidePackages Then Exit Sub
 ```
 

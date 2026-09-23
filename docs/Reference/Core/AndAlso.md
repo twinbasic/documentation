@@ -29,7 +29,8 @@ This is the standard "short-circuit AND". It is useful when *expression2* depend
 
 Guarding a property access by first verifying the object reference:
 
-```tb
+```tb check_build
+Dim obj As Object
 If obj IsNot Nothing AndAlso obj.IsReady Then
     ' Safe to call - obj.IsReady is only evaluated when obj is non-Nothing.
     obj.DoWork
@@ -38,7 +39,8 @@ End If
 
 Compare with the equivalent code using **And**, which would crash if `obj` were **Nothing** because both operands are always evaluated:
 
-```tb
+```tb check_build
+Dim obj As Object
 ' WRONG - obj.IsReady is evaluated even when obj is Nothing.
 If obj IsNot Nothing And obj.IsReady Then
     obj.DoWork

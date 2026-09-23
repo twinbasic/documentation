@@ -161,9 +161,11 @@ Syntax: *project*.**SaveMetaData** *Key*, *Value*
 *Value*
 : *required* The value to store. **String**.
 
-```tb
+```tb check_build
 ' Persist a user-selected option that should follow the project:
-Host.CurrentProject.SaveMetaData "MyAddIn.LastUsedFilter", "*.bas"
+Private Sub RememberFilter()
+    Host.CurrentProject.SaveMetaData "MyAddIn.LastUsedFilter", "*.bas"
+End Sub
 
 ' Restore it next time the project loads:
 Private Sub Host_OnProjectLoaded()

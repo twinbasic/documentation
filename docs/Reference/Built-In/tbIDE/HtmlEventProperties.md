@@ -10,7 +10,13 @@ has_toc: false
 
 The dynamic event-payload bag passed to every [**HtmlElement.AddEventListener**](HtmlElement#addeventlistener) callback. Conceptually the IDE-side equivalent of the JavaScript `Event` object --- fields like `.key`, `.target.id`, `.target.value`, `.index` are accessed dynamically through the bag's `[COMExtensible(True)]` resolution.
 
-```tb
+```tb hidden
+' Context for the samples below: the addin's own handler for a submitted value.
+Public Sub ProcessEntered(ByVal Value As String)
+End Sub
+```
+
+```tb check_build
 Private Sub MyButtonClicked(ByVal eventInfo As HtmlEventProperties)
     Host.DebugConsole.PrintText "clicked: " & eventInfo.target.id
 End Sub

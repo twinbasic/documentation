@@ -13,7 +13,7 @@ Aggregates everything needed to draw a piece of text inside a control: the font,
 
 A newly-constructed **TextRendering** pre-sets its [**Fill**](#fill) to solid black so that text is immediately visible.
 
-```tb
+```tb check_build
 With lblTitle.TextRendering
     .Font.Size = 18
     .Font.Weight = tbBold

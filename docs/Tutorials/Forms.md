@@ -69,7 +69,7 @@ End Sub
 
 Fill it in as follows:
 
-```tb
+```tb check_build
 Private Sub cmdConvert_Click()
     If Not IsNumeric(txtInput.Text) Then
         lblResult.Caption = "Please enter a number."

@@ -11,7 +11,7 @@ has_toc: false
 
 Per-side padding, in pixels, applied around the text inside a [**TextRendering**](TextRendering). Accessed as [**TextRendering.Padding**](TextRendering#padding). The padded region is what the text [**Alignment**](TextRendering#alignment) is applied to --- adding 5 pixels of left padding moves left-aligned text 5 pixels to the right, and shrinks the available area by 5 pixels at the left edge.
 
-```tb
+```tb check_build
 With txtNotes.NormalState.TextRendering.Padding
     .Left = 5
     .Right = 5

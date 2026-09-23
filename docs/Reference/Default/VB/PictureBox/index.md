@@ -16,7 +16,7 @@ A **PictureBox** is a Win32 native control that combines three roles in one:
 
 The control is normally placed on a [**Form**](../Form), [**Frame**](../Frame), or **UserControl** at design time. The default property is [**Picture**](#picture); the default-designer event is [**Click**](#click).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     Set picLogo.Picture = LoadPicture(App.Path & "\logo.png")
     picLogo.AutoSize = True

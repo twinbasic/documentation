@@ -22,7 +22,15 @@ Error values are produced by passing an error number through the [**CVErr**](../
 
 This example uses **IsError** to check whether a value is an error. **CVErr** is used to return an **Error**-subtype **Variant** from a user-defined function. `UserFunction` is assumed to return an error value, for example via `UserFunction = CVErr(32767)`.
 
-```tb
+```tb hidden
+' Context for the sample below: the user-defined function it calls, which
+' belongs to the reader's program.
+Public Function UserFunction() As Variant
+    UserFunction = CVErr(32767)
+End Function
+```
+
+```tb check_build
 Dim ReturnVal As Variant
 Dim MyCheck As Boolean
 ReturnVal = UserFunction()

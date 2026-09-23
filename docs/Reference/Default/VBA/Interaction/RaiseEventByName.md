@@ -28,7 +28,8 @@ If *procname* doesn't match any event declared on *object*, or the supplied arit
 
 ### Example
 
-```tb
+```tb check_build
+Dim MyControl As Object
 Dim Args(0) As Variant
 Args(0) = "Some argument value"
 RaiseEventByName MyControl, "ValueChanged", Args

@@ -20,7 +20,8 @@ The returned picture is a fresh bitmap-typed **stdole.StdPicture** with the icon
 
 ### Example
 
-```tb
+```tb check_build
+Dim MyIconPicture As StdPicture
 Dim Bmp As StdPicture
 Set Bmp = ConvertIconToBitmap(MyIconPicture, RGB(255, 255, 255))
 Set Picture1.Picture = Bmp

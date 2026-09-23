@@ -25,7 +25,8 @@ Data written with **Put** is usually read from a file with [**Get**](Get).
 
 The first record or byte in a file is at position 1, the second record or byte is at position 2, and so on. When *recnumber* is omitted, the next record or byte after the last **Get** or **Put** statement, or pointed to by the last [**Seek**](../Modules/FileSystem/Seek) function, is written. The delimiting commas must be included:
 
-```tb
+```tb check_build
+Dim FileBuffer As String
 Put #4, , FileBuffer
 ```
 
@@ -64,7 +65,8 @@ For files opened in **Binary** mode, all of the **Random** rules apply, except:
 
 - **Put** writes variable-length strings that are not elements of user-defined types without the 2-byte length descriptor. The number of bytes written equals the number of characters in the string. For example, the following statements write 10 bytes to file number 1:
 
-  ```tb
+  ```tb check_build
+  Dim VarString As String
   VarString$ = String$(10, " ")
   Put #1, , VarString$
   ```
@@ -73,21 +75,23 @@ For files opened in **Binary** mode, all of the **Random** rules apply, except:
 
 This example uses the **Put** statement to write data to a file. Five records of the user-defined type are written to the file.
 
-```tb
+```tb check_build
 Type Record ' Define user-defined type.
     ID As Integer
     Name As String * 20
 End Type
 
-Dim MyRecord As Record, RecordNumber ' Declare variables.
-' Open file for random access.
-Open "TESTFILE" For Random As #1 Len = Len(MyRecord)
-For RecordNumber = 1 To 5 ' Loop 5 times.
-    MyRecord.ID = RecordNumber ' Define ID.
-    MyRecord.Name = "My Name" & RecordNumber ' Create a string.
-    Put #1, RecordNumber, MyRecord ' Write record to file.
-Next RecordNumber
-Close #1 ' Close file.
+Sub WriteFiveRecords()
+    Dim MyRecord As Record, RecordNumber ' Declare variables.
+    ' Open file for random access.
+    Open "TESTFILE" For Random As #1 Len = Len(MyRecord)
+    For RecordNumber = 1 To 5 ' Loop 5 times.
+        MyRecord.ID = RecordNumber ' Define ID.
+        MyRecord.Name = "My Name" & RecordNumber ' Create a string.
+        Put #1, RecordNumber, MyRecord ' Write record to file.
+    Next RecordNumber
+    Close #1 ' Close file.
+End Sub
 ```
 
 ### See Also

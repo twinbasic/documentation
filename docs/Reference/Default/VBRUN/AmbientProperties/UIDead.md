@@ -19,7 +19,7 @@ The host sets **UIDead** to **True** when the application is in a state where it
 
 This example responds to a **UIDead** change and pauses animations while the host is non-responsive.
 
-```tb
+```tb check_build
 Private Sub UserControl_AmbientChanged(PropertyName As String)
     Select Case PropertyName
         Case "UIDead"

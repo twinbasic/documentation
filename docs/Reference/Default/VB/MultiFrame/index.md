@@ -51,7 +51,7 @@ A frame whose [**Container**](../Frame#container) is the **MultiFrame** but whos
 
 The mapping from frame to **MultiFrame** is discovered from the parent form's control collection on each layout pass: a frame appears in the strip exactly when its [**Container**](../Frame#container) property points at the **MultiFrame**. The discovered set is then cached. To force the cache to be rebuilt --- for example after re-parenting a frame at run time --- assign any value to [**FramesCount**](#framescount):
 
-```tb
+```tb check_build
 Set fraExtra.Container = mfPanels
 mfPanels.FramesCount = 0       ' assigned value is ignored; the layout cache is rebuilt
 ```

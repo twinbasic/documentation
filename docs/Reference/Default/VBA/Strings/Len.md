@@ -32,21 +32,23 @@ One (and only one) of the two possible arguments must be specified. With user-de
 
 This example uses **Len** to return the number of characters in a string or the number of bytes required to store a variable. The `Type...End Type` block defining `CustomerRecord` must be preceded by the keyword **Private** if it appears in a class module. In a standard module, a **Type** statement can be **Public**.
 
-```tb
+```tb check_build
 Type CustomerRecord            ' Define user-defined type.
     ID As Integer              ' Place this definition in a
     Name As String * 10        ' standard module.
     Address As String * 30
 End Type
 
-Dim Customer As CustomerRecord    ' Declare variables.
-Dim MyInt As Integer, MyCur As Currency
-Dim MyString, MyLen
-MyString = "Hello World"     ' Initialize variable.
-MyLen = Len(MyInt)           ' Returns 2.
-MyLen = Len(Customer)        ' Returns 42.
-MyLen = Len(MyString)        ' Returns 11.
-MyLen = Len(MyCur)           ' Returns 8.
+Sub Demo()
+    Dim Customer As CustomerRecord    ' Declare variables.
+    Dim MyInt As Integer, MyCur As Currency
+    Dim MyString, MyLen
+    MyString = "Hello World"     ' Initialize variable.
+    MyLen = Len(MyInt)           ' Returns 2.
+    MyLen = Len(Customer)        ' Returns 42.
+    MyLen = Len(MyString)        ' Returns 11.
+    MyLen = Len(MyCur)           ' Returns 8.
+End Sub
 ```
 
 ### See Also

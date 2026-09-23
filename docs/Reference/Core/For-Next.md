@@ -60,7 +60,8 @@ After all statements in the loop have executed, *step* is added to *counter*. At
 
 **For...Next** loops can be nested by placing one **For...Next** loop within another. Give each loop a unique variable name as its *counter*. The following construction is correct:
 
-```tb
+```tb check_build
+Dim I As Long, J As Long, K As Long
 For I = 1 To 10 
   For J = 1 To 10 
     For K = 1 To 10 

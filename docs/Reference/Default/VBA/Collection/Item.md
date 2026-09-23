@@ -21,7 +21,8 @@ If *index* doesn't match any existing member of the collection, an error occurs.
 
 **Item** is the default member of a **Collection** object. Therefore, the following lines of code are equivalent:
 
-```tb
+```tb check_build
+Dim MyCollection As New Collection
 Debug.Print MyCollection(1)
 Debug.Print MyCollection.Item(1)
 ```

@@ -27,11 +27,14 @@ Syntax:
 
 The lower bound of an array created with **Array** is determined by the **Option Base** statement at the component scope, defaulting to `0`.
 
-```tb
+```tb check_build
 Option Base 1
-Dim a As Variant
-a = Array(10, 20, 30)
-Debug.Print a(1)             ' 10
+
+Sub Demo()
+    Dim a As Variant
+    a = Array(10, 20, 30)
+    Debug.Print a(1)             ' 10
+End Sub
 ```
 
 The destructuring form unpacks an array into the named variables in order, starting from the array's lower bound. The argument list can mix variables and the `_` placeholder to skip elements:

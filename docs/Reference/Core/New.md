@@ -44,6 +44,15 @@ X.Add "first" ' First reference - instance is created here.
 
 Explicit creation via **Set ... = New**. The instance is created at the **Set** line. This is the more common form, since the moment of construction is visible at the call site.
 
+```tb hidden
+' Context for the sample below: the form it creates four of. In a real project
+' the designer declares this class; here it is written out so the sample has the
+' type it names.
+Class Form1
+    Inherits Form
+End Class
+```
+
 ```tb check_build
 Dim Forms(1 To 4) As Form1
 Dim i As Long
