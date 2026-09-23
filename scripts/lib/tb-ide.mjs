@@ -124,13 +124,41 @@ export async function launchIde({ exe, project, port, show = false, env = {} }) 
   return { pid, launcher: ps };
 }
 
-/** End an IDE started by launchIde, and the launcher holding its desktop. */
+/**
+ * End an IDE started by launchIde, and the launcher holding its desktop, and
+ * wait until the IDE's process is gone.
+ *
+ * The wait is for whatever runs next. The IDE writes its recent list and
+ * project state to the registry while it runs, and taskkill only asks for the
+ * end of a process: tidying the registry before the process has actually gone
+ * could lose to one last write. It is normally over in well under a second,
+ * and it gives up after five.
+ */
 export function shutdownIde(ide) {
   if (!ide) return;
   killTree(ide.pid);
   // The launcher holds the private desktop open; it exits once the IDE does,
   // but do not wait on that.
   try { ide.launcher?.kill(); } catch { /* already gone */ }
+  waitForExit(ide.pid, 5000);
+}
+
+/**
+ * Block until a process has exited, or the time runs out.
+ *
+ * Synchronous on purpose: shutdown runs on paths that end in process.exit().
+ *
+ * @returns {boolean} true if the process is gone
+ */
+export function waitForExit(pid, timeoutMs) {
+  const until = Date.now() + timeoutMs;
+  const cell = new Int32Array(new SharedArrayBuffer(4));
+  while (Date.now() < until) {
+    // Signal 0 tests whether the process exists; it throws once it does not.
+    try { process.kill(pid, 0); } catch { return true; }
+    Atomics.wait(cell, 0, 0, 100);
+  }
+  return false;
 }
 
 /** Attach to the IDE's page once its DevTools port answers; null if it never does. */

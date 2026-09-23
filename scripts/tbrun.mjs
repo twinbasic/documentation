@@ -89,6 +89,7 @@ import path from "node:path";
 import { compilerExe, findIde, runCompiler } from "./lib/tb-install.mjs";
 import { attachIde, clickCenter, compileOutcome, killTree, launchIde, readConsole,
          shutdownIde, summaryLine, waitForCompile, wantShow } from "./lib/tb-ide.mjs";
+import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes(`--${n}`);
@@ -213,6 +214,12 @@ if (!pack.done) die(2, `packing failed${pack.why}:\n${pack.tail}`);
 // paths differ in a way nobody would remember.
 const processesBefore = snapshotProcesses();
 
+// Everything this run opens is under `work`, so the IDE's registry entries for
+// it -- its recent list and its saved project state, see lib/tb-registry.mjs --
+// are swept by that folder once the IDE has exited, along with any an earlier
+// run on this port left behind. Not under --keep: a kept IDE is still writing.
+const tidy = flag("keep") ? null : startTidy({ prefixes: [work] });
+
 let ideRun = null;
 // A failure before the console is read: said on stdout, as it was when this
 // phase was tbbuild's output relayed, and ended with tbbuild's meaning of 1
@@ -308,6 +315,7 @@ function strip(text) {
 function shutdown() {
   if (flag("keep")) return null;          // the IDE is the caller's problem now
   shutdownIde(ideRun);
+  finishTidy(tidy);
   return flag("no-reap") ? null : reapOrphans();
 }
 

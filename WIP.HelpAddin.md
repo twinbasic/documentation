@@ -204,9 +204,13 @@ from the page's own origin (**P13**). Deferred.
   add-in tests.
 - **The `.twinproj` association** is `HKCU\Software\Classes\.twinproj` →
   `twinBASIC.ProjectFile`, and it currently points at the BETA 983 `twinBASIC.exe`. A
-  harvested finding says every launch re-registers it to the exe that was launched
-  *(reported)*. If so, an IDE copy started from `%TEMP%` points the user's association at a
-  folder that is about to be deleted.
+  harvested finding said every launch re-registers it. Key timestamps say otherwise:
+  `DefaultIcon` and `shell\open\command` were last written when BETA 983 was installed, and
+  a day of launches of that build did not touch them. The likely rule is that the IDE
+  rewrites them when the path differs --- inferred from that last write matching the
+  install, and the first IDE copy started from `%TEMP%` in item 2 will measure it. If it
+  holds, such a copy points the user's association at a folder that is about to be deleted.
+  [tb-registry.mjs](scripts/lib/tb-registry.mjs) restores it either way.
 - **`SaveSetting` from an add-in writes to the same tree**, under
   `VB and VBA Program Settings\<app name>`, so it is shared with any installed copy of the
   same add-in. A test that changes an add-in-wide option changes it for the user too.
@@ -266,6 +270,16 @@ Everything after this stage is developed against it.
 
    The complete answer is a separate Windows account for test runs, which only the user can
    create. Start with the above.
+
+   **Done for `tbbuild`, `tbrun` and `check_examples`:**
+   [scripts/lib/tb-registry.mjs](scripts/lib/tb-registry.mjs), described in [WIP.Harness.md,
+   What a run leaves in the registry](WIP.Harness.md#what-a-run-leaves-in-the-registry-and-putting-it-back).
+   The 14 fixture cases, run one at a time, and a full `examples.bat` run leave the
+   registry identical, value for value, with every output line unchanged. The last two
+   bullets wait for the add-in runner (item 7). `snapshotKeys` takes any key, so the add-in's
+   `SaveSetting` key is one more entry in its list. The work also found an IDE bug, now in
+   [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md): a recent list shorter than 21 entries gets its
+   empty slots filled with copies of the last entry.
 4. **Build, then load.** The add-in is a Standard DLL. In a staged copy of its tree, pin
    `project.buildPath` to an explicit file in the lane IDE's `addins\<arch>\`, the way
    `tbrun` pins its exe path: the default `${SourcePath}\Build\...` template has already

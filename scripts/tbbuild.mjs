@@ -45,9 +45,11 @@
 // them. See WIP.Harness.md, "Compiling a twinBASIC project without the IDE in
 // front of you".
 import { existsSync, statSync } from "node:fs";
+import path from "node:path";
 import { findIde } from "./lib/tb-install.mjs";
 import { attachIde, compileOutcome, launchIde, shutdownIde, summaryLine,
          waitForCompile, wantShow } from "./lib/tb-ide.mjs";
+import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
 const args = process.argv.slice(2);
 const flag = (n) => args.includes("--" + n);
@@ -100,9 +102,11 @@ if (!IDE) {
 }
 
 let ide;
+let tidy = null;
 function shutdown() {
   if (!ide || keep) return;
   shutdownIde(ide);
+  finishTidy(tidy);
 }
 
 function die(code, msg) {
@@ -110,6 +114,14 @@ function die(code, msg) {
   shutdown();
   process.exit(code);
 }
+
+// The IDE puts the project at the top of the user's recent list and saves
+// state for it -- see lib/tb-registry.mjs, and WIP.Harness.md for the numbers.
+// Both go back as they were once the IDE has exited: an entry the run created
+// is deleted, and the user's own project, if this was one, gets its old state
+// back. Not under --keep, because a kept IDE is still writing; and not when
+// check_examples started this process, because it tidies once for every lane.
+if (!keep) tidy = startTidy({ paths: [path.resolve(proj)] });
 
 try {
   ide = await launchIde({ exe: IDE, project: proj, port, show });

@@ -396,3 +396,89 @@ outstanding. The sweep is a before/after snapshot diff restricted to processes t
 on an image allowlist, *and* windowless --- a new one that has a window is reported and left
 alone, since that cannot be told from a copy the user opened. `--no-reap` turns it off, and
 concurrent runs driving the same server should use it and sweep once at the end.
+
+## What a run leaves in the registry, and putting it back
+
+**Every IDE the harness starts writes to the user's own settings.** They live under
+`HKCU\Software\VB and VBA Program Settings\twinBASIC_IDE`, and the same key serves every
+installed build. An IDE records each project it opens as a `ProjectState` value (open tabs,
+watch expressions, DEBUG CONSOLE history: up to 34 KB for a real project) and moves it to
+the top of `RecentlyOpened`, a 21-slot list. Nothing removed either, so on 2026-09-23
+**318 of 424 `ProjectState` values** were harness temp projects, and **all 21 recent slots**
+were: the user's own recent projects had gone from the IDE entirely. One `examples.bat` run
+adds 41 values and fills the list.
+
+[scripts/lib/tb-registry.mjs](scripts/lib/tb-registry.mjs) puts it back. **The rule is to
+leave everything as it was found**, and it takes three forms:
+
+- **A folder only the harness writes to is swept by prefix** --- `check_examples`' and
+  `tbrun`'s work folders. The sweep also runs at the start of a run, which catches what an
+  earlier run left when it died. A prefix must lie inside the temp folder, or it is refused:
+  a caller passing the wrong folder cannot sweep away real projects.
+- **A named project is restored, not deleted.** `tbbuild` is pointed at the user's own
+  projects too, and deleting one of those entries would throw away somebody's open tabs and
+  watches. So it snapshots the project's entry first, and afterwards puts back the old state
+  and the old place in the list if there was one, and deletes the entry only if there was
+  not.
+- **The `.twinproj` association is restored value by value**, writing only what differs,
+  so an untouched key is never written. The IDE does not rewrite it on every launch: key
+  timestamps show `DefaultIcon` and `shell\open\command` last written when BETA 983 was
+  installed, through a day of launches of that build. That it rewrites them when the path
+  differs is inferred from that timing, not yet measured; a private copy of the IDE per
+  test lane ([WIP.HelpAddin.md](WIP.HelpAddin.md), Stage 1 item 2) is the first thing that
+  will test it.
+
+**One process owns the registry per run.** `check_examples` runs four lanes of `tbbuild`
+children at once; each restoring its own snapshot would put back whatever the registry held
+when that lane started, in whatever order the lanes finished. `startTidy` sets
+`TB_REGISTRY_OWNER`, the children inherit it and leave the registry alone, and the owner
+sweeps once after the last lane. An owner pid that is no longer running does not count, or a
+variable left set in a shell would switch tidying off for good. Under `--keep` nothing is
+tidied, because the kept IDE is still writing. `shutdownIde` waits for the IDE's process to
+be gone before anything is tidied, because `taskkill` only asks.
+
+**Why .NET through PowerShell and not `reg.exe`.** Node has no registry API. `reg.exe`
+prints value names in the console code page when its output is piped, so a path containing a
+character outside that code page (an accented user name in `%TEMP%` is enough) comes back
+mangled, and a value cannot be deleted by a name that no longer matches it. The request goes
+in on stdin, because a project's state can reach 34 KB and an environment variable stops at
+32 K characters. It is passed with `-EncodedCommand`, like `tb-launch.ps1`, and it is
+inline in the `.mjs` rather than a second `.ps1`, like `tbrun`'s process snapshot.
+
+**Three things went wrong on the way to it, and each is now handled in the file:**
+
+- **PowerShell answers in XML when its streams are redirected.** Progress records ("Preparing
+  modules for first use") arrive on stderr as `#< CLIXML`, and so do errors, so a failure
+  whose message was taken from stderr read `#< CLIXML`. Progress is now silenced, and a
+  failure comes back as `{"error": ...}` on stdout.
+- **A restore near the root would be a disaster rather than a no-op.** Restoring deletes
+  whatever the snapshot does not list, so an empty or short key path would have taken
+  everything under `HKCU` or `Software`. Nothing passed one, and that is not a safeguard:
+  anything shallower than three segments is now refused, in JavaScript and again inside the
+  script.
+- **Two runs deleting one value raced.** Three concurrent `tbbuild`s on the same fixture each
+  listed the value, one deleted it, and the next `DeleteValue` threw "No value exists with that
+  name". That aborted the whole tidy, recent list included, and the list was left holding one
+  project eighteen times. Every delete now tolerates a missing value.
+
+**The eighteen copies were the IDE's own bug**, and it is in
+[BUGS-TO-REPORT.md](BUGS-TO-REPORT.md): when the recent list has fewer than 21 entries, the
+IDE fills every empty slot with a copy of the last one. The tidy leaves a short list whenever
+it removes harness projects, so the next project the user opens trips it. That is the same
+list a new installation has, and it cannot be fixed from outside the IDE.
+
+**Two limits remain, both about IDEs the tidy does not own:**
+
+- Two *standalone* `tbbuild`s on the same project at once: the second sees the first's entry
+  as the user's, and puts it back. `check_examples` is immune, because its lanes are owned,
+  and the end-to-end check below ran its fixture cases one at a time for this reason.
+- An IDE the user has open reads the recent list when it starts and writes its whole copy
+  back when it opens a project, so it can bring back harness entries that were tidied after
+  it started.
+
+**Verified** by [scripts/check_tb_registry.mjs](scripts/check_tb_registry.mjs), which plays
+out a run on a scratch key and checks every rule above, the guards and the ownership rule
+included. It is not a gate: it needs Windows and a real registry, and the CI runners are
+Ubuntu. Run it after changing `tb-registry.mjs`. End to end, the 14 fixture cases, run one
+at a time, and a full `examples.bat` run leave `ProjectState`, the recent list and the
+association keys exactly as they were, value for value.

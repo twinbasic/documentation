@@ -78,6 +78,7 @@ import {
   collectFences, concatFences, moduleName, parseInfo, partOf, resourcePath, wrapFence,
 } from "./lib/tb-fences.mjs";
 import { buildNumber, compilerExe, findIde, runCompiler } from "./lib/tb-install.mjs";
+import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DOCS = path.join(REPO, "docs");
@@ -568,6 +569,11 @@ function stageBatch(batch, work) {
 
 const IDE = findIde(opt("ide", undefined));
 const COMPILER = IDE ? compilerExe(IDE) : null;
+
+// The registry tidy for the whole run (lib/tb-registry.mjs): taken in main()
+// before the first lane starts, finished once the last one has ended -- and
+// by the top-level catch, if main() dies in between.
+let tidy = null;
 
 /** Build one staged batch; returns per-fence errors, or a crash marker. */
 async function buildStaged(staged, port) {
@@ -1436,10 +1442,21 @@ async function main() {
       `implemented yet, so they were compiled only`);
   }
 
+  // Every lane's IDE records its projects in the user's recent list and saved
+  // project state (lib/tb-registry.mjs). This process owns the tidying for all
+  // of them: the tbbuild children see TB_REGISTRY_OWNER and leave the registry
+  // alone, because each restoring its own snapshot would put back whatever the
+  // registry held when that lane happened to start. Everything is under `work`,
+  // so one sweep by that folder at the end takes the lot -- and the sweep here
+  // at the start takes whatever a run on this --port left when it died.
+  tidy = startTidy({ prefixes: [work] });
+
   const t0 = Date.now();
   let results;
   try { results = await runAll(batches, work); }
-  catch (e) { console.error(`check_examples: ${e.message}`); process.exit(2); }
+  catch (e) { console.error(`check_examples: ${e.message}`); finishTidy(tidy); process.exit(2); }
+  finishTidy(tidy);
+  tidy = null;
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
 
   const errorsById = new Map();
@@ -1567,4 +1584,4 @@ function reportFindings() {
   }
 }
 
-main().catch((err) => { console.error(err); process.exit(2); });
+main().catch((err) => { console.error(err); finishTidy(tidy); process.exit(2); });

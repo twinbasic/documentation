@@ -103,6 +103,12 @@ cannot make without a native FFI addon, and adding one for a single call would m
 execution policy. See [Compiling a twinBASIC project without the IDE in front of
 you](WIP.Harness.md#compiling-a-twinbasic-project-without-the-ide-in-front-of-you).
 
+Two `.mjs` files also run a little PowerShell inline, for Windows state Node has no API
+for, and neither adds a file: `scripts/tbrun.mjs` takes a process snapshot with
+`Get-Process`, and `scripts/lib/tb-registry.mjs` reads and restores the IDE's registry
+keys through .NET, because `reg.exe` mangles names outside the console code page. See
+[What a run leaves in the registry](WIP.Harness.md#what-a-run-leaves-in-the-registry-and-putting-it-back).
+
 The full account of the JavaScript port of `build_fonts.py` --- what works, the harfbuzzjs
 build defect that blocks it, the evidence, the root cause in `hb-config.hh`, and what the
 port must check for when it happens --- is in [WIP.Fonts.md](WIP.Fonts.md).

@@ -19,6 +19,45 @@ What an entry owes a reader:
 
 ---
 
+## The recent-projects list fills its empty slots with copies of its last entry
+
+**Build:** BETA 983
+**Severity:** cosmetic, but it shows on a new installation, which is exactly when the
+list has empty slots --- the same project repeated down the Recent tab.
+
+The list is 21 values, `"0"` to `"20"`, under
+`HKCU\Software\VB and VBA Program Settings\twinBASIC_IDE\RecentlyOpened`. Reproduction:
+
+1. Leave two entries: `"0"` = `A.twinproj`, `"1"` = `B.twinproj`. Either delete `"2"` to
+   `"20"` or set them to empty strings; both reproduce it.
+2. Open a third project, `C.twinproj` --- on the command line is enough.
+3. The IDE writes `"0"` = `C`, `"1"` = `A`, and `"2"` to `"20"` = `B`: **nineteen copies of
+   `B`**.
+
+What does **not** reproduce it:
+
+| starting list | result |
+|---|---|
+| no `RecentlyOpened` key at all | `C` and 20 empty strings --- correct |
+| 21 distinct entries | 21 distinct entries, the oldest dropped --- correct, read at the end of 41 successive opens |
+| `C` already at the top | unchanged --- the opened project itself is never duplicated |
+
+So it takes at least one existing entry and at least one slot with nothing in it, which
+looks like each slot being read with the previous slot's value as its default. Once a
+duplicate is there, the next opened project keeps it: 18 copies of one project became 20
+after one more open, with the new project on top.
+
+**Observed** on 2026-09-23 by reading the registry values after `tbbuild --keep` opened a
+fixture project on a private desktop and the IDE was killed: once for each variant of step
+1, and in two successive sessions on one project for the third row and the growth from 18
+copies to 20. The first row was seen when the key had been deleted and the next harness run
+recreated it, the second at the end of a `check_examples` run. The
+harness records it because its registry tidy (`scripts/lib/tb-registry.mjs`) leaves a list
+shorter than 21 entries whenever it removes harness projects, and the next project the user
+opens then trips this.
+
+---
+
 ## Compiler crashes on an `Interface` whose name and base are both angle-bracket placeholders
 
 **Build:** BETA 983 (`twinBASIC_win32.dll+00141F7A`)
