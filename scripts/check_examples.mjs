@@ -6,6 +6,7 @@
 //     node scripts/check_examples.mjs --census           # classify every tb fence
 //     node scripts/check_examples.mjs --propose          # compile unmarked ones too
 //     node scripts/check_examples.mjs --propose --apply  # ...and mark the ones that pass
+//     node scripts/check_examples.mjs --report survey.json  # group a saved survey
 //
 // Exit: 0 clean, 1 a sample does not compile, 2 the harness failed.
 //
@@ -27,7 +28,7 @@
 //
 // ------------------------------------------------------------- opt-in, and why
 //
-// 1,116 `tb` fences under docs/, and a third of them are not programs: a
+// 1,124 `tb` fences under docs/, and a quarter of them are not programs: a
 // statement run with an elision in it, a syntax skeleton, an `If` with no `End
 // If`. A gate demanding that every fence compile would need hundreds of
 // opt-outs on day one, and a list of hundreds of exceptions is a list nobody
@@ -86,6 +87,7 @@ const opt = (n, d) => { const i = argv.indexOf("--" + n); return i < 0 ? d : arg
 
 const MODE_CENSUS = flag("census");
 const MODE_PROPOSE = flag("propose");
+const MODE_REPORT = opt("report", null);
 const APPLY = flag("apply");
 const VERBOSE = flag("verbose");
 const AS_JSON = flag("json");
@@ -101,6 +103,8 @@ if (flag("help")) {
   --census         classify every tb fence and print the table; no compiler
   --propose        treat every classifiable fence as marked, and say which pass
   --apply          with --propose, add \`${MARKER}\` to the fences that passed
+  --report <file>  group the findings of a saved \`--propose --json\` survey by
+                   diagnostic, section, undeclared symbol and page; no compiler
   --jobs <n>       concurrent IDE lanes (default 4)
   --port <n>       base DevTools port (default 9480)
   --batch <n>      samples per generated project (default 120)
@@ -187,8 +191,13 @@ const say = (...a) => (AS_JSON ? console.error(...a) : console.log(...a));
 // ------------------------------------------------------------------ selection
 
 const findings = [];
-const addFinding = (fence, message, detail) =>
-  findings.push({ id: fence.id, rel: fence.rel, line: fence.line, message, detail });
+const addFinding = (fence, message, detail, extra = {}) =>
+  findings.push({
+    id: fence.id, rel: fence.rel, line: fence.line, message, detail,
+    // The slot and template are carried rather than described, so `--report`
+    // groups on fields instead of parsing them back out of the message.
+    slot: fence.slot, project: fence.project, ...extra,
+  });
 
 function select(fences) {
   const chosen = [];
@@ -256,18 +265,35 @@ function checkGroups(all, selected) {
   const members = new Map();
   for (const f of all) {
     const name = f.keys.get("projname");
-    if (!name || (only && !only.test(f.rel))) continue;
+    if (!name) continue;
     if (!members.has(name)) members.set(name, []);
     members.get(name).push(f);
   }
   const chosen = new Set(selected.map((f) => f.id));
+  const where = (f) => `docs/${f.rel}:${f.line}`;
   for (const [name, list] of members) {
     const inRun = list.filter((f) => chosen.has(f.id));
     if (!inRun.length) continue;
-    if (inRun.length !== list.length) {
-      const missing = list.filter((f) => !chosen.has(f.id));
+    const missing = list.filter((f) => !chosen.has(f.id));
+    // A member `--only` left out is the caller's own doing, so it is advisory --
+    // but never silent. The group is one program: the half in the run compiles
+    // without the half that declares what it uses, and the errors name a missing
+    // symbol rather than a narrowed run. WinServicesLib's four-page group was
+    // read as a real failure that way, `--only` having taken the page that
+    // declares MyService while the ones instantiating
+    // `ServiceCreator(Of MyService)` stayed.
+    const cut = only ? missing.filter((f) => !only.test(f.rel)) : [];
+    const unmarked = missing.filter((f) => !cut.includes(f));
+    if (unmarked.length) {
       addFinding(inRun[0], `projname=${name} is incomplete: ${inRun.length} of ${list.length} samples are in this run`,
-        "unmarked or excluded: " + missing.map((f) => `docs/${f.rel}:${f.line}`).join(", "));
+        "unmarked or excluded: " + unmarked.map(where).join(", "));
+    }
+    if (cut.length) {
+      addFinding(inRun[0],
+        `projname=${name} is cut by --only: ${inRun.length} of ${list.length} samples are in this run`,
+        "left out: " + cut.map(where).join(", ") +
+        " -- a group is compiled as one project, so these results are not a full run's",
+        { advisory: true });
     }
     const templates = new Set(inRun.map((f) => f.project));
     if (templates.size > 1) {
@@ -483,20 +509,24 @@ async function buildStaged(staged, port) {
   catch { throw new Error(`tbbuild produced no JSON on ${staged.proj}\n${err.trim()}`); }
 
   const perFence = new Map();
-  // Anything that cannot be pinned to a sample: a diagnostic against one of the
-  // template's own files, which would otherwise read as every sample failing at
-  // once, and a row in a shape this does not parse. Both are reported as
-  // themselves rather than folded into the findings.
-  const templateFaults = [];
+  // A row in a shape this does not parse. Nothing in it names a file, so no
+  // amount of splitting the batch would find its cause; it is reported as
+  // itself.
+  const unreadable = [];
+  // An ERROR against a file that is not one of this batch's generated samples:
+  // the template's own source, or -- the case that cost this comment -- a
+  // source inside a referenced PACKAGE. `runBatch` isolates one of those to the
+  // sample that caused it, because it usually has one.
+  const unattributed = [];
   for (const row of result.diagnostics ?? []) {
     const m = /^\{(\w+)\}\s+(\S+)\s+\[(\d+),(\d+)\]:\s*(.*)$/.exec(row);
-    if (!m) { templateFaults.push(row); continue; }
+    if (!m) { unreadable.push(row); continue; }
     const [, severity, file, lineRaw, , message] = m;
     if (severity !== "ERROR" && !VERBOSE) continue;
     const base = file.split("/").pop();
     const entry = staged.map.get(base);
     if (!entry) {
-      if (severity === "ERROR") templateFaults.push(row);
+      if (severity === "ERROR") unattributed.push(row);
       continue;
     }
     const genLine = Number(lineRaw);
@@ -504,45 +534,160 @@ async function buildStaged(staged, port) {
     if (!perFence.has(entry.fence.id)) perFence.set(entry.fence.id, []);
     perFence.get(entry.fence.id).push({ severity, pageLine, message });
   }
-  return { perFence, templateFaults };
+  return { perFence, unreadable, unattributed };
 }
 
 /**
- * Build a batch, bisecting on a compiler crash.
+ * Halve a batch WITHOUT cutting through anything that has to stay together.
  *
- * A crash is attributed to a single sample by halving until one is left. That
- * sample is a finding in its own right -- it is also a compiler bug, and
- * BUGS-TO-REPORT.md is where one goes.
+ * The unit is what `makeBatches` made it: a `projname` group is one program, and
+ * a page's `hidden` context travels with every sample from that page. Halving
+ * the fence array instead would take a group's definitions away from its tests
+ * and then report the tests -- an isolation run that manufactures the failure it
+ * claims to have found. The hidden fences sit at the END of `batch.fences`, so a
+ * plain slice loses them for one half outright.
+ *
+ * Returns null when there is one unit left, which is the leaf: the smallest
+ * thing that can be blamed.
+ */
+function splitBatch(batch) {
+  const hidden = batch.fences.filter((f) => f.flags.has(HIDDEN_MARKER));
+  const units = new Map();
+  for (const f of batch.fences) {
+    if (f.flags.has(HIDDEN_MARKER)) continue;
+    const key = f.keys.get("projname") ? `@${f.keys.get("projname")}` : `#${f.id}`;
+    if (!units.has(key)) units.set(key, []);
+    units.get(key).push(f);
+  }
+  const list = [...units.values()];
+  if (list.length < 2) return null;
+  const half = Math.ceil(list.length / 2);
+  return [list.slice(0, half), list.slice(half)].map((part) => {
+    const fences = part.flat();
+    const pages = new Set(fences.map((f) => f.rel));
+    return { ...batch, fences: [...fences, ...hidden.filter((h) => pages.has(h.rel))], pages };
+  });
+}
+
+/** The visible samples of a leaf batch, and how to describe it in a finding. */
+function leafOf(batch) {
+  const visible = batch.fences.filter((f) => !f.flags.has(HIDDEN_MARKER));
+  const rest = visible.length > 1
+    ? ` -- one of the ${visible.length} samples in group \`${batch.group ?? "?"}\`, ` +
+      "which is compiled as one program and cannot be split further"
+    : "";
+  return { rep: visible[0] ?? batch.fences[0], ids: visible.map((f) => f.id), rest };
+}
+
+// The stage index is in every diagnostic's path, so two builds of one template
+// produce rows that differ by a number. Compared without this, a template's own
+// fault is never recognised as its own and every batch bisects to the bottom.
+const sameRow = (row) => row.replace(/[/\\]DocSamples\d+[/\\]/, "/");
+
+/**
+ * Does this template emit that diagnostic with NO samples in it?
+ *
+ * One build per template, memoised and shared across lanes, asked before any
+ * splitting. Without it the two cases are indistinguishable at the leaf: a
+ * sample that provoked a diagnostic inside a package source, and a template that
+ * emits it unprompted. Guessing the first would bisect every batch to a single
+ * sample -- hundreds of IDE starts -- and then blame an arbitrary one.
+ */
+const templateOwnRows = new Map();
+function ownRowsOf(project, port, work) {
+  if (!templateOwnRows.has(project)) {
+    templateOwnRows.set(project, (async () => {
+      const staged = stageBatch({ project, fences: [] }, work);
+      const result = await buildStaged(staged, port);
+      if (!flag("keep")) rmSync(staged.dir, { recursive: true, force: true });
+      const rows = result.crashed
+        ? [`the ${project} template crashes the compiler with no samples in it`]
+        : [...(result.unattributed ?? []), ...(result.unreadable ?? [])];
+      if (rows.length) {
+        say(`  note: template \`${project}\` does not build clean on its own; ` +
+          `${rows.length} row(s) are its own, not any sample's`);
+      }
+      return new Set(rows.map(sameRow));
+    })());
+  }
+  return templateOwnRows.get(project);
+}
+
+/**
+ * Build a batch, isolating a crash or an unattributable diagnostic.
+ *
+ * Both are attributed by halving until one unit is left. A crash is a compiler
+ * bug as well as a finding, and BUGS-TO-REPORT.md is where one goes. An
+ * unattributable diagnostic is the subtler of the two: the sample that caused it
+ * may have no diagnostic of its own at all -- a generic instantiated with a type
+ * the project does not have reports inside the PACKAGE's source, against the
+ * generic's own type parameter -- so before this the sample was counted as
+ * compiling while the run failed with a row naming no page.
  */
 async function runBatch(batch, port, work) {
   const staged = stageBatch(batch, work);
   const result = await buildStaged(staged, port);
   if (!flag("keep")) rmSync(staged.dir, { recursive: true, force: true });
 
-  if (!result.crashed) return result;
+  // A function, not a shared object: spreading one would hand every caller the
+  // same arrays, and a recursion that pushes into them is a bug waiting.
+  const blank = () => ({
+    perFence: new Map(), templateFaults: [], crashed: [], blamed: [], blamedRows: new Map(),
+  });
+  const split = async (why) => {
+    const parts = splitBatch(batch);
+    if (!parts) return null;
+    say(`  ${why} in ${batch.fences.length} sample(s) [${batch.project}]: splitting to find it`);
+    const merged = blank();
+    for (const part of parts) {
+      const sub = await runBatch(part, port, work);
+      for (const [k, v] of sub.perFence ?? []) merged.perFence.set(k, v);
+      for (const [k, v] of sub.blamedRows ?? []) merged.blamedRows.set(k, v);
+      merged.templateFaults.push(...(sub.templateFaults ?? []));
+      merged.crashed.push(...(sub.crashed ?? []));
+      merged.blamed.push(...(sub.blamed ?? []));
+    }
+    return merged;
+  };
 
-  if (batch.fences.length === 1) {
-    const fence = batch.fences[0];
-    addFinding(fence, "crashes the twinBASIC compiler",
+  if (result.crashed) {
+    const deeper = await split("a compiler crash");
+    if (deeper) return deeper;
+    const { rep, ids, rest } = leafOf(batch);
+    addFinding(rep, "crashes the twinBASIC compiler" + rest,
       "the compiler dies parsing this sample; record it in BUGS-TO-REPORT.md");
     // Named back to the caller, because a crashed sample produced no
     // diagnostics and would otherwise be counted as one that compiled -- the
     // same false-clean shape tbbuild's own crash check exists to close.
-    return { perFence: new Map(), templateFaults: [], crashed: [fence.id] };
+    return { ...blank(), crashed: ids };
   }
-  const half = Math.ceil(batch.fences.length / 2);
-  const parts = [
-    { ...batch, fences: batch.fences.slice(0, half) },
-    { ...batch, fences: batch.fences.slice(half) },
-  ];
-  const merged = { perFence: new Map(), templateFaults: [], crashed: [] };
-  for (const part of parts) {
-    const sub = await runBatch(part, port, work);
-    for (const [k, v] of sub.perFence ?? []) merged.perFence.set(k, v);
-    merged.templateFaults.push(...(sub.templateFaults ?? []));
-    merged.crashed.push(...(sub.crashed ?? []));
+
+  const unreadable = result.unreadable ?? [];
+  const rows = [...new Set((result.unattributed ?? []).map(sameRow))];
+  if (!rows.length) {
+    return { perFence: result.perFence, templateFaults: unreadable, crashed: [], blamed: [] };
   }
-  return merged;
+
+  const own = await ownRowsOf(batch.project, port, work);
+  const mine = rows.filter((r) => !own.has(r));
+  if (!mine.length) {
+    // Every row is the template's own. Reported as a template fault, which is
+    // what it is, and no sample is blamed for it.
+    return { perFence: result.perFence, templateFaults: [...rows, ...unreadable], crashed: [], blamed: [] };
+  }
+
+  const deeper = await split("a diagnostic outside every sample");
+  if (deeper) return { ...deeper, templateFaults: [...deeper.templateFaults, ...unreadable] };
+
+  // Blamed, not passed: the whole point is that such a sample can produce no
+  // diagnostic of its own, so counting it as compiling is the false clean. The
+  // rows go back to `main` rather than straight into a finding, so a sample with
+  // errors of its own as well reads as one finding instead of two.
+  const { rep, ids, rest } = leafOf(batch);
+  return {
+    perFence: result.perFence, templateFaults: unreadable, crashed: [], blamed: ids,
+    blamedRows: new Map([[rep.id, { rows: mine, rest }]]),
+  };
 }
 
 /** Run every batch across `jobs` lanes, each with its own port and workspace. */
@@ -566,6 +711,32 @@ async function runAll(batches, work) {
 }
 
 // --------------------------------------------------------------------- census
+
+/**
+ * The bucket a page counts towards in a census or a survey report.
+ *
+ * A package is the unit the work is actually organised by, and it sits one level
+ * deeper than `Reference/` -- `Reference/Default/VB`, `Reference/Built-In/CEF`.
+ * Bucketing by the first two segments instead would put all thirteen packages in
+ * one row called `Reference/Built-In` and hide exactly what the report is for.
+ * A page directly under a section is its own bucket, because `Attributes.md`
+ * carrying twelve is a fact about that page rather than about `Reference/`.
+ */
+function sectionOf(rel) {
+  const parts = rel.split(/[\\/]/);
+  if (parts[0] === "Reference" && (parts[1] === "Default" || parts[1] === "Built-In")) {
+    return parts.slice(0, 3).join("/");
+  }
+  if (parts[0] === "Reference") return parts.slice(0, 2).join("/");
+  return parts.slice(0, 2).join("/");
+}
+
+/** `n  key` lines, biggest first. */
+function tallyLines(map, limit = Infinity) {
+  return [...map].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
+    .slice(0, limit)
+    .map(([k, n]) => `    ${String(n).padStart(4)}  ${k}`);
+}
 
 function census(fences) {
   const tally = new Map();
@@ -597,6 +768,99 @@ function census(fences) {
   for (const f of fences) byProject.set(f.project, (byProject.get(f.project) ?? 0) + 1);
   say("\n  template a fence would use:");
   for (const [p, n] of byProject) say(`    ${String(n).padStart(4)}  ${p}`);
+
+  // Where the unmarked work is. This half needs no compiler, so it belongs here
+  // rather than in a survey: a classifiable fence with no marker is either a
+  // sample nobody has tried yet or one the harness cannot build, and the census
+  // is what says how much of that there is and which packages hold it. What it
+  // deliberately does NOT claim is that any of them would compile -- only
+  // `--propose` knows that, and today none of them does.
+  const left = fences.filter((f) => f.slot && !f.marked);
+  if (!left.length) return;
+  const bySection = new Map();
+  const byPage = new Map();
+  for (const f of left) {
+    bySection.set(sectionOf(f.rel), (bySection.get(sectionOf(f.rel)) ?? 0) + 1);
+    byPage.set(f.rel, (byPage.get(f.rel) ?? 0) + 1);
+  }
+  say(`\n  classifiable and unmarked -- ${left.length} sample(s) in ` +
+    `${byPage.size} page(s), by section:`);
+  for (const line of tallyLines(bySection)) say(line);
+  say("\n  ...and the pages holding the most of them:");
+  for (const line of tallyLines(byPage, 10)) say(line);
+}
+
+// --------------------------------------------------------------------- report
+
+/**
+ * A diagnostic's KIND: its code, with the identifiers taken out.
+ *
+ * `TB5079 Unrecognized symbol 'WebView'` and `... 'Host'` are one kind and 162
+ * of them are one answer; left un-generalised they are 130 rows of one. The
+ * identifier is not lost -- it is what the unresolved-name tally counts.
+ */
+function diagKind(message) {
+  const flat = String(message ?? "").replace(/'[^']*'/g, "'...'").trim();
+  return flat.length > 72 ? flat.slice(0, 69) + "..." : flat;
+}
+
+/** The name a diagnostic says it could not resolve, or null. */
+function unresolvedName(message) {
+  const m = /Unrecognized (?:datatype symbol|symbol|member|token)\s+'([^']+)'/
+    .exec(String(message ?? ""));
+  return m ? m[1] : null;
+}
+
+/**
+ * Group a survey's findings: which diagnostic, which section, which name.
+ *
+ * This is the "where is the next lever" question, and it was answered by hand
+ * three times over this arc -- each time by a throwaway script, and once by one
+ * whose regex the shell had eaten (WIP.ExamplesBuild.md records the 444
+ * unclassifiable fences that were really 32). It reads a saved `--propose
+ * --json` survey rather than compiling, so the expensive run happens once and
+ * the grouping is the part that can be iterated on.
+ */
+function summarise(survey) {
+  const findings = survey.findings ?? [];
+  const advisory = findings.filter((f) => f.advisory).length;
+  say(`\nsurvey: ${survey.selected ?? "?"} sample(s), ${survey.passed ?? "?"} compile, ` +
+    `${findings.length} finding(s)` + (advisory ? `, ${advisory} advisory` : ""));
+  if (!findings.length) return;
+
+  const kinds = new Map(), sections = new Map(), names = new Map();
+  const wrappers = new Map(), pages = new Map();
+  const bump = (m, k) => m.set(k, (m.get(k) ?? 0) + 1);
+  for (const f of findings) {
+    // The FIRST diagnostic only. A sample with four of them has one cause and
+    // three consequences -- a missing opener surfaces as a mismatch further
+    // down, never where it happened -- so counting them all would weight the
+    // loudest sample highest rather than the commonest cause.
+    const first = (f.diagnostics ?? [])[0]?.message ?? f.message;
+    bump(kinds, diagKind(first));
+    bump(sections, sectionOf(f.rel));
+    bump(pages, f.rel);
+    bump(wrappers, `${f.slot ?? "?"} in ${f.project ?? "?"}`);
+    const name = unresolvedName(first);
+    if (name) bump(names, name);
+  }
+
+  say("\n  by first diagnostic:");
+  for (const line of tallyLines(kinds, 12)) say(line);
+  say("\n  by section:");
+  for (const line of tallyLines(sections, 15)) say(line);
+  if (names.size) {
+    const once = [...names.values()].filter((n) => n === 1).length;
+    // The shape of this tail is the whole decision. A name used 65 times is a
+    // stage-set entry or a template, and one lever fixes all of them; a tail of
+    // names used once is editorial work, page by page, and no lever reaches it.
+    say(`\n  names that did not resolve -- ${names.size} distinct, ${once} used once:`);
+    for (const line of tallyLines(names, 12)) say(line);
+  }
+  say("\n  wrapper the tool chose:");
+  for (const line of tallyLines(wrappers, 8)) say(line);
+  say("\n  pages holding the most:");
+  for (const line of tallyLines(pages, 10)) say(line);
 }
 
 // ---------------------------------------------------------------------- apply
@@ -820,6 +1084,58 @@ async function runProbes() {
     failures.push("batching: two pages whose hidden context collides shared a project");
   }
 
+  // An isolation split must not cut through a unit. Both halves of that are
+  // probed because both manufacture a failure: a group cut apart loses the
+  // definitions its tests need, and a page's hidden context left in the other
+  // half takes away the declarations it exists to supply -- and the hidden
+  // fences sit at the END of batch.fences, where a plain slice drops them.
+  const soleGroup = makeBatches([fake("g1", "g"), fake("g2", "g")])[0];
+  if (splitBatch(soleGroup) !== null) failures.push("split: a projname group was cut in half");
+  const mixed = makeBatches([
+    fake("m1", null, [], { rel: "M.md" }),
+    fake("m2", null, [], { rel: "N.md" }),
+    fake("mh", null, ["Ctx"], { hidden: true, rel: "M.md" }),
+  ])[0];
+  const halves = splitBatch(mixed) ?? [];
+  if (halves.length !== 2) failures.push("split: a two-unit batch did not split");
+  const withM1 = halves.find((b) => b.fences.some((f) => f.id === "m1"));
+  const withM2 = halves.find((b) => b.fences.some((f) => f.id === "m2"));
+  if (!withM1?.fences.some((f) => f.id === "mh")) {
+    failures.push("split: a page's hidden context did not travel with its sample");
+  }
+  if (withM2?.fences.some((f) => f.id === "mh")) {
+    failures.push("split: a page's hidden context followed a page that never asked for it");
+  }
+  // Two builds of one template differ only by the stage index in every path, and
+  // a template's own fault is recognised by comparing those rows.
+  const row = (n) => `{ERROR} /DocSamples${n}/Packages/P/Sources/S.twin [10,20]: TB5079 x`;
+  if (sameRow(row(7)) !== sameRow(row(12))) {
+    failures.push("split: one template's rows from two builds do not compare equal");
+  }
+
+  // The report's own arithmetic. A survey is only read through this grouping, so
+  // a section that buckets wrong or a kind that fails to generalise moves the
+  // numbers a decision is made on.
+  for (const [rel, want] of [
+    ["Reference/Default/VB/Form/index.md", "Reference/Default/VB"],
+    ["Reference/Built-In/CEF/CefBrowser.md", "Reference/Built-In/CEF"],
+    ["Reference/Core/Dim.md", "Reference/Core"],
+    ["Reference/Attributes.md", "Reference/Attributes.md"],
+    ["Tutorials/CustomControls/Painting.md", "Tutorials/CustomControls"],
+  ]) {
+    const got = sectionOf(rel);
+    if (got !== want) failures.push(`section: ${rel} -> ${got}, want ${want}`);
+  }
+  if (diagKind("TB5079 Unrecognized symbol 'WebView'") !== "TB5079 Unrecognized symbol '...'") {
+    failures.push("report: a diagnostic kind keeps the identifier, so every row is one of one");
+  }
+  if (unresolvedName("TB5079 Unrecognized datatype symbol 'ControlsSection'") !== "ControlsSection") {
+    failures.push("report: the unresolved name was not read out of the diagnostic");
+  }
+  if (unresolvedName("TB5214 Only allowed inside a With block") !== null) {
+    failures.push("report: a diagnostic naming nothing produced a name anyway");
+  }
+
   // The markup must be invisible to the site. Verified against the REAL
   // pipeline -- createMarkdownIt plus the highlighter -- because a bare
   // markdown-it is a different renderer, which is the mistake WIP.md's
@@ -849,9 +1165,10 @@ async function runProbes() {
     for (const f of failures) say(`FAIL  probe: ${f}`);
     return false;
   }
-  // 10 line-map (5 slots x 2 bases) + 4 wrapper container + 7 batching + 6 markup.
-  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 27} probes: ` +
-    `classifier, markup, line mapping and batching`);
+  // 10 line-map (5 slots x 2 bases) + 4 wrapper container + 7 batching
+  // + 5 splitting + 8 report + 6 markup.
+  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 40} probes: ` +
+    `classifier, markup, line mapping, batching, splitting and the report`);
   return true;
 }
 
@@ -860,6 +1177,16 @@ async function runProbes() {
 async function main() {
   if (!await runProbes()) process.exit(2);
 
+  // Reads a survey and nothing else -- no compiler, and not even the docs tree,
+  // since the JSON already holds every page and line it names.
+  if (MODE_REPORT) {
+    let survey;
+    try { survey = JSON.parse(readFileSync(MODE_REPORT, "utf8")); }
+    catch (e) { console.error(`check_examples: cannot read ${MODE_REPORT}: ${e.message}`); process.exit(2); }
+    summarise(survey);
+    process.exit(0);
+  }
+
   const fences = await collectFences(DOCS);
   const selected = select(fences);
   checkGroups(fences, selected);
@@ -867,7 +1194,9 @@ async function main() {
   if (MODE_CENSUS) {
     census(selected);
     reportFindings();
-    process.exit(findings.length ? 1 : 0);
+    // Advisory findings are survey results, so they print and do not fail: a
+    // census narrowed with --only says what the narrowing cost and still exits 0.
+    process.exit(findings.some((f) => !f.advisory) ? 1 : 0);
   }
 
   if (!IDE) {
@@ -884,7 +1213,7 @@ async function main() {
     reportFindings();
     say(`check_examples: no sample is marked \`${MARKER}\`` +
       (only ? " in the selected pages" : "") + " -- nothing to compile");
-    process.exit(findings.length ? 1 : 0);
+    process.exit(findings.some((f) => !f.advisory) ? 1 : 0);
   }
 
   const batches = makeBatches(selected);
@@ -914,16 +1243,38 @@ async function main() {
   const errorsById = new Map();
   const templateFaults = [];
   const crashed = new Set();
+  const blamed = new Set();
+  const blamedRows = new Map();
   for (const r of results) {
     for (const [id, list] of r.perFence ?? []) errorsById.set(id, list);
+    for (const [id, info] of r.blamedRows ?? []) blamedRows.set(id, info);
     templateFaults.push(...(r.templateFaults ?? []));
     for (const id of r.crashed ?? []) crashed.add(id);
+    for (const id of r.blamed ?? []) blamed.add(id);
   }
 
   const passed = [];
   for (const fence of selected) {
     if (crashed.has(fence.id)) continue;         // reported already, and never a pass
     const diags = (errorsById.get(fence.id) ?? []).filter((d) => d.severity === "ERROR");
+
+    // A sample whose error landed in a package's own source. It comes first
+    // because an `expect-error` cannot be judged against it: the diagnostic the
+    // sample provoked is not on any line of the sample.
+    const blame = blamedRows.get(fence.id);
+    if (blame) {
+      findings.push({
+        id: fence.id, rel: fence.rel, line: fence.line,
+        advisory: MODE_PROPOSE && !fence.marked,
+        slot: fence.slot, project: fence.project, marked: fence.marked,
+        message: "a diagnostic landed outside this sample, in a package or " +
+          `template source (${fence.slot}, ${fence.project})${blame.rest}`,
+        detail: blame.rows.join("  |  "),
+        diagnostics: diags,
+      });
+      continue;
+    }
+
     const expect = fence.keys.get("expect-error");
     if (expect !== undefined) {
       if (!diags.length) {
@@ -936,21 +1287,27 @@ async function main() {
       }
       continue;
     }
-    if (!diags.length) { passed.push(fence); continue; }
+    // A sample blamed as part of a group carries no rows of its own -- the
+    // finding above names the group -- but it is still not a pass.
+    if (!diags.length) {
+      if (!blamed.has(fence.id)) passed.push(fence);
+      continue;
+    }
     findings.push({
       id: fence.id, rel: fence.rel, line: fence.line,
       // A sample that has not been marked has not claimed anything, so under
       // --propose its errors are information rather than a failure -- that mode
       // is a survey and must not exit 1 for doing its job.
       advisory: MODE_PROPOSE && !fence.marked,
+      slot: fence.slot, project: fence.project, marked: fence.marked,
       message: `does not compile (${fence.slot}${fence.slotStated ? "" : ", inferred"}, ${fence.project})`,
       diagnostics: diags,
     });
   }
 
   if (templateFaults.length) {
-    say("\nFAIL  diagnostics that belong to no sample -- a fault in the template");
-    say("      project, or a row in a shape this tool cannot read:");
+    say("\nFAIL  diagnostics no sample can be blamed for -- rows the template");
+    say("      produces with nothing in it, or rows in a shape this cannot read:");
     for (const row of [...new Set(templateFaults)].slice(0, 10)) say(`        ${row}`);
   }
 
@@ -977,6 +1334,12 @@ async function main() {
     console.log(JSON.stringify({ selected: selected.length, passed: passed.length, findings }, null, 2));
   } else {
     reportFindings();
+    // The same grouping `--report` prints, from the run that just produced it:
+    // a survey read page by page is 277 notes, and the question a survey is run
+    // to answer is which of them share a cause.
+    if (MODE_PROPOSE) {
+      summarise({ selected: selected.length, passed: passed.length, findings });
+    }
     say(`\ncheck_examples: ${selected.length} sample(s), ${passed.length} compile, ` +
       `${real} finding(s), ${secs}s` + (real ? "" : " -- clean"));
   }
