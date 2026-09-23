@@ -13,7 +13,14 @@ The event source interface of [**CustomControlTimer**](CustomControlTimer), decl
 
 This interface is the **\[Default, Source\]** interface of the **CustomControlTimer** CoClass. A field declared with `WithEvents` receives the **OnTimer** event through this interface automatically; there is no need to reference `_CustomControlTimerEvents` by name in application code.
 
-```tb inert=excerpt
+```tb hidden concat_group=timerevents-overview
+' Context for the sample below: the control class it belongs to.
+[COMCreatable(False)]
+Class TimerEventsDemo
+    Implements CustomControls.ICustomControl
+```
+
+```tb check_build concat_group=timerevents-overview
 Private WithEvents InternalTimer As CustomControlTimer
 
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
@@ -27,6 +34,17 @@ End Sub
 Private Sub OnTimer() Handles InternalTimer.OnTimer
     ' called every 100 ms while the timer is enabled
 End Sub
+```
+
+```tb hidden concat_group=timerevents-overview
+    ' The interface's other two members.
+    Private Sub OnDestroy() Implements CustomControls.ICustomControl.Destroy
+    End Sub
+
+    Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas) _
+            Implements CustomControls.ICustomControl.Paint
+    End Sub
+End Class
 ```
 
 ## Events

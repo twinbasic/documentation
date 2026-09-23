@@ -24,7 +24,17 @@ Syntax: *object*.**GetSerializer** ( ) **As SerializeInfo**
 
 Call **GetSerializer** at the start of a control's [**Initialize**](ICustomControl#initialize) implementation to load any property values that were set in the form designer, and to read the mode flags before storing the context for later use.
 
-```tb inert=excerpt
+```tb hidden concat_group=icontext-getserializer
+' Context for the sample below: the control class it belongs to, and the fields
+' it sets.
+[COMCreatable(False)]
+Class IContextGetSerializerDemo
+    Implements CustomControls.ICustomControl
+    Private ControlContext As CustomControls.CustomControlContext
+    Private IsDesignMode As Boolean
+```
+
+```tb check_build concat_group=icontext-getserializer
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
         Implements CustomControls.ICustomControl.Initialize
 
@@ -38,6 +48,20 @@ Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
 
     Set Me.ControlContext = Ctx
 End Sub
+```
+
+```tb hidden concat_group=icontext-getserializer
+    ' The helper the sample calls, and the interface's other two members.
+    Private Sub InitializeDefaultValues()
+    End Sub
+
+    Private Sub OnDestroy() Implements CustomControls.ICustomControl.Destroy
+    End Sub
+
+    Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas) _
+            Implements CustomControls.ICustomControl.Paint
+    End Sub
+End Class
 ```
 
 ### Repaint
@@ -71,7 +95,16 @@ Syntax: *object*.**CreateTimer** ( ) **As stdole.IUnknown**
 
 The timer is returned as **stdole.IUnknown**. Cast to [**CustomControlTimer**](CustomControlTimer) with `CType(Of CustomControlTimer)(…)` before accessing its members. Declare the holding field with **WithEvents** so that the **OnTimer** event can be handled.
 
-```tb inert=excerpt
+```tb hidden concat_group=icontext-createtimer
+' Context for the sample below: the control class it belongs to, and the field
+' it stores the context in.
+[COMCreatable(False)]
+Class IContextCreateTimerDemo
+    Implements CustomControls.ICustomControl
+    Private ControlContext As CustomControls.CustomControlContext
+```
+
+```tb check_build concat_group=icontext-createtimer
 Private WithEvents InternalTimer As CustomControlTimer
 
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
@@ -86,6 +119,17 @@ End Sub
 Private Sub OnTimer() Handles InternalTimer.OnTimer
     ' called every 250 ms
 End Sub
+```
+
+```tb hidden concat_group=icontext-createtimer
+    ' The interface's other two members.
+    Private Sub OnDestroy() Implements CustomControls.ICustomControl.Destroy
+    End Sub
+
+    Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas) _
+            Implements CustomControls.ICustomControl.Paint
+    End Sub
+End Class
 ```
 
 ### ChangeFocusedElement
@@ -104,7 +148,12 @@ Use this method when the control changes its own selection state without user ke
 
 *ElementTabIndex* must correspond to an element added in the **most recent** call to [**ICustomControl.Paint**](ICustomControl#paint). If the value does not match any registered element, the framework ignores the call.
 
-```tb inert=excerpt
+```tb hidden concat_group=icontext-changefocus
+' Context for the sample below: the selection field it updates.
+Private m_SelectedIndex As Long
+```
+
+```tb check_build concat_group=icontext-changefocus
 ' In a custom control that renders multiple clickable regions:
 Private m_Context As CustomControls.CustomControlContext
 

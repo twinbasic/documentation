@@ -13,7 +13,16 @@ A timer created by [**CustomControlContext.CreateTimer**](CustomControlContext#c
 
 The framework returns timers typed as **stdole.IUnknown**; cast to **CustomControlTimer** with `CType(Of CustomControlTimer)(…)` before storing. Declare the field with **WithEvents** so that the **OnTimer** event can be handled.
 
-```tb inert=excerpt
+```tb hidden concat_group=timer-overview
+' Context for the sample below: the control class it belongs to, and the field
+' it stores the context in.
+[COMCreatable(False)]
+Class TimerOverviewDemo
+    Implements CustomControls.ICustomControl
+    Private ControlContext As CustomControls.CustomControlContext
+```
+
+```tb check_build concat_group=timer-overview
 Private WithEvents InternalTimer As CustomControlTimer
 
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
@@ -28,6 +37,17 @@ End Sub
 Private Sub OnTimer() Handles InternalTimer.OnTimer
     ' raised every 250 ms
 End Sub
+```
+
+```tb hidden concat_group=timer-overview
+    ' The interface's other two members.
+    Private Sub OnDestroy() Implements CustomControls.ICustomControl.Destroy
+    End Sub
+
+    Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas) _
+            Implements CustomControls.ICustomControl.Paint
+    End Sub
+End Class
 ```
 
 [**WaynesTimer**](../WaynesTimer) wraps a single **CustomControlTimer** and re-exposes its **Interval** and **Enabled** as designer-visible properties. [**WaynesSlider**](../WaynesSlider/) uses one internally for mouse-down auto-repeat.

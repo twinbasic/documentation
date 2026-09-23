@@ -13,7 +13,16 @@ The callback object passed to a custom control's [**Initialize**](ICustomControl
 
 Custom controls store the **CustomControlContext** in a private field (typically called **ControlContext**) so that they can call back into the framework at any point after **Initialize** has returned. The form-class counterpart [**CustomFormContext**](CustomFormContext) extends this with **Show** and **Close**.
 
-```tb inert=excerpt
+```tb hidden concat_group=context-initialize
+' Context for the sample below: the control class it belongs to, and the field
+' it stores the context in.
+[COMCreatable(False)]
+Class ContextInitializeDemo
+    Implements CustomControls.ICustomControl
+    Private ControlContext As CustomControls.CustomControlContext
+```
+
+```tb check_build concat_group=context-initialize
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
         Implements CustomControls.ICustomControl.Initialize
 
@@ -25,6 +34,20 @@ Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
     ' Remember the context for later
     Set Me.ControlContext = Ctx
 End Sub
+```
+
+```tb hidden concat_group=context-initialize
+    ' The helper the sample calls, and the interface's other two members.
+    Private Sub InitializeDefaultValues()
+    End Sub
+
+    Private Sub OnDestroy() Implements CustomControls.ICustomControl.Destroy
+    End Sub
+
+    Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas) _
+            Implements CustomControls.ICustomControl.Paint
+    End Sub
+End Class
 ```
 
 ## Methods
@@ -48,7 +71,16 @@ Syntax: *object*.**CreateTimer** ( ) **As stdole.IUnknown**
 
 The timer is returned as **stdole.IUnknown**. Cast to [**CustomControlTimer**](CustomControlTimer) with `CType(Of CustomControlTimer)(…)` before accessing its members. Declare the holding field with **WithEvents** so that the **OnTimer** event can be handled.
 
-```tb inert=excerpt
+```tb hidden concat_group=context-createtimer
+' Context for the sample below: the control class it belongs to, and the field
+' it stores the context in.
+[COMCreatable(False)]
+Class ContextCreateTimerDemo
+    Implements CustomControls.ICustomControl
+    Private ControlContext As CustomControls.CustomControlContext
+```
+
+```tb check_build concat_group=context-createtimer
 Private WithEvents InternalTimer As CustomControlTimer
 
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
@@ -65,6 +97,17 @@ Private Sub OnTimer() Handles InternalTimer.OnTimer
 End Sub
 ```
 
+```tb hidden concat_group=context-createtimer
+    ' The interface's other two members.
+    Private Sub OnDestroy() Implements CustomControls.ICustomControl.Destroy
+    End Sub
+
+    Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas) _
+            Implements CustomControls.ICustomControl.Paint
+    End Sub
+End Class
+```
+
 ### GetSerializer
 {: .no_toc }
 
@@ -74,7 +117,17 @@ Syntax: *object*.**GetSerializer** ( ) **As SerializeInfo**
 
 Call **GetSerializer** at the start of a control's [**Initialize**](ICustomControl#initialize) implementation to load any property values that were set in the form designer, and to read the mode flags before storing the context for later use.
 
-```tb inert=excerpt
+```tb hidden concat_group=context-getserializer
+' Context for the sample below: the control class it belongs to, and the fields
+' it sets.
+[COMCreatable(False)]
+Class ContextGetSerializerDemo
+    Implements CustomControls.ICustomControl
+    Private ControlContext As CustomControls.CustomControlContext
+    Private IsDesignMode As Boolean
+```
+
+```tb check_build concat_group=context-getserializer
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
         Implements CustomControls.ICustomControl.Initialize
 
@@ -88,6 +141,20 @@ Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
 
     Set Me.ControlContext = Ctx
 End Sub
+```
+
+```tb hidden concat_group=context-getserializer
+    ' The helper the sample calls, and the interface's other two members.
+    Private Sub InitializeDefaultValues()
+    End Sub
+
+    Private Sub OnDestroy() Implements CustomControls.ICustomControl.Destroy
+    End Sub
+
+    Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas) _
+            Implements CustomControls.ICustomControl.Paint
+    End Sub
+End Class
 ```
 
 ### Repaint
