@@ -48,26 +48,33 @@ Interface-level attributes:
 Member-level attributes:
 
 - `[Description("text")]`
-- `[PreserveSig]` --- keeps the raw COM signature (returning `HRESULT`) instead of having the runtime translate negative results into errors. Use this when the literal return value is required, or when negative values mean *acceptable failure* (e.g. an enumerator running out of items).
+- `[PreserveSig]` --- keeps the raw COM signature (returning `HRESULT`) instead of having the runtime translate negative results into errors. Use this when the literal return value is required, or when negative values mean *acceptable failure* (e.g. an enumerator running out of items). A twinBASIC class cannot implement a member marked `[PreserveSig]` --- the compiler reports the implementation as unmatched --- so use it on interfaces that the program calls, not on interfaces that it implements.
 - `[DispId(number)]` --- fixes the dispatch ID associated with the member.
 
 ### Example
 
-```tb inert=skeleton
+```tb hidden
+' Context for the IFoo sample below: the enum its [TypeHint] names.
+Public Enum MyEnum
+    MyEnumFirst = 0
+    MyEnumSecond = 1
+End Enum
+```
+
+```tb check_build projname=interface-ifoo
 [InterfaceId("E7064791-0E4A-425B-8C8F-08802AAFEE61")]
 [Description("Defines the IFoo interface")]
 [OleAutomation(False)]
 Interface IFoo Extends IUnknown
     Sub MySub(Arg1 As Long)
     Function Clone() As IFoo
-    [PreserveSig]
     Function MyFunc([TypeHint(MyEnum)] Arg1 As Variant) As Boolean
 End Interface
 ```
 
 A class that implements `IFoo` provides bodies for every member:
 
-```tb inert=excerpt
+```tb check_build projname=interface-ifoo
 Class FooImpl
     Implements IFoo
 

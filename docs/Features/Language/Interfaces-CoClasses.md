@@ -39,7 +39,7 @@ Methods can be any of the following: `Sub`, `Function`, `Property Get`, `Propert
 ### Available Attributes for Methods
 
 - `[Description("text")]` - Provides a description
-- `[PreserveSig]` - For COM interfaces, normally methods return an HRESULT that the language hides from you. The `[PreserveSig]` attribute overrides this behavior and defines the function exactly as you provide. This is necessary if you need to define it as returning something other than a 4-byte `Long`, or want to handle the result yourself, bypassing the normal runtime error raised if the return value is negative (this is helpful when a negative value indicates an expected, acceptable failure, rather than a true error, like when an enum interface is out of items).
+- `[PreserveSig]` - For COM interfaces, normally methods return an HRESULT that the language hides from you. The `[PreserveSig]` attribute overrides this behavior and defines the function exactly as you provide. This is necessary if you need to define it as returning something other than a 4-byte `Long`, or want to handle the result yourself, bypassing the normal runtime error raised if the return value is negative (this is helpful when a negative value indicates an expected, acceptable failure, rather than a true error, like when an enum interface is out of items). A twinBASIC class cannot implement a member marked `[PreserveSig]`, so use it on interfaces that you call rather than on ones that you implement.
 - `[DispId(number)]` - Defines a dispatch ID associated with the method.
 
 ### Example

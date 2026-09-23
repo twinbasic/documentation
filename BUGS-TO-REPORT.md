@@ -211,3 +211,51 @@ only the fifth is not.
 
 **Found by** `scripts/check_examples.mjs` over `Reference/Default/VBA/ErrObject/Source.md`,
 whose sample was written in the named form. The page uses the positional form now.
+
+---
+
+## An interface member marked `[PreserveSig]` cannot be implemented by a class
+
+**Build:** BETA 983
+**Severity:** an interface the language lets you declare cannot be implemented at all, and
+the diagnostic asks for the signature that is already written.
+
+```
+[InterfaceId("11111111-0000-4000-8000-000000000004")]
+Interface IProbeD Extends IUnknown
+    [PreserveSig]
+    Function F() As Long
+End Interface
+
+Class ImplD
+    Implements IProbeD
+    Private Function IProbeD_F() As Long Implements IProbeD.F
+    End Function
+End Class
+```
+
+```
+TB5004 unable to match this implementation to its interface member. The expected signature was: Private Function IProbeD_F() As Long
+TB5000 Missing implementation of member Function F() As Long
+```
+
+**The "expected" signature is character for character the one on the line the error is
+reported against.** Whatever the compiler is comparing, it is not what it prints.
+
+**What was tried and does not help**, each on its own:
+
+- the VB6-style name without the method-level `Implements IProbeD.F` clause --- `TB5018
+  unable to match this handler to its event member`, an *event-handler* message for an
+  interface member, with the same expected signature;
+- `[PreserveSig]` on the implementing method as well --- `TB5155 This attribute is not
+  supported in this context`.
+
+**What does not matter:** a parameter, or a **Boolean** return --- the case it was found in
+was `Function MyFunc(Arg1 As Variant) As Boolean` --- or a `[TypeHint(...)]` on that
+parameter, which implements cleanly without `[PreserveSig]`. The same interface with the
+attribute removed implements cleanly. `[PreserveSig]` alone is the trigger.
+
+**Found by** `scripts/check_examples.mjs` over `Reference/Core/Interface.md`, whose example
+declared `IFoo` with a `[PreserveSig]` member and then showed a class implementing it. The
+implementation had never compiled. The page's example no longer puts `[PreserveSig]` on a
+member it implements, and its description of the attribute says why.
