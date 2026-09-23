@@ -132,7 +132,7 @@ Applicable to: [**CoClass**](CoClass)
 
 In addition to interfaces, twinBASIC also allows defining coclasses -- creatable classes that implement one or more defined interfaces. Like interfaces, these too must be in .twin files and not legacy .bas/.cls files, and must appear prior to the `Class` or `Module` statement. The generic form is:
 
-```tb
+```tb inert=skeleton
 [CoClassId("00000000-0000-0000-0000-000000000000")]
 *<attributes>*
 CoClass <name>
@@ -617,9 +617,11 @@ Applicable to: [**Class**](Class), [**Module**](Module), [procedure](../Gloss#pr
 
 Suppresses the named warnings within the class, module or procedure the attribute is applied to. The codes are written bare, exactly as the compiler prints them, and are **not** quoted:
 
-```tb
+```tb check_build
 [IgnoreWarnings(TB0001)]
 Module MD5
+    ' ...
+End Module
 ```
 
 <!-- Applicability two ways: ~100 uses in VB, CEF, WinNativeCommonCtls and
@@ -687,7 +689,7 @@ Applicable to: [**Interface**](Interface)
 
 twinBASIC supports defining COM interfaces using BASIC syntax, rather than needing an type library with IDL and C++. These are only supported in .twin files, not in legacy .bas or .cls files. They must appear *before* the [**Class**](Class) or [**Module**](Module) statement, and will always have a project-wide scope. the The generic form for is as follows:
 
-```tb
+```tb inert=skeleton
 [InterfaceId ("00000000-0000-0000-0000-000000000000")]
 *<attributes>*
 Interface <name> Extends <base-interface>

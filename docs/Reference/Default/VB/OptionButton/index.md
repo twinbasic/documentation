@@ -32,7 +32,7 @@ End Sub
 
 Setting [**Value**](#value) to **True** on one option button clears every other option button whose [**Container**](#container) is the same control --- typically the parent form or a [**Frame**](../Frame). Option buttons in sibling frames are not affected, so a single form can host any number of independent groups: drop the buttons that belong to one group onto a frame, and the buttons that belong to a different group onto another frame (or directly onto the form).
 
-```tb
+```tb inert=pseudo
 ' Two independent groups on one form:
 '   fraSize:   optSmall, optMedium, optLarge   (children of fraSize)
 '   fraColour: optRed, optGreen, optBlue       (children of fraColour)

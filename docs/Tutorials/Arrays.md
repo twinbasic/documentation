@@ -71,7 +71,7 @@ Dim A(1 To 10, 1 To 20)    ' i.e. a 20 x 10 array
 
 Only the dynamic arrays can be passed as procedure arguments:
 
-```tb
+```tb inert=contrast
 Sub OkSub1(data() As Byte)     ' Dynamic array parameter
 Sub OkSub2(data As Byte())     ' Alternate syntax
 

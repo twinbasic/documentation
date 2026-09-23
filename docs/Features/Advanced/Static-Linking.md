@@ -31,7 +31,7 @@ Import Library "Relative resource path" As NAMESPACE Link "dependency1", "depend
 
 After that, you can use NAMESPACE in place of a DLL name, inside class/module declares:
 
-```tb
+```tb inert=external
 ' Compiled sqlite-amalgamation-3440200 (v3.44.2)
 '   using cmdline (MSVC):  cl /c /Gw /Gy /GS- /DSQLITE_OMIT_SEH sqlite3.c
 #If Win64 Then
@@ -44,7 +44,8 @@ Module MainModule
 
     Declare PtrSafe Function sqlite3_open CDecl Lib SQLITE3 (ByVal filename As String, ByRef ppDb As LongPtr) As Long
     Declare PtrSafe Function sqlite3_exec CDecl Lib SQLITE3 (ByVal pDb As LongPtr, ByVal sql As String, ByVal exec_callback As LongPtr, ByVal udp As LongPtr, ByRef errmsg As LongPtr) As Long
-'...
+    ' ...
+End Module
 ```
 
 > [!NOTE]

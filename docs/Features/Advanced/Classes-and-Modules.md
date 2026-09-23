@@ -64,15 +64,19 @@ It's possible to export a function or variable from standard modules, including 
 
 ### Examples
 
-```tb
+```tb check_build
 [DllExport]
 Public Const MyExportedSymbol As Long = &H00000001
 
 [DllExport]
 Public Function MyExportedFunction(ByVal arg As Long) As Long
+    ' ...
+End Function
 
 [DllExport]
 Public Function MyCDeclExport CDecl(ByVal arg As Long)
+    ' ...
+End Function
 ```
 
 This is primarily used to create Standard DLLs (see [Project Types](../Project-Configuration/Project-Types)), but this functionality is also available in Standard EXE and other compiled project types.

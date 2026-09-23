@@ -30,7 +30,7 @@ IOleWindow_GetWindow() As LongPtr _
 
 `Implements` is allowed on interfaces with 'As Any' parameters: In VBx, you'd get an error if you attempted to use any interface containing a member with an `As Any` argument. With twinBASIC, this is allowed if you substitute `As LongPtr` for `As Any`, for example:
 
-```tb
+```tb check_build
 Interface IFoo Extends IUnknown
     Sub Bar(ppv As Any)
 End Interface
@@ -41,6 +41,7 @@ Class MyClass
     Private Sub IFoo_Bar(ppv As LongPtr) Implements IFoo.Bar
 
     End Sub
+End Class
 ```
 
 ## **Implements Via** for Basic Inheritance

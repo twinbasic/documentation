@@ -50,7 +50,7 @@ The text in [**Caption**](#caption) is rendered along the top edge of the border
 
 Each frame defines its own option-button group. When the user selects an [**OptionButton**](../OptionButton) whose parent is this frame, every other option button on the same frame is automatically cleared, but option buttons on the form (or in sibling frames) are not affected. Use frames to present multiple independent radio-style choices on the same form:
 
-```tb
+```tb inert=pseudo
 ' Two independent option-button groups on one form:
 '   fraSize:    optSmall, optMedium, optLarge
 '   fraColour:  optRed, optGreen, optBlue

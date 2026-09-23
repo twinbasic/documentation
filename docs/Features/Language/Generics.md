@@ -209,16 +209,20 @@ A generic class enables substitution of type variables with type arguments provi
 >
 > Run Time:  Objects of those instantiated types can be created.
 
-In the example below, two class types are instantiated: **MyClass**(**Integer**) and **MyClass**(**String**). This happens at compile time. No instances of **MyClass** are created at runtime, since both variables default to **Nothing**:
+In the example below, two class types are instantiated: **MyClass(Of Integer)** and **MyClass(Of String)**. This happens at compile time. No instances of **MyClass** are created at runtime, since both variables default to **Nothing**:
 
-```tb
-Class MyClass(Of T) ' ...
+```tb check_build
+Class MyClass(Of T)
+    ' ...
+End Class
 
-Sub Test()
-    Dim intVar As MyClass(Integer)
-    Dim strVar As MyClass(String)
-    Debug.Assert intVar Is Nothing AndAlso strVar Is Nothing
-End Sub
+Module Demo
+    Sub Test()
+        Dim intVar As MyClass(Of Integer)
+        Dim strVar As MyClass(Of String)
+        Debug.Assert intVar Is Nothing AndAlso strVar Is Nothing
+    End Sub
+End Module
 ```
 
 ### List Class Example

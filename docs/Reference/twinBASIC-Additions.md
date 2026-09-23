@@ -54,10 +54,12 @@ twinBASIC supports generic types and generic modules using the `Of` keyword. A g
 
 twinBASIC uses a square-bracket attribute syntax on declarations and modules:
 
-```tb
+```tb check_build projname=additions-attribute-syntax
 [Description("Returns the absolute value of n.")]
 [ConstantFoldable]
 Public Function Abs(ByVal n As Double) As Double
+    ' ...
+End Function
 ```
 
 See [Attributes](../tB/Core/Attributes) for the full list, including `[DllExport]`, `[DebugOnly]`, `[WindowsControl]`, `[MustBeQualified]`, `[PreserveSig]`, and more.
