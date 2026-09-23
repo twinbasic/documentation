@@ -237,6 +237,8 @@ const BLOCK_DECL = rx("(?:Enum|Type|Structure)" + NAMED);
 const PROC_OPEN = rx("(?:Sub|Function|Property\\s+(?:Get|Let|Set)|Operator|Constructor|Destructor)\\b");
 const DECLARE = rx("(?:Declare|DeclareWide)\\b");
 const MODULE_ONLY = rx("(?:Event|Delegate|Implements|Inherits|Import|Extends)\\b");
+// ...and the two of those that a standard module may not have at all.
+const CLASS_ONLY = rx("(?:Implements|Inherits)\\b");
 const WITHEVENTS = rx("WithEvents\\b");
 // An access modifier at the head of a line, which only a container may hold.
 // Checked after the openers above, so `Public Sub`, `Public Enum` and
@@ -359,8 +361,15 @@ export function usesMe(src) {
 export function classify(content) {
   const lines = logicalLines(content);
   if (!lines.length) return { slot: null, reason: "empty", names: [] };
-  // An elision is the one fragment marker the docs use deliberately.
-  if (/(^|\n)[ \t]*(\.\.\.|…)[ \t]*(\n|$)/.test(content)) {
+  // An elision is the one fragment marker the docs use deliberately, and the
+  // VBA-derived pages inherited Microsoft's SPACED form -- `. . .` on a line of
+  // its own, in ReDim, Deftype and On-Error. Read as code that was three
+  // separate dot operators, which is how those pages came to be proposed as
+  // markable and to fail with "Expected a symbol following the dot operator" on
+  // a line that is not code at all. The line must be nothing but dots and
+  // spaces, so a `.Value = 1` inside a With block is untouched.
+  if (/(^|\n)[ \t]*\.[ \t]*\.[ \t.]*(\n|$)/.test(content) ||
+      /(^|\n)[ \t]*…[ \t]*(\n|$)/.test(content)) {
     return { slot: null, reason: "elided with ...", names: [] };
   }
 
@@ -368,7 +377,7 @@ export function classify(content) {
   const inner = [];                 // open statement blocks at fence top level
   const names = [];
   let sawContainer = false, sawProc = false, sawModuleOnly = false, sawLoose = false;
-  let sawWithEvents = false;
+  let sawWithEvents = false, sawClassOnly = false;
 
   for (const { text } of lines) {
     if (DIRECTIVE_RE.test(text)) continue;          // #If / #End If / #Const
@@ -430,6 +439,12 @@ export function classify(content) {
       // declaration and then TB5079 on every later use of the name -- four
       // diagnostics for one wrong container, none of them naming the cause.
       if (top && WITHEVENTS.test(text)) sawWithEvents = true;
+      // `Implements` and `Inherits` are the third signal, and the same kind of
+      // rule: neither is legal in a standard module, so a fence opening with
+      // one is class code-behind whatever else it contains. TbExpressionService/
+      // Bind.md is the shape -- an ITbCustomBinder implementation shown as the
+      // body of the class, with no `Me` in it and no WithEvents field.
+      if (top && CLASS_ONLY.test(text)) sawClassOnly = true;
       if (top) sawModuleOnly = true;
       continue;
     }
@@ -468,7 +483,7 @@ export function classify(content) {
   if (sawContainer) return { slot: "file", reason: "mixed with loose code", names };
   // `Me` or a top-level WithEvents picks the Class row of the table at the
   // top of this file.
-  const inClass = sawWithEvents || usesMe(content);
+  const inClass = sawWithEvents || sawClassOnly || usesMe(content);
   if (sawProc || sawModuleOnly) return { slot: inClass ? "class" : "module", names };
   return { slot: inClass ? "method" : "sub", names };
 }
@@ -503,11 +518,20 @@ export function wrapFence(fence, slot, name, base = null) {
   // A `base` is what a Me.<member> resolves against. Without one the wrapper is
   // a bare Class, `Me` is legal and `Me.Caption` is not -- which turns TB5025
   // into TB5027 and is no better. Measured; see WIP.ExamplesBuild.md.
-  const container = CLASS_SLOTS.has(slot) ? "Class" : "Module";
-  const open = base && CLASS_SLOTS.has(slot)
-    ? `${container} ${name}\n    Inherits ${base}`
-    : `${container} ${name}`;
-  const extra = base && CLASS_SLOTS.has(slot) ? 1 : 0;
+  const isClass = CLASS_SLOTS.has(slot);
+  const container = isClass ? "Class" : "Module";
+  // A generated Class is a wrapper and is never COM-created. Without the
+  // attribute, a sample whose only constructor takes arguments -- tbIDE's
+  // `Public Sub New(ByVal Host As Host)` is the shape -- fails with
+  // `TB5135 error generating implicit default constructor ... (for COM
+  // exposure)`, which is a diagnostic about the fiction rather than about the
+  // sample. The compiler names this attribute as one of the three remedies.
+  const lines = [];
+  if (isClass) lines.push("[COMCreatable(False)]");
+  lines.push(`${container} ${name}`);
+  if (base && isClass) lines.push(`    Inherits ${base}`);
+  const open = lines.join("\n");
+  const extra = lines.length - 1;
   if (slot === "module" || slot === "class") {
     return { text: `${header}\n${open}\n${body}\nEnd ${container}\n`, offset: 2 + extra };
   }

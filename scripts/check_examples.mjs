@@ -926,6 +926,10 @@ const CLASSIFIER_PROBES = [
   ["a Type whose field is called Type", "Public Type Rec\n    Type As Long\nEnd Type\n", "module"],
   ["a single-line procedure", "Sub Foo(): End Sub\n", "module"],
   ["an elision", "Dim x As Long\n...\nDebug.Print x\n", null],
+  // Microsoft's spaced form, which the VBA-derived pages inherited.
+  ["a spaced elision", "ReDim X(10)\n. . .\nReDim Preserve X(15)\n", null],
+  // ...but a With-block member line is dots and code, not dots alone.
+  ["a With member line", "With Label1\n    .Caption = \"hi\"\nEnd With\n", "sub"],
   ["an unclosed If", "If x Then\n    Debug.Print 1\n", null],
   ["an End with no opener", "    Debug.Print 1\nEnd Sub\n", null],
   ["a continuation line", "Dim a As Long, _\n    b As Long\n", "sub"],
@@ -945,6 +949,9 @@ const CLASSIFIER_PROBES = [
   // one, so a fence that does is code-behind even with no `Me` in it -- which
   // is the whole WinNamedPipesLib reference, where the field IS the subject.
   ["a WithEvents field", "Private WithEvents srv As Foo\nPrivate Sub srv_Ping()\nEnd Sub\n", "class"],
+  // Neither of these is legal in a standard module either.
+  ["a top-level Implements", "Implements IFoo\nPrivate Sub IFoo_Bar()\nEnd Sub\n", "class"],
+  ["a top-level Inherits", "Inherits Form\nPrivate Sub Form_Load()\nEnd Sub\n", "class"],
   // An access modifier is a container-scope declaration, never a statement.
   // Reference/Core/Public.md's own samples were wrapped in a Sub, where
   // `Public` is a syntax error -- on the page documenting the keyword.
