@@ -17,7 +17,7 @@ Determines how a single corner of a control is shaped. Used by [**Corner.Shape**
 
 [**Corners.SetAll**](../Styles/Corners#setall) applies one shape to every corner at once; setting [**TopLeft**](../Styles/Corners#topleft) / [**TopRight**](../Styles/Corners#topright) / [**BottomLeft**](../Styles/Corners#bottomleft) / [**BottomRight**](../Styles/Corners#bottomright) individually lets the shapes mix:
 
-```tb
+```tb check_build
 With btnDemo.NormalState.Corners
     .TopLeft.Shape = tbCurve     : .TopLeft.Radius = 16     ' rounded
     .TopRight.Shape = tbNotched  : .TopRight.Radius = 16    ' diagonal cut

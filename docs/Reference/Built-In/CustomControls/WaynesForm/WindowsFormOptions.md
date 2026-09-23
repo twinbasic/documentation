@@ -15,7 +15,7 @@ Most of the fields take effect *once*, when the form is first shown --- changing
 
 The type itself is `Private Class` --- the instance is accessed only through the form's **WindowsOptions** property, and a variable typed as **WindowsFormOptions** cannot be declared from outside the package.
 
-```tb
+```tb check_build inherits=WaynesForm
 Private Sub Form_Load()
     With Me.WindowsOptions
         .StartUpPosition = tbStartUpCenterScreen

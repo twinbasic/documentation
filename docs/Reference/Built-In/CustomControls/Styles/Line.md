@@ -11,7 +11,7 @@ has_toc: false
 
 A single stroke used to draw a grid line, divider, or resizer bar --- simpler than a full [**Border**](Borders#border-class) (no blend-with-background flag, no surrounding **Elements** array). Accessed as [**WaynesGrid.VerticalLineOptions**](../WaynesGrid/#verticallineoptions), [**HorizontalLineOptions**](../WaynesGrid/#horizontallineoptions), and [**ResizerBar**](../WaynesGrid/#resizerbar).
 
-```tb
+```tb check_build
 With WaynesGrid1.VerticalLineOptions
     .StrokeSize = 1
     .Fill.ColorPoints.SetSolidColor &HD0D0D0    ' pale grey

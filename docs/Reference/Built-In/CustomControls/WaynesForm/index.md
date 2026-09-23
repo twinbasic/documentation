@@ -14,7 +14,7 @@ Within the current release of the package every form created with the designer i
 
 A form has a [**Caption**](#caption) (shown in the Win32 title bar), a [**BackgroundFill**](#backgroundfill) (painted across its entire client area), and a [**WindowsOptions**](#windowsoptions) sub-object that controls the surrounding Win32 frame --- border style, window state, taskbar visibility, minimize / maximize buttons, and so on. Call [**Show**](#show) to display the form; call [**Close**](#close) to close it.
 
-```tb
+```tb check_build inherits=WaynesForm
 Private Sub Form_Load()
     Me.Caption = "Welcome"
     Me.BackgroundFill.ColorPoints.SetSolidColor vbWhite
@@ -28,7 +28,7 @@ End Sub
 
 [**BackgroundFill**](#backgroundfill) is an ordinary [**Fill**](../Styles/Fill), so the form can display a gradient backdrop or a solid colour --- this is what the package's `HelloWorld` sample form uses to give itself a soft top-to-bottom wash:
 
-```tb
+```tb check_build inherits=WaynesForm
 Private Sub Form_Load()
     Me.BackgroundFill.SetSimplePattern &HE5E5E5, &HF8F8F8, _
             Pattern:=tbGradientNorthToSouth

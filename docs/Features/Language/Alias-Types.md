@@ -24,7 +24,7 @@ End Type
 
 You can create aliases:
 
-```tb
+```tb check_build slot=file
 Public Alias POINTAPI As POINT
 
 Public Alias CBoolean As Byte

@@ -128,7 +128,23 @@ This sub fires when `RegisterServiceCtrlHandlerExW` returns a zero handle --- ty
 
 The typical implementation is a logging-only hook so the failure is recorded somewhere a developer can find it later:
 
-```tb
+```tb hidden
+' Stands in for the WinEventLogLib composition-delegation idiom this sample
+' assumes -- see WinEventLogLib's [PopulateFrom]-populated enums and
+' Implements ... Via LogFailure -- which this harness cannot stage as-is.
+Enum EVENTS
+    service_startup_failed
+End Enum
+
+Enum CATEGORIES
+    status_changed
+End Enum
+
+Public Sub LogFailure(ByVal EventId As EVENTS, ByVal CategoryId As CATEGORIES, ByVal Text As String)
+End Sub
+```
+
+```tb check_build projname=itbservice-startupfailed-demo
 Sub StartupFailed(ByVal ServiceManager As ServiceManager) _
         Implements ITbService.StartupFailed
     LogFailure service_startup_failed, status_changed, CurrentComponentName

@@ -545,6 +545,15 @@ as nothing put them in one project, and the marking pass put them in one. `Type`
 **The lesson generalises:** a collision rule has to cover the names a sample can be made
 ambiguous *by*, not only the ones two samples would duplicate.
 
+**And it is still too narrow, in a way the editorial pass found.** `COLLIDES` reads a
+fence's *outermost container* names, so `Module MESSAGETABLE` is what it records --- not the
+`Enum EVENTS` inside it, and not that enum's members. twinBASIC puts enum members in project
+scope whatever container declares them, so two pages whose hidden context each declared an
+`EVENTS` enum landed in one batch and produced `TB5000 duplicate definition [EVENTS]` and
+`TB5073 'status_changed' is ambiguous`. The fix taken was `projname=` on each page, which
+buys an isolated project; tracking nested enum names in `COLLIDES` would be the general
+version, at the cost of splitting batches for names that usually do not collide.
+
 ### `expect-error` has its first use
 
 `Reference/Core/Option.md`'s module-level example exists to show that `Option Explicit`

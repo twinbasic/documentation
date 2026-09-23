@@ -28,7 +28,7 @@ Event firing is done in the order that connections were established. Because eve
 
 The following fragment declares an event at the module level of a class module and raises it from a procedure:
 
-```tb
+```tb check_build slot=class
 ' In a class module:
 Public Event LogonCompleted(UserName As String)
 

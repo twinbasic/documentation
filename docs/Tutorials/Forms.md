@@ -112,7 +112,7 @@ Close the form to stop the application and return to the IDE.
 
 Design-time properties are convenient but limited. You can read and write most control properties from code at any time. Add a `Form_Load` handler to set the form's title bar text and give `lblResult` a starting caption:
 
-```tb
+```tb check_build inherits=Form
 Private Sub Form_Load()
     Me.Caption = "Temperature Converter"
     lblResult.Caption = "Enter a value and click Convert."

@@ -99,8 +99,10 @@ When the SCM is asked to start this service, it auto-starts every listed depende
 
 Assign an array of **String** service names using `Array(...)`:
 
-```tb
-.DependentServices = Array("MSMQ", "LanmanServer")
+```tb check_build
+With Services.ConfigureNew
+    .DependentServices = Array("MSMQ", "LanmanServer")
+End With
 ```
 
 The value is read at [**Install**](#install) time. Changing it after install requires uninstalling and re-installing the service.
@@ -134,8 +136,10 @@ The command line the SCM will use when launching the service-host EXE. **String*
 
 The default suffices only when the EXE always runs as a service. The conventional pattern is to **override the default** to add a discriminator argument so the EXE's `Sub Main` can tell which mode it is in:
 
-```tb
-.InstallCmdLine = """" & App.ModulePath & """ -startService"
+```tb check_build
+With Services.ConfigureNew
+    .InstallCmdLine = """" & App.ModulePath & """ -startService"
+End With
 ```
 
 The matching `If InStr(Command, "-startService") > 0 Then Services.RunServiceDispatcher` branch in `Sub Main` is what makes the same EXE work both as installer / control-panel UI (when launched normally) and as service host (when launched by the SCM).
