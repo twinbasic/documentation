@@ -121,6 +121,10 @@ export const INERT_REASONS = new Set([
   "contrast",   // shows invalid code on purpose, beside the valid form
   "external",   // needs a file or environment the harness cannot stage
   "designer",   // needs a real form designer: TB5247, or a Handles on its fields
+  // Correct code that a PRODUCT defect stops compiling. The sample is what the
+  // API ought to accept, so rewriting it would document around the bug; it is
+  // recorded in BUGS-TO-REPORT.md instead and re-checked when that is fixed.
+  "blocked",
 ]);
 
 /**
