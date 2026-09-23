@@ -150,7 +150,8 @@ Syntax: *object*.**ItemData**( *Index* ) [ = *value* ]
 *Index*
 : *required* A **Long** zero-based item position.
 
-```tb
+```tb check_build
+Dim customerID As Long
 Combo1.AddItem "Apple"
 Combo1.ItemData(Combo1.NewIndex) = customerID
 ```

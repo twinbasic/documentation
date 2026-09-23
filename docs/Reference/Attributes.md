@@ -305,7 +305,7 @@ Marks which of a CoClass's interfaces is its default: the one a client binds to 
 
 A CoClass declares one default interface, and separately one default source interface, which also carries [Source](#source):
 
-```tb
+```tb check_build project=packages
 [CoClassId("E7F3D923-475B-4367-B5EF-568FCF3A74B5")]
 CoClass CustomControlTimer
     [Default] Interface _CustomControlTimer
@@ -341,7 +341,7 @@ Applicable to: [procedure in a **Class**](../Gloss#procedure)
 
 Default members are accessed under the instance of the object itself, without specifying their name. For example, a class that offers indexable elements may have an **Item** property that is the default member:
 
-```tb
+```tb check_build slot=file
 Class MyCollection
     [DefaultMember]
     Property Get Item(ByVal index&) As String
@@ -354,11 +354,13 @@ Class MyCollection
     End Property
 End Class
 
-Sub Example()
-    Dim coll As New MyCollection
-    Debug.Print "Item #3: ", coll(3)   ' Property Get Item is invoked
-    coll(4) = "Item 4"                 ' Property Let Item is invoked
-End Sub
+Module DefaultMemberDemo
+    Sub Example()
+        Dim coll As New MyCollection
+        Debug.Print "Item #3: ", coll(3)   ' Property Get Item is invoked
+        coll(4) = "Item 4"                 ' Property Let Item is invoked
+    End Sub
+End Module
 ```
 
 ## Description  (String) 
@@ -486,7 +488,9 @@ Applicable to: [procedure](../Gloss#procedure) in a [**Class**](Class) or [**Int
 
 Marks the member that supplies an enumerator, which is what makes the object usable with [For Each](For-Each-Next). The member is conventionally named `_NewEnum` and returns **stdole.IUnknown** or a **Variant** wrapping one.
 
-```tb
+```tb check_build slot=class
+Private InternalCollection As New Collection
+
 [Enumerator]
 Public Property Get _NewEnum() As Variant
     Return InternalCollection
@@ -713,7 +717,7 @@ The GUID of the type library the **Library** module was imported from, written w
 
 A **Library** module is the BASIC form of a referenced type library. Adding a COM reference to a project makes one appear, read-only, under **References** in the Project Explorer, and it is where [**DispInterface**](#dispinterface), [**DualInterface**](#dualinterface) and [**Version**](#version) are met. Its head names the library and says where it came from:
 
-```tb
+```tb inert=external
 [LibraryId("00020430-0000-0000-C000-000000000046")]
 [Version(2.0)]
 [Description("OLE Automation")]
@@ -776,15 +780,18 @@ Applicable to: [**Type** (UDT)](Type)
 
 twinBASIC normally aligns objects naturally within UDTs, e.g. an 8-byte object is aligned at the 8-byte boundary relative to the beginning of the UDT. This can leave gaps between UDT fields. A tighter packing can be achieved with a smaller **PackingAlignment**:
 
-```tb
+```tb check_build
 [PackingAlignment(2)]
 Private Type MyUDT
     x As Integer
     y As Long
     z As Integer
 End Type
-Private t As MyUDT
-Debug.Assert Len(t) = 8 And LenB(t) = 8
+
+Private Sub CheckPacking()
+    Dim t As MyUDT
+    Debug.Assert Len(t) = 8 And LenB(t) = 8
+End Sub
 ```
 
 You'll now find that both `Len(t)` and `LenB(t)` are 8.
@@ -809,7 +816,7 @@ In the future, this attribute may be expanded to allow more data file types, and
 
 For example, consider this enum declaration in a .twin file:
 
-```tb
+```tb check_build
 [PopulateFrom("json", "/Resources/MESSAGETABLE/Strings.json", "events", "name", "id")]
 Enum EVENTS
 End Enum
@@ -817,7 +824,7 @@ End Enum
 
 Then, there should be a `/Resources/MESSAGETABLE/Strings.json` file with following structure:
 
-``` json
+``` json resource=/Resources/MESSAGETABLE/Strings.json
 {
     "events": 
     [
@@ -825,8 +832,8 @@ Then, there should be a `/Resources/MESSAGETABLE/Strings.json` file with followi
             "id": -1073610751,
             "name": "service_started",
             "LCID_0000": "%1 service started"
-        },
-    ],
+        }
+    ]
 }
 ```
 
@@ -862,13 +869,13 @@ In COM interfaces, the default value of this attribute is **False**, since norma
 
 In APIs, the default value of this attribute is `True`. So therefore, you can specify `False` to rewrite the last parameter as a return. Example:
 
-```tb
+```tb inert=external
 Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" (ppshf As IShellFolder) As Long
 ```
 
 can be rewritten as
 
-```tb
+```tb inert=external
 [PreserveSig(False)] 
 Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" () As IShellFolder
 ```
@@ -936,7 +943,7 @@ Runs the function before the project's startup object. Returning **True** suppre
 
 The CEF package uses it to intercept the sub-process launches Chromium makes of the host executable, which must not run the application's own `Sub Main`:
 
-```tb
+```tb check_build project=packages
 Private Module PreSubMain
     [RunBeforeStartupObject]
     Function BeforeMain() As Boolean
@@ -986,7 +993,7 @@ Marks a CoClass interface as the one the CoClass raises events on, rather than o
 
 Every use in the twinBASIC packages pairs it with [Default](#default) in one set of braces, which marks the interface as the CoClass's *default* source interface:
 
-```tb
+```tb check_build project=packages
 CoClass CustomControlTimer
     [Default] Interface _CustomControlTimer
     [Default, Source] Interface _CustomControlTimerEvents
@@ -1092,7 +1099,7 @@ Marks a class as a Windows control, one the form designer can place on a form, a
 
 A path is relative to the project root. Where the toolbox wants the image at several sizes, `??` in the path stands for the size and the IDE resolves it against the sizes that are present:
 
-```tb
+```tb inert=skeleton
 [WindowsControl("/miscellaneous/ICONS??/CheckBox??.png")]
 ```
 
@@ -1117,7 +1124,7 @@ Routes late-bound calls arriving on the implemented interface to the class's own
 
 The **MyCOMAddin** sample states the consequence directly: the attribute "is needed so that late-bound calls on the IRibbonExtensibility interface get routed to our MyCOMAddin default interface. Without it, events like OnHelloWorldClicked will not fire."
 
-```tb
+```tb inert=external
 [WithDispatchForwarding]
 Implements IRibbonExtensibility
 ```

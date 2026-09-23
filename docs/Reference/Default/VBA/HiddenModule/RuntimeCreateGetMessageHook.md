@@ -14,7 +14,7 @@ The returned hook starts dormant. Subscribe a callback for one or more message t
 
 ### Example
 
-```tb
+```tb check_build inherits=Form
 Const WM_LBUTTONDOWN = &H201
 
 Sub HookClicks()
@@ -22,6 +22,11 @@ Sub HookClicks()
     Hook.RegisterMessage Me.hWnd, AllDescendants, _
                          WM_LBUTTONDOWN, AddressOf OnLButtonDown
     Hook.Start
+End Sub
+```
+
+```tb hidden
+Public Sub OnLButtonDown()
 End Sub
 ```
 

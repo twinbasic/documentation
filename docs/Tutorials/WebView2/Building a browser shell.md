@@ -115,7 +115,7 @@ End Sub
 
 To make the host window's caption track the page's `<title>`, listen for [**DocumentTitleChanged**](../../tB/Packages/WebView2/WebView2/#documenttitlechanged) and read [**DocumentTitle**](../../tB/Packages/WebView2/WebView2/#documenttitle):
 
-```tb
+```tb inert=designer
 Private Sub WebView_DocumentTitleChanged() Handles WebView.DocumentTitleChanged
     Me.Caption = WebView.DocumentTitle
 End Sub

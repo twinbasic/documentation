@@ -168,7 +168,7 @@ The method opens the SCM with `SC_MANAGER_CONNECT`, opens the service with `SERV
 
 The launch-args mechanism is commonly used to gate startup on a shared secret:
 
-```tb
+```tb inert=excerpt
 ' UI side — starting the service with a password argument:
 Services.LaunchService "MyService", "MySecretPassword"
 

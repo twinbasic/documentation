@@ -14,7 +14,7 @@ Like [**Image**](../Image), a QRCode has no `hWnd` and is not focusable. It is t
 
 The default property is [**Picture**](#picture) (the read-only generated image) and the default event is [**Click**](#click).
 
-```tb
+```tb inert=blocked
 Private Sub Form_Load()
     QRCode1.Payload = "https://www.twinbasic.com"
     QRCode1.EccMode = vbQRCodegenEccHigh    ' 30 % parity

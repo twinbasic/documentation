@@ -25,7 +25,7 @@ A run-time error raised inside the expression --- division by zero, type mismatc
 
 This example compiles an expression that references a property on the host object via [**AddCustomBinderObject**](AddCustomBinderObject), then evaluates it twice with the property having different values.
 
-```tb
+```tb inert=excerpt
 Dim Service As TbExpressionService = New TbExpressionService
 Service.AddStdLibraryBinder()
 Service.AddCustomBinderObject "State", Me, IsAppObject

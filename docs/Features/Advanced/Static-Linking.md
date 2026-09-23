@@ -13,7 +13,7 @@ tB allows you to use properly compiled .lib and .obj files as statically linked 
 
 Example from the sqlite sample:
 
-```tb
+```tb inert=external
 #If Win64 Then
     Import Library "/Miscellaneous/sqlite3_64.obj" As SQLITE3 Link "stdlib", "kernel32"
 #Else
@@ -23,7 +23,7 @@ Example from the sqlite sample:
 
 ### Generic Syntax
 
-```tb
+```tb inert=skeleton
 Import Library "Relative resource path" As NAMESPACE Link "dependency1", "dependency2", '...
 ```
 

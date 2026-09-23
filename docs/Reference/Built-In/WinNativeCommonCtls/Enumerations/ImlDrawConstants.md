@@ -10,7 +10,7 @@ permalink: /tB/Packages/WinNativeCommonCtls/Enumerations/ImlDrawConstants
 
 Flag combinations passed to the *Style* parameter of [**ListImage.Draw**](../ImageList/ListImage#draw). Multiple flags can be **Or**-combined to compose render styles.
 
-```tb
+```tb inert=blocked
 ' Draw a small icon with the focus rectangle overlaid:
 ImageList1.ListImages("doc").Draw _
     PictureBox1.hDC, 0, 0, _

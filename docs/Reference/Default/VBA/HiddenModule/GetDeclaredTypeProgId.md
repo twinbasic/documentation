@@ -19,7 +19,7 @@ Returns an empty string if the type has no associated ProgID.
 
 ### Example
 
-```tb
+```tb inert=skeleton
 Dim Id As String = GetDeclaredTypeProgId(Of MyApp.Document)()
 Debug.Print Id                       ' "MyApp.Document"
 ```

@@ -17,7 +17,7 @@ This is then persisted to your project as properties inside your form JSON struc
 
 The key to making this work is your serialization constructor, which might look something like this:
 
-```tb
+```tb inert=excerpt
 Public Sub New(Serializer As SerializeInfo)
    If Not Serializer.RuntimeUISrzDeserialize(Me, False) Then
       InitializeDefaultValues  ' you implement this

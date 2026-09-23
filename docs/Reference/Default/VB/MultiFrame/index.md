@@ -14,7 +14,7 @@ A frame is associated with a **MultiFrame** by setting the frame's [**Container*
 
 The default event is [**Initialize**](#initialize). There is no default property.
 
-```tb
+```tb inert=blocked
 Private Sub Form_Load()
     mfPanels.Direction = vbDirectionHorizontal
 

@@ -135,7 +135,13 @@ End Sub
 
 If instead you expected the function to raise an error:
 
-```tb
+```tb hidden
+' Context for the sample below: the function under test, which raises.
+Public Sub SomeFunctionThatRaises(ByVal Value As Long)
+End Sub
+```
+
+```tb check_build
 Public Sub TestSomethingThatShouldRaise()
     On Error Resume Next
     SomeFunctionThatRaises 0    ' call that should fail

@@ -22,7 +22,7 @@ Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas)  _
 
 You are passed a [`Canvas`](../../tB/Packages/CustomControls/Framework/Canvas) object that offers the following methods:
 
-```tb
+```tb inert=pseudo
 Canvas.Width As Long    ' Property-Get
 Canvas.Height As Long   ' Property-Get]
 Canvas.Dpi As Long      ' Property-Get]
@@ -45,7 +45,7 @@ The `Canvas.AddElement` method is used for adding elements to your control.  An 
 ## AddElement(ElementDescriptor)
 The AddElement method takes a single argument; an ElementDescriptor.  ElementDescriptor is a UDT that defines exactly how the element will be drawn and how it reacts to events like mouse clicks.
 
-```tb
+```tb check_build project=cc-private
 Public Type ElementDescriptor
    OnClick As LongPtr               ' event function callback pointer
    OnDblClick As LongPtr            ' event function callback pointer
@@ -64,10 +64,10 @@ Public Type ElementDescriptor
    TrackingIdX As LongLong          ' for tracking this element, passed to events
    TrackingIdY As LongLong          ' for tracking this element, passed to events
    Text As String                   ' the text to render
-   TextRenderingOptions As TextRendering ' options to customize text rendering (object)
-   BackgroundFill As Fill           ' options to customize back fill rendering (object)
-   Corners As Corners               ' options to customize corner rendering (object)
-   Borders As Borders               ' options to customize border rendering (object)
+   TextRenderingOptions As CustomControlsPackage.TextRendering ' options to customize text rendering (object)
+   BackgroundFill As CustomControlsPackage.Fill           ' options to customize back fill rendering (object)
+   Corners As CustomControlsPackage.Corners               ' options to customize corner rendering (object)
+   Borders As CustomControlsPackage.Borders               ' options to customize border rendering (object)
 End Type
 ```
 

@@ -136,13 +136,13 @@ A user-defined format expression for numbers can have from one to four sections 
 | Three sections   | The first section applies to positive values, the second to negative values, and the third to zeros.                                                                     |
 | Four sections    | The first section applies to positive values, the second to negative values, the third to zeros, and the fourth to **Null** values.                                      |
 
-```tb
+```tb inert=pseudo
 "$#,##0;($#,##0)"
 ```
 
 When semicolons are included with nothing between them, the missing section is printed using the format of the positive value. For example, the following format displays positive and negative values using the format in the first section and displays "Zero" if the value is zero.
 
-```tb
+```tb inert=pseudo
 "$#,##0;;\Z\e\r\o"
 ```
 

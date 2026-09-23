@@ -77,8 +77,8 @@ The convention is to place the **Label** immediately before the control it capti
 
 With **vbCustomBorder**, [**BorderCustomOptions**](#bordercustomoptions) returns an object whose `.Left`, `.Top`, `.Right`, and `.Bottom` properties each have independent **Size** (line thickness, in twips), **Padding** (inset between the border and the caption, in twips), and **Color** values:
 
-```tb
-lblBox.BorderStyle = vbCustomBorder
+```tb check_build
+lblBox.BorderStyle = ControlBorderStyleConstantsCustom.vbCustomBorder
 With lblBox.BorderCustomOptions
     .Top.Size = 30 :  .Top.Color = vbRed :   .Top.Padding = 60
     .Bottom.Size = 30 : .Bottom.Color = vbRed : .Bottom.Padding = 60

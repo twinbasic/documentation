@@ -44,13 +44,30 @@ Methods can be any of the following: `Sub`, `Function`, `Property Get`, `Propert
 
 ### Example
 
-```tb
+```tb hidden
+' Context for the samples below: the enum one of them type-hints with, and the
+' second interface the coclass example names. The Enum needs a container and the
+' Interface must not have one, so both sit in one file the way a reader's would.
+Module SampleTypes
+    Public Enum MyEnum
+        FirstValue = 1
+        SecondValue = 2
+    End Enum
+End Module
+
+[InterfaceId("B4C0A41A-1E1B-42C4-9E31-2B6F2E0A77D2")]
+Public Interface IDrawable
+    Sub Draw()
+End Interface
+```
+
+```tb check_build projname=iface-coclass-example
 [InterfaceId("E7064791-0E4A-425B-8C8F-08802AAFEE61")]
-[Description("Defines the IFoo interface")]
+[Description("Defines the IShape interface")]
 [OleAutomation(False)]
-Interface IFoo Extends IUnknown
+Interface IShape Extends IUnknown
     Sub MySub(Arg1 As Long)
-    Function Clone() As IFoo
+    Function Clone() As IShape
     [PreserveSig]
     Function MyFunc([TypeHint(MyEnum)] Arg1 As Variant) As Boolean
 End Interface
@@ -61,7 +78,7 @@ End Interface
 
 In addition to interfaces, twinBASIC also allows defining coclasses -- creatable classes that implement one or more defined interfaces. Like interfaces, these too must be in .twin files and not legacy .bas/.cls files, and must appear prior to the `Class` or `Module` statement. The generic form is:
 
-```tb
+```tb inert=skeleton
 [CoClassId("00000000-0000-0000-0000-000000000000")]
 '<attributes>
 CoClass name
@@ -83,14 +100,14 @@ Each coclass must specify at least one interface but may have several more. It c
 
 ### Example
 
-```tb
+```tb check_build projname=iface-coclass-example
 [CoClassId("52112FA1-FBE4-11CA-B5DD-0020AFE7292D")]
-CoClass Foo
-   [Default] Interface IFoo
-   Interface IBar
+CoClass Shape
+   [Default] Interface IShape
+   Interface IDrawable
 End CoClass
 ```
-Where `IFoo` and `IBar` are interfaces defined with the `Interface` syntax described earlier.
+Where `IShape` and `IDrawable` are interfaces defined with the `Interface` syntax described earlier.
 
 ## Custom Constructor Example
 

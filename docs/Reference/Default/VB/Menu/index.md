@@ -12,7 +12,7 @@ A **Menu** is an item in a Win32 native menu --- either a top-level entry on a [
 
 The default property is [**Enabled**](#enabled) and the default event is [**Click**](#click).
 
-```tb
+```tb inert=excerpt
 Private Sub Form_Load()
     mnuFileSave.Enabled = False     ' grey out until there is something to save
 End Sub
@@ -69,7 +69,12 @@ mnuFileSave.IconSizeY = 16
 
 A control array of menus is the standard way to build a *most-recently-used* file list, a dynamic *Window* sub-menu, or a list of plug-in commands. The array is declared at design time on the first item; further items are added at run time with **Load** and removed with **Unload**, exactly as for a windowed control. Inside a [**Click**](#click) handler shared by every item in the array, [**Index**](#index) identifies which one was picked.
 
-```tb
+```tb hidden
+Public Sub OpenDocument(ByVal Path As Variant)
+End Sub
+```
+
+```tb inert=designer
 Private Sub mnuRecent_Click(Index As Integer)
     OpenDocument mnuRecent(Index).Tag       ' Tag holds the file path
 End Sub

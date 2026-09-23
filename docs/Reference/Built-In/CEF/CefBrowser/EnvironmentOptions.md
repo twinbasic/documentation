@@ -13,7 +13,7 @@ Pre-creation configuration for the CEF environment --- runtime folder, user-data
 
 The fields below take effect only while the CEF runtime is being launched --- that is, *before or during* the control's [**Create**](.#create) event. Assigning them after that point has no effect on the live environment.
 
-```tb
+```tb inert=blocked
 Private Sub CefBrowser1_Create()
     CefBrowser1.EnvironmentOptions.UserDataFolder = _
         Environ$("APPDATA") & "\MyApp\CEF\"

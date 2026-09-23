@@ -21,7 +21,7 @@ You can access raw message data in the `PreKeyDown`/`PreKeyUp` event handlers wi
 
 ## Example
 
-```tb
+```tb inert=external
 Private Sub UserControl_Initialize()
     PreKeyEvents = True
 End Sub

@@ -68,8 +68,9 @@ Next I
 
 The next statement resizes the array and erases the elements.
 
-```tb
+```tb check_build
 ReDim MyArray(10) ' Resize to 10 elements.
+Dim I As Long
 For I = 1 To 10 ' Loop 10 times.
     MyArray(I) = I ' Initialize array.
 Next I

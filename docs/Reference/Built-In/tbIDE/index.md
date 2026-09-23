@@ -123,7 +123,7 @@ End With
 
 reads at run time as:
 
-```tb
+```tb inert=pseudo
 .Item("style").Item("textAlign").Value = "center"
 .Item("style").Item("color").Value     = "white"
 .Item("innerText").Value               = "Section heading"

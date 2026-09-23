@@ -14,7 +14,7 @@ A **UserControl** is not directly visible at run time as a property of an outer 
 
 The default-designer event is [**Initialize**](#initialize) --- double-clicking the control surface in the IDE adds a `UserControl_Initialize` handler.
 
-```tb
+```tb check_build inherits=UserControl
 ' In MyMonthView's code-behind:
 Private mFirstDay As Date
 
@@ -64,7 +64,7 @@ For each instance, exactly one of **InitProperties** or **ReadProperties** runs 
 
 Public read/write members are exposed to the host as design-time properties automatically. Persistent storage goes through the [**PropertyBag**](../../VBRUN/PropertyBag/) object handed to [**ReadProperties**](#readproperties) and [**WriteProperties**](#writeproperties); the property bag interns string keys and a small set of variant-friendly types. Calling [**PropertyChanged**](#propertychanged) (optionally with the property name) sets the host's *dirty* flag so the host knows to call [**WriteProperties**](#writeproperties) at the next save.
 
-```tb
+```tb check_build inherits=UserControl
 Public Property Let Caption(ByVal Value As String)
     Label1.Caption = Value
     PropertyChanged "Caption"
@@ -526,7 +526,15 @@ The vertical position of the **UserControl** inside its host container, in the h
 
 An array of **String** names registered with the host's `IOleObject::EnumVerbs` enumerator --- each entry appears on the host's right-click menu for this control. Invoking one raises [**VerbInvoked**](#verbinvoked) with the verb's name.
 
-```tb
+```tb hidden
+Public Sub DoRefresh()
+End Sub
+
+Public Sub ShowConfigDialog()
+End Sub
+```
+
+```tb check_build inherits=UserControl
 Private Sub UserControl_Initialize()
     ReDim Verbs(0 To 1)
     Verbs(0) = "Re&fresh"

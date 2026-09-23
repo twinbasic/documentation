@@ -10,23 +10,23 @@ has_toc: false
 
 A static text-display control. Paints a [**Caption**](#caption) string inside its rectangle using the configured [**TextRendering**](#textrendering), on top of a [**BackgroundFill**](#backgroundfill). The label has no interactive states --- appearance is the same whether the mouse is hovering over it or not.
 
-```tb
+```tb check_build
 Private Sub Form_Load()
-    Label1.Caption = "Hello, world"
-    With Label1.TextRendering
+    lblHeader.Caption = "Hello, world"
+    With lblHeader.TextRendering
         .Font.Size = 14
         .Font.Weight = tbBold
         .Alignment = tbAlignMiddleCenter
         .Fill.ColorPoints.SetSolidColor vbWhite
     End With
-    Label1.BackgroundFill.ColorPoints.SetSolidColor vbBlue
+    lblHeader.BackgroundFill.ColorPoints.SetSolidColor vbBlue
 End Sub
 ```
 
 Because [**BackgroundFill**](#backgroundfill) and [**TextRendering**](#textrendering) accept the same [**Fill**](Styles/Fill) gradients and the same [**Outlines**](Styles/TextRendering#outlines) array as any other control, a label can serve as a banner, header strip, or status panel without dropping a heavier control onto the form. Setting [**TextRendering.OverflowMode**](Styles/TextRendering#overflowmode) to **tbShrinkToFit** keeps a dynamically-set caption visible even when it is wider than the label:
 
-```tb
-With Label1.TextRendering
+```tb check_build
+With lblHeader.TextRendering
     .Font.Size = 24
     .Font.Weight = tbBold
     .Alignment = tbAlignMiddleCenter
@@ -34,7 +34,7 @@ With Label1.TextRendering
     .Fill.SetSimplePattern vbWhite, &HCCCCFF, _
             Pattern:=tbGradientNorthToSouth
 End With
-Label1.BackgroundFill.SetSimplePattern &H014C99, &H99CCFF, _
+lblHeader.BackgroundFill.SetSimplePattern &H014C99, &H99CCFF, _
         Pattern:=tbGradientNorthWestToSouthEast
 ```
 

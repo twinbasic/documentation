@@ -13,7 +13,7 @@ The callback object passed to a custom control's [**Initialize**](ICustomControl
 
 Custom controls store the **CustomControlContext** in a private field (typically called **ControlContext**) so that they can call back into the framework at any point after **Initialize** has returned. The form-class counterpart [**CustomFormContext**](CustomFormContext) extends this with **Show** and **Close**.
 
-```tb
+```tb inert=excerpt
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
         Implements CustomControls.ICustomControl.Initialize
 
@@ -48,7 +48,7 @@ Syntax: *object*.**CreateTimer** ( ) **As stdole.IUnknown**
 
 The timer is returned as **stdole.IUnknown**. Cast to [**CustomControlTimer**](CustomControlTimer) with `CType(Of CustomControlTimer)(…)` before accessing its members. Declare the holding field with **WithEvents** so that the **OnTimer** event can be handled.
 
-```tb
+```tb inert=excerpt
 Private WithEvents InternalTimer As CustomControlTimer
 
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
@@ -74,7 +74,7 @@ Syntax: *object*.**GetSerializer** ( ) **As SerializeInfo**
 
 Call **GetSerializer** at the start of a control's [**Initialize**](ICustomControl#initialize) implementation to load any property values that were set in the form designer, and to read the mode flags before storing the context for later use.
 
-```tb
+```tb inert=excerpt
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
         Implements CustomControls.ICustomControl.Initialize
 

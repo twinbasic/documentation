@@ -29,7 +29,7 @@ The cdecl calling convention is supported both for API declares and methods in y
 
 ### Examples
 
-```tb
+```tb check_build
 Private DeclareWide PtrSafe Function _wtoi64 CDecl Lib "msvcrt" (ByVal psz As String) As LongLong
 ```
 
@@ -136,13 +136,23 @@ The `[PreserveSig]` attribute was described earlier for COM methods, but it can 
 
 ### Example
 
-```tb
+```tb hidden
+' Context for the samples below: the shell interface they return. A reader has
+' this from the Windows shell type library; it is written out here so the two
+' declarations can be compiled.
+[InterfaceId("000214E6-0000-0000-C000-000000000046")]
+Public Interface IShellFolder
+    Sub ParseDisplayName()
+End Interface
+```
+
+```tb check_build projname=preservesig-shell
 Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" (ppshf As IShellFolder) As Long
 ```
 
 can be rewritten as:
 
-```tb
+```tb check_build projname=preservesig-shell2
 [PreserveSig(False)]
 Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" () As IShellFolder
 ```

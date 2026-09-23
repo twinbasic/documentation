@@ -35,7 +35,12 @@ Two properties between them decide whether the [**Timer**](#timer) event fires:
 
 Either property can be flipped from inside the [**Timer**](#timer) handler itself --- a one-shot timer disables itself on the first tick:
 
-```tb
+```tb hidden
+Public Sub LoadInitialData()
+End Sub
+```
+
+```tb check_build
 Private Sub tmrStartup_Timer()
     tmrStartup.Enabled = False      ' fire only once
     LoadInitialData
@@ -57,7 +62,18 @@ For periodic UI updates (a clock, a progress animation, a poll for external stat
 
 A control array of timers lets one handler service several periodic tasks while keeping a single shared code path. The array is declared at design time on the first item; further items are added at run time with **Load** and removed with **Unload**, exactly as for a windowed control. Inside the shared [**Timer**](#timer) handler, [**Index**](#index) identifies which timer fired.
 
-```tb
+```tb hidden
+Public Sub RefreshStatus()
+End Sub
+
+Public Sub PollPrinterQueue()
+End Sub
+
+Public Sub TrimLogFile()
+End Sub
+```
+
+```tb check_build
 Private Sub tmrPoll_Timer(Index As Integer)
     Select Case Index
         Case 0: RefreshStatus

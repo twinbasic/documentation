@@ -57,7 +57,9 @@ The safe rule of thumb:
 - Use [**JsRun**](../../tB/Packages/CEF/CefBrowser/#jsrun) for **pure** JavaScript functions --- ones that take inputs, compute, and return a value. No `postMessage`, no host-object calls, no `await` of anything that touches the host.
 - Use [**JsRunAsync**](../../tB/Packages/CEF/CefBrowser/#jsrunasync) for anything else --- anywhere the JavaScript side might end up wanting to talk to BASIC during the call.
 
-```tb
+```tb check_build
+Dim source As String
+Dim filePath As String
 ' Safe — pure JavaScript: takes two numbers, returns one number.
 Dim html As String = CefBrowser1.JsRun("renderMarkdownToHtml", source)
 

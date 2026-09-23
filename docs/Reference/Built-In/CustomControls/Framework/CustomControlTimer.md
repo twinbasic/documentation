@@ -13,7 +13,7 @@ A timer created by [**CustomControlContext.CreateTimer**](CustomControlContext#c
 
 The framework returns timers typed as **stdole.IUnknown**; cast to **CustomControlTimer** with `CType(Of CustomControlTimer)(…)` before storing. Declare the field with **WithEvents** so that the **OnTimer** event can be handled.
 
-```tb
+```tb inert=excerpt
 Private WithEvents InternalTimer As CustomControlTimer
 
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _

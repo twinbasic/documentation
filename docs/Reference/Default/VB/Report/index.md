@@ -10,7 +10,7 @@ has_toc: false
 
 A **Report** is a top-level Win32 window --- much like a [**Form**](../Form/) --- specialised for rendering the print preview of a banded report. Each report designed in the IDE becomes its own class derived from **Report**: its sections (report header / page header / detail / page footer / report footer) and the controls placed in them become members of that class. At run time, code assigns a recordset to [**Recordset**](#recordset), calls [**Show**](#show), and the framework iterates the recordset, evaluates expressions on the controls, and paints the resulting pages into a built-in preview window with a navigation toolbar at the bottom. [**PrintReport**](#printreport) sends the same pages to the printer. The default property is [**Controls**](#controls) and the default event is [**Load**](#load).
 
-```tb
+```tb inert=excerpt
 ' In the report's code-behind (rptSales):
 Private Sub Report_Load()
     Set Me.Recordset = OpenSalesRecordset()
@@ -127,7 +127,7 @@ The graphics primitives inherited from the form-style drawing surface ([**Cls**]
 
 [**PrintReport**](#printreport) iterates from page 1 to the last page through the [**Printer**](../../VB/Printer) object, sending each cached metafile as one printed page.
 
-```tb
+```tb inert=excerpt
 rptSales.PrintReport ShowDialog:=False
 ```
 

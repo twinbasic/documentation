@@ -350,7 +350,8 @@ The returned object exposes three members:
 
 The items are returned as **Object**, so use **CallByName** or late-bound member access to read and write their properties.
 
-```tb
+```tb check_build inherits=PropertyPage
+Dim ctl As Variant
 For Each ctl In SelectedControls
     ctl.Caption = txtCaption.Text
 Next

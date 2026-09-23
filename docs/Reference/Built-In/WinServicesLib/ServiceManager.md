@@ -174,7 +174,7 @@ Syntax (Let/Set): *manager*.**InstanceCreator** = *creator*
 
 Assign `New ServiceCreator(Of MyServiceClass)` where `MyServiceClass` is the user's [**ITbService**](ITbService) implementation:
 
-```tb
+```tb inert=excerpt
 .InstanceCreator = New ServiceCreator(Of MyService)
 ```
 

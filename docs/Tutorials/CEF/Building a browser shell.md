@@ -120,7 +120,7 @@ The CEF package does not currently expose **WebView2**'s **OpenTaskManagerWindow
 
 To make the host window's caption track the page's `<title>`, listen for [**DocumentTitleChanged**](../../tB/Packages/CEF/CefBrowser/#documenttitlechanged) and read [**DocumentTitle**](../../tB/Packages/CEF/CefBrowser/#documenttitle):
 
-```tb
+```tb inert=designer
 Private Sub WebView_DocumentTitleChanged() Handles WebView.DocumentTitleChanged
     Me.Caption = WebView.DocumentTitle
 End Sub

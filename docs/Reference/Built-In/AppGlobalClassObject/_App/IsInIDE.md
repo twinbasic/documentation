@@ -21,7 +21,14 @@ Use **IsInIDE** to branch between IDE-only debug behaviour and production behavi
 
 This example skips a lengthy initialisation step when running under the IDE.
 
-```tb
+```tb hidden
+' Context for the sample below: the step it skips under the IDE, which belongs
+' to the reader's program.
+Public Sub InitialiseHardware()
+End Sub
+```
+
+```tb check_build
 If App.IsInIDE Then
     Debug.Print "Skipping hardware initialisation in IDE."
 Else

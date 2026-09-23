@@ -31,7 +31,7 @@ Before calling **Rnd**, use the [**Randomize**](Randomize) statement without an 
 
 To produce random integers in a given range, use this formula:
 
-```tb
+```tb inert=skeleton
 Int((upperbound - lowerbound + 1) * Rnd + lowerbound)
 ```
 

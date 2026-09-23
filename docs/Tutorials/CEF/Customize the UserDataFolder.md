@@ -52,7 +52,7 @@ End Sub
 
 Two related fields on [**EnvironmentOptions**](../../tB/Packages/CEF/CefBrowser/EnvironmentOptions) configure the CEF debug log, useful when investigating runtime issues:
 
-```tb
+```tb inert=blocked
 Private Sub CefBrowser1_Create()
     CefBrowser1.EnvironmentOptions.UserDataFolder = _
         Environ$("APPDATA") & "\MyApp\CEF\"

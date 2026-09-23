@@ -139,7 +139,7 @@ Shape --- bare flags and `key=value` pairs after the language token:
 | `id=` | stable name for reporting | `<page>#<ordinal>` |
 | `expect-error=` | the sample is *meant* not to compile; assert this error | --- |
 | `resource=` | **on a fence in any language**: stage this fence's contents into the project at that path, instead of compiling it | --- |
-| `inert=` | this fence is not a program: `skeleton`, `excerpt`, `pseudo`, `contrast`, `external` or `designer` | --- |
+| `inert=` | this fence is not a program, or cannot be one: `skeleton`, `excerpt`, `pseudo`, `contrast`, `external`, `designer` or `blocked` | --- |
 
 ### `inert` is a decision, not a suppression
 
@@ -157,6 +157,17 @@ refused as a contradiction: those are opposite claims about the same fence.
 The census prints three numbers now --- marked, inert by reason, and **undecided**. Only the
 last is a backlog, and it is the one to drive to zero; the inert count is supposed to grow
 and then sit still.
+
+**`blocked` is the one reason that is not about the fence.** It marks correct code that a
+*product* defect stops compiling, and it exists so that the alternative --- rewriting the
+sample until the compiler accepts it --- is not taken by accident. Five fences carry it, all
+one bug: `ImlDrawTransparent` (WinNativeCommonCtls), `CefLogWarning` (cefPackage),
+`vbDirectionHorizontal` (VB `MultiFrame`) and `vbQRCodegenEccHigh` (VB `QRCode`) are enum
+members a consumer project cannot name, because each enum sits inside a `Private Module` or
+a control class that does not re-export it. Neither the member, nor the enum, nor the owning
+control as a qualifier resolves. The pages still say what the API ought to accept, and
+BUGS-TO-REPORT.md carries the evidence; when the packages expose them, those five go back to
+`check_build` and the compiler will say so.
 
 ### A sample can be compiled against a file
 
@@ -580,6 +591,24 @@ Three rules, each of which cost something to find:
 
 **`hidden` implies `check_build`**, because a hidden fence nobody compiles is text nobody
 can read and nothing checks.
+
+**A page cannot hide what it also shows --- so rename the placeholder.** Hidden context
+joins every project holding a sample from its page, so a *visible* sample on that page
+declaring the same name meets it. `Reference/Core/CoClass.md` is the case, and it looks like
+a hidden-fence job right up until you try it: its first example names `IFoo` and `IBar`
+without declaring them, and the page's *next* example is a complete custom-constructor
+sample declaring `IFoo`, `IBar` and `CoClass Foo` in full. Measured:
+`TB5137 'IFoo' is ambiguous. Could be: [Class] DocSamples1.IFoo [Class] DocSamples1.IFoo`.
+
+The way out is neither duplicating the ten lines that already appear ten lines below, nor
+giving up and calling the fence an excerpt. **`IFoo` and `IBar` are arbitrary placeholder
+names**: the first example is now a `CoClass Shape` over `IShape` and `IDrawable`, with
+those two interfaces in a hidden fence, and both examples compile. The rename also does
+something for the reader, which is why it is the right answer rather than a trick --- two
+examples that shared a cast of characters now look as different as they are.
+
+The general rule: **when hidden context collides with a visible sample, check whether the
+name is load-bearing before working around it.** A placeholder can simply be something else.
 
 ### A collision rule that was measured too narrowly
 

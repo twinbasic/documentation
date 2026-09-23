@@ -45,7 +45,7 @@ End Sub
 
 A single body responding to several property-change events at once (adapted from the standard `CheckMark` control):
 
-```tb
+```tb inert=excerpt
 Protected Sub SignificantChange() _
         Handles BackColor.OnPropertyLet, _
                 BackStyle.OnPropertyLet, _
@@ -57,7 +57,7 @@ End Sub
 
 For comparison, the equivalent classic-VBA naming-convention form for one of those events:
 
-```tb
+```tb inert=excerpt
 Private Sub BackColor_OnPropertyLet()
     Me.WindowlessRefresh()
 End Sub

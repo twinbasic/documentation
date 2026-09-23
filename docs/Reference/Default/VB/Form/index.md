@@ -13,7 +13,7 @@ A **Form** is a top-level Win32 window that hosts the controls, menus, and drawi
 On disk, a form is a `.twin` file holding a `Class` of the same name, carrying the
 designer attributes the IDE maintains:
 
-```tb
+```tb inert=designer
 [FormDesignerId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA01")]
 [PredeclaredId]
 Class Form1
@@ -109,7 +109,7 @@ End Sub
 
 Menu structures designed at form-design time appear automatically in the form's title bar. [**PopUpMenu**](#popupmenu) displays one of those menus as a context-menu pop-up at a specified location, raising the menu's **Click** event when the user picks an item.
 
-```tb
+```tb check_build inherits=Form
 Private Sub Form_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
     If Button = vbRightButton Then PopUpMenu mnuContext
 End Sub
@@ -647,7 +647,8 @@ Syntax: *object*.**Print** \[ *expressionlist* ] \[ **;** \| **,** ]
 
 A trailing `;` or `,` suppresses the newline so the next **Print** call continues on the same line; without a trailing separator, the pen advances to the start of the next line.
 
-```tb
+```tb check_build inherits=Form
+Dim sName As String, nAge As Long, Total As Double
 Me.CurrentX = 10 : Me.CurrentY = 10
 Me.Print "Name: "; sName, "Age: "; nAge      ' two fields, tab-separated
 Me.Print                                     ' blank line

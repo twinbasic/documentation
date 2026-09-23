@@ -66,7 +66,7 @@ Syntax: *object*.**Draw** *hDC* [, *x* [, *y* [, *Style* ] ] ]
 *Style*
 : *optional* A combination of [**ImlDrawConstants**](../Enumerations/ImlDrawConstants) flags controlling the draw mode (normal, transparent, masked, selected, focused). Multiple flags can be **Or**-combined.
 
-```tb
+```tb inert=blocked
 Private Sub PictureBox1_Paint()
     ImageList1.ListImages("doc").Draw _
         PictureBox1.hDC, 0, 0, _

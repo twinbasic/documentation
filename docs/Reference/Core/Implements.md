@@ -53,7 +53,16 @@ Public Address As String
 
 The code supporting the customer data is in a class module called `Customer`. Note that the `PersonalData` interface is implemented with members that are named with the interface name `PersonalData_` as a prefix.
 
-```tb
+```tb hidden
+Interface PersonalData
+    Property Get Name() As String
+    Property Let Name(ByVal RHS As String)
+    Property Get Address() As String
+    Property Let Address(ByVal RHS As String)
+End Interface
+```
+
+```tb check_build
 Implements PersonalData
 
 ' For PersonalData implementation
@@ -89,7 +98,7 @@ End Sub
 
 A second class `Supplier` implements the same interface independently, with its own state and `Class_Initialize`. Code that needs name/address access can declare a variable as the interface type and accept either:
 
-```tb
+```tb check_build
 Private m_pd As PersonalData
 
 Public Property Set PD(Data As PersonalData)

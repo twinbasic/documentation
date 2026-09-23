@@ -88,7 +88,7 @@ Syntax: *object*.**RemoveHeader** *name*
 
 A `For Each` loop over the collection produces every header in turn:
 
-```tb
+```tb inert=excerpt
 Dim h As WebView2Header
 For Each h In RequestHeaders
     Debug.Print h.Name & ": " & h.Value

@@ -122,7 +122,7 @@ redirect_from:
 
 ### Code Snippet for twinBASIC
 
-```tb
+```tb inert=external
 ' Example: Printing a Mixed-Control Form in twinBASIC
 Dim bmp As StdPicture
 Set bmp = CreateCompatibleBitmap(Me.Width, Me.Height)

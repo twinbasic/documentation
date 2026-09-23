@@ -73,7 +73,7 @@ Syntax: *object*.**GetHeaders** ( *name* ) **As WebView2HeadersCollection**
 
 A `For Each` loop produces every header in turn:
 
-```tb
+```tb inert=excerpt
 Dim h As WebView2Header
 For Each h In Response.Headers
     Debug.Print h.Name & ": " & h.Value

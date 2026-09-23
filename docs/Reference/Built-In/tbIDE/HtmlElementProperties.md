@@ -10,7 +10,7 @@ has_toc: false
 
 The dynamic property bag on an [**HtmlElement**](HtmlElement). Reached through [**HtmlElement.Properties**](HtmlElement#properties). Every CSS property, every DOM attribute, every custom-widget extension is accessed through this bag --- and almost always written in shorthand because [**Properties**](HtmlElement#properties) is the **DefaultMember** of [**HtmlElement**](HtmlElement):
 
-```tb
+```tb inert=external
 With element                          ' element.Properties is the default member
     .style.display    = "flex"        ' Properties.Item("style").Item("display").Value = "flex"
     .style.flexDirection = "column"

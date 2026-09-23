@@ -36,7 +36,7 @@ A service-hosting EXE goes through four phases:
 
 The canonical `Sub Main` skeleton:
 
-```tb
+```tb inert=excerpt
 Module Startup
     Public Sub Main()
         With Services.ConfigureNew

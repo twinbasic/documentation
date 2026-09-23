@@ -13,7 +13,7 @@ The event source interface of [**CustomControlTimer**](CustomControlTimer), decl
 
 This interface is the **\[Default, Source\]** interface of the **CustomControlTimer** CoClass. A field declared with `WithEvents` receives the **OnTimer** event through this interface automatically; there is no need to reference `_CustomControlTimerEvents` by name in application code.
 
-```tb
+```tb inert=excerpt
 Private WithEvents InternalTimer As CustomControlTimer
 
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _

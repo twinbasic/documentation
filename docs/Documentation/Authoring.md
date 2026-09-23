@@ -497,7 +497,8 @@ Mark those `inert=<reason>` rather than leaving them unmarked, so nobody triages
 | `pseudo` | prose, a table or a protocol listing set in a code fence |
 | `contrast` | shows the invalid form on purpose, beside the valid one |
 | `external` | needs a file or environment the checker cannot provide |
-| `designer` | needs a real form designer --- a `Handles` clause on designer-declared fields |
+| `designer` | needs a real form designer --- a `Handles` clause on designer-declared fields, or a control array |
+| `blocked` | correct code that a **product defect** stops compiling. Do not rewrite the sample around the bug: record it in the project's bug queue and leave the page saying what the API ought to accept |
 
 An unrecognised reason is refused, the same as a bad `slot=`, and `inert` together with
 `check_build` is refused as a contradiction. The census then reports three numbers rather

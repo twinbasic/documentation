@@ -126,7 +126,7 @@ End Sub
 
 It is often convenient to trigger the conversion when the user presses **Enter** in the text box, without having to click the button. Double-click `txtInput` in the designer to open the code editor, then select `KeyPress` from the event drop-down at the top right:
 
-```tb
+```tb inert=excerpt
 Private Sub txtInput_KeyPress(KeyAscii As Integer)
     If KeyAscii = vbKeyReturn Then
         KeyAscii = 0          ' suppress the beep

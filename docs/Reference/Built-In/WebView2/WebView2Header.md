@@ -10,7 +10,7 @@ has_toc: false
 
 A single HTTP header --- a name / value pair. **WebView2Header** is the element type produced by iterating a [**WebView2HeadersCollection**](WebView2HeadersCollection), which in turn comes from a [**WebView2RequestHeaders**](WebView2RequestHeaders) or [**WebView2ResponseHeaders**](WebView2ResponseHeaders) collection.
 
-```tb
+```tb inert=excerpt
 Dim h As WebView2Header
 For Each h In Request.Headers
     Debug.Print h.Name & ": " & h.Value

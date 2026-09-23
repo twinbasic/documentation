@@ -31,7 +31,7 @@ When the procedure is called, each argument supplied in the call becomes a corre
 
 This example defines a function that sums an arbitrary number of numeric arguments by using **ParamArray**.
 
-```tb
+```tb check_build
 Function CalcSum(ParamArray Args() As Variant) As Double
     Dim Total As Double, i As Long
     For i = LBound(Args) To UBound(Args)
@@ -40,16 +40,18 @@ Function CalcSum(ParamArray Args() As Variant) As Double
     CalcSum = Total
 End Function
 
-' Calls of varying arity:
-Debug.Print CalcSum()              ' 0
-Debug.Print CalcSum(1)             ' 1
-Debug.Print CalcSum(1, 2, 3, 4)    ' 10
-Debug.Print CalcSum(1.5, 2.5, 3#)  ' 7
+Sub TestCalcSum()
+    ' Calls of varying arity:
+    Debug.Print CalcSum()              ' 0
+    Debug.Print CalcSum(1)             ' 1
+    Debug.Print CalcSum(1, 2, 3, 4)    ' 10
+    Debug.Print CalcSum(1.5, 2.5, 3#)  ' 7
+End Sub
 ```
 
 A **ParamArray** can follow ordinary positional parameters; only those that come after a fixed leading list participate in the variadic tail.
 
-```tb
+```tb check_build
 Function Concat(ByVal Separator As String, ParamArray Parts() As Variant) As String
     Dim i As Long, s As String
     For i = LBound(Parts) To UBound(Parts)
@@ -59,7 +61,9 @@ Function Concat(ByVal Separator As String, ParamArray Parts() As Variant) As Str
     Concat = s
 End Function
 
-Debug.Print Concat(", ", "one", "two", "three")  ' "one, two, three"
+Sub TestConcat()
+    Debug.Print Concat(", ", "one", "two", "three")  ' "one, two, three"
+End Sub
 ```
 
 ### See Also

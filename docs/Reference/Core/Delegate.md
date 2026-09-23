@@ -55,7 +55,7 @@ End Sub
 
 A delegate used as a UDT member, modelling the `lpfnHook` field of the Windows `CHOOSECOLOR` struct. Existing code that assigns a **Long**/**LongPtr** to `lpfnHook` continues to work; new code can assign **AddressOf** *Handler* directly and have the signature checked at compile time:
 
-```tb
+```tb inert=external
 Public Delegate Function CCHookProc (ByVal hwnd As LongPtr, ByVal uMsg As Long, _
     ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
 

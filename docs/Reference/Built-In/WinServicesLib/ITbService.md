@@ -80,7 +80,7 @@ Syntax: *service*.**ChangeState** *ServiceManager*, *dwControl*, *dwEventType*, 
 
 The typical pattern is a `Select Case dwControl` that handles the codes the service cares about and ignores the rest. The minimum a service needs to handle is *Stop*:
 
-```tb
+```tb inert=excerpt
 Select Case dwControl
     Case vbServiceControlStop, vbServiceControlShutdown
         ServiceManager.ReportStatus vbServiceStatusStopPending

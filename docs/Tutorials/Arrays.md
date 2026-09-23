@@ -59,7 +59,7 @@ Both variants of size specifications can be mixed in one declaration, e.g.
 
 Here is how **Option Base** controls the default lower bound of a dimension:
 
-```tb
+```tb inert=pseudo
 Option Base 0
 Dim A(10, 20)   ' is equivalent to...
 Dim A(0 To 10, 0 To 20)   ' i.e. a 21 x 11 array
@@ -266,7 +266,7 @@ End Sub
 
 Without these functions, this would have been more cumbersome:
 
-```tb
+```tb inert=contrast
 Sub Save(array() As Long)
     If IsArrayInitialized(array) Then
         SaveData( _

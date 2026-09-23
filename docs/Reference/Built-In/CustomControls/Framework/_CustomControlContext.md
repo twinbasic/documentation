@@ -24,7 +24,7 @@ Syntax: *object*.**GetSerializer** ( ) **As SerializeInfo**
 
 Call **GetSerializer** at the start of a control's [**Initialize**](ICustomControl#initialize) implementation to load any property values that were set in the form designer, and to read the mode flags before storing the context for later use.
 
-```tb
+```tb inert=excerpt
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
         Implements CustomControls.ICustomControl.Initialize
 
@@ -71,7 +71,7 @@ Syntax: *object*.**CreateTimer** ( ) **As stdole.IUnknown**
 
 The timer is returned as **stdole.IUnknown**. Cast to [**CustomControlTimer**](CustomControlTimer) with `CType(Of CustomControlTimer)(…)` before accessing its members. Declare the holding field with **WithEvents** so that the **OnTimer** event can be handled.
 
-```tb
+```tb inert=excerpt
 Private WithEvents InternalTimer As CustomControlTimer
 
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
@@ -104,7 +104,7 @@ Use this method when the control changes its own selection state without user ke
 
 *ElementTabIndex* must correspond to an element added in the **most recent** call to [**ICustomControl.Paint**](ICustomControl#paint). If the value does not match any registered element, the framework ignores the call.
 
-```tb
+```tb inert=excerpt
 ' In a custom control that renders multiple clickable regions:
 Private m_Context As CustomControls.CustomControlContext
 

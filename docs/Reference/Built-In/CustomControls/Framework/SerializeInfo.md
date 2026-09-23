@@ -11,7 +11,7 @@ has_toc: false
 
 The per-instance serializer for a custom control, returned by [**CustomControlContext.GetSerializer**](CustomControlContext#getserializer). The main entry point is [**RuntimeUISrzDeserialize**](#runtimeuisrzdeserialize) --- called from a control's [**Initialize**](ICustomControl#initialize) to load the designer-set property values that were saved into the form's serialized data. The remaining members expose framework state --- design-mode flag, runtime / report mode, owner window handle --- that a control may need while initializing.
 
-```tb
+```tb inert=excerpt
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
         Implements CustomControls.ICustomControl.Initialize
 

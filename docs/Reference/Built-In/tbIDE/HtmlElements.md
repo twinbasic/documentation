@@ -42,7 +42,7 @@ Syntax: *htmlElements*.**Add**( *ElementID*, *TagName* ) **As** [**HtmlElement**
 *TagName*
 : *required* The HTML tag name. **String**. Standard tags (`"div"`, `"span"`, `"input"`, `"h1"`, `"label"`, `"img"`, …) work as expected; the IDE additionally accepts four custom-widget tags described in [Tool-window DOM tags](.#tool-window-dom-tags) on the package overview: `"chartjs"`, `"monaco"`, `"listview"`, `"virtuallistview"`.
 
-```tb
+```tb inert=excerpt
 ' Standard DOM tags:
 Set greeting = .ChildDomElements.Add("greeting", "h1")
 Set entry    = .ChildDomElements.Add("entryBox", "input")

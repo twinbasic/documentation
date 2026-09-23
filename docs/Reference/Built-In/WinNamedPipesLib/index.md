@@ -45,7 +45,7 @@ Windows services hosted through the [**WinServicesLib**](../WinServicesLib/) pac
 
 The canonical pattern: [**ITbService.EntryPoint**](../WinServicesLib/ITbService#entrypoint) opens the server, transitions the service to `Running`, blocks inside [**ManualMessageLoopEnter**](NamedPipeServer#manualmessageloopenter), and only leaves the loop when [**ITbService.ChangeState**](../WinServicesLib/ITbService#changestate) --- running on the *other* (dispatcher) thread --- calls [**ManualMessageLoopLeave**](NamedPipeServer#manualmessageloopleave) on the same server instance.
 
-```tb
+```tb inert=excerpt
 ' On the service-entry-point thread:
 Set NamedPipeServer = New NamedPipeServer
 NamedPipeServer.PipeName = "MyServicePipe"
@@ -82,7 +82,7 @@ When [**ContinuouslyReadFromPipe**](NamedPipeServer#continuouslyreadfrompipe) is
 
 Every [**AsyncRead**](NamedPipeServerConnection#asyncread) and [**AsyncWrite**](NamedPipeServerConnection#asyncwrite) accepts an optional *Cookie* of type **Variant**. Whatever value the caller passes in is round-tripped through the IOCP completion and re-emitted as the *Cookie* parameter of the matching [**ClientMessageReceived**](NamedPipeServer#clientmessagereceived) / [**ClientMessageSent**](NamedPipeServer#clientmessagesent) (or client-side [**MessageReceived**](NamedPipeClientConnection#messagereceived) / [**MessageSent**](NamedPipeClientConnection#messagesent)) event. Use this to correlate event callbacks with the calls that initiated them --- a per-request sequence number, a callback object, a key into a pending-replies dictionary.
 
-```tb
+```tb inert=excerpt
 Private pending As New Collection
 
 Private Sub SendRequest(text As String, replyHandler As IReplyHandler)
@@ -107,7 +107,8 @@ The *Data* parameter on [**ClientMessageReceived**](NamedPipeServer#clientmessag
 
 For a fresh **Byte()** copy:
 
-```tb
+```tb check_build
+Dim Data() As Byte     ' the event handler's own ByRef parameter
 Dim Stored() As Byte
 ReDim Stored(UBound(Data))
 [_HiddenModule].vbaCopyBytes UBound(Data) + 1, VarPtr(Stored(0)), VarPtr(Data(0))
@@ -123,7 +124,7 @@ The package transports raw bytes; it is agnostic about what is inside them. For 
 1. **`PropertyBag.Contents` deep-copies the bytes**, which is the simplest answer to the transient-`Data()` lifetime caveat above. Assigning *Data* to a fresh **PropertyBag**'s **Contents** captures the buffer in one step; the copy is safe to retain past the event handler.
 2. **`PropertyBag` provides typed multi-field payloads** without the consumer having to design a wire protocol. Both sides agree on property names (e.g. `"CommandID"`, `"ResponseCommandID"`, `"Data"`) and **PropertyBag** handles the byte-level encoding.
 
-```tb
+```tb inert=excerpt
 ' Sender:
 Dim request As New PropertyBag
 request.WriteProperty "CommandID", "WHAT_TIME_IS_IT"
@@ -158,7 +159,7 @@ Either let the [**NamedPipeClientConnection**](NamedPipeClientConnection) object
 
 Named pipes can appear and disappear at any time as their server processes start and stop, and the package does not publish an event for this. The canonical discovery loop is a low-frequency [**Timer**](../VB/Timer/) that repopulates a list and preserves the user's current selection --- a few seconds between polls is the typical interval; the underlying `FindFirstFileW` is cheap enough that nothing finer is required:
 
-```tb
+```tb check_build
 Private Sub timerRefreshNamedPipes_Timer()
     Dim previousSelection As String = lstNamedPipes.List(lstNamedPipes.ListIndex)
     lstNamedPipes.Clear

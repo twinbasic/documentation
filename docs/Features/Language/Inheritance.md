@@ -21,7 +21,7 @@ twinBASIC provides several mechanisms for inheritance to support both simple and
 
 If you have an interface that multiple others extend from, you can write multiple implementations, or specify one implementation for all. For example:
 
-```tb
+```tb inert=external
 IOleWindow_GetWindow() As LongPtr _
     Implements IOleWindow.GetWindow, IShellBrowser.GetWindow, IShellView2.GetWindow
 ```

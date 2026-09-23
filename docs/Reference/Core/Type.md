@@ -108,14 +108,16 @@ twinBASIC extends classic VBA's **Type** in several ways. UDTs remain stack-allo
 
 **API declarations inside a UDT.** A [**Declare**](Declare) statement inside a **Type** body works as a regular module-level declaration, except that when its first parameter is named `Me` and is the same type as the UDT, calls on a variable of that type pass the variable as the first argument implicitly:
 
-```tb
+```tb check_build slot=module
 Type HWND
     Value As LongPtr
     Public Declare PtrSafe Function BringWindowToTop Lib "user32" (ByVal Me As HWND) As Long
 End Type
 
-Dim h As HWND
-h.BringWindowToTop()  ' Passes h as the first argument to the API.
+Sub Demo()
+    Dim h As HWND
+    h.BringWindowToTop()  ' Passes h as the first argument to the API.
+End Sub
 ```
 
 **Custom packing.** The [**PackingAlignment**](Attributes#packingalignment) type-level attribute controls alignment of the UDT's fields. The default packing places each field at a multiple of its own size (with trailing padding so the total size is a multiple of the largest field). Setting `[PackingAlignment(1)]` packs fields with no padding --- matching `#pragma pack(push, 1)` in C.

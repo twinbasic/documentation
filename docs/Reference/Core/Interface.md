@@ -53,7 +53,7 @@ Member-level attributes:
 
 ### Example
 
-```tb
+```tb inert=skeleton
 [InterfaceId("E7064791-0E4A-425B-8C8F-08802AAFEE61")]
 [Description("Defines the IFoo interface")]
 [OleAutomation(False)]
@@ -67,7 +67,7 @@ End Interface
 
 A class that implements `IFoo` provides bodies for every member:
 
-```tb
+```tb inert=excerpt
 Class FooImpl
     Implements IFoo
 

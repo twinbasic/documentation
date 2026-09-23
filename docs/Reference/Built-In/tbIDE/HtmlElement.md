@@ -62,7 +62,7 @@ Syntax: *element*.**AddEventListener** *DomEventName*, *CallbackFunc* [, *Data* 
 *Data*
 : *optional* An opaque value to associate with the registration. **Variant**.
 
-```tb
+```tb inert=excerpt
 With .ChildDomElements.Add("myButton", "div")
     .Properties.innerText = "Click me"
     .AddEventListener("click", AddressOf MyButtonClicked)
@@ -77,7 +77,7 @@ End Sub
 > [!IMPORTANT]
 > For the four custom-widget tags (`"chartjs"`, `"monaco"`, `"listview"`, `"virtuallistview"`), the widget-specific events (e.g. Monaco's `onDidChangeModelContent`, the listview's `onClickItem`) are registered on the **widget object**, not on the DOM element. So:
 >
-> ```tb
+> ```tb inert=contrast
 > ' WRONG --- listener is never reached:
 > monacoDivElement.AddEventListener("onDidChangeModelContent", AddressOf Handler)
 >
