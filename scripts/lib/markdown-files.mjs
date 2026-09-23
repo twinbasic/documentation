@@ -11,8 +11,8 @@
 //
 // Which trees are outputs is shared further than the walk. check_tree_fresh.mjs
 // skips the same ones when it looks for sources newer than a build; it used to
-// keep a list of its own, which named none of the empty -offline and -pdf
-// siblings the builder creates beside every destination.
+// keep a list of its own, which missed four folders sitting beside the ones it
+// named.
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -20,10 +20,8 @@ import path from "node:path";
 /**
  * The trees the build writes inside docs/, matched by name prefix: _site,
  * _site-offline and _site-pdf from build.bat, _serve from serve.bat, _pdf from
- * book.bat. The builder's prepDest also wipes and recreates an -offline and a
- * -pdf sibling beside every destination, whether or not those passes run, so
- * serve.bat leaves an empty _serve-offline and _serve-pdf behind it. None of
- * them holds source.
+ * book.bat, and the same three from a build given another --dest under docs/,
+ * such as _site-basepath. None of them holds source.
  */
 export const OUTPUT_TREES = ["_site", "_serve", "_pdf"];
 

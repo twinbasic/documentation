@@ -212,7 +212,7 @@ Seeds have no predecessors and become claimable as soon as the build starts (wit
 - `dot` (worker) --- regenerates stale `.dot` → `.svg` via the WASM build of Graphviz. WASM init (~50 ms) hides behind the main spine; per-diagram render is synchronous after that.
 - `highlighterInit` (main) --- loads the `Light.theme` + `Dark.theme` palette, emits `tb-highlight.css`. Does not bring up Shiki on main --- workers each init their own.
 - `warmInit` (worker, `on_demand` + `unique_per_worker` + `run_when_idle` + `survives_reset`) --- per-lane Shiki bootstrap. The flag combination means workers run it during the main-thread spine if they have no other claimable work, every render-worker needs it on its own lane, and in serve mode the per-lane done flag survives across rebuilds so the second build skips warmup entirely.
-- `prepDest` (main) --- cleans and recreates the three destination trees. Deferred to after `dispatch` so the wipe does not contend with `discover`'s reads.
+- `prepDest` (main) --- cleans and recreates the destination trees: all three for a build, `_serve/` alone in serve mode. Deferred to after `dispatch` so the wipe does not contend with `discover`'s reads.
 - `prepPageDirs` (main) --- pre-creates every page output directory. Lets `flush:i` skip `mkdir` entirely.
 
 ### Spine

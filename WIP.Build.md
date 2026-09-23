@@ -367,15 +367,15 @@ direction, and a rebuild is ~4 s --- but wiring the check into `book.bat` means
 a pure note edit now also blocks a render until you rebuild.
 
 **Which folders under `docs/` are outputs comes from one list.** The script used to
-name them one at a time, and named none of the siblings that `prepDest` in
-`builder/tbdocs.mjs` wipes and recreates beside every destination --- `<dest>-offline`
-and `<dest>-pdf`, whether or not those passes run. So `serve.bat` leaves an empty
-`_serve-offline` and `_serve-pdf` after every rebuild, and a build into
-`_site-basepath` leaves `_site-basepath-offline` and `_site-basepath-pdf`; all four
-were read as sources. They are not leftovers to delete, because the next rebuild
-recreates them. All four were empty, so nothing had gone wrong yet; a file planted
-in one made the old script call a fresh tree stale. It now skips the top-level
-folders that `isOutputTree` in
+name them one at a time, and missed four that sat beside the ones it named, all
+read as sources. Two were real outputs: a build given `--dest docs/_site-basepath`
+writes `_site-basepath-offline` and `_site-basepath-pdf` as well. The other two,
+`_serve-offline` and `_serve-pdf`, should never have existed. `prepDest` in
+`builder/tbdocs.mjs` prepared `<dest>-offline` and `<dest>-pdf` for every run, so
+serve mode --- which runs neither pass --- recreated both, empty, on every rebuild. It
+now prepares `_serve` alone, and the two were deleted. All four were empty, so
+nothing had gone wrong yet; a file planted in one made the old script call a fresh
+tree stale. It now skips the top-level folders that `isOutputTree` in
 [scripts/lib/markdown-files.mjs](scripts/lib/markdown-files.mjs) names --- the
 prefix list the markdown walk uses --- and keeps only `.git` and `node_modules` as
 names of its own.

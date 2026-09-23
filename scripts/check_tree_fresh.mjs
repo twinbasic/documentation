@@ -38,11 +38,11 @@ const REPO_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 // the build against itself and always pass. They are skipped at the top of
 // each source root by the prefix list the markdown walk uses, in
 // scripts/lib/markdown-files.mjs. This file used to name them one at a time,
-// and missed the siblings the builder's prepDest wipes and recreates beside
-// every destination whether or not their passes run: serve.bat leaves an empty
-// _serve-offline and _serve-pdf after every rebuild, and a build into
-// _site-basepath leaves _site-basepath-offline and _site-basepath-pdf. All four
-// were read as sources. These two are skipped at every depth.
+// and missed four that sat beside the others: _site-basepath-offline and
+// _site-basepath-pdf, which a build into _site-basepath writes, and the empty
+// _serve-offline and _serve-pdf that serve mode left behind until it stopped
+// preparing them. All four were read as sources. These two are skipped at
+// every depth.
 const IGNORED_DIRS = new Set([".git", "node_modules"]);
 
 // Files the build WRITES into a source directory. They are outputs, so their

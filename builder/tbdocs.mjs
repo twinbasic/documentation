@@ -344,15 +344,20 @@ const TASKS = {
     },
   },
 
-  // Clean and recreate _site/, _site-offline/, _site-pdf/. Deferred to after
-  // dispatch so the wipe doesn't contend with discover's source-file reads.
-  // Joined by write and searchData.
+  // Clean and recreate the trees the run owns. A build owns three -- _site/,
+  // _site-offline/ and _site-pdf/ -- and all three exist after it, whichever
+  // passes ran. Serve mode owns _serve/ alone: it never runs the offline or PDF
+  // pass, and preparing all three left an empty _serve-offline/ and _serve-pdf/
+  // beside _serve/ after every rebuild. Deferred to after dispatch so the wipe
+  // doesn't contend with discover's source-file reads. Joined by write and
+  // searchData.
   prepDest: {
     expected: ["dispatch"],
     runOnMain: true,
     async execute(_, ctx) {
       const r = ctx.destRoot;
-      await prepareDestinations([r, r + "-offline", r + "-pdf"], ctx.opts.dryRun);
+      const roots = ctx.opts.serve ? [r] : [r, r + "-offline", r + "-pdf"];
+      await prepareDestinations(roots, ctx.opts.dryRun);
       return {};
     },
     submit() {},
