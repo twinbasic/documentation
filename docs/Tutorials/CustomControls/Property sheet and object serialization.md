@@ -15,17 +15,40 @@ This is then persisted to your project as properties inside your form JSON struc
 
 ![CustomControl MyField JSON](Images/ccMyFieldJson1a.png)
 
-The key to making this work is your serialization constructor, which might look something like this:
+The key to making this work is your control's [**Initialize**](../../tB/Packages/CustomControls/Framework/ICustomControl#initialize) method, which loads the saved values through the serializer that its Context object provides.  It might look something like this:
 
-```tb inert=excerpt
-Public Sub New(Serializer As SerializeInfo)
-   If Not Serializer.RuntimeUISrzDeserialize(Me, False) Then
+```tb hidden concat_group=properties-initialize
+' Context for the sample below: the rest of a minimal control.
+[COMCreatable(False)]
+Class PropertiesInitializeDemo
+    Implements CustomControls.ICustomControl
+```
+
+```tb check_build concat_group=properties-initialize
+Private Sub OnInitialize(ByVal Context As CustomControls.CustomControlContext) _
+        Implements CustomControls.ICustomControl.Initialize
+   If Not Context.GetSerializer.RuntimeUISrzDeserialize(Me, False) Then
       InitializeDefaultValues  ' you implement this
    End If
+   ' ...
 End Sub
 ```
 
-If `RuntimeUISrzDeserialize(Me, False)` returns `True`, then your class properties were synchronized with the properties set via the form designer.  If it returns `False` then the control has just been added to the form, and this gives you an opportunity to setup any suitable default values for your custom public properties.  The form designer notices default values you set within the serialization constructor, so that your property sheet is kept in-sync.
+```tb hidden concat_group=properties-initialize
+    ' The helper the sample calls, and the interface's other two members.
+    Private Sub InitializeDefaultValues()
+    End Sub
+
+    Private Sub OnDestroy() Implements CustomControls.ICustomControl.Destroy
+    End Sub
+
+    Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas) _
+            Implements CustomControls.ICustomControl.Paint
+    End Sub
+End Class
+```
+
+If `RuntimeUISrzDeserialize(Me, False)` returns `True`, then your class properties were synchronized with the properties set via the form designer.  If it returns `False` then the control has just been added to the form, and this gives you an opportunity to setup any suitable default values for your custom public properties.  The form designer notices default values you set within **Initialize**, so that your property sheet is kept in-sync.
 
 ***
 ## Default Values
@@ -33,7 +56,7 @@ An alternative method for setting up default values is to inline them into the c
 
 ![CustomControl MyField = 42](Images/ccMyFieldPropertySheet1b.png)
 
-The `RuntimeUISrzDeserialize(Me, False)` call inside your serialization constructor will overwrite the property value if  the control is being synchronized from the persisted property sheet data.
+The `RuntimeUISrzDeserialize(Me, False)` call inside your **Initialize** method will overwrite the property value if  the control is being synchronized from the persisted property sheet data.
 
 ***
 ## Enumerations
@@ -80,7 +103,7 @@ At the moment, the form-designer doesn't yet support code-behind-forms, so this 
 > If you make changes to your CustomControl class, such as exposing new properties or changing how a control is drawn, these changes will get reflected immediately to any open form designers.  Form designers will show a 'resync' button when you return to them, once pressed the changes will be apparent.
 
 > [!TIP]
-> The serialization happens via JSON when running in the IDE, but via a binary format when running in a compiled DLL/EXE.  The `SerializeInfo` object that is passed to your serialization constructor is a different implementation when running in the IDE, but this should be transparent to you as a CustomControl implementer.
+> The serialization happens via JSON when running in the IDE, but via a binary format when running in a compiled DLL/EXE.  The `SerializeInfo` object that `GetSerializer()` returns is a different implementation when running in the IDE, but this should be transparent to you as a CustomControl implementer.
 
 > [!TIP]
 > When making changes or updates to a CustomControl always consider backwards compatibility.  For example, if you rename an exposed property, the old property values stored via the property sheet won't be deserialized to your new property.
