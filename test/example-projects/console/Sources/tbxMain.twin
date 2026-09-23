@@ -1,8 +1,8 @@
 ' The project's startup object, and nothing else.
 '
-' Sub Main comes from the template and never from a sample: a fence in the
-' `file` or `module` slot that brings its own Main would collide with this one,
-' and check_examples.mjs refuses such a fence rather than renaming it silently.
+' Every project gets its Sub Main from here. A sample may declare its own Main
+' as well -- two Public Sub Mains in different modules compile -- so a page's
+' `Module Startup` sample builds as written, and nothing renames or refuses it.
 '
 ' It is deliberately empty. The HelloWorld template's Main is a MsgBox, and a
 ' MsgBox hangs a run-mode probe invisibly -- the IDE waits on a modal nobody can

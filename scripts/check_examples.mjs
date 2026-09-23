@@ -44,15 +44,19 @@
 // 36.6 s wall including packing. One project per sample would be over three
 // hours.
 //
-// Four collision rules fall out of putting unrelated samples in one compilation
-// unit, and each is a real hazard rather than a precaution:
+// Three collision rules fall out of putting unrelated samples in one
+// compilation unit, and each is a real hazard rather than a precaution:
 //
 //   * one generated `Module tbx_<hash>` per fence, hashed from its id;
 //   * everything generated is Private -- eleven pages declare a `MyString`;
-//   * `Sub Main` comes from the template, never from a sample;
 //   * a generated module must not share a name with the project, or
 //     [RunAfterBuild]'s call becomes ambiguous and the IDE reports it at
 //     EXECUTION time, so the build is green and nothing runs.
+//
+// `Sub Main` is not one of them, though it was once listed as one. The template
+// brings a Main, and a sample may bring its own beside it: two `Public Sub
+// Main`s in different modules compile (measured, BETA 983), which is how the
+// WinServicesLib `Module Startup` samples build as written.
 //
 // And one that does not: a sample can take the compiler down. twinBASIC runs it
 // in-process with user code, and a two-line syntax skeleton in Attributes.md
