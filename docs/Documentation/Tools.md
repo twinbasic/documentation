@@ -724,7 +724,7 @@ It also writes a key naming the `Attributes.md` line each probe came from, besid
 
     twinBASIC_win32.exe import AttributeProbes.twinproj <out_dir> --overwrite
 
-**That command's exit code is `0` whether it worked or not**, so a script that packs a tree and then builds it will happily compile the previous `.twinproj`. Test the last line of its output for `... DONE` instead; [Import/Export Tool](../../Features/Packages/Import-Export-Tool#a-zero-exit-code-does-not-mean-success) has the caveat in full and a batch-file form of the test. That page also covers why this verb runs opposite to the standalone scripts' `import`. Re-run the generator after editing `Attributes.md`. Exits 0, or 2 with usage when given no output directory.
+**That command's exit code is `0` whether it worked or not**, so a script that packs a tree and then builds it will happily compile the previous `.twinproj`. Test the last line of its output for `... DONE` instead; [Import/Export Tool](../../Features/Packages/Import-Export-Tool#checking-the-result) has the caveat in full and a batch-file form of the test. The standalone [`impexp.mjs`](#impexp) takes the same command, and its exit code does say whether it worked. Re-run the generator after editing `Attributes.md`. Exits 0, or 2 with usage when given no output directory.
 
 ### census_attributes.mjs
 {: #census-attributes }
@@ -755,14 +755,15 @@ Grouping is by enclosing construct *and* declaration keyword, because the keywor
 
 The report ends with what the scanner could not resolve, and **that section is expected to be empty**. A census that quietly buckets its own confusion publishes a wrong number with nothing to notice it by, so an unresolved site is reported as a scanner bug rather than absorbed. Reaching zero took handling several things this corpus does that a simpler sweep gets wrong: attributes spanning lines (`[Description("..." & vbCrLf & _` accounts for 3.8% of all attribute lines), comma-separated lists, arguments containing commas, escaped identifiers that look exactly like attributes (`[_HiddenModule].Foo`, and Enum members genuinely named `[A4 Portrait]`), comments in four different positions, and block-tracking traps such as a UDT field called `Type As Long` or a module named `[_HiddenModule]`. Exits 0 once a report is produced, or 2 if no install or source tree can be found.
 
-### scripts/impexp.mjs and scripts/impexp.py
+### impexp.mjs and impexp.py
 {: #impexp }
 
-    node scripts/impexp.mjs import <file.twinproj|.twinpack> [output_dir]
-    node scripts/impexp.mjs export <input_dir> <output.twinproj|.twinpack>
+    node scripts/impexp.mjs export <project> <folder> [--overwrite]
+    node scripts/impexp.mjs import <project> <folder> [--overwrite]
+    node scripts/impexp.mjs settings|licence|changelog|readme <project>
     node scripts/impexp.mjs --self-test
 
-Standalone `.twinproj` / `.twinpack` unpacker and packer. `scripts/impexp.py` is the same tool with the same three commands, run as `python scripts/impexp.py ...`. Neither has dependencies; the Node edition needs Node 18+, the Python edition Python 3.6+.
+Standalone `.twinproj` / `.twinpack` unpacker and packer, with the compiler executable's own command line: the same six commands, the project file first, and `--overwrite` required to replace anything. `scripts/impexp.py` is the same tool, run as `python scripts/impexp.py ...`; the two editions print the same output and write byte-identical project files. Neither has dependencies; the Node edition needs Node 18+, the Python edition Python 3.6+. The exit code says what happened --- `0` done, `3` refused to overwrite, `6` done with a warning, and four more --- so a caller need not read the output; [Import/Export Tool](../../Features/Packages/Import-Export-Tool#checking-the-result) has the table. `--self-test` needs nothing but the script, and adds a round trip of `indexer/sample.twinpack` when run from this repository.
 
 **Neither is build tooling.** They are published downloads: `_config.yml`'s `bundle_extra` copies both into `Features/Packages/downloads/`, and [Import/Export Tool](../../Features/Packages/Import-Export-Tool) offers them to readers as the two editions of one tool. That is why `impexp.py` is one of only two `.py` files in a repository whose tooling is otherwise all Node --- porting it would delete a deliberate offering rather than tidy anything up. The `bundle_extra` exemption is by exact path, so moving either file breaks the download; see [`check_publish_policy.mjs`](#check-publish-policy).
 

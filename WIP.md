@@ -130,7 +130,7 @@ node scripts/tbbuild.mjs C:/probe/Thing.twinproj     # does it compile
 node scripts/tbrun.mjs <exported-source-dir>         # what does it print
 ```
 
-- **`export` needs the output folder to already exist**, and creates only one level of it. Redirect stdin (`</dev/null`) when looping, or the executable consumes the loop's input and the second iteration never runs.
+- **Give the executable backslashed paths, and `export` a full path to the project.** `export` prefixes `\\?\` to its project path, so a relative one, or one with forward slashes, reports `input twinproj file does not exist`; and a folder named with forward slashes cannot be created or even found, even when it exists. With backslashes `export` creates every missing level of its output folder. Redirect stdin (`</dev/null`) when looping, or the executable consumes the loop's input and the second iteration never runs.
 - **`tbbuild` exit codes:** 0 clean, 1 the project has errors, 2 the harness failed, 3 the compile never settled, 4 the project crashes the compiler. `--json` returns one object, `--keep` leaves the IDE running.
 - **It runs the IDE on a private Windows desktop**, so it cannot seize focus mid-sentence. Set `TBBUILD_SHOW=1` while working interactively and leave it unset for unattended runs --- a wedged IDE nobody can see is the failure that costs an afternoon.
 - **One project per IDE**, 8--11 seconds each and flat in project size. Reusing a live IDE for a second project wedges it, so the cold start is the unit of work, not overhead to optimise away. Concurrency is how to go faster: distinct `--port` values give distinct DevTools ports, user-data folders and desktops.

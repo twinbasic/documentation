@@ -27,11 +27,13 @@ Against BETA 983 that yields **820 `.twin` files** --- 661 from the sixteen pack
 `addins/`. All of it is code the compiler accepts, which makes it the strongest available
 evidence for anything the documentation asserts about legal syntax.
 
-Two operational notes, both learned the annoying way. **The output folder must already
-exist**, and only one level of it is created, so `mkdir -p` first or every call fails with
-`output folder does not exist and could not be created`. And **redirect stdin** when looping
-(`</dev/null`), or the executable consumes the loop's input and the second iteration never
-runs.
+Two operational notes, both learned the annoying way. **Use backslashes.** A folder named
+with forward slashes fails with `output folder does not exist and could not be created`
+whether it exists or not. This note used to say that the folder must already exist and that
+only one level of it is created; measured against BETA 983, `export` given backslashes
+creates every missing level, three deep in the test. Its project path must also be a full
+one, because it is prefixed with `\\?\`. And **redirect stdin** when looping (`</dev/null`),
+or the executable consumes the loop's input and the second iteration never runs.
 
 The samples matter as much as the packages: several constructs appear in exactly one sample
 and nowhere else. `[PopulateFrom]`'s only real use in the whole corpus is in Sample 22, and

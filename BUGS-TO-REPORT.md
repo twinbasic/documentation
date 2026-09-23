@@ -353,3 +353,116 @@ inside a deep working directory: `WebView2Package` and the three `cefPackage` ve
 back `... FAILED` while the other twelve packages exported. The census used to trust
 `export`'s exit code, so until it tested for `... DONE` it would have scanned those partial
 trees as complete.
+
+---
+
+## A damaged project file opens a message box, and the command waits until it is closed
+
+**Build:** BETA 983 --- `twinBASIC_win32.exe`
+**Severity:** an unattended `export`, `settings` or `readme` never finishes; once the box is
+closed, `export` reports success.
+
+```
+twinBASIC_win32.exe export C:\probe\garbage.twinproj C:\probe\out\
+```
+
+`garbage.twinproj` can be any file that is not a project: a 20-byte text file, an empty file,
+a real project with its first byte changed, or one cut off halfway. All four were tried.
+
+- The executable opens a modal message box --- *invalid header* and *invalid file format*
+  were both seen across those inputs --- and prints nothing more until it is closed. Left
+  alone, each of `export`, `settings` and `readme` was still waiting when the harness killed
+  it at 25 seconds.
+- Once the box is closed, `export` prints `WARNING: failed to parse project file, file may be
+  corrupt`, then `... DONE`, and exits 0. For the project cut off halfway it also writes the
+  one file it could read, `Settings`.
+
+So the `... DONE` test that the exit code forces on every script is fooled as well. **What
+does not reproduce it:** a folder given where the project should be. `settings` then prints
+`ERROR: failed to parse project file, file may be corrupt or inaccessible` and exits, with no
+box.
+
+**Found by** probing the command line for the rewrite of the Import/Export Tool page. The
+boxes appeared on the desktop of the person at the machine, which is how their wording is
+known.
+
+---
+
+## `export` refused for lack of `--overwrite` still writes part of the tree
+
+**Build:** BETA 983
+**Severity:** a refused export leaves the folder a mixture of the old tree and the project.
+
+Export the HelloWorld sample into a folder, delete the exported `Settings`, edit
+`Sources\HelloWorld.twin`, and export again without `--overwrite`:
+
+```
+[EXPORT]  ERROR: output file already exists and --overwrite not set: <out>\Resources\ICON\twinBASIC.ico
+[EXPORT]  ERROR: output file already exists and --overwrite not set: <out>\Sources\HelloWorld.twin
+[EXPORT]  DONE: <out>\Settings
+... FAILED
+```
+
+`Settings` comes back from the project while the edited `HelloWorld.twin` stays, so the folder
+now matches neither the old tree nor the project. `import` checks before it writes, so a
+refused `import` leaves the project file as it was; `export` should do the same.
+
+The same behaviour makes **the VB package impossible to export without `--overwrite`**, even
+into an empty folder: it holds `Resources\MANIFEST\#1.xml` twice (next entry), and `export`
+writes one copy and then refuses the other because of the file it has just written.
+
+---
+
+## The IDE has written the same name twice into project files it ships
+
+**Build:** BETA 983
+**Severity:** a folder can hold only one of them, so unpacking keeps one copy; which copy the
+IDE itself uses is not known.
+
+Two of the 48 project and package files an installation ships hold one name more than once,
+with different contents:
+
+| file | name | copies |
+|---|---|---|
+| the VB package | `Resources/MANIFEST/#1.xml` | 2 --- 703 and 682 bytes |
+| Sample 16, *twinBASIC IDE Addin (TODO Widgets demo)* | `.addins/WaynesTodoItemsData` | 8, no two alike |
+
+`export` writes entries in reverse order, so with `--overwrite` the first copy in the file is
+the one left on disk. The eight Sample 16 copies suggest that each save of the add-in's data
+added an entry instead of replacing the old one --- a guess, not a measurement.
+
+**Found by** comparing the standalone scripts' `export` with the executable's over every
+shipped project file. The scripts now keep the first copy, as the executable does, and name
+the repeated entries in a warning.
+
+---
+
+## `export` needs a full, backslashed project path, and no folder path may use forward slashes
+
+**Build:** BETA 983
+**Severity:** ordinary relative and forward-slashed paths fail, with messages that say the
+file or folder does not exist.
+
+| argument | example | result |
+|---|---|---|
+| `export`'s project path, relative | `export hello.twinproj out\` | `ERROR: input twinproj file does not exist` |
+| `export`'s project path, forward slashes | `export C:/p/hello.twinproj C:\p\out\` | the same |
+| `export`'s folder, forward slashes | `export C:\p\hello.twinproj C:/p/out/` | `ERROR: output folder does not exist and could not be created`, although it exists |
+| `import`'s folder, forward slashes | `import C:\p\x.twinproj C:/p/tree/` | `ERROR: input folder does not exist`, although it exists |
+
+The echo line explains the first two: `exporting from "\\?\hello.twinproj"`. The project path
+is prefixed with `\\?\`, which turns off Windows' path normalisation, so only a full path with
+backslashes survives it. **What does not reproduce it:** `import`'s project path and the
+printing commands' take relative and forward-slashed paths, and with backslashes `export`
+creates every missing level of its output folder.
+
+---
+
+## `import` of a folder with no `Settings` file fails without saying why
+
+**Build:** BETA 983
+**Severity:** minor --- the refusal is right, and the silence is not.
+
+Given a folder with no `Settings` file at its top, `import` lists the files it read, ends
+`... FAILED` with no `ERROR:` line, and writes nothing. Every other failure measured names its
+cause.

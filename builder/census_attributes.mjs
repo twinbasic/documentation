@@ -122,9 +122,10 @@ const buildNumberOf = (root) => (/_BETA_(\d+)$/.exec(root)?.[1]) ?? "unknown";
 
 // ------------------------------------------------------------- the export
 // The .twin sources live inside .twinproj archives; `export` unpacks one.
-// Two traps, both from WIP.md and both still live: the output folder must
-// already exist (only one level is created), and stdin has to be detached or
-// the executable consumes the caller's and later iterations never run.
+// Two traps, both from WIP.md and both still live: every path must use
+// backslashes (path.join gives them here), because a folder named with forward
+// slashes cannot be created or even found, and stdin has to be detached or the
+// executable consumes the caller's and later iterations never run.
 function exportAll(root, cacheDir, includeSamples) {
   const exe = path.join(root, "bin", "twinBASIC_win32.exe");
   if (!existsSync(exe)) die(2, `no compiler at ${exe}`);
