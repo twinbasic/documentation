@@ -735,7 +735,7 @@ It also writes a key naming the `Attributes.md` line each probe came from, besid
 
 Reports, for every attribute the twinBASIC packages use, **which enclosing construct and which kind of declaration it decorates**. It exports each package of an IDE install with the compiler's own `export` verb, scans the `.twin` sources, and writes a Markdown or JSON report. No arguments are needed: it finds the newest `twinBASIC_IDE_BETA_*` the same way [`tbbuild.mjs`](#tbbuild) does, caches the export under the build number, and reuses it on later runs. It is not part of the site build and nothing calls it during one.
 
-Against BETA 983 that is 619 files, 9,673 attribute sites and 55 distinct attributes.
+Against BETA 983 that is 661 files, 9,701 attribute sites and 55 distinct attributes.
 
 **A census is evidence, not applicability.** It says where an attribute *is* used, never where it *may* be used, and the two differ in both directions. The packages contain no use of `[Hidden]` on a whole **Class**, yet the compiler accepts one; they contain many on **Class** and **Interface** members, and the compiler refuses the same attribute on the **Interface** lines inside a **CoClass**. Neither fact is reachable from the other tool, so pair this with [`gen_attribute_probes.mjs`](#gen-attribute-probes) and [`tbbuild.mjs`](#tbbuild), which ask the compiler directly.
 

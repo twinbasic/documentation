@@ -1006,4 +1006,4 @@ page does not define. Marking those would be wrong, and opting them out one by o
 list of five hundred exceptions nobody maintains. Two passes of harness work and page edits
 have since taken the compiling share to **84% of the classifiable corpus**, which changes the
 size of the argument and not its shape --- see
-[What is left](#what-is-left-277-samples-and-no-lever).
+[What is left](#what-is-left-179-samples-and-no-lever).

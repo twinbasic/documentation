@@ -315,3 +315,41 @@ handling: a probe tree with a made-up `Packages\Nested\` folder never produced a
 compare. The standalone scripts pack all five exported trees with every file byte-identical
 to the original; the only files missing are `.meta` files, the embedded packages' own
 included, which `export` does not write.
+
+---
+
+## `export` and `import` stop at the 260-character path limit, apart from the one path they prefix with `\\?\`
+
+**Build:** BETA 983 --- `twinBASIC_win32.exe`, on a machine with `LongPathsEnabled` set to 1
+**Severity:** an `export` to a deep folder writes part of the tree and exits 0, and the
+errors it prints blame permissions and storage space.
+
+`export` names its input with a `\\?\` prefix --- *exporting from
+"\\?\C:\...\package.twinproj"* --- and a 301-character input path exports normally. Every
+other path the two verbs touch is held to the ordinary Win32 limits:
+
+| path | observed | what it prints |
+|---|---|---|
+| a file `export` writes | 259 characters written, 260 fails | `ERROR: failed to create output file: <path> (check permissions and storage space)` |
+| a folder `export` creates | 247 characters with its trailing `\` created, 248 fails | `[EXPORT]  ERROR: folder does not exist and could not be created: <path>\` |
+| the project file `import` writes | a 271-character path fails | `ERROR: failed to create output file: <path> (check permissions and storage space)` |
+| the tree `import` reads | a tree at a 250-character path fails | `ERROR: unable to read from folder: <tree>\\ImportedTypeLibraries\*` |
+
+Every one of those runs ends `... FAILED` and exits 0. `export` carries on past each error,
+so what it leaves is a partial tree: exporting `WebView2Package` to a 198-character folder
+wrote 45 of its 72 files. `LongPathsEnabled` is 1 on the machine this was measured on, so
+the Windows setting does not rescue it.
+
+**Reproduction.** Export the HelloWorld sample into an existing folder whose own path is 231
+characters long. `Settings` and `Sources\HelloWorld.twin` are written, at 240 and 255
+characters; `Resources\ICON\twinBASIC.ico` would be 260 and is not. At 220 characters every
+file is written and the run ends `... DONE`.
+
+**What does not reproduce it:** a long *input* path to `export`, and any output folder short
+enough that no file path reaches 260 characters and no folder path 248.
+
+**Found by** the attribute census, `builder/census_attributes.mjs`, pointed at a cache folder
+inside a deep working directory: `WebView2Package` and the three `cefPackage` versions came
+back `... FAILED` while the other twelve packages exported. The census used to trust
+`export`'s exit code, so until it tested for `... DONE` it would have scanned those partial
+trees as complete.
