@@ -216,8 +216,13 @@ function joinConcatGroups(fences) {
   for (const fence of fences) {
     const name = fence.keys.get(CONCAT_KEY);
     if (!name) { out.push(fence); continue; }
-    if (!groups.has(name)) { groups.set(name, []); out.push({ concatPlaceholder: name }); }
-    groups.get(name).push(fence);
+    // A group is its page's own, the way hidden context is. Keyed by name
+    // alone, two pages that picked the same name would be stitched into one
+    // unit -- a class opened on one page and closed on another -- and nothing
+    // would say so, because the join happens before anything is classified.
+    const key = `${fence.rel}\u0000${name}`;
+    if (!groups.has(key)) { groups.set(key, []); out.push({ concatPlaceholder: key }); }
+    groups.get(key).push(fence);
   }
   return out.flatMap((f) => {
     if (!f.concatPlaceholder) return [f];
@@ -1254,6 +1259,12 @@ async function runProbes() {
   if (around.id !== "P.md#2" || around.flags.has(HIDDEN_MARKER)) {
     failures.push("concat: a hidden header made the visible part's sample into page context");
   }
+  // Two pages that chose the same group name are two units.
+  const member = (rel) => ({ rel, line: 1, id: `${rel}#1`, flags: new Set([MARKER]),
+    keys: new Map([[CONCAT_KEY, "same-name"]]), content: "Sub S()\nEnd Sub\n" });
+  if (joinConcatGroups([member("A.md"), member("B.md")]).length !== 2) {
+    failures.push("concat: two pages' groups of one name were joined into one unit");
+  }
   if (!parseInfo(`tb ${CONCAT_KEY}=widget`).flags.has(MARKER)) {
     failures.push(`concat: ${CONCAT_KEY} does not imply ${MARKER}`);
   }
@@ -1336,8 +1347,8 @@ async function runProbes() {
     return false;
   }
   // 10 line-map (5 slots x 2 bases) + 4 wrapper container + 7 batching
-  // + 5 splitting + 8 concat + 10 resource + 8 report + 6 markup.
-  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 58} probes: ` +
+  // + 5 splitting + 9 concat + 10 resource + 8 report + 6 markup.
+  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 59} probes: ` +
     `classifier, markup, line mapping, batching, splitting, concat, resources and the report`);
   return true;
 }
@@ -1392,7 +1403,19 @@ async function main() {
 
   const batches = makeBatches(selected);
   const work = path.join(tmpdir(), "tbexamples", String(basePort));
-  rmSync(work, { recursive: true, force: true });
+  try {
+    rmSync(work, { recursive: true, force: true });
+  } catch (e) {
+    // A run whose node process died mid-batch leaves its lane IDEs running on
+    // their private desktops, holding the projects they opened here. Nothing
+    // on screen says so, and the bare EPERM names a folder, not a cause.
+    if (e.code !== "EPERM" && e.code !== "EBUSY") throw e;
+    console.error(`check_examples: cannot clear ${work} (${e.code}).\n` +
+      "  An earlier run on this --port probably died with its IDEs still open: look for\n" +
+      "  twinBASIC.exe processes whose command line names a project under that folder,\n" +
+      "  stop them, and run again -- or pass a different --port.");
+    process.exit(2);
+  }
   mkdirSync(work, { recursive: true });
 
   const staged = selected.length - samples.length;
