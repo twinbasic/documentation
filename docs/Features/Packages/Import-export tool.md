@@ -127,6 +127,17 @@ twinBASIC_win32.exe export "%PROJ%" "%TREE%" --overwrite > tb.log
 find "... DONE" tb.log > nul || exit /b 1
 ```
 
+### `import` converts code files to CRLF
+
+`import` converts LF line endings to CRLF in every `.twin`, `.bas` and `.cls` file,
+whatever folder it is in and whatever the case of its extension. A file with mixed line
+endings comes out all CRLF. The IDE stores code files with CRLF line endings, so a tree
+whose code files have LF line endings --- as a Git checkout or an editor may leave
+them --- needs no conversion before it is imported.
+
+Every other file is stored exactly as it is on disk, line endings included: the designer
+files (`.tbform`, `.tbcontrol`, `.tbppage`, `.tbreport`), `Settings`, and all resources.
+
 ### Compiling from the command line
 
 The six verbs above are the whole command-line surface of the executables under `bin\`,
@@ -207,6 +218,10 @@ directory name becomes the root entry name in the output file.  Well-known
 directory and file names (`Sources`, `Resources`, `Settings`, etc.) are
 tagged with the correct `category` values automatically.
 
+Line endings are converted the same way the compiler's `import` converts them: LF
+becomes CRLF in `.twin`, `.bas` and `.cls` files, and every other file is stored
+byte-for-byte. See [`import` converts code files to CRLF](#import-converts-code-files-to-crlf).
+
 ```
 node impexp.mjs export unpacked/ MyProject.twinproj
 ```
@@ -218,7 +233,7 @@ python impexp.py export unpacked/ MyPackage.twinpack
 ### Self-test
 
 Both implementations include a built-in test suite that exercises parsing,
-serialization, and full round-trip fidelity.
+serialization, full round-trip fidelity, and the line-ending conversion.
 
 ```
 node impexp.mjs --self-test
@@ -228,8 +243,9 @@ python impexp.py --self-test
 ### Round-trip notes
 
 Importing and re-exporting a binary file preserves all file contents
-byte-for-byte.  The following metadata fields are reset to defaults on a
-disk round-trip (they are not stored on the filesystem):
+byte-for-byte, except that a code file with LF line endings comes back with
+CRLF (see [Export](#export-pack)).  The following metadata fields are reset to
+defaults on a disk round-trip (they are not stored on the filesystem):
 
 - **revision counter** --- directories get `0x0000`; files get `0x0002`.
 - **flags** --- always written as zero (no flags set).

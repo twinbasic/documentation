@@ -45,6 +45,13 @@ CATEGORY_BY_NAME = {
     'Packages': CATEGORY_PACKAGES,
 }
 
+# Extensions of the code files, which the IDE stores with CRLF line endings.
+# Export converts LF to CRLF in these, as the compiler executable's own import
+# does, so a tree that Git or an editor left with LF line endings still packs
+# correctly. Every other file -- resources in particular -- is stored
+# byte-for-byte.
+CRLF_EXTENSIONS = ('.twin', '.bas', '.cls')
+
 # -------------------------- Parser (binary -> tree) --------------------------
 
 
@@ -222,6 +229,12 @@ def _category_for(name):
     return CATEGORY_BY_NAME.get(name, CATEGORY_DEFAULT)
 
 
+def _to_crlf(name, content):
+    if os.path.splitext(name)[1].lower() not in CRLF_EXTENSIONS:
+        return content
+    return content.replace(b'\r\n', b'\n').replace(b'\n', b'\r\n')
+
+
 def _build_tree(dir_path):
     name = os.path.basename(os.path.abspath(dir_path))
     listing = sorted(os.listdir(dir_path))
@@ -238,7 +251,7 @@ def _build_tree(dir_path):
             kind='file', name=f,
             revision=0x0002, flags=FLAGS_NONE,
             category=_category_for(f),
-            content=content, revisions=[],
+            content=_to_crlf(f, content), revisions=[],
         ))
     return dict(
         kind='directory', name=name,
@@ -382,6 +395,28 @@ def _self_test():
                 if a[i][1] != b[i][1]:
                     raise AssertionError(f'content mismatch: {a[i][0]}')
         test('Disk round-trip (import -> export -> re-import)', t_disk)
+
+        def t_eol():
+            src = os.path.join(tmp_dir, 'eol', 'Eol')
+            files = {
+                'Sources/Lf.twin': (b'A\nB\n', b'A\r\nB\r\n'),
+                'Sources/Mixed.BAS': (b'A\r\nB\nC', b'A\r\nB\r\nC'),
+                'Sources/Crlf.cls': (b'A\r\nB\r\n', b'A\r\nB\r\n'),
+                'Sources/Form.tbform': (b'{\n}\n', b'{\n}\n'),
+                'Resources/RCDATA/data.txt': (b'A\nB\n', b'A\nB\n'),
+            }
+            for rel, (before, _) in files.items():
+                p = os.path.join(src, *rel.split('/'))
+                os.makedirs(os.path.dirname(p), exist_ok=True)
+                with open(p, 'wb') as f:
+                    f.write(before)
+            out = os.path.join(tmp_dir, 'eol.twinproj')
+            do_export(src, out, quiet=True)
+            with open(out, 'rb') as f:
+                got = dict(tree_files(parse(f.read()), ''))
+            for rel, (_, after) in files.items():
+                eq(got['Eol/' + rel], after, rel)
+        test('Export converts LF to CRLF in code files only', t_eol)
 
         def t_empty():
             tree = dict(kind='directory', name='Empty',
