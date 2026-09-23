@@ -11,14 +11,16 @@ Reader-facing documentation is the [`check_examples.mjs`
 entry](docs/Documentation/Tools.md) in Tools.md and [Checking that a sample
 compiles](docs/Documentation/Authoring.md) in Authoring.md.
 
-**931 samples are marked today** and the gate over them takes ~59 s. That is up from 401,
-and the arithmetic of how it got there is [the second pass](#the-second-pass-604-to-818),
-which is also where the one claim this file got badly wrong is corrected.
+**1,070 samples are marked today** and the gate over them takes ~100 s, in 38 projects. That
+is up from 401, and the arithmetic of how it got there is [the second
+pass](#the-second-pass-604-to-818), which is also where the one claim this file got badly
+wrong is corrected.
 
-Of the 1,110 classifiable fences, 931 compile. Every gain since 826 came from editing pages
-rather than from marking them, which is [the editorial
-pass](#the-editorial-pass-826-to-931); what remains is
-[what is left](#what-is-left-179-samples-and-no-lever).
+Of the 1,159 `tb` fences, 1,070 are marked and compile, 89 are `inert` with a recorded
+reason, and **none is undecided**, so the backlog the census measures is empty. Every gain
+since 826 came from editing pages rather than from marking them, which is [the editorial
+pass](#the-editorial-pass-826-to-931); [what was left](#what-is-left-179-samples-and-no-lever)
+at 931 has since been worked through.
 
 ## The problem
 
@@ -139,7 +141,8 @@ Shape --- bare flags and `key=value` pairs after the language token:
 | `id=` | stable name for reporting | `<page>#<ordinal>` |
 | `expect-error=` | the sample is *meant* not to compile; assert this error | --- |
 | `resource=` | **on a fence in any language**: stage this fence's contents into the project at that path, instead of compiling it | --- |
-| `inert=` | this fence is not a program, or cannot be one: `skeleton`, `excerpt`, `pseudo`, `contrast`, `external`, `designer` or `blocked` | --- |
+| `concat_group=` | join these fences, in page order, into one compilation unit before classifying it. Implies `check_build` | --- |
+| `inert=` | this fence is not a program, or cannot be one: `skeleton`, `signature`, `excerpt`, `pseudo`, `contrast`, `external`, `designer` or `blocked` | --- |
 
 ### `inert` is a decision, not a suppression
 
@@ -210,6 +213,38 @@ Four rules, each a consequence rather than a preference:
 What this buys is not the tick. It is that the JSON's shape --- which array, which field
 supplies the name, which supplies the value --- is now checked against the code that reads
 it, on the page that documents both.
+
+### One construct across several fences
+
+`concat_group=<name>` joins its fences into one synthetic fence, in page order, **before
+`classify` runs** --- it has to, because each part of a split `Class` is an unclosed block
+and classifies as nothing. The joined fence keeps `concatParts`, the generated-line range
+each part occupies, and `partOf` maps a diagnostic back to its part's own page line. An
+off-by-one there would point every finding in the second part at a plausible wrong line,
+which is why four of the concat probes are nothing but line mapping.
+
+It was built for the cut-off fences in the triage tail, and **none of them needed it**: all
+four were a missing `End Class` or `End Module`, and the rule that came out of that is now
+in the public authoring guide --- a fence one closing line short of compiling gets `' ...`
+and the closer, not `inert`. The same review found no `excerpt` fence that a closer alone
+would fix; every one of them is already closed and needs context instead.
+
+Its first use is the other shape: **hidden parts around a visible one.** The Painting
+tutorial's `OnPaint` has to sit inside a class that implements `ICustomControl` --- its
+`Implements … .Paint` clause needs the class-level `Implements`, the interface's other two
+members and the field it draws with, all in the same class. A `hidden` fence cannot supply
+any of that, because it is a unit of its own: context a sample can *refer to*, never a
+container a sample goes *inside*. The mouse-event class further down the same page measured
+it while it was still an excerpt: without the class-level `Implements` it failed with
+`TB5016 Interface 'ICustomControl' was not found`. That one is a complete class now: what it
+had elided --- the class-level `Implements` and the interface's other two members --- was
+exactly what it needed to build.
+
+**The unit is its first *visible* part.** `concatFences` first spread `parts[0]` into the
+result, so with a hidden header first the joined unit inherited `hidden` and became page
+context --- which only travels with the page's other samples, so it is compiled only if the
+page has one, and it is never a unit `splitBatch` can isolate a failure to. Caught on the
+first use, fixed, and probed.
 
 **`project=` and `projname=` are one character apart and mean different things** --- the
 template to build into, and the group to build with. Worth renaming if it ever trips
@@ -644,6 +679,24 @@ scope whatever container declares them, so two pages whose hidden context each d
 buys an isolated project; tracking nested enum names in `COLLIDES` would be the general
 version, at the cost of splitting batches for names that usually do not collide.
 
+**It came round a second time**, and the fix that time was cheaper. API-Declarations.md's
+hidden context declared `POINT` inside a `Module DropTargetTypes` block, so the batcher
+recorded `DropTargetTypes`, and the full run put the page beside `Alias-Types.md`'s own
+`Public Type POINT`: `TB5137 'POINT' is ambiguous` on both pages. Hidden context has no
+reason to be wrapped in a `Module` --- the harness generates one for a module-slot fence ---
+so the types now sit at the top of the fence, where the batcher reads their names. **Write
+hidden declarations at the top of their fence**, so the batcher can see them. That matters
+for a name the sample cannot change, like the Win32 `POINT`; a colliding placeholder is
+simply renamed, as the same run's `foo` parameter was.
+
+The same run turned up a latent neighbour dependency: `Alias-Types.md`'s alias fence names
+the `POINT` declared in the fence before it, so it only ever compiled when the two happened
+to share a batch. They are a `projname` group now.
+
+**A page run is not a gate run.** Every one of these passed with `--only`, because a
+five-page selection packs into different batches than the whole corpus does. Finish a batch
+of edits with a full run.
+
 ### `expect-error` has its first use
 
 `Reference/Core/Option.md`'s module-level example exists to show that `Option Explicit`
@@ -783,6 +836,14 @@ declarations](#a-sample-could-pass-on-its-neighbours-declarations) states, bitin
 one afternoon: **the gate is the detector, so run it after every `--apply`.**
 
 ## What is left: 179 samples, and no lever
+
+**Since settled.** This section is the state at 931, kept because its reasoning still
+applies. Every fence it describes has since been completed, marked, or given an `inert=`
+reason, and the census reports none undecided. The CustomControls `Framework/` group below
+is still `inert=excerpt`, but it now has a way out that needs no visible enclosing class:
+hidden class parts joined to the method with `concat_group`, as the Painting tutorial's
+`OnPaint` does --- see [One construct across several
+fences](#one-construct-across-several-fences).
 
 Live against BETA 983, and reproducible: `--propose --json` writes the survey and
 `--report <file>` groups it. **931 of 1,110 compile.**

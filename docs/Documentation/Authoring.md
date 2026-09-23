@@ -477,6 +477,7 @@ generated `Sub`. Three keys override it when it guesses wrong, and one flag asks
 | `inherits=<class>` | The sample is code-behind *of* something --- `inherits=Form`, `inherits=MDIForm`. The wrapper becomes a `Class` that inherits it, so `Me.Caption` resolves against the real type. |
 | `project=<name>` | Which template project to build into. The default follows the page: a page under `Reference/Built-In/` gets the one that references every package. |
 | `projname=<name>` | Build these samples **as one project**, for a page that presents one program in pieces --- a function in one fence and the tests for it in the next three. Every sample sharing the name is compiled together and nothing else is compiled with them. |
+| `concat_group=<name>` | Join these fences, in page order, into **one** piece of code before building it --- for a single construct shown in parts, such as a `Sub` or a `Class` introduced a section at a time. Implies `check_build`. See below. |
 | `expect-error=<code>` | This sample is *meant* not to compile --- it is showing what goes wrong --- and the run fails if it compiles. |
 | `resource=<path>` | **On a fence in any language**, not just ` ```tb `. The fence's contents are written into the generated project at that project-relative path, so the page's samples can be compiled against it. For the compile-time attributes that read a project file --- see below. |
 | `inert=<reason>` | This fence is **not a program**, and saying so settles it: it is never compiled, never proposed, and counted under its reason instead of sitting in the backlog. See below. |
@@ -493,6 +494,7 @@ Mark those `inert=<reason>` rather than leaving them unmarked, so nobody triages
 | Reason | For |
 |---|---|
 | `skeleton` | placeholder identifiers --- `name`, `base_interface`, `<method 1>` |
+| `signature` | a procedure's signature shown on purpose without a body, where a body would mislead --- the members an interface declares, which a reader implements under other names |
 | `excerpt` | deliberately continues another fence, or shows part of one |
 | `pseudo` | prose, a table or a protocol listing set in a code fence |
 | `contrast` | shows the invalid form on purpose, beside the valid one |
@@ -504,6 +506,12 @@ An unrecognised reason is refused, the same as a bad `slot=`, and `inert` togeth
 `check_build` is refused as a contradiction. The census then reports three numbers rather
 than two: how many samples are checked, how many are inert, and how many are **undecided**.
 Only the last is a backlog.
+
+**A fence that stops before its closing line is usually one line from compiling.** Before
+marking it `excerpt` or `signature`, put an elision comment (`' ...`) where the omitted code
+would go and add the construct's closing line --- `End Function`, `End Interface`. The
+reader still sees that something was left out, and the compiler can now check what was
+left in.
 
 ### A sample that reads a file
 
@@ -562,6 +570,24 @@ End Class
 Use it for context, not for hiding a sample. A hidden fence is still compiled, so it is
 checked like everything else --- but nobody can read it, and a fence nobody can read is
 not documentation.
+
+### One construct across several fences
+
+`concat_group=<name>` joins every fence on the page that carries the name, in page order,
+into one piece of code before anything else happens. It is for a single construct shown in
+parts --- a `Sub` built up a few lines at a time, a `Class` whose members are introduced one
+section at a time --- which no fence can compile on its own, because each part is an
+unclosed block. It is not `projname`: that compiles its samples as *separate* modules of one
+project, while the parts of a `concat_group` become one file, so a `Private` field declared
+in the first part is visible in the last.
+
+Parts can be `hidden`. The [Painting](../Tutorials/CustomControls/Painting) tutorial shows
+only the `OnPaint` method it is teaching. A hidden fence before it opens the class,
+implements the interface's other two members and declares the field the method draws with,
+and a hidden fence after it closes the class. A `hidden` fence alone could not do this: it
+is built as a unit of its own, so it can declare what a sample *refers to* but cannot put
+the sample *inside* anything. The joined code is reported as its first visible part, and an
+error in any part is reported against that part's own line.
 
 **A sample that needs another sample needs `projname`.** Samples are packed several to a
 generated project, so one can sometimes see another's declarations by luck --- and luck
