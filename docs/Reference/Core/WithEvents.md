@@ -32,7 +32,7 @@ Assigning a new object to the field rebinds the handlers to it; assigning **Noth
 
 ## Example
 
-This form receives two events from a worker class. The field is declared at module level, constructed in **Form_Load**, and its handlers are named after it.
+This form receives two events from a worker class. The field is declared at module level, constructed in **Form_Load**, and its handlers are named after it. The form's code is shown whole: a form's file is a `Class` of the form's name, which the IDE creates together with its designer attributes (see [Form](../Packages/VB/Form/)), so only the lines inside it are typed.
 
 ```tb check_build projname=withevents-jobrunner
 Class Form1

@@ -103,6 +103,8 @@ A single `tbdocs` run produces all three trees. The `also_build_offline` and `al
 
 The full set of `tbdocs` CLI flags --- every flag, what each one does, when to use it --- lives on the [Tools and Scripts](Tools#tbdocs) page.
 
+**A build that stops with `Nav-parent orphan detected` or `Nav-parent ambiguity detected`** has pages whose `parent:` names no page, or a title two pages share --- most often after a page's `title:` was changed. [Authoring Pages](Authoring#nav-parent-orphan) has the fix for each message.
+
 ### What a healthy run looks like
 {: #a-healthy-run }
 
@@ -539,7 +541,7 @@ Self-hosting the body face settles the *text* at 17px on every machine, and does
 
    ![GitHub's Compare changes page, with the compare across forks link marked, and below it the head repository and compare branch selectors](Images/compare-changes.png)
 
-5. Create the pull request.
+5. Create the pull request. If it adds or changes a twinBASIC code sample, paste the `examples.bat` summary line into the description, as [Checking that a sample compiles](Authoring#checking-that-a-sample-compiles) describes --- no CI workflow compiles the samples.
 
    ![The comparison after choosing the fork and branch, reporting Able to merge, with the green Create pull request button marked](Images/create-pull-request.png)
 

@@ -100,6 +100,8 @@ The handler:
 2. Reads `optCtoF.Value` to determine the direction. Because the two OptionButtons are in the same Frame, exactly one of them is always `True`.
 3. Calls [**Format**](../tB/Modules/Strings/Format) to round the result to two decimal places.
 
+The events handled here are the controls' own. A class can declare and raise events of its own for a form to handle; [**WithEvents**](../tB/Core/WithEvents) shows both sides, with [**Event**](../tB/Core/Event) and [**RaiseEvent**](../tB/Core/RaiseEvent).
+
 ## Step 4: Run the application
 
 Press **F5** (or **Run → Start**). The form appears. Type `100` into the text box, make sure `Celsius → Fahrenheit` is selected, and click **Convert**. The label should show `212.00 °F`.

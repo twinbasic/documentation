@@ -9,7 +9,7 @@ indexed_from: beta-x-0983
 
 # Assert Package
 
-The **Assert** built-in package supplies the assertion functions used to write unit tests for twinBASIC code. Each assertion checks an expected condition; on failure, it records a test failure with the call site and an optional message. The test runner --- the twinBASIC IDE's Test Explorer, or any equivalent harness --- collects those results, decides which tests passed, failed, or were skipped, and reports them.
+The **Assert** built-in package supplies the assertion functions used to write unit tests for twinBASIC code. Each assertion checks an expected condition. One that holds does nothing visible, so a test procedure that returns has passed. One that fails raises the run-time error **Assertion FAILED** (-353703420, `&HEAEAEA04`) at the call, and the IDE stops on that line --- even inside `On Error Resume Next`, which does not catch it. The expected value, the actual value and the optional message are not displayed, and nothing is written to the Debug Console. [Writing unit tests with Assert](../../../Tutorials/Testing-with-Assert) builds and runs a complete test project.
 
 The package's three modules --- [**Exact**](Exact), [**Strict**](Strict), and [**Permissive**](Permissive) --- expose the same fifteen assertion functions; only the *comparison semantics* differ. Each flavour matches a different strictness level for equality evaluation.
 

@@ -400,6 +400,9 @@ page it came from. **1,116 samples are marked and the run takes about 110 second
 It is **never** wired into `build.bat`, `check.bat`, `test.bat` or CI: it needs a twinBASIC
 install, which `npm install` is not, and Windows with a private desktop and a
 CDP-reachable WebView2, which CI has not. `sweep_a11y.mjs` has the same arrangement.
+**So a pull request that adds or changes a sample pastes the run's command and summary
+line into its description** --- the contributor-facing statement is
+[Checking that a sample compiles](docs/Documentation/Authoring.md#checking-that-a-sample-compiles).
 
 **[WIP.ExamplesBuild.md](WIP.ExamplesBuild.md) is the file for this** --- the markup, the
 slots, the template projects and their stage sets, the batching and bisect-on-crash rules,

@@ -452,17 +452,31 @@ Then run it, which needs a twinBASIC install and Windows:
 
     examples.bat --only "^Reference/Core"
 
+**Paste the summary line into the pull request description.** `examples.bat` runs in no
+CI workflow, so a green pull request says nothing about a sample; the line a run ends with
+is the evidence a reviewer has. Run it over the pages you changed, and paste the command
+with the line:
+
+    examples.bat --only "^Tutorials/Testing-with-Assert"
+    check_examples: 7 sample(s), 7 compile, 0 finding(s), 19.6s -- clean
+
+`-- clean` is what a reviewer looks for. A run with a finding ends without it, lists each
+sample that failed against its page and line, and exits 1.
+
 **The marker never reaches the page.** The renderer takes the first word of a fence's info
 string as the language and discards the rest, so a marked fence produces byte-identical
 HTML to an unmarked one. Nothing in the built site, the search index or the PDF can tell
 the difference.
 
-**Mark a sample that is complete, and leave the rest alone.** Most fences on this site are
-not programs --- a statement run with an elision in it, a signature with no body, a syntax
-skeleton with `<placeholders>`. Those are good documentation and there is nothing for a
-compiler to say about them. Roughly a third of the corpus is in that state, which is why
-this is opt-in: a gate that demanded every fence compile would need hundreds of exceptions
-on the first day.
+**Mark every `tb` fence: `check_build` for a sample that is a program, `inert=<reason>` for
+one that is not.** A statement run with an elision in it, a signature with no body, a
+syntax skeleton with `<placeholders>` --- those are good documentation, and there is nothing
+for a compiler to say about them. They are marked all the same, as [Saying that a sample is
+not a program](#saying-that-a-sample-is-not-a-program) describes, because an unmarked fence
+is never compiled and `examples.bat --census` counts it as still unmarked. Checking is
+opt-in for a historical reason: when the harness arrived, roughly a third of the fences
+were not programs, and a gate that demanded every fence compile would have needed hundreds
+of exceptions on the first day.
 
 The tool works out what to build around a sample --- a whole `Class` goes in a file of its
 own, procedures and declarations go in a generated module, loose statements go in a
@@ -941,7 +955,40 @@ child left without a parent. The match is on the parent's **title**, not its
 file, so deleting a page whose title another page still carries is fine. A
 genuine orphan needs a parent that exists --- re-point the children, retitle
 their new home, or delete them too. Only nav-visible pages are checked, so a
-child that sets `nav_exclude` is not caught.
+child that sets `nav_exclude` is not caught. [The next
+section](#nav-parent-orphan) lists every message the check prints.
+
+## When the build stops with `Nav-parent orphan detected`
+{: #nav-parent-orphan }
+
+The build checks that every page's `parent:` names exactly one page, and stops when one
+does not. It lists each page it could not place, with the reason:
+
+    Nav-parent orphan detected in 12 page(s):
+      Features/Example/Child.md: no page titled "Old Title" exists
+
+**The match is on the parent's title, not its file.** Changing a page's `title:` leaves
+every page whose `parent:` names the old title without a parent, although nothing moved.
+Change each of those lines to the new title, in the same commit as the rename. One search
+finds them, and the `grand_parent:` lines that name it as well:
+
+    git grep -n -F "parent: Old Title" -- docs
+
+Change the `grand_parent:` lines too. The check reads `grand_parent:` only when two pages
+share the parent's title, so a stale one does not fail the build today; it fails on the
+day a second page takes that title.
+
+Each reason the check can give:
+
+| Reason | Means |
+|---|---|
+| `no page titled "X" exists` | The parent was renamed, deleted or misspelt --- or it sets `nav_exclude`, and a page hidden from the navigation cannot be a parent. |
+| `N pages are titled "X" and no grand_parent is declared to disambiguate` | Reported under *Nav-parent ambiguity detected*. Add `grand_parent:` naming the intended parent's own parent. |
+| `grand_parent "G" does not match any page titled "X"` | The title is shared, and `grand_parent:` names the parent of neither page. |
+| `N pages titled "X" share parent "G" - grand_parent does not disambiguate` | Two pages with the same title under the same parent. Retitle one of them. |
+
+Only nav-visible pages are checked, so a page that sets `nav_exclude` is never reported
+itself.
 
 ## See also
 

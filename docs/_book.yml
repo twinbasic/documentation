@@ -192,10 +192,30 @@ parts:
     no_heading_shift: true
 
   - title: Tutorials
-    subtitle: Worked code examples for Arrays, CEF, WebView2, and CustomControls
+    subtitle: The foundations, then worked code examples for Arrays, CEF, WebView2, and CustomControls
     outline_closed: true
     # DONE
     chapters:
+      - title: Hello World
+        page: /Tutorials/Hello-World
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: Forms Basics
+        page: /Tutorials/Forms
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: Calling the Windows API
+        page: /Tutorials/Windows-API
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: Writing Unit Tests with Assert
+        page: /Tutorials/Testing-with-Assert
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
       - title: Arrays
         page: /Tutorials/Arrays
         no_outline_entry: true

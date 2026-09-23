@@ -63,6 +63,12 @@ A *package* groups related code under one namespace and is referenced from a pro
 
 ## Tutorials
 
+Step-by-step guides, the first four written for someone new to twinBASIC. [Tutorials](Tutorials/) lists them all.
+
+- [**Hello World**](Tutorials/Hello-World) --- a first Standard EXE: a form, a button and one line of code
+- [**Forms basics**](Tutorials/Forms) --- controls, the Properties window and common events, building a temperature converter
+- [**Calling the Windows API**](Tutorials/Windows-API) --- `Declare` statements, `PtrSafe` and `LongPtr`, and reading error information
+- [**Writing unit tests with Assert**](Tutorials/Testing-with-Assert) --- test Subs, running them from the CodeLens bar, and testing error paths
 - [**Arrays**](Tutorials/Arrays) --- fixed and dynamic arrays, `Dim`, `ReDim`, multi-dimensional shapes
 - [**CustomControls**](Tutorials/CustomControls) --- building owner-drawn controls with the `Waynes…` framework
 - [**WebView2**](Tutorials/WebView2/) --- embedding the Edge runtime: hosting local assets, JavaScript interop, driving Monaco

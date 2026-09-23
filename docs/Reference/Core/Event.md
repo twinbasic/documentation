@@ -2,6 +2,7 @@
 title: Event
 parent: Statements
 permalink: /tB/Core/Event
+vba_attribution: true
 ---
 # Event
 {: .no_toc }
