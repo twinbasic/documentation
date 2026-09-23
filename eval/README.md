@@ -18,9 +18,15 @@ node builder/tbdocs.mjs --src docs            # the search index must be current
 node eval/build_corpus.mjs --dest <path>      # mirror, with source stubbed unreadable
 ```
 
-Then, per case: give an evaluator [protocol.md](protocol.md) with `<CORPUS_ROOT>` filled in,
-plus **one goal** from [usecases.md](usecases.md) and nothing else. Never tell it what the
-case is testing or that a hazard exists.
+Then, per case: give an evaluator the evaluator-facing part of [protocol.md](protocol.md)
+with `<CORPUS_ROOT>` filled in, plus **one goal** from [usecases.md](usecases.md) and nothing
+else. Never tell it what the case is testing or that a hazard exists. The part below
+*For the orchestrator* names defects earlier rounds found, so it stays out.
+
+**Snapshot the search index with the corpus**: copy `docs/_site/assets/js/search-data.json`
+and `assets/js/vendor/lunr.min.js` beside it, and give every evaluator `--site <snapshot>`.
+`site_search.mjs` otherwise reads the live `docs/_site/`, and a rebuild during the round
+--- a fix pass running alongside, say --- moves the ranks under the evaluators' feet.
 
 Cases are independent, so they run in parallel. Sixteen is comfortable.
 
@@ -95,6 +101,7 @@ The structural findings held up. The per-finding severity claims did not, reliab
 | 4 | 8 --- the failure path, and a fix pass auditing itself | [builder/REVIEW-USECASES-4f97bac.md](../builder/REVIEW-USECASES-4f97bac.md); 14 findings, six of them introduced by round 3's own fix pass |
 | 5 | 8 --- the fixes again, and three unread surfaces | [builder/REVIEW-USECASES-4b50c0c.md](../builder/REVIEW-USECASES-4b50c0c.md); 15 findings, no hazard walked into, and discoverability flat across three re-runs |
 | 6 | 8 --- a discoverability fix measured, and the reference half | [builder/REVIEW-USECASES-9b8e70c.md](../builder/REVIEW-USECASES-9b8e70c.md); 14 findings, the first non-compiling samples the harness has found |
+| 7 | 8 --- the re-runs round 6 named, and the first executed case | [builder/REVIEW-USECASES-60bb6f5.md](../builder/REVIEW-USECASES-60bb6f5.md); 19 findings, no hazard walked into, UC-40's discoverability 1 → 4, and a tutorial describing a failure the product does not produce |
 
 Round 1's headline was a gradient: documentation quality fell monotonically with depth into
 the toolchain (contributor 3.8 discoverability, toolchain user 2.8, builder developer 1.8),

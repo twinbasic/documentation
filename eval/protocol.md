@@ -1,6 +1,7 @@
 # Use-case evaluation protocol
 
-Hand this file to an evaluator, then give it one goal from [usecases.md](usecases.md).
+Hand an evaluator the part of this file between the rule below and [For the
+orchestrator](#for-the-orchestrator), then give it one goal from [usecases.md](usecases.md).
 Nothing else. In particular do not tell it what the case is testing, which page answers it,
 or that a hazard exists --- walking into the hazard is the finding.
 
@@ -28,8 +29,10 @@ logic:
 
 It prints ranked results as title + URL + snippet. A URL like
 `/Documentation/Development/Extending#adding-a-pipeline-task` corresponds to the corpus file
-`docs/Documentation/Extending.md`. Only published pages are indexed --- files under
-`builder/`, `perf/`, `test/` and the repository root are NOT reachable this way.
+`docs/Documentation/Extending.md`: to open a result, find the file whose frontmatter
+`permalink:` matches the URL. A grep for the permalink is fine for that, and does not count
+as full-text search. Only published pages are indexed --- files under `builder/`, `perf/`,
+`test/` and the repository root are NOT reachable this way.
 
 ## Three channels, measured independently
 
@@ -76,16 +79,31 @@ change, and nothing else:
 - **Channel 2 starts at `docs/index.md`**, the published welcome page, rather than the
   repository README.
 
-Round 6 introduced this because rounds 1--5 had tested 4% of the search index and left the
-reference's 80.9% unopened. It immediately returned the harness's first hazard failure in
-two rounds and its first non-compiling code samples --- a ListView example that raises a
-documented run-time error, and an `Event` sample with a nameless `Sub`.
-
-**A site-protocol run is not comparable with a repo-protocol run of the same goal.** They
-see different trees and start navigation in different places, so a re-run must keep the
-protocol it was first run under.
-
 ## For the orchestrator
+
+**Hand an evaluator the text above this heading and nothing below it**, with
+`<CORPUS_ROOT>` filled in and the search command given `--site` pointing at the index
+snapshotted with the corpus. What follows names defects earlier rounds found, which is an
+answer key for any case that re-runs them.
+
+**The site-entry variant** exists because rounds 1--5 had tested 4% of the search index and
+left the reference's 80.9% unopened. Round 6 introduced it, and it immediately returned the
+harness's first hazard failure in two rounds and its first non-compiling code samples ---
+a ListView example that raises a documented run-time error, and an `Event` sample with a
+nameless `Sub`. **A site-protocol run is not comparable with a repo-protocol run of the
+same goal.** They see different trees and start navigation in different places, so a
+re-run must keep the protocol it was first run under.
+
+**Record the evaluator model.** Rounds 1--6 did not; round 7 ran on Sonnet. A re-run on a
+different model mixes the fix's effect with the model's, which the orchestrator's own
+re-measured search ranks do not.
+
+**An executed case** --- round 7's UC-54 --- asks the evaluator for a complete project and
+what it will print, then runs it: the evaluator's code verbatim in a template from
+`test/example-projects/`, a `[RunAfterBuild]` Sub beginning `Debug.Cls` standing in for the
+reader's click, and `scripts/tbrun.mjs`. Change one expected value for a second run, since
+the failure path is what the pages are least likely to have been checked against. A
+program that opens a `MsgBox` or waits for a user at a form cannot be run this way.
 
 **Re-verify every finding against the file before recording it.** In round 1, seven of
 twenty-six findings needed amendment after an agent checked the source, every one in the

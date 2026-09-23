@@ -304,3 +304,60 @@ goal, so do not mix them in a re-run.
 | UC-50 | *(site)* Port a VBA routine that assigns to `Date` and does currency maths with `CDec`. | **H** `Date` is a property in twinBASIC, not a function/statement, and `Decimal` is a full data type rather than a Variant subtype |
 | UC-51 | *(site)* I want these docs on my laptop with no connection, or printed. | **H** the same deliverable as UC-45 from the reader's side, against a door added the same day |
 | UC-53 | *(site)* Write a class that raises an event and a form that handles it. | **H** `WithEvents` has no page of its own, and twinBASIC adds `Handles`, which VB6 does not have |
+
+## Round 7 --- the re-runs round 6 asked for, and the surface opened since
+
+**Run 2026-09-23 at `60bb6f5`**, plus two uncommitted edits made for it: the UC-40 door
+below, and one stale clause in `Tools.md`'s `gen_attribute_probes.mjs` entry. Round 6 left
+a list; this round takes it, less the two items it could not honestly run.
+
+**Re-run the three round 6 named.** UC-49 and UC-53 had their samples fixed and are now
+compiled by `examples.bat`, and `WithEvents` has a page. UC-40's fix *did not work* in
+round 6, and round 6 said why: a new section titled in the vocabulary of the problem is
+what moves discoverability, and a renamed heading is not. `Extending.md` now has *When
+`test.bat` says a regex can backtrack exponentially*, which quotes the gate's own first
+line of failure. Whether a symptom-shaped title works when the symptom is a gate's output
+rather than a behaviour is the question.
+
+**Open the two surfaces round 6 named and the one it could not have.** The Features section
+(6.7% of the index) has never been read by a case; UC-55 reads the page rebuilt the day
+before. UC-54 is the tutorial case round 6 asked for, and the first case whose deliverable
+is *executed*: the orchestrator compiles and runs what the evaluator assembles, with
+`tbrun`, and compares the output with what the evaluator predicted from the page. And the
+sample-compiling harness (`examples.bat`, `check_build`) did not exist at round 6.
+
+**Two gates round 3 listed as having no "when this fails" passage** were never sampled:
+`check_code_regions` and nav integrity. UC-56 and UC-57.
+
+**Not run: the stale-page case** round 3 queued --- an answer correct on one page and stale
+on another. A targeted search for a live instance found one, `Tools.md`'s claim that
+`import` always exits 0, and it was too weak to use: the remedy that page gives next to the
+stale claim is still the right one, so a reader who trusts it does not go wrong. It is fixed
+in the corpus instead. Every evaluator's GAPS section is the cheaper detector for the next
+one.
+
+**Not run: UC-50.** Its completeness 2 was round 6's finding 10, still open when this round
+started; a re-run would re-measure the same absence.
+
+### Persona A: content contributor
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-57 | I renamed the title of a section's landing page and the build now stops with `Nav-parent orphan detected in 12 page(s)`. Fix it properly. | **H** the recovery prose sits under *Removing a page*, a heading about a different task; the match is on the title, so every child has to follow it |
+| UC-58 | I'm adding a code example to a reference page. Make sure it actually compiles before I open the pull request, and tell me how I'd show a reviewer that it does. | **H** `examples.bat` is outside every gate and CI, so a green pull request says nothing about a sample; and a fence without `check_build` is never compiled at all |
+
+### Persona C: builder developer
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-40 | *(re-run)* A gate refused a regex I added to the builder. Understand it and fix it. | **H** rounds 5 and 6 found the answer only under the script's own name; the section added for this round quotes the failure instead |
+| UC-56 | I changed one of the builder's text rewrites, and `test.bat` now fails in `check_code_regions`. What does it want from me, and what is the right fix? | **H** exempting the page or loosening the comparison looks like a fix; the rewrite belongs between `maskCodeRegions` and its restore, and the gate's `Tools.md` entry has no "when this fails" passage |
+
+### Persona D: a twinBASIC developer on the published site
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-49 | *(site, re-run)* Port a VB6 form that uses an `MSCOMCTL.OCX` ListView: what replaces it, and how do I fill it? | **H** the flagship sample raised a documented run-time error; fixed and compile-checked since |
+| UC-53 | *(site, re-run)* Write a class that raises an event and a form that handles it. | **H** `WithEvents` had no page, and five pages disagreed about the event mechanism; reconciled since |
+| UC-54 | *(site)* I want to start unit-testing my twinBASIC code. Get me from nothing to a test run: the finished project exactly as I'd have it, and what the run will print. | executed, not only read: the orchestrator runs the assembled project with `tbrun`. The Assert calls need both the package and the module qualifier, and the samples compiled only from two days before |
+| UC-55 | *(site)* Keep my twinBASIC project in git as plain-text files, and rebuild the project file from them in a script. | **H** the tB executable exits 0 after the failures it reports, cannot re-pack a project that embeds a package --- which a project using one does by default --- and packs a `.git` folder into the project |
