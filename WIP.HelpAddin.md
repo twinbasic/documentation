@@ -194,10 +194,12 @@ from the page's own origin (**P13**). Deferred.
   `targetArchitectureMemory`, the licence values, ...), `ProjectState` (one value per project
   ever opened), `RecentlyOpened` (21 values) and `Window` (6). Every IDE a user runs shares
   them, and so does every IDE a harness starts.
-- **The existing harness already leaves entries there.** On 2026-09-23, **303 of the 424
+- **The existing harness already leaves entries there.** On 2026-09-23, **318 of the 424
   `ProjectState` values** were temp projects from `examples.bat` lanes, `%TEMP%\tbprobe` and
   scratchpad probes, and **all 21 `RecentlyOpened` entries** were temp projects: the user's
-  own recent projects had been pushed out of the IDE's recent list entirely. [Stage
+  own recent projects had been pushed out of the IDE's recent list entirely. Both were
+  cleared by hand the same day --- 339 `ProjectState` values by then, because a harness run
+  in another session had added 21 more in the meantime. [Stage
   1](#stage-1-testing-add-ins-by-machine) fixes this for every harness tool, not only for
   add-in tests.
 - **The `.twinproj` association** is `HKCU\Software\Classes\.twinproj` →
@@ -241,7 +243,10 @@ Everything after this stage is developed against it.
 3. **Leave the registry as it was found**, for every harness tool:
    - save `HKCU\Software\Classes\.twinproj` and `twinBASIC.ProjectFile` before a run, and
      restore them once the last lane has ended;
-   - delete the `ProjectState` values the run created, and restore `RecentlyOpened`;
+   - delete the `ProjectState` values the run created, and restore `RecentlyOpened`. Match
+     paths with either separator: some tools store them with forward slashes
+     (`C:/Users/.../Temp/tbprobe/...`), and a backslash-only pattern missed 15 of them in the
+     hand cleanup;
    - save and restore the add-in's own `SaveSetting` key;
    - refuse to start while `%APPDATA%\twinBASIC\addins\*` holds a DLL, until P6 says
      whether that folder matters.
