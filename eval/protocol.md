@@ -1,9 +1,11 @@
 # Use-case evaluation protocol
 
-Hand an evaluator the part of this file between the rule below and [For the
-orchestrator](#for-the-orchestrator), then give it one goal from [usecases.md](usecases.md).
+An evaluator gets the part of this file between the rule below and [For the
+orchestrator](#for-the-orchestrator), then one goal from [usecases.md](usecases.md).
 Nothing else. In particular do not tell it what the case is testing, which page answers it,
-or that a hazard exists --- walking into the hazard is the finding.
+or that a hazard exists --- walking into the hazard is the finding. `eval/run_case.mjs`
+assembles exactly that and runs the evaluator; never hand it over by any other route (see
+[For the orchestrator](#for-the-orchestrator)).
 
 ---
 
@@ -25,7 +27,7 @@ is NEW to this project and knows nothing about it beyond what you read here.
 The published site has a search box. This replica uses the real index and the real query
 logic:
 
-    node eval/site_search.mjs "your query here"
+    site-search "your query here"
 
 It prints ranked results as title + URL + snippet. A URL like
 `/Documentation/Development/Extending#adding-a-pipeline-task` corresponds to the corpus file
@@ -82,9 +84,29 @@ change, and nothing else:
 ## For the orchestrator
 
 **Hand an evaluator the text above this heading and nothing below it**, with
-`<CORPUS_ROOT>` filled in and the search command given `--site` pointing at the index
-snapshotted with the corpus. What follows names defects earlier rounds found, which is an
-answer key for any case that re-runs them.
+`<CORPUS_ROOT>` filled in and `site-search` pointing at the index snapshotted with the
+corpus. What follows names defects earlier rounds found, which is an answer key for any case
+that re-runs them.
+
+**Run every evaluator with `eval/run_case.mjs`, never as a subagent of the session you are
+working in.** A subagent started in this repository receives that session's `CLAUDE.md`,
+and the local `CLAUDE.md` imports `WIP.md` --- the file the corpus exists to withhold,
+holding every gate's hazard and remedy. Asked without tools, a subagent quoted `WIP.md`'s
+first heading. The runner starts `claude -p` inside the corpus instead: safe mode, read-only
+tools, reads refused outside its working directory, and one command allowed, the
+`site-search` shim it generates over the snapshot. For a site-protocol case the working
+directory is the corpus's `docs/`, so the variant's boundary is enforced rather than asked
+for. Run `--smoke` once before a round; it checks all of that and fails loudly. The
+consequences for rounds 1--7 are in [eval/README.md](README.md#why-an-evaluator-is-a-separate-process).
+
+**Audit the channels from the session, not from the report.** The runner keeps the whole
+session and prints `eval/transcript.mjs`'s digest: every search, read and full-text search,
+in order. Of the first two evaluators run this way, one searched the whole corpus for the
+gate's name before its first site search and then reported Channel 3 as not needed; the
+other found its answer by search and walked the navigation path afterwards, to links it
+already knew. Neither report said so. Where the digest flags a full-text search the report
+does not own up to, score discoverability from what can be checked --- the search ranks and
+the links --- and record the discrepancy.
 
 **The site-entry variant** exists because rounds 1--5 had tested 4% of the search index and
 left the reference's 80.9% unopened. Round 6 introduced it, and it immediately returned the
@@ -96,7 +118,8 @@ re-run must keep the protocol it was first run under.
 
 **Record the evaluator model.** Rounds 1--6 did not; round 7 ran on Sonnet. A re-run on a
 different model mixes the fix's effect with the model's, which the orchestrator's own
-re-measured search ranks do not.
+re-measured search ranks do not. The runner writes the model and the Claude Code version
+into every case's `.meta.json`.
 
 **An executed case** --- round 7's UC-54 --- asks the evaluator for a complete project and
 what it will print, then runs it: the evaluator's code verbatim in a template from
