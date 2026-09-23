@@ -65,7 +65,7 @@ For service / long-running classes that should expose [**LogSuccess**](EventLog#
 
 A class can mix [**EventLog**](EventLog)`(Of T1, T2)` in through twinBASIC's [`Implements ... Via`](../../../Features/Language/Inheritance) composition syntax and inherit its public members unqualified:
 
-```tb
+```tb check_build projname=eventlog-composition-idiom
 Class MyService
     Implements EventLog(Of MESSAGETABLE.EVENTS, MESSAGETABLE.CATEGORIES) Via _
         EventLog = New EventLog(Of MESSAGETABLE.EVENTS, MESSAGETABLE.CATEGORIES)("Application\" & CurrentComponentName)
@@ -100,7 +100,7 @@ For the generic [**EventLog**](EventLog)`(Of T1, T2)` class, the *T1* (event IDs
 
 Declare a module with two empty enum stubs, each tagged with [`[PopulateFrom]`](../../Core/Attributes#populatefrom) pointing at a project-relative JSON resource:
 
-```tb
+```tb check_build projname=eventlog-composition-idiom
 Module MESSAGETABLE
     [PopulateFrom("json", "/Resources/MESSAGETABLE/Strings.json", "events", "name", "id")]
     Enum EVENTS
@@ -116,7 +116,7 @@ The five [`[PopulateFrom]`](../../Core/Attributes#populatefrom) arguments are: t
 
 `Resources/MESSAGETABLE/Strings.json` has one entry per event and one per category. Each entry has three fields --- a numeric `id`, an enum-member `name`, and the per-locale message text under an `LCID_XXXX` key:
 
-```json
+```json resource=/Resources/MESSAGETABLE/Strings.json projname=eventlog-composition-idiom
 {
     "events": [
         { "id": -1073610751, "name": "service_started",        "LCID_0000": "%1 service started" },
@@ -133,7 +133,7 @@ The compiler reads the JSON at build time and populates each enum body --- `Enum
 
 Once the JSON, the enum stubs, and the registry entries written by [**Register**](EventLog#register) are in place, a runtime call
 
-```tb
+```tb check_build projname=eventlog-composition-idiom
 Dim Log As EventLog(Of MESSAGETABLE.EVENTS, MESSAGETABLE.CATEGORIES)
 Set Log = New EventLog(Of MESSAGETABLE.EVENTS, MESSAGETABLE.CATEGORIES)("Application\" & CurrentComponentName)
 Log.LogSuccess service_started, status_changed, "MyService"

@@ -679,6 +679,15 @@ ninety-nine their result. `tbbuild` reports a crash as exit 4; this splits the b
 recurses until the offending sample is alone, which is O(log n) extra builds paid only on
 failure. The finding names the sample and points at `BUGS-TO-REPORT.md`.
 
+**A sample can be compiled against a file.** A fence carrying `resource=<project-relative
+path>` --- in any language, typically ` ```json ` --- is written into the generated project at
+that path instead of being compiled, and travels with its page the way a `hidden` fence
+does. It exists for the compile-time attributes that read a project file:
+`[PopulateFrom("json", "/Resources/MESSAGETABLE/Strings.json", …)]` fills an **Enum**'s
+members from that JSON while compiling, so the members the page's other samples name are
+checked against the file the page shows. The path may not escape the project --- no `..`, no
+drive letter, no UNC --- and a refused path is a finding rather than a write.
+
 **A diagnostic can also land outside every sample**, inside a referenced package's own
 source. A generic instantiated with a type the project does not have is the case to know: the
 error is reported against the generic's own type parameter, in the package's file, and the

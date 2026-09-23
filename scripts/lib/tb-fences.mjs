@@ -101,7 +101,41 @@ const FLAGS = new Set([MARKER, RUN_MARKER, HIDDEN_MARKER]);
  * presents one program in pieces -- a tutorial that defines a function in one
  * fence and tests it in the next three.
  */
-const KEYS = new Set(["slot", "project", "projname", "id", "expect-error", "inherits"]);
+const KEYS = new Set([
+  "slot", "project", "projname", "id", "expect-error", "inherits", "resource",
+]);
+
+/**
+ * `resource=<project-relative path>` on a fence in ANY language stages that
+ * fence's contents as a file in the generated project, beside the samples that
+ * need it. It exists for the compile-time attributes that read a project file:
+ * `[PopulateFrom("json", "/Resources/MESSAGETABLE/Strings.json", ...)]` fills an
+ * Enum's members from that JSON while compiling, so without the file the whole
+ * feature is undocumentable -- and WITH it the compiler checks the member names
+ * the JSON produces, which is the claim the page is really making.
+ *
+ * A resource fence is never compiled and never counts as a sample. It is
+ * rendered like any other fence: the reader is supposed to see the file.
+ */
+export const RESOURCE_KEY = "resource";
+
+/**
+ * A resource path, reduced to something that cannot escape the staged project.
+ * Returns null for a path that tries.
+ */
+export function resourcePath(raw) {
+  // The UNC and drive-letter tests run BEFORE the leading slashes come off, or
+  // `//server/share` passes as the innocent-looking `server/share`.
+  const flat = String(raw ?? "").trim().replace(/\\/g, "/");
+  if (!flat || /^[A-Za-z]:/.test(flat) || flat.startsWith("//")) return null;
+  const parts = [];
+  for (const seg of flat.replace(/^\/+/, "").split("/")) {
+    if (!seg || seg === ".") continue;
+    if (seg === "..") return null;                  // no climbing out, ever
+    parts.push(seg);
+  }
+  return parts.length ? parts.join("/") : null;
+}
 
 /** The slots, in the order the classifier prefers them. */
 export const SLOTS = ["file", "module", "sub", "class", "method"];
@@ -185,16 +219,22 @@ export async function collectFences(root) {
   const out = [];
   for (const rel of await markdownFiles(root)) {
     const src = await fs.readFile(path.join(root, rel), "utf8");
-    let ordinal = 0;
+    let ordinal = 0, resources = 0;
     const walk = (tokens) => {
       for (const t of tokens) {
         if (t.type === "fence") {
           const parsed = parseInfo(t.info);
-          if (parsed.lang === "tb") {
-            ordinal += 1;
+          // A resource fence is collected whatever language it is written in --
+          // the JSON a [PopulateFrom] enum reads is a ```json block, and it is
+          // the file that matters rather than the highlighting. It counts on its
+          // own series, so adding one to a page does not renumber the samples
+          // below it and silently rename every generated module.
+          const isResource = parsed.keys.has(RESOURCE_KEY);
+          if (parsed.lang === "tb" || isResource) {
+            const n = isResource ? (resources += 1) : (ordinal += 1);
             out.push({
-              rel, ordinal,
-              id: parsed.keys.get("id") ?? `${rel}#${ordinal}`,
+              rel, ordinal: n, isResource,
+              id: parsed.keys.get("id") ?? `${rel}#${isResource ? "r" : ""}${n}`,
               line: t.map ? t.map[0] + 1 : 0,
               info: t.info.trim(),
               content: t.content,

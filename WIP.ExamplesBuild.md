@@ -138,6 +138,39 @@ Shape --- bare flags and `key=value` pairs after the language token:
 | `projname=` | build these samples as one project | each sample is its own unit |
 | `id=` | stable name for reporting | `<page>#<ordinal>` |
 | `expect-error=` | the sample is *meant* not to compile; assert this error | --- |
+| `resource=` | **on a fence in any language**: stage this fence's contents into the project at that path, instead of compiling it | --- |
+
+### A sample can be compiled against a file
+
+`[PopulateFrom("json", "/Resources/MESSAGETABLE/Strings.json", "events", "name", "id")]`
+fills an empty `Enum` with members read from a project file **while compiling**. A page
+documenting it therefore has samples whose symbols exist only if that file does, and
+`WinEventLogLib/index.md` is the case: its `Class MyService` names
+`MESSAGETABLE.EVENTS.service_started`, which comes from the JSON the page prints two
+sections further down.
+
+`resource=<project-relative path>` on that ` ```json ` fence stages it. Measured before any
+of it was built, by hand: **`import` packs a `Resources/` tree into the `.twinproj`, the
+attribute reads it, and a module referring to `MESSAGETABLE.EVENTS.service_started` compiles
+with 0 errors** --- so the member names really are produced from the file rather than merely
+tolerated.
+
+Four rules, each a consequence rather than a preference:
+
+- **It is a file, not a sample.** Never compiled, never counted, absent from the census, and
+  it cannot pass or fail. The run header says `N staged file(s)` so the count is visible.
+- **It travels with its page**, exactly as `hidden` does, which is why no `projname` is
+  needed for it to reach the page's group.
+- **It keeps its own id series** (`<page>#r1`). Collecting a `json` fence into the same
+  numbering as the `tb` fences would renumber every sample below it on the page, and a
+  sample's generated module name is a hash of its id.
+- **The path may not leave the project.** No `..`, no drive letter, no UNC --- eight probes,
+  and the first version of the guard failed one of them: it stripped the leading slashes
+  before testing for `//`, so `//server/share/x.json` passed as `server/share/x.json`.
+
+What this buys is not the tick. It is that the JSON's shape --- which array, which field
+supplies the name, which supplies the value --- is now checked against the code that reads
+it, on the page that documents both.
 
 **`project=` and `projname=` are one character apart and mean different things** --- the
 template to build into, and the group to build with. Worth renaming if it ever trips

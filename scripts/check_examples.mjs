@@ -71,7 +71,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   BODY_SLOTS, HIDDEN_MARKER, MARKER, RUN_MARKER, SLOTS, classify, collectFences,
-  moduleName, parseInfo, wrapFence,
+  moduleName, parseInfo, resourcePath, wrapFence,
 } from "./lib/tb-fences.mjs";
 import { buildNumber, compilerExe, findIde } from "./lib/tb-install.mjs";
 
@@ -216,6 +216,23 @@ function select(fences) {
       continue;
     }
 
+    // A resource fence is a FILE the project needs, not a sample: it is never
+    // compiled, never counted, and travels with the samples that read it. The
+    // path is checked here because a bad one would otherwise be written
+    // somewhere outside the staged project.
+    if (fence.isResource) {
+      const rel = resourcePath(fence.keys.get("resource"));
+      if (!rel) {
+        addFinding(fence, `resource= is not a path inside the project: ${fence.keys.get("resource")}`,
+          "it must be project-relative, with no drive letter and no `..` segment");
+        continue;
+      }
+      fence.resourceRel = rel;
+      fence.project = fence.keys.get("project") ?? defaultProject(fence.rel);
+      chosen.push(fence);
+      continue;
+    }
+
     const marked = fence.flags.has(MARKER);
     if (!marked && !MODE_PROPOSE && !MODE_CENSUS) continue;
 
@@ -321,10 +338,13 @@ function makeBatches(fences) {
   // Keyed by page AND template, because the same page can send samples to two
   // templates and a hidden block compiled into the wrong one would fail for a
   // reason that has nothing to do with the page.
+  //
+  // A `resource` fence travels the same way and for the same reason -- it is a
+  // file the page's samples read at compile time, not a unit of its own.
   const hiddenByPage = new Map();
   const visible = [];
   for (const f of fences) {
-    if (!f.flags.has(HIDDEN_MARKER)) { visible.push(f); continue; }
+    if (!f.flags.has(HIDDEN_MARKER) && !f.isResource) { visible.push(f); continue; }
     const key = `${f.project}\u0000${f.rel}`;
     if (!hiddenByPage.has(key)) hiddenByPage.set(key, []);
     hiddenByPage.get(key).push(f);
@@ -460,6 +480,16 @@ function stageBatch(batch, work) {
 
   const map = new Map();
   for (const fence of batch.fences) {
+    // A resource fence is written where the project expects to find it, not
+    // compiled. `import` packs a Resources/ tree into the .twinproj and the
+    // compile-time attributes read it from there -- measured against
+    // [PopulateFrom], which populates an Enum's members while compiling.
+    if (fence.isResource) {
+      const dest = path.join(dir, ...fence.resourceRel.split("/"));
+      mkdirSync(path.dirname(dest), { recursive: true });
+      writeFileSync(dest, fence.content.replace(/\r\n?/g, "\n"), "utf8");
+      continue;
+    }
     const mod = moduleName(fence.id);
     const { text, offset } = wrapFence(fence, fence.slot, mod, fence.base);
     // CRLF, as the IDE writes .twin files.
@@ -552,10 +582,13 @@ async function buildStaged(staged, port) {
  * thing that can be blamed.
  */
 function splitBatch(batch) {
-  const hidden = batch.fences.filter((f) => f.flags.has(HIDDEN_MARKER));
+  // Hidden fences and resource files are page context: they follow the samples
+  // rather than being split between them.
+  const travels = (f) => f.flags.has(HIDDEN_MARKER) || f.isResource;
+  const hidden = batch.fences.filter(travels);
   const units = new Map();
   for (const f of batch.fences) {
-    if (f.flags.has(HIDDEN_MARKER)) continue;
+    if (travels(f)) continue;
     const key = f.keys.get("projname") ? `@${f.keys.get("projname")}` : `#${f.id}`;
     if (!units.has(key)) units.set(key, []);
     units.get(key).push(f);
@@ -572,7 +605,7 @@ function splitBatch(batch) {
 
 /** The visible samples of a leaf batch, and how to describe it in a finding. */
 function leafOf(batch) {
-  const visible = batch.fences.filter((f) => !f.flags.has(HIDDEN_MARKER));
+  const visible = batch.fences.filter((f) => !f.flags.has(HIDDEN_MARKER) && !f.isResource);
   const rest = visible.length > 1
     ? ` -- one of the ${visible.length} samples in group \`${batch.group ?? "?"}\`, ` +
       "which is compiled as one program and cannot be split further"
@@ -1126,6 +1159,31 @@ async function runProbes() {
     failures.push("split: one template's rows from two builds do not compare equal");
   }
 
+  // A resource path is written into a staged project, so a path that climbs out
+  // of it would write somewhere on the machine. Every refusal here is a path
+  // that must never reach `writeFileSync`.
+  for (const [raw, want] of [
+    ["/Resources/MESSAGETABLE/Strings.json", "Resources/MESSAGETABLE/Strings.json"],
+    ["Resources\\Sub\\file.json", "Resources/Sub/file.json"],
+    ["./Resources/./file.json", "Resources/file.json"],
+    ["../outside.json", null],
+    ["Resources/../../outside.json", null],
+    ["C:/Windows/system32/evil.json", null],
+    ["//server/share/file.json", null],
+    ["   ", null],
+  ]) {
+    const got = resourcePath(raw);
+    if (got !== want) failures.push(`resource path: ${JSON.stringify(raw)} -> ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
+  }
+  // ...and a resource fence is collected whatever language it carries, while an
+  // ordinary fence in that language is not.
+  if (!parseInfo("json resource=/Resources/x.json").keys.has("resource")) {
+    failures.push("resource: the key is not read off a non-tb fence");
+  }
+  if (parseInfo("json resource=/Resources/x.json").bad.length) {
+    failures.push("resource: the key is refused as unknown markup");
+  }
+
   // The report's own arithmetic. A survey is only read through this grouping, so
   // a section that buckets wrong or a kind that fails to generalise moves the
   // numbers a decision is made on.
@@ -1179,9 +1237,9 @@ async function runProbes() {
     return false;
   }
   // 10 line-map (5 slots x 2 bases) + 4 wrapper container + 7 batching
-  // + 5 splitting + 8 report + 6 markup.
-  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 40} probes: ` +
-    `classifier, markup, line mapping, batching, splitting and the report`);
+  // + 5 splitting + 10 resource + 8 report + 6 markup.
+  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 50} probes: ` +
+    `classifier, markup, line mapping, batching, splitting, resources and the report`);
   return true;
 }
 
@@ -1203,9 +1261,13 @@ async function main() {
   const fences = await collectFences(DOCS);
   const selected = select(fences);
   checkGroups(fences, selected);
+  // Everything that counts as a sample. A resource fence is selected -- it has
+  // to be staged -- but it is a file, so it is not censused, not counted and
+  // never reported as passing.
+  const samples = selected.filter((f) => !f.isResource);
 
   if (MODE_CENSUS) {
-    census(selected);
+    census(samples);
     reportFindings();
     // Advisory findings are survey results, so they print and do not fail: a
     // census narrowed with --only says what the narrowing cost and still exits 0.
@@ -1234,9 +1296,11 @@ async function main() {
   rmSync(work, { recursive: true, force: true });
   mkdirSync(work, { recursive: true });
 
-  say(`check_examples: ${selected.length} sample(s) from ` +
-    `${new Set(selected.map((f) => f.rel)).size} page(s) in ${batches.length} project(s), ` +
-    `${Math.min(jobs, batches.length)} lane(s), BETA ${buildNumber(IDE) ?? "?"}`);
+  const staged = selected.length - samples.length;
+  say(`check_examples: ${samples.length} sample(s) from ` +
+    `${new Set(samples.map((f) => f.rel)).size} page(s) in ${batches.length} project(s), ` +
+    `${Math.min(jobs, batches.length)} lane(s), BETA ${buildNumber(IDE) ?? "?"}` +
+    (staged ? `, ${staged} staged file(s)` : ""));
 
   // Said out loud rather than passed over in silence: a sample asking to be RUN
   // is only being compiled today, and a reader of this output would otherwise
@@ -1268,6 +1332,7 @@ async function main() {
 
   const passed = [];
   for (const fence of selected) {
+    if (fence.isResource) continue;              // a staged file, not a sample
     if (crashed.has(fence.id)) continue;         // reported already, and never a pass
     const diags = (errorsById.get(fence.id) ?? []).filter((d) => d.severity === "ERROR");
 
@@ -1326,7 +1391,7 @@ async function main() {
 
   if (MODE_PROPOSE) {
     const unmarked = passed.filter((f) => !f.marked);
-    say(`\n${passed.length} of ${selected.length} sample(s) compile; ` +
+    say(`\n${passed.length} of ${samples.length} sample(s) compile; ` +
       `${unmarked.length} of them are not yet marked \`${MARKER}\``);
     const byPage = new Map();
     for (const f of unmarked) byPage.set(f.rel, (byPage.get(f.rel) ?? 0) + 1);
@@ -1344,16 +1409,16 @@ async function main() {
   // because a template that does not compile makes every sample in it fail.
   const real = findings.filter((f) => !f.advisory).length + (templateFaults.length ? 1 : 0);
   if (AS_JSON) {
-    console.log(JSON.stringify({ selected: selected.length, passed: passed.length, findings }, null, 2));
+    console.log(JSON.stringify({ selected: samples.length, passed: passed.length, findings }, null, 2));
   } else {
     reportFindings();
     // The same grouping `--report` prints, from the run that just produced it:
     // a survey read page by page is 277 notes, and the question a survey is run
     // to answer is which of them share a cause.
     if (MODE_PROPOSE) {
-      summarise({ selected: selected.length, passed: passed.length, findings });
+      summarise({ selected: samples.length, passed: passed.length, findings });
     }
-    say(`\ncheck_examples: ${selected.length} sample(s), ${passed.length} compile, ` +
+    say(`\ncheck_examples: ${samples.length} sample(s), ${passed.length} compile, ` +
       `${real} finding(s), ${secs}s` + (real ? "" : " -- clean"));
   }
   if (flag("keep")) say(`generated projects kept in ${work}`);

@@ -478,6 +478,31 @@ generated `Sub`. Three keys override it when it guesses wrong, and one flag asks
 | `project=<name>` | Which template project to build into. The default follows the page: a page under `Reference/Built-In/` gets the one that references every package. |
 | `projname=<name>` | Build these samples **as one project**, for a page that presents one program in pieces --- a function in one fence and the tests for it in the next three. Every sample sharing the name is compiled together and nothing else is compiled with them. |
 | `expect-error=<code>` | This sample is *meant* not to compile --- it is showing what goes wrong --- and the run fails if it compiles. |
+| `resource=<path>` | **On a fence in any language**, not just ` ```tb `. The fence's contents are written into the generated project at that project-relative path, so the page's samples can be compiled against it. For the compile-time attributes that read a project file --- see below. |
+
+### A sample that reads a file
+
+Some twinBASIC features read a project file *while compiling*.
+[`[PopulateFrom]`](../tB/Core/Attributes#populatefrom) is the one to know: it fills an empty
+**Enum** with members taken from a JSON resource, so a page documenting it has an enum whose
+members exist only if that file does.
+
+Mark the JSON block that the page already shows with `resource=`, and the file is staged
+beside the samples:
+
+````markdown
+```json resource=/Resources/MESSAGETABLE/Strings.json
+{ "events": [ { "id": 1000, "name": "service_started" } ] }
+```
+````
+
+The file travels with its page, exactly as a `hidden` fence does, so every sample on that
+page is compiled against it. The block is rendered normally --- the reader is meant to see
+the file --- and the path may not climb out of the project, so no `..` and no drive letter.
+
+What this buys is more than a green tick: the enum members the page's *other* samples use
+come from that JSON, so the compiler checks the file's shape and the names it produces
+against the code that reads them.
 
 A sample that assumes a control on a form is fine: the templates declare `Text1`,
 `ListView1`, `CefBrowser1` and the others, exactly as a reader's own project would, so what
