@@ -168,10 +168,19 @@ The method opens the SCM with `SC_MANAGER_CONNECT`, opens the service with `SERV
 
 The launch-args mechanism is commonly used to gate startup on a shared secret:
 
-```tb inert=excerpt
+```tb check_build
 ' UI side — starting the service with a password argument:
 Services.LaunchService "MyService", "MySecretPassword"
+```
 
+```tb hidden concat_group=launch-password
+' Context for the sample below: the service class it belongs to.
+[COMCreatable(False)]
+Class PasswordGatedService
+    Implements ITbService
+```
+
+```tb check_build concat_group=launch-password
 ' Service side — checking the argument inside EntryPoint:
 Sub EntryPoint(ByVal ServiceManager As ServiceManager) _
         Implements ITbService.EntryPoint
@@ -181,6 +190,21 @@ Sub EntryPoint(ByVal ServiceManager As ServiceManager) _
     End If
     ' ...steady-state work
 End Sub
+```
+
+```tb hidden concat_group=launch-password
+    ' The interface's other two members.
+    Sub ChangeState(ByVal ServiceManager As ServiceManager, _
+                    ByVal dwControl As ServiceControlCodeConstants, _
+                    ByVal dwEventType As Long, _
+                    ByVal lpEventData As LongPtr) _
+            Implements ITbService.ChangeState
+    End Sub
+
+    Sub StartupFailed(ByVal ServiceManager As ServiceManager) _
+            Implements ITbService.StartupFailed
+    End Sub
+End Class
 ```
 
 This prevents accidental starts from the Services control-panel applet (which calls `StartServiceW` with no extra arguments).

@@ -54,7 +54,12 @@ The same indirection lets the dispatcher pair the [**ITbService**](ITbService) i
 
 This example shows the complete setup for a single-service EXE. `MyService` implements [**ITbService**](ITbService); a `ServiceCreator(Of MyService)` factory is assigned to `InstanceCreator` during configuration so the dispatcher can call **CreateInstance** when the SCM starts the service.
 
-```tb inert=excerpt
+```tb hidden
+' Context for the Sub Main sample below: the EXE's own control-panel form.
+Public MainForm As Form
+```
+
+```tb check_build projname=winservices-demo
 Module Startup
     Public Sub Main()
         With Services.ConfigureNew

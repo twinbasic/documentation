@@ -126,7 +126,14 @@ End Sub
 
 It is often convenient to trigger the conversion when the user presses **Enter** in the text box, without having to click the button. Double-click `txtInput` in the designer to open the code editor, then select `KeyPress` from the event drop-down at the top right:
 
-```tb inert=excerpt
+```tb hidden concat_group=forms-keypress
+' Context for the sample below: the button handler it calls, shown in full
+' earlier on this page.
+Private Sub cmdConvert_Click()
+End Sub
+```
+
+```tb check_build concat_group=forms-keypress
 Private Sub txtInput_KeyPress(KeyAscii As Integer)
     If KeyAscii = vbKeyReturn Then
         KeyAscii = 0          ' suppress the beep

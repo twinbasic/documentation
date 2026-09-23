@@ -32,7 +32,7 @@ This is how [**Form**](Form/), [**PictureBox**](PictureBox/), [**Printer**](Prin
 
 **Print** evaluates the expressions and does the column arithmetic itself, then drives the target. For `myObject.Print "a", "b"` the calls are, in order:
 
-```tb inert=excerpt
+```tb inert=pseudo
 WriteText("a")        ' the first expression
 Column                ' read  -- returns 0
 Column = 14           ' write -- the comma moves to the next print zone

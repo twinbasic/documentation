@@ -10,13 +10,24 @@ has_toc: false
 
 A **Report** is a top-level Win32 window --- much like a [**Form**](../Form/) --- specialised for rendering the print preview of a banded report. Each report designed in the IDE becomes its own class derived from **Report**: its sections (report header / page header / detail / page footer / report footer) and the controls placed in them become members of that class. At run time, code assigns a recordset to [**Recordset**](#recordset), calls [**Show**](#show), and the framework iterates the recordset, evaluates expressions on the controls, and paints the resulting pages into a built-in preview window with a navigation toolbar at the bottom. [**PrintReport**](#printreport) sends the same pages to the printer. The default property is [**Controls**](#controls) and the default event is [**Load**](#load).
 
-```tb inert=excerpt
+```tb hidden
+' Context for the samples on this page: the designed report they name, and the
+' reader's own function that opens its data.
+Public rptSales As Report
+
+Public Function OpenSalesRecordset() As Object
+End Function
+```
+
+```tb check_build inherits=Report
 ' In the report's code-behind (rptSales):
 Private Sub Report_Load()
     Set Me.Recordset = OpenSalesRecordset()
     Me.Caption = "Sales for " & FormatDateTime(Now, vbLongDate)
 End Sub
+```
 
+```tb check_build
 ' In a startup module:
 Sub Main()
     rptSales.Show vbModal       ' opens the preview window
@@ -127,7 +138,7 @@ The graphics primitives inherited from the form-style drawing surface ([**Cls**]
 
 [**PrintReport**](#printreport) iterates from page 1 to the last page through the [**Printer**](../../VB/Printer) object, sending each cached metafile as one printed page.
 
-```tb inert=excerpt
+```tb check_build
 rptSales.PrintReport ShowDialog:=False
 ```
 

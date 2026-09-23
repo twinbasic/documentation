@@ -174,8 +174,10 @@ Syntax (Let/Set): *manager*.**InstanceCreator** = *creator*
 
 Assign `New ServiceCreator(Of MyServiceClass)` where `MyServiceClass` is the user's [**ITbService**](ITbService) implementation:
 
-```tb inert=excerpt
-.InstanceCreator = New ServiceCreator(Of MyService)
+```tb check_build projname=winservices-demo
+With Services.ConfigureNew
+    .InstanceCreator = New ServiceCreator(Of MyService)
+End With
 ```
 
 [**Services.RunServiceDispatcher**](Services#runservicedispatcher) calls `InstanceCreator.CreateInstance()` once per service start to obtain the [**ITbService**](ITbService) instance the dispatcher hands to the service thread.

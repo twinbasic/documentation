@@ -88,11 +88,19 @@ Syntax: *object*.**RemoveHeader** *name*
 
 A `For Each` loop over the collection produces every header in turn:
 
-```tb inert=excerpt
-Dim h As WebView2Header
-For Each h In RequestHeaders
-    Debug.Print h.Name & ": " & h.Value
-Next
+```tb check_build
+Private Sub WebView21_NavigationStarting( _
+        ByVal Uri As String, _
+        ByVal IsUserInitiated As Boolean, _
+        ByVal IsRedirected As Boolean, _
+        ByVal RequestHeaders As WebView2RequestHeaders, _
+        Cancel As Boolean)
+
+    Dim h As WebView2Header
+    For Each h In RequestHeaders
+        Debug.Print h.Name & ": " & h.Value
+    Next
+End Sub
 ```
 
 The enumerator is forward-only and cannot be reset. See [**WebView2HeadersCollection**](WebView2HeadersCollection) for the iteration object.

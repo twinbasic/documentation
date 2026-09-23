@@ -30,7 +30,17 @@ End Function
 
 The delegate type can also be used in interface/API declarations and as members of a User-defined type. For example, the `ChooseColor` API:
 
-```tb inert=external
+```tb hidden
+' Context for the ChooseColor samples below: the flags enum the structure uses.
+' A reader has it from a Windows declarations package such as WinDevLib.
+Public Enum ChooseColorFlags
+    CC_RGBINIT = &H1
+    CC_FULLOPEN = &H2
+    CC_ENABLEHOOK = &H10
+End Enum
+```
+
+```tb check_build projname=delegates-choosecolor
 Public Delegate Function CCHookProc (ByVal hwnd As LongPtr, ByVal uMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
 
 Public Type CHOOSECOLOR
@@ -48,13 +58,14 @@ End Type
 
 If you already have code assigning a `Long`/`LongPtr` to the `lpfnHook` member, it will continue to work normally, but now you can also have the type safety benefits of setting it to a method matching the Delegate:
 
-```tb inert=excerpt
-Dim tCC As CHOOSECOLOR
-tCC.lpfnHook = AddressOf ChooseColorHookProc
-
-'...
+```tb check_build projname=delegates-choosecolor
+Private Sub PickColor()
+    Dim tCC As CHOOSECOLOR
+    tCC.lpfnHook = AddressOf ChooseColorHookProc
+    ' ...
+End Sub
 
 Public Function ChooseColorHookProc(ByVal hwnd As LongPtr, ByVal uMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
-
+    ' ...
 End Function
 ```

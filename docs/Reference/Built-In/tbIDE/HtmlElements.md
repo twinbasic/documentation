@@ -42,16 +42,25 @@ Syntax: *htmlElements*.**Add**( *ElementID*, *TagName* ) **As** [**HtmlElement**
 *TagName*
 : *required* The HTML tag name. **String**. Standard tags (`"div"`, `"span"`, `"input"`, `"h1"`, `"label"`, `"img"`, …) work as expected; the IDE additionally accepts four custom-widget tags described in [Tool-window DOM tags](.#tool-window-dom-tags) on the package overview: `"chartjs"`, `"monaco"`, `"listview"`, `"virtuallistview"`.
 
-```tb inert=excerpt
-' Standard DOM tags:
-Set greeting = .ChildDomElements.Add("greeting", "h1")
-Set entry    = .ChildDomElements.Add("entryBox", "input")
+```tb hidden concat_group=add-tags
+' Context for the sample below: the variables it assigns.
+Dim greeting As HtmlElement, entry As HtmlElement
+Dim chart As HtmlElement, editor As HtmlElement
+Dim listview As HtmlElement, virtList As HtmlElement
+```
 
-' Custom-widget tags (see sample 11 / 12 / 13 / 14):
-Set chart      = .ChildDomElements.Add("cpuChart",  "chartjs")
-Set editor     = .ChildDomElements.Add("myEditor",  "monaco")
-Set listview   = .ChildDomElements.Add("itemsList", "listview")
-Set virtList   = .ChildDomElements.Add("bigList",   "virtuallistview")
+```tb check_build concat_group=add-tags
+With myToolWindow.RootDomElement
+    ' Standard DOM tags:
+    Set greeting = .ChildDomElements.Add("greeting", "h1")
+    Set entry    = .ChildDomElements.Add("entryBox", "input")
+
+    ' Custom-widget tags (see sample 11 / 12 / 13 / 14):
+    Set chart      = .ChildDomElements.Add("cpuChart",  "chartjs")
+    Set editor     = .ChildDomElements.Add("myEditor",  "monaco")
+    Set listview   = .ChildDomElements.Add("itemsList", "listview")
+    Set virtList   = .ChildDomElements.Add("bigList",   "virtuallistview")
+End With
 ```
 
 ## Properties

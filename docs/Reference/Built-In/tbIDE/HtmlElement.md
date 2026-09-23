@@ -62,13 +62,14 @@ Syntax: *element*.**AddEventListener** *DomEventName*, *CallbackFunc* [, *Data* 
 *Data*
 : *optional* An opaque value to associate with the registration. **Variant**.
 
-```tb inert=excerpt
-With .ChildDomElements.Add("myButton", "div")
-    .Properties.innerText = "Click me"
-    .AddEventListener("click", AddressOf MyButtonClicked)
-End With
+```tb check_build
+Private Sub AddClickableButton()
+    With myToolWindow.RootDomElement.ChildDomElements.Add("myButton", "div")
+        .Properties.innerText = "Click me"
+        .AddEventListener("click", AddressOf MyButtonClicked)
+    End With
+End Sub
 
-' …
 Private Sub MyButtonClicked(ByVal eventInfo As HtmlEventProperties)
     Host.DebugConsole.PrintText "clicked: " & eventInfo.target.id
 End Sub

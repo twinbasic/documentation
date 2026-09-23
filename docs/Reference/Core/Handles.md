@@ -45,7 +45,18 @@ End Sub
 
 A single body responding to several property-change events at once (adapted from the standard `CheckMark` control):
 
-```tb inert=excerpt
+```tb hidden concat_group=handles-several
+' Context for the sample below: the control's own properties, whose changes it
+' handles, and the refresh it calls. The CheckMark control declares these itself.
+[COMCreatable(False)]
+Class CheckMarkSketch
+    Public BackColor As Long
+    Public BackStyle As Long
+    Public Appearance As Long
+    Public Value As Boolean
+```
+
+```tb check_build concat_group=handles-several
 Protected Sub SignificantChange() _
         Handles BackColor.OnPropertyLet, _
                 BackStyle.OnPropertyLet, _
@@ -55,12 +66,32 @@ Protected Sub SignificantChange() _
 End Sub
 ```
 
+```tb hidden concat_group=handles-several
+    Private Sub WindowlessRefresh()
+    End Sub
+End Class
+```
+
 For comparison, the equivalent classic-VBA naming-convention form for one of those events:
 
-```tb inert=excerpt
+```tb hidden concat_group=handles-by-name
+' Context for the sample below: the control property whose change it handles,
+' and the refresh it calls.
+[COMCreatable(False)]
+Class CheckMarkByName
+    Public BackColor As Long
+```
+
+```tb check_build concat_group=handles-by-name
 Private Sub BackColor_OnPropertyLet()
     Me.WindowlessRefresh()
 End Sub
+```
+
+```tb hidden concat_group=handles-by-name
+    Private Sub WindowlessRefresh()
+    End Sub
+End Class
 ```
 
 --- a separate procedure body would be required per event.

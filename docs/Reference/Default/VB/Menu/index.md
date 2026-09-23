@@ -12,7 +12,16 @@ A **Menu** is an item in a Win32 native menu --- either a top-level entry on a [
 
 The default property is [**Enabled**](#enabled) and the default event is [**Click**](#click).
 
-```tb inert=excerpt
+```tb hidden
+' Context for the sample below: the toolbar it shows and hides, and the
+' reader's own save routine. The menus come from the form designer.
+Public Toolbar1 As Object
+
+Public Sub SaveDocument()
+End Sub
+```
+
+```tb check_build inherits=Form
 Private Sub Form_Load()
     mnuFileSave.Enabled = False     ' grey out until there is something to save
 End Sub

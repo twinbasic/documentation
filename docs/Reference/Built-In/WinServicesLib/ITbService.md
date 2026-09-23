@@ -80,12 +80,39 @@ Syntax: *service*.**ChangeState** *ServiceManager*, *dwControl*, *dwEventType*, 
 
 The typical pattern is a `Select Case dwControl` that handles the codes the service cares about and ignores the rest. The minimum a service needs to handle is *Stop*:
 
-```tb inert=excerpt
-Select Case dwControl
-    Case vbServiceControlStop, vbServiceControlShutdown
-        ServiceManager.ReportStatus vbServiceStatusStopPending
-        IsStopping = True       ' signal the service thread
-End Select
+```tb hidden concat_group=changestate-minimum
+' Context for the sample below: the service class it belongs to, and the flag
+' it sets for EntryPoint.
+[COMCreatable(False)]
+Class StopHandlingService
+    Implements ITbService
+
+    Public IsStopping As Boolean
+
+    Sub EntryPoint(ByVal ServiceManager As ServiceManager) _
+            Implements ITbService.EntryPoint
+    End Sub
+```
+
+```tb check_build concat_group=changestate-minimum
+Sub ChangeState(ByVal ServiceManager As ServiceManager, _
+                ByVal dwControl As ServiceControlCodeConstants, _
+                ByVal dwEventType As Long, _
+                ByVal lpEventData As LongPtr) _
+        Implements ITbService.ChangeState
+    Select Case dwControl
+        Case vbServiceControlStop, vbServiceControlShutdown
+            ServiceManager.ReportStatus vbServiceStatusStopPending
+            IsStopping = True       ' signal the service thread
+    End Select
+End Sub
+```
+
+```tb hidden concat_group=changestate-minimum
+    Sub StartupFailed(ByVal ServiceManager As ServiceManager) _
+            Implements ITbService.StartupFailed
+    End Sub
+End Class
 ```
 
 [**ChangeState**](#changestate) **does not stop** [**EntryPoint**](#entrypoint) --- it only delivers the SCM's request. The user's code is responsible for the actual shutdown logic, typically by setting a shared `Public` flag the service thread polls (`IsStopping`) or by calling a signal method on a blocking primitive that [**EntryPoint**](#entrypoint) owns (`NamedPipeServer.ManualMessageLoopLeave`, `SetEvent` on a Win32 event handle, ...).
