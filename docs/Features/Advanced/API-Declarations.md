@@ -30,7 +30,7 @@ The cdecl calling convention is supported both for API declares and methods in y
 ### Examples
 
 ```tb
-Private DeclareWide PtrSafe Function _wtoi64 CDecl Lib "msvcrt" (ByVal psz As String) As LongLong`
+Private DeclareWide PtrSafe Function _wtoi64 CDecl Lib "msvcrt" (ByVal psz As String) As LongLong
 ```
 
 ```tb
@@ -144,5 +144,5 @@ can be rewritten as:
 
 ```tb
 [PreserveSig(False)]
-Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" () As IShellFolder`
+Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" () As IShellFolder
 ```

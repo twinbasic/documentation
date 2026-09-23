@@ -53,7 +53,7 @@ The statement name determines the data type:
 
 For example, in the following fragment, `Message` is a **String** variable:
 
-```tb
+```tb check_build project=implicit
 DefStr A-Q
 ' ...
 Sub Demo()

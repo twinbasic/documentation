@@ -131,7 +131,7 @@ There are two common cases when a type variable might not appear in the *paramet
 
 The example below illustrates those possibilities:
 
-```tb
+```tb check_build
 Public Function Caster(Of R, U, T)(value As T) As R
     Dim intermediate As U = CType(Of U)(value)
     Return CType(Of R)(intermediate)
@@ -139,9 +139,9 @@ End Function
 
 Sub Test()
     ' Type T is deduced to be Single, from the argument 1.23!
-    Debug.Assert Example(Of String, Integer)(1.23!) = "1"
+    Debug.Assert Caster(Of String, Integer)(1.23!) = "1"
     ' Type T is explicitly provided as Double. The argument is cast to that type.
-    Debug.Print Example(Of String, Integer, Double)(1.23!) = "1"
+    Debug.Print Caster(Of String, Integer, Double)(1.23!) = "1"
 End Sub
 ```
 
@@ -154,10 +154,10 @@ The function **Caster** introduces three type variables within its scope:
 > [!TIP]
 > The order of the type variables in the definition can be chosen so that the trailing variable(s) are used in the *parameter-list*. The type-values of those type variable can thus be omitted if the types inferred from the argument types at the call site are appropriate.
 
-1. In the invocation `Example(Of String, Integer)(1.23!)`,  
+1. In the invocation `Caster(Of String, Integer)(1.23!)`,  
    *T* is deduced to be **Single**, *U* is provided and set to **Integer**, and **R** is provided and set to **String**.
 
-2. In the invocation `Example(Of String, Integer, Double)(1.23!)`,  
+2. In the invocation `Caster(Of String, Integer, Double)(1.23!)`,  
     *T* is provided and set to **Double**, *U* is provided and set to **Integer**, and *R* is provided and set to **String**.
    * First, the compiler will cast `1.23!` to the type of the formal parameter, that is to a **Double** `1.23#`.
    * Then, in the body of the function, the *value* is cast to **Integer** when it's assigned to **intermediate**.

@@ -24,7 +24,7 @@ Example from the sqlite sample:
 ### Generic Syntax
 
 ```tb
-Import Libary "Relative resource path" As NAMESPACE Link "dependency1", "dependency2", '...
+Import Library "Relative resource path" As NAMESPACE Link "dependency1", "dependency2", '...
 ```
 
 ## Using Imported Libraries

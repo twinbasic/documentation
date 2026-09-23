@@ -870,7 +870,7 @@ can be rewritten as
 
 ```tb
 [PreserveSig(False)] 
-Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" () As IShellFolder`
+Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" () As IShellFolder
 ```
 
 ## RedirectToStaticImplementation  (String)

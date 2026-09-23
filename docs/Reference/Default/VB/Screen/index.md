@@ -47,18 +47,52 @@ On a 96-DPI display these are both `15` (1440 twips per logical inch ÷ 96 pixel
 
 [**ActiveForm**](#activeform) returns the [**Form**](../Form/) instance that is currently the foreground form in the application; [**ActiveControl**](#activecontrol) returns the control within that form that currently holds the focus. Both return **Nothing** if no form in the application is active.
 
-The most common idiom is accessing the active form from a global handler --- for example, a toolbar button on an [**MDIForm**](../MDIForm/) that operates on whatever MDI child is in front:
+The most common idiom is accessing the active form from a global handler --- for example, an **Edit** menu on an [**MDIForm**](../MDIForm/) that operates on whatever MDI child is in front. The handlers share one routine, so the command that ran is the only thing they have to say:
 
-```tb
-Private Sub tbrEdit_ButtonClick(ByVal Button As MSComctlLib.Button)
+<!-- The VB6 original this replaced, kept for reference. It typed its parameter
+     as MSComctlLib.Button, from MSCOMCTL.OCX, and dispatched on Button.Key:
+
+       Private Sub tbrEdit_ButtonClick(ByVal Button As MSComctlLib.Button)
+           Dim f As Form
+           Set f = Screen.ActiveForm
+           If f Is Nothing Then Exit Sub
+           Select Case Button.Key
+               Case "Cut":   f.ActiveControl.SelText = ""
+               Case "Copy":  Clipboard.SetText f.ActiveControl.SelText
+           End Select
+       End Sub
+
+     twinBASIC's replacement for MSCOMCTL.OCX is the WinNativeCommonCtls
+     package, and it ships no Toolbar control, so that parameter type is not
+     available to a reader. The menu form below says the same thing about
+     Screen.ActiveForm, which is what the section is documenting. -->
+
+```tb check_build
+' One routine, called by every Edit-menu handler on the MDI parent.
+Private Sub DoEditCommand(ByVal Command As String)
     Dim f As Form
     Set f = Screen.ActiveForm
     If f Is Nothing Then Exit Sub
-    Select Case Button.Key
-        Case "Cut":   f.ActiveControl.SelText = ""
-        Case "Copy":  Clipboard.SetText f.ActiveControl.SelText
+
+    ' ActiveControl is typed as Control, so the edit members are reached
+    ' late-bound -- not every control has them.
+    Dim ctl As Object
+    Set ctl = f.ActiveControl
+    If ctl Is Nothing Then Exit Sub
+
+    Select Case Command
+        Case "Cut":   ctl.SelText = ""
+        Case "Copy":  Clipboard.SetText ctl.SelText
         ' ...
     End Select
+End Sub
+
+Private Sub mnuEditCut_Click()
+    DoEditCommand "Cut"
+End Sub
+
+Private Sub mnuEditCopy_Click()
+    DoEditCommand "Copy"
 End Sub
 ```
 

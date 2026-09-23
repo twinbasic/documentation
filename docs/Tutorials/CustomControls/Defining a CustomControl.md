@@ -67,13 +67,13 @@ This is the most interesting part for a CustomControl.  As such, it gets its own
 ## Minimum set of properties
 As twinBASIC doesn't yet support inheritance, you must expose a set of common properties (class fields) for all CustomControls:
 
-```tb
+```tb check_build slot=class project=cc-private
 Public Name As String
 Public Left As CustomControls.PixelCount
 Public Top As CustomControls.PixelCount
 Public Width As CustomControls.PixelCount
 Public Height As CustomControls.PixelCount
-Public Anchors As Anchors = New Anchors
+Public Anchors As CustomControlsPackage.Anchors = New CustomControlsPackage.Anchors
 Public Dock As CustomControls.DockMode
 Public Visible As Boolean
 ```

@@ -140,13 +140,13 @@ Debug.Assert UBound(array, 2) = 20  ' 2nd dimension, upper bound'
 
 An attempt to use **LBound** or **UBound** on an uninitialized array causes a runtime error. Thus, a function that determines the number of elements in a given dimension of an array, must first check if the array is initialized:
 
-```tb
-Sub ArrayLen(Of T)(array() Of T, ByVal dimension% = 1) As Long
+```tb check_build
+Function ArrayLen(Of T)(array() As T, ByVal dimension% = 1) As Long
     ' zero is the default return value    
     If IsArrayInitialized(array) Then
         Return 1 + UBound(array, dimension) - LBound(array, dimension)
     End If
-End Sub
+End Function
 ```
 
 See also [Efficient low-level access of a 1D array](#efficient-low-level-access-of-a-1d-array).
@@ -155,15 +155,15 @@ See also [Efficient low-level access of a 1D array](#efficient-low-level-access-
 
 To access array elements, indices for all dimensions should be provided as a parenthesized list after the name of the array variable:
 
-```tb
+```tb check_build
 Dim array(1 To 10) As Long
 
 array(1) = 42
 Debug.Assert array(1) = 42
 
 Dim array2(1 To 10, 1 To 2) As Long
-array(1, 2) = 42
-Debug.Assert array(1, 2) = 42
+array2(1, 2) = 42
+Debug.Assert array2(1, 2) = 42
 ```
 
 Array elements are initialized to zero/null, just as all the other types are in twinBASIC:
@@ -217,15 +217,15 @@ This can be used to efficiently access:
 - as the pointer to the data (to the 1st element in the array)
 - the size of the array in bytes
 
-```tb
+```tb check_build projname=arrays-lowlevel
 Function ArrayLen(Of T)(array() As T) As Long
     Dim p As LongPtr
     GetMemPtr(VarPtr(array), p)
     If p <> 0 Then	' if the array is initialized
     #If win64 Then
-        GetMem4(p + 24, Len)
+        GetMem4(p + 24, ArrayLen)
     #Else
-        GetMem4(p + 16, Len)
+        GetMem4(p + 16, ArrayLen)
     #End If
     End If
 End Function
@@ -235,9 +235,9 @@ Function ArrayPtr(Of T)(array() As T) As LongPtr
     GetMemPtr(VarPtr(array), p)
     If p <> 0 Then
     #If win64 Then
-        GetMemPtr(p + 16, Ptr)
+        GetMemPtr(p + 16, ArrayPtr)
     #Else
-        GetMemPtr(p + 12, Ptr)
+        GetMemPtr(p + 12, ArrayPtr)
     #End If
     End If
 End Function
@@ -250,13 +250,13 @@ End Function
 
 These functions are useful to pass arrays and array counts to external **Declare**-d procedures. For example:
 
-```tb
+```tb check_build projname=arrays-lowlevel
 Declare Sub SaveData Lib "mylib" (ByVal ptr As LongPtr, ByVal count&)
 Declare Sub WriteData Lib "mylib" (ByVal ptr As LongPtr, ByVal numBytes&)
 
 Sub Save(array() As Long)
     Debug.Assert ArrayBytes(array) = ArrayLen(array) * 4   ' 4 = size of a Long
-    SaveLongData(ArrayPtr(array), ArrayLen(array))
+    SaveData(ArrayPtr(array), ArrayLen(array))
 End Sub
         
 Sub Write(array() As Long)
@@ -269,11 +269,11 @@ Without these functions, this would have been more cumbersome:
 ```tb
 Sub Save(array() As Long)
     If IsArrayInitialized(array) Then
-        SaveLongData( _
+        SaveData( _
             VarPtr(array(LBound(array))), _
             1 + UBound(array) - LBound(array))
     Else
-        SaveLongData(0, 0)   ' ArrayLen, ArraySize, and ArrayPtr would
+        SaveData(0, 0)       ' ArrayLen, ArrayBytes, and ArrayPtr would
                              ' return 0 for an uninitialized array
     End If
 End Sub
