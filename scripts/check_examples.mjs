@@ -157,6 +157,8 @@ function defaultProject(rel) {
 const TEMPLATE_BASE = {
   "vb-private": "console",
   "cc-private": "packages",
+  "wnc-private": "packages",
+  "cef-private": "cef",
   implicit: "console",
   cef: "packages",
   webview2: "packages",

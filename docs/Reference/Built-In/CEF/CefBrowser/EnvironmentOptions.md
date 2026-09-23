@@ -13,15 +13,23 @@ Pre-creation configuration for the CEF environment --- runtime folder, user-data
 
 The fields below take effect only while the CEF runtime is being launched --- that is, *before or during* the control's [**Create**](.#create) event. Assigning them after that point has no effect on the live environment.
 
-```tb inert=blocked
+```tb check_build project=cef-private
 Private Sub CefBrowser1_Create()
     CefBrowser1.EnvironmentOptions.UserDataFolder = _
         Environ$("APPDATA") & "\MyApp\CEF\"
     CefBrowser1.EnvironmentOptions.LogFilePath = _
         Environ$("APPDATA") & "\MyApp\CEF\debug.log"
-    CefBrowser1.EnvironmentOptions.LogSeverity = CefLogWarning
+    CefBrowser1.EnvironmentOptions.LogSeverity = cefPackage.CefLogWarning
 End Sub
 ```
+
+> [!IMPORTANT]
+> These members live in a **Private** part of the cefPackage package, so a project that
+> references it the ordinary way cannot name them --- `CefLogWarning` on its own is
+> *TB5079 Unrecognized symbol*. Set the package's [library symbol](../../../../Features/Packages/Library-Symbols) to
+> `*cefPackage` and qualify the member, as the sample does. The asterisk is stripped
+> from the name: the library is still written `cefPackage` in code.
+
 
 The type itself is `Private Class` --- instances are reachable only through the control's **EnvironmentOptions** property, and a variable typed as **CefEnvironmentOptions** cannot be declared from outside the package.
 

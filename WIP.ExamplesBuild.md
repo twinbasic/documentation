@@ -158,16 +158,26 @@ The census prints three numbers now --- marked, inert by reason, and **undecided
 last is a backlog, and it is the one to drive to zero; the inert count is supposed to grow
 and then sit still.
 
-**`blocked` is the one reason that is not about the fence.** It marks correct code that a
-*product* defect stops compiling, and it exists so that the alternative --- rewriting the
-sample until the compiler accepts it --- is not taken by accident. Five fences carry it, all
-one bug: `ImlDrawTransparent` (WinNativeCommonCtls), `CefLogWarning` (cefPackage),
-`vbDirectionHorizontal` (VB `MultiFrame`) and `vbQRCodegenEccHigh` (VB `QRCode`) are enum
-members a consumer project cannot name, because each enum sits inside a `Private Module` or
-a control class that does not re-export it. Neither the member, nor the enum, nor the owning
-control as a qualifier resolves. The pages still say what the API ought to accept, and
-BUGS-TO-REPORT.md carries the evidence; when the packages expose them, those five go back to
-`check_build` and the compiler will say so.
+**`blocked` is the one reason that is not about the fence**, and **nothing carries it
+today** --- which is the point worth keeping. It marks correct code that a *product* defect
+stops compiling, and it exists so that the alternative, rewriting the sample until the
+compiler accepts it, is not taken by accident.
+
+Six fences carried it for about an hour: `ImlDrawTransparent` (WinNativeCommonCtls),
+`CefLogWarning` (cefPackage), `vbDirectionHorizontal` and `vbQRCodegenEccHigh` (VB) are enum
+members a default project cannot name, because each enum sits inside a `Private Module` or a
+private base class. Then the obvious question got asked --- *what would a reader actually
+do?* --- and the answer was the asterisk: `*WinNativeCommonCtls` exposes the package's
+private half, and `WinNativeCommonCtls.ImlDrawTransparent` compiles. Two more templates
+(`wnc-private`, `cef-private`) join `vb-private` and `cc-private`, every one of the six
+samples is checked again, and each page now carries an IMPORTANT saying which library symbol
+to set and why.
+
+**The lesson is the rule, not the reason:** documenting a call and leaving no way to make it
+work is worse than either fixing it or deleting it. `blocked` is for a defect with no
+workaround at all, and reaching for it is a signal that the workaround has not been looked
+for hard enough. The package defect is still a defect --- BUGS-TO-REPORT.md carries it, since
+a documented enum should not need the asterisk --- but the reader is no longer stuck.
 
 ### A sample can be compiled against a file
 

@@ -14,9 +14,9 @@ A frame is associated with a **MultiFrame** by setting the frame's [**Container*
 
 The default event is [**Initialize**](#initialize). There is no default property.
 
-```tb inert=blocked
+```tb check_build project=vb-private
 Private Sub Form_Load()
-    mfPanels.Direction = vbDirectionHorizontal
+    mfPanels.Direction = VB.vbDirectionHorizontal
 
     Set fraLeft.Container = mfPanels
     fraLeft.MultiFramePosition = 0
@@ -31,6 +31,14 @@ Private Sub Form_Load()
     fraRight.MultiFrameSize = 0                  ' shares the remaining space
 End Sub
 ```
+
+> [!IMPORTANT]
+> These members live in a **Private** part of the VB package, so a project that
+> references it the ordinary way cannot name them --- `vbDirectionHorizontal` on its own is
+> *TB5079 Unrecognized symbol*. Set the package's [library symbol](../../../../Features/Packages/Library-Symbols) to
+> `*VB` and qualify the member, as the sample does. The asterisk is stripped
+> from the name: the library is still written `VB` in code.
+
 
 * TOC
 {:toc}

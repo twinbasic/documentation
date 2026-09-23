@@ -14,10 +14,10 @@ Like [**Image**](../Image), a QRCode has no `hWnd` and is not focusable. It is t
 
 The default property is [**Picture**](#picture) (the read-only generated image) and the default event is [**Click**](#click).
 
-```tb inert=blocked
+```tb check_build project=vb-private
 Private Sub Form_Load()
     QRCode1.Payload = "https://www.twinbasic.com"
-    QRCode1.EccMode = vbQRCodegenEccHigh    ' 30 % parity
+    QRCode1.EccMode = VB.vbQRCodegenEccHigh    ' 30 % parity
     QRCode1.ForeColor = vbBlue
 End Sub
 
@@ -25,6 +25,14 @@ Private Sub QRCode1_Click()
     MsgBox "QR code clicked"
 End Sub
 ```
+
+> [!IMPORTANT]
+> These members live in a **Private** part of the VB package, so a project that
+> references it the ordinary way cannot name them --- `vbQRCodegenEccHigh` on its own is
+> *TB5079 Unrecognized symbol*. Set the package's [library symbol](../../../../Features/Packages/Library-Symbols) to
+> `*VB` and qualify the member, as the sample does. The asterisk is stripped
+> from the name: the library is still written `VB` in code.
+
 
 * TOC
 {:toc}

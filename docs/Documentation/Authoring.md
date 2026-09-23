@@ -498,7 +498,7 @@ Mark those `inert=<reason>` rather than leaving them unmarked, so nobody triages
 | `contrast` | shows the invalid form on purpose, beside the valid one |
 | `external` | needs a file or environment the checker cannot provide |
 | `designer` | needs a real form designer --- a `Handles` clause on designer-declared fields, or a control array |
-| `blocked` | correct code that a **product defect** stops compiling. Do not rewrite the sample around the bug: record it in the project's bug queue and leave the page saying what the API ought to accept |
+| `blocked` | correct code that a **product defect** stops compiling *and for which no workaround exists*. Look hard for one first --- a package's private half can be reached with an asterisk [library symbol](../Features/Packages/Library-Symbols), and a page that shows the qualified form plus a note is better than a page that shows code the reader cannot run |
 
 An unrecognised reason is refused, the same as a bad `slot=`, and `inert` together with
 `check_build` is refused as a contradiction. The census then reports three numbers rather

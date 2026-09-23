@@ -146,7 +146,11 @@ both enums are the argument type of a documented, public member:
 
 Neither the bare member (`ImlDrawTransparent`), the enum name (`ImlDrawConstants.…`), nor the
 owning control as a qualifier (`ImageList.ImlDrawConstants.…`) resolves --- all three are
-`TB5079 Unrecognized symbol`. **The VB package has it too**, from a different direction: the
+`TB5079 Unrecognized symbol`. **The asterisk works**, as it does for the VB and
+CustomControls cases: with the library symbol set to `*WinNativeCommonCtls`,
+`WinNativeCommonCtls.ImlDrawTransparent` compiles, and the documentation now shows that form
+with a note. That is a workaround, not a fix --- a documented, user-facing enum should not
+require a project to expose the package's private half. **The VB package has it too**, from a different direction: the
 enums nested inside a control class, `MultiFrameDirectionConstants` in `MultiFrame` and
 `QRCodegenEccConstants` in `QRCode`, are equally unreachable, so
 `mfPanels.Direction = vbDirectionHorizontal` does not compile although it is what the

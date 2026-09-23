@@ -52,15 +52,23 @@ End Sub
 
 Two related fields on [**EnvironmentOptions**](../../tB/Packages/CEF/CefBrowser/EnvironmentOptions) configure the CEF debug log, useful when investigating runtime issues:
 
-```tb inert=blocked
+```tb check_build project=cef-private
 Private Sub CefBrowser1_Create()
     CefBrowser1.EnvironmentOptions.UserDataFolder = _
         Environ$("APPDATA") & "\MyApp\CEF\"
     CefBrowser1.EnvironmentOptions.LogFilePath = _
         Environ$("APPDATA") & "\MyApp\CEF\debug.log"
-    CefBrowser1.EnvironmentOptions.LogSeverity = CefLogWarning
+    CefBrowser1.EnvironmentOptions.LogSeverity = cefPackage.CefLogWarning
 End Sub
 ```
+
+> [!IMPORTANT]
+> These members live in a **Private** part of the cefPackage package, so a project that
+> references it the ordinary way cannot name them --- `CefLogWarning` on its own is
+> *TB5079 Unrecognized symbol*. Set the package's [library symbol](../../Features/Packages/Library-Symbols) to
+> `*cefPackage` and qualify the member, as the sample does. The asterisk is stripped
+> from the name: the library is still written `cefPackage` in code.
+
 
 [**LogFilePath**](../../tB/Packages/CEF/CefBrowser/EnvironmentOptions#logfilepath) is appended to across runs --- rotate or delete it from your own code if it needs to be capped. [**LogSeverity**](../../tB/Packages/CEF/CefBrowser/EnvironmentOptions#logseverity) controls the threshold; **CefLogDisable** (the default) writes nothing regardless of the path.
 
