@@ -135,6 +135,23 @@ is that these particular classes are not internal --- they appear in the signatu
 members that stayed public, so every consumer of those members is now required to import the
 package with an asterisk and qualify names that the package's own controls write bare.
 
+**Two more packages have the same shape, found the same way.** In both, a `Public Enum` sits
+inside a `Private Module`, so a consumer can name neither the enum nor its members --- and
+both enums are the argument type of a documented, public member:
+
+| package | declaration | what a default project cannot write |
+|---|---|---|
+| WinNativeCommonCtls | `Private Module ImageListConsts` → `Public Enum ImlDrawConstants` | `ImageList1.ListImages(1).Draw hDC, x, y, ImlDrawTransparent Or ImlDrawFocus` |
+| cefPackage | `Private Module _cef_log_severity_t` → `Enum CefLogSeverity` | `CefBrowser1.EnvironmentOptions.LogSeverity = CefLogWarning` |
+
+Neither the bare member (`ImlDrawTransparent`), the enum name (`ImlDrawConstants.…`), nor the
+owning control as a qualifier (`ImageList.ImlDrawConstants.…`) resolves --- all three are
+`TB5079 Unrecognized symbol`. **The VB package has it too**, from a different direction: the
+enums nested inside a control class, `MultiFrameDirectionConstants` in `MultiFrame` and
+`QRCodegenEccConstants` in `QRCode`, are equally unreachable, so
+`mfPanels.Direction = vbDirectionHorizontal` does not compile although it is what the
+property's own documentation says to write.
+
 **Why it went unnoticed:** none of the 32 sample projects the IDE ships exercises any of
 this from code. Exported and grepped, all of them: `ControlsSection` appears only as a
 designer `_className` in the two `.tbreport` files and no sample handles

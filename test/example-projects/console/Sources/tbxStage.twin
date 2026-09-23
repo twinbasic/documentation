@@ -50,6 +50,9 @@ Module tbxStage
     Public Data1 As Data
     Public OLE1 As OLE
 
+    ' QRCode/index.md's control instance.
+    Public QRCode1 As QRCode
+
     ' The DataObject pages' samples enumerate a drag-and-drop payload, which in
     ' real code arrives as an OLEDrag handler's `Data` parameter. Declaring it
     ' shadows nothing: `Data1 As Data` above still resolves the VB control class
