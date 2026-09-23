@@ -102,7 +102,25 @@ const FLAGS = new Set([MARKER, RUN_MARKER, HIDDEN_MARKER]);
  * fence and tests it in the next three.
  */
 const KEYS = new Set([
-  "slot", "project", "projname", "id", "expect-error", "inherits", "resource",
+  "slot", "project", "projname", "id", "expect-error", "inherits", "resource", "inert",
+]);
+
+/**
+ * `inert=<reason>` says this fence is not a program and nobody should come back
+ * to it. It takes a reason rather than being a bare flag, because the point is
+ * not to hide the fence from the tool -- it is to record a judgement somebody
+ * made, so a census can separate "settled" from "not looked at yet".
+ *
+ * The backlog worth watching is the third number: classifiable, not marked, and
+ * not inert. That one should trend to zero; the inert count should not.
+ */
+export const INERT_REASONS = new Set([
+  "skeleton",   // placeholder identifiers -- `Inherits base_interface`, `<name>`
+  "excerpt",    // deliberately continues another fence, or shows part of one
+  "pseudo",     // prose, a table or a protocol listing dressed as code
+  "contrast",   // shows invalid code on purpose, beside the valid form
+  "external",   // needs a file or environment the harness cannot stage
+  "designer",   // needs a real form designer: TB5247, or a Handles on its fields
 ]);
 
 /**
@@ -179,6 +197,9 @@ export function parseInfo(info) {
     const key = part.slice(0, eq), value = part.slice(eq + 1);
     if (!KEYS.has(key)) { bad.push(part); continue; }
     if (key === "slot" && !SLOTS.includes(value)) { bad.push(part); continue; }
+    // A reason nobody recognises is worse than no reason: it reads as settled
+    // and says nothing, so it is refused the way a bad slot is.
+    if (key === "inert" && !INERT_REASONS.has(value)) { bad.push(part); continue; }
     keys.set(key, value);
   }
   // Both imply a build: a hidden fence that is not compiled is text nobody can

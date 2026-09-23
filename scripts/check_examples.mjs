@@ -233,6 +233,14 @@ function select(fences) {
       continue;
     }
 
+    // `inert=<reason>` and `check_build` are contradictory claims about the same
+    // fence, and the wrong one would win silently.
+    if (fence.keys.has("inert") && fence.flags.has(MARKER)) {
+      addFinding(fence, `inert=${fence.keys.get("inert")} and \`${MARKER}\` contradict each other`,
+        "a fence is either not a program, or one this compiles -- not both");
+      continue;
+    }
+
     const marked = fence.flags.has(MARKER);
     if (!marked && !MODE_PROPOSE && !MODE_CENSUS) continue;
 
@@ -249,8 +257,17 @@ function select(fences) {
     fence.slotStated = Boolean(stated);
     fence.project = fence.keys.get("project") ?? defaultProject(fence.rel);
     fence.marked = marked;
+    // `inert=<reason>` is a decision already taken: this fence is not a program
+    // and nobody is coming back to it. It is classified like any other -- the
+    // census still says what shape it is -- and then goes no further: never
+    // compiled, never proposed, so a survey stops re-reporting the settled
+    // hundred on every pass. It is still counted, under its reason, because a
+    // census that cannot tell "settled" from "not looked at yet" cannot say
+    // what the backlog is.
+    fence.inert = fence.keys.get("inert") ?? null;
 
     if (MODE_CENSUS) { chosen.push(fence); continue; }
+    if (fence.inert) continue;
 
     if (!slot) {
       // Marked but unclassifiable is a finding; unmarked and unclassifiable is
@@ -803,13 +820,23 @@ function census(fences) {
   say("\n  template a fence would use:");
   for (const [p, n] of byProject) say(`    ${String(n).padStart(4)}  ${p}`);
 
+  // What has been settled, and by whose judgement. An inert fence is not a
+  // program and is not coming back; the reason is recorded so that "settled"
+  // can be read apart from "nobody has looked".
+  const inert = fences.filter((f) => f.inert);
+  if (inert.length) {
+    const byReason = new Map();
+    for (const f of inert) byReason.set(f.inert, (byReason.get(f.inert) ?? 0) + 1);
+    say(`\n  inert -- ${inert.length} fence(s) that are not programs, by reason:`);
+    for (const line of tallyLines(byReason)) say(line);
+  }
+
   // Where the unmarked work is. This half needs no compiler, so it belongs here
-  // rather than in a survey: a classifiable fence with no marker is either a
-  // sample nobody has tried yet or one the harness cannot build, and the census
-  // is what says how much of that there is and which packages hold it. What it
-  // deliberately does NOT claim is that any of them would compile -- only
-  // `--propose` knows that, and today none of them does.
-  const left = fences.filter((f) => f.slot && !f.marked);
+  // rather than in a survey: a classifiable fence with no marker and no `inert`
+  // reason is one nobody has decided about yet, and the census is what says how
+  // much of that there is and which packages hold it. What it deliberately does
+  // NOT claim is that any of them would compile -- only `--propose` knows that.
+  const left = fences.filter((f) => f.slot && !f.marked && !f.inert);
   if (!left.length) return;
   const bySection = new Map();
   const byPage = new Map();
@@ -817,8 +844,8 @@ function census(fences) {
     bySection.set(sectionOf(f.rel), (bySection.get(sectionOf(f.rel)) ?? 0) + 1);
     byPage.set(f.rel, (byPage.get(f.rel) ?? 0) + 1);
   }
-  say(`\n  classifiable and unmarked -- ${left.length} sample(s) in ` +
-    `${byPage.size} page(s), by section:`);
+  say(`\n  undecided -- ${left.length} classifiable sample(s) that are neither ` +
+    `marked nor inert, in ${byPage.size} page(s), by section:`);
   for (const line of tallyLines(bySection)) say(line);
   say("\n  ...and the pages holding the most of them:");
   for (const line of tallyLines(byPage, 10)) say(line);
@@ -1011,6 +1038,9 @@ const INFO_PROBES = [
   ["a key", `tb ${MARKER} slot=module`, (p) => p.keys.get("slot") === "module"],
   ["a group name", `tb ${MARKER} projname=padleft`, (p) => p.keys.get("projname") === "padleft"],
   ["a typo is refused", "tb check_bild", (p) => p.bad.length === 1 && !p.flags.has(MARKER)],
+  ["an inert reason", `tb inert=skeleton`, (p) => p.keys.get("inert") === "skeleton" && !p.bad.length],
+  ["an unknown inert reason is refused", `tb inert=because`, (p) => p.bad.length === 1 && !p.keys.has("inert")],
+  ["a bare inert is refused", "tb inert", (p) => p.bad.length === 1],
   ["an unknown key is refused", `tb ${MARKER} mode=x`, (p) => p.bad.length === 1],
   ["a bad slot is refused", `tb ${MARKER} slot=banana`, (p) => p.bad.length === 1],
   ["a base class", `tb ${MARKER} inherits=Form`, (p) => p.keys.get("inherits") === "Form"],

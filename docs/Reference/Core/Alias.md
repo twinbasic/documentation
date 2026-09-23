@@ -32,12 +32,19 @@ Syntax:
 
 Aliasing intrinsic types and a user-defined type:
 
-```tb
-Public Type POINT
-    x As Long
-    y As Long
-End Type
+The **Type** goes inside a [**Module**](Module), where a **Type** must be; the aliases go
+outside it, where an **Alias** must be. Both are in the same `.twin` file:
 
+```tb check_build projname=alias-example
+Module Geometry
+    Public Type POINT
+        x As Long
+        y As Long
+    End Type
+End Module
+```
+
+```tb check_build projname=alias-example slot=file
 Public Alias POINTAPI As POINT
 
 Public Alias CBoolean As Byte
@@ -47,10 +54,10 @@ Public Alias KAFFINITY As LongPtr
 
 A variable declared with the alias and a variable declared with the original type are interchangeable:
 
-```tb
+```tb check_build projname=alias-example
 Dim p As POINT
 Dim q As POINTAPI
-p = q   ' OK — no type mismatch.
+p = q   ' OK -- no type mismatch.
 ```
 
 ### See Also

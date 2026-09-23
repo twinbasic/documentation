@@ -13,7 +13,7 @@ twinBASIC supports these features as native language syntax where in VBx they we
 
 twinBASIC supports defining COM interfaces using BASIC syntax, rather than needing an type library with IDL and C++. These are only supported in .twin files, not in legacy .bas or .cls files. They must appear *before* the `Class` or `Module` statement, and will always have a project-wide scope. The generic form for this is as follows:
 
-```tb
+```tb inert=skeleton
 [InterfaceId ("00000000-0000-0000-0000-000000000000")]
 '*<attributes>*
 Interface name Extends base_interface

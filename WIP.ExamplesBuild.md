@@ -139,6 +139,24 @@ Shape --- bare flags and `key=value` pairs after the language token:
 | `id=` | stable name for reporting | `<page>#<ordinal>` |
 | `expect-error=` | the sample is *meant* not to compile; assert this error | --- |
 | `resource=` | **on a fence in any language**: stage this fence's contents into the project at that path, instead of compiling it | --- |
+| `inert=` | this fence is not a program: `skeleton`, `excerpt`, `pseudo`, `contrast`, `external` or `designer` | --- |
+
+### `inert` is a decision, not a suppression
+
+Before it, an unmarked fence meant two different things --- nobody has looked, and somebody
+looked and concluded there is nothing to compile --- and the census could not tell them
+apart. So every pass re-triaged the same hundred skeletons, and the backlog never appeared
+to move.
+
+`inert=<reason>` records the second. It **takes a reason rather than being a bare flag**,
+because a bare flag would only hide the fence; the reason is what makes the count readable,
+and what lets a later reader disagree with a specific judgement rather than with a silence.
+An unknown reason is refused the way a bad `slot=` is, and `inert` beside `check_build` is
+refused as a contradiction: those are opposite claims about the same fence.
+
+The census prints three numbers now --- marked, inert by reason, and **undecided**. Only the
+last is a backlog, and it is the one to drive to zero; the inert count is supposed to grow
+and then sit still.
 
 ### A sample can be compiled against a file
 

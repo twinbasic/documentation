@@ -16,7 +16,7 @@ Declares references to external procedures in a dynamic-link library (DLL) at th
 
 To ensure backwards compatibility with VBA version 6 and earlier, use the following construct:
 
-```tb
+```tb inert=skeleton
 #If VBA7 Then 
 Declare PtrSafe Sub... 
 #Else 

@@ -479,6 +479,30 @@ generated `Sub`. Three keys override it when it guesses wrong, and one flag asks
 | `projname=<name>` | Build these samples **as one project**, for a page that presents one program in pieces --- a function in one fence and the tests for it in the next three. Every sample sharing the name is compiled together and nothing else is compiled with them. |
 | `expect-error=<code>` | This sample is *meant* not to compile --- it is showing what goes wrong --- and the run fails if it compiles. |
 | `resource=<path>` | **On a fence in any language**, not just ` ```tb `. The fence's contents are written into the generated project at that project-relative path, so the page's samples can be compiled against it. For the compile-time attributes that read a project file --- see below. |
+| `inert=<reason>` | This fence is **not a program**, and saying so settles it: it is never compiled, never proposed, and counted under its reason instead of sitting in the backlog. See below. |
+
+### Saying that a sample is not a program
+
+Plenty of good fences are not programs. A syntax skeleton written with placeholder names
+(`Interface name Extends base_interface`) teaches the shape better than any compilable
+stand-in would; a fence that continues the previous one, or shows the invalid form beside
+the valid one, is doing its job exactly as written.
+
+Mark those `inert=<reason>` rather than leaving them unmarked, so nobody triages them twice:
+
+| Reason | For |
+|---|---|
+| `skeleton` | placeholder identifiers --- `name`, `base_interface`, `<method 1>` |
+| `excerpt` | deliberately continues another fence, or shows part of one |
+| `pseudo` | prose, a table or a protocol listing set in a code fence |
+| `contrast` | shows the invalid form on purpose, beside the valid one |
+| `external` | needs a file or environment the checker cannot provide |
+| `designer` | needs a real form designer --- a `Handles` clause on designer-declared fields |
+
+An unrecognised reason is refused, the same as a bad `slot=`, and `inert` together with
+`check_build` is refused as a contradiction. The census then reports three numbers rather
+than two: how many samples are checked, how many are inert, and how many are **undecided**.
+Only the last is a backlog.
 
 ### A sample that reads a file
 

@@ -643,7 +643,7 @@ reports.
 | Flag | Effect |
 |---|---|
 | `--only <regex>` | Restrict to pages whose path matches. The path is page-relative, as in `^Reference/Core`. |
-| `--census` | Classify every `tb` fence and print the table --- how many are whole files, procedures, statement runs, and how many are fragments no wrapper can rescue --- then how many classifiable fences carry no marker, by section and by page. No compiler, no IDE, well under a second. |
+| `--census` | Classify every `tb` fence and print the table --- how many are whole files, procedures, statement runs, and how many are fragments no wrapper can rescue --- then the fences marked `inert` by reason, and finally the **undecided** ones: classifiable, unmarked, and not inert. That last number is the backlog; the inert count is not. No compiler, no IDE, well under a second. |
 | `--propose` | Compile the unmarked samples too, and list the ones that would pass. A survey, so it exits 0 whatever it finds. It ends with the same grouping `--report` prints. |
 | `--apply` | With `--propose`, add the marker to the fences that passed. It only ever adds the bare flag, only to a fence that compiled in that very run, and never to one that already carries markup --- so a re-run is a no-op. Read the diff. |
 | `--report <file>` | Group the findings of a survey saved with `--propose --json`: by diagnostic, by section, by the name that did not resolve, by wrapper, and by page. No compiler --- the survey holds every page and line it names, so the slow run happens once and the grouping is what gets iterated on. |
