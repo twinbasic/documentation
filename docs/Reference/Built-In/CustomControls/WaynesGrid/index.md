@@ -12,15 +12,16 @@ A tabular data display --- a grid of cells with column headers and row headers, 
 
 The grid has an array of [**Column**](Column) objects giving each column its [**Caption**](Column#caption) and [**Width**](Column#width). Five distinct [**CellRenderingOptions**](CellRenderingOptions) sub-objects control the appearance of column headers, row headers, normal cells, the hovered cell, the selected cell, and full-column / full-row multi-selection.
 
-```tb
+```tb check_build inherits=Form
 Private Sub Form_Load()
-    ReDim Grid1.Columns(2)
-    Set Grid1.Columns(0) = New Column
-    Set Grid1.Columns(1) = New Column
-    Set Grid1.Columns(2) = New Column
-    Grid1.Columns(0).Caption = "ID"
-    Grid1.Columns(1).Caption = "Name"
-    Grid1.Columns(2).Caption = "Date"
+    Dim cols(0 To 2) As Column
+    Set cols(0) = New Column
+    Set cols(1) = New Column
+    Set cols(2) = New Column
+    cols(0).Caption = "ID"
+    cols(1).Caption = "Name"
+    cols(2).Caption = "Date"
+    Grid1.Columns = cols
     Grid1.RowCount = 100
 End Sub
 
@@ -90,7 +91,7 @@ The [**CellRenderingOptions**](CellRenderingOptions) used to draw the column-hea
 ### Columns
 {: .no_toc }
 
-The array of [**Column**](Column) objects describing each column. Read-write; `ReDim` to grow / shrink, and assign individual [**Column**](Column) instances into the elements.
+The array of [**Column**](Column) objects describing each column. Read-write, but as a whole array: build a local `Column()`, fill it, and assign it to this property. `ReDim Grid1.Columns(2)` does not compile --- **ReDim** needs an array variable, not an array reached through an object --- and neither does assigning into an element of the property in place.
 
 ### Dock
 {: .no_toc }

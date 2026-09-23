@@ -16,9 +16,10 @@ To inspect both success and non-failure status codes, read **LastHresult** immed
 
 ### Example
 
-```tb
+```tb check_build
 ' Assume comObject exposes a method whose HRESULT contains status information.
 Sub CheckHresult()
+    Dim comObject As Object
     comObject.SomeMethod
     Dim status As Long
     status = Err.LastHresult

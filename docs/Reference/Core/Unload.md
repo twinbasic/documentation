@@ -21,21 +21,23 @@ When an object is unloaded, it is removed from memory and all memory associated 
 
 The following example assumes two `UserForm`s in a program. In `UserForm1`'s **Initialize** event, `UserForm2` is loaded and shown. When the user clicks `UserForm2`, it is unloaded and `UserForm1` appears. When `UserForm1` is clicked, it is unloaded in turn.
 
-```tb
+```tb check_build inherits=Form projname=unload-userforms
 ' This is the Initialize event procedure for UserForm1.
 Private Sub UserForm_Initialize()
     Load UserForm2
     UserForm2.Show
 End Sub
 
-' This is the Click event for UserForm2.
-Private Sub UserForm_Click()
-    Unload UserForm2
-End Sub
-
 ' This is the Click event for UserForm1.
 Private Sub UserForm_Click()
     Unload UserForm1
+End Sub
+```
+
+```tb check_build inherits=Form projname=unload-userforms
+' This is the Click event for UserForm2.
+Private Sub UserForm_Click()
+    Unload UserForm2
 End Sub
 ```
 

@@ -17,7 +17,7 @@ Iterates over the members of *T* and returns the lowest assigned value. Resolved
 
 ### Example
 
-```tb
+```tb check_build
 Enum Severity
     Trace = 0
     Debug = 1
@@ -26,8 +26,10 @@ Enum Severity
     Error = 4
 End Enum
 
-Debug.Print GetDeclaredMinEnumValue(Of Severity)()    ' 0
-Debug.Print GetDeclaredMaxEnumValue(Of Severity)()    ' 4
+Sub Demo()
+    Debug.Print GetDeclaredMinEnumValue(Of Severity)()    ' 0
+    Debug.Print GetDeclaredMaxEnumValue(Of Severity)()    ' 4
+End Sub
 ```
 
 ### See Also

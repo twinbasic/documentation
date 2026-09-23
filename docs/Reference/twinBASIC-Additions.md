@@ -54,10 +54,12 @@ twinBASIC supports generic types and generic modules using the `Of` keyword. A g
 
 twinBASIC uses a square-bracket attribute syntax on declarations and modules:
 
-```tb
+```tb check_build projname=additions-attribute-syntax
 [Description("Returns the absolute value of n.")]
 [ConstantFoldable]
 Public Function Abs(ByVal n As Double) As Double
+    ' ...
+End Function
 ```
 
 See [Attributes](../tB/Core/Attributes) for the full list, including `[DllExport]`, `[DebugOnly]`, `[WindowsControl]`, `[MustBeQualified]`, `[PreserveSig]`, and more.
@@ -78,9 +80,32 @@ See [Features → Inline Initialization](../Features/Language/Inline-Initializat
 
 `New` accepts constructor arguments when a class exposes a `Sub New` with matching parameters:
 
-```tb
-Dim conn As New NamedPipeClientConnection("\\.\pipe\mypipe", token)
+```tb check_build projname=parameterised-new
+' [COMCreatable(False)] because a class whose only constructor takes arguments
+' cannot supply the parameterless one COM creation requires.
+[COMCreatable(False)]
+Class PipeClient
+    Private m_PipeName As String
+
+    Sub New(ByVal PipeName As String, ByVal Token As LongPtr)
+        m_PipeName = PipeName
+    End Sub
+End Class
 ```
+
+The arguments go on the **New** expression, which means the assignment form rather than `As New`:
+
+```tb check_build projname=parameterised-new
+Dim token As LongPtr
+Dim conn As PipeClient
+Set conn = New PipeClient("\\.\pipe\mypipe", token)
+```
+
+> [!NOTE]
+> `Dim conn As New PipeClient("\\.\pipe\mypipe", token)` is a syntax error. `As New`
+> declares a variable that constructs itself on first use and takes no arguments; a
+> constructor call with arguments is an expression, so it needs `Set` (or an inline
+> initialiser).
 
 See [Features → Classes and Modules](../Features/Advanced/Classes-and-Modules).
 

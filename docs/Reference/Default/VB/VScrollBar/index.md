@@ -14,7 +14,7 @@ A **VScrollBar** is a Win32 native vertical scroll bar exposed as a stand-alone 
 
 The default property is [**Value**](#value) and the default event is [**Change**](#change).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     vsbLevel.Min = 0
     vsbLevel.Max = 100
@@ -41,7 +41,7 @@ End Sub
 
 The two endpoints may be supplied in either order. When **Min** is greater than **Max** the scroll bar runs *inverted* --- moving the thumb downward decreases [**Value**](#value), and **Max** is the lower bound of the legal range. This is convenient for, for example, a "high-at-top" volume or brightness slider:
 
-```tb
+```tb check_build
 vsbVolume.Min = 100    ' topmost == loudest
 vsbVolume.Max = 0      ' bottommost == silent
 vsbVolume.Value = 75

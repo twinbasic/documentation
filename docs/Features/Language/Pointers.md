@@ -34,7 +34,7 @@ End Sub
 
 More generally, in both APIs and local methods, any argument taking a user-defined type can instead be passed a `ByVal LongPtr`, with the new special constant `vbNullPtr` used for a null pointer:
 
-```tb
+```tb inert=skeleton
 Public Declare PtrSafe Function CreateFileW Lib "kernel32" (ByVal lpFileName As LongPtr, ByVal dwDesiredAccess As Long, ByVal dwShareMode As Long, lpSecurityAttributes As SECURITY_ATTRIBUTES, ByVal dwCreationDisposition As Long, ByVal dwFlagsAndAttributes As Long, ByVal hTemplateFile As LongPtr) As LongPtr
 
 hFile = CreateFileW(StrPtr("name"), 0, 0, ByVal vbNullPtr, '...)
@@ -52,23 +52,23 @@ The `CType(Of <type>)` operator specifies an explicit intent to cast one type to
 
 Consider the following UDTs:
 
-```tb check_build
-Private Type foo
+```tb check_build projname=pointer-cast-demo
+Public Type foo
     a As Long
     b As Long
     pfizz As LongPtr 'A pointer to a variable of type fizz
 End Type
-Private Type bar
+Public Type bar
     pfoo As LongPtr 'A pointer to a variable of type foo
 End Type
-Private Type fizz
+Public Type fizz
     c As Long
 End Type
 ```
 
 The following code examples work to manipulate the pointers:
 
-```tb
+```tb check_build projname=pointer-cast-demo
 Sub call1()
     Dim f As foo
     test1 VarPtr(f)
@@ -85,7 +85,7 @@ End Sub
 
 This will print `  1             2  ` --- a comma moves to the next 14-column [print zone](../../tB/Modules/Debug#print), and a positive number carries a leading space where its sign would be.
 
-```tb
+```tb check_build projname=pointer-cast-demo
 Sub call2()
     Dim f As foo, b As bar
     b.pfoo = VarPtr(f)
@@ -103,7 +103,7 @@ End Sub
 
 This will print `  3             4  `.
 
-```tb
+```tb check_build projname=pointer-cast-demo
 Sub call3()
     Dim f As foo, b As bar, z As fizz
     f.pfizz = VarPtr(z)

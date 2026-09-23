@@ -31,7 +31,13 @@ The properties are reset to their zero values when the handler exits via **Resum
 
 Code can generate its own run-time error by calling [**Raise**](Raise). Custom error numbers should be biased by [**vbObjectError**](../Constants/#vbObjectError) so that they don't collide with twinBASIC's built-in numbers. Setting [**Source**](Source) and [**Description**](Description) at the call site gives the error handler something useful to inspect or display.
 
-```tb
+```tb hidden
+' Context for the sample below: the account balance it tests, which belongs to
+' the reader's program.
+Public Balance As Currency
+```
+
+```tb check_build
 Public Sub WithdrawCash(ByVal Amount As Currency)
     If Amount > Balance Then
         Err.Raise vbObjectError + 1001, _

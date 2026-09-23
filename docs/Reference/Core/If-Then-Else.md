@@ -43,7 +43,8 @@ Use the single-line form (first syntax) for short, simple tests. The block form 
 > [!NOTE]
 > With the single-line form, it is possible to have multiple statements executed as the result of an **If...Then** decision. All statements must be on the same line and separated by colons, as in the following statement:
 >
-> ```tb
+> ```tb check_build
+> Dim A As Long, B As Long, C As Long
 > If A > 10 Then A = A + 1 : B = B + A : C = C + B
 > ```
 

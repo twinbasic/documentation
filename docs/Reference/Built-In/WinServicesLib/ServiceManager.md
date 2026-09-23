@@ -65,7 +65,16 @@ Syntax (Let): *manager*.**AutoInitializeCOM** = *value*
 
 The default **True** is appropriate for most services: it ensures that in-process COM objects and late-bound automation objects work without extra setup. Set to **False** when a different apartment model is required --- for example, a service that creates a Multi-Threaded Apartment (MTA) so that multiple worker threads can share COM objects directly:
 
-```tb
+```tb hidden
+' Context for the sample below: the two COM apartment calls it makes, which a
+' service declares for itself -- the package does not re-export them.
+Public Declare PtrSafe Function CoInitializeEx Lib "ole32" ( _
+        ByVal pvReserved As LongPtr, ByVal dwCoInit As Long) As Long
+Public Declare PtrSafe Sub CoUninitialize Lib "ole32" ()
+Public Const COINIT_MULTITHREADED As Long = &H0
+```
+
+```tb check_build
 Sub EntryPoint(ByVal ServiceManager As ServiceManager) _
         Implements ITbService.EntryPoint
     ' AutoInitializeCOM was set to False during configuration,
@@ -90,8 +99,10 @@ When the SCM is asked to start this service, it auto-starts every listed depende
 
 Assign an array of **String** service names using `Array(...)`:
 
-```tb
-.DependentServices = Array("MSMQ", "LanmanServer")
+```tb check_build
+With Services.ConfigureNew
+    .DependentServices = Array("MSMQ", "LanmanServer")
+End With
 ```
 
 The value is read at [**Install**](#install) time. Changing it after install requires uninstalling and re-installing the service.
@@ -125,8 +136,10 @@ The command line the SCM will use when launching the service-host EXE. **String*
 
 The default suffices only when the EXE always runs as a service. The conventional pattern is to **override the default** to add a discriminator argument so the EXE's `Sub Main` can tell which mode it is in:
 
-```tb
-.InstallCmdLine = """" & App.ModulePath & """ -startService"
+```tb check_build
+With Services.ConfigureNew
+    .InstallCmdLine = """" & App.ModulePath & """ -startService"
+End With
 ```
 
 The matching `If InStr(Command, "-startService") > 0 Then Services.RunServiceDispatcher` branch in `Sub Main` is what makes the same EXE work both as installer / control-panel UI (when launched normally) and as service host (when launched by the SCM).
@@ -161,8 +174,10 @@ Syntax (Let/Set): *manager*.**InstanceCreator** = *creator*
 
 Assign `New ServiceCreator(Of MyServiceClass)` where `MyServiceClass` is the user's [**ITbService**](ITbService) implementation:
 
-```tb
-.InstanceCreator = New ServiceCreator(Of MyService)
+```tb check_build projname=winservices-demo
+With Services.ConfigureNew
+    .InstanceCreator = New ServiceCreator(Of MyService)
+End With
 ```
 
 [**Services.RunServiceDispatcher**](Services#runservicedispatcher) calls `InstanceCreator.CreateInstance()` once per service start to obtain the [**ITbService**](ITbService) instance the dispatcher hands to the service thread.

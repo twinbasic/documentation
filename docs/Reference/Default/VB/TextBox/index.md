@@ -12,7 +12,7 @@ A **TextBox** is a Win32 native edit control that lets the user enter and edit t
 
 The control is normally placed on a [**Form**](../Form) or **UserControl** at design time. The default property is [**Text**](#text) and the default-designer event is [**Change**](#change).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     Text1.MultiLine  = True
     Text1.ScrollBars = vbVertical
@@ -42,7 +42,7 @@ When [**PasswordChar**](#passwordchar) is set to a non-empty string, the first c
 
 Password masking is a single-line edit feature --- assigning [**PasswordChar**](#passwordchar) while [**MultiLine**](#multiline) is **True** has no visible effect on the displayed text.
 
-```tb
+```tb check_build
 txtPassword.PasswordChar = "•"      ' display a bullet for each character
 ```
 

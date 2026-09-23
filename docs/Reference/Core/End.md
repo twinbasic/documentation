@@ -48,8 +48,8 @@ The **End** statement provides a way to force the program to halt. For normal te
 
 This example uses the **End** statement to end code execution if the user enters an invalid password.
 
-```tb
-Sub Form_Load 
+```tb check_build
+Sub Form_Load() 
   Dim Password, Pword 
   PassWord = "Swordfish" 
   Pword = InputBox("Type in your password") 

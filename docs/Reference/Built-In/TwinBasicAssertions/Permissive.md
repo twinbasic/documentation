@@ -49,7 +49,8 @@ Syntax: **Assert.Permissive.Fail** [ *Message* ]
 
 **Fail** marks code paths that should be unreachable in a passing test --- most often after a call that is expected to raise an error, in a branch that runs when the call returned normally instead.
 
-```tb
+```tb check_build
+Dim target As Object
 On Error Resume Next
 target.SomethingThatShouldRaise
 If Err.Number = 0 Then Assert.Permissive.Fail "expected an error, got success"
@@ -85,7 +86,8 @@ Syntax: **Assert.Permissive.AreEqual** *Expected*, *Actual* [, *Message* ]
 
 The comparison follows this module's [comparison semantics](#comparison-semantics) --- strings are compared case-insensitively, object comparison reads default members where they exist, and everything else uses normal twinBASIC equality (so numeric promotions apply and `vbNullString` matches `""`). If either operand is **Null**, the assertion fails --- `Null` is never equal to anything; use [**IsNull**](#isnull) to test for **Null** explicitly.
 
-```tb
+```tb check_build
+Dim result As Long, greeting As String
 Assert.Permissive.AreEqual 42, result          ' passes if result equals 42 (numeric promotion applies)
 Assert.Permissive.AreEqual "Hello", greeting   ' passes if greeting equals "hello", "HELLO", etc.
 

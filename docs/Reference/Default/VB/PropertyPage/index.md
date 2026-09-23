@@ -20,7 +20,7 @@ Designing a property page is much like designing a small dialog [**Form**](../Fo
 
 The default property is [**Controls**](#controls); the default-designer event is [**SelectionChanged**](#selectionchanged).
 
-```tb
+```tb check_build inherits=PropertyPage
 Private Sub PropertyPage_SelectionChanged()
     ' Mirror the first selected control's properties into the editor controls.
     txtCaption.Text = SelectedControls(0).Caption
@@ -350,7 +350,8 @@ The returned object exposes three members:
 
 The items are returned as **Object**, so use **CallByName** or late-bound member access to read and write their properties.
 
-```tb
+```tb check_build inherits=PropertyPage
+Dim ctl As Variant
 For Each ctl In SelectedControls
     ctl.Caption = txtCaption.Text
 Next

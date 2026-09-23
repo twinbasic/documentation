@@ -20,7 +20,7 @@ End With
 
 The three [**CornerShape**](../Enumerations/CornerShape) values can mix on a single control. Setting [**TopLeft**](#topleft), [**TopRight**](#topright), [**BottomLeft**](#bottomleft), and [**BottomRight**](#bottomright) individually gives full control over the silhouette:
 
-```tb
+```tb check_build
 With btnTab.NormalState.Corners
     .TopLeft.Shape = tbCurve     : .TopLeft.Radius = 12
     .TopRight.Shape = tbCurve    : .TopRight.Radius = 12

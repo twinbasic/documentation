@@ -1,0 +1,61 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "Documentation samples",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Standard EXE",
+	"project.description": "Template for scripts/check_examples.mjs: the console template with Option Explicit turned off, for the samples whose subject IS implicit declaration -- Deftype sets the type of a variable nobody declares, so the page demonstrating it cannot compile in a project that requires declarations. project.id, project.name and project.buildPath are rewritten in the staged copy, one per batch.",
+	"project.exportPathIsV2": true,
+	"project.id": "{7B247400-0000-4000-9000-7B2474000000}",
+	"project.name": "DocSamples",
+	"project.optionExplicit": false,
+	"project.references": [
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"symbolId": "stdole",
+			"versionMajor": 2,
+			"versionMinor": 0
+		},
+		{
+			"id": "{F50B82D0-DCAB-43FE-9631-11959D4A4728}",
+			"isCompilerPackage": true,
+			"licence": "MIT",
+			"name": "[COMPILER PACKAGE] twinBASIC - VB Compatibility Package (Forms)",
+			"path32": "",
+			"path64": "",
+			"publisher": "TWINBASIC-COMPILER",
+			"symbolId": "VB",
+			"versionBuild": 0,
+			"versionMajor": 0,
+			"versionMinor": 0,
+			"versionRevision": 31
+		},
+		{
+			"id": "{C192FB39-64CA-4D9B-B477-A5502F48EFCC}",
+			"isCompilerPackage": true,
+			"licence": "MIT",
+			"name": "[COMPILER PACKAGE] twinBASIC - App global class object",
+			"path32": "",
+			"path64": "",
+			"publisher": "TWINBASIC-COMPILER",
+			"symbolId": "AppGlobalClassProject",
+			"versionBuild": 0,
+			"versionMajor": 1,
+			"versionMinor": 0,
+			"versionRevision": 0
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.startupObject": "Sub Main",
+	"project.warnings": {
+		"errors": [],
+		"hints": [],
+		"ignored": [],
+		"info": [],
+		"warnings": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

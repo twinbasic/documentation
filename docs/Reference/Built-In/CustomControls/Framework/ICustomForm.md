@@ -54,15 +54,18 @@ A form should request additional repaints by calling [**CustomFormContext.Repain
 
 This example shows a minimal **ICustomForm** implementation whose **Paint** method fills the form with a solid background colour.
 
-```tb
+```tb check_build project=cc-private
 Class MyForm
     Implements CustomControls.ICustomForm
 
     Private m_Context As CustomControls.CustomFormContext
+    Public BackgroundFill As CustomControlsPackage.Fill
 
     Private Sub OnInitialize(ByVal Context As CustomControls.CustomFormContext) _
             Implements CustomControls.ICustomForm.Initialize
         Set m_Context = Context
+        Set BackgroundFill = New CustomControlsPackage.Fill
+        BackgroundFill.ColorPoints.SetSolidColor vbWhite
     End Sub
 
     Private Sub OnDestroy() _
@@ -72,7 +75,7 @@ Class MyForm
 
     Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas) _
             Implements CustomControls.ICustomForm.Paint
-        Dim descriptor As ElementDescriptor
+        Dim descriptor As CustomControlsPackage.ElementDescriptor
         With descriptor
             .Left = 0
             .Top = 0
@@ -84,6 +87,8 @@ Class MyForm
     End Sub
 End Class
 ```
+
+`ElementDescriptor` and [**Fill**](../Styles/Fill) are **Private** components of the **CustomControlsPackage** control package, so naming them takes that library symbol prefixed with an asterisk in *Project Settings* and the package qualifier shown above --- see [Exposing a library's private symbols](../../../../Features/Packages/Library-Symbols#exposing-a-librarys-private-symbols) for the setting, and [**Canvas**](Canvas) for the same sample on the control side.
 
 ### See Also
 

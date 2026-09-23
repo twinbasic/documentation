@@ -32,7 +32,8 @@ A driver that advertises a single device over multiple ports produces one [**Pri
 
 The collection is **not cached**. Every call to [**Count**](#count), [**Item**](#item), or `For Each` re-reads the system's installed-printers list from the Windows registry's profile section and reconstructs a fresh batch of [**Printer**](../Printer/) instances. A printer added or removed in **Settings → Printers** therefore appears the next time the collection is touched, with no need to refresh anything from code. The trade-off is that consecutive accesses are not cheap --- when enumerating, cache the result if many lookups are needed:
 
-```tb
+```tb check_build
+Dim p As Variant
 Dim snapshot As Variant : snapshot = Array()      ' or use a Collection
 For Each p In Printers
     snapshot = Array(snapshot, p.DeviceName)      ' (illustrative)

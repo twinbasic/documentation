@@ -19,7 +19,7 @@ Returns an empty array if *Picture* is **Nothing**.
 
 ### Example
 
-```tb
+```tb check_build
 Dim Bytes As Variant = PictureToByteArray(Picture1.Picture)
 Set Picture2.Picture = LoadPicture(Bytes)
 ```

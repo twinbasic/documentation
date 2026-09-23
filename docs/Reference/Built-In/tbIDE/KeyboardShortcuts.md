@@ -10,7 +10,13 @@ has_toc: false
 
 The IDE's keyboard-shortcut registry --- reached through [**Host.KeyboardShortcuts**](Host#keyboardshortcuts). Call [**Add**](#add) to bind a key combination to a callback. There is no removal API; the registration is released when the addin is unloaded.
 
-```tb
+```tb hidden
+' Context for the sample below: the flag the addin toggles, which belongs to the
+' addin rather than to the IDE API.
+Public debugMode As Boolean
+```
+
+```tb check_build
 Private Sub Host_OnProjectLoaded()
     Host.KeyboardShortcuts.Add "{CTRL}{SHIFT}d", AddressOf ToggleDebugMode
 End Sub

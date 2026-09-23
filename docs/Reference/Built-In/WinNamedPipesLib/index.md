@@ -45,25 +45,51 @@ Windows services hosted through the [**WinServicesLib**](../WinServicesLib/) pac
 
 The canonical pattern: [**ITbService.EntryPoint**](../WinServicesLib/ITbService#entrypoint) opens the server, transitions the service to `Running`, blocks inside [**ManualMessageLoopEnter**](NamedPipeServer#manualmessageloopenter), and only leaves the loop when [**ITbService.ChangeState**](../WinServicesLib/ITbService#changestate) --- running on the *other* (dispatcher) thread --- calls [**ManualMessageLoopLeave**](NamedPipeServer#manualmessageloopleave) on the same server instance.
 
-```tb
+```tb hidden concat_group=pipe-service-host
+' Context for the sample below: the service class its two methods belong to.
+[COMCreatable(False)]
+Class PipeHostService
+    Implements ITbService
+```
+
+```tb check_build concat_group=pipe-service-host
+Private NamedPipeServer As NamedPipeServer     ' shared by the two threads
+
 ' On the service-entry-point thread:
-Set NamedPipeServer = New NamedPipeServer
-NamedPipeServer.PipeName = "MyServicePipe"
+Sub EntryPoint(ByVal ServiceManager As ServiceManager) _
+        Implements ITbService.EntryPoint
+    Set NamedPipeServer = New NamedPipeServer
+    NamedPipeServer.PipeName = "MyServicePipe"
 
-' (tell the SCM the service is running, then block on the message loop)
-ServiceManager.ReportStatus vbServiceStatusRunning
-NamedPipeServer.Start
-NamedPipeServer.ManualMessageLoopEnter      ' blocks until ManualMessageLoopLeave
-NamedPipeServer.Stop
+    ' (tell the SCM the service is running, then block on the message loop)
+    ServiceManager.ReportStatus vbServiceStatusRunning
+    NamedPipeServer.Start
+    NamedPipeServer.ManualMessageLoopEnter      ' blocks until ManualMessageLoopLeave
+    NamedPipeServer.Stop
 
-ServiceManager.ReportStatus vbServiceStatusStopped
+    ServiceManager.ReportStatus vbServiceStatusStopped
+End Sub
 
-' On the dispatcher thread (an ITbService.ChangeState handler):
-Select Case dwControl
-    Case vbServiceControlStop, vbServiceControlShutdown
-        ServiceManager.ReportStatus vbServiceStatusStopPending
-        NamedPipeServer.ManualMessageLoopLeave   ' wakes the service thread out of ManualMessageLoopEnter
-End Select
+' On the dispatcher thread:
+Sub ChangeState(ByVal ServiceManager As ServiceManager, _
+                ByVal dwControl As ServiceControlCodeConstants, _
+                ByVal dwEventType As Long, _
+                ByVal lpEventData As LongPtr) _
+        Implements ITbService.ChangeState
+    Select Case dwControl
+        Case vbServiceControlStop, vbServiceControlShutdown
+            ServiceManager.ReportStatus vbServiceStatusStopPending
+            NamedPipeServer.ManualMessageLoopLeave   ' wakes the service thread out of ManualMessageLoopEnter
+    End Select
+End Sub
+```
+
+```tb hidden concat_group=pipe-service-host
+    ' The interface's third member.
+    Sub StartupFailed(ByVal ServiceManager As ServiceManager) _
+            Implements ITbService.StartupFailed
+    End Sub
+End Class
 ```
 
 Three facts worth pulling out:
@@ -82,7 +108,19 @@ When [**ContinuouslyReadFromPipe**](NamedPipeServer#continuouslyreadfrompipe) is
 
 Every [**AsyncRead**](NamedPipeServerConnection#asyncread) and [**AsyncWrite**](NamedPipeServerConnection#asyncwrite) accepts an optional *Cookie* of type **Variant**. Whatever value the caller passes in is round-tripped through the IOCP completion and re-emitted as the *Cookie* parameter of the matching [**ClientMessageReceived**](NamedPipeServer#clientmessagereceived) / [**ClientMessageSent**](NamedPipeServer#clientmessagesent) (or client-side [**MessageReceived**](NamedPipeClientConnection#messagereceived) / [**MessageSent**](NamedPipeClientConnection#messagesent)) event. Use this to correlate event callbacks with the calls that initiated them --- a per-request sequence number, a callback object, a key into a pending-replies dictionary.
 
-```tb
+```tb hidden concat_group=cookie-correlation
+' Context for the sample below: the reply callback it stores, and the class it
+' belongs to.
+Interface IReplyHandler Extends stdole.IUnknown
+    Sub HandleReply(ByVal Reply As String)
+End Interface
+
+[COMCreatable(False)]
+Class RequestTracker
+```
+
+```tb check_build concat_group=cookie-correlation
+Private WithEvents connection As NamedPipeClientConnection
 Private pending As New Collection
 
 Private Sub SendRequest(text As String, replyHandler As IReplyHandler)
@@ -98,6 +136,19 @@ Private Sub connection_MessageReceived(ByRef Cookie As Variant, ByRef Data() As 
 End Sub
 ```
 
+```tb hidden concat_group=cookie-correlation
+    ' The three helpers the sample calls, which are the reader's own.
+    Private Function NextCookie() As Long
+    End Function
+
+    Private Function Encode(ByVal Text As String) As Byte()
+    End Function
+
+    Private Function Decode(ByRef Data() As Byte) As String
+    End Function
+End Class
+```
+
 ## Working with `Data() As Byte` in events
 
 The *Data* parameter on [**ClientMessageReceived**](NamedPipeServer#clientmessagereceived) and [**MessageReceived**](NamedPipeClientConnection#messagereceived) is **not** a normal heap-allocated **Byte** array. The package constructs a custom `SAFEARRAY` whose backing memory points at the IOCP read buffer, then clears the array pointer at the end of the event handler so the buffer can be recycled. The values are valid *only* while the handler is on the stack.
@@ -107,7 +158,8 @@ The *Data* parameter on [**ClientMessageReceived**](NamedPipeServer#clientmessag
 
 For a fresh **Byte()** copy:
 
-```tb
+```tb check_build
+Dim Data() As Byte     ' the event handler's own ByRef parameter
 Dim Stored() As Byte
 ReDim Stored(UBound(Data))
 [_HiddenModule].vbaCopyBytes UBound(Data) + 1, VarPtr(Stored(0)), VarPtr(Data(0))
@@ -123,24 +175,33 @@ The package transports raw bytes; it is agnostic about what is inside them. For 
 1. **`PropertyBag.Contents` deep-copies the bytes**, which is the simplest answer to the transient-`Data()` lifetime caveat above. Assigning *Data* to a fresh **PropertyBag**'s **Contents** captures the buffer in one step; the copy is safe to retain past the event handler.
 2. **`PropertyBag` provides typed multi-field payloads** without the consumer having to design a wire protocol. Both sides agree on property names (e.g. `"CommandID"`, `"ResponseCommandID"`, `"Data"`) and **PropertyBag** handles the byte-level encoding.
 
-```tb
-' Sender:
-Dim request As New PropertyBag
-request.WriteProperty "CommandID", "WHAT_TIME_IS_IT"
-connection.AsyncWrite request.Contents
+```tb check_build
+' Sender -- the client:
+Private Sub AskForTheTime(ByVal connection As NamedPipeClientConnection)
+    Dim request As New PropertyBag
+    request.WriteProperty "CommandID", "WHAT_TIME_IS_IT"
+    connection.AsyncWrite request.Contents
+End Sub
+```
 
-' Receiver — inside ClientMessageReceived / MessageReceived:
-Dim incoming As New PropertyBag
-incoming.Contents = Data        ' deep-copies the bytes; safe to use past the handler
+```tb check_build
+' Receiver -- the server:
+Private Sub server_ClientMessageReceived( _
+        Connection As NamedPipeServerConnection, _
+        ByRef Cookie As Variant, _
+        ByRef Data() As Byte)
+    Dim incoming As New PropertyBag
+    incoming.Contents = Data        ' deep-copies the bytes; safe to use past the handler
 
-Dim cmd As String = incoming.ReadProperty("CommandID")
-Select Case cmd
-    Case "WHAT_TIME_IS_IT"
-        Dim reply As New PropertyBag
-        reply.WriteProperty "ResponseCommandID", cmd
-        reply.WriteProperty "ResponseData", Time()
-        Connection.AsyncWrite reply.Contents
-End Select
+    Dim cmd As String = incoming.ReadProperty("CommandID")
+    Select Case cmd
+        Case "WHAT_TIME_IS_IT"
+            Dim reply As New PropertyBag
+            reply.WriteProperty "ResponseCommandID", cmd
+            reply.WriteProperty "ResponseData", Time()
+            Connection.AsyncWrite reply.Contents
+    End Select
+End Sub
 ```
 
 Nothing in the package mandates **PropertyBag** --- raw `Byte()` works too, and a custom wire format may be the right answer for very high-throughput scenarios. The everyday case is well served by the **PropertyBag** convention, and it solves the transient-`Data()` problem without extra effort.
@@ -158,7 +219,9 @@ Either let the [**NamedPipeClientConnection**](NamedPipeClientConnection) object
 
 Named pipes can appear and disappear at any time as their server processes start and stop, and the package does not publish an event for this. The canonical discovery loop is a low-frequency [**Timer**](../VB/Timer/) that repopulates a list and preserves the user's current selection --- a few seconds between polls is the typical interval; the underlying `FindFirstFileW` is cheap enough that nothing finer is required:
 
-```tb
+```tb check_build
+Private manager As NamedPipeClientManager
+
 Private Sub timerRefreshNamedPipes_Timer()
     Dim previousSelection As String = lstNamedPipes.List(lstNamedPipes.ListIndex)
     lstNamedPipes.Clear

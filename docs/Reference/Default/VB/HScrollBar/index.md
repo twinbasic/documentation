@@ -14,7 +14,7 @@ An **HScrollBar** is a Win32 native horizontal scroll bar exposed as a stand-alo
 
 The default property is [**Value**](#value) and the default event is [**Change**](#change).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     hsbVolume.Min = 0
     hsbVolume.Max = 100
@@ -41,7 +41,7 @@ End Sub
 
 The two endpoints may be supplied in either order. When **Min** is greater than **Max** the scroll bar runs *inverted* --- moving the thumb to the right decreases [**Value**](#value), and **Max** is the lower bound of the legal range. This is convenient for, for example, a "high-on-the-left" colour or zoom slider:
 
-```tb
+```tb check_build
 hsbZoom.Min = 400      ' leftmost == 4.00x
 hsbZoom.Max = 100      ' rightmost == 1.00x
 hsbZoom.Value = 100

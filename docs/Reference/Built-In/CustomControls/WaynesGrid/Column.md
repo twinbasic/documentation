@@ -11,11 +11,12 @@ has_toc: false
 
 One column of a [**WaynesGrid**](.). Has a [**Caption**](#caption) that is shown in the column-header row and a [**Width**](#width) that the user can drag at run time. Elements of [**WaynesGrid.Columns**](.#columns).
 
-```tb
-ReDim Grid1.Columns(2)
-Set Grid1.Columns(0) = New Column
-Grid1.Columns(0).Caption = "ID"
-Grid1.Columns(0).Width = 80
+```tb check_build
+Dim cols(0 To 2) As Column
+Set cols(0) = New Column
+cols(0).Caption = "ID"
+cols(0).Width = 80
+Grid1.Columns = cols
 ```
 
 ## Properties

@@ -25,15 +25,20 @@ A run-time error raised inside the expression --- division by zero, type mismatc
 
 This example compiles an expression that references a property on the host object via [**AddCustomBinderObject**](AddCustomBinderObject), then evaluates it twice with the property having different values.
 
-```tb
-Dim Service As TbExpressionService = New TbExpressionService
-Service.AddStdLibraryBinder()
-Service.AddCustomBinderObject "State", Me, IsAppObject
+```tb check_build
+' In the host class:
+Public Counter As Long
 
-Dim Expr As ITbExpression = Service.Compile("Counter * 2")
+Public Sub EvaluateTwice()
+    Dim Service As TbExpressionService = New TbExpressionService
+    Service.AddStdLibraryBinder()
+    Service.AddCustomBinderObject "State", Me, IsAppObject
 
-Me.Counter = 1 : Debug.Print Expr.Evaluate()    ' 2
-Me.Counter = 5 : Debug.Print Expr.Evaluate()    ' 10
+    Dim Expr As ITbExpression = Service.Compile("Counter * 2")
+
+    Me.Counter = 1 : Debug.Print Expr.Evaluate()    ' 2
+    Me.Counter = 5 : Debug.Print Expr.Evaluate()    ' 10
+End Sub
 ```
 
 ### See Also

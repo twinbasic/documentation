@@ -39,18 +39,17 @@ The **Option Base** statement only affects the lower bound of arrays in the modu
 
 This example uses the **Option Base** statement to override the default base array subscript value of 0. The [**LBound**](LBound) function returns the smallest available subscript for the indicated dimension of an array. The **Option Base** statement is used at the module level only.
 
-```tb
+```tb check_build
 Module MyModule
     Option Base 1 ' Set the default array subscripts to 1. 
     Sub Example()
-        Dim Lower 
         Dim MyArray(20), TwoDArray(3, 4) ' Declare array variables. 
         Dim ZeroArray(0 To 5) ' Override the default base subscript. 
 
         ' Use LBound function to test lower bounds of arrays. 
-        Console.WriteLine LBound(MyArray)      ' Prints 1. 
-        Console.WriteLine LBound(TwoDArray, 2) ' Returns 1. 
-        Console.WriteLinee LBound(ZeroArray)   ' Returns 0. 
+        Debug.Print LBound(MyArray)      ' Prints 1. 
+        Debug.Print LBound(TwoDArray, 2) ' Returns 1. 
+        Debug.Print LBound(ZeroArray)    ' Returns 0. 
     End Sub
 End Module
 ```
@@ -58,12 +57,12 @@ End Module
 ### Example of use at class level
 {: .no_toc}
 
-```tb
+```tb check_build
 Class Example1
     Option Base 1
     Sub New()
         Dim A1(5)
-        Console.WriteLine LBound(A1)  ' Prints 1
+        Debug.Print LBound(A1)  ' Prints 1
     End Sub
 End Class
 
@@ -71,7 +70,7 @@ Class Example0
     Option Base 0
     Sub New()
         Dim A0(5)
-        Console.WriteLine LBound(A0)  ' Prints 0
+        Debug.Print LBound(A0)  ' Prints 0
     End Sub
 End Class
 ```
@@ -126,13 +125,13 @@ The **Option Compare** statement specifies the [string comparison](../Gloss#stri
 
 * **Option Compare Binary** results in string comparisons based on a [sort order](../Gloss#sort-order) derived from the internal binary representations of the characters. In Microsoft Windows, sort order is determined by the code page. A typical binary sort order is shown in the following example:
 
-  ```tb
+  ```text
   A < B < E < Z < a < b < e < z < À < Ê < Ø < à < ê < ø 
   ```
 
 * **Option Compare Text** results in string comparisons based on a case-insensitive text sort order determined by the system's [locale](../Gloss#locale). When the same characters are sorted by using **Option Compare Text**, the following text sort order is produced:
 
-  ```tb
+  ```text
   (A=a) < ( À=à) < (B=b) < (E=e) < (Ê=ê) < (Z=z) < (Ø=ø) 
   ```
 * **Option Compare Database** has no effect in twinBASIC. When used within Microsoft Access, it results in string comparisons based on the sort order determined by the locale ID of the database where the string comparisons occur.

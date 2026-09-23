@@ -22,6 +22,7 @@ two standalone scripts do it on a machine that has no twinBASIC installation.
 | Needs twinBASIC installed | yes | no |
 | Runs on | Windows | any platform with Node.js or Python |
 | Accepts a `.twinpack` path | no, see [Only `.twinproj` is accepted](#only-twinproj-is-accepted) | yes |
+| Packs a project that embeds a package | no, see [`import` fails on a tree with an embedded package](#import-fails-on-a-tree-with-an-embedded-package) | yes |
 | Verb that unpacks a file into a tree | `export` | `import` |
 | Verb that packs a tree into a file | `import` | `export` |
 
@@ -113,19 +114,53 @@ The two formats share one container, so a `.twinpack` can be handled by copying 
 a `.twinproj` name first and copying the result back afterwards. The
 [standalone scripts](#the-standalone-scripts) accept either extension as given.
 
-### The exit code is always zero
+### `import` fails on a tree with an embedded package
 
-The exit code is `0` whether the operation succeeded or failed --- observed on a
-missing input file, a refused overwrite, and unrecognised command-line syntax alike.
-A build script that tests it will carry on after a failure.
+A package that a project uses is embedded in it by default, stored as a folder of its own
+under `Packages\` (see [Linked Packages](Linked)). `export` writes that folder out with the
+rest of the tree, but `import` cannot read it back: it stops as soon as it reaches the
+first folder inside `Packages\`. Observed against BETA 983, with both executables:
+
+- no project file is written, and a project already at the output path is left unchanged;
+- the last line of output is the `IMPORTED FOLDER:` line for `Packages\`, so neither
+  `... DONE` nor `... FAILED` is printed;
+- the exit code is `999`.
+
+Any folder inside the top-level `Packages\` does this, even an empty one, so the executable
+cannot round-trip a project that embeds a package. Five of the project and package files
+that ship with the IDE embed one, among them the **WinNativeCommonCtls** package and the
+*Standard EXE (plus VBCCR v1.8)* project template.
+
+The [standalone scripts](#the-standalone-scripts) pack such a tree correctly. Their verb for
+that is `export`, not `import` --- see the warning at the top of this page.
+
+### A zero exit code does not mean success
+
+The exit code is `0` on success, and also on every failure the executable reports itself:
+observed on a missing input file, a refused overwrite, and unrecognised command-line syntax
+alike. A build script that tests it will carry on after such a failure. The only non-zero
+exit code observed is `999`, from
+[`import` on an embedded package](#import-fails-on-a-tree-with-an-embedded-package).
 
 The result is on the last line of standard output instead: `... DONE` on success,
-`... FAILED` on failure. A batch file can test for it:
+`... FAILED` on a failure the executable reports, and neither after the `999` failure. So
+test for `... DONE`, not for `... FAILED`. A batch file can do that:
 
 ```batch
 twinBASIC_win32.exe export "%PROJ%" "%TREE%" --overwrite > tb.log
 find "... DONE" tb.log > nul || exit /b 1
 ```
+
+### `import` converts code files to CRLF
+
+`import` converts LF line endings to CRLF in every `.twin`, `.bas` and `.cls` file,
+whatever folder it is in and whatever the case of its extension. A file with mixed line
+endings comes out all CRLF. The IDE stores code files with CRLF line endings, so a tree
+whose code files have LF line endings --- as a Git checkout or an editor may leave
+them --- needs no conversion before it is imported.
+
+Every other file is stored exactly as it is on disk, line endings included: the designer
+files (`.tbform`, `.tbcontrol`, `.tbppage`, `.tbreport`), `Settings`, and all resources.
 
 ### Compiling from the command line
 
@@ -207,6 +242,10 @@ directory name becomes the root entry name in the output file.  Well-known
 directory and file names (`Sources`, `Resources`, `Settings`, etc.) are
 tagged with the correct `category` values automatically.
 
+Line endings are converted the same way the compiler's `import` converts them: LF
+becomes CRLF in `.twin`, `.bas` and `.cls` files, and every other file is stored
+byte-for-byte. See [`import` converts code files to CRLF](#import-converts-code-files-to-crlf).
+
 ```
 node impexp.mjs export unpacked/ MyProject.twinproj
 ```
@@ -218,7 +257,7 @@ python impexp.py export unpacked/ MyPackage.twinpack
 ### Self-test
 
 Both implementations include a built-in test suite that exercises parsing,
-serialization, and full round-trip fidelity.
+serialization, full round-trip fidelity, and the line-ending conversion.
 
 ```
 node impexp.mjs --self-test
@@ -228,8 +267,9 @@ python impexp.py --self-test
 ### Round-trip notes
 
 Importing and re-exporting a binary file preserves all file contents
-byte-for-byte.  The following metadata fields are reset to defaults on a
-disk round-trip (they are not stored on the filesystem):
+byte-for-byte, except that a code file with LF line endings comes back with
+CRLF (see [Export](#export-pack)).  The following metadata fields are reset to
+defaults on a disk round-trip (they are not stored on the filesystem):
 
 - **revision counter** --- directories get `0x0000`; files get `0x0002`.
 - **flags** --- always written as zero (no flags set).

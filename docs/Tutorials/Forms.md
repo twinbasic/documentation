@@ -69,7 +69,7 @@ End Sub
 
 Fill it in as follows:
 
-```tb
+```tb check_build
 Private Sub cmdConvert_Click()
     If Not IsNumeric(txtInput.Text) Then
         lblResult.Caption = "Please enter a number."
@@ -112,7 +112,7 @@ Close the form to stop the application and return to the IDE.
 
 Design-time properties are convenient but limited. You can read and write most control properties from code at any time. Add a `Form_Load` handler to set the form's title bar text and give `lblResult` a starting caption:
 
-```tb
+```tb check_build inherits=Form
 Private Sub Form_Load()
     Me.Caption = "Temperature Converter"
     lblResult.Caption = "Enter a value and click Convert."
@@ -126,7 +126,14 @@ End Sub
 
 It is often convenient to trigger the conversion when the user presses **Enter** in the text box, without having to click the button. Double-click `txtInput` in the designer to open the code editor, then select `KeyPress` from the event drop-down at the top right:
 
-```tb
+```tb hidden concat_group=forms-keypress
+' Context for the sample below: the button handler it calls, shown in full
+' earlier on this page.
+Private Sub cmdConvert_Click()
+End Sub
+```
+
+```tb check_build concat_group=forms-keypress
 Private Sub txtInput_KeyPress(KeyAscii As Integer)
     If KeyAscii = vbKeyReturn Then
         KeyAscii = 0          ' suppress the beep

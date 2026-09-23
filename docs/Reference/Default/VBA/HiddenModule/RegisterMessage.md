@@ -29,7 +29,7 @@ The subscription is recorded but does not start firing until [**Start**](Start) 
 
 ### Example
 
-```tb
+```tb check_build inherits=Form
 Const WM_KEYDOWN = &H100
 Const WM_CHAR = &H102
 
@@ -37,6 +37,14 @@ Sub HookKeyboard(ByVal h As IGetMessageHook)
     h.RegisterMessage Me.hWnd, AllDescendants, WM_KEYDOWN, AddressOf OnKeyDown
     h.RegisterMessage Me.hWnd, AllDescendants, WM_CHAR,    AddressOf OnChar
     h.Start
+End Sub
+```
+
+```tb hidden
+Public Sub OnKeyDown()
+End Sub
+
+Public Sub OnChar()
 End Sub
 ```
 

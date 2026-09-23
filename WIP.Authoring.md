@@ -319,6 +319,23 @@ Add a `> [!NOTE]` callout or rewrite the affected section when source diverges. 
 
 When in doubt about a tB-specific behavior, check `docs/Features/` and `docs/Reference/index.md` before assuming VBA semantics carry over.
 
+## Document the product as it is, not as it was
+
+**twinBASIC is in a long beta, so a superseded name is not history --- it is noise.**
+Document the current API and nothing else. A reader cannot use a name that no longer
+exists, cannot search for it, and has to carry two names in their head to read one snippet.
+
+Two CustomControls tutorials showed `Public Sub New(Serializer As SerializationInfo)` and
+`Deserialize()`, each with a NOTE underneath explaining that the framework actually names
+them `SerializeInfo` and `RuntimeUISrzDeserialize()`. Both pages now show the current names
+and carry no note; the snippets are shorter and the reader has one name per thing.
+
+Version-skew notes earn their place when a reader may be *on* the older version --- a
+behaviour that changed in a shipped BETA, where the page says which build changed it (see
+`redirect_from` and the `[!NOTE]` conventions above). Nobody is on a pre-release draft of a
+name. **From v1 this rule relaxes**: once there are releases people stay on, what changed
+between them becomes something a reader needs.
+
 ## A script is findable only if its bare name is a token prefix somewhere
 
 lunr's tokeniser splits on **whitespace and hyphens only** (`/[\s\-]+/`), and the site's

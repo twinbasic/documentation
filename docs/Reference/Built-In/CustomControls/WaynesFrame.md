@@ -12,7 +12,7 @@ A rectangular container control whose entire area is painted with a configurable
 
 The default fill is a solid mid-grey ([**WAYNESCOLOR_GREY**](#) --- `&H808080`); change it by accessing the **Fill.ColorPoints** collection.
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     Frame1.BackgroundFill.ColorPoints.SetSolidColor vbWhite
 End Sub

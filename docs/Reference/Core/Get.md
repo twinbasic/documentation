@@ -26,7 +26,8 @@ Syntax:
 
 Data read with **Get** is usually written to a file with [**Put**](Put). The first record or byte in a file is at position 1, the second record or byte is at position 2, and so on. When *recnumber* is omitted, the next record or byte following the last **Get** or **Put** statement (or pointed to by the last [**Seek**](../Modules/FileSystem/Seek) function) is read. The delimiting commas must be included:
 
-```tb
+```tb check_build
+Dim FileBuffer As String
 Get #4, , FileBuffer
 ```
 
@@ -75,19 +76,21 @@ For files opened in **Binary** mode, all of the **Random** rules apply, except:
 
 This example uses the **Get** statement to read data from a file into a variable. This example assumes that `TESTFILE` is a file containing five records of the user-defined type `Record`.
 
-```tb
+```tb check_build
 Type Record ' Define user-defined type.
     ID As Integer
     Name As String * 20
 End Type
 
-Dim MyRecord As Record, Position ' Declare variables.
-' Open sample file for random access.
-Open "TESTFILE" For Random As #1 Len = Len(MyRecord)
-' Read the sample file using the Get statement.
-Position = 3 ' Define record number.
-Get #1, Position, MyRecord ' Read third record.
-Close #1 ' Close file.
+Sub ReadThirdRecord()
+    Dim MyRecord As Record, Position ' Declare variables.
+    ' Open sample file for random access.
+    Open "TESTFILE" For Random As #1 Len = Len(MyRecord)
+    ' Read the sample file using the Get statement.
+    Position = 3 ' Define record number.
+    Get #1, Position, MyRecord ' Read third record.
+    Close #1 ' Close file.
+End Sub
 ```
 
 ### See Also

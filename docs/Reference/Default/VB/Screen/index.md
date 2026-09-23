@@ -10,7 +10,14 @@ has_toc: false
 
 The **Screen** class wraps the user's primary display --- its dimensions and twip-to-pixel ratio, the list of installed fonts, the currently active [**Form**](../Form/) and the currently focused control on that form, and the application-wide mouse-pointer override. It is a singleton: there is exactly one **Screen** instance per process, owned by the runtime and exposed through the [**Screen**](../Global/#screen) property of the [**Global**](../Global/) app-object. Code reaches it without qualification:
 
-```tb
+```tb hidden
+' Context for the sample below: the long task it shows an hourglass over, which
+' belongs to the reader's program.
+Public Sub LongRunningWork()
+End Sub
+```
+
+```tb check_build inherits=Form
 ' Centre a form on the primary display
 Me.Left = (Screen.Width  - Me.Width)  \ 2
 Me.Top  = (Screen.Height - Me.Height) \ 2
@@ -40,18 +47,52 @@ On a 96-DPI display these are both `15` (1440 twips per logical inch ÷ 96 pixel
 
 [**ActiveForm**](#activeform) returns the [**Form**](../Form/) instance that is currently the foreground form in the application; [**ActiveControl**](#activecontrol) returns the control within that form that currently holds the focus. Both return **Nothing** if no form in the application is active.
 
-The most common idiom is accessing the active form from a global handler --- for example, a toolbar button on an [**MDIForm**](../MDIForm/) that operates on whatever MDI child is in front:
+The most common idiom is accessing the active form from a global handler --- for example, an **Edit** menu on an [**MDIForm**](../MDIForm/) that operates on whatever MDI child is in front. The handlers share one routine, so the command that ran is the only thing they have to say:
 
-```tb
-Private Sub tbrEdit_ButtonClick(ByVal Button As MSComctlLib.Button)
+<!-- The VB6 original this replaced, kept for reference. It typed its parameter
+     as MSComctlLib.Button, from MSCOMCTL.OCX, and dispatched on Button.Key:
+
+       Private Sub tbrEdit_ButtonClick(ByVal Button As MSComctlLib.Button)
+           Dim f As Form
+           Set f = Screen.ActiveForm
+           If f Is Nothing Then Exit Sub
+           Select Case Button.Key
+               Case "Cut":   f.ActiveControl.SelText = ""
+               Case "Copy":  Clipboard.SetText f.ActiveControl.SelText
+           End Select
+       End Sub
+
+     twinBASIC's replacement for MSCOMCTL.OCX is the WinNativeCommonCtls
+     package, and it ships no Toolbar control, so that parameter type is not
+     available to a reader. The menu form below says the same thing about
+     Screen.ActiveForm, which is what the section is documenting. -->
+
+```tb check_build
+' One routine, called by every Edit-menu handler on the MDI parent.
+Private Sub DoEditCommand(ByVal Command As String)
     Dim f As Form
     Set f = Screen.ActiveForm
     If f Is Nothing Then Exit Sub
-    Select Case Button.Key
-        Case "Cut":   f.ActiveControl.SelText = ""
-        Case "Copy":  Clipboard.SetText f.ActiveControl.SelText
-        ...
+
+    ' ActiveControl is typed as Control, so the edit members are reached
+    ' late-bound -- not every control has them.
+    Dim ctl As Object
+    Set ctl = f.ActiveControl
+    If ctl Is Nothing Then Exit Sub
+
+    Select Case Command
+        Case "Cut":   ctl.SelText = ""
+        Case "Copy":  Clipboard.SetText ctl.SelText
+        ' ...
     End Select
+End Sub
+
+Private Sub mnuEditCut_Click()
+    DoEditCommand "Cut"
+End Sub
+
+Private Sub mnuEditCopy_Click()
+    DoEditCommand "Copy"
 End Sub
 ```
 
@@ -59,7 +100,7 @@ End Sub
 
 [**FontCount**](#fontcount) is the number of fonts the OS reports for the current display context; [**Fonts**](#fonts)(*Index*) returns the name of the font at *Index* --- `0` to `FontCount - 1`. Together they let an application build a font-picker without going through the Win32 `EnumFontFamilies` API.
 
-```tb
+```tb check_build
 Dim i As Integer
 For i = 0 To Screen.FontCount - 1
     cboFonts.AddItem Screen.Fonts(i)

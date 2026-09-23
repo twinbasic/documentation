@@ -32,7 +32,8 @@ If *value* is anything other than **Null**, **Nz** returns *value* unchanged.
 
 This example uses **Nz** to substitute the string `"Unknown"` for a recordset field that may be **Null**.
 
-```tb
+```tb check_build
+Dim recordset As Object
 Dim customerName As Variant
 customerName = recordset.Fields("Name").Value
 MsgBox "Customer Name: " & Nz(customerName, "Unknown")

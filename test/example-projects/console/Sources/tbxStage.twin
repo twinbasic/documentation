@@ -34,6 +34,7 @@ Module tbxStage
     Public Command1 As CommandButton
     Public Frame1 As Frame
     Public Picture1 As PictureBox
+    Public Picture2 As PictureBox
     Public PictureBox1 As PictureBox
 
     ' The VB control instances the reference pages put on their forms. Each is
@@ -48,6 +49,9 @@ Module tbxStage
     Public File1 As FileListBox
     Public Data1 As Data
     Public OLE1 As OLE
+
+    ' QRCode/index.md's control instance.
+    Public QRCode1 As QRCode
 
     ' The DataObject pages' samples enumerate a drag-and-drop payload, which in
     ' real code arrives as an OLEDrag handler's `Data` parameter. Declaring it
@@ -76,5 +80,65 @@ Module tbxStage
     ' designer, not the code, is what brings them into scope.
     Public UserControl As UserControl
     Public Ambient As AmbientProperties
+
+    ' The rest of the VB reference's forms, named as each page names them. Every
+    ' one is a control instance a page's sample assumes the reader has placed,
+    ' and the type is the one that page is about -- fraLeft is a Frame because
+    ' MultiFrame's sample docks Frames into a strip, dlgOptions is a Form because
+    ' Form/index.md shows `dlgOptions.Show vbModal, Me`.
+    Public cboFonts As ComboBox
+    Public chkInPrint As CheckBox
+    Public cmdCancel As CommandButton
+    Public cmdContinue As CommandButton
+    Public cmdSave As CommandButton
+    Public dlgOptions As Form
+    Public fraCenter As Frame
+    Public fraExtra As Frame
+    Public fraLeft As Frame
+    Public fraOutput As Frame
+    Public fraRight As Frame
+    Public hsbZoom As HScrollBar
+    Public vsbVolume As VScrollBar
+    Public lblBox As Label
+    Public lblCount As Label
+    Public lblHelp As Label
+    Public lblLevel As Label
+    Public lblName As Label
+    Public lblResult As Label
+    Public lblUnits As Label
+    Public lblVolume As Label
+    Public optCtoF As OptionButton
+    Public optMarkdown As OptionButton
+    Public optPlain As OptionButton
+    Public optTerms As OptionButton
+    Public picLogo As PictureBox
+    Public tmrAnimate As Timer
+    Public tmrStartup As Timer
+    Public txtCaption As TextBox
+    Public txtEditor As TextBox
+    Public txtInput As TextBox
+    Public txtName As TextBox
+    Public txtPassword As TextBox
+    Public txtTitle As TextBox
+
+    ' The Menu page's menu items, including the separator: a Menu is a control
+    ' like any other here, and a separator is one whose Caption is "-".
+    Public mnuContext As Menu
+    Public mnuFileNew As Menu
+    Public mnuFilePrint As Menu
+    Public mnuFileSaveAs As Menu
+    Public mnuFileSep1 As Menu
+    Public mnuRecent As Menu
+    Public mnuViewToolbar As Menu
+
+    ' MyObject is the VBA reference's generic placeholder for "some object
+    ' reference", and eight pages use it -- For-Each-Next, Is, IsNot, Set, With,
+    ' Err.Raise, IsObject and GetObject. It is declared once here rather than by
+    ' each page, because a module-level name declared by two pages is ambiguous
+    ' in any project that holds both of them, and nothing separates two batches
+    ' over a name that is not a type. MyLabel is With.md's label, on the same
+    ' terms as lblStatus above.
+    Public MyObject As Object
+    Public MyLabel As Label
 
 End Module

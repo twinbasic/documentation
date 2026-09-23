@@ -10,7 +10,7 @@ has_toc: false
 
 A **CommandButton** is a Win32 native push-button control used to trigger an action --- a click-handler runs every time the user presses it. The control is normally placed on a **Form** or **UserControl** at design time. The default property is [**Value**](#value) and the default event is [**Click**](#click).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     cmdOK.Caption = "&OK"
     cmdOK.Default = True        ' Enter triggers it
@@ -44,7 +44,7 @@ cmdOK.Value = True              ' raises cmdOK_Click
 
 The text on the button face comes from [**Caption**](#caption). An ampersand in the caption marks the next character as a keyboard mnemonic: pressing **Alt+** that character moves the focus to the button and raises [**Click**](#click) (provided no other control on the form competes for the same access key). Use `&&` to display a literal ampersand.
 
-```tb
+```tb check_build
 cmdSave.Caption = "&Save && Close"   ' renders as: Save & Close
 ```
 

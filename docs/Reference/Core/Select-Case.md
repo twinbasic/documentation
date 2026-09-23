@@ -44,8 +44,19 @@ The **Case Else** clause is used to indicate the *elsestatements* to be executed
 
 Multiple expressions or ranges can appear in each **Case** clause. For example, the following line is valid:
 
-```tb
+```tb hidden concat_group=case-numbers
+' Context for the sample below: the Select Case block the clause sits in.
+Private Sub ClassifyNumber(ByVal Number As Long, ByVal MaxNumber As Long)
+    Select Case Number
+```
+
+```tb check_build concat_group=case-numbers
 Case 1 To 4, 7 To 9, 11, 13, Is > MaxNumber
+```
+
+```tb hidden concat_group=case-numbers
+    End Select
+End Sub
 ```
 
 > [!NOTE]
@@ -53,8 +64,19 @@ Case 1 To 4, 7 To 9, 11, 13, Is > MaxNumber
 
 Ranges and multiple expressions can also be specified for character strings. In the following example, **Case** matches strings that are exactly equal to `everything`, strings that fall between `nuts` and `soup` in alphabetic order, and the current value of `TestItem`:
 
-```tb
+```tb hidden concat_group=case-strings
+' Context for the sample below: the Select Case block the clause sits in.
+Private Sub ClassifyText(ByVal Text As String, ByVal TestItem As String)
+    Select Case Text
+```
+
+```tb check_build concat_group=case-strings
 Case "everything", "nuts" To "soup", TestItem
+```
+
+```tb hidden concat_group=case-strings
+    End Select
+End Sub
 ```
 
 **Select Case** statements can be nested. Each nested **Select Case** statement must have a matching **End Select** statement.

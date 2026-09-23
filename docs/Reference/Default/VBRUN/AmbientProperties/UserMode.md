@@ -19,7 +19,7 @@ This is the most-checked ambient property. A control should consult **UserMode**
 
 This example responds to a **UserMode** change and enables the animation timer only at runtime.
 
-```tb
+```tb check_build
 Private Sub UserControl_AmbientChanged(PropertyName As String)
     Select Case PropertyName
         Case "UserMode"

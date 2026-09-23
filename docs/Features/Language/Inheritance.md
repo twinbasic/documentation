@@ -21,7 +21,7 @@ twinBASIC provides several mechanisms for inheritance to support both simple and
 
 If you have an interface that multiple others extend from, you can write multiple implementations, or specify one implementation for all. For example:
 
-```tb
+```tb inert=external
 IOleWindow_GetWindow() As LongPtr _
     Implements IOleWindow.GetWindow, IShellBrowser.GetWindow, IShellView2.GetWindow
 ```
@@ -30,7 +30,7 @@ IOleWindow_GetWindow() As LongPtr _
 
 `Implements` is allowed on interfaces with 'As Any' parameters: In VBx, you'd get an error if you attempted to use any interface containing a member with an `As Any` argument. With twinBASIC, this is allowed if you substitute `As LongPtr` for `As Any`, for example:
 
-```tb
+```tb check_build
 Interface IFoo Extends IUnknown
     Sub Bar(ppv As Any)
 End Interface
@@ -41,6 +41,7 @@ Class MyClass
     Private Sub IFoo_Bar(ppv As LongPtr) Implements IFoo.Bar
 
     End Sub
+End Class
 ```
 
 ## **Implements Via** for Basic Inheritance

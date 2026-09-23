@@ -408,10 +408,12 @@ Syntax: *object*.**AddObject** *ObjName*, *Object* [, *UseDeferredInvoke* ]
 *UseDeferredInvoke*
 : *optional* A **Boolean**, default **False**. When **True**, calls from the page are deferred onto the BASIC message-loop --- safe to re-enter the WebView2 control from within them, but the page cannot read a return value back. Use **False** when the page needs to read return values.
 
-```tb
-Private Sub WebView21_Ready()
-    WebView21.AddObject "myCalculator", New MyCalculator
-End Sub
+```tb check_build slot=file
+Module WebView2AddObjectDemo
+    Private Sub WebView21_Ready()
+        WebView21.AddObject "myCalculator", New MyCalculator
+    End Sub
+End Module
 
 Class MyCalculator
     Public Function MultiplyByTen(ByVal Value As Long) As Long
@@ -690,8 +692,10 @@ Syntax: *object*.**PostWebMessage** *Message*
 
 Requires [**IsWebMessageEnabled**](#iswebmessageenabled).
 
-```tb
-WebView21.PostWebMessage "Hello from twinBASIC!"
+```tb check_build
+Sub SendHelloMessage()
+    WebView21.PostWebMessage "Hello from twinBASIC!"
+End Sub
 
 Private Sub WebView21_JsMessage(ByVal Message As Variant)
     Debug.Print "Reply from page: "; Message

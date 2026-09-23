@@ -86,7 +86,17 @@ Private Declare PtrSafe Function GetCursorPos Lib "user32" _
 
 Double-click the Timer control in the designer to generate the `Timer1_Timer` event handler, then fill it in:
 
-```tb
+```tb hidden
+Public Type POINT
+    x As Long
+    y As Long
+End Type
+
+Public Declare PtrSafe Function GetCursorPos Lib "user32" _
+    (lpPoint As POINT) As Long
+```
+
+```tb check_build
 Private Sub Timer1_Timer()
     Dim pt As POINT
     Dim success As Long
@@ -120,7 +130,7 @@ Private Declare PtrSafe Function GetLastError Lib "kernel32" () As Long
 
 A robust version of the Timer handler:
 
-```tb
+```tb check_build
 Private Sub Timer1_Timer()
     Dim pt As POINT
 
@@ -185,7 +195,7 @@ For functions where twinBASIC can pass a **String** directly, `DeclareWide` is a
 
 The full module for the cursor-tracking form:
 
-```tb
+```tb check_build inherits=Form
 Private Type POINT
     x As Long
     y As Long

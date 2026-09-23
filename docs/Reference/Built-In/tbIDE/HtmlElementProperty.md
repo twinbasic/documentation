@@ -12,7 +12,7 @@ One settable property on an [**HtmlElement**](HtmlElement) --- returned by [**Ht
 
 Almost always written in shorthand --- neither **HtmlElementProperty** nor its parent [**HtmlElementProperties**](HtmlElementProperties) is typically named in addin code; the compiler resolves chains like `.style.color = "red"` through their default-members:
 
-```tb
+```tb inert=external
 element.style.color = "red"
 '   ↑ HtmlElement.Properties      (HtmlElement's DefaultMember)
 '     .Item("style")               (HtmlElementProperties' DefaultMember)

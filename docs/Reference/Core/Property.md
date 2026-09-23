@@ -140,7 +140,7 @@ Like **Sub** and **Function** procedures, a **Property** procedure is a separate
 
 This example uses the **Property** statements to define a `PenColor` property: a **Property Let** that accepts a color name as a string and stores a numeric code, and a **Property Get** that returns the color name from the stored numeric code.
 
-```tb
+```tb check_build
 Dim CurrentColor As Integer
 Const BLACK = 0, RED = 1, GREEN = 2, BLUE = 3
 
@@ -169,9 +169,12 @@ Property Get PenColor() As String
     End Select
 End Property
 
-' Calling code:
-PenColor = "Red"        ' Calls Property Let.
-ColorName = PenColor    ' Calls Property Get.
+Sub TestPenColor()
+    Dim ColorName As String
+    ' Calling code:
+    PenColor = "Red"        ' Calls Property Let.
+    ColorName = PenColor    ' Calls Property Get.
+End Sub
 ```
 
 A **Property Set** procedure assigns an object reference, in much the same way as **Property Let** assigns a value:

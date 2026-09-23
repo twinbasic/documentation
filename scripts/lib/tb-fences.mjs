@@ -101,7 +101,125 @@ const FLAGS = new Set([MARKER, RUN_MARKER, HIDDEN_MARKER]);
  * presents one program in pieces -- a tutorial that defines a function in one
  * fence and tests it in the next three.
  */
-const KEYS = new Set(["slot", "project", "projname", "id", "expect-error", "inherits"]);
+const KEYS = new Set([
+  "slot", "project", "projname", "id", "expect-error", "inherits", "resource", "inert",
+  "concat_group",
+]);
+
+/**
+ * `concat_group=<name>` joins fences into ONE compilation unit, in page order,
+ * before anything is classified.
+ *
+ * It is for a construct a page splits across fences with prose between the
+ * halves -- a `Class` opened in one fence, its members discussed and shown in
+ * the next -- which is good writing and, fence by fence, unclassifiable: each
+ * half is an unclosed block. Joined, the halves are the class the page is
+ * describing, and the compiler can be asked about it.
+ *
+ * Distinct from `projname`, which compiles its members as SEPARATE modules in
+ * one project. These become one file, so a `Private` member in the first half
+ * is visible to the second.
+ *
+ * A diagnostic still has to land on the right page line, so the unit keeps the
+ * generated-line range each part occupies; see `partOf`.
+ */
+export const CONCAT_KEY = "concat_group";
+
+/**
+ * Join fences into one synthetic fence, recording where each part lands so a
+ * diagnostic can be traced back to the fence it came from.
+ *
+ * @param {object[]} parts  member fences, already in page order
+ */
+export function concatFences(parts) {
+  const bodies = parts.map((p) => p.content.replace(/\n+$/, ""));
+  const ranges = [];
+  let at = 1;                                   // 1-based line within the body
+  bodies.forEach((body, i) => {
+    const lines = body.split("\n").length;
+    ranges.push({ fence: parts[i], from: at, to: at + lines - 1 });
+    at += lines;
+  });
+  // The unit is the sample its first VISIBLE part is. A page can hide a class's
+  // header and footer to show only the method it is teaching, and that is still
+  // one sample, located at the method's fence. Inheriting the hidden header's
+  // flags instead would make it page context, which only travels with the
+  // page's other samples: never compiled at all on a page that has none, and
+  // never a unit a failure can be isolated to. Only a group with no visible
+  // part is context.
+  const lead = parts.find((p) => !p.flags?.has(HIDDEN_MARKER)) ?? parts[0];
+  return {
+    ...lead,
+    content: bodies.join("\n") + "\n",
+    concatParts: ranges,
+    concatOf: parts,
+  };
+}
+
+/** Which member fence a body line belongs to, and the line within its page. */
+export function partOf(ranges, bodyLine) {
+  for (const r of ranges) {
+    if (bodyLine >= r.from && bodyLine <= r.to) {
+      return { fence: r.fence, pageLine: r.fence.line + (bodyLine - r.from) + 1 };
+    }
+  }
+  return null;
+}
+
+/**
+ * `inert=<reason>` says this fence is not a program and nobody should come back
+ * to it. It takes a reason rather than being a bare flag, because the point is
+ * not to hide the fence from the tool -- it is to record a judgement somebody
+ * made, so a census can separate "settled" from "not looked at yet".
+ *
+ * The backlog worth watching is the third number: classifiable, not marked, and
+ * not inert. That one should trend to zero; the inert count should not.
+ */
+export const INERT_REASONS = new Set([
+  "skeleton",   // placeholder identifiers -- `Inherits base_interface`, `<name>`
+  "signature",  // a procedure's signature, shown deliberately without a body
+  "excerpt",    // deliberately continues another fence, or shows part of one
+  "pseudo",     // prose, a table or a protocol listing dressed as code
+  "contrast",   // shows invalid code on purpose, beside the valid form
+  "external",   // needs a file or environment the harness cannot stage
+  "designer",   // needs a real form designer: TB5247, or a Handles on its fields
+  // Correct code that a PRODUCT defect stops compiling. The sample is what the
+  // API ought to accept, so rewriting it would document around the bug; it is
+  // recorded in BUGS-TO-REPORT.md instead and re-checked when that is fixed.
+  "blocked",
+]);
+
+/**
+ * `resource=<project-relative path>` on a fence in ANY language stages that
+ * fence's contents as a file in the generated project, beside the samples that
+ * need it. It exists for the compile-time attributes that read a project file:
+ * `[PopulateFrom("json", "/Resources/MESSAGETABLE/Strings.json", ...)]` fills an
+ * Enum's members from that JSON while compiling, so without the file the whole
+ * feature is undocumentable -- and WITH it the compiler checks the member names
+ * the JSON produces, which is the claim the page is really making.
+ *
+ * A resource fence is never compiled and never counts as a sample. It is
+ * rendered like any other fence: the reader is supposed to see the file.
+ */
+export const RESOURCE_KEY = "resource";
+
+/**
+ * A resource path, reduced to something that cannot escape the staged project.
+ * Returns null for a path that tries.
+ */
+export function resourcePath(raw) {
+  // The UNC and drive-letter tests run BEFORE the leading slashes come off, or
+  // `//server/share` passes as the innocent-looking `server/share`.
+  const flat = String(raw ?? "").trim().replace(/\\/g, "/");
+  if (!flat || /^[A-Za-z]:/.test(flat) || flat.startsWith("//")) return null;
+  const parts = [];
+  for (const seg of flat.replace(/^\/+/, "").split("/")) {
+    if (!seg || seg === ".") continue;
+    if (seg === "..") return null;                  // no climbing out, ever
+    parts.push(seg);
+  }
+  return parts.length ? parts.join("/") : null;
+}
 
 /** The slots, in the order the classifier prefers them. */
 export const SLOTS = ["file", "module", "sub", "class", "method"];
@@ -145,11 +263,16 @@ export function parseInfo(info) {
     const key = part.slice(0, eq), value = part.slice(eq + 1);
     if (!KEYS.has(key)) { bad.push(part); continue; }
     if (key === "slot" && !SLOTS.includes(value)) { bad.push(part); continue; }
+    // A reason nobody recognises is worse than no reason: it reads as settled
+    // and says nothing, so it is refused the way a bad slot is.
+    if (key === "inert" && !INERT_REASONS.has(value)) { bad.push(part); continue; }
     keys.set(key, value);
   }
-  // Both imply a build: a hidden fence that is not compiled is text nobody can
-  // read and nothing checks.
+  // These imply a build: a hidden fence that is not compiled is text nobody can
+  // read and nothing checks, and half a joined construct is not a unit anybody
+  // could have marked on its own.
   if (flags.has(RUN_MARKER) || flags.has(HIDDEN_MARKER)) flags.add(MARKER);
+  if (keys.has(CONCAT_KEY)) flags.add(MARKER);
   return { lang, flags, keys, bad };
 }
 
@@ -185,16 +308,22 @@ export async function collectFences(root) {
   const out = [];
   for (const rel of await markdownFiles(root)) {
     const src = await fs.readFile(path.join(root, rel), "utf8");
-    let ordinal = 0;
+    let ordinal = 0, resources = 0;
     const walk = (tokens) => {
       for (const t of tokens) {
         if (t.type === "fence") {
           const parsed = parseInfo(t.info);
-          if (parsed.lang === "tb") {
-            ordinal += 1;
+          // A resource fence is collected whatever language it is written in --
+          // the JSON a [PopulateFrom] enum reads is a ```json block, and it is
+          // the file that matters rather than the highlighting. It counts on its
+          // own series, so adding one to a page does not renumber the samples
+          // below it and silently rename every generated module.
+          const isResource = parsed.keys.has(RESOURCE_KEY);
+          if (parsed.lang === "tb" || isResource) {
+            const n = isResource ? (resources += 1) : (ordinal += 1);
             out.push({
-              rel, ordinal,
-              id: parsed.keys.get("id") ?? `${rel}#${ordinal}`,
+              rel, ordinal: n, isResource,
+              id: parsed.keys.get("id") ?? `${rel}#${isResource ? "r" : ""}${n}`,
               line: t.map ? t.map[0] + 1 : 0,
               info: t.info.trim(),
               content: t.content,
@@ -237,11 +366,17 @@ const BLOCK_DECL = rx("(?:Enum|Type|Structure)" + NAMED);
 const PROC_OPEN = rx("(?:Sub|Function|Property\\s+(?:Get|Let|Set)|Operator|Constructor|Destructor)\\b");
 const DECLARE = rx("(?:Declare|DeclareWide)\\b");
 const MODULE_ONLY = rx("(?:Event|Delegate|Implements|Inherits|Import|Extends)\\b");
+// ...and the two of those that a standard module may not have at all.
+const CLASS_ONLY = rx("(?:Implements|Inherits)\\b");
 const WITHEVENTS = rx("WithEvents\\b");
 // An access modifier at the head of a line, which only a container may hold.
 // Checked after the openers above, so `Public Sub`, `Public Enum` and
 // `Public Declare` have already been claimed by the rules that know them.
 const ACCESS_DECL = /^(?:Public|Private|Friend|Global)\s+/i;
+// The VB6 default-type statements, which are module-level only. The list is the
+// full set the compiler accepts, not the ones this corpus happens to use.
+const DEFTYPE =
+  /^Def(?:Bool|Byte|Cur|Date|Dbl|Dec|Int|LngLng|LngPtr|Lng|Obj|Sng|Str|Var)\s+[A-Z]/i;
 const OPTION_RE = /^Option\s+/i;
 const ATTRIBUTE_RE = /^\[[A-Za-z_]/;
 const DIMLIKE = rx("(?:Dim|Const|ReDim)\\b");
@@ -359,8 +494,15 @@ export function usesMe(src) {
 export function classify(content) {
   const lines = logicalLines(content);
   if (!lines.length) return { slot: null, reason: "empty", names: [] };
-  // An elision is the one fragment marker the docs use deliberately.
-  if (/(^|\n)[ \t]*(\.\.\.|…)[ \t]*(\n|$)/.test(content)) {
+  // An elision is the one fragment marker the docs use deliberately, and the
+  // VBA-derived pages inherited Microsoft's SPACED form -- `. . .` on a line of
+  // its own, in ReDim, Deftype and On-Error. Read as code that was three
+  // separate dot operators, which is how those pages came to be proposed as
+  // markable and to fail with "Expected a symbol following the dot operator" on
+  // a line that is not code at all. The line must be nothing but dots and
+  // spaces, so a `.Value = 1` inside a With block is untouched.
+  if (/(^|\n)[ \t]*\.[ \t]*\.[ \t.]*(\n|$)/.test(content) ||
+      /(^|\n)[ \t]*…[ \t]*(\n|$)/.test(content)) {
     return { slot: null, reason: "elided with ...", names: [] };
   }
 
@@ -368,7 +510,7 @@ export function classify(content) {
   const inner = [];                 // open statement blocks at fence top level
   const names = [];
   let sawContainer = false, sawProc = false, sawModuleOnly = false, sawLoose = false;
-  let sawWithEvents = false;
+  let sawWithEvents = false, sawClassOnly = false;
 
   for (const { text } of lines) {
     if (DIRECTIVE_RE.test(text)) continue;          // #If / #End If / #Const
@@ -430,6 +572,12 @@ export function classify(content) {
       // declaration and then TB5079 on every later use of the name -- four
       // diagnostics for one wrong container, none of them naming the cause.
       if (top && WITHEVENTS.test(text)) sawWithEvents = true;
+      // `Implements` and `Inherits` are the third signal, and the same kind of
+      // rule: neither is legal in a standard module, so a fence opening with
+      // one is class code-behind whatever else it contains. TbExpressionService/
+      // Bind.md is the shape -- an ITbCustomBinder implementation shown as the
+      // body of the class, with no `Me` in it and no WithEvents field.
+      if (top && CLASS_ONLY.test(text)) sawClassOnly = true;
       if (top) sawModuleOnly = true;
       continue;
     }
@@ -444,6 +592,16 @@ export function classify(content) {
     // pages for the two keywords. `Static` is deliberately not in the list: it
     // IS legal inside a procedure.
     if (ACCESS_DECL.test(text)) {
+      if (top) sawModuleOnly = true;
+      continue;
+    }
+    // ...and neither is a Deftype. `DefInt A-Z` sets the default type for a
+    // whole module and is legal nowhere else, so reading it as a statement put
+    // Reference/Core/Deftype.md's own samples in a generated Sub, where the
+    // compiler answered `Unrecognized symbol 'DefInt'` -- which reads as "this
+    // language has no Deftype" and is not what it means. At module scope the
+    // same line compiles, asked directly.
+    if (DEFTYPE.test(text)) {
       if (top) sawModuleOnly = true;
       continue;
     }
@@ -468,7 +626,7 @@ export function classify(content) {
   if (sawContainer) return { slot: "file", reason: "mixed with loose code", names };
   // `Me` or a top-level WithEvents picks the Class row of the table at the
   // top of this file.
-  const inClass = sawWithEvents || usesMe(content);
+  const inClass = sawWithEvents || sawClassOnly || usesMe(content);
   if (sawProc || sawModuleOnly) return { slot: inClass ? "class" : "module", names };
   return { slot: inClass ? "method" : "sub", names };
 }
@@ -503,11 +661,20 @@ export function wrapFence(fence, slot, name, base = null) {
   // A `base` is what a Me.<member> resolves against. Without one the wrapper is
   // a bare Class, `Me` is legal and `Me.Caption` is not -- which turns TB5025
   // into TB5027 and is no better. Measured; see WIP.ExamplesBuild.md.
-  const container = CLASS_SLOTS.has(slot) ? "Class" : "Module";
-  const open = base && CLASS_SLOTS.has(slot)
-    ? `${container} ${name}\n    Inherits ${base}`
-    : `${container} ${name}`;
-  const extra = base && CLASS_SLOTS.has(slot) ? 1 : 0;
+  const isClass = CLASS_SLOTS.has(slot);
+  const container = isClass ? "Class" : "Module";
+  // A generated Class is a wrapper and is never COM-created. Without the
+  // attribute, a sample whose only constructor takes arguments -- tbIDE's
+  // `Public Sub New(ByVal Host As Host)` is the shape -- fails with
+  // `TB5135 error generating implicit default constructor ... (for COM
+  // exposure)`, which is a diagnostic about the fiction rather than about the
+  // sample. The compiler names this attribute as one of the three remedies.
+  const lines = [];
+  if (isClass) lines.push("[COMCreatable(False)]");
+  lines.push(`${container} ${name}`);
+  if (base && isClass) lines.push(`    Inherits ${base}`);
+  const open = lines.join("\n");
+  const extra = lines.length - 1;
   if (slot === "module" || slot === "class") {
     return { text: `${header}\n${open}\n${body}\nEnd ${container}\n`, offset: 2 + extra };
   }

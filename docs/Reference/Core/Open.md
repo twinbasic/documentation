@@ -71,16 +71,18 @@ Close #1
 
 The following example opens the file in **Random** mode. The file contains records of the user-defined type.
 
-```tb
+```tb check_build
 Type Record ' Define user-defined type.
     ID As Integer
     Name As String * 20
 End Type
 
-Dim MyRecord As Record ' Declare variable.
-Open "TESTFILE" For Random As #1 Len = Len(MyRecord)
-' Close before reopening in another mode.
-Close #1
+Sub OpenForRandomAccess()
+    Dim MyRecord As Record ' Declare variable.
+    Open "TESTFILE" For Random As #1 Len = Len(MyRecord)
+    ' Close before reopening in another mode.
+    Close #1
+End Sub
 ```
 
 This code example opens the file for sequential output; any process can read or write to the file.

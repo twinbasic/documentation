@@ -53,7 +53,7 @@ In the invocation, the *type-argument-list*, i.e. **(Of** *type-arg* ... **)**, 
 
 Type variables that correspond to types that could be deduced from the call argument types must form a trailer of the *type-variable-list*:  
 
-```tb
+```tb inert=contrast
 Sub MySub1(Of T, U, V)(argu As U, argv As V): End Sub
 MySub1(Of Long)(33%, 42%)                ' Valid: deduced U, V = Integer
 MySub1(Of Long, Single)(33%, 42%)        ' Valid: provided U = Single, deduced V = Integer
@@ -63,7 +63,7 @@ MySub1(Of Long, , Double)(33%, 42%)      ' Invalid: omitted deduced type must be
 
 Thus, to suppress deduction, put the type variable in the type list *before* the non-deducible type parameters:
 
-```tb
+```tb inert=contrast
 ' T must be provided, it won't be deduced
 Function MyFn1(Of T, U)(argu As T) As U: End Function
 MyFn1(Of Single, String)(10%)   ' Valid: provided T = Single, U = String
@@ -74,7 +74,7 @@ MyFn1(Of, String)(10%)          ' Invalid: T is not trailing so it can't be omit
 
 Only the unused type variables may have their arguments omitted at positions *after the first* in the *type-variable-list*.:
 
-```tb
+```tb inert=contrast
 Sub MySub2(Of T, U, V)(argt As T, argv As V): End Sub
 Sub MySub3(Of U, V)(argv As V): End Sub
 
@@ -131,7 +131,7 @@ There are two common cases when a type variable might not appear in the *paramet
 
 The example below illustrates those possibilities:
 
-```tb
+```tb check_build
 Public Function Caster(Of R, U, T)(value As T) As R
     Dim intermediate As U = CType(Of U)(value)
     Return CType(Of R)(intermediate)
@@ -139,9 +139,9 @@ End Function
 
 Sub Test()
     ' Type T is deduced to be Single, from the argument 1.23!
-    Debug.Assert Example(Of String, Integer)(1.23!) = "1"
+    Debug.Assert Caster(Of String, Integer)(1.23!) = "1"
     ' Type T is explicitly provided as Double. The argument is cast to that type.
-    Debug.Print Example(Of String, Integer, Double)(1.23!) = "1"
+    Debug.Print Caster(Of String, Integer, Double)(1.23!) = "1"
 End Sub
 ```
 
@@ -154,10 +154,10 @@ The function **Caster** introduces three type variables within its scope:
 > [!TIP]
 > The order of the type variables in the definition can be chosen so that the trailing variable(s) are used in the *parameter-list*. The type-values of those type variable can thus be omitted if the types inferred from the argument types at the call site are appropriate.
 
-1. In the invocation `Example(Of String, Integer)(1.23!)`,  
+1. In the invocation `Caster(Of String, Integer)(1.23!)`,  
    *T* is deduced to be **Single**, *U* is provided and set to **Integer**, and **R** is provided and set to **String**.
 
-2. In the invocation `Example(Of String, Integer, Double)(1.23!)`,  
+2. In the invocation `Caster(Of String, Integer, Double)(1.23!)`,  
     *T* is provided and set to **Double**, *U* is provided and set to **Integer**, and *R* is provided and set to **String**.
    * First, the compiler will cast `1.23!` to the type of the formal parameter, that is to a **Double** `1.23#`.
    * Then, in the body of the function, the *value* is cast to **Integer** when it's assigned to **intermediate**.
@@ -186,7 +186,7 @@ The type variables (*type-var*) introduce identifiers of arbitrary types that ca
 
 ### Example of  correct and incorrect instantiation
 
-```tb
+```tb inert=contrast
 Class MyClass(Of T, U)
     Function DumpT%(value As T): Debug.Print value: End Function
     Function DumpU%(value As U): Debug.Print value: End Function
@@ -209,23 +209,27 @@ A generic class enables substitution of type variables with type arguments provi
 >
 > Run Time:  Objects of those instantiated types can be created.
 
-In the example below, two class types are instantiated: **MyClass**(**Integer**) and **MyClass**(**String**). This happens at compile time. No instances of **MyClass** are created at runtime, since both variables default to **Nothing**:
+In the example below, two class types are instantiated: **MyClass(Of Integer)** and **MyClass(Of String)**. This happens at compile time. No instances of **MyClass** are created at runtime, since both variables default to **Nothing**:
 
-```tb
-Class MyClass(Of T) ' ...
+```tb check_build
+Class MyClass(Of T)
+    ' ...
+End Class
 
-Sub Test()
-    Dim intVar As MyClass(Integer)
-    Dim strVar As MyClass(String)
-    Debug.Assert intVar Is Nothing AndAlso strVar Is Nothing
-End Sub
+Module Demo
+    Sub Test()
+        Dim intVar As MyClass(Of Integer)
+        Dim strVar As MyClass(Of String)
+        Debug.Assert intVar Is Nothing AndAlso strVar Is Nothing
+    End Sub
+End Module
 ```
 
 ### List Class Example
 
 A Class generic allows the type in methods throughout the class. The following example shows this to make a generic List class:
 
-```tb
+```tb check_build slot=file
 [COMCreatable(False)]
 Class List(Of T)
     Private mData() As T
@@ -240,11 +244,12 @@ Class List(Of T)
     End Function
 End Class
 
-Sub Test()
-    Dim li As Any = New List(Of Integer)(Array(5, 6, 7))
-    Debug.Assert li(0) = 5 AndAlso li(2) = 7
-End Sub
-
+Module GenericsListDemo
+    Sub Test()
+        Dim li As Any = New List(Of Integer)(Array(5, 6, 7))
+        Debug.Assert li(0) = 5 AndAlso li(2) = 7
+    End Sub
+End Module
 ```
 
 ### List UDT Example

@@ -72,8 +72,8 @@
 // in the corpus. Anything the scanner cannot resolve goes to an `unresolved`
 // bucket and is reported -- a census that quietly buckets its own confusion is
 // how the wrong answer gets published with a number beside it.
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -157,12 +157,19 @@ function exportAll(root, cacheDir, includeSamples) {
     const out = path.join(cacheDir, p.group, p.name);
     if (existsSync(out) && !flag("refresh")) continue;
     mkdirSync(out, { recursive: true });
-    try {
-      execFileSync(exe, ["export", p.proj, out + path.sep, "--overwrite"],
-        { stdio: ["ignore", "ignore", "ignore"] });
+    // The exit code does not say whether export worked: it is 0 on the failures
+    // the compiler reports itself, so a last line of `... DONE` is the test --
+    // the same one scripts/lib/tb-install.mjs's runCompiler makes. A failure
+    // also takes its folder away, because the cache is keyed on the folder
+    // existing: left behind, the next run would take it for a finished export.
+    const r = spawnSync(exe, ["export", p.proj, out + path.sep, "--overwrite"],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    if (!r.error && /\.\.\. DONE$/.test((r.stdout ?? "").trim())) {
       exported++;
-    } catch {
-      log(`  ! export failed: ${p.name}`);
+    } else {
+      rmSync(out, { recursive: true, force: true });
+      const last = `${r.stdout ?? ""}\n${r.stderr ?? ""}`.trim().split(/\r?\n/).pop();
+      log(`  ! export failed: ${p.name} (${r.error ? r.error.message : `exit code ${r.status}`}): ${last}`);
     }
   }
   log(`  exported ${exported} project(s), ${projects.length} total in cache`);

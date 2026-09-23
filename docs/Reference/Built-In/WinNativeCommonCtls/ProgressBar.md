@@ -10,7 +10,11 @@ has_toc: false
 
 A **ProgressBar** is a horizontal or vertical bar that visually represents progress through a range. Three configurable axes shape the visual: [**Scrolling**](#scrolling) (segmented / smooth / marquee), [**State**](#state) (Normal / Error / Paused, which tints the bar to match the OS theme), and [**Orientation**](#orientation) (horizontal or vertical).
 
-```tb
+```tb hidden
+Public ItemCount As Long
+```
+
+```tb check_build
 Private Sub StartTask()
     ProgressBar1.Min = 0
     ProgressBar1.Max = ItemCount
@@ -54,10 +58,18 @@ All three can be changed at run time; the underlying Win32 styles are re-applied
 
 [**Min**](#min) and [**Max**](#max) bracket the range. [**Value**](#value) is the current position. [**Step**](#step) is the amount [**StepIt**](#stepit) advances the bar by, used to power the common loop pattern:
 
-```tb
+```tb hidden
+Public Items As New Collection
+
+Public Sub DoWork(ByVal Item As Variant)
+End Sub
+```
+
+```tb check_build
 ProgressBar1.Min = 0
 ProgressBar1.Max = Items.Count
 ProgressBar1.Step = 1
+Dim item As Variant
 For Each item In Items
     DoWork item
     ProgressBar1.StepIt

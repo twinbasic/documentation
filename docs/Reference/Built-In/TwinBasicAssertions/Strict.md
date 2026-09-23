@@ -52,7 +52,8 @@ Syntax: **Assert.Strict.Fail** [ *Message* ]
 
 **Fail** marks code paths that should be unreachable in a passing test --- most often after a call that is expected to raise an error, in a branch that runs when the call returned normally instead.
 
-```tb
+```tb check_build
+Dim target As Object
 On Error Resume Next
 target.SomethingThatShouldRaise
 If Err.Number = 0 Then Assert.Strict.Fail "expected an error, got success"
@@ -215,7 +216,15 @@ Syntax: **Assert.Strict.IsNotNothing** *Value* [, *Message* ]
 
 This is the complement of [**IsNothing**](#isnothing), equivalent to `Value IsNot Nothing`. Use this assertion to confirm that a factory call, a lookup, or any other expression that is expected to return an object did not return **Nothing**.
 
-```tb
+```tb hidden
+' Context for the sample below: the object it asks a factory for. Both belong to
+' the reader's program rather than to the package.
+Class Widget
+End Class
+```
+
+```tb check_build
+Dim factory As Object
 Dim result As Widget
 Set result = factory.CreateWidget("blue")
 Assert.Strict.IsNotNothing result   ' fails if CreateWidget returned Nothing
@@ -251,8 +260,9 @@ Syntax: **Assert.Strict.IsNotNull** *Value* [, *Message* ]
 
 **IsNotNull** is the inverse of [**IsNull**](#isnull): it passes when `IsNull(Value)` would return **False**, and fails when `IsNull(Value)` would return **True**. Because `Null` is never considered equal to anything --- including itself --- `AreNotEqual(Null, value)` is not a reliable way to assert the absence of **Null**; **IsNotNull** is the correct assertion for that purpose. To check for the **Nothing** object reference instead, use [**IsNotNothing**](#isnotnothing).
 
-```tb
+```tb check_build
 Sub TestQueryResult()
+    Dim db As Object
     Dim result As Variant
     result = db.ReadField("Name")
 

@@ -10,7 +10,7 @@ has_toc: false
 
 A **Data** control is a Win32 native control that opens a DAO database and exposes a single recordset to other controls on the form through data binding. It draws a strip of four arrow-shaped buttons --- **Move-First**, **Move-Previous**, **Move-Next**, **Move-Last** --- with a centred [**Caption**](#caption) between them, and lets the user step through the recordset with the mouse. The control is normally placed on a **Form** or **UserControl** at design time. Setting [**DatabaseName**](#databasename) and [**RecordSource**](#recordsource) is enough to populate it; the recordset opens automatically the first time the control is created. The default event is [**Validate**](#validate); the control has no usable default property.
 
-```tb
+```tb check_build inherits=Form
 Private Sub Form_Load()
     With Data1
         .DatabaseName = App.Path & "\biblio.mdb"
@@ -49,7 +49,7 @@ The opened objects are exposed read-only as [**Database**](#database) and read/w
 
 Other controls become *data-bound* by setting their **DataSource** to this **Data** control and their **DataField** to the name of a field in [**Recordset**](#recordset). A bound control reads its value from that field whenever the current record changes, and writes user edits back into the field as part of the next save. The **Data** control mediates both directions, raising [**Reposition**](#reposition) after the bound controls have re-synced and [**Validate**](#validate) before any operation that would discard pending edits.
 
-```tb
+```tb check_build
 ' At design time these are normally set in the property sheet,
 ' but they can also be assigned in code:
 Set txtTitle.DataSource = Data1

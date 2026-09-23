@@ -72,17 +72,19 @@ End Sub
 
 Taking a pointer to an instance method by qualifying with the object reference:
 
-```tb
+```tb check_build slot=file
 Class CFoo
     Public Sub Bar()
         Debug.Print "Bar on instance"
     End Sub
 End Class
 
-Public Sub Demo()
-    Dim foo1 As New CFoo
-    Dim lpfn As LongPtr = AddressOf foo1.Bar
-End Sub
+Module AddressOfDemo
+    Public Sub Demo()
+        Dim foo1 As New CFoo
+        Dim lpfn As LongPtr = AddressOf foo1.Bar
+    End Sub
+End Module
 ```
 
 ### See Also

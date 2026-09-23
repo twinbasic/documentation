@@ -28,7 +28,7 @@ Event firing is done in the order that connections were established. Because eve
 
 The following fragment declares an event at the module level of a class module and raises it from a procedure:
 
-```tb
+```tb check_build slot=class
 ' In a class module:
 Public Event LogonCompleted(UserName As String)
 
@@ -41,7 +41,7 @@ A more complete example showing event source/sink wiring. The class that raises 
 
 The source class declares two events and raises them from a worker procedure:
 
-```tb check_build
+```tb check_build projname=raiseevent-timer
 Class TimerState
     Public Event UpdateElapsedTime(ByVal elapsedTime As Double)
     Public Event DisplayFinalTime()
@@ -67,7 +67,7 @@ End Class
 
 A sink subscribes by using a `WithEvents` field and supplying handler procedures named `<field>_<EventName>`:
 
-```tb check_build
+```tb check_build projname=raiseevent-timer
 Class Form1
     Private WithEvents ts As TimerState
 

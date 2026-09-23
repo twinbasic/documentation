@@ -26,7 +26,7 @@ The **With** statement permits a series of statements on a specified object with
 
 The following example illustrates use of the **With** statement to assign values to several properties of the same object.
 
-```tb
+```tb check_build
 With MyLabel
     .Height = 2000
     .Width = 2000
@@ -46,12 +46,12 @@ End With
 
 This example uses the **With** statement to execute a series of statements on a single object. The object and its properties are generic names used for illustration purposes only.
 
-```tb
+```tb check_build
 With MyObject
     .Height = 100 ' Same as MyObject.Height = 100.
     .Caption = "Hello World" ' Same as MyObject.Caption = "Hello World".
     With .Font
-        .Color = Red ' Same as MyObject.Font.Color = Red.
+        .Color = vbRed ' Same as MyObject.Font.Color = vbRed.
         .Bold = True ' Same as MyObject.Font.Bold = True.
     End With
 End With

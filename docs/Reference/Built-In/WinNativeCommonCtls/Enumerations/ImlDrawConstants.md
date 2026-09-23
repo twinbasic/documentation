@@ -10,12 +10,20 @@ permalink: /tB/Packages/WinNativeCommonCtls/Enumerations/ImlDrawConstants
 
 Flag combinations passed to the *Style* parameter of [**ListImage.Draw**](../ImageList/ListImage#draw). Multiple flags can be **Or**-combined to compose render styles.
 
-```tb
+```tb check_build project=wnc-private
 ' Draw a small icon with the focus rectangle overlaid:
 ImageList1.ListImages("doc").Draw _
     PictureBox1.hDC, 0, 0, _
-    ImlDrawTransparent Or ImlDrawFocus
+    WinNativeCommonCtls.ImlDrawTransparent Or WinNativeCommonCtls.ImlDrawFocus
 ```
+
+> [!IMPORTANT]
+> These members live in a **Private** part of the WinNativeCommonCtls package, so a project that
+> references it the ordinary way cannot name them --- `ImlDrawTransparent` on its own is
+> *TB5079 Unrecognized symbol*. Set the package's [library symbol](../../../../Features/Packages/Library-Symbols) to
+> `*WinNativeCommonCtls` and qualify the member, as the sample does. The asterisk is stripped
+> from the name: the library is still written `WinNativeCommonCtls` in code.
+
 
 | Member                    | Value | Description                                                              |
 |---------------------------|-------|--------------------------------------------------------------------------|

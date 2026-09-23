@@ -12,7 +12,7 @@ A **CheckBox** is a Win32 native control that displays a small box, optionally f
 
 The control is normally placed on a **Form** or **UserControl** at design time. The default property is [**Value**](#value) and the default event is [**Click**](#click).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     Check1.Caption = "I &agree to the terms"
     Check1.Value = vbUnchecked

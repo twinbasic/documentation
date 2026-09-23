@@ -30,9 +30,10 @@ The return value is a **Variant** containing whatever the call returned. For met
 
 This example invokes the default member of an object --- `DISPID_VALUE`, defined as 0 --- by dispatch ID.
 
-```tb
+```tb check_build
 Const DISPID_VALUE As Long = 0
 
+Dim SomeObject As Object
 Dim Result As Variant
 Result = CallByDispId(SomeObject, DISPID_VALUE, vbGet)
 ```

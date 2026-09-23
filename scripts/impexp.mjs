@@ -50,6 +50,13 @@ const CATEGORY_BY_NAME = {
   Packages: CATEGORY.Packages,
 };
 
+// Extensions of the code files, which the IDE stores with CRLF line endings.
+// Export converts LF to CRLF in these, as the compiler executable's own import
+// does, so a tree that Git or an editor left with LF line endings still packs
+// correctly. Every other file -- resources in particular -- is stored
+// byte-for-byte.
+const CRLF_EXTENSIONS = ['.twin', '.bas', '.cls'];
+
 // -------------------------- Parser (binary -> tree) --------------------------
 
 function parse(buffer) {
@@ -201,6 +208,11 @@ function categoryFor(name) {
   return CATEGORY_BY_NAME[name] ?? CATEGORY.Default;
 }
 
+function toCrlf(name, content) {
+  if (!CRLF_EXTENSIONS.includes(path.extname(name).toLowerCase())) return content;
+  return Buffer.from(content.toString('latin1').replace(/\r?\n/g, '\r\n'), 'latin1');
+}
+
 function buildTree(dirPath) {
   const name = path.basename(dirPath);
   const entries = fs.readdirSync(dirPath, { withFileTypes: true });
@@ -215,7 +227,7 @@ function buildTree(dirPath) {
     children.push({
       kind: 'file', name: f.name,
       revision: 0x0002, flags: FLAGS.None, category: categoryFor(f.name),
-      content: fs.readFileSync(path.join(dirPath, f.name)),
+      content: toCrlf(f.name, fs.readFileSync(path.join(dirPath, f.name))),
       revisions: [],
     });
   }
@@ -324,6 +336,27 @@ function selfTest() {
         eq(a[i].p, b[i].p, `path[${i}]`);
         if (!a[i].d.equals(b[i].d)) throw new Error(`content mismatch: ${a[i].p}`);
       }
+    });
+
+    test('Export converts LF to CRLF in code files only', () => {
+      const src = path.join(tmpDir, 'eol', 'Eol');
+      const files = {
+        'Sources/Lf.twin': ['A\nB\n', 'A\r\nB\r\n'],
+        'Sources/Mixed.BAS': ['A\r\nB\nC', 'A\r\nB\r\nC'],
+        'Sources/Crlf.cls': ['A\r\nB\r\n', 'A\r\nB\r\n'],
+        'Sources/Form.tbform': ['{\n}\n', '{\n}\n'],
+        'Resources/RCDATA/data.txt': ['A\nB\n', 'A\nB\n'],
+      };
+      for (const [rel, [before]] of Object.entries(files)) {
+        const p = path.join(src, rel);
+        fs.mkdirSync(path.dirname(p), { recursive: true });
+        fs.writeFileSync(p, before);
+      }
+      const out = path.join(tmpDir, 'eol.twinproj');
+      doExport(src, out, { quiet: true });
+      const got = new Map(treeFiles(parse(fs.readFileSync(out)), '').map(f => [f.p, f.d.toString('latin1')]));
+      for (const [rel, [, after]] of Object.entries(files))
+        eq(JSON.stringify(got.get('Eol/' + rel)), JSON.stringify(after), rel);
     });
 
     test('Empty project round-trip', () => {

@@ -32,7 +32,7 @@ End Sub
 
 **Every call carries two qualifiers, and both are required.** The package namespace `Assert` comes first, because a package's members are reached through its namespace symbol; `VBA`, `VBRUN` and `VB` resolve unqualified only because every project references them, and **Assert** is referenced on demand. The module name comes next, because every member of every module is tagged `[MustBeQualified(True)]`.
 
-```tb
+```tb inert=contrast
 Assert.Strict.IsTrue x > 0   ' OK
 Strict.IsTrue x > 0          ' compile error -- the package namespace is missing
 Assert.IsTrue x > 0          ' compile error -- the module name is missing

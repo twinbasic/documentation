@@ -21,7 +21,7 @@ Syntax: **New EventLog(Of** *T1*, *T2* **)** ( *LogName* )
 *LogName*
 : *required* A **String** naming the event source. A leaf name like `"MyService"` is registered under the **Application** log (`Application\MyService`); a path like `"System\MyService"` is registered under the named parent log. The trailing segment is the source name --- it appears in the Event Viewer's **Source** column.
 
-```tb
+```tb check_build projname=eventlog-types
 Public Enum MyEventIds
     StartupOk     = 1000
     StartupFailed = 1001
@@ -32,7 +32,10 @@ Public Enum MyCategories
     Network = 2
 End Enum
 
-Dim Log As New EventLog(Of MyEventIds, MyCategories)("MyService")
+Sub Bind()
+    Dim Log As EventLog(Of MyEventIds, MyCategories)
+    Set Log = New EventLog(Of MyEventIds, MyCategories)("MyService")
+End Sub
 ```
 
 Both type arguments are required at instantiation --- twinBASIC does not deduce them from the *LogName* constructor argument. See the [Generics](../../../Features/Language/Generics) page for the general rules.
@@ -104,12 +107,14 @@ The constructor only stores *LogName*; no Win32 call is made at construction tim
 
 Both type arguments *T1* and *T2* are required at instantiation; twinBASIC does not deduce them from the *LogName* argument.
 
-```tb
+```tb check_build projname=eventlog-types
 ' Bind to "MyService" under the Application log.
-Dim Log As New EventLog(Of MyEventIds, MyCategories)("MyService")
+Dim Log As EventLog(Of MyEventIds, MyCategories)
+Set Log = New EventLog(Of MyEventIds, MyCategories)("MyService")
 
 ' Bind to a source under a named parent log.
-Dim SysLog As New EventLog(Of MyEventIds, MyCategories)("System\MyService")
+Dim SysLog As EventLog(Of MyEventIds, MyCategories)
+Set SysLog = New EventLog(Of MyEventIds, MyCategories)("System\MyService")
 ```
 
 ### Register
@@ -138,7 +143,7 @@ The lower-level [**EventLogHelperPublic.RegisterEventLogInternal**](EventLogHelp
 
 This example registers a source on first install (requires admin) and then writes an **Information**-type entry at runtime.
 
-```tb
+```tb check_build
 Public Enum MyEventIds
     StartupOk       = 1000
     StartupFailed   = 1001
@@ -152,13 +157,15 @@ End Enum
 
 ' One-time install step (requires admin):
 Sub Install()
-    Dim Log As New EventLog(Of MyEventIds, MyCategories)("MyService")
+    Dim Log As EventLog(Of MyEventIds, MyCategories)
+    Set Log = New EventLog(Of MyEventIds, MyCategories)("MyService")
     Log.Register
 End Sub
 
 ' Runtime use (no admin required):
 Sub OnServiceStart()
-    Dim Log As New EventLog(Of MyEventIds, MyCategories)("MyService")
+    Dim Log As EventLog(Of MyEventIds, MyCategories)
+    Set Log = New EventLog(Of MyEventIds, MyCategories)("MyService")
     Log.LogSuccess StartupOk, General, "Service started", App.ModulePath
 End Sub
 ```

@@ -13,7 +13,7 @@ A **Form** is a top-level Win32 window that hosts the controls, menus, and drawi
 On disk, a form is a `.twin` file holding a `Class` of the same name, carrying the
 designer attributes the IDE maintains:
 
-```tb
+```tb inert=designer
 [FormDesignerId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA01")]
 [PredeclaredId]
 Class Form1
@@ -64,7 +64,7 @@ Closing a form goes through both **QueryUnload** *and* **Unload**, so either can
 
 [**Show**](#show) makes the form visible. It accepts an optional [**FormShowConstants**](../../VBRUN/Constants/FormShowConstants) argument: **vbModeless** (default --- the call returns immediately and the user can interact with other forms) or **vbModal** (the call blocks until the form is closed, and other forms in the application become unresponsive). MDI child forms cannot be shown modally; attempting to do so raises run-time error 404.
 
-```tb
+```tb check_build
 dlgOptions.Show vbModal, Me      ' modal, owned by the calling form
 ```
 
@@ -109,7 +109,7 @@ End Sub
 
 Menu structures designed at form-design time appear automatically in the form's title bar. [**PopUpMenu**](#popupmenu) displays one of those menus as a context-menu pop-up at a specified location, raising the menu's **Click** event when the user picks an item.
 
-```tb
+```tb check_build inherits=Form
 Private Sub Form_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
     If Button = vbRightButton Then PopUpMenu mnuContext
 End Sub
@@ -647,7 +647,8 @@ Syntax: *object*.**Print** \[ *expressionlist* ] \[ **;** \| **,** ]
 
 A trailing `;` or `,` suppresses the newline so the next **Print** call continues on the same line; without a trailing separator, the pen advances to the start of the next line.
 
-```tb
+```tb check_build inherits=Form
+Dim sName As String, nAge As Long, Total As Double
 Me.CurrentX = 10 : Me.CurrentY = 10
 Me.Print "Name: "; sName, "Age: "; nAge      ' two fields, tab-separated
 Me.Print                                     ' blank line

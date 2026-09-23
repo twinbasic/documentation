@@ -10,7 +10,12 @@ has_toc: false
 
 A **FileListBox** is a Win32 native list control that displays the files in a single directory, filtered by a wildcard pattern and a set of file-attribute toggles. It is normally placed on a **Form** or **UserControl** at design time and paired with a [**DriveListBox**](../DriveListBox) and a [**DirListBox**](../DirListBox) to make a complete file picker --- their **Change** events feed into **FileListBox.Path**, and the user selects a name from the list. The default property is [**FileName**](#filename) and the default event is [**Click**](#click).
 
-```tb
+```tb hidden
+Public Sub OpenFile(ByVal Path As String)
+End Sub
+```
+
+```tb check_build
 Private Sub Form_Load()
     Drive1.Drive = "C:\"
     Dir1.Path = Drive1.Drive

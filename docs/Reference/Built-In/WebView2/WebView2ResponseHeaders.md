@@ -73,11 +73,16 @@ Syntax: *object*.**GetHeaders** ( *name* ) **As WebView2HeadersCollection**
 
 A `For Each` loop produces every header in turn:
 
-```tb
-Dim h As WebView2Header
-For Each h In Response.Headers
-    Debug.Print h.Name & ": " & h.Value
-Next
+```tb check_build
+Private Sub WebView21_WebResourceRequested( _
+        ByVal Request As WebView2Request, _
+        ByVal Response As WebView2Response)
+
+    Dim h As WebView2Header
+    For Each h In Response.Headers
+        Debug.Print h.Name & ": " & h.Value
+    Next
+End Sub
 ```
 
 See [**WebView2HeadersCollection**](WebView2HeadersCollection) for the iteration object.

@@ -10,13 +10,24 @@ has_toc: false
 
 A **Report** is a top-level Win32 window --- much like a [**Form**](../Form/) --- specialised for rendering the print preview of a banded report. Each report designed in the IDE becomes its own class derived from **Report**: its sections (report header / page header / detail / page footer / report footer) and the controls placed in them become members of that class. At run time, code assigns a recordset to [**Recordset**](#recordset), calls [**Show**](#show), and the framework iterates the recordset, evaluates expressions on the controls, and paints the resulting pages into a built-in preview window with a navigation toolbar at the bottom. [**PrintReport**](#printreport) sends the same pages to the printer. The default property is [**Controls**](#controls) and the default event is [**Load**](#load).
 
-```tb
+```tb hidden
+' Context for the samples on this page: the designed report they name, and the
+' reader's own function that opens its data.
+Public rptSales As Report
+
+Public Function OpenSalesRecordset() As Object
+End Function
+```
+
+```tb check_build inherits=Report
 ' In the report's code-behind (rptSales):
 Private Sub Report_Load()
     Set Me.Recordset = OpenSalesRecordset()
     Me.Caption = "Sales for " & FormatDateTime(Now, vbLongDate)
 End Sub
+```
 
+```tb check_build
 ' In a startup module:
 Sub Main()
     rptSales.Show vbModal       ' opens the preview window
@@ -94,13 +105,24 @@ Clicking the toolbar's plus or minus button automatically switches [**ZoomAutoFi
 
 Every section's repaint raises [**BeforePaintSection**](#beforepaintsection) on the report, with the [**Section**](#beforepaintsection) being drawn as the argument. During this event, [**hDC**](#hdc) returns the metafile device context that the section is being recorded into --- drawing primitives ([**Line**](#line), [**Circle**](#circle), [**PSet**](#pset), [**PaintPicture**](#paintpicture), [**Print**](#print), and direct GDI calls through [**hDC**](#hdc)) write straight into that section's image. Outside the event, [**hDC**](#hdc) returns the report window's own DC, suitable for screen drawing only.
 
-```tb
-Private Sub Report_BeforePaintSection(Section As ControlsSection)
-    If Section.SectionType = PageHeader Then
+```tb check_build inherits=VB.Report project=vb-private
+Private Sub Report_BeforePaintSection(ByVal Section As VB.ControlsSection)
+    If Section.SectionType = VB.PageHeader Then
         Me.Line (0, 0)-(Me.PixelsReportWidth, 0), vbBlack
     End If
 End Sub
 ```
+
+> [!IMPORTANT]
+>
+> [**ControlsSection**](#beforepaintsection) is a **Private** component of the VB package,
+> so the handler above needs the **VB** library symbol prefixed with an asterisk in
+> *Project Settings*, and the `VB.` qualifier on both the parameter type and the
+> section-type constant. See [Exposing a library's private
+> symbols](../../../../Features/Packages/Library-Symbols#exposing-a-librarys-private-symbols)
+> for the setting and where to find it. Without the asterisk the compiler reports
+> `TB5079 Unrecognized datatype symbol 'ControlsSection'` for the parameter --- alongside a
+> `TB5018` that names that very signature as the one it wants.
 
 ## Coordinate units
 
@@ -116,7 +138,7 @@ The graphics primitives inherited from the form-style drawing surface ([**Cls**]
 
 [**PrintReport**](#printreport) iterates from page 1 to the last page through the [**Printer**](../../VB/Printer) object, sending each cached metafile as one printed page.
 
-```tb
+```tb check_build
 rptSales.PrintReport ShowDialog:=False
 ```
 
@@ -780,10 +802,10 @@ Syntax: *object*\_**Activate**( )
 
 Raised once for each section as it is rendered, before the framework draws the controls in that section. Inside the handler, [**hDC**](#hdc) returns the metafile device context the section is being recorded into, so any drawing primitives ([**Line**](#line), [**Circle**](#circle), [**Print**](#print), …) or direct GDI calls write straight into the section.
 
-Syntax: *object*\_**BeforePaintSection**( *Section* **As ControlsSection** )
+Syntax: *object*\_**BeforePaintSection**( *Section* **As VB.ControlsSection** )
 
 *Section*
-: The section currently being painted. Inspect *Section*`.SectionType` (**ReportHeader**, **PageHeader**, **Detail**, **PageFooter**, or **ReportFooter**) to discriminate.
+: The section currently being painted. **ControlsSection** is a private component of the VB package, so the parameter type needs the `VB.` qualifier and the library symbol has to be imported with an asterisk --- see [Drawing inside sections](#drawing-inside-sections). Inspect *Section*`.SectionType` against **VB.ReportHeader**, **VB.PageHeader**, **VB.Detail**, **VB.PageFooter**, or **VB.ReportFooter**; these constants need the package prefix too.
 
 ### Click
 {: .no_toc }

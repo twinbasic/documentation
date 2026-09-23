@@ -113,7 +113,7 @@ The four `Html*` classes that have the `[COMExtensible(True)]` attribute --- [**
 
 So:
 
-```tb
+```tb check_build
 With element.ChildDomElements.Add("mySeparator", "h1").Properties
     .style.textAlign = "center"
     .style.color     = "white"
@@ -123,7 +123,7 @@ End With
 
 reads at run time as:
 
-```tb
+```tb inert=pseudo
 .Item("style").Item("textAlign").Value = "center"
 .Item("style").Item("color").Value     = "white"
 .Item("innerText").Value               = "Section heading"

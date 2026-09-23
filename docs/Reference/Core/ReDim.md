@@ -33,9 +33,10 @@ With the **Preserve** keyword, only the last array dimension can be resized, and
 
 The following example shows how to increase the size of the last dimension of a dynamic array without erasing any existing data contained in the array.
 
-```tb
+```tb check_build
+Dim X() As Long
 ReDim X(10, 10, 10)
-. . .
+' ...
 ReDim Preserve X(10, 10, 15)
 ```
 
@@ -56,8 +57,9 @@ The **ReDim** statement acts as a declarative statement if the variable it decla
 
 This example uses the **ReDim** statement to allocate and reallocate storage space for dynamic-array variables. It assumes the **Option Base** is **1**.
 
-```tb
+```tb check_build
 Dim MyArray() As Integer ' Declare dynamic array.
+Dim I As Integer
 ReDim MyArray(5) ' Allocate 5 elements.
 For I = 1 To 5 ' Loop 5 times.
     MyArray(I) = I ' Initialize array.
@@ -66,8 +68,9 @@ Next I
 
 The next statement resizes the array and erases the elements.
 
-```tb
+```tb check_build
 ReDim MyArray(10) ' Resize to 10 elements.
+Dim I As Long
 For I = 1 To 10 ' Loop 10 times.
     MyArray(I) = I ' Initialize array.
 Next I

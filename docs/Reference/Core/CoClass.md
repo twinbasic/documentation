@@ -46,13 +46,26 @@ Syntax:
 
 ### Example
 
-A simple coclass exposing two interfaces, with `IFoo` marked as the default:
+A simple coclass exposing two interfaces, with `IShape` marked as the default:
 
-```tb
+```tb hidden
+' Context for the sample below: the two interfaces it names.
+[InterfaceId("6E5A5F94-3C8E-4C6E-9E5F-1C1D6C9A54B1")]
+Public Interface IShape
+    Function Area() As Double
+End Interface
+
+[InterfaceId("B4C0A41A-1E1B-42C4-9E31-2B6F2E0A77D2")]
+Public Interface IDrawable
+    Sub Draw()
+End Interface
+```
+
+```tb check_build
 [CoClassId("52112FA1-FBE4-11CA-B5DD-0020AFE7292D")]
-CoClass Foo
-    [Default] Interface IFoo
-    Interface IBar
+CoClass Shape
+    [Default] Interface IShape
+    Interface IDrawable
 End CoClass
 ```
 

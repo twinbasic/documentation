@@ -45,13 +45,13 @@ Error-handling routines rely on the value in the **Number** property of the **Er
 
 To prevent error-handling code from running when no error has occurred, place an [**Exit Sub**](Exit), **Exit Function**, or **Exit Property** statement immediately before the error-handling routine, as in the following fragment:
 
-```tb
+```tb check_build
 Sub InitializeMatrix(Var1, Var2, Var3, Var4)
     On Error GoTo ErrorHandler
-    . . .
+    ' ...
     Exit Sub
 ErrorHandler:
-    . . .
+    ' ...
     Resume Next
 End Sub
 ```

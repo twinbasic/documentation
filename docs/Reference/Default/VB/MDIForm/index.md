@@ -99,7 +99,7 @@ Menu structures designed at form-design time appear automatically in the MDIForm
 
 [**PopUpMenu**](#popupmenu) displays one of the form's menus as a context-menu pop-up at a specified location, raising the menu's **Click** event when the user picks an item.
 
-```tb
+```tb check_build inherits=MDIForm
 Private Sub MDIForm_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
     If Button = vbRightButton Then PopUpMenu mnuContext
 End Sub

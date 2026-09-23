@@ -606,8 +606,8 @@ and sweep once at the end.
 {: #check-examples }
 
     node scripts/check_examples.mjs [--only <regex>] [--census] [--propose [--apply]]
-                                    [--jobs N] [--port N] [--batch N] [--ide <path>]
-                                    [--keep] [--verbose] [--json]
+                                    [--report <file>] [--jobs N] [--port N] [--batch N]
+                                    [--ide <path>] [--keep] [--verbose] [--json]
 
 Compiles the documentation's own code samples. A ` ```tb ` fence is something
 [`check_code_regions.mjs`](#check-code-regions) protects the *contents* of and nothing ever
@@ -636,14 +636,17 @@ as its own project with nothing else in it. Without that, a page presenting one 
 pieces passes only when its pieces happen to share a generated project --- which depends on
 what else is being checked, so the same page can pass a full run and fail a `--only` one.
 A group that is only half marked is reported as such, rather than as a missing symbol in
-whichever sample used it.
+whichever sample used it --- and an `--only` that leaves part of a group out of a run says
+so as well, because what that run reports about the rest of the group is not what a full run
+reports.
 
 | Flag | Effect |
 |---|---|
 | `--only <regex>` | Restrict to pages whose path matches. The path is page-relative, as in `^Reference/Core`. |
-| `--census` | Classify every `tb` fence and print the table --- how many are whole files, procedures, statement runs, and how many are fragments no wrapper can rescue. No compiler, no IDE, well under a second. |
-| `--propose` | Compile the unmarked samples too, and list the ones that would pass. A survey, so it exits 0 whatever it finds. |
+| `--census` | Classify every `tb` fence and print the table --- how many are whole files, procedures, statement runs, and how many are fragments no wrapper can rescue --- then the fences marked `inert` by reason, and finally the **undecided** ones: classifiable, unmarked, and not inert. That last number is the backlog; the inert count is not. No compiler, no IDE, well under a second. |
+| `--propose` | Compile the unmarked samples too, and list the ones that would pass. A survey, so it exits 0 whatever it finds. It ends with the same grouping `--report` prints. |
 | `--apply` | With `--propose`, add the marker to the fences that passed. It only ever adds the bare flag, only to a fence that compiled in that very run, and never to one that already carries markup --- so a re-run is a no-op. Read the diff. |
+| `--report <file>` | Group the findings of a survey saved with `--propose --json`: by diagnostic, by section, by the name that did not resolve, by wrapper, and by page. No compiler --- the survey holds every page and line it names, so the slow run happens once and the grouping is what gets iterated on. |
 | `--jobs <n>` | Concurrent IDE lanes. Default 4. Each lane has its own port, its own workspace and its own private desktop. |
 | `--port <n>` | Base DevTools port. Default 9480; lane *n* uses base + *n*. |
 | `--batch <n>` | Upper bound on samples per generated project. Default 120. The batcher packs fewer than this when there are lanes to fill. |
@@ -676,6 +679,24 @@ ninety-nine their result. `tbbuild` reports a crash as exit 4; this splits the b
 recurses until the offending sample is alone, which is O(log n) extra builds paid only on
 failure. The finding names the sample and points at `BUGS-TO-REPORT.md`.
 
+**A sample can be compiled against a file.** A fence carrying `resource=<project-relative
+path>` --- in any language, typically ` ```json ` --- is written into the generated project at
+that path instead of being compiled, and travels with its page the way a `hidden` fence
+does. It exists for the compile-time attributes that read a project file:
+`[PopulateFrom("json", "/Resources/MESSAGETABLE/Strings.json", …)]` fills an **Enum**'s
+members from that JSON while compiling, so the members the page's other samples name are
+checked against the file the page shows. The path may not escape the project --- no `..`, no
+drive letter, no UNC --- and a refused path is a finding rather than a write.
+
+**A diagnostic can also land outside every sample**, inside a referenced package's own
+source. A generic instantiated with a type the project does not have is the case to know: the
+error is reported against the generic's own type parameter, in the package's file, and the
+sample that provoked it can have no diagnostic of its own at all. Such a sample used to be
+counted as compiling while the run failed with a row naming no page. The same splitting
+isolates it, after one build of the template with nothing in it decides whether the row is
+the template's own rather than any sample's. A split never cuts a `projname` group in half,
+and never separates a page's `hidden` context from the samples that need it.
+
 Two files under `scripts/lib/` belong to it. `tb-fences.mjs` is the half that needs no
 compiler --- fence extraction, the markup, and the classifier --- and is where a new key or
 a new slot goes. `tb-install.mjs` finds the IDE and the compiler beside it, and is shared
@@ -703,7 +724,7 @@ It also writes a key naming the `Attributes.md` line each probe came from, besid
 
     twinBASIC_win32.exe import AttributeProbes.twinproj <out_dir> --overwrite
 
-**That command's exit code is `0` whether it worked or not**, so a script that packs a tree and then builds it will happily compile the previous `.twinproj`. Test the last line of its output for `... DONE` instead; [Import/Export Tool](../../Features/Packages/Import-Export-Tool#the-exit-code-is-always-zero) has the caveat in full and a batch-file form of the test. That page also covers why this verb runs opposite to the standalone scripts' `import`. Re-run the generator after editing `Attributes.md`. Exits 0, or 2 with usage when given no output directory.
+**That command's exit code is `0` whether it worked or not**, so a script that packs a tree and then builds it will happily compile the previous `.twinproj`. Test the last line of its output for `... DONE` instead; [Import/Export Tool](../../Features/Packages/Import-Export-Tool#a-zero-exit-code-does-not-mean-success) has the caveat in full and a batch-file form of the test. That page also covers why this verb runs opposite to the standalone scripts' `import`. Re-run the generator after editing `Attributes.md`. Exits 0, or 2 with usage when given no output directory.
 
 ### census_attributes.mjs
 {: #census-attributes }
@@ -714,7 +735,7 @@ It also writes a key naming the `Attributes.md` line each probe came from, besid
 
 Reports, for every attribute the twinBASIC packages use, **which enclosing construct and which kind of declaration it decorates**. It exports each package of an IDE install with the compiler's own `export` verb, scans the `.twin` sources, and writes a Markdown or JSON report. No arguments are needed: it finds the newest `twinBASIC_IDE_BETA_*` the same way [`tbbuild.mjs`](#tbbuild) does, caches the export under the build number, and reuses it on later runs. It is not part of the site build and nothing calls it during one.
 
-Against BETA 983 that is 619 files, 9,673 attribute sites and 55 distinct attributes.
+Against BETA 983 that is 661 files, 9,701 attribute sites and 55 distinct attributes.
 
 **A census is evidence, not applicability.** It says where an attribute *is* used, never where it *may* be used, and the two differ in both directions. The packages contain no use of `[Hidden]` on a whole **Class**, yet the compiler accepts one; they contain many on **Class** and **Interface** members, and the compiler refuses the same attribute on the **Interface** lines inside a **CoClass**. Neither fact is reachable from the other tool, so pair this with [`gen_attribute_probes.mjs`](#gen-attribute-probes) and [`tbbuild.mjs`](#tbbuild), which ask the compiler directly.
 

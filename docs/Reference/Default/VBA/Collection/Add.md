@@ -36,7 +36,15 @@ An error also occurs if a specified *key* duplicates the *key* for an existing m
 
 This example uses the **Add** method to add `Inst` objects (instances of a class called `Class1` containing a **Public** variable `InstanceName`) to a collection called `MyClasses`. To run this code, insert a class module and declare a public variable called `InstanceName` at module level of `Class1` (type `Public InstanceName`) to hold the names of each instance. Leave the default name as `Class1`.
 
-```tb
+```tb hidden
+' Context for the sample below: the class module its prose asks the reader to
+' insert, with the public variable it names.
+Class Class1
+    Public InstanceName As Variant
+End Class
+```
+
+```tb check_build
 Dim MyClasses As New Collection    ' Create a Collection object.
 Dim Num As Integer                 ' Counter for individualizing keys.
 Dim Msg As String

@@ -45,19 +45,19 @@ This is an optional attribute, but it is usually advisable to set this attribute
 
 All CustomControls *must* implement [`CustomControls.ICustomControl`](../../tB/Packages/CustomControls/Framework/ICustomControl).  This interface currently has 3 methods that you must implement:
 
-```tb
+```tb inert=signature
 Sub Initialize(ByVal Context As CustomControlContext)
 ```
 
 This method is called when your control is attached to a form.  You must store the provided Context object in a class field as it offers a `Repaint()` method for informing the form engine that something in your control has changed and needs to be repainted.
 
-```tb
+```tb inert=signature
 Sub Destroy()
 ```
 
 This method is called when your control is detached from a form.  This allows an opportunity to break circular references so that your object instance can be destructed properly.   The implementation for this can often be left empty provided you don't create circular references in objects.
 
-```tb
+```tb inert=signature
 Sub Paint(ByVal Canvas As Canvas)
 ```
 
@@ -67,13 +67,13 @@ This is the most interesting part for a CustomControl.  As such, it gets its own
 ## Minimum set of properties
 As twinBASIC doesn't yet support inheritance, you must expose a set of common properties (class fields) for all CustomControls:
 
-```tb
+```tb check_build slot=class project=cc-private
 Public Name As String
 Public Left As CustomControls.PixelCount
 Public Top As CustomControls.PixelCount
 Public Width As CustomControls.PixelCount
 Public Height As CustomControls.PixelCount
-Public Anchors As Anchors = New Anchors
+Public Anchors As CustomControlsPackage.Anchors = New CustomControlsPackage.Anchors
 Public Dock As CustomControls.DockMode
 Public Visible As Boolean
 ```
@@ -83,17 +83,42 @@ The form designer and the form engine work with these properties, so it is impor
 Note that the form designer works with pixel values which are not DPI-scaled.  So the Left/Top/Width/Height properties of your control do not reflect DPI scaling.  For example, if your control has a width of 50 pixels, then at DPI 150%, then the actual drawing width is 75 pixels ( see [Painting / drawing to your control](Painting)).
 
 ***
-## Must have a serialization constructor
-CustomControls *must* offer a serialization constructor:
+## Must load its property values in Initialize
+The property values set for your control in the form designer are loaded by your [**Initialize**](../../tB/Packages/CustomControls/Framework/ICustomControl#initialize) method.  The Context object passed to it offers a `GetSerializer()` method, and the serializer that it returns offers a `RuntimeUISrzDeserialize()` method, which copies the saved values into your control's properties:
 
-```tb
-Public Sub New(Serializer As SerializationInfo)
+```tb hidden concat_group=defining-initialize
+' Context for the sample below: the rest of a minimal control.
+[COMCreatable(False)]
+Class DefiningInitializeDemo
+    Implements CustomControls.ICustomControl
+    Private ControlContext As CustomControls.CustomControlContext
 ```
 
-The passed in Serializer object offers a `Deserialize()` method that you call to load the properties that have been set for your control via the form designer.  See [Property Sheet and Object Serialization](Properties) for further information.
+```tb check_build concat_group=defining-initialize
+Private Sub OnInitialize(ByVal Context As CustomControls.CustomControlContext) _
+        Implements CustomControls.ICustomControl.Initialize
+    If Not Context.GetSerializer.RuntimeUISrzDeserialize(Me, False) Then
+        InitializeDefaultValues     ' nothing was saved yet; you implement this
+    End If
+    Set Me.ControlContext = Context
+End Sub
+```
 
-> [!NOTE]
-> The current framework names the serializer type [`SerializeInfo`](../../tB/Packages/CustomControls/Framework/SerializeInfo) (not `SerializationInfo`), and `Deserialize()` is exposed as `RuntimeUISrzDeserialize()`. See the reference page for the current member names and the design-mode / runtime-mode flags also available on this object.
+```tb hidden concat_group=defining-initialize
+    ' The helper the sample calls, and the interface's other two members.
+    Private Sub InitializeDefaultValues()
+    End Sub
+
+    Private Sub OnDestroy() Implements CustomControls.ICustomControl.Destroy
+    End Sub
+
+    Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas) _
+            Implements CustomControls.ICustomControl.Paint
+    End Sub
+End Class
+```
+
+See [Property Sheet and Object Serialization](Properties) for further information, and [`SerializeInfo`](../../tB/Packages/CustomControls/Framework/SerializeInfo) for the serializer's other members --- the design-mode flag, the runtime / report mode, and the owner window handle.
 
 ***
 ## See also

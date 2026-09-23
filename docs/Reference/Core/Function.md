@@ -126,7 +126,7 @@ To return a value from a function, assign the value to the function name, or pro
 
 The following example shows how to assign a return value to a function. In this case, **False** is assigned to the name to indicate that some value was not found.
 
-```tb
+```tb inert=skeleton
 Function BinarySearch(...) As Boolean 
   '... 
   ' Value not found. Return a value of False. 

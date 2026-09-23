@@ -11,12 +11,18 @@ Reader-facing documentation is the [`check_examples.mjs`
 entry](docs/Documentation/Tools.md) in Tools.md and [Checking that a sample
 compiles](docs/Documentation/Authoring.md) in Authoring.md.
 
-**818 samples are marked today** and the gate over them takes ~42 s. That is up from 401,
-and the arithmetic of how it got there is [the second pass](#the-second-pass-604-to-818),
-which is also where the one claim this file got badly wrong is corrected.
+**1,116 samples are marked today** and the gate over them takes ~110 s, in 41 projects. That
+is up from 401, and the arithmetic of how it got there is [the second
+pass](#the-second-pass-604-to-818), which is also where the one claim this file got badly
+wrong is corrected.
 
-Of the 1,101 classifiable fences, 818 compile. The rest are the follow-up work, and
-[what the first full run found](#what-the-first-full-run-found) says what is in the way.
+Of the 1,168 `tb` fences, 1,116 are marked and compile, 52 are `inert` with a recorded
+reason, and **none is undecided**, so the backlog the census measures is empty. No fence is
+an `excerpt` any more: [the excerpts](#the-excerpts-25-to-none) were the last group that
+could be made to build. Every gain
+since 826 came from editing pages rather than from marking them, which is [the editorial
+pass](#the-editorial-pass-826-to-931); [what was left](#what-is-left-179-samples-and-no-lever)
+at 931 has since been worked through.
 
 ## The problem
 
@@ -48,14 +54,20 @@ is the same deal `sweep_a11y.mjs` (~20 min, full site) already makes.
 ## Opt-in, because the corpus says so
 
 `check_examples.mjs --census` is the live version of the table below, so there is one
-reproducible number rather than three prose ones. Against 1,116 `tb` fences in 603 pages:
+reproducible number rather than three prose ones. Against 1,134 `tb` fences in 603 pages:
 
 | shape | count | share | what is generated around it |
 |---|---:|---:|---|
-| whole `Class` / `Module` / `Interface` | 58 | 5.2% | nothing --- it becomes its own `.twin` |
-| procedures and module-level declarations | 403 | 36.1% | a `Module tbx_<hash>` |
-| loose statements | 634 | 56.8% | a `Module` and a `Private Sub` in it |
-| fragment --- no wrapper rescues it | 21 | 1.9% | --- |
+| whole `Class` / `Module` / `Interface` | 67 | 5.9% | nothing --- it becomes its own `.twin` |
+| procedures and module-level declarations | 370 | 32.6% | a `Module tbx_<hash>` |
+| loose statements | 607 | 53.5% | a `Module` and a `Private Sub` in it |
+| class code-behind --- declarations, then statements | 54 + 12 | 5.8% | a `Class`, and a `Private Sub` in it |
+| fragment --- no wrapper rescues it | 24 | 2.1% | --- |
+
+The census also prints **which classifiable fences carry no marker, by section and by
+page**, because that is the question the marking work is actually planned from and it needs
+no compiler to answer. What it deliberately does not claim is that any of them would
+compile; only `--propose` knows that.
 
 **Two earlier censuses disagreed with this one and with each other**, at 36 / 357 / 457 /
 250 and 103 / 349 / 22 / 621. The `procedure` row is the one all three agree on. The
@@ -81,11 +93,12 @@ What is left after those fixes really is fragmentary: an elision (`...`), a sign
 without a body, a syntax skeleton with `<placeholders>`.
 
 **Opt-in is still right**, but not for the reason the design gave. It is not that most of the
-corpus is unclassifiable --- 98% of it is. It is that **54% compiles and 46% does not**, and
-the 46% is overwhelmingly samples that are correct as documentation and incomplete as
-programs: a `With MyLabel` block with no `MyLabel`, a handler for a class the page does not
-define. Marking those would be wrong, and opting them out one by one would be a list of five
-hundred exceptions.
+corpus is unclassifiable --- 98% of it is. It is that when this was decided **54% compiled
+and 46% did not**, and the 46% was overwhelmingly samples that are correct as documentation
+and incomplete as programs: a `With MyLabel` block with no `MyLabel`, a handler for a class
+the page does not define. Marking those would be wrong, and opting them out one by one would
+be a list of five hundred exceptions. Two marking passes and an editorial one have taken the
+compiling share to 84%; what is left is the part where the sample really is not a program.
 
 ## The markup
 
@@ -129,6 +142,123 @@ Shape --- bare flags and `key=value` pairs after the language token:
 | `projname=` | build these samples as one project | each sample is its own unit |
 | `id=` | stable name for reporting | `<page>#<ordinal>` |
 | `expect-error=` | the sample is *meant* not to compile; assert this error | --- |
+| `resource=` | **on a fence in any language**: stage this fence's contents into the project at that path, instead of compiling it | --- |
+| `concat_group=` | join these fences, in page order, into one compilation unit before classifying it. Implies `check_build` | --- |
+| `inert=` | this fence is not a program, or cannot be one: `skeleton`, `signature`, `excerpt`, `pseudo`, `contrast`, `external`, `designer` or `blocked` | --- |
+
+### `inert` is a decision, not a suppression
+
+Before it, an unmarked fence meant two different things --- nobody has looked, and somebody
+looked and concluded there is nothing to compile --- and the census could not tell them
+apart. So every pass re-triaged the same hundred skeletons, and the backlog never appeared
+to move.
+
+`inert=<reason>` records the second. It **takes a reason rather than being a bare flag**,
+because a bare flag would only hide the fence; the reason is what makes the count readable,
+and what lets a later reader disagree with a specific judgement rather than with a silence.
+An unknown reason is refused the way a bad `slot=` is, and `inert` beside `check_build` is
+refused as a contradiction: those are opposite claims about the same fence.
+
+The census prints three numbers now --- marked, inert by reason, and **undecided**. Only the
+last is a backlog, and it is the one to drive to zero; the inert count is supposed to grow
+and then sit still.
+
+**`blocked` is the one reason that is not about the fence**, and **nothing carries it
+today** --- which is the point worth keeping. It marks correct code that a *product* defect
+stops compiling, and it exists so that the alternative, rewriting the sample until the
+compiler accepts it, is not taken by accident.
+
+Six fences carried it for about an hour: `ImlDrawTransparent` (WinNativeCommonCtls),
+`CefLogWarning` (cefPackage), `vbDirectionHorizontal` and `vbQRCodegenEccHigh` (VB) are enum
+members a default project cannot name, because each enum sits inside a `Private Module` or a
+private base class. Then the obvious question got asked --- *what would a reader actually
+do?* --- and the answer was the asterisk: `*WinNativeCommonCtls` exposes the package's
+private half, and `WinNativeCommonCtls.ImlDrawTransparent` compiles. Two more templates
+(`wnc-private`, `cef-private`) join `vb-private` and `cc-private`, every one of the six
+samples is checked again, and each page now carries an IMPORTANT saying which library symbol
+to set and why.
+
+**The lesson is the rule, not the reason:** documenting a call and leaving no way to make it
+work is worse than either fixing it or deleting it. `blocked` is for a defect with no
+workaround at all, and reaching for it is a signal that the workaround has not been looked
+for hard enough. The package defect is still a defect --- BUGS-TO-REPORT.md carries it, since
+a documented enum should not need the asterisk --- but the reader is no longer stuck.
+
+### A sample can be compiled against a file
+
+`[PopulateFrom("json", "/Resources/MESSAGETABLE/Strings.json", "events", "name", "id")]`
+fills an empty `Enum` with members read from a project file **while compiling**. A page
+documenting it therefore has samples whose symbols exist only if that file does, and
+`WinEventLogLib/index.md` is the case: its `Class MyService` names
+`MESSAGETABLE.EVENTS.service_started`, which comes from the JSON the page prints two
+sections further down.
+
+`resource=<project-relative path>` on that ` ```json ` fence stages it. Measured before any
+of it was built, by hand: **`import` packs a `Resources/` tree into the `.twinproj`, the
+attribute reads it, and a module referring to `MESSAGETABLE.EVENTS.service_started` compiles
+with 0 errors** --- so the member names really are produced from the file rather than merely
+tolerated.
+
+Four rules, each a consequence rather than a preference:
+
+- **It is a file, not a sample.** Never compiled, never counted, absent from the census, and
+  it cannot pass or fail. The run header says `N staged file(s)` so the count is visible.
+- **It travels with its page**, exactly as `hidden` does, which is why no `projname` is
+  needed for it to reach the page's group.
+- **It keeps its own id series** (`<page>#r1`). Collecting a `json` fence into the same
+  numbering as the `tb` fences would renumber every sample below it on the page, and a
+  sample's generated module name is a hash of its id.
+- **The path may not leave the project.** No `..`, no drive letter, no UNC --- eight probes,
+  and the first version of the guard failed one of them: it stripped the leading slashes
+  before testing for `//`, so `//server/share/x.json` passed as `server/share/x.json`.
+
+What this buys is not the tick. It is that the JSON's shape --- which array, which field
+supplies the name, which supplies the value --- is now checked against the code that reads
+it, on the page that documents both.
+
+### One construct across several fences
+
+`concat_group=<name>` joins its fences into one synthetic fence, in page order, **before
+`classify` runs** --- it has to, because each part of a split `Class` is an unclosed block
+and classifies as nothing. The joined fence keeps `concatParts`, the generated-line range
+each part occupies, and `partOf` maps a diagnostic back to its part's own page line. An
+off-by-one there would point every finding in the second part at a plausible wrong line,
+which is why four of the concat probes are nothing but line mapping.
+
+It was built for the cut-off fences in the triage tail, and **none of them needed it**: all
+four were a missing `End Class` or `End Module`, and the rule that came out of that is now
+in the public authoring guide --- a fence one closing line short of compiling gets `' ...`
+and the closer, not `inert`. The same review found no `excerpt` fence that a closer alone
+would fix; every one of them is already closed and needs context instead.
+
+Its first use is the other shape: **hidden parts around a visible one.** The Painting
+tutorial's `OnPaint` has to sit inside a class that implements `ICustomControl` --- its
+`Implements … .Paint` clause needs the class-level `Implements`, the interface's other two
+members and the field it draws with, all in the same class. A `hidden` fence cannot supply
+any of that, because it is a unit of its own: context a sample can *refer to*, never a
+container a sample goes *inside*. The mouse-event class further down the same page measured
+it while it was still an excerpt: without the class-level `Implements` it failed with
+`TB5016 Interface 'ICustomControl' was not found`. That one is a complete class now: what it
+had elided --- the class-level `Implements` and the interface's other two members --- was
+exactly what it needed to build.
+
+The same shape then took the CustomControls `Framework/` excerpts off the inert list: eight
+`OnInitialize` and timer methods, each between a hidden header (the class, its `Implements`,
+the fields the method sets) and a hidden footer (whatever helper it calls, the interface's
+other two members, `End Class`). The visible code did not change by a character. A ninth,
+`SelectItem`, needed only its undeclared `m_SelectedIndex`, joined in front as a one-line
+hidden part. The two CustomControls tutorials' `Initialize` samples are built the same way.
+
+**A group is its page's own.** The join first keyed groups by name alone, so two pages that
+picked the same name would have become one unit --- a class opened on one page and closed on
+another --- silently, since the join precedes classification. Scoped to the page before the
+Framework pages added nine groups across five pages, and probed.
+
+**The unit is its first *visible* part.** `concatFences` first spread `parts[0]` into the
+result, so with a hidden header first the joined unit inherited `hidden` and became page
+context --- which only travels with the page's other samples, so it is compiled only if the
+page has one, and it is never a unit `splitBatch` can isolate a failure to. Caught on the
+first use, fixed, and probed.
 
 **`project=` and `projname=` are one character apart and mean different things** --- the
 template to build into, and the group to build with. Worth renaming if it ever trips
@@ -191,8 +321,9 @@ explicit and greppable.
 One project per fence is unaffordable. What makes it tractable is that **IDE cost is flat in
 project size** --- what is paid for is startup, not compilation. Measured on this corpus:
 1,082 auto-wrapped fences across 16 projects on four concurrent lanes, **36.6 s wall**
-including packing. The 381 marked samples today take ~17 s; the full 1,095-fence survey
-takes 30 s.
+including packing. Today the 826 marked samples take ~45 s over 16 projects, and the full
+1,103-fence survey ~90 s over 21 --- the survey's extra includes the three builds it spends
+isolating the one diagnostic that lands outside every sample.
 
 **Fill the lanes, not the batches.** Filling each batch to `--batch` before opening another
 put 120, 55, 4 and 3 samples on four lanes --- and a run takes as long as its biggest batch.
@@ -238,7 +369,10 @@ Collision rules, all forced by putting unrelated samples in one compilation unit
 - **One generated `Module tbx_<hash>` per fence.** The hash covers the fence's id, so it is
   stable across runs and traceable without a lookup table.
 - **Everything generated is `Private`.** Eleven pages declare a `MyString`.
-- **`Sub Main` comes from the template, never from a fence.**
+- **`Sub Main` comes from the template --- and a fence may bring its own as well.** This was
+  listed as a collision rule, and nothing ever enforced it. Measured: two `Public Sub Main`s
+  in different modules compile, so the WinServicesLib `Module Startup` samples build as
+  written.
 - **A generated module must not share a name with the project.** `project.name = "ProbeWS"`
   beside `Module ProbeWS` makes `[RunAfterBuild]`'s `ProbeWS.ProbeWS.Probe` ambiguous, and
   the IDE refuses it at *execution* time --- so the build is green and nothing runs.
@@ -268,6 +402,47 @@ Two things a batch runner must do that a single-fence runner need not:
   split and recurse: O(log n) extra builds, paid only on failure. Verified against the real
   case, with the crashing sample isolated out of a batch and the rest of the batch still
   reporting.
+
+### A diagnostic that lands in a package's own source
+
+**A sample can produce a compiler error that appears in no file the sample is in.** Measured
+shape: a generic instantiated with a type the project does not have is reported against the
+*generic's own type parameter*, inside the package's source ---
+`Packages/WinServicesLib/Sources/ServiceCreator.twin [10,20]: TB5079 Unrecognized datatype
+symbol 'T'` for a sample writing `New ServiceCreator(Of MyService)` with no `MyService`
+anywhere. The sample gets **no diagnostic of its own at all**.
+
+That row matches no generated file, so it used to be filed as a template fault: the run
+failed with a row naming no page, and **the sample was counted as one that compiled**. One
+sample in the corpus is in that shape (`WinServicesLib/index.md#1`) and it is unmarked, so
+the gate was green rather than wrong --- but a marked sample there would have been a false
+pass of exactly the kind this tool exists to end.
+
+Three parts to the fix, each forced:
+
+- **An unreadable row and an unattributable one are different.** A row this cannot parse
+  names no file, so no amount of splitting finds its cause; an ERROR against a file that is
+  not one of the batch's generated samples has a cause among them.
+- **One build of the template with nothing in it decides whose row it is**, memoised per
+  template and shared across lanes. Without that the leaf is ambiguous --- a sample that
+  provoked the row and a template that emits it unprompted look identical --- and guessing
+  the first would bisect every batch to a single sample, hundreds of IDE starts, and then
+  blame an arbitrary one. The probe is lazy, so a clean run pays nothing for it.
+- **The split goes by unit, not by slicing the fence array.** A `projname` group is one
+  program, and a page's `hidden` fences are appended at the *end* of `batch.fences`, so a
+  plain halving took a group apart and dropped one half's context --- manufacturing the
+  failure it then reported. The crash bisect had this fault and nobody had hit it, because a
+  group is rare and a crash is rarer.
+
+Cost on this corpus: **one blame in 1,103 samples, three extra builds.**
+
+**`--only` cuts a `projname` group, and that silence cost an hour.** Narrowing to
+`WinServicesLib/ServiceCreator` left the page that declares `MyService` out of the run while
+keeping three pages that instantiate `ServiceCreator(Of MyService)`, so the isolation blamed
+a sample the full gate passes --- and it was read as a real false pass. `checkGroups` kept
+quiet about it deliberately, on the grounds that the filter is the caller's own doing. It now
+says so as an advisory finding. **A narrowed run's results are not a full run's, and the tool
+has to be the thing that says which.**
 
 ## Traps already paid for
 
@@ -303,13 +478,28 @@ implementation.
   and does not stage a copy the way `tbrun` does, so two concurrent builds pointed at the
   same folder --- distinct `--port`s, distinct desktops, everything else correct --- both
   wedge and neither ever returns. Each lane owns a workspace, not just a port.
+- **A run that dies mid-batch leaves its lanes' IDEs running**, on desktops nobody can see,
+  holding the projects they opened under `tbexamples\<port>`. The next run on that port then
+  fails its first step, clearing that folder, with a bare `EPERM`. Paid for once: a gate
+  whose node process ended during its last three batches left three IDEs, their compilers
+  and their debuggers behind. The harness now says what the `EPERM` means; stop the
+  `twinBASIC.exe` processes whose command line names a project under that folder, or run on
+  another `--port`.
 - **`export` needs the output folder to exist** (one level only), and stdin redirected
   (`</dev/null`) when looping, or the executable eats the loop's input.
 - **Paths handed to the compiler must be pure Windows.** It prefixes `\\?\`, which does not
   accept forward slashes: a `C:\Users\x/Desktop/...` mix fails with `input twinproj file
   does not exist`.
-- **`import` exits 0 whether it worked or not.** Its output is the only test: a successful
-  pack ends `... DONE`.
+- **`import`'s exit code does not say whether it worked.** It is 0 on every failure the
+  compiler reports itself, and 999 with no result line at all on a tree with a folder inside
+  its top-level `Packages` --- any project that embeds a package; see
+  [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md). The output is the only test: a successful pack
+  ends `... DONE`. This bullet used to say "exits 0 whether it worked or not", and both tools
+  packed through `execFileSync` on the strength of it --- which throws on a non-zero exit, so
+  a 999 escaped before the output was read and `tbrun` reported it as exit 1, *compile
+  errors*. `runCompiler` in `scripts/lib/tb-install.mjs` reads the output whatever the
+  status. No template embeds a package; only a `resource=` fence staged under `Packages/`
+  would reach it here.
 - **Office examples leak one process per run, and it is not self-limiting.** Each
   `CreateObject` starts a *separate* `EXCEL.EXE`, calling `Quit` is not sufficient --- the
   process exits only once every COM reference is released --- and they sit on the user's
@@ -479,6 +669,24 @@ Three rules, each of which cost something to find:
 **`hidden` implies `check_build`**, because a hidden fence nobody compiles is text nobody
 can read and nothing checks.
 
+**A page cannot hide what it also shows --- so rename the placeholder.** Hidden context
+joins every project holding a sample from its page, so a *visible* sample on that page
+declaring the same name meets it. `Reference/Core/CoClass.md` is the case, and it looks like
+a hidden-fence job right up until you try it: its first example names `IFoo` and `IBar`
+without declaring them, and the page's *next* example is a complete custom-constructor
+sample declaring `IFoo`, `IBar` and `CoClass Foo` in full. Measured:
+`TB5137 'IFoo' is ambiguous. Could be: [Class] DocSamples1.IFoo [Class] DocSamples1.IFoo`.
+
+The way out is neither duplicating the ten lines that already appear ten lines below, nor
+giving up and calling the fence an excerpt. **`IFoo` and `IBar` are arbitrary placeholder
+names**: the first example is now a `CoClass Shape` over `IShape` and `IDrawable`, with
+those two interfaces in a hidden fence, and both examples compile. The rename also does
+something for the reader, which is why it is the right answer rather than a trick --- two
+examples that shared a cast of characters now look as different as they are.
+
+The general rule: **when hidden context collides with a visible sample, check whether the
+name is load-bearing before working around it.** A placeholder can simply be something else.
+
 ### A collision rule that was measured too narrowly
 
 `COLLIDES` excluded `Type` on the strength of a real measurement: two generated modules may
@@ -493,6 +701,33 @@ as nothing put them in one project, and the marking pass put them in one. `Type`
 
 **The lesson generalises:** a collision rule has to cover the names a sample can be made
 ambiguous *by*, not only the ones two samples would duplicate.
+
+**And it is still too narrow, in a way the editorial pass found.** `COLLIDES` reads a
+fence's *outermost container* names, so `Module MESSAGETABLE` is what it records --- not the
+`Enum EVENTS` inside it, and not that enum's members. twinBASIC puts enum members in project
+scope whatever container declares them, so two pages whose hidden context each declared an
+`EVENTS` enum landed in one batch and produced `TB5000 duplicate definition [EVENTS]` and
+`TB5073 'status_changed' is ambiguous`. The fix taken was `projname=` on each page, which
+buys an isolated project; tracking nested enum names in `COLLIDES` would be the general
+version, at the cost of splitting batches for names that usually do not collide.
+
+**It came round a second time**, and the fix that time was cheaper. API-Declarations.md's
+hidden context declared `POINT` inside a `Module DropTargetTypes` block, so the batcher
+recorded `DropTargetTypes`, and the full run put the page beside `Alias-Types.md`'s own
+`Public Type POINT`: `TB5137 'POINT' is ambiguous` on both pages. Hidden context has no
+reason to be wrapped in a `Module` --- the harness generates one for a module-slot fence ---
+so the types now sit at the top of the fence, where the batcher reads their names. **Write
+hidden declarations at the top of their fence**, so the batcher can see them. That matters
+for a name the sample cannot change, like the Win32 `POINT`; a colliding placeholder is
+simply renamed, as the same run's `foo` parameter was.
+
+The same run turned up a latent neighbour dependency: `Alias-Types.md`'s alias fence names
+the `POINT` declared in the fence before it, so it only ever compiled when the two happened
+to share a batch. They are a `projname` group now.
+
+**A page run is not a gate run.** Every one of these passed with `--only`, because a
+five-page selection packs into different batches than the whole corpus does. Finish a batch
+of edits with a full run.
 
 ### `expect-error` has its first use
 
@@ -568,7 +803,9 @@ by grep.
   default and 275 worked; the measured evidence does not say where the knee is.
 - `check_run` needs the dispatcher design above, plus the `MsgBox` screen, plus a decision
   about what a sample's *output* is compared against. A sample that prints is a sample whose
-  printed value the page probably states, and that is the check worth having.
+  printed value the page probably states, and that is the check worth having. Deliberately
+  not started --- see [What is left](#what-is-left-179-samples-and-no-lever) for why the
+  editorial pass comes first.
 - A `projname` is global, so two pages choosing `demo` would merge without saying so. Scoping
   it to the page would prevent that and would also prevent a group spanning pages, which a
   multi-page tutorial wants. Left global and documented; revisit if a collision happens.
@@ -578,24 +815,157 @@ by grep.
   precisely "the control instances the samples assume", so they were left. The invented
   *classes* moved, because a class is not a control instance and a page is where it
   belongs. The line between the two is a judgement, not a rule.
-- **283 samples still do not compile.** Three groups:
-  - **`TB5182`** --- a genuine fragment: an elision, a signature with no body, or
-    pseudo-code sitting in a `tb` fence. `VB/MDIForm/index.md` had one of the last kind,
-    a menu-item-to-action table written with `=>`; it is four real handlers now, which
-    both compiles and is what a reader would actually write. The rest want the same
-    judgement, page by page.
-  - **The CustomControls `Framework/` pages**, about nine samples that are one method of a
-    control class. **An `implements=` key cannot rescue them, and that is measured:**
-    `Implements CustomControls.ICustomControl` with only `Initialize` supplied is
-    `TB5000 Missing implementation of member Sub Destroy()` and the same for `Paint()`. A
-    wrapper would have to synthesize stubs for every other member of an interface whose
-    shape the tool does not know. Nor can a `hidden` fence help --- the class has to be one
-    compilation unit, and a hidden fence is a separate one. The fix is editorial: show the
-    enclosing class, which these pages' own prose already half-describes ("custom controls
-    store the **CustomControlContext** in a private field, typically called
-    **ControlContext**").
-  - **One-off helper procedures a sample calls** --- `ProcessMessage`, `Sleep`,
-    `InitializeDefaultValues`. These *are* `hidden`-fence work, and cheap.
+## The editorial pass: 826 to 931
+
+The survey said no unmarked sample compiled, so every one of these came from changing a
+page. Five moves did the work, and the order matters --- the cheap mechanical ones first,
+because each makes the next survey's report shorter:
+
+| move | what it is |
+|---|---|
+| **declare the local** | `Dim I As Long` in a VBA-derived loop, `Dim obj As Object` above the reference the sample tests. A reader would write it; the VBA original left it implicit |
+| **`hidden` fence** | for what a reader has *elsewhere* in their program --- a helper procedure, a module-level flag, the class the page's prose asks them to insert |
+| **stage entry** | for a control instance. 50 added this pass, and they are the biggest single lever in it |
+| **put the statements in a `Sub`** | a fence mixing a `Type` or `Enum` with executable code is not a module a reader can paste; wrapping the code is what they would actually write |
+| **`projname`** | when a page's fences really are one program, which two of them turned out to be |
+
+The rule that decides between the first two: **a local goes in the sample, and anything the
+reader already has goes in a `hidden` fence.** A single-letter name in a hidden fence is the
+shape to avoid --- nothing separates two pages that both declare a module-level `A`, because
+`COLLIDES` tracks type names only.
+
+**The stage set is where the volume was.** 45 undeclared names in the survey were VB control
+instances, each on one or two pages --- `lblName`, `mnuFileSaveAs`, `optPlain`, `dlgOptions`,
+`fraLeft`. Adding them to the two stage modules bought **22 samples in `Default/VB` alone**
+for one file edit, against a tail where no single *name* was worth more than three. A flat
+tail of names is not the same as a flat tail of *work*.
+
+Four things this pass found that are not about any one page:
+
+- **`Dim x As New Foo(args)` is not valid twinBASIC.** Constructor arguments need the
+  expression form, `Set x = New Foo(args)`. Seven sites across three pages wrote the invalid
+  form, and one of them was `twinBASIC-Additions.md`'s **Parameterised New** section --- the
+  page that introduces the feature, illustrating it with a class whose constructor is
+  internal to its package. That section now shows a class the reader defines, carries
+  `[COMCreatable(False)]` because a class whose only constructor takes arguments cannot
+  supply the parameterless one COM creation wants, and says in a NOTE that `As New` with
+  arguments is a syntax error.
+- **A generated `Class` wrapper needs `[COMCreatable(False)]` too**, for exactly that reason:
+  tbIDE's `Host.md` sample declares `Public Sub New(ByVal Host As Host)` and failed with
+  `TB5135`, which is a diagnostic about the wrapper rather than about the sample.
+- **`Implements` and `Inherits` at fence top level mean class code-behind**, the same kind of
+  language rule as `Me` and `WithEvents`, and are read that way now.
+- **The elision the VBA-derived pages use is `. . .`, spaced.** The classifier knew only
+  `...`, so three pages were proposed as markable and failed on *"Expected a symbol following
+  the dot operator"* --- a diagnostic about a line that is not code at all.
+
+**Two latent neighbour-dependencies surfaced, both by repacking rather than by editing.**
+`Core/New.md` compiled only because some other page's fence declared a `Class Form1`, and
+`Core/RaiseEvent.md`'s handler sample needed the `TimerState` its own page declares two
+fences earlier. The first is a `hidden` fence now and the second a `projname` group. This is
+the residual [A sample could pass on its neighbour's
+declarations](#a-sample-could-pass-on-its-neighbours-declarations) states, biting twice in
+one afternoon: **the gate is the detector, so run it after every `--apply`.**
+
+## What is left: 179 samples, and no lever
+
+**Since settled.** This section is the state at 931, kept because its reasoning still
+applies. Every fence it describes has since been completed, marked, or given an `inert=`
+reason, and the census reports none undecided. The CustomControls `Framework/` group below
+builds now, with no visible enclosing class: hidden class parts are joined to each method
+with `concat_group` --- see [One construct across several
+fences](#one-construct-across-several-fences).
+
+Live against BETA 983, and reproducible: `--propose --json` writes the survey and
+`--report <file>` groups it. **931 of 1,110 compile.**
+
+Where it sits now: `Reference/Core` 27, `Default/VB` 24, `Built-In/CustomControls` 22,
+`Features/Language` 21, `Attributes.md` 12, `WinServicesLib` 8, `Default/VBA` 8,
+`Built-In/tbIDE` 6, `Tutorials/Arrays.md` 6.
+
+**The tail was flat before this pass and is flatter now.** What remains is dominated by
+fences that are not programs and were never going to be: syntax skeletons with
+`<placeholder>` names (`Features/Language/Interfaces-CoClasses.md` writes
+`Inherits base_interface`), property-assignment lines shown outside their `With`
+(`WinServicesLib/ServiceManager.md` documents each property as `.Name = "..."`), and
+continuation fences that deliberately reuse the previous fence's variables.
+
+Three groups, unchanged in kind from the first survey:
+
+- **`TB5182`** --- a genuine fragment: an elision, a signature with no body, or pseudo-code
+  sitting in a `tb` fence. `VB/MDIForm/index.md` had one of the last kind, a
+  menu-item-to-action table written with `=>`; it is four real handlers now, which both
+  compiles and is what a reader would actually write. The rest want the same judgement, page
+  by page.
+- **The CustomControls `Framework/` pages**, about nine samples that are one method of a
+  control class. **An `implements=` key cannot rescue them, and that is measured:**
+  `Implements CustomControls.ICustomControl` with only `Initialize` supplied is
+  `TB5000 Missing implementation of member Sub Destroy()` and the same for `Paint()`. A
+  wrapper would have to synthesize stubs for every other member of an interface whose shape
+  the tool does not know. Nor can a `hidden` fence help --- the class has to be one
+  compilation unit, and a hidden fence is a separate one. The fix is editorial: show the
+  enclosing class, which these pages' own prose already half-describes ("custom controls
+  store the **CustomControlContext** in a private field, typically called
+  **ControlContext**").
+- **One-off helper procedures a sample calls** --- `ProcessMessage`, `Sleep`,
+  `InitializeDefaultValues`. These *are* `hidden`-fence work, and cheap. Most of them were
+  done in the editorial pass; `InitializeDefaultValues` is left because it belongs to the
+  CustomControls `Framework/` group above.
+
+One page deserves its own line, because its shape recurs in tutorials.
+`Tutorials/Arrays.md` presents two implementations of the same helper --- a naive `ArrayLen`
+and a better one --- and a later fence calls it: `TB5073 'ArrayLen' is ambiguous. Could be:
+tbx_7bd542b06b.ArrayLen / tbx_3dc70092ea.ArrayLen`. A `projname` group cannot fix this,
+because grouping puts the two definitions in *one* project rather than keeping them apart,
+and `COLLIDES` does not track procedure names. The page also calls `SaveLongData` while
+declaring `SaveData`, which is a defect in the page rather than in the harness.
+
+**`check_run` waits for this work rather than the other way round.** No fence in `docs/`
+carries the marker, so it gates nothing today; and its open question --- what a sample's
+printed output is compared against --- is answered by pages that state a printed value, which
+is what the editorial pass produces. Building the dispatcher first would be building for
+candidates that do not exist yet.
+
+## The excerpts: 25 to none
+
+Every `excerpt` fence builds now, or turned out to be something else. What decided each one
+was a question asked partway through --- *would a reader of the page need to see this?* ---
+and it replaced the first plan, which was to hide an invented procedure header around every
+fragment:
+
+- **Shown:** whatever the reader writes, or needs in order to know where an object comes
+  from. An event handler's header (`Request.Headers` means nothing until the reader sees
+  which event passes `Request`), the `With` subject a leading-dot line depends on, the
+  `WithEvents` field an event handler's name is built from, the interface member the reader
+  implements. Where the page already shows that header elsewhere --- every WebView2 page
+  opens with the full handler --- the fence repeats it rather than inventing one.
+- **Hidden:** what the reader brings from elsewhere --- their own helpers
+  (`SaveDocument`, `OpenSalesRecordset`), what the form designer declares (`rptSales`,
+  `Toolbar1`), stand-ins for an external library's declarations (`ChooseColorFlags`), and
+  the class boilerplate around a method the page is about.
+
+Two fences that mixed two execution contexts were split: a report's code-behind and the
+startup module that shows it, and a pipe protocol's client and server halves. Three fences
+left the inert list for other reasons on the way: `Interface.md`'s `IFoo` was marked
+`skeleton` but lacked only a `MyEnum`, `Delegates.md`'s `CHOOSECOLOR` was `external` for one
+WinDevLib enum, and `IVBPrint.md`'s dispatch listing is `pseudo`, since a bare `Column` is
+not a statement anyone writes.
+
+What the compiler said once the fragments were whole:
+
+- **A product defect.** A class cannot implement an interface member marked
+  `[PreserveSig]`, and the diagnostic "expects" the signature already written ---
+  BUGS-TO-REPORT.md has the two-declaration reproduction. `Reference/Core/Interface.md` had
+  shown exactly such an implementation since it was written; its example no longer puts the
+  attribute on an implemented member, and both pages that describe the attribute say why.
+- **A latent neighbour dependency.** The WinNamedPipesLib discovery loop used a `manager`
+  its page never declared, and compiled only when `NamedPipeClientManager.md`'s hidden
+  `Public manager` happened to share its batch. It declares its own now.
+- **Claims confirmed.** `For Each` over a `WebView2RequestHeaders` or
+  `WebView2ResponseHeaders` works as the pages say, and `AsyncWrite` accepts a
+  `PropertyBag.Contents` **Variant** for its `Data() As Byte`.
+- **A harness rule that was never true.** "`Sub Main` comes from the template, never from a
+  sample" --- see the collision rules above.
 
 ## What is in the `tb` fences, and why opt-in
 
@@ -605,16 +975,16 @@ samples](WIP.md#compiling-the-references-own-code-samples). This is the census
 that decided the design, printed by `--census`.
 
 The census of what is in the fences, which `--census` prints and which decided the design
---- 1,122 `tb` blocks across 603 pages:
+--- 1,134 `tb` blocks across 603 pages:
 
 | shape | count | share | wrapper |
 |---|---:|---:|---|
-| whole `Class` / `Module` / `Interface` | 62 | 5.5% | none --- its own `.twin` |
-| procedures and module-level declarations | 366 | 32.6% | a generated `Module` |
-| loose statements | 609 | 54.3% | a generated `Module` and `Private Sub` |
-| class code-behind --- declarations | 52 | 4.6% | a generated `Class` |
+| whole `Class` / `Module` / `Interface` | 67 | 5.9% | none --- its own `.twin` |
+| procedures and module-level declarations | 370 | 32.6% | a generated `Module` |
+| loose statements | 607 | 53.5% | a generated `Module` and `Private Sub` |
+| class code-behind --- declarations | 54 | 4.8% | a generated `Class` |
 | class code-behind --- loose statements | 12 | 1.1% | a generated `Class` and `Private Sub` |
-| fragment --- no wrapper rescues it | 21 | 1.9% | --- |
+| fragment --- no wrapper rescues it | 24 | 2.1% | --- |
 
 The two Class rows are inferred from `Me` and from a top-level `WithEvents`, neither of
 which a standard module may contain; a sample reaching a member of the thing it is
@@ -629,8 +999,11 @@ field called `Type As Long`, and `Overridable` is a modifier. Those are probes n
 table above comes from a script rather than from prose.
 
 **Opt-in is right, but not for the reason first given.** It is not that the corpus resists
-classification --- 98% of it classifies. It is that **54% compiles and 46% does not**, and
-the 46% is overwhelmingly samples that are correct as documentation and incomplete as
-programs: a `With MyLabel` block with no `MyLabel`, a handler for a class the page does not
-define. Marking those would be wrong, and opting them out one by one would be a list of
-five hundred exceptions nobody maintains.
+classification --- 98% of it classifies. It is that when this was decided **54% compiled and
+46% did not**, and the 46% was overwhelmingly samples that are correct as documentation and
+incomplete as programs: a `With MyLabel` block with no `MyLabel`, a handler for a class the
+page does not define. Marking those would be wrong, and opting them out one by one would be a
+list of five hundred exceptions nobody maintains. Two passes of harness work and page edits
+have since taken the compiling share to **84% of the classifiable corpus**, which changes the
+size of the argument and not its shape --- see
+[What is left](#what-is-left-179-samples-and-no-lever).

@@ -59,7 +59,7 @@ End Sub
 
 The two halves form a request / reply exchange --- the page posts a query string, BASIC processes it and posts a result back:
 
-```tb
+```tb inert=designer
 Private Sub WebView_JsMessage(ByVal Message As Variant) _
         Handles WebView.JsMessage
     If Left$(Message, 6) = "QUERY:" Then

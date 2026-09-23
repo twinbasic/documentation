@@ -29,13 +29,15 @@ The cdecl calling convention is supported both for API declares and methods in y
 
 ### Examples
 
-```tb
-Private DeclareWide PtrSafe Function _wtoi64 CDecl Lib "msvcrt" (ByVal psz As String) As LongLong`
+```tb check_build
+Private DeclareWide PtrSafe Function _wtoi64 CDecl Lib "msvcrt" (ByVal psz As String) As LongLong
 ```
 
-```tb
+```tb check_build
 [ DllExport ]
-Public Function MyExportedFunction CDecl(foo As Long, Bar As Long) As Long
+Public Function MyExportedFunction CDecl(value1 As Long, value2 As Long) As Long
+    ' ...
+End Function
 ```
 
 ### CDecl Callbacks
@@ -84,11 +86,55 @@ End Function
 
 Simple UDTs can now be passed ByVal in APIs, interfaces, and any other method. In VBx this previously required workarounds like passing each argument separately.
 
-```tb
-Public Declare PtrSafe Function LBItemFromPt Lib "comctl32" (ByVal hLB As LongPtr, ByVal PXY As POINT, ByVal bAutoScroll As BOOL) As Long
+```tb hidden
+' Context for the two samples below: the Windows types they pass. A reader has
+' these from a Windows declarations package such as WinDevLib; they are written
+' out here so the declarations can be compiled. They sit at the top of the fence,
+' not inside a Module block, so the batcher sees their names and keeps this page
+' away from other pages that declare a POINT.
+Public Type POINT
+    x As Long
+    y As Long
+End Type
 
+Public Enum BOOL
+    CFALSE = 0
+    CTRUE = 1
+End Enum
+
+Public Enum KeyStateMouse
+    MK_LBUTTON = &H1
+    MK_RBUTTON = &H2
+    MK_SHIFT = &H4
+    MK_CONTROL = &H8
+    MK_MBUTTON = &H10
+End Enum
+
+Public Enum DROPEFFECTS
+    DROPEFFECT_NONE = 0
+    DROPEFFECT_COPY = 1
+    DROPEFFECT_MOVE = 2
+    DROPEFFECT_LINK = 4
+End Enum
+```
+
+```tb hidden
+' ...and the data-object interface that IDropTarget's methods take.
+[InterfaceId("0000010E-0000-0000-C000-000000000046")]
+Public Interface IDataObject Extends stdole.IUnknown
+    Sub GetData()
+End Interface
+```
+
+```tb check_build
+Public Declare PtrSafe Function LBItemFromPt Lib "comctl32" (ByVal hLB As LongPtr, ByVal PXY As POINT, ByVal bAutoScroll As BOOL) As Long
+```
+
+```tb check_build
 Interface IDropTarget Extends stdole.IUnknown
     Sub DragEnter(ByVal pDataObject As IDataObject, ByVal grfKeyState As KeyStateMouse, ByVal pt As POINT, pdwEffect As DROPEFFECTS)
+    ' ...
+End Interface
 ```
 
 and so on. For this feature, a "simple" UDT is one that does not have members that are reference counted or are otherwise managed in the background, so may not contain interface, String, or Variant types. They may contain other UDTs.
@@ -136,13 +182,23 @@ The `[PreserveSig]` attribute was described earlier for COM methods, but it can 
 
 ### Example
 
-```tb
+```tb hidden
+' Context for the samples below: the shell interface they return. A reader has
+' this from the Windows shell type library; it is written out here so the two
+' declarations can be compiled.
+[InterfaceId("000214E6-0000-0000-C000-000000000046")]
+Public Interface IShellFolder
+    Sub ParseDisplayName()
+End Interface
+```
+
+```tb check_build projname=preservesig-shell
 Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" (ppshf As IShellFolder) As Long
 ```
 
 can be rewritten as:
 
-```tb
+```tb check_build projname=preservesig-shell2
 [PreserveSig(False)]
-Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" () As IShellFolder`
+Public Declare PtrSafe Function SHGetDesktopFolder Lib "shell32" () As IShellFolder
 ```

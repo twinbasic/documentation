@@ -69,7 +69,9 @@ Syntax: *editors*.**Open** *Path* [, *LineNumber* ] [, *ColumnNumber* ] [, *Opti
 
 After **Open** returns, the requested file is the active editor; call `Editors.Item(0).SetFocus` to give it keyboard focus.
 
-```tb
+```tb check_build
+Dim File As tbIDE.File
+Dim LineNumber As Long, ColumnNumber As Long
 Host.ActiveEditors.Open File.Path, LineNumber, ColumnNumber
 Host.ActiveEditors.Item(0).SetFocus
 ```

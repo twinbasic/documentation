@@ -95,7 +95,7 @@ Syntax: *object*.**Remove** *index*
 
 A **DataMembers** object can be iterated with the [**For Each...Next**](../../../Core/For-Each-Next) statement, which yields each name in turn, in the order it was added. The hidden `_NewEnum` member supplies the enumerator and is not called directly from user code.
 
-```tb
+```tb inert=skeleton
 Dim Name As Variant
 For Each Name In MyDataMembers
     Debug.Print Name

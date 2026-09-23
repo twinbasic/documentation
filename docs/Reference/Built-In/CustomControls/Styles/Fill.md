@@ -19,17 +19,40 @@ btnGo.HoverState.BackgroundFill.SetSimplePattern vbBlue, vbWhite, _
         Pattern:=tbGradientNorthToSouth
 ```
 
-For three or more colour stops, build [**FillColorPoint**](#fillcolorpoint-class) instances and pass them to [**SetColorPoints**](#setcolorpoints). The stops accept fully-opaque ARGB literals (`&HFF` alpha in the high byte) --- see [**ColorRGBA**](../Enumerations/ColorRGBA) for the encoding:
+Each stop carries a colour and a position, and both are editable in place through [**Values**](#values) after the pattern has been set. Moving the stops off 0 and 100 holds each colour longer and compresses the blend between them:
 
-```tb
-With pnlHeader.BackgroundFill
-    .Pattern = tbGradientNorthToSouth
-    .ColorPoints.SetColorPoints _
-        New FillColorPoint(&HFFF3E58F, 0), _
-        New FillColorPoint(&HFF99CCFF, 50), _
-        New FillColorPoint(&HFF014C99, 100)
+```tb check_build
+With btnGo.NormalState.BackgroundFill
+    .SetSimplePattern &HF3E58F, &H014C99, Pattern:=tbGradientNorthToSouth
+    .ColorPoints.Values(0).PositionPercent = 20
+    .ColorPoints.Values(1).PositionPercent = 80
 End With
 ```
+
+For three or more colour stops, build [**FillColorPoint**](#fillcolorpoint-class) instances and pass them to [**SetColorPoints**](#setcolorpoints). The stops accept fully-opaque ARGB literals (`&HFF` alpha in the high byte) --- see [**ColorRGBA**](../Enumerations/ColorRGBA) for the encoding:
+
+```tb check_build project=cc-private
+With btnGo.NormalState.BackgroundFill
+    .Pattern = tbGradientNorthToSouth
+    .ColorPoints.SetColorPoints _
+        New CustomControlsPackage.FillColorPoint(&HFFF3E58F, 0), _
+        New CustomControlsPackage.FillColorPoint(&HFF99CCFF, 50), _
+        New CustomControlsPackage.FillColorPoint(&HFF014C99, 100)
+End With
+```
+
+> [!IMPORTANT]
+>
+> [**FillColorPoint**](#fillcolorpoint-class) is a **Private** component of the package, so
+> naming it takes the **CustomControlsPackage** library symbol prefixed with an asterisk in
+> *Project Settings* --- the control package, not the **CustomControls** DESIGNER library
+> listed beside it --- plus the package qualifier used above. See [Exposing a library's
+> private symbols](../../../../Features/Packages/Library-Symbols#exposing-a-librarys-private-symbols)
+> for the setting and where to find it.
+>
+> Note also that [**SetColorPoints**](#setcolorpoints) takes a `ParamArray` of **Variant**,
+> so a call passing anything other than a [**FillColorPoint**](#fillcolorpoint-class)
+> compiles and then fails at run time.
 
 * TOC
 {:toc}
@@ -105,7 +128,7 @@ The size of the generated colour table that interpolates the stops. Higher value
 ### Values
 {: .no_toc }
 
-The array of [**FillColorPoint**](#fillcolorpoint-class) gradient stops. Read-write, but in practice populated through the [**SetSolidColor**](#setsolidcolor), [**SetSolidColorRGBA**](#setsolidcolorrgba), [**SetColorPoints**](#setcolorpoints), or [**SetColorPointsArray**](#setcolorpointsarray) methods rather than by assigning the array directly.
+The array of [**FillColorPoint**](#fillcolorpoint-class) gradient stops. Read-write, but in practice populated through the [**SetSolidColor**](#setsolidcolor), [**SetSolidColorRGBA**](#setsolidcolorrgba), [**SetColorPoints**](#setcolorpoints), or [**SetColorPointsArray**](#setcolorpointsarray) methods rather than by assigning the array directly --- assigning it needs a `FillColorPoint()`, which the project can only declare when the package is imported with an asterisk.
 
 ### SetSolidColor
 {: .no_toc }
@@ -171,7 +194,9 @@ The stop's position along the gradient, as a percentage from 0 to 100. **Double*
 
 Constructs a [**FillColorPoint**](#fillcolorpoint-class). The parameterless overload sets neither field; the two-argument overload sets both.
 
-Syntax: **New FillColorPoint** [ ( *ColorRGBA*, *PositionPercent* ) ]
+Syntax: **New CustomControlsPackage.FillColorPoint** [ ( *ColorRGBA*, *PositionPercent* ) ]
+
+The package qualifier is required, and so is importing the reference with an asterisk --- see the note at the top of this page.
 
 *ColorRGBA*
 : *optional* A [**ColorRGBA**](../Enumerations/ColorRGBA) value to assign to [**Color**](#color).

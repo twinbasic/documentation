@@ -80,7 +80,7 @@ Syntax: *codeEditor*.**ExecuteMonacoCommand** *Command* [, *Arg1*, *Arg2*, … ]
 
 The reference does not enumerate Monaco's command set --- refer to Monaco's documentation for the full list and their per-command argument shapes.
 
-```tb
+```tb check_build
 codeEditor.ExecuteMonacoCommand "actions.find"          ' open Find widget
 codeEditor.ExecuteMonacoCommand "closeFindWidget"       ' close it
 ```

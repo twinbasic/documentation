@@ -82,11 +82,17 @@ node builder/census_attributes.mjs --attr Hidden          # one attribute
 node builder/census_attributes.mjs --attr Hidden --dump-sites sites.json
 ```
 
-Against BETA 983: **619 files, 9,673 attribute sites, 55 distinct attributes**, and every
+Against BETA 983: **661 files, 9,701 attribute sites, 55 distinct attributes**, and every
 one of the 55 is already in `Attributes.md` --- the "used but undocumented" section comes
 back empty. Sixteen documented attributes are used by no package, which is not a defect
 but does mean the census offers no evidence for those `Applicable to:` lines and a probe
 is the only check available.
+
+The figures first recorded here, 619 files and 9,673 sites, did not reproduce on a complete
+export of all sixteen packages, and the cache they came from no longer exists to say why.
+One way to undercount like that is now closed: until the census tested for `... DONE` it
+trusted `export`'s exit code, which is 0 on failure, and scanned a partial export as though
+it had finished --- see the path-length entry in [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md).
 
 **A census is evidence, not applicability, and the two disagree in both directions.** The
 corpus contains no use of `[Hidden]` on a whole `Class`, yet the compiler accepts one; it

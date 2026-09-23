@@ -53,7 +53,8 @@ Syntax: **Assert.Exact.Fail** [ *Message* ]
 
 **Fail** marks code paths that should be unreachable in a passing test --- most often after a call that is expected to raise an error, in a branch that runs when the call returned normally instead.
 
-```tb
+```tb check_build
+Dim target As Object
 On Error Resume Next
 target.SomethingThatShouldRaise
 If Err.Number = 0 Then Assert.Exact.Fail "expected an error, got success"
@@ -89,7 +90,8 @@ Syntax: **Assert.Exact.AreEqual** *Expected*, *Actual* [, *Message* ]
 
 The comparison follows this module's [comparison semantics](#comparison-semantics) --- *Expected* and *Actual* must have the same datatype, strings are compared case-sensitively, and `Empty`, `vbNullString`, and `""` are all distinct from one another. If either operand is **Null**, the assertion fails --- `Null` is never equal to anything; use [**IsNull**](#isnull) to test for **Null** explicitly.
 
-```tb
+```tb check_build
+Dim result As Long, greeting As String
 Assert.Exact.AreEqual 42, result          ' passes only if result is Long 42
 Assert.Exact.AreEqual "Hello", greeting   ' passes only if greeting is exactly "Hello"
 
@@ -256,8 +258,9 @@ Syntax: **Assert.Exact.IsNotNull** *Value* [, *Message* ]
 
 **IsNotNull** is the inverse of [**IsNull**](#isnull): it passes when `IsNull(Value)` would return **False**, and fails when `IsNull(Value)` would return **True**. Because `Null` is never considered equal to anything --- including itself --- `AreNotEqual(Null, value)` is not a reliable way to assert the absence of **Null**; **IsNotNull** is the correct assertion for that purpose. To check for the **Nothing** object reference instead, use [**IsNotNothing**](#isnotnothing).
 
-```tb
+```tb check_build
 Sub TestQueryResult()
+    Dim db As Object
     Dim result As Variant
     result = db.ReadField("Name")
 

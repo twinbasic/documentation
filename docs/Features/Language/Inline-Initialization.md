@@ -11,7 +11,7 @@ You can now set initial values for variables inline, without needing a line-cont
 
 ## Examples
 
-```tb
+```tb inert=skeleton
 Dim i As Long = 1
 Dim foo As Boolean = bar()
 Dim arr As Variant = Array(1, 2, 3)

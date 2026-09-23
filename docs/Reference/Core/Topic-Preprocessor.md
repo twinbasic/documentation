@@ -60,7 +60,7 @@ twinBASIC provides a set of built-in compiler constants --- `Win64`, `Win32`, `T
 
 This example uses the `Win64` predefined constant to select platform-specific imports, and a project-defined `DEBUG_BUILD` constant to enable extra logging only in debug builds.
 
-```tb
+```tb inert=external
 #Const DEBUG_BUILD = 1
 
 #If Win64 Then

@@ -30,7 +30,7 @@ A typical use has three stages:
 2. **Register** once, with administrator rights, at install time. Construct an [**EventLog**](EventLog) instance and call [**Register**](EventLog#register); this writes the source key under `HKLM\SYSTEM\CurrentControlSet\Services\EventLog\Application\<LogName>` and points the registry's **EventMessageFile** and **CategoryMessageFile** entries at the running EXE. Without this step, the Event Viewer shows *"The description for Event ID X cannot be found"* for every entry.
 3. **Log** at runtime, without elevation. Construct the same [**EventLog**](EventLog) with the same *LogName* and call [**LogSuccess**](EventLog#logsuccess) or [**LogFailure**](EventLog#logfailure) whenever the application has something to report.
 
-```tb
+```tb check_build
 Public Enum MyEventIds
     StartupOk       = 1000
     StartupFailed   = 1001
@@ -44,13 +44,15 @@ End Enum
 
 ' One-time install step (requires admin):
 Sub Install()
-    Dim Log As New EventLog(Of MyEventIds, MyCategories)("MyService")
+    Dim Log As EventLog(Of MyEventIds, MyCategories)
+    Set Log = New EventLog(Of MyEventIds, MyCategories)("MyService")
     Log.Register
 End Sub
 
 ' Runtime use (no admin required):
 Sub OnServiceStart()
-    Dim Log As New EventLog(Of MyEventIds, MyCategories)("MyService")
+    Dim Log As EventLog(Of MyEventIds, MyCategories)
+    Set Log = New EventLog(Of MyEventIds, MyCategories)("MyService")
     Log.LogSuccess StartupOk, General, "Service started", App.ModulePath
 End Sub
 ```
@@ -63,7 +65,7 @@ For service / long-running classes that should expose [**LogSuccess**](EventLog#
 
 A class can mix [**EventLog**](EventLog)`(Of T1, T2)` in through twinBASIC's [`Implements ... Via`](../../../Features/Language/Inheritance) composition syntax and inherit its public members unqualified:
 
-```tb
+```tb check_build projname=eventlog-composition-idiom
 Class MyService
     Implements EventLog(Of MESSAGETABLE.EVENTS, MESSAGETABLE.CATEGORIES) Via _
         EventLog = New EventLog(Of MESSAGETABLE.EVENTS, MESSAGETABLE.CATEGORIES)("Application\" & CurrentComponentName)
@@ -98,7 +100,7 @@ For the generic [**EventLog**](EventLog)`(Of T1, T2)` class, the *T1* (event IDs
 
 Declare a module with two empty enum stubs, each tagged with [`[PopulateFrom]`](../../Core/Attributes#populatefrom) pointing at a project-relative JSON resource:
 
-```tb
+```tb check_build projname=eventlog-composition-idiom
 Module MESSAGETABLE
     [PopulateFrom("json", "/Resources/MESSAGETABLE/Strings.json", "events", "name", "id")]
     Enum EVENTS
@@ -114,7 +116,7 @@ The five [`[PopulateFrom]`](../../Core/Attributes#populatefrom) arguments are: t
 
 `Resources/MESSAGETABLE/Strings.json` has one entry per event and one per category. Each entry has three fields --- a numeric `id`, an enum-member `name`, and the per-locale message text under an `LCID_XXXX` key:
 
-```json
+```json resource=/Resources/MESSAGETABLE/Strings.json projname=eventlog-composition-idiom
 {
     "events": [
         { "id": -1073610751, "name": "service_started",        "LCID_0000": "%1 service started" },
@@ -131,8 +133,9 @@ The compiler reads the JSON at build time and populates each enum body --- `Enum
 
 Once the JSON, the enum stubs, and the registry entries written by [**Register**](EventLog#register) are in place, a runtime call
 
-```tb
-Dim Log As New EventLog(Of MESSAGETABLE.EVENTS, MESSAGETABLE.CATEGORIES)("Application\" & CurrentComponentName)
+```tb check_build projname=eventlog-composition-idiom
+Dim Log As EventLog(Of MESSAGETABLE.EVENTS, MESSAGETABLE.CATEGORIES)
+Set Log = New EventLog(Of MESSAGETABLE.EVENTS, MESSAGETABLE.CATEGORIES)("Application\" & CurrentComponentName)
 Log.LogSuccess service_started, status_changed, "MyService"
 ```
 

@@ -18,7 +18,6 @@ Module tbxStage
     Public Label1 As Label
     Public Timer1 As Timer
     Public Command1 As CommandButton
-    Public Frame1 As Frame
     Public Picture1 As PictureBox
     Public PictureBox1 As PictureBox
 
@@ -45,17 +44,37 @@ Module tbxStage
     Public MyForm As Form
 
     ' CustomControls -- the Waynes... instances the reference pages assume.
+    Public txtNotes As WaynesTextBox
+    Public lblHeader As WaynesLabel
+    Public lblTitle As WaynesLabel
     Public btnGo As WaynesButton
+    Public btnDemo As WaynesButton
+    Public btnTab As WaynesButton
     Public Grid1 As WaynesGrid
+    Public WaynesGrid1 As WaynesGrid
     Public txtName As WaynesTextBox
     Public sldProgress As WaynesSlider
     Public sldVolume As WaynesSlider
+    Public Frame1 As WaynesFrame
+    Public pnlTree As WaynesFrame
+    Public pnlAside As WaynesFrame
+    Public pnlMain As WaynesFrame
+    Public pnlOne As WaynesFrame
+    Public pnlTwo As WaynesFrame
+    Public pnlThree As WaynesFrame
 
     ' tbIDE. An addin reaches the IDE through a Host, and opens tool windows;
     ' both are what the addin SDK's pages are written against.
     Public Host As tbIDE.Host
     Public myToolWindow As tbIDE.ToolWindow
     Public myWindow As tbIDE.ToolWindow
+
+    ' The editor and DOM objects an addin has in hand by the time the samples
+    ' run: one comes from Host.Project.Editors, the others from a tool window's
+    ' HTML. The pages name them this way.
+    Public codeEditor As tbIDE.CodeEditor
+    Public element As tbIDE.HtmlElement
+    Public monacoDivElement As tbIDE.HtmlElement
 
     ' An addin keeps the toolbar buttons it created, so that its handlers can
     ' reach them later; the Toolbar and Toolbars pages name theirs this way.

@@ -12,7 +12,7 @@ An **OptionButton** is a Win32 native control that displays a small round select
 
 The control is normally placed on a [**Form**](../Form), [**Frame**](../Frame), or **UserControl** at design time. The default property is [**Value**](#value) and the default event is [**Click**](#click).
 
-```tb
+```tb check_build
 Private Sub Form_Load()
     optHTML.Caption     = "&HTML"
     optMarkdown.Caption = "&Markdown"
@@ -32,7 +32,7 @@ End Sub
 
 Setting [**Value**](#value) to **True** on one option button clears every other option button whose [**Container**](#container) is the same control --- typically the parent form or a [**Frame**](../Frame). Option buttons in sibling frames are not affected, so a single form can host any number of independent groups: drop the buttons that belong to one group onto a frame, and the buttons that belong to a different group onto another frame (or directly onto the form).
 
-```tb
+```tb inert=pseudo
 ' Two independent groups on one form:
 '   fraSize:   optSmall, optMedium, optLarge   (children of fraSize)
 '   fraColour: optRed, optGreen, optBlue       (children of fraColour)
@@ -48,7 +48,7 @@ Setting [**Value**](#value) to **False** never deselects another button --- ther
 
 The text shown next to (or, with [**Alignment**](#alignment) `tbRightJustify`, before) the selector comes from [**Caption**](#caption). An ampersand in the caption marks the next character as a keyboard mnemonic: pressing **Alt+** that character moves the focus to the option button and selects it. Use `&&` to display a literal ampersand.
 
-```tb
+```tb check_build
 optTerms.Caption = "I &agree to the terms"
 optTerms.Caption = "Use && in folder names"   ' renders as: Use & in folder names
 ```

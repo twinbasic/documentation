@@ -23,21 +23,23 @@ Use [**Unload**](Unload) to remove the object from memory once it is no longer n
 
 In the following example, `UserForm2` is loaded during `UserForm1`'s **Initialize** event. Subsequent clicking on `UserForm2` reveals `UserForm1`.
 
-```tb
+```tb check_build inherits=Form projname=load-userforms
 ' This is the Initialize event procedure for UserForm1.
 Private Sub UserForm_Initialize()
     Load UserForm2
     UserForm2.Show
 End Sub
 
-' This is the Click event of UserForm2.
-Private Sub UserForm_Click()
-    UserForm2.Hide
-End Sub
-
 ' This is the Click event for UserForm1.
 Private Sub UserForm_Click()
     UserForm2.Show
+End Sub
+```
+
+```tb check_build inherits=Form projname=load-userforms
+' This is the Click event of UserForm2.
+Private Sub UserForm_Click()
+    UserForm2.Hide
 End Sub
 ```
 

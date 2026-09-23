@@ -454,7 +454,7 @@ An argument that has a name that is predefined in the object library. Instead of
 
 By assigning values to named arguments, you can write:
 
-```tb
+```tb inert=skeleton
 DoSomething namedarg3 := 4, namedarg2 := 5, namedarg1 := 20
 ```
 

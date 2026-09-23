@@ -27,7 +27,8 @@ The module offers four ways to pick one of several values inline:
 - [**Choose**](Choose) returns the *index*-th item from a list of values -- a one-based equivalent of array indexing for a fixed-length argument list.
 - [**Switch**](Switch) iterates over pairs of *(condition, value)* arguments and returns the value paired with the first **True** condition -- a compact stand-in for an **If...ElseIf** ladder.
 
-```tb
+```tb check_build
+Dim Age As Long
 Dim Status As Variant
 Status = Switch(Age < 13, "Child", _
                 Age < 20, "Teenager", _

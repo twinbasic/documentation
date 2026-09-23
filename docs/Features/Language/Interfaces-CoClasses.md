@@ -13,7 +13,7 @@ twinBASIC supports these features as native language syntax where in VBx they we
 
 twinBASIC supports defining COM interfaces using BASIC syntax, rather than needing an type library with IDL and C++. These are only supported in .twin files, not in legacy .bas or .cls files. They must appear *before* the `Class` or `Module` statement, and will always have a project-wide scope. The generic form for this is as follows:
 
-```tb
+```tb inert=skeleton
 [InterfaceId ("00000000-0000-0000-0000-000000000000")]
 '*<attributes>*
 Interface name Extends base_interface
@@ -39,18 +39,35 @@ Methods can be any of the following: `Sub`, `Function`, `Property Get`, `Propert
 ### Available Attributes for Methods
 
 - `[Description("text")]` - Provides a description
-- `[PreserveSig]` - For COM interfaces, normally methods return an HRESULT that the language hides from you. The `[PreserveSig]` attribute overrides this behavior and defines the function exactly as you provide. This is necessary if you need to define it as returning something other than a 4-byte `Long`, or want to handle the result yourself, bypassing the normal runtime error raised if the return value is negative (this is helpful when a negative value indicates an expected, acceptable failure, rather than a true error, like when an enum interface is out of items).
+- `[PreserveSig]` - For COM interfaces, normally methods return an HRESULT that the language hides from you. The `[PreserveSig]` attribute overrides this behavior and defines the function exactly as you provide. This is necessary if you need to define it as returning something other than a 4-byte `Long`, or want to handle the result yourself, bypassing the normal runtime error raised if the return value is negative (this is helpful when a negative value indicates an expected, acceptable failure, rather than a true error, like when an enum interface is out of items). A twinBASIC class cannot implement a member marked `[PreserveSig]`, so use it on interfaces that you call rather than on ones that you implement.
 - `[DispId(number)]` - Defines a dispatch ID associated with the method.
 
 ### Example
 
-```tb
+```tb hidden
+' Context for the samples below: the enum one of them type-hints with, and the
+' second interface the coclass example names. The Enum needs a container and the
+' Interface must not have one, so both sit in one file the way a reader's would.
+Module SampleTypes
+    Public Enum MyEnum
+        FirstValue = 1
+        SecondValue = 2
+    End Enum
+End Module
+
+[InterfaceId("B4C0A41A-1E1B-42C4-9E31-2B6F2E0A77D2")]
+Public Interface IDrawable
+    Sub Draw()
+End Interface
+```
+
+```tb check_build projname=iface-coclass-example
 [InterfaceId("E7064791-0E4A-425B-8C8F-08802AAFEE61")]
-[Description("Defines the IFoo interface")]
+[Description("Defines the IShape interface")]
 [OleAutomation(False)]
-Interface IFoo Extends IUnknown
+Interface IShape Extends IUnknown
     Sub MySub(Arg1 As Long)
-    Function Clone() As IFoo
+    Function Clone() As IShape
     [PreserveSig]
     Function MyFunc([TypeHint(MyEnum)] Arg1 As Variant) As Boolean
 End Interface
@@ -61,7 +78,7 @@ End Interface
 
 In addition to interfaces, twinBASIC also allows defining coclasses -- creatable classes that implement one or more defined interfaces. Like interfaces, these too must be in .twin files and not legacy .bas/.cls files, and must appear prior to the `Class` or `Module` statement. The generic form is:
 
-```tb
+```tb inert=skeleton
 [CoClassId("00000000-0000-0000-0000-000000000000")]
 '<attributes>
 CoClass name
@@ -83,14 +100,14 @@ Each coclass must specify at least one interface but may have several more. It c
 
 ### Example
 
-```tb
+```tb check_build projname=iface-coclass-example
 [CoClassId("52112FA1-FBE4-11CA-B5DD-0020AFE7292D")]
-CoClass Foo
-   [Default] Interface IFoo
-   Interface IBar
+CoClass Shape
+   [Default] Interface IShape
+   Interface IDrawable
 End CoClass
 ```
-Where `IFoo` and `IBar` are interfaces defined with the `Interface` syntax described earlier.
+Where `IShape` and `IDrawable` are interfaces defined with the `Interface` syntax described earlier.
 
 ## Custom Constructor Example
 

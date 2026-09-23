@@ -14,9 +14,9 @@ A frame is associated with a **MultiFrame** by setting the frame's [**Container*
 
 The default event is [**Initialize**](#initialize). There is no default property.
 
-```tb
+```tb check_build project=vb-private
 Private Sub Form_Load()
-    mfPanels.Direction = vbDirectionHorizontal
+    mfPanels.Direction = VB.vbDirectionHorizontal
 
     Set fraLeft.Container = mfPanels
     fraLeft.MultiFramePosition = 0
@@ -31,6 +31,14 @@ Private Sub Form_Load()
     fraRight.MultiFrameSize = 0                  ' shares the remaining space
 End Sub
 ```
+
+> [!IMPORTANT]
+> These members live in a **Private** part of the VB package, so a project that
+> references it the ordinary way cannot name them --- `vbDirectionHorizontal` on its own is
+> *TB5079 Unrecognized symbol*. Set the package's [library symbol](../../../../Features/Packages/Library-Symbols) to
+> `*VB` and qualify the member, as the sample does. The asterisk is stripped
+> from the name: the library is still written `VB` in code.
+
 
 * TOC
 {:toc}
@@ -51,7 +59,7 @@ A frame whose [**Container**](../Frame#container) is the **MultiFrame** but whos
 
 The mapping from frame to **MultiFrame** is discovered from the parent form's control collection on each layout pass: a frame appears in the strip exactly when its [**Container**](../Frame#container) property points at the **MultiFrame**. The discovered set is then cached. To force the cache to be rebuilt --- for example after re-parenting a frame at run time --- assign any value to [**FramesCount**](#framescount):
 
-```tb
+```tb check_build
 Set fraExtra.Container = mfPanels
 mfPanels.FramesCount = 0       ' assigned value is ignored; the layout cache is rebuilt
 ```

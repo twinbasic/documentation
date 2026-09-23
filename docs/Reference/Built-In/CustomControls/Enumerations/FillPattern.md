@@ -37,7 +37,7 @@ The colour table itself comes from the array of [**FillColorPoint**](../Styles/F
 
 The same two-stop pair painted with three different patterns produces three quite different results:
 
-```tb
+```tb check_build
 ' Top fades to bottom
 pnlOne.BackgroundFill.SetSimplePattern vbWhite, &H99CCFF, _
         Pattern:=tbGradientNorthToSouth

@@ -12,7 +12,7 @@ The **Clipboard** class wraps the system clipboard --- the Win32 inter-applicati
 
 **Clipboard** is not creatable: there is exactly one instance per process, owned by the runtime and exposed through the [**Clipboard**](../Global/#clipboard) property on the [**Global**](../Global/) app-object. Code reaches it without qualification:
 
-```tb
+```tb check_build
 ' Copy
 Clipboard.Clear
 Clipboard.SetText "Hello, world!"

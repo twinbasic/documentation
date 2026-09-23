@@ -33,7 +33,7 @@ A class registers itself as a binder by including `Implements ITbCustomBinder` a
 
 This **ITbCustomBinder** implementation looks up zero-argument symbols against the current row of an external recordset, deferring to the next binder for everything else.
 
-```tb
+```tb check_build
 Implements ITbCustomBinder
 
 Public Recordset As Object

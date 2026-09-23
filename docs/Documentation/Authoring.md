@@ -477,7 +477,65 @@ generated `Sub`. Three keys override it when it guesses wrong, and one flag asks
 | `inherits=<class>` | The sample is code-behind *of* something --- `inherits=Form`, `inherits=MDIForm`. The wrapper becomes a `Class` that inherits it, so `Me.Caption` resolves against the real type. |
 | `project=<name>` | Which template project to build into. The default follows the page: a page under `Reference/Built-In/` gets the one that references every package. |
 | `projname=<name>` | Build these samples **as one project**, for a page that presents one program in pieces --- a function in one fence and the tests for it in the next three. Every sample sharing the name is compiled together and nothing else is compiled with them. |
+| `concat_group=<name>` | Join these fences, in page order, into **one** piece of code before building it --- for a single construct shown in parts, such as a `Sub` or a `Class` introduced a section at a time. Implies `check_build`. See below. |
 | `expect-error=<code>` | This sample is *meant* not to compile --- it is showing what goes wrong --- and the run fails if it compiles. |
+| `resource=<path>` | **On a fence in any language**, not just ` ```tb `. The fence's contents are written into the generated project at that project-relative path, so the page's samples can be compiled against it. For the compile-time attributes that read a project file --- see below. |
+| `inert=<reason>` | This fence is **not a program**, and saying so settles it: it is never compiled, never proposed, and counted under its reason instead of sitting in the backlog. See below. |
+
+### Saying that a sample is not a program
+
+Plenty of good fences are not programs. A syntax skeleton written with placeholder names
+(`Interface name Extends base_interface`) teaches the shape better than any compilable
+stand-in would; a fence that continues the previous one, or shows the invalid form beside
+the valid one, is doing its job exactly as written.
+
+Mark those `inert=<reason>` rather than leaving them unmarked, so nobody triages them twice:
+
+| Reason | For |
+|---|---|
+| `skeleton` | placeholder identifiers --- `name`, `base_interface`, `<method 1>` |
+| `signature` | a procedure's signature shown on purpose without a body, where a body would mislead --- the members an interface declares, which a reader implements under other names |
+| `excerpt` | deliberately continues another fence, or shows part of one |
+| `pseudo` | prose, a table or a protocol listing set in a code fence |
+| `contrast` | shows the invalid form on purpose, beside the valid one |
+| `external` | needs a file or environment the checker cannot provide |
+| `designer` | needs a real form designer --- a `Handles` clause on designer-declared fields, or a control array |
+| `blocked` | correct code that a **product defect** stops compiling *and for which no workaround exists*. Look hard for one first --- a package's private half can be reached with an asterisk [library symbol](../Features/Packages/Library-Symbols), and a page that shows the qualified form plus a note is better than a page that shows code the reader cannot run |
+
+An unrecognised reason is refused, the same as a bad `slot=`, and `inert` together with
+`check_build` is refused as a contradiction. The census then reports three numbers rather
+than two: how many samples are checked, how many are inert, and how many are **undecided**.
+Only the last is a backlog.
+
+**A fence that stops before its closing line is usually one line from compiling.** Before
+marking it `excerpt` or `signature`, put an elision comment (`' ...`) where the omitted code
+would go and add the construct's closing line --- `End Function`, `End Interface`. The
+reader still sees that something was left out, and the compiler can now check what was
+left in.
+
+### A sample that reads a file
+
+Some twinBASIC features read a project file *while compiling*.
+[`[PopulateFrom]`](../tB/Core/Attributes#populatefrom) is the one to know: it fills an empty
+**Enum** with members taken from a JSON resource, so a page documenting it has an enum whose
+members exist only if that file does.
+
+Mark the JSON block that the page already shows with `resource=`, and the file is staged
+beside the samples:
+
+````markdown
+```json resource=/Resources/MESSAGETABLE/Strings.json
+{ "events": [ { "id": 1000, "name": "service_started" } ] }
+```
+````
+
+The file travels with its page, exactly as a `hidden` fence does, so every sample on that
+page is compiled against it. The block is rendered normally --- the reader is meant to see
+the file --- and the path may not climb out of the project, so no `..` and no drive letter.
+
+What this buys is more than a green tick: the enum members the page's *other* samples use
+come from that JSON, so the compiler checks the file's shape and the names it produces
+against the code that reads them.
 
 A sample that assumes a control on a form is fine: the templates declare `Text1`,
 `ListView1`, `CefBrowser1` and the others, exactly as a reader's own project would, so what
@@ -512,6 +570,32 @@ End Class
 Use it for context, not for hiding a sample. A hidden fence is still compiled, so it is
 checked like everything else --- but nobody can read it, and a fence nobody can read is
 not documentation.
+
+**Decide what to hide by asking what the reader needs.** Before hiding a line, ask whether
+a reader would write it, or would need it to know where an object comes from. An event
+handler's header is both --- `Request.Headers` means nothing until the reader sees which
+event passes `Request` --- and so is the subject of a `With` that a leading-dot line depends
+on, or the `WithEvents` field that an event handler's name is built from. Show those. Hide
+what the reader brings from elsewhere: their own helper routines, the controls the form
+designer declares, and stand-ins for declarations that an external library provides.
+
+### One construct across several fences
+
+`concat_group=<name>` joins every fence on the page that carries the name, in page order,
+into one piece of code before anything else happens. It is for a single construct shown in
+parts --- a `Sub` built up a few lines at a time, a `Class` whose members are introduced one
+section at a time --- which no fence can compile on its own, because each part is an
+unclosed block. It is not `projname`: that compiles its samples as *separate* modules of one
+project, while the parts of a `concat_group` become one file, so a `Private` field declared
+in the first part is visible in the last.
+
+Parts can be `hidden`. The [Painting](../Tutorials/CustomControls/Painting) tutorial shows
+only the `OnPaint` method it is teaching. A hidden fence before it opens the class,
+implements the interface's other two members and declares the field the method draws with,
+and a hidden fence after it closes the class. A `hidden` fence alone could not do this: it
+is built as a unit of its own, so it can declare what a sample *refers to* but cannot put
+the sample *inside* anything. The joined code is reported as its first visible part, and an
+error in any part is reported against that part's own line.
 
 **A sample that needs another sample needs `projname`.** Samples are packed several to a
 generated project, so one can sometimes see another's declarations by luck --- and luck
@@ -730,6 +814,18 @@ Three severities, used distinctly:
 - `> [!WARNING]` --- operations that can corrupt state or lose data.
 
 Use one callout per concern, and reserve them for genuine notes --- plain "why this is useful" prose should stay a plain paragraph.
+
+## Document the product as it is
+
+twinBASIC is in a long beta, and names still move. **When one does, document the current
+name and drop the old one.** A superseded name is not history a reader can use: they cannot
+call it, cannot search for it, and have to carry two names in their head to read one
+snippet. Update the sample, update the prose around it, and do not leave a note explaining
+what the thing used to be called.
+
+This is about names that never shipped in a release. A behaviour that changed *between*
+builds is different --- a reader may still be on the older one --- so say which build changed
+it and describe both.
 
 ## Cross-section links
 

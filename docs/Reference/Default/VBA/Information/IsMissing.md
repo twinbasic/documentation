@@ -34,10 +34,12 @@ End Sub
 
 This example uses **IsMissing** to check whether an optional argument has been passed to a user-defined procedure.
 
-```tb
-Dim ReturnValue As Variant
-ReturnValue = ReturnTwice()           ' Returns Null.
-ReturnValue = ReturnTwice(2)          ' Returns 4.
+```tb check_build
+Sub Demo()
+    Dim ReturnValue As Variant
+    ReturnValue = ReturnTwice()       ' Returns Null.
+    ReturnValue = ReturnTwice(2)      ' Returns 4.
+End Sub
 
 Function ReturnTwice(Optional A As Variant) As Variant
     If IsMissing(A) Then

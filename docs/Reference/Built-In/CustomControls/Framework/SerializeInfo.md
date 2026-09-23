@@ -11,7 +11,17 @@ has_toc: false
 
 The per-instance serializer for a custom control, returned by [**CustomControlContext.GetSerializer**](CustomControlContext#getserializer). The main entry point is [**RuntimeUISrzDeserialize**](#runtimeuisrzdeserialize) --- called from a control's [**Initialize**](ICustomControl#initialize) to load the designer-set property values that were saved into the form's serialized data. The remaining members expose framework state --- design-mode flag, runtime / report mode, owner window handle --- that a control may need while initializing.
 
-```tb
+```tb hidden concat_group=serializeinfo-overview
+' Context for the sample below: the control class it belongs to, and the fields
+' it sets.
+[COMCreatable(False)]
+Class SerializeInfoDemo
+    Implements CustomControls.ICustomControl
+    Private ControlContext As CustomControls.CustomControlContext
+    Private IsDesignMode As Boolean
+```
+
+```tb check_build concat_group=serializeinfo-overview
 Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
         Implements CustomControls.ICustomControl.Initialize
 
@@ -25,6 +35,20 @@ Private Sub OnInitialize(ByVal Ctx As CustomControls.CustomControlContext) _
 
     Set Me.ControlContext = Ctx
 End Sub
+```
+
+```tb hidden concat_group=serializeinfo-overview
+    ' The helper the sample calls, and the interface's other two members.
+    Private Sub InitializeDefaultValues()
+    End Sub
+
+    Private Sub OnDestroy() Implements CustomControls.ICustomControl.Destroy
+    End Sub
+
+    Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas) _
+            Implements CustomControls.ICustomControl.Paint
+    End Sub
+End Class
 ```
 
 ## Methods

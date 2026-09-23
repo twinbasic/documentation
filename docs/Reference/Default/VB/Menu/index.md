@@ -12,7 +12,16 @@ A **Menu** is an item in a Win32 native menu --- either a top-level entry on a [
 
 The default property is [**Enabled**](#enabled) and the default event is [**Click**](#click).
 
-```tb
+```tb hidden
+' Context for the sample below: the toolbar it shows and hides, and the
+' reader's own save routine. The menus come from the form designer.
+Public Toolbar1 As Object
+
+Public Sub SaveDocument()
+End Sub
+```
+
+```tb check_build inherits=Form
 Private Sub Form_Load()
     mnuFileSave.Enabled = False     ' grey out until there is something to save
 End Sub
@@ -37,7 +46,7 @@ End Sub
 - An ampersand (`&`) marks the next character as a keyboard mnemonic --- pressing **Alt + that letter** while the menu is open invokes the item, and the letter is underlined in the rendered menu. Use `&&` to display a literal ampersand.
 - A Caption consisting of a single hyphen (`"-"`) renders the item as a horizontal separator bar between the surrounding entries. Separator items still receive their own [**Click**](#click) events if invoked programmatically, but the user cannot reach them with the keyboard or mouse.
 
-```tb
+```tb check_build
 mnuFileNew.Caption    = "&New"          ' Alt+N while File is open
 mnuFileSep1.Caption   = "-"             ' separator bar
 mnuFileSaveAs.Caption = "Save &As..."   ' Alt+A
@@ -47,7 +56,7 @@ mnuFileSaveAs.Caption = "Save &As..."   ' Alt+A
 
 [**ShortcutId**](#shortcutid) binds a keyboard accelerator to the menu item. It is typed as [**ShortcutConstants**](../../VBRUN/Constants/ShortcutConstants) --- **vbShortcutNone** disables the accelerator, **vbShortcutCtrlS** binds **Ctrl+S**, and so on across the function-key, **Shift+**, and **Ctrl+** ranges. When set, the Win32 runtime appends the corresponding text after a tab character in the rendered Caption --- `Save\tCtrl+S` --- so the shortcut appears right-aligned in the menu, the conventional way.
 
-```tb
+```tb check_build
 mnuFileSave.ShortcutId = vbShortcutCtrlS
 mnuFilePrint.ShortcutId = vbShortcutCtrlP
 ```
@@ -69,7 +78,12 @@ mnuFileSave.IconSizeY = 16
 
 A control array of menus is the standard way to build a *most-recently-used* file list, a dynamic *Window* sub-menu, or a list of plug-in commands. The array is declared at design time on the first item; further items are added at run time with **Load** and removed with **Unload**, exactly as for a windowed control. Inside a [**Click**](#click) handler shared by every item in the array, [**Index**](#index) identifies which one was picked.
 
-```tb
+```tb hidden
+Public Sub OpenDocument(ByVal Path As Variant)
+End Sub
+```
+
+```tb inert=designer
 Private Sub mnuRecent_Click(Index As Integer)
     OpenDocument mnuRecent(Index).Tag       ' Tag holds the file path
 End Sub

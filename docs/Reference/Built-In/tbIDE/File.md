@@ -12,7 +12,13 @@ A file inside the IDE's virtual file system. Extends [**FileSystemItem**](FileSy
 
 A **File** also inherits the universal [**FileSystemItem**](FileSystemItem) members --- [**Name**](FileSystemItem#name), [**Path**](FileSystemItem#path), [**Type**](FileSystemItem#type), [**Parent**](FileSystemItem#parent). The [**Type**](FileSystemItem#type) value tells the addin what encoding the file is in and whether the text accessors are applicable; see [**FileSystemItemType**](FileSystemItem#filesystemitemtype) for the list.
 
-```tb
+```tb hidden
+' Context for the sample below: the addin's own handler for each file it finds.
+Public Sub ProcessText(ByVal Path As String, ByVal Text As String)
+End Sub
+```
+
+```tb check_build
 ' Read every source file's text:
 Private Sub WalkAllFiles(ByVal folder As Folder)
     Dim item As FileSystemItem
