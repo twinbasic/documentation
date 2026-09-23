@@ -15,35 +15,66 @@ This is by far the most important method of a CustomControl.  It tells the form 
 > [!TIP]
 > It is highly advisable to look at and experiment with the sample project provided with twinBASIC before trying to implement your own CustomControl.
 
-```tb
-Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas)  _
-    Implements ICustomControl.Paint
+```tb hidden concat_group=paint-a-line
+' Context for the OnPaint sample below: the rest of a minimal control, as
+' "Defining a CustomControl" describes it, and the Fill the sample draws with.
+[COMCreatable(False)]
+Class LineControl
+    Implements CustomControls.ICustomControl
+
+    Private LineFill As CustomControlsPackage.Fill
+
+    Private Sub OnInitialize(ByVal Context As CustomControls.CustomControlContext) _
+            Implements CustomControls.ICustomControl.Initialize
+        Set LineFill = New CustomControlsPackage.Fill
+        LineFill.ColorPoints.SetSolidColor vbBlack
+    End Sub
+
+    Private Sub OnDestroy() _
+            Implements CustomControls.ICustomControl.Destroy
+    End Sub
+```
+
+```tb check_build concat_group=paint-a-line project=cc-private
+Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas) _
+        Implements CustomControls.ICustomControl.Paint
+    ' Draws a horizontal line across the middle of the control, as an element
+    ' one pixel tall at 100% scaling. LineFill is a solid-colour
+    ' CustomControlsPackage.Fill that the control creates once, in Initialize.
+    Dim LineElement As CustomControlsPackage.ElementDescriptor
+    LineElement.Width = Canvas.RuntimeUICCGetWidth()
+    LineElement.Height = CLng(Canvas.RuntimeUICCGetDpiScaleFactor())
+    LineElement.Top = (Canvas.RuntimeUICCGetHeight() - LineElement.Height) \ 2
+    Set LineElement.BackgroundFill = LineFill
+    Canvas.RuntimeUICCCanvasAddElement LineElement
+End Sub
+```
+
+```tb hidden concat_group=paint-a-line
+End Class
 ```
 
 You are passed a [`Canvas`](../../tB/Packages/CustomControls/Framework/Canvas) object that offers the following methods:
 
 ```tb inert=pseudo
-Canvas.Width As Long    ' Property-Get
-Canvas.Height As Long   ' Property-Get]
-Canvas.Dpi As Long      ' Property-Get]
-Canvas.DpiScaleFactor As Double ' Property-Get
-Canvas.AddElement(Descriptor As ElementDescriptor)
+Canvas.RuntimeUICCGetWidth() As Long
+Canvas.RuntimeUICCGetHeight() As Long
+Canvas.RuntimeUICCGetDpi() As Long
+Canvas.RuntimeUICCGetDpiScaleFactor() As Double
+Canvas.RuntimeUICCCanvasAddElement(Descriptor As ElementDescriptor)
 ```
 
-> [!NOTE]
-> The current framework spells these members [`RuntimeUICCGetWidth`](../../tB/Packages/CustomControls/Framework/Canvas#runtimeuiccgetwidth), [`RuntimeUICCGetHeight`](../../tB/Packages/CustomControls/Framework/Canvas#runtimeuiccgetheight), [`RuntimeUICCGetDpi`](../../tB/Packages/CustomControls/Framework/Canvas#runtimeuiccgetdpi), [`RuntimeUICCGetDpiScaleFactor`](../../tB/Packages/CustomControls/Framework/Canvas#runtimeuiccgetdpiscalefactor), and [`RuntimeUICCCanvasAddElement`](../../tB/Packages/CustomControls/Framework/Canvas#runtimeuicccanvasaddelement). The shorter names shown above are how the API was originally drafted; the underlying behaviour is the same.
+[`RuntimeUICCGetWidth`](../../tB/Packages/CustomControls/Framework/Canvas#runtimeuiccgetwidth) and [`RuntimeUICCGetHeight`](../../tB/Packages/CustomControls/Framework/Canvas#runtimeuiccgetheight) return the absolute pixel sizes that your control is drawing to.  Unlike your control's Width/Height properties, which are not DPI-scaled, these values **are** DPI-scaled.
 
-`Canvas.Width` and `Canvas.Height` are the absolute pixel sizes that your control is drawing to.  Unlike your controls Width/Height properties that are not DPI-scaled, the `Canvas.Width` and `Canvas.Height` values **are** DPI-scaled.
+[`RuntimeUICCGetDpi`](../../tB/Packages/CustomControls/Framework/Canvas#runtimeuiccgetdpi) returns the DPI setting in Windows.  If no DPI scaling is in effect, this value is 96.  For example, if you have scaling set at 150% on your monitor, then `RuntimeUICCGetDpi` returns 144.
 
-The `Canvas.Dpi` property represents the DPI setting in Windows.  If no DPI scaling is in effect, this value is 96.  For example, if you have scaling set at 150% on your monitor, then the `Canvas.Dpi` property will be 144.
+[`RuntimeUICCGetDpiScaleFactor`](../../tB/Packages/CustomControls/Framework/Canvas#runtimeuiccgetdpiscalefactor) returns a floating point value representing the DPI scaling percentage.  A value of 1 indicates no scaling.  For example, if you have scaling set at 150% on your monitor, then `RuntimeUICCGetDpiScaleFactor` returns 1.5.
 
-The `Canvas.DpiScaleFactor` property gives a floating point value representing the DPI scaling percentage.  A value of 1 indicates no scaling.  For example, if you have scaling set at 150% on your monitor, then the `Canvas.DpiScaleFactor` property will be 1.5.
-
-The `Canvas.AddElement` method is used for adding elements to your control.  An *element* is considered to be something that the form-engine will render for you.  For example, you might have a grid control that displays 100 cells at a time.  Each of those cells would be an *element*.  Elements can overlap each over (allowing for opacity/transparency).  The form engine draws them in the order that you call AddElement, meaning that the last element added will have the highest z-order.
+[`RuntimeUICCCanvasAddElement`](../../tB/Packages/CustomControls/Framework/Canvas#runtimeuicccanvasaddelement) adds an element to your control.  An *element* is considered to be something that the form-engine will render for you.  For example, you might have a grid control that displays 100 cells at a time.  Each of those cells would be an *element*.  Elements can overlap each over (allowing for opacity/transparency).  The form engine draws them in the order that you call `RuntimeUICCCanvasAddElement`, meaning that the last element added will have the highest z-order.
 
 ***
-## AddElement(ElementDescriptor)
-The AddElement method takes a single argument; an ElementDescriptor.  ElementDescriptor is a UDT that defines exactly how the element will be drawn and how it reacts to events like mouse clicks.
+## RuntimeUICCCanvasAddElement(ElementDescriptor)
+`RuntimeUICCCanvasAddElement` takes a single argument, an ElementDescriptor.  ElementDescriptor is a UDT that defines exactly how the element will be drawn and how it reacts to events like mouse clicks.
 
 ```tb check_build project=cc-private
 Public Type ElementDescriptor
@@ -75,7 +106,7 @@ End Type
 ## Tips
 - Each time your OnPaint method is called, you start with a blank canvas.
 
-- Left/Top/Width/Height can legitimately be outside of the canvas area.  For example, negative Left/Top, or a Width/Height past the Canvas.Width/Canvas.Height has no ill-effects.  The form engine will clip everything appropriately for you, allowing for much simpler designing of your control.
+- Left/Top/Width/Height can legitimately be outside of the canvas area.  For example, negative Left/Top, or a Width/Height past the canvas width or height has no ill-effects.  The form engine will clip everything appropriately for you, allowing for much simpler designing of your control.
 
 - You should put thought into making the Paint routine efficient.  Try not to instantiate COM objects, and when drawing multiple similar elements, try to re-use ElementDescriptors by setting up common properties outside of loops (see WaynesGrid for examples of this)
 
@@ -85,23 +116,41 @@ End Type
 
 - You can use class-based event handlers by simply using the `AddressOf MyEvent` which is now possible to use even on class members.  You can see this used frequently in the samples, such as WaynesGrid.    All mouse events have the following format:   
 
-```tb
+```tb check_build project=cc-private
 Class MyCustomControl
-    '...
-    Private Sub MyClickEvent(ByRef EventInfo As MouseEvent)
+    Implements CustomControls.ICustomControl
+    ' ...
+
+    Private Sub OnInitialize(ByVal Context As CustomControls.CustomControlContext) _
+            Implements CustomControls.ICustomControl.Initialize
+        ' ...
+    End Sub
+
+    Private Sub OnDestroy() _
+            Implements CustomControls.ICustomControl.Destroy
+        ' ...
+    End Sub
+
+    Private Sub MyClickEvent(ByRef EventInfo As CustomControlsPackage.MouseEvent)
         MsgBox "You clicked me!"
     End Sub
 
-    Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas)  _
-            Implements ICustomControl.Paint
-        Dim MyDescriptor As ElementDescriptor
+    Private Sub OnPaint(ByVal Canvas As CustomControls.Canvas) _
+            Implements CustomControls.ICustomControl.Paint
+        ' One element covering the whole control, so a click anywhere on it
+        ' calls MyClickEvent.
+        Dim MyDescriptor As CustomControlsPackage.ElementDescriptor
+        MyDescriptor.Width = Canvas.RuntimeUICCGetWidth()
+        MyDescriptor.Height = Canvas.RuntimeUICCGetHeight()
         MyDescriptor.OnClick = AddressOf MyClickEvent
+        Canvas.RuntimeUICCCanvasAddElement MyDescriptor
     End Sub
+End Class
 ```
 
 EventInfo (MouseEvent) provides mouse information such as the relative X/Y position of the mouse, plus the TrackingX/Y values discussed earlier.
 
-- When you call Canvas.AddElement, your element goes into a render pipeline.  It is **not** immediately painted to the screen.   The render pipeline is compared to the previous render pipeline that was provided by you in the last OnPaint call, and the tB form engine will only redraw areas of the control that have changed.  This allows for efficient painting of controls whilst not needing to be concerned about the finer details of how to do partial repainting.
+- When you call `RuntimeUICCCanvasAddElement`, your element goes into a render pipeline.  It is **not** immediately painted to the screen.   The render pipeline is compared to the previous render pipeline that was provided by you in the last OnPaint call, and the tB form engine will only redraw areas of the control that have changed.  This allows for efficient painting of controls whilst not needing to be concerned about the finer details of how to do partial repainting.
 
 ***
 ## See also
