@@ -64,7 +64,7 @@
 // sample its result, so a crash bisects: O(log n) extra builds, paid only on
 // failure.
 
-import { execFileSync, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import {
   cpSync, existsSync, mkdirSync, promises as fs, readdirSync, readFileSync, rmSync,
   writeFileSync,
@@ -77,7 +77,7 @@ import {
   BODY_SLOTS, CONCAT_KEY, HIDDEN_MARKER, MARKER, RUN_MARKER, SLOTS, classify,
   collectFences, concatFences, moduleName, parseInfo, partOf, resourcePath, wrapFence,
 } from "./lib/tb-fences.mjs";
-import { buildNumber, compilerExe, findIde } from "./lib/tb-install.mjs";
+import { buildNumber, compilerExe, findIde, runCompiler } from "./lib/tb-install.mjs";
 
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DOCS = path.join(REPO, "docs");
@@ -555,13 +555,12 @@ function stageBatch(batch, work) {
   // Pure Windows paths: the compiler prefixes \\?\, which does not accept
   // forward slashes, and a mixed path fails with "input twinproj file does not
   // exist" rather than with anything about separators.
-  const packed = execFileSync(COMPILER,
-    ["import", proj.split("/").join("\\"), dir.split("/").join("\\"), "--overwrite"],
-    { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-  // import exits 0 whether it worked or not, so the output is the only test.
-  if (!/\.\.\. DONE\s*$/.test(packed.trim())) {
-    throw new Error(`packing failed:\n${packed.trim().split("\n").slice(-3).join("\n")}`);
-  }
+  const pack = runCompiler(COMPILER,
+    ["import", proj.split("/").join("\\"), dir.split("/").join("\\"), "--overwrite"]);
+  // import's exit code does not say whether it worked -- 0 on the failures it
+  // reports, 999 on a tree holding an embedded package, which a resource= fence
+  // staged under Packages/ would make -- so runCompiler reads the output.
+  if (!pack.done) throw new Error(`packing failed${pack.why}:\n${pack.tail}`);
   return { proj, dir, map };
 }
 

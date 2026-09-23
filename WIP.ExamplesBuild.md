@@ -490,8 +490,16 @@ implementation.
 - **Paths handed to the compiler must be pure Windows.** It prefixes `\\?\`, which does not
   accept forward slashes: a `C:\Users\x/Desktop/...` mix fails with `input twinproj file
   does not exist`.
-- **`import` exits 0 whether it worked or not.** Its output is the only test: a successful
-  pack ends `... DONE`.
+- **`import`'s exit code does not say whether it worked.** It is 0 on every failure the
+  compiler reports itself, and 999 with no result line at all on a tree with a folder inside
+  its top-level `Packages` --- any project that embeds a package; see
+  [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md). The output is the only test: a successful pack
+  ends `... DONE`. This bullet used to say "exits 0 whether it worked or not", and both tools
+  packed through `execFileSync` on the strength of it --- which throws on a non-zero exit, so
+  a 999 escaped before the output was read and `tbrun` reported it as exit 1, *compile
+  errors*. `runCompiler` in `scripts/lib/tb-install.mjs` reads the output whatever the
+  status. No template embeds a package; only a `resource=` fence staged under `Packages/`
+  would reach it here.
 - **Office examples leak one process per run, and it is not self-limiting.** Each
   `CreateObject` starts a *separate* `EXCEL.EXE`, calling `Quit` is not sufficient --- the
   process exits only once every COM reference is released --- and they sit on the user's

@@ -84,6 +84,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { attach } from "./lib/tb-cdp.mjs";
+import { runCompiler } from "./lib/tb-install.mjs";
 
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes(`--${n}`);
@@ -204,12 +205,11 @@ if (!hasHook) {
 
 // ------------------------------------------------------------------- pack
 
-// import's exit code is 0 whether it worked or not, so test the output.
-const packed = execFileSync(compilerExe, ["import", projPath, stage, "--overwrite"],
-                            { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-if (!/\.\.\. DONE\s*$/.test(packed.trim())) {
-  die(2, `packing failed:\n${packed.trim().split("\n").slice(-3).join("\n")}`);
-}
+// import's exit code does not say whether it worked -- 0 on the failures it
+// reports, 999 on a tree holding an embedded package -- so runCompiler reads
+// the output, and a failure of either kind is the harness's, exit 2.
+const pack = runCompiler(compilerExe, ["import", projPath, stage, "--overwrite"]);
+if (!pack.done) die(2, `packing failed${pack.why}:\n${pack.tail}`);
 
 // ------------------------------------------------------ compile, via tbbuild
 
