@@ -11,12 +11,12 @@ Reader-facing documentation is the [`check_examples.mjs`
 entry](docs/Documentation/Tools.md) in Tools.md and [Checking that a sample
 compiles](docs/Documentation/Authoring.md) in Authoring.md.
 
-**1,070 samples are marked today** and the gate over them takes ~100 s, in 38 projects. That
+**1,081 samples are marked today** and the gate over them takes ~105 s, in 38 projects. That
 is up from 401, and the arithmetic of how it got there is [the second
 pass](#the-second-pass-604-to-818), which is also where the one claim this file got badly
 wrong is corrected.
 
-Of the 1,159 `tb` fences, 1,070 are marked and compile, 89 are `inert` with a recorded
+Of the 1,159 `tb` fences, 1,081 are marked and compile, 78 are `inert` with a recorded
 reason, and **none is undecided**, so the backlog the census measures is empty. Every gain
 since 826 came from editing pages rather than from marking them, which is [the editorial
 pass](#the-editorial-pass-826-to-931); [what was left](#what-is-left-179-samples-and-no-lever)
@@ -240,6 +240,18 @@ it while it was still an excerpt: without the class-level `Implements` it failed
 had elided --- the class-level `Implements` and the interface's other two members --- was
 exactly what it needed to build.
 
+The same shape then took the CustomControls `Framework/` excerpts off the inert list: eight
+`OnInitialize` and timer methods, each between a hidden header (the class, its `Implements`,
+the fields the method sets) and a hidden footer (whatever helper it calls, the interface's
+other two members, `End Class`). The visible code did not change by a character. A ninth,
+`SelectItem`, needed only its undeclared `m_SelectedIndex`, joined in front as a one-line
+hidden part. The two CustomControls tutorials' `Initialize` samples are built the same way.
+
+**A group is its page's own.** The join first keyed groups by name alone, so two pages that
+picked the same name would have become one unit --- a class opened on one page and closed on
+another --- silently, since the join precedes classification. Scoped to the page before the
+Framework pages added nine groups across five pages, and probed.
+
 **The unit is its first *visible* part.** `concatFences` first spread `parts[0]` into the
 result, so with a hidden header first the joined unit inherited `hidden` and became page
 context --- which only travels with the page's other samples, so it is compiled only if the
@@ -461,6 +473,13 @@ implementation.
   and does not stage a copy the way `tbrun` does, so two concurrent builds pointed at the
   same folder --- distinct `--port`s, distinct desktops, everything else correct --- both
   wedge and neither ever returns. Each lane owns a workspace, not just a port.
+- **A run that dies mid-batch leaves its lanes' IDEs running**, on desktops nobody can see,
+  holding the projects they opened under `tbexamples\<port>`. The next run on that port then
+  fails its first step, clearing that folder, with a bare `EPERM`. Paid for once: a gate
+  whose node process ended during its last three batches left three IDEs, their compilers
+  and their debuggers behind. The harness now says what the `EPERM` means; stop the
+  `twinBASIC.exe` processes whose command line names a project under that folder, or run on
+  another `--port`.
 - **`export` needs the output folder to exist** (one level only), and stdin redirected
   (`</dev/null`) when looping, or the executable eats the loop's input.
 - **Paths handed to the compiler must be pure Windows.** It prefixes `\\?\`, which does not
@@ -840,9 +859,8 @@ one afternoon: **the gate is the detector, so run it after every `--apply`.**
 **Since settled.** This section is the state at 931, kept because its reasoning still
 applies. Every fence it describes has since been completed, marked, or given an `inert=`
 reason, and the census reports none undecided. The CustomControls `Framework/` group below
-is still `inert=excerpt`, but it now has a way out that needs no visible enclosing class:
-hidden class parts joined to the method with `concat_group`, as the Painting tutorial's
-`OnPaint` does --- see [One construct across several
+builds now, with no visible enclosing class: hidden class parts are joined to each method
+with `concat_group` --- see [One construct across several
 fences](#one-construct-across-several-fences).
 
 Live against BETA 983, and reproducible: `--propose --json` writes the survey and
