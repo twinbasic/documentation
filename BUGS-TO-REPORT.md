@@ -259,3 +259,59 @@ attribute removed implements cleanly. `[PreserveSig]` alone is the trigger.
 declared `IFoo` with a `[PreserveSig]` member and then showed a class implementing it. The
 implementation had never compiled. The page's example no longer puts `[PreserveSig]` on a
 member it implements, and its description of the attribute says why.
+
+---
+
+## `import` stops with exit code 999 on any folder inside `Packages`, so a project that embeds a package cannot be packed
+
+**Build:** BETA 983 --- `twinBASIC_win32.exe` and `twinBASIC_win64.exe` alike
+**Severity:** the command line cannot pack any project that embeds a package, and the
+failure prints neither `... DONE` nor `... FAILED`.
+
+`import` is the compiler executable's verb for packing a folder tree into a project file.
+Given a tree whose top-level `Packages` folder contains a folder, it ends partway through:
+
+```
+twinBASIC_win32.exe import out.twinproj tree\ --overwrite
+```
+
+- the exit code is **999**, where every other failure observed exits 0;
+- no project file is written, and one already at the output path is left untouched;
+- the last line printed is `  IMPORTED FOLDER: <tree>\\Packages\`, and nothing reaches
+  stderr.
+
+**The smallest reproduction is one empty folder.** Export any project, add an empty
+`Packages\Nested\` to the tree, and import it. Every case below starts from a fresh `export`
+of the HelloWorld sample:
+
+| added to the exported tree | result |
+|---|---|
+| nothing | exit 0, `... DONE` |
+| an empty `Packages\Nested\` | **exit 999, no project** |
+| `Packages\Nested\x.txt` | **exit 999, no project** |
+| `Packages\Nested\Settings`, a copy of the root `Settings` | **exit 999, no project** |
+| `Packages\A\B\` | **exit 999, no project** |
+| `packages\Nested\`, in lower case | **exit 999, no project** |
+| `Packages\x.txt` --- a file, no folder | exit 0, `... DONE` |
+| an empty `Packages\` on its own | exit 0, `... DONE` |
+| `Miscellaneous\Nested\x.txt` | exit 0, `... DONE` |
+| `Sources\Packages\Nested\` --- a `Packages` below the top level | exit 0, `... DONE` |
+
+So the trigger is a folder inside the top-level `Packages`, whatever it holds: an empty one
+does it, and so does one with a `Settings` file of its own, which is what a real package
+has. Leaving out `--overwrite` makes no difference: with a project already at the output
+path, `import` still stops with 999 rather than refusing to overwrite it.
+
+**This is not malformed input.** A package a project uses is embedded in it by default, as
+a folder of its own under `Packages`, and `export` writes that folder out with the rest of
+the tree. Five of the 48 project and package files the IDE ships have one ---
+`WinNativeCommonCtls` (which embeds `VBComDlg`), samples 8, 17 and 23, and the *Standard
+EXE (plus VBCCR v1.8)* project template --- and each was measured: `export` succeeds, and
+`import` of the tree it has just written stops as above. None of them round-trips through
+the command line, and neither does any project created from that template.
+
+**Found by** checking `scripts/impexp.mjs` against the compiler's `import` for line-ending
+handling: a probe tree with a made-up `Packages\Nested\` folder never produced a project to
+compare. The standalone scripts pack all five exported trees with every file byte-identical
+to the original; the only files missing are `.meta` files, the embedded packages' own
+included, which `export` does not write.

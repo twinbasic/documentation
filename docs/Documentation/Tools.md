@@ -724,7 +724,7 @@ It also writes a key naming the `Attributes.md` line each probe came from, besid
 
     twinBASIC_win32.exe import AttributeProbes.twinproj <out_dir> --overwrite
 
-**That command's exit code is `0` whether it worked or not**, so a script that packs a tree and then builds it will happily compile the previous `.twinproj`. Test the last line of its output for `... DONE` instead; [Import/Export Tool](../../Features/Packages/Import-Export-Tool#the-exit-code-is-always-zero) has the caveat in full and a batch-file form of the test. That page also covers why this verb runs opposite to the standalone scripts' `import`. Re-run the generator after editing `Attributes.md`. Exits 0, or 2 with usage when given no output directory.
+**That command's exit code is `0` whether it worked or not**, so a script that packs a tree and then builds it will happily compile the previous `.twinproj`. Test the last line of its output for `... DONE` instead; [Import/Export Tool](../../Features/Packages/Import-Export-Tool#a-zero-exit-code-does-not-mean-success) has the caveat in full and a batch-file form of the test. That page also covers why this verb runs opposite to the standalone scripts' `import`. Re-run the generator after editing `Attributes.md`. Exits 0, or 2 with usage when given no output directory.
 
 ### census_attributes.mjs
 {: #census-attributes }
