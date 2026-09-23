@@ -11,14 +11,14 @@ Reader-facing documentation is the [`check_examples.mjs`
 entry](docs/Documentation/Tools.md) in Tools.md and [Checking that a sample
 compiles](docs/Documentation/Authoring.md) in Authoring.md.
 
-**826 samples are marked today** and the gate over them takes ~45 s. That is up from 401,
+**931 samples are marked today** and the gate over them takes ~59 s. That is up from 401,
 and the arithmetic of how it got there is [the second pass](#the-second-pass-604-to-818),
 which is also where the one claim this file got badly wrong is corrected.
 
-Of the 1,103 classifiable fences, 826 compile. **The marking lever is spent**: a survey of
-everything, run against BETA 983, finds that not one unmarked sample compiles. Every
-remaining sample needs an edit to its page or a capability the harness does not have, and
-[what is left](#what-is-left-277-samples-and-no-lever) is the accounting.
+Of the 1,110 classifiable fences, 931 compile. Every gain since 826 came from editing pages
+rather than from marking them, which is [the editorial
+pass](#the-editorial-pass-826-to-931); what remains is
+[what is left](#what-is-left-179-samples-and-no-lever).
 
 ## The problem
 
@@ -50,15 +50,15 @@ is the same deal `sweep_a11y.mjs` (~20 min, full site) already makes.
 ## Opt-in, because the corpus says so
 
 `check_examples.mjs --census` is the live version of the table below, so there is one
-reproducible number rather than three prose ones. Against 1,124 `tb` fences in 603 pages:
+reproducible number rather than three prose ones. Against 1,134 `tb` fences in 603 pages:
 
 | shape | count | share | what is generated around it |
 |---|---:|---:|---|
-| whole `Class` / `Module` / `Interface` | 63 | 5.6% | nothing --- it becomes its own `.twin` |
-| procedures and module-level declarations | 366 | 32.6% | a `Module tbx_<hash>` |
-| loose statements | 611 | 54.4% | a `Module` and a `Private Sub` in it |
-| class code-behind --- declarations, then statements | 51 + 12 | 5.6% | a `Class`, and a `Private Sub` in it |
-| fragment --- no wrapper rescues it | 21 | 1.9% | --- |
+| whole `Class` / `Module` / `Interface` | 67 | 5.9% | nothing --- it becomes its own `.twin` |
+| procedures and module-level declarations | 370 | 32.6% | a `Module tbx_<hash>` |
+| loose statements | 607 | 53.5% | a `Module` and a `Private Sub` in it |
+| class code-behind --- declarations, then statements | 54 + 12 | 5.8% | a `Class`, and a `Private Sub` in it |
+| fragment --- no wrapper rescues it | 24 | 2.1% | --- |
 
 The census also prints **which classifiable fences carry no marker, by section and by
 page**, because that is the question the marking work is actually planned from and it needs
@@ -89,11 +89,12 @@ What is left after those fixes really is fragmentary: an elision (`...`), a sign
 without a body, a syntax skeleton with `<placeholders>`.
 
 **Opt-in is still right**, but not for the reason the design gave. It is not that most of the
-corpus is unclassifiable --- 98% of it is. It is that **54% compiles and 46% does not**, and
-the 46% is overwhelmingly samples that are correct as documentation and incomplete as
-programs: a `With MyLabel` block with no `MyLabel`, a handler for a class the page does not
-define. Marking those would be wrong, and opting them out one by one would be a list of five
-hundred exceptions.
+corpus is unclassifiable --- 98% of it is. It is that when this was decided **54% compiled
+and 46% did not**, and the 46% was overwhelmingly samples that are correct as documentation
+and incomplete as programs: a `With MyLabel` block with no `MyLabel`, a handler for a class
+the page does not define. Marking those would be wrong, and opting them out one by one would
+be a list of five hundred exceptions. Two marking passes and an editorial one have taken the
+compiling share to 84%; what is left is the part where the sample really is not a program.
 
 ## The markup
 
@@ -619,7 +620,7 @@ by grep.
 - `check_run` needs the dispatcher design above, plus the `MsgBox` screen, plus a decision
   about what a sample's *output* is compared against. A sample that prints is a sample whose
   printed value the page probably states, and that is the check worth having. Deliberately
-  not started --- see [What is left](#what-is-left-277-samples-and-no-lever) for why the
+  not started --- see [What is left](#what-is-left-179-samples-and-no-lever) for why the
   editorial pass comes first.
 - A `projname` is global, so two pages choosing `demo` would merge without saying so. Scoping
   it to the page would prevent that and would also prevent a group spanning pages, which a
@@ -630,33 +631,73 @@ by grep.
   precisely "the control instances the samples assume", so they were left. The invented
   *classes* moved, because a class is not a control instance and a page is where it
   belongs. The line between the two is a judgement, not a rule.
-## What is left: 277 samples, and no lever
+## The editorial pass: 826 to 931
+
+The survey said no unmarked sample compiled, so every one of these came from changing a
+page. Five moves did the work, and the order matters --- the cheap mechanical ones first,
+because each makes the next survey's report shorter:
+
+| move | what it is |
+|---|---|
+| **declare the local** | `Dim I As Long` in a VBA-derived loop, `Dim obj As Object` above the reference the sample tests. A reader would write it; the VBA original left it implicit |
+| **`hidden` fence** | for what a reader has *elsewhere* in their program --- a helper procedure, a module-level flag, the class the page's prose asks them to insert |
+| **stage entry** | for a control instance. 50 added this pass, and they are the biggest single lever in it |
+| **put the statements in a `Sub`** | a fence mixing a `Type` or `Enum` with executable code is not a module a reader can paste; wrapping the code is what they would actually write |
+| **`projname`** | when a page's fences really are one program, which two of them turned out to be |
+
+The rule that decides between the first two: **a local goes in the sample, and anything the
+reader already has goes in a `hidden` fence.** A single-letter name in a hidden fence is the
+shape to avoid --- nothing separates two pages that both declare a module-level `A`, because
+`COLLIDES` tracks type names only.
+
+**The stage set is where the volume was.** 45 undeclared names in the survey were VB control
+instances, each on one or two pages --- `lblName`, `mnuFileSaveAs`, `optPlain`, `dlgOptions`,
+`fraLeft`. Adding them to the two stage modules bought **22 samples in `Default/VB` alone**
+for one file edit, against a tail where no single *name* was worth more than three. A flat
+tail of names is not the same as a flat tail of *work*.
+
+Four things this pass found that are not about any one page:
+
+- **`Dim x As New Foo(args)` is not valid twinBASIC.** Constructor arguments need the
+  expression form, `Set x = New Foo(args)`. Seven sites across three pages wrote the invalid
+  form, and one of them was `twinBASIC-Additions.md`'s **Parameterised New** section --- the
+  page that introduces the feature, illustrating it with a class whose constructor is
+  internal to its package. That section now shows a class the reader defines, carries
+  `[COMCreatable(False)]` because a class whose only constructor takes arguments cannot
+  supply the parameterless one COM creation wants, and says in a NOTE that `As New` with
+  arguments is a syntax error.
+- **A generated `Class` wrapper needs `[COMCreatable(False)]` too**, for exactly that reason:
+  tbIDE's `Host.md` sample declares `Public Sub New(ByVal Host As Host)` and failed with
+  `TB5135`, which is a diagnostic about the wrapper rather than about the sample.
+- **`Implements` and `Inherits` at fence top level mean class code-behind**, the same kind of
+  language rule as `Me` and `WithEvents`, and are read that way now.
+- **The elision the VBA-derived pages use is `. . .`, spaced.** The classifier knew only
+  `...`, so three pages were proposed as markable and failed on *"Expected a symbol following
+  the dot operator"* --- a diagnostic about a line that is not code at all.
+
+**Two latent neighbour-dependencies surfaced, both by repacking rather than by editing.**
+`Core/New.md` compiled only because some other page's fence declared a `Class Form1`, and
+`Core/RaiseEvent.md`'s handler sample needed the `TimerState` its own page declares two
+fences earlier. The first is a `hidden` fence now and the second a `projname` group. This is
+the residual [A sample could pass on its neighbour's
+declarations](#a-sample-could-pass-on-its-neighbours-declarations) states, biting twice in
+one afternoon: **the gate is the detector, so run it after every `--apply`.**
+
+## What is left: 179 samples, and no lever
 
 Live against BETA 983, and reproducible: `--propose --json` writes the survey and
-`--report <file>` groups it. **826 of 1,103 compile, and not one of the other 277 does** ---
-so there is nothing left to *mark*, and the count only moves when a page changes or the
-harness grows a capability.
+`--report <file>` groups it. **931 of 1,110 compile.**
 
-| by first diagnostic | n |
-|---|---:|
-| `TB5079 Unrecognized symbol` / `datatype symbol` / `token` | 162 |
-| `TB5182 Syntax error. No handler for this symbol` | 47 |
-| `TB5016` implementation does not match its interface member | 8 |
-| `TB5069 Expected a symbol following the dot operator` | 5 |
-| `TB5214 Only allowed inside a With block` | 5 |
-| `TB5027 Unrecognized member` | 4 |
-| the rest, 2 or fewer each | 46 |
+Where it sits now: `Reference/Core` 27, `Default/VB` 24, `Built-In/CustomControls` 22,
+`Features/Language` 21, `Attributes.md` 12, `WinServicesLib` 8, `Default/VBA` 8,
+`Built-In/tbIDE` 6, `Tutorials/Arrays.md` 6.
 
-**The tail is flat, which is the finding.** 132 distinct names fail to resolve and **105 of
-them appear exactly once**; 110 of the 170 affected pages hold a single failing sample. The
-levers that paid in the second pass worked because one name was worth 65 --- `WebView` --- and
-nothing like that is left. This is editorial work, page by page, and the report is how to pick
-the next page rather than how to fix a class of them.
-
-Where it sits: `Reference/Core` 54, `Default/VB` 46, `Default/VBA` 27, `Built-In/CustomControls`
-25, `Features/Language` 21, `Built-In/tbIDE` 15, `Attributes.md` 12. The single pages worth a
-sitting are `Attributes.md` (12), `Generics.md` (6), `Tutorials/Arrays.md` (6) and
-`WinNamedPipesLib/index.md` (5).
+**The tail was flat before this pass and is flatter now.** What remains is dominated by
+fences that are not programs and were never going to be: syntax skeletons with
+`<placeholder>` names (`Features/Language/Interfaces-CoClasses.md` writes
+`Inherits base_interface`), property-assignment lines shown outside their `With`
+(`WinServicesLib/ServiceManager.md` documents each property as `.Name = "..."`), and
+continuation fences that deliberately reuse the previous fence's variables.
 
 Three groups, unchanged in kind from the first survey:
 
@@ -676,7 +717,17 @@ Three groups, unchanged in kind from the first survey:
   store the **CustomControlContext** in a private field, typically called
   **ControlContext**").
 - **One-off helper procedures a sample calls** --- `ProcessMessage`, `Sleep`,
-  `InitializeDefaultValues`. These *are* `hidden`-fence work, and cheap.
+  `InitializeDefaultValues`. These *are* `hidden`-fence work, and cheap. Most of them were
+  done in the editorial pass; `InitializeDefaultValues` is left because it belongs to the
+  CustomControls `Framework/` group above.
+
+One page deserves its own line, because its shape recurs in tutorials.
+`Tutorials/Arrays.md` presents two implementations of the same helper --- a naive `ArrayLen`
+and a better one --- and a later fence calls it: `TB5073 'ArrayLen' is ambiguous. Could be:
+tbx_7bd542b06b.ArrayLen / tbx_3dc70092ea.ArrayLen`. A `projname` group cannot fix this,
+because grouping puts the two definitions in *one* project rather than keeping them apart,
+and `COLLIDES` does not track procedure names. The page also calls `SaveLongData` while
+declaring `SaveData`, which is a defect in the page rather than in the harness.
 
 **`check_run` waits for this work rather than the other way round.** No fence in `docs/`
 carries the marker, so it gates nothing today; and its open question --- what a sample's
@@ -692,16 +743,16 @@ samples](WIP.md#compiling-the-references-own-code-samples). This is the census
 that decided the design, printed by `--census`.
 
 The census of what is in the fences, which `--census` prints and which decided the design
---- 1,124 `tb` blocks across 603 pages:
+--- 1,134 `tb` blocks across 603 pages:
 
 | shape | count | share | wrapper |
 |---|---:|---:|---|
-| whole `Class` / `Module` / `Interface` | 63 | 5.6% | none --- its own `.twin` |
-| procedures and module-level declarations | 366 | 32.6% | a generated `Module` |
-| loose statements | 611 | 54.4% | a generated `Module` and `Private Sub` |
-| class code-behind --- declarations | 51 | 4.5% | a generated `Class` |
+| whole `Class` / `Module` / `Interface` | 67 | 5.9% | none --- its own `.twin` |
+| procedures and module-level declarations | 370 | 32.6% | a generated `Module` |
+| loose statements | 607 | 53.5% | a generated `Module` and `Private Sub` |
+| class code-behind --- declarations | 54 | 4.8% | a generated `Class` |
 | class code-behind --- loose statements | 12 | 1.1% | a generated `Class` and `Private Sub` |
-| fragment --- no wrapper rescues it | 21 | 1.9% | --- |
+| fragment --- no wrapper rescues it | 24 | 2.1% | --- |
 
 The two Class rows are inferred from `Me` and from a top-level `WithEvents`, neither of
 which a standard module may contain; a sample reaching a member of the thing it is
@@ -721,6 +772,6 @@ classification --- 98% of it classifies. It is that when this was decided **54% 
 incomplete as programs: a `With MyLabel` block with no `MyLabel`, a handler for a class the
 page does not define. Marking those would be wrong, and opting them out one by one would be a
 list of five hundred exceptions nobody maintains. Two passes of harness work and page edits
-have since taken the compiling share to **75% of the classifiable corpus**, which changes the
+have since taken the compiling share to **84% of the classifiable corpus**, which changes the
 size of the argument and not its shape --- see
 [What is left](#what-is-left-277-samples-and-no-lever).
