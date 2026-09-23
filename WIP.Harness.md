@@ -8,7 +8,8 @@ compiler](WIP.md#driving-the-twinbasic-compiler) --- this file is why they are
 what they are.
 
 Read it before changing `scripts/tbbuild.mjs`, `scripts/tbrun.mjs`,
-`scripts/lib/tb-ide.mjs`, `scripts/lib/tb-cdp.mjs`, `scripts/lib/tb-launch.ps1` or
+`scripts/lib/tb-ide.mjs`, `scripts/lib/tb-cdp.mjs`, `scripts/lib/tb-launch.ps1`,
+`scripts/lib/tb-registry.mjs`, `scripts/lib/tb-ide-copy.mjs` or
 `builder/census_attributes.mjs`, and before concluding anything about twinBASIC
 syntax from a sweep of exported sources.
 
@@ -216,9 +217,11 @@ has no foreground to take, and the compile does not care whether anything is on 
 verified by reading the same diagnostics off an IDE nobody could see.
 
 That is the one piece of the harness that cannot be JavaScript, because it is
-`CreateDesktop` plus `CreateProcess` with `STARTUPINFO.lpDesktop` and Node has no FFI
-without a native addon. [scripts/lib/tb-launch.ps1](scripts/lib/tb-launch.ps1) holds those
-two calls. It is **not run as a file**: `tb-ide.mjs` reads the text and passes it through
+`CreateDesktop` plus `CreateProcess` with `STARTUPINFO.lpDesktop` --- and, since the IDE
+started running inside a job, the job object calls ([The IDE runs inside a
+job](#the-ide-runs-inside-a-job)) --- and Node has no FFI without a native addon.
+[scripts/lib/tb-launch.ps1](scripts/lib/tb-launch.ps1) holds those calls. It is **not run
+as a file**: `tb-ide.mjs` reads the text and passes it through
 `-EncodedCommand`, so the default execution policy --- which refuses `.ps1` files on this
 machine, and which is the same policy [BOOKPLAN.md](BOOKPLAN.md) records blocking `npx.ps1`
 --- never comes into it, and no `-ExecutionPolicy Bypass` has to be recommended to anyone.
@@ -264,7 +267,9 @@ the file now:
   MEMORY`, then a thread dump naming the file being parsed, which is what the exit-4 message
   reports.
 - **Kill the process tree, forcibly.** An IDE showing a modal ignores a normal close, and the
-  launcher is not the process holding the compiler, so `taskkill /T /F`.
+  launcher is not the process holding the compiler, so `taskkill /T /F`. A tree kill still
+  misses a process started while it runs, which a compiler restart can be; the job the IDE
+  runs in is what catches that ([The IDE runs inside a job](#the-ide-runs-inside-a-job)).
 - **Give each probe project its own `project.id`.** Two sharing one confuses the IDE's
   recents list.
 - **Adopt the IDE's pid; do not assume it is the child.** Launched through the desktop
@@ -482,3 +487,98 @@ included. It is not a gate: it needs Windows and a real registry, and the CI run
 Ubuntu. Run it after changing `tb-registry.mjs`. End to end, the 14 fixture cases, run one
 at a time, and a full `examples.bat` run leave `ProjectState`, the recent list and the
 association keys exactly as they were, value for value.
+
+## A private IDE for every lane
+
+**The compiler loads every DLL in `<install>\addins\win32` or `\win64` as it starts.** A
+test add-in put there would load into every IDE the user starts from that install, and two
+lanes testing different add-ins could not share the folder at all. So the add-in harness
+([WIP.HelpAddin.md](WIP.HelpAddin.md)) runs each lane on its own copy of the install, made
+by [scripts/lib/tb-ide-copy.mjs](scripts/lib/tb-ide-copy.mjs), whose `addins` folders hold
+exactly what the lane puts there.
+
+**Measured, against BETA 983:**
+
+- **An IDE session writes nothing into its install.** A compile, a compiler crash and a
+  `tbrun` build-and-run each left all 233 files byte-identical, down to the mtimes. A
+  compile also left the per-user `%APPDATA%\twinBASIC` unchanged; that folder holds the
+  user's downloaded packages and empty `addins`, `locale` and `themes` folders, and is
+  shared by every install. So a compile's whole footprint outside its temp folders is the
+  registry, which [the tidy](#what-a-run-leaves-in-the-registry-and-putting-it-back)
+  already puts back.
+- **The copy is isolated.** Asked which add-ins it had loaded (`loadedAddins`, below), the
+  real install's compiler answered `GlobalSearchAddIn AddIn` and the copy's answered
+  nothing. All 14 fixture cases gave the same output from the copy as from the real install,
+  and the real install was byte-identical afterwards.
+- **Starting the copy re-points the `.twinproj` association at it.** Read while the copy's
+  IDE was running, the keys pointed into the copy; the real install's IDE, run the same way,
+  left them alone. The tidy restored them with three writes. This was an inference in the
+  registry section until then.
+
+**A copy, not hardlinks.** The install is 233 files and 87 MB; leaving out `projects\` (the
+samples and New Project templates, 29 MB, which a test that opens its project on the command
+line never shows) and `addins\` (recreated), it copies in **380 ms**. Hardlinks would save
+that at the price of sharing every file with the user's install, so that any write the IDE
+made into its own folder would land in the real one. None was measured, but a copy makes
+the question irrelevant instead of merely answered.
+
+A copy keeps the install's folder name, `twinBASIC_IDE_BETA_<n>`, so that
+`tb-install.mjs`'s `buildNumber()` still reads the build off its path. It is made and
+deleted only inside the temp folder, and deleted only where the module left its marker
+file, so a wrong path cannot empty a folder anybody cares about. Deleting one that an IDE
+still holds fails with `EPERM`, and that is the right report: it is how the leak in the
+next section was found.
+
+**`loadedAddins(c)`** in `tb-ide.mjs` is the check that the copy is what it claims to be.
+It asks the page's `root.getAddinsList`, which asks the compiler over its root socket
+(`RequestAddinsStateList`), so the answer is the compiler's own, not an inference from files
+on disk. It is the same list the Add-Ins menu shows.
+
+## The IDE runs inside a job
+
+**A tree kill races the IDE's compiler restarts.** After a crash the IDE restarts its
+compiler, and `tbbuild` ends the IDE as soon as it sees the crash. A compiler started while
+`taskkill /T` is walking the tree is not in the tree it walked, so it outlives the kill: a
+`twinBASIC_win32_noDEP.exe --compiler=...` whose parent is gone, with
+`twinBASIC_nativedbg_win32.exe` attached, still holding the install's files open. It was
+found as the `EPERM` above, when a lane copy would not delete after a fixture run. It
+happened once in about a dozen crash-fixture runs, and the same kill had always been in
+`tbbuild`, so earlier runs against the real install may have left the same thing, holding
+the real install's files instead.
+
+**The fix is a job object**, the Windows primitive for "this process and everything it ever
+starts". [tb-launch.ps1](scripts/lib/tb-launch.ps1) creates one with
+`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, starts the IDE suspended, puts it in the job before it
+runs an instruction, and resumes it. Everything the IDE starts from then on is in the job,
+and when the launcher's handle to the job closes, Windows ends everything still in it, at
+once and with nothing to race. The evidence is what a kill does, not an `IsProcessInJob`
+check, which cannot say *which* job a process is in and answers yes for every process this
+session starts. Killing only `tbbuild` in the middle of a compile ended all thirteen
+processes of its IDE: the shell, the page server, the compiler, the native debugger, seven
+WebView2 processes and two console hosts. WebView2 runs inside the job without complaint.
+
+**How long the launcher lives is how long the IDE lives, and Node decides that.** Node puts
+the children it spawns into a kill-on-close job of its own, so when the Node process ends,
+the launcher ends with it, closing the IDE's job. Normally that is exactly what is wanted:
+killing only `tbbuild` in the middle of a compile now takes its whole IDE down with it,
+where before the IDE lived on, on a desktop nobody could see. `check_examples` should get
+the same protection one level up, since its `tbbuild` children die with it by the same
+mechanism; that step has not been measured separately.
+
+**A kept IDE is the exception, and it gets no job.** Both other arrangements were tried, and
+both fail:
+
+- **The job under `--keep`**: the kept IDE was gone before anything could attach to it. The
+  launcher died with `tbbuild`, as above, and took the job with it.
+- **The launcher detached from Node**, so that it would outlive `tbbuild`: PowerShell exited
+  at once, printing no pid and nothing on stderr.
+
+So under `--keep` the launcher makes no job, and the IDE escapes Node's job the way anything
+the launcher starts does, which is how `--keep` always worked. A kept IDE is therefore
+unprotected: killed while its compiler is restarting, it can still orphan one.
+
+**Measured:** twelve crash-fixture runs in a row left no process behind; the 14 fixture
+cases gave output identical to before the job, and a full `examples.bat` passed 1,116 of
+1,116 with no process left afterwards. `--show` still starts the IDE directly, without a
+launcher or a job: it is for a person watching, and it has not been moved onto the launcher
+because that would mean putting an untested window on somebody's screen.

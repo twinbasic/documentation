@@ -232,7 +232,7 @@ function failBuild(code, text) {
 
 try {
   ideRun = await launchIde({
-    exe: ide, project: projPath, port,
+    exe: ide, project: projPath, port, keep: flag("keep"),
     show: wantShow({ show: flag("show"), hide: flag("hide") }),
   });
 } catch (e) {

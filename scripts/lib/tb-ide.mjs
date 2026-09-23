@@ -36,6 +36,9 @@ export function wantShow({ show = false, hide = false } = {}) {
  *
  * An IDE showing a modal dialog ignores a normal close, and the launcher is
  * not the process that holds the compiler, so kill the tree and force it.
+ * A tree kill misses a process started while it runs -- a compiler the IDE is
+ * restarting after a crash, for one -- and the job tb-launch.ps1 puts the IDE
+ * in is what ends those.
  */
 export function killTree(pid) {
   try { execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore" }); }
@@ -70,11 +73,12 @@ export function killTree(pid) {
  * @param {number} o.port     DevTools port; also keys the WebView2 profile
  *                            folder and the private desktop's name
  * @param {boolean} [o.show]  on the user's desktop instead of a private one
+ * @param {boolean} [o.keep]  the IDE is to outlive this Node process
  * @param {object} [o.env]    extra environment for the IDE
  * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess | null}>}
  *   `pid` is the IDE's own. Throws when a hidden launch fails.
  */
-export async function launchIde({ exe, project, port, show = false, env = {} }) {
+export async function launchIde({ exe, project, port, show = false, keep = false, env = {} }) {
   const exeWin = exe.split("/").join("\\");
   const target = path.resolve(project).split("/").join("\\");
   const fullEnv = {
@@ -91,12 +95,27 @@ export async function launchIde({ exe, project, port, show = false, env = {} }) 
     return { pid: child.pid, launcher: null };
   }
 
-  // lib/tb-launch.ps1 does the two Win32 calls Node cannot -- CreateDesktop
-  // and CreateProcess with STARTUPINFO.lpDesktop. It is passed as
-  // -EncodedCommand rather than run as a file, so no execution policy is
-  // involved; its inputs arrive as environment variables, so there is no
-  // argument quoting to get wrong. The launcher holds the desktop handle open
-  // and so must outlive the IDE, hence no unref.
+  // lib/tb-launch.ps1 does the Win32 calls Node cannot -- CreateDesktop,
+  // CreateProcess with STARTUPINFO.lpDesktop, and a job object that ends every
+  // process the IDE starts once the launcher's handle to it closes. It is
+  // passed as -EncodedCommand rather than run as a file, so no execution
+  // policy is involved; its inputs arrive as environment variables, so there is
+  // no argument quoting to get wrong.
+  //
+  // How long the launcher lives is how long the IDE lives, and Node decides
+  // that. Node puts the children it spawns into a kill-on-close job of its
+  // own, so when this process ends -- finished, crashed, or stopped with
+  // Ctrl+C -- the launcher ends too, the launcher's job closes, and the IDE
+  // goes with it. That is what a run wants: before the job, a run that died
+  // left its IDEs open on desktops nobody could see.
+  //
+  // A kept IDE is the exception, and under `keep` the launcher makes no job:
+  // the IDE then escapes Node's job the way every process the launcher
+  // starts does, and lives until somebody closes it. Both of the other ways
+  // were measured and fail. With the job, a --keep IDE was gone before
+  // anything could attach to it, because the launcher died with tbbuild and
+  // took the job with it. With the launcher detached from Node instead,
+  // PowerShell exited at once, without a pid and without a word on stderr.
   const script = readFileSync(
     path.join(path.dirname(fileURLToPath(import.meta.url)), "tb-launch.ps1"), "utf8");
   const ps = spawn("powershell", [
@@ -104,7 +123,10 @@ export async function launchIde({ exe, project, port, show = false, env = {} }) 
     "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64"),
   ], {
     stdio: ["ignore", "pipe", "pipe"], windowsHide: true,
-    env: { ...fullEnv, TBBUILD_EXE: exeWin, TBBUILD_ARG: target, TBBUILD_DESKTOP: `tbbuild-${port}` },
+    env: {
+      ...fullEnv, TBBUILD_EXE: exeWin, TBBUILD_ARG: target, TBBUILD_DESKTOP: `tbbuild-${port}`,
+      TBBUILD_JOB: keep ? "0" : "1",
+    },
   });
   let err = "";
   ps.stderr.on("data", (d) => { err += d; });
@@ -137,8 +159,9 @@ export async function launchIde({ exe, project, port, show = false, env = {} }) 
 export function shutdownIde(ide) {
   if (!ide) return;
   killTree(ide.pid);
-  // The launcher holds the private desktop open; it exits once the IDE does,
-  // but do not wait on that.
+  // The launcher holds the private desktop open and the only handle to the
+  // IDE's job. It exits once the IDE does, but do not wait on that: killing it
+  // closes the job, which ends anything the tree kill missed.
   try { ide.launcher?.kill(); } catch { /* already gone */ }
   waitForExit(ide.pid, 5000);
 }
@@ -429,6 +452,18 @@ const consoleJs = (withTimestamps) => `(() => {
  * @param {boolean} [o.timestamps]    keep each entry's timestamp column
  */
 export const readConsole = (c, { timestamps = false } = {}) => c.evaluate(consoleJs(timestamps));
+
+/**
+ * The add-ins the IDE's compiler has loaded, as the Add-Ins menu lists them:
+ * an array of objects with at least a `name`. Empty when none loaded.
+ *
+ * The page asks the compiler over its root socket (`RequestAddinsStateList`),
+ * so this is the compiler's own answer rather than anything inferred from
+ * files on disk. Add-ins load as the compiler starts, so ask once the project
+ * has opened.
+ */
+export const loadedAddins = (c) => c.evaluate(
+  "new Promise((resolve) => root.getAddinsList(resolve))", { awaitPromise: true });
 
 /**
  * Click the centre of the element with this id, with a real press and release.

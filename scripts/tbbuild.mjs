@@ -124,7 +124,7 @@ function die(code, msg) {
 if (!keep) tidy = startTidy({ paths: [path.resolve(proj)] });
 
 try {
-  ide = await launchIde({ exe: IDE, project: proj, port, show });
+  ide = await launchIde({ exe: IDE, project: proj, port, show, keep });
 } catch (e) {
   die(2, e.message);
 }

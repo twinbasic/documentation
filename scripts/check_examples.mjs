@@ -1415,14 +1415,18 @@ async function main() {
   try {
     rmSync(work, { recursive: true, force: true });
   } catch (e) {
-    // A run whose node process died mid-batch leaves its lane IDEs running on
-    // their private desktops, holding the projects they opened here. Nothing
-    // on screen says so, and the bare EPERM names a folder, not a cause.
+    // Something still holds a project here: an IDE on a private desktop, where
+    // nothing on screen says so, and the bare EPERM names a folder, not a cause.
+    // A run that dies no longer leaves one -- each IDE runs inside its
+    // launcher's job, which ends when the run does (WIP.Harness.md, "The IDE
+    // runs inside a job") -- so the likely owner is an IDE from a run of the
+    // harness from before that, or a compiler orphaned by one.
     if (e.code !== "EPERM" && e.code !== "EBUSY") throw e;
     console.error(`check_examples: cannot clear ${work} (${e.code}).\n` +
-      "  An earlier run on this --port probably died with its IDEs still open: look for\n" +
+      "  An IDE from an earlier run on this --port still has it open: look for\n" +
       "  twinBASIC.exe processes whose command line names a project under that folder,\n" +
-      "  stop them, and run again -- or pass a different --port.");
+      "  and for twinBASIC_win32_noDEP.exe compilers whose parent has gone. Stop them,\n" +
+      "  and run again -- or pass a different --port.");
     process.exit(2);
   }
   mkdirSync(work, { recursive: true });

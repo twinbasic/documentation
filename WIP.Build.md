@@ -95,9 +95,10 @@ Two `.py` files stay, and neither is an oversight:
   use produces wrong CFF2 metrics --- a one-line build-configuration defect in harfbuzzjs,
   documented with the evidence in [WIP.Fonts.md](WIP.Fonts.md).
 
-One `.ps1` exists for a third kind of reason. **`scripts/lib/tb-launch.ps1`** is two Win32
-calls --- `CreateDesktop`, and `CreateProcess` with `STARTUPINFO.lpDesktop` --- which Node
-cannot make without a native FFI addon, and adding one for a single call would mean
+One `.ps1` exists for a third kind of reason. **`scripts/lib/tb-launch.ps1`** is Win32
+calls --- `CreateDesktop`, `CreateProcess` with `STARTUPINFO.lpDesktop`, and the job object
+the IDE runs in (`CreateJobObject`, `AssignProcessToJobObject`) --- which Node cannot make
+without a native FFI addon, and adding one for a handful of calls would mean
 `npm install` no longer suffices to run the tooling. It is also not a script anyone runs:
 `scripts/lib/tb-ide.mjs` reads the text and passes it through `-EncodedCommand`, so it never meets the
 execution policy. See [Compiling a twinBASIC project without the IDE in front of

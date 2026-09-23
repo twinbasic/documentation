@@ -53,6 +53,9 @@ the compiler what a symbol is.** Each of those gaps shapes a stage below.
   build into `${IdePath}\addins\${Architecture}\`. The shipped install has `addins\win32\`
   and `addins\win64\` beside `bin\`, each holding `tbGlobalSearchAddIn1.dll` --- so every
   IDE that `tbbuild`, `tbrun` and `examples.bat` start today loads the Global Search add-in.
+  Measured through the compiler's own list (`loadedAddins` in `tb-ide.mjs`): the real
+  install's IDE reports `GlobalSearchAddIn AddIn`, and a copy of it with empty `addins`
+  folders reports none.
 - **The page creates `%APPDATA%\twinBASIC\addins\win32` and `...\win64`** at startup
   (`CreateCommonFolders`, `main.js@961019`) *(reported)*. Whether the compiler also loads
   from there is **P6**. If it does, a DLL placed there loads into every IDE the user starts.
@@ -206,11 +209,14 @@ from the page's own origin (**P13**). Deferred.
   `twinBASIC.ProjectFile`, and it currently points at the BETA 983 `twinBASIC.exe`. A
   harvested finding said every launch re-registers it. Key timestamps say otherwise:
   `DefaultIcon` and `shell\open\command` were last written when BETA 983 was installed, and
-  a day of launches of that build did not touch them. The likely rule is that the IDE
-  rewrites them when the path differs --- inferred from that last write matching the
-  install, and the first IDE copy started from `%TEMP%` in item 2 will measure it. If it
-  holds, such a copy points the user's association at a folder that is about to be deleted.
-  [tb-registry.mjs](scripts/lib/tb-registry.mjs) restores it either way.
+  a day of launches of that build did not touch them. **The IDE rewrites them when its path
+  differs**, measured in item 2: read while an IDE copy in `%TEMP%` was running, the keys
+  pointed into the copy, while the real install's IDE, run the same way, left them alone.
+  So a copy points the user's association at a folder that is about to be deleted, and
+  [tb-registry.mjs](scripts/lib/tb-registry.mjs) puts it back (three writes).
+- **`%APPDATA%\twinBASIC`** holds the user's downloaded packages and empty `addins\win32`,
+  `addins\win64`, `locale` and `themes` folders, and it is shared by every install. A
+  compile session wrote nothing to it.
 - **`SaveSetting` from an add-in writes to the same tree**, under
   `VB and VBA Program Settings\<app name>`, so it is shared with any installed copy of the
   same add-in. A test that changes an add-in-wide option changes it for the user too.
@@ -257,6 +263,19 @@ Everything after this stage is developed against it.
    and two lanes never share one. Copy, rather than link, anything the IDE writes to during a
    session (**P11**), and copy everything when `%TEMP%` and the install are on different
    volumes.
+
+   **Done, as a copy rather than hardlinks:**
+   [scripts/lib/tb-ide-copy.mjs](scripts/lib/tb-ide-copy.mjs), described in [WIP.Harness.md,
+   A private IDE for every lane](WIP.Harness.md#a-private-ide-for-every-lane). P11 came back
+   negative --- a session writes nothing into its install --- and without `projects\` the
+   copy is 57 MB and takes 380 ms, so linking would have saved nothing worth the risk. The
+   copy's compiler loaded no add-in where the real install's loaded Global Search, the 14
+   fixture cases gave identical output from it, and the real install stayed byte-identical.
+   **The work also found and closed a process leak** that every harness tool had: a compiler
+   the IDE restarts after a crash can start while `taskkill /T` walks the tree, and survives
+   it, holding the install's files open. The IDE now runs inside a kill-on-close job ([The IDE
+   runs inside a job](WIP.Harness.md#the-ide-runs-inside-a-job)), which also means a run that
+   dies takes its IDEs with it.
 3. **Leave the registry as it was found**, for every harness tool:
    - save `HKCU\Software\Classes\.twinproj` and `twinBASIC.ProjectFile` before a run, and
      restore them once the last lane has ended;
@@ -297,6 +316,7 @@ Everything after this stage is developed against it.
      `code` values, less than 500 ms apart;
    - click: real `Input.dispatchMouseEvent` presses at the element's centre. The IDE's own
      controls ignore `element.click()` --- `tbrun` learned that on `#buildIcon`;
+   - ask which add-ins loaded: `loadedAddins(c)` in `tb-ide.mjs` (done for item 2);
    - read a tool window through `toolWindowsById[<guid>].bodyElement`; read the DEBUG
      CONSOLE's backing array, notifications and message boxes; dismiss any `alert()`;
      notice a compiler restart or crash, as `tbbuild`'s console check already does.
@@ -336,7 +356,7 @@ the build number it was measured on.
 | P8 | Is a loaded add-in DLL locked against being overwritten? | the rebuild loop |
 | P9 | Does a compiler restart reload add-ins from disk? | a rebuild loop without restarting the IDE |
 | P10 | Does an environment variable set by the harness reach the add-in (`Environ$`)? | the side-effect switch |
-| P11 | Does the IDE write into its own install folder during a session? | hardlinks or copies |
+| P11 | Does the IDE write into its own install folder during a session? **Answered, BETA 983: no.** A compile, a compiler crash and a `tbrun` build-and-run left all 233 files byte-identical, mtimes included. | hardlinks or copies --- copies, for safety, at 380 ms |
 | P12 | Does `raiseEvent` from plain tool-window HTML throw? | how the pane's events are written |
 | P13 | Does the compiler's HTTP server serve any file placed under `ide\`? | an offline route |
 | P14 | What do `tbCreateCompilerAddin_v2` and `_v3` expect? | probably a question for upstream |
