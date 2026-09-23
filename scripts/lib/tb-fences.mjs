@@ -103,7 +103,68 @@ const FLAGS = new Set([MARKER, RUN_MARKER, HIDDEN_MARKER]);
  */
 const KEYS = new Set([
   "slot", "project", "projname", "id", "expect-error", "inherits", "resource", "inert",
+  "concat_group",
 ]);
+
+/**
+ * `concat_group=<name>` joins fences into ONE compilation unit, in page order,
+ * before anything is classified.
+ *
+ * It is for a construct a page splits across fences with prose between the
+ * halves -- a `Class` opened in one fence, its members discussed and shown in
+ * the next -- which is good writing and, fence by fence, unclassifiable: each
+ * half is an unclosed block. Joined, the halves are the class the page is
+ * describing, and the compiler can be asked about it.
+ *
+ * Distinct from `projname`, which compiles its members as SEPARATE modules in
+ * one project. These become one file, so a `Private` member in the first half
+ * is visible to the second.
+ *
+ * A diagnostic still has to land on the right page line, so the unit keeps the
+ * generated-line range each part occupies; see `partOf`.
+ */
+export const CONCAT_KEY = "concat_group";
+
+/**
+ * Join fences into one synthetic fence, recording where each part lands so a
+ * diagnostic can be traced back to the fence it came from.
+ *
+ * @param {object[]} parts  member fences, already in page order
+ */
+export function concatFences(parts) {
+  const bodies = parts.map((p) => p.content.replace(/\n+$/, ""));
+  const ranges = [];
+  let at = 1;                                   // 1-based line within the body
+  bodies.forEach((body, i) => {
+    const lines = body.split("\n").length;
+    ranges.push({ fence: parts[i], from: at, to: at + lines - 1 });
+    at += lines;
+  });
+  // The unit is the sample its first VISIBLE part is. A page can hide a class's
+  // header and footer to show only the method it is teaching, and that is still
+  // one sample, located at the method's fence. Inheriting the hidden header's
+  // flags instead would make it page context, which only travels with the
+  // page's other samples: never compiled at all on a page that has none, and
+  // never a unit a failure can be isolated to. Only a group with no visible
+  // part is context.
+  const lead = parts.find((p) => !p.flags?.has(HIDDEN_MARKER)) ?? parts[0];
+  return {
+    ...lead,
+    content: bodies.join("\n") + "\n",
+    concatParts: ranges,
+    concatOf: parts,
+  };
+}
+
+/** Which member fence a body line belongs to, and the line within its page. */
+export function partOf(ranges, bodyLine) {
+  for (const r of ranges) {
+    if (bodyLine >= r.from && bodyLine <= r.to) {
+      return { fence: r.fence, pageLine: r.fence.line + (bodyLine - r.from) + 1 };
+    }
+  }
+  return null;
+}
 
 /**
  * `inert=<reason>` says this fence is not a program and nobody should come back
@@ -116,6 +177,7 @@ const KEYS = new Set([
  */
 export const INERT_REASONS = new Set([
   "skeleton",   // placeholder identifiers -- `Inherits base_interface`, `<name>`
+  "signature",  // a procedure's signature, shown deliberately without a body
   "excerpt",    // deliberately continues another fence, or shows part of one
   "pseudo",     // prose, a table or a protocol listing dressed as code
   "contrast",   // shows invalid code on purpose, beside the valid form
@@ -206,9 +268,11 @@ export function parseInfo(info) {
     if (key === "inert" && !INERT_REASONS.has(value)) { bad.push(part); continue; }
     keys.set(key, value);
   }
-  // Both imply a build: a hidden fence that is not compiled is text nobody can
-  // read and nothing checks.
+  // These imply a build: a hidden fence that is not compiled is text nobody can
+  // read and nothing checks, and half a joined construct is not a unit anybody
+  // could have marked on its own.
   if (flags.has(RUN_MARKER) || flags.has(HIDDEN_MARKER)) flags.add(MARKER);
+  if (keys.has(CONCAT_KEY)) flags.add(MARKER);
   return { lang, flags, keys, bad };
 }
 

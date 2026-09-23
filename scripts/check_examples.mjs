@@ -70,8 +70,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  BODY_SLOTS, HIDDEN_MARKER, MARKER, RUN_MARKER, SLOTS, classify, collectFences,
-  moduleName, parseInfo, resourcePath, wrapFence,
+  BODY_SLOTS, CONCAT_KEY, HIDDEN_MARKER, MARKER, RUN_MARKER, SLOTS, classify,
+  collectFences, concatFences, moduleName, parseInfo, partOf, resourcePath, wrapFence,
 } from "./lib/tb-fences.mjs";
 import { buildNumber, compilerExe, findIde } from "./lib/tb-install.mjs";
 
@@ -202,9 +202,34 @@ const addFinding = (fence, message, detail, extra = {}) =>
     slot: fence.slot, project: fence.project, ...extra,
   });
 
+/**
+ * Join every `concat_group` into one fence before anything else looks at them.
+ *
+ * Done here rather than in the batcher because the members are unclassifiable
+ * apart -- each half of a split `Class` is an unclosed block -- so the join has
+ * to happen before `classify`, not after. Members keep their identity through
+ * `concatParts`, which is what turns a diagnostic back into a page line.
+ */
+function joinConcatGroups(fences) {
+  const groups = new Map();
+  const out = [];
+  for (const fence of fences) {
+    const name = fence.keys.get(CONCAT_KEY);
+    if (!name) { out.push(fence); continue; }
+    if (!groups.has(name)) { groups.set(name, []); out.push({ concatPlaceholder: name }); }
+    groups.get(name).push(fence);
+  }
+  return out.flatMap((f) => {
+    if (!f.concatPlaceholder) return [f];
+    const parts = groups.get(f.concatPlaceholder)
+      .sort((a, b) => a.rel.localeCompare(b.rel) || a.line - b.line);
+    return [concatFences(parts)];
+  });
+}
+
 function select(fences) {
   const chosen = [];
-  for (const fence of fences) {
+  for (const fence of joinConcatGroups(fences)) {
     if (only && !only.test(fence.rel)) continue;
 
     // A mistyped marker is a finding in every mode, including --census. It is
@@ -213,8 +238,8 @@ function select(fences) {
     // marked `check_bild` would never be compiled and nothing would say so.
     if (fence.bad.length) {
       addFinding(fence, `unrecognised fence markup: ${fence.bad.join(" ")}`,
-        `known flags: ${MARKER}, ${RUN_MARKER}; keys: slot=${SLOTS.join("|")}, ` +
-        `inherits=, project=, projname=, id=, expect-error=`);
+        `known flags: ${MARKER}, ${RUN_MARKER}, ${HIDDEN_MARKER}; keys: slot=${SLOTS.join("|")}, ` +
+        `inherits=, project=, projname=, id=, expect-error=, resource=, inert=, ${CONCAT_KEY}=`);
       continue;
     }
 
@@ -580,9 +605,15 @@ async function buildStaged(staged, port) {
       continue;
     }
     const genLine = Number(lineRaw);
-    const pageLine = entry.fence.line + genLine - entry.offset;
+    // `genLine - offset` is the 1-based line within the fence's own body. For a
+    // joined unit that body spans several fences, so the part decides both the
+    // page line and which fence the finding belongs to.
+    const bodyLine = genLine - entry.offset;
+    const part = entry.fence.concatParts ? partOf(entry.fence.concatParts, bodyLine) : null;
+    const owner = part ? part.fence : entry.fence;
+    const pageLine = part ? part.pageLine : entry.fence.line + bodyLine;
     if (!perFence.has(entry.fence.id)) perFence.set(entry.fence.id, []);
-    perFence.get(entry.fence.id).push({ severity, pageLine, message });
+    perFence.get(entry.fence.id).push({ severity, pageLine, message, rel: owner.rel });
   }
   return { perFence, unreadable, unattributed };
 }
@@ -1191,6 +1222,42 @@ async function runProbes() {
     failures.push("split: one template's rows from two builds do not compare equal");
   }
 
+  // A joined unit has to classify as the construct its halves make, and a
+  // diagnostic in either half has to come back to THAT half's page line. Getting
+  // the second right is the whole difficulty: an off-by-one here points every
+  // finding in the second fence at the wrong line, plausibly.
+  const half1 = { rel: "P.md", line: 10, id: "P.md#1", content: "Class Thing\n    Public A As Long\n" };
+  const half2 = { rel: "P.md", line: 30, id: "P.md#2", content: "    Public B As Long\nEnd Class\n" };
+  const joined = concatFences([half1, half2]);
+  if (classify(joined.content).slot !== "file") {
+    failures.push("concat: two halves of a Class did not join into a whole one");
+  }
+  for (const [bodyLine, wantRel, wantPage] of [
+    [1, "P.md", 11],    // `Class Thing`      -- first line of the first fence
+    [2, "P.md", 12],    // `Public A As Long`
+    [3, "P.md", 31],    // `Public B As Long` -- first line of the SECOND fence
+    [4, "P.md", 32],    // `End Class`
+  ]) {
+    const got = partOf(joined.concatParts, bodyLine);
+    if (!got || got.fence.rel !== wantRel || got.pageLine !== wantPage) {
+      failures.push(`concat: body line ${bodyLine} -> ${got?.pageLine}, want ${wantPage}`);
+    }
+  }
+  if (partOf(joined.concatParts, 99)) failures.push("concat: a line past the end found a part");
+  // A hidden header and footer around a visible method: the unit is the
+  // method's sample, not page context that only travels with other samples.
+  const hide = (f) => ({ ...f, flags: new Set([HIDDEN_MARKER, MARKER]) });
+  const method = { rel: "P.md", line: 20, id: "P.md#2", flags: new Set([MARKER]),
+    content: "    Sub Paint()\n    End Sub\n" };
+  const around = concatFences([hide(half1), method,
+    hide({ rel: "P.md", line: 40, id: "P.md#3", content: "End Class\n" })]);
+  if (around.id !== "P.md#2" || around.flags.has(HIDDEN_MARKER)) {
+    failures.push("concat: a hidden header made the visible part's sample into page context");
+  }
+  if (!parseInfo(`tb ${CONCAT_KEY}=widget`).flags.has(MARKER)) {
+    failures.push(`concat: ${CONCAT_KEY} does not imply ${MARKER}`);
+  }
+
   // A resource path is written into a staged project, so a path that climbs out
   // of it would write somewhere on the machine. Every refusal here is a path
   // that must never reach `writeFileSync`.
@@ -1269,9 +1336,9 @@ async function runProbes() {
     return false;
   }
   // 10 line-map (5 slots x 2 bases) + 4 wrapper container + 7 batching
-  // + 5 splitting + 10 resource + 8 report + 6 markup.
-  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 50} probes: ` +
-    `classifier, markup, line mapping, batching, splitting, resources and the report`);
+  // + 5 splitting + 8 concat + 10 resource + 8 report + 6 markup.
+  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 58} probes: ` +
+    `classifier, markup, line mapping, batching, splitting, concat, resources and the report`);
   return true;
 }
 
@@ -1469,7 +1536,7 @@ function reportFindings() {
     say(`        ${f.message}`);
     if (f.detail) say(`        ${f.detail}`);
     for (const d of f.diagnostics ?? []) {
-      say(`        docs/${f.rel}:${d.pageLine}: ${d.message}`);
+      say(`        docs/${d.rel ?? f.rel}:${d.pageLine}: ${d.message}`);
     }
   }
 }
