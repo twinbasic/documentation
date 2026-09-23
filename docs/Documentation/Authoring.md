@@ -571,6 +571,14 @@ Use it for context, not for hiding a sample. A hidden fence is still compiled, s
 checked like everything else --- but nobody can read it, and a fence nobody can read is
 not documentation.
 
+**Decide what to hide by asking what the reader needs.** Before hiding a line, ask whether
+a reader would write it, or would need it to know where an object comes from. An event
+handler's header is both --- `Request.Headers` means nothing until the reader sees which
+event passes `Request` --- and so is the subject of a `With` that a leading-dot line depends
+on, or the `WithEvents` field that an event handler's name is built from. Show those. Hide
+what the reader brings from elsewhere: their own helper routines, the controls the form
+designer declares, and stand-ins for declarations that an external library provides.
+
 ### One construct across several fences
 
 `concat_group=<name>` joins every fence on the page that carries the name, in page order,

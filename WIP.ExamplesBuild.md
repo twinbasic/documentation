@@ -11,13 +11,15 @@ Reader-facing documentation is the [`check_examples.mjs`
 entry](docs/Documentation/Tools.md) in Tools.md and [Checking that a sample
 compiles](docs/Documentation/Authoring.md) in Authoring.md.
 
-**1,081 samples are marked today** and the gate over them takes ~105 s, in 38 projects. That
+**1,116 samples are marked today** and the gate over them takes ~110 s, in 41 projects. That
 is up from 401, and the arithmetic of how it got there is [the second
 pass](#the-second-pass-604-to-818), which is also where the one claim this file got badly
 wrong is corrected.
 
-Of the 1,159 `tb` fences, 1,081 are marked and compile, 78 are `inert` with a recorded
-reason, and **none is undecided**, so the backlog the census measures is empty. Every gain
+Of the 1,168 `tb` fences, 1,116 are marked and compile, 52 are `inert` with a recorded
+reason, and **none is undecided**, so the backlog the census measures is empty. No fence is
+an `excerpt` any more: [the excerpts](#the-excerpts-25-to-none) were the last group that
+could be made to build. Every gain
 since 826 came from editing pages rather than from marking them, which is [the editorial
 pass](#the-editorial-pass-826-to-931); [what was left](#what-is-left-179-samples-and-no-lever)
 at 931 has since been worked through.
@@ -367,7 +369,10 @@ Collision rules, all forced by putting unrelated samples in one compilation unit
 - **One generated `Module tbx_<hash>` per fence.** The hash covers the fence's id, so it is
   stable across runs and traceable without a lookup table.
 - **Everything generated is `Private`.** Eleven pages declare a `MyString`.
-- **`Sub Main` comes from the template, never from a fence.**
+- **`Sub Main` comes from the template --- and a fence may bring its own as well.** This was
+  listed as a collision rule, and nothing ever enforced it. Measured: two `Public Sub Main`s
+  in different modules compile, so the WinServicesLib `Module Startup` samples build as
+  written.
 - **A generated module must not share a name with the project.** `project.name = "ProbeWS"`
   beside `Module ProbeWS` makes `[RunAfterBuild]`'s `ProbeWS.ProbeWS.Probe` ambiguous, and
   the IDE refuses it at *execution* time --- so the build is green and nothing runs.
@@ -912,6 +917,47 @@ carries the marker, so it gates nothing today; and its open question --- what a 
 printed output is compared against --- is answered by pages that state a printed value, which
 is what the editorial pass produces. Building the dispatcher first would be building for
 candidates that do not exist yet.
+
+## The excerpts: 25 to none
+
+Every `excerpt` fence builds now, or turned out to be something else. What decided each one
+was a question asked partway through --- *would a reader of the page need to see this?* ---
+and it replaced the first plan, which was to hide an invented procedure header around every
+fragment:
+
+- **Shown:** whatever the reader writes, or needs in order to know where an object comes
+  from. An event handler's header (`Request.Headers` means nothing until the reader sees
+  which event passes `Request`), the `With` subject a leading-dot line depends on, the
+  `WithEvents` field an event handler's name is built from, the interface member the reader
+  implements. Where the page already shows that header elsewhere --- every WebView2 page
+  opens with the full handler --- the fence repeats it rather than inventing one.
+- **Hidden:** what the reader brings from elsewhere --- their own helpers
+  (`SaveDocument`, `OpenSalesRecordset`), what the form designer declares (`rptSales`,
+  `Toolbar1`), stand-ins for an external library's declarations (`ChooseColorFlags`), and
+  the class boilerplate around a method the page is about.
+
+Two fences that mixed two execution contexts were split: a report's code-behind and the
+startup module that shows it, and a pipe protocol's client and server halves. Three fences
+left the inert list for other reasons on the way: `Interface.md`'s `IFoo` was marked
+`skeleton` but lacked only a `MyEnum`, `Delegates.md`'s `CHOOSECOLOR` was `external` for one
+WinDevLib enum, and `IVBPrint.md`'s dispatch listing is `pseudo`, since a bare `Column` is
+not a statement anyone writes.
+
+What the compiler said once the fragments were whole:
+
+- **A product defect.** A class cannot implement an interface member marked
+  `[PreserveSig]`, and the diagnostic "expects" the signature already written ---
+  BUGS-TO-REPORT.md has the two-declaration reproduction. `Reference/Core/Interface.md` had
+  shown exactly such an implementation since it was written; its example no longer puts the
+  attribute on an implemented member, and both pages that describe the attribute say why.
+- **A latent neighbour dependency.** The WinNamedPipesLib discovery loop used a `manager`
+  its page never declared, and compiled only when `NamedPipeClientManager.md`'s hidden
+  `Public manager` happened to share its batch. It declares its own now.
+- **Claims confirmed.** `For Each` over a `WebView2RequestHeaders` or
+  `WebView2ResponseHeaders` works as the pages say, and `AsyncWrite` accepts a
+  `PropertyBag.Contents` **Variant** for its `Data() As Byte`.
+- **A harness rule that was never true.** "`Sub Main` comes from the template, never from a
+  sample" --- see the collision rules above.
 
 ## What is in the `tb` fences, and why opt-in
 
