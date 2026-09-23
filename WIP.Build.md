@@ -99,7 +99,7 @@ One `.ps1` exists for a third kind of reason. **`scripts/lib/tb-launch.ps1`** is
 calls --- `CreateDesktop`, and `CreateProcess` with `STARTUPINFO.lpDesktop` --- which Node
 cannot make without a native FFI addon, and adding one for a single call would mean
 `npm install` no longer suffices to run the tooling. It is also not a script anyone runs:
-`tbbuild.mjs` reads the text and passes it through `-EncodedCommand`, so it never meets the
+`scripts/lib/tb-ide.mjs` reads the text and passes it through `-EncodedCommand`, so it never meets the
 execution policy. See [Compiling a twinBASIC project without the IDE in front of
 you](WIP.Harness.md#compiling-a-twinbasic-project-without-the-ide-in-front-of-you).
 

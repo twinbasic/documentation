@@ -8,7 +8,7 @@ compiler](WIP.md#driving-the-twinbasic-compiler) --- this file is why they are
 what they are.
 
 Read it before changing `scripts/tbbuild.mjs`, `scripts/tbrun.mjs`,
-`scripts/lib/tb-cdp.mjs`, `scripts/lib/tb-launch.ps1` or
+`scripts/lib/tb-ide.mjs`, `scripts/lib/tb-cdp.mjs`, `scripts/lib/tb-launch.ps1` or
 `builder/census_attributes.mjs`, and before concluding anything about twinBASIC
 syntax from a sweep of exported sources.
 
@@ -181,6 +181,26 @@ The CDP client is [scripts/lib/tb-cdp.mjs](scripts/lib/tb-cdp.mjs) --- raw rathe
 puppeteer, because a pending `alert()` blocks the renderer and puppeteer's `connect()`
 handshake talks to the renderer, so it hangs on precisely the state you need to recover from.
 
+**The mechanics are one library, [scripts/lib/tb-ide.mjs](scripts/lib/tb-ide.mjs)**:
+starting the IDE, attaching, waiting for the compile, reading the diagnostics and the DEBUG
+CONSOLE, clicking, and ending the process tree. `tbbuild` and `tbrun` are command lines
+around it, and the add-in harness planned in [WIP.HelpAddin.md](WIP.HelpAddin.md) is built
+on it. Moving the code there was checked against 14 fixture cases run before and after ---
+every exit code and every line of output the same, apart from the two fixes below --- and
+against a full `examples.bat` run.
+
+Two bugs came out of the move, and neither had been noticed:
+
+- **A relative project path never loaded.** The IDE is given the resolved path and echoes
+  it back, and the wait loop compared that echo with the argument as typed, so
+  `tbbuild clean.twinproj` waited out its whole timeout and exited 3, "the IDE never
+  reported clean.twinproj as open". Every caller passed an absolute path, which is why
+  nothing noticed. The comparison now resolves first.
+- **`tbrun --ide` could pack with one install and build with another.** It ran `tbbuild` as
+  a child process without passing `--ide` on, so the build found its own IDE. It also
+  printed that child's `ide-pid:` line in its compile-error output, naming an IDE it had
+  already killed. `tbrun` now calls the library directly.
+
 **Do not reach for `--buildAndExit32` instead.** It exists, it is real (`parseCommandLine()`
 reads it, and Personal Edition is refused by name), and it is useless unattended: **nothing
 is written to stdout or stderr, ever**, it exits 0 on a project the IDE flags, and when the
@@ -198,7 +218,7 @@ verified by reading the same diagnostics off an IDE nobody could see.
 That is the one piece of the harness that cannot be JavaScript, because it is
 `CreateDesktop` plus `CreateProcess` with `STARTUPINFO.lpDesktop` and Node has no FFI
 without a native addon. [scripts/lib/tb-launch.ps1](scripts/lib/tb-launch.ps1) holds those
-two calls. It is **not run as a file**: `tbbuild.mjs` reads the text and passes it through
+two calls. It is **not run as a file**: `tb-ide.mjs` reads the text and passes it through
 `-EncodedCommand`, so the default execution policy --- which refuses `.ps1` files on this
 machine, and which is the same policy [BOOKPLAN.md](BOOKPLAN.md) records blocking `npx.ps1`
 --- never comes into it, and no `-ExecutionPolicy Bypass` has to be recommended to anyone.
@@ -323,8 +343,8 @@ measure once there was a way to run code.
     node scripts/tbrun.mjs <source-dir>
 
 It takes an **exported tree** rather than a `.twinproj`, stages a copy, pins the build path
-in the copy, packs it, builds it through `tbbuild --keep`, then reads the DEBUG CONSOLE
-back over CDP. The probe is a module with a `[RunAfterBuild]` Sub, which the IDE runs once
+in the copy, packs it, compiles it with the same library calls `tbbuild` makes, clicks
+Build, then reads the DEBUG CONSOLE back over CDP. The probe is a module with a `[RunAfterBuild]` Sub, which the IDE runs once
 the exe is linked. Reader-facing documentation is the [`tbrun.mjs` entry in
 Tools.md](docs/Documentation/Tools.md).
 
@@ -363,10 +383,11 @@ script knows about. Distinct `--port` values let probes run concurrently, exactl
 `tbbuild`'s do.
 
 **Two things make that safe, and both had to be built.** The workspace and `project.id`
-are keyed to `--port`, so a second run cannot delete the first one's tree; and `tbbuild`
-reports the IDE's pid (`ide-pid:` in text, `idePid` in `--json`) so shutdown is a kill by
-pid tree rather than a machine-wide `taskkill /F /T /IM twinBASIC.exe`, which would take
-out every concurrent run's IDE and the one you had open yourself.
+are keyed to `--port`, so a second run cannot delete the first one's tree; and shutdown is
+a kill by the pid the launch returned --- `tbbuild` reports it as `ide-pid:` in text and
+`idePid` in `--json` for a caller that inherits a kept IDE --- rather than a machine-wide
+`taskkill /F /T /IM twinBASIC.exe`, which would take out every concurrent run's IDE and the
+one you had open yourself.
 
 `tbrun` also **harvests COM servers a probe leaves behind**, because nothing else can: an
 `EXCEL.EXE` from `CreateObject` has `svchost.exe` for a parent, so no tree kill reaches it,

@@ -234,6 +234,19 @@ Everything after this stage is developed against it.
    (`tbbuild`, `tbrun`, [scripts/lib/tb-install.mjs](scripts/lib/tb-install.mjs)). Move it
    into `scripts/lib/`, keep both scripts' behaviour and exit codes exactly, and check the
    move with a full `examples.bat` run (1,116 samples, ~110 s) and a `tbrun` probe.
+
+   **Done:** [scripts/lib/tb-ide.mjs](scripts/lib/tb-ide.mjs). 14 fixture cases were run
+   before and after --- clean, compile errors, warnings, the BUGS-TO-REPORT crash, argument
+   errors, and `tbrun` output and errors --- with every exit code and output line the same
+   apart from two bug fixes, and `examples.bat` passed 1,116 of 1,116 both times. The two
+   bugs, a relative project path that never loaded and `tbrun --ide` building with a
+   different install, are in [WIP.Harness.md](WIP.Harness.md). Two more gaps showed up while
+   reading the code, and both matter here, because add-in tests will hit dialogs: **`tbbuild`
+   cannot record an `alert()`** --- it listens for `Page.javascriptDialogOpening` but never
+   sends `Page.enable`, and CDP delivers no Page event without it --- and **no
+   `Runtime.evaluate` has a timeout**, so a dialog blocking the renderer would hang the wait
+   loop rather than let it time out. Neither is tested yet. Item 5 fixes both and proves the
+   fix with a probe that opens a dialog.
 2. **A private IDE for every lane.** The install is 91 MB (`bin` 37, `projects` 30, `ide`
    15, `packages` 7). Hardlink it into the lane's work folder, with a real, empty
    `addins\win32` and `addins\win64`, so that a test add-in never loads into the user's IDE

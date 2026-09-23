@@ -12,7 +12,7 @@
 //       --no-reap         do not harvest automation servers the probe left behind
 //       --reap-images     comma-separated image names to harvest
 //                         (default: the Office suite -- see REAP_IMAGES)
-//       --show / --hide   passthrough to tbbuild
+//       --show / --hide   as tbbuild's
 //
 // Exit: 0 captured output, 1 the project has compile errors, 2 the harness
 // failed, 3 the build produced no console output before the timeout.
@@ -30,30 +30,34 @@
 // the IDE once the exe is built, so anything it writes with Debug.Print lands
 // in the IDE's DEBUG CONSOLE, where this script reads it back over CDP.
 //
+// It starts and reads the IDE through scripts/lib/tb-ide.mjs, the same code
+// tbbuild uses, rather than by running tbbuild as a child process. As a child
+// it was handed neither --ide nor the IDE this script had packed with, so the
+// two could be different installs, and the pid it had to kill came back as a
+// line of text to parse.
+//
 // ----------------------------------------------- seven things it gets right
 //
 // Each of these cost an hour when the probe was first done by hand.
 //
 //  1. THE BUILD PATH MUST BE AN EXPLICIT FILE. A project whose
 //     `project.buildPath` is still the default `${SourcePath}\Build\...`
-//     template opens a native Save dialog on the build -- and because tbbuild
-//     runs the IDE on a private desktop, that dialog is invisible, takes no
+//     template opens a native Save dialog on the build -- and because the
+//     IDE runs on a private desktop, that dialog is invisible, takes no
 //     input, and the build simply never happens. Nothing reports it: the
 //     WebView2 renderer stays responsive, so even a CDP health check says the
 //     IDE is fine. This script therefore owns the tree and pins buildPath to a
 //     concrete file before importing, which makes the trap unreachable.
 //  2. A JAVASCRIPT .click() ON THE BUILD BUTTON DOES NOTHING. `#buildIcon` is
 //     a plain DIV wired through the IDE's own pointer handling; it needs real
-//     CDP Input.dispatchMouseEvent presses at its centre.
+//     CDP Input.dispatchMouseEvent presses at its centre (tb-ide's
+//     clickCenter).
 //  3. READ THE CONSOLE'S BACKING ARRAY, NOT THE PANE. The DEBUG CONSOLE is a
 //     virtualised list view: only the rows that fit are in the DOM, so an
 //     `.innerText` scrape of it returns the tail of a long probe and looks
 //     exactly like a complete capture. Measured against the old reader: a
-//     probe printing 120 lines came back with 11. `debugConsoleContent
-//     .dataNodes` is the whole log, and the walk here is the IDE's own
-//     "Copy All" minus the clipboard write. The timestamp column comes off in
-//     the same step, since it is a nested <span> in each entry -- so --raw is
-//     now a different slice of the same string rather than a line filter.
+//     probe printing 120 lines came back with 11. tb-ide's readConsole reads
+//     `debugConsoleContent.dataNodes`, the whole log, and explains the rest.
 //  4. START THE PROBE WITH Debug.Cls. The DEBUG CONSOLE is also where the IDE
 //     writes its own build log, and the linker writes there after the build --
 //     so without a clear, a probe's output comes back interleaved with
@@ -69,7 +73,7 @@
 //     `taskkill /F /T /IM twinBASIC.exe`, which is machine-wide: it ended
 //     every concurrent run's IDE, and the IDE you had open yourself. The work
 //     directory and the project.id are now keyed to --port, and the IDE is
-//     killed by the pid tbbuild reports.
+//     killed by the pid its launch returned.
 //  7. A COM SERVER THE PROBE STARTED IS NOT A CHILD OF ANYTHING WE OWN.
 //     CreateObject("Excel.Application") is activated by DCOM, so the EXCEL.EXE
 //     that appears has svchost.exe for a parent -- measured. No tree kill can
@@ -77,14 +81,14 @@
 //     forever. Harvesting it therefore has to be a before/after diff, which is
 //     a blunt enough instrument to need the guard rails in reapOrphans().
 
-import { spawn, execFileSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync, readdirSync,
          cpSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { attach } from "./lib/tb-cdp.mjs";
-import { runCompiler } from "./lib/tb-install.mjs";
+import { compilerExe, findIde, runCompiler } from "./lib/tb-install.mjs";
+import { attachIde, clickCenter, compileOutcome, killTree, launchIde, readConsole,
+         shutdownIde, summaryLine, waitForCompile, wantShow } from "./lib/tb-ide.mjs";
 
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes(`--${n}`);
@@ -133,30 +137,20 @@ const REAP_IMAGES = [
 
 // ---------------------------------------------------------------- the IDE
 
-function findIde() {
-  const explicit = opt("ide", process.env.TB_IDE);
-  if (explicit) return explicit;
-  const desk = path.join(process.env.USERPROFILE ?? "", "Desktop");
-  const dirs = existsSync(desk)
-    ? readdirSync(desk).filter((d) => /^twinBASIC_IDE_BETA_\d+$/.test(d))
-    : [];
-  if (!dirs.length) return null;
-  dirs.sort((a, b) => Number(a.match(/\d+$/)[0]) - Number(b.match(/\d+$/)[0]));
-  return path.join(desk, dirs[dirs.length - 1], "twinBASIC.exe");
-}
-
-const ide = findIde();
+// One install packs the tree and builds it. --ide, then TB_IDE, then the
+// newest BETA on the Desktop, as for every other tool here.
+const ide = findIde(opt("ide", undefined));
 if (!ide || !existsSync(ide)) {
   die(2, "no twinBASIC IDE found. Pass --ide <twinBASIC.exe> or set TB_IDE.");
 }
-const compilerExe = path.join(path.dirname(ide), "bin", "twinBASIC_win32.exe");
-if (!existsSync(compilerExe)) die(2, `no compiler beside the IDE at ${compilerExe}`);
+const COMPILER = compilerExe(ide);
+if (!existsSync(COMPILER)) die(2, `no compiler beside the IDE at ${COMPILER}`);
 
 // ------------------------------------------------- pin the build output (1)
 
 // (6) The workspace is keyed to --port, which is already the thing that has to
 // differ between concurrent runs -- the IDE's DevTools port, its WebView2 user
-// data folder and its private desktop are all keyed to it in tbbuild. Sharing
+// data folder and its private desktop are all keyed to it in tb-ide. Sharing
 // one %TEMP%/tbrun/src meant the second run deleted the first one's tree.
 const runKey = String(port);
 const work = path.join(tmpdir(), "tbrun", runKey);
@@ -208,10 +202,10 @@ if (!hasHook) {
 // import's exit code does not say whether it worked -- 0 on the failures it
 // reports, 999 on a tree holding an embedded package -- so runCompiler reads
 // the output, and a failure of either kind is the harness's, exit 2.
-const pack = runCompiler(compilerExe, ["import", projPath, stage, "--overwrite"]);
+const pack = runCompiler(COMPILER, ["import", projPath, stage, "--overwrite"]);
 if (!pack.done) die(2, `packing failed${pack.why}:\n${pack.tail}`);
 
-// ------------------------------------------------------ compile, via tbbuild
+// ---------------------------------------------------------------- compile
 
 // (7) Taken before the IDE starts, so anything in it is somebody else's and is
 // never a candidate for harvesting. Cheap enough to be unconditional (~0.4 s
@@ -219,107 +213,50 @@ if (!pack.done) die(2, `packing failed${pack.why}:\n${pack.tail}`);
 // paths differ in a way nobody would remember.
 const processesBefore = snapshotProcesses();
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const passthrough = ["--keep", "--port", String(port)];
-if (flag("show")) passthrough.push("--show");
-if (flag("hide")) passthrough.push("--hide");
-
-const build = spawn(process.execPath, [path.join(here, "tbbuild.mjs"), projPath, ...passthrough],
-                    { stdio: ["ignore", "pipe", "pipe"] });
-let buildOut = "";
-build.stdout.on("data", (d) => { buildOut += d; });
-build.stderr.on("data", (d) => { buildOut += d; });
-const buildCode = await new Promise((res) => build.on("exit", res));
-
-// tbbuild ran with --keep, so the IDE it started is ours to end. It prints the
-// pid for exactly this reason: killing by image name would end every concurrent
-// run's IDE and the one the user has open.
-const idePid = Number(/^ide-pid:\s*(\d+)\s*$/m.exec(buildOut)?.[1]) || null;
-if (!idePid) {
-  console.error("warning: tbbuild did not report an ide-pid -- falling back to " +
-                "killing by image name, which will also end any other IDE running now.");
+let ideRun = null;
+// A failure before the console is read: said on stdout, as it was when this
+// phase was tbbuild's output relayed, and ended with tbbuild's meaning of 1
+// (compile errors) or 2 (anything else).
+function failBuild(code, text) {
+  process.stdout.write(text + "\n");
+  shutdown();
+  process.exit(code);
 }
 
-if (buildCode !== 0) {
-  process.stdout.write(buildOut);
-  shutdown();
-  process.exit(buildCode === 1 ? 1 : 2);
+try {
+  ideRun = await launchIde({
+    exe: ide, project: projPath, port,
+    show: wantShow({ show: flag("show"), hide: flag("hide") }),
+  });
+} catch (e) {
+  failBuild(2, e.message);
+}
+
+const cdp = await attachIde(port);
+if (!cdp) failBuild(2, "the IDE never exposed a debug port");
+
+const outcome = compileOutcome(
+  await waitForCompile(cdp, { project: projPath, timeout: 180 * 1000 }), { name: projPath });
+if (!outcome.ok) failBuild(2, outcome.message);
+if (outcome.counts[0] > 0) {
+  failBuild(1, [...outcome.rows, summaryLine(outcome.counts)].join("\n"));
 }
 
 // --------------------------------------------- build the exe, read the console
 
-// (3) Read the console's BACKING ARRAY, never the pane. `debugConsoleContent`
-// is a createListView(), which renders only the rows that fit -- so the old
-// `.innerText` scrape returned the last ~11 lines of any longer probe and gave
-// no sign that it had. `dataNodes` is the complete log: addItem() appends at
-// `itemCount` and nothing in main.js ever removes an entry, so the array holds
-// every line written since the last clear().
-//
-// The walk below is the IDE's own `tbDebugConsole_ClipboardCopyAll`, minus the
-// clipboard write -- the same borrow tbbuild makes for the diagnostics report.
-// Each entry is `<span class=COLOR><span class=ts>TIME</span>TEXT</span>`, so
-// slicing past the first `</span>` drops the timestamp, which is what the
-// IDE's own two Copy All variants differ by. Note that the timestamp is always
-// present in the data: the pane's "Show Timestamps" option only sets a
-// `--timestampsDisplay` CSS variable, so it cannot change what we read here.
-//
-// Two deliberate departures from the IDE's version:
-//
-//   * DECODE WITH textContent ON OUR OWN DETACHED NODE, not the IDE's
-//     HTMLToTEXT. That helper reads `.innerText` off a shared `hiddenDiv`, and
-//     it preserves runs of spaces only because `initMisc()` creates that div
-//     with no parent -- an element that is not rendered has innerText ===
-//     textContent. Attach it in some future build and every padded value a
-//     probe prints starts collapsing silently. Probes measure things like
-//     Debug.Print zone widths and Partition's space-padded labels, so that is
-//     the one thing this reader must not get wrong.
-//   * TOLERATE A MISSING TIMESTAMP SPAN. indexOf returns -1 when there is
-//     none, and the IDE's `substr(i + 7)` would then quietly eat six
-//     characters of real output. No current addItem() path omits it; the guard
-//     costs a comparison and removes a silent-corruption mode.
-const consoleJs = (withTimestamps) => `(() => {
-  if (typeof debugConsoleContent === "undefined" || !debugConsoleContent ||
-      !debugConsoleContent.dataNodes) return null;
-  const decode = (html) => {
-    const d = document.createElement("div");   // never attached; see above
-    d.innerHTML = html;
-    return d.textContent;
-  };
-  return debugConsoleContent.dataNodes.map(n => {
-    const i = n.indexOf("</span>");
-    if (i < 0) return decode(n);
-    return decode(${withTimestamps}
-      ? n.substr(0, i + 7) + " " + n.substr(i + 7)
-      : n.substr(i + 7));
-  }).join("\\n");
-})()`;
-
-const CONSOLE_JS = consoleJs(flag("raw"));
-
 let captured = null, failure = null;
 try {
-  const cdp = await attach(port);
-
-  const rect = await cdp.evaluate(`(() => {
-    const b = document.getElementById("buildIcon");
-    if (!b) return null;
-    const r = b.getBoundingClientRect();
-    return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: r.width };
-  })()`);
-  if (!rect || !rect.w) throw new Error("no #buildIcon in the IDE page -- did the project load?");
-
   // (2) a real press/release pair; element.click() is ignored.
-  for (const type of ["mousePressed", "mouseReleased"]) {
-    await cdp.send("Input.dispatchMouseEvent",
-                   { type, x: rect.x, y: rect.y, button: "left", clickCount: 1 });
+  if (!await clickCenter(cdp, "buildIcon")) {
+    throw new Error("no #buildIcon in the IDE page -- did the project load?");
   }
 
-  // (4) settle on a quiet period rather than a sentinel.
+  // (5) settle on a quiet period rather than a sentinel.
   const started = Date.now();
   let last = "", lastChange = Date.now(), seen = false;
   while (Date.now() - started < timeoutMs) {
     await new Promise((r) => setTimeout(r, 400));
-    const now = await cdp.evaluate(CONSOLE_JS);
+    const now = await readConsole(cdp, { timestamps: flag("raw") });
     if (now === null) {
       throw new Error("no debugConsoleContent.dataNodes in this IDE -- the DEBUG CONSOLE " +
                       "was never created, or this build moved it. Refusing rather than " +
@@ -345,7 +282,8 @@ if (!captured.length) {
 }
 
 if (flag("json")) {
-  console.log(JSON.stringify({ exe: exePath, lines: captured, idePid, reaped }, null, 2));
+  console.log(JSON.stringify({ exe: exePath, lines: captured, idePid: ideRun?.pid ?? null, reaped },
+                             null, 2));
 } else {
   for (const l of captured) console.log(l);
 }
@@ -364,24 +302,12 @@ function strip(text) {
   return out;
 }
 
-// (6) Kill OUR IDE by pid, never by image name. /T takes the probe exe and
-// anything it spawned with CreateProcess; what it cannot take is a COM server,
-// which is what reapOrphans is for.
-function killTree(pid) {
-  try { execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore" }); }
-  catch { /* already gone */ }
-}
-
+// (6) End OUR IDE by pid, never by image name. The tree kill takes the probe exe
+// and anything it spawned with CreateProcess; what it cannot take is a COM
+// server, which is what reapOrphans is for.
 function shutdown() {
   if (flag("keep")) return null;          // the IDE is the caller's problem now
-  if (idePid) killTree(idePid);
-  else {
-    // Only reachable when tbbuild did not report a pid, which is warned about
-    // above. Machine-wide, and the lesser evil against leaking an IDE.
-    for (const image of ["twinBASIC.exe", "twinBASIC_win32.exe", "twinBASIC_win32_noDEP.exe"]) {
-      try { execFileSync("taskkill", ["/F", "/T", "/IM", image], { stdio: "ignore" }); } catch {}
-    }
-  }
+  shutdownIde(ideRun);
   return flag("no-reap") ? null : reapOrphans();
 }
 
