@@ -30,15 +30,20 @@ import { readdirSync, statSync, existsSync } from "node:fs";
 import { join, resolve, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { isOutputTree } from "./lib/markdown-files.mjs";
+
 const REPO_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 // Output trees live under docs/, so walking docs/ naively would compare
-// the build against itself and always pass. Everything the build writes
-// is excluded by name.
-const IGNORED_DIRS = new Set([
-  "_site", "_site-offline", "_site-pdf", "_site-basepath", "_serve", "_pdf",
-  ".git", "node_modules",
-]);
+// the build against itself and always pass. They are skipped at the top of
+// each source root by the prefix list the markdown walk uses, in
+// scripts/lib/markdown-files.mjs. This file used to name them one at a time,
+// and missed the siblings the builder's prepDest wipes and recreates beside
+// every destination whether or not their passes run: serve.bat leaves an empty
+// _serve-offline and _serve-pdf after every rebuild, and a build into
+// _site-basepath leaves _site-basepath-offline and _site-basepath-pdf. All four
+// were read as sources. These two are skipped at every depth.
+const IGNORED_DIRS = new Set([".git", "node_modules"]);
 
 // Files the build WRITES into a source directory. They are outputs, so their
 // mtime says nothing about whether the tree is current -- and because the build
@@ -97,20 +102,20 @@ const builtAt = statSync(marker).mtimeMs;
 // Returns { path, mtimeMs } or null for an absent directory.
 function newestUnder(dir) {
   let best = null;
-  const walk = (d) => {
+  const walk = (d, top) => {
     let entries;
     try { entries = readdirSync(d, { withFileTypes: true }); } catch { return; }
     for (const e of entries) {
-      if (IGNORED_DIRS.has(e.name)) continue;
+      if (IGNORED_DIRS.has(e.name) || (top && isOutputTree(e.name))) continue;
       const p = join(d, e.name);
-      if (e.isDirectory()) { walk(p); continue; }
+      if (e.isDirectory()) { walk(p, false); continue; }
       if (!e.isFile() || IGNORED_FILES.has(e.name)) continue;
       let st;
       try { st = statSync(p); } catch { continue; }
       if (!best || st.mtimeMs > best.mtimeMs) best = { path: p, mtimeMs: st.mtimeMs };
     }
   };
-  walk(dir);
+  walk(dir, true);
   return best;
 }
 

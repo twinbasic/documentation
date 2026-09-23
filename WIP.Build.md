@@ -366,6 +366,20 @@ in the build reads those files. It errs toward refusing, which is the safe
 direction, and a rebuild is ~4 s --- but wiring the check into `book.bat` means
 a pure note edit now also blocks a render until you rebuild.
 
+**Which folders under `docs/` are outputs comes from one list.** The script used to
+name them one at a time, and named none of the siblings that `prepDest` in
+`builder/tbdocs.mjs` wipes and recreates beside every destination --- `<dest>-offline`
+and `<dest>-pdf`, whether or not those passes run. So `serve.bat` leaves an empty
+`_serve-offline` and `_serve-pdf` after every rebuild, and a build into
+`_site-basepath` leaves `_site-basepath-offline` and `_site-basepath-pdf`; all four
+were read as sources. They are not leftovers to delete, because the next rebuild
+recreates them. All four were empty, so nothing had gone wrong yet; a file planted
+in one made the old script call a fresh tree stale. It now skips the top-level
+folders that `isOutputTree` in
+[scripts/lib/markdown-files.mjs](scripts/lib/markdown-files.mjs) names --- the
+prefix list the markdown walk uses --- and keeps only `.git` and `node_modules` as
+names of its own.
+
 ### The code-region gate
 
 [scripts/check_code_regions.mjs](scripts/check_code_regions.mjs) tokenises every
@@ -393,6 +407,19 @@ reverting a rewrite to run outside the mask, which the probes catch while the
 allowlist, regex-safety gate and axe scan all passed green on a tree with six
 corrupted code samples in the published book, because the corruption is inside
 `<code>` and none of them looks there.
+
+**Its sweep used to crash while `serve.bat` was running**, over nothing in any page.
+The walk was a recursive `readdir` of `docs/` that dropped the output trees from
+its results afterwards, so it had already descended into `_serve` --- which a
+running preview deletes and rewrites on every rebuild --- and died with `ENOENT`
+when a folder vanished under it. `test.bat` failed that way on 2026-09-23. Two
+other tools carried their own copies of the same walk, and one of them did not
+skip the output trees at all, so all three now call
+[scripts/lib/markdown-files.mjs](scripts/lib/markdown-files.mjs), which skips
+`_site*`, `_serve*` and `_pdf*` before entering them. Measured against a live
+preview: the old walk hit `ENOENT` during a rebuild, while the new one opens 142
+folders, none of them inside an output tree, returns the same 910 files, and
+stayed clean through 642 walks and five full gate runs timed into rebuilds.
 
 ### The page-count drift guard
 

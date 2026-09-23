@@ -36,6 +36,8 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { markdownFiles } from "./lib/markdown-files.mjs";
+
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ROOT = path.join(REPO, "docs");
 
@@ -177,17 +179,6 @@ function byPathParts(a, b) {
   return x.length - y.length;
 }
 
-async function markdownFiles(root) {
-  const entries = await fs.readdir(root, { recursive: true, withFileTypes: true });
-  const rels = [];
-  for (const e of entries) {
-    if (!e.isFile() || !e.name.endsWith(".md")) continue;
-    const abs = path.join(e.parentPath ?? e.path, e.name);
-    rels.push(path.relative(root, abs).split(path.sep).join("/"));
-  }
-  return rels.sort(byPathParts);
-}
-
 async function main(argv) {
   const check = argv.includes("--check");
   let files = 0;
@@ -195,7 +186,7 @@ async function main(argv) {
   let em = 0;
   let en = 0;
 
-  for (const rel of await markdownFiles(ROOT)) {
+  for (const rel of (await markdownFiles(ROOT)).sort(byPathParts)) {
     const abs = path.join(ROOT, rel);
     const r = convertText(await fs.readFile(abs, "utf8"));
     if (r.sep + r.em + r.en === 0) continue;

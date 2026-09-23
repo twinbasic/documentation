@@ -62,6 +62,7 @@ import { fileURLToPath } from "node:url";
 
 import MarkdownIt from "markdown-it";
 import { applyPreRenderRewrites } from "../builder/render.mjs";
+import { markdownFiles } from "./lib/markdown-files.mjs";
 
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ROOT = path.join(REPO, "docs");
@@ -89,19 +90,6 @@ function codeRegions(src) {
 // That is what makes this gate mean something: unmasking any one of the
 // rewrites changes what this function does, and the comparison below sees it.
 const applyRewrites = applyPreRenderRewrites;
-
-async function markdownFiles(root) {
-  const entries = await fs.readdir(root, { recursive: true, withFileTypes: true });
-  const rels = [];
-  for (const e of entries) {
-    if (!e.isFile() || !e.name.endsWith(".md")) continue;
-    const abs = path.join(e.parentPath ?? e.path, e.name);
-    const rel = path.relative(root, abs).split(path.sep).join("/");
-    if (rel.startsWith("_site") || rel.startsWith("_serve") || rel.startsWith("_pdf")) continue;
-    rels.push(rel);
-  }
-  return rels.sort();
-}
 
 function compare(src) {
   const before = codeRegions(src);

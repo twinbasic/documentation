@@ -350,7 +350,7 @@ No browser, no built tree, ~40 ms, which is why it is `test.bat`'s first step. R
 
     node scripts/check_tree_fresh.mjs [--tree DIR] [--source DIR ...]
 
-`check.bat`'s first gate. Refuses a built tree older than the sources that produced it, by comparing the newest mtime under the source tree against the built tree's `index.html`. Without it, editing a page and running `check.bat` without rebuilding audits the *previous* build and passes --- a green run that says nothing about the change just made. CI never hits this because it builds in the same job; a development box hits it whenever the two commands run out of order. Exits 0 when the tree is current, 1 when stale (naming `build.bat`), 2 when the tree is absent.
+`check.bat`'s first gate. Refuses a built tree older than the sources that produced it, by comparing the newest mtime under the source tree against the built tree's `index.html`. The build's own output trees under `docs/` are not sources, and which folders those are comes from `scripts/lib/markdown-files.mjs`, the list [`check_code_regions.mjs`](#check-code-regions) walks by. Without it, editing a page and running `check.bat` without rebuilding audits the *previous* build and passes --- a green run that says nothing about the change just made. CI never hits this because it builds in the same job; a development box hits it whenever the two commands run out of order. Exits 0 when the tree is current, 1 when stale (naming `build.bat`), 2 when the tree is absent.
 
 ### check_dot_fit.mjs
 {: #check-dot-fit }
@@ -388,6 +388,8 @@ Exits 1 on an exponential finding, on a file that would not parse, or on a probe
     node scripts/check_code_regions.mjs [--verbose] [--self-test]
 
 Verifies that no pre-render rewrite in `builder/render.mjs` alters the contents of a code fence, an indented code block or an inline code span. Tokenises every markdown file under `docs/`, applies the real rewrite chain, re-tokenises, and compares the code regions in order. No browser, no built tree, a couple of seconds.
+
+The list of files comes from `scripts/lib/markdown-files.mjs`, which [`convert_em_dash_separators.mjs`](#convert-em-dash-separators) and [`check_examples.mjs`](#check-examples) share. It never enters the build's output trees, so a running `serve.bat` cannot fail the gate: the preview deletes and rewrites `docs/_serve` on every rebuild, and a walk inside it at that moment used to die with `ENOENT`.
 
 Those rewrites run over **raw markdown**, before markdown-it has parsed anything, so none of them can tell prose from code --- and this site's subject matter is code. Four defects of exactly that shape shipped: a language reference printed its `If` / `ElseIf` / `Else` bodies flush left, a page lost the blank line between two examples, a link's argument list was percent-encoded inside a fence, and a YAML sample's closing `---` was deleted outright. **No other gate can see any of it**, because the damage sits inside `<code>` and the link, integrity, publish and accessibility checks all pass over it.
 
