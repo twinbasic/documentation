@@ -11,12 +11,14 @@ Reader-facing documentation is the [`check_examples.mjs`
 entry](docs/Documentation/Tools.md) in Tools.md and [Checking that a sample
 compiles](docs/Documentation/Authoring.md) in Authoring.md.
 
-**818 samples are marked today** and the gate over them takes ~42 s. That is up from 401,
+**826 samples are marked today** and the gate over them takes ~45 s. That is up from 401,
 and the arithmetic of how it got there is [the second pass](#the-second-pass-604-to-818),
 which is also where the one claim this file got badly wrong is corrected.
 
-Of the 1,101 classifiable fences, 818 compile. The rest are the follow-up work, and
-[what the first full run found](#what-the-first-full-run-found) says what is in the way.
+Of the 1,103 classifiable fences, 826 compile. **The marking lever is spent**: a survey of
+everything, run against BETA 983, finds that not one unmarked sample compiles. Every
+remaining sample needs an edit to its page or a capability the harness does not have, and
+[what is left](#what-is-left-277-samples-and-no-lever) is the accounting.
 
 ## The problem
 
@@ -48,14 +50,20 @@ is the same deal `sweep_a11y.mjs` (~20 min, full site) already makes.
 ## Opt-in, because the corpus says so
 
 `check_examples.mjs --census` is the live version of the table below, so there is one
-reproducible number rather than three prose ones. Against 1,116 `tb` fences in 603 pages:
+reproducible number rather than three prose ones. Against 1,124 `tb` fences in 603 pages:
 
 | shape | count | share | what is generated around it |
 |---|---:|---:|---|
-| whole `Class` / `Module` / `Interface` | 58 | 5.2% | nothing --- it becomes its own `.twin` |
-| procedures and module-level declarations | 403 | 36.1% | a `Module tbx_<hash>` |
-| loose statements | 634 | 56.8% | a `Module` and a `Private Sub` in it |
+| whole `Class` / `Module` / `Interface` | 63 | 5.6% | nothing --- it becomes its own `.twin` |
+| procedures and module-level declarations | 366 | 32.6% | a `Module tbx_<hash>` |
+| loose statements | 611 | 54.4% | a `Module` and a `Private Sub` in it |
+| class code-behind --- declarations, then statements | 51 + 12 | 5.6% | a `Class`, and a `Private Sub` in it |
 | fragment --- no wrapper rescues it | 21 | 1.9% | --- |
+
+The census also prints **which classifiable fences carry no marker, by section and by
+page**, because that is the question the marking work is actually planned from and it needs
+no compiler to answer. What it deliberately does not claim is that any of them would
+compile; only `--propose` knows that.
 
 **Two earlier censuses disagreed with this one and with each other**, at 36 / 357 / 457 /
 250 and 103 / 349 / 22 / 621. The `procedure` row is the one all three agree on. The
@@ -191,8 +199,9 @@ explicit and greppable.
 One project per fence is unaffordable. What makes it tractable is that **IDE cost is flat in
 project size** --- what is paid for is startup, not compilation. Measured on this corpus:
 1,082 auto-wrapped fences across 16 projects on four concurrent lanes, **36.6 s wall**
-including packing. The 381 marked samples today take ~17 s; the full 1,095-fence survey
-takes 30 s.
+including packing. Today the 826 marked samples take ~45 s over 16 projects, and the full
+1,103-fence survey ~90 s over 21 --- the survey's extra includes the three builds it spends
+isolating the one diagnostic that lands outside every sample.
 
 **Fill the lanes, not the batches.** Filling each batch to `--batch` before opening another
 put 120, 55, 4 and 3 samples on four lanes --- and a run takes as long as its biggest batch.
@@ -268,6 +277,47 @@ Two things a batch runner must do that a single-fence runner need not:
   split and recurse: O(log n) extra builds, paid only on failure. Verified against the real
   case, with the crashing sample isolated out of a batch and the rest of the batch still
   reporting.
+
+### A diagnostic that lands in a package's own source
+
+**A sample can produce a compiler error that appears in no file the sample is in.** Measured
+shape: a generic instantiated with a type the project does not have is reported against the
+*generic's own type parameter*, inside the package's source ---
+`Packages/WinServicesLib/Sources/ServiceCreator.twin [10,20]: TB5079 Unrecognized datatype
+symbol 'T'` for a sample writing `New ServiceCreator(Of MyService)` with no `MyService`
+anywhere. The sample gets **no diagnostic of its own at all**.
+
+That row matches no generated file, so it used to be filed as a template fault: the run
+failed with a row naming no page, and **the sample was counted as one that compiled**. One
+sample in the corpus is in that shape (`WinServicesLib/index.md#1`) and it is unmarked, so
+the gate was green rather than wrong --- but a marked sample there would have been a false
+pass of exactly the kind this tool exists to end.
+
+Three parts to the fix, each forced:
+
+- **An unreadable row and an unattributable one are different.** A row this cannot parse
+  names no file, so no amount of splitting finds its cause; an ERROR against a file that is
+  not one of the batch's generated samples has a cause among them.
+- **One build of the template with nothing in it decides whose row it is**, memoised per
+  template and shared across lanes. Without that the leaf is ambiguous --- a sample that
+  provoked the row and a template that emits it unprompted look identical --- and guessing
+  the first would bisect every batch to a single sample, hundreds of IDE starts, and then
+  blame an arbitrary one. The probe is lazy, so a clean run pays nothing for it.
+- **The split goes by unit, not by slicing the fence array.** A `projname` group is one
+  program, and a page's `hidden` fences are appended at the *end* of `batch.fences`, so a
+  plain halving took a group apart and dropped one half's context --- manufacturing the
+  failure it then reported. The crash bisect had this fault and nobody had hit it, because a
+  group is rare and a crash is rarer.
+
+Cost on this corpus: **one blame in 1,103 samples, three extra builds.**
+
+**`--only` cuts a `projname` group, and that silence cost an hour.** Narrowing to
+`WinServicesLib/ServiceCreator` left the page that declares `MyService` out of the run while
+keeping three pages that instantiate `ServiceCreator(Of MyService)`, so the isolation blamed
+a sample the full gate passes --- and it was read as a real false pass. `checkGroups` kept
+quiet about it deliberately, on the grounds that the filter is the caller's own doing. It now
+says so as an advisory finding. **A narrowed run's results are not a full run's, and the tool
+has to be the thing that says which.**
 
 ## Traps already paid for
 
@@ -568,7 +618,9 @@ by grep.
   default and 275 worked; the measured evidence does not say where the knee is.
 - `check_run` needs the dispatcher design above, plus the `MsgBox` screen, plus a decision
   about what a sample's *output* is compared against. A sample that prints is a sample whose
-  printed value the page probably states, and that is the check worth having.
+  printed value the page probably states, and that is the check worth having. Deliberately
+  not started --- see [What is left](#what-is-left-277-samples-and-no-lever) for why the
+  editorial pass comes first.
 - A `projname` is global, so two pages choosing `demo` would merge without saying so. Scoping
   it to the page would prevent that and would also prevent a group spanning pages, which a
   multi-page tutorial wants. Left global and documented; revisit if a collision happens.
@@ -578,24 +630,59 @@ by grep.
   precisely "the control instances the samples assume", so they were left. The invented
   *classes* moved, because a class is not a control instance and a page is where it
   belongs. The line between the two is a judgement, not a rule.
-- **283 samples still do not compile.** Three groups:
-  - **`TB5182`** --- a genuine fragment: an elision, a signature with no body, or
-    pseudo-code sitting in a `tb` fence. `VB/MDIForm/index.md` had one of the last kind,
-    a menu-item-to-action table written with `=>`; it is four real handlers now, which
-    both compiles and is what a reader would actually write. The rest want the same
-    judgement, page by page.
-  - **The CustomControls `Framework/` pages**, about nine samples that are one method of a
-    control class. **An `implements=` key cannot rescue them, and that is measured:**
-    `Implements CustomControls.ICustomControl` with only `Initialize` supplied is
-    `TB5000 Missing implementation of member Sub Destroy()` and the same for `Paint()`. A
-    wrapper would have to synthesize stubs for every other member of an interface whose
-    shape the tool does not know. Nor can a `hidden` fence help --- the class has to be one
-    compilation unit, and a hidden fence is a separate one. The fix is editorial: show the
-    enclosing class, which these pages' own prose already half-describes ("custom controls
-    store the **CustomControlContext** in a private field, typically called
-    **ControlContext**").
-  - **One-off helper procedures a sample calls** --- `ProcessMessage`, `Sleep`,
-    `InitializeDefaultValues`. These *are* `hidden`-fence work, and cheap.
+## What is left: 277 samples, and no lever
+
+Live against BETA 983, and reproducible: `--propose --json` writes the survey and
+`--report <file>` groups it. **826 of 1,103 compile, and not one of the other 277 does** ---
+so there is nothing left to *mark*, and the count only moves when a page changes or the
+harness grows a capability.
+
+| by first diagnostic | n |
+|---|---:|
+| `TB5079 Unrecognized symbol` / `datatype symbol` / `token` | 162 |
+| `TB5182 Syntax error. No handler for this symbol` | 47 |
+| `TB5016` implementation does not match its interface member | 8 |
+| `TB5069 Expected a symbol following the dot operator` | 5 |
+| `TB5214 Only allowed inside a With block` | 5 |
+| `TB5027 Unrecognized member` | 4 |
+| the rest, 2 or fewer each | 46 |
+
+**The tail is flat, which is the finding.** 132 distinct names fail to resolve and **105 of
+them appear exactly once**; 110 of the 170 affected pages hold a single failing sample. The
+levers that paid in the second pass worked because one name was worth 65 --- `WebView` --- and
+nothing like that is left. This is editorial work, page by page, and the report is how to pick
+the next page rather than how to fix a class of them.
+
+Where it sits: `Reference/Core` 54, `Default/VB` 46, `Default/VBA` 27, `Built-In/CustomControls`
+25, `Features/Language` 21, `Built-In/tbIDE` 15, `Attributes.md` 12. The single pages worth a
+sitting are `Attributes.md` (12), `Generics.md` (6), `Tutorials/Arrays.md` (6) and
+`WinNamedPipesLib/index.md` (5).
+
+Three groups, unchanged in kind from the first survey:
+
+- **`TB5182`** --- a genuine fragment: an elision, a signature with no body, or pseudo-code
+  sitting in a `tb` fence. `VB/MDIForm/index.md` had one of the last kind, a
+  menu-item-to-action table written with `=>`; it is four real handlers now, which both
+  compiles and is what a reader would actually write. The rest want the same judgement, page
+  by page.
+- **The CustomControls `Framework/` pages**, about nine samples that are one method of a
+  control class. **An `implements=` key cannot rescue them, and that is measured:**
+  `Implements CustomControls.ICustomControl` with only `Initialize` supplied is
+  `TB5000 Missing implementation of member Sub Destroy()` and the same for `Paint()`. A
+  wrapper would have to synthesize stubs for every other member of an interface whose shape
+  the tool does not know. Nor can a `hidden` fence help --- the class has to be one
+  compilation unit, and a hidden fence is a separate one. The fix is editorial: show the
+  enclosing class, which these pages' own prose already half-describes ("custom controls
+  store the **CustomControlContext** in a private field, typically called
+  **ControlContext**").
+- **One-off helper procedures a sample calls** --- `ProcessMessage`, `Sleep`,
+  `InitializeDefaultValues`. These *are* `hidden`-fence work, and cheap.
+
+**`check_run` waits for this work rather than the other way round.** No fence in `docs/`
+carries the marker, so it gates nothing today; and its open question --- what a sample's
+printed output is compared against --- is answered by pages that state a printed value, which
+is what the editorial pass produces. Building the dispatcher first would be building for
+candidates that do not exist yet.
 
 ## What is in the `tb` fences, and why opt-in
 
@@ -605,14 +692,14 @@ samples](WIP.md#compiling-the-references-own-code-samples). This is the census
 that decided the design, printed by `--census`.
 
 The census of what is in the fences, which `--census` prints and which decided the design
---- 1,122 `tb` blocks across 603 pages:
+--- 1,124 `tb` blocks across 603 pages:
 
 | shape | count | share | wrapper |
 |---|---:|---:|---|
-| whole `Class` / `Module` / `Interface` | 62 | 5.5% | none --- its own `.twin` |
+| whole `Class` / `Module` / `Interface` | 63 | 5.6% | none --- its own `.twin` |
 | procedures and module-level declarations | 366 | 32.6% | a generated `Module` |
-| loose statements | 609 | 54.3% | a generated `Module` and `Private Sub` |
-| class code-behind --- declarations | 52 | 4.6% | a generated `Class` |
+| loose statements | 611 | 54.4% | a generated `Module` and `Private Sub` |
+| class code-behind --- declarations | 51 | 4.5% | a generated `Class` |
 | class code-behind --- loose statements | 12 | 1.1% | a generated `Class` and `Private Sub` |
 | fragment --- no wrapper rescues it | 21 | 1.9% | --- |
 
@@ -629,8 +716,11 @@ field called `Type As Long`, and `Overridable` is a modifier. Those are probes n
 table above comes from a script rather than from prose.
 
 **Opt-in is right, but not for the reason first given.** It is not that the corpus resists
-classification --- 98% of it classifies. It is that **54% compiles and 46% does not**, and
-the 46% is overwhelmingly samples that are correct as documentation and incomplete as
-programs: a `With MyLabel` block with no `MyLabel`, a handler for a class the page does not
-define. Marking those would be wrong, and opting them out one by one would be a list of
-five hundred exceptions nobody maintains.
+classification --- 98% of it classifies. It is that when this was decided **54% compiled and
+46% did not**, and the 46% was overwhelmingly samples that are correct as documentation and
+incomplete as programs: a `With MyLabel` block with no `MyLabel`, a handler for a class the
+page does not define. Marking those would be wrong, and opting them out one by one would be a
+list of five hundred exceptions nobody maintains. Two passes of harness work and page edits
+have since taken the compiling share to **75% of the classifiable corpus**, which changes the
+size of the argument and not its shape --- see
+[What is left](#what-is-left-277-samples-and-no-lever).

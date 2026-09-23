@@ -50,7 +50,7 @@ goes --- but a parser meeting nonsense should diagnose it, and this one derefere
 something instead.
 
 **Found by** pointing `scripts/check_examples.mjs` at the documentation's own code samples;
-the skeleton is one of the 1,116 `tb` fences under `docs/`. A crash in a batch of samples
+the skeleton is one of the 1,124 `tb` fences under `docs/`. A crash in a batch of samples
 costs the whole batch its result, which is why that tool bisects on exit code 4.
 
 ---
