@@ -18,14 +18,14 @@ This is then persisted to your project as properties inside your form JSON struc
 The key to making this work is your serialization constructor, which might look something like this:
 
 ```tb
-Public Sub New(Serializer As SerializationInfo)
-   If Not Serializer.Deserialize(Me) Then
+Public Sub New(Serializer As SerializeInfo)
+   If Not Serializer.RuntimeUISrzDeserialize(Me, False) Then
       InitializeDefaultValues  ' you implement this
    End If
 End Sub
 ```
 
-If `Deserialize(Me)` returns `True`, then your class properties were synchronized with the properties set via the form designer.  If it returns `False` then the control has just been added to the form, and this gives you an opportunity to setup any suitable default values for your custom public properties.  The form designer notices default values you set within the serialization constructor, so that your property sheet is kept in-sync.
+If `RuntimeUISrzDeserialize(Me, False)` returns `True`, then your class properties were synchronized with the properties set via the form designer.  If it returns `False` then the control has just been added to the form, and this gives you an opportunity to setup any suitable default values for your custom public properties.  The form designer notices default values you set within the serialization constructor, so that your property sheet is kept in-sync.
 
 ***
 ## Default Values
@@ -33,7 +33,7 @@ An alternative method for setting up default values is to inline them into the c
 
 ![CustomControl MyField = 42](Images/ccMyFieldPropertySheet1b.png)
 
-The `Deserialize(Me)` call inside your serialization constructor will overwrite the property value if  the control is being synchronized from the persisted property sheet data.
+The `RuntimeUISrzDeserialize(Me, False)` call inside your serialization constructor will overwrite the property value if  the control is being synchronized from the persisted property sheet data.
 
 ***
 ## Enumerations
@@ -80,7 +80,7 @@ At the moment, the form-designer doesn't yet support code-behind-forms, so this 
 > If you make changes to your CustomControl class, such as exposing new properties or changing how a control is drawn, these changes will get reflected immediately to any open form designers.  Form designers will show a 'resync' button when you return to them, once pressed the changes will be apparent.
 
 > [!TIP]
-> The serialization happens via JSON when running in the IDE, but via a binary format when running in a compiled DLL/EXE.  The `SerializationInfo` object that is passed to your serialization constructor is a different implementation when running in the IDE, but this should be transparent to you as a CustomControl implementer.
+> The serialization happens via JSON when running in the IDE, but via a binary format when running in a compiled DLL/EXE.  The `SerializeInfo` object that is passed to your serialization constructor is a different implementation when running in the IDE, but this should be transparent to you as a CustomControl implementer.
 
 > [!TIP]
 > When making changes or updates to a CustomControl always consider backwards compatibility.  For example, if you rename an exposed property, the old property values stored via the property sheet won't be deserialized to your new property.
@@ -88,5 +88,5 @@ At the moment, the form-designer doesn't yet support code-behind-forms, so this 
 ***
 ## See also
 
-- [`SerializeInfo`](../../tB/Packages/CustomControls/Framework/SerializeInfo) -- the reference for the current serializer type (the `SerializationInfo` name in the snippets above is the older draft name; the current type is `SerializeInfo` and `Deserialize()` is exposed as `RuntimeUISrzDeserialize()`)
+- [`SerializeInfo`](../../tB/Packages/CustomControls/Framework/SerializeInfo) -- the serializer type passed to the constructor, and the rest of its members
 - [CustomControls package reference](../../tB/Packages/CustomControls/) -- overview of the framework and the built-in `Waynes…` controls

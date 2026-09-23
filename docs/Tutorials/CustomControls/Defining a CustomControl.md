@@ -87,13 +87,10 @@ Note that the form designer works with pixel values which are not DPI-scaled.  S
 CustomControls *must* offer a serialization constructor:
 
 ```tb
-Public Sub New(Serializer As SerializationInfo)
+Public Sub New(Serializer As SerializeInfo)
 ```
 
-The passed in Serializer object offers a `Deserialize()` method that you call to load the properties that have been set for your control via the form designer.  See [Property Sheet and Object Serialization](Properties) for further information.
-
-> [!NOTE]
-> The current framework names the serializer type [`SerializeInfo`](../../tB/Packages/CustomControls/Framework/SerializeInfo) (not `SerializationInfo`), and `Deserialize()` is exposed as `RuntimeUISrzDeserialize()`. See the reference page for the current member names and the design-mode / runtime-mode flags also available on this object.
+The passed in Serializer object offers a `RuntimeUISrzDeserialize()` method that you call to load the properties that have been set for your control via the form designer.  See [Property Sheet and Object Serialization](Properties) for further information, and [`SerializeInfo`](../../tB/Packages/CustomControls/Framework/SerializeInfo) for its other members --- the design-mode flag, the runtime / report mode, and the owner window handle.
 
 ***
 ## See also

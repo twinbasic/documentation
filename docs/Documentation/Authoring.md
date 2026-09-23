@@ -731,6 +731,18 @@ Three severities, used distinctly:
 
 Use one callout per concern, and reserve them for genuine notes --- plain "why this is useful" prose should stay a plain paragraph.
 
+## Document the product as it is
+
+twinBASIC is in a long beta, and names still move. **When one does, document the current
+name and drop the old one.** A superseded name is not history a reader can use: they cannot
+call it, cannot search for it, and have to carry two names in their head to read one
+snippet. Update the sample, update the prose around it, and do not leave a note explaining
+what the thing used to be called.
+
+This is about names that never shipped in a release. A behaviour that changed *between*
+builds is different --- a reader may still be on the older one --- so say which build changed
+it and describe both.
+
 ## Cross-section links
 
 Relative links resolve against a page's **rendered URL** (its `permalink`), not its location in the source tree. A link to a sibling in the same URL folder is a bare name --- `[Dim](Dim)`; crossing into another folder climbs out with `../`. Always link to a page's canonical `permalink`, never to one of its `redirect_from` aliases.
