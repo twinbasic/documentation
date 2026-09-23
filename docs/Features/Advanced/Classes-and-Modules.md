@@ -41,17 +41,18 @@ In a class, module-level variables can be declared as `ReadOnly`, e.g. `Private 
 
 When have a variable in a class such as `Public myVar As Long`, it's treated as a property you can use the standard syntax to get or set. tB adds an optional notification event for when the Get/Let/Set occurs that's accessed through the regular `Handles` syntax:
 
-```tb
+```tb check_build
 Class MyClass
     Public myVar As Long
     Public myOtherVar As Long
     Private Sub OnChangeMyVars() Handles myVar.OnPropertyLet, myOtherVar.OnPropertyLet, _
                                          myVar.OnPropertySet, myOtherVar.OnPropertySet
-    ...
+    ' ...
     End Sub
     Private Sub OnGetMyVar() Handles myVar.OnPropertyGet, myOtherVar.OnPropertyGet
-    ...
+    ' ...
     End Sub
+End Class
 ```
 
 These are notifications only, you can't change the `OnPropertyGet` method to a function and override the return.

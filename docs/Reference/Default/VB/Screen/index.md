@@ -10,7 +10,14 @@ has_toc: false
 
 The **Screen** class wraps the user's primary display --- its dimensions and twip-to-pixel ratio, the list of installed fonts, the currently active [**Form**](../Form/) and the currently focused control on that form, and the application-wide mouse-pointer override. It is a singleton: there is exactly one **Screen** instance per process, owned by the runtime and exposed through the [**Screen**](../Global/#screen) property of the [**Global**](../Global/) app-object. Code reaches it without qualification:
 
-```tb
+```tb hidden
+' Context for the sample below: the long task it shows an hourglass over, which
+' belongs to the reader's program.
+Public Sub LongRunningWork()
+End Sub
+```
+
+```tb check_build inherits=Form
 ' Centre a form on the primary display
 Me.Left = (Screen.Width  - Me.Width)  \ 2
 Me.Top  = (Screen.Height - Me.Height) \ 2
@@ -50,7 +57,7 @@ Private Sub tbrEdit_ButtonClick(ByVal Button As MSComctlLib.Button)
     Select Case Button.Key
         Case "Cut":   f.ActiveControl.SelText = ""
         Case "Copy":  Clipboard.SetText f.ActiveControl.SelText
-        ...
+        ' ...
     End Select
 End Sub
 ```

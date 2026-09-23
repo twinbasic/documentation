@@ -33,9 +33,10 @@ With the **Preserve** keyword, only the last array dimension can be resized, and
 
 The following example shows how to increase the size of the last dimension of a dynamic array without erasing any existing data contained in the array.
 
-```tb
+```tb check_build
+Dim X() As Long
 ReDim X(10, 10, 10)
-. . .
+' ...
 ReDim Preserve X(10, 10, 15)
 ```
 

@@ -244,6 +244,10 @@ const WITHEVENTS = rx("WithEvents\\b");
 // Checked after the openers above, so `Public Sub`, `Public Enum` and
 // `Public Declare` have already been claimed by the rules that know them.
 const ACCESS_DECL = /^(?:Public|Private|Friend|Global)\s+/i;
+// The VB6 default-type statements, which are module-level only. The list is the
+// full set the compiler accepts, not the ones this corpus happens to use.
+const DEFTYPE =
+  /^Def(?:Bool|Byte|Cur|Date|Dbl|Dec|Int|LngLng|LngPtr|Lng|Obj|Sng|Str|Var)\s+[A-Z]/i;
 const OPTION_RE = /^Option\s+/i;
 const ATTRIBUTE_RE = /^\[[A-Za-z_]/;
 const DIMLIKE = rx("(?:Dim|Const|ReDim)\\b");
@@ -459,6 +463,16 @@ export function classify(content) {
     // pages for the two keywords. `Static` is deliberately not in the list: it
     // IS legal inside a procedure.
     if (ACCESS_DECL.test(text)) {
+      if (top) sawModuleOnly = true;
+      continue;
+    }
+    // ...and neither is a Deftype. `DefInt A-Z` sets the default type for a
+    // whole module and is legal nowhere else, so reading it as a statement put
+    // Reference/Core/Deftype.md's own samples in a generated Sub, where the
+    // compiler answered `Unrecognized symbol 'DefInt'` -- which reads as "this
+    // language has no Deftype" and is not what it means. At module scope the
+    // same line compiles, asked directly.
+    if (DEFTYPE.test(text)) {
       if (top) sawModuleOnly = true;
       continue;
     }

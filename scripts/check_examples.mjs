@@ -960,6 +960,11 @@ const CLASSIFIER_PROBES = [
   ["a Private Const", "Private Const Answer As Long = 42\n", "module"],
   // ...but Static IS legal in a procedure, so it stays a statement.
   ["a Static local", "Static Accumulate As Long\nAccumulate = 1\n", "sub"],
+  // A Deftype is module-level only, and asked directly the compiler accepts it
+  // there -- so the wrong container was the whole of `Unrecognized symbol
+  // 'DefInt'` on the page that documents it.
+  ["a Deftype", "DefInt A-Z\nDim TaxRate As Double\n", "module"],
+  ["Default is a modifier, not a Deftype", "Default Property Get Item() As Long\nEnd Property\n", "module"],
   // ...but only at container scope. Inside a Class the fence brings its own.
   ["WithEvents inside a whole Class", "Class C\n    Private WithEvents srv As Foo\nEnd Class\n", "file"],
 ];

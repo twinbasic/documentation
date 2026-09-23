@@ -55,8 +55,10 @@ For example, in the following fragment, `Message` is a **String** variable:
 
 ```tb
 DefStr A-Q
-. . .
-Message = "Out of stack space."
+' ...
+Sub Demo()
+    Message = "Out of stack space."   ' Message is a String, by DefStr above
+End Sub
 ```
 
 A **Def**_type_ statement affects only the module where it is used. The default data type for variables, arguments, and return types of items not declared explicitly and not covered by a **Def**_type_ statement is **Variant**.
@@ -65,7 +67,7 @@ A letter range usually defines the data type for variables that begin with lette
 
 After the range A-Z has been specified, subranges cannot be further redefined by using **Def**_type_ statements. Once a range has been specified, including a previously defined letter in another **Def**_type_ statement is an error. The data type of any variable --- defined or not --- can still be explicitly specified by using a [**Dim**](Dim) statement with an **As** *type* clause:
 
-```tb
+```tb check_build
 DefInt A-Z
 Dim TaxRate As Double   ' explicit declaration overrides the default
 ```
