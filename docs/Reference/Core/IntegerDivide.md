@@ -23,13 +23,19 @@ Syntax:
 *number*, *number1*, *number2*
 : Any numeric expressions.
 
-Before division is performed, the numeric expressions are rounded to **Byte**, **Integer**, **Long**, or **LongLong** expressions.
+Before division is performed, the numeric expressions are rounded to whole numbers. A value exactly halfway between two whole numbers is rounded to the even one, so `6.5 \ 2` is 3 and `7.5 \ 2` is 4.
 
-Usually, the data type of *result* is a **Byte**, **Byte** variant, **Integer**, **Integer** variant, **Long**, **Long** variant, or **LongLong**, regardless of whether *result* is a whole number.
+Usually, the data type of *result* is a **Byte**, **Byte** variant, **Integer**, **Integer** variant, **Long**, **Long** variant, **LongLong**, or **LongLong** variant, regardless of whether *result* is a whole number: **Byte** when both expressions are **Byte**, **Integer** when both are **Byte**, **Integer** or **Boolean**, **LongLong** when either is **LongLong**, and **Long** otherwise. A declared **Decimal** expression gives a **Decimal** *result*, still a whole number; a **Decimal** held in a **Variant** gives a **Long**. See [Result types and promotion](../../Reference/Operators#result-types-and-promotion).
 
-Any fractional portion of the quotient is discarded. However, if any expression is **Null**, *result* is **Null**. Any expression that is **Empty** is treated as 0.
+Any fractional portion of the quotient is discarded, so the quotient is truncated toward zero: `-7 \ 2` is -3. However, if any expression is **Null**, *result* is **Null**. Any expression that is **Empty** is treated as 0.
 
-Dividing by zero raises a run-time error.
+Dividing by zero raises error 11, *Division by zero*.
+
+> [!WARNING]
+> Dividing the most negative **Integer** (-32,768) or **Long** (-2,147,483,648) by -1 does not raise error 6. It raises a native overflow exception that `On Error` does not handle, and the procedure stops at that line. The same division on **LongLong** returns the most negative **LongLong** unchanged, with no error. A **Variant** holding the **Integer** gives a **Long** 32,768.
+
+> [!NOTE]
+> **Decimal** can be a declared type in twinBASIC, and integer division keeps it: a declared **Decimal** on either side gives a **Decimal** *result*. In VBA, **Decimal** exists only inside a **Variant**. **LongLong** takes part in 32-bit builds as well; VBA has it only in 64-bit builds.
 
 ### Compound assignment
 

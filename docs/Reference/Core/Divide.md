@@ -23,15 +23,21 @@ Syntax:
 *number*, *number1*, *number2*
 : Any numeric expressions.
 
-The data type of *result* is usually a **Double** or a **Double** variant. The following are exceptions:
+The data type of *result* is usually a **Double** or a **Double** variant, whatever the types of the operands --- `Integer / Integer` is a **Double**. The following are exceptions:
 
 | If                                                              | Then *result* is                                                                       |
 |:----------------------------------------------------------------|:---------------------------------------------------------------------------------------|
-| At least one expression is **Single** and neither is **Long**   | A **Single** unless it overflows its legal range, in which case an error occurs.       |
+| Either expression is **Decimal**                                | A **Decimal**.                                                                         |
+| One expression is **Single** and the other is a **Byte**, **Integer**, **Boolean** or **Single** | A **Single**. A declared **Single** that overflows raises error 6, *Overflow*; a **Single** variant that overflows becomes a **Double** variant. |
 | One or both expressions are **Null**                            | **Null**.                                                                              |
 | An expression is **Empty**                                      | Treated as 0.                                                                          |
 
-Dividing by zero raises a run-time error. Use [**\\**](IntegerDivide) for truncating-integer division and [**Mod**](Mod) for remainder.
+A **Single** divided by a **Long**, **LongLong**, **Double**, **Currency** or **Date** is a **Double**, and so is a **Currency** divided by anything except a **Decimal**. See [Result types and promotion](../../Reference/Operators#result-types-and-promotion) for the rules of every arithmetic operator.
+
+Dividing by zero raises error 11, *Division by zero*, and zero divided by zero raises error 6, *Overflow*. Use [**\\**](IntegerDivide) for truncating-integer division and [**Mod**](Mod) for remainder.
+
+> [!NOTE]
+> **Decimal** can be a declared type in twinBASIC, so dividing by or into a declared **Decimal** gives a declared **Decimal**. In VBA, **Decimal** exists only inside a **Variant**.
 
 ### Compound assignment
 

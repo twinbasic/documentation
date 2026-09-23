@@ -51,7 +51,7 @@ The suffix column lists the character that can optionally follow a literal or id
 
 **LongPtr** changes width with the compilation target: 4 bytes in a 32-bit build, 8 bytes in a 64-bit build. It is the correct type for Win32 handles, window handles (**HWND**), and pointers in `Declare` statements that must work in both modes. It has no literal suffix --- declare the variable with `Dim x As LongPtr` and assign it a numeric expression.
 
-Integer overflow raises a run-time error (error 6) by default. Overflow does not wrap silently.
+Integer overflow raises a run-time error (error 6) by default. Overflow does not wrap silently, with one exception: integer division of the most negative value by -1, described under [the **\\** operator](../tB/Core/IntegerDivide). Which type an arithmetic result has, and so where it overflows, is set out in [Result types and promotion](Operators#result-types-and-promotion).
 
 ---
 
@@ -63,7 +63,7 @@ Integer overflow raises a run-time error (error 6) by default. Overflow does not
 
 **Single** is accurate to approximately 6--7 significant decimal digits. It is smaller and may be faster in tight loops, but the reduced precision makes it unsuitable for financial or scientific calculations where rounding error matters.
 
-**Currency** is a fixed-point type, stored internally as a 64-bit signed integer scaled by 10,000. It avoids the binary rounding errors of IEEE 754 types and carries exactly four decimal places. Use it for monetary values and any calculation where exact decimal rounding is required.
+**Currency** is a fixed-point type, stored internally as a 64-bit signed integer scaled by 10,000. It avoids the binary rounding errors of IEEE 754 types and has exactly four decimal places; a value with more places is rounded to four, and a value exactly halfway is rounded to the even digit, so `CCur("0.12345")` is 0.1234. It suits monetary values whose amounts and intermediate results never need more than four decimal places --- [Decimal or Currency for money](#decimal-or-currency-for-money) compares the two types.
 
 ---
 
@@ -71,8 +71,27 @@ Integer overflow raises a run-time error (error 6) by default. Overflow does not
 
 **Decimal** is a 16-byte type using a 12-byte (96-bit) integer with a variable decimal-point scale and a sign bit. It provides up to 29 significant digits and up to 28 decimal places, making it the highest-precision numeric type available.
 
+**Decimal** stores decimal fractions exactly: ten additions of `CDec("0.1")` equal 1, where the same sum of **Double** values does not, and `CDec("1000.01") * CDec("0.0325")` is exactly 32.500325. Division is rounded to fit the type --- `CDec(1) / 3` keeps 28 decimal places --- so `CDec(1) / 3 * 3` is 0.9999999999999999999999999999, not 1.
+
+**Decimal** ranks above every other numeric type in arithmetic: a **Decimal** combined with any other type, including **Double**, **Currency** and **Date**, gives a **Decimal**. The exceptions are `^`, which always gives a **Double**, and `\` and `Mod`, which give a **Long** or **LongLong** when either operand is a **Variant**. See [Result types and promotion](Operators#result-types-and-promotion).
+
 > [!NOTE]
 > In twinBASIC, **Decimal** is available both as a **Variant** subtype (as in VBA) and as a standalone declared type --- `Dim x As Decimal` compiles and runs. The conversion function [**CDec**](../tB/Modules/Conversion/CDec) returns a **Decimal** value.
+
+### Decimal or Currency for money
+
+Both types store decimal fractions exactly, and both are suitable for money. They differ in how many decimal places they keep, how large a value they hold, and what mixing them with a **Double** gives:
+
+| Compared | **Currency** | **Decimal** |
+|:--|:--|:--|
+| Decimal places | 4 | up to 28 |
+| Largest value | 922,337,203,685,477.5807 | 79,228,162,514,264,337,593,543,950,335 |
+| A rate of 0.03125 | stored as 0.0312 | stored as 0.03125 |
+| 1000.01 × 0.0325 | 32.5003 | 32.500325 |
+| 10 / 3 | a **Double**, 3.33333333333333 | a **Decimal**, 3.3333333333333333333333333333 |
+| With a **Double** | **Currency** under `+` and `-`, **Double** under `*` and `/` | **Decimal** under `+`, `-`, `*` and `/` |
+
+**Currency** is enough when every amount and every intermediate result has at most four decimal places. **Decimal** keeps more: interest rates with five or more places, per-unit prices, and the results of division. Code that holds money in a **Variant** filled by [**CDec**](../tB/Modules/Conversion/CDec) gets the same result types from a declared **Decimal**, except under `\` and `Mod`, where the **Variant** gives a **Long**.
 
 ---
 
@@ -80,7 +99,30 @@ Integer overflow raises a run-time error (error 6) by default. Overflow does not
 
 **Date** is stored as an IEEE 754 double: the integer part counts days from the epoch (December 30, 1899), and the fractional part represents the time of day (0.0 at midnight, 0.5 at noon). The representable range is January 1, 100 to December 31, 9999.
 
-The [**Date**](../tB/Modules/DateTime/Date) and [**Time**](../tB/Modules/DateTime/Time) properties return the current date and time. [**Now**](../tB/Modules/DateTime/Now) returns both combined. Because **Date** is ultimately a **Double**, arithmetic on **Date** values works: adding 1 advances by one day, subtracting two dates gives the number of days between them.
+The [**Date**](../tB/Modules/DateTime/Date) and [**Time**](../tB/Modules/DateTime/Time) properties return the current date and time. [**Now**](../tB/Modules/DateTime/Now) returns both combined. Because **Date** is ultimately a **Double**, arithmetic on **Date** values works: adding 1 advances by one day, subtracting two dates gives the number of days between them. A **Date** plus or minus a number is still a **Date**, and the difference of two **Date** values is a **Double** --- see [Result types and promotion](Operators#result-types-and-promotion).
+
+### Date literals
+
+A date literal is a date, a time of day, or both, written between number signs (`#`). Its type is **Date**, and its value is fixed when the project is compiled: the executable holds the number, not the text, so the regional settings of the machine that runs the program do not affect it.
+
+```tb check_build
+Dim Deadline As Date = #2026-03-17#          ' March 17, 2026
+Dim Reminder As Date = #1:45 PM#             ' 1:45 PM on December 30, 1899, which is day 0
+Dim Meeting As Date = #3/17/2026 13:45:30#   ' March 17, 2026, 1:45:30 PM
+```
+
+The date can be written month first with `/` or `-` between the parts (`#3/17/2026#`, `#3-17-2026#`), year first (`#2026-03-17#`, `#2026/3/17#`), or with an English month name (`#Mar 17, 2026#`, `#17 March 2026#`). The time can be 24-hour (`#13:45#`, `#13:45:30#`) or 12-hour with `AM` or `PM` in either case (`#1:45 PM#`, `#1:45 pm#`). A literal with both puts a space between the date and the time. A time on its own has the date part December 30, 1899.
+
+The compiler reads the parts in the same order whatever the regional format of the machine that compiles the project. These results were measured under English (United States) and under English (United Kingdom), whose short dates put the month and the day in opposite orders:
+
+- `#1/2/2026#` is January 2, 2026, under both: the first number is always the month.
+- When the first number cannot be a month, the first two numbers are swapped: `#13/1/2026#` is January 13, 2026. So a day-first literal compiles without a diagnostic, and is read correctly only when its day is 13 or more.
+- A two-digit year was placed between 1950 and 2049, the range the machine's Windows settings specify for two-digit years: `#1/2/49#` is 2049, and `#1/2/50#` is 1950.
+- A literal with no year, such as `#1/2#`, takes the year in which the project is compiled.
+- A literal that is not a real date or time is a compile error, *TB5085 bad date*: `#2/29/2026#`, `#2/30/2026#`, `#24:00#` and `#13:60#` are all refused. So are fractional seconds (`#13:45:30.5#`), a `T` between the date and the time (`#2026-01-02T13:45:30#`), and, under English (United States), dots between the parts of a date (`#1.2.2026#`).
+
+> [!NOTE]
+> A date literal and [**CDate**](../tB/Modules/Conversion/CDate) can read the same text differently. The literal is read month first, when the project is compiled; **CDate** reads a string in the order of the regional format of the machine the program runs on. Under English (United Kingdom), `#1/2/2026#` is January 2 and `CDate("1/2/2026")` is February 1. Written year first, `#2026-01-02#` and `CDate("2026-01-02")` are January 2 under both formats.
 
 ---
 

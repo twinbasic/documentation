@@ -23,7 +23,7 @@ Syntax:
 *expression*, *expression1*, *expression2*
 : Any expressions.
 
-If an *expression* is not a string, it is converted to a **String** variant. The data type of *result* is **String** if both *expressions* are string expressions; otherwise, *result* is a **String** variant.
+If an *expression* is not a string, it is converted to a **String**. The data type of *result* is **String** when neither *expression* is a **Variant**, whatever their types --- `3 & 4` is the **String** `"34"`. When either *expression* is a **Variant**, *result* is a **Variant** containing a **String**. See [Result types and promotion](../../Reference/Operators#result-types-and-promotion) for the arithmetic operators.
 
 If both expressions are **Null**, *result* is **Null**. However, if only one *expression* is **Null**, that expression is treated as a zero-length string (`""`) when concatenated with the other expression. Any expression that is **Empty** is also treated as a zero-length string.
 

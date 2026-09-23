@@ -51,7 +51,7 @@ The right operand is evaluated only when the left operand does not already deter
 
 ## Bitshift
 
-*(twinBASIC)* Shifts are *logical* --- vacated bits are filled with zero, and shifts past the operand's width yield `0` rather than wrapping.
+*(twinBASIC)* On the integral types --- **Byte**, **Integer**, **Long**, **LongLong** and **LongPtr** --- shifts are *logical*: vacated bits are filled with zero, and a shift by the operand's width or more yields `0` rather than wrapping. Each operator's page describes what happens with other operand types and with constant operands.
 
 - [\<<](../tB/Core/LeftShift) -- (twinBASIC) shifts a numeric value left by a given number of bits
 - [\>>](../tB/Core/RightShift) -- (twinBASIC) shifts a numeric value right by a given number of bits
@@ -103,3 +103,58 @@ Within each category, the order from highest to lowest precedence is:
 Comparison operators all have equal precedence and evaluate left-to-right. Multiplication and division also evaluate left-to-right when they appear together, as do addition and subtraction. The `&` operator is not strictly arithmetic, but in precedence it follows all arithmetic operators and precedes all comparison operators.
 
 The compound-assignment operators (`+=`, `-=`, `*=`, `/=`, `^=`, `&=`, `<<=`, `>>=`) appear only at statement level --- they are not part of any expression, so they do not participate in precedence.
+
+## Result Types and Promotion
+
+The type of an arithmetic result depends only on the types of the operands, never on the variable that receives it. With `Count` declared **As Integer**, `Total = Count * 1000` multiplies two **Integer** values --- the literal `1000` is an **Integer** too --- and raises error 6, *Overflow*, once the product passes 32,767, even when `Total` is a **Long**. Writing `Count * 1000&` makes it a **Long** multiplication.
+
+### Declared types
+
+For `+`, `-` and `*`, the result has the type of whichever operand ranks higher:
+
+**Byte** < **Integer** < **Long** < **LongLong** < **Single** < **Double** < **Currency** < **Decimal**
+
+with these exceptions:
+
+- A **Boolean** counts as an **Integer**. A **String** counts as a **Double** and is converted to a number, except that `+` joins two **String** operands instead of adding them.
+- A **Single** combined with a **Long** or **LongLong** gives a **Double**.
+- For `*` only, **Single** and **Double** rank above **Currency**: `Currency * Double` and `Currency * Single` are **Double**.
+- A **Date** under `+` or `-` gives a **Date**, and a **Date** minus a **Date** gives a **Double**, the number of days between them. Under `*`, a **Date** counts as a **Double**. A **Decimal** outranks a **Date** under all three.
+- **LongPtr** is **Long** in a 32-bit build and **LongLong** in a 64-bit build, and ranks as that type.
+
+The other operators:
+
+| Operator | Result type |
+|:---------|:------------|
+| `/` | **Decimal** if either operand is **Decimal**; otherwise **Single** if one operand is **Single** and the other is **Byte**, **Integer**, **Boolean** or **Single**; otherwise **Double** |
+| `\`, `Mod` | **Decimal** if either operand is **Decimal**; otherwise **LongLong** if either is **LongLong**; otherwise **Byte** if both are **Byte**, **Integer** if both are **Byte**, **Integer** or **Boolean**, and **Long** in every other case. The operands are rounded to whole numbers first, and a value exactly halfway goes to the even neighbour: `6.5 \ 2` is 3 and `7.5 \ 2` is 4 |
+| `^` | **Double**, whatever the operand types |
+| `&` | **String** |
+| unary `-` | the operand's own type, except **Integer** for a **Byte** or **Boolean** and **Double** for a **String** |
+
+A result that does not fit its type raises error 6, *Overflow*, with one exception described under [the **\\** operator](../tB/Core/IntegerDivide). Some combinations that matter when porting code:
+
+| Expression | Result |
+|:-----------|:-------|
+| **Decimal** `*` **Integer** | **Decimal** |
+| **Decimal** `+` **Double** | **Decimal** |
+| **Currency** `+` **Double** | **Currency** |
+| **Currency** `*` **Double** | **Double** |
+| **Currency** `/` **Currency** | **Double** |
+| **Integer** `/` **Integer** | **Double** |
+| **Integer** `*` **Integer** | **Integer**, which overflows past 32,767 |
+| **Single** `+` **Long** | **Double** |
+| **Date** `+` **Integer** | **Date** |
+| **String** `+` **Integer** | **Double**: `"34" + 6` is 40 |
+
+### Variant operands
+
+When either operand is a **Variant**, the result is a **Variant**, and the value it holds has the type the rules above give for the values the operands hold: a **Variant** holding a **Decimal** times an **Integer** holds a **Decimal**. The differences:
+
+- **A result that does not fit is widened instead of raising an error** under `+`, `-`, `*`, `/` and unary `-`. It moves along **Byte**, **Integer**, **Long**, **Double** to the first type that holds it --- `255 * 255` held in **Byte** variants is a **Long** 65,025 --- and a **LongLong**, **Single** or **Date** result becomes a **Double**. So an **Integer** variable holding 32,767 plus a **Variant** holding 1 is a **Long** 32,768, where the same variable plus the literal `1` raises error 6. **Double**, **Currency** and **Decimal** results still raise error 6.
+- `\` and `Mod` treat a **Decimal** as a **Long** when either operand is a **Variant**, so the result is a **Long** (a **LongLong** beside a **LongLong**). Declared **Decimal** operands give a **Decimal**.
+- **Empty** counts as 0, or as a zero-length string when it is joined to a **String**. `Empty + x` is *x*, except that a **Boolean** becomes an **Integer**.
+- **Null** as either operand makes the result **Null**. Under `&`, **Null** counts as a zero-length string unless both operands are **Null**.
+
+> [!NOTE]
+> **LongLong** and **Decimal** take part in these rules in every twinBASIC build. **LongLong** exists in 32-bit builds as well, and **Decimal** can be a declared type, so an expression of declared types can have a **Decimal** result. VBA has **LongLong** only in 64-bit builds, and **Decimal** only inside a **Variant**.

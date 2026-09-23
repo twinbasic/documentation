@@ -29,12 +29,13 @@ If at least one expression is not a **Variant**, the following rules apply:
 
 | If                                                                              | Then                                                  |
 |:--------------------------------------------------------------------------------|:------------------------------------------------------|
-| Both expressions are numeric (**Byte**, **Boolean**, **Integer**, **Long**, **LongLong**, **LongPtr**, **Single**, **Double**, **Date**, **Currency**) | Add. |
+| Both expressions are numeric (**Byte**, **Boolean**, **Integer**, **Long**, **LongLong**, **LongPtr**, **Single**, **Double**, **Date**, **Currency**, **Decimal**) | Add. |
 | Both expressions are **String**                                                 | Concatenate.                                          |
+| One expression is numeric and the other is a **String**                         | Convert the **String** to a number and add: `"34" + 6` is 40. A **String** that is not a number raises error 13, *Type mismatch*. |
 | One expression is numeric and the other is any **Variant** except **Null**      | Add.                                                  |
-| One expression is **String** and the other is any **Variant** except **Null**   | Concatenate.                                          |
-| One expression is an **Empty** **Variant**                                      | Return the remaining expression unchanged as *result*.|
-| One expression is numeric and the other is a **String**                         | A `Type mismatch` error occurs.                       |
+| One expression is **String** and the other is a **Variant** holding a **String** or **Empty** | Concatenate.                            |
+| One expression is **String** and the other is a **Variant** holding a number, **Date** or **Boolean** | Add.                              |
+| One expression is an **Empty** **Variant**                                      | Return the remaining expression unchanged as *result*, except that a **Boolean** becomes an **Integer**. |
 | Either expression is **Null**                                                   | *result* is **Null**.                                 |
 
 If both expressions are **Variant** expressions, the following rules apply:
@@ -45,20 +46,25 @@ If both expressions are **Variant** expressions, the following rules apply:
 | Both **Variant** expressions are strings                        | Concatenate. |
 | One **Variant** expression is numeric and the other is a string | Add.         |
 
-For simple arithmetic addition involving only numeric expressions, the data type of *result* is usually the same as that of the most precise expression. The order of precision, from least to most precise, is **Byte**, **Integer**, **Long**, **LongLong**, **Single**, **Double**, **Currency**. The following are exceptions:
+For simple arithmetic addition involving only numeric expressions, the data type of *result* is usually the same as that of the most precise expression. The order of precision, from least to most precise, is **Byte**, **Integer**, **Long**, **LongLong**, **Single**, **Double**, **Currency**, **Decimal**. A **Boolean** counts as an **Integer**, a **String** as a **Double**, and a **LongPtr** as a **Long** in a 32-bit build or a **LongLong** in a 64-bit build. The following are exceptions:
 
 | If                                                                                        | Then *result* is                  |
 |:------------------------------------------------------------------------------------------|:----------------------------------|
-| A **Single** and a **Long** are added                                                     | A **Double**.                     |
-| *result* is a **Long**, **Single**, or **Date** variant that overflows its legal range    | Converted to a **Double** variant.|
+| A **Single** and a **Long** or **LongLong** are added                                     | A **Double**.                     |
+| *result* is a **Long**, **LongLong**, **Single**, or **Date** variant that overflows its legal range | Converted to a **Double** variant.|
 | *result* is a **Byte** variant that overflows its legal range                             | Converted to an **Integer** variant.|
 | *result* is an **Integer** variant that overflows its legal range                         | Converted to a **Long** variant.  |
-| A **Date** is added to any data type                                                      | A **Date**.                       |
+| A **Date** is added to any data type except **Decimal**                                   | A **Date**.                       |
 
-If one or both expressions are **Null** expressions, *result* is **Null**. If both expressions are **Empty**, *result* is an **Integer**. However, if only one expression is **Empty**, the other expression is returned unchanged as *result*.
+A declared (non-**Variant**) result that overflows raises error 6, *Overflow*. If one or both expressions are **Null** expressions, *result* is **Null**. If both expressions are **Empty**, *result* is an **Integer**. However, if only one expression is **Empty**, the other expression is returned unchanged as *result*.
 
 > [!NOTE]
 > The order of precision used by addition and subtraction is not the same as the order of precision used by multiplication.
+
+The rules for every arithmetic operator, including a list of the combinations that matter most when porting code, are collected under [Result types and promotion](../../Reference/Operators#result-types-and-promotion).
+
+> [!NOTE]
+> **LongLong** and **Decimal** take part in addition in every twinBASIC build: **LongLong** exists in 32-bit builds as well, and **Decimal** can be a declared type, so adding a declared **Decimal** to any other numeric type gives a declared **Decimal**. VBA has **LongLong** only in 64-bit builds, and **Decimal** only inside a **Variant**.
 
 ### Compound assignment
 

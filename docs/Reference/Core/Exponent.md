@@ -23,9 +23,9 @@ Syntax:
 *number*, *exponent*
 : Any numeric expressions.
 
-*number* can be negative only if *exponent* is an integer value. When more than one exponentiation is performed in a single expression, the **^** operator is evaluated as it is encountered from left to right.
+*number* can be negative only if *exponent* is an integer value; otherwise error 5, *Invalid procedure call or argument*, is raised, as it is for 0 raised to a negative power. When more than one exponentiation is performed in a single expression, the **^** operator is evaluated as it is encountered from left to right.
 
-Usually, the data type of *result* is a **Double** or a **Variant** containing a **Double**. However, if either *number* or *exponent* is a **Null** expression, *result* is **Null**.
+The data type of *result* is a **Double**, or a **Variant** containing a **Double** when either operand is a **Variant**, whatever the operand types --- a **Decimal** or **Currency** *number* also gives a **Double**. However, if either *number* or *exponent* is a **Null** expression, *result* is **Null**. See [Result types and promotion](../../Reference/Operators#result-types-and-promotion) for the other arithmetic operators.
 
 ### Compound assignment
 

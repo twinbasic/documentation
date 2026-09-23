@@ -276,6 +276,12 @@ make the other four point at it.
 two control packages (8); a comment on `_config.yml:45` (corrections); a remedy sentence and
 the book's real shape on `docs/index.md` (14); `Debug.Print` a page (11).
 
+> **Done.** Round 7 ran on 2026-09-23 at `60bb6f5` ---
+> [REVIEW-USECASES-60bb6f5.md](REVIEW-USECASES-60bb6f5.md). UC-40 went from 1 to 4 on
+> discoverability once the fix below was actually made, UC-49's hazard failure is gone,
+> and the tutorial case this item asked for was run end to end --- and found a failure
+> path described wrongly on five pages.
+
 **5. Round 7 candidates.** Re-run **UC-40**, whose fix demonstrably did not work and whose
 remedy is now known to be about vocabulary rather than matching --- and **UC-49** and
 **UC-53** once their samples are fixed, since a corrected example is exactly the kind of
@@ -286,7 +292,8 @@ follows a tutorial end to end and runs what it produces.
 ## Outcome
 
 **Twelve of the fourteen findings are closed.** `build.bat`, `check.bat` and `test.bat` are
-green; the site is 909 pages, one more than at review time.
+green; the site is 909 pages, one more than at review time. *The last two, findings 10 and
+12, closed during round 7 --- see the end of this section.*
 
 ### The samples
 
@@ -403,7 +410,7 @@ and a 250-entry opt-out list is not maintained. The tractable direction is to ma
 fences that claim to be complete and compile only those --- which makes the marker the
 design problem, not the harness. **Not started, deliberately.**
 
-### Two findings left open, both for the same reason
+### Two findings left open, both for the same reason --- closed in round 7
 
 **Finding 11 is now closed, and the way it closed is the point.** A maintainer supplied the
 member list --- `Cls`, `Print`, `Assert`, `TracePrint` --- and the rest was verified rather
@@ -430,16 +437,26 @@ boost, and `Debug.Print` is what a reader types, so the headings now read `Debug
 with the short anchors pinned. All four members went to **rank 1**. That is round 6's own
 lesson applied at authoring time instead of a round later.
 
-**Finding 12 (date literals) is still open**, and needs a primary source this repository
-does not contain. `Debug` appears in worked
-examples on eight-plus Features pages and nowhere is its member list stated; whether
-`#1/1/2026#` is month-first is stated nowhere either. Writing either page means either
-exporting the package `.twin` sources or compiling a probe --- both documented, both real
-work --- and the alternative is inventing semantics into a language reference, which is the
-one thing the authoring rules forbid outright.
+**Findings 10 and 12 are closed**, on 2026-09-23 during round 7, by an agent measuring
+against the compiler with `scripts/tbrun.mjs` --- about 150 probe projects on BETA 983 ---
+and spot-checked independently by the orchestrator, 12 claims of 12 agreeing. The paragraph
+that stood here said finding 12 needed "a primary source this repository does not
+contain"; `tbrun`, which appeared a day later, is that source.
 
-**Finding 10 (no numeric type-promotion rules) is the same, and larger.** It is the question
-UC-50 was actually set --- whether `Decimal * Integer` stays `Decimal` --- and answering it
-properly means documenting promotion across the operator set, not one probe's answer. An
-IDE install is present, so `scripts/tbbuild.mjs` can settle it; that is a session's work
-with a compiler, not a line of prose.
+- **Finding 10.** `Reference/Operators.md` has a *Result Types and Promotion* section: the
+  ranking for `+`, `-` and `*`, the rules for `/`, `\`, `Mod`, `^` and `&`, the **Variant**
+  differences, and a table of porting cases. **`Decimal * Integer` stays `Decimal`**,
+  declared or in a **Variant**. `Data-Types.md` compares **Decimal** and **Currency** for
+  money, and the ten operator pages were corrected against measurement --- claims on them
+  were wrong, among them that a number plus a **String** raises *Type mismatch* (it adds)
+  and that a shift truncates a floating-point operand (it does not compile).
+- **Finding 12.** `Data-Types.md` has a canonical *Date literals* section. `#1/2/2026#` is
+  January 2; `#13/1/2026#` silently becomes January 13; the value is fixed at compile time.
+  **A literal is month-first whatever the regional format.** That was the one question
+  the agent could not settle, because this machine was en-US and there a literal read
+  exactly as `CDate` reads the same text. The maintainer switched the regional format to
+  English (United Kingdom) and the same probe was compiled again: `#1/2/2026#` was still
+  January 2, while `CDate("1/2/2026")` became February 1. The page states the order as
+  settled and says in a NOTE that a literal and `CDate` read the same text differently.
+
+Five compiler defects the probes found are queued in `BUGS-TO-REPORT.md`.
