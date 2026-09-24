@@ -58,6 +58,12 @@ Git makes the files in `.git\objects` read-only. When the target is the top fold
 
 When the target is the folder that holds the `.twinproj`, the command deletes the `.twinproj` file too. The project then exists only in the open IDE, until **Save Project** (<kbd>CTRL</kbd> + <kbd>S</kbd>) writes the file back. For this reason the Project Settings dialog refuses `${SourcePath}` on its own as the *Export Path*, but it accepts the same folder written out in full.
 
+### Packing the export back into a project
+
+The `Packages` folder holds the compiler packages as well: for a project with the default references, **VB**, **VBA**, **VBRUN** and the package behind the **App** object. A `.twinproj` file that the IDE saved does not hold them, and the `export` command of the tB executable does not write them.
+
+The tB executable's `import` cannot pack a folder that holds packages. It stops at the first folder under `Packages\`, writes nothing, and exits with code `999` --- see [Where the two differ](../../../../Features/Packages/Import-Export-Tool#where-the-two-differ). So the tB executable cannot rebuild a project from this command's export. The import/export script can, and the project it writes holds its own copy of each of those packages: 4.2 MB for the two-file project above, against 2 KB for the same two files without them. That project compiles.
+
 ### What the Debug Console shows
 
 Each export writes a first line, `[EXPORT] exporting current project to "…"`, and a last line: `[EXPORT] COMPLETED (72 folders, 478 files)`, or the failure lines above. With [*Export Verbose*](../Settings#export-verbose) set, it also writes a line for each file and folder it deletes, `[EXPORT]  DELETED: …`, and for each file it writes, `[EXPORT]  DONE: …`.

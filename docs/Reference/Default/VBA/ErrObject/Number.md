@@ -22,7 +22,8 @@ When returning a user-defined error from an object, set **Err.Number** by adding
 Err.Raise Number:=vbObjectError + 1051, Source:="SomeClass"
 ```
 
-## Error numbers that differ from VBA
+## Error 9, Subscript out of range: numbers that differ from VBA
+{: #error-numbers-that-differ-from-vba }
 
 > [!NOTE]
 > As of BETA 983, twinBASIC does not raise error 9, *Subscript out of range*, for an array index that is out of range or for a **Collection** member that does not exist. VBA's documentation gives error 9 for each case below; twinBASIC raises a different number.

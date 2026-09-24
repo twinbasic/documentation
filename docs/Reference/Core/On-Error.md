@@ -36,6 +36,9 @@ Each time the error handler passes control back to a calling procedure, that pro
 
 Error-handling routines rely on the value in the **Number** property of the **Err** object to determine the cause of the error. The error-handling routine should test or save relevant property values in the **Err** object before any other error can occur or before a procedure that might cause an error is called. The property values in the **Err** object reflect only the most recent error. The error message associated with **Err.Number** is contained in **Err.Description**.
 
+> [!NOTE]
+> Some run-time errors have a different number in twinBASIC than in VBA. An array index outside the array's bounds raises -2147352565, not 9, *Subscript out of range*, so a handler ported from VBA that tests `Err.Number = 9` does not recognise it. [Error numbers that differ from VBA](../Modules/ErrObject/Number#error-numbers-that-differ-from-vba) lists them.
+
 **On Error Resume Next** causes execution to continue with the statement immediately following the statement that caused the run-time error, or with the statement immediately following the most recent call out of the procedure containing the **On Error Resume Next** statement. This statement allows execution to continue despite a run-time error. The error-handling routine can be placed where the error would occur, rather than transferring control to another location within the procedure. An **On Error Resume Next** statement becomes inactive when another procedure is called, so an **On Error Resume Next** statement must be executed in each called routine that requires inline error handling.
 
 > [!NOTE]

@@ -173,6 +173,8 @@ Private Class Cat
 End Class
 ```
 
+`Dog`'s `GetSound` is marked `Overridable` as well as `Overrides`, and that is what lets `GuardDog` override it again. `Cat`'s is not, so a class that inherits `Cat` cannot override `GetSound`: the compiler reports TB5068, *procedure is not marked as Overridable*.
+
 Code that uses the classes goes in a `Module`. A procedure written at the top level of a `.twin` file, outside any `Module` or `Class`, does not compile: every line of it fails with TB5182, *Syntax error. No handler for this symbol*. This routine holds each animal in an `Animal` variable, and each call to `Speak` still uses the `GetSound` of the object's own class:
 
 ```tb check_build projname=inheritance-animals

@@ -162,7 +162,22 @@ The function **Caster** introduces three type variables within its scope:
    * First, the compiler will cast `1.23!` to the type of the formal parameter, that is to a **Double** `1.23#`.
    * Then, in the body of the function, the *value* is cast to **Integer** when it's assigned to **intermediate**.
    * Finally, also in the body, the **intermediate** is cast to the result type of **String**, and returned.
-   
+
+### Operators in a generic body
+
+The body of a generic procedure is compiled once for each type it is used with, as if it had been written out for that type. So the body can use an operator that works on every type it is called with:
+
+```tb check_build
+Public Function Max(Of T)(a As T, b As T) As T
+    If a > b Then
+        Return a
+    Else
+        Return b
+    End If
+End Function
+```
+
+`Max(3, 7)` returns the **Integer** `7`, `Max(3.5, 2.1)` the **Double** `3.5`, and `Max("apple", "banana")` the **String** `"banana"`. Nothing in the definition says which types *T* may be. A type that the body does not work with is a compile error, and the error is reported in the body, on the line that uses the operator, not at the call that supplied the type. `Max(Of Collection)(c1, c2)` fails with TB5092, *Missing argument 'Index'*, on the line `If a > b Then`: the message is about the argument of **Item**, the **Collection**'s default member.
 
 ## Generic Classes And UDTs
 

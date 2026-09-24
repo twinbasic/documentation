@@ -185,11 +185,45 @@ Specify the Unicode function name in the `Alias` clause when the unaliased name 
 Private Declare PtrSafe Function GetWindowText Lib "user32" _
     Alias "GetWindowTextW" _
     (ByVal hwnd As LongPtr, _
-     ByVal lpString As Long, _
+     ByVal lpString As LongPtr, _
      ByVal nMaxCount As Long) As Long
 ```
 
-For functions where twinBASIC can pass a **String** directly, `DeclareWide` is an alternative to manually managing the buffer pointer --- see [Features → Enhanced API Declarations](../Features/Advanced/API-Declarations) for the `DeclareWide` and `CDecl` extensions.
+`lpString` is a pointer to the text, so it is a **LongPtr**, as the table above says, and a caller passes it `StrPtr(buffer)`. For functions where twinBASIC can pass a **String** directly, `DeclareWide` is an alternative to manually managing the buffer pointer --- see [Features → Enhanced API Declarations](../Features/Advanced/API-Declarations) for the `DeclareWide` and `CDecl` extensions.
+
+## Functions that return a string
+
+Most functions that return text do not allocate it. The caller passes a buffer, the function writes the text into it, and the function reports how many characters it wrote. `GetWindowsDirectoryW`, `GetComputerNameW` and `GetWindowTextW` all work this way. Make the buffer with `Space$`, pass it, then keep only the characters written:
+
+```tb check_build
+Private DeclareWide PtrSafe Function GetWindowsDirectory Lib "kernel32" _
+    Alias "GetWindowsDirectoryW" (ByVal lpBuffer As String, ByVal uSize As Long) As Long
+
+Private DeclareWide PtrSafe Function GetComputerName Lib "kernel32" _
+    Alias "GetComputerNameW" (ByVal lpBuffer As String, nSize As Long) As Long
+
+Public Function WindowsFolder() As String
+    Dim buffer As String
+    Dim length As Long
+    buffer = Space$(260)
+    length = GetWindowsDirectory(buffer, Len(buffer))   ' characters written, 0 on failure
+    WindowsFolder = Left$(buffer, length)
+End Function
+
+Public Function ComputerName() As String
+    Dim buffer As String
+    Dim size As Long
+    buffer = Space$(256)
+    size = Len(buffer)                                  ' in: the buffer's length
+    If GetComputerName(buffer, size) <> 0 Then          ' out: the characters written
+        ComputerName = Left$(buffer, size)
+    End If
+End Function
+```
+
+`Debug.Print WindowsFolder()` prints the Windows folder, such as `C:\WINDOWS`. The two functions show the two usual ways a length comes back: `GetWindowsDirectoryW` returns it, and `GetComputerNameW` takes the buffer's length in `nSize` and writes the text's length back into it, which is why `nSize` is passed **ByRef**. `DeclareWide` passes the **String** as a pointer to its characters, with no conversion to ANSI. With a plain `Declare`, declare the parameter `ByVal lpBuffer As LongPtr` and pass `StrPtr(buffer)`.
+
+A function that allocates the text itself and returns a pointer to it, rather than filling a buffer you created, needs different handling --- see the warning under [DeclareWide](../Features/Advanced/API-Declarations#declarewide).
 
 ## Putting it together
 
@@ -225,5 +259,6 @@ End Sub
 ## Where to go next
 
 - **Enhanced API Declarations** -- `DeclareWide`, `CDecl`, `ByVal` UDTs, variadic arguments: [Features → Enhanced API Declarations](../Features/Advanced/API-Declarations)
+- **Declarations already written** -- the community package WinDevLib declares common Windows APIs and COM interfaces, with 64-bit-compatible types: [WinDevLib on GitHub](https://github.com/fafalone/WinDevLib)
 - **Forms basics** -- the standard VB controls and event model: [Forms basics](Forms)
 - **Unit testing** -- verifying functions that wrap API calls: [Writing unit tests with Assert](Testing-with-Assert)

@@ -178,7 +178,9 @@ above; in order:
 > Use the tB executable or the script for this, not the IDE's **File → Export Project**. The
 > IDE's command empties its folder before it writes --- a `.git` folder included --- and with
 > the *Export After Save* setting it does so on every save. Pointed at a repository's top
-> folder, it breaks the repository. See [Export Project](../../tB/IDE/Project/Menu/File#export-project).
+> folder, it breaks the repository. Its export also holds the source of the compiler
+> packages, which the tB executable cannot pack back into a project. See
+> [Export Project](../../tB/IDE/Project/Menu/File#export-project).
 
 1. **Export into a folder of its own, not the repository's top folder** --- a `src` folder
    beside `.git`, for example. `import` packs everything in the folder it is given, and the
@@ -188,6 +190,17 @@ above; in order:
    renamed in the IDE. `export` never deletes a file, so one the project no longer holds
    stays in the folder, and the next `import` packs it back. The script warns about such
    files; the tB executable does not.
+
+   Every other export goes into a folder that already holds the files, so it needs
+   `--overwrite`. Without it the tB executable writes only the files that are not there
+   yet, prints an `ERROR:` line for each of the others and then `... FAILED`, and exits
+   `0` --- so every file you changed keeps its old contents, and the commit leaves the
+   changes out:
+
+   ```batch
+   twinBASIC_win32.exe export "C:\Projects\MyProject.twinproj" "C:\Projects\MyProject\src\" --overwrite > tb.log
+   find "... DONE" tb.log > nul || exit /b 1
+   ```
 3. **Commit the folder.** `export` leaves out the `.meta` file of editor state, and a project
    packed without one opens normally. A checkout with LF line endings needs no conversion:
    `import` converts LF to CRLF in `.twin`, `.bas` and `.cls` files.
