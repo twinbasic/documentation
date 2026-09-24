@@ -177,3 +177,11 @@ See [Packages](../../../Features/Packages/)
 
 ## Feature Flags
 
+## Compiler Options (BUILD)
+
+Turns on [LLVM compilation](../../../LLVM/Getting-Started#llvm-in-twinbasic) and its optimizations for the executable a build produces.
+
+## Compiler Options (DEBUG)
+
+Turns on [LLVM compilation](../../../LLVM/Getting-Started#llvm-in-twinbasic) and its optimizations when the project runs in the IDE. This is not recommended: the IDE cannot debug code compiled with LLVM.
+

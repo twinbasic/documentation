@@ -17,6 +17,10 @@ Start with the [FAQ](FAQ) for orientation --- what twinBASIC is, where it stands
 
 Most existing VB6 / VBA code compiles unchanged. Key additions beyond VBx compatibility: new data types ([**LongLong**](Features/Language/Data-Types#longlong), [**LongPtr**](Features/Language/Data-Types#longptr), [**Decimal**](Features/Language/Data-Types#decimal)), native [**Interface**](tB/Core/Interface) and [**CoClass**](tB/Core/CoClass) declarations, [**Implements Via**](Features/Language/Inheritance#implements-via-for-basic-inheritance) and [**Inherits**](Features/Language/Inheritance#inherits-for-complete-oop) for inheritance, generics, method overloading, type inference, and attribute syntax. The [Features overview](Features/) is the complete catalogue.
 
+## Faster and smaller programs with LLVM
+
+twinBASIC can compile a project with LLVM, an optimizing compiler back end built into the IDE. [Getting Started with LLVM](LLVM/Getting-Started) covers turning it on for a project or for a single procedure, the options that control it, and its current limitations.
+
 ## Looking up a keyword, function, or operator?
 
 The reference section is split into language constructs (the things the compiler parses) and runtime members (functions, properties, types, classes shipped in the built-in packages):

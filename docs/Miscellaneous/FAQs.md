@@ -81,7 +81,7 @@ While open source models are possible in the future, at this time the compiler i
 <details>
 <summary markdown=span id="cost"><b>How much does twinBASIC cost?</b></summary>
 
-There are 4 basic editions of twinBASIC: The Community Edition is FREE. A splash screen is placed on compiled 64bit binaries and certain features like advanced optimized compilation and future cross-platform compilation are unavailable, but there are no restrictions on core language features or royalties imposed. To get those features, subscriptions are available for the Personal, Professional and Ultimate editions. There are also VIP editions that come with perpetual licenses. For more details on what's included with each edition, and to see current pricing, [see this page](https://twinbasic.com/licensing).
+There are 4 basic editions of twinBASIC: The Community Edition is FREE. A splash screen is placed on compiled 64bit binaries and certain features like [advanced optimized compilation](LLVM/Getting-Started) and future cross-platform compilation are unavailable, but there are no restrictions on core language features or royalties imposed. To get those features, subscriptions are available for the Personal, Professional and Ultimate editions. There are also VIP editions that come with perpetual licenses. For more details on what's included with each edition, and to see current pricing, [see this page](https://twinbasic.com/licensing).
 
 > [!NOTE]
 > You can change the subscription level at any time and the Community Edition is always available. There will be no lockout (see [the previous statement regarding escrow](#open-source)) so you will always have the ability to develop, test and compile. 
@@ -353,6 +353,6 @@ Everything should also work under WINE and ReactOS, but testing, while successfu
 <details>
 <summary markdown=span id="exe-size"><b>Why are EXEs produced by twinBASIC larger than VB6?</b></summary>
 
-The large majority of functionality, including major pieces like the Forms engine, is provided in VB6 applications/components by the msvbvm60.dll runtime, a 1.4MB file. twinBASIC applications/components have no such outside dependency; the Forms engine and all other functionality is included in the single exe, so the combined size isn't too far off. EXE size is expected to be reduced significantly with the introduction of LLVM-optimized compilation, coming soon.
+The large majority of functionality, including major pieces like the Forms engine, is provided in VB6 applications/components by the msvbvm60.dll runtime, a 1.4MB file. twinBASIC applications/components have no such outside dependency; the Forms engine and all other functionality is included in the single exe, so the combined size isn't too far off. In the paid editions, [LLVM compilation](LLVM/Getting-Started) can also reduce EXE size, with its **LLVM: Optimize for smaller filesize** option.
 
 </details> 

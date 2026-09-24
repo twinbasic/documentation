@@ -9,6 +9,10 @@ permalink: /Features/Project-Configuration/Compiler-Options
 
 twinBASIC provides several compiler options to control how your code is compiled and optimized.
 
+## LLVM
+
+The **Compiler Options (BUILD)** and **Compiler Options (DEBUG)** sections turn on compilation with LLVM, which optimizes the code for performance and size. See [Getting Started with LLVM](../../LLVM/Getting-Started).
+
 ## COM Initialization
 
 You can specify the call used by the hidden entry point with the following options: `CoInitialize STA`, `CoInitializeEx MTA`, `OleInitialize STA`. If you don't know the difference, don't change it from the default.
