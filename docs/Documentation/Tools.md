@@ -321,13 +321,13 @@ Both default to `script`, and a bare invocation is refused rather than printing 
 | `online` | `_site/` --- integrity + sitemap + search + canonical | yes |
 | `online-abs` | `online` again with an absolute `--root-dir`, asserted to reach identical findings | no |
 | `offline` | `_site-offline/` --- integrity + `--forbid` | yes |
-| `book` | `_site-pdf/book.html` --- fragments only, `--no-fail` | yes |
+| `book` | `_site-pdf/book.html` --- fragments and `--forbid`, `--no-fail` | yes |
 | `basepath` | a tree built with `--baseurl`, checked with the matching `--base-path` | yes |
 | `fixture` | a synthetic tree written at run time, carrying one fault of every kind | no |
 | `fixture-built` | `test/fixtures/check-src` built by `tbdocs` --- the online tree | yes |
-| `fixture-built-offline` | the same build's offline tree, the only one with a forbidden prefix | yes |
+| `fixture-built-offline` | the same build's offline tree, which has the forbidden prefix the online tree lacks | yes |
 
-That last column is the part worth reading before trusting a green run. Under `--b fused` the two cases with no fused equivalent are skipped --- named in a `skipped:` line, not silently --- because the build's pass checks what the build produced and has nothing to say about a `--root-dir` shape variation or a hand-written tree it never wrote. The real-tree cases are empty in nearly every category on a healthy site, so for as long as `fixture` was the only fault-carrying case, **every `--b fused` run dropped the one case that gave the comparison anything to compare.** The built pair closes that: the same idea in a tree `tbdocs` produced, split across two cases because no single tree carries all nine categories --- the online tree has the sitemap, search and canonical checks, and the offline tree is the only one with a forbidden prefix.
+That last column is the part worth reading before trusting a green run. Under `--b fused` the two cases with no fused equivalent are skipped --- named in a `skipped:` line, not silently --- because the build's pass checks what the build produced and has nothing to say about a `--root-dir` shape variation or a hand-written tree it never wrote. The real-tree cases are empty in nearly every category on a healthy site, so for as long as `fixture` was the only fault-carrying case, **every `--b fused` run dropped the one case that gave the comparison anything to compare.** The built pair closes that: the same idea in a tree `tbdocs` produced, split across two cases because no single tree carries all nine categories --- the online tree has the sitemap, search and canonical checks, and the offline tree has the forbidden prefix the online tree lacks.
 
 Both CI workflows run the harness, and neither runs it over the real site. `checks.yml` (pull requests) runs both halves:
 

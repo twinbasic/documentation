@@ -116,14 +116,16 @@ tell an ordinary run from a broken one. This is the shape of a clean one.
     Done in 4685ms: 908 pages, 247 static files
       _site           871099 occurrences -- 0 broken, 0 integrity
       _site-offline   869285 occurrences -- 0 broken, 0 forbidden, 0 integrity
-      _site-pdf        12703 occurrences -- 13 broken, 0 integrity  (informational)
+      _site-pdf        13703 occurrences -- 0 broken, 18 out of book, 0 integrity  (informational)
 
 **The third line is not a failure, and it is the one that looks like one.** The book is a
-subset of the site, so every page it does not carry is a broken link from inside it; the
-pass is marked *informational* and does not touch the exit code. The two lines above it
-are the ones that must read `0 broken`. A few seconds is the normal duration --- the build
-is around 2--3 seconds of work plus the link check --- so a run still going after a minute
-is a [stall](#when-a-build-stops), not a slow machine.
+subset of the site, so some of its links name pages it does not carry. Each of those opens
+the page on the website instead, and the report lists it above the summary as
+`OUT OF BOOK`: the list says which pages the book leaves out and still links to. The pass
+is marked *informational* and does not touch the exit code. All three lines must read
+`0 broken`. A few seconds is the normal duration --- the build is around 2--3 seconds of
+work plus the link check --- so a run still going after a minute is a
+[stall](#when-a-build-stops), not a slow machine.
 
 `check.bat` runs its four gates in order and ends on the scan's tally:
 
@@ -229,7 +231,7 @@ The link check is part of the build. `build.bat` passes `--check-audit-index`, a
 
     build.bat
 
-It covers all three trees --- `_site/` (the online tree), `_site-offline/` (the `file://`-browsable mirror, which also carries `--forbid 'https://docs.twinbasic.com'` so a surviving live-site link is flagged: the offline mirror should never navigate back to the live docs site), and `_site-pdf/book.html` (informational). Every tree is also checked for HTML well-formedness, duplicate `id`s, anchor resolution, accessibility hints and remote `<img src>`; the online tree adds sitemap, search-index and canonical-URL integrity. The same check runs in CI on every pull request and on every push to `staging`.
+It covers all three trees --- `_site/` (the online tree), `_site-offline/` (the `file://`-browsable mirror, which also carries `--forbid 'https://docs.twinbasic.com'` so a surviving live-site link is flagged: the offline mirror should never navigate back to the live docs site), and `_site-pdf/book.html` (informational, and listing as `OUT OF BOOK` every link that leaves the book for the website). Every tree is also checked for HTML well-formedness, duplicate `id`s, anchor resolution, accessibility hints and remote `<img src>`; the online tree adds sitemap, search-index and canonical-URL integrity. The same check runs in CI on every pull request and on every push to `staging`.
 
 A failing check does not abort the build --- a broken link still produces a site worth looking at --- so it sets the exit code instead: 1 for link failures, 2 for integrity failures, 3 for both.
 

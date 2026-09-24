@@ -230,9 +230,25 @@ function collectImagePaths(body, seen) {
   for (const m of body.matchAll(IMG_SRC_RE_BOOK)) {
     if (m[1] === undefined) continue;
     const url = m[2];
-    const cleanPath = url.split(/[?#]/, 1)[0];
+    const cleanPath = decodeUrlPath(url.split(/[?#]/, 1)[0]);
     if (!cleanPath || seen.has(cleanPath)) continue;
     seen.add(cleanPath);
+  }
+}
+
+// A src is a URL, and the renderer percent-encodes it: the file
+// `IDE/Images/project settings description text.png` is referenced as
+// `project%20settings%20description%20text.png`. Every consumer of the
+// collected paths wants the name on disk -- pdf.mjs looks it up among the
+// source files and copies it out under that name, and the browser that
+// renders book.html decodes the URL before it opens the file. Left
+// encoded, the lookup missed and the missing-image check stopped the
+// build the first time a page with such an image entered the book.
+function decodeUrlPath(p) {
+  try {
+    return decodeURIComponent(p);
+  } catch {
+    return p; // a stray `%` that begins no escape is part of the name
   }
 }
 
@@ -572,8 +588,8 @@ const MONTH_NAMES = [
 // emits the title page + every <article>, runs the cross-ref rewrite +
 // landing-strip pass, runs html-compress. Pure compute; no I/O. The
 // returned `imagePaths` is an array of every page-relative `<img
-// src=>` path referenced from the assembled body, deduplicated in
-// emit order (Set insertion order).
+// src=>` path referenced from the assembled body, decoded to the file's
+// own name and deduplicated in emit order (Set insertion order).
 export function assembleBook(site, pages) {
   const bookData = site.bookData;
   if (!bookData) {
@@ -851,8 +867,9 @@ function chapteredFlags(part, chEntry) {
 const EXTERNAL_PREFIXES = ["http://", "https://", "mailto:", "#"];
 
 // PLAN-8 §6.6: walk each <article id="ch-..."> block, resolve relative
-// hrefs, rewrite in-book targets to `#ch-...` anchors, strip the
-// redundant landing-page heading.
+// hrefs, rewrite in-book targets to `#ch-...` anchors, point every other
+// site link at the page on the website, strip the redundant landing-page
+// heading.
 //
 // tbdocs derives redirect-from stubs from each page's
 // `frontmatter.redirect_from` and passes an extended array to the map
@@ -864,6 +881,9 @@ export function rewriteBookHrefs(html, site, pages) {
   const bookData = site.bookData;
   if (!bookData) return html;
   const baseurl = normalizeBaseurl(site.config?.baseurl);
+  // Same shape offline.mjs gives its own siteUrl, so a CI build given
+  // --url points the book at the deploy it belongs to.
+  const siteUrl = String(site.config?.url ?? "").replace(/\/+$/, "");
   const pagesWithStubs = augmentWithRedirectStubs(pages);
   const urlToAnchor = buildUrlToAnchor(bookData, pagesWithStubs);
   if (urlToAnchor.size === 0) return html;
@@ -883,14 +903,14 @@ export function rewriteBookHrefs(html, site, pages) {
       }
       const parentUrl = anchorToParent.get(anchorId);
       if (parentUrl) {
-        body = rewriteBodyHrefs(body, parentUrl, urlToAnchor, baseurl);
+        body = rewriteBodyHrefs(body, parentUrl, urlToAnchor, baseurl, siteUrl);
       }
       return open + body + close;
     },
   );
 }
 
-function rewriteBodyHrefs(body, parentUrl, urlToAnchor, baseurl) {
+function rewriteBodyHrefs(body, parentUrl, urlToAnchor, baseurl, siteUrl) {
   return replaceOutsideCode(body, /href="([^"]*)"/g, (whole, href) => {
     if (EXTERNAL_PREFIXES.some(p => href.startsWith(p))) return whole;
     const abs = resolveHref(href, parentUrl);
@@ -903,8 +923,15 @@ function rewriteBodyHrefs(body, parentUrl, urlToAnchor, baseurl) {
         ? `href="#${target}-${fragPart}"`
         : `href="#${target}"`;
     }
+    // Not in the book. A site path is dead in a PDF -- the viewer
+    // resolves it against the file on the reader's disk -- so the link
+    // opens the page on the website instead. The book pass of --check
+    // lists each one as OUT OF BOOK (check.mjs, TREES.pdf): that list is
+    // what says which pages the book leaves out and still links to.
     const missPath = fragPart ? `${lookupPath}#${fragPart}` : lookupPath;
-    return `href="${missPath}"`;
+    return siteUrl
+      ? `href="${siteUrl}${baseurl}${missPath}"`
+      : `href="${missPath}"`;
   });
 }
 

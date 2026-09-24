@@ -129,7 +129,7 @@ The gate compares against everything under `docs/` and `builder/`, including fil
 
 Images abort two different commands for two different reasons.
 
-**`pdf: missing image <path>` aborts Phase 8**, inside `build.bat`. The usual cause is a raw `<img>` tag with a page-relative `src`: the book flattens every page into one document, so `Images/x.png` resolves against the book root rather than the page's folder. The markdown form is rewritten to a section-qualified path; the raw tag is not. See [Images](Authoring#images) in the authoring guide.
+**`pdf: missing image <path>` aborts Phase 8**, inside `build.bat`. The usual cause is a raw `<img>` tag with a page-relative `src`: the book flattens every page into one document, so `Images/x.png` resolves against the book root rather than the page's folder. The markdown form is rewritten to a section-qualified path; the raw tag is not. See [Images](Authoring#images) in the authoring guide. A space or other character in the file name is not a cause: the `src` is percent-encoded, and Phase 8 decodes it back to the file's name before it looks the file up.
 
 **`paged.js (forked): image not loaded at render time` aborts Phase 1**, inside `book.bat`:
 

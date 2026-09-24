@@ -603,7 +603,7 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 | `chapterAnchorFromUrl` | `(url, fallbackTitle?) → string` | Page URL → `ch-…` anchor slug. |
 | `bookChapterTransform` | `(body, baseurl, headingShiftN, chapterAnchor) → string` | Five per-chapter body transforms: baseurl-strip, `<details>` unwrap, whitespace-`<span>` wrap for pagedjs, heading shift, chapter-anchor prefixing. |
 | `assembleBook` | `(site, pages) → string` | Phase 8 entry. Returns the assembled `book.html` string. |
-| `rewriteBookHrefs` | `(html, site, pages) → string` | Rewrites intra-book absolute `href="/X"` references to `href="#ch-X"` fragment anchors. |
+| `rewriteBookHrefs` | `(html, site, pages) → string` | Rewrites a link to a page in the book to that page's `href="#ch-X"` fragment anchor, and a link to any other page of the site to its absolute URL under `site.config.url`, because a site path is dead in a PDF. |
 
 ### `build-info.mjs`
 

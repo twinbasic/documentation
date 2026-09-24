@@ -37,7 +37,7 @@
 //
 //   online     _site/          integrity + sitemap + search + canonical
 //   offline    _site-offline/  integrity + --forbid
-//   book       _site-pdf/      book.html only, --no-fail, fragments
+//   book       _site-pdf/      book.html only, --no-fail, fragments, --forbid
 //   basepath   a tree built with --baseurl, checked with the matching
 //              --base-path. The only pass where isOutsideBasePath() and
 //              stripBasePath() do anything.
@@ -59,8 +59,8 @@
 //              only way the fused side can be held to it. Two cases over
 //              one build: no single tree carries all nine categories,
 //              because the online tree has the sitemap, search and
-//              canonical checks and the offline tree is the only one with
-//              a forbidden prefix.
+//              canonical checks and the offline tree has the forbidden
+//              prefix the online tree lacks.
 //
 // `online-abs` and `fixture` have no fused equivalent -- the fused pass
 // checks what the build produced, so it has nothing to say about a
@@ -166,12 +166,15 @@ const CASES = {
     ],
   },
 
+  // --forbid collects the links book.mjs sends to the website for pages
+  // the book leaves out; the build reports them as OUT OF BOOK.
   book: {
-    describe: "_site-pdf/book.html -- fragments only, --no-fail",
+    describe: "_site-pdf/book.html -- fragments + --forbid, --no-fail",
     fused: { tree: "pdf", baseurl: "" },
     root: () => "docs/_site-pdf",
     argv: (root) => [
       "--offline", "--no-fail", "--include-fragments",
+      "--forbid", "https://docs.twinbasic.com",
       "--root-dir", root, path.posix.join(root.replace(/\\/g, "/"), "book.html"),
     ],
   },
@@ -212,7 +215,8 @@ const CASES = {
   //
   // Two cases over one build, because no single tree carries all nine
   // categories: the online tree has the sitemap, search and canonical
-  // checks, and the offline tree is the only one with a forbidden prefix.
+  // checks, and the offline tree has the forbidden prefix the online tree
+  // lacks.
   "fixture-built": {
     describe: "a tree tbdocs built from test/fixtures/check-src -- online",
     fused: { tree: "online", baseurl: "", src: FIXTURE_SRC, dest: FIXTURE_TREE, offline: true },
@@ -222,7 +226,7 @@ const CASES = {
   },
 
   "fixture-built-offline": {
-    describe: "the same build's offline tree -- the only one with --forbid",
+    describe: "the same build's offline tree -- the one with --forbid",
     fused: { tree: "offline", baseurl: "", src: FIXTURE_SRC, dest: FIXTURE_TREE, offline: true },
     expect: FIXTURE_BUILT_OFFLINE,
     root: () => `${FIXTURE_TREE}-offline`,

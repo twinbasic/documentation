@@ -20,7 +20,7 @@ permalink: /Documentation/Development/Book-Configuration
 
 `data.mjs` loads `_book.yml` during Phase 2 and makes it available as `site.data.book`. The orchestrator then exposes `site.data.book` as `site.bookData` and passes it to `resolveBookChapters`. That call traverses the entire structure and resolves every selector to a concrete `Page[]` stored as `entry._chapters`, so Phase 8's `assembleBook` has no further page lookups to do.
 
-Run `build.bat` then `book.bat` to see the effect of changes. The `check.bat` integrity check also runs a PDF build pass.
+Run `build.bat` then `book.bat` to see the effect of changes. `build.bat`'s link check includes a pass over `book.html`; see [Pages no entry selects](#pages-no-entry-selects).
 
 ## Top-level structure
 
@@ -53,6 +53,15 @@ Every entry may combine any of these keys to select the pages it contributes to 
 | `no_descent` | `boolean` | When `true`, switches every match on this entry from `contains` to exact equality. Use this when a prefix like `/Foo/` should match only the index page and not its sub-pages, or when `page: /` would otherwise sweep in every page on the site. |
 
 All selector keys are combinable within one entry. An entry with both `page` and `nav_page` collects the union of both selections. Selectors on a chapter entry are independent of the selectors on the containing part --- a chapter collects its own pages; the part does not automatically inherit them.
+
+## Pages no entry selects
+
+A page that no entry selects is left out of the book. The build does not warn about it unless a page in the book links to it. Each such link opens the page on the website instead, because a site path goes nowhere in a PDF, and the link check's pass over `book.html` lists it as `OUT OF BOOK`:
+
+    _site-pdf/book.html:
+      OUT OF BOOK  https://docs.twinbasic.com/tB/IDE/Project/Explorer -- not in the book; opens the website
+
+That list is the place to look for a page the book should carry. A section that no entry selects at all, and that nothing in the book links to, does not appear in it.
 
 ## Common entry options
 
