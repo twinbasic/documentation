@@ -29,7 +29,9 @@
 //     IDE copy's, and putting them back would point at a deleted folder.
 //   * The build target the IDE remembers for each project path is deleted for
 //     every path under those folders, before the run and after it
-//     (sweepArchitectureMemory says why).
+//     (sweepArchitectureMemory says why), and a named project's is put back
+//     as it was, since a run can switch the target of the project it opens
+//     (restoreArchitectureMemory).
 //
 // ONE PROCESS OWNS THIS PER RUN. check_examples starts many tbbuild processes
 // at once; each snapshotting and restoring on its own would put back whichever
@@ -459,6 +461,37 @@ export function deleteSettings(apps) {
 const ARCH_MEMORY = "targetArchitectureMemory";
 const norm = (p) => String(p).split("/").join("\\").toLowerCase();
 
+// The build targets the IDE remembers, as an object, or null when there is no
+// value or it is not a JSON object -- which is not the harness's to repair.
+function readArchitectureMemory(root) {
+  const now = request({ op: "readValue", key: `${root}\\IDESettings`, name: ARCH_MEMORY });
+  if (!now.exists) return null;
+  let memory;
+  try { memory = JSON.parse(now.data); } catch { return null; }
+  if (!memory || typeof memory !== "object" || Array.isArray(memory)) return null;
+  return { data: now.data, memory };
+}
+
+// Change the remembered build targets with `edit`, which is handed the object
+// and returns how many entries it changed. The object is edited here rather
+// than in PowerShell, and written back with JSON.stringify, which is how the
+// IDE writes it, so the other entries keep their exact text and order. The
+// write is refused if the value changed after it was read -- an IDE switching
+// a target of its own meanwhile -- and the edit is then made again on what is
+// there now.
+function editArchitectureMemory(root, edit) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const now = readArchitectureMemory(root);
+    if (!now) return 0;
+    const changes = edit(now.memory);
+    if (!changes) return 0;
+    const w = request({ op: "writeValueIf", key: `${root}\\IDESettings`, name: ARCH_MEMORY,
+                        expected: now.data, data: JSON.stringify(now.memory) });
+    if (w.written) return changes;
+  }
+  throw new Error(`the IDE's ${ARCH_MEMORY} kept changing while it was being tidied`);
+}
+
 /**
  * Delete the build target the IDE remembers for every project under these
  * folders.
@@ -471,15 +504,10 @@ const norm = (p) => String(p).split("/").join("\\").toLowerCase();
  * target of every later run on that path, and nothing says so. On 2026-09-24
  * tbrun on ports 9372 and 9373 built 64-bit for that reason.
  *
- * Entries for any other path are left alone, the user's own projects among
- * them. Opening a project only reads its entry, so tbbuild on the user's
- * project writes nothing here; an entry is written when somebody changes the
- * target of a project that is open.
- *
- * The object is edited here rather than in PowerShell, and written back with
- * JSON.stringify, which is how the IDE writes it, so the other entries keep
- * their exact text and order. The write is refused if the value changed after
- * it was read, and the sweep is then repeated on what is there now.
+ * Entries for any other path are left alone here, the user's own projects
+ * among them. Opening a project only reads its entry; one is written when the
+ * target of an open project changes, which `--arch` does and a person can.
+ * A named project's entry is put back by restoreArchitectureMemory instead.
  *
  * @param {string[]} prefixes     folders inside the OS temp folder, as for restoreProjects
  * @param {object} [o]
@@ -489,21 +517,50 @@ const norm = (p) => String(p).split("/").join("\\").toLowerCase();
 export function sweepArchitectureMemory(prefixes = [], { root = IDE_SETTINGS_KEY } = {}) {
   const pre = prefixes.map((p) => norm(asTempFolder(p)));
   if (!pre.length) return 0;
-  const key = `${root}\\IDESettings`;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const now = request({ op: "readValue", key, name: ARCH_MEMORY });
-    if (!now.exists) return 0;
-    let memory;
-    try { memory = JSON.parse(now.data); } catch { return 0; }   // not the harness's to repair
-    if (!memory || typeof memory !== "object" || Array.isArray(memory)) return 0;
+  return editArchitectureMemory(root, (memory) => {
     const drop = Object.keys(memory).filter((p) => pre.some((x) => norm(p).startsWith(x)));
-    if (!drop.length) return 0;
     for (const p of drop) delete memory[p];
-    const w = request({ op: "writeValueIf", key, name: ARCH_MEMORY,
-                        expected: now.data, data: JSON.stringify(memory) });
-    if (w.written) return drop.length;
-  }
-  throw new Error(`the IDE's ${ARCH_MEMORY} kept changing while it was being tidied`);
+    return drop.length;
+  });
+}
+
+/**
+ * Record the build targets the IDE remembers for these projects, for
+ * restoreArchitectureMemory: every entry whose key names one of them, however
+ * the key is spelled, with its value. A project with none is recorded as
+ * having none.
+ */
+export function snapshotArchitectureMemory(paths = [], { root = IDE_SETTINGS_KEY } = {}) {
+  const want = paths.map((p) => norm(path.resolve(p)));
+  const memory = want.length ? readArchitectureMemory(root)?.memory ?? {} : {};
+  return { root, paths: want, entries: Object.entries(memory).filter(([p]) => want.includes(norm(p))) };
+}
+
+/**
+ * Put back the build targets a snapshot recorded, and delete every other entry
+ * for the same projects.
+ *
+ * A run that switches the target of a project it opens -- tbbuild --arch on
+ * the user's own project -- leaves the IDE's entry for it, saved under the
+ * path as the IDE was given it, which need not be spelled as the user's own
+ * IDE spelled it. So an entry the snapshot has is given its old value in its
+ * old place, and any other entry for the same project is deleted.
+ *
+ * @returns {number} entries written or deleted
+ */
+export function restoreArchitectureMemory(snap) {
+  if (!snap?.paths?.length) return 0;
+  return editArchitectureMemory(snap.root, (memory) => {
+    let changes = 0;
+    const had = new Map(snap.entries);
+    for (const p of Object.keys(memory)) {
+      if (!snap.paths.includes(norm(p))) continue;
+      if (!had.has(p)) { delete memory[p]; changes++; }
+      else if (memory[p] !== had.get(p)) { memory[p] = had.get(p); changes++; }
+    }
+    for (const [p, v] of had) if (!(p in memory)) { memory[p] = v; changes++; }
+    return changes;
+  });
 }
 
 // Restoring a key deletes whatever the snapshot does not list, so a key near
@@ -568,6 +625,9 @@ export function startTidy({ paths = [], prefixes = [], root = IDE_SETTINGS_KEY,
     return null;
   }
   sweepTargets(prefixes, root);
+  // After the sweep, so a named project inside a swept folder is not given back
+  // an entry the sweep has just deleted.
+  tidy.targets = snapshotTargets(paths, root);
   return tidy;
 }
 
@@ -597,7 +657,9 @@ export function finishTidy(tidy) {
     console.error(`warning: could not tidy the IDE's registry entries after this run: ${e.message}`);
     return null;
   }
-  return { ...done, architecture: sweepTargets(tidy.prefixes, tidy.root) };
+  const swept = sweepTargets(tidy.prefixes, tidy.root);
+  const restored = restoreTargets(tidy.targets);
+  return { ...done, architecture: swept === null || restored === null ? null : swept + restored };
 }
 
 // Whether any value in a key snapshot names a path inside the temp folder.
@@ -609,12 +671,33 @@ function namesTempFolder(snapshot) {
   return [].concat(snapshot ?? []).some((e) => named(e?.snap));
 }
 
-// With a warning of its own, so that failing here costs only this part of the tidy.
+// Each with a warning of its own, so that failing here costs only this part of the tidy.
 function sweepTargets(prefixes, root) {
   try {
     return sweepArchitectureMemory(prefixes, { root });
   } catch (e) {
     console.error(`warning: could not tidy the build targets the IDE remembers: ${e.message}`);
+    return null;
+  }
+}
+
+function snapshotTargets(paths, root) {
+  try {
+    return snapshotArchitectureMemory(paths, { root });
+  } catch (e) {
+    console.error(`warning: the build targets the IDE remembers for this run's projects will ` +
+                  `not be put back: ${e.message}`);
+    return null;
+  }
+}
+
+// A snapshot that failed was warned about when it was taken; there is nothing to put back.
+function restoreTargets(snap) {
+  if (!snap) return 0;
+  try {
+    return restoreArchitectureMemory(snap);
+  } catch (e) {
+    console.error(`warning: could not put back the build targets the IDE remembers: ${e.message}`);
     return null;
   }
 }

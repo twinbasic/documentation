@@ -32,7 +32,9 @@
 //   * the build targets the IDE remembers: the entries under a harness temp
 //     folder, in both separators, deleted; the user's, the lookalike folder's
 //     and the rest kept, in their order and in the IDE's own JSON; a value
-//     that is not JSON left alone;
+//     that is not JSON left alone; and a named project's target that the run
+//     switched, saved under another spelling of its path, put back in its
+//     place, with an entry for a project that had none deleted;
 //   * an association that named the temp folder when the run began, which is
 //     another run's IDE copy's and is left alone, against one that did not,
 //     which is put back;
@@ -197,6 +199,28 @@ try {
   deleteValues(SETTINGS, [MEMORY]);
   assert.equal(R.sweepArchitectureMemory([TEMPDIR], { root: ROOT }), 0, "no value, nothing to do");
   assert.throws(() => R.sweepArchitectureMemory(["C:\\"], { root: ROOT }), /outside/);
+
+  // A named project's target, which a run switches: tbbuild --arch on the
+  // user's own project. The IDE saves the switch under the path as it was
+  // given, which need not be spelled as the user's IDE spelled it.
+  const kept = { [OTHER]: "win32", [USER]: "win64", "D:\\z.twinproj": "win64" };
+  setValues(SETTINGS, { [MEMORY]: JSON.stringify(kept) });
+  const targets = R.snapshotArchitectureMemory([USER, NEWPROJ], { root: ROOT });
+  setValues(SETTINGS, { [MEMORY]: JSON.stringify(
+    { ...kept, [USER]: "win32", [NEWPROJ]: "win64", [USER.toLowerCase()]: "win32" }) });
+  assert.equal(R.restoreArchitectureMemory(targets), 3,
+    "the user's entry gets its value back; the run's other spelling of it, and its new project's, go");
+  assert.equal(readValue(SETTINGS, MEMORY), JSON.stringify(kept), "every entry as it was, in its order");
+  assert.equal(R.restoreArchitectureMemory(targets), 0, "a second restore writes nothing");
+  setValues(SETTINGS, { [MEMORY]: JSON.stringify({ [OTHER]: "win32", "D:\\z.twinproj": "win64" }) });
+  assert.equal(R.restoreArchitectureMemory(targets), 1);
+  assert.deepEqual(JSON.parse(readValue(SETTINGS, MEMORY)), kept, "an entry the run deleted comes back");
+  // ...and the same through the whole tidy.
+  setValues(SETTINGS, { [MEMORY]: JSON.stringify(kept) });
+  const named = R.startTidy({ root: ROOT, keys: [ASSOC], paths: [USER] });
+  setValues(SETTINGS, { [MEMORY]: JSON.stringify({ ...kept, [USER]: "win32" }) });
+  assert.equal(R.finishTidy(named).architecture, 1);
+  assert.equal(readValue(SETTINGS, MEMORY), JSON.stringify(kept), "finishTidy puts a named project's target back");
 
   // ------------------------------------------------ an association another run's copy held
   // startTidy and finishTidy, the whole tidy, on the scratch keys.

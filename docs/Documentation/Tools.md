@@ -521,7 +521,8 @@ Normalises literal en-dash / em-dash characters in markdown source under `docs/`
 {: #tbbuild }
 
     node scripts/tbbuild.mjs <project.twinproj> [--ide <twinBASIC.exe>] [--port N]
-                             [--timeout S] [--json] [--keep] [--show|--hide]
+                             [--arch win32|win64] [--timeout S] [--json] [--keep]
+                             [--show|--hide]
 
 Compiles a `.twinproj` and prints its diagnostics, with no IDE window to click through. This is how a claim the documentation makes about the language gets checked against the compiler rather than against memory: write a one-module project that uses the construct in the position you are asking about, run this, and read what comes back. Windows only, and no part of the site build.
 
@@ -531,8 +532,9 @@ twinBASIC has no command-line build. The compiler executable's whole surface is 
 |---|---|
 | `--ide <path>` | Path to `twinBASIC.exe`. Default: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` folder on `%USERPROFILE%\Desktop`, which is where the IDE's own zip says to unpack it. **No install path is hardcoded anywhere in this tooling** --- an install path contains a username --- so an install kept elsewhere needs one of those two. |
 | `--port <n>` | DevTools port. Default 9333. It also names the WebView2 user-data folder and the private desktop, which is what makes concurrent instances possible. A port another IDE already holds --- another run's, or another session's --- is refused after ten seconds, rather than attached to. |
+| `--arch <target>` | The target to compile for, `win32` or `win64`. Default `win32`. The diagnostics can differ between the two, because `#If Win64` and the size of `LongPtr` change what compiles. The target is set on every run, because the IDE opens a project in whatever target it last used for that project. Switching restarts the compiler, which then compiles the project again, so a switch adds a few seconds. When the target is not `win32`, or the IDE remembered another one for the project, the report starts with a `target:` line. |
 | `--timeout <secs>` | Give up waiting for the compile to settle. Default 180. |
-| `--json` | Emit one JSON object --- counts, diagnostic rows, and the text of any alert the IDE opened, which is dismissed so the compile can go on --- instead of lines of text. |
+| `--json` | Emit one JSON object --- the target, counts, diagnostic rows, and the text of any alert the IDE opened, which is dismissed so the compile can go on --- instead of lines of text. |
 | `--keep` | Leave the IDE running afterwards. The IDE's registry entries for the project are then left as they are, because the IDE is still writing them. |
 | `--show` / `--hide` | Put the IDE on your own desktop where you can watch it, or on a private one where it cannot take focus. Hidden is the default unless `TBBUILD_SHOW` is set to something other than `0`, `false` or `no`; the two flags override that for one invocation. |
 
@@ -544,15 +546,15 @@ Exit codes: **0** clean, **1** the project has errors, **2** the harness failed,
 
 **The IDE it starts ends with it.** The IDE runs inside a Windows job object, so when `tbbuild` ends --- finished, failed, or stopped with Ctrl+C --- every process the IDE started ends too. That includes a compiler the IDE was restarting after a crash, which a plain process-tree kill can miss and leave running. Two exceptions: under `--keep` the IDE runs outside the job and lives until you close it, and under `--show` it is started directly on your desktop, without the job.
 
-**It leaves the IDE's own settings as it found them.** Every IDE it starts writes to the same registry keys as your own IDE: a saved state for the project (open tabs, watch expressions, Debug Console history) and a place at the top of the recent-projects list. Once the IDE has exited, `tbbuild` puts both back. An entry the run created is deleted, and a project that already had one --- one of your own --- gets its old state and its old place in the list back. The `.twinproj` file association is restored too, if the IDE changed it. When [`check_examples.mjs`](#check-examples) runs `tbbuild`, `check_examples` does this once for all its lanes instead.
+**It leaves the IDE's own settings as it found them.** Every IDE it starts writes to the same registry keys as your own IDE: a saved state for the project (open tabs, watch expressions, Debug Console history), a place at the top of the recent-projects list, and, when the run switches the target, the target the IDE remembers for the project. Once the IDE has exited, `tbbuild` puts all three back. An entry the run created is deleted, and a project that already had one --- one of your own --- gets its old state, its old place in the list and its old target back. The `.twinproj` file association is restored too, if the IDE changed it. When [`check_examples.mjs`](#check-examples) runs `tbbuild`, `check_examples` does this once for all its lanes instead.
 
 Four files under `scripts/lib/` belong to it and are never run directly. `tb-ide.mjs` holds the mechanics `tbbuild.mjs` and `tbrun.mjs` share: starting the IDE, attaching to it, waiting for the compile, and reading the diagnostics and the DEBUG CONSOLE. `tb-registry.mjs` records and restores the registry entries described above, through .NET's registry API by way of PowerShell, because `reg.exe` mangles any path holding a character outside the console code page; [`check_tb_registry.mjs`](#check-tb-registry) is its self-test. `tb-cdp.mjs` is a minimal CDP client over Node's global `WebSocket`, raw rather than puppeteer because a pending `alert()` blocks the renderer and puppeteer's `connect()` handshake talks to the renderer --- so it hangs on precisely the state you need to recover from. Every call it makes has a time limit, so a blocked page ends a run with a message rather than holding it forever. `tb-launch.ps1` holds the Win32 calls Node cannot make without a native FFI addon: `CreateDesktop` and `CreateProcess` with `STARTUPINFO.lpDesktop` for the private desktop, and the job object described above. It is the only PowerShell file under `scripts/`, and it is not executed as a file: `tb-ide.mjs` reads the text and passes it through `-EncodedCommand`, so the execution policy never comes into it and nobody has to be told to bypass one.
 
 ### tbrun.mjs
 {: #tbrun }
 
-    node scripts/tbrun.mjs <source-dir> [--port N] [--timeout S] [--quiet MS]
-                           [--json] [--raw] [--keep] [--no-reap]
+    node scripts/tbrun.mjs <source-dir> [--port N] [--arch win32|win64] [--timeout S]
+                           [--quiet MS] [--json] [--raw] [--keep] [--no-reap]
                            [--reap-images a,b] [--show|--hide]
 
 Builds a probe project and captures what it writes to the IDE's
@@ -595,6 +597,13 @@ list view holding only the rows that fit --- reading that instead returns the la
 lines of a long probe and looks no different from a full capture. `Debug.Cls` is what empties
 the array, which is the other reason to begin with it.
 
+**A `win64` probe runs in the IDE's 64-bit compiler.** A `[RunAfterBuild]` Sub runs inside
+the compiler that built it, not in the file that was built. For `win64` that compiler is
+`twinBASIC_win64_noDEP.exe`, a 64-bit process, so the probe sees what 64-bit code sees:
+`LenB` of a `LongPtr` is 8, [**ProcessorArchitecture**](../../tB/Modules/Compilation/ProcessorArchitecture)
+returns **vbArchWin64**, and `Environ$("PROCESSOR_ARCHITECTURE")` is `AMD64`. Under `win32`
+they are 4, **vbArchWin32** and `x86`.
+
 **Print a line whole when its characters matter.** Text that continues a line left open by
 `Debug.Print ...;` comes back escaped: after `Debug.Print "A";`, a following
 `Debug.Print "&"` shows in the Debug Console as `A&amp;`, and `tbrun` captures what the
@@ -604,10 +613,11 @@ comes back as `A&`.
 | Flag | Effect |
 |---|---|
 | `--port <n>` | DevTools port for the IDE. Default 9346. Distinct ports let probes run concurrently --- the staging directory and the project id are keyed to it, so two runs never share a workspace. A port another IDE holds is refused, as for `tbbuild`. |
+| `--arch <target>` | The target to build for, `win32` or `win64`. Default `win32`, set on every run, as for `tbbuild`. A `win64` probe runs as a 64-bit process. |
 | `--timeout <secs>` | Give up waiting for console output. Default 120. |
 | `--quiet <ms>` | How long the console must stop changing before the output counts as complete. Default 2500. There is no sentinel string to match, so any probe works without telling the script anything. Raise it well above the default for a probe that drives an out-of-process server, which can take longer than that to start. |
 | `--raw` | Keep the console's timestamp column, which is otherwise stripped. |
-| `--json` | One object with the built exe's path, the captured lines, the IDE pid and anything reaped. |
+| `--json` | One object with the path of the built file, the target, the captured lines, the IDE pid and anything reaped. |
 | `--keep` | Leave the IDE running. Implies `--no-reap`, and leaves the IDE's registry entries for the probe as they are. |
 | `--no-reap` | Do not harvest automation servers the probe left behind. |
 | `--reap-images <a,b>` | Replace the harvested image list. Default is the Office suite. |
@@ -635,14 +645,17 @@ and sweep once at the end.
 > *Save* dialog on build. Under `tbbuild` the IDE runs on a private desktop, so that dialog
 > is invisible, takes no input, and the build silently never happens --- the WebView2
 > renderer stays responsive throughout, so even a health check says the IDE is fine. `tbrun`
-> pins the path to a concrete file in its staged copy, which makes the trap unreachable.
+> pins the path to a folder of its own in its staged copy, which makes the trap unreachable.
+> The file keeps the IDE's own name, *project name*`_`*target*`.`*extension* --- for
+> example `ArchProbe_win64.exe` --- so the name says what was built.
 
 Like `tbbuild`, it leaves the IDE's registry entries as it found them. Everything it opens is
 in its own temp folder, so it deletes every entry under that folder once the IDE has exited,
 and again at the start of a run, which removes what an earlier run on the same port left
-behind. That includes the build target the IDE remembers for each project, so **every probe
-builds for win32**, the IDE's default. Before the target was cleared this way, a kept IDE
-switched to win64 made every later run on the same port build 64-bit, and nothing said so.
+behind. That includes the target the IDE remembers for each project, which a `win64` run
+writes. **A probe builds for the target `--arch` names**, whatever the IDE remembers. Before
+the option, a kept IDE switched to `win64` made every later run on the same port build 64-bit,
+and nothing said so.
 
 ### addin_test.mjs
 {: #addin-test }

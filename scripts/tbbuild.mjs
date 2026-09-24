@@ -6,6 +6,11 @@
 //       --ide <path>      twinBASIC.exe (default: $TB_IDE, else the newest
 //                         %USERPROFILE%/Desktop/twinBASIC_IDE_BETA_*)
 //       --port <n>        DevTools port to start the IDE on (default 9333)
+//       --arch <target>   win32 or win64 (default win32): the target to
+//                         compile for. #If Win64 and LongPtr's size change
+//                         what compiles, and a project opens in whatever
+//                         target the IDE remembers for its path, so the
+//                         target is set on every run, win32 included.
 //       --timeout <secs>  give up waiting for the compile (default 180)
 //       --json            emit one JSON object instead of text
 //       --keep            leave the IDE running afterwards. The IDE's pid is
@@ -47,8 +52,8 @@
 import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { findIde } from "./lib/tb-install.mjs";
-import { attachIde, compileOutcome, launchIde, shutdownIde, summaryLine,
-         waitForCompile, wantShow } from "./lib/tb-ide.mjs";
+import { TARGETS, attachIde, compileOutcome, launchIde, setBuildTarget, shutdownIde,
+         summaryLine, waitForCompile, wantShow } from "./lib/tb-ide.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
 const args = process.argv.slice(2);
@@ -61,15 +66,16 @@ const proj = args.find((a, i) => !a.startsWith("--") && !args[i - 1]?.startsWith
 // which is where the IDE's own zip tells people to unpack it.
 const IDE = findIde(opt("ide", undefined));
 const port = Number(opt("port", 9333));
+const arch = opt("arch", TARGETS[0]);
 const timeout = Number(opt("timeout", 180)) * 1000;
 const asJson = flag("json");
 const keep = flag("keep");
 const show = wantShow({ show: flag("show"), hide: flag("hide") });
 
-if (!proj || flag("help")) {
+if (!proj || flag("help") || !TARGETS.includes(arch)) {
   console.error("usage: node scripts/tbbuild.mjs <project.twinproj> " +
-    "[--ide <twinBASIC.exe>] [--port N] [--timeout S] [--json] [--keep] " +
-    "[--show|--hide]");
+    "[--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--json] " +
+    "[--keep] [--show|--hide]");
   process.exit(2);
 }
 // Refuse anything that is not a .twinproj, rather than discovering it two
@@ -136,8 +142,23 @@ if (!c) die(2, "the IDE never exposed a debug port");
 // (attachIde), and reported with the diagnostics.
 const dialogs = c.dialogs;
 
-const outcome = compileOutcome(await waitForCompile(c, { project: proj, timeout }), { name: proj });
+let outcome = compileOutcome(await waitForCompile(c, { project: proj, timeout }), { name: proj });
 if (!outcome.ok) die(outcome.code, outcome.message);
+
+// Set on every run, win32 included, and what is reported is the compile under
+// it: see setBuildTarget. Switching restarts the compiler, which compiles the
+// project again, so a run that switches takes a few seconds longer.
+let openedIn;
+try {
+  const target = await setBuildTarget(c, arch, { project: proj, timeout });
+  openedIn = target.from;
+  if (target.waited) {
+    outcome = compileOutcome(target.waited, { name: proj });
+    if (!outcome.ok) die(outcome.code, outcome.message);
+  }
+} catch (e) {
+  die(2, e.message);
+}
 const { rows, counts } = outcome;
 
 // The IDE's pid is reported so a caller can clean up precisely. It matters most
@@ -146,12 +167,19 @@ const { rows, counts } = outcome;
 // and the user's own open IDE with it.
 if (asJson) {
   console.log(JSON.stringify({
-    project: proj,
+    project: proj, arch, openedIn,
     errors: counts[0], warnings: counts[1], hints: counts[2], infos: counts[3],
     idePid: ide?.pid ?? null, kept: keep,
     diagnostics: rows, dialogs: dialogs.map((d) => d.message),
   }, null, 2));
 } else {
+  // Said only when either target is not the default, so the usual report is
+  // unchanged, and the summary stays the last line. A project opens in win32
+  // unless the IDE remembered another target for its path.
+  if (arch !== TARGETS[0] || openedIn !== TARGETS[0]) {
+    console.log(`target: ${arch}` +
+      (openedIn !== TARGETS[0] ? ` (the IDE remembered ${openedIn} for this project)` : ""));
+  }
   for (const r of rows) console.log(r);
   console.log(summaryLine(counts));
   if (dialogs.length) console.log("dialogs:", JSON.stringify(dialogs.map((d) => d.message)));

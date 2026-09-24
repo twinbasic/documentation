@@ -459,6 +459,73 @@ on an image allowlist, *and* windowless --- a new one that has a window is repor
 alone, since that cannot be told from a copy the user opened. `--no-reap` turns it off, and
 concurrent runs driving the same server should use it and sweep once at the end.
 
+### Building for win64
+
+**`tbrun` and `tbbuild` take `--arch win32|win64`, and set it on every run, win32
+included.** Before the option they built whatever target the IDE had for the project, which
+for a fresh probe is win32, so no probe could measure 64-bit behaviour --- and a target the
+IDE remembered for a reused path decided the build without a word. `tbbuild` needs it as much
+as `tbrun`: `#If Win64` and `LongPtr`'s size change what compiles. Measured with a module
+declaring a variable of an undeclared type under both branches of `#If Win64`: win32
+reported line 6's `OnlyUnder32Bit`, win64 line 4's `OnlyUnder64Bit`.
+
+**The target is the toolbar's build configuration box**, the page global
+`buildConfigSelector`, whose options are `win32`, `win64` and `nocompile` --- safe mode,
+which the IDE sets itself after four compiler crashes in a minute, with a message box. The
+IDE's own `tbBuild_SwitchToWin64` and `tbBuild_SwitchToWin32` (Ctrl+F1, Ctrl+F2) set the box
+and call its `onchange`, and `setBuildTarget` in `tb-ide.mjs` does the same. The handler,
+`changedActiveBuildConfig` in `ide/main2.js`, saves the target for the project's path and
+calls `restartCompilerSafely`, which kills the compiler: **every switch restarts it**, as the
+target's own compiler, `twinBASIC_win64_noDEP.exe` for win64, and the project compiles
+again. A project opening with a remembered target goes through the same switch before it
+loads.
+
+**Wait for the restart by the compiler's pid, not by the clock.** Measured on BETA 983, at
+50 ms: the status bar stayed OPERATIONAL for about 250 ms after the switch, read UNAVAILABLE
+until the new compiler's pid appeared in `g_CurrentCompilerProcessId` at about 510 ms, and
+LIMITED until OPERATIONAL at 1.4 s. `waitForCompile` started straight after the switch can
+sample that second of downtime twice after having seen OPERATIONAL, and it counts that as
+the compiler going down twice: exit 4, a crash that did not happen. A three-second pause
+before it worked when this was first measured, and is a guess. `setBuildTarget` waits for
+the pid to change, then for the compile.
+
+**A win64 probe runs as a 64-bit process.** `[RunAfterBuild]` code runs in the compiler that
+built it, not in the binary:
+
+| | win32 | win64 |
+|---|---|---|
+| `LenB` of a `LongPtr` | 4 | 8 |
+| `#If Win64` | False | True |
+| `ProcessorArchitecture()` | 0, `vbArchWin32` | 1, `vbArchWin64` |
+| `Environ$("PROCESSOR_ARCHITECTURE")` | x86 | AMD64 |
+| `IsWow64Process` | 1 | 0 |
+| module path of the process | `bin\twinBASIC_win32_noDEP.exe` | `bin\twinBASIC_win64_noDEP.exe` |
+| PE machine of the built file | 0x14c | 0x8664 |
+
+The first three are decided when compiling; the last three can only come from the running
+process, and they agree.
+
+**The build path's folder has to be explicit; its file name need not be.** `tbrun` used to
+pin the output to `tbrun-probe.exe` whatever the build type or target. It now builds into
+its own `out` folder under the IDE's own name, `${ProjectName}_${Architecture}.${FileExtension}`,
+which gave `ArchProbe_win32.exe` and `ArchProbe_win64.exe` with no Save dialog --- so the
+trap above comes from the default `${SourcePath}\Build\...`, not from the variables. The
+name is looked for after the build rather than assumed, because `${FileExtension}` follows
+the build type.
+
+**A switch writes the IDE's remembered target for the project's path**, so the registry tidy
+has to put it back. Under a harness folder the entry is swept, as every entry there is. A
+named project --- `tbbuild` on one of the user's own --- has its entry snapshotted and
+restored, as its saved state is ([What a run leaves in the
+registry](#what-a-run-leaves-in-the-registry-and-putting-it-back)). Measured end to end with
+an entry of `win64` seeded for a named project: the default run said `target: win32 (the IDE
+remembered win64 for this project)`, compiled for win32, and left the entry at `win64`; with
+the seed removed, the whole value was byte-identical to before. Two limits. Under `--keep`
+nothing is tidied, so a kept IDE's switch stays remembered. And the IDE's own save is an
+unguarded read-modify-write of one JSON value (`setProjectLastUsedTargetArchitecture`), so two
+IDEs switching at the same moment can lose one another's entry --- harmless for a harness
+path, which the next sweep deletes anyway.
+
 ## What a run leaves in the registry, and putting it back
 
 **Every IDE the harness starts writes to the user's own settings.** They live under
@@ -496,8 +563,11 @@ leave everything as it was found**, and it takes four forms:
   2026-09-24 the object held `win64` for `tbrun`'s work folders on ports 9372 and 9373, so
   `tbrun` on either port built 64-bit. `sweepArchitectureMemory` deletes the entries under
   the run's folders and leaves every other entry alone, the user's among them. Opening a
-  project only reads its entry; one is written when somebody changes the target of a
-  project that is open. The object is edited in JavaScript and written back with
+  project only reads its entry; one is written when the target of an open project changes,
+  which `--arch` does ([Building for win64](#building-for-win64)). So a **named** project's
+  entry is snapshotted and put back as its saved state is, by
+  `restoreArchitectureMemory`: its old value in its old place, and any other spelling of its
+  path the IDE saved deleted. The object is edited in JavaScript and written back with
   `JSON.stringify`, which is how the IDE writes it, so the other entries keep their exact
   text and order, and the write is refused if the value changed after it was read.
 

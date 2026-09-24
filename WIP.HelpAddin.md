@@ -100,9 +100,12 @@ the compiler what a symbol is.** Each of those gaps shapes a stage below.
   a differently named DLL in each folder: a project with no memory got
   `twinBASIC_win32_noDEP.exe`, which loaded `addins\win32` alone; a project remembered as
   win64 got `twinBASIC_win64_noDEP.exe` with `twinBASIC_nativedbg_win64.exe`, which tried
-  `addins\win64` alone. What switching the target of an open project (Ctrl+F1 / Ctrl+F2)
-  does is the rest of **P7**; `changedActiveBuildConfig` in `ide/main2.js` records the new
-  target and restarts the compiler. A shipped add-in needs both builds.
+  `addins\win64` alone. Switching the target of an open project (Ctrl+F1 / Ctrl+F2) restarts
+  the compiler in the other bitness: `changedActiveBuildConfig` in `ide/main2.js` records the
+  new target and kills the compiler, and the one that replaced a `twinBASIC_win32_noDEP.exe`
+  on a switch to win64 was a `twinBASIC_win64_noDEP.exe` (measured for `--arch`,
+  [WIP.Harness.md](WIP.Harness.md#building-for-win64)). Which `addins` folder that one loads
+  was not looked at, and is the rest of **P7**. A shipped add-in needs both builds.
 
 ### Keyboard shortcuts
 
@@ -480,7 +483,7 @@ the build number it was measured on.
 | P4 | Does `innerHTML` render, and do inline handlers in it run page script? **Half answered, BETA 983:** HTML an add-in gives a list view's `addItem` renders, and its inline `onclick` runs the page's `raiseEvent` (Sample 15). `innerHTML` set as a property is untested. | how summaries are drawn; whether the page-internals route exists |
 | P5 | What does hover return for `MsgBox`, `Collection.Add`, `ToolWindows.Add` and a symbol declared in the project? What does definition return for a package symbol? | compiler-assisted context, or the add-in's own parser |
 | P6 | Does the compiler also load add-ins from `%APPDATA%\twinBASIC\addins\<arch>`? This needs a DLL placed there for a moment, and the user's own IDE would load it too --- **ask before running it.** | harness isolation |
-| P7 | Which bitness does the compiler start in, and does switching the build target restart it in the other one and load the other `addins` folder? **Half answered, BETA 983:** the target a project opens in picks the compiler --- win32 when the IDE remembers none, `twinBASIC_win64_noDEP.exe` for a project remembered as win64 --- and each compiler reads its own `addins` folder alone. Switching the target of an open project is untested. | building and testing both bitnesses |
+| P7 | Which bitness does the compiler start in, and does switching the build target restart it in the other one and load the other `addins` folder? **Half answered, BETA 983:** the target a project opens in picks the compiler --- win32 when the IDE remembers none, `twinBASIC_win64_noDEP.exe` for a project remembered as win64 --- and each compiler reads its own `addins` folder alone. Switching the target of an open project restarts the compiler in the other bitness --- `twinBASIC_win32_noDEP.exe` was replaced by `twinBASIC_win64_noDEP.exe` --- and which folder that one loads is untested. | building and testing both bitnesses |
 | P8 | Is a loaded add-in DLL locked against being overwritten? **Answered, BETA 983: yes.** While its IDE runs, overwriting fails (`EBUSY`) and deleting fails (`EPERM`), though renaming works; the hold outlasts the compiler's exit by a few tens of milliseconds. | the rebuild loop --- the DLL is built outside `addins`, and copied in once the IDE has ended |
 | P9 | Does a compiler restart reload add-ins from disk? **Half answered, BETA 983:** a restart ends the compiler and starts a new process, which loads every add-in again as it starts, so from disk. The loop itself is untested: rename the loaded DLL aside (P8 allows that), copy the new build in, restart. | a rebuild loop without restarting the IDE |
 | P10 | Does an environment variable set by the harness reach the add-in (`Environ$`)? **Answered, BETA 983: yes**, through the launcher, the IDE and the compiler the IDE starts. With `TB_ADDIN_TEST=1` in `launchIde`'s environment, `Environ$` and `GetEnvironmentVariableW` both returned `1` in the add-in, and a compiler started by the restart button returned it too; left out, both said it was unset. `WEBVIEW2_USER_DATA_FOLDER`, which `launchIde` always sets, arrived with the lane's port in it. | the side-effect switch |

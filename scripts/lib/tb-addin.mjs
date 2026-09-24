@@ -18,8 +18,9 @@
 // win32 only. A project path the IDE has no memory of opens in its first
 // build target, win32, whose compiler is twinBASIC_win32_noDEP.exe and loads
 // add-ins from addins\win32; the registry tidy deletes any memory the lane's
-// paths have. Which compiler a win64 project gets, and which folder that one
-// loads from, is P7.
+// paths have. A win64 project gets twinBASIC_win64_noDEP.exe, opened that way
+// or switched to (setBuildTarget in tb-ide.mjs); which add-in folder a
+// switched compiler loads is the rest of P7.
 
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";

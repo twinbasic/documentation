@@ -520,6 +520,74 @@ export function compileOutcome({ loaded, crash, drops, last, blocked }, { name }
 export const summaryLine = (counts) =>
   `--- ${counts[0]} error(s), ${counts[1]} warning(s), ${counts[2]} hint(s), ${counts[3]} info`;
 
+/** The build targets the toolbar's build configuration box offers, besides safe mode. */
+export const TARGETS = ["win32", "win64"];
+
+// The box, and the pid of the compiler the page is talking to: switching the
+// target restarts the compiler, and a new pid is how to tell that it has.
+const TARGET_JS = `(() => {
+  if (typeof buildConfigSelector === "undefined" || !buildConfigSelector) return null;
+  return JSON.stringify({
+    value: buildConfigSelector.value,
+    options: Array.from(buildConfigSelector.options, (o) => o.value),
+    pid: typeof g_CurrentCompilerProcessId === "undefined" ? null : g_CurrentCompilerProcessId,
+  });
+})()`;
+
+/**
+ * Make the project's build target `arch`, win32 or win64, and wait for the
+ * compile under it to settle.
+ *
+ * A project opens in the target the IDE remembers for its path
+ * (IDESettings\targetArchitectureMemory, which lib/tb-registry.mjs tidies),
+ * and in win32, the box's first option, when it remembers none. So a caller
+ * that means a target sets it, even win32: otherwise an entry somebody left
+ * decides the build, and nothing says so.
+ *
+ * The switch is the IDE's own tbBuild_SwitchToWin64 and tbBuild_SwitchToWin32
+ * commands: set the box, call its onchange. That handler,
+ * changedActiveBuildConfig, saves the target for the project's path and calls
+ * restartCompilerSafely, which kills the compiler; the new one is the target's
+ * own, twinBASIC_win64_noDEP.exe for win64, and it compiles the project again.
+ * Measured on BETA 983: the status bar stays OPERATIONAL for about 250 ms
+ * after the switch, and is down for about a second after that until the new
+ * compiler's pid appears. waitForCompile started straight away can count that
+ * as the compiler going down twice and report a crash, so the restart is waited
+ * for by the pid, not by the clock.
+ *
+ * @param {object} c                  a tb-cdp connection
+ * @param {string} arch               "win32" or "win64"
+ * @param {object} o                  as for waitForCompile
+ * @returns {Promise<{from: string, waited: object | null}>} `from` is the target
+ *   the project opened in; `waited` is waitForCompile's result for the compile
+ *   under `arch`, or null when the project was in `arch` already
+ */
+export async function setBuildTarget(c, arch, { project, timeout }) {
+  const read = async () => JSON.parse((await c.evaluate(TARGET_JS)) ?? "null");
+  const before = await read();
+  if (!before) throw new Error("this IDE has no build configuration box (buildConfigSelector)");
+  if (!before.options.includes(arch)) {
+    throw new Error(`the build configuration box offers ${before.options.join(", ")}, not ${arch}`);
+  }
+  if (before.value === arch) return { from: before.value, waited: null };
+  if (!before.pid) throw new Error("the IDE has no compiler process to restart for another target");
+  await c.evaluate(`buildConfigSelector.value = ${JSON.stringify(arch)}; buildConfigSelector.onchange()`);
+  const t0 = Date.now();
+  for (;;) {
+    await sleep(250);
+    let now = null;
+    try { now = await read(); } catch { /* the page is busy with the restart */ }
+    if (now?.pid && now.pid !== before.pid) {
+      if (now.value !== arch) throw new Error(`the build target went back to ${now.value} after the switch`);
+      break;
+    }
+    if (Date.now() - t0 > 60 * 1000) {
+      throw new Error(`the compiler did not restart within 60 s of switching the build target to ${arch}`);
+    }
+  }
+  return { from: before.value, waited: await waitForCompile(c, { project, timeout }) };
+}
+
 // Read the DEBUG CONSOLE's BACKING ARRAY, never the pane. `debugConsoleContent`
 // is a createListView(), which renders only the rows that fit -- so an
 // `.innerText` scrape returned the last ~11 lines of any longer probe and gave
