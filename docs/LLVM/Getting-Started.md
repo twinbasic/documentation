@@ -78,7 +78,7 @@ Besides the project settings, three settings in [IDE Options](../tB/IDE/Project/
 
 To reduce compile time, or to work around a procedure that LLVM reports problems with, use the [**CompilerOptions**](../tB/Core/Attributes#compileroptions) attribute with an empty string. It turns LLVM off for that procedure and keeps it on for the rest of your code:
 
-```tb
+```tb check_build
 [CompilerOptions("")]
 Public Sub DoNotOptimizeMe()
     ' ...
@@ -100,7 +100,7 @@ The flags for CPU instruction sets are `+aes`, `+avx`, `+avx2`, `+bmi2`, `+fma`,
 
 For example:
 
-```tb
+```tb check_build
 [CompilerOptions("+llvm,+optimize,+optimizesize")]
 Function Multiply(A As Long, B As Long) As Long
     Return A * B
