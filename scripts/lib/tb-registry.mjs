@@ -22,6 +22,9 @@
 //     it died before tidying.
 //   * The association keys are put back value by value, and only where they
 //     differ, so an untouched key is never written.
+//   * The build target the IDE remembers for each project path is deleted for
+//     every path under those folders, before the run and after it
+//     (sweepArchitectureMemory says why).
 //
 // ONE PROCESS OWNS THIS PER RUN. check_examples starts many tbbuild processes
 // at once; each snapshotting and restoring on its own would put back whichever
@@ -250,10 +253,34 @@ function RestoreKey([string]$path, $snap) {
   foreach ($s in @($snap.keys)) { RestoreKey ($path + $SEP + [string]$s.name) $s.snap }
 }
 
+function ReadValue([string]$path, [string]$name) {
+  $out = [ordered]@{ exists = $false; data = $null }
+  $k = $hk.OpenSubKey($path)
+  if (-not $k) { return $out }
+  if (@($k.GetValueNames()) -contains $name) { $out.exists = $true; $out.data = [string]$k.GetValue($name) }
+  $k.Close()
+  return $out
+}
+
+# Written only if the value still holds what the caller read, so that a value
+# an IDE saved in the meantime is never overwritten with an older copy.
+function WriteValueIf([string]$path, [string]$name, [string]$expected, [string]$data) {
+  $k = $hk.OpenSubKey($path, $true)
+  if (-not $k) { return [ordered]@{ written = $false } }
+  $same = (@($k.GetValueNames()) -contains $name) -and ([string]$k.GetValue($name) -ceq $expected)
+  if ($same) { $k.SetValue($name, $data, $String) }
+  $k.Close()
+  return [ordered]@{ written = $same }
+}
+
 try {
   $req = [Console]::In.ReadToEnd() | ConvertFrom-Json
   switch ([string]$req.op) {
     'lists'            { $result = Lists ([string]$req.root) }
+    'readValue'        { $result = ReadValue ([string]$req.key) ([string]$req.name) }
+    'writeValueIf'     {
+      $result = WriteValueIf ([string]$req.key) ([string]$req.name) ([string]$req.expected) ([string]$req.data)
+    }
     'snapshotProjects' { $result = SnapProjects ([string]$req.root) $req.paths }
     'restoreProjects'  { $result = RestoreProjects $req.snapshot $req.prefixes }
     'snapshotKeys'     {
@@ -331,6 +358,56 @@ export function restoreKeys(snapshot) {
   return request({ op: "restoreKeys", snapshot }).changes;
 }
 
+const ARCH_MEMORY = "targetArchitectureMemory";
+const norm = (p) => String(p).split("/").join("\\").toLowerCase();
+
+/**
+ * Delete the build target the IDE remembers for every project under these
+ * folders.
+ *
+ * The IDE keeps the target it last built each project for, win32 or win64, in
+ * one IDESettings value holding a JSON object keyed by project path, and a
+ * project it opens again starts in that target. A harness project's path is
+ * used run after run -- tbrun's work folder is keyed to its port -- so an
+ * entry one run leaves, when somebody switches a --keep IDE to win64, sets the
+ * target of every later run on that path, and nothing says so. On 2026-09-24
+ * tbrun on ports 9372 and 9373 built 64-bit for that reason.
+ *
+ * Entries for any other path are left alone, the user's own projects among
+ * them. Opening a project only reads its entry, so tbbuild on the user's
+ * project writes nothing here; an entry is written when somebody changes the
+ * target of a project that is open.
+ *
+ * The object is edited here rather than in PowerShell, and written back with
+ * JSON.stringify, which is how the IDE writes it, so the other entries keep
+ * their exact text and order. The write is refused if the value changed after
+ * it was read, and the sweep is then repeated on what is there now.
+ *
+ * @param {string[]} prefixes     folders inside the OS temp folder, as for restoreProjects
+ * @param {object} [o]
+ * @param {string} [o.root]       the IDE's settings key
+ * @returns {number} entries deleted
+ */
+export function sweepArchitectureMemory(prefixes = [], { root = IDE_SETTINGS_KEY } = {}) {
+  const pre = prefixes.map((p) => norm(asTempFolder(p)));
+  if (!pre.length) return 0;
+  const key = `${root}\\IDESettings`;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const now = request({ op: "readValue", key, name: ARCH_MEMORY });
+    if (!now.exists) return 0;
+    let memory;
+    try { memory = JSON.parse(now.data); } catch { return 0; }   // not the harness's to repair
+    if (!memory || typeof memory !== "object" || Array.isArray(memory)) return 0;
+    const drop = Object.keys(memory).filter((p) => pre.some((x) => norm(p).startsWith(x)));
+    if (!drop.length) return 0;
+    for (const p of drop) delete memory[p];
+    const w = request({ op: "writeValueIf", key, name: ARCH_MEMORY,
+                        expected: now.data, data: JSON.stringify(memory) });
+    if (w.written) return drop.length;
+  }
+  throw new Error(`the IDE's ${ARCH_MEMORY} kept changing while it was being tidied`);
+}
+
 // Restoring a key deletes whatever the snapshot does not list, so a key near
 // the root -- `Software`, `Software\Classes` -- would take everything under it.
 // Three segments is the shallowest key this has any business restoring.
@@ -379,28 +456,44 @@ export function startTidy({ paths = [], prefixes = [] } = {}) {
   const owner = Number(process.env.TB_REGISTRY_OWNER);
   if (owner && owner !== process.pid && alive(owner)) return null;
   process.env.TB_REGISTRY_OWNER = String(process.pid);
+  let tidy;
   try {
     if (prefixes.length) restoreProjects({ root: IDE_SETTINGS_KEY, entries: [] }, { prefixes });
-    return { projects: snapshotProjects(paths), keys: snapshotKeys(), prefixes };
+    tidy = { projects: snapshotProjects(paths), keys: snapshotKeys(), prefixes };
   } catch (e) {
     console.error(`warning: the IDE's registry entries will not be tidied after this run: ${e.message}`);
     return null;
   }
+  sweepTargets(prefixes);
+  return tidy;
 }
 
 /**
  * Put the registry back as startTidy found it. Call it only once every IDE of
  * the run has exited -- shutdownIde waits for that.
  *
- * @returns {{projectState: number, recentlyOpened: number, association: number} | null}
+ * @returns {{projectState: number, recentlyOpened: number, association: number,
+ *            architecture: number | null} | null}
  */
 export function finishTidy(tidy) {
   if (!tidy) return null;
+  let done;
   try {
     const p = restoreProjects(tidy.projects, { prefixes: tidy.prefixes });
-    return { ...p, association: restoreKeys(tidy.keys) };
+    done = { ...p, association: restoreKeys(tidy.keys) };
   } catch (e) {
     console.error(`warning: could not tidy the IDE's registry entries after this run: ${e.message}`);
+    return null;
+  }
+  return { ...done, architecture: sweepTargets(tidy.prefixes) };
+}
+
+// With a warning of its own, so that failing here costs only this part of the tidy.
+function sweepTargets(prefixes) {
+  try {
+    return sweepArchitectureMemory(prefixes);
+  } catch (e) {
+    console.error(`warning: could not tidy the build targets the IDE remembers: ${e.message}`);
     return null;
   }
 }

@@ -1,6 +1,7 @@
-// Starting a twinBASIC IDE, reaching it over CDP, reading what it shows, and
-// ending it. The mechanics scripts/tbbuild.mjs and scripts/tbrun.mjs share, and
-// the ones the add-in harness in WIP.HelpAddin.md (Stage 1) is built on.
+// Starting a twinBASIC IDE, reaching it over CDP, reading what it shows,
+// building the project it has open, and ending it. The mechanics
+// scripts/tbbuild.mjs and scripts/tbrun.mjs share, and the ones the add-in
+// harness in WIP.HelpAddin.md (Stage 1) is built on.
 //
 // Each function here was once inline in one of those two scripts, and the
 // comments that explain it moved with it. See WIP.Harness.md, "Compiling a
@@ -426,7 +427,7 @@ export const summaryLine = (counts) =>
 //     none, and the IDE's `substr(i + 7)` would then quietly eat six
 //     characters of real output. No current addItem() path omits it; the guard
 //     costs a comparison and removes a silent-corruption mode.
-const consoleJs = (withTimestamps) => `(() => {
+const consoleJs = (withTimestamps, from) => `(() => {
   if (typeof debugConsoleContent === "undefined" || !debugConsoleContent ||
       !debugConsoleContent.dataNodes) return null;
   const decode = (html) => {
@@ -434,7 +435,7 @@ const consoleJs = (withTimestamps) => `(() => {
     d.innerHTML = html;
     return d.textContent;
   };
-  return debugConsoleContent.dataNodes.map(n => {
+  return debugConsoleContent.dataNodes.slice(${from}).map(n => {
     const i = n.indexOf("</span>");
     if (i < 0) return decode(n);
     return decode(${withTimestamps}
@@ -450,8 +451,85 @@ const consoleJs = (withTimestamps) => `(() => {
  * @param {object} c                  a tb-cdp connection
  * @param {object} [o]
  * @param {boolean} [o.timestamps]    keep each entry's timestamp column
+ * @param {number} [o.from]           start at this entry instead of the first
  */
-export const readConsole = (c, { timestamps = false } = {}) => c.evaluate(consoleJs(timestamps));
+export const readConsole = (c, { timestamps = false, from = 0 } = {}) =>
+  c.evaluate(consoleJs(timestamps, Number(from)));
+
+// Where the console stands: how many entries it holds, and its first entry as
+// stored, timestamp and all. Nothing removes an entry but a clear, so entries
+// read later from index `n` on are new -- unless the first entry has changed or
+// the count has fallen, which means the console was cleared in between and all
+// of it is new.
+const CONSOLE_MARK_JS = `(() => {
+  const d = typeof debugConsoleContent === "undefined" || !debugConsoleContent
+    ? null : debugConsoleContent.dataNodes;
+  return d ? { n: d.length, first: d.length ? d[0] : null } : null;
+})()`;
+
+// The build log, in the compiler's own words (its strings, BETA 983). A build
+// writes "[BUILD] Starting..." to the DEBUG CONSOLE, and a binary ends with
+// "[LINKER] SUCCESS created output file '<path>'" or with one of some twenty
+// failure lines: "[LINKER] FAILED ...", "[BUILD] FAILED ...", "[BUILD] ERROR
+// ...", "[BUILD] failed" and "[LINKER] compilation (codegen) error ...".
+const BUILD_START = "[BUILD] Starting...";
+const BUILD_OK = /^\[LINKER\] SUCCESS created output file '(.+)'$/;
+const BUILD_FAILED = /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[LINKER\] compilation \(codegen\) error/;
+
+/**
+ * Build the open project, as the toolbar's Build button does, and wait for the
+ * build log to say how it went.
+ *
+ * Only a binary is recognised, an EXE or a DLL, whose log ends with the
+ * linker's SUCCESS line. What a package build writes has not been looked at,
+ * and one would end in the timeout.
+ *
+ * @param {object} c                  a tb-cdp connection
+ * @param {object} [o]
+ * @param {number} [o.timeout]        milliseconds (default 120000)
+ * @returns {Promise<{ok: boolean, file?: string, message?: string, log: string[]}>}
+ *   `file` is the path the linker says it created; `log` is the console from
+ *   the build's first line on
+ */
+export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
+  const mark = await c.evaluate(CONSOLE_MARK_JS);
+  if (!mark) {
+    return { ok: false, log: [], message: "no debugConsoleContent.dataNodes in this IDE, " +
+      "so the build log cannot be read" };
+  }
+  if (!await clickCenter(c, "buildIcon")) {
+    return { ok: false, log: [], message: "no #buildIcon in the IDE page -- did the project load?" };
+  }
+  const t0 = Date.now();
+  let log = [], failedAt = 0;
+  while (Date.now() - t0 < timeout) {
+    await sleep(250);
+    const now = await c.evaluate(CONSOLE_MARK_JS);
+    const cleared = !now || now.n < mark.n || (mark.n > 0 && now.first !== mark.first);
+    const text = await readConsole(c, { from: cleared ? 0 : mark.n });
+    const lines = text ? text.split("\n").map((l) => l.trim()) : [];
+    const start = lines.indexOf(BUILD_START);
+    if (start < 0) continue;
+    log = lines.slice(start);
+    const ok = log.map((l) => BUILD_OK.exec(l)).find(Boolean);
+    if (ok) return { ok: true, file: ok[1], log };
+    // Not every such line need end the build -- the strings include "[BUILD]
+    // failed to use project.iconForm setting", and whether a build goes on
+    // after that one has not been seen -- so one decides only after two
+    // seconds with no success line after it.
+    if (!failedAt && log.some((l) => BUILD_FAILED.test(l))) failedAt = Date.now();
+    if (failedAt && Date.now() - failedAt > 2000) {
+      return { ok: false, message: log.find((l) => BUILD_FAILED.test(l)), log };
+    }
+  }
+  return {
+    ok: false, log,
+    message: log.length
+      ? `the build started and reported nothing for ${timeout / 1000} s`
+      : `the build did not start in ${timeout / 1000} s -- is a dialog open? A template ` +
+        "buildPath opens a Save dialog, which the private desktop hides",
+  };
+}
 
 /**
  * The add-ins the IDE's compiler has loaded, as the Add-Ins menu lists them:
@@ -461,6 +539,11 @@ export const readConsole = (c, { timestamps = false } = {}) => c.evaluate(consol
  * so this is the compiler's own answer rather than anything inferred from
  * files on disk. Add-ins load as the compiler starts, so ask once the project
  * has opened.
+ *
+ * A DLL the compiler found but could not load is listed too, as
+ * "Unknown Addin", so look for the name you expect rather than counting. The
+ * DEBUG CONSOLE says what went wrong, in a line that starts with the file's
+ * name in brackets: "[x.dll] Failed to load addin.  LoadLibrary() failed."
  */
 export const loadedAddins = (c) => c.evaluate(
   "new Promise((resolve) => root.getAddinsList(resolve))", { awaitPromise: true });

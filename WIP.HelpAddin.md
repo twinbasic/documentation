@@ -4,7 +4,8 @@ See [WIP.md](WIP.md) for the maintenance guide. This file covers the planned twi
 add-in that shows the documentation for the symbol under the cursor, and the harness that
 tests IDE add-ins by machine, which the add-in is developed against.
 
-**Status: planning. Nothing is built.** This file replaces the June draft, `add-in/PLAN.md`
+**Status: Stage 1, the harness, is half built** --- items 1 to 4 are done, and the add-in
+itself is not started. This file replaces the June draft, `add-in/PLAN.md`
 in commit `d159acf8` ("Roughly plan the help add-in"). That commit is on no branch --- only
 the detached HEAD of an old worktree keeps it --- so everything in it worth keeping is here,
 corrected, and nothing depends on it surviving. [What changed from the June
@@ -57,14 +58,24 @@ the compiler what a symbol is.** Each of those gaps shapes a stage below.
   install's IDE reports `GlobalSearchAddIn AddIn`, and a copy of it with empty `addins`
   folders reports none.
 - **The page creates `%APPDATA%\twinBASIC\addins\win32` and `...\win64`** at startup
-  (`CreateCommonFolders`, `main.js@961019`) *(reported)*. Whether the compiler also loads
-  from there is **P6**. If it does, a DLL placed there loads into every IDE the user starts.
+  (`CreateCommonFolders`, `main.js@961019`) *(reported)*, and hands the folder above them
+  to the compiler: `RequestStartCompiler` and `RequestLoadAddins` both send
+  `commonFolderRootPath`, the resolved `%APPDATA%\twinBASIC` (`main.js@1047705` and
+  `@1048667`). That makes it likely that the compiler loads add-ins from there too, and it
+  is still **P6**. If it does, a DLL placed there loads into every IDE the user starts.
 - **Load failures have their own messages** in the compiler's strings: `Failed to load
   addin.  LoadLibrary() failed.`, `Entry point not found.  Addin may have been compiled for
   a newer version of the twinBASIC IDE.`, `Entry point 'tbCreateCompilerAddin' call
-  failed.` and `...returned an object that does not implement interface IAddInV1.` Where
-  they are written is untested; the DEBUG CONSOLE is the likely place, and it is where a
-  harness would look.
+  failed.` and `...returned an object that does not implement interface IAddInV1.` **They
+  go to the DEBUG CONSOLE**, after the file's name in brackets --- measured with a 32-bit
+  add-in in `addins\win64`: `[InFolder_win64.dll] Failed to load addin.  LoadLibrary()
+  failed.` **An add-in that failed to load is still in the compiler's list**, as `Unknown
+  Addin`, so a test looks for the name it expects rather than counting.
+- **Holding Shift while a project opens skips the add-ins.** The page sends
+  `RequestLoadAddins` only when `shiftKeyDown` is false, and otherwise writes `[IDE] SHIFT
+  KEY DETECTED: DISABLED LOADING OF ADDINS` to the DEBUG CONSOLE (`main.js@1048443`).
+  `shiftKeyDown` follows the keymap's `tbMisc_ShiftKeyStateDown` and `...Up` actions, so a
+  test that presses Shift must not do it while a project is opening.
 - **The loader also looks for `tbCreateCompilerAddin_v2`**, and the linker knows a
   `tbCreateCompilerAddin_v3`. The tbIDE package declares neither, and what they take is
   unknown (**P14**).
@@ -72,9 +83,16 @@ the compiler what a symbol is.** Each of those gaps shapes a stage below.
   and every item calls `notSupportedMenuOption()` *(reported)*. Restarting the compiler
   removes every add-in's UI and shortcuts (`removeAddinAlterations`) *(reported)*; whether it
   also reloads the DLLs from disk is **P9**.
-- **Which `addins` folder is used follows the compiler's bitness**, and the bitness
-  probably follows the build target (Ctrl+F1 / Ctrl+F2), which the IDE remembers in the
-  shared registry as `targetArchitectureMemory` (**P7**). A shipped add-in needs both builds.
+- **The build target picks the compiler, and the compiler picks the folder.** The IDE
+  remembers the target of each project in the shared registry, as one JSON object in
+  `IDESettings\targetArchitectureMemory` keyed by project path, and opens a project in the
+  target remembered for it --- or, with none, in the first on its list, win32. Measured with
+  a differently named DLL in each folder: a project with no memory got
+  `twinBASIC_win32_noDEP.exe`, which loaded `addins\win32` alone; a project remembered as
+  win64 got `twinBASIC_win64_noDEP.exe` with `twinBASIC_nativedbg_win64.exe`, which tried
+  `addins\win64` alone. What switching the target of an open project (Ctrl+F1 / Ctrl+F2)
+  does is the rest of **P7**; `changedActiveBuildConfig` in `ide/main2.js` records the new
+  target and restarts the compiler. A shipped add-in needs both builds.
 
 ### Keyboard shortcuts
 
@@ -298,13 +316,25 @@ Everything after this stage is developed against it.
    bullets wait for the add-in runner (item 7). `snapshotKeys` takes any key, so the add-in's
    `SaveSetting` key is one more entry in its list. The work also found an IDE bug, now in
    [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md): a recent list shorter than 21 entries gets its
-   empty slots filled with copies of the last entry.
+   empty slots filled with copies of the last entry. Item 4 added a fourth thing to put
+   back, the build target the IDE remembers for each project path, because a lane that
+   inherits `win64` builds and loads the wrong bitness.
 4. **Build, then load.** The add-in is a Standard DLL. In a staged copy of its tree, pin
    `project.buildPath` to an explicit file in the lane IDE's `addins\<arch>\`, the way
    `tbrun` pins its exe path: the default `${SourcePath}\Build\...` template has already
    cost a run with an invisible Save dialog, and whether the samples' `${IdePath}` template
    behaves any better is untested. Build, end that IDE, then start the same lane IDE on a
    test project; its compiler loads the add-in as it starts. One project per IDE, as always.
+
+   **Done, building into the work folder instead:** `buildAddin` in
+   [scripts/lib/tb-addin.mjs](scripts/lib/tb-addin.mjs) builds with the lane's copy into
+   `<work>\out\`, and `addAddin` in `tb-ide-copy.mjs` then puts the DLL in the copy's
+   `addins\win32`. Built straight into `addins`, a rebuild would meet the previous build
+   loaded by the very IDE doing the building, and a loaded add-in cannot be overwritten
+   (P8). [WIP.Harness.md, Building an add-in and loading it](WIP.Harness.md#building-an-add-in-and-loading-it)
+   has the rest: how the build log is read, why only win32 for now, and what was measured.
+   Samples 10 and 15 both built and loaded, and the tree staging that `tbrun` did is now
+   [scripts/lib/tb-project.mjs](scripts/lib/tb-project.mjs), shared by both.
 5. **Operating the IDE and reading it**, as library calls over CDP:
    - open a file: `fs.tree.resolvePath("twinbasic:/<Project>/Sources/<file>")`, then
      `openEditors.openFile(node,false,false,false,line,col)` *(reported)*;
@@ -316,7 +346,9 @@ Everything after this stage is developed against it.
      `code` values, less than 500 ms apart;
    - click: real `Input.dispatchMouseEvent` presses at the element's centre. The IDE's own
      controls ignore `element.click()` --- `tbrun` learned that on `#buildIcon`;
-   - ask which add-ins loaded: `loadedAddins(c)` in `tb-ide.mjs` (done for item 2);
+   - ask which add-ins loaded: `loadedAddins(c)` in `tb-ide.mjs` (done for item 2), which
+     lists a DLL that failed to load as `Unknown Addin`;
+   - build the open project: `buildProject(c)` in `tb-ide.mjs` (done for item 4);
    - read a tool window through `toolWindowsById[<guid>].bodyElement`; read the DEBUG
      CONSOLE's backing array, notifications and message boxes; dismiss any `alert()`;
      notice a compiler restart or crash, as `tbbuild`'s console check already does.
@@ -352,8 +384,8 @@ the build number it was measured on.
 | P4 | Does `innerHTML` render, and do inline handlers in it run page script? | how summaries are drawn; whether the page-internals route exists |
 | P5 | What does hover return for `MsgBox`, `Collection.Add`, `ToolWindows.Add` and a symbol declared in the project? What does definition return for a package symbol? | compiler-assisted context, or the add-in's own parser |
 | P6 | Does the compiler also load add-ins from `%APPDATA%\twinBASIC\addins\<arch>`? This needs a DLL placed there for a moment, and the user's own IDE would load it too --- **ask before running it.** | harness isolation |
-| P7 | Which bitness does the compiler start in, and does switching the build target restart it in the other one and load the other `addins` folder? | building and testing both bitnesses |
-| P8 | Is a loaded add-in DLL locked against being overwritten? | the rebuild loop |
+| P7 | Which bitness does the compiler start in, and does switching the build target restart it in the other one and load the other `addins` folder? **Half answered, BETA 983:** the target a project opens in picks the compiler --- win32 when the IDE remembers none, `twinBASIC_win64_noDEP.exe` for a project remembered as win64 --- and each compiler reads its own `addins` folder alone. Switching the target of an open project is untested. | building and testing both bitnesses |
+| P8 | Is a loaded add-in DLL locked against being overwritten? **Answered, BETA 983: yes.** While its IDE runs, overwriting fails (`EBUSY`) and deleting fails (`EPERM`), though renaming works; the hold outlasts the compiler's exit by a few tens of milliseconds. | the rebuild loop --- the DLL is built outside `addins`, and copied in once the IDE has ended |
 | P9 | Does a compiler restart reload add-ins from disk? | a rebuild loop without restarting the IDE |
 | P10 | Does an environment variable set by the harness reach the add-in (`Environ$`)? | the side-effect switch |
 | P11 | Does the IDE write into its own install folder during a session? **Answered, BETA 983: no.** A compile, a compiler crash and a `tbrun` build-and-run left all 233 files byte-identical, mtimes included. | hardlinks or copies --- copies, for safety, at 380 ms |

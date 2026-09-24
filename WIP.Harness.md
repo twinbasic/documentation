@@ -9,7 +9,8 @@ what they are.
 
 Read it before changing `scripts/tbbuild.mjs`, `scripts/tbrun.mjs`,
 `scripts/lib/tb-ide.mjs`, `scripts/lib/tb-cdp.mjs`, `scripts/lib/tb-launch.ps1`,
-`scripts/lib/tb-registry.mjs`, `scripts/lib/tb-ide-copy.mjs` or
+`scripts/lib/tb-registry.mjs`, `scripts/lib/tb-ide-copy.mjs`,
+`scripts/lib/tb-project.mjs`, `scripts/lib/tb-addin.mjs` or
 `builder/census_attributes.mjs`, and before concluding anything about twinBASIC
 syntax from a sweep of exported sources.
 
@@ -184,7 +185,7 @@ handshake talks to the renderer, so it hangs on precisely the state you need to 
 
 **The mechanics are one library, [scripts/lib/tb-ide.mjs](scripts/lib/tb-ide.mjs)**:
 starting the IDE, attaching, waiting for the compile, reading the diagnostics and the DEBUG
-CONSOLE, clicking, and ending the process tree. `tbbuild` and `tbrun` are command lines
+CONSOLE, clicking, building, and ending the process tree. `tbbuild` and `tbrun` are command lines
 around it, and the add-in harness planned in [WIP.HelpAddin.md](WIP.HelpAddin.md) is built
 on it. Moving the code there was checked against 14 fixture cases run before and after ---
 every exit code and every line of output the same, apart from the two fixes below --- and
@@ -349,8 +350,10 @@ measure once there was a way to run code.
 
 It takes an **exported tree** rather than a `.twinproj`, stages a copy, pins the build path
 in the copy, packs it, compiles it with the same library calls `tbbuild` makes, clicks
-Build, then reads the DEBUG CONSOLE back over CDP. The probe is a module with a `[RunAfterBuild]` Sub, which the IDE runs once
-the exe is linked. Reader-facing documentation is the [`tbrun.mjs` entry in
+Build, then reads the DEBUG CONSOLE back over CDP. The staging is
+[scripts/lib/tb-project.mjs](scripts/lib/tb-project.mjs), which the add-in harness shares.
+The probe is a module with a `[RunAfterBuild]` Sub, which the IDE runs once the exe is
+linked. Reader-facing documentation is the [`tbrun.mjs` entry in
 Tools.md](docs/Documentation/Tools.md).
 
 **The trap that cost two silent runs, and the reason the script owns the tree.** A project
@@ -426,7 +429,7 @@ were: the user's own recent projects had gone from the IDE entirely. One `exampl
 adds 41 values and fills the list.
 
 [scripts/lib/tb-registry.mjs](scripts/lib/tb-registry.mjs) puts it back. **The rule is to
-leave everything as it was found**, and it takes three forms:
+leave everything as it was found**, and it takes four forms:
 
 - **A folder only the harness writes to is swept by prefix** --- `check_examples`' and
   `tbrun`'s work folders. The sweep also runs at the start of a run, which catches what an
@@ -440,10 +443,21 @@ leave everything as it was found**, and it takes three forms:
 - **The `.twinproj` association is restored value by value**, writing only what differs,
   so an untouched key is never written. The IDE does not rewrite it on every launch: key
   timestamps show `DefaultIcon` and `shell\open\command` last written when BETA 983 was
-  installed, through a day of launches of that build. That it rewrites them when the path
-  differs is inferred from that timing, not yet measured; a private copy of the IDE per
-  test lane ([WIP.HelpAddin.md](WIP.HelpAddin.md), Stage 1 item 2) is the first thing that
-  will test it.
+  installed, through a day of launches of that build. It rewrites them when its own path
+  differs, which was measured once there was a private copy of the IDE to start ([A private
+  IDE for every lane](#a-private-ide-for-every-lane)).
+- **The build target the IDE remembers for each project is deleted under the same
+  folders**, before the run and after it. The IDE keeps the target it last built a project
+  for as one JSON object in `IDESettings\targetArchitectureMemory`, keyed by the project's
+  path, and a project it opens again starts in that target. A harness path is used run
+  after run, so one run's entry decides every later run's target without a word: on
+  2026-09-24 the object held `win64` for `tbrun`'s work folders on ports 9372 and 9373, so
+  `tbrun` on either port built 64-bit. `sweepArchitectureMemory` deletes the entries under
+  the run's folders and leaves every other entry alone, the user's among them. Opening a
+  project only reads its entry; one is written when somebody changes the target of a
+  project that is open. The object is edited in JavaScript and written back with
+  `JSON.stringify`, which is how the IDE writes it, so the other entries keep their exact
+  text and order, and the write is refused if the value changed after it was read.
 
 **One process owns the registry per run.** `check_examples` runs four lanes of `tbbuild`
 children at once; each restoring its own snapshot would put back whatever the registry held
@@ -484,21 +498,30 @@ IDE fills every empty slot with a copy of the last one. The tidy leaves a short 
 it removes harness projects, so the next project the user opens trips it. That is the same
 list a new installation has, and it cannot be fixed from outside the IDE.
 
-**Two limits remain, both about IDEs the tidy does not own:**
+**Three limits remain, all about IDEs the tidy does not own:**
 
 - Two *standalone* `tbbuild`s on the same project at once: the second sees the first's entry
   as the user's, and puts it back. `check_examples` is immune, because its lanes are owned,
   and the end-to-end check below ran its fixture cases one at a time for this reason.
 - An IDE the user has open reads the recent list when it starts and writes its whole copy
   back when it opens a project, so it can bring back harness entries that were tidied after
-  it started.
+  it started. So can an IDE of a run from another session, which is why a check of the
+  registry waits until no other session's run is going.
+- A run that starts while another run's IDE copy is open records the association pointing
+  at that copy, and puts it back that way at the end, after the copy is gone. The first IDE
+  started from a real install afterwards re-points it. Only runs that use copies can cause
+  this, and none runs outside the add-in harness yet; the runner (WIP.HelpAddin.md, Stage 1
+  item 7) is where two such runs could first overlap.
 
 **Verified** by [scripts/check_tb_registry.mjs](scripts/check_tb_registry.mjs), which plays
 out a run on a scratch key and checks every rule above, the guards and the ownership rule
 included. It is not a gate: it needs Windows and a real registry, and the CI runners are
 Ubuntu. Run it after changing `tb-registry.mjs`. End to end, the 14 fixture cases, run one
 at a time, and a full `examples.bat` run leave `ProjectState`, the recent list and the
-association keys exactly as they were, value for value.
+association keys exactly as they were, value for value. The add-in checks in [Building an
+add-in and loading it](#building-an-add-in-and-loading-it) left `IDESettings` unchanged too,
+compared value by value through hashes, so that the comparison copied no value out of the
+registry; the build targets they planted under their own folders were gone afterwards.
 
 ## A private IDE for every lane
 
@@ -594,3 +617,76 @@ cases gave output identical to before the job, and a full `examples.bat` passed 
 1,116 with no process left afterwards. `--show` still starts the IDE directly, without a
 launcher or a job: it is for a person watching, and it has not been moved onto the launcher
 because that would mean putting an untested window on somebody's screen.
+
+## Building an add-in and loading it
+
+**An add-in is tested with two IDEs of the lane's copy, one after the other.** The compiler
+loads add-ins only as it starts, and an IDE holds one project, so:
+
+1. `buildAddin` in [scripts/lib/tb-addin.mjs](scripts/lib/tb-addin.mjs) stages the add-in's
+   exported tree through [scripts/lib/tb-project.mjs](scripts/lib/tb-project.mjs) --- the
+   staging `tbrun` does, moved there to be shared --- with the build path pinned to
+   `<work>\out\<project name>.dll`. It starts the copy on it, refuses a project with compile
+   errors (exit code 1, every diagnostic listed), builds, and ends the IDE.
+2. `addAddin` in `tb-ide-copy.mjs` puts the DLL in the copy's `addins\win32`. It refuses any
+   folder that is not a marked copy, so a test add-in cannot reach the real install.
+3. The copy starts again, on the project the test opens, and `loadedAddins` asks its
+   compiler what it loaded.
+
+Both shipped add-in samples went through it. Sample 10 and Sample 15 each built in about
+nine seconds, IDE start included, and the next IDE reported `WaynesWorld AddIn` and
+`GlobalSearchAddIn AddIn`, with Sample 10's five `OnProjectLoaded` lines in its DEBUG
+CONSOLE and its two toolbar buttons on the page.
+
+**The DLL is built into the work folder, not into `addins` as the samples' own build path
+has it**, because the IDE that builds is the lane's copy too: on a rebuild its compiler
+would hold the previous build, loaded from that folder, while the linker tried to replace
+it. **A compiler holds every add-in it loaded** (P8 in WIP.HelpAddin.md): while the IDE
+runs, overwriting the file fails with `EBUSY` and deleting it with `EPERM`, though renaming
+it works. The hold also outlasts the process: with every process of the IDE gone, the first
+overwrite still failed and one 25 ms later worked, four runs out of four. So `addAddin`
+retries for two seconds. Its copy fails with `EIO` rather than `EBUSY`, and a retry that did
+not listen for `EIO` failed three runs out of three.
+
+**Whether the build worked is read from the build log.** `buildProject` in `tb-ide.mjs`
+clicks Build, as `tbrun` does, and waits for the DEBUG CONSOLE. The wording is in the
+compiler's strings: `[BUILD] Starting...`, then for a binary either `[LINKER] SUCCESS created
+output file '<path>'` or one of about twenty failure lines --- `[LINKER] FAILED ...`,
+`[BUILD] FAILED ...`, `[BUILD] ERROR ...`, `[BUILD] failed`, `[LINKER] compilation (codegen)
+error ...`. An output file another process held open gave `[LINKER] FAILED to create output
+file '...' (error code 32)`, then `LOCKED BY:` and a line naming the process, then `[BUILD]
+failed`. Two details:
+
+- **Only lines added after the click count.** Nothing removes a console entry but a clear.
+  So the entries from the pre-click count on are new, unless the first entry changed or the
+  count fell: that means a clear, and then everything is new. A previous build's SUCCESS
+  line can never be taken for this build's.
+- **A failure line waits two seconds for a success line after it.** The strings include
+  `[BUILD] failed to use project.iconForm setting`, and whether a build goes on after that
+  one has not been seen.
+
+What a package build writes has not been looked at; `buildProject` knows binaries only.
+
+**win32 only, and the target is checked rather than assumed.** A project path the IDE has
+no memory of opens in the first target on its list, win32, and gets
+`twinBASIC_win32_noDEP.exe`. `buildAddin` reads the target the IDE chose and refuses any
+other, and the [registry tidy](#what-a-run-leaves-in-the-registry-and-putting-it-back)
+deletes any target remembered for the lane's paths. **The target decides which folder is
+read** (part of P7): a copy holding Sample 10 as `InFolder_win32.dll` in `addins\win32` and
+`InFolder_win64.dll` in `addins\win64` loaded the first alone when it opened a project with
+no memory. When it opened a project remembered as win64, it started
+`twinBASIC_win64_noDEP.exe` with `twinBASIC_nativedbg_win64.exe`, which tried the second
+alone and failed, since the add-in is 32-bit.
+
+**A DLL that fails to load still appears in `loadedAddins`, as `Unknown Addin`.** The DEBUG
+CONSOLE says why, on a line that starts with the file name: `[InFolder_win64.dll] Failed to
+load addin.  LoadLibrary() failed.` So a test looks for the name it expects rather than
+counting, and reads the console for the reason when that name is missing.
+
+**Verified** by a scratch driver, beyond the two samples. An add-in with an undeclared name
+failed with exit code 1 and both of its diagnostics. An output file held open by another
+process failed with exit code 2 and the linker's line. A lane whose add-in path was planted
+in the registry as win64 still built win32, because the tidy deleted the entry first. The 14
+fixture cases gave output identical to before, `tbrun`'s three included. A full
+`examples.bat` passed 1,117 of 1,117, and the registry was identical afterwards,
+`IDESettings` included.

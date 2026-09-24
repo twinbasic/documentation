@@ -548,7 +548,7 @@ measured with it.
 
 It takes an **exported source tree** (the folder holding `Sources/` and `Settings`), not a
 `.twinproj`, because it has to adjust the project before packing it. It stages a copy and
-leaves your tree untouched.
+leaves your tree untouched. The staging is in `scripts/lib/tb-project.mjs`.
 
 The probe is an ordinary module with a [`[RunAfterBuild]`](../../tB/Core/Attributes#runafterbuild)
 Sub, which the IDE runs once the exe is linked:
@@ -619,7 +619,9 @@ and sweep once at the end.
 Like `tbbuild`, it leaves the IDE's registry entries as it found them. Everything it opens is
 in its own temp folder, so it deletes every entry under that folder once the IDE has exited,
 and again at the start of a run, which removes what an earlier run on the same port left
-behind.
+behind. That includes the build target the IDE remembers for each project, so **every probe
+builds for win32**, the IDE's default. Before the target was cleared this way, a kept IDE
+switched to win64 made every later run on the same port build 64-bit, and nothing said so.
 
 ### check_tb_registry.mjs
 {: #check-tb-registry }
@@ -632,8 +634,10 @@ entries back after [`tbbuild.mjs`](#tbbuild), [`tbrun.mjs`](#tbrun) and
 keys, under `HKCU\Software\tbharness-selftest`, and checks that everything comes back: a
 project of yours that the run opened gets its saved state and its place in the recent list
 back, the run's own entries go, the file association is restored, and a second restore
-writes nothing. It also checks that the module refuses to sweep outside the temp folder or
-restore a key near the root of the registry. It deletes the scratch key when it ends.
+writes nothing. The build targets the IDE remembers are checked the same way: those under
+the run's folder go, and every other one stays, in its order and its exact text. It also
+checks that the module refuses to sweep outside the temp folder or restore a key near the
+root of the registry. It deletes the scratch key when it ends.
 
 It is not a gate and is not in `test.bat`, because it needs Windows and a real registry and
 the CI runners have neither. Run it by hand after changing `tb-registry.mjs`. Exit code

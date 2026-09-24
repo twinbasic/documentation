@@ -24,6 +24,10 @@
 //   * the association keys: a value changed, one added, one deleted, a subkey
 //     added, and a key that did not exist before created by the run;
 //   * that a second restore writes nothing at all;
+//   * the build targets the IDE remembers: the entries under a harness temp
+//     folder, in both separators, deleted; the user's, the lookalike folder's
+//     and the rest kept, in their order and in the IDE's own JSON; a value
+//     that is not JSON left alone;
 //   * the guards: a key near the root and a sweep outside the temp folder
 //     refused, and an error raised inside PowerShell arriving as a sentence;
 //   * the ownership rule: a dead owner does not block tidying, a live one makes
@@ -46,10 +50,10 @@ const ABSENT = BASE + "\\Classes\\.notthere";
 function ps(script, input) {
   const enc = Buffer.from("$ErrorActionPreference='Stop';$ProgressPreference='SilentlyContinue';" +
     "$u=New-Object System.Text.UTF8Encoding $false;[Console]::InputEncoding=$u;" +
-    "$in=[Console]::In.ReadToEnd()|ConvertFrom-Json;" +
+    "[Console]::OutputEncoding=$u;$in=[Console]::In.ReadToEnd()|ConvertFrom-Json;" +
     "$hk=[Microsoft.Win32.Registry]::CurrentUser;" + script, "utf16le").toString("base64");
-  execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-EncodedCommand", enc],
-    { input: JSON.stringify(input ?? {}), stdio: ["pipe", "ignore", "inherit"] });
+  return execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-EncodedCommand", enc],
+    { input: JSON.stringify(input ?? {}), encoding: "utf8", stdio: ["pipe", "pipe", "inherit"] });
 }
 const wipe = () => ps("if ($hk.OpenSubKey($in.base)) { $hk.DeleteSubKeyTree($in.base) }", { base: BASE });
 // Pairs rather than an object: PowerShell 5.1's ConvertFrom-Json refuses an
@@ -61,6 +65,9 @@ const setValues = (key, values) => ps(
 const deleteValues = (key, names) => ps(
   "$k=$hk.OpenSubKey($in.key, $true); foreach ($n in $in.names) { $k.DeleteValue($n) }; $k.Close()",
   { key, names });
+const readValue = (key, name) => JSON.parse(ps(
+  "$k=$hk.OpenSubKey($in.key); $v=$k.GetValue($in.name); $k.Close(); " +
+  "ConvertTo-Json -InputObject $v -Compress", { key, name }).replace(/^﻿/, ""));
 
 const USER = "D:\\work\\Real Project\\Mine.twinproj";
 const OTHER = "D:\\work\\Other\\Other.twinproj";
@@ -124,6 +131,27 @@ try {
   // Idempotent: nothing is left to put back, so nothing may be written.
   assert.deepEqual(R.restoreProjects(snap, { prefixes: [TEMPDIR] }), { projectState: 0, recentlyOpened: 0 });
   assert.equal(R.restoreKeys(keys), 0);
+
+  // ------------------------------------------------ remembered build targets
+  const SETTINGS = ROOT + "\\IDESettings";
+  const MEMORY = "targetArchitectureMemory";
+  const PROBE = TEMPDIR + "\\tbrun-probe.twinproj";
+  const PROBE_FWD = TEMPDIR.split("\\").join("/") + "/src/x.twinproj";
+  const memory = { [USER]: "win64", [PROBE]: "win64", [LOOKALIKE]: "win64", [PROBE_FWD]: "win32",
+                   [OTHER]: "win32" };
+  setValues(SETTINGS, { [MEMORY]: JSON.stringify(memory) });
+  assert.equal(R.sweepArchitectureMemory([TEMPDIR], { root: ROOT }), 2,
+    "both of the run's entries are deleted, whichever separator they use");
+  assert.equal(readValue(SETTINGS, MEMORY),
+    JSON.stringify({ [USER]: "win64", [LOOKALIKE]: "win64", [OTHER]: "win32" }),
+    "every other entry is kept, in its order, written as the IDE writes it");
+  assert.equal(R.sweepArchitectureMemory([TEMPDIR], { root: ROOT }), 0, "a second sweep deletes nothing");
+  setValues(SETTINGS, { [MEMORY]: "{not json" });
+  assert.equal(R.sweepArchitectureMemory([TEMPDIR], { root: ROOT }), 0);
+  assert.equal(readValue(SETTINGS, MEMORY), "{not json", "a value that is not JSON is left alone");
+  deleteValues(SETTINGS, [MEMORY]);
+  assert.equal(R.sweepArchitectureMemory([TEMPDIR], { root: ROOT }), 0, "no value, nothing to do");
+  assert.throws(() => R.sweepArchitectureMemory(["C:\\"], { root: ROOT }), /outside/);
 
   // ------------------------------------------------ the guards
   assert.throws(() => R.restoreKeys([{ path: "Software", snap: null }]), /close to the root/);

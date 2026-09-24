@@ -48,7 +48,8 @@
 //     input, and the build simply never happens. Nothing reports it: the
 //     WebView2 renderer stays responsive, so even a CDP health check says the
 //     IDE is fine. This script therefore owns the tree and pins buildPath to a
-//     concrete file before importing, which makes the trap unreachable.
+//     concrete file before importing, which makes the trap unreachable
+//     (lib/tb-project.mjs, shared with the add-in harness).
 //  2. A JAVASCRIPT .click() ON THE BUILD BUTTON DOES NOTHING. `#buildIcon` is
 //     a plain DIV wired through the IDE's own pointer handling; it needs real
 //     CDP Input.dispatchMouseEvent presses at its centre (tb-ide's
@@ -83,13 +84,13 @@
 //     a blunt enough instrument to need the guard rails in reapOrphans().
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync, readdirSync,
-         cpSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, mkdirSync, statSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { compilerExe, findIde, runCompiler } from "./lib/tb-install.mjs";
+import { compilerExe, findIde } from "./lib/tb-install.mjs";
 import { attachIde, clickCenter, compileOutcome, killTree, launchIde, readConsole,
          shutdownIde, summaryLine, waitForCompile, wantShow } from "./lib/tb-ide.mjs";
+import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
 const argv = process.argv.slice(2);
@@ -159,28 +160,14 @@ const work = path.join(tmpdir(), "tbrun", runKey);
 rmSync(work, { recursive: true, force: true });
 mkdirSync(work, { recursive: true });
 
-// Staged into a temp copy rather than edited in place. Pinning buildPath is what
-// makes the invisible Save dialog unreachable, but it is still a change to the
-// caller's project, and a probe harness that rewrites the tree you pointed it at
-// is one you stop trusting with a real project.
+// Staged into a temp copy rather than edited in place, with buildPath pinned to
+// a concrete file and a project.id keyed to the port (lib/tb-project.mjs).
 const stage = path.join(work, "src");
-cpSync(srcDir, stage, { recursive: true });
-const stagedSettings = path.join(stage, "Settings");
 const exePath = path.join(work, "tbrun-probe.exe");
 const projPath = path.join(work, "tbrun-probe.twinproj");
 
-const settings = JSON.parse(readFileSync(stagedSettings, "utf8"));
-const wasTemplate = /\$\{/.test(settings["project.buildPath"] ?? "");
-settings["project.buildPath"] = exePath;
-// Two probes sharing a project.id confuse the IDE's recents list -- so this is
-// keyed to the port too, not a constant. The last group is 12 hex digits, of
-// which the port fills the low six.
-settings["project.id"] =
-  `{7B247000-0000-4000-9000-7B2470${port.toString(16).padStart(6, "0")}}`;
-writeFileSync(stagedSettings, JSON.stringify(settings, null, "\t"), "utf8");
-
 const sourceText = (() => {
-  const dir = path.join(stage, "Sources");
+  const dir = path.join(srcDir, "Sources");
   if (!existsSync(dir)) return "";
   return readdirSync(dir).filter((f) => f.endsWith(".twin"))
     .map((f) => readFileSync(path.join(dir, f), "utf8")).join(String.fromCharCode(10));
@@ -201,11 +188,17 @@ if (!hasHook) {
 
 // ------------------------------------------------------------------- pack
 
-// import's exit code does not say whether it worked -- 0 on the failures it
-// reports, 999 on a tree holding an embedded package -- so runCompiler reads
-// the output, and a failure of either kind is the harness's, exit 2.
-const pack = runCompiler(COMPILER, ["import", projPath, stage, "--overwrite"]);
-if (!pack.done) die(2, `packing failed${pack.why}:\n${pack.tail}`);
+// A packing failure is the harness's, exit 2.
+let wasTemplate = false;
+try {
+  const staged = stageProject({
+    src: srcDir, stage, project: projPath, compiler: COMPILER,
+    settings: { "project.buildPath": exePath, "project.id": laneProjectId(0, port) },
+  });
+  wasTemplate = /\$\{/.test(staged.original["project.buildPath"] ?? "");
+} catch (e) {
+  die(2, e.message);
+}
 
 // ---------------------------------------------------------------- compile
 

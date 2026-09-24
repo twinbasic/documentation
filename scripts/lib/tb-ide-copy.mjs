@@ -81,6 +81,46 @@ export function makeIdeCopy({ ide, dest, addins = {} }) {
 }
 
 /**
+ * Put an add-in DLL into a copy's addins\<arch> folder, replacing one of the
+ * same name, so that the copy's next IDE loads it.
+ *
+ * Refuses anything that is not a copy made by makeIdeCopy: in the real install
+ * a test add-in would load into every IDE the user starts. End the copy's IDEs
+ * first. A compiler holds every add-in it loaded: Windows refuses to overwrite
+ * or delete the file while it runs (WIP.HelpAddin.md, P8), and for a moment
+ * after -- the first overwrite after shutdownIde failed and one 25 ms later
+ * worked, four times out of four -- so a refused copy is retried for two
+ * seconds before it counts. The refusal comes back as EIO from the copy here
+ * and as EBUSY from a plain write.
+ *
+ * @param {string} exe   the copy's twinBASIC.exe, as makeIdeCopy returned it
+ * @param {string} dll   the add-in
+ * @param {"win32" | "win64"} arch
+ * @returns {string} where the DLL now is
+ */
+export function addAddin(exe, dll, arch) {
+  const root = path.dirname(path.resolve(exe));
+  if (!insideTemp(root) || !existsSync(path.join(root, MARKER))) {
+    throw new Error(`refusing to add an add-in to "${root}": it is not an IDE copy this module made`);
+  }
+  if (arch !== "win32" && arch !== "win64") throw new Error(`no such add-in folder: "${arch}"`);
+  const dest = path.join(root, "addins", arch, path.basename(dll));
+  const cell = new Int32Array(new SharedArrayBuffer(4));
+  for (let tries = 1; ; tries++) {
+    try {
+      cpSync(dll, dest);
+      return dest;
+    } catch (e) {
+      if (!["EIO", "EBUSY", "EPERM"].includes(e.code) || tries >= 20) {
+        throw new Error(`could not put the add-in in "${dest}" (${e.code}) -- ` +
+          "is an IDE started from this copy still running?");
+      }
+      Atomics.wait(cell, 0, 0, 100);
+    }
+  }
+}
+
+/**
  * Delete a copy made by makeIdeCopy. Refuses anything without its marker, and
  * anything outside the temp folder. End the copy's IDEs first: a running IDE
  * holds its files open.
