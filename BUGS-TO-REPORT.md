@@ -666,3 +666,242 @@ variable on the right both reproduce it.
 the other way round: `"2" \ b` is the `Long` -2.
 
 **Found by** the result-type probe for `Reference/Operators.md`.
+
+---
+
+## Export Project follows a directory junction in its folder and deletes what it points to
+
+**Build:** BETA 983
+**Severity:** data loss outside the folder the user chose. Export Project empties its folder
+before writing, as the *Export Path* setting warns; it does not stop at a junction.
+
+1. In the export folder, make a junction to another folder that holds a file:
+   `mklink /J <target>\linked <outside>`, with `<outside>\precious.txt`.
+2. Run **File → Export Project** into `<target>`, with *Export Verbose* on.
+3. The Debug Console shows:
+   ```
+   [EXPORT]  DELETED: \\?\<target>\linked\precious.txt
+   [EXPORT]  DELETED: \\?\<target>\linked
+   ```
+   and `<outside>` is empty afterwards.
+
+**What does not reproduce it:** the command-line `export` verb, which deletes nothing.
+
+**Found by** the Export Project probe for round 8's UC-55, which drove the IDE's own
+`exportProjectTo()` over DevTools on a scratch folder.
+
+---
+
+## Export Project stops at a read-only file after deleting everything before it, and the IDE reports nothing
+
+**Build:** BETA 983
+**Severity:** a partly emptied folder, with the only record in the Debug Console. On a Git
+working copy it breaks the repository, because Git makes its object files read-only.
+
+1. Put a read-only file in the export folder among other files.
+2. Run **File → Export Project** into it.
+3. The Debug Console shows:
+   ```
+   [EXPORT]  DELETE FAILED: \\?\<target>\readonly.txt
+   [EXPORT]  ERROR: unable to clean the output folder
+   [EXPORT] export failed.
+   ```
+   The files and folders that sort before the read-only one are already deleted, nothing is
+   exported, and no dialog appears: the compiler's response to the IDE is code 0.
+
+On a `git init` working copy with a commit, it deletes `.git\config`, `HEAD`, `index`, `hooks`
+and `info`, then stops at the first object file. `git status` there reports
+`fatal: not a git repository`.
+
+**What does not reproduce it:** a folder with no read-only file, which is emptied and exported
+completely --- `.git` included, with no prompt.
+
+**Found by** the same probe.
+
+---
+
+## Export Path refuses `${SourcePath}` alone, but not the same folder written as a path
+
+**Build:** BETA 983
+**Severity:** the project file is deleted when the export folder is the folder that holds it.
+
+The Settings editor's check on `project.exportPath` in `ide/main.js` compares the text with
+`${sourcepath}` and `${sourcepath}\`, with the message "This would DELETE the project file, as
+the `Export Project` command empties the output folder before exporting". It does not resolve
+the path. The compiler applies no check of its own: an export into the project's own folder
+logged `[EXPORT]  DELETED: \\?\<folder>\<project>.twinproj` and completed. A **Save** afterwards
+wrote the file back; closing without saving loses it.
+
+**Found by** the same probe. The compiler's side was measured, by calling `exportProjectTo()`
+with the folder; that the editor accepts the same folder typed as a path is read from the
+check's code, not tried.
+
+---
+
+## An out-of-range index raises `&H8002000B` or `&H80004005`, not VBA's error 9
+
+**Build:** BETA 983 --- the IDE and a compiled EXE alike
+**Severity:** VBA code that handles `Err.Number = 9` does not recognise the error, with no
+diagnostic.
+
+```
+Dim a(5) As Long
+On Error Resume Next
+a(7) = 1
+Debug.Print Err.Number, Hex$(Err.Number), Err.Description
+```
+
+prints `-2147352565  8002000B  Invalid index.`. Every case measured, reading `Err.Number` in
+the program:
+
+| access | twinBASIC | VBA, per VBA-Docs' *Subscript out of range (Error 9)* |
+|---|---|---|
+| past a fixed or dynamic array's bound, a `Variant` array's, or `Split("x y")(5)` | -2147352565 (`8002000B`) *Invalid index.* | 9 |
+| an element of an array never dimensioned: `Dim u() As Integer: u(8) = 234`, VBA-Docs' own example | -2147467259 (`80004005`) *Unspecified error* | 9 |
+| a `Collection` member by a missing index or key | -2147467259 *Unspecified error* | 9 for a missing member |
+| `Forms(99)`, `Forms.Item(-1)` | -2147467259 *Unspecified error* | --- |
+
+**What does not reproduce it:** `UBound` of an erased array, `Printers(99)` and `Err.Raise 9`
+all give 9, and division by zero gives 11. The IDE's run-time error panel shows the same number
+`Err.Number` holds, for the array case. An erased array behaves as one never dimensioned:
+`-2147467259` for an element, 9 from `LBound` and `UBound`. `Printers` raises 9 past its end but
+`-2147467259` for a negative index and for an unknown name. The description of `-2147467259`
+varies between runs --- *Unspecified error* in one, *Automation error* in another.
+
+---
+
+## Reading `Forms` by index returns a broken reference, and the process then crashes
+
+**Build:** BETA 983 --- the IDE and a compiled EXE alike
+**Severity:** crash (`0xC0000005`), from a form of access the documentation shows.
+
+With one form loaded (`Load Form1`):
+
+```
+Dim s As String
+s = Forms(0).Name        ' s is "", and the process later dies with 0xC0000005
+```
+
+`Set f = Forms(0)` followed by `f.Name` does the same, and so does `s = Forms(n).Name` with
+`n` a variable. Inside `For k = 0 To Forms.Count - 1`, `Set f = Forms(k)` corrupts the loop
+variable: `k` read 0, 0, 0, then 8195702.
+
+**What does not reproduce it:** `n = 0: Set f = Forms(n)` outside a loop returns the form
+(`f.Name` is `Form1`) and the program exits 0; `For Each f In Forms` and `Unload Forms(i)` work;
+`Printers(0)` with a literal index works.
+
+**Found by** the fix pass for round 8's error-number findings: an EXE that logs a line before
+each statement, run once per case with crash dialogs suppressed. The crash itself was
+reproduced by the orchestrator; the loop-variable corruption was measured by the fix agent only.
+
+**Found by** the IDE debugging probe for round 8's UC-61, then a probe of its own run in the IDE
+and as the built EXE, with identical results.
+
+---
+
+## A step key pressed on the line that raised an error leaves a step pending
+
+**Build:** BETA 983
+**Severity:** the debugger stops where it was not asked to, and one command no longer means one
+thing.
+
+1. Run a procedure that raises an untrapped error inside a loop, and let the error panel open.
+2. Press F8 (or F10, F11, SHIFT+F8) on the failing line. The line re-runs, the error recurs,
+   and the mark does not move --- as expected.
+3. Now choose **Ignore (Resume Next)**. It stops at the next line instead of running on.
+   Moving past the line with **Set Next Statement** (CTRL+F9) instead, each F5 then advances
+   one line.
+
+Seen in three runs. In the one followed to the end, it lasted until the procedure returned; in
+another, a fix-then-F5 stopped once. Which of the two applies was not isolated.
+
+**What does not reproduce it:** choosing **Ignore** without pressing a step key first, which
+runs on from the next line as the panel says.
+
+**Found by** the IDE debugging probe for round 8's UC-61, driving real keys over DevTools.
+
+---
+
+## Stop at a run-time error ends only the procedure that raised it
+
+**Build:** BETA 983
+**Severity:** the program goes on running after the user asked it to stop.
+
+A `Sub Main` that calls a procedure which raises an untrapped error, and prints a line after
+the call. At the error panel, choose **Stop** --- the panel's button or the toolbar's. The
+failing procedure ends, and `Main`'s following `Debug.Print` still runs. Three runs, the same
+each time.
+
+**What does not reproduce it:** **Stop** at an ordinary break (a breakpoint or a step), which
+prints `aborted` and ends the whole run.
+
+**Found by** the same probe.
+
+---
+
+## A `Static` declaration cannot initialise with a constructor that takes arguments
+
+**Build:** BETA 983
+**Severity:** a valid declaration does not compile; the workaround is a `Static` without an
+initialiser and a `Set` on first use.
+
+```
+Private Class Dog
+    Private m_Name As String
+    Public Sub New(ByVal Name As String)
+        m_Name = Name
+    End Sub
+End Class
+
+' in a procedure:
+Static s As Dog = New Dog("Rex")
+```
+
+fails with TB5074, *Could not bind to parameterized constructor of class 'Dog'. No compatible
+Sub New() method found*, at the `New`.
+
+**What does not reproduce it:** the same initialiser on `Dim` (`Dim d As Dog = New Dog("Rex")`),
+and on a module-level `Private` or `Public`; a `Static` initialised with a constructor that takes
+no arguments (`Static c As Collection = New Collection`); and a `Static` of a value type
+(`Static n As Long = 5`). All compile and run.
+
+**Found by** the fix pass for round 8's UC-59, measuring the forms `New.md` documents.
+
+---
+
+## *Import from file...* leaves the imported package unticked
+
+**Build:** BETA 983
+**Severity:** the package is imported but not referenced, and the documentation says it is.
+
+Settings → References → Available Packages → *Import from file...*, and choose a `.twinpack`. The
+compiler answers the IDE's `importPackage` request with
+`success: true, body: { packageSymbol: "DocProbePkg" }`, and the package appears in the list
+unticked, so nothing in the project can use it until it is ticked by hand.
+`packageLoadFromFile` in `ide/main.js` reads `packageSymbol` from the response itself rather
+than from its `body`, which is consistent with what is seen; that part is read, not traced.
+
+**Found by** the package probe for round 8's UC-60, which drove the import over DevTools with
+the file's path in place of the native picker.
+
+---
+
+## Replacing an embedded package under one Apply keeps running the old copy
+
+**Build:** BETA 983
+**Severity:** the project builds and runs the old package after the user has replaced it.
+
+1. A project embeds a package built locally, `DocProbePkg` v1.
+2. In Settings → References, untick it; *Import from file...* its v2; tick v2; apply once.
+3. The console shows only `[COMPILER] Project settings updated` --- no restart and no save. Builds
+   keep running v1. Save All and then a compiler restart give v2; a restart *without* saving
+   brings v1 back, under a reference numbered 1.1.0.0.
+
+Two runs of two, on a machine with no linked copy of the package.
+
+**What does not reproduce it:** the same steps with a linked copy of the package present in
+`%APPDATA%\twinBASIC\packages` (six runs of six), and an apply after the untick followed by
+another after the import and tick (every run): each of those restarts the compiler and saves,
+and v2 runs at once.
+
+**Found by** the same probe.
