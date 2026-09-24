@@ -11,23 +11,30 @@ twinBASIC provides several enhancements for classes and modules.
 
 ## Parameterized Class Constructors
 
-Classes now support a `New` sub with ability to add arguments, called as the class is constructed prior to the `Class_Initialize` event.
+A class can have a `Sub New` constructor, and the constructor can take arguments. The compiler treats the `Class_Initialize` event as another constructor, one that takes no arguments. [`New`](../../tB/Core/New) runs only the constructor that its arguments match --- it does not run `Sub New` and `Class_Initialize` one after the other:
+
+- `New MyClass(123)` runs `Sub New(Value As Long)`. `Class_Initialize` is not raised.
+- In a class that also has a `Class_Initialize`, a plain `New MyClass` runs `Class_Initialize`. `Sub New` does not run.
+- A class that has both a `Class_Initialize` and a `Sub New` with no parameters cannot be created with a plain `New`. The call matches both, and fails with TB5073.
 
 ### Example
 
 For example a class can have:
 
 ```tb check_build
-[ComCreatable(False)]
+[COMCreatable(False)]
 Class MyClass
-Private MyClassVar As Long
-Sub New(Value As Long)
-MyClassVar = Value
-End Sub
+    Private MyClassVar As Long
+    Sub New(Value As Long)
+        MyClassVar = Value
+    End Sub
 End Class
 ```
 
-then created by `Dim mc As MyClass = New MyClass(123)` which sets `MyClassVar` on create. Note: Classes using this must be private, have the `[ComCreatable(False)]` attribute, or also contain `Class_Initialize()`. `Class_Initialize()` will replace `New` in callers of a compiled OCX. Within the project, only `New` will be used if present.
+then created by `Dim mc As MyClass = New MyClass(123)`, which sets `MyClassVar` on creation.
+
+> [!IMPORTANT]
+> A class that is not `Private` is exposed to COM, and COM creates objects without arguments. So a class whose `Sub New` takes arguments must be `Private`, have the `[COMCreatable(False)]` attribute, or also have a constructor that takes no arguments --- a `Class_Initialize()`, or a second `Sub New` with no parameters. Otherwise it fails to compile with TB5135. `Class_Initialize()` replaces `New` in callers of a compiled OCX.
 
 ## Private/Public Modifiers for Modules and Classes
 

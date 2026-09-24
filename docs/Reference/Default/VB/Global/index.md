@@ -40,8 +40,11 @@ These properties are cached references --- repeated reads return the same object
 [**Forms**](#forms) returns the application's collection of currently-loaded [**Form**](../Form/) instances --- every form that has been **Load**-ed or **Show**-n but not yet **Unload**-ed. The collection is live: it grows when a form is loaded and shrinks when one is unloaded. The collection supports three operations:
 
 - **Forms.Count** --- a **Long** giving the number of currently-loaded forms.
-- **Forms.Item(** *Index* **)** --- the [**Form**](../Form/) at zero-based *Index*. **Item** is the default member, so `Forms(0)` and `Forms.Item(0)` are equivalent. Reading a negative or out-of-range index raises run-time error 9 (*Subscript out of range*).
+- **Forms.Item(** *Index* **)** --- the [**Form**](../Form/) at zero-based *Index*, a **Long**. **Item** is the default member, so `Forms(0)` and `Forms.Item(0)` are equivalent. An index below 0, or equal to or greater than **Count**, raises run-time error -2147467259 (`&H80004005`), not error 9 (*Subscript out of range*) --- see [Error numbers that differ from VBA](../../../Modules/ErrObject/Number#error-numbers-that-differ-from-vba). A form's name is not an index: `Forms("Form2")` raises error 13 (*Type mismatch*).
 - **Forms.Add(** *Name* **)** --- creates a new instance of the form class named *Name*, adds it to the collection, and returns the new [**Form**](../Form/). The form is loaded but not shown.
+
+> [!WARNING]
+> In BETA 983, taking a form out of **Forms** by index can crash the program. `Forms(0).Name` returns an empty string, and so does the **Name** of a form taken with `Set f = Forms(0)`; the program then stops with an access violation (`0xC0000005`), in the IDE and as a compiled program alike. Inside a `For` loop, `Set f = Forms(k)` also changes the loop variable. `For Each` over **Forms**, and `Unload Forms(i)`, both work: reach a loaded form with `For Each`, or by its class name.
 
 The collection also supports `For Each` enumeration:
 
@@ -125,9 +128,9 @@ Syntax: **Load** *object*
 : *required* The default instance of a form class (`Form1`), an explicit form reference, or a control-array element (`Command1(3)`).
 
 ```tb check_build
-Dim frm As Form
 Load Form2                        ' instantiates and runs Form_Load, but Form2 stays hidden
-Set frm = Forms("Form2")          ' the new instance now exists in Forms
+Debug.Print Form2.Visible         ' False
+Debug.Print Forms.Count           ' 1 if Form2 is the only form loaded
 ```
 
 ### LoadPicture

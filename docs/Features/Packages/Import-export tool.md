@@ -174,6 +174,12 @@ The usual reason to export is version control. The exported folder is plain text
 diff and merge, where a `.twinproj` is one binary file. Everything this takes is described
 above; in order:
 
+> [!WARNING]
+> Use the tB executable or the script for this, not the IDE's **File → Export Project**. The
+> IDE's command empties its folder before it writes --- a `.git` folder included --- and with
+> the *Export After Save* setting it does so on every save. Pointed at a repository's top
+> folder, it breaks the repository. See [Export Project](../../tB/IDE/Project/Menu/File#export-project).
+
 1. **Export into a folder of its own, not the repository's top folder** --- a `src` folder
    beside `.git`, for example. `import` packs everything in the folder it is given, and the
    tB executable packs a `.git` folder with it. The script skips `.git`, but a folder of
@@ -188,7 +194,16 @@ above; in order:
 4. **Rebuild the project file with `import --overwrite`**, and [check the
    result](#checking-the-result): the tB executable exits `0` after the failures it reports.
    It also cannot pack a project that embeds a package, and a project embeds the packages
-   it uses by default; the script packs those.
+   it uses by default; the script packs those. The project comes first, as in every
+   command:
+
+   ```batch
+   twinBASIC_win32.exe import "C:\Projects\MyProject.twinproj" "C:\Projects\MyProject\src\" --overwrite > tb.log
+   find "... DONE" tb.log > nul || exit /b 1
+   ```
+
+   With the order reversed, the tB executable prints `... FAILED`, writes nothing and still
+   exits `0`, so the second line is what catches it.
 
 ## Compiling from the command line
 

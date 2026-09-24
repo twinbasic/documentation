@@ -261,6 +261,8 @@ Do **not** jump from `#` straight to `###`. That old "house style" --- an h1 fol
 
 The repair is a re-levelling of the whole page, not a patch to one heading. The plugin raises **every** heading of level 3 or deeper until each one sits exactly one level below the heading it belongs under, closing every gap in a single pass: `#` / `###` renders as h1 / h2, and `#` / `###` / `#####` renders as h1 / h2 / h3. Only the h1 chapters are left as they are, since a page may legitimately have several.
 
+**Only `#` and `##` headings get an entry of their own in the site search.** The search index cuts each page at its h1 and h2 headings and gives each piece one entry, titled with its heading. A `###` or deeper heading gets no entry: its text is folded into the entry of the nearest `#` or `##` above it. So a section a reader should be able to find by searching for its subject needs a `##` heading. The index is built from the rendered page, after the normalizer has run, so on an old-style page a `###` that renders as h2 does get an entry.
+
 ### Editing a page that still uses the old style
 
 The repair is conditional, and the condition is easy to break without noticing. **The plugin runs only on a page that uses `#` and `###` and no `##` anywhere** --- a single `##` and it does not run at all. More than four hundred pages on this site are currently in that state, so on most of them, adding one `##` section disarms the normalizer for the whole page: every `###` that was already there stops being repaired and becomes a live heading-order defect, in the same edit that added a correctly-levelled section.
@@ -431,6 +433,17 @@ Those two example glyphs are, deliberately, the only characters on the whole sit
 Diagram exports carry the font with them. The Download / Copy SVG and PNG buttons above each diagram embed the typeface into the exported file, because an exported SVG has no access to the site's stylesheet and would otherwise render in whatever the viewer has installed. All four buttons work on every diagram.
 
 **Do not hand-edit a diagram's `.svg`.** It is a build artifact: the `.dot` beside it is the source, and the next build overwrites your edit. Changing the face is the edit that looks most harmless and is not --- Graphviz sizes each box to the text it measured, so a diagram whose labels are painted in a font the layout never saw has text hanging outside its boxes. `check.bat` fails on that; see [Diagrams](#diagrams) below.
+
+## Adding a CSS rule that works in both themes
+{: #css-rules }
+
+A style rule for something new on the site goes in `docs/_sass/custom/custom.scss`. Do not put it in the vendored theme under `builder/vendor/just-the-docs/`, and do not start a stylesheet of your own, which no page would load: everything under `docs/_sass/` is compiled into `just-the-docs-combined.css`, which every page does load. `serve.bat` rebuilds it each time you save.
+
+**The dark theme is a second copy of the whole theme, not a set of CSS variables.** The build compiles the theme twice and emits the dark copy inside a theme selector such as `html[data-theme="dark"]`, so every theme rule is more specific in dark mode than it is in light. A rule you write with a single class can therefore beat the theme in light mode and lose to it in dark, with no error: `.reversefootnote` did exactly that. Prefix the selector with `.main-content` --- `.main-content .reversefootnote` --- and it wins in both. [The specificity trap](Builder#the-specificity-trap) covers the cases where that is not enough.
+
+**Check it in both themes.** Run `serve.bat`, open a page that uses the rule, and switch themes with the theme button in the page header rather than with your operating system's setting, because the button is what exercises the `[data-theme]` rules. A rule that fails only in the dark theme is usually cosmetic, and no gate reports it.
+
+[Project styling](Builder#project-styling) is the full account: which file under `docs/_sass/` holds what, why the theme is compiled twice, and how to verify a style change.
 
 ## Checking that a sample compiles
 
@@ -968,8 +981,11 @@ does not. It lists each page it could not place, with the reason:
     Nav-parent orphan detected in 12 page(s):
       Features/Example/Child.md: no page titled "Old Title" exists
 
-**The match is on the parent's title, not its file.** Changing a page's `title:` leaves
-every page whose `parent:` names the old title without a parent, although nothing moved.
+**The match is on the parent's title, not its file, and it is exact, case included:**
+`parent: Strings module` does not find the page titled `Strings Module`. Setting
+`nav_sort: case_insensitive` in `_config.yml` would not change that, because the build
+reads it only to order the sidebar. Changing a page's `title:` leaves every page whose
+`parent:` names the old title without a parent, although nothing moved.
 Change each of those lines to the new title, in the same commit as the rename. One search
 finds them, and the `grand_parent:` lines that name it as well:
 

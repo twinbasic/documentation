@@ -21,7 +21,7 @@ permalink: /tB/IDE/Project/Toolbar
 - Break Into Code (<kbd>CTRL</kbd> + <kbd>BREAK</kbd>)
 - Stop
 - Step Over (<kbd>SHIFT</kbd> + <kbd>F8</kbd> / <kbd>F10</kbd>)
-- Step Into (<kbd>F8</kbd> / <kbd>F10</kbd>)
+- Step Into (<kbd>F8</kbd> / <kbd>F11</kbd>)
 - Step Out (<kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>F8</kbd> / <kbd>SHIFT</kbd> + <kbd>F11</kbd>)
 - Choose a build configuration
 - Restart the compiler

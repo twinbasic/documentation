@@ -18,7 +18,7 @@ When you check the box for a package for the first time on the current machine, 
 
 ![The Embedded column shown next to the package name](Images/1f7e3574-f3c8-4aee-972a-ff161c0e51ac.png)
 
-Uncheck the Embedded column and it will be converted to a linked package. A .twinpack file for the package is created in `%APPDATA%\Roaming\twinBASIC\packages`, where it can remain available across tB IDE updates.
+Uncheck the Embedded column and it will be converted to a linked package. A .twinpack file for the package is created in `%APPDATA%\twinBASIC\packages`, where it can remain available across tB IDE updates.
 
 ## Adding a package that has been linked
 
@@ -40,7 +40,9 @@ And it's handled in the same way. **Uncheck the reference** -- "Fix" is not curr
 
 ## Manual management
 
-You can make packages available, delete them, back them up, etc, via the linked packages folder: `%APPDATA%\Roaming\twinBASIC\packages`
+You can make packages available, delete them, back them up, etc, via the linked packages folder: `%APPDATA%\twinBASIC\packages`
 
 If you copy a .twinpack file (or a .twinproj) to that location, it will be available as a linked package without needing to be downloaded from the package server. It does not need to exist on the server at all, allowing fully private, local linked packages.
+
+To update a linked package, replace its file in that folder with the new build. A project uses the new file from the next time its compiler starts --- when the project is opened, or when **Restart the compiler** is pressed --- not from its next build. The file is found by the package's project ID, not by its file name. [Updating a package you built yourself](Updating#updating-a-package-you-built-yourself) gives the whole procedure, including how to switch a project from its embedded copy to the linked one.
 
