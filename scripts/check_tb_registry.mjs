@@ -21,6 +21,11 @@
 //     survive;
 //   * a path with a character outside every console code page, which is why
 //     the module goes through .NET rather than reg.exe;
+//   * what the IDE itself does to the recent list while a run is on it: a
+//     short list's empty slots filled with copies of its last entry, a full
+//     list's oldest entries pushed off the end, and, to be kept, a project the
+//     user opened meanwhile and copies that were there before; and another
+//     run's entry that its own tidy removed, which must not come back;
 //   * the association keys: a value changed, one added, one deleted, a subkey
 //     added, and a key that did not exist before created by the run;
 //   * that a second restore writes nothing at all;
@@ -134,6 +139,43 @@ try {
   // Idempotent: nothing is left to put back, so nothing may be written.
   assert.deepEqual(R.restoreProjects(snap, { prefixes: [TEMPDIR] }), { projectState: 0, recentlyOpened: 0 });
   assert.equal(R.restoreKeys(keys), 0);
+
+  // ------------------------------------------------ what the IDE does to the recent list
+  // Each case: the list as found, the list after the run, the list put back.
+  const PROBE1 = TEMPDIR + "\\p1.twinproj", PROBE2 = TEMPDIR + "\\p2.twinproj";
+  const OTHERRUN = path.join(tmpdir(), "tbharness-selftest-Łukasz", "tbrun", "9999", "o.twinproj");
+  const full = Array.from({ length: 21 }, (_, i) => `D:\\full\\p${i}.twinproj`);
+  const recentCases = [
+    ["a short list's empty slots filled with copies of its last entry",
+      ["D:\\x.twinproj"], [PROBE2, PROBE1, ...Array(19).fill("D:\\x.twinproj")], ["D:\\x.twinproj"]],
+    ["a full list's oldest entries pushed off the end",
+      full, [PROBE2, PROBE1, ...full.slice(0, 19)], full],
+    ["a project the user opened meanwhile kept on top, and moved one kept where it went",
+      ["D:\\a.twinproj", "D:\\b.twinproj", "D:\\c.twinproj"],
+      [PROBE1, "D:\\new.twinproj", "D:\\c.twinproj", "D:\\a.twinproj", "D:\\b.twinproj",
+       ...Array(16).fill("D:\\b.twinproj")],
+      ["D:\\new.twinproj", "D:\\c.twinproj", "D:\\a.twinproj", "D:\\b.twinproj"]],
+    ["copies that were there before kept, as many as there were",
+      ["D:\\a.twinproj", "D:\\b.twinproj", "D:\\b.twinproj"],
+      [PROBE1, "D:\\a.twinproj", ...Array(19).fill("D:\\b.twinproj")],
+      ["D:\\a.twinproj", "D:\\b.twinproj", "D:\\b.twinproj"]],
+    ["another run's entry that its own tidy removed meanwhile not brought back",
+      ["D:\\a.twinproj", OTHERRUN, "D:\\b.twinproj"], [PROBE1, "D:\\a.twinproj", "D:\\b.twinproj"],
+      ["D:\\a.twinproj", "D:\\b.twinproj"]],
+  ];
+  for (const [what, found, afterRun, expected] of recentCases) {
+    setValues(ROOT + "\\RecentlyOpened", slots(found));
+    const s = R.snapshotProjects([], { root: ROOT });
+    setValues(ROOT + "\\RecentlyOpened", slots(afterRun));
+    R.restoreProjects(s, { prefixes: [TEMPDIR] });
+    assert.deepEqual(R.ideLists({ root: ROOT }).recentlyOpened, Object.values(slots(expected)), what);
+    assert.equal(R.restoreProjects(s, { prefixes: [TEMPDIR] }).recentlyOpened, 0, `${what}: idempotent`);
+  }
+  // A sweep with no list in hand, as startTidy makes first, only deletes.
+  setValues(ROOT + "\\RecentlyOpened", slots([PROBE1, "D:\\x.twinproj", "D:\\x.twinproj"]));
+  R.restoreProjects({ root: ROOT, entries: [] }, { prefixes: [TEMPDIR] });
+  assert.deepEqual(R.ideLists({ root: ROOT }).recentlyOpened,
+    Object.values(slots(["D:\\x.twinproj", "D:\\x.twinproj"])), "a sweep with no snapshot only deletes");
 
   // ------------------------------------------------ remembered build targets
   const SETTINGS = ROOT + "\\IDESettings";

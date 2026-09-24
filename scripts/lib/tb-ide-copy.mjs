@@ -132,8 +132,32 @@ export function removeIdeCopy(exe) {
   if (!insideTemp(root) || !existsSync(path.join(root, MARKER))) {
     throw new Error(`refusing to delete "${root}": it is not an IDE copy this module made`);
   }
-  // Retries, because an IDE ended a moment ago can still be letting go of its
-  // files. Anything still holding them after that is a leaked process, and the
-  // EPERM is the right thing to report.
-  rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  removeTree(root);
+}
+
+/**
+ * Delete a folder and everything in it, retrying for up to `timeout`
+ * milliseconds while something still holds a file there.
+ *
+ * An IDE ended a moment ago can still be letting go of its files: its compiler
+ * held a loaded add-in some tens of milliseconds after the process had gone
+ * (WIP.HelpAddin.md, P8). rmSync's own maxRetries does not cover that. On
+ * Node 24.13 it gave up at once, in a millisecond, with EPERM on a folder
+ * holding a file another process had open, with maxRetries 10 and retryDelay
+ * 200 exactly as with neither (measured). So the retrying is done here.
+ * Anything still holding a file after that is a process that outlived its
+ * IDE, and the EPERM is the right thing to report.
+ */
+export function removeTree(dir, { timeout = 5000 } = {}) {
+  const until = Date.now() + timeout;
+  const cell = new Int32Array(new SharedArrayBuffer(4));
+  for (;;) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+      return;
+    } catch (e) {
+      if (!["EPERM", "EBUSY", "ENOTEMPTY", "EACCES"].includes(e.code) || Date.now() >= until) throw e;
+      Atomics.wait(cell, 0, 0, 100);
+    }
+  }
 }

@@ -1,18 +1,19 @@
 # twinBASIC Documentation --- The Compiler Harness
 
 How the twinBASIC compiler is reached without a person driving the IDE: getting
-at the package sources, censusing what they contain, compiling a probe, and
-capturing what one prints. Split out of [WIP.md](WIP.md), which keeps the
-invocations and the operational rules under [Driving the twinBASIC
-compiler](WIP.md#driving-the-twinbasic-compiler) --- this file is why they are
-what they are.
+at the package sources, censusing what they contain, compiling a probe,
+capturing what one prints, and testing an IDE add-in. Split out of
+[WIP.md](WIP.md), which keeps the invocations and the operational rules under
+[Driving the twinBASIC compiler](WIP.md#driving-the-twinbasic-compiler) --- this
+file is why they are what they are.
 
 Read it before changing `scripts/tbbuild.mjs`, `scripts/tbrun.mjs`,
-`scripts/lib/tb-ide.mjs`, `scripts/lib/tb-cdp.mjs`, `scripts/lib/tb-launch.ps1`,
-`scripts/lib/tb-registry.mjs`, `scripts/lib/tb-ide-copy.mjs`,
-`scripts/lib/tb-project.mjs`, `scripts/lib/tb-addin.mjs`, `scripts/lib/tb-operate.mjs`
-or `builder/census_attributes.mjs`, and before concluding anything about twinBASIC
-syntax from a sweep of exported sources.
+`scripts/addin_test.mjs`, `scripts/lib/tb-ide.mjs`, `scripts/lib/tb-cdp.mjs`,
+`scripts/lib/tb-launch.ps1`, `scripts/lib/tb-registry.mjs`,
+`scripts/lib/tb-ide-copy.mjs`, `scripts/lib/tb-project.mjs`,
+`scripts/lib/tb-addin.mjs`, `scripts/lib/tb-operate.mjs`, `scripts/lib/tb-lane.mjs`,
+anything under `test/addin/`, or `builder/census_attributes.mjs`, and before
+concluding anything about twinBASIC syntax from a sweep of exported sources.
 
 ## Getting at the `.twin` sources
 
@@ -525,15 +526,47 @@ temp folder, and if it did, `finishTidy` leaves the association as the IDEs set 
 so; the next IDE started from a real install points it at that install. A run still on
 older code puts back what it found, so the guarantee holds once every checkout has it.
 
+**Observed on 2026-09-24: older code in another checkout did exactly that.** An add-in run
+put the association back, and a comparison straight afterwards found it as it had been. A
+minute later it named that run's IDE copy, deleted by then: another session's harness run,
+on the code from before this rule, had recorded the association while the copy held it, and
+put that back when it ended. The next add-in run found it naming the temp folder and, by the
+rule, left it as its own IDEs set it, which was at its own copy, deleted in turn. It was put
+back by hand. So until every checkout has the rule, an association can be left naming a
+deleted copy, and `.twinproj` files then open nothing until an IDE is started from a real
+install.
+
+**The recent list is put back as it was found, not only swept.** The sweep alone was exact
+on an empty list, and the list was empty when the tidy was first verified. On a real one the
+IDE changes the list by itself while a run's projects are on it, in two ways, both in
+[BUGS-TO-REPORT.md](BUGS-TO-REPORT.md): it fills a short list's empty slots with copies of
+its last entry, and a full list loses its oldest entry for every project the run opens.
+Measured on 2026-09-24: an add-in run that began with one entry in the list ended with
+seventeen copies of it. Its four IDEs had filled all 21 slots, and the sweep removed only
+their four projects. So `snapshotProjects` records the whole list, and
+`restoreProjects`, after deleting the run's entries and putting a named project back in its
+place as before, keeps no more copies of any path than the list had, and puts the entries
+that fell off the end back there. A change made for any other reason is kept: a project the
+user opened meanwhile stays on top. **An entry in the temp folder is not brought back**,
+because it belongs to some run, whose own tidy may have removed it meanwhile; bringing it
+back would leave that run's entry in the list for good. That is also why a run that starts
+with another run's leftovers in the list can end without them.
+
 **Verified** by [scripts/check_tb_registry.mjs](scripts/check_tb_registry.mjs), which plays
 out a run on a scratch key and checks every rule above, the guards and the ownership rule
-included. It is not a gate: it needs Windows and a real registry, and the CI runners are
-Ubuntu. Run it after changing `tb-registry.mjs`. End to end, the 14 fixture cases, run one
-at a time, and a full `examples.bat` run leave `ProjectState`, the recent list and the
-association keys exactly as they were, value for value. The add-in checks in [Building an
-add-in and loading it](#building-an-add-in-and-loading-it) left `IDESettings` unchanged too,
-compared value by value through hashes, so that the comparison copied no value out of the
-registry; the build targets they planted under their own folders were gone afterwards.
+included. For the recent list it has five cases: the copies of a short list's last entry, a
+full list's lost entries, a project opened meanwhile, copies that were there before the run,
+and another run's entry that its tidy removed meanwhile. It is not a gate: it needs Windows
+and a real registry, and the CI runners are Ubuntu. Run it after changing `tb-registry.mjs`.
+
+End to end, the 14 fixture cases, run one at a time, and a full `examples.bat` run leave
+`ProjectState`, the recent list and the association keys exactly as they were, value for
+value, though the recent list was empty when that was first shown. With the user's own
+projects planted in it, two of them and then 21, an add-in run left it identical both times.
+The add-in checks in [Building an add-in and loading it](#building-an-add-in-and-loading-it)
+left `IDESettings` unchanged too, compared value by value through hashes, so that the
+comparison copied no value out of the registry; the build targets they planted under their
+own folders were gone afterwards.
 
 ## A private IDE for every lane
 
@@ -575,6 +608,16 @@ deleted only inside the temp folder, and deleted only where the module left its 
 file, so a wrong path cannot empty a folder anybody cares about. Deleting one that an IDE
 still holds fails with `EPERM`, and that is the right report: it is how the leak in the
 next section was found.
+
+**`removeTree` retries the delete itself, because `rmSync` does not.** An IDE ended a
+moment ago still holds some of its files for a while, and `removeIdeCopy` always passed
+`rmSync` a `maxRetries` of 10 for that. On Node 24.13 that option does nothing here:
+`rmSync` failed with `EPERM` within a millisecond on a folder holding a file another
+process had open, with `maxRetries` and `retryDelay` exactly as without them (measured).
+It never showed while every caller ran a registry tidy, a second or more of PowerShell,
+between ending the IDE and deleting the copy. The lane code deletes the copy the moment the
+IDE has gone, and the first delete failed. `removeTree` in `tb-ide-copy.mjs` retries for up
+to five seconds, and `removeIdeCopy` and the add-in runner both use it.
 
 **`loadedAddins(c)`** in `tb-ide.mjs` is the check that the copy is what it claims to be.
 It asks the page's `root.getAddinsList`, which asks the compiler over its root socket
@@ -721,7 +764,7 @@ view draws only the rows that fit, and a tool window is a shadow root that
 `document.querySelector` cannot see into, so the calls read `toolWindowsById`, a list
 view's `dataNodes` and `window.editor` rather than what is drawn.
 
-Five things about it were learned on the samples:
+Six things about it were learned on the samples:
 
 - **A click scrolls its target into view, and checks what is at the point before it
   clicks.** Sample 10's tool window is taller than it is shown. Its eleventh button had a
@@ -730,6 +773,13 @@ Five things about it were learned on the samples:
   finds the element at the centre point through every shadow root, and throws, naming both,
   when something else is there. It also throws when there is no such element, or the
   element has no size, which is what a hidden tool window's elements have.
+- **A click waits for its target, up to five seconds.** What an add-in adds is in the page's
+  data a moment before it is drawn. The first run of the Sample 15 scenario waited until
+  the results list held both files' results, read from the list view's data, and clicked a
+  match under a millisecond later: the list had not drawn the row yet, and the click failed
+  with "there is no such element". Done by hand, a pause had always come between the two. So
+  `click` now tries again every 100 ms until the target is there, has a size and is not
+  covered, and only then throws, with the last reason.
 - **Of the elements a selector finds, the target is the first one on screen.** Sample 15's
   results list held one file's entry twice in the page while its rendered text had it once:
   a list view keeps rows it has drawn before, and a kept row is not on screen. A target can
@@ -781,3 +831,123 @@ Five things about it were learned on the samples:
 14 fixture cases gave output identical to before, and a full `examples.bat` passed 1,119 of
 1,119 and left nothing in the registry under its folder, with another session's harness
 runs going at the same time.
+
+## An add-in under test opens nothing
+
+**Every IDE the harness starts has `TB_ADDIN_TEST=1` in its environment**, set by
+`launchIde` (`ADDIN_TEST_ENV` in [tb-ide.mjs](scripts/lib/tb-ide.mjs)). An add-in that sees
+it does nothing outside the IDE and prints each such action to the DEBUG CONSOLE instead:
+`open <url>` for a URL it would have opened in a browser. A browser started from an IDE on
+the private desktop would open where nobody can see it, and outlive the run. `openedUrls` in
+[tb-operate.mjs](scripts/lib/tb-operate.mjs) reads those lines back, and with a mark from
+`consoleMark` only the ones printed after it; `readConsole` takes the same mark as `since`,
+and `buildProject` now reads its build log that way.
+
+**Every IDE, not only the add-in runner's.** `tbbuild`, `tbrun` and `examples.bat` start the
+real install, whose compiler loads whatever add-ins the user has put in its `addins`
+folders, and none of those IDEs is on a desktop anybody watches. A caller can still set the
+variable otherwise, or leave it out by passing `undefined` as its value: Node leaves such a
+variable out of a child's environment even when its own environment has it (measured).
+
+**Measured on BETA 983 (P10 in WIP.HelpAddin.md):** a probe add-in printed the variable
+from `Host_OnProjectLoaded`. Through `launchIde` it read `1`, from `Environ$` and from
+`GetEnvironmentVariableW` alike, and with the variable left out both said it was unset. The
+path it travels: `tb-launch.ps1` calls `CreateProcess` with no environment block of its own,
+so the IDE inherits the launcher's; the IDE starts the compiler, `twinBASIC_win32_noDEP.exe`,
+as a direct child; and the add-in runs inside the compiler's process --- the process id it
+read was the compiler's. The toolbar's restart button ends the compiler and starts a new
+process, and the add-in that process loaded read `1` too. The control,
+`WEBVIEW2_USER_DATA_FOLDER`, arrived with the lane's port in it.
+
+**The console gives back exactly what was printed.** `PrintText` stores an add-in's text
+escaped, `<b>` as `&lt;b&gt;` and `&` as `&amp;`, and `readConsole` decodes it, so a URL with
+`&` in its query string comes back unchanged. `openedUrls` counts a line only when what
+follows `open ` holds no white space: a URL has none, so an ordinary line that happens to
+start with the word is not taken for one. A probe that printed `open this line names no URL`
+beside a real one got the real one alone.
+
+## The add-in test runner
+
+**`addin-test.bat` runs [scripts/addin_test.mjs](scripts/addin_test.mjs) over the lanes in
+[test/addin/lanes.mjs](test/addin/lanes.mjs).** A lane is one scenario file, a `node:test`
+file, and the runner starts each in a process of its own (`node --test`), a few at a time
+(`--jobs`, default 2), handing it its lane in `TB_ADDIN_LANE`: a DevTools port (`--port`,
+default 9560, plus the lane's index), a work folder at `%TEMP%\tbaddin\<port>`, and the
+install to copy. What the scenario does with that is
+[scripts/lib/tb-lane.mjs](scripts/lib/tb-lane.mjs): it makes the lane's copy of the install
+on first use, exports an install sample project (`addSample("Sample 15")`, the install only
+read), builds an add-in and puts it in the copy (`addAddin`), and opens a project (`open`),
+one IDE at a time, refusing one that does not compile. `close` ends the IDE and then fails
+the lane if the compiler crashed meanwhile, or if a javascript dialog opened that the
+scenario did not take out of `c.dialogs`, since the IDE opens one only on an error path;
+then it deletes the copy. Run outside the runner, a scenario file skips itself, so a bare
+`node --test` never starts an IDE.
+
+**A process per lane, not `node:test`'s own concurrency.** `node --test` can run files in
+parallel, but it cannot hand each file an environment of its own, and the runner has to
+choose which lanes may run together (below). A lane's output is held until it ends and then
+printed whole, so two lanes' reports never interleave. `--timeout` (default 600 s) ends a
+lane still running; its process's job takes the IDE with it.
+
+**The runner owns the registry, and checks it afterwards.** It calls `startTidy` with every
+lane's folder before the first lane starts, so the lanes inherit `TB_REGISTRY_OWNER` and
+leave the registry alone, and `finishTidy` once the last has ended. Then it checks rather
+than trusts: no project-state or recent-list entry may name a lane's folder, a second sweep
+of the remembered build targets must find none, and the add-ins' settings must be as
+recorded. Any failure is exit code 2.
+
+**An add-in's own settings are the runner's too.** `SaveSetting` writes under
+`HKCU\Software\VB and VBA Program Settings\<app>`, the same key as any installed copy of the
+add-in, so a lane names its add-ins' application names in `lanes.mjs` (`settings`). The
+runner records those keys before the first lane starts, deletes them before each lane that
+names them, so that the add-ins start from their defaults, and puts them back at the end.
+Two lanes that name the same application never run at once, because each deletes the key
+its add-in reads. An application key that appears during the run and that no lane named is
+reported, since it is almost certainly an add-in whose settings will stay behind; the
+report names it and leaves it. `settingsKey` refuses the IDE's own `twinBASIC_IDE`, which
+holds all of the IDE's settings and which the tidy puts back only value by value.
+
+**It refuses to start while `%APPDATA%\twinBASIC\addins` holds a DLL**, until P6 says
+whether the compiler loads from there: the page hands it that folder with
+`RequestLoadAddins`. It never writes there.
+
+**Ctrl+C ends the lanes and still puts everything back.** The runner handles `SIGINT`: it
+starts no more lanes, ends the running ones, waits, and tidies. Testing that took two tries.
+Windows passes a process's "ignore Ctrl+C" setting on to the processes it starts, and every
+process started from the session that ran the test had it, so the first `CTRL_C_EVENT`,
+sent with `GenerateConsoleCtrlEvent` into the runner's own hidden console, reached nothing;
+a bare Node listener started the same way did not see it either. Started through a
+PowerShell that first cleared the setting (`SetConsoleCtrlHandler(NULL, FALSE)`), the
+listener saw it, and so did the runner: 16 s in, with both lanes' IDEs open, it ended both
+lanes and put everything back within two seconds.
+
+**The two scenarios**, the ones that finish Stage 1:
+
+- [test/addin/sample10.test.mjs](test/addin/sample10.test.mjs): the add-in loads and prints
+  its five `OnProjectLoaded` lines, naming the project; its image button's message box; its
+  tool window; the three-button message box answered `button2`, then the follow-up
+  answered `ok`; a notification; a DEBUG CONSOLE line, read from a mark.
+- [test/addin/sample15.test.mjs](test/addin/sample15.test.mjs): the add-in loads; its tool
+  window opens with every option off, which also shows the runner deleted its saved
+  settings; a typed search lists all nine matches in both files of
+  [test/addin/host](test/addin/host), each with its `[line,column]`; a click on a match
+  opens `Haystack.twin` at 4:13; and Match case narrows the results to seven and is saved,
+  read back through `savedSettings`.
+
+**Measured on BETA 983:**
+
+- Both lanes pass, in about 25 s together: each is an add-in build of about 10 s, a host IDE
+  of about 9 s, and 2 s of scenario.
+- Around a run, the whole registry comparison was identical: `ProjectState`, the recent
+  list, the association keys, all 13 `IDESettings` values compared through hashes, and the
+  remembered build targets. The run was repeated with the user's projects planted in the
+  recent list, two of them and then 21, identical both times.
+- With Global Search settings planted beforehand (Match case on, and one extra value), the
+  lane began with every option off, and the key came back exactly, the extra value
+  included. With `settings` taken out of `lanes.mjs`, the run failed with exit code 2 and
+  named `GlobalSearchAddIn`.
+- A DLL under the add-ins folder of `%APPDATA%` (a stand-in, with `APPDATA` pointed at a
+  scratch folder) and an `--only` that matches nothing were both refused with exit code 2.
+  `--timeout 8` ended both lanes mid-build, and left the registry identical and nothing
+  running.
+- Exporting the samples left the install's `projects` folder as it was, mtimes included.

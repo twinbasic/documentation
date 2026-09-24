@@ -23,16 +23,17 @@ All help is *very much* appreciated :)
 The site is rendered by `tbdocs`, a Node.js static site generator kept in [`builder/`](builder/). You need **Node.js 22+**; a PDF or accessibility run additionally needs Chromium, installed once with `npx puppeteer browsers install chrome` (add `--install-deps` on Linux only).
 
 ```
-npm ci        # once, from the repository root
-build.bat     # renders _site/, _site-offline/ and _site-pdf/, and link-checks them
-serve.bat     # localhost:4000 with watch + live reload
-check.bat     # the gates that read the built site, ending in the accessibility scan
-test.bat      # the gates that test the toolchain itself
-book.bat      # renders the PDF book; run build.bat first
-examples.bat  # compiles the twinBASIC code samples in the pages (Windows + a twinBASIC install)
+npm ci          # once, from the repository root
+build.bat       # renders _site/, _site-offline/ and _site-pdf/, and link-checks them
+serve.bat       # localhost:4000 with watch + live reload
+check.bat       # the gates that read the built site, ending in the accessibility scan
+test.bat        # the gates that test the toolchain itself
+book.bat        # renders the PDF book; run build.bat first
+examples.bat    # compiles the twinBASIC code samples in the pages (Windows + a twinBASIC install)
+addin-test.bat  # tests IDE add-ins by operating an IDE (Windows + a twinBASIC install)
 ```
 
-A clean `build.bat && check.bat` is the bar for "ready to commit"; add `test.bat` when the change touched anything outside `docs/`. Each wrapper names the gates it runs, in order, on [Tools and Scripts](https://docs.twinbasic.com/Documentation/Development/Tools). On Linux or macOS, run the `node` command inside each batch file directly --- they are thin wrappers. `examples.bat` is the exception to both: it drives the twinBASIC IDE, so it is Windows-only and is deliberately outside every gate and outside CI.
+A clean `build.bat && check.bat` is the bar for "ready to commit"; add `test.bat` when the change touched anything outside `docs/`. Each wrapper names the gates it runs, in order, on [Tools and Scripts](https://docs.twinbasic.com/Documentation/Development/Tools). On Linux or macOS, run the `node` command inside each batch file directly --- they are thin wrappers. `examples.bat` and `addin-test.bat` are the exceptions to both: they drive the twinBASIC IDE, so they are Windows-only and deliberately outside every gate and outside CI.
 
 Where to read more:
 

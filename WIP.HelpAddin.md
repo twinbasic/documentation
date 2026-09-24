@@ -4,8 +4,9 @@ See [WIP.md](WIP.md) for the maintenance guide. This file covers the planned twi
 add-in that shows the documentation for the symbol under the cursor, and the harness that
 tests IDE add-ins by machine, which the add-in is developed against.
 
-**Status: Stage 1, the harness, is most of the way built** --- items 1 to 5 are done, and
-the add-in itself is not started. This file replaces the June draft, `add-in/PLAN.md`
+**Status: Stage 1, the harness, is built** --- items 1 to 7 are done, and `addin-test.bat`
+operates Samples 10 and 15 end to end and leaves the registry as it found it. The add-in
+itself is not started; Stage 2's probes come next. This file replaces the June draft, `add-in/PLAN.md`
 in commit `d159acf8` ("Roughly plan the help add-in"). That commit is on no branch --- only
 the detached HEAD of an old worktree keeps it --- so everything in it worth keeping is here,
 corrected, and nothing depends on it surviving. [What changed from the June
@@ -63,6 +64,15 @@ the compiler what a symbol is.** Each of those gaps shapes a stage below.
   `commonFolderRootPath`, the resolved `%APPDATA%\twinBASIC` (`main.js@1047705` and
   `@1048667`). That makes it likely that the compiler loads add-ins from there too, and it
   is still **P6**. If it does, a DLL placed there loads into every IDE the user starts.
+- **An add-in runs inside the compiler's process.** Measured (P10): the process id an
+  add-in read with `GetCurrentProcessId` was that of `twinBASIC_win32_noDEP.exe`, which
+  `twinBASIC.exe` starts as a direct child, beside the page server
+  `twinBASIC_win32.exe --ide=<pid>`. So an add-in sees the environment the IDE was started
+  with. **A compiler restart is a new process**: the toolbar's restart button
+  (`#restartIcon`, bound to `tbCompiler_Restart`, which calls `root.forceTerminate()`) ended
+  the compiler, and the next one, with a new process id, loaded the add-in again and ran its
+  `OnProjectLoaded` a second time. The DEBUG CONSOLE was not cleared; the IDE added
+  `restarting from MEMORY [<project>]`.
 - **Load failures have their own messages** in the compiler's strings: `Failed to load
   addin.  LoadLibrary() failed.`, `Entry point not found.  Addin may have been compiled for
   a newer version of the twinBASIC IDE.`, `Entry point 'tbCreateCompilerAddin' call
@@ -258,7 +268,9 @@ from the page's own origin (**P13**). Deferred.
   compile session wrote nothing to it.
 - **`SaveSetting` from an add-in writes to the same tree**, under
   `VB and VBA Program Settings\<app name>`, so it is shared with any installed copy of the
-  same add-in. A test that changes an add-in-wide option changes it for the user too.
+  same add-in. A test that changes an add-in-wide option changes it for the user too, which
+  is why the add-in runner records and puts back every application a lane names (Stage 1,
+  item 7).
 - WebView2 profiles: `%LOCALAPPDATA%\twinBASIC\v0` for the IDE --- `tbbuild` replaces it per
   port with `WEBVIEW2_USER_DATA_FOLDER` --- and `%LOCALAPPDATA%\twinBASIC_WebPanel\v0` for
   the WEBPAGE panel *(reported)*.
@@ -333,13 +345,20 @@ Everything after this stage is developed against it.
    [scripts/lib/tb-registry.mjs](scripts/lib/tb-registry.mjs), described in [WIP.Harness.md,
    What a run leaves in the registry](WIP.Harness.md#what-a-run-leaves-in-the-registry-and-putting-it-back).
    The 14 fixture cases, run one at a time, and a full `examples.bat` run leave the
-   registry identical, value for value, with every output line unchanged. The last two
-   bullets wait for the add-in runner (item 7). `snapshotKeys` takes any key, so the add-in's
-   `SaveSetting` key is one more entry in its list. The work also found an IDE bug, now in
-   [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md): a recent list shorter than 21 entries gets its
-   empty slots filled with copies of the last entry. Item 4 added a fourth thing to put
-   back, the build target the IDE remembers for each project path, because a lane that
-   inherits `win64` builds and loads the wrong bitness.
+   registry identical, value for value, with every output line unchanged. The work also
+   found an IDE bug, now in [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md): a recent list shorter
+   than 21 entries gets its empty slots filled with copies of the last entry. Item 4 added a
+   fourth thing to put back, the build target the IDE remembers for each project path,
+   because a lane that inherits `win64` builds and loads the wrong bitness.
+
+   **The last two bullets are done in the runner (item 7).** It records the `SaveSetting`
+   keys a lane names and puts them back, and refuses to start while
+   `%APPDATA%\twinBASIC\addins` holds a DLL. **Item 7 also corrected the recent list.** The
+   sweep was exact only on an empty list, which is what the list was when it was verified: a
+   run that began with one entry ended with seventeen copies of it, because of the bug above,
+   and a full list loses its oldest entry for every project a run opens. The tidy now
+   records the whole list and puts it back as found ([WIP.Harness.md, What a run leaves in
+   the registry](WIP.Harness.md#what-a-run-leaves-in-the-registry-and-putting-it-back)).
 4. **Build, then load.** The add-in is a Standard DLL. In a staged copy of its tree, pin
    `project.buildPath` to an explicit file in the lane IDE's `addins\<arch>\`, the way
    `tbrun` pins its exe path: the default `${SourcePath}\Build\...` template has already
@@ -393,6 +412,26 @@ Everything after this stage is developed against it.
    be chosen) and, when it is set, prints `open <url>` to the DEBUG CONSOLE instead of
    starting a browser. On a private desktop a real browser would start where nobody can see
    it and outlive the run. **P10** checks that the variable reaches the compiler process.
+
+   **Done:** the variable is **`TB_ADDIN_TEST`**, and P10 answered yes (Stage 2 has the
+   measurement). An add-in treats it as set when it is not empty. `launchIde` in
+   [tb-ide.mjs](scripts/lib/tb-ide.mjs) sets it to `1` for **every** IDE the harness starts,
+   `tbbuild`'s, `tbrun`'s and `examples.bat`'s included, because each of them loads whatever
+   add-ins the user has installed, on a desktop nobody watches; a caller's `env` can set it
+   otherwise, or leave it out with the value `undefined`. `openedUrls(c, { since })` in
+   [tb-operate.mjs](scripts/lib/tb-operate.mjs) reads the `open <url>` lines back, and
+   `consoleMark(c)` in `tb-ide.mjs` takes the mark that `since` names, so a scenario asks what
+   was opened after the key it pressed. A line counts only when what follows `open ` has no
+   white space in it, as a URL has none, so an ordinary line that starts with the word is not
+   read as one. `PrintText` stores its text escaped (`<b>` as `&lt;b&gt;`), so a URL comes
+   back exactly as printed, `&` included.
+
+   **The probe stayed in scratch.** It was thirty lines: `Host_OnProjectLoaded` printing
+   `Environ$("TB_ADDIN_TEST")`, the same through `GetEnvironmentVariableW`, and its own process
+   id. What it measured matters only while the add-in depends on it, and the add-in checks it
+   itself from Stage 4 on (increment 1 below). `add-in/` holds the add-in's tree and nothing
+   else: `stageProject` copies the whole folder it is given and packs the copy, so a probe
+   kept inside it would be packed into the add-in's project.
 7. **A runner.** Scenarios in JavaScript under `node:test`, one IDE per test project, lanes
    by `--port` as today. The add-in's pure twinBASIC logic --- word extraction, lookup --- is
    tested without loading any add-in: a test project holds those modules and a
@@ -400,12 +439,32 @@ Everything after this stage is developed against it.
    the JavaScript side checks the lines. The wrapper is `addin-test.bat`, outside every gate
    and CI for the reason `examples.bat` is: it needs Windows and a twinBASIC install.
 
+   **Done:** [scripts/addin_test.mjs](scripts/addin_test.mjs), with the lanes in
+   [test/addin/](test/addin/) and what a scenario gets in
+   [scripts/lib/tb-lane.mjs](scripts/lib/tb-lane.mjs), described in [WIP.Harness.md, The
+   add-in test runner](WIP.Harness.md#the-add-in-test-runner). A lane is one scenario file,
+   run in a process of its own with its own port and copy of the install; the runner owns
+   the registry, the add-ins' saved settings included, and checks it afterwards. Ctrl+C and
+   a lane timeout both end the lanes and still put the registry back. The pure-logic tests
+   wait for Stage 4, which writes that logic. They belong in a lane too, built and run in
+   the lane's own copy rather than by `tbrun`: a `tbrun` started under the runner leaves its
+   registry entries to the runner, which sweeps only the lanes' folders.
+
+   Two library changes came out of it: `click` waits up to five seconds for its target,
+   since a list view draws a row a moment after the row is in its data, and `removeTree`
+   retries a delete that an ending IDE still blocks, since on Node 24 `rmSync`'s own
+   `maxRetries` does not.
+
 **Done when** the harness operates two shipped samples end to end, and the user's registry
 is unchanged afterwards:
 
 - **Sample 10:** toolbar button, then its tool window, then a message box.
 - **Sample 15:** type a search, see the results, click one, and the right file opens at the
   right line.
+
+**Met on 2026-09-24, BETA 983:** both scenarios pass under `addin-test.bat`, and a
+comparison of the whole registry around the run, `IDESettings` included through hashes,
+was identical.
 
 ### Stage 2: probes that decide the design
 
@@ -423,8 +482,8 @@ the build number it was measured on.
 | P6 | Does the compiler also load add-ins from `%APPDATA%\twinBASIC\addins\<arch>`? This needs a DLL placed there for a moment, and the user's own IDE would load it too --- **ask before running it.** | harness isolation |
 | P7 | Which bitness does the compiler start in, and does switching the build target restart it in the other one and load the other `addins` folder? **Half answered, BETA 983:** the target a project opens in picks the compiler --- win32 when the IDE remembers none, `twinBASIC_win64_noDEP.exe` for a project remembered as win64 --- and each compiler reads its own `addins` folder alone. Switching the target of an open project is untested. | building and testing both bitnesses |
 | P8 | Is a loaded add-in DLL locked against being overwritten? **Answered, BETA 983: yes.** While its IDE runs, overwriting fails (`EBUSY`) and deleting fails (`EPERM`), though renaming works; the hold outlasts the compiler's exit by a few tens of milliseconds. | the rebuild loop --- the DLL is built outside `addins`, and copied in once the IDE has ended |
-| P9 | Does a compiler restart reload add-ins from disk? | a rebuild loop without restarting the IDE |
-| P10 | Does an environment variable set by the harness reach the add-in (`Environ$`)? | the side-effect switch |
+| P9 | Does a compiler restart reload add-ins from disk? **Half answered, BETA 983:** a restart ends the compiler and starts a new process, which loads every add-in again as it starts, so from disk. The loop itself is untested: rename the loaded DLL aside (P8 allows that), copy the new build in, restart. | a rebuild loop without restarting the IDE |
+| P10 | Does an environment variable set by the harness reach the add-in (`Environ$`)? **Answered, BETA 983: yes**, through the launcher, the IDE and the compiler the IDE starts. With `TB_ADDIN_TEST=1` in `launchIde`'s environment, `Environ$` and `GetEnvironmentVariableW` both returned `1` in the add-in, and a compiler started by the restart button returned it too; left out, both said it was unset. `WEBVIEW2_USER_DATA_FOLDER`, which `launchIde` always sets, arrived with the lane's port in it. | the side-effect switch |
 | P11 | Does the IDE write into its own install folder during a session? **Answered, BETA 983: no.** A compile, a compiler crash and a `tbrun` build-and-run left all 233 files byte-identical, mtimes included. | hardlinks or copies --- copies, for safety, at 380 ms |
 | P12 | Does `raiseEvent` from plain tool-window HTML throw? | how the pane's events are written |
 | P13 | Does the compiler's HTTP server serve any file placed under `ide\`? | an offline route |
@@ -499,6 +558,13 @@ Each increment is finished with its scenarios.
 1. **F1 to a page.** A toolbar button; the key (from P1 and P2); the name under the cursor;
    index lookup; open the page in the browser or the pane. A miss says `No help for '<name>'`
    through `ShowNotification`.
+
+   **The URL opener honours the test switch.** It calls `ShellExecuteW`, except while
+   `Environ$("TB_ADDIN_TEST")` is not empty: then it prints `open <url>` to the DEBUG CONSOLE
+   and starts nothing (Stage 1, item 6). When the add-in loads it prints whether the switch
+   is on, and every scenario checks that line before it presses anything. An IDE build that
+   stopped passing the variable on to the compiler then fails the run, instead of starting a
+   browser on the private desktop.
 2. **The help pane.** Search over the index, results, and a page view --- an iframe if P3
    passes, otherwise a summary with a link to the browser. Theme: read
    `Host.Themes.ActiveThemeNameGroup` at start, handle `Host_OnChangedTheme` after, and pass
@@ -591,12 +657,10 @@ Recommended, and not yet confirmed:
 - **Its code skeletons are not kept.** They were never compiled; Stage 4 writes the modules
   against the compiler, with tests.
 
-## Rules for once Stage 1 exists
+## Rules
 
-Move these into WIP.md when the harness is built, because they will then bind every session:
-
-- **Never build or copy a test add-in into the real install's `addins\`, or into
-  `%APPDATA%\twinBASIC\addins\`.** Either way it loads into the user's own IDE.
-- **A test never opens a real browser.**
-- Kill by pid, never by image name, and one project per IDE --- both already rules in
-  [WIP.md](WIP.md#driving-the-twinbasic-compiler).
+Stage 1 is built, so the rules for testing add-ins bind every session and are in
+[WIP.md, Driving the twinBASIC compiler](WIP.md#driving-the-twinbasic-compiler): no test
+add-in in the real install's `addins\` or in `%APPDATA%\twinBASIC\addins\`, no real browser
+from a test, every `SaveSetting` application named in `lanes.mjs`, IDEs ended by pid, and
+one project per IDE.

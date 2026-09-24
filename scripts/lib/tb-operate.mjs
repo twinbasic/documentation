@@ -14,7 +14,7 @@
 // tb-ide.mjs says why), and a tool window lives in a shadow root that
 // document.querySelector cannot see into.
 
-import { sleep } from "./tb-ide.mjs";
+import { readConsole, sleep } from "./tb-ide.mjs";
 
 // ------------------------------------------------------------------ finding
 
@@ -93,31 +93,44 @@ export async function clickAt(c, x, y, { clickCount = 1 } = {}) {
  * handle and did nothing. The element under the point is found through every
  * shadow root, since a tool window is one.
  *
- * Throws, naming the target, when there is no such element, when it has no
- * size (it is in a hidden tool window, say), or when something else covers
- * its centre.
+ * Waits up to `timeout` milliseconds for the target to be there, have a size
+ * and be uncovered, because what an add-in adds is drawn a moment after it is
+ * in the page's data: a list view that already held Sample 15's results had
+ * not yet drawn their rows when a click came under a millisecond later.
+ *
+ * Throws, naming the target, when it is still not clickable after that: there
+ * is no such element, it has no size (it is in a hidden tool window, say), or
+ * something else covers its centre.
+ *
+ * @param {object} [o]
+ * @param {number} [o.timeout]     milliseconds to wait (default 5000)
+ * @param {number} [o.clickCount]  2 for a double click
  */
-export async function click(c, target, options) {
-  const p = await c.evaluate(`(() => {
-    const e = ${targetJs(target)};
-    if (!e) return { error: "there is no such element" };
-    e.scrollIntoView({ block: "center", inline: "center" });
-    const r = e.getBoundingClientRect();
-    if (!r.width || !r.height) return { error: "it has no size; is it in a hidden tool window?" };
-    const x = r.x + r.width / 2, y = r.y + r.height / 2;
-    let hit = document.elementFromPoint(x, y);
-    while (hit && hit.shadowRoot) {
-      const inner = hit.shadowRoot.elementFromPoint(x, y);
-      if (!inner || inner === hit) break;
-      hit = inner;
-    }
-    if (hit && (hit === e || e.contains(hit))) return { x, y };
-    const what = !hit ? "nothing" : hit.id ? "#" + hit.id
-      : hit.tagName.toLowerCase() + (hit.className ? "." + String(hit.className).trim().split(/\\s+/).join(".") : "");
-    return { error: "its centre is covered by " + what };
-  })()`);
-  if (p.error) throw new Error(`cannot click ${named(target)}: ${p.error}`);
-  await clickAt(c, p.x, p.y, options);
+export async function click(c, target, { timeout = 5000, clickCount = 1 } = {}) {
+  const until = Date.now() + timeout;
+  for (;;) {
+    const p = await c.evaluate(`(() => {
+      const e = ${targetJs(target)};
+      if (!e) return { error: "there is no such element" };
+      e.scrollIntoView({ block: "center", inline: "center" });
+      const r = e.getBoundingClientRect();
+      if (!r.width || !r.height) return { error: "it has no size; is it in a hidden tool window?" };
+      const x = r.x + r.width / 2, y = r.y + r.height / 2;
+      let hit = document.elementFromPoint(x, y);
+      while (hit && hit.shadowRoot) {
+        const inner = hit.shadowRoot.elementFromPoint(x, y);
+        if (!inner || inner === hit) break;
+        hit = inner;
+      }
+      if (hit && (hit === e || e.contains(hit))) return { x, y };
+      const what = !hit ? "nothing" : hit.id ? "#" + hit.id
+        : hit.tagName.toLowerCase() + (hit.className ? "." + String(hit.className).trim().split(/\\s+/).join(".") : "");
+      return { error: "its centre is covered by " + what };
+    })()`);
+    if (!p.error) return clickAt(c, p.x, p.y, { clickCount });
+    if (Date.now() >= until) throw new Error(`cannot click ${named(target)}: ${p.error}`);
+    await sleep(100);
+  }
 }
 
 // ------------------------------------------------------------------ keyboard
@@ -303,6 +316,24 @@ export const answerMessageBox = (c, caption) =>
 export const notifications = (c) => c.evaluate(`[...document.querySelectorAll(".msgBoxText")]
   .filter((e) => { const r = e.getBoundingClientRect(); return r.width && r.height; })
   .map((e) => e.innerText)`);
+
+// ------------------------------------------------------------------ side effects
+
+/**
+ * The URLs the add-ins asked to open, in order. Under the harness an add-in
+ * starts no browser: ADDIN_TEST_ENV (tb-ide.mjs) is set, and the add-in prints
+ * `open <url>` to the DEBUG CONSOLE instead. A URL holds no white space, so a
+ * line that only begins with the word is not taken for one.
+ *
+ * @param {object} [o]
+ * @param {object} [o.since]  a mark from consoleMark in tb-ide.mjs: only what
+ *                            was printed after it
+ */
+export async function openedUrls(c, { since = null } = {}) {
+  const text = await readConsole(c, { since });
+  return (text ?? "").split("\n").map((l) => /^open (\S+)$/.exec(l.trim())).filter(Boolean)
+    .map((m) => m[1]);
+}
 
 // ------------------------------------------------------------------ the code editor
 

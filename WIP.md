@@ -14,7 +14,7 @@ change.
 |---|---|
 | write or edit any page under `docs/` | [WIP.Authoring.md](WIP.Authoring.md) --- page template, frontmatter, cross-section linking tables, per-symbol workflow |
 | document a specific package | that package's own file, listed under [Package API notes](#package-api-notes) |
-| run or change the twinBASIC compiler harness | [WIP.Harness.md](WIP.Harness.md) --- `export`, the attribute census, `tbbuild`, `tbrun` |
+| run or change the twinBASIC compiler harness | [WIP.Harness.md](WIP.Harness.md) --- `export`, the attribute census, `tbbuild`, `tbrun`, the add-in test runner |
 | change `builder/`, `scripts/`, or any gate | [WIP.Build.md](WIP.Build.md) --- the pipeline and every gate's failure history |
 | touch fonts, diagrams, or the PDF's type | [WIP.Typography.md](WIP.Typography.md), then [WIP.Fonts.md](WIP.Fonts.md) for the generator |
 | change the accessibility scan | [WIP.A11y.md](WIP.A11y.md) --- the axe scan, the sample, the fingerprint gate |
@@ -142,10 +142,26 @@ node scripts/tbrun.mjs <exported-source-dir>         # what does it print
 - **Keep a probe that might crash the compiler in a project of its own.** twinBASIC runs the compiler in the same process as user code, so one bad probe can take the run down and cost the other thirty their answer.
 - **`tbrun` takes an exported tree, not a `.twinproj`**, because it has to pin `project.buildPath` in its own staged copy --- a project still on the default template opens a native Save dialog that is invisible on the private desktop, and the build simply never happens while every health check says the IDE is fine. The probe is a module with a `[RunAfterBuild]` Sub, and must start with `Debug.Cls`.
 - **A census is evidence, not applicability.** The corpus not using an attribute somewhere does not mean the compiler refuses it there, and the reverse also holds. Only a probe settles that.
+- **End an IDE by its pid, never by image name.** `taskkill /IM twinBASIC.exe` ends every other run's IDE, another session's included, and the user's own. `tbbuild --keep` prints the pid for this reason.
 
 Why each of those is true, what the WebView/CDP route costs, why the compiler's
 own websockets cannot be driven instead, and the seven ways a sweep of this
 corpus returns a wrong answer: [WIP.Harness.md](WIP.Harness.md).
+
+**Testing an IDE add-in** is `addin-test.bat`, run by a person as `examples.bat` is. Each
+lane in `test/addin/lanes.mjs` builds the add-ins it tests into a private copy of the
+install and operates an IDE; the plan it serves is [WIP.HelpAddin.md](WIP.HelpAddin.md), and
+how it works is [WIP.Harness.md, The add-in test
+runner](WIP.Harness.md#the-add-in-test-runner).
+
+```sh
+addin-test.bat                     # every lane
+addin-test.bat --only sample15     # one lane; --port N moves the lanes' ports
+```
+
+- **Never build or copy a test add-in into the real install's `addins\`, or into `%APPDATA%\twinBASIC\addins\`.** Either way it loads into the user's own IDE. A test add-in goes only into a lane's copy of the install; `addAddin` refuses anywhere else, and the runner refuses to start while the `%APPDATA%` folder holds a DLL.
+- **A test never opens a real browser.** Every IDE the harness starts has `TB_ADDIN_TEST=1`, and an add-in under test prints `open <url>` to the DEBUG CONSOLE instead. Never start a test IDE with the variable removed unless its add-in opens nothing either way.
+- **Name in `lanes.mjs` every application an add-in under test passes to `SaveSetting`**, or its settings stay changed after the run: `SaveSetting` writes the key the user's own copy of the add-in reads.
 
 ## Authoring a page
 
@@ -440,6 +456,7 @@ Why the report separates the wedged task from the merely blocked ones, and why
 - `book.bat` — renders the PDF from `docs\_site-pdf\book.html` via `node book\render-book.mjs` into `docs\_pdf\twinBASIC Book.pdf`. Run `build.bat` first to populate `_site-pdf/`; `book.bat` refuses a tree older than its sources rather than rendering the previous book (see [The book refuses a stale source tree](WIP.Build.md#the-book-refuses-a-stale-source-tree)).
 
 - `examples.bat` — compiles the documentation's own twinBASIC code samples, every `tb` fence marked `check_build`, and reports the ones the compiler refuses against the line in the page they came from. Needs a twinBASIC install and Windows, so it is outside every gate and outside CI; ~110 s over the 1,119 samples marked today. Two modes need no compiler at all: `--census` classifies every fence and says how many classifiable ones are still unmarked, and `--report <survey.json>` groups a saved `--propose --json` survey by diagnostic, section and unresolved name. `--propose` itself does compile. See [Compiling the reference's own code samples](#compiling-the-references-own-code-samples) and [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md).
+- `addin-test.bat` — tests IDE add-ins by operating an IDE: every lane in `test/addin/lanes.mjs` builds the add-ins it tests into a private copy of the install, opens a project and checks what the add-in does. Outside every gate and outside CI for the same reasons as `examples.bat`; ~25 s for the two lanes today, Samples 10 and 15. Exit 0 every lane passed and the registry is as it was found, 1 a lane failed, 2 the harness failed or could not put the registry back. See [Driving the twinBASIC compiler](#driving-the-twinbasic-compiler) for its rules.
 
 Two generators sit outside that loop and produce committed artifacts rather than build output — neither runs during a build, and neither is needed for one. `python scripts/build_fonts.py` rebuilds the subset webfaces under `docs/assets/fonts/` and needs a network connection; `node scripts/build_dot_metrics.mjs` regenerates `builder/inter-metrics.json` from those webfaces and needs only a browser. See [Typography](#typography).
 

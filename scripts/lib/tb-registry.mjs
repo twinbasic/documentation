@@ -20,6 +20,9 @@
 //   * Everything under a folder the harness owns (its own temp work folders)
 //     is deleted by prefix, which also catches what an earlier run left when
 //     it died before tidying.
+//   * The recent list keeps no more copies of a path than it had, and gets
+//     back the entries that fell off its end while the run's projects were on
+//     it (restoreProjects says how the IDE does both).
 //   * The association keys are put back value by value, and only where they
 //     differ, so an untouched key is never written --- unless they named the
 //     temp folder when the run began, because then they were another run's
@@ -114,10 +117,10 @@ function SnapProjects([string]$root, $paths) {
   }
   if ($ps) { $ps.Close() }
   if ($ro) { $ro.Close() }
-  return [ordered]@{ root = $root; entries = $entries }
+  return [ordered]@{ root = $root; entries = $entries; recent = @($recent) }
 }
 
-function RestoreProjects($snap, $prefixes) {
+function RestoreProjects($snap, $prefixes, [string]$temp) {
   $root = [string]$snap.root
   $entries = @($snap.entries)
   $exact = @{}
@@ -166,6 +169,29 @@ function RestoreProjects($snap, $prefixes) {
     $back = @($entries | Where-Object { [int]$_.recentIndex -ge 0 } | Sort-Object { [int]$_.recentIndex })
     foreach ($e in $back) {
       $list.Insert([Math]::Min([int]$e.recentIndex, $list.Count), [string]$e.recentValue)
+    }
+    # The IDE fills a short list's empty slots with copies of its last entry,
+    # and a full list drops its oldest entry for each project a run opens
+    # (BUGS-TO-REPORT.md). With the list as it was found in hand, keep no more
+    # copies of a path than it had, and put back at the end what fell off --
+    # but not a path in the temp folder, which belongs to some run, and that
+    # run may have tidied it away since.
+    if (@($snap.PSObject.Properties.Name) -contains 'recent') {
+      $count = @{}
+      foreach ($v in @($snap.recent)) { $n = Norm ([string]$v); if ($n) { $count[$n] = 1 + [int]$count[$n] } }
+      $have = @{}
+      $kept = New-Object System.Collections.ArrayList
+      foreach ($v in $list) {
+        $n = Norm ([string]$v)
+        if ([int]$have[$n] -lt [Math]::Max(1, [int]$count[$n])) { [void]$kept.Add($v); $have[$n] = 1 + [int]$have[$n] }
+      }
+      $tmp = Norm $temp
+      foreach ($v in @($snap.recent)) {
+        $n = Norm ([string]$v)
+        if (-not $n -or ($tmp -and $n.StartsWith($tmp))) { continue }
+        if ([int]$have[$n] -lt [int]$count[$n]) { [void]$kept.Add([string]$v); $have[$n] = 1 + [int]$have[$n] }
+      }
+      $list = $kept
     }
     $changed = $false
     for ($i = 0; $i -lt $slots.Count; $i++) {
@@ -280,11 +306,16 @@ try {
   switch ([string]$req.op) {
     'lists'            { $result = Lists ([string]$req.root) }
     'readValue'        { $result = ReadValue ([string]$req.key) ([string]$req.name) }
+    'subkeys'          {
+      $result = @()
+      $k = $hk.OpenSubKey([string]$req.key)
+      if ($k) { $result = @($k.GetSubKeyNames() | Sort-Object); $k.Close() }
+    }
     'writeValueIf'     {
       $result = WriteValueIf ([string]$req.key) ([string]$req.name) ([string]$req.expected) ([string]$req.data)
     }
     'snapshotProjects' { $result = SnapProjects ([string]$req.root) $req.paths }
-    'restoreProjects'  { $result = RestoreProjects $req.snapshot $req.prefixes }
+    'restoreProjects'  { $result = RestoreProjects $req.snapshot $req.prefixes ([string]$req.temp) }
     'snapshotKeys'     {
       $result = @(foreach ($p in @($req.keys)) { [ordered]@{ path = [string]$p; snap = (SnapKey ([string]$p)) } })
     }
@@ -328,8 +359,9 @@ export function ideLists({ root = IDE_SETTINGS_KEY } = {}) {
 }
 
 /**
- * Record what the IDE holds for these projects now, so restoreProjects can put
- * it back. A project with no entry is recorded as having none.
+ * Record what the IDE holds for these projects now, and its whole recent list,
+ * so restoreProjects can put it back. A project with no entry is recorded as
+ * having none.
  */
 export function snapshotProjects(paths = [], { root = IDE_SETTINGS_KEY } = {}) {
   return request({ op: "snapshotProjects", root, paths: paths.map((p) => path.resolve(p)) });
@@ -339,13 +371,30 @@ export function snapshotProjects(paths = [], { root = IDE_SETTINGS_KEY } = {}) {
  * Put the snapshot's projects back as they were, and delete every entry under
  * the given folders.
  *
+ * The recent list is put back as the snapshot has it, with whatever else
+ * happened to it meanwhile kept: a project the user opened stays on top, but
+ * no path keeps more copies than the snapshot had, and the snapshot's entries
+ * that fell off the end come back there. Both are the IDE's doing. It fills a
+ * short list's empty slots with copies of its last entry, so a run that
+ * started on one entry ended with seventeen copies of it; and a full list
+ * drops its oldest entry for every project a run opens (BUGS-TO-REPORT.md).
+ * An entry in the temp folder is not brought back, since it belongs to some
+ * run, whose own tidy may have removed it meanwhile. A snapshot with no
+ * `recent`, such as `{ root, entries: [] }`, only deletes.
+ *
  * @param {string[]} [o.prefixes]  folders inside the OS temp folder; anything
  *   else is refused, so that a caller passing the wrong folder cannot sweep
  *   away the state of the user's real projects
  * @returns {{projectState: number, recentlyOpened: number}} values written or deleted
  */
 export function restoreProjects(snapshot, { prefixes = [] } = {}) {
-  return request({ op: "restoreProjects", snapshot, prefixes: prefixes.map(asTempFolder) });
+  return request({ op: "restoreProjects", snapshot, prefixes: prefixes.map(asTempFolder),
+                   temp: path.resolve(tmpdir()) + path.sep });
+}
+
+/** The names of a key's subkeys, sorted, and nothing else from under it; empty when there is no such key. */
+export function subkeyNames(key) {
+  return [].concat(request({ op: "subkeys", key }) ?? []);
 }
 
 /** Everything under these keys, values and subkeys, for restoreKeys. */
@@ -358,6 +407,53 @@ export function snapshotKeys(keys = ASSOCIATION_KEYS) {
 export function restoreKeys(snapshot) {
   for (const e of snapshot) deepEnough(e.path);
   return request({ op: "restoreKeys", snapshot }).changes;
+}
+
+/** Where SaveSetting keeps every application's settings, an add-in's included. */
+export const SETTINGS_ROOT = "Software\\VB and VBA Program Settings";
+
+/**
+ * The key SaveSetting writes an application's settings under. An add-in's
+ * SaveSetting writes here too, so its settings are shared with any installed
+ * copy of the same add-in, and a test that changes one changes the user's.
+ *
+ * The IDE's own application name is refused. That key holds all of the IDE's
+ * settings, and the parts of it a run changes are put back value by value by
+ * startTidy and finishTidy, never as a whole.
+ */
+export function settingsKey(app) {
+  const name = String(app ?? "");
+  if (!name || /[\\/]/.test(name)) throw new Error(`not a SaveSetting application name: "${name}"`);
+  if (name.toLowerCase() === "twinbasic_ide") {
+    throw new Error("refusing the IDE's own settings key: the run's tidy puts back the parts of " +
+                    "it the IDE changes, value by value");
+  }
+  return `${SETTINGS_ROOT}\\${name}`;
+}
+
+/**
+ * What SaveSetting has stored for an application, as `{ section: { name: value } }`,
+ * or null when it has stored nothing.
+ */
+export function savedSettings(app) {
+  const [entry] = snapshotKeys([settingsKey(app)]);
+  if (!entry?.snap) return null;
+  const out = {};
+  for (const s of [].concat(entry.snap.keys ?? [])) {
+    out[s.name] = Object.fromEntries([].concat(s.snap?.values ?? []).map((v) => [v.name, v.data]));
+  }
+  return out;
+}
+
+/**
+ * Delete what SaveSetting has stored for these applications, so that their
+ * next GetSetting returns its default. Snapshot the keys first
+ * (`snapshotKeys(apps.map(settingsKey))`) to put them back afterwards.
+ *
+ * @returns {number} the number of writes
+ */
+export function deleteSettings(apps) {
+  return restoreKeys(apps.map((a) => ({ path: settingsKey(a), snap: null })));
 }
 
 const ARCH_MEMORY = "targetArchitectureMemory";

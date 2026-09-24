@@ -20,6 +20,21 @@ export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export const normPath = (p) => p.split("\\").join("/").toLowerCase();
 
 /**
+ * The environment variable that tells an add-in it is under test. While it is
+ * set, an add-in does nothing outside the IDE: it prints each such action to
+ * the DEBUG CONSOLE instead, as `open <url>` for a URL it would have opened in
+ * a browser (WIP.HelpAddin.md, Stage 1 item 6). A browser started from an IDE
+ * on a private desktop would open where nobody can see it and outlive the run.
+ *
+ * launchIde sets it to "1" for every IDE the harness starts, tbbuild's and
+ * tbrun's included: any of them can load an add-in the user has installed,
+ * and none has anybody watching it. Measured on BETA 983 (P10): it reaches the
+ * compiler, twinBASIC_win32_noDEP.exe, which the IDE starts as its own child,
+ * and every add-in that compiler loads, including after the compiler restarts.
+ */
+export const ADDIN_TEST_ENV = "TB_ADDIN_TEST";
+
+/**
  * Whether the IDE goes on the user's desktop or on a private one.
  *
  * Hidden by default so an unattended run cannot take the keyboard, but the
@@ -85,7 +100,9 @@ export function killTree(pid) {
  * shutdownIde, and once two seconds. So the port gets ten seconds to come
  * free before the launch is refused.
  *
- * @param {object} [o.env]    extra environment for the IDE
+ * @param {object} [o.env]    extra environment for the IDE. ADDIN_TEST_ENV is
+ *                            set to "1" unless this names it; a value of
+ *                            undefined leaves a variable out altogether
  * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess | null}>}
  *   `pid` is the IDE's own. Throws when the port is taken, or when a hidden
  *   launch fails.
@@ -101,11 +118,14 @@ export async function launchIde({ exe, project, port, show = false, keep = false
   }
   const exeWin = exe.split("/").join("\\");
   const target = path.resolve(project).split("/").join("\\");
+  // Node leaves out of a child's environment any variable whose value is
+  // undefined, so `env` can remove one as well as set it.
   const fullEnv = {
     ...process.env,
     WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS:
       `--remote-debugging-port=${port} --remote-allow-origins=*`,
     WEBVIEW2_USER_DATA_FOLDER: `${process.env.TEMP}/tbbuild-wv2-${port}`,
+    [ADDIN_TEST_ENV]: "1",
     ...env,
   };
 
@@ -508,15 +528,26 @@ export const summaryLine = (counts) =>
 //     none, and the IDE's `substr(i + 7)` would then quietly eat six
 //     characters of real output. No current addItem() path omits it; the guard
 //     costs a comparison and removes a silent-corruption mode.
-const consoleJs = (withTimestamps, from) => `(() => {
+//
+// An entry's text is stored escaped: an add-in's PrintText of "<b>&copy=1"
+// is stored as "&lt;b&gt;&amp;copy=1" (measured, BETA 983), so decoding gives
+// back exactly what was printed, markup and ampersands included.
+//
+// A mark (consoleMark) is checked in the same evaluate as the read, so a
+// clear cannot fall between the two.
+const consoleJs = (withTimestamps, from, mark) => `(() => {
   if (typeof debugConsoleContent === "undefined" || !debugConsoleContent ||
       !debugConsoleContent.dataNodes) return null;
+  const nodes = debugConsoleContent.dataNodes;
+  const mark = ${JSON.stringify(mark ?? null)};
+  const start = !mark ? ${from}
+    : nodes.length < mark.n || (mark.n > 0 && nodes[0] !== mark.first) ? 0 : mark.n;
   const decode = (html) => {
     const d = document.createElement("div");   // never attached; see above
     d.innerHTML = html;
     return d.textContent;
   };
-  return debugConsoleContent.dataNodes.slice(${from}).map(n => {
+  return nodes.slice(start).map(n => {
     const i = n.indexOf("</span>");
     if (i < 0) return decode(n);
     return decode(${withTimestamps}
@@ -526,16 +557,19 @@ const consoleJs = (withTimestamps, from) => `(() => {
 })()`;
 
 /**
- * The whole DEBUG CONSOLE as text, one line per entry; null when this IDE has
- * no `debugConsoleContent.dataNodes` to read.
+ * The DEBUG CONSOLE as text, one line per entry; null when this IDE has no
+ * `debugConsoleContent.dataNodes` to read.
  *
  * @param {object} c                  a tb-cdp connection
  * @param {object} [o]
  * @param {boolean} [o.timestamps]    keep each entry's timestamp column
  * @param {number} [o.from]           start at this entry instead of the first
+ * @param {object} [o.since]          a mark from consoleMark: only the entries
+ *                                    written after it, or every entry if the
+ *                                    console was cleared since. Wins over `from`.
  */
-export const readConsole = (c, { timestamps = false, from = 0 } = {}) =>
-  c.evaluate(consoleJs(timestamps, Number(from)));
+export const readConsole = (c, { timestamps = false, from = 0, since = null } = {}) =>
+  c.evaluate(consoleJs(timestamps, Number(from), since));
 
 // Where the console stands: how many entries it holds, and its first entry as
 // stored, timestamp and all. Nothing removes an entry but a clear, so entries
@@ -547,6 +581,13 @@ const CONSOLE_MARK_JS = `(() => {
     ? null : debugConsoleContent.dataNodes;
   return d ? { n: d.length, first: d.length ? d[0] : null } : null;
 })()`;
+
+/**
+ * Where the DEBUG CONSOLE stands now, so that `readConsole(c, { since })` can
+ * later return only what was written after it. Null when this IDE has no
+ * console to read.
+ */
+export const consoleMark = (c) => c.evaluate(CONSOLE_MARK_JS);
 
 // The build log, in the compiler's own words (its strings, BETA 983). A build
 // writes "[BUILD] Starting..." to the DEBUG CONSOLE, and a binary ends with
@@ -573,7 +614,7 @@ const BUILD_FAILED = /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[LINKER\
  *   the build's first line on
  */
 export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
-  const mark = await c.evaluate(CONSOLE_MARK_JS);
+  const mark = await consoleMark(c);
   if (!mark) {
     return { ok: false, log: [], message: "no debugConsoleContent.dataNodes in this IDE, " +
       "so the build log cannot be read" };
@@ -585,9 +626,7 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
   let log = [], failedAt = 0;
   while (Date.now() - t0 < timeout) {
     await sleep(250);
-    const now = await c.evaluate(CONSOLE_MARK_JS);
-    const cleared = !now || now.n < mark.n || (mark.n > 0 && now.first !== mark.first);
-    const text = await readConsole(c, { from: cleared ? 0 : mark.n });
+    const text = await readConsole(c, { since: mark });
     const lines = text ? text.split("\n").map((l) => l.trim()) : [];
     const start = lines.indexOf(BUILD_START);
     if (start < 0) continue;
