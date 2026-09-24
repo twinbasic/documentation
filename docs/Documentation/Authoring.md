@@ -22,6 +22,7 @@ The documentation is grouped by area, each a folder under `docs/`:
 - **Reference** --- the language and library reference: core keywords and statements, plus one page per runtime symbol grouped by package, module, and class. The bulk of the site.
 - **Tutorials** --- step-by-step guides that build something end to end.
 - **Features** --- articles on individual twinBASIC language features.
+- **LLVM** --- compiling with the LLVM back end: turning it on, its options, and its current limitations.
 - **IDE** --- the IDE user guide.
 - **Documentation** --- this section: the toolchain reference and the authoring guide you are reading now.
 

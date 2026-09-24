@@ -183,6 +183,12 @@ parts:
         page: /Features/Fusion
         outline_closed: true
 
+  - title: LLVM
+    subtitle: Faster and smaller programs with the LLVM compiler back end
+    landing_page: /LLVM/
+    page: /LLVM/
+    outline_closed: true
+
   - title: Frequently Asked Questions
     subtitle: Status, scope, and how to get help
     page: /FAQ

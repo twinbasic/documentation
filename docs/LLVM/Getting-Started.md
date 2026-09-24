@@ -1,3 +1,10 @@
+---
+title: Getting Started with LLVM
+parent: LLVM
+nav_order: 1
+permalink: /LLVM/Getting-Started
+---
+
 ## Getting started with LLVM
 
 ### What is LLVM?
@@ -8,7 +15,7 @@ LLVM is a feature of the compiler process that allows for creating code highly o
 
 LLVM is an optional feature you can enable through Project Settings. It is off by default while still in the experimental stage. In Project Settings, you'll see the following options:
 
-![A screenshot of the project settings window showing the Compiler Options sections with Enable LLVM Compilation](../Images/llvmdoc1.jpg) 
+![A screenshot of the project settings window showing the Compiler Options sections with Enable LLVM Compilation](Images/llvmdoc1.jpg) 
 
 The two separate sections control whether LLVM is enabled when compiling your project to .exe, .dll, etc., under "(BUILD)", and when you're running from the IDE, under "(DEBUG)". The first option is for whether LLVM is enabled at all. With this box checked, LLVM will run during the compilation process and create an intermediate representation of your code, but not apply the optimizations for performance and size. Generally, you'll want to check one or both of the next options: Generate optimized code and Optimize for smaller filesize. The remaining options are for special CPU features that are not present on all CPUs. If you enable an option that is not available on the CPU your program runs on, it will crash or not run at all. The options range from features that would almost certainly be available on any CPU from the last 25 years, to features found only on more recent CPUs. An overview of this is included later in this article.
 
@@ -34,7 +41,7 @@ All language features besides that should be supported, for both 32-bit and 64-b
 
 In addition to the per-project settings, IDE Options has three new settings that control how LLVM is used when it's enabled:
 
-![A screenshot of the IDE settings window showing the LLVM Compiler options for thread count, reporting threshold for procedures that take very long to compile, and cache process keep-alive](../Images/llvmdoc2.jpg) 
+![A screenshot of the IDE settings window showing the LLVM Compiler options for thread count, reporting threshold for procedures that take very long to compile, and cache process keep-alive](Images/llvmdoc2.jpg) 
 
 The first option is for Maximum number of threads the LLVM compiler can create. Increasing this value can speed up the LLVM compilation process, but will also increase memory usage. If you begin experiencing crashes during LLVM compilation, this value has likely been set too high, and reducing it should fix the crashes. The default value is 1, but newer systems would likely handle 10 or more without issue.\
 The 'Complex procedure reporting threshold' is related to the earlier mention of very large procedures taking a long time to compile. This option sets a time threshold; any procedure that takes at least that long to compile will be listed in the Debug Console. This helps you identify which procedures you may want to split up to reduce compile time.\

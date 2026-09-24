@@ -1,6 +1,6 @@
 ---
 title: Features
-nav_order: 6
+nav_order: 5
 permalink: /Features/
 redirect_from: 
   - /Features/Overview
