@@ -51,7 +51,7 @@ LLVM compilation is not available with the free Community Edition licence, and t
 
 ### Operating system support
 
-LLVM does not currently work on Windows 7; Windows 10 or 11 is recommended. Windows 8 and 8.1 have not been tested yet.
+Building with LLVM does not currently work on Windows 7; Windows 10 or 11 is recommended. Windows 8 and 8.1 have not been tested yet. The limit applies only to the computer that builds the program: a program built with LLVM runs on Windows 7.
 
 ### Language support
 
@@ -69,10 +69,10 @@ Besides the project settings, three settings in [IDE Options](../tB/IDE/Project/
 : The number of threads the LLVM compiler can create. More threads can make LLVM compilation faster, but use more memory. If LLVM compilation starts to crash, this value is probably too high, and lowering it should stop the crashes. The default is 1, but newer computers can probably handle 10 or more.
 
 **LLVM Compiler: Complex procedure reporting threshold (milliseconds)**
-: A compile time. Every procedure that takes at least this long to compile is listed in the [Debug Console](../tB/IDE/Project/DebugConsole), which shows the procedures you may want to split up to reduce compile time.
+: A compile time. Every procedure that takes at least this long to compile is listed in the [Debug Console](../tB/IDE/Project/DebugConsole), which shows the procedures you may want to split up to reduce compile time. The default is 10000 milliseconds, which is 10 seconds.
 
 **LLVM Compiler: Keep cache process alive after exiting the IDE**
-: Keeps the LLVM cache running after you exit the IDE, so that LLVM does not have to do a long full compile again.
+: Keeps the LLVM cache running after you exit the IDE, so that LLVM does not have to do a long full compile again. It is on by default.
 
 ## Per-procedure LLVM options
 
@@ -96,7 +96,7 @@ The same attribute can also turn LLVM on for chosen procedures when it is off in
 `+optimizesize`
 : **LLVM: Optimize for smaller filesize**
 
-The flags for CPU instruction sets are `+aes`, `+avx`, `+avx2`, `+bmi2`, `+fma`, `+fxsr`, `+rdseed`, `+sha`, `+sse`, `+sse2`, `+sse3`, `+sse4.1`, `+sse4.2` and `+ssse3`.
+The flags for CPU instruction sets, one for each **LLVM: Target CPUs with** box, are `+aes`, `+avx`, `+avx2`, `+bmi2`, `+fma`, `+fxsr`, `+lzcnt`, `+popcnt`, `+rdseed`, `+sha`, `+sse`, `+sse2`, `+sse3`, `+sse4.1`, `+sse4.2`, `+ssse3`, `+xsave`, `+xsavec`, `+xsaveopt` and `+xsaves`.
 
 For example:
 
@@ -106,7 +106,7 @@ Function Multiply(A As Long, B As Long) As Long
     Return A * B
 End Function
 
-[CompilerOptions("+llvm,+optimize,+optimizesize,+aes,+avx,+avx2,+bmi2,+fma,+fxsr,+rdseed,+sha,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+ssse3")]
+[CompilerOptions("+llvm,+optimize,+optimizesize,+aes,+avx,+avx2,+bmi2,+fma,+fxsr,+lzcnt,+popcnt,+rdseed,+sha,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+ssse3,+xsave,+xsavec,+xsaveopt,+xsaves")]
 Sub FullyOptimizeMe()
     ' ...
 End Sub
