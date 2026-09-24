@@ -177,7 +177,7 @@ Per-lane Shiki bootstrap (`initHighlighter()` from `highlight.mjs`). The flag co
 prepDest.expected = ["dispatch"]
 ```
 
-Cleans and recreates `<destRoot>`, `<destRoot>-offline`, and `<destRoot>-pdf`. Deferred to after `dispatch` so the wipe does not contend with `discover`'s reads on small machines.
+Cleans and recreates the trees the run owns. A build owns `<destRoot>`, `<destRoot>-offline` and `<destRoot>-pdf`, and all three exist after it whether or not the offline and PDF passes ran. Serve mode owns `<destRoot>` alone, because it runs neither pass. Deferred to after `dispatch` so the wipe does not contend with `discover`'s reads on small machines.
 
 ### `prepPageDirs` (main)
 
@@ -732,7 +732,7 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | Symbol | Signature | Description |
 |---|---|---|
 | `writePhase` | `(pages, staticFiles, { destRoot, dryRun?, generatedAssets?, baseurl?, skipPages? }) → Promise<stats>` | Materialises the page set, vendored theme, project static files, and generated CSS. `skipPages: true` for `writeAssets`, since `flush:i` already wrote the pages. |
-| `prepareDestinations` | `(roots, dryRun) → Promise<void>` | Deletes and recreates each path in `roots`. Called by `prepDest` over `[destRoot, destRoot+"-offline", destRoot+"-pdf"]`. |
+| `prepareDestinations` | `(roots, dryRun) → Promise<void>` | Deletes and recreates each path in `roots`. Called by `prepDest` over `[destRoot, destRoot+"-offline", destRoot+"-pdf"]` for a build, and over `[destRoot]` alone in serve mode. |
 | `preparePageDirs` | `(pages, staticFiles, destRoot, offlineRoot) → Promise<void>` | Pre-creates every page output directory on both trees. Called by `prepPageDirs` so `flush:i` skips `mkdir`. |
 | `WRITE_LIMIT` | `64` | Concurrency ceiling for `runLimited`. |
 | `isUnderProject` | `(destRoot) → boolean` | Guard against destructive `--dest` values. Used by `writeOffline` and `writePdf`. |

@@ -95,13 +95,20 @@ Two `.py` files stay, and neither is an oversight:
   use produces wrong CFF2 metrics --- a one-line build-configuration defect in harfbuzzjs,
   documented with the evidence in [WIP.Fonts.md](WIP.Fonts.md).
 
-One `.ps1` exists for a third kind of reason. **`scripts/lib/tb-launch.ps1`** is two Win32
-calls --- `CreateDesktop`, and `CreateProcess` with `STARTUPINFO.lpDesktop` --- which Node
-cannot make without a native FFI addon, and adding one for a single call would mean
+One `.ps1` exists for a third kind of reason. **`scripts/lib/tb-launch.ps1`** is Win32
+calls --- `CreateDesktop`, `CreateProcess` with `STARTUPINFO.lpDesktop`, and the job object
+the IDE runs in (`CreateJobObject`, `AssignProcessToJobObject`) --- which Node cannot make
+without a native FFI addon, and adding one for a handful of calls would mean
 `npm install` no longer suffices to run the tooling. It is also not a script anyone runs:
-`tbbuild.mjs` reads the text and passes it through `-EncodedCommand`, so it never meets the
+`scripts/lib/tb-ide.mjs` reads the text and passes it through `-EncodedCommand`, so it never meets the
 execution policy. See [Compiling a twinBASIC project without the IDE in front of
 you](WIP.Harness.md#compiling-a-twinbasic-project-without-the-ide-in-front-of-you).
+
+Two `.mjs` files also run a little PowerShell inline, for Windows state Node has no API
+for, and neither adds a file: `scripts/tbrun.mjs` takes a process snapshot with
+`Get-Process`, and `scripts/lib/tb-registry.mjs` reads and restores the IDE's registry
+keys through .NET, because `reg.exe` mangles names outside the console code page. See
+[What a run leaves in the registry](WIP.Harness.md#what-a-run-leaves-in-the-registry-and-putting-it-back).
 
 The full account of the JavaScript port of `build_fonts.py` --- what works, the harfbuzzjs
 build defect that blocks it, the evidence, the root cause in `hb-config.hh`, and what the
@@ -366,6 +373,20 @@ in the build reads those files. It errs toward refusing, which is the safe
 direction, and a rebuild is ~4 s --- but wiring the check into `book.bat` means
 a pure note edit now also blocks a render until you rebuild.
 
+**Which folders under `docs/` are outputs comes from one list.** The script used to
+name them one at a time, and missed four that sat beside the ones it named, all
+read as sources. Two were real outputs: a build given `--dest docs/_site-basepath`
+writes `_site-basepath-offline` and `_site-basepath-pdf` as well. The other two,
+`_serve-offline` and `_serve-pdf`, should never have existed. `prepDest` in
+`builder/tbdocs.mjs` prepared `<dest>-offline` and `<dest>-pdf` for every run, so
+serve mode --- which runs neither pass --- recreated both, empty, on every rebuild. It
+now prepares `_serve` alone, and the two were deleted. All four were empty, so
+nothing had gone wrong yet; a file planted in one made the old script call a fresh
+tree stale. It now skips the top-level folders that `isOutputTree` in
+[scripts/lib/markdown-files.mjs](scripts/lib/markdown-files.mjs) names --- the
+prefix list the markdown walk uses --- and keeps only `.git` and `node_modules` as
+names of its own.
+
 ### The code-region gate
 
 [scripts/check_code_regions.mjs](scripts/check_code_regions.mjs) tokenises every
@@ -393,6 +414,19 @@ reverting a rewrite to run outside the mask, which the probes catch while the
 allowlist, regex-safety gate and axe scan all passed green on a tree with six
 corrupted code samples in the published book, because the corruption is inside
 `<code>` and none of them looks there.
+
+**Its sweep used to crash while `serve.bat` was running**, over nothing in any page.
+The walk was a recursive `readdir` of `docs/` that dropped the output trees from
+its results afterwards, so it had already descended into `_serve` --- which a
+running preview deletes and rewrites on every rebuild --- and died with `ENOENT`
+when a folder vanished under it. `test.bat` failed that way on 2026-09-23. Two
+other tools carried their own copies of the same walk, and one of them did not
+skip the output trees at all, so all three now call
+[scripts/lib/markdown-files.mjs](scripts/lib/markdown-files.mjs), which skips
+`_site*`, `_serve*` and `_pdf*` before entering them. Measured against a live
+preview: the old walk hit `ENOENT` during a rebuild, while the new one opens 142
+folders, none of them inside an output tree, returns the same 910 files, and
+stayed clean through 642 walks and five full gate runs timed into rebuilds.
 
 ### The page-count drift guard
 

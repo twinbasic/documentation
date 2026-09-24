@@ -19,6 +19,45 @@ What an entry owes a reader:
 
 ---
 
+## The recent-projects list fills its empty slots with copies of its last entry
+
+**Build:** BETA 983
+**Severity:** cosmetic, but it shows on a new installation, which is exactly when the
+list has empty slots --- the same project repeated down the Recent tab.
+
+The list is 21 values, `"0"` to `"20"`, under
+`HKCU\Software\VB and VBA Program Settings\twinBASIC_IDE\RecentlyOpened`. Reproduction:
+
+1. Leave two entries: `"0"` = `A.twinproj`, `"1"` = `B.twinproj`. Either delete `"2"` to
+   `"20"` or set them to empty strings; both reproduce it.
+2. Open a third project, `C.twinproj` --- on the command line is enough.
+3. The IDE writes `"0"` = `C`, `"1"` = `A`, and `"2"` to `"20"` = `B`: **nineteen copies of
+   `B`**.
+
+What does **not** reproduce it:
+
+| starting list | result |
+|---|---|
+| no `RecentlyOpened` key at all | `C` and 20 empty strings --- correct |
+| 21 distinct entries | 21 distinct entries, the oldest dropped --- correct, read at the end of 41 successive opens |
+| `C` already at the top | unchanged --- the opened project itself is never duplicated |
+
+So it takes at least one existing entry and at least one slot with nothing in it, which
+looks like each slot being read with the previous slot's value as its default. Once a
+duplicate is there, the next opened project keeps it: 18 copies of one project became 20
+after one more open, with the new project on top.
+
+**Observed** on 2026-09-23 by reading the registry values after `tbbuild --keep` opened a
+fixture project on a private desktop and the IDE was killed: once for each variant of step
+1, and in two successive sessions on one project for the third row and the growth from 18
+copies to 20. The first row was seen when the key had been deleted and the next harness run
+recreated it, the second at the end of a `check_examples` run. The
+harness records it because its registry tidy (`scripts/lib/tb-registry.mjs`) leaves a list
+shorter than 21 entries whenever it removes harness projects, and the next project the user
+opens then trips this.
+
+---
+
 ## Compiler crashes on an `Interface` whose name and base are both angle-bracket placeholders
 
 **Build:** BETA 983 (`twinBASIC_win32.dll+00141F7A`)
@@ -466,3 +505,164 @@ creates every missing level of its output folder.
 Given a folder with no `Settings` file at its top, `import` lists the files it read, ends
 `... FAILED` with no `ERROR:` line, and writes nothing. Every other failure measured names its
 cause.
+
+---
+
+## `\` and `Mod` on the most negative `Integer` or `Long` by -1 raise a native exception that `On Error` cannot handle
+
+**Build:** BETA 983, 32-bit target
+**Severity:** a division that should raise the trappable error 6 stops the procedure instead; the
+`LongLong` form returns a wrong value with no error at all.
+
+```
+Dim a As Integer = -32768
+Dim b As Integer = -1
+On Error Resume Next
+Debug.Print a \ b
+```
+
+The DEBUG CONSOLE shows `NATIVE EXCEPTION: NT_OVERFLOW /<file>; <module>.<procedure> LINE <n>
+[CONTINUABLE]` for the division's line, then `[IDE] auto-activated TRACE-MODE in this session`,
+and nothing after that line runs, `On Error Resume Next` notwithstanding.
+
+| operands | `\` | `Mod` |
+|---|---|---|
+| `Integer` -32768 and -1 | native exception | native exception |
+| `Long` -2147483648 and -1 | native exception | native exception |
+| `LongLong` -9223372036854775808 and -1 | **-9223372036854775808**, no error | 0 (right) |
+| a `Variant` holding the `Integer` -32768, and -1 | `Long` 32768 (right) | --- |
+| a `Variant` holding the `Long` -2147483648, and -1 | error 6 (right) | --- |
+
+**What does not reproduce it:** every other overflow measured raises error 6 as it should ---
+`32767 + 1`, `32767 * 32767` and `-(-32768)` on typed `Integer` values, and the same kind of
+overflow on `Long`, `LongLong`, `Single`, `Double`, `Currency` and `Decimal` --- and division by
+zero raises error 11. Only the one quotient that does not fit its type fails this way.
+
+**Found by** probing the arithmetic operators' result types for `Reference/Operators.md`. The
+probe's first run lost every case after this one.
+
+---
+
+## Shifting a `Single`, `Double`, `Date`, `Boolean` or `String` compiles clean, then fails code generation
+
+**Build:** BETA 983
+**Severity:** the compiler accepts the expression with no diagnostic, and the procedure that
+contains it never runs.
+
+```
+Dim a As Single = 7.9
+Dim c As Integer = 1
+Debug.Print a << c
+```
+
+The problems panel shows no errors and the build reports `[LINKER] SUCCESS created output file`.
+When the procedure is called, the DEBUG CONSOLE shows `[LINKER] compilation (codegen) error
+detected in '<module>.<procedure>' at line #<n>`, naming the shift's line, and nothing in the
+procedure runs --- not even the statements before the shift. `On Error Resume Next` in the caller
+does not see it; the caller stops too.
+
+| left operand | `<<` and `>>` |
+|---|---|
+| `Single`, `Double`, `Date`, `Boolean`, `String` | codegen error |
+| `Byte`, `Integer`, `Long`, `LongLong`, `LongPtr` | shifts |
+| `Currency`, `Decimal` | builds, but works on the value: a `Currency` holding 7.9, shifted left by 1, is 15.8 |
+| a `Variant` holding any of the types above | builds, and multiplies or divides the value |
+
+Precedence reaches it too: `"x" & n << 2` parses as `("x" & n) << 2`, a `String` shift, and fails
+the same way. Either a diagnostic or a working shift is expected; the documentation had said
+floating-point operands are truncated before shifting.
+
+**Found by** probing the operators' result types for `Reference/Operators.md`.
+
+---
+
+## `>>` gives three different results for the same value, and a `Variant` shift can return `Empty`
+
+**Build:** BETA 983
+**Severity:** wrong values, with no diagnostic.
+
+```
+Dim n As Long = -8
+Dim v As Variant = CLng(-8)
+Debug.Print -8& >> 1    ' -4           constants: an arithmetic shift
+Debug.Print n >> 1      ' 2147483644   a Long variable: a logical shift
+Debug.Print v >> 1      ' -4           a Variant: a division, truncated toward zero
+```
+
+The logical shift is what a typed variable gets and what the documentation describes. The
+constant folder disagrees with the code generator: `-1 >> 1` and `-1& >> 1` are both -1, where an
+`Integer` variable holding -1 gives 32767 and a `Long` variable gives 2147483647.
+
+A `Variant` operand is not shifted but multiplied or divided --- a `Variant` holding the `Double`
+7.9, shifted left by 1, is 15.8 --- and a count as large as the width of the type it holds gives
+`Empty` rather than 0:
+
+| expression | result |
+|---|---|
+| a `Variant` holding `CInt(1)`, `<< 20` | `Empty` |
+| a `Variant` holding `CLng(1)`, `<< 32` | `Empty` |
+| a `Variant` holding `CLng(1)`, `<< 31` | `Long` -2147483648 |
+| a `Long` variable holding 1, `<< 32` | 0 |
+
+**Found by** probing the operators for `Reference/Core/LeftShift.md` and `RightShift.md`, whose
+examples said `-1 >> 1` returns `&H7FFFFFFF`. It returns -1.
+
+---
+
+## Overloads on `Date` and `Double` resolve by declaration order, not by the argument's type
+
+**Build:** BETA 983
+**Severity:** the wrong overload runs, with no diagnostic.
+
+```
+Private Function F(ByVal x As Date) As String
+    F = "Date"
+End Function
+Private Function F(ByVal x As Double) As String
+    F = "Double"
+End Function
+
+Dim x As Double = 1.5
+Debug.Print F(x)        ' Date
+```
+
+Whichever of the two is declared first receives every call. With `Date` first, a `Double`
+argument reaches the `Date` overload; with `Double` first, a `Date` variable, `#1/2/2026#` and
+`CDate(1)` all reach the `Double` overload.
+
+**What does not reproduce it:** a `Date` overload beside a `String` one resolves correctly, and an
+overload set on `Byte`, `Integer`, `Long`, `LongLong`, `Single`, `Double`, `Currency`, `Decimal`,
+`Boolean`, `String` and `Variant` sends arguments of each of those types to their own overload.
+The compiler does tell the two types apart elsewhere: `TypeName` of a `Date` expression is
+`Date`, and a `Long` overload beside a `LongPtr` one is refused as a duplicate definition in a
+32-bit build, as it should be.
+
+**Found by** the overload set used to detect the static type of arithmetic results while
+measuring the operators for `Reference/Operators.md`.
+
+---
+
+## `Boolean \ String` and `Boolean Mod String` convert the `String` to `Boolean`
+
+**Build:** BETA 983
+**Severity:** a wrong value and a wrong type, with no diagnostic.
+
+```
+Dim b As Boolean = True
+Debug.Print TypeName(b \ "2")
+```
+
+| expression | result | expected |
+|---|---|---|
+| `b \ "2"` | `Boolean` True | `Long` 0, as `b \ 2.0` gives |
+| `b Mod "2"` | `Boolean` False | `Long` -1, as `b Mod 2.0` gives |
+
+The results are consistent with converting `"2"` to `Boolean` (`True`, -1) first: -1 \ -1 is 1,
+stored as `True`, and -1 Mod -1 is 0, stored as `False`. A `String` literal and a `String`
+variable on the right both reproduce it.
+
+**What does not reproduce it:** every other operator converts the `String` to a number --- `b +
+"2"` is the `Double` 1, `b / "2"` the `Double` -0.5 --- and so do `\` and `Mod` with the operands
+the other way round: `"2" \ b` is the `Long` -2.
+
+**Found by** the result-type probe for `Reference/Operators.md`.

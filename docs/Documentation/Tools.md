@@ -146,7 +146,7 @@ One invocation of [`check_examples.mjs`](#check-examples), with every flag passe
 
     node scripts/check_examples.mjs [flags]
 
-Compiles the documentation's own twinBASIC code samples --- every ` ```tb ` fence marked `check_build` --- and reports the ones the compiler refuses, against the line in the page they came from. [Authoring Pages](Authoring#checking-that-a-sample-compiles) is the page for marking a sample; this entry is about running the tool.
+Compiles the documentation's own twinBASIC code samples --- every ` ```tb ` fence marked `check_build` --- and reports the ones the compiler refuses, against the line in the page they came from. [Authoring Pages](Authoring#checking-that-a-sample-compiles) is the page for marking a sample and for what a pull request that changes one shows; this entry is about running the tool.
 
 **It is not one of the gates, and it must not become one.** It is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows, for three reasons that are not going to change: it needs a twinBASIC install, where `npm install` has to remain sufficient to build the docs; it needs Windows, a private desktop and a CDP-reachable WebView2, none of which exists on the CI box; and an IDE cold start is 8 to 11 seconds against a whole site build's four. It is run by a person, deliberately, which is the same arrangement [`sweep_a11y.mjs`](#sweep-a11y) already has.
 
@@ -350,7 +350,7 @@ No browser, no built tree, ~40 ms, which is why it is `test.bat`'s first step. R
 
     node scripts/check_tree_fresh.mjs [--tree DIR] [--source DIR ...]
 
-`check.bat`'s first gate. Refuses a built tree older than the sources that produced it, by comparing the newest mtime under the source tree against the built tree's `index.html`. Without it, editing a page and running `check.bat` without rebuilding audits the *previous* build and passes --- a green run that says nothing about the change just made. CI never hits this because it builds in the same job; a development box hits it whenever the two commands run out of order. Exits 0 when the tree is current, 1 when stale (naming `build.bat`), 2 when the tree is absent.
+`check.bat`'s first gate. Refuses a built tree older than the sources that produced it, by comparing the newest mtime under the source tree against the built tree's `index.html`. The build's own output trees under `docs/` are not sources, and which folders those are comes from `scripts/lib/markdown-files.mjs`, the list [`check_code_regions.mjs`](#check-code-regions) walks by. Without it, editing a page and running `check.bat` without rebuilding audits the *previous* build and passes --- a green run that says nothing about the change just made. CI never hits this because it builds in the same job; a development box hits it whenever the two commands run out of order. Exits 0 when the tree is current, 1 when stale (naming `build.bat`), 2 when the tree is absent.
 
 ### check_dot_fit.mjs
 {: #check-dot-fit }
@@ -370,7 +370,7 @@ Refuses a regex that can backtrack exponentially. Parses every `.mjs` under `bui
 
 **An exponential regex does not fail a build, it stops one.** The corpus passes for as long as no page happens to contain the trigger; then a worker sits inside `String.replace` and never returns, and the build prints its last line. That is not hypothetical --- `VOID_TAGS_RE` in `builder/render.mjs` shipped that way, and the two alt strings that triggered it (`Line/Column`, `/Packages/WinDevLib`) are ordinary English. This gate asks the question of the regex rather than waiting for content to ask it. When it first ran it found a second exponential regex in the same file that nobody knew about, and then found that the first attempt at fixing `VOID_TAGS_RE` was still exponential on a subtler input. The [stall watchdog](Building#when-a-build-stops) ends such a run after two minutes and names the wedged task and the pages it was rendering, which turns a silent hang into a diagnosis --- it does not make the regex safe.
 
-**When it refuses one**, the report gives the file, the line, the pattern, and a **witness** --- an input that makes that pattern blow up. Keep the witness: pasting it into a scratch `re.test(witness)` is how you watch the fault, and it is the only thing that later says the rewrite worked, since the corpus passed before the fix and passes after it.
+**When it refuses one**, the report gives the file, the line, the pattern, and a **witness** --- an input that makes that pattern blow up. Keep the witness: pasting it into a scratch `re.test(witness)` is how you watch the fault, and it is the only thing that later says the rewrite worked, since the corpus passed before the fix and passes after it. It is printed whole, with its length, and must be pasted whole. The report used to cut it to 70 characters, and a shortened witness has fewer repetitions of the part that causes the blowup: for the first attempt at fixing `VOID_TAGS_RE`, the 492-character witness ran for more than 30 seconds while its first 70 characters returned in under a millisecond.
 
 The cause is one shape, every time: **two parts of the pattern can match the same character**, so a single run of input can be divided between them in exponentially many ways, and a match that ultimately fails tries every division. Both regexes this repository shipped were that. `VOID_TAGS_RE` spelled a void tag's attribute list as `(?:\s+[^>/]+...)*`, and `[^>/]` matches a space exactly as `\s` does, so any run of attribute text divides arbitrarily. Narrowing the class to `[^\s>/]` looked like the fix and was not --- it still matches `"`, `'` and `=`, so an attribute could be taken either by the name class or by the quoted-value alternative, which is the same ambiguity one level down. That second version was pronounced safe by hand and refused by this gate.
 
@@ -380,7 +380,7 @@ It gates on **exponential only**. recheck also reports polynomial blowup, and ab
 
 Two sets of probes run inside the normal pass rather than behind `--self-test`, because a green line saying *no exponential regex* is otherwise indistinguishable from a gate that has stopped detecting them. Eight are regexes with known answers in both directions, including the three this repository actually shipped. Fourteen more cover the folding: eight constructions that must resolve to an exact pattern, and six that must be refused with a reason --- a folder that quietly resolves nothing moves every construction into the unresolved list and the run still passes.
 
-Exits 1 on an exponential finding, on a file that would not parse, or on a probe that came back wrong. Note that the last two are the harness failing rather than the tree, which the [convention for a gate's exit codes](Extending#it-must-be-able-to-fail) would put at 2; this gate predates that convention and returns 1 for everything. Both are non-zero, so no wrapper or workflow behaves differently --- but do not read a 1 here as proof that a regex was found.
+Exits 1 on an exponential finding. Exits 2 when the gate itself failed --- a file that would not parse, a regex recheck could not analyse, a probe that came back wrong, or a crash --- because each of those leaves something unchecked; a 2 wins over a 1 when both happen in one run. That is the [convention for a gate's exit codes](Extending#conventions), which this gate predates and followed only from round 7 of the use-case evaluation: until then it returned 1 for everything.
 
 ### check_code_regions.mjs
 {: #check-code-regions }
@@ -389,13 +389,15 @@ Exits 1 on an exponential finding, on a file that would not parse, or on a probe
 
 Verifies that no pre-render rewrite in `builder/render.mjs` alters the contents of a code fence, an indented code block or an inline code span. Tokenises every markdown file under `docs/`, applies the real rewrite chain, re-tokenises, and compares the code regions in order. No browser, no built tree, a couple of seconds.
 
+The list of files comes from `scripts/lib/markdown-files.mjs`, which [`convert_em_dash_separators.mjs`](#convert-em-dash-separators) and [`check_examples.mjs`](#check-examples) share. It never enters the build's output trees, so a running `serve.bat` cannot fail the gate: the preview deletes and rewrites `docs/_serve` on every rebuild, and a walk inside it at that moment used to die with `ENOENT`.
+
 Those rewrites run over **raw markdown**, before markdown-it has parsed anything, so none of them can tell prose from code --- and this site's subject matter is code. Four defects of exactly that shape shipped: a language reference printed its `If` / `ElseIf` / `Else` bodies flush left, a page lost the blank line between two examples, a link's argument list was percent-encoded inside a fence, and a YAML sample's closing `---` was deleted outright. **No other gate can see any of it**, because the damage sits inside `<code>` and the link, integrity, publish and accessibility checks all pass over it.
 
 Eleven probes ride along in the normal run, each a defect this repository actually shipped. The corpus is clean, so a sweep that finds nothing is otherwise indistinguishable from a gate that has stopped detecting. It imports the rewrite chain rather than reconstructing it, which is what makes removing the code mask from one rewrite change what the gate runs.
 
 Four of the eleven test the mirror fault, which the region comparison structurally cannot see: **a rewrite that misreads what is code can also fail to fire on real prose**, and the regions still come back identical because the text was only stashed and restored. `Reference/Attributes.md` shipped all six of its admonitions as the literal text `[!NOTE]` for exactly that reason --- a `[Description(...)]` sample whose argument is a Markdown string containing two fence markers as twinBASIC string literals, which the fence stasher closed the surrounding fence on. Every pairing after it was off by one.
 
-Exits 1 when a code region differs, or when a probe's admonition is not rewritten.
+Exits 1 when a code region differs, or when a probe's admonition is not rewritten. [When `test.bat` fails in `check_code_regions`](Extending#code-regions-altered) says what to change.
 
 ### check_gate_lists.mjs
 {: #check-gate-lists }
@@ -514,7 +516,7 @@ twinBASIC has no command-line build. The compiler executable's whole surface is 
 | `--port <n>` | DevTools port. Default 9333. It also names the WebView2 user-data folder and the private desktop, which is what makes concurrent instances possible. |
 | `--timeout <secs>` | Give up waiting for the compile to settle. Default 180. |
 | `--json` | Emit one JSON object --- counts, diagnostic rows, and any dialog text --- instead of lines of text. |
-| `--keep` | Leave the IDE running afterwards. |
+| `--keep` | Leave the IDE running afterwards. The IDE's registry entries for the project are then left as they are, because the IDE is still writing them. |
 | `--show` / `--hide` | Put the IDE on your own desktop where you can watch it, or on a private one where it cannot take focus. Hidden is the default unless `TBBUILD_SHOW` is set to something other than `0`, `false` or `no`; the two flags override that for one invocation. |
 
 Exit codes: **0** clean, **1** the project has errors, **2** the harness failed, **3** the compile never settled, **4** the project crashes the compiler.
@@ -523,7 +525,11 @@ Exit codes: **0** clean, **1** the project has errors, **2** the harness failed,
 
 **One IDE handles one project.** Loading a second project into a running IDE wedges it, so a fresh IDE per project is the design rather than a convenience. It costs roughly 8 to 11 seconds each on a development box and is flat in project size, because what is being paid for is IDE startup and not compilation. Concurrency is the way to make a batch of probes fast: distinct `--port` values give distinct DevTools ports, user-data folders and desktops, so instances do not collide. Keep a question that might crash the compiler in a project of its own, so the answer is attributable and one bad probe cannot cost the rest of the batch its run.
 
-Two files under `scripts/lib/` belong to it and are never run directly. `tb-cdp.mjs` is a minimal CDP client over Node's global `WebSocket`, raw rather than puppeteer because a pending `alert()` blocks the renderer and puppeteer's `connect()` handshake talks to the renderer --- so it hangs on precisely the state you need to recover from. `tb-launch.ps1` holds the two Win32 calls Node cannot make without a native FFI addon, `CreateDesktop` and `CreateProcess` with `STARTUPINFO.lpDesktop`. It is the only PowerShell under `scripts/`, and it is not executed as a file: `tbbuild.mjs` reads the text and passes it through `-EncodedCommand`, so the execution policy never comes into it and nobody has to be told to bypass one.
+**The IDE it starts ends with it.** The IDE runs inside a Windows job object, so when `tbbuild` ends --- finished, failed, or stopped with Ctrl+C --- every process the IDE started ends too. That includes a compiler the IDE was restarting after a crash, which a plain process-tree kill can miss and leave running. Two exceptions: under `--keep` the IDE runs outside the job and lives until you close it, and under `--show` it is started directly on your desktop, without the job.
+
+**It leaves the IDE's own settings as it found them.** Every IDE it starts writes to the same registry keys as your own IDE: a saved state for the project (open tabs, watch expressions, Debug Console history) and a place at the top of the recent-projects list. Once the IDE has exited, `tbbuild` puts both back. An entry the run created is deleted, and a project that already had one --- one of your own --- gets its old state and its old place in the list back. The `.twinproj` file association is restored too, if the IDE changed it. When [`check_examples.mjs`](#check-examples) runs `tbbuild`, `check_examples` does this once for all its lanes instead.
+
+Four files under `scripts/lib/` belong to it and are never run directly. `tb-ide.mjs` holds the mechanics `tbbuild.mjs` and `tbrun.mjs` share: starting the IDE, attaching to it, waiting for the compile, and reading the diagnostics and the DEBUG CONSOLE. `tb-registry.mjs` records and restores the registry entries described above, through .NET's registry API by way of PowerShell, because `reg.exe` mangles any path holding a character outside the console code page; [`check_tb_registry.mjs`](#check-tb-registry) is its self-test. `tb-cdp.mjs` is a minimal CDP client over Node's global `WebSocket`, raw rather than puppeteer because a pending `alert()` blocks the renderer and puppeteer's `connect()` handshake talks to the renderer --- so it hangs on precisely the state you need to recover from. `tb-launch.ps1` holds the Win32 calls Node cannot make without a native FFI addon: `CreateDesktop` and `CreateProcess` with `STARTUPINFO.lpDesktop` for the private desktop, and the job object described above. It is the only PowerShell file under `scripts/`, and it is not executed as a file: `tb-ide.mjs` reads the text and passes it through `-EncodedCommand`, so the execution policy never comes into it and nobody has to be told to bypass one.
 
 ### tbrun.mjs
 {: #tbrun }
@@ -574,10 +580,10 @@ the array, which is the other reason to begin with it.
 | `--quiet <ms>` | How long the console must stop changing before the output counts as complete. Default 2500. There is no sentinel string to match, so any probe works without telling the script anything. Raise it well above the default for a probe that drives an out-of-process server, which can take longer than that to start. |
 | `--raw` | Keep the console's timestamp column, which is otherwise stripped. |
 | `--json` | One object with the built exe's path, the captured lines, the IDE pid and anything reaped. |
-| `--keep` | Leave the IDE running. Implies `--no-reap`. |
+| `--keep` | Leave the IDE running. Implies `--no-reap`, and leaves the IDE's registry entries for the probe as they are. |
 | `--no-reap` | Do not harvest automation servers the probe left behind. |
 | `--reap-images <a,b>` | Replace the harvested image list. Default is the Office suite. |
-| `--show` / `--hide` | Passed through to `tbbuild.mjs`. |
+| `--show` / `--hide` | As for [`tbbuild.mjs`](#tbbuild): your own desktop or a private one, with `TBBUILD_SHOW` setting the default. |
 
 Exit codes: **0** captured output, **1** the project has compile errors (the diagnostics are
 printed), **2** the harness failed, **3** nothing reached the console before the timeout.
@@ -601,6 +607,29 @@ and sweep once at the end.
 > is invisible, takes no input, and the build silently never happens --- the WebView2
 > renderer stays responsive throughout, so even a health check says the IDE is fine. `tbrun`
 > pins the path to a concrete file in its staged copy, which makes the trap unreachable.
+
+Like `tbbuild`, it leaves the IDE's registry entries as it found them. Everything it opens is
+in its own temp folder, so it deletes every entry under that folder once the IDE has exited,
+and again at the start of a run, which removes what an earlier run on the same port left
+behind.
+
+### check_tb_registry.mjs
+{: #check-tb-registry }
+
+    node scripts/check_tb_registry.mjs
+
+The self-test for `scripts/lib/tb-registry.mjs`, the code that puts the IDE's registry
+entries back after [`tbbuild.mjs`](#tbbuild), [`tbrun.mjs`](#tbrun) and
+[`check_examples.mjs`](#check-examples). It plays out a run on a scratch copy of the IDE's
+keys, under `HKCU\Software\tbharness-selftest`, and checks that everything comes back: a
+project of yours that the run opened gets its saved state and its place in the recent list
+back, the run's own entries go, the file association is restored, and a second restore
+writes nothing. It also checks that the module refuses to sweep outside the temp folder or
+restore a key near the root of the registry. It deletes the scratch key when it ends.
+
+It is not a gate and is not in `test.bat`, because it needs Windows and a real registry and
+the CI runners have neither. Run it by hand after changing `tb-registry.mjs`. Exit code
+**0** when every check holds, **1** when one does not.
 
 ### check_examples.mjs
 {: #check-examples }
@@ -724,7 +753,7 @@ It also writes a key naming the `Attributes.md` line each probe came from, besid
 
     twinBASIC_win32.exe import AttributeProbes.twinproj <out_dir> --overwrite
 
-**That command's exit code is `0` whether it worked or not**, so a script that packs a tree and then builds it will happily compile the previous `.twinproj`. Test the last line of its output for `... DONE` instead; [Import/Export Tool](../../Features/Packages/Import-Export-Tool#checking-the-result) has the caveat in full and a batch-file form of the test. The standalone [`impexp.mjs`](#impexp) takes the same command, and its exit code does say whether it worked. Re-run the generator after editing `Attributes.md`. Exits 0, or 2 with usage when given no output directory.
+**That command's exit code is `0` after every failure it reports**, so a script that packs a tree and then builds it will happily compile the previous `.twinproj`. The one failure it does not report --- a tree holding an embedded package --- exits `999`. Test the last line of its output for `... DONE` instead; [Import/Export Tool](../../Features/Packages/Import-Export-Tool#checking-the-result) has the caveat in full and a batch-file form of the test. The standalone [`impexp.mjs`](#impexp) takes the same command, and its exit code does say whether it worked. Re-run the generator after editing `Attributes.md`. Exits 0, or 2 with usage when given no output directory.
 
 ### census_attributes.mjs
 {: #census-attributes }

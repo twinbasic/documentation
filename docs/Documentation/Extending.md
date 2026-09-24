@@ -55,6 +55,83 @@ partial reload. What *is* watched is everything under `docs/` --- page content a
 
 ---
 
+## When `test.bat` says a regex can backtrack exponentially
+{: #regex-refused }
+
+`check_regex_safety.mjs` reads every regex under `builder/`, `scripts/`, `book/`,
+`eval/` and `wisdom/`, and refuses one that can take exponential time on some input.
+It runs in `test.bat` and as a step of its own in both CI workflows, so a regex added
+to the builder can pass the build and `check.bat` and still be refused. The report
+starts with
+
+    FAIL: 1 regex(es) can backtrack exponentially:
+
+and names the file and line, the pattern, and a **witness** --- an input that makes
+that pattern take exponential time.
+
+[The gate's own entry](Tools#check-regex-safety) explains the cause and the rewrite in
+full. The short form:
+
+1. **Keep the witness.** Put the pattern and the witness in a scratch script and call
+   `re.test(witness)`: it hangs. That is the only test that can say the rewrite
+   worked, because the site's pages passed before the change and pass after it.
+2. **Find the two parts of the pattern that can match the same character.** That is
+   the cause every time. Narrowing a character class usually leaves the same ambiguity
+   one level down --- the first attempt at fixing `VOID_TAGS_RE` did exactly that and
+   was still exponential.
+3. **Stop describing the structure between the delimiters.** Match `<tag([^>]*)>`,
+   and take the attributes apart afterwards in ordinary JavaScript, which cannot
+   backtrack.
+4. **Run the gate again, and `re.test(witness)` once more.** It must return at once.
+
+A regex like this that reaches a build does not fail it: it stops it, and the build
+prints its last line and waits. [When a build stops instead of
+failing](Building#when-a-build-stops) covers that side.
+
+---
+
+## When `test.bat` fails in `check_code_regions`
+{: #code-regions-altered }
+
+`check_code_regions.mjs` runs every page through the real pre-render rewrite chain and
+fails when a rewrite changed the inside of a fenced code block, an indented code block or
+an inline code span. It names each page:
+
+    FAIL  Reference/Core/Example.md: 1 code region(s) altered by a pre-render rewrite
+
+Run `node scripts/check_code_regions.mjs --verbose` to see each region before and after,
+which usually shows which rewrite did it.
+
+The rewrites in `render.mjs` run over raw markdown, before markdown-it has parsed
+anything, so a rewrite cannot tell prose from code on its own. The fix is in where the
+rewrite runs:
+
+1. **For a fence or an inline span, move the rewrite behind the mask.** In
+   `applyPreRenderRewrites`, code regions are replaced by placeholders before the
+   rewrites run and put back afterwards. A rewrite added between the two never sees code:
+
+   ```js
+   const code = maskCodeRegions(source);
+   let work = code.masked;
+   work = rewriteTripleAsteriskEmphasis(work);
+   // ... the other masked rewrites ...
+   work = yourRewrite(work);
+   return rewriteAdmonitions(code.restore(work));
+   ```
+
+2. **For an indented code block, the mask cannot help.** It does not cover indented blocks
+   on purpose: telling one from a list item's continuation needs block context a
+   pre-render pass does not have. Narrow the rewrite so it cannot match the block's
+   lines, and let the gate say when it no longer does.
+3. **Do not widen the mask to make the report go away.** Text the mask hides is text no
+   rewrite reaches, so a mask that hides prose stops the rewrites firing on it --- and the
+   region comparison cannot see that, because the hidden text comes back unchanged.
+4. **Read a built page the rewrite is meant to change.** That is the only check that the
+   rewrite still does its job: the gate's probes assert what the existing rewrites must
+   do, and nothing asserts what a new one must do.
+
+---
+
 ## Changing what is already there
 
 Most builder work is not an addition. The walkthroughs below are written forwards, from nothing to a working task, and a reader who arrives having already changed something should not have to read one of them backwards. This section is the index into them.
@@ -690,7 +767,7 @@ Three gates are the ones a builder change is most likely to trip, and each fails
 
 - `pick_a11y_sample.mjs --check`, in `check.bat`, fails when a construct family the site uses is covered by no page in the sample --- normally because a build added or moved pages and the cheapest page for some family is no longer in the list. The fix is to add the page it names, not to widen the sample by hand. **It cannot report a genuinely new construct.** The gate iterates the registered `FAMILIES` and nothing else, so markup no family describes produces silence, and that silence is the exact failure a derived sample exists to prevent: the axe rule keyed on that construct then runs nowhere. Adding a family is the deliberate step, and [Tools and Scripts](Tools#pick-a11y-sample) gives the shape of one.
 - `check_publish_policy.mjs`, in `test.bat`, fails when a new emitted file type is not on the allowlist in `builder/publish-policy.mjs`. Add it to `BUILD_EXTENSIONS`, which is deliberately a separate set from `SOURCE_EXTENSIONS` so blessing a generated type does not also bless a stray one a contributor drops into `docs/`.
-- `check_code_regions.mjs`, also in `test.bat`, fails when a new pre-render rewrite alters the contents of a code fence or code span. The fix is to move the rewrite inside `applyPreRenderRewrites` in `render.mjs`, between `maskCodeRegions` and its `restore`, rather than to widen the mask.
+- `check_code_regions.mjs`, also in `test.bat`, fails when a new pre-render rewrite alters the contents of a code fence, an indented code block or a code span. For a fence or a span, the fix is to move the rewrite inside `applyPreRenderRewrites` in `render.mjs`, between `maskCodeRegions` and its `restore`, rather than to widen the mask; an indented block is not masked at all. [When `test.bat` fails in `check_code_regions`](#code-regions-altered) has both cases.
 
 > [!NOTE]
 > Both `check.bat` and `test.bat` want `build.bat` to have run first, for different reasons. `check.bat` reads the built tree throughout, and `check_tree_fresh.mjs` refuses one older than the sources that produced it rather than letting the later gates report on stale output. `test.bat` needs a built tree only for its last gate, `check_axe_patch_equiv.mjs`, and does not care how old that tree is.

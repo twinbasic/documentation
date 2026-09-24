@@ -68,6 +68,8 @@ import { createHash } from "node:crypto";
 
 import MarkdownIt from "markdown-it";
 
+import { markdownFiles } from "./markdown-files.mjs";
+
 /** The bare flag that opts a fence in to compilation. */
 export const MARKER = "check_build";
 
@@ -277,20 +279,6 @@ export function parseInfo(info) {
 }
 
 // ----------------------------------------------------------------- collection
-
-/** Every markdown file under `root`, repo-relative, sorted. */
-export async function markdownFiles(root) {
-  const entries = await fs.readdir(root, { recursive: true, withFileTypes: true });
-  const rels = [];
-  for (const e of entries) {
-    if (!e.isFile() || !e.name.endsWith(".md")) continue;
-    const abs = path.join(e.parentPath ?? e.path, e.name);
-    const rel = path.relative(root, abs).split(path.sep).join("/");
-    if (/^_(site|serve|pdf)/.test(rel)) continue;
-    rels.push(rel);
-  }
-  return rels.sort();
-}
 
 /**
  * Every `tb` fence under `root`.

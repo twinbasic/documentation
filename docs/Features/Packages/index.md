@@ -28,7 +28,7 @@ Please be aware that TWINPACK files currently contain the full source code of yo
 - [Linked Packages](Linked) -- storing a package in a shared location rather than embedding it in each project file.
 - [Updating a Package](Updating) -- removing an outdated package and installing a newer version from TWINSERV.
 - [TWINPACK File Format](File-Format) -- binary format specification for `.twinproj` and `.twinpack` files.
-- [Import/Export Tool](Import-Export-Tool) -- unpacking and repacking `.twinproj` and `.twinpack` files from the command line, with the compiler executable or with a standalone script.
+- [Import/Export Tool](Import-Export-Tool) -- unpacking and repacking `.twinproj` and `.twinpack` files from the command line, with the compiler executable or with a standalone script, and keeping a project in Git as plain-text files.
 - [Library Symbols](Library-Symbols) -- the name a referenced library's components are qualified with, how to change it, and how to expose a package's private components.
 
 [^1]: A service of TWINBASIC LTD offered to the user community.

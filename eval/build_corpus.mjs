@@ -58,6 +58,10 @@ const BINARY_EXTENSIONS = new Set([
  *  state, and the harness's own working data. */
 const EXCLUDED_PATHS = [
   ".git", "node_modules", ".claude", ".claire", ".font-cache",
+  // Gitignored and local: a one-line "@WIP.md" import shim that no clone
+  // has. Mirrored, it points every evaluator at a file WITHHELD removes ---
+  // round 7's UC-40 evaluator opened it first and reported the dead end.
+  "CLAUDE.md",
   "docs/_site", "docs/_site-offline", "docs/_site-pdf", "docs/_site-basepath",
   "docs/_serve", "docs/_pdf", "docs/assets/fonts",
   "wisdom/data", "perf/results", "package-lock.json",

@@ -167,6 +167,29 @@ if errorlevel 6 (
 ) else if errorlevel 1 exit /b 1
 ```
 
+## Keeping a project in Git
+{: #keeping-a-project-in-git }
+
+The usual reason to export is version control. The exported folder is plain text that Git can
+diff and merge, where a `.twinproj` is one binary file. Everything this takes is described
+above; in order:
+
+1. **Export into a folder of its own, not the repository's top folder** --- a `src` folder
+   beside `.git`, for example. `import` packs everything in the folder it is given, and the
+   tB executable packs a `.git` folder with it. The script skips `.git`, but a folder of
+   its own is the safe layout for both.
+2. **Export into an empty folder** the first time, and again after a file is removed or
+   renamed in the IDE. `export` never deletes a file, so one the project no longer holds
+   stays in the folder, and the next `import` packs it back. The script warns about such
+   files; the tB executable does not.
+3. **Commit the folder.** `export` leaves out the `.meta` file of editor state, and a project
+   packed without one opens normally. A checkout with LF line endings needs no conversion:
+   `import` converts LF to CRLF in `.twin`, `.bas` and `.cls` files.
+4. **Rebuild the project file with `import --overwrite`**, and [check the
+   result](#checking-the-result): the tB executable exits `0` after the failures it reports.
+   It also cannot pack a project that embeds a package, and a project embeds the packages
+   it uses by default; the script packs those.
+
 ## Compiling from the command line
 
 None of these commands builds a project. The IDE, `twinBASIC.exe`, accepts

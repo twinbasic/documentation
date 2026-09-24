@@ -20,6 +20,8 @@ change.
 | change the accessibility scan | [WIP.A11y.md](WIP.A11y.md) --- the axe scan, the sample, the fingerprint gate |
 | work on the sample-compiling harness | [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md) |
 | run or change Wisdom, the Discord harvester | [WIP.Wisdom.md](WIP.Wisdom.md) --- the three-phase pipeline and the Phase 3 extract flow |
+| work on the IDE help add-in, or on testing IDE add-ins by machine | [WIP.HelpAddin.md](WIP.HelpAddin.md) --- the plan, the IDE facts it rests on, and the probes still open |
+| run a use-case evaluation round | [eval/README.md](eval/README.md) --- start every evaluator with `eval/run_case.mjs`, **never as a subagent**: a subagent inherits this session's `CLAUDE.md`, and with it this file, which is the answer key the corpus withholds |
 
 The rule that decides where a new note belongs: **this file says what to do, a
 sibling says why it is done that way.** A measurement, a war story, or a "this
@@ -358,10 +360,11 @@ Node.js, and a new tool joins them there. Three files are not, each for a stated
 reason rather than by oversight: `scripts/impexp.py` is a published download
 offered to readers rather than tooling, `scripts/build_fonts.py` stays Python
 because the JavaScript HarfBuzz build produces wrong CFF2 metrics
-([WIP.Fonts.md](WIP.Fonts.md)), and `scripts/lib/tb-launch.ps1` is two Win32
-calls Node cannot make without a native FFI addon --- and is never run as a
-file, so the execution policy never comes into it. The full accounting, and what
-the two ports gained, is in [WIP.Build.md](WIP.Build.md).
+([WIP.Fonts.md](WIP.Fonts.md)), and `scripts/lib/tb-launch.ps1` is Win32 calls
+Node cannot make without a native FFI addon --- a private desktop, and the job
+object the IDE runs in --- and is never run as a file, so the execution policy
+never comes into it. The full accounting, and what the two ports gained, is in
+[WIP.Build.md](WIP.Build.md).
 
 ### The published docs assume manual work
 
@@ -393,11 +396,14 @@ over them, because a `tb` fence is something `check_code_regions.mjs` protects t
 the compiler now. A sample opts in by carrying `check_build` in its fence info string; the
 tool works out what to generate around it, packs many samples into one project, builds them
 through `tbbuild` on concurrent lanes, and reports each diagnostic against the line in the
-page it came from. **1,116 samples are marked and the run takes about 110 seconds.**
+page it came from. **1,117 samples are marked and the run takes about 110 seconds.**
 
 It is **never** wired into `build.bat`, `check.bat`, `test.bat` or CI: it needs a twinBASIC
 install, which `npm install` is not, and Windows with a private desktop and a
 CDP-reachable WebView2, which CI has not. `sweep_a11y.mjs` has the same arrangement.
+**So a pull request that adds or changes a sample pastes the run's command and summary
+line into its description** --- the contributor-facing statement is
+[Checking that a sample compiles](docs/Documentation/Authoring.md#checking-that-a-sample-compiles).
 
 **[WIP.ExamplesBuild.md](WIP.ExamplesBuild.md) is the file for this** --- the markup, the
 slots, the template projects and their stage sets, the batching and bisect-on-crash rules,
@@ -430,7 +436,7 @@ Why the report separates the wedged task from the merely blocked ones, and why
 - `test.bat` — the tests the *toolchain* has to pass: the publish-allowlist self-test (`scripts/check_publish_policy.mjs`), the gate-list check (`scripts/check_gate_lists.mjs`), the regex-safety gate (`scripts/check_regex_safety.mjs`), the code-region gate (`scripts/check_code_regions.mjs`), the page-count drift-guard probes (`scripts/check_page_baseline.mjs`), and the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`). ~8 s. See [What belongs in test.bat rather than check.bat](WIP.Build.md#what-belongs-in-testbat-rather-than-checkbat).
 - `book.bat` — renders the PDF from `docs\_site-pdf\book.html` via `node book\render-book.mjs` into `docs\_pdf\twinBASIC Book.pdf`. Run `build.bat` first to populate `_site-pdf/`; `book.bat` refuses a tree older than its sources rather than rendering the previous book (see [The book refuses a stale source tree](WIP.Build.md#the-book-refuses-a-stale-source-tree)).
 
-- `examples.bat` — compiles the documentation's own twinBASIC code samples, every `tb` fence marked `check_build`, and reports the ones the compiler refuses against the line in the page they came from. Needs a twinBASIC install and Windows, so it is outside every gate and outside CI; ~110 s over the 1,116 samples marked today. Two modes need no compiler at all: `--census` classifies every fence and says how many classifiable ones are still unmarked, and `--report <survey.json>` groups a saved `--propose --json` survey by diagnostic, section and unresolved name. `--propose` itself does compile. See [Compiling the reference's own code samples](#compiling-the-references-own-code-samples) and [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md).
+- `examples.bat` — compiles the documentation's own twinBASIC code samples, every `tb` fence marked `check_build`, and reports the ones the compiler refuses against the line in the page they came from. Needs a twinBASIC install and Windows, so it is outside every gate and outside CI; ~110 s over the 1,117 samples marked today. Two modes need no compiler at all: `--census` classifies every fence and says how many classifiable ones are still unmarked, and `--report <survey.json>` groups a saved `--propose --json` survey by diagnostic, section and unresolved name. `--propose` itself does compile. See [Compiling the reference's own code samples](#compiling-the-references-own-code-samples) and [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md).
 
 Two generators sit outside that loop and produce committed artifacts rather than build output — neither runs during a build, and neither is needed for one. `python scripts/build_fonts.py` rebuilds the subset webfaces under `docs/assets/fonts/` and needs a network connection; `node scripts/build_dot_metrics.mjs` regenerates `builder/inter-metrics.json` from those webfaces and needs only a browser. See [Typography](#typography).
 
@@ -505,6 +511,7 @@ they are.
 
 - Don't commit `.claude/` or `CLAUDE.md` — both gitignored. (`WIP.md` is committed; `CLAUDE.md` is just a local `@WIP.md` import shim.)
 - Don't touch `_site/` or `_site-offline/` (build outputs, gitignored).
+- **Don't walk `docs/` for its markdown with a private `readdir`.** Call `markdownFiles` from [scripts/lib/markdown-files.mjs](scripts/lib/markdown-files.mjs), which never enters the build's output trees. A walk that does enter them crashes whenever a running `serve.bat` rewrites `_serve`; see [The code-region gate](WIP.Build.md#the-code-region-gate). Any other walk of `docs/` decides what is an output tree with the same module's `isOutputTree`, as `check_tree_fresh.mjs` does, rather than a list of its own.
 - **Don't judge rendered styling by opening a built page as a `file://` URL in the in-app browser pane.** It does not apply the page's stylesheets, so everything renders unstyled and any conclusion about colour, spacing, layout or contrast drawn from it is worthless. Use `serve.bat`, which serves over HTTP at localhost and renders for real. The confusing part is that `file://` is fine *through puppeteer* -- `scripts/check_a11y.mjs`, `scripts/sweep_a11y.mjs` and the `perf/` rigs all load `_site-offline/` over `file://` and get correct computed styles, which is the entire reason the offline tree exists (see [Site integrity check](#site-integrity-check)). So: puppeteer for measuring, `serve.bat` for looking. Never the preview pane on a `file://` path.
 - Don't write literal en-dash `–` or em-dash `—` in `docs/` markdown source. Use `--` (renders as en-dash) or `---` (renders as em-dash) — markdown-it's typographer does the conversion at build time. `scripts/convert_em_dash_separators.mjs` normalises any strays.
 - **Never write or edit a file with a shell heredoc.** No `cat > file <<'EOF'`, no

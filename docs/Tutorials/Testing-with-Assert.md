@@ -7,7 +7,7 @@ permalink: /Tutorials/Testing-with-Assert
 # Writing unit tests with Assert
 {: .no_toc }
 
-This tutorial shows how to write a small function, add tests for it using the **Assert** package, and run those tests from inside the IDE.
+This tutorial shows how to write a small function, add tests for it using the **Assert** package, and run those tests from inside the IDE. It starts from a new **Standard EXE** project, created as in [Hello World](Hello-World).
 
 - TOC
 {:toc}
@@ -32,11 +32,11 @@ The most commonly used members are:
 - `Assert.Exact.Fail message` -- unconditionally records a failure
 - `Assert.Exact.Succeed` -- explicitly records a pass (useful at the end of conditional paths)
 
-Each failing assertion records the source location, the expected and actual values, and the optional message string. Results appear in the **Debug Console** pane.
+An assertion that holds does nothing visible. One that fails stops the run on its own line with the run-time error **Assertion FAILED**, and the IDE shows that line. The expected and actual values and the optional message are not displayed anywhere, so the name of the failing test and the line it stopped on are what identify a failure.
 
 ## Adding the package
 
-Open **Project → References** (Ctrl+T) → **Available Packages** and tick **Assert**. Click **OK**. The three modules (`Exact`, `Strict`, `Permissive`) are now in scope without any `Imports` statement.
+Open **Project → References** (Ctrl+T) → **Available Packages** and tick **Assert**. Click **OK**. The three modules (`Exact`, `Strict`, `Permissive`) are now available, and every call names both the package and the module: `Assert.Exact.AreEqual`, never `Exact.AreEqual` or `AreEqual` alone, which do not compile. [Calling convention](../tB/Packages/Assert/#calling-convention) explains why.
 
 ## The function under test
 
@@ -100,11 +100,11 @@ These tests cover: the normal case, a custom pad character, the at-boundary case
 
 There are two ways to run a test Sub:
 
-1. **CodeLens** --- place the cursor anywhere inside a test Sub. The CodeLens bar above the `Sub` line shows a `▶ Run` button. Click it to run that one Sub. The result appears immediately in the **Debug Console**.
+1. **CodeLens** --- place the cursor anywhere inside a test Sub. The CodeLens bar above the `Sub` line shows a `▶ Run` button. Click it to run that one Sub. A test that passes returns without printing anything; one that fails stops on the failing assertion, as described below.
 
 2. **F5 from inside the Sub** --- place the cursor inside the Sub and press **F5**. twinBASIC runs the procedure and stops when it returns or when an assertion fails.
 
-To run all tests in a batch, add a runner Sub that calls each test in sequence:
+To run all tests in a batch, add a runner Sub to `TestStringUtils` that calls each test in sequence:
 
 ```tb check_build projname=padleft-tests
 Public Sub RunAllTests()
@@ -118,7 +118,13 @@ Public Sub RunAllTests()
 End Sub
 ```
 
-Place the cursor inside `RunAllTests` and press **F5** (or click **▶ Run** in the CodeLens bar). If any assertion fails, execution stops at the failing line and the Debug Console shows which assertion failed, its expected and actual values, and the source location.
+Place the cursor inside `RunAllTests` and press **F5** (or click **▶ Run** in the CodeLens bar). When every test passes, the Debug Console shows the one line the runner prints:
+
+```text
+All PadLeft tests passed.
+```
+
+If an assertion fails, the run stops on that line with the run-time error **Assertion FAILED** (-353703420, `&HEAEAEA04`), so the final `Debug.Print` never runs. The IDE shows the failing line, and the call stack names the test it is in. The error panel offers **Try Again (Resume)** and **Ignore (Resume Next)**. Nothing about the failure is written to the Debug Console, and the expected and actual values are not shown.
 
 ## Testing error paths
 
@@ -152,14 +158,16 @@ Public Sub TestSomethingThatShouldRaise()
 End Sub
 ```
 
+`On Error Resume Next` does not swallow the **Fail**: a failing assertion stops the run even while it is in effect, so the test above fails whenever the call returns without an error.
+
 ## Choosing the right module
 
 Use **Exact** by default --- its strictest comparison semantics prevent tests from passing for the wrong reason. Switch to **Strict** or **Permissive** when the code under test is intentionally case-insensitive or when you are comparing values that should be equal regardless of numeric type:
 
 ```tb check_build
-' Exact would fail because "hello" ≠ "Hello" (case differs)
-Assert.Strict.AreEqual "HELLO", LCase$("HELLO")  ' fails -- "hello" ≠ "HELLO"
+' Strict compares strings case-sensitively; Permissive does not
 Assert.Permissive.AreEqual "HELLO", LCase$("HELLO")  ' passes -- case-insensitive
+Assert.Strict.AreEqual "HELLO", LCase$("HELLO")      ' fails -- "hello" ≠ "HELLO"
 ```
 
 The three modules are documented in full at:

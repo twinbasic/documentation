@@ -59,6 +59,11 @@
 //   node scripts/check_regex_safety.mjs             # the gate
 //   node scripts/check_regex_safety.mjs --census    # full classification
 //   node scripts/check_regex_safety.mjs --self-test # prove it still detects
+//
+// Exits 0 clean, 1 on an exponential regex, 2 when the gate itself failed
+// -- a file it could not parse, a regex recheck could not analyse, a probe
+// that came back wrong, or a throw. Each of those leaves something
+// unchecked, so it must not read as either a clean tree or a finding.
 
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
@@ -296,7 +301,7 @@ async function extractRegexes() {
   // the rule literals have always had, since render.mjs alone holds 69 and
   // several repeat.
   function add(entry) {
-    const key = `${entry.pattern} ${entry.flags}`;
+    const key = `${entry.pattern}\u0000${entry.flags}`;
     if (!found.has(key)) found.set(key, entry);
   }
 }
@@ -386,9 +391,16 @@ function tagOf(r) {
 function printFinding(r) {
   console.error(`  ${r.file}:${r.line}${tagOf(r)}`);
   console.error(`    /${r.pattern}/${r.flags}`);
-  if (r.attack) {
-    const a = r.attack.length > 70 ? `${r.attack.slice(0, 70)}...` : r.attack;
-    console.error(`    witness: ${JSON.stringify(a)}`);
+  if (r.verdict === "error") {
+    if (r.attack) console.error(`    error: ${r.attack}`);
+  } else if (r.attack) {
+    // Printed whole, never shortened. The documented way to watch the
+    // fault, and later to prove the rewrite, is re.test(witness) -- and
+    // a witness cut to 70 characters has fewer repetitions of its pump,
+    // so it can return at once from a regex that is still exponential.
+    // Two of the three shipped exponential regexes have witnesses of 148
+    // and 492 characters.
+    console.error(`    witness (${r.attack.length} chars): ${JSON.stringify(r.attack)}`);
   }
 }
 
@@ -448,18 +460,22 @@ async function gate({ census }) {
     for (const u of unresolved) console.log(`  ${u.file}:${u.line}  ${u.reason}`);
   }
 
+  // `failed` is a finding in the tree (exit 1); `broken` is the gate
+  // itself failing (exit 2), and wins, because a verdict from a gate that
+  // did not check everything is not a verdict.
   let failed = false;
+  let broken = false;
   const misclassified = probeResults.filter(r =>
     r.verdict === "error" || (r.verdict === "exponential") !== (r.probe === "exponential"));
   if (misclassified.length) {
-    failed = true;
+    broken = true;
     console.error(`\nFAIL: ${misclassified.length} of ${probeResults.length} self-test probes misclassified.`);
     for (const r of misclassified) console.error(`  ${r.name}: expected ${r.probe}, got ${r.verdict}`);
     console.error("  The gate is not measuring what it claims; its verdict above means nothing.");
   }
   const badFolds = foldProbes.filter(([ok]) => !ok);
   if (badFolds.length) {
-    failed = true;
+    broken = true;
     console.error(`\nFAIL: ${badFolds.length} of ${foldProbes.length} fold probes failed.`);
     for (const [, name, detail] of badFolds) console.error(`  ${name}${detail ? `: ${detail}` : ""}`);
     console.error(
@@ -468,12 +484,12 @@ async function gate({ census }) {
     );
   }
   if (parseFailures.length) {
-    failed = true;
+    broken = true;
     console.error(`\nFAIL: ${parseFailures.length} file(s) could not be parsed, so their regexes were never checked:`);
     for (const f of parseFailures) console.error(`  ${f}`);
   }
   if (errors.length) {
-    failed = true;
+    broken = true;
     console.error(`\nFAIL: ${errors.length} regex(es) could not be analysed:`);
     for (const r of errors) printFinding(r);
   }
@@ -481,19 +497,26 @@ async function gate({ census }) {
     failed = true;
     console.error(`\nFAIL: ${exponential.length} regex(es) can backtrack exponentially:`);
     for (const r of exponential) printFinding(r);
+    // The advice agrees with Extending.md#regex-refused and Tools.md's
+    // entry. It used to say "narrow one of them", which is the move that
+    // left VOID_TAGS_RE's first fix exponential one level down.
     console.error(
       "\n  An exponential regex is a hang waiting for the right input, not a slow one.\n" +
-      "  The usual cause is two quantified atoms whose character sets overlap:\n" +
+      "  The cause is two parts of the pattern that can match the same character:\n" +
       "  `\\s+[^>/]+` repeated, or `[^>]*\\/?` where `/` is already in the class.\n" +
-      "  Narrow one of them so the partition is unique, then check equivalence by\n" +
-      "  running both forms over the cases the regex is meant to match.",
+      "  Narrowing one class usually leaves the same overlap one level down. What\n" +
+      "  works is to match only the delimiters, as in `<tag([^>]*)>`, and take the\n" +
+      "  inside apart in JavaScript. Keep the witness: re.test(witness) hangs now,\n" +
+      "  and must return at once after the rewrite. The full procedure is in\n" +
+      "  docs/Documentation/Extending.md, under \"When test.bat says a regex can\n" +
+      "  backtrack exponentially\".",
     );
   }
-  if (!failed) {
+  if (!failed && !broken) {
     console.log(`ok    no regex can backtrack exponentially ` +
                 `(${probeResults.length} classification + ${foldProbes.length} fold probes correct)`);
   }
-  return failed ? 1 : 0;
+  return broken ? 2 : failed ? 1 : 0;
 }
 
 async function selfTest() {
@@ -515,7 +538,7 @@ async function selfTest() {
   }
   if (bad) {
     console.error(`\nFAIL: ${bad} probe(s) wrong -- the gate is not measuring what it claims.`);
-    return 1;
+    return 2;
   }
   console.log(`ok    ${results.length} classification + ${FOLD_PROBES.length + FOLD_NEGATIVES.length} ` +
               `fold probes correct, both directions`);
@@ -531,7 +554,14 @@ if (argv.includes("--shard")) {
   const list = JSON.parse(Buffer.concat(chunks).toString("utf8"));
   process.stdout.write(JSON.stringify(await checkList(list)));
 } else {
-  process.exitCode = argv.includes("--self-test")
-    ? await selfTest()
-    : await gate({ census: argv.includes("--census") });
+  try {
+    process.exitCode = argv.includes("--self-test")
+      ? await selfTest()
+      : await gate({ census: argv.includes("--census") });
+  } catch (err) {
+    // Node's own exit code for an unhandled throw is 1, which here means
+    // "an exponential regex was found". A crash is the gate failing.
+    console.error(err);
+    process.exitCode = 2;
+  }
 }

@@ -9,6 +9,8 @@ permalink: /Features/GUI-Components/Modernization
 
 tB will eventually replace all built in controls that you're used to, for now the ones available are: CommandButton, TextBox, ComboBox, CheckBox, OptionButton, Label, Frame, PictureBox, Line, Shape, VScrollBar, HScrollBar, Timer, DriveListBox, DirListBox, FileListBox, Image, and Data from the basic set; then, ListView, TreeView, ProgressBar, DTPicker, MonthView, Slider, and UpDown from the Common Controls.
 
+The Common Controls come from the built-in [WinNativeCommonCtls](../../tB/Packages/WinNativeCommonCtls/) package, a replacement for `MSCOMCTL.OCX` with the same member names. A project references it on demand, like the other built-in packages.
+
 ## Key Modernization Features
 
 - **64-bit Support**: Every control can be compiled both as 32bit and 64bit without changing anything.
@@ -17,6 +19,6 @@ tB will eventually replace all built in controls that you're used to, for now th
 
 ## Alternatives for Unimplemented Controls
 
-The best option is Krool's VBCCR and VBFlexGrid projects. These are now available [from the Package Server](../../Packages/Importing-TWINSERV) in x64-compatible form, and are also DPI aware and support Visual Styles.
+For a control neither set above includes, the best option is Krool's VBCCR and VBFlexGrid projects. These are now available [from the Package Server](../../Packages/Importing-TWINSERV) in x64-compatible form, and are also DPI aware and support Visual Styles.
 
 Additionally, the original OCX controls provided by Microsoft will work fine; however, they're mostly 32-bit only. The x64 version of `MSComCtl.ocx` doesn't come with Windows and isn't legally redistributable but if you have Office 64bit, it works in tB.
