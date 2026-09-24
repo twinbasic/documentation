@@ -347,7 +347,9 @@ the tree. Five of the 48 project and package files the IDE ships have one ---
 `WinNativeCommonCtls` (which embeds `VBComDlg`), samples 8, 17 and 23, and the *Standard
 EXE (plus VBCCR v1.8)* project template --- and each was measured: `export` succeeds, and
 `import` of the tree it has just written stops as above. None of them round-trips through
-the command line, and neither does any project created from that template.
+the command line, and neither does any project created from that template. Nor does any
+export written by the IDE's **Export Project**, which always adds the compiler packages under
+`Packages` (see *Export Project writes the compiler packages*, below).
 
 **Found by** checking `scripts/impexp.mjs` against the compiler's `import` for line-ending
 handling: a probe tree with a made-up `Packages\Nested\` folder never produced a project to
@@ -738,6 +740,38 @@ check's code, not tried.
 
 ---
 
+## Export Project writes the compiler packages, which the project does not hold, and the command line cannot pack the result
+
+**Build:** BETA 983
+**Severity:** the IDE's export of a project cannot be packed back into a project by the
+supported tool, so it cannot serve for version control; and a two-file project exports as
+477 files.
+
+**File → Export Project** writes a `Packages` folder holding the full source of the compiler
+packages the project uses: `VB`, `VBA`, `VBRUN` and `AppGlobalClassProject` for a project
+with the default references --- 475 of the 477 files an export of a two-file project wrote.
+The project file does not hold them. A `.twinproj` the IDE saved holds only the packages the
+project embeds, and `twinBASIC_win32.exe export` of it writes only those: for a project
+embedding WinDevLib, `Packages\WinDevLib` and no other package.
+
+Then, on that 477-file export:
+
+- `twinBASIC_win32.exe import x.twinproj <export>\` stops with exit code 999 and writes
+  nothing (the `import` entry above), as it does for any folder under `Packages`;
+- the standalone script packs it, into a 4,220,723-byte project, against 2,055 bytes for the
+  same export with `Packages` removed. The project now embeds its own copy of the four
+  compiler packages. It compiles with no errors; which copy the IDE then uses was not
+  measured.
+
+**What does not reproduce it:** the command line's own `export`, which writes what the
+project file holds.
+
+**Found by** checking round 9's UC-62 answer, which sets up *Export After Save* into a Git
+repository and rebuilds the project from a fresh clone with the tB executable. The export was
+round 8's, written by the IDE's `exportProjectTo()` over DevTools.
+
+---
+
 ## An out-of-range index raises `&H8002000B` or `&H80004005`, not VBA's error 9
 
 **Build:** BETA 983 --- the IDE and a compiled EXE alike
@@ -912,3 +946,34 @@ another after the import and tick (every run): each of those restarts the compil
 and v2 runs at once.
 
 **Found by** the same probe.
+
+---
+
+## An error in the body of a generic procedure names neither the type nor the call that caused it
+
+**Build:** BETA 983
+**Severity:** a diagnostic that points at correct code. In a project with many calls to a
+generic procedure, nothing says which call to fix.
+
+```
+Module GenMax
+Public Function Max(Of T)(a As T, b As T) As T
+    If a > b Then
+        Return a
+    Else
+        Return b
+    End If
+End Function
+End Module
+```
+
+With one call, `Set m = Max(Of Collection)(c1, c2)`, the project fails to compile with
+`TB5092 Missing argument 'Index'`, reported twice, both times at `[3,14]` of the module that
+holds `Max` --- the line with `>`. The message comes from `Collection`'s default member,
+`Item`. Neither error names `Collection`, and neither names the line of the call.
+
+**What does not reproduce it:** calls with `Long`, `Double` and `String`, deduced or given
+with `(Of ...)`, which compile and return the larger value.
+
+**Found by** probing round 9's UC-65 answer, whose `Max` uses `>` on a type parameter with
+nothing to say which types it accepts.
