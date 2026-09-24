@@ -5,72 +5,96 @@ nav_order: 1
 permalink: /LLVM/Getting-Started
 ---
 
-## Getting started with LLVM
+# Getting Started with LLVM
 
-### What is LLVM?
+Covers turning on LLVM compilation for a project or for a single procedure, the options that control it, and its current limitations.
 
-LLVM is a feature of the compiler process that allows for creating code highly optimized for performance and size. Most applications will benefit from this, with the degree of improvement depending on the specifics of your code. This works by creating an intermediate representation of your code (a form in between the original twinBASIC language and the final form of machine code) during the compilation process and then reorganizing it using a wide variety of techniques, such as dead code elimination, simplifying loops, modifying mathematical operations to avoid slow operations like division, inlining functions, and many more. It also allows your code, if applicable, to take advantage of specific CPU features designed to accelerate certain operations. 
+## What is LLVM?
 
-### LLVM in twinBASIC
+LLVM is an optional part of the compiler that produces code highly optimized for performance and size. Most applications benefit from it; how much depends on the code.
 
-LLVM is an optional feature you can enable through Project Settings. It is off by default while still in the experimental stage. In Project Settings, you'll see the following options:
+During compilation, LLVM translates your code into an *intermediate representation* --- a form between the twinBASIC source and the final machine code. It then reorganizes that representation with a wide variety of techniques, such as removing code that can never run (*dead code elimination*), simplifying loops, rewriting arithmetic to avoid slow operations like division, and inlining functions. Where it applies, LLVM can also make your code use CPU features designed to speed up particular operations.
 
-![A screenshot of the project settings window showing the Compiler Options sections with Enable LLVM Compilation](Images/llvmdoc1.jpg) 
+## LLVM in twinBASIC
 
-The two separate sections control whether LLVM is enabled when compiling your project to .exe, .dll, etc., under "(BUILD)", and when you're running from the IDE, under "(DEBUG)". The first option is for whether LLVM is enabled at all. With this box checked, LLVM will run during the compilation process and create an intermediate representation of your code, but not apply the optimizations for performance and size. Generally, you'll want to check one or both of the next options: Generate optimized code and Optimize for smaller filesize. The remaining options are for special CPU features that are not present on all CPUs. If you enable an option that is not available on the CPU your program runs on, it will crash or not run at all. The options range from features that would almost certainly be available on any CPU from the last 25 years, to features found only on more recent CPUs. An overview of this is included later in this article.
+You turn LLVM on in [Project Settings](../tB/IDE/Project/Settings). It is off by default while it is experimental. Project Settings has these options for it:
 
-Once the main LLVM options have been enabled, you'll see a 'waiting for LLVM compilation' message when you build or run your program. Compiling with LLVM can take significantly longer than the standard process for larger applications and for applications with particularly large individual methods. It is not unusual for very large applications to take several minutes or longer, depending on your hardware, to compile. twinBASIC employs a cache system so that, in general, subsequent builds will be much faster, with unchanged code sections not needing to be compiled again. The option to clear this cache and perform a full compile next time is available under the Tools menu: 'Flush the LLVM compiler cache'. 
+![The Project Settings dialog scrolled to its two compiler option sections, Compiler Options (BUILD) and Compiler Options (DEBUG). Each has the same unticked boxes in two columns: Enable LLVM Compilation, LLVM: Generate optimized code, LLVM: Optimize for smaller filesize, and one LLVM: Target CPUs with box for each of AES, AVX, AVX2, BMI2, FMA, FXSR, LZCNT, POPCNT, RDSEED, SHA, SSE, SSE2, SSE3, SSE4.1, SSE4.2, SSSE3, XSAVE, XSAVEC, XSAVEOPT and XSAVES. Under the BUILD section a note says that software built for a CPU feature will not run on a CPU without it. Under the DEBUG section a bold note says that LLVM compilation in the IDE debug environment is not recommended, because LLVM-compiled code cannot be debugged.](Images/llvmdoc1.jpg)
 
-### Availability
+The same options appear in two sections:
 
-Compiling with LLVM is not available with the free Community Edition licence for twinBASIC, so any settings for it will be ignored. For Personal license holders, LLVM can only be used to compile the built-in packages. All other paid licence tiers can take full advantage of LLVM.
+- **Compiler Options (BUILD)** applies when you build the project into an EXE, a DLL or another output file.
+- **Compiler Options (DEBUG)** applies when you run the project from the IDE.
 
-### Current limitations
+**Enable LLVM Compilation** turns LLVM on. With only this box ticked, LLVM runs during compilation and creates the intermediate representation of your code, but does not apply the optimizations for performance and size. You will usually want to tick one or both of the next two options as well: **LLVM: Generate optimized code** and **LLVM: Optimize for smaller filesize**.
 
-*OS Support*
+The remaining options, from **LLVM: Target CPUs with AES** to **LLVM: Target CPUs with XSAVES**, are for CPU features that not every CPU has. They range from features that almost every CPU from the last 25 years has, to features that only recent CPUs have. [CPU feature availability](#cpu-feature-availability) below gives an overview.
 
-LLVM is currently not working on Windows 7; Windows 10 or 11 is recommended. Windows 8 and 8.1 have not yet been tested.
+> [!IMPORTANT]
+> If you tick a CPU feature that the CPU running your program does not have, the program crashes or does not run at all.
 
-*Language support*
+When LLVM is on, a "waiting for LLVM compilation" message appears when you build or run your program. For large applications, and for applications with very large individual procedures, compiling with LLVM can take much longer than the standard compiler. A very large application can take several minutes or more to compile, depending on your hardware.
 
-The main unsupported feature in the initial release of LLVM support is error propagation up through parent procedures. If any error occurs in a procedure without an error handler, the error will not be picked up by its caller, instead it will cause a crash from an unhandled error. This will be addressed soon.
+twinBASIC keeps a cache of compiled code, so later builds are usually much faster: code that has not changed is not compiled again. To clear the cache and compile everything on the next build, choose **Flush the LLVM compiler cache** on the [**Tools** menu](../tB/IDE/Project/Menu/Tools).
 
-All language features besides that should be supported, for both 32-bit and 64-bit targets. Please report any LLVM-triggered crashes or if you receive a message saying "a feature used in your code is not yet supported with the LLVM compiler".
+## Availability
 
-### General LLVM options
+LLVM compilation is not available with the free Community Edition licence, and twinBASIC ignores the LLVM settings there. With a Personal Edition licence, LLVM compiles only the built-in packages. All other paid editions can use LLVM in full. The [FAQ](../FAQ#cost) describes the editions.
 
-In addition to the per-project settings, IDE Options has three new settings that control how LLVM is used when it's enabled:
+## Current limitations
 
-![A screenshot of the IDE settings window showing the LLVM Compiler options for thread count, reporting threshold for procedures that take very long to compile, and cache process keep-alive](Images/llvmdoc2.jpg) 
+### Operating system support
 
-The first option is for Maximum number of threads the LLVM compiler can create. Increasing this value can speed up the LLVM compilation process, but will also increase memory usage. If you begin experiencing crashes during LLVM compilation, this value has likely been set too high, and reducing it should fix the crashes. The default value is 1, but newer systems would likely handle 10 or more without issue.\
-The 'Complex procedure reporting threshold' is related to the earlier mention of very large procedures taking a long time to compile. This option sets a time threshold; any procedure that takes at least that long to compile will be listed in the Debug Console. This helps you identify which procedures you may want to split up to reduce compile time.\
-Finally, the 'Keep cache process alive after exiting the IDE' option is provided so LLVM doesn't need to perform a lengthy full compile again, even if you exit the twinBASIC IDE.
+LLVM does not currently work on Windows 7; Windows 10 or 11 is recommended. Windows 8 and 8.1 have not been tested yet.
 
-### Per-procedure LLVM options
+### Language support
 
-Whether to reduce compile time or to work around edge cases where LLVM reports problems with a procedure, you can use the `[CompilerOptions("")]` attribute to disable LLVM for individual procedures while keeping it on for the rest of your code. 
+The main feature not yet supported is passing an error up to the calling procedure. If an error occurs in a procedure that has no error handler, its caller does not receive the error; instead, the program crashes with an unhandled error. A fix is planned.
 
-Example:
+All other language features should work, in both 32-bit and 64-bit builds. Please [report](../FAQ#bug-reporting) any crash that LLVM causes, and any message saying "a feature used in your code is not yet supported with the LLVM compiler".
 
-```vb6
+## General LLVM options
+
+Besides the project settings, three settings in [IDE Options](../tB/IDE/Project/Menu/Tools) control how LLVM works when it is on:
+
+![Part of the twinBASIC IDE Options dialog, showing three LLVM settings: LLVM Compiler: Maximum number of threads, set to 10; LLVM Compiler: Complex procedure reporting threshold (milliseconds), set to 10000; and LLVM Compiler: Keep cache process alive after exiting the IDE, ticked.](Images/llvmdoc2.jpg)
+
+**LLVM Compiler: Maximum number of threads**
+: The number of threads the LLVM compiler can create. More threads can make LLVM compilation faster, but use more memory. If LLVM compilation starts to crash, this value is probably too high, and lowering it should stop the crashes. The default is 1, but newer computers can probably handle 10 or more.
+
+**LLVM Compiler: Complex procedure reporting threshold (milliseconds)**
+: A compile time. Every procedure that takes at least this long to compile is listed in the [Debug Console](../tB/IDE/Project/DebugConsole), which shows the procedures you may want to split up to reduce compile time.
+
+**LLVM Compiler: Keep cache process alive after exiting the IDE**
+: Keeps the LLVM cache running after you exit the IDE, so that LLVM does not have to do a long full compile again.
+
+## Per-procedure LLVM options
+
+To reduce compile time, or to work around a procedure that LLVM reports problems with, use the [**CompilerOptions**](../tB/Core/Attributes#compileroptions) attribute with an empty string. It turns LLVM off for that procedure and keeps it on for the rest of your code:
+
+```tb
 [CompilerOptions("")]
 Public Sub DoNotOptimizeMe()
-...
+    ' ...
 End Sub
 ```
 
-The same attribute can also be used to selectively enable LLVM for certain procedures. If you've unchecked the options to enable LLVM in Project Settings, you can still turn it on per procedure by using +llvm, +optimize, +optimizesize, followed by + and the name of each CPU instruction set you wish to enable. These flags are direct equivalents of the options in Project Settings.
+The same attribute can also turn LLVM on for chosen procedures when it is off in Project Settings. List the flags, separated by commas: `+llvm`, `+optimize` and `+optimizesize`, then `+` and the name of each CPU instruction set to use. Each flag is the direct equivalent of an option in Project Settings:
 
-+llvm - Enable LLVM Compilation\
-+optimize - LLVM: Generate optimized code\
-+optimizesize - LLVM: Optimize for smaller filesize
+`+llvm`
+: **Enable LLVM Compilation**
 
-Then there are further options matching CPU feature sets: +aes, +avx, +avx2, +bmi2, +fma, +fxsr, +rdseed, +sha, +sse, +sse2, +sse3, +sse4.1, +sse4.2, +ssse3
+`+optimize`
+: **LLVM: Generate optimized code**
 
-Examples:
+`+optimizesize`
+: **LLVM: Optimize for smaller filesize**
 
-```vb6
+The flags for CPU instruction sets are `+aes`, `+avx`, `+avx2`, `+bmi2`, `+fma`, `+fxsr`, `+rdseed`, `+sha`, `+sse`, `+sse2`, `+sse3`, `+sse4.1`, `+sse4.2` and `+ssse3`.
+
+For example:
+
+```tb
 [CompilerOptions("+llvm,+optimize,+optimizesize")]
 Function Multiply(A As Long, B As Long) As Long
     Return A * B
@@ -78,60 +102,39 @@ End Function
 
 [CompilerOptions("+llvm,+optimize,+optimizesize,+aes,+avx,+avx2,+bmi2,+fma,+fxsr,+rdseed,+sha,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+ssse3")]
 Sub FullyOptimizeMe()
-...
+    ' ...
 End Sub
 ```
 
-### CPU Features details
+## CPU feature availability
 
-This section provides an overview of CPU feature availability. It includes the first CPUs to offer it, then the year from which all new Intel and AMD CPUs shipped with the feature. The last column is an estimate; some rare models, such as specialized CPUs for embedded use, may still have lacked support.
+For each CPU feature, the table gives the first Intel and AMD CPUs to offer it, and the year from which all new Intel and AMD CPUs shipped with it. The last column is an estimate: some rare models, such as specialized CPUs for embedded use, may still have lacked the feature.
 
-```
-Feature       First Available (Intel)     First Available (AMD)     Available in all
+| Feature  | First available (Intel)   | First available (AMD)   | In all new CPUs from |
+|----------|---------------------------|-------------------------|----------------------|
+| AES      | 2010 (Westmere)           | 2011 (Bulldozer)        | 2016                 |
+| AVX      | 2011 (Sandy Bridge)       | 2011 (Bulldozer)        | 2022                 |
+| AVX2     | 2013 (Haswell)            | 2015 (Excavator)        | 2022                 |
+| BMI2     | 2013 (Haswell)            | 2015 (Excavator)        | 2022                 |
+| FMA      | 2013 (Haswell)            | 2012 (Piledriver)       | 2022                 |
+| FXSR     | 1997 (Pentium II)         | 1999 (Athlon)           | 2011; all x64 CPUs   |
+| LZCNT    | 2013 (Haswell)            | 2007 (K10/Phenom)       | 2022                 |
+| POPCNT   | 2008 (Nehalem)            | 2007 (K10/Phenom)       | 2013                 |
+| RDSEED   | 2014 (Broadwell)          | 2017 (Zen)              | 2020                 |
+| SHA      | 2016 (Atom)               | 2017 (Zen)              | 2022                 |
+| SSE      | 1999 (Pentium III)        | 2001 (Athlon XP)        | 2002; all x64 CPUs   |
+| SSE2     | 2000 (Pentium 4)          | 2003 (Athlon 64)        | 2005; all x64 CPUs   |
+| SSE3     | 2004 (Pentium 4 Prescott) | 2005 (Athlon 64 Rev. E) | 2006                 |
+| SSE4.1   | 2008 (Nehalem)            | 2011 (Bulldozer)        | 2013                 |
+| SSE4.2   | 2008 (Nehalem)            | 2011 (Bulldozer)        | 2013                 |
+| SSSE3    | 2006 (Core 2)             | 2011 (Bobcat)           | 2013                 |
+| XSAVE    | 2009 (Penryn E0/R0)       | 2011 (Bulldozer)        | 2016                 |
+| XSAVEC   | 2015 (Skylake)            | 2017 (Zen)              | 2020                 |
+| XSAVEOPT | 2011 (Sandy Bridge)       | 2017 (Zen)              | 2017                 |
+| XSAVES   | 2015 (Skylake)            | 2017 (Zen)              | 2020                 |
 
-AES:          2010 (Westmere)             2011 (Bulldozer)          2016
+FXSR, SSE and SSE2 are part of the base feature set that every x64 CPU must support, so 64-bit builds always use them when optimization is on.
 
-AVX:          2011 (Sandy Bridge)         2011 (Bulldozer)          2022
+## Future of LLVM support
 
-AVX2:         2013 (Haswell)              2015 (Excavator)          2022
-
-BMI2:         2013 (Haswell)              2015 (Excavator)          2022
-
-FMA:          2013 (Haswell)              2012 (Piledriver)         2022
-
-FXSR:         1997 (Pentium II)           1999 (Athlon)             2011; All x64 CPUs¹
-
-LZCNT:        2013 (Haswell)              2007 (K10/Phenom)         2022
-
-POPCNT:       2008 (Nehalem)              2007 (K10/Phenom)         2013
-
-RDSEED:       2014 (Broadwell)            2017 (Zen)                2020
-
-SHA:          2016 (Atom)                 2017 (Zen)                2022
-
-SSE:          1999 (Pentium III)          2001 (Athlon XP)          2002; All x64 CPUs¹
-
-SSE2:         2000 (Pentium 4)            2003 (Athlon 64)          2005; All x64 CPUs¹
-
-SSE3:         2004 (Pentium 4 Prescott)   2005 (Athlon 64 Rev. E)   2006
-
-SSE4.1:       2008 (Nehalem)              2011 (Bulldozer)          2013
-
-SSE4.2:       2008 (Nehalem)              2011 (Bulldozer)          2013
-
-SSSE3:        2006 (Core 2)               2011 (Bobcat)             2013
-
-XSAVE:        2009 (Penryn E0/R0)         2011 (Bulldozer)          2016
-
-XSAVEC:       2015 (Skylake)              2017 (Zen)                2020
-
-XSAVEOPT:     2011 (Sandy Bridge)         2017 (Zen)                2017
-
-XSAVES:       2015 (Skylake)              2017 (Zen)                2020
-```
-
-¹ - Features marked 'All x64 CPUs' are always used in 64-bit builds when optimization is enabled, because they're part of the base feature set all x64 CPUs must support.
-
-### Future of LLVM support in twinBASIC.
-
-This is just the start of LLVM integration in twinBASIC. It lays a strong foundation for us to make much more use of the optimizations and features LLVM can provide. Going forward, we will be restructuring some of the inner workings of the tB compiler to make the best use of these benefits and improve the performance of your code. Stay tuned-- there’s still a lot more to come!
+This is the first release of LLVM support in twinBASIC, and the groundwork for making much more use of the optimizations and features that LLVM provides. Later releases will restructure parts of the twinBASIC compiler to get the most from LLVM and to improve the performance of your code.
