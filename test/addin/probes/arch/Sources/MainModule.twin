@@ -1,0 +1,57 @@
+' P7 in WIP.HelpAddin.md: which compiler loads which add-in folder, and what a
+' switch of build target does. arch.test.mjs builds this add-in for win32 and
+' for win64, and puts each build in the add-in folders of its bitness, in the
+' lane's copy of the install and in the APPDATA it gives the lane's IDE; never
+' in the user's own. When it loads it prints one line, "[ArchProbe] <n>-bit |
+' <process> | <file>": the bitness it was built for, the executable of the
+' process it runs in, which is the compiler's (P10), and the file it was loaded
+' from. It does nothing else.
+Module MainModule
+    Private Declare PtrSafe Function GetModuleHandleExW Lib "kernel32" (ByVal dwFlags As Long, _
+        ByVal lpModuleName As LongPtr, ByRef phModule As LongPtr) As Long
+    Private Declare PtrSafe Function GetModuleFileNameW Lib "kernel32" (ByVal hModule As LongPtr, _
+        ByVal lpFilename As LongPtr, ByVal nSize As Long) As Long
+
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New ArchProbeAddin(Host)
+    End Function
+
+    ' The file a module was loaded from; module 0 is the process's executable.
+    Public Function ModuleFile(ByVal hModule As LongPtr) As String
+        Dim buf As String = String$(1024, vbNullChar)
+        Dim n As Long = GetModuleFileNameW(hModule, StrPtr(buf), 1024)
+        Return Left$(buf, n)
+    End Function
+
+    ' The file this code was loaded from: the module that holds this function.
+    Public Function ThisFile() As String
+        Const FROM_ADDRESS As Long = &H4
+        Const UNCHANGED_REFCOUNT As Long = &H2
+        Dim h As LongPtr
+        If GetModuleHandleExW(FROM_ADDRESS Or UNCHANGED_REFCOUNT, AddressOf ThisFile, h) = 0 Then
+            Return "(unknown)"
+        End If
+        Return ModuleFile(h)
+    End Function
+End Module
+
+Private Class ArchProbeAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "ArchProbe AddIn"
+    End Property
+
+    Private Sub Host_OnProjectLoaded()
+        ' 4 bytes in a win32 build, 8 in a win64 one.
+        Dim p As LongPtr
+        Host.DebugConsole.PrintText "[ArchProbe] " & (LenB(p) * 8) & "-bit | " & ModuleFile(0) & _
+            " | " & ThisFile()
+    End Sub
+End Class

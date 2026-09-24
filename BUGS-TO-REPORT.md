@@ -1216,3 +1216,40 @@ generated for an undeclared name.
 **Observed** on 2026-09-24 by sending `textDocument/hover` over the compiler's language socket
 with the parameters the IDE's own hover provider sends (`test/addin/symbols.test.mjs`, which
 checks every row of the table). The text is the markdown the IDE's hover shows.
+
+---
+
+## Every tool window given no id is the same window
+
+**Build:** BETA 983
+**Severity:** an add-in's windows overwrite each other, or another add-in's, and nothing
+says so. The id is declared `Optional`, so leaving it out looks correct.
+
+```
+Set w1 = Host.ToolWindows.Add("First")
+w1.Title = "First"
+w1.RootDomElement.ChildDomElements.Add("one", "div").Properties.innerText = "first"
+w1.Visible = True
+Set w2 = Host.ToolWindows.Add("Second")
+w2.Title = "Second"
+w2.RootDomElement.ChildDomElements.Add("two", "div").Properties.innerText = "second"
+w2.Visible = True
+```
+
+shows one window, titled `Second` and holding `second` alone. What is then added through
+`w1` goes into that same window.
+
+`createToolWindow` in `ide/main.js` files each window under `e.guid`, which is the
+`UniqueIdForPositionPersistance` argument, and `""` when it is left out.
+`createToolWindowById(e)` returns the window it already has under that id, after
+`n.bodyElement.innerHTML=""`, instead of making another, and the page answers the compiler
+with that window's number, so both `ToolWindow` objects are bound to it. The same reuse is
+what hands an add-in its own window back after a compiler restart, when it asks again for
+the id it used before (`test/addin/reload.test.mjs`), so a fix would give each window without
+an id one of its own rather than change the reuse.
+
+**What does not reproduce it:** a window given an id, or one window given none. None of the
+IDE's add-in samples leaves the id out.
+
+**Observed** on 2026-09-25 with the panes probe's third button, operated by
+`test/addin/panes.test.mjs`, which reads `toolWindowsById` over CDP.

@@ -1,0 +1,86 @@
+' P9 in WIP.HelpAddin.md: whether a compiler restart loads an add-in again from
+' its file, and what becomes of what the add-in put in the IDE. reload.test.mjs
+' builds this add-in twice, once as it is and once with BUILD changed to "B",
+' loads build A, and swaps the file for build B while the IDE runs. Everything
+' the add-in puts in the IDE names its build: a toolbar button, two tool
+' windows --- one given an id for its position and one not --- and a shortcut
+' on Shift+F1. Every line it prints starts "[ReloadProbe] build <BUILD>".
+'
+' Whether the add-in's Class_Terminate runs when the compiler restarts is
+' written to the file TB_RELOAD_FILE names, not to the DEBUG CONSOLE, which may
+' be gone by then. So is a line from an object it drops as it loads, which shows
+' that a Class_Terminate that runs does reach the file.
+Module MainModule
+    Private Declare PtrSafe Function GetCurrentProcessId Lib "kernel32" () As Long
+
+    ' The one line reload.test.mjs changes for build B.
+    Public Const BUILD As String = "A"
+
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New ReloadProbeAddin(Host)
+    End Function
+
+    Public Function ProcessId() As Long
+        Return GetCurrentProcessId()
+    End Function
+
+    ' Add "build <BUILD> <text>" to the file TB_RELOAD_FILE names.
+    Public Sub Record(ByVal text As String)
+        Dim file As String = Environ$("TB_RELOAD_FILE")
+        If Len(file) = 0 Then Exit Sub
+        Dim n As Integer = FreeFile
+        Open file For Append As #n
+        Print #n, "build " & BUILD & " " & text
+        Close #n
+    End Sub
+End Module
+
+' Dropped as soon as it is made, so its Class_Terminate runs while the add-in loads.
+Private Class TerminateControl
+    Private Sub Class_Terminate()
+        Record "control terminated"
+    End Sub
+End Class
+
+Private Class ReloadProbeAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+    Private ProbeButton As Button
+    Private WithId As ToolWindow
+    Private WithoutId As ToolWindow
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "ReloadProbe AddIn"
+    End Property
+
+    Private Sub Host_OnProjectLoaded()
+        Set ProbeButton = Host.Toolbars(0).AddButton("ReloadProbe", "Reload probe " & BUILD)
+        Set WithId = Pane(Host.ToolWindows.Add("Reload probe", "ReloadProbeWindow"), "Reload probe " & BUILD)
+        Set WithoutId = Pane(Host.ToolWindows.Add("Reload probe, no id"), "Reload probe, no id, " & BUILD)
+        Host.KeyboardShortcuts.Add "{shift}f1", AddressOf ShiftF1
+        Dim control As TerminateControl = New TerminateControl
+        Set control = Nothing
+        Host.DebugConsole.PrintText "[ReloadProbe] build " & BUILD & " loaded in " & ProcessId()
+    End Sub
+
+    Private Sub Class_Terminate()
+        Record "add-in terminated"
+    End Sub
+
+    ' A tool window showing the build's name.
+    Private Function Pane(ByVal w As ToolWindow, ByVal title As String) As ToolWindow
+        w.Title = title
+        w.RootDomElement.ChildDomElements.Add("reloadProbeBuild", "div").Properties.innerText = "build " & BUILD
+        w.Visible = True
+        Return w
+    End Function
+
+    Private Sub ShiftF1()
+        Host.DebugConsole.PrintText "[ReloadProbe] build " & BUILD & " key"
+    End Sub
+End Class

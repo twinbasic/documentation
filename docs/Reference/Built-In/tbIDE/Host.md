@@ -130,7 +130,7 @@ Syntax: *host*.**ShowNotification** *Prompt*
 
 ## Events
 
-The **Host** CoClass exposes three events. The third (and any future addition) is tagged with the compile-time `[AllowUnpopulatedVtableEntry]` attribute, which lets a newer addin compile against the newer events interface and still load against an older IDE that does not yet fire the newer event --- older IDEs leave the slot empty and the addin never receives that particular event.
+The **Host** CoClass exposes three events. The last two, [**OnChangedActiveEditor**](#onchangedactiveeditor) and [**OnChangedTheme**](#onchangedtheme), were each added in a later revision of the events interface, and are tagged with the compile-time [`[AllowUnpopulatedVtableEntry]`](../../Core/Attributes#allowunpopulatedvtableentry) attribute, so that an addin that implements only the first revision's members still satisfies the current one.
 
 ### OnProjectLoaded
 {: .no_toc }

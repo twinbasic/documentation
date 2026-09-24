@@ -96,15 +96,17 @@ export function makeIdeCopy({ ide, dest, addins = {} }) {
  * @param {string} exe   the copy's twinBASIC.exe, as makeIdeCopy returned it
  * @param {string} dll   the add-in
  * @param {"win32" | "win64"} arch
+ * @param {string} [name]  the file name to give it there; by default its own
  * @returns {string} where the DLL now is
  */
-export function addAddin(exe, dll, arch) {
+export function addAddin(exe, dll, arch, name = path.basename(dll)) {
   const root = path.dirname(path.resolve(exe));
   if (!insideTemp(root) || !existsSync(path.join(root, MARKER))) {
     throw new Error(`refusing to add an add-in to "${root}": it is not an IDE copy this module made`);
   }
   if (arch !== "win32" && arch !== "win64") throw new Error(`no such add-in folder: "${arch}"`);
-  const dest = path.join(root, "addins", arch, path.basename(dll));
+  if (path.basename(name) !== name) throw new Error(`an add-in's file name, not a path: "${name}"`);
+  const dest = path.join(root, "addins", arch, name);
   const cell = new Int32Array(new SharedArrayBuffer(4));
   for (let tries = 1; ; tries++) {
     try {

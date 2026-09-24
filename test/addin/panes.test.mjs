@@ -8,10 +8,13 @@
 // it through Page.getFrameTree. A frame on another site gets a process and a
 // DevTools target of its own (P3 in WIP.HelpAddin.md).
 //
+// The last test is what ToolWindows.Add does with windows given no id, which
+// P9 turned up.
+//
 // Each test states what BETA 983 does. If one fails after an IDE update, the
 // IDE has changed: update P3, P4 and P12 in WIP.HelpAddin.md and the tbIDE
 // pages that rest on them (HtmlElement, HtmlElementProperties, HtmlElements,
-// ToolWindow), and then this file.
+// ToolWindow, ToolWindows), and then this file.
 //
 // Run it with addin-test.bat, which gives it a lane; on its own it is skipped.
 
@@ -259,5 +262,19 @@ describe("P3, P4 and P12: HTML and a web page in a tool window", { skip: lane ? 
     t.diagnostic(`frame dark: ${dark}; Windows app mode dark: ${windowsAppModeDark()}; ` +
                  `IDE theme: ${await c.evaluate("getBaseThemeName()")}`);
     assert.equal(dark, windowsAppModeDark());
+  });
+
+  // Found by P9 (reload.test.mjs): the page files a window given no id under
+  // the id "", and ToolWindows.Add of an id it already has empties that window
+  // and returns it (createToolWindowById in main.js).
+  test("ToolWindows.Add: two windows given no id are one window, emptied by the second Add", async () => {
+    const mark = await consoleMark(c);
+    await click(c, "addinButton-PanesProbeNoId");
+    assert.ok(await waitFor(c, async (c) => (await probeLines(c, mark)).includes("no id windows")),
+              "the add-in did not finish opening its windows");
+    assert.deepEqual(await c.evaluate(`Object.entries(toolWindowsById).filter(([id]) => id !== ${JSON.stringify(W)})
+      .map(([id, w]) => ({ id, title: w.titleElement.textContent,
+                           divs: [...w.bodyElement.querySelectorAll("div[id^='noid']")].map((d) => d.id) }))`),
+    [{ id: "", title: "NO ID 2", divs: ["noid2", "noid1again"] }]);
   });
 });

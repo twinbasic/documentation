@@ -1,0 +1,42 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "ReloadProbe",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Standard DLL",
+	"project.description": "P9 in WIP.HelpAddin.md: whether a compiler restart loads an add-in again from its file, and what becomes of what the add-in put in the IDE. test/addin/reload.test.mjs builds it twice and swaps the builds in a lane's copy of the install; never put it in your own %APPDATA%\\twinBASIC\\addins or in a real install's addins folder.",
+	"project.exportPathIsV2": true,
+	"project.id": "{7B247100-0000-4000-9000-7B2471000005}",
+	"project.name": "ReloadProbe",
+	"project.optionExplicit": true,
+	"project.references": [
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"versionMajor": 2,
+			"versionMinor": 0
+		},
+		{
+			"id": "{99DEC38C-75F6-4488-8EE7-2D52D83881D2}",
+			"isCompilerPackage": true,
+			"licence": "MIT",
+			"name": "[COMPILER PACKAGE] twinBASIC IDE Extensibility Package",
+			"path32": "",
+			"path64": "",
+			"publisher": "TWINBASIC-COMPILER",
+			"symbolId": "tbIDE",
+			"versionBuild": 0,
+			"versionMajor": 0,
+			"versionMinor": 0,
+			"versionRevision": 1
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.warnings": {
+		"errors": [],
+		"ignored": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

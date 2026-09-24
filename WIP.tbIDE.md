@@ -25,7 +25,12 @@ Module MainModule
 End Module
 ```
 
-The returned object must implement the [`AddIn`](#public-user-facing-surface) interface (a single read-only `Name` property, declared in `Addin.twin`). The IDE releases the object when the addin is disabled or the IDE shuts down. Every sample uses this exact `tbCreateCompilerAddin` skeleton — surface it on the index landing as the canonical entry point.
+The returned object must implement the [`AddIn`](#public-user-facing-surface) interface (a single read-only `Name` property, declared in `Addin.twin`). Every sample uses this exact `tbCreateCompilerAddin` skeleton — surface it on the index landing as the canonical entry point.
+
+Two things about loading were measured on BETA 983 (P9 and P14 in [WIP.HelpAddin.md](WIP.HelpAddin.md)), and the index page says both:
+
+- **The linker exports `tbCreateCompilerAddin` as `tbCreateCompilerAddin_v3`**, and under no other name. The IDE's loader accepts `tbCreateCompilerAddin`, `_v2` and `_v3`, calls each the same way, and refuses a DLL with none of them as *compiled for a newer version of the twinBASIC IDE*. The suffix is a version stamp, not a different signature.
+- **A compiler restart does not release the object; it kills it.** The addin lives in the compiler's process, and the page ends that process with `taskkill /F` (`forceTerminate` in `main.js`) on every compiler restart --- the restart button, a switch of build target, a crash --- so `Class_Terminate` does not run, and a new instance is loaded from the DLL on disk. Closing the project calls `forceTerminate` as well *(read, not measured)*. This note used to say the object is released "when the addin is disabled or the IDE shuts down"; the Add-Ins menu's items cannot disable one *(reported)*, and the index page repeated the claim until the P9 lane showed `Class_Terminate` not running.
 
 ## Public user-facing surface
 
@@ -68,7 +73,7 @@ Almost every `.twin` declares one or two `Public Interface I<X>V1 Extends stdole
 **Versioning is conveyed by interface chains.** Two cases visible in the source:
 
 - `IFileV1` → `IFileV2 Extends IFileV1` (V2 adds `ReadText(ReadTextFlags)`). The `File` CoClass declares `[Default] Interface IFileV2`. Document the V2 surface as the canonical `File` page; do not split V1 vs V2. (Mention in passing that `ReadText` is V2-only and consequently won't bind against very early IDE builds — though in practice every shipping IDE is V2+.)
-- `IHostV1` → `ItbHostEventsV1` → `ItbHostEventsV2 Extends V1` → `ItbHostEventsV3 Extends V2`. The `Host` CoClass declares `[Default, Source] Interface ItbHostEventsV3`. The new members on V2 / V3 (`OnChangedActiveEditor`, `OnChangedTheme`) are each tagged **`[AllowUnpopulatedVtableEntry]`**, which is the mechanism that lets a newer addin compile against `ItbHostEventsV3` and still load against an older IDE that only implements `V1` — the IDE doesn't have to provide the V2/V3 entries.
+- `IHostV1` → `ItbHostEventsV1` → `ItbHostEventsV2 Extends V1` → `ItbHostEventsV3 Extends V2`. The `Host` CoClass declares `[Default, Source] Interface ItbHostEventsV3`. The new members on V2 / V3 (`OnChangedActiveEditor`, `OnChangedTheme`) are each tagged **`[AllowUnpopulatedVtableEntry]`**, which [Attributes](docs/Reference/Attributes.md#allowunpopulatedvtableentry) describes as marking a prototype that a class implementing the interface need not supply. This note, and the Host page after it, used to say the attribute lets a newer addin "still load against an older IDE"; nothing measured it, and P14 found the opposite mechanism in the loader: the linker stamps every addin's entry point `_v3`, and an IDE whose loader does not know a DLL's stamp refuses it. Every install from BETA 947 on knows `_v3`, so the claim could not be tested here either way.
 
 Document all `Host` events together on the `Host.md` page (the per-version split is a compatibility detail, not a user-facing concept).
 

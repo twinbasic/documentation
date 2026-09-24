@@ -1,0 +1,48 @@
+' P14 in WIP.HelpAddin.md: which entry points the compiler's add-in loader
+' accepts. The function below is named as the tbIDE package says, and the
+' linker exports it as tbCreateCompilerAddin_v3 and under no other name.
+' entry.test.mjs builds this add-in once and puts copies of it in the lane's
+' copy of the install with that one name patched in each: tbCreateCompilerAddin,
+' _v2, _v3 as the linker wrote it, and _v4. Each copy that loads prints
+' "[EntryProbe] loaded from <file>". It does nothing else.
+Module MainModule
+    Private Declare PtrSafe Function GetModuleHandleExW Lib "kernel32" (ByVal dwFlags As Long, _
+        ByVal lpModuleName As LongPtr, ByRef phModule As LongPtr) As Long
+    Private Declare PtrSafe Function GetModuleFileNameW Lib "kernel32" (ByVal hModule As LongPtr, _
+        ByVal lpFilename As LongPtr, ByVal nSize As Long) As Long
+
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New EntryProbeAddin(Host)
+    End Function
+
+    ' The file this code was loaded from: the module that holds this function.
+    Public Function ModulePath() As String
+        Const FROM_ADDRESS As Long = &H4
+        Const UNCHANGED_REFCOUNT As Long = &H2
+        Dim h As LongPtr
+        If GetModuleHandleExW(FROM_ADDRESS Or UNCHANGED_REFCOUNT, AddressOf ModulePath, h) = 0 Then
+            Return "(unknown)"
+        End If
+        Dim buf As String = String$(1024, vbNullChar)
+        Dim n As Long = GetModuleFileNameW(h, StrPtr(buf), 1024)
+        Return Left$(buf, n)
+    End Function
+End Module
+
+Private Class EntryProbeAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "EntryProbe AddIn"
+    End Property
+
+    Private Sub Host_OnProjectLoaded()
+        Host.DebugConsole.PrintText "[EntryProbe] loaded from " & ModulePath()
+    End Sub
+End Class

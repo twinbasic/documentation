@@ -572,20 +572,42 @@ export async function setBuildTarget(c, arch, { project, timeout }) {
   if (before.value === arch) return { from: before.value, waited: null };
   if (!before.pid) throw new Error("the IDE has no compiler process to restart for another target");
   await c.evaluate(`buildConfigSelector.value = ${JSON.stringify(arch)}; buildConfigSelector.onchange()`);
+  await awaitNewCompiler(c, before.pid, { why: `switching the build target to ${arch}` });
+  const now = await read();
+  if (now?.value !== arch) throw new Error(`the build target went back to ${now?.value} after the switch`);
+  return { from: before.value, waited: await waitForCompile(c, { project, timeout }) };
+}
+
+/** The process id of the compiler the page is talking to, or null while there is none. */
+export const compilerPid = (c) => c.evaluate(
+  "typeof g_CurrentCompilerProcessId === 'undefined' ? null : g_CurrentCompilerProcessId || null");
+
+/**
+ * Wait until the page is talking to a compiler other than the one whose
+ * process id was `before`, and return the new one's id.
+ *
+ * Whatever restarts the compiler --- a switch of build target, the toolbar's
+ * restart button --- ends its process and starts another, so a new id is the
+ * sign that it has happened. The status bar is not: it stays OPERATIONAL for
+ * about 250 ms after a switch (see setBuildTarget).
+ *
+ * @param {object} c                  a tb-cdp connection
+ * @param {number} before             the id of the compiler being replaced
+ * @param {object} [o]
+ * @param {string} [o.why]            what restarted it, for the message
+ * @param {number} [o.timeout]        milliseconds (default 60000)
+ */
+export async function awaitNewCompiler(c, before, { why = "restarting it", timeout = 60 * 1000 } = {}) {
   const t0 = Date.now();
   for (;;) {
     await sleep(250);
-    let now = null;
-    try { now = await read(); } catch { /* the page is busy with the restart */ }
-    if (now?.pid && now.pid !== before.pid) {
-      if (now.value !== arch) throw new Error(`the build target went back to ${now.value} after the switch`);
-      break;
-    }
-    if (Date.now() - t0 > 60 * 1000) {
-      throw new Error(`the compiler did not restart within 60 s of switching the build target to ${arch}`);
+    let pid = null;
+    try { pid = await compilerPid(c); } catch { /* the page is busy with the restart */ }
+    if (pid && pid !== before) return pid;
+    if (Date.now() - t0 > timeout) {
+      throw new Error(`the compiler did not restart within ${timeout / 1000} s of ${why}`);
     }
   }
-  return { from: before.value, waited: await waitForCompile(c, { project, timeout }) };
 }
 
 // Read the DEBUG CONSOLE's BACKING ARRAY, never the pane. `debugConsoleContent`

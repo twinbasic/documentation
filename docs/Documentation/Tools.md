@@ -681,7 +681,12 @@ does with HTML and with a web page in an `iframe`, for the
 serves the pages its frame shows from a server of its own on `localhost`. Three more answer
 questions the planned help add-in rests on: what the compiler says about the name under the
 cursor, which files the IDE's own web server serves from its `ide` folder, and which folders
-the compiler loads add-ins from. The seven lanes take about 75 seconds together.
+the compiler loads add-ins from. The last three check what the [Add Ins](../../tB/IDE/AddIns/)
+and [tbIDE package](../../tB/Packages/tbIDE/) pages say about loading: which folder each
+build target loads, what a compiler restart does to a loaded add-in, and which entry-point
+names the IDE accepts. They build add-ins for win64 as well as win32, restart the compiler,
+and patch a built DLL's export name. The ten lanes take about two and a half minutes
+together.
 
 | Flag | Effect |
 |---|---|

@@ -14,7 +14,7 @@
 // tb-ide.mjs says why), and a tool window lives in a shadow root that
 // document.querySelector cannot see into.
 
-import { readConsole, sleep } from "./tb-ide.mjs";
+import { awaitNewCompiler, compilerPid, readConsole, sleep, waitForCompile } from "./tb-ide.mjs";
 
 // ------------------------------------------------------------------ finding
 
@@ -333,6 +333,34 @@ export async function openedUrls(c, { since = null } = {}) {
   const text = await readConsole(c, { since });
   return (text ?? "").split("\n").map((l) => /^open (\S+)$/.exec(l.trim())).filter(Boolean)
     .map((m) => m[1]);
+}
+
+// ------------------------------------------------------------------ the compiler
+
+/**
+ * Restart the compiler with the toolbar's restart button, and wait for the new
+ * one to compile the project again.
+ *
+ * The button ends the compiler's process with taskkill /F, so no add-in's
+ * Class_Terminate runs, and the IDE starts another compiler, which loads the
+ * add-ins again from their folders as it starts, from the files that are there
+ * by then (P9 in WIP.HelpAddin.md). Before that the page removes every
+ * add-in's toolbar buttons and shortcuts (removeAddinAlterations in main.js),
+ * and hides each tool window's contents behind the text "(currently
+ * unavailable)". The window stays on screen until an add-in adds one with the
+ * same id, which empties it and shows it again.
+ *
+ * @param {object} c                  a tb-cdp connection
+ * @param {object} o                  as for waitForCompile in tb-ide.mjs
+ * @returns {Promise<{pid: number, waited: object}>} the new compiler's process
+ *   id, and waitForCompile's result for its compile
+ */
+export async function restartCompiler(c, { project, timeout = 180 * 1000 }) {
+  const before = await compilerPid(c);
+  if (!before) throw new Error("the IDE has no compiler process to restart");
+  await click(c, "restartIcon");
+  const pid = await awaitNewCompiler(c, before, { why: "clicking the restart button" });
+  return { pid, waited: await waitForCompile(c, { project, timeout }) };
 }
 
 // ------------------------------------------------------------------ the code editor

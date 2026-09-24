@@ -4,10 +4,10 @@ See [WIP.md](WIP.md) for the maintenance guide. This file covers the planned twi
 add-in that shows the documentation for the symbol under the cursor, and the harness that
 tests IDE add-ins by machine, which the add-in is developed against.
 
-**Status: Stage 1, the harness, is built, and Stage 2 is mostly done** --- `addin-test.bat`
-operates Samples 10 and 15 end to end and leaves the registry as it found it, and P1 to P6,
-P12 and P13 are answered by five probe lanes. P7 and P9 are half answered and P14 is open.
-The add-in itself is not started. This file
+**Status: Stages 1 and 2 are done** --- `addin-test.bat` operates Samples 10 and 15 end to
+end and leaves the registry as it found it, and all fourteen of Stage 2's questions are
+answered, twelve of them by eight probe lanes that fail when a later IDE build behaves
+differently. Stage 3, the symbol index, is next. The add-in itself is not started. This file
 replaces the June draft, `add-in/PLAN.md`
 in commit `d159acf8` ("Roughly plan the help add-in"). That commit is on no branch --- only
 the detached HEAD of an old worktree keeps it --- so everything in it worth keeping is here,
@@ -103,26 +103,70 @@ the compiler what a symbol is.** Each of those gaps shapes a stage below.
   KEY DETECTED: DISABLED LOADING OF ADDINS` to the DEBUG CONSOLE (`main.js@1048443`).
   `shiftKeyDown` follows the keymap's `tbMisc_ShiftKeyStateDown` and `...Up` actions, so a
   test that presses Shift must not do it while a project is opening.
-- **The loader also looks for `tbCreateCompilerAddin_v2`**, and the linker knows a
-  `tbCreateCompilerAddin_v3`. The tbIDE package declares neither, and what they take is
-  unknown (**P14**).
+- **The linker exports `tbCreateCompilerAddin` as `tbCreateCompilerAddin_v3`, and the
+  loader takes three names (P14).** Read in the compiler's code and measured on BETA 983 by
+  [test/addin/entry.test.mjs](test/addin/entry.test.mjs). The loader --- in BETA 983 the
+  code at `0x1EAB6275` in `twinBASIC_win32.dll`, and in another build the code that pushes
+  the address of the string `tbCreateCompilerAddin_v2`, found with `dumpbin /disasm`; the
+  same in `twinBASIC_win64.dll` --- asks `GetProcAddress` for
+  `tbCreateCompilerAddin`, then `tbCreateCompilerAddin_v2`, then `tbCreateCompilerAddin_v3`,
+  and calls the first it finds **the same way whichever it is**: one argument, the `Host`,
+  `stdcall` on win32. It asks what that returns for `IAddInV1` ---
+  `{F1BAB9A7-09A3-436C-8B57-A57A76C5DF98}`, the package's own --- and reads its `Name`. The
+  linker, for each `[DllExport]` function, swaps the export name for
+  `tbCreateCompilerAddin_v3` when the function's name is `tbCreateCompilerAddin`, and exports
+  nothing under the name written. So the three names are not three signatures: the suffix
+  is a version stamp, and an IDE whose loader does not know the stamp refuses the DLL.
+  Measured with the probe's one export patched in four copies: the plain name, `_v2` and
+  `_v3` all loaded, and `_v4` did not, with `[EntryV4.dll] Failed to load addin.  Entry point
+  not found.  Addin may have been compiled for a newer version of the twinBASIC IDE.` in the
+  DEBUG CONSOLE and an `Unknown Addin` in the compiler's list. Both of P7's builds, win32 and
+  win64, exported `_v3` alone. Every install on this machine, BETA 947 to 983, has the same
+  three names in its loader, and each one's shipped Global Search add-in exports `_v3` alone,
+  so both stamps are older than BETA 947.
 - **Add-ins cannot be switched off.** The Add-Ins menu lists the loaded add-ins with ticks,
-  and every item calls `notSupportedMenuOption()` *(reported)*. Restarting the compiler
-  removes every add-in's UI and shortcuts (`removeAddinAlterations`) *(reported)*; whether it
-  also reloads the DLLs from disk is **P9**.
-- **The build target picks the compiler, and the compiler picks the folder.** The IDE
+  and every item calls `notSupportedMenuOption()` *(reported)*.
+- **A compiler restart loads every add-in again, from the file in its folder then (P9).**
+  Measured on BETA 983 by [test/addin/reload.test.mjs](test/addin/reload.test.mjs). A
+  restart is the toolbar's restart button, every switch of the build target (below), and the
+  IDE's own restart after a compiler crash. The page's `restartCompiler` (`main.js@153451`)
+  first takes away what every add-in added: `removeAddinAlterations` removes their toolbar
+  buttons and shortcuts, and hides each tool window's body behind the text `(currently
+  unavailable)`, leaving the window where it was. It ends the old compiler with `taskkill
+  /F` (`forceTerminate`, `main.js@1050553`), so **no add-in's `Class_Terminate` runs**:
+  measured with the probe writing a line to a file from it, which it did for an object it
+  dropped as it loaded and never for itself. The new compiler then loads the add-ins
+  as it starts, and each runs `OnProjectLoaded` again, in a new process, so **an add-in
+  keeps no state across a restart.** A window it adds again under the same id is the same
+  window, emptied and shown again (below, under Tool windows). So the rebuild loop works
+  without ending the IDE: rename the loaded DLL aside, which P8 allows, put the new build in
+  its place, and restart the compiler. Measured: with build A renamed aside, a restart
+  loaded nothing, left no button or shortcut, and left both of A's windows showing the text;
+  the renamed file could be deleted, since the compiler that held it had ended. With build
+  B then copied in under A's name, the next restart loaded B, whose first line came 1.0 s
+  after the click (4.4 s with another lane building at the same time); B had one button,
+  one shortcut that fired B alone, and A's two windows, filled with B's content. A restart's
+  compile settled after 6.6 s, against 7.6 s for a new IDE to open the project and settle
+  its compile, so a harness saves little by the loop; a person keeps the IDE, its open files
+  and its layout.
+- **The build target picks the compiler, and the compiler picks the folder (P7).** The IDE
   remembers the target of each project in the shared registry, as one JSON object in
   `IDESettings\targetArchitectureMemory` keyed by project path, and opens a project in the
   target remembered for it --- or, with none, in the first on its list, win32. Measured with
   a differently named DLL in each folder: a project with no memory got
   `twinBASIC_win32_noDEP.exe`, which loaded `addins\win32` alone; a project remembered as
   win64 got `twinBASIC_win64_noDEP.exe` with `twinBASIC_nativedbg_win64.exe`, which tried
-  `addins\win64` alone. Switching the target of an open project (Ctrl+F1 / Ctrl+F2) restarts
-  the compiler in the other bitness: `changedActiveBuildConfig` in `ide/main2.js` records the
-  new target and kills the compiler, and the one that replaced a `twinBASIC_win32_noDEP.exe`
-  on a switch to win64 was a `twinBASIC_win64_noDEP.exe` (measured for `--arch`,
-  [WIP.Harness.md](WIP.Harness.md#building-for-win64)). Which `addins` folder that one loads
-  was not looked at, and is the rest of **P7**. A shipped add-in needs both builds.
+  `addins\win64` alone. **Switching the target of an open project (Ctrl+F1 / Ctrl+F2)
+  restarts the compiler in the other bitness, and the new one loads the other folders.**
+  `changedActiveBuildConfig` in `ide/main2.js` records the new target and kills the
+  compiler. Measured on BETA 983 by [test/addin/arch.test.mjs](test/addin/arch.test.mjs),
+  with a 32-bit and a 64-bit build of a probe in both folders of their bitness, the install's
+  and `%APPDATA%`'s: the project opened in win32, whose compiler loaded the two 32-bit copies
+  alone; a switch to win64 started `twinBASIC_win64_noDEP.exe`, which loaded the two 64-bit
+  copies alone, each reporting that it ran 64-bit; and a switch back loaded the 32-bit ones
+  again. A switch is a restart, with all that the item above says of one. **A shipped
+  add-in needs both builds**, and one that should keep working across a switch needs both
+  installed.
 
 ### Keyboard shortcuts
 
@@ -180,6 +224,19 @@ Read at `main.js@1002292` (`toolWindowElementAddChild`) and `@1005960`
   every element in it has no size. A window's content can be taller than the window: Sample
   10's eleventh button had a size and a place, but its place was under the window's bottom
   edge, where a click lands on the resize handle.
+- **A window's id is its identity, and a window given none shares the id `""`.**
+  `createToolWindow` (`main.js@992211`) files a window under the second argument of
+  `ToolWindows.Add`, and `createToolWindowById` returns the window the page already has
+  under that id, with its body emptied, rather than a new one; the add-in's new `ToolWindow`
+  is then bound to it, since the page answers with its number. Measured on BETA 983: P9's
+  window given no id was under `""`, and the last test of
+  [panes.test.mjs](test/addin/panes.test.mjs) opened two windows given no id and got one,
+  titled by the second, holding the second's element and what was then added through the
+  first's object, while the first's own element was gone. So **every tool window needs an
+  id of its own**; the published ToolWindows page said to leave it out for a window that is
+  not kept, and has an IMPORTANT now. The same rule is why a restart does no harm to a window
+  with an id: the add-in's `Add` after the restart gets its old window back, emptied and
+  shown again (P9). None of the shipped samples leaves the id out.
 - **An add-in's toolbar button is `#addinButton-<id>`**, with the id the add-in gave
   `AddButton`, inside `#rootMenu2`, and its caption as its `title`.
 - **`HtmlElements.Add(id, tagName)` accepts any tag.** The four IDE widget tags (`chartjs`,
@@ -512,7 +569,8 @@ Everything after this stage is developed against it.
    `addins\win32`. Built straight into `addins`, a rebuild would meet the previous build
    loaded by the very IDE doing the building, and a loaded add-in cannot be overwritten
    (P8). [WIP.Harness.md, Building an add-in and loading it](WIP.Harness.md#building-an-add-in-and-loading-it)
-   has the rest: how the build log is read, why only win32 for now, and what was measured.
+   has the rest: how the build log is read, how a build is made for win32 or win64 (win32
+   only until P7 was answered), and what was measured.
    Samples 10 and 15 both built and loaded, and the tree staging that `tbrun` did is now
    [scripts/lib/tb-project.mjs](scripts/lib/tb-project.mjs), shared by both.
 5. **Operating the IDE and reading it**, as library calls over CDP:
@@ -609,8 +667,13 @@ was identical.
 ### Stage 2: probes that decide the design
 
 Most probes are a small add-in plus a scenario. P5, P11 and P13 need only CDP and the file
-system, and P14 is probably a question for upstream. Record every answer in this file with
-the build number it was measured on.
+system. P14, planned as a question for upstream, was answered from the compiler's own code
+and then measured. Record every answer in this file with the build number it was measured
+on.
+
+**Stage 2 is done** (2026-09-25, BETA 983): every question is answered, and the eight lanes
+pass together with the two sample lanes, ten in all, in 2 minutes 21 seconds at two at a
+time.
 
 **A probe whose answer something else rests on becomes a lane**: its add-in in
 `test/addin/probes/<name>/`, its scenario beside the others, listed in `lanes.mjs`, with each
@@ -623,10 +686,16 @@ pages. [symbols.test.mjs](test/addin/symbols.test.mjs) (P5) holds up Stage 4's c
 and an entry in BUGS-TO-REPORT.md; it needs no add-in, only the project in
 `probes/symbols`. [ideserver.test.mjs](test/addin/ideserver.test.mjs) (P13) holds up the
 offline route, and [appdata.test.mjs](test/addin/appdata.test.mjs) (P6) the lanes' own
-`APPDATA` and the FAQ's answer on where add-ins go. A probe that settles a question once,
-as P10's did, stays in scratch; so did the two P3 checks that need the network or a
-changed WebView2, the live site in the frame and the colour scheme with WebView2
-preferring light.
+`APPDATA` and the FAQ's answer on where add-ins go. [arch.test.mjs](test/addin/arch.test.mjs)
+(P7) holds up the Add Ins page's account of which folder loads when, and the win64 builds
+`buildAddin` now makes; [reload.test.mjs](test/addin/reload.test.mjs) (P8, P9) the account
+of a compiler restart on the tbIDE package page and the ToolWindows page; and
+[entry.test.mjs](test/addin/entry.test.mjs) (P14) the entry point's NOTE on the tbIDE
+package page. P9 turned up the shared id `""` of windows given none, and the test of it
+went in the panes lane, with the rest of what a tool window does. A probe that settles a
+question once, as P10's did, stays in scratch; so did the two P3 checks that need the
+network or a changed WebView2, the live site in the frame and the colour scheme with
+WebView2 preferring light.
 
 | # | Question | What it decides |
 |---|---|---|
@@ -636,14 +705,14 @@ preferring light.
 | P4 | Does `innerHTML` render, and do inline handlers in it run page script? **Answered, BETA 983: yes, and yes.** It renders, and its inline handlers run as the IDE page's own script --- an `<img>`'s `onerror` with nothing clicked --- with its globals in reach. A property whose name starts with `on` is dropped, and the add-in hears no error. | how summaries are drawn; whether the page-internals route exists --- it does |
 | P5 | What does hover return for `MsgBox`, `Collection.Add`, `ToolWindows.Add` and a symbol declared in the project? What does definition return for a package symbol? **Answered, BETA 983:** hover gives the declaration, which says the kind, then a heading naming where it is declared: `in VBA.Interaction`, `in VBA._Collection`, `in tbIDE.IToolWindowsV1`, `in SymbolsProbe.Symbols` --- a class's members by its default interface, not by the class's name. Definition gives the declaration in the package's own source, `.../Packages/VBA/Sources/Interaction.twin`, which the IDE opens. Nothing for `Debug.Print` or a statement. Only page script can ask. | compiler-assisted context is possible; which route is [Stage 4](#stage-4-the-add-in-in-increments), increment 3 |
 | P6 | Does the compiler also load add-ins from `%APPDATA%\twinBASIC\addins\<arch>`? This needs a DLL placed there for a moment, and the user's own IDE would load it too --- **ask before running it.** **Answered, BETA 983: yes**, from `addins\win32` there and not from `addins` itself. The page expands `%APPDATA%` in the IDE's environment and sends the folder, and the compiler loads from what it is sent. Measured with `APPDATA` pointed at a folder of the lane's own, so no DLL went in the user's. | harness isolation --- every lane IDE gets an `APPDATA` of its own |
-| P7 | Which bitness does the compiler start in, and does switching the build target restart it in the other one and load the other `addins` folder? **Half answered, BETA 983:** the target a project opens in picks the compiler --- win32 when the IDE remembers none, `twinBASIC_win64_noDEP.exe` for a project remembered as win64 --- and each compiler reads its own `addins` folder alone. Switching the target of an open project restarts the compiler in the other bitness --- `twinBASIC_win32_noDEP.exe` was replaced by `twinBASIC_win64_noDEP.exe` --- and which folder that one loads is untested. | building and testing both bitnesses |
-| P8 | Is a loaded add-in DLL locked against being overwritten? **Answered, BETA 983: yes.** While its IDE runs, overwriting fails (`EBUSY`) and deleting fails (`EPERM`), though renaming works; the hold outlasts the compiler's exit by a few tens of milliseconds. | the rebuild loop --- the DLL is built outside `addins`, and copied in once the IDE has ended |
-| P9 | Does a compiler restart reload add-ins from disk? **Half answered, BETA 983:** a restart ends the compiler and starts a new process, which loads every add-in again as it starts, so from disk. The loop itself is untested: rename the loaded DLL aside (P8 allows that), copy the new build in, restart. | a rebuild loop without restarting the IDE |
+| P7 | Which bitness does the compiler start in, and does switching the build target restart it in the other one and load the other `addins` folder? **Answered, BETA 983: yes, and yes.** The target a project opens in picks the compiler --- win32 when the IDE remembers none, `twinBASIC_win64_noDEP.exe` for a project remembered as win64 --- and each compiler loads the folders of its own bitness alone, the install's and `%APPDATA%`'s. Switching the target of an open project restarts the compiler in the other bitness, and the new one loads the other folders: a 64-bit build of the probe in each win64 folder loaded, and ran 64-bit, once the project was switched to win64, and the 32-bit ones again after a switch back. | building and testing both bitnesses --- `buildAddin` builds either, and a shipped add-in needs both |
+| P8 | Is a loaded add-in DLL locked against being overwritten? **Answered, BETA 983: yes.** While its IDE runs, overwriting fails (`EBUSY`) and deleting fails (`EPERM`), though renaming works; the hold outlasts the compiler's exit by a few tens of milliseconds. The P9 lane checks all three again. | the rebuild loop --- the DLL is built outside `addins`, and copied in once the IDE has ended, or renamed aside first (P9) |
+| P9 | Does a compiler restart reload add-ins from disk? **Answered, BETA 983: yes.** A restart --- the restart button, a switch of build target, or the IDE's own after a crash --- removes every add-in's buttons and shortcuts, leaves its windows showing `(currently unavailable)`, kills the old compiler, so that no `Class_Terminate` runs, and starts a compiler that loads whatever file is in the folders then. With the loaded DLL renamed aside, a restart loaded nothing; with a new build put in its place, the next restart loaded it, about a second after the click, and it got its old windows back by their ids. | a rebuild loop without restarting the IDE --- it works: rename aside, copy in, restart |
 | P10 | Does an environment variable set by the harness reach the add-in (`Environ$`)? **Answered, BETA 983: yes**, through the launcher, the IDE and the compiler the IDE starts. With `TB_ADDIN_TEST=1` in `launchIde`'s environment, `Environ$` and `GetEnvironmentVariableW` both returned `1` in the add-in, and a compiler started by the restart button returned it too; left out, both said it was unset. `WEBVIEW2_USER_DATA_FOLDER`, which `launchIde` always sets, arrived with the lane's port in it. | the side-effect switch |
 | P11 | Does the IDE write into its own install folder during a session? **Answered, BETA 983: no.** A compile, a compiler crash and a `tbrun` build-and-run left all 233 files byte-identical, mtimes included. | hardlinks or copies --- copies, for safety, at 380 ms |
 | P12 | Does `raiseEvent` from plain tool-window HTML throw? **Answered, BETA 983: yes** --- `TypeError: Cannot read properties of null (reading 'rootEventHandler')`, and the listener is not called. An inline handler that calls the listener `AddEventListener` stored on its parent, `this.parentNode.<name>(event)`, reaches the add-in. | how the pane's events are written |
 | P13 | Does the compiler's HTTP server serve any file placed under `ide\`? **Answered, BETA 983: yes**, and it is the page server, `twinBASIC_win32.exe --ide=<pid>`, not the compiler. Any file, byte for byte, below the page's passkey path, including one written after the IDE started; a frame with a relative `src` shows it on the IDE page's own origin. A query string makes a 404, and `.html` has no `Content-Type`. | an offline route --- it exists ([Offline](#ways-to-show-a-page)) |
-| P14 | What do `tbCreateCompilerAddin_v2` and `_v3` expect? | probably a question for upstream |
+| P14 | What do `tbCreateCompilerAddin_v2` and `_v3` expect? **Answered, BETA 983: what `tbCreateCompilerAddin` does.** The loader looks for the plain name, then `_v2`, then `_v3`, and calls whichever it finds with the `Host` alone and asks the result for `IAddInV1`. The names are version stamps: the linker exports a function named `tbCreateCompilerAddin` as `tbCreateCompilerAddin_v3` alone, and an IDE that knows none of a DLL's names refuses it as `compiled for a newer version of the twinBASIC IDE`, as a patched `_v4` was. | nothing in the design --- the add-in declares `tbCreateCompilerAddin` as the package says; the tbIDE page has a NOTE |
 
 ### Stage 3: the symbol index, generated by the docs build
 
@@ -721,7 +790,10 @@ The generated index produces the complete list.
 
 ### Stage 4: the add-in, in increments
 
-Each increment is finished with its scenarios.
+Each increment is finished with its scenarios. Worked on by hand, a new build replaces the
+loaded one without ending the IDE: rename the loaded DLL aside, put the new build in its
+place, and click the compiler's restart button (P9). The lanes need not: a restart saves a
+harness about a second against opening a new IDE.
 
 1. **F1 to a page.** A toolbar button; the key; the name under the cursor; index lookup;
    open the page in the browser or the pane. A miss says `No help for '<name>'` through
@@ -748,6 +820,13 @@ Each increment is finished with its scenarios.
    `ToolWindow.ApplyCss` for the pane's own controls, and the theme in the page's URL once
    the site reads one (Stage 3). F1 pressed while the focus is in the page goes to the page,
    not to the add-in, so a lookup from there goes through the pane's own search box.
+
+   **The pane has an id of its own**, never none: every window given no id is the same
+   window. **And it outlives the add-in.** Every compiler restart, which every switch of
+   build target is, ends the add-in and loads a new instance, which gets the same window
+   back, emptied (P9). So the pane is built in `Host_OnProjectLoaded`, every time, and the
+   page it was showing is lost unless the add-in keeps its URL outside its own process ---
+   `Project.SaveMetaData`, say --- and reads it back there.
 3. **Context: which `Add`?** P5 says the compiler can answer it: hover names `c.Add` as
    `VBA._Collection`'s and `Host.ToolWindows.Add` as `tbIDE.IToolWindowsV1`'s, where a line
    scanner would have to find the declaration of `c` and the type of `Host.ToolWindows`
@@ -787,7 +866,8 @@ registry restore has to include it.
 
 **The add-in's own parser**, the June draft's Phase 4, kept as the fallback for increment 3:
 
-- On `Host_OnProjectLoaded`, go through the virtual file system with `For Each` --- never
+- On `Host_OnProjectLoaded`, which runs again after every compiler restart, in a new
+  instance of the add-in (P9), go through the virtual file system with `For Each` --- never
   `Count` and `Item`, because the IDE is multi-threaded ([WIP.tbIDE.md](WIP.tbIDE.md)) ---
   read each source file with `File.ReadText`, and record declarations only: `Module`,
   `Class`, `Interface`, `Enum` and `Type` headers; member headers with their `As` types;
@@ -804,12 +884,14 @@ registry restore has to include it.
 
 ### Stage 5: shipping
 
-- Build both bitnesses. Add a documentation page under
+- Build both bitnesses, which `buildAddin` does (P7). Add a documentation page under
   [docs/IDE/AddIns/](docs/IDE/AddIns/).
 - Distribution is upstream's decision: the community add-ins list, or bundled with the IDE.
 - Take to upstream, with the probe results as evidence: the shortcut bug; a call to open a
   URL; a way to ask the compiler about the symbol at a position, whose answer hover already
-  has (P5); what `_v2` and `_v3` are for.
+  has (P5); tool windows given no id sharing one window. The shortcut bug and the windows
+  are in [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md). What `_v2` and `_v3` are for no longer
+  needs asking: P14 answered it.
 
 ## Open decisions
 
@@ -844,8 +926,8 @@ Recommended, and not yet confirmed:
 - **It asked whether F1 was free.** It is not; see [Keyboard
   shortcuts](#keyboard-shortcuts). It also took the key strings on the published page on
   trust, and `{ctrl}` and `{alt}` do not work for add-ins.
-- **It said a tool window could not show a web page.** Nothing refuses an `iframe` (P3), and
-  if P3 passes, the order of its three tiers reverses.
+- **It said a tool window could not show a web page.** Nothing refuses an `iframe`, and P3
+  showed one working, so the order of its three tiers is reversed.
 - **Its code skeletons are not kept.** They were never compiled; Stage 4 writes the modules
   against the compiler, with tests.
 

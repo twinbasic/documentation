@@ -2,8 +2,9 @@
 ' holding HTML set through innerHTML, with inline handlers in it (P4); an
 ' element whose onclick is set as a property (P4); two ways of raising a custom
 ' event from plain HTML (P12); and an iframe whose page is the URL in
-' TB_PANES_URL (P3). Every line it prints starts "[PanesProbe]", and
-' panes.test.mjs reads them.
+' TB_PANES_URL (P3). A third button opens two tool windows given no id, as the
+' ToolWindows page's example of a window that is not kept is. Every line it
+' prints starts "[PanesProbe]", and panes.test.mjs reads them.
 Module MainModule
     [DllExport]
     Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
@@ -16,8 +17,11 @@ Private Class PanesProbeAddin
     Private WithEvents Host As Host
     Private WithEvents ShowButton As Button
     Private WithEvents NavigateButton As Button
+    Private WithEvents NoIdButton As Button
     Private WithEvents Pane As ToolWindow
     Private Frame As HtmlElement
+    Private NoId1 As ToolWindow
+    Private NoId2 As ToolWindow
 
     Public Sub New(ByVal Host As Host)
         Set Me.Host = Host
@@ -31,6 +35,7 @@ Private Class PanesProbeAddin
         With Host.Toolbars(0)
             Set ShowButton = .AddButton("PanesProbeShow", "Panes probe")
             Set NavigateButton = .AddButton("PanesProbeNavigate", "Panes probe: page C")
+            Set NoIdButton = .AddButton("PanesProbeNoId", "Panes probe: no id")
         End With
         ' To see whether a key pressed inside the frame reaches the IDE.
         Host.KeyboardShortcuts.Add "f1", AddressOf F1
@@ -99,6 +104,20 @@ Private Class PanesProbeAddin
     ' The add-in moving the frame to another page, as a help pane would.
     Private Sub NavigateButton_OnClick()
         Frame.Properties.src = Replace(Environ$("TB_PANES_URL"), "a.html", "c.html")
+    End Sub
+
+    ' Two windows given no id, then the first one written to again.
+    Private Sub NoIdButton_OnClick()
+        Set NoId1 = Host.ToolWindows.Add("Panes probe, no id, 1")
+        NoId1.Title = "NO ID 1"
+        NoId1.RootDomElement.ChildDomElements.Add("noid1", "div").Properties.innerText = "first"
+        NoId1.Visible = True
+        Set NoId2 = Host.ToolWindows.Add("Panes probe, no id, 2")
+        NoId2.Title = "NO ID 2"
+        NoId2.RootDomElement.ChildDomElements.Add("noid2", "div").Properties.innerText = "second"
+        NoId2.Visible = True
+        NoId1.RootDomElement.ChildDomElements.Add("noid1again", "div").Properties.innerText = "first again"
+        Host.DebugConsole.PrintText "[PanesProbe] no id windows"
     End Sub
 
     Private Sub FrameLoad(ByVal eventInfo As HtmlEventProperties)

@@ -36,9 +36,10 @@ import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";
 import { buildAddin } from "./tb-addin.mjs";
 import { addAddin, makeIdeCopy, removeIdeCopy } from "./tb-ide-copy.mjs";
-import { attachIde, awaitCrashName, checkAddinsRoot, compileOutcome, launchIde, readCrash,
-         shutdownIde, summaryLine, waitForCompile } from "./tb-ide.mjs";
+import { attachIde, awaitCrashName, checkAddinsRoot, compileOutcome, compilerPid, launchIde, readCrash,
+         setBuildTarget, shutdownIde, summaryLine, waitForCompile } from "./tb-ide.mjs";
 import { compilerExe, runCompiler } from "./tb-install.mjs";
+import { restartCompiler } from "./tb-operate.mjs";
 import { laneProjectId, stageProject } from "./tb-project.mjs";
 
 /** The environment variable the runner hands a lane to its scenario file in. */
@@ -66,6 +67,8 @@ export class Lane {
     this.exe = null;       // the lane's copy of the install, made on first use
     this.run = null;       // the open IDE, from launchIde
     this.c = null;         // the connection to it
+    this.src = null;       // the tree it has open, and the .twinproj staged from it
+    this.project = null;
     this.builds = 0;
     // The APPDATA every IDE of the lane is started with; the IDE makes
     // twinBASIC\{addins\win32,addins\win64,packages,themes,locale} in it.
@@ -116,28 +119,50 @@ export class Lane {
    * Build an add-in from its exported tree with the lane's copy, and leave the
    * DLL in the lane's work folder: no IDE the lane opens loads it until it is
    * put somewhere that IDE's compiler looks. addAddin puts it in the copy's own
-   * addins\win32.
+   * addins\<arch>, and placeAddin puts a built DLL there.
    *
+   * @param {string} src
+   * @param {object} [o]
+   * @param {string} [o.arch]  the build target, "win32" (the default) or "win64"
    * @returns {Promise<{dll: string, arch: string, diagnostics: string[], log: string[]}>}
    *   buildAddin's result; it throws, with an exitCode, when the add-in does not build
    */
-  async buildAddin(src) {
+  async buildAddin(src, { arch = "win32" } = {}) {
     if (this.run) throw new Error(`lane ${this.name}: close the open project before building an add-in`);
     return buildAddin({ ide: this.copy(), src, work: path.join(this.work, `addin${++this.builds}`),
-                        port: this.port, show: this.show, appdata: this.appdataDir() });
+                        port: this.port, arch, show: this.show, appdata: this.appdataDir() });
   }
 
   /**
    * Build an add-in from its exported tree and put it in the copy's
-   * addins\win32, so that every IDE the lane opens after this loads it.
+   * addins\<arch>, so that every IDE the lane opens after this with a compiler
+   * of that bitness loads it.
    *
+   * @param {string} src
+   * @param {object} [o]
+   * @param {string} [o.arch]  as for buildAddin
    * @returns {Promise<{dll: string, arch: string, diagnostics: string[], log: string[]}>}
    *   as buildAddin
    */
-  async addAddin(src) {
-    const built = await this.buildAddin(src);
-    addAddin(this.copy(), built.dll, "win32");
+  async addAddin(src, { arch = "win32" } = {}) {
+    const built = await this.buildAddin(src, { arch });
+    this.placeAddin(built.dll, { arch });
     return built;
+  }
+
+  /**
+   * Put a DLL in the copy's addins\<arch> folder, replacing a file of the same
+   * name, and return where it now is. Refused anywhere but a copy this lane
+   * made (addAddin in tb-ide-copy.mjs), and refused while an IDE of the copy
+   * holds a file of that name: a compiler holds every add-in it loaded (P8).
+   *
+   * @param {string} dll
+   * @param {object} [o]
+   * @param {string} [o.arch]  "win32" (the default) or "win64": which compiler loads it
+   * @param {string} [o.name]  the file name to give it; by default its own
+   */
+  placeAddin(dll, { arch = "win32", name } = {}) {
+    return addAddin(this.copy(), dll, arch, name);
   }
 
   /** exportSample, then addAddin. */
@@ -177,14 +202,10 @@ export class Lane {
     const appdata = this.appdataDir();
     this.run = await launchIde({ exe, project, port: this.port, show: this.show,
                                  env: { APPDATA: appdata, ...env } });
+    Object.assign(this, { src, project });
     this.c = await attachIde(this.port);
     if (!this.c) throw new Error(`lane ${this.name}: the IDE never exposed a debug port`);
-    const outcome = compileOutcome(await waitForCompile(this.c, { project, timeout }), { name: project });
-    if (!outcome.ok) throw new Error(`lane ${this.name}: ${outcome.message}`);
-    if (outcome.counts[0] > 0) {
-      throw new Error(`lane ${this.name}: ${src} does not compile\n` +
-                      [...outcome.rows, summaryLine(outcome.counts)].join("\n"));
-    }
+    this.checkCompile(await waitForCompile(this.c, { project, timeout }), src);
     // Checked against whatever APPDATA the IDE was given: `env` can name another.
     const given = "APPDATA" in env ? env.APPDATA : appdata;
     if (typeof given === "string") {
@@ -192,6 +213,48 @@ export class Lane {
         .catch((e) => { throw new Error(`lane ${this.name}: ${e.message}`); });
     }
     return this.c;
+  }
+
+  // Throw unless what waitForCompile saw is a compile that settled with no
+  // errors: a scenario on a project that does not compile would be testing
+  // something else.
+  checkCompile(waited, what) {
+    const outcome = compileOutcome(waited, { name: this.project });
+    if (!outcome.ok) throw new Error(`lane ${this.name}: ${outcome.message}`);
+    if (outcome.counts[0] > 0) {
+      throw new Error(`lane ${this.name}: ${what} does not compile\n` +
+                      [...outcome.rows, summaryLine(outcome.counts)].join("\n"));
+    }
+  }
+
+  /**
+   * Restart the open IDE's compiler with the toolbar's button (restartCompiler
+   * in tb-operate.mjs), and wait for the new one to compile the project. The
+   * new compiler loads the add-ins from their folders again (P9).
+   *
+   * @returns {Promise<number>} the new compiler's process id
+   */
+  async restartCompiler({ timeout = 180 * 1000 } = {}) {
+    if (!this.c) throw new Error(`lane ${this.name} has no project open`);
+    const { pid, waited } = await restartCompiler(this.c, { project: this.project, timeout });
+    this.checkCompile(waited, `${this.src}, after the restart,`);
+    return pid;
+  }
+
+  /**
+   * Switch the open project's build target to "win32" or "win64", as Ctrl+F2
+   * and Ctrl+F1 do (setBuildTarget in tb-ide.mjs), and wait for the compile
+   * under it. A switch restarts the compiler in the target's bitness, and the
+   * new one loads the add-ins in addins\<arch> (P7). The IDE remembers the
+   * target for the project's path, which the runner's registry tidy deletes.
+   *
+   * @returns {Promise<number>} the process id of the compiler now running
+   */
+  async setBuildTarget(arch, { timeout = 180 * 1000 } = {}) {
+    if (!this.c) throw new Error(`lane ${this.name} has no project open`);
+    const { waited } = await setBuildTarget(this.c, arch, { project: this.project, timeout });
+    if (waited) this.checkCompile(waited, `${this.src}, built for ${arch},`);
+    return compilerPid(this.c);
   }
 
   /**
