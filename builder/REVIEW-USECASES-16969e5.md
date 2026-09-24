@@ -21,14 +21,15 @@ touched, and only a re-run could show it. The IDE route works. Its rebuild half,
 *Import from folder...*, was on no page, and following UC-66's answer one step past where it
 stopped showed what that half needs: an export that still holds the compiler packages rebuilds
 into a project carrying a dead copy of them, which every later save writes back into the
-repository.
+repository; and after a pull, the next save puts the IDE's copy of the project back over it.
 
 **The new surfaces were accurate where the pages spoke, and silent where the reader got hurt.**
-Four of the five executed programs printed exactly what their evaluators predicted, and the
-fifth did once its function was put in a module. The failures were in what no page said: a
+Four of the five executed programs ran as their evaluators predicted, and the fifth did once
+its function was put in a module. The failures were in what no page said: a
 twinBASIC DLL called from VBA garbles every string it takes or returns, cannot be loaded by
 64-bit Office in the build a new project makes, and is written under a name the answer's
-`Declare` does not use.
+`Declare` does not use. And one page said too much: a delegate's signature, promised as checked
+at compile time, is only a warning, and a mismatched function receives its arguments mangled.
 
 **And the search box can freeze the page.** Re-measuring an evaluator's query ran the replica of
 the site's search out of memory. The site's own script does the same: three Windows API names it
@@ -108,10 +109,11 @@ round 9's index held none of the three words. That was finding 1.
 welcome page, it grepped the corpus three times --- `git|source control`, `\.twinproj`,
 `export.*project` --- opened the four pages that turned up, the File menu, Project Settings, New
 Project and Import/Export, and grepped twice more, for *Import from folder* and the export
-settings. Its first site search was its 14th call. Its report says Channel 3 was not needed. Scored from what can be checked, its discoverability stands: its
-first query ranks the Git section 1st, and that section is three hops from the welcome page. But
+settings. Its first site search was its 14th call. Its report says Channel 3 was not needed.
+Scored from what can be checked, its discoverability stands: its first query ranks the Git
+section 1st, and that section is three hops from the welcome page. But
 the part of the answer it most needed, how the IDE rebuilds its own export, was on no page, so
-no channel could have reached it (finding 5).
+no channel could have reached it (finding 7).
 
 **Four other flags were smaller.** UC-62's grep looked up a search result's anchor; UC-63's
 was refused; UC-64 grepped for `GetTickCount` after finding its tutorial, and its report owns a
@@ -142,7 +144,7 @@ the function, worked first time.
 above a `Module Demo` block: TB5182, *Syntax error. No handler for this symbol*, seven times,
 then TB5079 at each call. Wrapped in the `Module MaxDemo` its own comment names, it printed
 ` 25 `, ` 3.5 ` and `banana` --- the prediction, less the sign spaces round 9 also noted. The
-Generics page's `Max` sample is a bare function, beside samples that are whole files (finding 8).
+Generics page's `Max` sample is a bare function, beside samples that are whole files (finding 10).
 
 **UC-67 ran as predicted**: the five names alphabetically, then by length, with the two
 two-letter names in their original order. **UC-68 ran as predicted**: `Zoë - 3 characters`,
@@ -152,15 +154,15 @@ mark and with CRLF line ends, as the `Open` page says `utf_8` writes.
 **UC-64 and UC-67 first failed on the harness, not on their code.** Both declare a `Sub Main`,
 and so does the template's `tbxMain.twin`. Two `Main`s compile, which is all `examples.bat`
 asks, but a build fails binding the startup object: *'Main' is ambiguous*. The template's
-comment said a second `Main` "builds as written" (finding 12). Without the template's file both
+comment said a second `Main` "builds as written" (finding 14). Without the template's file both
 ran as above.
 
-**UC-69 was built and called** --- see finding 3. Its DLL is the Standard DLL template's settings
+**UC-69 was built and called** --- see finding 5. Its DLL is the Standard DLL template's settings
 and the evaluator's module; its caller is a twinBASIC project using plain `Declare`, which
 converts strings to and from ANSI as VBA's does, in place of the Excel macro. Excel itself was
 not driven: its *Trust access to the VBA project object model* is off, and it stays off.
 
-## Tier 1 --- the site does something harmful
+## Tier 1 --- the site does something harmful, or says something the product does not do
 
 **1. The search box froze the page on a query whose words the site does not index.** When a
 query matches nothing, just-the-docs searches again, allowing each word an edit distance taken
@@ -181,11 +183,22 @@ It was found because `eval/site_search.mjs`, which replicates the query logic, r
 2, in the vendored `just-the-docs.js` and in the replica. That changes nothing for a query of 15
 characters or fewer, where the formula gives at most 2; the two long queries above now answer in
 about 10 ms, and a misspelled query still falls back: `recieve bytez frum serail` returns 1,636
-results at distance 2 where it returned 3,027 at 3.
+results at distance 2 where it returned 3,027 at 3. Pasted into the rebuilt offline site in the
+same browser, the 49- and 70-character queries answered in 8 ms.
+
+**2. The pages promised a delegate's signature is checked, and a mismatch is only a warning.**
+The *Delegate* reference said a delegate "adds compile-time signature checking when it is
+assigned, passed, or called". Found by the fix pass while writing UC-67's section, and
+re-measured: a function taking an **Integer**, assigned to a delegate whose parameter is a
+**Long**, builds with warning TB0026, *Mismatched delegate type*, and no error, and called with
+70000 it receives 4464. The same page's syntax line made **Public** and **Private** optional; a
+**Delegate** with neither is TB5182, and a **Public** one in a class is TB5227, *Delegate
+declarations in class modules must be Private*. *Fixed* on both Delegate pages, with
+`[EnforceErrors(TB0026)]` as the way to make the mismatch an error.
 
 ## Tier 2 --- hazards the pages did not know
 
-**2. A project rebuilt from an export that holds the compiler packages keeps a dead copy of
+**3. A project rebuilt from an export that holds the compiler packages keeps a dead copy of
 them, and every save writes it back.** UC-66's answer rebuilt the fresh clone with the script,
 which round 9 had documented as the way and measured as compiling. Measured this round with the
 IDE's own *Import from folder* over DevTools, on scratch folders:
@@ -203,14 +216,22 @@ IDE's own *Import from folder* over DevTools, on scratch folders:
   copies to the same paths, the project's last.
 
 So after an IDE update, a repository kept this way goes on committing the package source of the
-IDE that first exported it. The WebView2 sample, which references two packages marked as
-compiler packages, exported `VB`, `VBA`, `VBRUN` and `WebView2Package`: the folder is named
-after the package, and nothing inside it marks it as a compiler package. *Fixed*: the Git
-section for the IDE keeps the compiler packages out of the repository, and says to delete them
-from a clone that has them before importing (finding 5). The product side extends round 9's
-queued entry.
+IDE that first exported it. Every compiler package a project references gets a folder, named
+after the package's own project: the WebView2 sample references `WebView2Package` and
+`WindowsControlsPackage`, and exported `VB`, `VBA`, `VBRUN` and `WebView2Package`, because
+`WindowsControlsPackage` is the VB package. The project's `Settings` marks each such reference
+`"isCompilerPackage": true`; nothing inside the folder does. *Fixed*: the Git section for the
+IDE keeps the compiler packages out of the repository, and says to delete them from a clone that
+has them before importing (finding 7). The product side extends round 9's queued entry.
 
-**3. A twinBASIC DLL called from VBA fails three ways, and no page said so.** UC-69's answer
+**4. With the IDE keeping `src`, the next save undoes a pull.** Every save empties `src` and
+writes the project the IDE has open, and the IDE's project is the `.twinproj`, which Git does
+not hold. Measured: a change written into `src` as a pull would, then the project opened and
+saved, and `src` held the IDE's version again, the pulled change gone. The fix pass derived
+this and flagged it unmeasured; it was measured before the section went in. *Fixed*: the section
+says to save and commit before pulling, and to open the project from `src` again after it.
+
+**5. A twinBASIC DLL called from VBA fails three ways, and no page said so.** UC-69's answer
 exported `AddNumbers` and `Greet` with `[DllExport]` and declared them in VBA with plain
 `Declare ... Lib "MathGreetLib.dll"`. Built from the Standard DLL template's settings and
 called:
@@ -230,11 +251,13 @@ called:
   `${SourcePath}\Build\${ProjectName}_${Architecture}.${FileExtension}`, so the file is
   `MathGreetLib_win32.dll` or `_win64.dll`, not the `MathGreetLib.dll` the answer declares.
 
-*Fixed*: a section on the Project Types page, *Calling a Standard DLL from VBA or Excel* [TITLE];
-the build configuration box documented on the Toolbar and 64-bit pages; *Build Output Path* and
-*Build Type* filled in on Project Settings from the IDE's own descriptions.
+*Fixed*: *Calling a Standard DLL from VBA or Excel*, a `##` on the Project Types page, with the
+bitness, the full path and the pointer pattern; the build configuration box documented on the
+Toolbar and 64-bit pages; *Build Output Path* and *Build Type* filled in on Project Settings from
+the IDE's own descriptions. The pattern's text outside the ANSI code page is described rather than
+quoted: the site's fonts do not cover CJK, and the page is in the book.
 
-**4. UC-55 again exported without `--overwrite`.** Round 9 put the command with `--overwrite`
+**6. UC-55 again exported without `--overwrite`.** Round 9 put the command with `--overwrite`
 into step 2 of *Keeping a project in Git*, for "every other export". Step 2's first sentence,
 about the first export, gave no command, and this round's evaluator took one from the Usage
 example, which has no `--overwrite`, and never mentioned later exports. Measured:
@@ -243,64 +266,95 @@ and `... DONE`. *Fixed*: step 2 gives one command for every export.
 
 ## Tier 3 --- the answer exists and the reader cannot reach it, or it does not exist
 
-**5. The IDE route to Git: round 9's warning closed it, and its rebuild was on no page.** New
+**7. The IDE route to Git: round 9's warning closed it, and its rebuild was on no page.** New
 Project's *Import from folder...* was a bare list item. In the IDE's code it shows a *Browse For
 Folder* dialog, "Select folder of the existing twinBASIC project...", and imports the folder as a
 new, unsaved project; the first save asks for a file name. Saved beside `src`, the project's
 `${SourcePath}\src` resolves to the clone's own folder, and every save updates it again ---
-measured. *Fixed*: *Keeping a project in Git from the IDE* [TITLE], a `##` beside the
-command-line section: the two settings, the layout, a `.gitignore` for the compiler packages and
-the `.twinproj`, and the fresh clone. The warning keeps its dangers and points there. The File
-menu's *Packing the export back into a project* and the New Project page describe the import.
+measured. *Fixed*: *Keeping a project in Git from the IDE*, a `##` beside the command-line
+section: the two settings, the layout, a `.gitignore` for the compiler packages, the
+`.twinproj` and the build folder, committing after a save, the fresh clone, and reopening after
+a pull. The warning keeps its dangers and points there. The File menu's *Packing the export back
+into a project* and a new *Import from folder* section on the New Project page describe the
+import.
 
-**6. No page said how to build for 64-bit, where a build goes, or what Build does.** The toolbar's
-build configuration box appeared only in an image's alt text; `64bit.md` says twinBASIC compiles
-64-bit and not how; *Build Output Path* and *Build Type* were empty headings; File → Build had no
-description. *Fixed* on those four pages. The box's keys are CTRL+F1 and CTRL+F2, and the IDE
-remembers the choice for each project.
+**8. No page said how to build for 64-bit, where a build goes, or what Build does.** The toolbar's
+build configuration box was one list item and an image's alt text; `64bit.md` says twinBASIC
+compiles 64-bit and not how; *Build Output Path* and *Build Type* were empty headings; File →
+Build had no description. *Fixed* on those pages and the File menu. The box's keys are CTRL+F1 and
+CTRL+F2, the IDE remembers the choice for each project, and the box has a third entry,
+**safeMode**, described from the IDE's own text.
 
-**7. Delegates are not found by the reader's word for them.** UC-67's `callback function as
+**9. Delegates are not found by the reader's word for them.** UC-67's `callback function as
 argument` and `pass function as parameter` both missed; `delegate`, a word the reader did not
 know yet, found the pages at ranks 1 and 2. No example showed a delegate as a procedure
-parameter. *Fixed* with a `##` section [TITLE] and an executed example: [RANKS].
+parameter. *Fixed* with *Passing a function as an argument or parameter (callbacks)*, a `##` on
+the Features page with an executed example; the title was chosen by its rank on the reader's
+two queries, 1st for both, where the shorter *Passing a function as an argument (callbacks)*
+was 1st and 2nd.
 
-**8. The Generics page's `Max` sample did not show where it goes** (UC-65). The rule is on the
-*Module* page: a `.twin` file needs the explicit block. *Fixed*: the sample is shown inside a
-module, like the page's other samples.
+**10. The Generics page's `Max` sample did not show where it goes** (UC-65). The rule is on the
+*Module* page: a `.twin` file needs the explicit block. *Fixed*: the sample is a whole file, a
+`Module` holding `Max` and the three calls the prose describes. Four other compiled samples on
+the page are still bare declarations, three procedures and a generic `Type`.
 
-**9. Left open.** `array index out of bounds error` and `division by zero` still miss the error
+**11. Left open.** `array index out of bounds error` and `division by zero` still miss the error
 table (UC-63); UC-64's `GetTickCount64` and `system uptime` miss, which is Microsoft's to
-document; and round 9's finding 9.
+document; `auto commit on save`, `version control settings` and `rebuild project file from
+source files` still miss the Git sections; and round 9's finding 9.
+
+### The fix, measured on the readers' words
+
+The fix pass's phrasings, against this round's snapshot of the index and the rebuilt site:
+
+| case | query | before | after |
+|---|---|---:|---:|
+| UC-67 | `callback function as argument` | miss | 1 |
+| UC-67 | `pass function as parameter` | miss | 1 |
+| UC-67 | `callback` | miss | 3 |
+| UC-66 | `import from folder` | miss | 1 |
+| UC-62 | `git integration IDE` | 1 | 1, the new section |
+| UC-69 | `Excel VBA declare function DLL` | 2 | 1 |
+| UC-69 | `build 64-bit DLL` | miss | 1 |
+| UC-69 | `win64` | miss | 3 |
+
+`open project without twinproj file` stays 7th, for the New Project page rather than its new
+section.
 
 ## The harness
 
-**10. `nav_hops.mjs` could not run on a corpus,** because it imported the Markdown walker from
+**12. `nav_hops.mjs` could not run on a corpus,** because it imported the Markdown walker from
 `--src`, where `build_corpus.mjs` leaves scripts as stubs; and **Git Bash turned its patterns
 into Windows paths**, `^/tB/Core/Open$` into `^C:/Program Files/Git/tB/Core/Open$`, so every
 target reported as unreachable. *Fixed*: the walker comes from the repository, and a pattern
 that arrives as a drive-letter path is refused with the reason.
 
-**11. The search replica had no guard** against finding 1, and a run that re-measures an
+**13. The search replica had no guard** against finding 1, and a run that re-measures an
 evaluator's queries died with it. It carries the same cap as the site now.
 
-**12. The console template's comment said a second `Sub Main` builds.** It compiles, and a build
+**14. The console template's comment said a second `Sub Main` builds.** It compiles, and a build
 fails (see *The executed cases*). *Fixed* in `test/example-projects/console/Sources/tbxMain.twin`.
 
-**13. The harness builds only the architecture the IDE last used**, win32 for a new project, so
+**15. The harness built only the architecture the IDE last used**, win32 for a new project, so
 round 9's 64-bit claim went unmeasured and this round's win64 DLL was built by a scratch probe
-that sets the toolbar's box over DevTools before clicking Build. A `--arch` option for `tbrun`
-and `tbbuild` is being written separately. The IDE remembers the choice per project path in the
-`targetArchitectureMemory` setting, which the registry tidy does not sweep; the probe's entry
-was removed by restoring the setting from a backup.
+that set the toolbar's box over DevTools before clicking Build. *Landed since*, in `a46fd3f`:
+`tbrun` and `tbbuild` take `--arch win32|win64`, and the registry tidy sweeps the remembered
+target, the `targetArchitectureMemory` setting, which the probe's entry had to be removed from by
+restoring a backup.
 
-**14. The executed cases ran four `tbrun` lanes from a script that did not own the registry
+**16. A `check_examples` run by the fix pass wedged for more than ten minutes** on one lane,
+with nothing listening on its port; its processes were ended and the rerun was clean. The cause
+was not isolated. The fix pass suspected a CDP call with no timeout; the tooling merged in
+`a46fd3f` gives every CDP call one.
+
+**17. The executed cases ran four `tbrun` lanes from a script that did not own the registry
 tidy**, which `scripts/lib/tb-registry.mjs` says one process per run must; the IDE's recent list
 was left holding one probe project 19 times, and was swept by the tidy's own prefix rule.
 
 ## Corrections --- evaluator claims amended
 
 **UC-55's** actionability is amended from 4 to 3, as in round 9: its export command has no
-`--overwrite`, and it never says to export again after a change (finding 4).
+`--overwrite`, and it never says to export again after a change (finding 6).
 
 **UC-63's** discoverability is amended from 2 to 3: `subscript out of range` ranks the table
 first, *On Error* ranks third for `On Error GoTo` and points to it, and by links the table is two
@@ -317,7 +371,7 @@ the first site search. Its scores stand, discoverability from the rank and the l
 
 **UC-67's** completeness is amended from 2 to 3: every mechanism its code used is documented,
 and the one step it inferred --- a delegate as a parameter --- compiled and ran as the rules
-imply. Its discoverability of 2 stands (finding 7).
+imply. Its discoverability of 2 stands (finding 9).
 
 **UC-68's** split discoverability, search 2 and navigation 4, is recorded as 3.
 
@@ -342,6 +396,15 @@ building it is where the file's name and bitness come from.
 do it. The search replica was written to return exactly what a reader's search returns; it
 returned exactly what a reader's search does to a long, unindexed query.
 
+**The fix pass measures too, and its briefs can be wrong.** Two findings came from the fix
+agents rather than the evaluators: the delegate warning, met while executing the callback
+example, and the pull that a save undoes, derived, flagged as unmeasured, and then measured.
+The brief for the Git pages said the WebView2 sample's export had no folder for
+`WindowsControlsPackage`, which was true and misleading --- that reference is the VB package ---
+and the page repeated it until the diff was read against the export's own `Settings`. The
+protocol's advice to verify rather than comply cuts both ways: the orchestrator has to verify
+what it dispatches, too.
+
 **The evaluators ran on `claude-sonnet-5` through Claude Code 2.1.280**, passed with `--claude`
 because the `claude` on `PATH` had become 2.1.212; the smoke check passed on both. Nine cases
 cost $2.21 --- a mean of $0.25, from $0.15 (UC-55) to $0.42 (UC-69) --- and the smoke runs $0.04
@@ -361,11 +424,13 @@ handed over and wrapped, UC-67 and UC-68, then UC-64 and UC-67 again without the
 `Main`; UC-69's DLL, its caller as handed over, and the pointer pattern. The win64 build ran on
 9817 through a scratch probe that sets the build configuration box over DevTools, and its DLL
 was called from 64-bit PowerShell. The IDE probes --- a save with *Export After Save*, *Import
-from folder* on a clone with and without `Packages`, a marker in the embedded `VBA`, and the
-WebView2 sample's export --- ran on 9831--9835 through `root.loadProjectFromFolder()` and
-`root.saveProjectAs()`, on scratch folders, with the IDE's registry entries swept by prefix and
-its remembered build architectures restored from a backup. The search timings used headless
-Chromium through the repository's puppeteer, on `_site-offline/`.
+from folder* on a clone with and without `Packages`, a marker in the embedded `VBA`, the
+WebView2 sample's export, and a save after a change to `src` --- ran on 9831--9836 through
+`root.loadProjectFromFolder()` and `root.saveProjectAs()`, on scratch folders, with the IDE's
+registry entries swept by prefix and its remembered build architectures restored from a backup.
+The delegate probes ran through `tbbuild` and `tbrun` on 9840--9842. The fix pass's own runs
+used 9850--9879. The search timings used headless Chromium through the repository's puppeteer,
+on `_site-offline/` and on the rebuilt offline tree.
 
 ## What to do next
 
@@ -374,12 +439,28 @@ DLL section, UC-67 against the callback section, and UC-55 against the single ex
 Re-run round 10's queries against round 11's index, as this round did. Measure a case in Excel
 itself if a person can run the macro; the harness cannot.
 
-**2. Once `tbrun` builds win64**, re-measure the Windows API tutorial's claim that a `Long`
-pointer fails in 64-bit mode, and UC-69's pattern in a 64-bit twinBASIC caller.
+**2. With `tbrun --arch win64`, merged in `a46fd3f`**, re-measure the Windows API tutorial's
+claim that a `Long` pointer fails in 64-bit mode, and UC-69's pointer pattern in a 64-bit
+twinBASIC caller.
 
 **3. Still open:** the master list of run-time error numbers; the IDE section's empty headings,
-[COUNT] of them, [N] on Project Settings; `check_run`; and the phrasings in finding 9.
+76 of them, 57 on Project Settings, after this round filled two; `check_run`; the Generics
+page's four remaining bare samples; and the phrasings in finding 11.
 
 ## Outcome
 
-[OUTCOME]
+**Every finding is fixed, except the misses left open in finding 11.** The documentation
+carries findings 1--10, in two commits; the site's search carries finding 1; the harness carries
+12--14, and 15--16 landed with the tooling merge the round was rebased onto. The product side of
+finding 3 extends round 9's queued entry in `BUGS-TO-REPORT.md`, with the dead copy measured.
+
+`build.bat`, `check.bat` and `test.bat` are green on the rebased tree: 914 pages, 0 broken links
+and 0 integrity findings in both real trees, 0 accessibility violations, every toolchain probe
+passing. The book tree's informational broken links are 31, up from 23: all eight new ones lead
+from this round's Features pages, which the book includes, into the IDE section, which it leaves
+out. The samples on the three pages whose samples changed compile (`check_examples`, 14
+samples), and the callback example printed what the page shows.
+
+The work is seven commits on `staging`, rebased onto `a46fd3f`: the search fix, the harness,
+the defect queue, round 10's goals with this review's draft, the documentation fixes in two
+parts, and this review. Nothing is pushed.
