@@ -412,15 +412,24 @@ export async function waitForCompile(c, { project, timeout }) {
     const v = JSON.parse(s);
     if (!loaded) { if (v.p && normPath(v.p) === want) loaded = true; else continue; }
     if (v.crash) {
-      // The IDE's FIRST exception line carries no thread dump; the file being
-      // parsed is only named in the dump that comes with the restart about a
-      // second later. Catching the crash on sight and reporting it without that
-      // name is a correct result nobody can act on, so give the IDE one more
-      // moment and take whatever it has then.
+      // The IDE's FIRST exception entry carries no thread dump, and the dump is
+      // what names the file being parsed. Only a compiler started in TRACE-MODE
+      // writes one, and the IDE switches that on in answer to the first
+      // exception, so the name arrives with the SECOND crash, once the restarted
+      // compiler reaches the same file. Catching the crash on sight and
+      // reporting it without that name is a correct result nobody can act on,
+      // so wait for the name, and take whatever there is if it never comes.
+      //
+      // Poll, not a fixed sleep. Against the crash fixture the second crash
+      // came 1.6 to 1.9 s after the first on an idle machine, but up to 3.0 s
+      // with four IDEs compiling at once, as check_examples runs them; replayed
+      // over those runs, one re-read after a fixed 2 s missed the name 31% of
+      // the time. Five seconds covers the slowest one measured with 2 s to spare.
       crash = v.crash;
-      if (!crash.files?.length) {
-        await sleep(2000);
-        try { crash = JSON.parse(await readBuildState(c)).crash ?? crash; } catch { /* keep what we have */ }
+      const until = Date.now() + 5000;
+      while (!crash.files?.length && Date.now() < until) {
+        await sleep(250);
+        try { crash = (await readCrash(c)) ?? crash; } catch { /* keep what we have */ }
       }
       break;
     }

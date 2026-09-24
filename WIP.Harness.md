@@ -229,7 +229,7 @@ machine, and which is the same policy [BOOKPLAN.md](BOOKPLAN.md) records blockin
 --- never comes into it, and no `-ExecutionPolicy Bypass` has to be recommended to anyone.
 Its inputs arrive as environment variables, so there is no argument quoting to get wrong.
 
-Six things about the harness were learned by getting them wrong, and each is a comment in
+Seven things about the harness were learned by getting them wrong, and each is a comment in
 the file now:
 
 - **Pass the project on the IDE's command line, and spawn with an argv array.**
@@ -265,9 +265,23 @@ the file now:
   OPERATIONAL with the counters at zero --- byte-identical to a clean build. A 275-file
   project reported `0 errors, 0 warnings` and exit 0, twice, reproducibly, while its quarters
   reported 129, 0, 294 and 448 errors. The console is the record that sampling cannot miss,
-  because nothing removes an entry from it: `NATIVE EXCEPTION`, then `restarting from
-  MEMORY`, then a thread dump naming the file being parsed, which is what the exit-4 message
-  reports.
+  because nothing removes an entry from it: `NATIVE EXCEPTION` and `restarting from
+  MEMORY`, three times over, with a thread dump naming the file being parsed from the second
+  crash on, and that file is what the exit-4 message reports.
+- **Poll for the crashed file's name; the first crash never carries it.** Only a compiler in
+  TRACE-MODE writes the thread dump that names the file, and the IDE switches that on in
+  answer to the first `NATIVE EXCEPTION` and passes it to a compiler as it starts, so the
+  restarted compiler's crash is the first to name one. `waitForCompile` re-read the console
+  once, 2 s after it saw the crash, and on 2026-09-24 one run in six against the crash
+  fixture printed no file. Over 41 runs of that fixture on BETA 983, the second crash came
+  1.6 to 1.9 s after the first on an idle machine and 1.8 to 3.0 s with four IDEs compiling
+  at once, as `check_examples` runs them. Replayed over the four-lane runs at every phase of
+  the 1 Hz sample, the single re-read missed the name 31% of the time; the poll that replaced
+  it, every 250 ms for up to 5 s, missed none and needed at most 3.25 s. The failing run said
+  `crashed 2x`, which that race does not explain --- a re-read that loses it has seen one
+  crash --- and no run here had a second crash without a name. If one does, the third crash
+  names the file as well, but under four lanes it came as late as 6.4 s, after the poll has
+  given up.
 - **Kill the process tree, forcibly.** An IDE showing a modal ignores a normal close, and the
   launcher is not the process holding the compiler, so `taskkill /T /F`. A tree kill still
   misses a process started while it runs, which a compiler restart can be; the job the IDE
