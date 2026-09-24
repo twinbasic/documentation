@@ -8,14 +8,14 @@ permalink: /Documentation/Development/Tools
 # Tools and Scripts
 {: .no_toc }
 
-One-line-per-tool reference for every executable in the documentation repository: the five Windows batch wrappers at the repository root, the Node and Python scripts under `scripts/` (cross-platform except for [`tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE), the `tbdocs` orchestrator and its CLI flags, [`census_attributes.mjs`](#census-attributes) under `builder/`, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper.
+One-line-per-tool reference for every executable in the documentation repository: the seven Windows batch wrappers at the repository root, the Node and Python scripts under `scripts/` (cross-platform except for [`tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE), the `tbdocs` orchestrator and its CLI flags, [`census_attributes.mjs`](#census-attributes) under `builder/`, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper.
 
 * TOC goes here
 {:toc}
 ## Batch wrappers at the repository root
 {: #batch-wrappers }
 
-All six sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. `examples.bat` is the exception to "each entry below gives the POSIX equivalent": it needs a twinBASIC install and drives the IDE, so it is Windows-only, and it is not part of the site build. Three other tools are Windows-specific for the same reason and are likewise not part of it: [`scripts/tbbuild.mjs`](#tbbuild) and [`scripts/tbrun.mjs`](#tbrun), which drive the twinBASIC IDE, and [`census_attributes.mjs`](#census-attributes), which runs the twinBASIC compiler's `export` verb --- though that one is cross-platform when given an already-exported tree with `--src`. Nothing else in the repository is: `tbdocs` and every gate in both wrappers is a Node script, and CI runs all of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
+All seven sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. `examples.bat` and `addin-test.bat` are the exceptions to "each entry below gives the POSIX equivalent": they need a twinBASIC install and drive the IDE, so they are Windows-only, and neither is part of the site build. Three other tools are Windows-specific for the same reason and are likewise not part of it: [`scripts/tbbuild.mjs`](#tbbuild) and [`scripts/tbrun.mjs`](#tbrun), which drive the twinBASIC IDE, and [`census_attributes.mjs`](#census-attributes), which runs the twinBASIC compiler's `export` verb --- though that one is cross-platform when given an already-exported tree with `--src`. Nothing else in the repository is: `tbdocs` and every gate in both wrappers is a Node script, and CI runs all of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
 
 ### build.bat
 
@@ -151,6 +151,21 @@ Compiles the documentation's own twinBASIC code samples --- every ` ```tb ` fenc
 **It is not one of the gates, and it must not become one.** It is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows, for three reasons that are not going to change: it needs a twinBASIC install, where `npm install` has to remain sufficient to build the docs; it needs Windows, a private desktop and a CDP-reachable WebView2, none of which exists on the CI box; and an IDE cold start is 8 to 11 seconds against a whole site build's four. It is run by a person, deliberately, which is the same arrangement [`sweep_a11y.mjs`](#sweep-a11y) already has.
 
 Exit codes: **0** clean, **1** a sample does not compile, **2** the harness failed.
+
+### addin-test.bat
+{: #addin-testbat }
+
+    addin-test.bat [flags]
+
+One invocation of [`addin_test.mjs`](#addin-test), with every flag passed straight through:
+
+    node scripts/addin_test.mjs [flags]
+
+Tests twinBASIC IDE add-ins by machine: it builds each add-in under test, loads it into an IDE, operates the IDE the way a person would, and checks what the add-in did.
+
+**It is not one of the gates either**, and for the reasons `examples.bat` is not: it needs a twinBASIC install, and it needs Windows, a private desktop and a CDP-reachable WebView2. It is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows.
+
+Exit codes: **0** every lane passed and the registry is as it was found, **1** a lane failed, **2** the harness failed or could not put the registry back.
 
 ## CLI tools
 
@@ -506,7 +521,8 @@ Normalises literal en-dash / em-dash characters in markdown source under `docs/`
 {: #tbbuild }
 
     node scripts/tbbuild.mjs <project.twinproj> [--ide <twinBASIC.exe>] [--port N]
-                             [--timeout S] [--json] [--keep] [--show|--hide]
+                             [--arch win32|win64] [--timeout S] [--json] [--keep]
+                             [--show|--hide]
 
 Compiles a `.twinproj` and prints its diagnostics, with no IDE window to click through. This is how a claim the documentation makes about the language gets checked against the compiler rather than against memory: write a one-module project that uses the construct in the position you are asking about, run this, and read what comes back. Windows only, and no part of the site build.
 
@@ -515,9 +531,10 @@ twinBASIC has no command-line build. The compiler executable's whole surface is 
 | Flag | Effect |
 |---|---|
 | `--ide <path>` | Path to `twinBASIC.exe`. Default: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` folder on `%USERPROFILE%\Desktop`, which is where the IDE's own zip says to unpack it. **No install path is hardcoded anywhere in this tooling** --- an install path contains a username --- so an install kept elsewhere needs one of those two. |
-| `--port <n>` | DevTools port. Default 9333. It also names the WebView2 user-data folder and the private desktop, which is what makes concurrent instances possible. |
+| `--port <n>` | DevTools port. Default 9333. It also names the WebView2 user-data folder and the private desktop, which is what makes concurrent instances possible. A port another IDE already holds --- another run's, or another session's --- is refused after ten seconds, rather than attached to. |
+| `--arch <target>` | The target to compile for, `win32` or `win64`. Default `win32`. The diagnostics can differ between the two, because `#If Win64` and the size of `LongPtr` change what compiles. The target is set on every run, because the IDE opens a project in whatever target it last used for that project. Switching restarts the compiler, which then compiles the project again, so a switch adds a few seconds. When the target is not `win32`, or the IDE remembered another one for the project, the report starts with a `target:` line. |
 | `--timeout <secs>` | Give up waiting for the compile to settle. Default 180. |
-| `--json` | Emit one JSON object --- counts, diagnostic rows, and any dialog text --- instead of lines of text. |
+| `--json` | Emit one JSON object --- the target, counts, diagnostic rows, and the text of any alert the IDE opened, which is dismissed so the compile can go on --- instead of lines of text. |
 | `--keep` | Leave the IDE running afterwards. The IDE's registry entries for the project are then left as they are, because the IDE is still writing them. |
 | `--show` / `--hide` | Put the IDE on your own desktop where you can watch it, or on a private one where it cannot take focus. Hidden is the default unless `TBBUILD_SHOW` is set to something other than `0`, `false` or `no`; the two flags override that for one invocation. |
 
@@ -529,15 +546,15 @@ Exit codes: **0** clean, **1** the project has errors, **2** the harness failed,
 
 **The IDE it starts ends with it.** The IDE runs inside a Windows job object, so when `tbbuild` ends --- finished, failed, or stopped with Ctrl+C --- every process the IDE started ends too. That includes a compiler the IDE was restarting after a crash, which a plain process-tree kill can miss and leave running. Two exceptions: under `--keep` the IDE runs outside the job and lives until you close it, and under `--show` it is started directly on your desktop, without the job.
 
-**It leaves the IDE's own settings as it found them.** Every IDE it starts writes to the same registry keys as your own IDE: a saved state for the project (open tabs, watch expressions, Debug Console history) and a place at the top of the recent-projects list. Once the IDE has exited, `tbbuild` puts both back. An entry the run created is deleted, and a project that already had one --- one of your own --- gets its old state and its old place in the list back. The `.twinproj` file association is restored too, if the IDE changed it. When [`check_examples.mjs`](#check-examples) runs `tbbuild`, `check_examples` does this once for all its lanes instead.
+**It leaves the IDE's own settings as it found them.** Every IDE it starts writes to the same registry keys as your own IDE: a saved state for the project (open tabs, watch expressions, Debug Console history), a place at the top of the recent-projects list, and, when the run switches the target, the target the IDE remembers for the project. Once the IDE has exited, `tbbuild` puts all three back. An entry the run created is deleted, and a project that already had one --- one of your own --- gets its old state, its old place in the list and its old target back. The `.twinproj` file association is restored too, if the IDE changed it. When [`check_examples.mjs`](#check-examples) runs `tbbuild`, `check_examples` does this once for all its lanes instead.
 
-Four files under `scripts/lib/` belong to it and are never run directly. `tb-ide.mjs` holds the mechanics `tbbuild.mjs` and `tbrun.mjs` share: starting the IDE, attaching to it, waiting for the compile, and reading the diagnostics and the DEBUG CONSOLE. `tb-registry.mjs` records and restores the registry entries described above, through .NET's registry API by way of PowerShell, because `reg.exe` mangles any path holding a character outside the console code page; [`check_tb_registry.mjs`](#check-tb-registry) is its self-test. `tb-cdp.mjs` is a minimal CDP client over Node's global `WebSocket`, raw rather than puppeteer because a pending `alert()` blocks the renderer and puppeteer's `connect()` handshake talks to the renderer --- so it hangs on precisely the state you need to recover from. `tb-launch.ps1` holds the Win32 calls Node cannot make without a native FFI addon: `CreateDesktop` and `CreateProcess` with `STARTUPINFO.lpDesktop` for the private desktop, and the job object described above. It is the only PowerShell file under `scripts/`, and it is not executed as a file: `tb-ide.mjs` reads the text and passes it through `-EncodedCommand`, so the execution policy never comes into it and nobody has to be told to bypass one.
+Four files under `scripts/lib/` belong to it and are never run directly. `tb-ide.mjs` holds the mechanics `tbbuild.mjs` and `tbrun.mjs` share: starting the IDE, attaching to it, waiting for the compile, and reading the diagnostics and the DEBUG CONSOLE. `tb-registry.mjs` records and restores the registry entries described above, through .NET's registry API by way of PowerShell, because `reg.exe` mangles any path holding a character outside the console code page; [`check_tb_registry.mjs`](#check-tb-registry) is its self-test. `tb-cdp.mjs` is a minimal CDP client over Node's global `WebSocket`, raw rather than puppeteer because a pending `alert()` blocks the renderer and puppeteer's `connect()` handshake talks to the renderer --- so it hangs on precisely the state you need to recover from. Every call it makes has a time limit, so a blocked page ends a run with a message rather than holding it forever. `tb-launch.ps1` holds the Win32 calls Node cannot make without a native FFI addon: `CreateDesktop` and `CreateProcess` with `STARTUPINFO.lpDesktop` for the private desktop, and the job object described above. It is the only PowerShell file under `scripts/`, and it is not executed as a file: `tb-ide.mjs` reads the text and passes it through `-EncodedCommand`, so the execution policy never comes into it and nobody has to be told to bypass one.
 
 ### tbrun.mjs
 {: #tbrun }
 
-    node scripts/tbrun.mjs <source-dir> [--port N] [--timeout S] [--quiet MS]
-                           [--json] [--raw] [--keep] [--no-reap]
+    node scripts/tbrun.mjs <source-dir> [--port N] [--arch win32|win64] [--timeout S]
+                           [--quiet MS] [--json] [--raw] [--keep] [--no-reap]
                            [--reap-images a,b] [--show|--hide]
 
 Builds a probe project and captures what it writes to the IDE's
@@ -548,7 +565,7 @@ measured with it.
 
 It takes an **exported source tree** (the folder holding `Sources/` and `Settings`), not a
 `.twinproj`, because it has to adjust the project before packing it. It stages a copy and
-leaves your tree untouched.
+leaves your tree untouched. The staging is in `scripts/lib/tb-project.mjs`.
 
 The probe is an ordinary module with a [`[RunAfterBuild]`](../../tB/Core/Attributes#runafterbuild)
 Sub, which the IDE runs once the exe is linked:
@@ -580,13 +597,27 @@ list view holding only the rows that fit --- reading that instead returns the la
 lines of a long probe and looks no different from a full capture. `Debug.Cls` is what empties
 the array, which is the other reason to begin with it.
 
+**A `win64` probe runs in the IDE's 64-bit compiler.** A `[RunAfterBuild]` Sub runs inside
+the compiler that built it, not in the file that was built. For `win64` that compiler is
+`twinBASIC_win64_noDEP.exe`, a 64-bit process, so the probe sees what 64-bit code sees:
+`LenB` of a `LongPtr` is 8, [**ProcessorArchitecture**](../../tB/Modules/Compilation/ProcessorArchitecture)
+returns **vbArchWin64**, and `Environ$("PROCESSOR_ARCHITECTURE")` is `AMD64`. Under `win32`
+they are 4, **vbArchWin32** and `x86`.
+
+**Print a line whole when its characters matter.** Text that continues a line left open by
+`Debug.Print ...;` comes back escaped: after `Debug.Print "A";`, a following
+`Debug.Print "&"` shows in the Debug Console as `A&amp;`, and `tbrun` captures what the
+console shows. The IDE does this, not the probe; `Debug.Print "A"; "&"`, in one statement,
+comes back as `A&`.
+
 | Flag | Effect |
 |---|---|
-| `--port <n>` | DevTools port for the IDE. Default 9346. Distinct ports let probes run concurrently --- the staging directory and the project id are keyed to it, so two runs never share a workspace. |
+| `--port <n>` | DevTools port for the IDE. Default 9346. Distinct ports let probes run concurrently --- the staging directory and the project id are keyed to it, so two runs never share a workspace. A port another IDE holds is refused, as for `tbbuild`. |
+| `--arch <target>` | The target to build for, `win32` or `win64`. Default `win32`, set on every run, as for `tbbuild`. A `win64` probe runs as a 64-bit process. |
 | `--timeout <secs>` | Give up waiting for console output. Default 120. |
 | `--quiet <ms>` | How long the console must stop changing before the output counts as complete. Default 2500. There is no sentinel string to match, so any probe works without telling the script anything. Raise it well above the default for a probe that drives an out-of-process server, which can take longer than that to start. |
 | `--raw` | Keep the console's timestamp column, which is otherwise stripped. |
-| `--json` | One object with the built exe's path, the captured lines, the IDE pid and anything reaped. |
+| `--json` | One object with the path of the built file, the target, the captured lines, the IDE pid and anything reaped. |
 | `--keep` | Leave the IDE running. Implies `--no-reap`, and leaves the IDE's registry entries for the probe as they are. |
 | `--no-reap` | Do not harvest automation servers the probe left behind. |
 | `--reap-images <a,b>` | Replace the harvested image list. Default is the Office suite. |
@@ -614,12 +645,67 @@ and sweep once at the end.
 > *Save* dialog on build. Under `tbbuild` the IDE runs on a private desktop, so that dialog
 > is invisible, takes no input, and the build silently never happens --- the WebView2
 > renderer stays responsive throughout, so even a health check says the IDE is fine. `tbrun`
-> pins the path to a concrete file in its staged copy, which makes the trap unreachable.
+> pins the path to a folder of its own in its staged copy, which makes the trap unreachable.
+> The file keeps the IDE's own name, *project name*`_`*target*`.`*extension* --- for
+> example `ArchProbe_win64.exe` --- so the name says what was built.
 
 Like `tbbuild`, it leaves the IDE's registry entries as it found them. Everything it opens is
 in its own temp folder, so it deletes every entry under that folder once the IDE has exited,
 and again at the start of a run, which removes what an earlier run on the same port left
-behind.
+behind. That includes the target the IDE remembers for each project, which a `win64` run
+writes. **A probe builds for the target `--arch` names**, whatever the IDE remembers. Before
+the option, a kept IDE switched to `win64` made every later run on the same port build 64-bit,
+and nothing said so.
+
+### addin_test.mjs
+{: #addin-test }
+
+    node scripts/addin_test.mjs [--only <regex>] [--port N] [--jobs N] [--timeout S]
+                                [--ide <path>] [--show|--hide]
+
+Runs the add-in scenarios under `test/addin/`. A scenario file is a `node:test` file, and
+[`addin-test.bat`](#addin-testbat) is the way to run it; run on its own, a scenario skips
+itself. Each file is one **lane**, listed in `test/addin/lanes.mjs`. It runs in a process of
+its own, with its own DevTools port and work folder, and with a private copy of the twinBASIC
+install, whose add-in folders hold only what the lane puts there. A test add-in therefore
+never loads into your own IDE, and two lanes never share one. The scenario builds the add-ins
+it tests into its copy, opens a project, and operates the IDE: it clicks, presses keys, types,
+and reads the add-ins' tool windows, message boxes, notifications, the code editor and the
+Debug Console. The first two scenarios operate the IDE's own sample add-ins, Sample 10 and
+Sample 15 (Global Search), end to end; the two lanes take about 25 seconds together.
+
+| Flag | Effect |
+|---|---|
+| `--only <regex>` | Run only the lanes whose name matches. A lane's name is its file's name without `.test.mjs`. |
+| `--port <n>` | Base DevTools port. Default 9560; the lanes get *n*, *n*+1 and so on, and their work folders are keyed to their ports. A port another IDE holds is refused, as for `tbbuild`. |
+| `--jobs <n>` | Lanes at once. Default 2. |
+| `--timeout <secs>` | A lane still running after this long is ended and counted as failed. Default 600. |
+| `--ide <path>` | The `twinBASIC.exe` to copy, found as for [`tbbuild.mjs`](#tbbuild). |
+| `--show` / `--hide` | As for [`tbbuild.mjs`](#tbbuild). |
+
+Exit codes: **0** every lane passed and the registry is as it was found, **1** a lane
+failed, **2** the harness failed or could not put the registry back.
+
+**It leaves the registry as it found it, and checks.** It puts back the IDE's own entries as
+`tbbuild` does, and also the settings the add-ins under test save with `SaveSetting`. Those
+are stored under `HKCU\Software\VB and VBA Program Settings\<name>`, which any installed copy
+of the same add-in shares, so a lane names its add-ins' application names in `lanes.mjs`
+(`settings`). They are recorded before the first lane starts, deleted before each lane that
+names them, so that its add-ins start from their defaults, and put back at the end. Two lanes
+that name the same one never run at once. Afterwards it confirms that no entry names a lane's
+folder and that the settings are as found, and reports any new application key that no lane
+named. Pressing Ctrl+C ends the lanes and still puts everything back.
+
+**An add-in under test starts no browser.** Every IDE the harness starts, including those of
+`tbbuild`, `tbrun` and `check_examples`, has the environment variable `TB_ADDIN_TEST` set to
+`1`, and an add-in tested here is expected to check it. While it is set, the add-in prints
+`open <url>` to the Debug Console instead of opening a page, and a scenario reads the line
+there. A browser started on the harness's private desktop would open where nobody can see it
+and keep running after the run.
+
+It refuses to start while `%APPDATA%\twinBASIC\addins` holds a DLL. The IDE passes that
+folder to its compiler when it loads add-ins, so a DLL there may load into every test IDE,
+as well as into your own.
 
 ### check_tb_registry.mjs
 {: #check-tb-registry }
@@ -627,13 +713,20 @@ behind.
     node scripts/check_tb_registry.mjs
 
 The self-test for `scripts/lib/tb-registry.mjs`, the code that puts the IDE's registry
-entries back after [`tbbuild.mjs`](#tbbuild), [`tbrun.mjs`](#tbrun) and
-[`check_examples.mjs`](#check-examples). It plays out a run on a scratch copy of the IDE's
-keys, under `HKCU\Software\tbharness-selftest`, and checks that everything comes back: a
-project of yours that the run opened gets its saved state and its place in the recent list
-back, the run's own entries go, the file association is restored, and a second restore
-writes nothing. It also checks that the module refuses to sweep outside the temp folder or
-restore a key near the root of the registry. It deletes the scratch key when it ends.
+entries back after [`tbbuild.mjs`](#tbbuild), [`tbrun.mjs`](#tbrun),
+[`addin_test.mjs`](#addin-test) and [`check_examples.mjs`](#check-examples). It plays out a
+run on a scratch copy of the IDE's keys, under `HKCU\Software\tbharness-selftest`, and checks
+that everything comes back: a project of yours that the run opened gets its saved state and
+its place in the recent list back, the run's own entries go, the file association is
+restored, and a second restore writes nothing. The recent list gets two more checks, because
+the IDE changes it on its own while a run's projects are on it: it fills a short list's empty
+slots with copies of the last entry, and a full list loses its oldest entry for each project
+a run opens. The copies must go and the lost entries come back. The build targets the IDE remembers are checked the same way: those under
+the run's folder go, and every other one stays, in its order and its exact text. So is the
+rule that a file association pointing into the temp folder when a run began --- at another
+run's private copy of the IDE --- is left as it is rather than put back. It also checks that
+the module refuses to sweep outside the temp folder or restore a key near the root of the
+registry. It deletes the scratch key when it ends.
 
 It is not a gate and is not in `test.bat`, because it needs Windows and a real registry and
 the CI runners have neither. Run it by hand after changing `tb-registry.mjs`. Exit code
@@ -712,9 +805,14 @@ identifiers ending in a digit, which would also have declared `Var1`, `Arg1`, `L
 
 **A sample can take the compiler down**, and one in this corpus does. twinBASIC runs the
 compiler in the same process as user code, so in a batch of a hundred that costs the other
-ninety-nine their result. `tbbuild` reports a crash as exit 4; this splits the batch and
-recurses until the offending sample is alone, which is O(log n) extra builds paid only on
-failure. The finding names the sample and points at `BUGS-TO-REPORT.md`.
+ninety-nine their result. `tbbuild` reports a crash as exit 4 and names the file the
+compiler was parsing when it died. The sample that file belongs to is built on its own and
+the rest of the batch without it, so a crash usually costs two extra builds. When no sample
+is named, the batch is split in half repeatedly until the offending sample is alone, which
+is O(log n) extra builds. A crash can also need several samples at once, so that no part of
+the batch crashes by itself. The samples it needs are then searched for as a set, and all
+of them are reported. The cost is paid only on failure. The finding names the sample, or
+the set, and points at `BUGS-TO-REPORT.md`.
 
 **A sample can be compiled against a file.** A fence carrying `resource=<project-relative
 path>` --- in any language, typically ` ```json ` --- is written into the generated project at

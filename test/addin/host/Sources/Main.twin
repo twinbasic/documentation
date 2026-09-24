@@ -1,0 +1,7 @@
+Module Main
+    Public Sub Main()
+        Dim needle As Long
+        needle = FindTheNeedle(3)
+        Debug.Print needle
+    End Sub
+End Module

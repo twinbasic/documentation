@@ -1,8 +1,16 @@
 # Test fixtures
 
-There is no test runner here and no `npm test` --- `package.json` declares no `scripts`
-at all. Everything under `test/` is input for [`scripts/check_links_diff.mjs`](../scripts/check_links_diff.mjs),
-the harness that proves the repository's two link-checker implementations agree.
+There is no `npm test` --- `package.json` declares no `scripts` at all. What is under `test/`
+is input for three tools:
+
+- `fixtures/` for [`scripts/check_links_diff.mjs`](../scripts/check_links_diff.mjs), the
+  harness that proves the repository's two link-checker implementations agree. The rest of
+  this file is about it.
+- `example-projects/` for [`scripts/check_examples.mjs`](../scripts/check_examples.mjs):
+  the templates it builds the documentation's code samples into
+  ([WIP.ExamplesBuild.md](../WIP.ExamplesBuild.md)).
+- `addin/` for [`scripts/addin_test.mjs`](../scripts/addin_test.mjs), which `addin-test.bat`
+  runs: the IDE add-in scenarios ([test/addin](#testaddin), at the end).
 
 If a fixture case has just gone red, start at [The invariant, and how it
 breaks](#the-invariant-and-how-it-breaks) --- the commit that broke it need not have touched
@@ -99,3 +107,20 @@ That is why the fixture carries stub CSS, JS and font files. When a template cha
 introduces a new unconditional reference, the fix is almost always **to add the stub the
 template now expects**, not to raise the expected count: six accidental broken links
 dilute a category the fixture is supposed to hold at an exact, meaningful number.
+
+## test/addin
+
+The scenarios that test twinBASIC IDE add-ins by operating an IDE, run with
+`addin-test.bat`. Each `*.test.mjs` is a `node:test` file and one lane of the run: it gets
+its own DevTools port, work folder and private copy of the twinBASIC install from
+[`scripts/lib/tb-lane.mjs`](../scripts/lib/tb-lane.mjs), builds the add-ins it tests into
+that copy, and opens `host/`, the project a scenario works in. `host/` holds two modules
+with the word `needle` in them, placed for Sample 15's search to find; change them and
+that scenario's expected results change too. `lanes.mjs` lists the lanes, and names the
+`SaveSetting` application whose settings each lane's add-ins change, so that the runner
+can put them back.
+
+Never run a scenario with a bare `node --test`: it skips itself, since only the runner
+gives it a lane, and only the runner puts the registry back afterwards.
+[WIP.Harness.md, The add-in test runner](../WIP.Harness.md#the-add-in-test-runner) has
+the design and what was measured.

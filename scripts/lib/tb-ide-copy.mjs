@@ -81,6 +81,46 @@ export function makeIdeCopy({ ide, dest, addins = {} }) {
 }
 
 /**
+ * Put an add-in DLL into a copy's addins\<arch> folder, replacing one of the
+ * same name, so that the copy's next IDE loads it.
+ *
+ * Refuses anything that is not a copy made by makeIdeCopy: in the real install
+ * a test add-in would load into every IDE the user starts. End the copy's IDEs
+ * first. A compiler holds every add-in it loaded: Windows refuses to overwrite
+ * or delete the file while it runs (WIP.HelpAddin.md, P8), and for a moment
+ * after -- the first overwrite after shutdownIde failed and one 25 ms later
+ * worked, four times out of four -- so a refused copy is retried for two
+ * seconds before it counts. The refusal comes back as EIO from the copy here
+ * and as EBUSY from a plain write.
+ *
+ * @param {string} exe   the copy's twinBASIC.exe, as makeIdeCopy returned it
+ * @param {string} dll   the add-in
+ * @param {"win32" | "win64"} arch
+ * @returns {string} where the DLL now is
+ */
+export function addAddin(exe, dll, arch) {
+  const root = path.dirname(path.resolve(exe));
+  if (!insideTemp(root) || !existsSync(path.join(root, MARKER))) {
+    throw new Error(`refusing to add an add-in to "${root}": it is not an IDE copy this module made`);
+  }
+  if (arch !== "win32" && arch !== "win64") throw new Error(`no such add-in folder: "${arch}"`);
+  const dest = path.join(root, "addins", arch, path.basename(dll));
+  const cell = new Int32Array(new SharedArrayBuffer(4));
+  for (let tries = 1; ; tries++) {
+    try {
+      cpSync(dll, dest);
+      return dest;
+    } catch (e) {
+      if (!["EIO", "EBUSY", "EPERM"].includes(e.code) || tries >= 20) {
+        throw new Error(`could not put the add-in in "${dest}" (${e.code}) -- ` +
+          "is an IDE started from this copy still running?");
+      }
+      Atomics.wait(cell, 0, 0, 100);
+    }
+  }
+}
+
+/**
  * Delete a copy made by makeIdeCopy. Refuses anything without its marker, and
  * anything outside the temp folder. End the copy's IDEs first: a running IDE
  * holds its files open.
@@ -92,8 +132,32 @@ export function removeIdeCopy(exe) {
   if (!insideTemp(root) || !existsSync(path.join(root, MARKER))) {
     throw new Error(`refusing to delete "${root}": it is not an IDE copy this module made`);
   }
-  // Retries, because an IDE ended a moment ago can still be letting go of its
-  // files. Anything still holding them after that is a leaked process, and the
-  // EPERM is the right thing to report.
-  rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  removeTree(root);
+}
+
+/**
+ * Delete a folder and everything in it, retrying for up to `timeout`
+ * milliseconds while something still holds a file there.
+ *
+ * An IDE ended a moment ago can still be letting go of its files: its compiler
+ * held a loaded add-in some tens of milliseconds after the process had gone
+ * (WIP.HelpAddin.md, P8). rmSync's own maxRetries does not cover that. On
+ * Node 24.13 it gave up at once, in a millisecond, with EPERM on a folder
+ * holding a file another process had open, with maxRetries 10 and retryDelay
+ * 200 exactly as with neither (measured). So the retrying is done here.
+ * Anything still holding a file after that is a process that outlived its
+ * IDE, and the EPERM is the right thing to report.
+ */
+export function removeTree(dir, { timeout = 5000 } = {}) {
+  const until = Date.now() + timeout;
+  const cell = new Int32Array(new SharedArrayBuffer(4));
+  for (;;) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+      return;
+    } catch (e) {
+      if (!["EPERM", "EBUSY", "ENOTEMPTY", "EACCES"].includes(e.code) || Date.now() >= until) throw e;
+      Atomics.wait(cell, 0, 0, 100);
+    }
+  }
 }

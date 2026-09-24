@@ -3,6 +3,9 @@
 //     node scripts/tbrun.mjs <source-dir> [options]
 //
 //       --port <n>        DevTools port to start the IDE on (default 9346)
+//       --arch <target>   win32 or win64 (default win32): the target to build
+//                         for, and so the process the probe runs in -- a win64
+//                         probe runs in the IDE's 64-bit compiler
 //       --timeout <secs>  give up waiting for console output (default 120)
 //       --quiet <ms>      output is complete after this long with no change
 //                         (default 2500)
@@ -41,14 +44,19 @@
 //
 // Each of these cost an hour when the probe was first done by hand.
 //
-//  1. THE BUILD PATH MUST BE AN EXPLICIT FILE. A project whose
+//  1. THE BUILD PATH MUST BE IN AN EXPLICIT FOLDER. A project whose
 //     `project.buildPath` is still the default `${SourcePath}\Build\...`
 //     template opens a native Save dialog on the build -- and because the
 //     IDE runs on a private desktop, that dialog is invisible, takes no
 //     input, and the build simply never happens. Nothing reports it: the
 //     WebView2 renderer stays responsive, so even a CDP health check says the
-//     IDE is fine. This script therefore owns the tree and pins buildPath to a
-//     concrete file before importing, which makes the trap unreachable.
+//     IDE is fine. This script therefore owns the tree and pins buildPath to
+//     its own out folder before importing, which makes the trap unreachable
+//     (lib/tb-project.mjs, shared with the add-in harness). The file name is
+//     the IDE's own `${ProjectName}_${Architecture}.${FileExtension}`, so it
+//     says what was built: measured on BETA 983, those variables in an
+//     explicit folder open no dialog, and give ArchProbe_win32.exe and
+//     ArchProbe_win64.exe.
 //  2. A JAVASCRIPT .click() ON THE BUILD BUTTON DOES NOTHING. `#buildIcon` is
 //     a plain DIV wired through the IDE's own pointer handling; it needs real
 //     CDP Input.dispatchMouseEvent presses at its centre (tb-ide's
@@ -83,13 +91,13 @@
 //     a blunt enough instrument to need the guard rails in reapOrphans().
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync, readdirSync,
-         cpSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, mkdirSync, statSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { compilerExe, findIde, runCompiler } from "./lib/tb-install.mjs";
-import { attachIde, clickCenter, compileOutcome, killTree, launchIde, readConsole,
-         shutdownIde, summaryLine, waitForCompile, wantShow } from "./lib/tb-ide.mjs";
+import { compilerExe, findIde } from "./lib/tb-install.mjs";
+import { TARGETS, attachIde, clickCenter, compileOutcome, killTree, launchIde, readConsole,
+         setBuildTarget, shutdownIde, summaryLine, waitForCompile, wantShow } from "./lib/tb-ide.mjs";
+import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
 const argv = process.argv.slice(2);
@@ -103,14 +111,15 @@ const die = (code, msg) => { console.error(msg); process.exit(code); };
 
 // Every flag that TAKES A VALUE has to be named here, or its value is mistaken
 // for the source directory.
-const VALUE_FLAGS = ["port", "timeout", "quiet", "ide", "reap-images"];
+const VALUE_FLAGS = ["port", "arch", "timeout", "quiet", "ide", "reap-images"];
 const positional = argv.filter((a, i) =>
   !a.startsWith("--") && !(i > 0 && VALUE_FLAGS.includes(argv[i - 1]?.replace(/^--/, ""))));
+const arch = opt("arch", TARGETS[0]);
 
-if (!positional.length || flag("help")) {
-  die(2, "usage: node scripts/tbrun.mjs <source-dir> [--port N] [--timeout S] " +
-         "[--quiet MS] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] " +
-         "[--show|--hide]");
+if (!positional.length || flag("help") || !TARGETS.includes(arch)) {
+  die(2, "usage: node scripts/tbrun.mjs <source-dir> [--port N] [--arch win32|win64] " +
+         "[--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] " +
+         "[--reap-images a,b] [--show|--hide]");
 }
 
 const srcDir = path.resolve(positional[0]);
@@ -159,28 +168,18 @@ const work = path.join(tmpdir(), "tbrun", runKey);
 rmSync(work, { recursive: true, force: true });
 mkdirSync(work, { recursive: true });
 
-// Staged into a temp copy rather than edited in place. Pinning buildPath is what
-// makes the invisible Save dialog unreachable, but it is still a change to the
-// caller's project, and a probe harness that rewrites the tree you pointed it at
-// is one you stop trusting with a real project.
+// Staged into a temp copy rather than edited in place, with buildPath pinned to
+// the run's own out folder and a project.id keyed to the port
+// (lib/tb-project.mjs). The file is named as the IDE's own template names it,
+// so the build type and the target are in the name (1).
 const stage = path.join(work, "src");
-cpSync(srcDir, stage, { recursive: true });
-const stagedSettings = path.join(stage, "Settings");
-const exePath = path.join(work, "tbrun-probe.exe");
+const outDir = path.join(work, "out");
+mkdirSync(outDir, { recursive: true });
+const buildPath = path.join(outDir, "${ProjectName}_${Architecture}.${FileExtension}");
 const projPath = path.join(work, "tbrun-probe.twinproj");
 
-const settings = JSON.parse(readFileSync(stagedSettings, "utf8"));
-const wasTemplate = /\$\{/.test(settings["project.buildPath"] ?? "");
-settings["project.buildPath"] = exePath;
-// Two probes sharing a project.id confuse the IDE's recents list -- so this is
-// keyed to the port too, not a constant. The last group is 12 hex digits, of
-// which the port fills the low six.
-settings["project.id"] =
-  `{7B247000-0000-4000-9000-7B2470${port.toString(16).padStart(6, "0")}}`;
-writeFileSync(stagedSettings, JSON.stringify(settings, null, "\t"), "utf8");
-
 const sourceText = (() => {
-  const dir = path.join(stage, "Sources");
+  const dir = path.join(srcDir, "Sources");
   if (!existsSync(dir)) return "";
   return readdirSync(dir).filter((f) => f.endsWith(".twin"))
     .map((f) => readFileSync(path.join(dir, f), "utf8")).join(String.fromCharCode(10));
@@ -201,11 +200,30 @@ if (!hasHook) {
 
 // ------------------------------------------------------------------- pack
 
-// import's exit code does not say whether it worked -- 0 on the failures it
-// reports, 999 on a tree holding an embedded package -- so runCompiler reads
-// the output, and a failure of either kind is the harness's, exit 2.
-const pack = runCompiler(COMPILER, ["import", projPath, stage, "--overwrite"]);
-if (!pack.done) die(2, `packing failed${pack.why}:\n${pack.tail}`);
+// A packing failure is the harness's, exit 2.
+let wasTemplate = false, projectName = "";
+try {
+  const staged = stageProject({
+    src: srcDir, stage, project: projPath, compiler: COMPILER,
+    settings: { "project.buildPath": buildPath, "project.id": laneProjectId(0, port) },
+  });
+  wasTemplate = /\$\{/.test(staged.original["project.buildPath"] ?? "");
+  projectName = String(staged.settings["project.name"] ?? "");
+} catch (e) {
+  die(2, e.message);
+}
+
+// What the build wrote: the IDE expands the template, so the name is looked for
+// rather than assumed -- ${FileExtension} follows the build type -- and the
+// binary is told from anything written beside it by its "MZ" header.
+function builtFile() {
+  const stem = `${projectName}_${arch}.`.toLowerCase();
+  for (const f of readdirSync(outDir).filter((n) => n.toLowerCase().startsWith(stem))) {
+    const file = path.join(outDir, f);
+    try { if (readFileSync(file).subarray(0, 2).toString("latin1") === "MZ") return file; } catch { /* gone */ }
+  }
+  return null;
+}
 
 // ---------------------------------------------------------------- compile
 
@@ -243,9 +261,28 @@ try {
 const cdp = await attachIde(port);
 if (!cdp) failBuild(2, "the IDE never exposed a debug port");
 
-const outcome = compileOutcome(
+let outcome = compileOutcome(
   await waitForCompile(cdp, { project: projPath, timeout: 180 * 1000 }), { name: projPath });
 if (!outcome.ok) failBuild(2, outcome.message);
+
+// The target, set on every run, win32 included (setBuildTarget says why). The
+// probe runs in the compiler that builds it, so under win64 it runs in the
+// IDE's 64-bit compiler, twinBASIC_win64_noDEP.exe, as a 64-bit process:
+// measured on BETA 983 with LenB of a LongPtr, ProcessorArchitecture(),
+// PROCESSOR_ARCHITECTURE, IsWow64Process and the module path of the process.
+try {
+  const target = await setBuildTarget(cdp, arch, { project: projPath, timeout: 180 * 1000 });
+  // Only a target the IDE remembered is worth a word: a new path opens in win32.
+  if (target.from !== TARGETS[0]) {
+    console.error(`note: the IDE remembered ${target.from} for this path; the probe is built for ${arch}`);
+  }
+  if (target.waited) {
+    outcome = compileOutcome(target.waited, { name: projPath });
+    if (!outcome.ok) failBuild(2, outcome.message);
+  }
+} catch (e) {
+  failBuild(2, e.message);
+}
 if (outcome.counts[0] > 0) {
   failBuild(1, [...outcome.rows, summaryLine(outcome.counts)].join("\n"));
 }
@@ -299,8 +336,8 @@ if (!captured.length) {
 }
 
 if (flag("json")) {
-  console.log(JSON.stringify({ exe: exePath, lines: captured, idePid: ideRun?.pid ?? null, reaped },
-                             null, 2));
+  console.log(JSON.stringify({ exe: builtFile(), arch, lines: captured, idePid: ideRun?.pid ?? null,
+                               reaped }, null, 2));
 } else {
   for (const l of captured) console.log(l);
 }

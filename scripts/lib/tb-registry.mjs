@@ -20,8 +20,18 @@
 //   * Everything under a folder the harness owns (its own temp work folders)
 //     is deleted by prefix, which also catches what an earlier run left when
 //     it died before tidying.
+//   * The recent list keeps no more copies of a path than it had, and gets
+//     back the entries that fell off its end while the run's projects were on
+//     it (restoreProjects says how the IDE does both).
 //   * The association keys are put back value by value, and only where they
-//     differ, so an untouched key is never written.
+//     differ, so an untouched key is never written --- unless they named the
+//     temp folder when the run began, because then they were another run's
+//     IDE copy's, and putting them back would point at a deleted folder.
+//   * The build target the IDE remembers for each project path is deleted for
+//     every path under those folders, before the run and after it
+//     (sweepArchitectureMemory says why), and a named project's is put back
+//     as it was, since a run can switch the target of the project it opens
+//     (restoreArchitectureMemory).
 //
 // ONE PROCESS OWNS THIS PER RUN. check_examples starts many tbbuild processes
 // at once; each snapshotting and restoring on its own would put back whichever
@@ -109,10 +119,10 @@ function SnapProjects([string]$root, $paths) {
   }
   if ($ps) { $ps.Close() }
   if ($ro) { $ro.Close() }
-  return [ordered]@{ root = $root; entries = $entries }
+  return [ordered]@{ root = $root; entries = $entries; recent = @($recent) }
 }
 
-function RestoreProjects($snap, $prefixes) {
+function RestoreProjects($snap, $prefixes, [string]$temp) {
   $root = [string]$snap.root
   $entries = @($snap.entries)
   $exact = @{}
@@ -161,6 +171,29 @@ function RestoreProjects($snap, $prefixes) {
     $back = @($entries | Where-Object { [int]$_.recentIndex -ge 0 } | Sort-Object { [int]$_.recentIndex })
     foreach ($e in $back) {
       $list.Insert([Math]::Min([int]$e.recentIndex, $list.Count), [string]$e.recentValue)
+    }
+    # The IDE fills a short list's empty slots with copies of its last entry,
+    # and a full list drops its oldest entry for each project a run opens
+    # (BUGS-TO-REPORT.md). With the list as it was found in hand, keep no more
+    # copies of a path than it had, and put back at the end what fell off --
+    # but not a path in the temp folder, which belongs to some run, and that
+    # run may have tidied it away since.
+    if (@($snap.PSObject.Properties.Name) -contains 'recent') {
+      $count = @{}
+      foreach ($v in @($snap.recent)) { $n = Norm ([string]$v); if ($n) { $count[$n] = 1 + [int]$count[$n] } }
+      $have = @{}
+      $kept = New-Object System.Collections.ArrayList
+      foreach ($v in $list) {
+        $n = Norm ([string]$v)
+        if ([int]$have[$n] -lt [Math]::Max(1, [int]$count[$n])) { [void]$kept.Add($v); $have[$n] = 1 + [int]$have[$n] }
+      }
+      $tmp = Norm $temp
+      foreach ($v in @($snap.recent)) {
+        $n = Norm ([string]$v)
+        if (-not $n -or ($tmp -and $n.StartsWith($tmp))) { continue }
+        if ([int]$have[$n] -lt [int]$count[$n]) { [void]$kept.Add([string]$v); $have[$n] = 1 + [int]$have[$n] }
+      }
+      $list = $kept
     }
     $changed = $false
     for ($i = 0; $i -lt $slots.Count; $i++) {
@@ -250,12 +283,41 @@ function RestoreKey([string]$path, $snap) {
   foreach ($s in @($snap.keys)) { RestoreKey ($path + $SEP + [string]$s.name) $s.snap }
 }
 
+function ReadValue([string]$path, [string]$name) {
+  $out = [ordered]@{ exists = $false; data = $null }
+  $k = $hk.OpenSubKey($path)
+  if (-not $k) { return $out }
+  if (@($k.GetValueNames()) -contains $name) { $out.exists = $true; $out.data = [string]$k.GetValue($name) }
+  $k.Close()
+  return $out
+}
+
+# Written only if the value still holds what the caller read, so that a value
+# an IDE saved in the meantime is never overwritten with an older copy.
+function WriteValueIf([string]$path, [string]$name, [string]$expected, [string]$data) {
+  $k = $hk.OpenSubKey($path, $true)
+  if (-not $k) { return [ordered]@{ written = $false } }
+  $same = (@($k.GetValueNames()) -contains $name) -and ([string]$k.GetValue($name) -ceq $expected)
+  if ($same) { $k.SetValue($name, $data, $String) }
+  $k.Close()
+  return [ordered]@{ written = $same }
+}
+
 try {
   $req = [Console]::In.ReadToEnd() | ConvertFrom-Json
   switch ([string]$req.op) {
     'lists'            { $result = Lists ([string]$req.root) }
+    'readValue'        { $result = ReadValue ([string]$req.key) ([string]$req.name) }
+    'subkeys'          {
+      $result = @()
+      $k = $hk.OpenSubKey([string]$req.key)
+      if ($k) { $result = @($k.GetSubKeyNames() | Sort-Object); $k.Close() }
+    }
+    'writeValueIf'     {
+      $result = WriteValueIf ([string]$req.key) ([string]$req.name) ([string]$req.expected) ([string]$req.data)
+    }
     'snapshotProjects' { $result = SnapProjects ([string]$req.root) $req.paths }
-    'restoreProjects'  { $result = RestoreProjects $req.snapshot $req.prefixes }
+    'restoreProjects'  { $result = RestoreProjects $req.snapshot $req.prefixes ([string]$req.temp) }
     'snapshotKeys'     {
       $result = @(foreach ($p in @($req.keys)) { [ordered]@{ path = [string]$p; snap = (SnapKey ([string]$p)) } })
     }
@@ -299,8 +361,9 @@ export function ideLists({ root = IDE_SETTINGS_KEY } = {}) {
 }
 
 /**
- * Record what the IDE holds for these projects now, so restoreProjects can put
- * it back. A project with no entry is recorded as having none.
+ * Record what the IDE holds for these projects now, and its whole recent list,
+ * so restoreProjects can put it back. A project with no entry is recorded as
+ * having none.
  */
 export function snapshotProjects(paths = [], { root = IDE_SETTINGS_KEY } = {}) {
   return request({ op: "snapshotProjects", root, paths: paths.map((p) => path.resolve(p)) });
@@ -310,13 +373,30 @@ export function snapshotProjects(paths = [], { root = IDE_SETTINGS_KEY } = {}) {
  * Put the snapshot's projects back as they were, and delete every entry under
  * the given folders.
  *
+ * The recent list is put back as the snapshot has it, with whatever else
+ * happened to it meanwhile kept: a project the user opened stays on top, but
+ * no path keeps more copies than the snapshot had, and the snapshot's entries
+ * that fell off the end come back there. Both are the IDE's doing. It fills a
+ * short list's empty slots with copies of its last entry, so a run that
+ * started on one entry ended with seventeen copies of it; and a full list
+ * drops its oldest entry for every project a run opens (BUGS-TO-REPORT.md).
+ * An entry in the temp folder is not brought back, since it belongs to some
+ * run, whose own tidy may have removed it meanwhile. A snapshot with no
+ * `recent`, such as `{ root, entries: [] }`, only deletes.
+ *
  * @param {string[]} [o.prefixes]  folders inside the OS temp folder; anything
  *   else is refused, so that a caller passing the wrong folder cannot sweep
  *   away the state of the user's real projects
  * @returns {{projectState: number, recentlyOpened: number}} values written or deleted
  */
 export function restoreProjects(snapshot, { prefixes = [] } = {}) {
-  return request({ op: "restoreProjects", snapshot, prefixes: prefixes.map(asTempFolder) });
+  return request({ op: "restoreProjects", snapshot, prefixes: prefixes.map(asTempFolder),
+                   temp: path.resolve(tmpdir()) + path.sep });
+}
+
+/** The names of a key's subkeys, sorted, and nothing else from under it; empty when there is no such key. */
+export function subkeyNames(key) {
+  return [].concat(request({ op: "subkeys", key }) ?? []);
 }
 
 /** Everything under these keys, values and subkeys, for restoreKeys. */
@@ -329,6 +409,158 @@ export function snapshotKeys(keys = ASSOCIATION_KEYS) {
 export function restoreKeys(snapshot) {
   for (const e of snapshot) deepEnough(e.path);
   return request({ op: "restoreKeys", snapshot }).changes;
+}
+
+/** Where SaveSetting keeps every application's settings, an add-in's included. */
+export const SETTINGS_ROOT = "Software\\VB and VBA Program Settings";
+
+/**
+ * The key SaveSetting writes an application's settings under. An add-in's
+ * SaveSetting writes here too, so its settings are shared with any installed
+ * copy of the same add-in, and a test that changes one changes the user's.
+ *
+ * The IDE's own application name is refused. That key holds all of the IDE's
+ * settings, and the parts of it a run changes are put back value by value by
+ * startTidy and finishTidy, never as a whole.
+ */
+export function settingsKey(app) {
+  const name = String(app ?? "");
+  if (!name || /[\\/]/.test(name)) throw new Error(`not a SaveSetting application name: "${name}"`);
+  if (name.toLowerCase() === "twinbasic_ide") {
+    throw new Error("refusing the IDE's own settings key: the run's tidy puts back the parts of " +
+                    "it the IDE changes, value by value");
+  }
+  return `${SETTINGS_ROOT}\\${name}`;
+}
+
+/**
+ * What SaveSetting has stored for an application, as `{ section: { name: value } }`,
+ * or null when it has stored nothing.
+ */
+export function savedSettings(app) {
+  const [entry] = snapshotKeys([settingsKey(app)]);
+  if (!entry?.snap) return null;
+  const out = {};
+  for (const s of [].concat(entry.snap.keys ?? [])) {
+    out[s.name] = Object.fromEntries([].concat(s.snap?.values ?? []).map((v) => [v.name, v.data]));
+  }
+  return out;
+}
+
+/**
+ * Delete what SaveSetting has stored for these applications, so that their
+ * next GetSetting returns its default. Snapshot the keys first
+ * (`snapshotKeys(apps.map(settingsKey))`) to put them back afterwards.
+ *
+ * @returns {number} the number of writes
+ */
+export function deleteSettings(apps) {
+  return restoreKeys(apps.map((a) => ({ path: settingsKey(a), snap: null })));
+}
+
+const ARCH_MEMORY = "targetArchitectureMemory";
+const norm = (p) => String(p).split("/").join("\\").toLowerCase();
+
+// The build targets the IDE remembers, as an object, or null when there is no
+// value or it is not a JSON object -- which is not the harness's to repair.
+function readArchitectureMemory(root) {
+  const now = request({ op: "readValue", key: `${root}\\IDESettings`, name: ARCH_MEMORY });
+  if (!now.exists) return null;
+  let memory;
+  try { memory = JSON.parse(now.data); } catch { return null; }
+  if (!memory || typeof memory !== "object" || Array.isArray(memory)) return null;
+  return { data: now.data, memory };
+}
+
+// Change the remembered build targets with `edit`, which is handed the object
+// and returns how many entries it changed. The object is edited here rather
+// than in PowerShell, and written back with JSON.stringify, which is how the
+// IDE writes it, so the other entries keep their exact text and order. The
+// write is refused if the value changed after it was read -- an IDE switching
+// a target of its own meanwhile -- and the edit is then made again on what is
+// there now.
+function editArchitectureMemory(root, edit) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const now = readArchitectureMemory(root);
+    if (!now) return 0;
+    const changes = edit(now.memory);
+    if (!changes) return 0;
+    const w = request({ op: "writeValueIf", key: `${root}\\IDESettings`, name: ARCH_MEMORY,
+                        expected: now.data, data: JSON.stringify(now.memory) });
+    if (w.written) return changes;
+  }
+  throw new Error(`the IDE's ${ARCH_MEMORY} kept changing while it was being tidied`);
+}
+
+/**
+ * Delete the build target the IDE remembers for every project under these
+ * folders.
+ *
+ * The IDE keeps the target it last built each project for, win32 or win64, in
+ * one IDESettings value holding a JSON object keyed by project path, and a
+ * project it opens again starts in that target. A harness project's path is
+ * used run after run -- tbrun's work folder is keyed to its port -- so an
+ * entry one run leaves, when somebody switches a --keep IDE to win64, sets the
+ * target of every later run on that path, and nothing says so. On 2026-09-24
+ * tbrun on ports 9372 and 9373 built 64-bit for that reason.
+ *
+ * Entries for any other path are left alone here, the user's own projects
+ * among them. Opening a project only reads its entry; one is written when the
+ * target of an open project changes, which `--arch` does and a person can.
+ * A named project's entry is put back by restoreArchitectureMemory instead.
+ *
+ * @param {string[]} prefixes     folders inside the OS temp folder, as for restoreProjects
+ * @param {object} [o]
+ * @param {string} [o.root]       the IDE's settings key
+ * @returns {number} entries deleted
+ */
+export function sweepArchitectureMemory(prefixes = [], { root = IDE_SETTINGS_KEY } = {}) {
+  const pre = prefixes.map((p) => norm(asTempFolder(p)));
+  if (!pre.length) return 0;
+  return editArchitectureMemory(root, (memory) => {
+    const drop = Object.keys(memory).filter((p) => pre.some((x) => norm(p).startsWith(x)));
+    for (const p of drop) delete memory[p];
+    return drop.length;
+  });
+}
+
+/**
+ * Record the build targets the IDE remembers for these projects, for
+ * restoreArchitectureMemory: every entry whose key names one of them, however
+ * the key is spelled, with its value. A project with none is recorded as
+ * having none.
+ */
+export function snapshotArchitectureMemory(paths = [], { root = IDE_SETTINGS_KEY } = {}) {
+  const want = paths.map((p) => norm(path.resolve(p)));
+  const memory = want.length ? readArchitectureMemory(root)?.memory ?? {} : {};
+  return { root, paths: want, entries: Object.entries(memory).filter(([p]) => want.includes(norm(p))) };
+}
+
+/**
+ * Put back the build targets a snapshot recorded, and delete every other entry
+ * for the same projects.
+ *
+ * A run that switches the target of a project it opens -- tbbuild --arch on
+ * the user's own project -- leaves the IDE's entry for it, saved under the
+ * path as the IDE was given it, which need not be spelled as the user's own
+ * IDE spelled it. So an entry the snapshot has is given its old value in its
+ * old place, and any other entry for the same project is deleted.
+ *
+ * @returns {number} entries written or deleted
+ */
+export function restoreArchitectureMemory(snap) {
+  if (!snap?.paths?.length) return 0;
+  return editArchitectureMemory(snap.root, (memory) => {
+    let changes = 0;
+    const had = new Map(snap.entries);
+    for (const p of Object.keys(memory)) {
+      if (!snap.paths.includes(norm(p))) continue;
+      if (!had.has(p)) { delete memory[p]; changes++; }
+      else if (memory[p] !== had.get(p)) { memory[p] = had.get(p); changes++; }
+    }
+    for (const [p, v] of had) if (!(p in memory)) { memory[p] = v; changes++; }
+    return changes;
+  });
 }
 
 // Restoring a key deletes whatever the snapshot does not list, so a key near
@@ -374,33 +606,98 @@ function alive(pid) {
  *                                 user's own, restored rather than deleted
  * @param {string[]} [o.prefixes]  folders only the harness writes to; every
  *                                 entry under them is deleted
+ * @param {string} [o.root]        the IDE's settings key (default IDE_SETTINGS_KEY)
+ * @param {string[]} [o.keys]      the association keys (default ASSOCIATION_KEYS);
+ *                                 the self-test passes scratch keys for both
  */
-export function startTidy({ paths = [], prefixes = [] } = {}) {
+export function startTidy({ paths = [], prefixes = [], root = IDE_SETTINGS_KEY,
+                            keys = ASSOCIATION_KEYS } = {}) {
   const owner = Number(process.env.TB_REGISTRY_OWNER);
   if (owner && owner !== process.pid && alive(owner)) return null;
   process.env.TB_REGISTRY_OWNER = String(process.pid);
+  let tidy;
   try {
-    if (prefixes.length) restoreProjects({ root: IDE_SETTINGS_KEY, entries: [] }, { prefixes });
-    return { projects: snapshotProjects(paths), keys: snapshotKeys(), prefixes };
+    if (prefixes.length) restoreProjects({ root, entries: [] }, { prefixes });
+    tidy = { projects: snapshotProjects(paths, { root }), keys: snapshotKeys(keys), prefixes, root };
+    tidy.keysInTemp = namesTempFolder(tidy.keys);
   } catch (e) {
     console.error(`warning: the IDE's registry entries will not be tidied after this run: ${e.message}`);
     return null;
   }
+  sweepTargets(prefixes, root);
+  // After the sweep, so a named project inside a swept folder is not given back
+  // an entry the sweep has just deleted.
+  tidy.targets = snapshotTargets(paths, root);
+  return tidy;
 }
 
 /**
  * Put the registry back as startTidy found it. Call it only once every IDE of
  * the run has exited -- shutdownIde waits for that.
  *
- * @returns {{projectState: number, recentlyOpened: number, association: number} | null}
+ * @returns {{projectState: number, recentlyOpened: number, association: number,
+ *            architecture: number | null} | null}
  */
 export function finishTidy(tidy) {
   if (!tidy) return null;
+  let done;
   try {
     const p = restoreProjects(tidy.projects, { prefixes: tidy.prefixes });
-    return { ...p, association: restoreKeys(tidy.keys) };
+    // An association that named the temp folder when the run began belonged to
+    // another run's copy of the IDE (tb-ide-copy.mjs), which will be deleted:
+    // putting it back would point .twinproj files at nothing. It is left as
+    // the IDEs set it, and the next IDE started from a real install points it
+    // back at that install.
+    if (tidy.keysInTemp) {
+      console.error("note: the .twinproj association pointed into the temp folder when this " +
+                    "run began, at another run's copy of the IDE, so it is left as it is now");
+    }
+    done = { ...p, association: tidy.keysInTemp ? null : restoreKeys(tidy.keys) };
   } catch (e) {
     console.error(`warning: could not tidy the IDE's registry entries after this run: ${e.message}`);
+    return null;
+  }
+  const swept = sweepTargets(tidy.prefixes, tidy.root);
+  const restored = restoreTargets(tidy.targets);
+  return { ...done, architecture: swept === null || restored === null ? null : swept + restored };
+}
+
+// Whether any value in a key snapshot names a path inside the temp folder.
+function namesTempFolder(snapshot) {
+  const tmp = norm(path.resolve(tmpdir())) + "\\";
+  const named = (snap) => !!snap && (
+    [].concat(snap.values ?? []).some((v) => [].concat(v?.data ?? []).some((d) => norm(d).includes(tmp))) ||
+    [].concat(snap.keys ?? []).some((k) => named(k?.snap)));
+  return [].concat(snapshot ?? []).some((e) => named(e?.snap));
+}
+
+// Each with a warning of its own, so that failing here costs only this part of the tidy.
+function sweepTargets(prefixes, root) {
+  try {
+    return sweepArchitectureMemory(prefixes, { root });
+  } catch (e) {
+    console.error(`warning: could not tidy the build targets the IDE remembers: ${e.message}`);
+    return null;
+  }
+}
+
+function snapshotTargets(paths, root) {
+  try {
+    return snapshotArchitectureMemory(paths, { root });
+  } catch (e) {
+    console.error(`warning: the build targets the IDE remembers for this run's projects will ` +
+                  `not be put back: ${e.message}`);
+    return null;
+  }
+}
+
+// A snapshot that failed was warned about when it was taken; there is nothing to put back.
+function restoreTargets(snap) {
+  if (!snap) return 0;
+  try {
+    return restoreArchitectureMemory(snap);
+  } catch (e) {
+    console.error(`warning: could not put back the build targets the IDE remembers: ${e.message}`);
     return null;
   }
 }

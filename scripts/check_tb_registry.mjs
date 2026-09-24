@@ -21,9 +21,23 @@
 //     survive;
 //   * a path with a character outside every console code page, which is why
 //     the module goes through .NET rather than reg.exe;
+//   * what the IDE itself does to the recent list while a run is on it: a
+//     short list's empty slots filled with copies of its last entry, a full
+//     list's oldest entries pushed off the end, and, to be kept, a project the
+//     user opened meanwhile and copies that were there before; and another
+//     run's entry that its own tidy removed, which must not come back;
 //   * the association keys: a value changed, one added, one deleted, a subkey
 //     added, and a key that did not exist before created by the run;
 //   * that a second restore writes nothing at all;
+//   * the build targets the IDE remembers: the entries under a harness temp
+//     folder, in both separators, deleted; the user's, the lookalike folder's
+//     and the rest kept, in their order and in the IDE's own JSON; a value
+//     that is not JSON left alone; and a named project's target that the run
+//     switched, saved under another spelling of its path, put back in its
+//     place, with an entry for a project that had none deleted;
+//   * an association that named the temp folder when the run began, which is
+//     another run's IDE copy's and is left alone, against one that did not,
+//     which is put back;
 //   * the guards: a key near the root and a sweep outside the temp folder
 //     refused, and an error raised inside PowerShell arriving as a sentence;
 //   * the ownership rule: a dead owner does not block tidying, a live one makes
@@ -46,10 +60,10 @@ const ABSENT = BASE + "\\Classes\\.notthere";
 function ps(script, input) {
   const enc = Buffer.from("$ErrorActionPreference='Stop';$ProgressPreference='SilentlyContinue';" +
     "$u=New-Object System.Text.UTF8Encoding $false;[Console]::InputEncoding=$u;" +
-    "$in=[Console]::In.ReadToEnd()|ConvertFrom-Json;" +
+    "[Console]::OutputEncoding=$u;$in=[Console]::In.ReadToEnd()|ConvertFrom-Json;" +
     "$hk=[Microsoft.Win32.Registry]::CurrentUser;" + script, "utf16le").toString("base64");
-  execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-EncodedCommand", enc],
-    { input: JSON.stringify(input ?? {}), stdio: ["pipe", "ignore", "inherit"] });
+  return execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-EncodedCommand", enc],
+    { input: JSON.stringify(input ?? {}), encoding: "utf8", stdio: ["pipe", "pipe", "inherit"] });
 }
 const wipe = () => ps("if ($hk.OpenSubKey($in.base)) { $hk.DeleteSubKeyTree($in.base) }", { base: BASE });
 // Pairs rather than an object: PowerShell 5.1's ConvertFrom-Json refuses an
@@ -61,6 +75,9 @@ const setValues = (key, values) => ps(
 const deleteValues = (key, names) => ps(
   "$k=$hk.OpenSubKey($in.key, $true); foreach ($n in $in.names) { $k.DeleteValue($n) }; $k.Close()",
   { key, names });
+const readValue = (key, name) => JSON.parse(ps(
+  "$k=$hk.OpenSubKey($in.key); $v=$k.GetValue($in.name); $k.Close(); " +
+  "ConvertTo-Json -InputObject $v -Compress", { key, name }).replace(/^﻿/, ""));
 
 const USER = "D:\\work\\Real Project\\Mine.twinproj";
 const OTHER = "D:\\work\\Other\\Other.twinproj";
@@ -124,6 +141,101 @@ try {
   // Idempotent: nothing is left to put back, so nothing may be written.
   assert.deepEqual(R.restoreProjects(snap, { prefixes: [TEMPDIR] }), { projectState: 0, recentlyOpened: 0 });
   assert.equal(R.restoreKeys(keys), 0);
+
+  // ------------------------------------------------ what the IDE does to the recent list
+  // Each case: the list as found, the list after the run, the list put back.
+  const PROBE1 = TEMPDIR + "\\p1.twinproj", PROBE2 = TEMPDIR + "\\p2.twinproj";
+  const OTHERRUN = path.join(tmpdir(), "tbharness-selftest-Łukasz", "tbrun", "9999", "o.twinproj");
+  const full = Array.from({ length: 21 }, (_, i) => `D:\\full\\p${i}.twinproj`);
+  const recentCases = [
+    ["a short list's empty slots filled with copies of its last entry",
+      ["D:\\x.twinproj"], [PROBE2, PROBE1, ...Array(19).fill("D:\\x.twinproj")], ["D:\\x.twinproj"]],
+    ["a full list's oldest entries pushed off the end",
+      full, [PROBE2, PROBE1, ...full.slice(0, 19)], full],
+    ["a project the user opened meanwhile kept on top, and moved one kept where it went",
+      ["D:\\a.twinproj", "D:\\b.twinproj", "D:\\c.twinproj"],
+      [PROBE1, "D:\\new.twinproj", "D:\\c.twinproj", "D:\\a.twinproj", "D:\\b.twinproj",
+       ...Array(16).fill("D:\\b.twinproj")],
+      ["D:\\new.twinproj", "D:\\c.twinproj", "D:\\a.twinproj", "D:\\b.twinproj"]],
+    ["copies that were there before kept, as many as there were",
+      ["D:\\a.twinproj", "D:\\b.twinproj", "D:\\b.twinproj"],
+      [PROBE1, "D:\\a.twinproj", ...Array(19).fill("D:\\b.twinproj")],
+      ["D:\\a.twinproj", "D:\\b.twinproj", "D:\\b.twinproj"]],
+    ["another run's entry that its own tidy removed meanwhile not brought back",
+      ["D:\\a.twinproj", OTHERRUN, "D:\\b.twinproj"], [PROBE1, "D:\\a.twinproj", "D:\\b.twinproj"],
+      ["D:\\a.twinproj", "D:\\b.twinproj"]],
+  ];
+  for (const [what, found, afterRun, expected] of recentCases) {
+    setValues(ROOT + "\\RecentlyOpened", slots(found));
+    const s = R.snapshotProjects([], { root: ROOT });
+    setValues(ROOT + "\\RecentlyOpened", slots(afterRun));
+    R.restoreProjects(s, { prefixes: [TEMPDIR] });
+    assert.deepEqual(R.ideLists({ root: ROOT }).recentlyOpened, Object.values(slots(expected)), what);
+    assert.equal(R.restoreProjects(s, { prefixes: [TEMPDIR] }).recentlyOpened, 0, `${what}: idempotent`);
+  }
+  // A sweep with no list in hand, as startTidy makes first, only deletes.
+  setValues(ROOT + "\\RecentlyOpened", slots([PROBE1, "D:\\x.twinproj", "D:\\x.twinproj"]));
+  R.restoreProjects({ root: ROOT, entries: [] }, { prefixes: [TEMPDIR] });
+  assert.deepEqual(R.ideLists({ root: ROOT }).recentlyOpened,
+    Object.values(slots(["D:\\x.twinproj", "D:\\x.twinproj"])), "a sweep with no snapshot only deletes");
+
+  // ------------------------------------------------ remembered build targets
+  const SETTINGS = ROOT + "\\IDESettings";
+  const MEMORY = "targetArchitectureMemory";
+  const PROBE = TEMPDIR + "\\tbrun-probe.twinproj";
+  const PROBE_FWD = TEMPDIR.split("\\").join("/") + "/src/x.twinproj";
+  const memory = { [USER]: "win64", [PROBE]: "win64", [LOOKALIKE]: "win64", [PROBE_FWD]: "win32",
+                   [OTHER]: "win32" };
+  setValues(SETTINGS, { [MEMORY]: JSON.stringify(memory) });
+  assert.equal(R.sweepArchitectureMemory([TEMPDIR], { root: ROOT }), 2,
+    "both of the run's entries are deleted, whichever separator they use");
+  assert.equal(readValue(SETTINGS, MEMORY),
+    JSON.stringify({ [USER]: "win64", [LOOKALIKE]: "win64", [OTHER]: "win32" }),
+    "every other entry is kept, in its order, written as the IDE writes it");
+  assert.equal(R.sweepArchitectureMemory([TEMPDIR], { root: ROOT }), 0, "a second sweep deletes nothing");
+  setValues(SETTINGS, { [MEMORY]: "{not json" });
+  assert.equal(R.sweepArchitectureMemory([TEMPDIR], { root: ROOT }), 0);
+  assert.equal(readValue(SETTINGS, MEMORY), "{not json", "a value that is not JSON is left alone");
+  deleteValues(SETTINGS, [MEMORY]);
+  assert.equal(R.sweepArchitectureMemory([TEMPDIR], { root: ROOT }), 0, "no value, nothing to do");
+  assert.throws(() => R.sweepArchitectureMemory(["C:\\"], { root: ROOT }), /outside/);
+
+  // A named project's target, which a run switches: tbbuild --arch on the
+  // user's own project. The IDE saves the switch under the path as it was
+  // given, which need not be spelled as the user's IDE spelled it.
+  const kept = { [OTHER]: "win32", [USER]: "win64", "D:\\z.twinproj": "win64" };
+  setValues(SETTINGS, { [MEMORY]: JSON.stringify(kept) });
+  const targets = R.snapshotArchitectureMemory([USER, NEWPROJ], { root: ROOT });
+  setValues(SETTINGS, { [MEMORY]: JSON.stringify(
+    { ...kept, [USER]: "win32", [NEWPROJ]: "win64", [USER.toLowerCase()]: "win32" }) });
+  assert.equal(R.restoreArchitectureMemory(targets), 3,
+    "the user's entry gets its value back; the run's other spelling of it, and its new project's, go");
+  assert.equal(readValue(SETTINGS, MEMORY), JSON.stringify(kept), "every entry as it was, in its order");
+  assert.equal(R.restoreArchitectureMemory(targets), 0, "a second restore writes nothing");
+  setValues(SETTINGS, { [MEMORY]: JSON.stringify({ [OTHER]: "win32", "D:\\z.twinproj": "win64" }) });
+  assert.equal(R.restoreArchitectureMemory(targets), 1);
+  assert.deepEqual(JSON.parse(readValue(SETTINGS, MEMORY)), kept, "an entry the run deleted comes back");
+  // ...and the same through the whole tidy.
+  setValues(SETTINGS, { [MEMORY]: JSON.stringify(kept) });
+  const named = R.startTidy({ root: ROOT, keys: [ASSOC], paths: [USER] });
+  setValues(SETTINGS, { [MEMORY]: JSON.stringify({ ...kept, [USER]: "win32" }) });
+  assert.equal(R.finishTidy(named).architecture, 1);
+  assert.equal(readValue(SETTINGS, MEMORY), JSON.stringify(kept), "finishTidy puts a named project's target back");
+
+  // ------------------------------------------------ an association another run's copy held
+  // startTidy and finishTidy, the whole tidy, on the scratch keys.
+  const COMMAND = ASSOC + "\\shell\\open\\command";
+  const REAL = "\"C:\\IDE\\twinBASIC.exe\" \"%1\"";
+  const COPY = `"${path.join(tmpdir(), "tbaddin", "9870", "ide", "twinBASIC.exe")}" "%1"`;
+  setValues(COMMAND, { "": COPY });                  // another run's copy has it
+  const dirty = R.startTidy({ root: ROOT, keys: [ASSOC] });
+  setValues(COMMAND, { "": REAL });                  // an IDE from a real install takes it back
+  assert.equal(R.finishTidy(dirty).association, null);
+  assert.equal(readValue(COMMAND, ""), REAL, "an association naming the temp folder is never put back");
+  const clean = R.startTidy({ root: ROOT, keys: [ASSOC] });
+  setValues(COMMAND, { "": COPY });                  // this run's copy takes it
+  assert.ok(R.finishTidy(clean).association >= 1);
+  assert.equal(readValue(COMMAND, ""), REAL, "one that did not is put back");
 
   // ------------------------------------------------ the guards
   assert.throws(() => R.restoreKeys([{ path: "Software", snap: null }]), /close to the root/);

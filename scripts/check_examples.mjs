@@ -61,8 +61,10 @@
 // And one that does not: a sample can take the compiler down. twinBASIC runs it
 // in-process with user code, and a two-line syntax skeleton in Attributes.md
 // crashes it outright (BUGS-TO-REPORT.md). In a batch that costs every other
-// sample its result, so a crash bisects: O(log n) extra builds, paid only on
-// failure.
+// sample its result, so a crash is isolated, paid for only on failure: the
+// sample tbbuild names as the one the compiler died parsing is built on its own
+// and the rest without it, a crash that names none bisects, O(log n) builds, and
+// one that needs several samples at once is reported with all of them.
 
 import { spawn } from "node:child_process";
 import {
@@ -575,6 +577,26 @@ const COMPILER = IDE ? compilerExe(IDE) : null;
 // by the top-level catch, if main() dies in between.
 let tidy = null;
 
+/**
+ * The samples of a staged batch that tbbuild's crash report says the compiler
+ * died parsing, as fence ids.
+ *
+ * tbbuild names them on its `last parsing:` line by the file's base name, which
+ * for a sample is its generated module's: `last parsing: tbx_df66b6fa33.twin`
+ * for a batch of nine holding the crash fixture. A file that is no sample of
+ * the batch -- the template's own source -- names nothing, and neither does a
+ * report without the line.
+ */
+function crashedIn(report, map) {
+  const ids = new Set();
+  const line = /^last parsing: (.+)$/m.exec(report)?.[1] ?? "";
+  for (const file of line.split(",")) {
+    const entry = map.get(file.trim().split(/[\\/]/).pop());
+    if (entry) ids.add(entry.fence.id);
+  }
+  return ids;
+}
+
 /** Build one staged batch; returns per-fence errors, or a crash marker. */
 async function buildStaged(staged, port) {
   const args = [path.join(REPO, "scripts", "tbbuild.mjs"), staged.proj,
@@ -589,7 +611,7 @@ async function buildStaged(staged, port) {
   child.stderr.on("data", (d) => { err += d; });
   const code = await new Promise((r) => child.on("exit", r));
 
-  if (code === 4) return { crashed: true, detail: err.trim() };
+  if (code === 4) return { crashed: true, detail: err.trim(), named: crashedIn(err, staged.map) };
   if (code !== 0 && code !== 1) {
     throw new Error(`tbbuild exited ${code} on ${staged.proj}\n${err.trim() || out.trim()}`);
   }
@@ -633,23 +655,20 @@ async function buildStaged(staged, port) {
 }
 
 /**
- * Halve a batch WITHOUT cutting through anything that has to stay together.
+ * A batch's units, and the page context that travels with them.
  *
- * The unit is what `makeBatches` made it: a `projname` group is one program, and
- * a page's `hidden` context travels with every sample from that page. Halving
- * the fence array instead would take a group's definitions away from its tests
- * and then report the tests -- an isolation run that manufactures the failure it
- * claims to have found. The hidden fences sit at the END of `batch.fences`, so a
- * plain slice loses them for one half outright.
- *
- * Returns null when there is one unit left, which is the leaf: the smallest
- * thing that can be blamed.
+ * Isolation cuts a batch by unit, never through one. The unit is what
+ * `makeBatches` made it: a `projname` group is one program, and a page's
+ * `hidden` context travels with every sample from that page. Cutting the fence
+ * array instead would take a group's definitions away from its tests and then
+ * report the tests -- an isolation run that manufactures the failure it claims
+ * to have found. The hidden fences sit at the END of `batch.fences`, so a plain
+ * slice loses them for one part outright.
  */
-function splitBatch(batch) {
+function unitsOf(batch) {
   // Hidden fences and resource files are page context: they follow the samples
   // rather than being split between them.
   const travels = (f) => f.flags.has(HIDDEN_MARKER) || f.isResource;
-  const hidden = batch.fences.filter(travels);
   const units = new Map();
   for (const f of batch.fences) {
     if (travels(f)) continue;
@@ -657,14 +676,43 @@ function splitBatch(batch) {
     if (!units.has(key)) units.set(key, []);
     units.get(key).push(f);
   }
-  const list = [...units.values()];
+  return { list: [...units.values()], hidden: batch.fences.filter(travels) };
+}
+
+/** A batch of some of another's units, with the page context those units need. */
+function batchOf(batch, units, hidden) {
+  const fences = units.flat();
+  const pages = new Set(fences.map((f) => f.rel));
+  return { ...batch, fences: [...fences, ...hidden.filter((h) => pages.has(h.rel))], pages };
+}
+
+/**
+ * Halve a batch WITHOUT cutting through anything that has to stay together.
+ *
+ * Returns null when there is one unit left, which is the leaf: the smallest
+ * thing that can be blamed.
+ */
+function splitBatch(batch) {
+  const { list, hidden } = unitsOf(batch);
   if (list.length < 2) return null;
   const half = Math.ceil(list.length / 2);
-  return [list.slice(0, half), list.slice(half)].map((part) => {
-    const fences = part.flat();
-    const pages = new Set(fences.map((f) => f.rel));
-    return { ...batch, fences: [...fences, ...hidden.filter((h) => pages.has(h.rel))], pages };
-  });
+  return [list.slice(0, half), list.slice(half)].map((part) => batchOf(batch, part, hidden));
+}
+
+/**
+ * Take the units holding these samples out of a batch: [those units, the rest].
+ *
+ * Null when that divides nothing -- no sample of the batch named, or every unit
+ * named -- which is what keeps a recursion on either part smaller than the
+ * batch it came from. Hidden context is not a unit, so naming it takes nothing
+ * out; the samples it travels with are left for halving to find.
+ */
+function takeOut(batch, ids) {
+  const { list, hidden } = unitsOf(batch);
+  const named = list.filter((u) => u.some((f) => ids.has(f.id)));
+  if (!named.length || named.length === list.length) return null;
+  return [batchOf(batch, named, hidden),
+          batchOf(batch, list.filter((u) => !named.includes(u)), hidden)];
 }
 
 /** The visible samples of a leaf batch, and how to describe it in a finding. */
@@ -692,17 +740,15 @@ const sameRow = (row) => row.replace(/[/\\]DocSamples\d+[/\\]/, "/");
  * sample -- hundreds of IDE starts -- and then blame an arbitrary one.
  */
 const templateOwnRows = new Map();
-function ownRowsOf(project, port, work) {
+function ownRowsOf(project, lane) {
   if (!templateOwnRows.has(project)) {
     templateOwnRows.set(project, (async () => {
-      const staged = stageBatch({ project, fences: [] }, work);
-      const result = await buildStaged(staged, port);
-      if (!flag("keep")) rmSync(staged.dir, { recursive: true, force: true });
+      const result = await lane.build({ project, fences: [] });
       const rows = result.crashed
         ? [`the ${project} template crashes the compiler with no samples in it`]
         : [...(result.unattributed ?? []), ...(result.unreadable ?? [])];
       if (rows.length) {
-        say(`  note: template \`${project}\` does not build clean on its own; ` +
+        lane.note(`  note: template \`${project}\` does not build clean on its own; ` +
           `${rows.length} row(s) are its own, not any sample's`);
       }
       return new Set(rows.map(sameRow));
@@ -712,53 +758,146 @@ function ownRowsOf(project, port, work) {
 }
 
 /**
- * Build a batch, isolating a crash or an unattributable diagnostic.
+ * A lane: where a batch is built, and where what isolating it finds goes.
  *
- * Both are attributed by halving until one unit is left. A crash is a compiler
- * bug as well as a finding, and BUGS-TO-REPORT.md is where one goes. An
- * unattributable diagnostic is the subtler of the two: the sample that caused it
- * may have no diagnostic of its own at all -- a generic instantiated with a type
- * the project does not have reports inside the PACKAGE's source, against the
- * generic's own type parameter -- so before this the sample was counted as
- * compiling while the run failed with a row naming no page.
+ * This one stages each batch into the lane's own workspace and builds it on the
+ * lane's port. The probes hand `runBatch` a fake, whose builds crash on sets of
+ * samples a probe chooses -- which is how isolation is tested without an IDE,
+ * and without a crash that needs two real samples to happen.
  */
-async function runBatch(batch, port, work) {
-  const staged = stageBatch(batch, work);
-  const result = await buildStaged(staged, port);
-  if (!flag("keep")) rmSync(staged.dir, { recursive: true, force: true });
-
-  // A function, not a shared object: spreading one would hand every caller the
-  // same arrays, and a recursion that pushes into them is a bug waiting.
-  const blank = () => ({
-    perFence: new Map(), templateFaults: [], crashed: [], blamed: [], blamedRows: new Map(),
-  });
-  const split = async (why) => {
-    const parts = splitBatch(batch);
-    if (!parts) return null;
-    say(`  ${why} in ${batch.fences.length} sample(s) [${batch.project}]: splitting to find it`);
-    const merged = blank();
-    for (const part of parts) {
-      const sub = await runBatch(part, port, work);
-      for (const [k, v] of sub.perFence ?? []) merged.perFence.set(k, v);
-      for (const [k, v] of sub.blamedRows ?? []) merged.blamedRows.set(k, v);
-      merged.templateFaults.push(...(sub.templateFaults ?? []));
-      merged.crashed.push(...(sub.crashed ?? []));
-      merged.blamed.push(...(sub.blamed ?? []));
-    }
-    return merged;
+function laneOf(port, work) {
+  return {
+    async build(batch) {
+      const staged = stageBatch(batch, work);
+      const result = await buildStaged(staged, port);
+      if (!flag("keep")) rmSync(staged.dir, { recursive: true, force: true });
+      return result;
+    },
+    finding: addFinding,
+    note: say,
   };
+}
 
-  if (result.crashed) {
-    const deeper = await split("a compiler crash");
-    if (deeper) return deeper;
+// A function, not a shared object: spreading one would hand every caller the
+// same arrays, and a recursion that pushes into them is a bug waiting.
+const blank = () => ({
+  perFence: new Map(), templateFaults: [], crashed: [], blamed: [], blamedRows: new Map(),
+});
+
+/** Several parts' results, as one batch's. */
+function merge(subs) {
+  const merged = blank();
+  for (const sub of subs) {
+    for (const [k, v] of sub.perFence ?? []) merged.perFence.set(k, v);
+    for (const [k, v] of sub.blamedRows ?? []) merged.blamedRows.set(k, v);
+    merged.templateFaults.push(...(sub.templateFaults ?? []));
+    merged.crashed.push(...(sub.crashed ?? []));
+    merged.blamed.push(...(sub.blamed ?? []));
+  }
+  return merged;
+}
+
+/** Build both halves of a batch; null when it is one unit, which cannot be halved. */
+async function split(batch, lane, why) {
+  const parts = splitBatch(batch);
+  if (!parts) return null;
+  lane.note(`  ${why} in ${batch.fences.length} sample(s) [${batch.project}]: splitting to find it`);
+  const subs = [];
+  for (const part of parts) subs.push(await runBatch(part, lane));
+  return merge(subs);
+}
+
+/**
+ * Find what took the compiler down in a batch, and build everything else.
+ *
+ * Start where tbbuild says the compiler died: the sample it was parsing is
+ * built on its own and the rest without it, two builds where halving pays two
+ * for every level. With no sample of the batch named, halve. Either way a
+ * crash can need several samples at once, and then no part crashes by itself
+ * -- the named sample and the rest both build, or both halves do. That used to
+ * end with every sample of the batch counted as compiling; `together` finds the
+ * samples the crash needs instead.
+ *
+ * The result is marked `fromCrash`, because a part that crashed may come back
+ * with nothing in `crashed` -- its crash needed several samples too -- and
+ * whether a part crashed is what decides the next step.
+ */
+async function isolateCrash(batch, named, lane) {
+  const where = `a compiler crash in ${batch.fences.length} sample(s) [${batch.project}]`;
+  let parts = takeOut(batch, named);
+  if (parts) lane.note(`  ${where}: building the sample it died parsing on its own`);
+  else if ((parts = splitBatch(batch))) lane.note(`  ${where}: splitting to find it`);
+  else {
     const { rep, ids, rest } = leafOf(batch);
-    addFinding(rep, "crashes the twinBASIC compiler" + rest,
+    lane.finding(rep, "crashes the twinBASIC compiler" + rest,
       "the compiler dies parsing this sample; record it in BUGS-TO-REPORT.md");
     // Named back to the caller, because a crashed sample produced no
     // diagnostics and would otherwise be counted as one that compiled -- the
     // same false-clean shape tbbuild's own crash check exists to close.
-    return { ...blank(), crashed: ids };
+    return { ...blank(), crashed: ids, fromCrash: true };
   }
+  const subs = [];
+  for (const part of parts) subs.push(await runBatch(part, lane));
+  if (subs.some((s) => s.fromCrash)) return { ...merge(subs), fromCrash: true };
+  lane.note("  neither part crashes on its own: looking for the samples it needs together");
+  return { ...merge([...subs, await together(batch, ...parts, lane)]), fromCrash: true };
+}
+
+/**
+ * The samples a crash needs when it needs several: `a` and `b` each built
+ * clean, and together they crash.
+ *
+ * `partners` finds the smallest part of a pool that still crashes with what is
+ * held fixed. Whichever half of the pool crashes with it holds what the crash
+ * needs; when neither does, each half holds some of it, and each is searched
+ * with the other held. That assumes a crash follows from what a build holds --
+ * more samples never prevent one -- and the last build checks it: a set that
+ * does not crash as found is reported whole instead.
+ *
+ * Every member built clean in `a` or `b`, so each has its own result. They are
+ * blamed rather than passed, because together they take the compiler down.
+ */
+async function together(batch, a, b, lane) {
+  const { hidden } = unitsOf(batch);
+  const crashes = async (units) => !!(await lane.build(batchOf(batch, units, hidden))).crashed;
+  const partners = async (fixed, pool) => {
+    if (pool.length === 1) return pool;
+    const half = Math.ceil(pool.length / 2);
+    const [x, y] = [pool.slice(0, half), pool.slice(half)];
+    if (await crashes([...fixed, ...x])) return partners(fixed, x);
+    if (await crashes([...fixed, ...y])) return partners(fixed, y);
+    const inX = await partners([...fixed, ...y], x);
+    return [...inX, ...await partners([...fixed, ...inX], y)];
+  };
+  const inA = unitsOf(a).list, inB = unitsOf(b).list;
+  const needB = await partners(inA, inB);
+  const needA = await partners(needB, inA);
+  const found = await crashes([...needA, ...needB]);
+  const members = (found ? [...needA, ...needB] : [...inA, ...inB]).flat()
+    .filter((f) => !f.flags.has(HIDDEN_MARKER) && !f.isResource);
+  const [rep, ...others] = members;
+  lane.finding(rep, `crashes the twinBASIC compiler when built with ${others.length} other ` +
+    `sample(s), though none of the ${members.length} does on its own`,
+    `the others: ${others.map((f) => `${f.rel}:${f.line}`).join(", ")}` +
+    (found ? "" : "; no smaller set that crashes was found") + " -- record it in BUGS-TO-REPORT.md");
+  return { ...blank(), blamed: members.map((f) => f.id) };
+}
+
+/**
+ * Build a batch, isolating a crash or an unattributable diagnostic.
+ *
+ * A crash goes to `isolateCrash`; an unattributable diagnostic is attributed by
+ * halving until one unit is left. A crash is a compiler bug as well as a
+ * finding, and BUGS-TO-REPORT.md is where one goes. An unattributable
+ * diagnostic is the subtler of the two: the sample that caused it may have no
+ * diagnostic of its own at all -- a generic instantiated with a type the
+ * project does not have reports inside the PACKAGE's source, against the
+ * generic's own type parameter -- so before this the sample was counted as
+ * compiling while the run failed with a row naming no page.
+ */
+async function runBatch(batch, lane) {
+  const result = await lane.build(batch);
+  if (result.crashed) return isolateCrash(batch, result.named, lane);
 
   const unreadable = result.unreadable ?? [];
   const rows = [...new Set((result.unattributed ?? []).map(sameRow))];
@@ -766,7 +905,7 @@ async function runBatch(batch, port, work) {
     return { perFence: result.perFence, templateFaults: unreadable, crashed: [], blamed: [] };
   }
 
-  const own = await ownRowsOf(batch.project, port, work);
+  const own = await ownRowsOf(batch.project, lane);
   const mine = rows.filter((r) => !own.has(r));
   if (!mine.length) {
     // Every row is the template's own. Reported as a template fault, which is
@@ -774,7 +913,7 @@ async function runBatch(batch, port, work) {
     return { perFence: result.perFence, templateFaults: [...rows, ...unreadable], crashed: [], blamed: [] };
   }
 
-  const deeper = await split("a diagnostic outside every sample");
+  const deeper = await split(batch, lane, "a diagnostic outside every sample");
   if (deeper) return { ...deeper, templateFaults: [...deeper.templateFaults, ...unreadable] };
 
   // Blamed, not passed: the whole point is that such a sample can produce no
@@ -792,16 +931,17 @@ async function runBatch(batch, port, work) {
 async function runAll(batches, work) {
   const queue = [...batches];
   const results = [];
-  const lanes = Array.from({ length: Math.min(jobs, queue.length) }, async (_, lane) => {
+  const lanes = Array.from({ length: Math.min(jobs, queue.length) }, async (_, i) => {
     // A lane owns its port AND its workspace. Two IDEs pointed at one source
     // tree both wedge and neither ever returns -- distinct ports are not
     // enough, which cost two runs to learn.
-    const laneWork = path.join(work, `lane${lane}`);
+    const laneWork = path.join(work, `lane${i}`);
     mkdirSync(laneWork, { recursive: true });
+    const lane = laneOf(basePort + i, laneWork);
     while (queue.length) {
       const batch = queue.shift();
-      process.stderr.write(`  building ${batch.fences.length} sample(s) [${batch.project}] on lane ${lane}\n`);
-      results.push(await runBatch(batch, basePort + lane, laneWork));
+      process.stderr.write(`  building ${batch.fences.length} sample(s) [${batch.project}] on lane ${i}\n`);
+      results.push(await runBatch(batch, lane));
     }
   });
   await Promise.all(lanes);
@@ -1229,6 +1369,82 @@ async function runProbes() {
   if (withM2?.fences.some((f) => f.id === "mh")) {
     failures.push("split: a page's hidden context followed a page that never asked for it");
   }
+  // Taking a crash's named sample out is the same kind of cut and can go wrong
+  // the same two ways. It also has to refuse a cut that divides nothing, or the
+  // recursion on the named part never gets any smaller.
+  const [outM2, restM1] = takeOut(mixed, new Set(["m2"])) ?? [];
+  if (outM2?.fences.map((f) => f.id).join() !== "m2") {
+    failures.push("take out: the named sample did not come out on its own");
+  }
+  if (!restM1?.fences.some((f) => f.id === "mh")) {
+    failures.push("take out: a page's hidden context did not stay with its sample");
+  }
+  const grouped = { project: "console", fences: [fake("t1", "t"), fake("t2", "t"), fake("u1", null)] };
+  if (takeOut(grouped, new Set(["t2"]))?.[0].fences.map((f) => f.id).join() !== "t1,t2") {
+    failures.push("take out: a projname group was cut apart");
+  }
+  if (takeOut(soleGroup, new Set(["g1"])) !== null) {
+    failures.push("take out: a cut that divides nothing was made");
+  }
+  if (takeOut(mixed, new Set(["mh"])) !== null) {
+    failures.push("take out: a page's hidden context was taken out as a unit");
+  }
+  // What is taken out is read off tbbuild's crash report, which names a sample
+  // by its generated module's file. This is a report as tbbuild printed it.
+  const staged9 = new Map([["tbx_df66b6fa33.twin", { fence: { id: "P.md#5" } }]]);
+  const report = "the compiler crashed 2x -- this project takes it down\n" +
+    "last parsing: tbx_df66b6fa33.twin\n" +
+    "(read the IDE's DEBUG CONSOLE with --keep for the exception detail)\n";
+  if ([...crashedIn(report, staged9)].join() !== "P.md#5") {
+    failures.push("crash report: the sample tbbuild named was not read off it");
+  }
+  if (crashedIn(report.replace("tbx_df66b6fa33", "tbxMain"), staged9).size) {
+    failures.push("crash report: the template's own file named a sample");
+  }
+  if (crashedIn("the compiler crashed 1x -- this project takes it down\n", staged9).size) {
+    failures.push("crash report: a report naming no file named a sample");
+  }
+  // Isolation itself, run by runBatch against a fake lane. `crash` gets the ids
+  // of a build's samples and says whether the compiler goes down, and which of
+  // them the report names. Each shape a crash can take has to end in exactly
+  // one finding, on the samples it needs -- never in a batch whose samples all
+  // count as compiling, which is what a crash that needs two of them used to
+  // become once halving had separated them.
+  const fakeLane = (crash) => {
+    const lane = {
+      found: [], builds: 0,
+      async build(b) {
+        lane.builds++;
+        const c = crash(new Set(b.fences.map((f) => f.id)));
+        return c ? { crashed: true, named: new Set(c.named ?? []) }
+                 : { perFence: new Map(), unreadable: [], unattributed: [] };
+      },
+      finding: (fence) => lane.found.push(fence.id),
+      note: () => {},
+    };
+    return lane;
+  };
+  const five = { project: "console", fences: ["a", "b", "c", "d", "e"].map((id) => fake(id, null)) };
+  const when = (...need) => (ids) => need.every((id) => ids.has(id));
+  const naming = (id) => (ids) => ({ named: ids.has(id) ? [id] : [] });
+  for (const [shape, crashes, names, alone, set] of [
+    ["a named sample that crashes alone", when("c"), naming("c"), ["c"], []],
+    ["an unnamed sample that crashes alone", when("d"), () => ({}), ["d"], []],
+    ["a named sample that crashes only with another", when("b", "d"), naming("d"), [], ["d", "b"]],
+    ["two unnamed samples that halving separates", when("a", "e"), () => ({}), [], ["a", "e"]],
+    ["an innocent sample named, the culprit elsewhere", when("e"), naming("b"), ["e"], []],
+    ["three samples that crash only together", when("a", "c", "e"), naming("c"), [], ["c", "a", "e"]],
+  ]) {
+    const lane = fakeLane((ids) => crashes(ids) && names(ids));
+    const r = await runBatch(five, lane);
+    const got = `${[...r.crashed].sort()} / ${[...r.blamed].sort()} / ${lane.found}`;
+    const want = `${[...alone].sort()} / ${[...set].sort()} / ${alone[0] ?? set[0]}`;
+    if (got !== want) failures.push(`isolation: ${shape} -> ${got}, want ${want}`);
+  }
+  // ...and the common case stays cheap: the batch, the named sample, the rest.
+  const cheap = fakeLane((ids) => when("c")(ids) && naming("c")(ids));
+  await runBatch(five, cheap);
+  if (cheap.builds !== 3) failures.push(`isolation: a named crash took ${cheap.builds} builds, want 3`);
   // Two builds of one template differ only by the stage index in every path, and
   // a template's own fault is recognised by comparing those rows.
   const row = (n) => `{ERROR} /DocSamples${n}/Packages/P/Sources/S.twin [10,20]: TB5079 x`;
@@ -1356,9 +1572,11 @@ async function runProbes() {
     return false;
   }
   // 10 line-map (5 slots x 2 bases) + 4 wrapper container + 7 batching
-  // + 5 splitting + 9 concat + 10 resource + 8 report + 6 markup.
-  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 59} probes: ` +
-    `classifier, markup, line mapping, batching, splitting, concat, resources and the report`);
+  // + 5 splitting + 5 taking out + 3 crash report + 7 isolation + 9 concat
+  // + 10 resource + 8 report + 6 markup.
+  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 74} probes: ` +
+    "classifier, markup, line mapping, batching, splitting, crash isolation, concat, " +
+    "resources and the report");
   return true;
 }
 
@@ -1511,8 +1729,9 @@ async function main() {
       }
       continue;
     }
-    // A sample blamed as part of a group carries no rows of its own -- the
-    // finding above names the group -- but it is still not a pass.
+    // A sample blamed as part of a group, or with the samples it takes the
+    // compiler down together with, carries no rows of its own -- one finding
+    // names the rest -- but it is still not a pass.
     if (!diags.length) {
       if (!blamed.has(fence.id)) passed.push(fence);
       continue;

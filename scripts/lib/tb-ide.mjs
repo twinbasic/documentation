@@ -1,6 +1,7 @@
-// Starting a twinBASIC IDE, reaching it over CDP, reading what it shows, and
-// ending it. The mechanics scripts/tbbuild.mjs and scripts/tbrun.mjs share, and
-// the ones the add-in harness in WIP.HelpAddin.md (Stage 1) is built on.
+// Starting a twinBASIC IDE, reaching it over CDP, reading what it shows,
+// building the project it has open, and ending it. The mechanics
+// scripts/tbbuild.mjs and scripts/tbrun.mjs share, and the ones the add-in
+// harness in WIP.HelpAddin.md (Stage 1) is built on.
 //
 // Each function here was once inline in one of those two scripts, and the
 // comments that explain it moved with it. See WIP.Harness.md, "Compiling a
@@ -8,6 +9,7 @@
 
 import { execFileSync, spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
+import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { attach } from "./tb-cdp.mjs";
@@ -16,6 +18,21 @@ export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // The IDE echoes projectFilePath back with whichever separators it was given.
 export const normPath = (p) => p.split("\\").join("/").toLowerCase();
+
+/**
+ * The environment variable that tells an add-in it is under test. While it is
+ * set, an add-in does nothing outside the IDE: it prints each such action to
+ * the DEBUG CONSOLE instead, as `open <url>` for a URL it would have opened in
+ * a browser (WIP.HelpAddin.md, Stage 1 item 6). A browser started from an IDE
+ * on a private desktop would open where nobody can see it and outlive the run.
+ *
+ * launchIde sets it to "1" for every IDE the harness starts, tbbuild's and
+ * tbrun's included: any of them can load an add-in the user has installed,
+ * and none has anybody watching it. Measured on BETA 983 (P10): it reaches the
+ * compiler, twinBASIC_win32_noDEP.exe, which the IDE starts as its own child,
+ * and every add-in that compiler loads, including after the compiler restarts.
+ */
+export const ADDIN_TEST_ENV = "TB_ADDIN_TEST";
 
 /**
  * Whether the IDE goes on the user's desktop or on a private one.
@@ -74,18 +91,41 @@ export function killTree(pid) {
  *                            folder and the private desktop's name
  * @param {boolean} [o.show]  on the user's desktop instead of a private one
  * @param {boolean} [o.keep]  the IDE is to outlive this Node process
- * @param {object} [o.env]    extra environment for the IDE
+ * A port something already listens on is refused. The harness attaches to
+ * whatever page answers on its port, so if another IDE already holds it, that
+ * IDE is the one the harness would read and operate --- and other sessions on
+ * the same machine run this harness too, on ports of their own choosing.
+ * An IDE ended a moment ago
+ * holds its port a little longer than it lives: 13 and 16 ms after
+ * shutdownIde, and once two seconds. So the port gets ten seconds to come
+ * free before the launch is refused.
+ *
+ * @param {object} [o.env]    extra environment for the IDE. ADDIN_TEST_ENV is
+ *                            set to "1" unless this names it; a value of
+ *                            undefined leaves a variable out altogether
  * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess | null}>}
- *   `pid` is the IDE's own. Throws when a hidden launch fails.
+ *   `pid` is the IDE's own. Throws when the port is taken, or when a hidden
+ *   launch fails.
  */
 export async function launchIde({ exe, project, port, show = false, keep = false, env = {} }) {
+  const waitFrom = Date.now();
+  while (await portTaken(port)) {
+    if (Date.now() - waitFrom > 10 * 1000) {
+      throw new Error(`DevTools port ${port} is in use: another IDE has it, perhaps one another ` +
+        "session started, and this one could be mistaken for it. Pass a different --port.");
+    }
+    await sleep(100);
+  }
   const exeWin = exe.split("/").join("\\");
   const target = path.resolve(project).split("/").join("\\");
+  // Node leaves out of a child's environment any variable whose value is
+  // undefined, so `env` can remove one as well as set it.
   const fullEnv = {
     ...process.env,
     WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS:
       `--remote-debugging-port=${port} --remote-allow-origins=*`,
     WEBVIEW2_USER_DATA_FOLDER: `${process.env.TEMP}/tbbuild-wv2-${port}`,
+    [ADDIN_TEST_ENV]: "1",
     ...env,
   };
 
@@ -184,14 +224,55 @@ export function waitForExit(pid, timeoutMs) {
   return false;
 }
 
-/** Attach to the IDE's page once its DevTools port answers; null if it never does. */
+/**
+ * Attach to the IDE's page once its DevTools port answers; null if it never does.
+ *
+ * The connection records and dismisses every javascript dialog the page opens,
+ * in `c.dialogs` as `{type, message, at}`. The IDE calls `alert()` from 37
+ * places in BETA 983, and never `confirm()` or `prompt()`. An alert blocks the
+ * page until it is answered, which on a private desktop nobody can do: every
+ * later call on the connection would time out. An alert is accepted, since it has only the
+ * one button; a confirm or a prompt, which only an add-in could open, is
+ * cancelled. CDP reports dialogs only once `Page.enable` has been sent, and
+ * until this function sent it, `tbbuild`'s list of dialogs could never fill.
+ *
+ * **A dialog that opened before this attached cannot be answered.** Measured:
+ * `Page.enable` got no answer while it was open, the new connection was told
+ * of no dialog, and `Page.handleJavaScriptDialog` replied "No dialog is
+ * showing" while the page stayed blocked. The IDE's own candidates are its
+ * "IDE startup failure" alert and "Bad command line syntax.", which
+ * launchIde's single argument never provokes. Such a page is marked
+ * `c.pageBlocked`, and waitForCompile passes that on, so the failure names the
+ * likely cause; `--show` puts the dialog where a person can read it.
+ */
 export async function attachIde(port, { tries = 60 } = {}) {
   for (let i = 0; i < tries; i++) {
     await sleep(1000);
-    try { return await attach(port); } catch { /* still starting */ }
+    let c;
+    try { c = await attach(port); } catch { continue; }  // still starting
+    c.dialogs = [];
+    c.pageBlocked = false;
+    c.on((m) => {
+      if (m.method !== "Page.javascriptDialogOpening") return;
+      const { type, message } = m.params;
+      c.dialogs.push({ type, message, at: Date.now() });
+      c.send("Page.handleJavaScriptDialog", { accept: type === "alert" || type === "beforeunload" })
+        .catch(() => { /* already answered, or the page is gone */ });
+    });
+    try { await c.send("Page.enable"); } catch { c.pageBlocked = true; }
+    return c;
   }
   return null;
 }
+
+// Whether something already listens on a loopback port. A DevTools server
+// binds 127.0.0.1, so binding it ourselves for a moment is the test.
+const portTaken = (port) => new Promise((resolve) => {
+  const s = net.createServer();
+  s.once("error", () => resolve(true));
+  s.once("listening", () => s.close(() => resolve(false)));
+  s.listen(port, "127.0.0.1");
+});
 
 // Counts and rows are read in ONE evaluate. Read separately they raced: a run
 // reported two diagnostics beside a zero error count, because the background
@@ -209,14 +290,7 @@ export async function attachIde(port, { tries = 60 } = {}) {
 // crash-restart cycle takes about 1.3 s and the loop samples at 1 Hz, so
 // `drops` never reaches its threshold. The console is the only record that
 // cannot be missed by sampling: nothing removes an entry from it.
-const BUILD_STATE_JS = `JSON.stringify({
-  st: document.getElementById("compilerStatus")?.textContent ?? "",
-  e: document.getElementById("errorCount")?.textContent ?? "",
-  w: document.getElementById("warningCount")?.textContent ?? "",
-  h: document.getElementById("hintCount")?.textContent ?? "",
-  i: document.getElementById("infoCount")?.textContent ?? "",
-  p: typeof projectFilePath !== "undefined" ? projectFilePath : null,
-  crash: (() => {
+const CRASH_JS = `(() => {
     if (typeof debugConsoleContent === "undefined" || !debugConsoleContent ||
         !debugConsoleContent.dataNodes) return null;
     let n = 0; const files = [];
@@ -226,7 +300,16 @@ const BUILD_STATE_JS = `JSON.stringify({
       if (m && files.indexOf(m[1]) < 0) files.push(m[1]);
     }
     return n ? { n: n, files: files } : null;
-  })(),
+  })()`;
+
+const BUILD_STATE_JS = `JSON.stringify({
+  st: document.getElementById("compilerStatus")?.textContent ?? "",
+  e: document.getElementById("errorCount")?.textContent ?? "",
+  w: document.getElementById("warningCount")?.textContent ?? "",
+  h: document.getElementById("hintCount")?.textContent ?? "",
+  i: document.getElementById("infoCount")?.textContent ?? "",
+  p: typeof projectFilePath !== "undefined" ? projectFilePath : null,
+  crash: ${CRASH_JS},
   rows: (() => {
     const out = [];
     if (typeof problemsPanel === "undefined" || !problemsPanel) return out;
@@ -288,6 +371,43 @@ const BUILD_STATE_JS = `JSON.stringify({
 export const readBuildState = (c) => c.evaluate(BUILD_STATE_JS);
 
 /**
+ * Whether the compiler has crashed since the DEBUG CONSOLE was last cleared:
+ * null, or `{ n, files }` --- how many "NATIVE EXCEPTION" entries, and the files
+ * the thread dumps name as being parsed. An add-in runs inside the compiler's
+ * process, so a crash ends whatever it was doing, and a scenario that saw one
+ * has not tested what it meant to.
+ */
+export const readCrash = (c) => c.evaluate(CRASH_JS);
+
+/**
+ * Wait for a crash record to name the file being parsed, and return it as it
+ * then stands: named, or as it was if no name came within `timeout` ms.
+ *
+ * The IDE's FIRST exception entry carries no thread dump, and the dump is what
+ * names the file. Only a compiler started in TRACE-MODE writes one, and the
+ * IDE switches that on in answer to the first exception, so the name arrives
+ * with the SECOND crash, once the restarted compiler reaches the same file.
+ * Reporting the crash without that name is a correct result nobody can act on.
+ *
+ * Poll, not a fixed sleep. Against the crash fixture the second crash came 1.6
+ * to 1.9 s after the first on an idle machine, but up to 3.0 s with four IDEs
+ * compiling at once, as check_examples runs them; replayed over those runs,
+ * one re-read after a fixed 2 s missed the name 31% of the time. Five seconds
+ * covers the slowest one measured with 2 s to spare.
+ *
+ * @param {object} c                  a tb-cdp connection
+ * @param {{n: number, files: string[]}} crash  a record readCrash returned
+ */
+export async function awaitCrashName(c, crash, { timeout = 5000 } = {}) {
+  const until = Date.now() + timeout;
+  while (!crash.files?.length && Date.now() < until) {
+    await sleep(250);
+    try { crash = (await readCrash(c)) ?? crash; } catch { /* keep what we have */ }
+  }
+  return crash;
+}
+
+/**
  * Wait for the project to open and its compile to settle.
  *
  * twinBASIC runs the compiler in the same process as user code, so a project
@@ -304,8 +424,10 @@ export const readBuildState = (c) => c.evaluate(BUILD_STATE_JS);
  *   given: compared as typed, a relative path never matched, and the IDE was
  *   never reported open.
  * @param {number} o.timeout          milliseconds
- * @returns {Promise<{loaded: boolean, crash: object | null, drops: number, last: string | null}>}
- *   `last` is the final sample, as the JSON string readBuildState returned
+ * @returns {Promise<{loaded: boolean, crash: object | null, drops: number, last: string | null,
+ *                    blocked: boolean}>}
+ *   `last` is the final sample, as the JSON string readBuildState returned;
+ *   `blocked` is attachIde's `pageBlocked`
  */
 export async function waitForCompile(c, { project, timeout }) {
   const want = normPath(path.resolve(project));
@@ -318,16 +440,9 @@ export async function waitForCompile(c, { project, timeout }) {
     const v = JSON.parse(s);
     if (!loaded) { if (v.p && normPath(v.p) === want) loaded = true; else continue; }
     if (v.crash) {
-      // The IDE's FIRST exception line carries no thread dump; the file being
-      // parsed is only named in the dump that comes with the restart about a
-      // second later. Catching the crash on sight and reporting it without that
-      // name is a correct result nobody can act on, so give the IDE one more
-      // moment and take whatever it has then.
-      crash = v.crash;
-      if (!crash.files?.length) {
-        await sleep(2000);
-        try { crash = JSON.parse(await readBuildState(c)).crash ?? crash; } catch { /* keep what we have */ }
-      }
+      // Caught on sight, but reported with the file the compiler died parsing,
+      // which only a later crash names -- see awaitCrashName.
+      crash = await awaitCrashName(c, v.crash);
       break;
     }
     const up = v.st === "tB Services: OPERATIONAL";
@@ -335,7 +450,7 @@ export async function waitForCompile(c, { project, timeout }) {
     if (up && s === last) { if (++stable >= 5) break; } else stable = 0;
     last = s;
   }
-  return { loaded, crash, drops, last };
+  return { loaded, crash, drops, last, blocked: !!c.pageBlocked };
 }
 
 /**
@@ -348,7 +463,7 @@ export async function waitForCompile(c, { project, timeout }) {
  *   `counts` is errors, warnings, hints, infos. `code` is 4 for a compiler
  *   crash and 3 for a compile that never settled.
  */
-export function compileOutcome({ loaded, crash, drops, last }, { name }) {
+export function compileOutcome({ loaded, crash, drops, last, blocked }, { name }) {
   // A crash is reported by the file the compiler died parsing, because in a batch
   // of generated probes that name is the whole answer: it says which sample to
   // take out, and a caller bisecting the batch has somewhere to start.
@@ -366,7 +481,15 @@ export function compileOutcome({ loaded, crash, drops, last }, { name }) {
       message: `the compiler restarted ${drops}x -- this project crashes it\nlast status: ${last}`,
     };
   }
-  if (!loaded) return { ok: false, code: 3, message: `the IDE never reported ${name} as open` };
+  if (!loaded) {
+    return {
+      ok: false, code: 3,
+      message: `the IDE never reported ${name} as open` + (blocked
+        ? "\nIts page did not answer when the harness attached. A dialog it opened before then " +
+          "is the likely cause, and one cannot be answered over CDP; --show puts it on screen."
+        : ""),
+    };
+  }
 
   const final = JSON.parse(last ?? "{}");
   const rows = (final.rows ?? []).map((r) =>
@@ -397,6 +520,74 @@ export function compileOutcome({ loaded, crash, drops, last }, { name }) {
 export const summaryLine = (counts) =>
   `--- ${counts[0]} error(s), ${counts[1]} warning(s), ${counts[2]} hint(s), ${counts[3]} info`;
 
+/** The build targets the toolbar's build configuration box offers, besides safe mode. */
+export const TARGETS = ["win32", "win64"];
+
+// The box, and the pid of the compiler the page is talking to: switching the
+// target restarts the compiler, and a new pid is how to tell that it has.
+const TARGET_JS = `(() => {
+  if (typeof buildConfigSelector === "undefined" || !buildConfigSelector) return null;
+  return JSON.stringify({
+    value: buildConfigSelector.value,
+    options: Array.from(buildConfigSelector.options, (o) => o.value),
+    pid: typeof g_CurrentCompilerProcessId === "undefined" ? null : g_CurrentCompilerProcessId,
+  });
+})()`;
+
+/**
+ * Make the project's build target `arch`, win32 or win64, and wait for the
+ * compile under it to settle.
+ *
+ * A project opens in the target the IDE remembers for its path
+ * (IDESettings\targetArchitectureMemory, which lib/tb-registry.mjs tidies),
+ * and in win32, the box's first option, when it remembers none. So a caller
+ * that means a target sets it, even win32: otherwise an entry somebody left
+ * decides the build, and nothing says so.
+ *
+ * The switch is the IDE's own tbBuild_SwitchToWin64 and tbBuild_SwitchToWin32
+ * commands: set the box, call its onchange. That handler,
+ * changedActiveBuildConfig, saves the target for the project's path and calls
+ * restartCompilerSafely, which kills the compiler; the new one is the target's
+ * own, twinBASIC_win64_noDEP.exe for win64, and it compiles the project again.
+ * Measured on BETA 983: the status bar stays OPERATIONAL for about 250 ms
+ * after the switch, and is down for about a second after that until the new
+ * compiler's pid appears. waitForCompile started straight away can count that
+ * as the compiler going down twice and report a crash, so the restart is waited
+ * for by the pid, not by the clock.
+ *
+ * @param {object} c                  a tb-cdp connection
+ * @param {string} arch               "win32" or "win64"
+ * @param {object} o                  as for waitForCompile
+ * @returns {Promise<{from: string, waited: object | null}>} `from` is the target
+ *   the project opened in; `waited` is waitForCompile's result for the compile
+ *   under `arch`, or null when the project was in `arch` already
+ */
+export async function setBuildTarget(c, arch, { project, timeout }) {
+  const read = async () => JSON.parse((await c.evaluate(TARGET_JS)) ?? "null");
+  const before = await read();
+  if (!before) throw new Error("this IDE has no build configuration box (buildConfigSelector)");
+  if (!before.options.includes(arch)) {
+    throw new Error(`the build configuration box offers ${before.options.join(", ")}, not ${arch}`);
+  }
+  if (before.value === arch) return { from: before.value, waited: null };
+  if (!before.pid) throw new Error("the IDE has no compiler process to restart for another target");
+  await c.evaluate(`buildConfigSelector.value = ${JSON.stringify(arch)}; buildConfigSelector.onchange()`);
+  const t0 = Date.now();
+  for (;;) {
+    await sleep(250);
+    let now = null;
+    try { now = await read(); } catch { /* the page is busy with the restart */ }
+    if (now?.pid && now.pid !== before.pid) {
+      if (now.value !== arch) throw new Error(`the build target went back to ${now.value} after the switch`);
+      break;
+    }
+    if (Date.now() - t0 > 60 * 1000) {
+      throw new Error(`the compiler did not restart within 60 s of switching the build target to ${arch}`);
+    }
+  }
+  return { from: before.value, waited: await waitForCompile(c, { project, timeout }) };
+}
+
 // Read the DEBUG CONSOLE's BACKING ARRAY, never the pane. `debugConsoleContent`
 // is a createListView(), which renders only the rows that fit -- so an
 // `.innerText` scrape returned the last ~11 lines of any longer probe and gave
@@ -426,32 +617,152 @@ export const summaryLine = (counts) =>
 //     none, and the IDE's `substr(i + 7)` would then quietly eat six
 //     characters of real output. No current addItem() path omits it; the guard
 //     costs a comparison and removes a silent-corruption mode.
-const consoleJs = (withTimestamps) => `(() => {
+//
+// An entry's text is stored escaped: an add-in's PrintText of "<b>&copy=1"
+// is stored as "&lt;b&gt;&amp;copy=1" (measured, BETA 983), so decoding gives
+// back exactly what was printed, markup and ampersands included. Except for
+// the IDE's own bug (BUGS-TO-REPORT.md): text that continues a line left open
+// by `Debug.Print ...;` is escaped twice, so the console shows "&amp;" for
+// "&", and so does this reader. It returns what the console shows.
+//
+// A mark (consoleMark) is checked in the same evaluate as the read, so a
+// clear cannot fall between the two. The entry that was last when the mark
+// was taken is read again as well, because the IDE can still add to it. All
+// output from the compiler's process, a program's Debug.Print and an add-in's
+// PrintText alike, goes through debugOutputPartial, which appends to the last
+// entry in place while its line is open; output ending in a line break closes
+// the line, and so does the IDE's own debugOutputLine, which starts a new
+// entry. So what was appended comes first, as a line of its own, and then the
+// entries after it. Reading on from the count alone missed that text
+// (measured).
+const consoleJs = (withTimestamps, from, mark) => `(() => {
   if (typeof debugConsoleContent === "undefined" || !debugConsoleContent ||
       !debugConsoleContent.dataNodes) return null;
+  const nodes = debugConsoleContent.dataNodes;
+  const mark = ${JSON.stringify(mark ?? null)};
+  const start = !mark ? ${from}
+    : nodes.length < mark.n || (mark.n > 0 && nodes[0] !== mark.first) ? 0 : mark.n;
   const decode = (html) => {
     const d = document.createElement("div");   // never attached; see above
     d.innerHTML = html;
     return d.textContent;
   };
-  return debugConsoleContent.dataNodes.map(n => {
+  const text = (n) => {
     const i = n.indexOf("</span>");
     if (i < 0) return decode(n);
     return decode(${withTimestamps}
       ? n.substr(0, i + 7) + " " + n.substr(i + 7)
       : n.substr(i + 7));
-  }).join("\\n");
+  };
+  const lines = nodes.slice(start).map(text);
+  // Appended text, if the last entry at the mark has grown since. Closing an
+  // open line adds only markup, so an unchanged text adds no line.
+  if (mark && "last" in mark && start === mark.n && mark.n > 0 && nodes[mark.n - 1] !== mark.last) {
+    const was = mark.last === null ? "" : text(mark.last), now = text(nodes[mark.n - 1]);
+    const added = now.startsWith(was) ? now.slice(was.length) : now;
+    if (added) lines.unshift(added);
+  }
+  return lines.join("\\n");
 })()`;
 
 /**
- * The whole DEBUG CONSOLE as text, one line per entry; null when this IDE has
- * no `debugConsoleContent.dataNodes` to read.
+ * The DEBUG CONSOLE as text, one line per entry; null when this IDE has no
+ * `debugConsoleContent.dataNodes` to read.
  *
  * @param {object} c                  a tb-cdp connection
  * @param {object} [o]
  * @param {boolean} [o.timestamps]    keep each entry's timestamp column
+ * @param {number} [o.from]           start at this entry instead of the first
+ * @param {object} [o.since]          a mark from consoleMark: only what was
+ *                                    written after it --- text appended to the
+ *                                    entry that was last then, and the entries
+ *                                    after it --- or every entry if the
+ *                                    console was cleared since. Wins over `from`.
  */
-export const readConsole = (c, { timestamps = false } = {}) => c.evaluate(consoleJs(timestamps));
+export const readConsole = (c, { timestamps = false, from = 0, since = null } = {}) =>
+  c.evaluate(consoleJs(timestamps, Number(from), since));
+
+// Where the console stands: how many entries it holds, and its first and last
+// entries as stored, timestamp and all. Nothing removes an entry but a clear,
+// so entries read later from index `n` on are new -- unless the first entry
+// has changed or the count has fallen, which means the console was cleared in
+// between and all of it is new. The last entry is kept because the IDE may
+// still append to it (consoleJs says when).
+const CONSOLE_MARK_JS = `(() => {
+  const d = typeof debugConsoleContent === "undefined" || !debugConsoleContent
+    ? null : debugConsoleContent.dataNodes;
+  return d ? { n: d.length, first: d.length ? d[0] : null,
+               last: d.length ? d[d.length - 1] : null } : null;
+})()`;
+
+/**
+ * Where the DEBUG CONSOLE stands now, so that `readConsole(c, { since })` can
+ * later return only what was written after it. Null when this IDE has no
+ * console to read.
+ */
+export const consoleMark = (c) => c.evaluate(CONSOLE_MARK_JS);
+
+// The build log, in the compiler's own words (its strings, BETA 983). A build
+// writes "[BUILD] Starting..." to the DEBUG CONSOLE, and a binary ends with
+// "[LINKER] SUCCESS created output file '<path>'" or with one of some twenty
+// failure lines: "[LINKER] FAILED ...", "[BUILD] FAILED ...", "[BUILD] ERROR
+// ...", "[BUILD] failed" and "[LINKER] compilation (codegen) error ...".
+const BUILD_START = "[BUILD] Starting...";
+const BUILD_OK = /^\[LINKER\] SUCCESS created output file '(.+)'$/;
+const BUILD_FAILED = /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[LINKER\] compilation \(codegen\) error/;
+
+/**
+ * Build the open project, as the toolbar's Build button does, and wait for the
+ * build log to say how it went.
+ *
+ * Only a binary is recognised, an EXE or a DLL, whose log ends with the
+ * linker's SUCCESS line. What a package build writes has not been looked at,
+ * and one would end in the timeout.
+ *
+ * @param {object} c                  a tb-cdp connection
+ * @param {object} [o]
+ * @param {number} [o.timeout]        milliseconds (default 120000)
+ * @returns {Promise<{ok: boolean, file?: string, message?: string, log: string[]}>}
+ *   `file` is the path the linker says it created; `log` is the console from
+ *   the build's first line on
+ */
+export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
+  const mark = await consoleMark(c);
+  if (!mark) {
+    return { ok: false, log: [], message: "no debugConsoleContent.dataNodes in this IDE, " +
+      "so the build log cannot be read" };
+  }
+  if (!await clickCenter(c, "buildIcon")) {
+    return { ok: false, log: [], message: "no #buildIcon in the IDE page -- did the project load?" };
+  }
+  const t0 = Date.now();
+  let log = [], failedAt = 0;
+  while (Date.now() - t0 < timeout) {
+    await sleep(250);
+    const text = await readConsole(c, { since: mark });
+    const lines = text ? text.split("\n").map((l) => l.trim()) : [];
+    const start = lines.indexOf(BUILD_START);
+    if (start < 0) continue;
+    log = lines.slice(start);
+    const ok = log.map((l) => BUILD_OK.exec(l)).find(Boolean);
+    if (ok) return { ok: true, file: ok[1], log };
+    // Not every such line need end the build -- the strings include "[BUILD]
+    // failed to use project.iconForm setting", and whether a build goes on
+    // after that one has not been seen -- so one decides only after two
+    // seconds with no success line after it.
+    if (!failedAt && log.some((l) => BUILD_FAILED.test(l))) failedAt = Date.now();
+    if (failedAt && Date.now() - failedAt > 2000) {
+      return { ok: false, message: log.find((l) => BUILD_FAILED.test(l)), log };
+    }
+  }
+  return {
+    ok: false, log,
+    message: log.length
+      ? `the build started and reported nothing for ${timeout / 1000} s`
+      : `the build did not start in ${timeout / 1000} s -- is a dialog open? A template ` +
+        "buildPath opens a Save dialog, which the private desktop hides",
+  };
+}
 
 /**
  * The add-ins the IDE's compiler has loaded, as the Add-Ins menu lists them:
@@ -461,6 +772,11 @@ export const readConsole = (c, { timestamps = false } = {}) => c.evaluate(consol
  * so this is the compiler's own answer rather than anything inferred from
  * files on disk. Add-ins load as the compiler starts, so ask once the project
  * has opened.
+ *
+ * A DLL the compiler found but could not load is listed too, as
+ * "Unknown Addin", so look for the name you expect rather than counting. The
+ * DEBUG CONSOLE says what went wrong, in a line that starts with the file's
+ * name in brackets: "[x.dll] Failed to load addin.  LoadLibrary() failed."
  */
 export const loadedAddins = (c) => c.evaluate(
   "new Promise((resolve) => root.getAddinsList(resolve))", { awaitPromise: true });
