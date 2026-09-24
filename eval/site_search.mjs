@@ -76,8 +76,10 @@ function search({ lunr, index }, input) {
   if (results.length === 0 && input.length > 2) {
     const tokens = lunr.tokenizer(input).filter((t) => t.str.length < 20);
     if (tokens.length) {
+      // Capped at 2, as the patched just-the-docs.js is. Uncapped, a query of
+      // three unindexed API names ran this replica out of memory.
       results = index.query((q) =>
-        q.term(tokens, { editDistance: Math.round(Math.sqrt(input.length / 2 - 1)) })
+        q.term(tokens, { editDistance: Math.min(2, Math.round(Math.sqrt(input.length / 2 - 1))) })
       );
     }
   }

@@ -79,7 +79,7 @@ A project-level setting allows you to control where the Fusion host EXE is gener
 ![tbFusionProjectSettings](Images/569150839-9ffc87ac-250d-40a4-bb47-669b607ad76f.png){:width="800" height="400"}
 
 If left blank (default), the standard build path set in the project settings is used.  Unless overriden, the standard build path is:
-${SourcePath}\Build${ProjectName}_${Architecture}.${FileExtension}
+`${SourcePath}\Build\${ProjectName}_${Architecture}.${FileExtension}`
 
 For Fusion host executables, `${Architecture}` will resolve to:
 - `win32host`  

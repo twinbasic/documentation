@@ -60,7 +60,10 @@ const pageKey = (url) =>
 
 /** Every page under docs/: permalink by file, and file by permalink or redirect alias. */
 async function loadPages(src) {
-  const { markdownFiles } = await import(pathToFileURL(path.join(src, "scripts/lib/markdown-files.mjs")).href);
+  // The walker comes from this repository, never from --src: a corpus built by
+  // eval/build_corpus.mjs holds scripts/ only as unreadable stubs, so importing
+  // it from there failed with "markdownFiles is not a function".
+  const { markdownFiles } = await import(pathToFileURL(path.join(REPO_ROOT, "scripts/lib/markdown-files.mjs")).href);
   const docs = path.join(src, "docs");
   const urlOf = new Map();
   const byKey = new Map();
@@ -108,6 +111,15 @@ async function main(argv) {
   if (o.help || !o.targets.length) {
     console.log(USAGE);
     return o.help ? 0 : 2;
+  }
+  // Git Bash turns an argument that looks like a POSIX path into a Windows one,
+  // so '^/tB/Core/Open$' arrives as '^C:/Program Files/Git/tB/Core/Open$', and
+  // every target then reports as unreachable, which reads as a finding.
+  const mangled = o.targets.filter((t) => /^\^?[A-Za-z]:[\\/]/.test(t));
+  if (mangled.length) {
+    console.error(`these patterns arrived as Windows paths: ${mangled.join(", ")}\n` +
+      "Git Bash converted them. Run with MSYS_NO_PATHCONV=1 set, or from another shell.");
+    return 2;
   }
   const start = path.resolve(o.src, o.from);
   if (!fs.existsSync(start)) {
