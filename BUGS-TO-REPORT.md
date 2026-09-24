@@ -798,15 +798,38 @@ Then, on that 477-file export:
   nothing (the `import` entry above), as it does for any folder under `Packages`;
 - the standalone script packs it, into a 4,220,723-byte project, against 2,055 bytes for the
   same export with `Packages` removed. The project now embeds its own copy of the four
-  compiler packages. It compiles with no errors; which copy the IDE then uses was not
-  measured.
+  compiler packages. It compiles with no errors;
+- the IDE's own **New Project → Import from folder...** does the same, into a
+  4,222,833-byte project, against 4,207 bytes from the export with `Packages` removed.
+
+**The embedded copy is dead, and every later export writes it back.** Measured on the
+IDE's import (round 10):
+
+1. Export a project with the default references into an empty folder `E`.
+2. In `E\Packages\VBA\Sources\Math.twin`, add `Public Function ProbeEmbeddedMarker() As
+   Long` before `End Module`, and a call to it in one of the project's own modules.
+3. **Import from folder...** on `E`: TB5079, *Unrecognized symbol 'ProbeEmbeddedMarker'*.
+   The compiler uses its own VBA package, not the copy the project now holds.
+4. Save the project, and export it again: the Debug Console reports
+   `[EXPORT] COMPLETED (139 folders, 954 files)`, against `(72 folders, 479 files)` before,
+   and the exported `Math.twin` holds the marker. The export writes both copies to the same
+   paths, the embedded one last.
+
+So a project kept in Git through *Export After Save* and rebuilt from a clone keeps committing
+the package source of the IDE that first exported it, while it compiles against the current
+IDE's. Expected: a `.twinproj` the IDE saves holds no compiler packages, so **Import from
+folder** could skip them, or the export could write the IDE's own copy rather than the
+project's.
 
 **What does not reproduce it:** the command line's own `export`, which writes what the
-project file holds.
+project file holds; and **Import from folder** on the export with the compiler packages'
+folders removed, which gives the 4,207-byte project, compiles, and exports 479 files.
 
 **Found by** checking round 9's UC-62 answer, which sets up *Export After Save* into a Git
 repository and rebuilds the project from a fresh clone with the tB executable. The export was
-round 8's, written by the IDE's `exportProjectTo()` over DevTools.
+round 8's, written by the IDE's `exportProjectTo()` over DevTools. The dead copy was measured
+following round 10's UC-66, the fresh clone, with `root.loadProjectFromFolder()` --- what the
+dialog calls after its folder picker --- and `root.saveProjectAs()` over DevTools.
 
 ---
 
