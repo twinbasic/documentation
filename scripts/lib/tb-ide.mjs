@@ -380,6 +380,34 @@ export const readBuildState = (c) => c.evaluate(BUILD_STATE_JS);
 export const readCrash = (c) => c.evaluate(CRASH_JS);
 
 /**
+ * Wait for a crash record to name the file being parsed, and return it as it
+ * then stands: named, or as it was if no name came within `timeout` ms.
+ *
+ * The IDE's FIRST exception entry carries no thread dump, and the dump is what
+ * names the file. Only a compiler started in TRACE-MODE writes one, and the
+ * IDE switches that on in answer to the first exception, so the name arrives
+ * with the SECOND crash, once the restarted compiler reaches the same file.
+ * Reporting the crash without that name is a correct result nobody can act on.
+ *
+ * Poll, not a fixed sleep. Against the crash fixture the second crash came 1.6
+ * to 1.9 s after the first on an idle machine, but up to 3.0 s with four IDEs
+ * compiling at once, as check_examples runs them; replayed over those runs,
+ * one re-read after a fixed 2 s missed the name 31% of the time. Five seconds
+ * covers the slowest one measured with 2 s to spare.
+ *
+ * @param {object} c                  a tb-cdp connection
+ * @param {{n: number, files: string[]}} crash  a record readCrash returned
+ */
+export async function awaitCrashName(c, crash, { timeout = 5000 } = {}) {
+  const until = Date.now() + timeout;
+  while (!crash.files?.length && Date.now() < until) {
+    await sleep(250);
+    try { crash = (await readCrash(c)) ?? crash; } catch { /* keep what we have */ }
+  }
+  return crash;
+}
+
+/**
  * Wait for the project to open and its compile to settle.
  *
  * twinBASIC runs the compiler in the same process as user code, so a project
@@ -412,25 +440,9 @@ export async function waitForCompile(c, { project, timeout }) {
     const v = JSON.parse(s);
     if (!loaded) { if (v.p && normPath(v.p) === want) loaded = true; else continue; }
     if (v.crash) {
-      // The IDE's FIRST exception entry carries no thread dump, and the dump is
-      // what names the file being parsed. Only a compiler started in TRACE-MODE
-      // writes one, and the IDE switches that on in answer to the first
-      // exception, so the name arrives with the SECOND crash, once the restarted
-      // compiler reaches the same file. Catching the crash on sight and
-      // reporting it without that name is a correct result nobody can act on,
-      // so wait for the name, and take whatever there is if it never comes.
-      //
-      // Poll, not a fixed sleep. Against the crash fixture the second crash
-      // came 1.6 to 1.9 s after the first on an idle machine, but up to 3.0 s
-      // with four IDEs compiling at once, as check_examples runs them; replayed
-      // over those runs, one re-read after a fixed 2 s missed the name 31% of
-      // the time. Five seconds covers the slowest one measured with 2 s to spare.
-      crash = v.crash;
-      const until = Date.now() + 5000;
-      while (!crash.files?.length && Date.now() < until) {
-        await sleep(250);
-        try { crash = (await readCrash(c)) ?? crash; } catch { /* keep what we have */ }
-      }
+      // Caught on sight, but reported with the file the compiler died parsing,
+      // which only a later crash names -- see awaitCrashName.
+      crash = await awaitCrashName(c, v.crash);
       break;
     }
     const up = v.st === "tB Services: OPERATIONAL";

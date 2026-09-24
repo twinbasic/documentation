@@ -792,9 +792,12 @@ identifiers ending in a digit, which would also have declared `Var1`, `Arg1`, `L
 
 **A sample can take the compiler down**, and one in this corpus does. twinBASIC runs the
 compiler in the same process as user code, so in a batch of a hundred that costs the other
-ninety-nine their result. `tbbuild` reports a crash as exit 4; this splits the batch and
-recurses until the offending sample is alone, which is O(log n) extra builds paid only on
-failure. The finding names the sample and points at `BUGS-TO-REPORT.md`.
+ninety-nine their result. `tbbuild` reports a crash as exit 4 and names the file the
+compiler was parsing when it died. The sample that file belongs to is built on its own and
+the rest of the batch without it, so a crash usually costs two extra builds. When no sample
+is named, or the named one compiles on its own, the batch is split in half repeatedly until
+the offending sample is alone, which is O(log n) extra builds. Either way the cost is paid
+only on failure. The finding names the sample and points at `BUGS-TO-REPORT.md`.
 
 **A sample can be compiled against a file.** A fence carrying `resource=<project-relative
 path>` --- in any language, typically ` ```json ` --- is written into the generated project at

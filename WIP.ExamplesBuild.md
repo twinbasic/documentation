@@ -397,11 +397,17 @@ Two things a batch runner must do that a single-fence runner need not:
   the page, the fence and the line within the page. Emitted while generating, not
   reconstructed afterwards. The offset differs per slot and the arithmetic must come out the
   same for all three, which is a probe.
-- **Bisect on a compiler crash.** twinBASIC runs the compiler in-process with user code, so
-  a bad sample can take it down --- and in a batch that loses all hundred with it. On crash,
-  split and recurse: O(log n) extra builds, paid only on failure. Verified against the real
-  case, with the crashing sample isolated out of a batch and the rest of the batch still
-  reporting.
+- **Isolate a compiler crash, starting from the sample it names.** twinBASIC runs the
+  compiler in-process with user code, so a bad sample can take it down --- and in a batch
+  that loses all hundred with it. `tbbuild`'s crash report names the file the compiler died
+  parsing, which for a sample is its generated module, so the unit holding it is built alone
+  and the rest of the batch without it: two builds, paid only on failure. Halving is the
+  fallback, for a crash that names no sample and for a named one that compiles alone: split
+  and recurse, O(log n) extra builds. On a page of nine samples with the crash fixture
+  fifth, halving took 7 builds and 48 s and the named start 3 builds and 22 s, with the same
+  finding and the other eight still reporting. Until then the name went unread ---
+  `buildStaged` kept `tbbuild`'s report and nothing looked at it --- so every crash paid for
+  the whole bisect.
 
 ### A diagnostic that lands in a package's own source
 

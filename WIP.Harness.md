@@ -277,7 +277,10 @@ the file now:
   1.6 to 1.9 s after the first on an idle machine and 1.8 to 3.0 s with four IDEs compiling
   at once, as `check_examples` runs them. Replayed over the four-lane runs at every phase of
   the 1 Hz sample, the single re-read missed the name 31% of the time; the poll that replaced
-  it, every 250 ms for up to 5 s, missed none and needed at most 3.25 s. The failing run said
+  it, every 250 ms for up to 5 s, missed none and needed at most 3.25 s. That poll is
+  `awaitCrashName`, and the add-in lanes' `closeProject` had the same gap: closed right after
+  a first crash, three times, it now waited 1.9 s and named the file where its single read
+  had `crashed 1x` and no name. The failing run said
   `crashed 2x`, which that race does not explain --- a re-read that loses it has seen one
   crash --- and no run here had a second crash without a name. If one does, the third crash
   names the file as well, but under four lanes it came as late as 6.4 s, after the poll has
@@ -784,7 +787,8 @@ fixture cases gave output identical to before, `tbrun`'s three included. A full
 click, press keys, type, read the add-ins' tool windows, message boxes, notifications and
 list views, open a file, and move or read the code editor's cursor. `readCrash` in
 `tb-ide.mjs` says whether the compiler crashed, from the same console record `tbbuild`
-reads. Every call takes a connection from `attachIde`. Both of Stage 1's acceptance
+reads, and `awaitCrashName` waits for that record to name the file being parsed, which no
+first crash does. Every call takes a connection from `attachIde`. Both of Stage 1's acceptance
 scenarios were carried out with these calls alone, on a lab IDE with Samples 10 and 15
 built in; [WIP.HelpAddin.md](WIP.HelpAddin.md), Stage 1 item 5, has what they did.
 

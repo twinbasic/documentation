@@ -29,8 +29,8 @@ import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";
 import { buildAddin } from "./tb-addin.mjs";
 import { addAddin, makeIdeCopy, removeIdeCopy } from "./tb-ide-copy.mjs";
-import { attachIde, compileOutcome, launchIde, readCrash, shutdownIde, summaryLine,
-         waitForCompile } from "./tb-ide.mjs";
+import { attachIde, awaitCrashName, compileOutcome, launchIde, readCrash, shutdownIde,
+         summaryLine, waitForCompile } from "./tb-ide.mjs";
 import { compilerExe, runCompiler } from "./tb-install.mjs";
 import { laneProjectId, stageProject } from "./tb-project.mjs";
 
@@ -165,7 +165,10 @@ export class Lane {
     let crash = null, dialogs = [];
     try {
       if (c) {
+        // A crash the scenario ended soon after has not named its file yet:
+        // only a later crash does, so it gets the wait waitForCompile gives one.
         crash = await readCrash(c).catch(() => null);
+        if (crash) crash = await awaitCrashName(c, crash);
         dialogs = c.dialogs;
         c.close();
       }
