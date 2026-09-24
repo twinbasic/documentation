@@ -9,9 +9,12 @@ permalink: /LLVM/Getting-Started
 
 Covers turning on LLVM compilation for a project or for a single procedure, the options that control it, and its current limitations.
 
+> [!NOTE]
+> This page describes twinBASIC BETA 984 and later. Earlier builds have no LLVM settings in Project Settings or IDE Options.
+
 ## What is LLVM?
 
-LLVM is an optional part of the compiler that produces code highly optimized for performance and size. Most applications benefit from it; how much depends on the code.
+LLVM is an optional part of the compiler that produces code highly optimized for performance and size. Most applications benefit from it; how much depends on the code. LLVM is built into twinBASIC: it does not need a separate LLVM installation, and twinBASIC ignores one if it is present.
 
 During compilation, LLVM translates your code into an *intermediate representation* --- a form between the twinBASIC source and the final machine code. It then reorganizes that representation with a wide variety of techniques, such as removing code that can never run (*dead code elimination*), simplifying loops, rewriting arithmetic to avoid slow operations like division, and inlining functions. Where it applies, LLVM can also make your code use CPU features designed to speed up particular operations.
 
@@ -25,6 +28,9 @@ The same options appear in two sections:
 
 - **Compiler Options (BUILD)** applies when you build the project into an EXE, a DLL or another output file.
 - **Compiler Options (DEBUG)** applies when you run the project from the IDE.
+
+> [!NOTE]
+> The IDE cannot debug code compiled with LLVM, so turning LLVM on under **Compiler Options (DEBUG)** is not recommended.
 
 **Enable LLVM Compilation** turns LLVM on. With only this box ticked, LLVM runs during compilation and creates the intermediate representation of your code, but does not apply the optimizations for performance and size. You will usually want to tick one or both of the next two options as well: **LLVM: Generate optimized code** and **LLVM: Optimize for smaller filesize**.
 
@@ -125,7 +131,7 @@ For each CPU feature, the table gives the first Intel and AMD CPUs to offer it, 
 | SSE      | 1999 (Pentium III)        | 2001 (Athlon XP)        | 2002; all x64 CPUs   |
 | SSE2     | 2000 (Pentium 4)          | 2003 (Athlon 64)        | 2005; all x64 CPUs   |
 | SSE3     | 2004 (Pentium 4 Prescott) | 2005 (Athlon 64 Rev. E) | 2006                 |
-| SSE4.1   | 2008 (Nehalem)            | 2011 (Bulldozer)        | 2013                 |
+| SSE4.1   | 2007 (Penryn)             | 2011 (Bulldozer)        | 2013                 |
 | SSE4.2   | 2008 (Nehalem)            | 2011 (Bulldozer)        | 2013                 |
 | SSSE3    | 2006 (Core 2)             | 2011 (Bobcat)           | 2013                 |
 | XSAVE    | 2009 (Penryn E0/R0)       | 2011 (Bulldozer)        | 2016                 |
