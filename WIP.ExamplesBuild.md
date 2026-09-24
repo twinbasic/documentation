@@ -401,13 +401,28 @@ Two things a batch runner must do that a single-fence runner need not:
   compiler in-process with user code, so a bad sample can take it down --- and in a batch
   that loses all hundred with it. `tbbuild`'s crash report names the file the compiler died
   parsing, which for a sample is its generated module, so the unit holding it is built alone
-  and the rest of the batch without it: two builds, paid only on failure. Halving is the
-  fallback, for a crash that names no sample and for a named one that compiles alone: split
-  and recurse, O(log n) extra builds. On a page of nine samples with the crash fixture
-  fifth, halving took 7 builds and 48 s and the named start 3 builds and 22 s, with the same
-  finding and the other eight still reporting. Until then the name went unread ---
+  and the rest of the batch without it: two builds, paid only on failure. With no sample
+  named, split and recurse: O(log n) extra builds. On a page of nine samples with the crash
+  fixture fifth, halving took 7 builds and 48 s and the named start 3 builds and 22 s, with
+  the same finding and the other eight still reporting. Until then the name went unread ---
   `buildStaged` kept `tbbuild`'s report and nothing looked at it --- so every crash paid for
   the whole bisect.
+- **A crash that needs two samples used to vanish.** Halving separates any pair by the time
+  it reaches single samples; both halves then build clean, and every sample in the batch
+  counted as compiling --- the false clean that the crash check exists to prevent, one level
+  down. Now, when neither part of a crashing batch crashes on its own (the named sample and
+  the rest, or two halves), `together` searches for the samples the crash needs: holding one
+  part fixed, whichever half of the other still crashes with it holds them, and when neither
+  does, each half is searched with the other held. The members are blamed --- each has its
+  own result, and none is a pass --- and one finding names them all. **No real crash of that
+  shape is known**, so its tests are probes against a fake lane whose builds crash on the
+  sample sets a probe chooses; before the fix, the three probe shapes that need a set came
+  back with nothing crashed, nothing blamed and no finding. Four two-file candidates were
+  tried for a real one: inheritance cycles through interfaces, classes and UDTs, and the
+  fixture's placeholder name with a base declared in the other file. None crashes only as a
+  pair: the class and UDT cycles are diagnosed, the interface cycle is accepted without a
+  word, which is queued in [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md), and the placeholder
+  crashes from its own file.
 
 ### A diagnostic that lands in a package's own source
 
@@ -469,7 +484,8 @@ implementation.
   changing" as suspect on this compiler.**
 - **A two-line syntax skeleton crashes the compiler**, and it is in the corpus:
   `Interface <name> Extends <base-interface>` / `End Interface`, in
-  `Reference/Attributes.md`. Neither half crashes alone. Recorded in
+  `Reference/Attributes.md`. The placeholder name is what does it, given any `Extends`
+  clause: `Extends IBase` crashes it too. Recorded in
   [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md); the classifier now refuses a `<placeholder>` as a
   declaration name, so it takes an explicit `slot=` to reach the compiler with one.
 - **`project.buildPath` must be an explicit file.** The default `${SourcePath}\Build\...`

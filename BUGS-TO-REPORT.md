@@ -60,7 +60,7 @@ opens then trips this.
 
 ---
 
-## Compiler crashes on an `Interface` whose name and base are both angle-bracket placeholders
+## Compiler crashes on an `Interface` named by an angle-bracket placeholder that has an `Extends` clause
 
 **Build:** BETA 983 (`twinBASIC_win32.dll+00141F7A`)
 **Severity:** crash --- takes the compiler down, three restarts, then the IDE gives up.
@@ -76,23 +76,59 @@ The IDE's DEBUG CONSOLE reports `NATIVE EXCEPTION: ACCESS_VIOLATION {no-basic-co
 `>>> thread 0004: ParsingFileStart, <that file>`, then `restarting from MEMORY`, three
 times over.
 
-**Neither half reproduces it on its own**, which is what makes it worth reporting rather
-than shrugging at:
+**It takes a placeholder name and an `Extends` clause**, and what the clause names does not
+matter:
 
 | source | result |
 |---|---|
 | `Interface <name>` + `End Interface` | TB5182 Syntax error, no crash |
 | `Interface IFoo Extends <base-interface>` + `End Interface` | TB5182 + TB5079 + TB5127, no crash |
 | `Interface <name> Extends <base-interface>` + `End Interface` | **crash** |
+| `Interface <name> Extends IBase` + `End Interface`, no `IBase` anywhere | **crash** |
+| the same, with `Interface IBase` or `Class IBase` declared in another file | **crash** |
 
-So it takes a placeholder in *both* positions. The input is not real code --- it is a
-syntax skeleton, the shape `docs/Reference/Attributes.md` uses to show where an attribute
-goes --- but a parser meeting nonsense should diagnose it, and this one dereferences
-something instead.
+This entry used to say that it takes a placeholder in *both* positions; the last two rows,
+measured on 2026-09-24 with a project of its own each, say otherwise. The input is not real
+code --- it is a syntax skeleton, the shape `docs/Reference/Attributes.md` uses to show
+where an attribute goes --- but a parser meeting nonsense should diagnose it, and this one
+dereferences something instead.
 
 **Found by** pointing `scripts/check_examples.mjs` at the documentation's own code samples;
 the skeleton is one of the 1,124 `tb` fences under `docs/`. A crash in a batch of samples
-costs the whole batch its result, which is why that tool bisects on exit code 4.
+costs the whole batch its result, which is why that tool isolates the sample on exit code 4.
+
+---
+
+## An `Interface` that extends itself compiles without a diagnostic
+
+**Build:** BETA 983
+**Severity:** invalid code accepted --- the same cycle through a class is refused.
+
+This two-line file compiles with no error, warning, hint or info:
+
+```
+Interface IA Extends IA
+End Interface
+```
+
+A cycle through two interfaces is accepted the same way, in one file or split across two:
+`Interface IA Extends IB` and `Interface IB Extends IA`. The other kinds of cycle are
+diagnosed:
+
+| source | result |
+|---|---|
+| `Class CA` + `Inherits CA` + `End Class` | TB5127 circular reference |
+| `Class CA` inheriting `CB` and `Class CB` inheriting `CA`, two files | TB5127 circular reference, TB5022 failed to import inherited members |
+| `Type TA` holding a `TB` and `Type TB` holding a `TA`, two modules | TB5101 unable to finalize User Defined Type, possible circular reference |
+
+So a cycle is checked for classes and UDTs, and not for interfaces. What happens when such a
+project is built --- its type library has to describe the cycle --- was not tried.
+
+**Observed** on 2026-09-24 with `tbbuild`, a project of its own for each source: exit 0 and
+`0 error(s), 0 warning(s), 0 hint(s), 0 info` for the three interface cases, and the
+diagnostics above for the rest. **Found by** looking for a compiler crash that needs two
+files, to test `check_examples`' handling of one: a cycle between two files was the likeliest
+candidate, and the interface cycle compiled instead of crashing.
 
 ---
 
