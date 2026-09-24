@@ -531,10 +531,21 @@ export const summaryLine = (counts) =>
 //
 // An entry's text is stored escaped: an add-in's PrintText of "<b>&copy=1"
 // is stored as "&lt;b&gt;&amp;copy=1" (measured, BETA 983), so decoding gives
-// back exactly what was printed, markup and ampersands included.
+// back exactly what was printed, markup and ampersands included. Except for
+// the IDE's own bug (BUGS-TO-REPORT.md): text that continues a line left open
+// by `Debug.Print ...;` is escaped twice, so the console shows "&amp;" for
+// "&", and so does this reader. It returns what the console shows.
 //
 // A mark (consoleMark) is checked in the same evaluate as the read, so a
-// clear cannot fall between the two.
+// clear cannot fall between the two. The entry that was last when the mark
+// was taken is read again as well, because the IDE can still add to it. All
+// output from the compiler's process, a program's Debug.Print and an add-in's
+// PrintText alike, goes through debugOutputPartial, which appends to the last
+// entry in place while its line is open; output ending in a line break closes
+// the line, and so does the IDE's own debugOutputLine, which starts a new
+// entry. So what was appended comes first, as a line of its own, and then the
+// entries after it. Reading on from the count alone missed that text
+// (measured).
 const consoleJs = (withTimestamps, from, mark) => `(() => {
   if (typeof debugConsoleContent === "undefined" || !debugConsoleContent ||
       !debugConsoleContent.dataNodes) return null;
@@ -547,13 +558,22 @@ const consoleJs = (withTimestamps, from, mark) => `(() => {
     d.innerHTML = html;
     return d.textContent;
   };
-  return nodes.slice(start).map(n => {
+  const text = (n) => {
     const i = n.indexOf("</span>");
     if (i < 0) return decode(n);
     return decode(${withTimestamps}
       ? n.substr(0, i + 7) + " " + n.substr(i + 7)
       : n.substr(i + 7));
-  }).join("\\n");
+  };
+  const lines = nodes.slice(start).map(text);
+  // Appended text, if the last entry at the mark has grown since. Closing an
+  // open line adds only markup, so an unchanged text adds no line.
+  if (mark && "last" in mark && start === mark.n && mark.n > 0 && nodes[mark.n - 1] !== mark.last) {
+    const was = mark.last === null ? "" : text(mark.last), now = text(nodes[mark.n - 1]);
+    const added = now.startsWith(was) ? now.slice(was.length) : now;
+    if (added) lines.unshift(added);
+  }
+  return lines.join("\\n");
 })()`;
 
 /**
@@ -564,22 +584,26 @@ const consoleJs = (withTimestamps, from, mark) => `(() => {
  * @param {object} [o]
  * @param {boolean} [o.timestamps]    keep each entry's timestamp column
  * @param {number} [o.from]           start at this entry instead of the first
- * @param {object} [o.since]          a mark from consoleMark: only the entries
- *                                    written after it, or every entry if the
+ * @param {object} [o.since]          a mark from consoleMark: only what was
+ *                                    written after it --- text appended to the
+ *                                    entry that was last then, and the entries
+ *                                    after it --- or every entry if the
  *                                    console was cleared since. Wins over `from`.
  */
 export const readConsole = (c, { timestamps = false, from = 0, since = null } = {}) =>
   c.evaluate(consoleJs(timestamps, Number(from), since));
 
-// Where the console stands: how many entries it holds, and its first entry as
-// stored, timestamp and all. Nothing removes an entry but a clear, so entries
-// read later from index `n` on are new -- unless the first entry has changed or
-// the count has fallen, which means the console was cleared in between and all
-// of it is new.
+// Where the console stands: how many entries it holds, and its first and last
+// entries as stored, timestamp and all. Nothing removes an entry but a clear,
+// so entries read later from index `n` on are new -- unless the first entry
+// has changed or the count has fallen, which means the console was cleared in
+// between and all of it is new. The last entry is kept because the IDE may
+// still append to it (consoleJs says when).
 const CONSOLE_MARK_JS = `(() => {
   const d = typeof debugConsoleContent === "undefined" || !debugConsoleContent
     ? null : debugConsoleContent.dataNodes;
-  return d ? { n: d.length, first: d.length ? d[0] : null } : null;
+  return d ? { n: d.length, first: d.length ? d[0] : null,
+               last: d.length ? d[d.length - 1] : null } : null;
 })()`;
 
 /**

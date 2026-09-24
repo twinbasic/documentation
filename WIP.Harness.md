@@ -407,6 +407,22 @@ after, not read on from an index**: new text can be appended to an entry that is
 Round 8's export probe missed the first `[EXPORT] exporting...` line of every session that
 way. `tbrun` re-reads the whole backing array on every poll, which is why it never did.
 
+`readConsole`'s `since` does compare, and it is what `buildProject` and `openedUrls` read
+with: the mark `consoleMark` takes holds the last entry as well as the count, and the text
+appended to that entry comes back as the first line, before the entries after it. The
+mechanism is in `ide/main.js`. Everything the compiler's process writes, a program's
+`Debug.Print` and an add-in's `PrintText` alike, arrives as an output event and goes through
+`debugOutputPartial`, which adds to the last entry in place (`updateItem`) while its line is
+open. Output that ends in a line break closes the line, which is why each `PrintText` makes
+an entry of its own, and so does `debugOutputLine`, the IDE's own messages, which starts a
+new entry. Measured by calling both from the page: from a mark taken on an open line, the
+count-only read missed the text appended to it, and the new read returned it first. And
+measured for `PrintText`: with a line left open, Sample 10's printed line was appended to
+that entry, and the new read returned it. **The
+IDE escapes that continued text twice** ([BUGS-TO-REPORT.md](BUGS-TO-REPORT.md)), so a probe
+printing `&`, `<` or `>` after a `Debug.Print ...;` reads them back as `&amp;`, `&lt;` and
+`&gt;`, which is also what the console shows.
+
 It settles on a quiet period rather than a sentinel, so no probe has to print a marker the
 script knows about. Distinct `--port` values let probes run concurrently, exactly as
 `tbbuild`'s do.
@@ -715,7 +731,9 @@ failed`. Two details:
 - **Only lines added after the click count.** Nothing removes a console entry but a clear.
   So the entries from the pre-click count on are new, unless the first entry changed or the
   count fell: that means a clear, and then everything is new. A previous build's SUCCESS
-  line can never be taken for this build's.
+  line can never be taken for this build's. Text the IDE appends to the entry that was last
+  at the click counts as new too, since the IDE adds to a line that is still open in place
+  (`readConsole`'s `since`, under `tbrun` above).
 - **A failure line waits two seconds for a success line after it.** The strings include
   `[BUILD] failed to use project.iconForm setting`, and whether a build goes on after that
   one has not been seen.
@@ -859,9 +877,12 @@ read was the compiler's. The toolbar's restart button ends the compiler and star
 process, and the add-in that process loaded read `1` too. The control,
 `WEBVIEW2_USER_DATA_FOLDER`, arrived with the lane's port in it.
 
-**The console gives back exactly what was printed.** `PrintText` stores an add-in's text
-escaped, `<b>` as `&lt;b&gt;` and `&` as `&amp;`, and `readConsole` decodes it, so a URL with
-`&` in its query string comes back unchanged. `openedUrls` counts a line only when what
+**The console gives back exactly what was printed, a whole line at a time.** `PrintText`
+stores an add-in's text escaped, `<b>` as `&lt;b&gt;` and `&` as `&amp;`, and `readConsole`
+decodes it, so a URL with `&` in its query string comes back unchanged. Text that continues
+a line left open is the exception: the IDE escapes it twice (under `tbrun` above). Each
+`PrintText` ends its own line, so it is affected only when something else, such as a
+program's `Debug.Print ...;`, left a line open just before it. `openedUrls` counts a line only when what
 follows `open ` holds no white space: a URL has none, so an ordinary line that happens to
 start with the word is not taken for one. A probe that printed `open this line names no URL`
 beside a real one got the real one alone.

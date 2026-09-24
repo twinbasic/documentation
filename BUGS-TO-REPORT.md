@@ -52,8 +52,10 @@ fixture project on a private desktop and the IDE was killed: once for each varia
 1, and in two successive sessions on one project for the third row and the growth from 18
 copies to 20. The first row was seen when the key had been deleted and the next harness run
 recreated it, the second at the end of a `check_examples` run. The
-harness records it because its registry tidy (`scripts/lib/tb-registry.mjs`) leaves a list
-shorter than 21 entries whenever it removes harness projects, and the next project the user
+harness records it because its own runs trip it: every IDE a run starts opens a project, and
+a run that began on a list holding one entry ended with seventeen copies of it. The registry
+tidy (`scripts/lib/tb-registry.mjs`) now puts the list back as it found it, without the
+copies; a list that was short to begin with is left short, and the next project the user
 opens then trips this.
 
 ---
@@ -977,3 +979,41 @@ with `(Of ...)`, which compile and return the larger value.
 
 **Found by** probing round 9's UC-65 answer, whose `Max` uses `>` on a type parameter with
 nothing to say which types it accepts.
+
+---
+
+## Text that continues a `Debug.Print` line is escaped twice in the DEBUG CONSOLE
+
+**Build:** BETA 983
+**Severity:** cosmetic, but it changes what a program appears to print: `&`, `<` and `>` in
+the continued part of a line show as `&amp;`, `&lt;` and `&gt;`.
+
+Two statements in a `[RunAfterBuild]` Sub are the whole reproduction:
+
+```
+Debug.Print "A";
+Debug.Print "&"
+```
+
+The DEBUG CONSOLE shows `A&amp;`. The text that opens the line comes out right ---
+`Debug.Print "a < b";` shows `a < b` --- and everything printed after it until the line
+ends is escaped twice: after `Debug.Print "C";`, `Debug.Print "D";` and
+`Debug.Print "<&>"`, the line reads `CD&lt;&amp;&gt;`.
+
+**What does not reproduce it:** a whole line (`Debug.Print "a < b & c"` shows exactly that),
+and the same text in one statement (`Debug.Print "B"; "&"` shows `B&`).
+
+`debugOutputPartial` in `ide/main.js`, which takes all of a program's output, and an
+add-in's `PrintText` too, and adds to a line that is still open, passes the new text through
+`TEXTtoHTML` twice: once as it builds the text and again as it stores it. When the new
+text's colour differs from the line's, the `</span><span class='...'>` it puts in to change
+colour goes through the second pass too, so the tags themselves show as text. The colour
+comes from the output: a program's plain output is `debugConsoleOutputText`, and a
+`PrintText` is `debugConsoleOutputTextYELLOW`. With a line left open in the first, made by
+calling `debugOutputPartial` from the page, a `PrintText` from the IDE's own Sample 10 add-in
+showed as `</span><span class='debugConsoleOutputTextYELLOW'>Hello there from
+WaynesWorldAddIn!`. A program's own open line followed by a `PrintText` was not tried.
+
+**Observed** on 2026-09-24 with `scripts/tbrun.mjs`, which decodes the console's stored
+entries once, as the pane renders them. Found while making the add-in harness read text
+that the IDE appends to an open console line.

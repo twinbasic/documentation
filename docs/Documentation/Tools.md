@@ -595,6 +595,12 @@ list view holding only the rows that fit --- reading that instead returns the la
 lines of a long probe and looks no different from a full capture. `Debug.Cls` is what empties
 the array, which is the other reason to begin with it.
 
+**Print a line whole when its characters matter.** Text that continues a line left open by
+`Debug.Print ...;` comes back escaped: after `Debug.Print "A";`, a following
+`Debug.Print "&"` shows in the Debug Console as `A&amp;`, and `tbrun` captures what the
+console shows. The IDE does this, not the probe; `Debug.Print "A"; "&"`, in one statement,
+comes back as `A&`.
+
 | Flag | Effect |
 |---|---|
 | `--port <n>` | DevTools port for the IDE. Default 9346. Distinct ports let probes run concurrently --- the staging directory and the project id are keyed to it, so two runs never share a workspace. A port another IDE holds is refused, as for `tbbuild`. |
