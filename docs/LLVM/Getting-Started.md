@@ -32,14 +32,14 @@ The same options appear in two sections:
 > [!NOTE]
 > The IDE cannot debug code compiled with LLVM, so turning LLVM on under **Compiler Options (DEBUG)** is not recommended.
 
-**Enable LLVM Compilation** turns LLVM on. With only this box ticked, LLVM runs during compilation and creates the intermediate representation of your code, but does not apply the optimizations for performance and size. You will usually want to tick one or both of the next two options as well: **LLVM: Generate optimized code** and **LLVM: Optimize for smaller filesize**.
+**Enable LLVM Compilation** turns LLVM on. With only this box ticked, LLVM runs during compilation and creates the intermediate representation of your code, but does not apply the optimizations for performance and size. You will usually want to tick one or both of the next two options as well: **LLVM: Generate optimized code** and **LLVM: Optimize for smaller filesize**. *Generate optimized code* is for optimizing for speed. This is not mutually exclusive with *Optimize for smaller filesize*, and when both are enabled, LLVM determines if an optimization doesn't provide a significant enough benefit to be worth the size increase.|
 
 The remaining options, from **LLVM: Target CPUs with AES** to **LLVM: Target CPUs with XSAVES**, are for CPU features that not every CPU has. They range from features that almost every CPU from the last 25 years has, to features that only recent CPUs have. [CPU feature availability](#cpu-feature-availability) below gives an overview.
 
 > [!IMPORTANT]
 > If you tick a CPU feature that the CPU running your program does not have, the program crashes or does not run at all.
 
-When LLVM is on, a "waiting for LLVM compilation" message appears when you build or run your program. For large applications, and for applications with very large individual procedures, compiling with LLVM can take much longer than the standard compiler. A very large application can take several minutes or more to compile, depending on your hardware.
+When LLVM is on, a progress dialog appears when you build or run your program showing the completion percentage of the build process. For large applications, and for applications with very large individual procedures, compiling with LLVM can take much longer than the standard compiler. A very large application can take several minutes or more to compile, depending on your hardware.
 
 twinBASIC keeps a cache of compiled code, so later builds are usually much faster: code that has not changed is not compiled again. To clear the cache and compile everything on the next build, choose **Flush the LLVM compiler cache** on the [**Tools** menu](../tB/IDE/Project/Menu/Tools).
 
