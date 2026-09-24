@@ -434,3 +434,57 @@ read the IDE section.
 | UC-54 | *(site, re-run)* I want to start unit-testing my twinBASIC code. Get me from nothing to a test run: the finished project exactly as I'd have it, and what the run will print. | executed, as in round 7, and twice: once as assembled and once with one expected value changed, against the Assert pages rewritten after round 7's run to say what a failure looks like |
 | UC-59 | *(site)* Several of my classes share most of their code and differ in one step. In VB6 I copied the shared code into each one behind `Implements`; I've read that twinBASIC has real inheritance. Get me a working example --- a base class, two classes derived from it, and a routine that uses both through the base type --- as the finished code exactly as I'd have it in my project, and what running that routine prints. | executed. **H** the Inheritance page's classes are all `Private` without saying why, and a public class whose `New` takes arguments does not compile; the rule is on another page, and the page's example never constructs a class |
 | UC-61 | *(site)* My program stops with a run-time error partway through a loop when I run it from the IDE. Find the line and the loop iteration where it stopped and what the variables held there, then step through the rest of the loop one line at a time. | none known. No case has read the IDE section, whose debugging pages are 14--25 lines each |
+
+## Round 9 --- the re-runs round 8 named, and four new site cases
+
+**Run 2026-09-24 at `d4b37ec`** --- [builder/REVIEW-USECASES-d4b37ec.md](../builder/REVIEW-USECASES-d4b37ec.md).
+Round 8's last commit, with its fixes in. One session, every case in parallel through
+`eval/run_case.mjs`, on the same model and Claude Code build as round 8.
+
+**Re-run the seven round 8 named**: UC-55, UC-59, UC-60 and UC-61 against its fixes, and UC-14,
+UC-15 and UC-16 against the three `##` sections written for them. Goals verbatim, each case on
+the protocol it was first run under. **Also re-run round 8's own queries** for those cases against
+this round's index, since an evaluator's queries differ from run to run and the index's answer to
+the same words does not.
+
+**Write the case round 8 asked for**: a project kept in Git with the IDE's own Export Project,
+where round 8 found the data loss. **Open three surfaces no case has read**, each executed: a VBA
+error handler ported as it stands, against the error-number table round 8 wrote; the Windows API
+tutorial; and generics.
+
+### Persona C: builder developer
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-14 | *(re-run of round 1)* Change the site's body typeface. What else must change? | **H** dark mode keeps the system fonts when a new stack is not passed to it, and the diagram metrics go stale; round 8's six queries all missed, and *Changing a typeface* was written for this |
+| UC-15 | *(re-run of round 1)* I edited the link checker. How do I know one implementation didn't quietly check less? | round 8 found the answer in an `###` the search does not index; *Changing the link checker* was written for this |
+| UC-16 | *(re-run of round 1)* Add a CSS rule for a component that works in both themes. | **H** the dark compilation raises specificity, so a single-class rule silently loses in dark mode; *Adding a CSS rule that works in both themes* was written for this |
+
+### Persona D: a twinBASIC developer on the published site
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-55 | *(site, re-run)* Keep my twinBASIC project in git as plain-text files, and rebuild the project file from them in a script. | **H** as round 8; its rebuild command reversed `import`'s arguments, and the section now gives the command |
+| UC-59 | *(site, re-run)* The goal of round 8, verbatim. | executed. **H** as round 8; the page now shows the routine inside a `Module` and says what the constructor rules are |
+| UC-60 | *(site, re-run)* The goal of round 8, verbatim. | **H** as round 8; *Updating a package you built yourself* was written for this, and the linked-package folder corrected |
+| UC-61 | *(site, re-run)* The goal of round 8, verbatim. | **H** Step Into on the failing line repeats the error; *When a run-time error stops the program* was written for this |
+| UC-62 | *(site)* I want my twinBASIC project under Git, and I'd rather do it from inside the IDE than with a separate command-line tool. Set it up so that every time I save the project in the IDE, the files in my repository are brought up to date and ready to commit. Tell me exactly which settings to change, what to set them to, and where my repository should be. | **H** Export Project empties its folder first, `.git` included, and *Export After Save* does it on every save |
+| UC-63 | *(site)* Port this VBA function to twinBASIC, and give me a routine that calls it on an array of a few numbers: once with two valid positions, once with a position past the end of the array, and once with a divisor of zero. I want the finished code exactly as I'd have it in my project, and what the routine prints. *(The function below follows the sentence.)* | executed. **H** an index past the end raises -2147352565, not 9, so `Case 9` does not catch it |
+| UC-64 | *(site)* I need to call the Windows API directly from twinBASIC. Get me a module that prints this computer's name, the Windows folder, and how many seconds the system has been running, using API calls rather than `Environ` or FileSystemObject --- the finished code exactly as I'd have it in my project, and what it prints. | executed. None known; no case has read the Windows API tutorial |
+| UC-65 | *(site)* I've read that twinBASIC has generics. Show me one function that returns the larger of two values and works for Long, Double and String alike, and a small stack class that holds items of any one type, with a routine that uses both --- the finished code exactly as I'd have it in my project, and what running that routine prints. | executed. None known; no case has read the generics page |
+
+UC-63's function, verbatim:
+
+```vba
+Public Function Ratio(values() As Double, ByVal i As Long, ByVal j As Long) As String
+    On Error GoTo Failed
+    Ratio = Format$(values(i) / values(j), "0.00")
+    Exit Function
+Failed:
+    Select Case Err.Number
+        Case 9:  Ratio = "no such position"
+        Case 11: Ratio = "cannot divide by zero"
+        Case Else: Ratio = "unexpected error " & Err.Number
+    End Select
+End Function
+```

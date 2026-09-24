@@ -38,7 +38,9 @@ and prints the session's digest --- see [Reading the results](#reading-the-resul
 **Snapshot the search index with the corpus**: copy `docs/_site/assets/js/search-data.json`
 and `assets/js/vendor/lunr.min.js` beside it, and give every case `--site <snapshot>`.
 `site_search.mjs` otherwise reads the live `docs/_site/`, and a rebuild during the round
---- a fix pass running alongside, say --- moves the ranks under the evaluators' feet.
+--- a fix pass running alongside, say --- moves the ranks under the evaluators' feet. **Keep the
+snapshot after the round**: the next round re-runs this round's queries against both indexes,
+which is how a fix is measured apart from the evaluator (see [Reading the results](#reading-the-results)).
 
 Cases are independent, so they run in parallel. Sixteen is comfortable; a case takes one
 to two minutes.
@@ -55,6 +57,8 @@ never compare a site-protocol run with a repo-protocol run of the same goal.
 node eval/site_search.mjs "how do I add a build task"   # the site's real search box
 node eval/site_search.mjs --composition                 # what the index is made of
 node eval/transcript.mjs <dir>/UC-56.jsonl --calls      # a finished case's session again
+node eval/nav_hops.mjs '^/tB/Modules/ErrObject/Number$' # hops by link from docs/index.md
+node eval/nav_hops.mjs --from README.md '^/Documentation/Development/Tools$'
 ```
 
 ## Why an evaluator is a separate process
@@ -103,7 +107,7 @@ unreadable when they render; another predicted a table-of-contents change on a p
 no table of contents). A capable evaluator that quietly reads the source measures how good
 the *source* is, reports a clean pass, and tells you nothing.
 
-Three of its decisions are deliberate and worth keeping:
+Four of its decisions are deliberate and worth keeping:
 
 - **What stays readable is an allowlist**, for the same reason
   [builder/publish-policy.mjs](../builder/publish-policy.mjs) holds one. A denylist of source
@@ -115,6 +119,9 @@ Three of its decisions are deliberate and worth keeping:
   worst-scoring cases both had answers that existed only there or in an unpublished plan.
 - **`eval/` and prior `REVIEW-USECASES-*.md` are excluded**, because this catalogue names the
   hazard each case probes and a past review names the answers.
+- **Readable files are written with LF**, as the repository stores them. A Windows checkout
+  hands the corpus CRLF, and a permalink grep anchored with `$` then matches nothing: round 9's
+  UC-63 reported a working link as broken, three times, from exactly that.
 
 Other `builder/REVIEW-*.md` files stay in. They are audit snapshots a real developer has, and
 round 1 produced a genuine finding because one was present.
@@ -165,6 +172,7 @@ never on the report's word for how the answer was reached.
 | 6 | 8 --- a discoverability fix measured, and the reference half | [builder/REVIEW-USECASES-9b8e70c.md](../builder/REVIEW-USECASES-9b8e70c.md); 14 findings, the first non-compiling samples the harness has found |
 | 7 | 8 --- the re-runs round 6 named, and the first executed case | [builder/REVIEW-USECASES-60bb6f5.md](../builder/REVIEW-USECASES-60bb6f5.md); 19 findings, no hazard walked into, UC-40's discoverability 1 → 4, and a tutorial describing a failure the product does not produce |
 | 8 | 13 --- the first isolated evaluators: round 7's re-runs, round 1's four lowest, three new | [builder/REVIEW-USECASES-5b4cd37.md](../builder/REVIEW-USECASES-5b4cd37.md); 29 findings, no set hazard walked into, and the four most serious found by probing the product: an IDE export that empties a Git repository, constructors that fail in silence, error numbers that are not VBA's, and a debugger Stop that stops one procedure and so turns a failed unit test into a pass |
+| 9 | 11 --- round 8's seven re-runs, and four new site cases, four of the eleven executed | [builder/REVIEW-USECASES-d4b37ec.md](../builder/REVIEW-USECASES-d4b37ec.md); 12 findings, the re-runs' discoverability +1.00 and round 8's own queries from 2 hits of 14 to 11, and an IDE export the tB executable cannot pack back into a project |
 
 Round 1's headline was a gradient: documentation quality fell monotonically with depth into
 the toolchain (contributor 3.8 discoverability, toolchain user 2.8, builder developer 1.8),
