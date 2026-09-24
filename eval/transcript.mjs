@@ -70,6 +70,13 @@ const SHELL_SEARCH = /(^|[\s;&|(])(grep|rg|findstr|select-string)\b/i;
 const RECURSIVE = /\s-[a-zA-Z]*[rR]|--recursive/;
 
 /**
+ * The search box in command position, by name or by a path to the shim. A bare
+ * substring match counted round 9's `which site-search; type site-search`, two
+ * lookups of the shim, as two queries.
+ */
+const SEARCH_CALL = /(?:^|[;&|(]\s*)"?(?:[^\s;&|()"]*[\\/])?site-search\b/g;
+
+/**
  * What a call was, in the protocol's terms. A search for a permalink is the
  * sanctioned way to open a search result, and a search inside one page is a
  * reader's find-in-page, so neither is full-text search. Any other search is,
@@ -80,7 +87,7 @@ export function classify(call) {
   const cmd = String(call.input.command ?? "");
   switch (call.tool) {
     case "Bash":
-      if (cmd.includes("site-search")) return "search";
+      if (queriesIn(call)) return "search";
       if (!SHELL_SEARCH.test(cmd)) return "shell";
       if (/permalink/i.test(cmd)) return "permalink";
       return !RECURSIVE.test(cmd) && /\.md\b/i.test(cmd) ? "find" : "fulltext";
@@ -111,15 +118,21 @@ function claimsChannel3Unused(report) {
  * command --- round 8's UC-58 ran four in a single call --- and a timeline of one
  * letter per call then reads as one search.
  */
-const queriesIn = (call) => (String(call.input.command ?? "").match(/site-search/g) ?? []).length;
+function queriesIn(call) {
+  return call.tool === "Bash" ? (String(call.input.command ?? "").match(SEARCH_CALL) ?? []).length : 0;
+}
 
 /** The facts about channel order the report cannot be trusted to state. */
 export function audit(s) {
   const kinds = s.calls.map(classify);
-  const firstSearch = kinds.indexOf("search");
+  const firstSearch = s.calls.findIndex((c, i) => kinds[i] === "search" && c.ok !== false);
   const fulltext = s.calls.filter((_, i) => kinds[i] === "fulltext");
   const early = fulltext.filter((c) => firstSearch < 0 || c.n - 1 < firstSearch);
-  const searchCalls = s.calls.filter((_, i) => kinds[i] === "search");
+  // A refused call ran no query, so it is counted apart: round 9's UC-65 had
+  // five queries refused, and a total that included them read as eleven.
+  const allSearchCalls = s.calls.filter((_, i) => kinds[i] === "search");
+  const searchCalls = allSearchCalls.filter((c) => c.ok !== false);
+  const refusedSearches = allSearchCalls.length - searchCalls.length;
   const queries = searchCalls.reduce((n, c) => n + queriesIn(c), 0);
   const flags = [];
   if (firstSearch < 0) flags.push("no site search at all: Channel 1 was not run");
@@ -134,7 +147,7 @@ export function audit(s) {
   }).join(" ");
   return {
     kinds, firstSearch: firstSearch < 0 ? null : firstSearch + 1, fulltext, early, flags, timeline,
-    queries, searchCalls: searchCalls.length,
+    queries, searchCalls: searchCalls.length, refusedSearches,
   };
 }
 
@@ -159,7 +172,8 @@ export function printDigest(s, { calls = false, report = false } = {}) {
   console.log("          R read  L listing  X other shell  (lower case: refused or failed)");
   console.log("          a number after a letter: that many queries in the one call");
   console.log(`\nfirst site search: ${a.firstSearch ? `call ${a.firstSearch}` : "none"}`);
-  console.log(`site searches: ${a.queries} quer${a.queries === 1 ? "y" : "ies"} in ${a.searchCalls} call(s)`);
+  console.log(`site searches: ${a.queries} quer${a.queries === 1 ? "y" : "ies"} in ${a.searchCalls} call(s)` +
+    (a.refusedSearches ? `, and ${a.refusedSearches} refused call(s) that ran none` : ""));
   console.log(`full-text searches: ${a.fulltext.length}`);
   for (const c of a.fulltext) console.log(`  #${c.n} ${brief(c).slice(0, 160)}`);
   for (const f of a.flags) console.log(`FLAG  ${f}`);

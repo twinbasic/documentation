@@ -146,7 +146,12 @@ function build({ src, dest, quiet }) {
     const out = path.join(dest, rel);
     fs.mkdirSync(path.dirname(out), { recursive: true });
     if (c.kind === "readable") {
-      fs.copyFileSync(abs, out);           // byte copy: line endings preserved
+      // LF, as the repository stores it. A Windows checkout with autocrlf
+      // hands the corpus CRLF, and a permalink grep anchored with `$` then
+      // matches nothing: round 9's UC-63 evaluator reported a working link
+      // as broken, three times over, from exactly that. latin1 maps every byte
+      // to one character and back, so nothing but the CRs changes.
+      fs.writeFileSync(out, fs.readFileSync(abs, "latin1").replace(/\r\n/g, "\n"), "latin1");
       bump(counts.readable, c.ext);
     } else {
       fs.writeFileSync(out, STUB);
