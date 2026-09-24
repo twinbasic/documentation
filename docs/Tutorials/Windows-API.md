@@ -157,7 +157,13 @@ For `GetCursorPos` the distinction does not arise because all its types are conc
 | `BOOL` | **Long** | Always 32-bit |
 | `INT`, `int` | **Long** | Always 32-bit |
 
-A Declare that uses `Long` for a handle type compiles and runs in 32-bit mode but fails or crashes in 64-bit mode because a 64-bit handle does not fit in 4 bytes. Always use `LongPtr` for handle and pointer parameters.
+In a 32-bit build **LongPtr** and `Long` are the same size, so a Declare that uses `Long` for a pointer compiles and runs. In a 64-bit build the same code goes wrong in three ways:
+
+- A **LongPtr** passed where the Declare says `Long` does not compile: *TB5001 cannot coerce type 'LongLong' to 'Long'*. Converting it with `CLng`, as the message suggests, compiles, and raises error 6, *Overflow*, when the address is above 2 GB, as `StrPtr` of a string was in the test.
+- A pointer or module handle returned `As Long` loses its upper half, with no error. `GetModuleHandleW(0)` returned `&H7FF6436A0000` declared `As LongPtr` and `&H436A0000` declared `As Long`, and `GetModuleFileNameW` given the `Long` failed with error 126, *module not found*.
+- A window handle and a kernel handle, such as an event's, fitted in a `Long` in the same test and worked, because their values fitted in 32 bits. The Windows API declares both pointer-sized.
+
+So declare every handle and pointer **LongPtr**, as the table says.
 
 ### Example: GetForegroundWindow
 

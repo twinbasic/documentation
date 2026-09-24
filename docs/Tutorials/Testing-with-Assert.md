@@ -36,7 +36,7 @@ An assertion that holds does nothing visible. One that fails stops the run on it
 
 ## Adding the package
 
-Open **Project → References** (Ctrl+T) → **Available Packages** and tick **Assert**. Click **OK**. The three modules (`Exact`, `Strict`, `Permissive`) are now available, and every call names both the package and the module: `Assert.Exact.AreEqual`, never `Exact.AreEqual` or `AreEqual` alone, which do not compile. [Calling convention](../tB/Packages/Assert/#calling-convention) explains why.
+Open **Project → References** (Ctrl+T) → **Available Packages** and tick **twinBASIC - Unit Testing Package**, the row whose library symbol is **Assert**. Press **Apply Changes**. The three modules (`Exact`, `Strict`, `Permissive`) are now available, and every call names both the package and the module: `Assert.Exact.AreEqual`, never `Exact.AreEqual` or `AreEqual` alone, which do not compile. [Calling convention](../tB/Packages/Assert/#calling-convention) explains why.
 
 ## The function under test
 

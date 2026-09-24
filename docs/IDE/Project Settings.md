@@ -43,7 +43,7 @@ See [Packages](../../../Features/Packages/)
 
 ## Build Output Path
 
-The full path of the file the compiler creates. Its description in the dialog lists these variables: `${SourcePath}`, the folder that holds the `.twinproj` file, and `${ProjectName}`, `${ProjectID}`, `${FileExtension}`, `${Architecture}`, `${VersionMajor}`, `${VersionMinor}`, `${VersionBuild}` and `${VersionRevision}`. `${Architecture}` is `win32` or `win64`, whichever the toolbar's [build configuration](Toolbar#build-configuration) box is set to.
+The full path of the file the compiler creates. Its description in the dialog lists these variables: `${SourcePath}`, the folder that holds the `.twinproj` file, and `${ProjectName}`, `${ProjectID}`, `${FileExtension}`, `${Architecture}`, `${VersionMajor}`, `${VersionMinor}`, `${VersionBuild}` and `${VersionRevision}`. `${Architecture}` is `win32` or `win64`, whichever the toolbar's [build configuration](Toolbar#build-configuration) box is set to. The IDE add-in samples use one more that the description leaves out, `${IdePath}`, the folder the IDE is installed in: their `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}` builds straight into the IDE's own `addins` folder, which works until the IDE has loaded the add-in --- see [Rebuilding an addin the IDE has loaded](../../Packages/tbIDE/#rebuilding-an-addin-the-ide-has-loaded).
 
 Every project template sets it to `${SourcePath}\Build\${ProjectName}_${Architecture}.${FileExtension}`: a `Build` folder beside the `.twinproj` file, and a different file name for each architecture. A Standard DLL project named `MathGreetLib` builds `Build\MathGreetLib_win32.dll` or `Build\MathGreetLib_win64.dll`, and a `Declare` that calls it has to name that file --- see [Calling a Standard DLL from VBA or Excel](../../../Features/Project-Configuration/Project-Types#calling-a-standard-dll-from-vba-or-excel). In the `Settings` file it is `project.buildPath`.
 
@@ -76,11 +76,9 @@ The type of file the compiler creates: **Standard EXE**, **ActiveX DLL**, **Acti
 ## Type Library Version
 
 ### Major/Minor
-
 {: #typelib-major-minor}
 
 ### Auto-Increment
-
 {: #typelib-auto-increment}
 
 ## Register DLLs to HKLM
@@ -88,6 +86,8 @@ The type of file the compiler creates: **Standard EXE**, **ActiveX DLL**, **Acti
 ## COM Initialization
 
 ## Is Console Application
+
+When set to **Yes**, the built executable is marked as a console application rather than a GUI application. It is **No** by default; the **Standard EXE (Console App)** template sets it to **Yes**. In the `Settings` file it is `project.isConsoleApplication`. [Writing a command-line tool](../../../Features/Project-Configuration/Project-Types#writing-a-command-line-tool-output-exit-code-and-arguments) shows how such a program writes its output and sets its exit code.
 
 ## Native Subsystem
 
@@ -102,7 +102,6 @@ The type of file the compiler creates: **Standard EXE**, **ActiveX DLL**, **Acti
 ## Auto Prettify Source Code
 
 ## CodeLens - Show Run Procedure
-
 {: #show-run-procedure }
 
 ## Runtime Windows Codepage
@@ -112,7 +111,6 @@ The type of file the compiler creates: **Standard EXE**, **ActiveX DLL**, **Acti
 ## Unicode Control Notifications
 
 ## Include Procedure Name Symbols in Built Executables
-
 {: #include-procedure-name-symbols }
 
 ## Trace Flags
@@ -130,15 +128,12 @@ The type of file the compiler creates: **Standard EXE**, **ActiveX DLL**, **Acti
 ## Constant Function Folding
 
 ## Large Address Aware (LAA)
-
 {: .la-aware }
 
 ## Terminal Server Avare
-
 {: .ts-aware }
 
 ## Data Execution Prevention Aware (DEP)
-
 {: .dep-aware }
 
 ## Export
@@ -163,7 +158,6 @@ When set to **Yes**, every save of the project also runs **Export Project** into
 When set to **Yes**, **Export Project** writes a line to the [Debug Console](DebugConsole) for each file and folder it deletes, `[EXPORT]  DELETED: …`, and for each file it writes, `[EXPORT]  DONE: …`. When set to **No**, the console shows only the line that starts the export, the `[EXPORT] COMPLETED` line that ends it, and any failure.
 
 ## Force DPI Awareness At Startup
-
 {: #dpi-awareness }
 
 ## Runtime Command Line Args
@@ -183,15 +177,12 @@ When set to **Yes**, a run-time error stops the program at the failing line even
 ## Codegen Model
 
 ## Strip PE File Relocation Symbols
-
 {: #strip-pe-symbols }
 
 ## Enable Address Space Layout Randomization (ASLR)
-
 {: #enable-aslr }
 
 ## PE File Image Base Address (Win32)
-
 {: #win32-base-address }
 
 ## PE File Image Base Address (Win64)

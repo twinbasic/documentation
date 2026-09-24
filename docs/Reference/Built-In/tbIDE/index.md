@@ -11,7 +11,7 @@ has_toc: false
 
 The **tbIDE** package is the **addin SDK** for the twinBASIC IDE. An addin is a Standard DLL that the IDE loads at start-up; the DLL exports one factory function, returns one object implementing the [**AddIn**](AddIn) contract, and from there everything happens through the [**Host**](Host) object the IDE passes in. The package itself is **type-only** --- every public symbol is an interface or a CoClass; the actual implementations live in the twinBASIC IDE binary, and the addin DLL binds against the type declarations and lets the IDE marshal calls into its implementations at run time.
 
-The package is a built-in *compiler* package shipped with twinBASIC. It is added to addin projects automatically; there is no need to add it manually through Project → References.
+The package is a built-in *compiler* package shipped with twinBASIC. The addin samples 10 to 16 reference it already, but a project started from the **Standard DLL** template does not, and without the reference every name in the package --- `AddIn`, `Host` and the rest --- is *TB5079 Unrecognized datatype symbol*. Add it through Project → References (**Ctrl-T**) → Available Packages: tick the row **twinBASIC - IDE Extensibility Package**, marked **[BUILT-IN]**, whose library symbol is **tbIDE**, and press **Apply Changes**.
 
 * TOC
 {:toc}
@@ -21,7 +21,7 @@ The package is a built-in *compiler* package shipped with twinBASIC. It is added
 An addin project has three distinguishing settings:
 
 - **Build type:** Standard DLL.
-- **Build path:** `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}`. The output drops directly into the IDE's `addins\Win32\` or `addins\Win64\` folder, where the IDE scans for addins on start-up. It also scans the same two folders under `%APPDATA%\twinBASIC\addins\`, which an IDE update leaves in place; see [Add Ins](../../IDE/AddIns/).
+- **Build path:** `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}`. The output drops directly into the IDE's `addins\Win32\` or `addins\Win64\` folder, where the IDE scans for addins on start-up. It also scans the same two folders under `%APPDATA%\twinBASIC\addins\`, which an IDE update leaves in place; see [Add Ins](../../IDE/AddIns/). Once the IDE has loaded the addin, this path can no longer be built to; see [Rebuilding an addin the IDE has loaded](#rebuilding-an-addin-the-ide-has-loaded).
 - **Compiler-package reference** to **tbIDE** (added to the project's references with `isCompilerPackage: true`, `publisher: TWINBASIC-COMPILER`, `symbolId: tbIDE`). This is the binding between the DLL's compile-time types and the IDE's run-time implementations.
 
 The DLL must export one function --- the entry point the IDE calls when it discovers and loads the addin:
@@ -65,6 +65,22 @@ End Class
 ```
 
 The `WithEvents Host As Host` pattern is how the addin subscribes to IDE lifecycle events ([**OnProjectLoaded**](Host#onprojectloaded), [**OnChangedActiveEditor**](Host#onchangedactiveeditor), [**OnChangedTheme**](Host#onchangedtheme)). Almost every meaningful addin sets up its toolbar buttons and tool windows inside the [**OnProjectLoaded**](Host#onprojectloaded) handler --- that is the first moment the IDE is fully ready to accept extensibility commands.
+
+## Rebuilding an addin the IDE has loaded
+
+The build path above writes the DLL into the IDE's own `addins` folder, and the IDE loads it the next time it starts. From then on the IDE's compiler keeps the file open, and building the addin again in that IDE fails. The build log reads:
+
+```text
+[LINKER] FAILED to create output file '...\addins\win32\MyAddIn.dll' (error code 32)
+```
+
+and then names the process that holds the file, the IDE's own compiler, `twinBASIC_win32_noDEP.exe`. Error code 32 is Windows' *file in use*. To change an addin and build it again, build it somewhere else and copy it in while the IDE is closed:
+
+1. Set the addin project's [Build Output Path](../../IDE/Project/Settings#build-output-path) to `${SourcePath}\Build\${ProjectName}_${Architecture}.${FileExtension}`, the path the other project templates use.
+2. Build. The DLL goes into a `Build` folder beside the `.twinproj`, as `MyAddIn_win32.dll`.
+3. Close the IDE, copy the new DLL over the old one in the installation's `addins\win32` folder, keeping the old one's name, and start the IDE again. It loads the new build.
+
+Keep one copy of the addin in the folder: the IDE loads every DLL in it, so a second copy under another name loads as a second addin.
 
 ## The class catalogue
 
