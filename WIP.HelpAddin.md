@@ -5,8 +5,8 @@ add-in that shows the documentation for the symbol under the cursor, and the har
 tests IDE add-ins by machine, which the add-in is developed against.
 
 **Status: Stage 1, the harness, is built, and Stage 2 has begun** --- `addin-test.bat`
-operates Samples 10 and 15 end to end and leaves the registry as it found it, and P1 and P2
-are answered by a probe lane of their own. The add-in itself is not started. This file
+operates Samples 10 and 15 end to end and leaves the registry as it found it, and P1 to P4
+and P12 are answered by two probe lanes. The add-in itself is not started. This file
 replaces the June draft, `add-in/PLAN.md`
 in commit `d159acf8` ("Roughly plan the help add-in"). That commit is on no branch --- only
 the detached HEAD of an old worktree keeps it --- so everything in it worth keeping is here,
@@ -153,7 +153,8 @@ whose lane is [test/addin/keys.test.mjs](test/addin/keys.test.mjs).
 ### Tool windows
 
 Read at `main.js@1002292` (`toolWindowElementAddChild`) and `@1005960`
-(`toolWindowElementSetProperty`).
+(`toolWindowElementSetProperty`), and measured on BETA 983 by P3, P4 and P12, whose lane is
+[test/addin/panes.test.mjs](test/addin/panes.test.mjs).
 
 - **A tool window is part of the main document**, inside an open shadow root, not an iframe.
   Measured on Samples 10 and 15: `toolWindowsById` is keyed by the *second* argument the
@@ -169,42 +170,91 @@ Read at `main.js@1002292` (`toolWindowElementAddChild`) and `@1005960`
   `monaco`, `listview`, `virtuallistview`) become a `div` with extra setup; every other name
   goes straight to `document.createElement`, so `iframe` is not refused. A parent is found
   with `querySelector(":scope #"+id)`, so element ids must be valid CSS identifiers.
+- **Showing a window sets its root's `display` to `block`.** `toolWindowSetVisible` sets
+  `bodyElement.style.display` to `"block"` or `"none"`, so a flex or grid layout an add-in
+  puts on the root is gone the moment the window shows: the probe's `display: flex` read
+  `block` after `Visible = True`, and its iframe kept the default 150 px height. Sample 10
+  lays its root out as a flex column and gets a block. A child of the root with its own
+  `display: flex` and `height: 100%`, under a root with `height: 100%`, keeps the layout;
+  the published ToolWindow page says so.
 - **Property sets go straight to the DOM**, as `r[a]=e.value`: `innerHTML`, `src` and
   `srcdoc` pass through unchanged. **A property whose name starts with `on` is dropped
-  silently, and the call still reports success.** A step in a property path that is an
-  array is called as a function, so DOM methods can be reached too.
-- An inline handler inside `innerHTML` (`<img onerror="...">`, `<div onclick="...">`) is an
-  attribute, not a property, so it is not dropped, and browsers run such handlers in the
-  page's own JavaScript. That is the one way an add-in can call the IDE page's internals
-  (**P4**). See [Open decisions](#open-decisions) for where it may be used. **Sample 15
-  already does it:** each search result it gives its list view's `addItem` is HTML with an
-  inline `onclick='raiseEvent("onClickMatch", event, true, path, line, column)'`, and a
-  click on one runs it --- measured, since the click opened the right file at the right
-  line. The event travels only from the element that carries the handler: Sample 15's
-  `[line,col]` label sits beside the clickable line rather than inside it, so a click on the
-  label reaches the handler of the whole file's entry, which opens the file's first match.
-- Events: a known DOM event gets a real `addEventListener`, and a copy of the event goes back
-  to the add-in over the compiler's root socket; an unknown name becomes a callback for
-  `raiseEvent(...)` to call *(reported)*. `raiseEvent` finds its handler by climbing
-  `parentNode` to an element that has `rootEventHandler`, and only listview containers and
-  `AddMonacoWidget` roots have one. In plain tool-window HTML it would climb to the shadow
-  root, whose `parentNode` is `null`, and throw *(reported; **P12**)*. So give elements ids
-  and use `AddEventListener`.
+  silently, and the call still reports success** --- measured (P4): the probe's `.onclick =
+  "..."` raised no error, and the element had neither an `onclick` property nor attribute.
+  The test is on the last name of the path. A step in a property path that is an array is
+  called as a function, so DOM methods can be reached too.
+- **An inline handler inside `innerHTML` runs as the IDE page's own script (P4).** It is an
+  attribute, not a property, so it is not dropped. Measured: an `<img src='data:,'
+  onerror='...'>` set through `innerHTML` ran its handler at once, with nothing clicked, and
+  an inline `onclick` ran when clicked; both saw `typeof openEditors === "object"`, a global
+  of the IDE's page. That is the one way an add-in can call the page's internals; see [Open
+  decisions](#open-decisions) for where it may be used. **Sample 15 already relies on it:**
+  each search result it gives its list view's `addItem` is HTML with an inline
+  `onclick='raiseEvent("onClickMatch", event, true, path, line, column)'`, and a click on
+  one runs it. The event travels only from the element that carries the handler: Sample
+  15's `[line,col]` label sits beside the clickable line rather than inside it, so a click
+  on the label reaches the handler of the whole file's entry, which opens the file's first
+  match. Text from a file or the user must be escaped before it goes into such HTML; the
+  published HtmlElementProperties page says so.
+- **Events.** A name the element has as a property or as `on<name>` gets a real
+  `addEventListener`, and a copy of the event goes back to the add-in over the compiler's
+  root socket, with `target` reduced to `{id, value}` (`copyEvent`). Any other name is
+  stored as a function on the element, or on the object at the end of the property path,
+  under that name (`toolWindowElementSetPropertyCallback`) --- that function is what
+  `raiseEvent` calls. `raiseEvent` climbs `parentNode` to the first node with a
+  `rootEventHandler` and calls `rootEventHandler[name](event)`. Only three kinds of node
+  have one: a `listview` or `virtuallistview` container (the list view object), the shadow
+  root of an `AddMonacoWidget` widget (the widget's own element), and one of the IDE's
+  dialogs. **So `raiseEvent` from plain tool-window HTML throws (P12, measured):**
+  `TypeError: Cannot read properties of null (reading 'rootEventHandler')`, at the shadow
+  root, whose `parentNode` is `null`, and the add-in's listener is not called. **The stored
+  function can be called directly:** `onclick='this.parentNode.p12Event(event)'` reached the
+  listener its parent registered as `"p12Event"`, with `eventInfo.target.id` =
+  `p12direct`. So: `AddEventListener` on elements with ids for a few controls; a list view
+  with `raiseEvent` in its items for a list; the direct call for HTML set through
+  `innerHTML` outside a list view.
 
 ### Ways to show a page
 
 1. **The external browser.** `ShellExecuteW` from the add-in DLL. Certain to work; it leaves
    the IDE. The IDE itself opens links with `hostAppObject.Shell('cmd.exe /c start "link"
    "'+url+'"',1)` *(reported)* --- a host object that only page script can reach.
-2. **An `iframe` in a tool window.** Nothing refuses the tag. No file under `ide\` sets a
-   Content-Security-Policy --- there is no `Content-Security-Policy`, `http-equiv` or
-   `frame-ancestors` in any `ide\*.htm` --- and neither does the compiler's HTTP header
-   template *(reported)*. docs.twinbasic.com sends neither X-Frame-Options nor CSP
-   *(reported, from one HEAD request)*. So a documentation page should load in a pane
-   (**P3**). If it does, the most expensive tier of the June draft --- whole pages inside
-   the IDE --- becomes the cheapest, and the site's own navigation and search come with it.
-   Keys pressed while focus is inside the iframe go to the page, not to the IDE, so F1 does
-   nothing there.
+2. **An `iframe` in a tool window --- it works (P3, BETA 983).** Nothing refuses the tag. No
+   file under `ide\` sets a Content-Security-Policy --- there is no
+   `Content-Security-Policy`, `http-equiv` or `frame-ancestors` in any `ide\*.htm` --- and
+   neither does the compiler's HTTP header template *(reported)*. The host DLL,
+   `bin/twinBASIC_ide_win32.dll`, names no WebView2 navigation event at all, so nothing
+   intercepts a frame's navigation. So the most expensive tier of the June draft --- whole
+   pages inside the IDE --- is the cheapest, and the site's own navigation and search come
+   with it. Measured with the probe lane, on pages it serves itself on `localhost`:
+   - the frame loaded the page whose URL the add-in set as `src` (the server saw
+     `sec-fetch-dest: iframe`), followed a link in the page, and moved again when the add-in
+     set `src` a second time; the add-in's `"load"` listener heard every load;
+   - the mouse wheel over the frame scrolled the page;
+   - with a wrapper's flex layout the frame filled the window below the other elements;
+   - **keys pressed with the focus in the frame go to the page**: F1 there did not fire the
+     add-in's `f1`, and did once the focus was back in the IDE's own document;
+   - **the page's colour scheme is WebView2's, never the IDE's.** The IDE sets none on its
+     WebView2 --- no `ColorScheme` in `main.js`, no `PreferredColorScheme` in the host DLL
+     --- so a page's `prefers-color-scheme` is Windows' app mode by default. On this
+     machine all three were dark, so the lane cannot tell them apart; a lab IDE whose
+     WebView2 was told to prefer light (`--blink-settings=preferredColorScheme=1` added to
+     its `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`) showed the framed page light, and its own
+     page reported light, while the IDE's theme stayed dark. The site follows
+     `prefers-color-scheme` unless its own toggle has stored a choice, so **a page in the
+     pane matches the IDE only when Windows' app mode happens to agree** --- see Stage 3's
+     embedded mode.
+
+   **The live site works in the frame too** (lab, 2026-09-24). The KeyboardShortcuts page on
+   docs.twinbasic.com loaded in 0.9 s as a cross-site frame, with a process and a DevTools
+   target of its own (type `iframe` in `/json/list`; the page's `Page.getFrameTree` does not
+   list it). It applied its own dark theme, had its search box and `lunr`, scrolled under
+   the wheel, and a link to Host navigated the frame. The site, served by GitHub Pages, sends
+   neither `X-Frame-Options` nor a CSP (`curl -I`, 2026-09-24), and no page of the built
+   site has a `target="_blank"` link, so its links stay in the frame. The host DLL does name
+   `NewWindowRequested`, and what it does with a new window was not tried, since it might
+   start a browser. A link to a site that refuses to be framed, such as GitHub, would show
+   the browser's error page in the pane; not tried either.
 3. **The IDE's WEBPAGE panel**, a second native WebView2 whose default URL is
    `https://www.google.com`, controlled through `hostAppObject.SetAdditionalWebview2Url` and
    the `tbWebpage_ShowPanel` command *(reported)*. Page internals only.
@@ -497,16 +547,20 @@ the build number it was measured on.
 **A probe whose answer something else rests on becomes a lane**: its add-in in
 `test/addin/probes/<name>/`, its scenario beside the others, listed in `lanes.mjs`, with each
 test asserting what the build did. A later build that behaves differently then fails the
-run, and the failure says what to update. [keys.test.mjs](test/addin/keys.test.mjs) is the
-first --- the KeyboardShortcuts page's NOTE and two entries in BUGS-TO-REPORT.md rest on
-it. A probe that settles a question once, as P10's did, stays in scratch.
+run, and the failure says what to update. [keys.test.mjs](test/addin/keys.test.mjs) (P1,
+P2) is the first --- the KeyboardShortcuts page's NOTE and two entries in BUGS-TO-REPORT.md
+rest on it --- and [panes.test.mjs](test/addin/panes.test.mjs) (P3, P4, P12) the second,
+under the NOTEs on the HtmlElement, HtmlElementProperties, HtmlElements and ToolWindow
+pages. A probe that settles a question once, as P10's did, stays in scratch; so did the
+two P3 checks that need the network or a changed WebView2, the live site in the frame and
+the colour scheme with WebView2 preferring light.
 
 | # | Question | What it decides |
 |---|---|---|
 | P1 | Do `{ctrl}` and `{alt}` add-in shortcuts ever fire? Register `{ctrl}{shift}d`, `{alt}f`, `{shift}d`, `d` and `f1`, and press each. **Answered, BETA 983: no.** `d`, `{shift}d`, `f1` and `{shift}f1` fire; `{ctrl}{shift}d`, `{ctrl}d` and `{alt}f` fire only when the same key was pressed on its own less than 500 ms before. Queued in BUGS-TO-REPORT.md; the KeyboardShortcuts page has a NOTE. | the bug report; which key the add-in uses; the NOTE on the KeyboardShortcuts page |
 | P2 | Does the add-in's `f1` fire with focus in the code editor, and what happens with signature help showing? **Answered, BETA 983: yes.** It fires with the focus in the code editor, in the DEBUG CONSOLE and on nothing, and types nothing. With signature help showing, the IDE expands or collapses it as well, and logs `command failed: "tbHelp_ToggleExpandSignatureHelp"`. | F1 or another key --- F1 |
-| P3 | Does an `iframe` of a documentation page load and navigate inside a tool window? Size, scrolling, theme. | how pages are shown |
-| P4 | Does `innerHTML` render, and do inline handlers in it run page script? **Half answered, BETA 983:** HTML an add-in gives a list view's `addItem` renders, and its inline `onclick` runs the page's `raiseEvent` (Sample 15). `innerHTML` set as a property is untested. | how summaries are drawn; whether the page-internals route exists |
+| P3 | Does an `iframe` of a documentation page load and navigate inside a tool window? Size, scrolling, theme. **Answered, BETA 983: yes.** It loads, follows its own links, moves when the add-in sets `src`, scrolls, and fills the window under a wrapper's flex layout; the live site works too. Keys in the frame never reach the add-in, and the page's colour scheme is Windows', not the IDE's. | how pages are shown --- in the pane |
+| P4 | Does `innerHTML` render, and do inline handlers in it run page script? **Answered, BETA 983: yes, and yes.** It renders, and its inline handlers run as the IDE page's own script --- an `<img>`'s `onerror` with nothing clicked --- with its globals in reach. A property whose name starts with `on` is dropped, and the add-in hears no error. | how summaries are drawn; whether the page-internals route exists --- it does |
 | P5 | What does hover return for `MsgBox`, `Collection.Add`, `ToolWindows.Add` and a symbol declared in the project? What does definition return for a package symbol? | compiler-assisted context, or the add-in's own parser |
 | P6 | Does the compiler also load add-ins from `%APPDATA%\twinBASIC\addins\<arch>`? This needs a DLL placed there for a moment, and the user's own IDE would load it too --- **ask before running it.** | harness isolation |
 | P7 | Which bitness does the compiler start in, and does switching the build target restart it in the other one and load the other `addins` folder? **Half answered, BETA 983:** the target a project opens in picks the compiler --- win32 when the IDE remembers none, `twinBASIC_win64_noDEP.exe` for a project remembered as win64 --- and each compiler reads its own `addins` folder alone. Switching the target of an open project restarts the compiler in the other bitness --- `twinBASIC_win32_noDEP.exe` was replaced by `twinBASIC_win64_noDEP.exe` --- and which folder that one loads is untested. | building and testing both bitnesses |
@@ -514,7 +568,7 @@ it. A probe that settles a question once, as P10's did, stays in scratch.
 | P9 | Does a compiler restart reload add-ins from disk? **Half answered, BETA 983:** a restart ends the compiler and starts a new process, which loads every add-in again as it starts, so from disk. The loop itself is untested: rename the loaded DLL aside (P8 allows that), copy the new build in, restart. | a rebuild loop without restarting the IDE |
 | P10 | Does an environment variable set by the harness reach the add-in (`Environ$`)? **Answered, BETA 983: yes**, through the launcher, the IDE and the compiler the IDE starts. With `TB_ADDIN_TEST=1` in `launchIde`'s environment, `Environ$` and `GetEnvironmentVariableW` both returned `1` in the add-in, and a compiler started by the restart button returned it too; left out, both said it was unset. `WEBVIEW2_USER_DATA_FOLDER`, which `launchIde` always sets, arrived with the lane's port in it. | the side-effect switch |
 | P11 | Does the IDE write into its own install folder during a session? **Answered, BETA 983: no.** A compile, a compiler crash and a `tbrun` build-and-run left all 233 files byte-identical, mtimes included. | hardlinks or copies --- copies, for safety, at 380 ms |
-| P12 | Does `raiseEvent` from plain tool-window HTML throw? | how the pane's events are written |
+| P12 | Does `raiseEvent` from plain tool-window HTML throw? **Answered, BETA 983: yes** --- `TypeError: Cannot read properties of null (reading 'rootEventHandler')`, and the listener is not called. An inline handler that calls the listener `AddEventListener` stored on its parent, `this.parentNode.<name>(event)`, reaches the add-in. | how the pane's events are written |
 | P13 | Does the compiler's HTTP server serve any file placed under `ide\`? | an offline route |
 | P14 | What do `tbCreateCompilerAddin_v2` and `_v3` expect? | probably a question for upstream |
 
@@ -545,9 +599,16 @@ at `/tB/Modules/Collection`, not under VBRUN. The index is generated instead.
   build, the way `builder/page-baseline.json` treats a fall in the page count --- which is
   what catches a reworded heading breaking a member's anchor; retiring an entry follows the
   rules in [Permanent Links](docs/Documentation/Permanent-Links.md).
-- **Maybe an embedded mode for pages**, such as a query parameter that hides the site's
-  header and navigation and takes the IDE's theme. We own the site, so this is cheap. Decide
-  after P3.
+- **An embedded mode for pages: P3 says the theme needs one.** The pages work in the pane
+  unmodified, but they follow Windows' app mode, not the IDE's theme, and the add-in cannot
+  reach into the frame to change that: the live site is cross-site, so neither its document
+  nor its storage is the IDE page's. The site can take the theme from its URL instead: a
+  `theme=dark|light` query parameter, read by the no-flash snippet in `renderHead`
+  ([builder/template.mjs](builder/template.mjs)) and set as `data-theme` without being
+  stored, so a reader's own choice on the site is left as it is. Hiding the header and
+  navigation is a separate, optional question, untested. **Recommended, not yet decided**:
+  it changes what the published pages do, and it needs a test that the parameter keeps
+  working.
 
 The June data model stands:
 
@@ -600,10 +661,15 @@ Each increment is finished with its scenarios.
    is on, and every scenario checks that line before it presses anything. An IDE build that
    stopped passing the variable on to the compiler then fails the run, instead of starting a
    browser on the private desktop.
-2. **The help pane.** Search over the index, results, and a page view --- an iframe if P3
-   passes, otherwise a summary with a link to the browser. Theme: read
-   `Host.Themes.ActiveThemeNameGroup` at start, handle `Host_OnChangedTheme` after, and pass
-   a light or a dark stylesheet to `ToolWindow.ApplyCss`.
+2. **The help pane.** Search over the index, results, and a page view --- an iframe, since
+   P3 passed, laid out inside a wrapper element because showing the window resets its
+   root's `display`. The results are a list view with `raiseEvent` in their HTML, as in
+   Sample 15, since `raiseEvent` works nowhere else (P12); escape every name that goes into
+   that HTML. Theme: read `Host.Themes.ActiveThemeNameGroup` at start, handle
+   `Host_OnChangedTheme` after, and pass a light or a dark stylesheet to
+   `ToolWindow.ApplyCss` for the pane's own controls, and the theme in the page's URL once
+   the site reads one (Stage 3). F1 pressed while the focus is in the page goes to the page,
+   not to the add-in, so a lookup from there goes through the pane's own search box.
 3. **Context: which `Add`?** From the compiler if P5 allows --- through the public API once
    upstream adds a call, not through page internals --- otherwise from the add-in's own parser
    below.
@@ -667,7 +733,12 @@ registry restore has to include it.
 Recommended, and not yet confirmed:
 
 - **Page internals are for probes only.** The shipped add-in uses the public API and
-  `ShellExecuteW`, and whatever the API lacks is requested upstream.
+  `ShellExecuteW`, and whatever the API lacks is requested upstream. P4 showed the route
+  exists: any inline handler can reach the page's globals, `openEditors`, `lspSocket` and
+  `hostAppObject` among them. `raiseEvent` in a list view's items is the exception, since
+  the IDE's own samples use it that way and it is the only way a list view reports a click.
+- **The site reads a `theme` query parameter**, so that a page in the help pane can match
+  the IDE's theme (Stage 3, after P3).
 - **Isolation starts with restoring the registry** (Stage 1, item 3). A separate Windows
   account for test runs comes only if that proves not to be enough.
 

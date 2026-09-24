@@ -672,10 +672,13 @@ never loads into your own IDE, and two lanes never share one. The scenario build
 it tests into its copy, opens a project, and operates the IDE: it clicks, presses keys, types,
 and reads the add-ins' tool windows, message boxes, notifications, the code editor and the
 Debug Console. Two scenarios operate the IDE's own sample add-ins, Sample 10 and Sample 15
-(Global Search), end to end. A third builds a probe add-in of its own, from
-`test/addin/probes/keys`, and checks which keyboard shortcuts fire --- what the
-[KeyboardShortcuts](../../tB/Packages/tbIDE/KeyboardShortcuts) page says about them. The three
-lanes take about 50 seconds together.
+(Global Search), end to end. The others build probe add-ins of their own, from
+`test/addin/probes/`, and check what the tbIDE pages say about the IDE: which keyboard
+shortcuts fire, for the [KeyboardShortcuts](../../tB/Packages/tbIDE/KeyboardShortcuts) page,
+and what a tool window does with HTML and with a web page in an `iframe`, for the
+[HtmlElement](../../tB/Packages/tbIDE/HtmlElement) page and its neighbours. The panes lane
+serves the pages its frame shows from a server of its own on `localhost`. The four lanes take
+about a minute together.
 
 | Flag | Effect |
 |---|---|

@@ -1043,8 +1043,8 @@ PowerShell that first cleared the setting (`SetConsoleCtrlHandler(NULL, FALSE)`)
 listener saw it, and so did the runner: 16 s in, with both lanes' IDEs open, it ended both
 lanes and put everything back within two seconds.
 
-**The scenarios.** Two finish Stage 1 of WIP.HelpAddin.md, and the third is the first of
-Stage 2's probe lanes:
+**The scenarios.** Two finish Stage 1 of WIP.HelpAddin.md, and the others are Stage 2's
+probe lanes:
 
 - [test/addin/sample10.test.mjs](test/addin/sample10.test.mjs): the add-in loads and prints
   its five `OnProjectLoaded` lines, naming the project; its image button's message box; its
@@ -1064,12 +1064,29 @@ Stage 2's probe lanes:
   nothing. Each press waits 600 ms first, so that no press is paired with the one before
   it; the last P1 test does the opposite on purpose. Then F1 and a letter in the code
   editor, and F1 with signature help showing, from Ctrl+Space inside `FindTheNeedle(`.
+- [test/addin/panes.test.mjs](test/addin/panes.test.mjs), P3, P4 and P12: its probe add-in,
+  from [test/addin/probes/panes](test/addin/probes/panes), opens a tool window holding HTML
+  set through `innerHTML`, an element given `onclick` as a property, two ways of raising a
+  custom event from plain HTML, and an iframe whose `src` is `TB_PANES_URL`. The scenario
+  hands the IDE that variable through `Lane.open`'s `env`, which `Environ$` then reads in
+  the add-in (P10), and serves the pages itself, from an HTTP server of its own on both
+  loopback addresses of one port, recording each request's `sec-fetch-dest`. The server is
+  on `localhost` because the IDE's page is: the frame is then on the same site, in the
+  page's process, where `Page.getFrameTree` lists it and `Page.createIsolatedWorld` reads
+  its document without touching the page's script. A frame on another site is a DevTools
+  target of its own, type `iframe` in `/json/list`, which the parent's frame tree does not
+  list --- the lab check of the live site had to attach to it separately. The scenario
+  turns on `Runtime` to record page exceptions, which is how P12's `TypeError` is seen.
 
 **Measured on BETA 983:**
 
 - Both sample lanes pass, in about 25 s together: each is an add-in build of about 10 s, a
-  host IDE of about 9 s, and 2 s of scenario. With the keys lane, the three take about 50 s
-  at the default two at a time; the keys lane is 28 s, about 9 s of it pressing keys.
+  host IDE of about 9 s, and 2 s of scenario. With the two probe lanes, the four take 57 s
+  at the default two at a time: the keys lane is 28 s, about 9 s of it pressing keys, and
+  the panes lane 23 s.
+- The runner does not compare the IDE's own `IDESettings`, so that was done by hand around
+  the panes lane, whose floating tool window has a persistence id: all 13 values were
+  identical afterwards.
 - Around a run, the whole registry comparison was identical: `ProjectState`, the recent
   list, the association keys, all 13 `IDESettings` values compared through hashes, and the
   remembered build targets. The run was repeated with the user's projects planted in the

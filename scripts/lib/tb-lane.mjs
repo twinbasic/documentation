@@ -127,9 +127,12 @@ export class Lane {
    * @param {string} src        an exported tree: the folder holding Settings and Sources
    * @param {object} [o]
    * @param {number} [o.timeout]  milliseconds for the compile to settle (default 180000)
+   * @param {object} [o.env]      extra environment for the IDE, as launchIde takes it.
+   *                              An add-in reads it with Environ$, since it runs in the
+   *                              compiler's process, which the IDE starts (P10)
    * @returns {Promise<object>} the connection (attachIde's), which the tb-operate.mjs calls take
    */
-  async open(src, { timeout = 180 * 1000 } = {}) {
+  async open(src, { timeout = 180 * 1000, env = {} } = {}) {
     if (this.run) throw new Error(`lane ${this.name} has a project open already: one IDE at a time`);
     const exe = this.copy();
     const project = path.join(this.work, "project.twinproj");
@@ -140,7 +143,7 @@ export class Lane {
         "project.id": laneProjectId(2, this.port),
       }),
     });
-    this.run = await launchIde({ exe, project, port: this.port, show: this.show });
+    this.run = await launchIde({ exe, project, port: this.port, show: this.show, env });
     this.c = await attachIde(this.port);
     if (!this.c) throw new Error(`lane ${this.name}: the IDE never exposed a debug port`);
     const outcome = compileOutcome(await waitForCompile(this.c, { project, timeout }), { name: project });

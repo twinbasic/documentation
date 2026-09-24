@@ -1,0 +1,115 @@
+' P3, P4 and P12 in WIP.HelpAddin.md. A toolbar button opens a tool window
+' holding HTML set through innerHTML, with inline handlers in it (P4); an
+' element whose onclick is set as a property (P4); two ways of raising a custom
+' event from plain HTML (P12); and an iframe whose page is the URL in
+' TB_PANES_URL (P3). Every line it prints starts "[PanesProbe]", and
+' panes.test.mjs reads them.
+Module MainModule
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New PanesProbeAddin(Host)
+    End Function
+End Module
+
+Private Class PanesProbeAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+    Private WithEvents ShowButton As Button
+    Private WithEvents NavigateButton As Button
+    Private WithEvents Pane As ToolWindow
+    Private Frame As HtmlElement
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "PanesProbe AddIn"
+    End Property
+
+    Private Sub Host_OnProjectLoaded()
+        With Host.Toolbars(0)
+            Set ShowButton = .AddButton("PanesProbeShow", "Panes probe")
+            Set NavigateButton = .AddButton("PanesProbeNavigate", "Panes probe: page C")
+        End With
+        ' To see whether a key pressed inside the frame reaches the IDE.
+        Host.KeyboardShortcuts.Add "f1", AddressOf F1
+        Host.DebugConsole.PrintText "[PanesProbe] loaded"
+    End Sub
+
+    Private Sub ShowButton_OnClick()
+        Set Pane = Host.ToolWindows.Add("Panes probe", "PanesProbeData")
+        With Pane
+            .Title = "PANES PROBE"
+            With .RootDomElement
+                With .Properties
+                    ' Visible = True replaces this display with "block", which
+                    ' the scenario checks; the layout is on p3box below.
+                    .style.display = "flex"
+                    .style.height = "100%"
+                    .suggestedWidth = "500px"
+                    .suggestedHeight = "600px"
+                End With
+                With .ChildDomElements.Add("p3box", "div")
+                    With .Properties
+                        .style.display = "flex"
+                        .style.flexDirection = "column"
+                        .style.height = "100%"
+                    End With
+
+                    ' P4 and P12. p12raise calls raiseEvent, as Sample 15's
+                    ' list view items do; p12direct calls the handler that
+                    ' AddEventListener puts on this div, by its name.
+                    With .ChildDomElements.Add("p4html", "div")
+                        .AddEventListener("p12Event", AddressOf P12Event)
+                        .Properties.innerHTML = "<b id='p4bold'>bold</b> " & _
+                            "<span id='p4click' onclick='window.__p4click = typeof openEditors'>click</span> " & _
+                            "<img id='p4img' src='data:,' onerror='window.__p4error = typeof openEditors'> " & _
+                            "<span id='p12raise' onclick='raiseEvent(""p12Event"", event, true, ""a"")'>raise</span> " & _
+                            "<span id='p12direct' onclick='this.parentNode.p12Event(event)'>direct</span>"
+                    End With
+
+                    ' P4: a property whose name starts with "on".
+                    With .ChildDomElements.Add("p4onprop", "div")
+                        .Properties.innerText = "onclick property"
+                        On Error Resume Next
+                        .Properties.onclick = "window.__p4onprop = 1"
+                        Host.DebugConsole.PrintText "[PanesProbe] onclick property set, error " & Err.Number
+                        On Error GoTo 0
+                    End With
+
+                    ' P3: a web page in the tool window.
+                    Set Frame = .ChildDomElements.Add("p3frame", "iframe")
+                    With Frame
+                        .AddEventListener("load", AddressOf FrameLoad)
+                        With .Properties
+                            .style.flex = "1"
+                            .style.width = "100%"
+                            .style.border = "0"
+                            .src = Environ$("TB_PANES_URL")
+                        End With
+                    End With
+                End With
+            End With
+            .Visible = True
+        End With
+        Host.DebugConsole.PrintText "[PanesProbe] shown"
+    End Sub
+
+    ' The add-in moving the frame to another page, as a help pane would.
+    Private Sub NavigateButton_OnClick()
+        Frame.Properties.src = Replace(Environ$("TB_PANES_URL"), "a.html", "c.html")
+    End Sub
+
+    Private Sub FrameLoad(ByVal eventInfo As HtmlEventProperties)
+        Host.DebugConsole.PrintText "[PanesProbe] frame load"
+    End Sub
+
+    Private Sub P12Event(ByVal eventInfo As HtmlEventProperties)
+        Host.DebugConsole.PrintText "[PanesProbe] p12Event from " & eventInfo.target.id
+    End Sub
+
+    Private Sub F1()
+        Host.DebugConsole.PrintText "[PanesProbe] fired f1"
+    End Sub
+End Class

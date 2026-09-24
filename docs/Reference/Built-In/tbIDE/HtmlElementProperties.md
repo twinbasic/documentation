@@ -24,6 +24,12 @@ The shorthand reads at run time as a chain of `Item("name")` lookups against the
 > [!IMPORTANT]
 > This interface is **`[COMExtensible(True)]`**. Property names are resolved against the live DOM element at run time, not declared statically on the interface. The compiler does not validate names --- a typo (`.innerTxt = "..."` instead of `.innerText = "..."`) fails silently or throws at run time. The accepted set is **every DOM property of the underlying tag**, plus any custom-widget extensions; the reference does not enumerate it.
 
+> [!NOTE]
+> A property whose name starts with `on` is ignored. In BETA 983, `.onclick = "..."` sets nothing, and the call returns without an error. Register a listener with [**HtmlElement.AddEventListener**](HtmlElement#addeventlistener) instead.
+
+> [!IMPORTANT]
+> Text set as `innerHTML` is parsed as HTML, and an inline event handler in it runs as script of the IDE's own page, with access to everything that page's script can reach. An `<img>` whose image fails to load runs its `onerror` handler as soon as it is set, with nothing clicked. Escape any text that comes from a file, a project or the user before it goes into `innerHTML`, or set `innerText` instead.
+
 ## Default member
 
 The interface's **DefaultMember** is [**Item**](#item) --- so `properties("style")` is equivalent to `properties.Item("style")`. Chains of `.style.color = "red"` thus desugar to `properties.Item("style").Item("color").Value = "red"`.

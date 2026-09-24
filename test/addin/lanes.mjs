@@ -22,4 +22,5 @@ export default [
   { file: "sample15.test.mjs", settings: ["GlobalSearchAddIn"] },
   // Stage 2 probes: each builds its own add-in, from probes/<name>.
   { file: "keys.test.mjs" },
+  { file: "panes.test.mjs" },
 ];
