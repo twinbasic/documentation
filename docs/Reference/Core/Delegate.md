@@ -6,19 +6,19 @@ permalink: /tB/Core/Delegate
 # Delegate
 {: .no_toc }
 
-Declares a function-pointer type --- a named signature that variables, parameters, and UDT members can hold a *reference* to a callable matching. A delegate value is bit-compatible with **LongPtr**, but adds compile-time signature checking when it is assigned, passed, or called.
+Declares a function-pointer type --- a named signature that variables, parameters, and UDT members can hold a *reference* to a callable matching. A delegate value is bit-compatible with **LongPtr**, but the compiler compares the signature of a procedure assigned to it, and warns when they differ.
 
 > [!NOTE]
 > The **Delegate** statement is a twinBASIC extension. In classic VBA, function pointers are untyped **LongPtr** values produced by **AddressOf** and called indirectly through custom mechanisms (`DispCallFunc`, `CallWindowProc` shims, etc.).
 
 Syntax:
-> [ **Public** \| **Private** ] **Delegate Function** *name* [ **CDecl** ] **(** [ *arglist* ] **)** **As** *type*
+> { **Public** \| **Private** } **Delegate Function** *name* [ **CDecl** ] **(** [ *arglist* ] **)** **As** *type*
 
 **Public**
-: *optional* In an ActiveX project, exports the delegate type to the type library so consumers in other projects see *name*.
+: *required*, or **Private**: a declaration with neither is a syntax error, TB5182. In an ActiveX project, exports the delegate type to the type library so consumers in other projects see *name*. Not allowed in a class, where a delegate must be **Private** (TB5227, *Delegate declarations in class modules must be Private*).
 
 **Private**
-: *optional* Withholds the delegate from the type library; usable only within the project.
+: *required*, or **Public**. Withholds the delegate from the type library; usable only within the project.
 
 *name*
 : The identifier naming the delegate type. Must be a valid twinBASIC identifier.
@@ -34,7 +34,7 @@ Syntax:
 
 After the declaration, *name* may be used wherever a type is allowed: to declare variables and parameters of function-pointer type, as the type of a member of a [**Type**](Type) (UDT), or as a parameter type in a [**Declare**](Declare) statement or an [**Interface**](Interface) member.
 
-A delegate value is normally produced by **AddressOf**, which yields a delegate-typed reference to a regular procedure with a matching signature. For backwards compatibility, a delegate variable can also be assigned a plain **LongPtr** address obtained by other means --- the value passes through unchecked. A delegate variable is called like a function: `result = myDelegate(arg1, arg2)`.
+A delegate value is normally produced by **AddressOf**, which yields a delegate-typed reference to a regular procedure with a matching signature. A procedure that does not match causes only a warning, TB0026 *Mismatched delegate type*, and the program still builds; its arguments then arrive in a form it does not expect. See [Passing a function as an argument](../../Features/Language/Delegates#callbacks) for what that looks like and how to make it an error. For backwards compatibility, a delegate variable can also be assigned a plain **LongPtr** address obtained by other means --- the value passes through unchecked. A delegate variable is called like a function: `result = myDelegate(arg1, arg2)`.
 
 ### Example
 
@@ -53,7 +53,7 @@ Private Sub Command1_Click()
 End Sub
 ```
 
-A delegate used as a UDT member, modelling the `lpfnHook` field of the Windows `CHOOSECOLOR` struct. Existing code that assigns a **Long**/**LongPtr** to `lpfnHook` continues to work; new code can assign **AddressOf** *Handler* directly and have the signature checked at compile time:
+A delegate used as a UDT member, modelling the `lpfnHook` field of the Windows `CHOOSECOLOR` struct. Existing code that assigns a **Long**/**LongPtr** to `lpfnHook` continues to work; new code can assign **AddressOf** *Handler* directly, and the compiler warns if its signature does not match:
 
 ```tb inert=external
 Public Delegate Function CCHookProc (ByVal hwnd As LongPtr, ByVal uMsg As Long, _
