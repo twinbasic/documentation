@@ -9,6 +9,7 @@
 
 import { execFileSync, spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
+import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { attach } from "./tb-cdp.mjs";
@@ -75,11 +76,29 @@ export function killTree(pid) {
  *                            folder and the private desktop's name
  * @param {boolean} [o.show]  on the user's desktop instead of a private one
  * @param {boolean} [o.keep]  the IDE is to outlive this Node process
+ * A port something already listens on is refused. The harness attaches to
+ * whatever page answers on its port, so if another IDE already holds it, that
+ * IDE is the one the harness would read and operate --- and other sessions on
+ * the same machine run this harness too, on ports of their own choosing.
+ * An IDE ended a moment ago
+ * holds its port a little longer than it lives: 13 and 16 ms after
+ * shutdownIde, and once two seconds. So the port gets ten seconds to come
+ * free before the launch is refused.
+ *
  * @param {object} [o.env]    extra environment for the IDE
  * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess | null}>}
- *   `pid` is the IDE's own. Throws when a hidden launch fails.
+ *   `pid` is the IDE's own. Throws when the port is taken, or when a hidden
+ *   launch fails.
  */
 export async function launchIde({ exe, project, port, show = false, keep = false, env = {} }) {
+  const waitFrom = Date.now();
+  while (await portTaken(port)) {
+    if (Date.now() - waitFrom > 10 * 1000) {
+      throw new Error(`DevTools port ${port} is in use: another IDE has it, perhaps one another ` +
+        "session started, and this one could be mistaken for it. Pass a different --port.");
+    }
+    await sleep(100);
+  }
   const exeWin = exe.split("/").join("\\");
   const target = path.resolve(project).split("/").join("\\");
   const fullEnv = {
@@ -185,14 +204,55 @@ export function waitForExit(pid, timeoutMs) {
   return false;
 }
 
-/** Attach to the IDE's page once its DevTools port answers; null if it never does. */
+/**
+ * Attach to the IDE's page once its DevTools port answers; null if it never does.
+ *
+ * The connection records and dismisses every javascript dialog the page opens,
+ * in `c.dialogs` as `{type, message, at}`. The IDE calls `alert()` from 37
+ * places in BETA 983, and never `confirm()` or `prompt()`. An alert blocks the
+ * page until it is answered, which on a private desktop nobody can do: every
+ * later call on the connection would time out. An alert is accepted, since it has only the
+ * one button; a confirm or a prompt, which only an add-in could open, is
+ * cancelled. CDP reports dialogs only once `Page.enable` has been sent, and
+ * until this function sent it, `tbbuild`'s list of dialogs could never fill.
+ *
+ * **A dialog that opened before this attached cannot be answered.** Measured:
+ * `Page.enable` got no answer while it was open, the new connection was told
+ * of no dialog, and `Page.handleJavaScriptDialog` replied "No dialog is
+ * showing" while the page stayed blocked. The IDE's own candidates are its
+ * "IDE startup failure" alert and "Bad command line syntax.", which
+ * launchIde's single argument never provokes. Such a page is marked
+ * `c.pageBlocked`, and waitForCompile passes that on, so the failure names the
+ * likely cause; `--show` puts the dialog where a person can read it.
+ */
 export async function attachIde(port, { tries = 60 } = {}) {
   for (let i = 0; i < tries; i++) {
     await sleep(1000);
-    try { return await attach(port); } catch { /* still starting */ }
+    let c;
+    try { c = await attach(port); } catch { continue; }  // still starting
+    c.dialogs = [];
+    c.pageBlocked = false;
+    c.on((m) => {
+      if (m.method !== "Page.javascriptDialogOpening") return;
+      const { type, message } = m.params;
+      c.dialogs.push({ type, message, at: Date.now() });
+      c.send("Page.handleJavaScriptDialog", { accept: type === "alert" || type === "beforeunload" })
+        .catch(() => { /* already answered, or the page is gone */ });
+    });
+    try { await c.send("Page.enable"); } catch { c.pageBlocked = true; }
+    return c;
   }
   return null;
 }
+
+// Whether something already listens on a loopback port. A DevTools server
+// binds 127.0.0.1, so binding it ourselves for a moment is the test.
+const portTaken = (port) => new Promise((resolve) => {
+  const s = net.createServer();
+  s.once("error", () => resolve(true));
+  s.once("listening", () => s.close(() => resolve(false)));
+  s.listen(port, "127.0.0.1");
+});
 
 // Counts and rows are read in ONE evaluate. Read separately they raced: a run
 // reported two diagnostics beside a zero error count, because the background
@@ -210,14 +270,7 @@ export async function attachIde(port, { tries = 60 } = {}) {
 // crash-restart cycle takes about 1.3 s and the loop samples at 1 Hz, so
 // `drops` never reaches its threshold. The console is the only record that
 // cannot be missed by sampling: nothing removes an entry from it.
-const BUILD_STATE_JS = `JSON.stringify({
-  st: document.getElementById("compilerStatus")?.textContent ?? "",
-  e: document.getElementById("errorCount")?.textContent ?? "",
-  w: document.getElementById("warningCount")?.textContent ?? "",
-  h: document.getElementById("hintCount")?.textContent ?? "",
-  i: document.getElementById("infoCount")?.textContent ?? "",
-  p: typeof projectFilePath !== "undefined" ? projectFilePath : null,
-  crash: (() => {
+const CRASH_JS = `(() => {
     if (typeof debugConsoleContent === "undefined" || !debugConsoleContent ||
         !debugConsoleContent.dataNodes) return null;
     let n = 0; const files = [];
@@ -227,7 +280,16 @@ const BUILD_STATE_JS = `JSON.stringify({
       if (m && files.indexOf(m[1]) < 0) files.push(m[1]);
     }
     return n ? { n: n, files: files } : null;
-  })(),
+  })()`;
+
+const BUILD_STATE_JS = `JSON.stringify({
+  st: document.getElementById("compilerStatus")?.textContent ?? "",
+  e: document.getElementById("errorCount")?.textContent ?? "",
+  w: document.getElementById("warningCount")?.textContent ?? "",
+  h: document.getElementById("hintCount")?.textContent ?? "",
+  i: document.getElementById("infoCount")?.textContent ?? "",
+  p: typeof projectFilePath !== "undefined" ? projectFilePath : null,
+  crash: ${CRASH_JS},
   rows: (() => {
     const out = [];
     if (typeof problemsPanel === "undefined" || !problemsPanel) return out;
@@ -289,6 +351,15 @@ const BUILD_STATE_JS = `JSON.stringify({
 export const readBuildState = (c) => c.evaluate(BUILD_STATE_JS);
 
 /**
+ * Whether the compiler has crashed since the DEBUG CONSOLE was last cleared:
+ * null, or `{ n, files }` --- how many "NATIVE EXCEPTION" entries, and the files
+ * the thread dumps name as being parsed. An add-in runs inside the compiler's
+ * process, so a crash ends whatever it was doing, and a scenario that saw one
+ * has not tested what it meant to.
+ */
+export const readCrash = (c) => c.evaluate(CRASH_JS);
+
+/**
  * Wait for the project to open and its compile to settle.
  *
  * twinBASIC runs the compiler in the same process as user code, so a project
@@ -305,8 +376,10 @@ export const readBuildState = (c) => c.evaluate(BUILD_STATE_JS);
  *   given: compared as typed, a relative path never matched, and the IDE was
  *   never reported open.
  * @param {number} o.timeout          milliseconds
- * @returns {Promise<{loaded: boolean, crash: object | null, drops: number, last: string | null}>}
- *   `last` is the final sample, as the JSON string readBuildState returned
+ * @returns {Promise<{loaded: boolean, crash: object | null, drops: number, last: string | null,
+ *                    blocked: boolean}>}
+ *   `last` is the final sample, as the JSON string readBuildState returned;
+ *   `blocked` is attachIde's `pageBlocked`
  */
 export async function waitForCompile(c, { project, timeout }) {
   const want = normPath(path.resolve(project));
@@ -336,7 +409,7 @@ export async function waitForCompile(c, { project, timeout }) {
     if (up && s === last) { if (++stable >= 5) break; } else stable = 0;
     last = s;
   }
-  return { loaded, crash, drops, last };
+  return { loaded, crash, drops, last, blocked: !!c.pageBlocked };
 }
 
 /**
@@ -349,7 +422,7 @@ export async function waitForCompile(c, { project, timeout }) {
  *   `counts` is errors, warnings, hints, infos. `code` is 4 for a compiler
  *   crash and 3 for a compile that never settled.
  */
-export function compileOutcome({ loaded, crash, drops, last }, { name }) {
+export function compileOutcome({ loaded, crash, drops, last, blocked }, { name }) {
   // A crash is reported by the file the compiler died parsing, because in a batch
   // of generated probes that name is the whole answer: it says which sample to
   // take out, and a caller bisecting the batch has somewhere to start.
@@ -367,7 +440,15 @@ export function compileOutcome({ loaded, crash, drops, last }, { name }) {
       message: `the compiler restarted ${drops}x -- this project crashes it\nlast status: ${last}`,
     };
   }
-  if (!loaded) return { ok: false, code: 3, message: `the IDE never reported ${name} as open` };
+  if (!loaded) {
+    return {
+      ok: false, code: 3,
+      message: `the IDE never reported ${name} as open` + (blocked
+        ? "\nIts page did not answer when the harness attached. A dialog it opened before then " +
+          "is the likely cause, and one cannot be answered over CDP; --show puts it on screen."
+        : ""),
+    };
+  }
 
   const final = JSON.parse(last ?? "{}");
   const rows = (final.rows ?? []).map((r) =>

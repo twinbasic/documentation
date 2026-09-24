@@ -10,8 +10,8 @@ what they are.
 Read it before changing `scripts/tbbuild.mjs`, `scripts/tbrun.mjs`,
 `scripts/lib/tb-ide.mjs`, `scripts/lib/tb-cdp.mjs`, `scripts/lib/tb-launch.ps1`,
 `scripts/lib/tb-registry.mjs`, `scripts/lib/tb-ide-copy.mjs`,
-`scripts/lib/tb-project.mjs`, `scripts/lib/tb-addin.mjs` or
-`builder/census_attributes.mjs`, and before concluding anything about twinBASIC
+`scripts/lib/tb-project.mjs`, `scripts/lib/tb-addin.mjs`, `scripts/lib/tb-operate.mjs`
+or `builder/census_attributes.mjs`, and before concluding anything about twinBASIC
 syntax from a sweep of exported sources.
 
 ## Getting at the `.twin` sources
@@ -338,6 +338,14 @@ distinct DevTools ports, WebView2 user-data folders and private desktops, so ins
 not collide. Three projects: **26 s sequentially, 10 s in parallel**, with each run
 reporting its own diagnostics and no bleed between them.
 
+**A port another IDE holds is refused.** The harness attaches to whatever page answers on
+its port, so an IDE already there --- another lane's, or another session's, since several
+sessions run this harness on one machine with ports of their own choosing --- would be the
+one read and operated. `launchIde` binds the port for a moment first, and gives up after
+ten seconds with a message saying which port and why. The wait is for the lane's own
+previous IDE: after `shutdownIde` a port came free in 13 and 16 ms, and once in two
+seconds.
+
 ### Capturing what a probe prints, not just whether it compiles
 
 `tbbuild` answers *does this compile*. [scripts/tbrun.mjs](scripts/tbrun.mjs) answers *what
@@ -498,7 +506,7 @@ IDE fills every empty slot with a copy of the last one. The tidy leaves a short 
 it removes harness projects, so the next project the user opens trips it. That is the same
 list a new installation has, and it cannot be fixed from outside the IDE.
 
-**Three limits remain, all about IDEs the tidy does not own:**
+**Two limits remain, both about IDEs the tidy does not own:**
 
 - Two *standalone* `tbbuild`s on the same project at once: the second sees the first's entry
   as the user's, and puts it back. `check_examples` is immune, because its lanes are owned,
@@ -507,11 +515,15 @@ list a new installation has, and it cannot be fixed from outside the IDE.
   back when it opens a project, so it can bring back harness entries that were tidied after
   it started. So can an IDE of a run from another session, which is why a check of the
   registry waits until no other session's run is going.
-- A run that starts while another run's IDE copy is open records the association pointing
-  at that copy, and puts it back that way at the end, after the copy is gone. The first IDE
-  started from a real install afterwards re-points it. Only runs that use copies can cause
-  this, and none runs outside the add-in harness yet; the runner (WIP.HelpAddin.md, Stage 1
-  item 7) is where two such runs could first overlap.
+
+**A third was closed: an association that named the temp folder is never put back.** A run
+that starts while another run's IDE copy is open finds the association pointing at that
+copy. Put back at the end, it would point `.twinproj` files at a folder that has been
+deleted, and other sessions run `examples.bat` while add-in tests run copies, so the
+overlap is ordinary. `startTidy` now notes whether the association it recorded names the
+temp folder, and if it did, `finishTidy` leaves the association as the IDEs set it and says
+so; the next IDE started from a real install points it at that install. A run still on
+older code puts back what it found, so the guarantee holds once every checkout has it.
 
 **Verified** by [scripts/check_tb_registry.mjs](scripts/check_tb_registry.mjs), which plays
 out a run on a scratch key and checks every rule above, the guards and the ownership rule
@@ -690,3 +702,82 @@ in the registry as win64 still built win32, because the tidy deleted the entry f
 fixture cases gave output identical to before, `tbrun`'s three included. A full
 `examples.bat` passed 1,117 of 1,117, and the registry was identical afterwards,
 `IDESettings` included.
+
+## Operating the IDE and reading it
+
+**A scenario is written with [scripts/lib/tb-operate.mjs](scripts/lib/tb-operate.mjs)**:
+click, press keys, type, read the add-ins' tool windows, message boxes, notifications and
+list views, open a file, and move or read the code editor's cursor. `readCrash` in
+`tb-ide.mjs` says whether the compiler crashed, from the same console record `tbbuild`
+reads. Every call takes a connection from `attachIde`. Both of Stage 1's acceptance
+scenarios were carried out with these calls alone, on a lab IDE with Samples 10 and 15
+built in; [WIP.HelpAddin.md](WIP.HelpAddin.md), Stage 1 item 5, has what they did.
+
+**Input is real input; reading is from the page's data.** A click is the pointer moving to
+the element's centre, pressing and releasing, and a key press is the key-down and key-up a
+keyboard sends, because the IDE's own controls ignore `element.click()` and an add-in's
+shortcut is matched on the real pair of key events. Reading is the other way round: a list
+view draws only the rows that fit, and a tool window is a shadow root that
+`document.querySelector` cannot see into, so the calls read `toolWindowsById`, a list
+view's `dataNodes` and `window.editor` rather than what is drawn.
+
+Five things about it were learned on the samples:
+
+- **A click scrolls its target into view, and checks what is at the point before it
+  clicks.** Sample 10's tool window is taller than it is shown. Its eleventh button had a
+  size and a place, but the place was under the window's bottom edge, and the first click
+  went to the window's resize handle and did nothing. `click` now calls `scrollIntoView`,
+  finds the element at the centre point through every shadow root, and throws, naming both,
+  when something else is there. It also throws when there is no such element, or the
+  element has no size, which is what a hidden tool window's elements have.
+- **Of the elements a selector finds, the target is the first one on screen.** Sample 15's
+  results list held one file's entry twice in the page while its rendered text had it once:
+  a list view keeps rows it has drawn before, and a kept row is not on screen. A target can
+  also be narrowed by its exact text, and can take the last match rather than the first,
+  for a dialog stacked on another.
+- **Which element carries the handler decides what a click does.** Sample 15 puts each
+  match's `[line,col]` label beside the clickable line, not inside it, so a click on the
+  label runs the handler of the file's whole entry and opens the file's first match. The
+  harness was right and the target was wrong; clicking the line opened `Haystack.twin` at
+  line 4, column 13, as the result said.
+- **Typing is one key press per character.** Sample 15 searches on key-up, once typing
+  pauses for a second, so text put into its box any other way would never be searched.
+  `pressKey` sends a US keyboard's `key`, `code` and virtual key code, since the IDE names
+  an add-in shortcut's letters from `code` and every other key from `key`. Modifiers go down
+  before the key and come up after it, in reverse. Measured in the code editor: End moved
+  to the end of the line, Shift+End selected to it, Ctrl+A selected all 152 characters, and
+  a typed `x` followed by Backspace left the text as it was.
+- **The editor is `window.editor`**, one Monaco editor given the model of the selected
+  tab, and `openEditors.selectedEditorNode.name` is that tab's file,
+  `/<Project>/Sources/<file>`. Opening a file the way the IDE's Find in Files does ---
+  `fs.tree.resolvePath("twinbasic:" + path)`, then `openEditors.openFile(node, false,
+  false, false, line, column)` --- put the cursor at the line and column given, counted
+  from 1.
+
+**The connection itself changed in three ways.** They were the gaps item 1 found in
+`tbbuild`, and they matter more once a harness clicks into dialogs on purpose:
+
+- **Every CDP call has a time limit**, thirty seconds unless a call passes its own, and a
+  connection that closes fails its waiting calls at once. Before, a page blocked by a dialog
+  or a synchronous host call hung the caller for good. Measured: on a page an `alert()` was
+  blocking, a call with a three-second limit failed after 3.0 s, with a message naming the
+  likely causes.
+- **`attachIde` records and dismisses every javascript dialog**, in `c.dialogs`, after
+  sending `Page.enable`. `tbbuild` has always listened for dialogs, but nothing sent
+  `Page.enable`, and without it CDP reports none, so its list could never fill. Measured:
+  an `alert()` opened from the page was recorded with its type and text, and dismissed, and
+  the page answered again. The IDE only ever calls `alert()`, from 37 places, so every
+  dialog is accepted; a `confirm()` or `prompt()`, which only an add-in could open, would be
+  cancelled.
+- **An alert that opened before the connection existed cannot be answered.** Measured:
+  `Page.enable` got no answer while it was open, the connection was told of no dialog, and
+  `Page.handleJavaScriptDialog` replied "No dialog is showing" while the page stayed
+  blocked. `attachIde` marks such a page (`c.pageBlocked`), and a compile that then never
+  reports its project open says why, instead of looking like a slow compile. The IDE's
+  candidates are its "IDE startup failure" alert and "Bad command line syntax.", which
+  `launchIde`'s single argument never provokes; `--show` puts either where it can be read.
+
+**Verified:** after the connection changes, the port check and the association rule, the
+14 fixture cases gave output identical to before, and a full `examples.bat` passed 1,119 of
+1,119 and left nothing in the registry under its folder, with another session's harness
+runs going at the same time.

@@ -515,9 +515,9 @@ twinBASIC has no command-line build. The compiler executable's whole surface is 
 | Flag | Effect |
 |---|---|
 | `--ide <path>` | Path to `twinBASIC.exe`. Default: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` folder on `%USERPROFILE%\Desktop`, which is where the IDE's own zip says to unpack it. **No install path is hardcoded anywhere in this tooling** --- an install path contains a username --- so an install kept elsewhere needs one of those two. |
-| `--port <n>` | DevTools port. Default 9333. It also names the WebView2 user-data folder and the private desktop, which is what makes concurrent instances possible. |
+| `--port <n>` | DevTools port. Default 9333. It also names the WebView2 user-data folder and the private desktop, which is what makes concurrent instances possible. A port another IDE already holds --- another run's, or another session's --- is refused after ten seconds, rather than attached to. |
 | `--timeout <secs>` | Give up waiting for the compile to settle. Default 180. |
-| `--json` | Emit one JSON object --- counts, diagnostic rows, and any dialog text --- instead of lines of text. |
+| `--json` | Emit one JSON object --- counts, diagnostic rows, and the text of any alert the IDE opened, which is dismissed so the compile can go on --- instead of lines of text. |
 | `--keep` | Leave the IDE running afterwards. The IDE's registry entries for the project are then left as they are, because the IDE is still writing them. |
 | `--show` / `--hide` | Put the IDE on your own desktop where you can watch it, or on a private one where it cannot take focus. Hidden is the default unless `TBBUILD_SHOW` is set to something other than `0`, `false` or `no`; the two flags override that for one invocation. |
 
@@ -531,7 +531,7 @@ Exit codes: **0** clean, **1** the project has errors, **2** the harness failed,
 
 **It leaves the IDE's own settings as it found them.** Every IDE it starts writes to the same registry keys as your own IDE: a saved state for the project (open tabs, watch expressions, Debug Console history) and a place at the top of the recent-projects list. Once the IDE has exited, `tbbuild` puts both back. An entry the run created is deleted, and a project that already had one --- one of your own --- gets its old state and its old place in the list back. The `.twinproj` file association is restored too, if the IDE changed it. When [`check_examples.mjs`](#check-examples) runs `tbbuild`, `check_examples` does this once for all its lanes instead.
 
-Four files under `scripts/lib/` belong to it and are never run directly. `tb-ide.mjs` holds the mechanics `tbbuild.mjs` and `tbrun.mjs` share: starting the IDE, attaching to it, waiting for the compile, and reading the diagnostics and the DEBUG CONSOLE. `tb-registry.mjs` records and restores the registry entries described above, through .NET's registry API by way of PowerShell, because `reg.exe` mangles any path holding a character outside the console code page; [`check_tb_registry.mjs`](#check-tb-registry) is its self-test. `tb-cdp.mjs` is a minimal CDP client over Node's global `WebSocket`, raw rather than puppeteer because a pending `alert()` blocks the renderer and puppeteer's `connect()` handshake talks to the renderer --- so it hangs on precisely the state you need to recover from. `tb-launch.ps1` holds the Win32 calls Node cannot make without a native FFI addon: `CreateDesktop` and `CreateProcess` with `STARTUPINFO.lpDesktop` for the private desktop, and the job object described above. It is the only PowerShell file under `scripts/`, and it is not executed as a file: `tb-ide.mjs` reads the text and passes it through `-EncodedCommand`, so the execution policy never comes into it and nobody has to be told to bypass one.
+Four files under `scripts/lib/` belong to it and are never run directly. `tb-ide.mjs` holds the mechanics `tbbuild.mjs` and `tbrun.mjs` share: starting the IDE, attaching to it, waiting for the compile, and reading the diagnostics and the DEBUG CONSOLE. `tb-registry.mjs` records and restores the registry entries described above, through .NET's registry API by way of PowerShell, because `reg.exe` mangles any path holding a character outside the console code page; [`check_tb_registry.mjs`](#check-tb-registry) is its self-test. `tb-cdp.mjs` is a minimal CDP client over Node's global `WebSocket`, raw rather than puppeteer because a pending `alert()` blocks the renderer and puppeteer's `connect()` handshake talks to the renderer --- so it hangs on precisely the state you need to recover from. Every call it makes has a time limit, so a blocked page ends a run with a message rather than holding it forever. `tb-launch.ps1` holds the Win32 calls Node cannot make without a native FFI addon: `CreateDesktop` and `CreateProcess` with `STARTUPINFO.lpDesktop` for the private desktop, and the job object described above. It is the only PowerShell file under `scripts/`, and it is not executed as a file: `tb-ide.mjs` reads the text and passes it through `-EncodedCommand`, so the execution policy never comes into it and nobody has to be told to bypass one.
 
 ### tbrun.mjs
 {: #tbrun }
@@ -582,7 +582,7 @@ the array, which is the other reason to begin with it.
 
 | Flag | Effect |
 |---|---|
-| `--port <n>` | DevTools port for the IDE. Default 9346. Distinct ports let probes run concurrently --- the staging directory and the project id are keyed to it, so two runs never share a workspace. |
+| `--port <n>` | DevTools port for the IDE. Default 9346. Distinct ports let probes run concurrently --- the staging directory and the project id are keyed to it, so two runs never share a workspace. A port another IDE holds is refused, as for `tbbuild`. |
 | `--timeout <secs>` | Give up waiting for console output. Default 120. |
 | `--quiet <ms>` | How long the console must stop changing before the output counts as complete. Default 2500. There is no sentinel string to match, so any probe works without telling the script anything. Raise it well above the default for a probe that drives an out-of-process server, which can take longer than that to start. |
 | `--raw` | Keep the console's timestamp column, which is otherwise stripped. |
@@ -635,9 +635,11 @@ keys, under `HKCU\Software\tbharness-selftest`, and checks that everything comes
 project of yours that the run opened gets its saved state and its place in the recent list
 back, the run's own entries go, the file association is restored, and a second restore
 writes nothing. The build targets the IDE remembers are checked the same way: those under
-the run's folder go, and every other one stays, in its order and its exact text. It also
-checks that the module refuses to sweep outside the temp folder or restore a key near the
-root of the registry. It deletes the scratch key when it ends.
+the run's folder go, and every other one stays, in its order and its exact text. So is the
+rule that a file association pointing into the temp folder when a run began --- at another
+run's private copy of the IDE --- is left as it is rather than put back. It also checks that
+the module refuses to sweep outside the temp folder or restore a key near the root of the
+registry. It deletes the scratch key when it ends.
 
 It is not a gate and is not in `test.bat`, because it needs Windows and a real registry and
 the CI runners have neither. Run it by hand after changing `tb-registry.mjs`. Exit code

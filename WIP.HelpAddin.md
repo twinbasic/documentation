@@ -4,8 +4,8 @@ See [WIP.md](WIP.md) for the maintenance guide. This file covers the planned twi
 add-in that shows the documentation for the symbol under the cursor, and the harness that
 tests IDE add-ins by machine, which the add-in is developed against.
 
-**Status: Stage 1, the harness, is half built** --- items 1 to 4 are done, and the add-in
-itself is not started. This file replaces the June draft, `add-in/PLAN.md`
+**Status: Stage 1, the harness, is most of the way built** --- items 1 to 5 are done, and
+the add-in itself is not started. This file replaces the June draft, `add-in/PLAN.md`
 in commit `d159acf8` ("Roughly plan the help add-in"). That commit is on no branch --- only
 the detached HEAD of an old worktree keeps it --- so everything in it worth keeping is here,
 corrected, and nothing depends on it surviving. [What changed from the June
@@ -130,8 +130,16 @@ Read at `main.js@608242`, `@610953` and `@611152`.
 Read at `main.js@1002292` (`toolWindowElementAddChild`) and `@1005960`
 (`toolWindowElementSetProperty`).
 
-- **A tool window is part of the main document**, inside an open shadow root, not an iframe
-  *(reported)*. A harness reaches its content through `toolWindowsById[<guid>].bodyElement`.
+- **A tool window is part of the main document**, inside an open shadow root, not an iframe.
+  Measured on Samples 10 and 15: `toolWindowsById` is keyed by the *second* argument the
+  add-in gave `ToolWindows.Add` (`"GlobalSearchAddInData"`, `"WaynesWindowData"`), its
+  `bodyElement` is in the shadow root, and the root's host is `#toolWindow<n>`
+  (`#toolWindow900`). A window an add-in created and has not shown is there already, and
+  every element in it has no size. A window's content can be taller than the window: Sample
+  10's eleventh button had a size and a place, but its place was under the window's bottom
+  edge, where a click lands on the resize handle.
+- **An add-in's toolbar button is `#addinButton-<id>`**, with the id the add-in gave
+  `AddButton`, inside `#rootMenu2`, and its caption as its `title`.
 - **`HtmlElements.Add(id, tagName)` accepts any tag.** The four IDE widget tags (`chartjs`,
   `monaco`, `listview`, `virtuallistview`) become a `div` with extra setup; every other name
   goes straight to `document.createElement`, so `iframe` is not refused. A parent is found
@@ -143,7 +151,13 @@ Read at `main.js@1002292` (`toolWindowElementAddChild`) and `@1005960`
 - An inline handler inside `innerHTML` (`<img onerror="...">`, `<div onclick="...">`) is an
   attribute, not a property, so it is not dropped, and browsers run such handlers in the
   page's own JavaScript. That is the one way an add-in can call the IDE page's internals
-  (**P4**). See [Open decisions](#open-decisions) for where it may be used.
+  (**P4**). See [Open decisions](#open-decisions) for where it may be used. **Sample 15
+  already does it:** each search result it gives its list view's `addItem` is HTML with an
+  inline `onclick='raiseEvent("onClickMatch", event, true, path, line, column)'`, and a
+  click on one runs it --- measured, since the click opened the right file at the right
+  line. The event travels only from the element that carries the handler: Sample 15's
+  `[line,col]` label sits beside the clickable line rather than inside it, so a click on the
+  label reaches the handler of the whole file's entry, which opens the file's first match.
 - Events: a known DOM event gets a real `addEventListener`, and a copy of the event goes back
   to the add-in over the compiler's root socket; an unknown name becomes a callback for
   `raiseEvent(...)` to call *(reported)*. `raiseEvent` finds its handler by climbing
@@ -197,16 +211,23 @@ from the page's own origin (**P13**). Deferred.
 
 ### Dialogs
 
-- `Host.ShowMessageBox` and `Host.ShowNotification` are drawn in the page --- a
-  `.modalDialogContainer` with `.msgBoxButton` buttons, and the fixed boxes `#msgBox1` to
-  `#msgBox3` --- not as native dialogs *(reported)*. A harness can read them and click them.
-- **`main.js` calls `alert()` at 33 sites** *(reported)*. An `alert()` blocks the renderer,
-  so the harness must record and dismiss every one (`Page.javascriptDialogOpening`, then
-  `Page.handleJavaScriptDialog`). The ones an add-in test could reach: the rename provider
+- `Host.ShowMessageBox` and `Host.ShowNotification` are drawn in the page, not as native
+  dialogs, and a harness reads them and clicks them (measured on Sample 10). A message box
+  is a `.modalDialogContainer` holding a `.modalTitleBar` (the title as a text node, then a
+  close button), a `.simpleMsgBox` with the message and a `.msgBoxButton` per button; the
+  add-in's call returns once one is clicked. A notification's text is the `.msgBoxText` of
+  one of the fixed boxes `#msgBox1` to `#msgBox3`.
+- **The IDE calls `alert()` at 37 sites**, 33 in `main.js` and 4 in `main2.js`, and never
+  `confirm()` or `prompt()`. An `alert()` blocks the renderer, so the harness records and
+  dismisses every one (`Page.javascriptDialogOpening`, then `Page.handleJavaScriptDialog`),
+  which `attachIde` now does. The ones an add-in test could reach: the rename provider
   (`alert("need to massage workspace edits here...")`), Find with an invalid regular
   expression, and an unknown message on any of the compiler's sockets. A notification's
   "Copy to clipboard" link also calls `alert()`, but plain `ShowNotification` messages hide
-  that link.
+  that link. **An alert that opened before the harness attached cannot be dismissed over
+  CDP** (measured): the page then answers nothing, and the harness reports it as the likely
+  cause. The IDE's own candidates are its "IDE startup failure" alert and "Bad command line
+  syntax.", which `launchIde`'s single argument never provokes.
 
 ### IDE state outside the install
 
@@ -337,11 +358,12 @@ Everything after this stage is developed against it.
    [scripts/lib/tb-project.mjs](scripts/lib/tb-project.mjs), shared by both.
 5. **Operating the IDE and reading it**, as library calls over CDP:
    - open a file: `fs.tree.resolvePath("twinbasic:/<Project>/Sources/<file>")`, then
-     `openEditors.openFile(node,false,false,false,line,col)` *(reported)*;
-   - move the cursor or select: `window.editor` is the one Monaco code editor
-     (`setPosition`, `setSelection`, `getModel().getValue()`). Not
-     `monaco.editor.getEditors()`, which also returns editors that add-ins created
-     *(reported)*;
+     `openEditors.openFile(node,false,false,false,line,col)`, line and column counted from 1
+     (measured);
+   - move the cursor or select: `window.editor` is the one Monaco code editor, given the
+     model of whichever file's tab is selected (`setPosition`, `setSelection`,
+     `getModel().getValue()`; measured). Not `monaco.editor.getEditors()`, which also
+     returns editors that add-ins created *(reported)*;
    - press keys: `Input.dispatchKeyEvent` key-down, then key-up, with real `key` and
      `code` values, less than 500 ms apart;
    - click: real `Input.dispatchMouseEvent` presses at the element's centre. The IDE's own
@@ -352,6 +374,21 @@ Everything after this stage is developed against it.
    - read a tool window through `toolWindowsById[<guid>].bodyElement`; read the DEBUG
      CONSOLE's backing array, notifications and message boxes; dismiss any `alert()`;
      notice a compiler restart or crash, as `tbbuild`'s console check already does.
+
+   **Done:** [scripts/lib/tb-operate.mjs](scripts/lib/tb-operate.mjs), with `readCrash` in
+   `tb-ide.mjs`, described in [WIP.Harness.md, Operating the IDE and reading
+   it](WIP.Harness.md#operating-the-ide-and-reading-it). Both acceptance scenarios were
+   carried out with it by hand on a lab IDE: **Sample 15** --- the toolbar button, the
+   search typed key by key, both files' results, and a click on one match that opened
+   `Haystack.twin` at line 4, column 13 --- and **Sample 10** --- its tool window, the
+   three-button message box answered `button2`, the follow-up answered `ok`, a notification
+   and a DEBUG CONSOLE line. The two gaps item 1 found are closed: every CDP call has a time
+   limit, and the connection records and dismisses dialogs, proved with an `alert()`; an
+   alert already open before the harness attached is the one case it cannot handle, and it
+   says so. Two dangers were closed on the way: `launchIde` refuses a DevTools port another
+   IDE holds, since the harness would otherwise operate that IDE, and the registry tidy no
+   longer puts back an association that pointed into the temp folder. The runner (item 7)
+   turns the two scenarios into tests.
 6. **No real side effects.** The add-in's URL opener checks an environment variable (name to
    be chosen) and, when it is set, prints `open <url>` to the DEBUG CONSOLE instead of
    starting a browser. On a private desktop a real browser would start where nobody can see
@@ -381,7 +418,7 @@ the build number it was measured on.
 | P1 | Do `{ctrl}` and `{alt}` add-in shortcuts ever fire? Register `{ctrl}{shift}d`, `{alt}f`, `{shift}d`, `d` and `f1`, and press each. | the bug report; which key the add-in uses; the NOTE on the KeyboardShortcuts page |
 | P2 | Does the add-in's `f1` fire with focus in the code editor, and what happens with signature help showing? | F1 or another key |
 | P3 | Does an `iframe` of a documentation page load and navigate inside a tool window? Size, scrolling, theme. | how pages are shown |
-| P4 | Does `innerHTML` render, and do inline handlers in it run page script? | how summaries are drawn; whether the page-internals route exists |
+| P4 | Does `innerHTML` render, and do inline handlers in it run page script? **Half answered, BETA 983:** HTML an add-in gives a list view's `addItem` renders, and its inline `onclick` runs the page's `raiseEvent` (Sample 15). `innerHTML` set as a property is untested. | how summaries are drawn; whether the page-internals route exists |
 | P5 | What does hover return for `MsgBox`, `Collection.Add`, `ToolWindows.Add` and a symbol declared in the project? What does definition return for a package symbol? | compiler-assisted context, or the add-in's own parser |
 | P6 | Does the compiler also load add-ins from `%APPDATA%\twinBASIC\addins\<arch>`? This needs a DLL placed there for a moment, and the user's own IDE would load it too --- **ask before running it.** | harness isolation |
 | P7 | Which bitness does the compiler start in, and does switching the build target restart it in the other one and load the other `addins` folder? **Half answered, BETA 983:** the target a project opens in picks the compiler --- win32 when the IDE remembers none, `twinBASIC_win64_noDEP.exe` for a project remembered as win64 --- and each compiler reads its own `addins` folder alone. Switching the target of an open project is untested. | building and testing both bitnesses |

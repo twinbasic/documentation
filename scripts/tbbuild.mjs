@@ -132,10 +132,9 @@ try {
 const c = await attachIde(port);
 if (!c) die(2, "the IDE never exposed a debug port");
 
-const dialogs = [];
-c.on((m) => {
-  if (m.method === "Page.javascriptDialogOpening") dialogs.push(m.params.message);
-});
+// Every alert the IDE opens is recorded and dismissed by the connection
+// (attachIde), and reported with the diagnostics.
+const dialogs = c.dialogs;
 
 const outcome = compileOutcome(await waitForCompile(c, { project: proj, timeout }), { name: proj });
 if (!outcome.ok) die(outcome.code, outcome.message);
@@ -150,12 +149,12 @@ if (asJson) {
     project: proj,
     errors: counts[0], warnings: counts[1], hints: counts[2], infos: counts[3],
     idePid: ide?.pid ?? null, kept: keep,
-    diagnostics: rows, dialogs,
+    diagnostics: rows, dialogs: dialogs.map((d) => d.message),
   }, null, 2));
 } else {
   for (const r of rows) console.log(r);
   console.log(summaryLine(counts));
-  if (dialogs.length) console.log("dialogs:", JSON.stringify(dialogs));
+  if (dialogs.length) console.log("dialogs:", JSON.stringify(dialogs.map((d) => d.message)));
   // Only under --keep, where the pid is still alive and therefore actionable.
   if (keep && ide?.pid) console.log(`ide-pid: ${ide.pid}`);
 }

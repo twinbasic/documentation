@@ -21,7 +21,9 @@
 //     is deleted by prefix, which also catches what an earlier run left when
 //     it died before tidying.
 //   * The association keys are put back value by value, and only where they
-//     differ, so an untouched key is never written.
+//     differ, so an untouched key is never written --- unless they named the
+//     temp folder when the run began, because then they were another run's
+//     IDE copy's, and putting them back would point at a deleted folder.
 //   * The build target the IDE remembers for each project path is deleted for
 //     every path under those folders, before the run and after it
 //     (sweepArchitectureMemory says why).
@@ -451,20 +453,25 @@ function alive(pid) {
  *                                 user's own, restored rather than deleted
  * @param {string[]} [o.prefixes]  folders only the harness writes to; every
  *                                 entry under them is deleted
+ * @param {string} [o.root]        the IDE's settings key (default IDE_SETTINGS_KEY)
+ * @param {string[]} [o.keys]      the association keys (default ASSOCIATION_KEYS);
+ *                                 the self-test passes scratch keys for both
  */
-export function startTidy({ paths = [], prefixes = [] } = {}) {
+export function startTidy({ paths = [], prefixes = [], root = IDE_SETTINGS_KEY,
+                            keys = ASSOCIATION_KEYS } = {}) {
   const owner = Number(process.env.TB_REGISTRY_OWNER);
   if (owner && owner !== process.pid && alive(owner)) return null;
   process.env.TB_REGISTRY_OWNER = String(process.pid);
   let tidy;
   try {
-    if (prefixes.length) restoreProjects({ root: IDE_SETTINGS_KEY, entries: [] }, { prefixes });
-    tidy = { projects: snapshotProjects(paths), keys: snapshotKeys(), prefixes };
+    if (prefixes.length) restoreProjects({ root, entries: [] }, { prefixes });
+    tidy = { projects: snapshotProjects(paths, { root }), keys: snapshotKeys(keys), prefixes, root };
+    tidy.keysInTemp = namesTempFolder(tidy.keys);
   } catch (e) {
     console.error(`warning: the IDE's registry entries will not be tidied after this run: ${e.message}`);
     return null;
   }
-  sweepTargets(prefixes);
+  sweepTargets(prefixes, root);
   return tidy;
 }
 
@@ -480,18 +487,36 @@ export function finishTidy(tidy) {
   let done;
   try {
     const p = restoreProjects(tidy.projects, { prefixes: tidy.prefixes });
-    done = { ...p, association: restoreKeys(tidy.keys) };
+    // An association that named the temp folder when the run began belonged to
+    // another run's copy of the IDE (tb-ide-copy.mjs), which will be deleted:
+    // putting it back would point .twinproj files at nothing. It is left as
+    // the IDEs set it, and the next IDE started from a real install points it
+    // back at that install.
+    if (tidy.keysInTemp) {
+      console.error("note: the .twinproj association pointed into the temp folder when this " +
+                    "run began, at another run's copy of the IDE, so it is left as it is now");
+    }
+    done = { ...p, association: tidy.keysInTemp ? null : restoreKeys(tidy.keys) };
   } catch (e) {
     console.error(`warning: could not tidy the IDE's registry entries after this run: ${e.message}`);
     return null;
   }
-  return { ...done, architecture: sweepTargets(tidy.prefixes) };
+  return { ...done, architecture: sweepTargets(tidy.prefixes, tidy.root) };
+}
+
+// Whether any value in a key snapshot names a path inside the temp folder.
+function namesTempFolder(snapshot) {
+  const tmp = norm(path.resolve(tmpdir())) + "\\";
+  const named = (snap) => !!snap && (
+    [].concat(snap.values ?? []).some((v) => [].concat(v?.data ?? []).some((d) => norm(d).includes(tmp))) ||
+    [].concat(snap.keys ?? []).some((k) => named(k?.snap)));
+  return [].concat(snapshot ?? []).some((e) => named(e?.snap));
 }
 
 // With a warning of its own, so that failing here costs only this part of the tidy.
-function sweepTargets(prefixes) {
+function sweepTargets(prefixes, root) {
   try {
-    return sweepArchitectureMemory(prefixes);
+    return sweepArchitectureMemory(prefixes, { root });
   } catch (e) {
     console.error(`warning: could not tidy the build targets the IDE remembers: ${e.message}`);
     return null;

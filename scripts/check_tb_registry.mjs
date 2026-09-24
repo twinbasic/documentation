@@ -28,6 +28,9 @@
 //     folder, in both separators, deleted; the user's, the lookalike folder's
 //     and the rest kept, in their order and in the IDE's own JSON; a value
 //     that is not JSON left alone;
+//   * an association that named the temp folder when the run began, which is
+//     another run's IDE copy's and is left alone, against one that did not,
+//     which is put back;
 //   * the guards: a key near the root and a sweep outside the temp folder
 //     refused, and an error raised inside PowerShell arriving as a sentence;
 //   * the ownership rule: a dead owner does not block tidying, a live one makes
@@ -152,6 +155,21 @@ try {
   deleteValues(SETTINGS, [MEMORY]);
   assert.equal(R.sweepArchitectureMemory([TEMPDIR], { root: ROOT }), 0, "no value, nothing to do");
   assert.throws(() => R.sweepArchitectureMemory(["C:\\"], { root: ROOT }), /outside/);
+
+  // ------------------------------------------------ an association another run's copy held
+  // startTidy and finishTidy, the whole tidy, on the scratch keys.
+  const COMMAND = ASSOC + "\\shell\\open\\command";
+  const REAL = "\"C:\\IDE\\twinBASIC.exe\" \"%1\"";
+  const COPY = `"${path.join(tmpdir(), "tbaddin", "9870", "ide", "twinBASIC.exe")}" "%1"`;
+  setValues(COMMAND, { "": COPY });                  // another run's copy has it
+  const dirty = R.startTidy({ root: ROOT, keys: [ASSOC] });
+  setValues(COMMAND, { "": REAL });                  // an IDE from a real install takes it back
+  assert.equal(R.finishTidy(dirty).association, null);
+  assert.equal(readValue(COMMAND, ""), REAL, "an association naming the temp folder is never put back");
+  const clean = R.startTidy({ root: ROOT, keys: [ASSOC] });
+  setValues(COMMAND, { "": COPY });                  // this run's copy takes it
+  assert.ok(R.finishTidy(clean).association >= 1);
+  assert.equal(readValue(COMMAND, ""), REAL, "one that did not is put back");
 
   // ------------------------------------------------ the guards
   assert.throws(() => R.restoreKeys([{ path: "Software", snap: null }]), /close to the root/);
