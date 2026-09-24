@@ -295,8 +295,10 @@ was 1st and 2nd.
 
 **10. The Generics page's `Max` sample did not show where it goes** (UC-65). The rule is on the
 *Module* page: a `.twin` file needs the explicit block. *Fixed*: the sample is a whole file, a
-`Module` holding `Max` and the three calls the prose describes. Four other compiled samples on
-the page are still bare declarations, three procedures and a generic `Type`.
+`Module` holding `Max` and a `Test` routine making the three calls the prose describes, laid out
+as the page's other whole-file samples are, with no blank line against `Module` or `End Module`.
+The callback sample on the Delegates page went the other way: its wrapper came out, as noise
+beside that page's bare samples, and the harness wraps a bare sample itself.
 
 **11. Left open.** `array index out of bounds error` and `division by zero` still miss the error
 table (UC-63); UC-64's `GetTickCount64` and `system uptime` miss, which is Microsoft's to
@@ -444,14 +446,14 @@ claim that a `Long` pointer fails in 64-bit mode, and UC-69's pointer pattern in
 twinBASIC caller.
 
 **3. Still open:** the master list of run-time error numbers; the IDE section's empty headings,
-76 of them, 57 on Project Settings, after this round filled two; `check_run`; the Generics
-page's four remaining bare samples; and the phrasings in finding 11.
+76 of them, 57 on Project Settings, after this round filled two; `check_run`; and the phrasings
+in finding 11.
 
 ## Outcome
 
-**Every finding is fixed, except the misses left open in finding 11.** The documentation
-carries findings 1--10, in two commits; the site's search carries finding 1; the harness carries
-12--14, and 15--16 landed with the tooling merge the round was rebased onto. The product side of
+**Every finding is fixed, except the misses left open in finding 11.** The site's search
+carries finding 1, the documentation findings 2--10, and the harness 12--14; 15 and 16 landed
+with the tooling merge the round was rebased onto. The product side of
 finding 3 extends round 9's queued entry in `BUGS-TO-REPORT.md`, with the dead copy measured.
 
 `build.bat`, `check.bat` and `test.bat` are green on the rebased tree: 914 pages, 0 broken links
@@ -463,4 +465,5 @@ samples), and the callback example printed what the page shows.
 
 The work is seven commits on `staging`, rebased onto `a46fd3f`: the search fix, the harness,
 the defect queue, round 10's goals with this review's draft, the documentation fixes in two
-parts, and this review. Nothing is pushed.
+parts, and this review. Later commits took the `Module` wrapper out of the callback sample, and
+out of the `Max` sample and back in; both pages' twelve samples compile. Nothing is pushed.

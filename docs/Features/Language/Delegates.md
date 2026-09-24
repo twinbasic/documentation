@@ -40,42 +40,38 @@ A procedure can take a function as an argument and call it. Other languages call
 **SortNames** below sorts an array of names. The caller chooses the order by passing a comparison function, and **SortNames** calls it through its *isInOrder* parameter:
 
 ```tb check_build
-Module NameSorting
+' The signature every comparison function must have.
+Public Delegate Function Comparer(ByVal a As String, ByVal b As String) As Boolean
 
-    ' The signature every comparison function must have.
-    Public Delegate Function Comparer(ByVal a As String, ByVal b As String) As Boolean
+' Sorts names() in place. isInOrder returns True if a can stay before b.
+Public Sub SortNames(names() As String, ByVal isInOrder As Comparer)
+    Dim i As Long, j As Long, temp As String
+    For i = LBound(names) To UBound(names) - 1
+        For j = LBound(names) To UBound(names) - 1
+            If Not isInOrder(names(j), names(j + 1)) Then
+                temp = names(j)
+                names(j) = names(j + 1)
+                names(j + 1) = temp
+            End If
+        Next j
+    Next i
+End Sub
 
-    ' Sorts names() in place. isInOrder returns True if a can stay before b.
-    Public Sub SortNames(names() As String, ByVal isInOrder As Comparer)
-        Dim i As Long, j As Long, temp As String
-        For i = LBound(names) To UBound(names) - 1
-            For j = LBound(names) To UBound(names) - 1
-                If Not isInOrder(names(j), names(j + 1)) Then
-                    temp = names(j)
-                    names(j) = names(j + 1)
-                    names(j + 1) = temp
-                End If
-            Next j
-        Next i
-    End Sub
+Public Function ByAlphabet(ByVal a As String, ByVal b As String) As Boolean
+    Return a <= b
+End Function
 
-    Public Function ByAlphabet(ByVal a As String, ByVal b As String) As Boolean
-        Return a <= b
-    End Function
+Public Function ByLength(ByVal a As String, ByVal b As String) As Boolean
+    Return Len(a) <= Len(b)
+End Function
 
-    Public Function ByLength(ByVal a As String, ByVal b As String) As Boolean
-        Return Len(a) <= Len(b)
-    End Function
-
-    Public Sub SortDemo()
-        Dim names() As String = Array("Charlie", "Al", "Bob", "Dave", "Ed")
-        SortNames names, AddressOf ByAlphabet
-        Debug.Print Join(names, ", ")
-        SortNames names, AddressOf ByLength
-        Debug.Print Join(names, ", ")
-    End Sub
-
-End Module
+Public Sub SortDemo()
+    Dim names() As String = Array("Charlie", "Al", "Bob", "Dave", "Ed")
+    SortNames names, AddressOf ByAlphabet
+    Debug.Print Join(names, ", ")
+    SortNames names, AddressOf ByLength
+    Debug.Print Join(names, ", ")
+End Sub
 ```
 
 **SortDemo** prints:
