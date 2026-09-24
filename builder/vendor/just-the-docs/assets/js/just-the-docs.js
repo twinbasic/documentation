@@ -190,8 +190,13 @@ function searchLoaded(index, docs) {
       })
       if (tokens.length > 0) {
         results = index.query(function (query) {
+          // Patched: capped at 2. Upstream takes the distance from the whole
+          // query's length and applies it to every word, and lunr's fuzzy
+          // expansion grows exponentially with it: three unindexed API names
+          // (49 characters, distance 5) froze the page for 5 s at 1.6 GB, four
+          // (70, distance 6) for over a minute. See builder/vendor/just-the-docs/README.md.
           query.term(tokens, {
-            editDistance: Math.round(Math.sqrt(input.length / 2 - 1))
+            editDistance: Math.min(2, Math.round(Math.sqrt(input.length / 2 - 1)))
           });
         });
       }

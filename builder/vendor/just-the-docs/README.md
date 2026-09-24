@@ -101,6 +101,20 @@ patcher in [`offline.mjs`](../../offline.mjs) is AST-based and survives
 cosmetic upstream edits inside the patched function bodies, but the
 copy-button retirement above is structural and has to be re-applied.
 
+**The search's typo fallback is capped at an edit distance of 2.** When a
+query's words match nothing, upstream searches again with an edit distance
+taken from the length of the *whole query*, `Math.round(Math.sqrt(input.length
+/ 2 - 1))`, and applies it to every word. lunr's fuzzy expansion grows
+exponentially with that distance. Measured in headless Chromium against the
+built site: three Windows API names the site does not index, 49 characters and
+distance 5, froze the page for 5.1 s and took the JS heap to 1.6 GB; four, 70
+characters and distance 6, never answered within 60 s. Capped, both answer in
+about 10 ms. A query of 15 characters or fewer is unaffected, since the formula
+gives at most 2 there. [`eval/site_search.mjs`](../../../eval/site_search.mjs)
+replicates the query logic and carries the same cap; it is where the defect
+was found, when re-measuring an evaluator's search ran the replica out of
+memory.
+
 ## Licence
 
 just-the-docs is MIT-licensed, and `LICENSE.txt` beside this file is the
@@ -185,9 +199,10 @@ Bumping the just-the-docs version is a deliberate operation. Procedure:
    by the axe scan, and the three focus rings by nothing at all, since axe
    checks that a control is reachable and named, not that its ring is visible.
 
-5. Re-apply the copy-button patch in `assets/js/just-the-docs.js` (see
-   above). Diffing against the previous vendored copy via `git diff` is
-   the easiest way to spot what needs to come back.
+5. Re-apply the copy-button patch and the edit-distance cap in
+   `assets/js/just-the-docs.js` (see above). Diffing against the previous
+   vendored copy via `git diff` is the easiest way to spot what needs to
+   come back.
 
 6. Inspect the entry point at `docs/assets/css/just-the-docs-combined.scss`
    --- if the upstream `_includes/css/just-the-docs.scss.liquid` Liquid
