@@ -210,12 +210,12 @@ Syntax: **[CompilerOptions( "** options **" )]**
 
 Applicable to: [procedure definitions](../Gloss#procedure)
 
-Typical use would be `[CompilerOptions("+llvm,+optimize,+optimizesize")]` ⁠to compile the procedure using built-in LLVMinstead of the default compiler, with chosen optimizations. Compiler options available:
+Sets the LLVM compiler options for one procedure, in place of the **Compiler Options** in [Project Settings](../IDE/Project/Settings). *options* is a comma-separated list of flags; an empty string turns LLVM off for the procedure. Typical use would be `[CompilerOptions("+llvm,+optimize,+optimizesize")]` to compile the procedure using the built-in LLVM instead of the default compiler, with chosen optimizations. [Getting Started with LLVM](../../LLVM/Getting-Started) describes LLVM compilation in full. Compiler options available:
 
-- **+llvm** - uses LLVM to compile this procedure. This feature is experimental at the moment, and cannot be used to compile functions with "complex" argument/variable types, such as objects, strings and dynamic arrays. The LLVM compiler back-end is built into twinBASIC. It is not necessary to have LLVM separately installed, and any such installation is ignored by twinBASIC.
+- **+llvm** - uses LLVM to compile this procedure. This feature is experimental at the moment. The LLVM compiler back-end is built into twinBASIC. It is not necessary to have LLVM separately installed, and any such installation is ignored by twinBASIC.
 - **+optimize** - enables optimization during compilation of this procedure
 - **+optimizesize** - optimize this procedure for small code size, potentially at the expense of slower speed of the procedure
-- **+optimizespeed** - optimize this procedure for fast speed, potentially at the expense of larger code size post-compilation
+- **+** and the name of a CPU instruction set, such as **+avx2** - lets LLVM use that instruction set in this procedure. The program then does not run on a CPU without it. [Per-procedure LLVM options](../../LLVM/Getting-Started#per-procedure-llvm-options) lists the instruction sets.
 
 ## ConstantFoldable  (optional Bool)
 {: #constantfoldable }
