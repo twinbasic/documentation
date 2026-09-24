@@ -5,6 +5,9 @@
 //     node scripts/check_code_regions.mjs --verbose    # per-finding detail
 //     node scripts/check_code_regions.mjs --self-test  # prove it still detects
 //
+// Exit: 0 clean, 1 a code region changed or a probe failed, 2 the gate itself
+// could not run.
+//
 // WHY THIS EXISTS
 //
 // builder/render.mjs applies several kramdown-parity rewrites to raw markdown
@@ -224,7 +227,9 @@ async function main(argv) {
   process.exit(failed ? 1 : 0);
 }
 
+// A crash is the harness failing, not a finding: exit 2, as Extending.md's
+// gate conventions require, so it cannot read as an altered code region.
 main(process.argv.slice(2)).catch((err) => {
   console.error(err);
-  process.exit(1);
+  process.exit(2);
 });

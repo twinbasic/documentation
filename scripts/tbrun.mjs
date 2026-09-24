@@ -15,7 +15,8 @@
 //       --show / --hide   as tbbuild's
 //
 // Exit: 0 captured output, 1 the project has compile errors, 2 the harness
-// failed, 3 the build produced no console output before the timeout.
+// failed -- a build that fails after a clean compile included, since the probe
+// never runs -- 3 the build produced no console output before the timeout.
 //
 // ---------------------------------------------------------------- why
 //
@@ -281,6 +282,15 @@ try {
 const reaped = shutdown();
 
 if (failure) die(2, `tbrun: ${failure}`);
+// A build that fails after a clean compile never runs the probe, and leaves the
+// IDE's own build log in the console. The probe's first statement is Debug.Cls,
+// which would have erased that log, so its survival means the capture is not the
+// probe's output. Returned as output, a `[TYPELIB] failed to finalize
+// typelibrary` build exited 0 twice in round 8's fix pass.
+if (captured.some((l) => /^\[(BUILD\]\s+failed|LINKER\]\s+FAILED)\b/i.test(l))) {
+  die(2, "tbrun: the build failed, so the probe never ran. The console holds the IDE's " +
+         `build log, not the probe's output:\n${captured.map((l) => `  ${l}`).join("\n")}`);
+}
 if (!captured.length) {
   die(3, "tbrun: the build produced no console output before the timeout.\n" +
          (hasHook ? "  The [RunAfterBuild] Sub may not have run -- check the IDE for a modal."

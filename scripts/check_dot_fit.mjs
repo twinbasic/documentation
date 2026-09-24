@@ -28,6 +28,11 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import puppeteer from "puppeteer";
 
+// A crash is the harness failing, not a finding: exit 2, as Extending.md's gate
+// conventions require. This file runs at top level, so there is no main().catch
+// to do it; the handler also catches a rejected top-level await.
+process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
+
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const SRC = path.join(REPO, "docs");
 
