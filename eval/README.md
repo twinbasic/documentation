@@ -35,6 +35,11 @@ any of it fails. Each case leaves the prompt it was given, its whole session as
 stream-json, its report and a `.meta.json` recording the model and the Claude Code version,
 and prints the session's digest --- see [Reading the results](#reading-the-results).
 
+**Pin the Claude Code build when a round re-runs an earlier one.** `--claude <exe>` names it;
+without it the runner takes whatever `claude` is on `PATH`, which changes with every install.
+Round 10 found 2.1.212 there, where rounds 8 and 9 had run the desktop app's bundled 2.1.280,
+and passed that one's path instead.
+
 **Snapshot the search index with the corpus**: copy `docs/_site/assets/js/search-data.json`
 and `assets/js/vendor/lunr.min.js` beside it, and give every case `--site <snapshot>`.
 `site_search.mjs` otherwise reads the live `docs/_site/`, and a rebuild during the round
