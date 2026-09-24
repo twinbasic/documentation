@@ -39,15 +39,17 @@
 //     recorded before the first lane starts, deleted before each lane that
 //     names them, so that its add-ins start from their defaults, and put back
 //     at the end. Lanes that name the same application never run at once.
-//   * %APPDATA%\twinBASIC\addins. The page hands the compiler that folder with
-//     RequestLoadAddins, so a DLL in it may load into every test IDE, and
-//     whether it does is P6 in WIP.HelpAddin.md. The run refuses to start
-//     while the folder holds one.
+//
+// Not %APPDATA%\twinBASIC\addins. The compiler loads the add-ins there too
+// (P6 in WIP.HelpAddin.md), but the IDE makes that folder's path from its own
+// environment, and every IDE a lane starts has an APPDATA inside the lane's
+// work folder (lib/tb-lane.mjs). So an add-in the user keeps there loads into
+// none of them, and the run has no need to refuse while one is there.
 //
 // Ctrl+C ends the lanes and still puts the registry back.
 
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -77,17 +79,6 @@ const laneTimeout = Number(opt("timeout", 600)) * 1000;
 const show = wantShow({ show: flag("show"), hide: flag("hide") });
 
 // ---------------------------------------------------------------- refusals
-
-const appDataAddins = path.join(process.env.APPDATA ?? "", "twinBASIC", "addins");
-const strays = existsSync(appDataAddins)
-  ? readdirSync(appDataAddins, { recursive: true }).filter((f) => /\.dll$/i.test(f))
-  : [];
-if (strays.length) {
-  die(2, `${appDataAddins} holds ${strays.map((f) => `"${f}"`).join(", ")}.\n` +
-         "The IDE hands the compiler that folder when it asks it to load add-ins, so a DLL there " +
-         "may load into every test IDE (P6 in WIP.HelpAddin.md), and into your own IDE as well. " +
-         "Move it out of that folder to run the tests.");
-}
 
 const ide = findIde(opt("ide", undefined));
 if (!ide || !existsSync(ide)) {

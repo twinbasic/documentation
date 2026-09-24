@@ -99,6 +99,11 @@ raiseEvent(eventName, event, stopPropagation, ...customData)
 
 --- pass an event name (any string), the DOM `event` object, a boolean controlling propagation, and any number of trailing custom-data values. The addin then registers a listener with the same event name through **AddEventListener**, and the custom-data values arrive on the [**HtmlEventProperties**](HtmlEventProperties) as `eventInfo.customData0`, `eventInfo.customData1`, … (numerically indexed from zero). This pattern is used heavily in sample 13 (listview) and sample 15 (Global Search) to attach handlers to per-item buttons rendered inside a listview's HTML.
 
+> [!NOTE]
+> **raiseEvent** works only inside a `"listview"` or `"virtuallistview"` widget, or inside a widget added with [**CodeEditor.AddMonacoWidget**](CodeEditor#addmonacowidget). It passes the event to the nearest enclosing widget: in a list view, register the listener on the list view object, `.Properties.listview.AddEventListener("name", ...)`, as sample 15 does; in a code-editor widget, on the widget's own element. In plain tool-window HTML there is no such widget, and in BETA 983 **raiseEvent** throws a `TypeError` in the IDE's page and the listener is not called.
+>
+> From plain HTML, an inline handler can call the listener itself. **AddEventListener** stores a listener for a name that is not one of the element's DOM events on the element, under that name, so an inline `onclick='this.parentNode.myEvent(event)'` calls the listener its parent registered as `"myEvent"`, and `eventInfo.target.id` names the element clicked.
+
 ### Remove
 {: .no_toc }
 

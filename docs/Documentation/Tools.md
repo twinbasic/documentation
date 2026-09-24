@@ -671,8 +671,22 @@ install, whose add-in folders hold only what the lane puts there. A test add-in 
 never loads into your own IDE, and two lanes never share one. The scenario builds the add-ins
 it tests into its copy, opens a project, and operates the IDE: it clicks, presses keys, types,
 and reads the add-ins' tool windows, message boxes, notifications, the code editor and the
-Debug Console. The first two scenarios operate the IDE's own sample add-ins, Sample 10 and
-Sample 15 (Global Search), end to end; the two lanes take about 25 seconds together.
+Debug Console. Two scenarios operate the IDE's own sample add-ins, Sample 10 and Sample 15
+(Global Search), end to end. The others are probes, and take what they need from
+`test/addin/probes/`. Two build add-ins of their own and check what the tbIDE pages say about
+the IDE: which keyboard shortcuts fire, for the
+[KeyboardShortcuts](../../tB/Packages/tbIDE/KeyboardShortcuts) page, and what a tool window
+does with HTML and with a web page in an `iframe`, for the
+[HtmlElement](../../tB/Packages/tbIDE/HtmlElement) page and its neighbours. The panes lane
+serves the pages its frame shows from a server of its own on `localhost`. Three more answer
+questions the planned help add-in rests on: what the compiler says about the name under the
+cursor, which files the IDE's own web server serves from its `ide` folder, and which folders
+the compiler loads add-ins from. The last three check what the [Add Ins](../../tB/IDE/AddIns/)
+and [tbIDE package](../../tB/Packages/tbIDE/) pages say about loading: which folder each
+build target loads, what a compiler restart does to a loaded add-in, and which entry-point
+names the IDE accepts. They build add-ins for win64 as well as win32, restart the compiler,
+and patch a built DLL's export name. The ten lanes take about two and a half minutes
+together.
 
 | Flag | Effect |
 |---|---|
@@ -703,9 +717,11 @@ named. Pressing Ctrl+C ends the lanes and still puts everything back.
 there. A browser started on the harness's private desktop would open where nobody can see it
 and keep running after the run.
 
-It refuses to start while `%APPDATA%\twinBASIC\addins` holds a DLL. The IDE passes that
-folder to its compiler when it loads add-ins, so a DLL there may load into every test IDE,
-as well as into your own.
+**The add-ins you keep in `%APPDATA%\twinBASIC\addins` never load into a test IDE.** The
+compiler loads the add-ins there as well as those in the install's own `addins` folders, but
+it takes that folder from the IDE, which builds its path from the `APPDATA` environment
+variable. Every IDE a lane starts has an `APPDATA` inside the lane's work folder, and a lane
+fails if its IDE's add-in folder turns out to be anywhere else.
 
 ### check_tb_registry.mjs
 {: #check-tb-registry }

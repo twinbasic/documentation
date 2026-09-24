@@ -21,7 +21,7 @@ The package is a built-in *compiler* package shipped with twinBASIC. It is added
 An addin project has three distinguishing settings:
 
 - **Build type:** Standard DLL.
-- **Build path:** `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}`. The output drops directly into the IDE's `addins\Win32\` or `addins\Win64\` folder, where the IDE scans for addins on start-up.
+- **Build path:** `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}`. The output drops directly into the IDE's `addins\Win32\` or `addins\Win64\` folder, where the IDE scans for addins on start-up. It also scans the same two folders under `%APPDATA%\twinBASIC\addins\`, which an IDE update leaves in place; see [Add Ins](../../IDE/AddIns/).
 - **Compiler-package reference** to **tbIDE** (added to the project's references with `isCompilerPackage: true`, `publisher: TWINBASIC-COMPILER`, `symbolId: tbIDE`). This is the binding between the DLL's compile-time types and the IDE's run-time implementations.
 
 The DLL must export one function --- the entry point the IDE calls when it discovers and loads the addin:
@@ -35,7 +35,12 @@ Module MainModule
 End Module
 ```
 
-The returned object must implement [**AddIn**](AddIn). The IDE releases the object when the addin is disabled or the IDE shuts down, which lets the addin close resources through `Class_Terminate`.
+The returned object must implement [**AddIn**](AddIn).
+
+> [!NOTE]
+> The linker exports **tbCreateCompilerAddin** as `tbCreateCompilerAddin_v3`, and under no other name, so that is the name a list of the DLL's exports shows. The IDE looks for `tbCreateCompilerAddin`, `tbCreateCompilerAddin_v2` and `tbCreateCompilerAddin_v3`, and calls whichever it finds in the same way. It does not load a DLL that exports none of them; the DEBUG CONSOLE then says *Entry point not found. Addin may have been compiled for a newer version of the twinBASIC IDE.* [Add Ins](../../IDE/AddIns/#when-an-addin-does-not-load) lists the other reasons an addin does not load.
+
+The addin runs inside the compiler's process, and lasts as long as that process does. **Whenever the compiler restarts, the addin is loaded again:** on the toolbar's restart button, on every switch of the build target, and when the IDE restarts the compiler after a crash. The IDE ends the old process with a forced kill, so the addin's `Class_Terminate` does not run, and whatever the addin held in memory is gone. It removes the addin's toolbar buttons and keyboard shortcuts, and leaves its tool windows where they were, showing *(currently unavailable)*. The new compiler loads the DLL that is in the addins folder by then, and the new instance's [**OnProjectLoaded**](Host#onprojectloaded) runs, as at start-up. A tool window it adds under the same id as before is the same window, emptied; see [**ToolWindows.Add**](ToolWindows#add).
 
 A minimal addin class:
 

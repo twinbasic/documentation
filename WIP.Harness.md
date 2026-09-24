@@ -487,7 +487,8 @@ LIMITED until OPERATIONAL at 1.4 s. `waitForCompile` started straight after the 
 sample that second of downtime twice after having seen OPERATIONAL, and it counts that as
 the compiler going down twice: exit 4, a crash that did not happen. A three-second pause
 before it worked when this was first measured, and is a guess. `setBuildTarget` waits for
-the pid to change, then for the compile.
+the pid to change, then for the compile. The wait is `awaitNewCompiler` in `tb-ide.mjs`,
+which `restartCompiler` in `tb-operate.mjs` uses too, after the toolbar's restart button.
 
 **A win64 probe runs as a 64-bit process.** `[RunAfterBuild]` code runs in the compiler that
 built it, not in the binary:
@@ -678,7 +679,9 @@ test add-in put there would load into every IDE the user starts from that instal
 lanes testing different add-ins could not share the folder at all. So the add-in harness
 ([WIP.HelpAddin.md](WIP.HelpAddin.md)) runs each lane on its own copy of the install, made
 by [scripts/lib/tb-ide-copy.mjs](scripts/lib/tb-ide-copy.mjs), whose `addins` folders hold
-exactly what the lane puts there.
+exactly what the lane puts there. The compiler loads the DLLs in
+`%APPDATA%\twinBASIC\addins\<arch>` as well (P6), and the `APPDATA` each lane gives its
+IDEs keeps the user's out ([The add-in test runner](#the-add-in-test-runner)).
 
 **Measured, against BETA 983:**
 
@@ -784,10 +787,14 @@ loads add-ins only as it starts, and an IDE holds one project, so:
 1. `buildAddin` in [scripts/lib/tb-addin.mjs](scripts/lib/tb-addin.mjs) stages the add-in's
    exported tree through [scripts/lib/tb-project.mjs](scripts/lib/tb-project.mjs) --- the
    staging `tbrun` does, moved there to be shared --- with the build path pinned to
-   `<work>\out\<project name>.dll`. It starts the copy on it, refuses a project with compile
-   errors (exit code 1, every diagnostic listed), builds, and ends the IDE.
-2. `addAddin` in `tb-ide-copy.mjs` puts the DLL in the copy's `addins\win32`. It refuses any
-   folder that is not a marked copy, so a test add-in cannot reach the real install.
+   `<work>\out\<project name>.dll`. It starts the copy on it, with the lane's own `APPDATA`
+   when given one (`appdata`), sets the build target, refuses a project with compile errors
+   (exit code 1, every diagnostic listed), builds, and ends the IDE. `Lane.buildAddin` stops
+   there and leaves the DLL in the work folder; `Lane.addAddin` goes on to step 2.
+2. `addAddin` in `tb-ide-copy.mjs` puts the DLL in the copy's `addins\win32` or
+   `addins\win64`, under its own name or one the caller gives (`Lane.placeAddin`). It
+   refuses any folder that is not a marked copy, so a test add-in cannot reach the real
+   install.
 3. The copy starts again, on the project the test opens, and `loadedAddins` asks its
    compiler what it loaded.
 
@@ -827,16 +834,23 @@ failed`. Two details:
 
 What a package build writes has not been looked at; `buildProject` knows binaries only.
 
-**win32 only, and the target is checked rather than assumed.** A project path the IDE has
-no memory of opens in the first target on its list, win32, and gets
-`twinBASIC_win32_noDEP.exe`. `buildAddin` reads the target the IDE chose and refuses any
-other, and the [registry tidy](#what-a-run-leaves-in-the-registry-and-putting-it-back)
-deletes any target remembered for the lane's paths. **The target decides which folder is
-read** (part of P7): a copy holding Sample 10 as `InFolder_win32.dll` in `addins\win32` and
-`InFolder_win64.dll` in `addins\win64` loaded the first alone when it opened a project with
-no memory. When it opened a project remembered as win64, it started
-`twinBASIC_win64_noDEP.exe` with `twinBASIC_nativedbg_win64.exe`, which tried the second
-alone and failed, since the add-in is 32-bit.
+**Either target, set on every build and checked in the file.** `buildAddin` takes `arch`,
+`win32` by default, and sets it with `setBuildTarget` as `tbrun`'s `--arch` does, even
+when the project opened in it: a project path the IDE has no memory of opens in win32, and
+a target the tidy missed would otherwise decide the build without a word. A win64 build is
+a switch, which restarts the compiler and compiles the add-in again before the build. It
+was win32 only until P7 said which folder a switched compiler loads. Then
+`dllInfo` reads the DLL's PE headers: its machine type has to be the target's (`0x14c`,
+`0x8664`), and it has to export one of the three names the IDE's loader takes (P14),
+which is what makes it an add-in at all. The linker's SUCCESS line alone had said only that
+a file was written.
+
+**The target decides which folder is read** (P7): a copy holding Sample 10 as
+`InFolder_win32.dll` in `addins\win32` and `InFolder_win64.dll` in `addins\win64` loaded the
+first alone when it opened a project with no memory. When it opened a project remembered as
+win64, it started `twinBASIC_win64_noDEP.exe` with `twinBASIC_nativedbg_win64.exe`, which
+tried the second alone and failed, since the add-in is 32-bit. A switch of an open project
+loads the other folder; the P7 lane checks it with a build of each bitness.
 
 **A DLL that fails to load still appears in `loadedAddins`, as `Unknown Addin`.** The DEBUG
 CONSOLE says why, on a line that starts with the file name: `[InFolder_win64.dll] Failed to
@@ -855,7 +869,10 @@ fixture cases gave output identical to before, `tbrun`'s three included. A full
 
 **A scenario is written with [scripts/lib/tb-operate.mjs](scripts/lib/tb-operate.mjs)**:
 click, press keys, type, read the add-ins' tool windows, message boxes, notifications and
-list views, open a file, and move or read the code editor's cursor. `readCrash` in
+list views, open a file, move or read the code editor's cursor, and restart the compiler
+with the toolbar's button (`restartCompiler`). A lane restarts it, or switches the build
+target, through `Lane.restartCompiler` and `Lane.setBuildTarget`, which also refuse a
+compile afterwards that crashed or has errors. `readCrash` in
 `tb-ide.mjs` says whether the compiler crashed, from the same console record `tbbuild`
 reads, and `awaitCrashName` waits for that record to name the file being parsed, which no
 first crash does. Every call takes a connection from `attachIde`. Both of Stage 1's acceptance
@@ -870,7 +887,7 @@ view draws only the rows that fit, and a tool window is a shadow root that
 `document.querySelector` cannot see into, so the calls read `toolWindowsById`, a list
 view's `dataNodes` and `window.editor` rather than what is drawn.
 
-Six things about it were learned on the samples:
+Seven things about it were learned, the first six on the samples:
 
 - **A click scrolls its target into view, and checks what is at the point before it
   clicks.** Sample 10's tool window is taller than it is shown. Its eleventh button had a
@@ -909,6 +926,19 @@ Six things about it were learned on the samples:
   `fs.tree.resolvePath("twinbasic:" + path)`, then `openEditors.openFile(node, false,
   false, false, line, column)` --- put the cursor at the line and column given, counted
   from 1.
+- **Opening a file at a place leaves the cursor unsettled for 700 ms** (learned on P2 in
+  WIP.HelpAddin.md). Whenever the compiler's decorations for the document arrive less than
+  700 ms after the IDE's last `revealLineInEditor`, `parseDocumentDecorations` calls it
+  again: the cursor goes back to the opened place, and the 700 ms start over. Every edit
+  brings new decorations, so a `setCursor` made in that time is undone, and text typed in it
+  goes in at the opened place, each key in front of the last: `MsgBox(` came out `gBox(s`.
+  So `openFile` now waits for the IDE's own callback, `openEditors.openFile`'s eighth
+  argument, and then for the 700 ms to pass --- about 0.8 s in all for a file not yet open.
+  `setCursor` and `select` first wait out any time left from something else that opened a
+  file, such as an add-in's `Editors.Open`, and `afterReveal` does the same wait for
+  anything else. Measured: `xyz` typed at 3:1 of `Haystack.twin`, 0.3 s after opening it at
+  4:9, went in as `x` at 3:1 and `zy` at 4:9; after the fixed `openFile` it went in as `xyz`
+  at 3:1. The IDE's side of it is in BUGS-TO-REPORT.md.
 
 **The connection itself changed in three ways.** They were the gaps item 1 found in
 `tbbuild`, and they matter more once a harness clicks into dialogs on purpose:
@@ -951,9 +981,10 @@ and `buildProject` now reads its build log that way.
 
 **Every IDE, not only the add-in runner's.** `tbbuild`, `tbrun` and `examples.bat` start the
 real install, whose compiler loads whatever add-ins the user has put in its `addins`
-folders, and none of those IDEs is on a desktop anybody watches. A caller can still set the
-variable otherwise, or leave it out by passing `undefined` as its value: Node leaves such a
-variable out of a child's environment even when its own environment has it (measured).
+folders or in `%APPDATA%\twinBASIC\addins` (P6), and none of those IDEs is on a desktop
+anybody watches. A caller can still set the variable otherwise, or leave it out by passing
+`undefined` as its value: Node leaves such a variable out of a child's environment even
+when its own environment has it (measured).
 
 **Measured on BETA 983 (P10 in WIP.HelpAddin.md):** a probe add-in printed the variable
 from `Host_OnProjectLoaded`. Through `launchIde` it read `1`, from `Environ$` and from
@@ -1016,9 +1047,24 @@ reported, since it is almost certainly an add-in whose settings will stay behind
 report names it and leaves it. `settingsKey` refuses the IDE's own `twinBASIC_IDE`, which
 holds all of the IDE's settings and which the tidy puts back only value by value.
 
-**It refuses to start while `%APPDATA%\twinBASIC\addins` holds a DLL**, until P6 says
-whether the compiler loads from there: the page hands it that folder with
-`RequestLoadAddins`. It never writes there.
+**Every IDE a lane starts has an `APPDATA` of its own**, `<work>\appdata`. The compiler
+also loads the add-ins in `%APPDATA%\twinBASIC\addins\<arch>` (P6 in WIP.HelpAddin.md),
+from the folder the page sends it, which the page makes by expanding `%APPDATA%` in the
+IDE's own environment. So `Lane.open` and `Lane.buildAddin` start their IDEs with `APPDATA`
+naming the lane's folder, and each checks, once the compile has settled, that the page's
+folder is under it (`checkAddinsRoot` in `tb-ide.mjs`): an IDE that stopped taking the
+folder from its environment may have loaded the user's add-ins, and the lane fails rather
+than test something else. The check runs after the fact, because the add-ins load
+while the project opens.
+
+Until P6 was answered the runner refused to start while the user's folder held a DLL. It
+no longer needs to, and the user no longer has to move their add-ins out to run the tests:
+with `APPDATA` pointed at a stand-in folder holding the Global Search add-in, the Sample 10
+and P6 lanes both ran and passed, and the P6 lane's IDE loaded its own probe alone. The
+runner never writes to the user's folder. `tbbuild`, `tbrun` and `examples.bat` keep the
+user's `APPDATA`: they build the user's projects, and the same folder holds the packages the
+user has downloaded. `TB_ADDIN_TEST` is what keeps a user's add-in from acting outside the
+IDE there.
 
 **Ctrl+C ends the lanes and still puts everything back.** The runner handles `SIGINT`: it
 starts no more lanes, ends the running ones, waits, and tidies. Testing that took two tries.
@@ -1030,7 +1076,8 @@ PowerShell that first cleared the setting (`SetConsoleCtrlHandler(NULL, FALSE)`)
 listener saw it, and so did the runner: 16 s in, with both lanes' IDEs open, it ended both
 lanes and put everything back within two seconds.
 
-**The two scenarios**, the ones that finish Stage 1:
+**The scenarios.** Two finish Stage 1 of WIP.HelpAddin.md, and the others are Stage 2's
+probe lanes:
 
 - [test/addin/sample10.test.mjs](test/addin/sample10.test.mjs): the add-in loads and prints
   its five `OnProjectLoaded` lines, naming the project; its image button's message box; its
@@ -1042,11 +1089,85 @@ lanes and put everything back within two seconds.
   [test/addin/host](test/addin/host), each with its `[line,column]`; a click on a match
   opens `Haystack.twin` at 4:13; and Match case narrows the results to seven and is saved,
   read back through `savedSettings`.
+- [test/addin/keys.test.mjs](test/addin/keys.test.mjs), P1 and P2: it builds its own probe
+  add-in from [test/addin/probes/keys](test/addin/probes/keys), which registers eight key
+  strings and prints a line to the DEBUG CONSOLE when one fires. It checks that they were
+  stored lowercased, then presses each key with nothing focused, followed by `q`, whose
+  shortcut always fires: once `q`'s line is back, a key that has printed nothing has fired
+  nothing. Each press waits 600 ms first, so that no press is paired with the one before
+  it; the last P1 test does the opposite on purpose. Then F1 and a letter in the code
+  editor, and F1 with signature help showing, from Ctrl+Space inside `FindTheNeedle(`.
+- [test/addin/panes.test.mjs](test/addin/panes.test.mjs), P3, P4 and P12: its probe add-in,
+  from [test/addin/probes/panes](test/addin/probes/panes), opens a tool window holding HTML
+  set through `innerHTML`, an element given `onclick` as a property, two ways of raising a
+  custom event from plain HTML, and an iframe whose `src` is `TB_PANES_URL`. The scenario
+  hands the IDE that variable through `Lane.open`'s `env`, which `Environ$` then reads in
+  the add-in (P10), and serves the pages itself, from an HTTP server of its own on both
+  loopback addresses of one port, recording each request's `sec-fetch-dest`. The server is
+  on `localhost` because the IDE's page is: the frame is then on the same site, in the
+  page's process, where `Page.getFrameTree` lists it and `Page.createIsolatedWorld` reads
+  its document without touching the page's script. A frame on another site is a DevTools
+  target of its own, type `iframe` in `/json/list`, which the parent's frame tree does not
+  list --- the lab check of the live site had to attach to it separately. The scenario
+  turns on `Runtime` to record page exceptions, which is how P12's `TypeError` is seen. Its
+  last test is not a numbered probe: a third button opens two tool windows given no id,
+  which turn out to be one window, as P9's lane first suggested.
+- [test/addin/symbols.test.mjs](test/addin/symbols.test.mjs), P5: no add-in. It opens the
+  project in [test/addin/probes/symbols](test/addin/probes/symbols), which references tbIDE
+  and is never built, and asks the compiler's language socket about names in it: hover,
+  Go To Definition, signature help and a completion's details, each with the parameters the
+  IDE's own code sends. `lspSocket.request` answers through a callback, so each question is
+  one `Runtime.evaluate` of a promise. Positions are found in the source by text, so an edit
+  to the probe project does not shift them.
+- [test/addin/ideserver.test.mjs](test/addin/ideserver.test.mjs), P13: no add-in either. It
+  writes fifteen files under `ide\p13\` in the lane's copy before the IDE starts, and one
+  more after, then fetches each from the page, relative to its base URL, and compares a
+  SHA-256 of the body with the file's. The guard before the writes checks that the folder
+  is inside the lane's own folder, since the real install's `ide\` is one wrong path away.
+- [test/addin/appdata.test.mjs](test/addin/appdata.test.mjs), P6: it builds the AppDataProbe
+  add-in from [test/addin/probes/appdata](test/addin/probes/appdata) with `Lane.buildAddin`,
+  which leaves the DLL in the work folder, and copies it into the lane's own `APPDATA`
+  rather than the copy of the install. The probe prints the file it was loaded from, found
+  with `GetModuleHandleExW` on one of its own functions, and the `APPDATA` it sees. The last
+  test points the page's `commonFolderRootPath` at a second folder and restarts the
+  compiler with the toolbar's button, so the new compiler inherits the old `APPDATA` but is
+  sent the new folder.
+- [test/addin/arch.test.mjs](test/addin/arch.test.mjs), P7: it builds the ArchProbe add-in
+  from [test/addin/probes/arch](test/addin/probes/arch) twice, with `Lane.buildAddin`'s
+  `arch` set to each target, and puts each build in both add-in folders of its bitness, the
+  copy's (`Lane.placeAddin`) and the lane's `APPDATA`'s, under two names. The probe prints
+  its bitness, from `LenB` of a `LongPtr`, the process's executable and its own file. The
+  scenario opens the host, switches it to win64 and back with `Lane.setBuildTarget`, and
+  after each checks which copies loaded.
+- [test/addin/reload.test.mjs](test/addin/reload.test.mjs), P8 and P9: it builds the
+  ReloadProbe add-in from [test/addin/probes/reload](test/addin/probes/reload) as it is and
+  again from a copy with its `BUILD` constant changed, so the two builds name themselves in
+  everything they add to the IDE. With build A loaded, it tries to overwrite and delete the
+  file, renames it aside, and restarts the compiler (`Lane.restartCompiler`); then it puts
+  build B in its place and restarts again. After each step it reads the page's toolbar
+  buttons, `addinKeys`, `toolWindowsById` with each window's body and empty body, and a
+  press of Shift+F1. Whether the add-in's `Class_Terminate` runs is written to a file,
+  `TB_RELOAD_FILE`, not to the DEBUG CONSOLE, and an object the add-in drops as it loads
+  shows that a `Class_Terminate` that does run reaches the file.
+- [test/addin/entry.test.mjs](test/addin/entry.test.mjs), P14: it builds the EntryProbe
+  add-in from [test/addin/probes/entry](test/addin/probes/entry) once, reads its exports with
+  `dllInfo`, and writes four copies with the one export name patched in place: the plain
+  name, `_v2`, `_v3` as built, and `_v4`, none longer than the original, with NULs after
+  it. The export table has one name, so its sorted order, which `GetProcAddress`
+  searches, cannot change.
 
 **Measured on BETA 983:**
 
-- Both lanes pass, in about 25 s together: each is an add-in build of about 10 s, a host IDE
-  of about 9 s, and 2 s of scenario.
+- Both sample lanes pass, in about 25 s together: each is an add-in build of about 10 s, a
+  host IDE of about 9 s, and 2 s of scenario. With the two probe lanes, the four take 57 s
+  at the default two at a time: the keys lane is 28 s, about 9 s of it pressing keys, and
+  the panes lane 23 s. All seven take 73 s: the symbols and ideserver lanes, which build
+  nothing, about 9 s each, and the appdata lane 18 s. All ten take 2 min 21 s: the arch
+  lane 56 s, with its two builds and two switches of target, the reload lane 47 s, with its
+  two builds and two restarts, and the entry lane 19 s.
+- The runner does not compare the IDE's own `IDESettings`, so that was done by hand around
+  the panes lane, whose floating tool window has a persistence id: all 13 values were
+  identical afterwards.
 - Around a run, the whole registry comparison was identical: `ProjectState`, the recent
   list, the association keys, all 13 `IDESettings` values compared through hashes, and the
   remembered build targets. The run was repeated with the user's projects planted in the
@@ -1055,8 +1176,8 @@ lanes and put everything back within two seconds.
   lane began with every option off, and the key came back exactly, the extra value
   included. With `settings` taken out of `lanes.mjs`, the run failed with exit code 2 and
   named `GlobalSearchAddIn`.
-- A DLL under the add-ins folder of `%APPDATA%` (a stand-in, with `APPDATA` pointed at a
-  scratch folder) and an `--only` that matches nothing were both refused with exit code 2.
-  `--timeout 8` ended both lanes mid-build, and left the registry identical and nothing
-  running.
+- An `--only` that matches nothing was refused with exit code 2, and so, until P6 was
+  answered, was a DLL in a stand-in `%APPDATA%`; now the lanes run beside it, and the P6
+  lane's IDE loaded its own probe alone. `--timeout 8` ended both lanes mid-build, and left
+  the registry identical and nothing running.
 - Exporting the samples left the install's `projects` folder as it was, mtimes included.

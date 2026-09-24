@@ -14,7 +14,7 @@
 // tb-ide.mjs says why), and a tool window lives in a shadow root that
 // document.querySelector cannot see into.
 
-import { readConsole, sleep } from "./tb-ide.mjs";
+import { awaitNewCompiler, compilerPid, readConsole, sleep, waitForCompile } from "./tb-ide.mjs";
 
 // ------------------------------------------------------------------ finding
 
@@ -335,6 +335,34 @@ export async function openedUrls(c, { since = null } = {}) {
     .map((m) => m[1]);
 }
 
+// ------------------------------------------------------------------ the compiler
+
+/**
+ * Restart the compiler with the toolbar's restart button, and wait for the new
+ * one to compile the project again.
+ *
+ * The button ends the compiler's process with taskkill /F, so no add-in's
+ * Class_Terminate runs, and the IDE starts another compiler, which loads the
+ * add-ins again from their folders as it starts, from the files that are there
+ * by then (P9 in WIP.HelpAddin.md). Before that the page removes every
+ * add-in's toolbar buttons and shortcuts (removeAddinAlterations in main.js),
+ * and hides each tool window's contents behind the text "(currently
+ * unavailable)". The window stays on screen until an add-in adds one with the
+ * same id, which empties it and shows it again.
+ *
+ * @param {object} c                  a tb-cdp connection
+ * @param {object} o                  as for waitForCompile in tb-ide.mjs
+ * @returns {Promise<{pid: number, waited: object}>} the new compiler's process
+ *   id, and waitForCompile's result for its compile
+ */
+export async function restartCompiler(c, { project, timeout = 180 * 1000 }) {
+  const before = await compilerPid(c);
+  if (!before) throw new Error("the IDE has no compiler process to restart");
+  await click(c, "restartIcon");
+  const pid = await awaitNewCompiler(c, before, { why: "clicking the restart button" });
+  return { pid, waited: await waitForCompile(c, { project, timeout }) };
+}
+
 // ------------------------------------------------------------------ the code editor
 
 // The IDE has one Monaco code editor, window.editor, and gives it the model of
@@ -370,25 +398,67 @@ export const editorState = (c) => c.evaluate(EDITOR_JS);
 export const editorText = (c) => c.evaluate(
   "typeof editor !== 'undefined' && editor.getModel() ? editor.getModel().getValue() : null");
 
+// How long the IDE may still put the cursor back where it last revealed a
+// line, in milliseconds. Opening a file at a place calls revealLineInEditor,
+// and whenever the compiler's decorations for the document arrive less than
+// 700 ms after the last such call, parseDocumentDecorations calls it again:
+// the cursor goes back to that place, and the 700 ms start over (main.js,
+// BETA 983). Every edit brings new decorations. Measured: with Haystack.twin
+// opened at 4:9, the cursor moved to 3:1 and "xyz" typed a key every 150 ms,
+// "x" went in at 3:1 and "y" and "z" both at 4:9, as "zy". A time the IDE has
+// cleared (undefined) never matches, and neither does its starting 0.
+const REVEAL_LEFT_JS = `typeof revealedLineTime !== "number" || !revealedLineTime ? 0
+  : Math.max(0, 700 - (performance.now() - revealedLineTime))`;
+
+/**
+ * Wait until the IDE can no longer put the cursor back where it last opened a
+ * file (REVEAL_LEFT_JS says why): 700 ms after its last reveal. openFile,
+ * setCursor and select wait for it themselves; call it before typing into the
+ * code editor after anything else that opens a file at a place, such as an
+ * add-in's Editors.Open. Returns false when reveals were still going on after
+ * `timeout` milliseconds.
+ */
+export async function afterReveal(c, { timeout = 10 * 1000 } = {}) {
+  const until = Date.now() + timeout;
+  for (;;) {
+    const left = await c.evaluate(REVEAL_LEFT_JS);
+    if (!left) return true;
+    if (Date.now() >= until) return false;
+    await sleep(left + 50);
+  }
+}
+
 /**
  * Open a file of the project in the code editor, with the cursor at a place,
  * the way the IDE's own Find in Files results do it. The path is the file's in
  * the project, "/<Project>/Sources/<file>", with or without "twinbasic:" in
  * front. Throws when the project has no such file.
+ *
+ * Returns once the cursor is at that place for good. A file not open yet is
+ * read from the compiler first, and the IDE calls openFile's eighth argument
+ * once it has been; then the IDE may still put the cursor back there for 700 ms
+ * (afterReveal), which would undo a setCursor made in the meantime.
  */
 export async function openFile(c, file, { line = 1, column = 1 } = {}) {
   const uri = file.startsWith("twinbasic:") ? file : `twinbasic:${file}`;
-  const ok = await c.evaluate(`(() => {
+  const r = await c.evaluate(`new Promise((resolve) => {
     const node = fs.tree.resolvePath(${JSON.stringify(uri)});
-    if (!node) return false;
-    openEditors.openFile(node, false, false, false, ${Number(line)}, ${Number(column)});
-    return true;
-  })()`);
-  if (!ok) throw new Error(`the project has no file ${file}`);
+    if (!node) return resolve("missing");
+    setTimeout(() => resolve("timeout"), 10000);
+    openEditors.openFile(node, false, false, false, ${Number(line)}, ${Number(column)}, undefined,
+                         () => resolve("open"));
+  })`, { awaitPromise: true });
+  if (r === "missing") throw new Error(`the project has no file ${file}`);
+  if (r !== "open") throw new Error(`the IDE did not report ${file} open within 10 s`);
+  await afterReveal(c);
 }
 
-/** Put the code editor's cursor at a line and column, and give it the focus. */
+/**
+ * Put the code editor's cursor at a line and column, and give it the focus.
+ * Waits for afterReveal first, so that the IDE cannot put it back.
+ */
 export async function setCursor(c, line, column) {
+  await afterReveal(c);
   await c.evaluate(`(() => {
     const p = { lineNumber: ${Number(line)}, column: ${Number(column)} };
     editor.setPosition(p);
@@ -399,9 +469,10 @@ export async function setCursor(c, line, column) {
 
 /**
  * Select a range in the code editor and give it the focus; the cursor ends at
- * the range's end.
+ * the range's end. Waits for afterReveal first, as setCursor does.
  */
 export async function select(c, { startLine, startColumn, endLine, endColumn }) {
+  await afterReveal(c);
   await c.evaluate(`(() => {
     editor.setSelection({ startLineNumber: ${Number(startLine)}, startColumn: ${Number(startColumn)},
                           endLineNumber: ${Number(endLine)}, endColumn: ${Number(endColumn)} });

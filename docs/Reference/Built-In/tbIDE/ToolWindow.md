@@ -87,6 +87,9 @@ Whether the pane is shown. **Boolean**, read / write. Default **False** --- newl
 
 Syntax: *toolWindow*.**Visible** [ = *value* ]
 
+> [!NOTE]
+> Showing the pane sets the `display` style of [**RootDomElement**](#rootdomelement) to `block`, replacing any value the addin gave it. Put a flex or grid layout on a child element of the root instead, and give both the root and that child a `height` of `100%` for the layout to fill the pane.
+
 ## Methods
 
 ### ApplyCss
