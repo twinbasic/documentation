@@ -17,7 +17,10 @@ Syntax: *object*.**Item(** *index* **)**
 *index*
 : *required* An expression that specifies the position of a member of the collection. If a numeric expression, *index* must be a number from 1 to the value of the collection's [**Count**](Count) property. If a string expression, *index* must correspond to the *key* argument specified when the member referred to was added to the collection.
 
-If *index* doesn't match any existing member of the collection, an error occurs. If *index* is neither a number nor a string, an error also occurs.
+If *index* doesn't match any existing member of the collection, run-time error -2147467259 (`&H80004005`, *Unspecified error*) occurs. If *index* is neither a number nor a string, an error also occurs.
+
+> [!NOTE]
+> VBA raises error 9, *Subscript out of range*, for a member that does not exist, so VBA code that tests `Err.Number = 9` does not recognise the twinBASIC error --- see [Error numbers that differ from VBA](../ErrObject/Number#error-numbers-that-differ-from-vba). To test for a key without raising an error, use [**Exists**](Exists).
 
 **Item** is the default member of a **Collection** object. Therefore, the following lines of code are equivalent:
 

@@ -22,7 +22,23 @@ When returning a user-defined error from an object, set **Err.Number** by adding
 Err.Raise Number:=vbObjectError + 1051, Source:="SomeClass"
 ```
 
-### Example
+## Error 9, Subscript out of range: numbers that differ from VBA
+{: #error-numbers-that-differ-from-vba }
+
+> [!NOTE]
+> As of BETA 983, twinBASIC does not raise error 9, *Subscript out of range*, for an array index that is out of range or for a **Collection** member that does not exist. VBA's documentation gives error 9 for each case below; twinBASIC raises a different number.
+
+| Access | VBA | twinBASIC |
+|---|---|---|
+| An array index outside the array's bounds, in any dimension --- in a fixed or dynamic array, an array held in a **Variant**, or the array that [**Split**](../Strings/Split) returns | 9 | -2147352565 (`&H8002000B`) *Invalid index.* |
+| Any element of a dynamic array that has no dimensions, because it was never dimensioned or was emptied with [**Erase**](../../Core/Erase) | 9 | -2147467259 (`&H80004005`) *Unspecified error* |
+| A [**Collection**](../Collection/) member that does not exist, by position or by key | 9 | -2147467259 (`&H80004005`) *Unspecified error* |
+
+Code ported from VBA that relies on `Err.Number = 9` to detect a bad index misses these errors. Check the index before using it instead: compare it with [**LBound**](../Information/LBound) and [**UBound**](../Information/UBound) for an array, compare it with [**Count**](../Collection/Count) for a **Collection**, or test a key with [**Exists**](../Collection/Exists). Where the error itself has to be handled, test for the twinBASIC number as well as `9`. The hexadecimal literals `&H8002000B` and `&H80004005` are equal to the two numbers.
+
+Error 9 is still raised elsewhere. **LBound** and **UBound** raise it for an array that has no dimensions, and the VB package's [**Printers**](../../Packages/VB/Printers/) collection raises it for an index past its end. The VB package's [**Forms**](../../Packages/VB/Global/#forms-collection) collection raises -2147467259 instead.
+
+## Example
 
 The first example illustrates a typical use of the **Number** property in an error-handling routine.
 
@@ -65,7 +81,7 @@ End If
 MsgBox msg, , "Object Error", Err.HelpFile, Err.HelpContext
 ```
 
-### See Also
+## See Also
 
 - [Description](Description) property
 - [Source](Source) property

@@ -128,6 +128,14 @@ reader's click, and `scripts/tbrun.mjs`. Change one expected value for a second 
 the failure path is what the pages are least likely to have been checked against. A
 program that opens a `MsgBox` or waits for a user at a form cannot be run this way.
 
+**Measure what an answer says the product does.** None of round 8's four most serious
+findings was in an evaluator's report: the IDE's Export Project emptying a Git repository,
+derived-class constructors failing in silence, error numbers that are not VBA's, and a debugger
+Stop that stops one procedure. Each came from checking an answer's claim about the product
+against the product, because an evaluator cannot find a behaviour that no page mentions. Drive
+the IDE the way `WIP.Harness.md` describes --- a probe agent per question, a port range of its
+own, scratch folders only --- and measure before a sentence about the product is written.
+
 **Re-verify every finding against the file before recording it.** In round 1, seven of
 twenty-six findings needed amendment after an agent checked the source, every one in the
 direction of the reviewer having overstated severity. Evaluators reason from prose and can
@@ -166,6 +174,14 @@ backgrounded run whose stdout nobody drains fills the pipe buffer and blocks on 
 *after* finishing its work --- leaving a process that has already written correct output,
 burned its usual few seconds of CPU, and will never exit. Three accumulated in one fix pass
 before anyone noticed. Run builds in the foreground, or drain the output.
+
+**A section written to be found must be a `##`.** The site search gives an entry to h1 and h2
+sections only, and folds an h3 into its parent's; a symptom-titled `###` is invisible to the
+search it was written for. Round 8 found this through UC-15's answer, an h3 with no entry.
+
+**Give every agent that drives the IDE its own port range**, and have it pass `--port` to
+`examples.bat` as well: another session may be running one on the default ports, and its work
+folder is keyed to the port.
 
 **Examples are the part readers copy, and nothing tests them.** Two of `Extending.md`'s three
 worked examples were defective --- one duplicated a shipped renderer rule and weakened its

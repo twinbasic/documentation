@@ -42,9 +42,9 @@ Next
 
 ## Indexing
 
-Numeric indexing is **0-based**, in contrast with most VB6 collections, which are 1-based. The first installed printer is `Printers(0)`; the last is `Printers(Printers.Count - 1)`. An index outside that range raises run-time error 9 (*Subscript out of range*).
+Numeric indexing is **0-based**, in contrast with most VB6 collections, which are 1-based. The first installed printer is `Printers(0)`; the last is `Printers(Printers.Count - 1)`. An index past the end raises run-time error 9 (*Subscript out of range*); a negative index raises -2147467259 (`&H80004005`) instead.
 
-String indexing looks up by **DeviceName** --- new in twinBASIC; VB6's **Printers** supports only numeric access. A name that is not present raises the underlying collection's run-time error 5 (*Invalid procedure call or argument*).
+String indexing looks up by **DeviceName** --- new in twinBASIC; VB6's **Printers** supports only numeric access. A name that is not present raises -2147467259 (`&H80004005`), the error a [**Collection**](../../../Modules/Collection/Item) raises for a missing key --- not VBA's 5 (*Invalid procedure call or argument*).
 
 ## Properties
 
@@ -63,7 +63,7 @@ Returns the [**Printer**](../Printer/) at the given index. **Default property** 
 Syntax: *object*.**Item**( *Index* ) **As Printer**
 
 *Index*
-: *required* A **Variant**. As a **Long**, the zero-based position in the collection (`0` to `Count - 1`); out-of-range values raise run-time error 9. As a **String**, the **DeviceName** of the printer; an unknown name raises run-time error 5.
+: *required* A **Variant**. As a **Long**, the zero-based position in the collection (`0` to `Count - 1`); a value past the end raises run-time error 9, and a negative one -2147467259. As a **String**, the **DeviceName** of the printer; an unknown name raises -2147467259.
 
 ## See Also
 

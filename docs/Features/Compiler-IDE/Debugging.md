@@ -7,7 +7,7 @@ permalink: /Features/Compiler-IDE/Debugging
 
 # Debugging Features
 
-twinBASIC includes several features to help with debugging.
+twinBASIC includes several features to help with debugging. Breakpoints, stepping through code, and what the IDE shows when a run-time error stops a program are on the [Debug menu](../../tB/IDE/Project/Menu/Debug#when-a-run-time-error-stops-the-program) page.
 
 ## Debug Trace Logger
 

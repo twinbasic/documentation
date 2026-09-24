@@ -137,11 +137,24 @@ See [Packages](../../../Features/Packages/)
 
 ## Export
 
+> [!WARNING]
+> **File → Export Project** deletes everything in its target folder before it writes, without asking. Read [Export Project](Menu/File#export-project) before setting these.
+
 ### Export Path
+
+The folder **File → Export Project** writes to. When it is set, the command exports there straight away instead of asking for a folder, and empties the folder first.
+
+The path can use these variables: `${SourcePath}`, the folder that holds the `.twinproj` file, and `${ProjectName}`, `${ProjectFileName}`, `${ProjectID}`, `${FileExtension}`, `${VersionMajor}`, `${VersionMinor}`, `${VersionBuild}` and `${VersionRevision}`. The dialog refuses `${SourcePath}` on its own, because the export would delete the project file, but it accepts the same folder written out in full.
+
+Every project template sets `"project.exportPathIsV2": true` in the `Settings` file. In a project without it, the export goes into a subfolder named after the project, inside *Export Path*.
 
 ### Export After Save
 
+When set to **Yes**, every save of the project also runs **Export Project** into *Export Path*. So every save empties that folder again, even a save with nothing changed.
+
 ### Export Verbose
+
+When set to **Yes**, **Export Project** writes a line to the [Debug Console](DebugConsole) for each file and folder it deletes, `[EXPORT]  DELETED: …`, and for each file it writes, `[EXPORT]  DONE: …`. When set to **No**, the console shows only the line that starts the export, the `[EXPORT] COMPLETED` line that ends it, and any failure.
 
 ## Force DPI Awareness At Startup
 
@@ -152,6 +165,10 @@ See [Packages](../../../Features/Packages/)
 ## Immediate Memory Invalidation
 
 ## Break On All Errors
+
+When set to **Yes**, a run-time error stops the program at the failing line even while an `On Error Resume Next` or `On Error GoTo` statement is in effect, with the same error panel as an error that nothing handles. It is **No** by default, and then the handler gets the error. **Debug → Debugger Options → Break On All Errors** turns the same setting on and off. In the `Settings` file it is `debugger.breakOnAllErrors`.
+
+[When a run-time error stops the program](Menu/Debug#when-a-run-time-error-stops-the-program) describes the panel. [Debugger Options](Menu/Debug#debugger-options) says what **Ignore (Resume Next)** does when this setting is on.
 
 ## Build Stack Reserve Size
 

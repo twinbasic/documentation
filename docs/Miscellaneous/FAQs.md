@@ -202,17 +202,17 @@ The IDE is quite small, it's currently only a 25MB download, about 80MB extracte
 
 In addition to the directory you extract the IDE to, twinBASIC stores files and settings in several locations:
 
-- `%APPDATA%\Local\twinBASIC`
+- `%LOCALAPPDATA%\twinBASIC`
 
-- `%APPDATA%\Local\twinBASIC_Admin`
+- `%LOCALAPPDATA%\twinBASIC_Admin`
 
-- `%APPDATA%\Local\twinBASIC_WebPanel`
+- `%LOCALAPPDATA%\twinBASIC_WebPanel`
 
-- `%APPDATA%\Local\twinBASIC_WebPanel_Admin`
+- `%LOCALAPPDATA%\twinBASIC_WebPanel_Admin`
 
   (WebView2 user folders, this is for the IDE itself and not directly related to files/settings you interact with. Some of these folders may not exist.)
 
-- `%APPDATA%\Roaming\twinBASIC`
+- `%APPDATA%\twinBASIC`
   
   (storage of themes, linked packages, and other files that you want to keep when deleting previous installs)
   

@@ -363,7 +363,7 @@ above with the one symptom that detects it removed. `tbrun` pins the path in its
 copy, which is why it insists on a source tree it can edit rather than a packed project it
 cannot.
 
-Three smaller things it knows, each of which cost a run:
+Four smaller things it knows, each of which cost a run:
 
 - **`element.click()` on `#buildIcon` does nothing.** It is a plain DIV behind the IDE's own
   pointer handling and needs real `Input.dispatchMouseEvent` presses at its centre.
@@ -382,6 +382,18 @@ Three smaller things it knows, each of which cost a run:
   and the linker writes there *after* the build, so without a clear you capture your output
   interleaved with `[LINKER]` lines. The script warns rather than guessing which lines are
   yours.
+- **A failed build is not output.** A build that fails after a clean compile never runs the
+  probe, and the IDE's own log stays in the console: `[BUILD] Starting...`,
+  `[TYPELIB] failed to finalize typelibrary.  Disk error?`, `[LINKER] FAILED to create type
+  library`, `[BUILD] failed`. `tbrun` returned exactly that as the probe's output, with exit 0,
+  twice in round 8's fix pass --- five runs going at once on ports 9740--9744, and both passed
+  when repeated. It now exits 2 on a `[BUILD] failed` or `[LINKER] FAILED` line, which the
+  probe's own `Debug.Cls` would have erased. What made the type library fail was not isolated.
+
+A reader of the console that is not `tbrun` should **compare the whole console before and
+after, not read on from an index**: new text can be appended to an entry that is still open.
+Round 8's export probe missed the first `[EXPORT] exporting...` line of every session that
+way. `tbrun` re-reads the whole backing array on every poll, which is why it never did.
 
 It settles on a quiet period rather than a sentinel, so no probe has to print a marker the
 script knows about. Distinct `--port` values let probes run concurrently, exactly as

@@ -13,7 +13,7 @@ Syntax:
 
 > [ *attributes* ]  
 > [ **Public** \| **Private** ] **Class** *name* [ **(** **Of** *typevars* **)** ]  
-> &nbsp;&nbsp;&nbsp;&nbsp;[ **Inherits** *baseclass* ]  
+> &nbsp;&nbsp;&nbsp;&nbsp;[ **Inherits** *baseclass* [ **,** *baseclass* ] ... ]  
 > &nbsp;&nbsp;&nbsp;&nbsp;[ *classmember* ]  
 > &nbsp;&nbsp;&nbsp;&nbsp;[ *classmember* ] ...  
 > **End Class**
@@ -35,7 +35,7 @@ Syntax:
 : *optional* (twinBASIC) One or more type variable names, separated by commas, that make the class a *generic class*. Each type variable can be referenced in member declarations as if it were a regular type. See [Generics](../../Features/Language/Generics).
 
 **Inherits** *baseclass*
-: *optional* (twinBASIC) Names a single base class whose **Public** and [**Protected**](Protected) members are inherited by *name*. The **Inherits** line, when present, must appear immediately after the **Class** header and before any other member. **Inherits** enables [**Overridable**](Sub) / **Overrides** members, explicit `*baseclass*.New(...)` chained constructor calls from inside `Sub New`, and **Protected** member visibility. See [Inheritance](../../Features/Language/Inheritance).
+: *optional* (twinBASIC) Names a base class whose **Public** and [**Protected**](Protected) members are inherited by *name*. A class can inherit from more than one: list them after one **Inherits**, separated by commas, or give each its own **Inherits** line. The **Inherits** lines, when present, must appear immediately after the **Class** header and before any other member. **Inherits** enables [**Overridable**](Sub) / **Overrides** members, explicit `*baseclass*.New(...)` chained constructor calls from inside `Sub New`, and **Protected** member visibility. See [Inheritance](../../Features/Language/Inheritance).
 
 *classmember*
 : *optional* Any of the following:

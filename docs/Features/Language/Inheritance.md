@@ -58,9 +58,12 @@ This option supports full inheritance and OOP: `Protected` methods and variables
 
 ### Example: Animal Class Hierarchy
 
+> [!IMPORTANT]
+> Every class in this example is declared `Private Class`, because each one has a `Sub New` that takes arguments. A class that is not `Private` is exposed to COM, and COM creates objects without arguments. So a public class --- base or derived --- whose `Sub New` takes arguments fails to compile with TB5135, unless it also has a constructor that takes none. There are three fixes: declare the class `Private`, add the `[COMCreatable(False)]` attribute, or add a constructor without arguments, such as `Class_Initialize`. See [Parameterized Class Constructors](../Advanced/Classes-and-Modules#parameterized-class-constructors).
+
 Starting with a base class:
 
-```tb check_build
+```tb check_build projname=inheritance-animals
 Private Class Animal
     Protected _name As String
     Protected _dob As Date  ' date of birth
@@ -102,9 +105,11 @@ Private Class Animal
 End Class
 ```
 
-Others can inherit:
+Others can inherit. Constructors are not inherited, so each derived class declares its own `Sub New`. Without one, a `Cat` cannot be created with arguments: `New Cat("Misty", #20-Nov-2022#)` fails with TB5030, *Unexpected call arguments*.
 
-```tb check_build
+When the base class's `Sub New` takes arguments, the derived class's `Sub New` must call it --- `Dog` calls `Animal.New` below, and `GuardDog` calls `Dog.New`. Nothing else calls it. If the call is left out --- or the derived class has no `Sub New` and is created without arguments --- the code still compiles and runs. The base constructor never runs, and the fields it sets keep their default values. No error or warning reports it. A base `Sub New` that takes no arguments is different: it runs automatically, before the derived class's `Sub New`.
+
+```tb check_build projname=inheritance-animals
 ' ===== Derived: Dog =====
 Private Class Dog
     Inherits Animal
@@ -112,7 +117,7 @@ Private Class Dog
     Protected _breed As String
 
     Public Sub New(name As String, dob As Date, breed As String)
-        Animal.New(name, dob)               ' we can explicitly call base constructors from within our constructor
+        Animal.New(name, dob)               ' required: nothing else runs Animal's constructor
         _breed = breed
     End Sub
 
@@ -133,7 +138,7 @@ Private Class GuardDog
     Protected _onDuty As Boolean
 
     Public Sub New(name As String, dob As Date, breed As String)
-        Dog.New(name, dob, breed)           ' we can explicitly call base constructors from within our constructor
+        Dog.New(name, dob, breed)           ' required: runs Dog's constructor, which runs Animal's
         _onDuty = True
     End Sub
 
@@ -153,6 +158,47 @@ Private Class GuardDog
         End If
     End Function
 End Class
+
+' ===== Derived: Cat =====
+Private Class Cat
+    Inherits Animal
+
+    Public Sub New(name As String, dob As Date)
+        Animal.New(name, dob)               ' required, although Cat adds no fields of its own
+    End Sub
+
+    Protected Function GetSound() As String Overrides Animal.GetSound
+        GetSound = "meow"
+    End Function
+End Class
 ```
 
-This is just an excerpt, see the full Sample 23 for additional classes, usage, and information about inheritance in twinBASIC.
+`Dog`'s `GetSound` is marked `Overridable` as well as `Overrides`, and that is what lets `GuardDog` override it again. `Cat`'s is not, so a class that inherits `Cat` cannot override `GetSound`: the compiler reports TB5068, *procedure is not marked as Overridable*.
+
+Code that uses the classes goes in a `Module`. A procedure written at the top level of a `.twin` file, outside any `Module` or `Class`, does not compile: every line of it fails with TB5182, *Syntax error. No handler for this symbol*. This routine holds each animal in an `Animal` variable, and each call to `Speak` still uses the `GetSound` of the object's own class:
+
+```tb check_build projname=inheritance-animals
+Module AnimalsDemoMod
+    Public Sub DemoAnimals()
+        Dim pets(2) As Animal
+        Set pets(0) = New Dog("Rex", #10-Feb-2019#, "Labrador")
+        Set pets(1) = New GuardDog("Rover", #01-Jun-2018#, "German Shepherd")
+        Set pets(2) = New Cat("Misty", #20-Nov-2022#)
+
+        Dim i As Long
+        For i = 0 To UBound(pets)
+            pets(i).Speak
+        Next i
+    End Sub
+End Module
+```
+
+Running `DemoAnimals` --- for example from its [CodeLens](../Compiler-IDE/CodeLens) bar --- prints this to the Debug Console:
+
+```text
+Rex says: woof
+Rover says: WOOF!
+Misty says: meow
+```
+
+The classes come from Sample 23, which also has an `AnimalWatcher` class that handles the `Spoke` event, and a longer demonstration routine. To open it, choose **File → New Project**, then the **Samples** tab, and pick **Sample 23. OOP Inheritance Example (Animals)**. The [New Project](../../tB/IDE/Project/New#samples) page lists every sample.

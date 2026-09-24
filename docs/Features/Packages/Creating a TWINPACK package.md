@@ -22,12 +22,13 @@ Once you've created the project, you should find the extra 'PACKAGE PUBLISHING' 
 <br>
 <br>
 
-You should now edit the Namespace, Description, Licence and Visibility properties appropriately by using the package manager 'EDIT' links, which will take you to the individual settings in the `Settings` file.   Once you've edited them, remember to close (and save) the `Settings` file in order for your changes to be reflected in the package manager panel.
+You should now edit the Namespace, Description, Licence, Visibility and Version properties appropriately by using the package manager 'EDIT' links, which will take you to the individual settings in the `Settings` file.   Once you've edited them, remember to close (and save) the `Settings` file in order for your changes to be reflected in the package manager panel.
 
 - **Namespace:** this is the symbol that will be used to group your components in projects that reference your package.  For example, a package that provides a series of different dialog classes might use the namespace `Dialogs`.
 - **Description:** this is the descriptive text that will appear in the `Settings`->`References` list.  If you plan to share this package, think carefully about the description so that others can discover your package through TWINSERV.
 - **Licence:** this short text appears in the `Settings`->`References` list, alongside the Description.  If you plan to share this package, it is important that you enter this field, and the value you enter here should appropriately match the content of the LICENCE.md file (e.g. 'MIT', 'LGPL' etc).
 - **Visibility:** determines whether the package is visible to only you (PRIVATE) or everyone (PUBLIC).  The value set here only takes effect when you use the 'PUBLISH THIS PACKAGE' button to publish your package in the package manager service, TWINSERV.
+- **Version:** the package's version number, in four parts: the **(VERSION) Major**, **(VERSION) Minor**, **(VERSION) Build** and **(VERSION) Revision** settings. A build copies them unchanged into the TWINPACK file, and a project that references the package shows them in the **Version** column of its **Library References** list. TWINSERV refuses to publish a version it already has: the IDE then reports *Package already uploaded with this exact version number.* For a package from a TWINPACK file the IDE does not compare versions at all. It accepts a lower version as well as a higher one, and it refuses to import a package that the project already contains, whatever the version. So raising the Version does not update the projects that use the package; see [Updating a package you built yourself](Updating#updating-a-package-you-built-yourself).
 
 *If you don't plan to publish your package on TWINSERV, then you don't need to fill in the **Licence** or **Visibility** fields.*
 
@@ -46,7 +47,7 @@ Use this option if you want to just create a local TWINPACK file that you can us
 
 You'll see the build output notification in the `DEBUG CONSOLE`, as seen above.
 
-Job done.  See [Importing a package from a TWINPACK file](Importing-TWINPACK) for referencing and using the TWINPACK file in other twinBASIC projects.
+Job done.  See [Importing a package from a TWINPACK file](Importing-TWINPACK) for referencing and using the TWINPACK file in other twinBASIC projects. To get a later build of the package into projects that already use it, see [Updating a package you built yourself](Updating#updating-a-package-you-built-yourself).
 
 <br>
 

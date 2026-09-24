@@ -257,13 +257,17 @@ runs at two points, neither of them behind a flag --- a build run with
 Unlike the link check, **a finding here aborts the build**. A broken link still
 leaves a tree worth inspecting; a tree with a private key in it does not.
 
-When it aborts on a file of yours there are three ways forward, and the message
-names only two: keep the file out of `docs/`, declare that one file in
-`_config.yml`'s `bundle_extra`, or add its extension to `SOURCE_EXTENSIONS`.
-Which one applies is a decision about the file rather than about the build ---
-[What may live in docs/](Authoring#what-may-live-in-docs) gives the
-`bundle_extra` syntax and says why it is the right answer far more often than
-widening `SOURCE_EXTENSIONS`, which re-blesses every stray file of that type.
+When it aborts on a file of yours, the message names all three ways forward, in
+the order to consider them: remove the file from `docs/` or add an `exclude:`
+pattern for it in `_config.yml`, declare that one file there under
+`bundle_extra:`, or add its extension to `SOURCE_EXTENSIONS`. The message keeps
+the last for a site that is genuinely gaining an asset type, because it publishes
+every file of that type from then on. Which one applies is a decision about the
+file rather than about the build --- [What may live in docs/](Authoring#what-may-live-in-docs)
+gives the `bundle_extra` syntax and says why it is the right answer far more
+often than widening `SOURCE_EXTENSIONS`. A refusal from the second sweep gives
+different advice: nothing in `docs/` produced that file, so the message names
+`BUILD_EXTENSIONS` instead.
 
 `test.bat` runs [`scripts/check_publish_policy.mjs`](Tools#check-publish-policy)
 first, and it exists because a clean build proves only half of this. "Nothing in

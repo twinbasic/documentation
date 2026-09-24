@@ -28,6 +28,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { checkPageBaseline, GUARDED_SRC } from "../builder/page-baseline.mjs";
 
+// A crash is the harness failing, not a finding: exit 2, as Extending.md's gate
+// conventions require. This file runs at top level, so there is no main().catch
+// to do it; the handler also catches a rejected top-level await.
+process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
+
 const BASE = { src: GUARDED_SRC, pages: 908, staticFiles: 247 };
 
 let failures = 0;
