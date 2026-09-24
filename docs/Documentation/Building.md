@@ -589,7 +589,7 @@ release:
 | asset | what it is |
 |---|---|
 | `twinbasic-docs-offline.zip` | `_site-offline/` zipped from the inside, so `index.html` sits at the archive root. Extract anywhere and open it --- no server, and search, navigation and dark mode all work. |
-| `twinBASIC Book.pdf` | The PDF book, A4, a little under 2,000 pages, bookmarked to `h1`--`h4`. |
+| `twinBASIC Book.pdf` | The PDF book, A4, about 2,250 pages, bookmarked to `h1`--`h4`. |
 
 > [!IMPORTANT]
 > The release is marked *latest*, and the site's own two download buttons are

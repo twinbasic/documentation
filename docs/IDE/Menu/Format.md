@@ -16,15 +16,19 @@ Every command on this menu acts on the controls selected in the form designer, s
 
 - Align
 - Make Same Size
+
 ---
 - Horizontal Spacing
 - Vertical Spacing
+
 ---
 - Center In Container (Horizontally)
 - Center In Container (Vertically)
+
 ---
 - Bring To Front
 - Send To Back
+
 ---
 - Lock Controls
 
@@ -33,10 +37,12 @@ Every command on this menu acts on the controls selected in the form designer, s
 - Left <kbd>ALT</kbd> + <kbd>ARROWLEFT</kbd>
 - Center (Horizontal)
 - Right <kbd>ALT</kbd> + <kbd>ARROWRIGHT</kbd>
+
 ---
 - Top <kbd>ALT</kbd> + <kbd>ARROWUP</kbd>
 - Center (Vertical)
 - Bottom <kbd>ALT</kbd> + <kbd>ARROWDOWN</kbd>
+
 ---
 - To Grid
 

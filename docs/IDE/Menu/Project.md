@@ -11,9 +11,11 @@ permalink: /tB/IDE/Project/Menu/Project
 ![The Project menu open with every command greyed out: Add, which carries a submenu arrow, References with CTRL+T, Project Settings, Open Project Folder and Open Build Output Folder.](Images/Menu_Project.png)
 
 - Add
+
 ---
 - References... <kbd>CTRL</kbd> + <kbd>T</kbd>
 - Project Settings...
+
 ---
 - Open Project Folder...
 - Open Build Output Folder...

@@ -199,6 +199,7 @@ parts:
 
   - title: Tutorials
     subtitle: The foundations, then worked code examples for Arrays, CEF, WebView2, and CustomControls
+    landing_page: /Tutorials/
     outline_closed: true
     # DONE
     chapters:
@@ -244,6 +245,53 @@ parts:
         no_heading_shift: true
         outline_closed: true
 
+  - title: The twinBASIC IDE
+    subtitle: Starting, configuring, building, and debugging a project
+    # Only the IDE pages with prose of their own. The rest of the section
+    # is still screenshots and the labels they show; list a page here once
+    # it explains something. Links to the pages left out open the website.
+    landing_page: /tB/IDE
+    outline_closed: true
+    chapters:
+      - title: New Project
+        page: /tB/IDE/Project/New
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: Project Settings
+        page: /tB/IDE/Project/Settings
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: File Menu
+        page: /tB/IDE/Project/Menu/File
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: Toolbar
+        page: /tB/IDE/Project/Toolbar
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: Debug Menu
+        page: /tB/IDE/Project/Menu/Debug
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+      - title: Debugging Panes
+        pages:
+          - /tB/IDE/Project/DebugConsole
+          - /tB/IDE/Project/CallStack
+          - /tB/IDE/Project/Variables
+          - /tB/IDE/Project/Memory
+        outline_closed: true
+      - title: Add Ins
+        page: /tB/IDE/AddIns/
+        no_descent: true
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
+
   - title: The Core Language
     subtitle: Statements, operators, and built-in keywords
     outline_closed: true
@@ -268,6 +316,11 @@ parts:
       - title: Operators
         nav_page: Reference Section/Operators
         outline_closed: true
+      - title: Data Types
+        page: /Reference/Data-Types
+        no_outline_entry: true
+        no_heading_shift: true
+        outline_closed: true
       - title: Compiler Constants
         page: /Reference/Compiler-Constants
         outline_closed: true
@@ -279,11 +332,17 @@ parts:
         
 
   - title: Reference Section
-    subtitle: Controls and the project glossary
+    subtitle: Controls, enumerations, twinBASIC's additions, and the glossary
     outline_closed: true
     chapters:
       - title: Controls
         landing_page: /tB/Controls
+        outline_closed: true
+      - title: Enumerations
+        landing_page: /Reference/Enumerations
+        outline_closed: true
+      - title: twinBASIC Additions
+        landing_page: /Reference/twinBASIC-Additions
         outline_closed: true
       - title: Glossary
         landing_page: /tB/Gloss
