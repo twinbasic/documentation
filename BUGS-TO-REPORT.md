@@ -835,7 +835,14 @@ each time.
 **What does not reproduce it:** **Stop** at an ordinary break (a breakpoint or a step), which
 prints `aborted` and ends the whole run.
 
-**Found by** the same probe.
+**Its worst consequence is a false pass.** At a failed `Assert` --- whose error is raised by the
+assertion's own procedure --- **Stop**, and **Run → End** too, end only that procedure: the test
+carries on past the failed check, and a runner in the shape `Testing-with-Assert.md` teaches then
+prints `All PadLeft tests passed.` Three trials, one per button (**Ignore (Resume Next)** does the
+same, as it should). Moving execution to the test's `End Sub` with **Set Next Statement** and then
+choosing **Run → End** makes it an ordinary break, and the run is aborted (two trials).
+
+**Found by** the same probe; the assertion case by the fix pass for the Assert tutorial.
 
 ---
 

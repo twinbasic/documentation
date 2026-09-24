@@ -164,6 +164,7 @@ never on the report's word for how the answer was reached.
 | 5 | 8 --- the fixes again, and three unread surfaces | [builder/REVIEW-USECASES-4b50c0c.md](../builder/REVIEW-USECASES-4b50c0c.md); 15 findings, no hazard walked into, and discoverability flat across three re-runs |
 | 6 | 8 --- a discoverability fix measured, and the reference half | [builder/REVIEW-USECASES-9b8e70c.md](../builder/REVIEW-USECASES-9b8e70c.md); 14 findings, the first non-compiling samples the harness has found |
 | 7 | 8 --- the re-runs round 6 named, and the first executed case | [builder/REVIEW-USECASES-60bb6f5.md](../builder/REVIEW-USECASES-60bb6f5.md); 19 findings, no hazard walked into, UC-40's discoverability 1 → 4, and a tutorial describing a failure the product does not produce |
+| 8 | 13 --- the first isolated evaluators: round 7's re-runs, round 1's four lowest, three new | [builder/REVIEW-USECASES-5b4cd37.md](../builder/REVIEW-USECASES-5b4cd37.md); 29 findings, no set hazard walked into, and the four most serious found by probing the product: an IDE export that empties a Git repository, constructors that fail in silence, error numbers that are not VBA's, and a debugger Stop that stops one procedure and so turns a failed unit test into a pass |
 
 Round 1's headline was a gradient: documentation quality fell monotonically with depth into
 the toolchain (contributor 3.8 discoverability, toolchain user 2.8, builder developer 1.8),
@@ -175,6 +176,12 @@ they used: **the developer documentation is hard to find and reliable once found
 (discoverability 2.25, actionability 3.50); the reference is easy to find and its
 examples do not work (3.25, 2.50).** Rounds 1--5 measured only the first, on 4.0% of
 the search index. The reference is 80.9%.
+
+Round 8's headline is where the findings come from. Its thirteen evaluators, the first that
+could not read `WIP.md`, passed every hazard they were set and raised every re-run; the round's
+four most serious findings were behaviours of the product that no page mentions, and every one
+was found by checking an evaluator's answer against the product --- a probe, an executed case, an
+IDE driven over DevTools --- because nothing in the corpus contradicts a page that is silent.
 
 Round 5's headline is what four rounds of fixes have and have not bought. Re-running three
 cases across round 4's fix pass moved completeness +1.33 and actionability +1.34 and moved

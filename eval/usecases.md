@@ -364,8 +364,9 @@ started; a re-run would re-measure the same absence.
 
 ## Round 8 --- isolated evaluators, and the re-runs round 7 named
 
-**In progress.** The corpus was built at `5de91d0`, which rebasing `staging` onto the IDE
-help add-in branch (`9c733b2c`) turned into `5b4cd37`. It therefore lacks that branch's
+**Run 2026-09-24 at `5b4cd37`** --- [builder/REVIEW-USECASES-5b4cd37.md](../builder/REVIEW-USECASES-5b4cd37.md).
+The corpus was built at `5de91d0`, which rebasing `staging` onto the IDE help add-in branch
+(`9c733b2c`) turned into `5b4cd37`. It therefore lacks that branch's
 changes to `Tools.md` and `BUGS-TO-REPORT.md`, the only two corpus files it touched that are
 readable.
 
@@ -399,12 +400,29 @@ End Sub
 **Open one surface no case has read**: the Features section's package pages, which UC-55
 reached only at their Import/Export page.
 
+**Then, in a second session, eight more.** UC-58 and UC-54 re-run, UC-54 executed again
+against the Assert pages rewritten after round 7's run. **Round 1's four lowest, never
+re-measured since**, with their goals verbatim from the Round 1 tables and on the repository
+protocol they were first run under: UC-06 (3/2/2), UC-14 (2/1/3), UC-15 (4/1/3) and UC-16
+(1/0/1). And two new site cases: UC-59, a second executed case, and UC-61, the first case to
+read the IDE section.
+
+### Persona B: toolchain user
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-06 | *(re-run of round 1)* The build aborted: a file type may not be published. Diagnose and fix. | **H** widening `SOURCE_EXTENSIONS` is the obvious fix and the wrong one; in round 1 the right remedy was on neither page that diagnoses the refusal |
+
 ### Persona C: builder developer, and a content contributor
 
 | id | goal | hazard |
 |----|------|--------|
 | UC-56 | *(re-run)* I changed one of the builder's text rewrites, and `test.bat` now fails in `check_code_regions`. What does it want from me, and what is the right fix? | **H** exempting the page or loosening the comparison looks like a fix; round 7's pass may have come from `WIP.md` |
 | UC-57 | *(re-run)* I renamed the title of a section's landing page and the build now stops with `Nav-parent orphan detected in 12 page(s)`. Fix it properly. | **H** the match is on the title, so every child has to follow it; round 7's pass may have come from `WIP.md` |
+| UC-58 | *(re-run)* I'm adding a code example to a reference page. Make sure it actually compiles before I open the pull request, and tell me how I'd show a reviewer that it does. | **H** `examples.bat` is outside every gate and CI, so a green pull request says nothing about a sample, and a fence without `check_build` is never compiled; round 7's pass may have come from `WIP.md` |
+| UC-14 | *(re-run of round 1)* Change the site's body typeface. What else must change? | **H** dark mode silently keeps the system font stack, and the diagram metrics go stale |
+| UC-15 | *(re-run of round 1)* I edited the link checker. How do I know one implementation didn't quietly check less? | round 1 found the answer excellent and missed by four searches of four |
+| UC-16 | *(re-run of round 1)* Add a CSS rule for a component that works in both themes. | **H** the dark compilation raises specificity, so a single-class rule silently loses in dark mode; round 1 stalled after eleven hops |
 
 ### Persona D: a twinBASIC developer on the published site
 
@@ -413,3 +431,6 @@ reached only at their Import/Export page.
 | UC-50 | *(site, re-run)* Port this VBA routine to twinBASIC: it assigns to `Date` and does its currency maths with `CDec`. *(The routine above follows the sentence.)* | **H** `Date` is a property, not a statement; `Decimal` is a full data type, and whether the arithmetic stays `Decimal` is now documented; so is the order a date literal is read in |
 | UC-55 | *(site, re-run)* Keep my twinBASIC project in git as plain-text files, and rebuild the project file from them in a script. | **H** as round 7, and one the pages do not know: the IDE's own **Export Project** --- and *Export After Save*, which runs it on every save --- empties its folder first, and the docs describe neither |
 | UC-60 | *(site)* I have a few utility modules I copy into every project. Make them a package that my projects reference instead, and tell me how a bug fix in the package then gets into the projects that use it. | **H** a referenced package is embedded in each project by default, so rebuilding the package changes nothing in them; *Updating a Package* covers only TWINSERV; and the linked-package folder is given as `%APPDATA%\Roaming\twinBASIC\packages`, which does not exist --- `%APPDATA%` already ends in `Roaming` |
+| UC-54 | *(site, re-run)* I want to start unit-testing my twinBASIC code. Get me from nothing to a test run: the finished project exactly as I'd have it, and what the run will print. | executed, as in round 7, and twice: once as assembled and once with one expected value changed, against the Assert pages rewritten after round 7's run to say what a failure looks like |
+| UC-59 | *(site)* Several of my classes share most of their code and differ in one step. In VB6 I copied the shared code into each one behind `Implements`; I've read that twinBASIC has real inheritance. Get me a working example --- a base class, two classes derived from it, and a routine that uses both through the base type --- as the finished code exactly as I'd have it in my project, and what running that routine prints. | executed. **H** the Inheritance page's classes are all `Private` without saying why, and a public class whose `New` takes arguments does not compile; the rule is on another page, and the page's example never constructs a class |
+| UC-61 | *(site)* My program stops with a run-time error partway through a loop when I run it from the IDE. Find the line and the loop iteration where it stopped and what the variables held there, then step through the rest of the loop one line at a time. | none known. No case has read the IDE section, whose debugging pages are 14--25 lines each |
