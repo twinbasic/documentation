@@ -519,3 +519,38 @@ called from Excel VBA, built and called.
 | UC-67 | *(site)* I want to pass a function as an argument to another procedure, the way a callback works in other languages. Write me a routine that sorts an array of names using a comparison function it is given, and use it to sort the same few names twice --- alphabetically, and by length --- printing the names each time. I want the finished code exactly as I'd have it in my project, and what it prints. | executed. None known; no case has read the Delegates page |
 | UC-68 | *(site)* I need to write a text file in UTF-8 that holds names with accents and non-Latin letters --- Zoë, Łódź and 東京 --- and read it back later. Write me a routine that writes those three names to a UTF-8 file, one per line, then reads the file back line by line and prints each line and how many characters it has. I want the finished code exactly as I'd have it in my project, and what it prints. | executed. None known; no case has read File I/O |
 | UC-69 | *(site)* Some of my Excel VBA code is slow, and I'd like to move it into a DLL built with twinBASIC and call it from VBA. Get me a working example: a twinBASIC DLL with one function that adds two numbers and one that takes a name and returns a greeting such as "Hello, Ann", and the VBA declarations and a macro that calls both and prints the results. I want both sides exactly as I'd have them, the steps to build the DLL, and what the macro prints. | built and called, with a twinBASIC caller standing in for VBA. None known; no case has read Project Types |
+
+## Round 11 --- the re-runs round 10 named, and three surfaces no case has read
+
+**Run 2026-09-24 at `4a67e09`** --- [builder/REVIEW-USECASES-4a67e09.md](../builder/REVIEW-USECASES-4a67e09.md).
+Round 10's last commit, with its fixes in. One session, every case in parallel through
+`eval/run_case.mjs`, on the model and Claude Code build of rounds 8--10: `claude-sonnet-5`
+through the desktop app's bundled 2.1.280, passed with `--claude`.
+
+**Re-run the five round 10 named**: UC-62 and UC-66 against *Keeping a project in Git from
+the IDE*, UC-69 against *Calling a Standard DLL from VBA or Excel*, UC-67 against the callback
+section, and UC-55 against the single export command; and UC-65 against the `Max` sample made
+a whole file. Goals verbatim, each on the site protocol it was first run under. **Also re-run
+round 10's own queries** for those cases against this round's index.
+
+**Open three surfaces no case has read**, each executed: a command-line tool with an exit
+code, built and run at a command prompt; two calculations on threads; and an IDE add-in, built,
+loaded and clicked in a private copy of the install by the add-in test runner.
+
+**UC-70 and UC-71 ran twice.** Their first evaluators chained `site-search` after a `cd`, were
+refused, and concluded that the search box was not available, so neither ran Channel 1. The
+protocol now says to run the command on its own, and the second runs are the ones scored.
+
+### Persona D: a twinBASIC developer on the published site
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-55 | *(site, re-run)* The goal of round 7, verbatim. | **H** a second export without `--overwrite` leaves every changed file stale; step 2 now gives one command for every export |
+| UC-62 | *(site, re-run)* The goal of round 9, verbatim. | **H** Export Project empties its folder; round 9's warning read as closing the IDE route, and *Keeping a project in Git from the IDE* was written for this |
+| UC-65 | *(site, re-run)* The goal of round 9, verbatim. | executed. The `Max` sample is now a whole file |
+| UC-66 | *(site, re-run)* The goal of round 10, verbatim. | **H** an export that holds the compiler packages rebuilds into a project with a dead copy of them; the section now says to delete them |
+| UC-67 | *(site, re-run)* The goal of round 10, verbatim. | executed. *Passing a function as an argument or parameter (callbacks)* was written for this |
+| UC-69 | *(site, re-run)* The goal of round 10, verbatim. | built and called, from a win32 and a win64 twinBASIC caller. **H** strings, bitness and the file's name; *Calling a Standard DLL from VBA or Excel* was written for this |
+| UC-70 | *(site)* I want to write a small command-line tool in twinBASIC. Run as `linecount <file>`, it prints how many lines the file has. Run with no argument, or with a file that does not exist, it prints what went wrong and exits with exit code 1, so that a batch file can test `errorlevel`. Get me the finished code exactly as I'd have it in my project, the steps to build it into an .exe, and exactly what it prints for a file of three lines and for a file that does not exist. | built, and run at a command prompt in a console window, redirected and piped. None known; *Console Applications* is one paragraph |
+| UC-71 | *(site)* I have two slow calculations that don't depend on each other, and I want twinBASIC to run them at the same time on two separate threads, wait until both have finished, and then print both results. As the two calculations, use counting the prime numbers below 200,000 and counting how many of the numbers from 1 to 5,000,000 are divisible by 7 or by 11. I want the finished code exactly as I'd have it in my project, and what it prints. | executed. None known; no case has read Multithreading |
+| UC-72 | *(site)* I want to write my own add-in for the twinBASIC IDE: a button on the IDE's toolbar that, when clicked, inserts a comment line holding today's date, such as `' 2026-09-24`, at the cursor in the code editor I'm working in. Get me the finished add-in project exactly as I'd have it, the steps to build it and get the IDE to load it, and what happens when I click the button. | built, loaded and clicked in a private copy of the install. None known; no case has read the tbIDE package |
