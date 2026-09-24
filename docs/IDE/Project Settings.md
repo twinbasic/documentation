@@ -43,7 +43,13 @@ See [Packages](../../../Features/Packages/)
 
 ## Build Output Path
 
+The full path of the file the compiler creates. Its description in the dialog lists these variables: `${SourcePath}`, the folder that holds the `.twinproj` file, and `${ProjectName}`, `${ProjectID}`, `${FileExtension}`, `${Architecture}`, `${VersionMajor}`, `${VersionMinor}`, `${VersionBuild}` and `${VersionRevision}`. `${Architecture}` is `win32` or `win64`, whichever the toolbar's [build configuration](Toolbar#build-configuration) box is set to.
+
+Every project template sets it to `${SourcePath}\Build\${ProjectName}_${Architecture}.${FileExtension}`: a `Build` folder beside the `.twinproj` file, and a different file name for each architecture. A Standard DLL project named `MathGreetLib` builds `Build\MathGreetLib_win32.dll` or `Build\MathGreetLib_win64.dll`, and a `Declare` that calls it has to name that file --- see [Calling a Standard DLL from VBA or Excel](../../../Features/Project-Configuration/Project-Types#calling-a-standard-dll-from-vba-or-excel). In the `Settings` file it is `project.buildPath`.
+
 ## Build Type
+
+The type of file the compiler creates: **Standard EXE**, **ActiveX DLL**, **ActiveX Control**, **Standard DLL** or **Package TWINPACK**. [Project Types](../../../Features/Project-Configuration/Project-Types) describes the Standard DLL, and code can test the setting with the [`TWINBASIC_BUILD_TYPE`](../../../Reference/Compiler-Constants#twinbasic_build_type) compiler constant. In the `Settings` file it is `project.buildType`.
 
 ## Licence Type
 

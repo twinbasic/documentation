@@ -11,6 +11,12 @@ twinBASIC can compile native 64bit executables in addition to 32bit. The syntax 
 
 Using the [Fusion](Fusion) feature, it is also possible to use both 32bit and 64bit ActiveX controls in 32bit *and* 64bit projects.
 
+## Building a 64-bit Version
+
+The [build configuration](../tB/IDE/Project/Toolbar#build-configuration) box on the toolbar chooses between a 32-bit and a 64-bit build: **win32** or **win64**. <kbd>CTRL</kbd> + <kbd>F1</kbd> switches to **win64**, and <kbd>CTRL</kbd> + <kbd>F2</kbd> switches back to **win32**. The IDE remembers the choice for each project.
+
+The two builds write different files. The default [Build Output Path](../tB/IDE/Project/Settings#build-output-path) ends in `${ProjectName}_${Architecture}.${FileExtension}`, and `${Architecture}` is `win32` or `win64`. So a Standard DLL project named `MathGreetLib` builds `Build\MathGreetLib_win32.dll` in one mode and `Build\MathGreetLib_win64.dll` in the other.
+
 ## Example Syntax
 
 ```tb check_build

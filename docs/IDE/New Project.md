@@ -15,16 +15,24 @@ Shortcut: <kbd>CTRL</kbd> + <kbd>N</kbd>
 
 ## Options
 
-- Standard Exe
+- Standard EXE
 - ActiveX Control
 - ActiveX DLL
 - Standard DLL
 - Standard EXE (Console App)
 - Standard EXE (plus VBCCR v1.8)
 - Import from VBP...
-- Import from folder...
+- [Import from folder...](#import-from-folder)
 
 Browse \| Open \| Cancel
+
+## Import from folder
+
+Opens a project from a folder of source files, such as the folder that **File → Export Project** writes. It shows a *Browse For Folder* dialog titled *Select folder of the existing twinBASIC project...*: choose the folder that holds the project's `Settings` file.
+
+The project opens with no `.twinproj` file behind it: it is unsaved, and marked as changed. Because it has no file, the first **Save Project** (<kbd>CTRL</kbd> + <kbd>S</kbd>) opens the *Save As* dialog to ask for one. The folder it is saved in becomes `${SourcePath}`, which the project's [*Export Path*](Settings#export-path) may use.
+
+If the folder holds the compiler packages under `Packages`, as an export by the IDE does, delete their folders first: imported with them, the project gets a copy of them that the compiler does not use. See [Packing the export back into a project](Menu/File#packing-the-export-back-into-a-project). [Keeping a project in Git from the IDE](../../../Features/Packages/Import-Export-Tool#keeping-a-project-in-git-from-the-ide) uses this command to open a fresh clone.
 
 # Samples
 
