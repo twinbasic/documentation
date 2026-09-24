@@ -488,3 +488,34 @@ Failed:
     End Select
 End Function
 ```
+
+## Round 10 --- the re-runs round 9 named, a fresh clone, and three surfaces no case has read
+
+**Run 2026-09-24 at `16969e5`** --- [builder/REVIEW-USECASES-16969e5.md](../builder/REVIEW-USECASES-16969e5.md).
+Round 9's last commit, with its fixes in. One session, every case in parallel through
+`eval/run_case.mjs`, on the model and Claude Code build of rounds 8 and 9. That build is the
+desktop app's bundled 2.1.280, passed with `--claude`: the `claude` on `PATH` had become 2.1.212
+in the meantime, and the smoke check ran on both.
+
+**Re-run the five round 9 named**: UC-63, UC-64 and UC-65 against its fixes, executed again;
+UC-62 against the Git section's new warning; UC-55 against the export command. Goals verbatim,
+each on the site protocol it was first run under. **Also re-run round 9's own queries** for those
+cases against this round's index.
+
+**Write the fresh-clone case round 9 asked for**, UC-66, and **open three surfaces no case has
+read**: delegates used as callbacks and a UTF-8 text file, both executed, and a Standard DLL
+called from Excel VBA, built and called.
+
+### Persona D: a twinBASIC developer on the published site
+
+| id | goal | hazard |
+|----|------|--------|
+| UC-55 | *(site, re-run)* The goal of round 7, verbatim. | **H** a second export without `--overwrite` leaves every changed file stale and exits 0; round 9 put the command with `--overwrite` into step 2 |
+| UC-62 | *(site, re-run)* The goal of round 9, verbatim. | **H** Export Project empties its folder, `.git` included; round 9 added a warning to the Git section |
+| UC-63 | *(site, re-run)* The goal of round 9, verbatim, with the function above. | executed. **H** -2147352565, not 9; the table was retitled for error 9 and *On Error* points to it |
+| UC-64 | *(site, re-run)* The goal of round 9, verbatim. | executed. The tutorial now has *Functions that return a string* and links WinDevLib |
+| UC-65 | *(site, re-run)* The goal of round 9, verbatim. | executed. The page now says the body is compiled for each type |
+| UC-66 | *(site)* My twinBASIC project is in a Git repository. A colleague set it up so that the IDE exports the project into the repository every time it is saved, and the exported files are what we commit; the `.twinproj` file itself is not in the repository. I've just cloned the repository onto a new computer that has twinBASIC installed. Get me from the fresh clone to the project open in the IDE and building, with every save still updating the repository --- the exact steps and commands, in order. | **H** the tB executable cannot pack the IDE's export (999), and a `.twinproj` saved inside the export folder is deleted by the next save |
+| UC-67 | *(site)* I want to pass a function as an argument to another procedure, the way a callback works in other languages. Write me a routine that sorts an array of names using a comparison function it is given, and use it to sort the same few names twice --- alphabetically, and by length --- printing the names each time. I want the finished code exactly as I'd have it in my project, and what it prints. | executed. None known; no case has read the Delegates page |
+| UC-68 | *(site)* I need to write a text file in UTF-8 that holds names with accents and non-Latin letters --- Zoë, Łódź and 東京 --- and read it back later. Write me a routine that writes those three names to a UTF-8 file, one per line, then reads the file back line by line and prints each line and how many characters it has. I want the finished code exactly as I'd have it in my project, and what it prints. | executed. None known; no case has read File I/O |
+| UC-69 | *(site)* Some of my Excel VBA code is slow, and I'd like to move it into a DLL built with twinBASIC and call it from VBA. Get me a working example: a twinBASIC DLL with one function that adds two numbers and one that takes a name and returns a greeting such as "Hello, Ann", and the VBA declarations and a macro that calls both and prints the results. I want both sides exactly as I'd have them, the steps to build the DLL, and what the macro prints. | built and called, with a twinBASIC caller standing in for VBA. None known; no case has read Project Types |
