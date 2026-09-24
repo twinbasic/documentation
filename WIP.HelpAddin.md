@@ -4,9 +4,10 @@ See [WIP.md](WIP.md) for the maintenance guide. This file covers the planned twi
 add-in that shows the documentation for the symbol under the cursor, and the harness that
 tests IDE add-ins by machine, which the add-in is developed against.
 
-**Status: Stage 1, the harness, is built** --- items 1 to 7 are done, and `addin-test.bat`
-operates Samples 10 and 15 end to end and leaves the registry as it found it. The add-in
-itself is not started; Stage 2's probes come next. This file replaces the June draft, `add-in/PLAN.md`
+**Status: Stage 1, the harness, is built, and Stage 2 has begun** --- `addin-test.bat`
+operates Samples 10 and 15 end to end and leaves the registry as it found it, and P1 and P2
+are answered by a probe lane of their own. The add-in itself is not started. This file
+replaces the June draft, `add-in/PLAN.md`
 in commit `d159acf8` ("Roughly plan the help add-in"). That commit is on no branch --- only
 the detached HEAD of an old worktree keeps it --- so everything in it worth keeping is here,
 corrected, and nothing depends on it surviving. [What changed from the June
@@ -109,31 +110,42 @@ the compiler what a symbol is.** Each of those gaps shapes a stage below.
 
 ### Keyboard shortcuts
 
-Read at `main.js@608242`, `@610953` and `@611152`.
+Read at `main.js@608242`, `@610953` and `@611152`, and measured on BETA 983 by P1 and P2,
+whose lane is [test/addin/keys.test.mjs](test/addin/keys.test.mjs).
 
 - `KeyboardShortcuts.Add` lowercases the key string, deletes its whitespace and stores it
-  as it is. Matching is a plain string comparison against `{ctrl}` + `{shift}` + `{alt}` +
-  the key, built in that order --- so `{SHIFT}{CTRL}d` could never match, whatever else is
-  true.
+  as it is: `{CTRL}{SHIFT}d`, `{SHIFT}D` and `F1` were stored as `{ctrl}{shift}d`,
+  `{shift}d` and `f1`. Matching is a plain string comparison against `{ctrl}` + `{shift}` +
+  `{alt}` + the key, built in that order --- so `{SHIFT}{CTRL}d` could never match,
+  whatever else is true.
 - **Add-in shortcuts are matched on key-up**, in `document.onkeyup`, after the IDE's own
   handling of that key-up. The built-in bindings run on key-down, in a capture-phase
-  listener *(reported)*. The key-up only dispatches if the same key's key-down was recorded
-  less than 500 ms earlier.
+  listener. The key-up only dispatches if the same key's key-down was recorded less than
+  500 ms earlier.
 - **The key-down is recorded only when Ctrl and Alt are not held:**
   `if((!e.ctrlKey||e.key==="Control")&&(!e.altKey||e.key==="Alt")){realKeyPresses[o]=performance.now()}`.
-  So **an add-in shortcut containing `{ctrl}` or `{alt}` cannot fire.** That includes the
-  SDK's own example, `{CTRL}{SHIFT}d`, and three of the four rows of the key-string table on
-  the published [KeyboardShortcuts](docs/Reference/Built-In/tbIDE/KeyboardShortcuts.md) page.
-  Plain keys, `{shift}` keys and function keys work. **P1** confirms it by running it; then
-  it goes to [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md) with a narrowed repro, and the published
-  page gets a NOTE and the prefix-order rule above. Until P1 runs, change neither.
-- **F1 is taken.** The default keymap binds it to `tbHelp_ToggleExpandSignatureHelp` on
-  key-down ([Window.md](docs/IDE/Menu/Window.md) lists the keymap), and that command only
-  acts while signature help is showing. An add-in's `f1` fires on key-up as well, and the
-  add-in cannot stop the built-in. The key-down handler calls `preventDefault()` and
-  `stopPropagation()` for the keys in `specialKeyMustNotPropagate` --- F1 to F12
-  *(reported)* --- so Monaco never sees F1, and the add-in still gets it with focus in the
-  code editor (**P2**).
+  **So a shortcut containing `{ctrl}` or `{alt}` does not fire (P1).** Pressed with nothing
+  focused, `{ctrl}{shift}d`, `{ctrl}d` and `{alt}f` fired nothing, while `d`, `{shift}d`,
+  `f1` and `{shift}f1` all fired. A record is never cleared, so such a shortcut does fire
+  when the same key was pressed on its own less than 500 ms before: D, then Ctrl+D and
+  Ctrl+Shift+D, and F, then Alt+F, fired all three. So the SDK's own example,
+  `{CTRL}{SHIFT}d`, does not work. The bug is in [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md), and the published
+  [KeyboardShortcuts](docs/Reference/Built-In/tbIDE/KeyboardShortcuts.md) page has a NOTE,
+  the prefix-order rule, which keys fire, and an example on Shift+F12.
+- **F1 fires, and is shared with the IDE (P2).** The default keymap binds it to
+  `tbHelp_ToggleExpandSignatureHelp` on key-down ([Window.md](docs/IDE/Menu/Window.md) lists
+  the keymap), a command that acts only while signature help is showing. The add-in's `f1`
+  fired with the focus in the code editor, in the DEBUG CONSOLE's entry box and on nothing;
+  it typed nothing, and Monaco's command palette, which Monaco binds to F1, did not open ---
+  the key-down handler calls `preventDefault()` and `stopPropagation()` for F1 to F12
+  (`specialKeyMustNotPropagate`), so Monaco never sees them. With signature help showing,
+  F1 did both things: the IDE expanded the signature help, and the add-in's `f1` fired. The
+  IDE also wrote `command failed: "tbHelp_ToggleExpandSignatureHelp"` to the DEBUG CONSOLE,
+  a bug of its own (BUGS-TO-REPORT.md). An add-in cannot stop the built-in.
+- **A shortcut on a key that types fires as the user types.** `d` typed into the code
+  editor, and into the DEBUG CONSOLE's entry box, went in and fired the add-in's `d`.
+- **Keys with no binding in the default keymap:** Shift+F1, F4, Shift+F4, Shift+F5,
+  Shift+F6, F7 and Shift+F12. A user can rebind any of them.
 - Both handlers return at once while a modal dialog or the rename widget is open.
 - Letter keys are named from `e.code` (`KeyD` gives `d`), every other key from `e.key` (`F1`
   gives `f1`). So Shift+1 arrives as `{shift}!` on a US layout.
@@ -221,6 +233,13 @@ from the page's own origin (**P13**). Deferred.
   between the two designs for context. From page script the call is
   `lspSocket.request(method, params, callback)`, so a harness can ask over CDP with no
   add-in involved.
+- **The expanded signature help names the declaring module**, seen while measuring P2 on
+  BETA 983. For `FindTheNeedle`, declared in the host project's `Haystack` module, it read
+  `Function FindTheNeedle(ByVal n As Long) As Long`, then `FindTheNeedle`, then
+  `in AddinHost.Haystack`, then the `[Description]` text --- here the IDE's placeholder,
+  *no further info available*. It comes from the same completion request as the rest of
+  intellisense (`textDocument/completion`, its `signatures`), so P5 should read it for
+  package symbols too.
 
 ### Dialogs
 
@@ -475,10 +494,17 @@ Most probes are a small add-in plus a scenario. P5, P11 and P13 need only CDP an
 system, and P14 is probably a question for upstream. Record every answer in this file with
 the build number it was measured on.
 
+**A probe whose answer something else rests on becomes a lane**: its add-in in
+`test/addin/probes/<name>/`, its scenario beside the others, listed in `lanes.mjs`, with each
+test asserting what the build did. A later build that behaves differently then fails the
+run, and the failure says what to update. [keys.test.mjs](test/addin/keys.test.mjs) is the
+first --- the KeyboardShortcuts page's NOTE and two entries in BUGS-TO-REPORT.md rest on
+it. A probe that settles a question once, as P10's did, stays in scratch.
+
 | # | Question | What it decides |
 |---|---|---|
-| P1 | Do `{ctrl}` and `{alt}` add-in shortcuts ever fire? Register `{ctrl}{shift}d`, `{alt}f`, `{shift}d`, `d` and `f1`, and press each. | the bug report; which key the add-in uses; the NOTE on the KeyboardShortcuts page |
-| P2 | Does the add-in's `f1` fire with focus in the code editor, and what happens with signature help showing? | F1 or another key |
+| P1 | Do `{ctrl}` and `{alt}` add-in shortcuts ever fire? Register `{ctrl}{shift}d`, `{alt}f`, `{shift}d`, `d` and `f1`, and press each. **Answered, BETA 983: no.** `d`, `{shift}d`, `f1` and `{shift}f1` fire; `{ctrl}{shift}d`, `{ctrl}d` and `{alt}f` fire only when the same key was pressed on its own less than 500 ms before. Queued in BUGS-TO-REPORT.md; the KeyboardShortcuts page has a NOTE. | the bug report; which key the add-in uses; the NOTE on the KeyboardShortcuts page |
+| P2 | Does the add-in's `f1` fire with focus in the code editor, and what happens with signature help showing? **Answered, BETA 983: yes.** It fires with the focus in the code editor, in the DEBUG CONSOLE and on nothing, and types nothing. With signature help showing, the IDE expands or collapses it as well, and logs `command failed: "tbHelp_ToggleExpandSignatureHelp"`. | F1 or another key --- F1 |
 | P3 | Does an `iframe` of a documentation page load and navigate inside a tool window? Size, scrolling, theme. | how pages are shown |
 | P4 | Does `innerHTML` render, and do inline handlers in it run page script? **Half answered, BETA 983:** HTML an add-in gives a list view's `addItem` renders, and its inline `onclick` runs the page's `raiseEvent` (Sample 15). `innerHTML` set as a property is untested. | how summaries are drawn; whether the page-internals route exists |
 | P5 | What does hover return for `MsgBox`, `Collection.Add`, `ToolWindows.Add` and a symbol declared in the project? What does definition return for a package symbol? | compiler-assisted context, or the add-in's own parser |
@@ -558,9 +584,15 @@ The generated index produces the complete list.
 
 Each increment is finished with its scenarios.
 
-1. **F1 to a page.** A toolbar button; the key (from P1 and P2); the name under the cursor;
-   index lookup; open the page in the browser or the pane. A miss says `No help for '<name>'`
-   through `ShowNotification`.
+1. **F1 to a page.** A toolbar button; the key; the name under the cursor; index lookup;
+   open the page in the browser or the pane. A miss says `No help for '<name>'` through
+   `ShowNotification`.
+
+   **The key is F1**, as planned: P1 and P2 do not rule it out. It fires wherever the focus
+   is in the IDE's window. The one overlap is signature help: while it shows, F1 also expands
+   or collapses it, and the cursor is then inside a call's parentheses, often on an argument
+   rather than the procedure. If that proves a nuisance, Shift+F1 has no binding of its own.
+   Never a key with `{ctrl}` or `{alt}` while the P1 bug stands.
 
    **The URL opener honours the test switch.** It calls `ShellExecuteW`, except while
    `Environ$("TB_ADDIN_TEST")` is not empty: then it prints `open <url>` to the DEBUG CONSOLE

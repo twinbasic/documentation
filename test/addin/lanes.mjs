@@ -20,4 +20,6 @@ export default [
   { file: "sample10.test.mjs" },
   // Sample 15 saves all four of its option boxes whenever one is clicked.
   { file: "sample15.test.mjs", settings: ["GlobalSearchAddIn"] },
+  // Stage 2 probes: each builds its own add-in, from probes/<name>.
+  { file: "keys.test.mjs" },
 ];

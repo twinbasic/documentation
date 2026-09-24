@@ -1,0 +1,76 @@
+' P1 and P2 in WIP.HelpAddin.md: which add-in keyboard shortcuts fire.
+' Registers one shortcut per key string, and prints "[KeysProbe] fired <key
+' string>" to the DEBUG CONSOLE when one fires, which keys.test.mjs reads.
+Module MainModule
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New KeysProbeAddin(Host)
+    End Function
+End Module
+
+' Not "KeysProbe": that is the project's name, and a class named after its own
+' project is TB5139, "a project or library, not a datatype".
+Private Class KeysProbeAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "KeysProbe AddIn"
+    End Property
+
+    ' Upper case in some strings on purpose: KeyboardShortcuts.Add lowercases
+    ' what it is given, and the scenario checks that it did.
+    Private Sub Host_OnProjectLoaded()
+        With Host.KeyboardShortcuts
+            .Add "{CTRL}{SHIFT}d", AddressOf CtrlShiftD
+            .Add "{ctrl}d", AddressOf CtrlD
+            .Add "{ALT}f", AddressOf AltF
+            .Add "{SHIFT}D", AddressOf ShiftD
+            .Add "d", AddressOf PlainD
+            .Add "F1", AddressOf F1
+            .Add "{shift}f1", AddressOf ShiftF1
+            .Add "q", AddressOf PlainQ
+        End With
+        Host.DebugConsole.PrintText "[KeysProbe] registered"
+    End Sub
+
+    Private Sub Fired(ByVal keyString As String)
+        Host.DebugConsole.PrintText "[KeysProbe] fired " & keyString
+    End Sub
+
+    Private Sub CtrlShiftD()
+        Fired "{ctrl}{shift}d"
+    End Sub
+
+    Private Sub CtrlD()
+        Fired "{ctrl}d"
+    End Sub
+
+    Private Sub AltF()
+        Fired "{alt}f"
+    End Sub
+
+    Private Sub ShiftD()
+        Fired "{shift}d"
+    End Sub
+
+    Private Sub PlainD()
+        Fired "d"
+    End Sub
+
+    Private Sub F1()
+        Fired "f1"
+    End Sub
+
+    Private Sub ShiftF1()
+        Fired "{shift}f1"
+    End Sub
+
+    Private Sub PlainQ()
+        Fired "q"
+    End Sub
+End Class

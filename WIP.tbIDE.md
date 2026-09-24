@@ -202,9 +202,11 @@ Surface as the canonical safe-cast pattern on `CodeEditor.md`.
 
 ## `KeyboardShortcuts.Add` callback signature
 
-The `keyString` argument is a literal key with optional `{CTRL}` / `{SHIFT}` / `{ALT}` prefixes, e.g. `"{CTRL}{SHIFT}d"` (the source-side `[Description]` is the canonical example). The `Callback` is `AddressOf` an addin function; the function takes no arguments and returns nothing. Surface as *"the callback fires on the IDE's UI thread; do everything Host-related synchronously"*.
+The `keyString` argument is a literal key with optional `{CTRL}` / `{SHIFT}` / `{ALT}` prefixes, e.g. `"{CTRL}{SHIFT}d"` (the source-side `[Description]`'s example). The `Callback` is `AddressOf` an addin function; the function takes no arguments and returns nothing --- a `Private Sub` with no parameters, in the add-in's class, works (measured, BETA 983).
 
-The samples don't actually use `KeyboardShortcuts.Add` — that's a feature documented through its declaration only. Cross-link to the relevant Win32 / IDE keyboard-handling section once available.
+**The source's own example does not fire.** No sample uses `KeyboardShortcuts.Add`, so it was measured instead: P1 and P2 in [WIP.HelpAddin.md](WIP.HelpAddin.md), with the lane `test/addin/keys.test.mjs`. In BETA 983 a shortcut with `{CTRL}` or `{ALT}` never fires when pressed, the prefixes must come in the order `{ctrl}{shift}{alt}`, a shortcut fires on key-up wherever the focus is in the IDE's window, and a key that types fires each time it is typed. The published page says all of that, with an example on Shift+F12; keep it in step with the lane.
+
+**Do not describe callbacks as running "on the IDE's UI thread".** This file used to say to, and it is unmeasured and probably misleading: an add-in runs inside the compiler's process (P10), not in the IDE's page, which is a WebView2 process of its own. The KeyboardShortcuts page no longer says it. **The AddinTimer page still does**, three times, with "long-running work ... will block the UI thread" --- unverified; which thread runs an add-in's callbacks, and what a slow one holds up, is not known. Fix it when something measures it.
 
 ## `Themes.ActiveThemeNameGroup` and `OnChangedTheme`
 

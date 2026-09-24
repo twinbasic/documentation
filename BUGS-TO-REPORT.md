@@ -1076,3 +1076,102 @@ WaynesWorldAddIn!`. A program's own open line followed by a `PrintText` was not 
 **Observed** on 2026-09-24 with `scripts/tbrun.mjs`, which decodes the console's stored
 entries once, as the pane renders them. Found while making the add-in harness read text
 that the IDE appends to an open console line.
+
+---
+
+## An add-in's keyboard shortcut does not fire if it includes `{CTRL}` or `{ALT}`
+
+**Build:** BETA 983
+**Severity:** the SDK's own example, `{CTRL}{SHIFT}d` in `KeyboardShortcuts.Add`'s
+description, cannot be used, and nothing says why.
+
+An add-in that registers
+
+```
+Host.KeyboardShortcuts.Add "{CTRL}{SHIFT}d", AddressOf OnCtrlShiftD
+Host.KeyboardShortcuts.Add "{SHIFT}d", AddressOf OnShiftD
+```
+
+gets `OnShiftD` for Shift+D, and nothing at all for Ctrl+Shift+D.
+
+| registered | pressed | fires |
+|---|---|---|
+| `d`, `{SHIFT}D`, `F1`, `{shift}f1` | D, Shift+D, F1, Shift+F1 | yes |
+| `{CTRL}{SHIFT}d`, `{ctrl}d`, `{ALT}f` | Ctrl+Shift+D, Ctrl+D, Alt+F, each more than 0.5 s after any other press of D or F | **no** |
+| the same three | D alone, then Ctrl+D and Ctrl+Shift+D; F alone, then Alt+F, all inside 0.5 s | yes, all three |
+
+The last row shows the cause. `globalKeyUp` in `ide/main.js` matches an add-in's shortcut when
+the key is released, and only if `realKeyPresses` holds a press of the same key from less than
+500 ms before. `globalKeyDown` records a press only
+`if((!e.ctrlKey||e.key==="Control")&&(!e.altKey||e.key==="Alt"))`, so a key pressed with Ctrl
+or Alt held is never recorded. Its release finds either no press, or an earlier one of the same
+key made without the modifier. The IDE's own bindings are unaffected, because they are matched
+on the key-down.
+
+A smaller point for the same fix: `KeyboardShortcuts.Add` stores the string as given, lowercased
+and without spaces, and the key-up builds the string it looks up as `{ctrl}`, `{shift}`, `{alt}`
+and the key, in that order. So `{SHIFT}{CTRL}d` could never match even with the recording fixed.
+
+**Observed** on 2026-09-24 with a probe add-in whose shortcuts print to the DEBUG CONSOLE
+(`test/addin/probes/keys`), operated by `test/addin/keys.test.mjs`, which presses keys as CDP
+key events and checks each result. Every case in the table is a test in that lane.
+
+---
+
+## F1 and the fold icon toggle the signature help, then fail
+
+**Build:** BETA 983
+**Severity:** cosmetic --- the toggle works, but every F1 adds `command failed:
+"tbHelp_ToggleExpandSignatureHelp"` to the DEBUG CONSOLE, and every click on the icon throws
+in the page.
+
+1. In the code editor, put the cursor inside a call's parentheses and press Ctrl+Space. The
+   signature help shows, with a fold icon whose tooltip reads *Fold/Collapse (F1)*.
+2. Press F1. The signature help expands, and the DEBUG CONSOLE shows
+   `command failed: "tbHelp_ToggleExpandSignatureHelp"`. F1 again collapses it, with a second
+   such line.
+3. Click the fold icon instead. The signature help toggles, and the page throws
+   `TypeError: Cannot read properties of undefined (reading 'stopPropagation') at toggleSigHelp`.
+
+`toggleSigHelp(e)` in `ide/main.js` ends with `e.stopPropagation();e.preventDefault()`, and
+neither caller passes an event: the command is `internalAction:()=>{toggleSigHelp()}`, and the
+icon is `onclick='toggleSigHelp()'`. The toggle comes first, so the error is the only symptom.
+`executeKeyboardShortcuts` catches the command's error and writes the DEBUG CONSOLE line.
+
+**Observed** on 2026-09-24: the F1 case in `test/addin/keys.test.mjs`, which checks for the
+line, and the click in a harness IDE with `Runtime.exceptionThrown` recorded over CDP.
+
+---
+
+## Typing just after a file opens at a position puts the text at that position, in reverse
+
+**Build:** BETA 983
+**Severity:** typed text goes to the wrong place and in the wrong order, and nothing shows
+that it happened.
+
+For 700 ms after the code editor opens a file at a line and column --- Go To Definition, a
+Find in Files result, an add-in's `Editors.Open` --- the IDE puts the cursor back at that
+place whenever the compiler's decorations for the document arrive. Every edit brings new
+decorations, and each time the cursor goes back the 700 ms start again. So typing that
+starts inside the window, and goes on without a 0.7 s pause, puts each character at the
+opened position, in front of the one before it.
+
+1. Open `Haystack.twin`, not yet open, at line 4, column 9, through
+   `openEditors.openFile(node, false, false, false, 4, 9)` --- the call Find in Files makes.
+2. 0.3 s later, move the cursor to line 3, column 1, and type `xyz`, one key every 150 ms.
+3. Line 3 starts with `x`, and line 4 reads `        zyDim needleCount As Long`.
+
+`parseDocumentDecorations` in `ide/main.js` ends with
+`if(performance.now()-revealedLineTime<700){revealLineInEditor(revealedLine,revealedLineColumn,revealedLineViewPortTop)}`,
+and `revealLineInEditor` sets the cursor's position and `revealedLineTime` again. Logged in the
+run above: `revealLineInEditor(4,9)` from `gotFileData`, then from `parseDocumentDecorations`
+9 ms later, and again after each key. The same happens for a file that is already open, whose
+`onReveal` calls `revealLineInEditor` too.
+
+**What does not reproduce it:** the same typing started more than 0.7 s after the file opened,
+which puts `xyz` at 3:1 in order. Keeping the view where the reveal left it may be what the
+repeat is for; setting the cursor again is what does the damage.
+
+**Found by** the add-in harness: `MsgBox(`, typed into the code editor just after opening a
+file at line 5, came out as `gBox(s` at the start of that line, with the `M` on the line below. The harness now waits for the 700 ms to pass after
+opening a file (`afterReveal` in `scripts/lib/tb-operate.mjs`).

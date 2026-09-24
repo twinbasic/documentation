@@ -671,8 +671,11 @@ install, whose add-in folders hold only what the lane puts there. A test add-in 
 never loads into your own IDE, and two lanes never share one. The scenario builds the add-ins
 it tests into its copy, opens a project, and operates the IDE: it clicks, presses keys, types,
 and reads the add-ins' tool windows, message boxes, notifications, the code editor and the
-Debug Console. The first two scenarios operate the IDE's own sample add-ins, Sample 10 and
-Sample 15 (Global Search), end to end; the two lanes take about 25 seconds together.
+Debug Console. Two scenarios operate the IDE's own sample add-ins, Sample 10 and Sample 15
+(Global Search), end to end. A third builds a probe add-in of its own, from
+`test/addin/probes/keys`, and checks which keyboard shortcuts fire --- what the
+[KeyboardShortcuts](../../tB/Packages/tbIDE/KeyboardShortcuts) page says about them. The three
+lanes take about 50 seconds together.
 
 | Flag | Effect |
 |---|---|

@@ -870,7 +870,7 @@ view draws only the rows that fit, and a tool window is a shadow root that
 `document.querySelector` cannot see into, so the calls read `toolWindowsById`, a list
 view's `dataNodes` and `window.editor` rather than what is drawn.
 
-Six things about it were learned on the samples:
+Seven things about it were learned, the first six on the samples:
 
 - **A click scrolls its target into view, and checks what is at the point before it
   clicks.** Sample 10's tool window is taller than it is shown. Its eleventh button had a
@@ -909,6 +909,19 @@ Six things about it were learned on the samples:
   `fs.tree.resolvePath("twinbasic:" + path)`, then `openEditors.openFile(node, false,
   false, false, line, column)` --- put the cursor at the line and column given, counted
   from 1.
+- **Opening a file at a place leaves the cursor unsettled for 700 ms** (learned on P2 in
+  WIP.HelpAddin.md). Whenever the compiler's decorations for the document arrive less than
+  700 ms after the IDE's last `revealLineInEditor`, `parseDocumentDecorations` calls it
+  again: the cursor goes back to the opened place, and the 700 ms start over. Every edit
+  brings new decorations, so a `setCursor` made in that time is undone, and text typed in it
+  goes in at the opened place, each key in front of the last: `MsgBox(` came out `gBox(s`.
+  So `openFile` now waits for the IDE's own callback, `openEditors.openFile`'s eighth
+  argument, and then for the 700 ms to pass --- about 0.8 s in all for a file not yet open.
+  `setCursor` and `select` first wait out any time left from something else that opened a
+  file, such as an add-in's `Editors.Open`, and `afterReveal` does the same wait for
+  anything else. Measured: `xyz` typed at 3:1 of `Haystack.twin`, 0.3 s after opening it at
+  4:9, went in as `x` at 3:1 and `zy` at 4:9; after the fixed `openFile` it went in as `xyz`
+  at 3:1. The IDE's side of it is in BUGS-TO-REPORT.md.
 
 **The connection itself changed in three ways.** They were the gaps item 1 found in
 `tbbuild`, and they matter more once a harness clicks into dialogs on purpose:
@@ -1030,7 +1043,8 @@ PowerShell that first cleared the setting (`SetConsoleCtrlHandler(NULL, FALSE)`)
 listener saw it, and so did the runner: 16 s in, with both lanes' IDEs open, it ended both
 lanes and put everything back within two seconds.
 
-**The two scenarios**, the ones that finish Stage 1:
+**The scenarios.** Two finish Stage 1 of WIP.HelpAddin.md, and the third is the first of
+Stage 2's probe lanes:
 
 - [test/addin/sample10.test.mjs](test/addin/sample10.test.mjs): the add-in loads and prints
   its five `OnProjectLoaded` lines, naming the project; its image button's message box; its
@@ -1042,11 +1056,20 @@ lanes and put everything back within two seconds.
   [test/addin/host](test/addin/host), each with its `[line,column]`; a click on a match
   opens `Haystack.twin` at 4:13; and Match case narrows the results to seven and is saved,
   read back through `savedSettings`.
+- [test/addin/keys.test.mjs](test/addin/keys.test.mjs), P1 and P2: it builds its own probe
+  add-in from [test/addin/probes/keys](test/addin/probes/keys), which registers eight key
+  strings and prints a line to the DEBUG CONSOLE when one fires. It checks that they were
+  stored lowercased, then presses each key with nothing focused, followed by `q`, whose
+  shortcut always fires: once `q`'s line is back, a key that has printed nothing has fired
+  nothing. Each press waits 600 ms first, so that no press is paired with the one before
+  it; the last P1 test does the opposite on purpose. Then F1 and a letter in the code
+  editor, and F1 with signature help showing, from Ctrl+Space inside `FindTheNeedle(`.
 
 **Measured on BETA 983:**
 
-- Both lanes pass, in about 25 s together: each is an add-in build of about 10 s, a host IDE
-  of about 9 s, and 2 s of scenario.
+- Both sample lanes pass, in about 25 s together: each is an add-in build of about 10 s, a
+  host IDE of about 9 s, and 2 s of scenario. With the keys lane, the three take about 50 s
+  at the default two at a time; the keys lane is 28 s, about 9 s of it pressing keys.
 - Around a run, the whole registry comparison was identical: `ProjectState`, the recent
   list, the association keys, all 13 `IDESettings` values compared through hashes, and the
   remembered build targets. The run was repeated with the user's projects planted in the
