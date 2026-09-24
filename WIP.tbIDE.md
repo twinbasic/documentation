@@ -11,7 +11,7 @@ The package's own `CHANGELOG.md` is a leftover copy-paste from a different packa
 From any of the six sample `Settings` files (the structure is identical across them):
 
 - `project.buildType`: **Standard DLL** — addins are not packages, they are DLLs that the IDE loads.
-- `project.buildPath`: `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}` — the build output drops directly into `<IDE>\addins\Win32\` or `<IDE>\addins\Win64\`. The IDE scans this folder on startup.
+- `project.buildPath`: `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}` — the build output drops directly into `<IDE>\addins\Win32\` or `<IDE>\addins\Win64\`. The IDE scans this folder on startup, and the same two under `%APPDATA%\twinBASIC\addins\` (P6 in [WIP.HelpAddin.md](WIP.HelpAddin.md)).
 - `project.references` includes the tbIDE compiler package: `id: {99DEC38C-75F6-4488-8EE7-2D52D83881D2}`, `isCompilerPackage: true`, `publisher: TWINBASIC-COMPILER`, `symbolId: tbIDE`. Same shape that `CustomControls` uses.
 
 The DLL **must** export a single factory function the IDE will call:

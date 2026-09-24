@@ -2,7 +2,8 @@
 // item 4) calls "build, then load".
 //
 // An add-in is a Standard DLL, and the compiler loads every DLL in its
-// install's addins\win32 or addins\win64 folder as it starts. A test builds the
+// install's addins\win32 or addins\win64 folder as it starts, and in the same
+// folders under %APPDATA%\twinBASIC (P6 in WIP.HelpAddin.md). A test builds the
 // add-in with the lane's private copy of the IDE (tb-ide-copy.mjs), ends that
 // IDE, puts the DLL into the copy's addins folder with addAddin, and starts the
 // copy again on the project it tests with. That IDE's compiler loads the add-in
@@ -25,8 +26,8 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { compilerExe } from "./tb-install.mjs";
-import { attachIde, buildProject, compileOutcome, launchIde, normPath, shutdownIde,
-         summaryLine, waitForCompile } from "./tb-ide.mjs";
+import { attachIde, buildProject, checkAddinsRoot, compileOutcome, launchIde, normPath,
+         shutdownIde, summaryLine, waitForCompile } from "./tb-ide.mjs";
 import { laneProjectId, stageProject } from "./tb-project.mjs";
 
 // An error carrying tbbuild's exit codes: 1 the project has compile errors,
@@ -49,6 +50,10 @@ function failure(exitCode, message) {
  * @param {number} o.port      the lane's DevTools port
  * @param {string} [o.arch]    the build target; "win32" is the only one yet
  * @param {boolean} [o.show]   on the user's desktop instead of a private one
+ * @param {string} [o.appdata] a folder to start the IDE with as its APPDATA. Its
+ *                             compiler then loads the add-ins under
+ *                             <appdata>\twinBASIC\addins rather than the user's
+ *                             own (P6), which checkAddinsRoot confirms
  * @param {number} [o.timeout] milliseconds for the compile to settle, and again
  *                             for the build (default 180000)
  * @returns {Promise<{dll: string, arch: string, diagnostics: string[], log: string[]}>}
@@ -56,7 +61,7 @@ function failure(exitCode, message) {
  * @throws an Error with an `exitCode` (see failure above); a compile error's
  *   message lists every diagnostic
  */
-export async function buildAddin({ ide, src, work, port, arch = "win32", show = false,
+export async function buildAddin({ ide, src, work, port, arch = "win32", show = false, appdata,
                                    timeout = 180 * 1000 }) {
   if (arch !== "win32") {
     throw failure(2, `cannot build an add-in for ${arch} yet: which compiler loads a ${arch} ` +
@@ -83,7 +88,8 @@ export async function buildAddin({ ide, src, work, port, arch = "win32", show = 
                      "is a Standard DLL");
   }
 
-  const run = await launchIde({ exe: ide, project, port, show });
+  const run = await launchIde({ exe: ide, project, port, show,
+                                env: appdata ? { APPDATA: appdata } : {} });
   let built;
   try {
     const c = await attachIde(port);
@@ -94,6 +100,7 @@ export async function buildAddin({ ide, src, work, port, arch = "win32", show = 
       if (outcome.counts[0] > 0) {
         throw failure(1, [...outcome.rows, summaryLine(outcome.counts)].join("\n"));
       }
+      if (appdata) await checkAddinsRoot(c, appdata).catch((e) => { throw failure(2, e.message); });
       const target = await c.evaluate(
         "typeof buildConfigSelector === 'undefined' ? null : buildConfigSelector.value");
       if (target !== arch) {

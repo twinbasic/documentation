@@ -1,0 +1,42 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "SymbolsProbe",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Standard DLL",
+	"project.description": "P5 in WIP.HelpAddin.md: what the compiler's language service says about the name under the cursor. test/addin/symbols.test.mjs opens it in a lane's copy of the install and asks; it is not an add-in, and nothing builds it.",
+	"project.exportPathIsV2": true,
+	"project.id": "{7B247200-0000-4000-9000-7B2472000001}",
+	"project.name": "SymbolsProbe",
+	"project.optionExplicit": true,
+	"project.references": [
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"versionMajor": 2,
+			"versionMinor": 0
+		},
+		{
+			"id": "{99DEC38C-75F6-4488-8EE7-2D52D83881D2}",
+			"isCompilerPackage": true,
+			"licence": "MIT",
+			"name": "[COMPILER PACKAGE] twinBASIC IDE Extensibility Package",
+			"path32": "",
+			"path64": "",
+			"publisher": "TWINBASIC-COMPILER",
+			"symbolId": "tbIDE",
+			"versionBuild": 0,
+			"versionMajor": 0,
+			"versionMinor": 0,
+			"versionRevision": 1
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.warnings": {
+		"errors": [],
+		"ignored": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

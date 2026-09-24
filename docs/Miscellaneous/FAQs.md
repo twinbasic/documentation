@@ -276,10 +276,12 @@ Addins for VB6 and VBA are not supported by the twinBASIC IDE. However, tB has i
 
 twinBASIC supports **creating** addins for VBA. It's currently the only tool that supports creating these addins for 64bit Office using a language with 100% compatible syntax. See Sample 4 and Sample 5.
 
-There are two locations that the addins can be installed to:
+There are two locations that the addins can be installed to. Each has a `win32` folder for 32-bit addins and a `win64` folder for 64-bit ones, and an addin goes in one of those: a DLL placed directly in `addins\` is not loaded.
 
-1. `%appdata%\twinBASIC\addins\` - that's the preferred location as the TwinBasic distribution itself is not modified, and the addins won't get lost when upgrading to a newer version.
-2. `<twinbasic unzip folder>\addins\` - if you want to modify your TwinBasic installation. This is not generally recommended.
+1. `%appdata%\twinBASIC\addins\win32\` or `...\win64\` --- the preferred location, as the twinBASIC distribution itself is not modified, and the addins won't get lost when upgrading to a newer version.
+2. `<twinbasic unzip folder>\addins\win32\` or `...\win64\` --- if you want to modify your twinBASIC installation. This is not generally recommended.
+
+The IDE loads the addins in the folder that matches the project's build target: `win32`, unless the project is set to build for win64. An addin that should load either way needs a build of each. See [Add Ins](tB/IDE/AddIns/) for more.
 
 </details>
 

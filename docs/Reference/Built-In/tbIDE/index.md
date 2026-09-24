@@ -21,7 +21,7 @@ The package is a built-in *compiler* package shipped with twinBASIC. It is added
 An addin project has three distinguishing settings:
 
 - **Build type:** Standard DLL.
-- **Build path:** `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}`. The output drops directly into the IDE's `addins\Win32\` or `addins\Win64\` folder, where the IDE scans for addins on start-up.
+- **Build path:** `${IdePath}\addins\${Architecture}\${ProjectName}.${FileExtension}`. The output drops directly into the IDE's `addins\Win32\` or `addins\Win64\` folder, where the IDE scans for addins on start-up. It also scans the same two folders under `%APPDATA%\twinBASIC\addins\`, which an IDE update leaves in place; see [Add Ins](../../IDE/AddIns/).
 - **Compiler-package reference** to **tbIDE** (added to the project's references with `isCompilerPackage: true`, `publisher: TWINBASIC-COMPILER`, `symbolId: tbIDE`). This is the binding between the DLL's compile-time types and the IDE's run-time implementations.
 
 The DLL must export one function --- the entry point the IDE calls when it discovers and loads the addin:

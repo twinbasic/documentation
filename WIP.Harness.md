@@ -678,7 +678,9 @@ test add-in put there would load into every IDE the user starts from that instal
 lanes testing different add-ins could not share the folder at all. So the add-in harness
 ([WIP.HelpAddin.md](WIP.HelpAddin.md)) runs each lane on its own copy of the install, made
 by [scripts/lib/tb-ide-copy.mjs](scripts/lib/tb-ide-copy.mjs), whose `addins` folders hold
-exactly what the lane puts there.
+exactly what the lane puts there. The compiler loads the DLLs in
+`%APPDATA%\twinBASIC\addins\<arch>` as well (P6), and the `APPDATA` each lane gives its
+IDEs keeps the user's out ([The add-in test runner](#the-add-in-test-runner)).
 
 **Measured, against BETA 983:**
 
@@ -784,8 +786,10 @@ loads add-ins only as it starts, and an IDE holds one project, so:
 1. `buildAddin` in [scripts/lib/tb-addin.mjs](scripts/lib/tb-addin.mjs) stages the add-in's
    exported tree through [scripts/lib/tb-project.mjs](scripts/lib/tb-project.mjs) --- the
    staging `tbrun` does, moved there to be shared --- with the build path pinned to
-   `<work>\out\<project name>.dll`. It starts the copy on it, refuses a project with compile
-   errors (exit code 1, every diagnostic listed), builds, and ends the IDE.
+   `<work>\out\<project name>.dll`. It starts the copy on it, with the lane's own `APPDATA`
+   when given one (`appdata`), refuses a project with compile errors (exit code 1, every
+   diagnostic listed), builds, and ends the IDE. `Lane.buildAddin` stops there and leaves
+   the DLL in the work folder; `Lane.addAddin` goes on to step 2.
 2. `addAddin` in `tb-ide-copy.mjs` puts the DLL in the copy's `addins\win32`. It refuses any
    folder that is not a marked copy, so a test add-in cannot reach the real install.
 3. The copy starts again, on the project the test opens, and `loadedAddins` asks its
@@ -964,9 +968,10 @@ and `buildProject` now reads its build log that way.
 
 **Every IDE, not only the add-in runner's.** `tbbuild`, `tbrun` and `examples.bat` start the
 real install, whose compiler loads whatever add-ins the user has put in its `addins`
-folders, and none of those IDEs is on a desktop anybody watches. A caller can still set the
-variable otherwise, or leave it out by passing `undefined` as its value: Node leaves such a
-variable out of a child's environment even when its own environment has it (measured).
+folders or in `%APPDATA%\twinBASIC\addins` (P6), and none of those IDEs is on a desktop
+anybody watches. A caller can still set the variable otherwise, or leave it out by passing
+`undefined` as its value: Node leaves such a variable out of a child's environment even
+when its own environment has it (measured).
 
 **Measured on BETA 983 (P10 in WIP.HelpAddin.md):** a probe add-in printed the variable
 from `Host_OnProjectLoaded`. Through `launchIde` it read `1`, from `Environ$` and from
@@ -1029,9 +1034,24 @@ reported, since it is almost certainly an add-in whose settings will stay behind
 report names it and leaves it. `settingsKey` refuses the IDE's own `twinBASIC_IDE`, which
 holds all of the IDE's settings and which the tidy puts back only value by value.
 
-**It refuses to start while `%APPDATA%\twinBASIC\addins` holds a DLL**, until P6 says
-whether the compiler loads from there: the page hands it that folder with
-`RequestLoadAddins`. It never writes there.
+**Every IDE a lane starts has an `APPDATA` of its own**, `<work>\appdata`. The compiler
+also loads the add-ins in `%APPDATA%\twinBASIC\addins\<arch>` (P6 in WIP.HelpAddin.md),
+from the folder the page sends it, which the page makes by expanding `%APPDATA%` in the
+IDE's own environment. So `Lane.open` and `Lane.buildAddin` start their IDEs with `APPDATA`
+naming the lane's folder, and each checks, once the compile has settled, that the page's
+folder is under it (`checkAddinsRoot` in `tb-ide.mjs`): an IDE that stopped taking the
+folder from its environment may have loaded the user's add-ins, and the lane fails rather
+than test something else. The check runs after the fact, because the add-ins load
+while the project opens.
+
+Until P6 was answered the runner refused to start while the user's folder held a DLL. It
+no longer needs to, and the user no longer has to move their add-ins out to run the tests:
+with `APPDATA` pointed at a stand-in folder holding the Global Search add-in, the Sample 10
+and P6 lanes both ran and passed, and the P6 lane's IDE loaded its own probe alone. The
+runner never writes to the user's folder. `tbbuild`, `tbrun` and `examples.bat` keep the
+user's `APPDATA`: they build the user's projects, and the same folder holds the packages the
+user has downloaded. `TB_ADDIN_TEST` is what keeps a user's add-in from acting outside the
+IDE there.
 
 **Ctrl+C ends the lanes and still puts everything back.** The runner handles `SIGINT`: it
 starts no more lanes, ends the running ones, waits, and tidies. Testing that took two tries.
@@ -1077,13 +1097,34 @@ probe lanes:
   target of its own, type `iframe` in `/json/list`, which the parent's frame tree does not
   list --- the lab check of the live site had to attach to it separately. The scenario
   turns on `Runtime` to record page exceptions, which is how P12's `TypeError` is seen.
+- [test/addin/symbols.test.mjs](test/addin/symbols.test.mjs), P5: no add-in. It opens the
+  project in [test/addin/probes/symbols](test/addin/probes/symbols), which references tbIDE
+  and is never built, and asks the compiler's language socket about names in it: hover,
+  Go To Definition, signature help and a completion's details, each with the parameters the
+  IDE's own code sends. `lspSocket.request` answers through a callback, so each question is
+  one `Runtime.evaluate` of a promise. Positions are found in the source by text, so an edit
+  to the probe project does not shift them.
+- [test/addin/ideserver.test.mjs](test/addin/ideserver.test.mjs), P13: no add-in either. It
+  writes fifteen files under `ide\p13\` in the lane's copy before the IDE starts, and one
+  more after, then fetches each from the page, relative to its base URL, and compares a
+  SHA-256 of the body with the file's. The guard before the writes checks that the folder
+  is inside the lane's own folder, since the real install's `ide\` is one wrong path away.
+- [test/addin/appdata.test.mjs](test/addin/appdata.test.mjs), P6: it builds the AppDataProbe
+  add-in from [test/addin/probes/appdata](test/addin/probes/appdata) with `Lane.buildAddin`,
+  which leaves the DLL in the work folder, and copies it into the lane's own `APPDATA`
+  rather than the copy of the install. The probe prints the file it was loaded from, found
+  with `GetModuleHandleExW` on one of its own functions, and the `APPDATA` it sees. The last
+  test points the page's `commonFolderRootPath` at a second folder and restarts the
+  compiler with the toolbar's button, so the new compiler inherits the old `APPDATA` but is
+  sent the new folder.
 
 **Measured on BETA 983:**
 
 - Both sample lanes pass, in about 25 s together: each is an add-in build of about 10 s, a
   host IDE of about 9 s, and 2 s of scenario. With the two probe lanes, the four take 57 s
   at the default two at a time: the keys lane is 28 s, about 9 s of it pressing keys, and
-  the panes lane 23 s.
+  the panes lane 23 s. All seven take 73 s: the symbols and ideserver lanes, which build
+  nothing, about 9 s each, and the appdata lane 18 s.
 - The runner does not compare the IDE's own `IDESettings`, so that was done by hand around
   the panes lane, whose floating tool window has a persistence id: all 13 values were
   identical afterwards.
@@ -1095,8 +1136,8 @@ probe lanes:
   lane began with every option off, and the key came back exactly, the extra value
   included. With `settings` taken out of `lanes.mjs`, the run failed with exit code 2 and
   named `GlobalSearchAddIn`.
-- A DLL under the add-ins folder of `%APPDATA%` (a stand-in, with `APPDATA` pointed at a
-  scratch folder) and an `--only` that matches nothing were both refused with exit code 2.
-  `--timeout 8` ended both lanes mid-build, and left the registry identical and nothing
-  running.
+- An `--only` that matches nothing was refused with exit code 2, and so, until P6 was
+  answered, was a DLL in a stand-in `%APPDATA%`; now the lanes run beside it, and the P6
+  lane's IDE loaded its own probe alone. `--timeout 8` ended both lanes mid-build, and left
+  the registry identical and nothing running.
 - Exporting the samples left the install's `projects` folder as it was, mtimes included.

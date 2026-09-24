@@ -1175,3 +1175,44 @@ repeat is for; setting the cursor again is what does the damage.
 **Found by** the add-in harness: `MsgBox(`, typed into the code editor just after opening a
 file at line 5, came out as `gBox(s` at the start of that line, with the `M` on the line below. The harness now waits for the 700 ms to pass after
 opening a file (`afterReveal` in `scripts/lib/tb-operate.mjs`).
+
+---
+
+## Hover says a `ByVal` parameter was auto-generated because `Option Explicit` is off
+
+**Build:** BETA 983
+**Severity:** cosmetic, but it tells the user to turn on an option that is already on, over
+a parameter they declared.
+
+In a project with `project.optionExplicit` set to true:
+
+```
+Public Sub Probe2(ByVal h As Host, ByVal count As Long, ByVal col As Collection, _
+                  ByVal o As Object, ByVal v As Variant, ByRef r As Host, ByVal s As String)
+    Dim d As Host
+    Debug.Print h Is Nothing, count, col Is Nothing, o Is Nothing, IsEmpty(v), r Is Nothing, s, d Is Nothing
+End Sub
+```
+
+Hover over `s` where it is used shows
+
+> *parameter* ByVal s As String
+>
+> ***note:*** *this variable was auto-generated due to* ***Option Explicit*** *being Off*
+>
+> ***recommendation:*** *use Option Explicit and declare variables explicitly*
+
+| hovered | note |
+|---|---|
+| `ByVal` of `String`, `Variant`, `Object`, `Collection` or tbIDE's `Host` | **yes** |
+| `ByVal` of `Long` | no |
+| `ByRef r As Host` | no |
+| a local, `Dim d As Host` or `Dim c As New Collection` | no |
+
+So it takes `ByVal` and a type that is not a plain number. That looks like a hidden local copy
+that the compiler makes for such a parameter, which the hover then describes as a variable it
+generated for an undeclared name.
+
+**Observed** on 2026-09-24 by sending `textDocument/hover` over the compiler's language socket
+with the parameters the IDE's own hover provider sends (`test/addin/symbols.test.mjs`, which
+checks every row of the table). The text is the markdown the IDE's hover shows.

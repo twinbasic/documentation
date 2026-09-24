@@ -17,3 +17,11 @@ To install an addin via the IDE install directory, unzip and copy each architect
 `\twinBASIC_IDE_BETA_xxx\addins\win32\`
 
 `\twinBASIC_IDE_BETA_xxx\addins\win64\`
+
+To install it for your own user account instead, copy each architecture DLL to the matching folder under your application data. The IDE creates both folders when it starts:
+
+`%APPDATA%\twinBASIC\addins\win32\`
+
+`%APPDATA%\twinBASIC\addins\win64\`
+
+In either location the DLL goes in one of the two architecture folders. A DLL placed directly in `addins\` is not loaded. The IDE loads the addins in the folder that matches the project's build target, which is `win32` unless the project is set to build for win64, so an addin that should load either way needs a build of each.

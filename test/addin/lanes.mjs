@@ -20,7 +20,12 @@ export default [
   { file: "sample10.test.mjs" },
   // Sample 15 saves all four of its option boxes whenever one is clicked.
   { file: "sample15.test.mjs", settings: ["GlobalSearchAddIn"] },
-  // Stage 2 probes: each builds its own add-in, from probes/<name>.
+  // Stage 2 probes. Each finds what it needs in probes/<name>: an add-in it
+  // builds (keys, panes, appdata) or a project it opens (symbols); ideserver
+  // needs neither.
   { file: "keys.test.mjs" },
   { file: "panes.test.mjs" },
+  { file: "symbols.test.mjs" },
+  { file: "ideserver.test.mjs" },
+  { file: "appdata.test.mjs" },
 ];

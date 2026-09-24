@@ -1,0 +1,32 @@
+' P5 in WIP.HelpAddin.md: what the compiler's language service says about the
+' name under the cursor --- hover, Go To Definition and signature help --- for
+' a VBA function, a method of a VBA class, a method of a tbIDE class and a
+' procedure of this project. symbols.test.mjs opens this project and asks
+' about each name where Probe uses it. Nothing builds or runs it.
+Module Symbols
+    ' A procedure of the project itself.
+    Public Function FindTheNeedle(ByVal n As Long) As Long
+        Debug.Print n
+        Return n * 2
+    End Function
+
+    Public Sub Probe(ByVal Host As Host)
+        MsgBox "hello"
+        Dim c As New Collection
+        c.Add 1, "one"
+        Dim w As ToolWindow
+        Set w = Host.ToolWindows.Add("Probe", "ProbeData")
+        Debug.Print FindTheNeedle(3)
+    End Sub
+
+    Public Function Describe(ByVal k As Long) As String
+        Return CStr(k)
+    End Function
+
+    ' Parameters of several types, for the note hover gives some of them.
+    Public Sub Probe2(ByVal h As Host, ByVal count As Long, ByVal col As Collection, _
+                      ByVal o As Object, ByVal v As Variant, ByRef r As Host, ByVal s As String)
+        Dim d As Host
+        Debug.Print h Is Nothing, count, col Is Nothing, o Is Nothing, IsEmpty(v), r Is Nothing, s, d Is Nothing
+    End Sub
+End Module
