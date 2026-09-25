@@ -15,20 +15,12 @@ import path from "node:path";
 import { stripHtml } from "./seo.mjs";
 import { writeFileMkdirp } from "./write.mjs";
 
-export async function writeSearchData(pages, site, destRoot) {
-  const entries = deriveSearchEntries(pages, site);
-  const body = entries.map(renderEntryString).join(",");
-  const json = `{` + body + `\n}\n`;
-  await writeFileMkdirp(path.join(destRoot, "assets/js/search-data.json"), json);
-  return { entries: entries.length, json };
-}
-
 // Phase 17 consolidation path: per-worker render handlers call
 // deriveSearchEntries on their chunk and stash the result on
 // state.searchChunks[i].  This function flattens those chunks (in chunk-
 // index order, matching the serial page iteration), renumbers `i` so it
 // is globally sequential, and writes the same byte-for-byte search-data.json
-// the single-threaded writeSearchData would have produced.
+// a single-pass derivation over all pages at once would have produced.
 export async function writeSearchDataFromChunks(searchChunks, destRoot) {
   // searchChunks starts as `new Array(N)` -- holes, not undefined -- and
   // each render:i.submit() fills its own slot. Array.prototype.flat()
@@ -62,8 +54,8 @@ export async function writeSearchDataFromChunks(searchChunks, destRoot) {
 // Pure-compute derivation: produces the search-data entry array
 // (already sanitised, already URL-encoded) without writing anything.
 // Each entry is `{ i, doc, title, content, url, relUrl, sourcePage }`.
-// `sourcePage` is the originating tbdocs page so callers (`_triage.mjs`,
-// `_diff.mjs`) can gate by `srcRel` against `accepted-divergences.mjs`.
+// `sourcePage` is the originating tbdocs page; renderEntryString below
+// never reads it, so it never reaches the emitted JSON.
 // The generator's two content skips, as a predicate: a page with no
 // title has nothing to index, and `search_exclude: true` is an explicit
 // opt-out.  The integrity check needs the same answer -- otherwise the

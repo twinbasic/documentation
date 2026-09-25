@@ -24,9 +24,10 @@
 // §B  Site-paths set
 // ---------------------------------------------------------------------------
 
-// Synchronous version of buildSitePaths. Takes an explicit themeAssetRels
-// array (from enumerateVendoredThemeAssets in offline.mjs) instead of
-// walking _site/assets/ --- so it can run before the output tree exists.
+// Builds the URL resolver's "is the target real" Set. Takes an
+// explicit themeAssetRels array (from enumerateVendoredThemeAssets in
+// offline.mjs) instead of walking _site/assets/ --- so it can run
+// before the output tree exists.
 export function buildSitePathsSync(pages, staticFiles, excludePatterns, stubs, themeAssetRels) {
   const paths = new Set();
   for (const p of pages) {
@@ -408,7 +409,7 @@ export function deriveOfflinePageCached(page, deps) {
 // single rendered page. Returns `{ html, misses }`. The page must
 // have `page.html !== undefined`. The state's caches are mutated for
 // per-build reuse; pass a fresh state if cache pollution across pages
-// is a concern (see _diff.mjs's per-call buildOfflineState).
+// is a concern.
 export function deriveOfflinePage(page, state) {
   const { sitePaths, caches, baseurl } = state;
   const fileDir = posixDirname(page.destPath);

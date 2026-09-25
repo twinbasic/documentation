@@ -439,7 +439,7 @@ Returns `{ redirectStats, sitemapStats, searchStats }` (the search stats pass th
 writeOffline.expected = ["writeAux", "writeAssets"]
 ```
 
-Calls `writeOffline(state.pages, state.staticFiles, state.site, destRoot, { auxStats, precomputed: true, sitePaths, profileOffline })` from `offline.mjs`. With `precomputed: true`, the per-page HTML rewrite is skipped --- it was already done inside `render:i` and written by `flush:i`. This task handles the cross-cutting work: CSS `url()` rewriting, the `just-the-docs.js` AST patch (`deriveOfflineJtdJs`), the `search-data.js` wrapper (`deriveOfflineSearchDataJs`), theme assets, redirect stubs. Reads `sitePaths` from `state.sitePaths` (computed by `dispatch`).
+Calls `writeOffline(state.staticFiles, state.site, destRoot, { auxStats, sitePaths, profileOffline })` from `offline.mjs`. Per-page HTML is already rewritten and written to disk inside `render:i` / `flush:i`. This task handles the cross-cutting work: CSS `url()` rewriting, the `just-the-docs.js` AST patch (`deriveOfflineJtdJs`), the `search-data.js` wrapper (`deriveOfflineSearchDataJs`), theme assets, redirect stubs. Reads `sitePaths` from `state.sitePaths` (computed by `dispatch`).
 
 ### `writePdf` (main)
 
@@ -608,7 +608,6 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `loadBookData` | `(srcRoot) → Promise<object\|null>` | Back-compat wrapper around the `data.mjs` loader. |
 | `resolveBookChapters` | `(bookData, pages) → void` | Resolves `_book.yml` chapter selectors to `Page[]` references; sets `_chapters` / `_landing` / `_foreword` in place. |
 | `sortByNavOrder` | `(input) → Page[]` | Group-by-owning-index sort: index pages first, then by `nav_order` ascending with title tie-breaker. |
 | `chapterAnchorFromUrl` | `(url, fallbackTitle?) → string` | Page URL → `ch-…` anchor slug. |
@@ -775,14 +774,11 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | `writeSitemap` | `(pages, site, destRoot, urls?) → Promise<{ entries }>` | Writes `sitemap.xml` + `robots.txt`. Accepts pre-computed URL list from `deriveSitemap`. |
 | `deriveSitemapUrls` | `(pages, site) → string[]` | Sorted absolute URL list. Filters `sitemap: false` and `/404.html`. |
 | `sitemapIncludes` | `(page) → boolean` | The opt-out predicate on its own: `frontmatter.sitemap !== false && permalink !== "/404.html"`. Exported so `linkJoin` can exempt the same pages the generator skipped --- otherwise the first page carrying `sitemap: false` fails the build with no hint why. |
-| `extractSitemapUrls` | `(xml) → string[]` | Parses an existing `sitemap.xml` string. Useful for diffing two builds. |
-| `renderRobotsTxt` | `(config) → string` | Returns the `robots.txt` content string. |
 
 ### `search.mjs`
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `writeSearchData` | `(pages, site, destRoot) → Promise<{ entries, json }>` | Main-thread single-pass derivation + write. Used by dev tooling. |
 | `writeSearchDataFromChunks` | `(searchChunks, destRoot) → Promise<{ entries, json }>` | Per-chunk consolidator. Flattens, renumbers global `i`, writes `assets/js/search-data.json`. Used by the `searchData` task. |
 | `deriveSearchEntries` | `(pages, site) → object[]` | Pure compute. One entry per heading-bounded section of each titled page. Each entry: `{ i, doc, title, content, url, relUrl, sourcePage }`. Called by render workers; the worker drops `sourcePage` and chunk-local `i` from the returned objects before posting back. |
 | `renderEntryString` | `(entry) → string` | Per-entry JSON shape matching the upstream template output byte-for-byte. |
@@ -811,8 +807,7 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `writeOffline` | `(pages, staticFiles, site, destRoot, { auxStats?, profileOffline?, precomputed?, sitePaths? }) → Promise<stats>` | Offline tree writer. `precomputed: true` skips per-page HTML rewriting (use the pre-computed `page.offlineHtml` from render workers); `sitePaths` skips the `_site/assets/` walk. |
-| `buildOfflineState` | `(pages, staticFiles, site, destRoot, { stubs?, sitePaths? }) → Promise<OfflineState>` | Constructs the rewrite-state object (site-path set, resolution caches, per-directory nav caches). |
+| `writeOffline` | `(staticFiles, site, destRoot, { auxStats?, profileOffline?, sitePaths }) → Promise<stats>` | Offline tree writer. Per-page HTML is already written by render workers from their pre-computed `page.offlineHtml`; `sitePaths` is the set `dispatch` built with `buildSitePathsSync`. |
 | `enumerateVendoredThemeAssets` | `() → string[]` | Lists the relative paths under `builder/vendor/just-the-docs/assets/`. Used by `dispatch` to build the site-paths set without traversing `_site/`. |
 | `deriveOfflineJtdJs` | `(src) → string` | AST-based patcher: replaces `navLink` and `initSearch` in `just-the-docs.js` with offline-compatible implementations via `acorn`. A parse failure at build time signals that re-extraction produced something acorn cannot read. |
 | `deriveOfflineSearchDataJs` | `(jsonBytes) → string` | Wraps `search-data.json` as `window.SEARCH_DATA = …` and minifies. `<script src=>` cannot fetch JSON under `file://`. |
@@ -824,7 +819,7 @@ Pure-compute rewrite helpers extracted from `offline.mjs` so they can be importe
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `buildSitePathsSync` | `(pages, staticFiles, excludePatterns, stubs, themeAssetRels) → Set<string>` | Synchronous version of `buildSitePaths`. Takes an explicit theme-asset list instead of traversing `_site/assets/`. Used by `dispatch`. |
+| `buildSitePathsSync` | `(pages, staticFiles, excludePatterns, stubs, themeAssetRels) → Set<string>` | Builds the URL resolver's site-paths Set synchronously, from an explicit theme-asset list rather than traversing `_site/assets/`. Used by `dispatch`. |
 | `deriveOfflinePage` | `(page, state) → { html, misses }` | Rewrites one page's HTML for offline use: strips SEO metadata, rewrites every absolute URL to a page-relative path, injects the offline search setup script. |
 | `deriveOfflinePageCached` | `(page, deps) → { html, misses }` | Cached variant. Uses `state.navCache` to substitute the pre-rewritten sidebar nav block, avoiding a full regex pass over the ~80 KB sidebar on each page. |
 | `sliceNavBlock` | `(html) → { before, nav, after } \| null` | Splits a page's HTML into the segments before, within, and after the sidebar nav block. |
@@ -843,8 +838,6 @@ Pure-compute rewrite helpers extracted from `offline.mjs` so they can be importe
 | Symbol | Signature | Description |
 |---|---|---|
 | `writePdf` | `(pages, staticFiles, site, destRoot, { tolerateMissingImages?, highlightCss }) → Promise<stats>` | Writes the `_site-pdf/` source tree: `book.html` + `tb-highlight.css` + `print.css` + referenced images. |
-| `deriveBookOutputs` | `(pages, site) → { bookHtml, images }` | Pure compute. Returns the assembled HTML and image-path list. |
-| `extractImagePaths` | `(html) → string[]` | Extracts all `src` / `href` paths from an HTML string. |
 
 ### `scheduler.mjs`
 
@@ -857,7 +850,7 @@ Pure-compute rewrite helpers extracted from `offline.mjs` so they can be importe
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `WorkerPool` | class | Constructor: `(size, workerUrl)`. Methods: `sendInit(sab, ctx, idMapping)` (broadcasts the init message; increments `_buildCount`), `broadcastDynamicData(payloadSAB, sharedSAB)`, `destroy()`. Public fields: `bootTimings[]`, `_buildCount` (read by `runBuild` to detect serve-mode rebuilds). Callbacks (`onWorkerDone`, `onWorkerError`, `onPerWorkerTiming`, `onMainTaskReady`) are wired by the caller. |
+| `WorkerPool` | class | Constructor: `(size, workerUrl)`. Methods: `sendInit(sab, ctx)` (broadcasts the init message; increments `_buildCount`), `broadcastDynamicData(payloadSAB, sharedSAB)`, `destroy()`. Public fields: `bootTimings[]`, `_buildCount` (read by `runBuild` to detect serve-mode rebuilds). Callbacks (`onWorkerDone`, `onWorkerError`, `onPerWorkerTiming`, `onMainTaskReady`) are wired by the caller. |
 
 ### `cpu-worker.mjs`
 
@@ -922,7 +915,6 @@ The handler table is built from the imported `HANDLERS` constant:
 |---|---|---|
 | `runBuild` | `(opts) → Promise<{ pages, staticFiles, site, destRoot }>` | Runs the full pipeline. Allocates the SAB, spawns or reuses the pool, sends `init` to every worker, awaits `scheduler.start(ctx)`, logs the summary, injects the Gantt chart, returns the final state. |
 | `createWorkerPool` | `() → WorkerPool` | Factory for `serve.mjs`. Lets the dev server construct one pool at startup and pass it to every `runBuild()` call without importing `WorkerPool` itself. |
-| `makeTimer` | `() → { lap(label), summary() }` | Lightweight lap timer. |
 
 `BuildOpts` fields:
 

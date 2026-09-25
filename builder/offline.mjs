@@ -3,22 +3,20 @@
 // file:// with no HTTP server. See builder/PLAN-7.md for the full spec
 // and docs/_plugins/offlinify.rb for the canonical Jekyll reference.
 //
-// One entry point: writeOffline(pages, staticFiles, site, destRoot,
-// { auxStats, precomputed, sitePaths }). When precomputed is true,
-// per-page HTML was already derived by render workers and stored on
-// page.offlineHtml; writeOfflinePages writes those directly (I/O only).
-// sitePaths, when provided, skips the async _site/assets/ walk in
-// buildOfflineState. Pure-compute derive helpers are in
-// offline-rewrite.mjs and re-exported from here for `_diff.mjs` /
-// `_triage.mjs` backward compatibility.
+// One entry point: writeOffline(staticFiles, site, destRoot,
+// { auxStats, sitePaths }). The render workers derive each page's
+// offline HTML and write it during their flush, so writeOffline writes
+// the rest: the patched just-the-docs.js, search-data.js, the redirect
+// stubs, the static files and the theme assets. sitePaths is the set
+// the caller built with buildSitePathsSync (offline-rewrite.mjs), which
+// holds the pure-compute rewrite helpers.
 //
 // Internal sections:
 //
 //   §A  Top-level orchestration
-//   §B  Site-paths set (buildSitePaths async + enumerateVendoredThemeAssets)
+//   §B  Site-paths set (enumerateVendoredThemeAssets)
 //   §G  just-the-docs.js patches + search-data.js wrapper
 //   §H  Static-file pass + theme-asset pass
-//   §I  Re-export surface for diff tools (from offline-rewrite.mjs)
 
 import { promises as fs } from "node:fs";
 import { existsSync, readdirSync } from "node:fs";
@@ -39,51 +37,8 @@ import {
 import {
   offlineExcluded,
   normalizeBaseurl,
-  posixDirname,
-  sliceNavBlock,
-  deriveOfflinePage,
-  deriveOfflinePageCached,
   deriveOfflineCss,
   deriveOfflineRedirect,
-} from "./offline-rewrite.mjs";
-
-// ---------------------------------------------------------------------------
-// §I  Re-export surface for diff tools (from offline-rewrite.mjs)
-// ---------------------------------------------------------------------------
-
-export {
-  buildSitePathsSync,
-  offlineExcluded,
-  fnmatchPathname,
-  normalizeBaseurl,
-  posixDirname,
-  fileDirSegsFromRel,
-  sliceNavBlock,
-  NAV_OPEN_RE,
-  NAV_CLOSE,
-  NAV_PLACEHOLDER,
-  deriveOfflinePageCached,
-  deriveOfflinePage,
-  deriveOfflineCss,
-  deriveOfflineRedirect,
-  stripSeo,
-  rewriteHtml,
-  injectSearchSetup,
-  rewriteCss,
-  computeRelative,
-  resolveRaw,
-  buildSegs,
-  decode,
-  computeRelUrl,
-  getPageCache,
-  escapeRegExp,
-  PATH_SAFE_RE,
-  PATH_SAFE_CHAR_RE,
-  SEO_BLOCK_RE,
-  TITLE_RE,
-  HTML_COMBINED_RE,
-  JTD_SCRIPT_TAG_RE,
-  CSS_URL_RE,
 } from "./offline-rewrite.mjs";
 
 const OFFLINE_SUFFIX = "-offline";
@@ -91,9 +46,9 @@ const LIMIT = WRITE_LIMIT;
 
 const _builderDir = path.dirname(fileURLToPath(import.meta.url));
 
-// Local copy of tbdocs.mjs's makeTimer (PLAN-9 §7.D13). Avoids a
-// cyclic import; the verify harnesses and diff tools import
-// offline.mjs without going through tbdocs.mjs's main() side effects.
+// Minimal lap timer, used only when --profile-offline is set. A
+// private copy rather than an import from tbdocs.mjs, which would be
+// a cyclic import (tbdocs.mjs imports this file).
 function makeTimer() {
   const laps = [];
   let last = Date.now();
@@ -113,14 +68,12 @@ function makeTimer() {
 // §A  Top-level orchestration
 // ---------------------------------------------------------------------------
 
-// biome-ignore lint/correctness/noUnusedFunctionParameters: unread since the diff tools were retired (A2-1); C14 removes it and tbdocs.mjs's argument.
-export async function writeOffline(pages, staticFiles, site, destRoot, { auxStats, profileOffline = false, precomputed = false, sitePaths, check = false } = {}) {
+export async function writeOffline(staticFiles, site, destRoot, { auxStats, profileOffline = false, sitePaths, check = false } = {}) {
   if (!destRoot) {
     throw new Error("writeOffline requires a destRoot");
   }
 
-  const stubs = auxStats?.redirects?.stubs ?? [];
-  const state = await buildOfflineState(pages, staticFiles, site, destRoot, { stubs, sitePaths });
+  const state = buildOfflineState(site, destRoot, sitePaths);
   // Project-owned theme assets (head-nav.css, print.css, theme-toggle.js)
   // live under docs/assets/ and ride the static-file copy path -- but the
   // online pass also copies them into <destRoot>/assets/, so they show up
@@ -160,17 +113,16 @@ export async function writeOffline(pages, staticFiles, site, destRoot, { auxStat
   );
   subT?.lap("searchDataJs");
 
-  // PLAN-9 §5.7: per-branch timing. The five Promise.all branches
+  // PLAN-9 §5.7: per-branch timing. The three Promise.all branches
   // overlap, so each branch's reported duration is the await time
   // inside its own .then() callback; they sum to more than the
   // wall-clock total. The "(concurrent)" suffix is informational only
   // -- the sequential laps above are the source of truth for total.
   //
   // Construct the branch promise array under the same subT lap that
-  // covers Promise.all: each writeOfflinePages/etc. call runs its
-  // synchronous prefix (e.g. nav-block cache pre-pass) immediately,
-  // before any await happens. Folding that work into the same lap as
-  // the parallel await keeps the timing report honest.
+  // covers Promise.all: each branch call runs its synchronous prefix
+  // immediately, before any await happens. Folding that work into the
+  // same lap as the parallel await keeps the timing report honest.
   // Offline page HTML is already on disk from per-worker flush.
   // Only redirect stubs, static files, and theme assets are written here.
   if (subT) {
@@ -197,20 +149,15 @@ export async function writeOffline(pages, staticFiles, site, destRoot, { auxStat
   return { ...deps.counters, jtdPatches, subT, checkStubs: deps.checkStubs };
 }
 
-// Pure-compute state assembly. Shared by the writer (writeOffline) and
-// the diff tools (`_diff.mjs --offline`, `_triage.mjs auditOffline`).
-// Reads destRoot/assets/ to seed the URL resolver's site-paths Set with
-// the theme files Phase 5 copied -- those don't live in staticFiles[].
-// `stubs` (optional) is the redirect-stub list from Phase 6; their
-// destinations land in sitePaths so a page-relative link like
-// `LBound` resolves through the stub at `tB/Core/LBound.html`.
-export async function buildOfflineState(pages, staticFiles, site, destRoot, { stubs = [], sitePaths } = {}) {
+// The state the URL rewrite reads: the site-paths Set, the resolution
+// caches, and the base URL and exclusions from the site config.
+function buildOfflineState(site, destRoot, sitePaths) {
   const excludePatterns = Array.isArray(site.config?.offline_exclude)
     ? site.config.offline_exclude.map(String)
     : [];
   return {
     destRoot,
-    sitePaths: sitePaths ?? await buildSitePaths(pages, staticFiles, destRoot, excludePatterns, stubs),
+    sitePaths,
     caches: {
       rawResolution: new Map(),
       seg: new Map(),
@@ -220,73 +167,6 @@ export async function buildOfflineState(pages, staticFiles, site, destRoot, { st
     siteUrl: String(site.config?.url ?? "").replace(/\/+$/, ""),
     excludePatterns,
   };
-}
-
-// §5.2  writeOfflinePages -- per-page strip + rewrite + inject.
-//
-// PLAN-9 §5.3 (B7) nav-block cache: the just-the-docs sidebar in
-// `<nav id="site-nav">...</nav>` is byte-identical across every page
-// site-wide before rewrite (template.mjs's renderSidebar takes only
-// `site`, not `page`; the per-page active highlight lives in a
-// separate `<style id="jtd-nav-activation">` block emitted in
-// <head>, not as inline class attributes on the nav anchors). The
-// HTML rewrite pass spends ~200 ms per build re-running the per-
-// match callback over that ~80kB block on each of 837 pages. The
-// cache stashes the pre/post-rewrite nav slices once per
-// **destination** dir (the URL rewrite is keyed by `fileSegs`,
-// derived from `page.destPath`) and the per-page rewriter
-// substitutes them in instead of re-scanning.
-//
-// Asserted-premise design (§7.D11): each subsequent page checks that
-// its pre-rewrite nav block matches the cached `input` byte-for-byte.
-// On miss we fall back to the full rewrite with a warning -- the
-// cache is purely an optimisation, never a correctness dependency.
-// biome-ignore lint/correctness/noUnusedVariables: dead since the diff tools were retired (A2-1); C14 deletes it and moves the nav-block cache comment above cpu-worker.mjs's live copy.
-async function writeOfflinePages(pages, deps, { precomputed = false } = {}) {
-  const { offlineRoot } = deps;
-
-  if (precomputed) {
-    const writable = pages.filter(p => p.offlineHtml !== undefined);
-    await runLimited(writable, LIMIT, async (page) => {
-      const dest = path.join(offlineRoot, page.destPath);
-      await writeFileMkdirp(dest, page.offlineHtml);
-      deps.counters.html += 1;
-      deps.counters.unresolved += page.offlineMisses ?? 0;
-    });
-    return;
-  }
-
-  const writable = pages.filter(p => p.html !== undefined);
-
-  // Pre-pass: group pages by destination dir, render the first page
-  // in each group through deriveOfflinePage, and stash the
-  // pre-rewrite/post-rewrite nav slices on deps.navCache.
-  const byDir = new Map();
-  for (const p of writable) {
-    const destDir = posixDirname(p.destPath);
-    let g = byDir.get(destDir);
-    if (!g) { g = []; byDir.set(destDir, g); }
-    g.push(p);
-  }
-  const navCache = new Map();
-  for (const [destDir, group] of byDir) {
-    const first = group[0];
-    const input = sliceNavBlock(first.html);
-    if (input === null) continue;
-    const { html: rendered } = deriveOfflinePage(first, deps);
-    const output = sliceNavBlock(rendered);
-    if (output === null) continue;
-    navCache.set(destDir, { input, output });
-  }
-  deps.navCache = navCache;
-
-  await runLimited(writable, LIMIT, async (page) => {
-    const { html, misses } = deriveOfflinePageCached(page, deps);
-    const dest = path.join(offlineRoot, page.destPath);
-    await writeFileMkdirp(dest, html);
-    deps.counters.html += 1;
-    deps.counters.unresolved += misses;
-  });
 }
 
 // §5.3  writeOfflineRedirects -- rewrite the four <site.url><path>
@@ -356,43 +236,6 @@ async function copyOfflineThemeAssets(deps) {
 // ---------------------------------------------------------------------------
 // §B  Site-paths set
 // ---------------------------------------------------------------------------
-
-// §6.1  buildSitePaths -- the URL resolver's "is the target real" Set.
-// Combines pages, staticFiles, and the theme tree Phase 5 copied to
-// <destRoot>/assets/ (which is not present in staticFiles[]).
-// Filters on the same signal Phase 5 uses to decide what to write
-// (`layout: book-combined` is the only skip case), not on whether
-// `page.html` happens to be populated -- the diff tools call this
-// without running templatePhase first.
-async function buildSitePaths(pages, staticFiles, destRoot, excludePatterns, stubs = []) {
-  const paths = new Set();
-  for (const p of pages) {
-    if (p.frontmatter?.layout === "book-combined") continue;
-    const rel = p.destPath.replaceAll("\\", "/");
-    if (offlineExcluded(rel, excludePatterns)) continue;
-    paths.add("/" + rel);
-  }
-  for (const s of staticFiles) {
-    const rel = s.destRel.replaceAll("\\", "/");
-    if (offlineExcluded(rel, excludePatterns)) continue;
-    paths.add("/" + rel);
-  }
-  for (const stub of stubs) {
-    const rel = stub.destPath.replaceAll("\\", "/");
-    if (offlineExcluded(rel, excludePatterns)) continue;
-    paths.add("/" + rel);
-  }
-  const themeRoot = path.join(destRoot, "assets");
-  if (existsSync(themeRoot)) {
-    const themeFiles = await collectThemeFiles(themeRoot);
-    for (const f of themeFiles) {
-      const rel = "assets/" + f.relUnderAssets;
-      if (offlineExcluded(rel, excludePatterns)) continue;
-      paths.add("/" + rel);
-    }
-  }
-  return paths;
-}
 
 // Synchronous walk of builder/vendor/just-the-docs/assets/. Returns
 // paths like ["assets/js/just-the-docs.js",

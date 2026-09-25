@@ -913,6 +913,40 @@ naming them, remain.
 tools outside the PLAN and REVIEW records. The tree comparison: identical apart from the
 documentation pages this commit edits.
 
+**Landed** with more than the entry names: everything it lists went, and deleting it left
+more dead code, which went too.
+
+- With the fallback gone, `buildOfflineState` read none of `pages`, `staticFiles` and
+  `stubs`, and `writeOffline` kept `pages` only to pass it on. Both lost those parameters,
+  and `tbdocs.mjs`'s call and Pipeline-Stages.md's signatures lost them too. Nothing outside
+  `offline.mjs` calls `buildOfflineState` and it awaits nothing, so it is private and no longer
+  `async`. Four imports from `offline-rewrite.mjs` that only the deleted code used went, and so
+  did `pdf.mjs`'s `IMG_SRC_RE` and `sitemap.mjs`'s `LOC_RE` with the only functions that used
+  them. `offline.mjs`'s rewritten header lists everything `writeOffline` still writes, and a
+  comment there that counted five `Promise.all` branches says three, as there have been since
+  before this commit.
+- Three more things existed only for the retired tools, by their own comments, and the review
+  missed them: `book.mjs`'s `loadBookData` ("retained for the verify harnesses and diff
+  tools"), which nothing calls and which is deleted, and the exports of `pdf.mjs`'s
+  `deriveBookOutputs` and `sitemap.mjs`'s `renderRobotsTxt`, which only their own files use.
+  Pipeline-Stages.md loses eight rows: those two, `loadBookData`, `buildOfflineState`,
+  `extractSitemapUrls`, `writeSearchData`, `extractImagePaths` and `makeTimer`. The rows for
+  `writeOffline`, `buildSitePathsSync` and `WorkerPool` changed, and so did the `writeOffline`
+  task's paragraph, which still passed `precomputed: true`.
+- The entry's comment list missed three that named the tools or their code:
+  `offline-rewrite.mjs`'s on `buildSitePathsSync`, `search.mjs`'s on
+  `writeSearchDataFromChunks`, and `book.mjs`'s on `IMG_SRC_RE_BOOK`, which pointed at
+  `pdf.mjs`'s deleted copy of the pattern.
+- The nav-block cache comment sits above the cache in `cpu-worker.mjs`'s `render`, unchanged
+  apart from its first line, which named the deleted function, and one "we".
+
+Verified: `git grep -w` for each deleted name finds only the scheduler's own `idMapping`,
+unrelated uses of "precomputed", and the records; the retired tools are named only in the
+records and in two notes that say they were retired (`WIP.OldJekyll.md`, `builder/README.md`).
+Lint is clean at 138 files. The tree comparison differs only in Pipeline-Stages.html, the
+search index and `book.html`. Every offline page is identical, which shows that dropping
+`precomputed` and the fallback changed nothing the render workers write.
+
 ### C15 — `builder, wisdom: delete precomputeSeo and schemas.mjs; unexport kramdownSlug`
 
 **A3-9, A3-10 (R3), A10-4 (R2).** `seo.mjs`'s `precomputeSeo` (`:90-94`) has no caller;

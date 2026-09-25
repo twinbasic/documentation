@@ -193,21 +193,6 @@ function parseArgs(argv) {
   return args;
 }
 
-export function makeTimer() {
-  const laps = [];
-  let last = Date.now();
-  return {
-    lap(label) {
-      const now = Date.now();
-      laps.push({ label, ms: now - last });
-      last = now;
-    },
-    summary() {
-      return laps.map(l => `${l.label}=${l.ms}ms`).join(" ");
-    },
-  };
-}
-
 // ── Task graph ────────────────────────────────────────────────────────────────
 //
 // Seeds (config, buildInfo, dot, scssLight + scssDark → scss,
@@ -1021,9 +1006,8 @@ const TASKS = {
       const skipOffline = ctx.opts.skipOffline ?? (state.site.config.also_build_offline === false);
       if (ctx.opts.dryRun || skipOffline) return null;
       const auxStats = { redirects: redirectStats, sitemap: sitemapStats, search: searchStats };
-      return writeOffline(state.pages, state.staticFiles, state.site, ctx.destRoot, {
+      return writeOffline(state.staticFiles, state.site, ctx.destRoot, {
         auxStats,
-        precomputed: true,
         sitePaths: state.sitePaths,
         profileOffline: ctx.opts.profileOffline,
         check: !!state.checkTrees,
@@ -1446,7 +1430,7 @@ export async function runBuild(opts) {
   pool.onPerWorkerTiming = (msg) => scheduler._onPerWorkerTiming(msg);
   pool.onMainTaskReady  = ()    => scheduler._onMainTaskReady();
 
-  pool.sendInit(sab, ctx, idMapping);
+  pool.sendInit(sab, ctx);
 
   let results;
   try {

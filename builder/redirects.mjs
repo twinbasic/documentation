@@ -33,11 +33,9 @@ export async function writeRedirects(pages, site, destRoot, precomputedStubs) {
 
 // Pure-compute derivation: produces the redirect-stub list (destPath +
 // HTML + source page reference) without writing to disk. Used by
-// writeRedirects above and by `_triage.mjs` / `_diff.mjs` to derive
-// the expected output in-memory for byte comparison against Jekyll's
-// `_site/`. Throws on collision (§7.D2) -- the build would fail
-// anyway if it tried to write the conflicting stub, so surfacing it
-// from the derivation step is the right place.
+// writeRedirects above. Throws on collision (§7.D2) -- the build would
+// fail anyway if it tried to write the conflicting stub, so surfacing
+// it from the derivation step is the right place.
 export function deriveRedirectStubs(pages, site) {
   const config = site.config;
 

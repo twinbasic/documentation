@@ -62,17 +62,6 @@ export function sitemapIncludes(page) {
   return page.frontmatter?.sitemap !== false && page.permalink !== "/404.html";
 }
 
-// Parse the raw `<loc>...</loc>` URL values out of an on-disk
-// sitemap.xml as a Set. Comparable against deriveSitemapUrls's output
-// for set-difference reporting. Exported so `_triage.mjs` and
-// `_sitemap_diff.mjs` share the extraction.
-const LOC_RE = /<loc>([^<]+)<\/loc>/g;
-export function extractSitemapUrls(xml) {
-  const out = new Set();
-  for (const m of xml.matchAll(LOC_RE)) out.add(m[1]);
-  return out;
-}
-
 // jekyll-sitemap template line: `{{ site.url }}{{ doc.url | replace:
 // '/index.html', '/' | absolute_url | xml_escape }}`. The /index.html
 // strip handles the case where a permalink ends in /index.html so the
@@ -94,9 +83,7 @@ function renderSitemapXml(urls) {
     `</urlset>\n`;
 }
 
-// Exported so `_triage.mjs` / `_diff.mjs` can derive the expected
-// robots.txt content in-memory and compare against `_site/robots.txt`.
-export function renderRobotsTxt(config) {
+function renderRobotsTxt(config) {
   return `Sitemap: ${absoluteUrl("/sitemap.xml", config)}\n`;
 }
 
