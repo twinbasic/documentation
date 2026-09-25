@@ -73,9 +73,9 @@
 // bucket and is reported -- a census that quietly buckets its own confusion is
 // how the wrong answer gets published with a number beside it.
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { findIde } from "./lib/tb-install.mjs";
 import { defaultCache, exportPackages, packageName } from "./lib/tb-packages.mjs";
 
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -94,28 +94,17 @@ if (flag("help")) {
 }
 
 // ------------------------------------------------------------- the install
-// An install path contains a username, so it is never hardcoded -- the same
-// rule tbbuild.mjs follows, and for the same reason.
+// Found as every harness tool finds it, by scripts/lib/tb-install.mjs's
+// findIde, and then checked for the packages/ folder the census reads. An
+// install path contains a username, so it is never hardcoded.
 function findInstall() {
-  const given = opt("ide", process.env.TB_IDE);
-  if (given) {
-    // Accept either the install root or the IDE exe inside it.
-    const root = /\.exe$/i.test(given) ? path.dirname(given) : given;
-    if (existsSync(path.join(root, "packages"))) return root;
-    if (existsSync(path.join(path.dirname(root), "packages"))) return path.dirname(root);
-    die(2, `no packages/ under ${root} -- pass the install root with --ide`);
-  }
-  const home = process.env.USERPROFILE || os.homedir();
-  const desktop = path.join(home, "Desktop");
-  if (!existsSync(desktop)) die(2, "no Desktop to search; pass --ide or set TB_IDE");
-  const betas = readdirSync(desktop)
-    .map((n) => /^twinBASIC_IDE_BETA_(\d+)$/.exec(n))
-    .filter(Boolean)
-    .map((m) => ({ n: Number(m[1]), dir: path.join(desktop, m[0]) }))
-    .filter((b) => existsSync(path.join(b.dir, "packages")))
-    .sort((a, b) => b.n - a.n);
-  if (!betas.length) die(2, "no twinBASIC_IDE_BETA_* with a packages/ folder on the Desktop; pass --ide");
-  return betas[0].dir;
+  const found = findIde(opt("ide"));
+  if (!found) die(2, "no twinBASIC install found; pass --ide or set TB_IDE");
+  // Accept either the install root or the IDE exe inside it.
+  const root = /\.exe$/i.test(found) ? path.dirname(found) : found;
+  if (existsSync(path.join(root, "packages"))) return root;
+  if (existsSync(path.join(path.dirname(root), "packages"))) return path.dirname(root);
+  die(2, `no packages/ under ${root} -- pass the install root with --ide`);
 }
 
 const buildNumberOf = (root) => (/_BETA_(\d+)$/.exec(root)?.[1]) ?? "unknown";

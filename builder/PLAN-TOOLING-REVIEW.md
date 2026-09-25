@@ -771,6 +771,30 @@ it.
 **Verify.** A scratch script: `findIde` and census resolve the same install with
 `USERPROFILE` set and unset. `census_attributes.mjs --json` unchanged (a harness run).
 
+**Landed** as the entry describes. `findInstall` asks `findIde`, then checks, as before, that
+the path it gets or the folder above it holds `packages/`. `tb-install.mjs` gains the fallback
+(`USERPROFILE || os.homedir()`), so tbbuild, tbrun, check_examples, addin_test and
+build_package_api have it too; without it a missing `USERPROFILE` searched a `Desktop` folder
+under the working directory. Census's two messages for a failed Desktop search became one,
+`build_package_api.mjs`'s wording, still exit 2. Three cases now behave differently. Two are
+the point of the finding: an install with `twinBASIC.exe` but no `packages/` is now refused
+rather than skipped for an older one, and one with `packages/` but no `twinBASIC.exe` is no
+longer chosen, so census never reads a different install from the one the other tools compile
+with. The third is `--ide` given last with no value, which used to skip `TB_IDE` and now falls
+back to it; C17 makes that command line an error.
+
+**Unsetting `USERPROFILE` for a child process does not work on Windows.** A child spawned with
+an environment block that lacks it still has it, and so do `HOMEPATH` and `TEMP`, while
+`APPDATA` and `LOCALAPPDATA` stay removed: libuv adds a set of variables back from the parent.
+The first run of the oracle reported agreement for that reason. Its "unset" children now
+delete the variable themselves, through a `--import` preload, and they print what they saw.
+
+Verified: before the change, with `USERPROFILE` unset, `findIde` returned null while census
+found BETA 983 through the home folder; after it, both resolve BETA 983 with it set and unset.
+The census's `--json` report is byte-identical to C10's baseline in both cases, and with
+`--ide` given the install root or its `twinBASIC.exe`; a path with no `packages/` and a home
+folder with no install both exit 2. The tree comparison is identical.
+
 ### C12 — `lib: move markdown-files.mjs to a top-level lib/`
 
 **Decision (a)'s home**, and the prerequisite for C13: `builder/serve.mjs` needs
