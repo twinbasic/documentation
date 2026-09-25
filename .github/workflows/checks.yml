@@ -98,161 +98,23 @@ jobs:
         # step fails on the exit code: 1 for link failures, 2 for
         # integrity failures, 3 for both.
         run: node builder/tbdocs.mjs --src docs --no-fetch-assets --check-audit-index
-      # The build above is the only pass over the site's HTML. This step is
-      # NOT a second one: it runs the differential harness against a
-      # nine-file synthetic tree that carries one fault of every kind, so
-      # scripts/check_links.mjs -- still the tool for a tree the build did
-      # not produce, and the oracle the fused path is defined against --
-      # cannot rot unnoticed. ~0.3 s, no site files touched.
-      #
-      # The full script-vs-fused comparison over the real trees stays a
-      # manual gate (`check_links_diff.mjs --a script --b fused`): running
-      # it here would mean checking every page twice, which is exactly what
-      # folding the check into the build removed.
-      - name: Verify the standalone link checker (check_links_diff.mjs)
-        run: node scripts/check_links_diff.mjs --case fixture --a script --b index
-      # The step above compares two front ends over a hand-written tree.
-      # This one compares the script against the BUILD's own checker, over
-      # a three-page tree the build produces from test/fixtures/check-src.
-      # That is the pass the harness exists for and the one nothing
-      # exercised: `--b fused` skipped the synthetic `fixture` case every
-      # time, because the build cannot check a tree it did not write. A
-      # regression in builder/check.mjs that stopped REPORTING a category
-      # would have left every gate green.
+      # The gates both workflows run, in one list: see
+      # .github/actions/run-gates/action.yml, which check_ci_workflows.mjs
+      # checks against test.bat and check.bat. Each gate is its own group in
+      # this step's log.
+      - name: Run the gates
+        uses: ./.github/actions/run-gates
+      # The action's first step compares the standalone link checker's two
+      # front ends over a hand-written tree. This one compares the script
+      # against the BUILD's own checker, over a three-page tree the build
+      # produces from test/fixtures/check-src. That is the pass the harness
+      # exists for and the one nothing exercised: `--b fused` skipped the
+      # synthetic `fixture` case every time, because the build cannot check a
+      # tree it did not write. A regression in builder/check.mjs that stopped
+      # REPORTING a category would have left every gate green.
       #
       # One extra three-page build, ~1 s. It is here and not in the deploy
       # workflow because this is the PR gate: catching it before a merge is
       # the point, and the deploy workflow has a site to ship.
       - name: Verify the build's own link checker (check_links_diff.mjs)
         run: node scripts/check_links_diff.mjs --case fixture-built --case fixture-built-offline --a script --b fused
-      # The publish allowlist (builder/publish-policy.mjs) is enforced
-      # inside the build above, so a green build already says nothing
-      # unpublishable is in docs/. It does NOT say the allowlist still
-      # refuses anything: one widened until it refuses nothing reports the
-      # same clean pass. This asserts the refusals against named probes --
-      # a stray .bak, a .pem, a scratch .md with no frontmatter. No
-      # browser, no built tree, ~40 ms.
-      - name: Verify the publish allowlist (check_publish_policy.mjs)
-        run: node scripts/check_publish_policy.mjs
-      # The two gate lists on Tools.md against the wrappers that run
-      # them, plus every gate count stated in prose in README.md or
-      # under docs/Documentation/. Documented gate counts have rotted
-      # three times; the third was round 3's own fix pass, on the two
-      # pages the first version of this gate did not read. Pure text,
-      # ~50 ms.
-      - name: Verify the documented gate lists (check_gate_lists.mjs)
-        run: node scripts/check_gate_lists.mjs
-      # This workflow and tbdocs-gh-pages.yml against the wrappers: every
-      # gate test.bat and check.bat run, with the same arguments and in the
-      # same order, and a build with build.bat's flags. See the script's
-      # header for the differences it allows. No browser, no built tree.
-      - name: Verify the workflows run the wrappers' gates (check_ci_workflows.mjs)
-        run: node scripts/check_ci_workflows.mjs
-      # A regex that backtracks exponentially does not fail a build, it
-      # stops one: the corpus passes until a page happens to contain the
-      # trigger, and then a render worker sits inside String.replace
-      # forever. VOID_TAGS_RE shipped that way for as long as no alt text
-      # contained a slash, and its first fix was still exponential on a
-      # subtler witness. Nothing else here can see it, because there is
-      # nothing to see until the content changes.
-      #
-      # Reads regex literals AND every `new RegExp(...)` the source
-      # decides the arguments of. That second half is not a refinement:
-      # assembling a pattern from shared string constants is ordinary
-      # JavaScript, and for as long as this read literals only it was
-      # also a way out of the gate. Six such regexes went into one gate
-      # unseen, one of them polynomial.
-      #
-      # Gates on exponential only -- about a fifth of the patterns here
-      # are polynomial, nearly all the ordinary `<tag[^>]*>` shape on
-      # bounded input, and a gate that fails on day one gets switched
-      # off. The self-test probes run inside the same pass, classification
-      # and folding both, so a green line here cannot be a gate that has
-      # stopped detecting. No browser, no built tree, a few seconds
-      # sharded across the runner's CPUs.
-      #
-      # recheck's native backend is an optional dependency resolved per
-      # platform; if it is missing the script says so and falls back to
-      # the pure-JS implementation, which is slower but reaches the same
-      # verdict on every probe.
-      - name: Verify regex safety (check_regex_safety.mjs)
-        run: node scripts/check_regex_safety.mjs
-      # render.mjs applies several kramdown-parity rewrites to RAW markdown,
-      # before anything has been parsed, so none of them can tell prose from
-      # code -- on a site whose subject matter is code. Four defects of that
-      # shape shipped: `{% raw %}` stripped inside fences, admonition bodies
-      # losing the indentation of the code they contain, `Items[1](a, b)`
-      # percent-encoded inside a fence, and a YAML sample's closing `---`
-      # deleted with the line above it promoted to a heading.
-      #
-      # No other gate can see any of it: the corruption is inside <code>,
-      # and the link, integrity, publish and axe checks all pass over it.
-      # Tokenise the source, apply the real rewrite chain, re-tokenise, and
-      # compare the literal regions. Probes ride along in the same run so a
-      # clean corpus cannot be mistaken for a working gate. No browser, no
-      # built tree.
-      - name: Verify code regions survive the pre-render rewrites (check_code_regions.mjs)
-        run: node scripts/check_code_regions.mjs
-      # The page-count drift guard reports nothing on a healthy tree, so a
-      # green build says exactly what a guard that had stopped working says.
-      # These probes make the other assertion, against a scratch baseline
-      # rather than the committed one. The first replays the defect that
-      # motivated it: 37 pages of AppGlobalClassObject lost to a blanket
-      # exclude rule, under a guard that knew only a floor of 836 against a
-      # real 908. No browser, no built tree.
-      - name: Verify the page-count drift guard (check_page_baseline.mjs)
-        run: node scripts/check_page_baseline.mjs
-      # The book-coverage warnings say nothing when every page has an entry
-      # in docs/_book.yml, which is also all a check that had stopped working
-      # would say. Before they existed, whole sections dropped out of the PDF
-      # without a word. These probes give each of the five findings a fault
-      # to report, on a manifest and pages built in memory. No browser, no
-      # built tree.
-      - name: Verify the book-coverage warnings (check_book_coverage.mjs)
-        run: node scripts/check_book_coverage.mjs
-      # The symbol index (tB/symbols.json) is read by the IDE help add-in. A
-      # build that indexes the reference cleanly says nothing about the rules
-      # that did not fire on it, so these probes assert each against the case
-      # that made it necessary -- the .twin scanner's traps, the rules placing
-      # a symbol on a page or heading, and the drift guard refusing a URL the
-      # index stopped publishing. Fixtures only: no tree, no install.
-      - name: Verify the symbol index and its drift guard (check_symbol_index.mjs)
-        run: node scripts/check_symbol_index.mjs
-      # Graphviz sizes each node box from a width table; the browser paints
-      # the label with a real font. Nothing in the build compares the two, so
-      # a mismatch ships as text hanging outside its box on a green build --
-      # which is how 27 labels across three diagrams went out, through a full
-      # accessibility sweep, unreported. axe does not evaluate SVG <text>
-      # geometry either.
-      #
-      # Safe on CI's font set: it loads Inter from the committed .woff2 by
-      # @font-face rather than relying on an installed face, so unlike the
-      # target-size rules it measures the same here as on a dev box.
-      - name: Verify DOT diagram fit (check_dot_fit.mjs)
-        run: node scripts/check_dot_fit.mjs
-      # check_a11y.mjs injects a PATCHED axe bundle (plain-color-fields,
-      # -26 % on a realistic page set -- see builder/PLAN-axe-perf.md), so the
-      # patch has to be verified before its results are trusted. The patch
-      # asserts its substitution targets and so fails loudly if an axe-core
-      # bump moves the code; this catches the other case, where the text still
-      # matches but the colour maths has changed. The fingerprint gate cannot
-      # see that -- it compares `incomplete` as a rule-id set.
-      #
-      # Cheap (one page, two bundles) and Chromium is already installed. The
-      # PR that bumps axe-core is exactly when it earns its place.
-      - name: Verify axe source patch (check_axe_patch_equiv.mjs)
-        run: node scripts/check_axe_patch_equiv.mjs
-      # The scan is thirteen pages of ~1,160, so its page list decides what it can
-      # report at all. This fails when the site grows a markup construct no
-      # sample page carries -- the drift that let the previous six-page sample
-      # report a clean pass while 54 pages had violations in constructs it never
-      # saw. No browser, ~1 s.
-      - name: Verify a11y sample coverage (pick_a11y_sample.mjs)
-        run: node scripts/pick_a11y_sample.mjs --check
-      # Matches check.bat: the build's own link check gates this, and a
-      # link failure short-circuits before the (slower) browser scan runs.
-      # Scans _site-offline/, whose relative asset paths actually resolve --
-      # _site/ uses root-absolute URLs that render unstyled here, making
-      # every colour-contrast result meaningless.
-      - name: Accessibility check (check_a11y.mjs)
-        run: node scripts/check_a11y.mjs

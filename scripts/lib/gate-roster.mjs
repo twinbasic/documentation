@@ -48,15 +48,29 @@ export function buildArgs(text) {
   return out;
 }
 
-/**
- * One job's steps from a parsed workflow, each with the gates and the build it
- * runs: `{name, gates, build}`.
- */
-export function workflowSteps(workflow, job) {
-  const steps = workflow?.jobs?.[job]?.steps ?? [];
-  return steps.map((s) => ({
+function stepOf(s, via = null) {
+  return {
     name: s.name ?? s.uses ?? "",
+    via,
     gates: gateSteps(s.run ?? ""),
     build: buildArgs(s.run ?? ""),
-  }));
+  };
+}
+
+/**
+ * One job's steps from a parsed workflow, each with the gates and the build it
+ * runs: `{name, via, gates, build}`. A step that uses a local composite action
+ * (`uses: ./path`) is replaced by that action's own steps, with `via` naming
+ * the action; `resolveAction(uses)` returns the parsed `action.yml`, or null
+ * when it cannot be read, which leaves a step with `unreadable` set rather
+ * than one that quietly runs nothing.
+ */
+export function workflowSteps(workflow, job, resolveAction = () => null) {
+  const steps = workflow?.jobs?.[job]?.steps ?? [];
+  return steps.flatMap((s) => {
+    if (typeof s.uses !== "string" || !s.uses.startsWith("./")) return [stepOf(s)];
+    const action = resolveAction(s.uses);
+    if (action?.runs?.using !== "composite") return [{ ...stepOf(s), unreadable: s.uses }];
+    return (action.runs.steps ?? []).map((a) => stepOf(a, s.uses));
+  });
 }

@@ -497,6 +497,23 @@ a workflow that stops calling it.
 **Verify.** The roster gate and its probes. CI: a dispatch of `checks.yml` on `origin`, and
 the deploy workflow's next run.
 
+**Landed.** All thirteen shared steps moved, the standalone link checker's included, so
+`checks.yml` runs its fused fixture step after the action, with its comment saying which step
+it now follows. The setup steps stay in each workflow: a local action cannot be used before
+the repository is checked out, and the two workflows' installs differ only in how many steps
+they take. The action has one comment per gate, merged from the two workflows'. `checks.yml`'s
+were the long ones, and three facts only the deploy workflow's comments had are kept:
+`check_dot_fit.mjs` runs after the build because `dot.mjs` rewrites a stale `.svg` in place,
+Chromium is already installed for the PDF render, and the deploy run is the one place a change
+pushed straight to `staging` meets the gates.
+
+`check_ci_workflows.mjs` reads a step that uses a local action as that action's own steps, and
+reports one it cannot read; its probes are 17. With `pick_a11y_sample.mjs`'s step removed from
+the action, it reported that gate missing from both workflows and exited 1. `Extending.md`'s
+rule for registering a gate goes from four places to three, and names both checks that enforce
+it. **The cost:** GitHub shows a composite action as one step, with each gate as a named group
+inside its log, so a failure reads as "Run the gates" until the log is opened.
+
 ### C05 — `lint: Biome, correctness rules only, and the fixes it finds`
 
 **Decision 4**, first half. The linter comes first because moved and deleted code leaves

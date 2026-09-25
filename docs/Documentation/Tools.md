@@ -451,9 +451,11 @@ Its probes ride along in the ordinary run rather than hiding behind `--self-test
 
 The same question as [`check_gate_lists.mjs`](#check-gate-lists), asked of the two CI workflows, which nothing else reads. It requires that `checks.yml` and `tbdocs-gh-pages.yml` each run every gate [`test.bat`](#testbat) and [`check.bat`](#checkbat) run, with the same arguments and in each wrapper's own order; that the two workflows run the same gate steps in the same order; and that each workflow's build passes every argument [`build.bat`](#buildbat) passes, plus `--no-fetch-assets`. A step dropped from a workflow, a gate added to a wrapper and never to CI, or a lost `--check-audit-index` would otherwise leave CI green over a check it had stopped making.
 
+The gates both workflows share are one composite action, `.github/actions/run-gates/action.yml`, and the gate reads a workflow step that uses a local action as that action's own steps. A local action it cannot read is a finding, so a renamed action cannot take its gates out of CI unnoticed.
+
 The differences that are meant are listed in the script, each with where it is recorded: `check_tree_fresh.mjs` runs only locally, because CI builds the tree in the same job; the two `check_links_diff.mjs` fixture steps run only in CI, one of them only in `checks.yml`; and the deploy build adds `--url` and `--baseurl`. CI may also interleave the two wrappers' gates, as long as each wrapper's own order holds. Anything else is a finding, and so is an allowance that no longer matches anything.
 
-Its probes ride along in every run: each plants one defect in a small synthetic set of wrappers and workflows --- a missing gate, a step no wrapper runs, two gates swapped, changed arguments, a build flag lost or added --- and requires exactly the findings it should produce. Pure text: no browser, no built tree. Exits 0 clean, 1 on a finding, 2 when a probe fails or the gate cannot run.
+Its probes ride along in every run: each plants one defect in a small synthetic set of wrappers, workflows and actions --- a missing gate, a step no wrapper runs, two gates swapped, changed arguments, a build flag lost or added, a gate missing from the shared action, a workflow that stops calling it --- and requires exactly the findings it should produce. Pure text: no browser, no built tree. Exits 0 clean, 1 on a finding, 2 when a probe fails or the gate cannot run.
 
 ### check_page_baseline.mjs
 {: #check-page-baseline }

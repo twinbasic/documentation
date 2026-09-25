@@ -512,7 +512,10 @@ about what a gate interrogates, not about what it happens to open.
 
 Both CI workflows run every one of these as its own step, unconditionally and
 without invoking the `.bat` files --- so skipping `test.bat` locally changes
-what a content edit costs you, never what reaches `staging`.
+what a content edit costs you, never what reaches `staging`. The steps are one
+list, the composite action `.github/actions/run-gates/action.yml`, which both
+workflows call: **a new gate goes into its wrapper, that action and Tools.md's
+list**, and `check_ci_workflows.mjs` fails `test.bat` until CI matches.
 
 The nav integrity check ([builder/nav.mjs](builder/nav.mjs)) runs during COMPUTE and aborts the build on two failure modes, both otherwise silent:
 

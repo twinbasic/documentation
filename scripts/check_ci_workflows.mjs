@@ -85,9 +85,10 @@ function removeEach(list, drop) {
 /**
  * The findings for one set of texts, as {kind, where, text}. Pure, so that the
  * probes can run it on synthetic sets. `workflows` maps a file name to its
- * parsed YAML.
+ * parsed YAML, and `actions` maps a local action's `uses:` path to its parsed
+ * action.yml; a workflow step that uses one is read as that action's steps.
  */
-function findings({ testBat, checkBat, buildBat, workflows, allowed }) {
+function findings({ testBat, checkBat, buildBat, workflows, actions = {}, allowed }) {
   const out = [];
   const add = (kind, where, text) => out.push({ kind, where, text });
 
@@ -104,7 +105,10 @@ function findings({ testBat, checkBat, buildBat, workflows, allowed }) {
   const compared = {};
 
   for (const wf of names) {
-    const steps = workflowSteps(workflows[wf], JOB);
+    const steps = workflowSteps(workflows[wf], JOB, (uses) => actions[uses] ?? null);
+    for (const s of steps.filter((x) => x.unreadable)) {
+      add("action", wf, `uses \`${s.unreadable}\`, which is not a composite action this gate can read`);
+    }
     const all = steps.flatMap((s) => s.gates.map(keyOf));
     const mine = allowed.ciOnly.filter((e) => e.workflows.includes(wf));
     const { rest: core, absent } = removeEach(all, mine.map(keyOf));
@@ -204,6 +208,18 @@ function pair(one, two) {
   return { "one.yml": one, "two.yml": two };
 }
 
+// A workflow whose gates are in a shared composite action, and the action.
+function wfAction(build, extra = []) {
+  const steps = [{ name: "Checkout", uses: "actions/checkout@v5" }, { name: "Build", run: build }];
+  steps.push({ name: "Run the gates", uses: "./gates" });
+  for (const g of extra) steps.push({ name: g, run: `node scripts/${g}` });
+  return { jobs: { [JOB]: { steps } } };
+}
+
+function actionOf(gates) {
+  return { runs: { using: "composite", steps: gates.map((g) => ({ name: g, shell: "bash", run: `node scripts/${g}` })) } };
+}
+
 const PROBES = [
   ["the recorded differences alone", {}, []],
   ["a gate missing from one workflow",
@@ -242,6 +258,18 @@ const PROBES = [
   ["allowances that match nothing",
     { workflows: pair(wf(GOOD, BUILD_ONE), wf(GOOD, BUILD_ONE)) },
     ["stale"]],
+  ["the gates in a shared composite action",
+    { workflows: pair(wfAction(BUILD_ONE, ["ci.mjs"]), wfAction(BUILD_TWO)), actions: { "./gates": actionOf(GOOD) } },
+    []],
+  ["a gate missing from the shared action",
+    { workflows: pair(wfAction(BUILD_ONE, ["ci.mjs"]), wfAction(BUILD_TWO)), actions: { "./gates": actionOf(["a.mjs", "c.mjs --check"]) } },
+    ["missing"]],
+  ["a workflow that stops calling the action",
+    { workflows: pair(wf(["ci.mjs"], BUILD_ONE), wfAction(BUILD_TWO)), actions: { "./gates": actionOf(GOOD) } },
+    ["missing", "differ"]],
+  ["an action the gate cannot read",
+    { workflows: pair(wfAction(BUILD_ONE, ["ci.mjs"]), wfAction(BUILD_TWO)), actions: {} },
+    ["action", "missing"]],
 ];
 
 function runProbes() {
@@ -275,11 +303,28 @@ console.log(`check_ci_workflows: ${PROBES.length} probes, all pass`);
 const read = (rel) => readFileSync(path.join(ROOT, rel), "utf8");
 const workflows = {};
 for (const name of WORKFLOWS) workflows[name] = yaml.load(read(`.github/workflows/${name}`));
+// Every local action the workflows use; one that cannot be read is left out,
+// and findings() reports the step that uses it.
+const actions = {};
+for (const w of Object.values(workflows)) {
+  for (const s of w?.jobs?.[JOB]?.steps ?? []) {
+    if (typeof s.uses !== "string" || !s.uses.startsWith("./") || s.uses in actions) continue;
+    for (const file of ["action.yml", "action.yaml"]) {
+      try {
+        actions[s.uses] = yaml.load(read(path.join(s.uses, file)));
+        break;
+      } catch {
+        // not this name; try the other
+      }
+    }
+  }
+}
 const found = findings({
   testBat: read("test.bat"),
   checkBat: read("check.bat"),
   buildBat: read("build.bat"),
   workflows,
+  actions,
   allowed: ALLOWED,
 });
 
