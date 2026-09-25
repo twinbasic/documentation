@@ -18,7 +18,6 @@
 import { readFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import puppeteer from "puppeteer";
 
 // This module lives at <repo>/scripts/lib/axe-scan.mjs.  Anchoring the built
 // tree and the axe bundle to the repo root rather than to process.cwd() lets
@@ -254,14 +253,6 @@ export const THEMES = ["light", "dark"];
 // colour-contrast node count on Select-Case drops 54 -> 2 -- which would
 // silently mask coverage for ~130 ms.
 export const BLOCKED_REQUESTS = [/search-data\.js/, /lunr\.min\.js/];
-
-// --no-sandbox: GitHub's ubuntu-24.04 runners carry the AppArmor restriction
-// on unprivileged user namespaces, which Chrome's sandbox needs -- without
-// this the launch fails in CI.  --disable-dev-shm-usage avoids crashes where
-// /dev/shm is small (containers).  Neither touches layout or computed style,
-// so axe sees exactly what it sees locally; book/render-book.mjs passes the
-// same pair for the same reason.
-export const LAUNCH_ARGS = ["--no-sandbox", "--disable-dev-shm-usage"];
 
 // The production axe.run options.
 //
@@ -594,9 +585,8 @@ export function axeVersion() {
 // Browser / page plumbing
 // ---------------------------------------------------------------------------
 
-export function launchBrowser(opts = {}) {
-  return puppeteer.launch({ headless: true, args: LAUNCH_ARGS, ...opts });
-}
+// The launch lives in browser.mjs; perf/'s rigs still import it from here.
+export { launchBrowser } from "./browser.mjs";
 
 /** A page with the scan's request blocking installed. */
 export async function newAuditPage(browser) {

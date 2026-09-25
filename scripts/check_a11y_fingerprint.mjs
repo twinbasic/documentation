@@ -67,12 +67,12 @@ import {
   buildMatrix,
   fingerprint,
   getScheme,
-  launchBrowser,
   newAuditPage,
   readAxeSource,
   runMatrix,
   SOURCE_PATCHES,
 } from "./lib/axe-scan.mjs";
+import { withBrowser } from "./lib/browser.mjs";
 
 // ---- CLI ------------------------------------------------------------------
 let baselineLabel = "production";
@@ -231,11 +231,10 @@ async function main() {
         `candidate ${candPatches.join(", ") || "(stock)"}`
     );
   }
-  const browser = await launchBrowser();
-  const page = await newAuditPage(browser);
-
   let base, cand;
-  try {
+  await withBrowser(async (browser) => {
+    const page = await newAuditPage(browser);
+
     process.stdout.write(`running baseline  ... `);
     base = await runScheme(page, baseline, baseSource);
     console.log(`${base.wallMs} ms`);
@@ -243,9 +242,7 @@ async function main() {
     process.stdout.write(`running candidate ... `);
     cand = await runScheme(page, candidate, candSource);
     console.log(`${cand.wallMs} ms`);
-  } finally {
-    await browser.close();
-  }
+  });
 
   // Wall clock here is indicative only -- unpinned, single run, and the
   // schemes do not run under identical machine state.  perf/ab-axe.mjs is the

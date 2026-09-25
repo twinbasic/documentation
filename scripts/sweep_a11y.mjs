@@ -33,7 +33,7 @@
 //   --root-dir DIR       tree to scan       (default docs/_site-offline)
 //   --out FILE           JSONL destination  (default perf/results/a11y-sweep.jsonl)
 //   --stock-axe          inject the unmodified bundle, bypassing SOURCE_PATCHES
-//   --recycle-every N    restart the browser every N audits, to cap memory growth
+//   --recycle-every N    open a fresh tab every N audits, to cap memory growth
 //
 // Requires build.bat to have produced an up-to-date docs/_site-offline/.
 
@@ -53,11 +53,11 @@ import {
   VIEWPORTS,
   getScheme,
   gotoPage,
-  launchBrowser,
   newAuditPage,
   readAxeSource,
   runAxe,
 } from "./lib/axe-scan.mjs";
+import { withBrowser } from "./lib/browser.mjs";
 
 // The production scheme, read from the one registry check_a11y.mjs reads --
 // same bundle, same patches, same run options.  A survey run against a
@@ -206,12 +206,11 @@ if (!reportOnly && matrix.length) {
   console.error(`[sweep] ${matrix.length} audits to run, ${done.size} already recorded`);
   console.error(`[sweep] -> ${outPath}`);
 
-  const browser = await launchBrowser();
-  let page = await newAuditPage(browser);
-  let currentViewport = null;
-  const t0 = Date.now();
+  await withBrowser(async (browser) => {
+    let page = await newAuditPage(browser);
+    let currentViewport = null;
+    const t0 = Date.now();
 
-  try {
     for (let i = 0; i < matrix.length; i++) {
       const entry = matrix[i];
 
@@ -269,9 +268,7 @@ if (!reportOnly && matrix.length) {
         );
       }
     }
-  } finally {
-    await browser.close();
-  }
+  });
 }
 
 // ---- report -----------------------------------------------------------

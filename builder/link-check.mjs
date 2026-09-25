@@ -17,8 +17,8 @@
 // on worker threads in the build's hot path; importing across into
 // scripts/ would drag the checks' dependency tree onto every lane's cold
 // boot. (scripts/lib/axe-scan.mjs stays where it is for the same reason
-// read the other way -- it owns puppeteer, which must never enter the
-// build graph.)
+// read the other way -- it loads puppeteer, through scripts/lib/browser.mjs,
+// and puppeteer must never enter the build graph.)
 //
 // htmlparser2 is a static import here and this module is loaded
 // dynamically by the worker, so a build without --check never pays its

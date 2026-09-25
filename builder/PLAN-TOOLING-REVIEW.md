@@ -397,6 +397,37 @@ the change and none after. Count by the Puppeteer cache path in each process's c
 line, never by image name, since the owner's own Chrome has the same one. `check_a11y.mjs`'s
 findings unchanged; `check_axe_patch_equiv.mjs` passes.
 
+**Landed.** The premise was wrong; the change stands, restated (see [Where the plan was
+wrong](#where-the-plan-was-wrong)). At HEAD, with `"details.section-links"` changed to
+`"details.section-links-x"` in the first `PAGE_STATES` applier, `check_a11y.mjs` exits 2 after
+8 s with the applier's error and leaves no Chromium running. `@puppeteer/browsers` subscribes
+to Node's `exit` event for every launch (`lib/launch.js:178`) and kills the browser there
+synchronously (`:232`): `taskkill /pid <pid> /T /F` on Windows (`:268`), a `SIGKILL` of the
+browser's detached process group elsewhere (`:151`, `:283`). Linux was read, not measured.
+What the failed run left was the browser's temporary profile, one
+`%TEMP%\puppeteer_dev_chrome_profile-*` folder of 4.3 MB. Puppeteer deletes it only when the
+browser process's own `exit` event arrives (`puppeteer-core`'s `BrowserLauncher.js:64`, `:82`),
+and `process.exit` ends Node before that. A clean run left none. On 2026-09-26 the owner kept
+C19 as planned and had the 211 such folders then in `%TEMP%` (389 MB, dated February to
+September 2026) deleted.
+
+`scripts/lib/browser.mjs` holds `launchBrowser`, `LAUNCH_ARGS` and `withBrowser(fn,
+options)`. `LAUNCH_ARGS` is no longer exported, since nothing imported it. `axe-scan.mjs`
+re-exports `launchBrowser` for the four `perf/` rigs that import it, and drops its `puppeteer`
+import; `builder/link-check.mjs`'s comment, which said `axe-scan.mjs` owns puppeteer, now says
+it loads puppeteer through `browser.mjs`. In `check_a11y.mjs`, `buildMatrix` now runs before
+the launch instead of after it.
+`sweep_a11y.mjs`'s header said `--recycle-every` restarts the browser; the code opens a fresh
+tab, as its own comment says, and the header now says so too.
+
+After the change the same failing run exits 2 with the same error and leaves no folder, and
+no Chromium. `check.bat`'s a11y line is unchanged: `13 pages x 2 theme(s) x 2 viewport(s) + 8
+state audit(s) checked: 0 violation(s), 42 incomplete check(s)`. `check_a11y_fingerprint.mjs`'s
+self-test reports `60/60 audits identical -- gate PASSES` before and after. `sweep_a11y.mjs
+--limit 4 --recycle-every 2 --theme light --viewport desktop` writes four records that match
+HEAD's apart from `runMs`. `check_axe_patch_equiv.mjs` reports `20/20 colour values
+identical`.
+
 ### C20 — `a11y: validate --theme and --viewport wherever a matrix is built`
 
 **L1-1 (R1).** `check_a11y.mjs:82-95`'s `pick()` was written after `--theme drak` labelled a
@@ -1464,7 +1495,7 @@ than one commit lists each.
 | L1-4: a `tbdocs` usage error exits as a link failure | R1 | C18 |
 | L2-1: two output-tree lists miss `_site-basepath*` | R1 | C13, after C12 |
 | L2-2: census's private install finder | R1 | C11 |
-| L3-1: `check_a11y` leaves Chromium running | R1 | C19 |
+| L3-1: `check_a11y` leaves Chromium running (in fact its profile folder; see C19) | R1 | C19 |
 | L3-3: `parseStaging` drops content after a fenced `---` | R1 | C26 (loud), C36 (fence-aware) |
 | L4-10: two `logicalLines` | R1 | C61 |
 | A1-3 / L4-1: a run, time and report block three times | R2 | C59 |
@@ -1620,9 +1651,14 @@ than one commit lists each.
 
 ## Where the plan was wrong
 
-Nothing yet. When a commit lands and its code turned out different from its entry, the entry
-keeps its text, gains a Landed note, and the correction is listed here, as in the last
-review's plan.
+When a commit lands and its code turned out different from its entry, the entry keeps its
+text, gains a Landed note, and the correction is listed here, as in the last review's plan.
+
+- **C19 (L3-1): a failed accessibility run leaves no Chromium running.** The review and C19's
+  entry said Chromium stays up for the rest of the CI job. Puppeteer kills its browser from
+  its own `exit` handler, on Windows and Linux alike. What a failed run leaves is the
+  browser's temporary profile folder, 4.3 MB. The change stands as planned and fixes that
+  instead; see C19's Landed note.
 
 ## Found while implementing
 
