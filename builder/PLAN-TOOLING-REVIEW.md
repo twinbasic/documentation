@@ -1003,6 +1003,24 @@ Reviving `schemas.mjs` would mean reconciling it with `workflow.mjs` for no call
 
 **Verify.** `git grep` finds no importer before each deletion; the tree comparison identical.
 
+**Landed** as the entry describes, with the documentation that named the three. `precomputeSeo`
+went with its comment, which said it was kept for dev tooling; both halves it wrapped keep
+their callers, `markdownInit` on the main thread and `render` on the workers. Pipeline-Stages.md,
+whose module tables are headed as each file's export list, loses the rows for `precomputeSeo`
+and `kramdownSlug`. The `kramdownSlug` row was the only description of the slug rule, and it
+credited the function with the deduplication that `headerIdPlugin` does through `uniqueSlug`,
+so the rule moved, corrected, into the plugin chain's row for `headerIdPlugin`. Wisdom.md's
+file listing loses `schemas.mjs`, and its `workflow.mjs` line, one column out, is aligned.
+`wisdom/PLAN-3.md` still says the workflow uses `extract/schemas.mjs`, which was already untrue;
+like the builder's PLAN files, it is a record and stays as written.
+
+Verified: before the change, `git grep` found no importer of any of the three, only the
+records, the documentation rows and `render.mjs`'s own call. After it, `kramdownSlug` appears
+only in `render.mjs`, in the `headerIdPlugin` row and in one WIP.Build.md sentence, which name
+the function the heading ids use. Lint checks 137 files, one fewer, `schemas.mjs`. The tree
+comparison differs only in Pipeline-Stages.html, Wisdom.html, the search index and
+`book.html`.
+
 ### C16 — `scripts: tbrun recognises all five failed-build shapes`
 
 **A7-1 (R1).** `tbrun.mjs:327`'s pattern matches three of the five shapes that
@@ -2318,6 +2336,13 @@ Defects the review did not have, found by building something this plan asks for.
   **Fixed in C13a, which found this diagnosis incomplete**: `discover` reads such a folder as
   source too, so every rebuild fails the publish allowlist, and the fix is for the build to
   refuse the destination. See C13a's Landed note.
+
+- **Pipeline-Stages.md's `render.mjs` table lists three functions the module does not
+  export**, found while C15 removed `kramdownSlug`'s row: `svgInlinePlugin`,
+  `buildSvgWrapper` and `headingLevelNormalizePlugin`. The section is headed "Module export
+  tables", "the full export list per file". Not fixed. The plugin chain's rows for
+  `svgInlinePlugin` and `headingLevelNormalizePlugin` say "Detailed above" and mean these
+  rows, so the fix moves that detail rather than deleting it.
 
 ## Open questions
 

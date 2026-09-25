@@ -598,7 +598,6 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 |---|---|---|
 | `computeSiteSeo` | `(config, markdown) → { seoSiteTitle, seoLogoUrl }` | Site-level SEO constants. Called by `markdownInit` on main. Requires a built markdown-it instance. |
 | `computeChunkSeo` | `(pages, seoSiteTitle, config, markdown) → void` | Per-page SEO (`seoTitle` / `seoFullTitle` / `seoCanonical` / `seoIsHome`). Mutates pages in place. Called by each render worker between `renderPhase` and `templatePhase`. |
-| `precomputeSeo` | `(pages, config, markdown) → { seoSiteTitle, seoLogoUrl }` | Convenience wrapper that runs both halves on the main thread. Used by dev tooling. |
 | `renderTitle` | `(text, markdown) → string` | Runs one title through `markdownify → strip_html → normalize_whitespace → escape_once`. |
 | `stripHtml` | `(s) → string` | Drops `<script>` / `<style>` / HTML comments, then strips remaining tag delimiters. Re-exported for `search.mjs`. |
 | `absoluteUrl` | `(input, config) → string` | Composes an absolute URL from a root-relative path. |
@@ -651,7 +650,6 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 | `initHighlighter` | (re-export from `highlight.mjs`) | `() → Promise<object>`. Initialises Shiki with the bundled twinBASIC grammar. |
 | `buildLinkTables` | `(pages) → { byPath, byUrl, byRedirect }` | Map lookups keyed by `srcRel`, `permalink`, and `redirect_from` entries. |
 | `serializeLinkTables` | `(lt) → { byPath, byUrl, byRedirect }` | Serializes the Maps to `[key, permalink]` pair arrays for structured-clone transfer to workers. |
-| `kramdownSlug` | `(text) → string` | Header-id slugify: lowercase, drop characters outside `\p{L}\p{N}\p{M}\p{Pc}\-`, replace spaces with `-`, deduplicate. |
 | `svgInlinePlugin` | `(md, ctx) → void` | markdown-it plugin. Overrides the image renderer: when the `src` ends in `.svg` and its content exists in `ctx.svgContents`, replaces the `<img>` with an inline SVG wrapper (via `buildSvgWrapper`) and sets `page.hasSvg = true`. Non-matching images fall through to the default renderer. Registered last in the plugin chain. |
 | `buildSvgWrapper` | `(svgContent, alt, stem, srcRel) → string` | Returns the `<div class="svg-inline-wrap">` HTML structure containing the SVG controls (download/copy SVG and PNG) and the `<div class="svg-container">` with the raw SVG content. |
 | `rewriteAdmonitions` | `(src) → string` | GFM admonition rewrite to the `markdown-alert markdown-alert-<type>` class structure with the five SVG octicons. |
@@ -671,7 +669,7 @@ The table below is the plugin chain only. The renderer rules `createMarkdownIt` 
 | 4 | `markdown-it-deflist` | npm | Definition lists --- the `term` + `: definition` shape every parameter list in the reference uses. |
 | 5 | `looseDeflistPlugin` | in-tree | The same per-item tightness rule applied to `<dd>`. |
 | 6 | `markdown-it-footnote` | npm | Footnotes. `configureFootnotes(md)` then overrides five renderer rules to match kramdown's markup. |
-| 7 | `headerIdPlugin` | in-tree | kramdown-compatible heading ids via `kramdownSlug`, with per-page deduplication. |
+| 7 | `headerIdPlugin` | in-tree | kramdown-compatible heading ids via `kramdownSlug`: lowercase, keep only characters in `\p{L}\p{N}\p{M}\p{Pc}`, hyphens and spaces, then replace each space with `-`; an empty result becomes `section`. A repeated id on the same page gets `-1`, `-2`, … appended. |
 | 8 | `headingLevelNormalizePlugin` | in-tree | Detailed above. Inserted `before("header-id")`, so ids are slugged from the corrected levels. |
 | 9 | `tocPlugin` | in-tree | The `* TOC` + `{:toc}` marker becomes a nested `<ul id="markdown-toc">`. Runs `after("header-id")`, since it links to the ids that rule assigned. |
 | 10 | `relativeLinksPlugin` | in-tree | Resolves every relative and root-absolute `href` / `src` against the link tables, so a link written as a file path lands on the target page's canonical permalink. Static assets resolve to root-absolute paths instead. |

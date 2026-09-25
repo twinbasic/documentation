@@ -1345,7 +1345,7 @@ function headingText(children) {
 // leading/trailing `-`. Emoji and punctuation drop out; the surrounding
 // spaces still become hyphens, which is why headings like "🎮 X" emit
 // id="-x" (leading dash).
-export function kramdownSlug(text) {
+function kramdownSlug(text) {
   const lower = text.toLowerCase();
   const filtered = [...lower].filter((c) => GFM_HEADER_CHAR_RE.test(c)).join("");
   return filtered.replaceAll(" ", "-") || "section";

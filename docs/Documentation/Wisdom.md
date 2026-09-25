@@ -195,8 +195,7 @@ wisdom/
     state.mjs              extract-state.json I/O, watermark comparison, emission log
     sitemap.mjs            Walk docs/Reference/, build package-summary + page-index
     merger.mjs             Parse/merge/serialise staging.md
-    schemas.mjs            JSON Schema definitions for findings and additions
-    workflow.mjs            Claude Code Workflow script (runs inside the Workflow tool)
+    workflow.mjs           Claude Code Workflow script (runs inside the Workflow tool)
 ```
 
 ### Entry point --- `wisdom.mjs`
