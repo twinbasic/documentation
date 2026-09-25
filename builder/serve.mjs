@@ -13,6 +13,7 @@ import { createServer } from "node:http";
 import { readFile, stat, watch } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { isOutputTree } from "../lib/markdown-files.mjs";
 import { runBuild, createWorkerPool } from "./tbdocs.mjs";
 
 const MIME = {
@@ -135,13 +136,17 @@ function createStaticHandler(destRoot) {
 }
 
 // §D — Watcher filtering
-const IGNORED_PREFIXES = ["_site", "_site-offline", "_site-pdf", "_serve", "_pdf", "node_modules", ".git"];
+// The build's output trees are skipped by the test every tool that walks
+// docs/ uses, isOutputTree. This list used to name them one at a time and
+// missed the three a build given --dest docs/_site-basepath writes, so such a
+// build started a rebuild here. The two names below are not output trees.
+const IGNORED_DIRS = ["node_modules", ".git"];
 const IGNORED_BASENAME_RE = /^\.|~$|\.tmp$|\.swp$|^4913$/;
 
 function shouldRebuild(filename, srcRoot) {
   if (!filename) return false;
   const segs = filename.split(/[/\\]/);
-  if (IGNORED_PREFIXES.includes(segs[0])) return false;
+  if (isOutputTree(segs[0]) || IGNORED_DIRS.includes(segs[0])) return false;
   if (IGNORED_BASENAME_RE.test(segs.at(-1) ?? "")) return false;
   // Graphviz renders <name>.dot → <name>.svg back under srcRoot, beside the
   // source. The .dot is the source of truth; the .svg is the build artifact.
@@ -164,9 +169,10 @@ export async function runServe(opts) {
   const srcRoot = path.resolve(process.cwd(), opts.src ?? "docs");
   // Serve writes to a tree disjoint from build.bat's `_site/` so a one-off
   // build.bat run (for the PDF, an offline-mirror check, ...) doesn't clobber
-  // the running serve session's output mid-watch. The HTTP server, the
-  // watcher's IGNORED_PREFIXES, and both runBuild calls below all key off
-  // this same path.
+  // the running serve session's output mid-watch. The HTTP server and both
+  // runBuild calls below key off this path. The watcher does not: it skips
+  // output trees by name (isOutputTree), so a --dest inside docs/ whose name
+  // does not start with _site, _serve or _pdf has every rebuild start another.
   const destRoot = path.resolve(opts.dest ?? path.join(srcRoot, "_serve"));
   const port = opts.port ?? 4000;
 

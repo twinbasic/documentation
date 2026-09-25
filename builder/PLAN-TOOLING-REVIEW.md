@@ -855,6 +855,27 @@ trees.
 rebuild, and a page edit still does. A scratch run of `build_corpus.mjs`'s exclusion test
 excludes all three basepath trees.
 
+**Landed** as the entry describes. `serve.mjs`'s watcher skips a top-level folder that
+`isOutputTree` names, and keeps `node_modules` and `.git` in a list of its own,
+`IGNORED_DIRS`. `build_corpus.mjs`'s `isExcluded` asks `isOutputTree` about the folder
+directly under `docs/`, and `EXCLUDED_PATHS` lost the six output trees it named. A comment in
+`runServe` said the watcher's list keyed off the serve's destination; the list matches names,
+so the comment now says that a `--dest` inside `docs/` must be named like an output tree (see
+Found while implementing).
+
+Verified by running the tool rather than a scratch copy of its test. With a build to `--dest
+docs/_site-basepath` on disk, all three trees populated, the old `build_corpus.mjs` mirrored
+2,545 files, 1,217 of them from `_site-basepath-offline` and 3 from `_site-basepath-pdf`, the
+rest being binary and omitted; the new one mirrors 1,325, that list less those two trees, and
+`diff -r` finds nothing else different. A second serve ran the new code on port 4010 with
+`--dest docs/_serve-c13`, since the build refuses to clean a destination outside the project
+tree. A build to `--dest docs/_site-basepath` that rewrote files in all three trees started no
+rebuild there, and touching `Tools.md` started one (`Changed: Documentation/Tools.md`). The
+old list matched whole names and had none of the three. The tree comparison is identical.
+The test builds overwrote `docs/_site-basepath`, which `check_links_diff.mjs --base-path-tree`
+reads, so it was rebuilt the way that tool builds it, with `--baseurl /twinBASIC-docs
+--no-offline --no-pdf`.
+
 ### C14 — `builder: delete what the retired diff tools left behind`
 
 **A2-1 / A1-5 / L4-4, A1-4, A2-2 / A9-10 (all R2).** `644d6bdb` deleted `_diff.mjs`,
@@ -2206,6 +2227,14 @@ Defects the review did not have, found by building something this plan asks for.
   the same extracted text; the two PDFs differ from byte 22.6 MB on, inside the compressed
   object streams, and their document dates differ. `build.bat`, `check.bat` and `test.bat`
   are clean.
+
+- **`serve.bat --dest` inside `docs/` rebuilds forever unless the name is an output tree's**,
+  found by reading `serve.mjs` for C13 and not reproduced. The watcher skips output trees by
+  name, never by the path it serves from, and an event that arrives during a build queues
+  another build, so the build's own writes into a folder such as `docs/preview` start the
+  next one. `serve.bat` passes its arguments through, so `serve.bat --dest docs/preview` is
+  enough. Not fixed: C13 only corrected the comment that said otherwise. The fix is for the
+  watcher to skip the serve's own destination as well.
 
 ## Open questions
 

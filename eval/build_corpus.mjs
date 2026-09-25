@@ -16,6 +16,8 @@ import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import path from "node:path";
 
+import { isOutputTree } from "../lib/markdown-files.mjs";
+
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 // ---------------------------------------------------------------------------
@@ -53,16 +55,16 @@ const BINARY_EXTENSIONS = new Set([
   ".pdf", ".zip", ".af", ".wasm", ".exe", ".dll",
 ]);
 
-/** Directories and files never mirrored: build output, dependencies, local
- *  state, and the harness's own working data. */
+/** Directories and files never mirrored: dependencies, local state, and the
+ *  harness's own working data. The build's output trees are the other thing
+ *  never mirrored, and isExcluded finds those by name. */
 const EXCLUDED_PATHS = [
   ".git", "node_modules", ".claude", ".claire", ".font-cache",
   // Gitignored and local: a one-line "@WIP.md" import shim that no clone
   // has. Mirrored, it points every evaluator at a file WITHHELD removes ---
   // round 7's UC-40 evaluator opened it first and reported the dead end.
   "CLAUDE.md",
-  "docs/_site", "docs/_site-offline", "docs/_site-pdf", "docs/_site-basepath",
-  "docs/_serve", "docs/_pdf", "docs/assets/fonts",
+  "docs/assets/fonts",
   "wisdom/data", "perf/results", "package-lock.json",
   // The harness itself. eval/usecases.md names the hazard each case probes,
   // so leaving it in the corpus hands every evaluator the answer key.
@@ -106,6 +108,12 @@ function parseArgs(argv) {
 }
 
 function isExcluded(rel) {
+  // The build's output trees under docs/, by the test every tool that walks
+  // docs/ uses. This list used to name them, and a build given --dest
+  // docs/_site-basepath also writes _site-basepath-offline and
+  // _site-basepath-pdf, which it missed.
+  const [top, sub] = rel.split("/");
+  if (top === "docs" && sub !== undefined && isOutputTree(sub)) return true;
   return EXCLUDED_PATHS.some((p) => rel === p || rel.startsWith(p + "/"));
 }
 
