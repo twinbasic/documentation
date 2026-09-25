@@ -5,6 +5,9 @@
 //     node scripts/convert_em_dash_separators.mjs            # rewrite in place
 //     node scripts/convert_em_dash_separators.mjs --check    # report, change nothing
 //
+// Exit codes: 0 nothing to report, or converted; 1 --check found a literal
+// dash; 2 the tool failed, so that a crash cannot read as a finding.
+//
 // The typographer (enabled in builder/render.mjs) renders:
 //
 //     source `--`   ->  en-dash
@@ -211,5 +214,6 @@ async function main(argv) {
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+  process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
   process.exit(await main(process.argv.slice(2)));
 }

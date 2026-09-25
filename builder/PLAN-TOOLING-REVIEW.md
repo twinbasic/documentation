@@ -633,6 +633,15 @@ one helper.
 **Verify.** A forced throw exits 2; `--check` over `docs/` exits 0; a planted literal dash
 exits 1.
 
+**Landed** with one difference from the four gates' copies: the handler is installed inside
+the entry-point guard (`process.argv[1]` against `import.meta.url`), not at the top of the
+module. The tool is written to be importable, and a module that installs a process-wide
+handler on import changes how the importing process ends on a crash. C43's helper has to keep
+that property. The header now states the three exit codes. A throw forced from a preload
+(`node --import`, replacing `fs.promises.readFile`) exited 1 before the change and 2 after,
+since a rejected top-level `await` reaches `uncaughtException`; `--check` exits 0 on `docs/`
+and 1 with a planted em-dash. The tree comparison is identical.
+
 ### C08 — `githooks: a pre-commit hook that runs Biome on the staged files`
 
 **Decision 4.** The owner approved the hook on condition that it runs Biome and nothing else.
@@ -1240,7 +1249,9 @@ detail.
 **Change.** `scripts/lib/gate-probes.mjs` holds the accumulator, the report, the crash handler
 and `withBaseline`. Probes stay unconditional, and the exit code for a failed probe is a
 parameter: 1 for these gates, 2 where probes guard a separate sweep. The three gates and
-`check_publish_policy.mjs` adopt it, and so do the handlers C07 and C28 added.
+`check_publish_policy.mjs` adopt it, and so do the handlers C07 and C28 added. C07's sits
+inside `convert_em_dash_separators.mjs`'s entry-point guard because that module is
+importable, so the shared handler is installed by a call, never as a side effect of the import.
 `check_gate_lists.mjs` and `check_regex_safety.mjs` adopt it only if the fit is exact. The
 re-indenting becomes the shared behaviour: the one change in output, and only in gate text.
 
