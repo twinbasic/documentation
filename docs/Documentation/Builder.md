@@ -411,12 +411,12 @@ When adding a new task to `TASKS`, give it a `ganttSection` key matching one of 
 
 ## Dependencies
 
-A single `package.json` at the repo root contains everything --- the static site generator's deps, the PDF renderer's deps, and the few packages both consume:
+A single `package.json` at the repo root contains everything --- the static site generator's deps, the PDF renderer's deps, the gates' deps, and the few packages several of them consume:
 
 ```json
 {
   "devDependencies": {
-    "@hpcc-js/wasm-graphviz": "^1.21",
+    "@hpcc-js/wasm-graphviz": "^1.29.1",
     "acorn": "^8.0",
     "acorn-walk": "^8.0",
     "axe-core": "4.13.0",
@@ -431,13 +431,23 @@ A single `package.json` at the repo root contains everything --- the static site
     "markdown-it-footnote": "^4.0",
     "pdf-lib": "1.17.1",
     "puppeteer": "25.0.4",
+    "recheck": "4.5.0",
     "sass": "^1.0",
     "shiki": "^1.0"
   }
 }
 ```
 
-No template engine, no framework, no bundler, no postinstall hooks. `acorn` + `acorn-walk` parse the upstream `just-the-docs.js` for the AST-based offline patcher; the `markdown-it-*` packages cover the dialect extensions the legacy parser supported; `shiki` is the syntax highlighter; `@hpcc-js/wasm-graphviz` is the WASM build of Graphviz that renders `.dot` diagram sources; `sass` is Dart Sass for the SCSS compile. `pdf-lib` + `html-entities` + `htmlparser2` + `puppeteer` are the PDF renderer's toolchain (puppeteer controls headless Chromium for the paged.js layout pass). `axe-core` + `puppeteer` also back the standalone accessibility checker ([`scripts/check_a11y.mjs`](https://github.com/twinbasic/documentation/blob/main/scripts/check_a11y.mjs)), which runs the same headless Chromium over the built pages --- neither the checker nor `axe-core` is used by `tbdocs` itself. `axe-core` is the one dependency pinned to an exact version rather than a caret range: the scan injects a patched copy of its bundle, and the patch asserts an exact occurrence count at each substitution point, so a minor bump would fail loudly rather than silently reverting to the slow path.
+No template engine, no framework, no bundler, no postinstall hooks. For the site generator, the `markdown-it-*` packages cover the dialect extensions the legacy parser supported; `gray-matter` splits off page frontmatter and `js-yaml` parses `_config.yml` and `_book.yml`; `fast-glob` finds the source files; `shiki` is the syntax highlighter; `@hpcc-js/wasm-graphviz` is the WASM build of Graphviz that renders `.dot` diagram sources; `sass` is Dart Sass for the SCSS compile; `acorn` + `acorn-walk` parse the upstream `just-the-docs.js` for the AST-based offline patcher; and `htmlparser2` is the SAX parser under the link and integrity check. `puppeteer` + `pdf-lib` + `html-entities` are the PDF renderer's toolchain: puppeteer controls headless Chromium for the paged.js layout pass, and `html-entities` decodes the entities in the PDF outline's entries. `axe-core` + `puppeteer` also back the standalone accessibility checker ([`scripts/check_a11y.mjs`](https://github.com/twinbasic/documentation/blob/main/scripts/check_a11y.mjs)), which runs the same headless Chromium over the built pages, and `recheck` + `acorn` back the regex-safety gate ([`scripts/check_regex_safety.mjs`](https://github.com/twinbasic/documentation/blob/main/scripts/check_regex_safety.mjs)). Neither `axe-core` nor `recheck` is used by `tbdocs` itself.
+
+**Which packages are pinned.** A package is pinned to an exact version where a new release could change what the build produces or what a gate reports without anything failing to say so: where the code patches the package or relies on its internals with no guard that fails when they change, or where the package's own results are what a gate reports. Everything else takes a caret range. Four packages are exact:
+
+- `axe-core` --- the scan injects a copy of its bundle patched at source level, and its rules decide the accessibility gate's verdict. [PLAN-axe-perf.md](https://github.com/twinbasic/documentation/blob/main/builder/PLAN-axe-perf.md) records why the pin is exact.
+- `pdf-lib` --- the shims under `book/lib/` are line-by-line ports of this release's source, and pdf-lib is no longer maintained; [08-pdf-lib.md](https://github.com/twinbasic/documentation/blob/main/perf/notes/08-pdf-lib.md) records the pin.
+- `puppeteer` --- the book renderer and the accessibility gate measure what its Chromium renders, and the performance notes reason about that version at source level. It was pinned in the same change as `pdf-lib`.
+- `recheck` --- the regex-safety gate reports its analysis, and finds its native backend itself, because this release cannot find it on Windows; [WIP.Build.md](https://github.com/twinbasic/documentation/blob/main/WIP.Build.md) records the workaround.
+
+`@hpcc-js/wasm-graphviz` is patched too, and takes a caret range on purpose: [`dot-metrics.mjs`](#diagram-geometry) finds Graphviz's width table by an exact signature match and fails the build when a new release moves it, so an upgrade cannot change the diagrams silently. A change to `package.json` updates this section in the same commit.
 
 Node 22+ is required: the SAB scheduler uses `Atomics.wait`, `Atomics.notify`, and `SharedArrayBuffer` --- all baseline in Node 22 without flags.
 

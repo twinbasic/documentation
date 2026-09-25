@@ -375,6 +375,16 @@ commit that changes `package.json` updates this section in the same commit (see 
 **Verify.** Every row re-read against `package.json` and `package-lock.json`; `build.bat`
 for the page.
 
+**Landed**, saying two things the entry does not. The paragraph under the package list also
+credited `htmlparser2` to the PDF renderer, where only the link checker and `crawl_check.mjs`
+import it; the rewrite says what each package is for, the four it never mentioned (`gray-matter`,
+`js-yaml`, `fast-glob`, `recheck`) included. And the policy had to explain why
+`@hpcc-js/wasm-graphviz` floats although `dot-metrics.mjs` patches it: the patch finds Graphviz's
+width table by an exact signature and fails the build when a release moves it, so the caret is
+a decision, and the section says so. The exact pins cite `PLAN-axe-perf.md`, `08-pdf-lib.md`,
+the change that pinned `puppeteer` with `pdf-lib`, and WIP.Build.md's note on `recheck`'s
+Windows backend. The JSON block now matches `package.json`'s `devDependencies` exactly.
+
 ### C02 — `scripts: compare_trees.mjs, the built trees before and after a change`
 
 **Decision 3.** The oracle for every `builder/` commit below.
