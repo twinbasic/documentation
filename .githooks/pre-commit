@@ -1,0 +1,11 @@
+#!/bin/sh
+# Lints the scripts this commit stages with the pinned Biome, through
+# scripts/check_lint.mjs --staged: the check test.bat and both CI workflows
+# run over the whole scope, on the files being committed. It runs nothing
+# else, and a commit that stages no script returns before Biome starts.
+#
+# Enable it in a clone:  git config core.hooksPath .githooks
+#
+# Git runs a hook from the top of the working tree. .gitattributes keeps this
+# file LF in every checkout, for a POSIX Git's sake: see the reason there.
+exec node scripts/check_lint.mjs --staged

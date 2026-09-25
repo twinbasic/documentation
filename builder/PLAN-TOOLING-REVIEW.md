@@ -658,6 +658,30 @@ same check for a clone without it.
 **Verify.** A staged file with an unused import is refused; a clean commit passes; a commit
 that stages no JavaScript is not slowed. Time the hook on a typical commit.
 
+**Landed** as the entry describes, with three details. The hook is one line, `exec node
+scripts/check_lint.mjs --staged`. The gate's new `--staged` asks git for the scripts the commit
+adds or changes (`git diff --cached --diff-filter=ACMR`) and passes them to Biome with
+`--no-errors-on-unmatched`, so a staged script outside the scope is skipped and checking none
+is clean; the whole-scope run keeps its floor. A partly staged file is linted as it is in the
+working tree. A new `.gitattributes` keeps `.githooks/*` LF. Git for Windows ran a CRLF copy
+of the hook correctly, through `sh` and through `git hook run`, so the rule is for a POSIX Git
+on a CRLF checkout, such as WSL on a Windows tree, whose kernel would read the carriage return
+after `#!/bin/sh` as part of the interpreter's name. That case is untested, since this machine
+has no WSL. C84, which settles line endings, keeps the rule. The hook is committed executable,
+as a POSIX Git requires.
+
+`core.hooksPath` in this clone's `.git/config` was `D:\OCP\wc\twinBASIC-documentation\.git\hooks`,
+a folder holding only Git's samples, and is now `.githooks`. The worktrees under
+`.claude/worktrees/` share the setting, and get the hook once their branch has it.
+
+Verified: with a planted unused import staged, `git hook run pre-commit` exited 1 and
+`git commit` was refused with HEAD unchanged; a staged script outside the scope, in `perf/`,
+was skipped, exit 0; this commit, which stages `check_lint.mjs`, passed the hook. Timed with
+`git hook run`: Git with no hook about 55 ms; the hook with no script staged about 145 ms, the
+difference being Node's start and one `git diff`; with one clean script staged about 230 ms.
+The gate's whole-scope cases are unchanged. The tree comparison differs only in Tools.html,
+the search index and `book.html`.
+
 ## Phase 1: remove, relocate, and fix in place
 
 Done ahead of this phase, during the review: the four superseded pdf-lib shims deleted

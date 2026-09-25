@@ -19,13 +19,20 @@
 // it cannot read leaves no summary; the summary counts the findings, and the
 // files checked.
 //
-//   node scripts/check_lint.mjs
+// With --staged it lints only the scripts the next commit adds or changes,
+// which is how the pre-commit hook in .githooks/ runs it. Biome keeps those
+// its scope includes, and a commit whose scripts it excludes checks none and
+// is clean. A commit that stages no script returns before Biome starts. A
+// partly staged file is linted as it is in the working tree.
 //
-// Exit codes: 0 clean, 1 a finding, 2 Biome could not lint, or checked no
-// script.
+//   node scripts/check_lint.mjs              # the whole scope: test.bat and CI
+//   node scripts/check_lint.mjs --staged     # the staged scripts: the hook
+//
+// Exit codes: 0 clean, 1 a finding, 2 Biome could not lint or, over the whole
+// scope, checked no script.
 
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
@@ -39,6 +46,25 @@ function cannotLint(message) {
   console.error(`check_lint: ${message}`);
   process.exit(2);
 }
+
+const argv = process.argv.slice(2);
+const staged = argv.length === 1 && argv[0] === "--staged";
+if (argv.length && !staged) cannotLint("usage: node scripts/check_lint.mjs [--staged]");
+
+// The scripts the next commit adds or changes that are still on disk, by the
+// two extensions the scope in biome.jsonc is made of.
+function stagedScripts() {
+  const r = spawnSync("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"], {
+    cwd: ROOT,
+    encoding: "utf8",
+  });
+  if (r.error) cannotLint(`could not run git: ${r.error.message}`);
+  if (r.status !== 0) cannotLint(`git diff --cached failed: ${r.stderr.trim()}`);
+  return r.stdout.split("\0").filter((f) => /\.m?js$/.test(f) && existsSync(path.join(ROOT, f)));
+}
+
+const scripts = staged ? stagedScripts() : [];
+if (staged && !scripts.length) process.exit(0);
 
 let biome;
 try {
@@ -66,11 +92,9 @@ let run;
 let summary;
 try {
   const file = path.join(dir, "summary.txt");
-  run = spawnSync(
-    process.execPath,
-    [biome, "lint", "--error-on-warnings", "--reporter=default", "--reporter=summary", `--reporter-file=${file}`],
-    { cwd: ROOT, stdio: ["ignore", "inherit", "inherit"] },
-  );
+  const args = ["lint", "--error-on-warnings", "--reporter=default", "--reporter=summary", `--reporter-file=${file}`];
+  if (staged) args.push("--no-errors-on-unmatched", "--", ...scripts);
+  run = spawnSync(process.execPath, [biome, ...args], { cwd: ROOT, stdio: ["ignore", "inherit", "inherit"] });
   summary = readSummary(file);
 } finally {
   rmSync(dir, { recursive: true, force: true });
@@ -82,6 +106,6 @@ if (run.status !== 0) {
   if (summary.found > 0) process.exit(1);
   cannotLint(`Biome failed without a finding (exit ${run.status}); its message is above`);
 }
-// The count includes biome.jsonc.
 if (summary.checked === null) cannotLint("Biome's summary does not say how many files it checked");
-if (summary.checked < 2) cannotLint("Biome checked no script: the scope biome.jsonc names matches none");
+// The whole scope has to reach a script; the count includes biome.jsonc.
+if (!staged && summary.checked < 2) cannotLint("Biome checked no script: the scope biome.jsonc names matches none");

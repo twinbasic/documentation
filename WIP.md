@@ -536,6 +536,8 @@ Favor concise one-line git commit messages.
 **Lint before every commit:** `node scripts/check_lint.mjs`, a fraction of a second. It
 runs Biome over the tooling and the site's two scripts, and fails on a warning as well as an
 error, because Biome reports an unused import as a warning. `test.bat` and CI run it too.
+The pre-commit hook in `.githooks/` runs it on the staged scripts and nothing else; enable it
+in a clone with `git config core.hooksPath .githooks`.
 
 **A bug in twinBASIC itself goes in [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md)**, which is a
 queue rather than a record: an entry is deleted once it has been filed upstream. Each one

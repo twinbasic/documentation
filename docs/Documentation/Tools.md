@@ -463,12 +463,17 @@ Its probes ride along in every run: each plants one defect in a small synthetic 
 {: #check-lint }
 
     node scripts/check_lint.mjs
+    node scripts/check_lint.mjs --staged
 
 Runs Biome, pinned to an exact version, over the tooling: `builder/`, `scripts/`, `book/`, `eval/`, `wisdom/`, `test/` and the site's two scripts in `docs/assets/js/`, less the exceptions that `biome.jsonc` at the repository root lists and explains. The rules are the ones that find defects --- Biome's correctness and suspicious groups --- and none about style; the configuration names the few it turns off, each with its reason. Moving and deleting code leaves unused imports and undeclared names behind, and nothing else reads the tooling for them. No browser, no built tree, a fraction of a second.
 
-**Warnings fail as well as errors.** Biome reports an unused import or variable as a warning, and exits 0 on warnings, so a plain `npx biome lint` passes a file full of them. The gate also refuses to pass when Biome could not lint. Biome exits 1 for a broken `biome.jsonc`, as it does for a finding, and 0 for a scope that matches no script at all, so the gate reads the summary Biome writes beside its usual output to tell these apart. Exits 0 clean, 1 on a finding, 2 when Biome could not lint or checked no script.
+**Warnings fail as well as errors.** Biome reports an unused import or variable as a warning, and exits 0 on warnings, so a plain `npx biome lint` passes a file full of them. The gate also refuses to pass when Biome could not lint. Biome exits 1 for a broken `biome.jsonc`, as it does for a finding, and 0 for a scope that matches no script at all, so the gate reads the summary Biome writes beside its usual output to tell these apart. Exits 0 clean, 1 on a finding, 2 when Biome could not lint or, over the whole scope, checked no script.
 
-Lint before every commit that touches one of those folders. `npx biome lint --write` applies the fixes Biome marks safe. The fixes it offers for an unused import or variable are marked unsafe and need `--unsafe` as well, so read the diff after applying them.
+Lint before every commit that touches one of those folders, or let the pre-commit hook do it. `.githooks/pre-commit` runs this gate with `--staged`, on the scripts the commit adds or changes, as they are in the working tree, and runs nothing else. Biome skips the staged scripts its scope excludes, and a commit that stages no script returns before Biome starts. Enable the hook in a clone with:
+
+    git config core.hooksPath .githooks
+
+A clone without the hook is still checked, because `test.bat` and both CI workflows run this gate over the whole scope. `npx biome lint --write` applies the fixes Biome marks safe. The fixes it offers for an unused import or variable are marked unsafe and need `--unsafe` as well, so read the diff after applying them.
 
 ### check_page_baseline.mjs
 {: #check-page-baseline }
