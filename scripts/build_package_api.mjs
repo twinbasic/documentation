@@ -56,6 +56,14 @@ const flag = (n) => argv.includes(`--${n}`);
 const opt = (n) => { const i = argv.indexOf(`--${n}`); return i < 0 ? undefined : argv[i + 1]; };
 const die = (code, msg) => { console.error(msg); process.exit(code); };
 
+// A flag that takes a value, given last or followed by another flag, has none,
+// and is refused rather than read as undefined: --src then fell back to an
+// export of the install, and --out to builder/package-api.json.
+const VALUE_FLAGS = ["ide", "src", "cache", "out"];
+const bare = argv.find((a, i) => a.startsWith("--") && VALUE_FLAGS.includes(a.slice(2)) &&
+  (argv[i + 1] === undefined || /^-./.test(argv[i + 1])));
+if (bare) die(2, `${bare} needs a value`);
+
 function sources() {
   // --src takes a folder of exports, or a cache holding `packages\` and more:
   // a folder with a Settings file is an export, and one without is looked into.

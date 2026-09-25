@@ -59,25 +59,50 @@ import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 const args = process.argv.slice(2);
 const flag = (n) => args.includes("--" + n);
 const opt = (n, d) => { const i = args.indexOf("--" + n); return i < 0 ? d : args[i + 1]; };
-const proj = args.find((a, i) => !a.startsWith("--") && !args[i - 1]?.startsWith("--"));
 
-// An install path is a home directory, so it is never hardcoded here: pass
-// --ide, set TB_IDE, or let tb-install find the newest BETA on the Desktop,
-// which is where the IDE's own zip tells people to unpack it.
-const IDE = findIde(opt("ide", undefined));
-const port = Number(opt("port", 9333));
-const arch = opt("arch", TARGETS[0]);
-const timeout = Number(opt("timeout", 180)) * 1000;
-const asJson = flag("json");
-const keep = flag("keep");
-const show = wantShow({ show: flag("show"), hide: flag("hide") });
-
-if (!proj || flag("help") || !TARGETS.includes(arch)) {
+function usage(why) {
+  if (why) console.error(why);
   console.error("usage: node scripts/tbbuild.mjs <project.twinproj> " +
     "[--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--json] " +
     "[--keep] [--show|--hide]");
   process.exit(2);
 }
+
+// Every flag that TAKES A VALUE is named here, as in tbrun. The token after
+// one is its value, never the project; the token after any other flag can be
+// the project, as in `--keep proj`. One given last, or followed by another
+// flag, has no value, and is refused rather than read as undefined.
+const VALUE_FLAGS = ["ide", "port", "arch", "timeout"];
+const takesValue = (a) => a?.startsWith("--") && VALUE_FLAGS.includes(a.slice(2));
+const bare = args.find((a, i) =>
+  takesValue(a) && (args[i + 1] === undefined || /^-./.test(args[i + 1])));
+if (bare) usage(`${bare} needs a value`);
+const proj = args.find((a, i) => !a.startsWith("--") && !takesValue(args[i - 1]));
+
+// A number that is not positive, or a port that is not whole, is refused too.
+// Anything Number() cannot read is NaN, and a NaN timeout ends
+// waitForCompile's loop before its first pass, which then reports that the IDE
+// never opened the project.
+function positive(n, d, { whole = false } = {}) {
+  const v = Number(opt(n, d));
+  if (!(v > 0) || (whole && !Number.isInteger(v))) {
+    usage(`--${n} takes a positive ${whole ? "whole " : ""}number`);
+  }
+  return v;
+}
+
+// An install path is a home directory, so it is never hardcoded here: pass
+// --ide, set TB_IDE, or let tb-install find the newest BETA on the Desktop,
+// which is where the IDE's own zip tells people to unpack it.
+const IDE = findIde(opt("ide", undefined));
+const port = positive("port", 9333, { whole: true });
+const arch = opt("arch", TARGETS[0]);
+const timeout = positive("timeout", 180) * 1000;
+const asJson = flag("json");
+const keep = flag("keep");
+const show = wantShow({ show: flag("show"), hide: flag("hide") });
+
+if (!proj || flag("help") || !TARGETS.includes(arch)) usage();
 // Refuse anything that is not a .twinproj, rather than discovering it two
 // minutes later. A source directory is the tempting mistake -- it is what
 // `tbrun` takes -- and handing one to the IDE does not fail: the IDE starts,

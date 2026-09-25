@@ -91,6 +91,20 @@ const TEMPLATES = path.join(REPO, "test", "example-projects");
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes("--" + n);
 const opt = (n, d) => { const i = argv.indexOf("--" + n); return i < 0 ? d : argv[i + 1]; };
+const usageError = (why) => { console.error(`check_examples: ${why}`); process.exit(2); };
+
+// A flag that takes a value, given last or followed by another flag, has none,
+// and is refused rather than read as undefined. So is a count or a port that is
+// not a positive whole number: Number() makes NaN of anything it cannot read.
+const VALUE_FLAGS = ["only", "report", "jobs", "port", "batch", "ide"];
+const bare = argv.find((a, i) => a.startsWith("--") && VALUE_FLAGS.includes(a.slice(2)) &&
+  (argv[i + 1] === undefined || /^-./.test(argv[i + 1])));
+if (bare) usageError(`${bare} needs a value`);
+function positiveInteger(n, d) {
+  const v = Number(opt(n, d));
+  if (!Number.isInteger(v) || v < 1) usageError(`--${n} takes a positive whole number`);
+  return v;
+}
 
 const MODE_CENSUS = flag("census");
 const MODE_PROPOSE = flag("propose");
@@ -99,9 +113,9 @@ const APPLY = flag("apply");
 const VERBOSE = flag("verbose");
 const AS_JSON = flag("json");
 const only = opt("only", null) ? new RegExp(opt("only", null)) : null;
-const jobs = Math.max(1, Number(opt("jobs", 4)));
-const basePort = Number(opt("port", 9480));
-const batchSize = Math.max(1, Number(opt("batch", 120)));
+const jobs = positiveInteger("jobs", 4);
+const basePort = positiveInteger("port", 9480);
+const batchSize = positiveInteger("batch", 120);
 
 if (flag("help")) {
   console.log(`usage: node scripts/check_examples.mjs [options]

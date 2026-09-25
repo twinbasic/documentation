@@ -87,6 +87,14 @@ const opt = (n, d) => { const i = argv.indexOf("--" + n); return i < 0 ? d : arg
 const die = (code, msg) => { console.error(msg); process.exit(code); };
 const log = (...a) => { if (!flag("quiet")) console.error(...a); };
 
+// A flag that takes a value, given last or followed by another flag, has none,
+// and is refused rather than read as undefined: --ide then fell back to TB_IDE,
+// and --out to stdout.
+const VALUE_FLAGS = ["ide", "src", "cache", "attr", "dump-sites", "out"];
+const bare = argv.find((a, i) => a.startsWith("--") && VALUE_FLAGS.includes(a.slice(2)) &&
+  (argv[i + 1] === undefined || /^-./.test(argv[i + 1])));
+if (bare) die(2, `${bare} needs a value`);
+
 if (flag("help")) {
   console.log(readFileSync(fileURLToPath(import.meta.url), "utf8")
     .split("\n").filter((l) => l.startsWith("//")).slice(1, 18).map((l) => l.slice(3)).join("\n"));

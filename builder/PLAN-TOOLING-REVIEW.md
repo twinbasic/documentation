@@ -1082,6 +1082,41 @@ positional argument with a table of the flags that take values, as `tbrun.mjs:11
 `tbbuild --keep proj` and `tbbuild --json proj` build (harness runs; the kept IDE is ended by
 its pid). The `examples.bat` summary unchanged: 1,119 samples.
 
+**Landed** as the entry describes, with three things it left open settled. "No value" also
+covers a value flag followed by another flag, as in `--port --keep proj`. Node's strict
+`parseArgs`, which C47's module is built on, refuses both forms and takes a lone `-` as a
+value (measured on Node 24.13), and the four tools now do the same, so C49 has nothing to
+change here. Ports and counts must be whole numbers; the timeout may be any positive number.
+`check_examples` clamped `--jobs 0` and `--batch 0` to 1 and now refuses them; the clamp never
+caught a bare `--jobs`, because `Math.max(1, NaN)` is NaN. The check comes before `--help` in
+`check_examples` and `census_attributes`, as a strict parser's does. Each reason is one line
+on stderr: `tbbuild` follows it with its usage line, and `check_examples` prefixes its own
+name, as most of its messages do.
+
+Before, on HEAD in a worktree: `tbbuild <probe> --timeout` started the IDE and exited 3 after
+3 s with `the IDE never reported <probe> as open`, and `tbbuild --keep <probe>` and `--json
+<probe>` printed the usage and exited 2. A scratch table of 34 malformed invocations, run with
+`TB_IDE` naming a file that does not exist, so that a case which got past parsing fails on
+another message rather than starting an IDE, now gives exit 2 and the reason for all 34, each
+in under 100 ms. On HEAD, a bare `--ide` fell back to `TB_IDE` in `tbbuild`,
+`census_attributes` and `build_package_api`; `build_package_api --src --check` looked for a
+folder named `--check`; and a bare or unreadable `--port` reached `tbbuild`'s launch as NaN
+(`options.port should be >= 0 and < 65536`). HEAD's `check_examples` cannot load in a
+worktree with no `node_modules`, so it has no before column.
+
+Harness runs, one at a time, on BETA 983: `tbbuild --keep <probe>`, `0 error(s), 0
+warning(s), 0 hint(s), 0 info` and exit 0 in 9 s, its IDE then ended by `taskkill /PID <pid>
+/T /F`; `tbbuild --json <probe>`, `"errors": 0` and exit 0 in 11 s; and `examples.bat`,
+`check_examples: 1129 sample(s), 1129 compile, 0 finding(s), 121.1s -- clean`. The count is
+1,129 rather than 1,119 because content commits of 2026-09-24 and 25 marked more samples. C17
+changes no fence handling, and later commits compare against 1,129. `tbbuild` leaves a kept
+IDE's registry entries alone, so a scratch tidy spanned the two runs: `startTidy` with the
+probe's folder as a prefix before them, and `finishTidy` after, which deleted the project
+state and the recent-list entry the kept run left. The census's `--json` report is
+byte-identical to HEAD's, 27,490 bytes, and `build_package_api --check` finds
+`package-api.json` up to date. The harness runs predate one edit, which lets a lone `-`
+through as a value; none of them passed one.
+
 ### C18 — `builder, scripts: a command-line error exits outside the link bitmask`
 
 **L1-4 (R1)**, and the same fault in `check_links.mjs`, which the review did not list (see
