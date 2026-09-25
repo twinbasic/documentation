@@ -1270,6 +1270,30 @@ corrected; the code is safe as it stands.
 **Verify.** `tbbuild` on a probe, and `tbbuild` given a missing `--ide`, both leave the
 registry as found (harness runs).
 
+### C25a — `scripts: tbrun reports a codegen failure that Debug.Cls erased`
+
+**Found while verifying C16; the owner chose this fix on 2026-09-25** (see Found while
+implementing). When a procedure the probe calls fails code generation, the compiler logs
+`[LINKER] compilation (codegen) error` straight after `[BUILD] Executing
+'<project>.<module>.<Sub>'...`. The probe's first statement, `Debug.Cls`, erases that line,
+and the probe prints up to the call and stops. `tbrun` exits 0 with the partial output.
+
+**Change.** Before it presses Build, `tbrun` wraps the IDE page's global
+`clearDebugConsole()`, so each call first saves the lines it is about to erase, read the
+way `readConsole` reads them. In BETA 983's `ide/main.js` the compiler's clear event
+(`event_clearDebugConsole`) and the Clear command both call that function by name, so the
+wrapper sees every clear. After the run, a `BUILD_FAILED` line in a saved segment after the
+last `[BUILD] Executing` line makes `tbrun` exit 2, naming that line and printing the
+partial output. An IDE page without `clearDebugConsole` is refused, as one without
+`dataNodes` is today. Probes keep `Debug.Cls`: nothing asked of a probe changes. `tbrun`'s
+header, Tools.md's paragraph and WIP.Harness.md's bullet on failed builds name the case.
+
+**Verify.** Harness runs, one at a time: probe C (the shift in a procedure the probe calls),
+before `exit 0` with `before` as its output, after `exit 2` naming the codegen line; probe A
+(the shift in the `[RunAfterBuild]` Sub) still `exit 2`; a clean probe still `exit 0` with
+its output; and a clean probe that calls `Debug.Cls` twice `exit 0`, since a saved segment
+with no failure line in it is not a failure.
+
 ### C26 — `wisdom: parseStaging refuses a chunk it cannot place`
 
 **L3-3 (R1)**, the half that needs no shared module. `parseStaging` (`merger.mjs:114-129`)
@@ -1992,7 +2016,10 @@ passing) and runs the same commands through both editions on the repository's fi
 (`indexer/sample.twinpack`, and a project under `test/example-projects/`), comparing printed
 output and written files byte for byte. Decision (b)'s open question is settled here: whether
 `test.bat` without Python fails, or reports the gate skipped, loudly. In CI a missing
-interpreter fails the gate and never skips it. Registered in the composite action, Tools.md
+interpreter fails the gate and never skips it. **The owner settled it on 2026-09-25:**
+without Python, `test.bat` reports the gate skipped, loudly, and passes. The gate tells the
+two cases apart by the `CI` variable GitHub sets, not by an argument, because
+`check_ci_workflows` requires CI to pass each gate the wrapper's arguments unchanged. Registered in the composite action, Tools.md
 and WIP.md.
 
 **Verify.** Passes; a copy of one edition with one output line changed fails it. CI waits for
@@ -2460,6 +2487,10 @@ Defects the review did not have, found by building something this plan asks for.
   `[BUILD] Executing` line instead of relying on `Debug.Cls` to clear the log, so the line
   stays visible; that changes what `tbrun` asks of a probe, and is the owner's call.
 
+  **Scheduled as C25a** on the owner's decision of 2026-09-25, by another route: `tbrun`
+  keeps what each clear erases, through the IDE's global `clearDebugConsole()`, so probes
+  keep `Debug.Cls`. See its entry.
+
 ## Open questions
 
 Each is settled in the commit named, on the recommendation given there, unless the owner
@@ -2468,7 +2499,7 @@ decides otherwise:
 - the exit value for a command-line error in `tbdocs` and `check_links.mjs`: C18 recommends 4;
 - Biome or ESLint: C05's evaluation decides;
 - whether `test.bat` without Python fails or skips `check_impexp_parity.mjs` loudly: C70,
-  decision (b)'s open question;
+  decision (b)'s open question, which the owner settled on 2026-09-25: it skips, loudly;
 - whether the pre-commit hook should also run the dash check, which A6-3 assumed: the owner
   approved a hook that runs Biome only (C08), so it stays out unless the owner asks for it.
 
