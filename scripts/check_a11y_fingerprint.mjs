@@ -68,6 +68,7 @@ import {
   fingerprint,
   getScheme,
   newAuditPage,
+  pick,
   readAxeSource,
   runMatrix,
   SOURCE_PATCHES,
@@ -131,8 +132,8 @@ rootDir = resolve(rootDir);
 
 const matrix = buildMatrix({
   pages: pagesArg ?? SAMPLE_PAGES,
-  themes: themeArg === "both" ? THEMES : [themeArg],
-  viewports: viewportArg === "both" ? Object.keys(VIEWPORTS) : [viewportArg],
+  themes: pick("theme", themeArg, THEMES),
+  viewports: pick("viewport", viewportArg, Object.keys(VIEWPORTS)),
 });
 
 // ---- Diff -----------------------------------------------------------------

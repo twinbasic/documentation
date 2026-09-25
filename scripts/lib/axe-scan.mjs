@@ -236,6 +236,22 @@ export const VIEWPORTS = {
 
 export const THEMES = ["light", "dark"];
 
+// A --theme or --viewport value: "both", or one of `allowed`. Validated, not
+// trusted. An unrecognised value used to sail through: `--theme drak` set
+// data-theme="drak", which renders light, and then labelled every line of the
+// report `[drak, ...]` -- a full run of the light theme presented as a run of
+// something else. `--viewport tiny` passed undefined to setViewport, which
+// Puppeteer accepts, so the run went ahead at a size nobody chose, labelled
+// `tiny`.
+export function pick(name, value, allowed) {
+  if (value === "both") return allowed;
+  if (allowed.includes(value)) return [value];
+  console.error(
+    `unknown --${name} "${value}"; expected one of ${allowed.join(", ")} or both`
+  );
+  process.exit(2);
+}
+
 // Requests aborted for the duration of the scan.
 //
 // Every page in the offline tree pulls in the ~3.2 MB search index
@@ -692,6 +708,18 @@ export function buildMatrix({
   viewports = Object.keys(VIEWPORTS),
   stateAudits = STATE_AUDITS,
 } = {}) {
+  // The backstop behind pick(), for a caller that builds a matrix without it.
+  for (const theme of themes) {
+    if (!THEMES.includes(theme)) {
+      throw new Error(`buildMatrix: unknown theme "${theme}"`);
+    }
+  }
+  for (const viewport of viewports) {
+    if (!Object.hasOwn(VIEWPORTS, viewport)) {
+      throw new Error(`buildMatrix: unknown viewport "${viewport}"`);
+    }
+  }
+
   const seen = new Set();
   const uniquePages = pages.filter((p) => {
     if (seen.has(p)) return false;

@@ -443,6 +443,26 @@ caller.
 **Verify.** `--theme drak` and `--viewport tiny` fail with a usage error in all three tools;
 `check_a11y.mjs`'s findings unchanged.
 
+**Landed.** Reproduced first, after C19. `sweep_a11y.mjs --theme drak --viewport desktop
+--limit 1` exited 0 and recorded `/404.html [drak, desktop]`. `--theme light --viewport tiny`
+also exited 0, recording `[light, tiny]`: `setViewport(undefined)` does not throw, so the audit
+ran at a size nobody chose. `check_a11y_fingerprint.mjs --pages /404.html` reported `1/1
+audits identical -- gate PASSES` with either value.
+
+`pick()` moved from `check_a11y.mjs` into `axe-scan.mjs`, exported, beside `THEMES`, and its
+comment gained the viewport case. All three tools call it at module level, so the usage error
+comes before any browser starts. `buildMatrix` throws for a theme not in `THEMES` or a
+viewport that is not an own key of `VIEWPORTS` (`Object.hasOwn`, so `toString` is refused
+too). `sweep_a11y.mjs` builds its own matrix, so the backstop covers the other two.
+
+The six cases now exit 2 with one line each, `unknown --theme "drak"; expected one of light,
+dark or both` or `unknown --viewport "tiny"; expected one of desktop, mobile or both`. A
+scratch probe of `buildMatrix` got 60 entries by default and 30 for one theme or one
+viewport, and a throw for `drak`, `tiny` and `toString`. Valid single values still run:
+`sweep_a11y.mjs --theme dark --viewport mobile --limit 1` recorded `/404.html [dark, mobile]`,
+and the fingerprint self-test with the same values passed. `check.bat`'s a11y line is
+unchanged.
+
 ### C21 — `builder: the Gantt chart draws Check, vendorAssets and Other`
 
 **A1-1 (R1).** `gantt.mjs:39-49` draws only `Seeds`, `Spine` (which also takes `Render`)

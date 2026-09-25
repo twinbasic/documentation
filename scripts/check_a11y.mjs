@@ -55,6 +55,7 @@ import {
   buildMatrix,
   getScheme,
   newAuditPage,
+  pick,
   readAxeSource,
   runMatrix,
 } from "./lib/axe-scan.mjs";
@@ -79,18 +80,6 @@ for (let i = 0; i < args.length; i++) {
 }
 rootDir = resolve(rootDir);
 
-// Validated, not trusted. An unrecognised value used to sail through:
-// `--theme drak` set data-theme="drak", which renders light, and then
-// labelled every line of the report `[drak, ...]` -- a full run of the
-// light theme presented as a run of something else.
-function pick(name, value, allowed) {
-  if (value === "both") return allowed;
-  if (allowed.includes(value)) return [value];
-  console.error(
-    `unknown --${name} "${value}"; expected one of ${allowed.join(", ")} or both`
-  );
-  process.exit(2);
-}
 const themes = pick("theme", themeArg, THEMES);
 const viewports = pick("viewport", viewportArg, Object.keys(VIEWPORTS));
 

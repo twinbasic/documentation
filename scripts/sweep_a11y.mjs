@@ -54,6 +54,7 @@ import {
   getScheme,
   gotoPage,
   newAuditPage,
+  pick,
   readAxeSource,
   runAxe,
 } from "./lib/axe-scan.mjs";
@@ -117,8 +118,8 @@ for (let i = 0; i < args.length; i++) {
 rootDir = resolve(rootDir);
 outPath = resolve(outPath ?? join(REPO_ROOT, "perf/results/a11y-sweep.jsonl"));
 
-const themes = themeArg === "both" ? THEMES : [themeArg];
-const viewports = viewportArg === "both" ? Object.keys(VIEWPORTS) : [viewportArg];
+const themes = pick("theme", themeArg, THEMES);
+const viewports = pick("viewport", viewportArg, Object.keys(VIEWPORTS));
 
 // ---- page discovery ---------------------------------------------------
 
