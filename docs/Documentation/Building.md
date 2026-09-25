@@ -417,7 +417,8 @@ seconds. [`test.bat`](Tools#testbat) names them and the order they run in.
 page at all, which is why they are not in `check.bat`: writing a reference page
 should not pay for tests of the toolchain, and a gate that costs nothing to a
 change it cannot be affected by is a gate people start skipping. Run `test.bat`
-when the change touches `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`.
+when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/` or
+`wisdom/`.
 
 **Two of them do read `docs/`**, and the smaller one is easy to predict:
 [`check_gate_lists.mjs`](Tools#check-gate-lists) reads this page, `README.md`

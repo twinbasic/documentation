@@ -91,7 +91,7 @@ POSIX:
       && node scripts/check_symbol_index.mjs \
       && node scripts/check_axe_patch_equiv.mjs
 
-**Seven of the ten cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all ten unconditionally, as they always did, so skipping it locally cannot let a tooling regression reach `staging`.
+**Seven of the ten cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all ten unconditionally, as they always did, so skipping it locally cannot let a tooling regression reach `staging`.
 
 The two exceptions are [`check_code_regions.mjs`](#check-code-regions) and [`check_gate_lists.mjs`](#check-gate-lists), which reads this page. The first is worth knowing in detail. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes are a different matter: they run against their own sources whatever the tree holds, and they cover the *mirror* fault, where a rewrite silently stops firing. The sweep cannot see that one --- text the rewrite skipped is stashed and restored unchanged, so every region still matches. Add a page with an unusual code construct and run `test.bat`, but read the built page too.
 
@@ -376,7 +376,7 @@ No browser, no built tree, ~40 ms, which is why it is `test.bat`'s first step. R
 
     node scripts/check_tree_fresh.mjs [--tree DIR] [--source DIR ...]
 
-`check.bat`'s first gate. Refuses a built tree older than the sources that produced it, by comparing the newest mtime under the source tree against the built tree's `index.html`. The build's own output trees under `docs/` are not sources, and which folders those are comes from `scripts/lib/markdown-files.mjs`, the list [`check_code_regions.mjs`](#check-code-regions) walks by. Without it, editing a page and running `check.bat` without rebuilding audits the *previous* build and passes --- a green run that says nothing about the change just made. CI never hits this because it builds in the same job; a development box hits it whenever the two commands run out of order. Exits 0 when the tree is current, 1 when stale (naming `build.bat`), 2 when the tree is absent.
+`check.bat`'s first gate. Refuses a built tree older than the sources that produced it, by comparing the newest mtime under the source tree against the built tree's `index.html`. The build's own output trees under `docs/` are not sources, and which folders those are comes from `lib/markdown-files.mjs`, the list [`check_code_regions.mjs`](#check-code-regions) walks by. Without it, editing a page and running `check.bat` without rebuilding audits the *previous* build and passes --- a green run that says nothing about the change just made. CI never hits this because it builds in the same job; a development box hits it whenever the two commands run out of order. Exits 0 when the tree is current, 1 when stale (naming `build.bat`), 2 when the tree is absent.
 
 ### check_dot_fit.mjs
 {: #check-dot-fit }
@@ -390,7 +390,7 @@ Renders every committed diagram with the real webfont and fails if a label sits 
 
     node scripts/check_regex_safety.mjs [--census] [--self-test]
 
-Refuses a regex that can backtrack exponentially. Parses every `.mjs` under `builder/`, `scripts/`, `book/`, `eval/` and `wisdom/` with acorn and classifies each pattern with [recheck](https://makenowjust-labs.github.io/recheck/). No browser, no built tree, a few seconds.
+Refuses a regex that can backtrack exponentially. Parses every `.mjs` under `builder/`, `scripts/`, `lib/`, `book/`, `eval/` and `wisdom/` with acorn and classifies each pattern with [recheck](https://makenowjust-labs.github.io/recheck/). No browser, no built tree, a few seconds.
 
 **It reads two things: regex literals, and every `new RegExp(...)` whose arguments can be resolved from the source.** The second half matters more than it sounds, because building a pattern out of shared fragments --- `const NUM = "..."; new RegExp(`${WRAP}${NUM}`)` --- is the ordinary way to avoid writing a sub-pattern six times, and for as long as the gate read literals only, doing that made a regex invisible to it. Six in one gate were, and one of them turned out to be polynomial rather than safe; it was found by a person running recheck against it by hand, which is not a process. A construction it cannot resolve is listed by `--census` with the reason --- *a function parameter, check the call sites*, *a `let`, so its value is not fixed* --- so the remaining blind spot is a short list rather than a count.
 
@@ -415,7 +415,7 @@ Exits 1 on an exponential finding. Exits 2 when the gate itself failed --- a fil
 
 Verifies that no pre-render rewrite in `builder/render.mjs` alters the contents of a code fence, an indented code block or an inline code span. Tokenises every markdown file under `docs/`, applies the real rewrite chain, re-tokenises, and compares the code regions in order. No browser, no built tree, a couple of seconds.
 
-The list of files comes from `scripts/lib/markdown-files.mjs`, which [`convert_em_dash_separators.mjs`](#convert-em-dash-separators) and [`check_examples.mjs`](#check-examples) share. It never enters the build's output trees, so a running `serve.bat` cannot fail the gate: the preview deletes and rewrites `docs/_serve` on every rebuild, and a walk inside it at that moment used to die with `ENOENT`.
+The list of files comes from `lib/markdown-files.mjs`, which [`convert_em_dash_separators.mjs`](#convert-em-dash-separators) and [`check_examples.mjs`](#check-examples) share. It never enters the build's output trees, so a running `serve.bat` cannot fail the gate: the preview deletes and rewrites `docs/_serve` on every rebuild, and a walk inside it at that moment used to die with `ENOENT`.
 
 Those rewrites run over **raw markdown**, before markdown-it has parsed anything, so none of them can tell prose from code --- and this site's subject matter is code. Four defects of exactly that shape shipped: a language reference printed its `If` / `ElseIf` / `Else` bodies flush left, a page lost the blank line between two examples, a link's argument list was percent-encoded inside a fence, and a YAML sample's closing `---` was deleted outright. **No other gate can see any of it**, because the damage sits inside `<code>` and the link, integrity, publish and accessibility checks all pass over it.
 
@@ -465,7 +465,7 @@ Its probes ride along in every run: each plants one defect in a small synthetic 
     node scripts/check_lint.mjs
     node scripts/check_lint.mjs --staged
 
-Runs Biome, pinned to an exact version, over the tooling: `builder/`, `scripts/`, `book/`, `eval/`, `wisdom/`, `test/` and the site's two scripts in `docs/assets/js/`, less the exceptions that `biome.jsonc` at the repository root lists and explains. The rules are the ones that find defects --- Biome's correctness and suspicious groups --- and none about style; the configuration names the few it turns off, each with its reason. Moving and deleting code leaves unused imports and undeclared names behind, and nothing else reads the tooling for them. No browser, no built tree, a fraction of a second.
+Runs Biome, pinned to an exact version, over the tooling: `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `test/` and the site's two scripts in `docs/assets/js/`, less the exceptions that `biome.jsonc` at the repository root lists and explains. The rules are the ones that find defects --- Biome's correctness and suspicious groups --- and none about style; the configuration names the few it turns off, each with its reason. Moving and deleting code leaves unused imports and undeclared names behind, and nothing else reads the tooling for them. No browser, no built tree, a fraction of a second.
 
 **Warnings fail as well as errors.** Biome reports an unused import or variable as a warning, and exits 0 on warnings, so a plain `npx biome lint` passes a file full of them. The gate also refuses to pass when Biome could not lint. Biome exits 1 for a broken `biome.jsonc`, as it does for a finding, and 0 for a scope that matches no script at all, so the gate reads the summary Biome writes beside its usual output to tell these apart. Exits 0 clean, 1 on a finding, 2 when Biome could not lint or, over the whole scope, checked no script.
 

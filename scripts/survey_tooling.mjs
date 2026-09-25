@@ -55,7 +55,7 @@ import { parseArgs } from "node:util";
 import * as acorn from "acorn";
 import * as walk from "acorn-walk";
 
-const TOOLING_DIRS = ["builder", "scripts", "book", "eval", "wisdom", "test", "perf"];
+const TOOLING_DIRS = ["builder", "scripts", "lib", "book", "eval", "wisdom", "test", "perf"];
 const VENDORED = [/^book\/lib\/paged\.browser\.js$/, /^builder\/vendor\//];
 const LAB = "perf/";
 const MAX_OCCURRENCES = 40;

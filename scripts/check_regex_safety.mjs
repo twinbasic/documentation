@@ -124,6 +124,7 @@ if (nativeBin && !process.env.RECHECK_BIN) {
 const SOURCE_GLOBS = [
   "builder/**/*.mjs",
   "scripts/**/*.mjs",
+  "lib/**/*.mjs",
   "book/*.mjs",
   "eval/*.mjs",
   "wisdom/**/*.mjs",

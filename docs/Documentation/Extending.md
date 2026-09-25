@@ -58,8 +58,8 @@ partial reload. What *is* watched is everything under `docs/` --- page content a
 ## When `test.bat` says a regex can backtrack exponentially
 {: #regex-refused }
 
-`check_regex_safety.mjs` reads every regex under `builder/`, `scripts/`, `book/`,
-`eval/` and `wisdom/`, and refuses one that can take exponential time on some input.
+`check_regex_safety.mjs` reads every regex under `builder/`, `scripts/`, `lib/`,
+`book/`, `eval/` and `wisdom/`, and refuses one that can take exponential time on some input.
 It runs in `test.bat` and as a step of its own in the gates both CI workflows run, so a regex added
 to the builder can pass the build and `check.bat` and still be refused. The report
 starts with
@@ -781,7 +781,7 @@ Five commands cover the loop:
 1. **`build.bat`** --- full pipeline, including the link and integrity check over both trees while their HTML is still in worker memory. A clean exit and a sensible Gantt placement is the bar.
 2. **`serve.bat`** --- live-reload dev server for visual checks. Remember the persistent pool: Ctrl+C and restart after handler-code or task-graph changes. Check both themes if the change touches anything visible.
 3. **`check.bat`** --- the gates that read the built site. [Tools and Scripts](Tools#checkbat) lists them in the order they run.
-4. **`test.bat`** --- the gates that test the toolchain itself, listed at [Tools and Scripts](Tools#testbat). Every change under `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/` needs this one, which is every change this page describes. Most content edits do not, with two exceptions: `check_code_regions.mjs` sweeps every markdown file under `docs/`, and `check_gate_lists.mjs` reads `README.md` and every page under `docs/Documentation/`.
+4. **`test.bat`** --- the gates that test the toolchain itself, listed at [Tools and Scripts](Tools#testbat). Every change under `builder/`, `scripts/`, `lib/`, `book/`, `eval/` or `wisdom/` needs this one, which is every change this page describes. Most content edits do not, with two exceptions: `check_code_regions.mjs` sweeps every markdown file under `docs/`, and `check_gate_lists.mjs` reads `README.md` and every page under `docs/Documentation/`.
 5. **`book.bat`** --- re-renders the PDF if your change affects `_site-pdf/` or any chapter body.
 
 A clean run of all five is the bar for "ready to commit".

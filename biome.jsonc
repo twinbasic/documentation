@@ -10,6 +10,7 @@
     "includes": [
       "builder/**/*.mjs",
       "scripts/**/*.mjs",
+      "lib/**/*.mjs",
       "book/**/*.mjs",
       "book/lib/progress-handler.js",
       "eval/**/*.mjs",
@@ -67,6 +68,29 @@
               "level": "error",
               "options": {
                 "patterns": [{ "group": ["**/scripts/**"], "message": "builder/ must not depend on scripts/." }]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      // lib/ holds modules every other part of the tooling may import
+      // (lib/README.md), so it imports none of them; a lib/ module that reached
+      // into scripts/ would take builder/ there with it.
+      "includes": ["lib/**/*.mjs"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/builder/**", "**/scripts/**", "**/book/**", "**/eval/**", "**/wisdom/**", "**/test/**"],
+                    "message": "lib/ must not import builder/, scripts/, book/, eval/, wisdom/ or test/."
+                  }
+                ]
               }
             }
           }

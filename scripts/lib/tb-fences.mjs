@@ -68,7 +68,7 @@ import { createHash } from "node:crypto";
 
 import MarkdownIt from "markdown-it";
 
-import { markdownFiles } from "./markdown-files.mjs";
+import { markdownFiles } from "../../lib/markdown-files.mjs";
 
 /** The bare flag that opts a fence in to compilation. */
 export const MARKER = "check_build";

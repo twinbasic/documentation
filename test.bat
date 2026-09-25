@@ -13,8 +13,8 @@
 @rem block, an admonition wrapping a fence -- and after editing a
 @rem developer page that says how many gates a wrapper runs.
 @rem
-@rem Otherwise run it when the change touches builder/, scripts/, book/,
-@rem eval/, wisdom/, a wrapper or a workflow. Both CI workflows run it
+@rem Otherwise run it when the change touches builder/, scripts/, lib/,
+@rem book/, eval/, wisdom/, a wrapper or a workflow. Both CI workflows run it
 @rem unconditionally, so a tooling regression cannot reach staging by
 @rem someone skipping it.
 @rem

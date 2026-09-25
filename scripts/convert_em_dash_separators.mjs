@@ -39,7 +39,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { markdownFiles } from "./lib/markdown-files.mjs";
+import { markdownFiles } from "../lib/markdown-files.mjs";
 
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ROOT = path.join(REPO, "docs");

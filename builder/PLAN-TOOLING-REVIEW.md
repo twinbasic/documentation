@@ -819,6 +819,27 @@ folder with no install both exit 2. The tree comparison is identical.
 since `check_tree_fresh.mjs` uses `isOutputTree`; an edit under `lib/` makes
 `check_tree_fresh.mjs` refuse the tree.
 
+**Landed** as the entry describes. `biome.jsonc` lints `lib/**/*.mjs` and gains a second
+`noRestrictedImports` override, for `lib/`, that refuses an import from `builder/`,
+`scripts/`, `book/`, `eval/`, `wisdom/` or `test/`: a probe under `lib/` had all six flagged,
+while `node:fs`, `node:test`, `fast-glob` and `./markdown-files.mjs` passed. `lib/README.md`
+says what the folder is for and states the rule, and WIP.Build.md gains a paragraph on `lib/`
+beside the ones on `wisdom/` and `eval/`. `eval/nav_hops.mjs`'s comment said a corpus holds
+`scripts/` only as stubs; `build_corpus.mjs` stubs every file whose extension is not prose or
+configuration, `lib/` included, so the comment now says every script. `build_corpus.mjs`
+itself did not change: its list is of exclusions, and `lib/` is mirrored as `scripts/` is.
+Only the review's records and this plan keep the old path.
+
+Verified: `markdownFiles` from HEAD's copy (loaded from `git show` through a `data:` URL, so
+nothing was written) and from `lib/` return the same 912 files, and `isOutputTree` picks the
+same eight folders under `docs/`. After a build, touching `lib/markdown-files.mjs` makes
+`check_tree_fresh.mjs` exit 1, and the old default, `--source docs --source builder`, passes
+the same stale tree. A probe under `lib/` holding `/^(a+)+$/` fails `check_regex_safety.mjs`,
+which passes once the probe is gone. `survey_tooling.mjs` surveys 186 files, the 189 scripts
+under its eight folders less the three vendored ones. `check_lint.mjs` still checks 138
+files, since the module moved within its scope. The tree comparison differs only in
+Building.html, Extending.html and Tools.html, the search index and `book.html`.
+
 ### C13 — `builder, eval: decide what is an output tree with isOutputTree`
 
 **L2-1 (R1).** `serve.mjs:138`'s `IGNORED_PREFIXES` has no `_site-basepath*`, so a
