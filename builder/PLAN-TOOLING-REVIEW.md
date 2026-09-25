@@ -125,115 +125,22 @@ Observed by hand at the same commit:
 
 ## How the review is run
 
-### Passes
+The review ran as fourteen passes against `fe9ce12b`: ten area passes (`A1`–`A10`), each over
+one part of the tree, and four lens passes (`L1`–`L4`), each following one concern across the
+whole tree. A verifier re-checked every R1 and R2 citation, and the orchestrator merged
+findings more than one pass reported. The method (each pass's exact scope, what counted as a
+finding, the acceptable-workaround test, and the output format) is recorded in
+[REVIEW-TOOLING-fe9ce12b.md](REVIEW-TOOLING-fe9ce12b.md); the review is finished and that
+record does not change.
 
-The last review split its passes by area, and that misses repetition between areas, which
-is where much of what the survey found sits. So there are two kinds of pass. An **area
-pass** asks about design inside one part. A **lens pass** follows one concern across the
-whole tree. All passes run on Sonnet; the orchestrator reconciles them and judges.
+The commit entries below still cite the review's notation:
 
-| Pass | Subject | Scope |
-|---|---|---|
-| A1 | build orchestration and scheduling | `builder/`: `tbdocs`, `scheduler`, `sab-scheduler`, `sab-broadcast`, `cpu-worker`, `worker-pool`, `serve`, `gantt`, `build-info`, `discover`, `data`, `paths` |
-| A2 | output stages and auxiliary outputs | `builder/`: `write`, `offline`, `offline-rewrite`, `redirects`, `sitemap`, `search`, `compress`, `scss`, `vendor-assets`, `counts`, `publish-policy`, `page-baseline`, `symbol-baseline`, `symbols` |
-| A3 | the Markdown dialect and page templates | `builder/`: `render`, `highlight`, `highlight-theme`, `template`, `seo`, `nav` |
-| A4 | link and integrity checks, and the two-checker question | `builder/`: `link-check`, `check`, `check-tree`; `scripts/`: `check_links`, `check_links_diff`, `crawl_check`; `test/fixtures/` |
-| A5 | site-reading gates, accessibility, diagrams | `scripts/lib/axe-scan`, `check_a11y`, `check_a11y_fingerprint`, `check_axe_patch_equiv`, `pick_a11y_sample`, `sweep_a11y`, `check_dot_fit`, `build_dot_metrics`, `check_tree_fresh`; `builder/`: `dot`, `dot-metrics` |
-| A6 | the gates as a system, and the `test.bat` gates | the seven `.bat` files, both workflows, `check_gate_lists`, `check_publish_policy`, `check_regex_safety` with `lib/regex-fold`, `check_code_regions` with `lib/markdown-files`, `check_page_baseline`, `check_book_coverage`, `check_symbol_index`, `convert_em_dash_separators` |
-| A7 | the compiler harness | `scripts/lib/tb-*` with `tb-launch.ps1`, `tbbuild`, `tbrun`, `addin_test`, `check_tb_registry`, `test/addin/` |
-| A8 | sample compiling and the package API | `check_examples`, `lib/tb-fences`, `gen_attribute_probes`, `builder/census_attributes`, `build_package_api`, `lib/twin-api`, `lib/tb-packages` |
-| A9 | the book pipeline | `book/render-book`, `book/lib/` except the fork, `builder/book`, `builder/pdf`, `book.bat`, and whatever the book build loads from `perf/` |
-| A10 | smaller tools and the site's scripts | `eval/`, `wisdom/`, `scripts/impexp.mjs`, `scripts/build_fonts.py`, `docs/assets/js/` |
-| L1 | command-line and process conventions | every entry point outside `perf/` |
-| L2 | paths, configuration, file walking, dependencies | the whole tree outside `perf/` |
-| L3 | browsers, child processes, and rewriting HTML and Markdown as text | the whole tree outside `perf/` |
-| L4 | the survey's duplicate-code leads | the clone list, outside `perf/` |
-
-A verifier, also on Sonnet, then re-reads every R1 and R2 citation against the source. The
-orchestrator merges findings that more than one pass reported, and writes the review.
-
-### What counts as a finding
-
-Five kinds:
-
-- **dup**: two or more implementations of one thing. Worst when the copies have already
-  diverged, because the divergence is a latent bug.
-- **hack**: a workaround that fails one of the three tests below.
-- **struct**: a module doing several unrelated jobs, a module in the wrong place, a
-  dependency pointing the wrong way (production code loading from `perf/`), or a missing
-  seam where a test would need one.
-- **conv**: conventions that differ between tools for no reason: flags, help, exit codes,
-  output streams, error reporting.
-- **dead**: superseded code, unused exports, dead flags, comments naming files that have
-  moved.
-
-**A workaround is acceptable when it passes three tests.** It is *contained*: in one place,
-behind one interface. It is *guarded*: if what it works around changes, something fails
-loudly; the axe patch and `check_axe_patch_equiv.mjs` are the model. It has a *stated
-exit*: the condition under which it can be removed. A workaround that fails any of the
-three is a finding, and so is one whose recorded reason no longer holds.
-
-**A recorded decision is not a finding.** This codebase explains itself in header comments,
-in the `WIP.*.md` casebooks and in `builder/PLAN-*.md`. Before calling anything a hack or a
-duplication, look for its recorded reason. Report it only if the reason does not cover what
-the code actually does, or its premise has expired, and cite where the reason is.
-
-**Severity is by cost:**
-
-- **R1**: has already produced a divergence or a defect, or will on the next ordinary
-  change: copies that disagree, a list maintained by hand in several places.
-- **R2**: makes every change in its area slower or riskier: a helper edited in several
-  places, a module too large to hold in mind, a missing seam.
-- **R3**: local untidiness.
-
-Size alone is not a finding. A large module is reported as a *split candidate*, with
-evidence of what its size costs (decision 2).
-
-### Rules for every pass
-
-- **Read-only.** Create, modify or delete nothing in the repository. Scratch files go only
-  in the session scratchpad.
-- **Run nothing that writes outside the scratchpad, starts a browser or starts an IDE.** No
-  `build.bat`, `serve.bat`, `check.bat`, `test.bat` or `book.bat`, and no
-  `node builder/tbdocs.mjs`: it writes `docs/_site*` and can rewrite the committed
-  baselines. No `examples.bat`, `addin-test.bat`, `tbbuild`, `tbrun`, `build_package_api`,
-  `census_attributes`, `gen_attribute_probes` or `check_tb_registry`: a harness run starts
-  an IDE and changes the registry, and two must never run at once. No network, no
-  `npm install`.
-- Allowed: reading, `grep`, `git log` / `show` / `blame`, and small Node scripts in the
-  scratchpad to test a hypothesis, including importing a repository module that does
-  nothing on import. These gates are read-only and may be run on their own:
-  `check_gate_lists`, `check_publish_policy`, `check_code_regions`, `check_page_baseline`,
-  `check_book_coverage`, `check_symbol_index`, `check_regex_safety`, and
-  `check_examples --census`.
-- **Cite `path:line` and the enclosing function or constant.** Line numbers will move
-  before the last fixes land.
-- Stay in scope. Anything seen outside it goes under *Cross-area leads*.
-- Be complete on findings and brief in prose.
-
-### Output format for a pass
-
-```
-## <pass> -- <subject>
-
-### Findings
-<pass>-<n>. [R1|R2|R3] [dup|hack|struct|conv|dead] <one-line statement of the fault>
-  Where: <path:line (function)>, ...
-  Recorded reason: <where, and what it says> | none found (looked in: ...)
-  Cost: <the divergence that already happened, or what it makes harder>
-  Fix in place: <the change; name any shared module it needs>
-  Verify by: <which oracle below>
-  Size: S | M | L
-
-### Split candidates
-<module> -- <the separate jobs it does, and what its size costs; evidence>
-
-### Verified sound
-<what was examined and found fine, one line each, with why>
-
-### Cross-area leads
-<observations outside this pass's scope, for another pass>
-```
+- **Finding IDs**: `<pass>-<n>`, the pass's label (`A1` through `A10`, `L1` through `L4`) and
+  the finding's number within it, for example `A7-1` or `L3-1`. A `/` joins IDs the review
+  merged as one finding.
+- **Severity, by cost**: **R1** has already produced a divergence or a defect, or will on the
+  next ordinary change. **R2** makes every change in its area slower or riskier. **R3** is
+  local untidiness.
 
 ## Oracles
 
@@ -253,10 +160,13 @@ compared before and after:
 
 Each phase lands as commits on `staging`, the working branch, which is merged upstream when a
 chunk of work is done. The commits below are numbered in the order they are meant to land. A
-commit that needs a follow-up takes a letter (C07a) rather than renumbering the rest; when one
-lands, its heading gains the hash, and a **Landed** note records anything that differed from
-the entry, as in [PLAN-REVIEW-c9f2dfe0-1b6922b.md](PLAN-REVIEW-c9f2dfe0-1b6922b.md). Line
-numbers are the review's, at `fe9ce12b`, and move as the commits land.
+commit that needs a follow-up takes a letter (C07a) rather than renumbering the rest. From now
+on, a commit's **Landed** note is written in full in the commit that lands it, where git
+history keeps it; at the end of each phase, that phase's landed entries are cut to what later
+work still needs. The landed entries of C01–C18 and C13a were cut this way on 2026-09-26;
+their full text is in this file as it stood before the commit `builder: cut the tooling
+plan's landed entries to what later work needs`. Line numbers are the
+review's, at `fe9ce12b`, and move as the commits land.
 
 ### The organising idea
 
@@ -309,11 +219,9 @@ Planning against the tree turned up places where a finding's stated fix does not
 or where the charter's own details were short. None changes a decision; each changes how one
 is implemented.
 
-1. **A command-line error in `tbdocs` cannot exit 2 (L1-4).** `tbdocs` reports link failures
-   as 1, integrity failures as 2 and both as 3 (`tbdocs.mjs:1563-1570`), so a usage error at
-   2 reads as an integrity failure. `check_links.mjs` has the same scheme and already returns
-   2 for its three argument errors (`:384,399,403`), which the review did not list. C18 gives
-   a command-line error one value outside the bitmask, the same in both tools.
+1. **A command-line error in `tbdocs` cannot exit 2 (L1-4).** Fixed by C18, which gives a
+   command-line error one value outside the bitmask in both `tbdocs` and `check_links.mjs`,
+   whose own argument errors the review did not list.
 2. **`builder/` cannot import `isOutputTree` (L2-1).** `serve.mjs` is in `builder/`, which
    must not import `scripts/` (`render.mjs:383`), and `isOutputTree` is in
    `scripts/lib/markdown-files.mjs`. C12 moves that module into the new top-level `lib/`
@@ -324,20 +232,14 @@ is implemented.
 3. **`withBrowser` goes in `scripts/lib/browser.mjs`, not `axe-scan.mjs` (L3-1).** The two
    diagram tools need the same browser lifecycle (A5-5) and have no other reason to load the
    accessibility module.
-4. **The tree comparison normalises three regions, not two.** `injectGanttChart`
-   (`tbdocs.mjs:1312`) also inlines the chart into `Documentation/Development/BuildInfo.html`
-   in the online and offline trees, so excluding `assets/images/gantt.svg` alone would fail
-   every comparison. The PDF title page's commit comes from `git rev-parse --short HEAD`
-   (`build-info.mjs`), so it differs only when the two sides are different commits.
-5. **The pinning policy has to cover the linter (decision (g)).** Worded as the review words
-   it (exact where the code patches a dependency or relies on its internals), it does not
-   explain the exact pin decision 4 gives Biome, which patches nothing: the reason there is
-   that a new version changes the gate's verdict on unchanged code. C01 words the policy to
-   include that.
-6. **A dispatch of the deploy workflow is not a test.** It cuts a GitHub release
-   (`tbdocs-gh-pages.yml`'s `release` job). A commit that changes the workflows is checked by
-   a dispatch of `checks.yml` on `origin` and by the deploy workflow's run on the next push of
-   `staging`, which is the owner's to make. The Oracles table now says so.
+4. **The tree comparison normalises three regions, not two.** Folded into the Oracles table
+   above, which now carries the detail.
+5. **The pinning policy has to cover the linter (decision (g)).** C01 states the policy to
+   include the case a review-worded pin would miss: exact also where a new version would
+   change a gate's verdict on unchanged code, which is why Biome is pinned exact though it
+   patches nothing.
+6. **A dispatch of the deploy workflow is not a test.** It cuts a GitHub release; folded into
+   the Oracles table's CI row.
 7. **The command-line defects are fixed before `cli.mjs` exists (L1-2, L1-3, A7-5).** The
    review's fix for each is the shared module, but decision (e) makes Phase 2 change no
    behaviour, so C17 fixes them in place first. L3-3 likewise gets a loud failure in Phase 1
@@ -349,11 +251,8 @@ is implemented.
    every option and cannot be told not to, so this is the one behaviour change Phase 2's
    migrations make, and it only adds a form.
 10. **Three of the review's facts were wrong**, found by proofreading this plan against the
-    source. `check_tree_fresh.mjs`'s `IGNORED_FILES` has three entries, not one only for
-    `census_attributes.mjs`, so C10 removes that entry and keeps the other two (A8-2);
-    `offline.mjs`'s unused re-export block has 32 names, not 24 (A2-1); and
-    `check_examples.mjs`'s probe suite has 119 probes, of which 74 are the inline ones the
-    review counted (L4-10).
+    source (A8-2, fixed in C10; A2-1, fixed in C14; L4-10, whose corrected figure, 119 probes,
+    is stated in C61).
 
 ## Phase 0: process and oracles
 
@@ -361,326 +260,54 @@ Before any finding is fixed.
 
 ### C01 — `docs: state the dependency pinning policy, and correct Builder.md's list`
 
-**Decision (g).** `docs/Documentation/Builder.md`'s Dependencies section omits `recheck`,
-gives `@hpcc-js/wasm-graphviz` as `^1.21` where `package.json` has `^1.29.1`, and names
-`axe-core` as the only exact pin where four are exact (`axe-core`, `pdf-lib`, `puppeteer`,
-`recheck`). The last review fixed the same drift once, in `74b3395`.
-
-**Change.** Correct the section against `package.json`. Give each exact pin its recorded
-reason, cited where it is recorded rather than restated. State the policy in one sentence:
-exact where the code patches the dependency or relies on its internals, or where a new
-version would change a gate's verdict on unchanged code; caret otherwise. From here on, a
-commit that changes `package.json` updates this section in the same commit (see the bar).
-
-**Verify.** Every row re-read against `package.json` and `package-lock.json`; `build.bat`
-for the page.
-
-**Landed**, saying two things the entry does not. The paragraph under the package list also
-credited `htmlparser2` to the PDF renderer, where only the link checker and `crawl_check.mjs`
-import it; the rewrite says what each package is for, the four it never mentioned (`gray-matter`,
-`js-yaml`, `fast-glob`, `recheck`) included. And the policy had to explain why
-`@hpcc-js/wasm-graphviz` floats although `dot-metrics.mjs` patches it: the patch finds Graphviz's
-width table by an exact signature and fails the build when a release moves it, so the caret is
-a decision, and the section says so. The exact pins cite `PLAN-axe-perf.md`, `08-pdf-lib.md`,
-the change that pinned `puppeteer` with `pdf-lib`, and WIP.Build.md's note on `recheck`'s
-Windows backend. The JSON block now matches `package.json`'s `devDependencies` exactly.
+**Carried forward.** The pinning policy (decision (g)): exact where the code patches the
+dependency or relies on its internals, or where a new version would change a gate's verdict on
+unchanged code (the reason `@biomejs/biome`, C05, is pinned exact though it patches nothing);
+caret otherwise. `docs/Documentation/Builder.md`'s Dependencies section is the corrected,
+authoritative list, and a commit that changes `package.json` updates it in the same commit (see
+The bar for each commit).
 
 ### C02 — `scripts: compare_trees.mjs, the built trees before and after a change`
 
-**Decision 3.** The oracle for every `builder/` commit below.
-
-**Change.** A tool, not a gate.
-
-- The *before* side is built from a temporary `git worktree` at `--before <ref>` (default
-  `HEAD`), with `node_modules` linked to this checkout's; the *after* side is the working
-  tree. Both run `node builder/tbdocs.mjs --src docs --dest docs/_site-cmp-<side>
-  --no-fetch-assets` with `CI=1` in the environment, so the page and symbol baselines are
-  read and never written (`tbdocs.mjs:1589`); the only other reader of `CI` is the asset
-  fetch, which the flag already turns off. Arguments after `--` go to both builds; C53
-  needs a `--baseurl` build.
-- All three tree pairs are compared file by file: missing, extra and differing files, with
-  the first differing lines of a text file. Exit 0 identical, 1 different, 2 the tool failed.
-- Known differences are normalised, each with a stated reason, never excluded wholesale: the
-  timings in `assets/images/gantt.svg` and in the copy of that chart inlined into
-  `Documentation/Development/BuildInfo.html` (both trees), and the commit and date on the PDF
-  title page.
-- `--keep` leaves the trees and the worktree for inspection; otherwise both are removed.
-  `docs/.gitignore`, which names each output tree, gains the `_site-cmp*` trees.
-- A Tools.md entry; WIP.Build.md names it as the oracle for a `builder/` change.
-
-**Verify.** First the A/A run the charter asks for: `HEAD` against a clean working tree must
-be identical after normalisation. Anything else it finds is either given a reason and a
-normaliser, or fixed as nondeterminism. Then a one-character change to a template must show
-in all three trees. Record how long a comparison takes.
-
-**Landed, with the after side built from a checkout too.** The entry's design, the working
-tree built in place against a worktree at `HEAD`, failed its first run on eleven files that
-were not differences. Under `core.autocrlf` a fresh checkout writes CRLF, while files a tool
-has rewritten in this working tree hold LF, and everything the build copies verbatim (the
-impexp downloads, the font licences, `theme-toggle.js`, a committed diagram `.svg`) differed by
-line endings alone. So the after side is a second worktree, at a commit object made from the
-working tree through a copy of the index: `git add -A` into the copy, `write-tree`,
-`commit-tree`, with fixed identities. Neither the real index nor any file changes, untracked
-files that are not ignored are included, and both sides get the same line endings.
-
-Both worktrees live under `.compare-trees/` at the repository root, which the root `.gitignore`
-names, rather than `docs/_site-cmp*`; Node finds `node_modules` by walking up from them, so
-nothing is linked. The PDF title page's normaliser covers the whole build line, which holds the
-build's wall-clock date as well as the commit. A comparison takes about ten seconds.
-
-Verified at `b0612a46`. The A/A run, `HEAD` against a clean tree, found all 3,055 files
-identical across the three trees, with the three regions normalised and nothing else. **The
-entry's test, that a one-character template change shows in all three trees, was wrong about
-the trees.** A change to the generator tag in the page head reached all 913 online pages and no
-offline one, because the offline pass removes the whole SEO block (`offline-rewrite.mjs`'s
-`stripSeo`); a change to the skip link's text reached 913 pages in each of the online and
-offline trees; neither touched the PDF tree, because `book.html` is assembled from each page's
-rendered content, not from the page template. A page edit reaches all three: C01's change to
-`Builder.md` showed in both trees' `Builder.html`, both search indexes and `book.html`.
+Landed.
 
 ### C03 — `scripts: check_ci_workflows.mjs, the workflows against the wrappers' gates`
 
-**Decision 6, A6-4 (R2).** Nothing reads either workflow to confirm it runs the gates the
-wrappers run. Today the two workflows' twelve shared gate steps are identical and in the same
-order, and the workflows differ only in three recorded ways.
-
-**Change.** As A6-4's design in the ledger:
-
-- `scripts/lib/gate-roster.mjs` generalises `check_gate_lists.mjs`'s `gatesFromBat`
-  (`:111-118`) to read a wrapper or a workflow's `run:` steps. `check_gate_lists.mjs` moves
-  onto it unchanged.
-- `scripts/check_ci_workflows.mjs` compares (1) each workflow with the wrappers' roster:
-  `test.bat` and `check.bat`, less `check_tree_fresh.mjs`, which CI does not need because it
-  builds in the same job, plus the recorded CI-only `check_links_diff.mjs` steps; (2) the two
-  workflows with each other; and (3) the build step's critical flags, `--check-audit-index`
-  and `--no-fetch-assets`. An allowlist holds the recorded deltas, each with where it is
-  recorded: `checks.yml`'s fixture-built link-checker step, the deploy build's `--url` and
-  `--baseurl`, and the deploy-only steps. Order is compared within each wrapper's own gates.
-  CI already interleaves the two wrappers' gates, running `check_axe_patch_equiv.mjs` among
-  `check.bat`'s, and that stays allowed.
-- Probes ride along: a missing gate, an extra step, two gates reordered, a missing
-  `--check-audit-index`, and the allowlisted deltas, which must not fire.
-- Registered in `test.bat`, both workflows, Tools.md's numbered list, which
-  `check_gate_lists.mjs` requires, and WIP.md's gate table.
-
-**Verify.** Clean on the real tree; each probe fails as intended; a scratch copy of
-`checks.yml` with one gate step deleted fails. `check_gate_lists.mjs`'s 18 probes unchanged.
-CI waits for the owner's push.
-
-**Landed**, somewhat wider than the entry. The gate compares each gate's arguments as well as
-its name, since `pick_a11y_sample.mjs` without `--check` is a different gate; it reports an
-allowance that no longer matches anything, so the allowlist cannot quietly outlive its reason;
-and it reads the build flags as quoted tokens, because the deploy build's `--url` value is
-`'${{ steps.pages.outputs.origin }}'`, spaces included. Its probes number 13, on a synthetic set
-of wrappers and workflows rather than copies of the real files, so that they mean the same
-whatever state the real ones are in; two of them assert that CI may interleave the two
-wrappers' gates alike and may not interleave them differently.
-
-With `check_code_regions.mjs`'s step deleted from the real `checks.yml` (restored from git
-afterwards), it reported the missing gate and the two workflows parting at step 5, and exited
-1. Registering it found one more place restating `test.bat`: `check_gate_lists.mjs` failed on
-`Building.md`'s POSIX command block until the new gate was added there too. `test.bat`'s header
-and WIP.md now name a wrapper or a workflow among the changes that call for `test.bat`.
+Landed.
 
 ### C04 — `ci: one composite action for the gates both workflows run`
 
-**Decision (d).** After the roster gate, so the action is checked from its first commit.
-
-**Change.** `.github/actions/run-gates/action.yml` holds the steps both workflows share, in
-their current order, each with its comment, and both workflows call it. `checks.yml` keeps
-its fixture-built step; the deploy workflow keeps its build flags and its deploy steps.
-Whether the setup steps join the action (`checks.yml` installs in three steps, the deploy
-workflow in one) is decided here. `check_ci_workflows.mjs` reads through
-`uses: ./.github/actions/run-gates` and gains two probes: a gate missing from the action, and
-a workflow that stops calling it.
-
-**Verify.** The roster gate and its probes. CI: a dispatch of `checks.yml` on `origin`, and
-the deploy workflow's next run.
-
-**Landed.** All thirteen shared steps moved, the standalone link checker's included, so
-`checks.yml` runs its fused fixture step after the action, with its comment saying which step
-it now follows. The setup steps stay in each workflow: a local action cannot be used before
-the repository is checked out, and the two workflows' installs differ only in how many steps
-they take. The action has one comment per gate, merged from the two workflows'. `checks.yml`'s
-were the long ones, and three facts only the deploy workflow's comments had are kept:
-`check_dot_fit.mjs` runs after the build because `dot.mjs` rewrites a stale `.svg` in place,
-Chromium is already installed for the PDF render, and the deploy run is the one place a change
-pushed straight to `staging` meets the gates.
-
-`check_ci_workflows.mjs` reads a step that uses a local action as that action's own steps, and
-reports one it cannot read; its probes are 17. With `pick_a11y_sample.mjs`'s step removed from
-the action, it reported that gate missing from both workflows and exited 1. `Extending.md`'s
-rule for registering a gate goes from four places to three, and names both checks that enforce
-it. **The cost:** GitHub shows a composite action as one step, with each gate as a named group
-inside its log, so a failure reads as "Run the gates" until the log is opened.
+Landed.
 
 ### C05 — `lint: Biome, correctness rules only, and the fixes it finds`
 
-**Decision 4**, first half. The linter comes first because moved and deleted code leaves
-unused imports and undeclared names behind, and Phases 1 and 2 move and delete a lot.
-
-**Change.**
-
-- Evaluate first, and record the result in the Landed note. Run Biome's defect-finding rules
-  (its correctness and suspicious groups) over the scope, counting findings and false
-  positives in three kinds of code: Node modules; the two browser scripts in
-  `docs/assets/js/`; and the functions passed to `page.evaluate`, which sit in Node files
-  but run in the browser. If Biome cannot tell these apart without blanket suppressions, use
-  ESLint (`eslint`, `@eslint/js`, `globals`) under the same rules.
-- Install it pinned to an exact version, after the **owner's confirmation**, and add its row
-  to Builder.md's Dependencies.
-- One configuration at the root. Scope: `builder/`, `scripts/`, `book/`, `eval/`, `wisdom/`,
-  `test/`, `docs/assets/js/`. Excluded: `perf/`; the vendored code
-  (`book/lib/paged.browser.js`, `builder/vendor/`); `book/lib/outline.mjs` and
-  `postprocesser.mjs`, which the review found to be attributed, unmodified ports of
-  `pagedjs-cli`, to be treated as vendored; the generated JSON (the two baselines,
-  `package-api.json`, `inter-metrics.json`); `package-lock.json`; every Markdown, SCSS, YAML
-  and `.bat` file. The formatter stays off until Phase 6.
-- Findings with a mechanical fix are fixed here. A rule whose findings need design work
-  starts disabled, with a comment naming the phase that enables it.
-
-**Verify.** Lint clean over the scope. The tree comparison identical, since the fixes touch
-`builder/`. `test.bat` and `check.bat` clean.
-
-**Landed** with Biome 2.5.14, exact. Its first run over the scope, with the recommended
-correctness and suspicious rules, found 106 diagnostics in eleven rules:
-`noAssignInExpressions` 20, `noInnerDeclarations` 19, `noUnusedFunctionParameters` 17,
-`noUnusedVariables` 17, `noTemplateCurlyInString` 10, `useIterableCallbackReturn` 7,
-`noUnusedImports` 5, `noControlCharactersInRegex` 4, `noGlobalIsNan` 3,
-`noShadowRestrictedNames` 1, and two `useBiomeIgnoreFolder` notes on the configuration itself.
-None fired on a browser global inside a `page.evaluate` body, so the three kinds of code need
-no separate treatment and ESLint was not needed. It checks the scope, 136 scripts, in about
-100 ms.
-
-`biome.jsonc` turns two rules off, each with its reason: `noAssignInExpressions`, because
-`while ((m = re.exec(s)))` is how this tree walks a regex's matches, and
-`noTemplateCurlyInString`, because strings here hold Actions, PowerShell and JavaScript source
-whose `${...}` is literal. `noInnerDeclarations` is off only for `docs/assets/js/`, whose
-ES5-style scripts ship as written. Biome 2.5 replaced the `recommended` field with `preset`,
-which the configuration uses. **One file is outside the entry's scope:**
-`wisdom/extract/workflow.mjs` ends in a top-level `return`, because the agent Workflow engine
-runs it as a function body, and no module parser accepts that. It is excluded, and
-`check_regex_safety.mjs` still reads its regexes, through acorn's `allowReturnOutsideFunction`.
-
-The other 54 findings are fixed, or suppressed with a reason. Five unused imports went, and
-sixteen unused parameters of fixed callback signatures gained an underscore. Seventeen unused
-variables were deleted, among them `census_attributes.mjs`'s `declLine`, assigned on two paths
-and never read, and `cpu-worker.mjs`'s `idMapping`, which no worker reads. `measure-pass.mjs`
-uses `Number.isNaN`, the same test there, since `parseNumberOrRefCapture` returns only a
-number or `NaN`. `twin-api.mjs`'s `unescape`, which shadowed the global, is `unbracket`. Seven
-`forEach` callbacks no longer return their expression's value. The two regexes whose control
-characters are intended, the code mask's NUL delimiter and `impexp.mjs`'s test for the
-characters Windows forbids in a file name, say so in a `biome-ignore` comment. **Two findings
-are suppressed rather than fixed**, on the owner's decision: `offline.mjs`'s
-`writeOfflinePages` and `writeOffline`'s `precomputed` parameter are A2-1's dead code, and
-C14, which deletes them, now removes the two comments as well and moves the function's account
-of the nav-block cache into `cpu-worker.mjs`. The main thread still posts `idMapping` to every
-worker, and C14 now deletes that too.
-
-The tree comparison could not be identical, because the commit edits `Builder.md`, the site's
-two scripts, and `scripts/impexp.mjs`, which the site publishes as a download. Those are the
-only differences: `Builder.html`, the search index and `book.html`; `svg-inline.js` and
-`theme-toggle.js`, whose four `catch (e)` became `catch (_e)` to stay ES5; and the
-`impexp.mjs` download, whose readers now see its new comment. Every other change built
-identical output.
+**Carried forward.** The linter is Biome, pinned exact (2.5.14); ESLint was not needed, since
+no finding required separate treatment for Node modules, the two browser scripts in
+`docs/assets/js/`, or `page.evaluate` callback bodies. Scope: `builder/`, `scripts/`, `book/`,
+`eval/`, `wisdom/`, `test/`, `docs/assets/js/`, and `lib/` since C12, excluding `perf/`, the vendored code, the
+generated JSON (the two baselines, `package-api.json`, `inter-metrics.json`),
+`package-lock.json`, and every Markdown, SCSS, YAML and `.bat` file. The formatter stays off
+until Phase 6 (decision 4).
 
 ### C06 — `scripts: check_lint.mjs, a lint gate in test.bat and CI`
 
-**Decision 4.** The backstop for C08's hook.
-
-**Change.** `scripts/check_lint.mjs` runs the pinned linter over the configured scope and
-follows the gate convention: 0 clean, 1 findings, 2 the linter failed. It sits early in
-`test.bat` (no tree, no browser), and goes in the composite action, Tools.md's numbered list
-and WIP.md's gate table. WIP.md gains the rule: lint before every commit.
-
-**Verify.** Clean on the tree; an unused import exits 1; a broken configuration exits 2. The
-roster gate passes. CI waits for the owner's push.
-
-**Landed** with two things the entry did not foresee, both about what Biome's exit code
-means. **Biome 2.5 reports `noUnusedImports` and `noUnusedVariables` as warnings, and exits 0
-on warnings**, so a gate that ran `biome lint` as C05 left it would have passed the entry's
-own test case, an unused import. The gate passes `--error-on-warnings`. And the exit code
-cannot tell a finding from a gate that checked nothing: Biome exits 1 for a configuration it
-cannot read, as for a finding, and 0 for a scope that matches no script, because it counts
-`biome.jsonc` among the files it checked and so never reports that no files were processed.
-The gate reads the summary Biome writes to a file beside its usual output. No summary means
-Biome stopped before linting, and the summary counts the findings and the files checked.
-Neither the SARIF nor the JUnit report counts the files checked, and Biome prints a notice
-calling its JSON report experimental on every run, so the summary is the report the gate
-reads. C08's hook will pass the staged files, where checking none of them is normal, so the
-floor of one script belongs to the whole-scope run only.
-
-Verified: clean on the tree, 0; an unused import, 1, and `test.bat` stops there; a syntax
-error, 1; an unknown key in `biome.jsonc`, invalid JSON, and a scope that matches no script,
-2; Biome not installed, 2. About 0.25 s. With the gate registered, `check_gate_lists.mjs` and
-`check_ci_workflows.mjs` pass. Tools.md's "seven of the nine" became "seven of the ten", not
-eight: the lint scope includes `docs/assets/js/`, so an edit under `docs/` can now affect
-three gates. The tree comparison differs only in the three pages the commit edits (Tools,
-Building, and Builder, whose dependency list now names the gate), the search index and
-`book.html`. CI waits for the owner's push.
+Landed.
 
 ### C07 — `scripts: convert_em_dash_separators exits 2 on a crash`
 
-**A6-3 (R2).** Its one exit is `process.exit(main())`, with 0 or 1 (`:210,214`), and a crash
-also exits 1, which reads as a finding. The review expected it to run from the pre-commit
-hook; the owner approved that hook for Biome only (C08), so the fix stands on its own: a crash
-should not read as a finding wherever the tool runs.
-
-**Change.** The one-line `uncaughtException` handler four gates already have
-(`check_page_baseline.mjs:34` and its siblings), exiting 2. C43 later folds every copy into
-one helper.
-
-**Verify.** A forced throw exits 2; `--check` over `docs/` exits 0; a planted literal dash
-exits 1.
-
-**Landed** with one difference from the four gates' copies: the handler is installed inside
-the entry-point guard (`process.argv[1]` against `import.meta.url`), not at the top of the
-module. The tool is written to be importable, and a module that installs a process-wide
-handler on import changes how the importing process ends on a crash. C43's helper has to keep
-that property. The header now states the three exit codes. A throw forced from a preload
-(`node --import`, replacing `fs.promises.readFile`) exited 1 before the change and 2 after,
-since a rejected top-level `await` reaches `uncaughtException`; `--check` exits 0 on `docs/`
-and 1 with a planted em-dash. The tree comparison is identical.
+**Carried forward.** A crash handler is installed by a call inside a module's
+entry-point guard (`process.argv[1]` against `import.meta.url`), never as a side effect of
+import: the module is written to stay importable, and a process-wide handler installed on
+import would change how the importing process ends on a crash. C43's shared helper keeps that
+property.
 
 ### C08 — `githooks: a pre-commit hook that runs Biome on the staged files`
 
-**Decision 4.** The owner approved the hook on condition that it runs Biome and nothing else.
-The dash check `PLAN-10.md:690-693,795-797` deferred to a hook, and that A6-3 assumed, stays
-out of it unless the owner asks for it.
-
-**Change.** `.githooks/pre-commit`, run by Git for Windows's own `sh` and by `sh` elsewhere,
-runs the pinned Biome, through `check_lint.mjs`, on the staged JavaScript. Enabling it in a
-clone is `git config core.hooksPath .githooks`. This clone's `.git/config` already sets
-`core.hooksPath`, to the default `.git\hooks`, so enabling it here means changing that value,
-which the owner has confirmed. WIP.md and Tools.md say how to enable it, and that CI runs the
-same check for a clone without it.
-
-**Verify.** A staged file with an unused import is refused; a clean commit passes; a commit
-that stages no JavaScript is not slowed. Time the hook on a typical commit.
-
-**Landed** as the entry describes, with three details. The hook is one line, `exec node
-scripts/check_lint.mjs --staged`. The gate's new `--staged` asks git for the scripts the commit
-adds or changes (`git diff --cached --diff-filter=ACMR`) and passes them to Biome with
-`--no-errors-on-unmatched`, so a staged script outside the scope is skipped and checking none
-is clean; the whole-scope run keeps its floor. A partly staged file is linted as it is in the
-working tree. A new `.gitattributes` keeps `.githooks/*` LF. Git for Windows ran a CRLF copy
-of the hook correctly, through `sh` and through `git hook run`, so the rule is for a POSIX Git
-on a CRLF checkout, such as WSL on a Windows tree, whose kernel would read the carriage return
-after `#!/bin/sh` as part of the interpreter's name. That case is untested, since this machine
-has no WSL. C84, which settles line endings, keeps the rule. The hook is committed executable,
-as a POSIX Git requires.
-
-`core.hooksPath` in this clone's `.git/config` was `D:\OCP\wc\twinBASIC-documentation\.git\hooks`,
-a folder holding only Git's samples, and is now `.githooks`. The worktrees under
-`.claude/worktrees/` share the setting, and get the hook once their branch has it.
-
-Verified: with a planted unused import staged, `git hook run pre-commit` exited 1 and
-`git commit` was refused with HEAD unchanged; a staged script outside the scope, in `perf/`,
-was skipped, exit 0; this commit, which stages `check_lint.mjs`, passed the hook. Timed with
-`git hook run`: Git with no hook about 55 ms; the hook with no script staged about 145 ms, the
-difference being Node's start and one `git diff`; with one clean script staged about 230 ms.
-The gate's whole-scope cases are unchanged. The tree comparison differs only in Tools.html,
-the search index and `book.html`.
+**Carried forward.** The pre-commit hook (`.githooks/pre-commit`) runs `node
+scripts/check_lint.mjs --staged` and nothing else, on the owner's decision; enabled per clone
+with `git config core.hooksPath .githooks`. `--staged` lints only the files `git diff --cached
+--diff-filter=ACMR` reports, with `--no-errors-on-unmatched`, so staging nothing in the lint
+scope is clean; the whole-scope run keeps its own floor of one script.
 
 ## Phase 1: remove, relocate, and fix in place
 
@@ -690,478 +317,65 @@ Done ahead of this phase, during the review: the four superseded pdf-lib shims d
 
 ### C09 — `deps: declare picocolors and pako, which the code imports directly`
 
-**A1-2 (R1).** `picocolors` is imported by `tbdocs.mjs:35` and `scheduler.mjs:5` and installed
-only through `puppeteer → cosmiconfig → parse-json → @babel/code-frame`; `pako` is imported
-by `book/lib/fast-inflate.mjs` and installed only through `pdf-lib`. The day either chain
-changes, the build stops at an import.
-
-**Change.** Declare both at the versions installed today, under C01's policy: `picocolors`
-with a caret (`^1.1.1`), and `pako` exact (`1.0.11`), because `fast-inflate.mjs` replaces its
-`inflate` at run time. The **owner's confirmation** before `npm install`. Builder.md's
-Dependencies gains both rows.
-
-**Verify.** `npm ls picocolors pako` shows both as direct dependencies at the same versions,
-and `package-lock.json` should change only in its root entry. The tree comparison identical.
-
-**Landed** as the entry describes. Each package was installed once, at the version declared,
-and both lockfiles agreed with every package's own `package.json` apart from the optional
-packages for other platforms, so `npm install` reported the tree up to date and changed no
-installed file. `package-lock.json` changed only in its root entry, and `npm ls` shows both
-at depth 0. Builder.md's block gains both, its prose says what each is for, and its pinned
-list gains `pako`, making six: `fast-inflate.mjs` patches the copy it imports, which reaches
-pdf-lib only while the two share one copy, and 1.0.11 is the last 1.x release, the only one
-pdf-lib's own `^1.0.11` accepts. Declaring pako 2 instead would put it at the root and nest
-pdf-lib's own copy under `pdf-lib/`, and the patch would stop reaching pdf-lib without an
-error.
-
-Verified with two `--keep` runs of the tree comparison, one before the install and one after:
-HEAD's two builds are identical under the three normalisers, and the working tree differs from
-HEAD only in Builder.html, the search index and `book.html`.
+Landed.
 
 ### C10 — `scripts: move census_attributes.mjs out of builder/`
 
-**A8-2 (R2).** It imports `../scripts/lib/tb-packages.mjs` (`:79`) against `builder/`'s rule
-that it must not depend on `scripts/` (`render.mjs:383`), and `check_tree_fresh.mjs`'s
-`IGNORED_FILES` (`:57-63`) holds an entry only for it, beside the two baselines.
-
-**Change.** `git mv` it to `scripts/`, beside `build_package_api.mjs`, and fix its imports.
-Update every citation of the `builder/` path: `V3.md` lists eleven, the HTML comment in the
-published `docs/Reference/Attributes.md:588` among them; re-run `git grep census_attributes`.
-Remove its entry from `IGNORED_FILES`, whose other two entries, the two baselines, stay. If
-the linter can express it, a restricted-imports rule for `builder/` turns the rule into a
-guard rather than a comment.
-
-**Verify.** The tree comparison: identical, or differing only in that HTML comment if it
-reaches the page. `check_tree_fresh.mjs` clean. `census_attributes.mjs --json` byte-identical
-before and after (a harness run).
-
-**Landed** as the entry describes. `REPO` needed no change, since `scripts/` sits at the same
-depth as `builder/`. Seventeen lines citing the old path changed, in twelve files: the tool's
-own header, the three `scripts/lib/` modules and `build_package_api.mjs` that name it,
-Tools.md's usage line, the HTML comment in Attributes.md, `BUGS-TO-REPORT.md`, WIP.md and three
-WIP siblings. Two more places described the old placement rather than citing the path, and
-lost the description: Tools.md's opening paragraph listed the tool as the one executable
-under `builder/`, and WIP.Harness.md explained why it sat there and why `IGNORED_FILES` named
-it. The review's own files keep the old path, as records of `fe9ce12b`.
-
-Biome can express the rule. `biome.jsonc` gains an override for `builder/**/*.mjs` that turns
-on `style/noRestrictedImports` with the pattern `**/scripts/**`, a dependency guard although
-Biome files it under style. A probe under `builder/` showed it catching a static import, a
-re-export, a bare side-effect import and a dynamic `import()` into `scripts/`, and passing
-`picocolors` and `./render.mjs`; the same file under `scripts/` is not checked. With the
-census copied back into `builder/` with its old import, `check_lint.mjs` exits 1. C12's `lib/`
-needs a rule of its own, since it may import none of the tree's other folders.
-
-Verified: the census's `--json` report is byte-identical before and after the move, from the
-cached export of BETA 983 (661 files, 9,701 sites; no compiler started). The tree comparison
-differs only in Tools.html, Attributes.html (the HTML comment does reach the page), the search
-index and `book.html`, which carries both pages.
+**Carried forward.** `census_attributes.mjs` moved from `builder/` to `scripts/`, beside
+`build_package_api.mjs` (C38 relies on both readers now living in `scripts/`).
 
 ### C11 — `scripts: census_attributes finds the install through tb-install`
 
-**L2-2 (R1).** `findInstall` (`census_attributes.mjs:99-119`) recognises an install by its
-`packages/` folder and `tb-install.mjs`'s `findIde` (`:19-35`) by `twinBASIC.exe`, and only
-the private copy falls back to `os.homedir()` when `USERPROFILE` is unset. `tb-install.mjs`'s
-header exists to prevent exactly this copy.
-
-**Change.** Use `findIde`, keep the `packages/` check as census's own validation of what it
-found, and move the home-folder fallback into `tb-install.mjs`, where every harness tool gets
-it.
-
-**Verify.** A scratch script: `findIde` and census resolve the same install with
-`USERPROFILE` set and unset. `census_attributes.mjs --json` unchanged (a harness run).
-
-**Landed** as the entry describes. `findInstall` asks `findIde`, then checks, as before, that
-the path it gets or the folder above it holds `packages/`. `tb-install.mjs` gains the fallback
-(`USERPROFILE || os.homedir()`), so tbbuild, tbrun, check_examples, addin_test and
-build_package_api have it too; without it a missing `USERPROFILE` searched a `Desktop` folder
-under the working directory. Census's two messages for a failed Desktop search became one,
-`build_package_api.mjs`'s wording, still exit 2. Three cases now behave differently. Two are
-the point of the finding: an install with `twinBASIC.exe` but no `packages/` is now refused
-rather than skipped for an older one, and one with `packages/` but no `twinBASIC.exe` is no
-longer chosen, so census never reads a different install from the one the other tools compile
-with. The third is `--ide` given last with no value, which used to skip `TB_IDE` and now falls
-back to it; C17 makes that command line an error.
-
-**Unsetting `USERPROFILE` for a child process does not work on Windows.** A child spawned with
-an environment block that lacks it still has it, and so do `HOMEPATH` and `TEMP`, while
-`APPDATA` and `LOCALAPPDATA` stay removed: libuv adds a set of variables back from the parent.
-The first run of the oracle reported agreement for that reason. Its "unset" children now
-delete the variable themselves, through a `--import` preload, and they print what they saw.
-
-Verified: before the change, with `USERPROFILE` unset, `findIde` returned null while census
-found BETA 983 through the home folder; after it, both resolve BETA 983 with it set and unset.
-The census's `--json` report is byte-identical to C10's baseline in both cases, and with
-`--ide` given the install root or its `twinBASIC.exe`; a path with no `packages/` and a home
-folder with no install both exit 2. The tree comparison is identical.
+Landed.
 
 ### C12 — `lib: move markdown-files.mjs to a top-level lib/`
 
-**Decision (a)'s home**, and the prerequisite for C13: `builder/serve.mjs` needs
-`isOutputTree` and may not import `scripts/`.
-
-**Change.**
-
-- `git mv scripts/lib/markdown-files.mjs lib/markdown-files.mjs`, and update its importers
-  (`check_code_regions.mjs`, `check_tree_fresh.mjs`, `convert_em_dash_separators.mjs`,
-  `scripts/lib/tb-fences.mjs`, and `eval/nav_hops.mjs`'s file-URL import) and every citation,
-  WIP.md's Don't rule among them.
-- A header, or `lib/README.md`, says what `lib/` is for: modules that `builder/`,
-  `scripts/`, `book/`, `eval/` and `wisdom/` may all import, and that import none of them.
-- `lib/` joins every list of the tooling's folders: `check_tree_fresh.mjs`'s
-  `DEFAULT_SOURCES` (`docs` and `builder` today; the build imports `lib/` from C13 on, and an
-  edit there must mark the tree stale), `check_regex_safety.mjs`'s globs,
-  `survey_tooling.mjs`'s `TOOLING_DIRS`, the lint scope, and the prose that names the folders
-  (WIP.md, `test.bat`'s header, Tools.md).
-
-**Verify.** `markdownFiles` returns the same list before and after (a scratch comparison).
-`test.bat` clean, since `check_code_regions.mjs` and the dash tool use it; `check.bat` clean,
-since `check_tree_fresh.mjs` uses `isOutputTree`; an edit under `lib/` makes
-`check_tree_fresh.mjs` refuse the tree.
-
-**Landed** as the entry describes. `biome.jsonc` lints `lib/**/*.mjs` and gains a second
-`noRestrictedImports` override, for `lib/`, that refuses an import from `builder/`,
-`scripts/`, `book/`, `eval/`, `wisdom/` or `test/`: a probe under `lib/` had all six flagged,
-while `node:fs`, `node:test`, `fast-glob` and `./markdown-files.mjs` passed. `lib/README.md`
-says what the folder is for and states the rule, and WIP.Build.md gains a paragraph on `lib/`
-beside the ones on `wisdom/` and `eval/`. `eval/nav_hops.mjs`'s comment said a corpus holds
-`scripts/` only as stubs; `build_corpus.mjs` stubs every file whose extension is not prose or
-configuration, `lib/` included, so the comment now says every script. `build_corpus.mjs`
-itself did not change: its list is of exclusions, and `lib/` is mirrored as `scripts/` is.
-Only the review's records and this plan keep the old path.
-
-Verified: `markdownFiles` from HEAD's copy (loaded from `git show` through a `data:` URL, so
-nothing was written) and from `lib/` return the same 912 files, and `isOutputTree` picks the
-same eight folders under `docs/`. After a build, touching `lib/markdown-files.mjs` makes
-`check_tree_fresh.mjs` exit 1, and the old default, `--source docs --source builder`, passes
-the same stale tree. A probe under `lib/` holding `/^(a+)+$/` fails `check_regex_safety.mjs`,
-which passes once the probe is gone. `survey_tooling.mjs` surveys 186 files, the 189 scripts
-under its eight folders less the three vendored ones. `check_lint.mjs` still checks 138
-files, since the module moved within its scope. The tree comparison differs only in
-Building.html, Extending.html and Tools.html, the search index and `book.html`.
+**Carried forward.** `markdown-files.mjs` (`markdownFiles`, `isOutputTree`) moved from
+`scripts/lib/` to the new top-level `lib/`, which any part of the tree may import and which
+imports none of them (see departure 2). `biome.jsonc` enforces the second half of that rule on
+`lib/**/*.mjs` with a `noRestrictedImports` override refusing `builder/`, `scripts/`, `book/`,
+`eval/`, `wisdom/` and `test/`.
 
 ### C13 — `builder, eval: decide what is an output tree with isOutputTree`
 
-**L2-1 (R1).** `serve.mjs:138`'s `IGNORED_PREFIXES` has no `_site-basepath*`, so a
-`--dest docs/_site-basepath` build while `serve.bat` runs triggers a rebuild;
-`eval/build_corpus.mjs:59-71` lists `docs/_site-basepath` but its prefix test misses the
-`-offline` and `-pdf` trees. `check_tree_fresh.mjs` was fixed for this class once already.
-
-**Change.** Both decide output trees with `lib/markdown-files.mjs`'s `isOutputTree`.
-`serve.mjs` keeps `node_modules` and `.git` in its own list, since those are not output
-trees.
-
-**Verify.** With `serve.bat` running, a build to `--dest docs/_site-basepath` causes no
-rebuild, and a page edit still does. A scratch run of `build_corpus.mjs`'s exclusion test
-excludes all three basepath trees.
-
-**Landed** as the entry describes. `serve.mjs`'s watcher skips a top-level folder that
-`isOutputTree` names, and keeps `node_modules` and `.git` in a list of its own,
-`IGNORED_DIRS`. `build_corpus.mjs`'s `isExcluded` asks `isOutputTree` about the folder
-directly under `docs/`, and `EXCLUDED_PATHS` lost the six output trees it named. A comment in
-`runServe` said the watcher's list keyed off the serve's destination; the list matches names,
-so the comment now says that a `--dest` inside `docs/` must be named like an output tree (see
-Found while implementing).
-
-Verified by running the tool rather than a scratch copy of its test. With a build to `--dest
-docs/_site-basepath` on disk, all three trees populated, the old `build_corpus.mjs` mirrored
-2,545 files, 1,217 of them from `_site-basepath-offline` and 3 from `_site-basepath-pdf`, the
-rest being binary and omitted; the new one mirrors 1,325, that list less those two trees, and
-`diff -r` finds nothing else different. A second serve ran the new code on port 4010 with
-`--dest docs/_serve-c13`, since the build refuses to clean a destination outside the project
-tree. A build to `--dest docs/_site-basepath` that rewrote files in all three trees started no
-rebuild there, and touching `Tools.md` started one (`Changed: Documentation/Tools.md`). The
-old list matched whole names and had none of the three. The tree comparison is identical.
-The test builds overwrote `docs/_site-basepath`, which `check_links_diff.mjs --base-path-tree`
-reads, so it was rebuilt the way that tool builds it, with `--baseurl /twinBASIC-docs
---no-offline --no-pdf`.
+Landed.
 
 ### C13a — `builder: refuse a --dest that overlaps the source tree`
 
-**Found while implementing C13**, and given a commit of its own by the owner. `serve.mjs`'s
-watcher skips output trees by name, never by the path it serves from, so a `--dest` inside
-`docs/` with any other name is watched as source.
-
-**Change.** Found while implementing proposed that the watcher skip the serve's own
-destination as well.
-
-**Verify.** `serve.bat --dest docs/preview` starts no rebuild of its own, and an edit still
-starts one.
-
-**Landed** differently, because reproducing the fault showed that the watcher is not the only
-reader of the destination. A serve given `--dest docs/preview-c13a` on port 4010 started its
-first rebuild with no edit, on late directory events from its initial build (`Changed:
-preview-c13a/CustomControls, …`), and every rebuild failed in `discover`. `_config.yml`
-excludes only `_*` at the top of `docs/`, so the previous output was read as source, and the
-publish allowlist refused five of its files: both `impexp` downloads, both JSON files and
-`sitemap.xml`. Any other build over `docs/` reads the folder the same way while it exists.
-Skipping it in the watcher would have left every rebuild failing. For a name that `discover`
-skips and `isOutputTree` does not, such as `_preview`, each rebuild's writes would start the
-next, as the original note said; that case follows from the same log and was not reproduced.
-
-So `write.mjs` gains `assertDestinationClearOfSource(srcRoot, destRoot)`, which `runBuild`
-calls before any task, for a build and for each of a serve's builds. It refuses a destination
-that is or contains the source tree, which `prepareDestinations` would delete, having checked
-only that it lies under the project; and one inside the source tree unless its first folder
-there is one that `isOutputTree` names, which is what both `discover` and the watcher skip.
-The watcher's name test then covers the serve's destination, and `serve.mjs` changes only in
-its comment. The rule is in the `--dest` rows of Tools.md and `builder/README.md`, and
-Pipeline-Stages.md has a row for the function.
-
-Verified: a scratch probe gives the expected answer for 21 destinations. Among them
-`docs/_site-basepath`, `docs/_site/sub`, the fixture build's `test/fixtures/_out` and
-compare_trees' `.compare-out/site` pass; `docs/preview`, `docs/_foo`, `docs/_SITE`,
-`docs/..foo`, `docs/preview/_site`, `docs` itself and the repository root are refused. Every
-in-tree caller of `tbdocs --dest` passes. A build and a serve given `--dest docs/preview-c13a`
-both exit 1 before writing anything, the build with a stack from `main()`'s catch, which C18
-replaces for command-line errors. A serve given `--dest docs/_serve-c13a` built, started no
-rebuild in the eight seconds after, rebuilt once when `Tools.md`'s time stamp changed, and did
-not rebuild again. The tree comparison differs only in Tools.html, Pipeline-Stages.html, the
-search index and `book.html`.
+Landed.
 
 ### C14 — `builder: delete what the retired diff tools left behind`
 
-**A2-1 / A1-5 / L4-4, A1-4, A2-2 / A9-10 (all R2).** `644d6bdb` deleted `_diff.mjs`,
-`_triage.mjs`, `_sitemap_diff.mjs` and their siblings; code only they called, and comments
-naming them, remain.
-
-**Change.**
-
-- Delete `offline.mjs`'s `writeOfflinePages` (`:244-289`), `writeOffline`'s unread
-  `precomputed` parameter (`:117`), `buildSitePaths` and the fallback that calls it
-  (`:207,213,359-394`; `tbdocs.mjs:705-706` always sets `sitePaths`), and the 32-name
-  re-export block that nothing imports (`:55-88`); `search.mjs`'s `writeSearchData`
-  (`:18-24`); `sitemap.mjs`'s `extractSitemapUrls` (`:70-74`); `pdf.mjs`'s
-  `extractImagePaths` (`:146-158`).
-- With `writeOfflinePages` and `precomputed` go the two `biome-ignore` comments C05 put on
-  them and `tbdocs.mjs`'s `precomputed: true` argument. The function's comment on the
-  nav-block cache (`PLAN-9.md` §5.3, B7, and §7.D11) is the only explanation in the code of
-  a mechanism that lives on in `cpu-worker.mjs`'s `render`, so it moves above that copy
-  instead of going with the function. `offline.mjs`'s header (`:6-20`) describes
-  `precomputed`, `writeOfflinePages`, `buildSitePaths` and the re-exports, and is rewritten
-  to match.
-- `worker-pool.mjs`'s `sendInit` still posts `idMapping` to every worker (`:43-45`, called
-  from `tbdocs.mjs:1449`), though C05 deleted the only place a worker kept it. The parameter
-  and the message field go, and `Pipeline-Stages.md:860`'s signature with them.
-- Delete `tbdocs.mjs`'s unused `makeTimer` export (`:196-209`). `offline.mjs` keeps its
-  private copy (`:98-111`), with a comment that no longer cites the deleted tools.
-- Delete or correct the comments that name them: `offline-rewrite.mjs:411`,
-  `search.mjs:65-66`, `sitemap.mjs:67-68,97`, `redirects.mjs:35-36`, `pdf.mjs:6-9,99-107`,
-  and `offline.mjs:200-201`, which the review missed; and those that refer to them as "the
-  diff tools" without naming them, `offline.mjs:95-97` and `:364-365`.
-- The documentation rows that name a deleted function (`Pipeline-Stages.md:847` for
-  `extractImagePaths`, and any for the others) change in the same commit.
-
-**Verify.** `git grep` finds no caller of any deleted name, and no mention of the deleted
-tools outside the PLAN and REVIEW records. The tree comparison: identical apart from the
-documentation pages this commit edits.
-
-**Landed** with more than the entry names: everything it lists went, and deleting it left
-more dead code, which went too.
-
-- With the fallback gone, `buildOfflineState` read none of `pages`, `staticFiles` and
-  `stubs`, and `writeOffline` kept `pages` only to pass it on. Both lost those parameters,
-  and `tbdocs.mjs`'s call and Pipeline-Stages.md's signatures lost them too. Nothing outside
-  `offline.mjs` calls `buildOfflineState` and it awaits nothing, so it is private and no longer
-  `async`. Four imports from `offline-rewrite.mjs` that only the deleted code used went, and so
-  did `pdf.mjs`'s `IMG_SRC_RE` and `sitemap.mjs`'s `LOC_RE` with the only functions that used
-  them. `offline.mjs`'s rewritten header lists everything `writeOffline` still writes, and a
-  comment there that counted five `Promise.all` branches says three, as there have been since
-  before this commit.
-- Three more things existed only for the retired tools, by their own comments, and the review
-  missed them: `book.mjs`'s `loadBookData` ("retained for the verify harnesses and diff
-  tools"), which nothing calls and which is deleted, and the exports of `pdf.mjs`'s
-  `deriveBookOutputs` and `sitemap.mjs`'s `renderRobotsTxt`, which only their own files use.
-  Pipeline-Stages.md loses eight rows: those two, `loadBookData`, `buildOfflineState`,
-  `extractSitemapUrls`, `writeSearchData`, `extractImagePaths` and `makeTimer`. The rows for
-  `writeOffline`, `buildSitePathsSync` and `WorkerPool` changed, and so did the `writeOffline`
-  task's paragraph, which still passed `precomputed: true`.
-- The entry's comment list missed three that named the tools or their code:
-  `offline-rewrite.mjs`'s on `buildSitePathsSync`, `search.mjs`'s on
-  `writeSearchDataFromChunks`, and `book.mjs`'s on `IMG_SRC_RE_BOOK`, which pointed at
-  `pdf.mjs`'s deleted copy of the pattern.
-- The nav-block cache comment sits above the cache in `cpu-worker.mjs`'s `render`, unchanged
-  apart from its first line, which named the deleted function, and one "we".
-
-Verified: `git grep -w` for each deleted name finds only the scheduler's own `idMapping`,
-unrelated uses of "precomputed", and the records; the retired tools are named only in the
-records and in two notes that say they were retired (`WIP.OldJekyll.md`, `builder/README.md`).
-Lint is clean at 138 files. The tree comparison differs only in Pipeline-Stages.html, the
-search index and `book.html`. Every offline page is identical, which shows that dropping
-`precomputed` and the fallback changed nothing the render workers write.
+Landed.
 
 ### C15 — `builder, wisdom: delete precomputeSeo and schemas.mjs; unexport kramdownSlug`
 
-**A3-9, A3-10 (R3), A10-4 (R2).** `seo.mjs`'s `precomputeSeo` (`:90-94`) has no caller;
-`render.mjs`'s `kramdownSlug` (`:1352`) is exported and used only inside its module;
-`wisdom/extract/schemas.mjs` is imported by nothing and has drifted from the inline schemas
-`workflow.mjs` uses (`source_thread` where `:49` has `thread_path`, free text where `:77` has
-an enum).
-
-**Change.** Delete `precomputeSeo` and `schemas.mjs`; drop `kramdownSlug`'s `export`.
-Reviving `schemas.mjs` would mean reconciling it with `workflow.mjs` for no caller.
-
-**Verify.** `git grep` finds no importer before each deletion; the tree comparison identical.
-
-**Landed** as the entry describes, with the documentation that named the three. `precomputeSeo`
-went with its comment, which said it was kept for dev tooling; both halves it wrapped keep
-their callers, `markdownInit` on the main thread and `render` on the workers. Pipeline-Stages.md,
-whose module tables are headed as each file's export list, loses the rows for `precomputeSeo`
-and `kramdownSlug`. The `kramdownSlug` row was the only description of the slug rule, and it
-credited the function with the deduplication that `headerIdPlugin` does through `uniqueSlug`,
-so the rule moved, corrected, into the plugin chain's row for `headerIdPlugin`. Wisdom.md's
-file listing loses `schemas.mjs`, and its `workflow.mjs` line, one column out, is aligned.
-`wisdom/PLAN-3.md` still says the workflow uses `extract/schemas.mjs`, which was already untrue;
-like the builder's PLAN files, it is a record and stays as written.
-
-Verified: before the change, `git grep` found no importer of any of the three, only the
-records, the documentation rows and `render.mjs`'s own call. After it, `kramdownSlug` appears
-only in `render.mjs`, in the `headerIdPlugin` row and in one WIP.Build.md sentence, which name
-the function the heading ids use. Lint checks 137 files, one fewer, `schemas.mjs`. The tree
-comparison differs only in Pipeline-Stages.html, Wisdom.html, the search index and
-`book.html`.
+Landed.
 
 ### C16 — `scripts: tbrun recognises all five failed-build shapes`
 
-**A7-1 (R1).** `tbrun.mjs:327`'s pattern matches three of the five shapes that
-`tb-ide.mjs:730-734`'s `BUILD_FAILED` lists. A build that fails with `[BUILD] ERROR` or
-`[LINKER] compilation (codegen) error` is reported as a success.
-
-**Change.** Export `BUILD_FAILED` from `tb-ide.mjs`, and use it in `tbrun.mjs`.
-
-**Verify.** A scratch script: all five shapes match the exported list, and the two missed
-ones fail the old pattern. A probe project with a compile error makes `tbrun` exit non-zero,
-and a clean one still prints its output and exits 0 (harness runs).
-
-**Landed** as the entry describes, and verified end to end with a failure the old pattern
-missed rather than with a compile error. A compile error never reaches the pattern: `tbrun`
-exits 1 on the compile's error count before it builds. BUGS-TO-REPORT.md records a shift of
-a `Single` that compiles clean and then fails code generation, so the probe's
-`[RunAfterBuild]` Sub did that. Before the change, `tbrun` exited 0 and returned the IDE's
-log as the probe's output: `[BUILD] Starting...`, `[LINKER] SUCCESS created output file`,
-`[BUILD] Executing 'DocSamples.Probe.Run'...` and `[LINKER] compilation (codegen) error
-detected in 'Probe.Run' at line #11`. Nothing in the Sub ran, `Debug.Cls` included. After it,
-the same probe exits 2 and prints that log as the reason, and a clean probe still prints
-`clean probe 2` and exits 0. The message and the header's exit-code line now name code
-generation beside the build, since the build succeeded there. Tools.md's paragraph and
-WIP.Harness.md's bullet on failed builds say the same.
-
-A scratch script tested all five shapes against the exported pattern and the old one: the
-new one matches all five and none of five ordinary lines from the same log, and the old one
-misses `[BUILD] ERROR` and the codegen line. The `[BUILD] FAILED` and `[BUILD] ERROR` test
-lines have made-up tails, since no build here produced either; the other three are real lines
-from WIP.Harness.md and these runs. The old pattern was
-case-insensitive and allowed any run of spaces; the build log writes one space and the case
-the list names, so nothing real is lost.
-
-Harness runs, one at a time, on BETA 983: probe A (the shift in the `[RunAfterBuild]` Sub),
-before `exit 0`, after `exit 2`; probe B (clean), after `exit 0`; probe C (the shift in a
-procedure the probe calls), before and after `exit 0` with `before` as the output; probe C2
-(probe C without `Debug.Cls`), before, `exit 0`. Probe C is a gap no pattern can close; see
-Found while implementing.
+**Carried forward.** `tb-ide.mjs` exports `BUILD_FAILED`, the pattern matching all five
+failed-build log shapes; `tbrun.mjs` reports a build failure by matching against it. C25a's
+saved-segment check looks for a `BUILD_FAILED` line the same way.
 
 ### C17 — `scripts: harness CLIs reject a missing value; tbbuild finds its project`
 
-**L1-2, L1-3 (R1), A7-5 (R2).** Three defects in hand-written argument parsing, fixed in
-place so that C49 can migrate these tools without changing what they do:
-
-- `opt()` returns `undefined` for a value flag given last, in `census_attributes.mjs:86`,
-  `check_examples.mjs:93` and `tbbuild.mjs:61`, and `build_package_api.mjs:56`'s one-argument
-  `opt()` has the same gap. `Number(undefined)` then makes `tbbuild`'s `--port` and
-  `--timeout` (`:68,70`) and `check_examples`'s `--jobs`, `--port` and `--batch`
-  (`:102-104`) `NaN`. A `NaN` timeout makes `tb-ide.mjs:436`'s poll run zero times and
-  report that the IDE never opened the project, instead of a timeout.
-- `tbbuild.mjs:62` skips any token after a `--flag`, whether or not the flag takes a value,
-  so `tbbuild --keep proj` and `tbbuild --json proj` report a usage error.
-
-**Change.** A value flag with no value, or a numeric flag whose value is not a positive
-number, is a usage error through each tool's existing usage path. `tbbuild` finds its
-positional argument with a table of the flags that take values, as `tbrun.mjs:112-116` does.
-
-**Verify.** Each malformed invocation exits with the tool's usage code before any IDE starts.
-`tbbuild --keep proj` and `tbbuild --json proj` build (harness runs; the kept IDE is ended by
-its pid). The `examples.bat` summary unchanged: 1,119 samples.
-
-**Landed** as the entry describes, with three things it left open settled. "No value" also
-covers a value flag followed by another flag, as in `--port --keep proj`. Node's strict
-`parseArgs`, which C47's module is built on, refuses both forms and takes a lone `-` as a
-value (measured on Node 24.13), and the four tools now do the same, so C49 has nothing to
-change here. Ports and counts must be whole numbers; the timeout may be any positive number.
-`check_examples` clamped `--jobs 0` and `--batch 0` to 1 and now refuses them; the clamp never
-caught a bare `--jobs`, because `Math.max(1, NaN)` is NaN. The check comes before `--help` in
-`check_examples` and `census_attributes`, as a strict parser's does. Each reason is one line
-on stderr: `tbbuild` follows it with its usage line, and `check_examples` prefixes its own
-name, as most of its messages do.
-
-Before, on HEAD in a worktree: `tbbuild <probe> --timeout` started the IDE and exited 3 after
-3 s with `the IDE never reported <probe> as open`, and `tbbuild --keep <probe>` and `--json
-<probe>` printed the usage and exited 2. A scratch table of 34 malformed invocations, run with
-`TB_IDE` naming a file that does not exist, so that a case which got past parsing fails on
-another message rather than starting an IDE, now gives exit 2 and the reason for all 34, each
-in under 100 ms. On HEAD, a bare `--ide` fell back to `TB_IDE` in `tbbuild`,
-`census_attributes` and `build_package_api`; `build_package_api --src --check` looked for a
-folder named `--check`; and a bare or unreadable `--port` reached `tbbuild`'s launch as NaN
-(`options.port should be >= 0 and < 65536`). HEAD's `check_examples` cannot load in a
-worktree with no `node_modules`, so it has no before column.
-
-Harness runs, one at a time, on BETA 983: `tbbuild --keep <probe>`, `0 error(s), 0
-warning(s), 0 hint(s), 0 info` and exit 0 in 9 s, its IDE then ended by `taskkill /PID <pid>
-/T /F`; `tbbuild --json <probe>`, `"errors": 0` and exit 0 in 11 s; and `examples.bat`,
-`check_examples: 1129 sample(s), 1129 compile, 0 finding(s), 121.1s -- clean`. The count is
-1,129 rather than 1,119 because content commits of 2026-09-24 and 25 marked more samples. C17
-changes no fence handling, and later commits compare against 1,129. `tbbuild` leaves a kept
-IDE's registry entries alone, so a scratch tidy spanned the two runs: `startTidy` with the
-probe's folder as a prefix before them, and `finishTidy` after, which deleted the project
-state and the recent-list entry the kept run left. The census's `--json` report is
-byte-identical to HEAD's, 27,490 bytes, and `build_package_api --check` finds
-`package-api.json` up to date. The harness runs predate one edit, which lets a lone `-`
-through as a value; none of them passed one.
+**Carried forward.** In `tbbuild`, `check_examples`, `census_attributes` and
+`build_package_api` (and in `tbdocs`, under C18), a value flag given no value, whether at the end of
+the command line or followed immediately by another flag, is a usage error. This matches
+Node's strict `parseArgs` (confirmed on Node 24.13, which also accepts a lone `-` as a value),
+so `lib/cli.mjs` (C47) needs no behaviour change here when C49 migrates these tools onto it.
+Ports and counts must be whole numbers; a timeout may be any positive number. The check runs
+before `--help` is handled.
 
 ### C18 — `builder, scripts: a command-line error exits outside the link bitmask`
 
-**L1-4 (R1)**, and the same fault in `check_links.mjs`, which the review did not list (see
-departure 1). `tbdocs.mjs` throws on an unknown argument (`:189-191`) and `main()`'s catch
-exits 1 (`:1616-1635`), the "link check failed" bit. `check_links.mjs` exits 2 for its
-argument errors (`:384,399,403`), its integrity bit.
-
-**Change.** In both tools a command-line error exits with one value outside the 1/2/3
-bitmask. 4 is recommended: no run that reaches a check can produce it. Both usage texts and
-Tools.md's exit-code rows say so. C13a added one more command-line error to `tbdocs`: the
-refusal of a `--dest` that overlaps the source tree. It is thrown from `runBuild`, not
-`parseArgs`, so it must be told apart from a crash to exit 4 as well. Phase 3's convention, where an argument error exits 2,
-records these two tools as the exception, and C60 names the value beside the two bits.
-
-**Verify.** `tbdocs --bogus`, and `check_links.mjs` with no input, both exit 4. The fixture
-build (`test/fixtures/check-src`) still exits with its link and integrity bits, and
-`check_links_diff.mjs --self-test` passes.
-
-**Landed** as the entry describes, and one step further in `tbdocs`: a flag that takes a
-value, given last or followed by another flag, is a command-line error too, as C17 made it in
-the harness tools, and so is a `--port` that is not a whole number from 1 to 65535. Before, a
-bare `--dest` or `--baseurl` fell back to its default without a word, and a bare `--src`
-crashed with a TypeError and exit 1 (measured). A strict `parseArgs` refuses a bare value
-flag, so without this C52 would change what those command lines do. `check_links` already
-refused a flag without its value.
-
-A command-line error is an Error marked `commandLine: true`. `tbdocs`'s `parseArgs` makes
-one through `commandLineError()`, `write.mjs` marks its two `--dest` refusals the same way,
-and `main()`'s catch and `serve.mjs`'s initial-build catch exit 4 on it; `main()` prints the
-message alone, where it printed the stack. `check_links` returns 4 from its three argument
-errors, and from a command line with no arguments at all, which prints the help and which the
-entry's line list left out. The usage texts, `tbdocs.mjs`'s header and `check_links`' help
-and header, say so, and so does Tools.md: `tbdocs` gains an exit-code line under its flag
-table, since no row stated one, and `check_links`' sentence gains the 4.
-
-Verified by a scratch table of 16 command lines, each of which exits 4 with its message as the
-first line and no stack, in under 250 ms: `tbdocs --bogus`; a bare `--src`, `--dest`,
-`--baseurl` and `--stall-timeout`; `--port abc`, `70000` and `=0`; `--stall-timeout x`;
-`--dest docs/preview` and `--dest docs`; `--serve --dest docs/preview`, which prints `serve:
-initial build failed: refusing --dest ...`; and `check_links` with no arguments, with
-`--offline` alone, without `--offline`, and with a bare `--root-dir`. The fixture build
-(`--src test/fixtures/check-src --dest test/fixtures/_out --no-pdf --check`) exits 3, and
-`check_links_diff.mjs --self-test` passes. The tree comparison differs in the Tools page,
-online and offline, the online search index and `book.html`, all from Tools.md, and nowhere
-else.
+**Carried forward.** A command-line error in `tbdocs` and in `check_links.mjs` exits 4, a
+value outside the existing 1 (link failure) / 2 (integrity failure) / 3 (both) bitmask. This
+covers a value flag given no value or followed by another flag, an out-of-range `--port`, and
+(from C13a) a `--dest` that overlaps the source tree. C47, C49, C52 and C60 build on this
+value; Phase 3 (C71, C72) treats these two tools as the exception to "an unknown flag or a bad
+value exits 2."
 
 ### C19 — `scripts: close the browser on every exit path, through lib/browser.mjs`
 
@@ -2416,80 +1630,27 @@ Defects the review did not have, found by building something this plan asks for.
 
 - **Four high-severity advisories in the installed packages**, which `npm` reported while C05
   installed Biome. Fixed between C05 and C06 in `deps: update js-yaml, ws, linkify-it and
-  immutable past their advisories`. All four are denial of service from crafted input, and
-  every fix is a release inside a range already declared, by `package.json` for `js-yaml` and
-  by the parent package for the other four, so only `package-lock.json` changed and
-  Builder.md's Dependencies did not: `js-yaml` 4.1.1 to
-  4.3.2, and `gray-matter`'s nested copy 3.14.2 to 3.15.2; `ws` 8.20.1 to 8.21.3, under
-  Puppeteer; `linkify-it` 5.0.1 to 5.0.2, under `markdown-it`, where it cannot change the
-  output because `render.mjs` sets `linkify: false`; and `immutable` 5.1.6 to 5.1.9, under
-  `sass`.
+  immutable past their advisories` (only `package-lock.json` changed). Two lessons bind later
+  work, and C40 needs both: `npm ls` can report a version that is not actually installed,
+  because `node_modules/.package-lock.json` can be rewritten (by e.g. `npm audit fix
+  --dry-run`) while the packages on disk stay old, and npm trusts that file when it is newer
+  than every package folder, so read each package's own `package.json` instead; and
+  `compare_trees.mjs` cannot see a dependency change at all, because both its worktrees
+  resolve packages from this checkout's one `node_modules`. So run it with `--keep` before
+  the change, copy `.compare-trees/before/.compare-out` aside, run it again after, and compare
+  the two `before` builds with the same three normalisers; they must agree.
 
-  **`npm ls` reported the fix as already done.** `node_modules/.package-lock.json`, npm's
-  record of what is installed, had been rewritten with the fixed versions after the Biome
-  install, most likely by the `npm audit fix --dry-run` that listed them, while the packages
-  on disk stayed old. npm trusts that file when it is newer than every package folder, so a
-  real `npm audit fix` could have updated the lockfile and left the old packages in place.
-  With the file moved aside, `npm ls` showed the old versions, and the fix replaced five
-  packages. C09 and C40 change installed packages too: read the versions from each package's
-  own `package.json`, not from `npm ls`.
+- **`serve.bat --dest` inside `docs/` could rebuild forever** for a destination name the
+  watcher does not recognise as an output tree, and `discover` reads a stale destination as
+  source content too, failing the publish allowlist on every rebuild. Fixed in C13a, which
+  added `assertDestinationClearOfSource`.
 
-  **`compare_trees.mjs` cannot see a dependency change**, because both of its worktrees
-  resolve packages from this checkout's one `node_modules`. One `--keep` run before the update
-  and one after gave two builds of the same commit, which the same three normalisers found
-  identical. The book rendered 2,276 pages both times, with the same 2,460 outline entries and
-  the same extracted text; the two PDFs differ from byte 22.6 MB on, inside the compressed
-  object streams, and their document dates differ. `build.bat`, `check.bat` and `test.bat`
-  are clean.
-
-- **`serve.bat --dest` inside `docs/` rebuilds forever unless the name is an output tree's**,
-  found by reading `serve.mjs` for C13 and not reproduced. The watcher skips output trees by
-  name, never by the path it serves from, and an event that arrives during a build queues
-  another build, so the build's own writes into a folder such as `docs/preview` start the
-  next one. `serve.bat` passes its arguments through, so `serve.bat --dest docs/preview` is
-  enough. Not fixed: C13 only corrected the comment that said otherwise. The fix is for the
-  watcher to skip the serve's own destination as well.
-
-  **Fixed in C13a, which found this diagnosis incomplete**: `discover` reads such a folder as
-  source too, so every rebuild fails the publish allowlist, and the fix is for the build to
-  refuse the destination. See C13a's Landed note.
-
-- **Pipeline-Stages.md's `render.mjs` table lists three functions the module does not
-  export**, found while C15 removed `kramdownSlug`'s row: `svgInlinePlugin`,
-  `buildSvgWrapper` and `headingLevelNormalizePlugin`. The section is headed "Module export
-  tables", "the full export list per file". Not fixed. The plugin chain's rows for
-  `svgInlinePlugin` and `headingLevelNormalizePlugin` say "Detailed above" and mean these
-  rows, so the fix moves that detail rather than deleting it.
-
-  **Fixed in `docs, builder: correct render.mjs's export table and plugin chain`**, on the
-  owner's decision of 2026-09-25, which found five more errors in the same material. The
-  table lacked two real exports, `applyPreRenderRewrites` and `maskCodeRegions`.
-  `createMarkdownIt`'s signature lacked `vendoredVideos`, `vendoredImages` and `counts`.
-  `svgInlinePlugin`'s row said it is registered last, and three plugins follow it. The chain
-  is eighteen plugins, not seventeen: `countPlugin`, from `counts.mjs`, is registered after
-  them all and had no row, and Extending.md repeated the seventeen. And the detail the fix
-  moved said `headingLevelNormalizePlugin` raises every heading of level 3 or deeper by one,
-  where it gives each heading one level below its parent, so `h1`, `h3`, `h5` become `h1`,
-  `h2`, `h3`. Builder.md's SVG section, which describes the same two functions, showed four
-  `<a>` controls where `buildSvgWrapper` emits five buttons, left out the rule that only an
-  image alone in its paragraph is inlined, gave `svg-inline.js` ~80 lines against 319, and
-  said the main-thread markdown-it serves only the SEO pass and passes an empty SVG map:
-  `book.mjs` renders through it too, and it is given no map. `countPlugin`'s comment said
-  the SEO pass builds a markdown-it of its own; it shares the site's, and the one caller
-  without counts is `check_examples.mjs`'s markup probe.
+- **Pipeline-Stages.md's `render.mjs` table listed exports the module does not have**, and
+  five more errors in the same material. Fixed in `docs, builder: correct render.mjs's export
+  table and plugin chain` (`57cdaa1d`).
 
 - **`tbrun` exits 0 with partial output when a procedure the probe calls fails code
-  generation**, found while verifying C16. The codegen line naming the callee comes straight
-  after `[BUILD] Executing '<project>.<module>.<Sub>'...`, before the probe's first statement:
-  probe C2, which omits `Debug.Cls`, shows it above its own `before`. So the probe's
-  `Debug.Cls` erases it, the probe prints up to the call and stops, and nothing left in the
-  console says so. Not fixed. One direction: take the probe's output as everything after the
-  `[BUILD] Executing` line instead of relying on `Debug.Cls` to clear the log, so the line
-  stays visible; that changes what `tbrun` asks of a probe, and is the owner's call.
-
-  **Scheduled as C25a** on the owner's decision of 2026-09-25, by another route: `tbrun`
-  keeps what each clear erases, through the IDE's global `clearDebugConsole()`, so probes
-  keep `Debug.Cls`. See its entry.
+  generation**, found while verifying C16. Scheduled as C25a; see its entry for the fix.
 
 ## Open questions
 
