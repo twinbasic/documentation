@@ -25,6 +25,18 @@ every time. `byName` breaks ties on `srcRel` now. Two builds of a commit are
 byte-identical except for `BuildInfo.html` and `gantt.svg`, which record build
 timings and cannot be.
 
+**`scripts/compare_trees.mjs` is the check that relies on it.** It builds a
+commit and the working tree from two git worktrees and compares all three trees
+byte for byte, replacing those two regions and the PDF title page's build line,
+which also differs when the sides are different commits or were built on
+different days. Run it after any change to `builder/` that should leave the
+output alone; a change meant to alter the output is checked the same way, and
+what it reports should be the intended differences and nothing else. Build the
+working tree from a checkout, never in place: under `core.autocrlf` a file a
+tool has rewritten holds LF where a fresh checkout writes CRLF, and every file
+the build copies verbatim then differs, which is what the tool's first version
+found.
+
 ### A hung build times out and says where it hung
 
 Readers get this at [When a build stops instead of

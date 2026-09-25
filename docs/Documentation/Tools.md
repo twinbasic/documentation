@@ -569,6 +569,20 @@ Measures the repository's own tooling for repetition and structure: code duplica
 
 It is not a gate, and nothing runs it: take a measurement before and after a piece of refactoring. It reads only the files git tracks, so a scratch file never changes a number. `--root` measures another checkout, such as a worktree at an older commit that does not contain the script. `perf/` is measured, but it is counted separately in the summary and left out of the listings unless `--include-perf` is given. Exits 0, or 2 on a bad argument or a folder that is not a git checkout.
 
+### compare_trees.mjs
+{: #compare-trees }
+
+    node scripts/compare_trees.mjs                      # HEAD against the working tree
+    node scripts/compare_trees.mjs --before <ref>       # any commit against the working tree
+    node scripts/compare_trees.mjs --keep               # leave both trees and both build logs
+    node scripts/compare_trees.mjs -- --baseurl /docs   # extra tbdocs arguments, for both builds
+
+Builds the site twice and compares the online, offline and PDF trees file by file, byte for byte: once at a commit, `HEAD` unless `--before` names another, and once from the working tree as a commit would hold it, untracked files included. It is the check for a change to `builder/` that should leave the output alone, and for one that should not, whose differences ought to be the intended ones and no others.
+
+Both builds run from git worktrees under `.compare-trees/` at the repository root, which is gitignored, and neither touches the index or the working tree. Building the working tree in place would not do: under `core.autocrlf` a fresh checkout writes CRLF where files a tool has rewritten hold LF, and every file the build copies verbatim would then differ. Both builds run `tbdocs --no-fetch-assets` with `CI=1`, so the committed baselines are read and never written.
+
+Three regions differ between any two builds and are replaced before the comparison: the build's own timings in `assets/images/gantt.svg`, the same chart inlined into the [Build Info](BuildInfo) page, and the PDF title page's build line, which holds the build date and the commit. Everything else must match. A run takes about ten seconds on the development box. It is not a gate, and nothing runs it. Exits 0 when the trees match, 1 when they differ, and 2 when the tool failed; a failed run leaves `.compare-trees/` for inspection, and the next run removes it.
+
 ### tbbuild.mjs
 {: #tbbuild }
 

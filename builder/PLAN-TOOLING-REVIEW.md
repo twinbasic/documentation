@@ -413,6 +413,22 @@ be identical after normalisation. Anything else it finds is either given a reaso
 normaliser, or fixed as nondeterminism. Then a one-character change to a template must show
 in all three trees. Record how long a comparison takes.
 
+**Landed, with the after side built from a checkout too.** The entry's design, the working
+tree built in place against a worktree at `HEAD`, failed its first run on eleven files that
+were not differences. Under `core.autocrlf` a fresh checkout writes CRLF, while files a tool
+has rewritten in this working tree hold LF, and everything the build copies verbatim (the
+impexp downloads, the font licences, `theme-toggle.js`, a committed diagram `.svg`) differed by
+line endings alone. So the after side is a second worktree, at a commit object made from the
+working tree through a copy of the index: `git add -A` into the copy, `write-tree`,
+`commit-tree`, with fixed identities. Neither the real index nor any file changes, untracked
+files that are not ignored are included, and both sides get the same line endings.
+
+Both worktrees live under `.compare-trees/` at the repository root, which the root `.gitignore`
+names, rather than `docs/_site-cmp*`; Node finds `node_modules` by walking up from them, so
+nothing is linked. The PDF title page's normaliser covers the whole build line, which holds the
+build's wall-clock date as well as the commit. A comparison takes about ten seconds. The A/A run
+and the template change are recorded in this entry's commit.
+
 ### C03 — `scripts: check_ci_workflows.mjs, the workflows against the wrappers' gates`
 
 **Decision 6, A6-4 (R2).** Nothing reads either workflow to confirm it runs the gates the

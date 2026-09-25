@@ -476,6 +476,12 @@ On the dev box that is ~4 s of build against ~37 s of check, of which the axe sc
 build.bat && check.bat && test.bat
 ```
 
+**If the change touched `builder/`, compare the output as well.** `node
+scripts/compare_trees.mjs` builds `HEAD` and the working tree from two git
+worktrees and compares the three trees byte for byte, in about ten seconds. A
+refactor must come out identical; any other change should differ exactly where
+it meant to and nowhere else. See [WIP.Build.md](WIP.Build.md#the-pipeline).
+
 ### The gates, and where their internals are
 
 [Tools and Scripts](docs/Documentation/Tools.md) owns the authoritative lists,
