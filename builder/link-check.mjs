@@ -895,7 +895,12 @@ export function checkCanonical(canonicalByRel, basePath) {
 // FORBIDDEN labels distinguishing them. Labels are padded to the wider
 // of the two so href columns line up. Returns "" when there is nothing
 // to say.
-export function formatLinkReport(broken, forbiddenBySource) {
+//
+// `tag` and `reason` rename the forbidden entries for a tree where a
+// live-site link is expected rather than a fault: the book, where
+// book.mjs sends every link to a page it does not contain to the
+// website. The defaults are what both front ends printed before.
+export function formatLinkReport(broken, forbiddenBySource, { tag = "FORBIDDEN", reason = null } = {}) {
   if (!broken.length && !(forbiddenBySource && forbiddenBySource.size)) return "";
 
   const bySource = new Map();
@@ -910,11 +915,12 @@ export function formatLinkReport(broken, forbiddenBySource) {
       let set = bySource.get(src);
       if (!set) { set = new Set(); bySource.set(src, set); }
       for (const fh of fhits) {
-        set.add(`F\0${fh.url}\0forbidden prefix '${fh.prefix}'`);
+        set.add(`F\0${fh.url}\0${reason ?? `forbidden prefix '${fh.prefix}'`}`);
       }
     }
   }
 
+  const width = Math.max(tag.length, "BROKEN".length);
   const lines = [];
   for (const src of [...bySource.keys()].sort()) {
     lines.push("");
@@ -924,9 +930,9 @@ export function formatLinkReport(broken, forbiddenBySource) {
       const j2 = item.indexOf("\0", j1 + 1);
       const kind = item.slice(0, j1);
       const href = item.slice(j1 + 1, j2);
-      const reason = item.slice(j2 + 1);
-      const label = kind === "F" ? "FORBIDDEN" : "BROKEN   ";
-      lines.push(`  ${label}  ${href} -- ${reason}`);
+      const why = item.slice(j2 + 1);
+      const label = (kind === "F" ? tag : "BROKEN").padEnd(width);
+      lines.push(`  ${label}  ${href} -- ${why}`);
     }
   }
   lines.push("");

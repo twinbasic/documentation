@@ -84,7 +84,98 @@ For 32-bit Office, change the two paths to the win32 build. The rest of the code
 
 ## Console Applications
 
-This project type allows making a true console project rather than a GUI project. Helpfully, it will also add a default `Console` class for reading/writing console IO and provided debug console.
+This project type allows making a true console project rather than a GUI project: the program runs in the Command Prompt window it was started from, or in a console window of its own. Start one with **File → New Project → Standard EXE (Console App)**. The template turns on [*Is Console Application*](../../tB/IDE/Project/Settings#is-console-application), starts the program at `Sub Main` in its `MainModule`, and adds a `Console` class with `Cls`, `WriteLine` and `ReadLine` members for the console window. The class is a starting point, not a requirement; [Writing a command-line tool](#writing-a-command-line-tool-output-exit-code-and-arguments) replaces it with output that a batch file can capture.
+
+## Writing a command-line tool: output, exit code and arguments
+
+A tool that a batch file runs must put its output where the batch file can redirect it, and report failure through its exit code, which a batch file tests with `if errorlevel`. Four things behave differently from what the template and VBA suggest:
+
+- **`Debug.Print` writes only to the IDE's [Debug Console](../../tB/IDE/Project/DebugConsole).** The built `.exe` prints nothing with it.
+- **The template's `Console.WriteLine` writes only to a console window.** It calls `WriteConsoleW`, which writes nothing to a file or a pipe. With the program's output redirected, as in `mytool > out.txt`, it writes nothing and raises error 5.
+- **`End` stops the program with exit code 0.** To set the exit code, call the Windows `ExitProcess` function, after closing any files the program has open.
+- **`Command$` returns the arguments as they were typed.** For `mytool "my file.txt"` it returns `"my file.txt"`, quotes included.
+
+The module below counts the lines in a file. It replaces the template's `MainModule`, whose own `Sub Main` has to go: with a second `Sub Main` in another module, the build fails with *'Main' is ambiguous*. `WriteOut` and `WriteErr` write a line to standard output and standard error, stdout and stderr. They use `WriteConsoleW` when the output goes to a console window, which takes the text unconverted, and `WriteFile` when it goes to a file or a pipe.
+
+```tb check_build
+Module MainModule
+    Private Declare PtrSafe Function GetStdHandle Lib "kernel32" (ByVal nStdHandle As Long) As LongPtr
+    Private Declare PtrSafe Function GetConsoleMode Lib "kernel32" (ByVal hConsoleHandle As LongPtr, ByRef lpMode As Long) As Long
+    Private Declare PtrSafe Function WriteConsoleW Lib "kernel32" (ByVal hConsoleOutput As LongPtr, ByVal lpBuffer As LongPtr, ByVal nNumberOfCharsToWrite As Long, ByRef lpNumberOfCharsWritten As Long, ByVal lpReserved As LongPtr) As Long
+    Private Declare PtrSafe Function WriteFile Lib "kernel32" (ByVal hFile As LongPtr, ByRef lpBuffer As Any, ByVal nNumberOfBytesToWrite As Long, ByRef lpNumberOfBytesWritten As Long, ByVal lpOverlapped As LongPtr) As Long
+    Private Declare PtrSafe Sub ExitProcess Lib "kernel32" (ByVal uExitCode As Long)
+
+    Private Const STD_OUTPUT_HANDLE As Long = -11
+    Private Const STD_ERROR_HANDLE As Long = -12
+
+    Public Sub Main()
+        Dim fileName As String
+        fileName = Trim$(Command$())
+        If Len(fileName) > 1 And Left$(fileName, 1) = """" And Right$(fileName, 1) = """" Then
+            fileName = Mid$(fileName, 2, Len(fileName) - 2)    ' a quoted name keeps its quotes
+        End If
+        If fileName = "" Then
+            WriteErr "Usage: linecount <file>"
+            ExitProcess 1
+        End If
+        If Dir$(fileName) = "" Then
+            WriteErr "linecount: file not found: " & fileName
+            ExitProcess 1
+        End If
+
+        Dim f As Integer, lineText As String, count As Long
+        f = FreeFile
+        Open fileName For Input As #f
+        Do While Not EOF(f)
+            Line Input #f, lineText
+            count = count + 1
+        Loop
+        Close #f
+        WriteOut fileName & ": " & count & " lines"
+    End Sub
+
+    ' Writes a line to standard output or standard error: with WriteConsoleW to
+    ' a console window, and with WriteFile to a file or a pipe.
+    Public Sub WriteOut(ByVal text As String)
+        WriteTo STD_OUTPUT_HANDLE, text & vbCrLf
+    End Sub
+
+    Public Sub WriteErr(ByVal text As String)
+        WriteTo STD_ERROR_HANDLE, text & vbCrLf
+    End Sub
+
+    Private Sub WriteTo(ByVal stream As Long, ByVal text As String)
+        Dim handle As LongPtr, mode As Long, written As Long
+        handle = GetStdHandle(stream)
+        If GetConsoleMode(handle, mode) <> 0 Then
+            WriteConsoleW handle, StrPtr(text), Len(text), written, 0
+        Else
+            Dim bytes() As Byte
+            bytes = StrConv(text, vbFromUnicode)
+            WriteFile handle, bytes(0), UBound(bytes) + 1, written, 0
+        End If
+    End Sub
+End Module
+```
+
+With the default [Build Output Path](../../tB/IDE/Project/Settings#build-output-path), a project named `linecount` builds `Build\linecount_win32.exe`. Rename the file, or change the setting, to run it as `linecount`. At a command prompt, with `three.txt` holding three lines:
+
+```text
+C:\Tools>linecount three.txt
+three.txt: 3 lines
+
+C:\Tools>linecount missing.txt
+linecount: file not found: missing.txt
+
+C:\Tools>echo %errorlevel%
+1
+```
+
+The error message goes to standard error, so `linecount missing.txt 2> errors.txt` puts it in the file. `linecount three.txt > count.txt` writes `three.txt: 3 lines` into `count.txt`, and `linecount three.txt | find "lines"` passes it through the pipe.
+
+Output written to a file or a pipe is in the system's ANSI code page, as `StrConv` converts it. A character the code page does not have is replaced: on a Western European system, `Ł` becomes `L`. In a console window, `WriteConsoleW` writes the text unconverted, so `Zoë Łódź` shows as it is.
+
+`Line Input #` ends a line at a carriage return, so a file with Unix line endings, where each line ends with a line feed alone, counts as one line. See [Line Input #](../../tB/Core/Line-Input).
 
 ## Windows Services
 

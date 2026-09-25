@@ -13,6 +13,7 @@ permalink: /tB/IDE/Project/Menu/Window
 - Panel Layouts
 - Panel Features
 - Keyboard Shortcuts
+
 ---
 - Theme
 - Language
@@ -23,8 +24,10 @@ permalink: /tB/IDE/Project/Menu/Window
 
 - Default Built-in Layout <kbd>CTRL</kbd> + <kbd>#</kbd>
 - Full Screen Editor Layout
+
 ---
 - ✓ Custom Layout (Unsaved)
+
 ---
 - Save Current Panel Layout As...
 - Manage Panel Layouts...
@@ -207,6 +210,7 @@ permalink: /tB/IDE/Project/Menu/Window
 - ✓ Allow resizing of docked panels
 - ✓ Allow rearrangement of docked panels
 - ✓ Allow tear-out of docked panels
+
 ---
 - ✓ Allow resizing of floating panels
 - ✓ Allow movement of floating panels
@@ -216,6 +220,7 @@ permalink: /tB/IDE/Project/Menu/Window
 ![The Window menu with Keyboard Shortcuts highlighted and its submenu open to the right: a ticked Default Built-in Keyboard Shortcuts above Manage Keyboard Shortcuts.](Images/Menu_Window_KeyboardShortcuts.png)
 
 - ✓ Default Built-in Keyboard Shortcuts
+
 ---
 - Manage Keyboard Shortcuts
 
@@ -959,6 +964,7 @@ permalink: /tB/IDE/Project/Menu/Window
 - Classic (Light)
 - ✓ Dark
 - Light
+
 ---
 - Reload from disk
 

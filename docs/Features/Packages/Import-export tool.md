@@ -316,11 +316,23 @@ for the save before committing.
 
 **Open a fresh clone** in the IDE. It holds `src` and the `.gitignore`, but no `.twinproj`:
 
-1. Choose **File → New Project**, then **Import from folder...** (see [New
+1. **Before importing, empty `src\Packages` of the compiler packages.** Delete any `VB`,
+   `VBA`, `VBRUN` or `AppGlobalClassProject` folder in it. Imported with them, the project
+   gets its own copy of each, and keeps it: its `.twinproj` measured 4,222,833 bytes, against
+   4,207 bytes for the same folder without them. A fresh clone has them only if they were
+   committed before the `.gitignore` listed them; then remove them from the repository, and
+   commit that:
+
+   ```batch
+   git rm -r --ignore-unmatch src/Packages/VB src/Packages/VBA src/Packages/VBRUN src/Packages/AppGlobalClassProject
+   git commit -m "Remove the compiler packages"
+   ```
+
+2. Choose **File → New Project**, then **Import from folder...** (see [New
    Project](../../tB/IDE/Project/New#import-from-folder)).
-2. In the *Browse For Folder* dialog, choose the clone's `src` folder. The project opens
+3. In the *Browse For Folder* dialog, choose the clone's `src` folder. The project opens
    unsaved, with no file behind it yet.
-3. Save it with <kbd>CTRL</kbd> + <kbd>S</kbd>. The project has no file, so **Save Project**
+4. Save it with <kbd>CTRL</kbd> + <kbd>S</kbd>. The project has no file, so **Save Project**
    opens the *Save As* dialog. Save the `.twinproj` in the clone's top folder, beside `src`,
    and not inside `src`: *Export Path* is relative to the folder that holds the `.twinproj`,
    so a project saved inside `src` exports into `src\src`, and the `src` that Git tracks is
@@ -328,22 +340,12 @@ for the save before committing.
 
 The same save exports the project into `src`, and from then on every save updates it.
 
-**If the repository holds the compiler packages**, because they were committed before the
-`.gitignore` listed them, remove them from the clone before step 1, and commit that:
-
-```batch
-git rm -r --ignore-unmatch src/Packages/VB src/Packages/VBA src/Packages/VBRUN src/Packages/AppGlobalClassProject
-```
-
-Imported with them, the project gets its own copy of each: its `.twinproj` measured 4,222,833
-bytes, against 4,207 bytes for the same folder without them.
-
 **After a pull or a merge, open the project from `src` again.** Every save empties `src` and
 writes the project as the IDE has it open, so once Git has changed `src`, the next save would
 undo those changes. Save and commit before pulling. Afterwards, close the project without
-saving it, delete the compiler packages' folders from `src\Packages` --- the last export wrote
-them there, though Git ignores them --- and follow the three fresh-clone steps above, saving
-over the old `.twinproj`.
+saving it, and follow the four fresh-clone steps above, saving over the old `.twinproj`. Step
+1 matters here too: the last export wrote the compiler packages into `src\Packages`, though
+Git ignores them.
 
 A clone that has no compiler packages, of a project that embeds no package, holds no folder
 under `src\Packages`, so the tB executable's `import` can pack it as well: see step 4 of

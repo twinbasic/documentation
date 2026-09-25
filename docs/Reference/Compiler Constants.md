@@ -5,55 +5,63 @@ nav_order: 5
 permalink: /Reference/Compiler-Constants
 ---
 
-This is a guide to the built in compiler constants in twinBASIC. It includes the constants listed for VBA in its documentation even if they're not defined, as an undefined compiler constant can always be used, but will be 0.
+# Compiler Constants
+{: .no_toc }
 
-## `Win16`
+The constants twinBASIC predefines for conditional compilation, and how to test them with `#If`.
+
+The list includes the constants that VBA documents, even those twinBASIC does not define: an undefined compiler constant can always be used, and its value is 0.
+
+## Predefined constants
+
+### `Win16`
 
 **Purpose:** Indicates a 16-bit Windows compatible platform.\
-**Value:** Always 0 (False); 16 bit Windows is not supported.
+**Value:** Always 0 (False); 16-bit Windows is not supported.
 
-## `Win32` 
+### `Win32`
 
-**Purpose:** Indicates a 32bit compatible Windows platform\
-**Value:** Always 1 (True) on supported Windows platforms, for both 32bit and 64bit.
+**Purpose:** Indicates a 32-bit compatible Windows platform.\
+**Value:** Always 1 (True) on supported Windows platforms, for both 32-bit and 64-bit.
 
-## `Win64`
+### `Win64`
 
-**Purpose:** Indicates a 64bit Windows AMD64 platform.\
-**Value:** 0 (False) when the compiler is in 32bit mode, 1 (True) when in 64bit mode.
+**Purpose:** Indicates a 64-bit Windows AMD64 platform.\
+**Value:** 0 (False) when the compiler is in 32-bit mode, 1 (True) when in 64-bit mode.
 
-## `VBA6`
+### `VBA6`
 
 **Purpose:** Indicates compatibility with VBA6 syntax.\
 **Value:** Always 1 (True).
 
-## `VBA7`
+### `VBA7`
 
 **Purpose:** Indicates compatibility with VBA7 syntax.\
 **Value:** Always 1 (True).
 
-## `MAC`
+### `MAC`
+
 **Purpose:** Indicates running on a MacOS platform.\
 **Value:** Always 0 (False). Mac is not currently supported, although this will change in the future.
 
-## `TWINBASIC`
+### `TWINBASIC`
 
 **Purpose:** Indicates compatibility with twinBASIC syntax.\
 **Value:** Always 1 (True).
 
-## `TWINBASIC_BUILD`
+### `TWINBASIC_BUILD`
 
 **Purpose:** Provides a `Long` value giving the current twinBASIC Build Number.\
 **Value:** Currently this is the same as the "BETA" number, e.g. for Beta 610 it will have a value of 610.
 
-## `TWINBASIC_BUILD_TYPE`
+### `TWINBASIC_BUILD_TYPE`
+
 **Purpose:** Allows conditional compilation based on whether the project is an exe, dll, or ocx.\
 **Value:** A `String` that can be one of "Standard EXE", "Standard DLL", "ActiveX DLL", or "ActiveX Control", determined by the "Build Type" option in Project Settings.
 
+## Usage
 
-# Usage
-
-Usage of these follows the standard syntax of using a hashtag before the standard `If/Else/ElseIf` conditionals. For example, to differentiate between 32bit and 64bit VBA vs 64bit twinBASIC, 
+A compiler constant is tested with `#If`, `#ElseIf` and `#Else`: the `If`, `ElseIf` and `Else` keywords with a `#` in front. For example, to tell 32-bit and 64-bit VBA apart from 64-bit twinBASIC:
 
 ```tb check_build
 #If VBA7 Then
@@ -81,7 +89,7 @@ Usage of these follows the standard syntax of using a hashtag before the standar
 #End If
 ```
 
-Or more simply, to determine whether to use `PtrSafe` then `DeclareWide` or other tB features:
+Or more simply, to decide whether to use `PtrSafe`, and then `DeclareWide` or other twinBASIC features:
 
 ```tb check_build
 #If VBA7 Then
@@ -96,17 +104,16 @@ Or more simply, to determine whether to use `PtrSafe` then `DeclareWide` or othe
 ```
 
 > [!IMPORTANT]
-> Reminder: Compiler Constants are not `Boolean` values, so you shouuldn't use syntax like `#If Not Win64 Then` as the result may not be desired, for instance that example evaluates to `True` for both 32bit and 64bit modes when you likely used it expecting `False` under 64bit to use 32bit-only code.\
-If you wish to treat these as `Boolean`, you can use the `CBool()` function, e.g. `#If Not CBool(Win64) Then`.
+> Compiler constants are not `Boolean` values, so a test such as `#If Not Win64 Then` does not do what it appears to. It is `True` in both 32-bit and 64-bit mode, where the intent is usually `False` under 64-bit, to select 32-bit-only code. To treat a constant as a `Boolean`, convert it with `CBool()`, as in `#If Not CBool(Win64) Then`.
 
-# Appearance
+## Appearance
 
-The tB editor has the helpful feature of showing you in real time which compiler constants are active. Code in `#If` blocks is inactive and will appear grayed out if it will not execute under current settings. Note that unlike VBx, inactive code is not evaluated for errors.
+The twinBASIC editor shows in real time which compiler constants are active. Code in an `#If` block that will not run under the current settings is inactive, and appears greyed out. Unlike VBx, twinBASIC does not check inactive code for errors.
 
-For example, in 32bit mode:\
+For example, in 32-bit mode:\
 ![The editor in win32 mode, with the declares in the Win64 branch greyed out and those in the Else branch active](Images/oHpCiV1.png)
 
-Then switching to 64bit mode:\
+Then after switching to 64-bit mode:\
 ![The same code in win64 mode, with the Win64 branch now active and the Else branch greyed out](Images/TYizrRW.png)
 
 

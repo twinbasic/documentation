@@ -1,5 +1,5 @@
 ---
-title: Project
+title: New Project
 parent: IDE
 # nav_order: 2
 permalink: /tB/IDE/Project/New
@@ -34,7 +34,7 @@ The project opens with no `.twinproj` file behind it: it is unsaved, and marked 
 
 If the folder holds the compiler packages under `Packages`, as an export by the IDE does, delete their folders first: imported with them, the project gets a copy of them that the compiler does not use. See [Packing the export back into a project](Menu/File#packing-the-export-back-into-a-project). [Keeping a project in Git from the IDE](../../../Features/Packages/Import-Export-Tool#keeping-a-project-in-git-from-the-ide) uses this command to open a fresh clone.
 
-# Samples
+## Samples
 
 ![The same dialog on its Samples tab, a scrolling column of sample projects headed by Sample 0. Reports (Experimental), which is selected, then Sample 1. HelloWorld, Sample 1a. WebView2 Examples, Sample 2. GetIPAddresses and Sample 3. MyCodeLibrary, with the list running on past the bottom of the panel.](Images/New_Project_Samples.png)
 
@@ -66,7 +66,7 @@ Each row is labelled **Sample** followed by its number. The numbering is the dia
 - **22.** Windows Service Complex Example (inc Event Logging and IPC)
 - **23.** OOP Inheritance Example (Animals)
 
-# Recent
+## Recent
 
 If you haven't opened any projects, or removed all then this tab will be blank.
 

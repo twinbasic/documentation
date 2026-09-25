@@ -151,7 +151,7 @@ Two implementations of one check is exactly the shape that rots quietly: **a che
 node scripts/check_links_diff.mjs --a script --b fused
 ```
 
-It diffs the two implementations' findings category by category across the real invocations -- `_site/` with sitemap + search + canonical, `_site-offline/` with the forbidden-prefix rule, `book.html`, and a `--baseurl` tree checked with the matching base path. It is deliberately *not* in `check.bat`: the script side costs ~3 s, which is the whole saving.
+It diffs the two implementations' findings category by category across the real invocations -- `_site/` with sitemap + search + canonical, `_site-offline/` with the forbidden-prefix rule, `book.html` with the same rule (there it collects the links that leave the book for the website, reported as `OUT OF BOOK`), and a `--baseurl` tree checked with the matching base path. It is deliberately *not* in `check.bat`: the script side costs ~3 s, which is the whole saving.
 
 Two further modes matter:
 
@@ -522,6 +522,44 @@ correctly is not obvious**: a mis-paired opener swallows text only as far as the
 fence marker, so a probe with no fence *after* the admonition passes against the very
 stasher it was written to catch. The damage is always to the prose **between** two
 fences.
+
+### The book-coverage warnings
+
+**A page no `_book.yml` entry selected was left out of the PDF without a word**, and
+by September 2026 that had taken 52 pages out of the book. Some were deliberate ---
+the 404 page, Videos, Challenges --- and some were not: Data Types, Enumerations and
+twinBASIC Additions are as plainly reference material as anything the book carries,
+and nothing recorded why they were missing. The IDE section's pages with real prose
+went the same way as its placeholders. The only trace was the book pass of the link
+check, which listed the 32 links from the book to pages it did not carry as `BROKEN`,
+on a pass marked informational --- so the list read as noise.
+
+Two halves fixed it, and the second is what makes the first worth having. **`left_out:`
+in `_book.yml` names every page that is out on purpose, with a `reason:`**, and
+`bookCoverage()` in `builder/book.mjs` warns about a page that is in neither. Every
+page has an entry one way or the other, so a warning is a decision nobody has made.
+Without the list the warning fired for 37 pages on every build, which is a warning
+nobody reads after the first week.
+
+It reports five things, all empty on a consistent manifest: a page in no entry, a page
+in the book and in `left_out:`, a book entry that selects no page, a `left_out:` entry
+that matches none (a page renamed or deleted), and a landing or foreword URL no page
+publishes at. **They are warnings, not failures**: the book is complete for the
+manifest it was given, and a new page should not stop a build. They print under the
+`pdf:` summary, and only when the book is built, so `--serve` does not repeat them on
+every save. A link from the book to a page left out opens the website instead, and the
+link check lists it as `OUT OF BOOK` --- which left-out pages the book still links to.
+
+**"In the book" has to mirror `emitPart`, not the selectors.** A chaptered part's
+`landing_page` and a `foreword_page` are emitted by URL rather than selected, so a
+check that walked only `_chapters` would report the Features landing and the Packages
+foreword on every build. The emission sites are listed once, in `bookCoverage()`, and
+two probes pin them.
+
+`scripts/check_book_coverage.mjs` is the gate on it, in `test.bat` and both CI
+workflows: twelve probes over pages and a manifest built in memory, so it reads nothing
+under `docs/`. Dropping the chaptered-landing site fails ten of the twelve; ignoring
+`left_out:` fails nine.
 
 ### Build-time counts as named values
 

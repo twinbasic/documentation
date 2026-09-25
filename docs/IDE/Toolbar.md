@@ -13,7 +13,7 @@ permalink: /tB/IDE/Project/Toolbar
 ![The same toolbar while the project runs. Start has gone grey, Break is blue and Stop is a red square; the red form and code button and the 100% zoom box are unchanged.](Images/Toolbar_4.png)
 
 - Save All Changes (<kbd>CTRL</kbd> + <kbd>S</kbd>)
-- Find In Project... (<kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>F</kbd>) (<kbd>CTRL</kbd> + <kbd>⇧</kbd> + <kbd>F</kbd>)
+- Find In Project... (<kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>F</kbd>)
 - Switch Between Form And Code
 - Undo
 - Redo

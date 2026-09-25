@@ -13,6 +13,12 @@ The Debug Console captures output from [**Debug.Print**](../../Modules/Debug#pri
 
 ## ![](Images/DebugConsole_AutoScroll.png) Auto Scroll
 
+Keeps the newest output in view. While Auto Scroll is on, the console scrolls to each new line as it arrives: to the bottom, or to the top when **Invert Output Direction** is ticked. It is on each time the IDE starts, and the button is highlighted while it is on.
+
+Scrolling away from the newest line turns Auto Scroll off, so earlier output stays in view while the program goes on writing. Scrolling back until the newest line shows turns it on again.
+
+Clicking the button turns Auto Scroll off until it is clicked again. Scrolling back to the newest line then leaves it off.
+
 ## ![](Images/DebugConsole_Clear.png) Clear Debug Console
 
 Empties the console. [**Debug.Cls**](../../Modules/Debug#cls) does the same thing from code.

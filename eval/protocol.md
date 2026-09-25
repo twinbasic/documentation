@@ -29,6 +29,10 @@ logic:
 
     site-search "your query here"
 
+Run it as a command of its own, exactly like that: it is on your PATH and works from any
+directory. Chained after a `cd`, or piped into another command, it is refused, as every
+other shell command is.
+
 It prints ranked results as title + URL + snippet. A URL like
 `/Documentation/Development/Extending#adding-a-pipeline-task` corresponds to the corpus file
 `docs/Documentation/Extending.md`: to open a result, find the file whose frontmatter
@@ -127,6 +131,18 @@ what it will print, then runs it: the evaluator's code verbatim in a template fr
 reader's click, and `scripts/tbrun.mjs`. Change one expected value for a second run, since
 the failure path is what the pages are least likely to have been checked against. A
 program that opens a `MsgBox` or waits for a user at a form cannot be run this way.
+Several at once run from one process that owns the registry tidy --- `startTidy` and
+`finishTidy` in `scripts/lib/tb-registry.mjs` --- so that the `tbrun` children leave the
+registry alone; round 10's four did not, and left one probe project in the IDE's recent list
+19 times.
+
+**A command-line program is run at a real command prompt, not through a pipe.** Build it
+with `tbrun`, then run the `.exe` in a console of its own and read the console's screen
+buffer. A program that writes with `WriteConsole` shows nothing through a pipe, and whether
+its output survives redirection is one of the things such a case tests. Round 11's UC-70
+did this with a PowerShell script that attaches to a hidden `cmd.exe` console; it also
+needed `.\` in front of the program's name, because the harness's environment sets
+`NoDefaultCurrentDirectoryInExePath`.
 
 **Measure what an answer says the product does.** None of round 8's four most serious
 findings was in an evaluator's report: the IDE's Export Project emptying a Git repository,

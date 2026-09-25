@@ -1448,6 +1448,14 @@ export async function runBuild(opts) {
     console.log(`  ${pc.bold("pdf:")}     -> ${pc.cyan(`${destRoot}-pdf`)}`);
     console.log(`           book.html (${mb} MB), ${pdfResult.css} CSS, ` +
                 `${pdfResult.images} images${missingClause}`);
+    // Pages _book.yml says nothing about, and entries that no longer
+    // match a page -- see book.mjs §G. Printed only when the book is
+    // built, so a --serve session is not told about it on every save.
+    const [head, ...rest] = pdfResult.coverage ?? [];
+    if (head) {
+      console.log(`  ${pc.bold(pc.yellow("book:"))}    ${head}`);
+      for (const line of rest) console.log(`           ${line}`);
+    }
   }
   // The Gantt injection rewrites BuildInfo.html in both trees, so it has
   // to happen before the check report is printed -- otherwise the check

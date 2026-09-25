@@ -12,13 +12,16 @@ permalink: /tB/IDE/Project/Menu/View
 
 - Code Editor
 - Object Designer <kbd>SHIFT</kbd> + <kbd>F7</kbd>
+
 ---
 - Definition <kbd>SHIFT</kbd> + <kbd>F2</kbd> / <kbd>F12</kbd>
 - Last Position <kbd>CTRL</kbd> + <kbd>SHIFT</kbd> + <kbd>F2</kbd>
+
 ---
 - Object Browser
 - Zoom In
 - Zoom Out
+
 ---
 - EDITOR
 - PROJECT EXPLORER

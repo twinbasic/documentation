@@ -20,7 +20,7 @@ import { promises as fs } from "node:fs";
 
 import path from "node:path";
 
-import { assembleBook } from "./book.mjs";
+import { assembleBook, bookCoverage, formatBookCoverage } from "./book.mjs";
 import {
   WRITE_LIMIT,
   mkdirRec,
@@ -74,6 +74,11 @@ export async function writePdf(pages, staticFiles, site, destRoot, { tolerateMis
   ]);
 
   reportMissingImages(missingPaths, tolerateMissingImages, counters);
+
+  // A page with no _book.yml entry, or an entry with no page: lines for
+  // tbdocs to print under the pdf summary. Warnings, never a failure --
+  // the book this build wrote is complete for the manifest it was given.
+  counters.coverage = formatBookCoverage(bookCoverage(site.bookData, pages));
 
   // --check: hand the assembled book and the tree's exact contents to
   // the link check rather than making it read 6.5 MB back off disk.

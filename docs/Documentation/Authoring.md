@@ -925,6 +925,8 @@ The indexes to join depend on what the page documents:
 
 Every one of these entries is a link plus a one-line description in the style of its neighbours, so the reliable way to write one is to copy the entry above the position you are inserting at and replace its contents.
 
+**The PDF book is the one list that does catch the omission.** Every page needs an entry in `docs/_book.yml`: a part or chapter that selects it, or a `left_out:` entry that names it with a reason. A page with neither gets a `book:` warning in the build's summary. Most parts select by URL prefix, so a new page in a section the book already carries --- another operator, another VBA function --- usually has its entry already, and the warning appears only for a page somewhere new. [Book Configuration](Book-Configuration#pages-left-out-of-the-book) has the details.
+
 ## Removing a page
 
 Deleting the file is the easy half, and removal is the more dangerous direction:
@@ -943,6 +945,7 @@ stale entry is reported rather than shipped. Go through the same places
 - **A class, control, or enumeration inside a package** comes out of that package's `index.md`, and a VB control out of [Controls](../../tB/Controls).
 - **An enumeration** comes out of [Enumerations](../../Reference/Enumerations) in both places. The total on the [Reference Section](../../Reference) landing page is a [count name](#counts) and follows on its own.
 - **A whole package** comes out of [Default Packages](../../tB/Packages/Default/) or [Built-In Packages](../../tB/Packages/Built-In/), out of the *Built-in packages* section of the [welcome page](../../), and out of its `###` section in [Permanent Links](Permanent-Links). Package counts already written as [count names](#counts) follow on their own; any still written as digits do not.
+- **Any page `docs/_book.yml` names on its own** --- as a `landing_page:`, or in a `left_out:` entry --- comes out of the manifest too. The build warns about an entry that no longer matches a page.
 
 Three things then have no counterpart in adding a page.
 

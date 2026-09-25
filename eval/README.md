@@ -165,6 +165,12 @@ was wrong: UC-56's rank-1 query and its one-hop README link both check out. But 
 discoverability score has to rest on what can be checked, the ranks and the links, and
 never on the report's word for how the answer was reached.
 
+**A case with no site search at all lost Channel 1 to the harness, not to the pages: run it
+again.** The digest flags it as `no site search at all`. In round 11, two evaluators chained
+`site-search` after a `cd`, were refused, and concluded that the search box was not
+available; six others made the same first call and retried the bare command. The protocol
+now says to run it on its own, and both re-runs searched first.
+
 ## Rounds so far
 
 | round | cases | outcome |
@@ -179,6 +185,7 @@ never on the report's word for how the answer was reached.
 | 8 | 13 --- the first isolated evaluators: round 7's re-runs, round 1's four lowest, three new | [builder/REVIEW-USECASES-5b4cd37.md](../builder/REVIEW-USECASES-5b4cd37.md); 29 findings, no set hazard walked into, and the four most serious found by probing the product: an IDE export that empties a Git repository, constructors that fail in silence, error numbers that are not VBA's, and a debugger Stop that stops one procedure and so turns a failed unit test into a pass |
 | 9 | 11 --- round 8's seven re-runs, and four new site cases, four of the eleven executed | [builder/REVIEW-USECASES-d4b37ec.md](../builder/REVIEW-USECASES-d4b37ec.md); 12 findings, the re-runs' discoverability +1.00 and round 8's own queries from 2 hits of 14 to 11, and an IDE export the tB executable cannot pack back into a project |
 | 10 | 9 --- round 9's five re-runs, a fresh clone, and three new surfaces; five executed, and a DLL built and called | [builder/REVIEW-USECASES-16969e5.md](../builder/REVIEW-USECASES-16969e5.md); 17 findings: round 9's own warning closed the IDE route to Git, a twinBASIC DLL called from VBA fails three ways no page named, a delegate's signature is only a warning, and four unindexed API names froze the site's search box |
+| 11 | 9 --- round 10's five re-runs and UC-65, and three new surfaces: a command-line tool, threads and an IDE add-in, all executed | [builder/REVIEW-USECASES-4a67e09.md](../builder/REVIEW-USECASES-4a67e09.md); 13 findings: the re-runs +1.00 completeness and +1.33 actionability with discoverability flat again, a console program that prints nothing and exits 0, an add-in reference the page called automatic, and two evaluators who took one refused search for no search box |
 
 Round 1's headline was a gradient: documentation quality fell monotonically with depth into
 the toolchain (contributor 3.8 discoverability, toolchain user 2.8, builder developer 1.8),

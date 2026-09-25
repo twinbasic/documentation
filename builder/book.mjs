@@ -11,7 +11,11 @@
 //   _plugins/book-resolve-chapters.rb (resolver)
 //   _plugins/book-sort.rb            (sortByNavOrder)
 //
-// Phase 8 surface (§B-§G): assembleBook + bookChapterTransform +
+// Coverage (§G): bookCoverage + formatBookCoverage. Checks that every page
+// has a manifest entry -- in the book, or in `left_out:` with a reason --
+// and that every entry still matches a page. Warnings only.
+//
+// Phase 8 surface (§B-§F): assembleBook + bookChapterTransform +
 // chapterAnchorFromUrl + rewriteBookHrefs. Builds the full book.html
 // string for the sparse PDF tree. See builder/PLAN-8.md. Ports:
 //   docs/book.html                       (Liquid walker)
@@ -230,9 +234,25 @@ function collectImagePaths(body, seen) {
   for (const m of body.matchAll(IMG_SRC_RE_BOOK)) {
     if (m[1] === undefined) continue;
     const url = m[2];
-    const cleanPath = url.split(/[?#]/, 1)[0];
+    const cleanPath = decodeUrlPath(url.split(/[?#]/, 1)[0]);
     if (!cleanPath || seen.has(cleanPath)) continue;
     seen.add(cleanPath);
+  }
+}
+
+// A src is a URL, and the renderer percent-encodes it: the file
+// `IDE/Images/project settings description text.png` is referenced as
+// `project%20settings%20description%20text.png`. Every consumer of the
+// collected paths wants the name on disk -- pdf.mjs looks it up among the
+// source files and copies it out under that name, and the browser that
+// renders book.html decodes the URL before it opens the file. Left
+// encoded, the lookup missed and the missing-image check stopped the
+// build the first time a page with such an image entered the book.
+function decodeUrlPath(p) {
+  try {
+    return decodeURIComponent(p);
+  } catch {
+    return p; // a stray `%` that begins no escape is part of the name
   }
 }
 
@@ -572,8 +592,8 @@ const MONTH_NAMES = [
 // emits the title page + every <article>, runs the cross-ref rewrite +
 // landing-strip pass, runs html-compress. Pure compute; no I/O. The
 // returned `imagePaths` is an array of every page-relative `<img
-// src=>` path referenced from the assembled body, deduplicated in
-// emit order (Set insertion order).
+// src=>` path referenced from the assembled body, decoded to the file's
+// own name and deduplicated in emit order (Set insertion order).
 export function assembleBook(site, pages) {
   const bookData = site.bookData;
   if (!bookData) {
@@ -851,8 +871,9 @@ function chapteredFlags(part, chEntry) {
 const EXTERNAL_PREFIXES = ["http://", "https://", "mailto:", "#"];
 
 // PLAN-8 §6.6: walk each <article id="ch-..."> block, resolve relative
-// hrefs, rewrite in-book targets to `#ch-...` anchors, strip the
-// redundant landing-page heading.
+// hrefs, rewrite in-book targets to `#ch-...` anchors, point every other
+// site link at the page on the website, strip the redundant landing-page
+// heading.
 //
 // tbdocs derives redirect-from stubs from each page's
 // `frontmatter.redirect_from` and passes an extended array to the map
@@ -864,6 +885,9 @@ export function rewriteBookHrefs(html, site, pages) {
   const bookData = site.bookData;
   if (!bookData) return html;
   const baseurl = normalizeBaseurl(site.config?.baseurl);
+  // Same shape offline.mjs gives its own siteUrl, so a CI build given
+  // --url points the book at the deploy it belongs to.
+  const siteUrl = String(site.config?.url ?? "").replace(/\/+$/, "");
   const pagesWithStubs = augmentWithRedirectStubs(pages);
   const urlToAnchor = buildUrlToAnchor(bookData, pagesWithStubs);
   if (urlToAnchor.size === 0) return html;
@@ -883,14 +907,14 @@ export function rewriteBookHrefs(html, site, pages) {
       }
       const parentUrl = anchorToParent.get(anchorId);
       if (parentUrl) {
-        body = rewriteBodyHrefs(body, parentUrl, urlToAnchor, baseurl);
+        body = rewriteBodyHrefs(body, parentUrl, urlToAnchor, baseurl, siteUrl);
       }
       return open + body + close;
     },
   );
 }
 
-function rewriteBodyHrefs(body, parentUrl, urlToAnchor, baseurl) {
+function rewriteBodyHrefs(body, parentUrl, urlToAnchor, baseurl, siteUrl) {
   return replaceOutsideCode(body, /href="([^"]*)"/g, (whole, href) => {
     if (EXTERNAL_PREFIXES.some(p => href.startsWith(p))) return whole;
     const abs = resolveHref(href, parentUrl);
@@ -903,8 +927,15 @@ function rewriteBodyHrefs(body, parentUrl, urlToAnchor, baseurl) {
         ? `href="#${target}-${fragPart}"`
         : `href="#${target}"`;
     }
+    // Not in the book. A site path is dead in a PDF -- the viewer
+    // resolves it against the file on the reader's disk -- so the link
+    // opens the page on the website instead. The book pass of --check
+    // lists each one as OUT OF BOOK (check.mjs, TREES.pdf): that list is
+    // what says which pages the book leaves out and still links to.
     const missPath = fragPart ? `${lookupPath}#${fragPart}` : lookupPath;
-    return `href="${missPath}"`;
+    return siteUrl
+      ? `href="${siteUrl}${baseurl}${missPath}"`
+      : `href="${missPath}"`;
   });
 }
 
@@ -1100,4 +1131,122 @@ function buildAnchorToParent(bookData, pages) {
     }
   }
   return map;
+}
+
+// ---------------------------------------------------------------------------
+// §G  Coverage: every page has a manifest entry, in the book or out of it
+// ---------------------------------------------------------------------------
+
+// A page no entry selects is simply absent from the book, and for a long
+// time nothing said so: the IDE, Challenges and Videos sections were all
+// missing that way, and so were pages as plainly book material as Data
+// Types and Enumerations. `left_out:` in _book.yml names the pages that
+// are out on purpose, each with a reason, so every page has an entry one
+// way or the other and a warning here means a decision nobody has made.
+//
+// Runs after resolveBookChapters. Returns five lists, all empty on a
+// consistent manifest:
+//   unlisted      pages in no book entry and no left_out entry
+//   both          pages a book entry selects and left_out also names
+//   emptyEntries  book entries that select no page
+//   emptyLeftOut  left_out entries that match no page -- the page was
+//                 renamed or deleted, and the entry would outlive it
+//   missingUrls   landing_page / foreword_page URLs no page publishes at
+export function bookCoverage(bookData, pages) {
+  const out = { unlisted: [], both: [], emptyEntries: [], emptyLeftOut: [], missingUrls: [] };
+  if (!bookData) return out;
+
+  // The emission sites of emitFrontMatter and emitPart, and no others: a
+  // flat part's landing is the head of its _chapters, a chaptered part's
+  // is emitted on its own.
+  const inBook = new Set();
+  for (const fm of bookData.front_matter ?? []) {
+    for (const p of fm._chapters ?? []) inBook.add(p);
+  }
+  for (const part of bookData.parts ?? []) {
+    if (part._foreword) inBook.add(part._foreword);
+    if (part.chapters && part._landing) inBook.add(part._landing);
+    for (const p of part._chapters ?? []) inBook.add(p);
+    for (const ch of part.chapters ?? []) {
+      for (const p of ch._chapters ?? []) inBook.add(p);
+    }
+  }
+
+  const leftOut = new Set();
+  for (const entry of bookData.left_out ?? []) {
+    const matched = collectMatches(entry, pages);
+    if (matched.length === 0) out.emptyLeftOut.push(describeEntry("left_out", entry));
+    for (const p of matched) leftOut.add(p);
+  }
+
+  for (const p of pages) {
+    // The book itself: layout book-combined, which assembleBook fills.
+    if (p.frontmatter?.layout === "book-combined") continue;
+    const inside = inBook.has(p);
+    const outside = leftOut.has(p);
+    if (!inside && !outside) out.unlisted.push(p);
+    else if (inside && outside) out.both.push(p);
+  }
+  // `pages` is in basename order (discover.mjs); by path, a section's
+  // pages read together.
+  const bySrc = (a, b) => (a.srcRel < b.srcRel ? -1 : a.srcRel > b.srcRel ? 1 : 0);
+  out.unlisted.sort(bySrc);
+  out.both.sort(bySrc);
+
+  const urls = new Set(pages.map(p => p.permalink));
+  const checkUrl = (where, key, url) => {
+    if (url && !urls.has(url)) out.missingUrls.push(`${where} ${key}: ${url}`);
+  };
+  for (const fm of bookData.front_matter ?? []) {
+    if (!fm._chapters?.length) out.emptyEntries.push(describeEntry("front_matter", fm));
+  }
+  for (const part of bookData.parts ?? []) {
+    const where = describeEntry("part", part);
+    checkUrl(where, "landing_page", part.landing_page);
+    checkUrl(where, "foreword_page", part.foreword_page);
+    if (!part.chapters && !part._chapters?.length) out.emptyEntries.push(where);
+    for (const ch of part.chapters ?? []) {
+      const chWhere = describeEntry("chapter", ch);
+      checkUrl(chWhere, "landing_page", ch.landing_page);
+      if (!ch._chapters?.length) out.emptyEntries.push(chWhere);
+    }
+  }
+  return out;
+}
+
+function describeEntry(kind, entry) {
+  const name = entry.title ?? entry.reason;
+  return name ? `${kind} "${name}"` : `${kind} ${JSON.stringify(entry)}`;
+}
+
+// The warning text for bookCoverage's result, one line per finding, each
+// section headed by what to do about it. [] when there is nothing to say.
+export function formatBookCoverage(c) {
+  const lines = [];
+  const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const section = (items, head, fmt) => {
+    if (!items.length) return;
+    lines.push(head);
+    for (const x of items) lines.push(`  ${fmt(x)}`);
+  };
+  const page = p => `${p.srcRel}  (${p.permalink})`;
+  section(c.unlisted,
+    `${count(c.unlisted.length, "page has", "pages have")} no entry in _book.yml -- ` +
+    `add each to a part, or to left_out with a reason:`,
+    page);
+  section(c.both,
+    `${count(c.both.length, "page is", "pages are")} in the book and in left_out as well -- ` +
+    `remove the left_out entry:`,
+    page);
+  section(c.emptyEntries,
+    `${count(c.emptyEntries.length, "book entry selects", "book entries select")} no page:`,
+    x => x);
+  section(c.emptyLeftOut,
+    `${count(c.emptyLeftOut.length, "left_out entry matches", "left_out entries match")} no page -- ` +
+    `remove or correct:`,
+    x => x);
+  section(c.missingUrls,
+    `${count(c.missingUrls.length, "landing or foreword URL names", "landing or foreword URLs name")} no page:`,
+    x => x);
+  return lines;
 }

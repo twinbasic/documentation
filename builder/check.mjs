@@ -45,8 +45,9 @@ export { normalizeBasePath };
 
 // The three passes, verbatim from check.bat. Fusion must not quietly
 // unify them: the online tree has a sitemap and a search index and the
-// offline tree has neither, the offline tree is the only one that
-// forbids live-site links, and the book pass is informational.
+// offline tree has neither, a live-site link is a fault in the offline
+// tree and an expected, listed one in the book, and the book pass is
+// informational.
 export const FALLBACK_EXTS = ["html"];
 export const INDEX_FILES   = ["index.html", "."];
 
@@ -84,7 +85,13 @@ export const TREES = {
     suffix: "-pdf",
     label:  "_site-pdf",
     checkOpts: null,
-    forbid: null,
+    // Every link book.mjs sent to the website because the page it names
+    // is not in the book. They are collected the way the offline tree
+    // collects its forbidden links, and reported under a name of their
+    // own: here they are expected, and the list says which pages the
+    // book leaves out and still links to.
+    forbid: ["https://docs.twinbasic.com"],
+    forbidReport: { tag: "OUT OF BOOK", reason: "not in the book; opens the website", noun: "out of book" },
     crossFile: { sitemap: false, search: false, canonical: false },
     // book.html is one flattened document whose links are almost
     // entirely internal fragments; there is no directory structure to
@@ -339,7 +346,8 @@ export function formatReport(r) {
 
   // The script prints bare walk paths; prefix the tree so a fused run
   // covering three trees says which one each finding came from.
-  const linkReport = formatLinkReport(r.broken, r.forbiddenBySource);
+  const forbidReport = r.tree.forbidReport;
+  const linkReport = formatLinkReport(r.broken, r.forbiddenBySource, forbidReport ?? {});
   if (linkReport) out.push(prefixPaths(linkReport, r.label));
 
   const integrity = formatIntegrityReport(r.integrityByFile);
@@ -364,7 +372,17 @@ export function formatReport(r) {
   // and exactly the wrong shape.
   const integrityFailed = integrityCount > 0 || r.errors.length > 0;
 
-  const forbidNote = r.forbiddenBySource ? `, ${forbiddenCount} forbidden` : "";
+  // The book's live-site links are counted the way the report lists
+  // them, once per target, as broken links are. The offline tree keeps
+  // its count of occurrences, which scripts/check_links.mjs prints too.
+  let forbidNote = "";
+  if (r.forbiddenBySource && forbidReport) {
+    const targets = new Set();
+    for (const hits of r.forbiddenBySource.values()) for (const h of hits) targets.add(h.url);
+    forbidNote = `, ${targets.size} ${forbidReport.noun}`;
+  } else if (r.forbiddenBySource) {
+    forbidNote = `, ${forbiddenCount} forbidden`;
+  }
   const failNote   = r.noFail && (linksFailed || integrityFailed) ? "  (informational)" : "";
   out.push(
     `  ${r.label.padEnd(14)} ${String(r.occurrences).padStart(7)} occurrences -- ` +

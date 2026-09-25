@@ -436,7 +436,7 @@ Calls `writeOffline(state.pages, state.staticFiles, state.site, destRoot, { auxS
 writePdf.expected = ["flushJoin", "renderJoin", "dot", "resolveBookChapters"]
 ```
 
-Calls `writePdf(state.pages, state.staticFiles, state.site, destRoot, { tolerateMissingImages, highlightCss })` from `pdf.mjs`. Internally calls `assembleBook(site, pages)` from `book.mjs` for the `book.html` HTML string, writes `tb-highlight.css` from the highlight string passed in, copies `print.css` via the `staticFiles` inventory, copies every image referenced in `book.html`. Missing images throw by default; `--tolerate-missing-images` downgrades to a warning.
+Calls `writePdf(state.pages, state.staticFiles, state.site, destRoot, { tolerateMissingImages, highlightCss })` from `pdf.mjs`. Internally calls `assembleBook(site, pages)` from `book.mjs` for the `book.html` HTML string, writes `tb-highlight.css` from the highlight string passed in, copies `print.css` via the `staticFiles` inventory, copies every image referenced in `book.html`. Missing images throw by default; `--tolerate-missing-images` downgrades to a warning. It also runs `bookCoverage` and returns its `formatBookCoverage` lines as `coverage`, which the build prints under a `book:` heading in its summary --- warnings about pages `_book.yml` does not mention, never a failure.
 
 `renderJoin` is listed although `execute()` ignores it: an `expected` list says what must have *merged*, not what the body reads, and the book is assembled from `page.renderedContent`.
 
@@ -603,7 +603,9 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 | `chapterAnchorFromUrl` | `(url, fallbackTitle?) → string` | Page URL → `ch-…` anchor slug. |
 | `bookChapterTransform` | `(body, baseurl, headingShiftN, chapterAnchor) → string` | Five per-chapter body transforms: baseurl-strip, `<details>` unwrap, whitespace-`<span>` wrap for pagedjs, heading shift, chapter-anchor prefixing. |
 | `assembleBook` | `(site, pages) → string` | Phase 8 entry. Returns the assembled `book.html` string. |
-| `rewriteBookHrefs` | `(html, site, pages) → string` | Rewrites intra-book absolute `href="/X"` references to `href="#ch-X"` fragment anchors. |
+| `rewriteBookHrefs` | `(html, site, pages) → string` | Rewrites a link to a page in the book to that page's `href="#ch-X"` fragment anchor, and a link to any other page of the site to its absolute URL under `site.config.url`, because a site path is dead in a PDF. |
+| `bookCoverage` | `(bookData, pages) → { unlisted, both, emptyEntries, emptyLeftOut, missingUrls }` | Runs after `resolveBookChapters`. Pages in no book entry and no `left_out:` entry, pages in both, entries that match no page, and landing or foreword URLs that name no page. Every list is empty on a consistent manifest. |
+| `formatBookCoverage` | `(coverage) → string[]` | The `book:` warning lines for a `bookCoverage` result; `[]` when there is nothing to report. |
 
 ### `build-info.mjs`
 
