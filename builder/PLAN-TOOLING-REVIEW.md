@@ -426,8 +426,17 @@ files that are not ignored are included, and both sides get the same line ending
 Both worktrees live under `.compare-trees/` at the repository root, which the root `.gitignore`
 names, rather than `docs/_site-cmp*`; Node finds `node_modules` by walking up from them, so
 nothing is linked. The PDF title page's normaliser covers the whole build line, which holds the
-build's wall-clock date as well as the commit. A comparison takes about ten seconds. The A/A run
-and the template change are recorded in this entry's commit.
+build's wall-clock date as well as the commit. A comparison takes about ten seconds.
+
+Verified at `b0612a46`. The A/A run, `HEAD` against a clean tree, found all 3,055 files
+identical across the three trees, with the three regions normalised and nothing else. **The
+entry's test, that a one-character template change shows in all three trees, was wrong about
+the trees.** A change to the generator tag in the page head reached all 913 online pages and no
+offline one, because the offline pass removes the whole SEO block (`offline-rewrite.mjs`'s
+`stripSeo`); a change to the skip link's text reached 913 pages in each of the online and
+offline trees; neither touched the PDF tree, because `book.html` is assembled from each page's
+rendered content, not from the page template. A page edit reaches all three: C01's change to
+`Builder.md` showed in both trees' `Builder.html`, both search indexes and `book.html`.
 
 ### C03 — `scripts: check_ci_workflows.mjs, the workflows against the wrappers' gates`
 
