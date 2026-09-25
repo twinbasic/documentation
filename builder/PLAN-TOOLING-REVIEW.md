@@ -1150,9 +1150,9 @@ text; `hrefs` returns the same links for every page.
 
 ### C40 — `builder, eval: frontmatter through lib/frontmatter; drop gray-matter`
 
-**Decision (a)'s frontmatter half.** `gray-matter@4.0.3` bundles its own `js-yaml@3.14.2`,
+**Decision (a)'s frontmatter half.** `gray-matter@4.0.3` bundles its own `js-yaml@3.15.2`,
 while `data.mjs`, `tbdocs.mjs` and `check_publish_policy.mjs` parse the configuration with
-`js-yaml@4.1.1`: page frontmatter and site configuration go through two major versions of one
+`js-yaml@4.3.2`: page frontmatter and site configuration go through two major versions of one
 library.
 
 **Change.** `discover.mjs` (`:94-117`, which strips the BOM itself because `matter.test()`
@@ -2037,7 +2037,35 @@ review's plan.
 
 ## Found while implementing
 
-Nothing yet: defects the review did not have, found by building something this plan asks for.
+Defects the review did not have, found by building something this plan asks for.
+
+- **Four high-severity advisories in the installed packages**, which `npm` reported while C05
+  installed Biome. Fixed between C05 and C06 in `deps: update js-yaml, ws, linkify-it and
+  immutable past their advisories`. All four are denial of service from crafted input, and
+  every fix is a release inside a range already declared, by `package.json` for `js-yaml` and
+  by the parent package for the other four, so only `package-lock.json` changed and
+  Builder.md's Dependencies did not: `js-yaml` 4.1.1 to
+  4.3.2, and `gray-matter`'s nested copy 3.14.2 to 3.15.2; `ws` 8.20.1 to 8.21.3, under
+  Puppeteer; `linkify-it` 5.0.1 to 5.0.2, under `markdown-it`, where it cannot change the
+  output because `render.mjs` sets `linkify: false`; and `immutable` 5.1.6 to 5.1.9, under
+  `sass`.
+
+  **`npm ls` reported the fix as already done.** `node_modules/.package-lock.json`, npm's
+  record of what is installed, had been rewritten with the fixed versions after the Biome
+  install, most likely by the `npm audit fix --dry-run` that listed them, while the packages
+  on disk stayed old. npm trusts that file when it is newer than every package folder, so a
+  real `npm audit fix` could have updated the lockfile and left the old packages in place.
+  With the file moved aside, `npm ls` showed the old versions, and the fix replaced five
+  packages. C09 and C40 change installed packages too: read the versions from each package's
+  own `package.json`, not from `npm ls`.
+
+  **`compare_trees.mjs` cannot see a dependency change**, because both of its worktrees
+  resolve packages from this checkout's one `node_modules`. One `--keep` run before the update
+  and one after gave two builds of the same commit, which the same three normalisers found
+  identical. The book rendered 2,276 pages both times, with the same 2,460 outline entries and
+  the same extracted text; the two PDFs differ from byte 22.6 MB on, inside the compressed
+  object streams, and their document dates differ. `build.bat`, `check.bat` and `test.bat`
+  are clean.
 
 ## Open questions
 
