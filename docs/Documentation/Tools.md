@@ -558,6 +558,17 @@ It shares [`census_attributes.mjs`](#census-attributes)'s export and cache, and 
 
 Normalises literal en-dash / em-dash characters in markdown source under `docs/` to the ASCII source forms markdown-it's typographer converts at build time (`--` for en-dash, `---` for em-dash). The site forbids literal `–` / `—` in source --- this is the canonical fixer if any slip back in. Skips fenced code blocks and inline code spans, and preserves each file's existing line endings. `--check` reports what it would change and exits non-zero without writing, so it can serve as a gate.
 
+### survey_tooling.mjs
+{: #survey-tooling }
+
+    node scripts/survey_tooling.mjs                  # the summary, then every listing
+    node scripts/survey_tooling.mjs --summary        # the summary only
+    node scripts/survey_tooling.mjs --root <dir>     # measure another checkout
+
+Measures the repository's own tooling for repetition and structure: code duplicated between files, found token by token so that two copies differing only in names still match; top-level functions defined under one name in several files; how the command-line tools read their arguments; packages imported without being declared in `package.json`; and the import graph --- the imports that cross from one directory to another, the files nothing imports, and the most imported modules. `builder/PLAN-TOOLING-REVIEW.md` records its summary at the commit the tooling review started from, and the review's last phase runs it again to compare.
+
+It is not a gate, and nothing runs it: take a measurement before and after a piece of refactoring. It reads only the files git tracks, so a scratch file never changes a number. `--root` measures another checkout, such as a worktree at an older commit that does not contain the script. `perf/` is measured, but it is counted separately in the summary and left out of the listings unless `--include-perf` is given. Exits 0, or 2 on a bad argument or a folder that is not a git checkout.
+
 ### tbbuild.mjs
 {: #tbbuild }
 
