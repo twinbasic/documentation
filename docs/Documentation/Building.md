@@ -74,6 +74,7 @@ Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from a
       && node scripts/check_code_regions.mjs \
       && node scripts/check_page_baseline.mjs \
       && node scripts/check_book_coverage.mjs \
+      && node scripts/check_symbol_index.mjs \
       && node scripts/check_axe_patch_equiv.mjs
 
 `book.bat` has one step that is invisible from the command it ends with. `render-book.mjs` writes the PDF with a plain file write and never creates the directory above it, so `docs/_pdf/` has to exist first --- otherwise the render fails with `ENOENT` at the very last moment, after the whole page-breaking pass has already run. The deploy workflow does the same `mkdir` before its render, for the same reason:
@@ -143,7 +144,8 @@ each gate's probes and a line per gate; every probe passes on a clean tree.
 
 Two more things are normal and read as alarming. A page-count **rise** rewrites
 `builder/page-baseline.json` and says so in the log --- that is the guard accepting new
-work, and the changed file belongs in your commit. And `git status` after a build can show
+work, and the changed file belongs in your commit. A new heading on a reference page does
+the same to `builder/symbol-baseline.json`, for the [symbol index](#the-symbol-index). And `git status` after a build can show
 a regenerated diagram `.svg` or `gantt.svg`; both are committed artifacts, so a diff there
 means the build genuinely produced something different.
 
@@ -346,6 +348,51 @@ for sources newer than the built tree. Without that, the build writing a raised
 baseline at the end of its own run would make the tree it had just produced
 report as stale.
 
+## The symbol index and its drift guard
+{: #the-symbol-index }
+
+The build also writes `tB/symbols.json`: every name the reference documents ---
+statements, operators, attributes, and each package's modules, classes, members
+and enumeration values --- with the URL of the page or heading that documents it.
+The IDE help add-in looks up the name under the cursor in it. [Permanent
+Links](Permanent-Links#the-symbol-index) describes the file.
+
+The entries come from the pages: a page's `permalink:`, and the id the build
+gave a heading, read from the rendered HTML. What the pages cannot say --- the
+kind of a member, the values of an enumeration --- comes from
+`builder/package-api.json`, a committed snapshot of what the shipped packages
+declare. The build never regenerates it, because that needs a twinBASIC
+install; [`build_package_api.mjs`](Tools#build-package-api) does, when the
+reference is re-indexed against a newer build. The summary line says how many
+entries the index has, and how many public symbols no page documents.
+
+An installed add-in keeps its copy of the index, so a URL the index has given
+out has to keep resolving. A page URL is protected by `redirect_from:`, but an
+anchor is not --- rewording `### Add` to `### Add method` moves `#add` to
+`#add-method`, and nothing else in the build notices, because the link check
+only follows links made inside the site. So `builder/symbol-baseline.json` lists
+every URL the index has published, and a build that loses one fails:
+
+    ERROR: 1 URL(s) the symbol index has published are no longer in it:
+             /tB/Packages/tbIDE/ToolWindows#add
+           An installed IDE help add-in keeps these. A reworded heading moves its anchor:
+           pin the old one on it, as `{: #add }`. If the symbol is retired, follow
+           Permanent Links and record the removal in the same commit:
+             build.bat --update-symbol-baseline
+             node builder/tbdocs.mjs --src docs --check-audit-index --update-symbol-baseline
+
+The usual fix is the first one: keep the new wording and pin the old id on the
+heading. New URLs need nothing --- an ordinary local build adds them to the
+list and says so, and the changed file is committed with the pages. It writes
+under the same three restrictions as the page-count guard above, and
+`check_tree_fresh.mjs` skips it for the same reason.
+
+A page in a package folder that gives no entry at all is reported by name after
+the summary. Its title names nothing the package declares --- most often
+because the page's subject has an internal name, as the (Default) module's is
+`_HiddenModule`. [`symbols:` in its frontmatter](Authoring#symbols) says what it
+documents.
+
 ## Checking accessibility
 
     check.bat
@@ -408,8 +455,8 @@ say your own page came out right. Read that one in
 [`serve.bat`](#building-and-local-serving) as well.
 
 Skipping `test.bat` locally cannot let anything through: **both CI workflows run
-all six unconditionally**, and always did --- CI invokes the scripts directly
-and has never used the batch wrappers.
+every one of them unconditionally**, and always did --- CI invokes the scripts
+directly and has never used the batch wrappers.
 
 The split is by what a gate *interrogates*, not by what it happens to open.
 `check_axe_patch_equiv.mjs` loads a built page and needs Chromium, but only
@@ -505,7 +552,7 @@ Two workflows cover the repository:
 - `.github/workflows/checks.yml` runs on every pull request into `staging` or `main`. It builds, checks, and stops --- it has no deploy rights at all. It also has no `paths:` filter, deliberately: an earlier `docs/**` filter skipped any pull request touching only `builder/` or `scripts/`, which is exactly the code most able to break the build, the link checker or asset vendoring.
 - `.github/workflows/tbdocs-gh-pages.yml` runs on every push to `staging` and on manual dispatch. It runs the same gates, then renders the PDF book and publishes `docs/_site/` to Pages. A manual dispatch additionally cuts a GitHub release with the offline site copy and the book attached.
 
-Both run nine of the ten local gates --- all six of `test.bat`'s and three of `check.bat`'s four --- in the same relative order; the tenth is covered at the end of this section. What follows is the delta --- each item a way a clean local run can still come back red.
+Both run every local gate but one --- all of `test.bat`'s, and all of `check.bat`'s except its freshness check --- in the same relative order; that one is covered at the end of this section. What follows is the delta --- each item a way a clean local run can still come back red.
 
 ### A missing image is an error there and a download here
 

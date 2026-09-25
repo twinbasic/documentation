@@ -72,11 +72,11 @@
 // in the corpus. Anything the scanner cannot resolve goes to an `unresolved`
 // bucket and is reported -- a census that quietly buckets its own confusion is
 // how the wrong answer gets published with a number beside it.
-import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { defaultCache, exportPackages, packageName } from "../scripts/lib/tb-packages.mjs";
 
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ATTR_DOC = path.join(REPO, "docs", "Reference", "Attributes.md");
@@ -121,60 +121,19 @@ function findInstall() {
 const buildNumberOf = (root) => (/_BETA_(\d+)$/.exec(root)?.[1]) ?? "unknown";
 
 // ------------------------------------------------------------- the export
-// The .twin sources live inside .twinproj archives; `export` unpacks one.
-// Two traps, both from WIP.md and both still live: every path must use
-// backslashes (path.join gives them here), because a folder named with forward
-// slashes cannot be created or even found, and stdin has to be detached or the
-// executable consumes the caller's and later iterations never run.
+// scripts/lib/tb-packages.mjs, shared with scripts/build_package_api.mjs so the
+// two read the same export from the same cache. A failed export leaves no
+// folder behind, and is left out of the census rather than counted as empty.
 function exportAll(root, cacheDir, includeSamples) {
-  const exe = path.join(root, "bin", "twinBASIC_win32.exe");
-  if (!existsSync(exe)) die(2, `no compiler at ${exe}`);
-
-  const roots = [path.join(root, "packages")];
-  if (includeSamples) {
-    for (const d of ["projects", "addins"]) {
-      const p = path.join(root, d);
-      if (existsSync(p)) roots.push(p);
-    }
+  try {
+    const { projects, failed } = exportPackages({
+      root, cache: cacheDir, refresh: flag("refresh"), samples: includeSamples, log,
+    });
+    const lost = new Set(failed.map((f) => f.name));
+    return projects.filter((p) => !lost.has(p.name));
+  } catch (e) {
+    die(2, e.message);
   }
-
-  const projects = [];
-  for (const r of roots) {
-    for (const entry of readdirSync(r, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue;
-      const dir = path.join(r, entry.name);
-      for (const f of readdirSync(dir)) {
-        if (f.toLowerCase().endsWith(".twinproj")) {
-          projects.push({ proj: path.join(dir, f), name: entry.name, group: path.basename(r) });
-        }
-      }
-    }
-  }
-  if (!projects.length) die(2, `no .twinproj found under ${roots.join(", ")}`);
-
-  mkdirSync(cacheDir, { recursive: true });
-  let exported = 0;
-  for (const p of projects) {
-    const out = path.join(cacheDir, p.group, p.name);
-    if (existsSync(out) && !flag("refresh")) continue;
-    mkdirSync(out, { recursive: true });
-    // The exit code does not say whether export worked: it is 0 on the failures
-    // the compiler reports itself, so a last line of `... DONE` is the test --
-    // the same one scripts/lib/tb-install.mjs's runCompiler makes. A failure
-    // also takes its folder away, because the cache is keyed on the folder
-    // existing: left behind, the next run would take it for a finished export.
-    const r = spawnSync(exe, ["export", p.proj, out + path.sep, "--overwrite"],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-    if (!r.error && /\.\.\. DONE$/.test((r.stdout ?? "").trim())) {
-      exported++;
-    } else {
-      rmSync(out, { recursive: true, force: true });
-      const last = `${r.stdout ?? ""}\n${r.stderr ?? ""}`.trim().split(/\r?\n/).pop();
-      log(`  ! export failed: ${p.name} (${r.error ? r.error.message : `exit code ${r.status}`}): ${last}`);
-    }
-  }
-  log(`  exported ${exported} project(s), ${projects.length} total in cache`);
-  return projects.map((p) => ({ ...p, dir: path.join(cacheDir, p.group, p.name) }));
 }
 
 // ------------------------------------------------------------- the scanner
@@ -601,7 +560,7 @@ function main() {
     install = findInstall();
     build = buildNumberOf(install);
     log(`install : ${install}`);
-    const cache = opt("cache", path.join(os.tmpdir(), "tb-census", `beta-${build}`));
+    const cache = opt("cache", defaultCache(build));
     log(`cache   : ${cache}`);
     projects = exportAll(install, cache, flag("samples"));
   }
@@ -609,7 +568,7 @@ function main() {
   const allSites = [], allProblems = [];
   let fileCount = 0;
   for (const p of projects) {
-    const pkg = p.name.replace(/^\.?\{[^}]+\}_/, "");
+    const pkg = packageName(p.name);
     for (const f of collectTwinFiles(p.dir)) {
       fileCount++;
       try {

@@ -5,6 +5,7 @@ permalink: /tB/Modules/HiddenModule/
 redirect_from:
   - /tB/Modules/_HiddenModule
 has_toc: false
+symbols: [_HiddenModule]
 ---
 
 # (Default) module

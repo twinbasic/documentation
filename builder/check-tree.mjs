@@ -13,8 +13,10 @@
 // the result against what actually landed on disk; see
 // builder/check.mjs's auditIndex().
 
-// Aux files the online tree receives after the pages are written.
-const ONLINE_AUX = ["sitemap.xml", "robots.txt", "assets/js/search-data.json"];
+// Aux files the online tree receives after the pages are written. The symbol
+// index is the online tree's alone: the IDE help add-in fetches it from the
+// site, and the offline tree has no reader for it yet.
+const ONLINE_AUX = ["sitemap.xml", "robots.txt", "assets/js/search-data.json", "tB/symbols.json"];
 // The offline tree carries neither sitemap nor search index, but does
 // get the JS wrapper writeOffline generates around the search data.
 const OFFLINE_AUX = ["assets/js/search-data.js"];

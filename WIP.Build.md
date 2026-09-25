@@ -561,6 +561,60 @@ workflows: twelve probes over pages and a manifest built in memory, so it reads 
 under `docs/`. Dropping the chaptered-landing site fails ten of the twelve; ignoring
 `left_out:` fails nine.
 
+### The symbol index, and the drift guard on its URLs
+
+`tB/symbols.json` is written by the `symbolIndex` task
+([builder/symbols.mjs](builder/symbols.mjs)) for the IDE help add-in; why it exists and
+what it has to say is [WIP.HelpAddin.md, Stage 3](WIP.HelpAddin.md#stage-3-the-symbol-index-generated-by-the-docs-build).
+Three decisions about the build side, each with the alternative it rules out:
+
+- **The entries come from the rendered pages, and the packages only annotate them.** A
+  URL is a `permalink:` as written or that plus the id the render gave a heading, read
+  out of `renderedContent` --- never recomputed with `kramdownSlug`, which would
+  disagree with the page on every pinned `{: #id }` and every `-1` duplicate. What the
+  pages cannot say comes from `builder/package-api.json`, a committed snapshot. An
+  index built the other way round, from the packages, would list thousands of symbols
+  with no page and put the docs' own layout (Array filed under Information, the Styles
+  classes documented though declared `Private`) in the wrong place.
+- **The snapshot is committed, like `inter-metrics.json`, because making it needs a
+  twinBASIC install.** `scripts/build_package_api.mjs` exports the packages through
+  `scripts/lib/tb-packages.mjs` (shared with `census_attributes.mjs`, whose output was
+  verified identical across the move), scans them with `scripts/lib/twin-api.mjs`, and
+  writes 255 KB. `package-api.json` is a build *input*, so `check_tree_fresh.mjs`
+  watches it; `symbol-baseline.json` is an output and is in its `IGNORED_FILES`.
+- **The heading scan is `indexOf`, not a regex.** `/<h([1-6])\b([^>]*)>([\s\S]*?)<\/h\1>/`
+  is cubic in the regex gate's census, and it runs over every reference page; the scan
+  gives a byte-identical index.
+
+**The drift guard is the page-count guard's shape applied to URLs**
+([builder/symbol-baseline.mjs](builder/symbol-baseline.mjs)): `builder/symbol-baseline.json`
+lists every URL the index has published, one to a line; a build that loses one fails and
+names it; a build that adds one rewrites the list; CI, `--serve` and `--dry-run` never
+write; a source root other than `docs` is skipped; `--update-symbol-baseline` records a
+removal. It exists because **an anchor has no `redirect_from:`** --- a reworded member
+heading moves its id, an installed add-in keeps the old URL, and the link check only
+follows links made inside the site, so before this nothing noticed. The failure message
+leads with the usual fix, pinning the old id on the reworded heading.
+
+`scripts/check_symbol_index.mjs` is the gate on all three pieces, in `test.bat` and both
+CI workflows: forty-six probes on fixtures, no tree, no install. The scanner's probes are
+the traps the BETA 983 packages actually contain; the derivation's are each a rule that the
+real site exercised only once or twice (`symbols:`, the section heading named like a
+member, the ellipsis the typographer puts in a Core H1 --- whose absence from the rules
+was found only because `Do…Loop`'s first heading never split).
+
+**The guard caught the first two defects it met, before either was committed.** Six
+`### Example` and `#### Example` headings, placed among a class's members, went into the
+index as members named `Example` by the rule that a heading under Properties or Methods is
+a member. With that rule narrowed to headings one level under the section and not named
+like prose, the six URLs left the index and the build failed naming them. Then the
+snapshot learned the members of VB's `Screen`, declared on a private interface, and
+`Screen.Fonts` moved from `#fonts-1`, its `### Fonts` under Properties, to `#fonts`, a
+prose section above it --- because the first heading of a member's name on the page won.
+The build named that URL too, and the fix, placing headings under a section of members
+first, moved three more entries back from prose sections to their properties (`Style` on
+ComboBox and ListBox, `CheckBoxes` on TreeView). A probe now holds each shape.
+
 ### Build-time counts as named values
 
 `{{tbdocs:pages}}` in a page renders as the number of pages the build

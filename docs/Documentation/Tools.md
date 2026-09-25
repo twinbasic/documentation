@@ -15,7 +15,7 @@ One-line-per-tool reference for every executable in the documentation repository
 ## Batch wrappers at the repository root
 {: #batch-wrappers }
 
-All seven sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. `examples.bat` and `addin-test.bat` are the exceptions to "each entry below gives the POSIX equivalent": they need a twinBASIC install and drive the IDE, so they are Windows-only, and neither is part of the site build. Three other tools are Windows-specific for the same reason and are likewise not part of it: [`scripts/tbbuild.mjs`](#tbbuild) and [`scripts/tbrun.mjs`](#tbrun), which drive the twinBASIC IDE, and [`census_attributes.mjs`](#census-attributes), which runs the twinBASIC compiler's `export` verb --- though that one is cross-platform when given an already-exported tree with `--src`. Nothing else in the repository is: `tbdocs` and every gate in both wrappers is a Node script, and CI runs all of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
+All seven sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. `examples.bat` and `addin-test.bat` are the exceptions to "each entry below gives the POSIX equivalent": they need a twinBASIC install and drive the IDE, so they are Windows-only, and neither is part of the site build. Four other tools are Windows-specific for the same reason and are likewise not part of it: [`scripts/tbbuild.mjs`](#tbbuild) and [`scripts/tbrun.mjs`](#tbrun), which drive the twinBASIC IDE, and [`census_attributes.mjs`](#census-attributes) and [`build_package_api.mjs`](#build-package-api), which run the twinBASIC compiler's `export` verb --- though those two are cross-platform when given an already-exported tree with `--src`. Nothing else in the repository is: `tbdocs` and every gate in both wrappers is a Node script, and CI runs all of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
 
 ### build.bat
 
@@ -65,7 +65,7 @@ One of the four does not mean the same thing locally as it does in CI, on any pl
 
     test.bat
 
-The tests the toolchain has to pass. Seven steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Eight steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
 2. [`scripts/check_gate_lists.mjs`](#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
@@ -73,7 +73,8 @@ The tests the toolchain has to pass. Seven steps, each stopping the run if it fa
 4. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span.
 5. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
 6. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
-7. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+7. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
+8. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
@@ -83,9 +84,10 @@ POSIX:
       && node scripts/check_code_regions.mjs \
       && node scripts/check_page_baseline.mjs \
       && node scripts/check_book_coverage.mjs \
+      && node scripts/check_symbol_index.mjs \
       && node scripts/check_axe_patch_equiv.mjs
 
-**Five of the seven cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`. Both CI workflows run all seven unconditionally, as they always did, so skipping it locally cannot let a tooling regression reach `staging`.
+**Six of the eight cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`. Both CI workflows run all eight unconditionally, as they always did, so skipping it locally cannot let a tooling regression reach `staging`.
 
 The two exceptions are [`check_code_regions.mjs`](#check-code-regions) and [`check_gate_lists.mjs`](#check-gate-lists), which reads this page. The first is worth knowing in detail. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes are a different matter: they run against their own sources whatever the tree holds, and they cover the *mirror* fault, where a rewrite silently stops firing. The sweep cannot see that one --- text the rewrite skipped is stashed and restored unchanged, so every region still matches. Add a page with an unusual code construct and run `test.bat`, but read the built page too.
 
@@ -192,7 +194,8 @@ Full invocation:
                             [--profile-offline]
                             [--check] [--no-check] [--check-audit-index]
                             [--check-findings <path>]
-                            [--update-page-baseline]
+                            [--update-page-baseline] [--update-symbol-baseline]
+                            [--symbol-gaps <path>]
                             [--serve] [--port <N>]
 
 `build.bat` passes `--src docs --check-audit-index`, and forwards anything else given to it.
@@ -214,6 +217,8 @@ Full invocation:
 | `--check-audit-index` | Implies `--check`, and additionally diffs the tree index the build derives from its own records against what landed on disk. A spurious entry makes the link oracle answer "exists" for a path that 404s in production, and nothing else would notice. This is what `build.bat` passes. |
 | `--check-findings <path>` | Implies `--check`, and writes the findings as JSON for a tool to read. Used by [`scripts/check_links_diff.mjs`](#check-links-diff). |
 | `--update-page-baseline` | Record this build's page and static-file counts in `builder/page-baseline.json` as the drift guard's new baseline, in whichever direction they moved. An ordinary build raises the baseline by itself; only a **fall** needs this flag, because a fall is what the guard exists to catch. See [the page-count drift guard](Building#the-page-count-drift-guard). |
+| `--update-symbol-baseline` | Record this build's symbol-index URLs in `builder/symbol-baseline.json`, whichever left it. New URLs are recorded by an ordinary build; only a URL the index has **stopped** publishing needs this flag --- and usually needs a pinned heading id instead. See [the symbol index and its drift guard](Building#the-symbol-index). |
+| `--symbol-gaps <path>` | Write the public symbols no page documents to a JSON file: each one's package, container, name, kind, and the page its container is on. Names a package's `exclude_from_docs:` lists are left out. |
 | `--stall-timeout <seconds>` | How long the build waits with no task completing before it gives up, names the outstanding tasks and exits 1. Default: 120. `0` disables the watchdog and returns the build to hanging in silence on a wedged worker. See [when a build stops instead of failing](Building#when-a-build-stops). |
 | `--serve` | Start the long-lived dev server (watch + rebuild + SSE live-reload). Offline and PDF passes are skipped each rebuild. |
 | `--port <N>` | HTTP port for `--serve` mode. Default: 4000. |
@@ -463,6 +468,17 @@ Eight probes give each of the five findings a fault to report: a page with no en
 
 Exits 1 on any failed probe, 2 if it cannot run.
 
+### check_symbol_index.mjs
+{: #check-symbol-index }
+
+    node scripts/check_symbol_index.mjs
+
+Verifies the [symbol index](Building#the-symbol-index) still places each kind of symbol, and that its drift guard still refuses a URL the index has stopped publishing. Every probe is a fixture of its own --- a few lines of twinBASIC, a page or three, a scratch baseline file --- so it needs no built tree and no twinBASIC install, and never touches `builder/symbol-baseline.json`. Under a second.
+
+A build that indexes the reference cleanly says nothing about the rules that did not fire on it, so each rule is asserted against the case that made it necessary. The `.twin` scanner's: a `Type` whose `Sub`s have bodies, an `Interface` line inside a `CoClass`, `[Hidden]` on a module whose members are global, a `$` name escaped in brackets. The derivation's: a member on a page of its own and under a heading, an inherited member found on its declaring type's page, a page filed under one module and declared in another, a `$` form, a `## Properties` heading on a type that has a `Properties` property, and the ellipsis the typographer puts in a Core page's heading. And the guard's: a lost anchor fails and is named, and CI never writes the list.
+
+Exits 1 on any failed probe, 2 if it cannot run.
+
 ### check_axe_patch_equiv.mjs
 {: #check-axe-patch-equiv }
 
@@ -523,6 +539,16 @@ Regenerates the subset webfonts under `docs/assets/fonts/` from pinned upstream 
     node scripts/build_dot_metrics.mjs --check    # fail if stale
 
 Measures Inter's advance widths in a browser and writes `builder/inter-metrics.json`, the table `builder/dot-metrics.mjs` installs into Graphviz before any layout runs. The widths are measured from the committed `.woff2` files rather than read out of the font binary, because the browser's shaped advance is the number the layout has to match. Development tooling; the JSON is committed and the build never runs the generator. Run it after [`build_fonts.py`](#build-fonts) touches Inter --- forgetting is not silent, but it surfaces as [`check_dot_fit.mjs`](#check-dot-fit) failing rather than as anything naming the metrics. It measures Inter by name, so giving the diagrams a different face means editing this script, not only rerunning it; see [Changing a typeface](Builder#changing-a-typeface).
+
+### build_package_api.mjs
+{: #build-package-api }
+
+    node scripts/build_package_api.mjs            # regenerate
+    node scripts/build_package_api.mjs --check    # fail if stale
+
+Writes `builder/package-api.json`: every type the packages of a twinBASIC install declare, public or not, and the public members of each with their kinds. The [symbol index](Building#the-symbol-index) takes its entries from the pages and this file annotates them --- the kind of a member documented on a page of its own, an enumeration's values, the interface a CoClass's members are declared on --- and says which public symbols no page documents. Development tooling like [`build_dot_metrics.mjs`](#build-dot-metrics): the JSON is committed and the build never runs the generator, because running it needs a twinBASIC install, so it is Windows-only in the way [`census_attributes.mjs`](#census-attributes) is. Run it when the reference is re-indexed against a newer build, and commit the result with the pages.
+
+It shares [`census_attributes.mjs`](#census-attributes)'s export and cache, and takes the same `--ide`, `--src`, `--cache` and `--refresh` flags; `--out` writes elsewhere. Packages are keyed by the name code uses for them --- the project name, which is not always the folder's: TwinBasicAssertions is `Assert`, and the three CEF builds are one `cefPackage`, whose APIs the tool checks are identical. Exits 0 when written or up to date, 1 when `--check` finds the file stale, and 2 when the install or an export cannot be read.
 
 ### convert_em_dash_separators.mjs
 {: #convert-em-dash-separators }
