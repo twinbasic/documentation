@@ -18,13 +18,39 @@ The stable, or machine-accessible, part of the documentation tree is rooted on t
 
 The guarantee is that a published `/tB/` URL is never **re-pointed**: it is not renamed, not restructured, and never made to resolve to a different symbol. A page that moves on disk keeps its `permalink`, which is why [the Default / Built-In split](../../tB/Packages/) changed no URL at all, and a page that takes over another's subject declares the old URL in `redirect_from:` rather than leaving it dead.
 
-**One case falls outside it: a symbol that no longer exists in twinBASIC.** Its page is [removed](Authoring#removing-a-page) and its URL goes with it, and that is a deliberate decision rather than a routine edit --- nothing in the build will stop you, because the link check only resolves links made from inside the tree and no link inside the tree survives the removal. Three things are expected of one:
+**One case falls outside it: a symbol that no longer exists in twinBASIC.** Its page is [removed](Authoring#removing-a-page) and its URL goes with it, and that is a deliberate decision rather than a routine edit. The link check would not notice, because it only resolves links made from inside the tree and no link inside the tree survives the removal; what stops the build is the [symbol index](#the-symbol-index)'s list of every URL it has published, until a run with `--update-symbol-baseline` records the removal. Three things are expected of one:
 
 - **A redirect wherever anything can carry the URL.** If another page covers the subject now, it takes a `redirect_from:` entry for the old URL. Only a URL nothing can stand in for is allowed to 404.
 - **The entry comes out of this page in the same commit.** This page is the contract; a URL listed here that no longer resolves is worse than one that was never listed, because it is the thing an implementer reads to decide what is safe to link to.
 - **The commit message says which URL was retired.** Consumers of the contract are outside this repository --- the IDE help system above all --- and a commit message naming the URL is the only record they can be pointed at.
 
-Renaming a heading is the quieter version of the same thing: `redirect_from:` emits whole-page stubs and has no fragment remapping, so an anchor that some page links into breaks silently when its heading is reworded. Anchors named in the sections below are part of the contract for the same reason the URLs are.
+Renaming a heading is the quieter version of the same thing: `redirect_from:` emits whole-page stubs and has no fragment remapping, so an anchor that some page links into breaks silently when its heading is reworded. Anchors named in the sections below are part of the contract for the same reason the URLs are, and so is every anchor in the symbol index --- a build that loses one fails, and the fix is to pin the old id on the reworded heading with `{: #old-id }` ([Renaming a heading](Authoring#renaming-a-heading-without-breaking-its-links)).
+
+## /tB/symbols.json --- the symbol index
+{: #the-symbol-index }
+
+Every name the reference documents, and the URL of the page or heading that documents it, in one file the build generates: `/tB/symbols.json`. The IDE help add-in looks up the name under the cursor in it. The file's own URL is part of this contract, and so is every URL in it.
+
+```json
+{
+  "format": 1,
+  "api": 983,
+  "packages": {"VBA": "VBA", "Assert": "Assert", "cefPackage": "CEF", ...},
+  "interfaces": {"VBA._Collection": "VBA.Collection", "tbIDE.IToolWindowsV1": "tbIDE.ToolWindows", ...},
+  "symbols": [
+    {"name": "Add", "package": "tbIDE", "container": "ToolWindows", "kind": "method", "url": "/tB/Packages/tbIDE/ToolWindows#add"},
+    ...
+  ]
+}
+```
+
+- **`format`** changes when an entry's fields change meaning, so a reader holding a file it does not understand can tell.
+- **`api`** is the twinBASIC build whose packages the file's kinds and members were read from.
+- **`packages`** maps each package's name as code writes it --- `Assert`, `cefPackage` --- to the name its pages use.
+- **`interfaces`** maps an interface to the class whose members it declares. The compiler names a member by the interface it is declared on --- hover over `Collection.Add` says `VBA._Collection` --- so a reader that has the compiler's answer looks the interface up here first.
+- **`symbols`** has one entry per name and URL. `name` is as the package declares it and is matched without regard to case; `package` and `container` are null for the language itself; and `url` is a path below the site's root: a page's permalink exactly as written, with the heading's id after `#` for a member documented under a heading. `kind` is one of `statement`, `keyword`, `operator`, `directive`, `attribute`, `package`, `module`, `class`, `control`, `interface`, `enum`, `type`, `object`, `function`, `sub`, `property`, `method`, `event`, `constant`, `variable`, `field`, `enumvalue`, `delegate` and `member` --- the last for a name the pages document and the packages do not declare.
+
+A name can have several entries, and many do: `Add` is a method of a dozen classes, and `Print` is a statement, a method of six classes and a member of `Debug`. The index does not choose between them; its reader does. The `$` form of a function has the entry of its base --- `Left$` goes to `Left` --- as the section on modules below describes.
 
 ## /tB/Core/\<Statement\>
 

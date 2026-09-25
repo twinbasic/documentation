@@ -409,6 +409,17 @@ searchData.expected = ["renderJoin", "prepDest"]
 
 Calls `writeSearchDataFromChunks(state.searchChunks, destRoot)` from `search.mjs`. Flattens the per-chunk entry arrays, renumbers the global `i` index sequentially, writes `assets/js/search-data.json`. Returns `{ entries, json }`. The heavy work (heading split, content sanitisation, URL encoding) ran on the workers; this task only concatenates.
 
+### `symbolIndex` (main)
+
+```js
+symbolIndex.expected = ["renderJoin", "prepDest"]
+symbolIndex.execute() → { entries, urls, gaps, unplaced }
+```
+
+Writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index). Reads `builder/package-api.json` --- the build fails, naming `scripts/build_package_api.mjs`, if it is missing --- then calls `symbolPages(state.pages)`, `deriveSymbolIndex({ pages, api })` and `serializeSymbolIndex(...)` from `symbols.mjs`. `renderJoin` is the dependency that matters: an entry's anchor is the id the render gave its heading, read out of `renderedContent`, never computed a second time. ~50 ms over the reference's pages. With `--symbol-gaps <path>` it also writes `reportableGaps(...)` there as JSON.
+
+`urls` is every distinct URL in the index. `runBuild` hands it to `checkSymbolBaseline` from `symbol-baseline.mjs` after the check report, beside the page-count guard; `unplaced` names the package pages that gave no entry, which the summary prints. `checkReport` waits for this task, since `tB/symbols.json` is in the online tree's index and `--check-audit-index` must not look for it early.
+
 ### `writeAux` (main)
 
 ```js
@@ -476,7 +487,7 @@ Checks `_site-pdf/book.html` as a single one-document chunk, against a tree inde
 ### `checkReport` (main, terminal)
 
 ```js
-checkReport.expected = ["linkJoin", "checkBook", "scss"]
+checkReport.expected = ["linkJoin", "checkBook", "scss", "symbolIndex"]
 checkReport.execute({ linkJoin, checkBook }) → void
 ```
 
@@ -486,7 +497,7 @@ Formats every tree's result, decides the exit code, and optionally writes the ma
 - **`--check-findings <path>`** writes the findings as JSON for [`check_links_diff.mjs`](Tools#check-links-diff) to diff against the standalone script's. Written *before* the exit code is decided, so a failing check still produces the file that says what it found.
 - **`--check-audit-index`** additionally diffs the tree index the build derived from its own records against what actually landed on disk. This is the one failure mode the two-checker findings comparison structurally cannot see: a *missing* index entry turns a working link into a reported break, which is loud, but a *spurious* one makes the oracle answer "exists" for a path that 404s in production, and on a clean site nothing links to a path that does not exist, so nothing would ever notice. Cost is one `readdir` per tree.
 
-`scss` is in `expected` for a reason worth keeping: `--check-audit-index` reads the tree off disk, and the combined stylesheet is in the index from the moment `dispatch` builds it. Without that edge the audit can run first and report the file as "indexed but not on disk" --- which it was, for another few milliseconds. On the real site `scss` finishes long before the check; on a three-page fixture it does not, and the audit failed the build over nothing.
+`scss` is in `expected` for a reason worth keeping: `--check-audit-index` reads the tree off disk, and the combined stylesheet is in the index from the moment `dispatch` builds it. Without that edge the audit can run first and report the file as "indexed but not on disk" --- which it was, for another few milliseconds. On the real site `scss` finishes long before the check; on a three-page fixture it does not, and the audit failed the build over nothing. `symbolIndex` is there for the same reason: `tB/symbols.json` is in the online tree's index too.
 
 ---
 
@@ -777,6 +788,25 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | `renderEntryString` | `(entry) → string` | Per-entry JSON shape matching the upstream template output byte-for-byte. |
 | `searchIncludes` | `(page) → boolean` | The opt-out predicate: a page is indexed when it has a `title` and does not set `search_exclude: true`. Exported so `linkJoin` exempts the same pages the generator skipped. |
 
+### `symbols.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `symbolPages` | `(pages) → object[]` | The pages under `/tB/`, each as `{ src, url, title, parent, symbols, excludeFromDocs, headings }`, `headings` read from `renderedContent`. |
+| `headingsOf` | `(html) → { level, id, text }[]` | Every heading of a rendered page, in order, with the id the render gave it. A scan for `<hN`, not a regex over the page. |
+| `deriveSymbolIndex` | `({ pages, api }) → { symbols, interfaces, packages, gaps, unplaced }` | Pure compute. The entries, the interface-to-class and package-name maps, the public symbols no page documents, and the package pages that gave no entry. |
+| `serializeSymbolIndex` | `(result, api) → string` | The published file: a header, then one entry to a line. |
+| `reportableGaps` | `(result, pages, api) → object[]` | `gaps` less what a package's `exclude_from_docs:` names and the types inside a non-public one. What `--symbol-gaps` writes. |
+| `PACKAGE_FOLDERS` | `{ folder, projects }[]` | Each package folder under `Reference/`, and the project names it documents. |
+| `SYMBOL_INDEX_REL`, `SYMBOL_INDEX_FORMAT` | `string`, `number` | `tB/symbols.json`, and the `format` it declares. |
+
+### `symbol-baseline.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `checkSymbolBaseline` | `({ src, urls, write, force, file }) → Promise<{ failed, text }>` | The symbol index's drift guard: fails on a URL `builder/symbol-baseline.json` has and `urls` does not, rewrites the file when `urls` adds one and `write` is set, and does nothing for a source root other than `docs`. |
+| `SYMBOL_BASELINE_PATH` | `URL` | `builder/symbol-baseline.json`. |
+
 ### `offline.mjs`
 
 | Symbol | Signature | Description |
@@ -911,6 +941,9 @@ The handler table is built from the imported `HANDLERS` constant:
 | `auditIndex` | `false` | Implies `check`. Additionally diff the derived tree index against what landed on disk. |
 | `checkFindings` | `null` | Implies `check`. Path to write the findings JSON to. |
 | `fetchAssets` | `null` | Force remote-asset vendoring on or off. `null` means "download unless `$CI` is set". |
+| `updatePageBaseline` | `false` | Record this build's page and static-file counts in `builder/page-baseline.json` whichever way they moved. |
+| `updateSymbolBaseline` | `false` | Record this build's symbol-index URLs in `builder/symbol-baseline.json` whichever left it. |
+| `symbolGaps` | `null` | Path to write the public symbols no page documents to, as JSON. |
 | `serve` | `false` | Start the dev server instead of the one-shot build. |
 | `port` | `4000` | HTTP port for serve mode. |
 | `pool` | `null` | Optional external `WorkerPool`. Set by `serve.mjs` to reuse the pool across rebuilds. |

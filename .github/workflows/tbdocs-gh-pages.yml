@@ -157,6 +157,10 @@ jobs:
       # built tree.
       - name: Verify the book-coverage warnings (check_book_coverage.mjs)
         run: node scripts/check_book_coverage.mjs
+      # The symbol index's rules and drift guard, against fixtures. See the
+      # same step in checks.yml.
+      - name: Verify the symbol index and its drift guard (check_symbol_index.mjs)
+        run: node scripts/check_symbol_index.mjs
       # Graphviz sizes each node box from a width table; the browser paints the
       # label with a real font, and nothing in the build compares the two -- so a
       # mismatch ships as text hanging outside its box on a green build. See the

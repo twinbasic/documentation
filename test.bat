@@ -86,6 +86,16 @@ node scripts/check_page_baseline.mjs
 @rem empty docs\. No tree, no browser, well under a second.
 node scripts/check_book_coverage.mjs
 @if errorlevel 1 goto :fail
+@rem The symbol index (tB/symbols.json) is read by the IDE help add-in,
+@rem and a build that indexes the reference cleanly says nothing about the
+@rem rules that did not fire on it. These probes assert each one against
+@rem the case that made it necessary: the .twin scanner's traps, the rules
+@rem that place a symbol on a page or heading, and the drift guard's
+@rem refusal of a URL the index has stopped publishing -- a reworded
+@rem heading moves its anchor, and an installed add-in keeps the old one.
+@rem Fixtures only: no tree, no install, ~100 ms.
+node scripts/check_symbol_index.mjs
+@if errorlevel 1 goto :fail
 @rem check_a11y.mjs injects a PATCHED axe bundle (plain-color-fields,
 @rem -26 % on a realistic page set). The patch asserts its substitution
 @rem targets, so an axe-core bump fails loudly; this catches the other

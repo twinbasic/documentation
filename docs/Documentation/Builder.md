@@ -186,12 +186,12 @@ The complete layout, allocation helper, and the `readTaskMeta` / `writeTaskMeta`
 
 ## Task DAG by section
 
-The pipeline has 31 named static tasks plus 2N dynamic ones (N render chunks + N flush tasks). The Gantt chart groups them into five sections that also organise the discussion below:
+The pipeline has 32 named static tasks plus 2N dynamic ones (N render chunks + N flush tasks). The Gantt chart groups them into five sections that also organise the discussion below:
 
 - **Seeds**: `buildInfo`, `scssLight`, `scssDark`, `config`, `warmInit`, `highlighterInit`, `discover`, `loadData`, `vendorAssets`
 - **Spine**: `nav`, `dot`, `buildInit`, `markdownInit`, `deriveSitemap`, `deriveRedirects`, `resolveBookChapters`
 - **Render**: `dispatch`, `prepDest`, `prepPageDirs`, `renderEnvInit`, `render:i`, `renderJoin`
-- **Write**: `scss`, `flush:i`, `flushJoin`, `writeAssets`, `searchData`, `writeAux`, `writeOffline`, `writePdf`
+- **Write**: `scss`, `flush:i`, `flushJoin`, `writeAssets`, `searchData`, `symbolIndex`, `writeAux`, `writeOffline`, `writePdf`
 - **Check**: `linkJoin`, `checkBook`, `checkReport` --- present on every ordinary build, because `build.bat` always passes `--check-audit-index`
 
 The task DAG, with every static task and every dependency between them, follows:
@@ -251,12 +251,13 @@ dispatch ┬→ render:0 ─┬→ flush:0 ─┐
          └→ renderJoin ←──────────┘
                 ↓             ↓
             searchData    flushJoin
+            symbolIndex
 ```
 
 - `renderEnvInit` (worker, `on_demand` + `unique_per_worker`) --- per-lane render environment setup: unpack the shared SAB, reconstruct the link-table Maps, instantiate the worker's own markdown-it. Declared as a `perWorkerDeps` on every `render:i` so the first render claim per lane pulls it in.
 - `render:i` (worker, dynamic) --- the per-chunk compute. Each one runs five sub-stages over its slice of `state.pages`: `renderPhase` (markdown-it body render) → `computeChunkSeo` (per-page SEO fields) → `templatePhase` (just-the-docs layout wrap) → `deriveOfflinePageCached` (offline HTML rewrite) → `deriveSearchEntries` (per-section search entries). Returns a delta containing `renderedContent` per page, plus the per-chunk search entries.
 - `flush:i` (worker, dynamic, `pin_to_predecessor`) --- writes the chunk's page HTML to disk on the same worker that rendered it. Online tree always; offline tree too unless `skipOffline`. The pinning is what makes per-chunk flush correct: the worker stores a batch on its own `_pendingFlush` FIFO at the end of `render`, and only the matching `flush:i` ever drains it. **When `--check` is on, the link and integrity check runs here too**, over the chunk's just-written HTML --- both trees' final strings are already decoded and in worker memory at that moment, so the check never writes ~270 MB out to read it back.
-- `renderJoin` (main, `on_demand`) --- barrier that unblocks `searchData` and `writePdf`. `dispatch.submit()` sets its dep count to N *and* rewrites its `expected` list with every chunk name; the dep count alone is not a barrier over the submits. See [Pipeline Stages](Pipeline-Stages#renderjoin-main-on_demand).
+- `renderJoin` (main, `on_demand`) --- barrier that unblocks `searchData`, `symbolIndex` and `writePdf`. `dispatch.submit()` sets its dep count to N *and* rewrites its `expected` list with every chunk name; the dep count alone is not a barrier over the submits. See [Pipeline Stages](Pipeline-Stages#renderjoin-main-on_demand).
 - `flushJoin` (main, `on_demand`) --- barrier that aggregates per-chunk write stats and gates `writeAux` + `writePdf`.
 
 ### Write
@@ -265,6 +266,7 @@ Once `renderJoin` fires the auxiliary writers can run; once `flushJoin` fires th
 
 - `writeAssets` (main) --- writes generated CSS, copies vendored theme JS, copies the project's static files. Page HTML is *not* written here --- the per-chunk `flush:i` tasks already did that. Depends on `prepPageDirs` so the directory tree exists.
 - `searchData` (main) --- concatenates `state.searchChunks` (already populated by each `render:i`'s `submit()`), renumbers the global `i` index, writes `search-data.json`. The heavy work (heading split, content sanitisation, URL encoding) ran on the workers; this task only consolidates.
+- `symbolIndex` (main) --- writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index) the IDE help add-in reads. Reads the heading ids out of every `/tB/` page's `renderedContent`, joins them with the committed `builder/package-api.json`, and returns the index's URLs for the drift guard that `runBuild` runs once the build is done. Depends on `renderJoin` and `prepDest`; `checkReport` waits for it, because the file is in the online tree's index.
 - `writeAux` (main) --- writes redirect stubs + sitemap + robots.txt. Depends on `writeAssets`, `searchData`, `flushJoin`, `deriveRedirects`, `deriveSitemap`.
 - `writeOffline` (main) --- produces `_site-offline/`. The per-page offline HTML was already computed inside `render:i` and written by `flush:i`, so this task only handles the cross-cutting work: CSS url() rewriting, the just-the-docs.js AST patch, the `search-data.js` wrapper, theme assets, redirect stubs.
 - `writePdf` (main) --- assembles `_site-pdf/book.html` and copies the images it references. Depends on `flushJoin` (so `renderedContent` is filled), `resolveBookChapters` (so `bookData._chapters` is wired), and `dot` (so diagram SVGs are in `staticFiles`).
@@ -288,7 +290,7 @@ For a one-page reference, every task and its execution locus:
 | Render | `render:i` | worker | Body + SEO + template + offline + search per chunk. |
 | Render | `flush:i` | worker (pinned) | Page HTML write, online + offline. |
 | Render | `renderJoin`, `flushJoin` | main | Barriers. |
-| Write | `writeAssets`, `searchData`, `writeAux`, `writeOffline`, `writePdf` | main | I/O bound; cooperative async concurrency. |
+| Write | `writeAssets`, `searchData`, `symbolIndex`, `writeAux`, `writeOffline`, `writePdf` | main | I/O bound; cooperative async concurrency. |
 
 Three pieces of work newly distributed to render workers under the current design:
 

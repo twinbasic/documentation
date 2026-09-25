@@ -4,6 +4,7 @@ parent: Operators
 grand_parent: Reference Section
 permalink: /tB/Core/Comparison-Operators
 vba_attribution: true
+symbols: ["=", "<>", "<", "<=", ">", ">="]
 ---
 # Comparison operators
 {: .no_toc }

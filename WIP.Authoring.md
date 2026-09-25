@@ -82,10 +82,13 @@ The attribution rule is **per-page**, determined by content provenance — not b
 
 ### Authoring-only frontmatter
 
-Three keys on a package's `index.md` are **provenance for the authoring pass, not build
-input**. The build never reads them and they do not reach the HTML --- `grep -r indexed_from docs/_site`
-returns nothing, because nothing in `template.mjs` iterates frontmatter generically; every
-consumer reads a named field. Leave them in place.
+Three keys on a package's `index.md` are **provenance for the authoring pass**. None of
+them reaches the HTML --- `grep -r indexed_from docs/_site` returns nothing, because nothing
+in `template.mjs` iterates frontmatter generically; every consumer reads a named field. The
+build reads one of them, `exclude_from_docs`, for one purpose: the symbol index's count of
+public symbols no page documents leaves those names out (`reportableGaps` in
+[builder/symbols.mjs](builder/symbols.mjs), and `--symbol-gaps` writes the list). Leave all
+three in place.
 
 | Key | Means |
 |-----|-------|
@@ -115,6 +118,22 @@ check was run against a build that no longer matches the package.
 One other inert key exists, and is a different thing: `has_children` on four pages is a
 just-the-docs leftover. tbdocs derives the nav tree itself and never reads it. Harmless, but
 it is theme residue rather than something anyone is meant to maintain.
+
+### `symbols:` --- what a page documents, for the symbol index
+
+The build's symbol index (`tB/symbols.json`, [WIP.HelpAddin.md](WIP.HelpAddin.md#stage-3-the-symbol-index-generated-by-the-docs-build))
+learns what a page documents from its title, less a trailing `Module`, `class` and the
+like, and the comma-separated names of its first heading --- `# Left, LeftB` documents
+both. A page whose title cannot name its subject says so with `symbols:`, which replaces
+those names. Two pages need it: the (Default) module (`[_HiddenModule]`) and the comparison
+operators (`["=", "<>", "<", "<=", ">", ">="]`, quoted, since a bare `>` is YAML). On a
+Core statement page the first name is the statement and the rest its keywords; on an
+operator page each is an operator.
+
+The build names any page in a package folder that gives the index no entry, after its
+summary line. That is the cue for a third. **Do not add `symbols:` to change how a page
+ranks or to add a keyword a page merely mentions**: the index is what the page documents,
+and a keyword such as `ElseIf` belongs on a page only when the page explains it.
 
 ### Cross-section linking
 

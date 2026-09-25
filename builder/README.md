@@ -107,7 +107,7 @@ render-worker sub-stage.
 | 3 | [render.mjs](render.mjs) + [highlight.mjs](highlight.mjs) + [highlight-theme.mjs](highlight-theme.mjs) | Markdown -> HTML body |
 | 4 | [template.mjs](template.mjs) + [compress.mjs](compress.mjs) | Wrap in layout, anchor-heading injection, whitespace compress |
 | 5 | [write.mjs](write.mjs) | Write `_site/` |
-| 6 | [redirects.mjs](redirects.mjs) / [sitemap.mjs](sitemap.mjs) / [search.mjs](search.mjs) | Auxiliaries (stubs, sitemap.xml, search-data.json) |
+| 6 | [redirects.mjs](redirects.mjs) / [sitemap.mjs](sitemap.mjs) / [search.mjs](search.mjs) / [symbols.mjs](symbols.mjs) + [symbol-baseline.mjs](symbol-baseline.mjs) | Auxiliaries (stubs, sitemap.xml, search-data.json, tB/symbols.json and the drift guard on its URLs) |
 | 7 | [offline.mjs](offline.mjs) | Mirror to `_site-offline/` with `file://` URL rewrites |
 | 8 | [pdf.mjs](pdf.mjs) + [book.mjs](book.mjs) (renderer half) | Sparse `_site-pdf/` tree (book.html + CSS + images) |
 

@@ -162,8 +162,9 @@ Every page opens with a YAML frontmatter block. The keys that matter:
 - **`redirect_from`** --- optional. List any earlier URL the page has moved from, so existing links keep resolving. Each entry becomes a small stub page at that URL, so two rules apply and the build aborts naming both files if either is broken: a `redirect_from` entry may not point at a URL some page already publishes at, and no two pages may claim the same one.
 - **`vba_attribution`** --- set to `true` only on pages adapted from the VBA-Docs source; see [Attribution](#attribution).
 - **`nav_exclude`**, **`sitemap: false`**, **`search_exclude: true`** --- optional opt-outs, each from exactly one thing: the sidebar, `sitemap.xml`, and the search index. They are independent; a page that should be unlisted everywhere sets all three. The build's own link check honours the last two, so a page that opts out is not then reported as missing from the index it opted out of.
+- **`symbols`** --- optional, and rare. The names a page documents, when its title and first heading cannot say; see [Naming what a page documents](#symbols).
 
-A package's `index.md` may also carry **`indexed_from`**, **`exclude_from_docs`** and **`exclude_kinds`**. Those are provenance for the authoring pass, not build input: they record which twinBASIC build the package download was indexed against, and what was deliberately left undocumented, so a later re-index can tell a genuine gap from a deliberate omission. The build ignores them and they never reach the HTML. **Leave them in place**, and bump `indexed_from` in the same commit if you re-index a package against a newer build.
+A package's `index.md` may also carry **`indexed_from`**, **`exclude_from_docs`** and **`exclude_kinds`**. Those are provenance for the authoring pass: they record which twinBASIC build the package download was indexed against, and what was deliberately left undocumented, so a later re-index can tell a genuine gap from a deliberate omission. The build reads `exclude_from_docs` for one thing only, to leave those names out of the [symbol index](Building#the-symbol-index)'s count of undocumented symbols; none of the three reaches the HTML. **Leave them in place**, and bump `indexed_from` in the same commit if you re-index a package against a newer build.
 
 Any key the build does not recognise is simply inert --- nothing iterates frontmatter generically, so an unknown key is never emitted into the page. A key whose *value* is not valid YAML is a different matter: the build aborts with `Failed to parse frontmatter in <file>`, quoting the YAML parser's own line and column.
 
@@ -295,9 +296,27 @@ The same attribute works inline, attached to a span instead of a block, and that
 
 To find what a rename would break, start with `grep -rn "#old-anchor" docs`, then let the build settle it. `build.bat` resolves every fragment in the tree against the ids that actually reached the HTML and reports `fragment #old-anchor not found` for each link that misses. It is the oracle rather than grep because almost every id is generated: it exists in the built page and in no source file, so there is nothing for grep to match on the receiving end.
 
-That check sees only links made from inside this repository, and the `/tB/` anchors have a consumer outside it. [Permanent Links](Permanent-Links) enumerates the `#<attribute>` anchors on `/tB/Core/Attributes` --- the URLs the IDE help system resolves against. They are covered by the build's check only because that page links to each one, so an attribute added to `Attributes.md` and not added to that list is unchecked from the moment it is written. Two were in exactly that position until recently, and adding them to the list is what put them under the check.
+That check sees only links made from inside this repository, and the `/tB/` anchors have a consumer outside it: the IDE help add-in, through the [symbol index](Building#the-symbol-index). Every member heading on a reference page, and every attribute heading on `/tB/Core/Attributes`, is an entry in that index, and **a build that loses one of its URLs fails**, naming it --- so a reworded member heading is caught whether or not anything in the site links to it. The fix is the one above: keep the new wording and pin the old id.
 
-Every heading on that page also carries a pinned `{: #... }` id, and that is not decoration. Three of them once had none and resolved on the default slug alone --- which ties the published URL to the heading text, so appending a parenthesised type to one, to match its neighbours, would have broken it silently. Pin the id when you add the heading.
+Every heading on the attributes page also carries a pinned `{: #... }` id, and that is not decoration. Three of them once had none and resolved on the default slug alone --- which ties the published URL to the heading text, so appending a parenthesised type to one, to match its neighbours, would have broken it silently. Pin the id when you add the heading.
+
+## Naming what a page documents
+{: #symbols }
+
+The [symbol index](Building#the-symbol-index) learns what a reference page documents from the page itself: its title, less a trailing word such as `Module` or `class`, and the comma-separated names of its first heading --- `# Left, LeftB` documents both. For a Core page, the words of the title are the statement and its keywords: `Do...Loop` is the **Do** statement, and **Loop** is a keyword that leads to it.
+
+A page whose title cannot name its subject says so with `symbols:`, which replaces those names:
+
+```yaml
+---
+title: (Default) Module
+parent: VBA Package
+permalink: /tB/Modules/HiddenModule/
+symbols: [_HiddenModule]
+---
+```
+
+On a statement page the first name is the statement and the rest are its keywords; on an operator page each is an operator of its own --- the comparison operators page lists `["=", "<>", "<", "<=", ">", ">="]`, quoted, because a bare `>` is YAML syntax. Only two pages need it today. The build tells you when a third does: a page in a package folder that gives the index no entry at all is named after the build's summary.
 
 ## Counts the build fills in
 {: #counts }

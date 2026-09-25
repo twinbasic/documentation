@@ -204,6 +204,14 @@ jobs:
       # built tree.
       - name: Verify the book-coverage warnings (check_book_coverage.mjs)
         run: node scripts/check_book_coverage.mjs
+      # The symbol index (tB/symbols.json) is read by the IDE help add-in. A
+      # build that indexes the reference cleanly says nothing about the rules
+      # that did not fire on it, so these probes assert each against the case
+      # that made it necessary -- the .twin scanner's traps, the rules placing
+      # a symbol on a page or heading, and the drift guard refusing a URL the
+      # index stopped publishing. Fixtures only: no tree, no install.
+      - name: Verify the symbol index and its drift guard (check_symbol_index.mjs)
+        run: node scripts/check_symbol_index.mjs
       # Graphviz sizes each node box from a width table; the browser paints
       # the label with a real font. Nothing in the build compares the two, so
       # a mismatch ships as text hanging outside its box on a green build --

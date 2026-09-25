@@ -5,7 +5,7 @@ grand_parent: Reference Section
 permalink: /tB/Core/IntegerDivide
 vba_attribution: true
 ---
-# \ and \= operators
+# \\ and \\= operators
 {: .no_toc }
 
 Used to divide two numbers and return an integer result. The compound form **\\=** divides-and-assigns in one step.

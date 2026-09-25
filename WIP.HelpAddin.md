@@ -4,10 +4,13 @@ See [WIP.md](WIP.md) for the maintenance guide. This file covers the planned twi
 add-in that shows the documentation for the symbol under the cursor, and the harness that
 tests IDE add-ins by machine, which the add-in is developed against.
 
-**Status: Stages 1 and 2 are done** --- `addin-test.bat` operates Samples 10 and 15 end to
-end and leaves the registry as it found it, and all fourteen of Stage 2's questions are
-answered, twelve of them by eight probe lanes that fail when a later IDE build behaves
-differently. Stage 3, the symbol index, is next. The add-in itself is not started. This file
+**Status: Stages 1 and 2 are done, and Stage 3's index is built** --- `addin-test.bat`
+operates Samples 10 and 15 end to end and leaves the registry as it found it; all fourteen
+of Stage 2's questions are answered, twelve of them by eight probe lanes that fail when a
+later IDE build behaves differently; and every build publishes `tB/symbols.json`, 5,536
+names at 4,086 URLs, under a drift guard that fails the build when one of its URLs goes.
+Stage 3's embedded mode, a `theme` parameter the site would read, waits until the add-in
+works (decided 2026-09-25). Stage 4, the add-in itself, is next. This file
 replaces the June draft, `add-in/PLAN.md`
 in commit `d159acf8` ("Roughly plan the help add-in"). That commit is on no branch --- only
 the detached HEAD of an old worktree keeps it --- so everything in it worth keeping is here,
@@ -752,10 +755,11 @@ at `/tB/Modules/Collection`, not under VBRUN. The index is generated instead.
   `theme=dark|light` query parameter, read by the no-flash snippet in `renderHead`
   ([builder/template.mjs](builder/template.mjs)) and set as `data-theme` without being
   stored, so a reader's own choice on the site is left as it is. Hiding the header and
-  navigation is a separate, optional question, untested. **Recommended, not yet decided**:
-  it changes what the published pages do, and it needs a test that the parameter keeps
-  working. It serves the live site only: the IDE's own server answers any URL with a query
-  string with a 404 (P13), so the offline route would need the theme some other way.
+  navigation is a separate, optional question, untested. **Deferred until the add-in works,
+  at least in part** (decided 2026-09-25): it changes what the published pages do, and it
+  needs a test that the parameter keeps working. It serves the live site only: the IDE's
+  own server answers any URL with a query string with a 404 (P13), so the offline route
+  would need the theme some other way.
 
 The June data model stands:
 
@@ -787,6 +791,102 @@ Names that belong to more than one page, to test lookup against:
   `HtmlElements`, `HtmlElementProperties`, `HtmlEventProperties`, `Toolbars`).
 
 The generated index produces the complete list.
+
+#### What was built (2026-09-25, BETA 983)
+
+**Everything above except the embedded mode.** The index is the `symbolIndex` task of the
+build, in [builder/symbols.mjs](builder/symbols.mjs), and it publishes
+[`/tB/symbols.json`](docs/Documentation/Permanent-Links.md#the-symbol-index) --- under
+`/tB/` because the file is part of the same contract as the URLs in it. 5,536 entries at
+4,086 distinct URLs; 782 KB, 52 KB gzipped, under 100 ms of the build. Permanent Links
+documents the format for any reader; [Building](docs/Documentation/Building.md#the-symbol-index)
+and [WIP.Build.md](WIP.Build.md#the-symbol-index-and-the-drift-guard-on-its-urls) the build side.
+
+**The entries come from the pages, and the packages annotate them.** Joining the other way
+round was tried first, and the packages declare far more than the pages give an anchor to:
+of the 2,368 public members of VB's documented classes, 173 have no page or heading, and
+of WinNativeCommonCtls' 738, 294 --- inherited members that pages name in a sentence
+(`DTPicker` "inherits ... Anchors, Dock, Font ...") or not at all. An index built from the
+packages would carry those as page-less names, and would put the pages' own layout in the
+wrong place. So a page is read for what it documents, by these
+rules, in [builder/symbols.mjs](builder/symbols.mjs)'s header: its title and its first
+heading's comma list name a type or member; a page under a type's page in the nav is one
+of its members; a heading on a type's page whose every part is an identifier and one a
+member is that member's, as is any heading under Properties, Methods or Events; an
+inherited member documented on its declaring type's page has that URL from every type that
+inherits it (`CodeEditor.Close` is `Editor#close`); a page filed under one module and
+declared in another belongs to the declarer (VBA's `Array` is under Information and
+declared in `_HiddenModule`); a `$` form shares its base's URL; and a Core page's title
+gives its statement and keywords (`Do...Loop`: `Do`, and `Loop` as a keyword). **Every
+package page gives at least one entry**; a build names any that stops.
+
+**What the packages add, from [builder/package-api.json](builder/package-api.json)**, which
+[scripts/build_package_api.mjs](scripts/build_package_api.mjs) writes from the packages of
+an install, through the export `census_attributes.mjs` already made (now
+[scripts/lib/tb-packages.mjs](scripts/lib/tb-packages.mjs), shared, and the census's output
+checked identical) and a declaration scanner,
+[scripts/lib/twin-api.mjs](scripts/lib/twin-api.mjs). It is committed, like
+`inter-metrics.json`, because CI has no install. 1,379 types in 16 exports, 255 KB. Four
+facts about the packages shaped it:
+
+- **A package is known by its project name, not its folder's.** TwinBasicAssertions is
+  `Assert`, all three CEF builds are `cefPackage` (their declared APIs are identical, and
+  the generator checks that they stay so), and AppGlobalClassObject is
+  `AppGlobalClassProject`. That is what code writes and hover says, so the index's
+  `package` is the project name, and its `packages` map gives each project's name on the
+  pages.
+- **Visibility cannot be read off one declaration.** CEF's `CefLogSeverity` is a `Public
+  Enum` inside a `Private Module`, documented and used; CustomControls' `Borders` is a
+  `Private Class` a control's `Borders` property returns; and `CheckBox` declares almost
+  nothing itself, its members being on `Private Class CheckBoxBaseCtl` and four classes above
+  it; and VB's `Clipboard` is a public CoClass whose members are on `Private Interface
+  _Clipboard`. So every declared type is kept and marked, a non-public one keeping its
+  members only when a public type exposes them, by inheritance or as the interface a public
+  CoClass is built on.
+- **`[Hidden]` is not "absent".** `Module [_HiddenModule]` carries it, and its members are
+  globals.
+- **The default-interface map comes from CoClasses:** `interfaces` maps `VBA._Collection`
+  to `VBA.Collection` and `tbIDE.IToolWindowsV1` to `tbIDE.ToolWindows`, 37 in all, which
+  is P5's hover answer turned into a lookup.
+
+**Two pages needed `symbols:`**, a new optional frontmatter key naming what a page documents
+when its title cannot: the (Default) module is `_HiddenModule`, and the comparison
+operators page documents `=`, `<>` and four more. One page was wrong: IntegerDivide's
+first heading, `# \ and \= operators`, rendered "\ and = operators" because `\=` is a
+markdown escape. It is `\\=` now; its id did not change.
+
+**The gates.** `builder/symbol-baseline.json` lists every published URL, and a build that
+loses one fails --- the case it exists for is a reworded member heading, which moves an
+anchor an installed add-in still holds. `scripts/check_symbol_index.mjs`, a seventh
+`test.bat` gate, asserts each derivation rule, each scanner trap and the guard's refusals
+on fixtures. Every URL resolves by construction, and `tB/symbols.json` is in the online
+tree's index, so `--check-audit-index` sees it written. The build's summary gives the
+count of public symbols no page documents, 602 today, and `--symbol-gaps <file>` lists
+them: 173 VB and 294 WinNativeCommonCtls members inherited and named only in prose, 48
+WinNativeCommonCtls types --- enumerations and structures declared in its controls' base
+classes and its public `...Consts` modules --- 39 members of VBA's `_HiddenModule` and
+`Interaction`, and a tail of a few each.
+
+**The URL is settled** (2026-09-25): `/tB/symbols.json` is part of the Permanent Links
+contract from here on.
+
+**Not done, and why:**
+
+- **The embedded mode** above waits until the add-in works, at least in part (decided
+  2026-09-25): it changes what the published pages do.
+- **Keywords with no page of their own** --- `ElseIf`, `Until`, `Step`, `To`, `In`,
+  `ByVal`, `ByRef`, `Optional`, `As` --- are in the index only where a page's title gives
+  them. Adding one is a `symbols:` line on the page that explains it, which is a content
+  decision per keyword. Deferred with the next item (2026-09-25).
+- **Data types** --- `Long`, `String`, `LongPtr` --- have their page at
+  `/Reference/Data-Types`, outside `/tB/`, so the index cannot carry them without breaking
+  its own rule. Giving that page a `/tB/` permalink, with the old one in `redirect_from:`,
+  would. Deferred (2026-09-25).
+- **The offline tree has no copy of the index**, since the offline route is deferred.
+- **Hover over a VB control's member is unmeasured.** P5 measured CoClasses; for a
+  `Class` such as `CheckBox`, whose members are inherited from private classes, hover may
+  name the declaring base class, which the `interfaces` map does not cover. A P5 case
+  settles it when increment 3 needs it.
 
 ### Stage 4: the add-in, in increments
 
@@ -905,7 +1005,8 @@ Recommended, and not yet confirmed:
   P5 raises what the rule costs: through `lspSocket` the add-in would know the package and
   interface of any name under the cursor today (Stage 4, increment 3).
 - **The site reads a `theme` query parameter**, so that a page in the help pane can match
-  the IDE's theme (Stage 3, after P3).
+  the IDE's theme (Stage 3, after P3). **Deferred** until the add-in works, at least in part
+  (2026-09-25); decided then, not before.
 - **Isolation starts with restoring the registry** (Stage 1, item 3), and a private
   `APPDATA` for every lane IDE (P6). A separate Windows account for test runs comes only if
   that proves not to be enough.

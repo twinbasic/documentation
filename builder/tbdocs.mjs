@@ -6,6 +6,8 @@
 //        [--fetch-assets | --no-fetch-assets] [--profile-offline]
 //        [--check | --no-check] [--check-audit-index]
 //        [--check-findings <path>] [--serve] [--port <N>]
+//        [--update-page-baseline] [--update-symbol-baseline]
+//        [--symbol-gaps <path>]
 //
 // --check runs the link + integrity check over the HTML the build
 // already holds in worker memory, instead of writing ~270 MB out and
@@ -49,7 +51,7 @@ import {
 } from "./render.mjs";
 import { loadHighlightTheme } from "./highlight-theme.mjs";
 import { buildInitConfig, renderSidebar } from "./template.mjs";
-import { writePhase, prepareDestinations, preparePageDirs } from "./write.mjs";
+import { writePhase, prepareDestinations, preparePageDirs, writeFileMkdirp } from "./write.mjs";
 import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
 import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
 import { writeSearchDataFromChunks } from "./search.mjs";
@@ -64,6 +66,9 @@ import { writePdf } from "./pdf.mjs";
 // build without --check pays nothing.
 import { deriveTreeRels } from "./check-tree.mjs";
 import { checkPageBaseline } from "./page-baseline.mjs";
+import { checkSymbolBaseline } from "./symbol-baseline.mjs";
+import { deriveSymbolIndex, reportableGaps, serializeSymbolIndex,
+         symbolPages, SYMBOL_INDEX_REL } from "./symbols.mjs";
 import { publishPolicyFor, unpublishableSourceFiles,
          unpublishableTreePaths, formatPublishRefusal } from "./publish-policy.mjs";
 import { packShared } from "./sab-broadcast.mjs";
@@ -76,6 +81,7 @@ import {
 } from "./sab-scheduler.mjs";
 
 const CPU_WORKER_URL = new URL("./cpu-worker.mjs", import.meta.url);
+const PACKAGE_API_PATH = new URL("./package-api.json", import.meta.url);
 
 // builder/ sits one level under the repository root. Used to state a build's
 // source root the same way however it was invoked, for the page-count drift
@@ -96,6 +102,8 @@ function parseArgs(argv) {
     check: false,
     auditIndex: false,
     updatePageBaseline: false,
+    updateSymbolBaseline: false,
+    symbolGaps: null,
     checkFindings: null,
     serve: false,
     port: 4000,
@@ -158,6 +166,13 @@ function parseArgs(argv) {
       // whichever direction it moved. The build only ever raises it on its
       // own; lowering it is a deliberate act, so it takes a deliberate flag.
       args.updatePageBaseline = true;
+    } else if (a === "--update-symbol-baseline") {
+      // The same for the URLs tB/symbols.json has published: record the
+      // current list whatever left it. See symbol-baseline.mjs.
+      args.updateSymbolBaseline = true;
+    } else if (a === "--symbol-gaps") {
+      // Write the public symbols no page documents, as JSON, to a file.
+      args.symbolGaps = argv[++i];
     } else if (a === "--serve") {
       args.serve = true;
     } else if (a === "--port") {
@@ -943,6 +958,42 @@ const TASKS = {
     submit() {},
   },
 
+  // Write tB/symbols.json, the symbol index the IDE help add-in reads -- see
+  // builder/symbols.mjs. renderJoin because an entry's anchor is the id the
+  // render gave its heading, read from the HTML; prepDest for the tree. The
+  // package half comes from builder/package-api.json, a committed snapshot the
+  // build never regenerates, because regenerating it needs a twinBASIC install.
+  symbolIndex: {
+    expected: ["renderJoin", "prepDest"],
+    runOnMain: true,
+    async execute(_, ctx, state) {
+      let api;
+      try {
+        api = JSON.parse(await fs.readFile(PACKAGE_API_PATH, "utf8"));
+      } catch (err) {
+        if (err.code !== "ENOENT") throw err;
+        throw new Error("builder/package-api.json is missing, and the symbol index needs it. " +
+          "Restore it from git, or regenerate it with node scripts/build_package_api.mjs");
+      }
+      const pages = symbolPages(state.pages);
+      const result = deriveSymbolIndex({ pages, api });
+      const gaps = reportableGaps(result, pages, api);
+      if (!ctx.opts.dryRun) {
+        await writeFileMkdirp(path.join(ctx.destRoot, SYMBOL_INDEX_REL), serializeSymbolIndex(result, api));
+      }
+      if (ctx.opts.symbolGaps) {
+        await fs.writeFile(ctx.opts.symbolGaps, `${JSON.stringify(gaps, null, 1)}\n`, "utf8");
+      }
+      return {
+        entries: result.symbols.length,
+        urls: [...new Set(result.symbols.map((s) => s.url))],
+        gaps: gaps.length,
+        unplaced: result.unplaced,
+      };
+    },
+    submit() {},
+  },
+
   // Write redirect stubs + sitemap/robots. Waits for writeAssets (theme on
   // disk), searchData, deriveRedirects, and deriveSitemap.
   // Passes searchStats through to writeOffline (for search-data.js).
@@ -1154,7 +1205,9 @@ const TASKS = {
     // another few milliseconds. On the real site scss happens to finish
     // long before the check; on a three-page fixture it does not, and
     // the audit failed the build over nothing.
-    expected: ["linkJoin", "checkBook", "scss"],
+    // symbolIndex for the same reason: tB/symbols.json is in the online tree's
+    // index, and the audit must not look for it before it is written.
+    expected: ["linkJoin", "checkBook", "scss", "symbolIndex"],
     runOnMain: true,
     async execute({ linkJoin: trees, checkBook: book }, ctx, state) {
       if (!state.checkTrees) return null;
@@ -1222,7 +1275,7 @@ const GANTT_SECTION = {
   deriveRedirects: "Spine", deriveSitemap: "Spine",
   dispatch: "Render", prepDest: "Render", prepPageDirs: "Render",
   renderJoin: "Render", flushJoin: "Write",
-  writeAssets: "Write", searchData: "Write", writeAux: "Write", writeOffline: "Write", writePdf: "Write",
+  writeAssets: "Write", searchData: "Write", symbolIndex: "Write", writeAux: "Write", writeOffline: "Write", writePdf: "Write",
   linkJoin: "Check", checkBook: "Check", checkReport: "Check",
 };
 const GANTT_SECTION_ORDER = ["Seeds", "Spine", "Render", "Write", "Check"];
@@ -1431,6 +1484,19 @@ export async function runBuild(opts) {
                 `${auxResult.sitemapStats.entries} sitemap entries, ` +
                 `${auxResult.searchStats.entries} search-index entries`);
   }
+  const symbolStats = results.get("symbolIndex");
+  if (symbolStats) {
+    console.log(`  ${pc.bold("symbols:")} ${symbolStats.entries} entries at ${symbolStats.urls.length} URLs in ` +
+                `${SYMBOL_INDEX_REL}, ${symbolStats.gaps} public symbol(s) no page documents` +
+                (opts.symbolGaps ? ` (listed in ${opts.symbolGaps})` : ""));
+    // A page in a package folder the index could not place documents something
+    // it cannot find: a title that names nothing the package declares, most
+    // often. `symbols:` in its frontmatter says what it is.
+    for (const u of symbolStats.unplaced) {
+      console.log(`  ${pc.yellow("symbols: no entry for")} ${u.url} (${u.title}) -- ` +
+                  "its title names nothing the package declares; see symbols: in Authoring");
+    }
+  }
   if (offlineResult) {
     console.log(`  ${pc.bold("offline:")} -> ${pc.cyan(`${destRoot}-offline`)}`);
     console.log(`           ${flushStats.offlineWritten} HTML, ${offlineResult.css} CSS, ` +
@@ -1516,18 +1582,33 @@ export async function runBuild(opts) {
   // the check above claims bits 1 and 2, and the old `= 1` here clobbered
   // them, so a build with both an integrity failure and a page drop reported
   // only the drop.
+  // Repo-relative and forward-slashed, so it matches GUARDED_SRC however the
+  // build was invoked. tbdocs also runs over test/fixtures/check-src, which
+  // has no baseline and must not be measured against the site's.
+  const guardedSrc = path.relative(REPO_ROOT, path.resolve(opts.src ?? "docs")).replaceAll(path.sep, "/");
+  const mayWrite = !process.env.CI && !opts.serve && !opts.dryRun;
   const drift = await checkPageBaseline({
-    // Repo-relative and forward-slashed, so it matches GUARDED_SRC however the
-    // build was invoked. tbdocs also runs over test/fixtures/check-src, which
-    // has no baseline and must not be measured against the site's.
-    src: path.relative(REPO_ROOT, path.resolve(opts.src ?? "docs")).replaceAll(path.sep, "/"),
+    src: guardedSrc,
     pages: pages.length,
     staticFiles: staticFiles.length,
-    write: !process.env.CI && !opts.serve && !opts.dryRun,
+    write: mayWrite,
     force: !!opts.updatePageBaseline,
   });
   if (drift.text) process.stdout.write(drift.text);
   if (drift.failed) process.exitCode = (process.exitCode ?? 0) | 1;
+
+  // The same guard over the URLs tB/symbols.json has published, which an
+  // installed IDE help add-in holds a copy of -- see symbol-baseline.mjs.
+  if (symbolStats) {
+    const lost = await checkSymbolBaseline({
+      src: guardedSrc,
+      urls: symbolStats.urls,
+      write: mayWrite,
+      force: !!opts.updateSymbolBaseline,
+    });
+    if (lost.text) process.stdout.write(lost.text);
+    if (lost.failed) process.exitCode = (process.exitCode ?? 0) | 1;
+  }
 
   return { pages, staticFiles, site, destRoot };
 }
