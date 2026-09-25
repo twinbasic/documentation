@@ -564,7 +564,7 @@ const TASKS = {
   nav: {
     expected: ["discover"],
     runOnMain: true,
-    execute(_, ctx, state) {
+    execute(_, _ctx, state) {
       const { navTree } = computeNav(state.pages, state.site.config);
       state.site.navTree = navTree;
       return { sidebar: renderSidebar(state.site) };
@@ -579,7 +579,7 @@ const TASKS = {
   buildInit: {
     expected: ["discover"],
     runOnMain: true,
-    execute(_, ctx, state) {
+    execute(_, _ctx, state) {
       return { initData: buildInitConfig(state.site) };
     },
     submit() {},
@@ -594,7 +594,7 @@ const TASKS = {
     // is derived from the stub set, and nothing else on this task needs it.
     expected: ["discover", "vendorAssets", "deriveRedirects"],
     runOnMain: true,
-    execute({ deriveRedirects: { stubs } }, ctx, state) {
+    execute({ deriveRedirects: { stubs } }, _ctx, state) {
       const linkTables    = buildLinkTables(state.pages);
       const baseurl       = String(state.site.config.baseurl || "");
       const staticFileSet = new Set(state.staticFiles.map(s => s.srcRel));
@@ -646,7 +646,7 @@ const TASKS = {
   resolveBookChapters: {
     expected: ["deriveSitemap"],
     runOnMain: true,
-    execute(_, ctx, state) {
+    execute(_, _ctx, state) {
       resolveBookChapters(state.site.bookData, state.pages);
       return {};
     },
@@ -659,7 +659,7 @@ const TASKS = {
   deriveRedirects: {
     expected: ["discover"],
     runOnMain: true,
-    execute(_, ctx, state) {
+    execute(_, _ctx, state) {
       return { stubs: deriveRedirectStubs(state.pages, state.site) };
     },
     submit(out, state) {
@@ -676,7 +676,7 @@ const TASKS = {
   deriveSitemap: {
     expected: ["dispatch"],
     runOnMain: true,
-    execute(_, ctx, state) {
+    execute(_, _ctx, state) {
       return { urls: deriveSitemapUrls(state.pages, state.site) };
     },
     submit() {},

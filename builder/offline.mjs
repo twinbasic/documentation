@@ -30,7 +30,6 @@ import * as acornWalk from "acorn-walk";
 
 import {
   WRITE_LIMIT,
-  isUnderProject,
   mkdirRec,
   runLimited,
   safeWrite,
@@ -114,6 +113,7 @@ function makeTimer() {
 // §A  Top-level orchestration
 // ---------------------------------------------------------------------------
 
+// biome-ignore lint/correctness/noUnusedFunctionParameters: unread since the diff tools were retired (A2-1); C14 removes it and tbdocs.mjs's argument.
 export async function writeOffline(pages, staticFiles, site, destRoot, { auxStats, profileOffline = false, precomputed = false, sitePaths, check = false } = {}) {
   if (!destRoot) {
     throw new Error("writeOffline requires a destRoot");
@@ -241,6 +241,7 @@ export async function buildOfflineState(pages, staticFiles, site, destRoot, { st
 // its pre-rewrite nav block matches the cached `input` byte-for-byte.
 // On miss we fall back to the full rewrite with a warning -- the
 // cache is purely an optimisation, never a correctness dependency.
+// biome-ignore lint/correctness/noUnusedVariables: dead since the diff tools were retired (A2-1); C14 deletes it and moves the nav-block cache comment above cpu-worker.mjs's live copy.
 async function writeOfflinePages(pages, deps, { precomputed = false } = {}) {
   const { offlineRoot } = deps;
 

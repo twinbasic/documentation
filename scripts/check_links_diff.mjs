@@ -369,7 +369,7 @@ const SIDES = {
   // nothing else would say so.
   fused: {
     describe: "tbdocs --check, the build's own pass",
-    run(argv, { case: name }) {
+    run(_argv, { case: name }) {
       const c = CASES[name];
       if (!c.fused) throw new Error(`case '${name}' has no fused equivalent`);
       const all = fusedBuild(c.fused);

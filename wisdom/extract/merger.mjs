@@ -14,8 +14,8 @@
 // Atomic writes: temp file + rename, previous staging.md retained as
 // staging.md.bak for one generation.
 
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync, copyFileSync, unlinkSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync, copyFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { buildEmissionKeySet, emissionKey } from './state.mjs'
 
 const STAGING_FILE = 'staging.md'
@@ -94,7 +94,7 @@ export function graftAdditions(outDir, additions, state) {
  */
 export function renderSideband(additions) {
   const parsed = freshStaging()
-  const stats = mergeIntoParsed(parsed, additions, new Set())
+  mergeIntoParsed(parsed, additions, new Set())
   ensureUnmappedHeader(parsed)
   return serializeStaging(parsed)
 }

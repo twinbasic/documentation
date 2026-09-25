@@ -610,7 +610,7 @@ export function assembleBook(site, pages) {
   out.push("\n<body>\n");
   out.push(renderTitlePage(site));
   emitFrontMatter(out, bookData, baseurl, imagePaths);
-  (bookData.parts ?? []).forEach((part, i) => emitPart(out, part, i, site, baseurl, imagePaths));
+  (bookData.parts ?? []).forEach((part, i) => { emitPart(out, part, i, site, baseurl, imagePaths); });
   out.push("\n</body>\n</html>\n");
 
   let bookHtml = out.join("");

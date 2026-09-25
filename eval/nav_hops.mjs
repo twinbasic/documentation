@@ -154,7 +154,7 @@ async function main(argv) {
     const chain = [];
     for (let f = hit; f; f = prev.get(f)) chain.unshift(f);
     console.log(`${t}: ${chain.length - 1} hop(s)`);
-    chain.forEach((f, i) => console.log(`  ${i}. ${show(f)}${pages.urlOf.has(f) ? `  ${pages.urlOf.get(f)}` : ""}`));
+    chain.forEach((f, i) => { console.log(`  ${i}. ${show(f)}${pages.urlOf.has(f) ? `  ${pages.urlOf.get(f)}` : ""}`); });
   }
   return unreachable ? 1 : 0;
 }

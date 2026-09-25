@@ -12,7 +12,6 @@
 //
 // See eval/README.md for how a round uses it.
 
-import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import path from "node:path";

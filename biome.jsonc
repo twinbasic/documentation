@@ -1,0 +1,58 @@
+{
+  // Biome as the repository's linter (builder/PLAN-TOOLING-REVIEW.md,
+  // decision 4): rules that find defects -- the correctness and suspicious
+  // groups -- and nothing about style. The formatter stays off until the
+  // review's last phase. scripts/check_lint.mjs runs this configuration.
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "root": true,
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "includes": [
+      "builder/**/*.mjs",
+      "scripts/**/*.mjs",
+      "book/**/*.mjs",
+      "book/lib/progress-handler.js",
+      "eval/**/*.mjs",
+      "wisdom/**/*.mjs",
+      "test/**/*.mjs",
+      "docs/assets/js/*.js",
+      // Vendored code, and the two pagedjs-cli ports the review treats as
+      // vendored: attributed and unmodified.
+      "!builder/vendor",
+      "!book/lib/paged.browser.js",
+      "!book/lib/outline.mjs",
+      "!book/lib/postprocesser.mjs",
+      // A Workflow script, not a module: the agent Workflow engine runs it as
+      // a function body, so it ends in a top-level `return`, which no module
+      // parser accepts. check_regex_safety.mjs still reads its regexes, through
+      // acorn's allowReturnOutsideFunction.
+      "!wisdom/extract/workflow.mjs",
+      // Trees the gates read as data.
+      "!test/fixtures"
+    ]
+  },
+  "formatter": { "enabled": false },
+  "assist": { "enabled": false },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "none",
+      "correctness": { "preset": "recommended" },
+      "suspicious": {
+        "preset": "recommended",
+        // `while ((m = re.exec(s)))` is how this tree walks a regex's matches.
+        "noAssignInExpressions": "off",
+        // Strings here hold GitHub Actions, PowerShell and JavaScript source
+        // whose `${...}` is meant literally.
+        "noTemplateCurlyInString": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      // ES5-style scripts that ship to readers as written.
+      "includes": ["docs/assets/js/*.js"],
+      "linter": { "rules": { "correctness": { "noInnerDeclarations": "off" } } }
+    }
+  ]
+}

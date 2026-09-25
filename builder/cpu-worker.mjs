@@ -35,7 +35,6 @@ const myLane = workerData?.lane ?? 0;
 
 let views     = null;   // Int32Array views into the scheduling SAB
 let ctx       = null;   // { srcRoot, destRoot, opts, workerCount }
-let idMapping = null;   // { nameToIdx, idxToName, DYNAMIC_BASE, … }
 
 let _payloadSAB = null;   // SharedArrayBuffer with packed per-task payloads
 let _sharedSAB  = null;   // SharedArrayBuffer with packed shared payload
@@ -290,7 +289,6 @@ parentPort.on("message", (msg) => {
   if (msg.init) {
     views     = createViews(msg.sab);
     ctx       = msg.ctx;
-    idMapping = msg.idMapping;
     _payloadSAB   = null;
     _sharedSAB    = null;
     _renderEnv    = null;

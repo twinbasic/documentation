@@ -136,6 +136,7 @@ export function applyPreRenderRewrites(rawContent) {
 // continuation needs block context that a pre-render pass does not have, and
 // guessing would change how real list content renders. That gap is a known,
 // measured one -- scripts/check_code_regions.mjs covers it.
+// biome-ignore lint/suspicious/noControlCharactersInRegex: NUL delimits the placeholders because page text never contains one.
 const CODE_MASK_RE = /`\u0000CM(\d+)\u0000`/g;
 
 export function maskCodeRegions(src) {
@@ -456,7 +457,7 @@ export function createMarkdownIt(ctx) {
   // kramdown emits `style="text-align: left"` with a space after the
   // colon; markdown-it emits the compact form. Override the th/td
   // renderers to widen the gap.
-  const styleSpace = (defaultRule) => (tokens, idx, opts, env, slf) => {
+  const styleSpace = (_defaultRule) => (tokens, idx, opts, _env, slf) => {
     const tok = tokens[idx];
     const styleIdx = tok.attrIndex("style");
     if (styleIdx >= 0) {
@@ -464,7 +465,7 @@ export function createMarkdownIt(ctx) {
     }
     return slf.renderToken(tokens, idx, opts);
   };
-  md.renderer.rules.th_open = ((defaultRule) => (tokens, idx, opts, env, slf) => {
+  md.renderer.rules.th_open = ((_defaultRule) => (tokens, idx, opts, _env, slf) => {
     const tok = tokens[idx];
     const styleIdx = tok.attrIndex("style");
     if (styleIdx >= 0) {
@@ -771,9 +772,6 @@ const SQ_CLOSE_EXCLUDED = new Set([" ", "\\", "\t", "\r", "\n", "[", "{", "(", "
 // kramdown's SQ_PUNCT character class.
 const SQ_PUNCT_RE = /[!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~]/;
 
-// Any straight or curly quote character.
-const QUOTE_ANY_RE = /["'“”‘’]/;
-
 // Apply kramdown-style smart-quote conversion to a raw HTML body --
 // used for content inside `<summary markdown=span>...</summary>` and
 // similar inline elements where kramdown's HTML parser descends and
@@ -869,7 +867,6 @@ function standaloneIalForwardPlugin(md) {
   // consumed as attrs) and re-target the attrs onto the right
   // neighbour using token.map to look up the source-line gap.
   md.core.ruler.after("curly_attributes", "standalone-ial-attach", (state) => {
-    const srcLines = state.src.split("\n");
     const toks = state.tokens;
     // Lines previously occupied by a now-removed standalone IAL --
     // counts as "non-blank" when checking adjacency for a following
@@ -1132,7 +1129,6 @@ function looseDeflistPlugin(md) {
   // to visible. Override both directions: hide when tight, unhide
   // when loose.
   md.core.ruler.after("block", "deflist-tightness", (state) => {
-    const srcLines = state.src.split("\n");
     const toks = state.tokens;
     let dtEndLine = -1;
     for (let i = 0; i < toks.length; i++) {
@@ -1596,17 +1592,6 @@ function splitFragment(href) {
   return [href.slice(0, i), href.slice(i + 1)];
 }
 
-function normalizePosixPath(p) {
-  const parts = p.split("/");
-  const out = [];
-  for (const part of parts) {
-    if (part === "" || part === ".") continue;
-    if (part === "..") { out.pop(); continue; }
-    out.push(part);
-  }
-  return out.join("/");
-}
-
 // Mirrors jekyll-relative-links's File.expand_path-based resolution: a
 // link whose `..` segments would escape the docs/ root (the Jekyll
 // source directory) is left unrewritten by the upstream gem because the
@@ -1737,7 +1722,7 @@ export function rewriteAdmonitions(src) {
   const stashed = [];
   let work = stashCodeFences(src, stashed);
 
-  work = work.replace(ADMONITION_RE, (m, leading, indent, typeRaw, bodyRaw) => {
+  work = work.replace(ADMONITION_RE, (_m, leading, indent, typeRaw, bodyRaw) => {
     const type = typeRaw.toLowerCase();
     const meta = ADMONITION_TYPES[type];
     // The body lines all share the same leading indent; strip it plus the

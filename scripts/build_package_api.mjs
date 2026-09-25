@@ -146,7 +146,7 @@ function serialize({ build, packages, exportsOf }) {
     lines.push(`      "exports": ${JSON.stringify(exportsOf.get(pkg))},`);
     lines.push(`      "types": [`);
     const types = packages[pkg];
-    types.forEach((t, j) => lines.push(`        ${JSON.stringify(t)}${j < types.length - 1 ? "," : ""}`));
+    types.forEach((t, j) => { lines.push(`        ${JSON.stringify(t)}${j < types.length - 1 ? "," : ""}`); });
     lines.push("      ]", `    }${i < names.length - 1 ? "," : ""}`);
   });
   lines.push("  }", "}");

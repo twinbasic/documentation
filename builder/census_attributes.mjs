@@ -301,7 +301,6 @@ function scanFile(file, pkg) {
         // put the comment text in the report and lost the real target.
         // blankStrings erases a ' comment, so a blank result means "no code".
         let decl = blankStrings(decomment(run.rest)).trim() ? decomment(run.rest) : null;
-        let declLine = run.endLine;
         if (!decl) {
           let j = run.endLine + 1;
           while (j < lines.length) {
@@ -314,7 +313,6 @@ function scanFile(file, pkg) {
             break;
           }
           decl = decomment(lines[j] ?? "");
-          declLine = j;
         }
         const container = stack.at(-1)?.kind ?? "(file)";
         const kind = classify(decl, container);
@@ -392,8 +390,6 @@ function documentedAttributes() {
 }
 
 // ------------------------------------------------------------------- report
-const pct = (n, d) => (d ? ((n / d) * 100).toFixed(1) : "0.0");
-
 function buildReport(sites, problems, files, projects, meta) {
   const byAttr = new Map();
   for (const s of sites) {

@@ -441,7 +441,6 @@ function renderNavExternalLinks(config) {
 // ---------- §5.5 navActivationCss ----------------------------------------
 
 const COLLECTION_PREFIX = ".site-nav > ul.nav-list:first-child";
-const OTHER_COLLECTION_PREFIX = ".site-nav > ul.nav-list:not(:first-child)";
 
 export function navActivationCss(page) {
   const levels = page.navLevels;

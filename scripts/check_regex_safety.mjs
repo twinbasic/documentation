@@ -361,7 +361,7 @@ async function checkAll(regexes) {
   // cluster by file (render.mjs alone holds 69 of them), so contiguous
   // slices would leave one shard doing nearly all the work.
   const buckets = Array.from({ length: shards }, () => []);
-  regexes.forEach((r, i) => buckets[i % shards].push(r));
+  regexes.forEach((r, i) => { buckets[i % shards].push(r); });
   const settled = await Promise.all(buckets.map(runShard));
   const merged = settled.flat();
   // A shard that returns fewer results than it was given would silently

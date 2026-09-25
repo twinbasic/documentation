@@ -173,7 +173,7 @@ async function copyTheme(builderAssetsRoot, destRoot, limit, baseurl) {
 function cssBaseurlTransformer(baseurl) {
   return (css) => css.replace(
     /url\((["']?)\/(?!\/)([^)"']*)\1\)/g,
-    (whole, q, rest) => `url(${q}${baseurl}/${rest}${q})`,
+    (_whole, q, rest) => `url(${q}${baseurl}/${rest}${q})`,
   );
 }
 

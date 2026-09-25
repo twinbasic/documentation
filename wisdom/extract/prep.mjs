@@ -46,7 +46,6 @@ export async function runExtract(flags) {
   // Scan thread .md files
   const allThreads = []
   let skippedByState = 0
-  let skippedByChannel = 0
   let skippedBySince = 0
 
   const subdirs = readdirSync(threadsDir, { withFileTypes: true })

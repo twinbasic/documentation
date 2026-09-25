@@ -50,7 +50,7 @@
   function fontData(rel) {
     if (fontCache[rel]) return fontCache[rel];
     var url;
-    try { url = new URL(rel, SCRIPT_SRC).href; } catch (e) { url = null; }
+    try { url = new URL(rel, SCRIPT_SRC).href; } catch (_e) { url = null; }
     if (!url) return (fontCache[rel] = Promise.resolve(null));
     fontCache[rel] = fetch(url).then(function (r) {
       if (!r.ok) throw new Error(r.status + " " + r.statusText);

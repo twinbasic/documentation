@@ -27,7 +27,7 @@
 // leaves state untouched, so the next run retries the same threads.
 
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 
 const STATE_FILE = 'extract-state.json'
 const STATE_VERSION = 1

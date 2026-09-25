@@ -128,7 +128,7 @@ if (!PDFParser.prototype.__fastSyncLoadInstalled) {
       const initialOffset = this.bytes.offset();
       try {
         this.parseIndirectObject();
-      } catch (e) {
+      } catch {
         this.bytes.moveTo(initialOffset);
         this.tryToParseInvalidIndirectObject();
       }

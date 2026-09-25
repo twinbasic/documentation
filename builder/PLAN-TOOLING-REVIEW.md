@@ -542,6 +542,48 @@ unused imports and undeclared names behind, and Phases 1 and 2 move and delete a
 **Verify.** Lint clean over the scope. The tree comparison identical, since the fixes touch
 `builder/`. `test.bat` and `check.bat` clean.
 
+**Landed** with Biome 2.5.14, exact. Its first run over the scope, with the recommended
+correctness and suspicious rules, found 106 diagnostics in eleven rules:
+`noAssignInExpressions` 20, `noInnerDeclarations` 19, `noUnusedFunctionParameters` 17,
+`noUnusedVariables` 17, `noTemplateCurlyInString` 10, `useIterableCallbackReturn` 7,
+`noUnusedImports` 5, `noControlCharactersInRegex` 4, `noGlobalIsNan` 3,
+`noShadowRestrictedNames` 1, and two `useBiomeIgnoreFolder` notes on the configuration itself.
+None fired on a browser global inside a `page.evaluate` body, so the three kinds of code need
+no separate treatment and ESLint was not needed. It checks the scope, 136 scripts, in about
+100 ms.
+
+`biome.jsonc` turns two rules off, each with its reason: `noAssignInExpressions`, because
+`while ((m = re.exec(s)))` is how this tree walks a regex's matches, and
+`noTemplateCurlyInString`, because strings here hold Actions, PowerShell and JavaScript source
+whose `${...}` is literal. `noInnerDeclarations` is off only for `docs/assets/js/`, whose
+ES5-style scripts ship as written. Biome 2.5 replaced the `recommended` field with `preset`,
+which the configuration uses. **One file is outside the entry's scope:**
+`wisdom/extract/workflow.mjs` ends in a top-level `return`, because the agent Workflow engine
+runs it as a function body, and no module parser accepts that. It is excluded, and
+`check_regex_safety.mjs` still reads its regexes, through acorn's `allowReturnOutsideFunction`.
+
+The other 54 findings are fixed, or suppressed with a reason. Five unused imports went, and
+sixteen unused parameters of fixed callback signatures gained an underscore. Seventeen unused
+variables were deleted, among them `census_attributes.mjs`'s `declLine`, assigned on two paths
+and never read, and `cpu-worker.mjs`'s `idMapping`, which no worker reads. `measure-pass.mjs`
+uses `Number.isNaN`, the same test there, since `parseNumberOrRefCapture` returns only a
+number or `NaN`. `twin-api.mjs`'s `unescape`, which shadowed the global, is `unbracket`. Seven
+`forEach` callbacks no longer return their expression's value. The two regexes whose control
+characters are intended, the code mask's NUL delimiter and `impexp.mjs`'s test for the
+characters Windows forbids in a file name, say so in a `biome-ignore` comment. **Two findings
+are suppressed rather than fixed**, on the owner's decision: `offline.mjs`'s
+`writeOfflinePages` and `writeOffline`'s `precomputed` parameter are A2-1's dead code, and
+C14, which deletes them, now removes the two comments as well and moves the function's account
+of the nav-block cache into `cpu-worker.mjs`. The main thread still posts `idMapping` to every
+worker, and C14 now deletes that too.
+
+The tree comparison could not be identical, because the commit edits `Builder.md`, the site's
+two scripts, and `scripts/impexp.mjs`, which the site publishes as a download. Those are the
+only differences: `Builder.html`, the search index and `book.html`; `svg-inline.js` and
+`theme-toggle.js`, whose four `catch (e)` became `catch (_e)` to stay ES5; and the
+`impexp.mjs` download, whose readers now see its new comment. Every other change built
+identical output.
+
 ### C06 — `scripts: check_lint.mjs, a lint gate in test.bat and CI`
 
 **Decision 4.** The backstop for C08's hook.
@@ -689,6 +731,16 @@ naming them, remain.
   re-export block that nothing imports (`:55-88`); `search.mjs`'s `writeSearchData`
   (`:18-24`); `sitemap.mjs`'s `extractSitemapUrls` (`:70-74`); `pdf.mjs`'s
   `extractImagePaths` (`:146-158`).
+- With `writeOfflinePages` and `precomputed` go the two `biome-ignore` comments C05 put on
+  them and `tbdocs.mjs`'s `precomputed: true` argument. The function's comment on the
+  nav-block cache (`PLAN-9.md` §5.3, B7, and §7.D11) is the only explanation in the code of
+  a mechanism that lives on in `cpu-worker.mjs`'s `render`, so it moves above that copy
+  instead of going with the function. `offline.mjs`'s header (`:6-20`) describes
+  `precomputed`, `writeOfflinePages`, `buildSitePaths` and the re-exports, and is rewritten
+  to match.
+- `worker-pool.mjs`'s `sendInit` still posts `idMapping` to every worker (`:43-45`, called
+  from `tbdocs.mjs:1449`), though C05 deleted the only place a worker kept it. The parameter
+  and the message field go, and `Pipeline-Stages.md:860`'s signature with them.
 - Delete `tbdocs.mjs`'s unused `makeTimer` export (`:196-209`). `offline.mjs` keeps its
   private copy (`:98-111`), with a comment that no longer cites the deleted tools.
 - Delete or correct the comments that name them: `offline-rewrite.mjs:411`,
