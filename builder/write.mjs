@@ -135,15 +135,17 @@ export function isUnderProject(destRoot) {
 // discover skips but the watcher does not rebuilds on its own writes.
 // Cleaning a destination that is or contains the source tree deletes the
 // source. runBuild calls this before discover, which is the first to fail.
+// The refusal is marked as a command-line error, which tbdocs exits 4 on.
 export function assertDestinationClearOfSource(srcRoot, destRoot) {
+  const refuse = (message) => Object.assign(new Error(message), { commandLine: true });
   const rel = path.relative(srcRoot, destRoot);
   if (path.isAbsolute(rel)) return;
   const segs = rel.split(path.sep);
   if (segs.every((s) => s === ".." || s === "")) {
-    throw new Error(`refusing --dest ${destRoot}: it is or contains the source tree ${srcRoot}, which cleaning it would delete`);
+    throw refuse(`refusing --dest ${destRoot}: it is or contains the source tree ${srcRoot}, which cleaning it would delete`);
   }
   if (segs[0] === ".." || isOutputTree(segs[0])) return;
-  throw new Error(
+  throw refuse(
     `refusing --dest ${destRoot}: it is inside the source tree, so a build would read its output back as source, ` +
     `or serve would rebuild on its own writes. Use a folder directly under ${srcRoot} whose name starts with ` +
     `${OUTPUT_TREES.join(", ")}, or one inside such a folder, or one outside ${srcRoot}.`);

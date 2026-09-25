@@ -204,7 +204,8 @@ export async function runServe(opts) {
   } catch (err) {
     console.error("serve: initial build failed:", describeBuildError(err));
     await pool.destroy();
-    process.exit(1);
+    // A --dest the build refuses is a command-line error, as in tbdocs's main().
+    process.exit(err?.commandLine ? 4 : 1);
   }
 
   const staticHandler = createStaticHandler(destRoot);

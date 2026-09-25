@@ -1135,6 +1135,34 @@ records these two tools as the exception, and C60 names the value beside the two
 build (`test/fixtures/check-src`) still exits with its link and integrity bits, and
 `check_links_diff.mjs --self-test` passes.
 
+**Landed** as the entry describes, and one step further in `tbdocs`: a flag that takes a
+value, given last or followed by another flag, is a command-line error too, as C17 made it in
+the harness tools, and so is a `--port` that is not a whole number from 1 to 65535. Before, a
+bare `--dest` or `--baseurl` fell back to its default without a word, and a bare `--src`
+crashed with a TypeError and exit 1 (measured). A strict `parseArgs` refuses a bare value
+flag, so without this C52 would change what those command lines do. `check_links` already
+refused a flag without its value.
+
+A command-line error is an Error marked `commandLine: true`. `tbdocs`'s `parseArgs` makes
+one through `commandLineError()`, `write.mjs` marks its two `--dest` refusals the same way,
+and `main()`'s catch and `serve.mjs`'s initial-build catch exit 4 on it; `main()` prints the
+message alone, where it printed the stack. `check_links` returns 4 from its three argument
+errors, and from a command line with no arguments at all, which prints the help and which the
+entry's line list left out. The usage texts, `tbdocs.mjs`'s header and `check_links`' help
+and header, say so, and so does Tools.md: `tbdocs` gains an exit-code line under its flag
+table, since no row stated one, and `check_links`' sentence gains the 4.
+
+Verified by a scratch table of 16 command lines, each of which exits 4 with its message as the
+first line and no stack, in under 250 ms: `tbdocs --bogus`; a bare `--src`, `--dest`,
+`--baseurl` and `--stall-timeout`; `--port abc`, `70000` and `=0`; `--stall-timeout x`;
+`--dest docs/preview` and `--dest docs`; `--serve --dest docs/preview`, which prints `serve:
+initial build failed: refusing --dest ...`; and `check_links` with no arguments, with
+`--offline` alone, without `--offline`, and with a bare `--root-dir`. The fixture build
+(`--src test/fixtures/check-src --dest test/fixtures/_out --no-pdf --check`) exits 3, and
+`check_links_diff.mjs --self-test` passes. The tree comparison differs in the Tools page,
+online and offline, the online search index and `book.html`, all from Tools.md, and nowhere
+else.
+
 ### C19 — `scripts: close the browser on every exit path, through lib/browser.mjs`
 
 **L3-1 (R1).** `check_a11y.mjs` launches Chromium (`:167`) and closes it only on success

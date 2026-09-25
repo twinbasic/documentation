@@ -227,6 +227,8 @@ Full invocation:
 | `--serve` | Start the long-lived dev server (watch + rebuild + SSE live-reload). Offline and PDF passes are skipped each rebuild. |
 | `--port <N>` | HTTP port for `--serve` mode. Default: 4000. |
 
+Exit codes: **0** clean; **1** a link failure, a failed build step, a fall in the page count, a symbol-index URL lost, or a crash; **2** an integrity failure; **3** both. A command-line error --- an unknown flag, a flag without its value, or a `--dest` the build refuses --- exits **4**, which no check can produce, so it is never read as a broken link.
+
 ### check_links.mjs
 {: #check-links }
 
@@ -252,7 +254,7 @@ Offline (filesystem-only) link checker plus optional integrity checks. Multiple 
 | `--check-canonical` | Assert each page's canonical URL matches its location. |
 | `--no-fail` | Downgrade failures to informational output (exit 0 even with broken links). |
 
-Exit code 1 indicates broken links; exit code 2 indicates integrity-only failures (the integrity checks share the same SAX parse pass as link extraction). The script dedupes `(target, fragment)` so each unique filesystem check fires exactly once regardless of how many pages link to the same target --- on the current tree (~733k link occurrences, ~12k unique targets across 1,127 HTML files / 124 MB) each pass runs in ~2.2 seconds on a development box.
+Exit code 1 indicates broken links; exit code 2 indicates integrity-only failures (the integrity checks share the same SAX parse pass as link extraction). Exit code 4 is a command-line error --- no arguments, a flag without its value, no `--offline`, or no input --- and no check can produce it. The script dedupes `(target, fragment)` so each unique filesystem check fires exactly once regardless of how many pages link to the same target --- on the current tree (~733k link occurrences, ~12k unique targets across 1,127 HTML files / 124 MB) each pass runs in ~2.2 seconds on a development box.
 
 ### crawl_check.mjs
 

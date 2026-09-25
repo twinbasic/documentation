@@ -25,6 +25,10 @@
 // --url overrides _config.yml's url (used by CI to inject the Pages
 // origin -- e.g. https://kubao.github.io -- so canonical URLs match
 // the actual deployment instead of the configured production host).
+//
+// Exit codes: 0 clean; 1 a link failure, a failed build step, a page-count
+// or symbol-baseline drop, or a crash; 2 an integrity failure; 3 both. A
+// command-line error, a --dest the build refuses included, exits 4.
 
 import { promises as fs } from "node:fs";
 import os from "node:os";
@@ -88,6 +92,13 @@ const PACKAGE_API_PATH = new URL("./package-api.json", import.meta.url);
 // guard -- see page-baseline.mjs.
 const REPO_ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 
+// A command-line error, which main() reports by its message alone and exits 4
+// on: a value outside the 1/2/3 of the link and integrity checks, so a mistyped
+// flag never reads as a broken link. write.mjs marks its --dest refusal the same.
+function commandLineError(message) {
+  return Object.assign(new Error(message), { commandLine: true });
+}
+
 function parseArgs(argv) {
   const args = {
     src: "docs",
@@ -114,22 +125,29 @@ function parseArgs(argv) {
     // without being called stalled. 0 disables the watchdog.
     stallTimeoutMs: 120000,
   };
+  // A flag that takes a value, given last or followed by another flag, has
+  // none. Read as one, it was undefined: --dest and --baseurl fell back to
+  // their defaults without a word, and --src crashed.
+  const valueAfter = (flag, v) => {
+    if (v === undefined || /^-./.test(v)) throw commandLineError(`${flag} needs a value`);
+    return v;
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--src") {
-      args.src = argv[++i];
+      args.src = valueAfter(a, argv[++i]);
     } else if (a.startsWith("--src=")) {
       args.src = a.slice("--src=".length);
     } else if (a === "--dest") {
-      args.dest = argv[++i];
+      args.dest = valueAfter(a, argv[++i]);
     } else if (a.startsWith("--dest=")) {
       args.dest = a.slice("--dest=".length);
     } else if (a === "--baseurl") {
-      args.baseurl = argv[++i];
+      args.baseurl = valueAfter(a, argv[++i]);
     } else if (a.startsWith("--baseurl=")) {
       args.baseurl = a.slice("--baseurl=".length);
     } else if (a === "--url") {
-      args.url = argv[++i];
+      args.url = valueAfter(a, argv[++i]);
     } else if (a.startsWith("--url=")) {
       args.url = a.slice("--url=".length);
     } else if (a === "--dry-run") {
@@ -160,7 +178,7 @@ function parseArgs(argv) {
       args.auditIndex = true;
     } else if (a === "--check-findings") {
       args.check = true;
-      args.checkFindings = argv[++i];
+      args.checkFindings = valueAfter(a, argv[++i]);
     } else if (a === "--update-page-baseline") {
       // Record the current inventory as the drift guard's new baseline,
       // whichever direction it moved. The build only ever raises it on its
@@ -172,22 +190,24 @@ function parseArgs(argv) {
       args.updateSymbolBaseline = true;
     } else if (a === "--symbol-gaps") {
       // Write the public symbols no page documents, as JSON, to a file.
-      args.symbolGaps = argv[++i];
+      args.symbolGaps = valueAfter(a, argv[++i]);
     } else if (a === "--serve") {
       args.serve = true;
-    } else if (a === "--port") {
-      args.port = Number(argv[++i]);
-    } else if (a.startsWith("--port=")) {
-      args.port = Number(a.slice("--port=".length));
+    } else if (a === "--port" || a.startsWith("--port=")) {
+      const raw = a === "--port" ? valueAfter(a, argv[++i]) : a.slice("--port=".length);
+      args.port = Number(raw);
+      if (!Number.isInteger(args.port) || args.port < 1 || args.port > 65535) {
+        throw commandLineError(`--port expects a port number from 1 to 65535, got: ${raw}`);
+      }
     } else if (a === "--stall-timeout" || a.startsWith("--stall-timeout=")) {
-      const raw = a === "--stall-timeout" ? argv[++i] : a.slice("--stall-timeout=".length);
+      const raw = a === "--stall-timeout" ? valueAfter(a, argv[++i]) : a.slice("--stall-timeout=".length);
       const secs = Number(raw);
       if (!Number.isFinite(secs) || secs < 0) {
-        throw new Error(`--stall-timeout expects seconds (0 disables), got: ${raw}`);
+        throw commandLineError(`--stall-timeout expects seconds (0 disables), got: ${raw}`);
       }
       args.stallTimeoutMs = secs * 1000;
     } else {
-      throw new Error(`Unknown argument: ${a}`);
+      throw commandLineError(`Unknown argument: ${a}`);
     }
   }
   return args;
@@ -1611,6 +1631,10 @@ async function main() {
 const isEntry = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isEntry) {
   main().catch((err) => {
+    if (err?.commandLine) {
+      console.error(err.message);
+      process.exit(4);
+    }
     // A stall report is the diagnostic; the Error wrapping it carries a
     // stack pointing at the watchdog's own setInterval, which tells the
     // reader nothing and buries the part that does.
