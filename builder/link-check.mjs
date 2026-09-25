@@ -12,6 +12,9 @@
 //                             worker memory, and an index built from the
 //                             build's own output records.
 //
+// scripts/crawl_check.mjs, which checks a deployed site over HTTP, takes
+// only forEachLink from it, so it follows the same links as these two.
+//
 // The module lives in builder/ rather than scripts/lib/ and the
 // dependency runs script -> builder, never the reverse. Extraction runs
 // on worker threads in the build's hot path; importing across into
@@ -89,6 +92,23 @@ function* splitSrcset(value) {
   }
 }
 
+// Calls fn with each link an element's attributes hold, as
+// LINK_ATTR_TABLE lists them: once per URL in a srcset, once for any
+// other attribute's value.
+export function forEachLink(name, attribs, fn) {
+  const attrs = LINK_ATTR_TABLE.get(name);
+  if (!attrs) return;
+  for (const a of attrs) {
+    const v = attribs[a];
+    if (!v) continue;
+    if (SRCSET_ATTRS.has(a)) {
+      for (const u of splitSrcset(v)) fn(u);
+    } else {
+      fn(v);
+    }
+  }
+}
+
 // One pass per document: extract every outgoing link AND every fragment-
 // target id/name in a single parse. The Python original makes two
 // passes (extract_links over all files, then extract_fragment_ids over
@@ -127,6 +147,10 @@ export function extractFromHtml(html, captureIds, forbidPrefixes, checkOpts) {
       return;
     }
   } : null;
+  const addLink = (url) => {
+    links.push(url);
+    if (checkForbid) checkForbid(url);
+  };
 
   // Integrity state -- only allocated when requested.
   const doHtml      = checkOpts?.checkHtml  ?? false;
@@ -162,22 +186,7 @@ export function extractFromHtml(html, captureIds, forbidPrefixes, checkOpts) {
         }
       }
       // ── existing: extract links ────────────────────────────────
-      const attrs = LINK_ATTR_TABLE.get(name);
-      if (attrs) {
-        for (const a of attrs) {
-          const v = attribs[a];
-          if (!v) continue;
-          if (SRCSET_ATTRS.has(a)) {
-            for (const u of splitSrcset(v)) {
-              links.push(u);
-              if (checkForbid) checkForbid(u);
-            }
-          } else {
-            links.push(v);
-            if (checkForbid) checkForbid(v);
-          }
-        }
-      }
+      forEachLink(name, attribs, addLink);
 
       // ── check-html: track foreign content ──────────────────────
       if (doHtml && FOREIGN_ROOTS.has(name)) foreignDepth++;

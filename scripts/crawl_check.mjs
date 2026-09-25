@@ -1,7 +1,8 @@
 // External-link crawler for a deployed site. Starts at a URL,
-// recursively GETs every same-origin/same-basepath page, extracts
-// links, and verifies each link responds 2xx (HEAD for cross-origin,
-// GET for same-origin since we need the HTML anyway).
+// recursively GETs every same-origin/same-basepath page, extracts the
+// links the build's check follows (forEachLink, builder/link-check.mjs),
+// and verifies each link responds 2xx (HEAD for cross-origin, GET for
+// same-origin since we need the HTML anyway).
 //
 // Usage:
 //   node scripts/crawl_check.mjs <start-url> [--concurrency N] [--timeout MS]
@@ -10,6 +11,7 @@
 // Exits 0 if all links are reachable, 1 if any are broken.
 
 import { Parser } from "htmlparser2";
+import { forEachLink } from "../builder/link-check.mjs";
 
 const args = process.argv.slice(2);
 let startArg = null;
@@ -95,11 +97,7 @@ function extractFromHtml(html) {
     onopentag(name, attrs) {
       if (attrs.id) ids.add(attrs.id);
       if (attrs.name && (name === "a" || name === "input")) ids.add(attrs.name);
-      if (name === "a" && attrs.href) links.push(attrs.href);
-      else if (name === "link" && attrs.href) links.push(attrs.href);
-      else if (name === "img" && attrs.src) links.push(attrs.src);
-      else if (name === "script" && attrs.src) links.push(attrs.src);
-      else if (name === "iframe" && attrs.src) links.push(attrs.src);
+      forEachLink(name, attrs, (url) => links.push(url));
     },
   });
   parser.write(html);

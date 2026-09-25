@@ -529,6 +529,37 @@ URL, and otherwise ask before crawling the live site. The after run requests the
 `poster` targets, and reports nothing the before run did not, apart from any link in those
 attributes that is actually broken.
 
+**Landed**, with one change of shape. Exporting the table and `splitSrcset` would have left a
+second copy of the loop over them in `crawl_check.mjs`, including which attribute is a
+srcset. So `link-check.mjs` exports one function instead, `forEachLink(name, attribs, fn)`,
+which walks the table and splits a srcset; `extractFromHtml` and `crawl_check`'s tag handler
+both call it, and the table and `splitSrcset` stay private. `crawl_check`'s id capture is
+unchanged. Tools.md's paragraph says it follows every link the build's check follows.
+
+`extractFromHtml` gives the same results: a scratch script ran HEAD's copy and the edited one
+over every `.html` file in the three built trees, the check fixture's trees and the fixture
+below (2,414 files, 1,777,900 links), with every option on and with every option off, and no
+field of any result differed. `check_links_diff.mjs --a script --b fused` found no
+differences across 6 cases.
+
+The tool takes a start URL, so both runs used a scratch static server on `127.0.0.1` that
+resolves a path as `serve.mjs` does and, as GitHub Pages does, redirects a folder URL without
+its trailing slash to the slash form. Without the redirect, 626 links came back broken, all
+from folder pages fetched without the slash; an agent confirmed the redirect on both live
+sites (a 301 with an absolute `Location`), and found no GitHub documentation of it. Node's
+server also closes an idle keep-alive socket after 5 s, which failed 30 fetches until the
+scratch server kept its sockets longer.
+
+Against the built site, with `--skip-external`, before and after: 1,247 pages crawled, 3,228
+unique links, 0 broken, 0 missing anchors, the two reports identical apart from the elapsed
+time. The site uses none of the newly followed attributes: nothing in `_site` has a `srcset`,
+`poster`, `cite`, `action`, `data` or `longdesc`. So the fixture carried the test: one page
+with a missing target for each of the table's 26 pairs, 28 URLs in all, since both srcsets
+list two. Before, 5 broken (`a`, `link`, `img src`, `script`, `iframe`); after, all 28, the
+srcset and poster targets included. `compare_trees`: Tools.html online and offline, the search
+data and `book.html`, nothing else. Two defects found on the way are recorded under Found
+while implementing.
+
 ### C23 — `scripts: check_examples restores the registry after a spawn failure`
 
 **L3-2 (R2)**, with V4's note that `check_examples.mjs` has no process-level handler at all.
@@ -1754,6 +1785,22 @@ Defects the review did not have, found by building something this plan asks for.
   before `highlighterInit`, where `loadData` waits for `highlighterInit`, which waits for
   `config`. And the Gantt paragraph says boot timings form a row group of their own, where
   they are drawn at the start of each worker's row. Not fixed: a docs commit of its own.
+
+- **`crawl_check.mjs` can exit 127 on Windows where it should exit 1**, found while
+  verifying C22. It calls `process.exit()` straight after printing its report, while `fetch`'s
+  sockets are still closing, and libuv (Node 24.13.0) aborts on an assertion,
+  `!(handle->flags & UV_HANDLE_CLOSING)` in `src\win\async.c:76`. The report is complete; the
+  exit code is not. It happened on three of three runs against the C22 fixture and on none of
+  four against the site; a clean run reaches the same `process.exit(0)`, so nothing shows it is
+  safe. Not fixed.
+
+- **`serve.bat` serves a folder page at its URL without the trailing slash** rather than
+  redirecting, as GitHub Pages does, so the page's relative links resolve one level too high.
+  The built site links 74 folder pages that way, e.g. `../../tB/Modules/Collection` from
+  Permanent-Links. On the live site those links cost a 301; in a `serve.bat` preview reached
+  through one of them, the page's relative links are broken. `serve.mjs`'s resolver (about
+  `:84-100`) has the same three candidates the C22 scratch server started with, whose crawl
+  found 626 broken links for this reason. Not fixed.
 
 ## Open questions
 

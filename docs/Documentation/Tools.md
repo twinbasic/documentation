@@ -260,7 +260,7 @@ Exit code 1 indicates broken links; exit code 2 indicates integrity-only failure
 
     node scripts/crawl_check.mjs <start-url> [--concurrency N] [--timeout MS] [--skip-external]
 
-Online link crawler for the deployed site. Starts at `<start-url>`, GETs every same-origin / same-base-path page recursively, extracts links, and verifies that each link responds 2xx (HEAD for cross-origin, GET for same-origin). Exits 0 if all links are reachable, 1 if any are broken. Use it after a manual `workflow_dispatch` deploy to verify the published site --- `check_links.mjs` covers the local filesystem; `crawl_check.mjs` covers the live deployed site.
+Online link crawler for the deployed site. Starts at `<start-url>`, GETs every same-origin / same-base-path page recursively, extracts every link the build's own check follows (`srcset` and `poster` included), and verifies that each link responds 2xx (HEAD for cross-origin, GET for same-origin). Exits 0 if all links are reachable, 1 if any are broken. Use it after a manual `workflow_dispatch` deploy to verify the published site --- `check_links.mjs` covers the local filesystem; `crawl_check.mjs` covers the live deployed site.
 
 ### check_a11y.mjs
 {: #check-a11y }
