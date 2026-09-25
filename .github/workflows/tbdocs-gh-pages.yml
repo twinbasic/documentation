@@ -149,6 +149,14 @@ jobs:
       # real 908. No browser, no built tree.
       - name: Verify the page-count drift guard (check_page_baseline.mjs)
         run: node scripts/check_page_baseline.mjs
+      # The book-coverage warnings say nothing when every page has an entry
+      # in docs/_book.yml, which is also all a check that had stopped working
+      # would say. Before they existed, whole sections dropped out of the PDF
+      # without a word. These probes give each of the five findings a fault
+      # to report, on a manifest and pages built in memory. No browser, no
+      # built tree.
+      - name: Verify the book-coverage warnings (check_book_coverage.mjs)
+        run: node scripts/check_book_coverage.mjs
       # Graphviz sizes each node box from a width table; the browser paints the
       # label with a real font, and nothing in the build compares the two -- so a
       # mismatch ships as text hanging outside its box on a green build. See the

@@ -76,6 +76,16 @@ node scripts/check_code_regions.mjs
 @rem tree, no browser, ~60 ms.
 node scripts/check_page_baseline.mjs
 @if errorlevel 1 goto :fail
+@rem The book-coverage warnings say nothing when every page has an entry
+@rem in docs\_book.yml -- in a part, or in left_out with a reason -- which
+@rem is also all a check that had stopped working would say. Until they
+@rem existed, whole sections dropped out of the PDF without a word: the
+@rem IDE, Challenges and Videos, and Data Types and Enumerations with them.
+@rem These probes give each of the five findings a fault to report, on a
+@rem manifest and pages built in memory, so they mean the same against an
+@rem empty docs\. No tree, no browser, well under a second.
+node scripts/check_book_coverage.mjs
+@if errorlevel 1 goto :fail
 @rem check_a11y.mjs injects a PATCHED axe bundle (plain-color-fields,
 @rem -26 % on a realistic page set). The patch asserts its substitution
 @rem targets, so an axe-core bump fails loudly; this catches the other
