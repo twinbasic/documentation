@@ -16,6 +16,10 @@ this file once they are in.
   settled further while the passes ran (below), and the four superseded pdf-lib shims were
   deleted. The passes also raised a theme the review will lead with: markdown is repeatedly
   processed as text, each tool deciding privately what counts as code.
+- 2026-09-25: the review is written, [REVIEW-TOOLING-fe9ce12b.md](REVIEW-TOOLING-fe9ce12b.md),
+  with its evidence beside it in [REVIEW-TOOLING-fe9ce12b/](REVIEW-TOOLING-fe9ce12b/README.md).
+  The owner accepted all seven of its decisions as recommended (listed below). Decision (f),
+  the `staging.md` content slip, is already fixed. Next: the commit plan, added to this file.
 
 ## Decisions
 
@@ -51,6 +55,26 @@ Made on 2026-09-25, before the review started.
    one implementation reading a tree two ways.
 6. **A gate checks that both CI workflows run the same gates as the wrappers**, rather than
    generating the workflows and wrappers from one list.
+
+Taken on the review's recommendations, 2026-09-25; the letters are the review's:
+
+- **(a) One shared markdown module, in a new top-level `lib/`**: markdown-it block regions,
+  one tested inline-code splitter, and a frontmatter splitter on js-yaml 4. gray-matter, and
+  the js-yaml 3 it bundles, are dropped. The five rewriting sites move onto it before the ten
+  scanning sites.
+- **(b) A parity gate for `impexp.mjs` and `impexp.py`**, run unconditionally in CI. Whether
+  `test.bat` then requires Python or reports the gate as skipped, loudly, is settled when the
+  gate is written.
+- **(c) Load-time checks in each pdf-lib shim, and an equivalence test against stock
+  pdf-lib**, modelled on the axe patch and `check_axe_patch_equiv.mjs`.
+- **(d) A composite CI action for the two workflows' shared steps**, after the roster gate of
+  decision 6.
+- **(e) Command lines:** Phase 2 builds `scripts/lib/cli.mjs` on `node:util` `parseArgs` with no
+  change in behaviour; Phase 3 converges on `impexp.mjs`'s discipline (`--help` to stdout and
+  exit 0, errors to stderr and exit 2, one table of exit codes per tool).
+- **(f) The `staging.md` content slip is fixed now**, as data, ahead of the tooling.
+- **(g) The pinning policy is stated** (exact where the code patches a dependency or relies on
+  its internals, caret otherwise), and Builder.md's stale Dependencies section is fixed.
 
 ## Scope
 
