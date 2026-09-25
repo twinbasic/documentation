@@ -703,6 +703,21 @@ Dependencies gains both rows.
 **Verify.** `npm ls picocolors pako` shows both as direct dependencies at the same versions,
 and `package-lock.json` should change only in its root entry. The tree comparison identical.
 
+**Landed** as the entry describes. Each package was installed once, at the version declared,
+and both lockfiles agreed with every package's own `package.json` apart from the optional
+packages for other platforms, so `npm install` reported the tree up to date and changed no
+installed file. `package-lock.json` changed only in its root entry, and `npm ls` shows both
+at depth 0. Builder.md's block gains both, its prose says what each is for, and its pinned
+list gains `pako`, making six: `fast-inflate.mjs` patches the copy it imports, which reaches
+pdf-lib only while the two share one copy, and 1.0.11 is the last 1.x release, the only one
+pdf-lib's own `^1.0.11` accepts. Declaring pako 2 instead would put it at the root and nest
+pdf-lib's own copy under `pdf-lib/`, and the patch would stop reaching pdf-lib without an
+error.
+
+Verified with two `--keep` runs of the tree comparison, one before the install and one after:
+HEAD's two builds are identical under the three normalisers, and the working tree differs from
+HEAD only in Builder.html, the search index and `book.html`.
+
 ### C10 — `scripts: move census_attributes.mjs out of builder/`
 
 **A8-2 (R2).** It imports `../scripts/lib/tb-packages.mjs` (`:79`) against `builder/`'s rule
