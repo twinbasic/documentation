@@ -27,7 +27,7 @@ CLI flags:
 | Flag | Effect |
 |---|---|
 | `--src <path>` | Source root (default `docs`). |
-| `--dest <path>` | Online tree destination (default `<src>/_site`). The offline tree lands at `<dest>-offline`, the PDF tree at `<dest>-pdf`. |
+| `--dest <path>` | Online tree destination (default `<src>/_site`). The offline tree lands at `<dest>-offline`, the PDF tree at `<dest>-pdf`. It may not be or contain `<src>`, and inside `<src>` it must be, or be inside, a folder directly under it whose name starts with `_site`, `_serve` or `_pdf`; the build refuses any other. |
 | `--baseurl <prefix>` | Overrides `_config.yml`'s `baseurl` (used by CI to inject the GitHub Pages base path on fork deployments). |
 | `--url <origin>` | Overrides `_config.yml`'s `url` (used by CI so canonical URLs match the deployment origin). |
 | `--dry-run` | Skip every filesystem write. |

@@ -748,6 +748,7 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | `preparePageDirs` | `(pages, staticFiles, destRoot, offlineRoot) → Promise<void>` | Pre-creates every page output directory on both trees. Called by `prepPageDirs` so `flush:i` skips `mkdir`. |
 | `WRITE_LIMIT` | `64` | Concurrency ceiling for `runLimited`. |
 | `isUnderProject` | `(destRoot) → boolean` | Guard against destructive `--dest` values. Used by `writeOffline` and `writePdf`. |
+| `assertDestinationClearOfSource` | `(srcRoot, destRoot) → void` | Throws when `destRoot` is or contains the source tree, or lies inside it anywhere but in a folder directly under it that `isOutputTree` names. Called by `runBuild` before any task runs. |
 | `assertNoDestinationCollisions` | `(pages, staticFiles) → void` | Throws when a static file's `destRel` would overwrite a page's `destPath`. |
 | `mkdirRec` | `(dir) → Promise<void>` | Recursive `mkdir` with in-flight deduplication cache. |
 | `runLimited` | `(items, limit, fn) → Promise<void>` | Concurrency-limited per-item runner. |

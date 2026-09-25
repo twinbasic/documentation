@@ -876,6 +876,49 @@ The test builds overwrote `docs/_site-basepath`, which `check_links_diff.mjs --b
 reads, so it was rebuilt the way that tool builds it, with `--baseurl /twinBASIC-docs
 --no-offline --no-pdf`.
 
+### C13a — `builder: refuse a --dest that overlaps the source tree`
+
+**Found while implementing C13**, and given a commit of its own by the owner. `serve.mjs`'s
+watcher skips output trees by name, never by the path it serves from, so a `--dest` inside
+`docs/` with any other name is watched as source.
+
+**Change.** Found while implementing proposed that the watcher skip the serve's own
+destination as well.
+
+**Verify.** `serve.bat --dest docs/preview` starts no rebuild of its own, and an edit still
+starts one.
+
+**Landed** differently, because reproducing the fault showed that the watcher is not the only
+reader of the destination. A serve given `--dest docs/preview-c13a` on port 4010 started its
+first rebuild with no edit, on late directory events from its initial build (`Changed:
+preview-c13a/CustomControls, …`), and every rebuild failed in `discover`. `_config.yml`
+excludes only `_*` at the top of `docs/`, so the previous output was read as source, and the
+publish allowlist refused five of its files: both `impexp` downloads, both JSON files and
+`sitemap.xml`. Any other build over `docs/` reads the folder the same way while it exists.
+Skipping it in the watcher would have left every rebuild failing. For a name that `discover`
+skips and `isOutputTree` does not, such as `_preview`, each rebuild's writes would start the
+next, as the original note said; that case follows from the same log and was not reproduced.
+
+So `write.mjs` gains `assertDestinationClearOfSource(srcRoot, destRoot)`, which `runBuild`
+calls before any task, for a build and for each of a serve's builds. It refuses a destination
+that is or contains the source tree, which `prepareDestinations` would delete, having checked
+only that it lies under the project; and one inside the source tree unless its first folder
+there is one that `isOutputTree` names, which is what both `discover` and the watcher skip.
+The watcher's name test then covers the serve's destination, and `serve.mjs` changes only in
+its comment. The rule is in the `--dest` rows of Tools.md and `builder/README.md`, and
+Pipeline-Stages.md has a row for the function.
+
+Verified: a scratch probe gives the expected answer for 21 destinations. Among them
+`docs/_site-basepath`, `docs/_site/sub`, the fixture build's `test/fixtures/_out` and
+compare_trees' `.compare-out/site` pass; `docs/preview`, `docs/_foo`, `docs/_SITE`,
+`docs/..foo`, `docs/preview/_site`, `docs` itself and the repository root are refused. Every
+in-tree caller of `tbdocs --dest` passes. A build and a serve given `--dest docs/preview-c13a`
+both exit 1 before writing anything, the build with a stack from `main()`'s catch, which C18
+replaces for command-line errors. A serve given `--dest docs/_serve-c13a` built, started no
+rebuild in the eight seconds after, rebuilt once when `Tools.md`'s time stamp changed, and did
+not rebuild again. The tree comparison differs only in Tools.html, Pipeline-Stages.html, the
+search index and `book.html`.
+
 ### C14 — `builder: delete what the retired diff tools left behind`
 
 **A2-1 / A1-5 / L4-4, A1-4, A2-2 / A9-10 (all R2).** `644d6bdb` deleted `_diff.mjs`,
@@ -1003,7 +1046,9 @@ argument errors (`:384,399,403`), its integrity bit.
 
 **Change.** In both tools a command-line error exits with one value outside the 1/2/3
 bitmask. 4 is recommended: no run that reaches a check can produce it. Both usage texts and
-Tools.md's exit-code rows say so. Phase 3's convention, where an argument error exits 2,
+Tools.md's exit-code rows say so. C13a added one more command-line error to `tbdocs`: the
+refusal of a `--dest` that overlaps the source tree. It is thrown from `runBuild`, not
+`parseArgs`, so it must be told apart from a crash to exit 4 as well. Phase 3's convention, where an argument error exits 2,
 records these two tools as the exception, and C60 names the value beside the two bits.
 
 **Verify.** `tbdocs --bogus`, and `check_links.mjs` with no input, both exit 4. The fixture
@@ -2269,6 +2314,10 @@ Defects the review did not have, found by building something this plan asks for.
   next one. `serve.bat` passes its arguments through, so `serve.bat --dest docs/preview` is
   enough. Not fixed: C13 only corrected the comment that said otherwise. The fix is for the
   watcher to skip the serve's own destination as well.
+
+  **Fixed in C13a, which found this diagnosis incomplete**: `discover` reads such a folder as
+  source too, so every rebuild fails the publish allowlist, and the fix is for the build to
+  refuse the destination. See C13a's Landed note.
 
 ## Open questions
 

@@ -207,7 +207,7 @@ Full invocation:
 | Flag | Effect |
 |---|---|
 | `--src <path>` | Source root. Default: `docs` relative to the working directory. |
-| `--dest <path>` | Online-tree destination. Default: `<src>/_site`. The offline tree lands at `<dest>-offline`, the PDF tree at `<dest>-pdf`. |
+| `--dest <path>` | Online-tree destination. Default: `<src>/_site`. The offline tree lands at `<dest>-offline`, the PDF tree at `<dest>-pdf`. The build refuses a destination that is or contains `<src>`, since cleaning it would delete the source. Inside `<src>`, it must be, or be inside, a folder directly under it whose name starts with `_site`, `_serve` or `_pdf`: anywhere else there, its output is read back as source by the next build or by `--serve`'s watcher. |
 | `--baseurl <prefix>` | Overrides `_config.yml`'s `baseurl`. Used by CI to inject the GitHub Pages base path on fork deployments. |
 | `--url <origin>` | Overrides `_config.yml`'s `url`. Used by CI so canonical URLs match the actual deployment origin rather than the configured production host. |
 | `--dry-run` | Skip every filesystem write. Useful for benchmarking or validating discovery / compute / render. |

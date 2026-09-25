@@ -51,7 +51,7 @@ import {
 } from "./render.mjs";
 import { loadHighlightTheme } from "./highlight-theme.mjs";
 import { buildInitConfig, renderSidebar } from "./template.mjs";
-import { writePhase, prepareDestinations, preparePageDirs, writeFileMkdirp } from "./write.mjs";
+import { writePhase, prepareDestinations, preparePageDirs, writeFileMkdirp, assertDestinationClearOfSource } from "./write.mjs";
 import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
 import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
 import { writeSearchDataFromChunks } from "./search.mjs";
@@ -1399,6 +1399,7 @@ export async function runBuild(opts) {
   const { src, dest } = opts;
   const srcRoot = path.resolve(process.cwd(), src);
   const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site"));
+  assertDestinationClearOfSource(srcRoot, destRoot);
 
   // When serve.mjs reuses a pool across rebuilds, opts.pool is passed in;
   // runBuild() then skips pool create/destroy.  rebuild === true means this

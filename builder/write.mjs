@@ -18,6 +18,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isOutputTree, OUTPUT_TREES } from "../lib/markdown-files.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -124,6 +125,28 @@ export async function preparePageDirs(pages, staticFiles, destRoot, offlineRoot)
 export function isUnderProject(destRoot) {
   const rel = path.relative(PROJECT_ROOT, destRoot);
   return rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel);
+}
+
+// Inside the source tree, what both discover (`_config.yml` excludes `_*`)
+// and serve's watcher skip is a folder directly under it that isOutputTree
+// names, and everything in it. Anything else there is taken for source:
+// after a build to --dest docs/preview, the next build over docs/ fails the
+// publish allowlist on the last one's output, and a serve to a folder that
+// discover skips but the watcher does not rebuilds on its own writes.
+// Cleaning a destination that is or contains the source tree deletes the
+// source. runBuild calls this before discover, which is the first to fail.
+export function assertDestinationClearOfSource(srcRoot, destRoot) {
+  const rel = path.relative(srcRoot, destRoot);
+  if (path.isAbsolute(rel)) return;
+  const segs = rel.split(path.sep);
+  if (segs.every((s) => s === ".." || s === "")) {
+    throw new Error(`refusing --dest ${destRoot}: it is or contains the source tree ${srcRoot}, which cleaning it would delete`);
+  }
+  if (segs[0] === ".." || isOutputTree(segs[0])) return;
+  throw new Error(
+    `refusing --dest ${destRoot}: it is inside the source tree, so a build would read its output back as source, ` +
+    `or serve would rebuild on its own writes. Use a folder directly under ${srcRoot} whose name starts with ` +
+    `${OUTPUT_TREES.join(", ")}, or one inside such a folder, or one outside ${srcRoot}.`);
 }
 
 // ---------- §5.2 writePages ---------------------------------------------

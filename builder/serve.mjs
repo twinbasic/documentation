@@ -171,8 +171,9 @@ export async function runServe(opts) {
   // build.bat run (for the PDF, an offline-mirror check, ...) doesn't clobber
   // the running serve session's output mid-watch. The HTTP server and both
   // runBuild calls below key off this path. The watcher does not: it skips
-  // output trees by name (isOutputTree), so a --dest inside docs/ whose name
-  // does not start with _site, _serve or _pdf has every rebuild start another.
+  // output trees by name (isOutputTree), which covers this path because
+  // runBuild refuses a --dest inside docs/ that is not in an output tree
+  // directly under it (assertDestinationClearOfSource).
   const destRoot = path.resolve(opts.dest ?? path.join(srcRoot, "_serve"));
   const port = opts.port ?? 4000;
 
