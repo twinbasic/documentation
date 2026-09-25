@@ -689,6 +689,12 @@ and warns again when there is no `[RunAfterBuild]` at all.
 reason. The probe never runs then, so the console still holds that log --- `[BUILD] failed`,
 often after `[TYPELIB] failed to finalize typelibrary` --- and `tbrun` used to return it as the
 probe's output, with exit 0. Run it again: both failures seen so far passed on a second run.
+A `[RunAfterBuild]` Sub that fails code generation exits 2 the same way: the build succeeds,
+the console adds `[LINKER] compilation (codegen) error detected in '<module>.<procedure>'`,
+and nothing in the Sub runs, `Debug.Cls` included. A procedure the probe *calls* that fails
+code generation is not caught. Its error line is written before the probe's first statement,
+which erases it, and the probe stops at the call, so `tbrun` exits 0 with the output printed
+up to that point.
 
 **The capture is complete however much a probe prints**, so there is no reason to keep one
 short. `tbrun` reads the console's backing array rather than the pane, which is a virtualised

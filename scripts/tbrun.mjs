@@ -18,8 +18,9 @@
 //       --show / --hide   as tbbuild's
 //
 // Exit: 0 captured output, 1 the project has compile errors, 2 the harness
-// failed -- a build that fails after a clean compile included, since the probe
-// never runs -- 3 the build produced no console output before the timeout.
+// failed -- a build that fails after a clean compile included, and a
+// [RunAfterBuild] Sub that fails code generation, since the probe never runs
+// -- 3 the build produced no console output before the timeout.
 //
 // ---------------------------------------------------------------- why
 //
@@ -95,8 +96,9 @@ import { existsSync, readFileSync, mkdirSync, statSync, readdirSync, rmSync } fr
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { compilerExe, findIde } from "./lib/tb-install.mjs";
-import { TARGETS, attachIde, clickCenter, compileOutcome, killTree, launchIde, readConsole,
-         setBuildTarget, shutdownIde, summaryLine, waitForCompile, wantShow } from "./lib/tb-ide.mjs";
+import { BUILD_FAILED, TARGETS, attachIde, clickCenter, compileOutcome, killTree, launchIde,
+         readConsole, setBuildTarget, shutdownIde, summaryLine, waitForCompile,
+         wantShow } from "./lib/tb-ide.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
@@ -323,10 +325,14 @@ if (failure) die(2, `tbrun: ${failure}`);
 // IDE's own build log in the console. The probe's first statement is Debug.Cls,
 // which would have erased that log, so its survival means the capture is not the
 // probe's output. Returned as output, a `[TYPELIB] failed to finalize
-// typelibrary` build exited 0 twice in round 8's fix pass.
-if (captured.some((l) => /^\[(BUILD\]\s+failed|LINKER\]\s+FAILED)\b/i.test(l))) {
-  die(2, "tbrun: the build failed, so the probe never ran. The console holds the IDE's " +
-         `build log, not the probe's output:\n${captured.map((l) => `  ${l}`).join("\n")}`);
+// typelibrary` build exited 0 twice in round 8's fix pass. A [RunAfterBuild] Sub
+// that fails code generation leaves the log too: the build succeeds, and then
+// nothing in the Sub runs, Debug.Cls included. BUILD_FAILED is buildProject's
+// list of failure lines, the code-generation one among them.
+if (captured.some((l) => BUILD_FAILED.test(l))) {
+  die(2, "tbrun: the build or the probe's code generation failed, so the probe never ran. " +
+         "The console holds the IDE's build log, not the probe's output:\n" +
+         captured.map((l) => `  ${l}`).join("\n"));
 }
 if (!captured.length) {
   die(3, "tbrun: the build produced no console output before the timeout.\n" +

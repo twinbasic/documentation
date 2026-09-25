@@ -731,7 +731,7 @@ export const consoleMark = (c) => c.evaluate(CONSOLE_MARK_JS);
 // ...", "[BUILD] failed" and "[LINKER] compilation (codegen) error ...".
 const BUILD_START = "[BUILD] Starting...";
 const BUILD_OK = /^\[LINKER\] SUCCESS created output file '(.+)'$/;
-const BUILD_FAILED = /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[LINKER\] compilation \(codegen\) error/;
+export const BUILD_FAILED = /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[LINKER\] compilation \(codegen\) error/;
 
 /**
  * Build the open project, as the toolbar's Build button does, and wait for the

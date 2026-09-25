@@ -1033,6 +1033,33 @@ comparison differs only in Pipeline-Stages.html, Wisdom.html, the search index a
 ones fail the old pattern. A probe project with a compile error makes `tbrun` exit non-zero,
 and a clean one still prints its output and exits 0 (harness runs).
 
+**Landed** as the entry describes, and verified end to end with a failure the old pattern
+missed rather than with a compile error. A compile error never reaches the pattern: `tbrun`
+exits 1 on the compile's error count before it builds. BUGS-TO-REPORT.md records a shift of
+a `Single` that compiles clean and then fails code generation, so the probe's
+`[RunAfterBuild]` Sub did that. Before the change, `tbrun` exited 0 and returned the IDE's
+log as the probe's output: `[BUILD] Starting...`, `[LINKER] SUCCESS created output file`,
+`[BUILD] Executing 'DocSamples.Probe.Run'...` and `[LINKER] compilation (codegen) error
+detected in 'Probe.Run' at line #11`. Nothing in the Sub ran, `Debug.Cls` included. After it,
+the same probe exits 2 and prints that log as the reason, and a clean probe still prints
+`clean probe 2` and exits 0. The message and the header's exit-code line now name code
+generation beside the build, since the build succeeded there. Tools.md's paragraph and
+WIP.Harness.md's bullet on failed builds say the same.
+
+A scratch script tested all five shapes against the exported pattern and the old one: the
+new one matches all five and none of five ordinary lines from the same log, and the old one
+misses `[BUILD] ERROR` and the codegen line. The `[BUILD] FAILED` and `[BUILD] ERROR` test
+lines have made-up tails, since no build here produced either; the other three are real lines
+from WIP.Harness.md and these runs. The old pattern was
+case-insensitive and allowed any run of spaces; the build log writes one space and the case
+the list names, so nothing real is lost.
+
+Harness runs, one at a time, on BETA 983: probe A (the shift in the `[RunAfterBuild]` Sub),
+before `exit 0`, after `exit 2`; probe B (clean), after `exit 0`; probe C (the shift in a
+procedure the probe calls), before and after `exit 0` with `before` as the output; probe C2
+(probe C without `Debug.Cls`), before, `exit 0`. Probe C is a gap no pattern can close; see
+Found while implementing.
+
 ### C17 — `scripts: harness CLIs reject a missing value; tbbuild finds its project`
 
 **L1-2, L1-3 (R1), A7-5 (R2).** Three defects in hand-written argument parsing, fixed in
@@ -2343,6 +2370,15 @@ Defects the review did not have, found by building something this plan asks for.
   tables", "the full export list per file". Not fixed. The plugin chain's rows for
   `svgInlinePlugin` and `headingLevelNormalizePlugin` say "Detailed above" and mean these
   rows, so the fix moves that detail rather than deleting it.
+
+- **`tbrun` exits 0 with partial output when a procedure the probe calls fails code
+  generation**, found while verifying C16. The codegen line naming the callee comes straight
+  after `[BUILD] Executing '<project>.<module>.<Sub>'...`, before the probe's first statement:
+  probe C2, which omits `Debug.Cls`, shows it above its own `before`. So the probe's
+  `Debug.Cls` erases it, the probe prints up to the call and stops, and nothing left in the
+  console says so. Not fixed. One direction: take the probe's output as everything after the
+  `[BUILD] Executing` line instead of relying on `Debug.Cls` to clear the log, so the line
+  stays visible; that changes what `tbrun` asks of a probe, and is the owner's call.
 
 ## Open questions
 
