@@ -20,7 +20,7 @@ permalink: /Documentation/Development/Book-Configuration
 
 `data.mjs` loads `_book.yml` during Phase 2 and makes it available as `site.data.book`. The orchestrator then exposes `site.data.book` as `site.bookData` and passes it to `resolveBookChapters`. That call traverses the entire structure and resolves every selector to a concrete `Page[]` stored as `entry._chapters`, so Phase 8's `assembleBook` has no further page lookups to do.
 
-Run `build.bat` then `book.bat` to see the effect of changes. `build.bat`'s link check includes a pass over `book.html`; see [Pages no entry selects](#pages-no-entry-selects).
+Run `build.bat` then `book.bat` to see the effect of changes. `build.bat` warns about a page the manifest does not mention; see [Pages left out of the book](#pages-left-out-of-the-book).
 
 ## Top-level structure
 
@@ -32,6 +32,10 @@ front_matter:
 parts:
   - <part>       # one or more numbered Parts
   - ...
+
+left_out:
+  - <entry>      # pages deliberately not in the book, each with a reason
+  - ...
 ```
 
 **`front_matter`** entries are emitted between the title page and the first numbered Part. They produce no divider page and no part number.
@@ -39,6 +43,8 @@ parts:
 **`parts`** entries each produce a numbered divider page. A part may contain a flat set of pages or an ordered list of `chapters`, each of which produces its own sub-divider page.
 
 Both `front_matter` entries and parts (and their chapters) share the [selector schema](#selector-schema) and [common entry options](#common-entry-options) described below.
+
+**`left_out`** entries name the pages that are not in the book on purpose. They use the selector schema and a `reason:`, and emit nothing; see [Pages left out of the book](#pages-left-out-of-the-book).
 
 ## Selector schema
 
@@ -54,14 +60,36 @@ Every entry may combine any of these keys to select the pages it contributes to 
 
 All selector keys are combinable within one entry. An entry with both `page` and `nav_page` collects the union of both selections. Selectors on a chapter entry are independent of the selectors on the containing part --- a chapter collects its own pages; the part does not automatically inherit them.
 
-## Pages no entry selects
+## Pages left out of the book
 
-A page that no entry selects is left out of the book. The build does not warn about it unless a page in the book links to it. Each such link opens the page on the website instead, because a site path goes nowhere in a PDF, and the link check's pass over `book.html` lists it as `OUT OF BOOK`:
+A page that no part, chapter or `front_matter` entry selects is not in the book. To leave a page out on purpose, name it in `left_out:` with the same selector keys and a `reason:`:
+
+```yaml
+left_out:
+  - reason: Time-limited community contests
+    page: /Challenges
+```
+
+Every page has to be in one or the other. When the book is built, the build's summary prints a `book:` warning for:
+
+- a page that no entry selects and `left_out:` does not name;
+- a page that is in the book and in `left_out:` as well;
+- a book entry that selects no page, or a `left_out:` entry that matches none --- usually a page that was renamed or deleted;
+- a `landing_page:` or `foreword_page:` URL that no page publishes at.
+
+A new page with no entry looks like this:
+
+      book:    1 page has no entry in _book.yml -- add each to a part, or to left_out with a reason:
+                 IDE/Probe.md  (/tB/IDE/Project/Probe)
+
+These are warnings: the exit code does not change, and the book is complete for the manifest it was given. A build with nothing to report prints no `book:` line. `serve.bat` does not build the book, so it never prints one.
+
+A link from inside the book to a page left out opens that page on the website, because a site path goes nowhere in a PDF. The link check's pass over `book.html` lists each such link as `OUT OF BOOK`:
 
     _site-pdf/book.html:
       OUT OF BOOK  https://docs.twinbasic.com/tB/IDE/Project/Explorer -- not in the book; opens the website
 
-That list is the place to look for a page the book should carry. A section that no entry selects at all, and that nothing in the book links to, does not appear in it.
+That list shows which left-out pages the book still links to. It is the first place to look for a page that belongs in the book after all.
 
 ## Common entry options
 

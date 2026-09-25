@@ -112,6 +112,14 @@
 #                    and common entry options above. No chapter-specific
 #                    options exist beyond those shared with parts.
 #
+# ── left_out ──────────────────────────────────────────────────────────
+# The pages deliberately not in the book. Each entry uses the selector
+# schema above plus a `reason:`. Every page must be selected by a book
+# entry or by a left_out entry: the build warns about a page that is in
+# neither, about a page that is in both, and about an entry here that
+# matches no page. So a new page cannot drop out of the book unnoticed,
+# and a renamed one cannot leave a stale entry behind.
+#
 # ── Sort order ────────────────────────────────────────────────────────
 # Per-entry content lists are ordered by sort_by_nav_order: folder-
 # style index pages first (URL ends in `/`), then nav_order pages by
@@ -248,8 +256,9 @@ parts:
   - title: The twinBASIC IDE
     subtitle: Starting, configuring, building, and debugging a project
     # Only the IDE pages with prose of their own. The rest of the section
-    # is still screenshots and the labels they show; list a page here once
-    # it explains something. Links to the pages left out open the website.
+    # is in left_out at the end of this file; move a page from there to
+    # here once it explains something. Links to the pages left out open
+    # the website.
     landing_page: /tB/IDE
     outline_closed: true
     chapters:
@@ -476,3 +485,54 @@ parts:
         page: /Documentation/Development/
         landing_is_target: true
         outline_closed: true
+
+left_out:
+  - reason: The site's error page
+    page: /404.html
+    no_descent: true
+
+  - reason: The Reference Section's index; the book's own parts and outline replace it
+    page: /Reference
+    no_descent: true
+
+  - reason: Links to video recordings, with nothing to read in print
+    page: /Videos
+
+  - reason: Time-limited community contests
+    page: /Challenges
+
+  - reason: IDE pages that are still screenshots and the labels they show, or headings with nothing under them
+    no_descent: true
+    pages:
+      - /tB/IDE/Project/Diagnostics
+      - /tB/IDE/Project/FindReplace
+      - /tB/IDE/Project/Editor
+      - /tB/IDE/Project/Editor/Form
+      - /tB/IDE/Project/Explorer
+      - /tB/IDE/AddIns/Community
+      - /tB/IDE/Project/Menu
+      - /tB/IDE/Project/Menu/Edit
+      - /tB/IDE/Project/Menu/View
+      - /tB/IDE/Project/Menu/Project
+      - /tB/IDE/Project/Menu/Format
+      - /tB/IDE/Project/Menu/Run
+      - /tB/IDE/Project/Menu/AddIns
+      - /tB/IDE/Project/Menu/Help
+      - /tB/IDE/Project/Menu/Tools      # one real line, under a visible TODO note
+
+  - reason: IDE pages that are complete but too short, or too much a list, to earn space in print yet
+    no_descent: true
+    pages:
+      - /tB/IDE/Project/StatusBar
+      - /tB/IDE/Project/Toolbox
+      - /tB/IDE/Project/Editor/Report
+      - /tB/IDE/Project/Properties
+      - /tB/IDE/Project/Webpage
+      - /tB/IDE/Project/Splash
+      - /tB/IDE/Project/Watches
+      - /tB/IDE/Project/Outline
+      - /tB/IDE/Project/History
+      - /tB/IDE/Project/OpenEditors
+      - /tB/IDE/Project/PackagePublishing
+      - /tB/IDE/AddIns/GlobalSearch
+      - /tB/IDE/Project/Menu/Window     # ~800 lines of shortcut JSON that would print unfolded

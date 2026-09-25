@@ -127,6 +127,10 @@ is marked *informational* and does not touch the exit code. All three lines must
 work plus the link check --- so a run still going after a minute is a
 [stall](#when-a-build-stops), not a slow machine.
 
+A healthy run also prints no `book:` line under its `pdf:` summary. That line is a warning
+about a page `docs/_book.yml` does not mention, in the book or in its `left_out:` list ---
+see [Book Configuration](Book-Configuration#pages-left-out-of-the-book).
+
 `check.bat` runs its four gates in order and ends on the scan's tally:
 
     13 pages x 2 theme(s) x 2 viewport(s) + 8 state audit(s) checked: 0 violation(s), 42 incomplete check(s)
