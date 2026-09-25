@@ -12,7 +12,7 @@ Read it before changing `scripts/tbbuild.mjs`, `scripts/tbrun.mjs`,
 `scripts/lib/tb-launch.ps1`, `scripts/lib/tb-registry.mjs`,
 `scripts/lib/tb-ide-copy.mjs`, `scripts/lib/tb-project.mjs`,
 `scripts/lib/tb-addin.mjs`, `scripts/lib/tb-operate.mjs`, `scripts/lib/tb-lane.mjs`,
-anything under `test/addin/`, or `builder/census_attributes.mjs`, and before
+anything under `test/addin/`, or `scripts/census_attributes.mjs`, and before
 concluding anything about twinBASIC syntax from a sweep of exported sources.
 
 ## Getting at the `.twin` sources
@@ -72,19 +72,16 @@ minutes, against a question that four documentation pages could not settle betwe
 
 ## Censusing every attribute at once
 
-[builder/census_attributes.mjs](builder/census_attributes.mjs) --- which sits under
-`builder/` by deliberate placement rather than because it renders anything; it is listed in
-`check_tree_fresh.mjs`'s `IGNORED_FILES` for exactly that reason, so editing it does not
-mark every output tree stale --- does the export above for
+[scripts/census_attributes.mjs](scripts/census_attributes.mjs) does the export above for
 every package of the current install and reports, per attribute, **which enclosing
 construct and which kind of declaration it decorates**. No arguments needed; it finds the
 newest `twinBASIC_IDE_BETA_*` the same way `tbbuild` does, caches the export by build
 number, and re-uses it.
 
 ```sh
-node builder/census_attributes.mjs --out census.md
-node builder/census_attributes.mjs --attr Hidden          # one attribute
-node builder/census_attributes.mjs --attr Hidden --dump-sites sites.json
+node scripts/census_attributes.mjs --out census.md
+node scripts/census_attributes.mjs --attr Hidden          # one attribute
+node scripts/census_attributes.mjs --attr Hidden --dump-sites sites.json
 ```
 
 Against BETA 983: **661 files, 9,701 attribute sites, 55 distinct attributes**, and every

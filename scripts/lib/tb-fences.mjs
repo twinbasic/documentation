@@ -331,7 +331,7 @@ export async function collectFences(root) {
 
 // Modifiers that may precede a declaration keyword. A modifier this list does
 // not know makes the keyword after it invisible, which is the silent
-// misclassification builder/census_attributes.mjs records paying for
+// misclassification scripts/census_attributes.mjs records paying for
 // (`NotDispatchable`, there).
 // The vocabulary is measured, not guessed: `Overridable` has 32 uses across the
 // shipped packages and 3 in docs/, and leaving it out cost three fences, which
@@ -346,7 +346,7 @@ const rx = (body) => new RegExp("^(?:" + MODS + "\\s+)*" + body, "i");
 // Every opener demands a NAME after the keyword. Without that guard a UDT field
 // called `Type As Long` -- four of them in the shipped packages -- reads as an
 // opener that never closes, and swallows the rest of the file; one such field
-// put 368 Declares inside a phantom Type when builder/census_attributes.mjs
+// put 368 Declares inside a phantom Type when scripts/census_attributes.mjs
 // made the same mistake.
 const NAMED = "\\s+(?!As\\b)[A-Za-z_\\[]";
 const CONTAINER_OPEN = rx("(?:Class|Module|Interface|CoClass|Library|Namespace)" + NAMED);

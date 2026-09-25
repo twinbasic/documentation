@@ -735,6 +735,28 @@ guard rather than a comment.
 reaches the page. `check_tree_fresh.mjs` clean. `census_attributes.mjs --json` byte-identical
 before and after (a harness run).
 
+**Landed** as the entry describes. `REPO` needed no change, since `scripts/` sits at the same
+depth as `builder/`. Seventeen lines citing the old path changed, in twelve files: the tool's
+own header, the three `scripts/lib/` modules and `build_package_api.mjs` that name it,
+Tools.md's usage line, the HTML comment in Attributes.md, `BUGS-TO-REPORT.md`, WIP.md and three
+WIP siblings. Two more places described the old placement rather than citing the path, and
+lost the description: Tools.md's opening paragraph listed the tool as the one executable
+under `builder/`, and WIP.Harness.md explained why it sat there and why `IGNORED_FILES` named
+it. The review's own files keep the old path, as records of `fe9ce12b`.
+
+Biome can express the rule. `biome.jsonc` gains an override for `builder/**/*.mjs` that turns
+on `style/noRestrictedImports` with the pattern `**/scripts/**`, a dependency guard although
+Biome files it under style. A probe under `builder/` showed it catching a static import, a
+re-export, a bare side-effect import and a dynamic `import()` into `scripts/`, and passing
+`picocolors` and `./render.mjs`; the same file under `scripts/` is not checked. With the
+census copied back into `builder/` with its old import, `check_lint.mjs` exits 1. C12's `lib/`
+needs a rule of its own, since it may import none of the tree's other folders.
+
+Verified: the census's `--json` report is byte-identical before and after the move, from the
+cached export of BETA 983 (661 files, 9,701 sites; no compiler started). The tree comparison
+differs only in Tools.html, Attributes.html (the HTML comment does reach the page), the search
+index and `book.html`, which carries both pages.
+
 ### C11 — `scripts: census_attributes finds the install through tb-install`
 
 **L2-2 (R1).** `findInstall` (`census_attributes.mjs:99-119`) recognises an install by its

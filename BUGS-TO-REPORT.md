@@ -427,7 +427,7 @@ file is written and the run ends `... DONE`.
 **What does not reproduce it:** a long *input* path to `export`, and any output folder short
 enough that no file path reaches 260 characters and no folder path 248.
 
-**Found by** the attribute census, `builder/census_attributes.mjs`, pointed at a cache folder
+**Found by** the attribute census, `scripts/census_attributes.mjs`, pointed at a cache folder
 inside a deep working directory: `WebView2Package` and the three `cefPackage` versions came
 back `... FAILED` while the other twelve packages exported. The census used to trust
 `export`'s exit code, so until it tested for `... DONE` it would have scanned those partial

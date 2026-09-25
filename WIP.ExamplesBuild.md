@@ -82,7 +82,7 @@ probe in `check_examples.mjs`:
   `Type_Initialize`, `Type_Assignment` and `Type_Conversion`, which is what
   `Features/Language/UDTs.md` is about. But a UDT *field* may also be called `Type As Long`,
   which reads as an opener that never closes --- the trap
-  `builder/census_attributes.mjs` records paying for, so every opener demands a name after
+  `scripts/census_attributes.mjs` records paying for, so every opener demands a name after
   the keyword.
 - **`Overridable` is a modifier**, with 32 uses in the shipped packages and 3 in `docs/`.
   Leaving it out of the list cost three fences, and they came back as *"End Function closing

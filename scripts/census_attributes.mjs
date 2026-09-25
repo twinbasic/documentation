@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Census every attribute used by the twinBASIC packages an IDE install ships.
 //
-//     node builder/census_attributes.mjs [options]
+//     node scripts/census_attributes.mjs [options]
 //
 //       --ide <path>       twinBASIC install root (default: $TB_IDE, else the
 //                          newest %USERPROFILE%/Desktop/twinBASIC_IDE_BETA_*)
@@ -76,7 +76,7 @@ import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { defaultCache, exportPackages, packageName } from "../scripts/lib/tb-packages.mjs";
+import { defaultCache, exportPackages, packageName } from "./lib/tb-packages.mjs";
 
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ATTR_DOC = path.join(REPO, "docs", "Reference", "Attributes.md");

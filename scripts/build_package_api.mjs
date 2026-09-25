@@ -9,7 +9,7 @@
 //                       else the newest Desktop\twinBASIC_IDE_BETA_<n>)
 //       --src <dir>     read an existing export of the packages instead
 //       --cache <dir>   where exports are kept (default %TEMP%\tb-census\beta-<n>,
-//                       shared with builder/census_attributes.mjs)
+//                       shared with scripts/census_attributes.mjs)
 //       --refresh       export again even if the cache has this build
 //       --out <file>    write somewhere other than builder/package-api.json
 //

@@ -54,13 +54,7 @@ const IGNORED_DIRS = new Set([".git", "node_modules"]);
 // same for the symbol index's URLs (builder/symbol-baseline.mjs), and is
 // rewritten by any build that adds a heading. package-api.json is not here: the
 // build reads it, and it decides the bytes of tB/symbols.json.
-// census_attributes.mjs lives under builder/ but decides none of the built
-// bytes -- it censuses twinBASIC package sources and never runs during a build.
-// Without this, editing it marks every output tree stale, which blocks check.bat
-// and makes book.bat refuse to render, for a tool the build never calls. Same
-// reasoning as page-baseline.json: the sources this script watches are "the
-// inputs that decide the built bytes", and neither file is one.
-const IGNORED_FILES = new Set(["page-baseline.json", "symbol-baseline.json", "census_attributes.mjs"]);
+const IGNORED_FILES = new Set(["page-baseline.json", "symbol-baseline.json"]);
 
 // The inputs that decide the built bytes. The source tree is the obvious
 // one; the builder and the theme sources matter just as much, and are

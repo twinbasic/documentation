@@ -8,7 +8,7 @@ permalink: /Documentation/Development/Tools
 # Tools and Scripts
 {: .no_toc }
 
-One-line-per-tool reference for every executable in the documentation repository: the seven Windows batch wrappers at the repository root, the Node and Python scripts under `scripts/` (cross-platform except for [`tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE), the `tbdocs` orchestrator and its CLI flags, [`census_attributes.mjs`](#census-attributes) under `builder/`, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper.
+One-line-per-tool reference for every executable in the documentation repository: the seven Windows batch wrappers at the repository root, the Node and Python scripts under `scripts/` (cross-platform except for [`tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE), the `tbdocs` orchestrator and its CLI flags, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper.
 
 * TOC goes here
 {:toc}
@@ -979,7 +979,7 @@ It also writes a key naming the `Attributes.md` line each probe came from, besid
 ### census_attributes.mjs
 {: #census-attributes }
 
-    node builder/census_attributes.mjs [--ide <install>] [--src <dir>] [--cache <dir>]
+    node scripts/census_attributes.mjs [--ide <install>] [--src <dir>] [--cache <dir>]
                                        [--refresh] [--samples] [--attr <name>]
                                        [--json] [--out <file>] [--dump-sites <file>] [--quiet]
 

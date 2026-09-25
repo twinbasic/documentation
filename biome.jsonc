@@ -53,6 +53,25 @@
       // ES5-style scripts that ship to readers as written.
       "includes": ["docs/assets/js/*.js"],
       "linter": { "rules": { "correctness": { "noInnerDeclarations": "off" } } }
+    },
+    {
+      // builder/ must not depend on scripts/. check_tree_fresh.mjs watches
+      // docs/ and builder/ as the inputs that decide the built bytes, and would
+      // not see a change to a module the build imported from scripts/. Biome
+      // files the rule under style; here it guards a dependency.
+      "includes": ["builder/**/*.mjs"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [{ "group": ["**/scripts/**"], "message": "builder/ must not depend on scripts/." }]
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

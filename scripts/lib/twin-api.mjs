@@ -14,7 +14,7 @@
 // is read, which is right for this corpus -- the branches it has guard features,
 // not alternatives -- and what it cannot place goes to `problems` rather than
 // being guessed at. Seven ways to misread this corpus, each met in the BETA 983
-// packages (builder/census_attributes.mjs lists six more, about attributes):
+// packages (scripts/census_attributes.mjs lists six more, about attributes):
 //
 //   1. A Type is not a record only. `Type HDC` in the VB package declares
 //      Private Subs with bodies, and a scanner that thinks a Type holds fields

@@ -585,7 +585,7 @@ Hides the declaration from certain IntelliSense and other lists. It applies to a
 > [!NOTE]
 > A **CoClass** can only be hidden whole. Its body holds nothing but **Interface** lines, and the attribute is refused there with TB5155 --- unlike [**Default**](#default) and [**Source**](#source), which are interface-line attributes. It is likewise refused on an **Enum** or [**Type**](Type) declaration, on a **Type** member, and on a procedure parameter, though an individual **Enum** *member* does accept it.
 
-<!-- Applicability from builder/census_attributes.mjs over BETA 983 (269 sites)
+<!-- Applicability from scripts/census_attributes.mjs over BETA 983 (269 sites)
      plus one probe per target via gen_attribute_probes.mjs + tbbuild.mjs.
      Census: Module DeclareWide 158, Module Const 50, Class Property 18 / Sub 9
      / variable 7 / Event 1, Interface Property 10 / Function 6 / Sub 3, whole

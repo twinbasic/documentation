@@ -130,7 +130,7 @@ because an install path contains a username.
 
 ```sh
 "$TB/bin/twinBASIC_win32.exe" export "<some>.twinproj" "C:\out\dir\" --overwrite
-node builder/census_attributes.mjs --out census.md   # every attribute, by enclosing construct
+node scripts/census_attributes.mjs --out census.md   # every attribute, by enclosing construct
 node scripts/tbbuild.mjs C:/probe/Thing.twinproj     # does it compile
 node scripts/tbrun.mjs <exported-source-dir>         # what does it print
 ```

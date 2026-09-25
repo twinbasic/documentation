@@ -1,5 +1,5 @@
 // The packages an IDE install ships, exported as source trees. Shared by
-// builder/census_attributes.mjs and scripts/build_package_api.mjs, which read
+// scripts/census_attributes.mjs and scripts/build_package_api.mjs, which read
 // the same trees for different questions, so that one export -- and one cache
 // of it -- answers both.
 //
