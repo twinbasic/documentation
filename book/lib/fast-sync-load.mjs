@@ -77,8 +77,8 @@ const { Keywords }           = require('pdf-lib/cjs/core/syntax/Keywords.js');
 const { toUint8Array, copyStringIntoBuffer, last } = require('pdf-lib/cjs/utils/index.js');
 
 // Pool-deduped PDFName instances are reference-stable for the whole
-// load (see fast-parse-dict.mjs for the same trick). Capture the three
-// sentinels parseIndirectObject's Type-dispatch needs.
+// load. Capture the three sentinels parseIndirectObject's Type-dispatch
+// needs.
 const TypeName   = PDFName.of('Type');
 const ObjStmName = PDFName.of('ObjStm');
 const XRefName   = PDFName.of('XRef');

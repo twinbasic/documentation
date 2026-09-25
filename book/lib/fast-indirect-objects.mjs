@@ -18,7 +18,7 @@
 // indirect objects, discarding each intermediate arena to GC.
 //
 // PDFRefs are overwhelmingly gen=0 (revisions / incremental updates
-// are the only gen!=0 producers, and they're rare). fast-refs.mjs
+// are the only gen!=0 producers, and they're rare). fast-refs-class.mjs
 // already exploits this on the key side -- a dense array indexed by
 // objectNumber for the PDFRef pool, Map fallback for gen!=0. This
 // shim does the same on the value side for PDFContext.indirectObjects.
