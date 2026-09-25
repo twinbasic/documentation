@@ -467,6 +467,21 @@ order, and the workflows differ only in three recorded ways.
 `checks.yml` with one gate step deleted fails. `check_gate_lists.mjs`'s 18 probes unchanged.
 CI waits for the owner's push.
 
+**Landed**, somewhat wider than the entry. The gate compares each gate's arguments as well as
+its name, since `pick_a11y_sample.mjs` without `--check` is a different gate; it reports an
+allowance that no longer matches anything, so the allowlist cannot quietly outlive its reason;
+and it reads the build flags as quoted tokens, because the deploy build's `--url` value is
+`'${{ steps.pages.outputs.origin }}'`, spaces included. Its probes number 13, on a synthetic set
+of wrappers and workflows rather than copies of the real files, so that they mean the same
+whatever state the real ones are in; two of them assert that CI may interleave the two
+wrappers' gates alike and may not interleave them differently.
+
+With `check_code_regions.mjs`'s step deleted from the real `checks.yml` (restored from git
+afterwards), it reported the missing gate and the two workflows parting at step 5, and exited
+1. Registering it found one more place restating `test.bat`: `check_gate_lists.mjs` failed on
+`Building.md`'s POSIX command block until the new gate was added there too. `test.bat`'s header
+and WIP.md now name a wrapper or a workflow among the changes that call for `test.bat`.
+
 ### C04 — `ci: one composite action for the gates both workflows run`
 
 **Decision (d).** After the roster gate, so the action is checked from its first commit.

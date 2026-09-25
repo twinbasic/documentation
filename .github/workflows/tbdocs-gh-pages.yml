@@ -118,6 +118,12 @@ jobs:
       # ~50 ms.
       - name: Verify the documented gate lists (check_gate_lists.mjs)
         run: node scripts/check_gate_lists.mjs
+      # This workflow and checks.yml against the wrappers: every gate
+      # test.bat and check.bat run, with the same arguments and in the same
+      # order, and a build with build.bat's flags. See the script's header
+      # for the differences it allows. No browser, no built tree.
+      - name: Verify the workflows run the wrappers' gates (check_ci_workflows.mjs)
+        run: node scripts/check_ci_workflows.mjs
       # An exponentially backtracking regex does not fail a build, it
       # stops one -- a render worker sits inside String.replace forever
       # the first time a page contains the trigger. VOID_TAGS_RE shipped

@@ -142,6 +142,12 @@ jobs:
       # ~50 ms.
       - name: Verify the documented gate lists (check_gate_lists.mjs)
         run: node scripts/check_gate_lists.mjs
+      # This workflow and tbdocs-gh-pages.yml against the wrappers: every
+      # gate test.bat and check.bat run, with the same arguments and in the
+      # same order, and a build with build.bat's flags. See the script's
+      # header for the differences it allows. No browser, no built tree.
+      - name: Verify the workflows run the wrappers' gates (check_ci_workflows.mjs)
+        run: node scripts/check_ci_workflows.mjs
       # A regex that backtracks exponentially does not fail a build, it
       # stops one: the corpus passes until a page happens to contain the
       # trigger, and then a render worker sits inside String.replace
