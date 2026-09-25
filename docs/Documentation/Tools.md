@@ -65,23 +65,25 @@ One of the four does not mean the same thing locally as it does in CI, on any pl
 
     test.bat
 
-The tests the toolchain has to pass. Nine steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Ten steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
 2. [`scripts/check_gate_lists.mjs`](#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
 3. [`scripts/check_ci_workflows.mjs`](#check-ci-workflows) --- verifies both CI workflows run the gates the wrappers run, and build as `build.bat` does.
-4. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
-5. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span.
-6. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
-7. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
-8. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
-9. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+4. [`scripts/check_lint.mjs`](#check-lint) --- runs Biome over the tooling and fails on any finding, warnings included.
+5. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
+6. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span.
+7. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
+8. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
+9. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
+10. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
     node scripts/check_publish_policy.mjs \
       && node scripts/check_gate_lists.mjs \
       && node scripts/check_ci_workflows.mjs \
+      && node scripts/check_lint.mjs \
       && node scripts/check_regex_safety.mjs \
       && node scripts/check_code_regions.mjs \
       && node scripts/check_page_baseline.mjs \
@@ -89,7 +91,7 @@ POSIX:
       && node scripts/check_symbol_index.mjs \
       && node scripts/check_axe_patch_equiv.mjs
 
-**Seven of the nine cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`, a wrapper, or a workflow. Both CI workflows run all nine unconditionally, as they always did, so skipping it locally cannot let a tooling regression reach `staging`.
+**Seven of the ten cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all ten unconditionally, as they always did, so skipping it locally cannot let a tooling regression reach `staging`.
 
 The two exceptions are [`check_code_regions.mjs`](#check-code-regions) and [`check_gate_lists.mjs`](#check-gate-lists), which reads this page. The first is worth knowing in detail. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes are a different matter: they run against their own sources whatever the tree holds, and they cover the *mirror* fault, where a rewrite silently stops firing. The sweep cannot see that one --- text the rewrite skipped is stashed and restored unchanged, so every region still matches. Add a page with an unusual code construct and run `test.bat`, but read the built page too.
 
@@ -456,6 +458,17 @@ The gates both workflows share are one composite action, `.github/actions/run-ga
 The differences that are meant are listed in the script, each with where it is recorded: `check_tree_fresh.mjs` runs only locally, because CI builds the tree in the same job; the two `check_links_diff.mjs` fixture steps run only in CI, one of them only in `checks.yml`; and the deploy build adds `--url` and `--baseurl`. CI may also interleave the two wrappers' gates, as long as each wrapper's own order holds. Anything else is a finding, and so is an allowance that no longer matches anything.
 
 Its probes ride along in every run: each plants one defect in a small synthetic set of wrappers, workflows and actions --- a missing gate, a step no wrapper runs, two gates swapped, changed arguments, a build flag lost or added, a gate missing from the shared action, a workflow that stops calling it --- and requires exactly the findings it should produce. Pure text: no browser, no built tree. Exits 0 clean, 1 on a finding, 2 when a probe fails or the gate cannot run.
+
+### check_lint.mjs
+{: #check-lint }
+
+    node scripts/check_lint.mjs
+
+Runs Biome, pinned to an exact version, over the tooling: `builder/`, `scripts/`, `book/`, `eval/`, `wisdom/`, `test/` and the site's two scripts in `docs/assets/js/`, less the exceptions that `biome.jsonc` at the repository root lists and explains. The rules are the ones that find defects --- Biome's correctness and suspicious groups --- and none about style; the configuration names the few it turns off, each with its reason. Moving and deleting code leaves unused imports and undeclared names behind, and nothing else reads the tooling for them. No browser, no built tree, a fraction of a second.
+
+**Warnings fail as well as errors.** Biome reports an unused import or variable as a warning, and exits 0 on warnings, so a plain `npx biome lint` passes a file full of them. The gate also refuses to pass when Biome could not lint. Biome exits 1 for a broken `biome.jsonc`, as it does for a finding, and 0 for a scope that matches no script at all, so the gate reads the summary Biome writes beside its usual output to tell these apart. Exits 0 clean, 1 on a finding, 2 when Biome could not lint or checked no script.
+
+Lint before every commit that touches one of those folders. `npx biome lint --write` applies the fixes Biome marks safe. The fixes it offers for an unused import or variable are marked unsafe and need `--unsafe` as well, so read the diff after applying them.
 
 ### check_page_baseline.mjs
 {: #check-page-baseline }

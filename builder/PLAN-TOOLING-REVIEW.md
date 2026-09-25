@@ -596,6 +596,29 @@ and WIP.md's gate table. WIP.md gains the rule: lint before every commit.
 **Verify.** Clean on the tree; an unused import exits 1; a broken configuration exits 2. The
 roster gate passes. CI waits for the owner's push.
 
+**Landed** with two things the entry did not foresee, both about what Biome's exit code
+means. **Biome 2.5 reports `noUnusedImports` and `noUnusedVariables` as warnings, and exits 0
+on warnings**, so a gate that ran `biome lint` as C05 left it would have passed the entry's
+own test case, an unused import. The gate passes `--error-on-warnings`. And the exit code
+cannot tell a finding from a gate that checked nothing: Biome exits 1 for a configuration it
+cannot read, as for a finding, and 0 for a scope that matches no script, because it counts
+`biome.jsonc` among the files it checked and so never reports that no files were processed.
+The gate reads the summary Biome writes to a file beside its usual output. No summary means
+Biome stopped before linting, and the summary counts the findings and the files checked.
+Neither the SARIF nor the JUnit report counts the files checked, and Biome prints a notice
+calling its JSON report experimental on every run, so the summary is the report the gate
+reads. C08's hook will pass the staged files, where checking none of them is normal, so the
+floor of one script belongs to the whole-scope run only.
+
+Verified: clean on the tree, 0; an unused import, 1, and `test.bat` stops there; a syntax
+error, 1; an unknown key in `biome.jsonc`, invalid JSON, and a scope that matches no script,
+2; Biome not installed, 2. About 0.25 s. With the gate registered, `check_gate_lists.mjs` and
+`check_ci_workflows.mjs` pass. Tools.md's "seven of the nine" became "seven of the ten", not
+eight: the lint scope includes `docs/assets/js/`, so an edit under `docs/` can now affect
+three gates. The tree comparison differs only in the three pages the commit edits (Tools,
+Building, and Builder, whose dependency list now names the gate), the search index and
+`book.html`. CI waits for the owner's push.
+
 ### C07 — `scripts: convert_em_dash_separators exits 2 on a crash`
 
 **A6-3 (R2).** Its one exit is `process.exit(main())`, with 0 or 1 (`:210,214`), and a crash

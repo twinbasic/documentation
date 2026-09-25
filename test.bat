@@ -53,6 +53,14 @@ node scripts/check_gate_lists.mjs
 @rem ~100 ms.
 node scripts/check_ci_workflows.mjs
 @if errorlevel 1 goto :fail
+@rem Biome over the tooling, with the rules that find defects and none
+@rem about style (biome.jsonc). Moving and deleting code leaves unused
+@rem imports and undeclared names behind, and nothing else reads the
+@rem tooling for them. Warnings fail too: Biome reports an unused import
+@rem as a warning and exits 0 on one. Lint before every commit. No tree,
+@rem no browser, ~0.25 s.
+node scripts/check_lint.mjs
+@if errorlevel 1 goto :fail
 @rem A regex that backtracks exponentially is a hang waiting for the
 @rem right input, and nothing that reads the site can see it: the corpus
 @rem passes until some page happens to contain the trigger, and then the

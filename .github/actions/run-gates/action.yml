@@ -54,6 +54,16 @@ runs:
     - name: Verify the workflows run the wrappers' gates (check_ci_workflows.mjs)
       shell: bash
       run: node scripts/check_ci_workflows.mjs
+    # Biome, pinned, over the tooling, with the rules that find defects and
+    # none about style (biome.jsonc). Moving and deleting code leaves unused
+    # imports and undeclared names behind, and nothing else reads the tooling
+    # for them. Warnings fail as well as errors, since Biome reports an unused
+    # import as a warning and exits 0 on one; and a scope that matches no
+    # script fails rather than passing. npm ci installs the Linux binary. No
+    # browser, no built tree, ~0.25 s.
+    - name: Lint the tooling (check_lint.mjs)
+      shell: bash
+      run: node scripts/check_lint.mjs
     # A regex that backtracks exponentially does not fail a build, it stops
     # one: the corpus passes until a page happens to contain the trigger, and
     # then a render worker sits inside String.replace forever. VOID_TAGS_RE
