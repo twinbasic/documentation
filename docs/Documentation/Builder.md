@@ -362,7 +362,7 @@ The pipeline:
 
 1. **`dispatch.execute()`** reads every `.svg` static file into a `svgContentsMap` keyed by `srcRel`. The map is packed into the shared SAB and broadcast to every render worker.
 2. **`renderEnvInit`** on each worker unpacks `svgContentsMap` and passes it as `svgContents` to `createMarkdownIt`.
-3. **`svgInlinePlugin`** in `render.mjs` overrides the markdown-it image renderer. When the `src` ends in `.svg` and the file's content exists in `ctx.svgContents`, the plugin replaces the `<img>` tag with a wrapper structure containing the raw SVG, four control links (Download SVG, Copy SVG, Download PNG, Copy PNG), and a click-to-zoom container. The plugin also sets `page.hasSvg = true`.
+3. **`svgInlinePlugin`** in `render.mjs` overrides the markdown-it image renderer. When the image is the only content of its paragraph, its `src` ends in `.svg` and the file's content exists in `ctx.svgContents`, the plugin replaces the `<img>` tag with a wrapper holding five control buttons (Download SVG, Copy SVG, Download PNG, Copy PNG, Zoom) and a container with the raw SVG, and hides the paragraph around it. The plugin also sets `page.hasSvg = true`.
 4. **`templatePhase`** conditionally includes `<script defer src="/assets/js/svg-inline.js">` on pages where `page.hasSvg` is true.
 
 The wrapper HTML emitted by `buildSvgWrapper`:
@@ -370,10 +370,11 @@ The wrapper HTML emitted by `buildSvgWrapper`:
 ```html
 <div class="svg-inline-wrap">
   <div class="svg-controls">
-    <a href="#" data-action="download-svg" data-filename="...">Download SVG</a>
-    <a href="#" data-action="copy-svg">Copy SVG</a>
-    <a href="#" data-action="download-png" data-filename="...">Download PNG</a>
-    <a href="#" data-action="copy-png" data-filename="...">Copy PNG</a>
+    <button type="button" class="btn-reset" data-action="download-svg" data-filename="...">Download SVG</button>
+    <button type="button" class="btn-reset" data-action="copy-svg">Copy SVG</button>
+    <button type="button" class="btn-reset" data-action="download-png" data-filename="...">Download PNG</button>
+    <button type="button" class="btn-reset" data-action="copy-png" data-filename="...">Copy PNG</button>
+    <button type="button" class="btn-reset" data-action="zoom-svg" aria-label="Zoom diagram">Zoom</button>
   </div>
   <div class="svg-container" data-svg-src="..." role="img" aria-label="...">
     <svg>...</svg>
@@ -381,9 +382,11 @@ The wrapper HTML emitted by `buildSvgWrapper`:
 </div>
 ```
 
-`svg-inline.js` (~80 lines, no dependencies) handles four client-side behaviours: click-to-zoom (fullscreen overlay, Escape to close), SVG download (serialises the `<svg>` to XML), SVG clipboard copy, and PNG export (renders the SVG to a 2048 px-wide canvas via `Image` + `toBlob`). The controls are hidden in print CSS.
+`role` and `aria-label` are emitted only when the image has alt text. An image without any logs a warning at build time, since a diagram is never decorative.
 
-Only SVGs whose content is present in `svgContents` are inlined; external URLs and missing files fall through to the default `<img>` renderer. The main-thread markdown-it instance (used only for site-level SEO) passes an empty map --- no SVG content needed there.
+`svg-inline.js` (~320 lines, no dependencies) handles the controls on the client: zoom (a fullscreen overlay, opened by clicking the diagram or its Zoom button and closed with Escape), SVG download (serialises the `<svg>` to XML), SVG clipboard copy, and PNG download and copy (renders the SVG to a 2048 px-wide canvas via `Image` + `toBlob`). The controls are hidden in print CSS.
+
+Only a lone image whose content is present in `svgContents` is inlined; an external URL, a missing file, or an image with text beside it in its paragraph falls through to the default `<img>` renderer. The markdown-it instance built on the main thread has no `svgContents` and never inlines.
 
 ## Diagram geometry
 

@@ -441,7 +441,7 @@ That is the full pattern: per-chunk compute on the render workers, merge into th
 
 `createMarkdownIt` in `render.mjs` builds the configured markdown-it instance. Seventeen plugins are applied in a fixed order: three from npm (`markdown-it-attrs`, `markdown-it-deflist`, `markdown-it-footnote`) interleaved with fourteen defined in `render.mjs` itself. A new plugin becomes part of that order.
 
-Those in-tree plugins cover token-stream transforms --- `svgInlinePlugin` embeds SVG diagrams, `headingLevelNormalizePlugin` repairs legacy pages that skip from `h1` to `h3` --- alongside link, slug, and typography helpers, most of them closing a behavioural gap between markdown-it and the kramdown dialect the content was authored against. [Pipeline Stages](Pipeline-Stages#the-plugin-chain) tabulates all seventeen in registration order, with what each one does.
+Those in-tree plugins cover token-stream transforms --- `svgInlinePlugin` embeds SVG diagrams, `headingLevelNormalizePlugin` repairs legacy pages that skip from `h1` to `h3` --- alongside link, slug, and typography helpers, most of them closing a behavioural gap between markdown-it and the kramdown dialect the content was authored against. [Pipeline Stages](Pipeline-Stages#the-plugin-chain) tabulates all eighteen in registration order, with what each one does.
 
 The same factory is called twice on main (once for the shared site-level SEO instance via `markdownInit`, and once per dev-tooling harness that re-renders) and once per render worker (via `renderEnvInit`). Plugins that reach for module-scope state must therefore work across worker boundaries --- in practice, that means no mutable closure-captured state, since each worker has its own module-scope instance.
 

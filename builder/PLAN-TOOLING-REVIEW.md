@@ -2434,6 +2434,23 @@ Defects the review did not have, found by building something this plan asks for.
   `svgInlinePlugin` and `headingLevelNormalizePlugin` say "Detailed above" and mean these
   rows, so the fix moves that detail rather than deleting it.
 
+  **Fixed in `docs, builder: correct render.mjs's export table and plugin chain`**, on the
+  owner's decision of 2026-09-25, which found five more errors in the same material. The
+  table lacked two real exports, `applyPreRenderRewrites` and `maskCodeRegions`.
+  `createMarkdownIt`'s signature lacked `vendoredVideos`, `vendoredImages` and `counts`.
+  `svgInlinePlugin`'s row said it is registered last, and three plugins follow it. The chain
+  is eighteen plugins, not seventeen: `countPlugin`, from `counts.mjs`, is registered after
+  them all and had no row, and Extending.md repeated the seventeen. And the detail the fix
+  moved said `headingLevelNormalizePlugin` raises every heading of level 3 or deeper by one,
+  where it gives each heading one level below its parent, so `h1`, `h3`, `h5` become `h1`,
+  `h2`, `h3`. Builder.md's SVG section, which describes the same two functions, showed four
+  `<a>` controls where `buildSvgWrapper` emits five buttons, left out the rule that only an
+  image alone in its paragraph is inlined, gave `svg-inline.js` ~80 lines against 319, and
+  said the main-thread markdown-it serves only the SEO pass and passes an empty SVG map:
+  `book.mjs` renders through it too, and it is given no map. `countPlugin`'s comment said
+  the SEO pass builds a markdown-it of its own; it shares the site's, and the one caller
+  without counts is `check_examples.mjs`'s markup probe.
+
 - **`tbrun` exits 0 with partial output when a procedure the probe calls fails code
   generation**, found while verifying C16. The codegen line naming the callee comes straight
   after `[BUILD] Executing '<project>.<module>.<Sub>'...`, before the probe's first statement:

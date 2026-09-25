@@ -192,8 +192,8 @@ export const COUNT_NAMES = Object.keys(deriveCounts({ pages: [], staticFiles: []
  *
  * Registered after `replacements` so it sees the same text the reader will.
  * `ctx.counts` absent is not an error -- it means a caller that does not need
- * substitution (the SEO pass builds a markdown-it of its own), and the rule
- * then does nothing.
+ * substitution (check_examples.mjs's markup probe builds one without counts),
+ * and the rule then does nothing.
  */
 export function countPlugin(md, ctx) {
   md.core.ruler.push("tbdocs-counts", (state) => {
