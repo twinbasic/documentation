@@ -8,7 +8,10 @@
 //   node scripts/crawl_check.mjs <start-url> [--concurrency N] [--timeout MS]
 //   node scripts/crawl_check.mjs <start-url> --skip-external
 //
-// Exits 0 if all links are reachable, 1 if any are broken.
+// Exits 0 if every link is reachable and every anchor exists, 1 if a link
+// is broken or an anchor is missing, 2 on a usage error or a crash. It sets
+// process.exitCode rather than calling process.exit, which on Windows can
+// abort on a libuv assertion after a crawl and exit with a crash code.
 
 import { Parser } from "htmlparser2";
 import { forEachLink } from "../builder/link-check.mjs";
@@ -70,14 +73,22 @@ async function fetchWithTimeout(url, options) {
   }
 }
 
+// A response body left unread keeps its connection busy, and the process
+// alive after the report; cancel every body that is not read.
+function discardBody(res) {
+  return res.body?.cancel().catch(() => {});
+}
+
 async function checkUrl(url) {
   if (linkStatus.has(url)) return linkStatus.get(url);
   let result;
   try {
     let res = await fetchWithTimeout(url, { method: "HEAD" });
     if (res.status === 405 || res.status === 501) {
+      await discardBody(res);
       res = await fetchWithTimeout(url, { method: "GET" });
     }
+    await discardBody(res);
     result = {
       ok: res.ok,
       status: res.status,
@@ -118,10 +129,11 @@ async function crawlOne(url) {
     status: res.status,
     redirected: res.redirected ? res.url : null,
   });
-  if (!res.ok) return;
-
   const ct = res.headers.get("content-type") || "";
-  if (!ct.includes("text/html") && !ct.includes("xhtml")) return;
+  if (!res.ok || (!ct.includes("text/html") && !ct.includes("xhtml"))) {
+    await discardBody(res);
+    return;
+  }
 
   let html;
   try { html = await res.text(); } catch { return; }
@@ -250,7 +262,7 @@ async function main() {
     }
   }
 
-  process.exit((broken.length > 0 || fragmentMisses.length > 0) ? 1 : 0);
+  process.exitCode = (broken.length > 0 || fragmentMisses.length > 0) ? 1 : 0;
 }
 
-main().catch((e) => { console.error(e); process.exit(2); });
+main().catch((e) => { console.error(e); process.exitCode = 2; });

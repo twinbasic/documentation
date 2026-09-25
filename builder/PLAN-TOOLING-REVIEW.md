@@ -560,6 +560,43 @@ srcset and poster targets included. `compare_trees`: Tools.html online and offli
 data and `book.html`, nothing else. Two defects found on the way are recorded under Found
 while implementing.
 
+### C22a — `scripts: crawl_check sets its exit code instead of calling process.exit`
+
+**Found while verifying C22; the owner asked on 2026-09-26 for it to be fixed before C23**
+(see Found while implementing). `crawl_check.mjs` ended `main()` with `process.exit()` straight
+after printing its report, and its crash handler called `process.exit(2)`. On Windows (Node
+24.13.0) that can abort on a libuv assertion, `!(handle->flags & UV_HANDLE_CLOSING)` in
+`src\win\async.c:76`: the report is complete, and the exit code is 0xC0000409 (Git Bash shows
+127) instead of 1.
+
+**Change.** `main()` sets `process.exitCode` and returns, and the crash handler sets it to 2.
+The two usage exits stay, since they run before any fetch. The header and Tools.md's
+paragraph give all three exit codes: a missing anchor exits 1 as well.
+
+**Landed**, with one addition. With `process.exit` gone, a crawl of the site printed its
+report at 66 s and never exited: idle, its CPU time flat, 90 connections to the server still
+established, until it was stopped 269 s later. `crawlOne` GETs every same-site URL but read
+the body only of an HTML page answered 2xx, and an unread body keeps its connection busy;
+`process.exit` had been cutting that short. `discardBody` now cancels every body that is not
+read, in `crawlOne` and after `checkUrl`'s HEAD and GET.
+
+The assertion does not need unread bodies. On scratch probes against the fixture server, 28
+concurrent fetches followed by `process.exit(1)` aborted 10 times of 10 with or without
+cancelling the bodies, and one fetch, read or unread, exited 1 all 10 times. What else it
+needs is not established: HEAD's crawl of the site reaches `process.exit` with those 90
+connections open, and did not abort in C22's four runs.
+
+Against the C22 fixture, through the kit's static server with `--skip-external`: before, 5
+runs of 5 aborted after reporting 28 broken; after, 10 of 10 exit 1 with 28 broken and no
+assertion, the process ending 25–30 ms after its report. Against the site, three runs after:
+exit 0, 1,247 pages crawled, 3,228 unique links, 1,247 status checks, 0 broken, 0 missing
+anchors, as in C22's runs, in 66 to 79 s, ending 26–43 ms after the report. A crash
+mid-crawl, injected by a preload that makes `Response#url` throw from its 200th read so that
+`crawlOne` throws outside its `try` blocks with other fetches in flight: HEAD's copy aborted
+5 of 5 with 0xC0000409, and after, 5 of 5 exit 2, about 40 ms after the error. An unknown flag
+and a missing URL exit 2, as before. `compare_trees`: Tools.html online and offline, the search
+data and `book.html`, nothing else.
+
 ### C23 — `scripts: check_examples restores the registry after a spawn failure`
 
 **L3-2 (R2)**, with V4's note that `check_examples.mjs` has no process-level handler at all.
@@ -1787,12 +1824,12 @@ Defects the review did not have, found by building something this plan asks for.
   they are drawn at the start of each worker's row. Not fixed: a docs commit of its own.
 
 - **`crawl_check.mjs` can exit 127 on Windows where it should exit 1**, found while
-  verifying C22. It calls `process.exit()` straight after printing its report, while `fetch`'s
-  sockets are still closing, and libuv (Node 24.13.0) aborts on an assertion,
-  `!(handle->flags & UV_HANDLE_CLOSING)` in `src\win\async.c:76`. The report is complete; the
-  exit code is not. It happened on three of three runs against the C22 fixture and on none of
-  four against the site; a clean run reaches the same `process.exit(0)`, so nothing shows it is
-  safe. Not fixed.
+  verifying C22. It calls `process.exit()` straight after printing its report, and libuv
+  (Node 24.13.0) aborts on an assertion, `!(handle->flags & UV_HANDLE_CLOSING)` in
+  `src\win\async.c:76`. The report is complete; the exit code is not. It happened on three of
+  three runs against the C22 fixture and on none of four against the site; a clean run
+  reaches the same `process.exit(0)`, so nothing shows it is safe. Fixed in `scripts:
+  crawl_check sets its exit code instead of calling process.exit`.
 
 - **`serve.bat` serves a folder page at its URL without the trailing slash** rather than
   redirecting, as GitHub Pages does, so the page's relative links resolve one level too high.
