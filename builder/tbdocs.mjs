@@ -1274,7 +1274,7 @@ function chunkPages(pages, workers) {
 const GANTT_SECTION = {
   config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", scss: "Write", dot: "Spine",
   highlighterInit: "Seeds", loadData: "Seeds",
-  discover: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
+  discover: "Spine", vendorAssets: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
   resolveBookChapters: "Spine",
   deriveRedirects: "Spine", deriveSitemap: "Spine",
   dispatch: "Render", prepDest: "Render", prepPageDirs: "Render",
@@ -1295,7 +1295,8 @@ function groupGanttTimings(timings, { check = false } = {}) {
     // Without --check these are no-ops; charting three zero-width bars
     // would only make a plain build's Gantt harder to read.
     if (!check && CHECK_TASKS.has(id)) continue;
-    const section = ganttSection ?? GANTT_SECTION[id] ?? "Other";
+    const section = ganttSection ?? GANTT_SECTION[id];
+    if (!section) throw new Error(`gantt: task ${id} has no section; add it to GANTT_SECTION`);
     if (!grouped.has(section)) grouped.set(section, []);
     const entry = { id, start: start - t0, end: end - t0 };
     if (t3 != null) entry.t3 = t3 - t0;

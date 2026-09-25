@@ -109,7 +109,7 @@ Every task is declared as an entry in the static `TASKS` object in [`tbdocs.mjs`
 | `pinnedTo` / `F_PIN_TO_PRED` | (dynamic) | no | Must run on the same lane that ran the named predecessor. Set via the `pinnedTo` array, not in the task def directly. |
 | `priority` | `number` | no | When multiple tasks are READY, the **highest** priority value claims first (`scanAndClaim` keeps the largest `pri` it finds). Default `0`; `dispatch.submit` gives each `flush:i` `priority: 1` so a pending flush outranks a fresh render. |
 | `consolidate` | `boolean` | no | Combine timings across lanes into one Gantt swimlane (used by `render:i` / `flush:i`). |
-| `ganttSection` | `string` | no | Section header for the Gantt chart row (`Seeds` / `Spine` / `Render` / `Write`). |
+| `ganttSection` | `string` | no | Section header for the Gantt chart row (`Seeds` / `Spine` / `Render` / `Write` / `Check`). |
 
 ### Handler IDs
 
@@ -899,7 +899,7 @@ The handler table is built from the imported `HANDLERS` constant:
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `renderGantt` | `(grouped) → string` | Inline SVG Gantt chart from a `Map<section, taskTiming[]>`. Lane rows compress all worker tasks for one lane into a single row; section rows show one task per row. Theme-aware (light + dark palettes). |
+| `renderGantt` | `(grouped) → string` | Inline SVG Gantt chart from a `Map<section, taskTiming[]>`. Lane rows compress all worker tasks for one lane into a single row; section rows show one task per row. Theme-aware (light + dark palettes). Throws, naming the task, on a task it has no row or colour for. |
 
 ### `serve.mjs`
 

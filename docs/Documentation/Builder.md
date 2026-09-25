@@ -188,8 +188,8 @@ The complete layout, allocation helper, and the `readTaskMeta` / `writeTaskMeta`
 
 The pipeline has 32 named static tasks plus 2N dynamic ones (N render chunks + N flush tasks). The Gantt chart groups them into five sections that also organise the discussion below:
 
-- **Seeds**: `buildInfo`, `scssLight`, `scssDark`, `config`, `warmInit`, `highlighterInit`, `discover`, `loadData`, `vendorAssets`
-- **Spine**: `nav`, `dot`, `buildInit`, `markdownInit`, `deriveSitemap`, `deriveRedirects`, `resolveBookChapters`
+- **Seeds**: `buildInfo`, `scssLight`, `scssDark`, `config`, `warmInit`, `highlighterInit`, `discover`, `loadData`
+- **Spine**: `vendorAssets`, `nav`, `dot`, `buildInit`, `markdownInit`, `deriveSitemap`, `deriveRedirects`, `resolveBookChapters`
 - **Render**: `dispatch`, `prepDest`, `prepPageDirs`, `renderEnvInit`, `render:i`, `renderJoin`
 - **Write**: `scss`, `flush:i`, `flushJoin`, `writeAssets`, `searchData`, `symbolIndex`, `writeAux`, `writeOffline`, `writePdf`
 - **Check**: `linkJoin`, `checkBook`, `checkReport` --- present on every ordinary build, because `build.bat` always passes `--check-audit-index`
@@ -410,7 +410,7 @@ Every build emits an inline-SVG Gantt chart of its task timeline. [`gantt.mjs`](
 
 The Gantt chart flows through the same SVG inlining pipeline as other diagrams. The [Build Info](BuildInfo) page contains a standard markdown image reference to a placeholder `gantt.svg`; during the render pass it becomes an inline SVG wrapper with zoom and export controls. After `writeOffline` completes, `tbdocs.mjs:injectGanttChart` locates the wrapper's `data-svg-src` marker in the rendered HTML and swaps the placeholder SVG content for the real Gantt chart. Both the online and offline copies of the page are patched; the on-disk `gantt.svg` file is also updated so the offline mirror's fallback stays current.
 
-When adding a new task to `TASKS`, give it a `ganttSection` key matching one of `Seeds` / `Spine` / `Render` / `Write` so it lands in a coherent group. Tasks without a section fall into a generic "Other" bucket.
+When adding a new task to `TASKS`, give it a section in `GANTT_SECTION` in `tbdocs.mjs`: `Seeds`, `Spine`, `Render`, `Write` or `Check`. The build fails, naming the task, if a task has no section or one the chart does not draw. Only a `unique_per_worker` task needs none: its timings are drawn in each worker's lane.
 
 ## Dependencies
 

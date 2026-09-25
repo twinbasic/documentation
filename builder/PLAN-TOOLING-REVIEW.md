@@ -479,6 +479,39 @@ falls into an "Other" bucket.
 the change and not before. The tree comparison identical apart from its normalised Gantt
 regions. `Builder.md:410` re-read against the result.
 
+**Landed.** Before, both built `gantt.svg` files (at 0ba42460) named none of the three tasks
+and had no Check band. After, each names all three once and has a Check band, and so do both
+copies inlined into `BuildInfo.html`. `vendorAssets` charts in Spine: it runs on the main
+thread after `discover`, and `markdownInit` waits for it. Check's colour is a pink (`#e59ac6`
+light, `#b35c8c` dark); its label contrast is in the range of the other bars', and both themes
+were looked at through puppeteer.
+
+**At the owner's request, a task the chart cannot draw fails the build**, so `Other` was not
+added: nothing can reach it, and `COLORS.Other` and its `.gb-other` rules are gone.
+`groupGanttTimings` throws for a task with no section, and `renderGantt` for a main-thread
+task whose section has no band or a worker task whose section has no colour. With each defect put back
+by a scratch edit, the check fixture's build exited 1 with `gantt: task vendorAssets has no
+section; add it to GANTT_SECTION`, and with `gantt: the chart has no place for task checkBook
+in section "Check"`. Without `--check` the Check tasks are not charted, so the second fails
+only a checked build, which `build.bat` and both CI workflows are. WIP.md's gate table gains
+the check beside nav integrity; Tools.md lists no build-internal checks, so nothing is
+registered there.
+
+Docs: Builder.md's `Other` sentence rewritten and `vendorAssets` moved from Seeds to Spine in
+its section list; Extending.md's row on Gantt sections rewritten, its counts corrected (32
+static tasks, 30 in the map, none setting `ganttSection` on its definition, where it said 31,
+28 and `dispatch`); Pipeline-Stages.md's `ganttSection` values gain `Check` and `renderGantt`'s
+row says it throws; BuildInfo.md's alt text says five bands. `Builder.md:410`, re-read (now
+`:409-413`): the `Other` sentence was the one the entry named; the paragraph's claim that
+boot timings form a row group of their own, and more in the section lists above it, is wrong
+and is recorded under Found while implementing.
+
+`compare_trees` replaces the chart whole, so it cannot see this change; the built chart is the
+oracle. It exits 1 on the four edited pages, online and offline, the search data and
+`book.html`, and BuildInfo.html's difference is its alt text. `check.bat`'s a11y line is
+unchanged (0 violations, 42 incomplete), though BuildInfo.html is in the sample and the chart
+gained four labels. `test.bat` and lint pass.
+
 ### C22 — `scripts: crawl_check follows every link attribute the build checks`
 
 **A4-3 (R1).** `crawl_check.mjs:91-108`, the only checker that runs against the deployed
@@ -1679,6 +1712,10 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   its own `exit` handler, on Windows and Linux alike. What a failed run leaves is the
   browser's temporary profile folder, 4.3 MB. The change stands as planned and fixes that
   instead; see C19's Landed note.
+- **C21 (A1-1): no `Other` band.** The entry adds `Check` and `Other` to the chart. At the
+  owner's request a task with no section fails the build instead, so nothing can reach
+  `Other`, and it was removed; see C21's Landed note. It landed as `builder: the Gantt chart
+  draws every task, or the build fails naming it`.
 
 ## Found while implementing
 
@@ -1707,6 +1744,16 @@ Defects the review did not have, found by building something this plan asks for.
 
 - **`tbrun` exits 0 with partial output when a procedure the probe calls fails code
   generation**, found while verifying C16. Scheduled as C25a; see its entry for the fix.
+
+- **Builder.md's "Task DAG by section" disagrees with the chart and with the task graph**,
+  found while re-reading its Gantt paragraph for C21. The section lists put `discover` in
+  Seeds, where `GANTT_SECTION` charts it in Spine, and `warmInit` and `renderEnvInit` in Seeds
+  and Render, where the chart draws them as start-up bars in each worker's lane. The Seeds
+  discussion says a seed has no predecessors, then lists `scss`, `prepDest` and
+  `prepPageDirs`, which all have them. The Spine sketch draws `loadData` off `discover` and
+  before `highlighterInit`, where `loadData` waits for `highlighterInit`, which waits for
+  `config`. And the Gantt paragraph says boot timings form a row group of their own, where
+  they are drawn at the start of each worker's row. Not fixed: a docs commit of its own.
 
 ## Open questions
 

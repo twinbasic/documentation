@@ -497,6 +497,7 @@ wrapper:
 | `build.bat` | page-count baseline | a rise rewrites `builder/page-baseline.json` and says so; a fall fails the build |
 | `build.bat` | symbol-index URLs | every URL `tB/symbols.json` has published is still in it: a new one rewrites `builder/symbol-baseline.json`, a lost one --- most often a reworded member heading --- fails the build |
 | `build.bat` | nav integrity | every nav-visible `parent:` resolves to exactly one page |
+| `build.bat` | Gantt sections | every task handed to the build's Gantt chart has a section, and the chart has a place for it: a band for a main-thread task, a colour for a worker's |
 | `check.bat` | `check_tree_fresh` | the tree is not older than the sources that produced it |
 | `check.bat` | `check_dot_fit` | every diagram label sits inside the box Graphviz drew for it |
 | `check.bat` | `pick_a11y_sample --check`, `check_a11y` | see [WIP.A11y.md](WIP.A11y.md) |
