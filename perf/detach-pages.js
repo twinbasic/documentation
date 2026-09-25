@@ -1,3 +1,8 @@
+// Production code, despite its folder: book.bat and the deploy workflow
+// (.github/workflows/tbdocs-gh-pages.yml) load it into every book render
+// through render-book.mjs's --additional-script. It stays in perf/ because
+// the lab's scripts load it from here too.
+//
 // Paged.Handler that physically removes each finalized page from the
 // layout tree as soon as paged.js finishes laying it out, then restores
 // them in original order at afterRendered before page.pdf() runs.

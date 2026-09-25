@@ -18,6 +18,12 @@ optimisation, what was tried and failed -- lives split across the
 seven phase files in [`notes/`](notes/). The current state is summarised
 at the bottom of this file.
 
+One file here is not lab-only: `detach-pages.js` is loaded into every
+book render by `book.bat` and by the deploy workflow
+(`.github/workflows/tbdocs-gh-pages.yml`). Edit it as production code.
+It stays in this folder because the lab's own scripts load it from here
+too.
+
 ## Profiling `paged.browser.js`: canonical command
 
 The command we reach for whenever CPU-profiling paged.js:
