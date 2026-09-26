@@ -186,13 +186,15 @@ The complete layout, allocation helper, and the `readTaskMeta` / `writeTaskMeta`
 
 ## Task DAG by section
 
-The pipeline has 32 named static tasks plus 2N dynamic ones (N render chunks + N flush tasks). The Gantt chart groups them into five sections that also organise the discussion below:
+The pipeline has 32 named static tasks plus 2N dynamic ones (N render chunks + N flush tasks). The Gantt chart groups them into five sections, and the discussion below follows the same grouping:
 
-- **Seeds**: `buildInfo`, `scssLight`, `scssDark`, `config`, `warmInit`, `highlighterInit`, `discover`, `loadData`
-- **Spine**: `vendorAssets`, `nav`, `dot`, `buildInit`, `markdownInit`, `deriveSitemap`, `deriveRedirects`, `resolveBookChapters`
-- **Render**: `dispatch`, `prepDest`, `prepPageDirs`, `renderEnvInit`, `render:i`, `renderJoin`
+- **Seeds**: `config`, `buildInfo`, `scssLight`, `scssDark`, `highlighterInit`, `loadData`
+- **Spine**: `discover`, `vendorAssets`, `nav`, `dot`, `buildInit`, `markdownInit`, `deriveRedirects`, `deriveSitemap`, `resolveBookChapters`
+- **Render**: `dispatch`, `prepDest`, `prepPageDirs`, `render:i`, `renderJoin`
 - **Write**: `scss`, `flush:i`, `flushJoin`, `writeAssets`, `searchData`, `symbolIndex`, `writeAux`, `writeOffline`, `writePdf`
 - **Check**: `linkJoin`, `checkBook`, `checkReport` --- present on every ordinary build, because `build.bat` always passes `--check-audit-index`
+
+`warmInit` and `renderEnvInit` are in none of the five. The chart draws them in the worker rows as start-up bars, beside each worker's cold start, and they are described under Render. The chart does not draw the three `Join` barriers.
 
 The task DAG, with every static task and every dependency between them, follows:
 
@@ -202,38 +204,34 @@ The task DAG, with every static task and every dependency between them, follows:
 
 ### Seeds
 
-Seeds have no predecessors and become claimable as soon as the build starts (with the exception of `on_demand` seeds that wait for a successor). They saturate the worker pool while the main thread is still traversing the source tree.
+The tasks that start the build. `config`, `buildInfo`, `scssLight` and `scssDark` have no predecessors and can start at once; `highlighterInit` waits for `config`, and `loadData` for `highlighterInit`. The three worker tasks run while the main thread is still traversing the source tree.
 
 - `config` (main) --- reads `_config.yml` + applies CLI overrides.
 - `buildInfo` (worker) --- two `git` shell-outs. Falls back to `"unknown"` on failure.
 - `scssLight` (worker) --- compiles `just-the-docs-combined.scss` against the light palette.
 - `scssDark` (worker) --- same against the dark palette. The two halves were one ~700 ms compile in the old design; splitting them saves about 200 ms.
-- `scss` (main) --- joins both halves, writes the combined CSS to `_site/` and `_site-offline/`.
-- `dot` (worker) --- regenerates stale `.dot` → `.svg` via the WASM build of Graphviz. WASM init (~50 ms) hides behind the main spine; per-diagram render is synchronous after that.
 - `highlighterInit` (main) --- loads the `Light.theme` + `Dark.theme` palette, emits `tb-highlight.css`. Does not bring up Shiki on main --- workers each init their own.
-- `warmInit` (worker, `on_demand` + `unique_per_worker` + `run_when_idle` + `survives_reset`) --- per-lane Shiki bootstrap. The flag combination means workers run it during the main-thread spine if they have no other claimable work, every render-worker needs it on its own lane, and in serve mode the per-lane done flag survives across rebuilds so the second build skips warmup entirely.
-- `prepDest` (main) --- cleans and recreates the destination trees: all three for a build, `_serve/` alone in serve mode. Deferred to after `dispatch` so the wipe does not contend with `discover`'s reads.
-- `prepPageDirs` (main) --- pre-creates every page output directory. Lets `flush:i` skip `mkdir` entirely.
+- `loadData` (main) --- reads `_book.yml`.
 
 ### Spine
 
-Main-thread tasks fed by `discover`. They are mostly cheap; the point is to fork out into independent compute streams as fast as possible after the source tree is known.
+`discover` and the main-thread tasks fed by it, with `dot` running on a worker beside them. They are mostly cheap; the point is to fork out into independent compute streams as fast as possible after the source tree is known. `deriveSitemap` and `resolveBookChapters` wait for `dispatch`, which is described under Render.
 
 ```
-config → discover ┬→ nav            ┐
-                  ├→ buildInit      ├→ dispatch
-                  ├→ markdownInit   ┘
-                  ├→ deriveRedirects
-                  ├→ loadData → highlighterInit (already running)
-                  ├→ deriveSitemap (deferred)
-                  └→ resolveBookChapters (after deriveSitemap)
+config ┬→ highlighterInit → loadData
+       └→ discover ┬→ nav ──────────────────────────────┐
+                   ├→ buildInit ────────────────────────┤
+                   ├→ vendorAssets ────┐                │
+                   └→ deriveRedirects ─┴→ markdownInit ─┼→ dispatch → deriveSitemap → resolveBookChapters
+                              buildInfo, dot (workers) ─┘
 ```
 
 - `discover` --- traverses `docs/`, classifies pages vs static files, builds `state.pageByDest`.
+- `vendorAssets` --- finds the YouTube video markers and GitHub user-attachment URLs in the pages, downloads any file not already in `docs/assets/thumbnails/` or `docs/assets/attachments/`, and adds the new files to the static-file copy. `markdownInit` and `writeAssets` both depend on it.
 - `nav` --- builds the sidebar tree, runs the integrity check (orphan / ambiguous `parent:` aborts the build here), pre-renders the sidebar HTML.
+- `dot` (worker) --- regenerates stale `.dot` → `.svg` via the WASM build of Graphviz. WASM init (~50 ms) hides behind the main spine; per-diagram render is synchronous after that.
 - `buildInit` --- pre-renders the config-only chrome (SVG sprites, header, search footer, favicon). No nav-tree dependency; runs in parallel with `nav`.
 - `markdownInit` --- builds the link tables, instantiates the shared markdown-it, computes site-level SEO. The serialized link tables and site-level SEO constants travel to render workers as part of the shared SAB payload.
-- `loadData` --- reads `_book.yml`.
 - `deriveRedirects` --- pure derivation of redirect stubs. Forks off `discover` directly.
 - `deriveSitemap` --- absolute-URL list for `sitemap.xml`. Deferred to `dispatch` so it runs while the main thread would otherwise be idle waiting on render workers.
 - `resolveBookChapters` --- resolves the `_book.yml` chapter selectors to `Page` references. Identity-critical: the same `Page` objects must be visible to `writePdf` after the render fan-out has populated `renderedContent`.
@@ -243,27 +241,30 @@ config → discover ┬→ nav            ┐
 `dispatch` is the fan-out point. It chunks `state.pages` into `workerCount × 10` slices (`SLICES_PER_WORKER = 10`), allocates 2N dynamic task slots in the SAB, wires each `render:i` → `[renderJoin, flush:i]` and each `flush:i` → `[flushJoin]`, packs the per-chunk page data into a payload SAB and the per-build shared payload into a second SAB, broadcasts both to every worker, and activates the `render:i` tasks.
 
 ```
-dispatch ┬→ render:0 ─┬→ flush:0 ─┐
-         ├→ render:1 ─┼→ flush:1 ─┤
-         │   :        │   :       │
-         ├→ render:N ─┴→ flush:N ─┤
-         │                        │
-         └→ renderJoin ←──────────┘
-                ↓             ↓
-            searchData    flushJoin
-            symbolIndex
+dispatch ┬→ render:0 ┬→ flush:0 ┐
+         ├→ render:1 ┼→ flush:1 ┤
+         │    :      │    :     │
+         └→ render:N ┼→ flush:N ┤
+                     ↓          ↓
+                renderJoin  flushJoin
+                     ↓
+          searchData, symbolIndex
 ```
 
+- `prepDest` (main) --- cleans and recreates the destination trees: all three for a build, `_serve/` alone in serve mode. Deferred to after `dispatch` so the wipe does not contend with `discover`'s reads.
+- `prepPageDirs` (main) --- pre-creates every page output directory. Lets `flush:i` skip `mkdir` entirely.
+- `warmInit` (worker, `on_demand` + `unique_per_worker` + `run_when_idle` + `survives_reset`) --- per-lane Shiki bootstrap. The flag combination means workers run it during the main-thread spine if they have no other claimable work, every render-worker needs it on its own lane, and in serve mode the per-lane done flag survives across rebuilds so the second build skips warmup entirely.
 - `renderEnvInit` (worker, `on_demand` + `unique_per_worker`) --- per-lane render environment setup: unpack the shared SAB, reconstruct the link-table Maps, instantiate the worker's own markdown-it. Declared as a `perWorkerDeps` on every `render:i` so the first render claim per lane pulls it in.
 - `render:i` (worker, dynamic) --- the per-chunk compute. Each one runs five sub-stages over its slice of `state.pages`: `renderPhase` (markdown-it body render) → `computeChunkSeo` (per-page SEO fields) → `templatePhase` (just-the-docs layout wrap) → `deriveOfflinePageCached` (offline HTML rewrite) → `deriveSearchEntries` (per-section search entries). Returns a delta containing `renderedContent` per page, plus the per-chunk search entries.
-- `flush:i` (worker, dynamic, `pin_to_predecessor`) --- writes the chunk's page HTML to disk on the same worker that rendered it. Online tree always; offline tree too unless `skipOffline`. The pinning is what makes per-chunk flush correct: the worker stores a batch on its own `_pendingFlush` FIFO at the end of `render`, and only the matching `flush:i` ever drains it. **When `--check` is on, the link and integrity check runs here too**, over the chunk's just-written HTML --- both trees' final strings are already decoded and in worker memory at that moment, so the check never writes ~270 MB out to read it back.
 - `renderJoin` (main, `on_demand`) --- barrier that unblocks `searchData`, `symbolIndex` and `writePdf`. `dispatch.submit()` sets its dep count to N *and* rewrites its `expected` list with every chunk name; the dep count alone is not a barrier over the submits. See [Pipeline Stages](Pipeline-Stages#renderjoin-main-on_demand).
-- `flushJoin` (main, `on_demand`) --- barrier that aggregates per-chunk write stats and gates `writeAux` + `writePdf`.
 
 ### Write
 
-Once `renderJoin` fires the auxiliary writers can run; once `flushJoin` fires the offline mirror and the PDF source tree can be assembled.
+`scss` joins the two SCSS halves once `prepDest` has run, and each `flush:i` writes its chunk once its render has finished and `prepPageDirs` has run. Once `renderJoin` fires the auxiliary writers can run; once `flushJoin` fires the offline mirror and the PDF source tree can be assembled.
 
+- `scss` (main) --- joins both halves, writes the combined CSS to `_site/` and `_site-offline/`. Waits for `prepDest`, which cleans the trees it writes to.
+- `flush:i` (worker, dynamic, `pin_to_predecessor`) --- writes the chunk's page HTML to disk on the same worker that rendered it. Online tree always; offline tree too unless `skipOffline`. The pinning is what makes per-chunk flush correct: the worker stores a batch on its own `_pendingFlush` FIFO at the end of `render`, and only the matching `flush:i` ever drains it. **When `--check` is on, the link and integrity check runs here too**, over the chunk's just-written HTML --- both trees' final strings are already decoded and in worker memory at that moment, so the check never writes ~270 MB out to read it back.
+- `flushJoin` (main, `on_demand`) --- barrier that aggregates per-chunk write stats and gates `writeAux` + `writePdf`.
 - `writeAssets` (main) --- writes generated CSS, copies vendored theme JS, copies the project's static files. Page HTML is *not* written here --- the per-chunk `flush:i` tasks already did that. Depends on `prepPageDirs` so the directory tree exists.
 - `searchData` (main) --- concatenates `state.searchChunks` (already populated by each `render:i`'s `submit()`), renumbers the global `i` index, writes `search-data.json`. The heavy work (heading split, content sanitisation, URL encoding) ran on the workers; this task only consolidates.
 - `symbolIndex` (main) --- writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index) the IDE help add-in reads. Reads the heading ids out of every `/tB/` page's `renderedContent`, joins them with the committed `builder/package-api.json`, and returns the index's URLs for the drift guard that `runBuild` runs once the build is done. Depends on `renderJoin` and `prepDest`; `checkReport` waits for it, because the file is in the online tree's index.
@@ -280,17 +281,20 @@ For a one-page reference, every task and its execution locus:
 | Seeds | `config` | main | Trivial read; output feeds `discover` directly. |
 | Seeds | `buildInfo` | worker | Two `git` shell-outs in parallel. |
 | Seeds | `scssLight`, `scssDark` | workers | Light + dark palettes compile concurrently. |
-| Seeds | `scss` | main | Joins light + dark; writes online + offline CSS. |
-| Seeds | `dot` | worker | WASM Graphviz; init hides behind the main spine. |
 | Seeds | `highlighterInit` | main | Palette CSS only. |
-| Seeds | `warmInit` | worker (per lane) | Per-worker Shiki bootstrap. `on_demand` + `run_when_idle`. |
-| Seeds | `prepDest`, `prepPageDirs` | main | Deferred to after `dispatch`. |
-| Spine | `discover`, `nav`, `buildInit`, `markdownInit`, `loadData`, `deriveRedirects`, `deriveSitemap`, `resolveBookChapters`, `dispatch` | main | Spine is single-threaded by design. |
-| Render | `renderEnvInit` | worker (per lane) | First-render-claim cost on each lane. |
+| Seeds | `loadData` | main | Reads `_book.yml`. |
+| Spine | `discover`, `vendorAssets`, `nav`, `buildInit`, `markdownInit`, `deriveRedirects`, `deriveSitemap`, `resolveBookChapters` | main | The main-thread spine is single-threaded by design. |
+| Spine | `dot` | worker | WASM Graphviz; init hides behind the main spine. |
+| Render | `dispatch`, `prepDest`, `prepPageDirs` | main | `prepDest` and `prepPageDirs` are deferred to after `dispatch`. |
 | Render | `render:i` | worker | Body + SEO + template + offline + search per chunk. |
-| Render | `flush:i` | worker (pinned) | Page HTML write, online + offline. |
-| Render | `renderJoin`, `flushJoin` | main | Barriers. |
+| Render | `renderJoin` | main | Barrier. |
+| none | `warmInit` | worker (per lane) | Per-worker Shiki bootstrap. `on_demand` + `run_when_idle`. A start-up bar on the chart. |
+| none | `renderEnvInit` | worker (per lane) | First-render-claim cost on each lane. A start-up bar on the chart. |
+| Write | `scss` | main | Joins light + dark; writes online + offline CSS. |
+| Write | `flush:i` | worker (pinned) | Page HTML write, online + offline. |
+| Write | `flushJoin` | main | Barrier. |
 | Write | `writeAssets`, `searchData`, `symbolIndex`, `writeAux`, `writeOffline`, `writePdf` | main | I/O bound; cooperative async concurrency. |
+| Check | `linkJoin`, `checkBook`, `checkReport` | main | No-ops without `--check`. |
 
 Three pieces of work newly distributed to render workers under the current design:
 
@@ -406,7 +410,7 @@ The residual 0.5% is kerning, which a per-character table cannot express. It err
 
 ## Gantt chart and build introspection
 
-Every build emits an inline-SVG Gantt chart of its task timeline. [`gantt.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/gantt.mjs)'s `renderGantt(grouped)` takes the `Map<section, taskTiming[]>` the scheduler accumulates and renders one SVG row per main-thread task plus one row per worker lane. Workers appear as a single row each with multiple coloured rectangles (one per task they ran, in completion order); the colour encodes the originating section. Boot timings (cold start, `warmInit`, `renderEnvInit`) appear as a distinct row group on the first build of a session.
+Every build emits an inline-SVG Gantt chart of its task timeline. [`gantt.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/gantt.mjs)'s `renderGantt(grouped)` takes the `Map<section, taskTiming[]>` the scheduler accumulates and renders one SVG row per main-thread task plus one row per worker lane. The main-thread rows are grouped in four bands --- Seeds, Spine, Write and Check --- with Render's main-thread tasks in the Spine band and the worker rows between Spine and Write; the `Join` barriers are not drawn. Each worker's row has one coloured rectangle per task it ran, in the order they started, and the colour encodes the task's section. The start-up bars share that row, labelled `cold`, `warm` and `env`: the worker's cold start, drawn on the first build only, since on a rebuild the workers are already running, then `warmInit` and `renderEnvInit`.
 
 The Gantt chart flows through the same SVG inlining pipeline as other diagrams. The [Build Info](BuildInfo) page contains a standard markdown image reference to a placeholder `gantt.svg`; during the render pass it becomes an inline SVG wrapper with zoom and export controls. After `writeOffline` completes, `tbdocs.mjs:injectGanttChart` locates the wrapper's `data-svg-src` marker in the rendered HTML and swaps the placeholder SVG content for the real Gantt chart. Both the online and offline copies of the page are patched; the on-disk `gantt.svg` file is also updated so the offline mirror's fallback stays current.
 

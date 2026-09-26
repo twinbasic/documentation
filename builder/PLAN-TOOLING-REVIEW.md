@@ -631,6 +631,39 @@ caused by `read ECONNRESET`, and none an HTTP error. The resets are a separate d
 recorded under Found while implementing: with the serve's keep-alive timeout raised as a
 scratch experiment, two crawls of two had none. `compare_trees`: identical.
 
+### C22c — `docs: Builder.md's task sections match the chart and the task graph`
+
+**Found while re-reading Builder.md's Gantt paragraph for C21; the owner asked on 2026-09-26
+for it to be fixed before C23** (see Found while implementing). "Task DAG by section" says the
+chart's five sections organise its discussion, and disagreed with the chart and with `TASKS`:
+the lists put `discover` in Seeds and `warmInit` and `renderEnvInit` in Seeds and Render; the
+Seeds discussion said a seed has no predecessors and listed `scss`, `prepDest` and
+`prepPageDirs`, which have; the Spine sketch drew `loadData → highlighterInit` off `discover`;
+and the Gantt paragraph put the start-up bars in a row group of their own, and a lane's bars
+in completion order.
+
+**Change.** The five lists follow `GANTT_SECTION`, and a sentence says `warmInit` and
+`renderEnvInit` are in none of them. Each task's bullet and its row in What runs where move
+under its chart section; the two per-lane start-up tasks are described under Render. The
+Seeds introduction says which seeds wait for another task, the Spine sketch is redrawn from
+`expected`, and the Gantt paragraph says where the bands and the start-up bars are drawn.
+
+**Landed**, with three additions. The Render sketch drew the `flush:i` column feeding
+`renderJoin`; it is redrawn with each `render:i` feeding `renderJoin` and each `flush:i`
+feeding `flushJoin`, as `dispatch` wires them. `vendorAssets`, in the Spine list, had neither
+a bullet nor a row in What runs where, and gains both, from Pipeline-Stages.md's section. And
+the table, which says it lists every task, had no row for the three Check tasks. Every edge
+in the two sketches was checked against `expected` and `dispatch`'s dynamic edges (the Spine
+sketch leaves out `deriveRedirects → dispatch`, which `markdownInit` implies), every section
+against `GANTT_SECTION`, and the Gantt paragraph against `gantt.mjs` (the four bands, a lane's
+bars sorted by `workerStart`, the `cold` / `warm` / `env` labels) and `tbdocs.mjs` (no
+cold-start bars on a rebuild; the `Join` tasks skipped). A scratch script confirmed the
+sketches' vertical connectors line up. `scheduler-dag.dot` already draws `config →
+highlighterInit → loadData`. Extending.md's account of the four surfaces still holds.
+Pipeline-Stages.md files the same tasks by stage rather than by chart section, which is
+recorded under Found while implementing. `compare_trees`: Builder.html online and offline, the
+search data and `book.html`, nothing else.
+
 ### C23 — `scripts: check_examples restores the registry after a spawn failure`
 
 **L3-2 (R2)**, with V4's note that `check_examples.mjs` has no process-level handler at all.
@@ -1855,7 +1888,8 @@ Defects the review did not have, found by building something this plan asks for.
   `prepPageDirs`, which all have them. The Spine sketch draws `loadData` off `discover` and
   before `highlighterInit`, where `loadData` waits for `highlighterInit`, which waits for
   `config`. And the Gantt paragraph says boot timings form a row group of their own, where
-  they are drawn at the start of each worker's row. Not fixed: a docs commit of its own.
+  they are drawn at the start of each worker's row. Fixed in `docs: Builder.md's task
+  sections match the chart and the task graph`.
 
 - **`crawl_check.mjs` can exit 127 on Windows where it should exit 1**, found while
   verifying C22. It calls `process.exit()` straight after printing its report, and libuv
@@ -1884,6 +1918,16 @@ Defects the review did not have, found by building something this plan asks for.
   three crawls of `_site`. So the resets come from the server closing idle connections that
   `fetch` then reuses, and `crawl_check` does not retry such a request. Whether the live site
   does the same is unmeasured. Not fixed.
+
+- **Pipeline-Stages.md files eight tasks under a section other than the chart's**, found
+  while fixing Builder.md's copy of the same lists in C22c. Extending.md says each task's
+  `###` heading there sits "under the numbered section matching its Gantt section". Section 1
+  (Seed tasks) holds `scss`, `dot`, `prepDest` and `prepPageDirs`, Section 2 (Spine)
+  `loadData` and `dispatch`, and Section 3 (Render fan-out) `flush:i` and `flushJoin`, where
+  `GANTT_SECTION` charts them in Write, Spine, Render, Render, Seeds, Render, Write and Write.
+  Section 1 also holds `warmInit` and Section 3 `renderEnvInit`, which the chart gives no
+  section. And Section 1's introduction says its tasks have no predecessors, which `scss`,
+  `highlighterInit`, `prepDest` and `prepPageDirs` all have. Not fixed.
 
 ## Open questions
 
