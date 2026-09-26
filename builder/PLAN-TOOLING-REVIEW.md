@@ -1002,6 +1002,29 @@ encoded script is 24,296 characters, against 20,872 before; a command line stops
 (20 project-state, 21 recent-list and 3 association writes)`. `compare_trees` identical. Lint
 clean.
 
+### C25d — `scripts: launchIde under --show reports a spawn that fails`
+
+**Found while implementing C25** (see Found while implementing). `launchIde`'s `--show` branch
+spawned the IDE with no `'error'` listener and returned at once. A spawn that fails is
+reported by an `'error'` event, not a throw, so `launchIde` returned a handle with no pid, and
+the event then ended the process on Node's report of an unhandled `'error'`, with exit 1,
+which `tbbuild` and `tbrun` define as compile errors. Nothing after it ran, the tidy
+included.
+
+**Change.** The branch waits for the child's `'spawn'` or `'error'` event before it returns,
+and a failed spawn throws `could not start the IDE: <Node's message>`, which the callers'
+catch reports with exit 2. The doc comment says a launch that fails throws, hidden or not.
+
+**Landed.** The kit's `c25d-show.mjs` calls `launchIde` with `show: true` and no IDE. HEAD's
+copy returned `pid undefined` for `C:\nope\twinBASIC.exe` and for the install folder, and the
+process then died on the unhandled `'error'` with exit 1; for a one-second `node` child it
+returned a live pid. After: the first two throw `could not start the IDE: spawn <path>
+ENOENT`, since libuv reports a folder as not found too, and the child's live pid is returned
+as before. `tbbuild --show` with the install folder as `--ide`: exit 2 after 2.3 s with that
+line, after a tidy that wrote nothing, the registry as found; at C25's commit it exited 1 on
+Node's report. No IDE was started on the desktop: the success path is the `node` child's.
+`compare_trees` identical. Lint clean.
+
 ### C26 — `wisdom: parseStaging refuses a chunk it cannot place`
 
 **L3-3 (R1)**, the half that needs no shared module. `parseStaging` (`merger.mjs:114-129`)
@@ -2261,6 +2284,12 @@ Defects the review did not have, found by building something this plan asks for.
   read the Win32 error after PowerShell's own calls had replaced it, so a missing executable
   was reported as error 203, "The system could not find the environment option that was
   entered". Fixed in `scripts: tb-launch.ps1 reports why a launch failed, in plain text`.
+
+- **`launchIde` under `--show` crashes when the IDE cannot be started**, found while
+  implementing C25. The branch spawned the IDE with no `'error'` listener, so a spawn that
+  failed ended the run on Node's report of an unhandled `'error'`, with exit 1, the code
+  `tbbuild` and `tbrun` give compile errors. Measured with a missing executable and with the
+  install folder. Fixed in `scripts: launchIde under --show reports a spawn that fails`.
 
 ## Open questions
 
