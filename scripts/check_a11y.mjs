@@ -54,11 +54,12 @@ import {
   SAMPLE_PAGES,
   buildMatrix,
   getScheme,
-  launchBrowser,
   newAuditPage,
+  pick,
   readAxeSource,
   runMatrix,
 } from "./lib/axe-scan.mjs";
+import { withBrowser } from "./lib/browser.mjs";
 
 const args = process.argv.slice(2);
 let rootDir = DEFAULT_ROOT_DIR;
@@ -79,18 +80,6 @@ for (let i = 0; i < args.length; i++) {
 }
 rootDir = resolve(rootDir);
 
-// Validated, not trusted. An unrecognised value used to sail through:
-// `--theme drak` set data-theme="drak", which renders light, and then
-// labelled every line of the report `[drak, ...]` -- a full run of the
-// light theme presented as a run of something else.
-function pick(name, value, allowed) {
-  if (value === "both") return allowed;
-  if (allowed.includes(value)) return [value];
-  console.error(
-    `unknown --${name} "${value}"; expected one of ${allowed.join(", ")} or both`
-  );
-  process.exit(2);
-}
 const themes = pick("theme", themeArg, THEMES);
 const viewports = pick("viewport", viewportArg, Object.keys(VIEWPORTS));
 
@@ -164,58 +153,56 @@ async function main() {
     (AXE_MINIFIED ? " [minified]" : " [unminified]")
   );
 
-  const browser = await launchBrowser();
-  const page = await newAuditPage(browser);
-
   let totalViolations = 0;
   let totalIncomplete = 0;
   const stateCoverage = [];
 
   const matrix = buildMatrix({ pages: SAMPLE_PAGES, themes, viewports });
 
-  await runMatrix(page, {
-    rootDir,
-    matrix,
-    // Patches require the unminified bundle.  That costs ~6 ms more per page
-    // to inject (22 -> 28 ms), against seconds saved on the audit itself.
-    axeSource: readAxeSource({ minified: AXE_MINIFIED, patches: AXE_PATCHES }),
-    configure: PRODUCTION.configure,
-    runOptions: PRODUCTION.runOptions,
-    onAudit({ label, results, state, stateResult }) {
-      if (state) stateCoverage.push(`${state} exposed ${stateResult} ${STATE_UNITS[state] ?? "node"}(s)`);
-      const { violations, incomplete } = results;
+  await withBrowser(async (browser) => {
+    const page = await newAuditPage(browser);
+    await runMatrix(page, {
+      rootDir,
+      matrix,
+      // Patches require the unminified bundle.  That costs ~6 ms more per page
+      // to inject (22 -> 28 ms), against seconds saved on the audit itself.
+      axeSource: readAxeSource({ minified: AXE_MINIFIED, patches: AXE_PATCHES }),
+      configure: PRODUCTION.configure,
+      runOptions: PRODUCTION.runOptions,
+      onAudit({ label, results, state, stateResult }) {
+        if (state) stateCoverage.push(`${state} exposed ${stateResult} ${STATE_UNITS[state] ?? "node"}(s)`);
+        const { violations, incomplete } = results;
 
-      if (violations.length > 0 || incomplete.length > 0) {
-        console.log(`\n== ${label} ==`);
+        if (violations.length > 0 || incomplete.length > 0) {
+          console.log(`\n== ${label} ==`);
 
-        for (const v of violations) {
-          console.log(
-            `  VIOLATION [${v.impact}] ${v.id}: ${v.help} (${v.helpUrl})`
-          );
-          for (const node of v.nodes.slice(0, 3)) {
-            console.log(`    ${node.html.slice(0, 120)}`);
+          for (const v of violations) {
+            console.log(
+              `  VIOLATION [${v.impact}] ${v.id}: ${v.help} (${v.helpUrl})`
+            );
+            for (const node of v.nodes.slice(0, 3)) {
+              console.log(`    ${node.html.slice(0, 120)}`);
+            }
+            if (v.nodes.length > 3) {
+              console.log(`    ... and ${v.nodes.length - 3} more`);
+            }
           }
-          if (v.nodes.length > 3) {
-            console.log(`    ... and ${v.nodes.length - 3} more`);
+
+          for (const inc of incomplete) {
+            console.log(`  INCOMPLETE [${inc.impact}] ${inc.id}: ${inc.help}`);
+            for (const node of inc.nodes.slice(0, 2)) {
+              console.log(`    ${node.html.slice(0, 120)}`);
+            }
           }
+
+          totalViolations += violations.length;
+          totalIncomplete += incomplete.length;
+        } else {
+          console.log(`  OK  ${label}`);
         }
-
-        for (const inc of incomplete) {
-          console.log(`  INCOMPLETE [${inc.impact}] ${inc.id}: ${inc.help}`);
-          for (const node of inc.nodes.slice(0, 2)) {
-            console.log(`    ${node.html.slice(0, 120)}`);
-          }
-        }
-
-        totalViolations += violations.length;
-        totalIncomplete += incomplete.length;
-      } else {
-        console.log(`  OK  ${label}`);
-      }
-    },
+      },
+    });
   });
-
-  await browser.close();
 
   // matrix.length is no longer pages x themes x viewports: STATE_AUDITS adds
   // entries that re-audit a page in a non-default state, so count the two

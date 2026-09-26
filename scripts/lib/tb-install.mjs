@@ -9,17 +9,23 @@
 
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 /**
  * The twinBASIC IDE executable, or null.
+ *
+ * Without a path from --ide or TB_IDE, the newest twinBASIC_IDE_BETA_<n> on the
+ * Desktop that holds a twinBASIC.exe. The Desktop is under USERPROFILE, else
+ * under the home folder: without the fallback, a missing USERPROFILE searched a
+ * `Desktop` folder relative to the working directory.
  *
  * @param {string} [explicit]  a path from --ide, which wins outright
  */
 export function findIde(explicit) {
   const named = explicit ?? process.env.TB_IDE;
   if (named) return named;
-  const desktop = path.join(process.env.USERPROFILE ?? "", "Desktop");
+  const desktop = path.join(process.env.USERPROFILE || os.homedir(), "Desktop");
   let best = null;
   try {
     for (const name of readdirSync(desktop)) {

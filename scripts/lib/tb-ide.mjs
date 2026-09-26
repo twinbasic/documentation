@@ -104,8 +104,8 @@ export function killTree(pid) {
  *                            set to "1" unless this names it; a value of
  *                            undefined leaves a variable out altogether
  * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess | null}>}
- *   `pid` is the IDE's own. Throws when the port is taken, or when a hidden
- *   launch fails.
+ *   `pid` is the IDE's own. Throws when the port is taken, or when the launch
+ *   fails.
  */
 export async function launchIde({ exe, project, port, show = false, keep = false, env = {} }) {
   const waitFrom = Date.now();
@@ -131,6 +131,13 @@ export async function launchIde({ exe, project, port, show = false, keep = false
 
   if (show) {
     const child = spawn(exeWin, [target], { detached: true, stdio: "ignore", env: fullEnv });
+    // A spawn that fails is reported by an 'error' event, not a throw, and an
+    // 'error' nothing listens for ends this process with exit 1, which tbbuild
+    // and tbrun define as compile errors. 'spawn' says the IDE started.
+    await new Promise((resolve, reject) => {
+      child.once("spawn", resolve);
+      child.once("error", (e) => reject(new Error(`could not start the IDE: ${e.message}`)));
+    });
     child.unref();
     return { pid: child.pid, launcher: null };
   }
@@ -731,7 +738,7 @@ export const consoleMark = (c) => c.evaluate(CONSOLE_MARK_JS);
 // ...", "[BUILD] failed" and "[LINKER] compilation (codegen) error ...".
 const BUILD_START = "[BUILD] Starting...";
 const BUILD_OK = /^\[LINKER\] SUCCESS created output file '(.+)'$/;
-const BUILD_FAILED = /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[LINKER\] compilation \(codegen\) error/;
+export const BUILD_FAILED = /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[LINKER\] compilation \(codegen\) error/;
 
 /**
  * Build the open project, as the toolbar's Build button does, and wait for the

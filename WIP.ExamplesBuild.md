@@ -11,12 +11,12 @@ Reader-facing documentation is the [`check_examples.mjs`
 entry](docs/Documentation/Tools.md) in Tools.md and [Checking that a sample
 compiles](docs/Documentation/Authoring.md) in Authoring.md.
 
-**1,119 samples are marked today** and the gate over them takes ~110 s, in 41 projects. That
+**1,129 samples are marked as of 2026-09-25** and the gate over them takes ~120 s, in 43 projects. That
 is up from 401, and the arithmetic of how it got there is [the second
 pass](#the-second-pass-604-to-818), which is also where the one claim this file got badly
 wrong is corrected.
 
-Of the 1,171 `tb` fences, 1,119 are marked and compile, 52 are `inert` with a recorded
+Of the 1,181 `tb` fences, 1,129 are marked and compile, 52 are `inert` with a recorded
 reason, and **none is undecided**, so the backlog the census measures is empty. No fence is
 an `excerpt` any more: [the excerpts](#the-excerpts-25-to-none) were the last group that
 could be made to build. Every gain
@@ -82,7 +82,7 @@ probe in `check_examples.mjs`:
   `Type_Initialize`, `Type_Assignment` and `Type_Conversion`, which is what
   `Features/Language/UDTs.md` is about. But a UDT *field* may also be called `Type As Long`,
   which reads as an opener that never closes --- the trap
-  `builder/census_attributes.mjs` records paying for, so every opener demands a name after
+  `scripts/census_attributes.mjs` records paying for, so every opener demands a name after
   the keyword.
 - **`Overridable` is a modifier**, with 32 uses in the shipped packages and 3 in `docs/`.
   Leaving it out of the list cost three fences, and they came back as *"End Function closing

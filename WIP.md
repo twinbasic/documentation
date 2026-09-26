@@ -130,7 +130,7 @@ because an install path contains a username.
 
 ```sh
 "$TB/bin/twinBASIC_win32.exe" export "<some>.twinproj" "C:\out\dir\" --overwrite
-node builder/census_attributes.mjs --out census.md   # every attribute, by enclosing construct
+node scripts/census_attributes.mjs --out census.md   # every attribute, by enclosing construct
 node scripts/tbbuild.mjs C:/probe/Thing.twinproj     # does it compile
 node scripts/tbrun.mjs <exported-source-dir>         # what does it print
 ```
@@ -374,7 +374,7 @@ must never do: [WIP.Typography.md](WIP.Typography.md).
 
 ### Tooling is JavaScript
 
-Everything under `scripts/`, `builder/`, `book/`, `eval/` and `wisdom/` is
+Everything under `scripts/`, `builder/`, `lib/`, `book/`, `eval/` and `wisdom/` is
 Node.js, and a new tool joins them there. Three files are not, each for a stated
 reason rather than by oversight: `scripts/impexp.py` is a published download
 offered to readers rather than tooling, `scripts/build_fonts.py` stays Python
@@ -415,7 +415,7 @@ over them, because a `tb` fence is something `check_code_regions.mjs` protects t
 the compiler now. A sample opts in by carrying `check_build` in its fence info string; the
 tool works out what to generate around it, packs many samples into one project, builds them
 through `tbbuild` on concurrent lanes, and reports each diagnostic against the line in the
-page it came from. **1,119 samples are marked and the run takes about 110 seconds.**
+page it came from. **1,129 samples are marked as of 2026-09-25, and the run takes about 120 seconds.**
 
 It is **never** wired into `build.bat`, `check.bat`, `test.bat` or CI: it needs a twinBASIC
 install, which `npm install` is not, and Windows with a private desktop and a
@@ -452,10 +452,10 @@ Why the report separates the wedged task from the merely blocked ones, and why
 - `build.bat` — runs `node builder\tbdocs.mjs --src docs --check-audit-index` (which implies `--check`) and produces three trees in one pass: the online copy at `_site/`, a `file://`-browsable copy at `_site-offline/`, and the sparse pagedjs source at `_site-pdf/`. The offline pass adds ~700 ms and the PDF pass adds ~150 ms on top of the ~2 s online build. Toggle `also_build_offline` / `also_build_pdf` in `_config.yml` (or pass `--no-offline` / `--no-pdf`) to skip a sibling output. `--check` adds ~1.7 s and runs the link + integrity check over the HTML while it is still in worker memory; `build.bat --no-check` gets a plain build.
 - `serve.bat` — runs `tbdocs --serve`: initial build, then a long-lived process with watcher, debounced rebuilds, and SSE-driven browser auto-reload. Writes to `docs/_serve/` (disjoint from `build.bat`'s `_site*/`) and skips the offline + PDF passes — so a one-off `build.bat` for the PDF or offline mirror doesn't disturb the live preview. Ctrl+C to stop.
 - `check.bat` — the gates that read the built site: a freshness check that refuses a stale tree (`scripts/check_tree_fresh.mjs`), the DOT diagram fit check (`scripts/check_dot_fit.mjs`), the a11y sample-coverage check (`scripts/pick_a11y_sample.mjs --check`), then the accessibility check (`scripts/check_a11y.mjs`). The link + integrity check moved into `build.bat`. ~37 s.
-- `test.bat` — the tests the *toolchain* has to pass: the publish-allowlist self-test (`scripts/check_publish_policy.mjs`), the gate-list check (`scripts/check_gate_lists.mjs`), the regex-safety gate (`scripts/check_regex_safety.mjs`), the code-region gate (`scripts/check_code_regions.mjs`), the page-count drift-guard probes (`scripts/check_page_baseline.mjs`), the book-coverage probes (`scripts/check_book_coverage.mjs`), the symbol-index probes (`scripts/check_symbol_index.mjs`), and the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`). ~8 s. See [What belongs in test.bat rather than check.bat](WIP.Build.md#what-belongs-in-testbat-rather-than-checkbat).
+- `test.bat` — the tests the *toolchain* has to pass: the publish-allowlist self-test (`scripts/check_publish_policy.mjs`), the gate-list check (`scripts/check_gate_lists.mjs`), the CI-workflow roster check (`scripts/check_ci_workflows.mjs`), the lint gate (`scripts/check_lint.mjs`), the regex-safety gate (`scripts/check_regex_safety.mjs`), the code-region gate (`scripts/check_code_regions.mjs`), the page-count drift-guard probes (`scripts/check_page_baseline.mjs`), the book-coverage probes (`scripts/check_book_coverage.mjs`), the symbol-index probes (`scripts/check_symbol_index.mjs`), and the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`). ~8 s. See [What belongs in test.bat rather than check.bat](WIP.Build.md#what-belongs-in-testbat-rather-than-checkbat).
 - `book.bat` — renders the PDF from `docs\_site-pdf\book.html` via `node book\render-book.mjs` into `docs\_pdf\twinBASIC Book.pdf`. Run `build.bat` first to populate `_site-pdf/`; `book.bat` refuses a tree older than its sources rather than rendering the previous book (see [The book refuses a stale source tree](WIP.Build.md#the-book-refuses-a-stale-source-tree)).
 
-- `examples.bat` — compiles the documentation's own twinBASIC code samples, every `tb` fence marked `check_build`, and reports the ones the compiler refuses against the line in the page they came from. Needs a twinBASIC install and Windows, so it is outside every gate and outside CI; ~110 s over the 1,119 samples marked today. Two modes need no compiler at all: `--census` classifies every fence and says how many classifiable ones are still unmarked, and `--report <survey.json>` groups a saved `--propose --json` survey by diagnostic, section and unresolved name. `--propose` itself does compile. See [Compiling the reference's own code samples](#compiling-the-references-own-code-samples) and [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md).
+- `examples.bat` — compiles the documentation's own twinBASIC code samples, every `tb` fence marked `check_build`, and reports the ones the compiler refuses against the line in the page they came from. Needs a twinBASIC install and Windows, so it is outside every gate and outside CI; ~120 s over the 1,129 samples marked as of 2026-09-25. Two modes need no compiler at all: `--census` classifies every fence and says how many classifiable ones are still unmarked, and `--report <survey.json>` groups a saved `--propose --json` survey by diagnostic, section and unresolved name. `--propose` itself does compile. See [Compiling the reference's own code samples](#compiling-the-references-own-code-samples) and [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md).
 - `addin-test.bat` — tests IDE add-ins by operating an IDE: every lane in `test/addin/lanes.mjs` builds the add-ins it tests into a private copy of the install, opens a project and checks what the add-in does. Outside every gate and outside CI for the same reasons as `examples.bat`; ~140 s for the ten lanes today: Samples 10 and 15, and the eight probe lanes behind Stage 2's answers in [WIP.HelpAddin.md](WIP.HelpAddin.md). Exit 0 every lane passed and the registry is as it was found, 1 a lane failed, 2 the harness failed or could not put the registry back. See [Driving the twinBASIC compiler](#driving-the-twinbasic-compiler) for its rules.
 
 Three generators sit outside that loop and produce committed artifacts rather than build output — none runs during a build, and none is needed for one. `python scripts/build_fonts.py` rebuilds the subset webfaces under `docs/assets/fonts/` and needs a network connection; `node scripts/build_dot_metrics.mjs` regenerates `builder/inter-metrics.json` from those webfaces and needs only a browser. See [Typography](#typography). `node scripts/build_package_api.mjs` regenerates `builder/package-api.json`, the packages' declared API that the build's symbol index (`tB/symbols.json`, for the IDE help add-in) is annotated from; it needs a twinBASIC install, so **run it when the reference is re-indexed against a newer build** and commit it with the pages. See [WIP.HelpAddin.md, Stage 3](WIP.HelpAddin.md#stage-3-the-symbol-index-generated-by-the-docs-build).
@@ -470,11 +470,17 @@ build.bat && check.bat
 
 On the dev box that is ~4 s of build against ~37 s of check, of which the axe scan is ~20 s. [builder/PLAN-checks.md](builder/PLAN-checks.md) records how the link checker got folded into the build's task graph, what it cost and what it saved; the axe follow-ons are designed there but not implemented.
 
-**If the change touched `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`, run `test.bat` as well** --- another ~8 s. Six of its eight gates cannot be affected by a content edit at all. **Two can.** `check_gate_lists.mjs` is the easy one to predict: it reads `README.md` and every page under `docs/Documentation/`, so an edit to any developer page that states a gate count can fail it. **`check_code_regions.mjs` is the one worth understanding**, and which half of it a content edit reaches is worth keeping straight. Its corpus sweep has `ROOT = <repo>/docs` and tokenises all 906 markdown files, so a page that provokes a rewrite into *altering* a code region fails it --- that half is content-dependent. Its fixed probes are not: they run against their own sources whatever the tree holds, and they cover the **mirror** fault, where a rewrite silently stops firing. The sweep structurally cannot see that one, because text the rewrite skipped is stashed and restored unchanged and every region still matches. So run `test.bat` after adding an unusual code construct --- a fence whose contents include a fence marker, a 4-space indented block, an admonition wrapping a fence --- and read the built page as well, because for the mirror fault the gate is asserting that the stasher still works rather than checking your page:
+**If the change touched `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `test/`, the site's scripts in `docs/assets/js/`, a wrapper or a workflow, run `test.bat` as well** --- another ~8 s. Seven of its ten gates cannot be affected by an edit under `docs/` at all. **Three can.** `check_lint.mjs` lints the site's two scripts in `docs/assets/js/` along with the tooling. `check_gate_lists.mjs` is the easy one to predict: it reads `README.md` and every page under `docs/Documentation/`, so an edit to any developer page that states a gate count can fail it. **`check_code_regions.mjs` is the one worth understanding**, and which half of it a content edit reaches is worth keeping straight. Its corpus sweep has `ROOT = <repo>/docs` and tokenises all 906 markdown files, so a page that provokes a rewrite into *altering* a code region fails it --- that half is content-dependent. Its fixed probes are not: they run against their own sources whatever the tree holds, and they cover the **mirror** fault, where a rewrite silently stops firing. The sweep structurally cannot see that one, because text the rewrite skipped is stashed and restored unchanged and every region still matches. So run `test.bat` after adding an unusual code construct --- a fence whose contents include a fence marker, a 4-space indented block, an admonition wrapping a fence --- and read the built page as well, because for the mirror fault the gate is asserting that the stasher still works rather than checking your page:
 
 ```sh
 build.bat && check.bat && test.bat
 ```
+
+**If the change touched `builder/`, compare the output as well.** `node
+scripts/compare_trees.mjs` builds `HEAD` and the working tree from two git
+worktrees and compares the three trees byte for byte, in about ten seconds. A
+refactor must come out identical; any other change should differ exactly where
+it meant to and nowhere else. See [WIP.Build.md](WIP.Build.md#the-pipeline).
 
 ### The gates, and where their internals are
 
@@ -491,12 +497,15 @@ wrapper:
 | `build.bat` | page-count baseline | a rise rewrites `builder/page-baseline.json` and says so; a fall fails the build |
 | `build.bat` | symbol-index URLs | every URL `tB/symbols.json` has published is still in it: a new one rewrites `builder/symbol-baseline.json`, a lost one --- most often a reworded member heading --- fails the build |
 | `build.bat` | nav integrity | every nav-visible `parent:` resolves to exactly one page |
+| `build.bat` | Gantt sections | every task handed to the build's Gantt chart has a section, and the chart has a place for it: a band for a main-thread task, a colour for a worker's |
 | `check.bat` | `check_tree_fresh` | the tree is not older than the sources that produced it |
 | `check.bat` | `check_dot_fit` | every diagram label sits inside the box Graphviz drew for it |
 | `check.bat` | `pick_a11y_sample --check`, `check_a11y` | see [WIP.A11y.md](WIP.A11y.md) |
 | `test.bat` | `check_code_regions` | no source or HTML rewrite altered a code region |
 | `test.bat` | `check_regex_safety` | no regex in the tree can backtrack exponentially |
 | `test.bat` | `check_symbol_index` | the symbol index still places each kind of symbol, from fixtures |
+| `test.bat` | `check_ci_workflows` | both CI workflows run every wrapper gate, with the same arguments and order, and build with `build.bat`'s flags |
+| `test.bat` | `check_lint` | Biome finds nothing in the tooling, warnings included, and checked at least one script |
 | `test.bat` | `check_publish_policy`, `check_gate_lists`, `check_page_baseline`, `check_book_coverage`, `check_axe_patch_equiv` | the gates on the gates |
 
 **A gate belongs in `test.bat` rather than `check.bat` if it would still mean
@@ -505,7 +514,10 @@ about what a gate interrogates, not about what it happens to open.
 
 Both CI workflows run every one of these as its own step, unconditionally and
 without invoking the `.bat` files --- so skipping `test.bat` locally changes
-what a content edit costs you, never what reaches `staging`.
+what a content edit costs you, never what reaches `staging`. The steps are one
+list, the composite action `.github/actions/run-gates/action.yml`, which both
+workflows call: **a new gate goes into its wrapper, that action and Tools.md's
+list**, and `check_ci_workflows.mjs` fails `test.bat` until CI matches.
 
 The nav integrity check ([builder/nav.mjs](builder/nav.mjs)) runs during COMPUTE and aborts the build on two failure modes, both otherwise silent:
 
@@ -522,6 +534,12 @@ inline `<code>` is content.
 
 Favor concise one-line git commit messages.
 
+**Lint before every commit:** `node scripts/check_lint.mjs`, a fraction of a second. It
+runs Biome over the tooling and the site's two scripts, and fails on a warning as well as an
+error, because Biome reports an unused import as a warning. `test.bat` and CI run it too.
+The pre-commit hook in `.githooks/` runs it on the staged scripts and nothing else; enable it
+in a clone with `git config core.hooksPath .githooks`.
+
 **A bug in twinBASIC itself goes in [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md)**, which is a
 queue rather than a record: an entry is deleted once it has been filed upstream. Each one
 carries the build it was seen on and a *narrowed* reproduction --- the compiler crash
@@ -533,7 +551,7 @@ they are.
 
 - Don't commit `.claude/` or `CLAUDE.md` — both gitignored. (`WIP.md` is committed; `CLAUDE.md` is just a local `@WIP.md` import shim.)
 - Don't touch `_site/` or `_site-offline/` (build outputs, gitignored).
-- **Don't walk `docs/` for its markdown with a private `readdir`.** Call `markdownFiles` from [scripts/lib/markdown-files.mjs](scripts/lib/markdown-files.mjs), which never enters the build's output trees. A walk that does enter them crashes whenever a running `serve.bat` rewrites `_serve`; see [The code-region gate](WIP.Build.md#the-code-region-gate). Any other walk of `docs/` decides what is an output tree with the same module's `isOutputTree`, as `check_tree_fresh.mjs` does, rather than a list of its own.
+- **Don't walk `docs/` for its markdown with a private `readdir`.** Call `markdownFiles` from [lib/markdown-files.mjs](lib/markdown-files.mjs), which never enters the build's output trees. A walk that does enter them crashes whenever a running `serve.bat` rewrites `_serve`; see [The code-region gate](WIP.Build.md#the-code-region-gate). Any other walk of `docs/` decides what is an output tree with the same module's `isOutputTree`, as `check_tree_fresh.mjs` does, rather than a list of its own.
 - **Don't judge rendered styling by opening a built page as a `file://` URL in the in-app browser pane.** It does not apply the page's stylesheets, so everything renders unstyled and any conclusion about colour, spacing, layout or contrast drawn from it is worthless. Use `serve.bat`, which serves over HTTP at localhost and renders for real. The confusing part is that `file://` is fine *through puppeteer* -- `scripts/check_a11y.mjs`, `scripts/sweep_a11y.mjs` and the `perf/` rigs all load `_site-offline/` over `file://` and get correct computed styles, which is the entire reason the offline tree exists (see [Site integrity check](#site-integrity-check)). So: puppeteer for measuring, `serve.bat` for looking. Never the preview pane on a `file://` path.
 - Don't write literal en-dash `–` or em-dash `—` in `docs/` markdown source. Use `--` (renders as en-dash) or `---` (renders as em-dash) — markdown-it's typographer does the conversion at build time. `scripts/convert_em_dash_separators.mjs` normalises any strays.
 - **Never write or edit a file with a shell heredoc.** No `cat > file <<'EOF'`, no

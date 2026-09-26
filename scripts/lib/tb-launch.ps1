@@ -11,6 +11,8 @@
 #   TBBUILD_DESKTOP  desktop name to create
 #   TBBUILD_JOB      "0" for no job -- a --keep IDE, which must outlive the run
 #
+# A launch that fails prints no pid, and its cause as one line on stderr.
+#
 # Why a desktop at all: the twinBASIC IDE calls HostForceFocus() from its own
 # window.onload, so it takes the keyboard whatever window style it is started
 # with. `start /min` was tried and does not help. A process on another desktop
@@ -35,12 +37,30 @@
 
 $ErrorActionPreference = "Stop"
 
+# With its streams redirected, PowerShell writes to stderr in CLIXML: the
+# progress record Add-Type makes ("Preparing modules for first use"), and any
+# error. A failed launch then read "#< CLIXML" rather than its cause. So
+# progress is silenced, and a failure is written here as plain text, in UTF-8,
+# which is how tb-ide.mjs reads it.
+$ProgressPreference = "SilentlyContinue"
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
+trap {
+  [Console]::Error.WriteLine($_.Exception.GetBaseException().Message)
+  exit 1
+}
+
 $exe = $env:TBBUILD_EXE
 $arg = $env:TBBUILD_ARG
 $desktop = if ($env:TBBUILD_DESKTOP) { $env:TBBUILD_DESKTOP } else { "tbbuild" }
 
+# Each Win32 call is made, and its error read, in C#. PowerShell makes calls of
+# its own before a script's next statement, and they replace the error: read
+# from PowerShell, a CreateProcess that had set 3, "The system cannot find the
+# path specified", was reported as 203, "The system could not find the
+# environment option that was entered".
 Add-Type -TypeDefinition @'
 using System;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 
 public static class TbLaunch {
@@ -76,63 +96,93 @@ public static class TbLaunch {
   }
 
   [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-  public static extern IntPtr CreateDesktop(string name, IntPtr device, IntPtr devmode,
+  static extern IntPtr CreateDesktop(string name, IntPtr device, IntPtr devmode,
     int flags, uint access, IntPtr sa);
 
   [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-  public static extern bool CreateProcess(string app, string cmd, IntPtr pa, IntPtr ta,
+  static extern bool CreateProcess(string app, string cmd, IntPtr pa, IntPtr ta,
     bool inherit, uint flags, IntPtr env, string cwd,
     ref STARTUPINFO si, out PROCESS_INFORMATION pi);
 
   [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-  public static extern IntPtr CreateJobObject(IntPtr sa, string name);
+  static extern IntPtr CreateJobObject(IntPtr sa, string name);
 
   [DllImport("kernel32.dll", SetLastError = true)]
-  public static extern bool SetInformationJobObject(IntPtr job, int infoClass,
+  static extern bool SetInformationJobObject(IntPtr job, int infoClass,
     ref JOBOBJECT_EXTENDED_LIMIT_INFORMATION info, uint length);
 
   [DllImport("kernel32.dll", SetLastError = true)]
-  public static extern bool AssignProcessToJobObject(IntPtr job, IntPtr process);
+  static extern bool AssignProcessToJobObject(IntPtr job, IntPtr process);
 
   [DllImport("kernel32.dll", SetLastError = true)]
-  public static extern uint ResumeThread(IntPtr thread);
+  static extern uint ResumeThread(IntPtr thread);
 
   [DllImport("kernel32.dll", SetLastError = true)]
-  public static extern bool TerminateProcess(IntPtr process, uint exitCode);
+  static extern bool TerminateProcess(IntPtr process, uint exitCode);
+
+  // The error of the call just made, with its text. Nothing may come between
+  // that call and this one.
+  static Exception Failed(string what) {
+    int code = Marshal.GetLastWin32Error();
+    return new Exception(what + " failed: " + new Win32Exception(code).Message);
+  }
+
+  // GENERIC_ALL (0x10000000).
+  public static IntPtr Desktop(string name) {
+    IntPtr desk = CreateDesktop(name, IntPtr.Zero, IntPtr.Zero, 0, 0x10000000, IntPtr.Zero);
+    if (desk == IntPtr.Zero) throw Failed("CreateDesktop");
+    return desk;
+  }
+
+  // KILL_ON_JOB_CLOSE (0x2000), set through JobObjectExtendedLimitInformation,
+  // which is information class 9.
+  public static IntPtr KillOnCloseJob() {
+    IntPtr job = CreateJobObject(IntPtr.Zero, null);
+    if (job == IntPtr.Zero) throw Failed("CreateJobObject");
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION info = new JOBOBJECT_EXTENDED_LIMIT_INFORMATION();
+    info.Basic.LimitFlags = 0x2000;
+    if (!SetInformationJobObject(job, 9, ref info, (uint)Marshal.SizeOf(info))) {
+      throw Failed("SetInformationJobObject");
+    }
+    return job;
+  }
+
+  public static PROCESS_INFORMATION Start(string exe, string cmd, string cwd, string desktop,
+                                          uint flags) {
+    STARTUPINFO si = new STARTUPINFO();
+    si.cb = Marshal.SizeOf(si);
+    si.lpDesktop = desktop;
+    PROCESS_INFORMATION pi;
+    if (!CreateProcess(exe, cmd, IntPtr.Zero, IntPtr.Zero, false, flags, IntPtr.Zero, cwd,
+                       ref si, out pi)) {
+      throw Failed("CreateProcess");
+    }
+    return pi;
+  }
+
+  // Ends the process, still suspended, when it cannot go into the job.
+  public static void Assign(IntPtr job, PROCESS_INFORMATION pi) {
+    if (AssignProcessToJobObject(job, pi.hProcess)) return;
+    Exception failed = Failed("AssignProcessToJobObject");
+    TerminateProcess(pi.hProcess, 1);
+    throw failed;
+  }
+
+  public static void Resume(PROCESS_INFORMATION pi) {
+    ResumeThread(pi.hThread);
+  }
 }
 '@
 
-function Fail($what) {
-  $code = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-  throw "$what failed: $(([ComponentModel.Win32Exception]::new($code)).Message)"
-}
+# The desktop lives as long as this handle does, which is as long as this
+# process does -- hence the wait at the end.
+$hDesk = [TbLaunch]::Desktop($desktop)
 
-# GENERIC_ALL. The desktop lives as long as this handle does, which is as long
-# as this process does -- hence the wait at the end.
-$hDesk = [TbLaunch]::CreateDesktop($desktop, [IntPtr]::Zero, [IntPtr]::Zero, 0, 0x10000000, [IntPtr]::Zero)
-if ($hDesk -eq [IntPtr]::Zero) { Fail "CreateDesktop" }
-
-# The job. KILL_ON_JOB_CLOSE (0x2000) is the whole point; breakaway is not
-# allowed, so nothing the IDE starts can leave it. Its one handle is this
-# process's, which closes when this process ends, however it ends.
-# JobObjectExtendedLimitInformation is information class 9. The nested struct
-# is copied out, changed and put back: assigning through $info.Basic.LimitFlags
-# would change a copy PowerShell makes of a value type, and set nothing.
+# The job. KILL_ON_JOB_CLOSE is the whole point; breakaway is not allowed, so
+# nothing the IDE starts can leave it. Its one handle is this process's, which
+# closes when this process ends, however it ends.
 $useJob = $env:TBBUILD_JOB -ne "0"
-if ($useJob) {
-  $job = [TbLaunch]::CreateJobObject([IntPtr]::Zero, $null)
-  if ($job -eq [IntPtr]::Zero) { Fail "CreateJobObject" }
-  $info = New-Object TbLaunch+JOBOBJECT_EXTENDED_LIMIT_INFORMATION
-  $basic = $info.Basic
-  $basic.LimitFlags = 0x2000
-  $info.Basic = $basic
-  if (-not [TbLaunch]::SetInformationJobObject($job, 9, [ref]$info,
-        [Runtime.InteropServices.Marshal]::SizeOf($info))) { Fail "SetInformationJobObject" }
-}
-
-$si = New-Object TbLaunch+STARTUPINFO
-$si.cb = [Runtime.InteropServices.Marshal]::SizeOf($si)
-$si.lpDesktop = $desktop
+if ($useJob) { $job = [TbLaunch]::KillOnCloseJob() }
 
 # The command line is assembled here rather than by Start-Process, which
 # appends a trailing space -- parseCommandLine() in ide/main2.js reads that as an
@@ -142,21 +192,14 @@ $cmd = '"' + $exe + '" "' + $arg + '"'
 
 # CREATE_SUSPENDED (0x4): the IDE goes into the job before it runs a single
 # instruction, so there is no moment in which it could start a child outside.
-$pi = New-Object TbLaunch+PROCESS_INFORMATION
 $flags = if ($useJob) { 0x4 } else { 0 }
-if (-not [TbLaunch]::CreateProcess($exe, $cmd, [IntPtr]::Zero, [IntPtr]::Zero, $false,
-      $flags, [IntPtr]::Zero, [IO.Path]::GetDirectoryName($exe), [ref]$si, [ref]$pi)) {
-  Fail "CreateProcess"
-}
+$pi = [TbLaunch]::Start($exe, $cmd, [IO.Path]::GetDirectoryName($exe), $desktop, $flags)
 if ($useJob) {
-  if (-not [TbLaunch]::AssignProcessToJobObject($job, $pi.hProcess)) {
-    # End the suspended IDE rather than resume it: the caller gets no pid from a
-    # failed launch, so an IDE resumed here would be one nothing ever kills.
-    $err = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-    [void][TbLaunch]::TerminateProcess($pi.hProcess, 1)
-    throw "AssignProcessToJobObject failed: $(([ComponentModel.Win32Exception]::new($err)).Message)"
-  }
-  [void][TbLaunch]::ResumeThread($pi.hThread)
+  # An IDE that cannot go into the job is ended, still suspended, rather than
+  # resumed: the caller gets no pid from a failed launch, so an IDE resumed
+  # here would be one nothing ever kills.
+  [TbLaunch]::Assign($job, $pi)
+  [TbLaunch]::Resume($pi)
 }
 
 Write-Output $pi.dwProcessId

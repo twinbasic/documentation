@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Census every attribute used by the twinBASIC packages an IDE install ships.
 //
-//     node builder/census_attributes.mjs [options]
+//     node scripts/census_attributes.mjs [options]
 //
 //       --ide <path>       twinBASIC install root (default: $TB_IDE, else the
 //                          newest %USERPROFILE%/Desktop/twinBASIC_IDE_BETA_*)
@@ -73,10 +73,10 @@
 // bucket and is reported -- a census that quietly buckets its own confusion is
 // how the wrong answer gets published with a number beside it.
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { defaultCache, exportPackages, packageName } from "../scripts/lib/tb-packages.mjs";
+import { findIde } from "./lib/tb-install.mjs";
+import { defaultCache, exportPackages, packageName } from "./lib/tb-packages.mjs";
 
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ATTR_DOC = path.join(REPO, "docs", "Reference", "Attributes.md");
@@ -87,6 +87,14 @@ const opt = (n, d) => { const i = argv.indexOf("--" + n); return i < 0 ? d : arg
 const die = (code, msg) => { console.error(msg); process.exit(code); };
 const log = (...a) => { if (!flag("quiet")) console.error(...a); };
 
+// A flag that takes a value, given last or followed by another flag, has none,
+// and is refused rather than read as undefined: --ide then fell back to TB_IDE,
+// and --out to stdout.
+const VALUE_FLAGS = ["ide", "src", "cache", "attr", "dump-sites", "out"];
+const bare = argv.find((a, i) => a.startsWith("--") && VALUE_FLAGS.includes(a.slice(2)) &&
+  (argv[i + 1] === undefined || /^-./.test(argv[i + 1])));
+if (bare) die(2, `${bare} needs a value`);
+
 if (flag("help")) {
   console.log(readFileSync(fileURLToPath(import.meta.url), "utf8")
     .split("\n").filter((l) => l.startsWith("//")).slice(1, 18).map((l) => l.slice(3)).join("\n"));
@@ -94,28 +102,17 @@ if (flag("help")) {
 }
 
 // ------------------------------------------------------------- the install
-// An install path contains a username, so it is never hardcoded -- the same
-// rule tbbuild.mjs follows, and for the same reason.
+// Found as every harness tool finds it, by scripts/lib/tb-install.mjs's
+// findIde, and then checked for the packages/ folder the census reads. An
+// install path contains a username, so it is never hardcoded.
 function findInstall() {
-  const given = opt("ide", process.env.TB_IDE);
-  if (given) {
-    // Accept either the install root or the IDE exe inside it.
-    const root = /\.exe$/i.test(given) ? path.dirname(given) : given;
-    if (existsSync(path.join(root, "packages"))) return root;
-    if (existsSync(path.join(path.dirname(root), "packages"))) return path.dirname(root);
-    die(2, `no packages/ under ${root} -- pass the install root with --ide`);
-  }
-  const home = process.env.USERPROFILE || os.homedir();
-  const desktop = path.join(home, "Desktop");
-  if (!existsSync(desktop)) die(2, "no Desktop to search; pass --ide or set TB_IDE");
-  const betas = readdirSync(desktop)
-    .map((n) => /^twinBASIC_IDE_BETA_(\d+)$/.exec(n))
-    .filter(Boolean)
-    .map((m) => ({ n: Number(m[1]), dir: path.join(desktop, m[0]) }))
-    .filter((b) => existsSync(path.join(b.dir, "packages")))
-    .sort((a, b) => b.n - a.n);
-  if (!betas.length) die(2, "no twinBASIC_IDE_BETA_* with a packages/ folder on the Desktop; pass --ide");
-  return betas[0].dir;
+  const found = findIde(opt("ide"));
+  if (!found) die(2, "no twinBASIC install found; pass --ide or set TB_IDE");
+  // Accept either the install root or the IDE exe inside it.
+  const root = /\.exe$/i.test(found) ? path.dirname(found) : found;
+  if (existsSync(path.join(root, "packages"))) return root;
+  if (existsSync(path.join(path.dirname(root), "packages"))) return path.dirname(root);
+  die(2, `no packages/ under ${root} -- pass the install root with --ide`);
 }
 
 const buildNumberOf = (root) => (/_BETA_(\d+)$/.exec(root)?.[1]) ?? "unknown";
@@ -301,7 +298,6 @@ function scanFile(file, pkg) {
         // put the comment text in the report and lost the real target.
         // blankStrings erases a ' comment, so a blank result means "no code".
         let decl = blankStrings(decomment(run.rest)).trim() ? decomment(run.rest) : null;
-        let declLine = run.endLine;
         if (!decl) {
           let j = run.endLine + 1;
           while (j < lines.length) {
@@ -314,7 +310,6 @@ function scanFile(file, pkg) {
             break;
           }
           decl = decomment(lines[j] ?? "");
-          declLine = j;
         }
         const container = stack.at(-1)?.kind ?? "(file)";
         const kind = classify(decl, container);
@@ -392,8 +387,6 @@ function documentedAttributes() {
 }
 
 // ------------------------------------------------------------------- report
-const pct = (n, d) => (d ? ((n / d) * 100).toFixed(1) : "0.0");
-
 function buildReport(sites, problems, files, projects, meta) {
   const byAttr = new Map();
   for (const s of sites) {

@@ -1,0 +1,5 @@
+# Git hooks stay LF even where core.autocrlf checks files out CRLF. Git for
+# Windows runs a CRLF hook without trouble, but a POSIX Git -- WSL on a
+# Windows checkout, say -- hands the hook to the kernel, which reads the
+# carriage return after #!/bin/sh as part of the interpreter's name.
+.githooks/* text eol=lf

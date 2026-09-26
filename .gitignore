@@ -12,6 +12,10 @@ indexer/.packages/
 # Temporary session handoff notes. Root-anchored: only the repo-root file.
 /HANDOFF.md
 
+# scripts/compare_trees.mjs: the before side's git worktree, both built
+# trees and both build logs. Removed after a clean run unless --keep.
+/.compare-trees/
+
 # scripts/check_links_diff.mjs builds test/fixtures/check-src into these.
 /test/fixtures/_out/
 /test/fixtures/_out-offline/

@@ -36,7 +36,7 @@
 //
 // Mechanism: PDFObjectParser isn't re-exported from pdf-lib's index,
 // so we reach in through the CJS internals via createRequire (same
-// shape as fast-parse-dict.mjs). Mutating
+// shape as fast-sync-load.mjs). Mutating
 // PDFObjectParser.prototype.parseObject is global -- every parser
 // instance created after this shim loads picks it up.
 //

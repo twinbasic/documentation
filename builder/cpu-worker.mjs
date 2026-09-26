@@ -35,7 +35,6 @@ const myLane = workerData?.lane ?? 0;
 
 let views     = null;   // Int32Array views into the scheduling SAB
 let ctx       = null;   // { srcRoot, destRoot, opts, workerCount }
-let idMapping = null;   // { nameToIdx, idxToName, DYNAMIC_BASE, … }
 
 let _payloadSAB = null;   // SharedArrayBuffer with packed per-task payloads
 let _sharedSAB  = null;   // SharedArrayBuffer with packed shared payload
@@ -180,6 +179,23 @@ const handlers = {
         caches: { rawResolution: new Map(), seg: new Map(), result: new Map() },
       };
 
+      // PLAN-9 §5.3 (B7) nav-block cache: the just-the-docs sidebar in
+      // `<nav id="site-nav">...</nav>` is byte-identical across every page
+      // site-wide before rewrite (template.mjs's renderSidebar takes only
+      // `site`, not `page`; the per-page active highlight lives in a
+      // separate `<style id="jtd-nav-activation">` block emitted in
+      // <head>, not as inline class attributes on the nav anchors). The
+      // HTML rewrite pass spends ~200 ms per build re-running the per-
+      // match callback over that ~80kB block on each of 837 pages. The
+      // cache stashes the pre/post-rewrite nav slices once per
+      // **destination** dir (the URL rewrite is keyed by `fileSegs`,
+      // derived from `page.destPath`) and the per-page rewriter below
+      // substitutes them in instead of re-scanning.
+      //
+      // Asserted-premise design (§7.D11): each subsequent page checks that
+      // its pre-rewrite nav block matches the cached `input` byte-for-byte.
+      // On miss it falls back to the full rewrite with a warning -- the
+      // cache is purely an optimisation, never a correctness dependency.
       const writable = chunk.filter(p => p.html !== undefined);
       const byDir = new Map();
       for (const p of writable) {
@@ -290,7 +306,6 @@ parentPort.on("message", (msg) => {
   if (msg.init) {
     views     = createViews(msg.sab);
     ctx       = msg.ctx;
-    idMapping = msg.idMapping;
     _payloadSAB   = null;
     _sharedSAB    = null;
     _renderEnv    = null;

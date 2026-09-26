@@ -143,11 +143,11 @@ function countEnumerations(pages) {
  * Derive every named count from build state.
  *
  * @param {object} state    scheduler state: needs `pages` and `staticFiles`
- * @param {object} [extra]  values from tasks other than discover
- * @param {number} [extra.redirectStubs]  deriveRedirects' stub count
+ * @param {object} extra    values from tasks other than discover
+ * @param {number} extra.redirectStubs  deriveRedirects' stub count
  * @returns {Record<string, number>}
  */
-export function deriveCounts(state, extra = {}) {
+export function deriveCounts(state, extra) {
   const pages = state.pages ?? [];
   const refPages = pages.filter((p) => p.srcRel.startsWith(REF_PREFIX));
   const folderStyle = refPages.filter((p) => p.srcRel.endsWith("/index.md"));
@@ -179,11 +179,9 @@ export function deriveCounts(state, extra = {}) {
     enumerations: countEnumerations(pages),
     // Whole-page stubs emitted for every `redirect_from:` entry. Passed in
     // because it comes from deriveRedirects rather than from discover.
-    redirectStubs: extra.redirectStubs ?? 0,
+    redirectStubs: extra.redirectStubs,
   };
 }
-
-export const COUNT_NAMES = Object.keys(deriveCounts({ pages: [], staticFiles: [] })).sort();
 
 // ------------------------------------------------------------------ plugin
 
@@ -192,8 +190,8 @@ export const COUNT_NAMES = Object.keys(deriveCounts({ pages: [], staticFiles: []
  *
  * Registered after `replacements` so it sees the same text the reader will.
  * `ctx.counts` absent is not an error -- it means a caller that does not need
- * substitution (the SEO pass builds a markdown-it of its own), and the rule
- * then does nothing.
+ * substitution (check_examples.mjs's markup probe builds one without counts),
+ * and the rule then does nothing.
  */
 export function countPlugin(md, ctx) {
   md.core.ruler.push("tbdocs-counts", (state) => {

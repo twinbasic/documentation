@@ -30,14 +30,14 @@ import { readdirSync, statSync, existsSync } from "node:fs";
 import { join, resolve, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { isOutputTree } from "./lib/markdown-files.mjs";
+import { isOutputTree } from "../lib/markdown-files.mjs";
 
 const REPO_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 // Output trees live under docs/, so walking docs/ naively would compare
 // the build against itself and always pass. They are skipped at the top of
 // each source root by the prefix list the markdown walk uses, in
-// scripts/lib/markdown-files.mjs. This file used to name them one at a time,
+// lib/markdown-files.mjs. This file used to name them one at a time,
 // and missed four that sat beside the others: _site-basepath-offline and
 // _site-basepath-pdf, which a build into _site-basepath writes, and the empty
 // _serve-offline and _serve-pdf that serve mode left behind until it stopped
@@ -54,19 +54,14 @@ const IGNORED_DIRS = new Set([".git", "node_modules"]);
 // same for the symbol index's URLs (builder/symbol-baseline.mjs), and is
 // rewritten by any build that adds a heading. package-api.json is not here: the
 // build reads it, and it decides the bytes of tB/symbols.json.
-// census_attributes.mjs lives under builder/ but decides none of the built
-// bytes -- it censuses twinBASIC package sources and never runs during a build.
-// Without this, editing it marks every output tree stale, which blocks check.bat
-// and makes book.bat refuse to render, for a tool the build never calls. Same
-// reasoning as page-baseline.json: the sources this script watches are "the
-// inputs that decide the built bytes", and neither file is one.
-const IGNORED_FILES = new Set(["page-baseline.json", "symbol-baseline.json", "census_attributes.mjs"]);
+const IGNORED_FILES = new Set(["page-baseline.json", "symbol-baseline.json"]);
 
 // The inputs that decide the built bytes. The source tree is the obvious
 // one; the builder and the theme sources matter just as much, and are
 // what a maintainer is most likely to be editing when they run these two
-// commands in the wrong order.
-const DEFAULT_SOURCES = ["docs", "builder"];
+// commands in the wrong order. lib/ holds modules the builder shares with
+// the other tools, so an edit there can change the build too.
+const DEFAULT_SOURCES = ["docs", "builder", "lib"];
 const DEFAULT_TREE = "docs/_site-offline";
 const DEFAULT_MARKER = "index.html";
 

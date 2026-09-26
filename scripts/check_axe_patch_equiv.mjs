@@ -31,10 +31,10 @@ import {
   DEFAULT_ROOT_DIR,
   VIEWPORTS,
   gotoPage,
-  launchBrowser,
   newAuditPage,
   readAxeSource,
 } from "./lib/axe-scan.mjs";
+import { withBrowser } from "./lib/browser.mjs";
 
 let patchName = "plain-color-fields";
 const args = process.argv.slice(2);
@@ -96,12 +96,11 @@ const PROBE = () => {
 };
 
 async function main() {
-  const browser = await launchBrowser();
-  const page = await newAuditPage(browser);
-  await page.setViewport(VIEWPORTS.desktop);
-
   const results = {};
-  try {
+  await withBrowser(async (browser) => {
+    const page = await newAuditPage(browser);
+    await page.setViewport(VIEWPORTS.desktop);
+
     for (const [label, src] of [
       ["stock", readAxeSource({ minified: false })],
       ["patched", readAxeSource({ minified: false, patches: [patchName] })],
@@ -111,9 +110,7 @@ async function main() {
       await page.evaluate(src);
       results[label] = await page.evaluate(PROBE);
     }
-  } finally {
-    await browser.close();
-  }
+  });
 
   console.log(`patch: ${patchName}\n`);
 

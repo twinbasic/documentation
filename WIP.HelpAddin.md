@@ -734,7 +734,7 @@ at `/tB/Modules/Collection`, not under VBRUN. The index is generated instead.
   `/tB/Core/Attributes#<name in lowercase>`.
 - **From the packages:** the public API from an `export` of the shipped packages --- the
   export and its cache already exist in
-  [builder/census_attributes.mjs](builder/census_attributes.mjs). That supplies each
+  [scripts/census_attributes.mjs](scripts/census_attributes.mjs). That supplies each
   symbol's package, container and kind, and lists public symbols that have no page, which
   measures documentation coverage as a side effect. **It must also supply each class's
   default interface**, because that is what the compiler names a class's members by (P5):

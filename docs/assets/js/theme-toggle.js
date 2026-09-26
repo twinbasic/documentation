@@ -39,7 +39,7 @@
     try {
       var stored = localStorage.getItem(KEY);
       if (stored === "light" || stored === "dark") return stored;
-    } catch (e) {
+    } catch (_e) {
       // localStorage unavailable (private mode) -- fall through to system.
     }
     return "system";
@@ -50,14 +50,14 @@
       root.removeAttribute("data-theme");
       try {
         localStorage.removeItem(KEY);
-      } catch (e) {
+      } catch (_e) {
         // ignore: the preference simply won't persist
       }
     } else {
       root.setAttribute("data-theme", choice);
       try {
         localStorage.setItem(KEY, choice);
-      } catch (e) {
+      } catch (_e) {
         // ignore: the preference simply won't persist
       }
     }

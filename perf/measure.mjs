@@ -29,12 +29,12 @@
 //                    [--no-detach-pages] [--instrument] [--time-hooks]
 //                    [--incremental] [--chrome-outline] [--timing]
 //                    [--clone-count] [--render-only]
-//                    [--fast-refs] [--parallel-deflate]
+//                    [--parallel-deflate]
 //                    [--fast-decode-name] [--fast-number-to-string]
 //                    [--fast-size-in-bytes] [--fast-inflate]
-//                    [--fast-parse-number] [--fast-parse-dict]
+//                    [--fast-parse-number]
 //                    [--fast-parse-object] [--fast-sync-load]
-//                    [--fast-dict-array] [--fast-indirect-objects]
+//                    [--fast-indirect-objects]
 //                    [--fast-pdfnumber-pool]
 //
 // --render-only bails out after the render phase. Skips meta extraction,
@@ -106,11 +106,12 @@
 // 512 for finer-grained attribution on short phases. Composable with
 // --cpu-profile-process; both share one inspector session.
 //
-// --fast-refs replaces PDFRef.of's string-keyed Map lookup with a
-// dense-array cache for the gen=0 case (82 % of ~1.2 M calls on the
-// book). Eliminates the per-call `<obj> <gen> R` string allocation
-// and Map hash. gen != 0 calls (pdf-lib's xref-stream bookkeeping
-// for compressed objects) pass through unchanged.
+// --fast-refs, --fast-parse-dict, --fast-dict-iter and --fast-dict-array
+// loaded shims that production had replaced with fast-refs-class and
+// fast-dict-onebuf. They were deleted in the tooling review, and their
+// flags with them: pdf-lib is pinned at its final release, so the
+// comparisons they served are settled. The measurements are in
+// notes/08-pdf-lib.md, and git history has the code.
 //
 // --parallel-deflate replaces pdfDoc.save() with parallelSave from
 // book/lib/parallel-deflate.mjs: object streams are pre-deflated in
@@ -149,14 +150,6 @@
 // PDF flows through these; hundreds of thousands of calls per load
 // on the book. Production runs through it.
 //
-// --fast-parse-dict hoists the four sentinel PDFName.of calls
-// (Type / Catalog / Pages / Page) out of the type-dispatch tail
-// in PDFObjectParser.prototype.parseDict. The dispatch fires
-// per-dict (tens of thousands on the book) and even with
-// --fast-decode-name each lookup is still a Map.get on fastCache.
-// Pool-dedup makes the canonical PDFNames reference-stable, so
-// captured constants replace the four calls verbatim.
-//
 // --fast-parse-object replaces PDFObjectParser.prototype.parseObject
 // with a first-byte-dispatch version that gates the three
 // matchKeyword (true / false / null) scans behind a byte check.
@@ -165,18 +158,6 @@
 // upstream version pays three speculative matchKeyword fail-and-
 // rewind costs on every invocation. Same semantics, dispatch
 // reordered by observed frequency in dict-value position.
-//
-// --fast-dict-array replaces PDFDict's backing Map with a flat
-// alternating array [k0, v0, k1, v1, ...]. The sampling heap profile
-// showed `new Map()` + `Map.prototype.set` accounting for half the
-// process-phase allocations (~63 MB combined), 80 % of that traffic
-// from the parser's per-dict accumulator. The flat array is one
-// allocation per dict, no hash-table arena; lookups are linear scans
-// but PDF dicts are tiny (typically <= 10 entries). Subsumes
-// --fast-parse-dict and --fast-dict-iter (the parser's hot loop
-// accumulates into the array directly; sizeInBytes / copyBytesInto
-// iterate in place). Now superseded by --fast-dict-onebuf; kept as
-// an A/B baseline.
 //
 // --fast-dict-onebuf collapses the per-dict array allocation into
 // ONE long-lived mainBuf shared across every committed PDFDict
@@ -187,10 +168,9 @@
 // header. Owned dicts (factory-created post-parse) append to main
 // and mutate in place / COW to the tail. PDFContext is a singleton
 // in our pipeline (one PDFDocument.load per process); a second
-// distinct context throws. Mutually exclusive with --fast-dict-array
-// and the other dict-shape shims. ~57 % cumulative heap reduction
-// since the original Map-backed PDFDict (152 -> 66 MB). Production
-// runs through it.
+// distinct context throws. ~57 % cumulative heap reduction since
+// the original Map-backed PDFDict (152 -> 66 MB). Production runs
+// through it.
 //
 // --fast-indirect-objects replaces PDFContext.indirectObjects
 // (Map<PDFRef, PDFObject>) with a dense array indexed by
@@ -281,7 +261,6 @@ let timing = false;
 let cloneCount = false;
 let renderOnly = false;
 let tracing = false;
-let fastRefs = false;
 let fastRefsClass = false;
 let parallelDeflate = false;
 let fastDecodeName = false;
@@ -289,12 +268,9 @@ let fastNumberToString = false;
 let fastSizeInBytes = false;
 let fastInflate = false;
 let fastParseNumber = false;
-let fastDictIter = false;
-let fastParseDict = false;
 let fastParseObject = false;
 let fastParseName = false;
 let fastSyncLoad = false;
-let fastDictArray = false;
 let fastIndirectObjects = false;
 let fastPdfnumberPool = false;
 let fastDictOnebuf = false;
@@ -325,7 +301,6 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--render-only') renderOnly = true;
   else if (a === '--tracing') tracing = true;
   else if (a === '--no-affinity') { /* handled in pin-cpu.mjs */ }
-  else if (a === '--fast-refs') fastRefs = true;
   else if (a === '--fast-refs-class') fastRefsClass = true;
   else if (a === '--parallel-deflate') parallelDeflate = true;
   else if (a === '--fast-decode-name') fastDecodeName = true;
@@ -333,12 +308,9 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--fast-size-in-bytes') fastSizeInBytes = true;
   else if (a === '--fast-inflate') fastInflate = true;
   else if (a === '--fast-parse-number') fastParseNumber = true;
-  else if (a === '--fast-dict-iter') fastDictIter = true;
-  else if (a === '--fast-parse-dict') fastParseDict = true;
   else if (a === '--fast-parse-object') fastParseObject = true;
   else if (a === '--fast-parse-name') fastParseName = true;
   else if (a === '--fast-sync-load') fastSyncLoad = true;
-  else if (a === '--fast-dict-array') fastDictArray = true;
   else if (a === '--fast-indirect-objects') fastIndirectObjects = true;
   else if (a === '--fast-pdfnumber-pool') fastPdfnumberPool = true;
   else if (a === '--fast-dict-onebuf') fastDictOnebuf = true;
@@ -389,14 +361,6 @@ if (heapProfileProcess && renderOnly) {
   console.error('--heap-profile-process is incompatible with --render-only (the process phase is skipped).');
   process.exit(2);
 }
-if (fastDictArray && (fastParseDict || fastDictIter)) {
-  console.error('--fast-dict-array subsumes --fast-parse-dict and --fast-dict-iter (Map-backed shims). Pick one shape.');
-  process.exit(2);
-}
-if (fastDictOnebuf && (fastDictArray || fastParseDict || fastDictIter)) {
-  console.error('--fast-dict-onebuf subsumes the other dict-shape shims (different storage shape). Pick one.');
-  process.exit(2);
-}
 if (measurePass && !fastDictOnebuf) {
   console.error('--measure-pass requires --fast-dict-onebuf (the only shim that consumes setExpectedDictSlots so far).');
   process.exit(2);
@@ -420,14 +384,6 @@ if (instrumentSlotTypes && (incremental || renderOnly)) {
 
 // Install the dense-array cache for PDFRef.of's gen=0 path before any
 // pdf-lib operation. Side-effecting import; idempotent.
-if (fastRefs && fastRefsClass) {
-  console.error('--fast-refs and --fast-refs-class are mutually exclusive (both shim PDFRef.of).');
-  process.exit(2);
-}
-if (fastRefs) {
-  await import('../book/lib/fast-refs.mjs');
-  console.log('[harness] fast-refs: PDFRef.of dense-array cache for gen=0');
-}
 if (fastRefsClass) {
   await import('../book/lib/fast-refs-class.mjs');
   console.log('[harness] fast-refs-class: PDFRef.of dense-array cache + class-constructor shape');
@@ -452,14 +408,6 @@ if (fastParseNumber) {
   await import('../book/lib/fast-parse-number.mjs');
   console.log('[harness] fast-parse-number: direct-integer accumulator for parseRawNumber/parseRawInt');
 }
-if (fastDictIter) {
-  await import('../book/lib/fast-dict-iter.mjs');
-  console.log('[harness] fast-dict-iter: in-place Map.forEach for PDFDict.sizeInBytes/copyBytesInto');
-}
-if (fastParseDict) {
-  await import('../book/lib/fast-parse-dict.mjs');
-  console.log('[harness] fast-parse-dict: hoist Type/Catalog/Pages/Page sentinel PDFNames out of parseDict');
-}
 if (fastParseObject) {
   await import('../book/lib/fast-parse-object.mjs');
   console.log('[harness] fast-parse-object: first-byte dispatch in parseObject, gate true/false/null matchKeyword behind byte check');
@@ -471,10 +419,6 @@ if (fastParseName) {
 if (fastSyncLoad) {
   await import('../book/lib/fast-sync-load.mjs');
   console.log('[harness] fast-sync-load: synchronify PDFParser load path, strip waitForTick machinery');
-}
-if (fastDictArray) {
-  await import('../book/lib/fast-dict-array.mjs');
-  console.log('[harness] fast-dict-array: PDFDict backed by flat alternating array (subsumes fast-parse-dict + fast-dict-iter)');
 }
 if (fastIndirectObjects) {
   await import('../book/lib/fast-indirect-objects.mjs');

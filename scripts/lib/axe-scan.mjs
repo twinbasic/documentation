@@ -18,7 +18,6 @@
 import { readFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import puppeteer from "puppeteer";
 
 // This module lives at <repo>/scripts/lib/axe-scan.mjs.  Anchoring the built
 // tree and the axe bundle to the repo root rather than to process.cwd() lets
@@ -237,6 +236,22 @@ export const VIEWPORTS = {
 
 export const THEMES = ["light", "dark"];
 
+// A --theme or --viewport value: "both", or one of `allowed`. Validated, not
+// trusted. An unrecognised value used to sail through: `--theme drak` set
+// data-theme="drak", which renders light, and then labelled every line of the
+// report `[drak, ...]` -- a full run of the light theme presented as a run of
+// something else. `--viewport tiny` passed undefined to setViewport, which
+// Puppeteer accepts, so the run went ahead at a size nobody chose, labelled
+// `tiny`.
+export function pick(name, value, allowed) {
+  if (value === "both") return allowed;
+  if (allowed.includes(value)) return [value];
+  console.error(
+    `unknown --${name} "${value}"; expected one of ${allowed.join(", ")} or both`
+  );
+  process.exit(2);
+}
+
 // Requests aborted for the duration of the scan.
 //
 // Every page in the offline tree pulls in the ~3.2 MB search index
@@ -254,14 +269,6 @@ export const THEMES = ["light", "dark"];
 // colour-contrast node count on Select-Case drops 54 -> 2 -- which would
 // silently mask coverage for ~130 ms.
 export const BLOCKED_REQUESTS = [/search-data\.js/, /lunr\.min\.js/];
-
-// --no-sandbox: GitHub's ubuntu-24.04 runners carry the AppArmor restriction
-// on unprivileged user namespaces, which Chrome's sandbox needs -- without
-// this the launch fails in CI.  --disable-dev-shm-usage avoids crashes where
-// /dev/shm is small (containers).  Neither touches layout or computed style,
-// so axe sees exactly what it sees locally; book/render-book.mjs passes the
-// same pair for the same reason.
-export const LAUNCH_ARGS = ["--no-sandbox", "--disable-dev-shm-usage"];
 
 // The production axe.run options.
 //
@@ -594,9 +601,8 @@ export function axeVersion() {
 // Browser / page plumbing
 // ---------------------------------------------------------------------------
 
-export function launchBrowser(opts = {}) {
-  return puppeteer.launch({ headless: true, args: LAUNCH_ARGS, ...opts });
-}
+// The launch lives in browser.mjs; perf/'s rigs still import it from here.
+export { launchBrowser } from "./browser.mjs";
 
 /** A page with the scan's request blocking installed. */
 export async function newAuditPage(browser) {
@@ -702,6 +708,18 @@ export function buildMatrix({
   viewports = Object.keys(VIEWPORTS),
   stateAudits = STATE_AUDITS,
 } = {}) {
+  // The backstop behind pick(), for a caller that builds a matrix without it.
+  for (const theme of themes) {
+    if (!THEMES.includes(theme)) {
+      throw new Error(`buildMatrix: unknown theme "${theme}"`);
+    }
+  }
+  for (const viewport of viewports) {
+    if (!Object.hasOwn(VIEWPORTS, viewport)) {
+      throw new Error(`buildMatrix: unknown viewport "${viewport}"`);
+    }
+  }
+
   const seen = new Set();
   const uniquePages = pages.filter((p) => {
     if (seen.has(p)) return false;

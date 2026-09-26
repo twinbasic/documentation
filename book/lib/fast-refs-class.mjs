@@ -1,6 +1,8 @@
-// fast-refs variant: use a class-style constructor for stable hidden class.
+// Replaces PDFRef.of: a dense-array cache for gen=0 refs, built with a
+// class-style constructor for a stable hidden class.
 //
-// fast-refs.mjs builds PDFRef instances with
+// The shim this replaced, fast-refs.mjs (since deleted; see
+// "fast-refs-class" in perf/notes/08-pdf-lib.md), built PDFRef instances with
 // `Object.create(PDFRef.prototype) + fresh.objectNumber = ... + fresh.gen = ...`.
 // V8 treats objects built that way as transitioning through intermediate
 // hidden-class maps as each property is added, and the result is roughly
@@ -29,17 +31,20 @@
 // raw, aligned to 16 B by V8 -- versus 12 + 2*4 = 20 B raw, aligned to
 // 24 B for a 2-slot instance. Saves 8 B per gen=0 PDFRef * ~226 k unique
 // = ~1.8 MB heap on the book.
-//
-// Mutually exclusive with --fast-refs in the harness.
 
 import { PDFRef } from 'pdf-lib';
 
-// ---- helpers (same as fast-refs.mjs, see commentary there) -------------
+// ---- helpers -----------------------------------------------------------
 
+// Write n's decimal representation into buffer starting at offset.
+// No allocations. Returns the number of bytes written. n must be a
+// non-negative integer.
 function _writeUint(buffer, offset, n) {
   if (n < 10) { buffer[offset] = 0x30 + n; return 1; }
+  // Count digits.
   let m = n, d = 0;
   while (m > 0) { d++; m = (m / 10) | 0; }
+  // Write digits backwards.
   for (let i = d - 1; i >= 0; i--) {
     buffer[offset + i] = 0x30 + (n % 10);
     n = (n / 10) | 0;
@@ -47,6 +52,8 @@ function _writeUint(buffer, offset, n) {
   return d;
 }
 
+// Non-allocating decimal digit count for non-negative integers.
+// Ladder catches the common small-number cases without arithmetic.
 function _digitCount(n) {
   if (n < 10)      return 1;
   if (n < 100)     return 2;

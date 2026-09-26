@@ -8,7 +8,7 @@ permalink: /Documentation/Development/Tools
 # Tools and Scripts
 {: .no_toc }
 
-One-line-per-tool reference for every executable in the documentation repository: the seven Windows batch wrappers at the repository root, the Node and Python scripts under `scripts/` (cross-platform except for [`tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE), the `tbdocs` orchestrator and its CLI flags, [`census_attributes.mjs`](#census-attributes) under `builder/`, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper.
+One-line-per-tool reference for every executable in the documentation repository: the seven Windows batch wrappers at the repository root, the Node and Python scripts under `scripts/` (cross-platform except for [`tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE), the `tbdocs` orchestrator and its CLI flags, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper.
 
 * TOC goes here
 {:toc}
@@ -65,21 +65,25 @@ One of the four does not mean the same thing locally as it does in CI, on any pl
 
     test.bat
 
-The tests the toolchain has to pass. Eight steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Ten steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
 2. [`scripts/check_gate_lists.mjs`](#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
-3. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
-4. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span.
-5. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
-6. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
-7. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
-8. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+3. [`scripts/check_ci_workflows.mjs`](#check-ci-workflows) --- verifies both CI workflows run the gates the wrappers run, and build as `build.bat` does.
+4. [`scripts/check_lint.mjs`](#check-lint) --- runs Biome over the tooling and fails on any finding, warnings included.
+5. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
+6. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span.
+7. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
+8. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
+9. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
+10. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
     node scripts/check_publish_policy.mjs \
       && node scripts/check_gate_lists.mjs \
+      && node scripts/check_ci_workflows.mjs \
+      && node scripts/check_lint.mjs \
       && node scripts/check_regex_safety.mjs \
       && node scripts/check_code_regions.mjs \
       && node scripts/check_page_baseline.mjs \
@@ -87,7 +91,7 @@ POSIX:
       && node scripts/check_symbol_index.mjs \
       && node scripts/check_axe_patch_equiv.mjs
 
-**Six of the eight cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/`. Both CI workflows run all eight unconditionally, as they always did, so skipping it locally cannot let a tooling regression reach `staging`.
+**Seven of the ten cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all ten unconditionally, as they always did, so skipping it locally cannot let a tooling regression reach `staging`.
 
 The two exceptions are [`check_code_regions.mjs`](#check-code-regions) and [`check_gate_lists.mjs`](#check-gate-lists), which reads this page. The first is worth knowing in detail. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes are a different matter: they run against their own sources whatever the tree holds, and they cover the *mirror* fault, where a rewrite silently stops firing. The sweep cannot see that one --- text the rewrite skipped is stashed and restored unchanged, so every region still matches. Add a page with an unusual code construct and run `test.bat`, but read the built page too.
 
@@ -203,7 +207,7 @@ Full invocation:
 | Flag | Effect |
 |---|---|
 | `--src <path>` | Source root. Default: `docs` relative to the working directory. |
-| `--dest <path>` | Online-tree destination. Default: `<src>/_site`. The offline tree lands at `<dest>-offline`, the PDF tree at `<dest>-pdf`. |
+| `--dest <path>` | Online-tree destination. Default: `<src>/_site`. The offline tree lands at `<dest>-offline`, the PDF tree at `<dest>-pdf`. The build refuses a destination that is or contains `<src>`, since cleaning it would delete the source. Inside `<src>`, it must be, or be inside, a folder directly under it whose name starts with `_site`, `_serve` or `_pdf`: anywhere else there, its output is read back as source by the next build or by `--serve`'s watcher. |
 | `--baseurl <prefix>` | Overrides `_config.yml`'s `baseurl`. Used by CI to inject the GitHub Pages base path on fork deployments. |
 | `--url <origin>` | Overrides `_config.yml`'s `url`. Used by CI so canonical URLs match the actual deployment origin rather than the configured production host. |
 | `--dry-run` | Skip every filesystem write. Useful for benchmarking or validating discovery / compute / render. |
@@ -222,6 +226,8 @@ Full invocation:
 | `--stall-timeout <seconds>` | How long the build waits with no task completing before it gives up, names the outstanding tasks and exits 1. Default: 120. `0` disables the watchdog and returns the build to hanging in silence on a wedged worker. See [when a build stops instead of failing](Building#when-a-build-stops). |
 | `--serve` | Start the long-lived dev server (watch + rebuild + SSE live-reload). Offline and PDF passes are skipped each rebuild. |
 | `--port <N>` | HTTP port for `--serve` mode. Default: 4000. |
+
+Exit codes: **0** clean; **1** a link failure, a failed build step, a fall in the page count, a symbol-index URL lost, or a crash; **2** an integrity failure; **3** both. A command-line error --- an unknown flag, a flag without its value, or a `--dest` the build refuses --- exits **4**, which no check can produce, so it is never read as a broken link.
 
 ### check_links.mjs
 {: #check-links }
@@ -248,13 +254,13 @@ Offline (filesystem-only) link checker plus optional integrity checks. Multiple 
 | `--check-canonical` | Assert each page's canonical URL matches its location. |
 | `--no-fail` | Downgrade failures to informational output (exit 0 even with broken links). |
 
-Exit code 1 indicates broken links; exit code 2 indicates integrity-only failures (the integrity checks share the same SAX parse pass as link extraction). The script dedupes `(target, fragment)` so each unique filesystem check fires exactly once regardless of how many pages link to the same target --- on the current tree (~733k link occurrences, ~12k unique targets across 1,127 HTML files / 124 MB) each pass runs in ~2.2 seconds on a development box.
+Exit code 1 indicates broken links; exit code 2 indicates integrity-only failures (the integrity checks share the same SAX parse pass as link extraction). Exit code 4 is a command-line error --- no arguments, a flag without its value, no `--offline`, or no input --- and no check can produce it. The script dedupes `(target, fragment)` so each unique filesystem check fires exactly once regardless of how many pages link to the same target --- on the current tree (~733k link occurrences, ~12k unique targets across 1,127 HTML files / 124 MB) each pass runs in ~2.2 seconds on a development box.
 
 ### crawl_check.mjs
 
     node scripts/crawl_check.mjs <start-url> [--concurrency N] [--timeout MS] [--skip-external]
 
-Online link crawler for the deployed site. Starts at `<start-url>`, GETs every same-origin / same-base-path page recursively, extracts links, and verifies that each link responds 2xx (HEAD for cross-origin, GET for same-origin). Exits 0 if all links are reachable, 1 if any are broken. Use it after a manual `workflow_dispatch` deploy to verify the published site --- `check_links.mjs` covers the local filesystem; `crawl_check.mjs` covers the live deployed site.
+Online link crawler for the deployed site. Starts at `<start-url>`, GETs every same-origin / same-base-path page recursively, extracts every link the build's own check follows (`srcset` and `poster` included), and verifies that each link responds 2xx (HEAD for cross-origin, GET for same-origin). A request that fails before any response arrives, whether its connection is reset or it times out, is tried twice more, each time with the full `--timeout`, before its link is reported broken. The timeout covers a page's body as well as its headers. A page whose body breaks off, or is still arriving when the timeout runs out, is reported broken at once, without a retry, and the part that arrived is not parsed for links. Exits 0 if every link is reachable and every anchor exists, 1 if a link is broken or an anchor is missing, and 2 on a usage error or a crash. Use it after a manual `workflow_dispatch` deploy to verify the published site --- `check_links.mjs` covers the local filesystem; `crawl_check.mjs` covers the live deployed site.
 
 ### check_a11y.mjs
 {: #check-a11y }
@@ -372,7 +378,7 @@ No browser, no built tree, ~40 ms, which is why it is `test.bat`'s first step. R
 
     node scripts/check_tree_fresh.mjs [--tree DIR] [--source DIR ...]
 
-`check.bat`'s first gate. Refuses a built tree older than the sources that produced it, by comparing the newest mtime under the source tree against the built tree's `index.html`. The build's own output trees under `docs/` are not sources, and which folders those are comes from `scripts/lib/markdown-files.mjs`, the list [`check_code_regions.mjs`](#check-code-regions) walks by. Without it, editing a page and running `check.bat` without rebuilding audits the *previous* build and passes --- a green run that says nothing about the change just made. CI never hits this because it builds in the same job; a development box hits it whenever the two commands run out of order. Exits 0 when the tree is current, 1 when stale (naming `build.bat`), 2 when the tree is absent.
+`check.bat`'s first gate. Refuses a built tree older than the sources that produced it, by comparing the newest mtime under the source tree against the built tree's `index.html`. The build's own output trees under `docs/` are not sources, and which folders those are comes from `lib/markdown-files.mjs`, the list [`check_code_regions.mjs`](#check-code-regions) walks by. Without it, editing a page and running `check.bat` without rebuilding audits the *previous* build and passes --- a green run that says nothing about the change just made. CI never hits this because it builds in the same job; a development box hits it whenever the two commands run out of order. Exits 0 when the tree is current, 1 when stale (naming `build.bat`), 2 when the tree is absent.
 
 ### check_dot_fit.mjs
 {: #check-dot-fit }
@@ -386,7 +392,7 @@ Renders every committed diagram with the real webfont and fails if a label sits 
 
     node scripts/check_regex_safety.mjs [--census] [--self-test]
 
-Refuses a regex that can backtrack exponentially. Parses every `.mjs` under `builder/`, `scripts/`, `book/`, `eval/` and `wisdom/` with acorn and classifies each pattern with [recheck](https://makenowjust-labs.github.io/recheck/). No browser, no built tree, a few seconds.
+Refuses a regex that can backtrack exponentially. Parses every `.mjs` under `builder/`, `scripts/`, `lib/`, `book/`, `eval/` and `wisdom/` with acorn and classifies each pattern with [recheck](https://makenowjust-labs.github.io/recheck/). No browser, no built tree, a few seconds.
 
 **It reads two things: regex literals, and every `new RegExp(...)` whose arguments can be resolved from the source.** The second half matters more than it sounds, because building a pattern out of shared fragments --- `const NUM = "..."; new RegExp(`${WRAP}${NUM}`)` --- is the ordinary way to avoid writing a sub-pattern six times, and for as long as the gate read literals only, doing that made a regex invisible to it. Six in one gate were, and one of them turned out to be polynomial rather than safe; it was found by a person running recheck against it by hand, which is not a process. A construction it cannot resolve is listed by `--census` with the reason --- *a function parameter, check the call sites*, *a `let`, so its value is not fixed* --- so the remaining blind spot is a short list rather than a count.
 
@@ -411,7 +417,7 @@ Exits 1 on an exponential finding. Exits 2 when the gate itself failed --- a fil
 
 Verifies that no pre-render rewrite in `builder/render.mjs` alters the contents of a code fence, an indented code block or an inline code span. Tokenises every markdown file under `docs/`, applies the real rewrite chain, re-tokenises, and compares the code regions in order. No browser, no built tree, a couple of seconds.
 
-The list of files comes from `scripts/lib/markdown-files.mjs`, which [`convert_em_dash_separators.mjs`](#convert-em-dash-separators) and [`check_examples.mjs`](#check-examples) share. It never enters the build's output trees, so a running `serve.bat` cannot fail the gate: the preview deletes and rewrites `docs/_serve` on every rebuild, and a walk inside it at that moment used to die with `ENOENT`.
+The list of files comes from `lib/markdown-files.mjs`, which [`convert_em_dash_separators.mjs`](#convert-em-dash-separators) and [`check_examples.mjs`](#check-examples) share. It never enters the build's output trees, so a running `serve.bat` cannot fail the gate: the preview deletes and rewrites `docs/_serve` on every rebuild, and a walk inside it at that moment used to die with `ENOENT`.
 
 Those rewrites run over **raw markdown**, before markdown-it has parsed anything, so none of them can tell prose from code --- and this site's subject matter is code. Four defects of exactly that shape shipped: a language reference printed its `If` / `ElseIf` / `Else` bodies flush left, a page lost the blank line between two examples, a link's argument list was percent-encoded inside a fence, and a YAML sample's closing `---` was deleted outright. **No other gate can see any of it**, because the damage sits inside `<code>` and the link, integrity, publish and accessibility checks all pass over it.
 
@@ -441,6 +447,35 @@ Three things follow from how it works. **The wrapper is the source of truth**, n
 When it fires on a count that is merely a subset --- *three cheaper gates run first* --- the fix is to delete the number rather than correct it. The command block or the linked list beneath it already states it, and a number nothing derives is a number that goes stale. The script's header names what the sweep deliberately does not see.
 
 Its probes ride along in the ordinary run rather than hiding behind `--self-test`, because a green line from a gate that has stopped detecting looks exactly like a green line from a working one. Twelve of the eighteen cover the sweep, each a sentence that was published at the commit round 4 reviewed. Exits 1 on a disagreement or a failed probe, 2 if it cannot run.
+
+### check_ci_workflows.mjs
+{: #check-ci-workflows }
+
+    node scripts/check_ci_workflows.mjs
+
+The same question as [`check_gate_lists.mjs`](#check-gate-lists), asked of the two CI workflows, which nothing else reads. It requires that `checks.yml` and `tbdocs-gh-pages.yml` each run every gate [`test.bat`](#testbat) and [`check.bat`](#checkbat) run, with the same arguments and in each wrapper's own order; that the two workflows run the same gate steps in the same order; and that each workflow's build passes every argument [`build.bat`](#buildbat) passes, plus `--no-fetch-assets`. A step dropped from a workflow, a gate added to a wrapper and never to CI, or a lost `--check-audit-index` would otherwise leave CI green over a check it had stopped making.
+
+The gates both workflows share are one composite action, `.github/actions/run-gates/action.yml`, and the gate reads a workflow step that uses a local action as that action's own steps. A local action it cannot read is a finding, so a renamed action cannot take its gates out of CI unnoticed.
+
+The differences that are meant are listed in the script, each with where it is recorded: `check_tree_fresh.mjs` runs only locally, because CI builds the tree in the same job; the two `check_links_diff.mjs` fixture steps run only in CI, one of them only in `checks.yml`; and the deploy build adds `--url` and `--baseurl`. CI may also interleave the two wrappers' gates, as long as each wrapper's own order holds. Anything else is a finding, and so is an allowance that no longer matches anything.
+
+Its probes ride along in every run: each plants one defect in a small synthetic set of wrappers, workflows and actions --- a missing gate, a step no wrapper runs, two gates swapped, changed arguments, a build flag lost or added, a gate missing from the shared action, a workflow that stops calling it --- and requires exactly the findings it should produce. Pure text: no browser, no built tree. Exits 0 clean, 1 on a finding, 2 when a probe fails or the gate cannot run.
+
+### check_lint.mjs
+{: #check-lint }
+
+    node scripts/check_lint.mjs
+    node scripts/check_lint.mjs --staged
+
+Runs Biome, pinned to an exact version, over the tooling: `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `test/` and the site's two scripts in `docs/assets/js/`, less the exceptions that `biome.jsonc` at the repository root lists and explains. The rules are the ones that find defects --- Biome's correctness and suspicious groups --- and none about style; the configuration names the few it turns off, each with its reason. Moving and deleting code leaves unused imports and undeclared names behind, and nothing else reads the tooling for them. No browser, no built tree, a fraction of a second.
+
+**Warnings fail as well as errors.** Biome reports an unused import or variable as a warning, and exits 0 on warnings, so a plain `npx biome lint` passes a file full of them. The gate also refuses to pass when Biome could not lint. Biome exits 1 for a broken `biome.jsonc`, as it does for a finding, and 0 for a scope that matches no script at all, so the gate reads the summary Biome writes beside its usual output to tell these apart. Exits 0 clean, 1 on a finding, 2 when Biome could not lint or, over the whole scope, checked no script.
+
+Lint before every commit that touches one of those folders, or let the pre-commit hook do it. `.githooks/pre-commit` runs this gate with `--staged`, on the scripts the commit adds or changes, as they are in the working tree, and runs nothing else. Biome skips the staged scripts its scope excludes, and a commit that stages no script returns before Biome starts. Enable the hook in a clone with:
+
+    git config core.hooksPath .githooks
+
+A clone without the hook is still checked, because `test.bat` and both CI workflows run this gate over the whole scope. `npx biome lint --write` applies the fixes Biome marks safe. The fixes it offers for an unused import or variable are marked unsafe and need `--unsafe` as well, so read the diff after applying them.
 
 ### check_page_baseline.mjs
 {: #check-page-baseline }
@@ -558,6 +593,31 @@ It shares [`census_attributes.mjs`](#census-attributes)'s export and cache, and 
 
 Normalises literal en-dash / em-dash characters in markdown source under `docs/` to the ASCII source forms markdown-it's typographer converts at build time (`--` for en-dash, `---` for em-dash). The site forbids literal `–` / `—` in source --- this is the canonical fixer if any slip back in. Skips fenced code blocks and inline code spans, and preserves each file's existing line endings. `--check` reports what it would change and exits non-zero without writing, so it can serve as a gate.
 
+### survey_tooling.mjs
+{: #survey-tooling }
+
+    node scripts/survey_tooling.mjs                  # the summary, then every listing
+    node scripts/survey_tooling.mjs --summary        # the summary only
+    node scripts/survey_tooling.mjs --root <dir>     # measure another checkout
+
+Measures the repository's own tooling for repetition and structure: code duplicated between files, found token by token so that two copies differing only in names still match; top-level functions defined under one name in several files; how the command-line tools read their arguments; packages imported without being declared in `package.json`; and the import graph --- the imports that cross from one directory to another, the files nothing imports, and the most imported modules. `builder/PLAN-TOOLING-REVIEW.md` records its summary at the commit the tooling review started from, and the review's last phase runs it again to compare.
+
+It is not a gate, and nothing runs it: take a measurement before and after a piece of refactoring. It reads only the files git tracks, so a scratch file never changes a number. `--root` measures another checkout, such as a worktree at an older commit that does not contain the script. `perf/` is measured, but it is counted separately in the summary and left out of the listings unless `--include-perf` is given. Exits 0, or 2 on a bad argument or a folder that is not a git checkout.
+
+### compare_trees.mjs
+{: #compare-trees }
+
+    node scripts/compare_trees.mjs                      # HEAD against the working tree
+    node scripts/compare_trees.mjs --before <ref>       # any commit against the working tree
+    node scripts/compare_trees.mjs --keep               # leave both trees and both build logs
+    node scripts/compare_trees.mjs -- --baseurl /docs   # extra tbdocs arguments, for both builds
+
+Builds the site twice and compares the online, offline and PDF trees file by file, byte for byte: once at a commit, `HEAD` unless `--before` names another, and once from the working tree as a commit would hold it, untracked files included. It is the check for a change to `builder/` that should leave the output alone, and for one that should not, whose differences ought to be the intended ones and no others.
+
+Both builds run from git worktrees under `.compare-trees/` at the repository root, which is gitignored, and neither touches the index or the working tree. Building the working tree in place would not do: under `core.autocrlf` a fresh checkout writes CRLF where files a tool has rewritten hold LF, and every file the build copies verbatim would then differ. Both builds run `tbdocs --no-fetch-assets` with `CI=1`, so the committed baselines are read and never written.
+
+Three regions differ between any two builds and are replaced before the comparison: the build's own timings in `assets/images/gantt.svg`, the same chart inlined into the [Build Info](BuildInfo) page, and the PDF title page's build line, which holds the build date and the commit. Everything else must match. A run takes about ten seconds on the development box. It is not a gate, and nothing runs it. Exits 0 when the trees match, 1 when they differ, and 2 when the tool failed; a failed run leaves `.compare-trees/` for inspection, and the next run removes it.
+
 ### tbbuild.mjs
 {: #tbbuild }
 
@@ -631,6 +691,12 @@ and warns again when there is no `[RunAfterBuild]` at all.
 reason. The probe never runs then, so the console still holds that log --- `[BUILD] failed`,
 often after `[TYPELIB] failed to finalize typelibrary` --- and `tbrun` used to return it as the
 probe's output, with exit 0. Run it again: both failures seen so far passed on a second run.
+A `[RunAfterBuild]` Sub that fails code generation exits 2 the same way: the build succeeds,
+the console adds `[LINKER] compilation (codegen) error detected in '<module>.<procedure>'`,
+and nothing in the Sub runs, `Debug.Cls` included. A procedure the probe *calls* that fails
+code generation is not caught. Its error line is written before the probe's first statement,
+which erases it, and the probe stops at the call, so `tbrun` exits 0 with the output printed
+up to that point.
 
 **The capture is complete however much a probe prints**, so there is no reason to keep one
 short. `tbrun` reads the console's backing array rather than the pane, which is a virtualised
@@ -921,7 +987,7 @@ It also writes a key naming the `Attributes.md` line each probe came from, besid
 ### census_attributes.mjs
 {: #census-attributes }
 
-    node builder/census_attributes.mjs [--ide <install>] [--src <dir>] [--cache <dir>]
+    node scripts/census_attributes.mjs [--ide <install>] [--src <dir>] [--cache <dir>]
                                        [--refresh] [--samples] [--attr <name>]
                                        [--json] [--out <file>] [--dump-sites <file>] [--quiet]
 

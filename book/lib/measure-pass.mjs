@@ -345,7 +345,7 @@ export class Measurer {
 
       if (tag === 1 && IsNumeric[buf[this.pos]]) {
         const v = this.parseNumberOrRefCapture();
-        if (!isNaN(v)) this._stLength[d] = v;
+        if (!Number.isNaN(v)) this._stLength[d] = v;
       } else if (tag === 2 && buf[this.pos] === SLASH) {
         if (this._isNameAt(this.pos + 1, 'ObjStm')) this._stIsObjStm[d] = 1;
         this.pos++;
@@ -353,10 +353,10 @@ export class Measurer {
         this.numNames++;
       } else if (tag === 3 && IsNumeric[buf[this.pos]]) {
         const v = this.parseNumberOrRefCapture();
-        if (!isNaN(v)) this._stN[d] = v;
+        if (!Number.isNaN(v)) this._stN[d] = v;
       } else if (tag === 4 && IsNumeric[buf[this.pos]]) {
         const v = this.parseNumberOrRefCapture();
-        if (!isNaN(v)) this._stFirst[d] = v;
+        if (!Number.isNaN(v)) this._stFirst[d] = v;
       } else {
         this.parseObject();
       }
@@ -371,7 +371,7 @@ export class Measurer {
   }
 
   parseArray() {
-    const d = this._depth++;
+    this._depth++;
     if (this._depth > this.maxRecursionDepth) this.maxRecursionDepth = this._depth;
 
     this.pos++;

@@ -1,8 +1,8 @@
 // Phase 2 book chapter resolution + Phase 8 book.html assembly.
 //
-// Phase 2 surface (§A below): loadBookData, resolveBookChapters,
-// sortByNavOrder. Loads _book.yml and walks every entry / part /
-// chaptered-part-chapter, resolving the selector schema (page / pages /
+// Phase 2 surface (§A below): resolveBookChapters, sortByNavOrder.
+// Walks every entry / part / chaptered-part-chapter of _book.yml, which
+// the build reads through data.mjs into site.data.book, resolving the selector schema (page / pages /
 // nav_page / nav_pages + no_descent) to a concrete Array<Page> stored
 // as `_chapters` on the entry. Pre-resolves landing_page / foreword_page
 // URL lookups in the same pass so Phase 8 has no pages-walk left to do.
@@ -25,21 +25,10 @@
 //   docs/_plugins/book-href-rewrite.rb   (cross-ref rewrite + landing strip)
 
 import { compressHtml } from "./compress.mjs";
-import { loadData } from "./data.mjs";
 
 // ---------------------------------------------------------------------------
-// §A  Phase 2: _book.yml loader + chapter resolver + sort_by_nav_order
+// §A  Phase 2: chapter resolver + sort_by_nav_order
 // ---------------------------------------------------------------------------
-
-// Back-compat wrapper around the generic `loadData` loader. The
-// orchestrator (PLAN-9 §5.2) calls `loadData(srcRoot)` once and stashes
-// the result on `site.data`; downstream consumers read
-// `site.data.book` directly. `loadBookData` is retained for the verify
-// harnesses and diff tools that haven't migrated to `site.data` yet.
-export async function loadBookData(srcRoot) {
-  const data = await loadData(srcRoot);
-  return data.book ?? null;
-}
 
 export function resolveBookChapters(bookData, pages) {
   if (!bookData) return;
@@ -220,11 +209,11 @@ function replaceOutsideCode(html, pattern, replacer) {
     (m.startsWith("<code") || m.startsWith("<pre")) ? m : replacer(m, ...rest));
 }
 
-// PLAN-9 §5.9: per-chapter image-path collector. Same shape as
-// pdf.mjs's IMG_SRC_RE -- three top-level alternatives: <code>/<pre>
-// (consumed atomically so src= inside code samples doesn't count),
-// then a real page-relative `src="..."` attribute. The code/pre
-// branches leave m[1] (the quote char) undefined; we skip those.
+// PLAN-9 §5.9: per-chapter image-path collector. Three top-level
+// alternatives: <code>/<pre> (consumed atomically so src= inside code
+// samples doesn't count), then a real page-relative `src="..."`
+// attribute. The code/pre branches leave m[1] (the quote char)
+// undefined; we skip those.
 const IMG_SRC_RE_BOOK =
   /<code\b[^>]*>[\s\S]*?<\/code>|<pre\b[^>]*>[\s\S]*?<\/pre>|\bsrc=(["'])((?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\1/g;
 
@@ -610,7 +599,7 @@ export function assembleBook(site, pages) {
   out.push("\n<body>\n");
   out.push(renderTitlePage(site));
   emitFrontMatter(out, bookData, baseurl, imagePaths);
-  (bookData.parts ?? []).forEach((part, i) => emitPart(out, part, i, site, baseurl, imagePaths));
+  (bookData.parts ?? []).forEach((part, i) => { emitPart(out, part, i, site, baseurl, imagePaths); });
   out.push("\n</body>\n</html>\n");
 
   let bookHtml = out.join("");

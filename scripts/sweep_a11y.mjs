@@ -33,7 +33,7 @@
 //   --root-dir DIR       tree to scan       (default docs/_site-offline)
 //   --out FILE           JSONL destination  (default perf/results/a11y-sweep.jsonl)
 //   --stock-axe          inject the unmodified bundle, bypassing SOURCE_PATCHES
-//   --recycle-every N    restart the browser every N audits, to cap memory growth
+//   --recycle-every N    open a fresh tab every N audits, to cap memory growth
 //
 // Requires build.bat to have produced an up-to-date docs/_site-offline/.
 
@@ -53,11 +53,12 @@ import {
   VIEWPORTS,
   getScheme,
   gotoPage,
-  launchBrowser,
   newAuditPage,
+  pick,
   readAxeSource,
   runAxe,
 } from "./lib/axe-scan.mjs";
+import { withBrowser } from "./lib/browser.mjs";
 
 // The production scheme, read from the one registry check_a11y.mjs reads --
 // same bundle, same patches, same run options.  A survey run against a
@@ -117,8 +118,8 @@ for (let i = 0; i < args.length; i++) {
 rootDir = resolve(rootDir);
 outPath = resolve(outPath ?? join(REPO_ROOT, "perf/results/a11y-sweep.jsonl"));
 
-const themes = themeArg === "both" ? THEMES : [themeArg];
-const viewports = viewportArg === "both" ? Object.keys(VIEWPORTS) : [viewportArg];
+const themes = pick("theme", themeArg, THEMES);
+const viewports = pick("viewport", viewportArg, Object.keys(VIEWPORTS));
 
 // ---- page discovery ---------------------------------------------------
 
@@ -206,12 +207,11 @@ if (!reportOnly && matrix.length) {
   console.error(`[sweep] ${matrix.length} audits to run, ${done.size} already recorded`);
   console.error(`[sweep] -> ${outPath}`);
 
-  const browser = await launchBrowser();
-  let page = await newAuditPage(browser);
-  let currentViewport = null;
-  const t0 = Date.now();
+  await withBrowser(async (browser) => {
+    let page = await newAuditPage(browser);
+    let currentViewport = null;
+    const t0 = Date.now();
 
-  try {
     for (let i = 0; i < matrix.length; i++) {
       const entry = matrix[i];
 
@@ -269,9 +269,7 @@ if (!reportOnly && matrix.length) {
         );
       }
     }
-  } finally {
-    await browser.close();
-  }
+  });
 }
 
 // ---- report -----------------------------------------------------------

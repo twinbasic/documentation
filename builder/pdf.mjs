@@ -4,14 +4,13 @@
 // Jekyll reference.
 //
 // One entry point: writePdf(pages, staticFiles, site, destRoot,
-// { tolerateMissingImages }). The pure-compute helper deriveBookOutputs is also
-// exported so `_diff.mjs --book` / `_triage.mjs auditBook*` can derive
-// expected bytes without touching disk.
+// { tolerateMissingImages }). Its pure-compute half, deriveBookOutputs,
+// assembles book.html and lists the images it uses without touching
+// disk.
 //
 // Internal sections:
 //
 //   §A  Top-level orchestration (writePdf entry point)
-//   §B  Image-path extraction (port of pdfify.rb's IMG_SRC_RE)
 //   §C  Static-file lookup
 //   §D  Copy pass (book.html + CSS + images)
 //   §E  Missing-image reporting (port of pdfify.rb's strict mode)
@@ -98,14 +97,11 @@ export async function writePdf(pages, staticFiles, site, destRoot, { tolerateMis
 
 // PLAN-8 §4 deps assembly: pure-compute helper. Returns the assembled
 // book.html string + the list of relative image paths it references.
-// Used by the writer (writePdf above) and by the diff tools.
 //
 // PLAN-9 §5.9: image-path collection is folded into the assembly
-// itself (book.mjs's emitChapter populates a Set as it goes); the
-// post-pass `extractImagePaths(bookHtml)` regex sweep is gone.
-// `extractImagePaths` is retained below as a fallback/diagnostic
-// export for the bulk-triage tools.
-export function deriveBookOutputs(pages, site) {
+// itself (book.mjs's emitChapter populates a Set as it goes), so there
+// is no separate pass over book.html looking for images.
+function deriveBookOutputs(pages, site) {
   return assembleBook(site, pages);
 }
 
@@ -128,33 +124,6 @@ function resolveBookPage(pages) {
     );
   }
   return matches[0];
-}
-
-// ---------------------------------------------------------------------------
-// §B  Image-path extraction (port of pdfify.rb's IMG_SRC_RE)
-// ---------------------------------------------------------------------------
-
-// Three top-level alternatives, same as pdfify.rb's:
-//   1. <code\b[^>]*>...</code>  -- code block; consumed atomically.
-//   2. <pre\b[^>]*>...</pre>    -- pre block; same.
-//   3. \bsrc=(["'])URL\1        -- a real attribute, page-relative URL
-//      only (no leading `/`, `#`, or `scheme:`).
-// The code/pre branches make `m[1]` undefined; the loop skips them.
-const IMG_SRC_RE =
-  /<code\b[^>]*>[\s\S]*?<\/code>|<pre\b[^>]*>[\s\S]*?<\/pre>|\bsrc=(["'])((?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\1/g;
-
-export function extractImagePaths(html) {
-  const seen = new Set();
-  const out = [];
-  for (const m of html.matchAll(IMG_SRC_RE)) {
-    if (m[1] === undefined) continue;
-    const url = m[2];
-    const path = url.split(/[?#]/, 1)[0];
-    if (!path || seen.has(path)) continue;
-    seen.add(path);
-    out.push(path);
-  }
-  return out;
 }
 
 // ---------------------------------------------------------------------------

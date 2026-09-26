@@ -295,6 +295,7 @@ const HINT_IMPORT = ['import replaces the project file with the folder.',
 // and Windows drops a trailing dot or space, which turns `.. ` into `..`.
 // Nothing the IDE writes breaks these rules.
 function isSafeName(name) {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: Windows forbids the control characters \x00-\x1f in a file name.
   return name !== '' && !/[\\/:*?"<>|\x00-\x1f]/.test(name) && !/[. ]$/.test(name);
 }
 

@@ -13,9 +13,10 @@
 @rem block, an admonition wrapping a fence -- and after editing a
 @rem developer page that says how many gates a wrapper runs.
 @rem
-@rem Otherwise run it when the change touches builder/, scripts/, book/,
-@rem eval/ or wisdom/. Both CI workflows run it unconditionally, so a
-@rem tooling regression cannot reach staging by someone skipping it.
+@rem Otherwise run it when the change touches builder/, scripts/, lib/,
+@rem book/, eval/, wisdom/, a wrapper or a workflow. Both CI workflows run it
+@rem unconditionally, so a tooling regression cannot reach staging by
+@rem someone skipping it.
 @rem
 @rem The split is by what a gate INTERROGATES, not by what it happens to
 @rem open: check_axe_patch_equiv.mjs loads a built page, but only because
@@ -42,6 +43,23 @@ node scripts/check_publish_policy.mjs
 @rem under a gate that read neither file. None of it broke a link or
 @rem failed a gate. Pure text, no tree, no browser, ~50 ms.
 node scripts/check_gate_lists.mjs
+@if errorlevel 1 goto :fail
+@rem The same question asked of the two CI workflows, which nothing else
+@rem reads: do they run every gate this file and check.bat run, with the
+@rem same arguments and in the same order, and build as build.bat does?
+@rem A step dropped from one would leave CI green over a check it had
+@rem stopped making. The differences that are meant are listed, each with
+@rem where it is recorded. Its probes ride along. No tree, no browser,
+@rem ~100 ms.
+node scripts/check_ci_workflows.mjs
+@if errorlevel 1 goto :fail
+@rem Biome over the tooling, with the rules that find defects and none
+@rem about style (biome.jsonc). Moving and deleting code leaves unused
+@rem imports and undeclared names behind, and nothing else reads the
+@rem tooling for them. Warnings fail too: Biome reports an unused import
+@rem as a warning and exits 0 on one. Lint before every commit. No tree,
+@rem no browser, ~0.25 s.
+node scripts/check_lint.mjs
 @if errorlevel 1 goto :fail
 @rem A regex that backtracks exponentially is a hang waiting for the
 @rem right input, and nothing that reads the site can see it: the corpus

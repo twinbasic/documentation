@@ -94,102 +94,14 @@ jobs:
         # online tree gets a base path -- the offline tree's links are all
         # relative after the rewrite.
         run: node builder/tbdocs.mjs --src docs --url '${{ steps.pages.outputs.origin }}' --baseurl '${{ steps.pages.outputs.base_path }}' --no-fetch-assets --check-audit-index
-      # Not a second pass over the site: a nine-file synthetic tree carrying
-      # one fault of every kind, so scripts/check_links.mjs -- still the
-      # tool for a tree the build did not produce -- cannot rot unnoticed.
-      # ~0.3 s. See the same step in checks.yml, which additionally runs the
-      # comparison against the build's own checker.
-      - name: Verify the standalone link checker (check_links_diff.mjs)
-        run: node scripts/check_links_diff.mjs --case fixture --a script --b index
-      # The publish allowlist (builder/publish-policy.mjs) is enforced
-      # inside the build above, so a green build already says nothing
-      # unpublishable is in docs/. It does NOT say the allowlist still
-      # refuses anything: one widened until it refuses nothing reports the
-      # same clean pass. This asserts the refusals against named probes --
-      # a stray .bak, a .pem, a scratch .md with no frontmatter. No
-      # browser, no built tree, ~40 ms.
-      - name: Verify the publish allowlist (check_publish_policy.mjs)
-        run: node scripts/check_publish_policy.mjs
-      # The two gate lists on Tools.md against the wrappers that run
-      # them, plus every gate count stated in prose in README.md or
-      # under docs/Documentation/. Documented gate counts have rotted
-      # three times; the third was round 3's own fix pass, on the two
-      # pages the first version of this gate did not read. Pure text,
-      # ~50 ms.
-      - name: Verify the documented gate lists (check_gate_lists.mjs)
-        run: node scripts/check_gate_lists.mjs
-      # An exponentially backtracking regex does not fail a build, it
-      # stops one -- a render worker sits inside String.replace forever
-      # the first time a page contains the trigger. VOID_TAGS_RE shipped
-      # that way, and so did its first fix. See the same step in
-      # checks.yml for what it gates on and why only exponential.
-      #
-      # Here for the same reason check_dot_fit.mjs is: checks.yml runs
-      # only on pull requests, so this is the one gate a regex merged by
-      # a direct push to `staging` would otherwise never meet. No browser
-      # and no built tree, so its position relative to the build does not
-      # matter.
-      - name: Verify regex safety (check_regex_safety.mjs)
-        run: node scripts/check_regex_safety.mjs
-      # The pre-render rewrites in render.mjs run over raw markdown and
-      # cannot tell prose from code; four defects of that shape shipped,
-      # and nothing else looks inside <code>. See the same step in
-      # checks.yml. Here for the same reason the gate above is: checks.yml
-      # runs only on pull requests, so this is the one place a rewrite
-      # merged by a direct push to `staging` would meet it. No browser and
-      # no built tree.
-      - name: Verify code regions survive the pre-render rewrites (check_code_regions.mjs)
-        run: node scripts/check_code_regions.mjs
-      # The page-count drift guard reports nothing on a healthy tree, so a
-      # green build says exactly what a guard that had stopped working says.
-      # These probes make the other assertion, against a scratch baseline
-      # rather than the committed one. The first replays the defect that
-      # motivated it: 37 pages of AppGlobalClassObject lost to a blanket
-      # exclude rule, under a guard that knew only a floor of 836 against a
-      # real 908. No browser, no built tree.
-      - name: Verify the page-count drift guard (check_page_baseline.mjs)
-        run: node scripts/check_page_baseline.mjs
-      # The book-coverage warnings say nothing when every page has an entry
-      # in docs/_book.yml, which is also all a check that had stopped working
-      # would say. Before they existed, whole sections dropped out of the PDF
-      # without a word. These probes give each of the five findings a fault
-      # to report, on a manifest and pages built in memory. No browser, no
-      # built tree.
-      - name: Verify the book-coverage warnings (check_book_coverage.mjs)
-        run: node scripts/check_book_coverage.mjs
-      # The symbol index's rules and drift guard, against fixtures. See the
-      # same step in checks.yml.
-      - name: Verify the symbol index and its drift guard (check_symbol_index.mjs)
-        run: node scripts/check_symbol_index.mjs
-      # Graphviz sizes each node box from a width table; the browser paints the
-      # label with a real font, and nothing in the build compares the two -- so a
-      # mismatch ships as text hanging outside its box on a green build. See the
-      # same step in checks.yml for how 27 labels once went out that way.
-      #
-      # checks.yml only runs on pull requests, so this is the one gate a diagram
-      # merged by a direct push to `staging` -- or by a manual dispatch -- would
-      # otherwise never meet.
-      #
-      # After the build on purpose: builder/dot.mjs rewrites a stale .svg from
-      # its .dot in place, so this measures the bytes about to be deployed, not
-      # the ones that were committed. Chromium is already installed above, and
-      # the check loads Inter from the committed .woff2 rather than an installed
-      # face, so it measures the same here as on a dev box. Five diagrams, ~1 s.
-      - name: Verify DOT diagram fit (check_dot_fit.mjs)
-        run: node scripts/check_dot_fit.mjs
-      # check_a11y.mjs injects a PATCHED axe bundle; verify the patch is still
-      # value-preserving before trusting what it reports. See the same step in
-      # checks.yml for why the fingerprint gate does not cover this.
-      - name: Verify axe source patch (check_axe_patch_equiv.mjs)
-        run: node scripts/check_axe_patch_equiv.mjs
-      # Fails when the site grows a construct no sample page covers; see the
-      # same step in checks.yml. No browser, ~1 s.
-      - name: Verify a11y sample coverage (pick_a11y_sample.mjs)
-        run: node scripts/pick_a11y_sample.mjs --check
-      # Same gate as check.bat and the PR workflow. Chromium is already
-      # installed above for the PDF render, so this costs only the scan.
-      - name: Accessibility check (check_a11y.mjs)
-        run: node scripts/check_a11y.mjs
+      # The gates both workflows run, in one list: see
+      # .github/actions/run-gates/action.yml, which check_ci_workflows.mjs
+      # checks against test.bat and check.bat. checks.yml runs only on pull
+      # requests, so this is the one place a change pushed straight to
+      # `staging`, or a manual dispatch, meets them. Each gate is its own
+      # group in this step's log.
+      - name: Run the gates
+        uses: ./.github/actions/run-gates
       - name: Render book PDF
         run: |
           mkdir -p _pdf

@@ -12,7 +12,7 @@ Read it before changing `scripts/tbbuild.mjs`, `scripts/tbrun.mjs`,
 `scripts/lib/tb-launch.ps1`, `scripts/lib/tb-registry.mjs`,
 `scripts/lib/tb-ide-copy.mjs`, `scripts/lib/tb-project.mjs`,
 `scripts/lib/tb-addin.mjs`, `scripts/lib/tb-operate.mjs`, `scripts/lib/tb-lane.mjs`,
-anything under `test/addin/`, or `builder/census_attributes.mjs`, and before
+anything under `test/addin/`, or `scripts/census_attributes.mjs`, and before
 concluding anything about twinBASIC syntax from a sweep of exported sources.
 
 ## Getting at the `.twin` sources
@@ -72,19 +72,16 @@ minutes, against a question that four documentation pages could not settle betwe
 
 ## Censusing every attribute at once
 
-[builder/census_attributes.mjs](builder/census_attributes.mjs) --- which sits under
-`builder/` by deliberate placement rather than because it renders anything; it is listed in
-`check_tree_fresh.mjs`'s `IGNORED_FILES` for exactly that reason, so editing it does not
-mark every output tree stale --- does the export above for
+[scripts/census_attributes.mjs](scripts/census_attributes.mjs) does the export above for
 every package of the current install and reports, per attribute, **which enclosing
 construct and which kind of declaration it decorates**. No arguments needed; it finds the
 newest `twinBASIC_IDE_BETA_*` the same way `tbbuild` does, caches the export by build
 number, and re-uses it.
 
 ```sh
-node builder/census_attributes.mjs --out census.md
-node builder/census_attributes.mjs --attr Hidden          # one attribute
-node builder/census_attributes.mjs --attr Hidden --dump-sites sites.json
+node scripts/census_attributes.mjs --out census.md
+node scripts/census_attributes.mjs --attr Hidden          # one attribute
+node scripts/census_attributes.mjs --attr Hidden --dump-sites sites.json
 ```
 
 Against BETA 983: **661 files, 9,701 attribute sites, 55 distinct attributes**, and every
@@ -228,6 +225,15 @@ as a file**: `tb-ide.mjs` reads the text and passes it through
 machine, and which is the same policy [BOOKPLAN.md](BOOKPLAN.md) records blocking `npx.ps1`
 --- never comes into it, and no `-ExecutionPolicy Bypass` has to be recommended to anyone.
 Its inputs arrive as environment variables, so there is no argument quoting to get wrong.
+
+A launch that fails prints no pid, and its cause as one line on stderr, which `launchIde`
+reports. Two things used to hide the cause. With its streams redirected, PowerShell writes
+progress records and errors to stderr as CLIXML, as `tb-registry.mjs` also found (below), so
+every failed launch read `#< CLIXML`; the script now silences progress and writes a failure
+itself, as plain UTF-8 text. And a Win32 error read from PowerShell is not the call's:
+PowerShell makes calls of its own before the next statement runs, and a `CreateProcess` that
+had set 3 was reported as 203, "The system could not find the environment option that was
+entered". Each call is now made, and its error read, in C#.
 
 Seven things about the harness were learned by getting them wrong, and each is a comment in
 the file now:
@@ -418,6 +424,16 @@ Four smaller things it knows, each of which cost a run:
   twice in round 8's fix pass --- five runs going at once on ports 9740--9744, and both passed
   when repeated. It now exits 2 on a `[BUILD] failed` or `[LINKER] FAILED` line, which the
   probe's own `Debug.Cls` would have erased. What made the type library fail was not isolated.
+  Since the tooling review's C16 it exits 2 on any line `buildProject`'s `BUILD_FAILED`
+  matches, which adds `[BUILD] ERROR` and `[LINKER] compilation (codegen) error`. The second
+  was measured: a `[RunAfterBuild]` Sub that shifts a `Single` (BUGS-TO-REPORT.md) builds with
+  `[LINKER] SUCCESS`, the console adds `[BUILD] Executing 'DocSamples.Probe.Run'...` and the
+  codegen line, and nothing in the Sub runs, so `tbrun` had returned that log with exit 0.
+- **A callee's code-generation failure is invisible.** When the failing shift is in a
+  procedure the probe calls, the codegen line naming that procedure comes straight after the
+  `[BUILD] Executing` line, before the probe's first statement runs. The probe's `Debug.Cls`
+  erases it, the probe prints what comes before the call and stops there, and `tbrun` exits 0
+  with that partial output. Measured with and without `Debug.Cls` on BETA 983; not fixed.
 
 A reader of the console that is not `tbrun` should **compare the whole console before and
 after, not read on from an index**: new text can be appended to an entry that is still open.
@@ -938,7 +954,9 @@ Seven things about it were learned, the first six on the samples:
   file, such as an add-in's `Editors.Open`, and `afterReveal` does the same wait for
   anything else. Measured: `xyz` typed at 3:1 of `Haystack.twin`, 0.3 s after opening it at
   4:9, went in as `x` at 3:1 and `zy` at 4:9; after the fixed `openFile` it went in as `xyz`
-  at 3:1. The IDE's side of it is in BUGS-TO-REPORT.md.
+  at 3:1. When the IDE is still revealing lines 10 s later, `openFile`, `setCursor` and
+  `select` throw, naming the file and the place, rather than go on while the cursor can still
+  move; `afterReveal` itself returns `false`. The IDE's side of it is in BUGS-TO-REPORT.md.
 
 **The connection itself changed in three ways.** They were the gaps item 1 found in
 `tbbuild`, and they matter more once a harness clicks into dialogs on purpose:

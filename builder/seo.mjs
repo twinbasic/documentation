@@ -85,14 +85,6 @@ export function computeChunkSeo(pages, seoSiteTitle, config, markdown) {
   }
 }
 
-// Convenience wrapper kept for dev tooling that wants the full
-// main-thread pass (site-level + per-page) in one call.
-export function precomputeSeo(pages, config, markdown) {
-  const { seoSiteTitle, seoLogoUrl } = computeSiteSeo(config, markdown);
-  computeChunkSeo(pages, seoSiteTitle, config, markdown);
-  return { seoSiteTitle, seoLogoUrl };
-}
-
 // `text | markdownify | strip_html | normalize_whitespace | escape_once`,
 // matching the Ruby pipeline byte-for-byte. markdown-it.render() adds a
 // trailing \n; normalize_whitespace's /\s+/ + trim strips it back out.

@@ -91,6 +91,20 @@ const TEMPLATES = path.join(REPO, "test", "example-projects");
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes("--" + n);
 const opt = (n, d) => { const i = argv.indexOf("--" + n); return i < 0 ? d : argv[i + 1]; };
+const usageError = (why) => { console.error(`check_examples: ${why}`); process.exit(2); };
+
+// A flag that takes a value, given last or followed by another flag, has none,
+// and is refused rather than read as undefined. So is a count or a port that is
+// not a positive whole number: Number() makes NaN of anything it cannot read.
+const VALUE_FLAGS = ["only", "report", "jobs", "port", "batch", "ide"];
+const bare = argv.find((a, i) => a.startsWith("--") && VALUE_FLAGS.includes(a.slice(2)) &&
+  (argv[i + 1] === undefined || /^-./.test(argv[i + 1])));
+if (bare) usageError(`${bare} needs a value`);
+function positiveInteger(n, d) {
+  const v = Number(opt(n, d));
+  if (!Number.isInteger(v) || v < 1) usageError(`--${n} takes a positive whole number`);
+  return v;
+}
 
 const MODE_CENSUS = flag("census");
 const MODE_PROPOSE = flag("propose");
@@ -99,9 +113,9 @@ const APPLY = flag("apply");
 const VERBOSE = flag("verbose");
 const AS_JSON = flag("json");
 const only = opt("only", null) ? new RegExp(opt("only", null)) : null;
-const jobs = Math.max(1, Number(opt("jobs", 4)));
-const basePort = Number(opt("port", 9480));
-const batchSize = Math.max(1, Number(opt("batch", 120)));
+const jobs = positiveInteger("jobs", 4);
+const basePort = positiveInteger("port", 9480);
+const batchSize = positiveInteger("batch", 120);
 
 if (flag("help")) {
   console.log(`usage: node scripts/check_examples.mjs [options]
@@ -574,7 +588,8 @@ const COMPILER = IDE ? compilerExe(IDE) : null;
 
 // The registry tidy for the whole run (lib/tb-registry.mjs): taken in main()
 // before the first lane starts, finished once the last one has ended -- and
-// by the top-level catch, if main() dies in between.
+// by main()'s catch around the lanes, or by `die`, if the run dies in
+// between.
 let tidy = null;
 
 /**
@@ -609,7 +624,13 @@ async function buildStaged(staged, port) {
   let out = "", err = "";
   child.stdout.on("data", (d) => { out += d; });
   child.stderr.on("data", (d) => { err += d; });
-  const code = await new Promise((r) => child.on("exit", r));
+  // A child that cannot start emits "error" and never "exit". "close" comes
+  // only once its output has been read to the end, which "exit" does not wait
+  // for.
+  const code = await new Promise((resolve, reject) => {
+    child.on("error", reject);
+    child.on("close", resolve);
+  });
 
   if (code === 4) return { crashed: true, detail: err.trim(), named: crashedIn(err, staged.map) };
   if (code !== 0 && code !== 1) {
@@ -1807,4 +1828,9 @@ function reportFindings() {
   }
 }
 
-main().catch((err) => { console.error(err); finishTidy(tidy); process.exit(2); });
+// Whatever escapes main() -- a throw inside an event handler, a rejection
+// nothing awaits -- still puts the registry back, and the run exits 2.
+function die(err) { console.error(err); finishTidy(tidy); process.exit(2); }
+process.on("uncaughtException", die);
+process.on("unhandledRejection", die);
+main().catch(die);

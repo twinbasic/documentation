@@ -81,6 +81,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { gatesFromBat } from "./lib/gate-roster.mjs";
 
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const TOOLS_MD = "docs/Documentation/Tools.md";
@@ -99,23 +100,6 @@ const NUMBER_WORDS = [
   "zero", "one", "two", "three", "four", "five",
   "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
 ];
-
-/**
- * The gate scripts a batch file invokes, in order.
- *
- * Matches a `node scripts/<name>.mjs` invocation at the start of a line. The
- * wrappers chain with `@if errorlevel`, not `&&`, so one invocation per line
- * holds -- and a continuation or a commented line (`@rem`, `rem`) must not
- * count, which anchoring at the line start gives for free.
- */
-function gatesFromBat(src) {
-  const out = [];
-  for (const line of src.split(/\r?\n/)) {
-    const m = /^\s*(?:@)?node\s+scripts[\\/]([A-Za-z0-9_]+\.mjs)/.exec(line);
-    if (m) out.push(m[1]);
-  }
-  return out;
-}
 
 /** The body of a `### <name>` section: up to the next heading of any level. */
 function sectionBody(md, heading) {

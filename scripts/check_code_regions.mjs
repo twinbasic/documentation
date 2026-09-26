@@ -65,7 +65,7 @@ import { fileURLToPath } from "node:url";
 
 import MarkdownIt from "markdown-it";
 import { applyPreRenderRewrites } from "../builder/render.mjs";
-import { markdownFiles } from "./lib/markdown-files.mjs";
+import { markdownFiles } from "../lib/markdown-files.mjs";
 
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ROOT = path.join(REPO, "docs");

@@ -5,6 +5,9 @@
 //     node scripts/convert_em_dash_separators.mjs            # rewrite in place
 //     node scripts/convert_em_dash_separators.mjs --check    # report, change nothing
 //
+// Exit codes: 0 nothing to report, or converted; 1 --check found a literal
+// dash; 2 the tool failed, so that a crash cannot read as a finding.
+//
 // The typographer (enabled in builder/render.mjs) renders:
 //
 //     source `--`   ->  en-dash
@@ -36,7 +39,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { markdownFiles } from "./lib/markdown-files.mjs";
+import { markdownFiles } from "../lib/markdown-files.mjs";
 
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ROOT = path.join(REPO, "docs");
@@ -211,5 +214,6 @@ async function main(argv) {
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+  process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
   process.exit(await main(process.argv.slice(2)));
 }

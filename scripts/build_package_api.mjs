@@ -9,7 +9,7 @@
 //                       else the newest Desktop\twinBASIC_IDE_BETA_<n>)
 //       --src <dir>     read an existing export of the packages instead
 //       --cache <dir>   where exports are kept (default %TEMP%\tb-census\beta-<n>,
-//                       shared with builder/census_attributes.mjs)
+//                       shared with scripts/census_attributes.mjs)
 //       --refresh       export again even if the cache has this build
 //       --out <file>    write somewhere other than builder/package-api.json
 //
@@ -55,6 +55,14 @@ const argv = process.argv.slice(2);
 const flag = (n) => argv.includes(`--${n}`);
 const opt = (n) => { const i = argv.indexOf(`--${n}`); return i < 0 ? undefined : argv[i + 1]; };
 const die = (code, msg) => { console.error(msg); process.exit(code); };
+
+// A flag that takes a value, given last or followed by another flag, has none,
+// and is refused rather than read as undefined: --src then fell back to an
+// export of the install, and --out to builder/package-api.json.
+const VALUE_FLAGS = ["ide", "src", "cache", "out"];
+const bare = argv.find((a, i) => a.startsWith("--") && VALUE_FLAGS.includes(a.slice(2)) &&
+  (argv[i + 1] === undefined || /^-./.test(argv[i + 1])));
+if (bare) die(2, `${bare} needs a value`);
 
 function sources() {
   // --src takes a folder of exports, or a cache holding `packages\` and more:
@@ -146,7 +154,7 @@ function serialize({ build, packages, exportsOf }) {
     lines.push(`      "exports": ${JSON.stringify(exportsOf.get(pkg))},`);
     lines.push(`      "types": [`);
     const types = packages[pkg];
-    types.forEach((t, j) => lines.push(`        ${JSON.stringify(t)}${j < types.length - 1 ? "," : ""}`));
+    types.forEach((t, j) => { lines.push(`        ${JSON.stringify(t)}${j < types.length - 1 ? "," : ""}`); });
     lines.push("      ]", `    }${i < names.length - 1 ? "," : ""}`);
   });
   lines.push("  }", "}");

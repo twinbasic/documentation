@@ -6,11 +6,17 @@ const COLORS = {
   Spine:  { light: "#6eb5d9", dark: "#3c7db0" },
   Render: { light: "#b09cd8", dark: "#8066a8" },
   Write:  { light: "#e8a756", dark: "#c08030" },
+  Check:  { light: "#e59ac6", dark: "#b35c8c" },
   Boot:   { light: "#e57373", dark: "#c62828" },
   Cold:   { light: "#5b7fb5", dark: "#2c4a7c" },
   Env:    { light: "#e8a756", dark: "#c08030" },
-  Other:  { light: "#bbb",    dark: "#666"    },
 };
+
+// The bands a main-thread task can be drawn in, top to bottom; the
+// worker lanes go between Spine and Write. Render's main-thread tasks
+// (dispatch, prepDest, prepPageDirs) are drawn in Spine.
+const BANDS = ["Seeds", "Spine", "Write", "Check"];
+const BAND_OF = { Render: "Spine" };
 
 const SECTION_W = 24;
 
@@ -34,19 +40,21 @@ export function renderGantt(grouped) {
   if (maxT <= 0) return "";
 
   // Any task with a lane ran on a worker — pull it into the Workers
-  // section, tagged with its original section for bar colour.  Leftover
-  // Render tasks (dispatch, prepDest) fold into Spine.
-  const seeds = [], spine = [], write = [];
+  // section, tagged with its original section for bar colour. Any other
+  // task goes in its section's band. A task the chart has no place for
+  // fails the build rather than vanishing from the chart, as the Check
+  // tasks and vendorAssets once did.
+  const bands = new Map(BANDS.map(s => [s, []]));
   const laneTasks = [];
   for (const [section, tasks] of grouped) {
     for (const t of tasks) {
-      if (t.lane != null) { t._color = section; laneTasks.push(t); }
-      else if (section === "Seeds") seeds.push(t);
-      else if (section === "Spine" || section === "Render") spine.push(t);
-      else if (section === "Write") write.push(t);
+      const band = t.lane == null ? bands.get(BAND_OF[section] ?? section) : null;
+      if (t.lane != null && COLORS[section]) { t._color = section; laneTasks.push(t); }
+      else if (band) band.push(t);
+      else throw new Error(`gantt: the chart has no place for task ${t.id} in section "${section}"`);
     }
   }
-  const mainSections = [["Seeds", seeds], ["Spine", spine], ["Write", write]];
+  const mainSections = [...bands];
 
   const lanes = new Map();
   for (const t of laneTasks) {
@@ -137,7 +145,7 @@ export function renderGantt(grouped) {
     }
   }
 
-  // Write
+  // Write, Check
   for (const [section, tasks] of mainSections.slice(2)) {
     if (tasks.length === 0) continue;
     y = renderMainSection(o, section, tasks, y, xOf);

@@ -14,7 +14,7 @@
 // is read, which is right for this corpus -- the branches it has guard features,
 // not alternatives -- and what it cannot place goes to `problems` rather than
 // being guessed at. Seven ways to misread this corpus, each met in the BETA 983
-// packages (builder/census_attributes.mjs lists six more, about attributes):
+// packages (scripts/census_attributes.mjs lists six more, about attributes):
 //
 //   1. A Type is not a record only. `Type HDC` in the VB package declares
 //      Private Subs with bodies, and a scanner that thinks a Type holds fields
@@ -136,7 +136,7 @@ const ENUM_VALUE = new RegExp(String.raw`^(${NAME})\s*(=|$)`);
 // Types whose procedures have bodies, and so an `End Sub` to wait for.
 const WITH_BODIES = new Set(["module", "class", "type", "union"]);
 
-const unescape = (name) => name.replace(/^\[(.*)\]$/, "$1");
+const unbracket = (name) => name.replace(/^\[(.*)\]$/, "$1");
 
 function kindOf(keyword) {
   const k = keyword.toLowerCase();
@@ -222,7 +222,7 @@ export function parseTwin(src, file = "") {
     const open = TYPE_OPEN.exec(decl);
     if (open && !/^As$/i.test(open[2])) {
       const kind = open[1].toLowerCase();
-      const name = unescape(open[2]);
+      const name = unbracket(open[2]);
       if (kind === "interface" && parent?.kind === "coclass") {
         parent.interfaces.push({
           name,
@@ -294,7 +294,7 @@ export function parseTwin(src, file = "") {
   // Everything in an Interface, CoClass, Enum, Type or Union is public.
   function add(type, rawName, kind, vis, hidden, line, fallback) {
     const implicit = ["interface", "coclass", "enum", "type", "union"].includes(type.kind) ? "public" : fallback;
-    type.members.push({ name: unescape(rawName), kind, vis: vis ?? implicit, hidden, line });
+    type.members.push({ name: unbracket(rawName), kind, vis: vis ?? implicit, hidden, line });
   }
 }
 

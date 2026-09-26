@@ -413,10 +413,10 @@ const REVEAL_LEFT_JS = `typeof revealedLineTime !== "number" || !revealedLineTim
 /**
  * Wait until the IDE can no longer put the cursor back where it last opened a
  * file (REVEAL_LEFT_JS says why): 700 ms after its last reveal. openFile,
- * setCursor and select wait for it themselves; call it before typing into the
- * code editor after anything else that opens a file at a place, such as an
- * add-in's Editors.Open. Returns false when reveals were still going on after
- * `timeout` milliseconds.
+ * setCursor and select wait for it themselves, and throw when it times out;
+ * call it before typing into the code editor after anything else that opens a
+ * file at a place, such as an add-in's Editors.Open. Returns false when
+ * reveals were still going on after `timeout` milliseconds.
  */
 export async function afterReveal(c, { timeout = 10 * 1000 } = {}) {
   const until = Date.now() + timeout;
@@ -428,6 +428,15 @@ export async function afterReveal(c, { timeout = 10 * 1000 } = {}) {
   }
 }
 
+// afterReveal for openFile, setCursor and select, which place the cursor: when
+// the wait times out, the IDE could still move the cursor under whatever comes
+// next, so it throws. `file` is null where the caller does not know the file.
+async function settledAt(c, file, place) {
+  if (await afterReveal(c)) return;
+  file ??= (await editorState(c).catch(() => null))?.file ?? "the code editor";
+  throw new Error(`the IDE was still revealing lines 10 s later, so the cursor could still move: ${file} at ${place}`);
+}
+
 /**
  * Open a file of the project in the code editor, with the cursor at a place,
  * the way the IDE's own Find in Files results do it. The path is the file's in
@@ -437,7 +446,8 @@ export async function afterReveal(c, { timeout = 10 * 1000 } = {}) {
  * Returns once the cursor is at that place for good. A file not open yet is
  * read from the compiler first, and the IDE calls openFile's eighth argument
  * once it has been; then the IDE may still put the cursor back there for 700 ms
- * (afterReveal), which would undo a setCursor made in the meantime.
+ * (afterReveal), which would undo a setCursor made in the meantime. Throws when
+ * the IDE is still doing that 10 s later.
  */
 export async function openFile(c, file, { line = 1, column = 1 } = {}) {
   const uri = file.startsWith("twinbasic:") ? file : `twinbasic:${file}`;
@@ -450,15 +460,16 @@ export async function openFile(c, file, { line = 1, column = 1 } = {}) {
   })`, { awaitPromise: true });
   if (r === "missing") throw new Error(`the project has no file ${file}`);
   if (r !== "open") throw new Error(`the IDE did not report ${file} open within 10 s`);
-  await afterReveal(c);
+  await settledAt(c, file, `${line}:${column}`);
 }
 
 /**
  * Put the code editor's cursor at a line and column, and give it the focus.
- * Waits for afterReveal first, so that the IDE cannot put it back.
+ * Waits for afterReveal first, so that the IDE cannot put it back, and throws
+ * when that times out.
  */
 export async function setCursor(c, line, column) {
-  await afterReveal(c);
+  await settledAt(c, null, `${line}:${column}`);
   await c.evaluate(`(() => {
     const p = { lineNumber: ${Number(line)}, column: ${Number(column)} };
     editor.setPosition(p);
@@ -472,7 +483,7 @@ export async function setCursor(c, line, column) {
  * the range's end. Waits for afterReveal first, as setCursor does.
  */
 export async function select(c, { startLine, startColumn, endLine, endColumn }) {
-  await afterReveal(c);
+  await settledAt(c, null, `${startLine}:${startColumn}-${endLine}:${endColumn}`);
   await c.evaluate(`(() => {
     editor.setSelection({ startLineNumber: ${Number(startLine)}, startColumn: ${Number(startColumn)},
                           endLineNumber: ${Number(endLine)}, endColumn: ${Number(endColumn)} });

@@ -25,6 +25,18 @@ every time. `byName` breaks ties on `srcRel` now. Two builds of a commit are
 byte-identical except for `BuildInfo.html` and `gantt.svg`, which record build
 timings and cannot be.
 
+**`scripts/compare_trees.mjs` is the check that relies on it.** It builds a
+commit and the working tree from two git worktrees and compares all three trees
+byte for byte, replacing those two regions and the PDF title page's build line,
+which also differs when the sides are different commits or were built on
+different days. Run it after any change to `builder/` that should leave the
+output alone; a change meant to alter the output is checked the same way, and
+what it reports should be the intended differences and nothing else. Build the
+working tree from a checkout, never in place: under `core.autocrlf` a file a
+tool has rewritten holds LF where a fresh checkout writes CRLF, and every file
+the build copies verbatim then differs, which is what the tool's first version
+found.
+
 ### A hung build times out and says where it hung
 
 Readers get this at [When a build stops instead of
@@ -78,7 +90,7 @@ Historical engineering notes from the Jekyll era --- the original build pipeline
 
 ### Tooling is JavaScript, and the two remaining `.py` files each have a reason
 
-Everything under `scripts/`, `builder/`, `book/`, `eval/` and `wisdom/` is Node.js.
+Everything under `scripts/`, `builder/`, `lib/`, `book/`, `eval/` and `wisdom/` is Node.js.
 One trap the ports away from Python left behind: **a tool that rewrites a file must
 preserve its line endings byte-exactly.** Python's `Path.read_text` / `write_text`
 round-trip applies universal-newline translation, rewriting any LF file it touches to
@@ -113,6 +125,11 @@ keys through .NET, because `reg.exe` mangles names outside the console code page
 The full account of the JavaScript port of `build_fonts.py` --- what works, the harfbuzzjs
 build defect that blocks it, the evidence, the root cause in `hb-config.hh`, and what the
 port must check for when it happens --- is in [WIP.Fonts.md](WIP.Fonts.md).
+
+`lib/` — modules that every other tooling folder may import, and that import none of them.
+`builder/` may not import `scripts/`, so code that both need lives here;
+[lib/README.md](lib/README.md) states the rule, and `biome.jsonc` refuses an import that
+breaks either one.
 
 `wisdom/` — Discord knowledge-harvesting tool (three-phase: export → process → extract). Plans in `wisdom/PLAN-{1,2,3}.md`; implementation under `wisdom/`. Uses only Node.js built-in APIs. Running it is [WIP.Wisdom.md](WIP.Wisdom.md).
 
@@ -383,7 +400,7 @@ serve mode --- which runs neither pass --- recreated both, empty, on every rebui
 now prepares `_serve` alone, and the two were deleted. All four were empty, so
 nothing had gone wrong yet; a file planted in one made the old script call a fresh
 tree stale. It now skips the top-level folders that `isOutputTree` in
-[scripts/lib/markdown-files.mjs](scripts/lib/markdown-files.mjs) names --- the
+[lib/markdown-files.mjs](lib/markdown-files.mjs) names --- the
 prefix list the markdown walk uses --- and keeps only `.git` and `node_modules` as
 names of its own.
 
@@ -422,7 +439,7 @@ running preview deletes and rewrites on every rebuild --- and died with `ENOENT`
 when a folder vanished under it. `test.bat` failed that way on 2026-09-23. Two
 other tools carried their own copies of the same walk, and one of them did not
 skip the output trees at all, so all three now call
-[scripts/lib/markdown-files.mjs](scripts/lib/markdown-files.mjs), which skips
+[lib/markdown-files.mjs](lib/markdown-files.mjs), which skips
 `_site*`, `_serve*` and `_pdf*` before entering them. Measured against a live
 preview: the old walk hit `ENOENT` during a rebuild, while the new one opens 142
 folders, none of them inside an output tree, returns the same 910 files, and
@@ -732,10 +749,10 @@ six are `safe`, and all six are checked on every run.
 ### The regex-safety gate
 
 [scripts/check_regex_safety.mjs](scripts/check_regex_safety.mjs) parses every
-`.mjs` under `builder/`, `scripts/`, `book/`, `eval/` and `wisdom/` with acorn,
-takes the regex literals *and* every `new RegExp(...)` whose arguments the source
-decides, and refuses any that can backtrack exponentially. In `test.bat` and both
-CI workflows; ~5 s, no browser, no built tree.
+`.mjs` under `builder/`, `scripts/`, `lib/`, `book/`, `eval/` and `wisdom/` with
+acorn, takes the regex literals *and* every `new RegExp(...)` whose arguments the
+source decides, and refuses any that can backtrack exponentially. In `test.bat`
+and both CI workflows; ~5 s, no browser, no built tree.
 
 ```sh
 node scripts/check_regex_safety.mjs           # the gate

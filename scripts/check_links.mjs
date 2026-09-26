@@ -53,7 +53,8 @@
 //   These share the existing htmlparser2 SAX parse pass -- no
 //   second file read.  Exit codes are a bitwise pair so CI can tell
 //   the two apart: 0 clean, 1 link failures, 2 integrity failures,
-//   3 both.  --no-fail forces 0.
+//   3 both.  --no-fail forces 0.  A command-line error exits 4, which
+//   no check can produce, so it is never read as a failed check.
 
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -240,6 +241,8 @@ Exit codes:
   1  Link / forbidden-prefix check failed.
   2  Integrity check failed (no link failures).
   3  Both link and integrity checks failed.
+  4  Command-line error: no arguments, a flag without its value,
+     no --offline, or no input.
 
 Inputs are files or directories; directories are searched recursively
 for *.html.
@@ -381,7 +384,7 @@ export function runCheck(argv, { structured = false } = {}) {
     parsed = parseArgs(argv);
   } catch (e) {
     write(`error: ${e.message}\n`);
-    return { output: buf.join(""), exitCode: 2 };
+    return { output: buf.join(""), exitCode: 4 };
   }
   const { opts, inputs, unknown } = parsed;
 
@@ -396,11 +399,11 @@ export function runCheck(argv, { structured = false } = {}) {
       "error: --offline is required. Online (network) checking is not " +
       "implemented by this tool.\n"
     );
-    return { output: buf.join(""), exitCode: 2 };
+    return { output: buf.join(""), exitCode: 4 };
   }
   if (!inputs.length) {
     write("error: at least one input file or directory is required\n");
-    return { output: buf.join(""), exitCode: 2 };
+    return { output: buf.join(""), exitCode: 4 };
   }
 
   // Keep --root-dir in its caller-supplied shape (no path.resolve) so
@@ -794,7 +797,7 @@ if (!isMainThread && workerData?.argv) {
 
   if (segments.length === 0) {
     printHelp();
-    process.exit(2);
+    process.exit(4);
   }
 
   if (segments.length === 1) {

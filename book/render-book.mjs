@@ -43,7 +43,7 @@ import { PDFDocument } from 'pdf-lib';
 //     copyBytesInto compute from objectNumber / generationNumber
 //     directly via _writeUint + _digitCount helpers). Replaces the
 //     `Object.create(PDFRef.prototype) + property writes` pattern of
-//     the older fast-refs.mjs shim, which V8 routes through the
+//     the older fast-refs shim (since deleted), which V8 routes through the
 //     slow-property path: PDFRef ended up at ~60 B/instance vs
 //     PDFName's ~31 B (`new PDFName(...)`-built). The constructor
 //     gives V8 a stable hidden class from the first instance and
@@ -54,8 +54,8 @@ import { PDFDocument } from 'pdf-lib';
 //     trimmed parseIndirectObjectHeader by ~4.3 MB. Same prototype
 //     methods, same instanceof semantics; the only change is the
 //     construction style. See "fast-refs-class" in
-//     perf/notes/08-pdf-lib.md. fast-refs.mjs stays in the tree as
-//     an A/B baseline (mutex-checked in measure.mjs).
+//     perf/notes/08-pdf-lib.md, which also records the measurements
+//     for fast-refs; git history has its code.
 //   fast-inflate     -- swaps pako.inflate for node:zlib.inflateSync
 //     on the one pdf-lib call site that uses it
 //     (PDFCrossRefStreamParser during load). Negligible cost shift,
@@ -92,9 +92,9 @@ import { PDFDocument } from 'pdf-lib';
 //     beyond fast-dict-array. See "One-buffer PDFDict" in
 //     perf/notes/08-pdf-lib.md.
 //
-//     Earlier dict-shape shims (fast-dict-array, fast-dict-iter,
-//     fast-parse-dict) stay in the tree as A/B baselines but are
-//     mutually exclusive with --fast-dict-onebuf in measure.mjs.
+//     The earlier dict-shape shims it replaced (fast-dict-array,
+//     fast-dict-iter, fast-parse-dict) were deleted; their measurements
+//     are in perf/notes/08-pdf-lib.md, and git history has the code.
 //   fast-parse-object -- replace PDFObjectParser.prototype.parseObject
 //     with a first-byte-dispatch version that gates the three
 //     matchKeyword (true / false / null) scans behind a byte check.

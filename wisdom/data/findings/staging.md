@@ -14242,8 +14242,8 @@ _Date range: 2023-09-19 to 2023-09-20_
 > In twinBASIC x64 builds, `Len()` and `LenB()` return different values for UDTs whose members are pointer-sized or otherwise architecture-dependent. `Len()` returns a character or element count that does not reflect the actual byte footprint on x64, while `LenB()` returns the correct byte size. Code ported from VB6 or 32-bit twinBASIC that passes `Len()` as a byte count to `CopyMemory` or uses it to size a buffer with `ReDim` will silently allocate the wrong amount of memory on x64. Always use `LenB()` when the intent is to obtain the byte size of a UDT for memory operations. When dimensioning a byte array to hold a UDT for `CopyMemory`, subtract 1 from the result because array indices are zero-based:
 >
 > ```tb
-ReDim arr(LenB(udt) - 1)
-```
+> ReDim arr(LenB(udt) - 1)
+> ```
 
 _Source threads: 1314412625714479125 · confidence: high_
 _Date range: 2024-12-06_

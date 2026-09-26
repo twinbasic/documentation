@@ -40,9 +40,9 @@ export class WorkerPool {
     return w;
   }
 
-  sendInit(sab, ctx, idMapping) {
+  sendInit(sab, ctx) {
     for (const w of this._workers) {
-      w.postMessage({ init: true, sab, ctx, idMapping });
+      w.postMessage({ init: true, sab, ctx });
     }
     this._buildCount++;
   }

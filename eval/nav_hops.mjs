@@ -61,9 +61,9 @@ const pageKey = (url) =>
 /** Every page under docs/: permalink by file, and file by permalink or redirect alias. */
 async function loadPages(src) {
   // The walker comes from this repository, never from --src: a corpus built by
-  // eval/build_corpus.mjs holds scripts/ only as unreadable stubs, so importing
-  // it from there failed with "markdownFiles is not a function".
-  const { markdownFiles } = await import(pathToFileURL(path.join(REPO_ROOT, "scripts/lib/markdown-files.mjs")).href);
+  // eval/build_corpus.mjs holds every script only as an unreadable stub, so
+  // importing it from there failed with "markdownFiles is not a function".
+  const { markdownFiles } = await import(pathToFileURL(path.join(REPO_ROOT, "lib/markdown-files.mjs")).href);
   const docs = path.join(src, "docs");
   const urlOf = new Map();
   const byKey = new Map();
@@ -154,7 +154,7 @@ async function main(argv) {
     const chain = [];
     for (let f = hit; f; f = prev.get(f)) chain.unshift(f);
     console.log(`${t}: ${chain.length - 1} hop(s)`);
-    chain.forEach((f, i) => console.log(`  ${i}. ${show(f)}${pages.urlOf.has(f) ? `  ${pages.urlOf.get(f)}` : ""}`));
+    chain.forEach((f, i) => { console.log(`  ${i}. ${show(f)}${pages.urlOf.has(f) ? `  ${pages.urlOf.get(f)}` : ""}`); });
   }
   return unreachable ? 1 : 0;
 }

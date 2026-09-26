@@ -58,9 +58,9 @@ partial reload. What *is* watched is everything under `docs/` --- page content a
 ## When `test.bat` says a regex can backtrack exponentially
 {: #regex-refused }
 
-`check_regex_safety.mjs` reads every regex under `builder/`, `scripts/`, `book/`,
-`eval/` and `wisdom/`, and refuses one that can take exponential time on some input.
-It runs in `test.bat` and as a step of its own in both CI workflows, so a regex added
+`check_regex_safety.mjs` reads every regex under `builder/`, `scripts/`, `lib/`,
+`book/`, `eval/` and `wisdom/`, and refuses one that can take exponential time on some input.
+It runs in `test.bat` and as a step of its own in the gates both CI workflows run, so a regex added
 to the builder can pass the build and `check.bat` and still be refused. The report
 starts with
 
@@ -143,7 +143,7 @@ Find the row for what changed. The middle column is the step that explains the m
 | A task's `expected` list | [Pick the right flags](#2-pick-the-right-flags) | Nothing. The scheduler derives successor edges from `expected`, so a static edge is declared exactly once. The dynamic edges are the exception: `render:i` and `flush:i` are wired in `dispatch.submit`, not in `TASKS`. |
 | A task's `execute()` or handler return shape | [Define the task in `TASKS`](#4-define-the-task-in-tasks) | The task's own `submit()`, and every downstream task that reads the field back off `state`. |
 | Which thread a task runs on | [Decide where the work runs](#1-decide-where-the-work-runs) | Swap `runOnMain: true` + `execute` for `handler:` plus a `cpu-worker.mjs` entry, and add the name to `HANDLERS` in `sab-scheduler.mjs`. Moving a task onto a worker costs it direct access to `state`: everything it reads has to arrive through the payload SAB, and everything it produces has to come back through its return value. |
-| Which Gantt section a task charts under | --- | **`GANTT_SECTION` in `tbdocs.mjs`**, not the task definition. A `ganttSection` on the definition does win where it is set, which is why the walkthroughs below set one --- but of the 31 static tasks only `dispatch` does, 28 are listed in the map, and the three that are in neither (`warmInit`, `renderEnvInit`, `vendorAssets`) fall back to `Other`, or to `Boot` for a `unique_per_worker` task's per-lane timings. |
+| Which Gantt section a task charts under | --- | **`GANTT_SECTION` in `tbdocs.mjs`**, not the task definition. A `ganttSection` on the definition does win where it is set, which is why the walkthroughs below set one --- but only the `render:i` and `flush:i` tasks that `dispatch` registers carry one. Of the 32 static tasks, 30 are listed in the map; the other two, `warmInit` and `renderEnvInit`, are `unique_per_worker` tasks, whose per-lane timings chart as `Boot`. Any other task with no section, or with a section the chart does not draw, fails the build. |
 | A field on the per-page render delta | [Worked example B](#6-worked-example-b-distributed-compute) | The `pages.map(…)` projection at the end of the render handler **and** the merge in `dispatch.submit`'s `render:i` callback. Both, or the field never reaches main at all. |
 | What a markdown-it rule emits | [Write the plugin](#1-write-the-plugin) | Nothing in the chain, if the rule is self-contained. But changing the emitted HTML changes what the accessibility scan can see --- read the construct-family note at the end of [Verify](#3-verify). |
 
@@ -441,7 +441,7 @@ That is the full pattern: per-chunk compute on the render workers, merge into th
 
 `createMarkdownIt` in `render.mjs` builds the configured markdown-it instance. Seventeen plugins are applied in a fixed order: three from npm (`markdown-it-attrs`, `markdown-it-deflist`, `markdown-it-footnote`) interleaved with fourteen defined in `render.mjs` itself. A new plugin becomes part of that order.
 
-Those in-tree plugins cover token-stream transforms --- `svgInlinePlugin` embeds SVG diagrams, `headingLevelNormalizePlugin` repairs legacy pages that skip from `h1` to `h3` --- alongside link, slug, and typography helpers, most of them closing a behavioural gap between markdown-it and the kramdown dialect the content was authored against. [Pipeline Stages](Pipeline-Stages#the-plugin-chain) tabulates all seventeen in registration order, with what each one does.
+Those in-tree plugins cover token-stream transforms --- `svgInlinePlugin` embeds SVG diagrams, `headingLevelNormalizePlugin` repairs legacy pages that skip from `h1` to `h3` --- alongside link, slug, and typography helpers, most of them closing a behavioural gap between markdown-it and the kramdown dialect the content was authored against. [Pipeline Stages](Pipeline-Stages#the-plugin-chain) tabulates all eighteen in registration order, with what each one does.
 
 The same factory is called twice on main (once for the shared site-level SEO instance via `markdownInit`, and once per dev-tooling harness that re-renders) and once per render worker (via `renderEnvInit`). Plugins that reach for module-scope state must therefore work across worker boundaries --- in practice, that means no mutable closure-captured state, since each worker has its own module-scope instance.
 
@@ -655,9 +655,9 @@ Separating 1 from 2 is what stops a broken gate reading as a clean site, and it 
 
 **Be explicit about what may already have run.** Both wrappers stop at the first failure, so a gate's position decides what it can assume --- and the two do not offer the same guarantees. `check_tree_fresh.mjs` runs first in `check.bat`, so every later gate there may assume `_site-offline/` is current. `test.bat` has no freshness gate at all, and its one gate that opens a built page does not need one: `check_axe_patch_equiv.mjs` loads a single page and never reads that page's DOM, so a stale tree cannot change its result. Nothing in either wrapper may assume the build's own link check passed: a link failure sets the build's exit code without aborting the build, so a tree that failed it is still on disk and still fresh.
 
-**Register it in four places** --- the wrapper it belongs in, `.github/workflows/checks.yml`, `.github/workflows/tbdocs-gh-pages.yml`, and that wrapper's numbered list in [Tools and Scripts](Tools#checkbat). The first three each take a comment saying what the gate protects against, which is the convention already in all four files. Both workflows run every gate as its own step, from both wrappers, so the wrapper choice does not change what CI does. Leaving a gate out of the workflows is a decision, not an omission, and gets the same comment: `check_tree_fresh.mjs` is in neither, because CI builds in the same job and cannot have a stale tree.
+**Register it in three places** --- the wrapper it belongs in, `.github/actions/run-gates/action.yml`, and that wrapper's numbered list in [Tools and Scripts](Tools#checkbat). The action is the one list of gates both CI workflows run, so a gate goes into CI once. The first two each take a comment saying what the gate protects against, which is the convention already in both files. CI runs every gate from both wrappers, each as its own step of the action, so the wrapper choice does not change what CI does. Leaving a gate out of CI is a decision, not an omission, and is written down with its reason in `check_ci_workflows.mjs`'s list of allowed differences: `check_tree_fresh.mjs` is left out because CI builds in the same job and cannot have a stale tree.
 
-The fourth is the one that is machine enforced, and the only one you will be told about: [`check_gate_lists.mjs`](Tools#check-gate-lists) compares both wrappers against `Tools.md`'s two numbered lists --- membership, order, and the step count each section states --- so adding a gate without the entry fails `test.bat` naming the disagreement. It then sweeps `README.md` and every page under `docs/Documentation/` for a gate count stated anywhere in prose and fails on those too, which is what makes one edit enough: `Tools.md` owns the lists and nothing else restates them. If you find yourself writing a gate count into a second page, that is the thing not to do.
+Two checks enforce the registration, and they are the only ones you will be told about. [`check_gate_lists.mjs`](Tools#check-gate-lists) compares both wrappers against `Tools.md`'s two numbered lists --- membership, order, and the step count each section states --- so adding a gate without the entry fails `test.bat` naming the disagreement. It then sweeps `README.md` and every page under `docs/Documentation/` for a gate count stated anywhere in prose and fails on those too, which is what makes one edit enough: `Tools.md` owns the lists and nothing else restates them. If you find yourself writing a gate count into a second page, that is the thing not to do. [`check_ci_workflows.mjs`](Tools#check-ci-workflows) does the same for CI: both workflows, read through the action, must run every wrapper gate with the same arguments and in the same order, and any difference not on its list of allowed ones fails `test.bat`.
 
 ### It must be able to fail
 
@@ -695,7 +695,7 @@ list formatting and the number moves with it.
 1. **Add the entry.** A function beside the others in
    [`counts.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/counts.mjs),
    returning a number from the `state` passed to `deriveCounts`, and a line in the object
-   it returns. `COUNT_NAMES` is derived from that object, so nothing else registers it.
+   it returns. That object's keys are the names a page may use, so nothing else registers it.
 2. **Add the row** to the name table on [Authoring Pages](Authoring#counts). An
    undocumented name is one nobody will use.
 3. **Use it**, or do not --- a name with no call sites is fine, and cheaper to add now than
@@ -725,7 +725,7 @@ Four files under `docs/` model the task graph: `Pipeline-Stages.md`, `Builder.md
 
 Three surfaces, and the second is the one that gets missed.
 
-**The task's own section.** One `###` heading per task, under the numbered section matching its Gantt section, opening with a fenced block that gives its `expected` array --- and its `execute()` return shape where the return value matters --- followed by prose for what `submit()` merges into `SharedState`. A new predecessor, a new field on the returned delta, a new key written to `state`: each is an edit here.
+**The task's own section.** One `###` heading per task, under the numbered section matching its Gantt section, opening with a fenced block that gives its `expected` array --- and its `execute()` return shape where the return value matters --- followed by prose for what `submit()` merges into `SharedState`. A per-lane start-up task, which the chart draws in the worker rows rather than in a section, goes under Render, as `warmInit` and `renderEnvInit` do. A new predecessor, a new field on the returned delta, a new key written to `state`: each is an edit here.
 
 **The reverse edges.** A task's position in the graph is stated once in its own section and again in the `expected` line of every task that depends on it. Add `myTask` to `writeAux.expected` in the code and `writeAux`'s section goes on printing the old list, because nothing connects the two. `Pipeline-Stages.md` names `renderJoin` on nine lines; two of them are the `expected` declarations belonging to `searchData` and `writePdf`. Grep the task name across the whole file rather than editing only the section that carries its name.
 
@@ -781,7 +781,7 @@ Five commands cover the loop:
 1. **`build.bat`** --- full pipeline, including the link and integrity check over both trees while their HTML is still in worker memory. A clean exit and a sensible Gantt placement is the bar.
 2. **`serve.bat`** --- live-reload dev server for visual checks. Remember the persistent pool: Ctrl+C and restart after handler-code or task-graph changes. Check both themes if the change touches anything visible.
 3. **`check.bat`** --- the gates that read the built site. [Tools and Scripts](Tools#checkbat) lists them in the order they run.
-4. **`test.bat`** --- the gates that test the toolchain itself, listed at [Tools and Scripts](Tools#testbat). Every change under `builder/`, `scripts/`, `book/`, `eval/` or `wisdom/` needs this one, which is every change this page describes. Most content edits do not, with two exceptions: `check_code_regions.mjs` sweeps every markdown file under `docs/`, and `check_gate_lists.mjs` reads `README.md` and every page under `docs/Documentation/`.
+4. **`test.bat`** --- the gates that test the toolchain itself, listed at [Tools and Scripts](Tools#testbat). Every change under `builder/`, `scripts/`, `lib/`, `book/`, `eval/` or `wisdom/` needs this one, which is every change this page describes. Most content edits do not, with two exceptions: `check_code_regions.mjs` sweeps every markdown file under `docs/`, and `check_gate_lists.mjs` reads `README.md` and every page under `docs/Documentation/`.
 5. **`book.bat`** --- re-renders the PDF if your change affects `_site-pdf/` or any chapter body.
 
 A clean run of all five is the bar for "ready to commit".

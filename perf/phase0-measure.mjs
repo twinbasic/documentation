@@ -25,7 +25,7 @@ import { performance } from 'node:perf_hooks';
 import { createRequire } from 'node:module';
 
 // Production-equivalent shim wiring (same order as book/render-book.mjs).
-await import('../book/lib/fast-refs.mjs');
+await import('../book/lib/fast-refs-class.mjs');
 await import('../book/lib/fast-inflate.mjs');
 await import('../book/lib/fast-parse-number.mjs');
 await import('../book/lib/fast-decode-name.mjs');

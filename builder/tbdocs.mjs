@@ -25,6 +25,10 @@
 // --url overrides _config.yml's url (used by CI to inject the Pages
 // origin -- e.g. https://kubao.github.io -- so canonical URLs match
 // the actual deployment instead of the configured production host).
+//
+// Exit codes: 0 clean; 1 a link failure, a failed build step, a page-count
+// or symbol-baseline drop, or a crash; 2 an integrity failure; 3 both. A
+// command-line error, a --dest the build refuses included, exits 4.
 
 import { promises as fs } from "node:fs";
 import os from "node:os";
@@ -51,7 +55,7 @@ import {
 } from "./render.mjs";
 import { loadHighlightTheme } from "./highlight-theme.mjs";
 import { buildInitConfig, renderSidebar } from "./template.mjs";
-import { writePhase, prepareDestinations, preparePageDirs, writeFileMkdirp } from "./write.mjs";
+import { writePhase, prepareDestinations, preparePageDirs, writeFileMkdirp, assertDestinationClearOfSource } from "./write.mjs";
 import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
 import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
 import { writeSearchDataFromChunks } from "./search.mjs";
@@ -88,6 +92,13 @@ const PACKAGE_API_PATH = new URL("./package-api.json", import.meta.url);
 // guard -- see page-baseline.mjs.
 const REPO_ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 
+// A command-line error, which main() reports by its message alone and exits 4
+// on: a value outside the 1/2/3 of the link and integrity checks, so a mistyped
+// flag never reads as a broken link. write.mjs marks its --dest refusal the same.
+function commandLineError(message) {
+  return Object.assign(new Error(message), { commandLine: true });
+}
+
 function parseArgs(argv) {
   const args = {
     src: "docs",
@@ -114,22 +125,29 @@ function parseArgs(argv) {
     // without being called stalled. 0 disables the watchdog.
     stallTimeoutMs: 120000,
   };
+  // A flag that takes a value, given last or followed by another flag, has
+  // none. Read as one, it was undefined: --dest and --baseurl fell back to
+  // their defaults without a word, and --src crashed.
+  const valueAfter = (flag, v) => {
+    if (v === undefined || /^-./.test(v)) throw commandLineError(`${flag} needs a value`);
+    return v;
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--src") {
-      args.src = argv[++i];
+      args.src = valueAfter(a, argv[++i]);
     } else if (a.startsWith("--src=")) {
       args.src = a.slice("--src=".length);
     } else if (a === "--dest") {
-      args.dest = argv[++i];
+      args.dest = valueAfter(a, argv[++i]);
     } else if (a.startsWith("--dest=")) {
       args.dest = a.slice("--dest=".length);
     } else if (a === "--baseurl") {
-      args.baseurl = argv[++i];
+      args.baseurl = valueAfter(a, argv[++i]);
     } else if (a.startsWith("--baseurl=")) {
       args.baseurl = a.slice("--baseurl=".length);
     } else if (a === "--url") {
-      args.url = argv[++i];
+      args.url = valueAfter(a, argv[++i]);
     } else if (a.startsWith("--url=")) {
       args.url = a.slice("--url=".length);
     } else if (a === "--dry-run") {
@@ -160,7 +178,7 @@ function parseArgs(argv) {
       args.auditIndex = true;
     } else if (a === "--check-findings") {
       args.check = true;
-      args.checkFindings = argv[++i];
+      args.checkFindings = valueAfter(a, argv[++i]);
     } else if (a === "--update-page-baseline") {
       // Record the current inventory as the drift guard's new baseline,
       // whichever direction it moved. The build only ever raises it on its
@@ -172,54 +190,35 @@ function parseArgs(argv) {
       args.updateSymbolBaseline = true;
     } else if (a === "--symbol-gaps") {
       // Write the public symbols no page documents, as JSON, to a file.
-      args.symbolGaps = argv[++i];
+      args.symbolGaps = valueAfter(a, argv[++i]);
     } else if (a === "--serve") {
       args.serve = true;
-    } else if (a === "--port") {
-      args.port = Number(argv[++i]);
-    } else if (a.startsWith("--port=")) {
-      args.port = Number(a.slice("--port=".length));
+    } else if (a === "--port" || a.startsWith("--port=")) {
+      const raw = a === "--port" ? valueAfter(a, argv[++i]) : a.slice("--port=".length);
+      args.port = Number(raw);
+      if (!Number.isInteger(args.port) || args.port < 1 || args.port > 65535) {
+        throw commandLineError(`--port expects a port number from 1 to 65535, got: ${raw}`);
+      }
     } else if (a === "--stall-timeout" || a.startsWith("--stall-timeout=")) {
-      const raw = a === "--stall-timeout" ? argv[++i] : a.slice("--stall-timeout=".length);
+      const raw = a === "--stall-timeout" ? valueAfter(a, argv[++i]) : a.slice("--stall-timeout=".length);
       const secs = Number(raw);
       if (!Number.isFinite(secs) || secs < 0) {
-        throw new Error(`--stall-timeout expects seconds (0 disables), got: ${raw}`);
+        throw commandLineError(`--stall-timeout expects seconds (0 disables), got: ${raw}`);
       }
       args.stallTimeoutMs = secs * 1000;
     } else {
-      throw new Error(`Unknown argument: ${a}`);
+      throw commandLineError(`Unknown argument: ${a}`);
     }
   }
   return args;
 }
 
-export function makeTimer() {
-  const laps = [];
-  let last = Date.now();
-  return {
-    lap(label) {
-      const now = Date.now();
-      laps.push({ label, ms: now - last });
-      last = now;
-    },
-    summary() {
-      return laps.map(l => `${l.label}=${l.ms}ms`).join(" ");
-    },
-  };
-}
-
 // ── Task graph ────────────────────────────────────────────────────────────────
 //
-// Seeds (config, buildInfo, dot, scssLight + scssDark → scss,
-// highlighterInit), the main-thread spine (config → discover → nav (sidebar) + buildInit (chrome);
-// nav + buildInit → dispatch; config → loadData; discover → markdownInit;
-// deriveRedirects off discover; deriveSitemap + resolveBookChapters + prepDest deferred to dispatch),
-// the render fan-out (dispatch → render:0..N, each worker stashes html locally),
-// the per-worker flush (prepPageDirs → flush [per worker] → flushJoin [counter barrier]),
-// and write/post-write tasks
-// (flushJoin + prepPageDirs → writeAssets + searchData;
-// writeAssets + searchData → writeAux → writeOffline; flushJoin + dot → writePdf)
-// are scheduler tasks.
+// The build is the scheduler tasks in TASKS below, plus the render:i and
+// flush:i tasks that dispatch.submit adds; their `expected` arrays are the
+// graph. docs/Documentation/Pipeline-Stages.md describes each task, and
+// docs/assets/images/dot/scheduler-dag.dot draws the graph.
 // runBuild() constructs the pool + scheduler, awaits start(), logs the
 // summary, and returns.
 
@@ -564,7 +563,7 @@ const TASKS = {
   nav: {
     expected: ["discover"],
     runOnMain: true,
-    execute(_, ctx, state) {
+    execute(_, _ctx, state) {
       const { navTree } = computeNav(state.pages, state.site.config);
       state.site.navTree = navTree;
       return { sidebar: renderSidebar(state.site) };
@@ -579,7 +578,7 @@ const TASKS = {
   buildInit: {
     expected: ["discover"],
     runOnMain: true,
-    execute(_, ctx, state) {
+    execute(_, _ctx, state) {
       return { initData: buildInitConfig(state.site) };
     },
     submit() {},
@@ -594,7 +593,7 @@ const TASKS = {
     // is derived from the stub set, and nothing else on this task needs it.
     expected: ["discover", "vendorAssets", "deriveRedirects"],
     runOnMain: true,
-    execute({ deriveRedirects: { stubs } }, ctx, state) {
+    execute({ deriveRedirects: { stubs } }, _ctx, state) {
       const linkTables    = buildLinkTables(state.pages);
       const baseurl       = String(state.site.config.baseurl || "");
       const staticFileSet = new Set(state.staticFiles.map(s => s.srcRel));
@@ -646,7 +645,7 @@ const TASKS = {
   resolveBookChapters: {
     expected: ["deriveSitemap"],
     runOnMain: true,
-    execute(_, ctx, state) {
+    execute(_, _ctx, state) {
       resolveBookChapters(state.site.bookData, state.pages);
       return {};
     },
@@ -659,7 +658,7 @@ const TASKS = {
   deriveRedirects: {
     expected: ["discover"],
     runOnMain: true,
-    execute(_, ctx, state) {
+    execute(_, _ctx, state) {
       return { stubs: deriveRedirectStubs(state.pages, state.site) };
     },
     submit(out, state) {
@@ -676,7 +675,7 @@ const TASKS = {
   deriveSitemap: {
     expected: ["dispatch"],
     runOnMain: true,
-    execute(_, ctx, state) {
+    execute(_, _ctx, state) {
       return { urls: deriveSitemapUrls(state.pages, state.site) };
     },
     submit() {},
@@ -1021,9 +1020,8 @@ const TASKS = {
       const skipOffline = ctx.opts.skipOffline ?? (state.site.config.also_build_offline === false);
       if (ctx.opts.dryRun || skipOffline) return null;
       const auxStats = { redirects: redirectStats, sitemap: sitemapStats, search: searchStats };
-      return writeOffline(state.pages, state.staticFiles, state.site, ctx.destRoot, {
+      return writeOffline(state.staticFiles, state.site, ctx.destRoot, {
         auxStats,
-        precomputed: true,
         sitePaths: state.sitePaths,
         profileOffline: ctx.opts.profileOffline,
         check: !!state.checkTrees,
@@ -1270,7 +1268,7 @@ function chunkPages(pages, workers) {
 const GANTT_SECTION = {
   config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", scss: "Write", dot: "Spine",
   highlighterInit: "Seeds", loadData: "Seeds",
-  discover: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
+  discover: "Spine", vendorAssets: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
   resolveBookChapters: "Spine",
   deriveRedirects: "Spine", deriveSitemap: "Spine",
   dispatch: "Render", prepDest: "Render", prepPageDirs: "Render",
@@ -1291,7 +1289,8 @@ function groupGanttTimings(timings, { check = false } = {}) {
     // Without --check these are no-ops; charting three zero-width bars
     // would only make a plain build's Gantt harder to read.
     if (!check && CHECK_TASKS.has(id)) continue;
-    const section = ganttSection ?? GANTT_SECTION[id] ?? "Other";
+    const section = ganttSection ?? GANTT_SECTION[id];
+    if (!section) throw new Error(`gantt: task ${id} has no section; add it to GANTT_SECTION`);
     if (!grouped.has(section)) grouped.set(section, []);
     const entry = { id, start: start - t0, end: end - t0 };
     if (t3 != null) entry.t3 = t3 - t0;
@@ -1415,6 +1414,7 @@ export async function runBuild(opts) {
   const { src, dest } = opts;
   const srcRoot = path.resolve(process.cwd(), src);
   const destRoot = path.resolve(dest ?? path.join(srcRoot, "_site"));
+  assertDestinationClearOfSource(srcRoot, destRoot);
 
   // When serve.mjs reuses a pool across rebuilds, opts.pool is passed in;
   // runBuild() then skips pool create/destroy.  rebuild === true means this
@@ -1446,7 +1446,7 @@ export async function runBuild(opts) {
   pool.onPerWorkerTiming = (msg) => scheduler._onPerWorkerTiming(msg);
   pool.onMainTaskReady  = ()    => scheduler._onMainTaskReady();
 
-  pool.sendInit(sab, ctx, idMapping);
+  pool.sendInit(sab, ctx);
 
   let results;
   try {
@@ -1626,6 +1626,10 @@ async function main() {
 const isEntry = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isEntry) {
   main().catch((err) => {
+    if (err?.commandLine) {
+      console.error(err.message);
+      process.exit(4);
+    }
     // A stall report is the diagnostic; the Error wrapping it carries a
     // stack pointing at the watchdog's own setInterval, which tells the
     // reader nothing and buries the part that does.

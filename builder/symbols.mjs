@@ -572,7 +572,7 @@ export function serializeSymbolIndex({ symbols, interfaces, packages }, api) {
   const lines = ["{"];
   for (const [k, v] of Object.entries(head)) lines.push(`  ${JSON.stringify(k)}: ${JSON.stringify(v)},`);
   lines.push(`  "symbols": [`);
-  symbols.forEach((s, i) => lines.push(`    ${JSON.stringify(s)}${i < symbols.length - 1 ? "," : ""}`));
+  symbols.forEach((s, i) => { lines.push(`    ${JSON.stringify(s)}${i < symbols.length - 1 ? "," : ""}`); });
   lines.push("  ]", "}");
   return lines.join("\n") + "\n";
 }

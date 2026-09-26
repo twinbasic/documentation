@@ -1,15 +1,23 @@
 // External-link crawler for a deployed site. Starts at a URL,
-// recursively GETs every same-origin/same-basepath page, extracts
-// links, and verifies each link responds 2xx (HEAD for cross-origin,
-// GET for same-origin since we need the HTML anyway).
+// recursively GETs every same-origin/same-basepath page, extracts the
+// links the build's check follows (forEachLink, builder/link-check.mjs),
+// and verifies each link responds 2xx (HEAD for cross-origin, GET for
+// same-origin since we need the HTML anyway). A request that fails before
+// any response arrives is tried twice more before its link is reported; a
+// page whose body breaks off, or is still arriving when --timeout runs out,
+// is reported at once.
 //
 // Usage:
 //   node scripts/crawl_check.mjs <start-url> [--concurrency N] [--timeout MS]
 //   node scripts/crawl_check.mjs <start-url> --skip-external
 //
-// Exits 0 if all links are reachable, 1 if any are broken.
+// Exits 0 if every link is reachable and every anchor exists, 1 if a link
+// is broken or an anchor is missing, 2 on a usage error or a crash. It sets
+// process.exitCode rather than calling process.exit, which on Windows can
+// abort on a libuv assertion after a crawl and exit with a crash code.
 
 import { Parser } from "htmlparser2";
+import { forEachLink } from "../builder/link-check.mjs";
 
 const args = process.argv.slice(2);
 let startArg = null;
@@ -58,31 +66,49 @@ function isCrawlable(url) {
   return url.origin === origin && url.pathname.startsWith(basePath);
 }
 
-async function fetchWithTimeout(url, options) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal, redirect: "follow" });
-  } finally {
-    clearTimeout(timer);
+// A request that fails before any response arrives, reset or timed out, is
+// tried twice more: a server that closes an idle keep-alive connection just
+// as fetch reuses it resets the request. The timeout runs on through the
+// body, so it also stops a body that stalls after its headers.
+const RETRIES = 2;
+
+async function fetchWithRetry(url, options) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fetch(url, { ...options, signal: AbortSignal.timeout(timeoutMs), redirect: "follow" });
+    } catch (e) {
+      if (attempt === RETRIES) throw e;
+    }
   }
+}
+
+function errorText(e) {
+  return e.name === "TimeoutError" ? "timeout" : e.message;
+}
+
+// A response body left unread keeps its connection busy, and the process
+// alive after the report; cancel every body that is not read.
+function discardBody(res) {
+  return res.body?.cancel().catch(() => {});
 }
 
 async function checkUrl(url) {
   if (linkStatus.has(url)) return linkStatus.get(url);
   let result;
   try {
-    let res = await fetchWithTimeout(url, { method: "HEAD" });
+    let res = await fetchWithRetry(url, { method: "HEAD" });
     if (res.status === 405 || res.status === 501) {
-      res = await fetchWithTimeout(url, { method: "GET" });
+      await discardBody(res);
+      res = await fetchWithRetry(url, { method: "GET" });
     }
+    await discardBody(res);
     result = {
       ok: res.ok,
       status: res.status,
       redirected: res.redirected ? res.url : null,
     };
   } catch (e) {
-    result = { ok: false, status: 0, error: e.name === "AbortError" ? "timeout" : e.message };
+    result = { ok: false, status: 0, error: errorText(e) };
   }
   linkStatus.set(url, result);
   return result;
@@ -95,11 +121,7 @@ function extractFromHtml(html) {
     onopentag(name, attrs) {
       if (attrs.id) ids.add(attrs.id);
       if (attrs.name && (name === "a" || name === "input")) ids.add(attrs.name);
-      if (name === "a" && attrs.href) links.push(attrs.href);
-      else if (name === "link" && attrs.href) links.push(attrs.href);
-      else if (name === "img" && attrs.src) links.push(attrs.src);
-      else if (name === "script" && attrs.src) links.push(attrs.src);
-      else if (name === "iframe" && attrs.src) links.push(attrs.src);
+      forEachLink(name, attrs, (url) => links.push(url));
     },
   });
   parser.write(html);
@@ -110,9 +132,9 @@ function extractFromHtml(html) {
 async function crawlOne(url) {
   let res;
   try {
-    res = await fetchWithTimeout(url, { method: "GET" });
+    res = await fetchWithRetry(url, { method: "GET" });
   } catch (e) {
-    linkStatus.set(url, { ok: false, status: 0, error: e.name === "AbortError" ? "timeout" : e.message });
+    linkStatus.set(url, { ok: false, status: 0, error: errorText(e) });
     return;
   }
   linkStatus.set(url, {
@@ -120,13 +142,21 @@ async function crawlOne(url) {
     status: res.status,
     redirected: res.redirected ? res.url : null,
   });
-  if (!res.ok) return;
-
   const ct = res.headers.get("content-type") || "";
-  if (!ct.includes("text/html") && !ct.includes("xhtml")) return;
+  if (!res.ok || (!ct.includes("text/html") && !ct.includes("xhtml"))) {
+    await discardBody(res);
+    return;
+  }
 
+  // A body that breaks off or times out is not retried, since the server
+  // has answered, and not parsed: the page is reported broken instead.
   let html;
-  try { html = await res.text(); } catch { return; }
+  try {
+    html = await res.text();
+  } catch (e) {
+    linkStatus.set(url, { ok: false, status: res.status, error: `body: ${errorText(e)}` });
+    return;
+  }
   const { links, ids } = extractFromHtml(html);
 
   // Index ids on the final (redirected) URL so fragment links resolve.
@@ -252,7 +282,7 @@ async function main() {
     }
   }
 
-  process.exit((broken.length > 0 || fragmentMisses.length > 0) ? 1 : 0);
+  process.exitCode = (broken.length > 0 || fragmentMisses.length > 0) ? 1 : 0;
 }
 
-main().catch((e) => { console.error(e); process.exit(2); });
+main().catch((e) => { console.error(e); process.exitCode = 2; });

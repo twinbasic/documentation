@@ -228,14 +228,14 @@ function buildNavNode(page, chain, orderedChildren, depth) {
 
 // ---------- §5.4 nav-levels ------------------------------------------------
 
-function computeNavLevels(pages, state) {
+function computeNavLevels(_pages, state) {
   const topIndex = new Map();
-  state.topLevel.forEach((p, i) => topIndex.set(p.permalink, i + 1));
+  state.topLevel.forEach((p, i) => { topIndex.set(p.permalink, i + 1); });
 
   const childIndex = new Map();
   for (const [parentUrl, list] of state.orderedChildren) {
     const m = new Map();
-    list.forEach((c, i) => m.set(c.permalink, i + 1));
+    list.forEach((c, i) => { m.set(c.permalink, i + 1); });
     childIndex.set(parentUrl, m);
   }
 
@@ -278,7 +278,7 @@ function levelsFromPath(chain, topIndex, childIndex) {
 
 // ---------- §5.5 breadcrumbs -----------------------------------------------
 
-function computeBreadcrumbs(pages, state) {
+function computeBreadcrumbs(_pages, state) {
   for (const page of state.titled) {
     page.breadcrumbs = breadcrumbChainFor(page, state.byTitle);
   }
@@ -314,7 +314,7 @@ function resolveParent(parentTitle, grandParentTitle, byTitle) {
 
 // ---------- §5.6 children ---------------------------------------------------
 
-function computeChildren(pages, state) {
+function computeChildren(_pages, state) {
   for (const page of state.titled) {
     const candidates = state.byParentTitle.get(String(page.frontmatter.title)) || [];
     const filtered = candidates.filter(c => {
