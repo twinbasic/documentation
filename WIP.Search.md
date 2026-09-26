@@ -29,7 +29,7 @@ tree is clean; the last commit only records a hash in this file.
 | `482ae8af` | intent 3: exact-name and page-title fields, all words first, query tokens trimmed |
 | `08eb2c77` | intent 4: `primary` names, non-word characters kept in exact names, kind words |
 | `ae880486` | pilot 1: prose queries can expect pages right behind (`behind`); ground truth intent-2 |
-| PILOT_HASH | pilot 2: hand-marked index entries, and the first five |
+| `70b73344` | pilot 2: hand-marked index entries, and the first five |
 
 Hit@10 went from 20.5% to 98.8%, and MRR from .182 to .962. By reader
 intent, rank 1 is right for 94.2% of queries (89.0% before the intent
