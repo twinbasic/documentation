@@ -103,6 +103,15 @@ bundle_extra:
   - src: ../scripts/impexp.py
     dest: Features/Packages/downloads/impexp.py
 
+# Search index granularity and generic-section folding. See WIP.Search.md's
+# "Design" §1 for why: splitting at h3 instead of h2 finds API members
+# (`### PaintPicture`) as their own entries, and folding boilerplate
+# sub-sections back into the member they belong to keeps that split from
+# scattering "See Also" / "Example" noise across the index.
+search:
+  heading_level: 3
+  fold_headings: [See Also, Example, Examples, Remarks, Parameters, Return value, Syntax, Notes]
+
 exclude:
   # Underscore-prefixed entries AT THE SOURCE ROOT -- _config.yml,
   # _book.yml, _sass, and every build-output tree (_site*, _serve*, _pdf).

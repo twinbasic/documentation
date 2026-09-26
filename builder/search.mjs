@@ -1,14 +1,21 @@
-// Phase 6 AUXILIARIES -- search-data.json. Port of the just-the-docs
-// theme's `assets/js/zzzz-search-data.json` Liquid template plus the
-// empty `_includes/lunr/custom-data.json` (which renders as a blank
-// indented line between the `url` and `relUrl` fields). The output is
-// the lunr index input that client-side `initSearch()` in
+// Phase 6 AUXILIARIES -- search-data.json. Originally a byte-for-byte port
+// of the just-the-docs theme's `assets/js/zzzz-search-data.json` Liquid
+// template plus the empty `_includes/lunr/custom-data.json` (which
+// rendered as a blank indented line between the `url` and `relUrl`
+// fields). That parity mattered only up to the Jekyll cutover, when this
+// was still being checked against Jekyll's own output; nothing has
+// compared against Jekyll since, and the search granularity now
+// intentionally diverges from it (see below). The output is still the
+// lunr index input that client-side `initSearch()` in
 // `just-the-docs.js` feeds into `lunr(...)`.
 //
-// One entry per heading-bounded section of each titled page. Pages with
-// N visible headings produce up to N (+ 1 prefix entry, when the first
-// heading text differs from the page title or non-empty prose precedes
-// it). See builder/PLAN-6.md §5.3 + §7.D4 + §7.D5.
+// One entry per heading-bounded section of each titled page, up to
+// `search.heading_level` (+ 1 prefix entry, when the first heading text
+// differs from the page title or non-empty prose precedes it). A
+// section whose title is in `search.fold_headings` (e.g. "See Also",
+// "Example") is folded into the section before it instead of getting an
+// entry of its own -- see `extractSections` and WIP.Search.md's "Design"
+// §1 for why. See also builder/PLAN-6.md §5.3 + §7.D4 + §7.D5.
 
 import path from "node:path";
 
@@ -67,6 +74,10 @@ export function searchIncludes(page) {
 export function deriveSearchEntries(pages, site) {
   const headingLevel = site.config.search?.heading_level ?? 2;
   const baseurl = String(site.config.baseurl ?? "");
+  // Absent or empty means no folding, so behaviour is exactly the single-
+  // entry-per-heading split described above.
+  const foldHeadings = site.config.search?.fold_headings ?? [];
+  const foldSet = new Set(foldHeadings.map((h) => String(h).trim().toLowerCase()));
   const entries = [];
   let i = 0;
 
@@ -88,6 +99,7 @@ export function deriveSearchEntries(pages, site) {
       page,
       String(title),
       headingLevel,
+      foldSet,
     );
 
     for (const sec of sections) {
@@ -121,7 +133,22 @@ export function deriveSearchEntries(pages, site) {
 // Returns the heading-split sections plus the prose-before-first-heading
 // (`parts[0]`) and a `titleFound` flag indicating whether the title-
 // prefix entry should be suppressed.
-function extractSections(page, pageTitle, headingLevel) {
+//
+// `foldSet` is the lowercased, trimmed `search.fold_headings` list. A
+// section whose title matches it (case-insensitively) is folded into the
+// section immediately before it on this page: its body is appended to
+// that earlier section's body, and the earlier section's title and url
+// are kept, so the fold is invisible to anything reading the result --
+// it just looks like one bigger section. A generic heading names nothing:
+// as an entry of its own it would be a search result titled just "See
+// Also" or "Example", and its text belongs to the member or topic above
+// it. Measured, folding is a small gain with a smaller index (see
+// WIP.Search.md's "What the numbers showed"). A generic heading with
+// nothing before it on the page (the page's first heading) has nowhere
+// to fold into, so it keeps its own entry -- same as any other section.
+// The loop below still emits sections top to bottom, so entry order
+// stays exactly as deterministic as it was before folding existed.
+function extractSections(page, pageTitle, headingLevel, foldSet = new Set()) {
   let content = page.renderedContent;
 
   // h2..h<heading_level> → h1 substitution. For the upstream default
@@ -162,6 +189,17 @@ function extractSections(page, pageTitle, headingLevel) {
         const idValue = idParts[1].split('"')[0];
         url = `${page.permalink}#${idValue}`;
       }
+    }
+
+    // Fold into the previous section on this page rather than starting a
+    // new entry, unless this is the first section (nothing to fold into
+    // yet). titleFound above is unaffected either way: it is about
+    // whether the page-title prefix entry is still needed, not about
+    // how many section entries the page ends up with.
+    const isGeneric = foldSet.has(sectionTitle.trim().toLowerCase());
+    if (isGeneric && sections.length > 0) {
+      sections[sections.length - 1].body += body;
+      continue;
     }
 
     sections.push({ title: sectionTitle, body, url });

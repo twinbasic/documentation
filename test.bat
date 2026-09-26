@@ -56,6 +56,13 @@ node scripts/check_ci_workflows.mjs
 @rem no browser, ~0.25 s.
 node scripts/check_lint.mjs
 @if errorlevel 1 goto :fail
+@rem Unit tests for builder/search.mjs: the search-data.json generator's
+@rem heading split, generic-section folding (search.fold_headings), the
+@rem titleFound/prefix-entry logic and output determinism, against small
+@rem synthetic pages -- see WIP.Search.md's "Design" §1 and §5. No tree,
+@rem no browser, well under a second.
+node --test test/search.test.mjs
+@if errorlevel 1 goto :fail
 @rem A regex that backtracks exponentially is a hang waiting for the
 @rem right input, and nothing that reads the site can see it: the corpus
 @rem passes until some page happens to contain the trigger, and then the
