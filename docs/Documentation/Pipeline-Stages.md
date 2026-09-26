@@ -711,6 +711,18 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 
 `table_open` calls the default `renderToken` and rewrites its output rather than returning a hand-built string. That preserves markdown-it's per-token block-prefix whitespace handling, which is what produces the leading newline when a table is the first child of a list item, a `<dd>`, or a blockquote.
 
+### `counts.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `PLACEHOLDER_RE` | `RegExp` | Matches a `{{tbdocs:<name>}}` placeholder and captures the name. Used by the internal `substitute` helper that `countPlugin` calls, and by `findCountRefs` to locate placeholders in a page's raw markdown. |
+| `deriveCounts` | `(state, extra?) → Record<string, number>` | Derives every named count from build state: page, static-file, reference-page and documentation-page totals, folder-style reference indexes and how many of them have a permalink ending in a slash, packages (total, default, built-in), attribute anchors, enumerations, and `extra.redirectStubs`. Called by `markdownInit` in `tbdocs.mjs` to build `state.site.counts`, and with an empty state to compute `COUNT_NAMES`. |
+| `COUNT_NAMES` | `string[]` | The sorted list of every valid count name, computed once at module load by calling `deriveCounts` with an empty `pages` and `staticFiles` state. |
+| `countPlugin` | `(md, ctx) → void` | A markdown-it plugin, the last one `createMarkdownIt` applies. Its core rule is pushed last, so it runs after `replacements` and sees the same text the reader will. Substitutes each `{{tbdocs:<name>}}` placeholder in prose and image alt text with the value `ctx.counts` holds under that name, and leaves an unknown name as written; code spans and fences are untouched. Does nothing when `ctx.counts` is absent. |
+| `findCountRefs` | `(rawContent) → { name, line }[]` | Finds every `{{tbdocs:...}}` reference in a page's raw source that is outside code, using `maskCodeRegions` from `render.mjs` so code is masked the same way the pre-render rewrites mask it. Called by `validateCountNames` for each page. |
+| `validateCountNames` | `(pages, counts) → string[]` | Checks every page's count references against the known `counts` names via `findCountRefs`, returning one message per unknown reference that gives the file and line, the nearest known name when one is within an edit distance of three, and every known name; empty when every reference is known. Called by `markdownInit` in `tbdocs.mjs`, which throws when the result is non-empty. |
+| `findSurvivingPlaceholder` | `(html) → string\|null` | Scans rendered HTML, outside `<code>` and `<pre>`, for a `{{tbdocs:...}}` placeholder that survived rendering, returning the first survivor or `null`. Called by `renderPhase` in `render.mjs` after each page renders, which throws when a survivor is found. |
+
 ### `highlight.mjs`
 
 | Symbol | Signature | Description |
@@ -804,6 +816,14 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 |---|---|---|
 | `checkSymbolBaseline` | `({ src, urls, write, force, file }) → Promise<{ failed, text }>` | The symbol index's drift guard: fails on a URL `builder/symbol-baseline.json` has and `urls` does not, rewrites the file when `urls` adds one and `write` is set, and does nothing for a source root other than `docs`. |
 | `SYMBOL_BASELINE_PATH` | `URL` | `builder/symbol-baseline.json`. |
+
+### `page-baseline.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `BASELINE_PATH` | `URL` | `builder/page-baseline.json`, the default `file` of `checkPageBaseline`. |
+| `GUARDED_SRC` | `string` | The repo-relative, forward-slashed source root these counts describe: `"docs"`. `checkPageBaseline` skips any other source root; `symbol-baseline.mjs` imports it to guard `checkSymbolBaseline` the same way, and `scripts/check_page_baseline.mjs` and `scripts/check_symbol_index.mjs` pass it in their probes. |
+| `checkPageBaseline` | `({ src, pages, staticFiles, write, force, file }) → Promise<{ failed, text }>` | The page-count drift guard, which does nothing unless `src` is `GUARDED_SRC`. With `force` it writes this build's counts to `file`, up or down. Otherwise a missing baseline fails, or is created when `write` is set; a page or static-file count below the baseline fails; and a count above it rewrites `file` when `write` is set. Called by `runBuild` in `tbdocs.mjs`, and by the probes in `scripts/check_page_baseline.mjs`. |
 
 ### `offline.mjs`
 

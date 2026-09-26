@@ -728,6 +728,29 @@ so no link into the page lost its anchor. `compare_trees`: Extending.html and
 Pipeline-Stages.html online and offline, the search data and `book.html`, nothing else. Two
 defects found on the way are recorded under Found while implementing.
 
+### C22f — `docs: export tables for counts.mjs and page-baseline.mjs`
+
+**Found while fixing Pipeline-Stages.md's task sections in C22e; the owner asked on
+2026-09-26 for it to be fixed before C23** (see Found while implementing). The page says its
+second half covers every module, with the full export table for each, and had none for
+`builder/counts.mjs` or `builder/page-baseline.mjs`.
+
+**Change.** A `counts.mjs` section after `render.mjs`'s, since `countPlugin` is the last
+plugin `createMarkdownIt` applies, and a `page-baseline.mjs` section after
+`symbol-baseline.mjs`'s, the other drift guard: every export, in the order the module declares
+them, in the neighbouring tables' form.
+
+**Landed.** A Sonnet agent drafted both tables from the modules, and every row was checked
+against the source; five were corrected. `validateCountNames` returns a message per unknown
+reference, not per name, and offers the nearest known name only within an edit distance of
+three (`counts.mjs:251-258`). `countPlugin` runs after `replacements` because its core rule is
+pushed last, not because it is the last plugin. `checkPageBaseline`'s row is rewritten so that
+each case reads on its own (`page-baseline.mjs:120-175`). `GUARDED_SRC` is passed in the two
+scripts' probes rather than building fixtures. And `deriveCounts`'s folder-style indexes are
+reference pages, not only classes. Nothing imports `COUNT_NAMES`, which is recorded under
+Found while implementing. `compare_trees`: Pipeline-Stages.html online and offline, the search
+data and `book.html`, nothing else.
+
 ### C23 — `scripts: check_examples restores the registry after a spawn failure`
 
 **L3-2 (R2)**, with V4's note that `check_examples.mjs` has no process-level handler at all.
@@ -1999,7 +2022,7 @@ Defects the review did not have, found by building something this plan asks for.
   sections in C22e. The page says its second half covers every module, with the full export
   table for each, and has no table for `counts.mjs` or `page-baseline.mjs`, both in
   `builder/`. Its `markdownInit` section and `render.mjs`'s plugin table name `counts.mjs`'s
-  functions. Not fixed.
+  functions. Fixed in `docs: export tables for counts.mjs and page-baseline.mjs`.
 
 - **`tbdocs.mjs`'s task-graph comment (`:216-227`) contradicts `TASKS`**, found while checking
   C22e's edges. It lists `scss` among the seeds, where `scss` waits for `scssLight`,
@@ -2007,6 +2030,11 @@ Defects the review did not have, found by building something this plan asks for.
   `highlighterInit`; and it gives `flushJoin + prepPageDirs → writeAssets + searchData`, where
   neither waits for `flushJoin`, and `searchData` waits for `renderJoin` and `prepDest`. It is
   a fifth description of the graph, beside the four that Extending.md lists. Not fixed.
+
+- **`counts.mjs` exports `COUNT_NAMES`, which nothing reads**, found while checking C22f's
+  table. `git grep` finds no importer: `validateCountNames` checks a page against the keys of
+  the counts it is given (`counts.mjs:288`), and nothing else lists the names. Extending.md
+  (`:698`) names it as though it registered them. Not fixed.
 
 ## Open questions
 
