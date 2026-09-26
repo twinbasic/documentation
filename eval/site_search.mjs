@@ -96,6 +96,11 @@ export function buildIndex(lunr, docs) {
     this.field("content", { boost: 2 });
     this.field("names", { boost: 100 });
     this.field("qualified", { boost: 50 });
+    // Mirrors the exact-name and page-title patches (WIP.Search.md, "Reader
+    // intent"). Both are derived here, from `names` and `doc`, not stored
+    // in search-data.json, so the download doesn't grow.
+    this.field("exact", { boost: 50 });
+    this.field("page", { boost: 5 });
     this.field("relUrl");
     this.metadataWhitelist = ["position"];
     // Mirrors the stop-word patch (step 5A, "Design" section): lunr's index
@@ -111,11 +116,27 @@ export function buildIndex(lunr, docs) {
         content: docs[id].content,
         names: docs[id].names || "",
         qualified: docs[id].qualified || "",
+        exact: (docs[id].names || "").split(/\s+/).filter(Boolean).map(exactName).join(" "),
+        page: docs[id].doc || "",
         relUrl: docs[id].relUrl,
       });
     }
   });
 }
+
+// Matches just-the-docs.js's exactName(): a name, lowercased, without a
+// trailing `$`, and with `_` appended. The `_` keeps a whole-name query off
+// every longer name that starts with it (`Node` against `Nodes`); lunr's
+// trimmer keeps it as a word character, and no Porter stemmer rule touches
+// a word ending in it. Dropping the `$` makes `Format` and `Format$` one
+// name, so a page documenting both isn't marked down for a longer field.
+function exactName(name) {
+  return name.toLowerCase().replace(/\$$/, "") + "_";
+}
+
+// Every field but `exact`, which only the exact-name clause may search:
+// otherwise the trailing wildcard `node*` matches `nodes_` there too.
+const TEXT_FIELDS = ["title", "content", "names", "qualified", "page", "relUrl"];
 
 export function load(site) {
   const { dataPath, lunrPath } = resolvePaths(site);
@@ -144,10 +165,12 @@ export function load(site) {
 const DOT_SPLIT = /([A-Za-z_]\w*)\.(?=[A-Za-z_])/g;
 
 export function search({ lunr, index }, input) {
-  // Patched, matching just-the-docs.js: drop tokens made only of asterisks.
-  // Unfiltered, a bare `*` or `**` reaches lunr.Query.wildcard.TRAILING and
-  // throws inside lunr's query engine instead of matching nothing.
-  const baseTokens = lunr.tokenizer(input).filter((t) => !/^\*+$/.test(t.str));
+  // Patched, matching just-the-docs.js: trim each token as the index's own
+  // pipeline did (lunr.trimmer), so `Date$` finds `date`, and drop tokens
+  // left empty. That includes tokens made only of asterisks, which would
+  // otherwise reach lunr.Query.wildcard.TRAILING and throw inside lunr's
+  // query engine instead of matching nothing.
+  const baseTokens = lunr.tokenizer(input).map((t) => lunr.trimmer(t)).filter((t) => t.str !== "");
   const queryTokens = [];
   for (const token of baseTokens) {
     queryTokens.push(token);
@@ -158,12 +181,34 @@ export function search({ lunr, index }, input) {
       }
     }
   }
-  let results = queryTokens.length
-    ? index.query((q) => {
-        q.term(queryTokens, { boost: 10 });
-        q.term(queryTokens, { wildcard: lunr.Query.wildcard.TRAILING });
-      })
-    : [];
+  // Exact name, matching just-the-docs.js: a one-word query also matches
+  // that whole name. Only one word: in a phrase such as "error handling",
+  // `error` on its own isn't what the reader named.
+  const words = input.split(/\s+/).filter(Boolean);
+  const anyWords = (q) => {
+    q.term(queryTokens, { fields: TEXT_FIELDS, boost: 10 });
+    q.term(queryTokens, { fields: TEXT_FIELDS, wildcard: lunr.Query.wildcard.TRAILING });
+    if (words.length === 1) q.term(exactName(words[0]), { fields: ["exact"] });
+  };
+  // All words first, matching just-the-docs.js: with two or more words, look
+  // for entries that contain every one of them, and only if there are none,
+  // for entries that contain any. Each word is required as its stem with a
+  // trailing wildcard, since the index holds stems (an unstemmed `operator*`
+  // would miss `oper`); a whole word and a partly typed one both match.
+  let results = [];
+  if (baseTokens.length >= 2) {
+    results = index.query((q) => {
+      anyWords(q);
+      for (const token of baseTokens) {
+        q.term(lunr.stemmer(token.clone()).toString(), {
+          wildcard: lunr.Query.wildcard.TRAILING,
+          usePipeline: false,
+          presence: lunr.Query.presence.REQUIRED,
+        });
+      }
+    });
+  }
+  if (results.length === 0 && queryTokens.length) results = index.query(anyWords);
   if (results.length === 0 && input.length > 2 && queryTokens.length) {
     const tokens = queryTokens.filter((t) => t.str.length < 20);
     if (tokens.length) {

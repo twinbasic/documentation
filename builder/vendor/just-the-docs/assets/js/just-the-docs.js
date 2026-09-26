@@ -154,6 +154,14 @@ function initSearch() {
             // WIP.Search.md's "Design" §2.
             this.field('names', { boost: 100 });
             this.field('qualified', { boost: 50 });
+            // Patched: two fields derived here rather than stored in
+            // search-data.json, so the download doesn't grow. `exact` holds
+            // each bare name whole (see exactName() below), for a one-word
+            // query naming it exactly; `page` holds the page's title, so a
+            // page whose title the reader typed outranks a section of another
+            // page that only mentions it. See WIP.Search.md, "Reader intent".
+            this.field('exact', { boost: 50 });
+            this.field('page', { boost: 5 });
             this.field('relUrl');
             this.metadataWhitelist = ['position']
             // Patched: keep stop words in the index (step 5A). lunr's index
@@ -172,6 +180,8 @@ function initSearch() {
                 content: docs[i].content,
                 names: docs[i].names || '',
                 qualified: docs[i].qualified || '',
+                exact: (docs[i].names || '').split(/\s+/).filter(Boolean).map(exactName).join(' '),
+                page: docs[i].doc || '',
                 relUrl: docs[i].relUrl
               });
             }
@@ -197,6 +207,17 @@ function initSearch() {
   }
 
   searchLoaded(loadIndex);
+}
+
+// Patched: a name as the `exact` field holds it -- lowercased, without a
+// trailing `$`, and with `_` appended. The `_` keeps a whole-name query off
+// every longer name that starts with it (`Node` against `Nodes`); lunr's
+// trimmer keeps it as a word character, and no Porter stemmer rule touches a
+// word ending in it. Dropping the `$` makes `Format` and `Format$` one name,
+// so a page documenting both isn't marked down for a longer field. Used by
+// initSearch() above and doSearch() below.
+function exactName(name) {
+  return name.toLowerCase().replace(/\$$/, '') + '_';
 }
 
 function searchLoaded(loadIndex) {
@@ -327,14 +348,18 @@ function searchLoaded(loadIndex) {
   // (plus the asterisk guard and smart dot split patches, both pre-existing).
   function doSearch(input) {
 
-    // Patched: drop tokens made only of asterisks. lunr's query engine
-    // throws on a bare-wildcard term ("Cannot read properties of undefined
-    // (reading '_index')"), so a search for `*` or `**` used to crash and
-    // leave search broken until the page reloaded. See
-    // builder/vendor/just-the-docs/README.md.
-    var queryTokens = lunr.tokenizer(input).filter(function(token) {
-      return !/^\*+$/.test(token.str);
+    // Patched: trim each token as the index's own pipeline did
+    // (lunr.trimmer), so `Date$` finds `date`, and drop tokens left empty.
+    // That includes tokens made only of asterisks: lunr's query engine throws
+    // on a bare-wildcard term ("Cannot read properties of undefined (reading
+    // '_index')"), so a search for `*` or `**` used to crash and leave search
+    // broken until the page reloaded. See builder/vendor/just-the-docs/README.md.
+    var queryTokens = lunr.tokenizer(input).map(function(token) {
+      return lunr.trimmer(token);
+    }).filter(function(token) {
+      return token.str !== '';
     });
+    var baseTokens = queryTokens;
 
     // Patched: smart dot split. A qualified name like "Form.PaintPicture"
     // tokenises as the single token "form.paintpicture", which almost never
@@ -365,14 +390,49 @@ function searchLoaded(loadIndex) {
     });
     queryTokens = allTokens;
 
-    var results = queryTokens.length > 0 ? index.query(function (query) {
+    // Patched: every field but `exact`, which only the exact-name clause
+    // below may search -- otherwise the trailing wildcard `node*` matches
+    // `nodes_` there too. A one-word query also matches that whole name in
+    // `exact`. Only one word: in a phrase such as "error handling", `error`
+    // on its own isn't what the reader named.
+    var textFields = ['title', 'content', 'names', 'qualified', 'page', 'relUrl'];
+    var words = input.split(/\s+/).filter(Boolean);
+    function anyWords(query) {
       query.term(queryTokens, {
+        fields: textFields,
         boost: 10
       });
       query.term(queryTokens, {
+        fields: textFields,
         wildcard: lunr.Query.wildcard.TRAILING
       });
-    }) : [];
+      if (words.length === 1) {
+        query.term(exactName(words[0]), { fields: ['exact'] });
+      }
+    }
+
+    // Patched: all words first. With two or more words, look for entries
+    // that contain every one of them, and only if there are none, for
+    // entries that contain any. Each word is required as its stem with a
+    // trailing wildcard, since the index holds stems (an unstemmed
+    // `operator*` would miss `oper`); a whole word and a partly typed one
+    // both match. See WIP.Search.md, "Reader intent".
+    var results = [];
+    if (baseTokens.length >= 2) {
+      results = index.query(function (query) {
+        anyWords(query);
+        baseTokens.forEach(function(token) {
+          query.term(lunr.stemmer(token.clone()).toString(), {
+            wildcard: lunr.Query.wildcard.TRAILING,
+            usePipeline: false,
+            presence: lunr.Query.presence.REQUIRED
+          });
+        });
+      });
+    }
+    if (results.length == 0 && queryTokens.length > 0) {
+      results = index.query(anyWords);
+    }
 
     if ((results.length == 0) && (input.length > 2) && (queryTokens.length > 0)) {
       var tokens = queryTokens.filter(function(token, i) {

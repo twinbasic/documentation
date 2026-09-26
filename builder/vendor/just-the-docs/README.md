@@ -121,11 +121,13 @@ unfiltered; a token that is all `*` survives tokenising (lunr's trimmer
 only strips from the ends) and reaches `lunr.Query.wildcard.TRAILING`,
 where lunr's query engine throws (`Cannot read properties of undefined
 (reading '_index')`) instead of matching nothing. Once that throws, the
-in-page search stays broken until the page reloads. The patch filters out
-any token matching `/^\*+$/` before both the main query and the fuzzy
-fallback; if nothing is left, `results` is set to `[]` directly so the
-existing "No results found" branch renders as it would for any other query
-with no hits. `initSearch()` and `navLink()` are the only functions the
+in-page search stays broken until the page reloads. The patch runs each
+query token through `lunr.trimmer`, as the index pipeline already does, and
+drops any token left empty, which an all-`*` token always is; this happens
+before both the main query and the fuzzy fallback. If nothing is left,
+`results` stays `[]`, so the existing "No results found" branch renders as
+it would for any other query with no hits. (The trim also lets `Date$` find
+`date`: the index trimmed the `$` away, but the query used to keep it.) `initSearch()` and `navLink()` are the only functions the
 offline build's AST patcher (`deriveOfflineJtdJs` in
 [`offline.mjs`](../../offline.mjs)) replaces; `update()` and `searchLoaded()`
 pass through untouched, so the offline build inherits this fix for free.
@@ -192,6 +194,32 @@ object, it applies to the index build and every query alike.
 `eval/site_search.mjs` installs the same wrapper. `test/search.test.mjs`'s
 drift guard checks all three copies remove the stop-word filter and install
 this wrapper, alongside its existing field/boost check.
+
+**A reader typing a name got a longer name, or a section that only
+mentioned it.** Three changes, measured in
+[`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Reader intent":
+
+- *Exact name.* `initSearch()` adds a field `exact`, boost 50, holding each
+  of the entry's `names` as `exactName()` writes it: lowercased, without a
+  trailing `$`, with `_` appended. For a one-word query, `update()` adds that
+  word, written the same way, as a term on `exact` only. `Node` then ranks
+  the Node class above `Nodes`, and `Format` finds the function documented
+  as both `Format` and `Format$`. The boost is on the field because lunr
+  divides each field's score by the query's own weight in that field, so a
+  single clause's boost cancels out. The other clauses name every field but
+  `exact`, or the trailing wildcard `node*` would match `nodes_` there too.
+- *Page title.* A field `page`, boost 5, holding the entry's `doc`, so a
+  page titled with the query outranks a section of another page that only
+  mentions it (`Fusion`).
+- *All words first.* With two or more tokens, `update()` first requires
+  every token, as its stem with a trailing wildcard (`usePipeline: false`,
+  since the index holds stems and an unstemmed `operator*` would miss
+  `oper`). If no entry contains them all, it runs the ordinary query.
+
+Both fields are derived in the browser, so `search-data.json` doesn't grow.
+`offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` adds the same two fields;
+`exactName()` and the query changes sit outside `initSearch()`, so the
+offline build inherits them.
 
 **The index was fetched and built synchronously on every page load, even
 for readers who never opened search.** About 1.3s and 240MB of heap on a
@@ -304,13 +332,14 @@ Bumping the just-the-docs version is a deliberate operation. Procedure:
    checks that a control is reachable and named, not that its ring is visible.
 
 5. Re-apply the copy-button patch, the edit-distance cap, the asterisk
-   guard, the `names`/`qualified` fields, the smart dot split, the
-   stop-word removal, the dot-run-split tokenizer wrapper, and the lazy
-   index build in `assets/js/just-the-docs.js` (see above). Diffing against
+   guard and query-token trim, the `names`/`qualified` fields, the smart dot
+   split, the stop-word removal, the dot-run-split tokenizer wrapper, the
+   lazy index build, and the `exact`/`page` fields with the all-words-first
+   query in `assets/js/just-the-docs.js` (see above). Diffing against
    the previous vendored copy via `git diff` is the easiest way to spot
    what needs to come back. Then re-check `offline.mjs`'s
-   `JTD_INITSEARCH_FN_REPLACEMENT` still carries the same two fields at the
-   same boosts and the same stop-word/dot-run-split/lazy-build patches, and
+   `JTD_INITSEARCH_FN_REPLACEMENT` still carries the same four extra fields
+   at the same boosts and the same stop-word/dot-run-split/lazy-build patches, and
    run `test/search.test.mjs`'s field-list drift guard and its stop-word/
    dot-run-split sibling guard -- both fail loudly if the re-vendor left the
    copies out of step. If upstream's `initSearch()`/`searchLoaded()` split

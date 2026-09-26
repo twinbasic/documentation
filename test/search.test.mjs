@@ -484,3 +484,44 @@ describe("stop-word and dot-run-split guard: online client, offline client, eval
     }
   });
 });
+
+// Sibling to the guards above, for WIP.Search.md's "Reader intent" changes.
+// The `exact` and `page` fields are covered by the field-list guard; what
+// it can't see is how they are filled and queried. The index side lives in
+// each copy's own lunr builder, so all three must derive `exact` with
+// exactName() and `page` from `doc`. The query side lives in update() (the
+// offline build inherits it) and in the eval replica, so those two must
+// trim tokens, keep `exact` out of the ordinary clauses, add the exact-name
+// clause, and require every word first as a stem with a trailing wildcard.
+describe("reader-intent guard: online client, offline client, eval replica", () => {
+  const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
+  const onlineSrc = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js");
+  const offlineSrc = read("builder/offline.mjs");
+  const evalSrc = read("eval/site_search.mjs");
+
+  test("all three derive `exact` with exactName() and `page` from `doc`", () => {
+    for (const [label, src] of [
+      ["just-the-docs.js", onlineSrc],
+      ["offline.mjs", offlineSrc],
+      ["eval/site_search.mjs", evalSrc],
+    ]) {
+      assert.match(src, /exact:\s*\(docs\[\w+\]\.names \|\| ['"]{2}\)[^\n]*\.map\(exactName\)/, `${label} doesn't fill \`exact\` from names via exactName()`);
+      assert.match(src, /page:\s*docs\[\w+\]\.doc \|\| ['"]{2}/, `${label} doesn't fill \`page\` from doc`);
+    }
+  });
+
+  test("the online client and the eval replica build the same query", () => {
+    for (const [label, src] of [
+      ["just-the-docs.js", onlineSrc],
+      ["eval/site_search.mjs", evalSrc],
+    ]) {
+      assert.match(src, /function exactName\(name\)\s*\{\s*return name\.toLowerCase\(\)\.replace\(\/\\\$\$\/, ['"]{2}\) \+ ['"]_['"];/, `${label}'s exactName() differs`);
+      assert.match(src, /lunr\.trimmer\(/, `${label} doesn't trim query tokens`);
+      assert.match(src, /\[\s*['"]title['"],\s*['"]content['"],\s*['"]names['"],\s*['"]qualified['"],\s*['"]page['"],\s*['"]relUrl['"]\s*\]/, `${label} has no field list without \`exact\` for the ordinary clauses`);
+      assert.match(src, /exactName\(words\[0\]\),\s*\{\s*fields:\s*\[\s*['"]exact['"]\s*\]\s*\}/, `${label} has no exact-name clause`);
+      assert.match(src, /lunr\.stemmer\(token\.clone\(\)\)\.toString\(\)/, `${label} doesn't require words as stems`);
+      assert.match(src, /presence:\s*lunr\.Query\.presence\.REQUIRED/, `${label} doesn't require every word first`);
+      assert.match(src, /usePipeline:\s*false/, `${label}'s required stems would be stemmed again`);
+    }
+  });
+});

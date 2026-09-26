@@ -12,8 +12,9 @@ Like WIP.md, this file is not rendered through tbdocs, so literal dashes are fin
 Everything needed to continue is in this file and in `eval/`; nothing
 depends on the session that wrote it.
 
-**Where it stands.** Rollout steps 1–5 are done and committed, on branch
-`claude/paintpicture-docs-runtime-f3250d`. Nothing is pushed.
+**Where it stands.** Rollout steps 1–5 and the first reader-intent steps
+are done and committed, on branch `claude/paintpicture-docs-runtime-f3250d`.
+Nothing is pushed.
 
 | commit | step |
 |---|---|
@@ -23,17 +24,19 @@ depends on the session that wrote it.
 | `378e9d87` | 3: h3 entries; `search.fold_headings` |
 | `fd0bfa7b` | 4: `names`/`qualified` fields; the smart dot split |
 | `0961e6e9` | 5: stop words kept; dot runs split; lazy index build |
+| `d6075e23` | intent 1: `search_quality.mjs` judges bare names by reader intent |
+| (next commit) | intent 3: exact-name and page-title fields, all words first, query tokens trimmed |
 
-Hit@10 went from 20.5% to 98.0%, and MRR from .182 to .933. By reader
-intent, rank 1 is right for 89.0% of queries.
+Hit@10 went from 20.5% to 98.5%, and MRR from .182 to .957. By reader
+intent, rank 1 is right for 93.5% of queries (89.0% before the intent
+step), with no query worse.
 
 **Next:** [Reader intent](#reader-intent-after-the-rollout), "Next steps".
 In short:
-1. Make the intent ground truth the primary measure.
-2. Implement X1 + X2 + X3 (measured: hit@1 89.0% → 92.4%, with no query
-   worse).
-3. Work through the rank-1 failure list.
-4. Then the operators.
+1. Decide the `conditional compilation` expectation (the user's call).
+2. Work through the rank-1 failure list: `node eval/search_quality.mjs
+   --failures 200`.
+3. Then the operators.
 
 **The user's criteria**, which govern every decision here:
 - A reader either finds what they want or doesn't. A small regression is
@@ -54,7 +57,9 @@ In short:
 
 **Tools.**
 - `node eval/search_quality.mjs --compare eval/search_baseline.json --worst 20`
-  measures a build against the saved baseline; `--save` updates it.
+  measures a build against the saved baseline; `--save` updates it;
+  `--failures N` lists what misses rank 1, by category and tier. The
+  baseline records its ground truth (`intent-1`).
 - `eval/site_search.mjs` is the replica of the client search. The site's
   client and `builder/offline.mjs`'s `initSearch` must stay identical to it;
   `test/search.test.mjs` fails if their fields or pipeline drift apart.
@@ -77,6 +82,15 @@ In short:
 - BM25's length normalisation makes a short entry that mentions a term beat
   a long entry about it. Tuning `b` doesn't help short of `b` = 0.
 - A query of only `*` throws inside lunr.
+- A clause's `boost` cancels out when it is the only clause on a field:
+  lunr divides each field's score by the query vector's magnitude *for
+  that field*. Weight such a field with its index-time field boost.
+- A clause names every field unless it says otherwise, so a wildcard
+  clause also searches helper fields such as `exact`.
+- A wildcard term is not stemmed usefully: `operator*` misses the index's
+  `oper`. Stem first, then add the wildcard, with `usePipeline: false`.
+- The index trims non-word characters from token ends (`Date$` → `date`);
+  the query side didn't, until the intent step.
 
 ## The problem
 
@@ -467,7 +481,9 @@ from the harness.
 
 ## Reader intent (after the rollout)
 
-Not implemented yet. This is the next step, measured and ready to build.
+Steps 1 and 3 of "Next steps" below are done; see "What shipped" at the
+end of this section. The measurements between here and there are the
+research that led to it, kept as it was.
 
 ### The criterion
 
@@ -631,21 +647,74 @@ lead for `CheckBox` and probably for the other types that miss (`Line`,
 section are split, and consider merging an empty top entry into the first
 section, or giving it the page's introduction.
 
+### What shipped
+
+Implementing X1 + X2 + X3 as measured made 14 queries worse, so it was not
+shipped as measured. Four corrections, each measured, took that to none:
+
+1. **X3's required terms were wrong.** The experiment required each raw
+   whitespace word, neither lowercased nor split like the index, so every
+   capitalised or hyphenated phrase silently fell back to the old query.
+   Lowercased properly, `AddressOf operator` and `64-bit compilation` then
+   vanish, because `operator*` can't match the stem `oper`. Shipped: each
+   lunr token is required as its stem plus a trailing wildcard, with
+   `usePipeline: false`. Prose rank 1 went from 10 to 16 of 20.
+2. **X1's boost never did anything.** A clause alone on a field has its
+   boost divided back out (see "How lunr behaves here"), which is why
+   50–1000 measured the same. Shipped: field boost 50 on `exact`; the
+   other clauses name every field but `exact` (otherwise `node*` matches
+   `nodes_`); `exact` is queried only for a one-word query (`error
+   handling` had lost its answer to `Error`); and `exactName()` drops a
+   trailing `$`, so `Format`/`Format$` isn't marked down as a longer field.
+3. **X2's boost is 5, not 20.** At 10 or 20 the `Folder` page outranks
+   `Folder.Parent` and `Folder.Path`, which are documented on
+   `FileSystemItem`.
+4. **Query tokens are trimmed as the index trims them** (`lunr.trimmer`).
+   This fixed 8 `Xxx$` qualified queries that X2 had made worse, found
+   every bare `Xxx$` function that was unfindable, and subsumes the
+   asterisk guard, since an all-`*` token trims to nothing.
+
+Measured against the intent baseline (`d6075e23`):
+
+| | before | after |
+|---|---|---|
+| hit@1 | 89.0% | 93.5% |
+| bare / qualified / prose hit@1 | 93.3% / 86.6% / 10 of 20 | 97.0% / 91.5% / 16 of 20 |
+| hit@10 | 97.9% | 98.5% (prose 20 of 20) |
+| names out of tier order | 45 | 19 |
+| queries worse / better | | 0 / 418 |
+| index build, heap | 1,538 ms, 251 MB | 1,625 ms, 280 MB |
+
+The cost row is 7 interleaved builds and one heap reading per process,
+three processes each. Both client copies were checked in a browser against
+`eval/site_search.mjs`: the same top three for 15 queries, and `*` shows
+"No results found".
+
+Still missing rank 1 (522 queries): 70 language elements (the 24
+operators; the `Def*` statements, rank 2; `Left`/`Left$` at 42, below 40
+controls' `Left` properties; `Right`, the `B`/`W` string functions;
+`#If`/`#Const`/`#Else`; `Default`, `Description`, `Flags`), 7 types
+(`BorderStyle` 23, `WindowState` 5, `StartupPosition` 5), 7 enum constants
+(`vbDate`, `vbForm`), 2 members, 432 qualified (mostly `Constants.vbXxx`,
+rank 2) and 4 prose.
+
 ### Next steps
 
-1. Promote the intent ground truth into `eval/search_quality.mjs` as the
-   primary measure, with the tier metrics, and save a baseline.
-2. Decide the `conditional compilation` expectation.
-3. Implement X1 + X2 + X3 in all three copies: `just-the-docs.js`
-   (`initSearch` and `update()`), `offline.mjs`'s `initSearch`, and
-   `eval/site_search.mjs`. X1 and X2 need no build change, since `names` and
-   `doc` are already in search-data.json. Extend the drift guard in
-   `test/search.test.mjs` to cover the new fields and the AND-first query.
-   Check in a browser as for step 5.
-4. Work through the rank-1 failure list above, starting with the empty
-   top entries (CheckBox), `VB` (the trailing wildcard crowds it with
-   `vbXxx` names), the Attributes page (`Default`, `Description`,
-   `Flags`), and the VBA constants in qualified form (`Constants.vbCr`).
+1. ~~Promote the intent ground truth into `eval/search_quality.mjs`.~~
+   Done, `d6075e23`.
+2. Decide the `conditional compilation` expectation. It is the user's call:
+   `/Reference/Compiler-Constants` (today's expectation, rank 3) or
+   `/tB/Core/Topic-Preprocessor`, the `#If`/`#Const` page.
+3. ~~Implement X1 + X2 + X3 in all three copies.~~ Done, with the four
+   corrections in "What shipped". `test/search.test.mjs`'s reader-intent
+   guard covers the fields and the query.
+4. Work through the rank-1 failure list (`--failures 200`). `CheckBox` and
+   `VB` are fixed. The leads now: `Left`/`Left$`/`Right`, where the Strings
+   function loses to every control's property; the `Def*` statements and
+   `#If`/`#Const`/`#Else` at rank 2; `BorderStyle` (23), `WindowState` and
+   `StartupPosition` (5); the Attributes page (`Default`, `Description`,
+   `Flags`); and the VBA constants in qualified form (`Constants.vbCr`,
+   rank 2).
 5. Operators: [Future work](#future-work).
 
 ## Future work

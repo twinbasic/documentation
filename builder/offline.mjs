@@ -366,6 +366,10 @@ const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
         // asserts they agree, so the two copies cannot drift apart silently.
         this.field('names', { boost: 100 });
         this.field('qualified', { boost: 50 });
+        // Mirrors the online build's exact-name and page-title patches
+        // (exactName() is the online copy's, which this file keeps).
+        this.field('exact', { boost: 50 });
+        this.field('page', { boost: 5 });
         this.field('relUrl');
         this.metadataWhitelist = ['position'];
         // Mirrors the online build's stop-word patch (step 5A): keep
@@ -381,6 +385,8 @@ const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
             content: docs[i].content,
             names: docs[i].names || '',
             qualified: docs[i].qualified || '',
+            exact: (docs[i].names || '').split(/\\s+/).filter(Boolean).map(exactName).join(' '),
+            page: docs[i].doc || '',
             relUrl: docs[i].relUrl
           });
         }
