@@ -15,8 +15,14 @@
 //     node eval/site_search.mjs --composition
 //
 // Requires build.bat (or `node builder/tbdocs.mjs --src docs`) to have run.
+//
+// `resolvePaths`, `loadLunr`, `buildIndex`, `load` and `search` are exported
+// so eval/search_quality.mjs can measure ranking quality against this exact
+// index setup and query logic, instead of forking its own copy that could
+// drift from what the CLI below actually runs.
 
 import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
 import fs from "node:fs";
 import path from "node:path";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
@@ -35,33 +41,29 @@ function parseArgs(argv) {
   return o;
 }
 
-function load(site) {
-  const dataPath = path.join(site, "assets/js/search-data.json");
-  const lunrPath = path.join(site, "assets/js/vendor/lunr.min.js");
-  for (const p of [dataPath, lunrPath]) {
-    if (!fs.existsSync(p)) {
-      console.error(
-        `missing ${path.relative(REPO_ROOT, p)}\n` +
-        "Run build.bat (or `node builder/tbdocs.mjs --src docs`) first."
-      );
-      process.exit(1);
-    }
-  }
+export function resolvePaths(site) {
+  return {
+    dataPath: path.join(site, "assets/js/search-data.json"),
+    lunrPath: path.join(site, "assets/js/vendor/lunr.min.js"),
+  };
+}
+
+// Mirrors just-the-docs.js exactly. Do not "improve" this weight: the point
+// is to measure what a reader's search actually returns, not what a
+// better-tuned index would.
+//
+// The client's initSearch() (just-the-docs.js, and offline.mjs's copy of it)
+// sets the tokenizer separator to /[\s\-\/]+/, so `/` splits tokens too.
+// Without this, lunr's default /[\s\-]+/ tokenises differently from the real
+// site and this replica cannot reproduce what it claims to.
+export function loadLunr(lunrPath) {
   const lunr = require(lunrPath);
-  const docs = JSON.parse(fs.readFileSync(dataPath, "utf8"));
-
-  // Mirrors just-the-docs.js exactly. Do not "improve" these weights: the
-  // point is to measure what a reader's search actually returns, not what a
-  // better-tuned index would.
-  //
-  // The client's initSearch() (just-the-docs.js, and offline.mjs's copy of
-  // it) sets the tokenizer separator to /[\s\-\/]+/, so `/` splits tokens
-  // too. Without
-  // this, lunr's default /[\s\-]+/ tokenises differently from the real
-  // site and this replica cannot reproduce what it claims to.
   lunr.tokenizer.separator = /[\s\-\/]+/;
+  return lunr;
+}
 
-  const index = lunr(function () {
+export function buildIndex(lunr, docs) {
+  return lunr(function () {
     this.ref("id");
     this.field("title", { boost: 200 });
     this.field("content", { boost: 2 });
@@ -71,10 +73,26 @@ function load(site) {
       this.add({ id, title: docs[id].title, content: docs[id].content, relUrl: docs[id].relUrl });
     }
   });
+}
+
+export function load(site) {
+  const { dataPath, lunrPath } = resolvePaths(site);
+  for (const p of [dataPath, lunrPath]) {
+    if (!fs.existsSync(p)) {
+      console.error(
+        `missing ${path.relative(REPO_ROOT, p)}\n` +
+        "Run build.bat (or `node builder/tbdocs.mjs --src docs`) first."
+      );
+      process.exit(1);
+    }
+  }
+  const lunr = loadLunr(lunrPath);
+  const docs = JSON.parse(fs.readFileSync(dataPath, "utf8"));
+  const index = buildIndex(lunr, docs);
   return { lunr, docs, index };
 }
 
-function search({ lunr, index }, input) {
+export function search({ lunr, index }, input) {
   // Patched, matching just-the-docs.js: drop tokens made only of asterisks.
   // Unfiltered, a bare `*` or `**` reaches lunr.Query.wildcard.TRAILING and
   // throws inside lunr's query engine instead of matching nothing.
@@ -126,30 +144,34 @@ function composition(docs) {
   );
 }
 
-const opts = parseArgs(process.argv.slice(2));
-if (opts.help || (!opts.composition && !opts.terms.length)) {
-  console.log(
-    'Usage: node eval/site_search.mjs "<query>" [--n <count>] [--site <path>]\n' +
-    "       node eval/site_search.mjs --composition\n\n" +
-    "Queries the built site's real lunr index with the real query logic.\n" +
-    "See eval/README.md."
-  );
-  process.exit(opts.help ? 0 : 1);
-}
+// Only run the CLI when this file is executed directly -- eval/search_quality.mjs
+// imports load()/buildIndex()/search() from here and must not trigger it.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const opts = parseArgs(process.argv.slice(2));
+  if (opts.help || (!opts.composition && !opts.terms.length)) {
+    console.log(
+      'Usage: node eval/site_search.mjs "<query>" [--n <count>] [--site <path>]\n' +
+      "       node eval/site_search.mjs --composition\n\n" +
+      "Queries the built site's real lunr index with the real query logic.\n" +
+      "See eval/README.md."
+    );
+    process.exit(opts.help ? 0 : 1);
+  }
 
-const ctx = load(opts.site);
-if (opts.composition) {
-  composition(ctx.docs);
-} else {
-  const input = opts.terms.join(" ");
-  const hits = search(ctx, input);
-  console.log(`query: ${JSON.stringify(input)} -- ${hits.length} result(s), showing ${Math.min(opts.n, hits.length)}\n`);
-  hits.slice(0, opts.n).forEach((h, i) => {
-    const d = ctx.docs[h.ref];
-    const snippet = String(d.content ?? "").replace(/\s+/g, " ").slice(0, 130);
-    console.log(`${String(i + 1).padStart(2)}. ${d.title}`);
-    console.log(`    ${d.relUrl}`);
-    if (snippet) console.log(`    ${snippet}...`);
-    console.log();
-  });
+  const ctx = load(opts.site);
+  if (opts.composition) {
+    composition(ctx.docs);
+  } else {
+    const input = opts.terms.join(" ");
+    const hits = search(ctx, input);
+    console.log(`query: ${JSON.stringify(input)} -- ${hits.length} result(s), showing ${Math.min(opts.n, hits.length)}\n`);
+    hits.slice(0, opts.n).forEach((h, i) => {
+      const d = ctx.docs[h.ref];
+      const snippet = String(d.content ?? "").replace(/\s+/g, " ").slice(0, 130);
+      console.log(`${String(i + 1).padStart(2)}. ${d.title}`);
+      console.log(`    ${d.relUrl}`);
+      if (snippet) console.log(`    ${snippet}...`);
+      console.log();
+    });
+  }
 }

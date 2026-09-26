@@ -11,6 +11,23 @@ most findings from the first use-case round involve sentences that are individua
 case the check mostly fires on. `Authoring.md` correctly told contributors to widen
 `SOURCE_EXTENSIONS`; that advice reintroduces the exact defect the allowlist exists to prevent.
 
+## A different question: is the search index good?
+
+[eval/search_quality.mjs](search_quality.mjs) is a separate tool for a
+narrower question than this harness asks: given a query, does the site's
+lunr index rank the right page highly? It shares its index setup and query
+logic with [eval/site_search.mjs](site_search.mjs) below, derives symbol
+ground truth from a build's `tB/symbols.json`, and checks a hand-picked
+prose set in the committed
+[eval/search_prose_queries.json](search_prose_queries.json). See
+[WIP.Search.md](../WIP.Search.md) for the design and
+[eval/search_baseline.json](search_baseline.json) for today's numbers.
+
+```sh
+node eval/search_quality.mjs                                        # today's numbers
+node eval/search_quality.mjs --compare eval/search_baseline.json    # measure a change
+```
+
 ## Running a round
 
 ```sh

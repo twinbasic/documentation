@@ -64,8 +64,12 @@ It runs against a built `search-data.json`. The ground truth is
 
 It reports hit@1/5/10, MRR (capped at rank 20), results by symbol kind, cost
 (size raw and gzipped, index build time in the browser, heap) and the
-queries that changed rank between two configurations. The harness is in the
-session scratchpad for now; see the last open question.
+queries that changed rank between two configurations. The harness is
+[eval/search_quality.mjs](eval/search_quality.mjs); today's numbers (the
+"today (h2)" row below) are its baseline, saved as
+[eval/search_baseline.json](eval/search_baseline.json). Run
+`node eval/search_quality.mjs --compare eval/search_baseline.json` to measure
+a change against it.
 
 ### Results
 
