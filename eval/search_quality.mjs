@@ -56,6 +56,11 @@
 // "Option Explicit") with a maintainer-judged expected page, matched by
 // path only (ignoring the in-page anchor, since which heading gets the
 // anchor is exactly the kind of thing an index-granularity change moves).
+// A prose query may also name `behind` pages: the ones a reader should find
+// right behind the expected one, as a book's index lists a main entry
+// before its secondary ones. That is reported on its own line (the
+// expected page at rank 1 and a `behind` page within the top BEHIND_WITHIN),
+// and never changes the query's rank.
 // Small and cherry-picked for plausibility, its 80% hit@10 is a sanity
 // check that this tool has kept stable across configurations, not a
 // statistical claim about real user queries.
@@ -186,15 +191,21 @@ function loadProseQueries() {
     kindGroup: "n/a",
     q: r.q,
     expected: r.expected.map(normalizeUrl),
+    behind: (r.behind ?? []).map(normalizeUrl),
     pathOnlyMatch: true,
   }));
 }
+
+// "Right behind" for a prose query's `behind` pages: within the top three,
+// counting the expected page at rank 1. Rank 2 exactly would fail on a
+// glossary entry for the same term, which is a fair result too.
+const BEHIND_WITHIN = 3;
 
 function checkProseUrlsExist(proseQueries, docs) {
   const knownPaths = new Set(Object.values(docs).map((d) => pathOnly(String(d.relUrl ?? ""))));
   const missing = [];
   for (const q of proseQueries) {
-    for (const e of q.expected) {
+    for (const e of [...q.expected, ...q.behind]) {
       if (!knownPaths.has(pathOnly(e))) missing.push(`${q.q} -> ${e}`);
     }
   }
@@ -296,6 +307,7 @@ function evaluate(ctx, queries) {
 
     let firstHitRank = null; // 1-based
     let anyPageRank = null; // bare names: the first URL of any tier
+    let behindRank = null; // prose: the first `behind` page
     let anyCorrect = false;
     for (let i = 0; i < results.length; i++) {
       const url = ctx.docs[results[i].ref]?.relUrl;
@@ -303,6 +315,7 @@ function evaluate(ctx, queries) {
         anyCorrect = true;
         if (firstHitRank === null) firstHitRank = i + 1;
       }
+      if (query.behind?.length && behindRank === null && query.behind.some((e) => pathOnly(url) === pathOnly(e))) behindRank = i + 1;
       if (query.urlTier && anyPageRank === null && query.urlTier.has(normalizeUrl(url))) anyPageRank = i + 1;
     }
 
@@ -320,6 +333,9 @@ function evaluate(ctx, queries) {
       tier: query.tier,
       anyPageHit10: anyPageRank !== null && anyPageRank <= 10,
       tierOrder: query.urlTier && query.urlTier.size >= 2 ? tierOrder(ctx, results, query.urlTier) : null,
+      behind: query.behind?.length
+        ? { rank: behindRank, met: firstHitRank === 1 && behindRank !== null && behindRank <= BEHIND_WITHIN }
+        : null,
     });
   }
 
@@ -425,6 +441,11 @@ function printTable(result) {
   for (const [label, key] of [["symbol-bare", "symbol-bare"], ["symbol-qualified", "symbol-qualified"], ["prose", "prose"]]) {
     console.log(label.padEnd(labelWidth) + " | " + line(result.byCategory[key]));
   }
+  const ordered = result.perQuery.filter((r) => r.behind);
+  if (ordered.length) {
+    const met = ordered.filter((r) => r.behind.met).length;
+    console.log(`prose, behind within ${BEHIND_WITHIN}`.padEnd(labelWidth) + " | " + `${met} of ${ordered.length}`);
+  }
   console.log("bare, any page (hit@10)".padEnd(labelWidth) + " | " + fmtPct(result.bareAnyPageHit10));
 
   console.log("\nBare names by intent tier (hit@1 / hit@10 / MRR / n):");
@@ -456,14 +477,22 @@ function printFailures(perQuery, n) {
     console.log(`  ${g} (${rows.length}):`);
     for (const r of rows.slice(0, n)) console.log(`    ${r.q}: ${r.firstHitRank ?? "none"}`);
   }
+  const unordered = perQuery.filter((r) => r.behind && !r.behind.met);
+  if (unordered.length) {
+    console.log(`\nProse without its \`behind\` page right behind it (expected rank, behind rank): ${unordered.length}`);
+    for (const r of unordered.slice(0, n)) console.log(`    ${r.q}: ${r.firstHitRank ?? "none"}, ${r.behind.rank ?? "none"}`);
+  }
 }
 
 // Short codes keep the saved rank map (one entry per query, thousands of
 // them) from ballooning: "symbol-qualified" repeated 5,108 times costs real
 // kilobytes for no information a single letter doesn't carry.
 // Saved with a baseline, so --compare can tell a baseline judged by a
-// different ground truth from a change in ranking.
-const GROUND_TRUTH = "intent-1";
+// different ground truth from a change in ranking. intent-1 judged bare
+// names by reader intent; intent-2 changed two prose expectations
+// (`conditional compilation` expects the #If/#Const page, `symbol index`
+// accepts Permanent-Links too).
+const GROUND_TRUTH = "intent-2";
 
 const CATEGORY_CODE = { "symbol-bare": "b", "symbol-qualified": "q", prose: "p" };
 const CATEGORY_NAME = { b: "symbol-bare", q: "symbol-qualified", p: "prose" };
@@ -501,7 +530,7 @@ function printCompare(current, saved, worstN) {
   if (saved.groundTruth !== GROUND_TRUTH) {
     console.log(
       `\nwarning: the baseline was saved with ground truth "${saved.groundTruth ?? "any-page"}", ` +
-      `this run uses "${GROUND_TRUTH}"; bare-name ranks are not comparable.`
+      `this run uses "${GROUND_TRUTH}"; ranks the two judge differently are not comparable.`
     );
   }
   const oldRanks = saved.ranks ?? rankMap(saved.perQuery ?? []);

@@ -4,7 +4,7 @@
   { "q": "AutoRedraw", "expected": ["/tB/Packages/VB/Form", "/tB/Packages/VB/PictureBox"] },
   { "q": "DoEvents", "expected": ["/tB/Modules/Interaction/DoEvents"] },
   { "q": "Option Explicit", "expected": ["/tB/Core/Option"] },
-  { "q": "conditional compilation", "expected": ["/Reference/Compiler-Constants"] },
+  { "q": "conditional compilation", "expected": ["/tB/Core/Topic-Preprocessor"], "behind": ["/Reference/Compiler-Constants"] },
   { "q": "PtrSafe", "expected": ["/Features/64bit"] },
   { "q": "circular reference", "expected": ["/Tutorials/CustomControls/Defining"] },
   { "q": "64-bit compilation", "expected": ["/Features/64bit"] },
@@ -18,5 +18,5 @@
   { "q": "variadic arguments", "expected": ["/Features/Advanced/API-Declarations"] },
   { "q": "heading levels", "expected": ["/Documentation/Development/Authoring"] },
   { "q": "With statement", "expected": ["/tB/Core/With"] },
-  { "q": "symbol index", "expected": ["/Documentation/Development/Building"] }
+  { "q": "symbol index", "expected": ["/Documentation/Development/Building", "/Documentation/Development/Permanent-Links"] }
 ]

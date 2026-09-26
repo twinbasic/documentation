@@ -21,7 +21,10 @@ ground truth from a build's `tB/symbols.json`, judging a bare name by
 reader intent (a type or language element before a class member, before an
 enum constant), and checks a hand-picked
 prose set in the committed
-[eval/search_prose_queries.json](search_prose_queries.json). See
+[eval/search_prose_queries.json](search_prose_queries.json). A prose query
+lists the pages that count as its answer in `expected`, and may list in
+`then` the pages a reader should find right behind it (within the top
+three). See
 [WIP.Search.md](../WIP.Search.md) for the design and
 [eval/search_baseline.json](search_baseline.json) for today's numbers.
 
