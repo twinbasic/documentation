@@ -12,9 +12,10 @@ Like WIP.md, this file is not rendered through tbdocs, so literal dashes are fin
 Everything needed to continue is in this file and in `eval/`; nothing
 depends on the session that wrote it.
 
-**Where it stands.** Rollout steps 1–5 and the first reader-intent steps
-are done and committed, on branch `claude/paintpicture-docs-runtime-f3250d`.
-Nothing is pushed.
+**Where it stands.** Rollout steps 1–5 and two reader-intent rounds are
+done and committed, on branch `claude/paintpicture-docs-runtime-f3250d`.
+Nothing is pushed. The working tree is clean; the last commit only records
+a hash in this file.
 
 | commit | step |
 |---|---|
@@ -33,13 +34,43 @@ intent, rank 1 is right for 94.1% of queries (89.0% before the intent
 steps), no bare name is out of tier order, and no query got worse at any
 step.
 
-**Next:** [Reader intent](#reader-intent-after-the-rollout), "Next steps".
-In short:
-1. The index pilot: hand-marked index entries for jargon, starting with
-   `conditional compilation` and the 4 remaining prose misses. The user
-   chose this order: tweak-shaped failures first, then the pilot.
-2. The rest of the rank-1 failure list (`--failures 500`), mostly qualified
-   names.
+Where the remaining 470 rank-1 misses are, and why, is in
+[What shipped, second round](#what-shipped-second-round-tiers-in-the-index).
+
+**Next: the index pilot.** The user asked whether ranking tweaks are an
+uphill battle, since a book's index is marked by hand. The conclusion,
+which the user accepted:
+- Symbol lookups are not uphill. `names`, `qualified` and `primary` are
+  already a hand index, generated from `tB/symbols.json`, and that is why
+  they work. Tweaks remain the tool there.
+- Jargon and concepts are uphill. `conditional compilation` should find
+  `/tB/Core/Topic-Preprocessor` (the `#If`/`#Const` page) first, with
+  `/Reference/Compiler-Constants` right behind, but Topic-Preprocessor
+  never contains the words "conditional compilation". No ranking can find
+  a page for words it doesn't contain.
+
+So the pilot, in this order:
+1. A mechanism for hand-marked entries. The proposal, not yet built: an
+   `index:` list in a page's front matter (or on a heading), which the
+   build puts into a boosted field, like `names`. A main entry and a
+   secondary one, in two fields of different boost, give "Preprocessor
+   first, Compiler Constants right behind, then the pages that mention
+   it". Where the entries live and how a heading carries one are still
+   open; decide with the user.
+2. Entries for the 5 prose misses: `conditional compilation`, `late
+   binding`, `64-bit compilation`, `symbol index`, and whichever else
+   `--failures` lists. Read the pages to decide where a term belongs.
+3. Change `eval/search_prose_queries.json`'s `conditional compilation`
+   expectation to Topic-Preprocessor, and teach `search_quality.mjs` to
+   check "right behind" (an ordered expectation), not just "found".
+4. Measure. Only if the pilot holds up, a wider pass with agents, under
+   rules: an entry names the page a reader wants for that term, not a
+   summary of the page; few entries per page; one main entry per term,
+   with a check that fails when two pages claim it.
+
+After the pilot: the qualified names deep in the list (`Slider.*`,
+`MonthView.*` at 20–26), and the same-page ground-truth question
+(`DefInt` → a section of `Deftype`).
 
 **The user's criteria**, which govern every decision here:
 - A reader either finds what they want or doesn't. A small regression is
@@ -52,6 +83,14 @@ In short:
 - Configuration belongs in `docs/_config.yml`, not code (for example
   `search.fold_headings`).
 - Ship in small steps, each committed on its own with its measured numbers.
+- Existing links in the docs may be wrong or not the best. Treat them as
+  leads, never as evidence of the right page, and don't derive test
+  expectations from them. The glossary is a source of candidate *terms*,
+  not of targets. List doubtful links for the user; don't fix them in
+  passing, since which page is right is an editorial call.
+- Fix what a tweak can fix first; use hand-marked index entries where the
+  right page can't be found from its text. A tweak that happens to fix a
+  handful of prose queries is overfitting, not a fix.
 - Use Sonnet agents for mechanical and exploratory work.
 - Review every agent's work before committing it. Agents have produced
   false explanations (see [X1t](#rejected-tier-specific-exact-fields-x1t)),
@@ -69,10 +108,16 @@ In short:
 - Build first with `node builder/tbdocs.mjs --src docs --no-check --no-offline --no-pdf`.
 - The research scripts and their records are in
   [eval/search-experiments/](eval/search-experiments/README.md).
+- Measure a candidate change with temporary knobs in the replica (an `EXP`
+  environment variable read by `eval/site_search.mjs`), then restore the
+  file from git and write the chosen version cleanly into all three
+  copies.
 - Check anything in the client in a real browser. `.claude/launch.json` has
-  `docs-serve` (port 4001) and `docs-offline` (port 4002). The client runs
-  `update()` on `keyup`, so browser tools that insert text without key
-  events don't trigger search. A hidden pane pauses `requestAnimationFrame`;
+  `docs-serve` (port 4001) and `docs-offline` (port 4002; build without
+  `--no-offline` first). The client runs `update()` on `keyup`, so browser
+  tools that insert text without key events don't trigger search; setting
+  the box's value and dispatching a `keyup` from script does, and is the
+  quick way to compare many queries with the replica. A hidden pane pauses `requestAnimationFrame`;
   the client has a timer fallback for that.
 - `test.bat` stops at `check_axe_patch_equiv.mjs` in a worktree without
   `node_modules`. Run `npm install` first for the full suite.
@@ -635,6 +680,11 @@ With the recommended combination, and intent ground truth:
 | `conditional compilation` | 6, unchanged |
 
 ### Rejected: tier-specific exact fields (X1t)
+
+**Later superseded:** this was measured while a lone clause's boost
+cancelled out, so it never had a fair test. Done with field boosts, as the
+`primary` field, it took tier-order violations to zero; see "What shipped,
+second round".
 
 Splitting `exact` into `exact1`/`exact2`/`exact3` by symbol kind, with
 descending boosts, measured no better than flat X1 (hit@1 90.0% against
