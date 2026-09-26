@@ -25,7 +25,7 @@ Nothing is pushed.
 | `fd0bfa7b` | 4: `names`/`qualified` fields; the smart dot split |
 | `0961e6e9` | 5: stop words kept; dot runs split; lazy index build |
 | `d6075e23` | intent 1: `search_quality.mjs` judges bare names by reader intent |
-| (next commit) | intent 3: exact-name and page-title fields, all words first, query tokens trimmed |
+| `482ae8af` | intent 3: exact-name and page-title fields, all words first, query tokens trimmed |
 
 Hit@10 went from 20.5% to 98.5%, and MRR from .182 to .957. By reader
 intent, rank 1 is right for 93.5% of queries (89.0% before the intent
