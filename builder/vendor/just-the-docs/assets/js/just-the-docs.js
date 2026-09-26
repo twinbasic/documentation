@@ -164,8 +164,14 @@ function initSearch() {
             this.field('exact', { boost: 50 });
             this.field('primary', { boost: 1000 });
             this.field('page', { boost: 5 });
+            // Patched: `index` holds the entry's hand-marked index terms
+            // (builder/search.mjs's attachIndexMarks), as indexField() below
+            // writes them. See WIP.Search.md, "What shipped, third round:
+            // the index pilot".
+            this.field('index', { boost: 1000 });
             this.field('relUrl');
             this.metadataWhitelist = ['position']
+            pinIndexFieldLengths(this);
             // Patched: keep stop words in the index (step 5A). lunr's index
             // pipeline runs lunr.stopWordFilter by default, but its search
             // pipeline never did, so English stop words were dropped from the
@@ -179,12 +185,13 @@ function initSearch() {
               this.add({
                 id: i,
                 title: docs[i].title,
-                content: docs[i].content,
+                content: indexedContent(docs[i]),
                 names: docs[i].names || '',
                 qualified: docs[i].qualified || '',
                 exact: (docs[i].names || '').split(/\s+/).filter(Boolean).map(exactName).join(' '),
                 primary: (docs[i].primary || '').split(/\s+/).filter(Boolean).map(exactName).join(' '),
                 page: docs[i].doc || '',
+                index: indexField(docs[i]),
                 relUrl: docs[i].relUrl
               });
             }
@@ -224,6 +231,62 @@ function exactName(name) {
   return name.toLowerCase().replace(/\W/g, function(c) {
     return '_' + c.charCodeAt(0).toString(16);
   }) + '_';
+}
+
+// Patched: a hand-marked index term as the `index` field holds it -- its
+// words as the index holds words (tokenized, trimmed and stemmed), joined by
+// `_`, with `_` appended, so the whole term is one token. A query matches it
+// only by naming the whole term (see indexKeys in doSearch() below). No
+// stemmer rule touches a word ending in `_`, and the trimmer keeps it.
+function phraseKey(tokens) {
+  return tokens.map(function(t) {
+    return lunr.stemmer(t.clone()).toString();
+  }).join('_') + '_';
+}
+
+function indexTermKey(term) {
+  var tokens = lunr.tokenizer(term).map(function(t) {
+    return lunr.trimmer(t);
+  }).filter(function(t) {
+    return t.str !== '';
+  });
+  return tokens.length ? phraseKey(tokens) : '';
+}
+
+// Patched: a search entry's `index` field. Its main terms (`index`) as
+// indexTermKey() writes them, and its secondary ones (`index_also`) with one
+// more `_`, so that doSearch() can weigh the two apart within one field. One
+// field, not two, because lunr gives every term in the whole index a slot
+// for every field: as two fields, with the words below as a third, the
+// index took 24 MB more heap; as one, 5 MB.
+function indexField(doc) {
+  var main = (doc.index || []).map(indexTermKey).filter(Boolean);
+  var also = (doc.index_also || []).map(indexTermKey).filter(Boolean).map(function(k) {
+    return k + '_';
+  });
+  return main.concat(also).join(' ');
+}
+
+// Patched: a search entry's content, with its index terms appended as plain
+// words, so an entry marked `late binding` still has both words when a query
+// requires all of them.
+function indexedContent(doc) {
+  var terms = (doc.index || []).concat(doc.index_also || []);
+  return terms.length ? doc.content + ' ' + terms.join(' ') : doc.content;
+}
+
+// Patched: BM25 scales a match by its field's length against the average
+// length of that field, and `index` is empty on nearly every entry, so its
+// average is near zero and a marked entry looked a thousand times too long:
+// its match counted for almost nothing, and would count for more with every
+// page marked. A term fills the field on its own, so the average is pinned
+// at one term. Called from the lunr builder function in initSearch().
+function pinIndexFieldLengths(builder) {
+  var averageLengths = builder.calculateAverageFieldLengths;
+  builder.calculateAverageFieldLengths = function() {
+    averageLengths.call(this);
+    this.averageFieldLength.index = 1;
+  };
 }
 
 // Patched: the kinds tB/symbols.json gives its symbols, less `enumvalue`,
@@ -401,8 +464,8 @@ function searchLoaded(loadIndex) {
     });
     queryTokens = allTokens;
 
-    // Patched: every field but `exact` and `primary`, which only the
-    // exact-name clause below may search -- otherwise the trailing wildcard
+    // Patched: every field but `exact`, `primary` and `index`, which only
+    // their own clauses below may search -- otherwise the trailing wildcard
     // `node*` matches `nodes_` there too. A query naming one thing also
     // matches that whole name in `exact` and `primary`. One thing is one
     // word, not counting words that name a kind: in a phrase such as "error
@@ -414,6 +477,17 @@ function searchLoaded(loadIndex) {
       return KIND_WORDS.indexOf(w.toLowerCase().replace(/s$/, '')) === -1;
     });
     var name = named.length === 1 ? named[0] : words.length === 1 ? words[0] : null;
+    // Patched: hand-marked index terms. Every run of up to four
+    // consecutive words, written as indexTermKey() writes a term, so a query
+    // matches a term by naming all of it, alone or among other words. A
+    // secondary term (the key with one more `_`, see indexField()) weighs a
+    // fifth of a main one: the field's boost of 1000 against 200.
+    var indexKeys = [];
+    for (var a = 0; a < baseTokens.length; a++) {
+      for (var b = a + 1; b <= baseTokens.length && b - a <= 4; b++) {
+        indexKeys.push(phraseKey(baseTokens.slice(a, b)));
+      }
+    }
     function anyWords(query) {
       query.term(queryTokens, {
         fields: textFields,
@@ -426,6 +500,10 @@ function searchLoaded(loadIndex) {
       if (name) {
         query.term(exactName(name), { fields: ['exact', 'primary'] });
       }
+      indexKeys.forEach(function(key) {
+        query.term(key, { fields: ['index'], boost: 5, usePipeline: false });
+        query.term(key + '_', { fields: ['index'], boost: 1, usePipeline: false });
+      });
     }
 
     // Patched: all words first. With two or more words, look for entries

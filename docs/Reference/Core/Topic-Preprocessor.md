@@ -2,6 +2,7 @@
 title: '#If, #Const'
 parent: Statements
 permalink: /tB/Core/Topic-Preprocessor
+index: conditional compilation
 vba_attribution: true
 ---
 # #If...Then...#Else, #Const directives

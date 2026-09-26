@@ -25,6 +25,13 @@
 // keeping bare names (client boost 100) separate from the longer
 // `Container.Name` forms (boost 50) measured better than one field at
 // any single boost.
+//
+// Two more, `index` and `index_also`, are the hand-marked index entries:
+// terms an author names in a page's front matter or on a heading, for
+// jargon a reader looks up by a name the page's text may never use
+// (`conditional compilation` for the #If/#Const page). See
+// `attachIndexMarks` below and WIP.Search.md's "What shipped, third round:
+// the index pilot".
 
 import path from "node:path";
 
@@ -61,6 +68,7 @@ export async function writeSearchDataFromChunks(searchChunks, destRoot, symbols)
 
   const allEntries = searchChunks.flat();
   for (let idx = 0; idx < allEntries.length; idx++) allEntries[idx].i = idx;
+  checkIndexTerms(allEntries);
   if (symbols?.length) joinSymbolsToEntries(allEntries, symbols);
   const body = allEntries.map(renderEntryString).join(",");
   const json = `{` + body + `\n}\n`;
@@ -112,8 +120,12 @@ export function deriveSearchEntries(pages, site) {
       foldSet,
     );
 
+    // Each entry with the heading ids its section holds, for the index
+    // marks below; the ids never leave this function.
+    const held = [];
+    let pageEntry = null;
     for (const sec of sections) {
-      entries.push({
+      const e = {
         i: i++,
         doc: String(title),
         title: sec.title,
@@ -121,11 +133,14 @@ export function deriveSearchEntries(pages, site) {
         url: encodeSpaces(baseurl + sec.url),
         relUrl: sec.url,
         sourcePage: page,
-      });
+      };
+      entries.push(e);
+      held.push({ entry: e, ids: sec.ids });
+      if (sec.isTitle && !pageEntry) pageEntry = e;
     }
 
     if (!titleFound) {
-      entries.push({
+      pageEntry = {
         i: i++,
         doc: String(title),
         title: String(title),
@@ -133,11 +148,90 @@ export function deriveSearchEntries(pages, site) {
         url: encodeSpaces(baseurl + page.permalink),
         relUrl: page.permalink,
         sourcePage: page,
-      });
+      };
+      entries.push(pageEntry);
     }
+
+    attachIndexMarks(page, held, pageEntry);
   }
 
   return entries;
+}
+
+// The hand-marked index entries of one page, onto its entries. The front
+// matter's `index` / `index_also` go to the page's own entry, the one whose
+// URL is the page itself; a heading's (lifted off it by render.mjs's
+// searchIndexMarksPlugin, keyed by the heading's id) go to the entry whose
+// section holds that heading, which is the heading's own entry unless it
+// is deeper than `search.heading_level` or was folded. Terms are kept in
+// the order written, once each regardless of case, and a term that is an
+// entry's main one is dropped from its secondary ones.
+function attachIndexMarks(page, held, pageEntry) {
+  const where = page.srcRel ?? page.destPath;
+  const add = (entry, field, value, label) => {
+    const terms = parseIndexTerms(value, `${where}: ${label}`);
+    const seen = new Map((entry[field] ?? []).map((t) => [t.toLowerCase(), t]));
+    for (const t of terms) if (!seen.has(t.toLowerCase())) seen.set(t.toLowerCase(), t);
+    if (seen.size) entry[field] = [...seen.values()];
+  };
+  const fm = page.frontmatter ?? {};
+  for (const field of INDEX_FIELDS) {
+    if (fm[field] != null) add(pageEntry, field, fm[field], `front matter \`${field}\``);
+  }
+  for (const mark of page.searchIndexMarks ?? []) {
+    const holder = held.find((h) => h.ids.includes(mark.id));
+    if (!holder) {
+      throw new Error(`${where}: heading #${mark.id} carries a search index entry, but no search entry holds that heading`);
+    }
+    for (const field of INDEX_FIELDS) {
+      if (mark[field] != null) add(holder.entry, field, mark[field], `heading #${mark.id}'s \`${field}\``);
+    }
+  }
+  for (const e of [pageEntry, ...held.map((h) => h.entry)]) {
+    if (!e.index || !e.index_also) continue;
+    const main = new Set(e.index.map((t) => t.toLowerCase()));
+    e.index_also = e.index_also.filter((t) => !main.has(t.toLowerCase()));
+    if (!e.index_also.length) delete e.index_also;
+  }
+}
+
+const INDEX_FIELDS = ["index", "index_also"];
+
+// One index mark's value: a term, a list of terms (front matter), or terms
+// separated by `;` (a heading attribute, which can only hold a string).
+// Whitespace inside a term is collapsed. Anything else is a mistake the
+// author should hear about, not a mark to drop.
+export function parseIndexTerms(value, where) {
+  const items = typeof value === "string" ? [value] : Array.isArray(value) ? value : null;
+  if (!items || items.some((v) => typeof v !== "string")) {
+    throw new Error(`${where}: expected a term or a list of terms, got ${JSON.stringify(value)}`);
+  }
+  return items.flatMap((v) => v.split(";")).map((t) => t.replace(/\s+/g, " ").trim()).filter(Boolean);
+}
+
+// A term is the main index entry of one place only, as in a book's index:
+// that is what lets its page come first. Other places that answer it well
+// take it as `index_also`. Compared without regard to case, and with a
+// hyphen counting as a space, since the client's tokenizer splits on both.
+// The client also stems, so `late bindings` and `late binding` would still
+// collide there without failing here; keep terms in their plain form.
+export function checkIndexTerms(entries) {
+  const claims = new Map();
+  for (const e of entries) {
+    for (const t of e.index ?? []) {
+      const key = t.toLowerCase().replace(/[\s-]+/g, " ");
+      if (!claims.has(key)) claims.set(key, []);
+      claims.get(key).push(e.relUrl);
+    }
+  }
+  const dup = [...claims].filter(([, urls]) => urls.length > 1);
+  if (dup.length) {
+    throw new Error(
+      "search index: a term can be the main index entry of one place only; " +
+      "mark the others with index_also:\n" +
+      dup.map(([t, urls]) => `  "${t}": ${urls.join(", ")}`).join("\n"),
+    );
+  }
 }
 
 // Returns the heading-split sections plus the prose-before-first-heading
@@ -189,9 +283,18 @@ function extractSections(page, pageTitle, headingLevel, foldSet = new Set()) {
     const titleHtml = gtIdx === -1 ? headingChunk : headingChunk.slice(gtIdx + 1);
     const sectionTitle = stripHtml(titleHtml);
 
+    // Every heading id this section holds: its own, and those of any
+    // deeper heading in its body that the split didn't reach. The index
+    // marks find their entry by these.
+    const ownId = /\sid="([^"]*)"/.exec(headingChunk)?.[1];
+    const ids = ownId === undefined ? [] : [ownId];
+    for (const m of body.matchAll(/<h\d\b[^>]*?\sid="([^"]*)"/g)) ids.push(m[1]);
+
     let url = page.permalink;
+    let isTitle = false;
     if (sectionTitle === pageTitle && prefixContent === "") {
       titleFound = true;
+      isTitle = true;
     } else {
       // Extract id from `id="..."` if present exactly once.
       const idParts = headingChunk.split('id="');
@@ -209,10 +312,11 @@ function extractSections(page, pageTitle, headingLevel, foldSet = new Set()) {
     const isGeneric = foldSet.has(sectionTitle.trim().toLowerCase());
     if (isGeneric && sections.length > 0) {
       sections[sections.length - 1].body += body;
+      sections[sections.length - 1].ids.push(...ids);
       continue;
     }
 
-    sections.push({ title: sectionTitle, body, url });
+    sections.push({ title: sectionTitle, body, url, ids, isTitle });
   }
 
   return { sections, titleFound, prefixContent };
@@ -314,6 +418,8 @@ export function renderEntryString(e) {
   if (e.names) extra += `    "names": ${JSON.stringify(e.names)},\n`;
   if (e.qualified) extra += `    "qualified": ${JSON.stringify(e.qualified)},\n`;
   if (e.primary) extra += `    "primary": ${JSON.stringify(e.primary)},\n`;
+  if (e.index?.length) extra += `    "index": ${JSON.stringify(e.index)},\n`;
+  if (e.index_also?.length) extra += `    "index_also": ${JSON.stringify(e.index_also)},\n`;
   return `"${e.i}": {\n` +
     `    "doc": ${JSON.stringify(e.doc)},\n` +
     `    "title": ${JSON.stringify(e.title)},\n` +

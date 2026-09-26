@@ -372,8 +372,13 @@ const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
         this.field('exact', { boost: 50 });
         this.field('primary', { boost: 1000 });
         this.field('page', { boost: 5 });
+        // Mirrors the online build's index-term patch (indexField(),
+        // indexedContent() and pinIndexFieldLengths() are the online
+        // copy's).
+        this.field('index', { boost: 1000 });
         this.field('relUrl');
         this.metadataWhitelist = ['position'];
+        pinIndexFieldLengths(this);
         // Mirrors the online build's stop-word patch (step 5A): keep
         // lunr's default stop words in the index, since many are
         // twinBASIC keywords (Do, For, If, Is, On, With, Each...) that the
@@ -384,12 +389,13 @@ const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
           this.add({
             id: i,
             title: docs[i].title,
-            content: docs[i].content,
+            content: indexedContent(docs[i]),
             names: docs[i].names || '',
             qualified: docs[i].qualified || '',
             exact: (docs[i].names || '').split(/\\s+/).filter(Boolean).map(exactName).join(' '),
             primary: (docs[i].primary || '').split(/\\s+/).filter(Boolean).map(exactName).join(' '),
             page: docs[i].doc || '',
+            index: indexField(docs[i]),
             relUrl: docs[i].relUrl
           });
         }

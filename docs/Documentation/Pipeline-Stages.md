@@ -41,6 +41,7 @@ The pipeline passes three pieces of mutable state through every task: the `pages
 | `breadcrumbs` | `nav` | `Page[]` | Ancestor chain from the root to the current page, nearest-first. |
 | `children` | `nav` | `Page[]` | Immediate child pages in nav order. |
 | `renderedContent` | `render:i` | `string` | HTML body produced by markdown-it. Set on the worker, merged back into the master page via the render delta. |
+| `searchIndexMarks` | `render:i` (`searchIndexMarksPlugin`) | `object[]\|undefined` | The [index entries](Authoring#index-entries-for-the-site-search) written on the page's headings, each `{ id, index, index_also }` with the raw attribute values, taken off the heading before the HTML is written. Set only on a page that has any. Read by `deriveSearchEntries` on the same worker; never merged back to main. |
 | `seoTitle` | `render:i` (`computeChunkSeo`) | `string` | HTML-stripped, whitespace-collapsed page title for `<title>` and `og:title`. |
 | `seoFullTitle` | `render:i` (`computeChunkSeo`) | `string` | `"<seoTitle> \| <siteTitle>"` for non-home pages; equals `seoTitle` on the home page. |
 | `seoCanonical` | `render:i` (`computeChunkSeo`) | `string` | Absolute canonical URL. |
@@ -327,7 +328,7 @@ Handler (`render` in `cpu-worker.mjs`):
 4. `await templatePhase(chunk, env.site, env.initData)` --- just-the-docs layout wrap.
 5. When `env.offlineBase` is set: per-destination-directory, render the first page through `deriveOfflinePage` and slice the nav block via `sliceNavBlock`; cache the input/output nav slices keyed by directory; for each writable page, call `deriveOfflinePageCached` which substitutes the cached nav, runs the rewriter over the smaller string, and splices the output back in. Saves ~200 ms of repeated nav rewriting.
 6. Store `{ destPath, html, offlineHtml, offlineMisses }` on the worker's `_pendingFlush` FIFO so the matching `flush:i` can drain it.
-7. `deriveSearchEntries(chunk, env.site)` --- per-section search entries. Trim `sourcePage` and the chunk-local `i` before returning (main reassigns global indices).
+7. `deriveSearchEntries(chunk, env.site)` --- per-section search entries, with any [index entries](Authoring#index-entries-for-the-site-search) the page's frontmatter or headings name. Trim `sourcePage` and the chunk-local `i` before returning (main reassigns global indices).
 
 Returns `{ pages, searchEntries }`. The `submit()` callback (registered on the scheduler by `dispatch.submit`) merges `renderedContent` / `offlineMisses` into the master `Page` objects via `state.pageByDest`, and writes `searchEntries` into `state.searchChunks[i]`.
 
@@ -412,7 +413,7 @@ Calls `writePhase(state.pages, state.staticFiles, { destRoot, dryRun, generatedA
 searchData.expected = ["renderJoin", "prepDest", "symbolIndex"]
 ```
 
-Calls `writeSearchDataFromChunks(state.searchChunks, destRoot, symbolIndex.symbols)` from `search.mjs`. Flattens the per-chunk entry arrays, joins `symbolIndex`'s symbols onto the matching entries by URL (`joinSymbolsToEntries`, adding the `names` / `qualified` / `primary` fields -- see `WIP.Search.md`'s "Design" §2), renumbers the global `i` index sequentially, and writes `assets/js/search-data.json`. Returns `{ entries, json }`. The heavy work (heading split, content sanitisation, URL encoding) ran on the workers; this task joins and concatenates. The new dependency on `symbolIndex` is why: the join needs its `symbols` array, and both tasks already ran on main after `renderJoin`, so ordering them costs nothing extra.
+Calls `writeSearchDataFromChunks(state.searchChunks, destRoot, symbolIndex.symbols)` from `search.mjs`. Flattens the per-chunk entry arrays, joins `symbolIndex`'s symbols onto the matching entries by URL (`joinSymbolsToEntries`, adding the `names` / `qualified` / `primary` fields -- see `WIP.Search.md`'s "Design" §2), renumbers the global `i` index sequentially, checks that no index term is the main entry (`index`) of two entries (`checkIndexTerms`, which throws naming them), and writes `assets/js/search-data.json`. Returns `{ entries, json }`. The heavy work (heading split, content sanitisation, URL encoding) ran on the workers; this task joins and concatenates. The new dependency on `symbolIndex` is why: the join needs its `symbols` array, and both tasks already ran on main after `renderJoin`, so ordering them costs nothing extra.
 
 ### `symbolIndex` (main)
 

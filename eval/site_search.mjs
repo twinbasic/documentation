@@ -103,8 +103,13 @@ export function buildIndex(lunr, docs) {
     this.field("exact", { boost: 50 });
     this.field("primary", { boost: 1000 });
     this.field("page", { boost: 5 });
+    // Mirrors the index-term patch: hand-marked terms written whole in
+    // `index` (see indexField()), with its average length pinned at one term
+    // (see pinIndexFieldLengths()).
+    this.field("index", { boost: 1000 });
     this.field("relUrl");
     this.metadataWhitelist = ["position"];
+    pinIndexFieldLengths(this);
     // Mirrors the stop-word patch (step 5A, "Design" section): lunr's index
     // pipeline runs lunr.stopWordFilter by default, but the search pipeline
     // never did, so English stop words -- many of them twinBASIC keywords
@@ -115,12 +120,13 @@ export function buildIndex(lunr, docs) {
       this.add({
         id,
         title: docs[id].title,
-        content: docs[id].content,
+        content: indexedContent(docs[id]),
         names: docs[id].names || "",
         qualified: docs[id].qualified || "",
         exact: (docs[id].names || "").split(/\s+/).filter(Boolean).map(exactName).join(" "),
         primary: (docs[id].primary || "").split(/\s+/).filter(Boolean).map(exactName).join(" "),
         page: docs[id].doc || "",
+        index: indexField(lunr, docs[id]),
         relUrl: docs[id].relUrl,
       });
     }
@@ -139,8 +145,52 @@ function exactName(name) {
   return name.toLowerCase().replace(/\W/g, (c) => "_" + c.charCodeAt(0).toString(16)) + "_";
 }
 
-// Every field but `exact` and `primary`, which only the exact-name clauses
-// may search: otherwise the trailing wildcard `node*` matches `nodes_`.
+// Matches just-the-docs.js's phraseKey() and indexTermKey(): a hand-marked
+// index term as `index` holds it, its words as the index holds words
+// (tokenized, trimmed, stemmed) joined by `_`, with `_` appended, so the
+// whole term is one token that a query matches only by naming all of it.
+function phraseKey(lunr, tokens) {
+  return tokens.map((t) => lunr.stemmer(t.clone()).toString()).join("_") + "_";
+}
+
+function indexTermKey(lunr, term) {
+  const tokens = lunr.tokenizer(term).map((t) => lunr.trimmer(t)).filter((t) => t.str !== "");
+  return tokens.length ? phraseKey(lunr, tokens) : "";
+}
+
+// Matches just-the-docs.js's indexField(): the main terms as
+// indexTermKey() writes them, the secondary ones (`index_also`) with one
+// more `_`, in one field, since every field costs a slot on every term in
+// the index.
+function indexField(lunr, doc) {
+  const main = (doc.index || []).map((t) => indexTermKey(lunr, t)).filter(Boolean);
+  const also = (doc.index_also || []).map((t) => indexTermKey(lunr, t)).filter(Boolean).map((k) => k + "_");
+  return main.concat(also).join(" ");
+}
+
+// Matches just-the-docs.js's indexedContent(): the content with the index
+// terms appended as plain words, so an entry marked `late binding` still
+// has both words when a query requires all of them.
+function indexedContent(doc) {
+  const terms = (doc.index || []).concat(doc.index_also || []);
+  return terms.length ? doc.content + " " + terms.join(" ") : doc.content;
+}
+
+// Matches just-the-docs.js's pinIndexFieldLengths(): `index` is empty on
+// nearly every entry, so BM25's average length for it is near zero and a
+// marked entry's match would count for almost nothing. The average is
+// pinned at one term.
+function pinIndexFieldLengths(builder) {
+  const averageLengths = builder.calculateAverageFieldLengths;
+  builder.calculateAverageFieldLengths = function () {
+    averageLengths.call(this);
+    this.averageFieldLength.index = 1;
+  };
+}
+
+// Every field but `exact`, `primary` and `index`, which only their own
+// clauses may search: otherwise the trailing wildcard `node*` matches
+// `nodes_`.
 const TEXT_FIELDS = ["title", "content", "names", "qualified", "page", "relUrl"];
 
 // Matches just-the-docs.js: the kinds tB/symbols.json gives its symbols,
@@ -200,10 +250,24 @@ export function search({ lunr, index }, input) {
   const words = input.split(/\s+/).filter(Boolean);
   const named = words.filter((w) => !KIND_WORDS.includes(w.toLowerCase().replace(/s$/, "")));
   const name = named.length === 1 ? named[0] : words.length === 1 ? words[0] : null;
+  // Index terms, matching just-the-docs.js: every run of up to four
+  // consecutive words, written as indexTermKey() writes a term, so a query
+  // matches a term by naming all of it, alone or among other words. A
+  // secondary term (one more `_`) weighs a fifth of a main one.
+  const indexKeys = [];
+  for (let a = 0; a < baseTokens.length; a++) {
+    for (let b = a + 1; b <= baseTokens.length && b - a <= 4; b++) {
+      indexKeys.push(phraseKey(lunr, baseTokens.slice(a, b)));
+    }
+  }
   const anyWords = (q) => {
     q.term(queryTokens, { fields: TEXT_FIELDS, boost: 10 });
     q.term(queryTokens, { fields: TEXT_FIELDS, wildcard: lunr.Query.wildcard.TRAILING });
     if (name) q.term(exactName(name), { fields: ["exact", "primary"] });
+    for (const key of indexKeys) {
+      q.term(key, { fields: ["index"], boost: 5, usePipeline: false });
+      q.term(key + "_", { fields: ["index"], boost: 1, usePipeline: false });
+    }
   };
   // All words first, matching just-the-docs.js: with two or more words, look
   // for entries that contain every one of them, and only if there are none,

@@ -230,6 +230,38 @@ section that only mentioned it.** Four changes, measured in
 
 `exact` and `page` are derived in the browser; `primary` is the one field
 `search-data.json` gained (23 KB raw, 4 KB gzipped).
+
+**A page could not be found by a term its text never uses.** The `#If` /
+`#Const` page never says "conditional compilation". Authors now name such
+terms as index entries, in a page's frontmatter or on a heading (see
+`docs/Documentation/Authoring.md`, "Index entries for the site search"), and
+`search-data.json` carries them as `index` and `index_also` lists on the
+entry. [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "What shipped,
+third round: the index pilot":
+
+- *One field, both levels.* `initSearch()` adds a field `index`, boost 1000,
+  that `indexField()` fills: each main term as `indexTermKey()` writes it
+  (its words tokenized, trimmed and stemmed as the index holds them, joined
+  by `_`, with `_` appended, so the term is one token), and each `index_also`
+  term the same with one more `_`. `doSearch()` adds, for every run of up to
+  four consecutive query words, that run's key at clause boost 5 and the key
+  with one more `_` at boost 1, both on `index` only. So a query matches a
+  term by naming all of it, and a secondary entry weighs a fifth of a main
+  one. One field rather than two because lunr gives every term in the index
+  a slot for every field: two fields, plus a third for the words, took 24 MB
+  more heap; one takes 5 MB.
+- *Words in the content.* `indexedContent()` appends the terms to the
+  entry's content as plain words, so the all-words-first query, which
+  requires every word in the text fields, still finds a marked entry.
+- *Average length pinned.* `pinIndexFieldLengths()` wraps the builder's
+  `calculateAverageFieldLengths()` and sets the `index` field's average to
+  1. The field is empty on nearly every entry, so its real average is near
+  zero, BM25 took a marked entry for a thousand times longer than average,
+  and its match counted for almost nothing.
+
+`offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` declares the same field and
+fills it and the content the same way; the helpers and the query sit outside
+`initSearch()`.
 `offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` adds the same three fields;
 `exactName()`, `KIND_WORDS` and the query changes sit outside
 `initSearch()`, so the offline build inherits them.
@@ -347,11 +379,12 @@ Bumping the just-the-docs version is a deliberate operation. Procedure:
 5. Re-apply the copy-button patch, the edit-distance cap, the asterisk
    guard and query-token trim, the `names`/`qualified` fields, the smart dot
    split, the stop-word removal, the dot-run-split tokenizer wrapper, the
-   lazy index build, and the `exact`/`primary`/`page` fields with the
-   exact-name and all-words-first query in `assets/js/just-the-docs.js` (see above). Diffing against
+   lazy index build, the `exact`/`primary`/`page` fields with the
+   exact-name and all-words-first query, and the `index` field with its
+   helpers and query clauses in `assets/js/just-the-docs.js` (see above). Diffing against
    the previous vendored copy via `git diff` is the easiest way to spot
    what needs to come back. Then re-check `offline.mjs`'s
-   `JTD_INITSEARCH_FN_REPLACEMENT` still carries the same five extra fields
+   `JTD_INITSEARCH_FN_REPLACEMENT` still carries the same six extra fields
    at the same boosts and the same stop-word/dot-run-split/lazy-build patches, and
    run `test/search.test.mjs`'s field-list drift guard and its stop-word/
    dot-run-split sibling guard -- both fail loudly if the re-vendor left the

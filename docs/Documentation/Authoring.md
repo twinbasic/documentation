@@ -163,6 +163,7 @@ Every page opens with a YAML frontmatter block. The keys that matter:
 - **`vba_attribution`** --- set to `true` only on pages adapted from the VBA-Docs source; see [Attribution](#attribution).
 - **`nav_exclude`**, **`sitemap: false`**, **`search_exclude: true`** --- optional opt-outs, each from exactly one thing: the sidebar, `sitemap.xml`, and the search index. They are independent; a page that should be unlisted everywhere sets all three. The build's own link check honours the last two, so a page that opts out is not then reported as missing from the index it opted out of.
 - **`symbols`** --- optional, and rare. The names a page documents, when its title and first heading cannot say; see [Naming what a page documents](#symbols).
+- **`index`**, **`index_also`** --- optional. Terms a reader searches for that should find this page, as a book's index lists them; see [Index entries for the site search](#index-entries-for-the-site-search).
 
 A package's `index.md` may also carry **`indexed_from`**, **`exclude_from_docs`** and **`exclude_kinds`**. Those are provenance for the authoring pass: they record which twinBASIC build the package download was indexed against, and what was deliberately left undocumented, so a later re-index can tell a genuine gap from a deliberate omission. The build reads `exclude_from_docs` for one thing only, to leave those names out of the [symbol index](Building#the-symbol-index)'s count of undocumented symbols; none of the three reaches the HTML. **Leave them in place**, and bump `indexed_from` in the same commit if you re-index a package against a newer build.
 
@@ -264,7 +265,7 @@ Do **not** jump from `#` straight to `###`. That old "house style" --- an h1 fol
 
 The repair is a re-levelling of the whole page, not a patch to one heading. The plugin raises **every** heading of level 3 or deeper until each one sits exactly one level below the heading it belongs under, closing every gap in a single pass: `#` / `###` renders as h1 / h2, and `#` / `###` / `#####` renders as h1 / h2 / h3. Only the h1 chapters are left as they are, since a page may legitimately have several.
 
-**Only `#` and `##` headings get an entry of their own in the site search.** The search index cuts each page at its h1 and h2 headings and gives each piece one entry, titled with its heading. A `###` or deeper heading gets no entry: its text is folded into the entry of the nearest `#` or `##` above it. So a section a reader should be able to find by searching for its subject needs a `##` heading. The index is built from the rendered page, after the normalizer has run, so on an old-style page a `###` that renders as h2 does get an entry.
+**Only `#`, `##` and `###` headings get an entry of their own in the site search.** The search index cuts each page at its h1, h2 and h3 headings and gives each piece one entry, titled with its heading. A `####` or deeper heading gets no entry: its text is folded into the entry of the nearest heading above it. So does a heading with a generic name, such as **Example** or **See Also**, whatever its level: it names nothing a reader would search for, so its text joins the section before it. The list is `search.fold_headings` in `docs/_config.yml`. The index is built from the rendered page, after the normalizer has run, so it sees the levels the page renders with.
 
 ### Editing a page that still uses the old style
 
@@ -319,6 +320,32 @@ symbols: [_HiddenModule]
 ```
 
 On a statement page the first name is the statement and the rest are its keywords; on an operator page each is an operator of its own --- the comparison operators page lists `["=", "<>", "<", "<=", ">", ">="]`, quoted, because a bare `>` is YAML syntax. Only two pages need it today. The build tells you when a third does: a page in a package folder that gives the index no entry at all is named after the build's summary.
+
+## Index entries for the site search
+
+The search finds a page by the words in it. That fails for a term the right page never uses: the `#If` / `#Const` page is where a reader searching for *conditional compilation* should land, and its text never says those words. An index entry names such a term, the way a book's index does, and a search for the whole term then finds that page first.
+
+A page takes entries in its frontmatter, as one term or a list:
+
+```yaml
+---
+title: '#If, #Const'
+parent: Statements
+permalink: /tB/Core/Topic-Preprocessor
+index: conditional compilation
+---
+```
+
+A section takes them on its heading, with terms separated by `;`, on the line directly below it as with a [pinned id](#renaming-a-heading-without-breaking-its-links):
+
+    ## Object
+    {: index="late binding" }
+
+**`index`** is the main entry: the one place a reader searching for the term wants first. **`index_also`** is a strong second answer, which ranks right behind it --- `/Reference/Compiler-Constants` takes `index_also: conditional compilation`. A term has one main entry across the whole site, and the build stops, naming every page that claims it, if two do. Any number of places may take it as `index_also`.
+
+A term matches only a search that names all of it, alone or among other words: *late binding* and *late binding in VBA* find the entry, *binding* on its own does not. Capitals, hyphens and word endings do not matter. The entries never appear on the page; the build takes them off the heading before it writes the HTML, and fails on `index` written on anything but a heading.
+
+Mark a term only where the page's own words cannot find it, and name the page a reader wants for that term, not a summary of the page. The entries in use are few on purpose: before adding one, search for the term on a built site and see where it lands.
 
 ## Counts the build fills in
 {: #counts }

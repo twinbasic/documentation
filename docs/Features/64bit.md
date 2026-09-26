@@ -3,6 +3,7 @@ title: 64bit Compilation
 parent: Features
 nav_order: 9
 permalink: /Features/64bit
+index: 64-bit compilation
 ---
 
 # 64bit Compilation

@@ -18,7 +18,9 @@ import { describe, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import path from "node:path";
-import { deriveSearchEntries, joinSymbolsToEntries, renderEntryString } from "../builder/search.mjs";
+import { checkIndexTerms, deriveSearchEntries, joinSymbolsToEntries, renderEntryString } from "../builder/search.mjs";
+import { createMarkdownIt } from "../builder/render.mjs";
+import { buildIndex, loadLunr, search } from "../eval/site_search.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -28,15 +30,17 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 // headingLevelNormalizePlugin would have left it), and permalink.
 // destPath is only read inside an error message for a page with no
 // renderedContent, which these tests never trigger.
-function page({ title, content, permalink = "/Widget/", searchExclude }) {
+function page({ title, content, permalink = "/Widget/", searchExclude, frontmatter = {}, marks }) {
   return {
     frontmatter: {
       title,
       ...(searchExclude === undefined ? {} : { search_exclude: searchExclude }),
+      ...frontmatter,
     },
     renderedContent: content,
     permalink,
     destPath: permalink,
+    ...(marks ? { searchIndexMarks: marks } : {}),
   };
 }
 
@@ -609,5 +613,215 @@ describe("reader-intent guard: online client, offline client, eval replica", () 
       assert.match(src, /presence:\s*lunr\.Query\.presence\.REQUIRED/, `${label} doesn't require every word first`);
       assert.match(src, /usePipeline:\s*false/, `${label}'s required stems would be stemmed again`);
     }
+  });
+});
+
+// Hand-marked index entries (WIP.Search.md, "What shipped, third round: the
+// index pilot"): the front matter's `index` / `index_also`, and the same on
+// a heading, which render.mjs's searchIndexMarksPlugin lifts off it into
+// page.searchIndexMarks, keyed by the heading's id.
+describe("index marks: from the page to its entries", () => {
+  const content =
+    '<h1 id="widget">Widget</h1><p>Intro.</p>' +
+    '<h2 id="methods">Methods</h2><p>Methods.</p>' +
+    '<h3 id="paint">Paint</h3><p>Paints.</p>' +
+    '<h4 id="deep">Deep</h4><p>Deep.</p>' +
+    '<h3 id="see-also">See Also</h3><p>Links.</p>';
+  const cfg = site({ heading_level: 3, fold_headings: ["See Also"] });
+  const byUrl = (entries) => Object.fromEntries(entries.map((e) => [e.relUrl, e]));
+
+  test("front matter marks the page's own entry", () => {
+    const entries = deriveSearchEntries([page({
+      title: "Widget", content, frontmatter: { index: "late binding", index_also: ["early binding", "binding"] },
+    })], cfg);
+    const e = byUrl(entries)["/Widget/"];
+    assert.deepEqual(e.index, ["late binding"]);
+    assert.deepEqual(e.index_also, ["early binding", "binding"]);
+    assert.equal(byUrl(entries)["/Widget/#methods"].index, undefined);
+  });
+
+  test("a page whose first heading isn't its title marks its prefix entry", () => {
+    const entries = deriveSearchEntries([page({
+      title: "Other", content, frontmatter: { index: "late binding" },
+    })], cfg);
+    assert.deepEqual(byUrl(entries)["/Widget/"].index, ["late binding"]);
+    assert.equal(byUrl(entries)["/Widget/#widget"].index, undefined);
+  });
+
+  test("a heading's mark goes to the entry holding that heading", () => {
+    const entries = byUrl(deriveSearchEntries([page({
+      title: "Widget", content, marks: [
+        { id: "paint", index: "painting; drawing" },
+        { id: "deep", index_also: "deep term" },
+        { id: "see-also", index_also: "folded term" },
+      ],
+    })], cfg));
+    assert.deepEqual(entries["/Widget/#paint"].index, ["painting", "drawing"]);
+    // #deep is an h4, below heading_level, and See Also folds: both are
+    // held by the #paint entry.
+    assert.deepEqual(entries["/Widget/#paint"].index_also, ["deep term", "folded term"]);
+  });
+
+  test("terms are trimmed, kept once regardless of case, and a main term is not also secondary", () => {
+    const [e] = deriveSearchEntries([page({
+      title: "Widget", content: "<h1>Widget</h1>",
+      frontmatter: { index: ["  late   binding ", "Late Binding"], index_also: "late binding; LATE binding; other" },
+    })], cfg);
+    assert.deepEqual(e.index, ["late binding"]);
+    assert.deepEqual(e.index_also, ["other"]);
+  });
+
+  test("a value that isn't a term or a list of terms fails the build", () => {
+    assert.throws(
+      () => deriveSearchEntries([page({ title: "Widget", content, frontmatter: { index: 64 } })], cfg),
+      /front matter `index`: expected a term or a list of terms/,
+    );
+  });
+
+  test("a mark on a heading no entry holds fails the build", () => {
+    assert.throws(
+      () => deriveSearchEntries([page({ title: "Widget", content, marks: [{ id: "nowhere", index: "x" }] })], cfg),
+      /heading #nowhere carries a search index entry/,
+    );
+  });
+
+  test("an unmarked page produces no index fields", () => {
+    for (const e of deriveSearchEntries([page({ title: "Widget", content })], cfg)) {
+      assert.equal("index" in e, false);
+      assert.equal("index_also" in e, false);
+    }
+  });
+});
+
+describe("index marks: one main entry per term", () => {
+  test("two places claiming the same main term fail, ignoring case and hyphens", () => {
+    assert.throws(
+      () => checkIndexTerms([
+        { relUrl: "/A/", index: ["64-bit compilation"] },
+        { relUrl: "/B/#x", index: ["64 Bit Compilation"] },
+      ]),
+      /"64 bit compilation": \/A\/, \/B\/#x/,
+    );
+  });
+
+  test("the same term as a secondary entry elsewhere is fine", () => {
+    checkIndexTerms([
+      { relUrl: "/A/", index: ["late binding"] },
+      { relUrl: "/B/", index_also: ["late binding"] },
+    ]);
+  });
+
+  test("renderEntryString writes the terms as lists after primary", () => {
+    const out = renderEntryString({
+      i: 0, doc: "W", title: "W", content: "", url: "/W/", relUrl: "/W/",
+      primary: "W", index: ["late binding"], index_also: ["a", "b"],
+    });
+    assert.match(out, /"primary": "W",\n {4}"index": \["late binding"\],\n {4}"index_also": \["a","b"\],\n {4}"url"/);
+  });
+});
+
+describe("index marks: render.mjs lifts them off headings", () => {
+  const md = createMarkdownIt({ highlighter: null, linkTables: { byPath: new Map() }, baseurl: "", staticFiles: new Set() });
+
+  test("a heading's index and index_also leave the HTML and land in env, keyed by id", () => {
+    const env = { page: { srcRel: "t.md" } };
+    const html = md.render('## Object\n{: index="late binding" index_also="object variable; COM object" }\n\ntext\n', env);
+    assert.equal(html.includes("index"), false, html);
+    assert.match(html, /<h2 id="object">Object<\/h2>/);
+    assert.deepEqual(env.searchIndexMarks, [
+      { id: "object", index: "late binding", index_also: "object variable; COM object" },
+    ]);
+  });
+
+  test("a pinned id is the one the mark is keyed by", () => {
+    const env = { page: { srcRel: "t.md" } };
+    md.render('### Foo {: #custom index="x" }\n', env);
+    assert.deepEqual(env.searchIndexMarks, [{ id: "custom", index: "x" }]);
+  });
+
+  test("the attribute on anything but a heading fails the build", () => {
+    assert.throws(() => md.render('para\n{: index="x" }\n', { page: { srcRel: "p.md" } }), /p\.md: .* on <p>; only a heading/);
+    assert.throws(() => md.render('a [link](x){: index_also="x" } b\n', { page: { srcRel: "p.md" } }), /on <a>; only a heading/);
+  });
+});
+
+// The index-term patch in the three copies. indexTermKey(), indexField()
+// and indexedContent() are compared by what they produce, like exactName()
+// above, and the query side is checked to build the same key as the index
+// side.
+describe("index-term guard: online client, offline client, eval replica", () => {
+  const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
+  const onlineSrc = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js");
+  const offlineSrc = read("builder/offline.mjs");
+  const evalSrc = read("eval/site_search.mjs");
+  const lunr = loadLunr(path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js"));
+
+  const fn = (src, name, label) => {
+    const m = src.match(new RegExp(`function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}`));
+    assert.ok(m, `${label} has no ${name}()`);
+    return m[0];
+  };
+
+  test("all three fill the index field and the content with the terms, and pin the average length", () => {
+    for (const [label, src] of [
+      ["just-the-docs.js", onlineSrc],
+      ["offline.mjs", offlineSrc],
+      ["eval/site_search.mjs", evalSrc],
+    ]) {
+      assert.match(src, /index:\s*indexField\((lunr, )?docs\[\w+\]\)/, `${label} doesn't fill \`index\` via indexField()`);
+      assert.match(src, /content:\s*indexedContent\(docs\[\w+\]\)/, `${label} doesn't fill \`content\` via indexedContent()`);
+      assert.match(src, /pinIndexFieldLengths\(this\)/, `${label} doesn't pin the index field's average length`);
+    }
+    for (const [label, src] of [["just-the-docs.js", onlineSrc], ["eval/site_search.mjs", evalSrc]]) {
+      assert.match(src, /term\(key, \{ fields: \[['"]index['"]\], boost: 5, usePipeline: false \}\)/, `${label} has no main index-term clause`);
+      assert.match(src, /term\(key \+ ['"]_['"], \{ fields: \[['"]index['"]\], boost: 1, usePipeline: false \}\)/, `${label} has no secondary index-term clause`);
+      assert.match(src, /b - a <= 4/, `${label} doesn't match runs of up to four words`);
+    }
+  });
+
+  test("the online client and the eval replica write a term the same way, and a query names it the same way", () => {
+    const names = ["phraseKey", "indexTermKey", "indexField", "indexedContent"];
+    const load = (src, label) => names.map((n) => fn(src, n, label)).join("\n") + `\nreturn { ${names.join(", ")} };`;
+    const online = new Function("lunr", load(onlineSrc, "just-the-docs.js"))(lunr);
+    const replica = new Function(load(evalSrc, "eval/site_search.mjs"))();
+    for (const t of ["late binding", "64-bit compilation", "File I/O", "Do...Loop", "#If directives", "conditional compilation", "  "]) {
+      assert.equal(online.indexTermKey(t), replica.indexTermKey(lunr, t), `indexTermKey(${JSON.stringify(t)}) differs`);
+    }
+    for (const doc of [
+      { content: "Body." },
+      { content: "Body.", index: ["late binding"] },
+      { content: "Body.", index: ["late binding", "  "], index_also: ["64-bit compilation", "File I/O"] },
+    ]) {
+      assert.equal(online.indexField(doc), replica.indexField(lunr, doc), `indexField(${JSON.stringify(doc)}) differs`);
+      assert.equal(online.indexedContent(doc), replica.indexedContent(doc), `indexedContent(${JSON.stringify(doc)}) differs`);
+    }
+    assert.equal(online.indexedContent({ content: "Body." }), "Body.");
+    // A secondary term is its main key with one more `_`, which is how the
+    // query tells them apart.
+    assert.equal(online.indexField({ index_also: ["late binding"] }), online.indexTermKey("late binding") + "_");
+    assert.equal(online.indexTermKey("  "), "");
+    const queryKey = (q) => online.phraseKey(lunr.tokenizer(q).map((t) => lunr.trimmer(t)).filter((t) => t.str !== ""));
+    assert.equal(queryKey("Late-Binding"), online.indexTermKey("late binding"));
+    assert.equal(queryKey("64 bit compilations"), online.indexTermKey("64-bit compilation"));
+    // One token, so no field split or stemmer touches it again at index time.
+    assert.equal(lunr.tokenizer(online.indexTermKey("64-bit compilation")).length, 1);
+  });
+
+  test("the replica ranks a marked entry first, and its secondary entry next", () => {
+    const docs = {
+      0: { doc: "Glossary", title: "late binding and early binding", content: "late binding late binding late binding", relUrl: "/Gloss#late" },
+      1: { doc: "Data types", title: "Object", content: "Calls resolve at run time.", relUrl: "/Types#object", index: ["late binding"] },
+      2: { doc: "CreateObject", title: "CreateObject", content: "Makes an object.", relUrl: "/CreateObject", index_also: ["late binding"] },
+      3: { doc: "Filler", title: "Filler", content: "late words and binding words", relUrl: "/Filler" },
+    };
+    // Unmarked entries, as on the site, where nearly every entry is: without
+    // pinIndexFieldLengths(), the index field's average length falls toward
+    // zero and a marked entry's match counts for almost nothing.
+    for (let k = 4; k < 200; k++) docs[k] = { doc: `Page ${k}`, title: `Page ${k}`, content: "unrelated text", relUrl: `/P${k}` };
+    const ctx = { lunr, index: buildIndex(lunr, docs) };
+    const urls = (q) => search(ctx, q).map((r) => docs[r.ref].relUrl);
+    assert.deepEqual(urls("late binding").slice(0, 2), ["/Types#object", "/CreateObject"]);
+    // Naming only part of a term doesn't match it.
+    assert.notEqual(urls("binding")[0], "/Types#object");
   });
 });

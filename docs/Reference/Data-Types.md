@@ -147,6 +147,7 @@ Fixed-length strings --- `Dim s As String * 20` --- occupy exactly the specified
 ---
 
 ## Object
+{: index="late binding" }
 
 **Object** holds a COM interface reference --- a pointer to a vtable. In a 32-bit build it occupies 4 bytes; in a 64-bit build, 8 bytes. The runtime calls `AddRef` on assignment and `Release` when the variable goes out of scope or is set to `Nothing`.
 

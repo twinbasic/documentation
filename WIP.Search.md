@@ -12,10 +12,10 @@ Like WIP.md, this file is not rendered through tbdocs, so literal dashes are fin
 Everything needed to continue is in this file and in `eval/`; nothing
 depends on the session that wrote it.
 
-**Where it stands.** Rollout steps 1–5 and two reader-intent rounds are
-done and committed, on branch `claude/paintpicture-docs-runtime-f3250d`.
-Nothing is pushed. The working tree is clean; the last commit only records
-a hash in this file.
+**Where it stands.** Rollout steps 1–5, two reader-intent rounds and the
+index pilot are done and committed, on branch
+`claude/paintpicture-docs-runtime-f3250d`. Nothing is pushed. The working
+tree is clean; the last commit only records a hash in this file.
 
 | commit | step |
 |---|---|
@@ -28,47 +28,42 @@ a hash in this file.
 | `d6075e23` | intent 1: `search_quality.mjs` judges bare names by reader intent |
 | `482ae8af` | intent 3: exact-name and page-title fields, all words first, query tokens trimmed |
 | `08eb2c77` | intent 4: `primary` names, non-word characters kept in exact names, kind words |
+| `ae880486` | pilot 1: prose queries can expect pages right behind (`behind`); ground truth intent-2 |
+| PILOT_HASH | pilot 2: hand-marked index entries, and the first five |
 
 Hit@10 went from 20.5% to 98.8%, and MRR from .182 to .962. By reader
-intent, rank 1 is right for 94.1% of queries (89.0% before the intent
-steps), no bare name is out of tier order, and no query got worse at any
-step.
+intent, rank 1 is right for 94.2% of queries (89.0% before the intent
+steps), all 20 prose queries are at rank 1, no bare name is out of tier
+order, and no query got worse at any step.
 
-Where the remaining 470 rank-1 misses are, and why, is in
-[What shipped, second round](#what-shipped-second-round-tiers-in-the-index).
+Where the remaining 466 rank-1 misses are, and why, is in
+[What shipped, second round](#what-shipped-second-round-tiers-in-the-index)
+(less its 4 prose misses, which the pilot fixed).
 
-**Next: the index pilot.** The user asked whether ranking tweaks are an
+**The index pilot held up.** The user asked whether ranking tweaks are an
 uphill battle, since a book's index is marked by hand. The conclusion,
-which the user accepted:
-- Symbol lookups are not uphill. `names`, `qualified` and `primary` are
-  already a hand index, generated from `tB/symbols.json`, and that is why
-  they work. Tweaks remain the tool there.
-- Jargon and concepts are uphill. `conditional compilation` should find
-  `/tB/Core/Topic-Preprocessor` (the `#If`/`#Const` page) first, with
-  `/Reference/Compiler-Constants` right behind, but Topic-Preprocessor
-  never contains the words "conditional compilation". No ranking can find
-  a page for words it doesn't contain.
+which the user accepted: symbol lookups are not uphill (`names`,
+`qualified` and `primary` are already a hand index, generated from
+`tB/symbols.json`), but jargon is, because no ranking can find a page for
+words it doesn't contain. So authors now mark index entries by hand, and
+five entries put the three remaining prose misses at rank 1 with nothing
+worse. How it works, what it cost and what was measured on the way is in
+[What shipped, third round](#what-shipped-third-round-the-index-pilot).
 
-So the pilot, in this order:
-1. A mechanism for hand-marked entries. The proposal, not yet built: an
-   `index:` list in a page's front matter (or on a heading), which the
-   build puts into a boosted field, like `names`. A main entry and a
-   secondary one, in two fields of different boost, give "Preprocessor
-   first, Compiler Constants right behind, then the pages that mention
-   it". Where the entries live and how a heading carries one are still
-   open; decide with the user.
-2. Entries for the 5 prose misses: `conditional compilation`, `late
-   binding`, `64-bit compilation`, `symbol index`, and whichever else
-   `--failures` lists. Read the pages to decide where a term belongs.
-3. Change `eval/search_prose_queries.json`'s `conditional compilation`
-   expectation to Topic-Preprocessor, and teach `search_quality.mjs` to
-   check "right behind" (an ordered expectation), not just "found".
-4. Measure. Only if the pilot holds up, a wider pass with agents, under
-   rules: an entry names the page a reader wants for that term, not a
-   summary of the page; few entries per page; one main entry per term,
-   with a check that fails when two pages claim it.
+**Next: decide with the user whether to widen it.** The pilot planned a
+wider pass with agents only if the pilot held up, under these rules: an
+entry names the page a reader wants for that term, not a summary of the
+page; few entries per page; one main entry per term (the build enforces
+this). Open questions for that pass:
+- Where the candidate terms come from. The glossary is a source of
+  *terms*, never of targets. Every candidate needs a query in
+  `eval/search_prose_queries.json` first, so an entry is measured, not
+  assumed: the prose set is 20 queries and all now pass, so it no longer
+  discriminates.
+- Only a term the page's own words can't find gets an entry. Check first
+  where the term lands without one (`node eval/site_search.mjs "<term>"`).
 
-After the pilot: the qualified names deep in the list (`Slider.*`,
+After that: the qualified names deep in the list (`Slider.*`,
 `MonthView.*` at 20–26), and the same-page ground-truth question
 (`DefInt` → a section of `Deftype`).
 
@@ -143,6 +138,16 @@ After the pilot: the qualified names deep in the list (`Slider.*`,
 - A REQUIRED clause names every field too, so it scores in helper fields
   such as `exact` unless it is given the text fields. That leak once put
   `With statement` first by accident, and pushed `error handling` down.
+- BM25 compares a field's length with that field's average over *every*
+  entry, empty ones included. A field that is empty on nearly every entry
+  has an average near zero, so a match in it counts for almost nothing,
+  and counts for more as more entries fill it. The pilot's `index` field
+  pins its average at 1 (`pinIndexFieldLengths`).
+- Every field costs a slot on every term of the whole index, not just on
+  the entries that use it: `add()` creates an empty object per field for
+  each new term. Three sparse fields took 24 MB more heap; one takes 5 MB.
+  Prefer encoding a variant inside one field (the pilot's secondary
+  entries carry one more `_`) to adding a field.
 
 ## The problem
 
@@ -816,22 +821,102 @@ Left at rank 1's door (470 queries):
 - 4 prose: `late binding` 5, `conditional compilation` 3, `64-bit
   compilation` 3, `symbol index` 3. Index-pilot material.
 
+### What shipped, third round: the index pilot
+
+Decided with the user: entries live in the page, not a central file, so an
+entry moves with its text and a renamed heading can't strand it. A page
+takes `index:` / `index_also:` in its frontmatter (a term or a list); a
+heading takes `{: index="a; b" }` / `{: index_also="..." }`, like a pinned
+id. `index` is the main entry, where a reader of that term wants to land
+first; `index_also` a strong second answer. Documented for authors in
+`docs/Documentation/Authoring.md`, "Index entries for the site search".
+
+**Build.** `render.mjs`'s `searchIndexMarksPlugin` runs after `header-id`,
+takes both attributes off every heading into `env.searchIndexMarks` as
+`{ id, index, index_also }`, and throws on either attribute anywhere
+else, since it would be published and do nothing. `search.mjs` gives each
+section the ids of every heading it holds (its own, deeper ones and folded
+ones), attaches heading marks by id and frontmatter marks to the page's
+own entry, and emits `index` / `index_also` as JSON lists. On main,
+`checkIndexTerms` throws when two entries claim one term as `index`
+(compared without case, a hyphen counting as a space).
+
+**Client**, in all three copies:
+- One lunr field `index`, boost 1000. Each term is one token: its words
+  tokenized, trimmed and stemmed as the index holds words, joined by `_`,
+  with `_` appended (`late_bind_`). A secondary term has one more `_`.
+- The query adds, for every run of up to four consecutive words, that
+  run's key at clause boost 5 and the key plus `_` at boost 1, on `index`
+  only. So a term matches only a query that names all of it, alone or
+  among other words: `binding` alone doesn't match `late binding`.
+- The terms are appended to the entry's content as plain words, so the
+  all-words-first pass, which requires every word in the text fields,
+  still finds a marked entry.
+- `pinIndexFieldLengths` sets the field's average length to 1 (see "How
+  lunr behaves here").
+
+**The five entries.** Pages were read to place them (a Sonnet survey,
+checked against the pages); existing links were leads only. It found no
+doubtful links for these terms.
+
+| term | `index` | `index_also` |
+|---|---|---|
+| conditional compilation | `/tB/Core/Topic-Preprocessor` (page) | `/Reference/Compiler-Constants` (page) |
+| late binding | `/Reference/Data-Types#object` | `/tB/Modules/Interaction/CreateObject` (page) |
+| 64-bit compilation | `/Features/64bit` (page) | |
+
+`symbol index` needed none: the user ruled that Permanent-Links'
+definition counts as well as Building's section (pilot 1), and the
+definition ranks first on its own text.
+
+**Measured on the way.**
+- As first built, with two fields and no length pin, the entries barely
+  moved anything (`late binding` 5 → 2, the other two unchanged). The
+  cause was BM25's average length for a nearly empty field; with the pin,
+  all three went to rank 1.
+- Boosts, main/secondary: 1000/200 and 200/50 both put the three at rank
+  1, but only 1000/200 keeps CreateObject right behind Data-Types for
+  `late binding` (at 200/50 the `Bind` method comes between). 100/20 left
+  `late binding` at 2; 50/10 and 20/5 fixed nothing.
+- Weighting longer word runs higher changed nothing, so it was dropped.
+- Two fields plus a words field cost 24 MB of heap (288 → 312 MB); the
+  words in `content` brought that to 10 MB, and one field for both levels
+  to 5 MB (287 → 292 MB), with identical results.
+
+Against intent-2's baseline (`ae880486`):
+
+| | before | after |
+|---|---|---|
+| hit@1 | 94.15% | 94.18% |
+| prose hit@1 | 17 of 20 | 20 of 20 |
+| prose, `behind` page within 3 | 0 of 1 | 1 of 1 |
+| queries worse / better | | 0 / 3 |
+| search-data.json | 4,807 KB, 1,177 KB gzip | 4,810 KB, 1,178 KB gzip (mostly the new Authoring section) |
+| index build, heap | 287 MB | +3–8%, 292 MB |
+
+Both clients were checked in a browser against the replica: the same top
+three for 15 queries, `**` shows "No results found", no console errors.
+`test/search.test.mjs` covers the marks' path from page to entry, the
+render rule, the one-main-entry check, and the client patch by behaviour;
+mutating the replica's key, secondary suffix, words in content or length
+pin each fails it. `test.bat`, `check.bat` and a checked build pass.
+
+The boosts sit in the client beside every other boost, not in
+`docs/_config.yml`: the client reads no site config today.
+
 ### Next steps
 
 1. ~~Promote the intent ground truth into `eval/search_quality.mjs`.~~
    Done, `d6075e23`.
-2. Decide the `conditional compilation` expectation. It is the user's call:
-   `/Reference/Compiler-Constants` (today's expectation, rank 3) or
-   `/tB/Core/Topic-Preprocessor`, the `#If`/`#Const` page.
+2. ~~Decide the `conditional compilation` expectation.~~ The user chose
+   Topic-Preprocessor, with Compiler-Constants right behind (`ae880486`).
 3. ~~Implement X1 + X2 + X3 in all three copies.~~ Done, with the four
    corrections in "What shipped". `test/search.test.mjs`'s reader-intent
    guard covers the fields and the query.
 4. ~~The tweak-shaped rank-1 failures.~~ Done; see "What shipped, second
    round". The operators came with it.
-5. The index pilot (next): hand-marked entries for jargon. Pages are read
-   to decide where a term belongs; existing links are leads, not evidence
-   (the user's caution -- the site's own links may be wrong). Doubtful
-   links found on the way are listed for review, not fixed in passing.
+5. ~~The index pilot.~~ Done; see "What shipped, third round". Next is
+   the user's decision on a wider pass (see "Resuming this work").
 6. Then the qualified names deep in the list, and the same-page
    ground-truth question.
 
