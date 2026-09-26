@@ -751,6 +751,19 @@ reference pages, not only classes. Nothing imports `COUNT_NAMES`, which is recor
 Found while implementing. `compare_trees`: Pipeline-Stages.html online and offline, the search
 data and `book.html`, nothing else.
 
+### C22g — `builder: tbdocs.mjs's task-graph comment points to TASKS and the docs`
+
+**Found while checking C22e's edges; the owner asked on 2026-09-26 for it to be fixed before
+C23, with a pointer rather than a correction** (see Found while implementing). The comment
+above `TASKS` described the graph in prose, and contradicted `TASKS` in three places.
+
+**Change.** The prose goes. The comment says that `TASKS`, with the `render:i` and `flush:i`
+tasks `dispatch.submit` adds, is the graph, and names Pipeline-Stages.md and
+`scheduler-dag.dot` as its descriptions; the sentence on `runBuild()` stays. No page cites the
+comment.
+
+**Landed.** A comment-only change: `compare_trees` identical, lint clean.
+
 ### C23 — `scripts: check_examples restores the registry after a spawn failure`
 
 **L3-2 (R2)**, with V4's note that `check_examples.mjs` has no process-level handler at all.
@@ -2029,7 +2042,8 @@ Defects the review did not have, found by building something this plan asks for.
   `scssDark` and `prepDest`; it gives `config → loadData`, where `loadData` waits for
   `highlighterInit`; and it gives `flushJoin + prepPageDirs → writeAssets + searchData`, where
   neither waits for `flushJoin`, and `searchData` waits for `renderJoin` and `prepDest`. It is
-  a fifth description of the graph, beside the four that Extending.md lists. Not fixed.
+  a fifth description of the graph, beside the four that Extending.md lists. Fixed in
+  `builder: tbdocs.mjs's task-graph comment points to TASKS and the docs`.
 
 - **`counts.mjs` exports `COUNT_NAMES`, which nothing reads**, found while checking C22f's
   table. `git grep` finds no importer: `validateCountNames` checks a page against the keys of

@@ -215,16 +215,10 @@ function parseArgs(argv) {
 
 // ── Task graph ────────────────────────────────────────────────────────────────
 //
-// Seeds (config, buildInfo, dot, scssLight + scssDark → scss,
-// highlighterInit), the main-thread spine (config → discover → nav (sidebar) + buildInit (chrome);
-// nav + buildInit → dispatch; config → loadData; discover → markdownInit;
-// deriveRedirects off discover; deriveSitemap + resolveBookChapters + prepDest deferred to dispatch),
-// the render fan-out (dispatch → render:0..N, each worker stashes html locally),
-// the per-worker flush (prepPageDirs → flush [per worker] → flushJoin [counter barrier]),
-// and write/post-write tasks
-// (flushJoin + prepPageDirs → writeAssets + searchData;
-// writeAssets + searchData → writeAux → writeOffline; flushJoin + dot → writePdf)
-// are scheduler tasks.
+// The build is the scheduler tasks in TASKS below, plus the render:i and
+// flush:i tasks that dispatch.submit adds; their `expected` arrays are the
+// graph. docs/Documentation/Pipeline-Stages.md describes each task, and
+// docs/assets/images/dot/scheduler-dag.dot draws the graph.
 // runBuild() constructs the pool + scheduler, awaits start(), logs the
 // summary, and returns.
 
