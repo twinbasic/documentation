@@ -664,6 +664,37 @@ Pipeline-Stages.md files the same tasks by stage rather than by chart section, w
 recorded under Found while implementing. `compare_trees`: Builder.html online and offline, the
 search data and `book.html`, nothing else.
 
+### C22d — `scripts: crawl_check retries a request that fails before any response`
+
+**Found while verifying C22b; the owner asked on 2026-09-26 for it to be fixed before C23,
+with two retries** (see Found while implementing). A crawl of `serve.bat` reported about 20
+links broken with `fetch failed`, each caused by `read ECONNRESET`: the serve closes an idle
+keep-alive connection after Node's default 5 s, `fetch` reuses one just as it closes, and
+`crawl_check` reported the first failure as the link's.
+
+**Change.** `fetchWithTimeout`, which every request goes through (`crawlOne`'s GET,
+`checkUrl`'s HEAD and its GET after a 405 or 501), becomes `fetchWithRetry`: when `fetch`
+rejects, whether reset or timed out, it tries twice more, each attempt with the full
+`--timeout`, and throws the last error. An HTTP error status is a response and is not
+retried, and neither is a failure while reading a body. The header and Tools.md's paragraph
+say so.
+
+**Landed.** A test serve (port 4393, `--dest docs/_serve-c22d`, through a temporary
+`.claude/launch.json` entry; both removed afterwards), crawled with `--skip-external` through
+the kit's `crawl-tally.mjs`: before, exit 1 with 10 broken, every one a `fetch failed` from
+`read ECONNRESET` (the twelfth session's crawls had 20, 21 and 20); after, two crawls, each
+exit 0, 1,247 pages crawled, 3,228 unique links, 0 broken and 0 missing anchors, while the
+preload logged 20 failed attempts in each, all `read ECONNRESET`. A scratch server, the kit's
+`c22d-retry.mjs`, resets the first two requests to `/r2` and `/h2` and the first three to
+`/r3` and `/h3`, and never answers `/slow`; the crawl runs with `--timeout 1000`, and the `r`
+paths are same-origin GETs, the others cross-origin HEADs. HEAD's copy requested each path
+once and reported all five. After, each path was requested three times: `/r2` and `/h2`
+succeeded on the third, and `/r3`, `/h3` and `/slow` were reported, the last as `timeout`. The
+C22 fixture through the kit's static server: three runs of three exit 1 with 28 broken, as
+before. A host that never answers now costs three timeouts, 45 s at the default, before its
+link is reported. `compare_trees`: Tools.html online and offline, the search data and
+`book.html`, nothing else.
+
 ### C23 — `scripts: check_examples restores the registry after a spawn failure`
 
 **L3-2 (R2)**, with V4's note that `check_examples.mjs` has no process-level handler at all.
@@ -1917,7 +1948,8 @@ Defects the review did not have, found by building something this plan asks for.
   no failure, and the kit's static server, which keeps connections 300 s, had none in C22a's
   three crawls of `_site`. So the resets come from the server closing idle connections that
   `fetch` then reuses, and `crawl_check` does not retry such a request. Whether the live site
-  does the same is unmeasured. Not fixed.
+  does the same is unmeasured. Fixed in `scripts: crawl_check retries a request that fails
+  before any response`.
 
 - **Pipeline-Stages.md files eight tasks under a section other than the chart's**, found
   while fixing Builder.md's copy of the same lists in C22c. Extending.md says each task's

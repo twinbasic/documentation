@@ -2,7 +2,8 @@
 // recursively GETs every same-origin/same-basepath page, extracts the
 // links the build's check follows (forEachLink, builder/link-check.mjs),
 // and verifies each link responds 2xx (HEAD for cross-origin, GET for
-// same-origin since we need the HTML anyway).
+// same-origin since we need the HTML anyway). A request that fails before
+// any response arrives is tried twice more before its link is reported.
 //
 // Usage:
 //   node scripts/crawl_check.mjs <start-url> [--concurrency N] [--timeout MS]
@@ -63,13 +64,22 @@ function isCrawlable(url) {
   return url.origin === origin && url.pathname.startsWith(basePath);
 }
 
-async function fetchWithTimeout(url, options) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...options, signal: controller.signal, redirect: "follow" });
-  } finally {
-    clearTimeout(timer);
+// A request that fails before any response arrives, reset or timed out, is
+// tried twice more: a server that closes an idle keep-alive connection just
+// as fetch reuses it resets the request.
+const RETRIES = 2;
+
+async function fetchWithRetry(url, options) {
+  for (let attempt = 0; ; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal, redirect: "follow" });
+    } catch (e) {
+      if (attempt === RETRIES) throw e;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 }
 
@@ -83,10 +93,10 @@ async function checkUrl(url) {
   if (linkStatus.has(url)) return linkStatus.get(url);
   let result;
   try {
-    let res = await fetchWithTimeout(url, { method: "HEAD" });
+    let res = await fetchWithRetry(url, { method: "HEAD" });
     if (res.status === 405 || res.status === 501) {
       await discardBody(res);
-      res = await fetchWithTimeout(url, { method: "GET" });
+      res = await fetchWithRetry(url, { method: "GET" });
     }
     await discardBody(res);
     result = {
@@ -119,7 +129,7 @@ function extractFromHtml(html) {
 async function crawlOne(url) {
   let res;
   try {
-    res = await fetchWithTimeout(url, { method: "GET" });
+    res = await fetchWithRetry(url, { method: "GET" });
   } catch (e) {
     linkStatus.set(url, { ok: false, status: 0, error: e.name === "AbortError" ? "timeout" : e.message });
     return;
