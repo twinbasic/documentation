@@ -695,7 +695,7 @@ list formatting and the number moves with it.
 1. **Add the entry.** A function beside the others in
    [`counts.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/counts.mjs),
    returning a number from the `state` passed to `deriveCounts`, and a line in the object
-   it returns. `COUNT_NAMES` is derived from that object, so nothing else registers it.
+   it returns. That object's keys are the names a page may use, so nothing else registers it.
 2. **Add the row** to the name table on [Authoring Pages](Authoring#counts). An
    undocumented name is one nobody will use.
 3. **Use it**, or do not --- a name with no call sites is fine, and cheaper to add now than

@@ -764,6 +764,22 @@ comment.
 
 **Landed.** A comment-only change: `compare_trees` identical, lint clean.
 
+### C22h — `builder: delete counts.mjs's unused COUNT_NAMES`
+
+**Found while checking C22f's table; the owner asked on 2026-09-26 for it to be deleted
+before C23** (see Found while implementing). `COUNT_NAMES` called `deriveCounts` with an empty
+state at module load, and nothing read it: `validateCountNames` checks a page against the
+keys of the counts it is given, and `countPlugin` substitutes from the same object.
+
+**Change.** The export goes, with its row in Pipeline-Stages.md's table and the clause of the
+`deriveCounts` row that named it. It was the only call that omitted `extra`, so `extra`'s
+default and the `?? 0` behind `redirectStubs` go too, and the JSDoc and the table's signature
+make `extra` required; `tbdocs.mjs:606`, the one caller left, always passes it. Extending.md
+says instead that the returned object's keys are the names a page may use.
+
+**Landed.** `compare_trees`: Extending.html and Pipeline-Stages.html online and offline, the
+search data and `book.html`, nothing else. Lint clean.
+
 ### C23 — `scripts: check_examples restores the registry after a spawn failure`
 
 **L3-2 (R2)**, with V4's note that `check_examples.mjs` has no process-level handler at all.
@@ -2048,7 +2064,8 @@ Defects the review did not have, found by building something this plan asks for.
 - **`counts.mjs` exports `COUNT_NAMES`, which nothing reads**, found while checking C22f's
   table. `git grep` finds no importer: `validateCountNames` checks a page against the keys of
   the counts it is given (`counts.mjs:288`), and nothing else lists the names. Extending.md
-  (`:698`) names it as though it registered them. Not fixed.
+  (`:698`) names it as though it registered them. Fixed in `builder: delete counts.mjs's
+  unused COUNT_NAMES`.
 
 ## Open questions
 
