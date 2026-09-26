@@ -428,3 +428,59 @@ describe("field list drift guard: online client, offline client, eval replica", 
     assert.deepEqual(evalReplica, online, "eval/site_search.mjs's field list has drifted from just-the-docs.js");
   });
 });
+
+// Sibling to the field-list drift guard above, for WIP.Search.md's rollout
+// step 5 (parts A and B): the online client, the offline client and the
+// eval replica must all (1) remove lunr's stop-word filter from the index
+// pipeline, so English stop words that double as twinBASIC keywords (Do,
+// For, If, Is, On, With, Each...) stay searchable, and (2) install the
+// dot-run-split tokenizer wrapper, so titles like "Do...Loop" and "For
+// Each...Next" tokenise into words instead of one opaque token. Neither
+// shows up in a field/boost pair, so extractFields() above can't catch a
+// drift here -- this checks for the two patches by name instead.
+describe("stop-word and dot-run-split guard: online client, offline client, eval replica", () => {
+  test("just-the-docs.js, offline.mjs and site_search.mjs all remove the stop-word filter", () => {
+    const onlineSrc = fs.readFileSync(
+      path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/just-the-docs.js"),
+      "utf8",
+    );
+    const offlineSrc = fs.readFileSync(path.join(REPO_ROOT, "builder/offline.mjs"), "utf8");
+    const evalSrc = fs.readFileSync(path.join(REPO_ROOT, "eval/site_search.mjs"), "utf8");
+
+    const STOP_WORD_RE = /this\.pipeline\.remove\(\s*lunr\.stopWordFilter\s*\)/;
+    assert.match(onlineSrc, STOP_WORD_RE, "just-the-docs.js no longer removes lunr.stopWordFilter");
+    assert.match(offlineSrc, STOP_WORD_RE, "offline.mjs's JTD_INITSEARCH_FN_REPLACEMENT no longer removes lunr.stopWordFilter");
+    assert.match(evalSrc, STOP_WORD_RE, "eval/site_search.mjs no longer removes lunr.stopWordFilter");
+  });
+
+  test("just-the-docs.js, offline.mjs and site_search.mjs all install the dot-run-split tokenizer wrapper", () => {
+    const onlineSrc = fs.readFileSync(
+      path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/just-the-docs.js"),
+      "utf8",
+    );
+    const offlineSrc = fs.readFileSync(path.join(REPO_ROOT, "builder/offline.mjs"), "utf8");
+    const evalSrc = fs.readFileSync(path.join(REPO_ROOT, "eval/site_search.mjs"), "utf8");
+
+    // Loose on purpose -- the wrapper's exact variable names may reasonably
+    // differ between the three copies. What must agree is: a marker flag
+    // (`dotRunSplit`) so the wrapper installs only once, a replace of 2+
+    // dot runs, and the wrapper carrying its own `separator`.
+    for (const [label, src] of [
+      ["just-the-docs.js", onlineSrc],
+      ["offline.mjs", offlineSrc],
+      ["eval/site_search.mjs", evalSrc],
+    ]) {
+      assert.match(src, /dotRunSplit/, `${label} has no dotRunSplit marker -- the dot-run-split wrapper looks missing`);
+      assert.match(src, /\\\.\{2,\}/, `${label} has no /\\.{2,}/ dot-run pattern -- the dot-run-split wrapper looks missing`);
+      // Loose on the exact escaping (offline.mjs's copy lives inside a JS
+      // template literal, so its backslashes are doubled) -- just checks
+      // for "<something>.separator = /[<char class>]+/" somewhere in the
+      // wrapper.
+      assert.match(
+        src,
+        /\.separator\s*=\s*\/\[[^\]]*\]\+\//,
+        `${label}'s dot-run-split wrapper doesn't set its own .separator`,
+      );
+    }
+  });
+});

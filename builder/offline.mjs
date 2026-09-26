@@ -281,72 +281,119 @@ const JTD_NAVLINK_REPLACEMENT = `function navLink() {
 }`;
 
 const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
-  // Patched by _plugins/offlinify.rb for file:// compatibility.
-  // The upstream version fires XMLHttpRequest for search-data.json,
-  // which browsers block under file://. We instead read the index
-  // from a global the offline copy preloads via <script src=>.
-  var docs = window.SEARCH_DATA;
-  if (!docs) {
-    console.log('Offlinify: window.SEARCH_DATA not found; ensure search-data.js loads before just-the-docs.js');
-    return;
-  }
-  // Rebuild each doc.url from doc.relUrl (no baseurl prefix) so
-  // search-result clicks land on the right file regardless of
-  // whatever baseurl the site was built with. Upstream sets
-  // \`link.href = doc.url\`, so this is the value users navigate
-  // to.
-  var siteRoot = window.OFFLINE_SITE_ROOT || '';
-  for (var i in docs) {
-    var rel = docs[i].relUrl;
-    if (typeof rel === 'string' && rel.charAt(0) === '/') {
-      var hash = '';
-      var hashIdx = rel.indexOf('#');
-      if (hashIdx !== -1) {
-        hash = rel.slice(hashIdx);
-        rel = rel.slice(0, hashIdx);
+  // Patched by _plugins/offlinify.rb for file:// compatibility, and for
+  // the lazy index build (WIP.Search.md rollout step 5C): initSearch()
+  // only defines how to build the index -- loadIndex() below -- and hands
+  // that to searchLoaded(), which wires up the search box right away but
+  // doesn't call loadIndex() until the first keystroke. window.SEARCH_DATA
+  // is already sitting in memory (preloaded via <script src=> before this
+  // file runs), so there's no fetch to defer here, only the build itself
+  // -- the same ~1.3s / 240MB-heap cost the online copy defers, paid only
+  // by readers who open search.
+  function loadIndex(onSuccess, onError) {
+    try {
+      // The upstream version fires XMLHttpRequest for search-data.json,
+      // which browsers block under file://. We instead read the index
+      // from a global the offline copy preloads via <script src=>.
+      var docs = window.SEARCH_DATA;
+      if (!docs) {
+        console.log('Offlinify: window.SEARCH_DATA not found; ensure search-data.js loads before just-the-docs.js');
+        onError();
+        return;
       }
-      rel = rel.slice(1); // strip leading /
-      if (rel.endsWith('/')) {
-        rel = rel + 'index.html';
-      } else {
-        var lastSlash = rel.lastIndexOf('/');
-        var lastSeg = lastSlash === -1 ? rel : rel.slice(lastSlash + 1);
-        if (lastSeg.indexOf('.') === -1) rel = rel + '.html';
+      // Rebuild each doc.url from doc.relUrl (no baseurl prefix) so
+      // search-result clicks land on the right file regardless of
+      // whatever baseurl the site was built with. Upstream sets
+      // \`link.href = doc.url\`, so this is the value users navigate
+      // to. Reading from doc.relUrl each time (not doc.url) keeps this
+      // idempotent, since a failed load can retry and run it again.
+      var siteRoot = window.OFFLINE_SITE_ROOT || '';
+      for (var i in docs) {
+        var rel = docs[i].relUrl;
+        if (typeof rel === 'string' && rel.charAt(0) === '/') {
+          var hash = '';
+          var hashIdx = rel.indexOf('#');
+          if (hashIdx !== -1) {
+            hash = rel.slice(hashIdx);
+            rel = rel.slice(0, hashIdx);
+          }
+          rel = rel.slice(1); // strip leading /
+          if (rel.endsWith('/')) {
+            rel = rel + 'index.html';
+          } else {
+            var lastSlash = rel.lastIndexOf('/');
+            var lastSeg = lastSlash === -1 ? rel : rel.slice(lastSlash + 1);
+            if (lastSeg.indexOf('.') === -1) rel = rel + '.html';
+          }
+          docs[i].url = siteRoot + rel + hash;
+        }
       }
-      docs[i].url = siteRoot + rel + hash;
-    }
-  }
 
-  lunr.tokenizer.separator = /[\\s\\-\\/]+/;
+      // Mirrors the online build's dot-run-split patch (see
+      // builder/vendor/just-the-docs/README.md and WIP.Search.md's
+      // "Design" section): wrap lunr.tokenizer once so a run of 2+ dots
+      // ("Do...Loop", "For Each...Next") tokenises as spaces instead of
+      // one opaque token, for both the index and the query. Installed
+      // once, since lunr is a global singleton and loadIndex() can run
+      // again after a failed load; the wrapper carries \`separator\`
+      // itself because the original tokenizer reads
+      // \`lunr.tokenizer.separator\` at call time, which after this
+      // reassignment resolves to the wrapper's own property.
+      if (!lunr.tokenizer.dotRunSplit) {
+        var originalTokenizer = lunr.tokenizer;
+        var dotRunSplitTokenizer = function (input) {
+          if (typeof input === 'string') {
+            input = input.replace(/\\.{2,}/g, function (m) {
+              return new Array(m.length + 1).join(' ');
+            });
+          }
+          return originalTokenizer(input);
+        };
+        dotRunSplitTokenizer.dotRunSplit = true;
+        dotRunSplitTokenizer.separator = /[\\s\\-\\/]+/;
+        lunr.tokenizer = dotRunSplitTokenizer;
+      }
 
-  var index = lunr(function(){
-    this.ref('id');
-    this.field('title', { boost: 200 });
-    this.field('content', { boost: 2 });
-    // Mirrors the online build's just-the-docs.js patch (see
-    // builder/vendor/just-the-docs/README.md and WIP.Search.md's
-    // "Design" §2): the same two symbol-index fields, at the same
-    // boosts. test/search.test.mjs extracts the field/boost list from
-    // both this string and the vendored just-the-docs.js source and
-    // asserts they agree, so the two copies cannot drift apart silently.
-    this.field('names', { boost: 100 });
-    this.field('qualified', { boost: 50 });
-    this.field('relUrl');
-    this.metadataWhitelist = ['position'];
+      var index = lunr(function(){
+        this.ref('id');
+        this.field('title', { boost: 200 });
+        this.field('content', { boost: 2 });
+        // Mirrors the online build's just-the-docs.js patch (see
+        // builder/vendor/just-the-docs/README.md and WIP.Search.md's
+        // "Design" §2): the same two symbol-index fields, at the same
+        // boosts. test/search.test.mjs extracts the field/boost list from
+        // both this string and the vendored just-the-docs.js source and
+        // asserts they agree, so the two copies cannot drift apart silently.
+        this.field('names', { boost: 100 });
+        this.field('qualified', { boost: 50 });
+        this.field('relUrl');
+        this.metadataWhitelist = ['position'];
+        // Mirrors the online build's stop-word patch (step 5A): keep
+        // lunr's default stop words in the index, since many are
+        // twinBASIC keywords (Do, For, If, Is, On, With, Each...) that the
+        // search pipeline's query side never dropped.
+        this.pipeline.remove(lunr.stopWordFilter);
 
-    for (var i in docs) {
-      this.add({
-        id: i,
-        title: docs[i].title,
-        content: docs[i].content,
-        names: docs[i].names || '',
-        qualified: docs[i].qualified || '',
-        relUrl: docs[i].relUrl
+        for (var i in docs) {
+          this.add({
+            id: i,
+            title: docs[i].title,
+            content: docs[i].content,
+            names: docs[i].names || '',
+            qualified: docs[i].qualified || '',
+            relUrl: docs[i].relUrl
+          });
+        }
       });
-    }
-  });
 
-  searchLoaded(index, docs);
+      onSuccess(index, docs);
+    } catch (e) {
+      console.log('Error building search index: ' + e);
+      onError();
+    }
+  }
+
+  searchLoaded(loadIndex);
 }`;
 
 // §6.9  patchJustTheDocsJs -- regex-substitute navLink() + initSearch().

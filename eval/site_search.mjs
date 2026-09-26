@@ -56,9 +56,30 @@ export function resolvePaths(site) {
 // sets the tokenizer separator to /[\s\-\/]+/, so `/` splits tokens too.
 // Without this, lunr's default /[\s\-]+/ tokenises differently from the real
 // site and this replica cannot reproduce what it claims to.
+//
+// Mirrors the dot-run-split patch too (WIP.Search.md rollout step 5B, "Design"
+// section): titles like "Do...Loop" and "For Each...Next" tokenise as one
+// opaque token ("do...loop") because lunr's tokenizer tests one character at
+// a time against `separator`, so a `\.{2,}` alternative in that regex can't
+// work. Wrapping lunr.tokenizer instead: a run of 2+ dots in a string input
+// becomes the same number of spaces (keeping character positions valid),
+// then the original tokenizer runs as usual. The wrapper carries `separator`
+// itself, since the original tokenizer reads `lunr.tokenizer.separator` at
+// call time, which after this reassignment resolves to the wrapper's own
+// property. test/search.test.mjs's drift guard checks this installs in all
+// three copies (this file, just-the-docs.js, offline.mjs).
 export function loadLunr(lunrPath) {
   const lunr = require(lunrPath);
-  lunr.tokenizer.separator = /[\s\-\/]+/;
+  const originalTokenizer = lunr.tokenizer;
+  const dotRunSplitTokenizer = function (input) {
+    if (typeof input === "string") {
+      input = input.replace(/\.{2,}/g, (m) => new Array(m.length + 1).join(" "));
+    }
+    return originalTokenizer(input);
+  };
+  dotRunSplitTokenizer.dotRunSplit = true;
+  dotRunSplitTokenizer.separator = /[\s\-\/]+/;
+  lunr.tokenizer = dotRunSplitTokenizer;
   return lunr;
 }
 
@@ -77,6 +98,12 @@ export function buildIndex(lunr, docs) {
     this.field("qualified", { boost: 50 });
     this.field("relUrl");
     this.metadataWhitelist = ["position"];
+    // Mirrors the stop-word patch (step 5A, "Design" section): lunr's index
+    // pipeline runs lunr.stopWordFilter by default, but the search pipeline
+    // never did, so English stop words -- many of them twinBASIC keywords
+    // (Do, For, If, Is, On, With, Each...) -- were dropped from the index
+    // while a query still carried them and could never match.
+    this.pipeline.remove(lunr.stopWordFilter);
     for (const id in docs) {
       this.add({
         id,

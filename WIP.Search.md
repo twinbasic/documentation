@@ -228,6 +228,130 @@ asserts they agree, so they cannot drift apart silently.
   API lookup. The symbols field comes from the same data as the ground truth.
   The held-out check limits that concern, but does not remove it. The prose
   set is small and hand-picked.
+- **After step 5** (below), 18 queries are still worse than the *original*
+  (pre-rollout) baseline, not the 38 above: `VB` (rank 1→16, wildcard
+  crowding -- `VB` is a prefix of many `vbXxx` constant names in `names`),
+  `Lock`, `Time$` (same crowding, on `names`/`qualified`), `Column`,
+  `ColumnHeader`, `CheckBox`, `PropertyPage`, `ToolWindow`, `Node`, several
+  `vbXxx` bare names at rank 2 instead of 1, and the `symbol index` prose
+  query (rank 1→39, because `Index` is a property on many controls, so the
+  `names` field now outranks the prose page that used to be the only match).
+  All are wildcard/wording crowding from keeping short common words
+  searchable, not regressions step 5 introduces on its own -- see "Design
+  §5" below for why keeping them was still the right trade.
+
+## Design §5: stop words, dot runs, and a lazy build
+
+Step 5 of the rollout (see "Rollout" below) is three independent, measured
+changes to both client copies and the eval replica.
+
+### A. Keep lunr's stop words in the index
+
+lunr's **index** pipeline runs `lunr.stopWordFilter` by default, dropping
+words like `do`, `for`, `if`, `is`, `on`, `with`, `each` from every field
+before it's added. Its **search** pipeline never ran that filter -- upstream
+never removes it, so a query for `Do` still carried the token `do`, which
+by that point existed nowhere in the index. Since a large fraction of
+twinBASIC's own keywords are English stop words, every keyword query was
+guaranteed to miss its own entry (`Do` ranked 18th, `For` 17th, `With` 55th,
+`Is` 177th, `On` 3rd only because of an unrelated coincidental match, `Each`
+6th). The fix is one line inside the `lunr(function(){...})` builder: `
+this.pipeline.remove(lunr.stopWordFilter);`. Keeping stop words does let a
+handful of short, extremely common tokens (mostly other `vbXxx` constant
+name prefixes and `Index`/`Lock`/`Column`/`Time$`) crowd into more results
+than before -- see "Known regressions" above -- but every one of the
+keyword queries this fixes goes to rank 1, and the fix generalises (it
+isn't specific to twinBASIC's keyword list).
+
+### B. Split runs of two or more dots
+
+Titles like `Do...Loop`, `For Each...Next` and `If...Then...Else` tokenised
+as a single opaque token (`do...loop`), because lunr's tokenizer decides
+where to split by testing *one character at a time* against `separator`; a
+`\.{2,}` alternative inside that regex can never match, since no single
+character is "two or more dots". The fix wraps `lunr.tokenizer` instead of
+trying to extend the separator regex: for a string input, every run of 2+
+dots becomes the same number of spaces (`s.replace(/\.{2,}/g, m => new
+Array(m.length + 1).join(' '))`, chosen over deleting the dots so that
+character offsets used for match highlighting stay valid), then the
+original tokenizer runs as usual. Non-string input (arrays, `null`) passes
+through unchanged, since lunr also calls its tokenizer with those.
+
+The wrapper is installed once, at the same place the separator used to be
+set, and it has to carry `separator` itself: the original tokenizer reads
+`lunr.tokenizer.separator` at call time (not a value captured when it was
+first defined), so once `lunr.tokenizer` points at the wrapper, that lookup
+resolves to the *wrapper's* own `.separator` property, not the original
+function's. The wrapper sets `wrapper.separator = /[\s\-\/]+/`, the client's
+existing separator, and `/` still splits tokens, e.g. `a/b` tokenises to
+`a`, `b` exactly as before. Since it runs on the shared global `lunr`
+object, it applies to the index build and every query alike -- `update()`
+already calls `lunr.tokenizer(input)` unchanged.
+
+### C. Build the index lazily, on the first keystroke, with visible feedback
+
+Before step 5, `initSearch()` ran unconditionally on every page load,
+fetching `search-data.json` and synchronously building the lunr index --
+about 1.3s and 240MB of heap on a desktop (see the cost table below), paid
+by every reader whether or not they ever opened search. `initSearch()` now
+only defines *how* to build the index (`loadIndex(onSuccess, onError)`,
+which fetches via XHR as before and installs the stop-word/dot-run patches
+above) and hands that function to `searchLoaded()`, which wires up the
+search box's listeners immediately but doesn't call `loadIndex()` until the
+first `keyup` that leaves the box non-empty.
+
+That first keystroke calls `loadIndexNow()`, which shows a status message
+("Loading search index...") in the same slot and style as "No results
+found" (`.search-no-result`, reused rather than adding a class, since
+visually it's the same single centred message) and the same text in the
+`a11y-status` live region, then yields (a `requestAnimationFrame` raced by
+a 100 ms timer, since frames never fire in a hidden tab, then
+`setTimeout(fn, 0)`) so that message actually paints before the
+synchronous, comparatively expensive index build runs on the main thread.
+A keystroke during the load leaves the message in place. Checked in a
+browser: the message stays up until results replace it, with no empty
+panel in between, both online and in the offline tree.
+When `loadIndex()` finishes, `finishLoad()` searches whatever is in the box
+*at that moment* -- not whatever was typed when the load started, since the
+reader may have kept typing while the fetch and build were in flight. Only
+one load is ever in flight at a time (`indexLoading`, checked at the top of
+`loadIndexNow()`); a keystroke that lands mid-load just returns from
+`update()`, having already updated `currentInput`, and `finishLoad()`'s
+fresh read of the search box at completion is what ends up searched for. A
+failed load (a bad XHR status, a parse error, or an exception building the
+index) shows "Search is unavailable" plus the matching `a11y-status` text
+and leaves the index `null`, so the next keystroke retries from scratch.
+
+The restructuring keeps `update()`'s existing prefix (the dedup check, the
+`search-active` class, the iOS scroll workaround) and its keyboard/focus/
+blur listeners untouched; only the part that used to run the query
+unconditionally was split out into `doSearch(input)`, gated behind `if
+(index === null) { loadIndexNow(); return; }`. `searchLoaded()` itself now
+takes `loadIndex` instead of `(index, docs)`, since those two are no longer
+available at the time it's called.
+
+`builder/offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` gets the same
+treatment: its `window.SEARCH_DATA` is already sitting in memory (preloaded
+via a `<script src=>` the offline HTML injects before this file runs, so
+there's no fetch to defer), but the *build* -- the actual expensive part --
+still waits for `loadIndexNow()`'s first call, with the same loading/error
+feedback, because `searchLoaded()` (unchanged, shared by both copies) is
+what decides when to call `loadIndex()`. `eval/site_search.mjs` mirrors
+parts A and B exactly (there's no lazy build to mirror -- the CLI always
+wants an index).
+
+**Cost per page view**, from 15 interleaved runs on a desktop (median build
+time and heap; see "Measurement" above for methodology):
+
+| | today (h2) | steps 3-4 | + stop words kept |
+|---|---|---|---|
+| index build | 964 ms | 1,184 ms | 1,294 ms |
+| heap | 157 MB | 204 MB | 243 MB |
+
+With the lazy build (part C), these costs move from "every page view" to
+"once per page, and only for readers who actually type into the search
+box" -- a page a reader never searches from now pays nothing at all for
+search.
 
 ## Decisions
 
@@ -250,7 +374,17 @@ from the harness.
 4. **Symbols field and smart dot split.** The build join, the new field in
    both client copies, the query construction, and `eval/site_search.mjs`
    updated to match.
-5. **Regression fix.** Whatever the measurement picks for the 38 queries.
+5. **Regression fix.** Done: keep lunr's stop words in the index, split runs
+   of 2+ dots before tokenising, and build the index lazily on the first
+   keystroke instead of on every page load. See "Design §5" above. Against
+   step 4's baseline: hit@10 97.8% → 98.0%, MRR .9326 → .9331, 42 queries
+   worse (all but two by a single rank -- wildcard crowding from keeping
+   short common words searchable) and 23 better. Against the *original*
+   (pre-rollout) baseline: hit@10 98.0%, MRR .933, bare MRR .966, prose
+   80% (`With statement` improves from rank 19 to 4), and 18 queries worse
+   (`VB`, `Lock`, `Time$`, `Column`, `ColumnHeader` and a few more, plus the
+   `symbol index` prose query) against `With`, `Is`, `Do`, `For`, `Each` and
+   `On` all now at rank 1.
 
 ## Future work
 

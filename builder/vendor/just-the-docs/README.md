@@ -164,6 +164,61 @@ boost list from this file, `offline.mjs`, and `eval/site_search.mjs` and
 asserts all three agree, so the two client copies (and the eval replica)
 cannot drift apart silently.
 
+**Stop words were dropped from the index but never from the query, so
+every twinBASIC keyword was unfindable.** lunr's index pipeline runs
+`lunr.stopWordFilter` by default; its search pipeline never did, so a
+query for `Do`, `For`, `If`, `Is`, `On`, `With` or `Each` still carried that
+exact token, which by then existed nowhere in the index (`Do` ranked 18th,
+`With` 55th, `Is` 177th). The fix is `this.pipeline.remove(
+lunr.stopWordFilter)` inside the `lunr(function(){...})` builder in both
+copies (and `eval/site_search.mjs`'s `buildIndex`), which keeps stop words
+in the index instead. See [`../../../WIP.Search.md`](../../../WIP.Search.md)'s
+"Design §5" for the queries this trades away (short common words, mostly
+other `vbXxx` prefixes, now crowd into a few more results than before).
+
+**Runs of two or more dots (`Do...Loop`, `For Each...Next`) tokenised as
+one opaque token.** lunr's tokenizer decides where to split by testing one
+character at a time against `separator`, so a `\.{2,}` alternative inside
+that regex can never match. The fix wraps `lunr.tokenizer`: for a string
+input, every run of 2+ dots becomes the same number of spaces (keeping
+character offsets valid for match highlighting), then the original
+tokenizer runs as usual; non-string input (arrays, `null`) passes through
+unchanged. Installed once, at the same place `lunr.tokenizer.separator`
+used to be set directly -- and the wrapper has to carry `separator` itself,
+because the original tokenizer reads `lunr.tokenizer.separator` at call
+time, which after this reassignment resolves to the wrapper's own property,
+not the original function's. Since it patches the shared global `lunr`
+object, it applies to the index build and every query alike.
+`eval/site_search.mjs` installs the same wrapper. `test/search.test.mjs`'s
+drift guard checks all three copies remove the stop-word filter and install
+this wrapper, alongside its existing field/boost check.
+
+**The index was fetched and built synchronously on every page load, even
+for readers who never opened search.** About 1.3s and 240MB of heap on a
+desktop -- see [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Design
+§5" cost table. `initSearch()` now only defines *how* to build the index
+(`loadIndex(onSuccess, onError)`) and hands that to `searchLoaded()`, which
+wires up the search box's listeners immediately but doesn't call
+`loadIndex()` until the first `keyup` (upstream's trigger for `update()`)
+that leaves the box non-empty. That first keystroke shows a loading message
+(reusing `.search-no-result`) and the matching `a11y-status` text, then
+yields: a frame (`requestAnimationFrame`) raced by a 100 ms timer, since
+frames never fire in a hidden tab, then `setTimeout(fn, 0)`, so the message
+paints before the synchronous build runs. It then searches whatever is in
+the box *when the build finishes*, which may differ from what triggered it,
+since the reader may keep typing. Only one load is ever in flight; a
+keystroke mid-load leaves the loading message in place (`update()` checks
+for the unbuilt index before it clears the panel) and just changes what
+gets searched at the end. A failed load shows "Search is unavailable" and
+leaves the index unset, so the next keystroke retries. `searchLoaded()` now
+takes `loadIndex` in place of `(index, docs)` -- it, and everything below
+`update()`'s new lazy-build gate, stays a single shared function; only
+`initSearch()` differs between the two copies (XHR fetch vs. reading the
+offline build's preloaded `window.SEARCH_DATA`), and both install the
+stop-word and dot-run-split patches above from inside their own
+`loadIndex()`. `eval/site_search.mjs` has no lazy build to mirror -- the
+CLI always wants an index built up front.
+
 ## Licence
 
 just-the-docs is MIT-licensed, and `LICENSE.txt` beside this file is the
@@ -249,13 +304,20 @@ Bumping the just-the-docs version is a deliberate operation. Procedure:
    checks that a control is reachable and named, not that its ring is visible.
 
 5. Re-apply the copy-button patch, the edit-distance cap, the asterisk
-   guard, the `names`/`qualified` fields, and the smart dot split in
-   `assets/js/just-the-docs.js` (see above). Diffing against the
-   previous vendored copy via `git diff` is the easiest way to spot what
-   needs to come back. Then re-check `offline.mjs`'s
+   guard, the `names`/`qualified` fields, the smart dot split, the
+   stop-word removal, the dot-run-split tokenizer wrapper, and the lazy
+   index build in `assets/js/just-the-docs.js` (see above). Diffing against
+   the previous vendored copy via `git diff` is the easiest way to spot
+   what needs to come back. Then re-check `offline.mjs`'s
    `JTD_INITSEARCH_FN_REPLACEMENT` still carries the same two fields at the
-   same boosts, and run `test/search.test.mjs`'s field-list drift guard --
-   it fails loudly if the re-vendor left the two out of step.
+   same boosts and the same stop-word/dot-run-split/lazy-build patches, and
+   run `test/search.test.mjs`'s field-list drift guard and its stop-word/
+   dot-run-split sibling guard -- both fail loudly if the re-vendor left the
+   copies out of step. If upstream's `initSearch()`/`searchLoaded()` split
+   changed shape (a signature change, a rename), `deriveOfflineJtdJs`'s
+   `JTD_INITSEARCH_FN_REPLACEMENT` and the offline `loadIndex()` it defines
+   may need a matching update -- see [`../../../WIP.Search.md`](../../../WIP.Search.md)'s
+   "Design §5" for how the two functions divide the work now.
 
 6. Inspect the entry point at `docs/assets/css/just-the-docs-combined.scss`
    --- if the upstream `_includes/css/just-the-docs.scss.liquid` Liquid

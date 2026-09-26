@@ -91,61 +91,121 @@ function disableHeadStyleSheets() {
 // Site search
 
 function initSearch() {
-  var request = new XMLHttpRequest();
-  request.open('GET', (window.jtdBaseurl || '') + '/assets/js/search-data.json', true);
+  // Patched: lazy index build (WIP.Search.md rollout step 5C). Building
+  // the lunr index eagerly, on every page load, cost about 1.3s and
+  // 240MB of heap even for readers who never open search (see
+  // WIP.Search.md's per-page-view cost table). initSearch() now only
+  // defines how to fetch and build the index -- loadIndex() below -- and
+  // hands that to searchLoaded(), which wires up the search box right
+  // away but doesn't call loadIndex() until the first keystroke. See
+  // builder/vendor/just-the-docs/README.md.
+  function loadIndex(onSuccess, onError) {
+    var request = new XMLHttpRequest();
+    request.open('GET', (window.jtdBaseurl || '') + '/assets/js/search-data.json', true);
 
-  request.onload = function(){
-    if (request.status >= 200 && request.status < 400) {
-      var docs = JSON.parse(request.responseText);
+    request.onload = function(){
+      if (request.status >= 200 && request.status < 400) {
+        try {
+          var docs = JSON.parse(request.responseText);
 
-      lunr.tokenizer.separator = /[\s\-/]+/
+          // Patched: split runs of 2+ dots into spaces before tokenising
+          // (step 5B). Titles like "Do...Loop" and "For Each...Next"
+          // tokenised as a single token ("do...loop"), because lunr's
+          // tokenizer tests one character at a time against `separator`,
+          // so a `\.{2,}` alternative in that regex can't work. Wrapping
+          // lunr.tokenizer instead: for a string input, every run of 2+
+          // dots becomes the same number of spaces (character positions
+          // stay valid, so match highlighting still works), then the
+          // original tokenizer runs as usual; non-string input (arrays,
+          // null) passes through unchanged. Installed once -- lunr is a
+          // global singleton and loadIndex() can run again after a failed
+          // load -- and the wrapper has to carry `separator` itself,
+          // because the original tokenizer reads `lunr.tokenizer.separator`
+          // at call time, which after this reassignment resolves to the
+          // wrapper's own property, not the original function's. See
+          // builder/vendor/just-the-docs/README.md and WIP.Search.md's
+          // "Design" section.
+          if (!lunr.tokenizer.dotRunSplit) {
+            var originalTokenizer = lunr.tokenizer;
+            var dotRunSplitTokenizer = function (input) {
+              if (typeof input === 'string') {
+                input = input.replace(/\.{2,}/g, function (m) {
+                  return new Array(m.length + 1).join(' ');
+                });
+              }
+              return originalTokenizer(input);
+            };
+            dotRunSplitTokenizer.dotRunSplit = true;
+            dotRunSplitTokenizer.separator = /[\s\-\/]+/;
+            lunr.tokenizer = dotRunSplitTokenizer;
+          }
 
-      var index = lunr(function(){
-        this.ref('id');
-        this.field('title', { boost: 200 });
-        this.field('content', { boost: 2 });
-        // Patched: two extra fields joined in at build time from the symbol
-        // index (builder/search.mjs's joinSymbolsToEntries) -- bare names
-        // ("PaintPicture") and their qualified "Container.Name" forms
-        // ("Form.PaintPicture"). Two fields, not one, because BM25 discounts
-        // a match inside a long field, and the qualified forms are longer;
-        // splitting them keeps the short bare names scoring well on their
-        // own. See builder/vendor/just-the-docs/README.md and
-        // WIP.Search.md's "Design" §2.
-        this.field('names', { boost: 100 });
-        this.field('qualified', { boost: 50 });
-        this.field('relUrl');
-        this.metadataWhitelist = ['position']
+          var index = lunr(function(){
+            this.ref('id');
+            this.field('title', { boost: 200 });
+            this.field('content', { boost: 2 });
+            // Patched: two extra fields joined in at build time from the symbol
+            // index (builder/search.mjs's joinSymbolsToEntries) -- bare names
+            // ("PaintPicture") and their qualified "Container.Name" forms
+            // ("Form.PaintPicture"). Two fields, not one, because BM25 discounts
+            // a match inside a long field, and the qualified forms are longer;
+            // splitting them keeps the short bare names scoring well on their
+            // own. See builder/vendor/just-the-docs/README.md and
+            // WIP.Search.md's "Design" §2.
+            this.field('names', { boost: 100 });
+            this.field('qualified', { boost: 50 });
+            this.field('relUrl');
+            this.metadataWhitelist = ['position']
+            // Patched: keep stop words in the index (step 5A). lunr's index
+            // pipeline runs lunr.stopWordFilter by default, but its search
+            // pipeline never did, so English stop words were dropped from the
+            // index while a query still carried them and could never match --
+            // many are twinBASIC keywords (Do, For, If, Is, On, With, Each...).
+            // See WIP.Search.md's "Design" section.
+            this.pipeline.remove(lunr.stopWordFilter);
 
-        for (var i in docs) {
+            for (var i in docs) {
 
-          this.add({
-            id: i,
-            title: docs[i].title,
-            content: docs[i].content,
-            names: docs[i].names || '',
-            qualified: docs[i].qualified || '',
-            relUrl: docs[i].relUrl
+              this.add({
+                id: i,
+                title: docs[i].title,
+                content: docs[i].content,
+                names: docs[i].names || '',
+                qualified: docs[i].qualified || '',
+                relUrl: docs[i].relUrl
+              });
+            }
           });
+
+          onSuccess(index, docs);
+        } catch (e) {
+          console.log('Error building search index: ' + e);
+          onError();
         }
-      });
+      } else {
+        console.log('Error loading ajax request. Request status:' + request.status);
+        onError();
+      }
+    };
 
-      searchLoaded(index, docs);
-    } else {
-      console.log('Error loading ajax request. Request status:' + request.status);
-    }
-  };
+    request.onerror = function(){
+      console.log('There was a connection error');
+      onError();
+    };
 
-  request.onerror = function(){
-    console.log('There was a connection error');
-  };
+    request.send();
+  }
 
-  request.send();
+  searchLoaded(loadIndex);
 }
 
-function searchLoaded(index, docs) {
-  var index = index;
-  var docs = docs;
+function searchLoaded(loadIndex) {
+  // Patched: index/docs start out unbuilt (step 5C) -- loadIndex() (from
+  // initSearch(), above) isn't called until the first non-empty keystroke,
+  // in loadIndexNow() below.
+  var index = null;
+  var docs = null;
+  var indexLoading = false;
   var searchInput = document.getElementById('search-input');
   var searchResults = document.getElementById('search-results');
   var mainHeader = document.getElementById('main-header');
@@ -165,6 +225,67 @@ function searchLoaded(index, docs) {
     searchInput.removeAttribute('aria-activedescendant');
   }
 
+  // Patched: shared by the "loading" and "failed" states (step 5C). Reuses
+  // .search-no-result -- same slot, same style as "No results found" --
+  // rather than adding a class for what is visually the same single
+  // centred message.
+  function showStatusMessage(text) {
+    searchResults.innerHTML = '';
+    var statusDiv = document.createElement('div');
+    statusDiv.classList.add('search-no-result');
+    statusDiv.innerText = text;
+    searchResults.appendChild(statusDiv);
+    var statusEl = document.getElementById('a11y-status');
+    if (statusEl) statusEl.textContent = text;
+  }
+
+  // Patched: starts the deferred fetch + build (step 5C). Only one load
+  // ever runs at a time -- a keystroke that lands while `indexLoading` is
+  // true just returns below in update(), and finishLoad() re-reads the
+  // search box once the build finishes, so it searches whatever is in it
+  // by then, not whatever triggered the load.
+  function loadIndexNow() {
+    if (indexLoading) return;
+    indexLoading = true;
+    showStatusMessage('Loading search index\u2026');
+    // Yield so the loading message above actually paints before the
+    // synchronous (and comparatively expensive) index build runs on the
+    // main thread: a frame, then a task. requestAnimationFrame never fires
+    // while the tab is hidden, so a 100 ms timer races it -- whichever
+    // comes first starts the load, and the other does nothing.
+    var started = false;
+    function start() {
+      if (started) return;
+      started = true;
+      setTimeout(function() {
+        loadIndex(function(loadedIndex, loadedDocs) {
+          index = loadedIndex;
+          docs = loadedDocs;
+          indexLoading = false;
+          finishLoad();
+        }, function() {
+          indexLoading = false;
+          index = null; // stays null, so the next keystroke retries the load
+          showStatusMessage('Search is unavailable');
+        });
+      }, 0);
+    }
+    requestAnimationFrame(start);
+    setTimeout(start, 100);
+  }
+
+  // Runs once loadIndex() succeeds, against whatever is in the search box
+  // *now* -- which may have changed while the fetch + build were in flight.
+  function finishLoad() {
+    var value = searchInput.value;
+    currentInput = value;
+    searchResults.innerHTML = ''; // clear the "Loading search index..." message
+    if (value === '') {
+      return;
+    }
+    doSearch(value);
+  }
+
   function update() {
     currentSearchIndex++;
 
@@ -181,10 +302,30 @@ function searchLoaded(index, docs) {
       return;
     }
     currentInput = input;
-    searchResults.innerHTML = '';
     if (input === '') {
+      searchResults.innerHTML = '';
       return;
     }
+
+    // Patched: the index isn't fetched or built until now, on the first
+    // non-empty keystroke (step 5C). loadIndexNow() shows the loading
+    // state and, once loadIndex() finishes, finishLoad() runs the search.
+    // This comes before the panel is cleared, so a keystroke that lands
+    // mid-load leaves "Loading search index..." in place rather than
+    // blanking the panel until the build finishes.
+    if (index === null) {
+      loadIndexNow();
+      return;
+    }
+    searchResults.innerHTML = '';
+
+    doSearch(input);
+  }
+
+  // Patched: split out of update() (step 5C) so update() can gate on the
+  // index being loaded first. Everything below is unchanged from upstream
+  // (plus the asterisk guard and smart dot split patches, both pre-existing).
+  function doSearch(input) {
 
     // Patched: drop tokens made only of asterisks. lunr's query engine
     // throws on a bare-wildcard term ("Cannot read properties of undefined
