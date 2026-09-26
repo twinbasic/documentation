@@ -154,13 +154,15 @@ function initSearch() {
             // WIP.Search.md's "Design" §2.
             this.field('names', { boost: 100 });
             this.field('qualified', { boost: 50 });
-            // Patched: two fields derived here rather than stored in
-            // search-data.json, so the download doesn't grow. `exact` holds
-            // each bare name whole (see exactName() below), for a one-word
-            // query naming it exactly; `page` holds the page's title, so a
+            // Patched: `exact` holds each bare name whole (see exactName()
+            // below), for a query naming it exactly; `primary` holds the same
+            // for the names that are types or language elements (the build
+            // lists them), so `Left` finds the Strings function before 40
+            // controls' Left properties; `page` holds the page's title, so a
             // page whose title the reader typed outranks a section of another
             // page that only mentions it. See WIP.Search.md, "Reader intent".
             this.field('exact', { boost: 50 });
+            this.field('primary', { boost: 1000 });
             this.field('page', { boost: 5 });
             this.field('relUrl');
             this.metadataWhitelist = ['position']
@@ -181,6 +183,7 @@ function initSearch() {
                 names: docs[i].names || '',
                 qualified: docs[i].qualified || '',
                 exact: (docs[i].names || '').split(/\s+/).filter(Boolean).map(exactName).join(' '),
+                primary: (docs[i].primary || '').split(/\s+/).filter(Boolean).map(exactName).join(' '),
                 page: docs[i].doc || '',
                 relUrl: docs[i].relUrl
               });
@@ -209,16 +212,24 @@ function initSearch() {
   searchLoaded(loadIndex);
 }
 
-// Patched: a name as the `exact` field holds it -- lowercased, without a
-// trailing `$`, and with `_` appended. The `_` keeps a whole-name query off
-// every longer name that starts with it (`Node` against `Nodes`); lunr's
-// trimmer keeps it as a word character, and no Porter stemmer rule touches a
-// word ending in it. Dropping the `$` makes `Format` and `Format$` one name,
-// so a page documenting both isn't marked down for a longer field. Used by
-// initSearch() above and doSearch() below.
+// Patched: a name as the `exact` and `primary` fields hold it -- lowercased,
+// with every non-word character spelled as `_` and its hex code, and `_`
+// appended. lunr's trimmer would strip those characters from the ends,
+// turning `#If` into `if` and `<>` into nothing; spelled out, they survive,
+// so `#If`, `Time$` and the operators stay distinct names. The final `_`
+// keeps a whole-name query off every longer name that starts with it (`Node`
+// against `Nodes`); no Porter stemmer rule touches a word ending in it. Used
+// by initSearch() above and doSearch() below.
 function exactName(name) {
-  return name.toLowerCase().replace(/\$$/, '') + '_';
+  return name.toLowerCase().replace(/\W/g, function(c) {
+    return '_' + c.charCodeAt(0).toString(16);
+  }) + '_';
 }
+
+// Patched: the kinds tB/symbols.json gives its symbols, less `enumvalue`,
+// which nobody types. A query naming one thing plus its kind -- `With
+// statement`, `AddressOf operator` -- is treated as naming that thing.
+var KIND_WORDS = ['operator', 'statement', 'attribute', 'keyword', 'directive', 'class', 'method', 'property', 'module', 'function', 'constant', 'enum', 'object', 'member', 'sub', 'package', 'interface', 'control', 'event', 'type', 'field'];
 
 function searchLoaded(loadIndex) {
   // Patched: index/docs start out unbuilt (step 5C) -- loadIndex() (from
@@ -390,13 +401,19 @@ function searchLoaded(loadIndex) {
     });
     queryTokens = allTokens;
 
-    // Patched: every field but `exact`, which only the exact-name clause
-    // below may search -- otherwise the trailing wildcard `node*` matches
-    // `nodes_` there too. A one-word query also matches that whole name in
-    // `exact`. Only one word: in a phrase such as "error handling", `error`
-    // on its own isn't what the reader named.
+    // Patched: every field but `exact` and `primary`, which only the
+    // exact-name clause below may search -- otherwise the trailing wildcard
+    // `node*` matches `nodes_` there too. A query naming one thing also
+    // matches that whole name in `exact` and `primary`. One thing is one
+    // word, not counting words that name a kind: in a phrase such as "error
+    // handling", `error` on its own isn't what the reader named, but in
+    // "With statement", `With` is.
     var textFields = ['title', 'content', 'names', 'qualified', 'page', 'relUrl'];
     var words = input.split(/\s+/).filter(Boolean);
+    var named = words.filter(function(w) {
+      return KIND_WORDS.indexOf(w.toLowerCase().replace(/s$/, '')) === -1;
+    });
+    var name = named.length === 1 ? named[0] : words.length === 1 ? words[0] : null;
     function anyWords(query) {
       query.term(queryTokens, {
         fields: textFields,
@@ -406,8 +423,8 @@ function searchLoaded(loadIndex) {
         fields: textFields,
         wildcard: lunr.Query.wildcard.TRAILING
       });
-      if (words.length === 1) {
-        query.term(exactName(words[0]), { fields: ['exact'] });
+      if (name) {
+        query.term(exactName(name), { fields: ['exact', 'primary'] });
       }
     }
 
@@ -423,6 +440,7 @@ function searchLoaded(loadIndex) {
         anyWords(query);
         baseTokens.forEach(function(token) {
           query.term(lunr.stemmer(token.clone()).toString(), {
+            fields: textFields,
             wildcard: lunr.Query.wildcard.TRAILING,
             usePipeline: false,
             presence: lunr.Query.presence.REQUIRED
@@ -430,7 +448,9 @@ function searchLoaded(loadIndex) {
         });
       });
     }
-    if (results.length == 0 && queryTokens.length > 0) {
+    // A name with no word characters (`<>`, `*`) leaves no tokens, but its
+    // exact-name clause can still match.
+    if (results.length == 0 && (queryTokens.length > 0 || name)) {
       results = index.query(anyWords);
     }
 

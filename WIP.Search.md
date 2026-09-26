@@ -26,17 +26,20 @@ Nothing is pushed.
 | `0961e6e9` | 5: stop words kept; dot runs split; lazy index build |
 | `d6075e23` | intent 1: `search_quality.mjs` judges bare names by reader intent |
 | `482ae8af` | intent 3: exact-name and page-title fields, all words first, query tokens trimmed |
+| (next commit) | intent 4: `primary` names, non-word characters kept in exact names, kind words |
 
-Hit@10 went from 20.5% to 98.5%, and MRR from .182 to .957. By reader
-intent, rank 1 is right for 93.5% of queries (89.0% before the intent
-step), with no query worse.
+Hit@10 went from 20.5% to 98.8%, and MRR from .182 to .962. By reader
+intent, rank 1 is right for 94.1% of queries (89.0% before the intent
+steps), no bare name is out of tier order, and no query got worse at any
+step.
 
 **Next:** [Reader intent](#reader-intent-after-the-rollout), "Next steps".
 In short:
-1. Decide the `conditional compilation` expectation (the user's call).
-2. Work through the rank-1 failure list: `node eval/search_quality.mjs
-   --failures 200`.
-3. Then the operators.
+1. The index pilot: hand-marked index entries for jargon, starting with
+   `conditional compilation` and the 4 remaining prose misses. The user
+   chose this order: tweak-shaped failures first, then the pilot.
+2. The rest of the rank-1 failure list (`--failures 500`), mostly qualified
+   names.
 
 **The user's criteria**, which govern every decision here:
 - A reader either finds what they want or doesn't. A small regression is
@@ -90,7 +93,11 @@ In short:
 - A wildcard term is not stemmed usefully: `operator*` misses the index's
   `oper`. Stem first, then add the wildcard, with `usePipeline: false`.
 - The index trims non-word characters from token ends (`Date$` → `date`);
-  the query side didn't, until the intent step.
+  the query side didn't, until the intent step. A name that must keep them
+  (`#If`, `<>`) has to spell them as word characters.
+- A REQUIRED clause names every field too, so it scores in helper fields
+  such as `exact` unless it is given the text fields. That leak once put
+  `With statement` first by accident, and pushed `error handling` down.
 
 ## The problem
 
@@ -698,6 +705,67 @@ controls' `Left` properties; `Right`, the `B`/`W` string functions;
 (`vbDate`, `vbForm`), 2 members, 432 qualified (mostly `Constants.vbXxx`,
 rank 2) and 4 prose.
 
+### What shipped, second round: tiers in the index
+
+The step-4 failures sorted into four mechanisms, measured one at a time:
+
+1. **Same-name entries of different tiers tied, and length decided.**
+   `Left`, `Right`, `BorderStyle`, `WindowState`, `StartupPosition`,
+   `Next`, `Default`, `Month`, `Print`, `Lock`: the function, enum or
+   statement and the members all matched `exact` equally, and BM25 then
+   favoured the short member entries. An enum page lost further, since its
+   `exact` also held every constant's name. Fixed with a `primary` field:
+   the build's join lists the names that are types or language elements
+   (`isPrimarySymbol` in `builder/search.mjs`), and the client indexes
+   them as exact names at field boost 1000. This is X1t done right: X1t was
+   measured when clause boosts cancelled out, so it never had a fair test.
+   Boost 200 left 9 names out of tier order; 500 left 2; 1000 leaves none.
+2. **`#If`, `#Const`, `#Else` lost their `#`** to lunr's trimmer and
+   matched the `If` function. `exactName()` now spells every non-word
+   character as `_` and its hex code (`#if` → `_23if_`), so they stay
+   distinct. So do `Time$` against `Time` and `Error$` against the `Error`
+   statement, which dropping `$` had merged, and the 24 operators (`<>`,
+   `&=`, `*`) become findable: the exact-name clause runs even when a
+   query leaves no tokens.
+3. **REQUIRED clauses searched every field** (see "How lunr behaves
+   here"). Restricted to the text fields.
+4. **`With statement` then fell to 2**, because its rank 1 had come from
+   that leak. Fixed properly: a query names one thing if it has one word,
+   or one word besides words naming a kind (`KIND_WORDS`, the kinds in
+   `tB/symbols.json` less `enumvalue`). `error handling` still names
+   nothing.
+
+Against the previous baseline: 53 queries better, none worse.
+
+| | before | after |
+|---|---|---|
+| hit@1 | 93.5% | 94.1% |
+| bare hit@1 / hit@10 | 97.0% / 99.1% | 98.8% / 100% |
+| language / type hit@1 | 85.3% / 97.8% | 94.7% / 100% |
+| names out of tier order | 19 | 0 |
+| search-data.json | 4,784 KB, 1,173 KB gzip | 4,807 KB, 1,177 KB gzip |
+| index build, heap | | +5–6%, 280 → 288 MB |
+
+Both clients were checked in a browser against the replica (15 queries,
+same top three; `**` shows "No results found", no console errors).
+`test/search.test.mjs` now compares `exactName()` and `KIND_WORDS` by
+behaviour across the online client and the replica, and a mutation of the
+replica's `exactName()` fails it.
+
+Left at rank 1's door (470 queries):
+- **25 language elements, all at rank 2, behind a section of the same
+  page**: `DefInt` → `Deftype#defbool-defbyte-defint-…` above `Deftype`;
+  `AscW` → `Asc#asc-ascb-ascw` above `Asc`. The reader lands on the
+  definition either way, so this looks like a ground-truth artifact
+  (the symbol's URL is the page; the heading that names it is a section).
+  Not changed: whether a page-level symbol should accept its own sections
+  is a ground-truth decision, to be made on its own.
+- 7 enum constants and 2 members, all at rank 2 (`vbForm`, `vbDate`).
+- **432 qualified**: 246 at rank 2, but 24–26 deep for members of
+  `Slider`, `MonthView`, `ProgressBar`, `UpDown` and similar.
+- 4 prose: `late binding` 5, `conditional compilation` 3, `64-bit
+  compilation` 3, `symbol index` 3. Index-pilot material.
+
 ### Next steps
 
 1. ~~Promote the intent ground truth into `eval/search_quality.mjs`.~~
@@ -708,20 +776,24 @@ rank 2) and 4 prose.
 3. ~~Implement X1 + X2 + X3 in all three copies.~~ Done, with the four
    corrections in "What shipped". `test/search.test.mjs`'s reader-intent
    guard covers the fields and the query.
-4. Work through the rank-1 failure list (`--failures 200`). `CheckBox` and
-   `VB` are fixed. The leads now: `Left`/`Left$`/`Right`, where the Strings
-   function loses to every control's property; the `Def*` statements and
-   `#If`/`#Const`/`#Else` at rank 2; `BorderStyle` (23), `WindowState` and
-   `StartupPosition` (5); the Attributes page (`Default`, `Description`,
-   `Flags`); and the VBA constants in qualified form (`Constants.vbCr`,
-   rank 2).
-5. Operators: [Future work](#future-work).
+4. ~~The tweak-shaped rank-1 failures.~~ Done; see "What shipped, second
+   round". The operators came with it.
+5. The index pilot (next): hand-marked entries for jargon. Pages are read
+   to decide where a term belongs; existing links are leads, not evidence
+   (the user's caution -- the site's own links may be wrong). Doubtful
+   links found on the way are listed for review, not fixed in passing.
+6. Then the qualified names deep in the list, and the same-page
+   ground-truth question.
 
 ## Future work
 
 ### Operators
 
-The 24 operator symbols can't be found by searching for the symbol,
+**Done in the intent step's second round**: all 24 are now at rank 1,
+through exact names that spell non-word characters (`<>` → `_3c_3e_`).
+What follows is the analysis from before, kept for the record.
+
+The 24 operator symbols couldn't be found by searching for the symbol,
 whatever the configuration: `<` `<=` `<>` `=` `>` `>=` `&` `&=` `/` `/=`
 `^` `^=` `\` `\=` `<<` `<<=` `-` `-=` `*` `*=` `+` `+=` `>>` `>>=`. Three things combine:
 

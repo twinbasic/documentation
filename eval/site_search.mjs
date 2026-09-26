@@ -96,10 +96,12 @@ export function buildIndex(lunr, docs) {
     this.field("content", { boost: 2 });
     this.field("names", { boost: 100 });
     this.field("qualified", { boost: 50 });
-    // Mirrors the exact-name and page-title patches (WIP.Search.md, "Reader
-    // intent"). Both are derived here, from `names` and `doc`, not stored
-    // in search-data.json, so the download doesn't grow.
+    // Mirrors the exact-name, primary-name and page-title patches
+    // (WIP.Search.md, "Reader intent"). `exact` and `primary` hold names as
+    // exactName() writes them, from `names` and `primary`; `page` holds
+    // `doc`.
     this.field("exact", { boost: 50 });
+    this.field("primary", { boost: 1000 });
     this.field("page", { boost: 5 });
     this.field("relUrl");
     this.metadataWhitelist = ["position"];
@@ -117,6 +119,7 @@ export function buildIndex(lunr, docs) {
         names: docs[id].names || "",
         qualified: docs[id].qualified || "",
         exact: (docs[id].names || "").split(/\s+/).filter(Boolean).map(exactName).join(" "),
+        primary: (docs[id].primary || "").split(/\s+/).filter(Boolean).map(exactName).join(" "),
         page: docs[id].doc || "",
         relUrl: docs[id].relUrl,
       });
@@ -124,19 +127,27 @@ export function buildIndex(lunr, docs) {
   });
 }
 
-// Matches just-the-docs.js's exactName(): a name, lowercased, without a
-// trailing `$`, and with `_` appended. The `_` keeps a whole-name query off
-// every longer name that starts with it (`Node` against `Nodes`); lunr's
-// trimmer keeps it as a word character, and no Porter stemmer rule touches
-// a word ending in it. Dropping the `$` makes `Format` and `Format$` one
-// name, so a page documenting both isn't marked down for a longer field.
+// Matches just-the-docs.js's exactName(): a name, lowercased, with every
+// non-word character spelled as `_` and its hex code, and `_` appended.
+// lunr's trimmer would strip those characters from the ends, turning
+// `#If` into `if` and `<>` into nothing; spelled out, they survive, so
+// `#If`, `Time$` and the operators stay distinct names. The final `_`
+// keeps a whole-name query off every longer name that starts with it
+// (`Node` against `Nodes`); no Porter stemmer rule touches a word ending
+// in it.
 function exactName(name) {
-  return name.toLowerCase().replace(/\$$/, "") + "_";
+  return name.toLowerCase().replace(/\W/g, (c) => "_" + c.charCodeAt(0).toString(16)) + "_";
 }
 
-// Every field but `exact`, which only the exact-name clause may search:
-// otherwise the trailing wildcard `node*` matches `nodes_` there too.
+// Every field but `exact` and `primary`, which only the exact-name clauses
+// may search: otherwise the trailing wildcard `node*` matches `nodes_`.
 const TEXT_FIELDS = ["title", "content", "names", "qualified", "page", "relUrl"];
+
+// Matches just-the-docs.js: the kinds tB/symbols.json gives its symbols,
+// less `enumvalue`, which nobody types. A query naming one thing plus its
+// kind -- `With statement`, `AddressOf operator` -- is treated as naming
+// that thing.
+const KIND_WORDS = ["operator", "statement", "attribute", "keyword", "directive", "class", "method", "property", "module", "function", "constant", "enum", "object", "member", "sub", "package", "interface", "control", "event", "type", "field"];
 
 export function load(site) {
   const { dataPath, lunrPath } = resolvePaths(site);
@@ -181,14 +192,18 @@ export function search({ lunr, index }, input) {
       }
     }
   }
-  // Exact name, matching just-the-docs.js: a one-word query also matches
-  // that whole name. Only one word: in a phrase such as "error handling",
-  // `error` on its own isn't what the reader named.
+  // Exact name, matching just-the-docs.js: a query naming one thing also
+  // matches that whole name, in `exact` and, if it is a type or language
+  // element, in `primary`. One thing is one word, not counting words that
+  // name a kind: in a phrase such as "error handling", `error` on its own
+  // isn't what the reader named, but in "With statement", `With` is.
   const words = input.split(/\s+/).filter(Boolean);
+  const named = words.filter((w) => !KIND_WORDS.includes(w.toLowerCase().replace(/s$/, "")));
+  const name = named.length === 1 ? named[0] : words.length === 1 ? words[0] : null;
   const anyWords = (q) => {
     q.term(queryTokens, { fields: TEXT_FIELDS, boost: 10 });
     q.term(queryTokens, { fields: TEXT_FIELDS, wildcard: lunr.Query.wildcard.TRAILING });
-    if (words.length === 1) q.term(exactName(words[0]), { fields: ["exact"] });
+    if (name) q.term(exactName(name), { fields: ["exact", "primary"] });
   };
   // All words first, matching just-the-docs.js: with two or more words, look
   // for entries that contain every one of them, and only if there are none,
@@ -201,6 +216,7 @@ export function search({ lunr, index }, input) {
       anyWords(q);
       for (const token of baseTokens) {
         q.term(lunr.stemmer(token.clone()).toString(), {
+          fields: TEXT_FIELDS,
           wildcard: lunr.Query.wildcard.TRAILING,
           usePipeline: false,
           presence: lunr.Query.presence.REQUIRED,
@@ -208,7 +224,9 @@ export function search({ lunr, index }, input) {
       }
     });
   }
-  if (results.length === 0 && queryTokens.length) results = index.query(anyWords);
+  // A name with no word characters (`<>`, `*`) leaves no tokens, but its
+  // exact-name clause can still match.
+  if (results.length === 0 && (queryTokens.length || name)) results = index.query(anyWords);
   if (results.length === 0 && input.length > 2 && queryTokens.length) {
     const tokens = queryTokens.filter((t) => t.str.length < 20);
     if (tokens.length) {

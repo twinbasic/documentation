@@ -241,12 +241,16 @@ function normalizeSymbolUrl(u) {
 
 // Joins `tB/symbols.json`'s in-memory symbols (each `{ name, container,
 // url, ... }`, see `symbols.mjs`'s `deriveSymbolIndex`) onto the search
-// entries whose `relUrl` names the same URL, attaching two fields:
+// entries whose `relUrl` names the same URL, attaching three fields:
 //
 //   - `names`: every distinct symbol name at that URL, space-separated.
 //   - `qualified`: every distinct `Container.Name` form, space-
 //     separated, for symbols that have a container (a bare statement or
 //     operator does not).
+//   - `primary`: the names in `names` that a reader typing that name most
+//     likely wants, per `isPrimarySymbol` below. The client ranks these
+//     first, so `Left` finds the Strings function before 40 controls'
+//     `Left` properties (WIP.Search.md, "Reader intent").
 //
 // Mutates and returns `entries` -- called once, right before rendering,
 // over the full flattened array, so there is no benefit to allocating a
@@ -255,21 +259,42 @@ function normalizeSymbolUrl(u) {
 // into `writeSearchDataFromChunks`) so it can be unit-tested against
 // synthetic entries and symbols without going through a page render.
 export function joinSymbolsToEntries(entries, symbols) {
+  const moduleNames = new Set();
+  for (const s of symbols ?? []) if (s.kind === "module") moduleNames.add(s.name.toLowerCase());
   const byUrl = new Map();
   for (const s of symbols ?? []) {
     const key = normalizeSymbolUrl(s.url);
     let bucket = byUrl.get(key);
-    if (!bucket) byUrl.set(key, (bucket = { names: new Set(), qualified: new Set() }));
+    if (!bucket) byUrl.set(key, (bucket = { names: new Set(), qualified: new Set(), primary: new Set() }));
     bucket.names.add(s.name);
     if (s.container) bucket.qualified.add(`${s.container}.${s.name}`);
+    if (isPrimarySymbol(s, moduleNames)) bucket.primary.add(s.name);
   }
   for (const e of entries) {
     const bucket = byUrl.get(normalizeSymbolUrl(e.relUrl));
     if (!bucket) continue;
     if (bucket.names.size) e.names = [...bucket.names].join(" ");
     if (bucket.qualified.size) e.qualified = [...bucket.qualified].join(" ");
+    if (bucket.primary.size) e.primary = [...bucket.primary].join(" ");
   }
   return entries;
+}
+
+// The first of the reader-intent tiers (WIP.Search.md, "Reader intent"):
+// a type -- a page of its own -- or a language element, meaning a
+// statement, keyword, operator, attribute or directive outside any
+// package, or a procedure or property of a *module*, such as the Strings
+// module's Left. Class members and enum constants are the lower tiers.
+// eval/search_quality.mjs's `intentTier` states the same rule
+// independently, as the ground truth this is measured against.
+const PRIMARY_TYPE_KINDS = new Set(["class", "module", "interface", "enum", "control", "object", "type", "package"]);
+const PRIMARY_LANGUAGE_KINDS = new Set(["statement", "keyword", "operator", "attribute", "directive"]);
+const MODULE_MEMBER_KINDS = new Set(["function", "property", "sub", "method"]);
+
+function isPrimarySymbol(s, moduleNames) {
+  if (PRIMARY_TYPE_KINDS.has(s.kind)) return true;
+  if (PRIMARY_LANGUAGE_KINDS.has(s.kind)) return s.package == null;
+  return MODULE_MEMBER_KINDS.has(s.kind) && Boolean(s.container) && moduleNames.has(s.container.toLowerCase());
 }
 
 // Per-entry JSON shape matching the upstream Liquid template's output
@@ -279,15 +304,16 @@ export function joinSymbolsToEntries(entries, symbols) {
 // on the returned string -- the outer join with "," handles separation.
 //
 // Consumes a derived entry from `deriveSearchEntries`, optionally
-// carrying `names` / `qualified` from `joinSymbolsToEntries`: content is
-// already sanitised, url is already URL-encoded. `names` and
-// `qualified` are emitted only when non-empty, so an entry with no
+// carrying `names` / `qualified` / `primary` from `joinSymbolsToEntries`:
+// content is already sanitised, url is already URL-encoded. The three
+// are emitted only when non-empty, so an entry with no
 // symbols (most of them -- see WIP.Search.md's "Design" §2) produces the
 // exact same bytes as before the join existed.
 export function renderEntryString(e) {
   let extra = "";
   if (e.names) extra += `    "names": ${JSON.stringify(e.names)},\n`;
   if (e.qualified) extra += `    "qualified": ${JSON.stringify(e.qualified)},\n`;
+  if (e.primary) extra += `    "primary": ${JSON.stringify(e.primary)},\n`;
   return `"${e.i}": {\n` +
     `    "doc": ${JSON.stringify(e.doc)},\n` +
     `    "title": ${JSON.stringify(e.title)},\n` +

@@ -246,7 +246,8 @@ describe("deriveSearchEntries: search_exclude and no-title skips", () => {
 // joinSymbolsToEntries -- the symbol-index join described in
 // WIP.Search.md's "Design" §2: entries whose relUrl matches a symbol's
 // url gain "names" (bare names) and "qualified" ("Container.Name" forms),
-// both space-separated and deduplicated. See builder/tbdocs.mjs's
+// both space-separated and deduplicated, and "primary", the names that are
+// types or language elements ("Reader intent"). See builder/tbdocs.mjs's
 // searchData task for how this runs against the real symbolIndex output.
 describe("joinSymbolsToEntries", () => {
   function symbol({ name, container = null, url }) {
@@ -330,6 +331,35 @@ describe("joinSymbolsToEntries", () => {
     assert.equal(entry.names, "PaintPicture Refresh");
     assert.equal(entry.qualified, "Form.PaintPicture Form.Refresh");
   });
+
+  test("primary holds types and language elements, not class members or enum constants", () => {
+    const entries = [
+      { i: 0, title: "Left", relUrl: "/Strings/Left" },
+      { i: 1, title: "Left", relUrl: "/CheckBox/#left" },
+      { i: 2, title: "BorderStyle", relUrl: "/Enums/BorderStyle" },
+      { i: 3, title: "With", relUrl: "/Core/With" },
+      { i: 4, title: "Implements", relUrl: "/Pkg/Implements" },
+    ];
+    const symbols = [
+      { name: "Strings", kind: "module", package: "VBA", container: null, url: "/Strings/" },
+      { name: "Left", kind: "function", package: "VBA", container: "Strings", url: "/Strings/Left" },
+      { name: "CheckBox", kind: "control", package: "VB", container: null, url: "/CheckBox/" },
+      { name: "Left", kind: "property", package: "VB", container: "CheckBox", url: "/CheckBox/#left" },
+      { name: "BorderStyle", kind: "enum", package: "VB", container: null, url: "/Enums/BorderStyle" },
+      { name: "tbNone", kind: "enumvalue", package: "VB", container: "BorderStyle", url: "/Enums/BorderStyle" },
+      { name: "With", kind: "statement", package: null, container: null, url: "/Core/With" },
+      // A statement that belongs to a package is not a language element.
+      { name: "Implements", kind: "statement", package: "Pkg", container: null, url: "/Pkg/Implements" },
+    ];
+
+    const [left, checkBoxLeft, borderStyle, withEntry, pkgStatement] = joinSymbolsToEntries(entries, symbols);
+    assert.equal(left.primary, "Left");
+    assert.equal(checkBoxLeft.primary, undefined);
+    assert.equal(borderStyle.names, "BorderStyle tbNone");
+    assert.equal(borderStyle.primary, "BorderStyle");
+    assert.equal(withEntry.primary, "With");
+    assert.equal(pkgStatement.primary, undefined);
+  });
 });
 
 describe("renderEntryString: byte stability", () => {
@@ -352,6 +382,33 @@ describe("renderEntryString: byte stability", () => {
       `    "url": "/Widget/",\n` +
       `    \n` +
       `    "relUrl": "/Widget/"\n` +
+      `  }`,
+    );
+  });
+
+  test("an entry with primary renders it after qualified", () => {
+    const entry = {
+      i: 0,
+      doc: "Left",
+      title: "Left",
+      content: "Left body. ",
+      url: "/Strings/Left",
+      relUrl: "/Strings/Left",
+      names: "Left",
+      primary: "Left",
+    };
+
+    assert.equal(
+      renderEntryString(entry),
+      `"0": {\n` +
+      `    "doc": "Left",\n` +
+      `    "title": "Left",\n` +
+      `    "content": "Left body. ",\n` +
+      `    "names": "Left",\n` +
+      `    "primary": "Left",\n` +
+      `    "url": "/Strings/Left",\n` +
+      `    \n` +
+      `    "relUrl": "/Strings/Left"\n` +
       `  }`,
     );
   });
@@ -486,13 +543,15 @@ describe("stop-word and dot-run-split guard: online client, offline client, eval
 });
 
 // Sibling to the guards above, for WIP.Search.md's "Reader intent" changes.
-// The `exact` and `page` fields are covered by the field-list guard; what
-// it can't see is how they are filled and queried. The index side lives in
-// each copy's own lunr builder, so all three must derive `exact` with
-// exactName() and `page` from `doc`. The query side lives in update() (the
-// offline build inherits it) and in the eval replica, so those two must
-// trim tokens, keep `exact` out of the ordinary clauses, add the exact-name
-// clause, and require every word first as a stem with a trailing wildcard.
+// The `exact`, `primary` and `page` fields are covered by the field-list
+// guard; what it can't see is how they are filled and queried. The index
+// side lives in each copy's own lunr builder, so all three must derive
+// `exact` and `primary` with exactName() and `page` from `doc`. The query
+// side lives in update() (the offline build inherits it) and in the eval
+// replica, so those two must write names the same way, share the kind
+// words, trim tokens, keep the name fields out of the ordinary clauses,
+// add the exact-name clause, and require every word first as a stem with a
+// trailing wildcard.
 describe("reader-intent guard: online client, offline client, eval replica", () => {
   const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
   const onlineSrc = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js");
@@ -506,8 +565,36 @@ describe("reader-intent guard: online client, offline client, eval replica", () 
       ["eval/site_search.mjs", evalSrc],
     ]) {
       assert.match(src, /exact:\s*\(docs\[\w+\]\.names \|\| ['"]{2}\)[^\n]*\.map\(exactName\)/, `${label} doesn't fill \`exact\` from names via exactName()`);
+      assert.match(src, /primary:\s*\(docs\[\w+\]\.primary \|\| ['"]{2}\)[^\n]*\.map\(exactName\)/, `${label} doesn't fill \`primary\` via exactName()`);
       assert.match(src, /page:\s*docs\[\w+\]\.doc \|\| ['"]{2}/, `${label} doesn't fill \`page\` from doc`);
     }
+  });
+
+  // exactName() and the kind-word list are compared by what they produce,
+  // not by their text: the online copy is ES5 and the replica is not.
+  function extractExactName(src, label) {
+    const m = src.match(/function exactName\(name\) \{[\s\S]*?\n\}/);
+    assert.ok(m, `${label} has no exactName()`);
+    return new Function(`return (${m[0]});`)();
+  }
+  function extractKindWords(src, label) {
+    const m = src.match(/KIND_WORDS = (\[[^\]]*\])/);
+    assert.ok(m, `${label} has no KIND_WORDS`);
+    return JSON.parse(m[1].replaceAll("'", '"'));
+  }
+
+  test("the online client and the eval replica write names and kind words the same way", () => {
+    const online = extractExactName(onlineSrc, "just-the-docs.js");
+    const replica = extractExactName(evalSrc, "eval/site_search.mjs");
+    for (const n of ["Node", "Time$", "#If", "<>", "<<=", "Form.PaintPicture", "vb_Name", "Straße"]) {
+      assert.equal(online(n), replica(n), `exactName(${JSON.stringify(n)}) differs`);
+    }
+    // lunr's trimmer strips non-word characters from both ends of a token,
+    // so a written name must start and end with a word character.
+    for (const n of ["#If", "<>", "Time$", "*"]) assert.match(online(n), /^\w.*\w$/, `exactName(${JSON.stringify(n)}) would be trimmed`);
+    assert.notEqual(online("#If"), online("If"));
+    assert.notEqual(online("Time$"), online("Time"));
+    assert.deepEqual(extractKindWords(evalSrc, "eval/site_search.mjs"), extractKindWords(onlineSrc, "just-the-docs.js"));
   });
 
   test("the online client and the eval replica build the same query", () => {
@@ -515,10 +602,9 @@ describe("reader-intent guard: online client, offline client, eval replica", () 
       ["just-the-docs.js", onlineSrc],
       ["eval/site_search.mjs", evalSrc],
     ]) {
-      assert.match(src, /function exactName\(name\)\s*\{\s*return name\.toLowerCase\(\)\.replace\(\/\\\$\$\/, ['"]{2}\) \+ ['"]_['"];/, `${label}'s exactName() differs`);
       assert.match(src, /lunr\.trimmer\(/, `${label} doesn't trim query tokens`);
-      assert.match(src, /\[\s*['"]title['"],\s*['"]content['"],\s*['"]names['"],\s*['"]qualified['"],\s*['"]page['"],\s*['"]relUrl['"]\s*\]/, `${label} has no field list without \`exact\` for the ordinary clauses`);
-      assert.match(src, /exactName\(words\[0\]\),\s*\{\s*fields:\s*\[\s*['"]exact['"]\s*\]\s*\}/, `${label} has no exact-name clause`);
+      assert.match(src, /\[\s*['"]title['"],\s*['"]content['"],\s*['"]names['"],\s*['"]qualified['"],\s*['"]page['"],\s*['"]relUrl['"]\s*\]/, `${label} has no field list without the name fields for the ordinary clauses`);
+      assert.match(src, /exactName\(name\),\s*\{\s*fields:\s*\[\s*['"]exact['"],\s*['"]primary['"]\s*\]\s*\}/, `${label} has no exact-name clause`);
       assert.match(src, /lunr\.stemmer\(token\.clone\(\)\)\.toString\(\)/, `${label} doesn't require words as stems`);
       assert.match(src, /presence:\s*lunr\.Query\.presence\.REQUIRED/, `${label} doesn't require every word first`);
       assert.match(src, /usePipeline:\s*false/, `${label}'s required stems would be stemmed again`);
