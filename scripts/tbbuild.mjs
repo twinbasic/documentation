@@ -134,8 +134,12 @@ if (!IDE) {
 
 let ide;
 let tidy = null;
+// Tidies whether or not an IDE was started, as tbrun does: `ide` is unset when
+// the launch failed, and shutdownIde then has nothing to end. A failed launch
+// has written nothing to the registry so far, since tb-launch.ps1 never lets
+// the IDE run on a path that prints no pid, but the tidy does not rely on that.
 function shutdown() {
-  if (!ide || keep) return;
+  if (keep) return;
   shutdownIde(ide);
   finishTidy(tidy);
 }

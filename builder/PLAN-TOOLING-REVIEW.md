@@ -908,6 +908,21 @@ corrected; the code is safe as it stands.
 **Verify.** `tbbuild` on a probe, and `tbbuild` given a missing `--ide`, both leave the
 registry as found (harness runs).
 
+**Landed.** `shutdown` runs without an IDE only after a `launchIde` that throws, as it does
+when the DevTools port stays taken or a hidden launch prints no pid. It now returns early only
+under `--keep`: `shutdownIde` does nothing without an IDE, as `tbrun` already relies on, and
+`finishTidy` writes only where a value differs. The kit's `c25-reglog.mjs`, preloaded, logs
+each registry request a run makes and what each write request changed, and `c25-run.mjs`
+brackets a run with `reg-snap.mjs`'s read-only snapshots. With `--ide C:\nope\twinBASIC.exe`,
+HEAD exited 2 after 1.4 s having made `startTidy`'s three reads and no other request; after,
+it exited 2 after 2.3 s with `finishTidy` run as well: `restoreProjects` wrote 0 values,
+`restoreKeys` changed 0, and the build targets were read and left alone. No IDE started, so
+the snapshot was identical around both. `tbbuild` on a probe (the `console` template,
+packed): exit 0 after 10.7 s, `--- 0 error(s), 0 warning(s), 0 hint(s), 0 info`, with 1
+project-state and 1 recent-list value put back, the snapshot identical before and after, and
+no IDE or compiler process left. `tb-registry.mjs`'s comment names only `tb-launch.ps1` as
+passed the same way. `compare_trees` identical. Lint clean.
+
 ### C25a — `scripts: tbrun reports a codegen failure that Debug.Cls erased`
 
 **Found while verifying C16; the owner chose this fix on 2026-09-25** (see Found while

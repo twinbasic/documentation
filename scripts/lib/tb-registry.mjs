@@ -46,8 +46,8 @@
 // deleted by a name that no longer matches it. The request goes in on stdin as
 // UTF-8 JSON, because a project's saved state can reach 34 KB and an
 // environment variable stops at 32 K characters; the answer comes back on
-// stdout the same way. Like tb-launch.ps1 and tbrun's process snapshot, it is
-// passed with -EncodedCommand, so no execution policy is involved.
+// stdout the same way. Like tb-launch.ps1, it is passed with -EncodedCommand
+// rather than run as a file, so no execution policy is involved.
 
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
