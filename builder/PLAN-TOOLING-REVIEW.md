@@ -947,6 +947,26 @@ before `exit 0` with `before` as its output, after `exit 2` naming the codegen l
 its output; and a clean probe that calls `Debug.Cls` twice `exit 0`, since a saved segment
 with no failure line in it is not a failure.
 
+### C25b — `scripts: tbbuild refuses a named IDE that is not there`
+
+**Found while implementing C25; the owner asked on 2026-09-26 for it to be fixed before
+C25a**, as were C25c and C25d (see Found while implementing). Of the six tools that call
+`findIde`, `tbbuild` alone launched a named IDE without checking that it exists. `tbrun`,
+`addin_test` and `build_package_api` refuse one with exit 2, `census_attributes` looks for
+its `packages` folder, and `check_examples` for the compiler beside it. A wrong `--ide` or
+`TB_IDE` was found out only by the launch, which reported it in CLIXML (C25c) or, under
+`--show`, crashed (C25d).
+
+**Change.** The check that refuses a missing IDE also refuses a named one that is not there,
+before `startTidy`, naming the path: `no twinBASIC IDE at <path>: pass --ide ...`, exit 2.
+
+**Landed.** With `--ide C:\nope\twinBASIC.exe`, and with `TB_IDE` naming the same path and no
+`--ide`, `tbbuild` exits 2 after 0.1 s with that line and makes no registry request (the kit's
+`c25-run.mjs`); at C25's commit it exited 2 after 2.3 s, with the launch's CLIXML, after a
+full tidy. `tbbuild` on the probe, with the IDE found on the Desktop: exit 0 after 13.8 s,
+`--- 0 error(s), 0 warning(s), 0 hint(s), 0 info`, the snapshot identical before and after.
+`compare_trees` identical. Lint clean.
+
 ### C26 — `wisdom: parseStaging refuses a chunk it cannot place`
 
 **L3-3 (R1)**, the half that needs no shared module. `parseStaging` (`merger.mjs:114-129`)
@@ -2193,6 +2213,12 @@ Defects the review did not have, found by building something this plan asks for.
   page as C22i's `body: terminated`. The crawl starts its next batch of pages only when every
   page of the current one is done, so the whole crawl waited. Fixed in `scripts:
   crawl_check's --timeout covers a page's body`.
+
+- **`tbbuild` launches a named IDE that is not there**, found while implementing C25.
+  `findIde` returns a path from `--ide` or `TB_IDE` unchecked, and `tbbuild` alone of its six
+  callers went on to launch it: the hidden launch failed inside `tb-launch.ps1`, with a
+  message in PowerShell's CLIXML, and `--show` crashed. Fixed in `scripts: tbbuild refuses a
+  named IDE that is not there`.
 
 ## Open questions
 

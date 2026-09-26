@@ -126,9 +126,11 @@ if (proj && !existsSync(proj)) {
   console.error(`no such project: ${proj}`);
   process.exit(2);
 }
-if (!IDE) {
-  console.error("no twinBASIC IDE found: pass --ide <twinBASIC.exe>, set TB_IDE, " +
-    "or unpack a twinBASIC_IDE_BETA_<n> folder on your Desktop");
+// A named IDE that is not there is refused here, naming the path, as tbrun and
+// addin_test refuse it, rather than left for the launch to fail on.
+if (!IDE || !existsSync(IDE)) {
+  console.error((IDE ? `no twinBASIC IDE at ${IDE}: ` : "no twinBASIC IDE found: ") +
+    "pass --ide <twinBASIC.exe>, set TB_IDE, or unpack a twinBASIC_IDE_BETA_<n> folder on your Desktop");
   process.exit(2);
 }
 
