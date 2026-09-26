@@ -4,7 +4,8 @@
 // and verifies each link responds 2xx (HEAD for cross-origin, GET for
 // same-origin since we need the HTML anyway). A request that fails before
 // any response arrives is tried twice more before its link is reported; a
-// page whose body breaks off while it is read is reported at once.
+// page whose body breaks off, or is still arriving when --timeout runs out,
+// is reported at once.
 //
 // Usage:
 //   node scripts/crawl_check.mjs <start-url> [--concurrency N] [--timeout MS]
@@ -67,21 +68,22 @@ function isCrawlable(url) {
 
 // A request that fails before any response arrives, reset or timed out, is
 // tried twice more: a server that closes an idle keep-alive connection just
-// as fetch reuses it resets the request.
+// as fetch reuses it resets the request. The timeout runs on through the
+// body, so it also stops a body that stalls after its headers.
 const RETRIES = 2;
 
 async function fetchWithRetry(url, options) {
   for (let attempt = 0; ; attempt++) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      return await fetch(url, { ...options, signal: controller.signal, redirect: "follow" });
+      return await fetch(url, { ...options, signal: AbortSignal.timeout(timeoutMs), redirect: "follow" });
     } catch (e) {
       if (attempt === RETRIES) throw e;
-    } finally {
-      clearTimeout(timer);
     }
   }
+}
+
+function errorText(e) {
+  return e.name === "TimeoutError" ? "timeout" : e.message;
 }
 
 // A response body left unread keeps its connection busy, and the process
@@ -106,7 +108,7 @@ async function checkUrl(url) {
       redirected: res.redirected ? res.url : null,
     };
   } catch (e) {
-    result = { ok: false, status: 0, error: e.name === "AbortError" ? "timeout" : e.message };
+    result = { ok: false, status: 0, error: errorText(e) };
   }
   linkStatus.set(url, result);
   return result;
@@ -132,7 +134,7 @@ async function crawlOne(url) {
   try {
     res = await fetchWithRetry(url, { method: "GET" });
   } catch (e) {
-    linkStatus.set(url, { ok: false, status: 0, error: e.name === "AbortError" ? "timeout" : e.message });
+    linkStatus.set(url, { ok: false, status: 0, error: errorText(e) });
     return;
   }
   linkStatus.set(url, {
@@ -146,13 +148,13 @@ async function crawlOne(url) {
     return;
   }
 
-  // A body that breaks off is not retried, since the server has answered,
-  // and not parsed: the page is reported broken instead.
+  // A body that breaks off or times out is not retried, since the server
+  // has answered, and not parsed: the page is reported broken instead.
   let html;
   try {
     html = await res.text();
   } catch (e) {
-    linkStatus.set(url, { ok: false, status: res.status, error: `body: ${e.message}` });
+    linkStatus.set(url, { ok: false, status: res.status, error: `body: ${errorText(e)}` });
     return;
   }
   const { links, ids } = extractFromHtml(html);

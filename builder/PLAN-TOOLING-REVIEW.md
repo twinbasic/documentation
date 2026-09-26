@@ -803,6 +803,33 @@ and `/r3`, `/h3` and `/slow` reported. The C22 fixture through the kit's static 
 runs of three exit 1 with 28 broken. `compare_trees`: Tools.html online and offline, the
 search data and `book.html`, nothing else. Lint clean.
 
+### C22j — `scripts: crawl_check's --timeout covers a page's body`
+
+**Found while implementing C22i; the owner asked on 2026-09-26 for it to be fixed before
+C23** (see Found while implementing). `fetchWithRetry` cleared its timer once `fetch`
+resolved, which is when the headers arrive, so `--timeout` did not bound the read of a page's
+body, and a body that stalled after its headers held the crawl until undici gave up.
+
+**Change.** Each attempt passes `AbortSignal.timeout(timeoutMs)` as its signal, so the timeout
+runs on through the body. Such a signal fails with a `TimeoutError`, not an `AbortError`, so
+the three places that record an error take its text from one function, `errorText`:
+`timeout` for a timeout, the error's message otherwise. A body still arriving when the time
+runs out is reported `body: timeout`, without a retry, as C22i decided for a body that breaks
+off. The header, the retry comment and Tools.md's paragraph say so.
+
+**Landed.** The kit's `c22i-stall.mjs` serves `/`, linking `/stall` and `/ok`; `/stall`
+answers 200 `text/html` with a `Content-Length` of 5000, sends a link to `/missing`, then
+sends nothing and keeps the socket open. With `--timeout 1000`, C22i's commit exited 1 after
+305.6 s, reporting `[ERR  body: terminated]` for `/stall`; after, it exits 1 after 1.2 s,
+reporting `[ERR  body: timeout]`. Both requested each of `/`, `/stall` and `/ok` once and
+`/missing` never. `c22i-body.mjs` still reports `body: terminated` for `/cut`;
+`c22d-retry.mjs` gives C22d's result unchanged, `/slow` reported as `timeout`; and the C22
+fixture gives three runs of three exit 1 with 28 broken. A crawl of the built site through
+the kit's static server: exit 0, 1,247 pages crawled, 3,228 unique links, 0 broken and 0
+missing anchors in 88.8 s, so the default 15 s, which now covers each body, stopped no page.
+`compare_trees`: Tools.html online and offline, the search data and `book.html`, nothing
+else. Lint clean.
+
 ### C23 — `scripts: check_examples restores the registry after a spawn failure`
 
 **L3-2 (R2)**, with V4's note that `check_examples.mjs` has no process-level handler at all.
@@ -2098,6 +2125,16 @@ Defects the review did not have, found by building something this plan asks for.
   `Content-Length` of 5000, sends a link to a missing page and closes the socket: the crawl
   exits 0 with nothing broken, and the missing page is never requested. Fixed in `scripts:
   crawl_check reports a page whose body cannot be read`.
+
+- **`crawl_check.mjs`'s `--timeout` stops at a page's headers**, found while implementing
+  C22i. `fetchWithRetry` cleared its timer in its `finally` (`:82`) once `fetch` resolved,
+  which is when the headers arrive, so nothing of the crawl's own bounded the read of a body.
+  The kit's `c22i-stall.mjs` serves a page that answers 200 with a `Content-Length` of 5000,
+  sends part of it and then nothing, and keeps the socket open: with `--timeout 1000` the
+  crawl waited 305.6 s, about undici's default body timeout of 300 s, before it reported the
+  page as C22i's `body: terminated`. The crawl starts its next batch of pages only when every
+  page of the current one is done, so the whole crawl waited. Fixed in `scripts:
+  crawl_check's --timeout covers a page's body`.
 
 ## Open questions
 
