@@ -132,6 +132,38 @@ pass through untouched, so the offline build inherits this fix for free.
 [`eval/site_search.mjs`](../../../eval/site_search.mjs) mirrors the same
 filter, so the replica returns what the site does.
 
+**Two extra fields joined in from the symbol index.** `initSearch()` adds
+`this.field('names', { boost: 100 })` and `this.field('qualified', { boost:
+50 })`, and passes `docs[i].names || ''` / `docs[i].qualified || ''` in the
+matching `this.add({...})`. The values come from `builder/search.mjs`'s
+`joinSymbolsToEntries`, which attaches bare symbol names (`names`) and their
+`Container.Name` forms (`qualified`) to each `search-data.json` entry at
+build time -- see [`../../../WIP.Search.md`](../../../WIP.Search.md)'s
+"Design" §2 for why they are two fields, not one. `offline.mjs`'s
+`JTD_INITSEARCH_FN_REPLACEMENT` carries the same two fields at the same
+boosts, since it builds its own lunr index rather than inheriting
+`initSearch()`.
+
+**Qualified names ("Form.PaintPicture") missed their target because the
+tokenizer never splits on `.`.** `update()`'s smart dot split keeps each
+query token whole (so `Debug.Print` still matches its exact entry first)
+and, where a `.` follows a run of word characters holding a letter or
+underscore and precedes a letter or underscore, also adds the parts as
+extra terms with the same boost and trailing wildcard. Such dots are
+marked with a NUL by `/([A-Za-z_]\w*)\.(?=[A-Za-z_])/g` and split there. A
+lookbehind would say it more directly, but Safari before 16.4 can't parse
+one, and the SyntaxError would disable this whole file, navigation
+included. Parts of one character are dropped, which
+keeps `1.0`, `3.9`, `e.g.` and `i.e.` from adding noise. The fuzzy fallback
+reuses the same expanded token list. `update()` is not one of the two
+functions the offline AST patcher replaces, so the offline build inherits
+this for free, same as the asterisk guard above.
+[`eval/site_search.mjs`](../../../eval/site_search.mjs) mirrors the split
+exactly. `test/search.test.mjs` extracts the `names`/`qualified` field and
+boost list from this file, `offline.mjs`, and `eval/site_search.mjs` and
+asserts all three agree, so the two client copies (and the eval replica)
+cannot drift apart silently.
+
 ## Licence
 
 just-the-docs is MIT-licensed, and `LICENSE.txt` beside this file is the
@@ -216,10 +248,14 @@ Bumping the just-the-docs version is a deliberate operation. Procedure:
    by the axe scan, and the three focus rings by nothing at all, since axe
    checks that a control is reachable and named, not that its ring is visible.
 
-5. Re-apply the copy-button patch, the edit-distance cap, and the asterisk
-   guard in `assets/js/just-the-docs.js` (see above). Diffing against the
+5. Re-apply the copy-button patch, the edit-distance cap, the asterisk
+   guard, the `names`/`qualified` fields, and the smart dot split in
+   `assets/js/just-the-docs.js` (see above). Diffing against the
    previous vendored copy via `git diff` is the easiest way to spot what
-   needs to come back.
+   needs to come back. Then re-check `offline.mjs`'s
+   `JTD_INITSEARCH_FN_REPLACEMENT` still carries the same two fields at the
+   same boosts, and run `test/search.test.mjs`'s field-list drift guard --
+   it fails loudly if the re-vendor left the two out of step.
 
 6. Inspect the entry point at `docs/assets/css/just-the-docs-combined.scss`
    --- if the upstream `_includes/css/just-the-docs.scss.liquid` Liquid

@@ -15,7 +15,12 @@
 
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { deriveSearchEntries } from "../builder/search.mjs";
+import { fileURLToPath } from "node:url";
+import fs from "node:fs";
+import path from "node:path";
+import { deriveSearchEntries, joinSymbolsToEntries, renderEntryString } from "../builder/search.mjs";
+
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 // A minimal tbdocs page, holding exactly the fields deriveSearchEntries
 // and extractSections read: frontmatter.title (+ optional
@@ -235,5 +240,191 @@ describe("deriveSearchEntries: search_exclude and no-title skips", () => {
       site({ heading_level: 2 }),
     );
     assert.deepEqual(entries, []);
+  });
+});
+
+// joinSymbolsToEntries -- the symbol-index join described in
+// WIP.Search.md's "Design" §2: entries whose relUrl matches a symbol's
+// url gain "names" (bare names) and "qualified" ("Container.Name" forms),
+// both space-separated and deduplicated. See builder/tbdocs.mjs's
+// searchData task for how this runs against the real symbolIndex output.
+describe("joinSymbolsToEntries", () => {
+  function symbol({ name, container = null, url }) {
+    return { name, package: null, container, kind: "method", url };
+  }
+
+  test("a matching symbol attaches names and qualified", () => {
+    const entries = [{ i: 0, title: "PaintPicture", relUrl: "/Form/#paintpicture" }];
+    const symbols = [symbol({ name: "PaintPicture", container: "Form", url: "/Form/#paintpicture" })];
+
+    const [entry] = joinSymbolsToEntries(entries, symbols);
+    assert.equal(entry.names, "PaintPicture");
+    assert.equal(entry.qualified, "Form.PaintPicture");
+  });
+
+  test("a symbol with no container contributes to names but not qualified", () => {
+    const entries = [{ i: 0, title: "Do...Loop", relUrl: "/Core/Do/" }];
+    const symbols = [symbol({ name: "Do", container: null, url: "/Core/Do/" })];
+
+    const [entry] = joinSymbolsToEntries(entries, symbols);
+    assert.equal(entry.names, "Do");
+    assert.equal(entry.qualified, undefined);
+  });
+
+  test("URL normalisation: a trailing /index or /index.html, then the trailing slash, joins the same as a bare permalink", () => {
+    const variants = ["/Widget/", "/Widget", "/Widget/index", "/Widget/index.html"];
+    for (const relUrl of variants) {
+      const entries = [{ i: 0, title: "Widget", relUrl }];
+      const symbols = [symbol({ name: "Widget", container: null, url: "/Widget/index.html" })];
+      const [entry] = joinSymbolsToEntries(entries, symbols);
+      assert.equal(entry.names, "Widget", `relUrl ${relUrl} should join`);
+    }
+  });
+
+  test("a #fragment is compared exactly -- normalising the path around it does not blur two headings on the same page", () => {
+    const entries = [
+      { i: 0, title: "PaintPicture", relUrl: "/Form/#paintpicture" },
+      { i: 1, title: "Refresh", relUrl: "/Form/#refresh" },
+    ];
+    const symbols = [symbol({ name: "PaintPicture", container: "Form", url: "/Form/index.html#paintpicture" })];
+
+    const [paintPicture, refresh] = joinSymbolsToEntries(entries, symbols);
+    assert.equal(paintPicture.names, "PaintPicture");
+    assert.equal(refresh.names, undefined);
+  });
+
+  test("no matching symbol leaves the entry untouched", () => {
+    const entries = [{ i: 0, title: "Unrelated", relUrl: "/Unrelated/" }];
+    const symbols = [symbol({ name: "PaintPicture", container: "Form", url: "/Form/#paintpicture" })];
+
+    const [entry] = joinSymbolsToEntries(entries, symbols);
+    assert.equal(entry.names, undefined);
+    assert.equal(entry.qualified, undefined);
+  });
+
+  test("symbols documented on the same URL are deduplicated by name and by qualified form", () => {
+    // PaintPicture is a member of six classes, but only Form and
+    // PictureBox's URLs are exercised here; both symbols land on the
+    // same URL twice (a same-named override, or the join simply running
+    // twice over identical input) and must not repeat in the joined
+    // string.
+    const entries = [{ i: 0, title: "PaintPicture", relUrl: "/Form/#paintpicture" }];
+    const symbols = [
+      symbol({ name: "PaintPicture", container: "Form", url: "/Form/#paintpicture" }),
+      symbol({ name: "PaintPicture", container: "Form", url: "/Form/#paintpicture" }),
+    ];
+
+    const [entry] = joinSymbolsToEntries(entries, symbols);
+    assert.equal(entry.names, "PaintPicture");
+    assert.equal(entry.qualified, "Form.PaintPicture");
+  });
+
+  test("multiple symbols on one URL join into one space-separated field each", () => {
+    const entries = [{ i: 0, title: "Methods", relUrl: "/Form/#methods" }];
+    const symbols = [
+      symbol({ name: "PaintPicture", container: "Form", url: "/Form/#methods" }),
+      symbol({ name: "Refresh", container: "Form", url: "/Form/#methods" }),
+    ];
+
+    const [entry] = joinSymbolsToEntries(entries, symbols);
+    assert.equal(entry.names, "PaintPicture Refresh");
+    assert.equal(entry.qualified, "Form.PaintPicture Form.Refresh");
+  });
+});
+
+describe("renderEntryString: byte stability", () => {
+  test("an entry with no names/qualified renders identically to before the join existed", () => {
+    const entry = {
+      i: 0,
+      doc: "Widget",
+      title: "Widget",
+      content: "Widget body. ",
+      url: "/Widget/",
+      relUrl: "/Widget/",
+    };
+
+    assert.equal(
+      renderEntryString(entry),
+      `"0": {\n` +
+      `    "doc": "Widget",\n` +
+      `    "title": "Widget",\n` +
+      `    "content": "Widget body. ",\n` +
+      `    "url": "/Widget/",\n` +
+      `    \n` +
+      `    "relUrl": "/Widget/"\n` +
+      `  }`,
+    );
+  });
+
+  test("an entry with names/qualified inserts both fields right after content", () => {
+    const entry = {
+      i: 0,
+      doc: "Form",
+      title: "PaintPicture",
+      content: "Paint body. ",
+      url: "/Form/%23paintpicture",
+      relUrl: "/Form/#paintpicture",
+      names: "PaintPicture",
+      qualified: "Form.PaintPicture",
+    };
+
+    assert.equal(
+      renderEntryString(entry),
+      `"0": {\n` +
+      `    "doc": "Form",\n` +
+      `    "title": "PaintPicture",\n` +
+      `    "content": "Paint body. ",\n` +
+      `    "names": "PaintPicture",\n` +
+      `    "qualified": "Form.PaintPicture",\n` +
+      `    "url": "/Form/%23paintpicture",\n` +
+      `    \n` +
+      `    "relUrl": "/Form/#paintpicture"\n` +
+      `  }`,
+    );
+  });
+});
+
+// The field-list drift guard for WIP.Search.md's "Design" §4: the online
+// client (builder/vendor/just-the-docs/assets/js/just-the-docs.js), the
+// offline client's own copy (JTD_INITSEARCH_FN_REPLACEMENT in
+// builder/offline.mjs) and the eval replica (eval/site_search.mjs) each
+// build their own lunr index and so each declare the field list by hand.
+// Nothing at build time compares them -- this test is what stands in for
+// that, extracting each one's {field: boost} pairs by regex and asserting
+// all three agree. A change to one field list without the others is
+// exactly the drift this exists to catch.
+describe("field list drift guard: online client, offline client, eval replica", () => {
+  // Matches `this.field('name', { boost: N })` (also bare `this.field('name')`,
+  // which has no explicit boost -- none of the three sources currently do
+  // that, but a bare field is still a field the other two must declare).
+  const FIELD_RE = /this\.field\(\s*['"]([\w]+)['"]\s*(?:,\s*\{\s*boost:\s*(\d+)\s*\})?\s*\)/g;
+
+  function extractFields(src) {
+    const fields = {};
+    for (const m of src.matchAll(FIELD_RE)) {
+      fields[m[1]] = m[2] === undefined ? null : Number(m[2]);
+    }
+    return fields;
+  }
+
+  test("just-the-docs.js, offline.mjs and site_search.mjs declare the same fields at the same boosts", () => {
+    const onlineSrc = fs.readFileSync(
+      path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/just-the-docs.js"),
+      "utf8",
+    );
+    const offlineSrc = fs.readFileSync(path.join(REPO_ROOT, "builder/offline.mjs"), "utf8");
+    const evalSrc = fs.readFileSync(path.join(REPO_ROOT, "eval/site_search.mjs"), "utf8");
+
+    const online = extractFields(onlineSrc);
+    // offline.mjs has two initSearch-shaped functions in view once you count
+    // comments mentioning `this.field(...)`: only JTD_INITSEARCH_FN_REPLACEMENT
+    // actually calls it, so extracting over the whole file is safe -- there is
+    // exactly one declaration site.
+    const offline = extractFields(offlineSrc);
+    const evalReplica = extractFields(evalSrc);
+
+    assert.ok(Object.keys(online).length >= 4, "sanity: expected at least title/content/names/qualified");
+    assert.deepEqual(offline, online, "offline.mjs's field list has drifted from just-the-docs.js");
+    assert.deepEqual(evalReplica, online, "eval/site_search.mjs's field list has drifted from just-the-docs.js");
   });
 });

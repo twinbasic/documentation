@@ -104,15 +104,27 @@ function initSearch() {
         this.ref('id');
         this.field('title', { boost: 200 });
         this.field('content', { boost: 2 });
+        // Patched: two extra fields joined in at build time from the symbol
+        // index (builder/search.mjs's joinSymbolsToEntries) -- bare names
+        // ("PaintPicture") and their qualified "Container.Name" forms
+        // ("Form.PaintPicture"). Two fields, not one, because BM25 discounts
+        // a match inside a long field, and the qualified forms are longer;
+        // splitting them keeps the short bare names scoring well on their
+        // own. See builder/vendor/just-the-docs/README.md and
+        // WIP.Search.md's "Design" §2.
+        this.field('names', { boost: 100 });
+        this.field('qualified', { boost: 50 });
         this.field('relUrl');
         this.metadataWhitelist = ['position']
 
         for (var i in docs) {
-          
+
           this.add({
             id: i,
             title: docs[i].title,
             content: docs[i].content,
+            names: docs[i].names || '',
+            qualified: docs[i].qualified || '',
             relUrl: docs[i].relUrl
           });
         }
@@ -182,6 +194,35 @@ function searchLoaded(index, docs) {
     var queryTokens = lunr.tokenizer(input).filter(function(token) {
       return !/^\*+$/.test(token.str);
     });
+
+    // Patched: smart dot split. A qualified name like "Form.PaintPicture"
+    // tokenises as the single token "form.paintpicture", which almost never
+    // occurs verbatim in the index, so a qualified-name search used to miss
+    // its target 99.6% of the time. Each token is kept whole -- so
+    // "Debug.Print" still matches its own entry first -- and, where a "."
+    // sits between identifier characters on both sides, also split into its
+    // parts as extra terms. Parts of one character are dropped, which is
+    // what keeps "1.0", "3.9", "e.g." and "i.e." from adding noise: none of
+    // those leave a part longer than one character. A split dot is one whose
+    // run of word characters before it holds a letter or underscore; it is
+    // marked with a NUL and split there, rather than found with a
+    // lookbehind, because Safari before 16.4 cannot parse a lookbehind and
+    // the SyntaxError would take this whole file down with it. See
+    // builder/vendor/just-the-docs/README.md and WIP.Search.md's "Design" §3.
+    var DOT_SPLIT = /([A-Za-z_]\w*)\.(?=[A-Za-z_])/g;
+    var allTokens = [];
+    queryTokens.forEach(function(token) {
+      allTokens.push(token);
+      var marked = token.str.replace(DOT_SPLIT, '$1\u0000');
+      if (marked !== token.str) {
+        marked.split('\u0000').forEach(function(part) {
+          if (part.length > 1) {
+            allTokens.push(token.clone(function() { return part; }));
+          }
+        });
+      }
+    });
+    queryTokens = allTokens;
 
     var results = queryTokens.length > 0 ? index.query(function (query) {
       query.term(queryTokens, {

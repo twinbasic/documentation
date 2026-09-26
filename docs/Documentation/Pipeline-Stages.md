@@ -409,21 +409,21 @@ Calls `writePhase(state.pages, state.staticFiles, { destRoot, dryRun, generatedA
 ### `searchData` (main)
 
 ```js
-searchData.expected = ["renderJoin", "prepDest"]
+searchData.expected = ["renderJoin", "prepDest", "symbolIndex"]
 ```
 
-Calls `writeSearchDataFromChunks(state.searchChunks, destRoot)` from `search.mjs`. Flattens the per-chunk entry arrays, renumbers the global `i` index sequentially, writes `assets/js/search-data.json`. Returns `{ entries, json }`. The heavy work (heading split, content sanitisation, URL encoding) ran on the workers; this task only concatenates.
+Calls `writeSearchDataFromChunks(state.searchChunks, destRoot, symbolIndex.symbols)` from `search.mjs`. Flattens the per-chunk entry arrays, joins `symbolIndex`'s symbols onto the matching entries by URL (`joinSymbolsToEntries`, adding the `names` / `qualified` fields -- see `WIP.Search.md`'s "Design" §2), renumbers the global `i` index sequentially, and writes `assets/js/search-data.json`. Returns `{ entries, json }`. The heavy work (heading split, content sanitisation, URL encoding) ran on the workers; this task joins and concatenates. The new dependency on `symbolIndex` is why: the join needs its `symbols` array, and both tasks already ran on main after `renderJoin`, so ordering them costs nothing extra.
 
 ### `symbolIndex` (main)
 
 ```js
 symbolIndex.expected = ["renderJoin", "prepDest"]
-symbolIndex.execute() → { entries, urls, gaps, unplaced }
+symbolIndex.execute() → { entries, urls, gaps, unplaced, symbols }
 ```
 
 Writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index). Reads `builder/package-api.json` --- the build fails, naming `scripts/build_package_api.mjs`, if it is missing --- then calls `symbolPages(state.pages)`, `deriveSymbolIndex({ pages, api })` and `serializeSymbolIndex(...)` from `symbols.mjs`. `renderJoin` is the dependency that matters: an entry's anchor is the id the render gave its heading, read out of `renderedContent`, never computed a second time. ~50 ms over the reference's pages. With `--symbol-gaps <path>` it also writes `reportableGaps(...)` there as JSON.
 
-`urls` is every distinct URL in the index. `runBuild` hands it to `checkSymbolBaseline` from `symbol-baseline.mjs` after the check report, beside the page-count guard; `unplaced` names the package pages that gave no entry, which the summary prints. `checkReport` waits for this task, since `tB/symbols.json` is in the online tree's index and `--check-audit-index` must not look for it early.
+`urls` is every distinct URL in the index. `runBuild` hands it to `checkSymbolBaseline` from `symbol-baseline.mjs` after the check report, beside the page-count guard; `unplaced` names the package pages that gave no entry, which the summary prints. `checkReport` waits for this task, since `tB/symbols.json` is in the online tree's index and `--check-audit-index` must not look for it early. `symbols` -- the same array `deriveSymbolIndex` returned, each `{ name, container, url, ... }` -- passes through to `searchData`, which is the only other consumer; it is not written anywhere itself (that is `tB/symbols.json`, above).
 
 ### `writeAux` (main)
 
@@ -793,7 +793,8 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `writeSearchDataFromChunks` | `(searchChunks, destRoot) → Promise<{ entries, json }>` | Per-chunk consolidator. Flattens, renumbers global `i`, writes `assets/js/search-data.json`. Used by the `searchData` task. |
+| `writeSearchDataFromChunks` | `(searchChunks, destRoot, symbols) → Promise<{ entries, json }>` | Per-chunk consolidator. Flattens, joins `symbols` onto the matching entries by URL (`joinSymbolsToEntries`), renumbers global `i`, writes `assets/js/search-data.json`. Used by the `searchData` task. |
+| `joinSymbolsToEntries` | `(entries, symbols) → entries` | Attaches `names` / `qualified` to each entry whose `relUrl` matches a symbol's `url`, after normalising both (strip a trailing `/index` or `/index.html`, then a trailing slash; the `#fragment`, if any, is compared as-is). Mutates and returns `entries`. |
 | `deriveSearchEntries` | `(pages, site) → object[]` | Pure compute. One entry per heading-bounded section of each titled page. Each entry: `{ i, doc, title, content, url, relUrl, sourcePage }`. Called by render workers; the worker drops `sourcePage` and chunk-local `i` from the returned objects before posting back. |
 | `renderEntryString` | `(entry) → string` | Per-entry JSON shape matching the upstream template output byte-for-byte. |
 | `searchIncludes` | `(page) → boolean` | The opt-out predicate: a page is indexed when it has a `title` and does not set `search_exclude: true`. Exported so `linkJoin` exempts the same pages the generator skipped. |

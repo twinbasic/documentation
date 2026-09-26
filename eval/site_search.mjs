@@ -62,15 +62,30 @@ export function loadLunr(lunrPath) {
   return lunr;
 }
 
+// The two symbol-index fields (see builder/search.mjs's
+// joinSymbolsToEntries and WIP.Search.md's "Design" §2), at the same
+// boosts as both patched copies of just-the-docs.js
+// (builder/vendor/just-the-docs/assets/js/just-the-docs.js and
+// builder/offline.mjs's JTD_INITSEARCH_FN_REPLACEMENT). test/search.test.mjs
+// checks all three field lists agree.
 export function buildIndex(lunr, docs) {
   return lunr(function () {
     this.ref("id");
     this.field("title", { boost: 200 });
     this.field("content", { boost: 2 });
+    this.field("names", { boost: 100 });
+    this.field("qualified", { boost: 50 });
     this.field("relUrl");
     this.metadataWhitelist = ["position"];
     for (const id in docs) {
-      this.add({ id, title: docs[id].title, content: docs[id].content, relUrl: docs[id].relUrl });
+      this.add({
+        id,
+        title: docs[id].title,
+        content: docs[id].content,
+        names: docs[id].names || "",
+        qualified: docs[id].qualified || "",
+        relUrl: docs[id].relUrl,
+      });
     }
   });
 }
@@ -92,11 +107,30 @@ export function load(site) {
   return { lunr, docs, index };
 }
 
+// Matches just-the-docs.js's smart dot split exactly (see that file and
+// WIP.Search.md's "Design" §3): a token is kept whole, and where a `.`
+// sits between identifier characters on both sides it is also split into
+// parts, dropping parts of one character, so `Debug.Print` still matches
+// its own entry first while `1.0`, `e.g.` and `i.e.` add nothing. Marked
+// with a NUL and split there, not found with a lookbehind, exactly as the
+// client does it (the client must run on Safari before 16.4).
+const DOT_SPLIT = /([A-Za-z_]\w*)\.(?=[A-Za-z_])/g;
+
 export function search({ lunr, index }, input) {
   // Patched, matching just-the-docs.js: drop tokens made only of asterisks.
   // Unfiltered, a bare `*` or `**` reaches lunr.Query.wildcard.TRAILING and
   // throws inside lunr's query engine instead of matching nothing.
-  const queryTokens = lunr.tokenizer(input).filter((t) => !/^\*+$/.test(t.str));
+  const baseTokens = lunr.tokenizer(input).filter((t) => !/^\*+$/.test(t.str));
+  const queryTokens = [];
+  for (const token of baseTokens) {
+    queryTokens.push(token);
+    const marked = token.str.replace(DOT_SPLIT, "$1\u0000");
+    if (marked !== token.str) {
+      for (const part of marked.split("\u0000")) {
+        if (part.length > 1) queryTokens.push(token.clone(() => part));
+      }
+    }
+  }
   let results = queryTokens.length
     ? index.query((q) => {
         q.term(queryTokens, { boost: 10 });

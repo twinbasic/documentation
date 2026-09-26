@@ -119,6 +119,7 @@ digraph scheduler {
 
     RJ -> SYM
     PD -> SYM
+    SYM -> SDt
 
     WA  -> WX
     SDt -> WX

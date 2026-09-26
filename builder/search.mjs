@@ -16,6 +16,15 @@
 // "Example") is folded into the section before it instead of getting an
 // entry of its own -- see `extractSections` and WIP.Search.md's "Design"
 // §1 for why. See also builder/PLAN-6.md §5.3 + §7.D4 + §7.D5.
+//
+// Two extra fields, `names` and `qualified`, are joined in from the
+// symbol index (`tB/symbols.json`'s in-memory form) once both it and the
+// per-chunk entries exist -- see `joinSymbolsToEntries` below and
+// WIP.Search.md's "Design" §2. They are two fields rather than one
+// `symbols` field because BM25 discounts a match inside a long field:
+// keeping bare names (client boost 100) separate from the longer
+// `Container.Name` forms (boost 50) measured better than one field at
+// any single boost.
 
 import path from "node:path";
 
@@ -28,7 +37,7 @@ import { writeFileMkdirp } from "./write.mjs";
 // index order, matching the serial page iteration), renumbers `i` so it
 // is globally sequential, and writes the same byte-for-byte search-data.json
 // a single-pass derivation over all pages at once would have produced.
-export async function writeSearchDataFromChunks(searchChunks, destRoot) {
+export async function writeSearchDataFromChunks(searchChunks, destRoot, symbols) {
   // searchChunks starts as `new Array(N)` -- holes, not undefined -- and
   // each render:i.submit() fills its own slot. Array.prototype.flat()
   // skips holes silently, so a slot that has not been filled yet does
@@ -52,6 +61,7 @@ export async function writeSearchDataFromChunks(searchChunks, destRoot) {
 
   const allEntries = searchChunks.flat();
   for (let idx = 0; idx < allEntries.length; idx++) allEntries[idx].i = idx;
+  if (symbols?.length) joinSymbolsToEntries(allEntries, symbols);
   const body = allEntries.map(renderEntryString).join(",");
   const json = `{` + body + `\n}\n`;
   await writeFileMkdirp(path.join(destRoot, "assets/js/search-data.json"), json);
@@ -208,19 +218,81 @@ function extractSections(page, pageTitle, headingLevel, foldSet = new Set()) {
   return { sections, titleFound, prefixContent };
 }
 
+// URL key for the symbol join: strips a trailing `/index` or
+// `/index.html`, then a trailing slash, comparing everything up to and
+// including a `#fragment` unchanged. Both sides of the join go through
+// this -- a symbol's `url` (from `tB/symbols.json`, e.g.
+// `/Widget/#paintpicture` or a bare `/Widget/`) and a search entry's
+// `relUrl` (from `deriveSearchEntries`, always a page permalink, with or
+// without a `#id` suffix) -- since the two are produced by different
+// code and are not guaranteed to agree on trailing punctuation, only on
+// the page and fragment they name. Order matters: stripping `/index`
+// before the trailing slash turns `/Widget/index.html`, `/Widget/index`
+// and `/Widget/` all into the same `/Widget`.
+function normalizeSymbolUrl(u) {
+  const s = String(u ?? "");
+  const hashIdx = s.indexOf("#");
+  const pathPart = hashIdx === -1 ? s : s.slice(0, hashIdx);
+  const hash = hashIdx === -1 ? "" : s.slice(hashIdx);
+  const noIndex = pathPart.replace(/\/index(\.html)?$/, "");
+  const noTrailingSlash = noIndex.length > 1 && noIndex.endsWith("/") ? noIndex.slice(0, -1) : noIndex;
+  return noTrailingSlash + hash;
+}
+
+// Joins `tB/symbols.json`'s in-memory symbols (each `{ name, container,
+// url, ... }`, see `symbols.mjs`'s `deriveSymbolIndex`) onto the search
+// entries whose `relUrl` names the same URL, attaching two fields:
+//
+//   - `names`: every distinct symbol name at that URL, space-separated.
+//   - `qualified`: every distinct `Container.Name` form, space-
+//     separated, for symbols that have a container (a bare statement or
+//     operator does not).
+//
+// Mutates and returns `entries` -- called once, right before rendering,
+// over the full flattened array, so there is no benefit to allocating a
+// second array the caller would just discard. Pure with respect to
+// `symbols`: nothing here writes to it. Exported (rather than folded
+// into `writeSearchDataFromChunks`) so it can be unit-tested against
+// synthetic entries and symbols without going through a page render.
+export function joinSymbolsToEntries(entries, symbols) {
+  const byUrl = new Map();
+  for (const s of symbols ?? []) {
+    const key = normalizeSymbolUrl(s.url);
+    let bucket = byUrl.get(key);
+    if (!bucket) byUrl.set(key, (bucket = { names: new Set(), qualified: new Set() }));
+    bucket.names.add(s.name);
+    if (s.container) bucket.qualified.add(`${s.container}.${s.name}`);
+  }
+  for (const e of entries) {
+    const bucket = byUrl.get(normalizeSymbolUrl(e.relUrl));
+    if (!bucket) continue;
+    if (bucket.names.size) e.names = [...bucket.names].join(" ");
+    if (bucket.qualified.size) e.qualified = [...bucket.qualified].join(" ");
+  }
+  return entries;
+}
+
 // Per-entry JSON shape matching the upstream Liquid template's output
 // byte-for-byte: doc / title / content / url, then a blank-indented
 // line where the empty lunr/custom-data.json include used to render,
 // then relUrl. Closing brace has 2-space indent. No trailing newline
 // on the returned string -- the outer join with "," handles separation.
 //
-// Consumes a derived entry from `deriveSearchEntries`: content is
-// already sanitised, url is already URL-encoded.
+// Consumes a derived entry from `deriveSearchEntries`, optionally
+// carrying `names` / `qualified` from `joinSymbolsToEntries`: content is
+// already sanitised, url is already URL-encoded. `names` and
+// `qualified` are emitted only when non-empty, so an entry with no
+// symbols (most of them -- see WIP.Search.md's "Design" §2) produces the
+// exact same bytes as before the join existed.
 export function renderEntryString(e) {
+  let extra = "";
+  if (e.names) extra += `    "names": ${JSON.stringify(e.names)},\n`;
+  if (e.qualified) extra += `    "qualified": ${JSON.stringify(e.qualified)},\n`;
   return `"${e.i}": {\n` +
     `    "doc": ${JSON.stringify(e.doc)},\n` +
     `    "title": ${JSON.stringify(e.title)},\n` +
     `    "content": ${JSON.stringify(e.content)},\n` +
+    extra +
     `    "url": "${e.url}",\n` +
     `    \n` +
     `    "relUrl": "${e.relUrl}"\n` +

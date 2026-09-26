@@ -137,20 +137,34 @@ about 1.1 s against 1.0 s today. Query latency is unchanged at about 0.03 ms.
   deterministically because reordering used to shuffle search entries
   between builds, and splitting headings top to bottom keeps that.
 
-### 2. A `symbols` field built from the symbol index
+### 2. Two fields built from the symbol index
 
-- Each entry gets `"symbols": "<names…>"`: the bare name and the
-  `Container.Name` form of every symbol in `tB/symbols.json` whose URL is the
-  entry's `relUrl` (ignoring a trailing slash or `index`). With the current
-  corpus, 4,084 of 6,713 entries get one.
+Measurement (below) used a single `symbols` field at boost 50. Building it,
+BM25 discounts a match inside a long field, and `Container.Name` forms are
+longer than bare names, so the two compete inside one field for no reason.
+Splitting them into two fields, each boosted on its own, ranks better than
+one field at any single boost. The shipped design is therefore two fields,
+not one:
+
+- `names`: the bare name of every symbol in `tB/symbols.json` whose URL is
+  the entry's `relUrl` (ignoring a trailing slash or `index`), space-
+  separated and deduplicated. Client boost 100.
+- `qualified`: the `Container.Name` form of the same symbols (only those
+  that have a container -- a bare statement or operator does not), space-
+  separated and deduplicated. Client boost 50.
+
+With the current corpus, 4,084 of 6,713 entries get either field.
+
 - In the build, `searchData` also waits for `symbolIndex`. Both already run
   on the main thread after `renderJoin`. `symbolIndex` returns its symbols,
-  and `searchData` joins them by URL before it writes. Workers keep deriving
-  sections as they do now; the join is a map lookup per entry.
-- `renderEntryString` adds the field only when it is non-empty, so a page
-  with no symbols produces the same bytes as before.
-- In the client, `this.field('symbols', { boost: 50 })`. The title keeps 200
-  and content keeps 2.
+  and `searchData` joins them by URL before it writes (`joinSymbolsToEntries`
+  in `search.mjs`). Workers keep deriving sections as they do now; the join
+  is a map lookup per entry.
+- `renderEntryString` adds `names` / `qualified` only when non-empty, so a
+  page with no symbols produces the same bytes as before.
+- In the client, `this.field('names', { boost: 100 })` and
+  `this.field('qualified', { boost: 50 })`. The title keeps 200 and content
+  keeps 2.
 
 ### 3. Query construction
 
@@ -158,7 +172,8 @@ In the client's `update()`, for each token the tokenizer produces:
 
 - **Smart dot split.** Keep the whole token as a term with boost 10, as
   today. Where a `.` sits between identifier characters on both sides
-  (`/(?<=[A-Za-z_]\w*)\.(?=[A-Za-z_])/`), also add the parts as extra terms,
+  (found by `/([A-Za-z_]\w*)\.(?=[A-Za-z_])/g`, not a lookbehind, which
+  Safari before 16.4 can't parse), also add the parts as extra terms,
   with the same boost and trailing wildcard as ordinary tokens. Drop parts of
   one character. So `1.0`, `3.9`, `e.g.` and `i.e.` add nothing, and
   `Debug.Print` still matches its exact entry first.
@@ -175,10 +190,10 @@ The online client is the vendored
 Add both changes to the patch list in its README. The offline build replaces
 `initSearch` with its own copy, `JTD_INITSEARCH_FN_REPLACEMENT` in
 [builder/offline.mjs](builder/offline.mjs), which builds its own lunr index,
-so it needs the `symbols` field too. It uses the query code in `update()`
-unchanged, so it inherits the query changes. Either keep one source for the
-index setup, or add a check that the two field lists agree, so they cannot
-drift apart.
+so it needs the `names` and `qualified` fields too, at the same boosts. It
+uses the query code in `update()` unchanged, so it inherits the query
+changes. A unit test extracts the field/boost list from both sources and
+asserts they agree, so they cannot drift apart silently.
 
 ### 5. Tests and tooling
 

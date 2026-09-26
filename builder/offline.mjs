@@ -323,6 +323,14 @@ const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
     this.ref('id');
     this.field('title', { boost: 200 });
     this.field('content', { boost: 2 });
+    // Mirrors the online build's just-the-docs.js patch (see
+    // builder/vendor/just-the-docs/README.md and WIP.Search.md's
+    // "Design" §2): the same two symbol-index fields, at the same
+    // boosts. test/search.test.mjs extracts the field/boost list from
+    // both this string and the vendored just-the-docs.js source and
+    // asserts they agree, so the two copies cannot drift apart silently.
+    this.field('names', { boost: 100 });
+    this.field('qualified', { boost: 50 });
     this.field('relUrl');
     this.metadataWhitelist = ['position'];
 
@@ -331,6 +339,8 @@ const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
         id: i,
         title: docs[i].title,
         content: docs[i].content,
+        names: docs[i].names || '',
+        qualified: docs[i].qualified || '',
         relUrl: docs[i].relUrl
       });
     }
