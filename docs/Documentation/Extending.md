@@ -725,7 +725,7 @@ Four files under `docs/` model the task graph: `Pipeline-Stages.md`, `Builder.md
 
 Three surfaces, and the second is the one that gets missed.
 
-**The task's own section.** One `###` heading per task, under the numbered section matching its Gantt section, opening with a fenced block that gives its `expected` array --- and its `execute()` return shape where the return value matters --- followed by prose for what `submit()` merges into `SharedState`. A new predecessor, a new field on the returned delta, a new key written to `state`: each is an edit here.
+**The task's own section.** One `###` heading per task, under the numbered section matching its Gantt section, opening with a fenced block that gives its `expected` array --- and its `execute()` return shape where the return value matters --- followed by prose for what `submit()` merges into `SharedState`. A per-lane start-up task, which the chart draws in the worker rows rather than in a section, goes under Render, as `warmInit` and `renderEnvInit` do. A new predecessor, a new field on the returned delta, a new key written to `state`: each is an edit here.
 
 **The reverse edges.** A task's position in the graph is stated once in its own section and again in the `expected` line of every task that depends on it. Add `myTask` to `writeAux.expected` in the code and `writeAux`'s section goes on printing the old list, because nothing connects the two. `Pipeline-Stages.md` names `renderJoin` on nine lines; two of them are the `expected` declarations belonging to `searchData` and `writePdf`. Grep the task name across the whole file rather than editing only the section that carries its name.
 

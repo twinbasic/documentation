@@ -133,7 +133,7 @@ The `TASKS` object enumerates the **static** tasks --- the ones whose presence a
 
 ## Section 1 --- Seed tasks
 
-Tasks with no predecessors. They become claimable as soon as the build starts, with the exception of `on_demand` seeds that wait for a successor to request them.
+The tasks that start the build. `config`, `buildInfo`, `scssLight` and `scssDark` have no predecessors and are claimable as soon as the build starts; `highlighterInit` waits for `config`, and `loadData` for `highlighterInit`.
 
 ### `config` (main)
 
@@ -151,47 +151,27 @@ Handler in `cpu-worker.mjs`: calls `captureBuildInfo()` from `build-info.mjs`. T
 
 Handlers call `compileLightScss(srcRoot)` and `compileDarkScss(srcRoot)` respectively. Each compiles the vendored just-the-docs SCSS plus customisations against one palette. Returned CSS strings flow into the `scss` task.
 
-### `scss` (main)
+### `highlighterInit` (main)
 
 ```js
-scss.expected = ["scssLight", "scssDark", "prepDest"]
+highlighterInit.expected = ["config"]
 ```
-
-Joins the two CSS strings, writes `assets/css/just-the-docs-combined.css` to both `_site/` and `_site-offline/` (the offline copy includes the page-relative URL rewrite via `deriveOfflineCss`). Depends on `prepDest` so the destination directories exist.
-
-### `dot` (worker)
-
-Handler calls `regenerateDot(srcRoot)`. Traverses `<srcRoot>` for `*.dot` at any depth (skipping underscore-prefixed directories, which hold build output), compares mtimes against `.svg` siblings, calls `Graphviz.load()` once, installs Inter's width table via `applyInterMetrics()`, then `gv.dot(src)` per stale source. Returns `dotStats` (`processed`, `regenerated`, `failed`, `setupSkipped?`, `svgFiles[]`); `submit()` appends new SVG descriptors to `state.staticFiles`. The WASM render is fast (sub-millisecond per diagram after the ~50 ms one-time `Graphviz.load()`); runs on a worker so the init hides behind the main spine.
-
-### `highlighterInit` (main)
 
 Calls `loadHighlightTheme()` from `highlight-theme.mjs`. Loads `Light.theme` + `Dark.theme`, derives the palette, returns the generated `tb-highlight.css`. Does **not** initialise Shiki on main; only workers actually need a Shiki instance, and each builds its own via `warmInit`.
 
-### `warmInit` (worker, `on_demand` + `unique_per_worker` + `run_when_idle` + `survives_reset`)
-
-Per-lane Shiki bootstrap (`initHighlighter()` from `highlight.mjs`). The flag combination is essential: `unique_per_worker` means every lane that runs a render task needs its own warmup; `on_demand` keeps it off the auto-start list; `run_when_idle` lets workers fire it speculatively during the main spine; `survives_reset` keeps the per-lane done flag across serve-mode rebuilds, since the worker's module-scope Shiki state survives even though the SAB is fresh.
-
-### `prepDest` (main, deferred)
+### `loadData` (main)
 
 ```js
-prepDest.expected = ["dispatch"]
+loadData.expected = ["highlighterInit"]
 ```
 
-Cleans and recreates the trees the run owns. A build owns `<destRoot>`, `<destRoot>-offline` and `<destRoot>-pdf`, and all three exist after it whether or not the offline and PDF passes ran. Serve mode owns `<destRoot>` alone, because it runs neither pass. Deferred to after `dispatch` so the wipe does not contend with `discover`'s reads on small machines.
-
-### `prepPageDirs` (main)
-
-```js
-prepPageDirs.expected = ["prepDest"]
-```
-
-Pre-creates every page output directory (online + offline). Lets `flush:i` skip `mkdir` and call `writeFile` directly.
+Calls `loadData(srcRoot)` from `data.mjs`. Writes `state.site.data` and `state.site.bookData`. Sequenced behind `highlighterInit` to fit into the spine's I/O window without contention.
 
 ---
 
 ## Section 2 --- Spine tasks
 
-Main-thread tasks fed by `discover`. They build the `site` object, derive the auxiliary data structures, and prepare the fan-out.
+`discover` and the main-thread tasks fed by it, with `dot`, which has no predecessors, running on a worker beside them. They build the `site` object, derive the auxiliary data structures, and prepare the fan-out. `deriveSitemap` and `resolveBookChapters` wait for `dispatch`, which is in Section 3.
 
 ### `discover` (main)
 
@@ -226,6 +206,10 @@ nav.execute() → { sidebar }
 
 Calls `computeNav(state.pages, state.site.config)` from `nav.mjs`, then `renderSidebar(state.site)` from `template.mjs`. The nav-integrity check runs inside `computeNav` and throws on orphan or ambiguous `parent:` declarations. Returns the pre-rendered sidebar HTML for `dispatch` to fold into the shared payload.
 
+### `dot` (worker)
+
+Handler calls `regenerateDot(srcRoot)`. Traverses `<srcRoot>` for `*.dot` at any depth (skipping underscore-prefixed directories, which hold build output), compares mtimes against `.svg` siblings, calls `Graphviz.load()` once, installs Inter's width table via `applyInterMetrics()`, then `gv.dot(src)` per stale source. Returns `dotStats` (`processed`, `regenerated`, `failed`, `setupSkipped?`, `svgFiles[]`); `submit()` appends new SVG descriptors to `state.staticFiles`. The WASM render is fast (sub-millisecond per diagram after the ~50 ms one-time `Graphviz.load()`); runs on a worker so the init hides behind the main spine.
+
 ### `buildInit` (main)
 
 ```js
@@ -238,18 +222,10 @@ Calls `buildInitConfig(state.site)` from `template.mjs`. Pre-renders the config-
 ### `markdownInit` (main)
 
 ```js
-markdownInit.expected = ["discover", "vendorAssets"]
+markdownInit.expected = ["discover", "vendorAssets", "deriveRedirects"]
 ```
 
-Builds the link tables (`buildLinkTables(state.pages)`), instantiates the shared markdown-it (`createMarkdownIt({ highlighter: null, linkTables, baseurl, staticFiles })`), serializes the link tables (`serializeLinkTables(linkTables)`) for transfer to workers, and computes site-level SEO (`computeSiteSeo(state.site.config, state.site.markdown)`). Writes `markdown`, `linkTablesSerialized`, `seoSiteTitle`, `seoLogoUrl` to `state.site`. Per-page SEO is **not** computed here --- that runs inside each render worker via `computeChunkSeo`.
-
-### `loadData` (main)
-
-```js
-loadData.expected = ["highlighterInit"]
-```
-
-Calls `loadData(srcRoot)` from `data.mjs`. Writes `state.site.data` and `state.site.bookData`. Sequenced behind `highlighterInit` to fit into the spine's I/O window without contention.
+Builds the link tables (`buildLinkTables(state.pages)`) and derives the `{{tbdocs:<name>}}` counts registry (`deriveCounts(state, { redirectStubs: stubs.length })` from `counts.mjs`), throwing if a page names a count that does not exist; the count of redirect stubs is the only reason `deriveRedirects` is a predecessor. Then instantiates the shared markdown-it (`createMarkdownIt({ highlighter: null, linkTables, baseurl, staticFiles, vendoredVideos, vendoredImages, counts })`), serializes the link tables (`serializeLinkTables(linkTables)`) for transfer to workers, and computes site-level SEO (`computeSiteSeo(state.site.config, state.site.markdown)`). Writes `counts`, `markdown`, `linkTablesSerialized`, `seoSiteTitle` and `seoLogoUrl` to `state.site`. Per-page SEO is **not** computed here --- that runs inside each render worker via `computeChunkSeo`.
 
 ### `deriveRedirects` (main)
 
@@ -258,7 +234,7 @@ deriveRedirects.expected = ["discover"]
 deriveRedirects.execute() → { stubs }
 ```
 
-Pure derivation via `deriveRedirectStubs(state.pages, state.site)` from `redirects.mjs`. Output feeds both `dispatch` (folded into `sitePaths`) and `writeAux`.
+Pure derivation via `deriveRedirectStubs(state.pages, state.site)` from `redirects.mjs`. Output feeds `markdownInit` (the count of redirect stubs), `dispatch` (folded into `sitePaths`) and `writeAux`.
 
 ### `deriveSitemap` (main, deferred)
 
@@ -276,6 +252,12 @@ resolveBookChapters.expected = ["deriveSitemap"]
 ```
 
 Calls `resolveBookChapters(state.site.bookData, state.pages)` from `book.mjs`. Mutates `bookData._chapters` with `Page[]` references. Identity-critical: the same `Page` objects must be visible to `writePdf` after the render fan-out has populated `renderedContent` on them.
+
+---
+
+## Section 3 --- Render fan-out
+
+`dispatch`, the fan-out point, and the N render tasks it starts, with their barrier, the per-worker init they need, and the two tasks that prepare the destination trees. The chart draws `warmInit` and `renderEnvInit` in the worker rows, as start-up bars beside each worker's cold start, rather than in a section; they are described here. The N flush tasks and their barrier are in Section 4.
 
 ### `dispatch` (main)
 
@@ -296,11 +278,25 @@ The fan-out point. `execute`:
 
 `submit` allocates 2N dynamic SAB slots, writes their handler IDs, wires `render:i → [renderJoin, flush:i]` and `flush:i → [flushJoin]`, sets the per-worker dep on `render:i → renderEnvInit`, pins each `flush:i` to its `render:i`, packs the per-chunk page data into a payload SAB, registers `render:i` / `flush:i` task definitions on the scheduler (so `submit()` callbacks resolve), broadcasts the two SABs to every worker via `pool.broadcastDynamicData`, and finally activates the `render:i` slots.
 
----
+### `prepDest` (main, deferred)
 
-## Section 3 --- Render fan-out
+```js
+prepDest.expected = ["dispatch"]
+```
 
-The N render and N flush tasks, plus the per-worker init and the two barriers.
+Cleans and recreates the trees the run owns. A build owns `<destRoot>`, `<destRoot>-offline` and `<destRoot>-pdf`, and all three exist after it whether or not the offline and PDF passes ran. Serve mode owns `<destRoot>` alone, because it runs neither pass. Deferred to after `dispatch` so the wipe does not contend with `discover`'s reads on small machines.
+
+### `prepPageDirs` (main)
+
+```js
+prepPageDirs.expected = ["prepDest"]
+```
+
+Pre-creates every page output directory (online + offline). Lets `flush:i` skip `mkdir` and call `writeFile` directly.
+
+### `warmInit` (worker, `on_demand` + `unique_per_worker` + `run_when_idle` + `survives_reset`)
+
+Per-lane Shiki bootstrap (`initHighlighter()` from `highlight.mjs`). The flag combination is essential: `unique_per_worker` means every lane that runs a render task needs its own warmup; `on_demand` keeps it off the auto-start list; `run_when_idle` lets workers fire it speculatively during the main spine; `survives_reset` keeps the per-lane done flag across serve-mode rebuilds, since the worker's module-scope Shiki state survives even though the SAB is fresh.
 
 ### `renderEnvInit` (worker, `on_demand` + `unique_per_worker`)
 
@@ -334,21 +330,6 @@ Handler (`render` in `cpu-worker.mjs`):
 
 Returns `{ pages, searchEntries }`. The `submit()` callback (registered on the scheduler by `dispatch.submit`) merges `renderedContent` / `offlineMisses` into the master `Page` objects via `state.pageByDest`, and writes `searchEntries` into `state.searchChunks[i]`.
 
-### `flush:i` (worker, dynamic, `pin_to_predecessor`)
-
-```js
-flush:i.expected = ["render:i"]    // depCount: 2 — render:i + prepPageDirs
-flush:i.pinnedTo = render:i        // F_PIN_TO_PRED
-```
-
-Handler (`flush` in `cpu-worker.mjs`): pops the next batch from `_pendingFlush`, writes each page's `.html` to `<destRoot>/p.destPath` and (when `offlineHtml !== undefined`) `<destRoot>-offline/p.destPath`. Concurrency bounded at 64 via a small worker-of-workers loop. The pinning is what guarantees the FIFO drain happens on the right lane.
-
-When `--check` is on, the **link and integrity check rides along here**: after the writes, `runChunkCheck(items)` walks this chunk's final HTML for every tree it was written to, and the result is returned alongside the write stats as `{ written, offlineWritten, offlineMisses, check }`. `submit` appends `check` to `state.checkChunks` with an unindexed `push`, so the array holds chunks in arrival order.
-
-That is deliberately unlike `render:i.submit`'s indexed `state.searchChunks[i]` write, and the two are not interchangeable. Findings are merged per tree rather than concatenated in page order, so nothing downstream indexes by lane --- and the append is what gives `checkChunks.length` its meaning, because [`linkJoin`](#linkjoin-main) asserts completeness by comparing that length against `checkChunkCount`. A pre-allocated array would report `length === N` from the first chunk onwards and the short-chunk check could never fire.
-
-This placement is the whole point of folding the checker into the build. Both trees' final strings are already decoded and in worker memory at this moment; a standalone pass would write ~270 MB out only to read it back and re-parse it. The check cannot abort the build --- a broken link still produces a site worth inspecting --- so a chunk that throws returns `{ error }` and [`checkReport`](#checkreport-main-terminal) decides what to do with it.
-
 ### `renderJoin` (main, `on_demand`)
 
 ```js
@@ -358,7 +339,7 @@ renderJoin.expected = ["render:0", …, "render:N-1"]   // and depCount set to N
 renderJoin.execute() → {}
 ```
 
-Barrier over every `render:i`. Unblocks `searchData` and `writePdf`.
+Barrier over every `render:i`. Unblocks `searchData`, `symbolIndex` and `writePdf`.
 
 > [!IMPORTANT]
 > **A dep count of zero does not mean the submits have run**, so the `expected` list
@@ -378,6 +359,35 @@ Barrier over every `render:i`. Unblocks `searchData` and `writePdf`.
 > ignores the inputs.** See
 > [PLAN-sab-pull-scheduler.md](https://github.com/twinbasic/documentation/blob/main/builder/PLAN-sab-pull-scheduler.md).
 
+---
+
+## Section 4 --- Write and post-write
+
+The tasks that write the output. `scss` joins the two stylesheets once `prepDest` has run, each `flush:i` writes its chunk's pages once its `render:i` has finished and `prepPageDirs` has run, and the main-thread writers produce the rest of the output, all but `writeAssets` behind `renderJoin` or `flushJoin`.
+
+### `scss` (main)
+
+```js
+scss.expected = ["scssLight", "scssDark", "prepDest"]
+```
+
+Joins the two CSS strings, writes `assets/css/just-the-docs-combined.css` to both `_site/` and `_site-offline/` (the offline copy includes the page-relative URL rewrite via `deriveOfflineCss`). Depends on `prepDest` so the destination directories exist.
+
+### `flush:i` (worker, dynamic, `pin_to_predecessor`)
+
+```js
+flush:i.expected = ["render:i"]    // depCount: 2 — render:i + prepPageDirs
+flush:i.pinnedTo = render:i        // F_PIN_TO_PRED
+```
+
+Handler (`flush` in `cpu-worker.mjs`): pops the next batch from `_pendingFlush`, writes each page's `.html` to `<destRoot>/p.destPath` and (when `offlineHtml !== undefined`) `<destRoot>-offline/p.destPath`. Concurrency bounded at 64 via a small worker-of-workers loop. The pinning is what guarantees the FIFO drain happens on the right lane.
+
+When `--check` is on, the **link and integrity check rides along here**: after the writes, `runChunkCheck(items)` walks this chunk's final HTML for every tree it was written to, and the result is returned alongside the write stats as `{ written, offlineWritten, offlineMisses, check }`. `submit` appends `check` to `state.checkChunks` with an unindexed `push`, so the array holds chunks in arrival order.
+
+That is deliberately unlike `render:i.submit`'s indexed `state.searchChunks[i]` write, and the two are not interchangeable. Findings are merged per tree rather than concatenated in page order, so nothing downstream indexes by lane --- and the append is what gives `checkChunks.length` its meaning, because [`linkJoin`](#linkjoin-main) asserts completeness by comparing that length against `checkChunkCount`. A pre-allocated array would report `length === N` from the first chunk onwards and the short-chunk check could never fire.
+
+This placement is the whole point of folding the checker into the build. Both trees' final strings are already decoded and in worker memory at this moment; a standalone pass would write ~270 MB out only to read it back and re-parse it. The check cannot abort the build --- a broken link still produces a site worth inspecting --- so a chunk that throws returns `{ error }` and [`checkReport`](#checkreport-main-terminal) decides what to do with it.
+
 ### `flushJoin` (main, `on_demand`)
 
 ```js
@@ -385,13 +395,7 @@ flushJoin.expected = []    // populated by dispatch.submit with ["flush:0", ...,
 flushJoin.execute(inputs) → { written, offlineWritten, offlineMisses }
 ```
 
-Aggregates per-chunk write stats. Unblocks `writeAux` and `writePdf`.
-
----
-
-## Section 4 --- Write and post-write
-
-Main-thread tasks that materialise the rest of the output after the render fan-out completes.
+Aggregates per-chunk write stats. Unblocks `writeAux`, `writePdf` and `linkJoin`.
 
 ### `writeAssets` (main)
 

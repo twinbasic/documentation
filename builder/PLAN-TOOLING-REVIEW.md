@@ -695,6 +695,39 @@ before. A host that never answers now costs three timeouts, 45 s at the default,
 link is reported. `compare_trees`: Tools.html online and offline, the search data and
 `book.html`, nothing else.
 
+### C22e — `docs: Pipeline-Stages.md's task sections match the chart and the task graph`
+
+**Found while fixing Builder.md's copy of the same lists in C22c; the owner asked on
+2026-09-26 for it to be fixed before C23** (see Found while implementing). Extending.md says
+each task's `###` heading on the page sits under the numbered section matching its Gantt
+section, and eight did not: Section 1 (Seed tasks) held `scss`, `dot`, `prepDest` and
+`prepPageDirs`, Section 2 (Spine) `loadData` and `dispatch`, and Section 3 (Render fan-out)
+`flush:i` and `flushJoin`. Section 1 also held `warmInit`, which the chart draws as a start-up
+bar in each worker's row, and its introduction said its tasks have no predecessors.
+
+**Change.** Each `###` section moves under its chart section, in Builder.md's order, and
+`warmInit` joins `renderEnvInit` under Render, as in Builder.md; the four introductions say
+what each section now holds. No heading's text changes, so every anchor keeps its id.
+Extending.md's rule gains the case the chart gives no section: a per-lane start-up task goes
+under Render.
+
+**Landed**, with three additions. `markdownInit`'s `expected` line lacked `deriveRedirects`,
+which it waits for only to count the redirect stubs for the `{{tbdocs:...}}` counts
+(`tbdocs.mjs:598-599`), and its prose did not mention the counts; both are corrected, and so
+is `deriveRedirects`'s list of consumers. `renderJoin` unblocks `symbolIndex` as well as
+`searchData` and `writePdf`, and `flushJoin` unblocks `linkJoin` as well as `writeAux` and
+`writePdf`. And `highlighterInit` gains the `expected` block that every other task with a
+predecessor has. A scratch script moved the sections and would not write unless the region's
+non-blank lines came out the same multiset; `git diff --color-moved` shows no other line
+changed. The kit's `c22e-verify.mjs` checks the page against `tbdocs.mjs`: each block's
+section against `GANTT_SECTION`, with `render:i` in Render and `flush:i` in Write as
+`dispatch.submit` gives them and the two start-up tasks in Render; each `expected` line
+against `TASKS`; and a block for every static task. On HEAD's page it reports 10 problems,
+nine misplaced blocks and `markdownInit`'s line; after, none. `build.bat`'s link check passes,
+so no link into the page lost its anchor. `compare_trees`: Extending.html and
+Pipeline-Stages.html online and offline, the search data and `book.html`, nothing else. Two
+defects found on the way are recorded under Found while implementing.
+
 ### C23 — `scripts: check_examples restores the registry after a spawn failure`
 
 **L3-2 (R2)**, with V4's note that `check_examples.mjs` has no process-level handler at all.
@@ -1959,7 +1992,21 @@ Defects the review did not have, found by building something this plan asks for.
   `GANTT_SECTION` charts them in Write, Spine, Render, Render, Seeds, Render, Write and Write.
   Section 1 also holds `warmInit` and Section 3 `renderEnvInit`, which the chart gives no
   section. And Section 1's introduction says its tasks have no predecessors, which `scss`,
-  `highlighterInit`, `prepDest` and `prepPageDirs` all have. Not fixed.
+  `highlighterInit`, `prepDest` and `prepPageDirs` all have. Fixed in `docs: Pipeline-Stages.md's
+  task sections match the chart and the task graph`.
+
+- **Pipeline-Stages.md's module export tables omit two modules**, found while fixing its task
+  sections in C22e. The page says its second half covers every module, with the full export
+  table for each, and has no table for `counts.mjs` or `page-baseline.mjs`, both in
+  `builder/`. Its `markdownInit` section and `render.mjs`'s plugin table name `counts.mjs`'s
+  functions. Not fixed.
+
+- **`tbdocs.mjs`'s task-graph comment (`:216-227`) contradicts `TASKS`**, found while checking
+  C22e's edges. It lists `scss` among the seeds, where `scss` waits for `scssLight`,
+  `scssDark` and `prepDest`; it gives `config → loadData`, where `loadData` waits for
+  `highlighterInit`; and it gives `flushJoin + prepPageDirs → writeAssets + searchData`, where
+  neither waits for `flushJoin`, and `searchData` waits for `renderJoin` and `prepDest`. It is
+  a fifth description of the graph, beside the four that Extending.md lists. Not fixed.
 
 ## Open questions
 
