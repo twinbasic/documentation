@@ -844,6 +844,29 @@ restores the registry and exits 2.
 **Verify.** With the spawn pointed at a missing executable (a scratch edit), the run exits 2
 and the registry is as it was found. The `examples.bat` summary unchanged (a harness run).
 
+**Landed.** Waiting for `'close'` also means `out` holds all of tbbuild's output when its JSON
+is parsed, which `'exit'` did not promise. The handler is `die`, installed at the bottom
+beside `main().catch`, whose body it takes over; the probes' `fakeLane` already has a
+parameter named `crash`. A scratch edit pointed the spawn at `C:\no-such-folder\node.exe`,
+run with `--jobs 1 --only "^Reference/Core/"` (186 samples from 87 pages in 12 projects).
+HEAD: exit 1 after 3.6 s, on Node's own report of the uncaught `spawn
+C:\no-such-folder\node.exe ENOENT`, which `examples.bat` reads as a sample that does not
+compile, and nothing tidied. After: exit 2 after 3.4 s, `check_examples: spawn
+C:\no-such-folder\node.exe ENOENT`, from `main()`'s catch around the lanes, which finishes
+the tidy. A scratch throw from `process.nextTick` and a scratch rejection that nothing
+awaits, each in `buildStaged` before the spawn, exit 2 through `die` with the error printed.
+A read-only snapshot of the keys the tidy covers (`reg export` of the IDE's settings key and
+the two association keys) came out identical around every run; in the failing runs no IDE
+starts, so HEAD leaves the registry as found as well, and the full run is what shows the tidy
+still puts it back. `examples.bat`: exit 0 after 122.2 s, `1129 sample(s), 1129 compile, 0
+finding(s), 120.2s -- clean`, from 597 pages in 43 projects on 4 lanes, the snapshot
+identical before and after. A lane that fails while another builds was checked as well,
+because the catch then tidies while the other lane's IDE still runs, which `finishTidy`'s
+comment forbids: with lane 1 failing 6 s in on two lanes, the run exited 2 after 9.8 s, no
+tbbuild or IDE process was left, and the snapshot was identical, because Node ends the
+children it spawned when it exits, and they end theirs (`tb-ide.mjs:145-150`).
+`compare_trees` identical. Lint clean.
+
 ### C24 — `scripts: tb-operate stops on an afterReveal timeout`
 
 **A7-2 (R2).** `afterReveal` (`tb-operate.mjs:421-429`) returns `false` on a timeout, and

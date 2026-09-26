@@ -588,7 +588,8 @@ const COMPILER = IDE ? compilerExe(IDE) : null;
 
 // The registry tidy for the whole run (lib/tb-registry.mjs): taken in main()
 // before the first lane starts, finished once the last one has ended -- and
-// by the top-level catch, if main() dies in between.
+// by main()'s catch around the lanes, or by `die`, if the run dies in
+// between.
 let tidy = null;
 
 /**
@@ -623,7 +624,13 @@ async function buildStaged(staged, port) {
   let out = "", err = "";
   child.stdout.on("data", (d) => { out += d; });
   child.stderr.on("data", (d) => { err += d; });
-  const code = await new Promise((r) => child.on("exit", r));
+  // A child that cannot start emits "error" and never "exit". "close" comes
+  // only once its output has been read to the end, which "exit" does not wait
+  // for.
+  const code = await new Promise((resolve, reject) => {
+    child.on("error", reject);
+    child.on("close", resolve);
+  });
 
   if (code === 4) return { crashed: true, detail: err.trim(), named: crashedIn(err, staged.map) };
   if (code !== 0 && code !== 1) {
@@ -1821,4 +1828,9 @@ function reportFindings() {
   }
 }
 
-main().catch((err) => { console.error(err); finishTidy(tidy); process.exit(2); });
+// Whatever escapes main() -- a throw inside an event handler, a rejection
+// nothing awaits -- still puts the registry back, and the run exits 2.
+function die(err) { console.error(err); finishTidy(tidy); process.exit(2); }
+process.on("uncaughtException", die);
+process.on("unhandledRejection", die);
+main().catch(die);
