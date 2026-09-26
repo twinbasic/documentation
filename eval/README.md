@@ -17,7 +17,9 @@ case the check mostly fires on. `Authoring.md` correctly told contributors to wi
 narrower question than this harness asks: given a query, does the site's
 lunr index rank the right page highly? It shares its index setup and query
 logic with [eval/site_search.mjs](site_search.mjs) below, derives symbol
-ground truth from a build's `tB/symbols.json`, and checks a hand-picked
+ground truth from a build's `tB/symbols.json`, judging a bare name by
+reader intent (a type or language element before a class member, before an
+enum constant), and checks a hand-picked
 prose set in the committed
 [eval/search_prose_queries.json](search_prose_queries.json). See
 [WIP.Search.md](../WIP.Search.md) for the design and
@@ -26,6 +28,7 @@ prose set in the committed
 ```sh
 node eval/search_quality.mjs                                        # today's numbers
 node eval/search_quality.mjs --compare eval/search_baseline.json    # measure a change
+node eval/search_quality.mjs --failures 20                          # what misses rank 1
 ```
 
 ## Running a round

@@ -14,6 +14,7 @@
 //     node eval/search_quality.mjs --save eval/search_baseline.json
 //     node eval/search_quality.mjs --compare eval/search_baseline.json [--worst N]
 //     node eval/search_quality.mjs --sample 500        # fast iteration
+//     node eval/search_quality.mjs --failures 20       # queries not at rank 1
 //
 // Exit code is always 0: this is a measuring tool, not a pass/fail check
 // (scripts/ is for those).
@@ -25,14 +26,23 @@
 // build produce), not from a committed copy, so they always match the site
 // under test:
 //
-//   - Bare-name queries, one per unique symbol name (case-insensitive). A
-//     hit is correct if it lands on the URL of ANY symbol sharing that
-//     name. About 18% of names are genuinely ambiguous in twinBASIC itself
-//     (`Left`, `PaintPicture` on 30+ controls) -- the "any" rule absorbs
-//     that on purpose, because a stricter single-URL rule would punish the
-//     search for redeclarations that are real, not noise. It also means a
-//     bare query can be satisfied by the wrong class's page; the qualified
-//     queries below are what catches that.
+//   - Bare-name queries, one per unique symbol name (case-insensitive),
+//     judged by READER INTENT (WIP.Search.md, "Reader intent"). Every
+//     symbol sharing the name gets a tier:
+//       1. a type (class, control, module, enum, interface, package...) or
+//          a language element: a statement, keyword, operator, attribute or
+//          directive with no package, or a function/property/sub/method
+//          whose container is a *module* (`Left` -> the Strings function,
+//          not the Left property of 30 controls);
+//       2. a member of a class;
+//       3. an enum constant.
+//     A hit is correct only if it lands on a URL of the name's best tier.
+//     Where that tier has several URLs (`PaintPicture` on six classes, or
+//     `Line` the control and `Line` the statement), any of them counts.
+//     Lower tiers are not excluded from the results: the tier-order
+//     metrics below check that they still appear, after the higher ones.
+//     The looser "any page documenting this name" rule, which the first
+//     version of this tool used, is still reported as `bare, any page`.
 //   - Qualified `Container.Name` queries, one per unique (container, name)
 //     pair. Correct only for that exact symbol's URL.
 //
@@ -50,17 +60,26 @@
 // check that this tool has kept stable across configurations, not a
 // statistical claim about real user queries.
 //
+// TIER ORDER
+//
+// For each bare name documented on 2+ URLs: the fraction of those URLs in
+// the top 10 and top 20 (recall), and the number of names where a
+// lower-tier URL ranks above a higher-tier one, or appears in the top 20
+// while the best tier doesn't (violations). Near-name matches (`Nodes` for
+// `Node`) are not in the name's URL set, so they are neither counted nor
+// penalised here.
+//
 // BIASES TO KEEP IN MIND WHEN READING THE NUMBERS
 //
 //   - Most queries are symbol names, so the aggregate numbers mostly grade
 //     API lookup, not prose discoverability. The `prose` breakdown below is
 //     the only signal for the latter, and it is small.
-//   - If the index ever gains a `symbols` field built from this same
-//     `tB/symbols.json` (WIP.Search.md's design step 2), this ground truth
-//     becomes partly circular with it: a query that hits because of the
-//     symbols field is being checked against the data that field was built
-//     from. A held-out split would be needed to tell real generalisation
-//     from memorisation; this tool does not attempt that split today.
+//   - The index's `names` and `qualified` fields are built from this same
+//     `tB/symbols.json` (WIP.Search.md's "Design" §2), so this ground truth
+//     is partly circular with them: a query that hits because of those
+//     fields is checked against the data they were built from. A held-out
+//     split measured once showed the fields generalise (WIP.Search.md,
+//     "What the numbers showed"); this tool does not repeat that split.
 //
 // COST
 //
@@ -89,6 +108,7 @@ function parseArgs(argv) {
     compare: null,
     sample: null,
     worstN: 15,
+    failures: 0,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -97,6 +117,7 @@ function parseArgs(argv) {
     else if (a === "--compare") o.compare = path.resolve(argv[++i]);
     else if (a === "--sample") o.sample = Number(argv[++i]);
     else if (a === "--worst") o.worstN = Number(argv[++i]);
+    else if (a === "--failures") o.failures = Number(argv[++i]);
     else if (a === "--help" || a === "-h") o.help = true;
     else {
       console.error(`unrecognised argument: ${a}`);
@@ -140,6 +161,23 @@ function kindGroup(kind) {
   return TYPE_KINDS.has(kind) ? "type" : "member";
 }
 
+const LANGUAGE_KINDS = new Set(["statement", "keyword", "operator", "attribute", "directive"]);
+const MODULE_MEMBER_KINDS = new Set(["function", "property", "sub", "method"]);
+
+// The reader-intent tier of one symbol: 1 type or language element, 2
+// class member, 3 enum constant. `moduleNames` holds the lowercased names
+// of every module, so an intrinsic like Strings.Left counts as a language
+// element. `label` is only for the breakdown.
+function intentTier(s, moduleNames) {
+  if (TYPE_KINDS.has(s.kind)) return { tier: 1, label: "type" };
+  if (LANGUAGE_KINDS.has(s.kind) && s.package === null) return { tier: 1, label: "language" };
+  if (MODULE_MEMBER_KINDS.has(s.kind) && s.container && moduleNames.has(s.container.toLowerCase())) {
+    return { tier: 1, label: "language" };
+  }
+  if (s.kind === "enumvalue") return { tier: 3, label: "enum" };
+  return { tier: 2, label: "member" };
+}
+
 function loadProseQueries() {
   const p = path.join(REPO_ROOT, "eval/search_prose_queries.json");
   const raw = JSON.parse(fs.readFileSync(p, "utf8"));
@@ -172,6 +210,7 @@ function buildQuerySet(symbolIndex, proseQueries, sample) {
   const symbols = symbolIndex.symbols;
   const queries = [];
 
+  const moduleNames = new Set(symbols.filter((s) => s.kind === "module").map((s) => s.name.toLowerCase()));
   const byName = new Map();
   for (const s of symbols) {
     const k = s.name.toLowerCase();
@@ -179,13 +218,27 @@ function buildQuerySet(symbolIndex, proseQueries, sample) {
     byName.get(k).push(s);
   }
   for (const [, group] of byName) {
-    const expected = [...new Set(group.map((s) => normalizeUrl(s.url)))];
+    // urlTier: every URL documenting this name, with the best tier found
+    // there. `expected` is the URLs of the name's best tier.
+    const urlTier = new Map();
+    const labels = new Map();
+    for (const s of group) {
+      const u = normalizeUrl(s.url);
+      const { tier, label } = intentTier(s, moduleNames);
+      if (!urlTier.has(u) || tier < urlTier.get(u)) urlTier.set(u, tier);
+      if (!labels.has(tier)) labels.set(tier, new Set());
+      labels.get(tier).add(label);
+    }
+    const best = Math.min(...urlTier.values());
+    const expected = [...urlTier].filter(([, t]) => t === best).map(([u]) => u);
     const kinds = [...new Set(group.map((s) => kindGroup(s.kind)))];
     queries.push({
       category: "symbol-bare",
       kindGroup: kinds.length === 1 ? kinds[0] : "mixed",
+      tier: [...labels.get(best)].sort().join("+"),
       q: group[0].name,
       expected,
+      urlTier,
     });
   }
 
@@ -242,6 +295,7 @@ function evaluate(ctx, queries) {
         : expectedSet.has(normalizeUrl(rankedUrl));
 
     let firstHitRank = null; // 1-based
+    let anyPageRank = null; // bare names: the first URL of any tier
     let anyCorrect = false;
     for (let i = 0; i < results.length; i++) {
       const url = ctx.docs[results[i].ref]?.relUrl;
@@ -249,6 +303,7 @@ function evaluate(ctx, queries) {
         anyCorrect = true;
         if (firstHitRank === null) firstHitRank = i + 1;
       }
+      if (query.urlTier && anyPageRank === null && query.urlTier.has(normalizeUrl(url))) anyPageRank = i + 1;
     }
 
     const cappedRank = firstHitRank !== null && firstHitRank <= 20 ? firstHitRank : null;
@@ -262,12 +317,52 @@ function evaluate(ctx, queries) {
       hit5: firstHitRank !== null && firstHitRank <= 5,
       hit10: firstHitRank !== null && firstHitRank <= 10,
       zeroCorrect: !anyCorrect,
+      tier: query.tier,
+      anyPageHit10: anyPageRank !== null && anyPageRank <= 10,
+      tierOrder: query.urlTier && query.urlTier.size >= 2 ? tierOrder(ctx, results, query.urlTier) : null,
     });
   }
 
   latencies.sort((a, b) => a - b);
   const medianLatencyMs = latencies.length ? latencies[Math.floor(latencies.length / 2)] : 0;
   return { perQuery, medianLatencyMs };
+}
+
+// Where the URLs documenting one name land in the top 20: how many of them
+// appear in the top 10 and top 20, and whether any lower-tier URL comes
+// before a higher-tier one.
+function tierOrder(ctx, results, urlTier) {
+  const seen = new Set();
+  const hits = [];
+  for (let i = 0; i < results.length && i < 20; i++) {
+    const url = normalizeUrl(ctx.docs[results[i].ref]?.relUrl);
+    if (!urlTier.has(url) || seen.has(url)) continue;
+    seen.add(url);
+    hits.push({ rank: i + 1, tier: urlTier.get(url) });
+  }
+  let violation = false;
+  for (let i = 1; i < hits.length; i++) {
+    if (hits.slice(0, i).some((h) => h.tier > hits[i].tier)) violation = true;
+  }
+  const bestTier = Math.min(...urlTier.values());
+  if (hits.length && !hits.some((h) => h.tier === bestTier)) violation = true;
+  return {
+    recall10: hits.filter((h) => h.rank <= 10).length / urlTier.size,
+    recall20: hits.length / urlTier.size,
+    violation,
+  };
+}
+
+function summarizeTierOrder(perQuery) {
+  const rows = perQuery.filter((r) => r.tierOrder);
+  const n = rows.length;
+  if (n === 0) return null;
+  return {
+    n,
+    recall10: (100 * rows.reduce((a, r) => a + r.tierOrder.recall10, 0)) / n,
+    recall20: (100 * rows.reduce((a, r) => a + r.tierOrder.recall20, 0)) / n,
+    violations: rows.filter((r) => r.tierOrder.violation).length,
+  };
 }
 
 function summarize(perQuery, filterFn) {
@@ -325,22 +420,51 @@ function printTable(result) {
   const labelWidth = Math.max(28, ...rows.map((r) => r[0].length));
   for (const [label, value] of rows) console.log(label.padEnd(labelWidth) + " | " + value);
 
-  console.log("\nBreakdown by category (hit@10 / MRR / n):");
+  const line = (s) => (s ? `${fmtPct(s.hit1)} / ${fmtPct(s.hit10)} / ${s.mrr.toFixed(3)} / ${s.n}` : "n/a");
+  console.log("\nBreakdown by category (hit@1 / hit@10 / MRR / n):");
   for (const [label, key] of [["symbol-bare", "symbol-bare"], ["symbol-qualified", "symbol-qualified"], ["prose", "prose"]]) {
-    const s = result.byCategory[key];
-    console.log(label.padEnd(labelWidth) + " | " + (s ? `${fmtPct(s.hit10)}/${s.mrr.toFixed(3)}/${s.n}` : "n/a"));
+    console.log(label.padEnd(labelWidth) + " | " + line(result.byCategory[key]));
+  }
+  console.log("bare, any page (hit@10)".padEnd(labelWidth) + " | " + fmtPct(result.bareAnyPageHit10));
+
+  console.log("\nBare names by intent tier (hit@1 / hit@10 / MRR / n):");
+  for (const [tier, s] of Object.entries(result.byTier)) {
+    console.log(`tier: ${tier}`.padEnd(labelWidth) + " | " + line(s));
   }
 
-  console.log("\nBreakdown by symbol kind group (hit@10 / MRR / n):");
-  for (const [label, key] of [["kind: type", "type"], ["kind: member", "member"]]) {
-    const s = result.byKind[key];
-    console.log(label.padEnd(labelWidth) + " | " + (s ? `${fmtPct(s.hit10)}/${s.mrr.toFixed(3)}/${s.n}` : "n/a"));
+  const t = result.tierOrder;
+  console.log("\nTier order, bare names on 2+ URLs:");
+  if (t) {
+    console.log("names".padEnd(labelWidth) + " | " + t.n);
+    console.log("recall@10 / recall@20".padEnd(labelWidth) + " | " + `${fmtPct(t.recall10)} / ${fmtPct(t.recall20)}`);
+    console.log("names out of tier order".padEnd(labelWidth) + " | " + t.violations);
+  }
+}
+
+// The queries missing rank 1, grouped by category and tier, so the work
+// list is one command away.
+function printFailures(perQuery, n) {
+  const failing = perQuery.filter((r) => !r.hit1);
+  const groups = new Map();
+  for (const r of failing) {
+    const g = r.category === "symbol-bare" ? `bare, ${r.tier}` : r.category;
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(r);
+  }
+  console.log(`\nNot at rank 1: ${failing.length} (up to ${n} per group)`);
+  for (const [g, rows] of groups) {
+    console.log(`  ${g} (${rows.length}):`);
+    for (const r of rows.slice(0, n)) console.log(`    ${r.q}: ${r.firstHitRank ?? "none"}`);
   }
 }
 
 // Short codes keep the saved rank map (one entry per query, thousands of
 // them) from ballooning: "symbol-qualified" repeated 5,108 times costs real
 // kilobytes for no information a single letter doesn't carry.
+// Saved with a baseline, so --compare can tell a baseline judged by a
+// different ground truth from a change in ranking.
+const GROUND_TRUTH = "intent-1";
+
 const CATEGORY_CODE = { "symbol-bare": "b", "symbol-qualified": "q", prose: "p" };
 const CATEGORY_NAME = { b: "symbol-bare", q: "symbol-qualified", p: "prose" };
 
@@ -374,6 +498,12 @@ function printCompare(current, saved, worstN) {
     console.log(label.padEnd(20) + a.toFixed(2).padStart(12) + b.toFixed(2).padStart(12) + deltaStr.padStart(12));
   }
 
+  if (saved.groundTruth !== GROUND_TRUTH) {
+    console.log(
+      `\nwarning: the baseline was saved with ground truth "${saved.groundTruth ?? "any-page"}", ` +
+      `this run uses "${GROUND_TRUTH}"; bare-name ranks are not comparable.`
+    );
+  }
   const oldRanks = saved.ranks ?? rankMap(saved.perQuery ?? []);
   const newRanks = rankMap(current.perQuery);
 
@@ -437,7 +567,7 @@ function main() {
   if (opts.help) {
     console.log(
       "Usage: node eval/search_quality.mjs [--site docs/_site] [--save file] " +
-      "[--compare file] [--worst N] [--sample N]\n\nSee the header comment in this file."
+      "[--compare file] [--worst N] [--sample N] [--failures N]\n\nSee the header comment in this file."
     );
     process.exit(0);
   }
@@ -465,6 +595,7 @@ function main() {
   const evalResult = evaluate(ctx, queries);
   const cost = measureCost(rawText, ctx, ctx.docs);
 
+  const bare = evalResult.perQuery.filter((r) => r.category === "symbol-bare");
   const result = {
     site: opts.site,
     overall: summarize(evalResult.perQuery),
@@ -477,12 +608,20 @@ function main() {
       type: summarize(evalResult.perQuery, (r) => r.kindGroup === "type"),
       member: summarize(evalResult.perQuery, (r) => r.kindGroup === "member"),
     },
+    byTier: Object.fromEntries(
+      [...new Set(bare.map((r) => r.tier))]
+        .sort()
+        .map((tier) => [tier, summarize(evalResult.perQuery, (r) => r.category === "symbol-bare" && r.tier === tier)])
+    ),
+    bareAnyPageHit10: bare.length ? (100 * bare.filter((r) => r.anyPageHit10).length) / bare.length : 0,
+    tierOrder: summarizeTierOrder(evalResult.perQuery),
     cost,
     medianLatencyMs: evalResult.medianLatencyMs,
     perQuery: evalResult.perQuery,
   };
 
   printTable(result);
+  if (opts.failures) printFailures(result.perQuery, opts.failures);
 
   if (opts.compare) {
     const saved = JSON.parse(fs.readFileSync(opts.compare, "utf8"));
@@ -492,10 +631,14 @@ function main() {
 
   if (opts.save) {
     const compact = {
+      groundTruth: GROUND_TRUTH,
       site: result.site,
       overall: result.overall,
       byCategory: result.byCategory,
       byKind: result.byKind,
+      byTier: result.byTier,
+      bareAnyPageHit10: result.bareAnyPageHit10,
+      tierOrder: result.tierOrder,
       cost: { entries: result.cost.entries, rawBytes: result.cost.rawBytes, gzipBytes: result.cost.gzipBytes, medianBuildMs: result.cost.medianBuildMs, heapDeltaBytes: result.cost.heapDeltaBytes },
       medianLatencyMs: result.medianLatencyMs,
       ranks: rankMap(result.perQuery),
