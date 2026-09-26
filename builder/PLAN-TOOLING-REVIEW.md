@@ -597,6 +597,40 @@ mid-crawl, injected by a preload that makes `Response#url` throw from its 200th 
 and a missing URL exit 2, as before. `compare_trees`: Tools.html online and offline, the search
 data and `book.html`, nothing else.
 
+### C22b — `builder: serve.bat redirects a folder URL to its trailing slash`
+
+**Found while verifying C22; the owner asked on 2026-09-26 for it to be fixed before C23**
+(see Found while implementing). `serve.mjs`'s static handler answered a folder URL without its
+trailing slash with the folder's `index.html`, where GitHub Pages answers 301 to the slash
+form. A browser then resolves the page's relative links against the parent folder, one level
+too high. The built site links 74 folder pages without the slash, e.g.
+`../../tB/Modules/Collection` from Permanent-Links, so a `serve.bat` preview reached through
+one of those links shows a page whose links are broken.
+
+**Change.** When the only file that matches is the folder's `index.html` and the URL path
+lacks its slash, answer 301 to the path plus `/`, keeping any query string.
+
+**Landed.** `resolveFile` returns `{ file }` or `{ redirect }`. The `Location` is built from
+the folder under the destination rather than from the request, percent-encoded segment by
+segment, so a request for `//tB/Packages` redirects to `/tB/Packages/` and not to a host named
+`tB`. The redirect carries the page's `no-store` cache header, so a browser does not keep it
+after a folder page becomes a single-file one. A URL that names a page is served as before:
+`/tB/Core/Dim` from `Dim.html`. No page under `docs/Documentation/` describes how the serve
+resolves a URL.
+
+Verified on a test serve (port 4393, `--dest docs/_serve-c22b`, through a temporary
+`.claude/launch.json` entry; both removed afterwards). Before, `/tB/Packages`,
+`/tB/Modules/Interaction` and `/tB/Packages/CEF` answered 200. After, each answers 301 to its
+slash form and the slash forms 200; `/tB/Packages?x=1&y=2` redirects to
+`/tB/Packages/?x=1&y=2`, and a temporary folder named `Ä b` to `/%C3%84%20b/`.
+`crawl_check --skip-external` against HEAD's serve: 1,850 pages crawled, 3,831 unique links,
+623 broken, of which 603 were HTTP errors, such as a 404 for `/Core/Attributes`, and 20 were
+`fetch failed`, and 2 missing anchors. After: 1,247 pages crawled, 3,228 unique links and 0
+missing anchors, as in C22's crawl of `_site`, and 20 broken, every one a `fetch failed`
+caused by `read ECONNRESET`, and none an HTTP error. The resets are a separate defect,
+recorded under Found while implementing: with the serve's keep-alive timeout raised as a
+scratch experiment, two crawls of two had none. `compare_trees`: identical.
+
 ### C23 — `scripts: check_examples restores the registry after a spawn failure`
 
 **L3-2 (R2)**, with V4's note that `check_examples.mjs` has no process-level handler at all.
@@ -1837,7 +1871,19 @@ Defects the review did not have, found by building something this plan asks for.
   Permanent-Links. On the live site those links cost a 301; in a `serve.bat` preview reached
   through one of them, the page's relative links are broken. `serve.mjs`'s resolver (about
   `:84-100`) has the same three candidates the C22 scratch server started with, whose crawl
-  found 626 broken links for this reason. Not fixed.
+  found 626 broken links for this reason. Fixed in `builder: serve.bat redirects a folder URL
+  to its trailing slash`.
+
+- **A crawl of `serve.bat` loses about 20 requests to connection resets**, found while
+  verifying C22b. Crawls of a test serve report about 20 broken links that are not HTTP
+  errors: a crawl of HEAD's serve had 20 `fetch failed` beside its 603 HTTP errors, and
+  after C22b's fix, three crawls reported 20, 21 and 20 broken, the last tallied by cause as
+  20 `fetch failed`, each caused by `read ECONNRESET`. The serve keeps Node's default 5 s
+  keep-alive timeout. With it raised to 300 s as a scratch experiment, two crawls of two had
+  no failure, and the kit's static server, which keeps connections 300 s, had none in C22a's
+  three crawls of `_site`. So the resets come from the server closing idle connections that
+  `fetch` then reuses, and `crawl_check` does not retry such a request. Whether the live site
+  does the same is unmeasured. Not fixed.
 
 ## Open questions
 
