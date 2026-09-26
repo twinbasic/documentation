@@ -226,6 +226,15 @@ machine, and which is the same policy [BOOKPLAN.md](BOOKPLAN.md) records blockin
 --- never comes into it, and no `-ExecutionPolicy Bypass` has to be recommended to anyone.
 Its inputs arrive as environment variables, so there is no argument quoting to get wrong.
 
+A launch that fails prints no pid, and its cause as one line on stderr, which `launchIde`
+reports. Two things used to hide the cause. With its streams redirected, PowerShell writes
+progress records and errors to stderr as CLIXML, as `tb-registry.mjs` also found (below), so
+every failed launch read `#< CLIXML`; the script now silences progress and writes a failure
+itself, as plain UTF-8 text. And a Win32 error read from PowerShell is not the call's:
+PowerShell makes calls of its own before the next statement runs, and a `CreateProcess` that
+had set 3 was reported as 203, "The system could not find the environment option that was
+entered". Each call is now made, and its error read, in C#.
+
 Seven things about the harness were learned by getting them wrong, and each is a comment in
 the file now:
 

@@ -967,6 +967,41 @@ full tidy. `tbbuild` on the probe, with the IDE found on the Desktop: exit 0 aft
 `--- 0 error(s), 0 warning(s), 0 hint(s), 0 info`, the snapshot identical before and after.
 `compare_trees` identical. Lint clean.
 
+### C25c — `scripts: tb-launch.ps1 reports why a launch failed, in plain text`
+
+**Found while implementing C25** (see Found while implementing). When a hidden launch failed,
+`launchIde` relayed `tb-launch.ps1`'s stderr, which PowerShell writes in CLIXML when its
+streams are redirected: the message read `#< CLIXML` and a line of XML, with the cause inside
+an `<S S="Error">` record. The cause was wrong as well. `Fail` read the Win32 error after
+PowerShell had made calls of its own, which replace it: for `C:\nope\twinBASIC.exe` it
+reported 203, "The system could not find the environment option that was entered", where a
+C# read straight after the same `CreateProcess` gave 3. `tbbuild`, `tbrun` and the add-in
+test lanes all launch through it.
+
+**Change.** Every Win32 call moves into a C# helper that throws, with the error read straight
+after the call: `Desktop`, `KillOnCloseJob`, `Start`, `Assign`, which still ends the
+suspended process when it cannot go into the job, and `Resume`. Progress is silenced, and a
+`trap` writes a failure's innermost message as one line of UTF-8 on stderr and exits 1.
+Setting the job's limit in C# drops the PowerShell workaround of copying the nested struct
+out and back. WIP.Harness.md's paragraph on the launcher says why.
+
+**Landed.** The kit's `c25c-launch.mjs` runs a copy of the script as `tb-ide.mjs` does,
+without an IDE. HEAD's wrote CLIXML to stderr in every case, a successful launch included,
+for its progress record. After: `C:\nope\twinBASIC.exe` gives `CreateProcess failed: The
+directory name is invalid`, because the working folder, the missing `C:\nope`, is checked
+first; the install folder gives `Access is denied`, and `C:\Windows\twinBASIC.exe` `The system
+cannot find the file specified`. Each is the only line on stderr, with exit 1. A short-lived
+`node` child, with the job and without, prints its pid and nothing on stderr. A scratch
+variant that passes `Assign` a null job gives `AssignProcessToJobObject failed: The handle is
+invalid` and leaves no suspended child; another shows the UTF-8 line is needed, since without
+it `éü` arrives as `��`. `tbbuild --ide` naming the install folder: exit 2 after 2.4 s with
+that line, the registry as found. `tbbuild` on the probe: exit 0 after 10.7 s, clean. The
+encoded script is 24,296 characters, against 20,872 before; a command line stops at 32,767.
+`examples.bat`: exit 0, `1129 sample(s), 1129 compile, 0 finding(s), 124.1s -- clean`.
+`addin-test.bat`: exit 0 after 130 s, `10 of 10 lane(s) ran: 10 passed`, `registry: put back
+(20 project-state, 21 recent-list and 3 association writes)`. `compare_trees` identical. Lint
+clean.
+
 ### C26 — `wisdom: parseStaging refuses a chunk it cannot place`
 
 **L3-3 (R1)**, the half that needs no shared module. `parseStaging` (`merger.mjs:114-129`)
@@ -2219,6 +2254,13 @@ Defects the review did not have, found by building something this plan asks for.
   callers went on to launch it: the hidden launch failed inside `tb-launch.ps1`, with a
   message in PowerShell's CLIXML, and `--show` crashed. Fixed in `scripts: tbbuild refuses a
   named IDE that is not there`.
+
+- **A failed hidden launch reports its cause in CLIXML, and the wrong cause**, found while
+  implementing C25. `launchIde` relays `tb-launch.ps1`'s stderr, which PowerShell writes in
+  CLIXML when its streams are redirected, as `tb-registry.mjs` had already found; and `Fail`
+  read the Win32 error after PowerShell's own calls had replaced it, so a missing executable
+  was reported as error 203, "The system could not find the environment option that was
+  entered". Fixed in `scripts: tb-launch.ps1 reports why a launch failed, in plain text`.
 
 ## Open questions
 
