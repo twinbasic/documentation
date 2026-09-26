@@ -879,6 +879,22 @@ position.
 
 **Verify.** `addin-test.bat` green, all ten lanes (a harness run).
 
+**Landed**, without the retry: waiting again only makes the wait longer, which is what
+`afterReveal`'s `timeout` is for, and opening the file again would start a new reveal (see
+Where the plan was wrong). The three call sites share one unexported helper, `settledAt`,
+which throws naming the file and the place; `setCursor` and `select` are not given the file
+and read it from `editorState`. `afterReveal` still returns `false` on a timeout, for a
+caller that waits after an add-in's `Editors.Open`; nothing in the tree calls it but the
+three. The kit's `c24-reveal.mjs` drives the three against a fake connection whose reveal
+window never closes. HEAD's copy returned from each after 10.1 s, and `setCursor` and
+`select` then placed the cursor anyway; after, each throws after 10.1 s, as in `the IDE was
+still revealing lines 10 s later, so the cursor could still move:
+/AddinHost/Sources/Haystack.twin at 4:9`, and places nothing. With the window closed, each
+returns at once and places the cursor as before. WIP.Harness.md's paragraph on the 700 ms
+says so. `addin-test.bat`: exit 0 after 131.4 s, `10 of 10 lane(s) ran: 10 passed`, with
+`registry: put back (20 project-state, 21 recent-list and 3 association writes)`.
+`compare_trees` identical. Lint clean.
+
 ### C25 — `scripts: tbbuild always tidies; correct tb-registry's -Command note`
 
 **A7-9, A7-6 (R3).** `tbbuild`'s shutdown skips its tidy step when the IDE handle was never
@@ -2040,6 +2056,10 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   owner's request a task with no section fails the build instead, so nothing can reach
   `Other`, and it was removed; see C21's Landed note. It landed as `builder: the Gantt chart
   draws every task, or the build fails naming it`.
+- **C24 (A7-2): no retry.** The entry has each call site retry once before it throws.
+  Retrying the wait only makes it longer, which is what `afterReveal`'s `timeout` is for, and
+  opening the file again would start a new reveal, so each call throws at the first timeout,
+  the review's other option ("retry or fail loudly"); see C24's Landed note.
 
 ## Found while implementing
 

@@ -945,7 +945,9 @@ Seven things about it were learned, the first six on the samples:
   file, such as an add-in's `Editors.Open`, and `afterReveal` does the same wait for
   anything else. Measured: `xyz` typed at 3:1 of `Haystack.twin`, 0.3 s after opening it at
   4:9, went in as `x` at 3:1 and `zy` at 4:9; after the fixed `openFile` it went in as `xyz`
-  at 3:1. The IDE's side of it is in BUGS-TO-REPORT.md.
+  at 3:1. When the IDE is still revealing lines 10 s later, `openFile`, `setCursor` and
+  `select` throw, naming the file and the place, rather than go on while the cursor can still
+  move; `afterReveal` itself returns `false`. The IDE's side of it is in BUGS-TO-REPORT.md.
 
 **The connection itself changed in three ways.** They were the gaps item 1 found in
 `tbbuild`, and they matter more once a harness clicks into dialogs on purpose:
