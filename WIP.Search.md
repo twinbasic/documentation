@@ -7,6 +7,77 @@ generator as ported from Jekyll.
 
 Like WIP.md, this file is not rendered through tbdocs, so literal dashes are fine here.
 
+## Resuming this work
+
+Everything needed to continue is in this file and in `eval/`; nothing
+depends on the session that wrote it.
+
+**Where it stands.** Rollout steps 1–5 are done and committed, on branch
+`claude/paintpicture-docs-runtime-f3250d`. Nothing is pushed.
+
+| commit | step |
+|---|---|
+| `1927e070` | this design doc |
+| `40297b81` | 1: the asterisk crash guard; the replica's tokenizer separator |
+| `ed865316` | 2: `eval/search_quality.mjs` and its baseline |
+| `378e9d87` | 3: h3 entries; `search.fold_headings` |
+| `fd0bfa7b` | 4: `names`/`qualified` fields; the smart dot split |
+| `0961e6e9` | 5: stop words kept; dot runs split; lazy index build |
+
+Hit@10 went from 20.5% to 98.0%, and MRR from .182 to .933. By reader
+intent, rank 1 is right for 89.0% of queries.
+
+**Next:** [Reader intent](#reader-intent-after-the-rollout), "Next steps".
+In short:
+1. Make the intent ground truth the primary measure.
+2. Implement X1 + X2 + X3 (measured: hit@1 89.0% → 92.4%, with no query
+   worse).
+3. Work through the rank-1 failure list.
+4. Then the operators.
+
+**The user's criteria**, which govern every decision here:
+- A reader either finds what they want or doesn't. A small regression is
+  still a miss, and being better than the old index is not the bar: that
+  index was nearly useless.
+- Judge by what a reader typing the query wants. For a bare name the order
+  is type names and language elements first, then members, then enum
+  constants and similar, then prose. The order is a priority, not a filter:
+  lower tiers must still appear.
+- Configuration belongs in `docs/_config.yml`, not code (for example
+  `search.fold_headings`).
+- Ship in small steps, each committed on its own with its measured numbers.
+- Use Sonnet agents for mechanical and exploratory work.
+- Review every agent's work before committing it. Agents have produced
+  false explanations (see [X1t](#rejected-tier-specific-exact-fields-x1t)),
+  a lookbehind regex that would break the whole client on Safari before
+  16.4, and a loading message that blanked on the second keystroke.
+
+**Tools.**
+- `node eval/search_quality.mjs --compare eval/search_baseline.json --worst 20`
+  measures a build against the saved baseline; `--save` updates it.
+- `eval/site_search.mjs` is the replica of the client search. The site's
+  client and `builder/offline.mjs`'s `initSearch` must stay identical to it;
+  `test/search.test.mjs` fails if their fields or pipeline drift apart.
+- Build first with `node builder/tbdocs.mjs --src docs --no-check --no-offline --no-pdf`.
+- The research scripts and their records are in
+  [eval/search-experiments/](eval/search-experiments/README.md).
+- Check anything in the client in a real browser. `.claude/launch.json` has
+  `docs-serve` (port 4001) and `docs-offline` (port 4002). The client runs
+  `update()` on `keyup`, so browser tools that insert text without key
+  events don't trigger search. A hidden pane pauses `requestAnimationFrame`;
+  the client has a timer fallback for that.
+- `test.bat` stops at `check_axe_patch_equiv.mjs` in a worktree without
+  `node_modules`. Run `npm install` first for the full suite.
+
+**How lunr behaves here, learned the hard way:**
+- The tokenizer tests one character at a time against `separator`, so a
+  multi-character alternative in the separator regex can never match.
+- The index pipeline is trimmer, stop-word filter, stemmer; the search
+  pipeline is only the stemmer. The stop-word filter is now removed.
+- BM25's length normalisation makes a short entry that mentions a term beat
+  a long entry about it. Tuning `b` doesn't help short of `b` = 0.
+- A query of only `*` throws inside lunr.
+
 ## The problem
 
 `PaintPicture` is documented on six classes (Form, PictureBox, Printer,
@@ -236,9 +307,10 @@ asserts they agree, so they cannot drift apart silently.
   `vbXxx` bare names at rank 2 instead of 1, and the `symbol index` prose
   query (rank 1→39, because `Index` is a property on many controls, so the
   `names` field now outranks the prose page that used to be the only match).
-  All are wildcard/wording crowding from keeping short common words
-  searchable, not regressions step 5 introduces on its own -- see "Design
-  §5" below for why keeping them was still the right trade.
+  "Worse than the original baseline" turned out to be the wrong criterion:
+  that index was nearly useless, so its rank 1 was often not what a reader
+  wanted. These 18 and the rest of the work list are now judged by reader
+  intent; see [Reader intent](#reader-intent-after-the-rollout).
 
 ## Design §5: stop words, dot runs, and a lazy build
 
@@ -359,6 +431,13 @@ search.
 - The harness moves into `eval/`.
 - The 38 regressions are measured and fixed, in a step of their own.
 - The work ships in steps, in this order.
+- Stop words stay in the index, and to offset the cost the index is built
+  lazily, on the first keystroke rather than on focus, with a visible
+  loading message.
+- Results are judged by reader intent, not against the old baseline. For a
+  bare name the tiers are type and language element, then member, then enum
+  constant, then prose, as a priority order.
+- Operators are future work, after the reader-intent fixes.
 
 ## Rollout
 
@@ -385,6 +464,189 @@ from the harness.
    (`VB`, `Lock`, `Time$`, `Column`, `ColumnHeader` and a few more, plus the
    `symbol index` prose query) against `With`, `Is`, `Do`, `For`, `Each` and
    `On` all now at rank 1.
+
+## Reader intent (after the rollout)
+
+Not implemented yet. This is the next step, measured and ready to build.
+
+### The criterion
+
+A reader either finds what they want at the top or doesn't, so "small
+regressions" are not acceptable, and neither is the pre-rollout baseline as
+a reference: that index was nearly useless. A result is judged by what a
+reader typing the query most plausibly wants. Rank 1 is the measure that
+matters; hit@10 and MRR are secondary.
+
+The first ground truth (`eval/search_quality.mjs`) counts a bare name as
+correct if *any* page documenting that name is hit. That is too lax: for
+`CheckBox` it accepts `DTPicker › CheckBox`, but the reader wants the
+CheckBox control.
+
+### The intent ground truth
+
+For a bare name, the expected results are ordered by tier. Higher tiers
+come first, and lower tiers must still appear below them; nothing is
+excluded:
+
+1. **Type names and language elements.** A type is a class, control, module,
+   enum, interface or package. A language element is a statement, keyword,
+   operator, attribute or directive with no package, or a function or
+   property whose container is a module (so `Time$` → DateTime's `Time`, and
+   `Left` → the Strings function, not the `Left` property of 30 controls).
+2. **Members** of classes.
+3. **Enum constants and similar** (`vbForm` → `ControlTypeConstants`).
+4. **Prose.**
+
+The primary metric is a top-tier answer at rank 1; where a name has several
+top-tier answers, any of them counts. Secondary: recall of every same-name
+symbol URL in the top 10 and top 20, and tier-order violations, which is a
+lower-tier exact-name result ranked above a higher-tier one. Near-name
+matches (`Nodes` for `Node`) are related, not violations, but must not
+outrank any exact-name match. Qualified `Class.Member` queries expect that
+member, as before. Prose queries expect the dedicated page, not a summary
+section that only links to it.
+
+Of the 2,884 bare names: 318 are types, 453 language elements, 1,132 enum
+constants and 981 member-only. 115 have a doubtful expectation, listed by
+the script: mostly statements with several pages (`For` has For...Next and
+For Each...Next; `GoSub`, `On`, `Input`), plus `Line` and `Timer`, where a
+type outranks a same-named statement or enum and either could be argued.
+
+Implemented in
+[eval/search-experiments/intent/intent_gt.mjs](eval/search-experiments/intent/intent_gt.mjs).
+It still needs promoting into `eval/search_quality.mjs` as the primary
+ground truth.
+
+**Prose ground truth, reviewed.** The expectations for `64-bit
+compilation`, `Fusion`, `symbol index` and `array bounds checks` are right,
+so their misses are ranking problems. `conditional compilation` is doubtful:
+it expects `/Reference/Compiler-Constants`, but `/tB/Core/Topic-Preprocessor`
+(the `#If`/`#Const` page) is arguably the better answer, and the glossary's
+"conditional compiler constant" entry links there twice. Not changed yet;
+decide, then edit `eval/search_prose_queries.json`.
+
+### Where the committed design stands under it
+
+Measured at commit `0961e6e9`, with intent ground truth: hit@1 89.0% of
+8,012 queries. Failing at rank 1:
+
+- **bare names**: 193 of 2,884 (6.7%):
+  - 86 language elements. `Default`, `Description`, `Flags` lose to Core's
+    shared Attributes page; the operators can't be found at all (see
+    [Operators](#operators)).
+  - 55 types: `Line`, `Timer`, `FileSystem`, `Anchors`, `BorderStyle`.
+  - 25 enum constants: `vbDate`, `vbForm`, `vbListBox`, `vbKey0`…`vbKeyA`.
+  - 27 member-only names.
+- **qualified**: 682 of 5,108 (13.4%), mostly VBA constants: `Constants.vbCr`,
+  `.vbCrLf`, `.vbLf`.
+- **prose**: 10 of 20 at rank 1. `late binding` ranks 17, `circular
+  reference` 14, `regular expressions` 13.
+
+### Three fixes, measured
+
+Each was a client-side change to a copy of the replica,
+[eval/search-experiments/intent/variants.mjs](eval/search-experiments/intent/variants.mjs),
+measured by `eval_variants.mjs` beside it.
+
+- **X1, an exact-name field.** It fixes an exact name losing to a longer or
+  plural one (`Node` to `Nodes`, `ListItem` to `ListItems`, `vbForm` to
+  `vbFormCode`), and `Time$`, whose `$` the index trims but the query keeps.
+  At index-build time, every name in the doc's `names` field is lowercased and
+  suffixed with `_` into a field `exact`: `node_`, `time$_`, `vb_`. At query
+  time, for each whitespace token, the term `token + "_"` is added on `exact`
+  only, with no wildcard. Checked against lunr.min.js: the trimmer keeps `_`
+  as a word character, and every Porter stemmer rule anchors on the end of
+  the word, so a trailing `_` passes through untouched. It's derived in the
+  browser, so the download doesn't grow. Boosts from 50 to 1000 give the same
+  result, because nothing else matches that field.
+- **X2, a page-title field.** Index each entry's `doc` (its page's title) as
+  a field `page`. Then a page whose own title matches the query outranks a
+  summary section on another page (`Features › Fusion` against the Fusion
+  page). Boosts from 5 to 50 give the same result.
+- **X3, all words first.** With 2+ whitespace tokens, first query with every
+  token REQUIRED (each via its wildcard form, so an exact or a prefix match
+  satisfies it; the exact and dot-split clauses stay optional). If that finds
+  nothing, fall back to the current query. It doesn't move the aggregate,
+  but it is the only fix for `symbol index` (rank 39 → 3): the `Index`
+  property pages never contain "symbol".
+
+| configuration | hit@1, old ground truth | hit@1, intent |
+|---|---|---|
+| committed (`0961e6e9`) | 89.5% | 89.0% |
+| X1 | 90.1% | 89.5% |
+| X2 | 92.3% | 91.8% |
+| X3 | 89.5% | 89.0% |
+| X1t (tiered exact fields, below) | 90.0% | 89.3% |
+| X1 + X2 | 92.9% | 92.4% |
+| **X1 + X2 + X3 (recommended)** | **92.9%** | **92.4%** |
+
+With the recommended combination, and intent ground truth:
+- **Rank 1:** bare names 94.9% (99.0% in the top 10), qualified 91.1%,
+  prose 50% (85% in the top 10).
+- **No query gets worse:** 353 improve under intent ground truth, 344 under
+  the old one.
+- **Tier ordering:** recall of same-name pages is 92.4% in the top 10 and
+  97.6% in the top 20; 41 queries order tiers wrongly, against 42 before.
+- **Cost:** index build 1,533 ms against 1,359 ms (+13%), heap 291 MB
+  against 263 MB (+11%), from 7 interleaved runs of this experiment. It's
+  paid only when a reader starts searching, because of the lazy build. The
+  heap figures may undercount: the script let the index go out of use
+  before its second reading, so V8 could collect it early. That's fixed in
+  the committed copy; re-measure before relying on them.
+
+**The 18**, with their rank for the intent answer, before → after X1 + X2 + X3:
+
+| query | rank |
+|---|---|
+| `symbol index` | 39 → 3 |
+| `Time$` | 7 → 1 |
+| `Column` | 3 → 1 |
+| `PropertyPage` | 2 → 1 |
+| `ListItem` | 2 → 1 |
+| `Node` | 2 → 1 |
+| `ToolWindow` | 2 → 1 |
+| `CheckBox` | 4 → 2 |
+| `VB` | 16 → 11 |
+| `Lock`, `64-bit compilation` | 3, unchanged |
+| `vbForm`, `vbListBox`, `ListImage`, `ColumnHeader`, `array bounds checks`, `Fusion` | 2, unchanged |
+| `conditional compilation` | 6, unchanged |
+
+### Rejected: tier-specific exact fields (X1t)
+
+Splitting `exact` into `exact1`/`exact2`/`exact3` by symbol kind, with
+descending boosts, measured no better than flat X1 (hit@1 90.0% against
+90.1%) and ordered tiers worse (48 violating queries against 42). It would
+also need the build's join to emit each symbol's kind, which it doesn't
+today. Don't rebuild it without a new idea.
+
+The agent that measured it blamed the CheckBox control's `names` field for
+"listing every member". **That's false.** Both entries' `names` are the
+single word `CheckBox`. The real difference: the CheckBox page's top entry
+(`/tB/Packages/VB/CheckBox/`) has **1 character** of content, while
+`DTPicker › CheckBox` has 467 characters that mention "checkbox" several
+times. A class's introduction evidently sits under its own heading
+(`#checkbox-class`), which leaves the page's top entry empty. This is the
+lead for `CheckBox` and probably for the other types that miss (`Line`,
+`Timer`, `BorderStyle`): look at how a page's top entry and its first
+section are split, and consider merging an empty top entry into the first
+section, or giving it the page's introduction.
+
+### Next steps
+
+1. Promote the intent ground truth into `eval/search_quality.mjs` as the
+   primary measure, with the tier metrics, and save a baseline.
+2. Decide the `conditional compilation` expectation.
+3. Implement X1 + X2 + X3 in all three copies: `just-the-docs.js`
+   (`initSearch` and `update()`), `offline.mjs`'s `initSearch`, and
+   `eval/site_search.mjs`. X1 and X2 need no build change, since `names` and
+   `doc` are already in search-data.json. Extend the drift guard in
+   `test/search.test.mjs` to cover the new fields and the AND-first query.
+   Check in a browser as for step 5.
+4. Work through the rank-1 failure list above, starting with the empty
+   top entries (CheckBox), `VB` (the trailing wildcard crowds it with
+   `vbXxx` names), the Attributes page (`Default`, `Description`,
+   `Flags`), and the VBA constants in qualified form (`Constants.vbCr`).
+5. Operators: [Future work](#future-work).
 
 ## Future work
 

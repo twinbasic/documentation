@@ -1,0 +1,118 @@
+
+"/" under true (guarded) R: 0 results (expect 0)
+
+=== R (baseline, guarded) ===
+  overall n=8012 hit1=88.7% hit5=97.8% hit10=97.9% MRR=0.9288
+  symbol-bare: hit10=98.1% MRR=0.9455
+  symbol-qualified: hit10=97.9% MRR=0.9205
+  prose: hit10=80.0% MRR=0.6201
+  kind=type: hit10=99.8% MRR=0.9836
+  kind=member: hit10=97.8% MRR=0.9266
+  vs h2 (excl "/"): worse=37 better=6590 unchanged=1384 hist={"1":22,"2-5":10,"6-10":0,"11-20":3,"21-50":2,"51+":0}
+  worst vs h2: With:28->54, Is:151->176, VB:1->15, Do:1->13, For:1->12, Each:1->6, vbForm:1->4, With statement:16->19, Lock:1->3, On:1->3
+
+=== F5 (wildcard excl. symbols) ===
+  overall n=8012 hit1=88.9% hit5=97.6% hit10=97.8% MRR=0.9289
+  symbol-bare: hit10=98.2% MRR=0.9461
+  symbol-qualified: hit10=97.6% MRR=0.9204
+  prose: hit10=80.0% MRR=0.6201
+  kind=type: hit10=99.8% MRR=0.9812
+  kind=member: hit10=97.7% MRR=0.9269
+  vs h2 (excl "/"): worse=36 better=6587 unchanged=1388 hist={"1":24,"2-5":10,"6-10":0,"11-20":0,"21-50":2,"51+":0}
+  worst vs h2: With:28->54, Is:151->176, Each:1->6, For:1->6, With statement:16->19, Lock:1->3, On:1->3, Select:5->7, Time$:5->7, vbForm:1->3
+
+=== F6 (minlen=3) ===
+  overall n=8012 hit1=88.7% hit5=97.7% hit10=97.9% MRR=0.9287
+  symbol-bare: hit10=98.1% MRR=0.9454
+  symbol-qualified: hit10=97.9% MRR=0.9205
+  prose: hit10=80.0% MRR=0.6201
+  kind=type: hit10=100.0% MRR=0.9858
+  kind=member: hit10=97.8% MRR=0.9264
+  vs h2 (excl "/"): worse=37 better=6590 unchanged=1384 hist={"1":22,"2-5":9,"6-10":0,"11-20":1,"21-50":1,"51+":4}
+  worst vs h2: Do:1->none, If:1->none, On:1->859, Is:151->none, With:28->54, For:1->12, Each:1->6, vbForm:1->4, With statement:16->19, Lock:1->3
+
+=== F6 (minlen=4) ===
+  overall n=8012 hit1=88.6% hit5=97.7% hit10=97.9% MRR=0.9279
+  symbol-bare: hit10=98.1% MRR=0.9453
+  symbol-qualified: hit10=97.9% MRR=0.9193
+  prose: hit10=80.0% MRR=0.6201
+  kind=type: hit10=100.0% MRR=0.9858
+  kind=member: hit10=97.8% MRR=0.9256
+  vs h2 (excl "/"): worse=37 better=6590 unchanged=1384 hist={"1":22,"2-5":9,"6-10":0,"11-20":0,"21-50":1,"51+":5}
+  worst vs h2: Do:1->none, For:1->none, If:1->none, On:1->859, Is:151->none, With:28->54, Each:1->6, vbForm:1->4, With statement:16->19, Lock:1->3
+
+=== F5+F6(3) ===
+  overall n=8012 hit1=88.8% hit5=97.6% hit10=97.7% MRR=0.9286
+  symbol-bare: hit10=98.1% MRR=0.9453
+  symbol-qualified: hit10=97.6% MRR=0.9204
+  prose: hit10=80.0% MRR=0.6201
+  kind=type: hit10=99.8% MRR=0.9812
+  kind=member: hit10=97.7% MRR=0.9266
+  vs h2 (excl "/"): worse=38 better=6587 unchanged=1386 hist={"1":24,"2-5":9,"6-10":0,"11-20":0,"21-50":1,"51+":4}
+  worst vs h2: Do:1->none, If:1->none, On:1->859, Is:151->none, With:28->54, Each:1->6, For:1->6, With statement:16->19, Lock:1->3, Select:5->7
+
+=== F7 (names/qual=50/50) ===
+  overall n=8012 hit1=89.9% hit5=97.7% hit10=97.9% MRR=0.9349
+  symbol-bare: hit10=98.1% MRR=0.9460
+  symbol-qualified: hit10=97.8% MRR=0.9299
+  prose: hit10=80.0% MRR=0.6201
+  kind=type: hit10=99.8% MRR=0.9680
+  kind=member: hit10=97.8% MRR=0.9337
+  vs h2 (excl "/"): worse=40 better=6593 unchanged=1378 hist={"1":24,"2-5":11,"6-10":0,"11-20":3,"21-50":2,"51+":0}
+  worst vs h2: With:28->54, Is:151->176, VB:1->16, Do:1->13, For:1->12, Each:1->6, vbForm:1->4, With statement:16->19, Lock:1->3, On:1->3
+
+=== F7 (names/qual=50/25) ===
+  overall n=8012 hit1=85.7% hit5=97.3% hit10=97.7% MRR=0.9085
+  symbol-bare: hit10=98.1% MRR=0.9460
+  symbol-qualified: hit10=97.6% MRR=0.8886
+  prose: hit10=80.0% MRR=0.6201
+  kind=type: hit10=99.5% MRR=0.9607
+  kind=member: hit10=97.7% MRR=0.9061
+  vs h2 (excl "/"): worse=40 better=6593 unchanged=1378 hist={"1":24,"2-5":11,"6-10":0,"11-20":3,"21-50":2,"51+":0}
+  worst vs h2: With:28->54, Is:151->176, VB:1->14, Do:1->12, For:1->12, Each:1->6, vbForm:1->4, With statement:16->19, Lock:1->3, On:1->3
+
+=== F7 (names/qual=100/50) ===
+  overall n=8012 hit1=89.5% hit5=97.6% hit10=97.8% MRR=0.9326
+  symbol-bare: hit10=98.1% MRR=0.9619
+  symbol-qualified: hit10=97.7% MRR=0.9174
+  prose: hit10=75.0% MRR=0.5701
+  kind=type: hit10=99.5% MRR=0.9641
+  kind=member: hit10=97.7% MRR=0.9316
+  vs h2 (excl "/"): worse=26 better=6598 unchanged=1387 hist={"1":12,"2-5":8,"6-10":0,"11-20":3,"21-50":3,"51+":0}
+  worst vs h2: symbol index:1->32, With:28->54, Is:151->176, Do:1->18, For:1->17, VB:1->16, Each:1->6, With statement:16->19, Lock:1->3, On:1->3
+
+=== F7(50/25)+F5+F6(3) ===
+  overall n=8012 hit1=86.1% hit5=97.2% hit10=97.7% MRR=0.9105
+  symbol-bare: hit10=98.1% MRR=0.9463
+  symbol-qualified: hit10=97.5% MRR=0.8914
+  prose: hit10=80.0% MRR=0.6201
+  kind=type: hit10=99.8% MRR=0.9629
+  kind=member: hit10=97.6% MRR=0.9080
+  vs h2 (excl "/"): worse=39 better=6591 unchanged=1381 hist={"1":24,"2-5":10,"6-10":0,"11-20":0,"21-50":1,"51+":4}
+  worst vs h2: Do:1->none, If:1->none, On:1->859, Is:151->none, With:28->54, Each:1->6, For:1->6, With statement:16->19, Lock:1->3, Select:5->7
+
+F5 (wildcard excl. symbols) vs R: worse=75 better=60 unchanged=7877
+  new regressions vs R: _HiddenModule.Input$[symbol-qualified]:2->none, _HiddenModule.InputB$[symbol-qualified]:3->none, Strings.Left$[symbol-qualified]:36->977, Strings.LeftB$[symbol-qualified]:36->977, Strings.Len$[symbol-qualified]:37->978, Strings.LenB$[symbol-qualified]:37->978, Strings.Mid$[symbol-qualified]:38->979, Strings.MidB$[symbol-qualified]:38->979, Strings.Right$[symbol-qualified]:39->980, Strings.RightB$[symbol-qualified]:39->980, Strings.Chr$[symbol-qualified]:34->971, Strings.ChrB$[symbol-qualified]:34->971, Strings.ChrW$[symbol-qualified]:34->971, Strings.InStr$[symbol-qualified]:40->976, Interaction.Environ$[symbol-qualified]:7->86
+
+F6 (minlen=3) vs R: worse=4 better=1 unchanged=8007
+  new regressions vs R: If[symbol-bare]:1->none, Do[symbol-bare]:13->none, On[symbol-bare]:3->859, Is[symbol-bare]:176->none
+
+F6 (minlen=4) vs R: worse=21 better=4 unchanged=7987
+  new regressions vs R: If[symbol-bare]:1->none, For[symbol-bare]:12->none, Do[symbol-bare]:13->none, On[symbol-bare]:3->859, Is[symbol-bare]:176->none, DataMembers.Add[symbol-qualified]:1->9, Padding.Top[symbol-qualified]:1->6, Timer.Top[symbol-qualified]:2->5, WaynesLabel.Top[symbol-qualified]:2->3, CheckMark.Tag[symbol-qualified]:1->2, ComboBox.Top[symbol-qualified]:1->2, CommandButton.Top[symbol-qualified]:1->2, FileListBox.Top[symbol-qualified]:1->2, HScrollBar.Tag[symbol-qualified]:1->2, ListBox.Top[symbol-qualified]:1->2
+
+F5+F6(3) vs R: worse=79 better=59 unchanged=7874
+  new regressions vs R: If[symbol-bare]:1->none, _HiddenModule.Input$[symbol-qualified]:2->none, _HiddenModule.InputB$[symbol-qualified]:3->none, Do[symbol-bare]:13->none, Strings.Left$[symbol-qualified]:36->977, Strings.LeftB$[symbol-qualified]:36->977, Strings.Len$[symbol-qualified]:37->978, Strings.LenB$[symbol-qualified]:37->978, Strings.Mid$[symbol-qualified]:38->979, Strings.MidB$[symbol-qualified]:38->979, Strings.Right$[symbol-qualified]:39->980, Strings.RightB$[symbol-qualified]:39->980, Strings.Chr$[symbol-qualified]:34->971, Strings.ChrB$[symbol-qualified]:34->971, Strings.ChrW$[symbol-qualified]:34->971
+
+F7 (names/qual=50/50) vs R: worse=27 better=121 unchanged=7864
+  new regressions vs R: ListView.DragDrop[symbol-qualified]:1->24, TreeView.DragDrop[symbol-qualified]:1->24, DateTime.Time$[symbol-qualified]:4->20, Strings[symbol-bare]:2->4, Column[symbol-bare]:1->3, CheckBox[symbol-bare]:1->3, CustomControl[symbol-bare]:1->2, Financial[symbol-bare]:1->2, Interaction[symbol-bare]:1->2, CustomControls[symbol-bare]:2->3, VB[symbol-bare]:15->16, Form[symbol-bare]:1->2, PropertyPage[symbol-bare]:1->2, ListImage[symbol-bare]:1->2, ColumnHeader[symbol-bare]:1->2
+
+F7 (names/qual=50/25) vs R: worse=423 better=28 unchanged=7561
+  new regressions vs R: ProgressBar.Click[symbol-qualified]:3->31, Strings.AscB[symbol-qualified]:3->28, Strings.AscW[symbol-qualified]:3->28, Strings.InStrB[symbol-qualified]:3->28, ListView.DragOver[symbol-qualified]:1->26, MonthView.DragOver[symbol-qualified]:2->27, ProgressBar.DragOver[symbol-qualified]:2->27, TreeView.DragDrop[symbol-qualified]:1->26, UpDown.DragOver[symbol-qualified]:3->28, ListView.DragDrop[symbol-qualified]:1->25, Slider.DragOver[symbol-qualified]:2->26, TreeView.DragOver[symbol-qualified]:2->26, Constants.BorderStyle[symbol-qualified]:1->23, DateTime.Time$[symbol-qualified]:4->20, DataMembers.Add[symbol-qualified]:1->9
+
+F7 (names/qual=100/50) vs R: worse=69 better=161 unchanged=7782
+  new regressions vs R: symbol index[prose]:1->32, ListView.DragDrop[symbol-qualified]:1->25, ListView.DragOver[symbol-qualified]:1->25, MonthView.DragOver[symbol-qualified]:2->26, ProgressBar.DragOver[symbol-qualified]:2->26, Slider.DragOver[symbol-qualified]:2->26, TreeView.DragDrop[symbol-qualified]:1->25, TreeView.DragOver[symbol-qualified]:2->26, UpDown.DragOver[symbol-qualified]:3->27, Constants.BorderStyle[symbol-qualified]:1->23, DateTime.Time$[symbol-qualified]:4->20, DataMembers.Remove[symbol-qualified]:2->9, Do[symbol-bare]:13->18, For[symbol-bare]:12->17, Padding.Top[symbol-qualified]:1->6
+
+F7(50/25)+F5+F6(3) vs R: worse=393 better=31 unchanged=7588
+  new regressions vs R: If[symbol-bare]:1->none, _HiddenModule.Input$[symbol-qualified]:2->none, _HiddenModule.InputB$[symbol-qualified]:3->none, Do[symbol-bare]:13->none, Strings.Left$[symbol-qualified]:36->977, Strings.LeftB$[symbol-qualified]:36->977, Strings.Len$[symbol-qualified]:37->978, Strings.LenB$[symbol-qualified]:37->978, Strings.Mid$[symbol-qualified]:38->979, Strings.MidB$[symbol-qualified]:38->979, Strings.Right$[symbol-qualified]:39->980, Strings.RightB$[symbol-qualified]:39->980, Strings.Chr$[symbol-qualified]:34->971, Strings.ChrB$[symbol-qualified]:34->971, Strings.ChrW$[symbol-qualified]:34->971
+
+Full results -> results-r3.json

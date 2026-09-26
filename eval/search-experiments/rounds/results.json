@@ -1,0 +1,1135 @@
+[
+ {
+  "label": "data-h2",
+  "file": "C:\\Users\\kuba\\AppData\\Local\\Temp\\claude\\D--OCP-wc-twinBASIC-documentation--claude-worktrees-hopeful-dewdney-03ae03\\83533278-db11-4563-b6ba-c1ccb10a0077\\scratchpad\\search-eval\\data-h2.json",
+  "cost": {
+   "entries": 3781,
+   "rawBytes": 4010231,
+   "gzipBytes": 1064251,
+   "medianBuildMs": 995.5720000000001,
+   "buildTimes": [
+    945.2348999999999,
+    995.5720000000001,
+    1000.0388999999999
+   ],
+   "heapDeltaBytes": 215583568
+  },
+  "overall": {
+   "n": 70,
+   "hit1": 28.571428571428573,
+   "hit5": 34.285714285714285,
+   "hit10": 34.285714285714285,
+   "mrr": 0.31147155015852496,
+   "zeroCorrectPct": 60
+  },
+  "byCategory": {
+   "symbol-bare": {
+    "n": 18,
+    "hit1": 44.44444444444444,
+    "hit5": 44.44444444444444,
+    "hit10": 44.44444444444444,
+    "mrr": 0.4444444444444444,
+    "zeroCorrectPct": 55.55555555555556
+   },
+   "symbol-qualified": {
+    "n": 32,
+    "hit1": 0,
+    "hit5": 0,
+    "hit10": 0,
+    "mrr": 0,
+    "zeroCorrectPct": 100
+   },
+   "prose": {
+    "n": 20,
+    "hit1": 60,
+    "hit5": 80,
+    "hit10": 80,
+    "mrr": 0.6901504255548373,
+    "zeroCorrectPct": 0
+   }
+  },
+  "byKind": {
+   "type": {
+    "n": 4,
+    "hit1": 75,
+    "hit5": 75,
+    "hit10": 75,
+    "mrr": 0.75,
+    "zeroCorrectPct": 25
+   },
+   "member": {
+    "n": 46,
+    "hit1": 10.869565217391305,
+    "hit5": 10.869565217391305,
+    "hit10": 10.869565217391305,
+    "mrr": 0.10869565217391304,
+    "zeroCorrectPct": 89.1304347826087
+   }
+  },
+  "medianLatencyMs": 0.14869999999973516,
+  "perQuery": [
+   {
+    "q": "late binding",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/Reference/Data-Types"
+    ],
+    "resultCount": 172,
+    "firstHitRank": 17,
+    "reciprocalRank": 0.058823529411764705,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": false
+   },
+   {
+    "q": "Implements",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/tB/Core/Implements"
+    ],
+    "resultCount": 228,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "AutoRedraw",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/tB/Packages/VB/Form",
+     "/tB/Packages/VB/PictureBox"
+    ],
+    "resultCount": 19,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "DoEvents",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/tB/Modules/Interaction/DoEvents"
+    ],
+    "resultCount": 10,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "Option Explicit",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/tB/Core/Option"
+    ],
+    "resultCount": 537,
+    "firstHitRank": 2,
+    "reciprocalRank": 0.5,
+    "hit1": false,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "conditional compilation",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/Reference/Compiler-Constants"
+    ],
+    "resultCount": 381,
+    "firstHitRank": 5,
+    "reciprocalRank": 0.2,
+    "hit1": false,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "PtrSafe",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/Features/64bit"
+    ],
+    "resultCount": 38,
+    "firstHitRank": 3,
+    "reciprocalRank": 0.3333333333333333,
+    "hit1": false,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "circular reference",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/Tutorials/CustomControls/Defining"
+    ],
+    "resultCount": 491,
+    "firstHitRank": 14,
+    "reciprocalRank": 0.07142857142857142,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": false
+   },
+   {
+    "q": "64-bit compilation",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/Features/64bit"
+    ],
+    "resultCount": 559,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "regular expressions",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/tB/IDE/Project/FindReplace"
+    ],
+    "resultCount": 424,
+    "firstHitRank": 13,
+    "reciprocalRank": 0.07692307692307693,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": false
+   },
+   {
+    "q": "error handling",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/Reference/Categories"
+    ],
+    "resultCount": 629,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "threading and atomics",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/Reference/Categories"
+    ],
+    "resultCount": 140,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "array bounds checks",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/tB/IDE/Project/Settings"
+    ],
+    "resultCount": 531,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "File I/O",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/Features/Standard-Library/File-IO"
+    ],
+    "resultCount": 3001,
+    "firstHitRank": 2,
+    "reciprocalRank": 0.5,
+    "hit1": false,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "Fusion",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/Features/Fusion"
+    ],
+    "resultCount": 16,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "AddressOf operator",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/tB/Core/AddressOf"
+    ],
+    "resultCount": 324,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "variadic arguments",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/Features/Advanced/API-Declarations"
+    ],
+    "resultCount": 336,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "heading levels",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/Documentation/Development/Authoring"
+    ],
+    "resultCount": 217,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "With statement",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/tB/Core/With"
+    ],
+    "resultCount": 814,
+    "firstHitRank": 16,
+    "reciprocalRank": 0.0625,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": false
+   },
+   {
+    "q": "symbol index",
+    "category": "prose",
+    "kindGroup": "n/a",
+    "expected": [
+     "/Documentation/Development/Building"
+    ],
+    "resultCount": 304,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "ShowTodayCircle",
+    "category": "symbol-bare",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/WinNativeCommonCtls/MonthView#showtodaycircle"
+    ],
+    "resultCount": 1,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "AmbientProperties",
+    "category": "symbol-bare",
+    "kindGroup": "type",
+    "expected": [
+     "/tB/Packages/VBRUN/AmbientProperties"
+    ],
+    "resultCount": 59,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "WaynesGrid.SelectedCellX",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/CustomControls/WaynesGrid#selectedcellx"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "Constants.VbCalendar",
+    "category": "symbol-qualified",
+    "kindGroup": "type",
+    "expected": [
+     "/tB/Modules/Constants/VbCalendar"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "Label.DataField",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VB/Label#datafield"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "Line.Container",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VB/Line#container"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "ProgressBar",
+    "category": "symbol-bare",
+    "kindGroup": "type",
+    "expected": [
+     "/tB/Packages/WinNativeCommonCtls/ProgressBar"
+    ],
+    "resultCount": 22,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "DriveListBox.SetFocus",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VB/DriveListBox#setfocus"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "CellRenderingOptions.TextRendering",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/CustomControls/WaynesGrid/CellRenderingOptions#textrendering"
+    ],
+    "resultCount": 1,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "ColumnHeaders.Item",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/WinNativeCommonCtls/ListView/ColumnHeaders#item"
+    ],
+    "resultCount": 1,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "vbMenuAccelCtrlR",
+    "category": "symbol-bare",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+    ],
+    "resultCount": 3,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "vbDriveListBox",
+    "category": "symbol-bare",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+    ],
+    "resultCount": 2,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "Node",
+    "category": "symbol-bare",
+    "kindGroup": "type",
+    "expected": [
+     "/tB/Packages/WinNativeCommonCtls/TreeView/Node"
+    ],
+    "resultCount": 77,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "OLEContainerUpdateOptionsConstants.vbOLE_UpdateFrozen",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VBRUN/Constants/OLEContainerUpdateOptionsConstants"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "Load",
+    "category": "symbol-bare",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Core/Load",
+     "/tB/Packages/VB/Form#load",
+     "/tB/Packages/VB/Global#load",
+     "/tB/Packages/VB/MDIForm#load",
+     "/tB/Packages/VB/Report#load"
+    ],
+    "resultCount": 197,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "IsNothing",
+    "category": "symbol-bare",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/Assert/Exact#isnothing",
+     "/tB/Packages/Assert/Permissive#isnothing",
+     "/tB/Packages/Assert/Strict#isnothing"
+    ],
+    "resultCount": 8,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "DataObjectFormat.AspectType",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VBRUN/DataObject/DataObjectFormat#aspecttype"
+    ],
+    "resultCount": 1,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "tbServiceTypeOwnProcessInteractive",
+    "category": "symbol-bare",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/WinServicesLib/Enumerations/ServiceTypeConstants"
+    ],
+    "resultCount": 1,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "PopUpMenu",
+    "category": "symbol-bare",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VB/Form#popupmenu",
+     "/tB/Packages/VB/MDIForm#popupmenu",
+     "/tB/Packages/VB/UserControl#popupmenu"
+    ],
+    "resultCount": 9,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "ClientDisconnected",
+    "category": "symbol-bare",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/WinNamedPipesLib/NamedPipeServer#clientdisconnected"
+    ],
+    "resultCount": 6,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "MenuControlConstants.vbPopupMenuRightButton",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VBRUN/Constants/MenuControlConstants"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "OLE.Class",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VB/OLE#class"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "VbFileAttribute.vbReadOnly",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Modules/Constants/VbFileAttribute"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "ChrW",
+    "category": "symbol-bare",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Modules/Strings/Chr"
+    ],
+    "resultCount": 5,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "DirListBox.Width",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VB/DirListBox#width"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "SerializeInfo.RuntimeUISrzDeserialize",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/CustomControls/Framework/SerializeInfo#runtimeuisrzdeserialize"
+    ],
+    "resultCount": 1,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "Data.RecordSource",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VB/Data#recordsource"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "OLEContainerConstants.vbOLESaved",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "vbPRPSEnvMonarch",
+    "category": "symbol-bare",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VBRUN/Constants/PrinterObjectConstants",
+     "/tB/Packages/VBRUN/Constants/PrinterObjectConstants_PaperSize"
+    ],
+    "resultCount": 2,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "ComboBox.Sorted",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VB/ComboBox#sorted"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "FillPattern.tbGradientCornerTopRight",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/CustomControls/Enumerations/FillPattern"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "_App.Title",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/AppGlobalClassObject/_App/Title"
+    ],
+    "resultCount": 2,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "ColorMode",
+    "category": "symbol-bare",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VB/Printer#colormode"
+    ],
+    "resultCount": 2,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "MenuAccelConstants.vbMenuAccelF9",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "Report.Click",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VB/Report#click"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "PropertyPage.Appearance",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VB/PropertyPage#appearance"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "ControlTypeConstants.vbListView",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "WindowsFormOptions.MaximizeButton",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/CustomControls/WaynesForm/WindowsFormOptions#maximizebutton"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "Label.DataFormat",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VB/Label#dataformat"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "PictureBox.LinkItem",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VB/PictureBox#linkitem"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "LaunchService",
+    "category": "symbol-bare",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/WinServicesLib/Services#launchservice"
+    ],
+    "resultCount": 2,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "CommandButton.PictureDpiScaling",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VB/CommandButton#picturedpiscaling"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "CefBrowser.CanGoBack",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/CEF/CefBrowser#cangoback"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "DateAdd",
+    "category": "symbol-bare",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Modules/DateTime/DateAdd"
+    ],
+    "resultCount": 13,
+    "firstHitRank": 1,
+    "reciprocalRank": 1,
+    "hit1": true,
+    "hit5": true,
+    "hit10": true,
+    "zeroCorrect": false
+   },
+   {
+    "q": "MaskType",
+    "category": "symbol-bare",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VB/QRCode#masktype"
+    ],
+    "resultCount": 3,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "FileListBox.OLEDragDrop",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VB/FileListBox#oledragdrop"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "Fail",
+    "category": "symbol-bare",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/Assert/Exact#fail",
+     "/tB/Packages/Assert/Permissive#fail",
+     "/tB/Packages/Assert/Strict#fail"
+    ],
+    "resultCount": 188,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "ShapeConstants.vbShapeSquare",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VBRUN/Constants/ShapeConstants"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "UserControl.EventsFrozen",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VB/UserControl#eventsfrozen"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   },
+   {
+    "q": "HScrollBar.MouseIcon",
+    "category": "symbol-qualified",
+    "kindGroup": "member",
+    "expected": [
+     "/tB/Packages/VB/HScrollBar#mouseicon"
+    ],
+    "resultCount": 0,
+    "firstHitRank": null,
+    "reciprocalRank": 0,
+    "hit1": false,
+    "hit5": false,
+    "hit10": false,
+    "zeroCorrect": true
+   }
+  ]
+ }
+]

@@ -1,0 +1,2823 @@
+{
+ "worse": 352,
+ "better": 5991,
+ "unchanged": 1669,
+ "deltas": [
+  {
+   "q": "Debug.Print",
+   "category": "symbol-qualified",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 61,
+   "delta": 60
+  },
+  {
+   "q": "/",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 763,
+   "rankB": 798,
+   "delta": 35
+  },
+  {
+   "q": "vbManual",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 36,
+   "delta": 35
+  },
+  {
+   "q": "With",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 28,
+   "rankB": 54,
+   "delta": 26
+  },
+  {
+   "q": "vbUser",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 29,
+   "delta": 26
+  },
+  {
+   "q": "Is",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 151,
+   "rankB": 176,
+   "delta": 25
+  },
+  {
+   "q": "vbAppear3d",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 26,
+   "delta": 25
+  },
+  {
+   "q": "vbBringToFront",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 26,
+   "delta": 24
+  },
+  {
+   "q": "vbSendToBack",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 26,
+   "delta": 24
+  },
+  {
+   "q": "Debug.Assert",
+   "category": "symbol-qualified",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 25,
+   "delta": 24
+  },
+  {
+   "q": "vbAppearFlat",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 24,
+   "delta": 23
+  },
+  {
+   "q": "Debug.Cls",
+   "category": "symbol-qualified",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 23,
+   "delta": 22
+  },
+  {
+   "q": "vbButtonGraphical",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 24,
+   "delta": 20
+  },
+  {
+   "q": "vbAutomatic",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 21,
+   "delta": 20
+  },
+  {
+   "q": "vbCancel",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 20,
+   "delta": 19
+  },
+  {
+   "q": "vbFixedSingleBorder",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 20,
+   "delta": 19
+  },
+  {
+   "q": "vbBeginDrag",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 20,
+   "delta": 19
+  },
+  {
+   "q": "vbEndDrag",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 20,
+   "delta": 19
+  },
+  {
+   "q": "Debug.TracePrint",
+   "category": "symbol-qualified",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 20,
+   "delta": 19
+  },
+  {
+   "q": "vbOLEDropManual",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 7,
+   "rankB": 25,
+   "delta": 18
+  },
+  {
+   "q": "vbOLEDropNone",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 6,
+   "rankB": 23,
+   "delta": 17
+  },
+  {
+   "q": "vbNoBorder",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 17,
+   "delta": 15
+  },
+  {
+   "q": "vbDockNone",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 15,
+   "delta": 14
+  },
+  {
+   "q": "vbFSTransparent",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 15,
+   "delta": 14
+  },
+  {
+   "q": "vbDockBottom",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 15,
+   "delta": 13
+  },
+  {
+   "q": "vbDockFill",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 16,
+   "delta": 13
+  },
+  {
+   "q": "vbDockLeft",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 14,
+   "delta": 13
+  },
+  {
+   "q": "vbDockRight",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 16,
+   "delta": 13
+  },
+  {
+   "q": "vbDockTop",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 14,
+   "delta": 13
+  },
+  {
+   "q": "vbOLEDragAutomatic",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 5,
+   "rankB": 18,
+   "delta": 13
+  },
+  {
+   "q": "vbSolid",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 12,
+   "delta": 11
+  },
+  {
+   "q": "vbListBoxCheckbox",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 11,
+   "delta": 9
+  },
+  {
+   "q": "vbTwips",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 12,
+   "delta": 9
+  },
+  {
+   "q": "vbBFOpaque",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 11,
+   "delta": 8
+  },
+  {
+   "q": "vbComboDropdownList",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 10,
+   "delta": 8
+  },
+  {
+   "q": "vbCopyPen",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 11,
+   "delta": 8
+  },
+  {
+   "q": "vbBFTransparent",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 10,
+   "delta": 7
+  },
+  {
+   "q": "vbOLEDragManual",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 8,
+   "delta": 7
+  },
+  {
+   "q": "For",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 7,
+   "delta": 6
+  },
+  {
+   "q": "vbAlignBottom",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 7,
+   "delta": 6
+  },
+  {
+   "q": "vbAlignLeft",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 7,
+   "delta": 6
+  },
+  {
+   "q": "vbAlignRight",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 7,
+   "delta": 6
+  },
+  {
+   "q": "vbAlignTop",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 7,
+   "delta": 6
+  },
+  {
+   "q": "vbComboSimple",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 7,
+   "delta": 6
+  },
+  {
+   "q": "vbDash",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 7,
+   "delta": 6
+  },
+  {
+   "q": "vbDashDot",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 7,
+   "delta": 6
+  },
+  {
+   "q": "vbDashDotDot",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 7,
+   "delta": 6
+  },
+  {
+   "q": "vbDot",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 7,
+   "delta": 6
+  },
+  {
+   "q": "vbInsideSolid",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 7,
+   "delta": 6
+  },
+  {
+   "q": "vbInvisible",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 7,
+   "delta": 6
+  },
+  {
+   "q": "vbFSSolid",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 7,
+   "delta": 6
+  },
+  {
+   "q": "vbModeless",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 9,
+   "delta": 6
+  },
+  {
+   "q": "vbSrcCopy",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 7,
+   "delta": 6
+  },
+  {
+   "q": "vbCentimeters",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 8,
+   "delta": 6
+  },
+  {
+   "q": "vbCharacters",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 8,
+   "delta": 6
+  },
+  {
+   "q": "vbInches",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 9,
+   "delta": 6
+  },
+  {
+   "q": "vbMillimeters",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 8,
+   "delta": 6
+  },
+  {
+   "q": "vbPixels",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 9,
+   "delta": 6
+  },
+  {
+   "q": "vbPoints",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 8,
+   "delta": 6
+  },
+  {
+   "q": "Each",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 6,
+   "delta": 5
+  },
+  {
+   "q": "vbMultiSelectNone",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 6,
+   "delta": 5
+  },
+  {
+   "q": "vbOLEDropAutomatic",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 8,
+   "delta": 5
+  },
+  {
+   "q": "Select",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 5,
+   "rankB": 9,
+   "delta": 4
+  },
+  {
+   "q": "vbCross",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 5,
+   "delta": 4
+  },
+  {
+   "q": "vbDiagonalCross",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 5,
+   "delta": 4
+  },
+  {
+   "q": "vbDownwardDiagonal",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 5,
+   "delta": 4
+  },
+  {
+   "q": "vbHorizontalLine",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 5,
+   "delta": 4
+  },
+  {
+   "q": "vbUpwardDiagonal",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 5,
+   "delta": 4
+  },
+  {
+   "q": "vbVerticalLine",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 5,
+   "delta": 4
+  },
+  {
+   "q": "vbModal",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 7,
+   "delta": 4
+  },
+  {
+   "q": "vbNormal",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 4,
+   "delta": 3
+  },
+  {
+   "q": "Error$",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 10,
+   "rankB": 13,
+   "delta": 3
+  },
+  {
+   "q": "vbAlignNone",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 4,
+   "delta": 3
+  },
+  {
+   "q": "vbRightJustify",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 4,
+   "delta": 3
+  },
+  {
+   "q": "vbButtonStandard",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 4,
+   "delta": 3
+  },
+  {
+   "q": "vbChecked",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 6,
+   "delta": 3
+  },
+  {
+   "q": "vbUnchecked",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 6,
+   "delta": 3
+  },
+  {
+   "q": "vbComboDropdown",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 4,
+   "delta": 3
+  },
+  {
+   "q": "vbForm",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 4,
+   "delta": 3
+  },
+  {
+   "q": "vbMaximized",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 4,
+   "delta": 3
+  },
+  {
+   "q": "vbMinimized",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 4,
+   "delta": 3
+  },
+  {
+   "q": "vbPicTypeIcon",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 7,
+   "delta": 3
+  },
+  {
+   "q": "vbStartUpManual",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 4,
+   "delta": 3
+  },
+  {
+   "q": "vbStartUpOwner",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 4,
+   "delta": 3
+  },
+  {
+   "q": "vbStartUpScreen",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 4,
+   "delta": 3
+  },
+  {
+   "q": "vbStartUpWindowsDefault",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 4,
+   "delta": 3
+  },
+  {
+   "q": "vbServiceStatusRunning",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 4,
+   "delta": 3
+  },
+  {
+   "q": "vbServiceStatusStopped",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 5,
+   "delta": 3
+  },
+  {
+   "q": "With statement",
+   "category": "prose",
+   "kindGroup": "n/a",
+   "rankH2": 16,
+   "rankB": 19,
+   "delta": 3
+  },
+  {
+   "q": "Lock",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "On",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "Time$",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 5,
+   "rankB": 7,
+   "delta": 2
+  },
+  {
+   "q": "RightB$",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 4,
+   "delta": 2
+  },
+  {
+   "q": "tbCurve",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 5,
+   "delta": 2
+  },
+  {
+   "q": "tbNormal",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "Column",
+   "category": "symbol-bare",
+   "kindGroup": "type",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "CheckBox",
+   "category": "symbol-bare",
+   "kindGroup": "mixed",
+   "rankH2": 2,
+   "rankB": 4,
+   "delta": 2
+  },
+  {
+   "q": "vbCenter",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbLeftJustify",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "tbLeftJustify",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "tbRightJustify",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 5,
+   "delta": 2
+  },
+  {
+   "q": "vbBSDash",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 5,
+   "delta": 2
+  },
+  {
+   "q": "vbBSDashDot",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 5,
+   "delta": 2
+  },
+  {
+   "q": "vbBSDashDotDot",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 5,
+   "delta": 2
+  },
+  {
+   "q": "vbBSDot",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 5,
+   "delta": 2
+  },
+  {
+   "q": "vbBSInsideSolid",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 5,
+   "delta": 2
+  },
+  {
+   "q": "vbBSSolid",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 5,
+   "delta": 2
+  },
+  {
+   "q": "vbTransparent",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 5,
+   "delta": 2
+  },
+  {
+   "q": "vbGrayed",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 5,
+   "delta": 2
+  },
+  {
+   "q": "vbCFUnicodeText",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 7,
+   "rankB": 9,
+   "delta": 2
+  },
+  {
+   "q": "vbBlack",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 4,
+   "delta": 2
+  },
+  {
+   "q": "vbCustomBorder",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 4,
+   "delta": 2
+  },
+  {
+   "q": "vbImage",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbListBox",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbUseACE",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbUseJet",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbUseODBC",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 4,
+   "delta": 2
+  },
+  {
+   "q": "vbWhiteness",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 10,
+   "rankB": 12,
+   "delta": 2
+  },
+  {
+   "q": "vbBSNone",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbFixedDialog",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbFixedSingle",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbFixedToolWindow",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbSizable",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbSizableNoTitleBar",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbSizableToolWindow",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbSizableToolWindowNoTitleBar",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbListBoxColorSwatch",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbListBoxStandard",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 4,
+   "delta": 2
+  },
+  {
+   "q": "vbMultiSelectExtended",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 4,
+   "delta": 2
+  },
+  {
+   "q": "vbMultiSelectSimple",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 4,
+   "delta": 2
+  },
+  {
+   "q": "vbOLE_ActivateDoubleclick",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbSrcInvert",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbButtonFace",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbButtonText",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 4,
+   "delta": 2
+  },
+  {
+   "q": "vbGrayText",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbWindowBackground",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 5,
+   "rankB": 7,
+   "delta": 2
+  },
+  {
+   "q": "dtpCustom",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "ccOrientationHorizontal",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "ccOrientationVertical",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "ccFixedSingle",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "ccNone",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "tvwManual",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "tvwAscending",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "tvwBinary",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "tvwText",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbServiceControlContinue",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 5,
+   "delta": 2
+  },
+  {
+   "q": "vbServiceControlInterrogate",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbServiceControlPause",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbServiceControlStop",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "tbServiceStartOnDemand",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbServiceStatusContinuePending",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbServiceStatusPausePending",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbServiceStatusStartPending",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "vbServiceStatusStopPending",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "tbServiceTypeOwnProcess",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "_App.LegalCopyright",
+   "category": "symbol-qualified",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 3,
+   "delta": 2
+  },
+  {
+   "q": "Do",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "Set",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "Write",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "Compilation",
+   "category": "symbol-bare",
+   "kindGroup": "type",
+   "rankH2": 10,
+   "rankB": 11,
+   "delta": 1
+  },
+  {
+   "q": "Constants",
+   "category": "symbol-bare",
+   "kindGroup": "type",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbCalGreg",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbCalHijri",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbSunday",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 7,
+   "rankB": 8,
+   "delta": 1
+  },
+  {
+   "q": "vbUseSystemDayOfWeek",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbUnicode",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "HelpFile",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "Build",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "Comments",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "EXEName",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "IsInIDE",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "LastBuildPath",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "LogEvent",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "Major",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "Minor",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "ModulePath",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "Revision",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "hInstance",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "CefLogError",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "tbFixedSizable",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "tbCutOut",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "tbNotched",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 4,
+   "delta": 1
+  },
+  {
+   "q": "tbDockNone",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "tbGradientNorthToSouth",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "tbStartUpManual",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "tbStartUpWindowsDefault",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "tbAppendEllipsis",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "tbDisallowPartialChars",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "Form",
+   "category": "symbol-bare",
+   "kindGroup": "type",
+   "rankH2": 5,
+   "rankB": 6,
+   "delta": 1
+  },
+  {
+   "q": "Image",
+   "category": "symbol-bare",
+   "kindGroup": "mixed",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "PropertyPage",
+   "category": "symbol-bare",
+   "kindGroup": "type",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbCFBitmap",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 6,
+   "rankB": 7,
+   "delta": 1
+  },
+  {
+   "q": "vbCFDIB",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbCFEMetafile",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbCFLink",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 4,
+   "delta": 1
+  },
+  {
+   "q": "vbCFMetafile",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbCFPalette",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbCFRTF",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 4,
+   "delta": 1
+  },
+  {
+   "q": "vbCFText",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 9,
+   "rankB": 10,
+   "delta": 1
+  },
+  {
+   "q": "vbWhite",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 5,
+   "rankB": 6,
+   "delta": 1
+  },
+  {
+   "q": "vbYellow",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbCheckBox",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbComboBox",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbCommandButton",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbDataControl",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbDirListBox",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbDriveListBox",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbFileListBox",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbFrame",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbHScrollBar",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbLabel",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbMenuControl",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbOLEControl",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbOptionButton",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbPictureBox",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbPropertyPage",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbReport",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbShape",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 6,
+   "rankB": 7,
+   "delta": 1
+  },
+  {
+   "q": "vbTextBox",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbUserControl",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbVScrollBar",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbWebView2",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbBOF",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbMoveFirst",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbAddNew",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbEOF",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbMoveLast",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbDataActionCancel",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbUseDefaultCursor",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbUseODBCCursor",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbUseServersideCursor",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbBlackness",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 6,
+   "rankB": 7,
+   "delta": 1
+  },
+  {
+   "q": "vbGradientNS",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbGradientWE",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbArrangeIcons",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbCascade",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbTileHorizontal",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbTileVertical",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbResCursor",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbResIcon",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbLogAuto",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 3,
+   "rankB": 4,
+   "delta": 1
+  },
+  {
+   "q": "vbOLE_ActivateAuto",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbOLE_ActivateGetFocus",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbOLE_ActivateManual",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbOLE_DisplayContent",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbOLE_DisplayIcon",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbOLE_SizeAutoSize",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbOLE_SizeClip",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbOLE_SizeStretch",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbOLE_SizeZoom",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbOLE_Either",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbOLE_Embedded",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbOLE_Linked",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbOLE_UpdateAutomatic",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbOLE_UpdateFrozen",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbOLE_UpdateManual",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbDropEffectMove",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbPRBNCassette",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbPRBNManual",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbPRBNUpper",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbPRCMColor",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbPRCMMonochrome",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbPRDPHorizontal",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbPRDPSimplex",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbPRDPVertical",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbPRORLandscape",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbPRORPortrait",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbPRPQDraft",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbPRPQHigh",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbPRPQLow",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbPRPQMedium",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbPRPSA4",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbPRPSEnv10",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbPRPSLetter",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbPRPSUser",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbRSTypeDynaset",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbRSTypeSnapShot",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbRSTypeTable",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbBoth",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbHorizontal",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbSBNone",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbVertical",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbShapeOval",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbShapeRoundedRectangle",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbShapeRoundedSquare",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbShapeStar",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlB",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlC",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlD",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlF2",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlF3",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlF4",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlF5",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlF6",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlF7",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlF8",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlG",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlH",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlJ",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlK",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlM",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlN",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlO",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlQ",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlR",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlT",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlU",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlV",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlW",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlX",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vbShortcutCtrlY",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 4,
+   "rankB": 5,
+   "delta": 1
+  },
+  {
+   "q": "vb3DFace",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbActiveTitleBar",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbActiveTitleBarText",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbApplicationWorkspace",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "vbVerticalAlignBottom",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbVerticalAlignMiddle",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbVerticalAlignTop",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "wv2StateAllow",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "wv2StateDefault",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "wv2StateDeny",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "dtpLongDate",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "dtpShortDate",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "dtpTime",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "tvwAutomatic",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "tvwDisabled",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "tvwRootLines",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "tvwTreeLines",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "tvwTreelinesPlusMinusPictureText",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "ListImage",
+   "category": "symbol-bare",
+   "kindGroup": "type",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "ColumnHeader",
+   "category": "symbol-bare",
+   "kindGroup": "type",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "ListItem",
+   "category": "symbol-bare",
+   "kindGroup": "type",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "Node",
+   "category": "symbol-bare",
+   "kindGroup": "type",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbServiceControlDeviceEvent",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbServiceControlHardwareProfileChange",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbServiceControlPowerEvent",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbServiceControlSessionChange",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbServiceControlShutdown",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "tbServiceStartAuto",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "tbServiceStartBoot",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "tbServiceStartDisabled",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "tbServiceStartDriverSystem",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "vbServiceStatusPaused",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "tbServiceTypeKernelDriver",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "tbServiceTypeSystemDriver",
+   "category": "symbol-bare",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "ToolWindow",
+   "category": "symbol-bare",
+   "kindGroup": "type",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "Toolbar",
+   "category": "symbol-bare",
+   "kindGroup": "type",
+   "rankH2": 2,
+   "rankB": 3,
+   "delta": 1
+  },
+  {
+   "q": "_App.hInstance",
+   "category": "symbol-qualified",
+   "kindGroup": "member",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "conditional compilation",
+   "category": "prose",
+   "kindGroup": "n/a",
+   "rankH2": 5,
+   "rankB": 6,
+   "delta": 1
+  },
+  {
+   "q": "64-bit compilation",
+   "category": "prose",
+   "kindGroup": "n/a",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "array bounds checks",
+   "category": "prose",
+   "kindGroup": "n/a",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  },
+  {
+   "q": "Fusion",
+   "category": "prose",
+   "kindGroup": "n/a",
+   "rankH2": 1,
+   "rankB": 2,
+   "delta": 1
+  }
+ ]
+}

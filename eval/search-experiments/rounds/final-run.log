@@ -1,0 +1,156 @@
+
+=== Q-split ===
+  overall n=8012 hit1=77.9% hit5=96.3% hit10=97.5% MRR=0.8624
+  symbol-bare: hit10=98.1% MRR=0.9455
+  symbol-qualified: hit10=97.2% MRR=0.8164
+  prose: hit10=80.0% MRR=0.6201
+  kind=type: hit10=99.5% MRR=0.9763
+  kind=member: hit10=97.4% MRR=0.8564
+
+=== Q-smart ===
+  overall n=8012 hit1=88.7% hit5=97.8% hit10=97.9% MRR=0.9288
+  symbol-bare: hit10=98.1% MRR=0.9455
+  symbol-qualified: hit10=97.9% MRR=0.9205
+  prose: hit10=80.0% MRR=0.6201
+  kind=type: hit10=99.8% MRR=0.9836
+  kind=member: hit10=97.8% MRR=0.9266
+
+=== Q-smart-req ===
+  overall n=8012 hit1=89.4% hit5=91.9% hit10=92.0% MRR=0.9063
+  symbol-bare: hit10=98.1% MRR=0.9455
+  symbol-qualified: hit10=88.6% MRR=0.8853
+  prose: hit10=80.0% MRR=0.6201
+  kind=type: hit10=92.4% MRR=0.9115
+  kind=member: hit10=92.0% MRR=0.9068
+
+=== asterisk-guard confirmation (Q-split) ===
+  unguarded '*' query still crashes lunr directly: true
+  guarded runQuery('*') result: []
+
+=== regressions vs h2: Q-split ===
+  worse=44 better=6589 unchanged=1379
+  histogram: {"1":24,"2-5":10,"6-10":0,"11-20":6,"21-50":3,"51+":1}
+  top20:
+    [symbol-bare] "/": 763 -> none (delta=236)
+    [symbol-qualified] "Debug.Print": 1 -> 33 (delta=32)
+    [symbol-bare] "With": 28 -> 54 (delta=26)
+    [symbol-bare] "Is": 151 -> 176 (delta=25)
+    [symbol-qualified] "Debug.Assert": 1 -> 21 (delta=20)
+    [symbol-qualified] "Debug.Cls": 1 -> 21 (delta=20)
+    [symbol-bare] "VB": 1 -> 15 (delta=14)
+    [symbol-qualified] "Debug.TracePrint": 1 -> 15 (delta=14)
+    [symbol-bare] "Do": 1 -> 13 (delta=12)
+    [symbol-bare] "For": 1 -> 12 (delta=11)
+    [symbol-bare] "Each": 1 -> 6 (delta=5)
+    [symbol-bare] "vbForm": 1 -> 4 (delta=3)
+    [prose] "With statement": 16 -> 19 (delta=3)
+    [symbol-bare] "Lock": 1 -> 3 (delta=2)
+    [symbol-bare] "On": 1 -> 3 (delta=2)
+    [symbol-bare] "Select": 5 -> 7 (delta=2)
+    [symbol-bare] "Time$": 5 -> 7 (delta=2)
+    [symbol-bare] "vbListBox": 1 -> 3 (delta=2)
+    [prose] "conditional compilation": 5 -> 7 (delta=2)
+    [symbol-bare] "vbCheckBox": 1 -> 2 (delta=1)
+
+=== regressions vs h2: Q-smart ===
+  worse=38 better=6590 unchanged=1384
+  histogram: {"1":22,"2-5":10,"6-10":0,"11-20":3,"21-50":2,"51+":1}
+  top20:
+    [symbol-bare] "/": 763 -> none (delta=236)
+    [symbol-bare] "With": 28 -> 54 (delta=26)
+    [symbol-bare] "Is": 151 -> 176 (delta=25)
+    [symbol-bare] "VB": 1 -> 15 (delta=14)
+    [symbol-bare] "Do": 1 -> 13 (delta=12)
+    [symbol-bare] "For": 1 -> 12 (delta=11)
+    [symbol-bare] "Each": 1 -> 6 (delta=5)
+    [symbol-bare] "vbForm": 1 -> 4 (delta=3)
+    [prose] "With statement": 16 -> 19 (delta=3)
+    [symbol-bare] "Lock": 1 -> 3 (delta=2)
+    [symbol-bare] "On": 1 -> 3 (delta=2)
+    [symbol-bare] "Select": 5 -> 7 (delta=2)
+    [symbol-bare] "Time$": 5 -> 7 (delta=2)
+    [symbol-bare] "vbListBox": 1 -> 3 (delta=2)
+    [prose] "conditional compilation": 5 -> 7 (delta=2)
+    [symbol-bare] "vbCheckBox": 1 -> 2 (delta=1)
+    [symbol-bare] "vbComboBox": 1 -> 2 (delta=1)
+    [symbol-bare] "vbCommandButton": 1 -> 2 (delta=1)
+    [symbol-bare] "vbDataControl": 1 -> 2 (delta=1)
+    [symbol-bare] "vbDirListBox": 1 -> 2 (delta=1)
+
+=== regressions vs h2: Q-smart-req ===
+  worse=39 better=6012 unchanged=1961
+  histogram: {"1":22,"2-5":10,"6-10":0,"11-20":3,"21-50":2,"51+":2}
+  top20:
+    [symbol-qualified] "EventLogHelperPublic.RegisterEventLogInternal": 1 -> none (delta=998)
+    [symbol-bare] "/": 763 -> none (delta=236)
+    [symbol-bare] "With": 28 -> 54 (delta=26)
+    [symbol-bare] "Is": 151 -> 176 (delta=25)
+    [symbol-bare] "VB": 1 -> 15 (delta=14)
+    [symbol-bare] "Do": 1 -> 13 (delta=12)
+    [symbol-bare] "For": 1 -> 12 (delta=11)
+    [symbol-bare] "Each": 1 -> 6 (delta=5)
+    [symbol-bare] "vbForm": 1 -> 4 (delta=3)
+    [prose] "With statement": 16 -> 19 (delta=3)
+    [symbol-bare] "Lock": 1 -> 3 (delta=2)
+    [symbol-bare] "On": 1 -> 3 (delta=2)
+    [symbol-bare] "Select": 5 -> 7 (delta=2)
+    [symbol-bare] "Time$": 5 -> 7 (delta=2)
+    [symbol-bare] "vbListBox": 1 -> 3 (delta=2)
+    [prose] "conditional compilation": 5 -> 7 (delta=2)
+    [symbol-bare] "vbCheckBox": 1 -> 2 (delta=1)
+    [symbol-bare] "vbComboBox": 1 -> 2 (delta=1)
+    [symbol-bare] "vbCommandButton": 1 -> 2 (delta=1)
+    [symbol-bare] "vbDataControl": 1 -> 2 (delta=1)
+
+=== period queries: Q-split ===
+  "1.0" (296): ["ZoomFactor (/tB/Packages/WebView2/WebView2/#zoomfactor)","ZoomFactor (/tB/Packages/CEF/CefBrowser/#zoomfactor)","Zoom (/Tutorials/WebView2/Building-A-Browser-Shell#zoom)"]
+  "3.9" (637): ["3. Verify (/Documentation/Development/Extending#3-verify)","Phase 3: Process (/Documentation/Development/PDF-Generation#phase-3-process)","Phase 3 control flow (/Documentation/Development/Wisdom#phase-3-control-flow)"]
+  "e.g. array" (4150): ["G (/Reference/Procedures-and-Functions#g)","E (/Reference/Procedures-and-Functions#e)","Array (/tB/Modules/Information/Array)"]
+  "i.e. pointer" (5146): ["E (/Reference/Procedures-and-Functions#e)","Function Pointers (/Reference/Operators#function-pointers)","Raw pointers (/tB/Modules/Information/#raw-pointers)"]
+  "Debug.Print" (595): ["Debug (/tB/Modules/Debug)","Print (/tB/Core/Print)","Print (/tB/Packages/VB/Printer/#print)"]
+  "Debug.Assert" (467): ["Debug (/tB/Modules/Debug)","Debug-only (/tB/Packages/Assert/#debug-only)","Debugging (/Reference/Categories#debugging)"]
+  "Err.Raise" (1330): ["Err (/tB/Modules/Information/Err)","Raise (/tB/Modules/ErrObject/Raise)","Raising a custom error (/tB/Modules/ErrObject/#raising-a-custom-error)"]
+  "Form.Left" (1347): ["Left (/tB/Packages/VB/Form/#left)","Left (/tB/Packages/VB/CheckBox/#left)","Left (/tB/Packages/VB/CheckMark/#left)"]
+  "Collection.Add" (727): ["Add (/tB/Modules/Collection/Add)","Add (/tB/Packages/VBRUN/DataMembers/#add)","Add (/tB/Packages/WinNativeCommonCtls/ImageList/ListImages#add)"]
+  "Me.Hide" (1847): ["Hide (/tB/Packages/VB/UserControl/#hide)","Hide (/tB/Packages/VB/Form/#hide)","Hide (/tB/Packages/VB/MDIForm/#hide)"]
+  "App.Path" (1315): ["App (/tB/Packages/VB/App/)","App (/tB/Packages/VB/Global/#app)","Path (/tB/Packages/VB/App/#path)"]
+  "VB.Form" (3720): ["Form (/tB/Packages/VB/Form/)","Forms (/tB/Packages/VB/Global/#forms)","form (/tB/Gloss#form)"]
+  "Assert.Exact.AreEqual" (270): ["AreEqual (/tB/Packages/Assert/Exact#areequal)","Exact (/tB/Packages/Assert/Exact)","AreEqual (/tB/Packages/Assert/Permissive#areequal)"]
+  "String.Format" (1209): ["Format (/tB/Modules/Strings/Format)","Format (/tB/Packages/VB/OLE/#format)","Format (/tB/Packages/WinNativeCommonCtls/DTPicker#format)"]
+  "BETA 403" (29): ["TWINBASIC_BUILD (/Reference/Compiler-Constants#twinbasic_build)","Getting Started with LLVM (/LLVM/Getting-Started)","NotSequenceEquals (/tB/Packages/Assert/Strict#notsequenceequals)"]
+
+=== period queries: Q-smart ===
+  "1.0" (24): ["ZoomFactor (/tB/Packages/WebView2/WebView2/#zoomfactor)","DpiScaleFactorX (/tB/Packages/VB/Report/#dpiscalefactorx)","DpiScaleFactorX (/tB/Packages/VB/Form/#dpiscalefactorx)"]
+  "3.9" (1): ["&gt;&gt; and &gt;&gt;= operators (/tB/Core/RightShift#rightshift-operators)"]
+  "e.g. array" (286): ["Array (/tB/Modules/Information/Array)","Arrays (/Tutorials/Arrays)","Arrays (/Reference/Categories#arrays)"]
+  "i.e. pointer" (277): ["Function Pointers (/Reference/Operators#function-pointers)","Raw pointers (/tB/Modules/Information/#raw-pointers)","Memory and Pointers (/Reference/Categories#memory-and-pointers)"]
+  "Debug.Print" (595): ["Debug.Print (/tB/Modules/Debug#print)","Debug (/tB/Modules/Debug)","Print (/tB/Core/Print)"]
+  "Debug.Assert" (467): ["Debug.Assert (/tB/Modules/Debug#assert)","Debug (/tB/Modules/Debug)","Debug-only (/tB/Packages/Assert/#debug-only)"]
+  "Err.Raise" (1330): ["Err (/tB/Modules/Information/Err)","Raise (/tB/Modules/ErrObject/Raise)","Raising a custom error (/tB/Modules/ErrObject/#raising-a-custom-error)"]
+  "Form.Left" (1347): ["Left (/tB/Packages/VB/Form/#left)","Left (/tB/Packages/VB/CheckBox/#left)","Left (/tB/Packages/VB/CheckMark/#left)"]
+  "Collection.Add" (727): ["Add (/tB/Modules/Collection/Add)","Add (/tB/Packages/VBRUN/DataMembers/#add)","Add (/tB/Packages/WinNativeCommonCtls/ImageList/ListImages#add)"]
+  "Me.Hide" (1847): ["Hide (/tB/Packages/VB/UserControl/#hide)","Hide (/tB/Packages/VB/Form/#hide)","Hide (/tB/Packages/VB/MDIForm/#hide)"]
+  "App.Path" (1315): ["App (/tB/Packages/VB/App/)","Path (/tB/Packages/VB/App/#path)","App (/tB/Packages/VB/Global/#app)"]
+  "VB.Form" (3720): ["Form (/tB/Packages/VB/Form/)","Forms (/tB/Packages/VB/Global/#forms)","form (/tB/Gloss#form)"]
+  "Assert.Exact.AreEqual" (270): ["AreEqual (/tB/Packages/Assert/Exact#areequal)","Exact (/tB/Packages/Assert/Exact)","AreEqual (/tB/Packages/Assert/Permissive#areequal)"]
+  "String.Format" (1209): ["Format (/tB/Modules/Strings/Format)","Format (/tB/Packages/VB/OLE/#format)","Format (/tB/Packages/WinNativeCommonCtls/DTPicker#format)"]
+  "BETA 403" (29): ["TWINBASIC_BUILD (/Reference/Compiler-Constants#twinbasic_build)","Getting Started with LLVM (/LLVM/Getting-Started)","NotSequenceEquals (/tB/Packages/Assert/Strict#notsequenceequals)"]
+
+=== period queries: Q-smart-req ===
+  "1.0" (22): ["ZoomFactor (/tB/Packages/WebView2/WebView2/#zoomfactor)","DpiScaleFactorX (/tB/Packages/VB/Report/#dpiscalefactorx)","DpiScaleFactorX (/tB/Packages/VB/Form/#dpiscalefactorx)"]
+  "3.9" (11): ["Operators in a generic body (/Features/Language/Generics#operators-in-a-generic-body)","&gt;&gt; and &gt;&gt;= operators (/tB/Core/RightShift#rightshift-operators)","&lt;&lt; and &lt;&lt;= operators (/tB/Core/LeftShift#leftshift-operators)"]
+  "e.g. array" (1018): ["IsArray (/tB/Modules/Information/IsArray)","Arrange (/tB/Packages/VB/MDIForm/#arrange)","Arrange (/tB/Packages/WinNativeCommonCtls/ListView/#arrange)"]
+  "i.e. pointer" (876): ["Printer (/tB/Packages/VB/Printer/)","Printers (/tB/Packages/VB/Printers/)","Printer (/tB/Packages/VB/Global/#printer)"]
+  "Debug.Print" (43): ["Debug.Print (/tB/Modules/Debug#print)","Debug (/tB/Modules/Debug)","Print (/tB/Core/Print)"]
+  "Debug.Assert" (10): ["Debug.Assert (/tB/Modules/Debug#assert)","Debug (/tB/Modules/Debug)","Debug-only (/tB/Packages/Assert/#debug-only)"]
+  "Err.Raise" (20): ["Err (/tB/Modules/Information/Err)","Raise (/tB/Modules/ErrObject/Raise)","Inspecting an error (/tB/Modules/ErrObject/#inspecting-an-error)"]
+  "Form.Left" (61): ["Left (/tB/Packages/VB/Form/#left)","Left, LeftB (/tB/Modules/Strings/Left#left-leftb)","Additional Form Features (/Features/GUI-Components/Forms#additional-form-features)"]
+  "Collection.Add" (49): ["Add (/tB/Modules/Collection/Add)","Add (/tB/Packages/VBRUN/DataMembers/#add)","Add (/tB/Packages/WinNativeCommonCtls/ImageList/ListImages#add)"]
+  "Me.Hide" (464): ["Method (/tB/Packages/WebView2/WebView2Request#method)","Methods (/tB/Packages/AppGlobalClassObject/#methods)","Methods (/tB/Packages/AppGlobalClassObject/_App/#methods)"]
+  "App.Path" (25): ["Path (/tB/Packages/VB/App/#path)","Path (/tB/Packages/AppGlobalClassObject/_App/Path)","New App Object Properties (/Features/Standard-Library/New-Functions#new-app-object-properties)"]
+  "VB.Form" (378): ["Form (/tB/Packages/VB/Form/)","Forms (/tB/Packages/VB/Global/#forms)","Showing the form (/tB/Packages/VB/Form/#showing-the-form)"]
+  "Assert.Exact.AreEqual" (10): ["AreEqual (/tB/Packages/Assert/Exact#areequal)","AreEqual (/tB/Packages/Assert/Permissive#areequal)","Exact (/tB/Packages/Assert/#exact)"]
+  "String.Format" (89): ["Format (/tB/Modules/Strings/Format)","Format (/tB/Packages/VB/OLE/#format)","Format (/tB/Packages/WinNativeCommonCtls/DTPicker#format-event)"]
+  "BETA 403" (29): ["TWINBASIC_BUILD (/Reference/Compiler-Constants#twinbasic_build)","Getting Started with LLVM (/LLVM/Getting-Started)","NotSequenceEquals (/tB/Packages/Assert/Strict#notsequenceequals)"]
+
+Full results -> results-final.json

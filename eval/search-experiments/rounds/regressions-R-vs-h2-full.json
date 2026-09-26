@@ -1,0 +1,375 @@
+[
+ {
+  "q": "/",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Core/Divide"
+  ],
+  "rankH2": 763,
+  "rankR": 798,
+  "delta": 35
+ },
+ {
+  "q": "With",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Core/With"
+  ],
+  "rankH2": 28,
+  "rankR": 54,
+  "delta": 26
+ },
+ {
+  "q": "Is",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Core/Is"
+  ],
+  "rankH2": 151,
+  "rankR": 176,
+  "delta": 25
+ },
+ {
+  "q": "VB",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VB"
+  ],
+  "rankH2": 1,
+  "rankR": 15,
+  "delta": 14
+ },
+ {
+  "q": "Do",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Core/Do-Loop"
+  ],
+  "rankH2": 1,
+  "rankR": 13,
+  "delta": 12
+ },
+ {
+  "q": "For",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Core/For-Each-Next",
+   "/tB/Core/For-Next"
+  ],
+  "rankH2": 1,
+  "rankR": 12,
+  "delta": 11
+ },
+ {
+  "q": "Each",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Core/For-Each-Next"
+  ],
+  "rankH2": 1,
+  "rankR": 6,
+  "delta": 5
+ },
+ {
+  "q": "vbForm",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 4,
+  "delta": 3
+ },
+ {
+  "q": "With statement",
+  "category": "prose",
+  "expected": [
+   "/tB/Core/With"
+  ],
+  "rankH2": 16,
+  "rankR": 19,
+  "delta": 3
+ },
+ {
+  "q": "Lock",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Core/Lock"
+  ],
+  "rankH2": 1,
+  "rankR": 3,
+  "delta": 2
+ },
+ {
+  "q": "On",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Core/On-Error",
+   "/tB/Core/On-GoSub",
+   "/tB/Core/On-GoTo"
+  ],
+  "rankH2": 1,
+  "rankR": 3,
+  "delta": 2
+ },
+ {
+  "q": "Select",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Core/Select-Case"
+  ],
+  "rankH2": 5,
+  "rankR": 7,
+  "delta": 2
+ },
+ {
+  "q": "Time$",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Modules/DateTime/Time"
+  ],
+  "rankH2": 5,
+  "rankR": 7,
+  "delta": 2
+ },
+ {
+  "q": "vbListBox",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 3,
+  "delta": 2
+ },
+ {
+  "q": "conditional compilation",
+  "category": "prose",
+  "expected": [
+   "/Reference/Compiler-Constants"
+  ],
+  "rankH2": 5,
+  "rankR": 7,
+  "delta": 2
+ },
+ {
+  "q": "vbCheckBox",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "vbComboBox",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "vbCommandButton",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "vbDataControl",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "vbDirListBox",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "vbDriveListBox",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "vbFileListBox",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "vbFrame",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "vbHScrollBar",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "vbLabel",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "vbMenuControl",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "vbOLEControl",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "vbOptionButton",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "vbPictureBox",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "vbPropertyPage",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "vbReport",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "vbTextBox",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "vbUserControl",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "vbVScrollBar",
+  "category": "symbol-bare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "64-bit compilation",
+  "category": "prose",
+  "expected": [
+   "/Features/64bit"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "array bounds checks",
+  "category": "prose",
+  "expected": [
+   "/tB/IDE/Project/Settings"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ },
+ {
+  "q": "Fusion",
+  "category": "prose",
+  "expected": [
+   "/Features/Fusion"
+  ],
+  "rankH2": 1,
+  "rankR": 2,
+  "delta": 1
+ }
+]

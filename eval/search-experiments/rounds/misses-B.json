@@ -1,0 +1,7348 @@
+[
+ {
+  "q": "And",
+  "expected": [
+   "/tB/Core/And"
+  ],
+  "firstHitRank": null,
+  "resultCount": 13,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "<",
+  "expected": [
+   "/tB/Core/Comparison-Operators"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "<=",
+  "expected": [
+   "/tB/Core/Comparison-Operators"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "<>",
+  "expected": [
+   "/tB/Core/Comparison-Operators"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "=",
+  "expected": [
+   "/tB/Core/Comparison-Operators"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": ">",
+  "expected": [
+   "/tB/Core/Comparison-Operators"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": ">=",
+  "expected": [
+   "/tB/Core/Comparison-Operators"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "&",
+  "expected": [
+   "/tB/Core/Concat"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "&=",
+  "expected": [
+   "/tB/Core/Concat"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "DefBool",
+  "expected": [
+   "/tB/Core/Deftype"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "statement"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "DefByte",
+  "expected": [
+   "/tB/Core/Deftype"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "statement"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "DefCur",
+  "expected": [
+   "/tB/Core/Deftype"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "statement"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "DefDate",
+  "expected": [
+   "/tB/Core/Deftype"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "statement"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "DefDbl",
+  "expected": [
+   "/tB/Core/Deftype"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "statement"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "DefDec",
+  "expected": [
+   "/tB/Core/Deftype"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "statement"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "DefInt",
+  "expected": [
+   "/tB/Core/Deftype"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "statement"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "DefLng",
+  "expected": [
+   "/tB/Core/Deftype"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "statement"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "DefLngLng",
+  "expected": [
+   "/tB/Core/Deftype"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "statement"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "DefLngPtr",
+  "expected": [
+   "/tB/Core/Deftype"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "statement"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "DefObj",
+  "expected": [
+   "/tB/Core/Deftype"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "statement"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "DefSng",
+  "expected": [
+   "/tB/Core/Deftype"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "statement"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "DefStr",
+  "expected": [
+   "/tB/Core/Deftype"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "statement"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "DefVar",
+  "expected": [
+   "/tB/Core/Deftype"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "statement"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "/",
+  "expected": [
+   "/tB/Core/Divide"
+  ],
+  "firstHitRank": 798,
+  "resultCount": 6713,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "/=",
+  "expected": [
+   "/tB/Core/Divide"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "Loop",
+  "expected": [
+   "/tB/Core/Do-Loop"
+  ],
+  "firstHitRank": 92,
+  "resultCount": 129,
+  "kinds": [
+   "keyword"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "^",
+  "expected": [
+   "/tB/Core/Exponent"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "^=",
+  "expected": [
+   "/tB/Core/Exponent"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "Get",
+  "expected": [
+   "/tB/Core/Get"
+  ],
+  "firstHitRank": null,
+  "resultCount": 248,
+  "kinds": [
+   "statement"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "Else",
+  "expected": [
+   "/tB/Core/If-Then-Else"
+  ],
+  "firstHitRank": null,
+  "resultCount": 33,
+  "kinds": [
+   "keyword"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "Then",
+  "expected": [
+   "/tB/Core/If-Then-Else",
+   "/tB/Core/Topic-Preprocessor"
+  ],
+  "firstHitRank": null,
+  "resultCount": 4,
+  "kinds": [
+   "keyword"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "\\",
+  "expected": [
+   "/tB/Core/IntegerDivide"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "\\=",
+  "expected": [
+   "/tB/Core/IntegerDivide"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "Is",
+  "expected": [
+   "/tB/Core/Is"
+  ],
+  "firstHitRank": 176,
+  "resultCount": 253,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "<<",
+  "expected": [
+   "/tB/Core/LeftShift"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "<<=",
+  "expected": [
+   "/tB/Core/LeftShift"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "Let",
+  "expected": [
+   "/tB/Core/Let"
+  ],
+  "firstHitRank": null,
+  "resultCount": 98,
+  "kinds": [
+   "statement"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "Like",
+  "expected": [
+   "/tB/Core/Like"
+  ],
+  "firstHitRank": null,
+  "resultCount": 5,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "-",
+  "expected": [
+   "/tB/Core/Minus"
+  ],
+  "firstHitRank": 1796,
+  "resultCount": 6713,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "-=",
+  "expected": [
+   "/tB/Core/Minus"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "*",
+  "expected": [
+   "/tB/Core/Multiply"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "*=",
+  "expected": [
+   "/tB/Core/Multiply"
+  ],
+  "firstHitRank": null,
+  "resultCount": 82,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "Not",
+  "expected": [
+   "/tB/Core/Not"
+  ],
+  "firstHitRank": null,
+  "resultCount": 900,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "Or",
+  "expected": [
+   "/tB/Core/Or"
+  ],
+  "firstHitRank": null,
+  "resultCount": 424,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "+",
+  "expected": [
+   "/tB/Core/Plus"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "+=",
+  "expected": [
+   "/tB/Core/Plus"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": ">>",
+  "expected": [
+   "/tB/Core/RightShift"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": ">>=",
+  "expected": [
+   "/tB/Core/RightShift"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "operator"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "#Else",
+  "expected": [
+   "/tB/Core/Topic-Preprocessor"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "directive"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "#If",
+  "expected": [
+   "/tB/Core/Topic-Preprocessor"
+  ],
+  "firstHitRank": null,
+  "resultCount": 16,
+  "kinds": [
+   "directive"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "With",
+  "expected": [
+   "/tB/Core/With"
+  ],
+  "firstHitRank": 54,
+  "resultCount": 600,
+  "kinds": [
+   "statement"
+  ],
+  "containers": [],
+  "packages": []
+ },
+ {
+  "q": "Compilation",
+  "expected": [
+   "/tB/Modules/Compilation"
+  ],
+  "firstHitRank": 11,
+  "resultCount": 376,
+  "kinds": [
+   "module"
+  ],
+  "containers": [],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbBack",
+  "expected": [
+   "/tB/Modules/Constants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "constant"
+  ],
+  "containers": [
+   "Constants"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbCr",
+  "expected": [
+   "/tB/Modules/Constants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 28,
+  "kinds": [
+   "constant"
+  ],
+  "containers": [
+   "Constants"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbCrLf",
+  "expected": [
+   "/tB/Modules/Constants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 17,
+  "kinds": [
+   "constant"
+  ],
+  "containers": [
+   "Constants"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbFormFeed",
+  "expected": [
+   "/tB/Modules/Constants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "constant"
+  ],
+  "containers": [
+   "Constants"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbLf",
+  "expected": [
+   "/tB/Modules/Constants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "constant"
+  ],
+  "containers": [
+   "Constants"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbNewLine",
+  "expected": [
+   "/tB/Modules/Constants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "constant"
+  ],
+  "containers": [
+   "Constants"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbNullChar",
+  "expected": [
+   "/tB/Modules/Constants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "constant"
+  ],
+  "containers": [
+   "Constants"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbNullPtr",
+  "expected": [
+   "/tB/Modules/Constants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 8,
+  "kinds": [
+   "constant"
+  ],
+  "containers": [
+   "Constants"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbNullString",
+  "expected": [
+   "/tB/Modules/Constants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 18,
+  "kinds": [
+   "constant"
+  ],
+  "containers": [
+   "Constants"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbObjectError",
+  "expected": [
+   "/tB/Modules/Constants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 9,
+  "kinds": [
+   "constant"
+  ],
+  "containers": [
+   "Constants"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbTab",
+  "expected": [
+   "/tB/Modules/Constants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 4,
+  "kinds": [
+   "constant"
+  ],
+  "containers": [
+   "Constants"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbVerticalTab",
+  "expected": [
+   "/tB/Modules/Constants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "constant"
+  ],
+  "containers": [
+   "Constants"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbCancel",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxResult",
+   "/tB/Packages/VBRUN/Constants/DragConstants"
+  ],
+  "firstHitRank": 20,
+  "resultCount": 23,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxResult",
+   "DragConstants"
+  ],
+  "packages": [
+   "VBA",
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbAbortRetryIgnore",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxStyle"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxStyle"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbApplicationModal",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxStyle"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxStyle"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbCancelTryAgainContinue",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxStyle"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxStyle"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbDefaultButton1",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxStyle"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxStyle"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbDefaultButton3",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxStyle"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxStyle"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbDefaultButton4",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxStyle"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxStyle"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbExclamation",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxStyle"
+  ],
+  "firstHitRank": null,
+  "resultCount": 9,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxStyle"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbInformation",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxStyle"
+  ],
+  "firstHitRank": null,
+  "resultCount": 6,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxStyle"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbMsgBoxHelpButton",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxStyle"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxStyle"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbMsgBoxRight",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxStyle"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxStyle"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbMsgBoxRtlReading",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxStyle"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxStyle"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbMsgBoxSetForeground",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxStyle"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxStyle"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbOKCancel",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxStyle"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxStyle"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbOKOnly",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxStyle"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxStyle"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbQuestion",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxStyle"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxStyle"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbRetryCancel",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxStyle"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxStyle"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbSystemModal",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxStyle"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxStyle"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "vbYesNoCancel",
+  "expected": [
+   "/tB/Modules/Constants/VbMsgBoxStyle"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "VbMsgBoxStyle"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "Error$",
+  "expected": [
+   "/tB/Modules/Conversion/Error"
+  ],
+  "firstHitRank": 13,
+  "resultCount": 532,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Conversion"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "Hex$",
+  "expected": [
+   "/tB/Modules/Conversion/Hex"
+  ],
+  "firstHitRank": null,
+  "resultCount": 4,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Conversion"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "TracePrint",
+  "expected": [
+   "/tB/Modules/Debug#traceprint"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "member"
+  ],
+  "containers": [
+   "Debug"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "CurDir$",
+  "expected": [
+   "/tB/Modules/FileSystem/CurDir"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "FileSystem"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "_HiddenModule",
+  "expected": [
+   "/tB/Modules/HiddenModule"
+  ],
+  "firstHitRank": null,
+  "resultCount": 6,
+  "kinds": [
+   "module"
+  ],
+  "containers": [],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "Environ$",
+  "expected": [
+   "/tB/Modules/Interaction/Environ"
+  ],
+  "firstHitRank": null,
+  "resultCount": 17,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Interaction"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "Strings",
+  "expected": [
+   "/tB/Modules/Strings"
+  ],
+  "firstHitRank": 12,
+  "resultCount": 1060,
+  "kinds": [
+   "module"
+  ],
+  "containers": [],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "AscB",
+  "expected": [
+   "/tB/Modules/Strings/Asc"
+  ],
+  "firstHitRank": null,
+  "resultCount": 5,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "AscW",
+  "expected": [
+   "/tB/Modules/Strings/Asc"
+  ],
+  "firstHitRank": null,
+  "resultCount": 5,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "Chr$",
+  "expected": [
+   "/tB/Modules/Strings/Chr"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "ChrB",
+  "expected": [
+   "/tB/Modules/Strings/Chr"
+  ],
+  "firstHitRank": null,
+  "resultCount": 5,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "ChrB$",
+  "expected": [
+   "/tB/Modules/Strings/Chr"
+  ],
+  "firstHitRank": null,
+  "resultCount": 5,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "ChrW",
+  "expected": [
+   "/tB/Modules/Strings/Chr"
+  ],
+  "firstHitRank": null,
+  "resultCount": 5,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "ChrW$",
+  "expected": [
+   "/tB/Modules/Strings/Chr"
+  ],
+  "firstHitRank": null,
+  "resultCount": 5,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "Format$",
+  "expected": [
+   "/tB/Modules/Strings/Format"
+  ],
+  "firstHitRank": null,
+  "resultCount": 5,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "InStrB",
+  "expected": [
+   "/tB/Modules/Strings/InStr"
+  ],
+  "firstHitRank": null,
+  "resultCount": 5,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "LCase$",
+  "expected": [
+   "/tB/Modules/Strings/LCase"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "Left$",
+  "expected": [
+   "/tB/Modules/Strings/Left"
+  ],
+  "firstHitRank": null,
+  "resultCount": 5,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "LeftB",
+  "expected": [
+   "/tB/Modules/Strings/Left"
+  ],
+  "firstHitRank": null,
+  "resultCount": 5,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "LeftB$",
+  "expected": [
+   "/tB/Modules/Strings/Left"
+  ],
+  "firstHitRank": null,
+  "resultCount": 5,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "LenB",
+  "expected": [
+   "/tB/Modules/Strings/Len"
+  ],
+  "firstHitRank": null,
+  "resultCount": 18,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "LenB$",
+  "expected": [
+   "/tB/Modules/Strings/Len"
+  ],
+  "firstHitRank": null,
+  "resultCount": 8,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "Mid$",
+  "expected": [
+   "/tB/Modules/Strings/Mid"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "MidB$",
+  "expected": [
+   "/tB/Modules/Strings/Mid"
+  ],
+  "firstHitRank": null,
+  "resultCount": 9,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "Right$",
+  "expected": [
+   "/tB/Modules/Strings/Right"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "RightB",
+  "expected": [
+   "/tB/Modules/Strings/Right"
+  ],
+  "firstHitRank": null,
+  "resultCount": 4,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "Space$",
+  "expected": [
+   "/tB/Modules/Strings/Space"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "String$",
+  "expected": [
+   "/tB/Modules/Strings/String"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "Trim$",
+  "expected": [
+   "/tB/Modules/Strings/Trim"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "UCase$",
+  "expected": [
+   "/tB/Modules/Strings/UCase"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "function"
+  ],
+  "containers": [
+   "Strings"
+  ],
+  "packages": [
+   "VBA"
+  ]
+ },
+ {
+  "q": "AppGlobalClassProject",
+  "expected": [
+   "/tB/Packages/AppGlobalClassObject"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "package"
+  ],
+  "containers": [],
+  "packages": [
+   "AppGlobalClassProject"
+  ]
+ },
+ {
+  "q": "CefEnvironmentOptions",
+  "expected": [
+   "/tB/Packages/CEF/CefBrowser/EnvironmentOptions"
+  ],
+  "firstHitRank": null,
+  "resultCount": 5,
+  "kinds": [
+   "class"
+  ],
+  "containers": [],
+  "packages": [
+   "cefPackage"
+  ]
+ },
+ {
+  "q": "Pointer",
+  "expected": [
+   "/tB/Packages/CustomControls/Framework/Canvas",
+   "/tB/Packages/CustomControls/Framework/SerializeInfo"
+  ],
+  "firstHitRank": null,
+  "resultCount": 148,
+  "kinds": [
+   "field"
+  ],
+  "containers": [
+   "Canvas",
+   "SerializeInfo"
+  ],
+  "packages": [
+   "CustomControls"
+  ]
+ },
+ {
+  "q": "vbAppear3d",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/AppearanceConstants"
+  ],
+  "firstHitRank": 26,
+  "resultCount": 28,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "AppearanceConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbAppearFlat",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/AppearanceConstants"
+  ],
+  "firstHitRank": 24,
+  "resultCount": 26,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "AppearanceConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbBFOpaque",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/BackFillStyleConstants"
+  ],
+  "firstHitRank": 11,
+  "resultCount": 13,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "BackFillStyleConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbButtonGraphical",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ButtonConstants"
+  ],
+  "firstHitRank": 24,
+  "resultCount": 24,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ButtonConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbFixedSingleBorder",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlBorderStyleConstants",
+   "/tB/Packages/VBRUN/Constants/ControlBorderStyleConstantsCustom"
+  ],
+  "firstHitRank": 20,
+  "resultCount": 24,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ControlBorderStyleConstants",
+   "ControlBorderStyleConstantsCustom"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbNoBorder",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlBorderStyleConstants",
+   "/tB/Packages/VBRUN/Constants/ControlBorderStyleConstantsCustom"
+  ],
+  "firstHitRank": 17,
+  "resultCount": 19,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ControlBorderStyleConstants",
+   "ControlBorderStyleConstantsCustom"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbFusion",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 18,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ControlTypeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbDockBottom",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/DockModeConstants"
+  ],
+  "firstHitRank": 15,
+  "resultCount": 15,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "DockModeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbDockFill",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/DockModeConstants"
+  ],
+  "firstHitRank": 16,
+  "resultCount": 16,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "DockModeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbDockLeft",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/DockModeConstants"
+  ],
+  "firstHitRank": 14,
+  "resultCount": 14,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "DockModeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbDockNone",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/DockModeConstants"
+  ],
+  "firstHitRank": 15,
+  "resultCount": 15,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "DockModeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbDockRight",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/DockModeConstants"
+  ],
+  "firstHitRank": 16,
+  "resultCount": 16,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "DockModeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbDockTop",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/DockModeConstants"
+  ],
+  "firstHitRank": 14,
+  "resultCount": 14,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "DockModeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbBeginDrag",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/DragConstants"
+  ],
+  "firstHitRank": 20,
+  "resultCount": 20,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "DragConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbEndDrag",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/DragConstants"
+  ],
+  "firstHitRank": 20,
+  "resultCount": 20,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "DragConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbAutomatic",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/DragModeConstants"
+  ],
+  "firstHitRank": 21,
+  "resultCount": 21,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "DragModeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbManual",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/DragModeConstants"
+  ],
+  "firstHitRank": 36,
+  "resultCount": 36,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "DragModeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbCopyPen",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/DrawModeConstants"
+  ],
+  "firstHitRank": 11,
+  "resultCount": 11,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "DrawModeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbWhiteness",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/DrawModeConstants"
+  ],
+  "firstHitRank": 12,
+  "resultCount": 16,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "DrawModeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbSolid",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/DrawStyleConstants"
+  ],
+  "firstHitRank": 12,
+  "resultCount": 12,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "DrawStyleConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbFSTransparent",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/FillStyleConstants",
+   "/tB/Packages/VBRUN/Constants/FillStyleConstantsEx"
+  ],
+  "firstHitRank": 15,
+  "resultCount": 17,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "FillStyleConstants",
+   "FillStyleConstantsEx"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKey0",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKey1",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKey2",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKey3",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKey4",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKey5",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKey6",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKey7",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKey8",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKey9",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyA",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyAdd",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyB",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyBack",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyC",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyCancel",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyCapital",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyClear",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyControl",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyD",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyDecimal",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyDelete",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyDivide",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyDown",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyE",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyEnd",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyEscape",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyExecute",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyF",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyF1",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyF10",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyF11",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyF12",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyF13",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyF14",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyF15",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyF16",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyF2",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 4,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyF3",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 4,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyF4",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 4,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyF5",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 4,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyF6",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 4,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyF7",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 4,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyF8",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 4,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyF9",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 4,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyG",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyH",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyHelp",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyHome",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyI",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyInsert",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyJ",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyK",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyL",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyLButton",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyLeft",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyM",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyMButton",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyMenu",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyMultiply",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyN",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyNumlock",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyNumpad0",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyNumpad1",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyNumpad2",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyNumpad3",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyNumpad4",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyNumpad5",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyNumpad6",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyNumpad7",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyNumpad8",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyNumpad9",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyO",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyP",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyPageDown",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyPageUp",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyPause",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyPrint",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyQ",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyR",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 6,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyRButton",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyReturn",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 5,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyRight",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyS",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyScrollLock",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeySelect",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeySeparator",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyShift",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeySnapshot",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeySpace",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeySubtract",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyT",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyTab",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyU",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyUp",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyV",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyW",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyX",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyY",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbKeyZ",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/KeyCodeConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "KeyCodeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbListBoxCheckbox",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ListBoxConstants"
+  ],
+  "firstHitRank": 11,
+  "resultCount": 12,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ListBoxConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelAltBksp",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlA",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlB",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlC",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlD",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlE",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlF",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlF1",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlF11",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlF12",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlF2",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlF3",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlF4",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlF5",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlF6",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlF7",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlF8",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlF9",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlG",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlH",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlI",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlIns",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlJ",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlK",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlL",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlM",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlN",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlO",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlP",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlQ",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlR",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlS",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlT",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlU",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlV",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlW",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlX",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlY",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelCtrlZ",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelDel",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelF1",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelF11",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelF12",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelF2",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelF3",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelF4",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelF5",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelF6",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelF7",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelF8",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelF9",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShfitF2",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftCtrlF1",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftCtrlF11",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftCtrlF12",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftCtrlF2",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftCtrlF3",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftCtrlF4",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftCtrlF5",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftCtrlF6",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftCtrlF7",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftCtrlF8",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftCtrlF9",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftDel",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftF1",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftF11",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftF12",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftF3",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftF4",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftF5",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftF6",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftF7",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftF8",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftF9",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbMenuAccelShiftIns",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuAccelConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbPopupMenuCenterAlign",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuControlConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuControlConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbPopupMenuLeftAlign",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuControlConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuControlConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbPopupMenuLeftButton",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuControlConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuControlConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbPopupMenuRightAlign",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuControlConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuControlConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbPopupMenuRightButton",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuControlConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MenuControlConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbArrow",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbArrowCD",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbArrowHourglass",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbArrowQuestion",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbCrosshair",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbCustom",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 32,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbDefault",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 8,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbHand",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbHourglass",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 3,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbIbeam",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbIconPointer",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbNoDrop",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbPen",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbPerson",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbPin",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbScrollAll",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbScrollE",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbScrollN",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbScrollNE",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbScrollNS",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbScrollNW",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbScrollS",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbScrollSE",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbScrollSW",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbScrollW",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbScrollWE",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbSizeAll",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbSizeNESW",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbSizeNS",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbSizeNWSE",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbSizePointer",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbSizeWE",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbUpArrow",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MousePointerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "MousePointerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEActivateAuto",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEActivateDoubleclick",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEActivateGetFocus",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEActivateManual",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEAutomatic",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEChanged",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEClosed",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEDiscardUndoState",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEDisplayContent",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEDisplayIcon",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEEither",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEEmbedded",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEFlagChecked",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEFlagDisabled",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEFlagGrayed",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEFlagSeparator",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEFrozen",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEHide",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEInPlaceActivate",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLELinked",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEManual",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEMiscFlagDisableInPlace",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEMiscFlagMemStorage",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLENone",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEOpen",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEPrimary",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 4,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLERenamed",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLESaved",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEShow",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLESizeAutoSize",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLESizeClip",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLESizeStretch",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLESizeZoom",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEUIActivate",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEContainerConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEDragAutomatic",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEDragConstants"
+  ],
+  "firstHitRank": 18,
+  "resultCount": 20,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEDragConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEDropManual",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEDropConstants"
+  ],
+  "firstHitRank": 25,
+  "resultCount": 26,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEDropConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbOLEDropNone",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEDropConstants"
+  ],
+  "firstHitRank": 23,
+  "resultCount": 23,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "OLEDropConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbTwips",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ScaleModeConstants"
+  ],
+  "firstHitRank": 12,
+  "resultCount": 13,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ScaleModeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbUser",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ScaleModeConstants"
+  ],
+  "firstHitRank": 29,
+  "resultCount": 34,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ScaleModeConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutAltBackspace",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutCtrlE",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutCtrlF",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutCtrlF1",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutCtrlF11",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutCtrlF12",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutCtrlF9",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutCtrlI",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutCtrlInsert",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutCtrlL",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutCtrlP",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutCtrlS",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutCtrlZ",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutDelete",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutF1",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutF11",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutF12",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutF2",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutF3",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutF4",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutF5",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutF6",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutF7",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutF8",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 2,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutF9",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftCtrlF1",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftCtrlF11",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftCtrlF12",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftCtrlF2",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftCtrlF3",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftCtrlF4",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftCtrlF5",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftCtrlF6",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftCtrlF7",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftCtrlF8",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 0,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftCtrlF9",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftDelete",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftF1",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftF11",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftF12",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftF2",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftF3",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftF4",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftF5",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftF6",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftF7",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftF8",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftF9",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbShortcutShiftInsert",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShortcutConstants"
+  ],
+  "firstHitRank": null,
+  "resultCount": 1,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ShortcutConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbBringToFront",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ZOrderConstants"
+  ],
+  "firstHitRank": 26,
+  "resultCount": 26,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ZOrderConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "vbSendToBack",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ZOrderConstants"
+  ],
+  "firstHitRank": 26,
+  "resultCount": 26,
+  "kinds": [
+   "enumvalue"
+  ],
+  "containers": [
+   "ZOrderConstants"
+  ],
+  "packages": [
+   "VBRUN"
+  ]
+ },
+ {
+  "q": "WebView2EnvironmentOptions",
+  "expected": [
+   "/tB/Packages/WebView2/WebView2/EnvironmentOptions"
+  ],
+  "firstHitRank": null,
+  "resultCount": 5,
+  "kinds": [
+   "class"
+  ],
+  "containers": [],
+  "packages": [
+   "WebView2Package"
+  ]
+ },
+ {
+  "q": "Contains",
+  "expected": [
+   "/tB/Packages/WebView2/WebView2RequestHeaders#contains",
+   "/tB/Packages/WebView2/WebView2ResponseHeaders#contains"
+  ],
+  "firstHitRank": 21,
+  "resultCount": 654,
+  "kinds": [
+   "method"
+  ],
+  "containers": [
+   "WebView2RequestHeaders",
+   "WebView2ResponseHeaders"
+  ],
+  "packages": [
+   "WebView2Package"
+  ]
+ },
+ {
+  "q": "Scrolling",
+  "expected": [
+   "/tB/Packages/WinNativeCommonCtls/ProgressBar#scrolling"
+  ],
+  "firstHitRank": 12,
+  "resultCount": 145,
+  "kinds": [
+   "property"
+  ],
+  "containers": [
+   "ProgressBar"
+  ],
+  "packages": [
+   "WinNativeCommonCtls"
+  ]
+ }
+]

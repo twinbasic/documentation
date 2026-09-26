@@ -1,0 +1,41 @@
+lunr.tokenizer('Do...Loop') with alternation separator -> ["do...loop"]
+(expect NOT split -- confirms char-by-char .match() can't see a 2+ run)
+
+'…' appears in 30 entries' titles (30 unique titles)
+
+=== F7 ===
+  overall n=8012 hit1=89.5% hit5=97.6% hit10=97.8% MRR=0.9326
+  symbol-bare: hit10=98.1% MRR=0.9619
+  symbol-qualified: hit10=97.7% MRR=0.9174
+  prose: hit10=75.0% MRR=0.5701
+  kind=type: hit10=99.5% MRR=0.9641
+  kind=member: hit10=97.7% MRR=0.9316
+  vs h2 (excl "/"): worse=26 better=6598 unchanged=1387 hist={"1":12,"2-5":8,"6-10":0,"11-20":3,"21-50":3,"51+":0}
+  group-B queries (rank): With:54, Is:176, VB:16, Do:18, For:17, Each:6, On:3, Select:5, Time$:7, Lock:3
+  "symbol index" prose rank: 32
+
+=== F9 ===
+  overall n=8012 hit1=89.5% hit5=97.6% hit10=97.8% MRR=0.9325
+  symbol-bare: hit10=98.1% MRR=0.9617
+  symbol-qualified: hit10=97.7% MRR=0.9174
+  prose: hit10=75.0% MRR=0.5701
+  kind=type: hit10=99.5% MRR=0.9641
+  kind=member: hit10=97.7% MRR=0.9315
+  vs h2 (excl "/"): worse=27 better=6598 unchanged=1386 hist={"1":12,"2-5":6,"6-10":1,"11-20":1,"21-50":3,"51+":4}
+  vs F7: worse=5 better=2 unchanged=8005 NEW REGRESSIONS: While[symbol-bare]:1->none, For[symbol-bare]:17->none, Do[symbol-bare]:18->none, On[symbol-bare]:3->960, If[symbol-bare]:1->7
+  group-B queries (rank): With:54, Is:176, VB:16, Do:none, For:none, Each:1, On:960, Select:5, Time$:7, Lock:3
+  "symbol index" prose rank: 32
+
+=== F9b ===
+  overall n=8012 hit1=89.5% hit5=97.6% hit10=97.8% MRR=0.9325
+  symbol-bare: hit10=98.1% MRR=0.9617
+  symbol-qualified: hit10=97.7% MRR=0.9174
+  prose: hit10=75.0% MRR=0.5701
+  kind=type: hit10=99.5% MRR=0.9641
+  kind=member: hit10=97.7% MRR=0.9315
+  vs h2 (excl "/"): worse=27 better=6598 unchanged=1386 hist={"1":12,"2-5":7,"6-10":0,"11-20":1,"21-50":3,"51+":4}
+  vs F7: worse=5 better=2 unchanged=8005 NEW REGRESSIONS: While[symbol-bare]:1->none, For[symbol-bare]:17->none, Do[symbol-bare]:18->none, On[symbol-bare]:3->960, If[symbol-bare]:1->4
+  group-B queries (rank): With:54, Is:176, VB:16, Do:none, For:none, Each:1, On:960, Select:5, Time$:7, Lock:3
+  "symbol index" prose rank: 32
+
+Full results -> results-r4.json

@@ -1,0 +1,594 @@
+[
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "late binding",
+  "expected": [
+   "/Reference/Data-Types"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "Implements",
+  "expected": [
+   "/tB/Core/Implements"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "AutoRedraw",
+  "expected": [
+   "/tB/Packages/VB/Form",
+   "/tB/Packages/VB/PictureBox"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "DoEvents",
+  "expected": [
+   "/tB/Modules/Interaction/DoEvents"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "Option Explicit",
+  "expected": [
+   "/tB/Core/Option"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "conditional compilation",
+  "expected": [
+   "/Reference/Compiler-Constants"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "PtrSafe",
+  "expected": [
+   "/Features/64bit"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "circular reference",
+  "expected": [
+   "/Tutorials/CustomControls/Defining"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "64-bit compilation",
+  "expected": [
+   "/Features/64bit"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "regular expressions",
+  "expected": [
+   "/tB/IDE/Project/FindReplace"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "error handling",
+  "expected": [
+   "/Reference/Categories"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "threading and atomics",
+  "expected": [
+   "/Reference/Categories"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "array bounds checks",
+  "expected": [
+   "/tB/IDE/Project/Settings"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "File I/O",
+  "expected": [
+   "/Features/Standard-Library/File-IO"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "Fusion",
+  "expected": [
+   "/Features/Fusion"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "AddressOf operator",
+  "expected": [
+   "/tB/Core/AddressOf"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "variadic arguments",
+  "expected": [
+   "/Features/Advanced/API-Declarations"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "heading levels",
+  "expected": [
+   "/Documentation/Development/Authoring"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "With statement",
+  "expected": [
+   "/tB/Core/With"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "prose",
+  "kindGroup": "n/a",
+  "q": "symbol index",
+  "expected": [
+   "/Documentation/Development/Building"
+  ],
+  "pathOnlyMatch": true
+ },
+ {
+  "category": "symbol-bare",
+  "kindGroup": "member",
+  "q": "ShowTodayCircle",
+  "expected": [
+   "/tB/Packages/WinNativeCommonCtls/MonthView#showtodaycircle"
+  ]
+ },
+ {
+  "category": "symbol-bare",
+  "kindGroup": "type",
+  "q": "AmbientProperties",
+  "expected": [
+   "/tB/Packages/VBRUN/AmbientProperties"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "WaynesGrid.SelectedCellX",
+  "expected": [
+   "/tB/Packages/CustomControls/WaynesGrid#selectedcellx"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "type",
+  "q": "Constants.VbCalendar",
+  "expected": [
+   "/tB/Modules/Constants/VbCalendar"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "Label.DataField",
+  "expected": [
+   "/tB/Packages/VB/Label#datafield"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "Line.Container",
+  "expected": [
+   "/tB/Packages/VB/Line#container"
+  ]
+ },
+ {
+  "category": "symbol-bare",
+  "kindGroup": "type",
+  "q": "ProgressBar",
+  "expected": [
+   "/tB/Packages/WinNativeCommonCtls/ProgressBar"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "DriveListBox.SetFocus",
+  "expected": [
+   "/tB/Packages/VB/DriveListBox#setfocus"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "CellRenderingOptions.TextRendering",
+  "expected": [
+   "/tB/Packages/CustomControls/WaynesGrid/CellRenderingOptions#textrendering"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "ColumnHeaders.Item",
+  "expected": [
+   "/tB/Packages/WinNativeCommonCtls/ListView/ColumnHeaders#item"
+  ]
+ },
+ {
+  "category": "symbol-bare",
+  "kindGroup": "member",
+  "q": "vbMenuAccelCtrlR",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ]
+ },
+ {
+  "category": "symbol-bare",
+  "kindGroup": "member",
+  "q": "vbDriveListBox",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ]
+ },
+ {
+  "category": "symbol-bare",
+  "kindGroup": "type",
+  "q": "Node",
+  "expected": [
+   "/tB/Packages/WinNativeCommonCtls/TreeView/Node"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "OLEContainerUpdateOptionsConstants.vbOLE_UpdateFrozen",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerUpdateOptionsConstants"
+  ]
+ },
+ {
+  "category": "symbol-bare",
+  "kindGroup": "member",
+  "q": "Load",
+  "expected": [
+   "/tB/Core/Load",
+   "/tB/Packages/VB/Form#load",
+   "/tB/Packages/VB/Global#load",
+   "/tB/Packages/VB/MDIForm#load",
+   "/tB/Packages/VB/Report#load"
+  ]
+ },
+ {
+  "category": "symbol-bare",
+  "kindGroup": "member",
+  "q": "IsNothing",
+  "expected": [
+   "/tB/Packages/Assert/Exact#isnothing",
+   "/tB/Packages/Assert/Permissive#isnothing",
+   "/tB/Packages/Assert/Strict#isnothing"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "DataObjectFormat.AspectType",
+  "expected": [
+   "/tB/Packages/VBRUN/DataObject/DataObjectFormat#aspecttype"
+  ]
+ },
+ {
+  "category": "symbol-bare",
+  "kindGroup": "member",
+  "q": "tbServiceTypeOwnProcessInteractive",
+  "expected": [
+   "/tB/Packages/WinServicesLib/Enumerations/ServiceTypeConstants"
+  ]
+ },
+ {
+  "category": "symbol-bare",
+  "kindGroup": "member",
+  "q": "PopUpMenu",
+  "expected": [
+   "/tB/Packages/VB/Form#popupmenu",
+   "/tB/Packages/VB/MDIForm#popupmenu",
+   "/tB/Packages/VB/UserControl#popupmenu"
+  ]
+ },
+ {
+  "category": "symbol-bare",
+  "kindGroup": "member",
+  "q": "ClientDisconnected",
+  "expected": [
+   "/tB/Packages/WinNamedPipesLib/NamedPipeServer#clientdisconnected"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "MenuControlConstants.vbPopupMenuRightButton",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuControlConstants"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "OLE.Class",
+  "expected": [
+   "/tB/Packages/VB/OLE#class"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "VbFileAttribute.vbReadOnly",
+  "expected": [
+   "/tB/Modules/Constants/VbFileAttribute"
+  ]
+ },
+ {
+  "category": "symbol-bare",
+  "kindGroup": "member",
+  "q": "ChrW",
+  "expected": [
+   "/tB/Modules/Strings/Chr"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "DirListBox.Width",
+  "expected": [
+   "/tB/Packages/VB/DirListBox#width"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "SerializeInfo.RuntimeUISrzDeserialize",
+  "expected": [
+   "/tB/Packages/CustomControls/Framework/SerializeInfo#runtimeuisrzdeserialize"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "Data.RecordSource",
+  "expected": [
+   "/tB/Packages/VB/Data#recordsource"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "OLEContainerConstants.vbOLESaved",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/OLEContainerConstants"
+  ]
+ },
+ {
+  "category": "symbol-bare",
+  "kindGroup": "member",
+  "q": "vbPRPSEnvMonarch",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/PrinterObjectConstants",
+   "/tB/Packages/VBRUN/Constants/PrinterObjectConstants_PaperSize"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "ComboBox.Sorted",
+  "expected": [
+   "/tB/Packages/VB/ComboBox#sorted"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "FillPattern.tbGradientCornerTopRight",
+  "expected": [
+   "/tB/Packages/CustomControls/Enumerations/FillPattern"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "_App.Title",
+  "expected": [
+   "/tB/Packages/AppGlobalClassObject/_App/Title"
+  ]
+ },
+ {
+  "category": "symbol-bare",
+  "kindGroup": "member",
+  "q": "ColorMode",
+  "expected": [
+   "/tB/Packages/VB/Printer#colormode"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "MenuAccelConstants.vbMenuAccelF9",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/MenuAccelConstants"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "Report.Click",
+  "expected": [
+   "/tB/Packages/VB/Report#click"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "PropertyPage.Appearance",
+  "expected": [
+   "/tB/Packages/VB/PropertyPage#appearance"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "ControlTypeConstants.vbListView",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ControlTypeConstants"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "WindowsFormOptions.MaximizeButton",
+  "expected": [
+   "/tB/Packages/CustomControls/WaynesForm/WindowsFormOptions#maximizebutton"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "Label.DataFormat",
+  "expected": [
+   "/tB/Packages/VB/Label#dataformat"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "PictureBox.LinkItem",
+  "expected": [
+   "/tB/Packages/VB/PictureBox#linkitem"
+  ]
+ },
+ {
+  "category": "symbol-bare",
+  "kindGroup": "member",
+  "q": "LaunchService",
+  "expected": [
+   "/tB/Packages/WinServicesLib/Services#launchservice"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "CommandButton.PictureDpiScaling",
+  "expected": [
+   "/tB/Packages/VB/CommandButton#picturedpiscaling"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "CefBrowser.CanGoBack",
+  "expected": [
+   "/tB/Packages/CEF/CefBrowser#cangoback"
+  ]
+ },
+ {
+  "category": "symbol-bare",
+  "kindGroup": "member",
+  "q": "DateAdd",
+  "expected": [
+   "/tB/Modules/DateTime/DateAdd"
+  ]
+ },
+ {
+  "category": "symbol-bare",
+  "kindGroup": "member",
+  "q": "MaskType",
+  "expected": [
+   "/tB/Packages/VB/QRCode#masktype"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "FileListBox.OLEDragDrop",
+  "expected": [
+   "/tB/Packages/VB/FileListBox#oledragdrop"
+  ]
+ },
+ {
+  "category": "symbol-bare",
+  "kindGroup": "member",
+  "q": "Fail",
+  "expected": [
+   "/tB/Packages/Assert/Exact#fail",
+   "/tB/Packages/Assert/Permissive#fail",
+   "/tB/Packages/Assert/Strict#fail"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "ShapeConstants.vbShapeSquare",
+  "expected": [
+   "/tB/Packages/VBRUN/Constants/ShapeConstants"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "UserControl.EventsFrozen",
+  "expected": [
+   "/tB/Packages/VB/UserControl#eventsfrozen"
+  ]
+ },
+ {
+  "category": "symbol-qualified",
+  "kindGroup": "member",
+  "q": "HScrollBar.MouseIcon",
+  "expected": [
+   "/tB/Packages/VB/HScrollBar#mouseicon"
+  ]
+ }
+]

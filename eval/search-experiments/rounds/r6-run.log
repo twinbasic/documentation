@@ -1,0 +1,23 @@
+F10+F9(wrapped): overall hit1/5/10, MRR = 89.5 97.8 98.0 0.9331
+(round 8's F10+F9 preprocessing version: 89.5 / 97.8 / 98.0, MRR .9331 -- compare by eye)
+group-B (should all be rank 1): With:1, Is:1, Do:1, For:1, Each:1, On:1
+
+Offline flow: builds via the identical code path (same search-data.json + lunr.min.js, unexcluded from _site-offline/); already exercised above -- no separate test needed.
+
+=== 15x interleaved round-robin build times (--expose-gc: true) ===
+  h2 (today): median=964.3ms p90=1020.3ms (all: 962,931,985,941,958,964,956,967,963,994,1021,961,978,986,1020)
+  F7: median=1183.8ms p90=1218.4ms (all: 1151,1156,1169,1158,1165,1178,1207,1195,1218,1185,1184,1179,1214,1232,1218)
+  F10: median=1280.9ms p90=1371.8ms (all: 1200,1245,1372,1256,1277,1278,1396,1312,1314,1289,1279,1302,1316,1268,1281)
+  F10+F9: median=1293.8ms p90=1349.1ms (all: 1219,1540,1294,1270,1256,1280,1348,1282,1321,1317,1302,1328,1290,1286,1349)
+
+=== heap retained by the built index (gc, heapUsed delta, index held) ===
+  h2 (today): heapUsed delta = 156.79MB
+  F7: heapUsed delta = 204.05MB
+  F10: heapUsed delta = 242.71MB
+  F10+F9: heapUsed delta = 242.64MB
+
+=== median query latency over full query set ===
+  h2 (today): median=0.029ms
+  F7: median=0.355ms
+  F10: median=0.339ms
+  F10+F9: median=0.329ms

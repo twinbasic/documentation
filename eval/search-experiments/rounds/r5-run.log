@@ -1,0 +1,48 @@
+
+=== F7 ===
+  overall n=8012 hit1=89.5% hit5=97.6% hit10=97.8% MRR=0.9326
+  symbol-bare: hit10=98.1% MRR=0.9619
+  symbol-qualified: hit10=97.7% MRR=0.9174
+  prose: hit10=75.0% MRR=0.5701
+  kind=type: hit10=99.5% MRR=0.9641
+  kind=member: hit10=97.7% MRR=0.9316
+  median query latency: 0.531ms
+  cost: invertedIndex terms=23041 serialized index bytes=14563200 (gzip 3208844) build ms(median of 3)=1173.4
+  vs h2 (excl "/"): worse=26 better=6598 unchanged=1387 hist={"1":12,"2-5":8,"6-10":0,"11-20":3,"21-50":3,"51+":0}
+  group-B queries (rank): With:54, Is:176, VB:16, Do:18, For:17, Each:6, On:3, Select:5, Time$:7, Lock:3
+  "symbol index" prose rank: 32
+  prose ranks: late binding:17, Implements:1, AutoRedraw:1, DoEvents:1, Option Explicit:2, conditional compilation:7, PtrSafe:2, circular reference:14, 64-bit compilation:2, regular expressions:13, error handling:1, threading and atomics:1, array bounds checks:2, File I/O:2, Fusion:2, AddressOf operator:1, variadic arguments:1, heading levels:1, With statement:19, symbol index:32
+
+=== F10 ===
+  overall n=8012 hit1=89.4% hit5=97.8% hit10=98.0% MRR=0.9327
+  symbol-bare: hit10=98.6% MRR=0.9648
+  symbol-qualified: hit10=97.7% MRR=0.9159
+  prose: hit10=80.0% MRR=0.6229
+  kind=type: hit10=99.5% MRR=0.9641
+  kind=member: hit10=97.9% MRR=0.9316
+  median query latency: 0.476ms
+  cost: invertedIndex terms=23127 serialized index bytes=18016192 (gzip 4052153) build ms(median of 3)=1354.6
+  vs h2 (excl "/"): worse=22 better=6612 unchanged=1377 hist={"1":14,"2-5":6,"6-10":0,"11-20":1,"21-50":1,"51+":0}
+  vs F7: worse=43 better=21 unchanged=7948
+  NEW REGRESSIONS vs F7: DataMembers.Item[symbol-qualified]:1->9, symbol index[prose]:32->39, CheckMark.Value[symbol-qualified]:2->4, Timer.Top[symbol-qualified]:3->5, ColumnHeaders.Clear[symbol-qualified]:2->4, HtmlElement.Name[symbol-qualified]:3->5, HtmlEventProperty.Properties[symbol-qualified]:3->5, ToolWindow.Name[symbol-qualified]:4->6, While[symbol-bare]:1->2, vbKeyControl[symbol-bare]:1->2, vbKeyLButton[symbol-bare]:1->2, vbKeyMButton[symbol-bare]:1->2, vbKeyMenu[symbol-bare]:1->2, vbKeyRButton[symbol-bare]:1->2, vbKeyReturn[symbol-bare]:2->3
+  group-B queries (rank): With:1, Is:1, VB:16, Do:2, For:1, Each:6, On:1, Select:5, Time$:7, Lock:3
+  "symbol index" prose rank: 39
+  prose ranks: late binding:17, Implements:1, AutoRedraw:1, DoEvents:1, Option Explicit:1, conditional compilation:6, PtrSafe:1, circular reference:14, 64-bit compilation:3, regular expressions:13, error handling:1, threading and atomics:1, array bounds checks:2, File I/O:2, Fusion:2, AddressOf operator:1, variadic arguments:1, heading levels:1, With statement:4, symbol index:39
+
+=== F10+F9 ===
+  overall n=8012 hit1=89.5% hit5=97.8% hit10=98.0% MRR=0.9331
+  symbol-bare: hit10=98.6% MRR=0.9657
+  symbol-qualified: hit10=97.7% MRR=0.9159
+  prose: hit10=80.0% MRR=0.6229
+  kind=type: hit10=99.5% MRR=0.9641
+  kind=member: hit10=97.9% MRR=0.9320
+  median query latency: 0.355ms
+  cost: invertedIndex terms=23124 serialized index bytes=18016239 (gzip 4051907) build ms(median of 3)=1610.4
+  vs h2 (excl "/"): worse=19 better=6612 unchanged=1380 hist={"1":12,"2-5":5,"6-10":0,"11-20":1,"21-50":1,"51+":0}
+  vs F7: worse=42 better=23 unchanged=7947
+  NEW REGRESSIONS vs F7: DataMembers.Item[symbol-qualified]:1->9, symbol index[prose]:32->39, CheckMark.Value[symbol-qualified]:2->4, Timer.Top[symbol-qualified]:3->5, ColumnHeaders.Clear[symbol-qualified]:2->4, HtmlElement.Name[symbol-qualified]:3->5, HtmlEventProperty.Properties[symbol-qualified]:3->5, ToolWindow.Name[symbol-qualified]:4->6, vbKeyControl[symbol-bare]:1->2, vbKeyLButton[symbol-bare]:1->2, vbKeyMButton[symbol-bare]:1->2, vbKeyMenu[symbol-bare]:1->2, vbKeyRButton[symbol-bare]:1->2, vbKeyReturn[symbol-bare]:2->3, vbKeyShift[symbol-bare]:1->2
+  group-B queries (rank): With:1, Is:1, VB:16, Do:1, For:1, Each:1, On:1, Select:5, Time$:7, Lock:3
+  "symbol index" prose rank: 39
+  prose ranks: late binding:17, Implements:1, AutoRedraw:1, DoEvents:1, Option Explicit:1, conditional compilation:6, PtrSafe:1, circular reference:14, 64-bit compilation:3, regular expressions:13, error handling:1, threading and atomics:1, array bounds checks:2, File I/O:2, Fusion:2, AddressOf operator:1, variadic arguments:1, heading levels:1, With statement:4, symbol index:39
+
+Full results -> results-r5.json
