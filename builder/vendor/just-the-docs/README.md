@@ -115,6 +115,23 @@ replicates the query logic and carries the same cap; it is where the defect
 was found, when re-measuring an evaluator's search ran the replica out of
 memory.
 
+**A query made only of asterisks crashes lunr instead of returning no
+results.** `update()` builds its query from `lunr.tokenizer(input)`
+unfiltered; a token that is all `*` survives tokenising (lunr's trimmer
+only strips from the ends) and reaches `lunr.Query.wildcard.TRAILING`,
+where lunr's query engine throws (`Cannot read properties of undefined
+(reading '_index')`) instead of matching nothing. Once that throws, the
+in-page search stays broken until the page reloads. The patch filters out
+any token matching `/^\*+$/` before both the main query and the fuzzy
+fallback; if nothing is left, `results` is set to `[]` directly so the
+existing "No results found" branch renders as it would for any other query
+with no hits. `initSearch()` and `navLink()` are the only functions the
+offline build's AST patcher (`deriveOfflineJtdJs` in
+[`offline.mjs`](../../offline.mjs)) replaces; `update()` and `searchLoaded()`
+pass through untouched, so the offline build inherits this fix for free.
+[`eval/site_search.mjs`](../../../eval/site_search.mjs) mirrors the same
+filter, so the replica returns what the site does.
+
 ## Licence
 
 just-the-docs is MIT-licensed, and `LICENSE.txt` beside this file is the
@@ -199,10 +216,10 @@ Bumping the just-the-docs version is a deliberate operation. Procedure:
    by the axe scan, and the three focus rings by nothing at all, since axe
    checks that a control is reachable and named, not that its ring is visible.
 
-5. Re-apply the copy-button patch and the edit-distance cap in
-   `assets/js/just-the-docs.js` (see above). Diffing against the previous
-   vendored copy via `git diff` is the easiest way to spot what needs to
-   come back.
+5. Re-apply the copy-button patch, the edit-distance cap, and the asterisk
+   guard in `assets/js/just-the-docs.js` (see above). Diffing against the
+   previous vendored copy via `git diff` is the easiest way to spot what
+   needs to come back.
 
 6. Inspect the entry point at `docs/assets/css/just-the-docs-combined.scss`
    --- if the upstream `_includes/css/just-the-docs.scss.liquid` Liquid

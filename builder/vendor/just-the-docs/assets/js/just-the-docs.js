@@ -174,18 +174,26 @@ function searchLoaded(index, docs) {
       return;
     }
 
-    var results = index.query(function (query) {
-      var tokens = lunr.tokenizer(input)
-      query.term(tokens, {
-        boost: 10
-      });
-      query.term(tokens, {
-        wildcard: lunr.Query.wildcard.TRAILING
-      });
+    // Patched: drop tokens made only of asterisks. lunr's query engine
+    // throws on a bare-wildcard term ("Cannot read properties of undefined
+    // (reading '_index')"), so a search for `*` or `**` used to crash and
+    // leave search broken until the page reloaded. See
+    // builder/vendor/just-the-docs/README.md.
+    var queryTokens = lunr.tokenizer(input).filter(function(token) {
+      return !/^\*+$/.test(token.str);
     });
 
-    if ((results.length == 0) && (input.length > 2)) {
-      var tokens = lunr.tokenizer(input).filter(function(token, i) {
+    var results = queryTokens.length > 0 ? index.query(function (query) {
+      query.term(queryTokens, {
+        boost: 10
+      });
+      query.term(queryTokens, {
+        wildcard: lunr.Query.wildcard.TRAILING
+      });
+    }) : [];
+
+    if ((results.length == 0) && (input.length > 2) && (queryTokens.length > 0)) {
+      var tokens = queryTokens.filter(function(token, i) {
         return token.str.length < 20;
       })
       if (tokens.length > 0) {

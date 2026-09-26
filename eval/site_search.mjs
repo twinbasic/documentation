@@ -53,6 +53,14 @@ function load(site) {
   // Mirrors just-the-docs.js exactly. Do not "improve" these weights: the
   // point is to measure what a reader's search actually returns, not what a
   // better-tuned index would.
+  //
+  // The client's initSearch() (just-the-docs.js, and offline.mjs's copy of
+  // it) sets the tokenizer separator to /[\s\-\/]+/, so `/` splits tokens
+  // too. Without
+  // this, lunr's default /[\s\-]+/ tokenises differently from the real
+  // site and this replica cannot reproduce what it claims to.
+  lunr.tokenizer.separator = /[\s\-\/]+/;
+
   const index = lunr(function () {
     this.ref("id");
     this.field("title", { boost: 200 });
@@ -67,13 +75,18 @@ function load(site) {
 }
 
 function search({ lunr, index }, input) {
-  let results = index.query((q) => {
-    const tokens = lunr.tokenizer(input);
-    q.term(tokens, { boost: 10 });
-    q.term(tokens, { wildcard: lunr.Query.wildcard.TRAILING });
-  });
-  if (results.length === 0 && input.length > 2) {
-    const tokens = lunr.tokenizer(input).filter((t) => t.str.length < 20);
+  // Patched, matching just-the-docs.js: drop tokens made only of asterisks.
+  // Unfiltered, a bare `*` or `**` reaches lunr.Query.wildcard.TRAILING and
+  // throws inside lunr's query engine instead of matching nothing.
+  const queryTokens = lunr.tokenizer(input).filter((t) => !/^\*+$/.test(t.str));
+  let results = queryTokens.length
+    ? index.query((q) => {
+        q.term(queryTokens, { boost: 10 });
+        q.term(queryTokens, { wildcard: lunr.Query.wildcard.TRAILING });
+      })
+    : [];
+  if (results.length === 0 && input.length > 2 && queryTokens.length) {
+    const tokens = queryTokens.filter((t) => t.str.length < 20);
     if (tokens.length) {
       // Capped at 2, as the patched just-the-docs.js is. Uncapped, a query of
       // three unindexed API names ran this replica out of memory.
