@@ -3,7 +3,8 @@
 // links the build's check follows (forEachLink, builder/link-check.mjs),
 // and verifies each link responds 2xx (HEAD for cross-origin, GET for
 // same-origin since we need the HTML anyway). A request that fails before
-// any response arrives is tried twice more before its link is reported.
+// any response arrives is tried twice more before its link is reported; a
+// page whose body breaks off while it is read is reported at once.
 //
 // Usage:
 //   node scripts/crawl_check.mjs <start-url> [--concurrency N] [--timeout MS]
@@ -145,8 +146,15 @@ async function crawlOne(url) {
     return;
   }
 
+  // A body that breaks off is not retried, since the server has answered,
+  // and not parsed: the page is reported broken instead.
   let html;
-  try { html = await res.text(); } catch { return; }
+  try {
+    html = await res.text();
+  } catch (e) {
+    linkStatus.set(url, { ok: false, status: res.status, error: `body: ${e.message}` });
+    return;
+  }
   const { links, ids } = extractFromHtml(html);
 
   // Index ids on the final (redirected) URL so fragment links resolve.

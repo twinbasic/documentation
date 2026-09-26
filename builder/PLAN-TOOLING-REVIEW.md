@@ -780,6 +780,29 @@ says instead that the returned object's keys are the names a page may use.
 **Landed.** `compare_trees`: Extending.html and Pipeline-Stages.html online and offline, the
 search data and `book.html`, nothing else. Lint clean.
 
+### C22i — `scripts: crawl_check reports a page whose body cannot be read`
+
+**Found while implementing C22d; the owner asked on 2026-09-26 for it to be fixed before C23,
+with no retry** (see Found while implementing). `crawlOne` recorded a same-site page as
+reachable before reading its body, and returned in silence when the read failed: the page's
+links were never extracted, its ids never indexed, and the report said nothing.
+
+**Change.** When the read fails, `crawlOne` records the page broken, with its status and the
+error prefixed `body:`, and returns. It does not retry: the server has answered, and C22d's
+retries already cover the common reset, which comes before any response. The part of the body
+that arrived is not parsed. The header and Tools.md's paragraph say so.
+
+**Landed.** The kit's `c22i-body.mjs` serves `/`, linking `/cut` and `/ok`; `/cut` answers
+200 `text/html` with a `Content-Length` of 5000, sends a link to `/missing` and closes the
+socket 50 ms later. HEAD's copy: exit 0, 3 pages crawled, 2 unique links, 3 status checks, 0
+broken and 0 missing anchors. After: exit 1, the same counts with 1 broken, `[ERR  body:
+terminated] http://localhost:4395/cut`, where `terminated` is undici's message. Both requested
+each of `/`, `/cut` and `/ok` once and `/missing` never. The kit's `c22d-retry.mjs` gives
+C22d's result unchanged: each failing path requested three times, `/r2` and `/h2` recovering,
+and `/r3`, `/h3` and `/slow` reported. The C22 fixture through the kit's static server: three
+runs of three exit 1 with 28 broken. `compare_trees`: Tools.html online and offline, the
+search data and `book.html`, nothing else. Lint clean.
+
 ### C23 — `scripts: check_examples restores the registry after a spawn failure`
 
 **L3-2 (R2)**, with V4's note that `check_examples.mjs` has no process-level handler at all.
@@ -2066,6 +2089,15 @@ Defects the review did not have, found by building something this plan asks for.
   the counts it is given (`counts.mjs:288`), and nothing else lists the names. Extending.md
   (`:698`) names it as though it registered them. Fixed in `builder: delete counts.mjs's
   unused COUNT_NAMES`.
+
+- **`crawl_check.mjs` says nothing about a page whose body cannot be read**, found while
+  implementing C22d. `crawlOne` records a same-site page as reachable (`:137`) before it
+  reads the body, and a failed read returns at once (`:149`): the page's links are never
+  extracted and its ids never indexed, so the fragment check skips every anchor into it, and
+  the report says nothing. The kit's `c22i-body.mjs` serves a page that answers 200 with a
+  `Content-Length` of 5000, sends a link to a missing page and closes the socket: the crawl
+  exits 0 with nothing broken, and the missing page is never requested. Fixed in `scripts:
+  crawl_check reports a page whose body cannot be read`.
 
 ## Open questions
 
