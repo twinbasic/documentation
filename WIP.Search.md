@@ -15,12 +15,13 @@ depends on the session that wrote it.
 **Where it stands.** Rollout steps 1–5, two reader-intent rounds, the
 index pilot, the qualified-name round, the title-heading fix, the stem
 twins, the same-page ground truth, a fix for lunr inventing words, the
-whole-title round (two eval sets, the re-rank, the plural rule) and
-entity decoding in the index are done and committed, on branch
+whole-title round (two eval sets, the re-rank, the plural rule), entity
+decoding in the index and a fix for slow multi-word queries are done and
+committed, on branch
 `claude/paintpicture-docs-runtime-f3250d`, rebased onto `f8e630e5`.
 Nothing is pushed. The working tree is clean; the last commit records
-items 3 and 4 under "Next" as done. **Stopped here at the user's
-request**: the user chooses what comes next, item 5 or item 6.
+item 5 under "Next" as done. Item 6, the wider index pass, is waiting
+for the user to approve the drafted targets.
 
 | commit | step |
 |---|---|
@@ -45,6 +46,7 @@ request**: the user chooses what comes next, item 5 or item 6.
 | `3328881c` | a query naming a whole title scores ×3 |
 | `03c90175` | a plural kind word doesn't make the other word a name |
 | `e6237fe7` | HTML entities decoded per token in the index (`&H80004005`) |
+| `eed8a241` | lunr's set unions add in place: `a page` 809 → 87 ms |
 
 Hit@10 went from 20.5% to 100%, and MRR from .182 to .997. By reader
 intent, rank 1 is right for 99.9% of queries (89.0% before the intent
@@ -109,15 +111,10 @@ qualified names are now at rank 1, typed with a dot or as two words.
    see [Fixed: entities in the index](#fixed-entities-in-the-index). Not
    a content fix, as this item first proposed: the client needs the
    entities in the data, so the tokenizer decodes them.
-5. **Open, for the user to choose.** Multi-word queries with a short word
-   are slow: `a page` takes about 820 ms per search in the replica,
-   `Form events` about 100 ms, on every keystroke. Until the lunr fix,
-   `a` threw, so this was never seen; the eval's one-word queries take
-   0.4 ms. The likely cost is the all-words pass's REQUIRED stem
-   wildcards (`a*` reaches thousands of terms). Not caused by the
-   whole-title round: with every page and section title as a query, 245
-   took over 200 ms in the replica before it and 218 after. To measure in
-   a browser and profile before changing anything.
+5. ~~Multi-word queries with a short word are slow.~~ Done; see
+   [Fixed: slow multi-word queries](#fixed-slow-multi-word-queries). Not
+   the wildcards' reach as such: lunr's `Set#union` copied the whole
+   running total for every term they reach. The ranking is untouched.
 6. **Open, for the user to choose.** The wider index pass, under the pilot's rules: an entry names the page
    a reader wants for that term, not a summary of the page; few entries
    per page; one main entry per term (the build enforces this). Agents
@@ -1429,6 +1426,67 @@ words); punctuation inside a token still blocks a match (`Emit(&amp;Hb8,`
 indexes as `emit(&hb8`), as it does for any text; and the operator
 characters the entities spell (`<`, `>`) still trim away, so operators
 stay with their exact names (see "Operators").
+
+### Fixed: slow multi-word queries
+
+`a page` took about 800 ms per search in the replica and `a p`, a
+keystroke on the way to it, 1.3 s. Until the lunr fix, `a` threw, so this
+was never seen.
+
+**Profiled** (`node --cpu-prof`, `a p` and `a page`): 82% of the time
+in `lunr.Set#union` and the `lunr.Set` constructor. lunr 2.3.9's
+`Index#query` gathers the entries a REQUIRED clause matches as a running
+total, `c = c.union(S)`, once per term the clause expands to and per
+field, and `union` copies both sets into a new one every time. The
+all-words pass requires every word as its stem with a trailing wildcard,
+on six fields, and `a*` expands to thousands of terms: quadratic.
+
+**Shipped** (`eed8a241`), in all three copies: `accumulateSetUnions()`,
+installed beside `separateTokenSetKeys()`, replaces `Set#union` with one
+that, once it has made a set, adds the next set into it in place. lunr's
+only unions are running totals that drop the set they replace (`c`, the
+prohibited sets, and the final `R`), so nothing can see the change. It
+keeps lunr's own `length` (the first set's elements plus the second's, an
+element in both counting twice), which `intersect()` uses to choose the
+set it walks, so even the order of a set's elements is lunr's.
+
+| | before | after |
+|---|---|---|
+| replica, `a page` | 809 ms | 87 ms |
+| replica, `a p` | 1,334 ms | 278 ms |
+| replica, `Form events` / `the form` / `to the` | 104 / 112 / 114 ms | 52 / 35 / 43 ms |
+| Chrome, online client, `a page` / `a p` | 501 / 1,102 ms | 120 / 235 ms |
+| Chrome, `Form events` / `the form` | 70 / 86 ms | 17 / 41 ms |
+| every page and section title as a query (10,292), replica | 718 s; 716 over 200 ms; worst 4,068 ms | 86 s; 7 over 200 ms; worst 331 ms |
+| their results, refs and scores | | identical, all 10,292 |
+| eval (8,452 queries) | | unchanged |
+
+The Chrome numbers are one run each, on the same page, with lunr's own
+`union` swapped back in for the "before" column; results were the same
+either way. The offline client (`docs-offline`) was checked the same way:
+patch installed, the same top three as the replica for eight queries, no
+errors. `test/search.test.mjs`'s set-union guard runs the online
+client's and the replica's `union` against lunr's own (extracted from
+`lunr.min.js`) on a chain of sets: the same elements and length at every
+step, inputs untouched, and the running total added to in place. It also
+ranks a fixture with both and checks all three copies install it. Eight
+mutations (copying instead of adding, lunr's length changed, a stray
+element, either copy's function or any copy's call removed) each fail it.
+The token-set guard's install check was loosened to allow a second install
+after `separateTokenSetKeys(lunr)`.
+
+**Left**, none a regression: `a p` still takes about 250 ms and a single
+letter (`a`, `t`) about 80–110 ms. That is lunr's own work now (43% in
+`Index#query` itself): each one-letter word expands to thousands of terms
+in three clauses. Making it cheaper means changing the query, and so the
+ranking, for instance not completing a one-letter word; that needs its own
+measurement and the user's call.
+
+A trap met on the way: the browser pane's console kept errors from an
+earlier session's page (`Cannot read properties of undefined (reading
+'_index')`, the invented-word throw). Their line numbers matched
+`834e2bb5^`'s `just-the-docs.js`, not the page loaded. Check an error's
+line numbers against the served file before chasing it.
 
 ### Next steps
 
