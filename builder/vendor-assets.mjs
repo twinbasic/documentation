@@ -209,17 +209,12 @@ function validateImageBody(buf, contentType) {
 // Fetching
 // ---------------------------------------------------------------------------
 
-// Downloads `url`, validates the body as a real image, and only then
-// writes it to `destPath` -- via a temp file renamed into place, so a
-// body that fails validation, or a process that dies mid-write, never
-// leaves anything sitting at the final name. That matters because
-// `present.has(name)` below treats any file already at destPath as
-// fetched and done, and will not try again.
-//
-// `rejectBody`, when given, runs after the generic image checks pass and
-// can still reject on other grounds (see the YouTube placeholder check
-// below); it returns a reason string to reject, or null to accept.
-async function fetchToFile(url, destPath, { rejectBody } = {}) {
+// Fetches `url` and reads its body into a Buffer, folding every network
+// failure -- DNS, TLS, a reset connection, a proxy refusal, a body that
+// never finishes downloading -- into the same { ok: false, status } shape
+// a non-2xx response gets. Both callers below share this much; what counts
+// as a valid body differs per caller and is checked after this returns.
+async function guardedFetch(url) {
   let res;
   try {
     res = await fetch(url, { redirect: "follow" });
@@ -230,12 +225,36 @@ async function fetchToFile(url, destPath, { rejectBody } = {}) {
   }
   if (!res.ok) return { ok: false, status: res.status };
 
-  let buf;
   try {
-    buf = Buffer.from(await res.arrayBuffer());
+    const buf = Buffer.from(await res.arrayBuffer());
+    return { ok: true, buf, res };
   } catch (err) {
     return { ok: false, status: `network error (${err.message})` };
   }
+}
+
+// Writes `buf` to `destPath` via a temp file renamed into place, so a
+// body that fails validation, or a process that dies mid-write, never
+// leaves anything sitting at the final name. That matters because
+// `present.has(name)` below treats any file already at destPath as
+// fetched and done, and will not try again.
+async function writeAtomic(buf, destPath) {
+  const tmpPath = `${destPath}.tmp-${process.pid}-${Date.now()}`;
+  await fs.mkdir(path.dirname(destPath), { recursive: true });
+  await fs.writeFile(tmpPath, buf);
+  await fs.rename(tmpPath, destPath);
+}
+
+// Downloads `url`, validates the body as a real image, and only then
+// writes it to `destPath`.
+//
+// `rejectBody`, when given, runs after the generic image checks pass and
+// can still reject on other grounds (see the YouTube placeholder check
+// below); it returns a reason string to reject, or null to accept.
+async function fetchToFile(url, destPath, { rejectBody } = {}) {
+  const fetched = await guardedFetch(url);
+  if (!fetched.ok) return fetched;
+  const { buf, res } = fetched;
 
   const check = validateImageBody(buf, res.headers.get("content-type"));
   if (!check.ok) return { ok: false, status: check.reason };
@@ -244,10 +263,7 @@ async function fetchToFile(url, destPath, { rejectBody } = {}) {
     if (reason) return { ok: false, status: reason };
   }
 
-  const tmpPath = `${destPath}.tmp-${process.pid}-${Date.now()}`;
-  await fs.mkdir(path.dirname(destPath), { recursive: true });
-  await fs.writeFile(tmpPath, buf);
-  await fs.rename(tmpPath, destPath);
+  await writeAtomic(buf, destPath);
   return { ok: true, size: buf.length, contentType: res.headers.get("content-type") };
 }
 
@@ -278,20 +294,10 @@ async function fetchYouTubeThumb(videoId, destPath) {
 
 async function fetchAttachment(uuid, dirAbs) {
   const url = `https://github.com/user-attachments/assets/${uuid}`;
-  let res;
-  try {
-    res = await fetch(url, { redirect: "follow" });
-  } catch (err) {
-    return { ok: false, status: `network error (${err.message})` };
-  }
-  if (!res.ok) return { ok: false, status: res.status };
+  const fetched = await guardedFetch(url);
+  if (!fetched.ok) return fetched;
+  const { buf, res } = fetched;
 
-  let buf;
-  try {
-    buf = Buffer.from(await res.arrayBuffer());
-  } catch (err) {
-    return { ok: false, status: `network error (${err.message})` };
-  }
   if (buf.length < MIN_IMAGE_BYTES) {
     return { ok: false, status: `body too small to be a real image (${buf.length} bytes)` };
   }
@@ -311,10 +317,7 @@ async function fetchAttachment(uuid, dirAbs) {
   }
 
   const destPath = path.join(dirAbs, `gh-${uuid}.${ext}`);
-  const tmpPath = `${destPath}.tmp-${process.pid}-${Date.now()}`;
-  await fs.mkdir(dirAbs, { recursive: true });
-  await fs.writeFile(tmpPath, buf);
-  await fs.rename(tmpPath, destPath);
+  await writeAtomic(buf, destPath);
   return { ok: true, ext, destPath, size: buf.length };
 }
 

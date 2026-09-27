@@ -13,6 +13,7 @@
 // See builder/PLAN-2.md §5.7 + §6.3. Ports: _plugins/seo-precompute.rb.
 
 import { absoluteUrl } from "./url.mjs";
+import { isNonEmpty } from "./nav.mjs";
 
 // Constants ported verbatim from Liquid::StandardFilters so the
 // strip/escape steps use the same regex characters Liquid would.
@@ -117,10 +118,4 @@ export function stripHtml(s) {
 function uriEscape(input) {
   if (input == null) return null;
   return encodeURI(String(input));
-}
-
-function isNonEmpty(value) {
-  if (value == null) return false;
-  if (typeof value === "string") return value.length > 0;
-  return true;
 }

@@ -21,6 +21,7 @@
 
 import { escapeRegExp } from "./escape.mjs";
 import { CODE_OR_PRE } from "./code-guard.mjs";
+import { posix } from "./paths.mjs";
 
 // ---------------------------------------------------------------------------
 // §B  Site-paths set
@@ -34,17 +35,17 @@ export function buildSitePathsSync(pages, staticFiles, excludePatterns, stubs, t
   const paths = new Set();
   for (const p of pages) {
     if (p.frontmatter?.layout === "book-combined") continue;
-    const rel = p.destPath.replaceAll("\\", "/");
+    const rel = posix(p.destPath);
     if (offlineExcluded(rel, excludePatterns)) continue;
     paths.add("/" + rel);
   }
   for (const s of staticFiles) {
-    const rel = s.destRel.replaceAll("\\", "/");
+    const rel = posix(s.destRel);
     if (offlineExcluded(rel, excludePatterns)) continue;
     paths.add("/" + rel);
   }
   for (const stub of stubs) {
-    const rel = stub.destPath.replaceAll("\\", "/");
+    const rel = posix(stub.destPath);
     if (offlineExcluded(rel, excludePatterns)) continue;
     paths.add("/" + rel);
   }
@@ -219,14 +220,14 @@ export function decode(s) {
 
 // §6.11  fileDirSegsFromRel
 export function fileDirSegsFromRel(rel) {
-  const normalised = rel.replaceAll("\\", "/");
+  const normalised = posix(rel);
   const dir = posixDirname(normalised);
   if (dir === "." || dir === "") return [];
   return dir.split("/");
 }
 
 export function posixDirname(rel) {
-  const normalised = rel.replaceAll("\\", "/");
+  const normalised = posix(rel);
   const idx = normalised.lastIndexOf("/");
   return idx === -1 ? "." : normalised.slice(0, idx);
 }

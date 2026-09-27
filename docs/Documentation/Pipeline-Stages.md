@@ -597,6 +597,7 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 | Symbol | Signature | Description |
 |---|---|---|
 | `computeNav` | `(pages, config) → { navTree }` | Builds the sidebar tree, runs the integrity check (throws on orphan / ambiguous `parent:`), populates `navPath` / `navLevels` / `breadcrumbs` / `children` on each page. |
+| `isNonEmpty` | `(value) → boolean` | `false` for `null` / `undefined` or the empty string, `true` for anything else. Imported by `seo.mjs`. |
 
 ### `seo.mjs`
 
@@ -799,6 +800,7 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 
 | Symbol | Signature | Description |
 |---|---|---|
+| `posix` | `(p) → string` | Backslashes to forward slashes, for a rel/destPath that has to match the forward-slash form a URL or a tree-manifest comparison expects. Imported by `offline.mjs`, `offline-rewrite.mjs` and `publish-policy.mjs`; `check-tree.mjs` keeps its own copy rather than importing this one, to stay off the render fan-out's import cost. |
 | `permalinkToDestPath` | `(permalink) → string` | Permalink → destination file path. `/` → `index.html`; `/foo/` → `foo/index.html`; `.html`/`.htm`/`.xml` extensions are kept as-is; all other paths get `.html` appended. |
 
 ### `redirects.mjs`

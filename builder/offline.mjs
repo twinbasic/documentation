@@ -40,6 +40,7 @@ import {
   deriveOfflineRedirect,
 } from "./offline-rewrite.mjs";
 import { normalizeBaseurl } from "./url.mjs";
+import { posix } from "./paths.mjs";
 
 const OFFLINE_SUFFIX = "-offline";
 const LIMIT = WRITE_LIMIT;
@@ -83,7 +84,7 @@ export async function writeOffline(staticFiles, site, destRoot, { auxStats, prof
   // with EBUSY. Claiming them for the statics branch keeps a single writer
   // per path.
   const staticDestRels = new Set(
-    (staticFiles ?? []).map((f) => String(f.destRel).replaceAll("\\", "/")),
+    (staticFiles ?? []).map((f) => posix(f.destRel)),
   );
   const deps = {
     ...state,
@@ -189,7 +190,7 @@ async function writeOfflineRedirects(stubs, deps) {
 async function copyOfflineStatics(staticFiles, deps) {
   const { offlineRoot, excludePatterns, counters } = deps;
   await runLimited(staticFiles, LIMIT, async (file) => {
-    const destRel = file.destRel.replaceAll("\\", "/");
+    const destRel = posix(file.destRel);
     if (offlineExcluded(destRel, excludePatterns)) {
       counters.excluded += 1;
       return;

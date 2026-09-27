@@ -62,28 +62,25 @@ function makeLoadPaths(srcRoot) {
   ];
 }
 
-export async function compileLightScss(srcRoot) {
+// Shared by the two exports below, which differ only in which stylesheet
+// is compiled and the label its warning carries.
+async function compileScss(srcRoot, rel, label) {
   const sass = await loadSass();
   try {
-    const result = sass.compile(path.join(srcRoot, SCSS_LIGHT_REL), {
+    const result = sass.compile(path.join(srcRoot, rel), {
       style: "expanded", sourceMap: false, loadPaths: makeLoadPaths(srcRoot),
     });
     return { compiled: true, css: result.css };
   } catch (err) {
-    console.warn(`scss (light): compilation failed:\n  ${err.message}`);
+    console.warn(`scss (${label}): compilation failed:\n  ${err.message}`);
     return { compiled: false, failed: true };
   }
 }
 
-export async function compileDarkScss(srcRoot) {
-  const sass = await loadSass();
-  try {
-    const result = sass.compile(path.join(srcRoot, SCSS_DARK_REL), {
-      style: "expanded", sourceMap: false, loadPaths: makeLoadPaths(srcRoot),
-    });
-    return { compiled: true, css: result.css };
-  } catch (err) {
-    console.warn(`scss (dark): compilation failed:\n  ${err.message}`);
-    return { compiled: false, failed: true };
-  }
+export function compileLightScss(srcRoot) {
+  return compileScss(srcRoot, SCSS_LIGHT_REL, "light");
+}
+
+export function compileDarkScss(srcRoot) {
+  return compileScss(srcRoot, SCSS_DARK_REL, "dark");
 }

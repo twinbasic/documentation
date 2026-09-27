@@ -335,7 +335,7 @@ function computeChildren(_pages, state) {
 
 // ---------- utilities ------------------------------------------------------
 
-function isNonEmpty(value) {
+export function isNonEmpty(value) {
   if (value == null) return false;
   if (typeof value === "string") return value.length > 0;
   return true;

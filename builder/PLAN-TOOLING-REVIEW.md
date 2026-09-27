@@ -2134,6 +2134,32 @@ stylesheets included. For the fetch, the stubbed-fetch script from the last revi
 (`PLAN-REVIEW-c9f2dfe0-1b6922b.md`, C09) still rejects an HTML body and survives a network
 failure, and every committed thumbnail still validates.
 
+**Landed**, five of the six, by one Sonnet agent (121 calls, ~227k, 11.6 min) and reviewed by
+hand. A2-7 is not folded: the two collapses trim differently ("Where the plan was wrong").
+- **L4-3**: `vendor-assets.mjs` has two private helpers, `guardedFetch(url)` (the fetch, the
+  status check and the body read, every failure as `{ ok: false, status }`) and
+  `writeAtomic(buf, destPath)` (temp file and rename). `fetchToFile` and `fetchAttachment`
+  call both and keep their own validation.
+- **L4-2**: `scss.mjs`'s two exports call a private `compileScss(srcRoot, rel, label)`.
+- **A3-8**: `highlight-theme.mjs`'s three loops call a local `renderPalette(selectorFor,
+  palette, bg)`.
+- **A2-8**: `paths.mjs` exports `posix(p)`; the seven sites in `offline-rewrite.mjs` and
+  `offline.mjs` and `publish-policy.mjs`'s private copy use it. `check-tree.mjs` keeps its own
+  exported copy for its recorded reason, which `check.mjs` imports, and `paths.mjs`'s comment
+  names it. A site that called `replaceAll` on a value now passes it through `String()`, as
+  the private copy did.
+- **A3-4**: `nav.mjs` exports `isNonEmpty` and `seo.mjs` imports it.
+
+Pipeline-Stages.md has rows for `posix` and `isNonEmpty`. `compare_trees`: only
+Pipeline-Stages.md's page differs (with the search data and `book.html`); the search index,
+every compressed page and both stylesheets are identical. The agent's `c58-fetch.mjs` (the
+C09 script was described there, not kept, so it was rewritten) drives `vendorAssets()` with a
+stubbed `fetch` through both paths: an HTML body is rejected with no file and no temp file
+left, a rejected `fetch` is warned about and counted, and all 16 committed thumbnails validate
+(there are no committed attachments). Its output from a `git archive` copy of HEAD and from the
+working tree is identical. The regex-safety gate is unchanged: `504 literals + 28 constructed
+in 124 files` (C57's `baseline.mjs` is the 124th file).
+
 ### C59 — `builder: cpu-worker's timed task paths share one runner`
 
 **A1-3 / L4-1 (R2), A1-7 (R3).** The same run, time and report block appears three times in
@@ -2729,6 +2755,11 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   host page loads both Inter faces without it, and both give the same output, the regenerated
   table included. At the owner's choice the flag was dropped; CI's `check_dot_fit` step on
   Linux confirms it on the next push. See C44's Landed note.
+- **C58 (A2-7): the two whitespace collapses are not duplicates.** They collapse the same
+  ASCII class, but `compress.mjs` trims a both-sides segment with `String.prototype.trim`,
+  which also strips U+00A0, and its comment says why it keeps that; `search.mjs` strips ASCII
+  only. Folding either way changes one of them, so both stay, and C58 landed as `builder: fold
+  five small duplicates`. See C58's Landed note.
 
 ## Found while implementing
 
