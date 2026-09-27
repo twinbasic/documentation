@@ -32,7 +32,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import matter from "gray-matter";
+import { parseFrontmatter } from "../lib/frontmatter.mjs";
 import { blockRegions } from "../lib/markdown.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -71,8 +71,7 @@ async function loadPages(src) {
   const aliases = [];
   for (const rel of await markdownFiles(docs)) {
     const file = path.join(docs, rel);
-    // A BOM in front of the frontmatter hides it from gray-matter; builder/discover.mjs strips it too.
-    const { data } = matter(fs.readFileSync(file, "utf8").replace(/^﻿/, ""));
+    const data = parseFrontmatter(fs.readFileSync(file, "utf8"))?.data ?? {};
     if (typeof data.permalink !== "string") continue;
     urlOf.set(file, data.permalink);
     byKey.set(pageKey(data.permalink), file);

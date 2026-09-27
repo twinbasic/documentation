@@ -217,7 +217,7 @@ Three details of the policy are load-bearing:
   refusing at source. Folding the two together would pass every other assertion
   in the self-test, so the self-test asserts the disjointness directly.
 - **`.md` is deliberately absent from both.** A markdown file that reaches the
-  check is one `gray-matter` found no frontmatter block in --- the
+  check is one `discover` found no frontmatter block in --- the
   AppGlobalClassObject shape, where the raw markdown was served verbatim for
   months. The two causes that come to mind first are both handled upstream: a
   **UTF-8 BOM** is stripped before parsing, and **malformed YAML** inside the

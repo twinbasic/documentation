@@ -87,11 +87,10 @@ The rest of this file is the maintenance guide for updating existing pages or ad
   > to drop `_Images`, swallowed all 37 pages under `_App/` --- the twinBASIC interface
   > really is named `_App`, after the COM hidden-interface convention. It is scoped to
   > `**/_Images/**` (plus `**/*.af`) now, so **never widen an exclude to a bare
-  > underscore prefix.** Separately `index.md` carried a UTF-8 BOM, which sits in front
-  > of the `---` and stops `gray-matter` recognising any frontmatter at all, so
-  > `discover` filed it as a *static file* and served the raw markdown verbatim;
-  > `discover.mjs` strips a leading BOM before parsing now, and editors on Windows add
-  > one without being asked.
+  > underscore prefix.** Separately `index.md` carried a UTF-8 BOM in front of the `---`,
+  > which hid the frontmatter, so `discover` filed it as a *static file* and served the raw
+  > markdown verbatim; `lib/frontmatter.mjs` strips a leading BOM before parsing now, and
+  > editors on Windows add one without being asked.
 - `docs/Reference/Built-In/tbIDE/` — IDE Extensibility package (this is the **addin SDK**). The package is type-only — it ships **public interfaces + CoClasses** that an addin DLL binds to; every implementation behind them lives in the twinBASIC IDE itself. The user-facing surface is one entry-point factory (`tbCreateCompilerAddin`) plus 23 CoClasses grouped by role: the addin contract (`AddIn`), the root API (`Host`), the loaded `Project`, the editors collection (`Editor` / `CodeEditor` / `Editors`), the virtual file system (`FileSystem` / `FileSystemItem` / `Folder` / `File`), the in-IDE UI surface (`Toolbar` / `Toolbars` / `Button` / `ToolWindow` / `ToolWindows`), the HTML DOM inside a tool window (`HtmlElement` / `HtmlElements` / `HtmlElementProperty` / `HtmlElementProperties` / `HtmlEventProperty` / `HtmlEventProperties`), the `DebugConsole`, `KeyboardShortcuts`, `Themes`, and the single concrete user-instantiable helper class `AddinTimer`. Flat layout — one page per CoClass / Class plus the index landing.
 - `docs/Reference/Statements.md` — alphabetical index of language statements.
 - `docs/Reference/Procedures and Functions.md` — alphabetical index of procedures/functions.

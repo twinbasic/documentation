@@ -983,6 +983,32 @@ does not) and `eval/nav_hops.mjs` use `parseFrontmatter`. `gray-matter` leaves
 comparison identical. Compare before uninstalling, since the before side needs `gray-matter`;
 rebuild once after.
 
+**Landed.** `discover.mjs`'s own frontmatter step is renamed `readFrontmatter`, to free the
+name: it calls `parseFrontmatter` inside the same `Failed to parse frontmatter in <file>`
+wrap, and takes `contentLine` (C32a) from the raw text, since the stripped BOM holds no line
+ending. `stripBom` goes, as `parseFrontmatter` strips the BOM. `nav_hops` takes a missing block as no permalink, as gray-matter's
+empty data was. `npm uninstall gray-matter` removed it from `package.json`, and from the
+lockfile it, its nested `js-yaml@3` and `argparse`, and seven packages only it used
+(`esprima`, `extend-shallow`, `is-extendable`, `kind-of`, `section-matter`, `sprintf-js`,
+`strip-bom-string`): 120 lines deleted, none added. Builder.md's `package.json` listing and
+its Dependencies paragraph, Pipeline-Stages.md's `frontmatter` row, WIP.md's BOM paragraph,
+WIP.Build.md's publish-allowlist note, two comments in `publish-policy.mjs` and the headers
+of `lib/frontmatter.mjs` and `discover.mjs`'s frontmatter step no longer name gray-matter, in
+the present or as history: at the owner's word, history that no later task needs is left to
+git.
+
+**Verify.** `discover()` from a HEAD copy of `builder/` and `lib/` against the working one,
+over `docs/`: 914 pages (912 `.md`, 2 `.html`) deep-equal, frontmatter, content and
+`contentLine` included, in the same order, and the same 281 static files. With gray-matter
+still installed, the tree comparison before any page edit matched in all three trees (1,461,
+1,457 and 137 files). Its after side was set aside, gray-matter uninstalled, and the tree
+comparison run again with `--before` a `git stash create` commit of the working tree; the
+two after sides, compared by a scratch script with `compare_trees`' normalisers, agree on
+every file, five of them once normalised (the Gantt chart twice over in two trees, and the
+book's build line). HEAD's side no longer builds once the package is gone, so the final tree
+comparison takes that stash commit as its before side: it differs only in Builder and
+Pipeline-Stages online and offline, the search data, and `book.html`.
+
 ### C41 — `wisdom: read pages and threads through lib/`
 
 **A10-2 (R1), A10-3 (R2).** Three frontmatter readers disagree: `wisdom/extract/sitemap.mjs:69-87`
