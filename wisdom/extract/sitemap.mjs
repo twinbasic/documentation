@@ -19,11 +19,18 @@ export async function buildSitemap(docsDir, rootDir) {
   return entries
 }
 
+// A reference page's path from its package down: docs/Reference/Default/VBA/
+// Strings/Len.md gives [VBA, Strings, Len.md].  Default/ and Built-In/ only sort
+// the packages into those every project references and those it may; Core/,
+// the language itself, sits directly under docs/Reference/.
+function packageParts(path) {
+  return path.replace(/^docs\/Reference\/(?:(?:Default|Built-In)\/)?/, '').split('/')
+}
+
 export function buildPackageSummary(sitemap) {
   const groups = {}
   for (const entry of sitemap) {
-    const rel = entry.path.replace(/^docs\/Reference\//, '')
-    const parts = rel.split('/')
+    const parts = packageParts(entry.path)
     if (parts.length < 2) continue
     const pkg = parts[0]
     const isModule = (pkg === 'VBA' || pkg === 'VBRUN') && parts.length > 2
@@ -44,9 +51,7 @@ export function buildPageIndex(sitemap) {
   const index = {}
   const titleCount = {}
   for (const entry of sitemap) {
-    const rel = entry.path.replace(/^docs\/Reference\//, '')
-    const parts = rel.split('/')
-    const pkg = parts[0]
+    const pkg = packageParts(entry.path)[0]
     index[`${pkg}/${entry.title}`] = entry.path
     titleCount[entry.title] = (titleCount[entry.title] || 0) + 1
   }

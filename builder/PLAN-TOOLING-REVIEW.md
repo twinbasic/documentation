@@ -1110,6 +1110,30 @@ each fail `check_code_regions`: no call in `discover` (the `discover` probe), no
 skip (line 16 reported), no allowance for trailing whitespace (line 5 missed), and no quote
 check (line 18 reported).
 
+### C41c — `wisdom: group reference pages by package, below Default/ and Built-In/`
+
+**Found while landing C41.** `buildPackageSummary` and `buildPageIndex` take the first
+folder under `docs/Reference/` as a page's package, and since `58a5e1c` that folder is
+`Default`, `Built-In` or `Core`.
+
+**Change.** Both take a page's parts through one `packageParts(path)`, which drops
+`docs/Reference/` and then a `Default/` or `Built-In/`.
+
+**Landed.** As the entry says. Wisdom.md already describes `Package > Module` lines and
+`Package/Title` keys, so no page changes. The Assert package groups as
+`TwinBasicAssertions`, its folder's name, where the last summary written (2026-06-04, from a
+tree before the move) said `Assert`; the grouping has always been by folder. Open
+questions keeps this, at the owner's request.
+
+**Verify.** The kit's `c41c-oracle.mjs`, HEAD's two functions against the working ones over
+one sitemap: the summary goes from three groups to 40, VBA and VBRUN split by module again,
+and lists 735 titles where it listed 726, since a title shared by two packages no longer
+collapses into one group. The page index goes from 1,492 keys to 1,500, its 740 bare-title
+keys and their paths unchanged, and the pages a `Package/Title` key reaches from 751 to 759
+of 760, none lost. The kit's `c41-prep.mjs`, HEAD's `runExtract` against the working one:
+the batch files and the manifest are byte-identical, and only `package-summary.txt` and
+`page-index.json` differ.
+
 *The link checker, the gates' scaffolding, the browser tools and the repository root:
 C42–C46.*
 
@@ -2181,6 +2205,14 @@ Defects the review did not have, found by building something this plan asks for.
   `Write` (in the sidebar, the breadcrumb, the browser tab and the search) since `042210e2`
   (2026-05-09). Wisdom's own reader kept the `#`, which is how C41's oracle saw the
   difference. Fixed in `docs: quote the three statement titles that end in #`.
+- **Wisdom's extract grouped the reference as `Default`, `Built-In` and `Core`**, found while
+  landing C41. `buildPackageSummary` and `buildPageIndex` took the first folder under
+  `docs/Reference/` as a page's package, and `58a5e1c` (2026-06-03) moved the packages one
+  folder down. From then on `package-summary.txt` would have held three groups where the
+  Extract agents are told to expect `Package > Module` lines, and `page-index.json`'s keys
+  read `Default/<title>`, so that pages of one title in two packages hid all but one. No
+  extract run has used it: the one on disk predates the move. Fixed in `wisdom: group
+  reference pages by package, below Default/ and Built-In/`.
 
 ## Open questions
 
@@ -2192,7 +2224,14 @@ decides otherwise:
 - whether `test.bat` without Python fails or skips `check_impexp_parity.mjs` loudly: C70,
   decision (b)'s open question, which the owner settled on 2026-09-25: it skips, loudly;
 - whether the pre-commit hook should also run the dash check, which A6-3 assumed: the owner
-  approved a hook that runs Biome only (C08), so it stays out unless the owner asks for it.
+  approved a hook that runs Biome only (C08), so it stays out unless the owner asks for it;
+- what Wisdom's extract should call the Assert package: its reference folder is
+  `docs/Reference/Built-In/TwinBasicAssertions/`, while the package's title, nav parent and
+  permalinks say `Assert`. Since C41c `package-summary.txt` groups it as
+  `TwinBasicAssertions` and `page-index.json` keys it `TwinBasicAssertions/<title>`; the last
+  summary written (2026-06-04, before `58a5e1c` reached it) said `Assert`, the name a thread
+  on Discord would use. Kept at the owner's request, to be picked up later; no commit is
+  named yet.
 
 The two questions this plan started with are settled: the two link checkers (decision 5), and
 the survey script, which is committed.
