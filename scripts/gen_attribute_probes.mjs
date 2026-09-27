@@ -37,11 +37,10 @@
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { parseAttributes } from "./lib/attributes-doc.mjs";
+import { DOCS_DIR } from "../lib/repo-paths.mjs";
 
-const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const DOCS = path.join(REPO, "docs", "Reference", "Attributes.md");
+const ATTR_DOC = path.join(DOCS_DIR, "Reference", "Attributes.md");
 
 const USAGE = `Generate a twinBASIC probe project for Reference/Attributes.md applicability.
 
@@ -1119,7 +1118,7 @@ async function main(argv) {
   const overflowSrc = path.join(out + "-2", "Sources");
   await fs.mkdir(srcDir, { recursive: true });
 
-  const entries = parseAttributes(await fs.readFile(DOCS, "utf8"));
+  const entries = parseAttributes(await fs.readFile(ATTR_DOC, "utf8"));
   const byName = new Map(entries.map((e) => [e.name, e]));
   const probes = [];
   const overflow = [];

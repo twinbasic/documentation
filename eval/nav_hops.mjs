@@ -31,11 +31,11 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
 import { parseFrontmatter } from "../lib/frontmatter.mjs";
 import { blockRegions } from "../lib/markdown.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SITE_HOST = /^https?:\/\/docs\.twinbasic\.com/i;
 
 const USAGE =

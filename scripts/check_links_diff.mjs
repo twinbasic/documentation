@@ -77,11 +77,10 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { performance } from "node:perf_hooks";
-import { fileURLToPath } from "node:url";
 
 import { runCheck, selfTest as scriptSelfTest } from "./check_links.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
-const REPO_ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const BASE_PATH = "/twinBASIC-docs";
 const DEFAULT_BASEPATH_TREE = "docs/_site-basepath";
 const FIXTURE_SRC  = "test/fixtures/check-src";

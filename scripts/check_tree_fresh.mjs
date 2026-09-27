@@ -28,11 +28,9 @@
 
 import { readdirSync, statSync, existsSync } from "node:fs";
 import { join, resolve, relative, sep } from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { isOutputTree } from "../lib/markdown-files.mjs";
-
-const REPO_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 // Output trees live under docs/, so walking docs/ naively would compare
 // the build against itself and always pass. They are skipped at the top of

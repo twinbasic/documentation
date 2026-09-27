@@ -42,15 +42,13 @@
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
 
 import { createMarkdownIt } from "../builder/render.mjs";
 import { blockRegions, mapLines, splitCodeSpans } from "../lib/markdown.mjs";
 import { markdownFiles } from "../lib/markdown-files.mjs";
+import { DOCS_DIR } from "../lib/repo-paths.mjs";
 import { exitOnCrash } from "./lib/gate-probes.mjs";
-
-const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const ROOT = path.join(REPO, "docs");
 
 const EM_DASH = "—";
 const EN_DASH = "–";
@@ -135,8 +133,8 @@ async function main(argv) {
   let en = 0;
   const md = createMarkdownIt({ highlighter: null, linkTables: null, baseurl: "", staticFiles: new Set() });
 
-  for (const rel of (await markdownFiles(ROOT)).sort(byPathParts)) {
-    const abs = path.join(ROOT, rel);
+  for (const rel of (await markdownFiles(DOCS_DIR)).sort(byPathParts)) {
+    const abs = path.join(DOCS_DIR, rel);
     const r = convertText(await fs.readFile(abs, "utf8"), md);
     if (r.sep + r.em + r.en === 0) continue;
 

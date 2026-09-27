@@ -16,16 +16,17 @@
 // See builder/PLAN-axe-perf.md for why each knob below is a knob.
 
 import { readdirSync, readFileSync } from "node:fs";
-import { resolve, join, relative, sep } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { join, relative, sep } from "node:path";
+import { pathToFileURL } from "node:url";
+import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 
-// This module lives at <repo>/scripts/lib/axe-scan.mjs.  Anchoring the built
-// tree and the axe bundle to the repo root rather than to process.cwd() lets
-// perf/ab-axe.mjs run from perf/ (as ab-css.mjs does) while check_a11y.mjs
-// runs from the repo root, without either needing to know where the other is.
-// An explicit --root-dir still resolves against the caller's cwd, which is
-// what someone typing a relative path expects.
-export const REPO_ROOT = resolve(fileURLToPath(import.meta.url), "../../..");
+// Anchoring the built tree and the axe bundle to the repository root rather
+// than to process.cwd() lets perf/ab-axe.mjs run from perf/ (as ab-css.mjs
+// does) while check_a11y.mjs runs from the repo root, without either needing
+// to know where the other is. An explicit --root-dir still resolves against
+// the caller's cwd, which is what someone typing a relative path expects.
+// pick_a11y_sample.mjs and sweep_a11y.mjs take the root from here.
+export { REPO_ROOT };
 
 export const DEFAULT_ROOT_DIR = join(REPO_ROOT, "docs/_site-offline");
 

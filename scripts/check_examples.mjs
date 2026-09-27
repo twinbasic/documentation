@@ -73,7 +73,6 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { mapLines } from "../lib/markdown.mjs";
 import {
@@ -82,10 +81,9 @@ import {
 } from "./lib/tb-fences.mjs";
 import { buildNumber, compilerExe, findIde, runCompiler } from "./lib/tb-install.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
+import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 
-const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const DOCS = path.join(REPO, "docs");
-const TEMPLATES = path.join(REPO, "test", "example-projects");
+const TEMPLATES = path.join(REPO_ROOT, "test", "example-projects");
 
 // ---------------------------------------------------------------- arguments
 
@@ -615,7 +613,7 @@ function crashedIn(report, map) {
 
 /** Build one staged batch; returns per-fence errors, or a crash marker. */
 async function buildStaged(staged, port) {
-  const args = [path.join(REPO, "scripts", "tbbuild.mjs"), staged.proj,
+  const args = [path.join(REPO_ROOT, "scripts", "tbbuild.mjs"), staged.proj,
     "--port", String(port), "--json"];
   if (IDE) args.push("--ide", IDE);
   if (flag("show")) args.push("--show");
@@ -1151,7 +1149,7 @@ async function applyMarkers(passed) {
   }
   let count = 0;
   for (const [rel, list] of byFile) {
-    const file = path.join(DOCS, rel);
+    const file = path.join(DOCS_DIR, rel);
     const src = await fs.readFile(file, "utf8");
     // Lines are counted as the parse that found the fences counts them, and
     // each keeps its own ending.
@@ -1618,7 +1616,7 @@ async function main() {
     process.exit(0);
   }
 
-  const fences = await collectFences(DOCS);
+  const fences = await collectFences(DOCS_DIR);
   const selected = select(fences);
   checkGroups(fences, selected);
   // Everything that counts as a sample. A resource fence is selected -- it has

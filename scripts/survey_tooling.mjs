@@ -50,10 +50,10 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { builtinModules } from "node:module";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import * as acorn from "acorn";
 import * as walk from "acorn-walk";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const TOOLING_DIRS = ["builder", "scripts", "lib", "book", "eval", "wisdom", "test", "perf"];
 const VENDORED = [/^book\/lib\/paged\.browser\.js$/, /^builder\/vendor\//];
@@ -86,7 +86,7 @@ if (opts.help) {
 }
 const WINDOW = positiveInt("window", opts.window);
 const TOP = positiveInt("top", opts.top);
-const ROOT = path.resolve(opts.root ?? fileURLToPath(new URL("..", import.meta.url)));
+const ROOT = path.resolve(opts.root ?? REPO_ROOT);
 const listed = (f) => opts["include-perf"] || !f.startsWith(LAB);
 
 function positiveInt(name, raw) {

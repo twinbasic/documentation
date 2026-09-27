@@ -1340,6 +1340,44 @@ convention as it now is.
 **Verify.** The tree comparison identical; `test.bat` and `check.bat` clean;
 `check_examples.mjs --census`, and each `eval/` and `wisdom/` tool's cheapest mode, unchanged.
 
+**Landed.** `lib/repo-paths.mjs` exports `REPO_ROOT`, from its own URL, and `DOCS_DIR`, the
+one path several tools built from it; every other path built from the root is built by one or
+two tools and stays with them. Twenty-six files take the two from it: the review's nineteen;
+`check_regex_safety.mjs`, which was there at `fe9ce12b` and missing from the count;
+`check_ci_workflows.mjs`, `check_lint.mjs`, `compare_trees.mjs` and `survey_tooling.mjs`,
+added since, the last keeping its own `ROOT`, now `--root` or `REPO_ROOT`; `inter-page.mjs`
+(C44); and `axe-scan.mjs`, which imports the root and re-exports it with `export { REPO_ROOT
+}` for `pick_a11y_sample.mjs` and `sweep_a11y.mjs`, whose imports are unchanged. Local names
+follow the exports: `REPO`, `ROOT` and `PROJECT_ROOT` become `REPO_ROOT`; the docs folder's
+`ROOT` (`check_code_regions.mjs`, `convert_em_dash_separators.mjs`), `SRC` (`check_dot_fit.mjs`)
+and `DOCS` (`check_examples.mjs`, `inter-page.mjs`) become `DOCS_DIR`; and
+`gen_attribute_probes.mjs`'s `DOCS`, which held `Attributes.md`'s path, becomes `ATTR_DOC`, as
+in `census_attributes.mjs`. Left alone: `perf/`, outside the review's scope; `impexp.mjs`'s
+self-test path to `indexer/`, since the script is a download that must stand alone;
+`check_publish_policy.mjs`'s working-directory `docs` default, a behaviour change, which
+Extending.md names as the one gate that does not; and paths relative to a module that are not
+the root (Wisdom's data folders, `builder/`'s vendored assets, `test/addin/`'s `HERE`).
+Extending.md states the convention as it now is, `lib/README.md` names the module, and
+WIP.md's sentence on `check_code_regions`' sweep names `DOCS_DIR`. The mechanical edit was a
+Sonnet agent's (177 calls, ~207k, 12 min), reviewed line by line.
+
+Oracle: the kit's `c46-oracle.mjs` takes each of the 32 root and docs constants HEAD defined
+in the 26 files, evaluates it as HEAD wrote it for that file's own URL, and compares it with
+the exports: all 32 equal, byte for byte (the two `Attributes.md` paths as `DOCS_DIR` plus
+`\Reference\Attributes.md`). `c46-tools.mjs` runs each touched tool's cheapest mode from a
+HEAD worktree and from the working tree, both roots masked: `check_examples --census`,
+`nav_hops`, `site_search --site`, `run_case --prompt-only` over a `build_corpus` corpus,
+`survey_tooling --summary` (each tree measured by both scripts), `gen_attribute_probes` (135
+files) and `convert_em_dash_separators --check` give the same exit and output, and
+`site_search`'s default `--site` answers as the explicit one does. `build_corpus`'s corpus
+differs only in the three files this commit changes and in untracked local output that the
+worktree lacks; it holds `wisdom/.token` as the stub every unlisted file type gets, not the
+token. Wisdom's prep step, the kit's `c41-prep.mjs`, writes the same files. The tree
+comparison differs only in Extending.md's page, online and offline, the search index and
+`book.html`. Not run: `addin_test`, `build_dot_metrics`, `build_package_api`,
+`census_attributes` and `check_links_diff`, whose changed lines are the constants above; Biome's
+`noUndeclaredVariables` over the 26 files names none of the renamed identifiers.
+
 *Command lines (decision (e)): C47–C52.*
 
 ### C47 — `lib: cli.mjs on node:util parseArgs, and check_cli.mjs`

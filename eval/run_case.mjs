@@ -58,11 +58,10 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { blockRegions } from "../lib/markdown.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { printDigest, readTranscript, summarize } from "./transcript.mjs";
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SEARCH_SCRIPT = path.join(REPO_ROOT, "eval", "site_search.mjs");
 const SEARCH_COMMAND = 'site-search "your query here"';
 

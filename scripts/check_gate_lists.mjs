@@ -80,12 +80,11 @@
 
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { createMarkdownIt } from "../builder/render.mjs";
 import { splitOnMarker } from "../lib/markdown.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { gatesFromBat } from "./lib/gate-roster.mjs";
 
-const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const TOOLS_MD = "docs/Documentation/Tools.md";
 
 // The site's own parser, so that what is code is what the renderer will make
@@ -552,11 +551,11 @@ async function main(argv) {
     return probesFailed.length ? 1 : 0;
   }
 
-  const toolsMd = await readFile(path.join(REPO, TOOLS_MD), "utf8");
+  const toolsMd = await readFile(path.join(REPO_ROOT, TOOLS_MD), "utf8");
   const findings = [];
   const wrapperGates = new Map();
   for (const w of WRAPPERS) {
-    const batSrc = await readFile(path.join(REPO, w.bat), "utf8");
+    const batSrc = await readFile(path.join(REPO_ROOT, w.bat), "utf8");
     wrapperGates.set(w.bat, gatesFromBat(batSrc));
     const found = compareWrapper(w, batSrc, toolsMd);
     findings.push(...found);
@@ -570,7 +569,7 @@ async function main(argv) {
   // is legitimate and is exactly the kind of second copy that drifted last
   // time; README.md is here because three of round 4's findings were on it
   // and nothing had ever read it.
-  const docsDir = path.join(REPO, "docs/Documentation");
+  const docsDir = path.join(REPO_ROOT, "docs/Documentation");
   const wanted = [...wrapperGates.values()].map((g) => g.join("\0"));
   const counts = new Map([...wrapperGates].map(([bat, g]) => [bat, g.length]));
   const rels = [
@@ -580,7 +579,7 @@ async function main(argv) {
   ];
   let claimsSeen = 0;
   for (const rel of rels) {
-    const src = await readFile(path.join(REPO, rel), "utf8");
+    const src = await readFile(path.join(REPO_ROOT, rel), "utf8");
     for (const run of commandRuns(src, rel)) {
       if (wanted.includes(run.gates.join("\0"))) {
         if (verbose) console.log(`  ok    ${rel}:${run.line}: matches a wrapper`);

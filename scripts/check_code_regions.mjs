@@ -73,7 +73,6 @@ import assert from "node:assert/strict";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import MarkdownIt from "markdown-it";
 import deflist from "markdown-it-deflist";
@@ -83,10 +82,8 @@ import { applyPreRenderRewrites, createMarkdownIt } from "../builder/render.mjs"
 import { parseFrontmatter, unquotedHashValues } from "../lib/frontmatter.mjs";
 import { blockRegions, mapLines, maskCode, splitCodeSpans, splitOnMarker } from "../lib/markdown.mjs";
 import { markdownFiles } from "../lib/markdown-files.mjs";
+import { DOCS_DIR } from "../lib/repo-paths.mjs";
 import { convertText } from "./convert_em_dash_separators.mjs";
-
-const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const ROOT = path.join(REPO, "docs");
 
 // A bare CommonMark parser: this gate asks what the *source* says is code, so
 // it must not inherit the site's plugin stack (which rewrites content itself).
@@ -503,11 +500,11 @@ async function main(argv) {
     console.log("ok    1 probe: discover warns about an unquoted value that ends in #");
   }
 
-  const files = await markdownFiles(ROOT);
+  const files = await markdownFiles(DOCS_DIR);
   let touched = 0;
   let fences = 0;
   for (const rel of files) {
-    const src = await fs.readFile(path.join(ROOT, rel), "utf8");
+    const src = await fs.readFile(path.join(DOCS_DIR, rel), "utf8");
     const parsed = parsedRegions(src);
     const found = regionsOf(src);
     fences += parsed.filter((r) => r.startsWith("fence ")).length;

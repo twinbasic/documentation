@@ -10,16 +10,15 @@
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-
-const DOCS = path.resolve(fileURLToPath(import.meta.url), "../../../docs");
+import { pathToFileURL } from "node:url";
+import { DOCS_DIR } from "../../lib/repo-paths.mjs";
 
 /**
  * Opens a new page in `browser` with Inter declared, `css` after the
  * @font-face rules and `body` after the stylesheet, and returns it once loaded.
  */
 export async function openInterPage(browser, name, { css = "", body = "" } = {}) {
-  const fontDirUrl = pathToFileURL(path.join(DOCS, "assets", "fonts")).href;
+  const fontDirUrl = pathToFileURL(path.join(DOCS_DIR, "assets", "fonts")).href;
   const html = `<!doctype html><meta charset="utf-8"><title>${name}</title><style>
 @font-face{font-family:"Inter";font-style:normal;font-weight:100 900;
   src:url("${fontDirUrl}/inter-variable.woff2") format("woff2")}
@@ -29,7 +28,7 @@ ${css}</style>${body}`;
 
   const page = await browser.newPage();
   page.on("pageerror", (e) => console.error("[page error]", e.message));
-  const host = path.join(DOCS, `_${name}-host.html`);
+  const host = path.join(DOCS_DIR, `_${name}-host.html`);
   await fs.writeFile(host, html, "utf8");
   try {
     await page.goto(pathToFileURL(host).href, { waitUntil: "load" });

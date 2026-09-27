@@ -12,13 +12,11 @@
 //
 // See eval/README.md for how a round uses it.
 
-import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import path from "node:path";
 
 import { isOutputTree } from "../lib/markdown-files.mjs";
-
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 // ---------------------------------------------------------------------------
 // What stays readable is an ALLOWLIST, and that is the whole design.

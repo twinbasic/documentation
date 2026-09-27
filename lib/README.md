@@ -20,6 +20,9 @@ tooling uses, and lists the values left unquoted that end in `#`, since YAML
 reads a `#` after a space as a comment. `scripts/check_code_regions.mjs` carries the probes for both, and
 checks on every page that the block parse finds what a full parse finds.
 
+[repo-paths.mjs](repo-paths.mjs) is where every tool gets the repository root,
+`REPO_ROOT`, and `docs/`, `DOCS_DIR`, so each runs the same from any folder.
+
 `scripts/check_tree_fresh.mjs` counts `lib/` among the inputs that decide the
 built bytes, beside `docs/` and `builder/`, so an edit here marks every built
 tree stale, and `check.bat` and `book.bat` refuse it until the next build.

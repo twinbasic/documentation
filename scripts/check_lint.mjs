@@ -36,12 +36,10 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { exitOnCrash } from "./lib/gate-probes.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 exitOnCrash();
-
-const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 function cannotLint(message) {
   console.error(`check_lint: ${message}`);
@@ -56,12 +54,12 @@ if (argv.length && !staged) cannotLint("usage: node scripts/check_lint.mjs [--st
 // two extensions the scope in biome.jsonc is made of.
 function stagedScripts() {
   const r = spawnSync("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"], {
-    cwd: ROOT,
+    cwd: REPO_ROOT,
     encoding: "utf8",
   });
   if (r.error) cannotLint(`could not run git: ${r.error.message}`);
   if (r.status !== 0) cannotLint(`git diff --cached failed: ${r.stderr.trim()}`);
-  return r.stdout.split("\0").filter((f) => /\.m?js$/.test(f) && existsSync(path.join(ROOT, f)));
+  return r.stdout.split("\0").filter((f) => /\.m?js$/.test(f) && existsSync(path.join(REPO_ROOT, f)));
 }
 
 const scripts = staged ? stagedScripts() : [];
@@ -95,7 +93,7 @@ try {
   const file = path.join(dir, "summary.txt");
   const args = ["lint", "--error-on-warnings", "--reporter=default", "--reporter=summary", `--reporter-file=${file}`];
   if (staged) args.push("--no-errors-on-unmatched", "--", ...scripts);
-  run = spawnSync(process.execPath, [biome, ...args], { cwd: ROOT, stdio: ["ignore", "inherit", "inherit"] });
+  run = spawnSync(process.execPath, [biome, ...args], { cwd: REPO_ROOT, stdio: ["ignore", "inherit", "inherit"] });
   summary = readSummary(file);
 } finally {
   rmSync(dir, { recursive: true, force: true });

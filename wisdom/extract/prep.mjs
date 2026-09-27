@@ -5,15 +5,15 @@ import { buildSitemap, buildPackageSummary, buildPageIndex } from './sitemap.mjs
 import { loadState, saveState, isThreadChanged, recordEmission } from './state.mjs'
 import { graftAdditions, renderSideband } from './merger.mjs'
 import { readFrontmatter } from '../files.mjs'
+import { REPO_ROOT, DOCS_DIR } from '../../lib/repo-paths.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const REPO_ROOT = join(__dirname, '..', '..')
 const BATCH_SIZE = 200
 
 export async function runExtract(flags) {
   const threadsDir = flags.in || join(__dirname, '..', 'data', 'threads')
   const outDir = flags.out || join(__dirname, '..', 'data', 'findings')
-  const docsDir = join(REPO_ROOT, 'docs', 'Reference')
+  const docsDir = join(DOCS_DIR, 'Reference')
 
   if (!existsSync(threadsDir)) {
     process.stderr.write('[wisdom] Threads directory not found — run process first\n')

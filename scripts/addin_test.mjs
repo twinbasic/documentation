@@ -52,16 +52,16 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
 import { wantShow } from "./lib/tb-ide.mjs";
 import { buildNumber, findIde } from "./lib/tb-install.mjs";
 import { LANE_ENV } from "./lib/tb-lane.mjs";
 import { deleteSettings, finishTidy, ideLists, restoreKeys, SETTINGS_ROOT, settingsKey, snapshotKeys,
          startTidy, subkeyNames, sweepArchitectureMemory } from "./lib/tb-registry.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
-const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const SUITE = path.join(REPO, "test", "addin");
+const SUITE = path.join(REPO_ROOT, "test", "addin");
 
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes(`--${n}`);
@@ -168,7 +168,7 @@ function runLane(l) {
     }
     console.log(`  ${l.name}: started on port ${l.port}`);
     const child = spawn(process.execPath, ["--test", "--test-reporter=spec", path.join(SUITE, l.file)], {
-      cwd: REPO, stdio: ["ignore", "pipe", "pipe"], windowsHide: true,
+      cwd: REPO_ROOT, stdio: ["ignore", "pipe", "pipe"], windowsHide: true,
       env: { ...process.env,
              [LANE_ENV]: JSON.stringify({ name: l.name, port: l.port, work: l.work, ide, show }) },
     });

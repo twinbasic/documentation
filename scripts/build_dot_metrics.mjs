@@ -33,16 +33,15 @@
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { withBrowser } from "./lib/browser.mjs";
 import { exitOnCrash } from "./lib/gate-probes.mjs";
 import { openInterPage } from "./lib/inter-page.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 // A crash exits 2, where 1 is --check finding the table stale.
 exitOnCrash();
 
-const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const OUT = path.join(REPO, "builder", "inter-metrics.json");
+const OUT = path.join(REPO_ROOT, "builder", "inter-metrics.json");
 
 // Graphviz stores widths as `short`, in the family's own em units. The Times
 // family it falls back to declares 2048, and builder/dot-metrics.mjs writes
@@ -119,7 +118,7 @@ const next = JSON.stringify({
 }, null, 1) + "\n";
 
 const prev = await fs.readFile(OUT, "utf8").catch(() => null);
-const rel = path.relative(REPO, OUT).replace(/\\/g, "/");
+const rel = path.relative(REPO_ROOT, OUT).replace(/\\/g, "/");
 if (prev === next) {
   console.log(`  unchanged  ${rel}`);
 } else if (check) {

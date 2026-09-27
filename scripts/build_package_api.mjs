@@ -43,13 +43,12 @@
 
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { buildNumber, findIde } from "./lib/tb-install.mjs";
 import { defaultCache, exportPackages, packageName } from "./lib/tb-packages.mjs";
 import { apiSnapshot, parsePackage } from "./lib/twin-api.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
-const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const OUT = path.join(REPO, "builder", "package-api.json");
+const OUT = path.join(REPO_ROOT, "builder", "package-api.json");
 
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes(`--${n}`);
@@ -182,10 +181,10 @@ for (const u of [...new Set(unresolved)].slice(0, 20)) console.error(`  ? not fo
 const out = opt("out") ?? OUT;
 if (flag("check")) {
   const committed = existsSync(out) ? readFileSync(out, "utf8").replace(/\r\n/g, "\n") : null;
-  if (committed === text) { console.error(`up to date: ${path.relative(REPO, out)}`); process.exit(0); }
-  console.error(`STALE: ${path.relative(REPO, out)} differs from what BETA ${build ?? "?"} gives; ` +
+  if (committed === text) { console.error(`up to date: ${path.relative(REPO_ROOT, out)}`); process.exit(0); }
+  console.error(`STALE: ${path.relative(REPO_ROOT, out)} differs from what BETA ${build ?? "?"} gives; ` +
     `run node scripts/build_package_api.mjs and commit the result`);
   process.exit(1);
 }
 writeFileSync(out, text, "utf8");
-console.error(`wrote   : ${path.relative(REPO, out)} (${(text.length / 1024).toFixed(0)} KB)`);
+console.error(`wrote   : ${path.relative(REPO_ROOT, out)} (${(text.length / 1024).toFixed(0)} KB)`);

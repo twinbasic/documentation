@@ -78,9 +78,9 @@ import { fileURLToPath } from "node:url";
 import { parseAttributes } from "./lib/attributes-doc.mjs";
 import { findIde } from "./lib/tb-install.mjs";
 import { defaultCache, exportPackages, packageName } from "./lib/tb-packages.mjs";
+import { DOCS_DIR } from "../lib/repo-paths.mjs";
 
-const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const ATTR_DOC = path.join(REPO, "docs", "Reference", "Attributes.md");
+const ATTR_DOC = path.join(DOCS_DIR, "Reference", "Attributes.md");
 
 const argv = process.argv.slice(2);
 const flag = (n) => argv.includes("--" + n);

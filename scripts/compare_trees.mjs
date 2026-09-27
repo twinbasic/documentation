@@ -42,10 +42,9 @@ import { spawnSync } from "node:child_process";
 import { closeSync, existsSync, openSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
-const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
-const WORK = path.join(ROOT, ".compare-trees");
+const WORK = path.join(REPO_ROOT, ".compare-trees");
 const SIDES = ["before", "after"];
 
 // The three trees one build writes, by the suffix tbdocs adds to --dest.
@@ -133,7 +132,7 @@ function parseArgs(argv) {
 class ToolError extends Error {}
 
 function git(args, { env, allowFail = false } = {}) {
-  const r = spawnSync("git", args, { cwd: ROOT, encoding: "utf8", env: env ? { ...process.env, ...env } : process.env });
+  const r = spawnSync("git", args, { cwd: REPO_ROOT, encoding: "utf8", env: env ? { ...process.env, ...env } : process.env });
   if (r.error) throw new ToolError(`git ${args.join(" ")}: ${r.error.message}`);
   if (r.status !== 0 && !allowFail) {
     throw new ToolError(`git ${args.join(" ")} exited ${r.status}: ${(r.stderr || "").trim()}`);
@@ -157,7 +156,7 @@ async function removeWorktrees() {
 // identities keep it independent of the user's configuration; nothing refers
 // to it afterwards, so git's garbage collection removes it in time.
 function snapshotWorkingTree() {
-  const gitDir = path.resolve(ROOT, git(["rev-parse", "--git-dir"]).stdout.trim());
+  const gitDir = path.resolve(REPO_ROOT, git(["rev-parse", "--git-dir"]).stdout.trim());
   const index = path.join(WORK, "index");
   const env = {
     GIT_INDEX_FILE: index,

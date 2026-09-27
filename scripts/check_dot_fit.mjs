@@ -25,16 +25,13 @@
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { listDotSources } from "../builder/dot.mjs";
 import { withBrowser } from "./lib/browser.mjs";
 import { exitOnCrash } from "./lib/gate-probes.mjs";
 import { openInterPage } from "./lib/inter-page.mjs";
+import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 
 exitOnCrash();
-
-const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const SRC = path.join(REPO, "docs");
 
 // A label may sit this far past its box edge before it counts as a failure.
 // Kerning is the irreducible part: a per-character table cannot express it,
@@ -48,7 +45,7 @@ const verbose = process.argv.includes("--verbose");
 
 // The committed SVG of every diagram the build renders, found as it finds them.
 const svgs = [];
-for (const dot of await listDotSources(SRC)) {
+for (const dot of await listDotSources(DOCS_DIR)) {
   const svg = dot.replace(/\.dot$/, ".svg");
   if (await fs.stat(svg).then(() => true, () => false)) svgs.push(svg);
 }
@@ -77,7 +74,7 @@ await withBrowser(async (browser) => {
   });
 
   for (const svgPath of svgs) {
-    const rel = path.relative(REPO, svgPath).replace(/\\/g, "/");
+    const rel = path.relative(REPO_ROOT, svgPath).replace(/\\/g, "/");
     const svg = await fs.readFile(svgPath, "utf8");
 
     const result = await page.evaluate((markup, tol) => {
