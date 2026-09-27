@@ -36,7 +36,7 @@ tree is clean; the last commit only records a hash in this file.
 | `03108b5a` | only a page's first heading can be its title (`Shape.Shape`, `Timer.Timer`) |
 | `5d4f4e18` | stem twins held whole in `qualified` (`Printer.Fonts`) |
 | `3b839326` | ground truth intent-3: a section of a symbol's page counts for it |
-| (next commit) | lunr's token-set keys separated: queries with the word `a` threw |
+| `834e2bb5` | lunr's token-set keys separated: queries with the word `a` threw |
 
 Hit@10 went from 20.5% to 100%, and MRR from .182 to .997. By reader
 intent, rank 1 is right for 99.9% of queries (89.0% before the intent
