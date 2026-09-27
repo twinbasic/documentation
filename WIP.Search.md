@@ -34,7 +34,7 @@ tree is clean; the last commit only records a hash in this file.
 | `d74a19c1` | qualified names: `qualified` at 500, reached only by qualified names and word pairs |
 | `0725ab72` | only a page's first heading can be its title (`Shape.Shape`, `Timer.Timer`) |
 | `965cacac` | stem twins held whole in `qualified` (`Printer.Fonts`) |
-| (next commit) | ground truth intent-3: a section of a symbol's page counts for it |
+| `f16c4726` | ground truth intent-3: a section of a symbol's page counts for it |
 
 Hit@10 went from 20.5% to 100%, and MRR from .182 to .997. By reader
 intent, rank 1 is right for 99.9% of queries (89.0% before the intent
