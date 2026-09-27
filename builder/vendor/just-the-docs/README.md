@@ -318,6 +318,23 @@ alike and `Printer.Fonts` came second; so did `Collection.Item`,
 `qualified` the same way; the helpers and the query sit outside
 `initSearch()`.
 
+**Any query with the word `a` threw inside lunr.** lunr 2.3.9 minimises its
+token set by merging nodes whose `TokenSet#toString()` keys match, and that
+key runs each edge's label into its child's numeric id: `{1 -> 656}` and
+`{1 -> 6, 5 -> 6}` both key as `01656`. Merged, the token set held a word
+no entry has (`amp;h80004001010`) and lost two real ones, and a
+trailing-wildcard query reaching the invented word (`a*`, `am*`, `amp*`)
+found no postings for it and threw. Whether keys collide depends on the
+term set and the id each node happens to get, so a content change can
+start or stop it; this branch's terms started it. `separateTokenSetKeys()`
+replaces `TokenSet#toString()` with one that ends each id with `,`,
+installed once from `initSearch()` beside the tokenizer wrapper. It is a
+fix to lunr, not to this theme: drop it if a lunr upgrade fixes the key.
+See [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Fixed: lunr
+invented words".
+
+`offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` calls it too.
+
 **The index was fetched and built synchronously on every page load, even
 for readers who never opened search.** About 1.3s and 240MB of heap on a
 desktop -- see [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Design
@@ -433,8 +450,10 @@ Bumping the just-the-docs version is a deliberate operation. Procedure:
    split, the stop-word removal, the dot-run-split tokenizer wrapper, the
    lazy index build, the `exact`/`primary`/`page` fields with the
    exact-name and all-words-first query, the `index` field with its
-   helpers and query clauses, and the stem twins held whole in `qualified`
-   in `assets/js/just-the-docs.js` (see above). Diffing against
+   helpers and query clauses, the stem twins held whole in `qualified`,
+   and the separated token-set keys in `assets/js/just-the-docs.js` (see
+   above). On a lunr upgrade, check `test/search.test.mjs`'s token-set key
+   guard: it says whether the new lunr still collides. Diffing against
    the previous vendored copy via `git diff` is the easiest way to spot
    what needs to come back. Then re-check `offline.mjs`'s
    `JTD_INITSEARCH_FN_REPLACEMENT` still carries the same six extra fields

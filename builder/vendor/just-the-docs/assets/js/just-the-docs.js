@@ -139,6 +139,7 @@ function initSearch() {
             dotRunSplitTokenizer.separator = /[\s\-\/]+/;
             lunr.tokenizer = dotRunSplitTokenizer;
           }
+          separateTokenSetKeys();
 
           var twins = stemTwins(docs);
           var index = lunr(function(){
@@ -235,6 +236,31 @@ function exactName(name) {
   return name.toLowerCase().replace(/\W/g, function(c) {
     return '_' + c.charCodeAt(0).toString(16);
   }) + '_';
+}
+
+// Patched: lunr 2.3.9 keys a token set's nodes for minimisation by
+// TokenSet#toString(), which writes each edge's label and its child's id with
+// nothing between them. `{1 -> 656}` and `{1 -> 6, 5 -> 6}` both key as
+// `01656`, minimisation merges the two nodes, and the index's token set then
+// holds words no entry has and loses real ones (`amp;h80004001`). A
+// trailing-wildcard query that reaches an invented word throws inside lunr:
+// any query with the word `a` did. A `,` after each id keeps the keys apart.
+// Installed once, since lunr is a global singleton; called from initSearch()
+// above and from offline.mjs's copy of it. See WIP.Search.md, "Fixed: lunr
+// invented words".
+function separateTokenSetKeys() {
+  if (lunr.TokenSet.prototype.toString.separated) return;
+  var separated = function() {
+    if (this._str) return this._str;
+    var str = this.final ? '1' : '0';
+    var labels = Object.keys(this.edges).sort();
+    for (var i = 0; i < labels.length; i++) {
+      str += labels[i] + this.edges[labels[i]].id + ',';
+    }
+    return str;
+  };
+  separated.separated = true;
+  lunr.TokenSet.prototype.toString = separated;
 }
 
 // Patched: the qualified names that the stemmer merges with another name's

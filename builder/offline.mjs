@@ -353,6 +353,9 @@ const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
         dotRunSplitTokenizer.separator = /[\\s\\-\\/]+/;
         lunr.tokenizer = dotRunSplitTokenizer;
       }
+      // Mirrors the online build's token-set key patch
+      // (separateTokenSetKeys() is the online copy's).
+      separateTokenSetKeys();
 
       // Mirrors the online build's stem-twin patch (stemTwins() and
       // qualifiedField() are the online copy's).

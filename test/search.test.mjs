@@ -968,3 +968,52 @@ describe("index-term guard: online client, offline client, eval replica", () => 
     assert.notEqual(urls("binding")[0], "/Types#object");
   });
 });
+
+// lunr 2.3.9 keys token-set nodes for minimisation by TokenSet#toString(),
+// which runs each edge's label into its child's id, so two different nodes
+// can share a key and be merged: the index's token set then holds invented
+// words, and a wildcard query reaching one throws (WIP.Search.md, "Fixed:
+// lunr invented words"). All three copies install separated keys.
+describe("token-set key guard: online client, offline client, eval replica", () => {
+  const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
+  const lunrPath = path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js");
+  const lunr = loadLunr(lunrPath);
+  const lunrsOwn = new Function(`return ${read(path.relative(REPO_ROOT, lunrPath)).match(/TokenSet\.prototype\.toString=(function\(\)\{.*?return e\})/)[1]};`)();
+  // From id 3, lunr's own keys give node `c` ({1 -> leaf, 5 -> leaf}) and
+  // node `e` ({1 -> the node with id 656}) the one key `01656`.
+  const words = ["c1", "c5", ...Array.from({ length: 491 }, (_, i) => `d${String(i).padStart(3, "0")}`), "e1x"];
+  const tokenSet = (key) => {
+    const [saved, nextId] = [lunr.TokenSet.prototype.toString, lunr.TokenSet._nextId];
+    lunr.TokenSet.prototype.toString = key;
+    lunr.TokenSet._nextId = 3;
+    try {
+      return new Set(lunr.TokenSet.fromArray(words).toArray());
+    } finally {
+      lunr.TokenSet.prototype.toString = saved;
+      lunr.TokenSet._nextId = Math.max(nextId, lunr.TokenSet._nextId);
+    }
+  };
+  const exact = (set) => set.size === words.length && words.every((w) => set.has(w));
+
+  test("lunr's own keys still invent and lose words for the fixture", () => {
+    const set = tokenSet(lunrsOwn);
+    assert.ok(set.has("e1") && set.has("e5") && !set.has("e1x"), "the fixture no longer reproduces lunr's key collision; find a new one or drop the patch");
+  });
+
+  test("the online client's and the replica's keys keep the fixture exact", () => {
+    const fake = { TokenSet: { prototype: { toString: lunrsOwn } } };
+    const src = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js").match(/function separateTokenSetKeys\(\) \{[\s\S]*?\n\}/);
+    assert.ok(src, "just-the-docs.js has no separateTokenSetKeys()");
+    new Function("lunr", `${src[0]}\nseparateTokenSetKeys();`)(fake);
+    assert.notEqual(fake.TokenSet.prototype.toString, lunrsOwn);
+    assert.ok(exact(tokenSet(fake.TokenSet.prototype.toString)), "the online client's keys still collide");
+    assert.notEqual(lunr.TokenSet.prototype.toString, lunrsOwn);
+    assert.ok(exact(tokenSet(lunr.TokenSet.prototype.toString)), "the replica's keys still collide");
+  });
+
+  test("all three install the separated keys when they build the index", () => {
+    assert.match(read("builder/vendor/just-the-docs/assets/js/just-the-docs.js"), /lunr\.tokenizer = dotRunSplitTokenizer;\s*\}\s*separateTokenSetKeys\(\);/);
+    assert.match(read("builder/offline.mjs"), /lunr\.tokenizer = dotRunSplitTokenizer;\s*\}\s*(\/\/[^\n]*\n\s*)*separateTokenSetKeys\(\);/);
+    assert.match(read("eval/site_search.mjs"), /\s+separateTokenSetKeys\(lunr\);\s+return lunr;/);
+  });
+});

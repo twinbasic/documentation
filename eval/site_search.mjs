@@ -80,7 +80,28 @@ export function loadLunr(lunrPath) {
   dotRunSplitTokenizer.dotRunSplit = true;
   dotRunSplitTokenizer.separator = /[\s\-\/]+/;
   lunr.tokenizer = dotRunSplitTokenizer;
+  separateTokenSetKeys(lunr);
   return lunr;
+}
+
+// Matches just-the-docs.js's separateTokenSetKeys(): lunr 2.3.9 keys a token
+// set's nodes for minimisation by TokenSet#toString(), which writes each
+// edge's label and its child's id with nothing between them. `{1 -> 656}`
+// and `{1 -> 6, 5 -> 6}` both key as `01656`, minimisation merges the two
+// nodes, and the index's token set then holds words no entry has and loses
+// real ones (`amp;h80004001`). A trailing-wildcard query that reaches an
+// invented word throws inside lunr: any query with the word `a` did. A `,`
+// after each id keeps the keys apart. Installed once.
+function separateTokenSetKeys(lunr) {
+  if (lunr.TokenSet.prototype.toString.separated) return;
+  const separated = function () {
+    if (this._str) return this._str;
+    let str = this.final ? "1" : "0";
+    for (const label of Object.keys(this.edges).sort()) str += label + this.edges[label].id + ",";
+    return str;
+  };
+  separated.separated = true;
+  lunr.TokenSet.prototype.toString = separated;
 }
 
 // The two symbol-index fields (see builder/search.mjs's

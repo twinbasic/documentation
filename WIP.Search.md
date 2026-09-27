@@ -14,7 +14,8 @@ depends on the session that wrote it.
 
 **Where it stands.** Rollout steps 1–5, two reader-intent rounds, the
 index pilot, the qualified-name round, the title-heading fix, the stem
-twins and the same-page ground truth are done and committed, on branch
+twins, the same-page ground truth and a fix for lunr inventing words are
+done and committed, on branch
 `claude/paintpicture-docs-runtime-f3250d`. Nothing is pushed. The working
 tree is clean; the last commit only records a hash in this file.
 
@@ -35,6 +36,7 @@ tree is clean; the last commit only records a hash in this file.
 | `03108b5a` | only a page's first heading can be its title (`Shape.Shape`, `Timer.Timer`) |
 | `5d4f4e18` | stem twins held whole in `qualified` (`Printer.Fonts`) |
 | `3b839326` | ground truth intent-3: a section of a symbol's page counts for it |
+| (next commit) | lunr's token-set keys separated: queries with the word `a` threw |
 
 Hit@10 went from 20.5% to 100%, and MRR from .182 to .997. By reader
 intent, rank 1 is right for 99.9% of queries (89.0% before the intent
@@ -74,17 +76,27 @@ qualified names are now at rank 1, typed with a dot or as two words.
 3. Two probes that miss what a reader wants, both predating the recent
    rounds and outside the eval (measure any fix on the eval and on
    probes, as the qualified-name round did):
-   - `New Functions` puts `ServiceState#new` first and the
-     `Features/Standard-Library/New-Functions` page second. Not yet
-     diagnosed; the likely cause is that `functions` is a kind word, so
-     the query is taken to name `New`, and the exact-name clause lifts a
-     `New` member. Kind words were measured only as a whole so far.
-   - `Form events` puts `/tB/Core/Event` first and `Form#events` second.
-     Not yet diagnosed: `events` is a kind word, so the query names
-     `Form`, and the Event statement's page presumably wins on `event` in
-     its title. The qualified-name round's criterion was only that
-     `Form#events` stay in the top three.
-4. The wider index pass, under the pilot's rules: an entry names the page
+   - `New Functions` puts `ServiceState#new` first (689) and the
+     `Features/Standard-Library/New-Functions` page second (437).
+     Diagnosed: `functions` is a kind word, so the query is taken to name
+     `New`, and the exact-name clause matches `new_` in `ServiceState#new`'s
+     `exact`. The page matches both words in its title and `page`.
+   - `Form events` puts `/tB/Core/Event` first (210) and `Form#events`
+     second (151). Diagnosed: the exact-name clause (`form_`) plays no
+     part, since the Form page's own entry lacks `event` and the all-words
+     pass drops it. `events` stems to `event`, which is the Event page's
+     title (200) and name (100); `Form#events` has `form` only in `page`
+     (5) and its URL.
+   The throwaway sets to measure how widespread each is (every page by its
+   own multi-word title; `<page> <section>` for the section titles 20+
+   pages share, such as Events) are in progress; the first run found the
+   lunr crash below instead.
+4. `&H80004005` finds none of the five pages that mention it. The search
+   content keeps `&amp;` as an entity (`stripHtml` doesn't decode it), so
+   the index holds `amp;h80004005` while the query trims to `h80004005`.
+   The same is known for `&lt;`/`&gt;` (see "Operators"). A content fix in
+   `builder/search.mjs`, to measure on its own.
+5. The wider index pass, under the pilot's rules: an entry names the page
    a reader wants for that term, not a summary of the page; few entries
    per page; one main entry per term (the build enforces this). Agents
    draft candidate terms and targets, and **the user approves every
@@ -198,6 +210,13 @@ qualified names are now at rank 1, typed with a dot or as two words.
   scores as well. To require a word without scoring it in some field,
   give the REQUIRED clause boost 0 (its terms enter the query vector at
   zero weight) and score with a second, optional clause.
+- lunr 2.3.9's token set can invent words and lose real ones: its
+  minimisation keys nodes by `TokenSet#toString()`, which runs edge labels
+  into child ids (`{1 -> 656}` and `{1 -> 6, 5 -> 6}` are both `01656`).
+  Whether it happens depends on the whole term set, so any content or
+  field change can start it. Patched; see "Fixed: lunr invented words".
+  Check a candidate change with every title as a query, not only the
+  eval, since the eval never typed `a`.
 
 ## The problem
 
@@ -1162,6 +1181,52 @@ hit@1 99.58% → 99.88%, MRR .9978 → .9993.
 `MidB$` stays a miss, rightly: its first result is the `MidB =` statement
 (`/tB/Core/MidB-equals`), a different page, and the Mid function it names
 is second.
+
+### Fixed: lunr invented words
+
+Found while measuring the probes above: the replica threw inside lunr
+(`Cannot read properties of undefined (reading '_index')`) for 103 of
+3,658 page and section titles, every one holding the word `a` (or
+`&amp;`). So did both real clients: typing `a` left the results empty and
+logged the error.
+
+lunr's index keeps a token set of its terms for wildcard and fuzzy
+matching. Built from this branch's terms, it held `amp;h80004001010`,
+which no entry has, and lacked `amp;h80004001` and `amp;h80004005`, which
+six pages have (`&H80004001` and `&H80004005`, since the content keeps
+`&amp;`). A
+trailing-wildcard clause reaching the invented word (`a*`, `am*`, `amp*`)
+found no postings for it and threw.
+
+The cause is lunr 2.3.9's `TokenSet.Builder#minimize`, which merges nodes
+whose `TokenSet#toString()` match. That key is the final flag, then each
+edge's label and its child's numeric id with nothing between: here
+`{1 -> 656}` and `{1 -> 6, 5 -> 6}` (6 being the shared leaf) both keyed
+as `01656`. Whether keys collide depends on the whole term set and on the
+ids nodes happen to get. `f8e630e5`, built alone, doesn't collide; this
+branch's added fields shifted the ids until it did. Rebuilding the token
+set with a `,` after each id gives exactly the index's terms.
+
+**Shipped**, in all three copies: `separateTokenSetKeys()` replaces
+`TokenSet#toString()` with the separated key, installed once beside the
+tokenizer wrapper. `toString()` is used only for these keys.
+
+| | before | after |
+|---|---|---|
+| titles that throw, of 3,658 | 103 | 0 |
+| token set vs index terms | 1 invented, 2 lost | identical |
+| eval (8,012 queries) | | unchanged |
+| index terms | 26,136 | 26,136; the token set differs by those three words (heap after: 293.3 MB, not measured apart from the rebase's new content) |
+
+Both clients were checked in a browser against the replica: `a`,
+`Removing a page`, `am`, `amp`, `&H80004005`, `Printer.Fonts`, `late
+binding` and `PaintPicture` give the same top two, with no console
+errors. `test/search.test.mjs`'s token-set key guard takes lunr's own
+`toString()` from `lunr.min.js`, checks that a 494-word fixture built from
+id 3 still collides with it (so the test says when a lunr upgrade changes
+this), and that the online client's and the replica's keys keep the
+fixture exact; each of five mutations (either key without its separator,
+or any of the three copies not installing it) fails it.
 
 ### Next steps
 
