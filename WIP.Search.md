@@ -16,8 +16,9 @@ depends on the session that wrote it.
 index pilot, the qualified-name round, the title-heading fix, the stem
 twins, the same-page ground truth and a fix for lunr inventing words are
 done and committed, on branch
-`claude/paintpicture-docs-runtime-f3250d`. Nothing is pushed. The working
-tree is clean; the last commit only records a hash in this file.
+`claude/paintpicture-docs-runtime-f3250d`, rebased onto `f8e630e5`.
+Nothing is pushed. The working tree is clean; the last commit records the
+user's decisions on the probes (item 3 under "Next").
 
 | commit | step |
 |---|---|
@@ -37,6 +38,7 @@ tree is clean; the last commit only records a hash in this file.
 | `5d4f4e18` | stem twins held whole in `qualified` (`Printer.Fonts`) |
 | `3b839326` | ground truth intent-3: a section of a symbol's page counts for it |
 | `834e2bb5` | lunr's token-set keys separated: queries with the word `a` threw |
+| `0b2dbd96` | the `New Functions` / `Form events` probes diagnosed and measured, not shipped |
 
 Hit@10 went from 20.5% to 100%, and MRR from .182 to .997. By reader
 intent, rank 1 is right for 99.9% of queries (89.0% before the intent
@@ -73,13 +75,30 @@ qualified names are now at rank 1, typed with a dot or as two words.
 2. ~~The same-page ground-truth question.~~ The user ruled that a section
    of the page documenting a name counts; see
    [Same-page sections count](#same-page-sections-count).
-3. The `New Functions` and `Form events` probes: diagnosed and measured,
-   awaiting the user's go-ahead; see
-   [Probes: whole titles](#probes-whole-titles). Recommended, as two steps:
-   a score ×3 for a result whose whole title, or page title plus title, is
-   the multi-word query; and plural kind words not making a name.
-   Also to decide: whether the two throwaway sets behind it (page titles,
-   `<page> <section>`) join `eval/search_quality.mjs` as ground truth.
+3. **Do next: the whole-title fix.** Diagnosed and measured in
+   [Probes: whole titles](#probes-whole-titles). The user decided:
+   - **Ship both**, each its own commit with its measured numbers: the
+     score ×3 for a result whose whole title, or page title plus title,
+     reads the same as a query of two or more words; and plural kind
+     words not making a name. In all three copies, as every client change.
+   - **Add both sets to `eval/search_quality.mjs`** as ground truth: every
+     page's own multi-word title (any entry of that page counts), and
+     `<page title> <section title>` for the one-word section titles 20+
+     pages share (that section counts). They are derived from the build,
+     like the symbol queries, so no hand-approved targets are needed. This
+     is a new ground truth (`intent-4`), with a re-saved baseline.
+
+   Order, this session's suggestion: the eval sets first, as their own
+   commit with no change to ranking, so each fix is then measured by the
+   eval itself and not by throwaway scripts. Then the ×3 re-rank, then
+   the plural rule. `eval/search-experiments/probes/knobs.patch` holds
+   the measured knobs (`title=F`, `plural`), and `sets.mjs` the set
+   definitions to port. The re-rank needs `docs` in the replica's
+   `search()` (the `load()` context has it; tests pass `{ lunr, index }`
+   only, so decide how the re-rank behaves without it). Re-check the
+   operator titles (`&, &=` find nothing) when porting the title set:
+   leave them in and let them count as misses, or leave them out with a
+   stated reason.
 4. `&H80004005` finds none of the five pages that mention it. The search
    content keeps `&amp;` as an entity (`stripHtml` doesn't decode it), so
    the index holds `amp;h80004005` while the query trims to `h80004005`.
