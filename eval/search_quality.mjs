@@ -46,6 +46,12 @@
 //   - Qualified `Container.Name` queries, one per unique (container, name)
 //     pair. Correct only for that exact symbol's URL.
 //
+// For both, where a symbol's URL is a page, not a section of one, any
+// section of that page counts as well: `DefInt` is documented by the
+// Deftype page, and its section headed `DefBool, DefByte, DefInt, ...`
+// lands the reader on the same definition (WIP.Search.md, "Same-page
+// sections count").
+//
 // Both use the same URL normalisation: a trailing "/index" or "/index.html"
 // is stripped, then a trailing slash, before comparing (matching how
 // `relUrl` values do and don't agree on a trailing slash across pages).
@@ -300,10 +306,12 @@ function evaluate(ctx, queries) {
     latencies.push(performance.now() - t0);
 
     const expectedSet = new Set(query.expected);
+    // Expected URLs that are pages: any section of one counts too.
+    const expectedPages = new Set(query.expected.filter((e) => !e.includes("#")));
     const matches = (rankedUrl) =>
       query.pathOnlyMatch
         ? query.expected.some((e) => pathOnly(rankedUrl) === pathOnly(e))
-        : expectedSet.has(normalizeUrl(rankedUrl));
+        : expectedSet.has(normalizeUrl(rankedUrl)) || expectedPages.has(pathOnly(rankedUrl));
 
     let firstHitRank = null; // 1-based
     let anyPageRank = null; // bare names: the first URL of any tier
@@ -491,8 +499,9 @@ function printFailures(perQuery, n) {
 // different ground truth from a change in ranking. intent-1 judged bare
 // names by reader intent; intent-2 changed two prose expectations
 // (`conditional compilation` expects the #If/#Const page, `symbol index`
-// accepts Permanent-Links too).
-const GROUND_TRUTH = "intent-2";
+// accepts Permanent-Links too); intent-3 lets a section of a symbol's page
+// count for that symbol.
+const GROUND_TRUTH = "intent-3";
 
 const CATEGORY_CODE = { "symbol-bare": "b", "symbol-qualified": "q", prose: "p" };
 const CATEGORY_NAME = { b: "symbol-bare", q: "symbol-qualified", p: "prose" };

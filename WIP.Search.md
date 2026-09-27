@@ -13,8 +13,8 @@ Everything needed to continue is in this file and in `eval/`; nothing
 depends on the session that wrote it.
 
 **Where it stands.** Rollout steps 1–5, two reader-intent rounds, the
-index pilot, the qualified-name round, the title-heading fix and the stem
-twins are done and committed, on branch
+index pilot, the qualified-name round, the title-heading fix, the stem
+twins and the same-page ground truth are done and committed, on branch
 `claude/paintpicture-docs-runtime-f3250d`. Nothing is pushed. The working
 tree is clean; the last commit only records a hash in this file.
 
@@ -34,16 +34,17 @@ tree is clean; the last commit only records a hash in this file.
 | `d74a19c1` | qualified names: `qualified` at 500, reached only by qualified names and word pairs |
 | `0725ab72` | only a page's first heading can be its title (`Shape.Shape`, `Timer.Timer`) |
 | `965cacac` | stem twins held whole in `qualified` (`Printer.Fonts`) |
+| (next commit) | ground truth intent-3: a section of a symbol's page counts for it |
 
 Hit@10 went from 20.5% to 100%, and MRR from .182 to .997. By reader
-intent, rank 1 is right for 99.6% of queries (89.0% before the intent
+intent, rank 1 is right for 99.9% of queries (89.0% before the intent
 steps), every qualified name and all 20 prose queries are at rank 1, no
 bare name is out of tier order, and no query got worse at any step.
 
-The remaining 34 rank-1 misses are all bare names, in
-[What shipped, second round](#what-shipped-second-round-tiers-in-the-index):
-25 language elements behind a section of their own page, and 9 enum
-constants and members at rank 2.
+The remaining 10 rank-1 misses are all bare names: 7 enum constants and 2
+members, in
+[What shipped, second round](#what-shipped-second-round-tiers-in-the-index),
+and `MidB$`, in [Same-page sections count](#same-page-sections-count).
 
 **The index pilot held up.** The user asked whether ranking tweaks are an
 uphill battle, since a book's index is marked by hand. The conclusion,
@@ -67,9 +68,23 @@ qualified names are now at rank 1, typed with a dot or as two words.
 1. ~~The 9 qualified misses left.~~ Done; see
    [the title-heading fix](#fixed-a-member-heading-taken-for-the-page-title)
    and [the stem twins](#fixed-stem-twins).
-2. The same-page ground-truth question (`DefInt` → a section of
-   `Deftype`), a decision for the user.
-3. The wider index pass, under the pilot's rules: an entry names the page
+2. ~~The same-page ground-truth question.~~ The user ruled that a section
+   of the page documenting a name counts; see
+   [Same-page sections count](#same-page-sections-count).
+3. Two probes that miss what a reader wants, both predating the recent
+   rounds and outside the eval (measure any fix on the eval and on
+   probes, as the qualified-name round did):
+   - `New Functions` puts `ServiceState#new` first and the
+     `Features/Standard-Library/New-Functions` page second. Not yet
+     diagnosed; the likely cause is that `functions` is a kind word, so
+     the query is taken to name `New`, and the exact-name clause lifts a
+     `New` member. Kind words were measured only as a whole so far.
+   - `Form events` puts `/tB/Core/Event` first and `Form#events` second.
+     Not yet diagnosed: `events` is a kind word, so the query names
+     `Form`, and the Event statement's page presumably wins on `event` in
+     its title. The qualified-name round's criterion was only that
+     `Form#events` stay in the top three.
+4. The wider index pass, under the pilot's rules: an entry names the page
    a reader wants for that term, not a summary of the page; few entries
    per page; one main entry per term (the build enforces this). Agents
    draft candidate terms and targets, and **the user approves every
@@ -113,7 +128,7 @@ qualified names are now at rank 1, typed with a dot or as two words.
 - `node eval/search_quality.mjs --compare eval/search_baseline.json --worst 20`
   measures a build against the saved baseline; `--save` updates it;
   `--failures N` lists what misses rank 1, by category and tier. The
-  baseline records its ground truth (`intent-2`).
+  baseline records its ground truth (`intent-3`).
 - The eval's symbol queries are one word each, so it can't see a change
   to multi-word queries. The qualified-name round checked those with
   probes and a throwaway set: every qualified symbol written as two words
@@ -1128,6 +1143,25 @@ the replica; three in the online client) fails it. `test.bat`'s gates,
 Probes seen on the way, all predating this and unchanged by it: `Form
 events` puts `/tB/Core/Event` first and `Form#events` second; `Fonts
 property` puts `AmbientProperties/Font` first.
+
+### Same-page sections count
+
+Decided with the user: where a symbol's URL is a page, not a section of
+one, any section of that page counts for it too. `DefInt` is documented
+by the Deftype page, and its section headed `DefBool, DefByte, DefInt,
+...`, which ranked first, lands the reader on the same definition; so do
+`Chr#chr-chrb-chrw` for `ChrB` and `Left#left-leftb` for `LeftB`. Before,
+only the page's own entry counted, so 24 queries sat at rank 2 behind a
+section of the right page. `eval/search_quality.mjs` now judges by this,
+as ground truth `intent-3`; it applies to bare and qualified names alike,
+and not to prose, which already matched by path.
+
+The change moved exactly those 24 to rank 1 and no other query's rank:
+hit@1 99.58% → 99.88%, MRR .9978 → .9993.
+
+`MidB$` stays a miss, rightly: its first result is the `MidB =` statement
+(`/tB/Core/MidB-equals`), a different page, and the Mid function it names
+is second.
 
 ### Next steps
 
