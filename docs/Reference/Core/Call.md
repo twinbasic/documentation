@@ -59,6 +59,7 @@ End Sub
 ```
 
 ### Named arguments
+{: index="named parameters" }
 
 An argument can be passed by the name of its parameter instead of by its position, as *name* **:=** *value*. Named arguments can come in any order, and an **Optional** argument that isn't named is left out, so there is no need to count commas to skip one. The name is the parameter's name in the procedure's declaration; for a built-in procedure, it is the name its reference page gives, such as *prompt* and *title* for [**MsgBox**](../Modules/Interaction/MsgBox).
 

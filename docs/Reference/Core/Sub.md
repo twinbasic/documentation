@@ -111,6 +111,7 @@ A procedure can use a variable that is not explicitly declared in the procedure,
 > **GoSub**, **GoTo**, and **Return** cannot enter or exit a **Sub** procedure. Use [**Exit Sub**](Exit) to leave a **Sub** early.
 
 ### Passing arguments ByRef and ByVal
+{: index="ByRef; ByVal" }
 
 An argument is passed [by reference](../Gloss#by-reference) unless its parameter is declared **ByVal**. A **ByRef** parameter is another name for the caller's variable, so when the procedure assigns to it, the caller's variable changes. A **ByVal** parameter is a copy: the procedure can change it freely, and the caller's variable keeps its value.
 
@@ -136,6 +137,7 @@ End Sub
 ```
 
 ### Optional arguments and default values
+{: index="optional parameters" }
 
 A parameter declared **Optional** can be left out of a call. Give it a *defaultvalue* in its declaration, and the procedure sees that value whenever the caller leaves the argument out. An **Optional** parameter of type **Variant** with no default can instead be tested with [**IsMissing**](../Modules/Information/IsMissing), which returns **True** when the argument was left out.
 

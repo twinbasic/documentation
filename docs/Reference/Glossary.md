@@ -702,6 +702,7 @@ A character appended to a variable name indicating the variable's data type. By 
 | `$`  | **String**      |
 
 ## type library
+{: index="typelib" }
 
 A file or component within another file that contains standard descriptions of exposed objects, properties, and methods that are available for Automation. Object library files (`.olb`, `.tlb`) contain type libraries.
 

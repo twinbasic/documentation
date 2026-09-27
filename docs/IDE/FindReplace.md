@@ -3,6 +3,9 @@ title: Find / Replace
 parent: IDE
 # nav_order: 
 permalink: /tB/IDE/Project/FindReplace
+index:
+  - find and replace
+  - search and replace
 ---
 
 # Find / Replace

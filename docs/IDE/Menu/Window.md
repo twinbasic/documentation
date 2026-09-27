@@ -958,6 +958,7 @@ permalink: /tB/IDE/Project/Menu/Window
 </details>
 
 ## Theme
+{: index_also="dark mode" }
 
 ![The Window menu with Theme highlighted and its submenu open to the right, listing Classic (Light), a ticked Dark, and Light, with Reload from disk below a separator.](Images/Menu_Window_Theme.png)
 

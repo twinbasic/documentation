@@ -40,6 +40,7 @@ The form that the program shows when it starts, or **Sub Main**. When it is not 
 The form whose icon becomes the program's icon. The list holds the project's forms, and the default is **(none)**. The build copies the form's icon into the file's icon resources, as entry `#1` of the `RT_GROUP_ICON` group, which is the icon Windows usually shows for the program. In the `Settings` file it is `project.iconForm`.
 
 ## Library References
+{: index="add reference" }
 
 The type libraries and packages that the compiler uses for this project. In the `Settings` file it is `project.references`.
 
@@ -294,7 +295,7 @@ When set to **Yes**, every save of the project also runs **Export Project** into
 When set to **Yes**, **Export Project** writes a line to the [Debug Console](DebugConsole) for each file and folder it deletes, `[EXPORT]  DELETED: …`, and for each file it writes, `[EXPORT]  DONE: …`. When set to **No**, the console shows only the line that starts the export, the `[EXPORT] COMPLETED` line that ends it, and any failure. It is **No** by default. In the `Settings` file it is `project.exportVerbose`.
 
 ## Force DPI Awareness At Startup
-{: #dpi-awareness }
+{: #dpi-awareness index="high DPI" }
 
 How the program sets its DPI awareness as it starts: **NONE**, **SYSTEM_DPI_AWARE** or **PER_MONITOR_DPI_AWARE**. The default is **PER_MONITOR_DPI_AWARE**. The last two make the program call the `SetProcessDpiAwareness` API, where Windows has it. **NONE** turns DPI awareness off; it is also the choice for a program that sets its DPI awareness itself, in a manifest. In the `Settings` file it is `project.forceDpiAwarenessAtStartup`.
 

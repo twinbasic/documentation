@@ -27,6 +27,7 @@ permalink: /tB/IDE/Project/Menu/Project
 ![The Project Explorer context menu with Add highlighted and its submenu opened out to the left. The submenu lists Add Folder; five Windows item types from Form through MDI Form, UserControl and PropertyPage to Report; Add CustomControls Form; the Unicode-capable .TWIN module and class; the .BAS module and .CLS class; Add Other File; Import; and three Add Resource entries for a Visual Styles Manifest, a String Table and a MESSAGETABLE. On the parent menu, Cut, Copy, Paste, View As JSON and View As Markdown Preview are greyed out.](../Images/RightClick-Add.png)
 
 ## References
+{: index_also="add reference" }
 
 See [Project Settings](../Settings) filtered by "project.references".
 

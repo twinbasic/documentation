@@ -3,6 +3,9 @@ title: Variables
 parent: IDE
 # nav_order: 2
 permalink: /tB/IDE/Project/Variables
+index:
+  - variables panel
+  - locals window
 ---
 
 # Variables

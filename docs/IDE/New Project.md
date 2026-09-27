@@ -3,6 +3,7 @@ title: New Project
 parent: IDE
 # nav_order: 2
 permalink: /tB/IDE/Project/New
+index: new project dialog
 ---
 
 # New Project

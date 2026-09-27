@@ -774,7 +774,7 @@ Applicable to: [**Interface**](Interface)
 Controls whether this attribute is applied in the typelibrary. This attribute is set to **True** by default.
 
 ## PackingAlignment  (Integer)
-{: #packingalignment }
+{: #packingalignment index="packing alignment" }
 
 Syntax:  **[PackingAlignment( 1** \| **2** \| **4** \| **8** \| **16** \| **32** \| **64 )]**
 

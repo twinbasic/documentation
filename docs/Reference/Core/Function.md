@@ -147,6 +147,7 @@ A procedure can use a variable that is not explicitly declared in the procedure,
 Visual Basic may rearrange arithmetic expressions to increase internal efficiency. Avoid using a **Function** procedure in an arithmetic expression when the function changes the value of variables in the same expression. For more information about arithmetic operators, see Operators.
 
 ### Returning more than one value
+{: index="return multiple values; multiple return values" }
 
 A **Function** returns a single value. There are three ways to hand back more than one:
 

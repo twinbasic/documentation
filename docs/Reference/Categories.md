@@ -147,6 +147,7 @@ Procedures:
 * [MacID](../tB/Modules/Conversion/MacID) - convert a 4-character Mac file-type code (legacy)
 
 ## State Management
+{: index="registry access" }
 
 Procedures:
 

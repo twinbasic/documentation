@@ -10,6 +10,7 @@ permalink: /Features/Compiler-IDE/IDE-Features
 While the twinBASIC IDE still has a lot of work planned, it already includes a number of features that make life much easier found in other modern IDE, but not the ancient VBx IDEs.
 
 ## Theme System
+{: index="dark mode" }
 
 Fully theme-able, with Dark (default), Light, and Classic (Light) built in, and an easy inheritance-based system to add your own themes via CSS files.
 
