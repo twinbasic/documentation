@@ -19,10 +19,9 @@ whole-title round (two eval sets, the re-rank, the plural rule), entity
 decoding in the index, a fix for slow multi-word queries and one for
 kind words (`MaxHeight property`) are done and committed, on branch
 `claude/paintpicture-docs-runtime-f3250d`, rebased onto `f8e630e5`.
-Nothing is pushed. The working tree is clean. **Stopped for the user**:
-item 6's candidates are drafted and reviewed, in
-[Item 6: candidates for approval](#item-6-candidates-for-approval), and
-wait for the user's rulings and approvals.
+Nothing is pushed. The working tree is clean. Item 6's approved entries
+are shipped; two rows and one entry wait for the user, listed under
+[Item 6: shipped](#item-6-shipped).
 
 | commit | step |
 |---|---|
@@ -50,6 +49,10 @@ wait for the user's rulings and approvals.
 | `eed8a241` | lunr's set unions add in place: `a page` 809 → 87 ms |
 | `df5a34b7` | a kind word is required only while an entry found names the thing |
 | `80d44015` | ground truth intent-5: name-and-kind queries in the eval |
+| `997f72e2` | item 6: the approved prose queries, before their entries |
+| `57b6015e` | item 6: index entries for the recommended terms |
+| `81db4e60` | item 6: the user's-choice prose queries, before their entries |
+| `ca60a834` | item 6: their entries, and a Glossary entry for *namespace* |
 
 Hit@10 went from 20.5% to 100%, and MRR from .182 to .997. By reader
 intent, rank 1 is right for 99.9% of queries (89.0% before the intent
@@ -121,8 +124,8 @@ qualified names are now at rank 1, typed with a dot or as two words.
    [Fixed: slow multi-word queries](#fixed-slow-multi-word-queries). Not
    the wildcards' reach as such: lunr's `Set#union` copied the whole
    running total for every term they reach. The ranking is untouched.
-6. **Drafted; waiting for the user.** Candidates, reviewed, with the
-   rulings they need, are in
+6. **Shipped, as the user approved**; see [Item 6: shipped](#item-6-shipped),
+   which lists what still waits. The candidates as proposed are in
    [Item 6: candidates for approval](#item-6-candidates-for-approval).
    Found on the way and shipped, as a tweak comes before entries:
    [Fixed: kind words](#fixed-kind-words). The wider index pass, under the pilot's rules: an entry names the page
@@ -1691,6 +1694,69 @@ Features pages for `inline assembly`.
 then the entries go into the pages (`index:` in frontmatter, or
 `{: index="..." }` on a heading), measured again, with the eval showing
 any bare name the new terms reorder.
+
+### Item 6: shipped
+
+**The user's rulings and choices.**
+- All 16 recommended rows approved, with shortened forms indexed too
+  (`register COM dll`, `register dll`, `create dll`), and more variants:
+  `inline initialization`, `field initialization`, `typedecl
+  char[acter]`, `type char[acter]`. Capitals don't matter.
+- A Glossary definition counts as a right answer for its term within
+  the top 5; it needn't be first.
+- `array`: the Glossary's definition is 4th, so no entry.
+- The rows left to the user: `user defined types` (and `user types`) →
+  Type, then UDTs; `event handlers` → Handlers, then the Forms
+  tutorial's handler step; `namespaces` → a new Glossary definition that
+  links the relevant pages, then the Packages page; `twinpack` →
+  Creating-TWINPACK, then the other package pages; the rest as proposed,
+  with every candidate listed appearing in the results.
+
+**Shipped**, each batch as queries first, then entries (commits in the
+table at the top):
+
+| | prose hit@1 | `behind` within 3 | worse |
+|---|---|---|---|
+| the 20 earlier queries | 20 of 20 | 1 of 1 | |
+| + 33 approved, before entries | 25 of 53 | 1 of 10 | |
+| with their entries | 50 of 53 | 10 of 10 | 0 |
+| + 11 decided, before entries | 51 of 64 | 10 of 17 | |
+| with their entries | **61 of 64** | **17 of 17** | 0 |
+
+Qualified names typed as two words are unchanged throughout, and the
+live client was checked against the replica in the browser.
+
+**Rules the measurements forced**:
+- *A term whose stem is a bare name's reorders that name.* `declaration`
+  (stem `declar`) put `Declare` 2nd; `comment` put the `Comments`
+  property 2nd; `pointers` cost `Pointer` 6 → 7 and `Pointer field`
+  3 → 4. No entry for `declaration` and `comment`: their Glossary
+  definitions are 2nd and 5th without one, which the ruling counts, and
+  their queries accept the Glossary. `pointers` has no Glossary entry;
+  its page is 3rd.
+- *A secondary entry can overtake a page that ranks first only on its
+  own text.* CommandButton's `access key` put it above Label, and UDTs'
+  `user types` would have put it above Type. The page meant to be first
+  takes a main entry for the term too.
+- *A one-word term matches every query holding the word.* The Packages
+  page's `twinpack` entry beat `Importing a Package from a TWINPACK File`
+  typed whole; a secondary entry on the Importing page restored it.
+- *A term matches only whole words.* `type character` doesn't match
+  `type char`, so each spelling a reader types is its own term.
+
+**Waiting for the user**:
+- `standard exe` and `create [an] ActiveX DLL`. The user suggested
+  Project-Types first, but that page says it covers project types
+  "beyond the traditional EXE and ActiveX DLL/Control" and has no
+  section on either. `/tB/IDE/Project/New#options` (where they are
+  created) and Project Settings' *Build Type* do cover them.
+- `pointers`: an entry at the cost of the two symbol queries above, or
+  none (the page is 3rd).
+
+**Limit, not fixed**: a question-shaped query misses the entries.
+`how do I register a com dll` finds the FAQ, not ActiveX Registration:
+the all-words pass requires `how`, `do` and `I` too, and only the FAQ
+holds them all.
 
 ### Next steps
 
