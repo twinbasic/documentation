@@ -12,16 +12,11 @@ Like WIP.md, this file is not rendered through tbdocs, so literal dashes are fin
 Everything needed to continue is in this file and in `eval/`; nothing
 depends on the session that wrote it.
 
-**Where it stands.** Rollout steps 1–5, two reader-intent rounds, the
-index pilot, the qualified-name round, the title-heading fix, the stem
-twins, the same-page ground truth, a fix for lunr inventing words, the
-whole-title round (two eval sets, the re-rank, the plural rule), entity
-decoding in the index, a fix for slow multi-word queries and one for
-kind words (`MaxHeight property`) are done and committed, on branch
-`claude/paintpicture-docs-runtime-f3250d`, rebased onto `f8e630e5`.
-Nothing is pushed. The working tree is clean. Item 6's approved entries
-are shipped; two rows and one entry wait for the user, listed under
-[Item 6: shipped](#item-6-shipped).
+**Where it stands.** Every numbered item below is done and committed on
+branch `claude/paintpicture-docs-runtime-f3250d`, rebased onto
+`f8e630e5`. Nothing is pushed. The working tree is clean. **Nothing is
+open for the user right now**; the candidates for the next session are
+under "Next", and the user picks.
 
 | commit | step |
 |---|---|
@@ -53,95 +48,99 @@ are shipped; two rows and one entry wait for the user, listed under
 | `57b6015e` | item 6: index entries for the recommended terms |
 | `81db4e60` | item 6: the user's-choice prose queries, before their entries |
 | `ca60a834` | item 6: their entries, and a Glossary entry for *namespace* |
+| `d2fe8e27` | item 6: `standard exe`, `create [an] ActiveX DLL` queries, before their entries |
+| `af93606a` | item 6: their entries (New Project first); `pointers` as a secondary entry |
 
-Hit@10 went from 20.5% to 100%, and MRR from .182 to .997. By reader
-intent, rank 1 is right for 99.9% of queries (89.0% before the intent
-steps), every qualified name and all 20 prose queries are at rank 1, no
-bare name is out of tier order, and no query got worse at any step.
+**The eval now** (`node eval/search_quality.mjs`, ground truth
+`intent-5`, 10,284 queries): 98.2% at rank 1, 99.1% in the top 10.
 
-The eval now also types every page's multi-word title (140 queries) and
-`<page title> <section title>` for shared section titles (300). They
-were at 87.9% and 22.7% at rank 1; after the whole-title round they are
-at 97.9% and 96.7%. See [Fixed: whole titles](#fixed-whole-titles).
-It also types every symbol as its name and its kind (1,785 queries,
-`MaxHeight property`): about 62.6% at rank 1 before the kind-word fix,
-91.1% after. See [Fixed: kind words](#fixed-kind-words).
+| category | hit@1 | n | what it types |
+|---|---|---|---|
+| bare names | 99.7% | 2,884 | `PaintPicture`, judged by reader intent (tiers) |
+| qualified names | 100% | 5,108 | `Printer.Fonts` |
+| name and kind | 91.1% | 1,785 | `MaxHeight property` |
+| prose | 97.0% | 67 | hand-picked, user-approved (`late binding`, `immediate window`) |
+| page titles | 97.9% | 140 | `Return Syntax` |
+| page plus section | 96.7% | 300 | `DTPicker Properties` |
 
-The remaining 23 rank-1 misses: 10 bare names (7 enum constants and 2
-members, in
-[What shipped, second round](#what-shipped-second-round-tiers-in-the-index),
-and `MidB$`, in [Same-page sections count](#same-page-sections-count)),
-3 page titles and 10 page-plus-section queries, listed in
-[Fixed: whole titles](#fixed-whole-titles).
+No bare name is out of tier order, and every prose query's `behind`
+page is within the top 3 (20 of 20). Hit@10 was 20.5% and MRR .182 when
+this work began. The overall hit@1 fell from 99.7% when the name-and-kind
+set joined; compare categories, not totals, across ground truths.
+
+**Known misses (183 at rank 1)**, each recorded where it was diagnosed:
+- 158 name-and-kind queries, mostly properties; not diagnosed yet
+  ([Fixed: kind words](#fixed-kind-words)).
+- 10 bare names: 7 enum constants, 2 members
+  ([second round](#what-shipped-second-round-tiers-in-the-index)) and
+  `MidB$` ([Same-page sections count](#same-page-sections-count)).
+- 3 page titles and 10 page-plus-section queries, each at rank 2 or 3
+  ([Fixed: whole titles](#fixed-whole-titles)).
+- 2 prose queries, `declaration` and `comment`, whose Glossary
+  definitions are 2nd and 5th. That is right by the user's ruling (a
+  Glossary definition counts within the top 5); an entry would reorder
+  the bare names `Declare` and `Comments` ([Item 6: shipped](#item-6-shipped)).
+
+**Next**, for the user to choose from:
+1. **The 158 name-and-kind misses.** Diagnose them as the whole-title
+   probes were: group by cause, measure a knob, ship only what makes
+   nothing worse. 93 aren't in the top 50 at all.
+2. **Question-shaped queries.** `how do I register a com dll` misses the
+   index entry: the all-words pass requires `how`, `do` and `I`, and only
+   the FAQ holds them all. A fix would touch the all-words pass, so it
+   needs the spaced and kinds probes as well as the eval.
+3. **The cost of one-letter words.** `a p` still takes about 250 ms and a
+   single letter 80–110 ms, lunr's own work now. Cheaper means changing
+   the query, and so the ranking, for instance not completing a
+   one-letter word ([Fixed: slow multi-word queries](#fixed-slow-multi-word-queries)).
+4. **More index entries**, under the rules below, when readers' terms
+   turn up that the pages' words can't find. The content gaps the agents
+   found (no page for them at all) are listed in
+   [Item 6: candidates for approval](#item-6-candidates-for-approval):
+   multiple return values, application manifest, by reference / by value,
+   ActiveX control and object, Object Browser, type library, named
+   arguments, tab order, twips.
+
+**Done, in order** (each section has the measurements):
+1. The 9 qualified misses: [the title-heading fix](#fixed-a-member-heading-taken-for-the-page-title)
+   and [the stem twins](#fixed-stem-twins).
+2. The same-page ground truth: [Same-page sections count](#same-page-sections-count).
+3. Whole titles: [Fixed: whole titles](#fixed-whole-titles).
+4. `&H80004005`: [Fixed: entities in the index](#fixed-entities-in-the-index).
+5. Slow multi-word queries: [Fixed: slow multi-word queries](#fixed-slow-multi-word-queries).
+6. The wider index pass: [Item 6: shipped](#item-6-shipped), after
+   [Item 6: candidates for approval](#item-6-candidates-for-approval);
+   on the way, [Fixed: kind words](#fixed-kind-words) and ground truth
+   `intent-5`.
 
 **The index pilot held up.** The user asked whether ranking tweaks are an
 uphill battle, since a book's index is marked by hand. The conclusion,
 which the user accepted: symbol lookups are not uphill (`names`,
 `qualified` and `primary` are already a hand index, generated from
 `tB/symbols.json`), but jargon is, because no ranking can find a page for
-words it doesn't contain. So authors now mark index entries by hand, and
-five entries put the three remaining prose misses at rank 1 with nothing
-worse. How it works, what it cost and what was measured on the way is in
-[What shipped, third round](#what-shipped-third-round-the-index-pilot).
+words it doesn't contain. So authors mark index entries by hand
+([third round](#what-shipped-third-round-the-index-pilot)); item 6 added
+about 60 terms.
 
-**Qualified names are done.** The user chose them before a wider index
-pass. `qualified` now weighs 500, and only qualified names reach it,
-typed with a dot or as two adjacent words: 423 queries better, none
-worse, and 99.8% of qualified queries at rank 1 (91.5% before). The last
-9 followed: 2 member headings the build took for the page's title, and 7
-siblings the stemmer merges (`Printer.Font` / `Printer.Fonts`). All 5108
-qualified names are now at rank 1, typed with a dot or as two words.
-
-**Next.**
-1. ~~The 9 qualified misses left.~~ Done; see
-   [the title-heading fix](#fixed-a-member-heading-taken-for-the-page-title)
-   and [the stem twins](#fixed-stem-twins).
-2. ~~The same-page ground-truth question.~~ The user ruled that a section
-   of the page documenting a name counts; see
-   [Same-page sections count](#same-page-sections-count).
-3. ~~The whole-title fix.~~ Done, as the user decided below; see
-   [Fixed: whole titles](#fixed-whole-titles). The user had decided:
-   - **Ship both**, each its own commit with its measured numbers: the
-     score ×3 for a result whose whole title, or page title plus title,
-     reads the same as a query of two or more words; and plural kind
-     words not making a name. In all three copies, as every client change.
-   - **Add both sets to `eval/search_quality.mjs`** as ground truth: every
-     page's own multi-word title (any entry of that page counts), and
-     `<page title> <section title>` for the one-word section titles 20+
-     pages share (that section counts). They are derived from the build,
-     like the symbol queries, so no hand-approved targets are needed. This
-     is a new ground truth (`intent-4`), with a re-saved baseline.
-
-   Shipped in that order: the eval sets first, with no ranking change,
-   then the ×3 re-rank, then the plural rule, each measured by the eval.
-   The operator titles were left out of the title set, with the reason
-   in that section.
-4. ~~`&H80004005` finds none of the five pages that mention it.~~ Done;
-   see [Fixed: entities in the index](#fixed-entities-in-the-index). Not
-   a content fix, as this item first proposed: the client needs the
-   entities in the data, so the tokenizer decodes them.
-5. ~~Multi-word queries with a short word are slow.~~ Done; see
-   [Fixed: slow multi-word queries](#fixed-slow-multi-word-queries). Not
-   the wildcards' reach as such: lunr's `Set#union` copied the whole
-   running total for every term they reach. The ranking is untouched.
-6. **Shipped, as the user approved**; see [Item 6: shipped](#item-6-shipped),
-   which lists what still waits. The candidates as proposed are in
-   [Item 6: candidates for approval](#item-6-candidates-for-approval).
-   Found on the way and shipped, as a tweak comes before entries:
-   [Fixed: kind words](#fixed-kind-words). The wider index pass, under the pilot's rules: an entry names the page
-   a reader wants for that term, not a summary of the page; few entries
-   per page; one main entry per term (the build enforces this). Agents
-   draft candidate terms and targets, and **the user approves every
-   target** before it goes into `eval/search_prose_queries.json`. Open
-   questions:
-   - Where the candidate terms come from. The glossary is a source of
-     *terms*, never of targets. Every candidate needs a query in
-     `eval/search_prose_queries.json` first, so an entry is measured, not
-     assumed: the prose set is 20 queries and all now pass, so it no longer
-     discriminates.
-   - Only a term the page's own words can't find gets an entry. Check
-     first where the term lands without one
-     (`node eval/site_search.mjs "<term>"`).
+**Rules for index entries**, from the pilot and item 6:
+- An entry names the page a reader wants for that term, not a summary of
+  the page. One main entry (`index`) per term across the site; the build
+  enforces it. Any number of secondary entries (`index_also`).
+- Agents may draft terms and targets; **the user approves every target**.
+  The query goes into `eval/search_prose_queries.json` first, measured,
+  then the entry, measured again.
+- Only a term the page's own words can't find gets an entry. Check first
+  where it lands (`node eval/site_search.mjs "<term>"`).
+- A term matches only a query holding all its words, whole and in order,
+  alone or among others. Capitals and hyphens don't matter, word endings
+  don't (stems), but `type char` doesn't match `type character`, and
+  `register a dll` doesn't match `register dll`: each spelling a reader
+  types is its own term.
+- A term whose stem is a bare name's reorders that name (`declaration`
+  and `Declare`). A secondary entry can overtake a page that ranks first
+  only on its own text, so that page takes a main entry for the term too.
+  A one-word term matches every query holding the word, page titles
+  included. The eval shows all three.
 
 **The user's criteria**, which govern every decision here:
 - A reader either finds what they want or doesn't. A small regression is
@@ -162,6 +161,12 @@ qualified names are now at rank 1, typed with a dot or as two words.
 - Fix what a tweak can fix first; use hand-marked index entries where the
   right page can't be found from its text. A tweak that happens to fix a
   handful of prose queries is overfitting, not a fix.
+- A Glossary definition counts as a right answer for its term within
+  the top 5; it needn't be first. Where several pages answer a query,
+  they should all appear in the results, in the order the user chose.
+- lunr's cost rules out extra query passes for now (the reason the
+  name-and-kind set leaves out `sub` and `member` rather than spelling a
+  Sub as `method`).
 - Use Sonnet agents for mechanical and exploratory work.
 - Review every agent's work before committing it. Agents have produced
   false explanations (see [X1t](#rejected-tier-specific-exact-fields-x1t)),
@@ -200,10 +205,18 @@ qualified names are now at rank 1, typed with a dot or as two words.
 - `test.bat` stops at `check_axe_patch_equiv.mjs` in a worktree without
   `node_modules`. Run `npm install` first for the full suite.
 - In some agent shells `cmd` reports `test.bat` and `check.bat` as "not
-  recognized", even from the worktree. Their gates are plain `node`
-  commands; run them in order, and rebuild the way `build.bat` does
-  first, since `check_tree_fresh.mjs` refuses a tree older than any
-  edited file.
+  recognized", even from the worktree, and from PowerShell too. Their
+  gates are plain `node` commands; run them in order, and rebuild the way
+  `build.bat` does first (`node builder/tbdocs.mjs --src docs
+  --check-audit-index`), since `check_tree_fresh.mjs` refuses a tree
+  older than any edited file.
+- The browser pane's console keeps messages from earlier sessions'
+  pages. Check an error's line numbers against the served file before
+  chasing it.
+- Rewriting WIP.Search.md with a script: pass replacement text as a
+  function, never as a string. In a string, `$` followed by a backtick
+  means "everything before the match": the `MidB$` sentence once pasted
+  the whole file's head into the resume section that way.
 
 **How lunr behaves here, learned the hard way:**
 - The tokenizer tests one character at a time against `separator`, so a
@@ -256,6 +269,11 @@ qualified names are now at rank 1, typed with a dot or as two words.
   character positions in that text. Decode inside the index instead,
   per token, after the tokenizer splits (`Token#update` keeps the
   position); see "Fixed: entities in the index".
+- lunr 2.3.9's `Set#union` copies both sets, and `Index#query` unions
+  once per expanded term and field of a REQUIRED clause, so a short
+  wildcard word was quadratic. Patched (`accumulateSetUnions()`); see
+  "Fixed: slow multi-word queries". Profile before guessing:
+  `node --cpu-prof`.
 
 ## The problem
 
@@ -1744,14 +1762,17 @@ live client was checked against the replica in the browser.
 - *A term matches only whole words.* `type character` doesn't match
   `type char`, so each spelling a reader types is its own term.
 
-**Waiting for the user**:
-- `standard exe` and `create [an] ActiveX DLL`. The user suggested
-  Project-Types first, but that page says it covers project types
-  "beyond the traditional EXE and ActiveX DLL/Control" and has no
-  section on either. `/tB/IDE/Project/New#options` (where they are
-  created) and Project Settings' *Build Type* do cover them.
-- `pointers`: an entry at the cost of the two symbol queries above, or
-  none (the page is 3rd).
+**Decided last** (`d2fe8e27`, `af93606a`):
+- `standard exe`, `create an ActiveX DLL`, `create ActiveX DLL`: the
+  user first suggested Project-Types, but that page covers project types
+  "beyond the traditional EXE and ActiveX DLL/Control". The user then
+  chose the New Project dialog's options (main entry), with Project
+  Settings' *Build Type* and Project-Types as secondary entries. All
+  three at rank 1, with both behind within the top 3.
+- `pointers`: the user asked for an entry "at a lower priority", so a
+  secondary one. The Pointers page goes 3 → 1 and bare `Pointer` is
+  untouched (a main entry had cost it 6 → 7), but `Pointer field` still
+  goes 3 → 4, kept at the user's request. Prose: 65 of 67 at rank 1.
 
 **Limit, not fixed**: a question-shaped query misses the entries.
 `how do I register a com dll` finds the FAQ, not ActiveX Registration:
