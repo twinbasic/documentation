@@ -58,7 +58,8 @@ pass. `qualified` now weighs 500, and only qualified names reach it,
 typed with a dot or as two adjacent words: 423 queries better, none
 worse, and 99.8% of qualified queries at rank 1 (91.5% before).
 
-**Next, in the order the user left them:**
+**Next.** The user put qualified names before the wider pass; placing
+item 1 first, as small tweaks on the same ground, was this session's call:
 1. The 9 qualified misses left: 7 stemming collisions between siblings
    (`Printer.Font` / `Printer.Fonts`), a qualified counterpart of
    `exact`; and 2 member headings the build takes for the page's title
@@ -110,7 +111,12 @@ worse, and 99.8% of qualified queries at rank 1 (91.5% before).
 - `node eval/search_quality.mjs --compare eval/search_baseline.json --worst 20`
   measures a build against the saved baseline; `--save` updates it;
   `--failures N` lists what misses rank 1, by category and tier. The
-  baseline records its ground truth (`intent-1`).
+  baseline records its ground truth (`intent-2`).
+- The eval's symbol queries are one word each, so it can't see a change
+  to multi-word queries. The qualified-name round checked those with
+  probes and a throwaway set: every qualified symbol written as two words
+  (`FileListBox Name`), ranked with the committed replica and the
+  candidate. Do the same for any change to the all-words pass.
 - `eval/site_search.mjs` is the replica of the client search. The site's
   client and `builder/offline.mjs`'s `initSearch` must stay identical to it;
   `test/search.test.mjs` fails if their fields or pipeline drift apart.
@@ -130,6 +136,11 @@ worse, and 99.8% of qualified queries at rank 1 (91.5% before).
   the client has a timer fallback for that.
 - `test.bat` stops at `check_axe_patch_equiv.mjs` in a worktree without
   `node_modules`. Run `npm install` first for the full suite.
+- In some agent shells `cmd` reports `test.bat` and `check.bat` as "not
+  recognized", even from the worktree. Their gates are plain `node`
+  commands; run them in order, and rebuild the way `build.bat` does
+  first, since `check_tree_fresh.mjs` refuses a tree older than any
+  edited file.
 
 **How lunr behaves here, learned the hard way:**
 - The tokenizer tests one character at a time against `separator`, so a
@@ -162,6 +173,14 @@ worse, and 99.8% of qualified queries at rank 1 (91.5% before).
   each new term. Three sparse fields took 24 MB more heap; one takes 5 MB.
   Prefer encoding a variant inside one field (the pilot's secondary
   entries carry one more `_`) to adding a field.
+- A trailing wildcard completes a plain word to every token it begins,
+  including whole qualified names: `form*` reaches every `form.*` in
+  `qualified`. Harmless at a low field boost, it lifts a container by its
+  member count at a high one.
+- A REQUIRED clause matches if the term is in *any* of its fields, and it
+  scores as well. To require a word without scoring it in some field,
+  give the REQUIRED clause boost 0 (its terms enter the query vector at
+  zero weight) and score with a second, optional clause.
 
 ## The problem
 
