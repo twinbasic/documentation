@@ -26,6 +26,7 @@
 
 import { compressHtml } from "./compress.mjs";
 import { normalizeBaseurl } from "./url.mjs";
+import { escapeRegExp } from "./escape.mjs";
 
 // ---------------------------------------------------------------------------
 // §A  Phase 2: chapter resolver + sort_by_nav_order
@@ -185,7 +186,7 @@ function sortWithinGroup(members) {
 }
 
 // Chapter transforms rewrite attributes across a whole rendered body.
-// An inline code span is emitted as bare escaped text -- escapeHtmlMinimal
+// An inline code span is emitted as bare escaped text -- escapeMarkup
 // escapes only & < > -- so quotes survive and `id="`, `href="#` and `src="/`
 // are all directly matchable inside a code sample. Without a guard those
 // rewrites corrupt the sample, and the pages documenting this builder are
@@ -198,10 +199,6 @@ function sortWithinGroup(members) {
 // highlighter splits attributes across <span> boundaries, but inline spans
 // are not, and nothing should rest on that accident.
 const CODE_OR_PRE_BOOK = /<code\b[^>]*>[\s\S]*?<\/code>|<pre\b[^>]*>[\s\S]*?<\/pre>/;
-
-function escapeRegExpBook(t) {
-  return t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 function replaceOutsideCode(html, pattern, replacer) {
   const flags = pattern.flags.includes("g") ? pattern.flags : pattern.flags + "g";
@@ -374,7 +371,7 @@ export function bookChapterTransform(body, baseurl, headingShiftN, chapterAnchor
   // optimisation to skip the gsub! call when there's nothing to do.
   const strip = `src="${baseurl}/`;
   if (result.includes(strip)) {
-    result = replaceOutsideCode(result, new RegExp(escapeRegExpBook(strip), "g"), () => `src="`);
+    result = replaceOutsideCode(result, new RegExp(escapeRegExp(strip), "g"), () => `src="`);
   }
 
   // Step 2: unwrap <details>/<summary>. Summaries with an id= attribute

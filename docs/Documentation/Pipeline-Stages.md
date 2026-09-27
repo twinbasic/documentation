@@ -617,6 +617,16 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 | `encodeSpaces` | `(s) → string` | Each space as `%20`, the only character in this site's paths that needs encoding. `search.mjs`'s entry URLs. |
 | `splitFragment` | `(href) → [string, string \| null]` | Splits at the first `#`. `render.mjs`'s link rewrite, and `scripts/crawl_check.mjs`. |
 
+### `escape.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `escapeMarkup` | `(s) → string` | Escapes `&`, `<` and `>` and leaves quotes literal, as Rouge and kramdown's code spans do. Code blocks and code spans (`highlight.mjs`, `render.mjs`), table-of-contents entries, and the Gantt chart's labels. |
+| `escapeMarkupAndQuotes` | `(s) → string` | Escapes `&`, `<`, `>`, `"` and `'`, so the result is safe in an attribute value under either quote. `template.mjs`'s attributes and text, `render.mjs`'s diagram and video markup, and `sitemap.mjs`'s URLs. |
+| `escapeRegExp` | `(s) → string` | Escapes every character a RegExp reads as an operator, so the result matches `s` literally. `render.mjs`, `book.mjs` and `offline-rewrite.mjs`; `scripts/lib/regex-fold.mjs` recognises its shape. |
+
+Both HTML escapers convert a value that is not a string with `String` first.
+
 ### `book.mjs`
 
 | Symbol | Signature | Description |
@@ -862,7 +872,7 @@ Pure-compute rewrite helpers extracted from `offline.mjs` so they can be importe
 | `posixDirname` | `(rel) → string` | POSIX directory component of a relative path. |
 | `fileDirSegsFromRel` | `(rel) → string[]` | Splits a destination path into directory segments. |
 | `fnmatchPathname` | `(pattern, path) → boolean` | Glob-style pathname match. |
-| `computeRelative`, `resolveRaw`, `computeRelUrl`, `buildSegs`, `decode`, `escapeRegExp`, `getPageCache`, `stripSeo`, `rewriteHtml`, `rewriteCss`, `injectSearchSetup` | various | Internal helpers; see [`offline-rewrite.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/offline-rewrite.mjs) for the per-symbol descriptions. |
+| `computeRelative`, `resolveRaw`, `computeRelUrl`, `buildSegs`, `decode`, `getPageCache`, `stripSeo`, `rewriteHtml`, `rewriteCss`, `injectSearchSetup` | various | Internal helpers; see [`offline-rewrite.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/offline-rewrite.mjs) for the per-symbol descriptions. |
 
 ### `pdf.mjs`
 

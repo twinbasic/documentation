@@ -1914,6 +1914,46 @@ apostrophe or quote today; a scratch page with one renders the same text in the 
 in the table of contents. `check_regex_safety.mjs` still recognises the escaper, which it does
 by shape.
 
+**Landed.** `builder/escape.mjs` exports `escapeMarkup` (`&`, `<`, `>`),
+`escapeMarkupAndQuotes` (those and `"`, `'`) and `escapeRegExp`, and every copy is gone:
+`render.mjs`'s three, `highlight.mjs`'s `escapeHtml` (its Rouge reason is now on
+`escapeMarkup`), `gantt.mjs`'s `esc`, `template.mjs`'s `escText` and `escAttr` with their
+"§5.15" section, `sitemap.mjs`'s `xmlEscape` (its Liquid note now at its one call),
+`book.mjs`'s `escapeRegExpBook`, and `offline-rewrite.mjs`'s exported `escapeRegExp`, which
+nothing imported. No name is `escapeHtml` any more; markdown-it's own function keeps it. Both
+HTML escapers take `String(s)`, as `template.mjs`'s and `sitemap.mjs`'s did; every other
+caller passes a string. `seo.mjs`'s `escape_once` port is not one of the seven and stays: it
+leaves an existing entity alone, which neither escaper does. `headingTocHtml` escapes text
+tokens with `escapeMarkup`, as it already escaped code spans, since a table-of-contents entry
+is element content. `buildSvgWrapper` keeps its local `esc`, now bound to
+`escapeMarkupAndQuotes`.
+
+**The regex-safety gate now follows an import.** It recognised an escaper by its shape within
+one file, so moving `escapeRegExp` out of the three files that call it would have left their
+three constructions unresolved. `scripts/lib/regex-fold.mjs` has `exportedEscapers(ast)`, the
+names under which a module exports a helper of that shape (`export function`, `export const`,
+`export { f as g }`; a re-export from another module is not followed), and
+`foldConstructedRegexes` takes an `escapersOf(source)` that each `import { x as y }` is checked
+against. `check_regex_safety.mjs` parses every file before folding any and resolves a relative
+import among them. Three new fold probes: an imported escaper, one exported under another
+name, and (negative) an imported function of another shape. WIP.Build.md's probe count
+(fourteen to seventeen) and its paragraph on the model say so, and its book-transform
+paragraph names `escapeMarkup`. Pipeline-Stages.md has `escape.mjs`'s export table and drops
+`escapeRegExp` from `offline-rewrite.mjs`'s helpers row; Builder.md's module map has a row.
+
+`compare_trees`: all three trees identical. The gate: `504 literals + 25 constructed in 122
+files ... 0 exponential; 9 construction(s) not resolvable`, `8 classification + 17 fold
+probes correct`, against HEAD's `506 literals + 25 constructed in 121 files` and 14 probes;
+the census is otherwise identical. The literals lose `gantt.mjs`'s `/&/g`, `/</g` and `/>/g`
+and gain the negative probe's `reason` regex. With an exponential construction planted through
+the imported `escapeRegExp` (`^${escapeRegExp(s)}(a+)+$` in a scratch module), the gate exits
+1 naming it, `escaped splice modelled as "x"`. With the import resolution faulted out of
+`regex-fold.mjs` (the kit's `c43-fault.mjs`), it resolves 22 constructions and leaves 12
+unresolved, misses the planted one, and exits 2 on the two failing import probes. A scratch
+heading holding `"`, `'`, `&` and a code span with quotes shows the same text in the heading
+and in its table-of-contents entry, under HEAD's `render.mjs` and the working one; the entry's
+bytes now leave a quote in text literal, as its code span always did.
+
 ### C55 — `builder: one code/pre guard and replaceOutsideCode`
 
 **A9-7 (R2).** The `<code>`/`<pre>` leading alternative that WIP.Build.md prescribes for a

@@ -272,7 +272,7 @@ never thinks to look for.
 
 **The same class exists on rendered HTML.** `book.mjs`'s chapter transforms
 rewrite `id="`, `href="#` and `src="/` across a whole body. An inline code span
-is emitted through `escapeHtmlMinimal`, which escapes only `&`, `<` and `>`, so
+is emitted through `escapeMarkup`, which escapes only `&`, `<` and `>`, so
 quotes survive as literal bytes and all three patterns match inside a sample.
 Every one of the six exposed code spans in the corpus was corrupted in the
 published PDF --- `<style id="jtd-nav-activation">` read
@@ -827,7 +827,7 @@ Three implementation details are load-bearing:
 - **The self-test probes ride along inside the normal run**, not behind a
   `--self-test` nobody remembers. Eight classification probes, both directions:
   the three regexes this repo actually shipped (including the incomplete fix),
-  `^(a+)+$`, and four that must *not* be flagged --- plus fourteen fold probes,
+  `^(a+)+$`, and four that must *not* be flagged --- plus seventeen fold probes,
   below. A green line saying "no exponential regex" is otherwise
   indistinguishable from a gate that has stopped detecting.
 - **Parallelism comes from separate processes.** Importing `recheck` spawns one
@@ -868,15 +868,16 @@ eighteen constructions resolve; each is then checked exactly as a literal is.
 
 **One rule is a model rather than an exact fold, and it is marked as one.** A
 call to an escaping helper --- `escapeRegExp(x)` and anything written to the same
-shape, recognised by body rather than by name so all three copies in the tree are
-covered without a list --- yields a fixed character sequence with no regex
-operator in it, whatever `x` holds. Those fold to a one-character placeholder and
-are tagged `modelled`, in the census and in any finding. The gap is stated rather
-than hidden: an escaped splice *inside a quantified alternation* could be
-ambiguous with a sibling branch in a way the placeholder is not --- `(${esc}|a)+`
-is exponential when `esc` holds `a` and safe when it holds `x`. A fixed sequence
-cannot be a quantified atom by itself, so the surrounding pattern has to quantify
-a group containing it; none of the three in the tree does.
+shape, recognised by body rather than by name, in the file or in a module it
+imports by a relative path, so no list of names is kept --- yields a fixed
+character sequence with no regex operator in it, whatever `x` holds. Those fold
+to a one-character placeholder and are tagged `modelled`, in the census and in
+any finding. The gap is stated rather than hidden: an escaped splice *inside a
+quantified alternation* could be ambiguous with a sibling branch in a way the
+placeholder is not --- `(${esc}|a)+` is exponential when `esc` holds `a` and safe
+when it holds `x`. A fixed sequence cannot be a quantified atom by itself, so the
+surrounding pattern has to quantify a group containing it; none of the three
+calls in the tree does.
 
 **The remaining six are a list with a reason each, not a count.** *`pattern` is a
 function parameter --- check the call sites* says where to look; *`re` is a `let`,

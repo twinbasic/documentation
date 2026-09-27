@@ -16,6 +16,7 @@
 
 import { promises as fs } from "node:fs";
 import { loadHighlightTheme } from "./highlight-theme.mjs";
+import { escapeMarkup } from "./escape.mjs";
 
 // Fenced-info aliases that select the bundled tB grammar.
 const TB_ALIASES = new Set(["tb", "twinbasic", "vb", "vba"]);
@@ -135,7 +136,7 @@ function renderCodeBlock(shiki, theme, code, lang, warn) {
     });
     tokenizedHtml = renderThemedSpans(lines, theme);
   } else {
-    tokenizedHtml = escapeHtml(codeBody);
+    tokenizedHtml = escapeMarkup(codeBody);
   }
 
   return `<div class="language-${wrapperLang} highlighter-rouge">${COPY_BUTTON_HTML}<div class="highlight" tabindex="0"><pre class="highlight"><code>${tokenizedHtml}</code></pre></div></div>`;
@@ -214,10 +215,10 @@ function renderThemedSpans(lines, theme) {
         for (const ex of tok.explanation) {
           const scopes = (ex.scopes || []).map((s) => s.scopeName);
           const cls = theme.classForScope(scopes);
-          append(cls, escapeHtml(ex.content));
+          append(cls, escapeMarkup(ex.content));
         }
       } else {
-        append(null, escapeHtml(tok.content));
+        append(null, escapeMarkup(tok.content));
       }
     }
     // End of line:
@@ -244,11 +245,4 @@ function renderThemedSpans(lines, theme) {
     parts.push(pendingNewlines.slice(0, -1));
   }
   return parts.join("");
-}
-
-// Rouge's HTML formatter escapes only `& < >` -- not quotes. Match that
-// so string literals inside code blocks keep their literal " character.
-const HTML_ESCAPE = { "&": "&amp;", "<": "&lt;", ">": "&gt;" };
-function escapeHtml(s) {
-  return s.replace(/[&<>]/g, (c) => HTML_ESCAPE[c]);
 }

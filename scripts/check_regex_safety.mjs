@@ -77,7 +77,7 @@ import { parse } from "acorn";
 import * as walk from "acorn-walk";
 import fg from "fast-glob";
 
-import { foldConstructedRegexes } from "./lib/regex-fold.mjs";
+import { exportedEscapers, foldConstructedRegexes } from "./lib/regex-fold.mjs";
 import { parseCli } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
@@ -196,6 +196,15 @@ const FOLD_PROBES = [
     src: 'function esc(s){return s.replace(/[.*+?^${}()|[\\]\\\\]/g,"\\\\$&");}\n' +
          'const R = new RegExp(`^${esc(x)}[ ]*$`, "gm");',
     expect: [{ pattern: "^x[ ]*$", flags: "gm", modelled: true }] },
+  // `lib` is the module `./lib.mjs`, which `src` may import.
+  { name: "an escaper imported from the module that declares it",
+    lib: 'export function esc(s){return s.replace(/[.*+?^${}()|[\\]\\\\]/g,"\\\\$&");}',
+    src: 'import { esc as e } from "./lib.mjs";\nconst R = new RegExp(`^${e(x)}$`, "g");',
+    expect: [{ pattern: "^x$", flags: "g", modelled: true }] },
+  { name: "an escaper exported under another name",
+    lib: 'function f(s){return s.replace(/[.*+?^${}()|[\\]\\\\]/g,"\\\\$&");}\nexport { f as esc };',
+    src: 'import { esc } from "./lib.mjs";\nconst R = new RegExp(`${esc(x)}+`);',
+    expect: [{ pattern: "x+", flags: "", modelled: true }] },
   { name: "RegExp called without new",
     src: 'const A = "ab"; const R = RegExp(A, "g");',
     expect: [{ pattern: "ab", flags: "g" }] },
@@ -216,6 +225,10 @@ const FOLD_NEGATIVES = [
     src: 'const A = "ab"; function f(fl) { return new RegExp(A, fl); }', reason: /^flags: / },
   { name: "an unknown call is not resolved",
     src: 'const R = new RegExp(buildPattern(), "g");', reason: /a call to `buildPattern`/ },
+  { name: "an imported function of another shape is not an escaper",
+    lib: 'export function esc(s){return s;}',
+    src: 'import { esc } from "./lib.mjs";\nconst R = new RegExp(`^${esc(x)}$`);',
+    reason: /a call to `esc`/ },
 ];
 
 function foldSelfTest() {
@@ -223,10 +236,15 @@ function foldSelfTest() {
   const parseProbe = (src) => parse(src, {
     ecmaVersion: "latest", sourceType: "module", locations: true, allowReturnOutsideFunction: true,
   });
+  const fold = (p) => {
+    const lib = p.lib === undefined ? undefined : exportedEscapers(parseProbe(p.lib));
+    return foldConstructedRegexes(parseProbe(p.src), "<probe>",
+      (source) => (source === "./lib.mjs" ? lib : undefined));
+  };
   for (const p of FOLD_PROBES) {
     let ok = false, detail = "";
     try {
-      const { resolved, unresolved } = foldConstructedRegexes(parseProbe(p.src), "<probe>");
+      const { resolved, unresolved } = fold(p);
       const got = resolved.map((r) => ({ pattern: r.pattern, flags: r.flags, modelled: r.modelled }));
       ok = unresolved.length === 0 && got.length === p.expect.length &&
         p.expect.every((e, i) => got[i].pattern === e.pattern && got[i].flags === e.flags &&
@@ -238,7 +256,7 @@ function foldSelfTest() {
   for (const p of FOLD_NEGATIVES) {
     let ok = false, detail = "";
     try {
-      const { resolved, unresolved } = foldConstructedRegexes(parseProbe(p.src), "<probe>");
+      const { resolved, unresolved } = fold(p);
       ok = resolved.length === 0 && unresolved.length === 1 && p.reason.test(unresolved[0].reason);
       detail = ok ? "" : `resolved ${JSON.stringify(resolved.map(r => r.pattern))}, unresolved ${JSON.stringify(unresolved.map(u => u.reason))}`;
     } catch (err) { detail = err.message; }
@@ -255,23 +273,32 @@ async function extractRegexes() {
   const unresolved = [];
   const parseFailures = [];
 
+  // Every file is parsed before any is folded, so that an escape helper
+  // imported from another module is known where it is called.
+  const asts = new Map();
   for (const rel of files) {
     const src = await readFile(path.join(REPO_ROOT, rel), "utf8");
-    let ast;
     try {
       // allowReturnOutsideFunction: wisdom/extract/workflow.mjs has a
       // top-level return. A file skipped because it would not parse is
       // a file whose regexes are never checked, which is the exact
       // failure mode this gate exists to prevent -- so collect it and
       // fail, rather than continuing quietly.
-      ast = parse(src, {
+      asts.set(rel, parse(src, {
         ecmaVersion: "latest", sourceType: "module",
         locations: true, allowReturnOutsideFunction: true,
-      });
+      }));
     } catch (err) {
       parseFailures.push(`${rel}: ${err.message}`);
-      continue;
     }
+  }
+  const exported = new Map([...asts].map(([rel, ast]) => [rel, exportedEscapers(ast)]));
+
+  for (const [rel, ast] of asts) {
+    // fast-glob gives forward-slashed paths, so an import resolves with posix joins.
+    const escapersOf = (source) => source.startsWith(".")
+      ? exported.get(path.posix.join(path.posix.dirname(rel), source))
+      : undefined;
     walk.simple(ast, {
       Literal(node) {
         if (!node.regex) return;
@@ -286,7 +313,7 @@ async function extractRegexes() {
     // Constructions whose arguments fold to constants are checked exactly
     // like a literal; the rest are reported with the reason they could not
     // be, which is a blind spot a reader can act on rather than a count.
-    const folded = foldConstructedRegexes(ast, rel);
+    const folded = foldConstructedRegexes(ast, rel, escapersOf);
     for (const r of folded.resolved) add(r);
     unresolved.push(...folded.unresolved);
   }

@@ -19,6 +19,7 @@
 import { compressHtml } from "./compress.mjs";
 import { stripHtml } from "./seo.mjs";
 import { absoluteUrl, relativeUrl } from "./url.mjs";
+import { escapeMarkupAndQuotes } from "./escape.mjs";
 
 export async function templatePhase(pages, site, initData) {
   if (site.config.just_the_docs?.collections) {
@@ -83,7 +84,7 @@ function templatePage(page, site, init) {
 
   const html =
     `<!DOCTYPE html>\n` +
-    `<html lang="${escAttr(lang)}">\n` +
+    `<html lang="${escapeMarkupAndQuotes(lang)}">\n` +
     renderHead(page, site, init) +
     `<body>\n` +
     `  <a class="skip-to-main" href="#main-content">Skip to main content</a>\n` +
@@ -134,7 +135,7 @@ const PRELOAD_FONTS = [
 
 function fontPreloads(bu) {
   return PRELOAD_FONTS.map(f =>
-    `  <link rel="preload" href="${escAttr(relativeUrl(f, bu))}" as="font" ` +
+    `  <link rel="preload" href="${escapeMarkupAndQuotes(relativeUrl(f, bu))}" as="font" ` +
     `type="font/woff2" crossorigin>\n`).join("");
 }
 
@@ -153,19 +154,19 @@ function renderHead(page, site, init) {
     `  <meta http-equiv="X-UA-Compatible" content="IE=Edge"><script>\n` +
     `    try { var t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) {}\n` +
     `  </script>\n` +
-    `  <script type="text/javascript" src="${escAttr(relativeUrl("/assets/js/theme-toggle.js", bu))}" defer></script>\n` +
+    `  <script type="text/javascript" src="${escapeMarkupAndQuotes(relativeUrl("/assets/js/theme-toggle.js", bu))}" defer></script>\n` +
     fontPreloads(bu) +
-    `  <link rel="stylesheet" href="${escAttr(relativeUrl("/assets/css/just-the-docs-combined.css", bu))}">\n` +
-    `  <link rel="stylesheet" href="${escAttr(relativeUrl("/assets/css/tb-highlight.css", bu))}">\n` +
-    `  <link rel="stylesheet" href="${escAttr(relativeUrl("/assets/css/just-the-docs-head-nav.css", bu))}" id="jtd-head-nav-stylesheet">\n` +
+    `  <link rel="stylesheet" href="${escapeMarkupAndQuotes(relativeUrl("/assets/css/just-the-docs-combined.css", bu))}">\n` +
+    `  <link rel="stylesheet" href="${escapeMarkupAndQuotes(relativeUrl("/assets/css/tb-highlight.css", bu))}">\n` +
+    `  <link rel="stylesheet" href="${escapeMarkupAndQuotes(relativeUrl("/assets/css/just-the-docs-head-nav.css", bu))}" id="jtd-head-nav-stylesheet">\n` +
     `  <style id="jtd-nav-activation">\n` +
     navActivationCss(page) +
     `\n  </style>\n` +
     (init.gaSnippet ? init.gaSnippet + `\n` : "") +
-    (init.searchEnabled ? `  <script src="${escAttr(relativeUrl("/assets/js/vendor/lunr.min.js", bu))}"></script>\n` : "") +
+    (init.searchEnabled ? `  <script src="${escapeMarkupAndQuotes(relativeUrl("/assets/js/vendor/lunr.min.js", bu))}"></script>\n` : "") +
     (bu ? `  <script>window.jtdBaseurl=${JSON.stringify(bu)};</script>\n` : "") +
-    `  <script src="${escAttr(relativeUrl("/assets/js/just-the-docs.js", bu))}"></script>\n` +
-    (page.hasSvg ? `  <script src="${escAttr(relativeUrl("/assets/js/svg-inline.js", bu))}" defer></script>\n` : "") +
+    `  <script src="${escapeMarkupAndQuotes(relativeUrl("/assets/js/just-the-docs.js", bu))}"></script>\n` +
+    (page.hasSvg ? `  <script src="${escapeMarkupAndQuotes(relativeUrl("/assets/js/svg-inline.js", bu))}" defer></script>\n` : "") +
     `  <meta name="viewport" content="width=device-width, initial-scale=1">\n` +
     headSeoBlock(page, site) +
     init.faviconLink +
@@ -185,8 +186,8 @@ function headSeoBlock(page, site) {
     `<meta name="generator" content="Jekyll v4.4.1" />\n` +
     `<meta property="og:title" content="${page.seoTitle ?? ""}" />\n` +
     `<meta property="og:locale" content="en_US" />\n` +
-    `<link rel="canonical" href="${escAttr(page.seoCanonical ?? "")}" />\n` +
-    `<meta property="og:url" content="${escAttr(page.seoCanonical ?? "")}" />\n` +
+    `<link rel="canonical" href="${escapeMarkupAndQuotes(page.seoCanonical ?? "")}" />\n` +
+    `<meta property="og:url" content="${escapeMarkupAndQuotes(page.seoCanonical ?? "")}" />\n` +
     `<meta property="og:site_name" content="${site.seoSiteTitle ?? ""}" />\n` +
     `<meta property="og:type" content="website" />\n` +
     `<meta name="twitter:card" content="summary" />\n` +
@@ -335,7 +336,7 @@ function renderSidebar(site) {
   const baseurl = String(config.baseurl ?? "");
   return `  <div class="side-bar">\n` +
     `    <div class="site-header" role="banner">\n` +
-    `      <a href="${escAttr(relativeUrl("/", baseurl))}" class="site-title lh-tight">${renderSiteTitle(config)}</a>\n` +
+    `      <a href="${escapeMarkupAndQuotes(relativeUrl("/", baseurl))}" class="site-title lh-tight">${renderSiteTitle(config)}</a>\n` +
     `      <button id="menu-button" class="site-button btn-reset" aria-label="Toggle menu" aria-expanded="false" aria-controls="site-nav">\n` +
     `        <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><use xlink:href="#svg-menu"></use></svg>\n` +
     `      </button>\n` +
@@ -362,7 +363,7 @@ function renderSidebar(site) {
 function renderSiteTitle(config) {
   const title = String(config.title ?? "");
   if (config.logo) {
-    let out = ` <div class="site-logo" role="img" aria-label="${escAttr(title)}"></div>`;
+    let out = ` <div class="site-logo" role="img" aria-label="${escapeMarkupAndQuotes(title)}"></div>`;
     if (config.logo_with_title) {
       // The Liquid source has `{{ site.title }}` on its own indented
       // line; compress collapses surrounding whitespace to single spaces.
@@ -391,17 +392,17 @@ function renderNavTree(nodes, ancestorTitles, baseurl) {
   for (const node of nodes) {
     out += `<li class="nav-list-item">`;
     if (ancestorTitles.includes(node.title)) {
-      out += `<a href="${escAttr(relativeUrl(node.url, baseurl))}" class="nav-list-link"> &#8734; </a>`;
+      out += `<a href="${escapeMarkupAndQuotes(relativeUrl(node.url, baseurl))}" class="nav-list-link"> &#8734; </a>`;
     } else {
       const hasChildren = node.children && node.children.length > 0;
       if (hasChildren) {
         // The upstream emits the button + svg across multiple source
         // lines; compress collapses to single spaces.
-        out += `<button class="nav-list-expander btn-reset" aria-label="toggle items in ${escAttr(String(node.title))} category" aria-expanded="false"> ` +
+        out += `<button class="nav-list-expander btn-reset" aria-label="toggle items in ${escapeMarkupAndQuotes(String(node.title))} category" aria-expanded="false"> ` +
           `<svg viewBox="0 0 24 24" aria-hidden="true"><use xlink:href="#svg-arrow-right"></use></svg>` +
           ` </button>`;
       }
-      out += `<a href="${escAttr(relativeUrl(node.url, baseurl))}" class="nav-list-link">${String(node.title)}</a>`;
+      out += `<a href="${escapeMarkupAndQuotes(relativeUrl(node.url, baseurl))}" class="nav-list-link">${String(node.title)}</a>`;
       if (hasChildren) {
         out += renderNavTree(node.children, [...ancestorTitles, node.title], baseurl);
       }
@@ -429,8 +430,8 @@ function renderNavExternalLinks(config) {
     const svg = node.hide_icon ? ""
       : ` <svg viewBox="0 0 24 24" aria-labelledby="svg-external-link-title"><use xlink:href="#svg-external-link"></use></svg>`;
     return `<li class="nav-list-item external"> ` +
-      `<a href="${escAttr(url)}" class="nav-list-link external" ${targetAttrs}>` +
-      ` ${escText(String(node.title))}${svg} ` +
+      `<a href="${escapeMarkupAndQuotes(url)}" class="nav-list-link external" ${targetAttrs}>` +
+      ` ${escapeMarkupAndQuotes(String(node.title))}${svg} ` +
       `</a> ` +
       `</li>`;
   }).join("");
@@ -584,7 +585,7 @@ function renderSearchInput(config) {
   // Search placeholder (port of upstream search_placeholder_custom.html):
   // `Search ${site.title}`, then strip_html + strip. The site title is
   // plain text so strip_html is a no-op.
-  const placeholder = `Search ${escAttr(String(config.title ?? ""))}`;
+  const placeholder = `Search ${escapeMarkupAndQuotes(String(config.title ?? ""))}`;
   return `      <div class="search" role="search">\n` +
     `        <div class="search-input-wrap">\n` +
     `          <input type="text" id="search-input" class="search-input" role="combobox" placeholder="${placeholder}" aria-label="${placeholder}" autocomplete="off" aria-haspopup="listbox" aria-expanded="false">\n` +
@@ -608,7 +609,7 @@ function renderAuxNav(config) {
     // inside the open tag to a single space, leaving `class="site-button" >`.
     // Liquid `{{ link.first }}` doesn't escape -- emit title verbatim.
     return `      <li class="aux-nav-list-item">\n` +
-      `        <a href="${escAttr(String(url ?? ""))}" class="site-button"${targetAttrs}\n` +
+      `        <a href="${escapeMarkupAndQuotes(String(url ?? ""))}" class="site-button"${targetAttrs}\n` +
       `        >\n` +
       `          ${String(title)}\n` +
       `        </a>\n` +
@@ -679,7 +680,7 @@ function renderBreadcrumbs(page, baseurl) {
   // Operator titles like `&, &=` render literal in Jekyll's breadcrumb;
   // escaping here would emit `&amp;, &amp;=` instead.
   const items = chain.map(entry =>
-    `        <li class="breadcrumb-nav-list-item"><a href="${escAttr(relativeUrl(entry.url, baseurl))}">${String(entry.title)}</a></li>`
+    `        <li class="breadcrumb-nav-list-item"><a href="${escapeMarkupAndQuotes(relativeUrl(entry.url, baseurl))}">${String(entry.title)}</a></li>`
   ).join("\n");
   return `      <nav aria-label="Breadcrumb" class="breadcrumb-nav">\n` +
     `        <ol class="breadcrumb-nav-list">\n` +
@@ -749,7 +750,7 @@ export function injectAnchorHeadings(html, headingsOut) {
 function renderSectionLinks(headings) {
   if (!headings || headings.length < 2) return "";
   const items = headings
-    .map(({ id, text }) => `          <li><a href="#${escAttr(id)}">${text}</a></li>`)
+    .map(({ id, text }) => `          <li><a href="#${escapeMarkupAndQuotes(id)}">${text}</a></li>`)
     .join("\n");
   return `        <details class="section-links">\n` +
     `        <summary>Link to a section</summary>\n` +
@@ -770,7 +771,7 @@ function renderChildrenNav(page, baseurl) {
       ? ` - ${String(child.summary)}`
       : "";
     return `  <li>\n` +
-      `    <a href="${escAttr(relativeUrl(child.url, baseurl))}">${String(child.title)}</a>${summary}\n` +
+      `    <a href="${escapeMarkupAndQuotes(relativeUrl(child.url, baseurl))}">${String(child.title)}</a>${summary}\n` +
       `  </li>`;
   }).join("\n");
   return `\n<hr>\n` +
@@ -816,7 +817,7 @@ function renderFooterLegal(page, config) {
   if (config.last_edit_timestamp && config.last_edit_time_format
     && page.frontmatter.last_modified_date) {
     const formatted = formatDate(page.frontmatter.last_modified_date, config.last_edit_time_format);
-    out += `          <span>Page last modified: ${escText(formatted)}.</span>\n`;
+    out += `          <span>Page last modified: ${escapeMarkupAndQuotes(formatted)}.</span>\n`;
   }
   if (config.footer_content) {
     // Emitted verbatim, NOT escaped: the current value contains `&copy;`
@@ -861,16 +862,16 @@ function renderFooterActions(page, config) {
 
   let inner = "";
   if (showBackToTop) {
-    inner += `          <a href="#page-top" id="back-to-top">${escText(String(config.back_to_top_text ?? "Back to top"))}</a>\n`;
+    inner += `          <a href="#page-top" id="back-to-top">${escapeMarkupAndQuotes(String(config.back_to_top_text ?? "Back to top"))}</a>\n`;
   }
   if (showEdit) {
     const href = ghEditHref(page, config);
-    inner += `          <a href="${escAttr(href)}" id="edit-this-page">${escText(String(config.gh_edit_link_text))}</a>\n`;
+    inner += `          <a href="${escapeMarkupAndQuotes(href)}" id="edit-this-page">${escapeMarkupAndQuotes(String(config.gh_edit_link_text))}</a>\n`;
   }
   if (showOffline) {
-    inner += `          <a href="${escAttr(String(config.gh_offline_link_url))}" id="download-offline">Download offline copy</a>\n`;
+    inner += `          <a href="${escapeMarkupAndQuotes(String(config.gh_offline_link_url))}" id="download-offline">Download offline copy</a>\n`;
     if (config.gh_pdf_link_url) {
-      inner += `          <a href="${escAttr(String(config.gh_pdf_link_url))}" id="download-pdf">Download PDF</a>\n`;
+      inner += `          <a href="${escapeMarkupAndQuotes(String(config.gh_pdf_link_url))}" id="download-pdf">Download PDF</a>\n`;
     }
   }
   if (inner === "") return "";
@@ -959,16 +960,4 @@ function parseDate(input) {
     return Number.isFinite(d.getTime()) ? d : null;
   }
   return null;
-}
-
-// ---------- §5.15 escape helpers -----------------------------------------
-
-const HTML_ESCAPE = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
-const HTML_ESCAPE_RE = /[&<>"']/g;
-
-function escText(s) {
-  return String(s).replace(HTML_ESCAPE_RE, (c) => HTML_ESCAPE[c]);
-}
-function escAttr(s) {
-  return String(s).replace(HTML_ESCAPE_RE, (c) => HTML_ESCAPE[c]);
 }

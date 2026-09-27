@@ -9,8 +9,7 @@
 //                        fnmatchPathname)
 //   §C  URL resolution   (computeRelative, resolveRaw, computeRelUrl,
 //                         buildSegs, decode, fileDirSegsFromRel,
-//                         posixDirname, escapeRegExp,
-//                         getPageCache)
+//                         posixDirname, getPageCache)
 //   §D  HTML rewrite     (stripSeo, stripFontPreloads, rewriteHtml,
 //                         injectSearchSetup,
 //                         sliceNavBlock, NAV_OPEN_RE, NAV_CLOSE,
@@ -19,6 +18,8 @@
 //                         HTML_COMBINED_RE, JTD_SCRIPT_TAG_RE)
 //   §E  CSS rewrite      (rewriteCss, CSS_URL_RE, deriveOfflineCss)
 //   §F  Redirect-stub    (deriveOfflineRedirect)
+
+import { escapeRegExp } from "./escape.mjs";
 
 // ---------------------------------------------------------------------------
 // §B  Site-paths set
@@ -227,11 +228,6 @@ export function posixDirname(rel) {
   const normalised = rel.replaceAll("\\", "/");
   const idx = normalised.lastIndexOf("/");
   return idx === -1 ? "." : normalised.slice(0, idx);
-}
-
-// §6.13  escapeRegExp
-export function escapeRegExp(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // Hoist the per-file-dir inner cache so the per-match cost is one
