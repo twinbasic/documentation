@@ -33,7 +33,7 @@ tree is clean; the last commit only records a hash in this file.
 | `70b73344` | pilot 2: hand-marked index entries, and the first five |
 | `d74a19c1` | qualified names: `qualified` at 500, reached only by qualified names and word pairs |
 | `0725ab72` | only a page's first heading can be its title (`Shape.Shape`, `Timer.Timer`) |
-| (next commit) | stem twins held whole in `qualified` (`Printer.Fonts`) |
+| `965cacac` | stem twins held whole in `qualified` (`Printer.Fonts`) |
 
 Hit@10 went from 20.5% to 100%, and MRR from .182 to .997. By reader
 intent, rank 1 is right for 99.6% of queries (89.0% before the intent
