@@ -1581,12 +1581,23 @@ every target first.**
    (→ `/tB/Core/Declare`). If it counts, these need no entries; if not,
    each needs one. The pilot ruled that a definition counts for
    `symbol index`; the agents assumed the Glossary never does.
+   **Ruled: the Glossary counts as a right answer at rank 1.** These
+   need no entries.
 2. *Bare words that name a language element*: `array` (the `Array`
    function ranks first, `/Tutorials/Arrays` second) and `delegates`
    (`/tB/Core/Delegate`, then `/Features/Language/Delegates`). The tier
    rule puts the element first, and an index term shares its stem with
    the bare name (`deleg_`), so an entry would also reorder `Delegate`.
-   Recommended: no entries.
+   Recommended: no entries. **Measured**, with `index: arrays` on
+   `/Tutorials/Arrays` and `index: delegates` on
+   `/Features/Language/Delegates`, then reverted: `array`, `Array`,
+   `arrays` and `delegate`, `Delegate`, `delegates` all put the concept
+   page first and the function or statement second (they swap; the rest
+   of the top four is unchanged). `array function` and `Delegate
+   statement` still put the element first. The eval: 2 worse (bare
+   `Array` and `Delegate`, 1 → 2), nothing else. The stem can't tell the
+   singular from the plural, so an entry for `arrays` alone isn't
+   possible. Pending the user's decision.
 
 **Recommended**, the page read and the target clear, not rank 1 today:
 
