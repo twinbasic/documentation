@@ -131,8 +131,9 @@ async function statSvgFiles(sources, srcRoot) {
 // are skipped for the same reason _config.yml's `exclude` skips them: they
 // hold build output (`_site`, `_site-offline`, `_site-pdf`, `_serve`, `_pdf`)
 // and source that is not itself a page. Walking into `_site*` would also mean
-// rendering each diagram once per output tree.
-async function listDotSources(srcRoot) {
+// rendering each diagram once per output tree. scripts/check_dot_fit.mjs finds
+// the diagrams it checks through this too, so it checks what the build renders.
+export async function listDotSources(srcRoot) {
   const found = [];
   async function walk(dir) {
     let entries;

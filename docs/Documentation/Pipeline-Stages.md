@@ -638,6 +638,7 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 | Symbol | Signature | Description |
 |---|---|---|
 | `regenerateDot` | `(srcRoot) → Promise<{ processed, regenerated, failed, setupSkipped?, svgFiles }>` | Regenerates stale `.dot` → `.svg` via the WASM build of Graphviz (`@hpcc-js/wasm-graphviz`). `svgFiles` is the appendable static-file descriptor list. |
+| `listDotSources` | `(srcRoot) → Promise<string[]>` | Every `.dot` under `srcRoot` at any depth, sorted, each path joined onto `srcRoot`, skipping entries whose names start with `_` or `.`. `scripts/check_dot_fit.mjs` finds the diagrams it checks through it. |
 
 ### `scss.mjs`
 

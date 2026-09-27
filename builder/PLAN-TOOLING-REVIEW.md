@@ -1269,6 +1269,32 @@ skip, which is safe today.
 **Verify.** `check_dot_fit.mjs`'s output unchanged; `build_dot_metrics.mjs` regenerates
 `builder/inter-metrics.json` byte for byte; both listings name the same files.
 
+**Landed.** Both tools launch through `withBrowser` from `scripts/lib/browser.mjs`, and
+`--allow-file-access-from-files` is gone rather than explained: the host page loads both Inter
+faces without it (Where the plan was wrong), so `browser.mjs` is unchanged. The host page is
+built in a new `scripts/lib/inter-page.mjs`, whose `openInterPage(browser, name, { css, body
+})` writes `docs/_<name>-host.html` with the two `@font-face` rules, loads it, removes it, and
+returns the page with its `pageerror` logger; each tool passes only its own styles, and the
+two host files keep their names. The page's `<title>` is now the name (`dot-fit`,
+`dot-metrics`; was `dot fit`, `metrics`), which nothing reads. `builder/dot.mjs` exports
+`listDotSources`, and `check_dot_fit.mjs` maps its sources to the SVGs on disk in place of
+`findDotSvgs`, then sorts them as before (a sorted list of `.dot` paths can come out in
+another order once each ends in `.svg`, as `a.dot` and `a.e.dot` do). Pipeline-Stages.md's
+`dot.mjs` table gains the row. Neither tool's `try` body returned or exited, so moving it into
+the callback changed nothing; `build_dot_metrics.mjs`'s `table` is now the callback's result.
+
+Oracle: the kit's `c44-oracle.mjs before|after|compare`, 7 cases: `check_dot_fit` plain and
+`--verbose` (their `ok` lines name every SVG found, so they are the listing), with its
+tolerance forced to -100 through `c43-fault.mjs` (exit 1, every diagram reported), and through
+`c43-crash.mjs` (exit 2); `build_dot_metrics --check`, a regeneration, and a crash. All 7 are
+identical before and after, the regeneration leaves `inter-metrics.json` unchanged (sha256
+`15d2c7739cde15b2…` both sides), and no run leaves a host file in `docs/` or a Puppeteer
+profile in `%TEMP%`. The kit's `c44-noflag.mjs` ran the four plain cases with the flag still
+there but turned off, and all four matched; `c44-flag.mjs` prints each face's
+`FontFace.status` after a load, `loaded` both ways. With a font URL broken through
+`c43-fault.mjs`, both tools exit 2 on `NetworkError` from `document.fonts.load`, so a refused
+font stops the run rather than measuring a fallback; `inter-page.mjs`'s header says so.
+
 ### C45 — `a11y: one page discovery and stub ceiling for the sampler and the sweep`
 
 **A5-3 / L4-9, A5-4 (R2, R3).** `pick_a11y_sample.mjs` (`:122,159-169,184`, `STUB_CEILING`)
@@ -2090,6 +2116,11 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   the fit is exact. It is not: the first keeps its probes as pairs, prints failures to stderr
   and has verbose and self-test-only modes, and the second runs its probes inside the sharded
   recheck. With no caller passing anything but 1, `report()` returns 1; see C43's Landed note.
+- **C44 (A5-5): no file-access option.** The entry has `browser.mjs` add
+  `--allow-file-access-from-files` and state its reason. There is none for these tools: their
+  host page loads both Inter faces without it, and both give the same output, the regenerated
+  table included. At the owner's choice the flag was dropped; CI's `check_dot_fit` step on
+  Linux confirms it on the next push. See C44's Landed note.
 
 ## Found while implementing
 

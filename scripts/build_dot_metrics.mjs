@@ -33,9 +33,10 @@
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import puppeteer from "puppeteer";
+import { fileURLToPath } from "node:url";
+import { withBrowser } from "./lib/browser.mjs";
 import { exitOnCrash } from "./lib/gate-probes.mjs";
+import { openInterPage } from "./lib/inter-page.mjs";
 
 // A crash exits 2, where 1 is --check finding the table stale.
 exitOnCrash();
@@ -58,33 +59,10 @@ const VARIANTS = [
 
 const check = process.argv.includes("--check");
 
-const fontDirUrl = pathToFileURL(path.join(REPO, "docs/assets/fonts")).href;
-const hostHtml = `<!doctype html><meta charset="utf-8"><title>metrics</title><style>
-@font-face{font-family:"Inter";font-style:normal;font-weight:100 900;
-  src:url("${fontDirUrl}/inter-variable.woff2") format("woff2")}
-@font-face{font-family:"Inter";font-style:italic;font-weight:100 900;
-  src:url("${fontDirUrl}/inter-variable-italic.woff2") format("woff2")}
-body{margin:0}</style>`;
+const table = await withBrowser(async (browser) => {
+  const page = await openInterPage(browser, "dot-metrics", { css: "body{margin:0}" });
 
-const browser = await puppeteer.launch({
-  headless: true,
-  args: ["--no-sandbox", "--disable-dev-shm-usage", "--allow-file-access-from-files"],
-});
-
-let table;
-try {
-  const page = await browser.newPage();
-  page.on("pageerror", (e) => console.error("[page error]", e.message));
-
-  const tmp = path.join(REPO, "docs", "_dot-metrics-host.html");
-  await fs.writeFile(tmp, hostHtml, "utf8");
-  try {
-    await page.goto(pathToFileURL(tmp).href, { waitUntil: "load" });
-  } finally {
-    await fs.rm(tmp, { force: true });
-  }
-
-  table = await page.evaluate(async (variants, upm) => {
+  return await page.evaluate(async (variants, upm) => {
     for (const v of variants) {
       await document.fonts.load(`${v.style === "italic" ? "italic " : ""}${v.weight} 16px Inter`);
     }
@@ -121,9 +99,7 @@ try {
     }
     return { unitsPerEm: upm, widths: out, probe: Math.round(big) };
   }, VARIANTS, UNITS_PER_EM);
-} finally {
-  await browser.close();
-}
+});
 
 for (const v of VARIANTS) {
   const arr = table.widths[v.key];
