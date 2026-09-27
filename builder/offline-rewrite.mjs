@@ -20,6 +20,7 @@
 //   §F  Redirect-stub    (deriveOfflineRedirect)
 
 import { escapeRegExp } from "./escape.mjs";
+import { CODE_OR_PRE } from "./code-guard.mjs";
 
 // ---------------------------------------------------------------------------
 // §B  Site-paths set
@@ -286,7 +287,8 @@ export function stripSeo(html) {
 // with nothing behind it. A colon is deliberately NOT excluded:
 // `xlink:href` is a real URL attribute and there are 75,129 of them in
 // the built tree.
-export const HTML_COMBINED_RE = /<code\b[^>]*>[\s\S]*?<\/code>|<pre\b[^>]*>[\s\S]*?<\/pre>|(?<!-)\b(href|src)=(["'])(\/(?!\/)[^"']*|(?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\2/g;
+export const HTML_COMBINED_RE = new RegExp(
+  String.raw`${CODE_OR_PRE.source}|(?<!-)\b(href|src)=(["'])(\/(?!\/)[^"']*|(?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\2`, "g");
 
 // How many distinct unresolved URLs a single rewrite reports back. The
 // count is the headline; this is what makes it actionable. Capped so a

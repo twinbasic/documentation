@@ -27,6 +27,7 @@
 import { compressHtml } from "./compress.mjs";
 import { normalizeBaseurl } from "./url.mjs";
 import { escapeRegExp } from "./escape.mjs";
+import { CODE_OR_PRE, replaceOutsideCode } from "./code-guard.mjs";
 
 // ---------------------------------------------------------------------------
 // §A  Phase 2: chapter resolver + sort_by_nav_order
@@ -185,35 +186,18 @@ function sortWithinGroup(members) {
   return [...indexes, ...withOrder, ...withoutOrder];
 }
 
-// Chapter transforms rewrite attributes across a whole rendered body.
-// An inline code span is emitted as bare escaped text -- escapeMarkup
-// escapes only & < > -- so quotes survive and `id="`, `href="#` and `src="/`
-// are all directly matchable inside a code sample. Without a guard those
-// rewrites corrupt the sample, and the pages documenting this builder are
-// the ones that carry such samples: `<style id="jtd-nav-activation">`
-// shipped in the book reading `<style id="ch-...-jtd-nav-activation">`.
-//
-// Same three-alternative shape as IMG_SRC_RE_BOOK below: <code> and <pre>
-// are consumed atomically, so the real pattern never sees their contents.
-// Highlighted *blocks* happen to be protected anyway because the
-// highlighter splits attributes across <span> boundaries, but inline spans
-// are not, and nothing should rest on that accident.
-const CODE_OR_PRE_BOOK = /<code\b[^>]*>[\s\S]*?<\/code>|<pre\b[^>]*>[\s\S]*?<\/pre>/;
-
-function replaceOutsideCode(html, pattern, replacer) {
-  const flags = pattern.flags.includes("g") ? pattern.flags : pattern.flags + "g";
-  const re = new RegExp(`${CODE_OR_PRE_BOOK.source}|${pattern.source}`, flags);
-  return html.replace(re, (m, ...rest) =>
-    (m.startsWith("<code") || m.startsWith("<pre")) ? m : replacer(m, ...rest));
-}
+// Chapter transforms rewrite attributes across a whole rendered body, so
+// each goes through replaceOutsideCode (code-guard.mjs says why). The pages
+// documenting this builder are the ones whose code samples hold `id="`,
+// `href="#` and `src="/`.
 
 // PLAN-9 §5.9: per-chapter image-path collector. Three top-level
 // alternatives: <code>/<pre> (consumed atomically so src= inside code
 // samples doesn't count), then a real page-relative `src="..."`
 // attribute. The code/pre branches leave m[1] (the quote char)
 // undefined; we skip those.
-const IMG_SRC_RE_BOOK =
-  /<code\b[^>]*>[\s\S]*?<\/code>|<pre\b[^>]*>[\s\S]*?<\/pre>|\bsrc=(["'])((?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\1/g;
+const IMG_SRC_RE_BOOK = new RegExp(
+  String.raw`${CODE_OR_PRE.source}|\bsrc=(["'])((?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\1`, "g");
 
 // Mutates `seen`. Called once per emitted chapter body so the post-
 // pass scan in pdf.mjs's deriveBookOutputs is no longer needed.

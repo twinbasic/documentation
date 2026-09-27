@@ -77,7 +77,7 @@ import { parse } from "acorn";
 import * as walk from "acorn-walk";
 import fg from "fast-glob";
 
-import { exportedEscapers, foldConstructedRegexes } from "./lib/regex-fold.mjs";
+import { foldConstructedRegexes, moduleExports } from "./lib/regex-fold.mjs";
 import { parseCli } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
@@ -205,6 +205,10 @@ const FOLD_PROBES = [
     lib: 'function f(s){return s.replace(/[.*+?^${}()|[\\]\\\\]/g,"\\\\$&");}\nexport { f as esc };',
     src: 'import { esc } from "./lib.mjs";\nconst R = new RegExp(`${esc(x)}+`);',
     expect: [{ pattern: "x+", flags: "", modelled: true }] },
+  { name: "the .source of a regex const imported from another module",
+    lib: 'export const P = /<pre[^>]*>/;',
+    src: 'import { P } from "./lib.mjs";\nconst R = new RegExp(P.source + "|x", "g");',
+    expect: [{ pattern: "<pre[^>]*>|x", flags: "g" }] },
   { name: "RegExp called without new",
     src: 'const A = "ab"; const R = RegExp(A, "g");',
     expect: [{ pattern: "ab", flags: "g" }] },
@@ -229,6 +233,10 @@ const FOLD_NEGATIVES = [
     lib: 'export function esc(s){return s;}',
     src: 'import { esc } from "./lib.mjs";\nconst R = new RegExp(`^${esc(x)}$`);',
     reason: /a call to `esc`/ },
+  { name: "an imported const that is not a literal is not resolved",
+    lib: 'const A = "a";\nexport const P = A + "b";',
+    src: 'import { P } from "./lib.mjs";\nconst R = new RegExp(P);',
+    reason: /`P` is not a `const` in this file/ },
 ];
 
 function foldSelfTest() {
@@ -237,7 +245,7 @@ function foldSelfTest() {
     ecmaVersion: "latest", sourceType: "module", locations: true, allowReturnOutsideFunction: true,
   });
   const fold = (p) => {
-    const lib = p.lib === undefined ? undefined : exportedEscapers(parseProbe(p.lib));
+    const lib = p.lib === undefined ? undefined : moduleExports(parseProbe(p.lib));
     return foldConstructedRegexes(parseProbe(p.src), "<probe>",
       (source) => (source === "./lib.mjs" ? lib : undefined));
   };
@@ -273,8 +281,8 @@ async function extractRegexes() {
   const unresolved = [];
   const parseFailures = [];
 
-  // Every file is parsed before any is folded, so that an escape helper
-  // imported from another module is known where it is called.
+  // Every file is parsed before any is folded, so that an escape helper or a
+  // literal const imported from another module is known where it is used.
   const asts = new Map();
   for (const rel of files) {
     const src = await readFile(path.join(REPO_ROOT, rel), "utf8");
@@ -292,11 +300,11 @@ async function extractRegexes() {
       parseFailures.push(`${rel}: ${err.message}`);
     }
   }
-  const exported = new Map([...asts].map(([rel, ast]) => [rel, exportedEscapers(ast)]));
+  const exported = new Map([...asts].map(([rel, ast]) => [rel, moduleExports(ast)]));
 
   for (const [rel, ast] of asts) {
     // fast-glob gives forward-slashed paths, so an import resolves with posix joins.
-    const escapersOf = (source) => source.startsWith(".")
+    const exportsOf = (source) => source.startsWith(".")
       ? exported.get(path.posix.join(path.posix.dirname(rel), source))
       : undefined;
     walk.simple(ast, {
@@ -313,7 +321,7 @@ async function extractRegexes() {
     // Constructions whose arguments fold to constants are checked exactly
     // like a literal; the rest are reported with the reason they could not
     // be, which is a blind spot a reader can act on rather than a count.
-    const folded = foldConstructedRegexes(ast, rel, escapersOf);
+    const folded = foldConstructedRegexes(ast, rel, exportsOf);
     for (const r of folded.resolved) add(r);
     unresolved.push(...folded.unresolved);
   }

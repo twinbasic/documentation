@@ -1966,6 +1966,38 @@ private in `book.mjs:216` today; the four patterns are composed from the fragmen
 **Verify.** The tree comparison identical, covering `book.html` in the PDF tree and every
 offline page. `check_regex_safety.mjs` clean on the composed patterns.
 
+**Landed.** `builder/code-guard.mjs` exports `CODE_OR_PRE` and `replaceOutsideCode`, with the
+reason for the guard that `book.mjs` gave; `book.mjs`'s `CODE_OR_PRE_BOOK` and private
+`replaceOutsideCode` are gone. The entry's `pdf.mjs` copy went with the code C14 deleted, and
+it missed a copy written since: `counts.mjs`'s `SURVIVING_PLACEHOLDER_RE`. So three patterns
+are composed from the fragment, each as ``new RegExp(String.raw`${CODE_OR_PRE.source}|...`,
+"g")``: `book.mjs`'s `IMG_SRC_RE_BOOK`, `offline-rewrite.mjs`'s `HTML_COMBINED_RE` and that
+one. `compress.mjs`'s `CODE_BLOCK_RE` is not a guard (it splits a page into code and the
+rest, `<pre>` first, with no `[^>]*>`) and stays.
+
+**The regex-safety gate resolves an imported literal `const`.** Composed from an imported
+fragment, the three patterns, which the gate checked as literals, would have become
+constructions it could not resolve. C54's `exportedEscapers` is now `moduleExports(ast)`,
+giving the escape helpers a module exports and the `const`s it exports with a string or regex
+literal as initialiser; an import of one is a `const` in the importing file. A literal needs
+nothing from its module's scope, which is why nothing else is followed. Two new fold probes:
+an imported regex's `.source`, and (negative) an imported `const` that is not a literal.
+WIP.Build.md's fold paragraph says so and drops its stale "Twelve of the tree's eighteen
+constructions" for the summary line's own count; its probe count is nineteen; its rule for
+rendered-HTML rewrites, and WIP.md's Don't, name `code-guard.mjs`. Pipeline-Stages.md and
+Builder.md have its table and row.
+
+`compare_trees`: all three trees identical. The kit's `c55-equal.mjs` evaluates HEAD's three
+literals and `CODE_OR_PRE_BOOK` and the new expressions: the same
+`source` and `flags`, all four. The gate: `502 literals + 28 constructed in 123 files ... 462
+safe, 68 polynomial, ... 9 construction(s) not resolvable`, `19 fold probes correct`, against
+C54's `504 literals + 25 constructed ... 461 safe`: three literals are now constructions
+under the same keys (deg3, deg3 and deg2 in the census, as before), and the negative probe's
+`reason` is a new safe literal. With the import of a `const` faulted out of `regex-fold.mjs`
+(`c43-fault.mjs`), the three go unresolved (`25 constructed`, `65 polynomial`, `12 ... not
+resolvable`, each reported as `CODE_OR_PRE` not being a `const` in the file) and the gate
+exits 2 on the failing probe.
+
 ### C56 — `builder: guard code in the three whole-page HTML rewrites`
 
 **A3-6 (R2).** `padEmptyCells` (`render.mjs:74-80`), `normaliseVoidTags` (`:351-354`) and

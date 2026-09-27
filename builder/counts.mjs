@@ -66,6 +66,7 @@
 // registry is allowed to offer more than the prose currently asks for.
 
 import { blockRegions, maskCode } from "../lib/markdown.mjs";
+import { CODE_OR_PRE } from "./code-guard.mjs";
 
 export const PLACEHOLDER_RE = /\{\{tbdocs:([A-Za-z][A-Za-z0-9]*)\}\}/g;
 
@@ -323,11 +324,10 @@ export function validateCountNames(pages, counts, md) {
 }
 
 // Consumes <code>...</code> and <pre>...</pre> atomically in the leading
-// alternation, so a placeholder the documentation is deliberately SHOWING does
-// not trip the assertion. Same shape as book.mjs's replaceOutsideCode and
-// offline-rewrite.mjs's img rewrite.
-const SURVIVING_PLACEHOLDER_RE =
-  /<code\b[^>]*>[\s\S]*?<\/code>|<pre\b[^>]*>[\s\S]*?<\/pre>|(\{\{tbdocs:[A-Za-z][A-Za-z0-9]*\}\})/g;
+// alternation (code-guard.mjs), so a placeholder the documentation is
+// deliberately SHOWING does not trip the assertion.
+const SURVIVING_PLACEHOLDER_RE = new RegExp(
+  String.raw`${CODE_OR_PRE.source}|(\{\{tbdocs:[A-Za-z][A-Za-z0-9]*\}\})`, "g");
 
 /**
  * Reject a placeholder that survived rendering, outside code.

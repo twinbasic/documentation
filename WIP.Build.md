@@ -291,10 +291,11 @@ Two mechanisms now exist, and a new rewrite must use one of them:
   every fence the site's parser finds --- including one inside a blockquote or
   admonition, inside a list item, or one the definition-list plugin makes after
   `: ` --- plus every inline code span.
-- **Rendered-HTML rewrites** use `replaceOutsideCode` in
-  [builder/book.mjs](builder/book.mjs), or the same leading-alternation shape
-  found in `offline-rewrite.mjs:299`, `pdf.mjs:138` and `book.mjs`'s
-  `IMG_SRC_RE_BOOK`, which consume `<code>` and `<pre>` atomically.
+- **Rendered-HTML rewrites** use `replaceOutsideCode` from
+  [builder/code-guard.mjs](builder/code-guard.mjs), or compose their pattern
+  from its `CODE_OR_PRE`, a leading alternative that consumes `<code>` and
+  `<pre>` atomically, as `offline-rewrite.mjs`'s `HTML_COMBINED_RE`,
+  `book.mjs`'s `IMG_SRC_RE_BOOK` and `counts.mjs`'s `SURVIVING_PLACEHOLDER_RE` do.
 
 **One gap is deliberate and stated rather than hidden:** the chain does not
 mask **indented** (4-space) code blocks, since it calls `maskCode` without
@@ -827,7 +828,7 @@ Three implementation details are load-bearing:
 - **The self-test probes ride along inside the normal run**, not behind a
   `--self-test` nobody remembers. Eight classification probes, both directions:
   the three regexes this repo actually shipped (including the incomplete fix),
-  `^(a+)+$`, and four that must *not* be flagged --- plus seventeen fold probes,
+  `^(a+)+$`, and four that must *not* be flagged --- plus nineteen fold probes,
   below. A green line saying "no exponential regex" is otherwise
   indistinguishable from a gate that has stopped detecting.
 - **Parallelism comes from separate processes.** Importing `recheck` spawns one
@@ -863,8 +864,11 @@ the repository would have said so.
 the pattern it builds, where the source decides that: string and template
 literals, `+` concatenation, `String.raw`, a `const` declared once in the file,
 `X.source` of a `const` regex, `A.join(sep)` over a `const` array of string
-literals, and a ternary (checked as both branches). Twelve of the tree's
-eighteen constructions resolve; each is then checked exactly as a literal is.
+literals, and a ternary (checked as both branches). A `const` imported by a
+relative path resolves too, when its module declares it with a string or regex
+literal, which is how `builder/code-guard.mjs`'s `CODE_OR_PRE` reaches the three
+patterns composed from it. Most of the tree's constructions resolve, and the
+summary line counts the rest; each one resolved is checked exactly as a literal is.
 
 **One rule is a model rather than an exact fold, and it is marked as one.** A
 call to an escaping helper --- `escapeRegExp(x)` and anything written to the same

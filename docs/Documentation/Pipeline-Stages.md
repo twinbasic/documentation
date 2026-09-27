@@ -627,6 +627,13 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 
 Both HTML escapers convert a value that is not a string with `String` first.
 
+### `code-guard.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `CODE_OR_PRE` | `RegExp` | Matches a whole `<code>` or `<pre>` element. A pattern that rewrites rendered HTML puts it first, as a leading alternative, so the rest of the pattern never matches inside code: `offline-rewrite.mjs`'s `HTML_COMBINED_RE`, `book.mjs`'s image-path collector and `counts.mjs`'s surviving-placeholder check. |
+| `replaceOutsideCode` | `(html, pattern, replacer) → string` | `html` with every match of `pattern` outside `<code>` and `<pre>` replaced by `replacer`, called as `String.prototype.replace` calls it. `book.mjs`'s chapter transforms and link rewrite. |
+
 ### `book.mjs`
 
 | Symbol | Signature | Description |
