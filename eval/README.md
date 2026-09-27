@@ -23,8 +23,10 @@ enum constant), and checks a hand-picked
 prose set in the committed
 [eval/search_prose_queries.json](search_prose_queries.json). A prose query
 lists the pages that count as its answer in `expected`, and may list in
-`then` the pages a reader should find right behind it (within the top
-three). See
+`behind` the pages a reader should find right behind it (within the top
+three). Two multi-word sets are derived from the build as well: every
+page's own title, and `<page title> <section title>` for section titles
+such as `Properties` that many pages share. See
 [WIP.Search.md](../WIP.Search.md) for the design and
 [eval/search_baseline.json](search_baseline.json) for today's numbers.
 

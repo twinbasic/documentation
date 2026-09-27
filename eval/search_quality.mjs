@@ -52,6 +52,20 @@
 // lands the reader on the same definition (WIP.Search.md, "Same-page
 // sections count").
 //
+// Two more sets are derived from the build's search entries, and judge
+// multi-word queries, which the one-word symbol queries never type
+// (WIP.Search.md, "Probes: whole titles"):
+//
+//   - Page titles: every page's own title of two or more words, typed as
+//     the reader sees it (`Return Syntax`, `Delegate Types`). Any entry of
+//     that page counts, as for prose. Titles with no letter or digit (the
+//     operator pages, `&, &=`) are left out: a reader types one operator,
+//     which the bare-name set already measures.
+//   - Page plus section: `<page title> <section title>` for the one-word
+//     section titles 20 or more pages share (`DTPicker Properties`), except
+//     sections that document a symbol, which the symbol sets judge. Only
+//     that section counts.
+//
 // Both use the same URL normalisation: a trailing "/index" or "/index.html"
 // is stripped, then a trailing slash, before comparing (matching how
 // `relUrl` values do and don't agree on a trailing slash across pages).
@@ -223,7 +237,56 @@ function checkProseUrlsExist(proseQueries, docs) {
   }
 }
 
-function buildQuerySet(symbolIndex, proseQueries, sample) {
+// The search entries keep titles HTML-escaped (`&lt;&lt;, &lt;&lt;=`); a
+// reader types what the page shows.
+function decodeEntities(s) {
+  return s
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&amp;/g, "&");
+}
+
+// Section titles shared by at least this many pages count as generic
+// (`Properties`, `Events`), so `<page title> <section title>` is the only
+// way to name one of them.
+const SHARED_SECTION_PAGES = 20;
+
+// The page-title and page-plus-section queries. A title or query that
+// several URLs share expects any of them.
+function buildTitleQueries(docs) {
+  const entries = Object.values(docs);
+  const add = (map, q, url) => {
+    const k = q.toLowerCase();
+    if (!map.has(k)) map.set(k, { q, expected: new Set() });
+    map.get(k).expected.add(url);
+  };
+
+  const titles = new Map();
+  for (const d of entries) {
+    const url = normalizeUrl(String(d.relUrl ?? ""));
+    if (url.includes("#")) continue;
+    const t = decodeEntities(String(d.doc ?? "")).trim();
+    if (t.split(/\s+/).length < 2 || !/[A-Za-z0-9]/.test(t)) continue;
+    add(titles, t, url);
+  }
+
+  const sections = entries.filter((d) => String(d.relUrl ?? "").includes("#") && /^\w+$/.test(d.title ?? ""));
+  const pagesPerTitle = new Map();
+  for (const d of sections) pagesPerTitle.set(d.title, (pagesPerTitle.get(d.title) ?? 0) + 1);
+  const pageSections = new Map();
+  for (const d of sections) {
+    if (d.names || pagesPerTitle.get(d.title) < SHARED_SECTION_PAGES) continue;
+    add(pageSections, `${decodeEntities(String(d.doc ?? "")).trim()} ${d.title}`, normalizeUrl(d.relUrl));
+  }
+
+  const toQueries = (map, category, pathOnlyMatch) =>
+    [...map.values()].map(({ q, expected }) => ({ category, kindGroup: "n/a", q, expected: [...expected], pathOnlyMatch }));
+  return [...toQueries(titles, "title", true), ...toQueries(pageSections, "section", false)];
+}
+
+function buildQuerySet(symbolIndex, proseQueries, titleQueries, sample) {
   const symbols = symbolIndex.symbols;
   const queries = [];
 
@@ -276,11 +339,12 @@ function buildQuerySet(symbolIndex, proseQueries, sample) {
     });
   }
 
-  queries.push(...proseQueries);
+  queries.push(...proseQueries, ...titleQueries);
 
   if (sample) {
-    const prose = queries.filter((x) => x.category === "prose");
-    const rest = queries.filter((x) => x.category !== "prose");
+    const isSymbol = (x) => x.category.startsWith("symbol-");
+    const prose = queries.filter((x) => !isSymbol(x));
+    const rest = queries.filter(isSymbol);
     const shuffled = rest
       .map((x) => [Math.random(), x])
       .sort((a, b) => a[0] - b[0])
@@ -446,7 +510,7 @@ function printTable(result) {
 
   const line = (s) => (s ? `${fmtPct(s.hit1)} / ${fmtPct(s.hit10)} / ${s.mrr.toFixed(3)} / ${s.n}` : "n/a");
   console.log("\nBreakdown by category (hit@1 / hit@10 / MRR / n):");
-  for (const [label, key] of [["symbol-bare", "symbol-bare"], ["symbol-qualified", "symbol-qualified"], ["prose", "prose"]]) {
+  for (const [label, key] of [["symbol-bare", "symbol-bare"], ["symbol-qualified", "symbol-qualified"], ["prose", "prose"], ["page title", "title"], ["page plus section", "section"]]) {
     console.log(label.padEnd(labelWidth) + " | " + line(result.byCategory[key]));
   }
   const ordered = result.perQuery.filter((r) => r.behind);
@@ -500,11 +564,12 @@ function printFailures(perQuery, n) {
 // names by reader intent; intent-2 changed two prose expectations
 // (`conditional compilation` expects the #If/#Const page, `symbol index`
 // accepts Permanent-Links too); intent-3 lets a section of a symbol's page
-// count for that symbol.
-const GROUND_TRUTH = "intent-3";
+// count for that symbol; intent-4 adds the page-title and page-plus-section
+// sets.
+const GROUND_TRUTH = "intent-4";
 
-const CATEGORY_CODE = { "symbol-bare": "b", "symbol-qualified": "q", prose: "p" };
-const CATEGORY_NAME = { b: "symbol-bare", q: "symbol-qualified", p: "prose" };
+const CATEGORY_CODE = { "symbol-bare": "b", "symbol-qualified": "q", prose: "p", title: "t", section: "s" };
+const CATEGORY_NAME = { b: "symbol-bare", q: "symbol-qualified", p: "prose", t: "title", s: "section" };
 
 function rankKey(category, q) {
   return `${CATEGORY_CODE[category] ?? category}:${q}`;
@@ -622,12 +687,12 @@ function main() {
   const proseQueries = loadProseQueries();
   checkProseUrlsExist(proseQueries, ctx.docs);
 
-  const queries = buildQuerySet(symbolIndex, proseQueries, opts.sample);
+  const queries = buildQuerySet(symbolIndex, proseQueries, buildTitleQueries(ctx.docs), opts.sample);
+  const count = (category) => queries.filter((q) => q.category === category).length;
   console.log(
     `Evaluating ${queries.length} queries ` +
-    `(${queries.filter((q) => q.category === "symbol-bare").length} bare, ` +
-    `${queries.filter((q) => q.category === "symbol-qualified").length} qualified, ` +
-    `${queries.filter((q) => q.category === "prose").length} prose) against ${opts.site}\n`
+    `(${count("symbol-bare")} bare, ${count("symbol-qualified")} qualified, ${count("prose")} prose, ` +
+    `${count("title")} page titles, ${count("section")} page plus section) against ${opts.site}\n`
   );
 
   const evalResult = evaluate(ctx, queries);
@@ -641,6 +706,8 @@ function main() {
       "symbol-bare": summarize(evalResult.perQuery, (r) => r.category === "symbol-bare"),
       "symbol-qualified": summarize(evalResult.perQuery, (r) => r.category === "symbol-qualified"),
       prose: summarize(evalResult.perQuery, (r) => r.category === "prose"),
+      title: summarize(evalResult.perQuery, (r) => r.category === "title"),
+      section: summarize(evalResult.perQuery, (r) => r.category === "section"),
     },
     byKind: {
       type: summarize(evalResult.perQuery, (r) => r.kindGroup === "type"),
