@@ -236,13 +236,16 @@ function substitute(text, counts) {
  * it this would reject the very examples the documentation of this feature
  * has to contain.
  *
+ * `line` is 1-based in `rawContent`. It is counted with the code put back,
+ * because a masked fence is one line however many it holds.
+ *
  * @returns {{name: string, line: number}[]}
  */
 export function findCountRefs(rawContent, md) {
-  const { masked } = maskCode(rawContent.replace(/\r\n?/g, "\n"), { md });
+  const { masked, restore } = maskCode(rawContent.replace(/\r\n?/g, "\n"), { md });
   const out = [];
   for (const m of masked.matchAll(PLACEHOLDER_RE)) {
-    out.push({ name: m[1], line: masked.slice(0, m.index).split("\n").length });
+    out.push({ name: m[1], line: restore(masked.slice(0, m.index)).split("\n").length });
   }
   return out;
 }
@@ -281,6 +284,9 @@ function editDistance(a, b) {
  * name cannot be an error there: markdown-it emits the text verbatim, so the
  * rule would publish `{{tbdocs:pgaes}}` to readers rather than fail.
  *
+ * A message names the line of the file, not of `rawContent`: the page's
+ * `contentLine`, from `discover`, says where its content starts.
+ *
  * @returns {string[]} one message per bad reference; empty means clean
  */
 export function validateCountNames(pages, counts, md) {
@@ -291,7 +297,7 @@ export function validateCountNames(pages, counts, md) {
       if (Object.hasOwn(counts, name)) continue;
       const guess = nearest(name, names);
       problems.push(
-        `${p.srcRel}:${line}\n` +
+        `${p.srcRel}:${line + (p.contentLine ?? 1) - 1}\n` +
         `  unknown count name {{tbdocs:${name}}}\n` +
         (guess ? `  did you mean: ${guess}?\n` : "") +
         `  available: ${names.join(", ")}`,

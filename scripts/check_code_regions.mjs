@@ -63,15 +63,20 @@
 // tools ask what in a page is code and where its frontmatter ends. Their
 // probes ride along too, and the sweep checks on every page that
 // blockRegions, which parses blocks only, finds exactly the fences, code
-// blocks and HTML blocks of the full parse the comparison already makes.
+// blocks and HTML blocks of the full parse the comparison already makes. One
+// probe holds builder/counts.mjs's count validator, which asks the same module
+// what is code.
 
 import assert from "node:assert/strict";
 import { promises as fs } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import MarkdownIt from "markdown-it";
 import deflist from "markdown-it-deflist";
+import { validateCountNames } from "../builder/counts.mjs";
+import { discover } from "../builder/discover.mjs";
 import { applyPreRenderRewrites, createMarkdownIt } from "../builder/render.mjs";
 import { parseFrontmatter } from "../lib/frontmatter.mjs";
 import { blockRegions, mapLines, maskCode, splitCodeSpans, splitOnMarker } from "../lib/markdown.mjs";
@@ -294,6 +299,33 @@ const MODULE_PROBES = [
   }],
 ];
 
+// The count validator asks the same module what is code, with the site's
+// parser, and must name the line of the file. One page through the real
+// discover and validateCountNames: CRLF frontmatter, count names in a fence, a
+// code span and a definition-list fence, none of them references, then an
+// unknown name in prose on line 16. Counted in the masked content after the
+// frontmatter, where each fence is one line, it was reported at line 9.
+const COUNT_PAGE = [
+  "---", "title: T", "---", "",
+  "```tb", "{{tbdocs:a}}", "```", "",
+  "x `{{tbdocs:b}}` y", "",
+  "T", ": ```", "  {{tbdocs:c}}", "  ```", "",
+  "prose {{tbdocs:d}}", "",
+].join("\r\n");
+
+async function countProbe() {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "check-code-regions-"));
+  try {
+    await fs.writeFile(path.join(dir, "x.md"), COUNT_PAGE);
+    const { pages } = await discover(dir);
+    const problems = validateCountNames(pages, { pages: 1 }, siteMd);
+    assert.deepEqual(problems.map((p) => p.split("\n").slice(0, 2).join(" ")),
+      ["x.md:16   unknown count name {{tbdocs:d}}"]);
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+}
+
 async function main(argv) {
   const verbose = argv.includes("--verbose");
 
@@ -346,12 +378,21 @@ async function main(argv) {
       for (const line of err.message.split("\n")) console.log(`        ${line}`);
     }
   }
+  try {
+    await countProbe();
+  } catch (err) {
+    if (!(err instanceof assert.AssertionError)) throw err;
+    failed++;
+    console.log("FAIL  probe: the count validator's references and lines");
+    for (const line of err.message.split("\n")) console.log(`        ${line}`);
+  }
 
   if (!failed) {
     console.log(`ok    ${PROBES.length} probes: no rewrite alters a code region`);
     console.log(`ok    ${ADMONITION_PROBES.length} probes: a rewrite still fires on prose beside code`);
     console.log(`ok    ${UNCHANGED_PROBES.length} probe(s): the chain masks what the site's parser calls code`);
     console.log(`ok    ${MODULE_PROBES.length} probes: lib/markdown.mjs and lib/frontmatter.mjs`);
+    console.log("ok    1 probe: the count validator skips code and names the file's line");
   }
 
   const files = await markdownFiles(ROOT);

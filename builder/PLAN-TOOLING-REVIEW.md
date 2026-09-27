@@ -686,6 +686,30 @@ Found: the line `validateCountNames` reports is a line of the masked content aft
 frontmatter, not of the file: `x.md:5` for a name on line 12, below three lines of
 frontmatter and a five-line fence. C32 keeps that number, and C32a fixes it.
 
+### C32a — `builder: an unknown count name is reported at its file line`
+
+**Found in C32** (see Found while implementing); the owner asked for the fix as its own
+commit straight after C32, so that C32 changes nothing.
+
+**Landed.** `discover` gives each page `contentLine`, the file's 1-based line on which
+`rawContent` starts, counted from the text before gray-matter's content. `findCountRefs`
+counts a reference's line in `rawContent` with the code put back, so a masked fence counts
+all its lines, and `validateCountNames` adds `contentLine - 1`. C40 needs no change for it,
+because the line comes from the content's length. If `parseFrontmatter`'s content is ever
+not the file's tail, the probe fails. The probe is in `check_code_regions.mjs`, which the
+owner chose because the validator asks `lib/markdown` what is code. It writes one page to a
+temporary folder and runs it through the real `discover` and `validateCountNames`: CRLF
+frontmatter, count names in a fence, a code span and a definition-list fence, then an
+unknown one in prose on line 16. Pipeline-Stages gains the `contentLine` field and states
+both functions' lines. Tools.md's section and WIP.md's gate row name C32's probe and this one.
+
+**Verify.** HEAD's validator reports the probe's page at `x.md:9`, and this one at
+`x.md:16`. Four faults each fail the probe: lines counted in the masked content, no
+frontmatter offset, `discover` setting no `contentLine`, and the validator masking with a
+bare parser. Over all 914 pages `discover` finds (912 `.md`, 2 `.html`), the file from line
+`contentLine` on is exactly `rawContent`. The tree comparison differs only where the commit
+edits pages: Pipeline-Stages and Tools online and offline, the search data, and `book.html`.
+
 ### C33 — `render: admonitions find their fences through lib/markdown`
 
 **A3-1, second half.** `rewriteAdmonitions` protects fences with its own `stashCodeFences`.
@@ -1853,6 +1877,12 @@ Defects the review did not have, found by building something this plan asks for.
   the file's end and the date. C27a's oracle measured it: a stored channel holding d1 and d2
   held d10 alone after an export with `--since` d5. Fixed in `wisdom: export --since keeps the
   history already stored`.
+- **An unknown count name was reported at the wrong line**, found while landing C32.
+  `findCountRefs` counted lines in the masked content, where a fence is one line, and
+  `rawContent` starts after the frontmatter, so `validateCountNames` gave `x.md:5` for a name
+  on line 12 below three lines of frontmatter and a five-line fence. The build still failed;
+  only the line it named was wrong. Fixed in `builder: an unknown count name is reported at
+  its file line`.
 
 ## Open questions
 

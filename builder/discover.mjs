@@ -106,17 +106,24 @@ function stripBom(s) {
   return s.charCodeAt(0) === 0xfeff ? s.slice(1) : s;
 }
 
+// `contentLine` is the file's 1-based line on which `content` starts, so a
+// message about a line of the content can name the line of the file. The
+// content is the text after the frontmatter block, so the lines before it are
+// the lines of the block.
 function parseFrontmatter(raw, srcRel) {
   const text = stripBom(raw);
   if (!matter.test(text)) return null;
+  let data, content;
   try {
-    return matter(text);
+    ({ data, content } = matter(text));
   } catch (err) {
     throw new Error(`Failed to parse frontmatter in ${srcRel}: ${err.message}`);
   }
+  const block = text.slice(0, text.length - content.length);
+  return { data, content, contentLine: (block.match(/\r\n?|\n/g) ?? []).length + 1 };
 }
 
-function buildPage(srcRoot, srcRel, { data, content }) {
+function buildPage(srcRoot, srcRel, { data, content, contentLine }) {
   const srcRelPosix = toPosix(srcRel);
   const ext = path.extname(srcRel).toLowerCase();
   const permalink = computePermalink(data.permalink, srcRelPosix);
@@ -127,6 +134,7 @@ function buildPage(srcRoot, srcRel, { data, content }) {
     ext,
     frontmatter: data,
     rawContent: content,
+    contentLine,
     permalink,
     destPath,
     layoutDefault: data.layout === undefined || data.layout === null,
