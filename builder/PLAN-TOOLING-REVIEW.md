@@ -767,6 +767,37 @@ kept by the module's splice. The file's accepted gap for two-space list-item fen
 endings, a doubled-backtick span and a list-item fence has only its prose converted, and
 keeps its endings.
 
+**Landed.** `convertText(text, md)` takes its code regions from `blockRegions` with the
+site's parser, which `main` builds with `createMarkdownIt`, and throws a `TypeError` without
+one, as the build's two rewrites do. A line inside any region is left alone, and the other
+lines go through `splitCodeSpans`, rejoined by `mapLines`. HTML blocks count, because the
+typographer converts only text tokens, so a dash in one is literal on the page. `FENCE_OPEN_RE`,
+`FENCE_CLOSE_RE`, `splitInlineCode` and `KEEP_ENDS` are gone, and so is the comment on the
+known gap for indented code blocks, which this closes. The entry's gap for two-space
+list-item fences was already closed by `427f77a6`, whose opener allows up to three spaces.
+**The old scan closed no fence** (see Found while implementing), and deleting it is the fix,
+at the owner's choice. Also at the owner's choice, the entry's seeded file became seven
+permanent `DASH_PROBES` in `check_code_regions.mjs`: a fence after an earlier fence with CRLF
+and lone-CR endings, a doubled-backtick span, a fence five spaces into a nested list item,
+one behind `> `, an indented code block beside an HTML block, a definition-list fence, and a
+See Also separator. Tools.md's two sections and WIP.md's gate row say so. The exit paragraph
+in Tools.md now says "any other probe" where it named module probes and left out two kinds.
+
+**Verify.** `--check` over `docs/` exits 0 before and after, with `Files affected: 0`. Over
+all 912 pages against the old scan: 37,861 lines it read as code are prose to `blockRegions`,
+in 1,386 runs across 598 files, all after the page's first fence. 304 lines it read as prose
+are code now: 15 in fences behind `> `, 180 in indented code blocks and 109 in HTML blocks.
+The pages hold 77 literal dashes in fences and 4 on other lines, all four in code spans
+(`Authoring.md:388`, `Tools.md:596`), so no dash got past the old scan. The site's parser and
+a bare one find the same regions on every page, and so do the whole file and its content
+after the frontmatter. `check_code_regions.mjs`: 7, 6, 2, 7, 11 and 1 probes, and `912
+file(s), 0 with altered code regions, 1372 fence(s) in the full parse -- clean`. Six faults
+each fail it with exit 1: HEAD's scan put back and the regions
+ignored each fail five probes, the first among them; a bare parser fails the definition-list
+probe; skipping fences only fails the indented-block probe; unsplit code spans fail the span
+probe; and normalised line endings fail the first. The tree comparison differs only in Tools
+online and offline, the search data, and `book.html`.
+
 ### C35 — `scripts: check_examples' marker splice uses lib/markdown's line splice`
 
 **Inventory site A4.** `applyMarkers` (`check_examples.mjs:1123-1154`) already finds its line
@@ -1911,6 +1942,15 @@ Defects the review did not have, found by building something this plan asks for.
   on line 12 below three lines of frontmatter and a five-line fence. The build still failed;
   only the line it named was wrong. Fixed in `builder: an unknown count name is reported at
   its file line`.
+- **`convert_em_dash_separators.mjs` closed no fence**, found while landing C34. Its closing
+  test, `FENCE_CLOSE_RE`, ends in `[ \t]*$` without the `m` flag, and each line it tested
+  still carried its line ending, so a closing fence matched only as a page's last line with
+  no ending. From a page's first fence on, the tool converted nothing and `--check` reported
+  nothing: 37,861 prose lines in 598 of 912 pages. It came in with `427f77a6` (2026-09-21),
+  whose close test replaced the port's toggle on any line starting with three backticks,
+  and nothing tested the tool. No literal
+  dash got past it. Fixed in `scripts: convert_em_dash_separators reads code regions from
+  lib/`, which deletes the scan and adds the tool's probes to `check_code_regions.mjs`.
 
 ## Open questions
 

@@ -65,7 +65,8 @@
 // blockRegions, which parses blocks only, finds exactly the fences, code
 // blocks and HTML blocks of the full parse the comparison already makes. One
 // probe holds builder/counts.mjs's count validator, which asks the same module
-// what is code.
+// what is code, and a set holds scripts/convert_em_dash_separators.mjs, which
+// rewrites page source outside the build and asks it too.
 
 import assert from "node:assert/strict";
 import { promises as fs } from "node:fs";
@@ -81,6 +82,7 @@ import { applyPreRenderRewrites, createMarkdownIt } from "../builder/render.mjs"
 import { parseFrontmatter } from "../lib/frontmatter.mjs";
 import { blockRegions, mapLines, maskCode, splitCodeSpans, splitOnMarker } from "../lib/markdown.mjs";
 import { markdownFiles } from "../lib/markdown-files.mjs";
+import { convertText } from "./convert_em_dash_separators.mjs";
 
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ROOT = path.join(REPO, "docs");
@@ -207,6 +209,34 @@ const UNCHANGED_PROBES = [
     "Term\n: ```tb\n  v = Items[1](a, b)\n  ```\n"],
   ["an admonition written inside a fence the definition-list plugin makes",
     "Term\n: ```md\n  > [!NOTE]\n  > body\n  ```\n"],
+];
+
+// The dash normaliser: a source, what the tool must make of it, and how many
+// separator, em-dash and en-dash replacements it counts. Its own line scan
+// closed no fence, because the closing test ended in `$` and every line still
+// carried its ending, so after a page's first fence it converted nothing; the
+// first probe is that shape. The scan also never saw a fence indented four
+// spaces or more, or behind `> ` or `: `, an indented code block or an HTML
+// block, and the typographer converts none of them.
+const DASH_PROBES = [
+  ["a fence after an earlier fence, with CRLF and lone CR endings",
+    "```tb\r\na \u{2014} b\r\n```\r\n\r\nc \u{2014} d\re \u{2013} f\r\n",
+    "```tb\r\na \u{2014} b\r\n```\r\n\r\nc --- d\re -- f\r\n", "0/1/1"],
+  ["a doubled-backtick code span holding a single backtick",
+    "x ``a \u{2014} `b` c`` y \u{2013} z\n", "x ``a \u{2014} `b` c`` y -- z\n", "0/0/1"],
+  ["a fence in a nested list item, five spaces in",
+    "1. a\n\n   - b\n\n     ```tb\n     x \u{2014} y\n     ```\n",
+    "1. a\n\n   - b\n\n     ```tb\n     x \u{2014} y\n     ```\n", "0/0/0"],
+  ["a fence inside an admonition",
+    "> [!NOTE]\n> ```tb\n> a \u{2014} b\n> ```\n> c \u{2014} d\n",
+    "> [!NOTE]\n> ```tb\n> a \u{2014} b\n> ```\n> c --- d\n", "0/1/0"],
+  ["an indented code block and an HTML block",
+    "text\n\n    a \u{2014} b\n\n<div>\nc \u{2014} d\n</div>\n",
+    "text\n\n    a \u{2014} b\n\n<div>\nc \u{2014} d\n</div>\n", "0/0/0"],
+  ["a fence the definition-list plugin makes",
+    "Term\n: ```tb\n  a \u{2014} b\n  ```\n", "Term\n: ```tb\n  a \u{2014} b\n  ```\n", "0/0/0"],
+  ["a See Also separator, then an em-dash in prose",
+    "- [X](X) \u{2014} one \u{2014} two\n", "- [X](X) -- one --- two\n", "1/1/0"],
 ];
 
 // The regions blockRegions reports, in a form assert can compare at a glance.
@@ -378,6 +408,15 @@ async function main(argv) {
     console.log(`        before ${JSON.stringify(src)}`);
     console.log(`        after  ${JSON.stringify(after)}`);
   }
+  for (const [name, src, want, counts] of DASH_PROBES) {
+    const r = convertText(src, siteMd);
+    const got = `${r.sep}/${r.em}/${r.en}`;
+    if (r.text === want && got === counts) continue;
+    failed++;
+    console.log(`FAIL  probe: ${name}`);
+    console.log(`        want ${JSON.stringify(want)} (${counts})`);
+    console.log(`        got  ${JSON.stringify(r.text)} (${got})`);
+  }
   // Anything but a failed assertion is the gate breaking, and goes to exit 2.
   for (const [name, probe] of MODULE_PROBES) {
     try {
@@ -402,6 +441,7 @@ async function main(argv) {
     console.log(`ok    ${PROBES.length} probes: no rewrite alters a code region`);
     console.log(`ok    ${ADMONITION_PROBES.length} probes: a rewrite still fires on prose beside code`);
     console.log(`ok    ${UNCHANGED_PROBES.length} probe(s): the chain leaves alone what the site's parser calls code`);
+    console.log(`ok    ${DASH_PROBES.length} probes: the dash normaliser converts prose and nothing else`);
     console.log(`ok    ${MODULE_PROBES.length} probes: lib/markdown.mjs and lib/frontmatter.mjs`);
     console.log("ok    1 probe: the count validator skips code and names the file's line");
   }
