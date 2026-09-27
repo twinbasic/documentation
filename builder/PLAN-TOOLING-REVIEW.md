@@ -940,6 +940,33 @@ the ones it misses are indented or use four backticks. None misfires today.
 **Verify.** The tree comparison identical (the counts); `evaluatorProtocol` returns the same
 text; `hrefs` returns the same links for every page.
 
+**Landed.** All four use the bare parser. `counts.mjs` has no choice: the site's parser is
+built with the counts (`tbdocs.mjs:607-613`), so it does not exist when they are derived. A new
+`proseLines(src)` there gives a page's lines with each line in a region replaced by null;
+`countAttributeAnchors` counts the `{: #id }` lines in it, and `countEnumerations` finds the
+index heading and scans to the next heading in it, where each did a multiline regex over the
+raw source. `evaluatorProtocol` takes neither boundary from a region. `hrefs` blanks the lines
+of every fence and indented code block and keeps HTML blocks, whose `href`s are links.
+`eval/` still imports only `lib/`, not `builder/`: over all 912 pages the bare parser and the
+site's give the same regions. Extending.md's paragraph on the two scanning counts says they
+skip code, and that a new one should.
+
+**Verify.** A scratch oracle cut each function out of HEAD's file and the working one and ran
+both with their dependencies injected. The counts come out 72 anchors and 140 enumerations
+from the real pages and their CRLF forms under both; with a fenced `{: #fake }` appended and
+a fence holding `- [Fake](Fake)` and `## x` put under the index heading, HEAD gives 73 and 1
+and the new code 72 and 140. The protocol's evaluator half is the same 3,985 characters from
+the file and its CRLF form; with a fence holding `---` and the orchestrator heading put
+before the first rule, HEAD throws and the new code returns the same text. `hrefs` gives the
+same links on 911 of 912 pages (12,835 links in all). The one difference is `Authoring.md`,
+81 links under HEAD and 86 now, which is the Found item "`nav_hops.mjs`' `hrefs` misread
+`Authoring.md`": the new reader drops the three link strings in indented code and finds the
+five prose link targets HEAD's regex dropped. On a probe page it keeps a prose link and an
+HTML block's `href`, and drops one in a four-backtick fence, a fence in a list item and an
+indented code block, where HEAD dropped none of the three. `nav_hops` itself, HEAD copy against
+the working file, prints the same paths for four targets. The tree comparison differs only in
+Extending online and offline, the search data, and `book.html`.
+
 ### C40 — `builder, eval: frontmatter through lib/frontmatter; drop gray-matter`
 
 **Decision (a)'s frontmatter half.** `gray-matter@4.0.3` bundles its own `js-yaml@3.15.2`,
@@ -2029,6 +2056,17 @@ Defects the review did not have, found by building something this plan asks for.
   and nothing tested the tool. No literal
   dash got past it. Fixed in `scripts: convert_em_dash_separators reads code regions from
   lib/`, which deletes the scan and adds the tool's probes to `check_code_regions.mjs`.
+- **`nav_hops.mjs`' `hrefs` misread `Authoring.md`**, found while landing C39. Its fence
+  regex opens on any line starting with three backticks and closes only on a line of exactly
+  three, so each of the page's four-backtick fences (from `Authoring.md:476`) was closed
+  early, and its own four-backtick closing line then opened a fence that ran to the next
+  three-backtick line: lines 482-576, 577-614 and 615-760 were dropped as code, and five
+  prose link targets with them. The regex also keeps indented code blocks, where three link
+  strings sit (the page template's See Also, and two climbs shown as code). The fences came
+  in with `5b64cd41` (2026-09-22), before the review, whose B9 says "None misfires today":
+  it counted the fences the regex misses, not what it made of the lines after them. At the
+  owner's choice it is fixed inside `builder, eval: counts, run_case and nav_hops skip code`
+  rather than in place first.
 
 ## Open questions
 

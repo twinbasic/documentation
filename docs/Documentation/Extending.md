@@ -690,7 +690,9 @@ Two shapes qualify. Most names count things `discover` already found --- pages u
 prefix, static files, packages. `attributeAnchors` and `enumerations` are the other shape:
 they scan one page's `rawContent` for the pattern that makes an entry, which is legitimate
 because the page *is* the list, and carries the matching exposure --- change that page's
-list formatting and the number moves with it.
+list formatting and the number moves with it. Both scan only the lines outside code, which
+`proseLines` in `counts.mjs` gives them, so an example of the pattern in a fence is not
+counted; a new scan should do the same.
 
 1. **Add the entry.** A function beside the others in
    [`counts.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/counts.mjs),

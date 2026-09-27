@@ -65,7 +65,7 @@
 // A name with no uses is fine and is not reported. Names are cheap; the
 // registry is allowed to offer more than the prose currently asks for.
 
-import { maskCode } from "../lib/markdown.mjs";
+import { blockRegions, maskCode } from "../lib/markdown.mjs";
 
 export const PLACEHOLDER_RE = /\{\{tbdocs:([A-Za-z][A-Za-z0-9]*)\}\}/g;
 
@@ -112,7 +112,16 @@ function countPackages(pages, root = null) {
 function countAttributeAnchors(pages) {
   const page = pages.find((p) => p.srcRel === "Reference/Attributes.md");
   if (!page) return 0;
-  return (page.rawContent.match(/^\{: #[a-z0-9]+ \}/gm) ?? []).length;
+  return proseLines(page.rawContent).filter((l) => l !== null && /^\{: #[a-z0-9]+ \}/.test(l)).length;
+}
+
+// A page's lines, each line inside a fence, code block or HTML block replaced
+// by null, so that a scan over them reads no code. The bare parser finds the
+// regions: the site's is built with these counts, so it does not exist yet.
+function proseLines(src) {
+  const lines = src.split(/\r\n|\r|\n/);
+  for (const r of blockRegions(src)) lines.fill(null, r.start, r.end);
+  return lines;
 }
 
 // Enumerations documented across every package, counted off the alphabetical
@@ -130,13 +139,19 @@ function countAttributeAnchors(pages) {
 function countEnumerations(pages) {
   const page = pages.find((p) => p.srcRel === "Reference/Enumerations.md");
   if (!page) return 0;
-  const body = page.rawContent.split(/^## Alphabetical index\s*$/m)[1];
-  if (!body) return 0;
+  const lines = proseLines(page.rawContent);
+  const start = lines.findIndex((l) => l !== null && /^## Alphabetical index\s*$/.test(l));
+  if (start === -1) return 0;
   // Stop at the next heading of any level -- `### See Also` closes the list,
   // and its four bullets are not enumerations. The A/B/C dividers between
   // groups are bold text, not headings, so they do not terminate the scan.
-  const list = body.split(/^#{1,6} /m)[0];
-  return (list.match(/^- \[/gm) ?? []).length;
+  let n = 0;
+  for (const l of lines.slice(start + 1)) {
+    if (l === null) continue;
+    if (/^#{1,6} /.test(l)) break;
+    if (/^- \[/.test(l)) n++;
+  }
+  return n;
 }
 
 /**
