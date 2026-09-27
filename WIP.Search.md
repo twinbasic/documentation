@@ -14,9 +14,11 @@ depends on the session that wrote it.
 
 **Where it stands.** Every numbered item below is done and committed on
 branch `claude/paintpicture-docs-runtime-f3250d`, rebased onto
-`f8e630e5`. Nothing is pushed. The working tree is clean. **Nothing is
-open for the user right now**; the candidates for the next session are
-under "Next", and the user picks.
+`f8e630e5`. Nothing is pushed. The working tree is clean. The user has
+set this work aside for a week or two, after item 7 (content and index
+entries). **One decision is open for the user**: `default property`
+(see [Item 7](#item-7-content-and-index-entries-from-two-surveys)). The
+other candidates are under "Next", and the user picks.
 
 | commit | step |
 |---|---|
@@ -50,25 +52,28 @@ under "Next", and the user picks.
 | `ca60a834` | item 6: their entries, and a Glossary entry for *namespace* |
 | `d2fe8e27` | item 6: `standard exe`, `create [an] ActiveX DLL` queries, before their entries |
 | `af93606a` | item 6: their entries (New Project first); `pointers` as a secondary entry |
+| `4ac93cb5` | item 7: 41 prose queries from two surveys, before their fixes |
+| `78aefbef` | item 7: content: ByRef/ByVal, optional and named arguments, returning more than one value |
+| `b169ae0e` | item 7: index entries for what the new text still can't find |
 
 **The eval now** (`node eval/search_quality.mjs`, ground truth
-`intent-5`, 10,284 queries): 98.2% at rank 1, 99.1% in the top 10.
+`intent-5`, 10,325 queries): 98.2% at rank 1, 99.1% in the top 10.
 
 | category | hit@1 | n | what it types |
 |---|---|---|---|
 | bare names | 99.7% | 2,884 | `PaintPicture`, judged by reader intent (tiers) |
 | qualified names | 100% | 5,108 | `Printer.Fonts` |
 | name and kind | 91.1% | 1,785 | `MaxHeight property` |
-| prose | 97.0% | 67 | hand-picked, user-approved (`late binding`, `immediate window`) |
+| prose | 97.2% | 108 | hand-picked (`late binding`, `immediate window`, `ByVal`) |
 | page titles | 97.9% | 140 | `Return Syntax` |
 | page plus section | 96.7% | 300 | `DTPicker Properties` |
 
 No bare name is out of tier order, and every prose query's `behind`
-page is within the top 3 (20 of 20). Hit@10 was 20.5% and MRR .182 when
+page is within the top 3 (22 of 22). Hit@10 was 20.5% and MRR .182 when
 this work began. The overall hit@1 fell from 99.7% when the name-and-kind
 set joined; compare categories, not totals, across ground truths.
 
-**Known misses (183 at rank 1)**, each recorded where it was diagnosed:
+**Known misses (184 at rank 1)**, each recorded where it was diagnosed:
 - 158 name-and-kind queries, mostly properties; not diagnosed yet
   ([Fixed: kind words](#fixed-kind-words)).
 - 10 bare names: 7 enum constants, 2 members
@@ -80,6 +85,8 @@ set joined; compare categories, not totals, across ground truths.
   definitions are 2nd and 5th. That is right by the user's ruling (a
   Glossary definition counts within the top 5); an entry would reorder
   the bare names `Declare` and `Comments` ([Item 6: shipped](#item-6-shipped)).
+- 1 prose query, `default property`, at 6: waiting on the user's call
+  ([Item 7](#item-7-content-and-index-entries-from-two-surveys)).
 
 **Next**, for the user to choose from:
 1. **The 158 name-and-kind misses.** Diagnose them as the whole-title
@@ -93,13 +100,17 @@ set joined; compare categories, not totals, across ground truths.
    single letter 80–110 ms, lunr's own work now. Cheaper means changing
    the query, and so the ranking, for instance not completing a
    one-letter word ([Fixed: slow multi-word queries](#fixed-slow-multi-word-queries)).
-4. **More index entries**, under the rules below, when readers' terms
-   turn up that the pages' words can't find. The content gaps the agents
-   found (no page for them at all) are listed in
-   [Item 6: candidates for approval](#item-6-candidates-for-approval):
-   multiple return values, application manifest, by reference / by value,
-   ActiveX control and object, Object Browser, type library, named
-   arguments, tab order, twips.
+4. **More content and index entries**, under the rules below. What item 7
+   left: `default property` (the user's call), `COM interop` (no clear
+   target), and three content gaps: subclassing, IntelliSense and
+   conditional breakpoints (first find out whether the IDE has the last
+   two). See [Item 7](#item-7-content-and-index-entries-from-two-surveys).
+5. **An extra word hides a page.** `memory window`, `history panel`,
+   `registry access`: the all-words pass finds a few pages holding both
+   words, and doesn't fall back, so the page named by the other word
+   never shows. Item 7 fixed 20 such queries with entries, but the cause
+   is the pass itself, as in item 2; a fix there needs the spaced and
+   kinds probes.
 
 **Done, in order** (each section has the measurements):
 1. The 9 qualified misses: [the title-heading fix](#fixed-a-member-heading-taken-for-the-page-title)
@@ -112,6 +123,8 @@ set joined; compare categories, not totals, across ground truths.
    [Item 6: candidates for approval](#item-6-candidates-for-approval);
    on the way, [Fixed: kind words](#fixed-kind-words) and ground truth
    `intent-5`.
+7. Content and entries from two new surveys:
+   [Item 7](#item-7-content-and-index-entries-from-two-surveys).
 
 **The index pilot held up.** The user asked whether ranking tweaks are an
 uphill battle, since a book's index is marked by hand. The conclusion,
@@ -130,7 +143,9 @@ about 60 terms.
   The query goes into `eval/search_prose_queries.json` first, measured,
   then the entry, measured again.
 - Only a term the page's own words can't find gets an entry. Check first
-  where it lands (`node eval/site_search.mjs "<term>"`).
+  where it lands (`node eval/site_search.mjs "<term>"`). Where the page
+  lacks the content, write it first, measure, then mark what the new
+  text still can't find.
 - A term matches only a query holding all its words, whole and in order,
   alone or among others. Capitals and hyphens don't matter, word endings
   don't (stems), but `type char` doesn't match `type character`, and
@@ -202,6 +217,20 @@ about 60 terms.
   the box's value and dispatching a `keyup` from script does, and is the
   quick way to compare many queries with the replica. A hidden pane pauses `requestAnimationFrame`;
   the client has a timer fallback for that.
+- A twinBASIC sample on a page: mark it `check_build` and compile it
+  with `node scripts/check_examples.mjs --only "^Reference/Core/Sub\.md"`
+  (`check_run` only compiles, so far). To confirm what it prints, put the
+  code in a source tree with a `[RunAfterBuild]` Sub that starts with
+  `Debug.Cls`, and run `node scripts/tbrun.mjs <tree>`; `--keep` on
+  `check_examples` leaves a project whose `Settings` and `tbxMain.twin`
+  make a starting tree. No `MsgBox` in a probe: it hangs invisibly.
+- Every title as a query: item 7 used a throwaway script that loads
+  `eval/site_search.mjs` with an absolute site path (a relative one
+  breaks `loadLunr`) and searches each distinct entry title; a result's
+  `ref` is its key in `ctx.docs`. Before item 7's entries and after: no
+  throws, 9 empty, 2 not in the top 50.
+- `node eval/search_quality.mjs --save` needs the file name:
+  `--save eval/search_baseline.json`.
 - `test.bat` stops at `check_axe_patch_equiv.mjs` in a worktree without
   `node_modules`. Run `npm install` first for the full suite.
 - In some agent shells `cmd` reports `test.bat` and `check.bat` as "not
@@ -1778,6 +1807,81 @@ live client was checked against the replica in the browser.
 `how do I register a com dll` finds the FAQ, not ActiveX Registration:
 the all-words pass requires `how`, `do` and `I` too, and only the FAQ
 holds them all.
+
+### Item 7: content and index entries from two surveys
+
+Two Sonnet agents: one rechecked item 6's list of content gaps, one ran
+about 120 reader terms (IDE panes, VB6 vocabulary, Features and
+Tutorials headings) through the replica. The user asked for every fix
+they prompted, content included, with samples checked by the compiler.
+
+**Rechecked gaps.** Already fine, the Glossary 1st: `by reference`,
+`by value`, `ActiveX control`, `ActiveX object`, `Automation object`,
+`Object Browser`, `type library`, `tlb`, `named arguments`, `tab
+order`, `manifest`, `twips`. Missing: `ByRef`, `ByVal`, `ByVal vs
+ByRef` (no section explained them), `typelib`, `named parameters`,
+`application manifest`, and `return multiple values` (no page at all).
+`ByRef` and `ByVal` are not symbols, so entries for them reorder no bare
+name.
+
+**Content** (`78aefbef`), each sample `check_build`, compiled, and its
+printed values confirmed with `tbrun`:
+- Sub: *Passing arguments ByRef and ByVal*; *Optional arguments and
+  default values*. Function: *Returning more than one value* (ByRef
+  parameters, a UDT, an array). Call: *Named arguments* (a positional
+  argument after a named one is TB5103, checked), and its old example,
+  inert and declaring the 16-bit `"User"` library, now compiles.
+- Polish: Glossary links to these; the Project Explorer's manifest
+  section says what a manifest does and links Force DPI Awareness;
+  Library References says how to add a reference; the Variables pane
+  names VB6's Locals window.
+- *Placing a section can move words between entries.* With *Named
+  arguments* before Call's *Example*, the Example folded into the new
+  section instead of the page's top entry, which lost the word
+  "statement": `Call statement` fell 1 -> 5. Named arguments now comes
+  after the Example.
+
+**Entries** (`b169ae0e`): Sub `ByRef`, `ByVal`, `optional parameters`;
+Function `return multiple values`, `multiple return values`; Call
+`named parameters`; Glossary `typelib`; Project Explorer `visual
+styles`; Attributes `packing alignment`; Categories `registry access`;
+Project Settings `add reference` (the Project menu's References
+secondary) and `high DPI`; IDE-Features `dark mode` (the Window menu's
+Theme secondary); the IDE pages `new project dialog`, `find and
+replace`, `search and replace`, `memory window/panel`, `variables
+panel`, `locals window`, `diagnostics window`, `history panel/window`,
+`outline view/window/panel`.
+
+| | prose hit@1 | worse |
+|---|---|---|
+| before (41 new queries, 8 of them guards) | 73 of 108 | |
+| with the content | 80 of 108 | 0 |
+| with the entries | **105 of 108** | 0 |
+
+The live client matched the replica's top three for 10 of the new
+queries in the browser, with no new console errors.
+
+**Open for the user: `default property`.** A VB6 reader means a class's
+default member, which `[DefaultMember]` sets (Attributes). An entry
+there, main or secondary alike, puts it above CommandButton's `Default`
+property for the name-and-kind query `Default property` (1 -> 2). Not
+shipped; the prose query waits at 6.
+
+**Left for later.** `COM interop`: no clear target (Categories' COM
+and Automation list, Interfaces-CoClasses, ActiveX Registration).
+Content gaps: subclassing (only the FAQ mentions it), IntelliSense (no
+page names the feature), conditional breakpoints (the Debug menu shows
+none; check the IDE first).
+
+**Doubtful, noted, not changed.** `compile to exe` puts
+`TbExpressionService.Compile` first. `dark mode`, before its entry,
+put the site's own build docs (Documentation/Development) first: the
+builder docs are in the reader's search, and may crowd other
+site-tooling words.
+
+**The survey agent's "already fine" list was wrong at least once**:
+`optional parameters` landed on Compiler-Options. Rerun a list before
+using it as guards.
 
 ### Next steps
 
