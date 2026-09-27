@@ -6,7 +6,7 @@
 // as the code editor's intellisense does (getLiveDebugIntellisenseMonaco).
 // Only page script can ask any of them; the add-in API has no such call.
 //
-// Each test states what BETA 983 does. If one fails after an IDE update, the
+// Each test states what BETA 983 and 987 do. If one fails after an IDE update, the
 // IDE has changed: update P5 in WIP.HelpAddin.md, and the entry in
 // BUGS-TO-REPORT.md that the last hover test rests on, and then this file.
 //
@@ -120,9 +120,12 @@ describe("P5: what the compiler says about the name under the cursor", { skip: l
   test("hover on a variable gives its declaration, and on Debug.Print and a statement nothing", async () => {
     assert.equal(await hover(c, "c.Add", "c"), "*local variable* Dim c As Collection");
     assert.equal(await hover(c, "Nothing, count", "count"), "*parameter* ByVal count As Long");
-    assert.equal(await hover(c, "Debug.Print FindTheNeedle", "Debug"), null);
-    assert.equal(await hover(c, "Debug.Print FindTheNeedle", "Print"), null);
-    assert.equal(await hover(c, "Dim c As New", "Dim"), null);
+    // BETA 983 gives no hover here, and BETA 987 one whose text is empty.
+    const nothing = [["Debug.Print FindTheNeedle", "Debug"], ["Debug.Print FindTheNeedle", "Print"], ["Dim c As New", "Dim"]];
+    for (const [text, word] of nothing) {
+      const h = await hover(c, text, word);
+      assert.ok(h === null || h === "", `${word} in ${text}: ${JSON.stringify(h)}`);
+    }
     assert.match(await hover(c, "ByVal n As Long", "Long"), /^\*\*Long\*\*/);
   });
 
