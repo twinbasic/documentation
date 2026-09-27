@@ -12,8 +12,8 @@ Like WIP.md, this file is not rendered through tbdocs, so literal dashes are fin
 Everything needed to continue is in this file and in `eval/`; nothing
 depends on the session that wrote it.
 
-**Where it stands.** Rollout steps 1–5, two reader-intent rounds and the
-index pilot are done and committed, on branch
+**Where it stands.** Rollout steps 1–5, two reader-intent rounds, the
+index pilot and the qualified-name round are done and committed, on branch
 `claude/paintpicture-docs-runtime-f3250d`. Nothing is pushed. The working
 tree is clean; the last commit only records a hash in this file.
 
@@ -31,14 +31,16 @@ tree is clean; the last commit only records a hash in this file.
 | `ae880486` | pilot 1: prose queries can expect pages right behind (`behind`); ground truth intent-2 |
 | `70b73344` | pilot 2: hand-marked index entries, and the first five |
 
-Hit@10 went from 20.5% to 98.8%, and MRR from .182 to .962. By reader
-intent, rank 1 is right for 94.2% of queries (89.0% before the intent
+Hit@10 went from 20.5% to 99.98%, and MRR from .182 to .997. By reader
+intent, rank 1 is right for 99.5% of queries (89.0% before the intent
 steps), all 20 prose queries are at rank 1, no bare name is out of tier
 order, and no query got worse at any step.
 
-Where the remaining 466 rank-1 misses are, and why, is in
+The remaining 43 rank-1 misses: 34 bare names, in
 [What shipped, second round](#what-shipped-second-round-tiers-in-the-index)
-(less its 4 prose misses, which the pilot fixed).
+(25 language elements behind a section of their own page, 9 enum
+constants and members at rank 2), and 9 qualified names, in
+[What shipped, fourth round](#what-shipped-fourth-round-qualified-names).
 
 **The index pilot held up.** The user asked whether ranking tweaks are an
 uphill battle, since a book's index is marked by hand. The conclusion,
@@ -50,22 +52,33 @@ five entries put the three remaining prose misses at rank 1 with nothing
 worse. How it works, what it cost and what was measured on the way is in
 [What shipped, third round](#what-shipped-third-round-the-index-pilot).
 
-**Next: decide with the user whether to widen it.** The pilot planned a
-wider pass with agents only if the pilot held up, under these rules: an
-entry names the page a reader wants for that term, not a summary of the
-page; few entries per page; one main entry per term (the build enforces
-this). Open questions for that pass:
-- Where the candidate terms come from. The glossary is a source of
-  *terms*, never of targets. Every candidate needs a query in
-  `eval/search_prose_queries.json` first, so an entry is measured, not
-  assumed: the prose set is 20 queries and all now pass, so it no longer
-  discriminates.
-- Only a term the page's own words can't find gets an entry. Check first
-  where the term lands without one (`node eval/site_search.mjs "<term>"`).
+**Qualified names are done.** The user chose them before a wider index
+pass. `qualified` now weighs 500, and only qualified names reach it,
+typed with a dot or as two adjacent words: 423 queries better, none
+worse, and 99.8% of qualified queries at rank 1 (91.5% before).
 
-After that: the qualified names deep in the list (`Slider.*`,
-`MonthView.*` at 20–26), and the same-page ground-truth question
-(`DefInt` → a section of `Deftype`).
+**Next, in the order the user left them:**
+1. The 9 qualified misses left: 7 stemming collisions between siblings
+   (`Printer.Font` / `Printer.Fonts`), a qualified counterpart of
+   `exact`; and 2 member headings the build takes for the page's title
+   (`Shape.Shape`, `Timer.Timer`), a fix in `builder/search.mjs`'s
+   `extractSections`.
+2. The same-page ground-truth question (`DefInt` → a section of
+   `Deftype`), a decision for the user.
+3. The wider index pass, under the pilot's rules: an entry names the page
+   a reader wants for that term, not a summary of the page; few entries
+   per page; one main entry per term (the build enforces this). Agents
+   draft candidate terms and targets, and **the user approves every
+   target** before it goes into `eval/search_prose_queries.json`. Open
+   questions:
+   - Where the candidate terms come from. The glossary is a source of
+     *terms*, never of targets. Every candidate needs a query in
+     `eval/search_prose_queries.json` first, so an entry is measured, not
+     assumed: the prose set is 20 queries and all now pass, so it no longer
+     discriminates.
+   - Only a term the page's own words can't find gets an entry. Check
+     first where the term lands without one
+     (`node eval/site_search.mjs "<term>"`).
 
 **The user's criteria**, which govern every decision here:
 - A reader either finds what they want or doesn't. A small regression is
@@ -904,6 +917,102 @@ pin each fails it. `test.bat`, `check.bat` and a checked build pass.
 The boosts sit in the client beside every other boost, not in
 `docs/_config.yml`: the client reads no site config today.
 
+### What shipped, fourth round: qualified names
+
+Decided with the user: qualified names before a wider index pass.
+
+432 qualified queries missed rank 1: 338 at 2–5, 92 at 20–27. Every entry
+already held the right token (`qualified` keeps `FileListBox.Name` whole,
+and the query keeps it whole beside its parts), so this was weighting,
+not recall:
+- **The container's page came first** (333, most at rank 2):
+  `FileListBox.Name` → the FileListBox page, whose title matches
+  `filelistbox` at boost 200, above `#name`, whose `qualified` match
+  counted at 50.
+- **Headings naming several members fell furthest**: `Slider.KeyDown`,
+  under `KeyDown, KeyPress, KeyUp`, came 20th, behind every other
+  control's single `KeyDown`, since BM25 discounts its three-name title
+  and `names`.
+
+Measured with knobs in the replica, against intent-2's baseline:
+
+| `qualified` boost | plain words complete in `qualified` | hit@1 | worse / better |
+|---|---|---|---|
+| 50 (before) | yes | 94.18% | |
+| 200 | yes | 98.83% | 1 / 421 (`vbFile` 1 → 2) |
+| 1000 | yes | 99.41% | 4 / 423 (`error handling` 1 → 3, `System`, `TextAlign`, `vbFile`) |
+| 300 | no | 98.93% | 0 / 423 |
+| 500, 700, 1000 | no | 99.46% | 0 / 423 |
+
+The regressions all came from one mechanism: a plain word completing in
+`qualified` by the trailing wildcard, to every member of each container
+whose name it begins (`vbfile*` to all of `vbfileattribute.*`). At boost
+50 that was noise; at 500 it pulled a container up by the number of its
+members. So only a token with a split dot may complete there.
+
+The eval's symbol queries are one word each, so two-word queries were
+checked separately, on probes (`Form events`, `ListView events`,
+`TextBox properties`, `Printer object`, `DTPicker format`, `Slider value`,
+`FileListBox Name`, `Debug Print`, ...) and on every qualified symbol
+written as two words (`FileListBox Name`, 5108 queries, not saved as
+ground truth). The boost alone lost a good section from the top three on
+five probes, through the same mechanism in the all-words pass's REQUIRED
+clauses (`form*` completing to every `form.*`):
+
+| two-word variant | spaced hit@1 | worse / better than before | probes |
+|---|---|---|---|
+| before | 97.75% | | |
+| boost 500, REQUIRED unchanged | 98.84% | | 5 worse |
+| REQUIRED off `qualified` | | 36 gone from the results | fixed |
+| REQUIRED over all, scored off `qualified` | 96.93% | 45 / 0 | fixed |
+| the same, plus word pairs | 99.82% | 0 / 106 | fixed or better |
+| the same, pairs also completing | | | `File I/O` 1 → 2 |
+
+Taking `qualified` out of the REQUIRED clauses lost entries that name
+their container nowhere else (`_HiddenModule Input`,
+`CefEnvironmentOptions LogFilePath`), so presence and score are split: a
+REQUIRED clause over every text field at boost 0, which only decides who
+qualifies, and a second clause that scores the word off `qualified`.
+lunr ORs a REQUIRED clause's fields and adds boost-0 terms to the query
+vector at zero weight, so this changes no presence and no other score.
+Without `qualified`, though, two words naming a member (`FileListBox
+Name`) had nothing tying them together, so every two adjacent plain words
+are also a term on `qualified`, joined with a dot, at clause boost 10.
+
+**Shipped**, in all three copies: `qualified` at boost 500; plain words
+complete in the text fields less `qualified`; word pairs on `qualified`;
+the REQUIRED split. Against intent-2's baseline (`188c18c2`'s):
+
+| | before | after |
+|---|---|---|
+| hit@1 | 94.18% | 99.46% |
+| hit@10 | 98.83% | 99.98% |
+| MRR | .9627 | .9972 |
+| qualified hit@1 / hit@10 | 91.5% / 98.2% | 99.8% / 100% |
+| bare hit@1, prose, tier order | 98.8%, 20 of 20, 0 out | unchanged |
+| queries worse / better | | 0 / 423 |
+| two-word qualified (not in the baseline) | 97.75% | 99.82%, 0 worse |
+| search-data.json, heap | | unchanged: no new field or term |
+
+Both clients were checked in a browser against the replica: the same top
+three for 15 queries, `**` shows "No results found", no console errors.
+`test/search.test.mjs`'s qualified-name guard checks the online client's
+clauses by pattern and the replica by behaviour; each of five mutations
+(boost 50, plain words completing in `qualified`, no pairs, the REQUIRED
+clause scoring in `qualified`, the REQUIRED clause off `qualified`) fails
+it.
+
+Left at rank 1's door, 9 qualified queries:
+- **7 stemming collisions between siblings**: `Global.Printers` →
+  `Printer`, `OLE.Update` → `Updated`, `Printer.Fonts`, `Report.Page`,
+  `Collection.Item` → `Items`, and `GetHeaders` on both
+  `WebView2*Headers`. Porter stems both names alike, so they tie. For bare
+  names `exact` fixed this; a qualified equivalent is the next tweak.
+- **2 with no entry**: `Shape.Shape` and `Timer.Timer`. The member's
+  heading (`### Shape`, `### Timer`) reads the same as the page's title,
+  and the search-data build takes it for the title, so there's no
+  `#shape` entry for the symbol's URL to match. A builder fix.
+
 ### Next steps
 
 1. ~~Promote the intent ground truth into `eval/search_quality.mjs`.~~
@@ -915,10 +1024,10 @@ The boosts sit in the client beside every other boost, not in
    guard covers the fields and the query.
 4. ~~The tweak-shaped rank-1 failures.~~ Done; see "What shipped, second
    round". The operators came with it.
-5. ~~The index pilot.~~ Done; see "What shipped, third round". Next is
-   the user's decision on a wider pass (see "Resuming this work").
-6. Then the qualified names deep in the list, and the same-page
-   ground-truth question.
+5. ~~The index pilot.~~ Done; see "What shipped, third round".
+6. ~~The qualified names deep in the list.~~ Done; see "What shipped,
+   fourth round". What is left, and in what order, is in "Resuming this
+   work".
 
 ## Future work
 

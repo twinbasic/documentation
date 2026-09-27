@@ -151,9 +151,12 @@ function initSearch() {
             // a match inside a long field, and the qualified forms are longer;
             // splitting them keeps the short bare names scoring well on their
             // own. See builder/vendor/just-the-docs/README.md and
-            // WIP.Search.md's "Design" §2.
+            // WIP.Search.md's "Design" §2. `qualified` weighs most of the two
+            // since only a qualified name reaches it (see doSearch()), and
+            // naming one is the most specific thing a reader can type
+            // (WIP.Search.md, "What shipped, fourth round").
             this.field('names', { boost: 100 });
-            this.field('qualified', { boost: 50 });
+            this.field('qualified', { boost: 500 });
             // Patched: `exact` holds each bare name whole (see exactName()
             // below), for a query naming it exactly; `primary` holds the same
             // for the names that are types or language elements (the build
@@ -451,10 +454,12 @@ function searchLoaded(loadIndex) {
     // builder/vendor/just-the-docs/README.md and WIP.Search.md's "Design" §3.
     var DOT_SPLIT = /([A-Za-z_]\w*)\.(?=[A-Za-z_])/g;
     var allTokens = [];
+    var qualifiedTokens = [];
     queryTokens.forEach(function(token) {
       allTokens.push(token);
       var marked = token.str.replace(DOT_SPLIT, '$1\u0000');
       if (marked !== token.str) {
+        qualifiedTokens.push(token);
         marked.split('\u0000').forEach(function(part) {
           if (part.length > 1) {
             allTokens.push(token.clone(function() { return part; }));
@@ -464,6 +469,23 @@ function searchLoaded(loadIndex) {
     });
     queryTokens = allTokens;
 
+    // Patched: qualified names. `qualified` holds each `Container.Name`
+    // whole, so only a qualified name may complete there with the trailing
+    // wildcard. A plain word would complete to every member of each
+    // container its name begins (`vbfile*` to `vbfileattribute.*`). Two
+    // adjacent words, joined with a dot, name a member as a qualified name
+    // does (`FileListBox Name`). See WIP.Search.md, "What shipped, fourth
+    // round".
+    var plainTokens = queryTokens.filter(function(token) {
+      return qualifiedTokens.indexOf(token) === -1;
+    });
+    var pairTokens = [];
+    for (var p = 0; p + 1 < baseTokens.length; p++) {
+      if (qualifiedTokens.indexOf(baseTokens[p]) === -1 && qualifiedTokens.indexOf(baseTokens[p + 1]) === -1) {
+        pairTokens.push(baseTokens[p].clone(function(str) { return str + '.' + baseTokens[p + 1].str; }));
+      }
+    }
+
     // Patched: every field but `exact`, `primary` and `index`, which only
     // their own clauses below may search -- otherwise the trailing wildcard
     // `node*` matches `nodes_` there too. A query naming one thing also
@@ -472,6 +494,7 @@ function searchLoaded(loadIndex) {
     // handling", `error` on its own isn't what the reader named, but in
     // "With statement", `With` is.
     var textFields = ['title', 'content', 'names', 'qualified', 'page', 'relUrl'];
+    var plainFields = ['title', 'content', 'names', 'page', 'relUrl'];
     var words = input.split(/\s+/).filter(Boolean);
     var named = words.filter(function(w) {
       return KIND_WORDS.indexOf(w.toLowerCase().replace(/s$/, '')) === -1;
@@ -493,10 +516,15 @@ function searchLoaded(loadIndex) {
         fields: textFields,
         boost: 10
       });
-      query.term(queryTokens, {
+      query.term(plainTokens, {
+        fields: plainFields,
+        wildcard: lunr.Query.wildcard.TRAILING
+      });
+      query.term(qualifiedTokens, {
         fields: textFields,
         wildcard: lunr.Query.wildcard.TRAILING
       });
+      query.term(pairTokens, { fields: ['qualified'], boost: 10 });
       if (name) {
         query.term(exactName(name), { fields: ['exact', 'primary'] });
       }
@@ -511,17 +539,28 @@ function searchLoaded(loadIndex) {
     // entries that contain any. Each word is required as its stem with a
     // trailing wildcard, since the index holds stems (an unstemmed
     // `operator*` would miss `oper`); a whole word and a partly typed one
-    // both match. See WIP.Search.md, "Reader intent".
+    // both match. See WIP.Search.md, "Reader intent". A word found only in
+    // `qualified` still counts (an entry may name its container nowhere
+    // else), but scores there only if it is a qualified name, as in
+    // anyWords(): so the REQUIRED clause, which scores too, has boost 0, and
+    // a second clause scores the word.
     var results = [];
     if (baseTokens.length >= 2) {
       results = index.query(function (query) {
         anyWords(query);
         baseTokens.forEach(function(token) {
-          query.term(lunr.stemmer(token.clone()).toString(), {
+          var stem = lunr.stemmer(token.clone()).toString();
+          query.term(stem, {
             fields: textFields,
             wildcard: lunr.Query.wildcard.TRAILING,
             usePipeline: false,
-            presence: lunr.Query.presence.REQUIRED
+            presence: lunr.Query.presence.REQUIRED,
+            boost: 0
+          });
+          query.term(stem, {
+            fields: qualifiedTokens.indexOf(token) === -1 ? plainFields : textFields,
+            wildcard: lunr.Query.wildcard.TRAILING,
+            usePipeline: false
           });
         });
       });

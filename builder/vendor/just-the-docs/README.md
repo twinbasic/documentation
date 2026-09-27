@@ -136,7 +136,7 @@ filter, so the replica returns what the site does.
 
 **Two extra fields joined in from the symbol index.** `initSearch()` adds
 `this.field('names', { boost: 100 })` and `this.field('qualified', { boost:
-50 })`, and passes `docs[i].names || ''` / `docs[i].qualified || ''` in the
+500 })` (50 until the fourth round, below), and passes `docs[i].names || ''` / `docs[i].qualified || ''` in the
 matching `this.add({...})`. The values come from `builder/search.mjs`'s
 `joinSymbolsToEntries`, which attaches bare symbol names (`names`) and their
 `Container.Name` forms (`qualified`) to each `search-data.json` entry at
@@ -230,6 +230,9 @@ section that only mentioned it.** Four changes, measured in
 
 `exact` and `page` are derived in the browser; `primary` is the one field
 `search-data.json` gained (23 KB raw, 4 KB gzipped).
+`offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` adds the same three fields;
+`exactName()`, `KIND_WORDS` and the query changes sit outside
+`initSearch()`, so the offline build inherits them.
 
 **A page could not be found by a term its text never uses.** The `#If` /
 `#Const` page never says "conditional compilation". Authors now name such
@@ -262,9 +265,35 @@ third round: the index pilot":
 `offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` declares the same field and
 fills it and the content the same way; the helpers and the query sit outside
 `initSearch()`.
-`offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` adds the same three fields;
-`exactName()`, `KIND_WORDS` and the query changes sit outside
-`initSearch()`, so the offline build inherits them.
+
+**A qualified name found its container's page, or every other control's
+member of that name, first.** `FileListBox.Name` ranked the FileListBox
+page first, and `Slider.KeyDown`, documented under the heading `KeyDown,
+KeyPress, KeyUp`, ranked 20th. `qualified` held the right token, but at
+boost 50 it counted for less than a title naming the container. See
+[`../../../WIP.Search.md`](../../../WIP.Search.md)'s "What shipped, fourth
+round":
+
+- *Boost 500.* `qualified` now weighs more than any text field, since
+  naming a member with its container is the most specific thing a reader
+  can type.
+- *Only qualified names reach `qualified`.* With that weight, a plain word
+  completing there by the trailing wildcard (`vbfile*` to every
+  `vbfileattribute.*`) would pull a container's members up, so
+  `doSearch()` gives the wildcard clause for plain words `plainFields`,
+  the text fields less `qualified`. A token with a split dot keeps all of
+  them.
+- *Two words name a member too.* Every two adjacent plain words, joined
+  with a dot (`FileListBox Name` to `filelistbox.name`), are a term on
+  `qualified` at clause boost 10.
+- *Required, but not scored, in `qualified`.* In the all-words pass, a word
+  found only in `qualified` must still count (an entry may name its
+  container nowhere else), but a REQUIRED clause scores as well. So each
+  word is required over every text field at boost 0, and scored by a
+  second clause over `plainFields` (all text fields for a qualified name).
+
+`offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` carries the new boost; the
+query sits outside `initSearch()`.
 
 **The index was fetched and built synchronously on every page load, even
 for readers who never opened search.** About 1.3s and 240MB of heap on a

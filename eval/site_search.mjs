@@ -95,7 +95,7 @@ export function buildIndex(lunr, docs) {
     this.field("title", { boost: 200 });
     this.field("content", { boost: 2 });
     this.field("names", { boost: 100 });
-    this.field("qualified", { boost: 50 });
+    this.field("qualified", { boost: 500 });
     // Mirrors the exact-name, primary-name and page-title patches
     // (WIP.Search.md, "Reader intent"). `exact` and `primary` hold names as
     // exactName() writes them, from `names` and `primary`; `page` holds
@@ -191,7 +191,10 @@ function pinIndexFieldLengths(builder) {
 // Every field but `exact`, `primary` and `index`, which only their own
 // clauses may search: otherwise the trailing wildcard `node*` matches
 // `nodes_`.
+// A plain word, one that isn't a qualified name, completes with the
+// trailing wildcard in all of them but `qualified` (see search()).
 const TEXT_FIELDS = ["title", "content", "names", "qualified", "page", "relUrl"];
+const PLAIN_FIELDS = ["title", "content", "names", "page", "relUrl"];
 
 // Matches just-the-docs.js: the kinds tB/symbols.json gives its symbols,
 // less `enumvalue`, which nobody types. A query naming one thing plus its
@@ -233,14 +236,28 @@ export function search({ lunr, index }, input) {
   // query engine instead of matching nothing.
   const baseTokens = lunr.tokenizer(input).map((t) => lunr.trimmer(t)).filter((t) => t.str !== "");
   const queryTokens = [];
+  const qualifiedTokens = [];
   for (const token of baseTokens) {
     queryTokens.push(token);
     const marked = token.str.replace(DOT_SPLIT, "$1\u0000");
     if (marked !== token.str) {
+      qualifiedTokens.push(token);
       for (const part of marked.split("\u0000")) {
         if (part.length > 1) queryTokens.push(token.clone(() => part));
       }
     }
+  }
+  // Qualified names, matching just-the-docs.js: `qualified` holds each
+  // `Container.Name` whole, so only a qualified name may complete there
+  // with the trailing wildcard. A plain word would complete to every member
+  // of each container its name begins (`vbfile*` to `vbfileattribute.*`).
+  // Two adjacent words, joined with a dot, name a member as a qualified
+  // name does (`FileListBox Name`).
+  const plainTokens = queryTokens.filter((t) => !qualifiedTokens.includes(t));
+  const pairTokens = [];
+  for (let i = 0; i + 1 < baseTokens.length; i++) {
+    const [a, b] = [baseTokens[i], baseTokens[i + 1]];
+    if (!qualifiedTokens.includes(a) && !qualifiedTokens.includes(b)) pairTokens.push(a.clone(() => `${a.str}.${b.str}`));
   }
   // Exact name, matching just-the-docs.js: a query naming one thing also
   // matches that whole name, in `exact` and, if it is a type or language
@@ -262,7 +279,9 @@ export function search({ lunr, index }, input) {
   }
   const anyWords = (q) => {
     q.term(queryTokens, { fields: TEXT_FIELDS, boost: 10 });
-    q.term(queryTokens, { fields: TEXT_FIELDS, wildcard: lunr.Query.wildcard.TRAILING });
+    q.term(plainTokens, { fields: PLAIN_FIELDS, wildcard: lunr.Query.wildcard.TRAILING });
+    q.term(qualifiedTokens, { fields: TEXT_FIELDS, wildcard: lunr.Query.wildcard.TRAILING });
+    q.term(pairTokens, { fields: ["qualified"], boost: 10 });
     if (name) q.term(exactName(name), { fields: ["exact", "primary"] });
     for (const key of indexKeys) {
       q.term(key, { fields: ["index"], boost: 5, usePipeline: false });
@@ -273,18 +292,20 @@ export function search({ lunr, index }, input) {
   // for entries that contain every one of them, and only if there are none,
   // for entries that contain any. Each word is required as its stem with a
   // trailing wildcard, since the index holds stems (an unstemmed `operator*`
-  // would miss `oper`); a whole word and a partly typed one both match.
+  // would miss `oper`); a whole word and a partly typed one both match. A
+  // word found only in `qualified` still counts (an entry may name its
+  // container nowhere else), but scores there only if it is a qualified
+  // name, as in anyWords: so the REQUIRED clause, which scores too, has
+  // boost 0, and a second clause scores the word.
   let results = [];
   if (baseTokens.length >= 2) {
     results = index.query((q) => {
       anyWords(q);
       for (const token of baseTokens) {
-        q.term(lunr.stemmer(token.clone()).toString(), {
-          fields: TEXT_FIELDS,
-          wildcard: lunr.Query.wildcard.TRAILING,
-          usePipeline: false,
-          presence: lunr.Query.presence.REQUIRED,
-        });
+        const stem = lunr.stemmer(token.clone()).toString();
+        const wildcard = lunr.Query.wildcard.TRAILING;
+        q.term(stem, { fields: TEXT_FIELDS, wildcard, usePipeline: false, presence: lunr.Query.presence.REQUIRED, boost: 0 });
+        q.term(stem, { fields: qualifiedTokens.includes(token) ? TEXT_FIELDS : PLAIN_FIELDS, wildcard, usePipeline: false });
       }
     });
   }

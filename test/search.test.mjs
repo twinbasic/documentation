@@ -616,6 +616,68 @@ describe("reader-intent guard: online client, offline client, eval replica", () 
   });
 });
 
+// Qualified names (WIP.Search.md, "What shipped, fourth round"): only a
+// qualified name reaches `qualified`, typed with a dot or as two adjacent
+// words, and there it outweighs a title naming its container.
+describe("qualified-name guard: online client, eval replica", () => {
+  const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
+  const lunr = loadLunr(path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js"));
+
+  test("the online client and the eval replica keep plain words off `qualified` the same way", () => {
+    for (const [label, src] of [
+      ["just-the-docs.js", read("builder/vendor/just-the-docs/assets/js/just-the-docs.js")],
+      ["eval/site_search.mjs", read("eval/site_search.mjs")],
+    ]) {
+      assert.match(src, /\[\s*['"]title['"],\s*['"]content['"],\s*['"]names['"],\s*['"]page['"],\s*['"]relUrl['"]\s*\]/, `${label} has no field list without \`qualified\` for plain words`);
+      assert.match(src, /term\(plainTokens, \{\s*fields: (plainFields|PLAIN_FIELDS),\s*wildcard: lunr\.Query\.wildcard\.TRAILING\s*\}\)/, `${label}'s plain words complete in \`qualified\``);
+      assert.match(src, /term\(qualifiedTokens, \{\s*fields: (textFields|TEXT_FIELDS),\s*wildcard: lunr\.Query\.wildcard\.TRAILING\s*\}\)/, `${label}'s qualified names don't complete in \`qualified\``);
+      assert.match(src, /term\(pairTokens, \{ fields: \[['"]qualified['"]\], boost: 10 \}\)/, `${label} has no clause for two words naming a member`);
+      assert.match(src, /presence: lunr\.Query\.presence\.REQUIRED,\s*boost: 0/, `${label}'s required words score in \`qualified\``);
+    }
+  });
+
+  test("the replica ranks the member a qualified name names first", () => {
+    const docs = {
+      0: { doc: "FileListBox", title: "FileListBox", content: "A list of files. Name, Font.", names: "FileListBox", primary: "FileListBox", relUrl: "/FileListBox" },
+      1: { doc: "FileListBox", title: "Name", content: "The control's name.", names: "Name", qualified: "FileListBox.Name", relUrl: "/FileListBox#name" },
+      2: { doc: "Slider", title: "Slider", content: "A slider. KeyDown.", names: "Slider", primary: "Slider", relUrl: "/Slider" },
+      3: { doc: "Slider", title: "KeyDown, KeyPress, KeyUp", content: "Raised when a key is pressed.", names: "KeyDown KeyPress KeyUp", qualified: "Slider.KeyDown Slider.KeyPress Slider.KeyUp", relUrl: "/Slider#keys" },
+      4: { doc: "VbFileAttribute", title: "VbFileAttribute", content: "File attributes.", relUrl: "/VbFileAttribute" },
+      5: { doc: "StorageTypeConstants", title: "StorageTypeConstants", content: "Storage types. vbFile.", names: "StorageTypeConstants vbFile", qualified: "StorageTypeConstants.vbFile", primary: "StorageTypeConstants", relUrl: "/StorageType" },
+      6: { doc: "Input", title: "Input", content: "Reads from a file.", names: "Input", qualified: "_HiddenModule.Input", relUrl: "/Input" },
+      7: { doc: "_HiddenModule", title: "_HiddenModule", content: "Holds Input and Width.", names: "_HiddenModule", primary: "_HiddenModule", relUrl: "/HiddenModule" },
+      8: { doc: "Form", title: "Events", content: "The events a form raises.", relUrl: "/Form#events" },
+      9: { doc: "Form", title: "OLEDragDrop, OLEDragOver, OLEStartDrag", content: "Raised during a drag. These events of the form...", names: "OLEDragDrop OLEDragOver OLEStartDrag", qualified: "Form.OLEDragDrop Form.OLEDragOver Form.OLEStartDrag", relUrl: "/Form#ole" },
+    };
+    const attributes = ["vbNormal", "vbReadOnly", "vbHidden", "vbSystem", "vbVolume", "vbDirectory", "vbArchive", "vbAlias"];
+    Object.assign(docs[4], {
+      names: ["VbFileAttribute", ...attributes].join(" "),
+      qualified: attributes.map((a) => `VbFileAttribute.${a}`).join(" "),
+      primary: "VbFileAttribute",
+    });
+    for (let k = 0; k < 30; k++) {
+      docs[100 + k] = { doc: `Control${k}`, title: "KeyDown", content: "Raised when a key is pressed.", names: "KeyDown", qualified: `Control${k}.KeyDown`, relUrl: `/Control${k}#keydown` };
+      docs[200 + k] = { doc: `Control${k}`, title: "Name", content: "The control's name.", names: "Name", qualified: `Control${k}.Name`, relUrl: `/Control${k}#name` };
+      docs[300 + k] = { doc: "Form", title: `Member${k}`, content: "Runs before the form raises its other events.", names: `Member${k}`, qualified: `Form.Member${k}`, relUrl: `/Form#member${k}` };
+    }
+    const ctx = { lunr, index: buildIndex(lunr, docs) };
+    const urls = (q) => search(ctx, q).map((r) => docs[r.ref].relUrl);
+    // Before, the container's page came first, and a heading naming three
+    // events fell behind every other control's KeyDown.
+    assert.equal(urls("FileListBox.Name")[0], "/FileListBox#name");
+    assert.equal(urls("Slider.KeyDown")[0], "/Slider#keys");
+    // Two words name the member too.
+    assert.equal(urls("FileListBox Name")[0], "/FileListBox#name");
+    // A plain word that begins a container's name doesn't complete to its
+    // members.
+    assert.equal(urls("vbFile")[0], "/StorageType");
+    // Nor does a required word, though it still counts where only
+    // `qualified` holds it.
+    assert.equal(urls("Form events")[0], "/Form#events");
+    assert.ok(urls("_HiddenModule Input").includes("/Input"));
+  });
+});
+
 // Hand-marked index entries (WIP.Search.md, "What shipped, third round: the
 // index pilot"): the front matter's `index` / `index_also`, and the same on
 // a heading, which render.mjs's searchIndexMarksPlugin lifts off it into

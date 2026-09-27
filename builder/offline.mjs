@@ -365,7 +365,7 @@ const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
         // both this string and the vendored just-the-docs.js source and
         // asserts they agree, so the two copies cannot drift apart silently.
         this.field('names', { boost: 100 });
-        this.field('qualified', { boost: 50 });
+        this.field('qualified', { boost: 500 });
         // Mirrors the online build's exact-name, primary-name and
         // page-title patches (exactName() is the online copy's, which this
         // file keeps).
