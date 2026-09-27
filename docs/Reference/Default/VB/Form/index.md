@@ -782,7 +782,7 @@ Enters Windows' "What's This?" cursor mode --- the next click on a control raise
 Syntax: *object*.**WhatsThisMode**
 
 ### ZOrder
-{: .no_toc }
+{: .no_toc index="z-order" }
 
 Brings the form to the front or back of the top-level z-order.
 

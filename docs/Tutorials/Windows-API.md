@@ -2,6 +2,7 @@
 title: Calling the Windows API
 parent: Tutorials
 permalink: /Tutorials/Windows-API
+index: windows api tutorial
 ---
 
 # Calling the Windows API

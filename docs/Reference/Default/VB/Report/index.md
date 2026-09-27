@@ -779,7 +779,7 @@ Syntax: *object*.**TextWidth**( *Str* )
 : *required* A **String** to measure.
 
 ### ZOrder
-{: .no_toc }
+{: .no_toc index_also="z-order" }
 
 Brings the report window to the front or back of the top-level z-order.
 

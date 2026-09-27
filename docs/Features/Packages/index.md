@@ -3,6 +3,9 @@ title: Package Management
 parent: Features
 nav_order: 6
 permalink: /Features/Packages/
+index_also:
+  - twinpack
+  - namespaces
 redirect_from:
   - /Packages
   - /Packages/What-Is

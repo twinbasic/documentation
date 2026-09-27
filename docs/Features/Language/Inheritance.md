@@ -3,6 +3,7 @@ title: Inheritance
 parent: Language Syntax
 nav_order: 3
 permalink: /Features/Language/Inheritance
+index: inherited property
 ---
 
 # Inheritance

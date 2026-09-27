@@ -4,6 +4,7 @@ parent: Reference Section
 nav_order: 9
 has_toc: false
 permalink: /Reference/Enumerations
+index: enumerated constant
 ---
 
 # Enumerations

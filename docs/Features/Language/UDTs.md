@@ -3,6 +3,9 @@ title: UDT Enhancements
 parent: Language Syntax
 nav_order: 11
 permalink: /Features/Language/UDTs
+index_also:
+  - user defined types
+  - user types
 ---
 
 # Enhancements to User-Defined Types (UDTs)

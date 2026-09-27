@@ -3,6 +3,7 @@ title: Handler Method Syntax
 parent: Language Syntax
 nav_order: 15
 permalink: /Features/Language/Handlers
+index: event handlers
 ---
 
 # New Handler Class Member Syntax

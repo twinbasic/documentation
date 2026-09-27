@@ -4,6 +4,7 @@ parent: Package Management
 grand_parent: Features
 nav_order: 6
 permalink: /Features/Packages/File-Format
+index_also: twinpack
 ---
 
 # TWINPACK file format
