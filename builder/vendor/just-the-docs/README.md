@@ -335,6 +335,20 @@ invented words".
 
 `offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` calls it too.
 
+**A page's own title, typed whole, came second.** `Return Syntax` found
+the `Return` statement first, and `DTPicker Properties` the DTPicker
+class's heading, not its Properties section: a one-word entry matched one
+of the words in a heavier field (`title`, `names`), while the entry the
+reader named held the other word only in `page`. `boostWholeTitles()` runs
+after lunr, at the end of `doSearch()`: for a query of two or more words,
+a result whose title, or page title plus title, reads the same as the
+query (as `indexTermKey()` writes both) scores three times as much, and
+the results are sorted again. It adds no field and no index term; each
+entry's two keys are computed on its first appearance in a result and
+kept in `searchLoaded()`'s `titleKeys`. See
+[`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Fixed: whole
+titles". It sits outside `initSearch()`, so `offline.mjs` needs no change.
+
 **The index was fetched and built synchronously on every page load, even
 for readers who never opened search.** About 1.3s and 240MB of heap on a
 desktop -- see [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Design

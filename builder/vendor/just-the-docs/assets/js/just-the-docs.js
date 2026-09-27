@@ -355,6 +355,37 @@ function pinIndexFieldLengths(builder) {
   };
 }
 
+// Patched: a query of two or more words that reads the same as a result's
+// whole title, or its page title and title together, names that result:
+// `Return Syntax`, `DTPicker Properties`. lunr alone ranks a one-word entry
+// above it (`Return`, the DTPicker class's heading), since that entry matches
+// one word in a heavier field. Such a result scores WHOLE_TITLE_BOOST times
+// as much. Compared as indexTermKey() writes both, so case, punctuation and
+// word endings don't matter. `keys` holds each entry's two keys, by ref,
+// computed on its first appearance in a result. At five times, `_App
+// Comments` lifted the App page's Comments section, since the trimmer drops
+// the `_`; three leaves a margin. Called at the end of doSearch(). See
+// WIP.Search.md, "Fixed: whole titles".
+var WHOLE_TITLE_BOOST = 3;
+
+function boostWholeTitles(results, docs, baseTokens, keys) {
+  if (baseTokens.length < 2) return results;
+  var key = phraseKey(baseTokens);
+  var boosted = false;
+  results.forEach(function(result) {
+    var k = keys[result.ref];
+    if (!k) {
+      var doc = docs[result.ref];
+      k = keys[result.ref] = [indexTermKey(doc.title || ''), indexTermKey((doc.doc || '') + ' ' + (doc.title || ''))];
+    }
+    if (k[0] === key || k[1] === key) {
+      result.score *= WHOLE_TITLE_BOOST;
+      boosted = true;
+    }
+  });
+  return boosted ? results.sort(function(a, b) { return b.score - a.score; }) : results;
+}
+
 // Patched: the kinds tB/symbols.json gives its symbols, less `enumvalue`,
 // which nobody types. A query naming one thing plus its kind -- `With
 // statement`, `AddressOf operator` -- is treated as naming that thing.
@@ -366,6 +397,7 @@ function searchLoaded(loadIndex) {
   // in loadIndexNow() below.
   var index = null;
   var docs = null;
+  var titleKeys = {}; // boostWholeTitles()'s keys, by ref
   var indexLoading = false;
   var searchInput = document.getElementById('search-input');
   var searchResults = document.getElementById('search-results');
@@ -658,6 +690,7 @@ function searchLoaded(loadIndex) {
         });
       }
     }
+    results = boostWholeTitles(results, docs, baseTokens, titleKeys);
 
     var statusEl = document.getElementById('a11y-status');
     if (results.length == 0) {

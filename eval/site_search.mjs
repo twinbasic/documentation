@@ -275,7 +275,37 @@ export function load(site) {
 // client does it (the client must run on Safari before 16.4).
 const DOT_SPLIT = /([A-Za-z_]\w*)\.(?=[A-Za-z_])/g;
 
-export function search({ lunr, index }, input) {
+// Matches just-the-docs.js's boostWholeTitles(): a query of two or more
+// words that reads the same as a result's whole title, or its page title and
+// title together, scores WHOLE_TITLE_BOOST times as much (`Return Syntax`,
+// `DTPicker Properties`). Compared as indexTermKey() writes both. `keys`
+// holds each entry's two keys once computed, by ref.
+const WHOLE_TITLE_BOOST = 3;
+
+function boostWholeTitles(lunr, results, docs, baseTokens, keys) {
+  if (baseTokens.length < 2) return results;
+  const key = phraseKey(lunr, baseTokens);
+  let boosted = false;
+  for (const result of results) {
+    let k = keys.get(result.ref);
+    if (!k) {
+      const doc = docs[result.ref];
+      k = [indexTermKey(lunr, doc.title || ""), indexTermKey(lunr, `${doc.doc || ""} ${doc.title || ""}`)];
+      keys.set(result.ref, k);
+    }
+    if (k[0] === key || k[1] === key) {
+      result.score *= WHOLE_TITLE_BOOST;
+      boosted = true;
+    }
+  }
+  return boosted ? results.sort((a, b) => b.score - a.score) : results;
+}
+
+// The whole-title keys, per docs object, as the client keeps them for its
+// one docs object.
+const titleKeys = new WeakMap();
+
+export function search({ lunr, index, docs }, input) {
   // Patched, matching just-the-docs.js: trim each token as the index's own
   // pipeline did (lunr.trimmer), so `Date$` finds `date`, and drop tokens
   // left empty. That includes tokens made only of asterisks, which would
@@ -376,7 +406,8 @@ export function search({ lunr, index }, input) {
       );
     }
   }
-  return results;
+  if (!titleKeys.has(docs)) titleKeys.set(docs, new Map());
+  return boostWholeTitles(lunr, results, docs, baseTokens, titleKeys.get(docs));
 }
 
 // The composition report is why round 1's worst discoverability scores were

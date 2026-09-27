@@ -680,7 +680,7 @@ describe("qualified-name guard: online client, eval replica", () => {
       docs[200 + k] = { doc: `Control${k}`, title: "Name", content: "The control's name.", names: "Name", qualified: `Control${k}.Name`, relUrl: `/Control${k}#name` };
       docs[300 + k] = { doc: "Form", title: `Member${k}`, content: "Runs before the form raises its other events.", names: `Member${k}`, qualified: `Form.Member${k}`, relUrl: `/Form#member${k}` };
     }
-    const ctx = { lunr, index: buildIndex(lunr, docs) };
+    const ctx = { lunr, index: buildIndex(lunr, docs), docs };
     const urls = (q) => search(ctx, q).map((r) => docs[r.ref].relUrl);
     // Before, the container's page came first, and a heading naming three
     // events fell behind every other control's KeyDown.
@@ -748,7 +748,7 @@ describe("qualified-name guard: online client, eval replica", () => {
       2: { doc: "Printer", title: "Fonts", content: "The fonts the printer has.", names: "Fonts", qualified: "Printer.Fonts", relUrl: "/Printer#fonts" },
     };
     for (let k = 0; k < 30; k++) docs[100 + k] = { doc: `Page ${k}`, title: `Page ${k}`, content: "unrelated text", relUrl: `/P${k}` };
-    const ctx = { lunr, index: buildIndex(lunr, docs) };
+    const ctx = { lunr, index: buildIndex(lunr, docs), docs };
     const first = (q) => docs[search(ctx, q)[0].ref].relUrl;
     // Before, both names ranked their entries in the same order, since
     // every clause saw the one stem `printer.font`.
@@ -961,7 +961,7 @@ describe("index-term guard: online client, offline client, eval replica", () => 
     // pinIndexFieldLengths(), the index field's average length falls toward
     // zero and a marked entry's match counts for almost nothing.
     for (let k = 4; k < 200; k++) docs[k] = { doc: `Page ${k}`, title: `Page ${k}`, content: "unrelated text", relUrl: `/P${k}` };
-    const ctx = { lunr, index: buildIndex(lunr, docs) };
+    const ctx = { lunr, index: buildIndex(lunr, docs), docs };
     const urls = (q) => search(ctx, q).map((r) => docs[r.ref].relUrl);
     assert.deepEqual(urls("late binding").slice(0, 2), ["/Types#object", "/CreateObject"]);
     // Naming only part of a term doesn't match it.
@@ -1015,5 +1015,77 @@ describe("token-set key guard: online client, offline client, eval replica", () 
     assert.match(read("builder/vendor/just-the-docs/assets/js/just-the-docs.js"), /lunr\.tokenizer = dotRunSplitTokenizer;\s*\}\s*separateTokenSetKeys\(\);/);
     assert.match(read("builder/offline.mjs"), /lunr\.tokenizer = dotRunSplitTokenizer;\s*\}\s*(\/\/[^\n]*\n\s*)*separateTokenSetKeys\(\);/);
     assert.match(read("eval/site_search.mjs"), /\s+separateTokenSetKeys\(lunr\);\s+return lunr;/);
+  });
+});
+
+// Whole titles (WIP.Search.md, "Fixed: whole titles"): a query of two or more
+// words that reads the same as a result's title, or its page title plus
+// title, scores three times as much, after lunr ranks.
+describe("whole-title guard: online client, eval replica", () => {
+  const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
+  const lunr = loadLunr(path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js"));
+  const onlineSrc = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js");
+  const evalSrc = read("eval/site_search.mjs");
+  const fn = (src, name, label) => {
+    const m = src.match(new RegExp(`function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\r?\\n\\}`));
+    assert.ok(m, `${label} has no ${name}()`);
+    return m[0];
+  };
+  const boost = (src, label) => {
+    const m = src.match(/WHOLE_TITLE_BOOST = (\d+(\.\d+)?);/);
+    assert.ok(m, `${label} has no WHOLE_TITLE_BOOST`);
+    return m[0];
+  };
+  const names = ["phraseKey", "indexTermKey", "boostWholeTitles"];
+  const load = (src, label) =>
+    `var ${boost(src, label)}\n` + names.map((n) => fn(src, n, label)).join("\n") + "\nreturn boostWholeTitles;";
+
+  test("both boost the same results by the same factor", () => {
+    const online = new Function("lunr", load(onlineSrc, "just-the-docs.js"))(lunr);
+    const replica = new Function(load(evalSrc, "eval/site_search.mjs"))();
+    assert.equal(boost(onlineSrc, "just-the-docs.js"), boost(evalSrc, "eval/site_search.mjs"));
+    const docs = {
+      0: { doc: "DTPicker", title: "DTPicker class" },
+      1: { doc: "Return Syntax", title: "Return Syntax" },
+      2: { doc: "DTPicker", title: "Properties" },
+      3: { doc: "Other", title: "DTPicker-Properties!" },
+      4: {},
+    };
+    const results = () => [0, 1, 2, 3, 4].map((ref) => ({ ref: String(ref), score: [10, 6, 4, 1, 0.5][ref] }));
+    const tokens = (q) => lunr.tokenizer(q).map((t) => lunr.trimmer(t)).filter((t) => t.str !== "");
+    const run = (q) => {
+      const a = online(results(), docs, tokens(q), {});
+      const b = replica(lunr, results(), docs, tokens(q), new Map());
+      assert.deepEqual(a, b, `the two rank ${JSON.stringify(q)} differently`);
+      return a.map((r) => r.ref);
+    };
+    // The section, by its page title plus its own; and a title spelled
+    // with other punctuation and case.
+    assert.deepEqual(run("dtpicker properties"), ["2", "0", "1", "3", "4"]);
+    assert.deepEqual(run("Return syntax"), ["1", "0", "2", "3", "4"]);
+    // One word is never boosted, nor is part of a title.
+    assert.deepEqual(run("DTPicker"), ["0", "1", "2", "3", "4"]);
+    assert.deepEqual(run("DTPicker Properties class"), ["0", "1", "2", "3", "4"]);
+  });
+
+  test("both apply it to the final results", () => {
+    assert.match(onlineSrc, /var titleKeys = \{\};/, "just-the-docs.js keeps no keys");
+    assert.match(onlineSrc, /\}\s*results = boostWholeTitles\(results, docs, baseTokens, titleKeys\);\s*var statusEl/, "just-the-docs.js doesn't boost the final results");
+    assert.match(evalSrc, /return boostWholeTitles\(lunr, results, docs, baseTokens, titleKeys\.get\(docs\)\);\s*\}/, "the replica doesn't boost the final results");
+  });
+
+  test("the replica ranks a page's section first by its whole title", () => {
+    const docs = {
+      0: { doc: "DTPicker", title: "DTPicker class", content: "A date and time picker control. The field shows the date, formatted per Format; its properties set the rest.", relUrl: "/DTPicker#dtpicker-class" },
+      1: { doc: "DTPicker", title: "Properties", content: " ", relUrl: "/DTPicker#properties" },
+    };
+    // As on the site, a few percent of entries are a Properties section,
+    // so lunr alone puts the class's heading first: it holds the rarer word
+    // in `title`, the section only in `page`.
+    for (let k = 2; k < 20; k++) docs[k] = { doc: `Control${k}`, title: "Properties", content: " ", relUrl: `/Control${k}#properties` };
+    for (let k = 20; k < 1000; k++) docs[k] = { doc: `Page ${k}`, title: `Page ${k}`, content: "unrelated text", relUrl: `/P${k}` };
+    const urls = (q) => search({ lunr, index: buildIndex(lunr, docs), docs }, q).map((r) => docs[r.ref].relUrl);
+    assert.equal(urls("DTPicker Properties")[0], "/DTPicker#properties");
+    assert.equal(urls("DTPicker")[0], "/DTPicker#dtpicker-class");
   });
 });
