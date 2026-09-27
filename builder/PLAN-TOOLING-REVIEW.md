@@ -558,6 +558,65 @@ whole corpus takes about 34 ms.
 **Verify.** The probes. Over every page under `docs/`, `blockRegions` finds the same 1,371
 fences as `check_code_regions.mjs`'s own pass over the tokens.
 
+**Landed.** `lib/markdown.mjs` exports `blockRegions(src, { md })`, `maskCode(src, { md,
+indented })`, `splitCodeSpans(line)`, `splitOnMarker(src, isMarker, { md })` and `mapLines(src,
+fn)`, the line-splice helper. `lib/frontmatter.mjs` exports `parseFrontmatter(raw)`. Nothing
+adopts either yet. `check_code_regions.mjs` gained eleven module probes, one of them the
+sixteen code-span cases, and its sweep now checks on every page that `blockRegions` gives the
+full parse's fences, code blocks and HTML blocks at the same lines; its summary line adds the
+fence count. `lib/README.md`, Tools.md's list entry and section, Extending.md's "Say what a
+pass covered" and WIP.md's gate row say so.
+
+What the module decides, which later entries rely on:
+- **Lines** end at CRLF, LF or a lone CR, as in CommonMark, and are 0-based. `blockRegions`
+  applies markdown-it's `normalize` rule itself, since a block-only parse skips it: without
+  it a CRLF closing fence closes nothing. `mapLines` and `splitOnMarker` split the same way,
+  so a region's `start` and `end` index what they see. Neither gives a line for the empty
+  remainder after a final line ending, where `split("\n")` gives one (C35, C36).
+- **A region** is `{ type, start, end, markup, info, content }`: a half-open range whose
+  lines keep their blockquote and list prefixes, and markdown-it's token fields. Regions are
+  disjoint and in document order.
+- **`maskCode`** replaces a fence whole, prefixes included, with one line that starts with a
+  backtick, as `maskCodeRegions` did; the line's ending stays outside the placeholder.
+  Code spans are masked on every other line, HTML blocks included, and indented code blocks
+  only under `indented: true`.
+- **`splitOnMarker`** returns `{ marker, start, lines }[]`: first the lines before any marker,
+  with `marker` null, then each marker line's text and index with the lines after it, line
+  endings dropped. A line inside any region, HTML blocks included, is never a marker.
+- **`splitCodeSpans`** is `convert_em_dash_separators.mjs`'s `splitInlineCode` verbatim, so
+  V1's equivalence with `maskInlineCode` carries over. It scans backticks only: the entry's
+  "backtick and tilde run scanner" is wrong, since a code span cannot be written with tildes.
+  Its two known gaps are stated beside it, and both copies had them: a span over two lines
+  is not seen, and a backslash before a backtick does not stop it opening a span.
+- **`parseFrontmatter`** returns `{ data, content }`, or null when the first line is not
+  `---`. It differs from gray-matter only on input no page holds (C40, C41): a block closes
+  only at a line that is `---` with optional trailing whitespace, where gray-matter closes at
+  the first `\n---` whatever follows; nothing may follow the opening `---` but whitespace,
+  where gray-matter reads a language name there; an unclosed block throws, where gray-matter
+  parses the rest of the file as YAML; a block that parses to anything but a mapping throws.
+  An empty block, or one of only comments, gives `{}`, as gray-matter's does. A YAML error
+  names the line of the file, because the parse is given a newline in place of the opener.
+
+**Verify.** The eleven module probes and `--self-test` pass. Over all 912 pages
+`blockRegions` agrees with the full parse, and finds **1,372 fences, not 1,371**: one has
+been added since the review. Each of eight faults put into the modules fails the gate:
+dropping the newline normalisation (the CRLF probe and 598 pages), a marker split that
+ignores regions, a span closed by a longer run, `blockRegions` ignoring the parser passed,
+indented blocks always masked, the placeholder losing its line ending (three probes), no BOM
+strip, and no stand-in line for js-yaml (the error-line probe). `maskCodeRegions` fails the
+A3-1 probe's mask assertion: it masks the ```` ```abc`def ```` line and all after it as a
+fence. Ahead of C32 and C40, two scratch comparisons over the corpus: `maskCode` with the
+site's parser against `maskCodeRegions`, on the content `render.mjs` sees, gives the same
+masked text on 905 of 912 pages (the other seven are under C32); `parseFrontmatter` against
+gray-matter as `discover.mjs` calls it gives the same result on all 912 pages and on the two
+tracked `.html` pages, which have frontmatter too: data deep-equal, content byte-equal. The
+tree comparison differs only where the commit edits pages: Tools and Extending online and
+offline, the search data, and `book.html`. Nothing in `builder/` imports the modules yet.
+
+Writing the modules, the Write tool turned a four-digit `\u` escape into the character it
+names, twice; a scan for raw non-ASCII found both. WIP.md's Don'ts now say so, in the commit
+before this one.
+
 ### C32 — `render: the pre-render rewrites ask lib/markdown what is code`
 
 **A3-1 (R1), first half.** `maskCodeRegions` (`render.mjs:141-175`) accepts a backtick fence
@@ -572,6 +631,20 @@ site's instance and `indented: false` as today. `maskCodeRegions` and `maskInlin
 
 **Verify.** The tree comparison identical, since no page holds the shape.
 `check_code_regions.mjs` clean, its mirror-fault probes included.
+
+**Found in C31: the new mask covers seven fences the old one does not.** `maskCodeRegions`
+masks a fence only when nothing but up to three spaces or tabs precedes its opener, and
+`maskCode` masks every fence markdown-it finds. On the content `render.mjs` sees, with the site's parser, the
+two masks give the same text on 905 of 912 pages. The other seven each hold a `> ```tb`
+fence inside an admonition, which only the new mask hides: `CEF/CefBrowser/index.md`,
+`WebView2/WebView2/index.md`, `tbIDE/HtmlElement.md`, `Core/If-Then-Else.md`,
+`Core/Option.md`, `Core/WithEvents.md` and `VBA/Interaction/InputBox.md`. The tree comparison
+should still come out identical, but that is reasoned, not measured: `check_code_regions.mjs`
+already shows that no rewrite alters those fences, and `rewriteAdmonitions` runs after the
+restore. If it differs, look at those seven pages first. Two more things this commit must
+settle. `applyPreRenderRewrites` takes no parser today, so it needs one to pass the site's.
+And `check_code_regions.mjs` calls it: with the bare parser by default, the gate would mask
+differently from the build wherever the definition-list plugin makes a fence.
 
 ### C33 — `render: admonitions find their fences through lib/markdown`
 

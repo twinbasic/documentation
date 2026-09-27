@@ -501,7 +501,7 @@ wrapper:
 | `check.bat` | `check_tree_fresh` | the tree is not older than the sources that produced it |
 | `check.bat` | `check_dot_fit` | every diagram label sits inside the box Graphviz drew for it |
 | `check.bat` | `pick_a11y_sample --check`, `check_a11y` | see [WIP.A11y.md](WIP.A11y.md) |
-| `test.bat` | `check_code_regions` | no source or HTML rewrite altered a code region |
+| `test.bat` | `check_code_regions` | no source or HTML rewrite altered a code region; `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes, and the block parse finds what the full parse finds |
 | `test.bat` | `check_regex_safety` | no regex in the tree can backtrack exponentially |
 | `test.bat` | `check_symbol_index` | the symbol index still places each kind of symbol, from fixtures |
 | `test.bat` | `check_ci_workflows` | both CI workflows run every wrapper gate, with the same arguments and order, and build with `build.bat`'s flags |

@@ -58,13 +58,25 @@
 // contains a backtick -- and markdown-it does not build a code span inside that
 // context anyway, so there is no code region there to damage today. If a page
 // ever does put code inside raw HTML, this gate will not speak up.
+//
+// THE MODULES
+//
+// It is also the gate on lib/markdown.mjs and lib/frontmatter.mjs, which the
+// tools ask what in a page is code and where its frontmatter ends. Their
+// probes ride along too, and the sweep checks on every page that
+// blockRegions, which parses blocks only, finds exactly the fences, code
+// blocks and HTML blocks of the full parse the comparison already makes.
 
+import assert from "node:assert/strict";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import MarkdownIt from "markdown-it";
+import deflist from "markdown-it-deflist";
 import { applyPreRenderRewrites } from "../builder/render.mjs";
+import { parseFrontmatter } from "../lib/frontmatter.mjs";
+import { blockRegions, mapLines, maskCode, splitCodeSpans, splitOnMarker } from "../lib/markdown.mjs";
 import { markdownFiles } from "../lib/markdown-files.mjs";
 
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -87,6 +99,12 @@ function codeRegions(src) {
   };
   walk(md.parse(src, {}));
   return out;
+}
+
+// The block regions of a full parse, in the form regionsOf gives blockRegions'.
+const REGION_TYPES = new Set(["fence", "code_block", "html_block"]);
+function parsedRegions(src) {
+  return md.parse(src, {}).filter((t) => REGION_TYPES.has(t.type)).map((t) => `${t.type} ${t.map[0]}-${t.map[1]}`);
 }
 
 // The real chain, imported from render.mjs rather than reconstructed here.
@@ -164,6 +182,107 @@ const ADMONITION_PROBES = [
     "prose\n\n~~~markdown\nsample\n```\n~~~\n\n> [!NOTE]\n> body\n\n```tb\nDim y\n```\n"],
 ];
 
+// The regions blockRegions reports, in a form assert can compare at a glance.
+const regionsOf = (src, options) => blockRegions(src, options).map((r) => `${r.type} ${r.start}-${r.end}`);
+
+// A line's code-span segments, code in braces, segments joined by "|".
+const spansOf = (line) => splitCodeSpans(line).map((s) => (s.code ? `{${s.text}}` : s.text)).join("|");
+
+// One per shape the scanner has to get right: an empty line, none, runs of one,
+// two and four, an unmatched run, runs of another length inside a span, spans
+// side by side and at either end of the line, and three lengths on one line.
+const CODE_SPAN_CASES = [
+  ["", ""],
+  ["no backticks here", "no backticks here"],
+  ["a `b` c", "a |{`b`}| c"],
+  ["``a ` b``", "{``a ` b``}"],
+  ["x ````y```` z", "x |{````y````}| z"],
+  ["a ` b", "a ` b"],
+  ["`a``b`", "{`a``b`}"],
+  ["``a`b``", "{``a`b``}"],
+  ["`a` `b`", "{`a`}| |{`b`}"],
+  ["`a`x`b`", "{`a`}|x|{`b`}"],
+  ["`x` at the start", "{`x`}| at the start"],
+  ["at the end `x`", "at the end |{`x`}"],
+  ["``", "``"],
+  ["` `", "{` `}"],
+  ["``a`", "``a`"],
+  ["`a` ``b`` ```c```", "{`a`}| |{``b``}| |{```c```}"],
+];
+
+// Each probe throws an assert.AssertionError when the module answers wrongly.
+const MODULE_PROBES = [
+  // A3-1. CommonMark refuses a backtick in a backtick fence's info string, so
+  // this opens no fence and the admonition is prose. maskCodeRegions masked it
+  // as a fence while stashCodeFences did not, so one rewrite saw code where
+  // the next saw prose.
+  ["a backtick in a backtick fence's info string opens no fence", () => {
+    const src = "```abc`def\n> [!NOTE]\n> body\n";
+    assert.deepEqual(regionsOf(src), []);
+    assert.equal(maskCode(src).masked, src);
+    assert.deepEqual(regionsOf("~~~abc`def\nx\n~~~\n"), ["fence 0-3"]);
+  }],
+  ["a fence inside a blockquote is masked whole, markers and all", () => {
+    const src = "> text\n> ```tb\n> *** x ***\n> ```\n";
+    assert.deepEqual(regionsOf(src), ["fence 1-4"]);
+    const { masked, restore } = maskCode(src);
+    assert.equal(masked, "> text\n`\u0000CM0\u0000`\n");
+    assert.equal(restore(masked), src);
+  }],
+  ["a fence inside a list item, and inside a blockquote inside one", () => {
+    assert.deepEqual(regionsOf("- item\n\n  ```tb\n  x\n  ```\n"), ["fence 2-5"]);
+    assert.deepEqual(regionsOf("- item\n\n  > ```tb\n  > x\n  > ```\n"), ["fence 2-5"]);
+  }],
+  ["an indented code block is masked only when asked", () => {
+    const src = "text\n\n    *** x ***\n";
+    assert.deepEqual(regionsOf(src), ["code_block 2-3"]);
+    assert.equal(maskCode(src).masked, src);
+    assert.equal(maskCode(src, { indented: true }).masked, "text\n\n`\u0000CM0\u0000`\n");
+  }],
+  ["the parser a caller passes decides what is a block", () => {
+    // Only a parser with the site's definition-list plugin sees a fence after
+    // `: `. A bare one reads the closing marker as an opener instead.
+    const src = "Term\n: ```tb\n  x\n  ```\n";
+    assert.deepEqual(regionsOf(src), ["fence 3-4"]);
+    assert.deepEqual(regionsOf(src, { md: new MarkdownIt({ html: true }).use(deflist) }), ["fence 1-4"]);
+  }],
+  ["code spans: sixteen shapes", () => {
+    for (const [line, want] of CODE_SPAN_CASES) assert.equal(spansOf(line), want, JSON.stringify(line));
+  }],
+  ["CRLF and lone CR line endings come back as they went in", () => {
+    const src = "a\r\n\r\n```tb\r\n*** x ***\r\n```\r\nb `c` d\r\n";
+    assert.deepEqual(regionsOf(src), ["fence 2-5"]);
+    const { masked, restore } = maskCode(src);
+    assert.equal(masked, "a\r\n\r\n`\u0000CM0\u0000`\r\nb `\u0000CM1\u0000` d\r\n");
+    assert.equal(restore(masked), src);
+    assert.equal(mapLines("a\r\nb\nc\rd", (s) => s.toUpperCase()), "A\r\nB\nC\rD");
+    assert.deepEqual(regionsOf("x\r```tb\ry\r```\rz"), ["fence 1-4"]);
+  }],
+  ["a fenced --- does not start a section", () => {
+    const src = "top\n---\n```yaml\nk: v\n---\n```\ntail\n";
+    assert.deepEqual(splitOnMarker(src, (line) => line === "---"), [
+      { marker: null, start: 0, lines: ["top"] },
+      { marker: "---", start: 1, lines: ["```yaml", "k: v", "---", "```", "tail"] },
+    ]);
+  }],
+  ["frontmatter that markdown-it would read as a heading", () => {
+    const src = "---\ntitle: X\npermalink: /y\n---\n\n# Heading\n";
+    assert.deepEqual(parseFrontmatter(src), { data: { title: "X", permalink: "/y" }, content: "\n# Heading\n" });
+  }],
+  ["frontmatter behind a BOM, and content with CRLF endings", () => {
+    assert.deepEqual(parseFrontmatter("\u{FEFF}---\ntitle: X\n---\nbody\n"), { data: { title: "X" }, content: "body\n" });
+    assert.deepEqual(parseFrontmatter("---\r\ntitle: X\r\n---\r\nbody\r\n"), { data: { title: "X" }, content: "body\r\n" });
+    assert.deepEqual(parseFrontmatter("---\n# only a comment\n---\n"), { data: {}, content: "" });
+  }],
+  ["what is not frontmatter, and what is broken frontmatter", () => {
+    assert.equal(parseFrontmatter("----\nx: 1\n----\n"), null);
+    assert.equal(parseFrontmatter("text\n---\nx: 1\n---\n"), null);
+    assert.throws(() => parseFrontmatter("---\nx: 1\n"), /never closed/);
+    assert.throws(() => parseFrontmatter("---\n- a list\n---\n"), /not a mapping/);
+    assert.throws(() => parseFrontmatter("---\nok: 1\nbad: [\n---\n"), /\(4:1\)/);
+  }],
+];
+
 async function main(argv) {
   const verbose = argv.includes("--verbose");
 
@@ -197,16 +316,41 @@ async function main(argv) {
     console.log(`        the admonition was not rewritten -- the fence stasher`);
     console.log(`        mistook the prose around it for code`);
   }
+  // Anything but a failed assertion is the gate breaking, and goes to exit 2.
+  for (const [name, probe] of MODULE_PROBES) {
+    try {
+      probe();
+    } catch (err) {
+      if (!(err instanceof assert.AssertionError)) throw err;
+      failed++;
+      console.log(`FAIL  probe: ${name}`);
+      for (const line of err.message.split("\n")) console.log(`        ${line}`);
+    }
+  }
 
   if (!failed) {
     console.log(`ok    ${PROBES.length} probes: no rewrite alters a code region`);
     console.log(`ok    ${ADMONITION_PROBES.length} probes: a rewrite still fires on prose beside code`);
+    console.log(`ok    ${MODULE_PROBES.length} probes: lib/markdown.mjs and lib/frontmatter.mjs`);
   }
 
   const files = await markdownFiles(ROOT);
   let touched = 0;
+  let fences = 0;
   for (const rel of files) {
     const src = await fs.readFile(path.join(ROOT, rel), "utf8");
+    const parsed = parsedRegions(src);
+    const found = regionsOf(src);
+    fences += parsed.filter((r) => r.startsWith("fence ")).length;
+    if (found.join("\n") !== parsed.join("\n")) {
+      failed++;
+      console.log(`FAIL  ${rel}: blockRegions finds ${found.length} region(s), the full parse ${parsed.length}`);
+      if (verbose) {
+        let i = 0;
+        while (i < found.length && found[i] === parsed[i]) i++;
+        console.log(`        first difference: ${found[i] ?? "none"} against ${parsed[i] ?? "none"}`);
+      }
+    }
     const findings = compare(src);
     if (!findings.length) continue;
     touched++;
@@ -221,8 +365,8 @@ async function main(argv) {
   }
 
   console.log(
-    `check_code_regions: ${files.length} file(s), ${touched} with altered code regions`
-    + (failed ? "" : " -- clean"),
+    `check_code_regions: ${files.length} file(s), ${touched} with altered code regions,`
+    + ` ${fences} fence(s) in the full parse` + (failed ? "" : " -- clean"),
   );
   process.exit(failed ? 1 : 0);
 }

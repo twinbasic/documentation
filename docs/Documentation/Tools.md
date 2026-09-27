@@ -72,7 +72,7 @@ The tests the toolchain has to pass. Ten steps, each stopping the run if it fail
 3. [`scripts/check_ci_workflows.mjs`](#check-ci-workflows) --- verifies both CI workflows run the gates the wrappers run, and build as `build.bat` does.
 4. [`scripts/check_lint.mjs`](#check-lint) --- runs Biome over the tooling and fails on any finding, warnings included.
 5. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
-6. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span.
+6. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span, and that `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes.
 7. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
 8. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
 9. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
@@ -425,9 +425,11 @@ Probes ride along in the normal run, each a defect this repository actually ship
 
 The admonition probes test the mirror fault, which the region comparison structurally cannot see: **a rewrite that misreads what is code can also fail to fire on real prose**, and the regions still come back identical because the text was only stashed and restored. `Reference/Attributes.md` shipped all six of its admonitions as the literal text `[!NOTE]` for exactly that reason --- a `[Description(...)]` sample whose argument is a Markdown string containing two fence markers as twinBASIC string literals, which the fence stasher closed the surrounding fence on. Every pairing after it was off by one.
 
+It is also the gate on `lib/markdown.mjs` and `lib/frontmatter.mjs`, the modules that tell the tools what in a page is code and where its frontmatter ends. Their probes run with the others, and on every page the sweep checks that `blockRegions`, which parses blocks only, finds exactly the fences, code blocks and HTML blocks of a full parse. The summary line gives the number of fences that full parse found.
+
 `--verbose` prints the first few altered regions of each failing file, before and after. `--self-test` replaces the normal run rather than adding to it, so neither the probes nor the sweep runs: it de-indents the body of one small fence by hand and passes only if the comparison notices. That proves the comparator can still see a change, and nothing more --- it runs no rewrite at all.
 
-Exits 1 when a code region differs, when a probe's admonition is not rewritten, or when `--self-test`'s de-indent goes unnoticed, and 2 when the gate itself cannot run. [When `test.bat` fails in `check_code_regions`](Extending#code-regions-altered) says what to change.
+Exits 1 when a code region differs, when a probe's admonition is not rewritten, when a module probe fails or the two parses disagree on a page, or when `--self-test`'s de-indent goes unnoticed, and 2 when the gate itself cannot run. [When `test.bat` fails in `check_code_regions`](Extending#code-regions-altered) says what to change.
 
 ### check_gate_lists.mjs
 {: #check-gate-lists }
