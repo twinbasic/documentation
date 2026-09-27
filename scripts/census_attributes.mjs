@@ -75,6 +75,7 @@
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseAttributes } from "./lib/attributes-doc.mjs";
 import { findIde } from "./lib/tb-install.mjs";
 import { defaultCache, exportPackages, packageName } from "./lib/tb-packages.mjs";
 
@@ -371,19 +372,7 @@ function scanFile(file, pkg) {
 // ------------------------------------------------------ documented attributes
 function documentedAttributes() {
   if (!existsSync(ATTR_DOC)) return null;
-  const out = new Map();
-  const lines = readFileSync(ATTR_DOC, "utf8").replace(/\r\n?/g, "\n").split("\n");
-  let cur = null;
-  lines.forEach((line, i) => {
-    const m = /^Syntax:\s*\*\*\[(\w+)/.exec(line);
-    if (m) { cur = { name: m[1], line: i + 1, app: null }; out.set(m[1], cur); return; }
-    const a = /^Applicable to:\s*(.*)$/.exec(line);
-    if (a && cur && cur.app === null) {
-      cur.app = a[1].replace(/\[\*\*([^\]]*)\*\*\]\([^)]*\)/g, "$1")
-        .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replaceAll("**", "").replaceAll("\\", "").trim();
-    }
-  });
-  return out;
+  return new Map(parseAttributes(readFileSync(ATTR_DOC, "utf8")).map((e) => [e.name, e]));
 }
 
 // ------------------------------------------------------------------- report

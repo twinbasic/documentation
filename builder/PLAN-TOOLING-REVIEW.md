@@ -907,6 +907,25 @@ tools use it.
 **Verify.** A scratch script: both tools' parsed attribute lists identical before and after on
 the real page, and a fenced `Syntax:` line ignored.
 
+**Landed.** `scripts/lib/attributes-doc.mjs` exports `parseAttributes(src)`, which is
+`gen_attribute_probes`' reader, `{ name, syntax, line, app }[]` in page order, with every line
+inside a region from `blockRegions` skipped. Its regions come from the site's parser, built on
+first use, as in C37. `gen_attribute_probes` calls it on the file it reads; `census_attributes`
+builds its map from it, keyed by name, a later entry replacing an earlier one as before, and
+its values now also carry `syntax`, which it never reads. Both tools therefore load
+markdown-it and `builder/render.mjs`, where they imported only `node:` modules, so neither runs
+without `npm install` any more. Tools.md's `gen_attribute_probes.mjs` section says a fenced
+line is not read and names the module.
+
+**Verify.** The kit-style oracle, HEAD's `documentedAttributes` and `parseAttributes` cut from
+HEAD's files and run beside the new reader: the real page and its CRLF form give the same 71
+attributes, each with a target, under all three. A fenced `Syntax:` block appended to the page
+is read by both HEAD readers and not by the new one, and a fenced `Applicable to:` line put
+straight after the first `Syntax:` line becomes that attribute's target under HEAD, where the
+new reader takes the real line after the fence. End to end, HEAD copies and the working tools
+give byte-identical output, 136 files: `gen_attribute_probes`' two probe trees and key, and
+`census_attributes --json` over the BETA 987 cache (661 files, 9,706 sites; no IDE started).
+
 ### C39 — `builder, eval: counts, run_case and nav_hops skip code`
 
 **Inventory sites B4, B5, B8, B9.** `counts.mjs`'s `countAttributeAnchors` (`:112-116`) and

@@ -970,7 +970,7 @@ is.
 
     node scripts/gen_attribute_probes.mjs <out_dir> [key.md]
 
-Generates twinBASIC probe projects from the `Applicable to:` lines in `Reference/Attributes.md`, for [`tbbuild.mjs`](#tbbuild) to compile. Those lines had gone unchecked against the compiler since they were written, and the one that was eventually checked turned out to be wrong. This writes one source file per claimed target, so a single build answers every claim at once. A misplaced attribute comes back as `This attribute is not supported in this context` (TB5155) or `Syntax error.  No handler for this symbol` (TB5182). Which of the two arrives says nothing about whether the attribute exists, only that it is not accepted there.
+Generates twinBASIC probe projects from the `Applicable to:` lines in `Reference/Attributes.md`, for [`tbbuild.mjs`](#tbbuild) to compile. Those lines had gone unchecked against the compiler since they were written, and the one that was eventually checked turned out to be wrong. This writes one source file per claimed target, so a single build answers every claim at once. A `Syntax:` or `Applicable to:` line inside a code fence is not read, so an example that shows the page's own format is not taken for an attribute; [`census_attributes.mjs`](#census-attributes) reads the page through the same code, `scripts/lib/attributes-doc.mjs`. A misplaced attribute comes back as `This attribute is not supported in this context` (TB5155) or `Syntax error.  No handler for this symbol` (TB5182). Which of the two arrives says nothing about whether the attribute exists, only that it is not accepted there.
 
 Up to three trees come out, on two contracts that must not be mixed:
 
