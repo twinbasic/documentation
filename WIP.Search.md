@@ -16,12 +16,13 @@ depends on the session that wrote it.
 index pilot, the qualified-name round, the title-heading fix, the stem
 twins, the same-page ground truth, a fix for lunr inventing words, the
 whole-title round (two eval sets, the re-rank, the plural rule), entity
-decoding in the index and a fix for slow multi-word queries are done and
-committed, on branch
+decoding in the index, a fix for slow multi-word queries and one for
+kind words (`MaxHeight property`) are done and committed, on branch
 `claude/paintpicture-docs-runtime-f3250d`, rebased onto `f8e630e5`.
-Nothing is pushed. The working tree is clean; the last commit records
-item 5 under "Next" as done. Item 6, the wider index pass, is waiting
-for the user to approve the drafted targets.
+Nothing is pushed. The working tree is clean. **Stopped for the user**:
+item 6's candidates are drafted and reviewed, in
+[Item 6: candidates for approval](#item-6-candidates-for-approval), and
+wait for the user's rulings and approvals.
 
 | commit | step |
 |---|---|
@@ -47,6 +48,7 @@ for the user to approve the drafted targets.
 | `03c90175` | a plural kind word doesn't make the other word a name |
 | `e6237fe7` | HTML entities decoded per token in the index (`&H80004005`) |
 | `eed8a241` | lunr's set unions add in place: `a page` 809 → 87 ms |
+| `df5a34b7` | a kind word is required only while an entry found names the thing |
 
 Hit@10 went from 20.5% to 100%, and MRR from .182 to .997. By reader
 intent, rank 1 is right for 99.9% of queries (89.0% before the intent
@@ -115,7 +117,11 @@ qualified names are now at rank 1, typed with a dot or as two words.
    [Fixed: slow multi-word queries](#fixed-slow-multi-word-queries). Not
    the wildcards' reach as such: lunr's `Set#union` copied the whole
    running total for every term they reach. The ranking is untouched.
-6. **Open, for the user to choose.** The wider index pass, under the pilot's rules: an entry names the page
+6. **Drafted; waiting for the user.** Candidates, reviewed, with the
+   rulings they need, are in
+   [Item 6: candidates for approval](#item-6-candidates-for-approval).
+   Found on the way and shipped, as a tweak comes before entries:
+   [Fixed: kind words](#fixed-kind-words). The wider index pass, under the pilot's rules: an entry names the page
    a reader wants for that term, not a summary of the page; few entries
    per page; one main entry per term (the build enforces this). Agents
    draft candidate terms and targets, and **the user approves every
@@ -163,8 +169,9 @@ qualified names are now at rank 1, typed with a dot or as two words.
 - The eval's symbol queries are one word each; its page-title and
   page-plus-section sets are its only multi-word queries. So for any
   change to the all-words pass, also rank every qualified symbol written
-  as two words (`FileListBox Name`) with the committed replica and the
-  candidate: `eval/search-experiments/probes/spaced.mjs`, run once
+  as two words (`FileListBox Name`) and every symbol as its name and kind
+  (`MaxHeight property`) with the committed replica and the candidate:
+  `eval/search-experiments/probes/spaced.mjs` and `kinds.mjs`, run once
   against a copy of the committed `site_search.mjs`.
 - `eval/site_search.mjs` is the replica of the client search. The site's
   client and `builder/offline.mjs`'s `initSearch` must stay identical to it;
@@ -1487,6 +1494,163 @@ earlier session's page (`Cannot read properties of undefined (reading
 '_index')`, the invented-word throw). Their line numbers matched
 `834e2bb5^`'s `just-the-docs.js`, not the page loaded. Check an error's
 line numbers against the served file before chasing it.
+
+### Fixed: kind words
+
+Found while checking item 6's candidates: `continue statement` didn't
+find `/tB/Core/Continue`, whose page never says "statement". The query
+names `Continue` plus a kind word, which the exact-name clause handles,
+but the all-words pass still *required* the kind word, so the page was
+never a candidate. `With statement` worked only because its page happens
+to use the word.
+
+**How widespread**: every symbol written as its name and its kind, for
+the kinds the client counts as kind words (1,836 queries,
+`eval/search-experiments/probes/kinds.mjs`): 61.6% at rank 1, and 662
+not found at all. A member's section rarely says "property", "method" or
+"event": `MaxHeight property`, `Terminate event`, `VbTriState enum`. The
+eval never saw it, since its symbol queries are bare names.
+
+**Measured** with knobs:
+
+| variant | kinds hit@1 | kinds worse | eval | spaced (5,108) |
+|---|---|---|---|---|
+| now | 61.6% | | | 100% |
+| kind words never required | 93.9% | 22 (`Mid function`, `Line statement`, `Timer event`) | `Loop Control` 1→2 | 3 worse (`File Type`) |
+| optional only when no result has the exact name | 94.7% | 4 (`Mid function`, `Stop method`) | | |
+| **optional only when no result has the name in its title or as its exact name** | **91.1%** | **0** | unchanged | unchanged |
+
+Where requiring the word worked, it kept a different kind of the same
+name out: `Mid function` finds a section of the Mid page, titled `Mid`;
+with the word optional, the `Mid =` statement page, which never says
+"function", comes in on its exact name. The exact-name test alone
+fell back there, since a section carries no names.
+
+**Shipped** (`df5a34b7`), in the client (`doSearch()`, so the offline
+copy shares it) and the replica: for a query naming one thing in two or
+more words, if no entry the all-words pass found matched the name in
+`title`, or in `exact` or `primary` (`namesTheThing()`), the pass runs
+again with the kind words optional; they still score.
+
+| | before | after |
+|---|---|---|
+| name and kind (1,836), hit@1 | 61.6% | 91.1% |
+| top 10 | 63.9% | 94.9% |
+| not found | 662 | 93 |
+| better / worse | | 577 / 0 |
+| eval (8,452) | | unchanged |
+| qualified names as two words (5,108) | 100% | 100%, unchanged |
+| item 6's 114 candidate queries | | 3 changed: `continue statement` finds the Continue page; `operator overloading` and `OCX control` find more |
+
+Both clients were checked in a browser against the replica (`MaxHeight
+property`, `Continue statement`, `Terminate event`, `VbTriState enum`,
+`Mid function`, `Line statement`, `Loop Control` and others): same top
+results, no errors. `test/search.test.mjs`'s kind-word guard runs both
+copies' `namesTheThing()` on the same results, checks both fall back
+the same way, and ranks a fixture with the `MaxHeight` and `Mid` shapes.
+Eight mutations (no fallback, either half of the test dropped in either
+copy, kind words never unrequired) each fail it.
+
+**Left**: 164 not at rank 1, 93 not found, mostly properties (75). Not
+diagnosed further. Whether to promote the set into
+`eval/search_quality.mjs` as ground truth, as the whole-title sets were,
+is for the user.
+
+### Item 6: candidates for approval
+
+Two Sonnet agents drafted candidates: one from the glossary's terms, one
+from jargon and features outside it. Both read the target pages. I
+checked that every proposed URL exists in the build (all do), reread
+the contested pages, and reran all 114 queries after the kind-word fix.
+The agents' full reports, with evidence quotes, are not in the repo; the
+rulings below are what matters. Nothing is in
+`eval/search_prose_queries.json` or the pages yet: **the user approves
+every target first.**
+
+**Two rulings needed first**, since they decide about half the list:
+
+1. *Does the Glossary's own definition count as a right answer for its
+   term?* It ranks first for most glossary terms, with the page the
+   agents proposed right behind: the ten `<Type> data type` terms
+   (→ `/Reference/Data-Types#...`), `Function procedure`, `Sub
+   procedure`, `Property procedure` (→ `/tB/Core/...`), `breakpoint`
+   (→ `/tB/IDE/Project/Menu/Debug`), `watch expression`
+   (→ `/tB/IDE/Project/Watches`), `base class` (→ `/tB/Core/Class`),
+   `compiler directive` (→ `/tB/Core/Topic-Preprocessor`), `MDI form`
+   (→ `/tB/Packages/VB/MDIForm/`), `dynamic-link library`
+   (→ `/tB/Core/Declare`). If it counts, these need no entries; if not,
+   each needs one. The pilot ruled that a definition counts for
+   `symbol index`; the agents assumed the Glossary never does.
+2. *Bare words that name a language element*: `array` (the `Array`
+   function ranks first, `/Tutorials/Arrays` second) and `delegates`
+   (`/tB/Core/Delegate`, then `/Features/Language/Delegates`). The tier
+   rule puts the element first, and an index term shares its stem with
+   the bare name (`deleg_`), so an entry would also reorder `Delegate`.
+   Recommended: no entries.
+
+**Recommended**, the page read and the target clear, not rank 1 today:
+
+| query | `index` | `index_also` | today |
+|---|---|---|---|
+| immediate window | `/tB/IDE/Project/DebugConsole` | | not in the top 5: `WindowState` sections |
+| watch window | `/tB/IDE/Project/Watches` | | Glossary, Videos, IDE index |
+| call stack window | `/tB/IDE/Project/CallStack` | | not in the top 5 |
+| custom controls | `/Tutorials/CustomControls/` | | not in the top 5 |
+| register a COM dll | `/Features/Project-Configuration/ActiveX-Registration` | | not in the top 5 |
+| create a DLL project | `/Features/Project-Configuration/Project-Types#standard-dlls` | `/tB/IDE/Project/New#options` | not in the top 5 |
+| type aliases | `/Features/Language/Alias-Types` | `/tB/Core/Alias` | 2 |
+| inline field initialization | `/Features/Language/Inline-Initialization` | | not in the top 5 |
+| windowless controls | `/Features/GUI-Components/Windowless` | | 2, a section of it |
+| break mode | `/tB/IDE/Project/Menu/Debug#when-a-run-time-error-stops-the-program` | | not in the top 10 |
+| accelerator key | `/tB/Packages/VB/Label/#mnemonics-and-access-keys` | `/tB/Packages/VB/CommandButton/#caption-and-mnemonics` | Glossary, then Menu's shortcut keys, a different feature |
+| type-declaration character | `/Reference/Data-Types#quick-reference` | | Glossary, `Declare` |
+| declaration | `/Reference/Categories#variable-declaration` | | `/tB/Core/Declare`, a false friend (DLL imports) |
+| operator overloading | `/Features/Language/UDTs#procedures-constructors-destructors-and-operators` | `/tB/Core/Type` | the procedure Overloading page. The agent said no page covers it, but `Type_Assignment` and `Type_Conversion` are UDT operator overloads |
+| pointers | `/Features/Language/Pointers` | | 3. Its stem may meet the bare name `Pointer`; the eval will say |
+| comment | `/Features/Language/Comments` | | `Comments` properties. The same stem caveat |
+
+**The user's call**: the agents disagree, or the target is arguable:
+
+| query | candidates |
+|---|---|
+| user defined types | `/tB/Core/Type` (defines UDTs) or `/Features/Language/UDTs` (only the twinBASIC enhancements); the agents split |
+| event handlers | `/Features/Language/Handlers` (the `Handles` syntax) or `/Tutorials/Forms#step-3-write-the-event-handler` |
+| namespaces | `/Features/Packages/` (one sentence); twinBASIC has no `Namespace` statement, and Project Settings says the project name serves as one |
+| twinpack | `/Features/Packages/`, `Creating-TWINPACK`, or `File-Format` (rank 1 now, the binary format) |
+| standard exe, create an ActiveX DLL | `/tB/IDE/Project/New#options` (a bullet list) or `/Features/Project-Configuration/Project-Types` |
+| class module | `/tB/Core/Class`; no page uses the phrase |
+| enumerated constant | `/Reference/Enumerations` or `/tB/Core/Enum` |
+| module variable | `/tB/Core/Module` |
+| inherited property | `/Features/Language/Inheritance` |
+| z-order | `/tB/Packages/VB/Form/#zorder`, one of three identical `ZOrder` sections |
+| windows api tutorial | `/Tutorials/Windows-API`, behind two index pages that list it |
+
+**Not recommended**: `continue statement` (fixed by the kind-word
+tweak); `packages` (`/tB/Packages/` first is right too); `inline
+assembly`, `import a vbp project`, `breakpoints` (the right pages are in
+the top 3, and a reader lands fine).
+
+**No page to point at** (content gaps, not index work): multiple return
+values, application manifest, by reference / by value, ActiveX control,
+ActiveX / Automation object, Object Browser, type library, named
+arguments, tab order, twips.
+
+**Already rank 1**, 53 queries (41 jargon, 12 glossary), such as
+`generics`, `multithreading`, `static linking`, `migrate from VB6`,
+`unit testing`, `data type`, `date literal`, `control array`. They could
+join the prose set as guards: they don't discriminate, as the prose
+set's 20 no longer do, but they would catch a regression.
+
+Doubtful links: the agents found none. Two soft notes: Project-Types'
+Kernel-Mode Drivers section names the "Native subsystem" setting without
+linking it; and twinBASIC-Additions' changelog anchors outrank the
+Features pages for `inline assembly`.
+
+**Once approved**: the approved queries go into
+`eval/search_prose_queries.json` first, measured against the baseline;
+then the entries go into the pages (`index:` in frontmatter, or
+`{: index="..." }` on a heading), measured again, with the eval showing
+any bare name the new terms reorder.
 
 ### Next steps
 
