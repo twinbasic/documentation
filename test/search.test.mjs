@@ -1286,3 +1286,74 @@ describe("kind-word guard: online client, eval replica", () => {
     assert.deepEqual(urls("Mid function"), ["/Strings/Mid#mid"]);
   });
 });
+
+// Sliced build: both clients build the index through buildIndexInSlices(),
+// which does lunr 2.3.9's own build a piece at a time, reaching into
+// lunr.Builder's internals and swapping lunr.idf while it makes the vectors.
+// The index must come out the same as lunr(config)'s, sliced as finely as it
+// can be (one piece a slice, three fields' vectors a piece) and as the site
+// slices it, and lunr.idf must be put back, even when the build throws.
+describe("sliced-build guard: online client against lunr()", () => {
+  const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
+  const lunr = loadLunr(path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js"));
+  const src = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js");
+  const fnSrc = src.match(/function buildIndexInSlices\([^)]*\) \{[\s\S]*?\r?\n\}/);
+  const constant = (name) => {
+    const m = src.match(new RegExp(`var ${name} = (\\d+);`));
+    assert.ok(m, `just-the-docs.js has no ${name}`);
+    return Number(m[1]);
+  };
+  const sliced = (sliceMs, fieldsPerPiece) => {
+    assert.ok(fnSrc, "just-the-docs.js has no buildIndexInSlices()");
+    return new Function("lunr", `var INDEX_SLICE_MS = ${sliceMs};\nvar FIELDS_PER_PIECE = ${fieldsPerPiece};\n${fnSrc[0]}\nreturn buildIndexInSlices;`)(lunr);
+  };
+  const build = (buildIndexInSlices, config, docs, entry) =>
+    new Promise((resolve, reject) => buildIndexInSlices(config, docs, entry, resolve, reject));
+
+  const docs = [
+    { title: "Form", body: "A form is a window. Forms hold controls." },
+    { title: "Form.Show", body: "Shows the form. A modal form waits." },
+    { title: "Debug.Print", body: "Prints to the debug window." },
+    { title: "Do...Loop", body: "Repeats a block while a condition holds." },
+    { title: "Print", body: "Prints a line. See also Debug.Print and Form.Print." },
+    { title: "Window", body: "" },
+  ];
+  const fields = function () {
+    this.ref("id");
+    this.field("title", { boost: 10 });
+    this.field("body");
+    this.metadataWhitelist = ["position"];
+  };
+  const entry = (i) => ({ id: i, title: docs[i].title, body: docs[i].body });
+  const whole = lunr(function () {
+    fields.call(this);
+    for (const i of Object.keys(docs)) this.add(entry(i));
+  });
+  const same = (index, label) => {
+    assert.equal(JSON.stringify(index.toJSON()), JSON.stringify(whole.toJSON()), `${label}: the index differs from lunr()'s`);
+    assert.deepEqual(index.tokenSet.toArray(), whole.tokenSet.toArray(), `${label}: the token set differs from lunr()'s`);
+    for (const q of ["form", "f*", "window print", "debug"]) {
+      assert.deepEqual(index.search(q), whole.search(q), `${label}: ${JSON.stringify(q)} finds other results`);
+    }
+  };
+
+  test("the index is lunr()'s, sliced finely and as the site slices it", async () => {
+    const idf = lunr.idf;
+    same(await build(sliced(0, 3), fields, docs, entry), "one piece a slice");
+    same(await build(sliced(constant("INDEX_SLICE_MS"), constant("FIELDS_PER_PIECE")), fields, docs, entry), "the site's slices");
+    assert.equal(lunr.idf, idf, "lunr.idf was not put back");
+  });
+
+  test("a build that throws reports it and puts lunr.idf back", async () => {
+    const idf = lunr.idf;
+    // `boost` is read only while the vectors are made, so this throws with
+    // lunr.idf swapped.
+    const throwing = function () {
+      fields.call(this);
+      Object.defineProperty(this._fields.title, "boost", { get: () => { throw new Error("boost"); } });
+    };
+    await assert.rejects(build(sliced(0, 3), throwing, docs, entry), /boost/);
+    assert.equal(lunr.idf, idf, "lunr.idf was not put back after a throw");
+    await assert.rejects(build(sliced(0, 3), fields, docs, (i) => { if (i === "2") throw new Error("entry"); return entry(i); }), /entry/);
+  });
+});

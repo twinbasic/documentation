@@ -143,7 +143,7 @@ function initSearch() {
           accumulateSetUnions();
 
           var twins = stemTwins(docs);
-          var index = lunr(function(){
+          buildIndexInSlices(function(){
             this.ref('id');
             this.field('title', { boost: 200 });
             this.field('content', { boost: 2 });
@@ -185,25 +185,25 @@ function initSearch() {
             // many are twinBASIC keywords (Do, For, If, Is, On, With, Each...).
             // See WIP.Search.md's "Design" section.
             this.pipeline.remove(lunr.stopWordFilter);
-
-            for (var i in docs) {
-
-              this.add({
-                id: i,
-                title: docs[i].title,
-                content: indexedContent(docs[i]),
-                names: docs[i].names || '',
-                qualified: qualifiedField(docs[i], twins),
-                exact: (docs[i].names || '').split(/\s+/).filter(Boolean).map(exactName).join(' '),
-                primary: (docs[i].primary || '').split(/\s+/).filter(Boolean).map(exactName).join(' '),
-                page: docs[i].doc || '',
-                index: indexField(docs[i]),
-                relUrl: docs[i].relUrl
-              });
-            }
+          }, docs, function(i) {
+            return {
+              id: i,
+              title: docs[i].title,
+              content: indexedContent(docs[i]),
+              names: docs[i].names || '',
+              qualified: qualifiedField(docs[i], twins),
+              exact: (docs[i].names || '').split(/\s+/).filter(Boolean).map(exactName).join(' '),
+              primary: (docs[i].primary || '').split(/\s+/).filter(Boolean).map(exactName).join(' '),
+              page: docs[i].doc || '',
+              index: indexField(docs[i]),
+              relUrl: docs[i].relUrl
+            };
+          }, function(index) {
+            onSuccess(index, docs);
+          }, function(e) {
+            console.log('Error building search index: ' + e);
+            onError();
           });
-
-          onSuccess(index, docs);
         } catch (e) {
           console.log('Error building search index: ' + e);
           onError();
@@ -432,6 +432,120 @@ function pinIndexFieldLengths(builder) {
   };
 }
 
+// Patched: builds the index as lunr(config) does, but INDEX_SLICE_MS worth at
+// a time, handing the main thread back to the browser between slices, so the
+// search box takes keystrokes while the index builds. Built in one piece, the
+// index held the main thread for about 1.6 s on a desktop, the search box
+// took no keystrokes until it was done, and the first search was for the
+// text typed before the build began. `entry(id)` gives the entry to add for
+// docs[id]. The work is lunr 2.3.9's own, in its own order: lunr(config)
+// gives a new builder two pipelines and calls `config` on it, and build()
+// works out the average field lengths, then each field's vector
+// (createFieldVectors()), then the token set (TokenSet.fromArray() over the
+// sorted terms), then makes the Index. Only the pieces are new: an entry
+// added, FIELDS_PER_PIECE fields' vectors, a term put into the token set.
+// test/search.test.mjs checks that the index comes out the same as
+// lunr(config)'s. Called from initSearch() above and from offline.mjs's copy
+// of it.
+var INDEX_SLICE_MS = 25;
+var FIELDS_PER_PIECE = 100;
+function buildIndexInSlices(config, docs, entry, onSuccess, onError) {
+  var builder = new lunr.Builder();
+  builder.pipeline.add(lunr.trimmer, lunr.stopWordFilter, lunr.stemmer);
+  builder.searchPipeline.add(lunr.stemmer);
+  config.call(builder, builder);
+
+  var ids = Object.keys(docs);
+  var added = 0;
+  var fields = null; // the field refs, once every entry is in
+  var vectored = 0;
+  var vectors = {};
+  var idfs = [];
+  var terms = null; // the sorted terms, once every vector is made
+  var tokens = null;
+  var inserted = 0;
+
+  // Does one piece of the build, and returns false once none is left.
+  function piece() {
+    if (added < ids.length) {
+      builder.add(entry(ids[added++]));
+    } else if (!fields) {
+      builder.calculateAverageFieldLengths();
+      fields = Object.keys(builder.fieldTermFrequencies);
+    } else if (vectored < fields.length) {
+      addFieldVectors(fields.slice(vectored, vectored + FIELDS_PER_PIECE));
+      vectored += FIELDS_PER_PIECE;
+    } else if (!terms) {
+      terms = Object.keys(builder.invertedIndex).sort();
+      tokens = new lunr.TokenSet.Builder();
+    } else if (inserted < terms.length) {
+      tokens.insert(terms[inserted++]);
+    } else {
+      return false;
+    }
+    return true;
+  }
+
+  // lunr's own createFieldVectors(), on a view of the builder that holds
+  // only `refs`' term frequencies. That method caches each term's idf for
+  // the one call, so a piece would count the documents of every common term
+  // again, which made the vectors 6 to 13 times as slow; lunr.idf answers from
+  // `idfs` meanwhile, by the term's number, which each posting holds.
+  function addFieldVectors(refs) {
+    var view = Object.create(builder);
+    view.fieldTermFrequencies = {};
+    for (var i = 0; i < refs.length; i++) {
+      view.fieldTermFrequencies[refs[i]] = builder.fieldTermFrequencies[refs[i]];
+    }
+    var idf = lunr.idf;
+    lunr.idf = function(posting, documentCount) {
+      if (idfs[posting._index] === undefined) idfs[posting._index] = idf(posting, documentCount);
+      return idfs[posting._index];
+    };
+    try {
+      view.createFieldVectors();
+    } finally {
+      lunr.idf = idf;
+    }
+    for (var ref in view.fieldVectors) vectors[ref] = view.fieldVectors[ref];
+  }
+
+  // A message rather than setTimeout(fn, 0), which a browser delays by at
+  // least 4 ms once timeouts are nested five deep.
+  var channel = new MessageChannel();
+  channel.port1.onmessage = slice;
+  channel.port2.postMessage(null);
+
+  function slice() {
+    var index;
+    try {
+      var until = Date.now() + INDEX_SLICE_MS;
+      var more;
+      do {
+        more = piece();
+      } while (more && Date.now() < until);
+      if (more) {
+        channel.port2.postMessage(null);
+        return;
+      }
+      tokens.finish();
+      index = new lunr.Index({
+        invertedIndex: builder.invertedIndex,
+        fieldVectors: vectors,
+        tokenSet: tokens.root,
+        fields: Object.keys(builder._fields),
+        pipeline: builder.searchPipeline
+      });
+    } catch (e) {
+      channel.port1.close();
+      onError(e);
+      return;
+    }
+    channel.port1.close();
+    onSuccess(index);
+  }
+}
+
 // Patched: a query of two or more words that reads the same as a result's
 // whole title, or its page title and title together, names that result:
 // `Return Syntax`, `DTPicker Properties`. lunr alone ranks a one-word entry
@@ -511,18 +625,24 @@ function searchLoaded(loadIndex) {
 
   // Patched: starts the deferred fetch + build (step 5C). Only one load
   // ever runs at a time -- a keystroke that lands while `indexLoading` is
-  // true just returns below in update(), and finishLoad() re-reads the
-  // search box once the build finishes, so it searches whatever is in it
-  // by then, not whatever triggered the load.
+  // true just returns here, and finishLoad() re-reads the search box once
+  // the build finishes, so it searches whatever is in it by then, not
+  // whatever triggered the load. The build hands the main thread back
+  // between slices (buildIndexInSlices()), so the reader can keep typing.
   function loadIndexNow() {
-    if (indexLoading) return;
+    if (indexLoading) {
+      // Clearing the box mid-load empties the panel; typing again says so
+      // again.
+      if (!searchResults.firstChild) showStatusMessage('Loading search index\u2026');
+      return;
+    }
     indexLoading = true;
     showStatusMessage('Loading search index\u2026');
-    // Yield so the loading message above actually paints before the
-    // synchronous (and comparatively expensive) index build runs on the
-    // main thread: a frame, then a task. requestAnimationFrame never fires
-    // while the tab is hidden, so a 100 ms timer races it -- whichever
-    // comes first starts the load, and the other does nothing.
+    // Yield so the loading message above actually paints before the index
+    // fetch and build begin on the main thread: a frame, then a task.
+    // requestAnimationFrame never fires while the tab is hidden, so a
+    // 100 ms timer races it -- whichever comes first starts the load, and
+    // the other does nothing.
     var started = false;
     function start() {
       if (started) return;

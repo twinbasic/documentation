@@ -402,7 +402,7 @@ that leaves the box non-empty. That first keystroke shows a loading message
 (reusing `.search-no-result`) and the matching `a11y-status` text, then
 yields: a frame (`requestAnimationFrame`) raced by a 100 ms timer, since
 frames never fire in a hidden tab, then `setTimeout(fn, 0)`, so the message
-paints before the synchronous build runs. It then searches whatever is in
+paints before the build begins. It then searches whatever is in
 the box *when the build finishes*, which may differ from what triggered it,
 since the reader may keep typing. Only one load is ever in flight; a
 keystroke mid-load leaves the loading message in place (`update()` checks
@@ -416,6 +416,43 @@ offline build's preloaded `window.SEARCH_DATA`), and both install the
 stop-word and dot-run-split patches above from inside their own
 `loadIndex()`. `eval/site_search.mjs` has no lazy build to mirror -- the
 CLI always wants an index built up front.
+
+**The build held the main thread for about 1.6 s, so the search box took no
+keystrokes while "Loading search index..." showed**, and the first search
+was for the text typed before the build began. `buildIndexInSlices(config,
+docs, entry, onSuccess, onError)` does lunr 2.3.9's own work, in its own
+order, `INDEX_SLICE_MS` (25 ms) at a time, and yields between slices
+through a `MessageChannel` message, which a browser does not clamp to 4 ms
+as it does nested timeouts. `lunr(config)` gives a new builder two
+pipelines, calls `config` on it and calls `build()`, which works out the
+average field lengths, each field's vector (`createFieldVectors()`) and
+the token set (`TokenSet.fromArray()` over the sorted terms), then makes
+the `Index`. The pieces are an entry added (`config` no longer adds them;
+`entry(id)` returns the one for `docs[id]`), `FIELDS_PER_PIECE` (100)
+fields' vectors, and a term put into a `TokenSet.Builder`. The vectors are
+lunr's own `createFieldVectors()`, called on a view of the builder
+(`Object.create(builder)`) whose `fieldTermFrequencies` holds only that
+piece's fields. That method caches each term's idf for one call only, so
+each piece would count the documents of every common term again, which
+made the vectors 6 to 13 times as slow; while a piece runs, `lunr.idf`,
+which lunr looks up at call time, answers from a cache kept for the whole
+build, by the term's number (`posting._index`), and is put back in a
+`finally`. A slice that throws reports through `onError`, as a failed
+fetch does: "Search is unavailable", and the next keystroke retries.
+`test/search.test.mjs`'s sliced-build guard checks that the index comes
+out the same as `lunr(config)`'s, sliced one piece at a time and as the
+site slices it, and that `lunr.idf` is put back after a throw.
+
+Measured in headless Chrome on the built site, typing ahead of the build,
+each version three times over: in one piece, the longest main-thread task
+took 1.6 to 1.7 s, the keystrokes waited for it, and the first query
+searched `f`; with only the entries sliced, 0.35 to 0.38 s (the unsliced
+`build()`); sliced throughout, 52 to 54 ms, and the first query searched
+`form`. The whole load took 1.46 to 1.73 s in one piece and 1.55 to 1.83
+s sliced. Both copies of `initSearch()` call `buildIndexInSlices()`; it
+sits outside them, so `offline.mjs` carries it unchanged. `loadIndexNow()`
+also shows the loading message again when the box was cleared mid-load and
+the reader types again.
 
 ## Licence
 
@@ -504,16 +541,21 @@ Bumping the just-the-docs version is a deliberate operation. Procedure:
 5. Re-apply the copy-button patch, the edit-distance cap, the asterisk
    guard and query-token trim, the `names`/`qualified` fields, the smart dot
    split, the stop-word removal, the dot-run-split tokenizer wrapper, the
-   lazy index build, the `exact`/`primary`/`page` fields with the
+   lazy index build and its slices, the `exact`/`primary`/`page` fields with the
    exact-name and all-words-first query, the `index` field with its
    helpers and query clauses, the stem twins held whole in `qualified`,
    and the separated token-set keys in `assets/js/just-the-docs.js` (see
    above). On a lunr upgrade, check `test/search.test.mjs`'s token-set key
-   guard: it says whether the new lunr still collides. Diffing against
+   guard: it says whether the new lunr still collides. Check too that the
+   new `lunr()` and `Builder#build()` still work as `buildIndexInSlices()`
+   repeats them, and that `createFieldVectors()` still reads
+   `fieldTermFrequencies` and calls `lunr.idf` through the namespace; the
+   sliced-build guard fails if the index comes out different. Diffing against
    the previous vendored copy via `git diff` is the easiest way to spot
    what needs to come back. Then re-check `offline.mjs`'s
    `JTD_INITSEARCH_FN_REPLACEMENT` still carries the same six extra fields
-   at the same boosts and the same stop-word/dot-run-split/lazy-build patches, and
+   at the same boosts and the same stop-word/dot-run-split/lazy-build patches,
+   and still builds through `buildIndexInSlices()`, and
    run `test/search.test.mjs`'s field-list drift guard and its stop-word/
    dot-run-split sibling guard -- both fail loudly if the re-vendor left the
    copies out of step. If upstream's `initSearch()`/`searchLoaded()` split
