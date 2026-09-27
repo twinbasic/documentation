@@ -295,6 +295,29 @@ round":
 `offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` carries the new boost; the
 query sits outside `initSearch()`.
 
+**Two qualified names that stem alike tied.** `Printer.Font` and
+`Printer.Fonts` both stem to `printer.font`, so every clause scored them
+alike and `Printer.Fonts` came second; so did `Collection.Item`,
+`Global.Printers`, `OLE.Update`, `Report.Page` and both `GetHeaders`. See
+[`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Fixed: stem twins":
+
+- *The twins are held whole.* `stemTwins(docs)` finds the qualified names
+  whose stem another name shares (104, mostly a function and its `$`
+  form), and `qualifiedField()` appends each of an entry's twins to its
+  `qualified` field as `exactName()` writes it (`printer_2efonts_`), which
+  no stemmer rule touches.
+- *A query names them whole.* `doSearch()` adds, on `qualified` at clause
+  boost 10, every word holding a dot and every two adjacent words joined
+  with one, as `exactName()` writes them.
+- *Only the twins.* Held for every qualified name, the whole names cost
+  19 MB of heap; in `exact` instead of `qualified`, they lengthened the
+  field that bare names are ranked by, and `InStrB` fell behind its own
+  section.
+
+`offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` finds the twins and fills
+`qualified` the same way; the helpers and the query sit outside
+`initSearch()`.
+
 **The index was fetched and built synchronously on every page load, even
 for readers who never opened search.** About 1.3s and 240MB of heap on a
 desktop -- see [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Design
@@ -409,8 +432,9 @@ Bumping the just-the-docs version is a deliberate operation. Procedure:
    guard and query-token trim, the `names`/`qualified` fields, the smart dot
    split, the stop-word removal, the dot-run-split tokenizer wrapper, the
    lazy index build, the `exact`/`primary`/`page` fields with the
-   exact-name and all-words-first query, and the `index` field with its
-   helpers and query clauses in `assets/js/just-the-docs.js` (see above). Diffing against
+   exact-name and all-words-first query, the `index` field with its
+   helpers and query clauses, and the stem twins held whole in `qualified`
+   in `assets/js/just-the-docs.js` (see above). Diffing against
    the previous vendored copy via `git diff` is the easiest way to spot
    what needs to come back. Then re-check `offline.mjs`'s
    `JTD_INITSEARCH_FN_REPLACEMENT` still carries the same six extra fields

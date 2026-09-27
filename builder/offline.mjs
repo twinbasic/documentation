@@ -354,6 +354,9 @@ const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
         lunr.tokenizer = dotRunSplitTokenizer;
       }
 
+      // Mirrors the online build's stem-twin patch (stemTwins() and
+      // qualifiedField() are the online copy's).
+      var twins = stemTwins(docs);
       var index = lunr(function(){
         this.ref('id');
         this.field('title', { boost: 200 });
@@ -391,7 +394,7 @@ const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
             title: docs[i].title,
             content: indexedContent(docs[i]),
             names: docs[i].names || '',
-            qualified: docs[i].qualified || '',
+            qualified: qualifiedField(docs[i], twins),
             exact: (docs[i].names || '').split(/\\s+/).filter(Boolean).map(exactName).join(' '),
             primary: (docs[i].primary || '').split(/\\s+/).filter(Boolean).map(exactName).join(' '),
             page: docs[i].doc || '',

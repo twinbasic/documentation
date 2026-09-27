@@ -90,6 +90,7 @@ export function loadLunr(lunrPath) {
 // builder/offline.mjs's JTD_INITSEARCH_FN_REPLACEMENT). test/search.test.mjs
 // checks all three field lists agree.
 export function buildIndex(lunr, docs) {
+  const twins = stemTwins(lunr, docs);
   return lunr(function () {
     this.ref("id");
     this.field("title", { boost: 200 });
@@ -122,7 +123,7 @@ export function buildIndex(lunr, docs) {
         title: docs[id].title,
         content: indexedContent(docs[id]),
         names: docs[id].names || "",
-        qualified: docs[id].qualified || "",
+        qualified: qualifiedField(lunr, docs[id], twins),
         exact: (docs[id].names || "").split(/\s+/).filter(Boolean).map(exactName).join(" "),
         primary: (docs[id].primary || "").split(/\s+/).filter(Boolean).map(exactName).join(" "),
         page: docs[id].doc || "",
@@ -143,6 +144,31 @@ export function buildIndex(lunr, docs) {
 // in it.
 function exactName(name) {
   return name.toLowerCase().replace(/\W/g, (c) => "_" + c.charCodeAt(0).toString(16)) + "_";
+}
+
+// Matches just-the-docs.js's stemTwins(): the qualified names that the
+// stemmer merges with another name's (`Printer.Font` and `Printer.Fonts`
+// both stem to `printer.font`), which would otherwise tie in `qualified`.
+// Keyed by the name as the tokenizer writes it.
+function stemTwins(lunr, docs) {
+  const byStem = new Map();
+  for (const id in docs) {
+    for (const token of lunr.tokenizer(docs[id].qualified || "")) {
+      const stem = lunr.stemmer(lunr.trimmer(token.clone())).toString();
+      if (!byStem.has(stem)) byStem.set(stem, new Set());
+      byStem.get(stem).add(token.str);
+    }
+  }
+  return new Set([...byStem.values()].filter((names) => names.size > 1).flatMap((names) => [...names]));
+}
+
+// Matches just-the-docs.js's qualifiedField(): the qualified names, and
+// those of them that have a stem twin also whole, as exactName() writes
+// them, so a query naming one finds it and not its twin.
+function qualifiedField(lunr, doc, twins) {
+  const qualified = doc.qualified || "";
+  const whole = lunr.tokenizer(qualified).filter((t) => twins.has(t.str)).map((t) => exactName(t.str));
+  return whole.length ? `${qualified} ${whole.join(" ")}` : qualified;
 }
 
 // Matches just-the-docs.js's phraseKey() and indexTermKey(): a hand-marked
@@ -252,7 +278,8 @@ export function search({ lunr, index }, input) {
   // with the trailing wildcard. A plain word would complete to every member
   // of each container its name begins (`vbfile*` to `vbfileattribute.*`).
   // Two adjacent words, joined with a dot, name a member as a qualified
-  // name does (`FileListBox Name`).
+  // name does (`FileListBox Name`). Both also match a whole name, for the
+  // names `qualified` holds whole (see qualifiedField()).
   const plainTokens = queryTokens.filter((t) => !qualifiedTokens.includes(t));
   const pairTokens = [];
   for (let i = 0; i + 1 < baseTokens.length; i++) {
@@ -267,6 +294,11 @@ export function search({ lunr, index }, input) {
   const words = input.split(/\s+/).filter(Boolean);
   const named = words.filter((w) => !KIND_WORDS.includes(w.toLowerCase().replace(/s$/, "")));
   const name = named.length === 1 ? named[0] : words.length === 1 ? words[0] : null;
+  const wholeQualified = [];
+  words.forEach((word, w) => {
+    if (word.includes(".")) wholeQualified.push(exactName(word));
+    if (w + 1 < words.length) wholeQualified.push(exactName(`${word}.${words[w + 1]}`));
+  });
   // Index terms, matching just-the-docs.js: every run of up to four
   // consecutive words, written as indexTermKey() writes a term, so a query
   // matches a term by naming all of it, alone or among other words. A
@@ -282,6 +314,7 @@ export function search({ lunr, index }, input) {
     q.term(plainTokens, { fields: PLAIN_FIELDS, wildcard: lunr.Query.wildcard.TRAILING });
     q.term(qualifiedTokens, { fields: TEXT_FIELDS, wildcard: lunr.Query.wildcard.TRAILING });
     q.term(pairTokens, { fields: ["qualified"], boost: 10 });
+    q.term(wholeQualified, { fields: ["qualified"], boost: 10 });
     if (name) q.term(exactName(name), { fields: ["exact", "primary"] });
     for (const key of indexKeys) {
       q.term(key, { fields: ["index"], boost: 5, usePipeline: false });

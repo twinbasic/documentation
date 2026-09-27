@@ -140,6 +140,7 @@ function initSearch() {
             lunr.tokenizer = dotRunSplitTokenizer;
           }
 
+          var twins = stemTwins(docs);
           var index = lunr(function(){
             this.ref('id');
             this.field('title', { boost: 200 });
@@ -190,7 +191,7 @@ function initSearch() {
                 title: docs[i].title,
                 content: indexedContent(docs[i]),
                 names: docs[i].names || '',
-                qualified: docs[i].qualified || '',
+                qualified: qualifiedField(docs[i], twins),
                 exact: (docs[i].names || '').split(/\s+/).filter(Boolean).map(exactName).join(' '),
                 primary: (docs[i].primary || '').split(/\s+/).filter(Boolean).map(exactName).join(' '),
                 page: docs[i].doc || '',
@@ -234,6 +235,42 @@ function exactName(name) {
   return name.toLowerCase().replace(/\W/g, function(c) {
     return '_' + c.charCodeAt(0).toString(16);
   }) + '_';
+}
+
+// Patched: the qualified names that the stemmer merges with another name's
+// (`Printer.Font` and `Printer.Fonts` both stem to `printer.font`), which
+// would otherwise tie in `qualified`: 104 names, mostly a function and its
+// `$` form. Keyed by the name as the tokenizer writes it. Used by
+// initSearch() above, with qualifiedField().
+function stemTwins(docs) {
+  var byStem = {};
+  for (var i in docs) {
+    lunr.tokenizer(docs[i].qualified || '').forEach(function(token) {
+      var stem = lunr.stemmer(lunr.trimmer(token.clone())).toString();
+      (byStem[stem] = byStem[stem] || {})[token.str] = true;
+    });
+  }
+  var twins = {};
+  for (var stem in byStem) {
+    var names = Object.keys(byStem[stem]);
+    if (names.length > 1) names.forEach(function(name) { twins[name] = true; });
+  }
+  return twins;
+}
+
+// Patched: a search entry's `qualified` field. Its qualified names, and
+// those of them that have a stem twin also whole, as exactName() writes
+// them, so that a query naming one (see doSearch()) finds it and not its
+// twin. Only those: held for every qualified name, the whole names took
+// 19 MB more heap; for the twins, 0.3 MB.
+function qualifiedField(doc, twins) {
+  var qualified = doc.qualified || '';
+  var whole = lunr.tokenizer(qualified).filter(function(token) {
+    return twins[token.str];
+  }).map(function(token) {
+    return exactName(token.str);
+  });
+  return whole.length ? qualified + ' ' + whole.join(' ') : qualified;
 }
 
 // Patched: a hand-marked index term as the `index` field holds it -- its
@@ -474,8 +511,9 @@ function searchLoaded(loadIndex) {
     // wildcard. A plain word would complete to every member of each
     // container its name begins (`vbfile*` to `vbfileattribute.*`). Two
     // adjacent words, joined with a dot, name a member as a qualified name
-    // does (`FileListBox Name`). See WIP.Search.md, "What shipped, fourth
-    // round".
+    // does (`FileListBox Name`). Both also match a whole name, for the names
+    // `qualified` holds whole (see qualifiedField()). See WIP.Search.md,
+    // "What shipped, fourth round" and "Fixed: stem twins".
     var plainTokens = queryTokens.filter(function(token) {
       return qualifiedTokens.indexOf(token) === -1;
     });
@@ -485,6 +523,7 @@ function searchLoaded(loadIndex) {
         pairTokens.push(baseTokens[p].clone(function(str) { return str + '.' + baseTokens[p + 1].str; }));
       }
     }
+    var wholeQualified = [];
 
     // Patched: every field but `exact`, `primary` and `index`, which only
     // their own clauses below may search -- otherwise the trailing wildcard
@@ -500,6 +539,10 @@ function searchLoaded(loadIndex) {
       return KIND_WORDS.indexOf(w.toLowerCase().replace(/s$/, '')) === -1;
     });
     var name = named.length === 1 ? named[0] : words.length === 1 ? words[0] : null;
+    words.forEach(function(word, w) {
+      if (word.indexOf('.') !== -1) wholeQualified.push(exactName(word));
+      if (w + 1 < words.length) wholeQualified.push(exactName(word + '.' + words[w + 1]));
+    });
     // Patched: hand-marked index terms. Every run of up to four
     // consecutive words, written as indexTermKey() writes a term, so a query
     // matches a term by naming all of it, alone or among other words. A
@@ -525,6 +568,7 @@ function searchLoaded(loadIndex) {
         wildcard: lunr.Query.wildcard.TRAILING
       });
       query.term(pairTokens, { fields: ['qualified'], boost: 10 });
+      query.term(wholeQualified, { fields: ['qualified'], boost: 10 });
       if (name) {
         query.term(exactName(name), { fields: ['exact', 'primary'] });
       }

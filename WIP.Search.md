@@ -13,8 +13,8 @@ Everything needed to continue is in this file and in `eval/`; nothing
 depends on the session that wrote it.
 
 **Where it stands.** Rollout steps 1–5, two reader-intent rounds, the
-index pilot, the qualified-name round and the title-heading fix are done
-and committed, on branch
+index pilot, the qualified-name round, the title-heading fix and the stem
+twins are done and committed, on branch
 `claude/paintpicture-docs-runtime-f3250d`. Nothing is pushed. The working
 tree is clean; the last commit only records a hash in this file.
 
@@ -32,18 +32,18 @@ tree is clean; the last commit only records a hash in this file.
 | `ae880486` | pilot 1: prose queries can expect pages right behind (`behind`); ground truth intent-2 |
 | `70b73344` | pilot 2: hand-marked index entries, and the first five |
 | `d74a19c1` | qualified names: `qualified` at 500, reached only by qualified names and word pairs |
-| (next commit) | only a page's first heading can be its title (`Shape.Shape`, `Timer.Timer`) |
+| `0725ab72` | only a page's first heading can be its title (`Shape.Shape`, `Timer.Timer`) |
+| (next commit) | stem twins held whole in `qualified` (`Printer.Fonts`) |
 
 Hit@10 went from 20.5% to 100%, and MRR from .182 to .997. By reader
-intent, rank 1 is right for 99.5% of queries (89.0% before the intent
-steps), all 20 prose queries are at rank 1, no bare name is out of tier
-order, and no query got worse at any step.
+intent, rank 1 is right for 99.6% of queries (89.0% before the intent
+steps), every qualified name and all 20 prose queries are at rank 1, no
+bare name is out of tier order, and no query got worse at any step.
 
-The remaining 41 rank-1 misses: 34 bare names, in
-[What shipped, second round](#what-shipped-second-round-tiers-in-the-index)
-(25 language elements behind a section of their own page, 9 enum
-constants and members at rank 2), and 7 qualified names, in
-[What shipped, fourth round](#what-shipped-fourth-round-qualified-names).
+The remaining 34 rank-1 misses are all bare names, in
+[What shipped, second round](#what-shipped-second-round-tiers-in-the-index):
+25 language elements behind a section of their own page, and 9 enum
+constants and members at rank 2.
 
 **The index pilot held up.** The user asked whether ranking tweaks are an
 uphill battle, since a book's index is marked by hand. The conclusion,
@@ -58,14 +58,15 @@ worse. How it works, what it cost and what was measured on the way is in
 **Qualified names are done.** The user chose them before a wider index
 pass. `qualified` now weighs 500, and only qualified names reach it,
 typed with a dot or as two adjacent words: 423 queries better, none
-worse, and 99.8% of qualified queries at rank 1 (91.5% before).
+worse, and 99.8% of qualified queries at rank 1 (91.5% before). The last
+9 followed: 2 member headings the build took for the page's title, and 7
+siblings the stemmer merges (`Printer.Font` / `Printer.Fonts`). All 5108
+qualified names are now at rank 1, typed with a dot or as two words.
 
-**Next.** The user put qualified names before the wider pass; placing
-item 1 first, as small tweaks on the same ground, was this session's call:
-1. The 7 qualified misses left: stemming collisions between siblings
-   (`Printer.Font` / `Printer.Fonts`), a qualified counterpart of
-   `exact`. The other 2 (`Shape.Shape`, `Timer.Timer`) are fixed; see
-   [the title-heading fix](#fixed-a-member-heading-taken-for-the-page-title).
+**Next.**
+1. ~~The 9 qualified misses left.~~ Done; see
+   [the title-heading fix](#fixed-a-member-heading-taken-for-the-page-title)
+   and [the stem twins](#fixed-stem-twins).
 2. The same-page ground-truth question (`DefInt` → a section of
    `Deftype`), a decision for the user.
 3. The wider index pass, under the pilot's rules: an entry names the page
@@ -1034,6 +1035,8 @@ Left at rank 1's door, 9 qualified queries:
   and the search-data build takes it for the title, so there's no
   `#shape` entry for the symbol's URL to match. Fixed next.
 
+The 7 collisions are fixed in [Fixed: stem twins](#fixed-stem-twins).
+
 ### Fixed: a member heading taken for the page title
 
 `extractSections` took *any* heading that read the same as the page's
@@ -1060,6 +1063,71 @@ Seen on the way, and predating it: `New Functions` puts
 `ServiceState#new` first and the page second, because `functions` is a
 kind word, so the query is taken to name `New`. Not changed: one probe is
 not a measurement, and kind words were measured as a whole.
+
+### Fixed: stem twins
+
+`Printer.Font` and `Printer.Fonts` both stem to `printer.font`, so in
+`qualified`, and everywhere else a query for either reached, the two tied;
+`Printer.Fonts` came second. So did `Collection.Item`, `Global.Printers`,
+`OLE.Update`, `Report.Page` and both `WebView2*Headers.GetHeaders`, and
+the same seven written as two words (`Printer Fonts`). For bare names
+`exact` had fixed this, but its clause matched nothing for a qualified
+name: `exact` held only bare names.
+
+Measured with knobs in the replica, against `0725ab72`'s baseline, and on
+the throwaway set of every qualified name written as two words:
+
+| variant | worse / better | two words, hit@1 | heap | new terms |
+|---|---|---|---|---|
+| before | | 99.86% | 292.8 MB | |
+| every qualified name whole in `exact` | 0 / 7 | 99.86% (no clause for two words) | | 5108 |
+| the same, plus word pairs whole on `exact` | 0 / 7 | 100% | 311.6 MB | 5108 |
+| only the stem twins whole in `exact`, plus pairs | **2** / 7 | 100% | 293.1 MB | 104 |
+| only the stem twins whole in `qualified`, plus pairs (clause boost 1, 10 or 100) | 0 / 7 | 100% | 293.1 MB | 104 |
+
+- Every qualified name whole cost 19 MB of heap for 14 queries.
+- Only the twins, but in `exact`, made the entries holding them longer in
+  the field bare names are ranked by. `InStrB` fell from 1 to 2, behind
+  its own section `Strings/InStr#instr-instrb`, and `MidB$` from 2 to 3,
+  both BM25 length normalisation. (Both are the same-page question in
+  "Next", but that is not decided.)
+- In `qualified` the bare-name ranking can't move, and the result held at
+  clause boosts from 1 to 100.
+
+**Shipped**, in all three copies: `stemTwins()` finds the qualified names
+whose stem another qualified name shares (104 names under 50 stems, mostly
+a function and its `$` form: `strings.left` / `strings.left$`), and
+`qualifiedField()` appends each twin an entry holds to its `qualified`
+field as `exactName()` writes it (`printer_2efonts_`). The query adds, on
+`qualified` at clause boost 10, every word with a dot in it and every two
+adjacent words joined with a dot, as `exactName()` writes them. A whole
+name that isn't a twin is in no field, so it matches nothing.
+
+| | before | after |
+|---|---|---|
+| hit@1 | 99.49% | 99.58% |
+| qualified hit@1 | 99.86% | 100% |
+| every qualified name as two words, hit@1 | 99.86% | 100% (0 worse) |
+| queries worse / better | | 0 / 7 |
+| heap, index terms | 292.8 MB, 26,029 | 293.1 MB, 26,133 |
+| index build | | within noise (7 interleaved builds, three processes) |
+| search-data.json | | unchanged |
+
+Both clients were checked in a browser against the replica: the same top
+three for 15 queries (the seven twins, both ways where it applies,
+`Shape.Shape`, `FileListBox Name`, `Form events`, `late binding`,
+`PaintPicture`), `**` shows "No results found", no console errors.
+`test/search.test.mjs` checks all three copies fill `qualified` through
+`qualifiedField()`, compares the online client's `stemTwins()` and
+`qualifiedField()` with the replica's by behaviour, and ranks twins in a
+small index both ways; each of eight mutations (no whole-name clause, no
+whole names in the field, no twins, no pairs or no dotted words whole, in
+the replica; three in the online client) fails it. `test.bat`'s gates,
+`check.bat`'s gates and a checked build pass.
+
+Probes seen on the way, all predating this and unchanged by it: `Form
+events` puts `/tB/Core/Event` first and `Form#events` second; `Fonts
+property` puts `AmbientProperties/Font` first.
 
 ### Next steps
 

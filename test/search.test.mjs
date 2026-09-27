@@ -696,6 +696,67 @@ describe("qualified-name guard: online client, eval replica", () => {
     assert.equal(urls("Form events")[0], "/Form#events");
     assert.ok(urls("_HiddenModule Input").includes("/Input"));
   });
+
+  // Stem twins (WIP.Search.md, "Fixed: stem twins"): `Printer.Font` and
+  // `Printer.Fonts` stem alike, so `qualified` also holds each whole.
+  test("all three fill `qualified` via qualifiedField(), and both queries match a whole name there", () => {
+    for (const [label, src] of [
+      ["just-the-docs.js", read("builder/vendor/just-the-docs/assets/js/just-the-docs.js")],
+      ["offline.mjs", read("builder/offline.mjs")],
+      ["eval/site_search.mjs", read("eval/site_search.mjs")],
+    ]) {
+      assert.match(src, /twins = stemTwins\((lunr, )?docs\)/, `${label} doesn't find the stem twins`);
+      assert.match(src, /qualified:\s*qualifiedField\((lunr, )?docs\[\w+\], twins\)/, `${label} doesn't fill \`qualified\` via qualifiedField()`);
+      if (label === "offline.mjs") continue;
+      assert.match(src, /term\(wholeQualified, \{ fields: \[['"]qualified['"]\], boost: 10 \}\)/, `${label} has no clause for a whole qualified name`);
+    }
+  });
+
+  test("the online client and the eval replica find the same twins and write the same field", () => {
+    const fn = (src, name, label) => {
+      const m = src.match(new RegExp(`function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}`));
+      assert.ok(m, `${label} has no ${name}()`);
+      return m[0];
+    };
+    const names = ["exactName", "stemTwins", "qualifiedField"];
+    const load = (src, label) => names.map((n) => fn(src, n, label)).join("\n") + `\nreturn { ${names.join(", ")} };`;
+    const online = new Function("lunr", load(read("builder/vendor/just-the-docs/assets/js/just-the-docs.js"), "just-the-docs.js"))(lunr);
+    const replica = new Function(load(read("eval/site_search.mjs"), "eval/site_search.mjs"))();
+    const docs = {
+      0: { qualified: "Printer.Font Printer.FontCount" },
+      1: { qualified: "Printer.Fonts" },
+      2: { qualified: "Strings.Left Strings.Left$ Strings.LeftB" },
+      3: { qualified: "Form.PaintPicture" },
+      4: {},
+    };
+    const onlineTwins = online.stemTwins(docs);
+    const replicaTwins = replica.stemTwins(lunr, docs);
+    assert.deepEqual(Object.keys(onlineTwins).sort(), [...replicaTwins].sort());
+    assert.deepEqual([...replicaTwins].sort(), ["printer.font", "printer.fonts", "strings.left", "strings.left$"]);
+    for (const id in docs) {
+      assert.equal(online.qualifiedField(docs[id], onlineTwins), replica.qualifiedField(lunr, docs[id], replicaTwins), `qualifiedField(${JSON.stringify(docs[id])}) differs`);
+    }
+    // A name with no twin is held as before.
+    assert.equal(online.qualifiedField(docs[3], onlineTwins), "Form.PaintPicture");
+    assert.equal(online.qualifiedField(docs[1], onlineTwins), "Printer.Fonts printer_2efonts_");
+  });
+
+  test("the replica tells stem twins apart, typed with a dot or as two words", () => {
+    const docs = {
+      0: { doc: "Printer", title: "Printer", content: "The printer. Font, Fonts.", names: "Printer", primary: "Printer", relUrl: "/Printer" },
+      1: { doc: "Printer", title: "Font", content: "The font to print with.", names: "Font", qualified: "Printer.Font", relUrl: "/Printer#font" },
+      2: { doc: "Printer", title: "Fonts", content: "The fonts the printer has.", names: "Fonts", qualified: "Printer.Fonts", relUrl: "/Printer#fonts" },
+    };
+    for (let k = 0; k < 30; k++) docs[100 + k] = { doc: `Page ${k}`, title: `Page ${k}`, content: "unrelated text", relUrl: `/P${k}` };
+    const ctx = { lunr, index: buildIndex(lunr, docs) };
+    const first = (q) => docs[search(ctx, q)[0].ref].relUrl;
+    // Before, both names ranked their entries in the same order, since
+    // every clause saw the one stem `printer.font`.
+    assert.equal(first("Printer.Font"), "/Printer#font");
+    assert.equal(first("Printer.Fonts"), "/Printer#fonts");
+    assert.equal(first("Printer Font"), "/Printer#font");
+    assert.equal(first("Printer Fonts"), "/Printer#fonts");
+  });
 });
 
 // Hand-marked index entries (WIP.Search.md, "What shipped, third round: the
