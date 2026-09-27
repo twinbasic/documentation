@@ -81,7 +81,7 @@
   {"q": "visual styles", "expected": ["/tB/IDE/Project/Explorer#resource-visual-styles-manifest"]},
   {"q": "return multiple values", "expected": ["/tB/Core/Function#returning-more-than-one-value"]},
   {"q": "multiple return values", "expected": ["/tB/Core/Function#returning-more-than-one-value"]},
-  {"q": "default property", "expected": ["/tB/Core/Attributes"]},
+  {"q": "default property", "expected": ["/tB/Core/Attributes", "/tB/Gloss#default-member"]},
   {"q": "registry access", "expected": ["/Reference/Categories"]},
   {"q": "add reference", "expected": ["/tB/IDE/Project/Settings"], "behind": ["/tB/IDE/Project/Menu/Project"]},
   {"q": "new project dialog", "expected": ["/tB/IDE/Project/New"]},
