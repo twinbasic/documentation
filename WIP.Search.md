@@ -1606,8 +1606,9 @@ every target first.**
    (→ `/tB/Core/Declare`). If it counts, these need no entries; if not,
    each needs one. The pilot ruled that a definition counts for
    `symbol index`; the agents assumed the Glossary never does.
-   **Ruled: the Glossary counts as a right answer at rank 1.** These
-   need no entries.
+   **Ruled: a Glossary definition counts as a right answer for its
+   term, and needn't be first: within the top 5 is enough.** These are
+   all at rank 1, so they need no entries.
 2. *Bare words that name a language element*: `array` (the `Array`
    function ranks first, `/Tutorials/Arrays` second) and `delegates`
    (`/tB/Core/Delegate`, then `/Features/Language/Delegates`). The tier
@@ -1622,7 +1623,10 @@ every target first.**
    statement` still put the element first. The eval: 2 worse (bare
    `Array` and `Delegate`, 1 → 2), nothing else. The stem can't tell the
    singular from the plural, so an entry for `arrays` alone isn't
-   possible. Pending the user's decision.
+   possible. **Ruled: no action where the Glossary's definition is in
+   the top 5.** `array` and `arrays`: `/tB/Gloss#array` is 4th, so no
+   entry. `delegate` and `delegates`: the Glossary has no entry for the
+   word; asked the user what to add.
 
 **Recommended**, the page read and the target clear, not rank 1 today:
 
