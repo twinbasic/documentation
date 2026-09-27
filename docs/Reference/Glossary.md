@@ -236,6 +236,10 @@ A [data type](#data-type) that contains decimal numbers scaled by a power of 10.
 > [!NOTE]
 > Unlike classic VBA --- where **Decimal** was usable only as a **Variant** subtype produced by **CDec** --- twinBASIC supports **Decimal** as a first-class declared type. You can write `Dim x As Decimal`.
 
+## default member
+
+The member of an object that code uses when it names the object alone, without a member. For example, if **Item** is the default member of the collection `c`, then `c(1)` means `c.Item(1)`. Also called the *default property*. A twinBASIC class marks its default member with the [**[DefaultMember]**](Core/Attributes#defaultmember) attribute.
+
 ## designer
 
 A visual design surface in the twinBASIC development environment used to design forms, controls, and other classes visually.
