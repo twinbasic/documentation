@@ -1749,6 +1749,43 @@ is clean. The other 217 passed on Linux in both runs, so this is the whole of wh
 The steps after `check_cli` in the composite action did not run in either, so
 `check_dot_fit`, `check_axe_patch_equiv` and the accessibility steps wait for the next push.
 
+### C51b — `scripts: the gate roster reads node --test lines; CI runs the search tests`
+
+**Found while landing C51a.** PR #210 put `node --test test/search.test.mjs` into `test.bat`,
+and CI has never run it: `scripts/lib/gate-roster.mjs` read only `node scripts/<name>.mjs`
+lines, so `check_ci_workflows` and `check_gate_lists` did not see the step, and neither the
+composite action nor Tools.md's list had it.
+
+**Change.** The roster reads `node --test test/<name>.mjs` as a gate too, named by its path
+from the repository root (`gateName`), and `check_gate_lists` reads such a name in Tools.md's
+list (a `test/` link) and in a POSIX block. The composite action runs the tests after
+`check_lint`, as `test.bat` does; Tools.md lists them as `test.bat`'s fifth step, with a
+section of their own, and Building.md's POSIX block and WIP.md's bullet and gate table have
+them.
+
+**Landed.** As the entry says, at the owner's choice of registering the step fully over
+adding it to CI alone. Before the action and the pages had it, both gates failed on the real
+tree: `check_ci_workflows` with a `missing` finding for `test/search.test.mjs` in each
+workflow, and `check_gate_lists` with six disagreements (the list, the stated count, both
+POSIX blocks, and Tools.md's "Eleven steps" and "of the eleven"). After, `check_ci_workflows`
+passes with 19 probes and 15 gates, and `check_gate_lists` with 21 probes and `test.bat
+(12)`. The new probes: in `check_ci_workflows`, a test file in `test.bat` and not in CI, and
+one in both; in `check_gate_lists`, a test file the docs do not list, with a count that agrees
+with the list unless the file is read, and a test file listed by its path, CRLF and a
+backslash in the wrapper. Each fault through the kit's `c43-fault.mjs` fails: a roster that
+reads no test line fails a probe in both gates; a doc list that reads no `test/` link fails
+the new negative; POSIX blocks that read no test line split Building.md's and Tools.md's
+blocks in two. The last is caught by the real tree only, as every POSIX-block defect is.
+
+Found in passing, and fixed here at the owner's choice: Tools.md said eight of `test.bat`'s
+eleven gates could not be affected by an edit under `docs/` and named two exceptions;
+`check_lint`, which lints `docs/assets/js/`, was the third. It now says nine of twelve, and
+names all three. The search tests read `builder/`, `builder/vendor/` and `eval/` only.
+
+**CI must show**, on the owner's next push: `check_ci_workflows: 19 probes, all pass` and
+`both workflows run the wrappers' 15 gates`, and the new step passing on Linux with `tests
+67` and `pass 67`.
+
 ### C52 — `builder: tbdocs parses through lib/cli.mjs`
 
 **A1-8 (R3), last, as decision (e) says.** `tbdocs.mjs`'s parser (`:91-194`) is neither
@@ -2678,6 +2715,10 @@ Defects the review did not have, found by building something this plan asks for.
 - **`check_cli`'s `transcript -x` case failed on Linux**, found by CI after C51: it required
   a folder in a file name that Node prints with one only on Windows. Fixed in `scripts:
   check_cli's transcript -x case passes on Linux`.
+- **CI never ran `test/search.test.mjs`**, found while landing C51a: the gate roster read only
+  `node scripts/` lines, so the two roster gates could not see a `node --test` step in
+  `test.bat`. Fixed in `scripts: the gate roster reads node --test lines; CI runs the search
+  tests`.
 
 ## Open questions
 

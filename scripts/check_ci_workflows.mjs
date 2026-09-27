@@ -195,11 +195,16 @@ const P_ALLOWED = {
 const BUILD_ONE = "node builder/tbdocs.mjs --src docs --no-fetch-assets --check-audit-index";
 const BUILD_TWO = "node builder/tbdocs.mjs --src docs --url '${{ steps.pages.outputs.origin }}' --no-fetch-assets --check-audit-index";
 const GOOD = ["a.mjs", "b.mjs", "c.mjs --check"];
+const TEST_FILE = "--test test/d.test.mjs";
+
+// A gate as the probes spell it: a script's file name and arguments, or
+// `--test <path>` for a test file.
+const runOf = (g) => (g.startsWith("--test ") ? `node ${g}` : `node scripts/${g}`);
 
 function wf(gates, build) {
   const steps = [{ name: "Checkout", uses: "actions/checkout@v5" }];
   if (build) steps.push({ name: "Build", run: build });
-  for (const g of gates) steps.push({ name: g, run: `node scripts/${g}` });
+  for (const g of gates) steps.push({ name: g, run: runOf(g) });
   return { jobs: { [JOB]: { steps } } };
 }
 
@@ -211,12 +216,12 @@ function pair(one, two) {
 function wfAction(build, extra = []) {
   const steps = [{ name: "Checkout", uses: "actions/checkout@v5" }, { name: "Build", run: build }];
   steps.push({ name: "Run the gates", uses: "./gates" });
-  for (const g of extra) steps.push({ name: g, run: `node scripts/${g}` });
+  for (const g of extra) steps.push({ name: g, run: runOf(g) });
   return { jobs: { [JOB]: { steps } } };
 }
 
 function actionOf(gates) {
-  return { runs: { using: "composite", steps: gates.map((g) => ({ name: g, shell: "bash", run: `node scripts/${g}` })) } };
+  return { runs: { using: "composite", steps: gates.map((g) => ({ name: g, shell: "bash", run: runOf(g) })) } };
 }
 
 const PROBES = [
@@ -242,6 +247,15 @@ const PROBES = [
   ["a gate added to test.bat and not to CI",
     { testBat: `${P_TEST}\r\nnode scripts/d.mjs\r\n` },
     ["missing"]],
+  // test/search.test.mjs ran in test.bat and not in CI for as long as the
+  // roster read only scripts/.
+  ["a test file added to test.bat and not to CI",
+    { testBat: `${P_TEST}\r\nnode ${TEST_FILE}\r\n` },
+    ["missing"]],
+  ["a test file in test.bat and in both workflows",
+    { testBat: `${P_TEST}\r\nnode ${TEST_FILE}\r\n`,
+      workflows: pair(wf([...GOOD, TEST_FILE, "ci.mjs"], BUILD_ONE), wf([...GOOD, TEST_FILE], BUILD_TWO)) },
+    []],
   ["a build without --check-audit-index",
     { workflows: pair(wf([...GOOD, "ci.mjs"], BUILD_ONE), wf(GOOD, BUILD_TWO.replace(" --check-audit-index", ""))) },
     ["build"]],

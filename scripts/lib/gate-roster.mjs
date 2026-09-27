@@ -1,15 +1,20 @@
 // The gates a wrapper or a CI workflow runs, read from its own text.
 //
-// A wrapper runs one `node scripts/<name>.mjs` per line, chained with
-// `@if errorlevel` rather than `&&`; a workflow runs one per step's `run:`.
-// Both are read the same way: an invocation at the start of a line, so a
-// commented line (`@rem`, `rem`, `#`) or a continuation never counts.
+// A wrapper runs one gate per line, chained with `@if errorlevel` rather than
+// `&&`; a workflow runs one per step's `run:`. Both are read the same way: an
+// invocation at the start of a line, so a commented line (`@rem`, `rem`, `#`)
+// or a continuation never counts. A gate is a script, `node scripts/<name>.mjs`,
+// named by its file name, or a test file that Node's test runner runs, `node
+// --test test/<name>.mjs`, named by its path from the repository root.
 //
 // check_gate_lists.mjs compares the wrappers with Tools.md's numbered lists,
 // and check_ci_workflows.mjs compares them with the two workflows.
 
-const GATE_LINE = /^\s*@?node\s+scripts[\\/]([A-Za-z0-9_]+\.mjs)[ \t]*(.*?)\s*$/;
+const GATE_LINE = /^\s*@?node\s+(?:scripts[\\/]([A-Za-z0-9_]+\.mjs)|--test\s+test[\\/]([A-Za-z0-9_.]+\.mjs))[ \t]*(.*?)\s*$/;
 const BUILD_LINE = /^\s*@?node\s+builder[\\/]tbdocs\.mjs[ \t]*(.*?)\s*$/;
+
+/** A gate's name from the two captures every gate pattern has: a script's file name, or a test file's. */
+export const gateName = (script, testFile) => script ?? `test/${testFile}`;
 
 function matchLines(text, re) {
   const out = [];
@@ -20,12 +25,12 @@ function matchLines(text, re) {
   return out;
 }
 
-/** The gate scripts a text invokes, in order, as `{script, args}`. */
+/** The gates a text runs, in order, as `{script, args}`, `script` the gate's name. */
 export function gateSteps(text) {
-  return matchLines(text, GATE_LINE).map((m) => ({ script: m[1], args: m[2] }));
+  return matchLines(text, GATE_LINE).map((m) => ({ script: gateName(m[1], m[2]), args: m[3] }));
 }
 
-/** The gate scripts a batch file invokes, in order: the names alone. */
+/** The gates a batch file runs, in order: the names alone. */
 export function gatesFromBat(src) {
   return gateSteps(src).map((s) => s.script);
 }
