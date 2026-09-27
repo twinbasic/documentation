@@ -46,7 +46,14 @@
 //   - Qualified `Container.Name` queries, one per unique (container, name)
 //     pair. Correct only for that exact symbol's URL.
 //
-// For both, where a symbol's URL is a page, not a section of one, any
+//   - Name and kind: `<Name> <kind>` for every symbol whose kind the
+//     client counts as a kind word (`MaxHeight property`, `Continue
+//     statement`), less `sub` and `member`, which readers don't say (a Sub
+//     is a method to them). Any symbol of that name and kind counts.
+//     Operators, with no word character, are left out, as the bare-name
+//     set measures them (WIP.Search.md, "Fixed: kind words").
+//
+// For all three, where a symbol's URL is a page, not a section of one, any
 // section of that page counts as well: `DefInt` is documented by the
 // Deftype page, and its section headed `DefBool, DefByte, DefInt, ...`
 // lands the reader on the same definition (WIP.Search.md, "Same-page
@@ -120,7 +127,7 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { performance } from "node:perf_hooks";
 
-import { load, buildIndex, search } from "./site_search.mjs";
+import { load, buildIndex, search, KIND_WORDS } from "./site_search.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -286,6 +293,10 @@ function buildTitleQueries(docs) {
   return [...toQueries(titles, "title", true), ...toQueries(pageSections, "section", false)];
 }
 
+// The kinds the name-and-kind set types: the client's kind words, less
+// the two readers don't use.
+const EVAL_KIND_WORDS = KIND_WORDS.filter((k) => k !== "sub" && k !== "member");
+
 function buildQuerySet(symbolIndex, proseQueries, titleQueries, sample) {
   const symbols = symbolIndex.symbols;
   const queries = [];
@@ -336,6 +347,22 @@ function buildQuerySet(symbolIndex, proseQueries, titleQueries, sample) {
       kindGroup: kindGroup(group[0].kind),
       q: `${group[0].container}.${group[0].name}`,
       expected,
+    });
+  }
+
+  const byKindQuery = new Map();
+  for (const s of symbols) {
+    if (!EVAL_KIND_WORDS.includes(s.kind) || !/\w/.test(s.name)) continue;
+    const k = `${s.name.toLowerCase()} ${s.kind}`;
+    if (!byKindQuery.has(k)) byKindQuery.set(k, []);
+    byKindQuery.get(k).push(s);
+  }
+  for (const [, group] of byKindQuery) {
+    queries.push({
+      category: "symbol-kind",
+      kindGroup: kindGroup(group[0].kind),
+      q: `${group[0].name} ${group[0].kind}`,
+      expected: [...new Set(group.map((s) => normalizeUrl(s.url)))],
     });
   }
 
@@ -510,7 +537,7 @@ function printTable(result) {
 
   const line = (s) => (s ? `${fmtPct(s.hit1)} / ${fmtPct(s.hit10)} / ${s.mrr.toFixed(3)} / ${s.n}` : "n/a");
   console.log("\nBreakdown by category (hit@1 / hit@10 / MRR / n):");
-  for (const [label, key] of [["symbol-bare", "symbol-bare"], ["symbol-qualified", "symbol-qualified"], ["prose", "prose"], ["page title", "title"], ["page plus section", "section"]]) {
+  for (const [label, key] of [["symbol-bare", "symbol-bare"], ["symbol-qualified", "symbol-qualified"], ["name and kind", "symbol-kind"], ["prose", "prose"], ["page title", "title"], ["page plus section", "section"]]) {
     console.log(label.padEnd(labelWidth) + " | " + line(result.byCategory[key]));
   }
   const ordered = result.perQuery.filter((r) => r.behind);
@@ -565,11 +592,11 @@ function printFailures(perQuery, n) {
 // (`conditional compilation` expects the #If/#Const page, `symbol index`
 // accepts Permanent-Links too); intent-3 lets a section of a symbol's page
 // count for that symbol; intent-4 adds the page-title and page-plus-section
-// sets.
-const GROUND_TRUTH = "intent-4";
+// sets; intent-5 the name-and-kind set.
+const GROUND_TRUTH = "intent-5";
 
-const CATEGORY_CODE = { "symbol-bare": "b", "symbol-qualified": "q", prose: "p", title: "t", section: "s" };
-const CATEGORY_NAME = { b: "symbol-bare", q: "symbol-qualified", p: "prose", t: "title", s: "section" };
+const CATEGORY_CODE = { "symbol-bare": "b", "symbol-qualified": "q", "symbol-kind": "k", prose: "p", title: "t", section: "s" };
+const CATEGORY_NAME = { b: "symbol-bare", q: "symbol-qualified", k: "symbol-kind", p: "prose", t: "title", s: "section" };
 
 function rankKey(category, q) {
   return `${CATEGORY_CODE[category] ?? category}:${q}`;
@@ -691,7 +718,7 @@ function main() {
   const count = (category) => queries.filter((q) => q.category === category).length;
   console.log(
     `Evaluating ${queries.length} queries ` +
-    `(${count("symbol-bare")} bare, ${count("symbol-qualified")} qualified, ${count("prose")} prose, ` +
+    `(${count("symbol-bare")} bare, ${count("symbol-qualified")} qualified, ${count("symbol-kind")} name and kind, ${count("prose")} prose, ` +
     `${count("title")} page titles, ${count("section")} page plus section) against ${opts.site}\n`
   );
 
@@ -705,6 +732,7 @@ function main() {
     byCategory: {
       "symbol-bare": summarize(evalResult.perQuery, (r) => r.category === "symbol-bare"),
       "symbol-qualified": summarize(evalResult.perQuery, (r) => r.category === "symbol-qualified"),
+      "symbol-kind": summarize(evalResult.perQuery, (r) => r.category === "symbol-kind"),
       prose: summarize(evalResult.perQuery, (r) => r.category === "prose"),
       title: summarize(evalResult.perQuery, (r) => r.category === "title"),
       section: summarize(evalResult.perQuery, (r) => r.category === "section"),

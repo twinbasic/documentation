@@ -295,8 +295,8 @@ const PLAIN_FIELDS = ["title", "content", "names", "page", "relUrl"];
 // Matches just-the-docs.js: the kinds tB/symbols.json gives its symbols,
 // less `enumvalue`, which nobody types. A query naming one thing plus its
 // kind -- `With statement`, `AddressOf operator` -- is treated as naming
-// that thing.
-const KIND_WORDS = ["operator", "statement", "attribute", "keyword", "directive", "class", "method", "property", "module", "function", "constant", "enum", "object", "member", "sub", "package", "interface", "control", "event", "type", "field"];
+// that thing. Exported for eval/search_quality.mjs's name-and-kind set.
+export const KIND_WORDS = ["operator", "statement", "attribute", "keyword", "directive", "class", "method", "property", "module", "function", "constant", "enum", "object", "member", "sub", "package", "interface", "control", "event", "type", "field"];
 
 export function load(site) {
   const { dataPath, lunrPath } = resolvePaths(site);

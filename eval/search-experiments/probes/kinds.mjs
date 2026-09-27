@@ -7,12 +7,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
-const { load, search } = await import(new URL("../../site_search.mjs", import.meta.url));
+const { load, search, KIND_WORDS } = await import(new URL("../../site_search.mjs", import.meta.url));
 const site = path.join(ROOT, "docs/_site");
 const ctx = load(site);
 const sym = JSON.parse(fs.readFileSync(path.join(site, "tB/symbols.json"), "utf8")).symbols;
-// As just-the-docs.js's KIND_WORDS.
-const KIND_WORDS = ["operator", "statement", "attribute", "keyword", "directive", "class", "method", "property", "module", "function", "constant", "enum", "object", "member", "sub", "package", "interface", "control", "event", "type", "field"];
 const norm = (u) => {
   let [p, a] = u.split("#");
   p = p.replace(/\/index(\.html)?$/i, "").replace(/\/+$/, "") || "/";
