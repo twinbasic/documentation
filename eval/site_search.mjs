@@ -81,6 +81,7 @@ export function loadLunr(lunrPath) {
   dotRunSplitTokenizer.separator = /[\s\-\/]+/;
   lunr.tokenizer = dotRunSplitTokenizer;
   separateTokenSetKeys(lunr);
+  accumulateSetUnions(lunr);
   return lunr;
 }
 
@@ -120,6 +121,36 @@ function separateTokenSetKeys(lunr) {
   };
   separated.separated = true;
   lunr.TokenSet.prototype.toString = separated;
+}
+
+// Matches just-the-docs.js's accumulateSetUnions(): lunr 2.3.9's Index#query
+// gathers a REQUIRED clause's entries as a running total, `c = c.union(S)`,
+// once per expanded term and field, and Set#union copies both sets every
+// time, which made a short wildcard word quadratic (`a page`, about 800 ms).
+// A set that union() made takes the next set into itself, in place, with
+// lunr's own length. Installed once.
+function accumulateSetUnions(lunr) {
+  const union = lunr.Set.prototype.union;
+  if (union.accumulates) return;
+  const accumulating = function (other) {
+    if (other === lunr.Set.complete || other === lunr.Set.empty) return union.call(this, other);
+    let set = this;
+    if (set.distinct === undefined) {
+      set = new lunr.Set(Object.keys(this.elements));
+      set.distinct = set.length;
+    }
+    const keys = Object.keys(other.elements);
+    set.length = set.distinct + keys.length;
+    for (const key of keys) {
+      if (!set.elements[key]) {
+        set.elements[key] = true;
+        set.distinct++;
+      }
+    }
+    return set;
+  };
+  accumulating.accumulates = true;
+  lunr.Set.prototype.union = accumulating;
 }
 
 // The two symbol-index fields (see builder/search.mjs's

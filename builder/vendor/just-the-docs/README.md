@@ -338,6 +338,22 @@ invented words".
 
 `offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` calls it too.
 
+**Multi-word queries with a short word were slow.** `a page` took about
+800 ms per keystroke, `a p` 1.3 s. lunr 2.3.9's `Index#query` gathers the
+entries a REQUIRED clause matches as a running total, `c = c.union(S)`,
+once per term the clause expands to and per field, and `Set#union` copies
+both sets into a new one each time. The all-words pass requires every word
+with a trailing wildcard, and `a*` expands to thousands of terms, so the
+query was quadratic. `accumulateSetUnions()` replaces `Set#union` with one
+that, once it has made a set, adds the next set into it in place: lunr's
+only unions are running totals that drop the set they replace. It keeps
+lunr's own `length`, which `intersect()` uses to pick the set it walks.
+Every page and section title as a query ranks exactly as before, score for
+score. Installed once from `initSearch()`, and from `offline.mjs`'s copy.
+It is a fix to lunr, not to this theme: drop it if a lunr upgrade fixes
+`union`. See [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Fixed:
+slow multi-word queries".
+
 **Entities were indexed as written.** The search data keeps the page's
 HTML entities, and must: the results panel inserts titles and content
 with `innerHTML` and highlights by character position in that text. The

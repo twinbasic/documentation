@@ -1017,7 +1017,7 @@ describe("token-set key guard: online client, offline client, eval replica", () 
   test("all three install the separated keys when they build the index", () => {
     assert.match(read("builder/vendor/just-the-docs/assets/js/just-the-docs.js"), /lunr\.tokenizer = dotRunSplitTokenizer;\s*\}\s*separateTokenSetKeys\(\);/);
     assert.match(read("builder/offline.mjs"), /lunr\.tokenizer = dotRunSplitTokenizer;\s*\}\s*(\/\/[^\n]*\n\s*)*separateTokenSetKeys\(\);/);
-    assert.match(read("eval/site_search.mjs"), /\s+separateTokenSetKeys\(lunr\);\s+return lunr;/);
+    assert.match(read("eval/site_search.mjs"), /\s+separateTokenSetKeys\(lunr\);\s+(\w+\(lunr\);\s+)*return lunr;/);
   });
 });
 
@@ -1142,5 +1142,87 @@ describe("entity guard: online client, offline client, eval replica", () => {
     assert.deepEqual(results.map((r) => docs[r.ref].relUrl), ["/Printers#indexing"]);
     const [start, length] = results[0].matchData.metadata.h80004005.content.position[0];
     assert.equal(docs[0].content.slice(start, start + length), "(&amp;H80004005).");
+  });
+});
+
+// lunr 2.3.9's Index#query gathers a REQUIRED clause's entries as a running
+// total of set unions, and each union copied both sets, so a short wildcard
+// word made a query quadratic (WIP.Search.md, "Fixed: slow multi-word
+// queries"). All three copies install a union that adds in place.
+describe("set-union guard: online client, offline client, eval replica", () => {
+  const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
+  const lunrPath = path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js");
+  const lunr = loadLunr(lunrPath);
+  const ownSrc = read(path.relative(REPO_ROOT, lunrPath)).match(/Set\.prototype\.union=(function\(e\)\{return .*?\)\)\})/);
+  const lunrsOwn = new Function("T", `return ${ownSrc[1]};`)(lunr);
+  // A Set of its own, so the online client's patch can be installed on it
+  // without touching the replica's lunr.
+  const onlineUnion = () => {
+    const OwnSet = function (elements) {
+      lunr.Set.call(this, elements);
+    };
+    OwnSet.prototype = Object.create(lunr.Set.prototype);
+    OwnSet.prototype.union = lunrsOwn;
+    OwnSet.complete = lunr.Set.complete;
+    OwnSet.empty = lunr.Set.empty;
+    const src = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js").match(/function accumulateSetUnions\(\) \{[\s\S]*?\r?\n\}/);
+    assert.ok(src, "just-the-docs.js has no accumulateSetUnions()");
+    const fake = { Set: OwnSet };
+    new Function("lunr", `${src[0]}\naccumulateSetUnions();`)(fake);
+    assert.notEqual(OwnSet.prototype.union, lunrsOwn);
+    return OwnSet;
+  };
+
+  test("both give lunr's own sets and lengths, keep their inputs, and add in place", () => {
+    const sets = [["d1", "d2"], ["d2", "d3", "d4"], ["d4"], ["d5", "d1", "d6"], []];
+    const run = (SetClass, union) => {
+      const inputs = sets.map((keys) => new SetClass(keys));
+      // Each step's total as it stood then, and the total itself.
+      const steps = [];
+      const totals = [];
+      let total = lunr.Set.empty;
+      for (const s of inputs) {
+        total = s === inputs[0] ? total.union(s) : union.call(total, s);
+        steps.push([Object.keys(total.elements), total.length]);
+        totals.push(total);
+      }
+      return { inputs, steps, totals };
+    };
+    const own = run(lunr.Set, lunrsOwn);
+    const OwnSet = onlineUnion();
+    for (const [label, got] of [["just-the-docs.js", run(OwnSet, OwnSet.prototype.union)], ["eval/site_search.mjs", run(lunr.Set, lunr.Set.prototype.union)]]) {
+      assert.deepEqual(got.steps.map(([keys]) => keys), own.steps.map(([keys]) => keys), `${label}'s unions hold other elements than lunr's`);
+      assert.deepEqual(got.steps.map(([, length]) => length), own.steps.map(([, length]) => length), `${label}'s unions have other lengths than lunr's`);
+      assert.deepEqual(got.inputs.map((s) => [Object.keys(s.elements), s.length]), sets.map((keys) => [keys, keys.length]), `${label} changed a set it took in`);
+      assert.ok(got.totals[1] !== got.inputs[0] && got.totals.slice(2).every((s) => s === got.totals[1]), `${label} copies the running total instead of adding to it`);
+    }
+    assert.equal(lunr.Set.complete.union(new lunr.Set(["1"])), lunr.Set.complete);
+    assert.equal(lunr.Set.prototype.union.call(new lunr.Set(["1"]), lunr.Set.complete), lunr.Set.complete);
+  });
+
+  test("the replica ranks exactly as with lunr's own union", () => {
+    const words = ["alpha", "able", "about", "page", "paging", "apart", "pane", "form", "the", "a"];
+    const docs = {};
+    for (let i = 0; i < 60; i++) {
+      docs[i] = { doc: `Page ${i}`, title: `${words[i % 10]} ${words[(i * 7) % 10]}`, content: words.filter((_, w) => (i >> (w % 6)) & 1).join(" "), relUrl: `/P${i}` };
+    }
+    const ctx = { lunr, index: buildIndex(lunr, docs), docs };
+    const queries = ["a page", "a p", "the form", "ab pa", "a"];
+    const ranked = () => queries.map((q) => search(ctx, q).map((r) => `${r.ref}:${r.score}`));
+    const patched = ranked();
+    const saved = lunr.Set.prototype.union;
+    lunr.Set.prototype.union = lunrsOwn;
+    try {
+      assert.deepEqual(patched, ranked());
+    } finally {
+      lunr.Set.prototype.union = saved;
+    }
+    assert.ok(patched[0].length > 1, "the fixture no longer exercises the all-words pass");
+  });
+
+  test("all three install it when they build the index", () => {
+    assert.match(read("builder/vendor/just-the-docs/assets/js/just-the-docs.js"), /\s+separateTokenSetKeys\(\);\s*accumulateSetUnions\(\);/);
+    assert.match(read("builder/offline.mjs"), /\s+separateTokenSetKeys\(\);\s*accumulateSetUnions\(\);/);
+    assert.match(read("eval/site_search.mjs"), /\s+separateTokenSetKeys\(lunr\);\s+accumulateSetUnions\(lunr\);\s+return lunr;/);
   });
 });

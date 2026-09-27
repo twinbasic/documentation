@@ -140,6 +140,7 @@ function initSearch() {
             lunr.tokenizer = dotRunSplitTokenizer;
           }
           separateTokenSetKeys();
+          accumulateSetUnions();
 
           var twins = stemTwins(docs);
           var index = lunr(function(){
@@ -284,6 +285,43 @@ function separateTokenSetKeys() {
   };
   separated.separated = true;
   lunr.TokenSet.prototype.toString = separated;
+}
+
+// Patched: lunr 2.3.9's Index#query gathers the entries a REQUIRED clause
+// matches as a running total, `c = c.union(S)`, once per term the clause
+// expands to and per field, and Set#union copies both sets into a new one
+// every time. The all-words pass requires each word with a trailing wildcard,
+// and a short word expands to thousands of terms (`a*`), so that was
+// quadratic: `a page` took about 800 ms and `a p` 1.3 s, on every keystroke.
+// Here a set that union() made takes the next set into itself, in place:
+// lunr's only unions are running totals, which drop the set they replace.
+// The length is lunr's own (the first set's elements plus the second's, an
+// element in both counting twice), since intersect() walks the shorter set.
+// Installed once, since lunr is a global singleton; called from initSearch()
+// above and from offline.mjs's copy of it. See WIP.Search.md, "Fixed: slow
+// multi-word queries".
+function accumulateSetUnions() {
+  var union = lunr.Set.prototype.union;
+  if (union.accumulates) return;
+  var accumulating = function(other) {
+    if (other === lunr.Set.complete || other === lunr.Set.empty) return union.call(this, other);
+    var set = this;
+    if (set.distinct === undefined) {
+      set = new lunr.Set(Object.keys(this.elements));
+      set.distinct = set.length;
+    }
+    var keys = Object.keys(other.elements);
+    set.length = set.distinct + keys.length;
+    for (var i = 0; i < keys.length; i++) {
+      if (!set.elements[keys[i]]) {
+        set.elements[keys[i]] = true;
+        set.distinct++;
+      }
+    }
+    return set;
+  };
+  accumulating.accumulates = true;
+  lunr.Set.prototype.union = accumulating;
 }
 
 // Patched: the qualified names that the stemmer merges with another name's

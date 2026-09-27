@@ -356,8 +356,10 @@ const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
         lunr.tokenizer = dotRunSplitTokenizer;
       }
       // Mirrors the online build's token-set key patch
-      // (separateTokenSetKeys() is the online copy's).
+      // (separateTokenSetKeys() is the online copy's), and its set-union
+      // patch (accumulateSetUnions(), likewise).
       separateTokenSetKeys();
+      accumulateSetUnions();
 
       // Mirrors the online build's stem-twin patch (stemTwins() and
       // qualifiedField() are the online copy's).
