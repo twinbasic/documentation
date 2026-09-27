@@ -1,20 +1,21 @@
-import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
+import { markdownFiles } from '../../lib/markdown-files.mjs'
+import { readFrontmatter } from '../files.mjs'
 
-export function buildSitemap(docsDir, rootDir) {
+export async function buildSitemap(docsDir, rootDir) {
   const root = rootDir || process.cwd()
   const entries = []
-  walk(docsDir, filePath => {
-    if (!filePath.endsWith('.md')) return
-    const fm = parseFrontmatter(readFileSync(filePath, 'utf-8'))
-    if (!fm.title || !fm.permalink) return
+  for (const rel of await markdownFiles(docsDir)) {
+    const filePath = join(docsDir, rel)
+    const fm = readFrontmatter(filePath)
+    if (!fm.title || !fm.permalink) continue
     entries.push({
       path: relative(root, filePath).split(sep).join('/'),
       title: fm.title,
       permalink: fm.permalink,
       parent: fm.parent || null,
     })
-  })
+  }
   return entries
 }
 
@@ -56,32 +57,4 @@ export function buildPageIndex(sitemap) {
     }
   }
   return index
-}
-
-function walk(dir, callback) {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const full = join(dir, entry.name)
-    if (entry.isDirectory()) walk(full, callback)
-    else callback(full)
-  }
-}
-
-function parseFrontmatter(content) {
-  content = content.replace(/\r\n/g, '\n')
-  if (!content.startsWith('---')) return {}
-  const end = content.indexOf('\n---', 3)
-  if (end === -1) return {}
-  const block = content.slice(4, end)
-  const result = {}
-  for (const line of block.split('\n')) {
-    const m = line.match(/^(\w[\w_]*)\s*:\s*(.+)$/)
-    if (!m) continue
-    let val = m[2].trim()
-    if ((val.startsWith('"') && val.endsWith('"')) ||
-        (val.startsWith("'") && val.endsWith("'"))) {
-      val = val.slice(1, -1)
-    }
-    result[m[1]] = val
-  }
-  return result
 }

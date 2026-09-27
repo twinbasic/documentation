@@ -1028,6 +1028,40 @@ harvested Discord title may hold. If a thread file has one, the harvester that w
 files quotes its values, and the existing files are fixed in the same commit. The walker
 returns the same files.
 
+**Landed.** `wisdom/files.mjs` gains `readFrontmatter(path)`: `parseFrontmatter`'s data, `{}`
+for a file with no block, and an error naming the file for a block that does not parse, as
+`readJsonFile` names a state file. `sitemap.mjs`'s `parseFrontmatter` and `walk()` and
+`prep.mjs`'s `parseThreadFrontmatter` go, and all three call sites read through it.
+`buildSitemap` lists its pages with `markdownFiles`, so it is async and `runExtract` awaits
+it. `findThreadMetadata` still skips a thread file it cannot read, which now includes one
+whose frontmatter does not parse; `runExtract` stops on such a file and names it. The
+serializer's `quote` says why every string is written quoted: YAML would read an unquoted
+snowflake as a number and lose its low digits. `wisdom/PLAN-3.md`'s layout line no longer
+says the sitemap has a parser of its own.
+
+**Verify.** The kit's `c41-oracle.mjs`, HEAD's two readers cut out of the files against
+`parseFrontmatter`. Threads: 1,847 files, 1,830 of them in channel folders; none throws and
+no snowflake is unquoted, and the record `prep.mjs` builds from each of the 1,830 is
+deep-equal. The whole frontmatter differs on 919 files, each on purpose: the old reader
+dropped the nested `top_reactions` (898 files) and `starter_reactions` (250), and kept the
+backslash of an escaped `"` in 41 titles; `prep.mjs` reads none of those. Pages: 760 under
+`docs/Reference`, none throws, and `title`, `permalink` and `parent` agree on 757. The other
+three are `Input.md`, `Line-Input.md` and `Write.md`, whose unquoted `title: Input #` YAML
+reads as `Input` with a comment after it, which is how the site has shown them since
+`042210e2`; the old reader kept the `#`. The keys the sitemap does not read differ as
+expected: numbers and booleans where the old reader gave strings (`nav_order`, `has_toc`,
+`has_children`, `vba_attribution`), and lists it dropped or kept as text (`redirect_from`,
+`symbols`, `exclude_from_docs`, `exclude_kinds`). The walk returns the same 760 files, in
+code-unit order where it was the file system's. With HEAD's three titles read as YAML reads
+them, the entries, the package summary and the page index are the same; only
+`page-index.json`'s key order differs. End to end, the kit's `c41-prep.mjs` runs HEAD's
+`runExtract` and the working one into scratch folders over the real threads (it starts no
+agent): the ten batch files and the manifest are byte-identical, `package-summary.txt`
+differs by the three ` #` (6 bytes), and `page-index.json` by the six keys that held them
+(12 bytes) and by its key order. An unclosed block, a YAML error and a list each throw with
+the file's path; a BOM and CRLF parse. The tree comparison is identical in all three trees
+(1,461, 1,457 and 137 files).
+
 *The link checker, the gates' scaffolding, the browser tools and the repository root:
 C42–C46.*
 
