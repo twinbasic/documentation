@@ -105,6 +105,9 @@ export function serializeChannelFrontmatter(fm) {
   return lines.join('\n')
 }
 
+// Every string is written double-quoted, because the extract step reads these
+// blocks as YAML: unquoted, a snowflake id would parse as a number and lose its
+// low digits, and a title holding `: ` or ` #` would not parse as written.
 function quote(v) {
   if (typeof v === 'boolean') return v ? 'true' : 'false'
   if (typeof v === 'number') return String(v)

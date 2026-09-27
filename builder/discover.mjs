@@ -5,8 +5,8 @@
 import fg from "fast-glob";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import matter from "gray-matter";
 
+import { parseFrontmatter, unquotedHashValues } from "../lib/frontmatter.mjs";
 import { permalinkToDestPath } from "./paths.mjs";
 
 const PAGE_EXT = /\.(md|html)$/i;
@@ -30,7 +30,7 @@ export async function discover(srcRoot, ignore = []) {
 
     if (PAGE_EXT.test(srcRel)) {
       const raw = await fs.readFile(srcPath, "utf8");
-      const parsed = parseFrontmatter(raw, srcRel);
+      const parsed = readFrontmatter(raw, srcRel);
       if (parsed) {
         pages.push(buildPage(srcRoot, srcRel, parsed));
         return;
@@ -91,32 +91,36 @@ function bySrcRel(a, b) {
   return a.srcRel < b.srcRel ? -1 : a.srcRel > b.srcRel ? 1 : 0;
 }
 
-// A UTF-8 BOM decodes to U+FEFF, which node's "utf8" reader hands back as
-// the first character rather than swallowing. gray-matter's `test` then sees
-// ﻿--- instead of ---, reports no frontmatter, and the caller files the
-// page as a static asset: it vanishes from the nav and the search index, and
-// its raw markdown is copied into the output tree and served verbatim,
-// frontmatter keys and all. That is what happened to
-// Reference/Built-In/AppGlobalClassObject/index.md, undetected, for months.
+// Every .md and .html passes through here, and `parseFrontmatter` drops a
+// leading BOM, so a page an editor saved with one is still a page rather than
+// a static asset served as raw markdown.
 //
-// Editors on Windows add a BOM without being asked, so this is a hazard any
-// contributor can reintroduce. Strip it here, at the one place every .md and
-// .html passes through, rather than policing the files.
-function stripBom(s) {
-  return s.charCodeAt(0) === 0xfeff ? s.slice(1) : s;
-}
-
-function parseFrontmatter(raw, srcRel) {
-  const text = stripBom(raw);
-  if (!matter.test(text)) return null;
+// `contentLine` is the file's 1-based line on which `content` starts, so a
+// message about a line of the content can name the line of the file. The
+// content is the text after the frontmatter block, so the lines before it are
+// the lines of the block.
+//
+// A value left unquoted that ends in `#` is warned about, not refused: YAML
+// drops a `#` after a space as a comment, so `title: Input #` titles the page
+// `Input`, while `lang: C#` is read as written. Quoting the value keeps the `#`
+// and silences the warning either way.
+function readFrontmatter(raw, srcRel) {
+  let parsed;
   try {
-    return matter(text);
+    parsed = parseFrontmatter(raw);
   } catch (err) {
     throw new Error(`Failed to parse frontmatter in ${srcRel}: ${err.message}`);
   }
+  if (!parsed) return null;
+  for (const { line, text } of unquotedHashValues(raw)) {
+    console.warn(`discover: ${srcRel}:${line}: an unquoted value ends in #, and YAML drops a # after a space as a comment; quote the value to keep it: ${text.trim()}`);
+  }
+  const { data, content } = parsed;
+  const block = raw.slice(0, raw.length - content.length);
+  return { data, content, contentLine: (block.match(/\r\n?|\n/g) ?? []).length + 1 };
 }
 
-function buildPage(srcRoot, srcRel, { data, content }) {
+function buildPage(srcRoot, srcRel, { data, content, contentLine }) {
   const srcRelPosix = toPosix(srcRel);
   const ext = path.extname(srcRel).toLowerCase();
   const permalink = computePermalink(data.permalink, srcRelPosix);
@@ -127,6 +131,7 @@ function buildPage(srcRoot, srcRel, { data, content }) {
     ext,
     frontmatter: data,
     rawContent: content,
+    contentLine,
     permalink,
     destPath,
     layoutDefault: data.layout === undefined || data.layout === null,

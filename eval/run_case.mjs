@@ -58,10 +58,10 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { blockRegions } from "../lib/markdown.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { printDigest, readTranscript, summarize } from "./transcript.mjs";
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SEARCH_SCRIPT = path.join(REPO_ROOT, "eval", "site_search.mjs");
 const SEARCH_COMMAND = 'site-search "your query here"';
 
@@ -98,9 +98,13 @@ function parseArgs(argv) {
 
 /** The evaluator-facing half of protocol.md: from its first rule up to "For the orchestrator". */
 function evaluatorProtocol() {
-  const lines = fs.readFileSync(path.join(REPO_ROOT, "eval", "protocol.md"), "utf8").split(/\r?\n/);
-  const start = lines.indexOf("---");
-  const end = lines.findIndex((l) => l.startsWith("## For the orchestrator"));
+  const src = fs.readFileSync(path.join(REPO_ROOT, "eval", "protocol.md"), "utf8");
+  const lines = src.split(/\r\n|\r|\n/);
+  // A line inside a fence, code block or HTML block is neither boundary.
+  const inCode = new Uint8Array(lines.length);
+  for (const r of blockRegions(src)) inCode.fill(1, r.start, r.end);
+  const start = lines.findIndex((l, i) => !inCode[i] && l === "---");
+  const end = lines.findIndex((l, i) => !inCode[i] && l.startsWith("## For the orchestrator"));
   if (start < 0 || end < start) throw new Error("eval/protocol.md: cannot find the evaluator-facing half");
   const text = lines.slice(start + 1, end).join("\n").trim();
   if (!text.includes(SEARCH_COMMAND)) {

@@ -38,6 +38,8 @@ import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 import pc   from "picocolors";
 
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
+
 import { WorkerPool } from "./worker-pool.mjs";
 import { Scheduler }  from "./scheduler.mjs";
 import { renderGantt } from "./gantt.mjs";
@@ -86,11 +88,6 @@ import {
 
 const CPU_WORKER_URL = new URL("./cpu-worker.mjs", import.meta.url);
 const PACKAGE_API_PATH = new URL("./package-api.json", import.meta.url);
-
-// builder/ sits one level under the repository root. Used to state a build's
-// source root the same way however it was invoked, for the page-count drift
-// guard -- see page-baseline.mjs.
-const REPO_ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 // A command-line error, which main() reports by its message alone and exits 4
 // on: a value outside the 1/2/3 of the link and integrity checks, so a mistyped
@@ -602,21 +599,22 @@ const TASKS = {
       // renders -- and validated here for the same reason. An unknown name
       // cannot be an error inside the substitution rule: markdown-it emits an
       // unrecognised inline verbatim, so the rule would publish the typo to
-      // readers rather than fail. See counts.mjs.
+      // readers rather than fail. See counts.mjs. The validation masks code
+      // with the site's parser, so it follows the parser's creation.
       state.site.counts = deriveCounts(state, { redirectStubs: stubs.length });
-      const badNames = validateCountNames(state.pages, state.site.counts);
-      if (badNames.length) {
-        throw new Error(
-          `unknown {{tbdocs:...}} count name in ${badNames.length} place(s):\n\n` +
-          badNames.join("\n\n"));
-      }
-
       state.site.markdown             = createMarkdownIt({
         highlighter: null, linkTables, baseurl, staticFiles: staticFileSet,
         vendoredVideos: state.site.vendoredVideos,
         vendoredImages: state.site.vendoredImages,
         counts: state.site.counts,
       });
+      const badNames = validateCountNames(state.pages, state.site.counts, state.site.markdown);
+      if (badNames.length) {
+        throw new Error(
+          `unknown {{tbdocs:...}} count name in ${badNames.length} place(s):\n\n` +
+          badNames.join("\n\n"));
+      }
+
       state.site.linkTablesSerialized = serializeLinkTables(linkTables);
       const { seoSiteTitle, seoLogoUrl } = computeSiteSeo(state.site.config, state.site.markdown);
       state.site.seoSiteTitle = seoSiteTitle;

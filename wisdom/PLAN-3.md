@@ -401,7 +401,7 @@ wisdom/
     workflow.mjs    Workflow script (agent orchestration via Claude Code's Workflow tool)
     merger.mjs      parses staging.md, graft-merges DOC_ADDITIONs in place, atomic write
     state.mjs       reads / writes data/findings/extract-state.json (watermark + emission log)
-    sitemap.mjs     globs docs/Reference/**/*.md, parses YAML frontmatter (title, permalink, parent) with a minimal built-in parser — no dependency on builder/
+    sitemap.mjs     lists docs/Reference/**/*.md and reads each page's frontmatter (title, permalink, parent) through lib/
     prep.mjs        CLI handler: applies state filter, scans threads, writes shared + batch files
   data/
     findings/       gitignored

@@ -25,16 +25,14 @@
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import puppeteer from "puppeteer";
+import { listDotSources } from "../builder/dot.mjs";
+import { withBrowser } from "./lib/browser.mjs";
+import { exitOnCrash } from "./lib/gate-probes.mjs";
+import { openInterPage } from "./lib/inter-page.mjs";
+import { parseCli } from "../lib/cli.mjs";
+import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 
-// A crash is the harness failing, not a finding: exit 2, as Extending.md's gate
-// conventions require. This file runs at top level, so there is no main().catch
-// to do it; the handler also catches a rejected top-level await.
-process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
-
-const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const SRC = path.join(REPO, "docs");
+exitOnCrash();
 
 // A label may sit this far past its box edge before it counts as a failure.
 // Kerning is the irreducible part: a per-character table cannot express it,
@@ -44,61 +42,28 @@ const SRC = path.join(REPO, "docs");
 // tens of units rather than ones.
 const TOLERANCE = 1.0;
 
-const verbose = process.argv.includes("--verbose");
+const verbose = parseCli(process.argv.slice(2), { options: { verbose: { type: "boolean" } }, unknown: "ignore" }).values.verbose === true;
 
-async function findDotSvgs(dir, out = []) {
-  let entries;
-  try {
-    entries = await fs.readdir(dir, { withFileTypes: true });
-  } catch (err) {
-    if (err.code === "ENOENT") return out;
-    throw err;
-  }
-  for (const e of entries) {
-    if (e.name.startsWith("_") || e.name.startsWith(".")) continue;
-    const full = path.join(dir, e.name);
-    if (e.isDirectory()) await findDotSvgs(full, out);
-    else if (e.isFile() && e.name.endsWith(".dot")) {
-      const svg = full.replace(/\.dot$/, ".svg");
-      if (await fs.stat(svg).then(() => true, () => false)) out.push(svg);
-    }
-  }
-  return out;
+// The committed SVG of every diagram the build renders, found as it finds them.
+const svgs = [];
+for (const dot of await listDotSources(DOCS_DIR)) {
+  const svg = dot.replace(/\.dot$/, ".svg");
+  if (await fs.stat(svg).then(() => true, () => false)) svgs.push(svg);
 }
-
-const svgs = (await findDotSvgs(SRC)).sort();
+svgs.sort();
 if (svgs.length === 0) {
   console.log("check_dot_fit: no DOT diagrams found");
   process.exit(0);
 }
 
-const fontDirUrl = pathToFileURL(path.join(REPO, "docs/assets/fonts")).href;
-const hostHtml = `<!doctype html><meta charset="utf-8"><title>dot fit</title><style>
-@font-face{font-family:"Inter";font-style:normal;font-weight:100 900;
-  src:url("${fontDirUrl}/inter-variable.woff2") format("woff2")}
-@font-face{font-family:"Inter";font-style:italic;font-weight:100 900;
-  src:url("${fontDirUrl}/inter-variable-italic.woff2") format("woff2")}
-body{font-family:Inter,system-ui,sans-serif;margin:0}
-#host{width:1200px}#host svg{width:1200px;height:auto}</style><div id="host"></div>`;
-
-const browser = await puppeteer.launch({
-  headless: true,
-  args: ["--no-sandbox", "--disable-dev-shm-usage", "--allow-file-access-from-files"],
-});
-
 let failures = 0;
 let checked = 0;
-try {
-  const page = await browser.newPage();
-  page.on("pageerror", (e) => console.error("[page error]", e.message));
-
-  const tmp = path.join(SRC, "_dot-fit-host.html");
-  await fs.writeFile(tmp, hostHtml, "utf8");
-  try {
-    await page.goto(pathToFileURL(tmp).href, { waitUntil: "load" });
-  } finally {
-    await fs.rm(tmp, { force: true });
-  }
+await withBrowser(async (browser) => {
+  const page = await openInterPage(browser, "dot-fit", {
+    css: "body{font-family:Inter,system-ui,sans-serif;margin:0}\n" +
+      "#host{width:1200px}#host svg{width:1200px;height:auto}",
+    body: '<div id="host"></div>',
+  });
   await page.evaluate(async () => {
     await Promise.all([
       document.fonts.load("400 12px Inter"),
@@ -110,7 +75,7 @@ try {
   });
 
   for (const svgPath of svgs) {
-    const rel = path.relative(REPO, svgPath).replace(/\\/g, "/");
+    const rel = path.relative(REPO_ROOT, svgPath).replace(/\\/g, "/");
     const svg = await fs.readFile(svgPath, "utf8");
 
     const result = await page.evaluate((markup, tol) => {
@@ -177,9 +142,7 @@ try {
       if (verbose) console.log(`               tolerance ${TOLERANCE}`);
     }
   }
-} finally {
-  await browser.close();
-}
+});
 
 if (failures) {
   console.error(

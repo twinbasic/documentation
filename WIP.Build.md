@@ -158,17 +158,17 @@ A failing check never aborts the build: a broken link still produces a site you 
 
 The remote-asset rule fails the run on any `<img src>` resolving off-box (`http://`, `https://`, or protocol-relative `//host`). In the build it is unconditional -- `checkRemoteAssets: true` on both trees in `builder/check.mjs`'s `TREES` -- and is *not* reachable by a flag: `tbdocs` rejects `--check-remote-assets` as an unknown argument. That name belongs to the standalone `scripts/check_links.mjs`, where it is opt-in. The PDF pass over `book.html` is informational, so enforcement comes from the `_site/` pass -- every page in the book is also in `_site/`, making it a superset. The check is deliberately scoped to `<img>` only; `<iframe>` is untouched.
 
-### The two link checkers, and the gate that catches divergence
+### The link check's two front ends, and the gate that catches divergence
 
-[scripts/check_links.mjs](scripts/check_links.mjs) is still the tool for a tree the build did not produce -- a release zip, a bisect, someone else's artifact -- and both CI workflows still run it, though not directly: they invoke `check_links_diff.mjs`, which calls the script in-process as its `script` side (only the `fused` side spawns, and it spawns `tbdocs`). It is exercised only against the fixtures, never against the real trees. The pure core both front ends share lives in [builder/link-check.mjs](builder/link-check.mjs); the build-side plumbing is [builder/check.mjs](builder/check.mjs) and [builder/check-tree.mjs](builder/check-tree.mjs).
+[scripts/check_links.mjs](scripts/check_links.mjs) is still the tool for a tree the build did not produce -- a release zip, a bisect, someone else's artifact -- and both CI workflows still run it, though not directly: they invoke `check_links_diff.mjs`, which calls the script in-process as its `script` side (only the `fused` side spawns, and it spawns `tbdocs`). It is exercised only against the fixtures, never against the real trees. Both front ends run the check in [builder/check.mjs](builder/check.mjs), over the pure core in [builder/link-check.mjs](builder/link-check.mjs); the script keeps only its command line, its walk and reads of the tree, and its report's summary lines. [builder/check-tree.mjs](builder/check-tree.mjs) is the build's alone.
 
-Two implementations of one check is exactly the shape that rots quietly: **a checker that silently checks less reports a clean pass.** [scripts/check_links_diff.mjs](scripts/check_links_diff.mjs) is the gate against that, and it plays the same role on this side that `check_a11y_fingerprint.mjs` plays on the axe side. Run it whenever `link-check.mjs`, `check.mjs` or `check_links.mjs` changes:
+The two still read the tree differently -- the build from memory, through an index of what it wrote and in chunks across its workers -- and **a checker that silently checks less reports a clean pass.** [scripts/check_links_diff.mjs](scripts/check_links_diff.mjs) is the gate against that, and it plays the same role on this side that `check_a11y_fingerprint.mjs` plays on the axe side. Run it whenever `link-check.mjs`, `check.mjs` or `check_links.mjs` changes:
 
 ```sh
 node scripts/check_links_diff.mjs --a script --b fused
 ```
 
-It diffs the two implementations' findings category by category across the real invocations -- `_site/` with sitemap + search + canonical, `_site-offline/` with the forbidden-prefix rule, `book.html` with the same rule (there it collects the links that leave the book for the website, reported as `OUT OF BOOK`), and a `--baseurl` tree checked with the matching base path. It is deliberately *not* in `check.bat`: the script side costs ~3 s, which is the whole saving.
+It diffs the two front ends' findings category by category across the real invocations -- `_site/` with sitemap + search + canonical, `_site-offline/` with the forbidden-prefix rule, `book.html` with the same rule (there it collects the links that leave the book for the website, reported as `OUT OF BOOK`), and a `--baseurl` tree checked with the matching base path. It is deliberately *not* in `check.bat`: the script side costs ~3 s, which is the whole saving.
 
 Two further modes matter:
 
@@ -217,7 +217,7 @@ Three details of the policy are load-bearing:
   refusing at source. Folding the two together would pass every other assertion
   in the self-test, so the self-test asserts the disjointness directly.
 - **`.md` is deliberately absent from both.** A markdown file that reaches the
-  check is one `gray-matter` found no frontmatter block in --- the
+  check is one `discover` found no frontmatter block in --- the
   AppGlobalClassObject shape, where the raw markdown was served verbatim for
   months. The two causes that come to mind first are both handled upstream: a
   **UTF-8 BOM** is stripped before parsing, and **malformed YAML** inside the
@@ -286,24 +286,26 @@ that accident.**
 Two mechanisms now exist, and a new rewrite must use one of them:
 
 - **Source rewrites** go inside `applyPreRenderRewrites` in
-  [builder/render.mjs](builder/render.mjs), between `maskCodeRegions` and its
-  `restore`. The mask hides fenced blocks (backtick or tilde, any length) and
-  inline code spans (any backtick-run length).
+  [builder/render.mjs](builder/render.mjs), between `maskCode` and its
+  `restore`. `maskCode` lives in [lib/markdown.mjs](lib/markdown.mjs) and masks
+  every fence the site's parser finds --- including one inside a blockquote or
+  admonition, inside a list item, or one the definition-list plugin makes after
+  `: ` --- plus every inline code span.
 - **Rendered-HTML rewrites** use `replaceOutsideCode` in
   [builder/book.mjs](builder/book.mjs), or the same leading-alternation shape
   found in `offline-rewrite.mjs:299`, `pdf.mjs:138` and `book.mjs`'s
   `IMG_SRC_RE_BOOK`, which consume `<code>` and `<pre>` atomically.
 
-**One gap is deliberate and stated rather than hidden:** `maskCodeRegions` does
-not protect **indented** (4-space) code blocks, because telling one from a
-list-item continuation needs block context a pre-render pass does not have, and
-guessing would change how real list content renders. `check_code_regions.mjs`
+**One gap is deliberate and stated rather than hidden:** the chain does not
+mask **indented** (4-space) code blocks, since it calls `maskCode` without
+`indented: true`. `check_code_regions.mjs`
 *does* compare them, so a rewrite that damages one is reported --- and must be
 fixed at the rewrite, not by widening the mask.
 
-`rewriteAdmonitions` deliberately runs **outside** the mask. A fence inside an
-admonition still carries its `> ` markers at that point, so the mask does not
-see it as a fence, and the admonition rewrite is what strips those markers.
+`rewriteAdmonitions` deliberately runs **outside** the mask. It finds an
+admonition's lines by their `>` markers and strips them, and a masked fence
+inside an admonition takes its markers with it into the stash. It asks
+`blockRegions`, with the same parser, which lines are code instead.
 
 ### Whitespace inside inline code is content
 
@@ -420,7 +422,7 @@ node scripts/check_code_regions.mjs --self-test
 
 Two details are load-bearing. **It imports the chain rather than reconstructing
 it**, so removing the mask from one rewrite changes what the gate runs and is
-caught --- a gate that exercised `maskCodeRegions` alone would have passed. And
+caught --- a gate that exercised `maskCode` alone would have passed. And
 **its seven probes ride along in the normal run**, each a defect this repository
 actually shipped, because the corpus is clean: a sweep that finds nothing is
 otherwise indistinguishable from a gate that has stopped detecting. Verified by
@@ -473,7 +475,7 @@ comment in [builder/page-baseline.mjs](builder/page-baseline.mjs):
   `test/fixtures/check-src`, three pages, to compare the two link checkers.
   Against an unkeyed baseline that build reports **905 pages missing** --- a
   loud, confident, entirely wrong finding, on the one harness whose whole job is
-  noticing when two implementations disagree. `GUARDED_SRC` names the tree the
+  noticing when two front ends disagree. `GUARDED_SRC` names the tree the
   numbers are of and every other root is skipped in silence.
 - **The build now writes a tracked file, and `check_tree_fresh.mjs` watches
   `builder/`.** The write happens after the tree, so without an exclusion the
@@ -521,20 +523,27 @@ comparison matched, the link check passed, and axe has no opinion about a
 blockquote. It was found only because a new entry added to that page rendered
 the same way and looked wrong.
 
-The stasher is a line scan now --- CommonMark closes a fence on a line that is
+The stasher became a line scan --- CommonMark closes a fence on a line that is
 only the fence character, repeated at least as often as in the opener, which is
 a rule about lines rather than something to express as one regex over a whole
-document. Measured across the site, the fix changes four files: `Attributes.html`,
+document. Measured across the site, that fix changed four files: `Attributes.html`,
 `search-data.json` (which indexes it), and the two that record build timings.
 
 The same stasher had a second way to fail: it recognised *backtick* fences only,
-reasoning that `maskCodeRegions` knows about tildes --- but `rewriteAdmonitions` runs
-**outside** the mask by design, so nothing protected a tilde fence. `FENCE_OPEN_RE`
-accepts either character now and closes on the one that opened. `docs/` contains no
-tilde fence, which is why the corpus sweep could never have found it --- the same
-blind spot that makes the ADMONITION_PROBES necessary.
+reasoning that `maskCodeRegions` knew about tildes --- but `rewriteAdmonitions` runs
+**outside** the mask by design, so nothing protected a tilde fence. Its opener test
+was made to accept either character and close on the one that opened. `docs/`
+contains no tilde fence, which is why the corpus sweep could never have found it ---
+the same blind spot that makes the ADMONITION_PROBES necessary.
 
-Five probes in `check_code_regions.mjs` assert this direction, and **writing one
+**The stasher is gone.** A scan of its own could still disagree with the parser
+that renders the page: it never saw a fence opened after a definition list's `: `,
+so an admonition written inside one as a sample became a live one. `rewriteAdmonitions`
+asks `blockRegions` from `lib/markdown.mjs`, with the site's parser, and leaves an
+admonition alone when its `[!TYPE]` line is in a region. A fence *inside* an
+admonition is a region too, and the rewrite still strips its `>` markers.
+
+Six probes in `check_code_regions.mjs` assert this direction, and **writing one
 correctly is not obvious**: a mis-paired opener swallows text only as far as the next
 fence marker, so a probe with no fence *after* the admonition passes against the very
 stasher it was written to catch. The damage is always to the prose **between** two
@@ -734,8 +743,11 @@ Two judgement calls worth keeping:
   *"found `test.bat` documented as three gates when it had four"* as a false
   claim, so the verb list is explicit.
 
-Twelve of its eighteen probes cover the sweep, seven positive and five
-negative, each taken from the real corpus. The verification that means anything
+Thirteen of its nineteen probes cover the sweep, eight positive and five
+negative. Twelve are taken from the real corpus; the thirteenth puts a fenced
+`## ` line, the shape of Wisdom.md's `staging.md` example, inside a wrapper's
+section, since sections are split through `lib/markdown.mjs`'s `splitOnMarker`
+and a heading-shaped line in a region starts none. The verification that means anything
 is reverting the offending pages to the commit that shipped them and confirming
 the gate names every site.
 

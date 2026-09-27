@@ -37,10 +37,11 @@
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { parseAttributes } from "./lib/attributes-doc.mjs";
+import { parseCli } from "../lib/cli.mjs";
+import { DOCS_DIR } from "../lib/repo-paths.mjs";
 
-const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const DOCS = path.join(REPO, "docs", "Reference", "Attributes.md");
+const ATTR_DOC = path.join(DOCS_DIR, "Reference", "Attributes.md");
 
 const USAGE = `Generate a twinBASIC probe project for Reference/Attributes.md applicability.
 
@@ -49,45 +50,6 @@ const USAGE = `Generate a twinBASIC probe project for Reference/Attributes.md ap
 Writes one source file per claimed attribute target, plus a key naming the
 Attributes.md line each probe came from. Every probe is expected to compile; a
 diagnostic naming a probe module is a finding.`;
-
-// ----------------------------------------------------------------- parsing
-const LINK_BOLD = /\[\*\*([^\]]*)\*\*\]\([^)]*\)/g;
-const LINK = /\[([^\]]*)\]\([^)]*\)/g;
-
-function clean(s) {
-  return s
-    .replace(LINK_BOLD, "$1")
-    .replace(LINK, "$1")
-    .replaceAll("**", "")
-    .replaceAll("\\", "")
-    .trim();
-}
-
-async function parseAttributes(file) {
-  // Python reads in text mode, so universal-newline translation has already
-  // collapsed CRLF before the split. Match that, or every line carries a
-  // trailing CR into the generated key.
-  const lines = (await fs.readFile(file, "utf8")).replace(/\r\n?/g, "\n").split("\n");
-  const entries = [];
-  let cur = null;
-
-  lines.forEach((line, i) => {
-    const m = /^Syntax:\s*(.*)$/.exec(line);
-    if (m) {
-      const name = /^Syntax:\s*\*\*\[(\w+)/.exec(line);
-      // A `Syntax:` line that names no attribute leaves `cur` alone, exactly as
-      // the Python `continue` did -- the line cannot also be `Applicable to:`.
-      if (!name) return;
-      cur = { name: name[1], syntax: clean(m[1]), line: i + 1, app: null };
-      entries.push(cur);
-      return;
-    }
-    const m2 = /^Applicable to:\s*(.*)$/.exec(line);
-    if (m2 && cur !== null && cur.app === null) cur.app = clean(m2[1]);
-  });
-
-  return entries;
-}
 
 // --------------------------------------------------------------- arguments
 // An attribute with a mandatory argument needs a value that is itself valid, or
@@ -1145,19 +1107,20 @@ const MAIN_TWIN = "' Startup object for the probe project. Does nothing.\n\n" +
   "Module ProbeMain\n    Public Sub Main()\n    End Sub\nEnd Module\n";
 
 async function main(argv) {
-  if (argv.length < 1) {
+  const { positionals } = parseCli(argv, { unknown: "positional", positionals: { min: 0 } });
+  if (positionals.length < 1) {
     console.log(USAGE);
     return 2;
   }
-  const out = argv[0];
+  const out = positionals[0];
   // The key must land OUTSIDE the tree: anything inside it gets packed into the
   // .twinproj and shows up as a stray file in the project.
-  const keyPath = argv[1] ?? path.join(path.dirname(path.resolve(out)), "probe-key.md");
+  const keyPath = positionals[1] ?? path.join(path.dirname(path.resolve(out)), "probe-key.md");
   const srcDir = path.join(out, "Sources");
   const overflowSrc = path.join(out + "-2", "Sources");
   await fs.mkdir(srcDir, { recursive: true });
 
-  const entries = await parseAttributes(DOCS);
+  const entries = parseAttributes(await fs.readFile(ATTR_DOC, "utf8"));
   const byName = new Map(entries.map((e) => [e.name, e]));
   const probes = [];
   const overflow = [];

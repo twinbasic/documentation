@@ -26,23 +26,16 @@
 //     typographer's ellipsis in a Core heading, and an attribute's `##`;
 //   - the drift guard's refusals, which on a healthy tree it never shows.
 
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { readFile } from "node:fs/promises";
 import { checkSymbolBaseline } from "../builder/symbol-baseline.mjs";
 import { deriveSymbolIndex, headingsOf, serializeSymbolIndex } from "../builder/symbols.mjs";
 import { GUARDED_SRC } from "../builder/page-baseline.mjs";
+import { baselineFixture, createProbes, exitOnCrash } from "./lib/gate-probes.mjs";
 import { apiSnapshot, isPublicType, parseTwin } from "./lib/twin-api.mjs";
 
-// A crash is the harness failing, not a finding: exit 2.
-process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
+exitOnCrash();
 
-let failures = 0;
-const results = [];
-function check(name, ok, detail) {
-  results.push({ name, ok, detail });
-  if (!ok) failures++;
-}
+const { check, report } = createProbes("check_symbol_index");
 const show = (x) => JSON.stringify(x);
 
 // ------------------------------------------------------------ the scanner
@@ -311,41 +304,33 @@ check("a declared member no page documents is a gap, not an entry",
 
 // ------------------------------------------------------------ the drift guard
 
-async function withBaseline(initial, fn) {
-  const dir = await mkdtemp(path.join(tmpdir(), "tb-symbolbaseline-"));
-  const file = path.join(dir, "symbol-baseline.json");
-  try {
-    if (initial) await writeFile(file, JSON.stringify({ src: GUARDED_SRC, urls: initial }), "utf8");
-    return await fn(file);
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
-}
+const withBaseline = baselineFixture("symbol-baseline.json");
 const urlsIn = async (file) => JSON.parse(await readFile(file, "utf8")).urls;
 const BASE = ["/tB/Modules/Strings/Left", "/tB/Packages/tbIDE/ToolWindows#add"];
+const BASE_FILE = { src: GUARDED_SRC, urls: BASE };
 
-await withBaseline(BASE, async (file) => {
+await withBaseline(BASE_FILE, async (file) => {
   const out = await checkSymbolBaseline({ src: GUARDED_SRC, urls: ["/tB/Modules/Strings/Left", "/tB/Packages/tbIDE/ToolWindows#add-method"], write: true, file });
   check("a reworded heading's lost anchor fails, and is named",
     out.failed && out.text.includes("ToolWindows#add") && (await urlsIn(file)).length === 2, out.text.trim());
 });
-await withBaseline(BASE, async (file) => {
+await withBaseline(BASE_FILE, async (file) => {
   const out = await checkSymbolBaseline({ src: GUARDED_SRC, urls: [...BASE, "/tB/Core/Dim"], write: true, file });
   check("a new URL is accepted and recorded", !out.failed && (await urlsIn(file)).includes("/tB/Core/Dim"), out.text.trim());
 });
-await withBaseline(BASE, async (file) => {
+await withBaseline(BASE_FILE, async (file) => {
   const out = await checkSymbolBaseline({ src: GUARDED_SRC, urls: [...BASE, "/tB/Core/Dim"], write: false, file });
   check("a new URL with write:false leaves the file alone", !out.failed && (await urlsIn(file)).length === 2, out.text.trim());
 });
-await withBaseline(BASE, async (file) => {
+await withBaseline(BASE_FILE, async (file) => {
   const out = await checkSymbolBaseline({ src: GUARDED_SRC, urls: BASE, write: true, file });
   check("an unchanged index says nothing", !out.failed && out.text === "", show(out.text));
 });
-await withBaseline(BASE, async (file) => {
+await withBaseline(BASE_FILE, async (file) => {
   await checkSymbolBaseline({ src: GUARDED_SRC, urls: BASE.slice(0, 1), write: false, force: true, file });
   check("--update-symbol-baseline records a removal on request", (await urlsIn(file)).length === 1);
 });
-await withBaseline(BASE, async (file) => {
+await withBaseline(BASE_FILE, async (file) => {
   const out = await checkSymbolBaseline({ src: "test/fixtures/check-src", urls: [], write: true, file });
   check("a foreign source root is ignored, not measured", !out.failed && out.text === "" && (await urlsIn(file)).length === 2);
 });
@@ -360,11 +345,4 @@ await withBaseline(null, async (file) => {
 
 // ------------------------------------------------------------ report
 
-for (const { name, ok, detail } of results) {
-  console.log(`  ${ok ? "ok  " : "FAIL"} ${name}`);
-  if (!ok && detail) console.log(`       ${detail}`);
-}
-console.log(failures
-  ? `check_symbol_index: ${failures} of ${results.length} probes failed`
-  : `check_symbol_index: ${results.length} probes, all pass`);
-process.exit(failures ? 1 : 0);
+process.exit(report());

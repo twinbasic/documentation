@@ -28,13 +28,12 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
+import { exitOnCrash } from "./lib/gate-probes.mjs";
 import { buildArgs, gateSteps, workflowSteps } from "./lib/gate-roster.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
-process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
-
-const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
+exitOnCrash();
 const JOB = "build";
 const WORKFLOWS = ["checks.yml", "tbdocs-gh-pages.yml"];
 
@@ -300,7 +299,7 @@ if (probeFailures.length) {
 }
 console.log(`check_ci_workflows: ${PROBES.length} probes, all pass`);
 
-const read = (rel) => readFileSync(path.join(ROOT, rel), "utf8");
+const read = (rel) => readFileSync(path.join(REPO_ROOT, rel), "utf8");
 const workflows = {};
 for (const name of WORKFLOWS) workflows[name] = yaml.load(read(`.github/workflows/${name}`));
 // Every local action the workflows use; one that cannot be read is left out,

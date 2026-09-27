@@ -3,7 +3,7 @@
 // existence oracle -- nothing reads the filesystem, nothing walks a
 // directory, nothing knows where the HTML came from.
 //
-// Two front ends share it:
+// Two front ends share it, both through builder/check.mjs:
 //
 //   scripts/check_links.mjs   reads HTML off disk and stats the disk.
 //                             Works against any tree, including one this
@@ -948,9 +948,9 @@ export function formatLinkReport(broken, forbiddenBySource, { tag = "FORBIDDEN",
   return lines.join("\n") + "\n";
 }
 
-// The findings strings both front ends diff are deliberately terse --
-// see buildFindings / findingsFor. The report adds the part a reader
-// needs to know what to do about it.
+// The findings strings check_links_diff.mjs compares are deliberately
+// terse -- see findingsFor in check.mjs. The report adds the part a
+// reader needs to know what to do about it.
 const HTML_ERROR_HINT = {
   "unclosed-tag":
     "the document never closed it",

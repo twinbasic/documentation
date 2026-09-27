@@ -29,8 +29,9 @@ The pipeline passes three pieces of mutable state through every task: the `pages
 | `srcPath` | `discover` | `string` | Absolute filesystem path of the source file. |
 | `srcRel` | `discover` | `string` | POSIX-style path relative to `srcRoot`, e.g. `Reference/Core/Dim.md`. |
 | `ext` | `discover` | `string` | Lowercase file extension: `.md` or `.html`. |
-| `frontmatter` | `discover` | `object` | Parsed YAML frontmatter, with any leading UTF-8 BOM stripped before parsing (a BOM in front of the `---` otherwise makes `gray-matter` report no frontmatter at all, and the page is silently filed as a static asset). Only the named keys below are ever read --- nothing iterates this object, so an unrecognised key such as a package page's `indexed_from` is inert and never reaches the output. |
+| `frontmatter` | `discover` | `object` | Parsed YAML frontmatter, with any leading UTF-8 BOM stripped before parsing (a BOM in front of the `---` would otherwise hide the frontmatter, and the page would be silently filed as a static asset). A value left unquoted that ends in `#` gets a `discover:` warning naming its file and line, since YAML reads a `#` after a space as the start of a comment. Only the named keys below are ever read --- nothing iterates this object, so an unrecognised key such as a package page's `indexed_from` is inert and never reaches the output. |
 | `rawContent` | `discover` | `string` | Body text after the frontmatter block. |
+| `contentLine` | `discover` | `number` | The 1-based line of the source file on which `rawContent` starts. `validateCountNames` adds it to a line of `rawContent`, so its messages name the line of the file. |
 | `permalink` | `discover` | `string` | URL path from `frontmatter.permalink`. A fallback of `/<srcRel>.html` exists in `computePermalink`, but `nav`'s `validatePermalinks` aborts the build before it can matter --- the file tree does not mirror the URL tree, so a derived permalink is structurally wrong here. |
 | `destPath` | `discover` | `string` | Filesystem path within the output root, e.g. `Reference/Core/Dim.html`. |
 | `layoutDefault` | `discover` | `boolean` | `true` when frontmatter has no explicit `layout:` key. |
@@ -511,17 +512,17 @@ The same modules as above, with the full export list per file.
 
 ### `check.mjs`
 
-The build-side plumbing for the link and integrity check. Imported dynamically --- on the workers by `renderEnvInit`, on main by `linkJoin` / `checkBook` / `checkReport` --- because `htmlparser2` costs ~23 ms to import and a build without `--check` must not pay it on sixteen lanes.
+The link and integrity check over rendered pages, which the standalone [`scripts/check_links.mjs`](Tools#check-links) also runs, over a tree it reads from disk. The build imports it dynamically --- on the workers by `renderEnvInit`, on main by `linkJoin` / `checkBook` / `checkReport` --- because `htmlparser2` costs ~23 ms to import and a build without `--check` must not pay it on sixteen lanes.
 
 | Symbol | Signature | Description |
 |---|---|---|
 | `TREES` | `object` | Per-tree configuration: `suffix`, `label`, the `checkOpts` that tree enables, and its `forbid` prefixes. `online` and `offline` both set `checkRemoteAssets: true` unconditionally --- there is no flag to turn it off. |
 | `FALLBACK_EXTS` | `string[]` | Extensions appended when a target does not exist as-is (`["html"]`, mirroring Pages' extensionless URLs). |
 | `INDEX_FILES` | `string[]` | Filenames tried when a URL resolves to a directory. |
-| `checkChunk` | `(docs, env) → chunkResult` | Checks one chunk of `{ destPath, html }` against one tree. The unit of work that rides along inside `flush:i`. |
+| `checkChunk` | `(docs, env) → chunkResult` | Checks one chunk of `{ destPath, html }` against one tree. The unit of work that rides along inside `flush:i`; `check_links.mjs` runs it once, over a whole tree. |
 | `joinChunks` | `(chunks, opts) → treeResult` | Merges per-chunk results into one per-tree result, settling cross-chunk fragment references. |
 | `formatReport` | `(r) → { text, linksFailed, integrityFailed }` | Human-readable report plus the two booleans `checkReport` turns into an exit code. |
-| `findingsFor` | `(r) → object` | The machine-readable view, written by `--check-findings`. |
+| `findingsFor` | `(r) → object` | The machine-readable view, written by `--check-findings` and returned by `check_links.mjs`'s structured mode for `check_links_diff.mjs`. |
 | `treeIndexFor` | `(root, rels) → treeIndex` | Builds the existence oracle a tree is checked against, from the build's own records rather than a `readdir`. |
 | `auditIndex` | `(root, rels) → Promise<{ missing, spurious }>` | Diffs that derived index against what actually landed on disk. `--check-audit-index` only. |
 | `deriveTreeRels` | re-exported from `check-tree.mjs` | --- |
@@ -536,7 +537,7 @@ The build-side plumbing for the link and integrity check. Imported dynamically -
 
 ### `link-check.mjs`
 
-The pure core shared by the build's fused check and the standalone [`scripts/check_links.mjs`](Tools#check-links). No filesystem traversal and no CLI --- it takes HTML and an oracle and returns findings, which is what lets one implementation serve both front ends. **Two implementations of one check is the shape that rots quietly, so run [`check_links_diff.mjs`](Tools#check-links-diff) whenever this file, `check.mjs` or `check_links.mjs` changes.**
+The pure core shared by the build's fused check and the standalone [`scripts/check_links.mjs`](Tools#check-links). No filesystem traversal and no CLI --- it takes HTML and an oracle and returns findings, which is what lets one implementation serve both front ends. **The two front ends read the tree differently, and a checker that silently checks less reports a clean pass, so run [`check_links_diff.mjs`](Tools#check-links-diff) whenever this file, `check.mjs` or `check_links.mjs` changes.**
 
 | Symbol | Signature | Description |
 |---|---|---|
@@ -637,6 +638,7 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 | Symbol | Signature | Description |
 |---|---|---|
 | `regenerateDot` | `(srcRoot) → Promise<{ processed, regenerated, failed, setupSkipped?, svgFiles }>` | Regenerates stale `.dot` → `.svg` via the WASM build of Graphviz (`@hpcc-js/wasm-graphviz`). `svgFiles` is the appendable static-file descriptor list. |
+| `listDotSources` | `(srcRoot) → Promise<string[]>` | Every `.dot` under `srcRoot` at any depth, sorted, each path joined onto `srcRoot`, skipping entries whose names start with `_` or `.`. `scripts/check_dot_fit.mjs` finds the diagrams it checks through it. |
 
 ### `scss.mjs`
 
@@ -650,13 +652,12 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 | Symbol | Signature | Description |
 |---|---|---|
 | `renderPhase` | `(pages, site, staticFiles?) → Promise<void>` | Renders each page's `rawContent` to `renderedContent` via the supplied site's markdown-it. Skips `layout: book-combined`. |
-| `applyPreRenderRewrites` | `(rawContent) → string` | The whole pre-render source rewrite chain, as the render stage applies it to each page before parsing: normalises line endings to LF, masks the code regions, runs the four kramdown-parity rewrites, restores the code, then runs `rewriteAdmonitions`. Exported so `check_code_regions.mjs` and `check_examples.mjs` test the real chain rather than a copy of it. |
-| `maskCodeRegions` | `(src) → { masked, restore }` | Replaces each fenced code block and inline code span with a placeholder, so a source rewrite cannot reach into code; `restore(text)` puts them back. Indented code blocks are not masked. `counts.mjs` uses it to find `{{tbdocs:<name>}}` outside code. |
+| `applyPreRenderRewrites` | `(rawContent, md) → string` | The whole pre-render source rewrite chain, as the render stage applies it to each page before parsing: normalises line endings to LF, masks code with `maskCode` from `lib/markdown.mjs` using the site's markdown-it instance `md`, runs the four kramdown-parity rewrites, restores the code, then runs `rewriteAdmonitions` with the same instance. Throws a `TypeError` when `md` is omitted. Exported so `check_code_regions.mjs` and `check_examples.mjs` test the real chain rather than a copy of it. |
 | `createMarkdownIt` | `({ highlighter, linkTables, baseurl, staticFiles, svgContents?, vendoredVideos?, vendoredImages?, counts? }) → MarkdownIt` | Builds the configured markdown-it instance: the eighteen plugins tabulated below, in their fixed order, plus eight renderer-rule overrides assigned directly. `svgContents` is a `Map<srcRel, string>` of pre-read SVG file contents; when present, `svgInlinePlugin` replaces a lone `.svg` image with an inline SVG wrapper. `vendoredVideos` and `vendoredImages` are the maps `videoLinkPlugin` and `remoteImagePlugin` resolve against, and `counts` is the registry `countPlugin` substitutes from. See [Extending](Extending#adding-a-markdown-it-plugin) for how to add a plugin. |
 | `initHighlighter` | (re-export from `highlight.mjs`) | `() → Promise<object>`. Initialises Shiki with the bundled twinBASIC grammar. |
 | `buildLinkTables` | `(pages) → { byPath, byUrl, byRedirect }` | Map lookups keyed by `srcRel`, `permalink`, and `redirect_from` entries. |
 | `serializeLinkTables` | `(lt) → { byPath, byUrl, byRedirect }` | Serializes the Maps to `[key, permalink]` pair arrays for structured-clone transfer to workers. |
-| `rewriteAdmonitions` | `(src) → string` | GFM admonition rewrite to the `markdown-alert markdown-alert-<type>` class structure with the five SVG octicons. |
+| `rewriteAdmonitions` | `(src, md) → string` | GFM admonition rewrite to the `markdown-alert markdown-alert-<type>` class structure with the five SVG octicons. Leaves an admonition alone when its `[!TYPE]` line is inside a region that `blockRegions` from `lib/markdown.mjs` reports with the site's markdown-it instance `md`; a fence inside an admonition is part of its body. Throws a `TypeError` when `md` is omitted. |
 #### The plugin chain
 
 `createMarkdownIt` applies eighteen plugins in a fixed order: three from npm, fourteen defined in `render.mjs` itself, and `countPlugin` from `counts.mjs`. Most of the in-tree ones exist to close a behavioural gap between markdown-it and kramdown, which rendered this content under Jekyll --- the site's ~870 pages were authored against kramdown's dialect, so matching it is a compatibility requirement rather than a preference.
@@ -718,8 +719,8 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | `PLACEHOLDER_RE` | `RegExp` | Matches a `{{tbdocs:<name>}}` placeholder and captures the name. Used by the internal `substitute` helper that `countPlugin` calls, and by `findCountRefs` to locate placeholders in a page's raw markdown. |
 | `deriveCounts` | `(state, extra) → Record<string, number>` | Derives every named count from build state: page, static-file, reference-page and documentation-page totals, folder-style reference indexes and how many of them have a permalink ending in a slash, packages (total, default, built-in), attribute anchors, enumerations, and `extra.redirectStubs`. Called by `markdownInit` in `tbdocs.mjs` to build `state.site.counts`, whose keys are the names a page may use. |
 | `countPlugin` | `(md, ctx) → void` | A markdown-it plugin, the last one `createMarkdownIt` applies. Its core rule is pushed last, so it runs after `replacements` and sees the same text the reader will. Substitutes each `{{tbdocs:<name>}}` placeholder in prose and image alt text with the value `ctx.counts` holds under that name, and leaves an unknown name as written; code spans and fences are untouched. Does nothing when `ctx.counts` is absent. |
-| `findCountRefs` | `(rawContent) → { name, line }[]` | Finds every `{{tbdocs:...}}` reference in a page's raw source that is outside code, using `maskCodeRegions` from `render.mjs` so code is masked the same way the pre-render rewrites mask it. Called by `validateCountNames` for each page. |
-| `validateCountNames` | `(pages, counts) → string[]` | Checks every page's count references against the known `counts` names via `findCountRefs`, returning one message per unknown reference that gives the file and line, the nearest known name when one is within an edit distance of three, and every known name; empty when every reference is known. Called by `markdownInit` in `tbdocs.mjs`, which throws when the result is non-empty. |
+| `findCountRefs` | `(rawContent, md) → { name, line }[]` | Finds every `{{tbdocs:...}}` reference in a page's raw source that is outside code, using `maskCode` from `lib/markdown.mjs` with the site's markdown-it instance `md`, so code is masked the same way the pre-render rewrites mask it. `line` is 1-based in `rawContent`, counted with the code put back, since a masked fence is one line. Called by `validateCountNames` for each page. |
+| `validateCountNames` | `(pages, counts, md) → string[]` | Checks every page's count references against the known `counts` names via `findCountRefs`, returning one message per unknown reference that gives the file and the line in it (the reference's line in `rawContent`, moved down by the page's `contentLine`), the nearest known name when one is within an edit distance of three, and every known name; empty when every reference is known. Called by `markdownInit` in `tbdocs.mjs`, which throws when the result is non-empty. |
 | `findSurvivingPlaceholder` | `(html) → string\|null` | Scans rendered HTML, outside `<code>` and `<pre>`, for a `{{tbdocs:...}}` placeholder that survived rendering, returning the first survivor or `null`. Called by `renderPhase` in `render.mjs` after each page renders, which throws when a survivor is found. |
 
 ### `highlight.mjs`

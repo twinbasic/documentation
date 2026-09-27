@@ -35,19 +35,24 @@ import {
   readAxeSource,
 } from "./lib/axe-scan.mjs";
 import { withBrowser } from "./lib/browser.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
-let patchName = "plain-color-fields";
-const args = process.argv.slice(2);
-for (let i = 0; i < args.length; i++) {
-  if (args[i] === "--patch" && args[i + 1]) patchName = args[++i];
-  else if (args[i] === "-h" || args[i] === "--help") {
-    console.log("usage: node scripts/check_axe_patch_equiv.mjs [--patch NAME]");
-    process.exit(0);
-  } else {
-    console.error(`unknown arg: ${args[i]}`);
-    process.exit(2);
-  }
+const cli = withUsageError(
+  () =>
+    parseCli(process.argv.slice(2), {
+      options: {
+        patch: { type: "string", default: "plain-color-fields" },
+        help: { type: "boolean", short: "h" },
+      },
+      acceptsValue: Boolean,
+      stopAt: ["help"],
+    }),
+  { format: (err) => `unknown arg: ${err.arg}` },
+);
+if (cli.stopped === "help") {
+  printHelpAndExit("usage: node scripts/check_axe_patch_equiv.mjs [--patch NAME]");
 }
+let patchName = cli.values.patch;
 
 // Runs in the page against whichever bundle was injected.
 const PROBE = () => {

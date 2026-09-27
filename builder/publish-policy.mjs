@@ -36,10 +36,9 @@
 //
 // `.md` is deliberately absent. A markdown file that reaches this check is
 // one discover() could not parse frontmatter from, which is the shape of
-// the AppGlobalClassObject bug -- a UTF-8 BOM in front of the `---` made
-// gray-matter report no frontmatter, the page was filed as a static asset,
-// and its raw markdown was served verbatim for months. stripBom() fixed
-// that cause; this refuses the whole class.
+// the AppGlobalClassObject bug, where the raw markdown is served verbatim.
+// A BOM in front of the `---` was one cause, and lib/frontmatter.mjs strips
+// it now; this refuses the whole class.
 export const SOURCE_EXTENSIONS = new Set([
   ".css",
   ".gif",
@@ -105,12 +104,12 @@ function refuse(rel, extensions, declared) {
   if (extensions.has(ext)) return null;
 
   if (ext === ".md") {
-    // Not "check for a BOM": stripBom() removes one before parsing, so a
-    // BOM'd page renders normally and never reaches here. Nor is it
+    // Not "check for a BOM": parseFrontmatter removes one before parsing, so
+    // a BOM'd page renders normally and never reaches here. Nor is it
     // malformed YAML, which throws its own error naming the file and the
-    // parse fault. What is left is gray-matter finding no frontmatter
-    // block at all -- either there is none, or something precedes the
-    // opening `---`.
+    // parse fault. What is left is parseFrontmatter finding no frontmatter
+    // block at all -- either there is none, or the file's first line is
+    // something other than `---`.
     return "markdown with no frontmatter block -- it would be served as " +
            "raw markdown (the opening `---` must be the first line)";
   }

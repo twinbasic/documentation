@@ -1,5 +1,5 @@
 ---
-title: Write #
+title: "Write #"
 parent: Statements
 permalink: /tB/Core/Write
 vba_attribution: true

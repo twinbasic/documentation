@@ -42,14 +42,16 @@
 //   --root-dir DIR   tree to take the census from (default docs/_site-offline)
 //   --budget MS      audit-time budget --propose may spend on the sample
 
-import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { resolve, join, relative, sep } from "node:path";
-import { DEFAULT_ROOT_DIR, REPO_ROOT, SAMPLE_PAGES } from "./lib/axe-scan.mjs";
+import {
+  DEFAULT_ROOT_DIR, REPO_ROOT, SAMPLE_PAGES, discoverPages, median, pad, splitStubs,
+} from "./lib/axe-scan.mjs";
+import { exitOnCrash } from "./lib/gate-probes.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
-// A crash is the harness failing, not a finding: exit 2, as Extending.md's gate
-// conventions require, where 1 is a coverage gap. This file runs at top level,
-// so there is no main().catch to do it.
-process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
+// A crash exits 2, where 1 is a coverage gap.
+exitOnCrash();
 
 // ---------------------------------------------------------------------------
 // Construct families
@@ -120,74 +122,55 @@ const ANCHORS = {
   "/404.html": "the error layout, and the site's cheapest real page",
 };
 
-// Redirect stubs (~290 of them) are excluded, and cannot be included: each
-// carries `<script>location=...</script>`, so the browser has navigated to the
-// target before the audit runs and what axe walks is the target page.  Putting
-// one in the sample buys a silent duplicate audit, not a new layout.
-const STUB_CEILING = 100;
-
 // ---------------------------------------------------------------------------
 // CLI
 // ---------------------------------------------------------------------------
 
-const args = process.argv.slice(2);
-let mode = "check";
-let rootDir = DEFAULT_ROOT_DIR;
-let sweepPath = join(REPO_ROOT, "perf/results/a11y-sweep.jsonl");
-let budget = Infinity;
-let fresh = false;
-
-for (let i = 0; i < args.length; i++) {
-  const a = args[i];
-  if (a === "--check") mode = "check";
-  else if (a === "--propose") mode = "propose";
-  else if (a === "--census") mode = "census";
-  else if (a === "--fresh") fresh = true;
-  else if (a === "--root-dir" && args[i + 1]) rootDir = args[++i];
-  else if (a === "--sweep" && args[i + 1]) sweepPath = args[++i];
-  else if (a === "--budget" && args[i + 1]) budget = parseFloat(args[++i]);
-  else if (a === "-h" || a === "--help") {
-    console.error("usage: node scripts/pick_a11y_sample.mjs [--check|--propose|--census] [--fresh]");
-    console.error("                                        [--root-dir DIR] [--sweep FILE] [--budget MS]");
-    process.exit(0);
-  } else {
-    console.error("unknown arg: " + a);
-    process.exit(2);
-  }
+const cli = withUsageError(
+  () =>
+    parseCli(process.argv.slice(2), {
+      options: {
+        check: { type: "boolean" },
+        propose: { type: "boolean" },
+        census: { type: "boolean" },
+        fresh: { type: "boolean", default: false },
+        "root-dir": { type: "string", default: DEFAULT_ROOT_DIR },
+        sweep: { type: "string", default: join(REPO_ROOT, "perf/results/a11y-sweep.jsonl") },
+        budget: { type: "string" },
+        help: { type: "boolean", short: "h" },
+      },
+      acceptsValue: Boolean,
+      stopAt: ["help"],
+    }),
+  { format: (err) => `unknown arg: ${err.arg}` },
+);
+if (cli.stopped === "help") {
+  printHelpAndExit(
+    "usage: node scripts/pick_a11y_sample.mjs [--check|--propose|--census] [--fresh]\n"
+      + "                                        [--root-dir DIR] [--sweep FILE] [--budget MS]",
+    { stream: "stderr" },
+  );
 }
+const modeTokens = cli.tokens.filter((t) => t.key === "check" || t.key === "propose" || t.key === "census");
+let mode = modeTokens.length ? modeTokens[modeTokens.length - 1].key : "check";
+let rootDir = cli.values.rootDir;
+let sweepPath = cli.values.sweep;
+let budget = cli.values.budget !== undefined ? parseFloat(cli.values.budget) : Infinity;
+let fresh = cli.values.fresh;
 rootDir = resolve(rootDir);
 
 // ---------------------------------------------------------------------------
 // Scan the built tree
 // ---------------------------------------------------------------------------
 
-function discover(dir) {
-  const out = [];
-  (function walk(d) {
-    for (const e of readdirSync(d, { withFileTypes: true })) {
-      const p = join(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else if (e.name.endsWith(".html")) out.push(p);
-    }
-  })(dir);
-  return out;
-}
-
 const count = (html, re) => (html.match(re) || []).length;
 
-const pages = discover(rootDir).map((p) => {
-  const html = readFileSync(p, "utf8");
-  const row = {
-    filePath: "/" + relative(rootDir, p).split(sep).join("/"),
-    tags: count(html, /<[a-zA-Z][a-zA-Z0-9-]*(\s|>|\/)/g),
-    raw: {},
-  };
-  for (const [name, f] of Object.entries(FAMILIES)) row.raw[name] = count(html, f.re);
-  return row;
-});
-
-const content = pages.filter((p) => p.tags >= STUB_CEILING);
-const stubs = pages.filter((p) => p.tags < STUB_CEILING);
+// Redirect stubs are left out: a stub in the sample would audit its target
+// again, not a new layout (STUB_TAG_CEILING in axe-scan.mjs says why).
+const pages = discoverPages(rootDir, (html) => ({
+  raw: Object.fromEntries(Object.entries(FAMILIES).map(([name, f]) => [name, count(html, f.re)])),
+}));
+const { content, stubs } = splitStubs(pages);
 
 if (content.length === 0) {
   console.error(`no content pages under ${rootDir} -- has build.bat run?`);
@@ -231,10 +214,6 @@ if (existsSync(sweepPath)) {
     }
   }
 }
-const median = (xs) => {
-  const s = [...xs].sort((a, b) => a - b);
-  return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
-};
 
 // Anchor the fitted curve on the sweep's own median page when there is one, so
 // modelled and measured costs are on the same scale.
@@ -260,8 +239,6 @@ const costSource = measured.size
 // ---------------------------------------------------------------------------
 // Modes
 // ---------------------------------------------------------------------------
-
-const pad = (s, w) => String(s).padStart(w);
 
 if (mode === "census") {
   console.log(`construct census over ${content.length} content pages (+${stubs.length} redirect stubs)`);

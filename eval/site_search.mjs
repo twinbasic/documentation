@@ -17,12 +17,11 @@
 // Requires build.bat (or `node builder/tbdocs.mjs --src docs`) to have run.
 
 import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import path from "node:path";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const require = createRequire(import.meta.url);
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function parseArgs(argv) {
   const o = { site: path.join(REPO_ROOT, "docs/_site"), n: 8, terms: [] };

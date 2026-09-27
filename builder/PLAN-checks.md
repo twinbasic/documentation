@@ -786,8 +786,9 @@ graph. Three ways out, in rough order of preference:
 
 - Redirect stubs are counted out of the census (869 content pages, 290 stubs)
   but are written by `writeRedirects` inside `writeAux`, not by `flush` — so
-  the exclusion has to be deliberate rather than incidental. `STUB_CEILING`
-  (100) is the script's own heuristic for this; check whether the fused path
+  the exclusion has to be deliberate rather than incidental.
+  `STUB_TAG_CEILING` (100, in `scripts/lib/axe-scan.mjs`) is the a11y scripts'
+  own heuristic for this; check whether the fused path
   needs it at all, given the build knows exactly which pages are stubs.
 - `ANCHORS` pins `/index.html` and `/404.html` in the sample "for a reason the
   construct census cannot see". Nothing in the fused path should be able to

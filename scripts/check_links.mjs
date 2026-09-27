@@ -5,13 +5,15 @@
 // already hold, rather than writing ~270 MB out and reading it back.
 // This script is the same check as a standalone tool, for a tree the
 // build did not produce: a release zip, a bisect, someone else's
-// artifact. Both CI workflows still run it, though not directly: they
-// invoke check_links_diff.mjs, which spawns this script as its `script`
-// side, and only against the fixtures.
-//
-// The two front ends share builder/link-check.mjs, and
-// scripts/check_links_diff.mjs is the gate that says they agree --
-// run it whenever either side changes. See builder/PLAN-checks.md.
+// artifact. It keeps its own command line, its own walk of the tree and
+// its own reading of each page, and hands the pages to the functions
+// the build's pass runs, builder/check.mjs's checkChunk and joinChunks,
+// as one chunk. Both CI workflows still run it, though not directly:
+// check_links_diff.mjs runs it in-process as its `script` side, only
+// against the fixtures, and compares its findings with the build's. The
+// two differ only in how they read the tree, so run that comparison
+// whenever builder/check.mjs, builder/link-check.mjs or this script
+// changes. See builder/PLAN-checks.md.
 //
 // Typical invocation (single pass):
 //
@@ -63,94 +65,40 @@ import { performance } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 import { isMainThread, parentPort, workerData, Worker } from "node:worker_threads";
 
-// The pure core -- extraction, resolution, the cross-file checks and
-// the reporters -- lives in builder/. This script is one front end over
-// it; the build's --check pass is the other. See builder/link-check.mjs
-// for why the dependency runs this way round.
+// The check is builder/check.mjs's, the one the build's --check pass
+// runs, over the pure core in builder/link-check.mjs. This script adds
+// only what a tree on disk needs: the walk, the reads, the choice of
+// oracle, and its report's summary lines. See builder/link-check.mjs for
+// why the dependency runs this way round.
 import {
-  extractFromHtml, resolveOccurrences, FsOracle,
-  IndexOracle, buildTreeIndex,
-  checkSitemap, checkSearch, checkCanonical,
-  formatLinkReport, formatIntegrityReport,
-  normalizeBasePath, resolve, OUTSIDE_BASEPATH_MARKER,
+  checkChunk, joinChunks, findingsFor, normalizeBasePath, treeIndexFor,
+} from "../builder/check.mjs";
+import {
+  FsOracle, formatLinkReport, formatIntegrityReport,
+  resolve, OUTSIDE_BASEPATH_MARKER,
 } from "../builder/link-check.mjs";
+import { parseCli } from "../lib/cli.mjs";
 
-// Tree-relative POSIX path. The core's cross-file checks work in this
-// coordinate space, and so does the structured-findings view (see
-// runCheck's `structured` option): the human-readable report keeps
-// printing whatever shape the caller passed in, but findings need a
-// stable space so the same tree checked with a relative --root-dir, an
-// absolute one, or from inside the build compares equal.
+// Tree-relative POSIX path, the space check.mjs works and reports in, so
+// the same tree checked with a relative --root-dir, an absolute one, or
+// from inside the build gives equal findings.
 function relToRoot(rootStr, p) {
   const rootAbs = path.resolve(rootStr || ".");
   return path.relative(rootAbs, path.resolve(p)).replace(/\\/g, "/");
 }
 
-// Walk paths -> tree-relative POSIX paths, redirect stubs dropped.
-function relFilesFor(rootStr, htmlFiles, redirectStubSet) {
-  const rootAbs = path.resolve(rootStr);
-  const out = [];
-  for (const file of htmlFiles) {
-    if (redirectStubSet && redirectStubSet.has(path.resolve(file))) continue;
-    out.push(path.relative(rootAbs, path.resolve(file)).replace(/\\/g, "/"));
-  }
-  return out;
-}
-
-// Cross-file check: every .html file (except hardcoded exclusions and
-// redirect stubs) should appear in sitemap.xml.
-// Returns an array of issue strings, or null if sitemap.xml is absent.
+// sitemap.xml and search-data.json, which a cross-file check reads when
+// they are there and reports skipped when they are not.
 //
-// One thing this side cannot do, and the fused side can: a page carrying
+// One thing this side cannot do, and the build can: a page carrying
 // `sitemap: false` or `search_exclude: true` is absent from the generated
 // file on purpose, and nothing in the built HTML says so. The build knows
 // because it still has the frontmatter and passes the generators' own
 // opt-out sets to the checker; a tree this build did not produce is just a
 // directory of HTML, so a deliberate omission and a bug look identical
 // here. Both checks are opt-in flags for that reason.
-function checkSitemapContents(rootStr, htmlFiles, redirectStubSet, basePath) {
-  let xml;
-  try { xml = fs.readFileSync(path.join(rootStr, "sitemap.xml"), "utf8"); } catch { return null; }
-  return checkSitemap(xml, relFilesFor(rootStr, htmlFiles, redirectStubSet), basePath);
-}
-
-// Cross-file check: every .html file (except exclusions and redirect
-// stubs) should have at least one entry in search-data.json whose
-// url matches the page's canonical path (ignoring fragment).
-// Returns an array of issue strings, or null if search-data.json is absent.
-function checkSearchContents(rootStr, htmlFiles, redirectStubSet, basePath) {
-  let searchData;
-  try {
-    searchData = JSON.parse(
-      fs.readFileSync(path.join(rootStr, "assets", "js", "search-data.json"), "utf8"));
-  } catch { return null; }
-  return checkSearch(searchData, relFilesFor(rootStr, htmlFiles, redirectStubSet), basePath);
-}
-
-// Thin wrapper over the core's SAX pass: read the file, hand over the
-// string. Everything this used to do lives in builder/link-check.mjs so
-// the build can call it on HTML it already has in memory.
-function extractLinksAndIds(htmlPath, captureIds, forbidPrefixes, checkOpts) {
-  return extractFromHtml(fs.readFileSync(htmlPath, "utf8"), captureIds, forbidPrefixes, checkOpts);
-}
-
-// Cross-file check: every page's <link rel="canonical" href="..."> must
-// match the page's own deployment URL. Returns an array of issue
-// strings, or null if no pages had a canonical href (the input set was
-// empty / canonical-less).
-function checkCanonicalContents(rootStr, canonicalByFile, redirectStubSet, basePath) {
-  if (canonicalByFile.size === 0) return null;
-  const rootAbs = path.resolve(rootStr);
-  const byRel = new Map();
-  for (const [file, canonical] of canonicalByFile) {
-    if (redirectStubSet && redirectStubSet.has(path.resolve(file))) continue;
-    byRel.set(path.relative(rootAbs, path.resolve(file)).replace(/\\/g, "/"), canonical);
-  }
-  return checkCanonical(byRel, basePath);
-}
-
-function statSafe(p) {
-  try { return fs.statSync(p); } catch { return null; }
+function readIfPresent(p) {
+  try { return fs.readFileSync(p, "utf8"); } catch { return null; }
 }
 
 function printHelp() {
@@ -249,76 +197,97 @@ for *.html.
 `);
 }
 
+// `forbid` is the only repeatable flag. `threads` is accepted and unused, and
+// `help` is answered before any argument list is parsed.
+const LINK_OPTIONS = {
+  offline: { type: "boolean", default: false },
+  "include-fragments": { type: "boolean", default: false },
+  "fallback-extensions": { type: "string", default: "" },
+  "index-files": { type: "string", default: "" },
+  "root-dir": { type: "string", default: null },
+  "base-path": { type: "string", default: "" },
+  forbid: { type: "string", multiple: true },
+  "no-fail": { type: "boolean", default: false },
+  threads: { type: "string" },
+  verbose: { type: "boolean", short: "v", default: false },
+  help: { type: "boolean", short: "h", default: false },
+  "check-html": { type: "boolean", default: false },
+  "check-a11y": { type: "boolean", default: false },
+  "check-ids": { type: "boolean", default: false },
+  "check-remote-assets": { type: "boolean", default: false },
+  "check-sitemap": { type: "boolean", default: false },
+  "check-search": { type: "boolean", default: false },
+  "check-canonical": { type: "boolean", default: false },
+  // GitHub Pages serves from a case-sensitive filesystem; NTFS is
+  // not. FsOracle asks the platform, so on Windows a wrong-case link
+  // passes here and 404s in production -- and because
+  // check_links_diff.mjs calls this script "the oracle of record",
+  // the harness would report the side that is RIGHT as the one with
+  // the extra finding. IndexOracle compares strings, so it behaves
+  // the same everywhere. --oracle fs stays available for the case
+  // where the question really is "what does this machine's
+  // filesystem say".
+  oracle: { type: "string", default: process.platform === "win32" ? "index" : "fs" },
+};
+
 function parseArgs(argv) {
+  let cli;
+  try {
+    cli = parseCli(argv, {
+      options: LINK_OPTIONS,
+      unknown: "ignore",
+      positionals: { min: 0 },
+      acceptsValue: (v) => v !== undefined,
+    });
+  } catch (err) {
+    if (err.code === "missing-value") throw new Error(`${err.option} requires a value`);
+    throw err;
+  }
+
+  const { values } = cli;
   const opts = {
-    offline: false,
-    includeFragments: false,
-    fallbackExtensions: "",
-    indexFiles: "",
-    rootDir: null,
-    basePath: "",
-    forbid: [],
-    noFail: false,
-    verbose: false,
-    checkHtml: false,
-    checkA11y: false,
-    checkIds: false,
-    checkRemoteAssets: false,
-    checkSitemap: false,
-    checkSearch: false,
-    checkCanonical: false,
-    // GitHub Pages serves from a case-sensitive filesystem; NTFS is
-    // not. FsOracle asks the platform, so on Windows a wrong-case link
-    // passes here and 404s in production -- and because
-    // check_links_diff.mjs calls this script "the oracle of record",
-    // the harness would report the side that is RIGHT as the one with
-    // the extra finding. IndexOracle compares strings, so it behaves
-    // the same everywhere. --oracle fs stays available for the case
-    // where the question really is "what does this machine's
-    // filesystem say".
-    oracle: process.platform === "win32" ? "index" : "fs",
-  };
-  const inputs = [];
-  const unknown = [];
-  const need = (flag, i) => {
-    if (i >= argv.length) throw new Error(`${flag} requires a value`);
-    return argv[i];
+    offline: values.offline,
+    includeFragments: values.includeFragments,
+    fallbackExtensions: values.fallbackExtensions,
+    indexFiles: values.indexFiles,
+    rootDir: values.rootDir,
+    basePath: values.basePath,
+    forbid: values.forbid,
+    noFail: values.noFail,
+    verbose: values.verbose,
+    checkHtml: values.checkHtml,
+    checkA11y: values.checkA11y,
+    checkIds: values.checkIds,
+    checkRemoteAssets: values.checkRemoteAssets,
+    checkSitemap: values.checkSitemap,
+    checkSearch: values.checkSearch,
+    checkCanonical: values.checkCanonical,
+    oracle: values.oracle,
   };
 
-  let i = 0;
-  while (i < argv.length) {
-    const a = argv[i++];
-    if (a === "--offline") opts.offline = true;
-    else if (a === "--include-fragments") opts.includeFragments = true;
-    else if (a === "--fallback-extensions") opts.fallbackExtensions = need(a, i++);
-    else if (a === "--index-files") opts.indexFiles = need(a, i++);
-    else if (a === "--root-dir") opts.rootDir = need(a, i++);
-    else if (a === "--base-path") opts.basePath = need(a, i++);
-    else if (a === "--forbid") opts.forbid.push(need(a, i++));
-    else if (a === "--no-fail") opts.noFail = true;
-    else if (a === "--threads") { need(a, i++); /* accepted, ignored */ }
-    else if (a === "-v" || a === "--verbose") opts.verbose = true;
-    else if (a === "-h" || a === "--help") { /* handled before dispatch */ }
-    else if (a === "--check-html") opts.checkHtml = true;
-    else if (a === "--check-a11y") opts.checkA11y = true;
-    else if (a === "--check-ids") opts.checkIds = true;
-    else if (a === "--check-remote-assets") opts.checkRemoteAssets = true;
-    else if (a === "--check-sitemap") opts.checkSitemap = true;
-    else if (a === "--check-search") opts.checkSearch = true;
-    else if (a === "--check-canonical") opts.checkCanonical = true;
-    else if (a === "--oracle") opts.oracle = need(a, i++);
-    else if (a.startsWith("--")) {
-      // Tolerate unknown flags passed through via check.bat's %*.
-      // Consume an attached value if present.
-      if (!a.includes("=") && i < argv.length && !argv[i].startsWith("-")) {
-        unknown.push(a, argv[i++]);
-      } else {
-        unknown.push(a);
-      }
-    } else if (a.startsWith("-") && a.length > 1) {
-      unknown.push(a);
-    } else {
-      inputs.push(a);
+  // An index is covered once it is a kept token's own index, or the index
+  // right after a kept value option that took its value as a separate
+  // argument -- the two positions the parse actually looked at.
+  const covered = new Set();
+  const positionalAt = new Map();
+  for (const t of cli.tokens) {
+    covered.add(t.index);
+    if (t.kind === "option" && t.value !== undefined && !t.inlineValue) covered.add(t.index + 1);
+    if (t.kind === "positional") positionalAt.set(t.index, t.value);
+  }
+
+  // Everything else went unrecognised, and is warned about rather than
+  // refused. An unknown --flag with no "=" takes the positional right after
+  // it along, so that one goes to `unknown` too, not `inputs`.
+  const inputs = [];
+  const unknown = [];
+  for (let i = 0; i < argv.length; i++) {
+    if (positionalAt.has(i)) {
+      const prev = argv[i - 1];
+      if (i > 0 && !covered.has(i - 1) && prev.startsWith("--") && !prev.includes("=")) unknown.push(argv[i]);
+      else inputs.push(positionalAt.get(i));
+    } else if (!covered.has(i)) {
+      unknown.push(argv[i]);
     }
   }
   return { opts, inputs, unknown };
@@ -328,7 +297,8 @@ function collectHtmlFiles(inputs) {
   const files = [];
   const warnings = [];
   for (const inp of inputs) {
-    const s = statSafe(inp);
+    let s = null;
+    try { s = fs.statSync(inp); } catch { /* reported below */ }
     if (!s) {
       warnings.push(`warning: input not found: ${inp}\n`);
       continue;
@@ -371,10 +341,10 @@ function collectAllRelFiles(rootStr) {
 // nothing is written to stdout/stderr.  Returns { output, exitCode }.
 //
 // With `structured: true` the result additionally carries a `findings`
-// object -- the same conclusions the report prints, as sorted arrays of
-// tree-relative strings, for machine comparison. It is what
-// scripts/check_links_diff.mjs diffs. Building it costs a few ms and is
-// skipped entirely when not requested, so the CLI path is unchanged.
+// object -- builder/check.mjs's findingsFor, the same conclusions the
+// report prints as sorted arrays of tree-relative strings, which
+// scripts/check_links_diff.mjs compares with the build's. Building it
+// costs a few ms and is skipped entirely when not requested.
 export function runCheck(argv, { structured = false } = {}) {
   const buf = [];
   const write = (s) => buf.push(s);
@@ -406,13 +376,10 @@ export function runCheck(argv, { structured = false } = {}) {
     return { output: buf.join(""), exitCode: 4 };
   }
 
-  // Keep --root-dir in its caller-supplied shape (no path.resolve) so
-  // resolver-built target strings have the same relative-vs-absolute
-  // shape as walk paths -- otherwise the idsByFile lookup below would
-  // miss for absolute-URL hrefs, which produce absolute targets when
-  // root-dir is absolute but relative walk-path entries when not.
-  // check.bat / CI both pass the same string for --root-dir and the
-  // positional input, so the two sides always agree.
+  // --root-dir is used in the shape it was given. checkChunk joins it to
+  // each page's tree-relative path, so the paths it resolves links
+  // against and the paths it looks fragment ids up by are in one shape,
+  // relative or absolute, whatever shape the walk paths are in.
   const rootStr = opts.rootDir ?? "";
   const fallbackExts = opts.fallbackExtensions.split(",").filter(Boolean);
   const indexFiles = opts.indexFiles.split(",").filter(Boolean);
@@ -425,6 +392,9 @@ export function runCheck(argv, { structured = false } = {}) {
 
   // Build checkOpts only when at least one integrity flag is on, to
   // avoid adding handlers to the parser on runs that don't need them.
+  // The cross-file checks leave redirect stubs out, and a tree on disk
+  // does not say which pages the build generated as stubs, so they are
+  // sniffed from their meta refresh.
   const needIntegrity = opts.checkHtml || opts.checkA11y || opts.checkIds || opts.checkRemoteAssets;
   const needRedirectStub = opts.checkSitemap || opts.checkSearch || opts.checkCanonical;
   const checkOpts = (needIntegrity || needRedirectStub || opts.checkCanonical) ? {
@@ -436,86 +406,77 @@ export function runCheck(argv, { structured = false } = {}) {
     captureRedirectStub: needRedirectStub,
   } : null;
 
-  // Per-file: extract once, then group hrefs by (source_dir, href) so we
-  // resolve each unique combination exactly once. The same nav/footer
-  // links repeat across hundreds of pages from the same directory. Also
-  // capture the per-file id/name set if fragment checking is on, so the
-  // later fragment check is a Map lookup instead of a second SAX pass.
-  // idsByFile key matches the walk-path shape and (because rootStr is
-  // kept relative -- see above) the resolver-built target shape too,
-  // so a later `idsByFile.get(entry.resolved)` lands without
-  // canonicalisation.
-  const occurrences = []; // flat [srcPath, srcDir, href, ...] triples
-  const idsByFile = opts.includeFragments ? new Map() : null;
-  const forbidPrefixes = opts.forbid.length ? opts.forbid : null;
-  const forbiddenBySource = forbidPrefixes ? new Map() : null;
+  // This pass's tree, in the shape of check.mjs's TREES entries.
+  const tree = {
+    label: rootStr || ".",
+    checkOpts,
+    forbid: opts.forbid.length ? opts.forbid : null,
+    crossFile: {
+      sitemap: opts.checkSitemap, search: opts.checkSearch, canonical: opts.checkCanonical,
+    },
+    fallbackExts, indexFiles,
+    includeFragments: opts.includeFragments,
+  };
 
-  // Per-file integrity results (populated when checkOpts is set).
-  const integrityByFile = needIntegrity ? new Map() : null;
-  const redirectStubSet = needRedirectStub ? new Set() : null;
-  const canonicalByFile = opts.checkCanonical ? new Map() : null;
+  // checkChunk reads each page's `html` once, in order, so a getter
+  // keeps one page in memory at a time, and the whole tree goes through
+  // as one chunk: the unique count and the -v figures below are then the
+  // tree's, not a slice's. check.mjs reports a page by its tree-relative
+  // path; walkPath maps that back to the path the walk found, which is
+  // what the report prints.
+  const walkPath = new Map();
+  const docs = htmlFiles.map((file) => {
+    const destPath = relToRoot(rootStr, file);
+    walkPath.set(destPath, file);
+    return { destPath, get html() { return fs.readFileSync(file, "utf8"); } };
+  });
 
-  for (const src of htmlFiles) {
-    const srcDir = path.dirname(src);
-    const { links, ids, forbidden, htmlErrors, a11yErrors, dupIds, remoteAssets, isRedirectStub, canonicalHref } =
-      extractLinksAndIds(src, opts.includeFragments, forbidPrefixes, checkOpts);
-    for (const h of links) occurrences.push(src, srcDir, h);
-    if (idsByFile) idsByFile.set(src, ids);
-    if (forbidden && forbidden.length) forbiddenBySource.set(src, forbidden);
-    if (integrityByFile && (htmlErrors?.length || a11yErrors?.length || dupIds?.length || remoteAssets?.length)) {
-      integrityByFile.set(src, { htmlErrors, a11yErrors, dupIds, remoteAssets });
-    }
-    if (redirectStubSet && isRedirectStub) {
-      redirectStubSet.add(path.resolve(src));
-    }
-    if (canonicalByFile && canonicalHref) {
-      canonicalByFile.set(src, canonicalHref);
-    }
-  }
-  const tExtract = performance.now();
+  const env = { root: rootStr, basePath, tree };
+  if (opts.oracle === "index") env.index = treeIndexFor(rootStr, collectAllRelFiles(rootStr));
+  else env.oracle = FsOracle();
 
-  // Resolution, existence checks and fragment settling all live in the
-  // core now. idsByFile keys match the walk-path shape and (because
-  // rootStr is kept in its caller-supplied shape -- see above) the
-  // resolver-built target shape too, so the fragment lookup lands
-  // without canonicalisation. The set is complete here, so nothing
-  // defers.
-  const oracle = opts.oracle === "index"
-    ? IndexOracle(buildTreeIndex(rootStr, collectAllRelFiles(rootStr)))
-    : FsOracle();
-
-  const { broken, brokenUniqueCount, uniqueCount, fragmentTargets, stages } =
-    resolveOccurrences(occurrences, oracle, {
-      rootStr, basePath, fallbackExts, indexFiles,
-      includeFragments: opts.includeFragments,
-      localIds: idsByFile,
-    });
-  const filesForFragments = [...fragmentTargets];
+  const chunk = checkChunk(docs, env);
   const tDone = performance.now();
-  write(formatLinkReport(broken, forbiddenBySource));
+
+  const r = joinChunks([chunk], {
+    root: rootStr, tree, basePath,
+    relFiles: docs.map(d => d.destPath),
+    stubRels: new Set(chunk.stubs),
+    aux: {
+      sitemapXml: opts.checkSitemap
+        ? readIfPresent(path.join(rootStr, "sitemap.xml")) : null,
+      searchJson: opts.checkSearch
+        ? readIfPresent(path.join(rootStr, "assets", "js", "search-data.json")) : null,
+    },
+  });
+
+  const shown = (rel) => walkPath.get(rel) ?? rel;
+  const byWalkPath = (m) => m && new Map([...m].map(([rel, v]) => [shown(rel), v]));
+  const brokenShown = r.broken.slice();
+  for (let i = 0; i < brokenShown.length; i += 3) brokenShown[i] = shown(brokenShown[i]);
+  write(formatLinkReport(brokenShown, byWalkPath(r.forbiddenBySource)));
 
   let forbiddenCount = 0;
-  if (forbiddenBySource) {
-    for (const fhits of forbiddenBySource.values()) forbiddenCount += fhits.length;
+  if (r.forbiddenBySource) {
+    for (const fhits of r.forbiddenBySource.values()) forbiddenCount += fhits.length;
   }
-  const total = occurrences.length / 3;
-  const unique = uniqueCount;
-  const errorsUnique = brokenUniqueCount;
-  const okUnique = unique - errorsUnique;
+  const unique = chunk.uniqueLocal;
+  const okUnique = unique - r.brokenUnique;
   const elapsed = (tDone - t0) / 1000;
-  const forbidNote = forbidPrefixes ? `, ${forbiddenCount} forbidden` : "";
+  const forbidNote = tree.forbid ? `, ${forbiddenCount} forbidden` : "";
   write(
-    `Checked ${total} occurrences (${unique} unique) in ${elapsed.toFixed(3)}s ` +
-    `-- ${okUnique} OK, ${errorsUnique} broken${forbidNote}\n`
+    `Checked ${r.occurrences} occurrences (${unique} unique) in ${elapsed.toFixed(3)}s ` +
+    `-- ${okUnique} OK, ${r.brokenUnique} broken${forbidNote}\n`
   );
 
   if (opts.verbose) {
     const fmt = (ms) => `${(ms / 1000).toFixed(3)}s`;
+    const stages = chunk.stages;
     write("\n");
     write(`  Files scanned:        ${htmlFiles.length}\n`);
-    write(`  Fragment targets:     ${filesForFragments.length}\n`);
+    write(`  Fragment targets:     ${chunk.fragmentTargets}\n`);
     write(`  Walk:        ${fmt(tWalk - t0)}\n`);
-    write(`  Extract:     ${fmt(tExtract - tWalk)}\n`);
+    write(`  Extract:     ${fmt(stages.extract)}\n`);
     write(`  Resolve:     ${fmt(stages.resolve)}\n`);
     write(`  Check paths: ${fmt(stages.checkPaths)}\n`);
     write(`  Fragments:   ${fmt(stages.fragments)}\n`);
@@ -524,38 +485,22 @@ export function runCheck(argv, { structured = false } = {}) {
 
   // ── Integrity check reporting ──────────────────────────────────────
 
-  const integrityReport = formatIntegrityReport(integrityByFile);
+  const integrityReport = formatIntegrityReport(byWalkPath(r.integrityByFile));
   let integrityIssueCount = integrityReport.count;
   write(integrityReport.text);
 
-  // Cross-file sitemap check.
-  let sitemapIssues = null, searchIssues = null, canonicalIssues = null;
-  if (opts.checkSitemap) {
-    const issues = sitemapIssues = checkSitemapContents(rootStr, htmlFiles, redirectStubSet, basePath);
+  // The cross-file checks: each result is null when the check could not
+  // run, and joinChunks has already left the redirect stubs out.
+  const crossFile = [
+    [opts.checkSitemap, r.sitemapIssues, "--check-sitemap: sitemap.xml not found in root-dir"],
+    [opts.checkSearch, r.searchIssues, "--check-search: search-data.json not found in root-dir"],
+    [opts.checkCanonical, r.canonicalIssues,
+      '--check-canonical: no <link rel="canonical"> found in any page'],
+  ];
+  for (const [requested, issues, skipped] of crossFile) {
+    if (!requested) continue;
     if (issues === null) {
-      write("warning: --check-sitemap: sitemap.xml not found in root-dir, skipping\n");
-    } else if (issues.length) {
-      write("\n" + issues.join("\n") + "\n");
-      integrityIssueCount += issues.length;
-    }
-  }
-
-  // Cross-file search-index check.
-  if (opts.checkSearch) {
-    const issues = searchIssues = checkSearchContents(rootStr, htmlFiles, redirectStubSet, basePath);
-    if (issues === null) {
-      write("warning: --check-search: search-data.json not found in root-dir, skipping\n");
-    } else if (issues.length) {
-      write("\n" + issues.join("\n") + "\n");
-      integrityIssueCount += issues.length;
-    }
-  }
-
-  // Per-page canonical URL check.
-  if (opts.checkCanonical && canonicalByFile) {
-    const issues = canonicalIssues = checkCanonicalContents(rootStr, canonicalByFile, redirectStubSet, basePath);
-    if (issues === null) {
-      write("warning: --check-canonical: no <link rel=\"canonical\"> found in any page, skipping\n");
+      write(`warning: ${skipped}, skipping\n`);
     } else if (issues.length) {
       write("\n" + issues.join("\n") + "\n");
       integrityIssueCount += issues.length;
@@ -568,121 +513,57 @@ export function runCheck(argv, { structured = false } = {}) {
   }
 
   // Exit codes: 1 = link failures, 2 = integrity failures, 3 = both.
-  const linksFailed = broken.length > 0 || forbiddenCount > 0;
+  const linksFailed = r.broken.length > 0 || forbiddenCount > 0;
   const integrityFailed = integrityIssueCount > 0;
   let exitCode = (linksFailed ? 1 : 0) | (integrityFailed ? 2 : 0);
   if (opts.noFail) exitCode = 0;
 
   if (!structured) return { output: buf.join(""), exitCode };
 
-  return {
-    output: buf.join(""),
-    exitCode,
-    findings: buildFindings({
-      rootStr, broken, forbiddenBySource, integrityByFile,
-      sitemapIssues, searchIssues, canonicalIssues,
-      enabled: {
-        html: opts.checkHtml, a11y: opts.checkA11y,
-        ids: opts.checkIds, remoteAssets: opts.checkRemoteAssets,
-        forbid: forbidPrefixes !== null, fragments: opts.includeFragments,
-      },
-      counts: {
-        files:       htmlFiles.length,
-        occurrences: occurrences.length / 3,
-        unique:      uniqueCount,
-        brokenUnique: brokenUniqueCount,
-        forbidden:   forbiddenCount,
-        integrity:   integrityIssueCount,
-      },
-      linksFailed, integrityFailed,
-    }),
-  };
-}
-
-// Reduce a pass's conclusions to sorted arrays of tree-relative strings.
-// Category names match the flags that produce them, so a diff says which
-// check drifted rather than only that something did.
-function buildFindings({
-  rootStr, broken, forbiddenBySource, integrityByFile,
-  sitemapIssues, searchIssues, canonicalIssues, counts, enabled,
-  linksFailed, integrityFailed,
-}) {
-  const rel = (p) => relToRoot(rootStr, p);
-
-  const brokenOut = [];
-  for (let i = 0; i < broken.length; i += 3) {
-    brokenOut.push(`${rel(broken[i])}\t${broken[i + 1]}\t${broken[i + 2]}`);
-  }
-
-  const forbiddenOut = [];
-  if (forbiddenBySource) {
-    for (const [src, hits] of forbiddenBySource) {
-      for (const h of hits) forbiddenOut.push(`${rel(src)}\t${h.url}\t${h.prefix}`);
-    }
-  }
-
-  const html = [], a11y = [], dupIds = [], remoteAssets = [];
-  if (integrityByFile) {
-    for (const [src, rec] of integrityByFile) {
-      const r = rel(src);
-      for (const e of rec.htmlErrors ?? []) html.push(`${r}: html-${e.type}: <${e.tag}>`);
-      for (const e of rec.a11yErrors ?? []) {
-        if (e.type === "img-missing-alt")   a11y.push(`${r}: a11y-img-missing-alt: src=${e.src}`);
-        else if (e.type === "empty-anchor") a11y.push(`${r}: a11y-empty-anchor`);
-        else if (e.type === "empty-href")   a11y.push(`${r}: a11y-empty-href: <${e.tag}>`);
-      }
-      for (const e of rec.dupIds ?? []) dupIds.push(`${r}: duplicate-id: '${e.id}' appears ${e.count} times`);
-      for (const e of rec.remoteAssets ?? []) remoteAssets.push(`${r}: remote-asset: <${e.tag} src="${e.src}">`);
-    }
-  }
-
-  // `null` means "check not requested / input absent" and is distinct
-  // from `[]` ("ran, found nothing") -- a fused path that silently
-  // stopped running a cross-file check must not compare equal to one
-  // that ran it clean.
-  const sortOrNull = (a) => (a === null || a === undefined ? null : [...a].sort());
-
-  const gate = (on, a) => (on ? a.sort() : null);
-
-  return {
-    broken:       brokenOut.sort(),
-    forbidden:    gate(enabled.forbid, forbiddenOut),
-    html:         gate(enabled.html, html),
-    a11y:         gate(enabled.a11y, a11y),
-    dupIds:       gate(enabled.ids, dupIds),
-    remoteAssets: gate(enabled.remoteAssets, remoteAssets),
-    sitemap:      sortOrNull(sitemapIssues),
-    search:       sortOrNull(searchIssues),
-    canonical:    sortOrNull(canonicalIssues),
-    counts,
-    linksFailed, integrityFailed,
-  };
+  // findingsFor leaves `unique` null because the build cannot count it
+  // across its chunks. This pass is one chunk, so it can.
+  const findings = findingsFor(r);
+  findings.counts.unique = unique;
+  return { output: buf.join(""), exitCode, findings };
 }
 
 // ── Self-test ──────────────────────────────────────────────────
-// Regression guards.  Runs once per process; takes <10 ms.
+// Regression guards.  Runs once per process; takes ~20 ms.
 //
-//   1. checkSitemapContents / checkSearchContents must strip
-//      --base-path from extracted URLs before comparing against
-//      file-derived paths.
+//   1. --check-sitemap and --check-search must strip --base-path from
+//      the URLs they read before comparing them against the tree's own
+//      paths.
 //   2. The resolver must flag root-absolute URLs that escape
 //      --base-path as broken (browser-semantics check).  A link
 //      missing the baseurl prefix may still find a file on disk
 //      under --root-dir, but it would 404 on a real subpath deploy.
-//   3. checkCanonicalContents must flag canonical URLs whose path
+//   3. --check-canonical must flag canonical URLs whose path
 //      doesn't equal --base-path + the page's URL path.  Catches
 //      "canonical missing baseurl" (would 404 on subpath deploy)
 //      and the inverse "canonical includes baseurl on root deploy".
+//
+// Guards 1 and 3 run the whole pass, runCheck over a one-page tree, so
+// they cover this script's reading of the tree as well as the check.
 
-// Exported so scripts/check_links_diff.mjs can run it: these three guards
-// used to sit inside the `isEntry` branch below, and since b97c75f nothing
-// invokes this script as an entry point in CI -- so they ran in no
-// automated context at all. A clean differential against a broken
-// reference implementation means nothing, so the harness runs them first.
+// Exported so scripts/check_links_diff.mjs can run it, since nothing in
+// CI runs this script as an entry point. A clean comparison against a
+// side that reads the tree wrongly means nothing, so the harness runs
+// these first.
 export function selfTest() {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "check-links-test-"));
   try {
-    fs.writeFileSync(path.join(tmp, "Foo.html"), "<html><body>t</body></html>");
+    const page = path.join(tmp, "Foo.html");
+    // One pass over the tree, with Foo.html declaring `canonical`.
+    const run = (canonical, bp) => {
+      fs.writeFileSync(page,
+        `<html><head><link rel="canonical" href="${canonical}"></head><body>t</body></html>`);
+      const argv = ["--offline", "--check-sitemap", "--check-search", "--check-canonical",
+                    "--root-dir", tmp, tmp];
+      if (bp) argv.push("--base-path", bp);
+      const { findings, output } = runCheck(argv, { structured: true });
+      if (!findings) throw new Error(`runCheck refused the self-test's arguments:\n${output}`);
+      return findings;
+    };
 
     fs.writeFileSync(path.join(tmp, "sitemap.xml"),
       `<?xml version="1.0" encoding="UTF-8"?>\n` +
@@ -695,31 +576,29 @@ export function selfTest() {
     fs.writeFileSync(path.join(assetsDir, "search-data.json"),
       JSON.stringify({ "0": { url: "/base/Foo", title: "Foo", content: "" } }));
 
-    const files = [path.join(tmp, "Foo.html")];
     const bp = "/base";
 
-    // Guard 1: sitemap / search check base-path stripping.
-    const sm = checkSitemapContents(tmp, files, null, bp);
-    if (!sm || sm.length)
-      throw new Error("checkSitemapContents with --base-path: " + JSON.stringify(sm));
-
-    const se = checkSearchContents(tmp, files, null, bp);
-    if (!se || se.length)
-      throw new Error("checkSearchContents with --base-path: " + JSON.stringify(se));
+    // Guard 1: sitemap / search check base-path stripping. Guard 3's
+    // first case, a correct canonical under --base-path, is this pass.
+    const ok = run("https://example.com/base/Foo", bp);
+    if (!ok.sitemap || ok.sitemap.length)
+      throw new Error("--check-sitemap with --base-path: " + JSON.stringify(ok.sitemap));
+    if (!ok.search || ok.search.length)
+      throw new Error("--check-search with --base-path: " + JSON.stringify(ok.search));
 
     // Guard 2: resolver flags off-base-path root-absolute URLs.
     // /base/Foo (inside)  -> resolves to <tmp>/Foo (exists)
     // /Foo (outside)      -> sentinel target that won't exist on disk
-    const inside = resolve("/base/Foo", tmp, path.join(tmp, "Foo.html"), tmp, bp);
+    const inside = resolve("/base/Foo", tmp, page, tmp, bp);
     if (!inside || inside[0].startsWith(OUTSIDE_BASEPATH_MARKER))
       throw new Error("resolve('/base/Foo') should resolve inside base-path: " + JSON.stringify(inside));
 
-    const outside = resolve("/Foo", tmp, path.join(tmp, "Foo.html"), tmp, bp);
+    const outside = resolve("/Foo", tmp, page, tmp, bp);
     if (!outside || !outside[0].startsWith(OUTSIDE_BASEPATH_MARKER))
       throw new Error("resolve('/Foo') with base-path should be flagged outside: " + JSON.stringify(outside));
 
     // With no base-path, every root-absolute URL is in-bounds.
-    const noBp = resolve("/Foo", tmp, path.join(tmp, "Foo.html"), tmp, "");
+    const noBp = resolve("/Foo", tmp, page, tmp, "");
     if (!noBp || noBp[0].startsWith(OUTSIDE_BASEPATH_MARKER))
       throw new Error("resolve('/Foo') without --base-path must not be flagged: " + JSON.stringify(noBp));
 
@@ -727,34 +606,21 @@ export function selfTest() {
     // canonical for Foo.html must be "<host>/base/Foo" (the actual
     // deployment URL).  Both "missing baseurl" and "wrong baseurl"
     // are mismatches.
-    const okBp = new Map([
-      [path.join(tmp, "Foo.html"), "https://example.com/base/Foo"],
-    ]);
-    const okBpIssues = checkCanonicalContents(tmp, okBp, null, bp);
-    if (!okBpIssues || okBpIssues.length)
-      throw new Error("checkCanonicalContents under --base-path: correct canonical flagged: " + JSON.stringify(okBpIssues));
+    if (!ok.canonical || ok.canonical.length)
+      throw new Error("--check-canonical under --base-path: correct canonical flagged: " + JSON.stringify(ok.canonical));
 
-    const missingBaseurl = new Map([
-      [path.join(tmp, "Foo.html"), "https://example.com/Foo"],
-    ]);
-    const miBpIssues = checkCanonicalContents(tmp, missingBaseurl, null, bp);
-    if (!miBpIssues || miBpIssues.length !== 1 || !miBpIssues[0].includes("canonical-mismatch"))
-      throw new Error("checkCanonicalContents: should flag baseurl-less canonical under --base-path: " + JSON.stringify(miBpIssues));
+    const miBp = run("https://example.com/Foo", bp).canonical;
+    if (!miBp || miBp.length !== 1 || !miBp[0].includes("canonical-mismatch"))
+      throw new Error("--check-canonical: should flag baseurl-less canonical under --base-path: " + JSON.stringify(miBp));
 
     // With no --base-path, canonical must NOT include any path prefix.
-    const okNoBp = new Map([
-      [path.join(tmp, "Foo.html"), "https://example.com/Foo"],
-    ]);
-    const okNoBpIssues = checkCanonicalContents(tmp, okNoBp, null, "");
-    if (!okNoBpIssues || okNoBpIssues.length)
-      throw new Error("checkCanonicalContents without --base-path: correct canonical flagged: " + JSON.stringify(okNoBpIssues));
+    const okNoBp = run("https://example.com/Foo", "").canonical;
+    if (!okNoBp || okNoBp.length)
+      throw new Error("--check-canonical without --base-path: correct canonical flagged: " + JSON.stringify(okNoBp));
 
-    const extraBaseurl = new Map([
-      [path.join(tmp, "Foo.html"), "https://example.com/base/Foo"],
-    ]);
-    const exNoBpIssues = checkCanonicalContents(tmp, extraBaseurl, null, "");
-    if (!exNoBpIssues || exNoBpIssues.length !== 1 || !exNoBpIssues[0].includes("canonical-mismatch"))
-      throw new Error("checkCanonicalContents: should flag canonical with extra prefix on root deploy: " + JSON.stringify(exNoBpIssues));
+    const exNoBp = run("https://example.com/base/Foo", "").canonical;
+    if (!exNoBp || exNoBp.length !== 1 || !exNoBp[0].includes("canonical-mismatch"))
+      throw new Error("--check-canonical: should flag canonical with extra prefix on root deploy: " + JSON.stringify(exNoBp));
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

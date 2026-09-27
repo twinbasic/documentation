@@ -1,28 +1,36 @@
-import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
+import { markdownFiles } from '../../lib/markdown-files.mjs'
+import { readFrontmatter } from '../files.mjs'
 
-export function buildSitemap(docsDir, rootDir) {
+export async function buildSitemap(docsDir, rootDir) {
   const root = rootDir || process.cwd()
   const entries = []
-  walk(docsDir, filePath => {
-    if (!filePath.endsWith('.md')) return
-    const fm = parseFrontmatter(readFileSync(filePath, 'utf-8'))
-    if (!fm.title || !fm.permalink) return
+  for (const rel of await markdownFiles(docsDir)) {
+    const filePath = join(docsDir, rel)
+    const fm = readFrontmatter(filePath)
+    if (!fm.title || !fm.permalink) continue
     entries.push({
       path: relative(root, filePath).split(sep).join('/'),
       title: fm.title,
       permalink: fm.permalink,
       parent: fm.parent || null,
     })
-  })
+  }
   return entries
+}
+
+// A reference page's path from its package down: docs/Reference/Default/VBA/
+// Strings/Len.md gives [VBA, Strings, Len.md].  Default/ and Built-In/ only sort
+// the packages into those every project references and those it may; Core/,
+// the language itself, sits directly under docs/Reference/.
+function packageParts(path) {
+  return path.replace(/^docs\/Reference\/(?:(?:Default|Built-In)\/)?/, '').split('/')
 }
 
 export function buildPackageSummary(sitemap) {
   const groups = {}
   for (const entry of sitemap) {
-    const rel = entry.path.replace(/^docs\/Reference\//, '')
-    const parts = rel.split('/')
+    const parts = packageParts(entry.path)
     if (parts.length < 2) continue
     const pkg = parts[0]
     const isModule = (pkg === 'VBA' || pkg === 'VBRUN') && parts.length > 2
@@ -43,9 +51,7 @@ export function buildPageIndex(sitemap) {
   const index = {}
   const titleCount = {}
   for (const entry of sitemap) {
-    const rel = entry.path.replace(/^docs\/Reference\//, '')
-    const parts = rel.split('/')
-    const pkg = parts[0]
+    const pkg = packageParts(entry.path)[0]
     index[`${pkg}/${entry.title}`] = entry.path
     titleCount[entry.title] = (titleCount[entry.title] || 0) + 1
   }
@@ -56,32 +62,4 @@ export function buildPageIndex(sitemap) {
     }
   }
   return index
-}
-
-function walk(dir, callback) {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const full = join(dir, entry.name)
-    if (entry.isDirectory()) walk(full, callback)
-    else callback(full)
-  }
-}
-
-function parseFrontmatter(content) {
-  content = content.replace(/\r\n/g, '\n')
-  if (!content.startsWith('---')) return {}
-  const end = content.indexOf('\n---', 3)
-  if (end === -1) return {}
-  const block = content.slice(4, end)
-  const result = {}
-  for (const line of block.split('\n')) {
-    const m = line.match(/^(\w[\w_]*)\s*:\s*(.+)$/)
-    if (!m) continue
-    let val = m[2].trim()
-    if ((val.startsWith('"') && val.endsWith('"')) ||
-        (val.startsWith("'") && val.endsWith("'"))) {
-      val = val.slice(1, -1)
-    }
-    result[m[1]] = val
-  }
-  return result
 }

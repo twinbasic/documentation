@@ -158,14 +158,15 @@ patterns too, so assembling one from string constants is not an escape.
 refuses a pre-render rewrite that alters the contents of a code fence or
 code span, which four rewrites in [render.mjs](render.mjs) have done ---
 so a new one belongs inside `applyPreRenderRewrites`, between
-`maskCodeRegions` and its `restore`.
+`maskCode` and its `restore`.
 [Tools and Scripts](https://docs.twinbasic.com/Documentation/Development/Tools)
 lists every gate in both wrappers, in running order.
 
-The pure core lives in [link-check.mjs](link-check.mjs); the build-side
-plumbing is [check.mjs](check.mjs) and [check-tree.mjs](check-tree.mjs).
-[scripts/check_links.mjs](../scripts/check_links.mjs) is the same check
-as a standalone tool, for trees this build did not produce. Neither CI
+The pure core lives in [link-check.mjs](link-check.mjs), and the check
+over it in [check.mjs](check.mjs); [check-tree.mjs](check-tree.mjs) is
+the build-side index. [scripts/check_links.mjs](../scripts/check_links.mjs)
+runs the same check as a standalone tool, for trees this build did not
+produce. Neither CI
 workflow invokes it directly any more -- both reach it through
 `check_links_diff.mjs`, which runs it in-process against the fixtures.
 [scripts/check_links_diff.mjs](../scripts/check_links_diff.mjs) is the

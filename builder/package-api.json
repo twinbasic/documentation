@@ -1,5 +1,5 @@
 {
-  "build": 983,
+  "build": 987,
   "packages": {
     "AppGlobalClassProject": {
       "exports": ["AppGlobalClassObject"],
@@ -560,6 +560,8 @@
         {"name":"OLEMISC","kind":"enum","in":"Miscellaneous","values":["OLEMISC_RECOMPOSEONRESIZE","OLEMISC_ONLYICONIC","OLEMISC_INSERTNOTREPLACE","OLEMISC_STATIC","OLEMISC_CANTLINKINSIDE","OLEMISC_CANLINKBYOLE1","OLEMISC_ISLINKOBJECT","OLEMISC_INSIDEOUT","OLEMISC_ACTIVATEWHENVISIBLE","OLEMISC_RENDERINGISDEVICEINDEPENDENT","OLEMISC_INVISIBLEATRUNTIME","OLEMISC_ALWAYSRUN","OLEMISC_ACTSLIKEBUTTON","OLEMISC_ACTSLIKELABEL","OLEMISC_NOUIACTIVATE","OLEMISC_ALIGNABLE","OLEMISC_SIMPLEFRAME","OLEMISC_SETCLIENTSITEFIRST","OLEMISC_IMEMODE","OLEMISC_IGNOREACTIVATEWHENVISIBLE","OLEMISC_WANTSTOMENUMERGE","OLEMISC_SUPPORTSMULTILEVELUNDO"]},
         {"name":"BorderStyles","kind":"enum","in":"Miscellaneous","values":["BDR_RAISEDOUTER","BDR_SUNKENOUTER","BDR_RAISEDINNER","BDR_SUNKENINNER","BDR_OUTER","BDR_INNER","BDR_RAISED","BDR_SUNKEN","EDGE_RAISED","EDGE_SUNKEN","EDGE_ETCHED","EDGE_BUMP"]},
         {"name":"BorderFlags","kind":"enum","in":"Miscellaneous","values":["BF_LEFT","BF_TOP","BF_RIGHT","BF_BOTTOM","BF_DIAGONAL","BF_MIDDLE","BF_SOFT","BF_ADJUST","BF_FLAT","BF_MONO","BF_TOPLEFT","BF_TOPRIGHT","BF_BOTTOMLEFT","BF_BOTTOMRIGHT","BF_RECT","BF_DIAGONAL_ENDTOPRIGHT","BF_DIAGONAL_ENDTOPLEFT","BF_DIAGONAL_ENDBOTTOMLEFT","BF_DIAGONAL_ENDBOTTOMRIGHT"]},
+        {"name":"tbBytes","kind":"type","in":"Miscellaneous","public":false},
+        {"name":"tbIntegers","kind":"type","in":"Miscellaneous","public":false},
         {"name":"TEXTMETRICW","kind":"type","in":"Miscellaneous","public":false},
         {"name":"ENHMETAHEADER","kind":"type","in":"Miscellaneous","public":false},
         {"name":"DEVMODEW","kind":"type","in":"Miscellaneous","public":false},
@@ -590,7 +592,7 @@
     "VBA": {
       "exports": ["VBA"],
       "types": [
-        {"name":"_Collection","kind":"interface","members":{"Item":"function","Add":"sub","Count":"property","Remove":"sub","Clear":"sub","Exists":"function","KeyCountHint":"property","KeyCompareMode":"property","Items":"function","Keys":"function","_NewEnum":"function"},"hiddenMembers":["_NewEnum"]},
+        {"name":"_Collection","kind":"interface","members":{"Item":"function","Add":"sub","Count":"property","Remove":"sub","_NewEnum":"function","Clear":"sub","Exists":"function","KeyCountHint":"property","KeyCompareMode":"property","Items":"function","Keys":"function"},"hiddenMembers":["_NewEnum"]},
         {"name":"Collection","kind":"coclass","default":"_Collection"},
         {"name":"Compilation","kind":"module","members":{"CurrentProjectName":"function","CurrentComponentName":"function","CurrentComponentCLSID":"function","CurrentProcedureName":"function","CurrentSourceFile":"function","ProcessorArchitecture":"function","CompilerVersion":"function"}},
         {"name":"Constants","kind":"module","members":{"vbNewLine":"const","vbCrLf":"const","vbCr":"const","vbLf":"const","vbBack":"const","vbFormFeed":"const","vbTab":"const","vbVerticalTab":"const","vbNullChar":"const","vbNullString":"const","vbObjectError":"const","vbNullPtr":"const"}},
@@ -1008,8 +1010,9 @@
         {"name":"NMLISTVIEW","kind":"type","in":"ListViewConsts","public":false},
         {"name":"LVStyles","kind":"enum","in":"ListViewConsts","values":["LVS_ICON","LVS_REPORT","LVS_SMALLICON","LVS_LIST","LVS_TYPEMASK","LVS_SINGLESEL","LVS_SHOWSELALWAYS","LVS_SORTASCENDING","LVS_SORTDESCENDING","LVS_SHAREIMAGELISTS","LVS_NOLABELWRAP","LVS_AUTOARRANGE","LVS_EDITLABELS","LVS_OWNERDATA","LVS_NOSCROLL","LVS_TYPESTYLEMASK","LVS_ALIGNTOP","LVS_ALIGNLEFT","LVS_ALIGNMASK","LVS_OWNERDRAWFIXED","LVS_NOCOLUMNHEADER","LVS_NOSORTHEADER"]},
         {"name":"LVExtendedStyles","kind":"enum","in":"ListViewConsts","values":["LVS_EX_GRIDLINES","LVS_EX_SUBITEMIMAGES","LVS_EX_CHECKBOXES","LVS_EX_TRACKSELECT","LVS_EX_HEADERDRAGDROP","LVS_EX_FULLROWSELECT","LVS_EX_ONECLICKACTIVATE","LVS_EX_TWOCLICKACTIVATE","LVS_EX_FLATSB","LVS_EX_REGIONAL","LVS_EX_INFOTIP","LVS_EX_UNDERLINEHOT","LVS_EX_UNDERLINECOLD","LVS_EX_MULTIWORKAREAS","LVS_EX_LABELTIP","LVS_EX_BORDERSELECT","LVS_EX_DOUBLEBUFFER","LVS_EX_HIDELABELS","LVS_EX_SINGLEROW","LVS_EX_SNAPTOGRID","LVS_EX_SIMPLESELECT","LVS_EX_JUSTIFYCOLUMNS","LVS_EX_TRANSPARENTBKGND","LVS_EX_TRANSPARENTSHADOWTEXT","LVS_EX_AUTOAUTOARRANGE","LVS_EX_HEADERINALLVIEWS","LVS_EX_AUTOCHECKSELECT","LVS_EX_AUTOSIZECOLUMNS","LVS_EX_COLUMNSNAPPOINTS","LVS_EX_COLUMNOVERFLOW"]},
+        {"name":"Miscellaneous2","kind":"module"},
+        {"name":"OrientationConstants","kind":"enum","in":"Miscellaneous2","values":["ccOrientationHorizontal","ccOrientationVertical"]},
         {"name":"Miscellaneous","kind":"module","public":false},
-        {"name":"OrientationConstants","kind":"enum","in":"Miscellaneous","values":["ccOrientationHorizontal","ccOrientationVertical"]},
         {"name":"MonthViewConsts","kind":"module","members":{"GDTR_MIN":"const","GDTR_MAX":"const"}},
         {"name":"MonthViewStyles","kind":"enum","in":"MonthViewConsts","values":["MCS_DAYSTATE","MCS_MULTISELECT","MCS_WEEKNUMBERS","MCS_NOTODAYCIRCLE","MCS_NOTODAY","MCS_NOTRAILINGDATES","MCS_SHORTDAYSOFWEEK","MCS_NOSELCHANGEONNAV"]},
         {"name":"MonthViewColorArea","kind":"enum","in":"MonthViewConsts","values":["MCSC_BACKGROUND","MCSC_TEXT","MCSC_TITLEBK","MCSC_TITLETEXT","MCSC_MONTHBK","MCSC_TRAILINGTEXT"]},

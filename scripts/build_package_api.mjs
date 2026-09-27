@@ -43,31 +43,33 @@
 
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { buildNumber, findIde } from "./lib/tb-install.mjs";
 import { defaultCache, exportPackages, packageName } from "./lib/tb-packages.mjs";
 import { apiSnapshot, parsePackage } from "./lib/twin-api.mjs";
+import { parseCli, withUsageError } from "../lib/cli.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
-const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const OUT = path.join(REPO, "builder", "package-api.json");
+const OUT = path.join(REPO_ROOT, "builder", "package-api.json");
 
-const argv = process.argv.slice(2);
-const flag = (n) => argv.includes(`--${n}`);
-const opt = (n) => { const i = argv.indexOf(`--${n}`); return i < 0 ? undefined : argv[i + 1]; };
+const { values } = withUsageError(() =>
+  parseCli(process.argv.slice(2), {
+    options: {
+      ide: { type: "string" },
+      src: { type: "string" },
+      cache: { type: "string" },
+      out: { type: "string" },
+      refresh: { type: "boolean", default: false },
+      check: { type: "boolean", default: false },
+    },
+    unknown: "ignore",
+    positionals: 0,
+  }));
 const die = (code, msg) => { console.error(msg); process.exit(code); };
-
-// A flag that takes a value, given last or followed by another flag, has none,
-// and is refused rather than read as undefined: --src then fell back to an
-// export of the install, and --out to builder/package-api.json.
-const VALUE_FLAGS = ["ide", "src", "cache", "out"];
-const bare = argv.find((a, i) => a.startsWith("--") && VALUE_FLAGS.includes(a.slice(2)) &&
-  (argv[i + 1] === undefined || /^-./.test(argv[i + 1])));
-if (bare) die(2, `${bare} needs a value`);
 
 function sources() {
   // --src takes a folder of exports, or a cache holding `packages\` and more:
   // a folder with a Settings file is an export, and one without is looked into.
-  const src = opt("src");
+  const src = values.src;
   if (src) {
     if (!existsSync(src) || !statSync(src).isDirectory()) die(2, `not a directory: ${src}`);
     const packages = [];
@@ -84,17 +86,17 @@ function sources() {
     return { build: null, packages };
   }
   // --ide and TB_IDE may name the install root or the executable in it.
-  let ide = findIde(opt("ide"));
+  let ide = findIde(values.ide);
   if (ide && !/\.exe$/i.test(ide)) ide = path.join(ide, "twinBASIC.exe");
   if (!ide || !existsSync(ide)) die(2, "no twinBASIC install found; pass --ide or set TB_IDE");
   const root = path.dirname(ide);
   const build = buildNumber(ide);
-  const cache = opt("cache") ?? defaultCache(build);
+  const cache = values.cache ?? defaultCache(build);
   console.error(`install : ${root}`);
   console.error(`cache   : ${cache}`);
   let r;
   try {
-    r = exportPackages({ root, cache, refresh: flag("refresh"), log: (l) => console.error(l) });
+    r = exportPackages({ root, cache, refresh: values.refresh, log: (l) => console.error(l) });
   } catch (e) {
     die(2, e.message);
   }
@@ -179,13 +181,13 @@ for (const p of problems.slice(0, 20)) console.error(`  ? ${p.pkg} ${p.file}:${p
 if (problems.length > 20) console.error(`  ? ... and ${problems.length - 20} more`);
 for (const u of [...new Set(unresolved)].slice(0, 20)) console.error(`  ? not found: ${u}`);
 
-const out = opt("out") ?? OUT;
-if (flag("check")) {
+const out = values.out ?? OUT;
+if (values.check) {
   const committed = existsSync(out) ? readFileSync(out, "utf8").replace(/\r\n/g, "\n") : null;
-  if (committed === text) { console.error(`up to date: ${path.relative(REPO, out)}`); process.exit(0); }
-  console.error(`STALE: ${path.relative(REPO, out)} differs from what BETA ${build ?? "?"} gives; ` +
+  if (committed === text) { console.error(`up to date: ${path.relative(REPO_ROOT, out)}`); process.exit(0); }
+  console.error(`STALE: ${path.relative(REPO_ROOT, out)} differs from what BETA ${build ?? "?"} gives; ` +
     `run node scripts/build_package_api.mjs and commit the result`);
   process.exit(1);
 }
 writeFileSync(out, text, "utf8");
-console.error(`wrote   : ${path.relative(REPO, out)} (${(text.length / 1024).toFixed(0)} KB)`);
+console.error(`wrote   : ${path.relative(REPO_ROOT, out)} (${(text.length / 1024).toFixed(0)} KB)`);

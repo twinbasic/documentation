@@ -31,10 +31,11 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
-import matter from "gray-matter";
+import { pathToFileURL } from "node:url";
+import { parseFrontmatter } from "../lib/frontmatter.mjs";
+import { blockRegions } from "../lib/markdown.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SITE_HOST = /^https?:\/\/docs\.twinbasic\.com/i;
 
 const USAGE =
@@ -70,8 +71,7 @@ async function loadPages(src) {
   const aliases = [];
   for (const rel of await markdownFiles(docs)) {
     const file = path.join(docs, rel);
-    // A BOM in front of the frontmatter hides it from gray-matter; builder/discover.mjs strips it too.
-    const { data } = matter(fs.readFileSync(file, "utf8").replace(/^﻿/, ""));
+    const data = parseFrontmatter(fs.readFileSync(file, "utf8"))?.data ?? {};
     if (typeof data.permalink !== "string") continue;
     urlOf.set(file, data.permalink);
     byKey.set(pageKey(data.permalink), file);
@@ -82,10 +82,16 @@ async function loadPages(src) {
   return { urlOf, byKey };
 }
 
-/** The link targets a reader can click on a page, code fences left out. */
+/**
+ * The link targets a reader can click on a page, fences and indented code
+ * left out. An HTML block stays, since its `href`s are links. The bare parser
+ * finds the code: on the site's pages it finds what the site's parser finds.
+ */
 function hrefs(file) {
-  const text = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n")
-    .replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[ \t]*$/gm, "");
+  const src = fs.readFileSync(file, "utf8");
+  const lines = src.split(/\r\n|\r|\n/);
+  for (const r of blockRegions(src)) if (r.type !== "html_block") lines.fill("", r.start, r.end);
+  const text = lines.join("\n");
   const out = [];
   for (const m of text.matchAll(/\]\(\s*<?([^()\s<>]+)>?(?:\s+"[^"]*")?\s*\)/g)) out.push(m[1]);
   for (const m of text.matchAll(/^[ \t]*\[[^\]\n]+\]:[ \t]*<?(\S+?)>?[ \t]*$/gm)) out.push(m[1]);

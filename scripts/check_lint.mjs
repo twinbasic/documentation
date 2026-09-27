@@ -36,31 +36,37 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { parseCli } from "../lib/cli.mjs";
+import { exitOnCrash } from "./lib/gate-probes.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
-process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
-
-const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
+exitOnCrash();
 
 function cannotLint(message) {
   console.error(`check_lint: ${message}`);
   process.exit(2);
 }
 
-const argv = process.argv.slice(2);
-const staged = argv.length === 1 && argv[0] === "--staged";
-if (argv.length && !staged) cannotLint("usage: node scripts/check_lint.mjs [--staged]");
+const USAGE = "usage: node scripts/check_lint.mjs [--staged]";
+let cli;
+try {
+  cli = parseCli(process.argv.slice(2), { options: { staged: { type: "boolean", default: false } }, positionals: 0 });
+} catch {
+  cannotLint(USAGE);
+}
+if (cli.tokens.length > (cli.values.staged ? 1 : 0)) cannotLint(USAGE);
+const staged = cli.values.staged;
 
 // The scripts the next commit adds or changes that are still on disk, by the
 // two extensions the scope in biome.jsonc is made of.
 function stagedScripts() {
   const r = spawnSync("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"], {
-    cwd: ROOT,
+    cwd: REPO_ROOT,
     encoding: "utf8",
   });
   if (r.error) cannotLint(`could not run git: ${r.error.message}`);
   if (r.status !== 0) cannotLint(`git diff --cached failed: ${r.stderr.trim()}`);
-  return r.stdout.split("\0").filter((f) => /\.m?js$/.test(f) && existsSync(path.join(ROOT, f)));
+  return r.stdout.split("\0").filter((f) => /\.m?js$/.test(f) && existsSync(path.join(REPO_ROOT, f)));
 }
 
 const scripts = staged ? stagedScripts() : [];
@@ -94,7 +100,7 @@ try {
   const file = path.join(dir, "summary.txt");
   const args = ["lint", "--error-on-warnings", "--reporter=default", "--reporter=summary", `--reporter-file=${file}`];
   if (staged) args.push("--no-errors-on-unmatched", "--", ...scripts);
-  run = spawnSync(process.execPath, [biome, ...args], { cwd: ROOT, stdio: ["ignore", "inherit", "inherit"] });
+  run = spawnSync(process.execPath, [biome, ...args], { cwd: REPO_ROOT, stdio: ["ignore", "inherit", "inherit"] });
   summary = readSummary(file);
 } finally {
   rmSync(dir, { recursive: true, force: true });

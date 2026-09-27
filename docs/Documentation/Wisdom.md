@@ -20,7 +20,7 @@ Three-phase tool that extracts technical knowledge from the twinBASIC Discord se
 ## Prerequisites
 
 - **Node.js 18+** (uses native `fetch` and ES modules).
-- **No external dependencies** --- the tool uses only Node.js built-in APIs. No `npm install` needed.
+- **The repository's npm packages** --- run `npm install` once, as for the build. The tool reads `staging.md` through the repository's `lib/markdown.mjs`, which uses markdown-it.
 - **Discord token** --- for Phases 1 and 2.
 - **Claude Code session** --- for Phase 3 (the extract workflow runs Claude agents).
 
@@ -294,7 +294,7 @@ The pipeline runs both stages without a barrier --- Stage 2 for group A starts a
 1. **Collect results**: read all `extract-results-*.json` files and concatenate their additions arrays.
 
 2. **Graft into staging.md** (`extract/merger.mjs` --- `graftAdditions`):
-   - Parse existing `staging.md` into `{ preamble, sections[] }`. The parser splits on `---` delimiter lines, then parses each chunk into heading (target_page + section + optional marker), body lines, and trailing meta lines (source threads, confidence, date range, reviewer note). A chunk that does not start with a `## ` heading stops the merge, naming its first line, before anything is written.
+   - Parse existing `staging.md` into `{ preamble, sections[] }`. The parser splits on `---` delimiter lines outside any code sample, then parses each chunk into heading (target_page + section + optional marker), body lines, and trailing meta lines (source threads, confidence, date range, reviewer note). A chunk that does not start with a `## ` heading stops the merge, naming its first line, before anything is written. So does a fence left open: it runs to the end of the file, and no delimiter after it would split.
    - For each addition, compute a match key: `(target_page, section, sorted finding_ids)`.
      - **Key exists in staging.md** (and section is not `[LOCKED]`): replace the section body and meta in place.
      - **Key not in staging, but in the emission log** (from `extract-state.json`): this was previously emitted, reviewed, and removed. Insert with a `[REFINED?]` marker.

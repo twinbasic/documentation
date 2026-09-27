@@ -168,6 +168,8 @@ A package's `index.md` may also carry **`indexed_from`**, **`exclude_from_docs`*
 
 Any key the build does not recognise is simply inert --- nothing iterates frontmatter generically, so an unknown key is never emitted into the page. A key whose *value* is not valid YAML is a different matter: the build aborts with `Failed to parse frontmatter in <file>`, quoting the YAML parser's own line and column.
 
+A value that is valid YAML can still mean less than it shows. YAML reads a `#` after a space, and everything after it, as a comment, so `title: Input #` titles the page *Input*. The build warns about any value left unquoted that ends in `#`, naming the file and line, and goes on building. Quote the value --- `title: "Input #"` --- to keep the `#`. Quoting also silences the warning where YAML would have kept the `#` anyway, as in `C#`.
+
 A minimal reference-page header:
 
 ```yaml
@@ -419,9 +421,9 @@ with four backticks and close with four:
     ````
 
 Nothing else changes. A fence closes only on a run at least as long as the one
-that opened it, and both pre-render passes that have to find fences apply that
-same rule --- `maskCodeRegions`, which hides code from the rewrites, and the
-fence stasher inside `rewriteAdmonitions`, which is the one that matters here
+that opened it, and both pre-render passes that have to find fences get them from
+the site's own parser, through `lib/markdown.mjs` --- `maskCode`, which hides code
+from the rewrites, and `rewriteAdmonitions`, which is the one that matters here
 because it runs *outside* the mask by design. The language tag reaching the
 highlighter is the same string either way --- a four-backtick `tb` fence is highlighted exactly as a
 three-backtick one is. No page in `docs/` uses one yet, so there is no example to
@@ -437,8 +439,8 @@ longer backtick run is the one construct here with a shipped precedent.
 That failure is not hypothetical. The attribute reference once shipped all six of
 its admonitions as the literal text `[!NOTE]`, because the same pairing closed
 that page's opening fence on a marker in the middle of a line and every pairing
-after it was off by one. The mid-line case is fixed --- the rewrite scans lines
-now --- and [`check_code_regions.mjs`](Tools#check-code-regions), which
+after it was off by one. The mid-line case is fixed --- the rewrite now asks the
+site's parser where the fences are --- and [`check_code_regions.mjs`](Tools#check-code-regions), which
 `test.bat` runs, is the only gate that sees this class of fault at all.
 
 ### Typography

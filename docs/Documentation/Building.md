@@ -42,7 +42,7 @@ The documentation is rendered to HTML by `tbdocs`, a custom Node.js static site 
 ### On macOS and Linux
 {: #posix-equivalents }
 
-Nothing in the pipeline itself is Windows-specific --- `tbdocs` and all ten gates are Node programs, and CI runs all but one of them on `ubuntu-latest` (the exception is deliberate: see [What CI deliberately does not run](#what-ci-deliberately-does-not-run)). The five wrappers are the only part that is, and what follows is what each of them runs.
+Nothing in the pipeline itself is Windows-specific --- `tbdocs` and all the gates are Node programs, and CI runs all but one of them on `ubuntu-latest` (the exception is deliberate: see [What CI deliberately does not run](#what-ci-deliberately-does-not-run)). The five wrappers are the only part that is, and what follows is what each of them runs.
 
 Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from any directory. The commands below have no equivalent of that, so **run them from the repository root**. It is not a formality: `tbdocs`'s `--src docs`, `check_publish_policy.mjs`'s default source root, and every path handed to `render-book.mjs` are all resolved against the working directory.
 
@@ -77,6 +77,7 @@ Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from a
       && node scripts/check_page_baseline.mjs \
       && node scripts/check_book_coverage.mjs \
       && node scripts/check_symbol_index.mjs \
+      && node scripts/check_cli.mjs \
       && node scripts/check_axe_patch_equiv.mjs
 
 `book.bat` has one step that is invisible from the command it ends with. `render-book.mjs` writes the PDF with a plain file write and never creates the directory above it, so `docs/_pdf/` has to exist first --- otherwise the render fails with `ENOENT` at the very last moment, after the whole page-breaking pass has already run. The deploy workflow does the same `mkdir` before its render, for the same reason:
@@ -453,7 +454,7 @@ and restored unchanged --- it simply never fires. That is how
 admonitions as the literal text `[!NOTE]`: a twinBASIC string literal holding a
 fence marker closed the fence around it, and every pairing for the rest of the
 page was off by one. The gate keeps fixed probes for that rather than sweeping
-the corpus, so a green line says the fence stasher still works --- it does not
+the corpus, so a green line says the rewrites still find the code the parser finds --- it does not
 say your own page came out right. Read that one in
 [`serve.bat`](#building-and-local-serving) as well.
 
@@ -569,7 +570,7 @@ The deploy workflow passes `--url` and `--baseurl` from the `configure-pages` ou
 
 ### The link-checker parity fixtures
 
-[`scripts/check_links_diff.mjs`](Tools#check-links-diff) compares two implementations of one check: the standalone [`scripts/check_links.mjs`](Tools#check-links), still the tool for a tree this build did not produce, and the pass fused into the build. Two implementations of one check is the shape that rots quietly, because **a checker that silently checks less reports a clean pass.** `check.bat` runs neither invocation; CI runs one or both.
+[`scripts/check_links_diff.mjs`](Tools#check-links-diff) compares the check's two front ends: the standalone [`scripts/check_links.mjs`](Tools#check-links), still the tool for a tree this build did not produce, and the pass fused into the build. They run the same functions and differ only in how they read the tree, which is still enough to hide a fault, because **a checker that silently checks less reports a clean pass.** `check.bat` runs neither invocation; CI runs one or both.
 
 | Invocation | Where | What it holds to the comparison |
 |---|---|---|

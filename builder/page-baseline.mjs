@@ -47,10 +47,10 @@
 //
 // **The baseline describes one source tree, and the guard says which.** tbdocs
 // is not only run over `docs/`: scripts/check_links_diff.mjs spawns it over
-// test/fixtures/check-src, three pages, to compare the two link checkers. A
-// baseline keyed to nothing would meet that build with "905 pages missing" --
-// a loud, confident, entirely wrong finding, on a harness whose whole job is to
-// notice when two implementations disagree. So GUARDED_SRC names the tree these
+// test/fixtures/check-src, three pages, to compare the link check's two front
+// ends. A baseline keyed to nothing would meet that build with "905 pages
+// missing" -- a loud, confident, entirely wrong finding, on a harness whose
+// whole job is to notice when two front ends disagree. So GUARDED_SRC names the tree these
 // numbers are of, the file records it, and every other source root is skipped
 // in silence rather than measured against figures that were never about it.
 

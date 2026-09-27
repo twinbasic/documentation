@@ -20,11 +20,9 @@
 //     node scripts/check_book_coverage.mjs
 
 import { resolveBookChapters, bookCoverage, formatBookCoverage } from "../builder/book.mjs";
+import { createProbes, exitOnCrash } from "./lib/gate-probes.mjs";
 
-// A crash is the harness failing, not a finding: exit 2, as Extending.md's gate
-// conventions require. This file runs at top level, so there is no main().catch
-// to do it; the handler also catches a rejected top-level await.
-process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
+exitOnCrash();
 
 const page = (srcRel, permalink, title, frontmatter = {}) => ({
   srcRel, permalink, navPath: title, frontmatter: { title, permalink, ...frontmatter },
@@ -78,13 +76,8 @@ function coverage(mutate = () => {}) {
 const KINDS = ["unlisted", "both", "emptyEntries", "emptyLeftOut", "missingUrls"];
 const counts = (c) => KINDS.map(k => `${k}=${c[k].length}`).join(" ");
 
-let failures = 0;
-const results = [];
-
-function check(name, ok, detail) {
-  results.push({ name, ok, detail });
-  if (!ok) failures++;
-}
+const { check, report } = createProbes("check_book_coverage",
+  "bookCoverage() in builder/book.mjs no longer reports what the probe names");
 
 // Exactly the findings `expect` names, as {kind: n}, and none of any other kind.
 function only(c, expect) {
@@ -157,14 +150,4 @@ function only(c, expect) {
 
 // --- report ------------------------------------------------------------------
 
-for (const { name, ok, detail } of results) {
-  console.log(`  ${ok ? "ok  " : "FAIL"} ${name}`);
-  if (!ok && detail) console.log(`       ${detail.replaceAll("\n", "\n       ")}`);
-}
-console.log(
-  failures
-    ? `check_book_coverage: ${failures} of ${results.length} probes failed -- ` +
-      `bookCoverage() in builder/book.mjs no longer reports what the probe names`
-    : `check_book_coverage: ${results.length} probes, all pass`
-);
-process.exit(failures ? 1 : 0);
+process.exit(report());

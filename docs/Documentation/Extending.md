@@ -111,18 +111,18 @@ rewrite runs:
    rewrites run and put back afterwards. A rewrite added between the two never sees code:
 
    ```js
-   const code = maskCodeRegions(source);
+   const code = maskCode(source, { md });
    let work = code.masked;
    work = rewriteTripleAsteriskEmphasis(work);
    // ... the other masked rewrites ...
    work = yourRewrite(work);
-   return rewriteAdmonitions(code.restore(work));
+   return rewriteAdmonitions(code.restore(work), md);
    ```
 
 2. **For an indented code block, the mask cannot help.** It does not cover indented blocks
-   on purpose: telling one from a list item's continuation needs block context a
-   pre-render pass does not have. Narrow the rewrite so it cannot match the block's
-   lines, and let the gate say when it no longer does.
+   on purpose. Narrow the rewrite so it cannot match the block's
+   lines, and let the gate say when it no longer does. A rewrite that has to run outside
+   the mask can instead skip the lines `blockRegions` reports, as `rewriteAdmonitions` does.
 3. **Do not widen the mask to make the report go away.** Text the mask hides is text no
    rewrite reaches, so a mask that hides prose stops the rewrites firing on it --- and the
    region comparison cannot see that, because the hidden text comes back unchanged.
@@ -158,7 +158,7 @@ Two things are easy to miss from a changer's position.
 ## Changing the link checker
 {: #changing-the-link-checker }
 
-The link check exists twice. The build runs it over the HTML it holds in memory, through `builder/check.mjs`, and `scripts/check_links.mjs` runs it over a tree on disk; both use the core in `builder/link-check.mjs`. A change to any of the three can make the two disagree, and **a checker that silently checks less reports a clean pass** --- on a healthy site nearly every category of finding is empty, so nothing else would notice.
+The link check has two front ends. The build runs it over the HTML it holds in memory, and `scripts/check_links.mjs` runs it over a tree on disk; both call the same functions in `builder/check.mjs`, over the core in `builder/link-check.mjs`. A change to any of the three can make the two disagree, and **a checker that silently checks less reports a clean pass** --- on a healthy site nearly every category of finding is empty, so nothing else would notice.
 
 After changing `builder/link-check.mjs`, `builder/check.mjs` or `scripts/check_links.mjs`, run the full comparison by hand:
 
@@ -168,7 +168,7 @@ It builds everything it compares --- the site into the usual trees, a copy under
 
 **Nothing else runs this comparison.** `build.bat`, `check.bat` and `test.bat` never call it, and the CI workflows run only the fixture cases: both compare the script with its `index` variant over a synthetic tree, and the pull-request workflow also compares the script with the build's pass over the three-page fixture. Neither goes near the real site, so a green pull request says only that the two sides agree over the fixtures, not over the pages you will publish. A change meant to alter what the checker finds also moves the counts asserted after every fixture run, `FIXTURE_EXPECTED`, `FIXTURE_BUILT_ONLINE` and `FIXTURE_BUILT_OFFLINE` in `check_links_diff.mjs`; [`test/README.md`](https://github.com/twinbasic/documentation/blob/main/test/README.md) says what each fixture page is there to provoke.
 
-If you changed the harness itself, or `check_links.mjs`, which is the harness's reference implementation, also run:
+If you changed the harness itself, or `check_links.mjs`, which is the harness's `script` side, also run:
 
     node scripts/check_links_diff.mjs --self-test
 
@@ -645,13 +645,13 @@ The split exists so that an edit confined to `docs/` usually has to pay for `che
 | `1` | The checked thing failed. This is the finding. |
 | `2` | The harness or the environment failed --- an unknown argument, an absent tree, an unhandled throw. Nothing was checked. |
 
-Separating 1 from 2 is what stops a broken gate reading as a clean site, and it has to hold at the top level too. End the script with `main().catch((err) => { console.error(err); process.exit(2); })`, the way `check_a11y.mjs` does, so a crash cannot fall through to node's default exit 1 and be mistaken for a finding.
+Separating 1 from 2 is what stops a broken gate reading as a clean site, and it has to hold at the top level too. End the script with `main().catch((err) => { console.error(err); process.exit(2); })`, the way `check_a11y.mjs` does, so a crash cannot fall through to node's default exit 1 and be mistaken for a finding. A script that runs at top level, with no `main()`, calls `exitOnCrash()` from `scripts/lib/gate-probes.mjs` before it does anything else; that handler also catches a rejected top-level await.
 
-**Say what a pass covered.** Nearly every gate in both wrappers does: `check_dot_fit.mjs` gives the diagram count, `pick_a11y_sample.mjs --check` the sample size and the number of construct families in use, `check_publish_policy.mjs` the probe counts on both sides, `check_code_regions.mjs` the number of files swept and the number whose code regions moved, `check_a11y.mjs` the page × theme × viewport product it audited. A gate silent on success says nothing about whether it examined anything, which is the state a gate that has quietly stopped working also reports.
+**Say what a pass covered.** Nearly every gate in both wrappers does: `check_dot_fit.mjs` gives the diagram count, `pick_a11y_sample.mjs --check` the sample size and the number of construct families in use, `check_publish_policy.mjs` the probe counts on both sides, `check_code_regions.mjs` the number of files swept, the number whose code regions moved and the number of fences found, `check_a11y.mjs` the page × theme × viewport product it audited. A gate silent on success says nothing about whether it examined anything, which is the state a gate that has quietly stopped working also reports.
 
 **Name the artifact and the remedy.** A gate's output is read by someone who was in the middle of something else. `check_dot_fit.mjs` names the failing diagram, then `builder/dot-metrics.mjs` and an `@hpcc-js/wasm-graphviz` bump as the usual cause, then `build.bat` as the fix. `check_tree_fresh.mjs` names the source file that is newer than the tree and says to run `build.bat`. `pick_a11y_sample.mjs --check` names the uncovered construct *and* the cheapest page that would cover it.
 
-**Resolve paths from `import.meta.url`.** `resolve(fileURLToPath(new URL("..", import.meta.url)))` is what nearly all of them do, directly or through `axe-scan.mjs`'s `REPO_ROOT`, and it makes the gate work from any directory. `check_publish_policy.mjs` is the exception, with a working-directory-relative `docs` default, which is why the batch wrappers `pushd` to the repository root before running anything.
+**Resolve paths from the repository root in `lib/repo-paths.mjs`.** Import `REPO_ROOT`, or `DOCS_DIR` for `docs/`, rather than deriving either from `import.meta.url` or the working directory, and the gate works from any directory. `check_publish_policy.mjs` is the one gate that does not, with a working-directory-relative `docs` default, which is why the batch wrappers `pushd` to the repository root before running anything.
 
 **Be explicit about what may already have run.** Both wrappers stop at the first failure, so a gate's position decides what it can assume --- and the two do not offer the same guarantees. `check_tree_fresh.mjs` runs first in `check.bat`, so every later gate there may assume `_site-offline/` is current. `test.bat` has no freshness gate at all, and its one gate that opens a built page does not need one: `check_axe_patch_equiv.mjs` loads a single page and never reads that page's DOM, so a stale tree cannot change its result. Nothing in either wrapper may assume the build's own link check passed: a link failure sets the build's exit code without aborting the build, so a tree that failed it is still on disk and still fresh.
 
@@ -672,6 +672,8 @@ So a new gate needs a second assertion of the opposite sign, and there are four 
 - **A fixture that provokes one fault of each kind,** with the count asserted afterwards. The real site is clean, so without one every category compares empty against empty --- and a category that has stopped being checked looks identical to a category with nothing to find.
 - **An A/A control.** Running `check_a11y_fingerprint.mjs` with the same scheme on both sides says whether the harness is stable, before any A/B result from it is believed.
 
+A self-test made of named probes, such as `check_page_baseline.mjs`, records them with `createProbes` from `scripts/lib/gate-probes.mjs`, which prints a line for each probe and a summary, and returns the exit code.
+
 When the gate cannot assert its own correctness from the inside, the proof goes in a sibling script and is named in the gate's header comment, so whoever changes the gate next finds it in the file they are already reading.
 
 ---
@@ -690,7 +692,9 @@ Two shapes qualify. Most names count things `discover` already found --- pages u
 prefix, static files, packages. `attributeAnchors` and `enumerations` are the other shape:
 they scan one page's `rawContent` for the pattern that makes an entry, which is legitimate
 because the page *is* the list, and carries the matching exposure --- change that page's
-list formatting and the number moves with it.
+list formatting and the number moves with it. Both scan only the lines outside code, which
+`proseLines` in `counts.mjs` gives them, so an example of the pattern in a fence is not
+counted; a new scan should do the same.
 
 1. **Add the entry.** A function beside the others in
    [`counts.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/counts.mjs),
@@ -790,7 +794,7 @@ Three gates are the ones a builder change is most likely to trip, and each fails
 
 - `pick_a11y_sample.mjs --check`, in `check.bat`, fails when a construct family the site uses is covered by no page in the sample --- normally because a build added or moved pages and the cheapest page for some family is no longer in the list. The fix is to add the page it names, not to widen the sample by hand. **It cannot report a genuinely new construct.** The gate iterates the registered `FAMILIES` and nothing else, so markup no family describes produces silence, and that silence is the exact failure a derived sample exists to prevent: the axe rule keyed on that construct then runs nowhere. Adding a family is the deliberate step, and [Tools and Scripts](Tools#pick-a11y-sample) gives the shape of one.
 - `check_publish_policy.mjs`, in `test.bat`, fails when a new emitted file type is not on the allowlist in `builder/publish-policy.mjs`. Add it to `BUILD_EXTENSIONS`, which is deliberately a separate set from `SOURCE_EXTENSIONS` so blessing a generated type does not also bless a stray one a contributor drops into `docs/`.
-- `check_code_regions.mjs`, also in `test.bat`, fails when a new pre-render rewrite alters the contents of a code fence, an indented code block or a code span. For a fence or a span, the fix is to move the rewrite inside `applyPreRenderRewrites` in `render.mjs`, between `maskCodeRegions` and its `restore`, rather than to widen the mask; an indented block is not masked at all. [When `test.bat` fails in `check_code_regions`](#code-regions-altered) has both cases.
+- `check_code_regions.mjs`, also in `test.bat`, fails when a new pre-render rewrite alters the contents of a code fence, an indented code block or a code span. For a fence or a span, the fix is to move the rewrite inside `applyPreRenderRewrites` in `render.mjs`, between `maskCode` and its `restore`, rather than to widen the mask; an indented block is not masked at all. [When `test.bat` fails in `check_code_regions`](#code-regions-altered) has both cases.
 
 > [!NOTE]
 > Both `check.bat` and `test.bat` want `build.bat` to have run first, for different reasons. `check.bat` reads the built tree throughout, and `check_tree_fresh.mjs` refuses one older than the sources that produced it rather than letting the later gates report on stale output. `test.bat` needs a built tree only for its last gate, `check_axe_patch_equiv.mjs`, and does not care how old that tree is.

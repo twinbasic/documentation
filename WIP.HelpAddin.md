@@ -391,7 +391,8 @@ have: writing into the install, which every new build replaces. Still deferred.
   says `*class* **Collection** ... in package VBA` and lists `*[default]* VBA._Collection`.
   A variable gives its declaration, `*local variable* Dim c As Collection`. `Debug`,
   `Debug.Print` and a statement such as `Dim` give nothing, and a type such as `Long` a line
-  about it. Over a procedure's name in its own declaration, hover gives a debug block
+  about it. BETA 983 gives no hover for those three, and BETA 987 a hover whose text is
+  empty, so the add-in must treat both as nothing. Over a procedure's name in its own declaration, hover gives a debug block
   instead, `TB-DEBUG CODEGEN SIZE: [NOT-READY]`; over a `ByVal` parameter of a class,
   `String`, `Variant` or `Object` it adds a wrong note about `Option Explicit`
   ([BUGS-TO-REPORT.md](BUGS-TO-REPORT.md)).

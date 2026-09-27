@@ -1,14 +1,17 @@
 // Differential harness for the link checker.
 //
-// Runs the same check pass under two named *sides* -- two
-// implementations that are supposed to reach identical conclusions --
-// and diffs their findings category by category. Exits non-zero on any
-// difference.
+// Runs the same check pass under two named *sides* -- two ways of
+// running one check, which must reach identical conclusions -- and
+// diffs their findings category by category. Exits non-zero on any
+// difference. The two sides that matter run the same functions in
+// builder/check.mjs and differ in how they read the tree: the
+// standalone script reads it from disk, while the build's pass holds it
+// in memory, answers "does this exist" from an index of what it wrote,
+// and checks it in chunks across its workers.
 //
-// It exists because of the failure mode that makes this whole
-// refactor dangerous: a checker that silently checks *less* reports a
+// It exists because a checker that silently checks *less* reports a
 // clean pass. `check.bat` going green proves nothing about whether the
-// fused path still looks at everything the standalone script does.
+// fused path still looks at everything a read from disk finds.
 // This is the same role scripts/check_a11y_fingerprint.mjs plays on the
 // axe side, and it has the same blind spot: it compares conclusions,
 // never the shape of the work that produced them. Treat it as
@@ -74,11 +77,11 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { performance } from "node:perf_hooks";
-import { fileURLToPath } from "node:url";
 
 import { runCheck, selfTest as scriptSelfTest } from "./check_links.mjs";
+import { parseCli } from "../lib/cli.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
-const REPO_ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const BASE_PATH = "/twinBASIC-docs";
 const DEFAULT_BASEPATH_TREE = "docs/_site-basepath";
 const FIXTURE_SRC  = "test/fixtures/check-src";
@@ -330,7 +333,7 @@ const SIDES = {
   // case-insensitive), and a side that silently became the same oracle
   // as `index` would turn this comparison into a no-op on one platform.
   //
-  // It is the reference implementation, not an oracle of record: on
+  // It is the reference side, not an oracle of record: on
   // Windows, FsOracle answers "exists" for a wrong-case path that 404s on
   // GitHub Pages, so on that one question the `index` side is the correct
   // one and this side is the one with the missing finding.
@@ -536,24 +539,32 @@ function ensureBasePathTree(dir, allowBuild) {
 // ── Main ────────────────────────────────────────────────────────────
 
 function parseArgs(argv) {
-  const o = {
-    a: "script", b: "script", cases: [], verbose: false, list: false,
-    maxLines: 12, basePathTree: DEFAULT_BASEPATH_TREE, buildBasePath: false,
-  };
-  for (let i = 0; i < argv.length; i++) {
-    const x = argv[i];
-    if (x === "--a") o.a = argv[++i];
-    else if (x === "--b") o.b = argv[++i];
-    else if (x === "--case") o.cases.push(argv[++i]);
-    else if (x === "--max-lines") o.maxLines = Number(argv[++i]);
-    else if (x === "--base-path-tree") o.basePathTree = argv[++i];
-    else if (x === "--build-base-path") o.buildBasePath = true;
-    else if (x === "-v" || x === "--verbose") o.verbose = true;
-    else if (x === "--self-test") o.selfTest = true;
-    else if (x === "--list") o.list = true;
-    else if (x === "-h" || x === "--help") { o.help = true; }
-    else throw new Error(`unknown argument: ${x}`);
+  let values;
+  try {
+    ({ values } = parseCli(argv, {
+      options: {
+        a: { type: "string", default: "script" },
+        b: { type: "string", default: "script" },
+        case: { type: "string", multiple: true },
+        "max-lines": { type: "string", default: "12" },
+        "base-path-tree": { type: "string", default: DEFAULT_BASEPATH_TREE },
+        "build-base-path": { type: "boolean" },
+        "self-test": { type: "boolean" },
+        list: { type: "boolean" },
+        verbose: { type: "boolean", short: "v" },
+        help: { type: "boolean", short: "h" },
+      },
+      positionals: 0,
+      acceptsValue: () => true,
+    }));
+  } catch (err) {
+    throw new Error(`unknown argument: ${err.arg}`);
   }
+  const o = {
+    a: values.a, b: values.b, cases: values.case, verbose: values.verbose, list: values.list,
+    maxLines: Number(values.maxLines), basePathTree: values.basePathTree, buildBasePath: values.buildBasePath,
+    selfTest: values.selfTest, help: values.help,
+  };
   if (!o.cases.length) o.cases = [...DEFAULT_CASES];
   return o;
 }

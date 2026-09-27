@@ -3,8 +3,9 @@
 The Discord knowledge-harvesting tool: a three-phase pipeline (`export` →
 `process` → `extract`) that mines the twinBASIC Discord for things the
 documentation does not yet say, and drafts additions for human review. Plans in
-`wisdom/PLAN-{1,2,3}.md`; implementation under `wisdom/`. Uses only Node.js
-built-in APIs.
+`wisdom/PLAN-{1,2,3}.md`; implementation under `wisdom/`. Uses Node.js built-in
+APIs, and the repository's npm packages through `lib/markdown.mjs`, which
+`extract/merger.mjs` reads `staging.md` with.
 
 Split out of [WIP.md](WIP.md) because Wisdom runs occasionally and its
 invocation detail has no business in the context of a session doing anything

@@ -109,6 +109,14 @@ node scripts/check_book_coverage.mjs
 @rem Fixtures only: no tree, no install, ~100 ms.
 node scripts/check_symbol_index.mjs
 @if errorlevel 1 goto :fail
+@rem Nothing else tests how a tool reads its command line, which is how a
+@rem value flag given no value came to be read as NaN or as the next flag.
+@rem lib/cli.mjs's probes, then each tool's recorded command-line errors:
+@rem the tool runs with an IDE and a browser that do not exist, so a case
+@rem that gets past its command line fails rather than starting either.
+@rem No tree, no browser, no install, ~1 s.
+node scripts/check_cli.mjs
+@if errorlevel 1 goto :fail
 @rem check_a11y.mjs injects a PATCHED axe bundle (plain-color-fields,
 @rem -26 % on a realistic page set). The patch asserts its substitution
 @rem targets, so an axe-core bump fails loudly; this catches the other

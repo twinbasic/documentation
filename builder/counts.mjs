@@ -54,9 +54,9 @@
 // route; a placeholder rendering as empty is worse. Both abort the build, and
 // it takes two checks rather than one because they fail differently:
 //
-//   - `validateCountNames` scans the source, with code regions masked by the
-//     renderer's own `maskCodeRegions`, and rejects an unknown name. This is
-//     the typo case, and it names the file, the line and the nearest match.
+//   - `validateCountNames` scans the source, with code masked as the
+//     pre-render rewrites mask it, and rejects an unknown name. This is the
+//     typo case, and it names the file, the line and the nearest match.
 //   - `assertNoPlaceholders` scans the rendered HTML for a placeholder that
 //     survived, outside `<code>` and `<pre>`. Source validation cannot see
 //     this case: a placeholder inside a raw HTML block has a perfectly good
@@ -65,7 +65,7 @@
 // A name with no uses is fine and is not reported. Names are cheap; the
 // registry is allowed to offer more than the prose currently asks for.
 
-import { maskCodeRegions } from "./render.mjs";
+import { blockRegions, maskCode } from "../lib/markdown.mjs";
 
 export const PLACEHOLDER_RE = /\{\{tbdocs:([A-Za-z][A-Za-z0-9]*)\}\}/g;
 
@@ -112,7 +112,16 @@ function countPackages(pages, root = null) {
 function countAttributeAnchors(pages) {
   const page = pages.find((p) => p.srcRel === "Reference/Attributes.md");
   if (!page) return 0;
-  return (page.rawContent.match(/^\{: #[a-z0-9]+ \}/gm) ?? []).length;
+  return proseLines(page.rawContent).filter((l) => l !== null && /^\{: #[a-z0-9]+ \}/.test(l)).length;
+}
+
+// A page's lines, each line inside a fence, code block or HTML block replaced
+// by null, so that a scan over them reads no code. The bare parser finds the
+// regions: the site's is built with these counts, so it does not exist yet.
+function proseLines(src) {
+  const lines = src.split(/\r\n|\r|\n/);
+  for (const r of blockRegions(src)) lines.fill(null, r.start, r.end);
+  return lines;
 }
 
 // Enumerations documented across every package, counted off the alphabetical
@@ -130,13 +139,19 @@ function countAttributeAnchors(pages) {
 function countEnumerations(pages) {
   const page = pages.find((p) => p.srcRel === "Reference/Enumerations.md");
   if (!page) return 0;
-  const body = page.rawContent.split(/^## Alphabetical index\s*$/m)[1];
-  if (!body) return 0;
+  const lines = proseLines(page.rawContent);
+  const start = lines.findIndex((l) => l !== null && /^## Alphabetical index\s*$/.test(l));
+  if (start === -1) return 0;
   // Stop at the next heading of any level -- `### See Also` closes the list,
   // and its four bullets are not enumerations. The A/B/C dividers between
   // groups are bold text, not headings, so they do not terminate the scan.
-  const list = body.split(/^#{1,6} /m)[0];
-  return (list.match(/^- \[/gm) ?? []).length;
+  let n = 0;
+  for (const l of lines.slice(start + 1)) {
+    if (l === null) continue;
+    if (/^#{1,6} /.test(l)) break;
+    if (/^- \[/.test(l)) n++;
+  }
+  return n;
 }
 
 /**
@@ -231,17 +246,21 @@ function substitute(text, counts) {
 /**
  * Find every `{{tbdocs:...}}` in a page's source that is not inside code.
  *
- * Uses the renderer's own `maskCodeRegions`, so "what is code" has one
- * definition here and in the pre-render rewrites. Without it this would reject
- * the very examples the documentation of this feature has to contain.
+ * Masks code with `maskCode` and the site's parser `md`, as the pre-render
+ * rewrites do, so "what is code" has one definition here and there. Without
+ * it this would reject the very examples the documentation of this feature
+ * has to contain.
+ *
+ * `line` is 1-based in `rawContent`. It is counted with the code put back,
+ * because a masked fence is one line however many it holds.
  *
  * @returns {{name: string, line: number}[]}
  */
-export function findCountRefs(rawContent) {
-  const { masked } = maskCodeRegions(rawContent.replace(/\r\n?/g, "\n"));
+export function findCountRefs(rawContent, md) {
+  const { masked, restore } = maskCode(rawContent.replace(/\r\n?/g, "\n"), { md });
   const out = [];
   for (const m of masked.matchAll(PLACEHOLDER_RE)) {
-    out.push({ name: m[1], line: masked.slice(0, m.index).split("\n").length });
+    out.push({ name: m[1], line: restore(masked.slice(0, m.index)).split("\n").length });
   }
   return out;
 }
@@ -280,17 +299,20 @@ function editDistance(a, b) {
  * name cannot be an error there: markdown-it emits the text verbatim, so the
  * rule would publish `{{tbdocs:pgaes}}` to readers rather than fail.
  *
+ * A message names the line of the file, not of `rawContent`: the page's
+ * `contentLine`, from `discover`, says where its content starts.
+ *
  * @returns {string[]} one message per bad reference; empty means clean
  */
-export function validateCountNames(pages, counts) {
+export function validateCountNames(pages, counts, md) {
   const names = Object.keys(counts).sort();
   const problems = [];
   for (const p of pages) {
-    for (const { name, line } of findCountRefs(p.rawContent ?? "")) {
+    for (const { name, line } of findCountRefs(p.rawContent ?? "", md)) {
       if (Object.hasOwn(counts, name)) continue;
       const guess = nearest(name, names);
       problems.push(
-        `${p.srcRel}:${line}\n` +
+        `${p.srcRel}:${line + (p.contentLine ?? 1) - 1}\n` +
         `  unknown count name {{tbdocs:${name}}}\n` +
         (guess ? `  did you mean: ${guess}?\n` : "") +
         `  available: ${names.join(", ")}`,

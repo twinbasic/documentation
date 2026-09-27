@@ -80,11 +80,19 @@
 
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { createMarkdownIt } from "../builder/render.mjs";
+import { parseCli } from "../lib/cli.mjs";
+import { splitOnMarker } from "../lib/markdown.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { gatesFromBat } from "./lib/gate-roster.mjs";
 
-const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const TOOLS_MD = "docs/Documentation/Tools.md";
+
+// The site's own parser, so that what is code is what the renderer will make
+// of it. Built on first use, inside main, so a failure exits 2.
+let siteMd;
+const siteParser = () =>
+  (siteMd ??= createMarkdownIt({ highlighter: null, linkTables: null, baseurl: "", staticFiles: new Set() }));
 
 // The wrappers this gate covers, and the heading each one is documented under.
 // book.bat and build.bat are deliberately absent: neither runs a list of gates,
@@ -102,13 +110,9 @@ const NUMBER_WORDS = [
 ];
 
 /** The body of a `### <name>` section: up to the next heading of any level. */
-function sectionBody(md, heading) {
-  const lines = md.split(/\r?\n/);
-    const start = lines.findIndex((l) => l.trim() === heading);
-  if (start === -1) return null;
-  const rest = lines.slice(start + 1);
-  const end = rest.findIndex((l) => /^#{1,6}\s/.test(l));
-  return (end === -1 ? rest : rest.slice(0, end)).join("\n");
+function sectionBody(src, heading) {
+  const sec = splitSections(src).find((s) => s.heading === heading);
+  return sec ? sec.lines.slice(1).join("\n") : null;
 }
 
 /**
@@ -191,8 +195,9 @@ function statedCount(body) {
 
 const NUM = `(?:${NUMBER_WORDS.join("|")}|\\d+)`;
 const WRAP = "`?(check|test)\\.bat`?";
-// Deliberately not `checks?`: "two implementations of one check" is ordinary
-// English about the link checker and appears twice in the corpus.
+// Deliberately not `checks?`: a count of checks is ordinary English in the
+// corpus ("Two checks enforce the registration", "two more checks"), not a
+// count of gates.
 const NOUN = "(?:gates?|steps?|scripts?)";
 const QUAL = "(?:more|further|other|separate|cheaper|local|remaining)\\s+";
 // "`test.bat` is six more" names no noun at all, and that sentence is one of
@@ -231,20 +236,17 @@ const asNumber = (w) => {
   return i === -1 ? Number(w) : i;
 };
 
-/** Split markdown into sections: a heading and everything up to the next one. */
-function splitSections(md) {
-  const lines = md.split(/\r?\n/);
-  const out = [];
-  let cur = { heading: "(top of file)", start: 1, lines: [] };
-  for (let i = 0; i < lines.length; i++) {
-    if (/^#{1,6}\s/.test(lines[i])) {
-      out.push(cur);
-      cur = { heading: lines[i].trim(), start: i + 1, lines: [] };
-    }
-    cur.lines.push(lines[i]);
-  }
-  out.push(cur);
-  return out;
+/**
+ * Split markdown into sections: a heading and everything up to the next one.
+ * A heading-shaped line inside a fence, code block or HTML block starts none;
+ * Wisdom.md's `staging.md` example holds one. A section's `lines` begin with
+ * its heading, and `start` is that line's 1-based number.
+ */
+function splitSections(src) {
+  return splitOnMarker(src, (line) => /^#{1,6}\s/.test(line), { md: siteParser() }).map((s) =>
+    s.marker === null
+      ? { heading: "(top of file)", start: 1, lines: s.lines }
+      : { heading: s.marker.trim(), start: s.start + 1, lines: [s.marker, ...s.lines] });
 }
 
 /**
@@ -474,6 +476,13 @@ const PROSE_PROBES = [
     name: "a count in the sub-page list of an index page",
     md: "`build.bat` produces three output trees; `check.bat` runs six further gates, from the publish allowlist to the accessibility scan.\n",
   },
+  {
+    // Not a published sentence: Wisdom.md's `staging.md` example has a fenced
+    // `## ` line, and read as a heading it cut the section it sits in, so a
+    // count after it belonged to a section about no wrapper.
+    name: "a section total after a fenced heading-shaped line",
+    md: "## Tests of the toolchain\n\n    test.bat\n\n```\n## not a heading\n```\n\nFive gates that test the build system rather than the site.\n",
+  },
 ];
 
 const PROSE_NEGATIVES = [
@@ -522,8 +531,12 @@ function selfTest() {
 // ------------------------------------------------------------------ main
 
 async function main(argv) {
-  const verbose = argv.includes("--verbose");
-  const onlySelfTest = argv.includes("--self-test");
+  const { values } = parseCli(argv, {
+    options: { verbose: { type: "boolean" }, "self-test": { type: "boolean" } },
+    unknown: "ignore",
+  });
+  const verbose = values.verbose;
+  const onlySelfTest = values.selfTest;
 
   const probes = selfTest();
   const probesFailed = probes.filter(([ok]) => !ok);
@@ -543,11 +556,11 @@ async function main(argv) {
     return probesFailed.length ? 1 : 0;
   }
 
-  const toolsMd = await readFile(path.join(REPO, TOOLS_MD), "utf8");
+  const toolsMd = await readFile(path.join(REPO_ROOT, TOOLS_MD), "utf8");
   const findings = [];
   const wrapperGates = new Map();
   for (const w of WRAPPERS) {
-    const batSrc = await readFile(path.join(REPO, w.bat), "utf8");
+    const batSrc = await readFile(path.join(REPO_ROOT, w.bat), "utf8");
     wrapperGates.set(w.bat, gatesFromBat(batSrc));
     const found = compareWrapper(w, batSrc, toolsMd);
     findings.push(...found);
@@ -561,7 +574,7 @@ async function main(argv) {
   // is legitimate and is exactly the kind of second copy that drifted last
   // time; README.md is here because three of round 4's findings were on it
   // and nothing had ever read it.
-  const docsDir = path.join(REPO, "docs/Documentation");
+  const docsDir = path.join(REPO_ROOT, "docs/Documentation");
   const wanted = [...wrapperGates.values()].map((g) => g.join("\0"));
   const counts = new Map([...wrapperGates].map(([bat, g]) => [bat, g.length]));
   const rels = [
@@ -571,7 +584,7 @@ async function main(argv) {
   ];
   let claimsSeen = 0;
   for (const rel of rels) {
-    const src = await readFile(path.join(REPO, rel), "utf8");
+    const src = await readFile(path.join(REPO_ROOT, rel), "utf8");
     for (const run of commandRuns(src, rel)) {
       if (wanted.includes(run.gates.join("\0"))) {
         if (verbose) console.log(`  ok    ${rel}:${run.line}: matches a wrapper`);

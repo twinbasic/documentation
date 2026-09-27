@@ -16,6 +16,7 @@
 
 import { existsSync, mkdirSync, readFileSync, copyFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { blockRegions, splitOnMarker } from '../../lib/markdown.mjs'
 import { writeFileAtomic } from '../files.mjs'
 import { buildEmissionKeySet, emissionKey } from './state.mjs'
 
@@ -105,37 +106,31 @@ export function renderSideband(additions) {
 /**
  * Parse staging.md into { preamble, sections } where:
  *   preamble: string[] — lines before the first `## ` heading
- *   sections: Section[] — each section parsed from a chunk delimited by `---`
+ *   sections: Section[] — each section parsed from a chunk delimited by a
+ *             `---` line outside any fence, code block or HTML block
  *
  * The parser is forgiving: anything it can't categorise gets preserved as
- * part of a section body so we never silently drop reviewer content. A chunk
- * after a `---` that does not start with `## ` has no section to go in, so it
- * throws, naming the chunk's first line, rather than being dropped.
+ * part of a section body so we never silently drop reviewer content. It
+ * throws, naming the line, rather than drop or misfile content: when a chunk
+ * after a `---` does not start with `## `, so has no section to go in, and
+ * when a fence left open runs to the end of the file, so that no `---` after
+ * it splits and every later section would be read as part of its body.
  */
 export function parseStaging(content) {
-  const text = content.replace(/\r\n/g, '\n')
-  const lines = text.split('\n')
-
-  // Split on lines that are exactly "---", keeping each chunk's first line
-  // number for the error below.
-  const chunks = []
-  const starts = []
-  let current = []
-  let start = 1
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i] === '---') {
-      chunks.push(current)
-      starts.push(start)
-      current = []
-      start = i + 2
-    } else {
-      current.push(lines[i])
-    }
+  // Split on lines that are exactly "---", except inside a code sample, which
+  // may hold one. Each chunk keeps its first line number for the errors below.
+  const parts = splitOnMarker(content, (line) => line === '---')
+  const lines = parts.flatMap((p) => (p.marker === null ? p.lines : [p.marker, ...p.lines]))
+  for (const r of blockRegions(content)) {
+    if (r.end < lines.length) continue
+    const dash = lines.slice(r.start, r.end).indexOf('---')
+    if (dash < 0) continue
+    const what = r.type === 'fence' ? 'a fence that is never closed' : 'a block that runs to the end of the file'
+    throw new Error(`staging.md line ${r.start + 1} opens ${what}, so the "---" on line ` +
+                    `${r.start + dash + 1} and every one after it split no sections: close it`)
   }
-  if (current.length || chunks.length === 0) {
-    chunks.push(current)
-    starts.push(start)
-  }
+  const chunks = parts.map((p) => p.lines)
+  const starts = parts.map((p) => (p.marker === null ? 1 : p.start + 2))
 
   // First chunk = preamble + first section.  Subsequent chunks = sections.
   // Trailing chunk after the last `---` is usually blank lines; preserve as
@@ -168,8 +163,7 @@ export function parseStaging(content) {
     const first = chunks[i].findIndex((l) => l !== '')
     if (first >= 0) {
       throw new Error(`staging.md line ${starts[i] + first} follows a "---" line but is not a ` +
-                      `"## " heading, so it belongs to no section (a "---" inside a code sample ` +
-                      `splits the file too): ${chunks[i][first]}`)
+                      `"## " heading, so it belongs to no section: ${chunks[i][first]}`)
     }
   }
 

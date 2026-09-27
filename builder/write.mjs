@@ -19,6 +19,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isOutputTree, OUTPUT_TREES } from "../lib/markdown-files.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,7 +27,6 @@ const __dirname = path.dirname(__filename);
 // Everything else the site serves under /assets/ now comes from docs/assets/
 // (handled by the static-file copy in copyStaticFiles).
 const BUILDER_ASSETS = path.join(__dirname, "vendor", "just-the-docs", "assets");
-const PROJECT_ROOT = path.resolve(__dirname, "..");
 const LIMIT = 64;
 
 export const WRITE_LIMIT = LIMIT;
@@ -123,7 +123,7 @@ export async function preparePageDirs(pages, staticFiles, destRoot, offlineRoot)
 }
 
 export function isUnderProject(destRoot) {
-  const rel = path.relative(PROJECT_ROOT, destRoot);
+  const rel = path.relative(REPO_ROOT, destRoot);
   return rel !== "" && !rel.startsWith("..") && !path.isAbsolute(rel);
 }
 

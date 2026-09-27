@@ -78,8 +78,8 @@ import * as walk from "acorn-walk";
 import fg from "fast-glob";
 
 import { foldConstructedRegexes } from "./lib/regex-fold.mjs";
-
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+import { parseCli } from "../lib/cli.mjs";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 // ── Backend selection ────────────────────────────────────────────────────────
 //
@@ -250,13 +250,13 @@ function foldSelfTest() {
 // ── Extraction ───────────────────────────────────────────────────────────────
 
 async function extractRegexes() {
-  const files = (await fg(SOURCE_GLOBS, { cwd: ROOT, ignore: IGNORE })).sort();
+  const files = (await fg(SOURCE_GLOBS, { cwd: REPO_ROOT, ignore: IGNORE })).sort();
   const found = new Map();
   const unresolved = [];
   const parseFailures = [];
 
   for (const rel of files) {
-    const src = await readFile(path.join(ROOT, rel), "utf8");
+    const src = await readFile(path.join(REPO_ROOT, rel), "utf8");
     let ast;
     try {
       // allowReturnOutsideFunction: wisdom/extract/workflow.mjs has a
@@ -341,7 +341,7 @@ async function checkList(list) {
 function runShard(payload) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [fileURLToPath(import.meta.url), "--shard"], {
-      cwd: ROOT, stdio: ["pipe", "pipe", "inherit"],
+      cwd: REPO_ROOT, stdio: ["pipe", "pipe", "inherit"],
     });
     let buf = "";
     child.stdout.on("data", (d) => { buf += d; });
@@ -546,8 +546,15 @@ async function selfTest() {
   return 0;
 }
 
-const argv = process.argv.slice(2);
-if (argv.includes("--shard")) {
+const { values } = parseCli(process.argv.slice(2), {
+  options: {
+    shard: { type: "boolean" },
+    "self-test": { type: "boolean" },
+    census: { type: "boolean" },
+  },
+  unknown: "ignore",
+});
+if (values.shard) {
   // Worker half of checkAll(): a slice in on stdin, its verdicts out on
   // stdout. Not meant to be run by hand.
   const chunks = [];
@@ -556,9 +563,9 @@ if (argv.includes("--shard")) {
   process.stdout.write(JSON.stringify(await checkList(list)));
 } else {
   try {
-    process.exitCode = argv.includes("--self-test")
+    process.exitCode = values.selfTest
       ? await selfTest()
-      : await gate({ census: argv.includes("--census") });
+      : await gate({ census: values.census });
   } catch (err) {
     // Node's own exit code for an unhandled throw is 1, which here means
     // "an exponential regex was found". A crash is the gate failing.

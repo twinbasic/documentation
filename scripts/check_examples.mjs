@@ -73,52 +73,69 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { mapLines } from "../lib/markdown.mjs";
 import {
   BODY_SLOTS, CONCAT_KEY, HIDDEN_MARKER, MARKER, RUN_MARKER, SLOTS, classify,
   collectFences, concatFences, moduleName, parseInfo, partOf, resourcePath, wrapFence,
 } from "./lib/tb-fences.mjs";
 import { buildNumber, compilerExe, findIde, runCompiler } from "./lib/tb-install.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
+import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 
-const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const DOCS = path.join(REPO, "docs");
-const TEMPLATES = path.join(REPO, "test", "example-projects");
+const TEMPLATES = path.join(REPO_ROOT, "test", "example-projects");
 
 // ---------------------------------------------------------------- arguments
 
-const argv = process.argv.slice(2);
-const flag = (n) => argv.includes("--" + n);
-const opt = (n, d) => { const i = argv.indexOf("--" + n); return i < 0 ? d : argv[i + 1]; };
 const usageError = (why) => { console.error(`check_examples: ${why}`); process.exit(2); };
 
-// A flag that takes a value, given last or followed by another flag, has none,
-// and is refused rather than read as undefined. So is a count or a port that is
-// not a positive whole number: Number() makes NaN of anything it cannot read.
-const VALUE_FLAGS = ["only", "report", "jobs", "port", "batch", "ide"];
-const bare = argv.find((a, i) => a.startsWith("--") && VALUE_FLAGS.includes(a.slice(2)) &&
-  (argv[i + 1] === undefined || /^-./.test(argv[i + 1])));
-if (bare) usageError(`${bare} needs a value`);
+const { values } = withUsageError(
+  () => parseCli(process.argv.slice(2), {
+    options: {
+      only: { type: "string" },
+      report: { type: "string" },
+      jobs: { type: "string" },
+      port: { type: "string" },
+      batch: { type: "string" },
+      ide: { type: "string" },
+      census: { type: "boolean", default: false },
+      propose: { type: "boolean", default: false },
+      apply: { type: "boolean", default: false },
+      verbose: { type: "boolean", default: false },
+      json: { type: "boolean", default: false },
+      keep: { type: "boolean", default: false },
+      show: { type: "boolean", default: false },
+      hide: { type: "boolean", default: false },
+      help: { type: "boolean", default: false },
+    },
+    unknown: "ignore",
+    positionals: 0,
+  }),
+  { format: (err) => `check_examples: ${err.message}` },
+);
+
+// A count or a port that is not a positive whole number is refused: Number()
+// makes NaN of anything it cannot read.
 function positiveInteger(n, d) {
-  const v = Number(opt(n, d));
+  const v = Number(values[n] ?? d);
   if (!Number.isInteger(v) || v < 1) usageError(`--${n} takes a positive whole number`);
   return v;
 }
 
-const MODE_CENSUS = flag("census");
-const MODE_PROPOSE = flag("propose");
-const MODE_REPORT = opt("report", null);
-const APPLY = flag("apply");
-const VERBOSE = flag("verbose");
-const AS_JSON = flag("json");
-const only = opt("only", null) ? new RegExp(opt("only", null)) : null;
+const MODE_CENSUS = values.census;
+const MODE_PROPOSE = values.propose;
+const MODE_REPORT = values.report ?? null;
+const APPLY = values.apply;
+const VERBOSE = values.verbose;
+const AS_JSON = values.json;
+const only = values.only ? new RegExp(values.only) : null;
 const jobs = positiveInteger("jobs", 4);
 const basePort = positiveInteger("port", 9480);
 const batchSize = positiveInteger("batch", 120);
 
-if (flag("help")) {
-  console.log(`usage: node scripts/check_examples.mjs [options]
+if (values.help) {
+  printHelpAndExit(`usage: node scripts/check_examples.mjs [options]
 
   --only <regex>   restrict to pages whose path matches
   --census         classify every tb fence and print the table; no compiler
@@ -133,7 +150,6 @@ if (flag("help")) {
   --keep           leave the generated projects on disk and say where
   --verbose        also print warnings, not only errors
   --json           one JSON object instead of a report`);
-  process.exit(0);
 }
 
 // A page's template, when its fence does not name one. Inferred from the path
@@ -583,7 +599,7 @@ function stageBatch(batch, work) {
 
 // ------------------------------------------------------------------- building
 
-const IDE = findIde(opt("ide", undefined));
+const IDE = findIde(values.ide);
 const COMPILER = IDE ? compilerExe(IDE) : null;
 
 // The registry tidy for the whole run (lib/tb-registry.mjs): taken in main()
@@ -614,11 +630,11 @@ function crashedIn(report, map) {
 
 /** Build one staged batch; returns per-fence errors, or a crash marker. */
 async function buildStaged(staged, port) {
-  const args = [path.join(REPO, "scripts", "tbbuild.mjs"), staged.proj,
+  const args = [path.join(REPO_ROOT, "scripts", "tbbuild.mjs"), staged.proj,
     "--port", String(port), "--json"];
   if (IDE) args.push("--ide", IDE);
-  if (flag("show")) args.push("--show");
-  if (flag("hide")) args.push("--hide");
+  if (values.show) args.push("--show");
+  if (values.hide) args.push("--hide");
 
   const child = spawn(process.execPath, args, { stdio: ["ignore", "pipe", "pipe"] });
   let out = "", err = "";
@@ -791,7 +807,7 @@ function laneOf(port, work) {
     async build(batch) {
       const staged = stageBatch(batch, work);
       const result = await buildStaged(staged, port);
-      if (!flag("keep")) rmSync(staged.dir, { recursive: true, force: true });
+      if (!values.keep) rmSync(staged.dir, { recursive: true, force: true });
       return result;
     },
     finding: addFinding,
@@ -1150,14 +1166,14 @@ async function applyMarkers(passed) {
   }
   let count = 0;
   for (const [rel, list] of byFile) {
-    const file = path.join(DOCS, rel);
+    const file = path.join(DOCS_DIR, rel);
     const src = await fs.readFile(file, "utf8");
-    const lines = src.split("\n");
-    for (const fence of list) {
-      const i = fence.line - 1;
-      const line = lines[i];
-      const cr = line.endsWith("\r") ? "\r" : "";
-      const body = cr ? line.slice(0, -1) : line;
+    // Lines are counted as the parse that found the fences counts them, and
+    // each keeps its own ending.
+    const at = new Map(list.map((fence) => [fence.line - 1, fence]));
+    const out = mapLines(src, (body, i) => {
+      const fence = at.get(i);
+      if (!fence) return body;
       // The blockquote markers are part of the line for a fence inside an
       // admonition, which is where several samples live -- `> ```tb`. Refusing
       // those would leave a sample unmarkable for a reason that has nothing to
@@ -1165,12 +1181,12 @@ async function applyMarkers(passed) {
       if (!/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})tb[ \t]*$/.test(body)) {
         addFinding(fence, "could not mark: the fence line is not what was parsed",
           `line ${fence.line} reads ${JSON.stringify(body)}`);
-        continue;
+        return body;
       }
-      lines[i] = `${body} ${MARKER}${cr}`;
       count++;
-    }
-    await fs.writeFile(file, lines.join("\n"), "utf8");
+      return `${body} ${MARKER}`;
+    });
+    await fs.writeFile(file, out, "utf8");
   }
   return count;
 }
@@ -1567,8 +1583,9 @@ async function runProbes() {
   // pipeline -- createMarkdownIt plus the highlighter -- because a bare
   // markdown-it is a different renderer, which is the mistake WIP.md's
   // "Source dashes" section records paying for.
-  const { createMarkdownIt, initHighlighter, applyPreRenderRewrites, maskCodeRegions } =
+  const { createMarkdownIt, initHighlighter, applyPreRenderRewrites } =
     await import("../builder/render.mjs");
+  const { maskCode } = await import("../lib/markdown.mjs");
   const highlighter = await initHighlighter();
   const md = createMarkdownIt({ highlighter, linkTables: null, baseurl: "", staticFiles: new Set() });
   const plain = "```tb\nDim x As Long\n```\n";
@@ -1583,10 +1600,10 @@ async function runProbes() {
   // fence in another language, must still publish.
   const notHidden = "```tb " + MARKER + " id=hidden-thing\nDim x As Long\n```\n";
   if (md.render(notHidden).trim() === "") failures.push("markup: `hidden` matched inside a value");
-  const masked = maskCodeRegions(marked);
-  if (masked.masked.includes("Dim x As Long")) failures.push("markup: maskCodeRegions stops hiding the body");
+  const masked = maskCode(marked, { md });
+  if (masked.masked.includes("Dim x As Long")) failures.push("markup: the pre-render mask stops hiding the body");
   if (masked.restore(masked.masked) !== marked) failures.push("markup: the mask does not round-trip");
-  if (applyPreRenderRewrites(marked) !== marked) failures.push("markup: a pre-render rewrite alters it");
+  if (applyPreRenderRewrites(marked, md) !== marked) failures.push("markup: a pre-render rewrite alters it");
 
   if (failures.length) {
     for (const f of failures) say(`FAIL  probe: ${f}`);
@@ -1616,7 +1633,7 @@ async function main() {
     process.exit(0);
   }
 
-  const fences = await collectFences(DOCS);
+  const fences = await collectFences(DOCS_DIR);
   const selected = select(fences);
   checkGroups(fences, selected);
   // Everything that counts as a sample. A resource fence is selected -- it has
@@ -1807,7 +1824,7 @@ async function main() {
     say(`\ncheck_examples: ${samples.length} sample(s), ${passed.length} compile, ` +
       `${real} finding(s), ${secs}s` + (real ? "" : " -- clean"));
   }
-  if (flag("keep")) say(`generated projects kept in ${work}`);
+  if (values.keep) say(`generated projects kept in ${work}`);
   else rmSync(work, { recursive: true, force: true });
 
   process.exit(real ? 1 : 0);

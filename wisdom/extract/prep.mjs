@@ -4,15 +4,16 @@ import { fileURLToPath } from 'node:url'
 import { buildSitemap, buildPackageSummary, buildPageIndex } from './sitemap.mjs'
 import { loadState, saveState, isThreadChanged, recordEmission } from './state.mjs'
 import { graftAdditions, renderSideband } from './merger.mjs'
+import { readFrontmatter } from '../files.mjs'
+import { REPO_ROOT, DOCS_DIR } from '../../lib/repo-paths.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const REPO_ROOT = join(__dirname, '..', '..')
 const BATCH_SIZE = 200
 
 export async function runExtract(flags) {
   const threadsDir = flags.in || join(__dirname, '..', 'data', 'threads')
   const outDir = flags.out || join(__dirname, '..', 'data', 'findings')
-  const docsDir = join(REPO_ROOT, 'docs', 'Reference')
+  const docsDir = join(DOCS_DIR, 'Reference')
 
   if (!existsSync(threadsDir)) {
     process.stderr.write('[wisdom] Threads directory not found — run process first\n')
@@ -28,7 +29,7 @@ export async function runExtract(flags) {
   const mode = modeFlags[0] || 'incremental'
 
   // Build docs sitemap
-  const sitemap = buildSitemap(docsDir, REPO_ROOT)
+  const sitemap = await buildSitemap(docsDir, REPO_ROOT)
   const packageSummary = buildPackageSummary(sitemap)
   process.stderr.write(`[wisdom] Sitemap: ${sitemap.length} reference pages\n`)
 
@@ -64,7 +65,7 @@ export async function runExtract(flags) {
 
     for (const file of files) {
       const filePath = join(channelDir, file)
-      const fm = parseThreadFrontmatter(readFileSync(filePath, 'utf-8'))
+      const fm = readFrontmatter(filePath)
       if (!fm.thread_id) continue
 
       // --since filter: thread creation date
@@ -328,7 +329,7 @@ function findThreadMetadata(threadsDir, threadIds) {
       const tid = file.split('--')[0]
       if (!threadIds.has(tid)) continue
       try {
-        const fm = parseThreadFrontmatter(readFileSync(join(chDir, file), 'utf-8'))
+        const fm = readFrontmatter(join(chDir, file))
         result.set(tid, {
           last_message_id: fm.last_message_id || null,
           message_count: fm.message_count || 0,
@@ -336,52 +337,5 @@ function findThreadMetadata(threadsDir, threadIds) {
       } catch { /* skip unreadable */ }
     }
   }
-  return result
-}
-
-function parseThreadFrontmatter(content) {
-  content = content.replace(/\r\n/g, '\n')
-  if (!content.startsWith('---')) return {}
-  const end = content.indexOf('\n---', 3)
-  if (end === -1) return {}
-  const block = content.slice(4, end)
-  const result = {}
-
-  for (const line of block.split('\n')) {
-    const m = line.match(/^(\w[\w_]*)\s*:\s*(.+)$/)
-    if (!m) continue
-    const key = m[1]
-    let val = m[2].trim()
-
-    // Inline array: [item, item, ...]
-    if (val.startsWith('[') && val.endsWith(']')) {
-      const inner = val.slice(1, -1).trim()
-      if (!inner) { result[key] = []; continue }
-      result[key] = inner.split(',').map(s => {
-        s = s.trim()
-        if ((s.startsWith('"') && s.endsWith('"')) ||
-            (s.startsWith("'") && s.endsWith("'"))) {
-          s = s.slice(1, -1)
-        }
-        return s
-      })
-      continue
-    }
-
-    // Strip quotes
-    if ((val.startsWith('"') && val.endsWith('"')) ||
-        (val.startsWith("'") && val.endsWith("'"))) {
-      val = val.slice(1, -1)
-    }
-
-    // Coerce booleans and numbers (but not snowflakes — those exceed 15 digits
-    // and must stay as strings to avoid float precision loss)
-    if (val === 'true') val = true
-    else if (val === 'false') val = false
-    else if (/^\d+$/.test(val) && val.length <= 15) val = parseInt(val, 10)
-
-    result[key] = val
-  }
-
   return result
 }

@@ -65,18 +65,19 @@ One of the four does not mean the same thing locally as it does in CI, on any pl
 
     test.bat
 
-The tests the toolchain has to pass. Ten steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Eleven steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
 2. [`scripts/check_gate_lists.mjs`](#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
 3. [`scripts/check_ci_workflows.mjs`](#check-ci-workflows) --- verifies both CI workflows run the gates the wrappers run, and build as `build.bat` does.
 4. [`scripts/check_lint.mjs`](#check-lint) --- runs Biome over the tooling and fails on any finding, warnings included.
 5. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
-6. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span.
+6. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span, and that `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes.
 7. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
 8. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
 9. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
-10. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+10. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
+11. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
@@ -89,9 +90,10 @@ POSIX:
       && node scripts/check_page_baseline.mjs \
       && node scripts/check_book_coverage.mjs \
       && node scripts/check_symbol_index.mjs \
+      && node scripts/check_cli.mjs \
       && node scripts/check_axe_patch_equiv.mjs
 
-**Seven of the ten cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all ten unconditionally, as they always did, so skipping it locally cannot let a tooling regression reach `staging`.
+**Eight of the eleven cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all eleven unconditionally, as they always did, so skipping it locally cannot let a tooling regression reach `staging`.
 
 The two exceptions are [`check_code_regions.mjs`](#check-code-regions) and [`check_gate_lists.mjs`](#check-gate-lists), which reads this page. The first is worth knowing in detail. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes are a different matter: they run against their own sources whatever the tree holds, and they cover the *mirror* fault, where a rewrite silently stops firing. The sweep cannot see that one --- text the rewrite skipped is stashed and restored unchanged, so every region still matches. Add a page with an unusual code construct and run `test.bat`, but read the built page too.
 
@@ -314,13 +316,13 @@ which is the path `--check` names for you. Two things follow from that second ed
     node scripts/check_links_diff.mjs --list
     node scripts/check_links_diff.mjs --self-test
 
-Differential harness for the link checker. There are two implementations of one check --- the standalone [`scripts/check_links.mjs`](#check-links) and the build's own `--check` pass --- and two implementations of one check is the shape that rots quietly, because **a checker that silently checks less reports a clean pass**. This runs both over the same bytes and diffs their findings category by category, across the nine finding categories plus the per-run counts. Exits 0 when the two sides agree, 1 on a difference, 2 on a harness error.
+Differential harness for the link checker. The check has two front ends --- the standalone [`scripts/check_links.mjs`](#check-links), which reads a tree from disk, and the build's own `--check` pass, which checks the pages it holds in memory against an index of what it wrote, in chunks across its workers. Both run the same functions in `builder/check.mjs` and differ only in how they read the tree, which is still enough to hide a fault, because **a checker that silently checks less reports a clean pass**. This runs both over the same bytes and diffs their findings category by category, across the nine finding categories plus the per-run counts. Exits 0 when the two sides agree, 1 on a difference, 2 on a harness error.
 
 Two registries decide what a run actually does, and `--list` prints both. **Sides** are the implementations being compared, named by `--a` and `--b`:
 
 | Side | What it is |
 |---|---|
-| `script` | `check_links.mjs` pinned to `--oracle fs`, run in-process. The reference implementation --- though not an oracle of record: on Windows its filesystem oracle answers "exists" for a wrong-case path that 404s on GitHub Pages, and on that one question `index` is the correct side. |
+| `script` | `check_links.mjs` pinned to `--oracle fs`, run in-process. The reference side --- though not an oracle of record: on Windows its filesystem oracle answers "exists" for a wrong-case path that 404s on GitHub Pages, and on that one question `index` is the correct side. |
 | `index` | The same script over the same walk, with existence answered from a Set built off one directory listing rather than a stat per candidate. Proves the oracle's lookup semantics. |
 | `fused` | `tbdocs --check`, the build's own pass. The side the whole harness exists for: the one that could quietly check less, with nothing else on a clean site to say so. |
 | `mutant` | `script`, corrupted on purpose. Reachable only through `--self-test`. |
@@ -347,16 +349,16 @@ Both CI workflows run the harness, and neither runs it over the real site. `chec
     node scripts/check_links_diff.mjs --case fixture --a script --b index
     node scripts/check_links_diff.mjs --case fixture-built --case fixture-built-offline --a script --b fused
 
-`tbdocs-gh-pages.yml` (deploy) keeps only the first: ~0.3 s over a synthetic tree, enough that the reference implementation cannot rot unnoticed, while the extra three-page build stays on the PR gate. What is in neither, and deliberately not in `check.bat` either, is the full `--a script --b fused` over the real trees --- it builds the site itself so both sides read the same bytes, and the script side then costs a few seconds, which is the entire saving of having folded the check into the build. Run that one by hand after touching `builder/link-check.mjs`, `builder/check.mjs` or `scripts/check_links.mjs`.
+`tbdocs-gh-pages.yml` (deploy) keeps only the first: ~0.3 s over a synthetic tree, enough that the script side cannot rot unnoticed, while the extra three-page build stays on the PR gate. What is in neither, and deliberately not in `check.bat` either, is the full `--a script --b fused` over the real trees --- it builds the site itself so both sides read the same bytes, and the script side then costs a few seconds, which is the entire saving of having folded the check into the build. Run that one by hand after touching `builder/link-check.mjs`, `builder/check.mjs` or `scripts/check_links.mjs`.
 
-`--self-test` is the guard on the guard. It runs `check_links.mjs`'s own regression guards --- since `b97c75f` nothing else does --- and then diffs the reference implementation against a deliberately corrupted copy, failing unless the difference is reported. Everything else the harness prints reduces to *the two sides agreed*, which is also what a harness comparing nothing says.
+`--self-test` is the guard on the guard. It runs `check_links.mjs`'s own regression guards --- nothing else does --- and then diffs the `script` side against a deliberately corrupted copy, failing unless the difference is reported. Everything else the harness prints reduces to *the two sides agreed*, which is also what a harness comparing nothing says.
 
 The fixtures have their own document, and it is the one to read before editing them: [`test/README.md`](https://github.com/twinbasic/documentation/blob/main/test/README.md) covers what each page under `check-src/` is there to provoke, and the hard-coded per-category counts (`FIXTURE_EXPECTED`, `FIXTURE_BUILT_ONLINE`, `FIXTURE_BUILT_OFFLINE`) that are asserted after every run, so a fixture that stops provoking a category fails loudly instead of quietly returning to empty-against-empty. It also covers the hazard that catches people out: **the fixture is built by the real `tbdocs`, so a template change can turn this gate red without anyone touching the fixture or the checker.** Adding the self-hosted fonts put two `<link rel="preload">` tags on every page, `check-src/` had no `assets/fonts/`, and its `broken` count went from 3 to 9. The fix for that shape of failure is to add the stub asset the template now expects --- never to raise the expected count, which dilutes a category the fixture exists to hold at an exact number.
 
 ### axe-scan.mjs
 {: #axe-scan }
 
-Not a command --- `scripts/lib/axe-scan.mjs` is the shared module that **defines** the accessibility scan, imported by [`check_a11y.mjs`](#check-a11y), [`sweep_a11y.mjs`](#sweep-a11y) and [`check_a11y_fingerprint.mjs`](#check-a11y-fingerprint). It holds `SAMPLE_PAGES`, `THEMES`, `VIEWPORTS`, `STATE_AUDITS`, `BLOCKED_REQUESTS`, `AXE_RUN_OPTIONS`, `SOURCE_PATCHES` and the `SCHEMES` registry, plus the `runMatrix` / `buildMatrix` drivers. Any change to *what the scan runs* belongs here, and most of them must go through the [fingerprint gate](#check-a11y-fingerprint) first. **`SAMPLE_PAGES` is the exception, and it is the constant most often edited**: the gate compares a candidate against a baseline produced by the same page set, so a change to *which* pages are walked is its documented blind spot, and a green run there vouches for nothing. Argue that one from source, run [`sweep_a11y.mjs`](#sweep-a11y) once, and use the gate's A/A control (`--baseline production --candidate production`) only to show the matrix is still deterministic.
+Not a command --- `scripts/lib/axe-scan.mjs` is the shared module that **defines** the accessibility scan, imported by [`check_a11y.mjs`](#check-a11y), [`pick_a11y_sample.mjs`](#pick-a11y-sample), [`sweep_a11y.mjs`](#sweep-a11y), [`check_a11y_fingerprint.mjs`](#check-a11y-fingerprint) and [`check_axe_patch_equiv.mjs`](#check-axe-patch-equiv). It holds `SAMPLE_PAGES`, `THEMES`, `VIEWPORTS`, `STATE_AUDITS`, `BLOCKED_REQUESTS`, `AXE_RUN_OPTIONS`, `SOURCE_PATCHES` and the `SCHEMES` registry, plus the `runMatrix` / `buildMatrix` drivers, and the page discovery the sampler and the sweep share: `discoverPages`, and `STUB_TAG_CEILING`, below which a page is a redirect stub neither of them audits. Any change to *what the scan runs* belongs here, and most of them must go through the [fingerprint gate](#check-a11y-fingerprint) first. **`SAMPLE_PAGES` is the exception, and it is the constant most often edited**: the gate compares a candidate against a baseline produced by the same page set, so a change to *which* pages are walked is its documented blind spot, and a green run there vouches for nothing. Argue that one from source, run [`sweep_a11y.mjs`](#sweep-a11y) once, and use the gate's A/A control (`--baseline production --candidate production`) only to show the matrix is still deterministic.
 
 `STATE_AUDITS` deserves a note: a closed `<details>` subtree is `notRendered`, so axe never walks it. Entries here are layered onto the page × theme × viewport matrix and apply a DOM mutation from `PAGE_STATES` before the audit, which is how the section-links disclosure gets audited open as well as closed. **Every `PAGE_STATES` function must assert it found what it expected** --- a state that silently does nothing degrades into a second audit of the default page: slower, still green, covering nothing.
 
@@ -425,9 +427,11 @@ Probes ride along in the normal run, each a defect this repository actually ship
 
 The admonition probes test the mirror fault, which the region comparison structurally cannot see: **a rewrite that misreads what is code can also fail to fire on real prose**, and the regions still come back identical because the text was only stashed and restored. `Reference/Attributes.md` shipped all six of its admonitions as the literal text `[!NOTE]` for exactly that reason --- a `[Description(...)]` sample whose argument is a Markdown string containing two fence markers as twinBASIC string literals, which the fence stasher closed the surrounding fence on. Every pairing after it was off by one.
 
+It is also the gate on `lib/markdown.mjs` and `lib/frontmatter.mjs`, the modules that tell the tools what in a page is code and where its frontmatter ends. Their probes run with the others, and on every page the sweep checks that `blockRegions`, which parses blocks only, finds exactly the fences, code blocks and HTML blocks of a full parse. The summary line gives the number of fences that full parse found. Three more probes hold the build to the same answer: the rewrite chain must leave alone a fence that only the site's parser finds, and an admonition written inside one, and the build's check of `{{tbdocs:<name>}}` count names must skip names in code and give an unknown one's line in its file. One more holds the build's warning about a frontmatter value left unquoted that ends in `#`: `discover` must name the page and line of `title: Input #`, and say nothing about a quoted value. Another set holds [`convert_em_dash_separators.mjs`](#convert-em-dash-separators), which rewrites page source by hand rather than in the build, to converting prose and nothing else.
+
 `--verbose` prints the first few altered regions of each failing file, before and after. `--self-test` replaces the normal run rather than adding to it, so neither the probes nor the sweep runs: it de-indents the body of one small fence by hand and passes only if the comparison notices. That proves the comparator can still see a change, and nothing more --- it runs no rewrite at all.
 
-Exits 1 when a code region differs, when a probe's admonition is not rewritten, or when `--self-test`'s de-indent goes unnoticed, and 2 when the gate itself cannot run. [When `test.bat` fails in `check_code_regions`](Extending#code-regions-altered) says what to change.
+Exits 1 when a code region differs, when a probe's admonition is not rewritten, when any other probe fails or the two parses disagree on a page, or when `--self-test`'s de-indent goes unnoticed, and 2 when the gate itself cannot run. [When `test.bat` fails in `check_code_regions`](Extending#code-regions-altered) says what to change.
 
 ### check_gate_lists.mjs
 {: #check-gate-lists }
@@ -446,7 +450,7 @@ Three things follow from how it works. **The wrapper is the source of truth**, n
 
 When it fires on a count that is merely a subset --- *three cheaper gates run first* --- the fix is to delete the number rather than correct it. The command block or the linked list beneath it already states it, and a number nothing derives is a number that goes stale. The script's header names what the sweep deliberately does not see.
 
-Its probes ride along in the ordinary run rather than hiding behind `--self-test`, because a green line from a gate that has stopped detecting looks exactly like a green line from a working one. Twelve of the eighteen cover the sweep, each a sentence that was published at the commit round 4 reviewed. Exits 1 on a disagreement or a failed probe, 2 if it cannot run.
+Its probes ride along in the ordinary run rather than hiding behind `--self-test`, because a green line from a gate that has stopped detecting looks exactly like a green line from a working one. Thirteen of the nineteen cover the sweep. Twelve are sentences that were published at the commit round 4 reviewed; the thirteenth puts a heading-shaped line in a code fence, as in [Wisdom](Wisdom)'s `staging.md` example, inside a wrapper's section, because such a line starts no section. Exits 1 on a disagreement or a failed probe, 2 if it cannot run.
 
 ### check_ci_workflows.mjs
 {: #check-ci-workflows }
@@ -488,7 +492,7 @@ The guard says nothing on a healthy tree, so every ordinary build sounds exactly
 
 Two probes look redundant and are the two that caught real bugs while the guard was being written. A **foreign source root must be ignored**: [`check_links_diff.mjs`](#check-links-diff) builds a three-page fixture tree, and a baseline keyed to nothing met it with *905 pages missing*. And **CI must refuse a missing baseline** rather than create one, because a run that wrote the file would record whatever drop it had been asked to catch.
 
-Exits 1 on any failed probe.
+Exits 1 on any failed probe, 2 if it cannot run.
 
 ### check_book_coverage.mjs
 {: #check-book-coverage }
@@ -513,6 +517,19 @@ Verifies the [symbol index](Building#the-symbol-index) still places each kind of
 A build that indexes the reference cleanly says nothing about the rules that did not fire on it, so each rule is asserted against the case that made it necessary. The `.twin` scanner's: a `Type` whose `Sub`s have bodies, an `Interface` line inside a `CoClass`, `[Hidden]` on a module whose members are global, a `$` name escaped in brackets. The derivation's: a member on a page of its own and under a heading, an inherited member found on its declaring type's page, a page filed under one module and declared in another, a `$` form, a `## Properties` heading on a type that has a `Properties` property, and the ellipsis the typographer puts in a Core page's heading. And the guard's: a lost anchor fails and is named, and CI never writes the list.
 
 Exits 1 on any failed probe, 2 if it cannot run.
+
+### check_cli.mjs
+{: #check-cli }
+
+    node scripts/check_cli.mjs
+
+Verifies `lib/cli.mjs`, the module the tools read their command lines through, and each tool's recorded command-line errors. Nothing else tests how a tool reads its command line, which is how a value flag given no value came to be read as `NaN` or as the next flag. No built tree, no browser, no twinBASIC install; about a second.
+
+The module's probes cover what `parseCli` returns and refuses, with a comparison against a strict `node:util` `parseArgs` over the same argument lists, and what `numberOption`, `withUsageError` and `printHelpAndExit` do. A tool that is more lenient than a strict parse today --- one that ignores an unknown flag, say --- keeps its leniency through two of `parseCli`'s parameters, and the probes cover those too.
+
+The recorded cases are invocations that stop while the tool reads its command line, or at its first check of the project, folder or install the command line names, each with its exit code and what it prints on each stream: the tool's own words for the error exactly, and the opening of a usage text printed after it. A tool's cases are recorded before it moves onto `lib/cli.mjs`, so the move has to keep them. Each case runs the tool as a child process, in an empty folder of its own and with `TB_IDE` and `PUPPETEER_EXECUTABLE_PATH` naming files that do not exist, so a case that gets past the command line fails on a different message rather than starting a twinBASIC IDE or a browser. A case belongs here only if the tool stops before doing any work.
+
+Exits 1 on any failed probe or case, 2 if it cannot run.
 
 ### check_axe_patch_equiv.mjs
 {: #check-axe-patch-equiv }
@@ -591,7 +608,7 @@ It shares [`census_attributes.mjs`](#census-attributes)'s export and cache, and 
     node scripts/convert_em_dash_separators.mjs            # rewrite in place
     node scripts/convert_em_dash_separators.mjs --check    # report, change nothing
 
-Normalises literal en-dash / em-dash characters in markdown source under `docs/` to the ASCII source forms markdown-it's typographer converts at build time (`--` for en-dash, `---` for em-dash). The site forbids literal `–` / `—` in source --- this is the canonical fixer if any slip back in. Skips fenced code blocks and inline code spans, and preserves each file's existing line endings. `--check` reports what it would change and exits non-zero without writing, so it can serve as a gate.
+Normalises literal en-dash / em-dash characters in markdown source under `docs/` to the ASCII source forms markdown-it's typographer converts at build time (`--` for en-dash, `---` for em-dash). The site forbids literal `–` / `—` in source --- this is the canonical fixer if any slip back in. Skips what the site's parser reads as code --- fences, indented code blocks and HTML blocks, found through `lib/markdown.mjs` --- and inline code spans, and preserves each file's existing line endings. Its probes run in [`check_code_regions.mjs`](#check-code-regions). `--check` reports what it would change and exits non-zero without writing, so it can serve as a gate.
 
 ### survey_tooling.mjs
 {: #survey-tooling }
@@ -968,7 +985,7 @@ is.
 
     node scripts/gen_attribute_probes.mjs <out_dir> [key.md]
 
-Generates twinBASIC probe projects from the `Applicable to:` lines in `Reference/Attributes.md`, for [`tbbuild.mjs`](#tbbuild) to compile. Those lines had gone unchecked against the compiler since they were written, and the one that was eventually checked turned out to be wrong. This writes one source file per claimed target, so a single build answers every claim at once. A misplaced attribute comes back as `This attribute is not supported in this context` (TB5155) or `Syntax error.  No handler for this symbol` (TB5182). Which of the two arrives says nothing about whether the attribute exists, only that it is not accepted there.
+Generates twinBASIC probe projects from the `Applicable to:` lines in `Reference/Attributes.md`, for [`tbbuild.mjs`](#tbbuild) to compile. Those lines had gone unchecked against the compiler since they were written, and the one that was eventually checked turned out to be wrong. This writes one source file per claimed target, so a single build answers every claim at once. A `Syntax:` or `Applicable to:` line inside a code fence is not read, so an example that shows the page's own format is not taken for an attribute; [`census_attributes.mjs`](#census-attributes) reads the page through the same code, `scripts/lib/attributes-doc.mjs`. A misplaced attribute comes back as `This attribute is not supported in this context` (TB5155) or `Syntax error.  No handler for this symbol` (TB5182). Which of the two arrives says nothing about whether the attribute exists, only that it is not accepted there.
 
 Up to three trees come out, on two contracts that must not be mixed:
 
