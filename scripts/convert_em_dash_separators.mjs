@@ -47,6 +47,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { createMarkdownIt } from "../builder/render.mjs";
 import { blockRegions, mapLines, splitCodeSpans } from "../lib/markdown.mjs";
 import { markdownFiles } from "../lib/markdown-files.mjs";
+import { exitOnCrash } from "./lib/gate-probes.mjs";
 
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ROOT = path.join(REPO, "docs");
@@ -159,6 +160,6 @@ async function main(argv) {
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
-  process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
+  exitOnCrash();
   process.exit(await main(process.argv.slice(2)));
 }

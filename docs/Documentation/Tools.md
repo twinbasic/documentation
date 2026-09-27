@@ -490,7 +490,7 @@ The guard says nothing on a healthy tree, so every ordinary build sounds exactly
 
 Two probes look redundant and are the two that caught real bugs while the guard was being written. A **foreign source root must be ignored**: [`check_links_diff.mjs`](#check-links-diff) builds a three-page fixture tree, and a baseline keyed to nothing met it with *905 pages missing*. And **CI must refuse a missing baseline** rather than create one, because a run that wrote the file would record whatever drop it had been asked to catch.
 
-Exits 1 on any failed probe.
+Exits 1 on any failed probe, 2 if it cannot run.
 
 ### check_book_coverage.mjs
 {: #check-book-coverage }

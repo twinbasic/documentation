@@ -37,8 +37,9 @@ import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { exitOnCrash } from "./lib/gate-probes.mjs";
 
-process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
+exitOnCrash();
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 

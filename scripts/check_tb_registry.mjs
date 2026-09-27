@@ -49,12 +49,11 @@ import assert from "node:assert/strict";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { exitOnCrash } from "./lib/gate-probes.mjs";
 import * as R from "./lib/tb-registry.mjs";
 
-// A crash is the harness failing, not a finding: exit 2, as Extending.md's gate
-// conventions require. This file runs at top level, so there is no main().catch
-// to do it; the catch below passes it everything but a failed assertion.
-process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
+// A crash exits 2; the catch below passes on everything but a failed assertion.
+exitOnCrash();
 
 const BASE = "Software\\tbharness-selftest";
 const ROOT = BASE + "\\twinBASIC_IDE";

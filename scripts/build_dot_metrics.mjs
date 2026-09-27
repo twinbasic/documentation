@@ -35,12 +35,10 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import puppeteer from "puppeteer";
+import { exitOnCrash } from "./lib/gate-probes.mjs";
 
-// A crash is the harness failing, not a finding: exit 2, as Extending.md's gate
-// conventions require, where 1 is --check finding the table stale. This file
-// runs at top level, so there is no main().catch to do it; the handler also
-// catches a rejected top-level await.
-process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
+// A crash exits 2, where 1 is --check finding the table stale.
+exitOnCrash();
 
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const OUT = path.join(REPO, "builder", "inter-metrics.json");

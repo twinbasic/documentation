@@ -23,36 +23,16 @@
 //
 //     node scripts/check_page_baseline.mjs
 
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
+import { readFile } from "node:fs/promises";
 import { checkPageBaseline, GUARDED_SRC } from "../builder/page-baseline.mjs";
+import { baselineFixture, createProbes, exitOnCrash } from "./lib/gate-probes.mjs";
 
-// A crash is the harness failing, not a finding: exit 2, as Extending.md's gate
-// conventions require. This file runs at top level, so there is no main().catch
-// to do it; the handler also catches a rejected top-level await.
-process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
+exitOnCrash();
 
 const BASE = { src: GUARDED_SRC, pages: 908, staticFiles: 247 };
 
-let failures = 0;
-const results = [];
-
-function check(name, ok, detail) {
-  results.push({ name, ok, detail });
-  if (!ok) failures++;
-}
-
-async function withBaseline(initial, fn) {
-  const dir = await mkdtemp(path.join(tmpdir(), "tb-pagebaseline-"));
-  const file = path.join(dir, "page-baseline.json");
-  try {
-    if (initial) await writeFile(file, `${JSON.stringify(initial, null, 2)}\n`, "utf8");
-    return await fn(file);
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
-}
+const { check, report } = createProbes("check_page_baseline");
+const withBaseline = baselineFixture("page-baseline.json");
 
 const readJson = async (file) => JSON.parse(await readFile(file, "utf8"));
 
@@ -127,13 +107,4 @@ await withBaseline(null, async (file) => {
 
 // --- report ------------------------------------------------------------------
 
-for (const { name, ok, detail } of results) {
-  console.log(`  ${ok ? "ok  " : "FAIL"} ${name}`);
-  if (!ok && detail) console.log(`       ${detail}`);
-}
-console.log(
-  failures
-    ? `check_page_baseline: ${failures} of ${results.length} probes failed`
-    : `check_page_baseline: ${results.length} probes, all pass`
-);
-process.exit(failures ? 1 : 0);
+process.exit(report());

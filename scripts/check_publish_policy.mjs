@@ -22,11 +22,9 @@ import {
   publishPolicyFor, unpublishableSourceFiles, unpublishableTreePaths,
   SOURCE_EXTENSIONS, BUILD_EXTENSIONS,
 } from "../builder/publish-policy.mjs";
+import { exitOnCrash } from "./lib/gate-probes.mjs";
 
-// A crash is the harness failing, not a finding: exit 2, as Extending.md's gate
-// conventions require. This file runs at top level, so there is no main().catch
-// to do it; the handler also catches a rejected top-level await.
-process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
+exitOnCrash();
 
 const SRC = process.argv.includes("--src")
   ? process.argv[process.argv.indexOf("--src") + 1]

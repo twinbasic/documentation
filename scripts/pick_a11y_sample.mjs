@@ -45,11 +45,10 @@
 import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { resolve, join, relative, sep } from "node:path";
 import { DEFAULT_ROOT_DIR, REPO_ROOT, SAMPLE_PAGES } from "./lib/axe-scan.mjs";
+import { exitOnCrash } from "./lib/gate-probes.mjs";
 
-// A crash is the harness failing, not a finding: exit 2, as Extending.md's gate
-// conventions require, where 1 is a coverage gap. This file runs at top level,
-// so there is no main().catch to do it.
-process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
+// A crash exits 2, where 1 is a coverage gap.
+exitOnCrash();
 
 // ---------------------------------------------------------------------------
 // Construct families

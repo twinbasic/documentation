@@ -30,9 +30,10 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
+import { exitOnCrash } from "./lib/gate-probes.mjs";
 import { buildArgs, gateSteps, workflowSteps } from "./lib/gate-roster.mjs";
 
-process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
+exitOnCrash();
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const JOB = "build";

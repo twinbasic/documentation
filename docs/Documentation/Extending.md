@@ -645,7 +645,7 @@ The split exists so that an edit confined to `docs/` usually has to pay for `che
 | `1` | The checked thing failed. This is the finding. |
 | `2` | The harness or the environment failed --- an unknown argument, an absent tree, an unhandled throw. Nothing was checked. |
 
-Separating 1 from 2 is what stops a broken gate reading as a clean site, and it has to hold at the top level too. End the script with `main().catch((err) => { console.error(err); process.exit(2); })`, the way `check_a11y.mjs` does, so a crash cannot fall through to node's default exit 1 and be mistaken for a finding.
+Separating 1 from 2 is what stops a broken gate reading as a clean site, and it has to hold at the top level too. End the script with `main().catch((err) => { console.error(err); process.exit(2); })`, the way `check_a11y.mjs` does, so a crash cannot fall through to node's default exit 1 and be mistaken for a finding. A script that runs at top level, with no `main()`, calls `exitOnCrash()` from `scripts/lib/gate-probes.mjs` before it does anything else; that handler also catches a rejected top-level await.
 
 **Say what a pass covered.** Nearly every gate in both wrappers does: `check_dot_fit.mjs` gives the diagram count, `pick_a11y_sample.mjs --check` the sample size and the number of construct families in use, `check_publish_policy.mjs` the probe counts on both sides, `check_code_regions.mjs` the number of files swept, the number whose code regions moved and the number of fences found, `check_a11y.mjs` the page × theme × viewport product it audited. A gate silent on success says nothing about whether it examined anything, which is the state a gate that has quietly stopped working also reports.
 
@@ -671,6 +671,8 @@ So a new gate needs a second assertion of the opposite sign, and there are four 
 - **A deliberately corrupted side.** `check_links_diff.mjs --self-test` diffs the checker against a mutated copy of itself and fails unless the difference is reported.
 - **A fixture that provokes one fault of each kind,** with the count asserted afterwards. The real site is clean, so without one every category compares empty against empty --- and a category that has stopped being checked looks identical to a category with nothing to find.
 - **An A/A control.** Running `check_a11y_fingerprint.mjs` with the same scheme on both sides says whether the harness is stable, before any A/B result from it is believed.
+
+A self-test made of named probes, such as `check_page_baseline.mjs`, records them with `createProbes` from `scripts/lib/gate-probes.mjs`, which prints a line for each probe and a summary, and returns the exit code.
 
 When the gate cannot assert its own correctness from the inside, the proof goes in a sibling script and is named in the gate's header comment, so whoever changes the gate next finds it in the file they are already reading.
 

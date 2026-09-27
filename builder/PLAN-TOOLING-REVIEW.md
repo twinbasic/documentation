@@ -1219,6 +1219,41 @@ re-indenting becomes the shared behaviour: the one change in output, and only in
 **Verify.** Each adopting gate's probe count and verdict unchanged; a broken probe still fails
 it; a forced crash exits 2.
 
+**Landed.** `scripts/lib/gate-probes.mjs` exports `exitOnCrash()`, `createProbes(tool,
+onFailure)`, whose `check` records a probe and whose `report()` prints the lines and the
+summary and returns the exit code, and `baselineFixture(name)`, which returns the
+`withBaseline(initial, fn)` both drift-guard self-tests call. Each does its work when called,
+never on import. The three probe gates adopt all three; `check_book_coverage.mjs` passes its
+summary's remedy as `onFailure`. `check_symbol_index.mjs`'s fixture now takes `{ src, urls }`
+(`BASE_FILE`) and writes it pretty-printed where it was compact, which both guards read with
+`JSON.parse`. The temporary folders are `tb-page-baseline-*` and `tb-symbol-baseline-*`
+(were `tb-pagebaseline-*`, `tb-symbolbaseline-*`). `exitOnCrash()` replaces the handler in
+eleven files: the three gates, `check_publish_policy.mjs` (which keeps its own reporter), C07's
+in `convert_em_dash_separators.mjs`, still inside its entry-point guard, and C28's three
+(`pick_a11y_sample`, `build_dot_metrics`, `check_tb_registry`); and, at the owner's choice,
+the three copies this entry did not name: `check_dot_fit.mjs`, which the others copied,
+`check_ci_workflows.mjs` (C03) and `check_lint.mjs` (C06). Where a handler's comment said what
+exit 1 means, one line keeps that. Neither `check_gate_lists.mjs` nor `check_regex_safety.mjs`
+fits exactly, so neither adopts, and the failed-probe exit code is not a parameter (Where the
+plan was wrong). Extending.md's exit-code convention names `exitOnCrash` for a script with no
+`main()`, and a sentence after its four probe shapes names `createProbes`. Tools.md's
+`check_page_baseline` section now says it exits 2 if it cannot run, as its two siblings'
+sections say; the handler was there before.
+
+Oracle: the kit's `c43-oracle.mjs before|after|compare` runs 26 cases: each of the eleven
+tools plainly (`pick_a11y_sample`, `build_dot_metrics` and the converter with `--check`,
+`check_tb_registry` once each side, 37 s), each through a forced crash (`c43-crash.mjs`, a
+preload whose wrapped `process.on` throws from the line that installs the handler), an
+import of the converter that counts the `uncaughtException` listeners it leaves (0), and the
+three probe gates through a broken probe (`c43-fault.mjs`, a load hook that edits a builder
+module's source as it loads: `was ${baseline[k]}` in `page-baseline.mjs`, `is missing` in
+`symbol-baseline.mjs`, the `unlisted` push in `book.mjs`). 23 cases are identical, every crash
+exiting 2 with `Error: c43 forced crash` and each fault exiting 1 with the same probe failed.
+The three differences: lint checks 143 files, the new module among them; and in the page and
+symbol faults the detail's continuation lines gain seven spaces, so they stay aligned under
+`ERROR:` as the build prints them, the one change the entry expects. No `tb-*-baseline-*`
+folder is left in `%TEMP%`.
+
 ### C44 — `scripts: the dot tools share one launch, host page and source list`
 
 **A5-5, A5-6 / L2-3 (R2).** `check_dot_fit.mjs:76-87` and `build_dot_metrics.mjs:57-68`
@@ -2050,6 +2085,11 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   cannot both hold, since `formatReport` prints the build's format. The owner chose the
   unchanged report: the script prints its own summary lines around the two `link-check.mjs`
   reporters it already shared, and `formatReport` stays the build's; see C42's Landed note.
+- **C43 (A6-1): no exit-code parameter.** The entry makes the exit code for a failed probe a
+  parameter, 2 for `check_gate_lists.mjs` and `check_regex_safety.mjs`, which adopt only if
+  the fit is exact. It is not: the first keeps its probes as pairs, prints failures to stderr
+  and has verbose and self-test-only modes, and the second runs its probes inside the sharded
+  recheck. With no caller passing anything but 1, `report()` returns 1; see C43's Landed note.
 
 ## Found while implementing
 
