@@ -809,6 +809,22 @@ keeps CRLF is private.
 **Verify.** An equivalence run in a scratch script: the old and new splice give identical
 files for every `tb` fence opener in `docs/`.
 
+**Landed.** `applyMarkers` rewrites each file through `mapLines`, with a map from a line's
+0-based index to the fence found there; the re-verification and its finding are unchanged,
+and a refused line comes back as it was. The one difference is intended: `collectFences`
+numbers lines from a full markdown-it parse, which also ends a line at a lone CR, and
+`split("\n")` did not, so below a lone CR the old splice read the wrong line and refused the
+fence. `mapLines` splits as the parse does.
+
+**Verify.** HEAD's `applyMarkers` and this one, each cut from its file and run with a fake
+`fs` over the 1,222 `tb` fences `collectFences` returns from 606 pages, every one claimed
+unmarked with the info string `tb`. On the pages as they are, both refuse all 1,222 and write
+back identical files. With ` check_build` taken off every opener that carries it (569 pages),
+both mark 950 and refuse 272, and the marked pages are byte for byte the pages in the tree,
+all 606 of them, CRLF included. For a fence below a line holding a lone CR, HEAD refuses and
+this marks.
+`check_examples.mjs --census` loads it and passes its 119 probes.
+
 ### C36 — `wisdom: parseStaging splits only on real section boundaries`
 
 **L3-3 (R1), second half.** After C26 a fenced `---` makes the run fail instead of dropping

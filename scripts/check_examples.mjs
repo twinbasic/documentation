@@ -75,6 +75,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { mapLines } from "../lib/markdown.mjs";
 import {
   BODY_SLOTS, CONCAT_KEY, HIDDEN_MARKER, MARKER, RUN_MARKER, SLOTS, classify,
   collectFences, concatFences, moduleName, parseInfo, partOf, resourcePath, wrapFence,
@@ -1152,12 +1153,12 @@ async function applyMarkers(passed) {
   for (const [rel, list] of byFile) {
     const file = path.join(DOCS, rel);
     const src = await fs.readFile(file, "utf8");
-    const lines = src.split("\n");
-    for (const fence of list) {
-      const i = fence.line - 1;
-      const line = lines[i];
-      const cr = line.endsWith("\r") ? "\r" : "";
-      const body = cr ? line.slice(0, -1) : line;
+    // Lines are counted as the parse that found the fences counts them, and
+    // each keeps its own ending.
+    const at = new Map(list.map((fence) => [fence.line - 1, fence]));
+    const out = mapLines(src, (body, i) => {
+      const fence = at.get(i);
+      if (!fence) return body;
       // The blockquote markers are part of the line for a fence inside an
       // admonition, which is where several samples live -- `> ```tb`. Refusing
       // those would leave a sample unmarkable for a reason that has nothing to
@@ -1165,12 +1166,12 @@ async function applyMarkers(passed) {
       if (!/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})tb[ \t]*$/.test(body)) {
         addFinding(fence, "could not mark: the fence line is not what was parsed",
           `line ${fence.line} reads ${JSON.stringify(body)}`);
-        continue;
+        return body;
       }
-      lines[i] = `${body} ${MARKER}${cr}`;
       count++;
-    }
-    await fs.writeFile(file, lines.join("\n"), "utf8");
+      return `${body} ${MARKER}`;
+    });
+    await fs.writeFile(file, out, "utf8");
   }
   return count;
 }
