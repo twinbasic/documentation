@@ -1799,6 +1799,53 @@ for only some of its flags (L1-10), then works for all of them.
 ordering included; the tree comparison identical; `build.bat`, `serve.bat` and the CI build
 steps behave as before.
 
+**Landed.** The new `builder/command-line.mjs` exports `OPTIONS`, `DEFAULTS` and
+`parseCommandLine(argv)`. It reads the command line through `parseCli` with the defaults ---
+`unknown: "error"`, no positionals, the strict value rule --- and then applies each option
+token in the order given, so `--no-check` undoes only the check flags before it, the last of
+`--fetch-assets` and `--no-fetch-assets` wins, and each `--port` and `--stall-timeout` is
+checked where it stands. A `missing-value` error keeps `parseCli`'s words, which were
+already `tbdocs`'s (`--dest needs a value`); every other refusal is `Unknown argument:
+<arg>`, the argument as given, so `-xy` and `--dry-run=1` read as before. `--port` goes
+through `numberOption` with `tbdocs`'s message; `--stall-timeout` keeps a hand check,
+because `numberOption` refuses the blank value that `--stall-timeout=` gives, and that
+disables the watchdog. `main()` parses through `withUsageError` with exit 4, and its `catch`
+still exits 4 on write.mjs's `--dest` refusal; `commandLineError` is gone, since nothing
+else built one. The result is today's object, key for key, with `fetchAssets` still absent
+unless given. Pipeline-Stages.md has the module's export table, and a `stallTimeoutMs` row
+the `BuildOpts` table lacked; Builder.md's module map has a row; Tools.md's synopsis gains
+`--stall-timeout`, which it lacked, and says a value may be given as `--flag=value`.
+
+The oracle, in four parts. Cases first: 26 recorded from the unedited tool (with C47's four,
+30 for `tbdocs`), among them every missing-value shape, `--dest --`, `-xy`, `--help`, a
+boolean given a value, four bad `--port` values and a bad one before a good one, three bad
+`--stall-timeout` values, and write.mjs's two `--dest` refusals, pinned by patterns since
+the paths are the case's folder. Ten probes of `parseCommandLine` in `check_cli` for what no
+case can reach, since each list starts a build: the defaults, `--no-check` before and after
+the check flags, `--check-audit-index` after `--no-check`, both orders of each pair,
+`--stall-timeout=` as 0, seconds as milliseconds, `--name=value` for four value flags, and
+the two negations. `check_cli` makes 254 checks, 49 probes and 205 cases, in about 6 s (4.5 s
+before). Five faults put into the module through the kit's `c43-fault.mjs`, also in
+`NODE_OPTIONS` so the cases' children load them (`c52-faults.mjs`), each fail it: a
+`--no-check` that keeps `auditIndex` (one probe), `parseCli`'s words for a refusal (ten
+cases), `--stall-timeout` allowing -1 (one case), `--port` unchecked (seven cases and a
+probe), and the first of the fetch pair winning (one probe). The kit's `c52-oracle.mjs` cuts
+HEAD's parser out of `git show` and compares it with `parseCommandLine` over 76 argument
+lists --- `build.bat`'s with flags a person adds, `serve.bat`'s, both workflows' builds (the
+deploy's with an empty `--baseurl`, as a custom domain gives), `check_links_diff`'s and
+`compare_trees`' spawns, the cases and the probes' lists: 70 are the same, and the 6 that
+differ are the three differences below. `compare_trees`: only Builder.md, Pipeline-Stages.md
+and Tools.md, the search index and `book.html` differ, online and offline. A test serve
+(`--serve --port 4393 --dest=docs/_serve-c52 --stall-timeout=60`) built 914 pages and served
+them. `build.bat`, `check.bat` (the a11y line unchanged) and `test.bat` exit 0.
+
+What differs, none of it a recorded case: `--check-findings=x` and `--symbol-gaps=x` are
+accepted (L1-10, the point of the entry); `--` is no longer refused, and an argument after it
+is refused under its own name (`--src docs -- x` prints `Unknown argument: x`), as in every
+tool C51 migrated; and a bad `--port` or `--stall-timeout` value followed by a parse error
+now reports the parse error, since values are checked after `parseCli` returns. All three
+still exit 4.
+
 *`builder/`'s helpers, defined twice: C53–C60.*
 
 ### C53 — `builder: one URL module`

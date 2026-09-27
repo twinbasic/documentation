@@ -933,6 +933,14 @@ The handler table is built from the imported `HANDLERS` constant:
 |---|---|---|
 | `runServe` | `(opts) → Promise<void>` | Long-lived dev server. Initial one-shot build, then HTTP + recursive watcher + SSE reload. The worker pool is constructed once and reused across rebuilds. Writes to `<srcRoot>/_serve/`. Skips the offline + PDF passes by default. |
 
+### `command-line.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `OPTIONS` | `{ [flag]: { type } }` | `tbdocs`'s flags, in the table shape `lib/cli.mjs`'s `parseCli` reads: `"string"` for a flag that takes a value, `"boolean"` for the rest. `--no-check`, `--no-offline`, `--no-pdf` and `--no-fetch-assets` are flags of their own, not negations. |
+| `DEFAULTS` | frozen `BuildOpts` | The options a build takes with no flags given --- the defaults in the `BuildOpts` table below. `fetchAssets` is left out. |
+| `parseCommandLine` | `(argv) → BuildOpts` | Reads `argv` (without Node's own two entries) through `parseCli`, then applies the flags in the order given, so a `--no-check` undoes only the check flags before it. Throws a `CliError` whose message `main()` prints before it exits 4: `<flag> needs a value`, `Unknown argument: <arg>`, or a `--port` or `--stall-timeout` value that is not one. |
+
 ### `tbdocs.mjs` orchestrator
 
 | Symbol | Signature | Description |
@@ -962,6 +970,7 @@ The handler table is built from the imported `HANDLERS` constant:
 | `symbolGaps` | `null` | Path to write the public symbols no page documents to, as JSON. |
 | `serve` | `false` | Start the dev server instead of the one-shot build. |
 | `port` | `4000` | HTTP port for serve mode. |
+| `stallTimeoutMs` | `120000` | How long the build waits with no task completing before it fails, naming what was outstanding. `0` disables the watchdog. |
 | `pool` | `null` | Optional external `WorkerPool`. Set by `serve.mjs` to reuse the pool across rebuilds. |
 
 ## See Also

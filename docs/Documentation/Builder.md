@@ -59,6 +59,7 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 | File | Role |
 |---|---|
 | [`tbdocs.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/tbdocs.mjs) | Entry point. Defines the static `TASKS` graph, allocates the SAB, spawns the pool, runs the build, injects the Gantt chart. |
+| [`command-line.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/command-line.mjs) | `tbdocs`'s option table and defaults, and `parseCommandLine`, which reads the command line through `lib/cli.mjs` and applies the flags in order. |
 | [`scheduler.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/scheduler.mjs) | Main-thread side of the pull scheduler: claim loop, results map, completion detection, summary printer. |
 | [`worker-pool.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/worker-pool.mjs) | Worker lifecycle wrapper: spawn, send the SAB, forward messages to the scheduler, terminate. No dispatch logic. |
 | [`cpu-worker.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/cpu-worker.mjs) | Worker harness. Runs the pull loop, holds the eight named handlers, handles speculative idle execution. |

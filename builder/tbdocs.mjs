@@ -7,7 +7,10 @@
 //        [--check | --no-check] [--check-audit-index]
 //        [--check-findings <path>] [--serve] [--port <N>]
 //        [--update-page-baseline] [--update-symbol-baseline]
-//        [--symbol-gaps <path>]
+//        [--symbol-gaps <path>] [--stall-timeout <seconds>]
+//
+// builder/command-line.mjs reads these, in the order given; a flag that
+// takes a value also takes it as --flag=value.
 //
 // --check runs the link + integrity check over the HTML the build
 // already holds in worker memory, instead of writing ~270 MB out and
@@ -38,8 +41,10 @@ import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 import pc   from "picocolors";
 
+import { withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
+import { parseCommandLine } from "./command-line.mjs";
 import { WorkerPool } from "./worker-pool.mjs";
 import { Scheduler }  from "./scheduler.mjs";
 import { renderGantt } from "./gantt.mjs";
@@ -88,127 +93,6 @@ import {
 
 const CPU_WORKER_URL = new URL("./cpu-worker.mjs", import.meta.url);
 const PACKAGE_API_PATH = new URL("./package-api.json", import.meta.url);
-
-// A command-line error, which main() reports by its message alone and exits 4
-// on: a value outside the 1/2/3 of the link and integrity checks, so a mistyped
-// flag never reads as a broken link. write.mjs marks its --dest refusal the same.
-function commandLineError(message) {
-  return Object.assign(new Error(message), { commandLine: true });
-}
-
-function parseArgs(argv) {
-  const args = {
-    src: "docs",
-    dest: null,
-    baseurl: null,
-    url: null,
-    dryRun: false,
-    skipOffline: null,
-    skipPdf: null,
-    tolerateMissingImages: false,
-    profileOffline: false,
-    check: false,
-    auditIndex: false,
-    updatePageBaseline: false,
-    updateSymbolBaseline: false,
-    symbolGaps: null,
-    checkFindings: null,
-    serve: false,
-    port: 4000,
-    // Wall-clock with no task completing before the build gives up and
-    // reports what was outstanding. Generous on purpose: the longest
-    // single task here is worker cold boot at ~1.6 s, and a loaded CI
-    // box is allowed to be an order of magnitude slower than that
-    // without being called stalled. 0 disables the watchdog.
-    stallTimeoutMs: 120000,
-  };
-  // A flag that takes a value, given last or followed by another flag, has
-  // none. Read as one, it was undefined: --dest and --baseurl fell back to
-  // their defaults without a word, and --src crashed.
-  const valueAfter = (flag, v) => {
-    if (v === undefined || /^-./.test(v)) throw commandLineError(`${flag} needs a value`);
-    return v;
-  };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === "--src") {
-      args.src = valueAfter(a, argv[++i]);
-    } else if (a.startsWith("--src=")) {
-      args.src = a.slice("--src=".length);
-    } else if (a === "--dest") {
-      args.dest = valueAfter(a, argv[++i]);
-    } else if (a.startsWith("--dest=")) {
-      args.dest = a.slice("--dest=".length);
-    } else if (a === "--baseurl") {
-      args.baseurl = valueAfter(a, argv[++i]);
-    } else if (a.startsWith("--baseurl=")) {
-      args.baseurl = a.slice("--baseurl=".length);
-    } else if (a === "--url") {
-      args.url = valueAfter(a, argv[++i]);
-    } else if (a.startsWith("--url=")) {
-      args.url = a.slice("--url=".length);
-    } else if (a === "--dry-run") {
-      args.dryRun = true;
-    } else if (a === "--no-offline") {
-      args.skipOffline = true;
-    } else if (a === "--no-pdf") {
-      args.skipPdf = true;
-    } else if (a === "--tolerate-missing-images") {
-      args.tolerateMissingImages = true;
-    } else if (a === "--fetch-assets") {
-      args.fetchAssets = true;
-    } else if (a === "--no-fetch-assets") {
-      args.fetchAssets = false;
-    } else if (a === "--profile-offline") {
-      args.profileOffline = true;
-    } else if (a === "--check") {
-      args.check = true;
-    } else if (a === "--no-check") {
-      // build.bat bakes in --check; this is how to ask for a plain
-      // build without editing it. Flags are read in order, so a later
-      // --no-check wins.
-      args.check = false;
-      args.auditIndex = false;
-      args.checkFindings = null;
-    } else if (a === "--check-audit-index") {
-      args.check = true;
-      args.auditIndex = true;
-    } else if (a === "--check-findings") {
-      args.check = true;
-      args.checkFindings = valueAfter(a, argv[++i]);
-    } else if (a === "--update-page-baseline") {
-      // Record the current inventory as the drift guard's new baseline,
-      // whichever direction it moved. The build only ever raises it on its
-      // own; lowering it is a deliberate act, so it takes a deliberate flag.
-      args.updatePageBaseline = true;
-    } else if (a === "--update-symbol-baseline") {
-      // The same for the URLs tB/symbols.json has published: record the
-      // current list whatever left it. See symbol-baseline.mjs.
-      args.updateSymbolBaseline = true;
-    } else if (a === "--symbol-gaps") {
-      // Write the public symbols no page documents, as JSON, to a file.
-      args.symbolGaps = valueAfter(a, argv[++i]);
-    } else if (a === "--serve") {
-      args.serve = true;
-    } else if (a === "--port" || a.startsWith("--port=")) {
-      const raw = a === "--port" ? valueAfter(a, argv[++i]) : a.slice("--port=".length);
-      args.port = Number(raw);
-      if (!Number.isInteger(args.port) || args.port < 1 || args.port > 65535) {
-        throw commandLineError(`--port expects a port number from 1 to 65535, got: ${raw}`);
-      }
-    } else if (a === "--stall-timeout" || a.startsWith("--stall-timeout=")) {
-      const raw = a === "--stall-timeout" ? valueAfter(a, argv[++i]) : a.slice("--stall-timeout=".length);
-      const secs = Number(raw);
-      if (!Number.isFinite(secs) || secs < 0) {
-        throw commandLineError(`--stall-timeout expects seconds (0 disables), got: ${raw}`);
-      }
-      args.stallTimeoutMs = secs * 1000;
-    } else {
-      throw commandLineError(`Unknown argument: ${a}`);
-    }
-  }
-  return args;
-}
 
 // ── Task graph ────────────────────────────────────────────────────────────────
 //
@@ -1619,8 +1503,12 @@ export async function runBuild(opts) {
   return { pages, staticFiles, site, destRoot };
 }
 
+// A command-line error is reported by its message alone and exits 4: a value
+// outside the 1/2/3 of the link and integrity checks, so a mistyped flag never
+// reads as a broken link. write.mjs marks its --dest refusal, which runBuild
+// makes before any task runs, with `commandLine` for the same exit.
 async function main() {
-  const opts = parseArgs(process.argv.slice(2));
+  const opts = withUsageError(() => parseCommandLine(process.argv.slice(2)), { exitCode: 4 });
   if (opts.serve) {
     const { runServe } = await import("./serve.mjs");
     await runServe(opts);

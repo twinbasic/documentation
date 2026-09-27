@@ -9,7 +9,9 @@
 //
 // The module's probes: what parseCli returns and refuses, including a
 // comparison with a strict node:util parseArgs over the same argument lists,
-// and what numberOption, withUsageError and printHelpAndExit do.
+// and what numberOption, withUsageError and printHelpAndExit do. With them,
+// the options builder/command-line.mjs returns for tbdocs, whose --no-check
+// makes the order of its flags matter.
 //
 // The recorded cases: invocations that stop while the tool reads its command
 // line, each with the exit code and the text printed on each stream. A tool's
@@ -33,6 +35,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { availableParallelism, tmpdir } from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
+import { DEFAULTS, parseCommandLine } from "../builder/command-line.mjs";
 import { CliError, numberOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { createProbes, exitOnCrash } from "./lib/gate-probes.mjs";
@@ -238,6 +241,37 @@ function capture(fn) {
   check("printHelpAndExit prints the text and exits 0", out.text === "usage: tool\n" && out.code === 0, show(out));
   const err = capture((stream, exit) => printHelpAndExit("usage: tool\n", { stream, exit, exitCode: 2 }));
   check("printHelpAndExit takes the tool's exit code", err.text === "usage: tool\n" && err.code === 2, show(err));
+}
+
+// ------------------------------------------------------------ tbdocs's command line
+
+// What the recorded cases cannot see, because each of these gets past the
+// command line and would start a build: the options it returns.
+{
+  const parsed = (args) => parseCommandLine(args);
+  const pick = (args, keys) => show(Object.fromEntries(keys.map((k) => [k, parsed(args)[k]])));
+  const CHECKS = ["check", "auditIndex", "checkFindings"];
+  check("tbdocs's defaults are DEFAULTS, with no fetchAssets", show(parsed([])) === show(DEFAULTS) && !("fetchAssets" in parsed([])));
+  check("tbdocs's --no-check undoes the check flags before it",
+    pick(["--check-audit-index", "--check-findings", "f", "--no-check"], CHECKS) === show({ check: false, auditIndex: false, checkFindings: null }),
+    pick(["--check-audit-index", "--check-findings", "f", "--no-check"], CHECKS));
+  check("tbdocs's --no-check leaves the check flags after it",
+    pick(["--no-check", "--check-findings", "f"], CHECKS) === show({ check: true, auditIndex: false, checkFindings: "f" }),
+    pick(["--no-check", "--check-findings", "f"], CHECKS));
+  check("tbdocs's --check-audit-index after --no-check turns the check on",
+    pick(["--src", "docs", "--no-check", "--check-audit-index"], CHECKS) === show({ check: true, auditIndex: true, checkFindings: null }),
+    pick(["--src", "docs", "--no-check", "--check-audit-index"], CHECKS));
+  check("tbdocs's last --check or --no-check wins",
+    parsed(["--no-check", "--check"]).check === true && parsed(["--check", "--no-check"]).check === false);
+  check("tbdocs's last of --fetch-assets and --no-fetch-assets wins",
+    parsed(["--fetch-assets", "--no-fetch-assets"]).fetchAssets === false && parsed(["--no-fetch-assets", "--fetch-assets"]).fetchAssets === true);
+  check("tbdocs reads --stall-timeout= as 0, disabling the watchdog", parsed(["--stall-timeout="]).stallTimeoutMs === 0);
+  check("tbdocs reads --stall-timeout in seconds", parsed(["--stall-timeout", "1.5"]).stallTimeoutMs === 1500);
+  check("tbdocs takes --name=value for every value flag",
+    pick(["--check-findings=f", "--symbol-gaps=g", "--port=81", "--dest=d"], ["check", "checkFindings", "symbolGaps", "port", "dest"])
+      === show({ check: true, checkFindings: "f", symbolGaps: "g", port: 81, dest: "d" }));
+  check("tbdocs keeps the flags the negations set",
+    pick(["--no-offline", "--no-pdf"], ["skipOffline", "skipPdf"]) === show({ skipOffline: true, skipPdf: true }));
 }
 
 // ------------------------------------------------------------ the recorded cases
@@ -480,6 +514,42 @@ const CASES = [
   { tool: "wisdom/wisdom.mjs", args: ["bogus", "--force=1"], exit: 1, stderr: "Unknown option: --force=1\n" },
   { tool: "wisdom/wisdom.mjs", args: ["bogus", "-x"], exit: 1, stderr: "Unknown option: -x\n" },
   { tool: "wisdom/wisdom.mjs", args: ["bogus", "--guild", "x", "--bogus"], exit: 1, stderr: "Unknown option: --bogus\n" },
+
+  // Recorded in C52, before tbdocs moved onto lib/cli.mjs, with C47's four
+  // above. Every command-line error exits 4. A value flag refuses a missing
+  // value and one that starts with a dash, "--" included; an unknown option, a
+  // positional and a boolean given a value are all "Unknown argument", named
+  // as given. Each --port and --stall-timeout is checked where it stands, so a
+  // bad one fails even when a later one is good. A --dest the build refuses
+  // exits 4 too, after the command line has been read.
+  { tool: "builder/tbdocs.mjs", args: ["--src"], exit: 4, stderr: "--src needs a value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--url"], exit: 4, stderr: "--url needs a value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--check-findings"], exit: 4, stderr: "--check-findings needs a value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--symbol-gaps", "--serve"], exit: 4, stderr: "--symbol-gaps needs a value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--dest", "--"], exit: 4, stderr: "--dest needs a value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout"], exit: 4, stderr: "--stall-timeout needs a value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout", "-1"], exit: 4, stderr: "--stall-timeout needs a value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["foo"], exit: 4, stderr: "Unknown argument: foo\n" },
+  { tool: "builder/tbdocs.mjs", args: ["-"], exit: 4, stderr: "Unknown argument: -\n" },
+  { tool: "builder/tbdocs.mjs", args: ["-x"], exit: 4, stderr: "Unknown argument: -x\n" },
+  { tool: "builder/tbdocs.mjs", args: ["-xy"], exit: 4, stderr: "Unknown argument: -xy\n" },
+  { tool: "builder/tbdocs.mjs", args: ["-h"], exit: 4, stderr: "Unknown argument: -h\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--help"], exit: 4, stderr: "Unknown argument: --help\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--dry-run=1"], exit: 4, stderr: "Unknown argument: --dry-run=1\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--no-check=1"], exit: 4, stderr: "Unknown argument: --no-check=1\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--no-check", "--bogus"], exit: 4, stderr: "Unknown argument: --bogus\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port", "abc"], exit: 4, stderr: "--port expects a port number from 1 to 65535, got: abc\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port="], exit: 4, stderr: "--port expects a port number from 1 to 65535, got: \n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port=65536"], exit: 4, stderr: "--port expects a port number from 1 to 65535, got: 65536\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port=1.5"], exit: 4, stderr: "--port expects a port number from 1 to 65535, got: 1.5\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port=80", "--port=0"], exit: 4, stderr: "--port expects a port number from 1 to 65535, got: 0\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port=abc", "--port=80"], exit: 4, stderr: "--port expects a port number from 1 to 65535, got: abc\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout=-1"], exit: 4, stderr: "--stall-timeout expects seconds (0 disables), got: -1\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout=abc"], exit: 4, stderr: "--stall-timeout expects seconds (0 disables), got: abc\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--src", ".", "--dest", "."], exit: 4,
+    stderr: /^refusing --dest (.+): it is or contains the source tree \1, which cleaning it would delete\n$/ },
+  { tool: "builder/tbdocs.mjs", args: ["--src=.", "--dest=sub"], exit: 4,
+    stderr: /^refusing --dest (.+)[\\/]sub: it is inside the source tree, so a build would read its output back as source, or serve would rebuild on its own writes\. Use a folder directly under \1 whose name starts with _site, _serve, _pdf, or one inside such a folder, or one outside \1\.\n$/ },
 ];
 
 const TIMEOUT_MS = 30_000;
