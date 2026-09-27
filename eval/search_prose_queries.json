@@ -62,5 +62,8 @@
   { "q": "module variable", "expected": ["/tB/Core/Module"] },
   { "q": "inherited property", "expected": ["/Features/Language/Inheritance"] },
   { "q": "z-order", "expected": ["/tB/Packages/VB/Form"], "behind": ["/tB/Packages/VB/MDIForm", "/tB/Packages/VB/Report"] },
-  { "q": "windows api tutorial", "expected": ["/Tutorials/Windows-API"] }
+  { "q": "windows api tutorial", "expected": ["/Tutorials/Windows-API"] },
+  { "q": "standard exe", "expected": ["/tB/IDE/Project/New"], "behind": ["/tB/IDE/Project/Settings", "/Features/Project-Configuration/Project-Types"] },
+  { "q": "create an ActiveX DLL", "expected": ["/tB/IDE/Project/New"], "behind": ["/tB/IDE/Project/Settings", "/Features/Project-Configuration/Project-Types"] },
+  { "q": "create ActiveX DLL", "expected": ["/tB/IDE/Project/New"], "behind": ["/tB/IDE/Project/Settings", "/Features/Project-Configuration/Project-Types"] }
 ]
