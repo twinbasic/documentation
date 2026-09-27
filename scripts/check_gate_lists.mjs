@@ -81,10 +81,18 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createMarkdownIt } from "../builder/render.mjs";
+import { splitOnMarker } from "../lib/markdown.mjs";
 import { gatesFromBat } from "./lib/gate-roster.mjs";
 
 const REPO = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const TOOLS_MD = "docs/Documentation/Tools.md";
+
+// The site's own parser, so that what is code is what the renderer will make
+// of it. Built on first use, inside main, so a failure exits 2.
+let siteMd;
+const siteParser = () =>
+  (siteMd ??= createMarkdownIt({ highlighter: null, linkTables: null, baseurl: "", staticFiles: new Set() }));
 
 // The wrappers this gate covers, and the heading each one is documented under.
 // book.bat and build.bat are deliberately absent: neither runs a list of gates,
@@ -102,13 +110,9 @@ const NUMBER_WORDS = [
 ];
 
 /** The body of a `### <name>` section: up to the next heading of any level. */
-function sectionBody(md, heading) {
-  const lines = md.split(/\r?\n/);
-    const start = lines.findIndex((l) => l.trim() === heading);
-  if (start === -1) return null;
-  const rest = lines.slice(start + 1);
-  const end = rest.findIndex((l) => /^#{1,6}\s/.test(l));
-  return (end === -1 ? rest : rest.slice(0, end)).join("\n");
+function sectionBody(src, heading) {
+  const sec = splitSections(src).find((s) => s.heading === heading);
+  return sec ? sec.lines.slice(1).join("\n") : null;
 }
 
 /**
@@ -231,20 +235,17 @@ const asNumber = (w) => {
   return i === -1 ? Number(w) : i;
 };
 
-/** Split markdown into sections: a heading and everything up to the next one. */
-function splitSections(md) {
-  const lines = md.split(/\r?\n/);
-  const out = [];
-  let cur = { heading: "(top of file)", start: 1, lines: [] };
-  for (let i = 0; i < lines.length; i++) {
-    if (/^#{1,6}\s/.test(lines[i])) {
-      out.push(cur);
-      cur = { heading: lines[i].trim(), start: i + 1, lines: [] };
-    }
-    cur.lines.push(lines[i]);
-  }
-  out.push(cur);
-  return out;
+/**
+ * Split markdown into sections: a heading and everything up to the next one.
+ * A heading-shaped line inside a fence, code block or HTML block starts none;
+ * Wisdom.md's `staging.md` example holds one. A section's `lines` begin with
+ * its heading, and `start` is that line's 1-based number.
+ */
+function splitSections(src) {
+  return splitOnMarker(src, (line) => /^#{1,6}\s/.test(line), { md: siteParser() }).map((s) =>
+    s.marker === null
+      ? { heading: "(top of file)", start: 1, lines: s.lines }
+      : { heading: s.marker.trim(), start: s.start + 1, lines: [s.marker, ...s.lines] });
 }
 
 /**
@@ -473,6 +474,13 @@ const PROSE_PROBES = [
   {
     name: "a count in the sub-page list of an index page",
     md: "`build.bat` produces three output trees; `check.bat` runs six further gates, from the publish allowlist to the accessibility scan.\n",
+  },
+  {
+    // Not a published sentence: Wisdom.md's `staging.md` example has a fenced
+    // `## ` line, and read as a heading it cut the section it sits in, so a
+    // count after it belonged to a section about no wrapper.
+    name: "a section total after a fenced heading-shaped line",
+    md: "## Tests of the toolchain\n\n    test.bat\n\n```\n## not a heading\n```\n\nFive gates that test the build system rather than the site.\n",
   },
 ];
 

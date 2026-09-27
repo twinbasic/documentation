@@ -743,8 +743,11 @@ Two judgement calls worth keeping:
   *"found `test.bat` documented as three gates when it had four"* as a false
   claim, so the verb list is explicit.
 
-Twelve of its eighteen probes cover the sweep, seven positive and five
-negative, each taken from the real corpus. The verification that means anything
+Thirteen of its nineteen probes cover the sweep, eight positive and five
+negative. Twelve are taken from the real corpus; the thirteenth puts a fenced
+`## ` line, the shape of Wisdom.md's `staging.md` example, inside a wrapper's
+section, since sections are split through `lib/markdown.mjs`'s `splitOnMarker`
+and a heading-shaped line in a region starts none. The verification that means anything
 is reverting the offending pages to the commit that shipped them and confirming
 the gate names every site.
 

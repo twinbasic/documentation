@@ -876,6 +876,23 @@ none. A probe: a fenced `## ` line inside a section that states a count.
 **Verify.** The gate's verdict and its 18 probes unchanged; the new probe fails with the old
 splitter.
 
+**Landed.** `splitSections` splits with `splitOnMarker` on the same `/^#{1,6}\s/` test, with
+the site's parser, since the pages are the site's; it is built on first use inside `main`, so
+a failure to build it exits 2. A section still begins with its heading line and carries that
+line's 1-based number. `sectionBody` had the same fault in Tools.md's two wrapper sections,
+which the entry does not name, and now takes its section from `splitSections`. The new prose
+probe states a wrong total after a fenced `## ` line in a wrapper's section: 19 probes, and
+Tools.md's section and WIP.Build.md now say thirteen of the nineteen cover the sweep. Two
+other differences from the old split reach no page: a lone CR now ends a line (no page the
+gate reads has one), and a final line ending no longer gives an empty last line, which no
+rule matches.
+
+**Verify.** Of the 16 pages the gate reads, one has a heading-shaped line inside a region:
+`Wisdom.md:310`, in the `staging.md` example, under the bare parser and the site's alike.
+`--verbose` under a HEAD copy and the working file gives the same claim lines, 6 stated
+counts across 16 pages, exit 0 both; the only difference is the new probe's line. With the
+old splitter put back the new probe fails: exit 1, `1 of 19 self-test probes failed`.
+
 ### C38 — `scripts: one Attributes.md reader for census and the probe generator`
 
 **Inventory sites B1, B2.** `census_attributes.mjs`'s `documentedAttributes` (`:377-392`) and

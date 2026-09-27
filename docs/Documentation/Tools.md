@@ -448,7 +448,7 @@ Three things follow from how it works. **The wrapper is the source of truth**, n
 
 When it fires on a count that is merely a subset --- *three cheaper gates run first* --- the fix is to delete the number rather than correct it. The command block or the linked list beneath it already states it, and a number nothing derives is a number that goes stale. The script's header names what the sweep deliberately does not see.
 
-Its probes ride along in the ordinary run rather than hiding behind `--self-test`, because a green line from a gate that has stopped detecting looks exactly like a green line from a working one. Twelve of the eighteen cover the sweep, each a sentence that was published at the commit round 4 reviewed. Exits 1 on a disagreement or a failed probe, 2 if it cannot run.
+Its probes ride along in the ordinary run rather than hiding behind `--self-test`, because a green line from a gate that has stopped detecting looks exactly like a green line from a working one. Thirteen of the nineteen cover the sweep. Twelve are sentences that were published at the commit round 4 reviewed; the thirteenth puts a heading-shaped line in a code fence, as in [Wisdom](Wisdom)'s `staging.md` example, inside a wrapper's section, because such a line starts no section. Exits 1 on a disagreement or a failed probe, 2 if it cannot run.
 
 ### check_ci_workflows.mjs
 {: #check-ci-workflows }
