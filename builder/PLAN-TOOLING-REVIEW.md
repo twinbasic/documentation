@@ -1156,6 +1156,48 @@ memory, through one implementation.
 `--self-test` passes. `check_links.mjs` prints the same report on `docs/_site` and
 `docs/_site-offline` before and after. CI's fixture cases unchanged.
 
+**Landed.** `runCheck` walks the tree as before, then hands every page to `checkChunk` as one
+chunk, each page's `html` a getter that reads the file, so one page is in memory at a time
+and the chunk's unique count, fragment-target count and stage timings are the tree's. It
+passes the oracle on `env` (`FsOracle`, or `treeIndexFor` over its own listing for `--oracle
+index`), then `joinChunks` with the tree's rel paths, the sniffed stubs, and `sitemap.xml` and
+`search-data.json` read from disk, and returns `findingsFor`'s view with `counts.unique` filled
+in from the chunk. `buildFindings`, the three `*Contents` wrappers, `extractLinksAndIds`,
+`relFilesFor` and `statSafe` (inlined as a `try` in `collectHtmlFiles`) go. `check.mjs` pages
+are tree-relative; a `walkPath` map turns them back into the walk's paths for the report, so
+the report is unchanged. The owner chose that report over `formatReport` (Where the plan was
+wrong). `checkChunk` now also returns `stubs` (always empty in the build, whose `TREES` never
+set `captureRedirectStub`), `fragmentTargets` and `stages` (with `extract`), for `-v`. The
+self-test's guards 1 and 3 now run `runCheck` over its one-page tree, four passes, ~20 ms
+instead of <10 ms. Both comments the entry names are rewritten, and so is every sentence that
+called the pair two implementations or the script the reference implementation: Tools.md,
+Building.md, Extending.md, Builder.md, Pipeline-Stages.md (also `checkChunk`'s and
+`findingsFor`'s rows), WIP.Build.md (a heading, which nothing links to), test/README.md,
+builder/README.md, `link-check.mjs`'s banner and reporter comment, `check_links_diff.mjs`'s
+header and `script` side, `page-baseline.mjs`, a `checks.yml` comment (no step changes), and
+`check_gate_lists.mjs`'s note on `checks?`, whose example phrase is gone from the corpus.
+
+Oracle: the kit's `c42-oracle.mjs` runs `runCheck` in 25 cases (the three real trees, an
+absolute root, `-v`, the book with and without `--no-fail`, the base-path tree right and
+wrong, `check_links_diff`'s hand-written fixture cut from its source in five flag sets, the
+two built fixture trees, a subfolder, two inputs, no `--root-dir`, a missing input, only a
+missing input, a root without `sitemap.xml`, unknown flags and the three usage errors), each
+with the default, `fs` and `index` oracles, plus four CLI runs (`-h`, no arguments, three
+passes over `/sep/`, one pass), with timings masked. Against HEAD everything is identical,
+the self-test included, but two things: the findings gain `findingsFor`'s `skipped`, which
+`check_links_diff` does not compare; and where cross-file issues are printed (the wrong base
+path and the root without a sitemap, 13 canonical lines each) they now come sorted by code
+unit, as `joinChunks` sorts them, rather than in the walk's order (`tB/Core/LSet.html` now
+before `LeftShift.html`); line order only, no line gained or lost. `check_links_diff.mjs --a
+script --b fused`: no differences across 6 cases; `--a script --b index`: none across 8, both
+`online-abs` identities ok; `--self-test` ok, and with `basePath: ""` passed to `joinChunks`
+it fails on guard 1 (`--check-sitemap with --base-path`). Timing on `docs/_site` with `-v`,
+HEAD against now: 3.81 s against 3.38 (`fs`), 3.49 against 3.27 (`index`). `compare_trees`:
+the trees match. Two cases change and are not covered: an input on another drive than
+`--root-dir` on Windows, where a page's tree-relative path is absolute, so `checkChunk`
+resolves its links from a folder that does not exist; and a tree whose every canonical-bearing
+page is a redirect stub, where `--check-canonical` now warns instead of reporting `[]`.
+
 ### C43 — `scripts: lib/gate-probes.mjs for the gates' probes and crash handler`
 
 **A6-1 / L1-11 / L4-13 (R1).** A probe accumulator and report loop in
@@ -2003,6 +2045,11 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   Retrying the wait only makes it longer, which is what `afterReveal`'s `timeout` is for, and
   opening the file again would start a new reveal, so each call throws at the first timeout,
   the review's other option ("retry or fail loudly"); see C24's Landed note.
+- **C42 (A4-2): the script does not call `formatReport`.** The entry names it among the
+  functions the script calls, and also asks for the same report before and after; the two
+  cannot both hold, since `formatReport` prints the build's format. The owner chose the
+  unchanged report: the script prints its own summary lines around the two `link-check.mjs`
+  reporters it already shared, and `formatReport` stays the build's; see C42's Landed note.
 
 ## Found while implementing
 

@@ -1,22 +1,29 @@
-// The link check, folded into the build.
+// The link check, over pages already rendered.
 //
-// `tbdocs --src docs --check` reaches the same conclusions
-// scripts/check_links.mjs does, against the HTML the build already has
-// in worker memory rather than against ~270 MB read back off disk. The
-// two front ends share builder/link-check.mjs; this module is only the
-// build-side plumbing:
+// It has two front ends. `tbdocs --src docs --check` runs it on the HTML
+// the build already has in worker memory, rather than on ~270 MB read
+// back off disk. scripts/check_links.mjs runs the same functions over a
+// tree it reads from disk, for a tree the build did not produce. Both
+// sit on builder/link-check.mjs, the pure core:
 //
 //   deriveTreeRels()  what each output tree receives, from the build's
-//                     own records rather than a directory walk.
-//   checkChunk()      runs on a worker, inside flush(), on HTML that is
-//                     already decoded and in the lane's memory.
-//   joinChunks()      merges the chunks on main, settles the fragment
-//                     references no single chunk could decide, and runs
-//                     the three cross-file checks.
-//   formatReport()    the human-readable report and the exit code.
+//                     own records rather than a directory walk. Build
+//                     only.
+//   checkChunk()      checks a chunk of pages against one tree. The
+//                     build runs it on a worker, inside flush(), on HTML
+//                     already decoded in the lane's memory; the script
+//                     runs it once, over the whole tree.
+//   joinChunks()      merges the chunks, settles the fragment references
+//                     no single chunk could decide, and runs the three
+//                     cross-file checks.
+//   formatReport()    the build's human-readable report and exit code.
+//                     The script prints its own summary lines around the
+//                     same two link-check.mjs reporters.
+//   findingsFor()     the conclusions as sorted strings, which
+//                     scripts/check_links_diff.mjs compares.
 //
-// Two properties make replacing the filesystem with an index sound
-// rather than merely faster:
+// In the build, two properties make replacing the filesystem with an
+// index sound rather than merely faster:
 //
 //   1. prepareDestinations() wipes _site/, _site-offline/ and _site-pdf/
 //      before the build writes a byte, so nothing survives from a
@@ -31,6 +38,7 @@
 // are collected and reported; only the exit code changes.
 
 import * as path from "node:path";
+import { performance } from "node:perf_hooks";
 
 import {
   extractFromHtml, resolveOccurrences, settleFragments,
@@ -133,7 +141,9 @@ export function checkChunk(docs, env) {
   const integrity = [];
   const canonicals = [];
   const forbidden = [];
+  const stubs = [];
 
+  const t0 = performance.now();
   for (const doc of docs) {
     const abs = path.join(root, doc.destPath);
     const r = extractFromHtml(doc.html, tree.includeFragments, tree.forbid, tree.checkOpts);
@@ -155,7 +165,9 @@ export function checkChunk(docs, env) {
       }]);
     }
     if (r.canonicalHref) canonicals.push([doc.destPath, r.canonicalHref]);
+    if (r.isRedirectStub) stubs.push(doc.destPath);
   }
+  const extract = performance.now() - t0;
 
   const res = resolveOccurrences(occurrences, env.oracle, {
     rootStr: root, basePath,
@@ -184,6 +196,13 @@ export function checkChunk(docs, env) {
     forbidden,
     pending:     res.pendingFragments,
     ids, integrity, canonicals,
+    // Only the standalone script uses these three. The build knows its
+    // own stubs (captureRedirectStub is off in every TREES entry, so
+    // `stubs` stays empty), and the script checks a whole tree as one
+    // chunk, so its -v figures are the tree's.
+    stubs,
+    fragmentTargets: res.fragmentTargets.size,
+    stages: { extract, ...res.stages },
   };
 }
 
@@ -407,14 +426,16 @@ function prefixPaths(text, label) {
 
 // ── Structured findings ─────────────────────────────────────────────
 
-// The same conclusions, in the shape scripts/check_links.mjs's
-// `structured` mode emits, so scripts/check_links_diff.mjs can diff the
-// two implementations category by category. This is the whole gate:
-// check.bat going green proves nothing about whether the fused pass
-// still looks at everything the standalone script does.
+// The same conclusions as sorted arrays of tree-relative strings, one
+// category per check. Both front ends produce them here -- the script
+// in its `structured` mode -- so scripts/check_links_diff.mjs compares
+// one implementation reading a tree two ways: from disk, and held in
+// the build's memory through its index and its chunks. That comparison
+// is the only thing that says the build's pass still looks at every
+// page and link a read from disk finds; check.bat going green does not.
 //
-// `unique` is deliberately null. The script's "N unique" counts entries
-// deduped across the whole tree; the build resolves in 160 chunks and
+// `unique` is null here. The script checks its tree as one chunk and
+// fills in that chunk's own count; the build resolves in 160 chunks and
 // reconstructing a global figure would mean shipping every unique
 // target key back from every chunk -- hundreds of thousands of strings
 // for a number that appears in a summary line and is not a finding.

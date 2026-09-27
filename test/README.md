@@ -18,16 +18,18 @@ the fixture or the checker.
 
 ## Why this exists
 
-The link and integrity check has two front ends over one core
-([`builder/link-check.mjs`](../builder/link-check.mjs)):
+The link and integrity check has two front ends over one implementation
+([`builder/check.mjs`](../builder/check.mjs), over the core in
+[`builder/link-check.mjs`](../builder/link-check.mjs)):
 
 - the **build's own** fused check, reached with `tbdocs --check`, which walks each tree's
   HTML on the worker lane that produced it; and
 - the **standalone** [`scripts/check_links.mjs`](../scripts/check_links.mjs), for a tree
   the build did not produce --- a release zip, a bisect, someone else's artifact.
 
-Two implementations of one check is exactly the shape that rots quietly, because **a
-checker that silently checks less reports a clean pass.** `check_links_diff.mjs` runs both
+The two read the tree differently --- the build from memory, through an index of what it
+wrote and in chunks across its workers --- and **a checker that silently checks less
+reports a clean pass.** `check_links_diff.mjs` runs both
 over the same bytes and diffs their findings category by category.
 
 On a healthy site that comparison is nearly worthless: the real tree is clean, so both
@@ -79,8 +81,8 @@ in `tbdocs-gh-pages.yml`, which keeps only the cheaper `fixture` case, and neith
 having folded the check into the build. Run them locally after touching
 `builder/link-check.mjs`, `builder/check.mjs` or `scripts/check_links.mjs`.
 
-`--self-test` is a third mode: it diffs the reference implementation against a
-deliberately corrupted copy of itself and fails unless the difference is reported.
+`--self-test` is a third mode: it diffs the `script` side against a deliberately
+corrupted copy of itself and fails unless the difference is reported.
 Everything else the harness prints reduces to "the two sides agreed", which is also what a
 harness comparing nothing says.
 

@@ -512,17 +512,17 @@ The same modules as above, with the full export list per file.
 
 ### `check.mjs`
 
-The build-side plumbing for the link and integrity check. Imported dynamically --- on the workers by `renderEnvInit`, on main by `linkJoin` / `checkBook` / `checkReport` --- because `htmlparser2` costs ~23 ms to import and a build without `--check` must not pay it on sixteen lanes.
+The link and integrity check over rendered pages, which the standalone [`scripts/check_links.mjs`](Tools#check-links) also runs, over a tree it reads from disk. The build imports it dynamically --- on the workers by `renderEnvInit`, on main by `linkJoin` / `checkBook` / `checkReport` --- because `htmlparser2` costs ~23 ms to import and a build without `--check` must not pay it on sixteen lanes.
 
 | Symbol | Signature | Description |
 |---|---|---|
 | `TREES` | `object` | Per-tree configuration: `suffix`, `label`, the `checkOpts` that tree enables, and its `forbid` prefixes. `online` and `offline` both set `checkRemoteAssets: true` unconditionally --- there is no flag to turn it off. |
 | `FALLBACK_EXTS` | `string[]` | Extensions appended when a target does not exist as-is (`["html"]`, mirroring Pages' extensionless URLs). |
 | `INDEX_FILES` | `string[]` | Filenames tried when a URL resolves to a directory. |
-| `checkChunk` | `(docs, env) → chunkResult` | Checks one chunk of `{ destPath, html }` against one tree. The unit of work that rides along inside `flush:i`. |
+| `checkChunk` | `(docs, env) → chunkResult` | Checks one chunk of `{ destPath, html }` against one tree. The unit of work that rides along inside `flush:i`; `check_links.mjs` runs it once, over a whole tree. |
 | `joinChunks` | `(chunks, opts) → treeResult` | Merges per-chunk results into one per-tree result, settling cross-chunk fragment references. |
 | `formatReport` | `(r) → { text, linksFailed, integrityFailed }` | Human-readable report plus the two booleans `checkReport` turns into an exit code. |
-| `findingsFor` | `(r) → object` | The machine-readable view, written by `--check-findings`. |
+| `findingsFor` | `(r) → object` | The machine-readable view, written by `--check-findings` and returned by `check_links.mjs`'s structured mode for `check_links_diff.mjs`. |
 | `treeIndexFor` | `(root, rels) → treeIndex` | Builds the existence oracle a tree is checked against, from the build's own records rather than a `readdir`. |
 | `auditIndex` | `(root, rels) → Promise<{ missing, spurious }>` | Diffs that derived index against what actually landed on disk. `--check-audit-index` only. |
 | `deriveTreeRels` | re-exported from `check-tree.mjs` | --- |
@@ -537,7 +537,7 @@ The build-side plumbing for the link and integrity check. Imported dynamically -
 
 ### `link-check.mjs`
 
-The pure core shared by the build's fused check and the standalone [`scripts/check_links.mjs`](Tools#check-links). No filesystem traversal and no CLI --- it takes HTML and an oracle and returns findings, which is what lets one implementation serve both front ends. **Two implementations of one check is the shape that rots quietly, so run [`check_links_diff.mjs`](Tools#check-links-diff) whenever this file, `check.mjs` or `check_links.mjs` changes.**
+The pure core shared by the build's fused check and the standalone [`scripts/check_links.mjs`](Tools#check-links). No filesystem traversal and no CLI --- it takes HTML and an oracle and returns findings, which is what lets one implementation serve both front ends. **The two front ends read the tree differently, and a checker that silently checks less reports a clean pass, so run [`check_links_diff.mjs`](Tools#check-links-diff) whenever this file, `check.mjs` or `check_links.mjs` changes.**
 
 | Symbol | Signature | Description |
 |---|---|---|

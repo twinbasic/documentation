@@ -76,7 +76,7 @@ jobs:
         # trees out and reading ~270 MB of them back through
         # scripts/check_links.mjs. Same findings -- that equivalence is
         # gated by scripts/check_links_diff.mjs, run by hand when either
-        # implementation changes. Do NOT also add a check_links.mjs pass
+        # front end changes. Do NOT also add a check_links.mjs pass
         # over _site/: it would check the same bytes a second time.
         #
         # --check-audit-index adds the index audit on top: a diff of the

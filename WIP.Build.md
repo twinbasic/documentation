@@ -158,17 +158,17 @@ A failing check never aborts the build: a broken link still produces a site you 
 
 The remote-asset rule fails the run on any `<img src>` resolving off-box (`http://`, `https://`, or protocol-relative `//host`). In the build it is unconditional -- `checkRemoteAssets: true` on both trees in `builder/check.mjs`'s `TREES` -- and is *not* reachable by a flag: `tbdocs` rejects `--check-remote-assets` as an unknown argument. That name belongs to the standalone `scripts/check_links.mjs`, where it is opt-in. The PDF pass over `book.html` is informational, so enforcement comes from the `_site/` pass -- every page in the book is also in `_site/`, making it a superset. The check is deliberately scoped to `<img>` only; `<iframe>` is untouched.
 
-### The two link checkers, and the gate that catches divergence
+### The link check's two front ends, and the gate that catches divergence
 
-[scripts/check_links.mjs](scripts/check_links.mjs) is still the tool for a tree the build did not produce -- a release zip, a bisect, someone else's artifact -- and both CI workflows still run it, though not directly: they invoke `check_links_diff.mjs`, which calls the script in-process as its `script` side (only the `fused` side spawns, and it spawns `tbdocs`). It is exercised only against the fixtures, never against the real trees. The pure core both front ends share lives in [builder/link-check.mjs](builder/link-check.mjs); the build-side plumbing is [builder/check.mjs](builder/check.mjs) and [builder/check-tree.mjs](builder/check-tree.mjs).
+[scripts/check_links.mjs](scripts/check_links.mjs) is still the tool for a tree the build did not produce -- a release zip, a bisect, someone else's artifact -- and both CI workflows still run it, though not directly: they invoke `check_links_diff.mjs`, which calls the script in-process as its `script` side (only the `fused` side spawns, and it spawns `tbdocs`). It is exercised only against the fixtures, never against the real trees. Both front ends run the check in [builder/check.mjs](builder/check.mjs), over the pure core in [builder/link-check.mjs](builder/link-check.mjs); the script keeps only its command line, its walk and reads of the tree, and its report's summary lines. [builder/check-tree.mjs](builder/check-tree.mjs) is the build's alone.
 
-Two implementations of one check is exactly the shape that rots quietly: **a checker that silently checks less reports a clean pass.** [scripts/check_links_diff.mjs](scripts/check_links_diff.mjs) is the gate against that, and it plays the same role on this side that `check_a11y_fingerprint.mjs` plays on the axe side. Run it whenever `link-check.mjs`, `check.mjs` or `check_links.mjs` changes:
+The two still read the tree differently -- the build from memory, through an index of what it wrote and in chunks across its workers -- and **a checker that silently checks less reports a clean pass.** [scripts/check_links_diff.mjs](scripts/check_links_diff.mjs) is the gate against that, and it plays the same role on this side that `check_a11y_fingerprint.mjs` plays on the axe side. Run it whenever `link-check.mjs`, `check.mjs` or `check_links.mjs` changes:
 
 ```sh
 node scripts/check_links_diff.mjs --a script --b fused
 ```
 
-It diffs the two implementations' findings category by category across the real invocations -- `_site/` with sitemap + search + canonical, `_site-offline/` with the forbidden-prefix rule, `book.html` with the same rule (there it collects the links that leave the book for the website, reported as `OUT OF BOOK`), and a `--baseurl` tree checked with the matching base path. It is deliberately *not* in `check.bat`: the script side costs ~3 s, which is the whole saving.
+It diffs the two front ends' findings category by category across the real invocations -- `_site/` with sitemap + search + canonical, `_site-offline/` with the forbidden-prefix rule, `book.html` with the same rule (there it collects the links that leave the book for the website, reported as `OUT OF BOOK`), and a `--baseurl` tree checked with the matching base path. It is deliberately *not* in `check.bat`: the script side costs ~3 s, which is the whole saving.
 
 Two further modes matter:
 
@@ -475,7 +475,7 @@ comment in [builder/page-baseline.mjs](builder/page-baseline.mjs):
   `test/fixtures/check-src`, three pages, to compare the two link checkers.
   Against an unkeyed baseline that build reports **905 pages missing** --- a
   loud, confident, entirely wrong finding, on the one harness whose whole job is
-  noticing when two implementations disagree. `GUARDED_SRC` names the tree the
+  noticing when two front ends disagree. `GUARDED_SRC` names the tree the
   numbers are of and every other root is skipped in silence.
 - **The build now writes a tracked file, and `check_tree_fresh.mjs` watches
   `builder/`.** The write happens after the tree, so without an exclusion the

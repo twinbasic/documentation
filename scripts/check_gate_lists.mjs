@@ -195,8 +195,9 @@ function statedCount(body) {
 
 const NUM = `(?:${NUMBER_WORDS.join("|")}|\\d+)`;
 const WRAP = "`?(check|test)\\.bat`?";
-// Deliberately not `checks?`: "two implementations of one check" is ordinary
-// English about the link checker and appears twice in the corpus.
+// Deliberately not `checks?`: a count of checks is ordinary English in the
+// corpus ("Two checks enforce the registration", "two more checks"), not a
+// count of gates.
 const NOUN = "(?:gates?|steps?|scripts?)";
 const QUAL = "(?:more|further|other|separate|cheaper|local|remaining)\\s+";
 // "`test.bat` is six more" names no noun at all, and that sentence is one of

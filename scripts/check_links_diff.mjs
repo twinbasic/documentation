@@ -1,14 +1,17 @@
 // Differential harness for the link checker.
 //
-// Runs the same check pass under two named *sides* -- two
-// implementations that are supposed to reach identical conclusions --
-// and diffs their findings category by category. Exits non-zero on any
-// difference.
+// Runs the same check pass under two named *sides* -- two ways of
+// running one check, which must reach identical conclusions -- and
+// diffs their findings category by category. Exits non-zero on any
+// difference. The two sides that matter run the same functions in
+// builder/check.mjs and differ in how they read the tree: the
+// standalone script reads it from disk, while the build's pass holds it
+// in memory, answers "does this exist" from an index of what it wrote,
+// and checks it in chunks across its workers.
 //
-// It exists because of the failure mode that makes this whole
-// refactor dangerous: a checker that silently checks *less* reports a
+// It exists because a checker that silently checks *less* reports a
 // clean pass. `check.bat` going green proves nothing about whether the
-// fused path still looks at everything the standalone script does.
+// fused path still looks at everything a read from disk finds.
 // This is the same role scripts/check_a11y_fingerprint.mjs plays on the
 // axe side, and it has the same blind spot: it compares conclusions,
 // never the shape of the work that produced them. Treat it as
@@ -330,7 +333,7 @@ const SIDES = {
   // case-insensitive), and a side that silently became the same oracle
   // as `index` would turn this comparison into a no-op on one platform.
   //
-  // It is the reference implementation, not an oracle of record: on
+  // It is the reference side, not an oracle of record: on
   // Windows, FsOracle answers "exists" for a wrong-case path that 404s on
   // GitHub Pages, so on that one question the `index` side is the correct
   // one and this side is the one with the missing finding.

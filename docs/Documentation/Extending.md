@@ -158,7 +158,7 @@ Two things are easy to miss from a changer's position.
 ## Changing the link checker
 {: #changing-the-link-checker }
 
-The link check exists twice. The build runs it over the HTML it holds in memory, through `builder/check.mjs`, and `scripts/check_links.mjs` runs it over a tree on disk; both use the core in `builder/link-check.mjs`. A change to any of the three can make the two disagree, and **a checker that silently checks less reports a clean pass** --- on a healthy site nearly every category of finding is empty, so nothing else would notice.
+The link check has two front ends. The build runs it over the HTML it holds in memory, and `scripts/check_links.mjs` runs it over a tree on disk; both call the same functions in `builder/check.mjs`, over the core in `builder/link-check.mjs`. A change to any of the three can make the two disagree, and **a checker that silently checks less reports a clean pass** --- on a healthy site nearly every category of finding is empty, so nothing else would notice.
 
 After changing `builder/link-check.mjs`, `builder/check.mjs` or `scripts/check_links.mjs`, run the full comparison by hand:
 
@@ -168,7 +168,7 @@ It builds everything it compares --- the site into the usual trees, a copy under
 
 **Nothing else runs this comparison.** `build.bat`, `check.bat` and `test.bat` never call it, and the CI workflows run only the fixture cases: both compare the script with its `index` variant over a synthetic tree, and the pull-request workflow also compares the script with the build's pass over the three-page fixture. Neither goes near the real site, so a green pull request says only that the two sides agree over the fixtures, not over the pages you will publish. A change meant to alter what the checker finds also moves the counts asserted after every fixture run, `FIXTURE_EXPECTED`, `FIXTURE_BUILT_ONLINE` and `FIXTURE_BUILT_OFFLINE` in `check_links_diff.mjs`; [`test/README.md`](https://github.com/twinbasic/documentation/blob/main/test/README.md) says what each fixture page is there to provoke.
 
-If you changed the harness itself, or `check_links.mjs`, which is the harness's reference implementation, also run:
+If you changed the harness itself, or `check_links.mjs`, which is the harness's `script` side, also run:
 
     node scripts/check_links_diff.mjs --self-test
 

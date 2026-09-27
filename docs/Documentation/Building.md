@@ -569,7 +569,7 @@ The deploy workflow passes `--url` and `--baseurl` from the `configure-pages` ou
 
 ### The link-checker parity fixtures
 
-[`scripts/check_links_diff.mjs`](Tools#check-links-diff) compares two implementations of one check: the standalone [`scripts/check_links.mjs`](Tools#check-links), still the tool for a tree this build did not produce, and the pass fused into the build. Two implementations of one check is the shape that rots quietly, because **a checker that silently checks less reports a clean pass.** `check.bat` runs neither invocation; CI runs one or both.
+[`scripts/check_links_diff.mjs`](Tools#check-links-diff) compares the check's two front ends: the standalone [`scripts/check_links.mjs`](Tools#check-links), still the tool for a tree this build did not produce, and the pass fused into the build. They run the same functions and differ only in how they read the tree, which is still enough to hide a fault, because **a checker that silently checks less reports a clean pass.** `check.bat` runs neither invocation; CI runs one or both.
 
 | Invocation | Where | What it holds to the comparison |
 |---|---|---|
