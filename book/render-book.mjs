@@ -32,6 +32,7 @@ import { dirname, resolve } from 'node:path';
 import { writeFileSync, existsSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
+import { parseCli, withUsageError } from '../lib/cli.mjs';
 // Side-effecting imports. Mutate pdf-lib's live module exports
 // before any pdf-lib operation -- order doesn't matter. See
 // perf/notes/08-pdf-lib.md.
@@ -201,24 +202,22 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // --- arg parsing --------------------------------------------------------
 
-const args = process.argv.slice(2);
-let inputArg = null;
-let outputArg = null;
-let outlineTagsArg = 'h1,h2,h3,h4';
-let timeoutMs = 0;
-const additionalScripts = [];
-for (let i = 0; i < args.length; i++) {
-  const a = args[i];
-  if (a === '-o' || a === '--output')              outputArg = args[++i];
-  else if (a === '--outline-tags')                 outlineTagsArg = args[++i];
-  else if (a === '-t' || a === '--timeout')        timeoutMs = parseInt(args[++i], 10);
-  else if (a === '--additional-script')            additionalScripts.push(args[++i]);
-  else if (!inputArg && !a.startsWith('-'))        inputArg = a;
-  else {
-    console.error(`unknown arg: ${a}`);
-    process.exit(2);
-  }
-}
+const { values, positionals } = withUsageError(() => parseCli(process.argv.slice(2), {
+  options: {
+    output: { type: 'string', short: 'o' },
+    'outline-tags': { type: 'string', default: 'h1,h2,h3,h4' },
+    timeout: { type: 'string', short: 't', default: '0' },
+    'additional-script': { type: 'string', multiple: true },
+  },
+  positionals: { max: 1 },
+  unknown: 'error',
+  acceptsValue: () => true,
+}), { format: (err) => `unknown arg: ${err.arg}`, exitCode: 2 });
+const inputArg = positionals[0];
+const outputArg = values.output;
+const outlineTagsArg = values.outlineTags;
+const timeoutMs = parseInt(values.timeout, 10);
+const additionalScripts = values.additionalScript;
 if (!inputArg || !outputArg) {
   console.error('usage: node render-book.mjs <input.html> -o <output.pdf> [--outline-tags ...] [-t ms] [--additional-script path]...');
   process.exit(2);

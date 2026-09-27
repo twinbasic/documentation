@@ -58,6 +58,7 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { blockRegions } from "../lib/markdown.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { printDigest, readTranscript, summarize } from "./transcript.mjs";
@@ -76,22 +77,37 @@ const MEMORY_FILES = ["CLAUDE.md", "CLAUDE.local.md", "AGENTS.md"];
 const fwd = (p) => p.split(path.sep).join("/");
 
 function parseArgs(argv) {
-  const o = { claude: process.env.EVAL_CLAUDE || "claude", model: "sonnet", timeout: 20 };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === "--corpus") o.corpus = path.resolve(argv[++i]);
-    else if (a === "--site") o.site = path.resolve(argv[++i]);
-    else if (a === "--protocol") o.protocol = argv[++i];
-    else if (a === "--goal") o.goal = path.resolve(argv[++i]);
-    else if (a === "--out") o.out = path.resolve(argv[++i]);
-    else if (a === "--claude") o.claude = argv[++i];
-    else if (a === "--model") o.model = argv[++i];
-    else if (a === "--timeout") o.timeout = Number(argv[++i]);
-    else if (a === "--smoke") o.smoke = true;
-    else if (a === "--prompt-only") o.promptOnly = true;
-    else if (a === "--help" || a === "-h") o.help = true;
-    else throw new Error(`unknown argument: ${a}`);
-  }
+  const { values } = withUsageError(() => parseCli(argv, {
+    options: {
+      corpus: { type: "string" },
+      site: { type: "string" },
+      goal: { type: "string" },
+      out: { type: "string" },
+      protocol: { type: "string" },
+      claude: { type: "string", default: process.env.EVAL_CLAUDE || "claude" },
+      model: { type: "string", default: "sonnet" },
+      timeout: { type: "string" },
+      smoke: { type: "boolean" },
+      "prompt-only": { type: "boolean" },
+      help: { type: "boolean", short: "h" },
+    },
+    positionals: 0,
+    unknown: "error",
+    acceptsValue: () => true,
+  }), { format: (err) => `unknown argument: ${err.arg}`, exitCode: 2 });
+  const o = {
+    corpus: "corpus" in values ? path.resolve(values.corpus) : undefined,
+    site: "site" in values ? path.resolve(values.site) : undefined,
+    goal: "goal" in values ? path.resolve(values.goal) : undefined,
+    out: "out" in values ? path.resolve(values.out) : undefined,
+    protocol: values.protocol,
+    claude: values.claude,
+    model: values.model,
+    timeout: "timeout" in values ? Number(values.timeout) : 20,
+    smoke: values.smoke,
+    promptOnly: values.promptOnly,
+    help: values.help,
+  };
   if (o.smoke) o.protocol = "site";
   return o;
 }
@@ -245,10 +261,7 @@ async function main(argv) {
   const o = parseArgs(argv);
   const complete = o.corpus && o.site && o.out &&
     (o.smoke || (o.goal && ["repo", "site"].includes(o.protocol)));
-  if (o.help || !complete) {
-    console.log(USAGE);
-    return o.help ? 0 : 2;
-  }
+  if (o.help || !complete) return printHelpAndExit(USAGE, { exitCode: o.help ? 0 : 2 });
 
   const cwd = o.protocol === "site" ? path.join(o.corpus, "docs") : o.corpus;
   const needed = [cwd, path.join(o.site, "assets/js/search-data.json"), path.join(o.site, "assets/js/vendor/lunr.min.js")];
