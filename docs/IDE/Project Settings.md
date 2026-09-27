@@ -43,6 +43,8 @@ The form whose icon becomes the program's icon. The list holds the project's for
 
 The type libraries and packages that the compiler uses for this project. In the `Settings` file it is `project.references`.
 
+To add a reference, tick it on the **Available COM References** tab, which lists the type libraries registered on the machine, or on the **Available Packages** tab. The **Enabled Libraries** tab lists the references the project uses, in priority order.
+
 ![The Project Settings dialog on its Enabled Libraries tab, listing four ticked references in priority order with Library Symbol and Version columns: the twinBASIC VBA and VBRUN compatibility packages, OLE Automation as stdole, and the IDE Extensibility package as tbIDE.](Images/ProjectSettings_LibraryReferences.png)
 
 ![The same dialog on its Available COM References tab. A search box sits above an alphabetical list of unticked type libraries registered on the machine --- AccessibilityCplAdmin, Active DS, ActiveMovie, AgentWmiLib and so on --- against Library Symbol, Version and Publisher columns.](Images/ProjectSettings_AvailableCOMReferences.png)

@@ -112,6 +112,10 @@ Same as Right-Click
 
 ## Resource: Visual Styles Manifest
 
+An application manifest is an XML file that Windows reads when it starts the program. The one this command adds declares a dependency on version 6 of the Windows Common Controls, so that the program's buttons, lists and other controls are drawn in the current Windows visual style rather than the classic one. It is stored as resource `#1` in the project's `MANIFEST` resource folder, and the build embeds it in the program.
+
+A manifest can also declare the program's DPI awareness. A program whose manifest does should set [Force DPI Awareness At Startup](Settings#dpi-awareness) to **NONE**.
+
 See ![A small yellow folder icon](Images/Folder.png) `/.../Resources/MANIFEST/#1.xml`
 
 ```xml

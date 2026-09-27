@@ -98,11 +98,11 @@ A selected program line at which execution automatically stops. Breakpoints are 
 
 ## by reference
 
-A way of passing the address of an argument to a procedure instead of passing the value. This allows the procedure to access the actual variable. As a result, the variable's actual value can be changed by the procedure to which it is passed. Unless otherwise specified, arguments are passed by reference. Use the **ByRef** keyword to make this explicit.
+A way of passing the address of an argument to a procedure instead of passing the value. This allows the procedure to access the actual variable. As a result, the variable's actual value can be changed by the procedure to which it is passed. Unless otherwise specified, arguments are passed by reference. Use the **ByRef** keyword to make this explicit. See [Passing arguments ByRef and ByVal](Core/Sub#passing-arguments-byref-and-byval).
 
 ## by value
 
-A way of passing the value of an argument to a procedure instead of passing the address. This allows the procedure to access a copy of the variable. As a result, the variable's actual value can't be changed by the procedure to which it is passed. Use the **ByVal** keyword to pass an argument by value.
+A way of passing the value of an argument to a procedure instead of passing the address. This allows the procedure to access a copy of the variable. As a result, the variable's actual value can't be changed by the procedure to which it is passed. Use the **ByVal** keyword to pass an argument by value. See [Passing arguments ByRef and ByVal](Core/Sub#passing-arguments-byref-and-byval).
 
 ## Byte data type
 
@@ -456,7 +456,7 @@ By assigning values to named arguments, you can write:
 DoSomething namedarg3 := 4, namedarg2 := 5, namedarg1 := 20
 ```
 
-Note that the named arguments don't have to appear in the normal positional order in the syntax.
+Note that the named arguments don't have to appear in the normal positional order in the syntax. See [Named arguments](Core/Call#named-arguments).
 
 ## namespace
 {: index="namespaces" }
