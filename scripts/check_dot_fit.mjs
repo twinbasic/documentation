@@ -29,6 +29,7 @@ import { listDotSources } from "../builder/dot.mjs";
 import { withBrowser } from "./lib/browser.mjs";
 import { exitOnCrash } from "./lib/gate-probes.mjs";
 import { openInterPage } from "./lib/inter-page.mjs";
+import { parseCli } from "../lib/cli.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 
 exitOnCrash();
@@ -41,7 +42,7 @@ exitOnCrash();
 // tens of units rather than ones.
 const TOLERANCE = 1.0;
 
-const verbose = process.argv.includes("--verbose");
+const verbose = parseCli(process.argv.slice(2), { options: { verbose: { type: "boolean" } }, unknown: "ignore" }).values.verbose === true;
 
 // The committed SVG of every diagram the build renders, found as it finds them.
 const svgs = [];

@@ -1497,6 +1497,41 @@ typo included, which C72 removes. Their cases go into `check_cli.mjs` first.
 **Verify.** `check_cli.mjs`'s cases for the eight, recorded before and passing after;
 `check.bat` unchanged.
 
+**Landed.** All eight parse through `parseCli`. The six with a loop take `acceptsValue:
+Boolean`, which is their truthiness test (a missing or empty value is an error, a following
+flag is taken as the value), and `withUsageError` with `format: (err) => \`unknown arg:
+${err.arg}\``, since the loop printed every refused argument as given; positionals stay at 0.
+The loops answer `--help` and fingerprint's `--list` on the spot, so an error before them wins
+and nothing after them is read: `lib/cli.mjs` gained `stopAt` for this, with `stopped` in the
+result and three probes. `help` (short `h`) is in `stopAt` in the five that answer it, and each
+prints its usage unchanged through `printHelpAndExit`, to stdout (`check_a11y_fingerprint`,
+`check_axe_patch_equiv`, `check_tree_fresh`) or stderr (`pick_a11y_sample`, `sweep_a11y`);
+`check_a11y` has none and still refuses `--help`. `pick_a11y_sample`'s mode is the last of
+`--check`, `--propose` and `--census` in `tokens`; numbers are still read by `parseInt` and
+`parseFloat`. `check_dot_fit` and `build_dot_metrics` declare their one boolean with `unknown:
+"ignore"`, which cannot throw. The edit was a Sonnet agent's (43 calls, ~192k, 10.6 min),
+reviewed line by line; it gave the booleans `default: false`, so each value is a boolean.
+
+The cases were recorded from the unedited tools first: 25 across six tools (`--help`, an
+unknown flag, a trailing and an empty value, `--theme`/`--viewport` refused by C20's check);
+the two diagram tools ignore every argument and have none. `check_cli` now makes 78 checks, 39
+probes and 39 cases. The kit's `c48-tools.mjs` writes HEAD's copy of each tool beside the real
+one (`scripts/c48-head-<name>.mjs`, removed at the end) and runs both on 20 real invocations:
+the same exit and output on all 20, but for a stack-trace line number in one that fails alike
+on both (`--pages --list`, which takes `--list` as the page list). It covers the modes' order
+(`--propose --check` is check, `--check --census` census), `--help --bogus` against `--bogus
+--help`, `--list --bogus`, a flag taken as a value, `check_dot_fit` and `build_dot_metrics
+--check` with stray arguments, and `check_tree_fresh` with `--tree` twice. A HEAD worktree
+does not serve here: it lacks `node_modules/axe-core` and `perf/results`, which these tools
+read through `REPO_ROOT`.
+
+What differs, none of it a recorded case: `--name=value` is accepted (departure 9); after
+`--` an argument is a positional, so `check_dot_fit -- --verbose` is no longer verbose; and a
+short-option group is split into its letters, so `-hx` prints the usage where the loop said
+`unknown arg: -hx`. `build.bat`, `check.bat` (the a11y line unchanged, run by the migrated
+`check_tree_fresh`, `check_dot_fit`, `pick_a11y_sample --check` and `check_a11y`) and `test.bat`
+exit 0.
+
 ### C49 — `scripts: the harness tools parse through lib/cli.mjs`
 
 **A7-5 (R2)'s `die()` half, and L1-2's copies.** `tbbuild`, `tbrun` and `addin_test` each

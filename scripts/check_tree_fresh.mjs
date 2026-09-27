@@ -29,6 +29,7 @@
 import { readdirSync, statSync, existsSync } from "node:fs";
 import { join, resolve, relative, sep } from "node:path";
 
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { isOutputTree } from "../lib/markdown-files.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
@@ -63,24 +64,28 @@ const DEFAULT_SOURCES = ["docs", "builder", "lib"];
 const DEFAULT_TREE = "docs/_site-offline";
 const DEFAULT_MARKER = "index.html";
 
-let tree = DEFAULT_TREE;
-let markerName = DEFAULT_MARKER;
-const sources = [];
-const argv = process.argv.slice(2);
-for (let i = 0; i < argv.length; i++) {
-  if (argv[i] === "--tree" && argv[i + 1]) tree = argv[++i];
-  else if (argv[i] === "--marker" && argv[i + 1]) markerName = argv[++i];
-  else if (argv[i] === "--source" && argv[i + 1]) sources.push(argv[++i]);
-  else if (argv[i] === "-h" || argv[i] === "--help") {
-    console.log(
-      "usage: node scripts/check_tree_fresh.mjs [--tree DIR] [--marker FILE] [--source DIR ...]",
-    );
-    process.exit(0);
-  } else {
-    console.error(`unknown arg: ${argv[i]}`);
-    process.exit(2);
-  }
+const cli = withUsageError(
+  () =>
+    parseCli(process.argv.slice(2), {
+      options: {
+        tree: { type: "string", default: DEFAULT_TREE },
+        marker: { type: "string", default: DEFAULT_MARKER },
+        source: { type: "string", multiple: true },
+        help: { type: "boolean", short: "h" },
+      },
+      acceptsValue: Boolean,
+      stopAt: ["help"],
+    }),
+  { format: (err) => `unknown arg: ${err.arg}` },
+);
+if (cli.stopped === "help") {
+  printHelpAndExit(
+    "usage: node scripts/check_tree_fresh.mjs [--tree DIR] [--marker FILE] [--source DIR ...]",
+  );
 }
+let tree = cli.values.tree;
+let markerName = cli.values.marker;
+const sources = cli.values.source;
 if (!sources.length) sources.push(...DEFAULT_SOURCES);
 
 const treeDir = resolve(REPO_ROOT, tree);

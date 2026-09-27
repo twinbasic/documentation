@@ -62,6 +62,7 @@ import {
   splitStubs,
 } from "./lib/axe-scan.mjs";
 import { withBrowser } from "./lib/browser.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
 // The production scheme, read from the one registry check_a11y.mjs reads --
 // same bundle, same patches, same run options.  A survey run against a
@@ -70,42 +71,47 @@ import { withBrowser } from "./lib/browser.mjs";
 const PRODUCTION = getScheme("production");
 const AXE_PATCHES = PRODUCTION.patches;
 
-const args = process.argv.slice(2);
-let rootDir = DEFAULT_ROOT_DIR;
-let themeArg = "both";
-let viewportArg = "both";
-let filter = null;
-let limit = Infinity;
-let outPath = null;
-let resume = false;
-let reportOnly = false;
-let stockAxe = false;
-let recycleEvery = 100;
-
-for (let i = 0; i < args.length; i++) {
-  const a = args[i];
-  if (a === "--root-dir" && args[i + 1]) rootDir = args[++i];
-  else if (a === "--theme" && args[i + 1]) themeArg = args[++i];
-  else if (a === "--viewport" && args[i + 1]) viewportArg = args[++i];
-  else if (a === "--filter" && args[i + 1]) filter = args[++i];
-  else if (a === "--limit" && args[i + 1]) limit = parseInt(args[++i], 10);
-  else if (a === "--out" && args[i + 1]) outPath = args[++i];
-  else if (a === "--resume") resume = true;
-  else if (a === "--report") {
-    reportOnly = true;
-    resume = true;
-  } else if (a === "--stock-axe") stockAxe = true;
-  else if (a === "--recycle-every" && args[i + 1]) recycleEvery = parseInt(args[++i], 10);
-  else if (a === "-h" || a === "--help") {
-    console.error("usage: node scripts/sweep_a11y.mjs [--theme T] [--viewport V] [--filter SUBSTR]");
-    console.error("                                   [--limit N] [--out FILE] [--resume] [--report]");
-    console.error("                                   [--stock-axe] [--root-dir DIR]");
-    process.exit(0);
-  } else {
-    console.error("unknown arg: " + a);
-    process.exit(2);
-  }
+const cli = withUsageError(
+  () =>
+    parseCli(process.argv.slice(2), {
+      options: {
+        "root-dir": { type: "string", default: DEFAULT_ROOT_DIR },
+        theme: { type: "string", default: "both" },
+        viewport: { type: "string", default: "both" },
+        filter: { type: "string" },
+        limit: { type: "string" },
+        out: { type: "string" },
+        resume: { type: "boolean", default: false },
+        report: { type: "boolean", default: false },
+        "stock-axe": { type: "boolean", default: false },
+        "recycle-every": { type: "string" },
+        help: { type: "boolean", short: "h" },
+      },
+      acceptsValue: Boolean,
+      stopAt: ["help"],
+    }),
+  { format: (err) => `unknown arg: ${err.arg}` },
+);
+if (cli.stopped === "help") {
+  printHelpAndExit(
+    "usage: node scripts/sweep_a11y.mjs [--theme T] [--viewport V] [--filter SUBSTR]\n"
+      + "                                   [--limit N] [--out FILE] [--resume] [--report]\n"
+      + "                                   [--stock-axe] [--root-dir DIR]",
+    { stream: "stderr" },
+  );
 }
+
+let rootDir = cli.values.rootDir;
+let themeArg = cli.values.theme;
+let viewportArg = cli.values.viewport;
+let filter = cli.values.filter ?? null;
+let limit = cli.values.limit !== undefined ? parseInt(cli.values.limit, 10) : Infinity;
+let outPath = cli.values.out ?? null;
+let resume = cli.values.resume;
+let reportOnly = cli.values.report;
+if (reportOnly) resume = true;
+let stockAxe = cli.values.stockAxe;
+let recycleEvery = cli.values.recycleEvery !== undefined ? parseInt(cli.values.recycleEvery, 10) : 100;
 
 rootDir = resolve(rootDir);
 outPath = resolve(outPath ?? join(REPO_ROOT, "perf/results/a11y-sweep.jsonl"));

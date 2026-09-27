@@ -36,6 +36,7 @@ import path from "node:path";
 import { withBrowser } from "./lib/browser.mjs";
 import { exitOnCrash } from "./lib/gate-probes.mjs";
 import { openInterPage } from "./lib/inter-page.mjs";
+import { parseCli } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 // A crash exits 2, where 1 is --check finding the table stale.
@@ -56,7 +57,7 @@ const VARIANTS = [
   { key: "boldItalic", weight: 700, style: "italic" },
 ];
 
-const check = process.argv.includes("--check");
+const check = parseCli(process.argv.slice(2), { options: { check: { type: "boolean" } }, unknown: "ignore" }).values.check === true;
 
 const table = await withBrowser(async (browser) => {
   const page = await openInterPage(browser, "dot-metrics", { css: "body{margin:0}" });

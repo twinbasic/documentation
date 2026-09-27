@@ -60,24 +60,27 @@ import {
   runMatrix,
 } from "./lib/axe-scan.mjs";
 import { withBrowser } from "./lib/browser.mjs";
+import { parseCli, withUsageError } from "../lib/cli.mjs";
 
-const args = process.argv.slice(2);
-let rootDir = DEFAULT_ROOT_DIR;
-let themeArg = "both";
-let viewportArg = "both";
-let stockAxe = false;
-let minified = false;
-for (let i = 0; i < args.length; i++) {
-  if (args[i] === "--root-dir" && args[i + 1]) rootDir = args[++i];
-  else if (args[i] === "--theme" && args[i + 1]) themeArg = args[++i];
-  else if (args[i] === "--viewport" && args[i + 1]) viewportArg = args[++i];
-  else if (args[i] === "--stock-axe") stockAxe = true;
-  else if (args[i] === "--minified") minified = true;
-  else {
-    console.error(`unknown arg: ${args[i]}`);
-    process.exit(2);
-  }
-}
+const { values } = withUsageError(
+  () =>
+    parseCli(process.argv.slice(2), {
+      options: {
+        "root-dir": { type: "string", default: DEFAULT_ROOT_DIR },
+        theme: { type: "string", default: "both" },
+        viewport: { type: "string", default: "both" },
+        "stock-axe": { type: "boolean", default: false },
+        minified: { type: "boolean", default: false },
+      },
+      acceptsValue: Boolean,
+    }),
+  { format: (err) => `unknown arg: ${err.arg}` },
+);
+let rootDir = values.rootDir;
+let themeArg = values.theme;
+let viewportArg = values.viewport;
+let stockAxe = values.stockAxe;
+let minified = values.minified;
 rootDir = resolve(rootDir);
 
 const themes = pick("theme", themeArg, THEMES);

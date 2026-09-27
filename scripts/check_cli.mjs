@@ -140,6 +140,16 @@ const OPTIONS = {
   const any = parseCli(["--port"], { options: { port: { type: "string", default: "d" } }, acceptsValue: () => true }).values;
   check("a value acceptsValue takes is stored as it is, undefined included", "port" in any && any.port === undefined, show(any));
 }
+{
+  const spec = { options: { ...OPTIONS, help: { type: "boolean", short: "h" } }, positionals: 1, stopAt: ["help"] };
+  const r = parseCli(["--port", "80", "-h", "--bogus", "--port"], spec);
+  check("stopAt ends the parse at the option, reading nothing after it and counting no positionals",
+    r.stopped === "help" && r.values.port === "80" && r.values.help === true, show(r));
+  check("stopAt does not excuse an error before the option",
+    Boolean(cliError(() => parseCli(["--bogus", "--help"], spec), "unknown-option")));
+  check("without its option, stopAt changes nothing", parseCli(["a"], spec).stopped === undefined
+    && Boolean(cliError(() => parseCli([], spec), "missing-positional")));
+}
 check("unknown takes only its three values", caught(() => parseCli([], { unknown: "warn" })) instanceof TypeError);
 
 // With the defaults, parseCli refuses what a strict parseArgs refuses, in the
@@ -257,6 +267,38 @@ const CASES = [
   { tool: "scripts/census_attributes.mjs", args: ["--src", "--json"], exit: 2, stderr: "--src needs a value\n" },
   { tool: "scripts/build_package_api.mjs", args: ["--out"], exit: 2, stderr: "--out needs a value\n" },
   { tool: "scripts/build_package_api.mjs", args: ["--src", "--check"], exit: 2, stderr: "--src needs a value\n" },
+
+  // Recorded in C48, before the a11y and diagram tools moved onto lib/cli.mjs.
+  // A value flag given nothing, at the end or as "", reads as an unknown
+  // argument; one followed by another flag takes the flag as its value, so that
+  // is no case. check_a11y has no --help and refuses it. --theme and --viewport
+  // are checked against their lists (C20). check_dot_fit and build_dot_metrics
+  // ignore every argument, so neither has a case.
+  { tool: "scripts/check_a11y.mjs", args: ["--help"], exit: 2, stderr: "unknown arg: --help\n" },
+  { tool: "scripts/check_a11y.mjs", args: ["--bogus"], exit: 2, stderr: "unknown arg: --bogus\n" },
+  { tool: "scripts/check_a11y.mjs", args: ["--root-dir"], exit: 2, stderr: "unknown arg: --root-dir\n" },
+  { tool: "scripts/check_a11y.mjs", args: ["--theme", ""], exit: 2, stderr: "unknown arg: --theme\n" },
+  { tool: "scripts/check_a11y.mjs", args: ["--theme", "drak"], exit: 2, stderr: 'unknown --theme "drak"; expected one of light, dark or both\n' },
+  { tool: "scripts/check_a11y.mjs", args: ["--viewport", "huge"], exit: 2, stderr: 'unknown --viewport "huge"; expected one of desktop, mobile or both\n' },
+  { tool: "scripts/check_a11y_fingerprint.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_a11y_fingerprint\.mjs / },
+  { tool: "scripts/check_a11y_fingerprint.mjs", args: ["--bogus"], exit: 2, stderr: "unknown arg: --bogus\n" },
+  { tool: "scripts/check_a11y_fingerprint.mjs", args: ["--pages"], exit: 2, stderr: "unknown arg: --pages\n" },
+  { tool: "scripts/check_a11y_fingerprint.mjs", args: ["--theme", "drak"], exit: 2, stderr: 'unknown --theme "drak"; expected one of light, dark or both\n' },
+  { tool: "scripts/check_axe_patch_equiv.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_axe_patch_equiv\.mjs / },
+  { tool: "scripts/check_axe_patch_equiv.mjs", args: ["--bogus"], exit: 2, stderr: "unknown arg: --bogus\n" },
+  { tool: "scripts/check_axe_patch_equiv.mjs", args: ["--patch"], exit: 2, stderr: "unknown arg: --patch\n" },
+  { tool: "scripts/check_tree_fresh.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_tree_fresh\.mjs / },
+  { tool: "scripts/check_tree_fresh.mjs", args: ["--bogus"], exit: 2, stderr: "unknown arg: --bogus\n" },
+  { tool: "scripts/check_tree_fresh.mjs", args: ["--source"], exit: 2, stderr: "unknown arg: --source\n" },
+  { tool: "scripts/check_tree_fresh.mjs", args: ["--tree"], exit: 2, stderr: "unknown arg: --tree\n" },
+  { tool: "scripts/pick_a11y_sample.mjs", args: ["--help"], exit: 0, stderr: /^usage: node scripts\/pick_a11y_sample\.mjs / },
+  { tool: "scripts/pick_a11y_sample.mjs", args: ["--bogus"], exit: 2, stderr: "unknown arg: --bogus\n" },
+  { tool: "scripts/pick_a11y_sample.mjs", args: ["--budget"], exit: 2, stderr: "unknown arg: --budget\n" },
+  { tool: "scripts/sweep_a11y.mjs", args: ["--help"], exit: 0, stderr: /^usage: node scripts\/sweep_a11y\.mjs / },
+  { tool: "scripts/sweep_a11y.mjs", args: ["--bogus"], exit: 2, stderr: "unknown arg: --bogus\n" },
+  { tool: "scripts/sweep_a11y.mjs", args: ["--limit"], exit: 2, stderr: "unknown arg: --limit\n" },
+  { tool: "scripts/sweep_a11y.mjs", args: ["--theme", "drak"], exit: 2, stderr: 'unknown --theme "drak"; expected one of light, dark or both\n' },
+  { tool: "scripts/sweep_a11y.mjs", args: ["--viewport", "huge"], exit: 2, stderr: 'unknown --viewport "huge"; expected one of desktop, mobile or both\n' },
 ];
 
 const TIMEOUT_MS = 30_000;

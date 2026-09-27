@@ -48,6 +48,7 @@ import {
   DEFAULT_ROOT_DIR, REPO_ROOT, SAMPLE_PAGES, discoverPages, median, pad, splitStubs,
 } from "./lib/axe-scan.mjs";
 import { exitOnCrash } from "./lib/gate-probes.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
 // A crash exits 2, where 1 is a coverage gap.
 exitOnCrash();
@@ -125,31 +126,37 @@ const ANCHORS = {
 // CLI
 // ---------------------------------------------------------------------------
 
-const args = process.argv.slice(2);
-let mode = "check";
-let rootDir = DEFAULT_ROOT_DIR;
-let sweepPath = join(REPO_ROOT, "perf/results/a11y-sweep.jsonl");
-let budget = Infinity;
-let fresh = false;
-
-for (let i = 0; i < args.length; i++) {
-  const a = args[i];
-  if (a === "--check") mode = "check";
-  else if (a === "--propose") mode = "propose";
-  else if (a === "--census") mode = "census";
-  else if (a === "--fresh") fresh = true;
-  else if (a === "--root-dir" && args[i + 1]) rootDir = args[++i];
-  else if (a === "--sweep" && args[i + 1]) sweepPath = args[++i];
-  else if (a === "--budget" && args[i + 1]) budget = parseFloat(args[++i]);
-  else if (a === "-h" || a === "--help") {
-    console.error("usage: node scripts/pick_a11y_sample.mjs [--check|--propose|--census] [--fresh]");
-    console.error("                                        [--root-dir DIR] [--sweep FILE] [--budget MS]");
-    process.exit(0);
-  } else {
-    console.error("unknown arg: " + a);
-    process.exit(2);
-  }
+const cli = withUsageError(
+  () =>
+    parseCli(process.argv.slice(2), {
+      options: {
+        check: { type: "boolean" },
+        propose: { type: "boolean" },
+        census: { type: "boolean" },
+        fresh: { type: "boolean", default: false },
+        "root-dir": { type: "string", default: DEFAULT_ROOT_DIR },
+        sweep: { type: "string", default: join(REPO_ROOT, "perf/results/a11y-sweep.jsonl") },
+        budget: { type: "string" },
+        help: { type: "boolean", short: "h" },
+      },
+      acceptsValue: Boolean,
+      stopAt: ["help"],
+    }),
+  { format: (err) => `unknown arg: ${err.arg}` },
+);
+if (cli.stopped === "help") {
+  printHelpAndExit(
+    "usage: node scripts/pick_a11y_sample.mjs [--check|--propose|--census] [--fresh]\n"
+      + "                                        [--root-dir DIR] [--sweep FILE] [--budget MS]",
+    { stream: "stderr" },
+  );
 }
+const modeTokens = cli.tokens.filter((t) => t.key === "check" || t.key === "propose" || t.key === "census");
+let mode = modeTokens.length ? modeTokens[modeTokens.length - 1].key : "check";
+let rootDir = cli.values.rootDir;
+let sweepPath = cli.values.sweep;
+let budget = cli.values.budget !== undefined ? parseFloat(cli.values.budget) : Infinity;
+let fresh = cli.values.fresh;
 rootDir = resolve(rootDir);
 
 // ---------------------------------------------------------------------------

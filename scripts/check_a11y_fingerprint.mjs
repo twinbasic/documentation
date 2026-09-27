@@ -74,57 +74,64 @@ import {
   SOURCE_PATCHES,
 } from "./lib/axe-scan.mjs";
 import { withBrowser } from "./lib/browser.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
 // ---- CLI ------------------------------------------------------------------
-let baselineLabel = "production";
-let candidateLabel = "production";
-let rootDir = DEFAULT_ROOT_DIR;
-let themeArg = "both";
-let viewportArg = "both";
-let pagesArg = null;
-let jsonOut = null;
-let unminified = false;
-let patchesArg = "";
+const cli = withUsageError(
+  () =>
+    parseCli(process.argv.slice(2), {
+      options: {
+        baseline: { type: "string", default: "production" },
+        candidate: { type: "string", default: "production" },
+        "root-dir": { type: "string", default: DEFAULT_ROOT_DIR },
+        theme: { type: "string", default: "both" },
+        viewport: { type: "string", default: "both" },
+        pages: { type: "string" },
+        json: { type: "string" },
+        unminified: { type: "boolean", default: false },
+        patches: { type: "string", default: "" },
+        list: { type: "boolean" },
+        help: { type: "boolean", short: "h" },
+      },
+      acceptsValue: Boolean,
+      stopAt: ["list", "help"],
+    }),
+  { format: (err) => `unknown arg: ${err.arg}` },
+);
 
-const args = process.argv.slice(2);
-for (let i = 0; i < args.length; i++) {
-  const a = args[i];
-  if (a === "--baseline" && args[i + 1]) baselineLabel = args[++i];
-  else if (a === "--candidate" && args[i + 1]) candidateLabel = args[++i];
-  else if (a === "--root-dir" && args[i + 1]) rootDir = args[++i];
-  else if (a === "--theme" && args[i + 1]) themeArg = args[++i];
-  else if (a === "--viewport" && args[i + 1]) viewportArg = args[++i];
-  else if (a === "--pages" && args[i + 1]) pagesArg = args[++i].split(",");
-  else if (a === "--json" && args[i + 1]) jsonOut = args[++i];
-  else if (a === "--unminified") unminified = true;
-  else if (a === "--patches" && args[i + 1]) patchesArg = args[++i];
-  else if (a === "--list") {
-    console.log(`axe-core ${axeVersion()}\n`);
-    console.log("patches:");
-    for (const [label, p] of Object.entries(SOURCE_PATCHES)) {
-      console.log(`  ${label.padEnd(24)} ${p.describe}`);
-    }
-    console.log("");
-    console.log("schemes:");
-    for (const label of Object.keys(SCHEMES)) {
-      const s = getScheme(label);
-      const flag = s.gates === false ? "  [does not gate]" : "";
-      const p = s.patches.length ? `  (+${s.patches.join(", ")})` : "  (stock)";
-      console.log(`  ${label.padEnd(20)} ${s.describe}${flag}${p}`);
-    }
-    process.exit(0);
-  } else if (a === "-h" || a === "--help") {
-    console.log(
-      "usage: node scripts/check_a11y_fingerprint.mjs [--baseline SCHEME] " +
-        "[--candidate SCHEME] [--root-dir DIR] [--theme T] [--viewport V] " +
-        "[--pages P,P] [--json FILE] [--unminified] [--list]"
-    );
-    process.exit(0);
-  } else {
-    console.error(`unknown arg: ${a}`);
-    process.exit(2);
+if (cli.stopped === "list") {
+  console.log(`axe-core ${axeVersion()}\n`);
+  console.log("patches:");
+  for (const [label, p] of Object.entries(SOURCE_PATCHES)) {
+    console.log(`  ${label.padEnd(24)} ${p.describe}`);
   }
+  console.log("");
+  console.log("schemes:");
+  for (const label of Object.keys(SCHEMES)) {
+    const s = getScheme(label);
+    const flag = s.gates === false ? "  [does not gate]" : "";
+    const p = s.patches.length ? `  (+${s.patches.join(", ")})` : "  (stock)";
+    console.log(`  ${label.padEnd(20)} ${s.describe}${flag}${p}`);
+  }
+  process.exit(0);
 }
+if (cli.stopped === "help") {
+  printHelpAndExit(
+    "usage: node scripts/check_a11y_fingerprint.mjs [--baseline SCHEME] " +
+      "[--candidate SCHEME] [--root-dir DIR] [--theme T] [--viewport V] " +
+      "[--pages P,P] [--json FILE] [--unminified] [--list]"
+  );
+}
+
+let baselineLabel = cli.values.baseline;
+let candidateLabel = cli.values.candidate;
+let rootDir = cli.values.rootDir;
+let themeArg = cli.values.theme;
+let viewportArg = cli.values.viewport;
+let pagesArg = cli.values.pages !== undefined ? cli.values.pages.split(",") : null;
+let jsonOut = cli.values.json ?? null;
+let unminified = cli.values.unminified;
+let patchesArg = cli.values.patches;
 
 const baseline = getScheme(baselineLabel);
 const candidate = getScheme(candidateLabel);
