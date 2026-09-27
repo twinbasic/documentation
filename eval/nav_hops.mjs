@@ -32,6 +32,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
 import { parseFrontmatter } from "../lib/frontmatter.mjs";
 import { blockRegions } from "../lib/markdown.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
@@ -44,15 +45,22 @@ const USAGE =
   "whose permalink matches each regex. See eval/README.md.";
 
 function parseArgs(argv) {
-  const o = { src: REPO_ROOT, from: "docs/index.md", targets: [] };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === "--from") o.from = argv[++i];
-    else if (a === "--src") o.src = path.resolve(argv[++i]);
-    else if (a === "--help" || a === "-h") o.help = true;
-    else o.targets.push(a);
-  }
-  return o;
+  const { values, positionals } = parseCli(argv, {
+    options: {
+      from: { type: "string", default: "docs/index.md" },
+      src: { type: "string" },
+      help: { type: "boolean", short: "h" },
+    },
+    positionals: { max: Infinity },
+    unknown: "positional",
+    acceptsValue: () => true,
+  });
+  return {
+    from: values.from,
+    src: "src" in values ? path.resolve(values.src) : REPO_ROOT,
+    help: values.help,
+    targets: positionals,
+  };
 }
 
 /** A URL reduced to what identifies a page: no fragment, query, extension or trailing slash. */
@@ -114,10 +122,7 @@ function resolve(pages, from, href) {
 
 async function main(argv) {
   const o = parseArgs(argv);
-  if (o.help || !o.targets.length) {
-    console.log(USAGE);
-    return o.help ? 0 : 2;
-  }
+  if (o.help || !o.targets.length) return printHelpAndExit(USAGE, { exitCode: o.help ? 0 : 2 });
   // Git Bash turns an argument that looks like a POSIX path into a Windows one,
   // so '^/tB/Core/Open$' arrives as '^C:/Program Files/Git/tB/Core/Open$', and
   // every target then reports as unreachable, which reads as a finding.

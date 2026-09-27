@@ -618,8 +618,14 @@ found" (`.search-no-result`, reused rather than adding a class, since
 visually it's the same single centred message) and the same text in the
 `a11y-status` live region, then yields (a `requestAnimationFrame` raced by
 a 100 ms timer, since frames never fire in a hidden tab, then
-`setTimeout(fn, 0)`) so that message actually paints before the
-synchronous, comparatively expensive index build runs on the main thread.
+`setTimeout(fn, 0)`) so that message actually paints before the index
+build begins on the main thread. The build runs 25 ms at a time and yields
+between slices (`buildIndexInSlices()`, lunr's own work in pieces: an
+entry added, a hundred fields' vectors, a term put into the token set), so
+the reader can keep typing while the message shows; the longest task left
+is about 50 ms. Built in one piece, the index held the main thread for
+about 1.6 s, the box took no keystrokes, and the first search was for the
+text typed before the build began.
 A keystroke during the load leaves the message in place. Checked in a
 browser: the message stays up until results replace it, with no empty
 panel in between, both online and in the offline tree.

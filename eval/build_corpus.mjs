@@ -15,6 +15,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { isOutputTree } from "../lib/markdown-files.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
@@ -94,15 +95,23 @@ const WITHHELD = [
 const STUB = "/* [ source withheld for this exercise -- treat this file as unreadable ] */\n";
 
 function parseArgs(argv) {
-  const o = { src: REPO_ROOT, dest: null, quiet: false };
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === "--src") o.src = path.resolve(argv[++i]);
-    else if (argv[i] === "--dest") o.dest = path.resolve(argv[++i]);
-    else if (argv[i] === "--quiet") o.quiet = true;
-    else if (argv[i] === "--help" || argv[i] === "-h") o.help = true;
-    else throw new Error(`unknown argument: ${argv[i]}`);
-  }
-  return o;
+  const { values } = withUsageError(() => parseCli(argv, {
+    options: {
+      src: { type: "string" },
+      dest: { type: "string" },
+      quiet: { type: "boolean", default: false },
+      help: { type: "boolean", short: "h" },
+    },
+    positionals: 0,
+    unknown: "error",
+    acceptsValue: () => true,
+  }), { format: (err) => `unknown argument: ${err.arg}`, exitCode: 1 });
+  return {
+    src: "src" in values ? path.resolve(values.src) : REPO_ROOT,
+    dest: "dest" in values ? path.resolve(values.dest) : null,
+    quiet: values.quiet,
+    help: values.help,
+  };
 }
 
 function isExcluded(rel) {
@@ -196,12 +205,12 @@ function report(dest, counts) {
 
 const opts = parseArgs(process.argv.slice(2));
 if (opts.help || !opts.dest) {
-  console.log(
+  printHelpAndExit(
     "Usage: node eval/build_corpus.mjs --dest <path> [--src <path>] [--quiet]\n\n" +
     "Mirrors the repository with every non-prose file replaced by an unreadable\n" +
     "stub, so a documentation evaluation cannot silently read the implementation.\n" +
-    "See eval/README.md."
+    "See eval/README.md.",
+    { exitCode: opts.help ? 0 : 1 },
   );
-  process.exit(opts.help ? 0 : 1);
 }
 build(opts);

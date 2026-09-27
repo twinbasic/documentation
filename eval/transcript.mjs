@@ -24,6 +24,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
 
 /** Every event in a stream-json session, in order. */
 export function readTranscript(file) {
@@ -188,19 +189,28 @@ export function printDigest(s, { calls = false, report = false } = {}) {
 }
 
 function main(argv) {
-  const file = argv.find((a) => !a.startsWith("--"));
-  if (!file || argv.includes("--help") || argv.includes("-h")) {
-    console.log(
+  const { values, positionals } = parseCli(argv, {
+    options: {
+      calls: { type: "boolean", default: false },
+      report: { type: "boolean", default: false },
+      // No short "h": a lone -h is taken as the file, so it prints the usage
+      // and exits 0, where --help alone exits 1. C71 makes both exit 0.
+      help: { type: "boolean" },
+    },
+    positionals: { max: Infinity },
+    unknown: "positional",
+  });
+  const file = positionals.find((a) => !a.startsWith("--"));
+  const help = values.help || positionals.includes("-h");
+  if (!file || help) {
+    printHelpAndExit(
       "Usage: node eval/transcript.mjs <case.jsonl> [--calls] [--report]\n\n" +
       "Summarises an evaluator's session and audits the order of its channels.\n" +
-      "See eval/README.md."
+      "See eval/README.md.",
+      { exitCode: file ? 0 : 1 },
     );
-    process.exit(file ? 0 : 1);
   }
-  printDigest(summarize(readTranscript(file)), {
-    calls: argv.includes("--calls"),
-    report: argv.includes("--report"),
-  });
+  printDigest(summarize(readTranscript(file)), { calls: values.calls, report: values.report });
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

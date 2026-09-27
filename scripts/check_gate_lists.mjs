@@ -84,7 +84,7 @@ import { createMarkdownIt } from "../builder/render.mjs";
 import { parseCli } from "../lib/cli.mjs";
 import { splitOnMarker } from "../lib/markdown.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
-import { gatesFromBat } from "./lib/gate-roster.mjs";
+import { gateName, gatesFromBat } from "./lib/gate-roster.mjs";
 
 const TOOLS_MD = "docs/Documentation/Tools.md";
 
@@ -116,18 +116,19 @@ function sectionBody(src, heading) {
 }
 
 /**
- * The gate scripts a documented numbered list names, in order.
+ * The gates a documented numbered list names, in order.
  *
  * Deliberately narrow: an ordered-list item whose text opens with a link to
- * `scripts/<name>.mjs`. Prose elsewhere in the section may mention a script
- * without being a claim about the list -- Tools.md's check.bat entry names
- * test.bat in its opening paragraph, and that is a cross-reference, not a step.
+ * `scripts/<name>.mjs`, or to `test/<name>.mjs` for a test file. Prose
+ * elsewhere in the section may mention a script without being a claim about
+ * the list -- Tools.md's check.bat entry names test.bat in its opening
+ * paragraph, and that is a cross-reference, not a step.
  */
 function gatesFromDoc(body) {
   const out = [];
   for (const line of body.split(/\r?\n/)) {
-    const m = /^\s*\d+\.\s+\[`scripts[\\/]([A-Za-z0-9_]+\.mjs)/.exec(line);
-    if (m) out.push(m[1]);
+    const m = /^\s*\d+\.\s+\[`(?:scripts[\\/]([A-Za-z0-9_]+\.mjs)|test[\\/]([A-Za-z0-9_.]+\.mjs))/.exec(line);
+    if (m) out.push(gateName(m[1], m[2]));
   }
   return out;
 }
@@ -157,11 +158,11 @@ function commandRuns(src, file) {
     cur = null;
   };
   src.split(/\r?\n/).forEach((line, i) => {
-    const m = /^\s*(&&\s*)?node\s+scripts[\\/]([A-Za-z0-9_]+\.mjs)/.exec(line);
+    const m = /^\s*(&&\s*)?node\s+(?:scripts[\\/]([A-Za-z0-9_]+\.mjs)|--test\s+test[\\/]([A-Za-z0-9_.]+\.mjs))/.exec(line);
     if (!m) { flush(); return; }
     if (!cur) cur = { file, line: i + 1, gates: [], chained: true };
     else if (!m[1]) cur.chained = false;
-    cur.gates.push(m[2]);
+    cur.gates.push(gateName(m[2], m[3]));
   });
   flush();
   return runs;
@@ -428,16 +429,33 @@ const PROBES = [
     bat: "node scripts/a.mjs\n",
     doc: "### x.bat\n\nIt runs:\n\n1. [`scripts/a.mjs`](#a) --- a.\n\n### next\n",
   },
+  {
+    // test/search.test.mjs ran in test.bat for as long as the roster read only
+    // scripts/, so neither this gate nor check_ci_workflows saw it, and CI
+    // never ran it. The count here agrees with the list unless the test file
+    // is read, so this fails when the roster stops reading one.
+    name: "a test file the docs do not list",
+    bat: "node scripts/a.mjs\nnode --test test/a.test.mjs\n",
+    doc: "### x.bat\n\nOne step:\n\n1. [`scripts/a.mjs`](#a) --- a.\n\n### next\n",
+  },
 ];
 
-// Must NOT fire: a section whose prose mentions another wrapper's gate outside
-// the numbered list, which is what Tools.md's real entries do.
-const NEGATIVE = {
-  name: "a cross-reference in prose is not a step",
-  bat: "node scripts/a.mjs\n",
-  doc: "### x.bat\n\nTests of the toolchain are [`scripts/zz.mjs`](#zz), not these. One step:\n\n" +
-       "1. [`scripts/a.mjs`](#a) --- a.\n\n### next\n",
-};
+// Must NOT fire.
+const NEGATIVES = [
+  {
+    // What Tools.md's real entries do: prose that mentions another wrapper's
+    // gate outside the numbered list.
+    name: "a cross-reference in prose is not a step",
+    bat: "node scripts/a.mjs\n",
+    doc: "### x.bat\n\nTests of the toolchain are [`scripts/zz.mjs`](#zz), not these. One step:\n\n" +
+         "1. [`scripts/a.mjs`](#a) --- a.\n\n### next\n",
+  },
+  {
+    name: "a test file listed by its path is a step",
+    bat: "node scripts/a.mjs\r\nnode --test test\\a.test.mjs\r\n",
+    doc: "### x.bat\n\nTwo steps:\n\n1. [`scripts/a.mjs`](#a) --- a.\n2. [`test/a.test.mjs`](#a-test) --- tests.\n\n### next\n",
+  },
+];
 
 // Probes for the prose sweep. Every positive is a sentence that was on a
 // published page at 4f97bac, against the counts that were true at the time
@@ -516,8 +534,10 @@ function selfTest() {
     const found = compareWrapper({ bat: "x.bat", heading: "### x.bat" }, p.bat, p.doc);
     results.push([found.length > 0, p.name]);
   }
-  const neg = compareWrapper({ bat: "x.bat", heading: "### x.bat" }, NEGATIVE.bat, NEGATIVE.doc);
-  results.push([neg.length === 0, NEGATIVE.name]);
+  for (const n of NEGATIVES) {
+    const found = compareWrapper({ bat: "x.bat", heading: "### x.bat" }, n.bat, n.doc);
+    results.push([found.length === 0, n.name]);
+  }
 
   for (const p of PROSE_PROBES) {
     results.push([proseFindings(p.md, "<probe>", REAL_COUNTS).length > 0, `prose: ${p.name}`]);

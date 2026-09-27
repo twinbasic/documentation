@@ -25,20 +25,30 @@ import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import fs from "node:fs";
 import path from "node:path";
+import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const require = createRequire(import.meta.url);
 
 function parseArgs(argv) {
-  const o = { site: path.join(REPO_ROOT, "docs/_site"), n: 8, terms: [] };
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === "--site") o.site = path.resolve(argv[++i]);
-    else if (argv[i] === "--n") o.n = Number(argv[++i]);
-    else if (argv[i] === "--composition") o.composition = true;
-    else if (argv[i] === "--help" || argv[i] === "-h") o.help = true;
-    else o.terms.push(argv[i]);
-  }
-  return o;
+  const { values, positionals } = parseCli(argv, {
+    options: {
+      site: { type: "string" },
+      n: { type: "string" },
+      composition: { type: "boolean" },
+      help: { type: "boolean", short: "h" },
+    },
+    positionals: { max: Infinity },
+    unknown: "positional",
+    acceptsValue: () => true,
+  });
+  return {
+    site: "site" in values ? path.resolve(values.site) : path.join(REPO_ROOT, "docs/_site"),
+    n: "n" in values ? Number(values.n) : 8,
+    composition: values.composition,
+    help: values.help,
+    terms: positionals,
+  };
 }
 
 export function resolvePaths(site) {
@@ -517,13 +527,13 @@ function composition(docs) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.help || (!opts.composition && !opts.terms.length)) {
-    console.log(
+    printHelpAndExit(
       'Usage: node eval/site_search.mjs "<query>" [--n <count>] [--site <path>]\n' +
       "       node eval/site_search.mjs --composition\n\n" +
       "Queries the built site's real lunr index with the real query logic.\n" +
-      "See eval/README.md."
+      "See eval/README.md.",
+      { exitCode: opts.help ? 0 : 1 },
     );
-    process.exit(opts.help ? 0 : 1);
   }
 
   const ctx = load(opts.site);

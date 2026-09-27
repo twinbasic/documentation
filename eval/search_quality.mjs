@@ -125,6 +125,7 @@ import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { performance } from "node:perf_hooks";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 import { load, buildIndex, search, KIND_WORDS } from "./site_search.mjs";
@@ -132,29 +133,29 @@ import { load, buildIndex, search, KIND_WORDS } from "./site_search.mjs";
 // ---------------------------------------------------------------- arg parsing
 
 function parseArgs(argv) {
-  const o = {
-    site: path.join(REPO_ROOT, "docs/_site"),
-    save: null,
-    compare: null,
-    sample: null,
-    worstN: 15,
-    failures: 0,
+  const { values } = withUsageError(() => parseCli(argv, {
+    options: {
+      site: { type: "string" },
+      save: { type: "string" },
+      compare: { type: "string" },
+      sample: { type: "string" },
+      worst: { type: "string" },
+      failures: { type: "string" },
+      help: { type: "boolean", short: "h" },
+    },
+    positionals: 0,
+    unknown: "error",
+    acceptsValue: () => true,
+  }), { format: (err) => `unrecognised argument: ${err.arg}`, exitCode: 1 });
+  return {
+    site: "site" in values ? path.resolve(values.site) : path.join(REPO_ROOT, "docs/_site"),
+    save: "save" in values ? path.resolve(values.save) : null,
+    compare: "compare" in values ? path.resolve(values.compare) : null,
+    sample: "sample" in values ? Number(values.sample) : null,
+    worstN: "worst" in values ? Number(values.worst) : 15,
+    failures: "failures" in values ? Number(values.failures) : 0,
+    help: values.help,
   };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === "--site") o.site = path.resolve(argv[++i]);
-    else if (a === "--save") o.save = path.resolve(argv[++i]);
-    else if (a === "--compare") o.compare = path.resolve(argv[++i]);
-    else if (a === "--sample") o.sample = Number(argv[++i]);
-    else if (a === "--worst") o.worstN = Number(argv[++i]);
-    else if (a === "--failures") o.failures = Number(argv[++i]);
-    else if (a === "--help" || a === "-h") o.help = true;
-    else {
-      console.error(`unrecognised argument: ${a}`);
-      process.exit(1);
-    }
-  }
-  return o;
 }
 
 // ------------------------------------------------------------- URL normalize
@@ -693,11 +694,10 @@ function printCompare(current, saved, worstN) {
 function main() {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.help) {
-    console.log(
+    printHelpAndExit(
       "Usage: node eval/search_quality.mjs [--site docs/_site] [--save file] " +
       "[--compare file] [--worst N] [--sample N] [--failures N]\n\nSee the header comment in this file."
     );
-    process.exit(0);
   }
 
   const ctx = load(opts.site);

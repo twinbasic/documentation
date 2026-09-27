@@ -390,6 +390,96 @@ const CASES = [
   { tool: "scripts/compare_trees.mjs", args: ["--bogus", "--help"], exit: 2, stderr: /^compare_trees: unknown argument "--bogus"\n\nusage: node scripts\/compare_trees\.mjs / },
   { tool: "scripts/compare_trees.mjs", args: ["--before", "--", "x"], exit: 2, stderr: /^compare_trees: --before needs a value\n\nusage: node scripts\/compare_trees\.mjs / },
   { tool: "scripts/compare_trees.mjs", args: ["--keep=1"], exit: 2, stderr: /^compare_trees: unknown argument "--keep=1"\n\nusage: node scripts\/compare_trees\.mjs / },
+
+  // Recorded in C51, before render-book, eval/ and wisdom moved onto
+  // lib/cli.mjs. In every one of them a value flag takes whatever follows it,
+  // so a missing value shows only where the value is used. render-book
+  // refuses --help, an unknown flag and a second input with "unknown arg".
+  // build_corpus threw on an unknown argument, so only its message is pinned,
+  // as are the other crashes here. Node names a file it cannot open with its
+  // folder on Windows and as given on Linux, so a crash's file name may
+  // follow a folder or stand alone. run_case and search_quality refuse one in
+  // their own words. nav_hops and site_search take an unknown
+  // flag as a pattern or a search term. transcript's file is its first
+  // argument that does not start with --, -h included, and its exit code
+  // follows whether there is one, so a bare --help exits 1. wisdom takes its
+  // first argument as the command and answers --help there as an unknown
+  // command; after it, an unknown option or a stray argument is refused
+  // before any command runs, and the command in these cases is never a real
+  // one, so that none can start an export.
+  { tool: "book/render-book.mjs", args: ["--help"], exit: 2, stderr: "unknown arg: --help\n" },
+  { tool: "book/render-book.mjs", args: [], exit: 2, stderr: "usage: node render-book.mjs <input.html> -o <output.pdf> [--outline-tags ...] [-t ms] [--additional-script path]...\n" },
+  { tool: "book/render-book.mjs", args: ["a.html", "b.html"], exit: 2, stderr: "unknown arg: b.html\n" },
+  { tool: "book/render-book.mjs", args: ["a.html", "-o"], exit: 2, stderr: /^usage: node render-book\.mjs <input\.html> / },
+  { tool: "book/render-book.mjs", args: ["-o", "--bogus", "a.html"], exit: 1, stderr: /^input not found: .*a\.html\n$/ },
+  { tool: "book/render-book.mjs", args: ["a.html", "-o", "out.pdf", "--outline-tags"], exit: 1, stderr: /TypeError: Cannot read properties of undefined \(reading 'split'\)\r?\n/ },
+  { tool: "book/render-book.mjs", args: ["a.html", "-o", "out.pdf", "-t", "abc"], exit: 1, stderr: /^input not found: .*a\.html\n$/ },
+  { tool: "book/render-book.mjs", args: ["-x"], exit: 2, stderr: "unknown arg: -x\n" },
+  { tool: "eval/build_corpus.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node eval\/build_corpus\.mjs --dest <path> / },
+  { tool: "eval/build_corpus.mjs", args: [], exit: 1, stdout: /^Usage: node eval\/build_corpus\.mjs --dest <path> / },
+  { tool: "eval/build_corpus.mjs", args: ["--bogus"], exit: 1, stderr: /(^|\n)(Error: )?unknown argument: --bogus\r?\n/ },
+  { tool: "eval/build_corpus.mjs", args: ["stray"], exit: 1, stderr: /(^|\n)(Error: )?unknown argument: stray\r?\n/ },
+  { tool: "eval/build_corpus.mjs", args: ["--help", "--bogus"], exit: 1, stderr: /(^|\n)(Error: )?unknown argument: --bogus\r?\n/ },
+  { tool: "eval/build_corpus.mjs", args: ["--quiet=1"], exit: 1, stderr: /(^|\n)(Error: )?unknown argument: --quiet=1\r?\n/ },
+  { tool: "eval/build_corpus.mjs", args: ["-hq"], exit: 1, stderr: /(^|\n)(Error: )?unknown argument: -hq\r?\n/ },
+  { tool: "eval/build_corpus.mjs", args: ["--src"], exit: 1, stderr: /TypeError \[ERR_INVALID_ARG_TYPE\]: The "paths\[0\]" argument must be of type string\. Received undefined\r?\n/ },
+  { tool: "eval/nav_hops.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node eval\/nav_hops\.mjs \[--from <page>\] / },
+  { tool: "eval/nav_hops.mjs", args: [], exit: 2, stdout: /^Usage: node eval\/nav_hops\.mjs \[--from <page>\] / },
+  { tool: "eval/nav_hops.mjs", args: ["--from", "nope.md", "x"], exit: 2, stderr: /^no start page: .*[\\/]nope\.md\n$/ },
+  { tool: "eval/nav_hops.mjs", args: ["--src", "nowhere", "--bogus"], exit: 2, stderr: /^no start page: .*[\\/]nowhere[\\/]docs[\\/]index\.md\n$/ },
+  { tool: "eval/nav_hops.mjs", args: ["--help=1", "--src", "nowhere"], exit: 2, stderr: /^no start page: .*[\\/]nowhere[\\/]docs[\\/]index\.md\n$/ },
+  { tool: "eval/nav_hops.mjs", args: ["--from", "--src", "x"], exit: 2, stderr: /^no start page: .*[\\/]--src\n$/ },
+  { tool: "eval/nav_hops.mjs", args: ["--bogus", "C:/x"], exit: 2, stderr: "these patterns arrived as Windows paths: C:/x\nGit Bash converted them. Run with MSYS_NO_PATHCONV=1 set, or from another shell.\n" },
+  { tool: "eval/nav_hops.mjs", args: ["--src"], exit: 2, stderr: /^TypeError \[ERR_INVALID_ARG_TYPE\]: The "paths\[0\]" argument must be of type string\. Received undefined\n/ },
+  { tool: "eval/nav_hops.mjs", args: ["x", "--from"], exit: 2, stderr: /^TypeError \[ERR_INVALID_ARG_TYPE\]: The "paths\[1\]" argument must be of type string\. Received undefined\n/ },
+  { tool: "eval/run_case.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node eval\/run_case\.mjs --corpus <dir> / },
+  { tool: "eval/run_case.mjs", args: [], exit: 2, stdout: /^Usage: node eval\/run_case\.mjs --corpus <dir> / },
+  { tool: "eval/run_case.mjs", args: ["--bogus"], exit: 2, stderr: "unknown argument: --bogus\n" },
+  { tool: "eval/run_case.mjs", args: ["stray"], exit: 2, stderr: "unknown argument: stray\n" },
+  { tool: "eval/run_case.mjs", args: ["--help", "--bogus"], exit: 2, stderr: "unknown argument: --bogus\n" },
+  { tool: "eval/run_case.mjs", args: ["--prompt-only=1"], exit: 2, stderr: "unknown argument: --prompt-only=1\n" },
+  { tool: "eval/run_case.mjs", args: ["--corpus"], exit: 2, stderr: 'The "paths[0]" argument must be of type string. Received undefined\n' },
+  { tool: "eval/run_case.mjs", args: ["--smoke", "--corpus", "c", "--site", "s", "--out", "o"], exit: 2, stderr: /^missing: .*[\\/]c[\\/]docs, .*search-data\.json, .*lunr\.min\.js\n$/ },
+  { tool: "eval/run_case.mjs", args: ["--smoke", "--corpus", "c", "--site", "s", "--out", "o", "--timeout", "abc"], exit: 2, stderr: /^missing: .*[\\/]c[\\/]docs, / },
+  { tool: "eval/run_case.mjs", args: ["--corpus", "c", "--site", "s", "--out", "o", "--protocol", "--smoke"], exit: 2, stdout: /^Usage: node eval\/run_case\.mjs --corpus <dir> / },
+  { tool: "eval/site_search.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node eval\/site_search\.mjs "<query>" / },
+  { tool: "eval/site_search.mjs", args: [], exit: 1, stdout: /^Usage: node eval\/site_search\.mjs "<query>" / },
+  { tool: "eval/site_search.mjs", args: ["--site", "nowhere", "--bogus"], exit: 1, stderr: /^missing .*search-data\.json\nRun build\.bat / },
+  { tool: "eval/site_search.mjs", args: ["--help=1", "--site", "nowhere"], exit: 1, stderr: /^missing .*search-data\.json\nRun build\.bat / },
+  { tool: "eval/site_search.mjs", args: ["--composition", "--site", "nowhere"], exit: 1, stderr: /^missing .*search-data\.json\nRun build\.bat / },
+  { tool: "eval/site_search.mjs", args: ["--site"], exit: 1, stderr: /TypeError \[ERR_INVALID_ARG_TYPE\]: The "paths\[0\]" argument must be of type string\. Received undefined\r?\n/ },
+  { tool: "eval/search_quality.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node eval\/search_quality\.mjs \[--site docs\/_site\] / },
+  { tool: "eval/search_quality.mjs", args: ["--bogus"], exit: 1, stderr: "unrecognised argument: --bogus\n" },
+  { tool: "eval/search_quality.mjs", args: ["stray"], exit: 1, stderr: "unrecognised argument: stray\n" },
+  { tool: "eval/search_quality.mjs", args: ["--help", "--bogus"], exit: 1, stderr: "unrecognised argument: --bogus\n" },
+  { tool: "eval/search_quality.mjs", args: ["--help=1"], exit: 1, stderr: "unrecognised argument: --help=1\n" },
+  { tool: "eval/search_quality.mjs", args: ["-x"], exit: 1, stderr: "unrecognised argument: -x\n" },
+  { tool: "eval/search_quality.mjs", args: ["--site", "nowhere"], exit: 1, stderr: /^missing .*search-data\.json\nRun build\.bat / },
+  { tool: "eval/search_quality.mjs", args: ["--site", "nowhere", "--sample", "abc"], exit: 1, stderr: /^missing .*search-data\.json\nRun build\.bat / },
+  { tool: "eval/search_quality.mjs", args: ["--site", "--help"], exit: 1, stderr: /^missing .*[\\/]--help[\\/]assets[\\/]js[\\/]search-data\.json\nRun build\.bat / },
+  { tool: "eval/search_quality.mjs", args: ["--site"], exit: 1, stderr: /TypeError \[ERR_INVALID_ARG_TYPE\]: The "paths\[0\]" argument must be of type string\. Received undefined\r?\n/ },
+  { tool: "eval/search_quality.mjs", args: ["--site", "nowhere", "--save"], exit: 1, stderr: /TypeError \[ERR_INVALID_ARG_TYPE\]: The "paths\[0\]" argument must be of type string\. Received undefined\r?\n/ },
+  { tool: "eval/transcript.mjs", args: ["--help"], exit: 1, stdout: /^Usage: node eval\/transcript\.mjs <case\.jsonl> / },
+  { tool: "eval/transcript.mjs", args: ["-h"], exit: 0, stdout: /^Usage: node eval\/transcript\.mjs <case\.jsonl> / },
+  { tool: "eval/transcript.mjs", args: [], exit: 1, stdout: /^Usage: node eval\/transcript\.mjs <case\.jsonl> / },
+  { tool: "eval/transcript.mjs", args: ["nope.jsonl", "--help"], exit: 0, stdout: /^Usage: node eval\/transcript\.mjs <case\.jsonl> / },
+  { tool: "eval/transcript.mjs", args: ["--bogus"], exit: 1, stdout: /^Usage: node eval\/transcript\.mjs <case\.jsonl> / },
+  { tool: "eval/transcript.mjs", args: ["--help=1"], exit: 1, stdout: /^Usage: node eval\/transcript\.mjs <case\.jsonl> / },
+  { tool: "eval/transcript.mjs", args: ["nope.jsonl"], exit: 1, stderr: /Error: ENOENT: no such file or directory, open '[^']*nope\.jsonl'\r?\n/ },
+  { tool: "eval/transcript.mjs", args: ["--bogus", "nope.jsonl"], exit: 1, stderr: /Error: ENOENT: no such file or directory, open '[^']*nope\.jsonl'\r?\n/ },
+  { tool: "eval/transcript.mjs", args: ["-x"], exit: 1, stderr: /Error: ENOENT: no such file or directory, open '(?:[^']*[\\/])?-x'\r?\n/ },
+  { tool: "eval/transcript.mjs", args: ["a.jsonl", "b.jsonl"], exit: 1, stderr: /Error: ENOENT: no such file or directory, open '[^']*a\.jsonl'\r?\n/ },
+  { tool: "wisdom/wisdom.mjs", args: [], exit: 0, stderr: /^Usage: node wisdom\/wisdom\.mjs <command> \[options\]\n/ },
+  { tool: "wisdom/wisdom.mjs", args: ["--help"], exit: 1, stderr: /^Usage: node wisdom\/wisdom\.mjs <command> \[options\]\n/ },
+  { tool: "wisdom/wisdom.mjs", args: ["bogus"], exit: 1, stderr: /^Usage: node wisdom\/wisdom\.mjs <command> \[options\]\n/ },
+  { tool: "wisdom/wisdom.mjs", args: ["bogus", "--guild", "--bogus"], exit: 1, stderr: /^Usage: node wisdom\/wisdom\.mjs <command> \[options\]\n/ },
+  { tool: "wisdom/wisdom.mjs", args: ["bogus", "--cap"], exit: 1, stderr: /^Usage: node wisdom\/wisdom\.mjs <command> \[options\]\n/ },
+  { tool: "wisdom/wisdom.mjs", args: ["bogus", "--bogus"], exit: 1, stderr: "Unknown option: --bogus\n" },
+  { tool: "wisdom/wisdom.mjs", args: ["bogus", "stray"], exit: 1, stderr: "Unknown option: stray\n" },
+  { tool: "wisdom/wisdom.mjs", args: ["bogus", "--help"], exit: 1, stderr: "Unknown option: --help\n" },
+  { tool: "wisdom/wisdom.mjs", args: ["bogus", "--force=1"], exit: 1, stderr: "Unknown option: --force=1\n" },
+  { tool: "wisdom/wisdom.mjs", args: ["bogus", "-x"], exit: 1, stderr: "Unknown option: -x\n" },
+  { tool: "wisdom/wisdom.mjs", args: ["bogus", "--guild", "x", "--bogus"], exit: 1, stderr: "Unknown option: --bogus\n" },
 ];
 
 const TIMEOUT_MS = 30_000;

@@ -364,7 +364,10 @@ const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
       // Mirrors the online build's stem-twin patch (stemTwins() and
       // qualifiedField() are the online copy's).
       var twins = stemTwins(docs);
-      var index = lunr(function(){
+      // Mirrors the online build's sliced build (buildIndexInSlices() is
+      // the online copy's), so the search box takes keystrokes while the
+      // index builds.
+      buildIndexInSlices(function(){
         this.ref('id');
         this.field('title', { boost: 200 });
         this.field('content', { boost: 2 });
@@ -394,24 +397,25 @@ const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
         // twinBASIC keywords (Do, For, If, Is, On, With, Each...) that the
         // search pipeline's query side never dropped.
         this.pipeline.remove(lunr.stopWordFilter);
-
-        for (var i in docs) {
-          this.add({
-            id: i,
-            title: docs[i].title,
-            content: indexedContent(docs[i]),
-            names: docs[i].names || '',
-            qualified: qualifiedField(docs[i], twins),
-            exact: (docs[i].names || '').split(/\\s+/).filter(Boolean).map(exactName).join(' '),
-            primary: (docs[i].primary || '').split(/\\s+/).filter(Boolean).map(exactName).join(' '),
-            page: docs[i].doc || '',
-            index: indexField(docs[i]),
-            relUrl: docs[i].relUrl
-          });
-        }
+      }, docs, function(i) {
+        return {
+          id: i,
+          title: docs[i].title,
+          content: indexedContent(docs[i]),
+          names: docs[i].names || '',
+          qualified: qualifiedField(docs[i], twins),
+          exact: (docs[i].names || '').split(/\\s+/).filter(Boolean).map(exactName).join(' '),
+          primary: (docs[i].primary || '').split(/\\s+/).filter(Boolean).map(exactName).join(' '),
+          page: docs[i].doc || '',
+          index: indexField(docs[i]),
+          relUrl: docs[i].relUrl
+        };
+      }, function(index) {
+        onSuccess(index, docs);
+      }, function(e) {
+        console.log('Error building search index: ' + e);
+        onError();
       });
-
-      onSuccess(index, docs);
     } catch (e) {
       console.log('Error building search index: ' + e);
       onError();

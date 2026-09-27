@@ -1682,6 +1682,110 @@ otherwise stays as it is with a comment saying why.
 **Verify.** `check_cli.mjs`'s cases; `book.bat` renders; each `eval/` script's cheapest mode
 unchanged.
 
+**Landed.** All seven tools the entry names, and `eval/search_quality.mjs`, parse through
+`parseCli`. `search_quality` came in with the merge of PR #210, after this entry was written,
+and the owner added it to this commit (2026-09-27). `wisdom.mjs` fits cleanly, so it migrated:
+its command is its first argument, whatever that is, and the rest is parsed against one table
+for all three commands, as its loop did. Every tool takes `acceptsValue: () => true`, since each
+value flag took whatever followed it, and converts a value (`path.resolve`, `Number`,
+`parseInt`, `parseFloat`) only when one was given, so a trailing value flag still fails where
+it did: a path `TypeError`, a `NaN`, a `split` of undefined. `render-book` (`unknown arg: X`,
+exit 2), `build_corpus` (`unknown argument: X`, exit 1), `run_case` (`unknown argument: X`,
+exit 2), `search_quality` (`unrecognised argument: X`, exit 1) and `wisdom` (`Unknown option:
+X`, exit 1) refuse through `withUsageError`. `nav_hops`, `site_search` and `transcript` take
+`unknown: "positional"`, because an unknown flag was a pattern, a search term or an ignored
+argument to them. `printHelpAndExit` replaces the six usage-then-exit copies (five in `eval/`,
+and `wisdom`'s dispatch default, on stderr), each keeping its exit-code condition, and prints
+`search_quality`'s help. `transcript` declares `--help` without `-h`, because a lone `-h` was
+its file argument: until C71, `-h` alone exits 0 and `--help` alone exits 1. `build_corpus`
+threw on an unknown argument, so Node printed its stack; it now prints the line, still exiting
+1. `render-book`'s usage line for a missing input or output is an error, not one of the six,
+and is unchanged. The edit was a Sonnet agent's (49 calls, ~236k, 22 min), reviewed line by
+line; one comment was rewritten.
+
+The cases were recorded from the unedited tools first: 73 across the eight. They cover
+`render-book`'s refusals, `--help` among them, and a value flag taking a dash-led value. For
+each `eval/` tool they cover its usage both ways, its refusals or its taking an unknown flag,
+and a value flag given last. They also cover `transcript`'s exit codes for `--help` and `-h`,
+and `wisdom`'s usage for no command, `--help` and an unknown command, and its refusals after a
+command. Every `wisdom` case gives the command `bogus`, so a broken parse can only print the
+usage, never start an export. A crash's stream is pinned by the line that names the problem,
+allowing `\r?\n` for Node's own report. Tools.md's `check_cli` section says so now, adds a
+file to what a case may stop at, and says the gate takes a few seconds (2.8 s before this
+commit, 4.5 s after). The `site_search` cases were recorded before PR #210's merge rewrote
+much of that file and pass on both. `check_cli` makes 218 checks: 39 probes and 179 cases.
+The kit's `c51-tools.mjs` runs 26 real invocations through HEAD's copies and the migrated
+tools, and compares the exit code, the masked output and every file written. The
+invocations: `render-book` stopping at a missing input and a missing extra script, and one full
+`book.bat` render per side, compared by page count and `pdftotext`; `build_corpus` over a
+fixture and over the whole repository; `run_case --prompt-only` for both protocols and
+`--smoke`, and its refusal of a corpus holding `CLAUDE.md`; `nav_hops` three ways, one over
+that corpus; `site_search` four ways; `search_quality` over the full query set with `--save`
+and with `--compare` (not `--sample`, which draws its queries at random, so no two runs
+agree); `transcript` over a made-up session; `wisdom` with no command, `process` into scratch
+whole and filtered by `--since`, `--force` and two `--channel`s, and `extract --dry-run` three
+ways. All are the same. The kit's `c27-compare.mjs` reports all 21 of its export cases the
+same. `build.bat`, `check.bat` (the a11y line unchanged) and `test.bat` exit 0.
+
+What differs, none of it a recorded case: `--name=value` is accepted for a known flag. After
+`--`, an argument is a positional and `--` is not one, so `wisdom extract --` runs `extract`
+and `build_corpus --dest x --` builds, where both refused the `--`. A lone `-` is
+`render-book`'s input. A short group is split, so `nav_hops -hx` prints the usage. And
+`render-book -ofile` and `-t5` take the attached value.
+
+### C51a — `scripts: check_cli's transcript -x case passes on Linux`
+
+**Found by CI after C51.** The fork's deploy runs of C51 (36345344000) and of the search
+commit after it (36347252812) failed at `check_cli`, 1 of 218, on `transcript -x`. The case
+required a folder before the file name in Node's `ENOENT` line, which Node prints on Windows,
+where it resolves the path, and not on Linux, where it prints `open '-x'` as given.
+
+**Change.** The folder is optional in the case's pattern, and the C51 block's comment says
+why.
+
+**Landed.** As the entry says. The new pattern matches CI's line and a resolved Windows or
+POSIX path, and refuses `--x` and `a-x`; `check_cli` makes 218 checks, all passing, and lint
+is clean. The other 217 passed on Linux in both runs, so this is the whole of what CI found.
+The steps after `check_cli` in the composite action did not run in either, so
+`check_dot_fit`, `check_axe_patch_equiv` and the accessibility steps wait for the next push.
+
+### C51b — `scripts: the gate roster reads node --test lines; CI runs the search tests`
+
+**Found while landing C51a.** PR #210 put `node --test test/search.test.mjs` into `test.bat`,
+and CI has never run it: `scripts/lib/gate-roster.mjs` read only `node scripts/<name>.mjs`
+lines, so `check_ci_workflows` and `check_gate_lists` did not see the step, and neither the
+composite action nor Tools.md's list had it.
+
+**Change.** The roster reads `node --test test/<name>.mjs` as a gate too, named by its path
+from the repository root (`gateName`), and `check_gate_lists` reads such a name in Tools.md's
+list (a `test/` link) and in a POSIX block. The composite action runs the tests after
+`check_lint`, as `test.bat` does; Tools.md lists them as `test.bat`'s fifth step, with a
+section of their own, and Building.md's POSIX block and WIP.md's bullet and gate table have
+them.
+
+**Landed.** As the entry says, at the owner's choice of registering the step fully over
+adding it to CI alone. Before the action and the pages had it, both gates failed on the real
+tree: `check_ci_workflows` with a `missing` finding for `test/search.test.mjs` in each
+workflow, and `check_gate_lists` with six disagreements (the list, the stated count, both
+POSIX blocks, and Tools.md's "Eleven steps" and "of the eleven"). After, `check_ci_workflows`
+passes with 19 probes and 15 gates, and `check_gate_lists` with 21 probes and `test.bat
+(12)`. The new probes: in `check_ci_workflows`, a test file in `test.bat` and not in CI, and
+one in both; in `check_gate_lists`, a test file the docs do not list, with a count that agrees
+with the list unless the file is read, and a test file listed by its path, CRLF and a
+backslash in the wrapper. Each fault through the kit's `c43-fault.mjs` fails: a roster that
+reads no test line fails a probe in both gates; a doc list that reads no `test/` link fails
+the new negative; POSIX blocks that read no test line split Building.md's and Tools.md's
+blocks in two. The last is caught by the real tree only, as every POSIX-block defect is.
+
+Found in passing, and fixed here at the owner's choice: Tools.md said eight of `test.bat`'s
+eleven gates could not be affected by an edit under `docs/` and named two exceptions;
+`check_lint`, which lints `docs/assets/js/`, was the third. It now says nine of twelve, and
+names all three. The search tests read `builder/`, `builder/vendor/` and `eval/` only.
+
+**CI must show**, on the owner's next push: `check_ci_workflows: 19 probes, all pass` and
+`both workflows run the wrappers' 15 gates`, and the new step passing on Linux with `tests
+67` and `pass 67`.
+
 ### C52 — `builder: tbdocs parses through lib/cli.mjs`
 
 **A1-8 (R3), last, as decision (e) says.** `tbdocs.mjs`'s parser (`:91-194`) is neither
@@ -2608,6 +2712,13 @@ Defects the review did not have, found by building something this plan asks for.
   read `Default/<title>`, so that pages of one title in two packages hid all but one. No
   extract run has used it: the one on disk predates the move. Fixed in `wisdom: group
   reference pages by package, below Default/ and Built-In/`.
+- **`check_cli`'s `transcript -x` case failed on Linux**, found by CI after C51: it required
+  a folder in a file name that Node prints with one only on Windows. Fixed in `scripts:
+  check_cli's transcript -x case passes on Linux`.
+- **CI never ran `test/search.test.mjs`**, found while landing C51a: the gate roster read only
+  `node scripts/` lines, so the two roster gates could not see a `node --test` step in
+  `test.bat`. Fixed in `scripts: the gate roster reads node --test lines; CI runs the search
+  tests`.
 
 ## Open questions
 

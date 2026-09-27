@@ -3,6 +3,7 @@
 import { mkdirSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { parseCli, printHelpAndExit, withUsageError } from '../lib/cli.mjs'
 import { loadConfig } from './config.mjs'
 import { readJsonFile, writeFileAtomic } from './files.mjs'
 import { createClient, CapReachedError, timestampToSnowflake, EXIT_CAP_REACHED } from './discord/api.mjs'
@@ -14,30 +15,41 @@ import { runExtract, runMerge } from './extract/prep.mjs'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 function parseArgs(argv) {
-  const args = argv.slice(2)
-  const command = args[0]
-  const flags = { channels: [] }
+  const [command, ...rest] = argv.slice(2)
+  const { values } = withUsageError(() => parseCli(rest, {
+    options: {
+      guild: { type: 'string' },
+      channel: { type: 'string', multiple: true },
+      since: { type: 'string' },
+      in: { type: 'string' },
+      out: { type: 'string' },
+      concurrency: { type: 'string' },
+      'rate-limit': { type: 'string' },
+      cap: { type: 'string' },
+      'min-confidence': { type: 'string' },
+      force: { type: 'boolean' },
+      'dry-run': { type: 'boolean' },
+      merge: { type: 'boolean' },
+      all: { type: 'boolean' },
+    },
+    positionals: 0,
+    unknown: 'error',
+    acceptsValue: () => true,
+  }), { format: (err) => `Unknown option: ${err.arg}`, exitCode: 1 })
 
-  for (let i = 1; i < args.length; i++) {
-    switch (args[i]) {
-      case '--guild':       flags.guild = args[++i]; break
-      case '--channel':     flags.channels.push(args[++i]); break
-      case '--since':       flags.since = args[++i]; break
-      case '--force':       flags.force = true; break
-      case '--in':          flags.in = args[++i]; break
-      case '--out':         flags.out = args[++i]; break
-      case '--concurrency': flags.concurrency = parseInt(args[++i], 10); break
-      case '--rate-limit':  flags.rateLimit = parseFloat(args[++i]); break
-      case '--cap':         flags.cap = parseInt(args[++i], 10); break
-      case '--dry-run':     flags.dryRun = true; break
-      case '--merge':       flags.merge = true; break
-      case '--all':         flags.all = true; break
-      case '--min-confidence': flags.minConfidence = args[++i]; break
-      default:
-        process.stderr.write(`Unknown option: ${args[i]}\n`)
-        process.exit(1)
-    }
-  }
+  const flags = { channels: values.channel }
+  if ('guild' in values) flags.guild = values.guild
+  if ('since' in values) flags.since = values.since
+  if ('in' in values) flags.in = values.in
+  if ('out' in values) flags.out = values.out
+  if ('concurrency' in values) flags.concurrency = parseInt(values.concurrency, 10)
+  if ('rateLimit' in values) flags.rateLimit = parseFloat(values.rateLimit)
+  if ('cap' in values) flags.cap = parseInt(values.cap, 10)
+  if ('minConfidence' in values) flags.minConfidence = values.minConfidence
+  if (values.force) flags.force = true
+  if (values.dryRun) flags.dryRun = true
+  if (values.merge) flags.merge = true
+  if (values.all) flags.all = true
 
   return { command, flags }
 }
@@ -258,6 +270,5 @@ switch (command) {
     else await runExtract(flags)
     break
   default:
-    process.stderr.write(USAGE)
-    process.exit(command ? 1 : 0)
+    printHelpAndExit(USAGE, { stream: 'stderr', exitCode: command ? 1 : 0 })
 }
