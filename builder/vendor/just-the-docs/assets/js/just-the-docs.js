@@ -589,12 +589,14 @@ function searchLoaded(loadIndex) {
     // matches that whole name in `exact` and `primary`. One thing is one
     // word, not counting words that name a kind: in a phrase such as "error
     // handling", `error` on its own isn't what the reader named, but in
-    // "With statement", `With` is.
+    // "With statement", `With` is. Only in the singular: "Delegate Types"
+    // and "New Functions" name a topic, not the one thing `Delegate` or
+    // `New` (WIP.Search.md, "Fixed: whole titles").
     var textFields = ['title', 'content', 'names', 'qualified', 'page', 'relUrl'];
     var plainFields = ['title', 'content', 'names', 'page', 'relUrl'];
     var words = input.split(/\s+/).filter(Boolean);
     var named = words.filter(function(w) {
-      return KIND_WORDS.indexOf(w.toLowerCase().replace(/s$/, '')) === -1;
+      return KIND_WORDS.indexOf(w.toLowerCase()) === -1;
     });
     var name = named.length === 1 ? named[0] : words.length === 1 ? words[0] : null;
     words.forEach(function(word, w) {

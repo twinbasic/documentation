@@ -218,7 +218,10 @@ section that only mentioned it.** Four changes, measured in
 - *One thing named.* A query names one thing if it has one word, or one
   word besides words naming a kind (`KIND_WORDS`, the kinds
   `tB/symbols.json` uses): `With statement` names `With`, while `error
-  handling` names nothing, so `error` alone doesn't pull in `Error`.
+  handling` names nothing, so `error` alone doesn't pull in `Error`. A
+  kind word counts only in the singular: `Delegate Types` and `New
+  Functions` are pages' titles, not the `Delegate` statement or a `New`
+  method.
 - *Page title.* A field `page`, boost 5, holding the entry's `doc`, so a
   page titled with the query outranks a section of another page that only
   mentions it (`Fusion`).

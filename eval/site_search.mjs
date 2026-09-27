@@ -341,9 +341,11 @@ export function search({ lunr, index, docs }, input) {
   // matches that whole name, in `exact` and, if it is a type or language
   // element, in `primary`. One thing is one word, not counting words that
   // name a kind: in a phrase such as "error handling", `error` on its own
-  // isn't what the reader named, but in "With statement", `With` is.
+  // isn't what the reader named, but in "With statement", `With` is. Only
+  // in the singular: "Delegate Types" and "New Functions" name a topic, not
+  // the one thing `Delegate` or `New`.
   const words = input.split(/\s+/).filter(Boolean);
-  const named = words.filter((w) => !KIND_WORDS.includes(w.toLowerCase().replace(/s$/, "")));
+  const named = words.filter((w) => !KIND_WORDS.includes(w.toLowerCase()));
   const name = named.length === 1 ? named[0] : words.length === 1 ? words[0] : null;
   const wholeQualified = [];
   words.forEach((word, w) => {

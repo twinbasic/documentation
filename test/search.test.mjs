@@ -632,6 +632,9 @@ describe("reader-intent guard: online client, offline client, eval replica", () 
       assert.match(src, /lunr\.stemmer\(token\.clone\(\)\)\.toString\(\)/, `${label} doesn't require words as stems`);
       assert.match(src, /presence:\s*lunr\.Query\.presence\.REQUIRED/, `${label} doesn't require every word first`);
       assert.match(src, /usePipeline:\s*false/, `${label}'s required stems would be stemmed again`);
+      // A plural kind word names a topic ("Delegate Types"), so it counts
+      // as a named word (WIP.Search.md, "Fixed: whole titles").
+      assert.match(src, /KIND_WORDS\.(includes|indexOf)\(w\.toLowerCase\(\)\)/, `${label} doesn't compare kind words as typed`);
     }
   });
 });
