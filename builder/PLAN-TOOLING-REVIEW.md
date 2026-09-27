@@ -1405,6 +1405,83 @@ L1-2, L1-3 and L1-6 shipped.
 **Verify.** The probes; changing one recorded expectation fails the gate; the roster gate
 passes. CI waits for the owner's push.
 
+**Landed.** `lib/cli.mjs` exports `parseCli`, `CliError`, `numberOption`, `withUsageError` and
+`printHelpAndExit`. `parseCli(argv, { options, positionals, unknown, acceptsValue })` takes
+options in `parseArgs`' shape and returns `{ values, positionals, tokens, ignored }`: values
+keyed in camelCase; an absent option its `default`, a `multiple` one `[]`, any other none; a
+repeat keeps the last; `tokens` the kept options (each with its `key`), positionals and `--`,
+in order, for `tbdocs`' order-dependent resets. `parseArgs` runs loose and the module makes a
+strict parse's checks itself, because a strict parse stops at the first unknown option and a
+loose one alone takes a trailing value flag as `true`; with the defaults the two agree on 64
+argument lists (a probe). A tool's leniency is two parameters, each use of which Phase 3
+removes. `unknown` is `"error"`, `"ignore"` (an unknown option, a boolean given a value and a
+positional beyond `max` go into `ignored`, as given: the `includes` and `opt()` tools, and the
+list `check_links` warns about) or `"positional"` (an unknown option becomes a positional as
+given, and counts: `nav_hops`, `site_search`, `tbrun`, `gen_attribute_probes`); a value flag
+with no value is refused under all three. `acceptsValue(value, inline)` defaults to the strict
+rule (a separate value may not be missing or start with a dash and one more character; any
+inline value is taken; `-` and `""` are values); the survey's other guards are `(v) => v !==
+undefined` (`check_links`), `Boolean` (the a11y family's truthiness test), `(v) => v !==
+undefined && !v.startsWith("--")` (`compare_trees`) and `() => true` (no guard, which stores
+`undefined` for a trailing flag and skips its default). A `CliError` has a `code`
+(`unknown-option`, `unexpected-value`, `missing-value`, `unexpected-positional`,
+`missing-positional`, `bad-number`), `option` as typed, `arg` and `value`; its default
+messages are `unknown option: X`, `--x needs a value` (the majority wording), `--x takes no
+value`, `unexpected argument: X`, `expected at least N argument(s), got M` and `--x expects a
+whole number from 1 to 65535, got: 0`. `numberOption(value, { option, integer, min, max,
+message })` refuses blank text, which `Number` reads as 0. `withUsageError(fn, { stream,
+exitCode = 2, format, exit })` prints `format(err)` with one newline and exits, and throws
+anything but a `CliError` on; `printHelpAndExit(text, { stream = "stdout", exitCode = 0, exit
+})`. A `stream` object with a `write` and an `exit` are the probes' hooks, which no tool needs.
+
+`scripts/check_cli.mjs` holds 36 module probes and 14 cases, 50 checks in 0.6 s. A case is `{
+tool, args, exit, stdout, stderr }`: a string is the whole stream, a RegExp must match, and a
+stream not named must be empty. The tool's own words for the error are pinned exactly, a usage
+text after them by its opening. Each case runs in an empty folder of its own, with `TB_IDE` and
+`PUPPETEER_EXECUTABLE_PATH` naming missing files and `TBBUILD_SHOW` removed, 30 s at most,
+`availableParallelism()` at once. C47 records C18's settled behaviour (`tbdocs`: a trailing and
+a dash-led missing value, `--port=0` and an unknown argument, exit 4 on stderr; `check_links`:
+a trailing missing value for `--root-dir` and `--forbid`, exit 4, `error: ` on **stdout**) and
+C17's (`tbbuild`, `check_examples`, `census_attributes`, `build_package_api`: a trailing and a
+dash-led missing value, exit 2, `tbbuild`'s usage line matched by its opening).
+
+Measured: Puppeteer 25.0.4 honours `PUPPETEER_EXECUTABLE_PATH`; `check_dot_fit` and
+`check_axe_patch_equiv` exit 2 in about 0.3 s ("Tried to find the browser at the configured
+path"). The kit's `c47-faults.mjs` puts one fault at a time into the gate or the module as it
+loads (the `c43-fault.mjs` preload) and counts twinBASIC and Chromium processes, none before or
+after. A changed exit code, a changed message and a message moved to the other stream each fail
+their case alone (1 of 50); the value rule loosened to a loose parse's fails 2 probes, the
+comparison with `parseArgs` among them; unknown options accepted fails 6. Cases forced past the
+command line fail on their own message: `check_examples --jobs 2` runs its 119 probes and stops
+on "no compiler beside the IDE" (1.1 s), `census_attributes --out x.json` on "no packages/
+under", `tbdocs --port 4000` exits 1 with "task config failed" (0.5 s; its default `docs` is
+relative to the empty folder), `tbbuild` on "no such project". `check_gate_lists` passes, and
+`check_ci_workflows` counts 14 gates where it counted 13 (it leaves out `check_tree_fresh`,
+which CI does not run). Registered in `test.bat` after `check_symbol_index`, the
+composite action, Tools.md's list, POSIX block and a section, Building.md's POSIX block,
+WIP.md's table and bullet, and `lib/README.md`. CI waits for the push, where the four harness
+tools and `tbdocs` run on Linux for the first time, each only as far as its error.
+`build.bat`, `check.bat` (the a11y line unchanged) and `test.bat` exit 0, and the tree
+comparison differs only in Tools.md's and Building.md's pages, online and offline, the search
+index and `book.html`.
+
+For C48–C52:
+- `opt()` in `tbbuild`, `check_examples`, `census_attributes`, `build_package_api` and
+  `addin_test` finds its flag with `indexOf`, so a repeated flag keeps its **first** value;
+  `parseCli` keeps the last, as `parseArgs` does (read, not run; `tbrun`'s `opt` not read). The
+  survey's "every other repeat: last wins" is wrong for these. A repeat does not stop the tool,
+  so `check_cli` cannot hold it; C49 decides.
+- `check_tb_registry` reads no arguments, and C49's entry now says so; C50's names `check_lint`
+  and `compare_trees`, which no entry did; C51's counts five `eval/` scripts.
+- A migration adds its tools' cases to `CASES`, with a comment naming the commit, and runs the
+  gate against the unedited tool before the edit.
+- Found in passing, not fixed: a launch refused for a missing browser leaves a Puppeteer profile
+  folder in `%TEMP%`, since `ChromeLauncher` makes it (`ChromeLauncher.js:77`) before it
+  resolves the executable (`:87`), and `withBrowser` removes only the profile of a browser it
+  got. Only a case that gets past its command line reaches it here.
+- Building.md said "all ten gates" where there were 14 before this commit, and
+  `check_gate_lists` did not report it; it now says "all the gates", as that gate advises.
+
 ### C48 — `scripts: the a11y and diagram tools parse through lib/cli.mjs`
 
 **A5-1 (R1).** Eight hand-written loops, diverged three ways. `check_a11y.mjs:63-79` answers
@@ -1427,8 +1504,9 @@ have a `flag()` and `opt()` pair and a `die()`, in three shapes (V3's fifth note
 `check_examples`, `census_attributes`, `build_package_api`, `gen_attribute_probes` and
 `check_tb_registry` parse by hand as well.
 
-**Change.** All eight through `parseCli`, keeping today's behaviour, C17's fixes included;
+**Change.** All seven through `parseCli`, keeping today's behaviour, C17's fixes included;
 `tbrun` and `addin_test` still substitute their default for an empty value until C72.
+`check_tb_registry` reads no arguments (C47 found), so nothing of it migrates.
 
 **Verify.** `check_cli.mjs`'s cases; the `examples.bat` summary and `addin-test.bat`
 unchanged (harness runs, one at a time).
@@ -1440,8 +1518,10 @@ unchanged (harness runs, one at a time).
 **Change.** `check_links.mjs`, whose collect-and-warn handling of unknown flags stays custom
 code until C72; `check_links_diff.mjs`; `crawl_check.mjs`; `check_publish_policy.mjs`, whose
 inline `opt` is L1-2's fourth variant; `check_regex_safety.mjs`, with its internal `--shard`
-flag; `check_code_regions.mjs`; `check_gate_lists.mjs`; `convert_em_dash_separators.mjs`; and
-`survey_tooling.mjs`. Each keeps today's behaviour.
+flag; `check_code_regions.mjs`; `check_gate_lists.mjs`; `convert_em_dash_separators.mjs`;
+`survey_tooling.mjs`; and two no entry named until C47: `check_lint.mjs`, whose argument list
+must be `--staged` or nothing, and `compare_trees.mjs`, which passes what follows `--` to
+`tbdocs`. Each keeps today's behaviour.
 
 **Verify.** `check_cli.mjs`'s cases; `test.bat` and `check.bat` unchanged;
 `check_links_diff.mjs --a script --b fused` agrees.
@@ -1453,7 +1533,8 @@ flag; `check_code_regions.mjs`; `check_gate_lists.mjs`; `convert_em_dash_separat
 exits 1 on a bare `--help`; "usage, then an exit code chosen by whether help was asked" is
 repeated six times across `eval/` and `wisdom/`.
 
-**Change.** `render-book.mjs` and the four `eval/` scripts through `parseCli`, with
+**Change.** `render-book.mjs` and the five `eval/` scripts (the four parsers and
+`transcript.mjs`) through `parseCli`, with
 `printHelpAndExit` replacing the six copies, each keeping today's behaviour. `wisdom.mjs`'s
 subcommands need code the module does not have, so it migrates only if the fit is clean, and
 otherwise stays as it is with a comment saying why.

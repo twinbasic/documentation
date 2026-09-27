@@ -65,7 +65,7 @@ One of the four does not mean the same thing locally as it does in CI, on any pl
 
     test.bat
 
-The tests the toolchain has to pass. Ten steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Eleven steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
 2. [`scripts/check_gate_lists.mjs`](#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
@@ -76,7 +76,8 @@ The tests the toolchain has to pass. Ten steps, each stopping the run if it fail
 7. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
 8. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
 9. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
-10. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+10. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
+11. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
@@ -89,9 +90,10 @@ POSIX:
       && node scripts/check_page_baseline.mjs \
       && node scripts/check_book_coverage.mjs \
       && node scripts/check_symbol_index.mjs \
+      && node scripts/check_cli.mjs \
       && node scripts/check_axe_patch_equiv.mjs
 
-**Seven of the ten cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all ten unconditionally, as they always did, so skipping it locally cannot let a tooling regression reach `staging`.
+**Eight of the eleven cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all eleven unconditionally, as they always did, so skipping it locally cannot let a tooling regression reach `staging`.
 
 The two exceptions are [`check_code_regions.mjs`](#check-code-regions) and [`check_gate_lists.mjs`](#check-gate-lists), which reads this page. The first is worth knowing in detail. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes are a different matter: they run against their own sources whatever the tree holds, and they cover the *mirror* fault, where a rewrite silently stops firing. The sweep cannot see that one --- text the rewrite skipped is stashed and restored unchanged, so every region still matches. Add a page with an unusual code construct and run `test.bat`, but read the built page too.
 
@@ -515,6 +517,19 @@ Verifies the [symbol index](Building#the-symbol-index) still places each kind of
 A build that indexes the reference cleanly says nothing about the rules that did not fire on it, so each rule is asserted against the case that made it necessary. The `.twin` scanner's: a `Type` whose `Sub`s have bodies, an `Interface` line inside a `CoClass`, `[Hidden]` on a module whose members are global, a `$` name escaped in brackets. The derivation's: a member on a page of its own and under a heading, an inherited member found on its declaring type's page, a page filed under one module and declared in another, a `$` form, a `## Properties` heading on a type that has a `Properties` property, and the ellipsis the typographer puts in a Core page's heading. And the guard's: a lost anchor fails and is named, and CI never writes the list.
 
 Exits 1 on any failed probe, 2 if it cannot run.
+
+### check_cli.mjs
+{: #check-cli }
+
+    node scripts/check_cli.mjs
+
+Verifies `lib/cli.mjs`, the module the tools read their command lines through, and each tool's recorded command-line errors. Nothing else tests how a tool reads its command line, which is how a value flag given no value came to be read as `NaN` or as the next flag. No built tree, no browser, no twinBASIC install; about a second.
+
+The module's probes cover what `parseCli` returns and refuses, with a comparison against a strict `node:util` `parseArgs` over the same argument lists, and what `numberOption`, `withUsageError` and `printHelpAndExit` do. A tool that is more lenient than a strict parse today --- one that ignores an unknown flag, say --- keeps its leniency through two of `parseCli`'s parameters, and the probes cover those too.
+
+The recorded cases are invocations that stop while the tool reads its command line, each with its exit code and what it prints on each stream: the tool's own words for the error exactly, and the opening of a usage text printed after it. A tool's cases are recorded before it moves onto `lib/cli.mjs`, so the move has to keep them. Each case runs the tool as a child process, in an empty folder of its own and with `TB_IDE` and `PUPPETEER_EXECUTABLE_PATH` naming files that do not exist, so a case that gets past the command line fails on a different message rather than starting a twinBASIC IDE or a browser. A case belongs here only if the tool stops before doing any work.
+
+Exits 1 on any failed probe or case, 2 if it cannot run.
 
 ### check_axe_patch_equiv.mjs
 {: #check-axe-patch-equiv }

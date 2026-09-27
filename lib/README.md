@@ -23,6 +23,12 @@ checks on every page that the block parse finds what a full parse finds.
 [repo-paths.mjs](repo-paths.mjs) is where every tool gets the repository root,
 `REPO_ROOT`, and `docs/`, `DOCS_DIR`, so each runs the same from any folder.
 
+[cli.mjs](cli.mjs) reads a command line against a table of options, over
+`node:util`'s `parseArgs`, and throws an error naming the problem that each
+tool prints in its own words; it also reads a number that must be one, and
+prints a usage text. `scripts/check_cli.mjs` carries its probes and the tools'
+recorded command-line cases.
+
 `scripts/check_tree_fresh.mjs` counts `lib/` among the inputs that decide the
 built bytes, beside `docs/` and `builder/`, so an edit here marks every built
 tree stale, and `check.bat` and `book.bat` refuse it until the next build.

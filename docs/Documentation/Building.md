@@ -42,7 +42,7 @@ The documentation is rendered to HTML by `tbdocs`, a custom Node.js static site 
 ### On macOS and Linux
 {: #posix-equivalents }
 
-Nothing in the pipeline itself is Windows-specific --- `tbdocs` and all ten gates are Node programs, and CI runs all but one of them on `ubuntu-latest` (the exception is deliberate: see [What CI deliberately does not run](#what-ci-deliberately-does-not-run)). The five wrappers are the only part that is, and what follows is what each of them runs.
+Nothing in the pipeline itself is Windows-specific --- `tbdocs` and all the gates are Node programs, and CI runs all but one of them on `ubuntu-latest` (the exception is deliberate: see [What CI deliberately does not run](#what-ci-deliberately-does-not-run)). The five wrappers are the only part that is, and what follows is what each of them runs.
 
 Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from any directory. The commands below have no equivalent of that, so **run them from the repository root**. It is not a formality: `tbdocs`'s `--src docs`, `check_publish_policy.mjs`'s default source root, and every path handed to `render-book.mjs` are all resolved against the working directory.
 
@@ -77,6 +77,7 @@ Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from a
       && node scripts/check_page_baseline.mjs \
       && node scripts/check_book_coverage.mjs \
       && node scripts/check_symbol_index.mjs \
+      && node scripts/check_cli.mjs \
       && node scripts/check_axe_patch_equiv.mjs
 
 `book.bat` has one step that is invisible from the command it ends with. `render-book.mjs` writes the PDF with a plain file write and never creates the directory above it, so `docs/_pdf/` has to exist first --- otherwise the render fails with `ENOENT` at the very last moment, after the whole page-breaking pass has already run. The deploy workflow does the same `mkdir` before its render, for the same reason:

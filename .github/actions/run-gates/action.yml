@@ -134,6 +134,15 @@ runs:
     - name: Verify the symbol index and its drift guard (check_symbol_index.mjs)
       shell: bash
       run: node scripts/check_symbol_index.mjs
+    # Nothing else tests how a tool reads its command line, which is how a
+    # value flag given no value came to be read as NaN or as the next flag.
+    # lib/cli.mjs's probes, then each tool's recorded command-line errors, each
+    # run with a twinBASIC IDE and a browser that do not exist, so a case that
+    # gets past its command line fails rather than starting either. No
+    # browser, no built tree, no install.
+    - name: Verify the command-line parser and the tools' cases (check_cli.mjs)
+      shell: bash
+      run: node scripts/check_cli.mjs
     # Graphviz sizes each node box from a width table; the browser paints the
     # label with a real font. Nothing in the build compares the two, so a
     # mismatch ships as text hanging outside its box on a green build -- which
