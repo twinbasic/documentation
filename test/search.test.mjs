@@ -1226,3 +1226,63 @@ describe("set-union guard: online client, offline client, eval replica", () => {
     assert.match(read("eval/site_search.mjs"), /\s+separateTokenSetKeys\(lunr\);\s+accumulateSetUnions\(lunr\);\s+return lunr;/);
   });
 });
+
+// Kind words (WIP.Search.md, "Fixed: kind words"): a query naming one thing
+// and its kind requires the kind word only while some entry found has that
+// name in its title or as its exact name; otherwise the all-words pass runs
+// again with the kind words optional.
+describe("kind-word guard: online client, eval replica", () => {
+  const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
+  const lunr = loadLunr(path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js"));
+  const onlineSrc = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js");
+  const evalSrc = read("eval/site_search.mjs");
+  const fn = (src, label) => {
+    const m = src.match(/function namesTheThing\([^)]*\) \{[\s\S]*?\r?\n\}/);
+    assert.ok(m, `${label} has no namesTheThing()`);
+    return m[0];
+  };
+
+  test("both tell alike whether a result names the thing", () => {
+    const online = new Function("lunr", `${fn(onlineSrc, "just-the-docs.js")}\nreturn namesTheThing;`)(lunr);
+    const replica = new Function(`${fn(evalSrc, "eval/site_search.mjs")}\nreturn namesTheThing;`)();
+    const cases = [
+      ["MaxHeight", { maxheight: { content: {} }, properti: { content: {} } }, false],
+      ["MaxHeight", { maxheight: { title: {} } }, true],
+      ["MaxHeight", { maxheight_: { primary: {} } }, true],
+      ["Continue", { "continu_": { exact: {} } }, true],
+      ["Date$", { date: { title: {} } }, true],
+      ["Do...Loop", { do: { title: {} }, loop: { content: {} } }, false],
+      ["Do...Loop", { do: { title: {} }, loop: { title: {} } }, true],
+    ];
+    for (const [name, metadata, expected] of cases) {
+      const result = { ref: "0", score: 1, matchData: { metadata } };
+      assert.equal(online(result, name), expected, `just-the-docs.js: ${name} in ${JSON.stringify(metadata)}`);
+      assert.equal(replica(lunr, result, name), expected, `eval/site_search.mjs: ${name} in ${JSON.stringify(metadata)}`);
+    }
+  });
+
+  test("both make kind words optional only when nothing found names the thing", () => {
+    assert.match(onlineSrc, /if \(!optionalKinds \|\| KIND_WORDS\.indexOf\(token\.str\) === -1\) \{\s*query\.term\(stem, \{[^}]*presence: lunr\.Query\.presence\.REQUIRED/, "just-the-docs.js doesn't let kind words go unrequired");
+    assert.match(onlineSrc, /results = allWords\(false\);\s*if \(name && words\.length > 1 && !results\.some\(function\(r\) \{ return namesTheThing\(r, name\); \}\)\) \{\s*var again = allWords\(true\);\s*if \(again\.length > 0\) results = again;/, "just-the-docs.js doesn't fall back as the replica does");
+    assert.match(evalSrc, /if \(!optionalKinds \|\| !KIND_WORDS\.includes\(token\.str\)\) \{\s*q\.term\(stem, \{[^}]*presence: lunr\.Query\.presence\.REQUIRED/, "the replica doesn't let kind words go unrequired");
+    assert.match(evalSrc, /results = allWords\(false\);\s*if \(name && words\.length > 1 && !results\.some\(\(r\) => namesTheThing\(lunr, r, name\)\)\) \{\s*const again = allWords\(true\);\s*if \(again\.length\) results = again;/, "the replica doesn't fall back");
+  });
+
+  test("the replica finds a member its section doesn't call a property, and keeps a titled match", () => {
+    const docs = {
+      0: { doc: "Form", title: "Form class", content: "A window. Its sizes are set by properties such as MaxHeight.", names: "Form", primary: "Form", relUrl: "/Form#form-class" },
+      1: { doc: "Form", title: "MaxHeight", content: "The largest height the user can size the form to.", names: "MaxHeight", relUrl: "/Form#maxheight" },
+      2: { doc: "Report", title: "Coordinate units", content: "The MaxHeight property is in twips.", relUrl: "/Report#coordinate-units" },
+      3: { doc: "Mid", title: "Mid", content: "The Mid function returns part of a string.", relUrl: "/Strings/Mid#mid" },
+      4: { doc: "Mid =", title: "Mid =", content: "Replaces characters in a string.", names: "Mid", primary: "Mid", relUrl: "/Core/Mid-equals" },
+    };
+    for (let k = 5; k < 200; k++) docs[k] = { doc: `Page ${k}`, title: `Page ${k}`, content: "unrelated text", relUrl: `/P${k}` };
+    const urls = (q) => search({ lunr, index: buildIndex(lunr, docs), docs }, q).map((r) => docs[r.ref].relUrl);
+    // No entry holding both words is titled MaxHeight: the section, which
+    // never says "property", comes first once the word is optional.
+    assert.equal(urls("MaxHeight property")[0], "/Form#maxheight");
+    // The Mid section holds both words and is titled Mid, so the word stays
+    // required, and the statement page, which never says "function", stays out.
+    assert.deepEqual(urls("Mid function"), ["/Strings/Mid#mid"]);
+  });
+});

@@ -66,6 +66,10 @@ whatever `EXP` knobs `eval/site_search.mjs` carries at the time:
 
 - `spaced.mjs <out.json>`: every qualified symbol written as two words
   (`Printer Fonts`), and the top three for a list of probes.
+- `kinds.mjs <out.json>`: every symbol written as its name and its kind
+  (`MaxHeight property`, `Continue statement`), for the kinds the client
+  counts as kind words, with hit@1 by kind. See `WIP.Search.md`'s "Fixed:
+  kind words".
 - `sets.mjs <out.json>`: every page's own multi-word title, typed as is
   (any entry of that page counts), and `<page title> <section title>` for
   the one-word section titles 20 or more pages share (`Form Events`;

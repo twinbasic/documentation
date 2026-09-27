@@ -230,6 +230,15 @@ section that only mentioned it.** Four changes, measured in
   since the index holds stems and an unstemmed `operator*` would miss
   `oper`), in the text fields only. If no entry contains them all, it runs
   the ordinary query.
+- *Kind words optional, when nothing else names the thing.* For a query
+  naming one thing, if no entry the all-words pass found has that name in
+  its title or as its exact name (`namesTheThing()`), the pass runs again
+  with the kind words optional: they still score, but aren't required. A
+  member's section rarely says "property" or "event", so `MaxHeight
+  property` found only pages mentioning both words, and never the
+  `MaxHeight` section. Kept required otherwise, since `Mid function` needs
+  the word to keep the `Mid =` statement out. See
+  [`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Fixed: kind words".
 
 `exact` and `page` are derived in the browser; `primary` is the one field
 `search-data.json` gained (23 KB raw, 4 KB gzipped).

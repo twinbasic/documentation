@@ -350,6 +350,15 @@ function boostWholeTitles(lunr, results, docs, baseTokens, keys) {
   return boosted ? results.sort((a, b) => b.score - a.score) : results;
 }
 
+// Matches just-the-docs.js's namesTheThing(): a result matched the name in
+// `exact` or `primary`, or every word of it in `title`.
+function namesTheThing(lunr, result, name) {
+  const metadata = result.matchData.metadata;
+  if (Object.values(metadata).some((m) => m.exact || m.primary)) return true;
+  const keys = lunr.tokenizer(name).map((t) => lunr.stemmer(lunr.trimmer(t)).toString()).filter(Boolean);
+  return keys.length > 0 && keys.every((k) => metadata[k] && metadata[k].title);
+}
+
 // The whole-title keys, per docs object, as the client keeps them for its
 // one docs object.
 const titleKeys = new WeakMap();
@@ -432,17 +441,31 @@ export function search({ lunr, index, docs }, input) {
   // container nowhere else), but scores there only if it is a qualified
   // name, as in anyWords: so the REQUIRED clause, which scores too, has
   // boost 0, and a second clause scores the word.
-  let results = [];
-  if (baseTokens.length >= 2) {
-    results = index.query((q) => {
+  const allWords = (optionalKinds) =>
+    index.query((q) => {
       anyWords(q);
       for (const token of baseTokens) {
         const stem = lunr.stemmer(token.clone()).toString();
         const wildcard = lunr.Query.wildcard.TRAILING;
-        q.term(stem, { fields: TEXT_FIELDS, wildcard, usePipeline: false, presence: lunr.Query.presence.REQUIRED, boost: 0 });
+        if (!optionalKinds || !KIND_WORDS.includes(token.str)) {
+          q.term(stem, { fields: TEXT_FIELDS, wildcard, usePipeline: false, presence: lunr.Query.presence.REQUIRED, boost: 0 });
+        }
         q.term(stem, { fields: qualifiedTokens.includes(token) ? TEXT_FIELDS : PLAIN_FIELDS, wildcard, usePipeline: false });
       }
     });
+  // Kind words, matching just-the-docs.js: a query naming one thing and its
+  // kind (`MaxHeight property`, `Continue statement`) requires the kind word
+  // only while some entry found has that name in its title or as its exact
+  // name. A member's section rarely says "property" or "event", so requiring
+  // the word dropped the very entry the reader named; then the pass runs
+  // again with the kind words optional, and they still score.
+  let results = [];
+  if (baseTokens.length >= 2) {
+    results = allWords(false);
+    if (name && words.length > 1 && !results.some((r) => namesTheThing(lunr, r, name))) {
+      const again = allWords(true);
+      if (again.length) results = again;
+    }
   }
   // A name with no word characters (`<>`, `*`) leaves no tokens, but its
   // exact-name clause can still match.

@@ -324,6 +324,22 @@ function accumulateSetUnions() {
   lunr.Set.prototype.union = accumulating;
 }
 
+// Patched: whether a result matched the name a query names (see
+// doSearch()): in `exact` or `primary`, or every word of it in `title`.
+function namesTheThing(result, name) {
+  var metadata = result.matchData.metadata;
+  var terms = Object.keys(metadata);
+  for (var i = 0; i < terms.length; i++) {
+    if (metadata[terms[i]].exact || metadata[terms[i]].primary) return true;
+  }
+  var keys = lunr.tokenizer(name).map(function(token) {
+    return lunr.stemmer(lunr.trimmer(token)).toString();
+  }).filter(Boolean);
+  return keys.length > 0 && keys.every(function(key) {
+    return metadata[key] && metadata[key].title;
+  });
+}
+
 // Patched: the qualified names that the stemmer merges with another name's
 // (`Printer.Font` and `Printer.Fonts` both stem to `printer.font`), which
 // would otherwise tie in `qualified`: 104 names, mostly a function and its
@@ -709,19 +725,20 @@ function searchLoaded(loadIndex) {
     // else), but scores there only if it is a qualified name, as in
     // anyWords(): so the REQUIRED clause, which scores too, has boost 0, and
     // a second clause scores the word.
-    var results = [];
-    if (baseTokens.length >= 2) {
-      results = index.query(function (query) {
+    function allWords(optionalKinds) {
+      return index.query(function (query) {
         anyWords(query);
         baseTokens.forEach(function(token) {
           var stem = lunr.stemmer(token.clone()).toString();
-          query.term(stem, {
-            fields: textFields,
-            wildcard: lunr.Query.wildcard.TRAILING,
-            usePipeline: false,
-            presence: lunr.Query.presence.REQUIRED,
-            boost: 0
-          });
+          if (!optionalKinds || KIND_WORDS.indexOf(token.str) === -1) {
+            query.term(stem, {
+              fields: textFields,
+              wildcard: lunr.Query.wildcard.TRAILING,
+              usePipeline: false,
+              presence: lunr.Query.presence.REQUIRED,
+              boost: 0
+            });
+          }
           query.term(stem, {
             fields: qualifiedTokens.indexOf(token) === -1 ? plainFields : textFields,
             wildcard: lunr.Query.wildcard.TRAILING,
@@ -729,6 +746,21 @@ function searchLoaded(loadIndex) {
           });
         });
       });
+    }
+    // Patched: a query naming one thing and its kind (`MaxHeight property`,
+    // `Continue statement`) requires the kind word only while some entry
+    // found has that name in its title or as its exact name. A member's
+    // section rarely says "property" or "event", so requiring the word
+    // dropped the very entry the reader named; then the pass runs again with
+    // the kind words optional, and they still score. See WIP.Search.md,
+    // "Fixed: kind words".
+    var results = [];
+    if (baseTokens.length >= 2) {
+      results = allWords(false);
+      if (name && words.length > 1 && !results.some(function(r) { return namesTheThing(r, name); })) {
+        var again = allWords(true);
+        if (again.length > 0) results = again;
+      }
     }
     // A name with no word characters (`<>`, `*`) leaves no tokens, but its
     // exact-name clause can still match.
