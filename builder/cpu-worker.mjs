@@ -244,7 +244,8 @@ const handlers = {
     // global indices during consolidation).
     const searchEntries = deriveSearchEntries(chunk, env.site)
       .map(e => ({ doc: e.doc, title: e.title, content: e.content,
-                   url: e.url, relUrl: e.relUrl }));
+                   url: e.url, relUrl: e.relUrl,
+                   index: e.index, index_also: e.index_also }));
 
     return {
       pages: chunk.map(p => ({

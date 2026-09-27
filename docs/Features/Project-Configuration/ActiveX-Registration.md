@@ -3,6 +3,11 @@ title: ActiveX Registration
 parent: Project Configuration
 nav_order: 3
 permalink: /Features/Project-Configuration/ActiveX-Registration
+index:
+  - register a COM dll
+  - register COM dll
+  - register a dll
+  - register dll
 ---
 
 # ActiveX Registration Options

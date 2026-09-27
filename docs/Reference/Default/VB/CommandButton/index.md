@@ -41,6 +41,7 @@ cmdOK.Value = True              ' raises cmdOK_Click
 [**Cancel**](#cancel) and [**Default**](#default) are mutually-form-exclusive --- at most one button on a form can have either set to **True**. Assigning **True** to **Cancel** or **Default** on one button automatically clears the same property on whatever button held it before. Setting **Default = True** also gives the button the bold "default push-button" border.
 
 ## Caption and mnemonics
+{: index_also="accelerator key; access key" }
 
 The text on the button face comes from [**Caption**](#caption). An ampersand in the caption marks the next character as a keyboard mnemonic: pressing **Alt+** that character moves the focus to the button and raises [**Click**](#click) (provided no other control on the form competes for the same access key). Use `&&` to display a literal ampersand.
 

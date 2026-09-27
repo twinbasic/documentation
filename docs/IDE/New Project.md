@@ -3,6 +3,7 @@ title: New Project
 parent: IDE
 # nav_order: 2
 permalink: /tB/IDE/Project/New
+index: new project dialog
 ---
 
 # New Project
@@ -14,6 +15,7 @@ permalink: /tB/IDE/Project/New
 Shortcut: <kbd>CTRL</kbd> + <kbd>N</kbd>
 
 ## Options
+{: index="standard exe; create an ActiveX DLL; create ActiveX DLL" index_also="create a DLL project; create dll project; create a dll; create dll" }
 
 - Standard EXE
 - ActiveX Control

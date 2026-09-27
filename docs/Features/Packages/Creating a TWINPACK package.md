@@ -4,6 +4,7 @@ parent: Package Management
 grand_parent: Features
 nav_order: 1
 permalink: /Features/Packages/Creating-TWINPACK
+index: twinpack
 redirect_from:
   - /Packages/Creating-TWINPACK
 ---

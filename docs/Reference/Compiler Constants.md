@@ -3,6 +3,7 @@ title: Compiler Constants
 parent: Reference Section
 nav_order: 5
 permalink: /Reference/Compiler-Constants
+index_also: conditional compilation
 ---
 
 # Compiler Constants

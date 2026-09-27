@@ -3,6 +3,9 @@ title: Inline Variable Initialization
 parent: Language Syntax
 nav_order: 14
 permalink: /Features/Language/Inline-Initialization
+index:
+  - inline field initialization
+  - field initialization
 ---
 
 # Inline Variable Initialization

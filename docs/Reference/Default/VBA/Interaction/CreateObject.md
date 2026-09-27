@@ -2,6 +2,7 @@
 title: CreateObject
 parent: Interaction Module
 permalink: /tB/Modules/Interaction/CreateObject
+index_also: late binding
 redirect_from:
 -  /tB/Core/CreateObject
 vba_attribution: true

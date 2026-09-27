@@ -248,7 +248,9 @@ dispatch ┬→ render:0 ┬→ flush:0 ┐
                      ↓          ↓
                 renderJoin  flushJoin
                      ↓
-          searchData, symbolIndex
+               symbolIndex
+                     ↓
+                searchData
 ```
 
 - `prepDest` (main) --- cleans and recreates the destination trees: all three for a build, `_serve/` alone in serve mode. Deferred to after `dispatch` so the wipe does not contend with `discover`'s reads.
@@ -266,8 +268,8 @@ dispatch ┬→ render:0 ┬→ flush:0 ┐
 - `flush:i` (worker, dynamic, `pin_to_predecessor`) --- writes the chunk's page HTML to disk on the same worker that rendered it. Online tree always; offline tree too unless `skipOffline`. The pinning is what makes per-chunk flush correct: the worker stores a batch on its own `_pendingFlush` FIFO at the end of `render`, and only the matching `flush:i` ever drains it. **When `--check` is on, the link and integrity check runs here too**, over the chunk's just-written HTML --- both trees' final strings are already decoded and in worker memory at that moment, so the check never writes ~270 MB out to read it back.
 - `flushJoin` (main, `on_demand`) --- barrier that aggregates per-chunk write stats and gates `writeAux` + `writePdf`.
 - `writeAssets` (main) --- writes generated CSS, copies vendored theme JS, copies the project's static files. Page HTML is *not* written here --- the per-chunk `flush:i` tasks already did that. Depends on `prepPageDirs` so the directory tree exists.
-- `searchData` (main) --- concatenates `state.searchChunks` (already populated by each `render:i`'s `submit()`), renumbers the global `i` index, writes `search-data.json`. The heavy work (heading split, content sanitisation, URL encoding) ran on the workers; this task only consolidates.
-- `symbolIndex` (main) --- writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index) the IDE help add-in reads. Reads the heading ids out of every `/tB/` page's `renderedContent`, joins them with the committed `builder/package-api.json`, and returns the index's URLs for the drift guard that `runBuild` runs once the build is done. Depends on `renderJoin` and `prepDest`; `checkReport` waits for it, because the file is in the online tree's index.
+- `searchData` (main) --- concatenates `state.searchChunks` (already populated by each `render:i`'s `submit()`), joins `symbolIndex`'s symbols onto the matching entries by URL (adding the `names` / `qualified` / `primary` fields; see [Site search](Pipeline-Stages#searchdata-main) and `WIP.Search.md`'s "Design" §2), renumbers the global `i` index, and writes `search-data.json`. The heavy work (heading split, content sanitisation, URL encoding) ran on the workers; this task only joins and consolidates. Depends on `renderJoin`, `prepDest` and `symbolIndex` (for the join).
+- `symbolIndex` (main) --- writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index) the IDE help add-in reads, and hands its `symbols` array to `searchData`'s join. Reads the heading ids out of every `/tB/` page's `renderedContent`, joins them with the committed `builder/package-api.json`, and returns the index's URLs for the drift guard that `runBuild` runs once the build is done. Depends on `renderJoin` and `prepDest`; `checkReport` waits for it, because the file is in the online tree's index; `searchData` now waits for it too.
 - `writeAux` (main) --- writes redirect stubs + sitemap + robots.txt. Depends on `writeAssets`, `searchData`, `flushJoin`, `deriveRedirects`, `deriveSitemap`.
 - `writeOffline` (main) --- produces `_site-offline/`. The per-page offline HTML was already computed inside `render:i` and written by `flush:i`, so this task only handles the cross-cutting work: CSS url() rewriting, the just-the-docs.js AST patch, the `search-data.js` wrapper, theme assets, redirect stubs.
 - `writePdf` (main) --- assembles `_site-pdf/book.html` and copies the images it references. Depends on `flushJoin` (so `renderedContent` is filled), `resolveBookChapters` (so `bookData._chapters` is wired), and `dot` (so diagram SVGs are in `staticFiles`).
@@ -300,7 +302,7 @@ Three pieces of work newly distributed to render workers under the current desig
 
 1. **Per-page SEO** (`computeChunkSeo`) --- was a single Phase 2 main-thread task; now runs per chunk inside `render:i`, between `renderPhase` and `templatePhase`. The values are written into the page objects on the worker and travel back as part of the render delta.
 2. **Per-page offline HTML** (`deriveOfflinePageCached`) --- was a Phase 7 main-thread pass that re-read the online tree; now runs per chunk inside `render:i` after `templatePhase`. The resulting `offlineHtml` is stored on the page and written by the matching `flush:i` directly to `_site-offline/`.
-3. **Per-chunk search entries** (`deriveSearchEntries`) --- was a Phase 6 main-thread task; now runs per chunk inside `render:i`. Each chunk's entries are stored at `state.searchChunks[i]` by the render `submit()`; the `searchData` task only flattens, renumbers, and writes the JSON.
+3. **Per-chunk search entries** (`deriveSearchEntries`) --- was a Phase 6 main-thread task; now runs per chunk inside `render:i`. Each chunk's entries are stored at `state.searchChunks[i]` by the render `submit()`; the `searchData` task flattens them, joins `symbolIndex`'s symbols onto the matching entries by URL, renumbers, and writes the JSON.
 
 Per-chunk page HTML writes were similarly pulled off the main thread: each `flush:i` writes its chunk's pages to disk on the same worker that rendered them, with the pinning enforced by `pin_to_predecessor`.
 

@@ -3,6 +3,7 @@ title: Call Stack
 parent: IDE
 # nav_order: 2
 permalink: /tB/IDE/Project/CallStack
+index: call stack window
 ---
 
 # Call Stack

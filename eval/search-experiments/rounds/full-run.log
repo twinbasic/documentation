@@ -1,0 +1,74 @@
+Derived 8012 queries (2884 bare, 5108 qualified, 20 prose) -> C:\Users\kuba\AppData\Local\Temp\claude\D--OCP-wc-twinBASIC-documentation--claude-worktrees-hopeful-dewdney-03ae03\83533278-db11-4563-b6ba-c1ccb10a0077\scratchpad\search-eval\queries.json
+
+Evaluating data-h2 (C:\Users\kuba\AppData\Local\Temp\claude\D--OCP-wc-twinBASIC-documentation--claude-worktrees-hopeful-dewdney-03ae03\83533278-db11-4563-b6ba-c1ccb10a0077\scratchpad\search-eval\data-h2.json) ...
+
+Evaluating data-h3 (C:\Users\kuba\AppData\Local\Temp\claude\D--OCP-wc-twinBASIC-documentation--claude-worktrees-hopeful-dewdney-03ae03\83533278-db11-4563-b6ba-c1ccb10a0077\scratchpad\search-eval\data-h3.json) ...
+
+Evaluating data-h4 (C:\Users\kuba\AppData\Local\Temp\claude\D--OCP-wc-twinBASIC-documentation--claude-worktrees-hopeful-dewdney-03ae03\83533278-db11-4563-b6ba-c1ccb10a0077\scratchpad\search-eval\data-h4.json) ...
+
+====================================================================================================
+configuration                   |      data-h2 |      data-h3 |      data-h4
+--------------------------------+--------------+--------------+-------------
+# entries                       |         3781 |         7606 |         7637
+raw bytes                       |     3916.2KB |     4636.0KB |     4642.4KB
+gzip bytes                      |     1039.3KB |     1131.2KB |     1131.7KB
+median build time (3 runs)      |    1081.66ms |    1268.74ms |    1229.72ms
+heap delta (3rd build)          |   260783.9KB |   250256.0KB |   250602.7KB
+median query latency            |       0.03ms |       0.04ms |       0.03ms
+--- overall ranking quality --- |              |              |             
+# queries                       |         8012 |         8012 |         8012
+hit@1                           |        16.7% |        27.7% |        27.7%
+hit@5                           |        20.3% |        34.7% |        34.7%
+hit@10                          |        20.5% |        35.3% |        35.3%
+MRR (cap 20)                    |       0.1822 |       0.3070 |       0.3070
+% zero correct                  |        79.3% |        64.2% |        64.2%
+
+Breakdown by category (hit@10 / MRR / n):
+symbol-bare                     | 55.8%/0.495/2884 | 84.6%/0.731/2884 | 84.6%/0.731/2884
+symbol-qualified                | 0.4%/0.004/5108 | 7.3%/0.067/5108 | 7.3%/0.067/5108
+prose                           | 80.0%/0.690/20 | 80.0%/0.611/20 | 80.0%/0.611/20
+
+Breakdown by symbol kind group (hit@10 / MRR / n):
+kind: type                      | 65.0%/0.612/423 | 64.8%/0.603/423 | 64.8%/0.603/423
+kind: member                    | 17.5%/0.153/7531 | 33.2%/0.287/7531 | 33.2%/0.287/7531
+
+=== data-h2 -> data-h3: diff by query ===
+
+-- up to 15 most regressed (rank got worse or lost), of 1623 changed --
+  [symbol-bare] "vbAppear3d": rank 1 -> 26  (RR 1.000 -> 0.000)
+  [symbol-bare] "vbAppearFlat": rank 1 -> 24  (RR 1.000 -> 0.000)
+  [symbol-bare] "vbAutomatic": rank 1 -> 21  (RR 1.000 -> 0.000)
+  [symbol-bare] "vbManual": rank 1 -> 36  (RR 1.000 -> 0.000)
+  [symbol-bare] "vbCancel": rank 1 -> 20  (RR 1.000 -> 0.050)
+  [symbol-bare] "vbFixedSingleBorder": rank 1 -> 20  (RR 1.000 -> 0.050)
+  [symbol-bare] "vbBeginDrag": rank 1 -> 20  (RR 1.000 -> 0.050)
+  [symbol-bare] "vbEndDrag": rank 1 -> 20  (RR 1.000 -> 0.050)
+  [symbol-bare] "vbDockNone": rank 1 -> 15  (RR 1.000 -> 0.067)
+  [symbol-bare] "vbFSTransparent": rank 1 -> 15  (RR 1.000 -> 0.067)
+  [symbol-bare] "vbDockLeft": rank 1 -> 14  (RR 1.000 -> 0.071)
+  [symbol-bare] "vbDockTop": rank 1 -> 14  (RR 1.000 -> 0.071)
+  [symbol-bare] "vbSolid": rank 1 -> 12  (RR 1.000 -> 0.083)
+  [symbol-bare] "vbOLEDragManual": rank 1 -> 8  (RR 1.000 -> 0.125)
+  [symbol-bare] "For": rank 1 -> 7  (RR 1.000 -> 0.143)
+
+-- up to 15 most improved, of 1623 changed --
+  [symbol-bare] "Next": rank 228 -> 1  (RR 0.000 -> 1.000)
+  [symbol-bare] "AreEqual": rank none -> 1  (RR 0.000 -> 1.000)
+  [symbol-bare] "AreNotEqual": rank none -> 1  (RR 0.000 -> 1.000)
+  [symbol-bare] "AreNotSame": rank none -> 1  (RR 0.000 -> 1.000)
+  [symbol-bare] "AreSame": rank none -> 1  (RR 0.000 -> 1.000)
+  [symbol-bare] "Fail": rank none -> 1  (RR 0.000 -> 1.000)
+  [symbol-bare] "Inconclusive": rank none -> 1  (RR 0.000 -> 1.000)
+  [symbol-bare] "IsFalse": rank none -> 1  (RR 0.000 -> 1.000)
+  [symbol-bare] "IsNothing": rank none -> 1  (RR 0.000 -> 1.000)
+  [symbol-bare] "IsNotNothing": rank none -> 1  (RR 0.000 -> 1.000)
+  [symbol-bare] "IsNotNull": rank none -> 1  (RR 0.000 -> 1.000)
+  [symbol-bare] "IsTrue": rank none -> 1  (RR 0.000 -> 1.000)
+  [symbol-bare] "NotSequenceEquals": rank none -> 1  (RR 0.000 -> 1.000)
+  [symbol-bare] "SequenceEquals": rank none -> 1  (RR 0.000 -> 1.000)
+  [symbol-bare] "Succeed": rank none -> 1  (RR 0.000 -> 1.000)
+
+=== data-h3 -> data-h4: diff by query ===
+  (no query changed rank between these two configurations)
+
+Full results written to C:\Users\kuba\AppData\Local\Temp\claude\D--OCP-wc-twinBASIC-documentation--claude-worktrees-hopeful-dewdney-03ae03\83533278-db11-4563-b6ba-c1ccb10a0077\scratchpad\search-eval\results-full.json

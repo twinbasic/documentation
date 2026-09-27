@@ -88,7 +88,7 @@ Syntax: One or more of
 : *optional* Indicates that an argument is not required. If used, all subsequent arguments in *arglist* must also be optional and declared by using the **Optional** keyword. **Optional** can't be used for any argument if **ParamArray** is used.
 
 **ByVal**
-: *optional* Indicates that the argument is passed by value.
+: *optional* Indicates that the argument is passed by value. See [Passing arguments ByRef and ByVal](Sub#passing-arguments-byref-and-byval).
 
 **ByRef**
 : *optional* Indicates that the argument is passed by reference. **ByRef** is the default unlike in Visual Basic .NET.
@@ -145,6 +145,54 @@ Variables that are explicitly declared in a procedure (using **Dim** or the equi
 A procedure can use a variable that is not explicitly declared in the procedure, but a naming conflict can occur if anything defined at the module level has the same name. When a procedure refers to an undeclared variable that has the same name as another procedure, constant, or variable, it is assumed that the procedure refers to that module-level name. Explicitly declare variables to avoid this kind of conflict. Use an **[Option Explicit](Option#Explicit)** statement to force explicit declaration of variables.
 
 Visual Basic may rearrange arithmetic expressions to increase internal efficiency. Avoid using a **Function** procedure in an arithmetic expression when the function changes the value of variables in the same expression. For more information about arithmetic operators, see Operators.
+
+### Returning more than one value
+{: index="return multiple values; multiple return values" }
+
+A **Function** returns a single value. There are three ways to hand back more than one:
+
+- **Through ByRef parameters.** The caller passes a variable for each extra result, and the function assigns to it. The return value is then free for something else, such as a count or a success flag. See [Passing arguments ByRef and ByVal](Sub#passing-arguments-byref-and-byval).
+- **As a user-defined type.** Declare a [**Type**](Type) with a field for each result, and return a value of that type.
+- **As an array**, when the results are all of one type: declare the return type with empty parentheses, as in `As Double()`.
+
+```tb check_build
+Public Type Extremes
+    Lowest As Double
+    Highest As Double
+End Type
+
+' The count is the return value; the extremes come back through ByRef parameters.
+Function MinMax(Values() As Double, ByRef Lowest As Double, ByRef Highest As Double) As Long
+    Dim i As Long
+    Lowest = Values(LBound(Values))
+    Highest = Lowest
+    For i = LBound(Values) + 1 To UBound(Values)
+        If Values(i) < Lowest Then Lowest = Values(i)
+        If Values(i) > Highest Then Highest = Values(i)
+    Next
+    MinMax = UBound(Values) - LBound(Values) + 1
+End Function
+
+' Both extremes come back in one value of a user-defined type.
+Function FindExtremes(Values() As Double) As Extremes
+    Dim Result As Extremes
+    MinMax Values, Result.Lowest, Result.Highest
+    FindExtremes = Result
+End Function
+
+Sub TryExtremes()
+    Dim Data(1 To 3) As Double
+    Data(1) = 4: Data(2) = -2: Data(3) = 9
+
+    Dim Low As Double, High As Double, Count As Long
+    Count = MinMax(Data, Low, High)
+    Debug.Print Count, Low, High            ' 3  -2  9
+
+    Dim Result As Extremes
+    Result = FindExtremes(Data)
+    Debug.Print Result.Lowest, Result.Highest   ' -2  9
+End Sub
+```
 
 ### Example
 

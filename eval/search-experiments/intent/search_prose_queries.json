@@ -1,0 +1,22 @@
+[
+  { "q": "late binding", "expected": ["/Reference/Data-Types"] },
+  { "q": "Implements", "expected": ["/tB/Core/Implements"] },
+  { "q": "AutoRedraw", "expected": ["/tB/Packages/VB/Form", "/tB/Packages/VB/PictureBox"] },
+  { "q": "DoEvents", "expected": ["/tB/Modules/Interaction/DoEvents"] },
+  { "q": "Option Explicit", "expected": ["/tB/Core/Option"] },
+  { "q": "conditional compilation", "expected": ["/Reference/Compiler-Constants"] },
+  { "q": "PtrSafe", "expected": ["/Features/64bit"] },
+  { "q": "circular reference", "expected": ["/Tutorials/CustomControls/Defining"] },
+  { "q": "64-bit compilation", "expected": ["/Features/64bit"] },
+  { "q": "regular expressions", "expected": ["/tB/IDE/Project/FindReplace"] },
+  { "q": "error handling", "expected": ["/Reference/Categories"] },
+  { "q": "threading and atomics", "expected": ["/Reference/Categories"] },
+  { "q": "array bounds checks", "expected": ["/tB/IDE/Project/Settings"] },
+  { "q": "File I/O", "expected": ["/Features/Standard-Library/File-IO"] },
+  { "q": "Fusion", "expected": ["/Features/Fusion"] },
+  { "q": "AddressOf operator", "expected": ["/tB/Core/AddressOf"] },
+  { "q": "variadic arguments", "expected": ["/Features/Advanced/API-Declarations"] },
+  { "q": "heading levels", "expected": ["/Documentation/Development/Authoring"] },
+  { "q": "With statement", "expected": ["/tB/Core/With"] },
+  { "q": "symbol index", "expected": ["/Documentation/Development/Building"] }
+]

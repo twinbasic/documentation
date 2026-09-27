@@ -2,6 +2,7 @@
 title: Class
 parent: Statements
 permalink: /tB/Core/Class
+index: class module
 ---
 
 # Class

@@ -1,0 +1,208 @@
+37 regressions vs h2
+
+
+"/" [symbol-bare] h2:763 -> R:798 (delta 35)
+  GT: title="/, /=" len=1 symbols="/ /=" url=/tB/Core/Divide
+  #1 score=0.00 title="64bit Compilation" len=295 matchedFields= terms= url=/Features/64bit
+  #2 score=0.00 title="Building a 64-bit Version" len=522 matchedFields= terms= url=/Features/64bit#building-a-64-bit-version
+  #3 score=0.00 title="Example Syntax" len=67 matchedFields= terms= url=/Features/64bit#example-syntax
+
+"With" [symbol-bare] h2:28 -> R:54 (delta 26)
+  GT: title="With" len=1937 symbols="With" url=/tB/Core/With
+  #1 score=717.40 title="WithDispatchForwarding" len=618 matchedFields=content,title,symbols terms=without,withdispatchforward url=/tB/Core/Attributes#withdispatchforwarding
+  #2 score=512.08 title="WithEvents" len=708 matchedFields=title,content,relUrl,symbols terms=withev url=/tB/Core/WithEvents
+  #3 score=138.79 title="Position within an open file" len=794 matchedFields=title,relUrl terms=within url=/tB/Modules/FileSystem/#position-within-an-open-file
+
+"Is" [symbol-bare] h2:151 -> R:176 (delta 25)
+  GT: title="Is" len=2084 symbols="Is" url=/tB/Core/Is
+  #1 score=198.73 title="IsZoomControlEnabled" len=112 matchedFields=title,relUrl,symbols terms=iszoomcontrolen url=/tB/Packages/WebView2/WebView2/#iszoomcontrolenabled
+  #2 score=198.73 title="IsSwipeNavigationEnabled" len=153 matchedFields=title,relUrl,symbols terms=isswipenavigationen url=/tB/Packages/WebView2/WebView2/#isswipenavigationenabled
+  #3 score=198.73 title="IsStatusBarEnabled" len=85 matchedFields=title,relUrl,symbols terms=isstatusbaren url=/tB/Packages/WebView2/WebView2/#isstatusbarenabled
+
+"VB" [symbol-bare] h2:1 -> R:15 (delta 14)
+  GT: title="VB Package" len=190 symbols="VB" url=/tB/Packages/VB/
+  #1 score=88.35 title="VbIMEStatus" len=1079 matchedFields=content,symbols,title,relUrl terms=vbime,vbimeon,vbimeoff,vbimenoop,vbimemod,vbimemodeon,vbimemodeoff,vbimemodenocontrol,vbimemodekatakana,vbimemodekatakanahalf,vbimemodehiragana,vbimemodehangul,vbimemodehangulful,vbimemodedis,vbimemodealpha,vbimemodealphaful,vbimekatakanasng,vbimekatakanadbl,vbimehiragana,vbimedis,vbimealphasng,vbimealphadbl,vbimestatu,vbimestatus.vbimeon,vbimestatus.vbimeoff,vbimestatus.vbimenoop,vbimestatus.vbimemodeon,vbimestatus.vbimemodeoff,vbimestatus.vbimemodenocontrol,vbimestatus.vbimemodekatakana,vbimestatus.vbimemodekatakanahalf,vbimestatus.vbimemodehiragana,vbimestatus.vbimemodehangul,vbimestatus.vbimemodehangulful,vbimestatus.vbimemodedis,vbimestatus.vbimemodealpha,vbimestatus.vbimemodealphaful,vbimestatus.vbimekatakanasng,vbimestatus.vbimekatakanadbl,vbimestatus.vbimehiragana,vbimestatus.vbimedis,vbimestatus.vbimealphasng,vbimestatus.vbimealphadbl url=/tB/Modules/Constants/VbIMEStatus
+  #2 score=83.44 title="VbStrConv" len=1169 matchedFields=content,symbols,title,relUrl terms=vbwide,vbutf8,vbuppercas,vbunicod,vbpropercas,vbnarrow,vblowercas,vbkatakana,vbhiragana,vbfromutf8,vbfromunicod,vbstrconv,vbstrconv.vbwid,vbstrconv.vbutf8,vbstrconv.vbuppercas,vbstrconv.vbunicod,vbstrconv.vbpropercas,vbstrconv.vbnarrow,vbstrconv.vblowercas,vbstrconv.vbkatakana,vbstrconv.vbhiragana,vbstrconv.vbfromutf8,vbstrconv.vbfromunicod url=/tB/Modules/Constants/VbStrConv
+  #3 score=83.37 title="VbMsgBoxStyle" len=243 matchedFields=content,symbols,title,relUrl terms=vbyesno,vbdefaultbutton2,vbcritic,vbyesnocancel,vbsystemmod,vbretrycancel,vbquestion,vbokonli,vbokcancel,vbmsgboxstyl,vbmsgboxstyle.vbyesno,vbmsgboxstyle.vbyesnocancel,vbmsgboxstyle.vbsystemmod,vbmsgboxstyle.vbretrycancel,vbmsgboxstyle.vbquest,vbmsgboxstyle.vbokonli,vbmsgboxstyle.vbokcancel,vbmsgboxstyle.vbmsgboxsetforeground,vbmsgboxstyle.vbmsgboxrtlread,vbmsgboxstyle.vbmsgboxright,vbmsgboxstyle.vbmsgboxhelpbutton,vbmsgboxstyle.vbinform,vbmsgboxstyle.vbexclam,vbmsgboxstyle.vbdefaultbutton4,vbmsgboxstyle.vbdefaultbutton3,vbmsgboxstyle.vbdefaultbutton2,vbmsgboxstyle.vbdefaultbutton1,vbmsgboxstyle.vbcrit,vbmsgboxstyle.vbcanceltryagaincontinu,vbmsgboxstyle.vbapplicationmod,vbmsgboxstyle.vbabortretryignor,vbmsgboxsetforeground,vbmsgboxrtlread,vbmsgboxright,vbmsgboxhelpbutton,vbinform,vbexclam,vbdefaultbutton4,vbdefaultbutton3,vbdefaultbutton1,vbcanceltryagaincontinu,vbapplicationmod,vbabortretryignor url=/tB/Modules/Constants/VbMsgBoxStyle
+
+"Do" [symbol-bare] h2:1 -> R:13 (delta 12)
+  GT: title="Do...Loop" len=1 symbols="Do Loop" url=/tB/Core/Do-Loop
+  #1 score=136.53 title="DockMode" len=1909 matchedFields=content,title,relUrl,symbols terms=dock,dockmod,dockmode.tbdocktop,dockmode.tbdockright,dockmode.tbdocknon,dockmode.tbdockleft,dockmode.tbdockfil,dockmode.tbdockbottom url=/tB/Packages/CustomControls/Enumerations/DockMode
+  #2 score=134.37 title="DownClick" len=110 matchedFields=content,title,symbols terms=down,downclick url=/tB/Packages/WinNativeCommonCtls/UpDown#downclick
+  #3 score=133.32 title="DockModeConstants" len=536 matchedFields=content,title,relUrl,symbols terms=dock,dockmodeconst,dockmodeconstants.vbdocktop,dockmodeconstants.vbdockright,dockmodeconstants.vbdocknon,dockmodeconstants.vbdockleft,dockmodeconstants.vbdockfil,dockmodeconstants.vbdockbottom url=/tB/Packages/VBRUN/Constants/DockModeConstants
+
+"For" [symbol-bare] h2:1 -> R:12 (delta 11)
+  GT: title="For Each...Next" len=1 symbols="Each For Next" url=/tB/Core/For-Each-Next
+  GT: title="For...Next" len=1 symbols="For Next" url=/tB/Core/For-Next
+  #1 score=127.57 title="FormBorderStyleConstants" len=885 matchedFields=content,title,relUrl,symbols terms=form,formborderstyleconst,formborderstyleconstants.vbsiz,formborderstyleconstants.vbsizabletoolwindow,formborderstyleconstants.vbsizabletoolwindownotitlebar,formborderstyleconstants.vbsizablenotitlebar,formborderstyleconstants.vbfixedtoolwindow,formborderstyleconstants.vbfixedsingl,formborderstyleconstants.vbfixeddialog,formborderstyleconstants.vbbsnon url=/tB/Packages/VBRUN/Constants/FormBorderStyleConstants
+  #2 score=126.75 title="FormArrangeConstants" len=443 matchedFields=content,title,relUrl,symbols terms=form,formarrangeconst,formarrangeconstants.vbtilevert,formarrangeconstants.vbtilehorizont,formarrangeconstants.vbcascad,formarrangeconstants.vbarrangeicon url=/tB/Packages/VBRUN/Constants/FormArrangeConstants
+  #3 score=120.42 title="ForwardFocus" len=247 matchedFields=content,title,relUrl,symbols terms=forward,forwardfocu url=/tB/Packages/VB/UserControl/#forwardfocus
+
+"Each" [symbol-bare] h2:1 -> R:6 (delta 5)
+  GT: title="For Each...Next" len=1 symbols="Each For Next" url=/tB/Core/For-Each-Next
+  #1 score=418.31 title="For Each iteration" len=304 matchedFields=title,content,relUrl terms=each,each…next url=/tB/Packages/VBRUN/DataMembers/#for-each-iteration
+  #2 score=418.25 title="For Each iteration" len=345 matchedFields=title,content,relUrl terms=each,each…next url=/tB/Packages/VBRUN/ContainedControls/#for-each-iteration
+  #3 score=418.20 title="For Each iteration" len=340 matchedFields=title,content,relUrl terms=each,each…next url=/tB/Packages/VBRUN/ParentControls/#for-each-iteration
+
+"vbForm" [symbol-bare] h2:1 -> R:4 (delta 3)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=37.65 title="QueryUnloadConstants" len=593 matchedFields=content,symbols terms=vbformown,vbformmdiform,vbformcontrolmenu,vbformcod url=/tB/Packages/VBRUN/Constants/QueryUnloadConstants
+  #2 score=21.93 title="ControlType" len=90 matchedFields=content terms=vbform url=/tB/Packages/VB/Form/#controltype
+  #3 score=21.93 title="ControlType" len=90 matchedFields=content terms=vbform url=/tB/Packages/VB/MDIForm/#controltype
+
+"With statement" [prose] h2:16 -> R:19 (delta 3)
+  GT: title="With" len=1937 symbols="With" url=/tB/Core/With
+  #1 score=676.97 title="Statements" len=166 matchedFields=title,content,relUrl terms=statement url=/Reference/Statements
+  #2 score=673.45 title="statement" len=332 matchedFields=title,content terms=statement url=/tB/Gloss#statement
+  #3 score=510.04 title="Seek Statement" len=1804 matchedFields=title,content,relUrl terms=statement,within url=/tB/Modules/FileSystem/Seek#seek-statement
+
+"Lock" [symbol-bare] h2:1 -> R:3 (delta 2)
+  GT: title="Lock, Unlock" len=2501 symbols="Lock Unlock" url=/tB/Core/Lock
+  #1 score=1349.89 title="Locked" len=265 matchedFields=title,content,relUrl,symbols terms=lock url=/tB/Packages/VB/ComboBox/#locked
+  #2 score=1348.95 title="Locked" len=274 matchedFields=title,content,relUrl,symbols terms=lock url=/tB/Packages/VB/TextBox/#locked
+  #3 score=1083.58 title="Lock, Unlock" len=2501 matchedFields=title,content,relUrl,symbols terms=lock url=/tB/Core/Lock
+
+"On" [symbol-bare] h2:1 -> R:3 (delta 2)
+  GT: title="On Error" len=7412 symbols="Error On" url=/tB/Core/On-Error
+  GT: title="On...GoSub" len=1 symbols="GoSub On" url=/tB/Core/On-GoSub
+  GT: title="On...GoTo, On...GoSub" len=1 symbols="GoSub GoTo On" url=/tB/Core/On-GoTo
+  #1 score=189.01 title="One construct across several fences" len=1875 matchedFields=title,content terms=on,onpaint url=/Documentation/Development/Authoring#one-construct-across-several-fences
+  #2 score=188.67 title="Two compilations, one stylesheet" len=1790 matchedFields=title,content,relUrl terms=on,onc url=/Documentation/Development/Builder#two-compilations-one-stylesheet
+  #3 score=187.16 title="On...GoTo, On...GoSub" len=1 matchedFields=title terms=on...goto,on...gosub url=/tB/Core/On-GoTo
+
+"Select" [symbol-bare] h2:5 -> R:7 (delta 2)
+  GT: title="Select Case" len=3192 symbols="Case Select" url=/tB/Core/Select-Case
+  #1 score=759.27 title="Selected" len=912 matchedFields=title,content,relUrl,symbols terms=select,selected(index url=/tB/Packages/VB/ListBox/#selected
+  #2 score=758.64 title="Selected" len=418 matchedFields=title,content,relUrl,symbols terms=select,selected(index url=/tB/Packages/VB/FileListBox/#selected
+  #3 score=754.70 title="Selected" len=103 matchedFields=title,content,symbols terms=select url=/tB/Packages/WinNativeCommonCtls/ListView/ListItem#selected
+
+"Time$" [symbol-bare] h2:5 -> R:7 (delta 2)
+  GT: title="Time" len=279 symbols="Time DateTime.Time Time$ DateTime.Time$" url=/tB/Modules/DateTime/Time
+  #1 score=871.00 title="Timer" len=398 matchedFields=title,content,relUrl,symbols terms=timer url=/tB/Packages/VB/Timer/
+  #2 score=836.29 title="Timer" len=455 matchedFields=content,title,relUrl,symbols terms=time,timer url=/tB/Modules/DateTime/Timer
+  #3 score=818.24 title="Timer" len=276 matchedFields=title,symbols terms=timer url=/tB/Packages/tbIDE/AddinTimer#timer
+
+"vbListBox" [symbol-bare] h2:1 -> R:3 (delta 2)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=37.05 title="ListBoxConstants" len=368 matchedFields=content,symbols terms=vblistboxstandard,vblistboxcolorswatch,vblistboxcheckbox url=/tB/Packages/VBRUN/Constants/ListBoxConstants
+  #2 score=22.60 title="ControlType" len=97 matchedFields=content terms=vblistbox url=/tB/Packages/VB/ListBox/#controltype
+  #3 score=21.98 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vblistbox url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"conditional compilation" [prose] h2:5 -> R:7 (delta 2)
+  GT: title="Compiler Constants" len=256 symbols="" url=/Reference/Compiler-Constants
+  #1 score=725.65 title="conditional compiler constant" len=244 matchedFields=title,content,relUrl terms=condit,compil url=/tB/Gloss#conditional-compiler-constant
+  #2 score=722.18 title="Conditional Compilation Args" len=365 matchedFields=title,content,relUrl terms=condit,compil url=/tB/IDE/Project/Settings#conditional-compilation-args
+  #3 score=526.68 title="Compile" len=1634 matchedFields=title,content,relUrl,symbols terms=compil url=/tB/Modules/TbExpressionService/Compile
+
+"vbCheckBox" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=22.88 title="ControlType" len=99 matchedFields=content terms=vbcheckbox url=/tB/Packages/VB/CheckBox/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vbcheckbox url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"vbComboBox" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=22.88 title="ControlType" len=99 matchedFields=content terms=vbcombobox url=/tB/Packages/VB/ComboBox/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vbcombobox url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"vbCommandButton" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=22.88 title="ControlType" len=109 matchedFields=content terms=vbcommandbutton url=/tB/Packages/VB/CommandButton/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vbcommandbutton url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"vbDataControl" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=22.88 title="ControlType" len=105 matchedFields=content terms=vbdatacontrol url=/tB/Packages/VB/Data/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vbdatacontrol url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"vbDirListBox" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=22.61 title="ControlType" len=110 matchedFields=content terms=vbdirlistbox url=/tB/Packages/VB/DirListBox/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vbdirlistbox url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"vbDriveListBox" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=22.61 title="ControlType" len=108 matchedFields=content terms=vbdrivelistbox url=/tB/Packages/VB/DriveListBox/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vbdrivelistbox url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"vbFileListBox" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=22.61 title="ControlType" len=106 matchedFields=content terms=vbfilelistbox url=/tB/Packages/VB/FileListBox/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vbfilelistbox url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"vbFrame" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=23.15 title="ControlType" len=92 matchedFields=content terms=vbframe url=/tB/Packages/VB/Frame/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vbframe url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"vbHScrollBar" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=22.61 title="ControlType" len=113 matchedFields=content terms=vbhscrollbar url=/tB/Packages/VB/HScrollBar/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vbhscrollbar url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"vbLabel" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=23.15 title="ControlType" len=92 matchedFields=content terms=vblabel url=/tB/Packages/VB/Label/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vblabel url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"vbMenuControl" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=23.15 title="ControlType" len=97 matchedFields=content terms=vbmenucontrol url=/tB/Packages/VB/Menu/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vbmenucontrol url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"vbOLEControl" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=22.88 title="ControlType" len=106 matchedFields=content terms=vbolecontrol url=/tB/Packages/VB/OLE/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vbolecontrol url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"vbOptionButton" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=22.88 title="ControlType" len=108 matchedFields=content terms=vboptionbutton url=/tB/Packages/VB/OptionButton/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vboptionbutton url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"vbPictureBox" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=22.88 title="ControlType" len=103 matchedFields=content terms=vbpicturebox url=/tB/Packages/VB/PictureBox/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vbpicturebox url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"vbPropertyPage" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=22.88 title="ControlType" len=107 matchedFields=content terms=vbpropertypag url=/tB/Packages/VB/PropertyPage/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vbpropertypag url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"vbReport" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=23.15 title="ControlType" len=93 matchedFields=content terms=vbreport url=/tB/Packages/VB/Report/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vbreport url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"vbTextBox" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=22.88 title="ControlType" len=97 matchedFields=content terms=vbtextbox url=/tB/Packages/VB/TextBox/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vbtextbox url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"vbUserControl" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=22.88 title="ControlType" len=105 matchedFields=content terms=vbusercontrol url=/tB/Packages/VB/UserControl/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vbusercontrol url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"vbVScrollBar" [symbol-bare] h2:1 -> R:2 (delta 1)
+  GT: title="ControlTypeConstants" len=2026 symbols="ControlTypeConstants Constants.ControlTypeConstants vbActive" url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+  #1 score=22.61 title="ControlType" len=111 matchedFields=content terms=vbvscrollbar url=/tB/Packages/VB/VScrollBar/#controltype
+  #2 score=22.25 title="ControlTypeConstants" len=2026 matchedFields=content,symbols terms=vbvscrollbar url=/tB/Packages/VBRUN/Constants/ControlTypeConstants
+
+"64-bit compilation" [prose] h2:1 -> R:2 (delta 1)
+  GT: title="64bit Compilation" len=295 symbols="" url=/Features/64bit
+  #1 score=869.56 title="64-bit compilation" len=217 matchedFields=title,content,relUrl terms=64,bit,compil url=/Reference/twinBASIC-Additions#64-bit-compilation
+  #2 score=555.26 title="Building a 64-bit Version" len=522 matchedFields=title,content,relUrl terms=64,bit,64bit#build url=/Features/64bit#building-a-64-bit-version
+  #3 score=547.28 title="32-bit vs. 64-bit considerations" len=1526 matchedFields=title,content,relUrl terms=64,bit,compil url=/Tutorials/Windows-API#32-bit-vs-64-bit-considerations
+
+"array bounds checks" [prose] h2:1 -> R:2 (delta 1)
+  GT: title="Project Settings" len=596 symbols="" url=/tB/IDE/Project/Settings
+  #1 score=634.76 title="Array bounds" len=508 matchedFields=title,content,relUrl terms=array,bound url=/tB/Modules/Information/#array-bounds
+  #2 score=622.45 title="Disable Array Bounds Checks" len=456 matchedFields=title,content,relUrl terms=array,bound,check,arrayboundscheck,arrayboundschecks(fals url=/tB/IDE/Project/Settings#disable-array-bounds-checks
+  #3 score=492.05 title="Array" len=2038 matchedFields=title,content,relUrl,symbols terms=array,bound,array’,array(x,array(a,array("on,array("mon,array(1,array(10 url=/tB/Modules/Information/Array
+
+"Fusion" [prose] h2:1 -> R:2 (delta 1)
+  GT: title="Fusion" len=1 symbols="" url=/Features/Fusion
+  #1 score=1182.88 title="Fusion" len=188 matchedFields=title,content,relUrl terms=fusion url=/Features/#fusion
+  #2 score=1169.71 title="Fusion" len=1 matchedFields=title,relUrl terms=fusion url=/Features/Fusion
+  #3 score=734.08 title="ActiveX Fusion Mode" len=1113 matchedFields=title,content,relUrl terms=fusion,fusionallto64,fusionallto32,fusion64to32,fusion32to64,fusion#activex url=/Features/Fusion#activex-fusion-mode

@@ -940,17 +940,21 @@ const TASKS = {
   },
 
   // Write search-data.json. Depends on renderJoin (every render:i.submit
-  // has stored its searchEntries in state.searchChunks[i]) and prepDest
-  // (_site/ exists). Result passes through to writeAux so its search.json
+  // has stored its searchEntries in state.searchChunks[i]), prepDest
+  // (_site/ exists), and symbolIndex -- whose `symbols` (each `{ name,
+  // container, url, ... }`) this task joins onto the matching entries by
+  // URL before writing, adding the `names` / `qualified` fields (see
+  // WIP.Search.md's "Design" §2 and `joinSymbolsToEntries` in
+  // search.mjs). Result passes through to writeAux so its search.json
   // field reaches writeOffline.  Heavy lifting (extractSections, stripHtml,
-  // sanitiseContent) ran on the workers; this task only concatenates and
-  // renumbers.
+  // sanitiseContent) ran on the workers; this task only joins, concatenates
+  // and renumbers.
   searchData: {
-    expected: ["renderJoin", "prepDest"],
+    expected: ["renderJoin", "prepDest", "symbolIndex"],
     runOnMain: true,
-    async execute(_, ctx, state) {
+    async execute({ symbolIndex }, ctx, state) {
       if (ctx.opts.dryRun) return { entries: 0, json: "" };
-      return writeSearchDataFromChunks(state.searchChunks, ctx.destRoot);
+      return writeSearchDataFromChunks(state.searchChunks, ctx.destRoot, symbolIndex.symbols);
     },
     submit() {},
   },
@@ -986,6 +990,10 @@ const TASKS = {
         urls: [...new Set(result.symbols.map((s) => s.url))],
         gaps: gaps.length,
         unplaced: result.unplaced,
+        // Consumed by searchData's join (see joinSymbolsToEntries in
+        // search.mjs), not written anywhere itself -- symbolIndex's own
+        // file output is tB/symbols.json, above.
+        symbols: result.symbols,
       };
     },
     submit() {},

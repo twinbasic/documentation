@@ -2,6 +2,7 @@
 title: Module
 parent: Statements
 permalink: /tB/Core/Module
+index: module variable
 ---
 # Module
 {: .no_toc }

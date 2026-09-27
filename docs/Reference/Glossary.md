@@ -98,11 +98,11 @@ A selected program line at which execution automatically stops. Breakpoints are 
 
 ## by reference
 
-A way of passing the address of an argument to a procedure instead of passing the value. This allows the procedure to access the actual variable. As a result, the variable's actual value can be changed by the procedure to which it is passed. Unless otherwise specified, arguments are passed by reference. Use the **ByRef** keyword to make this explicit.
+A way of passing the address of an argument to a procedure instead of passing the value. This allows the procedure to access the actual variable. As a result, the variable's actual value can be changed by the procedure to which it is passed. Unless otherwise specified, arguments are passed by reference. Use the **ByRef** keyword to make this explicit. See [Passing arguments ByRef and ByVal](Core/Sub#passing-arguments-byref-and-byval).
 
 ## by value
 
-A way of passing the value of an argument to a procedure instead of passing the address. This allows the procedure to access a copy of the variable. As a result, the variable's actual value can't be changed by the procedure to which it is passed. Use the **ByVal** keyword to pass an argument by value.
+A way of passing the value of an argument to a procedure instead of passing the address. This allows the procedure to access a copy of the variable. As a result, the variable's actual value can't be changed by the procedure to which it is passed. Use the **ByVal** keyword to pass an argument by value. See [Passing arguments ByRef and ByVal](Core/Sub#passing-arguments-byref-and-byval).
 
 ## Byte data type
 
@@ -235,6 +235,10 @@ A [data type](#data-type) that contains decimal numbers scaled by a power of 10.
 
 > [!NOTE]
 > Unlike classic VBA --- where **Decimal** was usable only as a **Variant** subtype produced by **CDec** --- twinBASIC supports **Decimal** as a first-class declared type. You can write `Dim x As Decimal`.
+
+## default member
+
+The member of an object that code uses when it names the object alone, without a member. For example, if **Item** is the default member of the collection `c`, then `c(1)` means `c.Item(1)`. Also called the *default property*. A twinBASIC class marks its default member with the [**[DefaultMember]**](Core/Attributes#defaultmember) attribute.
 
 ## designer
 
@@ -456,7 +460,12 @@ By assigning values to named arguments, you can write:
 DoSomething namedarg3 := 4, namedarg2 := 5, namedarg1 := 20
 ```
 
-Note that the named arguments don't have to appear in the normal positional order in the syntax.
+Note that the named arguments don't have to appear in the normal positional order in the syntax. See [Named arguments](Core/Call#named-arguments).
+
+## namespace
+{: index="namespaces" }
+
+(twinBASIC) A name that groups the names declared under it, so that code reaches them through it, followed by a dot. A [package](#package) groups its components under the namespace given when it is [published](../Features/Packages/Creating-TWINPACK), and a project that references the package reaches them through that name; see [Packages](../Features/Packages/). A project's own namespace is its [**Project Name**](IDE/Project/Settings#project-name). **Import Library** ... **As** *namespace* names a [statically linked library](../Features/Advanced/Static-Linking#generic-syntax), which **Declare** statements then use in place of a DLL name. A class with the **[AppObject]** [attribute](../Features/Language/Interfaces-CoClasses) is part of the global namespace.
 
 ## Null
 
@@ -697,6 +706,7 @@ A character appended to a variable name indicating the variable's data type. By 
 | `$`  | **String**      |
 
 ## type library
+{: index="typelib" }
 
 A file or component within another file that contains standard descriptions of exposed objects, properties, and methods that are available for Automation. Object library files (`.olb`, `.tlb`) contain type libraries.
 

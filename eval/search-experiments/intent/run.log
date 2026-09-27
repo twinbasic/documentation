@@ -1,0 +1,16 @@
+tiered-field approximation fallbacks: 0 of 5475 name occurrences
+done: baseline
+done: X1-B50
+done: X1-B200
+done: X1-B1000
+done: X2-P5
+done: X2-P20
+done: X2-P50
+done: X3
+done: X1t(200/100/50)
+done: X1t(1000/200/50)
+done: X1(200)+X2(20)
+done: X1(200)+X3
+done: X1t(200/100/50)+X2(20)
+done: X1t(200/100/50)+X2(20)+X3
+wrote out_results.json

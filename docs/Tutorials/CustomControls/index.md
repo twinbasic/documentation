@@ -2,6 +2,7 @@
 title: CustomControls
 parent: Tutorials
 permalink: /Tutorials/CustomControls/
+index: custom controls
 redirect_from:
   - /CustomControls
   - /CustomControls/Introduction

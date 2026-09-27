@@ -3,6 +3,7 @@ title: Alias Types
 parent: Language Syntax
 nav_order: 0
 permalink: /Features/Language/Alias-Types
+index: type aliases
 ---
 
 # Alias Types

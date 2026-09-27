@@ -59,7 +59,11 @@ function renderPage(page, md) {
     return page.rawContent;
   }
   const source = applyPreRenderRewrites(page.rawContent, md);
-  let html = md.render(source, { page });
+  const env = { page };
+  let html = md.render(source, env);
+  // Lifted off the headings by searchIndexMarksPlugin; search.mjs reads
+  // them when it splits this page into entries.
+  if (env.searchIndexMarks) page.searchIndexMarks = env.searchIndexMarks;
   html = normaliseVoidTags(html);
   html = padEmptyCells(html);
   return html;
@@ -433,6 +437,7 @@ export function createMarkdownIt(ctx) {
   md.use(footnote);
   configureFootnotes(md);
   md.use(headerIdPlugin);
+  md.use(searchIndexMarksPlugin);
   md.use(headingLevelNormalizePlugin);
   md.use(tocPlugin);
   md.use(relativeLinksPlugin, ctx);
@@ -1245,6 +1250,48 @@ function headerIdPlugin(md) {
         const base = kramdownSlug(text);
         openHeading.attrSet("id", uniqueSlug(base, used));
       }
+    }
+  });
+}
+
+// Hand-marked search index entries (WIP.Search.md, "What shipped, third
+// round: the index pilot"). A heading's `{: index="..." }` names the terms
+// a reader looks up to find that section, as a book's index would, and
+// `{: index_also="..." }` the terms it is a strong second answer for. Both
+// are lifted off the heading here, once header-id has given it its id, into
+// env.searchIndexMarks as `{ id, index, index_also }` with the raw
+// attribute values, so they never reach the HTML. search.mjs parses the
+// values and attaches them to the entry holding that heading. On any other
+// element the attribute would be published and do nothing, so it fails the
+// build instead.
+const SEARCH_INDEX_ATTRS = ["index", "index_also"];
+
+function searchIndexMarksPlugin(md) {
+  md.core.ruler.after("header-id", "search-index-marks", (state) => {
+    const misplaced = (t) => {
+      const name = SEARCH_INDEX_ATTRS.find((a) => t.attrGet(a) !== null);
+      if (!name) return;
+      throw new Error(
+        `${state.env?.page?.srcRel ?? "(unknown page)"}: \`{: ${name}="..." }\` on ` +
+        `${t.tag ? `<${t.tag}>` : t.type}; only a heading can carry a search index entry. ` +
+        "For the whole page, use `index:` in the front matter.");
+    };
+    for (const t of state.tokens) {
+      if (t.type === "heading_open") {
+        const mark = { id: t.attrGet("id") };
+        let found = false;
+        for (const a of SEARCH_INDEX_ATTRS) {
+          const v = t.attrGet(a);
+          if (v === null) continue;
+          mark[a] = v;
+          found = true;
+          t.attrs.splice(t.attrIndex(a), 1);
+        }
+        if (found) (state.env.searchIndexMarks ??= []).push(mark);
+      } else if (t.attrs) {
+        misplaced(t);
+      }
+      for (const c of t.children ?? []) if (c.attrs) misplaced(c);
     }
   });
 }

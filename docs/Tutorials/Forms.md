@@ -58,6 +58,7 @@ Select `lblResult` and set its **Font** property. Click the `...` button next to
 <!-- screenshot: Properties window showing lblResult selected with Font property highlighted -->
 
 ## Step 3: Write the event handler
+{: index_also="event handlers" }
 
 Double-click the `cmdConvert` button in the designer. The IDE switches to the Code Editor and creates a shell for the button's Click event:
 

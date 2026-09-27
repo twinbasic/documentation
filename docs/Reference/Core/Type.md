@@ -2,6 +2,12 @@
 title: Type
 parent: Statements
 permalink: /tB/Core/Type
+index:
+  - user defined types
+  - user types
+index_also:
+  - operator overloading
+  - overloading operators
 vba_attribution: true
 ---
 # Type

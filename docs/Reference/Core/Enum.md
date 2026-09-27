@@ -2,6 +2,7 @@
 title: Enum
 parent: Statements
 permalink: /tB/Core/Enum
+index_also: enumerated constant
 vba_attribution: true
 ---
 

@@ -38,6 +38,7 @@ Like [**Image**](../Image/), a **Label** has no `hWnd`. The framework paints it 
 For text the user can edit (or that needs to take focus), use [**TextBox**](../TextBox) with `Locked = True` instead.
 
 ## Mnemonics and access keys
+{: index="accelerator key; access key" }
 
 Labels do not take focus themselves, but they participate in keyboard-mnemonic routing. With [**UseMnemonic**](#usemnemonic) **True** (the default), an ampersand in [**Caption**](#caption) marks the next character as a mnemonic --- pressing **Alt+** that character moves the focus to the *next focusable control in tab order* after the label. Use `&&` to display a literal ampersand. Set [**UseMnemonic**](#usemnemonic) to **False** to disable the special handling and have ampersands rendered verbatim.
 

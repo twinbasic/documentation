@@ -3,6 +3,9 @@ title: Memory
 parent: IDE
 # nav_order: 
 permalink: /tB/IDE/Project/Memory
+index:
+  - memory window
+  - memory panel
 ---
 
 # Memory

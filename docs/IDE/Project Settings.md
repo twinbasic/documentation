@@ -40,8 +40,11 @@ The form that the program shows when it starts, or **Sub Main**. When it is not 
 The form whose icon becomes the program's icon. The list holds the project's forms, and the default is **(none)**. The build copies the form's icon into the file's icon resources, as entry `#1` of the `RT_GROUP_ICON` group, which is the icon Windows usually shows for the program. In the `Settings` file it is `project.iconForm`.
 
 ## Library References
+{: index="add reference" }
 
 The type libraries and packages that the compiler uses for this project. In the `Settings` file it is `project.references`.
+
+To add a reference, tick it on the **Available COM References** tab, which lists the type libraries registered on the machine, or on the **Available Packages** tab. The **Enabled Libraries** tab lists the references the project uses, in priority order.
 
 ![The Project Settings dialog on its Enabled Libraries tab, listing four ticked references in priority order with Library Symbol and Version columns: the twinBASIC VBA and VBRUN compatibility packages, OLE Automation as stdole, and the IDE Extensibility package as tbIDE.](Images/ProjectSettings_LibraryReferences.png)
 
@@ -76,6 +79,7 @@ Every project template sets it to `${SourcePath}\Build\${ProjectName}_${Architec
 The full path of the host EXE that the compiler creates for [Fusion](../../../Features/Fusion): the separate program that ActiveX controls run in. It can use the same variables as [Build Output Path](#build-output-path), except that `${Architecture}` is `win32host` or `win64host`. When it is not set, the compiler uses *Build Output Path* when it needs the file. A built program expects the host EXE in its own folder. For a host EXE kept anywhere else, the program has to set `App.FusionHostEXEPath` as it starts --- see [Runtime Behaviour and Deployment](../../../Features/Fusion#runtime-behaviour-and-deployment). In the `Settings` file it is `project.fusionBuildPath`.
 
 ## Build Type
+{: index_also="standard exe; create an ActiveX DLL; create ActiveX DLL" }
 
 The type of file the compiler creates: **Standard EXE**, **ActiveX DLL**, **ActiveX Control**, **Standard DLL** or **Package TWINPACK**. [Project Types](../../../Features/Project-Configuration/Project-Types) describes the Standard DLL, and code can test the setting with the [`TWINBASIC_BUILD_TYPE`](../../../Reference/Compiler-Constants#twinbasic_build_type) compiler constant. In the `Settings` file it is `project.buildType`.
 
@@ -291,7 +295,7 @@ When set to **Yes**, every save of the project also runs **Export Project** into
 When set to **Yes**, **Export Project** writes a line to the [Debug Console](DebugConsole) for each file and folder it deletes, `[EXPORT]  DELETED: …`, and for each file it writes, `[EXPORT]  DONE: …`. When set to **No**, the console shows only the line that starts the export, the `[EXPORT] COMPLETED` line that ends it, and any failure. It is **No** by default. In the `Settings` file it is `project.exportVerbose`.
 
 ## Force DPI Awareness At Startup
-{: #dpi-awareness }
+{: #dpi-awareness index="high DPI" }
 
 How the program sets its DPI awareness as it starts: **NONE**, **SYSTEM_DPI_AWARE** or **PER_MONITOR_DPI_AWARE**. The default is **PER_MONITOR_DPI_AWARE**. The last two make the program call the `SetProcessDpiAwareness` API, where Windows has it. **NONE** turns DPI awareness off; it is also the choice for a program that sets its DPI awareness itself, in a manifest. In the `Settings` file it is `project.forceDpiAwarenessAtStartup`.
 

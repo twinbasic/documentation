@@ -3,6 +3,10 @@ title: Project Types
 parent: Project Configuration
 nav_order: 1
 permalink: /Features/Project-Configuration/Project-Types
+index_also:
+  - standard exe
+  - create an ActiveX DLL
+  - create ActiveX DLL
 ---
 
 # Project Types
@@ -10,6 +14,7 @@ permalink: /Features/Project-Configuration/Project-Types
 twinBASIC provides built-in support for several project types beyond the traditional EXE and ActiveX DLL/Control.
 
 ## Standard DLLs
+{: index="create a DLL project; create dll project; create a dll; create dll" }
 
 While it was possible to accomplish this via hacks previously, tB offers it as a built in project type. You can choose this project type at startup, then you simply need to mark functions with `[DllExport]` when you want them exported. The name will be used as-is, it will not be mangled. The `CDecl` calling convention is supported with the normal syntax, e.g. `Public Function foo CDecl(bar As Long) As Long`.
 

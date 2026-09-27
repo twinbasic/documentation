@@ -3,6 +3,9 @@ title: History
 parent: IDE
 # nav_order: 
 permalink: /tB/IDE/Project/History
+index:
+  - history panel
+  - history window
 ---
 
 # History

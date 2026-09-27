@@ -69,7 +69,7 @@ Syntax: One or more of
 : *optional* Indicates that an argument is not required. If used, all subsequent arguments in *arglist* must also be optional and declared by using the **Optional** keyword. **Optional** can't be used for any argument if **ParamArray** is used.
 
 **ByVal**
-: *optional* Indicates that the argument is passed by value.
+: *optional* Indicates that the argument is passed by value. See [Passing arguments ByRef and ByVal](#passing-arguments-byref-and-byval).
 
 **ByRef**
 : *optional* Indicates that the argument is passed by reference. **ByRef** is the default unlike in Visual Basic .NET.
@@ -109,6 +109,52 @@ A procedure can use a variable that is not explicitly declared in the procedure,
 
 > [!NOTE]
 > **GoSub**, **GoTo**, and **Return** cannot enter or exit a **Sub** procedure. Use [**Exit Sub**](Exit) to leave a **Sub** early.
+
+### Passing arguments ByRef and ByVal
+{: index="ByRef; ByVal" }
+
+An argument is passed [by reference](../Gloss#by-reference) unless its parameter is declared **ByVal**. A **ByRef** parameter is another name for the caller's variable, so when the procedure assigns to it, the caller's variable changes. A **ByVal** parameter is a copy: the procedure can change it freely, and the caller's variable keeps its value.
+
+**ByRef** reaches the caller's variable only when the caller passes a variable, an array element, or a field of a user-defined type. A constant, an expression, or a variable enclosed in its own parentheses is evaluated into a temporary copy, and the procedure's changes to that copy are lost.
+
+For an object, what is passed is the reference. The procedure can change the object's properties either way, since both references point at the same object. Only a **ByRef** parameter lets the procedure **Set** the caller's variable to a different object.
+
+This is how a procedure hands back more than one result; see [Returning more than one value](Function#returning-more-than-one-value).
+
+```tb check_build
+Sub AddOne(ByRef Counter As Long, ByVal Copy As Long)
+    Counter = Counter + 1   ' Changes the caller's variable.
+    Copy = Copy + 1         ' Changes only the local copy.
+End Sub
+
+Sub TryAddOne()
+    Dim a As Long, b As Long
+    AddOne a, b
+    Debug.Print a, b        ' 1  0
+    AddOne (a), b           ' The parentheses pass a copy of a.
+    Debug.Print a, b        ' 1  0
+End Sub
+```
+
+### Optional arguments and default values
+{: index="optional parameters" }
+
+A parameter declared **Optional** can be left out of a call. Give it a *defaultvalue* in its declaration, and the procedure sees that value whenever the caller leaves the argument out. An **Optional** parameter of type **Variant** with no default can instead be tested with [**IsMissing**](../Modules/Information/IsMissing), which returns **True** when the argument was left out.
+
+A caller leaves out an argument by leaving its place empty between commas, or by passing the others as [named arguments](Call#named-arguments).
+
+```tb check_build
+Sub Greet(Name As String, Optional Greeting As String = "Hello", Optional Suffix As Variant)
+    If IsMissing(Suffix) Then Suffix = "!"
+    Debug.Print Greeting & ", " & Name & Suffix
+End Sub
+
+Sub TryGreet()
+    Greet "Ada"                 ' Hello, Ada!
+    Greet "Ada", "Hi"           ' Hi, Ada!
+    Greet "Ada", , "?"          ' Hello, Ada?
+End Sub
+```
 
 ### Example
 

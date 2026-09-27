@@ -91,49 +91,391 @@ function disableHeadStyleSheets() {
 // Site search
 
 function initSearch() {
-  var request = new XMLHttpRequest();
-  request.open('GET', (window.jtdBaseurl || '') + '/assets/js/search-data.json', true);
+  // Patched: lazy index build (WIP.Search.md rollout step 5C). Building
+  // the lunr index eagerly, on every page load, cost about 1.3s and
+  // 240MB of heap even for readers who never open search (see
+  // WIP.Search.md's per-page-view cost table). initSearch() now only
+  // defines how to fetch and build the index -- loadIndex() below -- and
+  // hands that to searchLoaded(), which wires up the search box right
+  // away but doesn't call loadIndex() until the first keystroke. See
+  // builder/vendor/just-the-docs/README.md.
+  function loadIndex(onSuccess, onError) {
+    var request = new XMLHttpRequest();
+    request.open('GET', (window.jtdBaseurl || '') + '/assets/js/search-data.json', true);
 
-  request.onload = function(){
-    if (request.status >= 200 && request.status < 400) {
-      var docs = JSON.parse(request.responseText);
+    request.onload = function(){
+      if (request.status >= 200 && request.status < 400) {
+        try {
+          var docs = JSON.parse(request.responseText);
 
-      lunr.tokenizer.separator = /[\s\-/]+/
+          // Patched: split runs of 2+ dots into spaces before tokenising
+          // (step 5B). Titles like "Do...Loop" and "For Each...Next"
+          // tokenised as a single token ("do...loop"), because lunr's
+          // tokenizer tests one character at a time against `separator`,
+          // so a `\.{2,}` alternative in that regex can't work. Wrapping
+          // lunr.tokenizer instead: for a string input, every run of 2+
+          // dots becomes the same number of spaces (character positions
+          // stay valid, so match highlighting still works), then the
+          // original tokenizer runs as usual; non-string input (arrays,
+          // null) passes through unchanged. Installed once -- lunr is a
+          // global singleton and loadIndex() can run again after a failed
+          // load -- and the wrapper has to carry `separator` itself,
+          // because the original tokenizer reads `lunr.tokenizer.separator`
+          // at call time, which after this reassignment resolves to the
+          // wrapper's own property, not the original function's. See
+          // builder/vendor/just-the-docs/README.md and WIP.Search.md's
+          // "Design" section.
+          if (!lunr.tokenizer.dotRunSplit) {
+            var originalTokenizer = lunr.tokenizer;
+            var dotRunSplitTokenizer = function (input) {
+              if (typeof input === 'string') {
+                input = input.replace(/\.{2,}/g, function (m) {
+                  return new Array(m.length + 1).join(' ');
+                });
+              }
+              return originalTokenizer(input).map(decodeTokenEntities);
+            };
+            dotRunSplitTokenizer.dotRunSplit = true;
+            dotRunSplitTokenizer.separator = /[\s\-\/]+/;
+            lunr.tokenizer = dotRunSplitTokenizer;
+          }
+          separateTokenSetKeys();
+          accumulateSetUnions();
 
-      var index = lunr(function(){
-        this.ref('id');
-        this.field('title', { boost: 200 });
-        this.field('content', { boost: 2 });
-        this.field('relUrl');
-        this.metadataWhitelist = ['position']
+          var twins = stemTwins(docs);
+          var index = lunr(function(){
+            this.ref('id');
+            this.field('title', { boost: 200 });
+            this.field('content', { boost: 2 });
+            // Patched: two extra fields joined in at build time from the symbol
+            // index (builder/search.mjs's joinSymbolsToEntries) -- bare names
+            // ("PaintPicture") and their qualified "Container.Name" forms
+            // ("Form.PaintPicture"). Two fields, not one, because BM25 discounts
+            // a match inside a long field, and the qualified forms are longer;
+            // splitting them keeps the short bare names scoring well on their
+            // own. See builder/vendor/just-the-docs/README.md and
+            // WIP.Search.md's "Design" §2. `qualified` weighs most of the two
+            // since only a qualified name reaches it (see doSearch()), and
+            // naming one is the most specific thing a reader can type
+            // (WIP.Search.md, "What shipped, fourth round").
+            this.field('names', { boost: 100 });
+            this.field('qualified', { boost: 500 });
+            // Patched: `exact` holds each bare name whole (see exactName()
+            // below), for a query naming it exactly; `primary` holds the same
+            // for the names that are types or language elements (the build
+            // lists them), so `Left` finds the Strings function before 40
+            // controls' Left properties; `page` holds the page's title, so a
+            // page whose title the reader typed outranks a section of another
+            // page that only mentions it. See WIP.Search.md, "Reader intent".
+            this.field('exact', { boost: 50 });
+            this.field('primary', { boost: 1000 });
+            this.field('page', { boost: 5 });
+            // Patched: `index` holds the entry's hand-marked index terms
+            // (builder/search.mjs's attachIndexMarks), as indexField() below
+            // writes them. See WIP.Search.md, "What shipped, third round:
+            // the index pilot".
+            this.field('index', { boost: 1000 });
+            this.field('relUrl');
+            this.metadataWhitelist = ['position']
+            pinIndexFieldLengths(this);
+            // Patched: keep stop words in the index (step 5A). lunr's index
+            // pipeline runs lunr.stopWordFilter by default, but its search
+            // pipeline never did, so English stop words were dropped from the
+            // index while a query still carried them and could never match --
+            // many are twinBASIC keywords (Do, For, If, Is, On, With, Each...).
+            // See WIP.Search.md's "Design" section.
+            this.pipeline.remove(lunr.stopWordFilter);
 
-        for (var i in docs) {
-          
-          this.add({
-            id: i,
-            title: docs[i].title,
-            content: docs[i].content,
-            relUrl: docs[i].relUrl
+            for (var i in docs) {
+
+              this.add({
+                id: i,
+                title: docs[i].title,
+                content: indexedContent(docs[i]),
+                names: docs[i].names || '',
+                qualified: qualifiedField(docs[i], twins),
+                exact: (docs[i].names || '').split(/\s+/).filter(Boolean).map(exactName).join(' '),
+                primary: (docs[i].primary || '').split(/\s+/).filter(Boolean).map(exactName).join(' '),
+                page: docs[i].doc || '',
+                index: indexField(docs[i]),
+                relUrl: docs[i].relUrl
+              });
+            }
           });
+
+          onSuccess(index, docs);
+        } catch (e) {
+          console.log('Error building search index: ' + e);
+          onError();
         }
-      });
+      } else {
+        console.log('Error loading ajax request. Request status:' + request.status);
+        onError();
+      }
+    };
 
-      searchLoaded(index, docs);
-    } else {
-      console.log('Error loading ajax request. Request status:' + request.status);
-    }
-  };
+    request.onerror = function(){
+      console.log('There was a connection error');
+      onError();
+    };
 
-  request.onerror = function(){
-    console.log('There was a connection error');
-  };
+    request.send();
+  }
 
-  request.send();
+  searchLoaded(loadIndex);
 }
 
-function searchLoaded(index, docs) {
-  var index = index;
-  var docs = docs;
+// Patched: a name as the `exact` and `primary` fields hold it -- lowercased,
+// with every non-word character spelled as `_` and its hex code, and `_`
+// appended. lunr's trimmer would strip those characters from the ends,
+// turning `#If` into `if` and `<>` into nothing; spelled out, they survive,
+// so `#If`, `Time$` and the operators stay distinct names. The final `_`
+// keeps a whole-name query off every longer name that starts with it (`Node`
+// against `Nodes`); no Porter stemmer rule touches a word ending in it. Used
+// by initSearch() above and doSearch() below.
+function exactName(name) {
+  return name.toLowerCase().replace(/\W/g, function(c) {
+    return '_' + c.charCodeAt(0).toString(16);
+  }) + '_';
+}
+
+// Patched: the search data keeps the page's HTML entities (`&amp;H80004005`,
+// `&lt;`), since the results panel inserts its text as HTML and highlights by
+// character position in it. The index took them as written, so
+// `&amp;H80004005` was the term `amp;h80004005`, which no query reaches. The
+// tokenizer wrapper in initSearch() (and in offline.mjs's copy of it) decodes
+// each token here, after the split: the token keeps its position in the
+// escaped text, so highlighting still lines up. A decoded character that
+// would separate words (`&#45;`, a hyphen) doesn't split its token. See
+// WIP.Search.md, "Fixed: entities in the index".
+var NAMED_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+
+function decodeTokenEntities(token) {
+  if (token.str.indexOf('&') === -1) return token;
+  return token.update(function(str) {
+    return str.replace(/&(amp|lt|gt|quot|apos|nbsp|#[0-9]+|#x[0-9a-f]+);/g, function(m, name) {
+      if (name.charAt(0) !== '#') return NAMED_ENTITIES[name];
+      var code = name.charAt(1) === 'x' ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10);
+      // Lowercased, as lunr's tokenizer lowercases everything else.
+      return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code).toLowerCase() : m;
+    });
+  });
+}
+
+// Patched: lunr 2.3.9 keys a token set's nodes for minimisation by
+// TokenSet#toString(), which writes each edge's label and its child's id with
+// nothing between them. `{1 -> 656}` and `{1 -> 6, 5 -> 6}` both key as
+// `01656`, minimisation merges the two nodes, and the index's token set then
+// holds words no entry has and loses real ones (`amp;h80004001`). A
+// trailing-wildcard query that reaches an invented word throws inside lunr:
+// any query with the word `a` did. A `,` after each id keeps the keys apart.
+// Installed once, since lunr is a global singleton; called from initSearch()
+// above and from offline.mjs's copy of it. See WIP.Search.md, "Fixed: lunr
+// invented words".
+function separateTokenSetKeys() {
+  if (lunr.TokenSet.prototype.toString.separated) return;
+  var separated = function() {
+    if (this._str) return this._str;
+    var str = this.final ? '1' : '0';
+    var labels = Object.keys(this.edges).sort();
+    for (var i = 0; i < labels.length; i++) {
+      str += labels[i] + this.edges[labels[i]].id + ',';
+    }
+    return str;
+  };
+  separated.separated = true;
+  lunr.TokenSet.prototype.toString = separated;
+}
+
+// Patched: lunr 2.3.9's Index#query gathers the entries a REQUIRED clause
+// matches as a running total, `c = c.union(S)`, once per term the clause
+// expands to and per field, and Set#union copies both sets into a new one
+// every time. The all-words pass requires each word with a trailing wildcard,
+// and a short word expands to thousands of terms (`a*`), so that was
+// quadratic: `a page` took about 800 ms and `a p` 1.3 s, on every keystroke.
+// Here a set that union() made takes the next set into itself, in place:
+// lunr's only unions are running totals, which drop the set they replace.
+// The length is lunr's own (the first set's elements plus the second's, an
+// element in both counting twice), since intersect() walks the shorter set.
+// Installed once, since lunr is a global singleton; called from initSearch()
+// above and from offline.mjs's copy of it. See WIP.Search.md, "Fixed: slow
+// multi-word queries".
+function accumulateSetUnions() {
+  var union = lunr.Set.prototype.union;
+  if (union.accumulates) return;
+  var accumulating = function(other) {
+    if (other === lunr.Set.complete || other === lunr.Set.empty) return union.call(this, other);
+    var set = this;
+    if (set.distinct === undefined) {
+      set = new lunr.Set(Object.keys(this.elements));
+      set.distinct = set.length;
+    }
+    var keys = Object.keys(other.elements);
+    set.length = set.distinct + keys.length;
+    for (var i = 0; i < keys.length; i++) {
+      if (!set.elements[keys[i]]) {
+        set.elements[keys[i]] = true;
+        set.distinct++;
+      }
+    }
+    return set;
+  };
+  accumulating.accumulates = true;
+  lunr.Set.prototype.union = accumulating;
+}
+
+// Patched: whether a result matched the name a query names (see
+// doSearch()): in `exact` or `primary`, or every word of it in `title`.
+function namesTheThing(result, name) {
+  var metadata = result.matchData.metadata;
+  var terms = Object.keys(metadata);
+  for (var i = 0; i < terms.length; i++) {
+    if (metadata[terms[i]].exact || metadata[terms[i]].primary) return true;
+  }
+  var keys = lunr.tokenizer(name).map(function(token) {
+    return lunr.stemmer(lunr.trimmer(token)).toString();
+  }).filter(Boolean);
+  return keys.length > 0 && keys.every(function(key) {
+    return metadata[key] && metadata[key].title;
+  });
+}
+
+// Patched: the qualified names that the stemmer merges with another name's
+// (`Printer.Font` and `Printer.Fonts` both stem to `printer.font`), which
+// would otherwise tie in `qualified`: 104 names, mostly a function and its
+// `$` form. Keyed by the name as the tokenizer writes it. Used by
+// initSearch() above, with qualifiedField().
+function stemTwins(docs) {
+  var byStem = {};
+  for (var i in docs) {
+    lunr.tokenizer(docs[i].qualified || '').forEach(function(token) {
+      var stem = lunr.stemmer(lunr.trimmer(token.clone())).toString();
+      (byStem[stem] = byStem[stem] || {})[token.str] = true;
+    });
+  }
+  var twins = {};
+  for (var stem in byStem) {
+    var names = Object.keys(byStem[stem]);
+    if (names.length > 1) names.forEach(function(name) { twins[name] = true; });
+  }
+  return twins;
+}
+
+// Patched: a search entry's `qualified` field. Its qualified names, and
+// those of them that have a stem twin also whole, as exactName() writes
+// them, so that a query naming one (see doSearch()) finds it and not its
+// twin. Only those: held for every qualified name, the whole names took
+// 19 MB more heap; for the twins, 0.3 MB.
+function qualifiedField(doc, twins) {
+  var qualified = doc.qualified || '';
+  var whole = lunr.tokenizer(qualified).filter(function(token) {
+    return twins[token.str];
+  }).map(function(token) {
+    return exactName(token.str);
+  });
+  return whole.length ? qualified + ' ' + whole.join(' ') : qualified;
+}
+
+// Patched: a hand-marked index term as the `index` field holds it -- its
+// words as the index holds words (tokenized, trimmed and stemmed), joined by
+// `_`, with `_` appended, so the whole term is one token. A query matches it
+// only by naming the whole term (see indexKeys in doSearch() below). No
+// stemmer rule touches a word ending in `_`, and the trimmer keeps it.
+function phraseKey(tokens) {
+  return tokens.map(function(t) {
+    return lunr.stemmer(t.clone()).toString();
+  }).join('_') + '_';
+}
+
+function indexTermKey(term) {
+  var tokens = lunr.tokenizer(term).map(function(t) {
+    return lunr.trimmer(t);
+  }).filter(function(t) {
+    return t.str !== '';
+  });
+  return tokens.length ? phraseKey(tokens) : '';
+}
+
+// Patched: a search entry's `index` field. Its main terms (`index`) as
+// indexTermKey() writes them, and its secondary ones (`index_also`) with one
+// more `_`, so that doSearch() can weigh the two apart within one field. One
+// field, not two, because lunr gives every term in the whole index a slot
+// for every field: as two fields, with the words below as a third, the
+// index took 24 MB more heap; as one, 5 MB.
+function indexField(doc) {
+  var main = (doc.index || []).map(indexTermKey).filter(Boolean);
+  var also = (doc.index_also || []).map(indexTermKey).filter(Boolean).map(function(k) {
+    return k + '_';
+  });
+  return main.concat(also).join(' ');
+}
+
+// Patched: a search entry's content, with its index terms appended as plain
+// words, so an entry marked `late binding` still has both words when a query
+// requires all of them.
+function indexedContent(doc) {
+  var terms = (doc.index || []).concat(doc.index_also || []);
+  return terms.length ? doc.content + ' ' + terms.join(' ') : doc.content;
+}
+
+// Patched: BM25 scales a match by its field's length against the average
+// length of that field, and `index` is empty on nearly every entry, so its
+// average is near zero and a marked entry looked a thousand times too long:
+// its match counted for almost nothing, and would count for more with every
+// page marked. A term fills the field on its own, so the average is pinned
+// at one term. Called from the lunr builder function in initSearch().
+function pinIndexFieldLengths(builder) {
+  var averageLengths = builder.calculateAverageFieldLengths;
+  builder.calculateAverageFieldLengths = function() {
+    averageLengths.call(this);
+    this.averageFieldLength.index = 1;
+  };
+}
+
+// Patched: a query of two or more words that reads the same as a result's
+// whole title, or its page title and title together, names that result:
+// `Return Syntax`, `DTPicker Properties`. lunr alone ranks a one-word entry
+// above it (`Return`, the DTPicker class's heading), since that entry matches
+// one word in a heavier field. Such a result scores WHOLE_TITLE_BOOST times
+// as much. Compared as indexTermKey() writes both, so case, punctuation and
+// word endings don't matter. `keys` holds each entry's two keys, by ref,
+// computed on its first appearance in a result. At five times, `_App
+// Comments` lifted the App page's Comments section, since the trimmer drops
+// the `_`; three leaves a margin. Called at the end of doSearch(). See
+// WIP.Search.md, "Fixed: whole titles".
+var WHOLE_TITLE_BOOST = 3;
+
+function boostWholeTitles(results, docs, baseTokens, keys) {
+  if (baseTokens.length < 2) return results;
+  var key = phraseKey(baseTokens);
+  var boosted = false;
+  results.forEach(function(result) {
+    var k = keys[result.ref];
+    if (!k) {
+      var doc = docs[result.ref];
+      k = keys[result.ref] = [indexTermKey(doc.title || ''), indexTermKey((doc.doc || '') + ' ' + (doc.title || ''))];
+    }
+    if (k[0] === key || k[1] === key) {
+      result.score *= WHOLE_TITLE_BOOST;
+      boosted = true;
+    }
+  });
+  return boosted ? results.sort(function(a, b) { return b.score - a.score; }) : results;
+}
+
+// Patched: the kinds tB/symbols.json gives its symbols, less `enumvalue`,
+// which nobody types. A query naming one thing plus its kind -- `With
+// statement`, `AddressOf operator` -- is treated as naming that thing.
+var KIND_WORDS = ['operator', 'statement', 'attribute', 'keyword', 'directive', 'class', 'method', 'property', 'module', 'function', 'constant', 'enum', 'object', 'member', 'sub', 'package', 'interface', 'control', 'event', 'type', 'field'];
+
+function searchLoaded(loadIndex) {
+  // Patched: index/docs start out unbuilt (step 5C) -- loadIndex() (from
+  // initSearch(), above) isn't called until the first non-empty keystroke,
+  // in loadIndexNow() below.
+  var index = null;
+  var docs = null;
+  var titleKeys = {}; // boostWholeTitles()'s keys, by ref
+  var indexLoading = false;
   var searchInput = document.getElementById('search-input');
   var searchResults = document.getElementById('search-results');
   var mainHeader = document.getElementById('main-header');
@@ -153,6 +495,67 @@ function searchLoaded(index, docs) {
     searchInput.removeAttribute('aria-activedescendant');
   }
 
+  // Patched: shared by the "loading" and "failed" states (step 5C). Reuses
+  // .search-no-result -- same slot, same style as "No results found" --
+  // rather than adding a class for what is visually the same single
+  // centred message.
+  function showStatusMessage(text) {
+    searchResults.innerHTML = '';
+    var statusDiv = document.createElement('div');
+    statusDiv.classList.add('search-no-result');
+    statusDiv.innerText = text;
+    searchResults.appendChild(statusDiv);
+    var statusEl = document.getElementById('a11y-status');
+    if (statusEl) statusEl.textContent = text;
+  }
+
+  // Patched: starts the deferred fetch + build (step 5C). Only one load
+  // ever runs at a time -- a keystroke that lands while `indexLoading` is
+  // true just returns below in update(), and finishLoad() re-reads the
+  // search box once the build finishes, so it searches whatever is in it
+  // by then, not whatever triggered the load.
+  function loadIndexNow() {
+    if (indexLoading) return;
+    indexLoading = true;
+    showStatusMessage('Loading search index\u2026');
+    // Yield so the loading message above actually paints before the
+    // synchronous (and comparatively expensive) index build runs on the
+    // main thread: a frame, then a task. requestAnimationFrame never fires
+    // while the tab is hidden, so a 100 ms timer races it -- whichever
+    // comes first starts the load, and the other does nothing.
+    var started = false;
+    function start() {
+      if (started) return;
+      started = true;
+      setTimeout(function() {
+        loadIndex(function(loadedIndex, loadedDocs) {
+          index = loadedIndex;
+          docs = loadedDocs;
+          indexLoading = false;
+          finishLoad();
+        }, function() {
+          indexLoading = false;
+          index = null; // stays null, so the next keystroke retries the load
+          showStatusMessage('Search is unavailable');
+        });
+      }, 0);
+    }
+    requestAnimationFrame(start);
+    setTimeout(start, 100);
+  }
+
+  // Runs once loadIndex() succeeds, against whatever is in the search box
+  // *now* -- which may have changed while the fetch + build were in flight.
+  function finishLoad() {
+    var value = searchInput.value;
+    currentInput = value;
+    searchResults.innerHTML = ''; // clear the "Loading search index..." message
+    if (value === '') {
+      return;
+    }
+    doSearch(value);
+  }
+
   function update() {
     currentSearchIndex++;
 
@@ -169,23 +572,204 @@ function searchLoaded(index, docs) {
       return;
     }
     currentInput = input;
-    searchResults.innerHTML = '';
     if (input === '') {
+      searchResults.innerHTML = '';
       return;
     }
 
-    var results = index.query(function (query) {
-      var tokens = lunr.tokenizer(input)
-      query.term(tokens, {
+    // Patched: the index isn't fetched or built until now, on the first
+    // non-empty keystroke (step 5C). loadIndexNow() shows the loading
+    // state and, once loadIndex() finishes, finishLoad() runs the search.
+    // This comes before the panel is cleared, so a keystroke that lands
+    // mid-load leaves "Loading search index..." in place rather than
+    // blanking the panel until the build finishes.
+    if (index === null) {
+      loadIndexNow();
+      return;
+    }
+    searchResults.innerHTML = '';
+
+    doSearch(input);
+  }
+
+  // Patched: split out of update() (step 5C) so update() can gate on the
+  // index being loaded first. Everything below is unchanged from upstream
+  // (plus the asterisk guard and smart dot split patches, both pre-existing).
+  function doSearch(input) {
+
+    // Patched: trim each token as the index's own pipeline did
+    // (lunr.trimmer), so `Date$` finds `date`, and drop tokens left empty.
+    // That includes tokens made only of asterisks: lunr's query engine throws
+    // on a bare-wildcard term ("Cannot read properties of undefined (reading
+    // '_index')"), so a search for `*` or `**` used to crash and leave search
+    // broken until the page reloaded. See builder/vendor/just-the-docs/README.md.
+    var queryTokens = lunr.tokenizer(input).map(function(token) {
+      return lunr.trimmer(token);
+    }).filter(function(token) {
+      return token.str !== '';
+    });
+    var baseTokens = queryTokens;
+
+    // Patched: smart dot split. A qualified name like "Form.PaintPicture"
+    // tokenises as the single token "form.paintpicture", which almost never
+    // occurs verbatim in the index, so a qualified-name search used to miss
+    // its target 99.6% of the time. Each token is kept whole -- so
+    // "Debug.Print" still matches its own entry first -- and, where a "."
+    // sits between identifier characters on both sides, also split into its
+    // parts as extra terms. Parts of one character are dropped, which is
+    // what keeps "1.0", "3.9", "e.g." and "i.e." from adding noise: none of
+    // those leave a part longer than one character. A split dot is one whose
+    // run of word characters before it holds a letter or underscore; it is
+    // marked with a NUL and split there, rather than found with a
+    // lookbehind, because Safari before 16.4 cannot parse a lookbehind and
+    // the SyntaxError would take this whole file down with it. See
+    // builder/vendor/just-the-docs/README.md and WIP.Search.md's "Design" §3.
+    var DOT_SPLIT = /([A-Za-z_]\w*)\.(?=[A-Za-z_])/g;
+    var allTokens = [];
+    var qualifiedTokens = [];
+    queryTokens.forEach(function(token) {
+      allTokens.push(token);
+      var marked = token.str.replace(DOT_SPLIT, '$1\u0000');
+      if (marked !== token.str) {
+        qualifiedTokens.push(token);
+        marked.split('\u0000').forEach(function(part) {
+          if (part.length > 1) {
+            allTokens.push(token.clone(function() { return part; }));
+          }
+        });
+      }
+    });
+    queryTokens = allTokens;
+
+    // Patched: qualified names. `qualified` holds each `Container.Name`
+    // whole, so only a qualified name may complete there with the trailing
+    // wildcard. A plain word would complete to every member of each
+    // container its name begins (`vbfile*` to `vbfileattribute.*`). Two
+    // adjacent words, joined with a dot, name a member as a qualified name
+    // does (`FileListBox Name`). Both also match a whole name, for the names
+    // `qualified` holds whole (see qualifiedField()). See WIP.Search.md,
+    // "What shipped, fourth round" and "Fixed: stem twins".
+    var plainTokens = queryTokens.filter(function(token) {
+      return qualifiedTokens.indexOf(token) === -1;
+    });
+    var pairTokens = [];
+    for (var p = 0; p + 1 < baseTokens.length; p++) {
+      if (qualifiedTokens.indexOf(baseTokens[p]) === -1 && qualifiedTokens.indexOf(baseTokens[p + 1]) === -1) {
+        pairTokens.push(baseTokens[p].clone(function(str) { return str + '.' + baseTokens[p + 1].str; }));
+      }
+    }
+    var wholeQualified = [];
+
+    // Patched: every field but `exact`, `primary` and `index`, which only
+    // their own clauses below may search -- otherwise the trailing wildcard
+    // `node*` matches `nodes_` there too. A query naming one thing also
+    // matches that whole name in `exact` and `primary`. One thing is one
+    // word, not counting words that name a kind: in a phrase such as "error
+    // handling", `error` on its own isn't what the reader named, but in
+    // "With statement", `With` is. Only in the singular: "Delegate Types"
+    // and "New Functions" name a topic, not the one thing `Delegate` or
+    // `New` (WIP.Search.md, "Fixed: whole titles").
+    var textFields = ['title', 'content', 'names', 'qualified', 'page', 'relUrl'];
+    var plainFields = ['title', 'content', 'names', 'page', 'relUrl'];
+    var words = input.split(/\s+/).filter(Boolean);
+    var named = words.filter(function(w) {
+      return KIND_WORDS.indexOf(w.toLowerCase()) === -1;
+    });
+    var name = named.length === 1 ? named[0] : words.length === 1 ? words[0] : null;
+    words.forEach(function(word, w) {
+      if (word.indexOf('.') !== -1) wholeQualified.push(exactName(word));
+      if (w + 1 < words.length) wholeQualified.push(exactName(word + '.' + words[w + 1]));
+    });
+    // Patched: hand-marked index terms. Every run of up to four
+    // consecutive words, written as indexTermKey() writes a term, so a query
+    // matches a term by naming all of it, alone or among other words. A
+    // secondary term (the key with one more `_`, see indexField()) weighs a
+    // fifth of a main one: the field's boost of 1000 against 200.
+    var indexKeys = [];
+    for (var a = 0; a < baseTokens.length; a++) {
+      for (var b = a + 1; b <= baseTokens.length && b - a <= 4; b++) {
+        indexKeys.push(phraseKey(baseTokens.slice(a, b)));
+      }
+    }
+    function anyWords(query) {
+      query.term(queryTokens, {
+        fields: textFields,
         boost: 10
       });
-      query.term(tokens, {
+      query.term(plainTokens, {
+        fields: plainFields,
         wildcard: lunr.Query.wildcard.TRAILING
       });
-    });
+      query.term(qualifiedTokens, {
+        fields: textFields,
+        wildcard: lunr.Query.wildcard.TRAILING
+      });
+      query.term(pairTokens, { fields: ['qualified'], boost: 10 });
+      query.term(wholeQualified, { fields: ['qualified'], boost: 10 });
+      if (name) {
+        query.term(exactName(name), { fields: ['exact', 'primary'] });
+      }
+      indexKeys.forEach(function(key) {
+        query.term(key, { fields: ['index'], boost: 5, usePipeline: false });
+        query.term(key + '_', { fields: ['index'], boost: 1, usePipeline: false });
+      });
+    }
 
-    if ((results.length == 0) && (input.length > 2)) {
-      var tokens = lunr.tokenizer(input).filter(function(token, i) {
+    // Patched: all words first. With two or more words, look for entries
+    // that contain every one of them, and only if there are none, for
+    // entries that contain any. Each word is required as its stem with a
+    // trailing wildcard, since the index holds stems (an unstemmed
+    // `operator*` would miss `oper`); a whole word and a partly typed one
+    // both match. See WIP.Search.md, "Reader intent". A word found only in
+    // `qualified` still counts (an entry may name its container nowhere
+    // else), but scores there only if it is a qualified name, as in
+    // anyWords(): so the REQUIRED clause, which scores too, has boost 0, and
+    // a second clause scores the word.
+    function allWords(optionalKinds) {
+      return index.query(function (query) {
+        anyWords(query);
+        baseTokens.forEach(function(token) {
+          var stem = lunr.stemmer(token.clone()).toString();
+          if (!optionalKinds || KIND_WORDS.indexOf(token.str) === -1) {
+            query.term(stem, {
+              fields: textFields,
+              wildcard: lunr.Query.wildcard.TRAILING,
+              usePipeline: false,
+              presence: lunr.Query.presence.REQUIRED,
+              boost: 0
+            });
+          }
+          query.term(stem, {
+            fields: qualifiedTokens.indexOf(token) === -1 ? plainFields : textFields,
+            wildcard: lunr.Query.wildcard.TRAILING,
+            usePipeline: false
+          });
+        });
+      });
+    }
+    // Patched: a query naming one thing and its kind (`MaxHeight property`,
+    // `Continue statement`) requires the kind word only while some entry
+    // found has that name in its title or as its exact name. A member's
+    // section rarely says "property" or "event", so requiring the word
+    // dropped the very entry the reader named; then the pass runs again with
+    // the kind words optional, and they still score. See WIP.Search.md,
+    // "Fixed: kind words".
+    var results = [];
+    if (baseTokens.length >= 2) {
+      results = allWords(false);
+      if (name && words.length > 1 && !results.some(function(r) { return namesTheThing(r, name); })) {
+        var again = allWords(true);
+        if (again.length > 0) results = again;
+      }
+    }
+    // A name with no word characters (`<>`, `*`) leaves no tokens, but its
+    // exact-name clause can still match.
+    if (results.length == 0 && (queryTokens.length > 0 || name)) {
+      results = index.query(anyWords);
+    }
+
+    if ((results.length == 0) && (input.length > 2) && (queryTokens.length > 0)) {
+      var tokens = queryTokens.filter(function(token, i) {
         return token.str.length < 20;
       })
       if (tokens.length > 0) {
@@ -201,6 +785,7 @@ function searchLoaded(index, docs) {
         });
       }
     }
+    results = boostWholeTitles(results, docs, baseTokens, titleKeys);
 
     var statusEl = document.getElementById('a11y-status');
     if (results.length == 0) {

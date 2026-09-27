@@ -3,6 +3,7 @@ title: Watches
 parent: IDE
 # nav_order: 
 permalink: /tB/IDE/Project/Watches
+index: watch window
 ---
 
 # Watches

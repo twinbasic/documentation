@@ -3,6 +3,7 @@ title: Diagnostics
 parent: IDE
 # nav_order: 2
 permalink: /tB/IDE/Project/Diagnostics
+index: diagnostics window
 ---
 
 # Diagnostics

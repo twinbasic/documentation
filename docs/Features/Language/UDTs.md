@@ -3,11 +3,15 @@ title: UDT Enhancements
 parent: Language Syntax
 nav_order: 11
 permalink: /Features/Language/UDTs
+index_also:
+  - user defined types
+  - user types
 ---
 
 # Enhancements to User-Defined Types (UDTs)
 
 ## Procedures, Constructors, Destructors, and Operators
+{: index="operator overloading; overloading operators" }
 
 You can now place methods inside UDTs, as well as API declarations. With APIs, if the first parameter is named `Me` and is the same type as the UDT, it's treated as an implicit member call:
 

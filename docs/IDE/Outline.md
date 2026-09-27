@@ -3,6 +3,10 @@ title: Outline
 parent: IDE
 # nav_order: 
 permalink: /tB/IDE/Project/Outline
+index:
+  - outline view
+  - outline window
+  - outline panel
 ---
 
 # Outline
