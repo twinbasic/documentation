@@ -65,8 +65,9 @@
 // blockRegions, which parses blocks only, finds exactly the fences, code
 // blocks and HTML blocks of the full parse the comparison already makes. One
 // probe holds builder/counts.mjs's count validator, which asks the same module
-// what is code, and a set holds scripts/convert_em_dash_separators.mjs, which
-// rewrites page source outside the build and asks it too.
+// what is code, another builder/discover.mjs's warning about a frontmatter
+// value that ends in `#`, and a set holds scripts/convert_em_dash_separators.mjs,
+// which rewrites page source outside the build and asks it too.
 
 import assert from "node:assert/strict";
 import { promises as fs } from "node:fs";
@@ -79,7 +80,7 @@ import deflist from "markdown-it-deflist";
 import { validateCountNames } from "../builder/counts.mjs";
 import { discover } from "../builder/discover.mjs";
 import { applyPreRenderRewrites, createMarkdownIt } from "../builder/render.mjs";
-import { parseFrontmatter } from "../lib/frontmatter.mjs";
+import { parseFrontmatter, unquotedHashValues } from "../lib/frontmatter.mjs";
 import { blockRegions, mapLines, maskCode, splitCodeSpans, splitOnMarker } from "../lib/markdown.mjs";
 import { markdownFiles } from "../lib/markdown-files.mjs";
 import { convertText } from "./convert_em_dash_separators.mjs";
@@ -338,6 +339,35 @@ const MODULE_PROBES = [
     assert.throws(() => parseFrontmatter("---\n- a list\n---\n"), /not a mapping/);
     assert.throws(() => parseFrontmatter("---\nok: 1\nbad: [\n---\n"), /\(4:1\)/);
   }],
+  ["an unquoted value that ends in # is reported, a quoted one is not", () => {
+    assert.equal(parseFrontmatter("---\ntitle: Input #\n---\n").data.title, "Input");
+    const src = [
+      "\u{FEFF}---",
+      "title: Input #",
+      "parent: Statements",
+      'quoted: "Write #"',
+      "lang: C#  ",
+      "comment: x # a note",
+      "# title: y #",
+      "list:",
+      "  - Line Input #",
+      "  - 'kept #'",
+      "  - key: v #",
+      '  - key: "v #"',
+      "text: |",
+      "  a line #",
+      "",
+      "  - key: v #",
+      "after: z #",
+      'tail: "quoted" #',
+      "---",
+      "body: b #",
+    ].join("\r\n");
+    assert.deepEqual(unquotedHashValues(src).map((f) => f.line), [2, 5, 9, 11, 17]);
+    assert.equal(unquotedHashValues(src)[0].text, "title: Input #");
+    assert.deepEqual(unquotedHashValues("body: b #\n"), []);
+    assert.throws(() => unquotedHashValues("---\nx: 1 #\n"), /never closed/);
+  }],
 ];
 
 // The count validator asks the same module what is code, with the site's
@@ -366,6 +396,30 @@ async function countProbe() {
     await fs.rm(dir, { recursive: true, force: true });
   }
 }
+
+// discover warns about a frontmatter value left unquoted that ends in `#`,
+// naming the page and the line, and reads the page as YAML does: the `#` after
+// a space is a comment. A quoted value, and a `#` in the content, say nothing.
+async function hashProbe() {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "check-code-regions-"));
+  const warn = console.warn;
+  const warned = [];
+  console.warn = (message) => warned.push(message);
+  try {
+    await fs.writeFile(path.join(dir, "x.md"), '---\r\ntitle: Input #\r\nparent: "Write #"\r\n---\r\nbody #\r\n');
+    const { pages } = await discover(dir);
+    assert.equal(pages[0].frontmatter.title, "Input");
+    assert.deepEqual(warned.map((message) => message.split(": an unquoted")[0]), ["discover: x.md:2"]);
+  } finally {
+    console.warn = warn;
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+}
+
+const DISCOVER_PROBES = [
+  ["the count validator's references and lines", countProbe],
+  ["discover's warning about an unquoted value that ends in #", hashProbe],
+];
 
 async function main(argv) {
   const verbose = argv.includes("--verbose");
@@ -428,13 +482,15 @@ async function main(argv) {
       for (const line of err.message.split("\n")) console.log(`        ${line}`);
     }
   }
-  try {
-    await countProbe();
-  } catch (err) {
-    if (!(err instanceof assert.AssertionError)) throw err;
-    failed++;
-    console.log("FAIL  probe: the count validator's references and lines");
-    for (const line of err.message.split("\n")) console.log(`        ${line}`);
+  for (const [name, probe] of DISCOVER_PROBES) {
+    try {
+      await probe();
+    } catch (err) {
+      if (!(err instanceof assert.AssertionError)) throw err;
+      failed++;
+      console.log(`FAIL  probe: ${name}`);
+      for (const line of err.message.split("\n")) console.log(`        ${line}`);
+    }
   }
 
   if (!failed) {
@@ -444,6 +500,7 @@ async function main(argv) {
     console.log(`ok    ${DASH_PROBES.length} probes: the dash normaliser converts prose and nothing else`);
     console.log(`ok    ${MODULE_PROBES.length} probes: lib/markdown.mjs and lib/frontmatter.mjs`);
     console.log("ok    1 probe: the count validator skips code and names the file's line");
+    console.log("ok    1 probe: discover warns about an unquoted value that ends in #");
   }
 
   const files = await markdownFiles(ROOT);

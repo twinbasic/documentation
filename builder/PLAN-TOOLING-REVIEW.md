@@ -1080,6 +1080,36 @@ three pages' breadcrumbs, `<title>`, meta titles and JSON-LD headline, their ent
 search data, and their running heads in the book. The page count and the symbol index are
 unchanged.
 
+### C41b — `builder: warn about an unquoted frontmatter value that ends in #`
+
+**The owner's request, after C41a.** Nothing told the author of C41a's three pages that YAML
+had dropped their `#`. The build warns when a frontmatter value left unquoted ends in `#`,
+whitespace after the `#` aside, so the author is reminded to check; quoting the value
+always silences it.
+
+**Landed.** `lib/frontmatter.mjs` gains `unquotedHashValues(raw)`, the block's lines whose
+value is unquoted and ends in `#`, as `{ line, text }` counted from the opening `---`; it
+shares a new private `splitBlock` with `parseFrontmatter`, which is otherwise unchanged. A
+key's value, a list item, and a key opening a list item are checked; a comment line, a key
+whose value is on the lines below, and the lines of a `|` or `>` block scalar are not, since
+a scalar cannot be quoted. A value such as `C#`, which YAML keeps whole, is still reported,
+as the rule asks. `discover.mjs`'s `readFrontmatter` prints each as `discover:
+<page>:<line>: an unquoted value ends in #, ...` with the line's text, and the build goes on.
+`check_code_regions.mjs` gains a module probe (eighteen lines: five reported, among them a
+BOM, CRLF, trailing spaces and a list item's key; a quoted value, a quoted value followed by
+a bare `#`, a comment, a list of quoted items and a block scalar's lines not) and a
+`discover` probe that captures `console.warn` over a real page. Authoring.md's frontmatter
+section, Pipeline-Stages.md's `frontmatter` row, Tools.md's section on the gate, WIP.md's
+gate row and `lib/README.md` say so.
+
+**Verify.** On today's 912 pages no frontmatter line ends in `#` and none holds a block
+scalar, so the build prints no warning. With C41a's `title: "Input #"` put back unquoted and
+three spaces after the `#`, a build printed `discover: Reference/Core/Input.md:2: an
+unquoted value ends in #, ...: title: Input #` and exited 0. Four faults put into the code
+each fail `check_code_regions`: no call in `discover` (the `discover` probe), no block-scalar
+skip (line 16 reported), no allowance for trailing whitespace (line 5 missed), and no quote
+check (line 18 reported).
+
 *The link checker, the gates' scaffolding, the browser tools and the repository root:
 C42–C46.*
 

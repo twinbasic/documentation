@@ -6,7 +6,7 @@ import fg from "fast-glob";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
-import { parseFrontmatter } from "../lib/frontmatter.mjs";
+import { parseFrontmatter, unquotedHashValues } from "../lib/frontmatter.mjs";
 import { permalinkToDestPath } from "./paths.mjs";
 
 const PAGE_EXT = /\.(md|html)$/i;
@@ -99,6 +99,11 @@ function bySrcRel(a, b) {
 // message about a line of the content can name the line of the file. The
 // content is the text after the frontmatter block, so the lines before it are
 // the lines of the block.
+//
+// A value left unquoted that ends in `#` is warned about, not refused: YAML
+// drops a `#` after a space as a comment, so `title: Input #` titles the page
+// `Input`, while `lang: C#` is read as written. Quoting the value keeps the `#`
+// and silences the warning either way.
 function readFrontmatter(raw, srcRel) {
   let parsed;
   try {
@@ -107,6 +112,9 @@ function readFrontmatter(raw, srcRel) {
     throw new Error(`Failed to parse frontmatter in ${srcRel}: ${err.message}`);
   }
   if (!parsed) return null;
+  for (const { line, text } of unquotedHashValues(raw)) {
+    console.warn(`discover: ${srcRel}:${line}: an unquoted value ends in #, and YAML drops a # after a space as a comment; quote the value to keep it: ${text.trim()}`);
+  }
   const { data, content } = parsed;
   const block = raw.slice(0, raw.length - content.length);
   return { data, content, contentLine: (block.match(/\r\n?|\n/g) ?? []).length + 1 };

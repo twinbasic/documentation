@@ -168,6 +168,8 @@ A package's `index.md` may also carry **`indexed_from`**, **`exclude_from_docs`*
 
 Any key the build does not recognise is simply inert --- nothing iterates frontmatter generically, so an unknown key is never emitted into the page. A key whose *value* is not valid YAML is a different matter: the build aborts with `Failed to parse frontmatter in <file>`, quoting the YAML parser's own line and column.
 
+A value that is valid YAML can still mean less than it shows. YAML reads a `#` after a space, and everything after it, as a comment, so `title: Input #` titles the page *Input*. The build warns about any value left unquoted that ends in `#`, naming the file and line, and goes on building. Quote the value --- `title: "Input #"` --- to keep the `#`. Quoting also silences the warning where YAML would have kept the `#` anyway, as in `C#`.
+
 A minimal reference-page header:
 
 ```yaml

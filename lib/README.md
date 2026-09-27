@@ -16,7 +16,8 @@ its lines, a mask that hides the code from a rewrite and restores it, the code
 spans on a line, sections split on a marker line outside any code, and a line
 map that keeps each line's ending. [frontmatter.mjs](frontmatter.mjs) splits
 off a page's YAML frontmatter and parses it with the `js-yaml` the rest of the
-tooling uses. `scripts/check_code_regions.mjs` carries the probes for both, and
+tooling uses, and lists the values left unquoted that end in `#`, since YAML
+reads a `#` after a space as a comment. `scripts/check_code_regions.mjs` carries the probes for both, and
 checks on every page that the block parse finds what a full parse finds.
 
 `scripts/check_tree_fresh.mjs` counts `lib/` among the inputs that decide the
