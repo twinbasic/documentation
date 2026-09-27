@@ -73,30 +73,25 @@ qualified names are now at rank 1, typed with a dot or as two words.
 2. ~~The same-page ground-truth question.~~ The user ruled that a section
    of the page documenting a name counts; see
    [Same-page sections count](#same-page-sections-count).
-3. Two probes that miss what a reader wants, both predating the recent
-   rounds and outside the eval (measure any fix on the eval and on
-   probes, as the qualified-name round did):
-   - `New Functions` puts `ServiceState#new` first (689) and the
-     `Features/Standard-Library/New-Functions` page second (437).
-     Diagnosed: `functions` is a kind word, so the query is taken to name
-     `New`, and the exact-name clause matches `new_` in `ServiceState#new`'s
-     `exact`. The page matches both words in its title and `page`.
-   - `Form events` puts `/tB/Core/Event` first (210) and `Form#events`
-     second (151). Diagnosed: the exact-name clause (`form_`) plays no
-     part, since the Form page's own entry lacks `event` and the all-words
-     pass drops it. `events` stems to `event`, which is the Event page's
-     title (200) and name (100); `Form#events` has `form` only in `page`
-     (5) and its URL.
-   The throwaway sets to measure how widespread each is (every page by its
-   own multi-word title; `<page> <section>` for the section titles 20+
-   pages share, such as Events) are in progress; the first run found the
-   lunr crash below instead.
+3. The `New Functions` and `Form events` probes: diagnosed and measured,
+   awaiting the user's go-ahead; see
+   [Probes: whole titles](#probes-whole-titles). Recommended, as two steps:
+   a score ×3 for a result whose whole title, or page title plus title, is
+   the multi-word query; and plural kind words not making a name.
+   Also to decide: whether the two throwaway sets behind it (page titles,
+   `<page> <section>`) join `eval/search_quality.mjs` as ground truth.
 4. `&H80004005` finds none of the five pages that mention it. The search
    content keeps `&amp;` as an entity (`stripHtml` doesn't decode it), so
    the index holds `amp;h80004005` while the query trims to `h80004005`.
    The same is known for `&lt;`/`&gt;` (see "Operators"). A content fix in
    `builder/search.mjs`, to measure on its own.
-5. The wider index pass, under the pilot's rules: an entry names the page
+5. Multi-word queries with a short word are slow: `a page` takes about
+   820 ms per search in the replica, `Form events` about 100 ms, on every
+   keystroke. Until the lunr fix, `a` threw, so this was never seen; the
+   eval's one-word queries take 0.4 ms. The likely cost is the all-words
+   pass's REQUIRED stem wildcards (`a*` reaches thousands of terms). To
+   measure in a browser and profile before changing anything.
+6. The wider index pass, under the pilot's rules: an entry names the page
    a reader wants for that term, not a summary of the page; few entries
    per page; one main entry per term (the build enforces this). Agents
    draft candidate terms and targets, and **the user approves every
@@ -1227,6 +1222,70 @@ id 3 still collides with it (so the test says when a lunr upgrade changes
 this), and that the online client's and the replica's keys keep the
 fixture exact; each of five mutations (either key without its separator,
 or any of the three copies not installing it) fails it.
+
+### Probes: whole titles
+
+Not shipped; measured with knobs (`eval/search-experiments/probes/`).
+
+**Diagnosis.**
+- `New Functions`: `ServiceState#new` (689) above the page (437).
+  `functions` is a kind word, so the query names `New`, and the
+  exact-name clause matches `new_` in the method's `exact`. The page
+  matches both words in its title and `page`.
+- `Form events`: `/tB/Core/Event` (210) above `Form#events` (151). The
+  exact-name clause (`form_`) plays no part: the Form page's own entry
+  lacks `event`, so the all-words pass drops it. `events` stems to
+  `event`, the Event page's title (200) and name (100); `Form#events`
+  has `form` only in `page` (5) and its URL.
+
+**How widespread**, on two throwaway sets built from the site:
+- *titles*: every page's own multi-word title typed as is (149): 84.6% at
+  rank 1. The misses are a one-word symbol entry beating a page titled
+  with both words (`Return Syntax` → `Return`, `Delegate Types` →
+  `Delegate`), made worse where the other word is a kind word.
+- *sections*: `<page title> <section title>` for the section titles 20+
+  pages share, such as `DTPicker Properties` (300): 22.7% at rank 1,
+  94.3% in the top three. In 182 of the 232 misses the page's own
+  `X class` heading wins: it has `X` in its title (200), the section only
+  in `page` (5).
+
+**Measured** against the baseline (eval), both sets, and every qualified
+name as two words (*spaced*):
+
+| variant | eval | titles hit@1 | sections hit@1 | spaced | worse anywhere |
+|---|---|---|---|---|---|
+| now | | 84.6% | 22.7% | 100% | |
+| plural kind words don't make a name | unchanged | 85.2% | 22.7% | 100% | 0 |
+| `page` boost 10 / 20 / 50 | `Pointer` 6→7 (50: also `MidB$` 2→3) | 85.2–85.9% | 22.7–23.7% | 100% | 1–3 |
+| whole title ×1.5 | unchanged | 90.6% | 55.7% | 100% | 0 |
+| whole title ×2 | unchanged | 91.9% | 85.0% | 100% | 0 |
+| whole title ×3 | unchanged | 91.9% | 95.0% | 100% | 0 |
+| whole title ×5 / ×10 | unchanged | 94.0% | 96.7% | 99.59 / 99.55% | 21 / 23 spaced |
+| **plural + whole title ×3** | unchanged | **94.0%** | **96.0%** | 100% | **0** |
+
+*Whole title*: after lunr ranks, a query of two or more words multiplies
+the score of every result whose title, or page title plus title, reads
+the same as the query (compared as `indexTermKey()` writes both:
+tokenized, trimmed, stemmed). It adds no index term and no field; the
+keys are computed once per entry, on first use. At ×5 it goes wrong:
+`_App Comments` lifts the `App` page's Comments section, since the
+trimmer drops the leading `_`. ×3 leaves a margin.
+
+With plural + ×3 both probes are at rank 1, and so are `ListView events`
+and `TextBox properties`, from the qualified-name round's probes; every
+other probe is unchanged. Latency: about 100 ms more on the first
+multi-word query after the index is built (computing the keys of its
+results), nothing measurable after.
+
+Left: the operator titles (`&, &=`, no result), `Mid =`, `Compiler and
+IDE Features` and `WebView2 Package` at 2, and 12 sections, mostly on
+pages whose names contain each other (`HtmlElement Properties` behind
+`HtmlElementProperties`).
+
+Open: the re-rank works outside lunr's scoring, as a post-pass in
+`doSearch()`, in all three copies. Whether a hand-marked index entry
+should outrank it if the two ever disagree is untested: no prose query
+has a heading of the same text elsewhere.
 
 ### Next steps
 

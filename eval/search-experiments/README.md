@@ -57,3 +57,22 @@ node eval/search-experiments/intent/eval_variants.mjs docs/_site    # X1/X2/X3/X
   is a copy of the `eval/` file as of commit `281fd978`.
 - `quick_combo.mjs` is a quick single-combination check.
 - `run.log` and `run2.log` hold the runs' output.
+
+## probes/: multi-word queries the eval doesn't ask
+
+The eval's symbol queries are one word each. These scripts measure the
+multi-word ground `WIP.Search.md`'s probes point at, against a build, with
+whatever `EXP` knobs `eval/site_search.mjs` carries at the time:
+
+- `spaced.mjs <out.json>`: every qualified symbol written as two words
+  (`Printer Fonts`), and the top three for a list of probes.
+- `sets.mjs <out.json>`: every page's own multi-word title, typed as is
+  (any entry of that page counts), and `<page title> <section title>` for
+  the one-word section titles 20 or more pages share (`Form Events`;
+  that section counts).
+- `all.sh <label>`: the eval against its baseline, both scripts, and what
+  got worse or better against a run labelled `base`. Output goes to
+  `$OUT`.
+- `knobs.patch`: the knobs the probe round measured (`plural`, `page=N`,
+  `title=F`), as a diff against `eval/site_search.mjs`; apply it to
+  reproduce the table in `WIP.Search.md`'s "Probes: whole titles".
