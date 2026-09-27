@@ -453,7 +453,7 @@ and restored unchanged --- it simply never fires. That is how
 admonitions as the literal text `[!NOTE]`: a twinBASIC string literal holding a
 fence marker closed the fence around it, and every pairing for the rest of the
 page was off by one. The gate keeps fixed probes for that rather than sweeping
-the corpus, so a green line says the fence stasher still works --- it does not
+the corpus, so a green line says the rewrites still find the code the parser finds --- it does not
 say your own page came out right. Read that one in
 [`serve.bat`](#building-and-local-serving) as well.
 

@@ -724,6 +724,34 @@ pre-render chain.
 (five variants, `Attributes.md`'s literal fence strings among them) and the new probe pass;
 putting back a private opener test fails the new one.
 
+**Landed.** `stashCodeFences` and its `FENCE_OPEN_RE` are gone, with the comment above them
+that named `maskCodeRegions`. `rewriteAdmonitions(src, md)` asks `blockRegions` with the
+site's parser, which `applyPreRenderRewrites` passes on, and throws a `TypeError` without one,
+as the chain does. It leaves a match alone when the match's `[!TYPE]` line is in a region.
+That is narrower than the entry's "skips the ranges": a fence inside an admonition is a
+region too, and the rewrite must still strip its `> ` markers, so only the opener line
+decides. HTML blocks count as regions, as they do for `splitOnMarker`; the old stash did not
+protect them, but no page has an admonition in one (below). The new comment says what decides
+and points to WIP.Build.md for the two defects the old scan had. Two probes: A3-1's shape
+joins `ADMONITION_PROBES`, six now, with a fence after it that a wrong opener would close on;
+`UNCHANGED_PROBES` gains an admonition written inside a definition-list fence, the shape where
+the old scan and the parser disagree. The gate's failure message and summary line no longer
+name the stasher. Pipeline-Stages (both functions' rows), Extending (its sample passes `md`,
+and a rewrite outside the mask can skip `blockRegions`' lines), Authoring, Building, Tools
+and WIP.Build say so; what WIP.Build tells of the old scan stays in the past tense.
+
+**Verify.** Before the change, over all 912 pages: 632 admonition openers, one of them in a
+region (a fence in `Documentation/Wisdom.md`), which the old stash protected too, and none in
+an indented code block or an HTML block. The tree comparison with the page edits set aside is
+identical (1,461 files online, 1,457 offline, 137 pdf); with them it differs only in
+Authoring, Building, Extending, Pipeline-Stages and Tools online and offline, the search
+data, and `book.html`. `check_code_regions.mjs`: 7, 6, 2 and 11 probes, and `912 file(s), 0
+with altered code regions, 1372 fence(s) in the full parse -- clean`. Four faults each fail
+it with exit 1: the rewrite ignoring the regions (the new unchanged probe, and Wisdom.md's
+fence altered), the rewrite asking a bare parser (the new unchanged probe), a private opener
+test that allows a backtick in the info string, as the old mask's did (both new probes), and
+HEAD's `render.mjs` put back whole, stash and all (the new unchanged probe).
+
 ### C34 — `scripts: convert_em_dash_separators reads code regions from lib/`
 
 **L3-4, L4-7, merged into A3-1.** Its `FENCE_OPEN_RE` (`:59-60`) is byte for byte

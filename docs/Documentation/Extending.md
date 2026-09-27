@@ -116,12 +116,13 @@ rewrite runs:
    work = rewriteTripleAsteriskEmphasis(work);
    // ... the other masked rewrites ...
    work = yourRewrite(work);
-   return rewriteAdmonitions(code.restore(work));
+   return rewriteAdmonitions(code.restore(work), md);
    ```
 
 2. **For an indented code block, the mask cannot help.** It does not cover indented blocks
    on purpose. Narrow the rewrite so it cannot match the block's
-   lines, and let the gate say when it no longer does.
+   lines, and let the gate say when it no longer does. A rewrite that has to run outside
+   the mask can instead skip the lines `blockRegions` reports, as `rewriteAdmonitions` does.
 3. **Do not widen the mask to make the report go away.** Text the mask hides is text no
    rewrite reaches, so a mask that hides prose stops the rewrites firing on it --- and the
    region comparison cannot see that, because the hidden text comes back unchanged.

@@ -15,7 +15,7 @@ import attrs from "markdown-it-attrs";
 import deflist from "markdown-it-deflist";
 import footnote from "markdown-it-footnote";
 
-import { maskCode } from "../lib/markdown.mjs";
+import { blockRegions, maskCode } from "../lib/markdown.mjs";
 import { initHighlighter } from "./highlight.mjs";
 import { countPlugin, findSurvivingPlaceholder } from "./counts.mjs";
 
@@ -115,8 +115,8 @@ export function applyPreRenderRewrites(rawContent, md) {
   // rewriteAdmonitions runs OUTSIDE the mask, and must: it finds an
   // admonition's lines by their `> ` markers and strips them, and a masked
   // fence inside an admonition has taken its markers with it into the stash.
-  // It does its own code handling.
-  return rewriteAdmonitions(code.restore(work));
+  // It asks lib/markdown where the code is itself, with the same parser.
+  return rewriteAdmonitions(code.restore(work), md);
 }
 
 // kramdown accepts unescaped spaces inside `![alt](url)` and `[text](url)`
@@ -1577,76 +1577,38 @@ const ADMONITION_TYPES = {
 // indentation; the gem's regex captures that into \1 and uses it as a
 // per-line anchor on the body lines.
 const ADMONITION_RE = /(^|\n)([ \t]*)>[ \t]*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][^\n]*\n((?:\2[ \t]*>[ \t]*[^\n]*(?:\n|$))(?:(?![ \t]*>[ \t]*\[!)\2[ \t]*>[ \t]*[^\n]*(?:\n|$))*)?/g;
-// Stashing the fences used to be one regex --
-// `/(?:^|\n)[ \t]*```[\s\S]*?```/g` -- which paired an opening fence with the
-// next ``` ANYWHERE, including one in the middle of a line.
-// Reference/Attributes.md contains exactly that: a [Description(...)] sample
-// whose argument is a Markdown string built from twinBASIC string literals,
-// two of which are "```basic" and "```". The fence opened at that sample's
-// ```tb line closed on the literal instead of on its own closing line, and
-// every pairing after it was off by one -- so for the rest of the file the
-// stasher had prose and code exactly the wrong way round. None of the page's
-// six admonitions was rewritten, and all six shipped as literal "[!NOTE]"
-// text. One page in 869, and nothing reported it: check_code_regions.mjs
-// compares the code regions, and the damage here is to the prose between them.
+// An admonition written inside a code region is a sample of the syntax, and is
+// left as it is. This rewrite runs outside the mask, so it asks lib/markdown
+// where the regions are, with the site's parser for the reason
+// applyPreRenderRewrites gives. It is the `[!TYPE]` line that decides: a fence
+// INSIDE an admonition is a region too, and the rewrite must still strip its
+// `> ` markers with the rest of the body.
 //
-// CommonMark closes a fence on a line that is only the fence character,
-// repeated at least as often as in the opener. That is a rule about lines, so
-// this is a line scan rather than a cleverer regex.
-//
-// **Tildes are recognised here, and leaving them out was a live defect.** The
-// comment that stood here said they were deliberately skipped because
-// maskCodeRegions knows about them -- but rewriteAdmonitions runs OUTSIDE the
-// mask, by design, because a fence inside an admonition still carries its
-// `> ` markers at that point and this rewrite is what strips them. So nothing
-// protected a tilde fence, and a standalone ``` line inside one was read as an
-// opener: with an odd number of them the pairing ran past the end of the
-// sample and swallowed the prose after it. That is the Attributes.md failure
-// exactly, reachable by a construct CommonMark allows. Measured before the
-// fix: a ~~~ block holding one standalone ``` shipped the following
-// `> [!NOTE]` as literal text, while the 4-backtick form rendered correctly.
-//
-// A fence is closed only by its OWN character, so the close pattern is built
-// from what opened it. An info string may not contain a backtick on a backtick
-// fence, and may contain anything on a tilde fence -- CommonMark's rule, and
-// the reason the two cases are checked separately.
-const FENCE_OPEN_RE = /^([ \t]*)(`{3,}|~{3,})(.*)$/;
-
-function stashCodeFences(src, stashed) {
-  const lines = src.split("\n");
-  const out = [];
-  for (let i = 0; i < lines.length; i++) {
-    const m = FENCE_OPEN_RE.exec(lines[i]);
-    if (!m) { out.push(lines[i]); continue; }
-    const [, indent, ticks, info] = m;
-    if (ticks[0] === "`" && info.includes("`")) { out.push(lines[i]); continue; }
-    const fenceChar = ticks[0] === "`" ? "`" : "~";
-    const closeRe = new RegExp("^[ \\t]*" + fenceChar + "{" + ticks.length + ",}[ \\t]*$");
-    let j = i + 1;
-    while (j < lines.length && !closeRe.test(lines[j])) j++;
-    // An unclosed fence runs to the end of the document, as CommonMark says.
-    const end = Math.min(j, lines.length - 1);
-    // Stashed WITHOUT the opener's own indent: the placeholder is emitted with
-    // that indent in front of it and the restore puts the stashed text back in
-    // the placeholder's place, so carrying the indent in both would double it.
-    // That is visible wherever a literal fence sits inside an indented code
-    // block, such as the page-template skeleton in Documentation/Authoring.md.
-    stashed.push(lines.slice(i, end + 1).join("\n").slice(indent.length));
-    out.push(`${indent}\`\`\`{{CODE_BLOCK_${stashed.length - 1}}}\`\`\``);
-    i = end;
-  }
-  return out.join("\n");
-}
-
-export function rewriteAdmonitions(src) {
+// It used to find fences with a line scan of its own, and that scan is where
+// two defects lived that shipped admonitions as the literal text "[!NOTE]": it
+// once paired a fence with a marker in the middle of a line (the six
+// admonitions of Reference/Attributes.md), and it once saw backtick fences
+// only, so a tilde fence holding a ``` line swallowed the prose after it.
+// WIP.Build.md tells both. A private scan can also disagree with the parser
+// without anyone noticing, which the tooling review's A3-1 reproduced;
+// check_code_regions.mjs probes each shape through the whole chain.
+export function rewriteAdmonitions(src, md) {
+  if (!md) throw new TypeError("rewriteAdmonitions: pass the site's markdown-it instance");
   // CommonMark's normalisation pass converts CRLF/CR to LF before block
   // parsing. We do it up-front so our regexes operate on LF-only input.
   src = src.replace(/\r\n?/g, "\n");
 
-  const stashed = [];
-  let work = stashCodeFences(src, stashed);
+  const inCode = [];
+  for (const r of blockRegions(src, { md })) for (let i = r.start; i < r.end; i++) inCode[i] = true;
+  // The matches arrive in order, so the line count only moves forward.
+  let line = 0;
+  let counted = 0;
 
-  work = work.replace(ADMONITION_RE, (_m, leading, indent, typeRaw, bodyRaw) => {
+  return src.replace(ADMONITION_RE, (match, leading, indent, typeRaw, bodyRaw, offset) => {
+    const at = offset + leading.length;
+    for (; counted < at; counted++) if (src.charCodeAt(counted) === 10) line++;
+    if (inCode[line]) return match;
+
     const type = typeRaw.toLowerCase();
     const meta = ADMONITION_TYPES[type];
     // The body lines all share the same leading indent; strip it plus the
@@ -1656,9 +1618,8 @@ export function rewriteAdmonitions(src) {
     // The gem's `gsub(/^#{indent}\s*>\s*/, "")` was mirrored literally here
     // and the trailing `\s*` is greedy over `\s`, which includes newlines --
     // so it also ate the body's own indentation and swallowed blank lines.
-    // CODE_FENCE_RE cannot protect a fence inside an admonition (the fence
-    // opener is preceded by `> `, which `[ \t]*` does not match), so this
-    // ran over real code samples: Reference/Default/VBA/Interaction/InputBox
+    // A fence inside an admonition is stripped with the rest of the body, so
+    // this ran over real code samples: Reference/Default/VBA/Interaction/InputBox
     // shipped its If/ElseIf/Else bodies flush left, and Reference/Core/Option
     // lost the blank line between its Module and Class examples.
     const stripRe = indent
@@ -1676,8 +1637,6 @@ export function rewriteAdmonitions(src) {
     // a separate markdown block rather than absorbed into the html_block.
     return `${leading}<div class="markdown-alert markdown-alert-${type}" role="${meta.role}" markdown="1">\n<p class="markdown-alert-title">${meta.icon} ${meta.title}</p>\n\n${body}\n</div>\n\n`;
   });
-
-  return work.replace(/```\{\{CODE_BLOCK_(\d+)\}\}```/g, (_, n) => stashed[Number(n)]);
 }
 
 // ---------- markdown="1" attribute strip -----------------------------------

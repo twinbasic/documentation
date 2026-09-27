@@ -186,16 +186,27 @@ const ADMONITION_PROBES = [
   // sweep would never have found it.
   ["admonition after a tilde fence holding a lone fence marker",
     "prose\n\n~~~markdown\nsample\n```\n~~~\n\n> [!NOTE]\n> body\n\n```tb\nDim y\n```\n"],
+  // A3-1. A backtick in a backtick fence's info string opens no fence, so the
+  // admonition after it is prose. An opener test that took the line for one,
+  // as the chain's old mask did, closes it on the last line here and hides the
+  // admonition inside.
+  ["admonition after a line that a backtick in its info string keeps from opening a fence",
+    "```abc`def\n> [!NOTE]\n> body\n\n```tb\nDim y\n```\n"],
 ];
 
 // Sources the whole chain must return byte for byte. The first holds the chain
 // to the site's parser: the definition-list plugin makes a fence after `: `
 // that a bare parser reads as a paragraph, and masked with a bare parser, the
 // fence's body is rewritten (`a,%20b`). The region comparison cannot see that,
-// because it parses bare too and finds no fence there to compare.
+// because it parses bare too and finds no fence there to compare. The second
+// holds the admonition rewrite, which runs outside the mask, to the same
+// parser: the line scan it had never saw a fence open after `: `, and turned
+// the sample inside into a live admonition.
 const UNCHANGED_PROBES = [
   ["a fence the definition-list plugin makes",
     "Term\n: ```tb\n  v = Items[1](a, b)\n  ```\n"],
+  ["an admonition written inside a fence the definition-list plugin makes",
+    "Term\n: ```md\n  > [!NOTE]\n  > body\n  ```\n"],
 ];
 
 // The regions blockRegions reports, in a form assert can compare at a glance.
@@ -356,7 +367,7 @@ async function main(argv) {
     if (applyRewrites(src).includes("markdown-alert")) continue;
     failed++;
     console.log(`FAIL  probe: ${name}`);
-    console.log(`        the admonition was not rewritten -- the fence stasher`);
+    console.log(`        the admonition was not rewritten -- the chain`);
     console.log(`        mistook the prose around it for code`);
   }
   for (const [name, src] of UNCHANGED_PROBES) {
@@ -390,7 +401,7 @@ async function main(argv) {
   if (!failed) {
     console.log(`ok    ${PROBES.length} probes: no rewrite alters a code region`);
     console.log(`ok    ${ADMONITION_PROBES.length} probes: a rewrite still fires on prose beside code`);
-    console.log(`ok    ${UNCHANGED_PROBES.length} probe(s): the chain masks what the site's parser calls code`);
+    console.log(`ok    ${UNCHANGED_PROBES.length} probe(s): the chain leaves alone what the site's parser calls code`);
     console.log(`ok    ${MODULE_PROBES.length} probes: lib/markdown.mjs and lib/frontmatter.mjs`);
     console.log("ok    1 probe: the count validator skips code and names the file's line");
   }

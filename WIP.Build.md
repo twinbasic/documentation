@@ -304,7 +304,8 @@ fixed at the rewrite, not by widening the mask.
 
 `rewriteAdmonitions` deliberately runs **outside** the mask. It finds an
 admonition's lines by their `>` markers and strips them, and a masked fence
-inside an admonition takes its markers with it into the stash.
+inside an admonition takes its markers with it into the stash. It asks
+`blockRegions`, with the same parser, which lines are code instead.
 
 ### Whitespace inside inline code is content
 
@@ -522,20 +523,27 @@ comparison matched, the link check passed, and axe has no opinion about a
 blockquote. It was found only because a new entry added to that page rendered
 the same way and looked wrong.
 
-The stasher is a line scan now --- CommonMark closes a fence on a line that is
+The stasher became a line scan --- CommonMark closes a fence on a line that is
 only the fence character, repeated at least as often as in the opener, which is
 a rule about lines rather than something to express as one regex over a whole
-document. Measured across the site, the fix changes four files: `Attributes.html`,
+document. Measured across the site, that fix changed four files: `Attributes.html`,
 `search-data.json` (which indexes it), and the two that record build timings.
 
 The same stasher had a second way to fail: it recognised *backtick* fences only,
-reasoning that `maskCodeRegions` knows about tildes --- but `rewriteAdmonitions` runs
-**outside** the mask by design, so nothing protected a tilde fence. `FENCE_OPEN_RE`
-accepts either character now and closes on the one that opened. `docs/` contains no
-tilde fence, which is why the corpus sweep could never have found it --- the same
-blind spot that makes the ADMONITION_PROBES necessary.
+reasoning that `maskCodeRegions` knew about tildes --- but `rewriteAdmonitions` runs
+**outside** the mask by design, so nothing protected a tilde fence. Its opener test
+was made to accept either character and close on the one that opened. `docs/`
+contains no tilde fence, which is why the corpus sweep could never have found it ---
+the same blind spot that makes the ADMONITION_PROBES necessary.
 
-Five probes in `check_code_regions.mjs` assert this direction, and **writing one
+**The stasher is gone.** A scan of its own could still disagree with the parser
+that renders the page: it never saw a fence opened after a definition list's `: `,
+so an admonition written inside one as a sample became a live one. `rewriteAdmonitions`
+asks `blockRegions` from `lib/markdown.mjs`, with the site's parser, and leaves an
+admonition alone when its `[!TYPE]` line is in a region. A fence *inside* an
+admonition is a region too, and the rewrite still strips its `>` markers.
+
+Six probes in `check_code_regions.mjs` assert this direction, and **writing one
 correctly is not obvious**: a mis-paired opener swallows text only as far as the next
 fence marker, so a probe with no fence *after* the admonition passes against the very
 stasher it was written to catch. The damage is always to the prose **between** two
