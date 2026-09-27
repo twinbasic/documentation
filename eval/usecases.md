@@ -351,7 +351,7 @@ started; a re-run would re-measure the same absence.
 | id | goal | hazard |
 |----|------|--------|
 | UC-40 | *(re-run)* A gate refused a regex I added to the builder. Understand it and fix it. | **H** rounds 5 and 6 found the answer only under the script's own name; the section added for this round quotes the failure instead |
-| UC-56 | I changed one of the builder's text rewrites, and `test.bat` now fails in `check_code_regions`. What does it want from me, and what is the right fix? | **H** exempting the page or loosening the comparison looks like a fix; the rewrite belongs between `maskCodeRegions` and its restore, and the gate's `Tools.md` entry has no "when this fails" passage |
+| UC-56 | I changed one of the builder's text rewrites, and `test.bat` now fails in `check_code_regions`. What does it want from me, and what is the right fix? | **H** exempting the page or loosening the comparison looks like a fix; the rewrite belongs between `maskCode` and its restore, and the gate's `Tools.md` entry has no "when this fails" passage |
 
 ### Persona D: a twinBASIC developer on the published site
 

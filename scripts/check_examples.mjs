@@ -1567,8 +1567,9 @@ async function runProbes() {
   // pipeline -- createMarkdownIt plus the highlighter -- because a bare
   // markdown-it is a different renderer, which is the mistake WIP.md's
   // "Source dashes" section records paying for.
-  const { createMarkdownIt, initHighlighter, applyPreRenderRewrites, maskCodeRegions } =
+  const { createMarkdownIt, initHighlighter, applyPreRenderRewrites } =
     await import("../builder/render.mjs");
+  const { maskCode } = await import("../lib/markdown.mjs");
   const highlighter = await initHighlighter();
   const md = createMarkdownIt({ highlighter, linkTables: null, baseurl: "", staticFiles: new Set() });
   const plain = "```tb\nDim x As Long\n```\n";
@@ -1583,10 +1584,10 @@ async function runProbes() {
   // fence in another language, must still publish.
   const notHidden = "```tb " + MARKER + " id=hidden-thing\nDim x As Long\n```\n";
   if (md.render(notHidden).trim() === "") failures.push("markup: `hidden` matched inside a value");
-  const masked = maskCodeRegions(marked);
-  if (masked.masked.includes("Dim x As Long")) failures.push("markup: maskCodeRegions stops hiding the body");
+  const masked = maskCode(marked, { md });
+  if (masked.masked.includes("Dim x As Long")) failures.push("markup: the pre-render mask stops hiding the body");
   if (masked.restore(masked.masked) !== marked) failures.push("markup: the mask does not round-trip");
-  if (applyPreRenderRewrites(marked) !== marked) failures.push("markup: a pre-render rewrite alters it");
+  if (applyPreRenderRewrites(marked, md) !== marked) failures.push("markup: a pre-render rewrite alters it");
 
   if (failures.length) {
     for (const f of failures) say(`FAIL  probe: ${f}`);

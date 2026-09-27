@@ -38,11 +38,9 @@
 //
 // KNOWN GAP 1, stated rather than hidden: an indented (4-space) code block is
 // compared as a `code_block` token, so corruption of one IS caught here -- but
-// maskCodeRegions in render.mjs deliberately does not protect indented blocks,
-// because distinguishing one from a list-item continuation needs block context
-// a pre-render pass does not have. So a future rewrite that damages an indented
-// block will be reported by this gate and will need fixing at the rewrite, not
-// by widening the mask.
+// the chain's mask in render.mjs does not protect indented blocks, and never
+// has. So a future rewrite that damages an indented block will be reported by
+// this gate and will need fixing at the rewrite.
 //
 // KNOWN GAP 2: code inside a RAW HTML BLOCK is invisible here. markdown-it
 // emits such a block as a single `html_block` token, which is none of the three
@@ -74,7 +72,7 @@ import { fileURLToPath } from "node:url";
 
 import MarkdownIt from "markdown-it";
 import deflist from "markdown-it-deflist";
-import { applyPreRenderRewrites } from "../builder/render.mjs";
+import { applyPreRenderRewrites, createMarkdownIt } from "../builder/render.mjs";
 import { parseFrontmatter } from "../lib/frontmatter.mjs";
 import { blockRegions, mapLines, maskCode, splitCodeSpans, splitOnMarker } from "../lib/markdown.mjs";
 import { markdownFiles } from "../lib/markdown-files.mjs";
@@ -110,7 +108,10 @@ function parsedRegions(src) {
 // The real chain, imported from render.mjs rather than reconstructed here.
 // That is what makes this gate mean something: unmasking any one of the
 // rewrites changes what this function does, and the comparison below sees it.
-const applyRewrites = applyPreRenderRewrites;
+// It masks with the site's parser, as renderPage does; only its block rules
+// run, so the options that matter to rendering are left empty.
+const siteMd = createMarkdownIt({ highlighter: null, linkTables: null, baseurl: "", staticFiles: new Set() });
+const applyRewrites = (src) => applyPreRenderRewrites(src, siteMd);
 
 function compare(src) {
   const before = codeRegions(src);
@@ -180,6 +181,16 @@ const ADMONITION_PROBES = [
   // sweep would never have found it.
   ["admonition after a tilde fence holding a lone fence marker",
     "prose\n\n~~~markdown\nsample\n```\n~~~\n\n> [!NOTE]\n> body\n\n```tb\nDim y\n```\n"],
+];
+
+// Sources the whole chain must return byte for byte. The first holds the chain
+// to the site's parser: the definition-list plugin makes a fence after `: `
+// that a bare parser reads as a paragraph, and masked with a bare parser, the
+// fence's body is rewritten (`a,%20b`). The region comparison cannot see that,
+// because it parses bare too and finds no fence there to compare.
+const UNCHANGED_PROBES = [
+  ["a fence the definition-list plugin makes",
+    "Term\n: ```tb\n  v = Items[1](a, b)\n  ```\n"],
 ];
 
 // The regions blockRegions reports, in a form assert can compare at a glance.
@@ -316,6 +327,14 @@ async function main(argv) {
     console.log(`        the admonition was not rewritten -- the fence stasher`);
     console.log(`        mistook the prose around it for code`);
   }
+  for (const [name, src] of UNCHANGED_PROBES) {
+    const after = applyRewrites(src);
+    if (after === src) continue;
+    failed++;
+    console.log(`FAIL  probe: ${name}`);
+    console.log(`        before ${JSON.stringify(src)}`);
+    console.log(`        after  ${JSON.stringify(after)}`);
+  }
   // Anything but a failed assertion is the gate breaking, and goes to exit 2.
   for (const [name, probe] of MODULE_PROBES) {
     try {
@@ -331,6 +350,7 @@ async function main(argv) {
   if (!failed) {
     console.log(`ok    ${PROBES.length} probes: no rewrite alters a code region`);
     console.log(`ok    ${ADMONITION_PROBES.length} probes: a rewrite still fires on prose beside code`);
+    console.log(`ok    ${UNCHANGED_PROBES.length} probe(s): the chain masks what the site's parser calls code`);
     console.log(`ok    ${MODULE_PROBES.length} probes: lib/markdown.mjs and lib/frontmatter.mjs`);
   }
 

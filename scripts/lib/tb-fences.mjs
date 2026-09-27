@@ -21,12 +21,13 @@
 //     const lang = tok.info ? tok.info.trim().split(/\s+/)[0] : "";
 //
 // so everything after the language token is discarded before the highlighter
-// sees it, and maskCodeRegions hides the fence body either way -- which is why
+// sees it, and maskCode hides the fence body either way -- which is why
 // the marker cannot reach the HTML and cannot perturb check_code_regions.mjs.
 // check_examples.mjs asserts all of that on every run rather than trusting it.
 //
 // No backticks may appear in it: CommonMark forbids them in a backtick fence's
-// info string, and maskCodeRegions skips such a fence outright.
+// info string, and markdown-it reads such a line as prose rather than as a
+// fence, so the sample would not be a fence at all.
 //
 // ------------------------------------------------------------- the five slots
 //

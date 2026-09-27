@@ -54,9 +54,9 @@
 // route; a placeholder rendering as empty is worse. Both abort the build, and
 // it takes two checks rather than one because they fail differently:
 //
-//   - `validateCountNames` scans the source, with code regions masked by the
-//     renderer's own `maskCodeRegions`, and rejects an unknown name. This is
-//     the typo case, and it names the file, the line and the nearest match.
+//   - `validateCountNames` scans the source, with code masked as the
+//     pre-render rewrites mask it, and rejects an unknown name. This is the
+//     typo case, and it names the file, the line and the nearest match.
 //   - `assertNoPlaceholders` scans the rendered HTML for a placeholder that
 //     survived, outside `<code>` and `<pre>`. Source validation cannot see
 //     this case: a placeholder inside a raw HTML block has a perfectly good
@@ -65,7 +65,7 @@
 // A name with no uses is fine and is not reported. Names are cheap; the
 // registry is allowed to offer more than the prose currently asks for.
 
-import { maskCodeRegions } from "./render.mjs";
+import { maskCode } from "../lib/markdown.mjs";
 
 export const PLACEHOLDER_RE = /\{\{tbdocs:([A-Za-z][A-Za-z0-9]*)\}\}/g;
 
@@ -231,14 +231,15 @@ function substitute(text, counts) {
 /**
  * Find every `{{tbdocs:...}}` in a page's source that is not inside code.
  *
- * Uses the renderer's own `maskCodeRegions`, so "what is code" has one
- * definition here and in the pre-render rewrites. Without it this would reject
- * the very examples the documentation of this feature has to contain.
+ * Masks code with `maskCode` and the site's parser `md`, as the pre-render
+ * rewrites do, so "what is code" has one definition here and there. Without
+ * it this would reject the very examples the documentation of this feature
+ * has to contain.
  *
  * @returns {{name: string, line: number}[]}
  */
-export function findCountRefs(rawContent) {
-  const { masked } = maskCodeRegions(rawContent.replace(/\r\n?/g, "\n"));
+export function findCountRefs(rawContent, md) {
+  const { masked } = maskCode(rawContent.replace(/\r\n?/g, "\n"), { md });
   const out = [];
   for (const m of masked.matchAll(PLACEHOLDER_RE)) {
     out.push({ name: m[1], line: masked.slice(0, m.index).split("\n").length });
@@ -282,11 +283,11 @@ function editDistance(a, b) {
  *
  * @returns {string[]} one message per bad reference; empty means clean
  */
-export function validateCountNames(pages, counts) {
+export function validateCountNames(pages, counts, md) {
   const names = Object.keys(counts).sort();
   const problems = [];
   for (const p of pages) {
-    for (const { name, line } of findCountRefs(p.rawContent ?? "")) {
+    for (const { name, line } of findCountRefs(p.rawContent ?? "", md)) {
       if (Object.hasOwn(counts, name)) continue;
       const guess = nearest(name, names);
       problems.push(

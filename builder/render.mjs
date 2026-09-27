@@ -15,12 +15,8 @@ import attrs from "markdown-it-attrs";
 import deflist from "markdown-it-deflist";
 import footnote from "markdown-it-footnote";
 
+import { maskCode } from "../lib/markdown.mjs";
 import { initHighlighter } from "./highlight.mjs";
-// Circular with counts.mjs, which imports maskCodeRegions from here so that
-// "what is code" has one definition across the pre-render rewrites and the
-// count validator. Safe because both sides export function DECLARATIONS, which
-// are hoisted and bound before either module body runs, and neither calls into
-// the other at module-evaluation time. Verified in both import orders.
 import { countPlugin, findSurvivingPlaceholder } from "./counts.mjs";
 
 export async function renderPhase(pages, site, staticFiles = []) {
@@ -62,7 +58,7 @@ function renderPage(page, md) {
     // consumed by Phase 8. Either way, no markdown rendering happens here.
     return page.rawContent;
   }
-  const source = applyPreRenderRewrites(page.rawContent);
+  const source = applyPreRenderRewrites(page.rawContent, md);
   let html = md.render(source, { page });
   html = normaliseVoidTags(html);
   html = padEmptyCells(html);
@@ -79,21 +75,18 @@ function padEmptyCells(html) {
   return html.replace(/<(t[dh])([^>]*)><\/\1>/g, "<$1$2> </$1>");
 }
 
-// kramdown accepts unescaped spaces inside `![alt](url)` and `[text](url)`
-// URLs; CommonMark / markdown-it does NOT and leaves the source text
-// unparsed. URL-encode spaces inside image and link URL components so
-// markdown-it can parse them the way kramdown would.
-//
-// Only the simple case is handled: a URL that's a plain file path with
-// spaces and NO embedded quotes or parens. Anything trickier (titles,
-// nested parens) gets left alone -- the regex is too coarse to safely
-// rewrite those.
 // The whole pre-render rewrite chain, exactly as renderPage applies it.
 // Exported so scripts/check_code_regions.mjs can gate the real thing rather
 // than a reconstruction of it -- in particular so that removing the mask from
-// one of these rewrites is caught, which a gate that only exercised
-// maskCodeRegions would miss.
-export function applyPreRenderRewrites(rawContent) {
+// one of these rewrites is caught, which a gate that only exercised the mask
+// would miss.
+//
+// `md` is the site's markdown-it instance, and it decides what the mask hides:
+// the definition-list plugin, for one, makes a fence after `: ` that a bare
+// parser reads as a paragraph. Without it the mask would silently differ from
+// the build's, so a call without one throws.
+export function applyPreRenderRewrites(rawContent, md) {
+  if (!md) throw new TypeError("applyPreRenderRewrites: pass the site's markdown-it instance");
   // CommonMark normalises CRLF/CR to LF before block parsing. The rewrites
   // below all rely on LF-only input -- do the normalisation up front so they
   // see consistent line shapes.
@@ -105,105 +98,36 @@ export function applyPreRenderRewrites(rawContent) {
   // `Items[1](a,%20b)`, `' *** banner ***` became `' **_ banner _**`, and a
   // YAML sample ending in `---` had that line DELETED and the entry above it
   // promoted to a heading. Mask the code regions, rewrite, then restore.
-  const code = maskCodeRegions(source);
+  //
+  // The mask hides every fence the parser finds, blockquote and list prefixes
+  // included, and every code span. It does not hide indented code blocks,
+  // which the chain has never masked; check_code_regions.mjs compares them
+  // all the same. Each masked fence becomes one line starting with a backtick,
+  // so absorbTrailingHtmlComments, which will not join a comment to a line that
+  // starts with one, never joins a comment to a fence.
+  const code = maskCode(source, { md });
   let work = code.masked;
   work = rewriteTripleAsteriskEmphasis(work);
   work = encodeSpacesInMediaUrls(work);
   work = rewriteListItemSetextHeadings(work);
   work = absorbTrailingHtmlComments(work);
 
-  // rewriteAdmonitions runs OUTSIDE the mask, and must: a fence inside an
-  // admonition still carries its `> ` markers at this point, so the mask does
-  // not see it as a fence, and the admonition rewrite is what strips those
-  // markers. It does its own code handling.
+  // rewriteAdmonitions runs OUTSIDE the mask, and must: it finds an
+  // admonition's lines by their `> ` markers and strips them, and a masked
+  // fence inside an admonition has taken its markers with it into the stash.
+  // It does its own code handling.
   return rewriteAdmonitions(code.restore(work));
 }
 
-// ---------- code-region mask for the pre-render rewrites --------------------
+// kramdown accepts unescaped spaces inside `![alt](url)` and `[text](url)`
+// URLs; CommonMark / markdown-it does NOT and leaves the source text
+// unparsed. URL-encode spaces inside image and link URL components so
+// markdown-it can parse them the way kramdown would.
 //
-// Hides fenced code blocks (backtick or tilde, any fence length) and inline
-// code spans (any backtick-run length) behind opaque placeholders, so a
-// source-level rewrite cannot reach into a code sample.
-//
-// The placeholder is wrapped in backticks deliberately. A masked fence
-// collapses several lines into one, and `absorbTrailingHtmlComments`
-// classifies the PREVIOUS line to decide whether to join a comment to it --
-// its PARAGRAPH_CONTINUATION_RE excludes a line starting with a backtick,
-// which is what a real fence line started with. Keeping that leading
-// backtick keeps the classification identical.
-//
-// Indented code blocks are NOT masked: telling one from a list-item
-// continuation needs block context that a pre-render pass does not have, and
-// guessing would change how real list content renders. That gap is a known,
-// measured one -- scripts/check_code_regions.mjs covers it.
-// biome-ignore lint/suspicious/noControlCharactersInRegex: NUL delimits the placeholders because page text never contains one.
-const CODE_MASK_RE = /`\u0000CM(\d+)\u0000`/g;
-
-export function maskCodeRegions(src) {
-  const stash = [];
-  const lines = src.split("\n");
-  const out = [];
-  let i = 0;
-
-  while (i < lines.length) {
-    const open = lines[i].match(/^[ \t]{0,3}(`{3,}|~{3,})/);
-    if (open) {
-      const marker = open[1];
-      const fenceChar = marker[0];
-      const block = [lines[i]];
-      let j = i + 1;
-      for (; j < lines.length; j++) {
-        block.push(lines[j]);
-        const close = lines[j].match(/^[ \t]{0,3}(`+|~+)[ \t]*$/);
-        if (close && close[1][0] === fenceChar && close[1].length >= marker.length) {
-          j++;
-          break;
-        }
-      }
-      stash.push(block.join("\n"));
-      out.push(`\`\u0000CM${stash.length - 1}\u0000\``);
-      i = j;
-      continue;
-    }
-    out.push(maskInlineCode(lines[i], stash));
-    i++;
-  }
-
-  return {
-    masked: out.join("\n"),
-    restore: (s) => s.replace(CODE_MASK_RE, (_, n) => stash[Number(n)] ?? ""),
-  };
-}
-
-// A code span is a run of N backticks, the shortest possible content, then a
-// run of exactly N backticks. An unmatched run is literal text in CommonMark
-// and simply never matches here, which is the correct outcome.
-function maskInlineCode(line, stash) {
-  let res = "";
-  let k = 0;
-  while (k < line.length) {
-    if (line[k] !== "`") { res += line[k++]; continue; }
-    let n = 0;
-    while (line[k + n] === "`") n++;
-    const open = k;
-    let p = k + n;
-    let found = -1;
-    while (p < line.length) {
-      if (line[p] === "`") {
-        let m = 0;
-        while (line[p + m] === "`") m++;
-        if (m === n) { found = p; break; }
-        p += m;
-      } else p++;
-    }
-    if (found < 0) { res += line.slice(open, open + n); k = open + n; continue; }
-    stash.push(line.slice(open, found + n));
-    res += `\`\u0000CM${stash.length - 1}\u0000\``;
-    k = found + n;
-  }
-  return res;
-}
-
+// Only the simple case is handled: a URL that's a plain file path with
+// spaces and NO embedded quotes or parens. Anything trickier (titles,
+// nested parens) gets left alone -- the regex is too coarse to safely
+// rewrite those.
 const MEDIA_URL_SPACES_RE = /(!?\[(?:[^\]\n]*)\])\(([^)"'\n]+)\)/g;
 function encodeSpacesInMediaUrls(src) {
   return src.replace(MEDIA_URL_SPACES_RE, (whole, prefix, url) => {

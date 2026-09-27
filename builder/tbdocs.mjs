@@ -602,21 +602,22 @@ const TASKS = {
       // renders -- and validated here for the same reason. An unknown name
       // cannot be an error inside the substitution rule: markdown-it emits an
       // unrecognised inline verbatim, so the rule would publish the typo to
-      // readers rather than fail. See counts.mjs.
+      // readers rather than fail. See counts.mjs. The validation masks code
+      // with the site's parser, so it follows the parser's creation.
       state.site.counts = deriveCounts(state, { redirectStubs: stubs.length });
-      const badNames = validateCountNames(state.pages, state.site.counts);
-      if (badNames.length) {
-        throw new Error(
-          `unknown {{tbdocs:...}} count name in ${badNames.length} place(s):\n\n` +
-          badNames.join("\n\n"));
-      }
-
       state.site.markdown             = createMarkdownIt({
         highlighter: null, linkTables, baseurl, staticFiles: staticFileSet,
         vendoredVideos: state.site.vendoredVideos,
         vendoredImages: state.site.vendoredImages,
         counts: state.site.counts,
       });
+      const badNames = validateCountNames(state.pages, state.site.counts, state.site.markdown);
+      if (badNames.length) {
+        throw new Error(
+          `unknown {{tbdocs:...}} count name in ${badNames.length} place(s):\n\n` +
+          badNames.join("\n\n"));
+      }
+
       state.site.linkTablesSerialized = serializeLinkTables(linkTables);
       const { seoSiteTitle, seoLogoUrl } = computeSiteSeo(state.site.config, state.site.markdown);
       state.site.seoSiteTitle = seoSiteTitle;

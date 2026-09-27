@@ -646,6 +646,46 @@ settle. `applyPreRenderRewrites` takes no parser today, so it needs one to pass 
 And `check_code_regions.mjs` calls it: with the bare parser by default, the gate would mask
 differently from the build wherever the definition-list plugin makes a fence.
 
+**Landed.** `applyPreRenderRewrites(rawContent, md)` masks with `maskCode(source, { md })`
+and throws a `TypeError` when given no parser, so no caller can mask differently from the
+build without noticing; `renderPage` passes the site's. `maskCodeRegions` and
+`maskInlineCode` are gone. `findCountRefs(rawContent, md)` and `validateCountNames(pages,
+counts, md)` mask the same way, so `counts.mjs` no longer imports `render.mjs` and the
+circular import between them is gone; `tbdocs.mjs` now creates the site's parser before it
+validates the count names. `check_code_regions.mjs` builds the site's parser with
+`createMarkdownIt` and passes it to the chain, which settles the entry's question, and gains
+`UNCHANGED_PROBES`: sources the chain must return byte for byte, one so far, a fence the
+definition-list plugin makes. That probe had to be a direct comparison. The region
+comparison parses bare, finds no fence there, and so never sees the fence's body rewritten.
+`check_examples.mjs`'s markup probe masks with `maskCode`. At the owner's request,
+`encodeSpacesInMediaUrls`' comment, stranded above `applyPreRenderRewrites`, went back above
+its function. Citations of the old mask are updated in `builder/README.md`, WIP.md,
+WIP.Build.md, WIP.ExamplesBuild.md, Extending, Authoring, Pipeline-Stages,
+`eval/usecases.md` and `scripts/lib/tb-fences.mjs`; two of those said the old mask skipped a
+fence whose info string holds a backtick, which A3-1 shows it did not. The comment above
+`stashCodeFences` still names `maskCodeRegions`; C33 deletes it.
+
+For later entries: the region comparison cannot see a code region that only the site's
+parser finds, so a probe for one compares the chain's output directly. With the mask taken
+out of the chain altogether, the corpus sweep still reports no page altered; today only the
+probes catch that fault.
+
+**Verify.** Before the citation edits the tree comparison was identical (1,461 files online,
+1,457 offline, 137 pdf), the seven admonition-fence pages included, so the entry's reasoning
+now has a measurement behind it. After them it differs only in Authoring, Extending and
+Pipeline-Stages online and offline, the search data, and `book.html`.
+`check_code_regions.mjs`: `912 file(s), 0 with altered code regions, 1372 fence(s) in the
+full parse -- clean`, with 7, 5, 1 and 11 probes. Three faults each fail it with exit 1: the
+gate passing its bare parser to the chain and the mask ignoring the parser it is given both
+fail the new probe, and the chain rewriting unmasked source fails three fence probes and the
+new one. `check_examples.mjs --census` runs the markup probe: `ok 119 probes`. From a
+scratch page, the count validator ignores a name in a fence, in a code span and in a
+definition-list fence, and reports one in prose.
+
+Found: the line `validateCountNames` reports is a line of the masked content after the
+frontmatter, not of the file: `x.md:5` for a name on line 12, below three lines of
+frontmatter and a five-line fence. C32 keeps that number, and C32a fixes it.
+
 ### C33 — `render: admonitions find their fences through lib/markdown`
 
 **A3-1, second half.** `rewriteAdmonitions` protects fences with its own `stashCodeFences`.

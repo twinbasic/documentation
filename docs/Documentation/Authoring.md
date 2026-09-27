@@ -420,7 +420,7 @@ with four backticks and close with four:
 
 Nothing else changes. A fence closes only on a run at least as long as the one
 that opened it, and both pre-render passes that have to find fences apply that
-same rule --- `maskCodeRegions`, which hides code from the rewrites, and the
+same rule --- `maskCode`, which hides code from the rewrites, and the
 fence stasher inside `rewriteAdmonitions`, which is the one that matters here
 because it runs *outside* the mask by design. The language tag reaching the
 highlighter is the same string either way --- a four-backtick `tb` fence is highlighted exactly as a

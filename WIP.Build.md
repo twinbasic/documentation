@@ -286,24 +286,25 @@ that accident.**
 Two mechanisms now exist, and a new rewrite must use one of them:
 
 - **Source rewrites** go inside `applyPreRenderRewrites` in
-  [builder/render.mjs](builder/render.mjs), between `maskCodeRegions` and its
-  `restore`. The mask hides fenced blocks (backtick or tilde, any length) and
-  inline code spans (any backtick-run length).
+  [builder/render.mjs](builder/render.mjs), between `maskCode` and its
+  `restore`. `maskCode` lives in [lib/markdown.mjs](lib/markdown.mjs) and masks
+  every fence the site's parser finds --- including one inside a blockquote or
+  admonition, inside a list item, or one the definition-list plugin makes after
+  `: ` --- plus every inline code span.
 - **Rendered-HTML rewrites** use `replaceOutsideCode` in
   [builder/book.mjs](builder/book.mjs), or the same leading-alternation shape
   found in `offline-rewrite.mjs:299`, `pdf.mjs:138` and `book.mjs`'s
   `IMG_SRC_RE_BOOK`, which consume `<code>` and `<pre>` atomically.
 
-**One gap is deliberate and stated rather than hidden:** `maskCodeRegions` does
-not protect **indented** (4-space) code blocks, because telling one from a
-list-item continuation needs block context a pre-render pass does not have, and
-guessing would change how real list content renders. `check_code_regions.mjs`
+**One gap is deliberate and stated rather than hidden:** the chain does not
+mask **indented** (4-space) code blocks, since it calls `maskCode` without
+`indented: true`. `check_code_regions.mjs`
 *does* compare them, so a rewrite that damages one is reported --- and must be
 fixed at the rewrite, not by widening the mask.
 
-`rewriteAdmonitions` deliberately runs **outside** the mask. A fence inside an
-admonition still carries its `> ` markers at that point, so the mask does not
-see it as a fence, and the admonition rewrite is what strips those markers.
+`rewriteAdmonitions` deliberately runs **outside** the mask. It finds an
+admonition's lines by their `>` markers and strips them, and a masked fence
+inside an admonition takes its markers with it into the stash.
 
 ### Whitespace inside inline code is content
 
@@ -420,7 +421,7 @@ node scripts/check_code_regions.mjs --self-test
 
 Two details are load-bearing. **It imports the chain rather than reconstructing
 it**, so removing the mask from one rewrite changes what the gate runs and is
-caught --- a gate that exercised `maskCodeRegions` alone would have passed. And
+caught --- a gate that exercised `maskCode` alone would have passed. And
 **its seven probes ride along in the normal run**, each a defect this repository
 actually shipped, because the corpus is clean: a sweep that finds nothing is
 otherwise indistinguishable from a gate that has stopped detecting. Verified by

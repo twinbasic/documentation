@@ -117,7 +117,7 @@ that ride along on every run:
 | property | result |
 |---|---|
 | a marked fence renders byte-identical HTML to a plain one | **true** |
-| `maskCodeRegions` still hides the body | **true** |
+| `maskCode` still hides the body | **true** |
 | the mask round-trips the marked fence | **true** |
 | `applyPreRenderRewrites` leaves it byte-identical | **true** |
 
@@ -129,7 +129,8 @@ Shape --- bare flags and `key=value` pairs after the language token:
     ```tb check_build slot=module id=getobject-1
 
 **No backticks in it.** CommonMark forbids them in a backtick fence's info string, and
-`maskCodeRegions` skips such a fence outright.
+markdown-it reads such a line as prose rather than as a fence, so the sample would not be
+a fence at all.
 
 | token | meaning | default |
 |---|---|---|
