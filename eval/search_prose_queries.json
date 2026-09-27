@@ -51,5 +51,16 @@
   { "q": "operator overloading", "expected": ["/Features/Language/UDTs"], "behind": ["/tB/Core/Type"] },
   { "q": "overloading operators", "expected": ["/Features/Language/UDTs"], "behind": ["/tB/Core/Type"] },
   { "q": "pointers", "expected": ["/Features/Language/Pointers"] },
-  { "q": "comment", "expected": ["/Features/Language/Comments", "/tB/Gloss"] }
+  { "q": "comment", "expected": ["/Features/Language/Comments", "/tB/Gloss"] },
+  { "q": "user defined types", "expected": ["/tB/Core/Type"], "behind": ["/Features/Language/UDTs"] },
+  { "q": "user types", "expected": ["/tB/Core/Type"], "behind": ["/Features/Language/UDTs"] },
+  { "q": "event handlers", "expected": ["/Features/Language/Handlers"], "behind": ["/Tutorials/Forms"] },
+  { "q": "namespaces", "expected": ["/tB/Gloss"], "behind": ["/Features/Packages"] },
+  { "q": "twinpack", "expected": ["/Features/Packages/Creating-TWINPACK"], "behind": ["/Features/Packages", "/Features/Packages/File-Format"] },
+  { "q": "class module", "expected": ["/tB/Core/Class"] },
+  { "q": "enumerated constant", "expected": ["/Reference/Enumerations"], "behind": ["/tB/Core/Enum"] },
+  { "q": "module variable", "expected": ["/tB/Core/Module"] },
+  { "q": "inherited property", "expected": ["/Features/Language/Inheritance"] },
+  { "q": "z-order", "expected": ["/tB/Packages/VB/Form"], "behind": ["/tB/Packages/VB/MDIForm", "/tB/Packages/VB/Report"] },
+  { "q": "windows api tutorial", "expected": ["/Tutorials/Windows-API"] }
 ]
