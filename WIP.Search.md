@@ -14,11 +14,12 @@ depends on the session that wrote it.
 
 **Where it stands.** Rollout steps 1–5, two reader-intent rounds, the
 index pilot, the qualified-name round, the title-heading fix, the stem
-twins, the same-page ground truth and a fix for lunr inventing words are
+twins, the same-page ground truth, a fix for lunr inventing words, and
+the whole-title round (two eval sets, the re-rank, the plural rule) are
 done and committed, on branch
 `claude/paintpicture-docs-runtime-f3250d`, rebased onto `f8e630e5`.
 Nothing is pushed. The working tree is clean; the last commit records the
-user's decisions on the probes (item 3 under "Next").
+whole-title round (item 3 under "Next").
 
 | commit | step |
 |---|---|
@@ -39,16 +40,77 @@ user's decisions on the probes (item 3 under "Next").
 | `3b839326` | ground truth intent-3: a section of a symbol's page counts for it |
 | `834e2bb5` | lunr's token-set keys separated: queries with the word `a` threw |
 | `0b2dbd96` | the `New Functions` / `Form events` probes diagnosed and measured, not shipped |
+| `2b8de7a9` | ground truth intent-4: page titles and page-plus-section queries in the eval |
+| `3328881c` | a query naming a whole title scores ×3 |
+| `03c90175` | a plural kind word doesn't make the other word a name |
 
 Hit@10 went from 20.5% to 100%, and MRR from .182 to .997. By reader
 intent, rank 1 is right for 99.9% of queries (89.0% before the intent
 steps), every qualified name and all 20 prose queries are at rank 1, no
 bare name is out of tier order, and no query got worse at any step.
 
-The remaining 10 rank-1 misses are all bare names: 7 enum constants and 2
+The eval now also types every page's multi-word title (140 queries) and
+`<page title> <section title>` for shared section titles (300). They
+were at 87.9% and 22.7% at rank 1; after the whole-title round they are
+at 97.9% and 96.7%. See [Fixed: whole titles](#fixed-whole-titles).
+
+The remaining 23 rank-1 misses: 10 bare names (7 enum constants and 2
 members, in
 [What shipped, second round](#what-shipped-second-round-tiers-in-the-index),
-and `MidB$`, in [Same-page sections count](#same-page-sections-count).
+and `MidB# twinBASIC Documentation — Site search design notes
+
+Why searching for a member such as `PaintPicture` does not find it, what was
+measured, and the design that fixes it. Companion to
+[builder/PLAN-6.md](builder/PLAN-6.md) §5.3, which describes the search-data
+generator as ported from Jekyll.
+
+Like WIP.md, this file is not rendered through tbdocs, so literal dashes are fine here.
+
+## Resuming this work
+
+Everything needed to continue is in this file and in `eval/`; nothing
+depends on the session that wrote it.
+
+**Where it stands.** Rollout steps 1–5, two reader-intent rounds, the
+index pilot, the qualified-name round, the title-heading fix, the stem
+twins, the same-page ground truth, a fix for lunr inventing words, and
+the whole-title round (two eval sets, the re-rank, the plural rule) are
+done and committed, on branch
+`claude/paintpicture-docs-runtime-f3250d`, rebased onto `f8e630e5`.
+Nothing is pushed. The working tree is clean; the last commit records the
+whole-title round (item 3 under "Next").
+
+| commit | step |
+|---|---|
+| `64e33f63` | this design doc |
+| `0ce186db` | 1: the asterisk crash guard; the replica's tokenizer separator |
+| `1c3edd94` | 2: `eval/search_quality.mjs` and its baseline |
+| `897e48a3` | 3: h3 entries; `search.fold_headings` |
+| `8a6db0b2` | 4: `names`/`qualified` fields; the smart dot split |
+| `281fd978` | 5: stop words kept; dot runs split; lazy index build |
+| `48b15c2e` | intent 1: `search_quality.mjs` judges bare names by reader intent |
+| `6b9ada4a` | intent 3: exact-name and page-title fields, all words first, query tokens trimmed |
+| `0c5f774c` | intent 4: `primary` names, non-word characters kept in exact names, kind words |
+| `31f2d5b4` | pilot 1: prose queries can expect pages right behind (`behind`); ground truth intent-2 |
+| `657d4296` | pilot 2: hand-marked index entries, and the first five |
+| `f684f82c` | qualified names: `qualified` at 500, reached only by qualified names and word pairs |
+| `03108b5a` | only a page's first heading can be its title (`Shape.Shape`, `Timer.Timer`) |
+| `5d4f4e18` | stem twins held whole in `qualified` (`Printer.Fonts`) |
+| `3b839326` | ground truth intent-3: a section of a symbol's page counts for it |
+| `834e2bb5` | lunr's token-set keys separated: queries with the word `a` threw |
+| `0b2dbd96` | the `New Functions` / `Form events` probes diagnosed and measured, not shipped |
+| `2b8de7a9` | ground truth intent-4: page titles and page-plus-section queries in the eval |
+| `3328881c` | a query naming a whole title scores ×3 |
+| `03c90175` | a plural kind word doesn't make the other word a name |
+
+Hit@10 went from 20.5% to 100%, and MRR from .182 to .997. By reader
+intent, rank 1 is right for 99.9% of queries (89.0% before the intent
+steps), every qualified name and all 20 prose queries are at rank 1, no
+bare name is out of tier order, and no query got worse at any step.
+
+, in [Same-page sections count](#same-page-sections-count)),
+3 page titles and 10 page-plus-section queries, listed in
+[Fixed: whole titles](#fixed-whole-titles).
 
 **The index pilot held up.** The user asked whether ranking tweaks are an
 uphill battle, since a book's index is marked by hand. The conclusion,
@@ -75,8 +137,8 @@ qualified names are now at rank 1, typed with a dot or as two words.
 2. ~~The same-page ground-truth question.~~ The user ruled that a section
    of the page documenting a name counts; see
    [Same-page sections count](#same-page-sections-count).
-3. **Do next: the whole-title fix.** Diagnosed and measured in
-   [Probes: whole titles](#probes-whole-titles). The user decided:
+3. ~~The whole-title fix.~~ Done, in the order below; see
+   [Fixed: whole titles](#fixed-whole-titles). The user had decided:
    - **Ship both**, each its own commit with its measured numbers: the
      score ×3 for a result whose whole title, or page title plus title,
      reads the same as a query of two or more words; and plural kind
@@ -154,12 +216,13 @@ qualified names are now at rank 1, typed with a dot or as two words.
 - `node eval/search_quality.mjs --compare eval/search_baseline.json --worst 20`
   measures a build against the saved baseline; `--save` updates it;
   `--failures N` lists what misses rank 1, by category and tier. The
-  baseline records its ground truth (`intent-3`).
-- The eval's symbol queries are one word each, so it can't see a change
-  to multi-word queries. The qualified-name round checked those with
-  probes and a throwaway set: every qualified symbol written as two words
-  (`FileListBox Name`), ranked with the committed replica and the
-  candidate. Do the same for any change to the all-words pass.
+  baseline records its ground truth (`intent-4`).
+- The eval's symbol queries are one word each; its page-title and
+  page-plus-section sets are its only multi-word queries. So for any
+  change to the all-words pass, also rank every qualified symbol written
+  as two words (`FileListBox Name`) with the committed replica and the
+  candidate: `eval/search-experiments/probes/spaced.mjs`, run once
+  against a copy of the committed `site_search.mjs`.
 - `eval/site_search.mjs` is the replica of the client search. The site's
   client and `builder/offline.mjs`'s `initSearch` must stay identical to it;
   `test/search.test.mjs` fails if their fields or pipeline drift apart.
@@ -1242,9 +1305,13 @@ this), and that the online client's and the replica's keys keep the
 fixture exact; each of five mutations (either key without its separator,
 or any of the three copies not installing it) fails it.
 
-### Probes: whole titles
+### Fixed: whole titles
 
-Not shipped; measured with knobs (`eval/search-experiments/probes/`).
+Diagnosed and measured with knobs first
+(`eval/search-experiments/probes/`), as recorded below; then shipped as
+the user decided, in three commits: the two sets as ground truth, the
+×3 re-rank, and the plural rule. See "Shipped" at the end of this
+section.
 
 **Diagnosis.**
 - `New Functions`: `ServiceState#new` (689) above the page (437).
@@ -1296,15 +1363,72 @@ other probe is unchanged. Latency: about 100 ms more on the first
 multi-word query after the index is built (computing the keys of its
 results), nothing measurable after.
 
-Left: the operator titles (`&, &=`, no result), `Mid =`, `Compiler and
-IDE Features` and `WebView2 Package` at 2, and 12 sections, mostly on
-pages whose names contain each other (`HtmlElement Properties` behind
-`HtmlElementProperties`).
+**Shipped.**
 
-Open: the re-rank works outside lunr's scoring, as a post-pass in
-`doSearch()`, in all three copies. Whether a hand-marked index entry
-should outrank it if the two ever disagree is untested: no prose query
-has a heading of the same text elsewhere.
+1. `2b8de7a9`: `eval/search_quality.mjs` derives both sets from the
+   build, as ground truth `intent-4`, with no ranking change (all 8,012
+   earlier queries kept their ranks):
+   - *page title*: every page's own title of two or more words, as the
+     reader sees it (entities decoded: the data holds `&lt;&lt;`); any
+     entry of that page counts. 140 queries. The 9 operator pages
+     (`&, &=`, `<<, <<=`) are left out, since a reader types one
+     operator, which the bare-name set measures (all 24 at rank 1).
+     That, not a change of ranking, is why this set starts at 87.9% where
+     the probe's 149 titles were at 84.6%.
+   - *page plus section*: `<page title> <section title>` for the one-word
+     section titles 20+ pages share, less sections that document a
+     symbol; only that section counts, and a query several sections
+     share expects any of them. 300 queries.
+2. `3328881c`: the ×3 re-rank, `boostWholeTitles()`, at the end of
+   `doSearch()` in `just-the-docs.js` and of the replica's `search()`.
+   `doSearch()` is outside `initSearch()`, so the offline copy shares it:
+   two copies, not three. The replica now needs `docs` in its context
+   (`load()` gives it; the tests' fixtures pass it too) and fails loudly
+   without it, since a replica that skipped the re-rank would quietly
+   differ from the client.
+3. `03c90175`: a kind word counts only in the singular.
+
+| | page title (140) | page plus section (300) | other queries | spaced (5,108) |
+|---|---|---|---|---|
+| before | 87.9% | 22.7% | | 100% |
+| ×3 re-rank | 95.7% | 95.7% | unchanged; 243 better, none worse | 100%, unchanged |
+| plural rule | **97.9%** | **96.7%** | unchanged; 6 better, none worse | 100%, unchanged |
+
+Every page and section title (3,658) runs as a query without throwing.
+Both clients were checked in a browser against the replica
+(`DTPicker Properties`, `Return Syntax`, `Delegate Types`, `Form events`,
+`New Functions`, `With statement`, `AddressOf operator`, `a` and
+others): same results, no console errors.
+`test/search.test.mjs`'s whole-title guard runs both copies'
+`boostWholeTitles()` on the same results, checks both apply it to the
+final results, and ranks a fixture like the site (`DTPicker Properties`
+behind the class heading without the boost). Setting either copy's boost
+to 1, or dropping the client's call, fails it. The query guard checks
+that both compare kind words as typed.
+
+Left, 3 page titles and 10 page-plus-section queries, each at rank 2 or 3:
+- `Mid =`: the trimmer drops `=`, so the query is `Mid`, one word, and
+  the Mid function (tier 1 for `Mid`) comes before the `Mid =` statement.
+  An operator-like title, like those left out of the set.
+- `Compiler and IDE Features`: the Features page's section of the same
+  title, then the page. Both read the same as the query.
+- `WebView2 Package`: `/tB/Packages/WebView2/WebView2`, then the package
+  page.
+- Sections behind a page whose name contains or stems like theirs:
+  `Printers Properties` behind `Printer#properties`; the six `Html*`
+  pages (`HtmlElement Properties` behind a second Properties section on
+  the same page that documents a symbol, so the set leaves it out);
+  `UpDown Properties` behind `DTPicker#updown`; `ParentControls Members`
+  behind `UserControl#parentcontrols`; `Timer Properties` behind the
+  Timer function.
+
+Not diagnosed further: none is a reader's likely query in a form the
+bare-name or qualified sets don't already cover, and each would need its
+own tweak.
+
+Open: the re-rank works outside lunr's scoring, as a post-pass. Whether
+a hand-marked index entry should outrank it if the two ever disagree is
+untested: no prose query has a heading of the same text elsewhere.
 
 ### Next steps
 
