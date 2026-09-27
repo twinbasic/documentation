@@ -14,12 +14,13 @@ depends on the session that wrote it.
 
 **Where it stands.** Rollout steps 1–5, two reader-intent rounds, the
 index pilot, the qualified-name round, the title-heading fix, the stem
-twins, the same-page ground truth, a fix for lunr inventing words, and
-the whole-title round (two eval sets, the re-rank, the plural rule) are
-done and committed, on branch
+twins, the same-page ground truth, a fix for lunr inventing words, the
+whole-title round (two eval sets, the re-rank, the plural rule) and
+entity decoding in the index are done and committed, on branch
 `claude/paintpicture-docs-runtime-f3250d`, rebased onto `f8e630e5`.
-Nothing is pushed. The working tree is clean; the last commit records the
-whole-title round (item 3 under "Next").
+Nothing is pushed. The working tree is clean; the last commit records
+items 3 and 4 under "Next" as done. **Stopped here at the user's
+request**: the user chooses what comes next, item 5 or item 6.
 
 | commit | step |
 |---|---|
@@ -43,6 +44,7 @@ whole-title round (item 3 under "Next").
 | `2b8de7a9` | ground truth intent-4: page titles and page-plus-section queries in the eval |
 | `3328881c` | a query naming a whole title scores ×3 |
 | `03c90175` | a plural kind word doesn't make the other word a name |
+| `e6237fe7` | HTML entities decoded per token in the index (`&H80004005`) |
 
 Hit@10 went from 20.5% to 100%, and MRR from .182 to .997. By reader
 intent, rank 1 is right for 99.9% of queries (89.0% before the intent
@@ -137,7 +139,7 @@ qualified names are now at rank 1, typed with a dot or as two words.
 2. ~~The same-page ground-truth question.~~ The user ruled that a section
    of the page documenting a name counts; see
    [Same-page sections count](#same-page-sections-count).
-3. ~~The whole-title fix.~~ Done, in the order below; see
+3. ~~The whole-title fix.~~ Done, as the user decided below; see
    [Fixed: whole titles](#fixed-whole-titles). The user had decided:
    - **Ship both**, each its own commit with its measured numbers: the
      score ×3 for a result whose whole title, or page title plus title,
@@ -150,29 +152,24 @@ qualified names are now at rank 1, typed with a dot or as two words.
      like the symbol queries, so no hand-approved targets are needed. This
      is a new ground truth (`intent-4`), with a re-saved baseline.
 
-   Order, this session's suggestion: the eval sets first, as their own
-   commit with no change to ranking, so each fix is then measured by the
-   eval itself and not by throwaway scripts. Then the ×3 re-rank, then
-   the plural rule. `eval/search-experiments/probes/knobs.patch` holds
-   the measured knobs (`title=F`, `plural`), and `sets.mjs` the set
-   definitions to port. The re-rank needs `docs` in the replica's
-   `search()` (the `load()` context has it; tests pass `{ lunr, index }`
-   only, so decide how the re-rank behaves without it). Re-check the
-   operator titles (`&, &=` find nothing) when porting the title set:
-   leave them in and let them count as misses, or leave them out with a
-   stated reason.
-4. `&H80004005` finds none of the five pages that mention it. The search
-   content keeps `&amp;` as an entity (`stripHtml` doesn't decode it), so
-   the index holds `amp;h80004005` while the query trims to `h80004005`.
-   The same is known for `&lt;`/`&gt;` (see "Operators"). A content fix in
-   `builder/search.mjs`, to measure on its own.
-5. Multi-word queries with a short word are slow: `a page` takes about
-   820 ms per search in the replica, `Form events` about 100 ms, on every
-   keystroke. Until the lunr fix, `a` threw, so this was never seen; the
-   eval's one-word queries take 0.4 ms. The likely cost is the all-words
-   pass's REQUIRED stem wildcards (`a*` reaches thousands of terms). To
-   measure in a browser and profile before changing anything.
-6. The wider index pass, under the pilot's rules: an entry names the page
+   Shipped in that order: the eval sets first, with no ranking change,
+   then the ×3 re-rank, then the plural rule, each measured by the eval.
+   The operator titles were left out of the title set, with the reason
+   in that section.
+4. ~~`&H80004005` finds none of the five pages that mention it.~~ Done;
+   see [Fixed: entities in the index](#fixed-entities-in-the-index). Not
+   a content fix, as this item first proposed: the client needs the
+   entities in the data, so the tokenizer decodes them.
+5. **Open, for the user to choose.** Multi-word queries with a short word
+   are slow: `a page` takes about 820 ms per search in the replica,
+   `Form events` about 100 ms, on every keystroke. Until the lunr fix,
+   `a` threw, so this was never seen; the eval's one-word queries take
+   0.4 ms. The likely cost is the all-words pass's REQUIRED stem
+   wildcards (`a*` reaches thousands of terms). Not caused by the
+   whole-title round: with every page and section title as a query, 245
+   took over 200 ms in the replica before it and 218 after. To measure in
+   a browser and profile before changing anything.
+6. **Open, for the user to choose.** The wider index pass, under the pilot's rules: an entry names the page
    a reader wants for that term, not a summary of the page; few entries
    per page; one main entry per term (the build enforces this). Agents
    draft candidate terms and targets, and **the user approves every
@@ -294,6 +291,11 @@ qualified names are now at rank 1, typed with a dot or as two words.
   field change can start it. Patched; see "Fixed: lunr invented words".
   Check a candidate change with every title as a query, not only the
   eval, since the eval never typed `a`.
+- The search data must keep the page's HTML entities: the results panel
+  inserts titles and content with `innerHTML` and highlights by lunr's
+  character positions in that text. Decode inside the index instead,
+  per token, after the tokenizer splits (`Token#update` keeps the
+  position); see "Fixed: entities in the index".
 
 ## The problem
 
@@ -1431,6 +1433,54 @@ Open: the re-rank works outside lunr's scoring, as a post-pass. Whether
 a hand-marked index entry should outrank it if the two ever disagree is
 untested: no prose query has a heading of the same text elsewhere.
 
+### Fixed: entities in the index
+
+`&H80004005` found none of the five pages that mention it, only an
+unrelated fuzzy match. The search content keeps the page's HTML
+entities (`&amp;` 991 times, `&gt;` 977, `&lt;` 819, `&#45;` 90, a few
+others), so the index held `amp;h80004005` while the query trims to
+`h80004005`. 507 index terms held an entity.
+
+**Not a content fix**, as the resume item proposed. The client inserts
+`doc.title`, `doc.doc` and slices of `doc.content` with `innerHTML`,
+and highlights by lunr's character positions in that text. Decoded in
+`search-data.json`, `&lt;Object&gt;` would become a tag in the results
+panel, and every highlight after an entity would shift.
+
+**Shipped** (`e6237fe7`), in all three copies: the tokenizer wrapper
+(installed in both `initSearch()` copies and the replica's `loadLunr()`)
+passes each token through `decodeTokenEntities()`, which decodes
+`&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`, `&nbsp;` and numeric
+references, lowercased like the rest of the token. `Token#update` keeps
+the token's position, which still spans the escaped text, so the
+highlight covers `(&amp;H80004005)` and shows `(&H80004005)`. The same
+wrapper runs on queries, where it changes nothing a reader types.
+
+| | before | after |
+|---|---|---|
+| `&H80004005` | 1 result, unrelated | the 5 pages, nothing else |
+| eval (8,452 queries) | | unchanged |
+| qualified names as two words (5,108) | 100% | 100%, unchanged |
+| index terms | 26,136, 507 with an entity | 25,897, none |
+| token set vs index terms | identical | identical |
+| titles as queries (3,658) | | none throws |
+
+Both clients were checked in a browser against the replica
+(`&H80004005`, `DTPicker Properties`, `a`, `PaintPicture`, `late
+binding`), with the highlight in place. `test/search.test.mjs`'s entity
+guard checks that all three wrappers call the decoder, that the client's
+and the replica's decode alike and keep positions, and that the replica
+finds and highlights the literal. Removing the call from any copy, or the
+lowercasing from the client, fails it. The lowercasing came from that
+test: `&#x41;` decoded to `A` while every other token is lowercase.
+
+Limits, none a regression: a decoded separator doesn't split its token
+(`per&#45;lane` indexes as `per-lane`, which a query splits into two
+words); punctuation inside a token still blocks a match (`Emit(&amp;Hb8,`
+indexes as `emit(&hb8`), as it does for any text; and the operator
+characters the entities spell (`<`, `>`) still trim away, so operators
+stay with their exact names (see "Operators").
+
 ### Next steps
 
 1. ~~Promote the intent ground truth into `eval/search_quality.mjs`.~~
@@ -1459,7 +1509,9 @@ The 24 operator symbols couldn't be found by searching for the symbol,
 whatever the configuration: `<` `<=` `<>` `=` `>` `>=` `&` `&=` `/` `/=`
 `^` `^=` `\` `\=` `<<` `<<=` `-` `-=` `*` `*=` `+` `+=` `>>` `>>=`. Three things combine:
 
-- **Content.** `stripHtml` leaves `<` and `>` as the entities `&lt;` and
+- **Content.** (Since decoded per token in the index, see "Fixed:
+  entities in the index"; the trimming below still applies.) `stripHtml`
+  leaves `<` and `>` as the entities `&lt;` and
   `&gt;`, so the literal character never reaches the index.
 - **Trimming.** lunr's trimmer strips non-word characters from both ends of
   every token, in the index and in the query. An operator token trims to
