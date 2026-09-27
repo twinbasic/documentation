@@ -121,15 +121,13 @@
 // --expose-gc (`node --expose-gc eval/search_quality.mjs`); otherwise it is
 // skipped rather than reported as a number `global.gc` never actually froze.
 
-import { fileURLToPath } from "node:url";
 import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { performance } from "node:perf_hooks";
+import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 import { load, buildIndex, search, KIND_WORDS } from "./site_search.mjs";
-
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 // ---------------------------------------------------------------- arg parsing
 
