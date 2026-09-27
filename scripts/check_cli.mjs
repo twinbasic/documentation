@@ -396,7 +396,9 @@ const CASES = [
   // so a missing value shows only where the value is used. render-book
   // refuses --help, an unknown flag and a second input with "unknown arg".
   // build_corpus threw on an unknown argument, so only its message is pinned,
-  // as are the other crashes here; run_case and search_quality refuse one in
+  // as are the other crashes here. Node names a file it cannot open with its
+  // folder on Windows and as given on Linux, so a crash's file name may
+  // follow a folder or stand alone. run_case and search_quality refuse one in
   // their own words. nav_hops and site_search take an unknown
   // flag as a pattern or a search term. transcript's file is its first
   // argument that does not start with --, -h included, and its exit code
@@ -465,7 +467,7 @@ const CASES = [
   { tool: "eval/transcript.mjs", args: ["--help=1"], exit: 1, stdout: /^Usage: node eval\/transcript\.mjs <case\.jsonl> / },
   { tool: "eval/transcript.mjs", args: ["nope.jsonl"], exit: 1, stderr: /Error: ENOENT: no such file or directory, open '[^']*nope\.jsonl'\r?\n/ },
   { tool: "eval/transcript.mjs", args: ["--bogus", "nope.jsonl"], exit: 1, stderr: /Error: ENOENT: no such file or directory, open '[^']*nope\.jsonl'\r?\n/ },
-  { tool: "eval/transcript.mjs", args: ["-x"], exit: 1, stderr: /Error: ENOENT: no such file or directory, open '[^']*[\\/]-x'\r?\n/ },
+  { tool: "eval/transcript.mjs", args: ["-x"], exit: 1, stderr: /Error: ENOENT: no such file or directory, open '(?:[^']*[\\/])?-x'\r?\n/ },
   { tool: "eval/transcript.mjs", args: ["a.jsonl", "b.jsonl"], exit: 1, stderr: /Error: ENOENT: no such file or directory, open '[^']*a\.jsonl'\r?\n/ },
   { tool: "wisdom/wisdom.mjs", args: [], exit: 0, stderr: /^Usage: node wisdom\/wisdom\.mjs <command> \[options\]\n/ },
   { tool: "wisdom/wisdom.mjs", args: ["--help"], exit: 1, stderr: /^Usage: node wisdom\/wisdom\.mjs <command> \[options\]\n/ },

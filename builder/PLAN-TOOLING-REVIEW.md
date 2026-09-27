@@ -1733,6 +1733,22 @@ and `build_corpus --dest x --` builds, where both refused the `--`. A lone `-` i
 `render-book`'s input. A short group is split, so `nav_hops -hx` prints the usage. And
 `render-book -ofile` and `-t5` take the attached value.
 
+### C51a — `scripts: check_cli's transcript -x case passes on Linux`
+
+**Found by CI after C51.** The fork's deploy runs of C51 (36345344000) and of the search
+commit after it (36347252812) failed at `check_cli`, 1 of 218, on `transcript -x`. The case
+required a folder before the file name in Node's `ENOENT` line, which Node prints on Windows,
+where it resolves the path, and not on Linux, where it prints `open '-x'` as given.
+
+**Change.** The folder is optional in the case's pattern, and the C51 block's comment says
+why.
+
+**Landed.** As the entry says. The new pattern matches CI's line and a resolved Windows or
+POSIX path, and refuses `--x` and `a-x`; `check_cli` makes 218 checks, all passing, and lint
+is clean. The other 217 passed on Linux in both runs, so this is the whole of what CI found.
+The steps after `check_cli` in the composite action did not run in either, so
+`check_dot_fit`, `check_axe_patch_equiv` and the accessibility steps wait for the next push.
+
 ### C52 — `builder: tbdocs parses through lib/cli.mjs`
 
 **A1-8 (R3), last, as decision (e) says.** `tbdocs.mjs`'s parser (`:91-194`) is neither
@@ -2659,6 +2675,9 @@ Defects the review did not have, found by building something this plan asks for.
   read `Default/<title>`, so that pages of one title in two packages hid all but one. No
   extract run has used it: the one on disk predates the move. Fixed in `wisdom: group
   reference pages by package, below Default/ and Built-In/`.
+- **`check_cli`'s `transcript -x` case failed on Linux**, found by CI after C51: it required
+  a folder in a file name that Node prints with one only on Windows. Fixed in `scripts:
+  check_cli's transcript -x case passes on Linux`.
 
 ## Open questions
 
