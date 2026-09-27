@@ -30,6 +30,7 @@ tree is clean; the last commit only records a hash in this file.
 | `08eb2c77` | intent 4: `primary` names, non-word characters kept in exact names, kind words |
 | `ae880486` | pilot 1: prose queries can expect pages right behind (`behind`); ground truth intent-2 |
 | `70b73344` | pilot 2: hand-marked index entries, and the first five |
+| `d74a19c1` | qualified names: `qualified` at 500, reached only by qualified names and word pairs |
 
 Hit@10 went from 20.5% to 99.98%, and MRR from .182 to .997. By reader
 intent, rank 1 is right for 99.5% of queries (89.0% before the intent
