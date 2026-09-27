@@ -81,6 +81,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { createMarkdownIt } from "../builder/render.mjs";
+import { parseCli } from "../lib/cli.mjs";
 import { splitOnMarker } from "../lib/markdown.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { gatesFromBat } from "./lib/gate-roster.mjs";
@@ -530,8 +531,12 @@ function selfTest() {
 // ------------------------------------------------------------------ main
 
 async function main(argv) {
-  const verbose = argv.includes("--verbose");
-  const onlySelfTest = argv.includes("--self-test");
+  const { values } = parseCli(argv, {
+    options: { verbose: { type: "boolean" }, "self-test": { type: "boolean" } },
+    unknown: "ignore",
+  });
+  const verbose = values.verbose;
+  const onlySelfTest = values.selfTest;
 
   const probes = selfTest();
   const probesFailed = probes.filter(([ok]) => !ok);

@@ -36,6 +36,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
+import { parseCli } from "../lib/cli.mjs";
 import { exitOnCrash } from "./lib/gate-probes.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
@@ -46,9 +47,15 @@ function cannotLint(message) {
   process.exit(2);
 }
 
-const argv = process.argv.slice(2);
-const staged = argv.length === 1 && argv[0] === "--staged";
-if (argv.length && !staged) cannotLint("usage: node scripts/check_lint.mjs [--staged]");
+const USAGE = "usage: node scripts/check_lint.mjs [--staged]";
+let cli;
+try {
+  cli = parseCli(process.argv.slice(2), { options: { staged: { type: "boolean", default: false } }, positionals: 0 });
+} catch {
+  cannotLint(USAGE);
+}
+if (cli.tokens.length > (cli.values.staged ? 1 : 0)) cannotLint(USAGE);
+const staged = cli.values.staged;
 
 // The scripts the next commit adds or changes that are still on disk, by the
 // two extensions the scope in biome.jsonc is made of.

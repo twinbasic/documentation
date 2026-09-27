@@ -22,13 +22,17 @@ import {
   publishPolicyFor, unpublishableSourceFiles, unpublishableTreePaths,
   SOURCE_EXTENSIONS, BUILD_EXTENSIONS,
 } from "../builder/publish-policy.mjs";
+import { parseCli } from "../lib/cli.mjs";
 import { exitOnCrash } from "./lib/gate-probes.mjs";
 
 exitOnCrash();
 
-const SRC = process.argv.includes("--src")
-  ? process.argv[process.argv.indexOf("--src") + 1]
-  : "docs";
+const { values } = parseCli(process.argv.slice(2), {
+  options: { src: { type: "string", default: "docs" } },
+  unknown: "ignore",
+  acceptsValue: () => true,
+});
+const SRC = values.src;
 
 // Each probe names why refusing it matters. A probe that starts passing
 // is the allowlist having been widened -- deliberately or not -- and the

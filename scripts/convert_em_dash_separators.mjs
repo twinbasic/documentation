@@ -45,6 +45,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { createMarkdownIt } from "../builder/render.mjs";
+import { parseCli } from "../lib/cli.mjs";
 import { blockRegions, mapLines, splitCodeSpans } from "../lib/markdown.mjs";
 import { markdownFiles } from "../lib/markdown-files.mjs";
 import { DOCS_DIR } from "../lib/repo-paths.mjs";
@@ -126,7 +127,8 @@ function byPathParts(a, b) {
 }
 
 async function main(argv) {
-  const check = argv.includes("--check");
+  const { values } = parseCli(argv, { options: { check: { type: "boolean" } }, unknown: "ignore" });
+  const check = values.check;
   let files = 0;
   let sep = 0;
   let em = 0;

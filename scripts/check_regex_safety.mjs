@@ -78,6 +78,7 @@ import * as walk from "acorn-walk";
 import fg from "fast-glob";
 
 import { foldConstructedRegexes } from "./lib/regex-fold.mjs";
+import { parseCli } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 // ── Backend selection ────────────────────────────────────────────────────────
@@ -545,8 +546,15 @@ async function selfTest() {
   return 0;
 }
 
-const argv = process.argv.slice(2);
-if (argv.includes("--shard")) {
+const { values } = parseCli(process.argv.slice(2), {
+  options: {
+    shard: { type: "boolean" },
+    "self-test": { type: "boolean" },
+    census: { type: "boolean" },
+  },
+  unknown: "ignore",
+});
+if (values.shard) {
   // Worker half of checkAll(): a slice in on stdin, its verdicts out on
   // stdout. Not meant to be run by hand.
   const chunks = [];
@@ -555,9 +563,9 @@ if (argv.includes("--shard")) {
   process.stdout.write(JSON.stringify(await checkList(list)));
 } else {
   try {
-    process.exitCode = argv.includes("--self-test")
+    process.exitCode = values.selfTest
       ? await selfTest()
-      : await gate({ census: argv.includes("--census") });
+      : await gate({ census: values.census });
   } catch (err) {
     // Node's own exit code for an unhandled throw is 1, which here means
     // "an exponential regex was found". A crash is the gate failing.

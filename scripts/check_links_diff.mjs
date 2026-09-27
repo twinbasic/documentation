@@ -79,6 +79,7 @@ import * as path from "node:path";
 import { performance } from "node:perf_hooks";
 
 import { runCheck, selfTest as scriptSelfTest } from "./check_links.mjs";
+import { parseCli } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const BASE_PATH = "/twinBASIC-docs";
@@ -538,24 +539,32 @@ function ensureBasePathTree(dir, allowBuild) {
 // ── Main ────────────────────────────────────────────────────────────
 
 function parseArgs(argv) {
-  const o = {
-    a: "script", b: "script", cases: [], verbose: false, list: false,
-    maxLines: 12, basePathTree: DEFAULT_BASEPATH_TREE, buildBasePath: false,
-  };
-  for (let i = 0; i < argv.length; i++) {
-    const x = argv[i];
-    if (x === "--a") o.a = argv[++i];
-    else if (x === "--b") o.b = argv[++i];
-    else if (x === "--case") o.cases.push(argv[++i]);
-    else if (x === "--max-lines") o.maxLines = Number(argv[++i]);
-    else if (x === "--base-path-tree") o.basePathTree = argv[++i];
-    else if (x === "--build-base-path") o.buildBasePath = true;
-    else if (x === "-v" || x === "--verbose") o.verbose = true;
-    else if (x === "--self-test") o.selfTest = true;
-    else if (x === "--list") o.list = true;
-    else if (x === "-h" || x === "--help") { o.help = true; }
-    else throw new Error(`unknown argument: ${x}`);
+  let values;
+  try {
+    ({ values } = parseCli(argv, {
+      options: {
+        a: { type: "string", default: "script" },
+        b: { type: "string", default: "script" },
+        case: { type: "string", multiple: true },
+        "max-lines": { type: "string", default: "12" },
+        "base-path-tree": { type: "string", default: DEFAULT_BASEPATH_TREE },
+        "build-base-path": { type: "boolean" },
+        "self-test": { type: "boolean" },
+        list: { type: "boolean" },
+        verbose: { type: "boolean", short: "v" },
+        help: { type: "boolean", short: "h" },
+      },
+      positionals: 0,
+      acceptsValue: () => true,
+    }));
+  } catch (err) {
+    throw new Error(`unknown argument: ${err.arg}`);
   }
+  const o = {
+    a: values.a, b: values.b, cases: values.case, verbose: values.verbose, list: values.list,
+    maxLines: Number(values.maxLines), basePathTree: values.basePathTree, buildBasePath: values.buildBasePath,
+    selfTest: values.selfTest, help: values.help,
+  };
   if (!o.cases.length) o.cases = [...DEFAULT_CASES];
   return o;
 }

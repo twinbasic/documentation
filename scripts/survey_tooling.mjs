@@ -50,9 +50,9 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { builtinModules } from "node:module";
 import path from "node:path";
-import { parseArgs } from "node:util";
 import * as acorn from "acorn";
 import * as walk from "acorn-walk";
+import { parseCli, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const TOOLING_DIRS = ["builder", "scripts", "lib", "book", "eval", "wisdom", "test", "perf"];
@@ -64,30 +64,29 @@ const ARG_HELPERS = new Set(["flag", "opt", "die"]);
 const USAGE = "usage: node scripts/survey_tooling.mjs [--root DIR] [--summary] " +
   "[--window N] [--top N] [--include-perf]";
 
-let opts;
-try {
-  ({ values: opts } = parseArgs({
-    options: {
-      root: { type: "string" },
-      summary: { type: "boolean", default: false },
-      window: { type: "string", default: "60" },
-      top: { type: "string", default: "45" },
-      "include-perf": { type: "boolean", default: false },
-      help: { type: "boolean", default: false },
-    },
-  }));
-} catch (err) {
-  console.error(`${err.message}\n${USAGE}`);
-  process.exit(2);
-}
-if (opts.help) {
+const { values } = withUsageError(
+  () =>
+    parseCli(process.argv.slice(2), {
+      options: {
+        root: { type: "string" },
+        summary: { type: "boolean", default: false },
+        window: { type: "string", default: "60" },
+        top: { type: "string", default: "45" },
+        "include-perf": { type: "boolean", default: false },
+        help: { type: "boolean", default: false },
+      },
+      positionals: 0,
+    }),
+  { format: (err) => `${err.message}\n${USAGE}` },
+);
+if (values.help) {
   console.log(USAGE);
   process.exit(0);
 }
-const WINDOW = positiveInt("window", opts.window);
-const TOP = positiveInt("top", opts.top);
-const ROOT = path.resolve(opts.root ?? REPO_ROOT);
-const listed = (f) => opts["include-perf"] || !f.startsWith(LAB);
+const WINDOW = positiveInt("window", values.window);
+const TOP = positiveInt("top", values.top);
+const ROOT = path.resolve(values.root ?? REPO_ROOT);
+const listed = (f) => values.includePerf || !f.startsWith(LAB);
 
 function positiveInt(name, raw) {
   const n = Number(raw);
@@ -348,7 +347,7 @@ const summary = [
 console.log(`# Tooling survey: ${ROOT}\n`);
 const width = Math.max(...summary.map(([label]) => label.length));
 for (const [label, value] of summary) console.log(`${label.padEnd(width)}  ${value}`);
-if (opts.summary) process.exit(0);
+if (values.summary) process.exit(0);
 
 // ----------------------------------------------------------------- listings
 
@@ -379,7 +378,7 @@ for (const c of shownClones.slice(0, TOP)) {
   console.log(`              ${c.head.slice(0, 150)}`);
 }
 
-const shownNames = (opts["include-perf"] ? repeatedNames : repeatedOutsideLab)
+const shownNames = (values.includePerf ? repeatedNames : repeatedOutsideLab)
   .map(([name, defs]) => [name, defs.filter((d) => listed(d.file))])
   .sort((p, q) => q[1].length - p[1].length || p[0].localeCompare(q[0]));
 console.log(`\n## ${shownNames.length} top-level function names defined in 2+ files\n`);

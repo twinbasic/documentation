@@ -253,8 +253,9 @@ is implemented.
 9. **L1-10 closes as a side effect.** `node:util` `parseArgs` accepts `--name=value` for
    every option and cannot be told not to, so this is the one behaviour change Phase 2's
    migrations make, and it only adds a form. C49 adds a second, at the owner's choice
-   (2026-09-27): in the harness tools whose `opt()` found a flag with `indexOf`, a repeated
-   flag now keeps its last value, as `parseArgs` does and as C72's strict parse would.
+   (2026-09-27): in the harness tools whose `opt()` found a flag with `indexOf`, and in
+   `check_publish_policy` (C50), a repeated flag now keeps its last value, as `parseArgs` does
+   and as C72's strict parse would.
 10. **Three of the review's facts were wrong**, found by proofreading this plan against the
     source (A8-2, fixed in C10; A2-1, fixed in C14; L4-10, whose corrected figure, 119 probes,
     is stated in C61).
@@ -1620,6 +1621,50 @@ must be `--staged` or nothing, and `compare_trees.mjs`, which passes what follow
 
 **Verify.** `check_cli.mjs`'s cases; `test.bat` and `check.bat` unchanged;
 `check_links_diff.mjs --a script --b fused` agrees.
+
+**Landed.** All eleven parse through `parseCli`. The four that read their flags with
+`includes` (`check_regex_safety`, `check_code_regions`, `check_gate_lists`,
+`convert_em_dash_separators`) and `check_publish_policy` take `unknown: "ignore"`;
+`check_publish_policy` reads `--src` with `acceptsValue: () => true`, so given last it is
+still undefined. `check_links` takes `acceptsValue: (v) => v !== undefined` (its old `need()`)
+and `unknown: "ignore"`, and turns a missing value back into `--x requires a value`; its
+warning list is rebuilt from the kept tokens' indexes, because an unknown `--flag` without
+`=` takes the positional after it along, which parseArgs makes an input. `check_links_diff`
+and `crawl_check` take `acceptsValue: () => true` (a value flag takes whatever follows, and
+given last is `undefined`, `NaN` once read as a number) and turn every `CliError` into their
+own words, `unknown argument: X` and `unknown flag: X`. `compare_trees` splits its list at the
+first `--` before parsing, which is exactly where its loop stopped, and parses the rest with
+its old value guard as `acceptsValue` and `stopAt: ["help"]`. `check_lint` refuses any error,
+and more kept tokens than `--staged` accounts for. `survey_tooling` moves off `node:util`'s
+strict parse onto `parseCli`'s, at the owner's choice (2026-09-27): its three parse errors
+now read `unknown option: --bogus`, `unexpected argument: x` and `--root needs a value` where
+they were node:util's words, still followed by its usage line. The edit was a Sonnet agent's
+(82 calls, ~280k, 33.9 min), reviewed line by line; two of its comments described the old
+loop, one of them wrongly, and one repeated an old reason that is no longer true (`check.bat`
+passes no arguments to `check_links`); all three were rewritten.
+
+The cases were recorded from the unedited tools first: 39 across seven tools (`check_links`'
+unknown flag taking its positional and a value flag taking a following flag;
+`check_links_diff`'s refusals and its same-sides stop; `crawl_check`'s refusals, `--help`
+among them; `check_publish_policy --src` given last; `survey_tooling`'s refusals, pinned by
+their line and the usage after it, and its number checks; `check_lint`'s whole list;
+`compare_trees`' refusals, `--` included). The other four ignore every argument and have none.
+`check_cli` makes 145 checks, 39 probes and 106 cases. The kit's `c50-tools.mjs` runs 22 real
+read-only invocations through HEAD's copies and the migrated tools: three `check_links` runs
+over the built site with every kind of flag and a `/sep/` segment (56 MB of output each,
+identical), `check_links_diff --self-test` and `--list`, `crawl_check` against a port with
+nothing listening, both modes of the four gates, `convert_em_dash_separators --check`,
+`survey_tooling` in two forms, `check_lint` both ways and `compare_trees --max 2 -- --no-pdf`.
+All are the same but `survey_tooling --bogus`, whose words change as above.
+`check_links_diff --a script --b fused` reports `No differences across 6 case(s)`, and
+`build.bat`, `check.bat` (the a11y line unchanged) and `test.bat` exit 0.
+
+What differs, beyond `survey_tooling`'s words and none of it a recorded case: `--src` given
+twice keeps the last (departure 9); `--name=value` is accepted for a known flag; after `--` an
+argument is a positional, outside `compare_trees`, and `--` is no longer an unknown argument
+in `check_links`; a short-option group such as `-vh` is split; a lone `-` is a start URL to
+`crawl_check`; `compare_trees --max x --bogus` reports the unknown argument where it reported
+the bad number.
 
 ### C51 — `book, eval, wisdom: parse through lib/cli.mjs`
 

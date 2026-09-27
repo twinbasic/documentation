@@ -77,6 +77,7 @@ import {
   FsOracle, formatLinkReport, formatIntegrityReport,
   resolve, OUTSIDE_BASEPATH_MARKER,
 } from "../builder/link-check.mjs";
+import { parseCli } from "../lib/cli.mjs";
 
 // Tree-relative POSIX path, the space check.mjs works and reports in, so
 // the same tree checked with a relative --root-dir, an absolute one, or
@@ -196,76 +197,97 @@ for *.html.
 `);
 }
 
+// `forbid` is the only repeatable flag. `threads` is accepted and unused, and
+// `help` is answered before any argument list is parsed.
+const LINK_OPTIONS = {
+  offline: { type: "boolean", default: false },
+  "include-fragments": { type: "boolean", default: false },
+  "fallback-extensions": { type: "string", default: "" },
+  "index-files": { type: "string", default: "" },
+  "root-dir": { type: "string", default: null },
+  "base-path": { type: "string", default: "" },
+  forbid: { type: "string", multiple: true },
+  "no-fail": { type: "boolean", default: false },
+  threads: { type: "string" },
+  verbose: { type: "boolean", short: "v", default: false },
+  help: { type: "boolean", short: "h", default: false },
+  "check-html": { type: "boolean", default: false },
+  "check-a11y": { type: "boolean", default: false },
+  "check-ids": { type: "boolean", default: false },
+  "check-remote-assets": { type: "boolean", default: false },
+  "check-sitemap": { type: "boolean", default: false },
+  "check-search": { type: "boolean", default: false },
+  "check-canonical": { type: "boolean", default: false },
+  // GitHub Pages serves from a case-sensitive filesystem; NTFS is
+  // not. FsOracle asks the platform, so on Windows a wrong-case link
+  // passes here and 404s in production -- and because
+  // check_links_diff.mjs calls this script "the oracle of record",
+  // the harness would report the side that is RIGHT as the one with
+  // the extra finding. IndexOracle compares strings, so it behaves
+  // the same everywhere. --oracle fs stays available for the case
+  // where the question really is "what does this machine's
+  // filesystem say".
+  oracle: { type: "string", default: process.platform === "win32" ? "index" : "fs" },
+};
+
 function parseArgs(argv) {
+  let cli;
+  try {
+    cli = parseCli(argv, {
+      options: LINK_OPTIONS,
+      unknown: "ignore",
+      positionals: { min: 0 },
+      acceptsValue: (v) => v !== undefined,
+    });
+  } catch (err) {
+    if (err.code === "missing-value") throw new Error(`${err.option} requires a value`);
+    throw err;
+  }
+
+  const { values } = cli;
   const opts = {
-    offline: false,
-    includeFragments: false,
-    fallbackExtensions: "",
-    indexFiles: "",
-    rootDir: null,
-    basePath: "",
-    forbid: [],
-    noFail: false,
-    verbose: false,
-    checkHtml: false,
-    checkA11y: false,
-    checkIds: false,
-    checkRemoteAssets: false,
-    checkSitemap: false,
-    checkSearch: false,
-    checkCanonical: false,
-    // GitHub Pages serves from a case-sensitive filesystem; NTFS is
-    // not. FsOracle asks the platform, so on Windows a wrong-case link
-    // passes here and 404s in production -- and because
-    // check_links_diff.mjs calls this script "the oracle of record",
-    // the harness would report the side that is RIGHT as the one with
-    // the extra finding. IndexOracle compares strings, so it behaves
-    // the same everywhere. --oracle fs stays available for the case
-    // where the question really is "what does this machine's
-    // filesystem say".
-    oracle: process.platform === "win32" ? "index" : "fs",
-  };
-  const inputs = [];
-  const unknown = [];
-  const need = (flag, i) => {
-    if (i >= argv.length) throw new Error(`${flag} requires a value`);
-    return argv[i];
+    offline: values.offline,
+    includeFragments: values.includeFragments,
+    fallbackExtensions: values.fallbackExtensions,
+    indexFiles: values.indexFiles,
+    rootDir: values.rootDir,
+    basePath: values.basePath,
+    forbid: values.forbid,
+    noFail: values.noFail,
+    verbose: values.verbose,
+    checkHtml: values.checkHtml,
+    checkA11y: values.checkA11y,
+    checkIds: values.checkIds,
+    checkRemoteAssets: values.checkRemoteAssets,
+    checkSitemap: values.checkSitemap,
+    checkSearch: values.checkSearch,
+    checkCanonical: values.checkCanonical,
+    oracle: values.oracle,
   };
 
-  let i = 0;
-  while (i < argv.length) {
-    const a = argv[i++];
-    if (a === "--offline") opts.offline = true;
-    else if (a === "--include-fragments") opts.includeFragments = true;
-    else if (a === "--fallback-extensions") opts.fallbackExtensions = need(a, i++);
-    else if (a === "--index-files") opts.indexFiles = need(a, i++);
-    else if (a === "--root-dir") opts.rootDir = need(a, i++);
-    else if (a === "--base-path") opts.basePath = need(a, i++);
-    else if (a === "--forbid") opts.forbid.push(need(a, i++));
-    else if (a === "--no-fail") opts.noFail = true;
-    else if (a === "--threads") { need(a, i++); /* accepted, ignored */ }
-    else if (a === "-v" || a === "--verbose") opts.verbose = true;
-    else if (a === "-h" || a === "--help") { /* handled before dispatch */ }
-    else if (a === "--check-html") opts.checkHtml = true;
-    else if (a === "--check-a11y") opts.checkA11y = true;
-    else if (a === "--check-ids") opts.checkIds = true;
-    else if (a === "--check-remote-assets") opts.checkRemoteAssets = true;
-    else if (a === "--check-sitemap") opts.checkSitemap = true;
-    else if (a === "--check-search") opts.checkSearch = true;
-    else if (a === "--check-canonical") opts.checkCanonical = true;
-    else if (a === "--oracle") opts.oracle = need(a, i++);
-    else if (a.startsWith("--")) {
-      // Tolerate unknown flags passed through via check.bat's %*.
-      // Consume an attached value if present.
-      if (!a.includes("=") && i < argv.length && !argv[i].startsWith("-")) {
-        unknown.push(a, argv[i++]);
-      } else {
-        unknown.push(a);
-      }
-    } else if (a.startsWith("-") && a.length > 1) {
-      unknown.push(a);
-    } else {
-      inputs.push(a);
+  // An index is covered once it is a kept token's own index, or the index
+  // right after a kept value option that took its value as a separate
+  // argument -- the two positions the parse actually looked at.
+  const covered = new Set();
+  const positionalAt = new Map();
+  for (const t of cli.tokens) {
+    covered.add(t.index);
+    if (t.kind === "option" && t.value !== undefined && !t.inlineValue) covered.add(t.index + 1);
+    if (t.kind === "positional") positionalAt.set(t.index, t.value);
+  }
+
+  // Everything else went unrecognised, and is warned about rather than
+  // refused. An unknown --flag with no "=" takes the positional right after
+  // it along, so that one goes to `unknown` too, not `inputs`.
+  const inputs = [];
+  const unknown = [];
+  for (let i = 0; i < argv.length; i++) {
+    if (positionalAt.has(i)) {
+      const prev = argv[i - 1];
+      if (i > 0 && !covered.has(i - 1) && prev.startsWith("--") && !prev.includes("=")) unknown.push(argv[i]);
+      else inputs.push(positionalAt.get(i));
+    } else if (!covered.has(i)) {
+      unknown.push(argv[i]);
     }
   }
   return { opts, inputs, unknown };

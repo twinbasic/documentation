@@ -18,19 +18,25 @@
 
 import { Parser } from "htmlparser2";
 import { forEachLink } from "../builder/link-check.mjs";
+import { parseCli, withUsageError } from "../lib/cli.mjs";
 
-const args = process.argv.slice(2);
-let startArg = null;
-let concurrency = 10;
-let timeoutMs = 15000;
-let skipExternal = false;
-for (let i = 0; i < args.length; i++) {
-  if (args[i] === "--concurrency") concurrency = Number(args[++i]);
-  else if (args[i] === "--timeout") timeoutMs = Number(args[++i]);
-  else if (args[i] === "--skip-external") skipExternal = true;
-  else if (args[i].startsWith("-")) { console.error(`unknown flag: ${args[i]}`); process.exit(2); }
-  else if (!startArg) startArg = args[i];
-}
+const { values, positionals } = withUsageError(
+  () =>
+    parseCli(process.argv.slice(2), {
+      options: {
+        concurrency: { type: "string", default: "10" },
+        timeout: { type: "string", default: "15000" },
+        "skip-external": { type: "boolean" },
+      },
+      positionals: { min: 0 },
+      acceptsValue: () => true,
+    }),
+  { format: (err) => `unknown flag: ${err.arg}` },
+);
+const startArg = positionals[0];
+const concurrency = Number(values.concurrency);
+const timeoutMs = Number(values.timeout);
+const skipExternal = values.skipExternal;
 if (!startArg) {
   console.error("usage: node scripts/crawl_check.mjs <start-url> [--concurrency N] [--timeout MS] [--skip-external]");
   process.exit(2);

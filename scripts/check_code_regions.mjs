@@ -79,6 +79,7 @@ import deflist from "markdown-it-deflist";
 import { validateCountNames } from "../builder/counts.mjs";
 import { discover } from "../builder/discover.mjs";
 import { applyPreRenderRewrites, createMarkdownIt } from "../builder/render.mjs";
+import { parseCli } from "../lib/cli.mjs";
 import { parseFrontmatter, unquotedHashValues } from "../lib/frontmatter.mjs";
 import { blockRegions, mapLines, maskCode, splitCodeSpans, splitOnMarker } from "../lib/markdown.mjs";
 import { markdownFiles } from "../lib/markdown-files.mjs";
@@ -419,9 +420,13 @@ const DISCOVER_PROBES = [
 ];
 
 async function main(argv) {
-  const verbose = argv.includes("--verbose");
+  const { values } = parseCli(argv, {
+    options: { verbose: { type: "boolean" }, "self-test": { type: "boolean" } },
+    unknown: "ignore",
+  });
+  const verbose = values.verbose;
 
-  if (argv.includes("--self-test")) {
+  if (values.selfTest) {
     // Prove the comparator detects corruption by corrupting a region itself.
     const src = "```tb\nIf x Then\n    y\nEnd If\n```\n";
     const before = codeRegions(src);

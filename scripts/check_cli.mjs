@@ -339,6 +339,57 @@ const CASES = [
   { tool: "scripts/census_attributes.mjs", args: ["--dump-sites"], exit: 2, stderr: "--dump-sites needs a value\n" },
   { tool: "scripts/build_package_api.mjs", args: ["--help"], exit: 2, stderr: "no twinBASIC install found; pass --ide or set TB_IDE\n" },
   { tool: "scripts/gen_attribute_probes.mjs", args: [], exit: 2, stdout: /^Generate a twinBASIC probe project for Reference\/Attributes\.md applicability\.\n/ },
+
+  // Recorded in C50, before the gates and link tools moved onto lib/cli.mjs.
+  // check_links prints on stdout and exits 4; an unknown flag is warned about
+  // and takes the argument after it along, unless that starts with a dash, and
+  // a value flag takes whatever follows. check_links_diff, crawl_check and
+  // compare_trees refuse an unknown argument; crawl_check has no --help, and a
+  // value flag there takes whatever follows. check_publish_policy reads only
+  // --src and ignores the rest; check_lint takes --staged alone or nothing.
+  // survey_tooling's words for a parse error were node:util's, so only the
+  // line and the usage after it are pinned. check_regex_safety,
+  // check_code_regions, check_gate_lists and convert_em_dash_separators
+  // ignore every argument they do not know, so none has a case.
+  { tool: "scripts/check_links.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node check_links\.mjs \[options\] <inputs\.\.\.>\n/ },
+  { tool: "scripts/check_links.mjs", args: ["no-such-tree"], exit: 4, stdout: "error: --offline is required. Online (network) checking is not implemented by this tool.\n" },
+  { tool: "scripts/check_links.mjs", args: ["--offline"], exit: 4, stdout: "error: at least one input file or directory is required\n" },
+  { tool: "scripts/check_links.mjs", args: ["--offline", "--bogus", "no-such-tree"], exit: 4, stdout: "warning: ignoring unrecognised arguments: --bogus no-such-tree\nerror: at least one input file or directory is required\n" },
+  { tool: "scripts/check_links.mjs", args: ["--offline", "-x", "--bogus=1"], exit: 4, stdout: "warning: ignoring unrecognised arguments: -x --bogus=1\nerror: at least one input file or directory is required\n" },
+  { tool: "scripts/check_links.mjs", args: ["--offline", "--root-dir", "--forbid"], exit: 4, stdout: "error: at least one input file or directory is required\n" },
+  { tool: "scripts/check_links_diff.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node scripts\/check_links_diff\.mjs \[options\]\n/ },
+  { tool: "scripts/check_links_diff.mjs", args: [], exit: 2, stderr: /^error: --a and --b are both 'script', which compares nothing\.\n/ },
+  { tool: "scripts/check_links_diff.mjs", args: ["--bogus"], exit: 2, stderr: "error: unknown argument: --bogus\n" },
+  { tool: "scripts/check_links_diff.mjs", args: ["stray"], exit: 2, stderr: "error: unknown argument: stray\n" },
+  { tool: "scripts/check_links_diff.mjs", args: ["--list=1"], exit: 2, stderr: "error: unknown argument: --list=1\n" },
+  { tool: "scripts/crawl_check.mjs", args: [], exit: 2, stderr: /^usage: node scripts\/crawl_check\.mjs <start-url> / },
+  { tool: "scripts/crawl_check.mjs", args: ["--help"], exit: 2, stderr: "unknown flag: --help\n" },
+  { tool: "scripts/crawl_check.mjs", args: ["--bogus", "http://127.0.0.1:9/"], exit: 2, stderr: "unknown flag: --bogus\n" },
+  { tool: "scripts/crawl_check.mjs", args: ["--timeout", "5", "-x"], exit: 2, stderr: "unknown flag: -x\n" },
+  { tool: "scripts/crawl_check.mjs", args: ["--skip-external=1"], exit: 2, stderr: "unknown flag: --skip-external=1\n" },
+  { tool: "scripts/crawl_check.mjs", args: ["--concurrency", "--bogus"], exit: 2, stderr: /^usage: node scripts\/crawl_check\.mjs <start-url> / },
+  { tool: "scripts/check_publish_policy.mjs", args: ["--src"], exit: 2, stderr: /^TypeError \[ERR_INVALID_ARG_TYPE\]: The "path" argument must be of type string\. Received undefined\n/ },
+  { tool: "scripts/survey_tooling.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/survey_tooling\.mjs \[--root DIR\] / },
+  { tool: "scripts/survey_tooling.mjs", args: ["--bogus"], exit: 2, stderr: /^[^\n]+\nusage: node scripts\/survey_tooling\.mjs \[--root DIR\] / },
+  { tool: "scripts/survey_tooling.mjs", args: ["stray"], exit: 2, stderr: /^[^\n]+\nusage: node scripts\/survey_tooling\.mjs \[--root DIR\] / },
+  { tool: "scripts/survey_tooling.mjs", args: ["--root"], exit: 2, stderr: /^[^\n]+\nusage: node scripts\/survey_tooling\.mjs \[--root DIR\] / },
+  { tool: "scripts/survey_tooling.mjs", args: ["--window", "0"], exit: 2, stderr: /^--window expects a positive integer, got: 0\nusage: node scripts\/survey_tooling\.mjs / },
+  { tool: "scripts/survey_tooling.mjs", args: ["--top", "1.5"], exit: 2, stderr: /^--top expects a positive integer, got: 1\.5\nusage: node scripts\/survey_tooling\.mjs / },
+  { tool: "scripts/survey_tooling.mjs", args: ["--window", "0", "--help"], exit: 0, stdout: /^usage: node scripts\/survey_tooling\.mjs \[--root DIR\] / },
+  { tool: "scripts/check_lint.mjs", args: ["--help"], exit: 2, stderr: "check_lint: usage: node scripts/check_lint.mjs [--staged]\n" },
+  { tool: "scripts/check_lint.mjs", args: ["--staged", "--staged"], exit: 2, stderr: "check_lint: usage: node scripts/check_lint.mjs [--staged]\n" },
+  { tool: "scripts/check_lint.mjs", args: ["--staged", "x"], exit: 2, stderr: "check_lint: usage: node scripts/check_lint.mjs [--staged]\n" },
+  { tool: "scripts/check_lint.mjs", args: ["--"], exit: 2, stderr: "check_lint: usage: node scripts/check_lint.mjs [--staged]\n" },
+  { tool: "scripts/check_lint.mjs", args: ["--staged=1"], exit: 2, stderr: "check_lint: usage: node scripts/check_lint.mjs [--staged]\n" },
+  { tool: "scripts/compare_trees.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/compare_trees\.mjs \[--before <ref>\] / },
+  { tool: "scripts/compare_trees.mjs", args: ["--bogus"], exit: 2, stderr: /^compare_trees: unknown argument "--bogus"\n\nusage: node scripts\/compare_trees\.mjs / },
+  { tool: "scripts/compare_trees.mjs", args: ["stray"], exit: 2, stderr: /^compare_trees: unknown argument "stray"\n\nusage: node scripts\/compare_trees\.mjs / },
+  { tool: "scripts/compare_trees.mjs", args: ["--before"], exit: 2, stderr: /^compare_trees: --before needs a value\n\nusage: node scripts\/compare_trees\.mjs / },
+  { tool: "scripts/compare_trees.mjs", args: ["--max", "--keep"], exit: 2, stderr: /^compare_trees: --max needs a value\n\nusage: node scripts\/compare_trees\.mjs / },
+  { tool: "scripts/compare_trees.mjs", args: ["--max", "1.5"], exit: 2, stderr: /^compare_trees: --max takes a whole number, not "1\.5"\n\nusage: node scripts\/compare_trees\.mjs / },
+  { tool: "scripts/compare_trees.mjs", args: ["--bogus", "--help"], exit: 2, stderr: /^compare_trees: unknown argument "--bogus"\n\nusage: node scripts\/compare_trees\.mjs / },
+  { tool: "scripts/compare_trees.mjs", args: ["--before", "--", "x"], exit: 2, stderr: /^compare_trees: --before needs a value\n\nusage: node scripts\/compare_trees\.mjs / },
+  { tool: "scripts/compare_trees.mjs", args: ["--keep=1"], exit: 2, stderr: /^compare_trees: unknown argument "--keep=1"\n\nusage: node scripts\/compare_trees\.mjs / },
 ];
 
 const TIMEOUT_MS = 30_000;

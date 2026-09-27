@@ -42,6 +42,7 @@ import { spawnSync } from "node:child_process";
 import { closeSync, existsSync, openSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { parseCli } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const WORK = path.join(REPO_ROOT, ".compare-trees");
@@ -107,26 +108,39 @@ function usageError(message) {
 }
 
 function parseArgs(argv) {
-  const opts = { before: "HEAD", keep: false, max: 20, tbdocs: [] };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === "--") { opts.tbdocs = argv.slice(i + 1); break; }
-    if (a === "--help" || a === "-h") { process.stdout.write(USAGE); process.exit(0); }
-    if (a === "--keep") { opts.keep = true; continue; }
-    if (a === "--before" || a === "--max") {
-      const v = argv[i + 1];
-      if (v === undefined || v.startsWith("--")) usageError(`${a} needs a value`);
-      i++;
-      if (a === "--before") opts.before = v;
-      else {
-        opts.max = Number(v);
-        if (!Number.isInteger(opts.max) || opts.max < 0) usageError(`--max takes a whole number, not "${v}"`);
-      }
-      continue;
-    }
-    usageError(`unknown argument "${a}"`);
+  // Split before parsing: everything after the first -- is opaque, passed to
+  // both tbdocs builds unread, and must not be checked against this tool's
+  // own options.
+  const sep = argv.indexOf("--");
+  const head = sep === -1 ? argv : argv.slice(0, sep);
+  const tbdocs = sep === -1 ? [] : argv.slice(sep + 1);
+
+  let cli;
+  try {
+    cli = parseCli(head, {
+      options: {
+        before: { type: "string", default: "HEAD" },
+        max: { type: "string" },
+        keep: { type: "boolean", default: false },
+        help: { type: "boolean", short: "h" },
+      },
+      positionals: 0,
+      // A single-dash value such as -1 is taken; a double-dash one is not,
+      // so a flag with no value never eats the option that follows it.
+      acceptsValue: (v) => v !== undefined && !v.startsWith("--"),
+      stopAt: ["help"],
+    });
+  } catch (err) {
+    usageError(err.code === "missing-value" ? err.message : `unknown argument "${err.arg}"`);
   }
-  return opts;
+  if (cli.stopped === "help") { process.stdout.write(USAGE); process.exit(0); }
+
+  let max = 20;
+  if (cli.values.max !== undefined) {
+    max = Number(cli.values.max);
+    if (!Number.isInteger(max) || max < 0) usageError(`--max takes a whole number, not "${cli.values.max}"`);
+  }
+  return { before: cli.values.before, keep: cli.values.keep, max, tbdocs };
 }
 
 class ToolError extends Error {}
