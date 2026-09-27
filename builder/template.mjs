@@ -18,6 +18,7 @@
 
 import { compressHtml } from "./compress.mjs";
 import { stripHtml } from "./seo.mjs";
+import { absoluteUrl, relativeUrl } from "./url.mjs";
 
 export async function templatePhase(pages, site, initData) {
   if (site.config.just_the_docs?.collections) {
@@ -906,33 +907,6 @@ function renderSearchFooter(site) {
   return button + `    <div class="search-overlay"></div>`;
 }
 
-
-// ---------- §6.2 / §6.3 URL helpers --------------------------------------
-
-// Port of Jekyll's `relative_url` filter. URL-encodes spaces to `%20`
-// (matches the upstream's Addressable::URI normalisation); other
-// characters left alone since paths on this site don't contain
-// anything else that needs encoding.
-function relativeUrl(url, baseurl) {
-  if (typeof url !== "string") return "";
-  if (url.startsWith("/") && !url.startsWith("//")) {
-    return encodeSpaces(`${baseurl}${url}`);
-  }
-  return url;
-}
-
-function encodeSpaces(s) {
-  return s.includes(" ") ? s.replace(/ /g, "%20") : s;
-}
-
-function absoluteUrl(url, config) {
-  if (typeof url !== "string") return "";
-  if (/^[a-zA-Z][a-zA-Z0-9+.\-]*:/.test(url)) return url;
-  const siteUrl = String(config.url ?? "");
-  const rel = relativeUrl(url, String(config.baseurl ?? ""));
-  if (siteUrl === "") return rel;
-  return new URL(siteUrl + rel).href;
-}
 
 // ---------- §6.4 strftime formatter --------------------------------------
 

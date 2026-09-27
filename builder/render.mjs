@@ -18,6 +18,7 @@ import footnote from "markdown-it-footnote";
 import { blockRegions, maskCode } from "../lib/markdown.mjs";
 import { initHighlighter } from "./highlight.mjs";
 import { countPlugin, findSurvivingPlaceholder } from "./counts.mjs";
+import { splitFragment } from "./url.mjs";
 
 export async function renderPhase(pages, site, staticFiles = []) {
   // Allow the orchestrator to pre-build the markdown-it instance (so
@@ -1555,12 +1556,6 @@ function resolveAsset(resolved, ctx) {
     return `${ctx.baseurl}/${resolved}`;
   }
   return null;
-}
-
-function splitFragment(href) {
-  const i = href.indexOf("#");
-  if (i < 0) return [href, null];
-  return [href.slice(0, i), href.slice(i + 1)];
 }
 
 // Mirrors jekyll-relative-links's File.expand_path-based resolution: a

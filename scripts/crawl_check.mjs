@@ -18,6 +18,7 @@
 
 import { Parser } from "htmlparser2";
 import { forEachLink } from "../builder/link-check.mjs";
+import { splitFragment } from "../builder/url.mjs";
 import { parseCli, withUsageError } from "../lib/cli.mjs";
 
 const { values, positionals } = withUsageError(
@@ -60,12 +61,6 @@ function shouldSkip(href) {
   if (href.startsWith("#")) return true;
   if (SKIP_SCHEMES.test(href)) return true;
   return false;
-}
-
-function splitFragment(url) {
-  const i = url.indexOf("#");
-  if (i < 0) return [url, null];
-  return [url.slice(0, i), url.slice(i + 1)];
 }
 
 function isCrawlable(url) {

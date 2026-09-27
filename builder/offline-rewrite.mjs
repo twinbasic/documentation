@@ -9,7 +9,7 @@
 //                        fnmatchPathname)
 //   §C  URL resolution   (computeRelative, resolveRaw, computeRelUrl,
 //                         buildSegs, decode, fileDirSegsFromRel,
-//                         posixDirname, normalizeBaseurl, escapeRegExp,
+//                         posixDirname, escapeRegExp,
 //                         getPageCache)
 //   §D  HTML rewrite     (stripSeo, stripFontPreloads, rewriteHtml,
 //                         injectSearchSetup,
@@ -227,13 +227,6 @@ export function posixDirname(rel) {
   const normalised = rel.replaceAll("\\", "/");
   const idx = normalised.lastIndexOf("/");
   return idx === -1 ? "." : normalised.slice(0, idx);
-}
-
-// §6.12  normalizeBaseurl
-export function normalizeBaseurl(raw) {
-  let baseurl = String(raw ?? "").replace(/\/+$/, "");
-  if (baseurl && !baseurl.startsWith("/")) baseurl = "/" + baseurl;
-  return baseurl;
 }
 
 // §6.13  escapeRegExp

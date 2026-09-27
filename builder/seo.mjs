@@ -12,6 +12,8 @@
 //
 // See builder/PLAN-2.md §5.7 + §6.3. Ports: _plugins/seo-precompute.rb.
 
+import { absoluteUrl } from "./url.mjs";
+
 // Constants ported verbatim from Liquid::StandardFilters so the
 // strip/escape steps use the same regex characters Liquid would.
 const STRIP_HTML_BLOCKS = /<script.*?<\/script>|<!--.*?-->|<style.*?<\/style>/gms;
@@ -107,38 +109,6 @@ export function stripHtml(s) {
     .replace(STRIP_HTML_TAGS, "");
 }
 
-// Mirrors `Jekyll::Filters::URLFilters#absolute_url`. Already-absolute
-// inputs pass through; otherwise concatenate site.url + relative_url
-// and let Node's URL parse + normalise.
-export function absoluteUrl(input, config) {
-  if (input == null) return null;
-  const s = String(input);
-  if (isAbsoluteUrl(s)) return s;
-
-  const siteUrl = String(config.url || "");
-  const rel = relativeUrl(s, config);
-  if (siteUrl === "") return rel;
-
-  return new URL(siteUrl + rel).href;
-}
-
-// Mirrors `Jekyll::Filters::URLFilters#relative_url`. baseurl is empty
-// on this site; the helper still composes correctly for non-empty
-// baseurl by stripping a trailing "/" and slash-prefixing both parts
-// before concatenation.
-export function relativeUrl(input, config) {
-  const s = String(input);
-  if (isAbsoluteUrl(s)) return s;
-
-  const baseurl = String(config.baseurl || "").replace(/\/$/, "");
-  return ensureLeadingSlash(baseurl) + ensureLeadingSlash(s);
-}
-
-function ensureLeadingSlash(input) {
-  if (input === "" || input.startsWith("/")) return input;
-  return "/" + input;
-}
-
 // Mirrors `Jekyll::Filters#uri_escape` (=
 // `Addressable::URI.normalize_component`). For the inputs this site
 // produces (absolute https URLs whose components are already safe
@@ -147,10 +117,6 @@ function ensureLeadingSlash(input) {
 function uriEscape(input) {
   if (input == null) return null;
   return encodeURI(String(input));
-}
-
-function isAbsoluteUrl(s) {
-  return /^[a-zA-Z][a-zA-Z0-9+.\-]*:/.test(s);
 }
 
 function isNonEmpty(value) {

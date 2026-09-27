@@ -36,10 +36,10 @@ import {
 
 import {
   offlineExcluded,
-  normalizeBaseurl,
   deriveOfflineCss,
   deriveOfflineRedirect,
 } from "./offline-rewrite.mjs";
+import { normalizeBaseurl } from "./url.mjs";
 
 const OFFLINE_SUFFIX = "-offline";
 const LIMIT = WRITE_LIMIT;

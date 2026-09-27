@@ -10,7 +10,7 @@
 
 import path from "node:path";
 
-import { absoluteUrl } from "./seo.mjs";
+import { absoluteUrl } from "./url.mjs";
 import { writeFileMkdirp } from "./write.mjs";
 
 export async function writeSitemap(pages, site, destRoot, precomputedUrls) {

@@ -73,6 +73,7 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 | [`discover.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/discover.mjs) | Source tree walk; parses frontmatter and classifies each file as a page or a static file. |
 | [`nav.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/nav.mjs) | Sidebar tree, integrity check, breadcrumbs, per-page `navLevels`. |
 | [`seo.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/seo.mjs) | Site-level SEO on main (`computeSiteSeo`); per-page SEO on workers (`computeChunkSeo`). |
+| [`url.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/url.mjs) | The URL helpers every other module shares: `absoluteUrl` and `relativeUrl` (ports of Jekyll's two URL filters), `normalizeBaseurl`, `encodeSpaces`, `splitFragment`. |
 | [`book.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/book.mjs) | Chapter selector resolution (Phase 2 half) + `book.html` assembly (Phase 8 half). |
 | [`build-info.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/build-info.mjs) | Git commit hash + date capture. Runs on a worker so the shell-outs hide behind the main spine. |
 | [`data.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/data.mjs) | Loads `_book.yml`. |

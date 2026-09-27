@@ -67,8 +67,8 @@ import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
 import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
 import { writeSearchDataFromChunks } from "./search.mjs";
 import { writeOffline, enumerateVendoredThemeAssets } from "./offline.mjs";
-import { buildSitePathsSync, deriveOfflineCss,
-         normalizeBaseurl }  from "./offline-rewrite.mjs";
+import { buildSitePathsSync, deriveOfflineCss } from "./offline-rewrite.mjs";
+import { normalizeBaseurl } from "./url.mjs";
 import { writePdf } from "./pdf.mjs";
 // Only the index derivation is a static import: it runs inside dispatch,
 // on the render fan-out's critical path, and check-tree.mjs pulls

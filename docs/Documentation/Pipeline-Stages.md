@@ -606,8 +606,16 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 | `computeChunkSeo` | `(pages, seoSiteTitle, config, markdown) → void` | Per-page SEO (`seoTitle` / `seoFullTitle` / `seoCanonical` / `seoIsHome`). Mutates pages in place. Called by each render worker between `renderPhase` and `templatePhase`. |
 | `renderTitle` | `(text, markdown) → string` | Runs one title through `markdownify → strip_html → normalize_whitespace → escape_once`. |
 | `stripHtml` | `(s) → string` | Drops `<script>` / `<style>` / HTML comments, then strips remaining tag delimiters. Re-exported for `search.mjs`. |
-| `absoluteUrl` | `(input, config) → string` | Composes an absolute URL from a root-relative path. |
-| `relativeUrl` | `(input, config) → string` | Prepends `config.baseurl` to a root-relative path. |
+
+### `url.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `absoluteUrl` | `(url, config) → string` | The URL a path has on the deployed site: `config.url`, the normalised `config.baseurl`, then the path, read from the site root whether or not it starts with `/`. An absolute URL --- a scheme, or a network-path reference `//host` --- is returned unchanged; with no `config.url`, the root-relative path is. A value that is not a string gives `""`. Used by `seo.mjs` for canonicals and the logo, `redirects.mjs`, `sitemap.mjs`, and `template.mjs` for external nav links. |
+| `relativeUrl` | `(url, baseurl) → string` | Puts `baseurl`, as given, in front of a root-relative path and encodes its spaces. Anything else --- an absolute URL, a relative path, a bare fragment --- is returned unchanged, and a value that is not a string gives `""`. `template.mjs`'s links and asset references. |
+| `normalizeBaseurl` | `(raw) → string` | A base URL as `""` or `/prefix`: a leading slash added if missing, trailing slashes removed. |
+| `encodeSpaces` | `(s) → string` | Each space as `%20`, the only character in this site's paths that needs encoding. `search.mjs`'s entry URLs. |
+| `splitFragment` | `(href) → [string, string \| null]` | Splits at the first `#`. `render.mjs`'s link rewrite, and `scripts/crawl_check.mjs`. |
 
 ### `book.mjs`
 
@@ -851,7 +859,6 @@ Pure-compute rewrite helpers extracted from `offline.mjs` so they can be importe
 | `deriveOfflineRedirect` | `(stub, state) → string` | Rewrites a redirect stub's HTML for offline use. |
 | `offlineExcluded` | `(rel, patterns) → boolean` | Returns `true` when a site-relative path matches any `offline_exclude` glob from `_config.yml`. |
 | `stripFontPreloads` | `(html) → string` | Removes the `<link rel="preload" as="font">` tags from the offline tree only. A font preload is a CORS-mode fetch; under `file://` there is no origin to match, so Chrome fails it with `ERR_FAILED` while the `@font-face` fetch beside it succeeds and the faces load anyway. The preload therefore buys an offline reader nothing and costs two red lines in the console. |
-| `normalizeBaseurl` | `(raw) → string` | Normalises a baseurl string to the canonical trailing-slash form. |
 | `posixDirname` | `(rel) → string` | POSIX directory component of a relative path. |
 | `fileDirSegsFromRel` | `(rel) → string[]` | Splits a destination path into directory segments. |
 | `fnmatchPathname` | `(pattern, path) → boolean` | Glob-style pathname match. |

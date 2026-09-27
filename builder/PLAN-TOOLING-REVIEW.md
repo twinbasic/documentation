@@ -1866,6 +1866,35 @@ needs it. `crawl_check.mjs` imports `splitFragment` from it.
 **Verify.** The tree comparison identical, and again with `--baseurl /docs`: a non-empty base
 URL is where the two helpers disagree, and this site's is empty.
 
+**Landed.** `builder/url.mjs` exports `absoluteUrl(url, config)`, `relativeUrl(url,
+baseurl)`, `normalizeBaseurl`, `encodeSpaces` and `splitFragment`, and every copy is gone:
+`seo.mjs`'s two helpers with its `ensureLeadingSlash` and `isAbsoluteUrl`, `template.mjs`'s
+three, `search.mjs`'s `encodeSpaces`, `book.mjs`'s `normalizeBaseurl` with its comment about
+the Ruby plugins, `offline-rewrite.mjs`'s exported one (its three importers,
+`cpu-worker.mjs`, `offline.mjs` and `tbdocs.mjs`, now import `url.mjs`), and the two
+`splitFragment`s, `crawl_check.mjs`'s included. `redirects.mjs` and `sitemap.mjs` import
+`absoluteUrl` from `url.mjs` instead of `seo.mjs`. `relativeUrl` is `template.mjs`'s, which
+is the only caller: no forced leading slash, spaces encoded, `baseurl` used as given, `""`
+for a non-string. `absoluteUrl` treats a network-path reference `//host` as absolute, like a
+scheme, gives `""` for a non-string (what Liquid prints for Jekyll's nil), normalises
+`config.baseurl`, and reads a path from the site root, with or without its leading slash: its
+result is a URL on the site, and `new URL(siteUrl + "a/b")` gave `https://docs.twinbasic.coma/b`.
+That is the one place a forced leading slash is needed. Pipeline-Stages.md has `url.mjs`'s
+export table, drops the two rows from `seo.mjs`'s and the one from `offline-rewrite.mjs`'s
+(which said the opposite of what the function does, "the canonical trailing-slash form"), and
+Builder.md's module map has a row.
+
+`compare_trees`: all three trees identical, and identical again with `-- --baseurl /docs`.
+The kit's `c53-oracle.mjs` cuts HEAD's three helpers out of `git show` and runs them beside
+`url.mjs`'s over 12 inputs, 2 site URLs and 5 base URLs (288 comparisons). `relativeUrl`
+matches `template.mjs`'s on every one. The 94 that differ are all `absoluteUrl`, in six
+kinds: a non-string (`null` or `"/5"` before, `""` now), `//host` (the base URL or site URL
+put in front before), a path without a leading slash in `template.mjs`'s (`#x`, `a/b`), a
+base URL of `/docs/` or `docs` in `template.mjs`'s (`/docs//a/`, `docs/a/` before), a space
+in `seo.mjs`'s when there is no site URL, and an empty path under a base URL, now the base
+URL's root, `/docs/`. None is an input any call site passes, as the tree comparisons show.
+`build.bat`, `check.bat` (the a11y line unchanged) and `test.bat` exit 0.
+
 ### C54 — `builder: one module for the HTML, XML and RegExp escapers`
 
 **A3-2 / L3-5, A2-4 (R2).** Seven HTML escapers of two kinds: `&<>` in `render.mjs:2230-2233`,

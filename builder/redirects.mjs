@@ -20,7 +20,7 @@
 import path from "node:path";
 
 import { permalinkToDestPath } from "./paths.mjs";
-import { absoluteUrl } from "./seo.mjs";
+import { absoluteUrl } from "./url.mjs";
 import { runLimited, writeFileMkdirp, WRITE_LIMIT } from "./write.mjs";
 
 export async function writeRedirects(pages, site, destRoot, precomputedStubs) {

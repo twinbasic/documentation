@@ -16,8 +16,8 @@ import { unpackShared }                       from "./sab-broadcast.mjs";
 import { deriveSearchEntries }                from "./search.mjs";
 import { computeChunkSeo }                    from "./seo.mjs";
 import { deriveOfflinePage, deriveOfflinePageCached,
-         sliceNavBlock, normalizeBaseurl,
-         posixDirname }                       from "./offline-rewrite.mjs";
+         sliceNavBlock, posixDirname }        from "./offline-rewrite.mjs";
+import { normalizeBaseurl }                   from "./url.mjs";
 
 import {
   createViews, scanAndClaim, onTaskDone, readTaskMeta,

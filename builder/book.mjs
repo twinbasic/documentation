@@ -25,6 +25,7 @@
 //   docs/_plugins/book-href-rewrite.rb   (cross-ref rewrite + landing strip)
 
 import { compressHtml } from "./compress.mjs";
+import { normalizeBaseurl } from "./url.mjs";
 
 // ---------------------------------------------------------------------------
 // §A  Phase 2: chapter resolver + sort_by_nav_order
@@ -284,15 +285,6 @@ function chapterDividerId(chEntry) {
 function parentUrlOf(url) {
   if (url.endsWith("/")) return url;
   return url.replace(/[^\/]+$/, "");
-}
-
-// PLAN-8 §6.12 / §6.13 (duplicated from offline.mjs by design --
-// book-href-rewrite.rb keeps its own copy of normalize_baseurl so
-// plugins are independent).
-function normalizeBaseurl(raw) {
-  let baseurl = String(raw ?? "").replace(/\/+$/, "");
-  if (baseurl && !baseurl.startsWith("/")) baseurl = "/" + baseurl;
-  return baseurl;
 }
 
 // ---------------------------------------------------------------------------
