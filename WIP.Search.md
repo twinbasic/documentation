@@ -1416,8 +1416,9 @@ Left, 3 page titles and 10 page-plus-section queries, each at rank 2 or 3:
   page.
 - Sections behind a page whose name contains or stems like theirs:
   `Printers Properties` behind `Printer#properties`; the six `Html*`
-  pages (`HtmlElement Properties` behind a second Properties section on
-  the same page that documents a symbol, so the set leaves it out);
+  pages (`HtmlElement Properties` behind the same page's second
+  Properties section, which documents the `HtmlElement.Properties`
+  member, so the set leaves it out, and behind `HtmlElements#properties`);
   `UpDown Properties` behind `DTPicker#updown`; `ParentControls Members`
   behind `UserControl#parentcontrols`; `Timer Properties` behind the
   Timer function.
