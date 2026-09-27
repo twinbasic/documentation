@@ -1062,6 +1062,24 @@ differs by the three ` #` (6 bytes), and `page-index.json` by the six keys that 
 the file's path; a BOM and CRLF parse. The tree comparison is identical in all three trees
 (1,461, 1,457 and 137 files).
 
+### C41a — `docs: quote the three statement titles that end in #`
+
+**Found while landing C41.** `Input.md`, `Line-Input.md` and `Write.md` under
+`docs/Reference/Core/` have `title: Input #` and the like unquoted, and YAML reads ` #` as
+the start of a comment.
+
+**Change.** The three titles are quoted.
+
+**Landed.** As the entry says. No other frontmatter line under `docs/` holds an unquoted
+` #`: a grep for a key whose unquoted value contains one finds these three lines only.
+
+**Verify.** The tree comparison differs on all 914 pages online and offline, and on
+`book.html`. A word diff of the two kept trees, the Gantt chart's two files left out, finds
+nothing but the three titles gaining their `#`: the sidebar's link text on every page, the
+three pages' breadcrumbs, `<title>`, meta titles and JSON-LD headline, their entries in the
+search data, and their running heads in the book. The page count and the symbol index are
+unchanged.
+
 *The link checker, the gates' scaffolding, the browser tools and the repository root:
 C42–C46.*
 
@@ -2127,6 +2145,12 @@ Defects the review did not have, found by building something this plan asks for.
   it counted the fences the regex misses, not what it made of the lines after them. At the
   owner's choice it is fixed inside `builder, eval: counts, run_case and nav_hops skip code`
   rather than in place first.
+- **Three statement pages had lost the `#` from their titles**, found while landing C41.
+  `title: Input #`, `title: Line Input #` and `title: Write #` were unquoted, and YAML reads
+  ` #` as the start of a comment, so the site had titled the pages `Input`, `Line Input` and
+  `Write` (in the sidebar, the breadcrumb, the browser tab and the search) since `042210e2`
+  (2026-05-09). Wisdom's own reader kept the `#`, which is how C41's oracle saw the
+  difference. Fixed in `docs: quote the three statement titles that end in #`.
 
 ## Open questions
 

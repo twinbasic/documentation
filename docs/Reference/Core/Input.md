@@ -1,5 +1,5 @@
 ---
-title: Input #
+title: "Input #"
 parent: Statements
 permalink: /tB/Core/Input
 vba_attribution: true
