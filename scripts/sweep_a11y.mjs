@@ -38,25 +38,28 @@
 // Requires build.bat to have produced an up-to-date docs/_site-offline/.
 
 import {
-  readdirSync,
   readFileSync,
   appendFileSync,
   existsSync,
   mkdirSync,
 } from "node:fs";
-import { resolve, join, relative, sep, dirname } from "node:path";
+import { resolve, join, dirname } from "node:path";
 import {
   axeVersion,
   DEFAULT_ROOT_DIR,
   REPO_ROOT,
   THEMES,
   VIEWPORTS,
+  discoverPages,
   getScheme,
   gotoPage,
+  median,
   newAuditPage,
+  pad,
   pick,
   readAxeSource,
   runAxe,
+  splitStubs,
 } from "./lib/axe-scan.mjs";
 import { withBrowser } from "./lib/browser.mjs";
 
@@ -66,17 +69,6 @@ import { withBrowser } from "./lib/browser.mjs";
 // nobody ships.
 const PRODUCTION = getScheme("production");
 const AXE_PATCHES = PRODUCTION.patches;
-
-// Pages below this tag count are redirect stubs -- a canonical link, a meta
-// refresh, `<script>location=...</script>` and a one-line body.  There are ~290
-// of them and they are excluded outright, for a better reason than cost: they
-// cannot be audited.  The inline script navigates before the audit runs, so
-// what axe walks is the redirect *target*.  An earlier version of this script
-// sampled three of them and produced three exact duplicates of other pages'
-// results -- the stub for /CustomControls.html reported the same 2,221
-// elements as /Tutorials/CustomControls/index.html.  A page nobody sees for
-// longer than 0 ms is not a page to audit.
-const STUB_TAG_CEILING = 100;
 
 const args = process.argv.slice(2);
 let rootDir = DEFAULT_ROOT_DIR;
@@ -123,35 +115,9 @@ const viewports = pick("viewport", viewportArg, Object.keys(VIEWPORTS));
 
 // ---- page discovery ---------------------------------------------------
 
-// Static start-tag count.  Not the element count axe sees -- it misses what
-// scripts add and counts what parsing drops -- but it ranks pages correctly
-// and costs no browser, which is all it is used for here: separating stubs
-// from content before the sweep starts.
-function staticTagCount(html) {
-  const m = html.match(/<[a-zA-Z][a-zA-Z0-9-]*(\s|>|\/)/g);
-  return m ? m.length : 0;
-}
-
-function discoverPages(dir) {
-  const out = [];
-  (function walk(d) {
-    for (const e of readdirSync(d, { withFileTypes: true })) {
-      const p = join(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else if (e.name.endsWith(".html")) out.push(p);
-    }
-  })(dir);
-  return out
-    .map((p) => ({
-      filePath: "/" + relative(dir, p).split(sep).join("/"),
-      tags: staticTagCount(readFileSync(p, "utf8")),
-    }))
-    .sort((a, b) => a.filePath.localeCompare(b.filePath));
-}
-
-const allPages = discoverPages(rootDir);
-const stubs = allPages.filter((p) => p.tags < STUB_TAG_CEILING);
-const content = allPages.filter((p) => p.tags >= STUB_TAG_CEILING);
+// Redirect stubs are left out, for a better reason than cost: they cannot be
+// audited (STUB_TAG_CEILING in axe-scan.mjs says why).
+const { content, stubs } = splitStubs(discoverPages(rootDir));
 
 let selected = content;
 if (filter) selected = selected.filter((p) => p.filePath.includes(filter));
@@ -273,12 +239,6 @@ if (!reportOnly && matrix.length) {
 }
 
 // ---- report -----------------------------------------------------------
-
-const pad = (s, w) => String(s).padStart(w);
-const median = (xs) => {
-  const s = [...xs].sort((a, b) => a - b);
-  return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
-};
 
 console.log("");
 console.log(`=== a11y sweep: ${records.length} audits ===`);

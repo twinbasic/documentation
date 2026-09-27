@@ -1308,6 +1308,24 @@ import.
 **Verify.** `pick_a11y_sample.mjs --census` and `--propose` output unchanged; a sweep over two
 pages writes records of the same shape.
 
+**Landed.** `axe-scan.mjs` gains a page-discovery section: `STUB_TAG_CEILING` (the sweep's
+name; the sampler's `STUB_CEILING` goes), `staticTagCount`, `discoverPages(dir, fields)`,
+`splitStubs(pages)` returning `{ content, stubs }`, `pad` and `median`. `discoverPages` reads
+each page once and returns `{ filePath, tags, ...fields(html) }` sorted by `localeCompare`, as
+the sweep did; the sampler passes its family counts as `fields` (`raw`), so it still reads each
+page once, and its pages now come sorted where they came in `readdir` order. The two stub
+comments are merged into the ceiling's, in the present tense. Tools.md's `axe-scan.mjs`
+section names the shared discovery, and, at the owner's choice, all five scripts that import
+the module (it named three, leaving out `pick_a11y_sample.mjs` and `check_axe_patch_equiv.mjs`,
+a Found-in-passing item). `builder/PLAN-checks.md`'s open question cites the new name.
+
+Oracle: the kit's `c45-oracle.mjs before|after|compare`: `pick_a11y_sample --census`,
+`--propose` (over a copy of `perf/results/a11y-sweep.jsonl`, 3,476 records) and `--check`;
+`sweep_a11y --report` over the same copy; and a sweep of the first two `/tB/Core/A` pages,
+light and desktop, into a fresh JSONL. The sampler's three runs and the report are identical,
+so its new page order changed no tie. The two-page sweep writes the same records, `runMs`
+masked, and its output differs only in the per-page time column.
+
 ### C46 — `lib: one repository root for every tool`
 
 **L2-5 (R2).** Nineteen files derive the repository root inline, in about five different

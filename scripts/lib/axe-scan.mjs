@@ -15,8 +15,8 @@
 //
 // See builder/PLAN-axe-perf.md for why each knob below is a knob.
 
-import { readFileSync } from "node:fs";
-import { resolve, join } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { resolve, join, relative, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 // This module lives at <repo>/scripts/lib/axe-scan.mjs.  Anchoring the built
@@ -860,3 +860,65 @@ export function fingerprint({ filePath, theme, viewport, state, results }) {
     `|I[${fmtIncomplete(results.incomplete)}]`
   );
 }
+
+// ---------------------------------------------------------------------------
+// Page discovery -- the pages pick_a11y_sample.mjs and sweep_a11y.mjs see
+// ---------------------------------------------------------------------------
+
+// Pages below this static start-tag count are redirect stubs -- a canonical
+// link, a meta refresh, `<script>location=...</script>` and a one-line body.
+// There are ~290 of them, and neither tool audits them, because they cannot be
+// audited: the inline script navigates before the audit runs, so what axe
+// walks is the redirect *target*.  The stub for /CustomControls.html reports
+// the same 2,221 elements as /Tutorials/CustomControls/index.html.  One
+// ceiling serves both tools, since pick_a11y_sample.mjs --propose reads the
+// records the sweep writes.
+export const STUB_TAG_CEILING = 100;
+
+// Static start-tag count.  Not the element count axe sees -- it misses what
+// scripts add and counts what parsing drops -- but it ranks pages correctly
+// and costs no browser, which is all it is used for: separating stubs from
+// content before any audit starts.
+export function staticTagCount(html) {
+  const m = html.match(/<[a-zA-Z][a-zA-Z0-9-]*(\s|>|\/)/g);
+  return m ? m.length : 0;
+}
+
+/**
+ * Every .html page under the built tree `dir`, sorted by path, as
+ * `{ filePath, tags, ...fields(html) }`: `filePath` is root-relative with a
+ * leading slash, and `fields`, when given, adds what the caller counts in the
+ * same read of the page.
+ */
+export function discoverPages(dir, fields = () => ({})) {
+  const out = [];
+  (function walk(d) {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name.endsWith(".html")) out.push(p);
+    }
+  })(dir);
+  return out
+    .map((p) => {
+      const html = readFileSync(p, "utf8");
+      return { filePath: "/" + relative(dir, p).split(sep).join("/"), tags: staticTagCount(html), ...fields(html) };
+    })
+    .sort((a, b) => a.filePath.localeCompare(b.filePath));
+}
+
+/** `pages` split at the stub ceiling: `{ content, stubs }`, each in order. */
+export function splitStubs(pages) {
+  return {
+    content: pages.filter((p) => p.tags >= STUB_TAG_CEILING),
+    stubs: pages.filter((p) => p.tags < STUB_TAG_CEILING),
+  };
+}
+
+// The two tools' report helpers.
+export const pad = (s, w) => String(s).padStart(w);
+
+export const median = (xs) => {
+  const s = [...xs].sort((a, b) => a - b);
+  return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
+};
