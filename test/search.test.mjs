@@ -202,6 +202,26 @@ describe("deriveSearchEntries: titleFound / prefix entry", () => {
     assert.equal(entries[0].relUrl, "/Widget/#widget");
     assert.equal(entries[1].relUrl, "/Widget/");
   });
+
+  test("a later heading that reads like the title is a section, not the title", () => {
+    // The Shape page: its h1 is "Shape class", and `### Shape` documents
+    // the Shape property. Taken for the title, the property lost its
+    // #shape entry, so `Shape.Shape` found nothing.
+    const content =
+      `<h1 id="widget-class">Widget class</h1><p>Intro.</p>` +
+      `<h2 id="properties">Properties</h2>` +
+      `<h3 id="widget">Widget</h3><p>The Widget property.</p>`;
+    const entries = deriveSearchEntries(
+      [page({ title: "Widget", content })],
+      site({ heading_level: 3 }),
+    );
+
+    assert.deepEqual(
+      entries.map((e) => `${e.title} ${e.relUrl}`),
+      ["Widget class /Widget/#widget-class", "Properties /Widget/#properties", "Widget /Widget/#widget", "Widget /Widget/"],
+    );
+    assert.match(entries[2].content, /The Widget property/);
+  });
 });
 
 describe("deriveSearchEntries: deterministic output", () => {

@@ -13,7 +13,8 @@ Everything needed to continue is in this file and in `eval/`; nothing
 depends on the session that wrote it.
 
 **Where it stands.** Rollout steps 1–5, two reader-intent rounds, the
-index pilot and the qualified-name round are done and committed, on branch
+index pilot, the qualified-name round and the title-heading fix are done
+and committed, on branch
 `claude/paintpicture-docs-runtime-f3250d`. Nothing is pushed. The working
 tree is clean; the last commit only records a hash in this file.
 
@@ -31,16 +32,17 @@ tree is clean; the last commit only records a hash in this file.
 | `ae880486` | pilot 1: prose queries can expect pages right behind (`behind`); ground truth intent-2 |
 | `70b73344` | pilot 2: hand-marked index entries, and the first five |
 | `d74a19c1` | qualified names: `qualified` at 500, reached only by qualified names and word pairs |
+| (next commit) | only a page's first heading can be its title (`Shape.Shape`, `Timer.Timer`) |
 
-Hit@10 went from 20.5% to 99.98%, and MRR from .182 to .997. By reader
+Hit@10 went from 20.5% to 100%, and MRR from .182 to .997. By reader
 intent, rank 1 is right for 99.5% of queries (89.0% before the intent
 steps), all 20 prose queries are at rank 1, no bare name is out of tier
 order, and no query got worse at any step.
 
-The remaining 43 rank-1 misses: 34 bare names, in
+The remaining 41 rank-1 misses: 34 bare names, in
 [What shipped, second round](#what-shipped-second-round-tiers-in-the-index)
 (25 language elements behind a section of their own page, 9 enum
-constants and members at rank 2), and 9 qualified names, in
+constants and members at rank 2), and 7 qualified names, in
 [What shipped, fourth round](#what-shipped-fourth-round-qualified-names).
 
 **The index pilot held up.** The user asked whether ranking tweaks are an
@@ -60,11 +62,10 @@ worse, and 99.8% of qualified queries at rank 1 (91.5% before).
 
 **Next.** The user put qualified names before the wider pass; placing
 item 1 first, as small tweaks on the same ground, was this session's call:
-1. The 9 qualified misses left: 7 stemming collisions between siblings
+1. The 7 qualified misses left: stemming collisions between siblings
    (`Printer.Font` / `Printer.Fonts`), a qualified counterpart of
-   `exact`; and 2 member headings the build takes for the page's title
-   (`Shape.Shape`, `Timer.Timer`), a fix in `builder/search.mjs`'s
-   `extractSections`.
+   `exact`. The other 2 (`Shape.Shape`, `Timer.Timer`) are fixed; see
+   [the title-heading fix](#fixed-a-member-heading-taken-for-the-page-title).
 2. The same-page ground-truth question (`DefInt` → a section of
    `Deftype`), a decision for the user.
 3. The wider index pass, under the pilot's rules: an entry names the page
@@ -1031,7 +1032,34 @@ Left at rank 1's door, 9 qualified queries:
 - **2 with no entry**: `Shape.Shape` and `Timer.Timer`. The member's
   heading (`### Shape`, `### Timer`) reads the same as the page's title,
   and the search-data build takes it for the title, so there's no
-  `#shape` entry for the symbol's URL to match. A builder fix.
+  `#shape` entry for the symbol's URL to match. Fixed next.
+
+### Fixed: a member heading taken for the page title
+
+`extractSections` took *any* heading that read the same as the page's
+title, with no prose before the first heading, for the title: that entry
+got the page's URL and no prefix entry was made. On Shape and Timer the h1
+is "Shape class" / "Timer class", so `### Shape` and `### Timer`, which
+document the Shape and Timer properties, became the page's entry, and no
+`#shape` / `#timer` entry existed. Now only the page's first heading can
+be the title.
+
+It changed four pages' entries, nothing else: Shape and Timer, and two
+prose pages whose h1 differs from the title and whose second heading
+repeats it (`Features/Standard-Library/New-Functions`, `Challenges/1`).
+Those two now have an empty page entry beside the section, as 272 other
+pages already do (every page whose h1 differs from its title). Neither
+page's own query moved off it.
+
+| | before | after |
+|---|---|---|
+| hit@1 / hit@10 | 99.46% / 99.98% | 99.49% / 100% |
+| queries worse / better | | 0 / 2 (`Shape.Shape`, `Timer.Timer`: none → 1) |
+
+Seen on the way, and predating it: `New Functions` puts
+`ServiceState#new` first and the page second, because `functions` is a
+kind word, so the query is taken to name `New`. Not changed: one probe is
+not a measurement, and kind words were measured as a whole.
 
 ### Next steps
 

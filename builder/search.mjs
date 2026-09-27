@@ -290,9 +290,13 @@ function extractSections(page, pageTitle, headingLevel, foldSet = new Set()) {
     const ids = ownId === undefined ? [] : [ownId];
     for (const m of body.matchAll(/<h\d\b[^>]*?\sid="([^"]*)"/g)) ids.push(m[1]);
 
+    // Only the page's first heading can be its title. A later heading that
+    // reads the same is a section like any other: `### Shape` on the Shape
+    // page (whose h1 is "Shape class") documents the Shape property, and
+    // taking it for the title left the property without its own entry.
     let url = page.permalink;
     let isTitle = false;
-    if (sectionTitle === pageTitle && prefixContent === "") {
+    if (k === 1 && sectionTitle === pageTitle && prefixContent === "") {
       titleFound = true;
       isTitle = true;
     } else {
