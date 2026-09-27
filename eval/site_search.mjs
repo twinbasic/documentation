@@ -75,13 +75,31 @@ export function loadLunr(lunrPath) {
     if (typeof input === "string") {
       input = input.replace(/\.{2,}/g, (m) => new Array(m.length + 1).join(" "));
     }
-    return originalTokenizer(input);
+    return originalTokenizer(input).map(decodeTokenEntities);
   };
   dotRunSplitTokenizer.dotRunSplit = true;
   dotRunSplitTokenizer.separator = /[\s\-\/]+/;
   lunr.tokenizer = dotRunSplitTokenizer;
   separateTokenSetKeys(lunr);
   return lunr;
+}
+
+// Matches just-the-docs.js's decodeTokenEntities(): the search data keeps
+// the page's HTML entities, which the client needs for display, so each
+// token's are decoded after the split, keeping its position in the escaped
+// text: `&amp;H80004005` indexes as `h80004005`, not `amp;h80004005`.
+const NAMED_ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+
+function decodeTokenEntities(token) {
+  if (token.str.indexOf("&") === -1) return token;
+  return token.update((str) =>
+    str.replace(/&(amp|lt|gt|quot|apos|nbsp|#[0-9]+|#x[0-9a-f]+);/g, (m, name) => {
+      if (name.charAt(0) !== "#") return NAMED_ENTITIES[name];
+      const code = name.charAt(1) === "x" ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10);
+      // Lowercased, as lunr's tokenizer lowercases everything else.
+      return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code).toLowerCase() : m;
+    })
+  );
 }
 
 // Matches just-the-docs.js's separateTokenSetKeys(): lunr 2.3.9 keys a token

@@ -133,7 +133,7 @@ function initSearch() {
                   return new Array(m.length + 1).join(' ');
                 });
               }
-              return originalTokenizer(input);
+              return originalTokenizer(input).map(decodeTokenEntities);
             };
             dotRunSplitTokenizer.dotRunSplit = true;
             dotRunSplitTokenizer.separator = /[\s\-\/]+/;
@@ -236,6 +236,29 @@ function exactName(name) {
   return name.toLowerCase().replace(/\W/g, function(c) {
     return '_' + c.charCodeAt(0).toString(16);
   }) + '_';
+}
+
+// Patched: the search data keeps the page's HTML entities (`&amp;H80004005`,
+// `&lt;`), since the results panel inserts its text as HTML and highlights by
+// character position in it. The index took them as written, so
+// `&amp;H80004005` was the term `amp;h80004005`, which no query reaches. The
+// tokenizer wrapper in initSearch() (and in offline.mjs's copy of it) decodes
+// each token here, after the split: the token keeps its position in the
+// escaped text, so highlighting still lines up. A decoded character that
+// would separate words (`&#45;`, a hyphen) doesn't split its token. See
+// WIP.Search.md, "Fixed: entities in the index".
+var NAMED_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+
+function decodeTokenEntities(token) {
+  if (token.str.indexOf('&') === -1) return token;
+  return token.update(function(str) {
+    return str.replace(/&(amp|lt|gt|quot|apos|nbsp|#[0-9]+|#x[0-9a-f]+);/g, function(m, name) {
+      if (name.charAt(0) !== '#') return NAMED_ENTITIES[name];
+      var code = name.charAt(1) === 'x' ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10);
+      // Lowercased, as lunr's tokenizer lowercases everything else.
+      return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code).toLowerCase() : m;
+    });
+  });
 }
 
 // Patched: lunr 2.3.9 keys a token set's nodes for minimisation by

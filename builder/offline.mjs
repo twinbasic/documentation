@@ -338,7 +338,9 @@ const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
       // again after a failed load; the wrapper carries \`separator\`
       // itself because the original tokenizer reads
       // \`lunr.tokenizer.separator\` at call time, which after this
-      // reassignment resolves to the wrapper's own property.
+      // reassignment resolves to the wrapper's own property. Each token's
+      // HTML entities are decoded after the split, by the online copy's
+      // decodeTokenEntities().
       if (!lunr.tokenizer.dotRunSplit) {
         var originalTokenizer = lunr.tokenizer;
         var dotRunSplitTokenizer = function (input) {
@@ -347,7 +349,7 @@ const JTD_INITSEARCH_FN_REPLACEMENT = `function initSearch() {
               return new Array(m.length + 1).join(' ');
             });
           }
-          return originalTokenizer(input);
+          return originalTokenizer(input).map(decodeTokenEntities);
         };
         dotRunSplitTokenizer.dotRunSplit = true;
         dotRunSplitTokenizer.separator = /[\\s\\-\\/]+/;

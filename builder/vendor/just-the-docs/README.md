@@ -338,6 +338,20 @@ invented words".
 
 `offline.mjs`'s `JTD_INITSEARCH_FN_REPLACEMENT` calls it too.
 
+**Entities were indexed as written.** The search data keeps the page's
+HTML entities, and must: the results panel inserts titles and content
+with `innerHTML` and highlights by character position in that text. The
+index took them as words, so `&amp;H80004005` became the term
+`amp;h80004005`, and a search for `&H80004005` found none of the five
+pages that mention it. `decodeTokenEntities()` decodes each token after
+the tokenizer splits it (`&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`,
+`&nbsp;` and numeric references, lowercased), so the token keeps its
+position in the escaped text. The dot-run-split wrapper calls it, in
+`initSearch()` and in `offline.mjs`'s copy. A decoded separator (`&#45;`,
+a hyphen) doesn't split its token. See
+[`../../../WIP.Search.md`](../../../WIP.Search.md)'s "Fixed: entities in
+the index".
+
 **A page's own title, typed whole, came second.** `Return Syntax` found
 the `Return` statement first, and `DTPicker Properties` the DTPicker
 class's heading, not its Properties section: a one-word entry matched one

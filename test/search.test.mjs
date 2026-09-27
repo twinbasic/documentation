@@ -1092,3 +1092,55 @@ describe("whole-title guard: online client, eval replica", () => {
     assert.equal(urls("DTPicker")[0], "/DTPicker#dtpicker-class");
   });
 });
+
+// Entities (WIP.Search.md, "Fixed: entities in the index"): the search data
+// keeps the page's HTML entities, which the results panel needs, so each
+// copy's tokenizer wrapper decodes them per token, after the split.
+describe("entity guard: online client, offline client, eval replica", () => {
+  const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
+  const lunr = loadLunr(path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js"));
+  const onlineSrc = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js");
+  const evalSrc = read("eval/site_search.mjs");
+
+  test("all three decode each token in the tokenizer wrapper", () => {
+    for (const [label, src] of [
+      ["just-the-docs.js", onlineSrc],
+      ["offline.mjs", read("builder/offline.mjs")],
+      ["eval/site_search.mjs", evalSrc],
+    ]) {
+      assert.match(src, /return originalTokenizer\(input\)\.map\(decodeTokenEntities\);/, `${label}'s tokenizer wrapper doesn't decode entities`);
+    }
+  });
+
+  test("the online client and the replica decode alike, keeping each token's position", () => {
+    const load = (src, label) => {
+      const table = src.match(/(var|const) NAMED_ENTITIES = \{[^}]*\};/);
+      const fn = src.match(/function decodeTokenEntities\(token\) \{[\s\S]*?\r?\n\}/);
+      assert.ok(table && fn, `${label} has no decodeTokenEntities()`);
+      return new Function(`${table[0]}\n${fn[0]}\nreturn decodeTokenEntities;`)();
+    };
+    const online = load(onlineSrc, "just-the-docs.js");
+    const replica = load(evalSrc, "eval/site_search.mjs");
+    const text = "Err &amp;H80004005 at&amp;t &lt;&lt;= &#45;&gt; &#8617; &#x41; &bogus; &#1114112; plain";
+    // Tokens as lunr's tokenizer makes them: lowercased, positioned in the
+    // escaped text.
+    const tokens = (decode) => text.split(" ").map((str) => decode(new lunr.Token(str.toLowerCase(), { position: [0, str.length] })));
+    const a = tokens(online);
+    const b = tokens(replica);
+    assert.deepEqual(a.map((t) => t.str), b.map((t) => t.str));
+    assert.deepEqual(a.map((t) => t.str), ["err", "&h80004005", "at&t", "<<=", "->", "↩", "a", "&bogus;", "&#1114112;", "plain"]);
+    assert.deepEqual(a[1].metadata.position, [0, "&amp;H80004005".length], "a decoded token lost its position in the escaped text");
+  });
+
+  test("the replica finds an entity-escaped hex literal, and highlights it where it is written", () => {
+    const docs = {
+      0: { doc: "Printers", title: "Indexing", content: "An invalid index raises error 5 (&amp;H80004005).", relUrl: "/Printers#indexing" },
+      1: { doc: "Other", title: "Other", content: "Nothing to see.", relUrl: "/Other" },
+    };
+    const ctx = { lunr, index: buildIndex(lunr, docs), docs };
+    const results = search(ctx, "&H80004005");
+    assert.deepEqual(results.map((r) => docs[r.ref].relUrl), ["/Printers#indexing"]);
+    const [start, length] = results[0].matchData.metadata.h80004005.content.position[0];
+    assert.equal(docs[0].content.slice(start, start + length), "(&amp;H80004005).");
+  });
+});
