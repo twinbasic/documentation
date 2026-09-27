@@ -24,7 +24,8 @@
 //     node scripts/check_page_baseline.mjs
 
 import { readFile } from "node:fs/promises";
-import { checkPageBaseline, GUARDED_SRC } from "../builder/page-baseline.mjs";
+import { GUARDED_SRC } from "../builder/baseline.mjs";
+import { checkPageBaseline } from "../builder/page-baseline.mjs";
 import { baselineFixture, createProbes, exitOnCrash } from "./lib/gate-probes.mjs";
 
 exitOnCrash();

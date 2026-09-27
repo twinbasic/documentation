@@ -838,6 +838,13 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | `PACKAGE_FOLDERS` | `{ folder, projects }[]` | Each package folder under `Reference/`, and the project names it documents. |
 | `SYMBOL_INDEX_REL`, `SYMBOL_INDEX_FORMAT` | `string`, `number` | `tB/symbols.json`, and the `format` it declares. |
 
+### `baseline.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `GUARDED_SRC` | `string` | The repo-relative, forward-slashed source root the baselines describe: `"docs"`. `checkBaseline` skips any other source root, and `scripts/check_page_baseline.mjs` and `scripts/check_symbol_index.mjs` pass it in their probes. |
+| `checkBaseline` | `(guard, { record, write, force, file }) → Promise<{ failed, text }>` | The drift guard `checkPageBaseline` and `checkSymbolBaseline` share. `guard` names the file (`"page"` or `"symbol"`) and says what a loss and a gain are and how to describe them; `record` is what this build publishes, as the file holds it. Does nothing unless `record.src` is `GUARDED_SRC`. With `force` it writes `record` to `file`. Otherwise a missing file fails, or is created when `write` is set; a loss fails; and a gain rewrites `file` when `write` is set. The file is `record` as JSON, indented two spaces, with a closing newline. |
+
 ### `symbol-baseline.mjs`
 
 | Symbol | Signature | Description |
@@ -850,7 +857,6 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | Symbol | Signature | Description |
 |---|---|---|
 | `BASELINE_PATH` | `URL` | `builder/page-baseline.json`, the default `file` of `checkPageBaseline`. |
-| `GUARDED_SRC` | `string` | The repo-relative, forward-slashed source root these counts describe: `"docs"`. `checkPageBaseline` skips any other source root; `symbol-baseline.mjs` imports it to guard `checkSymbolBaseline` the same way, and `scripts/check_page_baseline.mjs` and `scripts/check_symbol_index.mjs` pass it in their probes. |
 | `checkPageBaseline` | `({ src, pages, staticFiles, write, force, file }) → Promise<{ failed, text }>` | The page-count drift guard, which does nothing unless `src` is `GUARDED_SRC`. With `force` it writes this build's counts to `file`, up or down. Otherwise a missing baseline fails, or is created when `write` is set; a page or static-file count below the baseline fails; and a count above it rewrites `file` when `write` is set. Called by `runBuild` in `tbdocs.mjs`, and by the probes in `scripts/check_page_baseline.mjs`. |
 
 ### `offline.mjs`

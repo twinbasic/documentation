@@ -481,7 +481,10 @@ the number stays current by itself; only a fall wants a decision, and
 deletion.
 
 **Three things about it were learned by getting them wrong**, and each is now a
-comment in [builder/page-baseline.mjs](builder/page-baseline.mjs):
+comment where it is decided: the first and third in
+[builder/baseline.mjs](builder/baseline.mjs), which holds the comparison the
+page and symbol guards share, and the second in
+[scripts/check_tree_fresh.mjs](scripts/check_tree_fresh.mjs):
 
 - **The baseline has to be keyed to a source tree.** `tbdocs` is not only run
   over `docs/`: `check_links_diff.mjs` spawns it over

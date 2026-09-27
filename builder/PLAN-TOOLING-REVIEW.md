@@ -2075,6 +2075,42 @@ compared, counts or a set of URLs; the write is `JSON.stringify`.
 byte-identical. `check_page_baseline.mjs` (11 probes) and `check_symbol_index.mjs` (46) pass,
 and a reintroduced drift fails each.
 
+**Landed.** `builder/baseline.mjs` exports `GUARDED_SRC` (moved from `page-baseline.mjs`) and
+`checkBaseline(guard, { record, write, force, file })`, which holds the read, the write and the
+six branches: another source tree skipped, a forced write, a missing file failing or created,
+a loss failing, a gain written. `guard` gives the file's name (`page` or `symbol`), the rest of
+the missing-file sentence, and four functions: the figures of a new file, what a forced write
+changed, the loss's failure text up to the commands, and the gain. The accept commands are
+built from the name, once. The write is `JSON.stringify(record, null, 2)` and a newline.
+`page-baseline.mjs` and `symbol-baseline.mjs` keep their exports and signatures, each now a
+guard object and a one-line call, so `tbdocs.mjs` is unchanged; the two probe scripts import
+`GUARDED_SRC` from `baseline.mjs`. The comments on the write restrictions, the source-tree key
+and the accept command moved into `baseline.mjs`; the last lost its history (the use-case
+round that found the defect), keeping the reason.
+
+The kit's `c57-oracle.mjs` runs HEAD's two functions and the working ones over 34 scenarios
+(17 each: every branch, a loss and a gain together, a baseline missing a key, one that is not
+JSON, one with CRLF, 25 and 30 lost URLs, unsorted and repeated URLs), each in a fresh folder,
+and compares the result and the file's bytes after: A/A 0 differ, after the change 1, the
+entry's known exception, an empty URL list now written `"urls": []` where the hand-written form
+gave `"urls": [` and a blank line. The kit's `c57-faults.mjs` puts four faults into
+`baseline.mjs` through `c43-fault.mjs` (a loss passes; a gain is written with `write` false; a
+missing file is created with `write` false; another source tree is measured), and each fails
+probes in both gates (3 and 1 for the first, 1 and 1 for each other), every run exit 1. A
+build, then `tbdocs --src docs --check-audit-index --update-page-baseline`, then
+`--update-symbol-baseline` (`pages 914 -> 914, static files 250 -> 250`, `4086 -> 4086 URLs`):
+both committed baselines hash as HEAD's blobs after each.
+
+`compare_trees`: the two pages edited differ (Builder.md, Pipeline-Stages.md, with the search
+data and `book.html`), nothing else. Pipeline-Stages.md has a `baseline.mjs` table and drops
+`GUARDED_SRC` from `page-baseline.mjs`'s; Builder.md's module table gains rows for
+`baseline.mjs` and `symbol-baseline.mjs`, which had none; WIP.Build.md's drift-guard section
+names where each of its three lessons is now a comment (it said all three were in
+`page-baseline.mjs`, and the second never was; it is in `check_tree_fresh.mjs`).
+
+**Found in passing, not fixed:** Builder.md's module table has no row for `symbols.mjs` either;
+every other `builder/*.mjs` has one.
+
 ### C58 — `builder: fold six small duplicates`
 
 Each written twice, with no recorded reason for the copy:

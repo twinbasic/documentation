@@ -27,9 +27,9 @@
 //   - the drift guard's refusals, which on a healthy tree it never shows.
 
 import { readFile } from "node:fs/promises";
+import { GUARDED_SRC } from "../builder/baseline.mjs";
 import { checkSymbolBaseline } from "../builder/symbol-baseline.mjs";
 import { deriveSymbolIndex, headingsOf, serializeSymbolIndex } from "../builder/symbols.mjs";
-import { GUARDED_SRC } from "../builder/page-baseline.mjs";
 import { baselineFixture, createProbes, exitOnCrash } from "./lib/gate-probes.mjs";
 import { apiSnapshot, isPublicType, parseTwin } from "./lib/twin-api.mjs";
 
