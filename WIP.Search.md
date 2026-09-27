@@ -14,50 +14,53 @@ depends on the session that wrote it.
 
 **Where it stands.** Every numbered item below is done and committed on
 branch `claude/paintpicture-docs-runtime-f3250d`, rebased onto
-`f8e630e5`. Nothing is pushed. The working tree is clean. The user has
-set this work aside for a week or two, after item 7 (content and index
-entries). **One decision is open for the user**: `default property`
-(see [Item 7](#item-7-content-and-index-entries-from-two-surveys)). The
-other candidates are under "Next", and the user picks.
+staging's `ea96e4c2`; the user handles the remotes. The working tree
+is clean. **The arc is closed for now**: in the user's words it made
+search at least semi-functional where it was quite broken before, and
+further search work resumes later. No decision is open. The candidates
+are under "Next", and the user picks.
 
 | commit | step |
 |---|---|
-| `64e33f63` | this design doc |
-| `0ce186db` | 1: the asterisk crash guard; the replica's tokenizer separator |
-| `1c3edd94` | 2: `eval/search_quality.mjs` and its baseline |
-| `897e48a3` | 3: h3 entries; `search.fold_headings` |
-| `8a6db0b2` | 4: `names`/`qualified` fields; the smart dot split |
-| `281fd978` | 5: stop words kept; dot runs split; lazy index build |
-| `48b15c2e` | intent 1: `search_quality.mjs` judges bare names by reader intent |
-| `6b9ada4a` | intent 3: exact-name and page-title fields, all words first, query tokens trimmed |
-| `0c5f774c` | intent 4: `primary` names, non-word characters kept in exact names, kind words |
-| `31f2d5b4` | pilot 1: prose queries can expect pages right behind (`behind`); ground truth intent-2 |
-| `657d4296` | pilot 2: hand-marked index entries, and the first five |
-| `f684f82c` | qualified names: `qualified` at 500, reached only by qualified names and word pairs |
-| `03108b5a` | only a page's first heading can be its title (`Shape.Shape`, `Timer.Timer`) |
-| `5d4f4e18` | stem twins held whole in `qualified` (`Printer.Fonts`) |
-| `3b839326` | ground truth intent-3: a section of a symbol's page counts for it |
-| `834e2bb5` | lunr's token-set keys separated: queries with the word `a` threw |
-| `0b2dbd96` | the `New Functions` / `Form events` probes diagnosed and measured, not shipped |
-| `2b8de7a9` | ground truth intent-4: page titles and page-plus-section queries in the eval |
-| `3328881c` | a query naming a whole title scores ×3 |
-| `03c90175` | a plural kind word doesn't make the other word a name |
-| `e6237fe7` | HTML entities decoded per token in the index (`&H80004005`) |
-| `eed8a241` | lunr's set unions add in place: `a page` 809 → 87 ms |
-| `df5a34b7` | a kind word is required only while an entry found names the thing |
-| `80d44015` | ground truth intent-5: name-and-kind queries in the eval |
-| `997f72e2` | item 6: the approved prose queries, before their entries |
-| `57b6015e` | item 6: index entries for the recommended terms |
-| `81db4e60` | item 6: the user's-choice prose queries, before their entries |
-| `ca60a834` | item 6: their entries, and a Glossary entry for *namespace* |
-| `d2fe8e27` | item 6: `standard exe`, `create [an] ActiveX DLL` queries, before their entries |
-| `af93606a` | item 6: their entries (New Project first); `pointers` as a secondary entry |
-| `4ac93cb5` | item 7: 41 prose queries from two surveys, before their fixes |
-| `78aefbef` | item 7: content: ByRef/ByVal, optional and named arguments, returning more than one value |
-| `b169ae0e` | item 7: index entries for what the new text still can't find |
+| `091a1154` | this design doc |
+| `6374edb8` | 1: the asterisk crash guard; the replica's tokenizer separator |
+| `f91b8848` | 2: `eval/search_quality.mjs` and its baseline |
+| `44615b92` | 3: h3 entries; `search.fold_headings` |
+| `d267af6c` | 4: `names`/`qualified` fields; the smart dot split |
+| `641f1613` | 5: stop words kept; dot runs split; lazy index build |
+| `d42ced01` | intent 1: `search_quality.mjs` judges bare names by reader intent |
+| `1e840741` | intent 3: exact-name and page-title fields, all words first, query tokens trimmed |
+| `7f706e63` | intent 4: `primary` names, non-word characters kept in exact names, kind words |
+| `38a4c41b` | pilot 1: prose queries can expect pages right behind (`behind`); ground truth intent-2 |
+| `73ff7cb6` | pilot 2: hand-marked index entries, and the first five |
+| `10d9c304` | qualified names: `qualified` at 500, reached only by qualified names and word pairs |
+| `1a15dae3` | only a page's first heading can be its title (`Shape.Shape`, `Timer.Timer`) |
+| `b814e260` | stem twins held whole in `qualified` (`Printer.Fonts`) |
+| `18b023fc` | ground truth intent-3: a section of a symbol's page counts for it |
+| `9210ce51` | lunr's token-set keys separated: queries with the word `a` threw |
+| `2577a8d2` | the `New Functions` / `Form events` probes diagnosed and measured, not shipped |
+| `05bd7ca0` | ground truth intent-4: page titles and page-plus-section queries in the eval |
+| `2eab7b9d` | a query naming a whole title scores ×3 |
+| `c36b5fa1` | a plural kind word doesn't make the other word a name |
+| `cb407ad4` | HTML entities decoded per token in the index (`&H80004005`) |
+| `85ba0a3a` | lunr's set unions add in place: `a page` 809 → 87 ms |
+| `96b57071` | a kind word is required only while an entry found names the thing |
+| `67653d2b` | ground truth intent-5: name-and-kind queries in the eval |
+| `ec1850c1` | item 6: the approved prose queries, before their entries |
+| `c892fa81` | item 6: index entries for the recommended terms |
+| `6cd850e3` | item 6: the user's-choice prose queries, before their entries |
+| `2007c92e` | item 6: their entries, and a Glossary entry for *namespace* |
+| `dc6762f8` | item 6: `standard exe`, `create [an] ActiveX DLL` queries, before their entries |
+| `25848eff` | item 6: their entries (New Project first); `pointers` as a secondary entry |
+| `100213c9` | item 7: 41 prose queries from two surveys, before their fixes |
+| `270f9dae` | item 7: content: ByRef/ByVal, optional and named arguments, returning more than one value |
+| `c980c3ea` | item 7: index entries for what the new text still can't find |
+| `74a436c6` | after the rebase: `search_quality.mjs` takes `REPO_ROOT` from `lib/repo-paths.mjs` |
+| `e2ed3c1e` | `default property` also accepts the Glossary's definition, before it exists |
+| `27fc0592` | Glossary *default member*, also called the default property |
 
 **The eval now** (`node eval/search_quality.mjs`, ground truth
-`intent-5`, 10,325 queries): 98.2% at rank 1, 99.1% in the top 10.
+`intent-5`, 10,327 queries): 98.2% at rank 1, 99.1% in the top 10.
 
 | category | hit@1 | n | what it types |
 |---|---|---|---|
@@ -65,7 +68,7 @@ other candidates are under "Next", and the user picks.
 | qualified names | 100% | 5,108 | `Printer.Fonts` |
 | name and kind | 91.1% | 1,785 | `MaxHeight property` |
 | prose | 97.2% | 108 | hand-picked (`late binding`, `immediate window`, `ByVal`) |
-| page titles | 97.9% | 140 | `Return Syntax` |
+| page titles | 97.2% | 142 | `Return Syntax` |
 | page plus section | 96.7% | 300 | `DTPicker Properties` |
 
 No bare name is out of tier order, and every prose query's `behind`
@@ -73,7 +76,7 @@ page is within the top 3 (22 of 22). Hit@10 was 20.5% and MRR .182 when
 this work began. The overall hit@1 fell from 99.7% when the name-and-kind
 set joined; compare categories, not totals, across ground truths.
 
-**Known misses (184 at rank 1)**, each recorded where it was diagnosed:
+**Known misses (185 at rank 1)**, each recorded where it was diagnosed:
 - 158 name-and-kind queries, mostly properties; not diagnosed yet
   ([Fixed: kind words](#fixed-kind-words)).
 - 10 bare names: 7 enum constants, 2 members
@@ -81,12 +84,17 @@ set joined; compare categories, not totals, across ground truths.
   `MidB$` ([Same-page sections count](#same-page-sections-count)).
 - 3 page titles and 10 page-plus-section queries, each at rank 2 or 3
   ([Fixed: whole titles](#fixed-whole-titles)).
-- 2 prose queries, `declaration` and `comment`, whose Glossary
-  definitions are 2nd and 5th. That is right by the user's ruling (a
+- 1 page title, `Input #`, at 2 behind the `Input` function: the
+  query trims to `input`. Staging's quoting of the titles that end in
+  `#` brought it in: the titles had read `Input`, `Line Input` and
+  `Write`, and the title set skips one-word titles
+  ([After the rebase](#after-the-rebase-onto-ea96e4c2)).
+- 3 prose queries, `declaration`, `comment` and `default property`,
+  whose Glossary definitions are 2nd, 5th and 5th. That is right by the user's ruling (a
   Glossary definition counts within the top 5); an entry would reorder
-  the bare names `Declare` and `Comments` ([Item 6: shipped](#item-6-shipped)).
-- 1 prose query, `default property`, at 6: waiting on the user's call
-  ([Item 7](#item-7-content-and-index-entries-from-two-surveys)).
+  the bare names `Declare` and `Comments` ([Item 6: shipped](#item-6-shipped)),
+  and one for `default property` would put it above CommandButton's
+  `Default` ([Item 7](#item-7-content-and-index-entries-from-two-surveys)).
 
 **Next**, for the user to choose from:
 1. **The 158 name-and-kind misses.** Diagnose them as the whole-title
@@ -101,7 +109,7 @@ set joined; compare categories, not totals, across ground truths.
    the query, and so the ranking, for instance not completing a
    one-letter word ([Fixed: slow multi-word queries](#fixed-slow-multi-word-queries)).
 4. **More content and index entries**, under the rules below. What item 7
-   left: `default property` (the user's call), `COM interop` (no clear
+   left: `COM interop` (no clear
    target), and three content gaps: subclassing, IntelliSense and
    conditional breakpoints (first find out whether the IDE has the last
    two). See [Item 7](#item-7-content-and-index-entries-from-two-surveys).
@@ -111,6 +119,12 @@ set joined; compare categories, not totals, across ground truths.
    never shows. Item 7 fixed 20 such queries with entries, but the cause
    is the pass itself, as in item 2; a fix there needs the spaced and
    kinds probes.
+
+6. **Operator-shaped page titles.** `Input #` (above) and `Mid =`
+   miss rank 1 because the query trims its non-word character. Exact
+   names already spell such characters as word characters (`#If`);
+   whether a whole title can too needs the title set and the spaced
+   probe.
 
 **Done, in order** (each section has the measurements):
 1. The 9 qualified misses: [the title-heading fix](#fixed-a-member-heading-taken-for-the-page-title)
@@ -755,7 +769,7 @@ decide, then edit `eval/search_prose_queries.json`.
 
 ### Where the committed design stands under it
 
-Measured at commit `281fd978`, with intent ground truth: hit@1 89.0% of
+Measured at commit `641f1613`, with intent ground truth: hit@1 89.0% of
 8,012 queries. Failing at rank 1:
 
 - **bare names**: 193 of 2,884 (6.7%):
@@ -800,7 +814,7 @@ measured by `eval_variants.mjs` beside it.
 
 | configuration | hit@1, old ground truth | hit@1, intent |
 |---|---|---|
-| committed (`281fd978`) | 89.5% | 89.0% |
+| committed (`641f1613`) | 89.5% | 89.0% |
 | X1 | 90.1% | 89.5% |
 | X2 | 92.3% | 91.8% |
 | X3 | 89.5% | 89.0% |
@@ -891,7 +905,7 @@ shipped as measured. Four corrections, each measured, took that to none:
    every bare `Xxx$` function that was unfindable, and subsumes the
    asterisk guard, since an all-`*` token trims to nothing.
 
-Measured against the intent baseline (`48b15c2e`):
+Measured against the intent baseline (`d42ced01`):
 
 | | before | after |
 |---|---|---|
@@ -1038,7 +1052,7 @@ definition ranks first on its own text.
   words in `content` brought that to 10 MB, and one field for both levels
   to 5 MB (287 → 292 MB), with identical results.
 
-Against intent-2's baseline (`31f2d5b4`):
+Against intent-2's baseline (`38a4c41b`):
 
 | | before | after |
 |---|---|---|
@@ -1123,7 +1137,7 @@ are also a term on `qualified`, joined with a dot, at clause boost 10.
 
 **Shipped**, in all three copies: `qualified` at boost 500; plain words
 complete in the text fields less `qualified`; word pairs on `qualified`;
-the REQUIRED split. Against intent-2's baseline (`063ed786`'s):
+the REQUIRED split. Against intent-2's baseline (`c95ca0b9`'s):
 
 | | before | after |
 |---|---|---|
@@ -1194,7 +1208,7 @@ the same seven written as two words (`Printer Fonts`). For bare names
 `exact` had fixed this, but its clause matched nothing for a qualified
 name: `exact` held only bare names.
 
-Measured with knobs in the replica, against `03108b5a`'s baseline, and on
+Measured with knobs in the replica, against `1a15dae3`'s baseline, and on
 the throwaway set of every qualified name written as two words:
 
 | variant | worse / better | two words, hit@1 | heap | new terms |
@@ -1374,7 +1388,7 @@ results), nothing measurable after.
 
 **Shipped.**
 
-1. `2b8de7a9`: `eval/search_quality.mjs` derives both sets from the
+1. `05bd7ca0`: `eval/search_quality.mjs` derives both sets from the
    build, as ground truth `intent-4`, with no ranking change (all 8,012
    earlier queries kept their ranks):
    - *page title*: every page's own title of two or more words, as the
@@ -1388,14 +1402,14 @@ results), nothing measurable after.
      section titles 20+ pages share, less sections that document a
      symbol; only that section counts, and a query several sections
      share expects any of them. 300 queries.
-2. `3328881c`: the ×3 re-rank, `boostWholeTitles()`, at the end of
+2. `2eab7b9d`: the ×3 re-rank, `boostWholeTitles()`, at the end of
    `doSearch()` in `just-the-docs.js` and of the replica's `search()`.
    `doSearch()` is outside `initSearch()`, so the offline copy shares it:
    two copies, not three. The replica now needs `docs` in its context
    (`load()` gives it; the tests' fixtures pass it too) and fails loudly
    without it, since a replica that skipped the re-rank would quietly
    differ from the client.
-3. `03c90175`: a kind word counts only in the singular.
+3. `c36b5fa1`: a kind word counts only in the singular.
 
 | | page title (140) | page plus section (300) | other queries | spaced (5,108) |
 |---|---|---|---|---|
@@ -1454,7 +1468,7 @@ and highlights by lunr's character positions in that text. Decoded in
 `search-data.json`, `&lt;Object&gt;` would become a tag in the results
 panel, and every highlight after an entity would shift.
 
-**Shipped** (`e6237fe7`), in all three copies: the tokenizer wrapper
+**Shipped** (`cb407ad4`), in all three copies: the tokenizer wrapper
 (installed in both `initSearch()` copies and the replica's `loadLunr()`)
 passes each token through `decodeTokenEntities()`, which decodes
 `&amp;`, `&lt;`, `&gt;`, `&quot;`, `&apos;`, `&nbsp;` and numeric
@@ -1502,7 +1516,7 @@ field, and `union` copies both sets into a new one every time. The
 all-words pass requires every word as its stem with a trailing wildcard,
 on six fields, and `a*` expands to thousands of terms: quadratic.
 
-**Shipped** (`eed8a241`), in all three copies: `accumulateSetUnions()`,
+**Shipped** (`85ba0a3a`), in all three copies: `accumulateSetUnions()`,
 installed beside `separateTokenSetKeys()`, replaces `Set#union` with one
 that, once it has made a set, adds the next set into it in place. lunr's
 only unions are running totals that drop the set they replace (`c`, the
@@ -1580,7 +1594,7 @@ with the word optional, the `Mid =` statement page, which never says
 "function", comes in on its exact name. The exact-name test alone
 fell back there, since a section carries no names.
 
-**Shipped** (`df5a34b7`), in the client (`doSearch()`, so the offline
+**Shipped** (`96b57071`), in the client (`doSearch()`, so the offline
 copy shares it) and the replica: for a query naming one thing in two or
 more words, if no entry the all-words pass found matched the name in
 `title`, or in `exact` or `primary` (`namesTheThing()`), the pass runs
@@ -1791,7 +1805,7 @@ live client was checked against the replica in the browser.
 - *A term matches only whole words.* `type character` doesn't match
   `type char`, so each spelling a reader types is its own term.
 
-**Decided last** (`d2fe8e27`, `af93606a`):
+**Decided last** (`dc6762f8`, `25848eff`):
 - `standard exe`, `create an ActiveX DLL`, `create ActiveX DLL`: the
   user first suggested Project-Types, but that page covers project types
   "beyond the traditional EXE and ActiveX DLL/Control". The user then
@@ -1824,7 +1838,7 @@ ByRef` (no section explained them), `typelib`, `named parameters`,
 `ByRef` and `ByVal` are not symbols, so entries for them reorder no bare
 name.
 
-**Content** (`78aefbef`), each sample `check_build`, compiled, and its
+**Content** (`270f9dae`), each sample `check_build`, compiled, and its
 printed values confirmed with `tbrun`:
 - Sub: *Passing arguments ByRef and ByVal*; *Optional arguments and
   default values*. Function: *Returning more than one value* (ByRef
@@ -1841,7 +1855,7 @@ printed values confirmed with `tbrun`:
   "statement": `Call statement` fell 1 -> 5. Named arguments now comes
   after the Example.
 
-**Entries** (`b169ae0e`): Sub `ByRef`, `ByVal`, `optional parameters`;
+**Entries** (`c980c3ea`): Sub `ByRef`, `ByVal`, `optional parameters`;
 Function `return multiple values`, `multiple return values`; Call
 `named parameters`; Glossary `typelib`; Project Explorer `visual
 styles`; Attributes `packing alignment`; Categories `registry access`;
@@ -1861,11 +1875,17 @@ panel`, `locals window`, `diagnostics window`, `history panel/window`,
 The live client matched the replica's top three for 10 of the new
 queries in the browser, with no new console errors.
 
-**Open for the user: `default property`.** A VB6 reader means a class's
-default member, which `[DefaultMember]` sets (Attributes). An entry
-there, main or secondary alike, puts it above CommandButton's `Default`
-property for the name-and-kind query `Default property` (1 -> 2). Not
-shipped; the prose query waits at 6.
+**`default property`, settled after the rebase.** A VB6 reader means a
+class's default member, which `[DefaultMember]` sets (Attributes). An
+entry there, main or secondary alike, puts it above CommandButton's
+`Default` property for the name-and-kind query `Default property`
+(1 -> 2); search ignores case, so the two are one query. The user chose
+to try a Glossary definition instead (`e2ed3c1e`, `27fc0592`). Headed
+*default property*, it matched the whole query, took rank 1 at ×3 and
+pushed `Default` to 2, the same trade. Headed *default member*, with
+*default property* as the other name and a link to `[DefaultMember]`,
+it lands at 5, where a Glossary definition counts: 6 -> 5, nothing
+worse.
 
 **Left for later.** `COM interop`: no clear target (Categories' COM
 and Automation list, Interfaces-CoClasses, ActiveX Registration).
@@ -1883,12 +1903,33 @@ site-tooling words.
 `optional parameters` landed on Compiler-Options. Rerun a list before
 using it as guards.
 
+### After the rebase onto ea96e4c2
+
+The user asked for the rebase before the work was set aside. Two
+conflicts, both mechanical: `eval/site_search.mjs`'s imports (staging's
+`lib/repo-paths.mjs` against the branch's `pathToFileURL` for its
+CLI guard) and `builder/render.mjs`'s `renderPage` (staging passes
+`md` to `applyPreRenderRewrites`; the branch keeps `env` for the
+index marks). Staging moved every `eval/` tool onto
+`lib/repo-paths.mjs`, so `search_quality.mjs` followed (`74a436c6`).
+Every branch commit this file cites is given by its rebased hash.
+
+Checked: every gate of `test.bat` and `check.bat`, run one by one, and
+a full `--check-audit-index` build with 0 broken links. The eval against
+the old baseline: 0 worse, 0 better. The query set changed under it:
+staging's `779fe142` quoted the three statement titles that end in
+`#`, which YAML had read as a comment, so the title query `Line Input`
+became `Input #`, `Line Input #` and `Write #` (the last two at 1, `Input #` at 2), and the
+symbol index renamed `Miscellaneous.OrientationConstants` to
+`Miscellaneous2.OrientationConstants` (at 1). The baseline is saved
+again (10,327 queries).
+
 ### Next steps
 
 1. ~~Promote the intent ground truth into `eval/search_quality.mjs`.~~
-   Done, `48b15c2e`.
+   Done, `d42ced01`.
 2. ~~Decide the `conditional compilation` expectation.~~ The user chose
-   Topic-Preprocessor, with Compiler-Constants right behind (`31f2d5b4`).
+   Topic-Preprocessor, with Compiler-Constants right behind (`38a4c41b`).
 3. ~~Implement X1 + X2 + X3 in all three copies.~~ Done, with the four
    corrections in "What shipped". `test/search.test.mjs`'s reader-intent
    guard covers the fields and the query.
