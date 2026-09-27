@@ -3,6 +3,7 @@ title: Enhanced Pointer Functionality
 parent: Language Syntax
 nav_order: 10
 permalink: /Features/Language/Pointers
+index_also: pointers
 ---
 
 # Enhanced Pointer Functionality

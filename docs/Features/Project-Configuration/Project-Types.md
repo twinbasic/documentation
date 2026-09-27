@@ -3,6 +3,10 @@ title: Project Types
 parent: Project Configuration
 nav_order: 1
 permalink: /Features/Project-Configuration/Project-Types
+index_also:
+  - standard exe
+  - create an ActiveX DLL
+  - create ActiveX DLL
 ---
 
 # Project Types

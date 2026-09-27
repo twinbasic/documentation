@@ -76,6 +76,7 @@ Every project template sets it to `${SourcePath}\Build\${ProjectName}_${Architec
 The full path of the host EXE that the compiler creates for [Fusion](../../../Features/Fusion): the separate program that ActiveX controls run in. It can use the same variables as [Build Output Path](#build-output-path), except that `${Architecture}` is `win32host` or `win64host`. When it is not set, the compiler uses *Build Output Path* when it needs the file. A built program expects the host EXE in its own folder. For a host EXE kept anywhere else, the program has to set `App.FusionHostEXEPath` as it starts --- see [Runtime Behaviour and Deployment](../../../Features/Fusion#runtime-behaviour-and-deployment). In the `Settings` file it is `project.fusionBuildPath`.
 
 ## Build Type
+{: index_also="standard exe; create an ActiveX DLL; create ActiveX DLL" }
 
 The type of file the compiler creates: **Standard EXE**, **ActiveX DLL**, **ActiveX Control**, **Standard DLL** or **Package TWINPACK**. [Project Types](../../../Features/Project-Configuration/Project-Types) describes the Standard DLL, and code can test the setting with the [`TWINBASIC_BUILD_TYPE`](../../../Reference/Compiler-Constants#twinbasic_build_type) compiler constant. In the `Settings` file it is `project.buildType`.
 
