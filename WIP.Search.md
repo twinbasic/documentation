@@ -49,6 +49,7 @@ wait for the user's rulings and approvals.
 | `e6237fe7` | HTML entities decoded per token in the index (`&H80004005`) |
 | `eed8a241` | lunr's set unions add in place: `a page` 809 → 87 ms |
 | `df5a34b7` | a kind word is required only while an entry found names the thing |
+| `80d44015` | ground truth intent-5: name-and-kind queries in the eval |
 
 Hit@10 went from 20.5% to 100%, and MRR from .182 to .997. By reader
 intent, rank 1 is right for 99.9% of queries (89.0% before the intent
@@ -59,6 +60,9 @@ The eval now also types every page's multi-word title (140 queries) and
 `<page title> <section title>` for shared section titles (300). They
 were at 87.9% and 22.7% at rank 1; after the whole-title round they are
 at 97.9% and 96.7%. See [Fixed: whole titles](#fixed-whole-titles).
+It also types every symbol as its name and its kind (1,785 queries,
+`MaxHeight property`): about 62.6% at rank 1 before the kind-word fix,
+91.1% after. See [Fixed: kind words](#fixed-kind-words).
 
 The remaining 23 rank-1 misses: 10 bare names (7 enum constants and 2
 members, in
@@ -165,7 +169,7 @@ qualified names are now at rank 1, typed with a dot or as two words.
 - `node eval/search_quality.mjs --compare eval/search_baseline.json --worst 20`
   measures a build against the saved baseline; `--save` updates it;
   `--failures N` lists what misses rank 1, by category and tier. The
-  baseline records its ground truth (`intent-4`).
+  baseline records its ground truth (`intent-5`).
 - The eval's symbol queries are one word each; its page-title and
   page-plus-section sets are its only multi-word queries. So for any
   change to the all-words pass, also rank every qualified symbol written
@@ -1552,9 +1556,30 @@ Eight mutations (no fallback, either half of the test dropped in either
 copy, kind words never unrequired) each fail it.
 
 **Left**: 164 not at rank 1, 93 not found, mostly properties (75). Not
-diagnosed further. Whether to promote the set into
-`eval/search_quality.mjs` as ground truth, as the whole-title sets were,
-is for the user.
+diagnosed further.
+
+**Ground truth `intent-5`.** The user agreed to make the set ground truth
+in `eval/search_quality.mjs` (category `name and kind`), less `sub` and
+`member`: readers don't say them (a Sub is a method to them). Spelling a
+Sub as `method` instead would need another query pass, which lunr's cost
+rules out for now. Operators, with no word character, stay out, as the
+bare-name set measures them. Any symbol of that name and kind counts,
+and any section of a page that documents one. Reasons against, noted
+when it was proposed: the fallback was designed on this set, so it
+starts near its best (fine as a regression guard, flattering for gains);
+several symbols of one name and kind (`Name property`) are judged
+leniently, any of them counting; and at 1,785 queries it moves the
+overall hit@1 (99.7% → 98.2%), so compare categories, not the total,
+across ground truths. `KIND_WORDS` is exported from the replica, so the
+eval and `probes/kinds.mjs` build the set from the list the replica
+searches with.
+
+| | |
+|---|---|
+| name and kind (1,785) | 91.1% hit@1, 95.0% hit@10, MRR .929 |
+| before the kind-word fix, same set (from the probe run) | about 62.6% hit@1, 624 not found |
+| earlier 8,452 queries | unchanged |
+| eval run | about 9 s longer |
 
 ### Item 6: candidates for approval
 
