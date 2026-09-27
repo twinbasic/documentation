@@ -54,6 +54,6 @@ node eval/search-experiments/intent/eval_variants.mjs docs/_site    # X1/X2/X3/X
 - `variants.mjs` holds the index and query variants (X1 exact-name field, X2
   page-title field, X3 all words first, X1t tiered exact fields) as
   modifications of `site_search.mjs`. That file, like `search_quality.mjs`,
-  is a copy of the `eval/` file as of commit `0961e6e9`.
+  is a copy of the `eval/` file as of commit `281fd978`.
 - `quick_combo.mjs` is a quick single-combination check.
 - `run.log` and `run2.log` hold the runs' output.

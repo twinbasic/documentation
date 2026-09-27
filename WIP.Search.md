@@ -20,21 +20,21 @@ tree is clean; the last commit only records a hash in this file.
 
 | commit | step |
 |---|---|
-| `1927e070` | this design doc |
-| `40297b81` | 1: the asterisk crash guard; the replica's tokenizer separator |
-| `ed865316` | 2: `eval/search_quality.mjs` and its baseline |
-| `378e9d87` | 3: h3 entries; `search.fold_headings` |
-| `fd0bfa7b` | 4: `names`/`qualified` fields; the smart dot split |
-| `0961e6e9` | 5: stop words kept; dot runs split; lazy index build |
-| `d6075e23` | intent 1: `search_quality.mjs` judges bare names by reader intent |
-| `482ae8af` | intent 3: exact-name and page-title fields, all words first, query tokens trimmed |
-| `08eb2c77` | intent 4: `primary` names, non-word characters kept in exact names, kind words |
-| `ae880486` | pilot 1: prose queries can expect pages right behind (`behind`); ground truth intent-2 |
-| `70b73344` | pilot 2: hand-marked index entries, and the first five |
-| `d74a19c1` | qualified names: `qualified` at 500, reached only by qualified names and word pairs |
-| `0725ab72` | only a page's first heading can be its title (`Shape.Shape`, `Timer.Timer`) |
-| `965cacac` | stem twins held whole in `qualified` (`Printer.Fonts`) |
-| `f16c4726` | ground truth intent-3: a section of a symbol's page counts for it |
+| `64e33f63` | this design doc |
+| `0ce186db` | 1: the asterisk crash guard; the replica's tokenizer separator |
+| `1c3edd94` | 2: `eval/search_quality.mjs` and its baseline |
+| `897e48a3` | 3: h3 entries; `search.fold_headings` |
+| `8a6db0b2` | 4: `names`/`qualified` fields; the smart dot split |
+| `281fd978` | 5: stop words kept; dot runs split; lazy index build |
+| `48b15c2e` | intent 1: `search_quality.mjs` judges bare names by reader intent |
+| `6b9ada4a` | intent 3: exact-name and page-title fields, all words first, query tokens trimmed |
+| `0c5f774c` | intent 4: `primary` names, non-word characters kept in exact names, kind words |
+| `31f2d5b4` | pilot 1: prose queries can expect pages right behind (`behind`); ground truth intent-2 |
+| `657d4296` | pilot 2: hand-marked index entries, and the first five |
+| `f684f82c` | qualified names: `qualified` at 500, reached only by qualified names and word pairs |
+| `03108b5a` | only a page's first heading can be its title (`Shape.Shape`, `Timer.Timer`) |
+| `5d4f4e18` | stem twins held whole in `qualified` (`Printer.Fonts`) |
+| `3b839326` | ground truth intent-3: a section of a symbol's page counts for it |
 
 Hit@10 went from 20.5% to 100%, and MRR from .182 to .997. By reader
 intent, rank 1 is right for 99.9% of queries (89.0% before the intent
@@ -650,7 +650,7 @@ decide, then edit `eval/search_prose_queries.json`.
 
 ### Where the committed design stands under it
 
-Measured at commit `0961e6e9`, with intent ground truth: hit@1 89.0% of
+Measured at commit `281fd978`, with intent ground truth: hit@1 89.0% of
 8,012 queries. Failing at rank 1:
 
 - **bare names**: 193 of 2,884 (6.7%):
@@ -695,7 +695,7 @@ measured by `eval_variants.mjs` beside it.
 
 | configuration | hit@1, old ground truth | hit@1, intent |
 |---|---|---|
-| committed (`0961e6e9`) | 89.5% | 89.0% |
+| committed (`281fd978`) | 89.5% | 89.0% |
 | X1 | 90.1% | 89.5% |
 | X2 | 92.3% | 91.8% |
 | X3 | 89.5% | 89.0% |
@@ -786,7 +786,7 @@ shipped as measured. Four corrections, each measured, took that to none:
    every bare `Xxx$` function that was unfindable, and subsumes the
    asterisk guard, since an all-`*` token trims to nothing.
 
-Measured against the intent baseline (`d6075e23`):
+Measured against the intent baseline (`48b15c2e`):
 
 | | before | after |
 |---|---|---|
@@ -933,7 +933,7 @@ definition ranks first on its own text.
   words in `content` brought that to 10 MB, and one field for both levels
   to 5 MB (287 → 292 MB), with identical results.
 
-Against intent-2's baseline (`ae880486`):
+Against intent-2's baseline (`31f2d5b4`):
 
 | | before | after |
 |---|---|---|
@@ -1018,7 +1018,7 @@ are also a term on `qualified`, joined with a dot, at clause boost 10.
 
 **Shipped**, in all three copies: `qualified` at boost 500; plain words
 complete in the text fields less `qualified`; word pairs on `qualified`;
-the REQUIRED split. Against intent-2's baseline (`188c18c2`'s):
+the REQUIRED split. Against intent-2's baseline (`063ed786`'s):
 
 | | before | after |
 |---|---|---|
@@ -1089,7 +1089,7 @@ the same seven written as two words (`Printer Fonts`). For bare names
 `exact` had fixed this, but its clause matched nothing for a qualified
 name: `exact` held only bare names.
 
-Measured with knobs in the replica, against `0725ab72`'s baseline, and on
+Measured with knobs in the replica, against `03108b5a`'s baseline, and on
 the throwaway set of every qualified name written as two words:
 
 | variant | worse / better | two words, hit@1 | heap | new terms |
@@ -1166,9 +1166,9 @@ is second.
 ### Next steps
 
 1. ~~Promote the intent ground truth into `eval/search_quality.mjs`.~~
-   Done, `d6075e23`.
+   Done, `48b15c2e`.
 2. ~~Decide the `conditional compilation` expectation.~~ The user chose
-   Topic-Preprocessor, with Compiler-Constants right behind (`ae880486`).
+   Topic-Preprocessor, with Compiler-Constants right behind (`31f2d5b4`).
 3. ~~Implement X1 + X2 + X3 in all three copies.~~ Done, with the four
    corrections in "What shipped". `test/search.test.mjs`'s reader-intent
    guard covers the fields and the query.
