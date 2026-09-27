@@ -299,6 +299,46 @@ const CASES = [
   { tool: "scripts/sweep_a11y.mjs", args: ["--limit"], exit: 2, stderr: "unknown arg: --limit\n" },
   { tool: "scripts/sweep_a11y.mjs", args: ["--theme", "drak"], exit: 2, stderr: 'unknown --theme "drak"; expected one of light, dark or both\n' },
   { tool: "scripts/sweep_a11y.mjs", args: ["--viewport", "huge"], exit: 2, stderr: 'unknown --viewport "huge"; expected one of desktop, mobile or both\n' },
+
+  // Recorded in C49, before the harness tools moved onto lib/cli.mjs. All of
+  // them ignore an unknown flag. tbbuild, tbrun and addin_test answer --help
+  // with their usage line on stderr and exit 2; tbbuild checks its numbers
+  // first. tbbuild finds its project anywhere in the list (C17). tbrun and
+  // addin_test give a value flag with nothing after it, or "", its default,
+  // and a value flag takes the argument after it whatever it is.
+  // check_examples and census_attributes print their help on stdout and exit
+  // 0, after the value checks; build_package_api has no --help, and
+  // gen_attribute_probes takes any argument as its output folder, so only its
+  // empty list is a case. census_attributes prints its own header comment,
+  // with the checkout's line endings.
+  { tool: "scripts/tbbuild.mjs", args: [], exit: 2, stderr: /^usage: node scripts\/tbbuild\.mjs / },
+  { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--help"], exit: 2, stderr: /^usage: node scripts\/tbbuild\.mjs / },
+  { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--arch", "win99"], exit: 2, stderr: /^usage: node scripts\/tbbuild\.mjs / },
+  { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--port", "1.5"], exit: 2, stderr: /^--port takes a positive whole number\nusage: node scripts\/tbbuild\.mjs / },
+  { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--timeout", "abc"], exit: 2, stderr: /^--timeout takes a positive number\nusage: node scripts\/tbbuild\.mjs / },
+  { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--timeout", "-3"], exit: 2, stderr: /^--timeout needs a value\nusage: node scripts\/tbbuild\.mjs / },
+  { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--port", "0", "--help"], exit: 2, stderr: /^--port takes a positive whole number\nusage: node scripts\/tbbuild\.mjs / },
+  { tool: "scripts/tbbuild.mjs", args: ["--bogus", "--keep", "x.twinproj"], exit: 2, stderr: "no such project: x.twinproj\n" },
+  { tool: "scripts/tbrun.mjs", args: [], exit: 2, stderr: /^usage: node scripts\/tbrun\.mjs / },
+  { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--help"], exit: 2, stderr: /^usage: node scripts\/tbrun\.mjs / },
+  { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch", "win99"], exit: 2, stderr: /^usage: node scripts\/tbrun\.mjs / },
+  { tool: "scripts/tbrun.mjs", args: ["--port", "no-such-dir"], exit: 2, stderr: /^usage: node scripts\/tbrun\.mjs / },
+  { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch"], exit: 2, stderr: /^not a directory: .*no-such-dir\ntbrun takes an exported source tree / },
+  { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch", ""], exit: 2, stderr: /^not a directory: .*no-such-dir\ntbrun takes an exported source tree / },
+  { tool: "scripts/tbrun.mjs", args: ["--bogus", "no-such-dir"], exit: 2, stderr: /^not a directory: .*no-such-dir\ntbrun takes an exported source tree / },
+  { tool: "scripts/addin_test.mjs", args: ["--help"], exit: 2, stderr: /^usage: node scripts\/addin_test\.mjs / },
+  { tool: "scripts/addin_test.mjs", args: ["--ide"], exit: 2, stderr: /^no twinBASIC IDE found: pass --ide / },
+  { tool: "scripts/addin_test.mjs", args: ["--ide", ""], exit: 2, stderr: /^no twinBASIC IDE found: pass --ide / },
+  { tool: "scripts/check_examples.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_examples\.mjs \[options\]\n/ },
+  { tool: "scripts/check_examples.mjs", args: ["--jobs", "0"], exit: 2, stderr: "check_examples: --jobs takes a positive whole number\n" },
+  { tool: "scripts/check_examples.mjs", args: ["--batch", "1.5"], exit: 2, stderr: "check_examples: --batch takes a positive whole number\n" },
+  { tool: "scripts/check_examples.mjs", args: ["--jobs", "0", "--help"], exit: 2, stderr: "check_examples: --jobs takes a positive whole number\n" },
+  { tool: "scripts/check_examples.mjs", args: ["--help", "--jobs"], exit: 2, stderr: "check_examples: --jobs needs a value\n" },
+  { tool: "scripts/census_attributes.mjs", args: ["--help"], exit: 0, stdout: /^\n {4}node scripts\/census_attributes\.mjs \[options\]\r?\n/ },
+  { tool: "scripts/census_attributes.mjs", args: ["--help", "--attr"], exit: 2, stderr: "--attr needs a value\n" },
+  { tool: "scripts/census_attributes.mjs", args: ["--dump-sites"], exit: 2, stderr: "--dump-sites needs a value\n" },
+  { tool: "scripts/build_package_api.mjs", args: ["--help"], exit: 2, stderr: "no twinBASIC install found; pass --ide or set TB_IDE\n" },
+  { tool: "scripts/gen_attribute_probes.mjs", args: [], exit: 2, stdout: /^Generate a twinBASIC probe project for Reference\/Attributes\.md applicability\.\n/ },
 ];
 
 const TIMEOUT_MS = 30_000;

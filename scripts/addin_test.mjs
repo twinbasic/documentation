@@ -53,6 +53,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { parseCli } from "../lib/cli.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
 import { wantShow } from "./lib/tb-ide.mjs";
 import { buildNumber, findIde } from "./lib/tb-install.mjs";
@@ -63,24 +64,36 @@ import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const SUITE = path.join(REPO_ROOT, "test", "addin");
 
-const argv = process.argv.slice(2);
-const flag = (n) => argv.includes(`--${n}`);
-const opt = (n, d) => { const i = argv.indexOf(`--${n}`); return i >= 0 && argv[i + 1] ? argv[i + 1] : d; };
+const { values } = parseCli(process.argv.slice(2), {
+  options: {
+    only: { type: "string" },
+    port: { type: "string" },
+    jobs: { type: "string" },
+    timeout: { type: "string" },
+    ide: { type: "string" },
+    show: { type: "boolean", default: false },
+    hide: { type: "boolean", default: false },
+    help: { type: "boolean", default: false },
+  },
+  unknown: "ignore",
+  positionals: 0,
+  acceptsValue: () => true,
+});
 const die = (code, msg) => { console.error(msg); process.exit(code); };
 
-if (flag("help")) {
+if (values.help) {
   die(2, "usage: node scripts/addin_test.mjs [--only REGEX] [--port N] [--jobs N] " +
          "[--timeout S] [--ide <twinBASIC.exe>] [--show|--hide]");
 }
-const only = opt("only", null) ? new RegExp(opt("only")) : null;
-const basePort = Number(opt("port", 9560));
-const jobs = Math.max(1, Number(opt("jobs", 2)));
-const laneTimeout = Number(opt("timeout", 600)) * 1000;
-const show = wantShow({ show: flag("show"), hide: flag("hide") });
+const only = values.only ? new RegExp(values.only) : null;
+const basePort = Number(values.port || 9560);
+const jobs = Math.max(1, Number(values.jobs || 2));
+const laneTimeout = Number(values.timeout || 600) * 1000;
+const show = wantShow({ show: values.show, hide: values.hide });
 
 // ---------------------------------------------------------------- refusals
 
-const ide = findIde(opt("ide", undefined));
+const ide = findIde(values.ide || undefined);
 if (!ide || !existsSync(ide)) {
   die(2, "no twinBASIC IDE found: pass --ide <twinBASIC.exe>, set TB_IDE, " +
          "or unpack a twinBASIC_IDE_BETA_<n> folder on your Desktop");

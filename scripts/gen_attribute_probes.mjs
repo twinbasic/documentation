@@ -38,6 +38,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { parseAttributes } from "./lib/attributes-doc.mjs";
+import { parseCli } from "../lib/cli.mjs";
 import { DOCS_DIR } from "../lib/repo-paths.mjs";
 
 const ATTR_DOC = path.join(DOCS_DIR, "Reference", "Attributes.md");
@@ -1106,14 +1107,15 @@ const MAIN_TWIN = "' Startup object for the probe project. Does nothing.\n\n" +
   "Module ProbeMain\n    Public Sub Main()\n    End Sub\nEnd Module\n";
 
 async function main(argv) {
-  if (argv.length < 1) {
+  const { positionals } = parseCli(argv, { unknown: "positional", positionals: { min: 0 } });
+  if (positionals.length < 1) {
     console.log(USAGE);
     return 2;
   }
-  const out = argv[0];
+  const out = positionals[0];
   // The key must land OUTSIDE the tree: anything inside it gets packed into the
   // .twinproj and shows up as a stray file in the project.
-  const keyPath = argv[1] ?? path.join(path.dirname(path.resolve(out)), "probe-key.md");
+  const keyPath = positionals[1] ?? path.join(path.dirname(path.resolve(out)), "probe-key.md");
   const srcDir = path.join(out, "Sources");
   const overflowSrc = path.join(out + "-2", "Sources");
   await fs.mkdir(srcDir, { recursive: true });

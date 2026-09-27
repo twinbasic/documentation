@@ -252,7 +252,9 @@ is implemented.
    helper commit that must change nothing (C43).
 9. **L1-10 closes as a side effect.** `node:util` `parseArgs` accepts `--name=value` for
    every option and cannot be told not to, so this is the one behaviour change Phase 2's
-   migrations make, and it only adds a form.
+   migrations make, and it only adds a form. C49 adds a second, at the owner's choice
+   (2026-09-27): in the harness tools whose `opt()` found a flag with `indexOf`, a repeated
+   flag now keeps its last value, as `parseArgs` does and as C72's strict parse would.
 10. **Three of the review's facts were wrong**, found by proofreading this plan against the
     source (A8-2, fixed in C10; A2-1, fixed in C14; L4-10, whose corrected figure, 119 probes,
     is stated in C61).
@@ -1545,6 +1547,64 @@ have a `flag()` and `opt()` pair and a `die()`, in three shapes (V3's fifth note
 
 **Verify.** `check_cli.mjs`'s cases; the `examples.bat` summary and `addin-test.bat`
 unchanged (harness runs, one at a time).
+
+**Landed.** All seven parse through `parseCli`. `tbbuild`, `check_examples`,
+`census_attributes` and `build_package_api` take the default `acceptsValue`, which is their
+old check for a value flag with no value, and print a `CliError` through `withUsageError`:
+`tbbuild` the message and then its usage line, `check_examples` with its `check_examples: `
+prefix, the other two the message alone, all on stderr with exit 2. Their number checks
+(`positive`, `positiveInteger`) stay in the tools, and so does the order: `tbbuild` and
+`check_examples` check their numbers before `--help`. `tbrun` and `addin_test` take
+`acceptsValue: () => true` and read each value as `values.x || default`, which keeps their
+truthy test until C72: a value flag at the end of the list, or given `""`, gets its default,
+and any other argument after it is its value. All six ignore an unknown flag (`unknown:
+"ignore"`); `tbbuild` and `tbrun` take one positional (`max: 1`), a second one ignored as
+before. `gen_attribute_probes` takes `unknown: "positional"` with no maximum, since every
+argument after its second is ignored. `check_examples` prints its help through
+`printHelpAndExit` (the same bytes: the text has no final newline); `census_attributes` still
+prints the slice of its own header comment with `console.log`; `build_package_api` still has
+no `--help`. The survey's list for `check_examples` lacked `--show` and `--hide`, which it
+passes on to `tbbuild`; they are in its table. The edit was a Sonnet agent's (65 calls,
+~275k, 18.6 min), reviewed line by line; one comment lost a dangling "too".
+
+The cases were recorded from the unedited tools first: 28 across the seven (`--help` in each
+shape, a number refused, a dash-led value, a bad `--arch`, a number error before `--help`,
+the project after an unknown flag, `tbrun`'s value flag taking the source folder, a trailing
+and an empty value given the default, `build_package_api --help` ignored,
+`gen_attribute_probes` with no argument). `census_attributes --help` prints its header with
+the checkout's line endings, so its case allows `\r`. Some cases stop at the first check of
+what the command line names (a project, a source folder, an install), which is where a
+default or a positional shows; Tools.md's `check_cli` section now says a case may. `check_cli`
+now makes 106 checks, 39
+probes and 67 cases. The kit's `c49-tools.mjs` (`c48-tools.mjs`'s shape, HEAD's copies
+beside the real tools) runs 35 real invocations that start no IDE: `tbbuild` and `tbrun`
+stopped at the project, Settings or IDE check with every option given, `addin_test` at the
+IDE check and at a lane filter matching nothing, `check_examples --census` in four forms,
+`--report` and `--help`, `census_attributes` over the warm BETA 987 cache, `build_package_api
+--check`, and `gen_attribute_probes` writing two probe trees, compared by hash. 29 are the
+same. Four differ as recorded below. `addin_test --only "("` crashes alike on both, the stack
+trace's line number moved (75 to 88). `census_attributes --help` differs only in `\r`: HEAD's
+copy is written from the LF blob and the tool prints its own file; the two slices are equal
+without it. The harness bar is unchanged from the BETA 987 baselines: `examples.bat` exit 0
+after 126.3 s, `1129 sample(s), 1129 compile, 0 finding(s), 124.0s -- clean`;
+`addin-test.bat` exit 0 after 129.8 s, `10 of 10 lane(s) ran: 10 passed`, `registry: put
+back (20 project-state, 21 recent-list and 3 association writes)`, the kit's registry
+snapshots identical before and after. `build.bat`, `check.bat` (the a11y line unchanged)
+and `test.bat` exit 0, and the tree comparison differs only in Tools.md's page, online and
+offline, the search index and `book.html`.
+
+What differs, none of it a recorded case: a repeated flag keeps its last value in `tbbuild`,
+`check_examples`, `census_attributes`, `build_package_api`, `addin_test` and `tbrun`, whose
+`opt()` also used `indexOf` (departure 9, at the owner's choice; `--census --jobs 3 --jobs
+0` now refuses the 0); `--name=value` is accepted (departure 9; `--only=Reference/Core`
+now filters); after `--` an argument is a positional, and `--` itself is not one; a
+single-dash argument is an unknown short option, so `tbbuild -x proj.twinproj` builds
+`proj.twinproj` where it said `not a .twinproj: -x`; and in `tbrun` and `addin_test` a flag
+taken as another flag's value (`--port --json`) no longer also counts as itself.
+
+Found in passing, not fixed: `census_attributes`' `--dump-sites <file>` is in neither its
+header comment nor its `--help`, which prints that comment; its help's first line is empty,
+since the slice starts at a bare `//`.
 
 ### C50 — `scripts: the gates and link tools parse through lib/cli.mjs`
 

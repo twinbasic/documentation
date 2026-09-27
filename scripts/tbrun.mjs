@@ -101,6 +101,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, mkdirSync, statSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { parseCli } from "../lib/cli.mjs";
 import { compilerExe, findIde } from "./lib/tb-install.mjs";
 import { BUILD_FAILED, TARGETS, attachIde, clickCenter, compileOutcome, keepClears, keptClears,
          killTree, launchIde, readConsole, setBuildTarget, shutdownIde, summaryLine,
@@ -108,29 +109,38 @@ import { BUILD_FAILED, TARGETS, attachIde, clickCenter, compileOutcome, keepClea
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
-const argv = process.argv.slice(2);
-const flag = (n) => argv.includes(`--${n}`);
-const opt = (n, d) => {
-  const i = argv.indexOf(`--${n}`);
-  return i >= 0 && argv[i + 1] ? argv[i + 1] : d;
-};
+const { values, positionals } = parseCli(process.argv.slice(2), {
+  options: {
+    port: { type: "string" },
+    arch: { type: "string" },
+    timeout: { type: "string" },
+    quiet: { type: "string" },
+    ide: { type: "string" },
+    "reap-images": { type: "string" },
+    json: { type: "boolean", default: false },
+    raw: { type: "boolean", default: false },
+    keep: { type: "boolean", default: false },
+    "no-reap": { type: "boolean", default: false },
+    show: { type: "boolean", default: false },
+    hide: { type: "boolean", default: false },
+    help: { type: "boolean", default: false },
+  },
+  unknown: "ignore",
+  positionals: { min: 0, max: 1 },
+  acceptsValue: () => true,
+});
 
 const die = (code, msg) => { console.error(msg); process.exit(code); };
 
-// Every flag that TAKES A VALUE has to be named here, or its value is mistaken
-// for the source directory.
-const VALUE_FLAGS = ["port", "arch", "timeout", "quiet", "ide", "reap-images"];
-const positional = argv.filter((a, i) =>
-  !a.startsWith("--") && !(i > 0 && VALUE_FLAGS.includes(argv[i - 1]?.replace(/^--/, ""))));
-const arch = opt("arch", TARGETS[0]);
+const arch = values.arch || TARGETS[0];
 
-if (!positional.length || flag("help") || !TARGETS.includes(arch)) {
+if (!positionals.length || values.help || !TARGETS.includes(arch)) {
   die(2, "usage: node scripts/tbrun.mjs <source-dir> [--port N] [--arch win32|win64] " +
          "[--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] " +
          "[--reap-images a,b] [--show|--hide]");
 }
 
-const srcDir = path.resolve(positional[0]);
+const srcDir = path.resolve(positionals[0]);
 if (!existsSync(srcDir) || !statSync(srcDir).isDirectory()) {
   die(2, `not a directory: ${srcDir}\n` +
          `tbrun takes an exported source tree (the folder holding Sources/ and Settings), ` +
@@ -141,9 +151,9 @@ if (!existsSync(srcDir) || !statSync(srcDir).isDirectory()) {
 const settingsPath = path.join(srcDir, "Settings");
 if (!existsSync(settingsPath)) die(2, `no Settings file in ${srcDir}`);
 
-const port = Number(opt("port", 9346));
-const timeoutMs = Number(opt("timeout", 120)) * 1000;
-const quietMs = Number(opt("quiet", 2500));
+const port = Number(values.port || 9346);
+const timeoutMs = Number(values.timeout || 120) * 1000;
+const quietMs = Number(values.quiet || 2500);
 
 // Images a probe can leave behind through COM activation. Office is the set that
 // prompted this; --reap-images replaces the list for anything else. Only out-of-
@@ -158,7 +168,7 @@ const REAP_IMAGES = [
 
 // One install packs the tree and builds it. --ide, then TB_IDE, then the
 // newest BETA on the Desktop, as for every other tool here.
-const ide = findIde(opt("ide", undefined));
+const ide = findIde(values.ide || undefined);
 if (!ide || !existsSync(ide)) {
   die(2, "no twinBASIC IDE found. Pass --ide <twinBASIC.exe> or set TB_IDE.");
 }
@@ -245,7 +255,7 @@ const processesBefore = snapshotProcesses();
 // it -- its recent list and its saved project state, see lib/tb-registry.mjs --
 // are swept by that folder once the IDE has exited, along with any an earlier
 // run on this port left behind. Not under --keep: a kept IDE is still writing.
-const tidy = flag("keep") ? null : startTidy({ prefixes: [work] });
+const tidy = values.keep ? null : startTidy({ prefixes: [work] });
 
 let ideRun = null;
 // A failure before the console is read: said on stdout, as it was when this
@@ -259,8 +269,8 @@ function failBuild(code, text) {
 
 try {
   ideRun = await launchIde({
-    exe: ide, project: projPath, port, keep: flag("keep"),
-    show: wantShow({ show: flag("show"), hide: flag("hide") }),
+    exe: ide, project: projPath, port, keep: values.keep,
+    show: wantShow({ show: values.show, hide: values.hide }),
   });
 } catch (e) {
   failBuild(2, e.message);
@@ -328,7 +338,7 @@ try {
   // line that starts where the console's text does, and a line holding only a
   // timestamp is never blank, so every check reads without the column; under
   // --raw the lines printed are the same entries, read again with it.
-  shown = flag("raw") ? strip(last, await readConsole(cdp, { timestamps: true })) : captured;
+  shown = values.raw ? strip(last, await readConsole(cdp, { timestamps: true })) : captured;
   const kept = await keptClears(cdp);
   if (!kept) {
     throw new Error("the IDE page no longer holds what the DEBUG CONSOLE's clears erased, so " +
@@ -385,7 +395,7 @@ if (!captured.length) {
          (wasTemplate ? "" : "\n  buildPath was already explicit, so a Save dialog is unlikely."));
 }
 
-if (flag("json")) {
+if (values.json) {
   console.log(JSON.stringify({ exe: builtFile(), arch, lines: shown, idePid: ideRun?.pid ?? null,
                                reaped }, null, 2));
 } else {
@@ -414,10 +424,10 @@ function strip(text, raw = null) {
 // and anything it spawned with CreateProcess; what it cannot take is a COM
 // server, which is what reapOrphans is for.
 function shutdown() {
-  if (flag("keep")) return null;          // the IDE is the caller's problem now
+  if (values.keep) return null;          // the IDE is the caller's problem now
   shutdownIde(ideRun);
   finishTidy(tidy);
-  return flag("no-reap") ? null : reapOrphans();
+  return values.noReap ? null : reapOrphans();
 }
 
 // Identity is pid + start time, because a pid alone is reused and a run that
@@ -460,7 +470,7 @@ function reapOrphans() {
   const after = snapshotProcesses();
   if (!after) return null;
 
-  const images = new Set((opt("reap-images", "") || "")
+  const images = new Set((values.reapImages || "")
     .split(",").map((s) => s.trim().toLowerCase().replace(/\.exe$/, "")).filter(Boolean));
   const wanted = images.size ? images : new Set(REAP_IMAGES);
 

@@ -78,25 +78,33 @@ import { fileURLToPath } from "node:url";
 import { parseAttributes } from "./lib/attributes-doc.mjs";
 import { findIde } from "./lib/tb-install.mjs";
 import { defaultCache, exportPackages, packageName } from "./lib/tb-packages.mjs";
+import { parseCli, withUsageError } from "../lib/cli.mjs";
 import { DOCS_DIR } from "../lib/repo-paths.mjs";
 
 const ATTR_DOC = path.join(DOCS_DIR, "Reference", "Attributes.md");
 
-const argv = process.argv.slice(2);
-const flag = (n) => argv.includes("--" + n);
-const opt = (n, d) => { const i = argv.indexOf("--" + n); return i < 0 ? d : argv[i + 1]; };
+const { values } = withUsageError(() =>
+  parseCli(process.argv.slice(2), {
+    options: {
+      ide: { type: "string" },
+      src: { type: "string" },
+      cache: { type: "string" },
+      attr: { type: "string" },
+      out: { type: "string" },
+      "dump-sites": { type: "string" },
+      refresh: { type: "boolean", default: false },
+      samples: { type: "boolean", default: false },
+      json: { type: "boolean", default: false },
+      quiet: { type: "boolean", default: false },
+      help: { type: "boolean", default: false },
+    },
+    unknown: "ignore",
+    positionals: 0,
+  }));
 const die = (code, msg) => { console.error(msg); process.exit(code); };
-const log = (...a) => { if (!flag("quiet")) console.error(...a); };
+const log = (...a) => { if (!values.quiet) console.error(...a); };
 
-// A flag that takes a value, given last or followed by another flag, has none,
-// and is refused rather than read as undefined: --ide then fell back to TB_IDE,
-// and --out to stdout.
-const VALUE_FLAGS = ["ide", "src", "cache", "attr", "dump-sites", "out"];
-const bare = argv.find((a, i) => a.startsWith("--") && VALUE_FLAGS.includes(a.slice(2)) &&
-  (argv[i + 1] === undefined || /^-./.test(argv[i + 1])));
-if (bare) die(2, `${bare} needs a value`);
-
-if (flag("help")) {
+if (values.help) {
   console.log(readFileSync(fileURLToPath(import.meta.url), "utf8")
     .split("\n").filter((l) => l.startsWith("//")).slice(1, 18).map((l) => l.slice(3)).join("\n"));
   process.exit(0);
@@ -107,7 +115,7 @@ if (flag("help")) {
 // findIde, and then checked for the packages/ folder the census reads. An
 // install path contains a username, so it is never hardcoded.
 function findInstall() {
-  const found = findIde(opt("ide"));
+  const found = findIde(values.ide);
   if (!found) die(2, "no twinBASIC install found; pass --ide or set TB_IDE");
   // Accept either the install root or the IDE exe inside it.
   const root = /\.exe$/i.test(found) ? path.dirname(found) : found;
@@ -125,7 +133,7 @@ const buildNumberOf = (root) => (/_BETA_(\d+)$/.exec(root)?.[1]) ?? "unknown";
 function exportAll(root, cacheDir, includeSamples) {
   try {
     const { projects, failed } = exportPackages({
-      root, cache: cacheDir, refresh: flag("refresh"), samples: includeSamples, log,
+      root, cache: cacheDir, refresh: values.refresh, samples: includeSamples, log,
     });
     const lost = new Set(failed.map((f) => f.name));
     return projects.filter((p) => !lost.has(p.name));
@@ -523,7 +531,7 @@ function collectTwinFiles(dir, out = []) {
 
 function main() {
   let projects, install = null, build = "n/a";
-  const srcDir = opt("src");
+  const srcDir = values.src;
 
   if (srcDir) {
     if (!existsSync(srcDir) || !statSync(srcDir).isDirectory()) die(2, `not a directory: ${srcDir}`);
@@ -542,9 +550,9 @@ function main() {
     install = findInstall();
     build = buildNumberOf(install);
     log(`install : ${install}`);
-    const cache = opt("cache", defaultCache(build));
+    const cache = values.cache ?? defaultCache(build);
     log(`cache   : ${cache}`);
-    projects = exportAll(install, cache, flag("samples"));
+    projects = exportAll(install, cache, values.samples);
   }
 
   const allSites = [], allProblems = [];
@@ -571,14 +579,14 @@ function main() {
     documentedCount: doc ? doc.size : null,
   });
 
-  const attr = opt("attr");
-  const text = flag("json")
+  const attr = values.attr;
+  const text = values.json
     ? JSON.stringify(attr ? rep.rows.find((r) => r.attr.toLowerCase() === attr.toLowerCase()) ?? null : rep, null, 2) + "\n"
     : attr ? renderAttrDetail(rep, attr) : renderMarkdown(rep);
 
   // Every raw site, for answering "which file produced this row?" -- the
   // question every surprising number in the report turns into.
-  const dump = opt("dump-sites");
+  const dump = values.dumpSites;
   if (dump) {
     writeFileSync(dump, JSON.stringify(attr
       ? allSites.filter((s) => s.attr.toLowerCase() === attr.toLowerCase())
@@ -586,7 +594,7 @@ function main() {
     log(`sites   : ${dump}`);
   }
 
-  const out = opt("out");
+  const out = values.out;
   if (out) { writeFileSync(out, text, "utf8"); log(`report  : ${out}`); }
   else process.stdout.write(text);
 }
