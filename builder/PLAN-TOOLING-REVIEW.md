@@ -837,6 +837,32 @@ content; this makes it not a boundary at all.
 and metadata, and serialises to the same bytes as before. C26's synthetic file now keeps its
 section's tail and metadata.
 
+**Landed.** `parseStaging` splits with `splitOnMarker(content, (line) => line === '---')`,
+with the bare parser, since `staging.md` is not a page. Each chunk's first line for C26's
+error comes from the marker's index, and C26's message no longer says that a fenced `---`
+splits the file. The CRLF replace goes: the module splits at any line ending. A fence left
+open runs to the end of the file in markdown, so every section after it would have become
+body text of one section, where the old split cut at every `---`. At the owner's choice
+`parseStaging` refuses that instead: a region that reaches the file's last line and holds a
+`---` line throws, naming its first line and the `---`. `serializeStaging` has nothing to
+take from the module: it builds lines from parsed sections and reads no source. Wisdom now
+loads markdown-it through `lib/`, from `wisdom.mjs` on, since it imports `prep.mjs` and so
+`merger.mjs` statically: Wisdom.md's Prerequisites said no `npm install` was needed, and now
+say it is, and WIP.Wisdom.md's opening says the same. C41 would have made that so anyway,
+through `lib/frontmatter.mjs` and js-yaml. Wisdom.md's merge step says what the split skips
+and what it refuses.
+
+**Verify.** The kit's `c36-oracle.mjs`, against a HEAD copy of `wisdom/extract` and
+`wisdom/files.mjs`. The real `staging.md` (1,586,815 bytes, LF, 180 fences and 10 HTML
+blocks, none holding a `---` or `## ` line) parses to 1,160 sections under both, deep-equal,
+and the same parse from its CRLF form. A graft of no additions writes back 1,586,815 bytes
+under both, equal to the file. C26's synthetic file, and one with a `---` in a tilde fence and
+in an HTML comment, give two sections with their finding ids and every body line, where HEAD
+throws. A fence left open and an HTML comment left open throw, where HEAD split them into
+three and two sections. Prose after an unfenced `---` throws under both at the same line;
+blank chunks, an all-preamble file and a file with no final newline parse the same. The tree
+comparison differs only in Wisdom online and offline, the search data, and `book.html`.
+
 ### C37 — `scripts: check_gate_lists' sections ignore fenced headings`
 
 **Inventory site B3.** `splitSections` (`:251-264`) starts a section at any line matching
