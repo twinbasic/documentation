@@ -47,9 +47,9 @@
   { "q": "type char", "expected": ["/Reference/Data-Types"] },
   { "q": "typedecl character", "expected": ["/Reference/Data-Types"] },
   { "q": "typedecl char", "expected": ["/Reference/Data-Types"] },
-  { "q": "declaration", "expected": ["/Reference/Categories"] },
+  { "q": "declaration", "expected": ["/Reference/Categories", "/tB/Gloss"] },
   { "q": "operator overloading", "expected": ["/Features/Language/UDTs"], "behind": ["/tB/Core/Type"] },
   { "q": "overloading operators", "expected": ["/Features/Language/UDTs"], "behind": ["/tB/Core/Type"] },
   { "q": "pointers", "expected": ["/Features/Language/Pointers"] },
-  { "q": "comment", "expected": ["/Features/Language/Comments"] }
+  { "q": "comment", "expected": ["/Features/Language/Comments", "/tB/Gloss"] }
 ]

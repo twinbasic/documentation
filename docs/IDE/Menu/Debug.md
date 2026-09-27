@@ -28,6 +28,7 @@ permalink: /tB/IDE/Project/Menu/Debug
 - Debugger Options
 
 ## When a run-time error stops the program
+{: index="break mode" }
 
 A run-time error that no `On Error` statement handles stops the program on the line that raised it. It stops the same way whether the program was started with **Run → Start** (<kbd>F5</kbd>), from the **▶ run** link above a procedure, or by a `[RunAfterBuild]` procedure. With **Break On All Errors** on, a handled error stops it too; see [Debugger Options](#debugger-options).
 

@@ -3,6 +3,7 @@ title: Windowless Controls vs. Windowed Controls
 parent: GUI Components
 nav_order: 3
 permalink: /Features/GUI-Components/Windowless
+index: windowless controls
 redirect_from:
   - /Features/Windowless
 ---

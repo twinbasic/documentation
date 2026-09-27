@@ -2,6 +2,7 @@
 title: Alias
 parent: Statements
 permalink: /tB/Core/Alias
+index_also: type aliases
 ---
 # Alias
 {: .no_toc }

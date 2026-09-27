@@ -8,6 +8,7 @@ permalink: /Features/Language/UDTs
 # Enhancements to User-Defined Types (UDTs)
 
 ## Procedures, Constructors, Destructors, and Operators
+{: index="operator overloading; overloading operators" }
 
 You can now place methods inside UDTs, as well as API declarations. With APIs, if the first parameter is named `Me` and is the same type as the UDT, it's treated as an implicit member call:
 
