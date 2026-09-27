@@ -59,58 +59,7 @@ at 97.9% and 96.7%. See [Fixed: whole titles](#fixed-whole-titles).
 The remaining 23 rank-1 misses: 10 bare names (7 enum constants and 2
 members, in
 [What shipped, second round](#what-shipped-second-round-tiers-in-the-index),
-and `MidB# twinBASIC Documentation — Site search design notes
-
-Why searching for a member such as `PaintPicture` does not find it, what was
-measured, and the design that fixes it. Companion to
-[builder/PLAN-6.md](builder/PLAN-6.md) §5.3, which describes the search-data
-generator as ported from Jekyll.
-
-Like WIP.md, this file is not rendered through tbdocs, so literal dashes are fine here.
-
-## Resuming this work
-
-Everything needed to continue is in this file and in `eval/`; nothing
-depends on the session that wrote it.
-
-**Where it stands.** Rollout steps 1–5, two reader-intent rounds, the
-index pilot, the qualified-name round, the title-heading fix, the stem
-twins, the same-page ground truth, a fix for lunr inventing words, and
-the whole-title round (two eval sets, the re-rank, the plural rule) are
-done and committed, on branch
-`claude/paintpicture-docs-runtime-f3250d`, rebased onto `f8e630e5`.
-Nothing is pushed. The working tree is clean; the last commit records the
-whole-title round (item 3 under "Next").
-
-| commit | step |
-|---|---|
-| `64e33f63` | this design doc |
-| `0ce186db` | 1: the asterisk crash guard; the replica's tokenizer separator |
-| `1c3edd94` | 2: `eval/search_quality.mjs` and its baseline |
-| `897e48a3` | 3: h3 entries; `search.fold_headings` |
-| `8a6db0b2` | 4: `names`/`qualified` fields; the smart dot split |
-| `281fd978` | 5: stop words kept; dot runs split; lazy index build |
-| `48b15c2e` | intent 1: `search_quality.mjs` judges bare names by reader intent |
-| `6b9ada4a` | intent 3: exact-name and page-title fields, all words first, query tokens trimmed |
-| `0c5f774c` | intent 4: `primary` names, non-word characters kept in exact names, kind words |
-| `31f2d5b4` | pilot 1: prose queries can expect pages right behind (`behind`); ground truth intent-2 |
-| `657d4296` | pilot 2: hand-marked index entries, and the first five |
-| `f684f82c` | qualified names: `qualified` at 500, reached only by qualified names and word pairs |
-| `03108b5a` | only a page's first heading can be its title (`Shape.Shape`, `Timer.Timer`) |
-| `5d4f4e18` | stem twins held whole in `qualified` (`Printer.Fonts`) |
-| `3b839326` | ground truth intent-3: a section of a symbol's page counts for it |
-| `834e2bb5` | lunr's token-set keys separated: queries with the word `a` threw |
-| `0b2dbd96` | the `New Functions` / `Form events` probes diagnosed and measured, not shipped |
-| `2b8de7a9` | ground truth intent-4: page titles and page-plus-section queries in the eval |
-| `3328881c` | a query naming a whole title scores ×3 |
-| `03c90175` | a plural kind word doesn't make the other word a name |
-
-Hit@10 went from 20.5% to 100%, and MRR from .182 to .997. By reader
-intent, rank 1 is right for 99.9% of queries (89.0% before the intent
-steps), every qualified name and all 20 prose queries are at rank 1, no
-bare name is out of tier order, and no query got worse at any step.
-
-, in [Same-page sections count](#same-page-sections-count)),
+and `MidB$`, in [Same-page sections count](#same-page-sections-count)),
 3 page titles and 10 page-plus-section queries, listed in
 [Fixed: whole titles](#fixed-whole-titles).
 
