@@ -17,10 +17,11 @@ export const CODE_OR_PRE = /<code\b[^>]*>[\s\S]*?<\/code>|<pre\b[^>]*>[\s\S]*?<\
 
 // `html` with each match of `pattern` outside code replaced by `replacer`,
 // which is called as `String.prototype.replace` calls it. Every match is
-// replaced, whether or not `pattern` has the `g` flag.
+// replaced, whether or not `pattern` has the `g` flag. The guard takes
+// `pattern`'s flags, so under `i` it also keeps `<PRE>` and `<Code>`.
 export function replaceOutsideCode(html, pattern, replacer) {
   const flags = pattern.flags.includes("g") ? pattern.flags : pattern.flags + "g";
   const re = new RegExp(`${CODE_OR_PRE.source}|${pattern.source}`, flags);
-  return html.replace(re, (m, ...rest) =>
-    (m.startsWith("<code") || m.startsWith("<pre")) ? m : replacer(m, ...rest));
+  const guarded = flags.includes("i") ? /^<(?:code|pre)/i : /^<(?:code|pre)/;
+  return html.replace(re, (m, ...rest) => (guarded.test(m) ? m : replacer(m, ...rest)));
 }

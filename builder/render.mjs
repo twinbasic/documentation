@@ -18,6 +18,7 @@ import footnote from "markdown-it-footnote";
 import { blockRegions, maskCode } from "../lib/markdown.mjs";
 import { initHighlighter } from "./highlight.mjs";
 import { countPlugin, findSurvivingPlaceholder } from "./counts.mjs";
+import { replaceOutsideCode } from "./code-guard.mjs";
 import { splitFragment } from "./url.mjs";
 import { escapeMarkup, escapeMarkupAndQuotes, escapeRegExp } from "./escape.mjs";
 
@@ -62,23 +63,29 @@ function renderPage(page, md) {
   }
   const source = applyPreRenderRewrites(page.rawContent, md);
   const env = { page };
-  let html = md.render(source, env);
+  const html = md.render(source, env);
   // Lifted off the headings by searchIndexMarksPlugin; search.mjs reads
   // them when it splits this page into entries.
   if (env.searchIndexMarks) page.searchIndexMarks = env.searchIndexMarks;
-  html = normaliseVoidTags(html);
-  html = padEmptyCells(html);
-  return html;
+  return applyPostRenderRewrites(html);
 }
 
-// kramdown emits a single space inside otherwise-empty `<td>` / `<th>`
-// cells (`<td> </td>`); markdown-it leaves them collapsed (`<td></td>`).
+// The rewrites over a page's whole rendered HTML, exactly as renderPage
+// applies them. Exported so scripts/check_code_regions.mjs gates the real
+// chain. Each goes through replaceOutsideCode. Code the renderer produced
+// cannot match their patterns, since its `<` is escaped; a `<pre>` or
+// `<code>` written as raw HTML reaches them as written, and whitespace
+// inside one is content.
+export function applyPostRenderRewrites(html) {
+  return padEmptyCells(normaliseVoidTags(html));
+}
+
+// markdown-it leaves an empty `<td>` / `<th>` cell collapsed (`<td></td>`);
+// kramdown emits a nbsp in it, and so does this. A regular space would look
+// the same, but Phase 4's compress would collapse it differently.
 function padEmptyCells(html) {
-  // kramdown emits `<td>\xa0</td>` (nbsp) for empty cells; we mirror
-  // it so the rendered HTML byte-matches. Regular space here would
-  // visually look the same, but Phase 4's compress would later
-  // collapse it differently than kramdown's empty-cell content.
-  return html.replace(/<(t[dh])([^>]*)><\/\1>/g, "<$1$2> </$1>");
+  return replaceOutsideCode(html, /<(t[dh])([^>]*)><\/\1>/g,
+    (_, tag, attrs) => `<${tag}${attrs}>\u{a0}</${tag}>`);
 }
 
 // The whole pre-render rewrite chain, exactly as renderPage applies it.
@@ -280,7 +287,7 @@ function stripSelfClose(attrs) {
 }
 
 function normaliseVoidTags(html) {
-  return html.replace(VOID_TAGS_RE, (_, tag, attrs) =>
+  return replaceOutsideCode(html, VOID_TAGS_RE, (_, tag, attrs) =>
     `<${tag.toLowerCase()}${stripSelfClose(attrs)} />`);
 }
 

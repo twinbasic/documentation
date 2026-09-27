@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Gate: no pre-render source rewrite may alter the contents of a code region.
+// Gate: no rewrite of page source or rendered HTML may alter a code region.
 //
 //     node scripts/check_code_regions.mjs              # the gate
 //     node scripts/check_code_regions.mjs --verbose    # per-finding detail
@@ -57,6 +57,14 @@
 // context anyway, so there is no code region there to damage today. If a page
 // ever does put code inside raw HTML, this gate will not speak up.
 //
+// THE REWRITES OVER RENDERED HTML
+//
+// builder/render.mjs's applyPostRenderRewrites and builder/template.mjs's
+// injectAnchorHeadings rewrite a page's whole rendered HTML. Code the renderer
+// produced cannot match them, since its `<` is escaped, but a `<pre>` or
+// `<code>` written as raw HTML reaches them as written. Each goes through
+// replaceOutsideCode, and a probe per rewrite holds it to that.
+//
 // THE MODULES
 //
 // It is also the gate on lib/markdown.mjs and lib/frontmatter.mjs, which the
@@ -78,7 +86,8 @@ import MarkdownIt from "markdown-it";
 import deflist from "markdown-it-deflist";
 import { validateCountNames } from "../builder/counts.mjs";
 import { discover } from "../builder/discover.mjs";
-import { applyPreRenderRewrites, createMarkdownIt } from "../builder/render.mjs";
+import { applyPostRenderRewrites, applyPreRenderRewrites, createMarkdownIt } from "../builder/render.mjs";
+import { injectAnchorHeadings } from "../builder/template.mjs";
 import { parseCli } from "../lib/cli.mjs";
 import { parseFrontmatter, unquotedHashValues } from "../lib/frontmatter.mjs";
 import { blockRegions, mapLines, maskCode, splitCodeSpans, splitOnMarker } from "../lib/markdown.mjs";
@@ -208,6 +217,25 @@ const UNCHANGED_PROBES = [
     "Term\n: ```tb\n  v = Items[1](a, b)\n  ```\n"],
   ["an admonition written inside a fence the definition-list plugin makes",
     "Term\n: ```md\n  > [!NOTE]\n  > body\n  ```\n"],
+];
+
+// The rewrites over rendered HTML: a page, and what the rewrite must make of
+// it. Each page holds a raw `<pre>` or `<code>` that must come through as
+// written, and outside it a match that must still be rewritten. A rewrite
+// that throws fails its probe.
+const POST_RENDER_PROBES = [
+  ["an empty table cell inside a raw <pre>", applyPostRenderRewrites,
+    "<pre><table><tr><td></td></tr></table></pre><table><tr><td></td></tr></table>",
+    "<pre><table><tr><td></td></tr></table></pre><table><tr><td>\u{a0}</td></tr></table>"],
+  ["a void tag inside a raw <pre> and <code>", applyPostRenderRewrites,
+    "<pre>a<br>b</pre><p><code>c<br>d</code> e<br>f</p>",
+    "<pre>a<br>b</pre><p><code>c<br>d</code> e<br />f</p>"],
+  ["a void tag inside a raw <PRE>", applyPostRenderRewrites,
+    "<PRE>a<BR>b</PRE><p>c<BR>d</p>",
+    "<PRE>a<BR>b</PRE><p>c<br />d</p>"],
+  ["a heading inside a raw <pre>", (html) => injectAnchorHeadings(html),
+    "<pre><h2>a</h2></pre><h2>b</h2>",
+    "<pre><h2>a</h2></pre><h2> b </h2>"],
 ];
 
 // The dash normaliser: a source, what the tool must make of it, and how many
@@ -464,6 +492,19 @@ async function main(argv) {
     console.log(`        before ${JSON.stringify(src)}`);
     console.log(`        after  ${JSON.stringify(after)}`);
   }
+  for (const [name, rewrite, src, want] of POST_RENDER_PROBES) {
+    let got;
+    try {
+      got = rewrite(src);
+    } catch (err) {
+      got = `threw ${err.message}`;
+    }
+    if (got === want) continue;
+    failed++;
+    console.log(`FAIL  probe: ${name}`);
+    console.log(`        want ${JSON.stringify(want)}`);
+    console.log(`        got  ${JSON.stringify(got)}`);
+  }
   for (const [name, src, want, counts] of DASH_PROBES) {
     const r = convertText(src, siteMd);
     const got = `${r.sep}/${r.em}/${r.en}`;
@@ -499,6 +540,7 @@ async function main(argv) {
     console.log(`ok    ${PROBES.length} probes: no rewrite alters a code region`);
     console.log(`ok    ${ADMONITION_PROBES.length} probes: a rewrite still fires on prose beside code`);
     console.log(`ok    ${UNCHANGED_PROBES.length} probe(s): the chain leaves alone what the site's parser calls code`);
+    console.log(`ok    ${POST_RENDER_PROBES.length} probes: the rewrites over rendered HTML leave a raw <pre> or <code> alone`);
     console.log(`ok    ${DASH_PROBES.length} probes: the dash normaliser converts prose and nothing else`);
     console.log(`ok    ${MODULE_PROBES.length} probes: lib/markdown.mjs and lib/frontmatter.mjs`);
     console.log("ok    1 probe: the count validator skips code and names the file's line");

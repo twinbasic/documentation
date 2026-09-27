@@ -500,7 +500,7 @@ wrapper:
 | `check.bat` | `check_tree_fresh` | the tree is not older than the sources that produced it |
 | `check.bat` | `check_dot_fit` | every diagram label sits inside the box Graphviz drew for it |
 | `check.bat` | `pick_a11y_sample --check`, `check_a11y` | see [WIP.A11y.md](WIP.A11y.md) |
-| `test.bat` | `check_code_regions` | no source or HTML rewrite altered a code region; `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes, and the block parse finds what the full parse finds; the count-name check skips code and names the file's line; `discover` warns about an unquoted frontmatter value that ends in `#`; the dash normaliser converts only prose |
+| `test.bat` | `check_code_regions` | no source or HTML rewrite altered a code region, and the rewrites over rendered HTML leave a raw `<pre>` or `<code>` as written; `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes, and the block parse finds what the full parse finds; the count-name check skips code and names the file's line; `discover` warns about an unquoted frontmatter value that ends in `#`; the dash normaliser converts only prose |
 | `test.bat` | `check_regex_safety` | no regex in the tree can backtrack exponentially |
 | `test.bat` | `check_symbol_index` | the symbol index still places each kind of symbol, from fixtures |
 | `test.bat` | `check_cli` | `lib/cli.mjs` parses as a strict `parseArgs` does, and keeps a lenient tool's leniency where asked; each tool's recorded command-line errors still exit and print as recorded, run with an IDE and a browser that do not exist |

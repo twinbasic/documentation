@@ -632,7 +632,7 @@ Both HTML escapers convert a value that is not a string with `String` first.
 | Symbol | Signature | Description |
 |---|---|---|
 | `CODE_OR_PRE` | `RegExp` | Matches a whole `<code>` or `<pre>` element. A pattern that rewrites rendered HTML puts it first, as a leading alternative, so the rest of the pattern never matches inside code: `offline-rewrite.mjs`'s `HTML_COMBINED_RE`, `book.mjs`'s image-path collector and `counts.mjs`'s surviving-placeholder check. |
-| `replaceOutsideCode` | `(html, pattern, replacer) → string` | `html` with every match of `pattern` outside `<code>` and `<pre>` replaced by `replacer`, called as `String.prototype.replace` calls it. `book.mjs`'s chapter transforms and link rewrite. |
+| `replaceOutsideCode` | `(html, pattern, replacer) → string` | `html` with every match of `pattern` outside `<code>` and `<pre>` replaced by `replacer`, called as `String.prototype.replace` calls it. The guard takes `pattern`'s flags, so under `i` it also skips `<PRE>`. `book.mjs`'s chapter transforms and link rewrite, `render.mjs`'s `applyPostRenderRewrites` and `template.mjs`'s `injectAnchorHeadings`. |
 
 ### `book.mjs`
 
@@ -679,6 +679,7 @@ Both HTML escapers convert a value that is not a string with `String` first.
 |---|---|---|
 | `renderPhase` | `(pages, site, staticFiles?) → Promise<void>` | Renders each page's `rawContent` to `renderedContent` via the supplied site's markdown-it. Skips `layout: book-combined`. |
 | `applyPreRenderRewrites` | `(rawContent, md) → string` | The whole pre-render source rewrite chain, as the render stage applies it to each page before parsing: normalises line endings to LF, masks code with `maskCode` from `lib/markdown.mjs` using the site's markdown-it instance `md`, runs the four kramdown-parity rewrites, restores the code, then runs `rewriteAdmonitions` with the same instance. Throws a `TypeError` when `md` is omitted. Exported so `check_code_regions.mjs` and `check_examples.mjs` test the real chain rather than a copy of it. |
+| `applyPostRenderRewrites` | `(html) → string` | The rewrites over a page's whole rendered HTML, as the render stage applies them after parsing: `normaliseVoidTags` writes each void tag self-closed and in lower case (`<BR>` becomes `<br />`), then `padEmptyCells` puts a no-break space in each empty table cell. Both go through `replaceOutsideCode`. Exported for `scripts/check_code_regions.mjs`. |
 | `createMarkdownIt` | `({ highlighter, linkTables, baseurl, staticFiles, svgContents?, vendoredVideos?, vendoredImages?, counts? }) → MarkdownIt` | Builds the configured markdown-it instance: the eighteen plugins tabulated below, in their fixed order, plus eight renderer-rule overrides assigned directly. `svgContents` is a `Map<srcRel, string>` of pre-read SVG file contents; when present, `svgInlinePlugin` replaces a lone `.svg` image with an inline SVG wrapper. `vendoredVideos` and `vendoredImages` are the maps `videoLinkPlugin` and `remoteImagePlugin` resolve against, and `counts` is the registry `countPlugin` substitutes from. See [Extending](Extending#adding-a-markdown-it-plugin) for how to add a plugin. |
 | `initHighlighter` | (re-export from `highlight.mjs`) | `() → Promise<object>`. Initialises Shiki with the bundled twinBASIC grammar. |
 | `buildLinkTables` | `(pages) → { byPath, byUrl, byRedirect }` | Map lookups keyed by `srcRel`, `permalink`, and `redirect_from` entries. |
@@ -770,7 +771,7 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | `buildInitFn` | (alias of internal `buildInit`) | Available for harnesses; combines `buildInitConfig` + `renderSidebar` in one call. |
 | `renderSidebar` | `(site) → string` | Pre-renders the sidebar HTML. Called by the `nav` task; the output is folded into the shared payload by `dispatch`. |
 | `navActivationCss` | `(page) → string` | Per-page `<style id="jtd-nav-activation">` block. |
-| `injectAnchorHeadings` | `(html, headingsOut) → string` | Adds `<a class="anchor-heading">` next to every heading with an `id`, and pushes each heading onto `headingsOut` as it goes. The icon is deliberately `aria-hidden="true" tabindex="-1"`; the keyboard and screen-reader equivalent is the per-page `<details class="section-links">` block that `renderFooter` builds from `headingsOut`. |
+| `injectAnchorHeadings` | `(html, headingsOut) → string` | Adds `<a class="anchor-heading">` next to every heading with an `id` outside `<code>` and `<pre>`, and pushes each heading onto `headingsOut` as it goes. The icon is deliberately `aria-hidden="true" tabindex="-1"`; the keyboard and screen-reader equivalent is the per-page `<details class="section-links">` block that `renderFooter` builds from `headingsOut`. |
 
 ### `compress.mjs`
 

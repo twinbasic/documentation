@@ -16,6 +16,7 @@
 // _layouts/default.html outer wrap. Activation CSS ports
 // _includes/css/activation.scss.liquid.
 
+import { replaceOutsideCode } from "./code-guard.mjs";
 import { compressHtml } from "./compress.mjs";
 import { stripHtml } from "./seo.mjs";
 import { absoluteUrl, relativeUrl } from "./url.mjs";
@@ -711,9 +712,11 @@ const ANCHOR_SVG_TPL = (id) =>
 // an id -- piggybacking on this pass rather than sweeping the page a second
 // time. `body` is rendered HTML whose text is already escaped, so dropping
 // the tags leaves a string that is still safe to emit as HTML; re-escaping
-// would double-encode headings like `&, &=`.
+// would double-encode headings like `&, &=`. It goes through
+// replaceOutsideCode (render.mjs's applyPostRenderRewrites says why): the
+// spaces this adds around a heading's body would be content in a raw `<pre>`.
 export function injectAnchorHeadings(html, headingsOut) {
-  return html.replace(HEADING_REGEX, (_, tag, attrs = "", body) => {
+  return replaceOutsideCode(html, HEADING_REGEX, (_, tag, attrs = "", body) => {
     const idMatch = attrs ? attrs.match(ID_ATTR_REGEX) : null;
     if (idMatch) {
       const id = idMatch[1];

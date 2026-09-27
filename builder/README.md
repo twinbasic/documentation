@@ -158,7 +158,10 @@ patterns too, so assembling one from string constants is not an escape.
 refuses a pre-render rewrite that alters the contents of a code fence or
 code span, which four rewrites in [render.mjs](render.mjs) have done ---
 so a new one belongs inside `applyPreRenderRewrites`, between
-`maskCode` and its `restore`.
+`maskCode` and its `restore`. Its probes also hold the rewrites over
+rendered HTML, which go through `replaceOutsideCode` from
+[code-guard.mjs](code-guard.mjs), to leaving a raw `<pre>` or `<code>`
+as written.
 [Tools and Scripts](https://docs.twinbasic.com/Documentation/Development/Tools)
 lists every gate in both wrappers, in running order.
 

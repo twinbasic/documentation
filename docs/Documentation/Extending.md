@@ -130,6 +130,12 @@ rewrite runs:
    rewrite still does its job: the gate's probes assert what the existing rewrites must
    do, and nothing asserts what a new one must do.
 
+A failed probe that names a raw `<pre>`, such as
+`FAIL  probe: a void tag inside a raw <pre> and <code>`,
+is a rewrite over rendered HTML reaching into code. Pass its pattern to
+`replaceOutsideCode` from `builder/code-guard.mjs`, as `applyPostRenderRewrites` in
+`render.mjs` does, instead of calling `replace` over the whole page.
+
 ---
 
 ## Changing what is already there
@@ -794,7 +800,7 @@ Three gates are the ones a builder change is most likely to trip, and each fails
 
 - `pick_a11y_sample.mjs --check`, in `check.bat`, fails when a construct family the site uses is covered by no page in the sample --- normally because a build added or moved pages and the cheapest page for some family is no longer in the list. The fix is to add the page it names, not to widen the sample by hand. **It cannot report a genuinely new construct.** The gate iterates the registered `FAMILIES` and nothing else, so markup no family describes produces silence, and that silence is the exact failure a derived sample exists to prevent: the axe rule keyed on that construct then runs nowhere. Adding a family is the deliberate step, and [Tools and Scripts](Tools#pick-a11y-sample) gives the shape of one.
 - `check_publish_policy.mjs`, in `test.bat`, fails when a new emitted file type is not on the allowlist in `builder/publish-policy.mjs`. Add it to `BUILD_EXTENSIONS`, which is deliberately a separate set from `SOURCE_EXTENSIONS` so blessing a generated type does not also bless a stray one a contributor drops into `docs/`.
-- `check_code_regions.mjs`, also in `test.bat`, fails when a new pre-render rewrite alters the contents of a code fence, an indented code block or a code span. For a fence or a span, the fix is to move the rewrite inside `applyPreRenderRewrites` in `render.mjs`, between `maskCode` and its `restore`, rather than to widen the mask; an indented block is not masked at all. [When `test.bat` fails in `check_code_regions`](#code-regions-altered) has both cases.
+- `check_code_regions.mjs`, also in `test.bat`, fails when a new pre-render rewrite alters the contents of a code fence, an indented code block or a code span. For a fence or a span, the fix is to move the rewrite inside `applyPreRenderRewrites` in `render.mjs`, between `maskCode` and its `restore`, rather than to widen the mask; an indented block is not masked at all. It also fails when a rewrite over rendered HTML changes a `<pre>` or `<code>` written as raw HTML. [When `test.bat` fails in `check_code_regions`](#code-regions-altered) has each case.
 
 > [!NOTE]
 > Both `check.bat` and `test.bat` want `build.bat` to have run first, for different reasons. `check.bat` reads the built tree throughout, and `check_tree_fresh.mjs` refuses one older than the sources that produced it rather than letting the later gates report on stale output. `test.bat` needs a built tree only for its last gate, `check_axe_patch_equiv.mjs`, and does not care how old that tree is.

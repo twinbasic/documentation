@@ -283,7 +283,7 @@ attributes across `<span>` boundaries, so `src="/vs/loader.js"` never appears as
 a contiguous byte sequence. Inline spans get no such treatment. **Do not rely on
 that accident.**
 
-Two mechanisms now exist, and a new rewrite must use one of them:
+Three mechanisms exist, and a new rewrite must use one of them:
 
 - **Source rewrites** go inside `applyPreRenderRewrites` in
   [builder/render.mjs](builder/render.mjs), between `maskCode` and its
@@ -296,6 +296,16 @@ Two mechanisms now exist, and a new rewrite must use one of them:
   from its `CODE_OR_PRE`, a leading alternative that consumes `<code>` and
   `<pre>` atomically, as `offline-rewrite.mjs`'s `HTML_COMBINED_RE`,
   `book.mjs`'s `IMG_SRC_RE_BOOK` and `counts.mjs`'s `SURVIVING_PLACEHOLDER_RE` do.
+  The three that rewrite every page, `normaliseVoidTags` and `padEmptyCells`
+  (`render.mjs`'s `applyPostRenderRewrites`) and `template.mjs`'s
+  `injectAnchorHeadings`, go through `replaceOutsideCode` too. Code the
+  renderer produced cannot match their patterns, since its `<` is escaped, but
+  a `<pre>` or `<code>` written as raw HTML reaches them as written, and
+  whitespace inside one is content.
+- **Token rules**: an `md.core` rule that rewrites only `text` tokens, as
+  `kramdown-dashes`, `kramdown-ellipsis` and `kramdown-possessive` do, never
+  sees code, because markdown-it gives code spans, fences and indented blocks
+  token types of their own (`code_inline`, `fence`, `code_block`).
 
 **One gap is deliberate and stated rather than hidden:** the chain does not
 mask **indented** (4-space) code blocks, since it calls `maskCode` without
@@ -412,8 +422,10 @@ names of its own.
 [scripts/check_code_regions.mjs](scripts/check_code_regions.mjs) tokenises every
 markdown file, applies the real `applyPreRenderRewrites` chain, re-tokenises,
 and compares the `fence` / `code_block` / `code_inline` contents in order. Any
-difference fails. In `test.bat` and both CI workflows; ~2 s, no browser, no
-built tree.
+difference fails. Its probes also run `applyPostRenderRewrites` and
+`injectAnchorHeadings` over a raw `<pre>` and `<code>`, which must come through
+as written. In `test.bat` and both CI workflows; ~2 s, no browser, no built
+tree.
 
 ```sh
 node scripts/check_code_regions.mjs

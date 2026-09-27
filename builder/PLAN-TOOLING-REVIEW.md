@@ -2017,6 +2017,49 @@ lead from L3).
 
 **Verify.** The tree comparison identical; each probe fails with its guard removed.
 
+**Landed.** All three go through `replaceOutsideCode`, so none states the invariant in place of
+a guard: the guard changes nothing on today's pages, and on a raw `<pre>` or `<code>` it keeps
+`padEmptyCells` and `injectAnchorHeadings` from adding whitespace where whitespace is content.
+`normaliseVoidTags` changes only a tag's spelling, so its guard is for the rule's sake.
+`render.mjs` exports `applyPostRenderRewrites(html)`, the two rewrites as `renderPage` applies
+them, which the gate imports as it imports `applyPreRenderRewrites`; its comment says what the
+guard is for (code the renderer produced cannot match, since its `<` is escaped; raw HTML
+reaches the rewrites as written). `padEmptyCells` takes a function replacer, its no-break space
+written `\u{a0}` instead of as a raw character, and its two comments, which disagreed about a
+space and a no-break space, are one. `template.mjs`'s comment on `injectAnchorHeadings` points
+to it.
+
+**Found in the move and fixed in it: `replaceOutsideCode` broke under the `i` flag.** It told a
+guard match by `startsWith("<code")` or `"<pre"`, while the guard alternative takes the
+pattern's flags. With `VOID_TAGS_RE` (`gi`) a raw `<PRE>` element was consumed by the guard,
+handed to the replacer with its groups undefined, and `tag.toLowerCase()` threw: a build crash
+on any page with a raw upper-case `<PRE>` or `<CODE>` (`git grep` finds none). The test now
+follows the flags, `/^<(?:code|pre)/i` under `i` and case-sensitive otherwise; Pipeline-Stages.md's
+row says so.
+
+`check_code_regions.mjs` has four `POST_RENDER_PROBES`: a raw `<pre>` holding an empty cell;
+one holding a void tag, beside a `<code>` holding one; a raw `<PRE>` holding `<BR>`; a raw
+`<pre>` holding a heading. Each page has a match outside the code that must still be rewritten,
+and each is compared with its exact expected output. A rewrite that throws fails its probe
+rather than exiting 2. The kit's `c56-faults.mjs` removes one guard at a time through
+`c43-fault.mjs`: without `padEmptyCells`'s guard the first probe fails, without
+`normaliseVoidTags`'s the second and third, without `injectAnchorHeadings`'s the fourth, and
+with the case-sensitive test put back the third fails with `threw Cannot read properties of
+undefined (reading 'toLowerCase')`. Each run exits 1, its sweep clean.
+
+WIP.Build.md's rewrite section names three mechanisms: the rendered-HTML bullet names the
+three rewrites and why the guard matters for them, and a new bullet names the token-scoped
+`md.core` rules (`kramdown-dashes`, `kramdown-ellipsis`, `kramdown-possessive` rewrite only
+`text` tokens). Its gate section, WIP.md's gate row, Tools.md's list item and section,
+Extending.md's failure section and gate bullet, `builder/README.md` and Pipeline-Stages.md (a
+row for `applyPostRenderRewrites`; `injectAnchorHeadings`'s and `replaceOutsideCode`'s rows)
+say what the probes hold.
+
+`compare_trees`: all three trees identical. The regex-safety gate: `504 literals + 28
+constructed in 123 files ... 464 safe, 68 polynomial ... 9 construction(s) not resolvable`,
+against C55's `502 ... 462 safe`; the two new literals are the guard tests in
+`code-guard.mjs`. Lint `Checked 162 files`.
+
 ### C57 — `builder: one drift guard for the page and symbol baselines`
 
 **A2-3 / L2-4 / L4-5 (R2).** `readBaseline` is byte-identical in `page-baseline.mjs:83-90` and
