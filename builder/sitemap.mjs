@@ -10,7 +10,8 @@
 
 import path from "node:path";
 
-import { absoluteUrl } from "./seo.mjs";
+import { absoluteUrl } from "./url.mjs";
+import { escapeMarkupAndQuotes } from "./escape.mjs";
 import { writeFileMkdirp } from "./write.mjs";
 
 export async function writeSitemap(pages, site, destRoot, precomputedUrls) {
@@ -40,7 +41,7 @@ export async function writeSitemap(pages, site, destRoot, precomputedUrls) {
 
 // Derive the set of sitemap URLs from the in-memory page set, applying
 // jekyll-sitemap's two filters and producing strings in the same form
-// the XML emits (post-absoluteUrl, post-xmlEscape, so that on-disk
+// the XML emits (post-absoluteUrl, post-escape, so that on-disk
 // `<loc>` content can be compared character-for-character against this
 // set). Exported separately from writeSitemap so triage tools that
 // haven't run Phase 6 can still cross-check the URL set in-memory
@@ -72,7 +73,10 @@ function sitemapUrlFor(page, config) {
   if (url.endsWith("/index.html")) {
     url = url.slice(0, -"index.html".length);
   }
-  return xmlEscape(absoluteUrl(url, config));
+  // Liquid's xml_escape (= CGI.escapeHTML) escapes the same five
+  // characters. Defensive: no permalink on this site contains any of
+  // them, so the escape changes no current URL.
+  return escapeMarkupAndQuotes(absoluteUrl(url, config));
 }
 
 function renderSitemapXml(urls) {
@@ -85,16 +89,4 @@ function renderSitemapXml(urls) {
 
 function renderRobotsTxt(config) {
   return `Sitemap: ${absoluteUrl("/sitemap.xml", config)}\n`;
-}
-
-// Liquid's xml_escape (= CGI.escapeHTML). Defensive: no permalink on
-// this site contains any of these characters, so the function is a
-// no-op on every current input.
-function xmlEscape(s) {
-  return String(s)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
 }

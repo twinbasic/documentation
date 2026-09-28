@@ -328,48 +328,44 @@ export async function loadHighlightTheme(themesDir = DEFAULT_THEMES_DIR) {
     return `${selector} {${c}\n${lines.join("\n")}\n}\n`;
   };
 
+  // One palette's rules, one class at a time -- shared by the light pass
+  // and the two dark passes below, which differ only in the selector
+  // template and which palette / background they read.
+  const renderPalette = (selectorFor, palette, bg) => {
+    let out = "";
+    for (const cls of orderedClasses) {
+      const sym = classToSample.get(cls);
+      out += renderRule(selectorFor(cls), palette.get(sym), symbolListComment(cls), bg);
+    }
+    return out;
+  };
+
   let css =
     "/* twinBASIC syntax-highlight palette. Generated from\n" +
     "   builder/themes/Light.theme + builder/themes/Dark.theme by\n" +
     "   builder/highlight-theme.mjs. Do not hand-edit; regenerate by\n" +
     "   running build.bat. */\n\n" +
     "/* Light palette (root). */\n";
-  for (const cls of orderedClasses) {
-    const sym = classToSample.get(cls);
-    css += renderRule(
-      `.highlight .${cls}`,
-      light.get(sym),
-      symbolListComment(cls),
-      CODE_BG.light,
-    );
-  }
+  css += renderPalette((cls) => `.highlight .${cls}`, light, CODE_BG.light);
+
   // Dark palette, emitted under both the no-JS system default
   // (prefers-color-scheme, unless the toggle forced light) and an explicit
   // [data-theme="dark"] choice -- mirroring docs/_sass/custom/_theme.scss.
   css += "\n/* Dark palette (system default via prefers-color-scheme). */\n";
-  let darkSystem = "";
-  for (const cls of orderedClasses) {
-    const sym = classToSample.get(cls);
-    darkSystem += renderRule(
-      `html:not([data-theme="light"]) .highlight .${cls}`,
-      dark.get(sym),
-      symbolListComment(cls),
-      CODE_BG.dark,
-    );
-  }
+  const darkSystem = renderPalette(
+    (cls) => `html:not([data-theme="light"]) .highlight .${cls}`,
+    dark,
+    CODE_BG.dark,
+  );
   if (darkSystem) {
     css += `@media (prefers-color-scheme: dark) {\n${darkSystem}}\n`;
   }
   css += "\n/* Dark palette (explicit [data-theme=dark] override). */\n";
-  for (const cls of orderedClasses) {
-    const sym = classToSample.get(cls);
-    css += renderRule(
-      `html[data-theme="dark"] .highlight .${cls}`,
-      dark.get(sym),
-      symbolListComment(cls),
-      CODE_BG.dark,
-    );
-  }
+  css += renderPalette(
+    (cls) => `html[data-theme="dark"] .highlight .${cls}`,
+    dark,
+    CODE_BG.dark,
+  );
 
   return { classForScope, classForSymbol, css };
 }

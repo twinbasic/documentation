@@ -36,6 +36,7 @@
 import path from "node:path";
 
 import { stripHtml } from "./seo.mjs";
+import { encodeSpaces } from "./url.mjs";
 import { writeFileMkdirp } from "./write.mjs";
 
 // Phase 17 consolidation path: per-worker render handlers call
@@ -433,14 +434,6 @@ export function renderEntryString(e) {
     `    \n` +
     `    "relUrl": "${e.relUrl}"\n` +
     `  }`;
-}
-
-// Liquid `relative_url` for this site: paths are ASCII-safe except for
-// the occasional space. encodeURI over-encodes (would touch `#` in
-// `/foo#bar`); a targeted space replacement matches Jekyll byte-for-
-// byte.
-function encodeSpaces(s) {
-  return s.includes(" ") ? s.replaceAll(" ", "%20") : s;
 }
 
 // Content sanitiser. Port of the Liquid filter chain in the template's

@@ -30,70 +30,46 @@
 // went unnoticed. Accepting a real removal is one flagged run, which puts the
 // lowered number in the same commit as the deletion that caused it.
 //
-// Two restrictions on the write, both deliberate:
-//
-//   - **CI never writes.** A CI run that rewrote the baseline would bless the
-//     drop it was asked to catch. It compares, and an absent file is a failure
-//     there rather than a bootstrap: the guard's own artifact going missing is
-//     a regression of the guard.
-//   - **`--serve` never writes.** Its watcher rebuilds on every save under
-//     `docs/`, so a page half-deleted in an editor would ratchet the baseline
-//     down and a half-added one would ratchet it up. The comparison still runs,
-//     so the console still says what happened.
-//
 // staticFiles is guarded the same way and for the same reason: it is the other
 // half of the publish surface, and an image tree that stops being copied is as
 // silent as a page tree that stops being discovered.
 //
-// **The baseline describes one source tree, and the guard says which.** tbdocs
-// is not only run over `docs/`: scripts/check_links_diff.mjs spawns it over
-// test/fixtures/check-src, three pages, to compare the link check's two front
-// ends. A baseline keyed to nothing would meet that build with "905 pages
-// missing" -- a loud, confident, entirely wrong finding, on a harness whose
-// whole job is to notice when two front ends disagree. So GUARDED_SRC names the tree these
-// numbers are of, the file records it, and every other source root is skipped
-// in silence rather than measured against figures that were never about it.
+// builder/baseline.mjs holds the read, the write and the comparison, which the
+// symbol index's guard shares, and says when the file is written and for which
+// source tree.
 
-import { readFile, writeFile } from "node:fs/promises";
+import { checkBaseline } from "./baseline.mjs";
 
 export const BASELINE_PATH = new URL("./page-baseline.json", import.meta.url);
-
-// Repo-relative, forward slashes. The documentation site is the only tree this
-// guard has numbers for.
-export const GUARDED_SRC = "docs";
-
-// Shown in the failure message. Relative, because that is how someone runs it.
-//
-// **`--check-audit-index` is part of the command, and leaving it out was a
-// real defect.** It implies `--check`, and `build.bat` supplies it on every
-// ordinary build -- so a message printing the bare `--src docs` form hands the
-// reader a build with no link or integrity check, on a page removal, which is
-// the change most likely to have broken links. Round 3 of the use-case
-// evaluation found an evaluator about to follow it. Both forms are given
-// because the wrapper is Windows-only and the docs are not.
-const ACCEPT_CMD_WIN = "build.bat --update-page-baseline";
-const ACCEPT_CMD_POSIX =
-  "node builder/tbdocs.mjs --src docs --check-audit-index --update-page-baseline";
 
 const METRICS = [
   ["pages", "pages"],
   ["staticFiles", "static files"],
 ];
 
-async function readBaseline(file) {
-  try {
-    return JSON.parse(await readFile(file, "utf8"));
-  } catch (err) {
-    if (err.code === "ENOENT") return null;
-    throw err;
-  }
-}
+const figures = (record) => METRICS.map(([k, label]) => `${label} ${record[k]}`).join(", ");
 
-async function writeBaseline(file, counts) {
-  // Trailing newline and two-space indent so a diff of this file reads as one
-  // changed line per metric rather than as a rewritten blob.
-  await writeFile(file, `${JSON.stringify(counts, null, 2)}\n`, "utf8");
-}
+const PAGE_GUARD = {
+  name: "page",
+  missing: "so the page-count drift guard has nothing to compare against.\n",
+  created: figures,
+  updated: (baseline, record) => (baseline
+    ? METRICS.map(([k, label]) => `${label} ${baseline[k]} -> ${record[k]}`).join(", ")
+    : figures(record)),
+  lost(baseline, record) {
+    const dropped = METRICS
+      .filter(([k]) => Number.isFinite(baseline[k]) && record[k] < baseline[k])
+      .map(([k, label]) => `${label} ${record[k]}, was ${baseline[k]} (${record[k] - baseline[k]})`);
+    if (!dropped.length) return "";
+    return `ERROR: fewer than the last committed build -- ${dropped.join("; ")}\n`
+      + "       Something stopped being discovered, or content was removed on purpose.\n"
+      + "       If the removal is intended, record it in the same commit:\n";
+  },
+  gained: (baseline, record) => METRICS
+    .filter(([k]) => record[k] > (baseline[k] ?? -1))
+    .map(([k, label]) => `${label} ${baseline[k] ?? "-"} -> ${record[k]}`)
+    .join(", "),
+};
 
 /**
  * Compare this build's inventory against the committed baseline.
@@ -117,60 +93,5 @@ async function writeBaseline(file, counts) {
 export async function checkPageBaseline({
   src, pages, staticFiles, write, force = false, file = BASELINE_PATH,
 }) {
-  if (src !== GUARDED_SRC) return { failed: false, text: "" };
-
-  const counts = { src, pages, staticFiles };
-  const baseline = await readBaseline(file);
-
-  if (force) {
-    await writeBaseline(file, counts);
-    const was = baseline
-      ? METRICS.map(([k, label]) => `${label} ${baseline[k]} -> ${counts[k]}`).join(", ")
-      : METRICS.map(([k, label]) => `${label} ${counts[k]}`).join(", ");
-    return { failed: false, text: `page baseline updated: ${was}\n` };
-  }
-
-  if (!baseline) {
-    if (!write) {
-      return {
-        failed: true,
-        text: "ERROR: builder/page-baseline.json is missing, so the page-count "
-            + "drift guard has nothing to compare against.\n"
-            + "       Restore it from git, or regenerate it with:\n"
-            + `         ${ACCEPT_CMD_WIN}\n`
-            + `         ${ACCEPT_CMD_POSIX}\n`,
-      };
-    }
-    await writeBaseline(file, counts);
-    return {
-      failed: false,
-      text: `page baseline created: ${METRICS.map(([k, l]) => `${l} ${counts[k]}`).join(", ")}\n`,
-    };
-  }
-
-  const dropped = METRICS
-    .filter(([k]) => Number.isFinite(baseline[k]) && counts[k] < baseline[k])
-    .map(([k, label]) => `${label} ${counts[k]}, was ${baseline[k]} (${counts[k] - baseline[k]})`);
-
-  if (dropped.length) {
-    return {
-      failed: true,
-      text: `ERROR: fewer than the last committed build -- ${dropped.join("; ")}\n`
-          + "       Something stopped being discovered, or content was removed on purpose.\n"
-          + "       If the removal is intended, record it in the same commit:\n"
-          + `         ${ACCEPT_CMD_WIN}\n`
-          + `         ${ACCEPT_CMD_POSIX}\n`,
-    };
-  }
-
-  const risen = METRICS.filter(([k]) => counts[k] > (baseline[k] ?? -1));
-  if (risen.length && write) {
-    await writeBaseline(file, counts);
-    const moved = risen
-      .map(([k, label]) => `${label} ${baseline[k] ?? "-"} -> ${counts[k]}`)
-      .join(", ");
-    return { failed: false, text: `page baseline raised: ${moved} (commit builder/page-baseline.json)\n` };
-  }
-
-  return { failed: false, text: "" };
+  return checkBaseline(PAGE_GUARD, { record: { src, pages, staticFiles }, write, force, file });
 }

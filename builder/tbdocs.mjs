@@ -7,7 +7,10 @@
 //        [--check | --no-check] [--check-audit-index]
 //        [--check-findings <path>] [--serve] [--port <N>]
 //        [--update-page-baseline] [--update-symbol-baseline]
-//        [--symbol-gaps <path>]
+//        [--symbol-gaps <path>] [--stall-timeout <seconds>]
+//
+// builder/command-line.mjs reads these, in the order given; a flag that
+// takes a value also takes it as --flag=value.
 //
 // --check runs the link + integrity check over the HTML the build
 // already holds in worker memory, instead of writing ~270 MB out and
@@ -38,8 +41,10 @@ import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 import pc   from "picocolors";
 
+import { withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
+import { parseCommandLine } from "./command-line.mjs";
 import { WorkerPool } from "./worker-pool.mjs";
 import { Scheduler }  from "./scheduler.mjs";
 import { renderGantt } from "./gantt.mjs";
@@ -62,8 +67,8 @@ import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
 import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
 import { writeSearchDataFromChunks } from "./search.mjs";
 import { writeOffline, enumerateVendoredThemeAssets } from "./offline.mjs";
-import { buildSitePathsSync, deriveOfflineCss,
-         normalizeBaseurl }  from "./offline-rewrite.mjs";
+import { buildSitePathsSync, deriveOfflineCss } from "./offline-rewrite.mjs";
+import { normalizeBaseurl } from "./url.mjs";
 import { writePdf } from "./pdf.mjs";
 // Only the index derivation is a static import: it runs inside dispatch,
 // on the render fan-out's critical path, and check-tree.mjs pulls
@@ -89,125 +94,20 @@ import {
 const CPU_WORKER_URL = new URL("./cpu-worker.mjs", import.meta.url);
 const PACKAGE_API_PATH = new URL("./package-api.json", import.meta.url);
 
-// A command-line error, which main() reports by its message alone and exits 4
-// on: a value outside the 1/2/3 of the link and integrity checks, so a mistyped
-// flag never reads as a broken link. write.mjs marks its --dest refusal the same.
-function commandLineError(message) {
-  return Object.assign(new Error(message), { commandLine: true });
-}
+// The exit codes in the header. The link and integrity bits are the ones
+// scripts/check_links.mjs sets, so CI can tell a broken link from malformed
+// output; EXIT_FAILED also carries every other failure. The command-line
+// value is outside both bits, so a mistyped flag never reads as a broken
+// link.
+export const EXIT_FAILED       = 1;
+export const EXIT_INTEGRITY    = 2;
+export const EXIT_COMMAND_LINE = 4;
 
-function parseArgs(argv) {
-  const args = {
-    src: "docs",
-    dest: null,
-    baseurl: null,
-    url: null,
-    dryRun: false,
-    skipOffline: null,
-    skipPdf: null,
-    tolerateMissingImages: false,
-    profileOffline: false,
-    check: false,
-    auditIndex: false,
-    updatePageBaseline: false,
-    updateSymbolBaseline: false,
-    symbolGaps: null,
-    checkFindings: null,
-    serve: false,
-    port: 4000,
-    // Wall-clock with no task completing before the build gives up and
-    // reports what was outstanding. Generous on purpose: the longest
-    // single task here is worker cold boot at ~1.6 s, and a loaded CI
-    // box is allowed to be an order of magnitude slower than that
-    // without being called stalled. 0 disables the watchdog.
-    stallTimeoutMs: 120000,
-  };
-  // A flag that takes a value, given last or followed by another flag, has
-  // none. Read as one, it was undefined: --dest and --baseurl fell back to
-  // their defaults without a word, and --src crashed.
-  const valueAfter = (flag, v) => {
-    if (v === undefined || /^-./.test(v)) throw commandLineError(`${flag} needs a value`);
-    return v;
-  };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === "--src") {
-      args.src = valueAfter(a, argv[++i]);
-    } else if (a.startsWith("--src=")) {
-      args.src = a.slice("--src=".length);
-    } else if (a === "--dest") {
-      args.dest = valueAfter(a, argv[++i]);
-    } else if (a.startsWith("--dest=")) {
-      args.dest = a.slice("--dest=".length);
-    } else if (a === "--baseurl") {
-      args.baseurl = valueAfter(a, argv[++i]);
-    } else if (a.startsWith("--baseurl=")) {
-      args.baseurl = a.slice("--baseurl=".length);
-    } else if (a === "--url") {
-      args.url = valueAfter(a, argv[++i]);
-    } else if (a.startsWith("--url=")) {
-      args.url = a.slice("--url=".length);
-    } else if (a === "--dry-run") {
-      args.dryRun = true;
-    } else if (a === "--no-offline") {
-      args.skipOffline = true;
-    } else if (a === "--no-pdf") {
-      args.skipPdf = true;
-    } else if (a === "--tolerate-missing-images") {
-      args.tolerateMissingImages = true;
-    } else if (a === "--fetch-assets") {
-      args.fetchAssets = true;
-    } else if (a === "--no-fetch-assets") {
-      args.fetchAssets = false;
-    } else if (a === "--profile-offline") {
-      args.profileOffline = true;
-    } else if (a === "--check") {
-      args.check = true;
-    } else if (a === "--no-check") {
-      // build.bat bakes in --check; this is how to ask for a plain
-      // build without editing it. Flags are read in order, so a later
-      // --no-check wins.
-      args.check = false;
-      args.auditIndex = false;
-      args.checkFindings = null;
-    } else if (a === "--check-audit-index") {
-      args.check = true;
-      args.auditIndex = true;
-    } else if (a === "--check-findings") {
-      args.check = true;
-      args.checkFindings = valueAfter(a, argv[++i]);
-    } else if (a === "--update-page-baseline") {
-      // Record the current inventory as the drift guard's new baseline,
-      // whichever direction it moved. The build only ever raises it on its
-      // own; lowering it is a deliberate act, so it takes a deliberate flag.
-      args.updatePageBaseline = true;
-    } else if (a === "--update-symbol-baseline") {
-      // The same for the URLs tB/symbols.json has published: record the
-      // current list whatever left it. See symbol-baseline.mjs.
-      args.updateSymbolBaseline = true;
-    } else if (a === "--symbol-gaps") {
-      // Write the public symbols no page documents, as JSON, to a file.
-      args.symbolGaps = valueAfter(a, argv[++i]);
-    } else if (a === "--serve") {
-      args.serve = true;
-    } else if (a === "--port" || a.startsWith("--port=")) {
-      const raw = a === "--port" ? valueAfter(a, argv[++i]) : a.slice("--port=".length);
-      args.port = Number(raw);
-      if (!Number.isInteger(args.port) || args.port < 1 || args.port > 65535) {
-        throw commandLineError(`--port expects a port number from 1 to 65535, got: ${raw}`);
-      }
-    } else if (a === "--stall-timeout" || a.startsWith("--stall-timeout=")) {
-      const raw = a === "--stall-timeout" ? valueAfter(a, argv[++i]) : a.slice("--stall-timeout=".length);
-      const secs = Number(raw);
-      if (!Number.isFinite(secs) || secs < 0) {
-        throw commandLineError(`--stall-timeout expects seconds (0 disables), got: ${raw}`);
-      }
-      args.stallTimeoutMs = secs * 1000;
-    } else {
-      throw commandLineError(`Unknown argument: ${a}`);
-    }
-  }
-  return args;
+// Sets `bit` in the exit code and keeps the bits already set, so a build
+// that fails two ways reports both. runBuild sets the exit code only through
+// this; an assignment would report the last failure alone.
+function failBuild(bit) {
+  process.exitCode = (process.exitCode ?? 0) | bit;
 }
 
 // ── Task graph ────────────────────────────────────────────────────────────────
@@ -553,7 +453,7 @@ const TASKS = {
       for (const f of out.files) {
         if (!known.has(f.srcRel)) state.staticFiles.push(f);
       }
-      if (out.failed > 0) process.exitCode = 1;
+      if (out.failed > 0) failBuild(EXIT_FAILED);
     },
   },
 
@@ -1472,8 +1372,8 @@ export async function runBuild(opts) {
     if (dotStats.failed > 0) parts.push(`failed ${dotStats.failed}`);
     console.log(`dot: ${parts.join(", ")} of ${dotStats.processed} SVG(s)`);
   }
-  if (dotStats.failed > 0) process.exitCode = 1;
-  if (scssResult.failed)   process.exitCode = 1;
+  if (dotStats.failed > 0) failBuild(EXIT_FAILED);
+  if (scssResult.failed)   failBuild(EXIT_FAILED);
 
   const flushStats    = results.get("flushJoin");
   const assetStats    = results.get("writeAssets");
@@ -1566,17 +1466,11 @@ export async function runBuild(opts) {
     console.log(`  ${pc.bold("check:")}`);
     process.stdout.write(checkResult.text);
     process.stdout.write(recheck.text);
-    // Same code scheme scripts/check_links.mjs uses -- 1 for link
-    // failures, 2 for integrity failures, 3 for both -- so CI can still
-    // tell "broken link" from "malformed output" after check.bat stops
-    // invoking the script. OR'd in rather than assigned: the build's own
-    // failures (dot, scss, vendorAssets) already claim bit 0.
-    const code = (checkResult.linksFailed ? 1 : 0)
-      | ((checkResult.integrityFailed || recheck.failed) ? 2 : 0);
-    if (code) process.exitCode = (process.exitCode ?? 0) | code;
+    if (checkResult.linksFailed) failBuild(EXIT_FAILED);
+    if (checkResult.integrityFailed || recheck.failed) failBuild(EXIT_INTEGRITY);
   } else if (recheck.failed) {
     process.stdout.write(recheck.text);
-    process.exitCode = (process.exitCode ?? 0) | 2;
+    failBuild(EXIT_INTEGRITY);
   }
 
   console.log(scheduler.summary());
@@ -1584,10 +1478,7 @@ export async function runBuild(opts) {
 
   // Drift guard from PLAN-1.md §1, against a committed baseline rather than
   // the literal 836 it was written with -- see page-baseline.mjs for why a
-  // floor could not do the job. OR'd into the exit code rather than assigned:
-  // the check above claims bits 1 and 2, and the old `= 1` here clobbered
-  // them, so a build with both an integrity failure and a page drop reported
-  // only the drop.
+  // floor could not do the job.
   // Repo-relative and forward-slashed, so it matches GUARDED_SRC however the
   // build was invoked. tbdocs also runs over test/fixtures/check-src, which
   // has no baseline and must not be measured against the site's.
@@ -1601,7 +1492,7 @@ export async function runBuild(opts) {
     force: !!opts.updatePageBaseline,
   });
   if (drift.text) process.stdout.write(drift.text);
-  if (drift.failed) process.exitCode = (process.exitCode ?? 0) | 1;
+  if (drift.failed) failBuild(EXIT_FAILED);
 
   // The same guard over the URLs tB/symbols.json has published, which an
   // installed IDE help add-in holds a copy of -- see symbol-baseline.mjs.
@@ -1613,14 +1504,17 @@ export async function runBuild(opts) {
       force: !!opts.updateSymbolBaseline,
     });
     if (lost.text) process.stdout.write(lost.text);
-    if (lost.failed) process.exitCode = (process.exitCode ?? 0) | 1;
+    if (lost.failed) failBuild(EXIT_FAILED);
   }
 
   return { pages, staticFiles, site, destRoot };
 }
 
+// A command-line error is reported by its message alone and exits
+// EXIT_COMMAND_LINE. write.mjs marks its --dest refusal, which runBuild makes
+// before any task runs, with `commandLine` for the same exit.
 async function main() {
-  const opts = parseArgs(process.argv.slice(2));
+  const opts = withUsageError(() => parseCommandLine(process.argv.slice(2)), { exitCode: EXIT_COMMAND_LINE });
   if (opts.serve) {
     const { runServe } = await import("./serve.mjs");
     await runServe(opts);
@@ -1634,13 +1528,13 @@ if (isEntry) {
   main().catch((err) => {
     if (err?.commandLine) {
       console.error(err.message);
-      process.exit(4);
+      process.exit(EXIT_COMMAND_LINE);
     }
     // A stall report is the diagnostic; the Error wrapping it carries a
     // stack pointing at the watchdog's own setInterval, which tells the
     // reader nothing and buries the part that does.
     if (err?.stalled && err.cause?.message) console.error(err.cause.message);
     else console.error(err);
-    process.exit(1);
+    process.exit(EXIT_FAILED);
   });
 }

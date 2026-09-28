@@ -21,21 +21,20 @@
 import assert from "node:assert/strict";
 import { copyFileSync, cpSync, existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { after, before, describe, test } from "node:test";
+import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { removeTree } from "../../scripts/lib/tb-ide-copy.mjs";
-import { compilerPid, consoleMark, loadedAddins, readConsole, sleep } from "../../scripts/lib/tb-ide.mjs";
-import { addinLane } from "../../scripts/lib/tb-lane.mjs";
+import { compilerPid, consoleMark, linesSince, loadedAddins, sleep } from "../../scripts/lib/tb-ide.mjs";
 import { pressKey, waitFor } from "../../scripts/lib/tb-operate.mjs";
+import { scenario } from "./scenario.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HOST = path.join(HERE, "host");
 const PROBE = path.join(HERE, "probes", "reload");
-const lane = addinLane();
 
 // The probe's lines since a mark, as "<build> loaded in <pid>" and "<build> key".
-const probeSince = async (c, mark) => ((await readConsole(c, { since: mark })) ?? "").split("\n")
-  .map((l) => /^\[ReloadProbe\] build ([AB]) (loaded in \d+|key)$/.exec(l.trim())).filter(Boolean)
+const probeSince = async (c, mark) => (await linesSince(c, mark))
+  .map((l) => /^\[ReloadProbe\] build ([AB]) (loaded in \d+|key)$/.exec(l)).filter(Boolean)
   .map(([, build, what]) => `${build} ${what}`);
 
 // What the add-ins have put in the page: toolbar buttons, shortcuts and tool
@@ -63,7 +62,7 @@ async function pressShiftF1(c) {
   return (await probeSince(c, mark)).filter((l) => l.endsWith(" key"));
 }
 
-describe("P9: loading an add-in again without ending the IDE", { skip: lane ? false : "run it with addin-test.bat" }, () => {
+scenario("P9: loading an add-in again without ending the IDE", (lane) => {
   let c, buildA, buildB, dest, openedIn, recordFile;
   // What the probe's Class_Terminate handlers wrote, a line each.
   const recorded = () => (existsSync(recordFile) ? readFileSync(recordFile, "utf8") : "")
@@ -84,7 +83,6 @@ describe("P9: loading an add-in again without ending the IDE", { skip: lane ? fa
     c = await lane.open(HOST, { env: { TB_RELOAD_FILE: recordFile } });
     openedIn = Date.now() - t0;
   });
-  after(() => lane?.close());
 
   test("build A loads, and adds its button, its two windows and its shortcut", async (t) => {
     t.diagnostic(`a new IDE opened the project and its compile settled in ${openedIn} ms`);

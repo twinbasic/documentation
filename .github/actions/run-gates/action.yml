@@ -142,6 +142,15 @@ runs:
     - name: Verify the symbol index and its drift guard (check_symbol_index.mjs)
       shell: bash
       run: node scripts/check_symbol_index.mjs
+    # The scanners of twinBASIC source and of Attributes.md misread in
+    # silence: a line read as the wrong kind is counted, generated or skipped
+    # as that kind. These probes run the shared modifier list through all
+    # three scanners, and assert the census's declaration kinds and the probe
+    # generator's targets against the shapes each once got wrong. Fixed
+    # inputs only: no tree, no install.
+    - name: Verify the twinBASIC source and attribute scanners (check_twin_parsers.mjs)
+      shell: bash
+      run: node scripts/check_twin_parsers.mjs
     # Nothing else tests how a tool reads its command line, which is how a
     # value flag given no value came to be read as NaN or as the next flag.
     # lib/cli.mjs's probes, then each tool's recorded command-line errors, each

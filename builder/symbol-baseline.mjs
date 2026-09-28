@@ -25,37 +25,42 @@
 // commit as the change that shortened it. The usual fix is not that but to pin
 // the old anchor on the reworded heading with `{: #add }`.
 //
-// It writes under the same restrictions as the page guard, for the same
-// reasons: never under CI, which would bless the loss it was asked to catch;
-// never under --serve, whose rebuilds follow every half-typed heading; and
-// only for the source tree the list describes.
+// The comparison, and the restrictions on the write, are builder/baseline.mjs's,
+// shared with the page guard: never under CI, which would bless the loss it
+// was asked to catch; never under --serve, whose rebuilds follow every
+// half-typed heading; and only for the source tree the list describes.
 
-import { readFile, writeFile } from "node:fs/promises";
-import { GUARDED_SRC } from "./page-baseline.mjs";
+import { checkBaseline } from "./baseline.mjs";
 
 export const SYMBOL_BASELINE_PATH = new URL("./symbol-baseline.json", import.meta.url);
-
-const ACCEPT_CMD_WIN = "build.bat --update-symbol-baseline";
-const ACCEPT_CMD_POSIX =
-  "node builder/tbdocs.mjs --src docs --check-audit-index --update-symbol-baseline";
 
 // How many lost URLs the failure names before it summarises the rest.
 const SHOWN = 25;
 
-async function readBaseline(file) {
-  try {
-    return JSON.parse(await readFile(file, "utf8"));
-  } catch (err) {
-    if (err.code === "ENOENT") return null;
-    throw err;
-  }
-}
-
-// One URL to a line, so a diff of the file reads as the URLs that came and went.
-async function writeBaseline(file, src, urls) {
-  const body = urls.map((u) => `    ${JSON.stringify(u)}`).join(",\n");
-  await writeFile(file, `{\n  "src": ${JSON.stringify(src)},\n  "urls": [\n${body}\n  ]\n}\n`, "utf8");
-}
+const SYMBOL_GUARD = {
+  name: "symbol",
+  missing: "so nothing checks that the symbol\n"
+    + "       index still has every URL it has published.\n",
+  created: (record) => `${record.urls.length} URLs`,
+  updated: (baseline, record) => `${baseline?.urls?.length ?? "-"} -> ${record.urls.length} URLs`,
+  lost(baseline, record) {
+    const now = new Set(record.urls);
+    const lost = (baseline.urls ?? []).filter((u) => !now.has(u));
+    if (!lost.length) return "";
+    const shown = lost.slice(0, SHOWN).map((u) => `         ${u}\n`).join("");
+    const more = lost.length > SHOWN ? `         ... and ${lost.length - SHOWN} more\n` : "";
+    return `ERROR: ${lost.length} URL(s) the symbol index has published are no longer in it:\n`
+      + shown + more
+      + "       An installed IDE help add-in keeps these. A reworded heading moves its anchor:\n"
+      + "       pin the old one on it, as `{: #add }`. If the symbol is retired, follow\n"
+      + "       Permanent Links and record the removal in the same commit:\n";
+  },
+  gained(baseline, record) {
+    const known = new Set(baseline.urls ?? []);
+    const added = record.urls.filter((u) => !known.has(u)).length;
+    return added ? `+${added} URLs` : "";
+  },
+};
 
 /**
  * Compare this build's symbol-index URLs with the committed list.
@@ -73,53 +78,6 @@ async function writeBaseline(file, src, urls) {
  * @returns {Promise<{failed: boolean, text: string}>}
  */
 export async function checkSymbolBaseline({ src, urls, write, force = false, file = SYMBOL_BASELINE_PATH }) {
-  if (src !== GUARDED_SRC) return { failed: false, text: "" };
-  const current = [...new Set(urls)].sort();
-  const baseline = await readBaseline(file);
-
-  if (force) {
-    await writeBaseline(file, src, current);
-    const was = baseline?.urls?.length;
-    return { failed: false, text: `symbol baseline updated: ${was ?? "-"} -> ${current.length} URLs\n` };
-  }
-
-  if (!baseline) {
-    if (!write) {
-      return {
-        failed: true,
-        text: "ERROR: builder/symbol-baseline.json is missing, so nothing checks that the symbol\n"
-            + "       index still has every URL it has published.\n"
-            + "       Restore it from git, or regenerate it with:\n"
-            + `         ${ACCEPT_CMD_WIN}\n`
-            + `         ${ACCEPT_CMD_POSIX}\n`,
-      };
-    }
-    await writeBaseline(file, src, current);
-    return { failed: false, text: `symbol baseline created: ${current.length} URLs\n` };
-  }
-
-  const now = new Set(current);
-  const lost = (baseline.urls ?? []).filter((u) => !now.has(u));
-  if (lost.length) {
-    const shown = lost.slice(0, SHOWN).map((u) => `         ${u}\n`).join("");
-    const more = lost.length > SHOWN ? `         ... and ${lost.length - SHOWN} more\n` : "";
-    return {
-      failed: true,
-      text: `ERROR: ${lost.length} URL(s) the symbol index has published are no longer in it:\n`
-          + shown + more
-          + "       An installed IDE help add-in keeps these. A reworded heading moves its anchor:\n"
-          + "       pin the old one on it, as `{: #add }`. If the symbol is retired, follow\n"
-          + "       Permanent Links and record the removal in the same commit:\n"
-          + `         ${ACCEPT_CMD_WIN}\n`
-          + `         ${ACCEPT_CMD_POSIX}\n`,
-    };
-  }
-
-  const known = new Set(baseline.urls ?? []);
-  const added = current.filter((u) => !known.has(u)).length;
-  if (added && write) {
-    await writeBaseline(file, src, current);
-    return { failed: false, text: `symbol baseline raised: +${added} URLs (commit builder/symbol-baseline.json)\n` };
-  }
-  return { failed: false, text: "" };
+  const record = { src, urls: [...new Set(urls)].sort() };
+  return checkBaseline(SYMBOL_GUARD, { record, write, force, file });
 }

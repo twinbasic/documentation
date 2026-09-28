@@ -62,8 +62,8 @@
 //     ArchProbe_win64.exe.
 //  2. A JAVASCRIPT .click() ON THE BUILD BUTTON DOES NOTHING. `#buildIcon` is
 //     a plain DIV wired through the IDE's own pointer handling; it needs real
-//     CDP Input.dispatchMouseEvent presses at its centre (tb-ide's
-//     clickCenter).
+//     CDP Input.dispatchMouseEvent presses at its centre (tb-click's click,
+//     which also checks that nothing covers it).
 //  3. READ THE CONSOLE'S BACKING ARRAY, NOT THE PANE. The DEBUG CONSOLE is a
 //     virtualised list view: only the rows that fit are in the DOM, so an
 //     `.innerText` scrape of it returns the tail of a long probe and looks
@@ -102,8 +102,9 @@ import { existsSync, readFileSync, mkdirSync, statSync, readdirSync, rmSync } fr
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { parseCli } from "../lib/cli.mjs";
+import { click } from "./lib/tb-click.mjs";
 import { compilerExe, findIde } from "./lib/tb-install.mjs";
-import { BUILD_FAILED, TARGETS, attachIde, clickCenter, compileOutcome, keepClears, keptClears,
+import { BUILD_FAILED, COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, keepClears, keptClears,
          killTree, launchIde, readConsole, setBuildTarget, shutdownIde, summaryLine,
          waitForCompile, wantShow } from "./lib/tb-ide.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
@@ -280,7 +281,7 @@ const cdp = await attachIde(port);
 if (!cdp) failBuild(2, "the IDE never exposed a debug port");
 
 let outcome = compileOutcome(
-  await waitForCompile(cdp, { project: projPath, timeout: 180 * 1000 }), { name: projPath });
+  await waitForCompile(cdp, { project: projPath, timeout: COMPILE_TIMEOUT }), { name: projPath });
 if (!outcome.ok) failBuild(2, outcome.message);
 
 // The target, set on every run, win32 included (setBuildTarget says why). The
@@ -289,7 +290,7 @@ if (!outcome.ok) failBuild(2, outcome.message);
 // measured on BETA 983 with LenB of a LongPtr, ProcessorArchitecture(),
 // PROCESSOR_ARCHITECTURE, IsWow64Process and the module path of the process.
 try {
-  const target = await setBuildTarget(cdp, arch, { project: projPath, timeout: 180 * 1000 });
+  const target = await setBuildTarget(cdp, arch, { project: projPath, timeout: COMPILE_TIMEOUT });
   // Only a target the IDE remembered is worth a word: a new path opens in win32.
   if (target.from !== TARGETS[0]) {
     console.error(`note: the IDE remembered ${target.from} for this path; the probe is built for ${arch}`);
@@ -315,9 +316,7 @@ try {
                     "failure unseen. Refusing rather than returning what it left as complete.");
   }
   // (2) a real press/release pair; element.click() is ignored.
-  if (!await clickCenter(cdp, "buildIcon")) {
-    throw new Error("no #buildIcon in the IDE page -- did the project load?");
-  }
+  await click(cdp, "buildIcon");
 
   // (5) settle on a quiet period rather than a sentinel.
   const started = Date.now();

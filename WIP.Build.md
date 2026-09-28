@@ -272,7 +272,7 @@ never thinks to look for.
 
 **The same class exists on rendered HTML.** `book.mjs`'s chapter transforms
 rewrite `id="`, `href="#` and `src="/` across a whole body. An inline code span
-is emitted through `escapeHtmlMinimal`, which escapes only `&`, `<` and `>`, so
+is emitted through `escapeMarkup`, which escapes only `&`, `<` and `>`, so
 quotes survive as literal bytes and all three patterns match inside a sample.
 Every one of the six exposed code spans in the corpus was corrupted in the
 published PDF --- `<style id="jtd-nav-activation">` read
@@ -283,7 +283,7 @@ attributes across `<span>` boundaries, so `src="/vs/loader.js"` never appears as
 a contiguous byte sequence. Inline spans get no such treatment. **Do not rely on
 that accident.**
 
-Two mechanisms now exist, and a new rewrite must use one of them:
+Three mechanisms exist, and a new rewrite must use one of them:
 
 - **Source rewrites** go inside `applyPreRenderRewrites` in
   [builder/render.mjs](builder/render.mjs), between `maskCode` and its
@@ -291,10 +291,21 @@ Two mechanisms now exist, and a new rewrite must use one of them:
   every fence the site's parser finds --- including one inside a blockquote or
   admonition, inside a list item, or one the definition-list plugin makes after
   `: ` --- plus every inline code span.
-- **Rendered-HTML rewrites** use `replaceOutsideCode` in
-  [builder/book.mjs](builder/book.mjs), or the same leading-alternation shape
-  found in `offline-rewrite.mjs:299`, `pdf.mjs:138` and `book.mjs`'s
-  `IMG_SRC_RE_BOOK`, which consume `<code>` and `<pre>` atomically.
+- **Rendered-HTML rewrites** use `replaceOutsideCode` from
+  [builder/code-guard.mjs](builder/code-guard.mjs), or compose their pattern
+  from its `CODE_OR_PRE`, a leading alternative that consumes `<code>` and
+  `<pre>` atomically, as `offline-rewrite.mjs`'s `HTML_COMBINED_RE`,
+  `book.mjs`'s `IMG_SRC_RE_BOOK` and `counts.mjs`'s `SURVIVING_PLACEHOLDER_RE` do.
+  The three that rewrite every page, `normaliseVoidTags` and `padEmptyCells`
+  (`render.mjs`'s `applyPostRenderRewrites`) and `template.mjs`'s
+  `injectAnchorHeadings`, go through `replaceOutsideCode` too. Code the
+  renderer produced cannot match their patterns, since its `<` is escaped, but
+  a `<pre>` or `<code>` written as raw HTML reaches them as written, and
+  whitespace inside one is content.
+- **Token rules**: an `md.core` rule that rewrites only `text` tokens, as
+  `kramdown-dashes`, `kramdown-ellipsis` and `kramdown-possessive` do, never
+  sees code, because markdown-it gives code spans, fences and indented blocks
+  token types of their own (`code_inline`, `fence`, `code_block`).
 
 **One gap is deliberate and stated rather than hidden:** the chain does not
 mask **indented** (4-space) code blocks, since it calls `maskCode` without
@@ -411,8 +422,10 @@ names of its own.
 [scripts/check_code_regions.mjs](scripts/check_code_regions.mjs) tokenises every
 markdown file, applies the real `applyPreRenderRewrites` chain, re-tokenises,
 and compares the `fence` / `code_block` / `code_inline` contents in order. Any
-difference fails. In `test.bat` and both CI workflows; ~2 s, no browser, no
-built tree.
+difference fails. Its probes also run `applyPostRenderRewrites` and
+`injectAnchorHeadings` over a raw `<pre>` and `<code>`, which must come through
+as written. In `test.bat` and both CI workflows; ~2 s, no browser, no built
+tree.
 
 ```sh
 node scripts/check_code_regions.mjs
@@ -468,7 +481,10 @@ the number stays current by itself; only a fall wants a decision, and
 deletion.
 
 **Three things about it were learned by getting them wrong**, and each is now a
-comment in [builder/page-baseline.mjs](builder/page-baseline.mjs):
+comment where it is decided: the first and third in
+[builder/baseline.mjs](builder/baseline.mjs), which holds the comparison the
+page and symbol guards share, and the second in
+[scripts/check_tree_fresh.mjs](scripts/check_tree_fresh.mjs):
 
 - **The baseline has to be keyed to a source tree.** `tbdocs` is not only run
   over `docs/`: `check_links_diff.mjs` spawns it over
@@ -491,8 +507,9 @@ comment in [builder/page-baseline.mjs](builder/page-baseline.mjs):
   page half-deleted in an editor would lower the baseline and a half-added one
   would raise it.
 
-**OR the exit code on this path, never assign it.** Plain `process.exitCode = 1`
-after the link check has already set bits 1 and 2 reports only the later failure.
+**Set an exit bit through `failBuild`, never by assigning `process.exitCode`.**
+An assignment after the link check has set bits 1 and 2 reports only the later
+failure; `failBuild` ORs.
 
 `scripts/check_page_baseline.mjs` is the gate on the gate, in `test.bat` and
 both CI workflows: eleven probes against a scratch baseline, no browser, no
@@ -827,7 +844,7 @@ Three implementation details are load-bearing:
 - **The self-test probes ride along inside the normal run**, not behind a
   `--self-test` nobody remembers. Eight classification probes, both directions:
   the three regexes this repo actually shipped (including the incomplete fix),
-  `^(a+)+$`, and four that must *not* be flagged --- plus fourteen fold probes,
+  `^(a+)+$`, and four that must *not* be flagged --- plus nineteen fold probes,
   below. A green line saying "no exponential regex" is otherwise
   indistinguishable from a gate that has stopped detecting.
 - **Parallelism comes from separate processes.** Importing `recheck` spawns one
@@ -863,20 +880,24 @@ the repository would have said so.
 the pattern it builds, where the source decides that: string and template
 literals, `+` concatenation, `String.raw`, a `const` declared once in the file,
 `X.source` of a `const` regex, `A.join(sep)` over a `const` array of string
-literals, and a ternary (checked as both branches). Twelve of the tree's
-eighteen constructions resolve; each is then checked exactly as a literal is.
+literals, and a ternary (checked as both branches). A `const` imported by a
+relative path resolves too, when its module declares it with a string or regex
+literal, which is how `builder/code-guard.mjs`'s `CODE_OR_PRE` reaches the three
+patterns composed from it. Most of the tree's constructions resolve, and the
+summary line counts the rest; each one resolved is checked exactly as a literal is.
 
 **One rule is a model rather than an exact fold, and it is marked as one.** A
 call to an escaping helper --- `escapeRegExp(x)` and anything written to the same
-shape, recognised by body rather than by name so all three copies in the tree are
-covered without a list --- yields a fixed character sequence with no regex
-operator in it, whatever `x` holds. Those fold to a one-character placeholder and
-are tagged `modelled`, in the census and in any finding. The gap is stated rather
-than hidden: an escaped splice *inside a quantified alternation* could be
-ambiguous with a sibling branch in a way the placeholder is not --- `(${esc}|a)+`
-is exponential when `esc` holds `a` and safe when it holds `x`. A fixed sequence
-cannot be a quantified atom by itself, so the surrounding pattern has to quantify
-a group containing it; none of the three in the tree does.
+shape, recognised by body rather than by name, in the file or in a module it
+imports by a relative path, so no list of names is kept --- yields a fixed
+character sequence with no regex operator in it, whatever `x` holds. Those fold
+to a one-character placeholder and are tagged `modelled`, in the census and in
+any finding. The gap is stated rather than hidden: an escaped splice *inside a
+quantified alternation* could be ambiguous with a sibling branch in a way the
+placeholder is not --- `(${esc}|a)+` is exponential when `esc` holds `a` and safe
+when it holds `x`. A fixed sequence cannot be a quantified atom by itself, so the
+surrounding pattern has to quantify a group containing it; none of the three
+calls in the tree does.
 
 **The remaining six are a list with a reason each, not a count.** *`pattern` is a
 function parameter --- check the call sites* says where to look; *`re` is a `let`,

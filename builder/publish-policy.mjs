@@ -30,6 +30,8 @@
 // a tree worth inspecting; a tree with a private key in it is a tree
 // nobody should be one `upload-pages-artifact` away from publishing.
 
+import { posix } from "./paths.mjs";
+
 // ── The lists ───────────────────────────────────────────────────────
 
 // What a file discovered under docs/ may carry. Lowercase, dot included.
@@ -184,5 +186,3 @@ export function formatPublishRefusal(findings, { surface, label }) {
 }
 
 function byRel(a, b) { return a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0; }
-
-function posix(p) { return String(p).replaceAll("\\", "/"); }

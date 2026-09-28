@@ -29,7 +29,7 @@
 //   SETUP   -- sass not installed: throw. There is no pre-compiled fallback;
 //              `npm install` is the fix. The error message points there.
 //   CONTENT -- SCSS syntax error: warn, return { failed: true }. The caller
-//              sets process.exitCode = 1 so CI surfaces it. The site still
+//              sets exit bit EXIT_FAILED so CI surfaces it. The site still
 //              renders but without the just-the-docs theme (the previous
 //              build's CSS lingers under <destRoot>/, if any).
 //
@@ -62,28 +62,25 @@ function makeLoadPaths(srcRoot) {
   ];
 }
 
-export async function compileLightScss(srcRoot) {
+// Shared by the two exports below, which differ only in which stylesheet
+// is compiled and the label its warning carries.
+async function compileScss(srcRoot, rel, label) {
   const sass = await loadSass();
   try {
-    const result = sass.compile(path.join(srcRoot, SCSS_LIGHT_REL), {
+    const result = sass.compile(path.join(srcRoot, rel), {
       style: "expanded", sourceMap: false, loadPaths: makeLoadPaths(srcRoot),
     });
     return { compiled: true, css: result.css };
   } catch (err) {
-    console.warn(`scss (light): compilation failed:\n  ${err.message}`);
+    console.warn(`scss (${label}): compilation failed:\n  ${err.message}`);
     return { compiled: false, failed: true };
   }
 }
 
-export async function compileDarkScss(srcRoot) {
-  const sass = await loadSass();
-  try {
-    const result = sass.compile(path.join(srcRoot, SCSS_DARK_REL), {
-      style: "expanded", sourceMap: false, loadPaths: makeLoadPaths(srcRoot),
-    });
-    return { compiled: true, css: result.css };
-  } catch (err) {
-    console.warn(`scss (dark): compilation failed:\n  ${err.message}`);
-    return { compiled: false, failed: true };
-  }
+export function compileLightScss(srcRoot) {
+  return compileScss(srcRoot, SCSS_LIGHT_REL, "light");
+}
+
+export function compileDarkScss(srcRoot) {
+  return compileScss(srcRoot, SCSS_DARK_REL, "dark");
 }

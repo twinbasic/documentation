@@ -192,7 +192,7 @@ vendorAssets.expected = ["discover"]
 vendorAssets.execute() → { videos, images, files, fetched, failed }
 ```
 
-Calls `vendorAssets(srcRoot, pages, { baseurl, allowFetch })` from `vendor-assets.mjs`. Scans the discovered markdown for YouTube video markers and GitHub user-attachment URLs, downloads anything not already committed into `docs/assets/thumbnails/` or `docs/assets/attachments/`, and hands the new files to the static-file copy pass. Idempotent --- a file already present is never re-fetched --- and the artifacts are committed to git exactly like the generated DOT SVGs. `submit()` puts the two lookup maps on `state.site` (where `dispatch` picks them up for the render workers), appends new descriptors to `state.staticFiles`, and flips `process.exitCode = 1` if any fetch failed.
+Calls `vendorAssets(srcRoot, pages, { baseurl, allowFetch })` from `vendor-assets.mjs`. Scans the discovered markdown for YouTube video markers and GitHub user-attachment URLs, downloads anything not already committed into `docs/assets/thumbnails/` or `docs/assets/attachments/`, and hands the new files to the static-file copy pass. Idempotent --- a file already present is never re-fetched --- and the artifacts are committed to git exactly like the generated DOT SVGs. `submit()` puts the two lookup maps on `state.site` (where `dispatch` picks them up for the render workers), appends new descriptors to `state.staticFiles`, and sets exit bit 1 (`EXIT_FAILED`) if any fetch failed.
 
 `markdownInit` and `writeAssets` both depend on this: the render plugins need the maps to rewrite a marker into a local poster frame, and the copy pass needs the files.
 
@@ -499,7 +499,7 @@ checkReport.execute({ linkJoin, checkBook }) → void
 
 Formats every tree's result, decides the exit code, and optionally writes the machine-readable findings.
 
-- **Exit code** follows the same scheme `check_links.mjs` has always used, so CI can tell the two apart: `1` link failures, `2` integrity failures, `3` both. Set via `process.exitCode`, never by throwing.
+- **Exit code** follows the same scheme as `check_links.mjs`, so CI can tell the two apart: `1` link failures, `2` integrity failures, `3` both. Set through `failBuild`, which ORs each bit into `process.exitCode`, never by throwing.
 - **`--check-findings <path>`** writes the findings as JSON for [`check_links_diff.mjs`](Tools#check-links-diff) to diff against the standalone script's. Written *before* the exit code is decided, so a failing check still produces the file that says what it found.
 - **`--check-audit-index`** additionally diffs the tree index the build derived from its own records against what actually landed on disk. This is the one failure mode the two-checker findings comparison structurally cannot see: a *missing* index entry turns a working link into a reported break, which is loud, but a *spurious* one makes the oracle answer "exists" for a path that 404s in production, and on a clean site nothing links to a path that does not exist, so nothing would ever notice. Cost is one `readdir` per tree.
 
@@ -597,6 +597,7 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 | Symbol | Signature | Description |
 |---|---|---|
 | `computeNav` | `(pages, config) → { navTree }` | Builds the sidebar tree, runs the integrity check (throws on orphan / ambiguous `parent:`), populates `navPath` / `navLevels` / `breadcrumbs` / `children` on each page. |
+| `isNonEmpty` | `(value) → boolean` | `false` for `null` / `undefined` or the empty string, `true` for anything else. Imported by `seo.mjs`. |
 
 ### `seo.mjs`
 
@@ -606,8 +607,33 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 | `computeChunkSeo` | `(pages, seoSiteTitle, config, markdown) → void` | Per-page SEO (`seoTitle` / `seoFullTitle` / `seoCanonical` / `seoIsHome`). Mutates pages in place. Called by each render worker between `renderPhase` and `templatePhase`. |
 | `renderTitle` | `(text, markdown) → string` | Runs one title through `markdownify → strip_html → normalize_whitespace → escape_once`. |
 | `stripHtml` | `(s) → string` | Drops `<script>` / `<style>` / HTML comments, then strips remaining tag delimiters. Re-exported for `search.mjs`. |
-| `absoluteUrl` | `(input, config) → string` | Composes an absolute URL from a root-relative path. |
-| `relativeUrl` | `(input, config) → string` | Prepends `config.baseurl` to a root-relative path. |
+
+### `url.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `absoluteUrl` | `(url, config) → string` | The URL a path has on the deployed site: `config.url`, the normalised `config.baseurl`, then the path, read from the site root whether or not it starts with `/`. An absolute URL --- a scheme, or a network-path reference `//host` --- is returned unchanged; with no `config.url`, the root-relative path is. A value that is not a string gives `""`. Used by `seo.mjs` for canonicals and the logo, `redirects.mjs`, `sitemap.mjs`, and `template.mjs` for external nav links. |
+| `relativeUrl` | `(url, baseurl) → string` | Puts `baseurl`, as given, in front of a root-relative path and encodes its spaces. Anything else --- an absolute URL, a relative path, a bare fragment --- is returned unchanged, and a value that is not a string gives `""`. `template.mjs`'s links and asset references. |
+| `normalizeBaseurl` | `(raw) → string` | A base URL as `""` or `/prefix`: a leading slash added if missing, trailing slashes removed. |
+| `encodeSpaces` | `(s) → string` | Each space as `%20`, the only character in this site's paths that needs encoding. `search.mjs`'s entry URLs. |
+| `splitFragment` | `(href) → [string, string \| null]` | Splits at the first `#`. `render.mjs`'s link rewrite, and `scripts/crawl_check.mjs`. |
+
+### `escape.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `escapeMarkup` | `(s) → string` | Escapes `&`, `<` and `>` and leaves quotes literal, as Rouge and kramdown's code spans do. Code blocks and code spans (`highlight.mjs`, `render.mjs`), table-of-contents entries, and the Gantt chart's labels. |
+| `escapeMarkupAndQuotes` | `(s) → string` | Escapes `&`, `<`, `>`, `"` and `'`, so the result is safe in an attribute value under either quote. `template.mjs`'s attributes and text, `render.mjs`'s diagram and video markup, and `sitemap.mjs`'s URLs. |
+| `escapeRegExp` | `(s) → string` | Escapes every character a RegExp reads as an operator, so the result matches `s` literally. `render.mjs`, `book.mjs` and `offline-rewrite.mjs`; `scripts/lib/regex-fold.mjs` recognises its shape. |
+
+Both HTML escapers convert a value that is not a string with `String` first.
+
+### `code-guard.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `CODE_OR_PRE` | `RegExp` | Matches a whole `<code>` or `<pre>` element. A pattern that rewrites rendered HTML puts it first, as a leading alternative, so the rest of the pattern never matches inside code: `offline-rewrite.mjs`'s `HTML_COMBINED_RE`, `book.mjs`'s image-path collector and `counts.mjs`'s surviving-placeholder check. |
+| `replaceOutsideCode` | `(html, pattern, replacer) → string` | `html` with every match of `pattern` outside `<code>` and `<pre>` replaced by `replacer`, called as `String.prototype.replace` calls it. The guard takes `pattern`'s flags, so under `i` it also skips `<PRE>`. `book.mjs`'s chapter transforms and link rewrite, `render.mjs`'s `applyPostRenderRewrites` and `template.mjs`'s `injectAnchorHeadings`. |
 
 ### `book.mjs`
 
@@ -654,6 +680,7 @@ Runs two build-aborting integrity checks before building the tree: `validatePerm
 |---|---|---|
 | `renderPhase` | `(pages, site, staticFiles?) → Promise<void>` | Renders each page's `rawContent` to `renderedContent` via the supplied site's markdown-it. Skips `layout: book-combined`. |
 | `applyPreRenderRewrites` | `(rawContent, md) → string` | The whole pre-render source rewrite chain, as the render stage applies it to each page before parsing: normalises line endings to LF, masks code with `maskCode` from `lib/markdown.mjs` using the site's markdown-it instance `md`, runs the four kramdown-parity rewrites, restores the code, then runs `rewriteAdmonitions` with the same instance. Throws a `TypeError` when `md` is omitted. Exported so `check_code_regions.mjs` and `check_examples.mjs` test the real chain rather than a copy of it. |
+| `applyPostRenderRewrites` | `(html) → string` | The rewrites over a page's whole rendered HTML, as the render stage applies them after parsing: `normaliseVoidTags` writes each void tag self-closed and in lower case (`<BR>` becomes `<br />`), then `padEmptyCells` puts a no-break space in each empty table cell. Both go through `replaceOutsideCode`. Exported for `scripts/check_code_regions.mjs`. |
 | `createMarkdownIt` | `({ highlighter, linkTables, baseurl, staticFiles, svgContents?, vendoredVideos?, vendoredImages?, counts? }) → MarkdownIt` | Builds the configured markdown-it instance: the eighteen plugins tabulated below, in their fixed order, plus eight renderer-rule overrides assigned directly. `svgContents` is a `Map<srcRel, string>` of pre-read SVG file contents; when present, `svgInlinePlugin` replaces a lone `.svg` image with an inline SVG wrapper. `vendoredVideos` and `vendoredImages` are the maps `videoLinkPlugin` and `remoteImagePlugin` resolve against, and `counts` is the registry `countPlugin` substitutes from. See [Extending](Extending#adding-a-markdown-it-plugin) for how to add a plugin. |
 | `initHighlighter` | (re-export from `highlight.mjs`) | `() → Promise<object>`. Initialises Shiki with the bundled twinBASIC grammar. |
 | `buildLinkTables` | `(pages) → { byPath, byUrl, byRedirect }` | Map lookups keyed by `srcRel`, `permalink`, and `redirect_from` entries. |
@@ -745,7 +772,7 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | `buildInitFn` | (alias of internal `buildInit`) | Available for harnesses; combines `buildInitConfig` + `renderSidebar` in one call. |
 | `renderSidebar` | `(site) → string` | Pre-renders the sidebar HTML. Called by the `nav` task; the output is folded into the shared payload by `dispatch`. |
 | `navActivationCss` | `(page) → string` | Per-page `<style id="jtd-nav-activation">` block. |
-| `injectAnchorHeadings` | `(html, headingsOut) → string` | Adds `<a class="anchor-heading">` next to every heading with an `id`, and pushes each heading onto `headingsOut` as it goes. The icon is deliberately `aria-hidden="true" tabindex="-1"`; the keyboard and screen-reader equivalent is the per-page `<details class="section-links">` block that `renderFooter` builds from `headingsOut`. |
+| `injectAnchorHeadings` | `(html, headingsOut) → string` | Adds `<a class="anchor-heading">` next to every heading with an `id` outside `<code>` and `<pre>`, and pushes each heading onto `headingsOut` as it goes. The icon is deliberately `aria-hidden="true" tabindex="-1"`; the keyboard and screen-reader equivalent is the per-page `<details class="section-links">` block that `renderFooter` builds from `headingsOut`. |
 
 ### `compress.mjs`
 
@@ -773,6 +800,7 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 
 | Symbol | Signature | Description |
 |---|---|---|
+| `posix` | `(p) → string` | Backslashes to forward slashes, for a rel/destPath that has to match the forward-slash form a URL or a tree-manifest comparison expects. Imported by `offline.mjs`, `offline-rewrite.mjs` and `publish-policy.mjs`; `check-tree.mjs` keeps its own copy rather than importing this one, to stay off the render fan-out's import cost. |
 | `permalinkToDestPath` | `(permalink) → string` | Permalink → destination file path. `/` → `index.html`; `/foo/` → `foo/index.html`; `.html`/`.htm`/`.xml` extensions are kept as-is; all other paths get `.html` appended. |
 
 ### `redirects.mjs`
@@ -812,6 +840,13 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | `PACKAGE_FOLDERS` | `{ folder, projects }[]` | Each package folder under `Reference/`, and the project names it documents. |
 | `SYMBOL_INDEX_REL`, `SYMBOL_INDEX_FORMAT` | `string`, `number` | `tB/symbols.json`, and the `format` it declares. |
 
+### `baseline.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `GUARDED_SRC` | `string` | The repo-relative, forward-slashed source root the baselines describe: `"docs"`. `checkBaseline` skips any other source root, and `scripts/check_page_baseline.mjs` and `scripts/check_symbol_index.mjs` pass it in their probes. |
+| `checkBaseline` | `(guard, { record, write, force, file }) → Promise<{ failed, text }>` | The drift guard `checkPageBaseline` and `checkSymbolBaseline` share. `guard` names the file (`"page"` or `"symbol"`) and says what a loss and a gain are and how to describe them; `record` is what this build publishes, as the file holds it. Does nothing unless `record.src` is `GUARDED_SRC`. With `force` it writes `record` to `file`. Otherwise a missing file fails, or is created when `write` is set; a loss fails; and a gain rewrites `file` when `write` is set. The file is `record` as JSON, indented two spaces, with a closing newline. |
+
 ### `symbol-baseline.mjs`
 
 | Symbol | Signature | Description |
@@ -824,7 +859,6 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | Symbol | Signature | Description |
 |---|---|---|
 | `BASELINE_PATH` | `URL` | `builder/page-baseline.json`, the default `file` of `checkPageBaseline`. |
-| `GUARDED_SRC` | `string` | The repo-relative, forward-slashed source root these counts describe: `"docs"`. `checkPageBaseline` skips any other source root; `symbol-baseline.mjs` imports it to guard `checkSymbolBaseline` the same way, and `scripts/check_page_baseline.mjs` and `scripts/check_symbol_index.mjs` pass it in their probes. |
 | `checkPageBaseline` | `({ src, pages, staticFiles, write, force, file }) → Promise<{ failed, text }>` | The page-count drift guard, which does nothing unless `src` is `GUARDED_SRC`. With `force` it writes this build's counts to `file`, up or down. Otherwise a missing baseline fails, or is created when `write` is set; a page or static-file count below the baseline fails; and a count above it rewrites `file` when `write` is set. Called by `runBuild` in `tbdocs.mjs`, and by the probes in `scripts/check_page_baseline.mjs`. |
 
 ### `offline.mjs`
@@ -851,11 +885,10 @@ Pure-compute rewrite helpers extracted from `offline.mjs` so they can be importe
 | `deriveOfflineRedirect` | `(stub, state) → string` | Rewrites a redirect stub's HTML for offline use. |
 | `offlineExcluded` | `(rel, patterns) → boolean` | Returns `true` when a site-relative path matches any `offline_exclude` glob from `_config.yml`. |
 | `stripFontPreloads` | `(html) → string` | Removes the `<link rel="preload" as="font">` tags from the offline tree only. A font preload is a CORS-mode fetch; under `file://` there is no origin to match, so Chrome fails it with `ERR_FAILED` while the `@font-face` fetch beside it succeeds and the faces load anyway. The preload therefore buys an offline reader nothing and costs two red lines in the console. |
-| `normalizeBaseurl` | `(raw) → string` | Normalises a baseurl string to the canonical trailing-slash form. |
 | `posixDirname` | `(rel) → string` | POSIX directory component of a relative path. |
 | `fileDirSegsFromRel` | `(rel) → string[]` | Splits a destination path into directory segments. |
 | `fnmatchPathname` | `(pattern, path) → boolean` | Glob-style pathname match. |
-| `computeRelative`, `resolveRaw`, `computeRelUrl`, `buildSegs`, `decode`, `escapeRegExp`, `getPageCache`, `stripSeo`, `rewriteHtml`, `rewriteCss`, `injectSearchSetup` | various | Internal helpers; see [`offline-rewrite.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/offline-rewrite.mjs) for the per-symbol descriptions. |
+| `computeRelative`, `resolveRaw`, `computeRelUrl`, `buildSegs`, `decode`, `getPageCache`, `stripSeo`, `rewriteHtml`, `rewriteCss`, `injectSearchSetup` | various | Internal helpers; see [`offline-rewrite.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/offline-rewrite.mjs) for the per-symbol descriptions. |
 
 ### `pdf.mjs`
 
@@ -933,11 +966,20 @@ The handler table is built from the imported `HANDLERS` constant:
 |---|---|---|
 | `runServe` | `(opts) → Promise<void>` | Long-lived dev server. Initial one-shot build, then HTTP + recursive watcher + SSE reload. The worker pool is constructed once and reused across rebuilds. Writes to `<srcRoot>/_serve/`. Skips the offline + PDF passes by default. |
 
+### `command-line.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `OPTIONS` | `{ [flag]: { type } }` | `tbdocs`'s flags, in the table shape `lib/cli.mjs`'s `parseCli` reads: `"string"` for a flag that takes a value, `"boolean"` for the rest. `--no-check`, `--no-offline`, `--no-pdf` and `--no-fetch-assets` are flags of their own, not negations. |
+| `DEFAULTS` | frozen `BuildOpts` | The options a build takes with no flags given --- the defaults in the `BuildOpts` table below. `fetchAssets` is left out. |
+| `parseCommandLine` | `(argv) → BuildOpts` | Reads `argv` (without Node's own two entries) through `parseCli`, then applies the flags in the order given, so a `--no-check` undoes only the check flags before it. Throws a `CliError` whose message `main()` prints before it exits 4: `<flag> needs a value`, `Unknown argument: <arg>`, or a `--port` or `--stall-timeout` value that is not one. |
+
 ### `tbdocs.mjs` orchestrator
 
 | Symbol | Signature | Description |
 |---|---|---|
 | `runBuild` | `(opts) → Promise<{ pages, staticFiles, site, destRoot }>` | Runs the full pipeline. Allocates the SAB, spawns or reuses the pool, sends `init` to every worker, awaits `scheduler.start(ctx)`, logs the summary, injects the Gantt chart, returns the final state. |
+| `EXIT_FAILED`, `EXIT_INTEGRITY`, `EXIT_COMMAND_LINE` | `number` | `1`, `2` and `4`: the exit bits for a link failure or any other failed step and for an integrity failure, and the value for a command-line error, outside both bits. `runBuild` sets a bit through a private `failBuild(bit)`, which ORs it into `process.exitCode`, so a build that fails two ways exits with both bits. `serve.mjs` exits with the same values. |
 | `createWorkerPool` | `() → WorkerPool` | Factory for `serve.mjs`. Lets the dev server construct one pool at startup and pass it to every `runBuild()` call without importing `WorkerPool` itself. |
 
 `BuildOpts` fields:
@@ -962,6 +1004,7 @@ The handler table is built from the imported `HANDLERS` constant:
 | `symbolGaps` | `null` | Path to write the public symbols no page documents to, as JSON. |
 | `serve` | `false` | Start the dev server instead of the one-shot build. |
 | `port` | `4000` | HTTP port for serve mode. |
+| `stallTimeoutMs` | `120000` | How long the build waits with no task completing before it fails, naming what was outstanding. `0` disables the watchdog. |
 | `pool` | `null` | Optional external `WorkerPool`. Set by `serve.mjs` to reuse the pool across rebuilds. |
 
 ## See Also

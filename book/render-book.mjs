@@ -57,10 +57,6 @@ import { parseCli, withUsageError } from '../lib/cli.mjs';
 //     construction style. See "fast-refs-class" in
 //     perf/notes/08-pdf-lib.md, which also records the measurements
 //     for fast-refs; git history has its code.
-//   fast-inflate     -- swaps pako.inflate for node:zlib.inflateSync
-//     on the one pdf-lib call site that uses it
-//     (PDFCrossRefStreamParser during load). Negligible cost shift,
-//     but eliminates the last pdf-lib -> pako call at runtime.
 //   fast-parse-number -- direct-integer accumulators in front of
 //     BaseParser.parseRawNumber + parseRawInt, skipping per-byte
 //     string concat and the trailing Number() round-trip. Touches
@@ -181,7 +177,6 @@ import { parseCli, withUsageError } from '../lib/cli.mjs';
 //     allocation + grow doublings across ~79 k PDFArrays). See
 //     "One-buffer PDFArray" in perf/notes/08-pdf-lib.md.
 import './lib/fast-refs-class.mjs';
-import './lib/fast-inflate.mjs';
 import './lib/fast-parse-number.mjs';
 import './lib/fast-decode-name.mjs';
 import './lib/fast-number-to-string.mjs';

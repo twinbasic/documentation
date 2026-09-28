@@ -65,7 +65,7 @@ One of the four does not mean the same thing locally as it does in CI, on any pl
 
     test.bat
 
-The tests the toolchain has to pass. Twelve steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Thirteen steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
 2. [`scripts/check_gate_lists.mjs`](#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
@@ -73,12 +73,13 @@ The tests the toolchain has to pass. Twelve steps, each stopping the run if it f
 4. [`scripts/check_lint.mjs`](#check-lint) --- runs Biome over the tooling and fails on any finding, warnings included.
 5. [`test/search.test.mjs`](#search-test) --- unit tests for the site search: what the search entries hold, and that the copies of the search client agree.
 6. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
-7. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span, and that `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes.
+7. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span, that the rewrites over rendered HTML leave a raw `<pre>` or `<code>` alone, and that `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes.
 8. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
 9. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
 10. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
-11. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
-12. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+11. [`scripts/check_twin_parsers.mjs`](#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
+12. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
+13. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
@@ -92,10 +93,11 @@ POSIX:
       && node scripts/check_page_baseline.mjs \
       && node scripts/check_book_coverage.mjs \
       && node scripts/check_symbol_index.mjs \
+      && node scripts/check_twin_parsers.mjs \
       && node scripts/check_cli.mjs \
       && node scripts/check_axe_patch_equiv.mjs
 
-**Nine of the twelve cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all twelve unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
+**Ten of the thirteen cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all thirteen unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
 
 The three exceptions are [`check_code_regions.mjs`](#check-code-regions), [`check_gate_lists.mjs`](#check-gate-lists), which reads this page, and [`check_lint.mjs`](#check-lint), which lints the site's scripts in `docs/assets/js/`. The first is worth knowing in detail. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes are a different matter: they run against their own sources whatever the tree holds, and they cover the *mirror* fault, where a rewrite silently stops firing. The sweep cannot see that one --- text the rewrite skipped is stashed and restored unchanged, so every region still matches. Add a page with an unusual code construct and run `test.bat`, but read the built page too.
 
@@ -205,8 +207,9 @@ Full invocation:
                             [--update-page-baseline] [--update-symbol-baseline]
                             [--symbol-gaps <path>]
                             [--serve] [--port <N>]
+                            [--stall-timeout <seconds>]
 
-`build.bat` passes `--src docs --check-audit-index`, and forwards anything else given to it.
+`build.bat` passes `--src docs --check-audit-index`, and forwards anything else given to it. A flag that takes a value takes it as the next argument or as `--flag=value`; given as the next argument, the value may not start with a dash.
 
 | Flag | Effect |
 |---|---|
@@ -429,6 +432,8 @@ Probes ride along in the normal run, each a defect this repository actually ship
 
 The admonition probes test the mirror fault, which the region comparison structurally cannot see: **a rewrite that misreads what is code can also fail to fire on real prose**, and the regions still come back identical because the text was only stashed and restored. `Reference/Attributes.md` shipped all six of its admonitions as the literal text `[!NOTE]` for exactly that reason --- a `[Description(...)]` sample whose argument is a Markdown string containing two fence markers as twinBASIC string literals, which the fence stasher closed the surrounding fence on. Every pairing after it was off by one.
 
+Four probes hold the rewrites that run over every page's rendered HTML, `render.mjs`'s `applyPostRenderRewrites` and `template.mjs`'s `injectAnchorHeadings`. A `<pre>` or `<code>` written as raw HTML must come through them as written, and a match outside it must still be rewritten. Code the renderer produced cannot match them, since its `<` is escaped; the probes are for raw HTML, which markdown-it passes through unchanged, and whitespace inside a `<pre>` is content.
+
 It is also the gate on `lib/markdown.mjs` and `lib/frontmatter.mjs`, the modules that tell the tools what in a page is code and where its frontmatter ends. Their probes run with the others, and on every page the sweep checks that `blockRegions`, which parses blocks only, finds exactly the fences, code blocks and HTML blocks of a full parse. The summary line gives the number of fences that full parse found. Three more probes hold the build to the same answer: the rewrite chain must leave alone a fence that only the site's parser finds, and an admonition written inside one, and the build's check of `{{tbdocs:<name>}}` count names must skip names in code and give an unknown one's line in its file. One more holds the build's warning about a frontmatter value left unquoted that ends in `#`: `discover` must name the page and line of `title: Input #`, and say nothing about a quoted value. Another set holds [`convert_em_dash_separators.mjs`](#convert-em-dash-separators), which rewrites page source by hand rather than in the build, to converting prose and nothing else.
 
 `--verbose` prints the first few altered regions of each failing file, before and after. `--self-test` replaces the normal run rather than adding to it, so neither the probes nor the sweep runs: it de-indents the body of one small fence by hand and passes only if the comparison notices. That proves the comparator can still see a change, and nothing more --- it runs no rewrite at all.
@@ -527,6 +532,17 @@ A build that indexes the reference cleanly says nothing about the rules that did
 
 Exits 1 on any failed probe, 2 if it cannot run.
 
+### check_twin_parsers.mjs
+{: #check-twin-parsers }
+
+    node scripts/check_twin_parsers.mjs
+
+Verifies the scanners that read twinBASIC source and the attribute reference still read the shapes each of them once misread. None of them says so when it misreads: a line read as the wrong kind is counted, generated or skipped as that kind. Every probe is a fixed input, so it needs no built tree and no twinBASIC install. Under a second.
+
+The modifier words that may precede a declaration keyword are one list, in `scripts/lib/twin-declarations.mjs`, and a word missing from it makes the keyword after it invisible. So each word is run through all three scanners that use the list: the attribute census's `declarationKind`, `scripts/lib/twin-api.mjs`'s `parseTwin` and `scripts/lib/tb-fences.mjs`'s `classify`. The census's declaration kinds are asserted too, including an inline block comment before the keyword and a `Const` kept apart from a variable, and so are the targets `parseTargets` in `scripts/lib/attributes-doc.mjs` reads from an `Applicable to:` line, including the phrases that must be matched before the line is split on commas and "and".
+
+Exits 1 on any failed probe, 2 if it cannot run.
+
 ### check_cli.mjs
 {: #check-cli }
 
@@ -534,7 +550,7 @@ Exits 1 on any failed probe, 2 if it cannot run.
 
 Verifies `lib/cli.mjs`, the module the tools read their command lines through, and each tool's recorded command-line errors. Nothing else tests how a tool reads its command line, which is how a value flag given no value came to be read as `NaN` or as the next flag. No built tree, no browser, no twinBASIC install; a few seconds.
 
-The module's probes cover what `parseCli` returns and refuses, with a comparison against a strict `node:util` `parseArgs` over the same argument lists, and what `numberOption`, `withUsageError` and `printHelpAndExit` do. A tool that is more lenient than a strict parse today --- one that ignores an unknown flag, say --- keeps its leniency through two of `parseCli`'s parameters, and the probes cover those too.
+The module's probes cover what `parseCli` returns and refuses, with a comparison against a strict `node:util` `parseArgs` over the same argument lists, and what `numberOption`, `withUsageError` and `printHelpAndExit` do. A tool that is more lenient than a strict parse today --- one that ignores an unknown flag, say --- keeps its leniency through two of `parseCli`'s parameters, and the probes cover those too. They also cover the options `builder/command-line.mjs` returns for `tbdocs`, where `--no-check` makes the order of the flags matter; no case can, since each of those command lines starts a build.
 
 The recorded cases are invocations that stop while the tool reads its command line, or at its first check of the project, folder, file or install the command line names, each with its exit code and what it prints on each stream: the tool's own words for the error exactly, a crash's only by the line that names the problem, and the opening of a usage text printed after it. A tool's cases are recorded before it moves onto `lib/cli.mjs`, so the move has to keep them. Each case runs the tool as a child process, in an empty folder of its own and with `TB_IDE` and `PUPPETEER_EXECUTABLE_PATH` naming files that do not exist, so a case that gets past the command line fails on a different message rather than starting a twinBASIC IDE or a browser. A case belongs here only if the tool stops before doing any work.
 

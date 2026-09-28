@@ -22,14 +22,6 @@ The root cause of the need for all these patches is the same: pdf-lib is designe
 
 **Fix.** Two constructor functions, `_FastRef` (gen=0) and `_FastRefGen` (gen≠0), both with their `prototype` aliased to `PDFRef.prototype`. V8 assigns each a stable hidden class from the first instance. `_FastRef` holds only `objectNumber`; `generationNumber` is provided as a prototype data-property default of `0`, so gen=0 instances need only one inline slot (~16 bytes per instance, down from ~60). Gen=0 instances are cached in a dense `pool0` Array indexed by `objectNumber`; gen≠0 instances use a `Map` keyed by `"N M"` string (vanishingly rare: only the free entry at object 0 in Chromium-emitted PDFs). The hot prototype methods `toString`, `sizeInBytes`, and `copyBytesInto` are rewritten to read `objectNumber` and `generationNumber` as plain data-property reads rather than going through the original `tag` string stored on each instance.
 
-## fast-inflate.mjs
-
-**Problem.** `PDFCrossRefStreamParser` decompressed the PDF's cross-reference stream with `pako.inflate()`, which is a pure-JavaScript zlib implementation. Node provides `zlib.inflateSync` backed by the native zlib C library, which is substantially faster. The cross-reference stream is compressed exactly once per `PDFDocument.load` call, so the saving is small in absolute wall-clock terms, but this was the last remaining call to pako after `parallel-deflate.mjs` took over the deflate side, and eliminating it brings the runtime pako call count to zero.
-
-**Fix.** Mutates the live `pako` exports object: replaces `pako.inflate` with a wrapper that delegates to `zlib.inflateSync` when called with no options (the only call pattern pdf-lib uses), and falls back to the original `pako.inflate` for any call that passes options. PDF's `/FlateDecode` encoding (RFC 1950 zlib framing) is accepted by both implementations, so the swap is byte-compatible.
-
-**Mechanism.** pdf-lib calls `require("pako")` lazily at the call site rather than capturing the export at import time, so mutating the live `pako.inflate` property on the module's exports object is visible to the call site.
-
 ## fast-parse-number.mjs
 
 **Problem.** `BaseParser.parseRawNumber` and `BaseParser.parseRawInt` built numeric values by appending one character at a time to a JavaScript string (`value += charFromCode(byte)`), then called `Number(value)` to convert the string back to a number. Every numeric token in a PDF --- object numbers, generation numbers, byte lengths, coordinates, font sizes, array indices --- flows through one of these paths. Each call allocated a temporary string that was immediately discarded. On the book this fired hundreds of thousands of times.

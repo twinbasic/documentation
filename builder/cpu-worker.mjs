@@ -16,13 +16,13 @@ import { unpackShared }                       from "./sab-broadcast.mjs";
 import { deriveSearchEntries }                from "./search.mjs";
 import { computeChunkSeo }                    from "./seo.mjs";
 import { deriveOfflinePage, deriveOfflinePageCached,
-         sliceNavBlock, normalizeBaseurl,
-         posixDirname }                       from "./offline-rewrite.mjs";
+         sliceNavBlock, posixDirname }        from "./offline-rewrite.mjs";
+import { normalizeBaseurl }                   from "./url.mjs";
 
 import {
   createViews, scanAndClaim, onTaskDone, readTaskMeta,
   HANDLERS,
-  READY, CLAIMED, DONE, F_ON_DEMAND, F_RUN_ON_MAIN,
+  READY, CLAIMED, DONE, FAILED, F_ON_DEMAND, F_RUN_ON_MAIN,
   F_RUN_WHEN_IDLE, F_UNIQUE_PER_WORKER,
   MAX_LANES,
 } from "./sab-scheduler.mjs";
@@ -363,6 +363,30 @@ function findIdleTask(views, lane) {
 
 // ── Pull loop ───────────────────────────────────────────────────────────────
 
+// Runs a per-worker task on this lane, marks it done for the lane, and
+// reports its timing and output. Returns false once a throw has been
+// reported, and the caller then ends the pull loop.
+async function runPerWorkerTask(taskIdx, meta) {
+  const t0 = Date.now();
+  let output;
+  try {
+    output = await handlerById[meta.handlerIdx]();
+  } catch (err) {
+    parentPort.postMessage({ taskFailed: taskIdx, message: err.message, stack: err.stack });
+    return false;
+  }
+  const t1 = Date.now();
+  Atomics.store(views.perWorkerDone, taskIdx * MAX_LANES + myLane, 1);
+  parentPort.postMessage({
+    perWorkerTiming: true,
+    taskIdx,
+    timing:  { start: t0, end: t1 },
+    lane:    myLane,
+    output,
+  });
+  return true;
+}
+
 async function pullLoop() {
   while (true) {
     if (Atomics.load(views.buildDone, 0) !== 0) return;
@@ -373,24 +397,7 @@ async function pullLoop() {
       // Speculative: run idle-eligible tasks before sleeping.
       const idleTask = findIdleTask(views, myLane);
       if (idleTask !== -1) {
-        const idleMeta = readTaskMeta(views, idleTask);
-        const t0 = Date.now();
-        let idleResult;
-        try {
-          idleResult = await handlerById[idleMeta.handlerIdx]();
-        } catch (err) {
-          parentPort.postMessage({ taskFailed: idleTask, message: err.message, stack: err.stack });
-          return;
-        }
-        const t1 = Date.now();
-        Atomics.store(views.perWorkerDone, idleTask * MAX_LANES + myLane, 1);
-        parentPort.postMessage({
-          perWorkerTiming: true,
-          taskIdx: idleTask,
-          timing:  { start: t0, end: t1 },
-          lane:    myLane,
-          output:  idleResult,
-        });
+        if (!await runPerWorkerTask(idleTask, readTaskMeta(views, idleTask))) return;
         continue;
       }
 
@@ -436,24 +443,7 @@ async function pullLoop() {
             Atomics.add(views.notify, 0, 1);
             Atomics.notify(views.notify, 0, 1);
 
-            const nestedMeta = readTaskMeta(views, nestedUnsatisfied);
-            const t0 = Date.now();
-            let nestedResult;
-            try {
-              nestedResult = await handlerById[nestedMeta.handlerIdx]();
-            } catch (err) {
-              parentPort.postMessage({ taskFailed: nestedUnsatisfied, message: err.message, stack: err.stack });
-              return;
-            }
-            const t1 = Date.now();
-            Atomics.store(views.perWorkerDone, nestedUnsatisfied * MAX_LANES + myLane, 1);
-            parentPort.postMessage({
-              perWorkerTiming: true,
-              taskIdx: nestedUnsatisfied,
-              timing:  { start: t0, end: t1 },
-              lane:    myLane,
-              output:  nestedResult,
-            });
+            if (!await runPerWorkerTask(nestedUnsatisfied, readTaskMeta(views, nestedUnsatisfied))) return;
             continue;
           }
           Atomics.store(views.status, taskIdx, READY);
@@ -482,24 +472,7 @@ async function pullLoop() {
         Atomics.add(views.notify, 0, 1);
         Atomics.notify(views.notify, 0, 1);
 
-        const t0 = Date.now();
-        let depResult;
-        try {
-          depResult = await handlerById[depMeta.handlerIdx]();
-        } catch (err) {
-          parentPort.postMessage({ taskFailed: unsatisfied, message: err.message, stack: err.stack });
-          return;
-        }
-        const t1 = Date.now();
-        Atomics.store(views.perWorkerDone, unsatisfied * MAX_LANES + myLane, 1);
-
-        parentPort.postMessage({
-          perWorkerTiming: true,
-          taskIdx: unsatisfied,
-          timing:  { start: t0, end: t1 },
-          lane:    myLane,
-          output:  depResult,
-        });
+        if (!await runPerWorkerTask(unsatisfied, depMeta)) return;
         continue;
       }
 
@@ -523,7 +496,7 @@ async function pullLoop() {
       result = await handler(taskIdx);
     } catch (err) {
       parentPort.postMessage({ taskFailed: taskIdx, message: err.message, stack: err.stack });
-      Atomics.store(views.status, taskIdx, 4); // FAILED
+      Atomics.store(views.status, taskIdx, FAILED);
       return;
     }
     const t1 = Date.now();

@@ -9,8 +9,7 @@
 //                        fnmatchPathname)
 //   §C  URL resolution   (computeRelative, resolveRaw, computeRelUrl,
 //                         buildSegs, decode, fileDirSegsFromRel,
-//                         posixDirname, normalizeBaseurl, escapeRegExp,
-//                         getPageCache)
+//                         posixDirname, getPageCache)
 //   §D  HTML rewrite     (stripSeo, stripFontPreloads, rewriteHtml,
 //                         injectSearchSetup,
 //                         sliceNavBlock, NAV_OPEN_RE, NAV_CLOSE,
@@ -19,6 +18,10 @@
 //                         HTML_COMBINED_RE, JTD_SCRIPT_TAG_RE)
 //   §E  CSS rewrite      (rewriteCss, CSS_URL_RE, deriveOfflineCss)
 //   §F  Redirect-stub    (deriveOfflineRedirect)
+
+import { escapeRegExp } from "./escape.mjs";
+import { CODE_OR_PRE } from "./code-guard.mjs";
+import { posix } from "./paths.mjs";
 
 // ---------------------------------------------------------------------------
 // §B  Site-paths set
@@ -32,17 +35,17 @@ export function buildSitePathsSync(pages, staticFiles, excludePatterns, stubs, t
   const paths = new Set();
   for (const p of pages) {
     if (p.frontmatter?.layout === "book-combined") continue;
-    const rel = p.destPath.replaceAll("\\", "/");
+    const rel = posix(p.destPath);
     if (offlineExcluded(rel, excludePatterns)) continue;
     paths.add("/" + rel);
   }
   for (const s of staticFiles) {
-    const rel = s.destRel.replaceAll("\\", "/");
+    const rel = posix(s.destRel);
     if (offlineExcluded(rel, excludePatterns)) continue;
     paths.add("/" + rel);
   }
   for (const stub of stubs) {
-    const rel = stub.destPath.replaceAll("\\", "/");
+    const rel = posix(stub.destPath);
     if (offlineExcluded(rel, excludePatterns)) continue;
     paths.add("/" + rel);
   }
@@ -217,28 +220,16 @@ export function decode(s) {
 
 // §6.11  fileDirSegsFromRel
 export function fileDirSegsFromRel(rel) {
-  const normalised = rel.replaceAll("\\", "/");
+  const normalised = posix(rel);
   const dir = posixDirname(normalised);
   if (dir === "." || dir === "") return [];
   return dir.split("/");
 }
 
 export function posixDirname(rel) {
-  const normalised = rel.replaceAll("\\", "/");
+  const normalised = posix(rel);
   const idx = normalised.lastIndexOf("/");
   return idx === -1 ? "." : normalised.slice(0, idx);
-}
-
-// §6.12  normalizeBaseurl
-export function normalizeBaseurl(raw) {
-  let baseurl = String(raw ?? "").replace(/\/+$/, "");
-  if (baseurl && !baseurl.startsWith("/")) baseurl = "/" + baseurl;
-  return baseurl;
-}
-
-// §6.13  escapeRegExp
-export function escapeRegExp(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // Hoist the per-file-dir inner cache so the per-match cost is one
@@ -297,7 +288,8 @@ export function stripSeo(html) {
 // with nothing behind it. A colon is deliberately NOT excluded:
 // `xlink:href` is a real URL attribute and there are 75,129 of them in
 // the built tree.
-export const HTML_COMBINED_RE = /<code\b[^>]*>[\s\S]*?<\/code>|<pre\b[^>]*>[\s\S]*?<\/pre>|(?<!-)\b(href|src)=(["'])(\/(?!\/)[^"']*|(?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\2/g;
+export const HTML_COMBINED_RE = new RegExp(
+  String.raw`${CODE_OR_PRE.source}|(?<!-)\b(href|src)=(["'])(\/(?!\/)[^"']*|(?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\2`, "g");
 
 // How many distinct unresolved URLs a single rewrite reports back. The
 // count is the headline; this is what makes it actionable. Capped so a

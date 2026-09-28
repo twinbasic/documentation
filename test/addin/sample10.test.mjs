@@ -7,16 +7,15 @@
 
 import assert from "node:assert/strict";
 import path from "node:path";
-import { after, before, describe, test } from "node:test";
+import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { consoleMark, loadedAddins, readConsole } from "../../scripts/lib/tb-ide.mjs";
-import { addinLane } from "../../scripts/lib/tb-lane.mjs";
+import { consoleMark, linesSince, loadedAddins } from "../../scripts/lib/tb-ide.mjs";
 import { answerMessageBox, click, messageBoxes, notifications, toolWindow,
          waitFor } from "../../scripts/lib/tb-operate.mjs";
+import { scenario } from "./scenario.mjs";
 
 const HOST = path.join(path.dirname(fileURLToPath(import.meta.url)), "host");
 const W = "WaynesWindowData";          // the id Sample 10 gives ToolWindows.Add
-const lane = addinLane();
 
 // The message box on top, with its text trimmed, or undefined.
 async function topBox(c) {
@@ -25,18 +24,17 @@ async function topBox(c) {
 }
 const noBoxes = (c) => waitFor(c, async (c) => (await messageBoxes(c)).length === 0);
 
-describe("Sample 10: WaynesWorld", { skip: lane ? false : "run it with addin-test.bat" }, () => {
+scenario("Sample 10: WaynesWorld", (lane) => {
   let c;
   before(async () => {
     await lane.addSample("Sample 10");
     c = await lane.open(HOST);
   });
-  after(() => lane?.close());
 
   test("the compiler loads the add-in, which reports the project", async () => {
     const names = (await loadedAddins(c)).map((a) => a.name);
     assert.ok(names.includes("WaynesWorld AddIn"), `loaded: ${JSON.stringify(names)}`);
-    const lines = ((await readConsole(c)) ?? "").split("\n").filter((l) => l.startsWith("[WaynesWorldAddin]"));
+    const lines = (await linesSince(c)).filter((l) => l.startsWith("[WaynesWorldAddin]"));
     assert.equal(lines.length, 5, `its OnProjectLoaded lines: ${JSON.stringify(lines)}`);
     assert.ok(lines.includes("[WaynesWorldAddin] ProjectName: AddinHost"), JSON.stringify(lines));
   });
@@ -78,7 +76,7 @@ describe("Sample 10: WaynesWorld", { skip: lane ? false : "run it with addin-tes
   test("a DEBUG CONSOLE line", async () => {
     const mark = await consoleMark(c);
     await click(c, { toolWindow: W, css: "#myButton7" });
-    const text = await waitFor(c, async (c) => ((await readConsole(c, { since: mark })) ?? "").trim());
+    const text = await waitFor(c, async (c) => (await linesSince(c, mark)).filter(Boolean).join("\n"));
     assert.equal(text, "Hello there from WaynesWorldAddIn!");
   });
 });

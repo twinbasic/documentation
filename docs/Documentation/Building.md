@@ -78,6 +78,7 @@ Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from a
       && node scripts/check_page_baseline.mjs \
       && node scripts/check_book_coverage.mjs \
       && node scripts/check_symbol_index.mjs \
+      && node scripts/check_twin_parsers.mjs \
       && node scripts/check_cli.mjs \
       && node scripts/check_axe_patch_equiv.mjs
 
@@ -508,7 +509,7 @@ At render time, any markdown image reference to a build-local `.svg` is replaced
 The renderer calls `@hpcc-js/wasm-graphviz` directly: one WASM module load (~50 ms) covers the whole batch, then each diagram is a synchronous `gv.dot(src)` call. No headless browser and no Chromium dependency for diagrams. Two failure modes are handled distinctly:
 
 - **Setup failures** (`@hpcc-js/wasm-graphviz` not installed, WASM load fails) emit a one-line warning, retain the existing on-disk SVGs, and let the build exit 0 --- a fresh checkout without `npm install` still builds against the committed SVGs.
-- **Content failures** (broken DOT syntax, render throws) emit the error verbatim, leave that diagram's previous SVG in place, continue rendering the rest of the batch, and flip `process.exitCode = 1` so CI catches the bad diagram.
+- **Content failures** (broken DOT syntax, render throws) emit the error verbatim, leave that diagram's previous SVG in place, continue rendering the rest of the batch, and set exit bit 1 so CI catches the bad diagram.
 
 In serve mode the watcher ignores any `.svg` that has a `.dot` sibling. The `.dot` is the source of truth; the `.svg` is the build artifact the renderer emits back under `srcRoot`. Without the filter, each `.dot` edit would fire two rebuilds (one on the edit, one on the SVG write) and the browser would reload twice for one user change.
 

@@ -7,16 +7,15 @@
 
 import assert from "node:assert/strict";
 import path from "node:path";
-import { after, before, describe, test } from "node:test";
+import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { loadedAddins } from "../../scripts/lib/tb-ide.mjs";
-import { addinLane } from "../../scripts/lib/tb-lane.mjs";
 import { click, editorState, toolWindow, typeText, waitFor } from "../../scripts/lib/tb-operate.mjs";
 import { savedSettings } from "../../scripts/lib/tb-registry.mjs";
+import { scenario } from "./scenario.mjs";
 
 const HOST = path.join(path.dirname(fileURLToPath(import.meta.url)), "host");
 const W = "GlobalSearchAddInData";     // the id Sample 15 gives ToolWindows.Add
-const lane = addinLane();
 
 // The search's results, read from the list view's data rather than its rows,
 // since a list view draws only the rows that fit. One entry per file, sorted by
@@ -45,13 +44,12 @@ const matchCount = (r) => r.reduce((n, f) => n + f.matches.length, 0);
 const options = (c) => c.evaluate(`Object.fromEntries([...toolWindowsById[${JSON.stringify(W)}]
   .bodyElement.querySelectorAll("input[type=checkbox]")].map((e) => [e.id, e.checked]))`);
 
-describe("Sample 15: Global Search", { skip: lane ? false : "run it with addin-test.bat" }, () => {
+scenario("Sample 15: Global Search", (lane) => {
   let c;
   before(async () => {
     await lane.addSample("Sample 15");
     c = await lane.open(HOST);
   });
-  after(() => lane?.close());
 
   test("the compiler loads the add-in", async () => {
     const names = (await loadedAddins(c)).map((a) => a.name);

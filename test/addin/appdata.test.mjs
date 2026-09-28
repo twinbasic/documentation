@@ -18,23 +18,21 @@
 import assert from "node:assert/strict";
 import { copyFileSync, mkdirSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { after, before, describe, test } from "node:test";
+import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { addinsRoot, consoleMark, loadedAddins, normPath, readConsole } from "../../scripts/lib/tb-ide.mjs";
-import { addinLane } from "../../scripts/lib/tb-lane.mjs";
+import { addinsRoot, consoleMark, linesSince, loadedAddins, normPath } from "../../scripts/lib/tb-ide.mjs";
 import { click, waitFor } from "../../scripts/lib/tb-operate.mjs";
+import { scenario } from "./scenario.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HOST = path.join(HERE, "host");
 const PROBE = path.join(HERE, "probes", "appdata");
-const lane = addinLane();
 
 // What the probe printed since a mark, without its prefix.
-const probeLines = async (c, mark) => ((await readConsole(c, { since: mark })) ?? "").split("\n")
-  .map((l) => l.trim()).filter((l) => l.startsWith("[AppDataProbe] ")).map((l) => l.slice(15));
+const probeLines = (c, mark) => linesSince(c, mark, { prefix: "[AppDataProbe] " });
 const same = (a, b) => normPath(path.resolve(a)) === normPath(path.resolve(b));
 
-describe("P6: add-ins in %APPDATA%\\twinBASIC\\addins", { skip: lane ? false : "run it with addin-test.bat" }, () => {
+scenario("P6: add-ins in %APPDATA%\\twinBASIC\\addins", (lane) => {
   let c, dll;
   before(async () => {
     const built = await lane.buildAddin(PROBE);
@@ -46,7 +44,6 @@ describe("P6: add-ins in %APPDATA%\\twinBASIC\\addins", { skip: lane ? false : "
     copyFileSync(built.dll, path.join(dir, "..", "AppDataProbeInAddins.dll"));
     c = await lane.open(HOST);
   });
-  after(() => lane?.close());
 
   test("the page makes the add-ins' root by expanding %APPDATA% in the IDE's environment, and fills it", async () => {
     assert.equal(await addinsRoot(c), `${path.join(lane.appdata, "twinBASIC")}\\`);

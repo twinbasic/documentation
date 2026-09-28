@@ -107,6 +107,7 @@ const WRAPPERS = [
 const NUMBER_WORDS = [
   "zero", "one", "two", "three", "four", "five",
   "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
+  "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty",
 ];
 
 /** The body of a `### <name>` section: up to the next heading of any level. */

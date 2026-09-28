@@ -13,6 +13,15 @@
 
 const HTMLISH_EXT = /\.(html?|xml)$/i;
 
+// Windows path separators to POSIX, for a rel/destPath that has to match
+// the forward-slash form a URL or a tree-manifest comparison expects.
+// `builder/check-tree.mjs` keeps its own copy rather than importing this
+// one -- it sits on the render fan-out's critical path and pays for no
+// import beyond node:path.
+export function posix(p) {
+  return String(p).replaceAll("\\", "/");
+}
+
 export function permalinkToDestPath(permalink) {
   let p = permalink.startsWith("/") ? permalink.slice(1) : permalink;
   if (p === "") return "index.html";

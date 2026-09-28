@@ -15,16 +15,15 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { after, before, describe, test } from "node:test";
+import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { addinLane } from "../../scripts/lib/tb-lane.mjs";
 import { openFile } from "../../scripts/lib/tb-operate.mjs";
+import { scenario } from "./scenario.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT = path.join(HERE, "probes", "symbols");
 const FILE = "/SymbolsProbe/Sources/Symbols.twin";
 const SOURCE = readFileSync(path.join(PROJECT, "Sources", "Symbols.twin"), "utf8").split(/\r?\n/);
-const lane = addinLane();
 
 // Where a name is, as LSP counts, 0-based: the first whole `word` from where
 // `text` starts, on the first line holding `text`; its middle character.
@@ -84,13 +83,12 @@ async function signatures(c, text, after) {
 const packageFile = (pkg, file) =>
   new RegExp(`^twinbasic:/SymbolsProbe/Packages/(?:[^/]+/Packages/)*${pkg}/Sources/${file}$`);
 
-describe("P5: what the compiler says about the name under the cursor", { skip: lane ? false : "run it with addin-test.bat" }, () => {
+scenario("P5: what the compiler says about the name under the cursor", (lane) => {
   let c;
   before(async () => {
     c = await lane.open(PROJECT);
     await openFile(c, FILE, { line: 1, column: 1 });
   });
-  after(() => lane?.close());
 
   test("hover on a procedure names its kind, and the package and module or interface it is declared in", async () => {
     const cases = [

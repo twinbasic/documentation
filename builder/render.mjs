@@ -18,6 +18,9 @@ import footnote from "markdown-it-footnote";
 import { blockRegions, maskCode } from "../lib/markdown.mjs";
 import { initHighlighter } from "./highlight.mjs";
 import { countPlugin, findSurvivingPlaceholder } from "./counts.mjs";
+import { replaceOutsideCode } from "./code-guard.mjs";
+import { splitFragment } from "./url.mjs";
+import { escapeMarkup, escapeMarkupAndQuotes, escapeRegExp } from "./escape.mjs";
 
 export async function renderPhase(pages, site, staticFiles = []) {
   // Allow the orchestrator to pre-build the markdown-it instance (so
@@ -60,23 +63,29 @@ function renderPage(page, md) {
   }
   const source = applyPreRenderRewrites(page.rawContent, md);
   const env = { page };
-  let html = md.render(source, env);
+  const html = md.render(source, env);
   // Lifted off the headings by searchIndexMarksPlugin; search.mjs reads
   // them when it splits this page into entries.
   if (env.searchIndexMarks) page.searchIndexMarks = env.searchIndexMarks;
-  html = normaliseVoidTags(html);
-  html = padEmptyCells(html);
-  return html;
+  return applyPostRenderRewrites(html);
 }
 
-// kramdown emits a single space inside otherwise-empty `<td>` / `<th>`
-// cells (`<td> </td>`); markdown-it leaves them collapsed (`<td></td>`).
+// The rewrites over a page's whole rendered HTML, exactly as renderPage
+// applies them. Exported so scripts/check_code_regions.mjs gates the real
+// chain. Each goes through replaceOutsideCode. Code the renderer produced
+// cannot match their patterns, since its `<` is escaped; a `<pre>` or
+// `<code>` written as raw HTML reaches them as written, and whitespace
+// inside one is content.
+export function applyPostRenderRewrites(html) {
+  return padEmptyCells(normaliseVoidTags(html));
+}
+
+// markdown-it leaves an empty `<td>` / `<th>` cell collapsed (`<td></td>`);
+// kramdown emits a nbsp in it, and so does this. A regular space would look
+// the same, but Phase 4's compress would collapse it differently.
 function padEmptyCells(html) {
-  // kramdown emits `<td>\xa0</td>` (nbsp) for empty cells; we mirror
-  // it so the rendered HTML byte-matches. Regular space here would
-  // visually look the same, but Phase 4's compress would later
-  // collapse it differently than kramdown's empty-cell content.
-  return html.replace(/<(t[dh])([^>]*)><\/\1>/g, "<$1$2> </$1>");
+  return replaceOutsideCode(html, /<(t[dh])([^>]*)><\/\1>/g,
+    (_, tag, attrs) => `<${tag}${attrs}>\u{a0}</${tag}>`);
 }
 
 // The whole pre-render rewrite chain, exactly as renderPage applies it.
@@ -278,7 +287,7 @@ function stripSelfClose(attrs) {
 }
 
 function normaliseVoidTags(html) {
-  return html.replace(VOID_TAGS_RE, (_, tag, attrs) =>
+  return replaceOutsideCode(html, VOID_TAGS_RE, (_, tag, attrs) =>
     `<${tag.toLowerCase()}${stripSelfClose(attrs)} />`);
 }
 
@@ -348,7 +357,7 @@ export function createMarkdownIt(ctx) {
   // `<pre><code>` -- override to match.
   md.renderer.rules.code_block = (tokens, idx, _opts, _env, _slf) => {
     const tok = tokens[idx];
-    const body = escapeHtmlMinimal(tok.content);
+    const body = escapeMarkup(tok.content);
     return `<div class="language-plaintext highlighter-rouge"><div class="highlight" tabindex="0"><pre class="highlight"><code>${body}</code></pre></div></div>\n`;
   };
 
@@ -359,7 +368,7 @@ export function createMarkdownIt(ctx) {
   // attribute syntax stays readable.
   md.renderer.rules.code_inline = (tokens, idx, _opts, _env, slf) => {
     const tok = tokens[idx];
-    return `<code class="language-plaintext highlighter-rouge"${slf.renderAttrs(tok)}>${escapeHtmlMinimal(tok.content)}</code>`;
+    return `<code class="language-plaintext highlighter-rouge"${slf.renderAttrs(tok)}>${escapeMarkup(tok.content)}</code>`;
   };
 
   // just-the-docs wraps every <table> in <div class="table-wrapper"> via
@@ -1400,13 +1409,14 @@ function collectHeadings(toks, from) {
 // each `<li>` link's text. Mirror that by rendering a minimal subset of
 // inline tokens to HTML: text, code spans, and emphasis/strong wrappers.
 // Other tokens (links, images, html_inline) fall back to their visible
-// text content -- kramdown drops them too.
+// text content -- kramdown drops them too. Text and code spans are escaped
+// alike: the entry is element content, where a quote needs no escaping.
 function headingTocHtml(children) {
   let out = "";
   for (const c of children) {
-    if (c.type === "text") out += escapeHtml(c.content);
+    if (c.type === "text") out += escapeMarkup(c.content);
     else if (c.type === "code_inline") {
-      out += `<code class="language-plaintext highlighter-rouge">${escapeHtmlMinimal(c.content)}</code>`;
+      out += `<code class="language-plaintext highlighter-rouge">${escapeMarkup(c.content)}</code>`;
     } else if (c.type === "strong_open") out += "<strong>";
     else if (c.type === "strong_close") out += "</strong>";
     else if (c.type === "em_open") out += "<em>";
@@ -1555,12 +1565,6 @@ function resolveAsset(resolved, ctx) {
     return `${ctx.baseurl}/${resolved}`;
   }
   return null;
-}
-
-function splitFragment(href) {
-  const i = href.indexOf("#");
-  if (i < 0) return [href, null];
-  return [href.slice(0, i), href.slice(i + 1)];
 }
 
 // Mirrors jekyll-relative-links's File.expand_path-based resolution: a
@@ -1904,7 +1908,7 @@ function videoLinkPlugin(md, ctx) {
         // has not finished loading when the page-breaking pass runs, so a
         // deferred image would abort the PDF book if the Videos pages ever
         // join it. Matches every other image on the site.
-        img.content = `<img src="${escapeHtml(thumb)}" alt="${escapeHtml(label)}" />`;
+        img.content = `<img src="${escapeMarkupAndQuotes(thumb)}" alt="${escapeMarkupAndQuotes(label)}" />`;
 
         // `.video` is the marker that selected this link, not a styling
         // hook -- nothing in the stylesheets matches it -- so it is
@@ -2104,7 +2108,7 @@ function svgInlinePlugin(md, ctx) {
 }
 
 function buildSvgWrapper(svgContent, alt, stem, srcRel) {
-  const esc = escapeHtml;
+  const esc = escapeMarkupAndQuotes;
 
   // `role="img"` with an empty `aria-label` is worse than no role at all: it
   // tells a screen reader there is an image here and then refuses to say what
@@ -2133,20 +2137,4 @@ function buildSvgWrapper(svgContent, alt, stem, srcRel) {
     svgContent +
     `</div>` +
     `</div>`;
-}
-
-// ---------- helpers ---------------------------------------------------------
-
-const HTML_ESCAPE = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
-function escapeHtml(s) {
-  return s.replace(/[&<>"']/g, (c) => HTML_ESCAPE[c]);
-}
-
-const HTML_ESCAPE_MIN = { "&": "&amp;", "<": "&lt;", ">": "&gt;" };
-function escapeHtmlMinimal(s) {
-  return s.replace(/[&<>]/g, (c) => HTML_ESCAPE_MIN[c]);
-}
-
-function escapeRegExp(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

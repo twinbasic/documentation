@@ -1,6 +1,8 @@
 // Inline SVG Gantt chart for the build timeline.
 // Replaces the client-side Mermaid renderer — no JS runtime needed.
 
+import { escapeMarkup } from "./escape.mjs";
+
 const COLORS = {
   Seeds:  { light: "#86c7a3", dark: "#3d8b5e" },
   Spine:  { light: "#6eb5d9", dark: "#3c7db0" },
@@ -139,7 +141,7 @@ export function renderGantt(grouped) {
         o.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${BAR_H}" class="${cls}" rx="2"/>`);
         const lbl = workerLabel(t);
         if (lbl.length * CHAR_W + BAR_PAD * 2 <= bw)
-          o.push(`<text x="${rd(bx + BAR_PAD)}" y="${ty}" class="gl" font-size="11">${esc(lbl)}</text>`);
+          o.push(`<text x="${rd(bx + BAR_PAD)}" y="${ty}" class="gl" font-size="11">${escapeMarkup(lbl)}</text>`);
       }
       y += ROW_H;
     }
@@ -160,7 +162,7 @@ function renderMainSection(o, section, tasks, y, xOf) {
   const cls = `gb-${section.toLowerCase()}`;
   const lx = Math.round(SECTION_W / 2);
   const ly = rd(y + tasks.length * ROW_H / 2);
-  o.push(`<text x="${lx}" y="${ly}" class="gs" font-size="12" text-anchor="middle" dominant-baseline="central" transform="rotate(-90,${lx},${ly})">${esc(section)}</text>`);
+  o.push(`<text x="${lx}" y="${ly}" class="gs" font-size="12" text-anchor="middle" dominant-baseline="central" transform="rotate(-90,${lx},${ly})">${escapeMarkup(section)}</text>`);
   for (let i = 0; i < tasks.length; i++) {
     const t = tasks[i];
     const bx = rd(xOf(t.start));
@@ -178,11 +180,11 @@ function renderMainSection(o, section, tasks, y, xOf) {
     const lbl = taskLabel(t);
     const textW = lbl.length * CHAR_W;
     if (textW + BAR_PAD * 2 <= bw) {
-      o.push(`<text x="${rd(bx + BAR_PAD)}" y="${ty}" class="gl" font-size="11">${esc(lbl)}</text>`);
+      o.push(`<text x="${rd(bx + BAR_PAD)}" y="${ty}" class="gl" font-size="11">${escapeMarkup(lbl)}</text>`);
     } else if (bx + bw + 4 + textW <= SVG_W) {
-      o.push(`<text x="${rd(bx + bw + 4)}" y="${ty}" class="gl" font-size="11">${esc(lbl)}</text>`);
+      o.push(`<text x="${rd(bx + bw + 4)}" y="${ty}" class="gl" font-size="11">${escapeMarkup(lbl)}</text>`);
     } else {
-      o.push(`<text x="${rd(bx - 4)}" y="${ty}" text-anchor="end" class="gl" font-size="11">${esc(lbl)}</text>`);
+      o.push(`<text x="${rd(bx - 4)}" y="${ty}" text-anchor="end" class="gl" font-size="11">${escapeMarkup(lbl)}</text>`);
     }
     y += ROW_H;
   }
@@ -218,4 +220,3 @@ function workerLabel(t) {
 }
 
 function rd(n) { return Math.round(n * 10) / 10; }
-function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }

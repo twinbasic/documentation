@@ -70,6 +70,8 @@ import { createHash } from "node:crypto";
 import MarkdownIt from "markdown-it";
 
 import { markdownFiles } from "../../lib/markdown-files.mjs";
+import { logicalLines } from "./twin-api.mjs";
+import { MODIFIERS } from "./twin-declarations.mjs";
 
 /** The bare flag that opts a fence in to compilation. */
 export const MARKER = "check_build";
@@ -330,19 +332,9 @@ export async function collectFences(root) {
 
 // ----------------------------------------------------------------- classifier
 
-// Modifiers that may precede a declaration keyword. A modifier this list does
-// not know makes the keyword after it invisible, which is the silent
-// misclassification scripts/census_attributes.mjs records paying for
-// (`NotDispatchable`, there).
-// The vocabulary is measured, not guessed: `Overridable` has 32 uses across the
-// shipped packages and 3 in docs/, and leaving it out cost three fences, which
-// came back as "End Function closing Class" -- a missed opener always surfaces
-// as a mismatch somewhere later, never where it happened.
-const MODS = "(?:Public|Private|Friend|Global|Protected|Static|Shared|Partial|" +
-  "NotDispatchable|Overridable|Overrides|Overloads|Virtual|Abstract|Default|" +
-  "Iterator|Async|MustOverride|MustInherit|NotInheritable|Optional|PtrSafe|Naked|" +
-  "CDecl|StdCall|Unsafe|Extern|Inline)";
-const rx = (body) => new RegExp("^(?:" + MODS + "\\s+)*" + body, "i");
+// Modifiers that may precede a declaration keyword: twin-declarations.mjs's,
+// shared with the two scanners of the packages' source.
+const rx = (body) => new RegExp("^(?:(?:" + MODIFIERS + ")\\s+)*" + body, "i");
 
 // Every opener demands a NAME after the keyword. Without that guard a UDT field
 // called `Type As Long` -- four of them in the shipped packages -- reads as an
@@ -414,62 +406,20 @@ const INNER_CLOSE = [
   [/^End\s+Select\b/i, "Select"], [/^End\s+Try\b/i, "Try"],
 ];
 
-/**
- * Logical source lines: comments stripped, continuations joined, blanks dropped.
- *
- * The comment strip is quote-aware because this corpus is full of samples whose
- * strings contain apostrophes and whose `[Description("...")]` arguments contain
- * whole sentences.
- */
-function logicalLines(src) {
-  const raw = src.replace(/\r\n?/g, "\n").split("\n");
-  const out = [];
-  let acc = "", accAt = 0;
-  raw.forEach((line, i) => {
-    let s = "", inStr = false;
-    for (const ch of line) {
-      if (ch === '"') { inStr = !inStr; s += ch; continue; }
-      if (!inStr && ch === "'") break;
-      s += ch;
-    }
-    const blank = !s.trim();
-    if (!blank && /\s_\s*$/.test(s)) {
-      if (!acc) accAt = i;
-      acc += s.replace(/\s_\s*$/, " ");
-      return;
-    }
-    if (acc) { out.push({ text: (acc + s).trim(), at: accAt }); acc = ""; return; }
-    if (blank) return;
-    out.push({ text: s.trim(), at: i });
-  });
-  if (acc) out.push({ text: acc.trim(), at: accAt });
-  return out;
-}
-
 const kindOf = (text) => (KIND_RE.exec(text)?.[1] ?? "?").toLowerCase();
 
 /**
  * Does this fence use `Me`, and so have to be generated into a Class?
  *
- * Strings are blanked as well as comments, which logicalLines does not do: this
- * corpus prints the word. `Debug.Print "Use Me instead"` is prose inside a
- * literal, and treating it as code would wrap an ordinary module sample in a
- * Class for nothing.
+ * Read from the logical lines, whose strings are blanked as well as their
+ * comments: this corpus prints the word. `Debug.Print "Use Me instead"` is prose
+ * inside a literal, and treating it as code would wrap an ordinary module sample
+ * in a Class for nothing.
  *
  * A `Me` preceded by a dot is somebody's member, not the keyword.
  */
 export function usesMe(src) {
-  for (const raw of src.replace(/\r\n?/g, "\n").split("\n")) {
-    let s = "", inStr = false;
-    for (const ch of raw) {
-      if (ch === '"') { inStr = !inStr; s += " "; continue; }
-      if (inStr) { s += " "; continue; }
-      if (ch === "'") break;
-      s += ch;
-    }
-    if (/(?:^|[^.\w])Me\b/i.test(s)) return true;
-  }
-  return false;
+  return logicalLines(src).some(({ text }) => /(?:^|[^.\w])Me\b/i.test(text));
 }
 
 /**
@@ -481,7 +431,12 @@ export function usesMe(src) {
  *   it were generated, which is what the batcher packs around.
  */
 export function classify(content) {
-  const lines = logicalLines(content);
+  // Trimmed, because every pattern above is anchored at a line's first word,
+  // and with the blank lines dropped, or a fence holding only comments would
+  // read as a loose statement instead of as empty. The strings arrive blanked,
+  // so a sentence in a `[Description("...")]` argument is never read as a
+  // declaration.
+  const lines = logicalLines(content).map((l) => l.text.trim()).filter(Boolean);
   if (!lines.length) return { slot: null, reason: "empty", names: [] };
   // An elision is the one fragment marker the docs use deliberately, and the
   // VBA-derived pages inherited Microsoft's SPACED form -- `. . .` on a line of
@@ -501,7 +456,7 @@ export function classify(content) {
   let sawContainer = false, sawProc = false, sawModuleOnly = false, sawLoose = false;
   let sawWithEvents = false, sawClassOnly = false;
 
-  for (const { text } of lines) {
+  for (const text of lines) {
     if (DIRECTIVE_RE.test(text)) continue;          // #If / #End If / #Const
 
     const end = END_RE.exec(text);

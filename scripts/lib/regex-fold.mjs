@@ -27,11 +27,16 @@
 //   A.join(sep)        a `const A = ["a","b"]` of string literals
 //   c ? a : b          both branches, checked as two patterns
 //
+// A name imported by a relative path resolves too, when the module exports it
+// as a `const` whose initialiser is a string or regex literal: a literal needs
+// nothing from the module's own scope, so it folds the same in either file.
+//
 // **The exception is an escaping call**, `escapeRegExp(x)` and anything else
-// written to the same shape. Its result is a fixed character sequence with no
-// regex operator in it, whatever `x` holds, so the construction's *structure*
-// is knowable even though its text is not. Those fold to a one-character
-// placeholder and are marked `modelled`.
+// written to the same shape, declared in the file or imported by a relative
+// path from a module that exports it. Its result is a fixed character
+// sequence with no regex operator in it, whatever `x` holds, so the
+// construction's *structure* is knowable even though its text is not. Those
+// fold to a one-character placeholder and are marked `modelled`.
 //
 // That model has a gap, and it is stated rather than hidden: an escaped splice
 // **inside a quantified alternation** could be ambiguous with a sibling branch
@@ -57,9 +62,9 @@ const isRegExpCallee = (n) => n?.type === "Identifier" && n.name === "RegExp";
 
 /**
  * `function f(s) { return s.replace(/[...]/g, "\\$&"); }` -- the universal
- * regex escaper. Recognised by shape rather than by name, so the three copies
- * in this tree (`escapeRegExp` twice, `escapeRegExpBook`) and any fourth are
- * all covered without a list to maintain.
+ * regex escaper. Recognised by shape rather than by name, so `builder/escape.mjs`'s
+ * `escapeRegExp` and any copy written elsewhere are covered without a list to
+ * maintain.
  */
 function isEscapeHelper(fn) {
   const params = fn?.params ?? [];
@@ -85,8 +90,12 @@ function isEscapeHelper(fn) {
  * Those three sets exist for the message, not for the decision -- all of them
  * are refused. "`pattern` is a function parameter" tells a reader to go and
  * look at the call sites; "`pattern` is not a const" tells them nothing.
+ *
+ * `exportsOf(source)` gives `moduleExports` of the module an import names, or
+ * nothing. An imported escape helper is an escaper here too, and an imported
+ * literal `const` is a `const` here.
  */
-function collectBindings(ast) {
+function collectBindings(ast, exportsOf) {
   const consts = new Map();
   const duplicated = new Set();
   const mutable = new Set();
@@ -120,12 +129,56 @@ function collectBindings(ast) {
       noteParams(node);
       if (node.id?.name && isEscapeHelper(node)) escapers.add(node.id.name);
     },
+    ImportDeclaration(node) {
+      const mod = exportsOf(node.source.value);
+      if (!mod) return;
+      for (const s of node.specifiers) {
+        if (s.type !== "ImportSpecifier") continue;
+        const name = s.imported.name ?? s.imported.value;
+        if (mod.escapers.has(name)) escapers.add(s.local.name);
+        if (mod.consts.has(name)) noteConst(s.local.name, mod.consts.get(name));
+      }
+    },
     FunctionExpression: noteParams,
     ArrowFunctionExpression: noteParams,
   });
 
   for (const name of [...duplicated, ...mutable, ...loopBound]) consts.delete(name);
   return { consts, duplicated, mutable, loopBound, params, escapers };
+}
+
+/**
+ * What an importing file may resolve from a module: the names under which it
+ * exports an escape helper, and those under which it exports a `const` whose
+ * initialiser is a string or regex literal, with that literal. Exported by
+ * `export function f`, `export const f = ...`, or `export { f as g }` of a
+ * binding declared in the module; a re-export from another module is not
+ * followed.
+ * @param {object} ast   an acorn AST of the module
+ * @returns {{escapers: Set<string>, consts: Map<string, object>}}
+ */
+export function moduleExports(ast) {
+  const { escapers, consts } = collectBindings(ast, () => undefined);
+  const out = { escapers: new Set(), consts: new Map() };
+  const note = (local, exported) => {
+    if (escapers.has(local)) out.escapers.add(exported);
+    const init = consts.get(local);
+    if (init?.regex || typeof init?.value === "string") out.consts.set(exported, init);
+  };
+  for (const node of ast.body) {
+    if (node.type !== "ExportNamedDeclaration") continue;
+    const d = node.declaration;
+    if (d?.type === "FunctionDeclaration") note(d.id.name, d.id.name);
+    if (d?.type === "VariableDeclaration") {
+      for (const v of d.declarations) {
+        if (v.id.type === "Identifier") note(v.id.name, v.id.name);
+      }
+    }
+    if (!d && !node.source) {
+      for (const s of node.specifiers) note(s.local.name, s.exported.name ?? s.exported.value);
+    }
+  }
+  return out;
 }
 
 /** Why a name could not be resolved. */
@@ -282,10 +335,12 @@ function srcName(n) {
  *
  * @param {object} ast   an acorn AST parsed with `locations: true`
  * @param {string} rel   the file's repo-relative path, for the report
+ * @param {(source: string) => object | undefined} [exportsOf]
+ *   `moduleExports` of the module an import's source string names
  * @returns {{resolved: object[], unresolved: object[]}}
  */
-export function foldConstructedRegexes(ast, rel) {
-  const ctx = collectBindings(ast);
+export function foldConstructedRegexes(ast, rel, exportsOf = () => undefined) {
+  const ctx = collectBindings(ast, exportsOf);
   const resolved = [];
   const unresolved = [];
 

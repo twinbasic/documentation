@@ -1799,6 +1799,53 @@ for only some of its flags (L1-10), then works for all of them.
 ordering included; the tree comparison identical; `build.bat`, `serve.bat` and the CI build
 steps behave as before.
 
+**Landed.** The new `builder/command-line.mjs` exports `OPTIONS`, `DEFAULTS` and
+`parseCommandLine(argv)`. It reads the command line through `parseCli` with the defaults ---
+`unknown: "error"`, no positionals, the strict value rule --- and then applies each option
+token in the order given, so `--no-check` undoes only the check flags before it, the last of
+`--fetch-assets` and `--no-fetch-assets` wins, and each `--port` and `--stall-timeout` is
+checked where it stands. A `missing-value` error keeps `parseCli`'s words, which were
+already `tbdocs`'s (`--dest needs a value`); every other refusal is `Unknown argument:
+<arg>`, the argument as given, so `-xy` and `--dry-run=1` read as before. `--port` goes
+through `numberOption` with `tbdocs`'s message; `--stall-timeout` keeps a hand check,
+because `numberOption` refuses the blank value that `--stall-timeout=` gives, and that
+disables the watchdog. `main()` parses through `withUsageError` with exit 4, and its `catch`
+still exits 4 on write.mjs's `--dest` refusal; `commandLineError` is gone, since nothing
+else built one. The result is today's object, key for key, with `fetchAssets` still absent
+unless given. Pipeline-Stages.md has the module's export table, and a `stallTimeoutMs` row
+the `BuildOpts` table lacked; Builder.md's module map has a row; Tools.md's synopsis gains
+`--stall-timeout`, which it lacked, and says a value may be given as `--flag=value`.
+
+The oracle, in four parts. Cases first: 26 recorded from the unedited tool (with C47's four,
+30 for `tbdocs`), among them every missing-value shape, `--dest --`, `-xy`, `--help`, a
+boolean given a value, four bad `--port` values and a bad one before a good one, three bad
+`--stall-timeout` values, and write.mjs's two `--dest` refusals, pinned by patterns since
+the paths are the case's folder. Ten probes of `parseCommandLine` in `check_cli` for what no
+case can reach, since each list starts a build: the defaults, `--no-check` before and after
+the check flags, `--check-audit-index` after `--no-check`, both orders of each pair,
+`--stall-timeout=` as 0, seconds as milliseconds, `--name=value` for four value flags, and
+the two negations. `check_cli` makes 254 checks, 49 probes and 205 cases, in about 6 s (4.5 s
+before). Five faults put into the module through the kit's `c43-fault.mjs`, also in
+`NODE_OPTIONS` so the cases' children load them (`c52-faults.mjs`), each fail it: a
+`--no-check` that keeps `auditIndex` (one probe), `parseCli`'s words for a refusal (ten
+cases), `--stall-timeout` allowing -1 (one case), `--port` unchecked (seven cases and a
+probe), and the first of the fetch pair winning (one probe). The kit's `c52-oracle.mjs` cuts
+HEAD's parser out of `git show` and compares it with `parseCommandLine` over 76 argument
+lists --- `build.bat`'s with flags a person adds, `serve.bat`'s, both workflows' builds (the
+deploy's with an empty `--baseurl`, as a custom domain gives), `check_links_diff`'s and
+`compare_trees`' spawns, the cases and the probes' lists: 70 are the same, and the 6 that
+differ are the three differences below. `compare_trees`: only Builder.md, Pipeline-Stages.md
+and Tools.md, the search index and `book.html` differ, online and offline. A test serve
+(`--serve --port 4393 --dest=docs/_serve-c52 --stall-timeout=60`) built 914 pages and served
+them. `build.bat`, `check.bat` (the a11y line unchanged) and `test.bat` exit 0.
+
+What differs, none of it a recorded case: `--check-findings=x` and `--symbol-gaps=x` are
+accepted (L1-10, the point of the entry); `--` is no longer refused, and an argument after it
+is refused under its own name (`--src docs -- x` prints `Unknown argument: x`), as in every
+tool C51 migrated; and a bad `--port` or `--stall-timeout` value followed by a parse error
+now reports the parse error, since values are checked after `parseCli` returns. All three
+still exit 4.
+
 *`builder/`'s helpers, defined twice: C53–C60.*
 
 ### C53 — `builder: one URL module`
@@ -1819,6 +1866,35 @@ needs it. `crawl_check.mjs` imports `splitFragment` from it.
 **Verify.** The tree comparison identical, and again with `--baseurl /docs`: a non-empty base
 URL is where the two helpers disagree, and this site's is empty.
 
+**Landed.** `builder/url.mjs` exports `absoluteUrl(url, config)`, `relativeUrl(url,
+baseurl)`, `normalizeBaseurl`, `encodeSpaces` and `splitFragment`, and every copy is gone:
+`seo.mjs`'s two helpers with its `ensureLeadingSlash` and `isAbsoluteUrl`, `template.mjs`'s
+three, `search.mjs`'s `encodeSpaces`, `book.mjs`'s `normalizeBaseurl` with its comment about
+the Ruby plugins, `offline-rewrite.mjs`'s exported one (its three importers,
+`cpu-worker.mjs`, `offline.mjs` and `tbdocs.mjs`, now import `url.mjs`), and the two
+`splitFragment`s, `crawl_check.mjs`'s included. `redirects.mjs` and `sitemap.mjs` import
+`absoluteUrl` from `url.mjs` instead of `seo.mjs`. `relativeUrl` is `template.mjs`'s, which
+is the only caller: no forced leading slash, spaces encoded, `baseurl` used as given, `""`
+for a non-string. `absoluteUrl` treats a network-path reference `//host` as absolute, like a
+scheme, gives `""` for a non-string (what Liquid prints for Jekyll's nil), normalises
+`config.baseurl`, and reads a path from the site root, with or without its leading slash: its
+result is a URL on the site, and `new URL(siteUrl + "a/b")` gave `https://docs.twinbasic.coma/b`.
+That is the one place a forced leading slash is needed. Pipeline-Stages.md has `url.mjs`'s
+export table, drops the two rows from `seo.mjs`'s and the one from `offline-rewrite.mjs`'s
+(which said the opposite of what the function does, "the canonical trailing-slash form"), and
+Builder.md's module map has a row.
+
+`compare_trees`: all three trees identical, and identical again with `-- --baseurl /docs`.
+The kit's `c53-oracle.mjs` cuts HEAD's three helpers out of `git show` and runs them beside
+`url.mjs`'s over 12 inputs, 2 site URLs and 5 base URLs (288 comparisons). `relativeUrl`
+matches `template.mjs`'s on every one. The 94 that differ are all `absoluteUrl`, in six
+kinds: a non-string (`null` or `"/5"` before, `""` now), `//host` (the base URL or site URL
+put in front before), a path without a leading slash in `template.mjs`'s (`#x`, `a/b`), a
+base URL of `/docs/` or `docs` in `template.mjs`'s (`/docs//a/`, `docs/a/` before), a space
+in `seo.mjs`'s when there is no site URL, and an empty path under a base URL, now the base
+URL's root, `/docs/`. None is an input any call site passes, as the tree comparisons show.
+`build.bat`, `check.bat` (the a11y line unchanged) and `test.bat` exit 0.
+
 ### C54 — `builder: one module for the HTML, XML and RegExp escapers`
 
 **A3-2 / L3-5, A2-4 (R2).** Seven HTML escapers of two kinds: `&<>` in `render.mjs:2230-2233`,
@@ -1838,6 +1914,46 @@ apostrophe or quote today; a scratch page with one renders the same text in the 
 in the table of contents. `check_regex_safety.mjs` still recognises the escaper, which it does
 by shape.
 
+**Landed.** `builder/escape.mjs` exports `escapeMarkup` (`&`, `<`, `>`),
+`escapeMarkupAndQuotes` (those and `"`, `'`) and `escapeRegExp`, and every copy is gone:
+`render.mjs`'s three, `highlight.mjs`'s `escapeHtml` (its Rouge reason is now on
+`escapeMarkup`), `gantt.mjs`'s `esc`, `template.mjs`'s `escText` and `escAttr` with their
+"§5.15" section, `sitemap.mjs`'s `xmlEscape` (its Liquid note now at its one call),
+`book.mjs`'s `escapeRegExpBook`, and `offline-rewrite.mjs`'s exported `escapeRegExp`, which
+nothing imported. No name is `escapeHtml` any more; markdown-it's own function keeps it. Both
+HTML escapers take `String(s)`, as `template.mjs`'s and `sitemap.mjs`'s did; every other
+caller passes a string. `seo.mjs`'s `escape_once` port is not one of the seven and stays: it
+leaves an existing entity alone, which neither escaper does. `headingTocHtml` escapes text
+tokens with `escapeMarkup`, as it already escaped code spans, since a table-of-contents entry
+is element content. `buildSvgWrapper` keeps its local `esc`, now bound to
+`escapeMarkupAndQuotes`.
+
+**The regex-safety gate now follows an import.** It recognised an escaper by its shape within
+one file, so moving `escapeRegExp` out of the three files that call it would have left their
+three constructions unresolved. `scripts/lib/regex-fold.mjs` has `exportedEscapers(ast)`, the
+names under which a module exports a helper of that shape (`export function`, `export const`,
+`export { f as g }`; a re-export from another module is not followed), and
+`foldConstructedRegexes` takes an `escapersOf(source)` that each `import { x as y }` is checked
+against. `check_regex_safety.mjs` parses every file before folding any and resolves a relative
+import among them. Three new fold probes: an imported escaper, one exported under another
+name, and (negative) an imported function of another shape. WIP.Build.md's probe count
+(fourteen to seventeen) and its paragraph on the model say so, and its book-transform
+paragraph names `escapeMarkup`. Pipeline-Stages.md has `escape.mjs`'s export table and drops
+`escapeRegExp` from `offline-rewrite.mjs`'s helpers row; Builder.md's module map has a row.
+
+`compare_trees`: all three trees identical. The gate: `504 literals + 25 constructed in 122
+files ... 0 exponential; 9 construction(s) not resolvable`, `8 classification + 17 fold
+probes correct`, against HEAD's `506 literals + 25 constructed in 121 files` and 14 probes;
+the census is otherwise identical. The literals lose `gantt.mjs`'s `/&/g`, `/</g` and `/>/g`
+and gain the negative probe's `reason` regex. With an exponential construction planted through
+the imported `escapeRegExp` (`^${escapeRegExp(s)}(a+)+$` in a scratch module), the gate exits
+1 naming it, `escaped splice modelled as "x"`. With the import resolution faulted out of
+`regex-fold.mjs` (the kit's `c43-fault.mjs`), it resolves 22 constructions and leaves 12
+unresolved, misses the planted one, and exits 2 on the two failing import probes. A scratch
+heading holding `"`, `'`, `&` and a code span with quotes shows the same text in the heading
+and in its table-of-contents entry, under HEAD's `render.mjs` and the working one; the entry's
+bytes now leave a quote in text literal, as its code span always did.
+
 ### C55 — `builder: one code/pre guard and replaceOutsideCode`
 
 **A9-7 (R2).** The `<code>`/`<pre>` leading alternative that WIP.Build.md prescribes for a
@@ -1849,6 +1965,38 @@ private in `book.mjs:216` today; the four patterns are composed from the fragmen
 
 **Verify.** The tree comparison identical, covering `book.html` in the PDF tree and every
 offline page. `check_regex_safety.mjs` clean on the composed patterns.
+
+**Landed.** `builder/code-guard.mjs` exports `CODE_OR_PRE` and `replaceOutsideCode`, with the
+reason for the guard that `book.mjs` gave; `book.mjs`'s `CODE_OR_PRE_BOOK` and private
+`replaceOutsideCode` are gone. The entry's `pdf.mjs` copy went with the code C14 deleted, and
+it missed a copy written since: `counts.mjs`'s `SURVIVING_PLACEHOLDER_RE`. So three patterns
+are composed from the fragment, each as ``new RegExp(String.raw`${CODE_OR_PRE.source}|...`,
+"g")``: `book.mjs`'s `IMG_SRC_RE_BOOK`, `offline-rewrite.mjs`'s `HTML_COMBINED_RE` and that
+one. `compress.mjs`'s `CODE_BLOCK_RE` is not a guard (it splits a page into code and the
+rest, `<pre>` first, with no `[^>]*>`) and stays.
+
+**The regex-safety gate resolves an imported literal `const`.** Composed from an imported
+fragment, the three patterns, which the gate checked as literals, would have become
+constructions it could not resolve. C54's `exportedEscapers` is now `moduleExports(ast)`,
+giving the escape helpers a module exports and the `const`s it exports with a string or regex
+literal as initialiser; an import of one is a `const` in the importing file. A literal needs
+nothing from its module's scope, which is why nothing else is followed. Two new fold probes:
+an imported regex's `.source`, and (negative) an imported `const` that is not a literal.
+WIP.Build.md's fold paragraph says so and drops its stale "Twelve of the tree's eighteen
+constructions" for the summary line's own count; its probe count is nineteen; its rule for
+rendered-HTML rewrites, and WIP.md's Don't, name `code-guard.mjs`. Pipeline-Stages.md and
+Builder.md have its table and row.
+
+`compare_trees`: all three trees identical. The kit's `c55-equal.mjs` evaluates HEAD's three
+literals and `CODE_OR_PRE_BOOK` and the new expressions: the same
+`source` and `flags`, all four. The gate: `502 literals + 28 constructed in 123 files ... 462
+safe, 68 polynomial, ... 9 construction(s) not resolvable`, `19 fold probes correct`, against
+C54's `504 literals + 25 constructed ... 461 safe`: three literals are now constructions
+under the same keys (deg3, deg3 and deg2 in the census, as before), and the negative probe's
+`reason` is a new safe literal. With the import of a `const` faulted out of `regex-fold.mjs`
+(`c43-fault.mjs`), the three go unresolved (`25 constructed`, `65 polynomial`, `12 ... not
+resolvable`, each reported as `CODE_OR_PRE` not being a `const` in the file) and the gate
+exits 2 on the failing probe.
 
 ### C56 — `builder: guard code in the three whole-page HTML rewrites`
 
@@ -1869,6 +2017,49 @@ lead from L3).
 
 **Verify.** The tree comparison identical; each probe fails with its guard removed.
 
+**Landed.** All three go through `replaceOutsideCode`, so none states the invariant in place of
+a guard: the guard changes nothing on today's pages, and on a raw `<pre>` or `<code>` it keeps
+`padEmptyCells` and `injectAnchorHeadings` from adding whitespace where whitespace is content.
+`normaliseVoidTags` changes only a tag's spelling, so its guard is for the rule's sake.
+`render.mjs` exports `applyPostRenderRewrites(html)`, the two rewrites as `renderPage` applies
+them, which the gate imports as it imports `applyPreRenderRewrites`; its comment says what the
+guard is for (code the renderer produced cannot match, since its `<` is escaped; raw HTML
+reaches the rewrites as written). `padEmptyCells` takes a function replacer, its no-break space
+written `\u{a0}` instead of as a raw character, and its two comments, which disagreed about a
+space and a no-break space, are one. `template.mjs`'s comment on `injectAnchorHeadings` points
+to it.
+
+**Found in the move and fixed in it: `replaceOutsideCode` broke under the `i` flag.** It told a
+guard match by `startsWith("<code")` or `"<pre"`, while the guard alternative takes the
+pattern's flags. With `VOID_TAGS_RE` (`gi`) a raw `<PRE>` element was consumed by the guard,
+handed to the replacer with its groups undefined, and `tag.toLowerCase()` threw: a build crash
+on any page with a raw upper-case `<PRE>` or `<CODE>` (`git grep` finds none). The test now
+follows the flags, `/^<(?:code|pre)/i` under `i` and case-sensitive otherwise; Pipeline-Stages.md's
+row says so.
+
+`check_code_regions.mjs` has four `POST_RENDER_PROBES`: a raw `<pre>` holding an empty cell;
+one holding a void tag, beside a `<code>` holding one; a raw `<PRE>` holding `<BR>`; a raw
+`<pre>` holding a heading. Each page has a match outside the code that must still be rewritten,
+and each is compared with its exact expected output. A rewrite that throws fails its probe
+rather than exiting 2. The kit's `c56-faults.mjs` removes one guard at a time through
+`c43-fault.mjs`: without `padEmptyCells`'s guard the first probe fails, without
+`normaliseVoidTags`'s the second and third, without `injectAnchorHeadings`'s the fourth, and
+with the case-sensitive test put back the third fails with `threw Cannot read properties of
+undefined (reading 'toLowerCase')`. Each run exits 1, its sweep clean.
+
+WIP.Build.md's rewrite section names three mechanisms: the rendered-HTML bullet names the
+three rewrites and why the guard matters for them, and a new bullet names the token-scoped
+`md.core` rules (`kramdown-dashes`, `kramdown-ellipsis`, `kramdown-possessive` rewrite only
+`text` tokens). Its gate section, WIP.md's gate row, Tools.md's list item and section,
+Extending.md's failure section and gate bullet, `builder/README.md` and Pipeline-Stages.md (a
+row for `applyPostRenderRewrites`; `injectAnchorHeadings`'s and `replaceOutsideCode`'s rows)
+say what the probes hold.
+
+`compare_trees`: all three trees identical. The regex-safety gate: `504 literals + 28
+constructed in 123 files ... 464 safe, 68 polynomial ... 9 construction(s) not resolvable`,
+against C55's `502 ... 462 safe`; the two new literals are the guard tests in
+`code-guard.mjs`. Lint `Checked 162 files`.
+
 ### C57 — `builder: one drift guard for the page and symbol baselines`
 
 **A2-3 / L2-4 / L4-5 (R2).** `readBaseline` is byte-identical in `page-baseline.mjs:83-90` and
@@ -1883,6 +2074,42 @@ compared, counts or a set of URLs; the write is `JSON.stringify`.
 **Verify.** After a build, and after each `--update-*-baseline`, both committed baselines are
 byte-identical. `check_page_baseline.mjs` (11 probes) and `check_symbol_index.mjs` (46) pass,
 and a reintroduced drift fails each.
+
+**Landed.** `builder/baseline.mjs` exports `GUARDED_SRC` (moved from `page-baseline.mjs`) and
+`checkBaseline(guard, { record, write, force, file })`, which holds the read, the write and the
+six branches: another source tree skipped, a forced write, a missing file failing or created,
+a loss failing, a gain written. `guard` gives the file's name (`page` or `symbol`), the rest of
+the missing-file sentence, and four functions: the figures of a new file, what a forced write
+changed, the loss's failure text up to the commands, and the gain. The accept commands are
+built from the name, once. The write is `JSON.stringify(record, null, 2)` and a newline.
+`page-baseline.mjs` and `symbol-baseline.mjs` keep their exports and signatures, each now a
+guard object and a one-line call, so `tbdocs.mjs` is unchanged; the two probe scripts import
+`GUARDED_SRC` from `baseline.mjs`. The comments on the write restrictions, the source-tree key
+and the accept command moved into `baseline.mjs`; the last lost its history (the use-case
+round that found the defect), keeping the reason.
+
+The kit's `c57-oracle.mjs` runs HEAD's two functions and the working ones over 34 scenarios
+(17 each: every branch, a loss and a gain together, a baseline missing a key, one that is not
+JSON, one with CRLF, 25 and 30 lost URLs, unsorted and repeated URLs), each in a fresh folder,
+and compares the result and the file's bytes after: A/A 0 differ, after the change 1, the
+entry's known exception, an empty URL list now written `"urls": []` where the hand-written form
+gave `"urls": [` and a blank line. The kit's `c57-faults.mjs` puts four faults into
+`baseline.mjs` through `c43-fault.mjs` (a loss passes; a gain is written with `write` false; a
+missing file is created with `write` false; another source tree is measured), and each fails
+probes in both gates (3 and 1 for the first, 1 and 1 for each other), every run exit 1. A
+build, then `tbdocs --src docs --check-audit-index --update-page-baseline`, then
+`--update-symbol-baseline` (`pages 914 -> 914, static files 250 -> 250`, `4086 -> 4086 URLs`):
+both committed baselines hash as HEAD's blobs after each.
+
+`compare_trees`: the two pages edited differ (Builder.md, Pipeline-Stages.md, with the search
+data and `book.html`), nothing else. Pipeline-Stages.md has a `baseline.mjs` table and drops
+`GUARDED_SRC` from `page-baseline.mjs`'s; Builder.md's module table gains rows for
+`baseline.mjs` and `symbol-baseline.mjs`, which had none; WIP.Build.md's drift-guard section
+names where each of its three lessons is now a comment (it said all three were in
+`page-baseline.mjs`, and the second never was; it is in `check_tree_fresh.mjs`).
+
+**Found in passing, not fixed:** Builder.md's module table has no row for `symbols.mjs` either;
+every other `builder/*.mjs` has one. Fixed in C59, at the owner's request.
 
 ### C58 — `builder: fold six small duplicates`
 
@@ -1907,6 +2134,32 @@ stylesheets included. For the fetch, the stubbed-fetch script from the last revi
 (`PLAN-REVIEW-c9f2dfe0-1b6922b.md`, C09) still rejects an HTML body and survives a network
 failure, and every committed thumbnail still validates.
 
+**Landed**, five of the six, by one Sonnet agent (121 calls, ~227k, 11.6 min) and reviewed by
+hand. A2-7 is not folded: the two collapses trim differently ("Where the plan was wrong").
+- **L4-3**: `vendor-assets.mjs` has two private helpers, `guardedFetch(url)` (the fetch, the
+  status check and the body read, every failure as `{ ok: false, status }`) and
+  `writeAtomic(buf, destPath)` (temp file and rename). `fetchToFile` and `fetchAttachment`
+  call both and keep their own validation.
+- **L4-2**: `scss.mjs`'s two exports call a private `compileScss(srcRoot, rel, label)`.
+- **A3-8**: `highlight-theme.mjs`'s three loops call a local `renderPalette(selectorFor,
+  palette, bg)`.
+- **A2-8**: `paths.mjs` exports `posix(p)`; the seven sites in `offline-rewrite.mjs` and
+  `offline.mjs` and `publish-policy.mjs`'s private copy use it. `check-tree.mjs` keeps its own
+  exported copy for its recorded reason, which `check.mjs` imports, and `paths.mjs`'s comment
+  names it. A site that called `replaceAll` on a value now passes it through `String()`, as
+  the private copy did.
+- **A3-4**: `nav.mjs` exports `isNonEmpty` and `seo.mjs` imports it.
+
+Pipeline-Stages.md has rows for `posix` and `isNonEmpty`. `compare_trees`: only
+Pipeline-Stages.md's page differs (with the search data and `book.html`); the search index,
+every compressed page and both stylesheets are identical. The agent's `c58-fetch.mjs` (the
+C09 script was described there, not kept, so it was rewritten) drives `vendorAssets()` with a
+stubbed `fetch` through both paths: an HTML body is rejected with no file and no temp file
+left, a rejected `fetch` is warned about and counted, and all 16 committed thumbnails validate
+(there are no committed attachments). Its output from a `git archive` copy of HEAD and from the
+working tree is identical. The regex-safety gate is unchanged: `504 literals + 28 constructed
+in 124 files` (C57's `baseline.mjs` is the 124th file).
+
 ### C59 — `builder: cpu-worker's timed task paths share one runner`
 
 **A1-3 / L4-1 (R2), A1-7 (R3).** The same run, time and report block appears three times in
@@ -1917,6 +2170,33 @@ different, with an ordering that closes a race, and stays as it is. `:510` write
 **Change.** One `runTimed()` for the three paths; `:510` uses the named constant.
 
 **Verify.** The tree comparison identical; the build reports its task timings as before.
+
+**Landed.** `cpu-worker.mjs` has a private `runPerWorkerTask(taskIdx, meta)`, named for what it
+runs rather than `runTimed`, since the fourth path is timed too. It times the handler, marks
+the task done for the lane and posts the `perWorkerTiming` message; on a throw it posts
+`taskFailed` and returns false, and the caller ends the pull loop, as each copy's `return`
+did. The idle, nested and on-demand paths call it in one line each, and each still reads the
+task's metadata where it did, the nested path after releasing its claimed task. The fourth path
+writes `FAILED`, now imported from `sab-scheduler.mjs`. Nothing reads that status (A1-7), so
+the name changes nothing.
+
+`compare_trees` on the code change alone: identical (1461, 1457 and 137 files). The build's
+summary still gives a `boot`, `render` and `write` time for each of the 16 lanes. The Gantt
+charts of HEAD's build and the working one, kept by `compare_trees --keep`, draw the same bars
+by class: 16 `gb-boot`, 16 `gb-env`, 16 `gb-cold`, 153 `gb-render`, 167 `gb-write`, 23
+`gb-spine`, 9 `gb-seeds`. The kit's `c59-faults.mjs` builds the `check-src` fixture from a `git
+archive` copy of HEAD and from the working tree, with a throw put at the top of `warmInit`,
+`renderEnvInit` or `flush` through `c43-fault.mjs`. `flush:<i>` runs through the fourth path,
+so its fault covers the `FAILED` write. Every faulted build exits 1 in about a second with
+`task <name> failed` and the fault as its cause, and the two sides print the same lines. The
+first run differed only in which flush chunk failed first (`flush:0` against `flush:1`), a race
+the second run did not repeat.
+
+Builder.md's module table gains a row for `symbols.mjs` (C57's Found item), under Write phase
+beside `search.mjs`, as `builder/README.md` groups them; every `builder/*.mjs` now has exactly
+one row. Its "Architecture at a glance" said `~34 modules` against 44; at the owner's choice it
+now says "dozens of modules", linked to the module map, rather than a figure nothing derives.
+With both, `compare_trees` differs in that page alone, with the search data and `book.html`.
 
 ### C60 — `builder: name tbdocs's exit bits and set them in one place`
 
@@ -1930,6 +2210,31 @@ assignments are safe only because they run before the ones that OR (V1's third n
 **Verify.** Each provoked failure exits as before: a broken link 1, an integrity failure 2,
 both 3, a command-line error 4, a baseline drift 1. A scratch copy that moves an assignment
 after an OR still exits with both bits.
+
+**Landed.** `tbdocs.mjs` exports `EXIT_FAILED` (1), `EXIT_INTEGRITY` (2) and
+`EXIT_COMMAND_LINE` (4), with the reasons for the scheme beside them, and has a private
+`failBuild(bit)` that ORs a bit into `process.exitCode`. All seven sites call it: the three
+plain assignments (vendorAssets, dot, scss), the check's combined code (now one call per bit)
+and its recheck-only branch, and the two baseline guards. `main()`'s usage error, its `--dest`
+refusal and its crash exit use the constants, and so do `serve.mjs`'s refusal and its two
+`process.exit(1)`s, since it imports from `tbdocs.mjs` already. The comments that justified
+each OR in place (one of them the history of the clobbered bits) are gone; `failBuild`'s says
+why. Pipeline-Stages.md has a row for the constants and names `failBuild` in `checkReport`'s
+exit-code line; Builder.md, Building.md, Pipeline-Stages.md's vendorAssets paragraph, and the
+`dot.mjs` and `scss.mjs` headers say "exit bit 1" where they quoted `process.exitCode = 1`;
+WIP.Build.md's rule now names `failBuild`.
+
+The kit's `c60-exits.mjs` builds scratch sources made from the `check-src` fixture from a `git
+archive` copy of HEAD and from the working tree, 17 cases each: clean 0, a broken link 1, a
+duplicate id 2, both 3, a broken diagram 1, a broken stylesheet 1, a diagram with an integrity
+failure 3, a stylesheet with a link 1, and through `c43-fault.mjs` a failed asset fetch 1 (with
+an integrity failure 3), a baseline drift 1 (3), a crash in `discover` 1, and an unknown flag,
+a `--dest` over the source and the same under `--serve`, each 4. Every case exits and prints
+the same on both sides, before the change and after. The one designed to differ puts a bit-0
+failure after the check has set bit 2: HEAD's form, `process.exitCode = 1`, exits 1, losing
+the integrity failure, and the working tree's, `failBuild(EXIT_FAILED)`, exits 3. `compare_trees`:
+the three pages edited differ, with the search data and `book.html`, and nothing else. No
+non-zero exit literal is left in `builder/*.mjs`.
 
 *The harness: C61–C65.*
 
@@ -1949,6 +2254,34 @@ for a BOM join `check_examples.mjs`'s `runProbes`.
 **Verify.** `check_examples.mjs --census`, which runs its 119 probes and needs no compiler,
 unchanged apart from the new probes. The `examples.bat` summary unchanged, 1,119 samples (a
 harness run).
+
+**Landed.** `tb-fences.mjs` imports `logicalLines` from `twin-api.mjs`, and its own splitter
+is gone. `classify` trims each logical line and drops the blank ones. `usesMe`, a third copy
+of the same quote-aware strip, reads the logical lines too: its comment's reason, that
+`logicalLines` does not blank strings, stopped being true. `twin-api.mjs` changes only by a
+line in `logicalLines`' comment naming its second user. The entry's differences are absorbed
+so: a BOM and a `/* */` are now handled; blank lines are dropped in `classify`; the line
+number went with its field, which nothing read; each line is trimmed; a `Rem` line is now a
+comment. Three the entry does not list: strings arrive blanked, a joined continuation keeps
+the space before its ` _`, and a lone `\r` no longer ends a line (a markdown-it fence never
+holds one). `CLASSIFIER_PROBES` gains three: a `/* */` over two lines, a BOM, and a fence of
+only comments and blank lines, so the census runs 122 probes.
+
+The kit's `c61-oracle.mjs [<rev>]` archives HEAD's `scripts/lib` and `lib` and compares
+HEAD's splitter, `classify` and `usesMe` with the working tree's over all 1,226 `tb` fences,
+and `twin-api.mjs`'s splitter and `parseTwin` over the 661 `.twin` files of the BETA 987
+census export. The split text differs on 725 fences: 558 by blanked strings, 64 by
+continuation whitespace, 102 by both, and one by a `/* in */` inside a signature
+(`Features/Language/Comments.md`). `classify` and `usesMe` agree on all 1,226 fences, and
+`parseTwin` on all 661 files. `check_examples --census` differs only in its probe count.
+HEAD's classifier gives the block-comment probe `null`. The kit's `c61-faults.mjs` puts four
+faults in through `c43-fault.mjs`: without block comments the first probe fails, with blank
+lines kept the third, untrimmed the first. Without the BOM strip every probe passes, because
+`classify`'s `trim()` removes U+FEFF as well, so the BOM probe fails only with both gone.
+`examples.bat`: exit 0 after 152.5 s, `1134 sample(s) from 598 page(s) in 43 project(s), 4
+lane(s), BETA 987, 2 staged file(s)`, then `1134 sample(s), 1134 compile, 0 finding(s),
+149.2s -- clean`; the census before the edit already counted 1,134 marked, so the rise from
+1,129 is the pages'.
 
 ### C62 — `scripts: one twinBASIC keyword classifier, with probes in test.bat`
 
@@ -1970,6 +2303,48 @@ composite action, Tools.md and WIP.md.
 `gen_attribute_probes.mjs`'s output unchanged; removing `Overridable` from the list fails a
 probe. CI waits for the owner's push.
 
+**Landed.** `scripts/lib/twin-declarations.mjs` exports `MODIFIERS`, the words allowed
+before a declaration keyword as regex alternatives, and census's line classifier, moved
+there so a gate can import it: `decomment` and `declarationKind(decl, container)` (census's
+`classify`, with `DECL_RE` and `VAR_RE`). `MODIFIERS` is the union of the three lists less
+`Optional`, `Dim` and `Const`: 30 words. `Dim` and `Const` open declarations of their own, and
+the two scanners that read one as a modifier add it (census `Const`, twin-api `Dim`).
+`Optional` is a parameter keyword: in the census it turned seven parameter-continuation lines
+from unresolved into `Variable`. The list is one string literal, because
+`check_regex_safety` folds an imported `const` only when its initialiser is a literal; as a
+concatenation, the three constructions built from it went unresolvable (28 constructed and 9
+unresolvable became 26 and 11). `census_attributes.mjs` keeps `OPEN_RE` and `CLOSE_RE`, built
+from `MODIFIERS` plus `Const`; `twin-api.mjs`'s `MODIFIER_RE` and `tb-fences.mjs`'s `rx` build
+from it too. `parseTargets`, its two rule tables and `stripDots` moved unchanged from
+`gen_attribute_probes.mjs` to `scripts/lib/attributes-doc.mjs` (a script compared the cut text
+with the moved text). The two structural divergences are left alone: census reads its source
+a physical line at a time, so its `blankStrings` and its per-line `/* */` stay as they are.
+
+The new gate `scripts/check_twin_parsers.mjs` (in `test.bat`, the composite action, Tools.md's
+list, POSIX block and a section, Building.md's POSIX block, and WIP.md's bullet and table) runs
+121 probes: `Public <word> Sub Foo()` for each of the 30 words through `declarationKind`,
+`parseTwin` and `classify`, 19 `declarationKind` shapes and 12 `parseTargets` lines. Tools.md
+now says "Thirteen steps", which `check_gate_lists` could not read: its number words stopped at
+twelve, and now run to twenty. The kit's `c62-faults.mjs` puts five faults in through
+`c43-fault.mjs`, and each fails the gate on the probes named after it: `Overridable` out of the
+list (three), no `decomment` (one), a `Const` read as a variable (two), no whole-phrase rules
+(two), the singular `const` rule (one). A `check_gate_lists` word list off by one fails it
+three times.
+
+The kit's `c62-oracle.mjs` runs HEAD copies of `census_attributes.mjs` and
+`gen_attribute_probes.mjs` beside the real ones (census `--json` and the Markdown report over
+the BETA 987 cache, no compiler; the generator's project and key), and all 137 files written are
+identical. It also runs HEAD's `classify` and `declarationKind` over every line of the 661
+`.twin` files under four containers: 128 of 415,428 pairs differ, all of them the 32
+`Overridable` procedure lines, now read as `Sub` or `Function` (A8-1's fix; none carries an
+attribute, so the census does not move). C61's `c61-oracle.mjs` finds `classify` identical on
+all 1,226 fences and `parseTwin` on all 661 files. `check_regex_safety`: `503 literals + 28
+constructed in 125 files ... 463 safe, 68 polynomial ... 9 construction(s) not resolvable`.
+
+Found, not fixed: `declarationKind` reads a field named `Type` inside a `Type` block as a
+`Type` declaration, since `DECL_RE` is tried before the container rules. It takes an attribute
+on such a field to matter, and the census output shows none.
+
 ### C63 — `scripts: click the build icon like every other control`
 
 **A7-3 (R2).** `tb-ide.mjs:848-861`'s `clickCenter` has no scroll into view, hit test or
@@ -1984,6 +2359,33 @@ why.
 **Verify.** `addin-test.bat` green, all ten lanes; the `examples.bat` summary unchanged
 (harness runs, one at a time).
 
+**Landed.** The click moved down into a new `scripts/lib/tb-click.mjs`, word for word from
+`tb-operate.mjs`: `targetJs` (now exported), `named`, `clickAt` and `click`. Its `sleep` is
+`node:timers/promises`' `setTimeout`, because `tb-ide.mjs`, which exports the other one,
+imports this module. `tb-ide.mjs` imports `click` and `clickCenter` is gone. `buildProject`
+returns `click`'s error as its `message` (`cannot click #buildIcon: <why>`) where it returned
+`no #buildIcon in the IDE page -- did the project load?`, and `tbrun` throws it where it threw
+that. `tb-operate.mjs` keeps `elementRect`, imports `targetJs`, `click` and `clickAt`, and
+re-exports the last two, so no scenario's import changed. WIP.Harness.md's list of files to
+read it before changing names the new module. The build icon now gets what every other control
+gets: the pointer moved there first, a scroll into view, a hit test, and up to five seconds for
+the icon to be there, sized and uncovered. Where `clickCenter` returned false at once for a
+missing icon, the click now throws after five seconds; where it pressed whatever covered the
+icon, and the build then waited out its timeout, the click throws naming what covers it.
+
+`tbrun` on the kit's `tbrun-probes/clean`, before and after: exit 0 (23 s, 22 s), `one`,
+`two`. The kit's `c63-faults.mjs` puts two faults in through `c43-fault.mjs`: an overlay over
+the whole page, added before the first hit test, gives exit 2 after 24.8 s and `tbrun: cannot
+click #buildIcon: its centre is covered by #c63cover`; a Build button that is not there gives
+exit 2 after 40.3 s and `there is no such element`. `addin-test.bat` through the kit's
+`c25-run.mjs`: exit 0 after 145.9 s, `10 of 10 lane(s) ran: 10 passed`, `registry: put back
+(20 project-state, 21 recent-list and 3 association writes)`, the snapshots before and after
+identical. Eight of the ten lanes, all but `symbols` and `ideserver`, build add-ins through
+`buildProject`, ten builds in all, so the Build button was pressed through the new click ten
+times. `examples.bat`, which presses no Build button (`tbbuild` only compiles), shows that
+`tb-ide.mjs` still loads and does what it did: exit 0 after 146 s, `1134 sample(s), 1134
+compile, 0 finding(s), 142.7s -- clean`, as in C61.
+
 ### C64 — `scripts: three small harness duplicates`
 
 - **A7-4 (R2):** `alive` and `norm`, private in `tb-registry.mjs` (`:588-590`, `:462`) and
@@ -1996,6 +2398,22 @@ why.
 
 **Verify.** The `examples.bat` summary and `addin-test.bat` unchanged (harness runs, one at a
 time).
+
+**Landed.** `tb-registry.mjs` exports `alive` and `norm` under their own names, each with a
+line saying what it is, and `addin_test.mjs` imports them and drops its copies. `tb-ide.mjs`
+exports `COMPILE_TIMEOUT` (180,000 ms) above `waitForCompile`. There were eight sites in five
+files, not seven in four: `tbbuild.mjs`'s `--timeout` default, 180 in seconds, is the eighth,
+and now reads `COMPILE_TIMEOUT / 1000`; its header still states 180, and the constant's comment
+says so. The two JSDoc lines that said `default 180000` name the constant. `check_examples.mjs`
+has a module-level `unitKey(fence)` above `makeBatches`, carrying the comment that stood over
+the arrow function it replaces, and `unitsOf` calls it too. The two sites held the same
+expression, so a clean run, which never splits a batch, covers `makeBatches` only, and
+`unitsOf` is the same code by reading. `examples.bat`, whose lanes run `tbbuild` with its
+default: exit 0 after 138 s, `1134 sample(s) from 598 page(s) in 43 project(s), 4 lane(s)`,
+then `1134 compile, 0 finding(s), 135.3s -- clean`, the layout and result of C61 and C63.
+`addin-test.bat` through the kit's `c25-run.mjs`: `10 of 10 lane(s) ran: 10 passed`, the
+registry put back as in C63, the snapshots identical. `tbrun` on `tbrun-probes/clean`: exit 0,
+`one`, `two`.
 
 ### C65 — `test: one scenario preamble and one linesSince for the add-in tests`
 
@@ -2010,6 +2428,104 @@ beside `readConsole`.
 
 **Verify.** `addin-test.bat` green, all ten lanes (a harness run).
 
+**Landed.** The new `test/addin/scenario.mjs` exports `scenario(title, fn)`: the file's lane
+from `addinLane`, a `describe` block skipped with the one reason when there is none, and an
+`after` hook that closes the lane. `fn` gets the lane, and a function it returns runs after the
+close in a `finally`, which is how `panes.test.mjs` keeps closing its page server when closing
+the lane fails. All ten files are one `scenario()` block now, with no `addinLane`, skip object
+or `after` of their own; `tb-lane.mjs`'s header points to the module for the outline it used
+to show, and WIP.Harness.md's runner section names it. `tb-ide.mjs` exports `linesSince(c,
+mark, { prefix })` after `consoleMark`: `readConsole`'s text since the mark, split and each
+line trimmed, and with `prefix` only the lines that start with it, without it, which replaces
+`appdata`'s and `panes`' `slice(15)` and `slice(13)`. `arch`, `reload`, `entry`, `keys` and
+both of `sample10`'s reads use it, and so do `buildProject` and `tb-operate.mjs`'s
+`openedUrls`, which read the console the same way. `keys.test.mjs`'s substring search for
+`[KeysProbe] registered` still reads the text. Two reads changed slightly: `sample10`'s
+`[WaynesWorldAddin]` lines are trimmed before the prefix test, and its one-line wait reads the
+non-empty lines joined, where it trimmed the whole text. Both give the same answer for what the
+add-in prints. The ten files were converted by one Sonnet agent from a brief (69 calls, ~193k,
+3.6 min; one comment needed correcting) after a Sonnet Explore survey (24 calls, ~139k, 4.2
+min).
+
+A scratch test through `c43-fault.mjs`, with `addinLane()` replaced by a lane whose `close`
+logs and optionally throws, shows the order: the close, then the returned function, also when
+the close throws; with no lane the block is skipped. `addin-test.bat` through the kit's
+`c25-run.mjs`: exit 0 after 130.0 s, `10 of 10 lane(s) ran: 10 passed`, the registry put back
+as in C63, the snapshots identical, and no `✖` line in any lane's output.
+
+### C65a — `test: a lane fails when closing it finds a problem`
+
+**Found while landing C65** (see Found while implementing). What `Lane.close` finds, a
+compiler crash or a javascript dialog, never fails a lane, because a throwing `after` hook
+leaves a `node --test` file's exit code 0.
+
+**Change.** `scenario()` closes the lane in a test of its own, the block's last, so that what
+the close finds is a failing test. The `after` hook stays, for a block whose tests never ran;
+closing a lane a second time does nothing (`closeProject` finds no connection, `shutdownIde`
+returns on null, the copy is already gone). The function a scenario returns still runs after
+the close, whichever of the two closed it. WIP.Harness.md's runner section says a problem
+found at close fails the lane only because the close is a test.
+
+**Verify.** The scratch test with a lane whose `close` throws exits 1 under `node --test`,
+and 0 with one whose `close` works; `addin-test.bat` green, all ten lanes (a harness run).
+
+**Landed.** After `fn` has declared the block's hooks and tests, `scenario()` declares one more
+test, `the lane closes with nothing found`, and gives the `after` hook the same function. That
+function runs once, whichever calls it first, so the hook closes the lane only when the test
+never ran, and the function a scenario returns, called in the close's `finally`, runs once too.
+A flag rather than `Lane.close`'s own idempotence keeps it to one run. `scenario.mjs`'s
+comments say why the close is a test, WIP.Harness.md's runner section says so as well, and
+`Lane.close`'s comment says it is for `scenario()` rather than `after()`. Each lane reports one
+test more.
+
+The kit's `c65-scenario.mjs` runs a scratch scenario seven ways, with `addinLane()` replaced
+through `c43-fault.mjs` by a lane whose `close` logs and optionally throws. On HEAD a close
+that throws exits 0, run directly and under `--test`; now it exits 1 both ways, with the close
+test under "failing tests" and its `close failed`. A close that works exits 0 with `pass 2`;
+with no lane the block is skipped (`tests 0`). A `before` hook that throws exits 1 on both
+sides, and the close still runs, from the `after` hook. In the six cases with a lane, the close
+and the returned function run once each, in that order.
+
+`addin-test.bat` through the kit's `c25-run.mjs`, twice: exit 0 after 131.8 s and 131.4 s, `10
+of 10 lane(s) ran: 10 passed`, the registry put back as in C63 and the snapshots identical.
+The second run counted the close test's result lines in the lanes' output: ten, one per lane.
+
+### C65b — `book: delete fast-inflate.mjs, which patched a function pdf-lib never calls`
+
+**Found while designing C66** (see Found while implementing). `fast-inflate.mjs` replaces
+`pako.inflate` with `zlib.inflateSync`, and pdf-lib 1.17.1 never calls `pako.inflate`: its
+`cjs/` tree, the build Node loads, calls only `pako.deflate`, and a load decodes the
+cross-reference stream and object streams through pdf-lib's own `FlateStream`. The shim changes
+nothing, and three documents describe a call site that does not exist: its Fixes-PDFLib.md
+section, `render-book.mjs`'s header, and Builder.md's reason for declaring and pinning `pako`.
+No code of ours imports `pako` without it.
+
+**Change.** Delete the shim and its import; drop its Fixes-PDFLib.md section, its line in
+`render-book.mjs`'s header and the `perf/` rigs' `--fast-inflate` flag and imports; `npm
+uninstall pako` (the owner's choice, which confirmed the uninstall), with Builder.md's
+Dependencies updated. pdf-lib still installs pako 1.0.11 as its own dependency. C66 and C69
+then cover twelve shims.
+
+**Verify.** `book.bat` renders with the same page count and outline; the lockfile loses only
+the root's `pako` line.
+
+**Landed.** As the entry says. `render-book.mjs` loses the import and the shim's four lines in
+its header; Fixes-PDFLib.md loses the section, which no page linked to; Builder.md loses
+`pako` from its Dependencies block, from the sentence on the PDF renderer's packages and from
+the pin list. In `perf/`, `measure.mjs` loses the flag, its comment, variable, argument branch
+and import, `instrument-objclasses.mjs`, `instrument-pioh.mjs` and `phase0-measure.mjs` their
+import, and `perf/README.md` the flag's bullet and its mentions in three command lines (done by
+a Sonnet agent: 33 calls, ~126k, 2 min; accurate). `perf/notes/` is the record of the
+measurements and keeps its account. `npm uninstall pako` removed one line from each of
+`package.json` and `package-lock.json`, and `node_modules/pako` is still 1.0.11.
+
+The book rendered twice from one `_site-pdf`, through HEAD's `book/` and `lib/` archived into
+a scratch folder and through the working tree's: 92 s and 93 s, both `process: 1.1s` and
+`1.0s`, 2,298 pages, 2,466 outline entries and 29,111,771 bytes each. The files differ in one
+run of 28,991 bytes, inside one object stream of 500 objects; inflated, the two streams differ
+only in `/CreationDate` and `/ModDate`, the render times. `compare_trees`: Builder.html and
+Fixes/PDFLib.html online and offline, the search data, and `book.html`.
+
 *The book's pdf-lib shims (decision (c)): C66–C69.*
 
 ### C66 — `book: check_pdf_shims_equiv.mjs, the shims against stock pdf-lib`
@@ -2018,8 +2534,8 @@ beside `readConsole`.
 one-off notes in `perf/notes/08-pdf-lib.md`.
 
 **Change.** A `test.bat` gate modelled on `check_axe_patch_equiv.mjs`. The same document is
-loaded, changed and saved by stock pdf-lib in a child process and by pdf-lib with the thirteen
-shims installed here, and the two results are compared object by object, with streams
+loaded, changed and saved by stock pdf-lib in a child process and by pdf-lib with the twelve
+shims (thirteen before C65b) installed here, and the two results are compared object by object, with streams
 decompressed, since a different deflate can give different bytes for the same content. The
 document is generated in the gate to reach every shimmed path (parsing, arrays and
 dictionaries, the parallel deflate, the inflate replacement), so the gate needs no built tree.
@@ -2053,7 +2569,7 @@ time within noise of before, since these shims exist for speed.
 
 ### C69 — `book: each pdf-lib shim checks what it overwrites`
 
-**A9-1 (R2).** The thirteen production shims each guard against being installed twice and
+**A9-1 (R2).** The twelve production shims (thirteen before C65b) each guard against being installed twice and
 never check what they replace, and `parallel-deflate.mjs:50`'s `PDFStreamWriter` subclass has
 no guard at all. Only the exact pin protects them (recorded in `08-pdf-lib.md:1751-1757`),
 and it catches an accidental `npm update`, not a deliberate upgrade or a mistaken edit.
@@ -2502,6 +3018,11 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   host page loads both Inter faces without it, and both give the same output, the regenerated
   table included. At the owner's choice the flag was dropped; CI's `check_dot_fit` step on
   Linux confirms it on the next push. See C44's Landed note.
+- **C58 (A2-7): the two whitespace collapses are not duplicates.** They collapse the same
+  ASCII class, but `compress.mjs` trims a both-sides segment with `String.prototype.trim`,
+  which also strips U+00A0, and its comment says why it keeps that; `search.mjs` strips ASCII
+  only. Folding either way changes one of them, so both stay, and C58 landed as `builder: fold
+  five small duplicates`. See C58's Landed note.
 
 ## Found while implementing
 
@@ -2719,6 +3240,19 @@ Defects the review did not have, found by building something this plan asks for.
   `node scripts/` lines, so the two roster gates could not see a `node --test` step in
   `test.bat`. Fixed in `scripts: the gate roster reads node --test lines; CI runs the search
   tests`.
+- **A lane whose close finds a problem passes**, found while landing C65. `Lane.close` throws
+  when the compiler crashed or the IDE opened a javascript dialog, and it runs in an `after`
+  hook. On Node 24.13.0 a throwing `after` hook marks its suite failed but leaves `fail 0`, and
+  the file exits 0 under `node --test`, even when the hook sets `process.exitCode = 1` (scratch
+  tests, run directly and under `--test`). `addin_test.mjs` judges a lane by that exit code.
+  Scheduled as C65a, at the owner's choice. Fixed in `test: a lane fails when closing it finds
+  a problem`.
+- **`fast-inflate.mjs` patched a function pdf-lib never calls**, found while designing C66 (a
+  Sonnet survey of the shims, then measured). A stock load of a PDF with a cross-reference
+  stream and object streams made no `pako.inflate` call and decoded both through pdf-lib's own
+  `FlateStream` (the kit's `c66-inflate-count.mjs`). The owner chose deletion, `pako`
+  included. Fixed in `book: delete fast-inflate.mjs, which patched a function pdf-lib never
+  calls`.
 
 ## Open questions
 

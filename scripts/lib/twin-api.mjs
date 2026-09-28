@@ -37,6 +37,7 @@
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { MODIFIERS } from "./twin-declarations.mjs";
 
 // ------------------------------------------------------------------ lexing
 
@@ -44,6 +45,7 @@ import path from "node:path";
  * The logical lines of a source file: comments removed, the contents of string
  * literals blanked (their quotes kept, so a comma or bracket inside one is
  * never read as syntax), and lines ending in ` _` joined to the next.
+ * tb-fences.mjs classifies the documentation's own samples with it too.
  *
  * @returns {{text: string, line: number}[]} `line` is the 1-based line the
  *   logical line starts on
@@ -120,9 +122,9 @@ function attributeNames(inner) {
 // ------------------------------------------------------------------ parsing
 
 const NAME = String.raw`(?:\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_]*[$%&!#@]?)`;
-const MODIFIERS = new RegExp(String.raw`^\s*(Public|Private|Friend|Protected|Global|Static|Shared|` +
-  String.raw`Overrides|Overridable|Virtual|MustOverride|NotInheritable|NotDispatchable|Partial|` +
-  String.raw`Default|ReadOnly|WriteOnly|WithEvents|Dim|Iterator)\b\s*`, "i");
+// `Dim` is read as a modifier too: what follows it is a field, as it is after
+// `Public`.
+const MODIFIER_RE = new RegExp(String.raw`^\s*(${MODIFIERS}|Dim)\b\s*`, "i");
 const TYPE_OPEN = new RegExp(String.raw`^(Module|Class|Interface|CoClass|Enum|Type|Union)\s+(${NAME})(.*)$`, "i");
 const TYPE_OR_PROC_END = /^End\s+(Sub|Function|Property|Module|Class|Interface|CoClass|Enum|Type|Union)\b/i;
 const DECLARE = new RegExp(String.raw`^(?:DeclareWide|Declare)\s+(?:PtrSafe\s+)?(Sub|Function|Property\s+(?:Get|Let|Set))\s+(${NAME})`, "i");
@@ -206,7 +208,7 @@ export function parseTwin(src, file = "") {
     // Public As Boolean` on UserControl.
     let decl = rest;
     const modifiers = [];
-    for (let m; (m = MODIFIERS.exec(decl));) {
+    for (let m; (m = MODIFIER_RE.exec(decl));) {
       const after = decl.slice(m[0].length);
       if (modifiers.length && /^(As\b|\(|=|$)/i.test(after)) break;
       modifiers.push(m[1].toLowerCase());
