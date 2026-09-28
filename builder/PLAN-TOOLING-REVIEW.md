@@ -2255,6 +2255,34 @@ for a BOM join `check_examples.mjs`'s `runProbes`.
 unchanged apart from the new probes. The `examples.bat` summary unchanged, 1,119 samples (a
 harness run).
 
+**Landed.** `tb-fences.mjs` imports `logicalLines` from `twin-api.mjs`, and its own splitter
+is gone. `classify` trims each logical line and drops the blank ones. `usesMe`, a third copy
+of the same quote-aware strip, reads the logical lines too: its comment's reason, that
+`logicalLines` does not blank strings, stopped being true. `twin-api.mjs` changes only by a
+line in `logicalLines`' comment naming its second user. The entry's differences are absorbed
+so: a BOM and a `/* */` are now handled; blank lines are dropped in `classify`; the line
+number went with its field, which nothing read; each line is trimmed; a `Rem` line is now a
+comment. Three the entry does not list: strings arrive blanked, a joined continuation keeps
+the space before its ` _`, and a lone `\r` no longer ends a line (a markdown-it fence never
+holds one). `CLASSIFIER_PROBES` gains three: a `/* */` over two lines, a BOM, and a fence of
+only comments and blank lines, so the census runs 122 probes.
+
+The kit's `c61-oracle.mjs [<rev>]` archives HEAD's `scripts/lib` and `lib` and compares
+HEAD's splitter, `classify` and `usesMe` with the working tree's over all 1,226 `tb` fences,
+and `twin-api.mjs`'s splitter and `parseTwin` over the 661 `.twin` files of the BETA 987
+census export. The split text differs on 725 fences: 558 by blanked strings, 64 by
+continuation whitespace, 102 by both, and one by a `/* in */` inside a signature
+(`Features/Language/Comments.md`). `classify` and `usesMe` agree on all 1,226 fences, and
+`parseTwin` on all 661 files. `check_examples --census` differs only in its probe count.
+HEAD's classifier gives the block-comment probe `null`. The kit's `c61-faults.mjs` puts four
+faults in through `c43-fault.mjs`: without block comments the first probe fails, with blank
+lines kept the third, untrimmed the first. Without the BOM strip every probe passes, because
+`classify`'s `trim()` removes U+FEFF as well, so the BOM probe fails only with both gone.
+`examples.bat`: exit 0 after 152.5 s, `1134 sample(s) from 598 page(s) in 43 project(s), 4
+lane(s), BETA 987, 2 staged file(s)`, then `1134 sample(s), 1134 compile, 0 finding(s),
+149.2s -- clean`; the census before the edit already counted 1,134 marked, so the rise from
+1,129 is the pages'.
+
 ### C62 — `scripts: one twinBASIC keyword classifier, with probes in test.bat`
 
 **A8-1 (R1), A8-4 (R2).** `census_attributes.mjs`'s `MODS` (`:138-148`) lacks `Overridable`,

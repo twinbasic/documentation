@@ -70,6 +70,7 @@ import { createHash } from "node:crypto";
 import MarkdownIt from "markdown-it";
 
 import { markdownFiles } from "../../lib/markdown-files.mjs";
+import { logicalLines } from "./twin-api.mjs";
 
 /** The bare flag that opts a fence in to compilation. */
 export const MARKER = "check_build";
@@ -414,62 +415,20 @@ const INNER_CLOSE = [
   [/^End\s+Select\b/i, "Select"], [/^End\s+Try\b/i, "Try"],
 ];
 
-/**
- * Logical source lines: comments stripped, continuations joined, blanks dropped.
- *
- * The comment strip is quote-aware because this corpus is full of samples whose
- * strings contain apostrophes and whose `[Description("...")]` arguments contain
- * whole sentences.
- */
-function logicalLines(src) {
-  const raw = src.replace(/\r\n?/g, "\n").split("\n");
-  const out = [];
-  let acc = "", accAt = 0;
-  raw.forEach((line, i) => {
-    let s = "", inStr = false;
-    for (const ch of line) {
-      if (ch === '"') { inStr = !inStr; s += ch; continue; }
-      if (!inStr && ch === "'") break;
-      s += ch;
-    }
-    const blank = !s.trim();
-    if (!blank && /\s_\s*$/.test(s)) {
-      if (!acc) accAt = i;
-      acc += s.replace(/\s_\s*$/, " ");
-      return;
-    }
-    if (acc) { out.push({ text: (acc + s).trim(), at: accAt }); acc = ""; return; }
-    if (blank) return;
-    out.push({ text: s.trim(), at: i });
-  });
-  if (acc) out.push({ text: acc.trim(), at: accAt });
-  return out;
-}
-
 const kindOf = (text) => (KIND_RE.exec(text)?.[1] ?? "?").toLowerCase();
 
 /**
  * Does this fence use `Me`, and so have to be generated into a Class?
  *
- * Strings are blanked as well as comments, which logicalLines does not do: this
- * corpus prints the word. `Debug.Print "Use Me instead"` is prose inside a
- * literal, and treating it as code would wrap an ordinary module sample in a
- * Class for nothing.
+ * Read from the logical lines, whose strings are blanked as well as their
+ * comments: this corpus prints the word. `Debug.Print "Use Me instead"` is prose
+ * inside a literal, and treating it as code would wrap an ordinary module sample
+ * in a Class for nothing.
  *
  * A `Me` preceded by a dot is somebody's member, not the keyword.
  */
 export function usesMe(src) {
-  for (const raw of src.replace(/\r\n?/g, "\n").split("\n")) {
-    let s = "", inStr = false;
-    for (const ch of raw) {
-      if (ch === '"') { inStr = !inStr; s += " "; continue; }
-      if (inStr) { s += " "; continue; }
-      if (ch === "'") break;
-      s += ch;
-    }
-    if (/(?:^|[^.\w])Me\b/i.test(s)) return true;
-  }
-  return false;
+  return logicalLines(src).some(({ text }) => /(?:^|[^.\w])Me\b/i.test(text));
 }
 
 /**
@@ -481,7 +440,12 @@ export function usesMe(src) {
  *   it were generated, which is what the batcher packs around.
  */
 export function classify(content) {
-  const lines = logicalLines(content);
+  // Trimmed, because every pattern above is anchored at a line's first word,
+  // and with the blank lines dropped, or a fence holding only comments would
+  // read as a loose statement instead of as empty. The strings arrive blanked,
+  // so a sentence in a `[Description("...")]` argument is never read as a
+  // declaration.
+  const lines = logicalLines(content).map((l) => l.text.trim()).filter(Boolean);
   if (!lines.length) return { slot: null, reason: "empty", names: [] };
   // An elision is the one fragment marker the docs use deliberately, and the
   // VBA-derived pages inherited Microsoft's SPACED form -- `. . .` on a line of
@@ -501,7 +465,7 @@ export function classify(content) {
   let sawContainer = false, sawProc = false, sawModuleOnly = false, sawLoose = false;
   let sawWithEvents = false, sawClassOnly = false;
 
-  for (const { text } of lines) {
+  for (const text of lines) {
     if (DIRECTIVE_RE.test(text)) continue;          // #If / #End If / #Const
 
     const end = END_RE.exec(text);

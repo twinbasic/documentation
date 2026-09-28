@@ -1219,6 +1219,10 @@ const CLASSIFIER_PROBES = [
   ["an End with no opener", "    Debug.Print 1\nEnd Sub\n", null],
   ["a continuation line", "Dim a As Long, _\n    b As Long\n", "sub"],
   ["an apostrophe inside a string", "Debug.Print \"it's here ' not a comment\"\n", "sub"],
+  // A block comment can span lines, and what follows it closes the line.
+  ["a block comment over two lines", "/* Greets\n   the user */ Public Sub Greet()\nEnd Sub\n", "module"],
+  ["a byte-order mark", "\u{FEFF}Class Foo\nEnd Class\n", "file"],
+  ["only comments and blank lines", "\n' nothing here\n\n", null],
   // The Class row. `Me` is the whole signal, so the three ways it can be a
   // false positive are probes: this corpus prints the word, and a member may
   // be called Me. Getting one of these wrong wraps an ordinary Module sample

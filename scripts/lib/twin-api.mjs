@@ -44,6 +44,7 @@ import path from "node:path";
  * The logical lines of a source file: comments removed, the contents of string
  * literals blanked (their quotes kept, so a comma or bracket inside one is
  * never read as syntax), and lines ending in ` _` joined to the next.
+ * tb-fences.mjs classifies the documentation's own samples with it too.
  *
  * @returns {{text: string, line: number}[]} `line` is the 1-based line the
  *   logical line starts on
