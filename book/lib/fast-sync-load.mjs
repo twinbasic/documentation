@@ -49,32 +49,14 @@
 //
 // Idempotent -- repeated imports do nothing after the first.
 
-import { createRequire } from 'node:module';
-
-const require = createRequire(import.meta.url);
-const PDFParser              = require('pdf-lib/cjs/core/parser/PDFParser.js').default;
-const PDFObjectStreamParser  = require('pdf-lib/cjs/core/parser/PDFObjectStreamParser.js').default;
-const PDFXRefStreamParser    = require('pdf-lib/cjs/core/parser/PDFXRefStreamParser.js').default;
-const PDFRawStream           = require('pdf-lib/cjs/core/objects/PDFRawStream.js').default;
-const PDFRef                 = require('pdf-lib/cjs/core/objects/PDFRef.js').default;
-const PDFName                = require('pdf-lib/cjs/core/objects/PDFName.js').default;
-const PDFNumber              = require('pdf-lib/cjs/core/objects/PDFNumber.js').default;
-const PDFStream              = require('pdf-lib/cjs/core/objects/PDFStream.js').default;
-const PDFInvalidObject       = require('pdf-lib/cjs/core/objects/PDFInvalidObject.js').default;
-const PDFDocument            = require('pdf-lib/cjs/api/PDFDocument.js').default;
-const PDFWriter              = require('pdf-lib/cjs/core/writers/PDFWriter.js').default;
-const PDFStreamWriter        = require('pdf-lib/cjs/core/writers/PDFStreamWriter.js').default;
-const PDFHeader              = require('pdf-lib/cjs/core/document/PDFHeader.js').default;
-const PDFTrailer             = require('pdf-lib/cjs/core/document/PDFTrailer.js').default;
-const PDFTrailerDict         = require('pdf-lib/cjs/core/document/PDFTrailerDict.js').default;
-const PDFCrossRefSection     = require('pdf-lib/cjs/core/document/PDFCrossRefSection.js').default;
-const PDFCrossRefStream      = require('pdf-lib/cjs/core/structures/PDFCrossRefStream.js').default;
-const PDFObjectStream        = require('pdf-lib/cjs/core/structures/PDFObjectStream.js').default;
-const CharCodes              = require('pdf-lib/cjs/core/syntax/CharCodes.js').default;
-const { ReparseError, StalledParserError } = require('pdf-lib/cjs/core/errors.js');
-const { IsDigit }            = require('pdf-lib/cjs/core/syntax/Numeric.js');
-const { Keywords }           = require('pdf-lib/cjs/core/syntax/Keywords.js');
-const { toUint8Array, copyStringIntoBuffer, last } = require('pdf-lib/cjs/utils/index.js');
+import {
+  PDFParser, PDFObjectStreamParser, PDFXRefStreamParser,
+  PDFRawStream, PDFRef, PDFName, PDFNumber, PDFStream, PDFInvalidObject,
+  PDFDocument, PDFWriter, PDFStreamWriter,
+  PDFHeader, PDFTrailer, PDFTrailerDict, PDFCrossRefSection, PDFCrossRefStream, PDFObjectStream,
+  CharCodes, ReparseError, StalledParserError, IsDigit, Keywords,
+  toUint8Array, copyStringIntoBuffer, last,
+} from './pdf-lib-internals.mjs';
 
 // Pool-deduped PDFName instances are reference-stable for the whole
 // load. Capture the three sentinels parseIndirectObject's Type-dispatch

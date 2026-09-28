@@ -44,12 +44,7 @@
 //
 // Idempotent -- repeated imports do nothing after the first.
 
-import { createRequire } from 'node:module';
-
-const require = createRequire(import.meta.url);
-const numbers     = require('pdf-lib/cjs/utils/numbers.js');
-const utilsBarrel = require('pdf-lib/cjs/utils/index.js');
-const topBarrel   = require('pdf-lib/cjs/index.js');
+import { numbers, utilsBarrel, topBarrel } from './pdf-lib-internals.mjs';
 
 if (!numbers.__fastNumberToStringInstalled) {
   const original = numbers.numberToString;

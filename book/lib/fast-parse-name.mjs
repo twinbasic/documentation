@@ -50,14 +50,9 @@
 // Side-effecting import. Import once before PDFDocument.load runs;
 // idempotent.
 
-import { createRequire } from 'node:module';
-
-const require = createRequire(import.meta.url);
-const PDFObjectParser = require('pdf-lib/cjs/core/parser/PDFObjectParser.js').default;
-const PDFName         = require('pdf-lib/cjs/core/objects/PDFName.js').default;
-const CharCodes       = require('pdf-lib/cjs/core/syntax/CharCodes.js').default;
-const { IsWhitespace } = require('pdf-lib/cjs/core/syntax/Whitespace.js');
-const { IsDelimiter }  = require('pdf-lib/cjs/core/syntax/Delimiters.js');
+import {
+  PDFObjectParser, PDFName, CharCodes, IsWhitespace, IsDelimiter,
+} from './pdf-lib-internals.mjs';
 
 const FORWARD_SLASH = CharCodes.ForwardSlash;
 

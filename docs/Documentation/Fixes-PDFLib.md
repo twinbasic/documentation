@@ -11,6 +11,8 @@ permalink: /Documentation/Development/Fixes/PDFLib
 
 The files under `book/lib/fast-*.mjs` and `book/lib/parallel-deflate.mjs` are side-effecting ES modules that patch pdf-lib's live exports. All are imported at the top of `render-book.mjs` before any pdf-lib operation runs; they are mutually compatible and idempotent (each guards its installation with a flag on the patched prototype or module). Together they reduce the process phase --- parsing Chromium's raw PDF output, adding bookmarks and metadata, and serialising the result --- from ~40 seconds to ~1.6 seconds on a 1,651-page book.
 
+A patch that reaches a pdf-lib class or module by its CommonJS path under `pdf-lib/cjs/`, rather than through the `pdf-lib` package's index, imports it from `book/lib/pdf-lib-internals.mjs`, which requires each one in a single place. `pdf-lib` itself resolves to `pdf-lib/cjs/index.js`, so each is the instance the library uses.
+
 The root cause of the need for all these patches is the same: pdf-lib is designed for general-purpose use in both browsers and Node, and optimises for generality rather than throughput on a single large document.
 
 Each patch must leave the output unchanged. [`check_pdf_shims_equiv.mjs`](../Tools#check-pdf-shims-equiv), one of `test.bat`'s gates, saves one document with stock pdf-lib and with every patch `render-book.mjs` imports, compares the two files object by object, and fails if any patch never runs.
@@ -30,7 +32,7 @@ Each patch must leave the output unchanged. [`check_pdf_shims_equiv.mjs`](../Too
 
 **Fix.** Direct integer accumulators: `n = n * 10 + (byte - 0x30)`, consuming each byte once. `parseRawNumber` additionally accumulates the digits after the period and divides once, `(integer * scale + fraction) / scale`: both operands are exact integers, and a single division rounds to the double nearest the decimal, as `Number` does. Adding the fraction's quotient to the integer part instead would round twice, and read `2.28` as `2.2800000000000002`. Both implementations fall back to the original when the number has more than 15 digits, the fraction's included (preserving `Number.MAX_SAFE_INTEGER` semantics for pathological inputs), or no digits at all.
 
-**Mechanism.** `BaseParser` is not re-exported from pdf-lib's public index; it is imported via `createRequire` through the CJS internal path `pdf-lib/cjs/core/parser/BaseParser.js`. Mutating `BaseParser.prototype` affects all subclasses: `PDFParser`, `PDFObjectParser`, `PDFObjectStreamParser`, and `PDFXRefStreamParser`.
+**Mechanism.** `BaseParser` is not re-exported from pdf-lib's public index; it comes from `pdf-lib-internals.mjs`, which requires it by the CJS internal path `pdf-lib/cjs/core/parser/BaseParser.js`. Mutating `BaseParser.prototype` affects all subclasses: `PDFParser`, `PDFObjectParser`, `PDFObjectStreamParser`, and `PDFXRefStreamParser`.
 
 ## fast-decode-name.mjs
 

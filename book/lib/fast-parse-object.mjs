@@ -34,11 +34,9 @@
 // keyword still falls through to the same PDFObjectParsingError
 // throw.
 //
-// Mechanism: PDFObjectParser isn't re-exported from pdf-lib's index,
-// so we reach in through the CJS internals via createRequire (same
-// shape as fast-sync-load.mjs). Mutating
-// PDFObjectParser.prototype.parseObject is global -- every parser
-// instance created after this shim loads picks it up.
+// Mechanism: PDFObjectParser comes from pdf-lib-internals.mjs.
+// Mutating PDFObjectParser.prototype.parseObject is global -- every
+// parser instance created after this shim loads picks it up.
 //
 // Side-effecting import. Import once before PDFDocument.load runs:
 //
@@ -46,16 +44,9 @@
 //
 // Idempotent -- repeated imports do nothing after the first.
 
-import { createRequire } from 'node:module';
-
-const require = createRequire(import.meta.url);
-const PDFObjectParser = require('pdf-lib/cjs/core/parser/PDFObjectParser.js').default;
-const PDFBool         = require('pdf-lib/cjs/core/objects/PDFBool.js').default;
-const PDFNull         = require('pdf-lib/cjs/core/objects/PDFNull.js').default;
-const CharCodes       = require('pdf-lib/cjs/core/syntax/CharCodes.js').default;
-const { Keywords }    = require('pdf-lib/cjs/core/syntax/Keywords.js');
-const { IsNumeric }   = require('pdf-lib/cjs/core/syntax/Numeric.js');
-const { PDFObjectParsingError } = require('pdf-lib/cjs/core/errors.js');
+import {
+  PDFObjectParser, PDFBool, PDFNull, CharCodes, Keywords, IsNumeric, PDFObjectParsingError,
+} from './pdf-lib-internals.mjs';
 
 const KwTrue  = Keywords.true;
 const KwFalse = Keywords.false;

@@ -56,17 +56,9 @@
 // Mutually exclusive with --fast-dict-double / --fast-dict-view /
 // --fast-dict-array.
 
-import { createRequire } from 'node:module';
-
-const require = createRequire(import.meta.url);
-const PDFDict         = require('pdf-lib/cjs/core/objects/PDFDict.js').default;
-const PDFCatalog      = require('pdf-lib/cjs/core/structures/PDFCatalog.js').default;
-const PDFPageTree     = require('pdf-lib/cjs/core/structures/PDFPageTree.js').default;
-const PDFPageLeaf     = require('pdf-lib/cjs/core/structures/PDFPageLeaf.js').default;
-const PDFName         = require('pdf-lib/cjs/core/objects/PDFName.js').default;
-const PDFNull         = require('pdf-lib/cjs/core/objects/PDFNull.js').default;
-const PDFObjectParser = require('pdf-lib/cjs/core/parser/PDFObjectParser.js').default;
-const CharCodes       = require('pdf-lib/cjs/core/syntax/CharCodes.js').default;
+import {
+  PDFDict, PDFCatalog, PDFPageTree, PDFPageLeaf, PDFName, PDFNull, PDFObjectParser, CharCodes,
+} from './pdf-lib-internals.mjs';
 
 const TypeName    = PDFName.of('Type');
 const CatalogName = PDFName.of('Catalog');

@@ -27,9 +27,9 @@
 //     NumberParsingError keeps its diagnostic context.
 // Both fallback paths are vanishingly rare on real PDFs.
 //
-// Mechanism: BaseParser isn't re-exported by pdf-lib's index, so we
-// import it via the package's CJS internal path through createRequire.
-// Mutating BaseParser.prototype affects every subclass (PDFParser,
+// Mechanism: BaseParser isn't re-exported by pdf-lib's index, so it
+// comes from pdf-lib-internals.mjs, which requires it by the package's
+// CJS internal path. Mutating BaseParser.prototype affects every subclass (PDFParser,
 // PDFObjectParser, PDFObjectStreamParser, PDFXRefStreamParser).
 //
 // Side-effecting import. Import once before PDFDocument.load runs:
@@ -38,11 +38,7 @@
 //
 // Idempotent -- repeated imports do nothing after the first.
 
-import { createRequire } from 'node:module';
-
-const require = createRequire(import.meta.url);
-const BaseParser = require('pdf-lib/cjs/core/parser/BaseParser.js').default;
-const { IsDigit } = require('pdf-lib/cjs/core/syntax/Numeric.js');
+import { BaseParser, IsDigit } from './pdf-lib-internals.mjs';
 
 const ZERO = 0x30;   // '0'
 const PERIOD = 0x2E; // '.'

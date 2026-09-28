@@ -2670,6 +2670,32 @@ in nine production shims.
 **Verify.** `check_pdf_shims_equiv.mjs`; `book.bat` renders with the same page count and
 outline.
 
+**Landed.** `book/lib/pdf-lib-internals.mjs` requires the 44 pdf-lib objects the nine shims
+required themselves, each by the same CommonJS path, and exports them under the names the
+shims already used, so each require block became one import and no shim's body changed. Two
+reads move: `Numeric.js` is required once for `IsDigit` and `IsNumeric`, and
+`copyStringIntoBuffer`, `last` and `toUint8Array` are read from the utilities barrel when the
+new module loads rather than when `fast-sync-load.mjs` does. Neither changes a value: no shim
+assigns those three (the two utility shims assign only `numberToString` and `sizeInBytes`), and
+`render-book.mjs` and the gate's side both import `pdf-lib`, which loads every module, before
+any shim. A scratch comparison of each export with `require('pdf-lib')` found 35 of the 44 to
+be the objects pdf-lib's index exports and 9 not in it (`BaseParser`, the five syntax exports
+and the three utility modules); the module's header says so. `fast-parse-object.mjs`'s header
+said `PDFObjectParser` is not re-exported from pdf-lib's index, which is false, and now says
+only where it comes from; `fast-parse-number.mjs` and Fixes-PDFLib.md say `BaseParser` is not,
+which is true, and now name the module, which Fixes-PDFLib.md's introduction describes in a
+new paragraph. `perf/`'s instruments keep their own requires, as records of the measurements.
+
+`check_pdf_shims_equiv`: unchanged. With the module exporting a subclass of `PDFObjectParser`
+in its place (a fault through the kit's `c43-fault.mjs`), the gate names `fast-parse-object`
+and `fast-parse-name`, whose patches land on the copy, and not `fast-dict-onebuf` or
+`fast-array-onebuf`, whose `parseDict` and `parseArray` land there too, because other
+functions in both still ran: C67a. With `BaseParser` so, it names `fast-parse-number`. The
+book, rendered from one `_site-pdf` through HEAD's `book/` and the working one: 2,299 pages,
+2,466 outline entries and 29,130,183 bytes each, differing only in `/CreationDate` and
+`/ModDate`; 130 s and 136 s, `process: 1.3s` and `1.4s`. `compare_trees`: Fixes-PDFLib online
+and offline, the search data and `book.html`. Lint `Checked 169 files`.
+
 ### C68 — `book: the two onebuf shims share their range machinery`
 
 **A9-3 (R2).** `_registerContext` and `_appendArray` are identical apart from names in

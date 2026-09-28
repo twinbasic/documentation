@@ -42,12 +42,7 @@
 // Composes with --fast-dict-onebuf. Mutually exclusive with
 // --fast-dict-encoded (which subsumes both via its own encoded shape).
 
-import { createRequire } from 'node:module';
-
-const require = createRequire(import.meta.url);
-const PDFArray        = require('pdf-lib/cjs/core/objects/PDFArray.js').default;
-const PDFObjectParser = require('pdf-lib/cjs/core/parser/PDFObjectParser.js').default;
-const CharCodes       = require('pdf-lib/cjs/core/syntax/CharCodes.js').default;
+import { PDFArray, PDFObjectParser, CharCodes } from './pdf-lib-internals.mjs';
 
 // ---- The single buffer ---------------------------------------------
 

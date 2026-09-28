@@ -46,13 +46,7 @@
 //
 // Idempotent -- repeated imports do nothing after the first.
 
-import { createRequire } from 'node:module';
-
-const require = createRequire(import.meta.url);
-const PDFContext = require('pdf-lib/cjs/core/PDFContext.js').default;
-const PDFRef     = require('pdf-lib/cjs/core/objects/PDFRef.js').default;
-const PDFNull    = require('pdf-lib/cjs/core/objects/PDFNull.js').default;
-const UnexpectedObjectTypeError = require('pdf-lib/cjs/core/errors.js').UnexpectedObjectTypeError;
+import { PDFContext, PDFRef, PDFNull, UnexpectedObjectTypeError } from './pdf-lib-internals.mjs';
 
 const byAscendingObjectNumber = ([a], [b]) => a.objectNumber - b.objectNumber;
 
