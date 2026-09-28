@@ -2587,6 +2587,19 @@ count moved with C65c's edit to Fixes-PDFLib.md), differing only in `/CreationDa
 `/ModDate`. `compare_trees`: Fixes/PDFLib.html online and offline, the search data, and
 `book.html`.
 
+### C65e — `docs: Fixes.md stops counting the pdf-lib shims`
+
+**Found while building C66** (see Found while implementing). Fixes.md says twice that there
+are thirteen `fast-*.mjs` shims; C65b left twelve and did not edit that page.
+
+**Change.** Both sentences name the shims without a count, which nothing keeps true.
+
+**Verify.** `compare_trees` shows the page, the search data and `book.html`, and nothing else.
+
+**Landed.** As the entry says; a search of the tree outside `perf/notes/` for a count of
+thirteen shims finds only this plan's own entries. `compare_trees`: Fixes.html online and
+offline, the search data, and `book.html`.
+
 *The book's pdf-lib shims (decision (c)): C66–C69.*
 
 ### C66 — `book: check_pdf_shims_equiv.mjs, the shims against stock pdf-lib`
@@ -3324,6 +3337,9 @@ Defects the review did not have, found by building something this plan asks for.
   Two of pdf-lib's dictionary factories were left unreplaced, and the replaced methods cannot
   read what they build. Scheduled as C65d, at the owner's choice. Fixed in `book:
   fast-dict-onebuf builds new pages and page trees in its buffer`.
+- **Fixes.md still counted thirteen pdf-lib shims**, found while building C66: C65b deleted one
+  and missed that page. Scheduled as C65e, at the owner's choice. Fixed in `docs: Fixes.md
+  stops counting the pdf-lib shims`.
 
 ## Open questions
 
