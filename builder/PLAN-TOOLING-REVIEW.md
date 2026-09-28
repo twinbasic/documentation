@@ -2109,7 +2109,7 @@ names where each of its three lessons is now a comment (it said all three were i
 `page-baseline.mjs`, and the second never was; it is in `check_tree_fresh.mjs`).
 
 **Found in passing, not fixed:** Builder.md's module table has no row for `symbols.mjs` either;
-every other `builder/*.mjs` has one.
+every other `builder/*.mjs` has one. Fixed in C59, at the owner's request.
 
 ### C58 — `builder: fold six small duplicates`
 
@@ -2170,6 +2170,33 @@ different, with an ordering that closes a race, and stays as it is. `:510` write
 **Change.** One `runTimed()` for the three paths; `:510` uses the named constant.
 
 **Verify.** The tree comparison identical; the build reports its task timings as before.
+
+**Landed.** `cpu-worker.mjs` has a private `runPerWorkerTask(taskIdx, meta)`, named for what it
+runs rather than `runTimed`, since the fourth path is timed too. It times the handler, marks
+the task done for the lane and posts the `perWorkerTiming` message; on a throw it posts
+`taskFailed` and returns false, and the caller ends the pull loop, as each copy's `return`
+did. The idle, nested and on-demand paths call it in one line each, and each still reads the
+task's metadata where it did, the nested path after releasing its claimed task. The fourth path
+writes `FAILED`, now imported from `sab-scheduler.mjs`. Nothing reads that status (A1-7), so
+the name changes nothing.
+
+`compare_trees` on the code change alone: identical (1461, 1457 and 137 files). The build's
+summary still gives a `boot`, `render` and `write` time for each of the 16 lanes. The Gantt
+charts of HEAD's build and the working one, kept by `compare_trees --keep`, draw the same bars
+by class: 16 `gb-boot`, 16 `gb-env`, 16 `gb-cold`, 153 `gb-render`, 167 `gb-write`, 23
+`gb-spine`, 9 `gb-seeds`. The kit's `c59-faults.mjs` builds the `check-src` fixture from a `git
+archive` copy of HEAD and from the working tree, with a throw put at the top of `warmInit`,
+`renderEnvInit` or `flush` through `c43-fault.mjs`. `flush:<i>` runs through the fourth path,
+so its fault covers the `FAILED` write. Every faulted build exits 1 in about a second with
+`task <name> failed` and the fault as its cause, and the two sides print the same lines. The
+first run differed only in which flush chunk failed first (`flush:0` against `flush:1`), a race
+the second run did not repeat.
+
+Builder.md's module table gains a row for `symbols.mjs` (C57's Found item), under Write phase
+beside `search.mjs`, as `builder/README.md` groups them; every `builder/*.mjs` now has exactly
+one row. Its "Architecture at a glance" said `~34 modules` against 44; at the owner's choice it
+now says "dozens of modules", linked to the module map, rather than a figure nothing derives.
+With both, `compare_trees` differs in that page alone, with the search data and `book.html`.
 
 ### C60 — `builder: name tbdocs's exit bits and set them in one place`
 

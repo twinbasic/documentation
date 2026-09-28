@@ -36,7 +36,7 @@ The rework documented here is internal. The build moved from a push-style schedu
 
 ## Architecture at a glance
 
-One entry point, ~34 modules, three output trees, N+1 threads.
+One entry point, [dozens of modules](#module-map), three output trees, N+1 threads.
 
 `runBuild()` allocates a `SharedArrayBuffer` holding the scheduling state (task status, dependency counts, successor edges), spawns one worker per available CPU, sends each worker a reference to the SAB, and lets the workers and the main thread compete for ready tasks. There is no central dispatcher; each thread scans the SAB, claims a task it is eligible to run, executes it, and updates the SAB so the next task becomes claimable. The main thread participates on equal footing for tasks marked `runOnMain` --- mostly the ones that mutate the master `pages[]` array or coordinate filesystem layout.
 
@@ -108,6 +108,7 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 | [`redirects.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/redirects.mjs) | `redirect_from:` stub generator. |
 | [`sitemap.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/sitemap.mjs) | `sitemap.xml` + `robots.txt`. |
 | [`search.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/search.mjs) | `deriveSearchEntries` (per-chunk, on workers) + `writeSearchDataFromChunks` (consolidator, on main). |
+| [`symbols.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/symbols.mjs) | The symbol index, `tB/symbols.json`, for the IDE help add-in: every name the reference pages document, and the page or heading that documents it. The entries come from the pages; `builder/package-api.json` only annotates them. See [Building and Deployment](Building#the-symbol-index). |
 
 **Offline and PDF**
 
