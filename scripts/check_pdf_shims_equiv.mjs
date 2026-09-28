@@ -22,15 +22,18 @@
 // removed, and dictionaries parsed early and edited late.
 //
 // A shim none of whose functions runs is reported too: it means the document
-// no longer tests it, or that the book never needed it.
+// no longer tests it, or that the book never needed it. So is each member of
+// pdf-lib the shims put a function into, against PATCHES below: a member
+// listed there and not patched, one patched and not listed, one whose function
+// never ran, and one marked there as not reached that ran.
 //
 // On a difference, the shimmed side is run again with each shim alone and with
 // each left out (parallelSave counts as one), to name the shims that make it.
 //
 //     node scripts/check_pdf_shims_equiv.mjs
 //
-// Exit codes: 0 the same, 1 a difference or a shim not reached, 2 the check
-// itself failed.
+// Exit codes: 0 the same, 1 a difference, a shim or patched member not reached
+// or a patched member not as PATCHES lists it, 2 the check itself failed.
 
 import { spawn } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -50,9 +53,10 @@ if (cli.stopped === "help") {
   printHelpAndExit(`usage: node scripts/check_pdf_shims_equiv.mjs
 
 Loads, changes and saves one PDF with stock pdf-lib and with the book's pdf-lib
-shims, and compares the two files object by object, streams inflated. Exit 0
-the same, 1 a difference or a shim the document no longer reaches, 2 the check
-itself failed.`);
+shims, compares the two files object by object, streams inflated, and checks
+the members of pdf-lib the shims patch against the list in this file. Exit 0
+the same, 1 a difference, a shim or patched member the document no longer
+reaches, or a patched member not as listed, 2 the check itself failed.`);
 }
 
 const TOOL = "check_pdf_shims_equiv";
@@ -75,6 +79,127 @@ function shimsOf(source) {
 }
 
 const shimName = (file) => path.basename(file);
+
+// Every member of pdf-lib each shim puts a function into, named as the side
+// names it. The side finds them by comparing pdf-lib's modules, their exported
+// classes and those classes' prototypes before and after the shims load, so a
+// patch applied to anything else, such as a copy of a class, is missing here.
+// A member given as [member, reason] is one the document does not reach.
+const UNCALLED = "the load, the change and the save do not call it";
+const CREATE_ONLY =
+  "pdf-lib calls it only from PDFDocument.create, and the onebuf shims allow the side one context, the loaded document's";
+const PATCHES = {
+  "fast-refs-class.mjs": [
+    "PDFRef.of",
+    ["PDFRef.prototype.toString", UNCALLED],
+    "PDFRef.prototype.sizeInBytes",
+    "PDFRef.prototype.copyBytesInto",
+  ],
+  "fast-parse-number.mjs": ["BaseParser.prototype.parseRawInt", "BaseParser.prototype.parseRawNumber"],
+  "fast-decode-name.mjs": ["PDFName.of"],
+  "fast-number-to-string.mjs": [
+    "numberToString in pdf-lib/cjs/index.js",
+    "numberToString in pdf-lib/cjs/utils/index.js",
+    "numberToString in pdf-lib/cjs/utils/numbers.js",
+  ],
+  "fast-size-in-bytes.mjs": [
+    "sizeInBytes in pdf-lib/cjs/index.js",
+    "sizeInBytes in pdf-lib/cjs/utils/index.js",
+    "sizeInBytes in pdf-lib/cjs/utils/numbers.js",
+  ],
+  "fast-dict-onebuf.mjs": [
+    "PDFObjectParser.prototype.parseDict",
+    "PDFDict.withContext",
+    "PDFDict.fromMapWithContext",
+    "PDFDict.prototype.keys",
+    ["PDFDict.prototype.values", UNCALLED],
+    ["PDFDict.prototype.entries", UNCALLED],
+    "PDFDict.prototype.set",
+    "PDFDict.prototype.get",
+    ["PDFDict.prototype.has", UNCALLED],
+    "PDFDict.prototype.delete",
+    ["PDFDict.prototype.asMap", UNCALLED],
+    ["PDFDict.prototype.clone", UNCALLED],
+    ["PDFDict.prototype.toString", UNCALLED],
+    "PDFDict.prototype.sizeInBytes",
+    "PDFDict.prototype.copyBytesInto",
+    "PDFDict.prototype.context (getter)",
+    ["PDFDict.prototype.context (setter)", UNCALLED],
+    ["PDFCatalog.withContextAndPages", CREATE_ONLY],
+    ["PDFCatalog.fromMapWithContext", "pdf-lib calls it only from the parseDict this shim replaces"],
+    ["PDFPageTree.withContext", CREATE_ONLY],
+    ["PDFPageTree.fromMapWithContext", "only this shim's PDFPageTree.withContext calls it"],
+    "PDFPageLeaf.withContextAndParent",
+    "PDFPageLeaf.fromMapWithContext",
+    "PDFPageLeaf.prototype.normalized (getter)",
+    "PDFPageLeaf.prototype.normalized (setter)",
+    "PDFPageLeaf.prototype.autoNormalizeCTM (getter)",
+    "PDFPageLeaf.prototype.autoNormalizeCTM (setter)",
+  ],
+  "fast-array-onebuf.mjs": [
+    "PDFObjectParser.prototype.parseArray",
+    "PDFArray.withContext",
+    "PDFArray.prototype.size",
+    "PDFArray.prototype.push",
+    "PDFArray.prototype.insert",
+    ["PDFArray.prototype.indexOf", UNCALLED],
+    "PDFArray.prototype.remove",
+    ["PDFArray.prototype.set", UNCALLED],
+    "PDFArray.prototype.get",
+    ["PDFArray.prototype.asArray", UNCALLED],
+    ["PDFArray.prototype.clone", UNCALLED],
+    ["PDFArray.prototype.toString", UNCALLED],
+    "PDFArray.prototype.sizeInBytes",
+    "PDFArray.prototype.copyBytesInto",
+    "PDFArray.prototype.context (getter)",
+    ["PDFArray.prototype.context (setter)", UNCALLED],
+  ],
+  "fast-parse-object.mjs": ["PDFObjectParser.prototype.parseObject"],
+  "fast-parse-name.mjs": ["PDFObjectParser.prototype.parseName"],
+  "fast-sync-load.mjs": [
+    "PDFDocument.load",
+    "PDFParser.prototype.parseDocument",
+    "PDFParser.prototype.parseDocumentSection",
+    "PDFParser.prototype.parseIndirectObjects",
+    "PDFParser.prototype.parseIndirectObject",
+    "PDFObjectStreamParser.prototype.parseIntoContext",
+    "PDFWriter.prototype.serializeToBuffer",
+    ["PDFWriter.prototype.computeBufferSize", "parallelSave does not call it"],
+    ["PDFStreamWriter.prototype.computeBufferSize", "parallelSave does not call it"],
+  ],
+  "fast-indirect-objects.mjs": [
+    "PDFContext.prototype.assign",
+    ["PDFContext.prototype.delete", UNCALLED],
+    "PDFContext.prototype.lookupMaybe",
+    "PDFContext.prototype.lookup",
+    ["PDFContext.prototype.getObjectRef", UNCALLED],
+    "PDFContext.prototype.enumerateIndirectObjects",
+  ],
+  "fast-pdfnumber-pool.mjs": ["PDFNumber.of"],
+};
+
+// The side's patched members against PATCHES, as lists of "shim: member".
+// A shim that ran nothing is reported whole, so its members are left out.
+function againstPatches(patched, unreached) {
+  const listed = new Map();
+  for (const [shim, entries] of Object.entries(PATCHES)) {
+    for (const entry of entries) {
+      const [member, reason = null] = Array.isArray(entry) ? entry : [entry];
+      listed.set(`${shim}: ${member}`, reason);
+    }
+  }
+  const seen = new Map(patched.map((p) => [`${shimName(p.shim)}: ${p.member}`, p]));
+  const quiet = (key) => unreached.includes(key.slice(0, key.indexOf(":")));
+  return {
+    marked: [...listed.values()].filter((reason) => reason !== null).length,
+    missing: [...listed.keys()].filter((key) => !seen.has(key) && !quiet(key)),
+    unlisted: [...seen.keys()].filter((key) => !listed.has(key)),
+    notRun: [...seen.values()]
+      .map((p) => `${shimName(p.shim)}: ${p.member}`)
+      .filter((key) => !seen.get(key).ran && listed.get(key) === null && !quiet(key)),
+    nowRun: [...seen.keys()].filter((key) => seen.get(key).ran && listed.get(key)),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // The document
@@ -407,9 +532,14 @@ try {
   const found = against(stock, shimmedSide);
   const unreached = shimmedSide.error ? [] : shims.filter((s) => !shimmedSide.reached.includes(s)).map(shimName);
   if (!shimmedSide.error && shimmedSide.streamCount === 0) unreached.push("parallel-deflate.mjs (no object stream was deflated on the thread pool)");
+  const members = shimmedSide.error ? null : againstPatches(shimmedSide.patched, unreached);
+  const faults = members ? members.missing.length + members.unlisted.length + members.notRun.length + members.nowRun.length : 0;
 
-  if (found.length === 0 && unreached.length === 0) {
-    console.log(`${TOOL}: stock pdf-lib and ${shims.length} shims with parallelSave write the same ${stock.objects.size} objects; every shim ran`);
+  if (found.length === 0 && unreached.length === 0 && faults === 0) {
+    console.log(
+      `${TOOL}: stock pdf-lib and ${shims.length} shims with parallelSave write the same ${stock.objects.size} objects; ` +
+        `the ${shimmedSide.patched.length} members the shims patch are as listed, and all ran but the ${members.marked} marked`
+    );
   } else {
     if (found.length) {
       console.log(`${TOOL}: the shimmed output differs from stock pdf-lib's in ${found.length} place(s):`);
@@ -424,6 +554,18 @@ try {
       console.log(`${TOOL}: ${unreached.length} shim(s) did nothing while the document was loaded, changed and saved:`);
       for (const name of unreached) console.log(`  book/lib/${name}`);
       console.log("  The document no longer reaches the shim, or the book does not need it.");
+    }
+    const report = (list, what, why) => {
+      if (list.length === 0) return;
+      console.log(`${TOOL}: ${list.length} ${what}:`);
+      for (const key of list) console.log(`  book/lib/${key}`);
+      console.log(`  ${why}`);
+    };
+    if (members) {
+      report(members.missing, "member(s) PATCHES lists are not patched", "The shim no longer patches pdf-lib's own object, or PATCHES is out of date.");
+      report(members.unlisted, "patched member(s) are not in PATCHES", "Add each to PATCHES, marked with a reason if the document does not reach it.");
+      report(members.notRun, "patched member(s) never ran", "The document no longer reaches the function, or the book does not need it; PATCHES can mark it, with the reason.");
+      report(members.nowRun, "member(s) PATCHES marks as not reached ran", "Remove the mark from PATCHES.");
     }
     process.exitCode = 1;
   }

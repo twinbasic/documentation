@@ -508,7 +508,7 @@ wrapper:
 | `test.bat` | `check_ci_workflows` | both CI workflows run every wrapper gate, with the same arguments and order, and build with `build.bat`'s flags |
 | `test.bat` | `check_lint` | Biome finds nothing in the tooling, warnings included, and checked at least one script |
 | `test.bat` | `test/search.test.mjs` | the search entries `builder/search.mjs` writes hold what they should, and the copies of the search client still agree. Run by `node --test`; the gate roster reads such a line as a gate, named by its path |
-| `test.bat` | `check_pdf_shims_equiv` | the book's pdf-lib shims write what stock pdf-lib writes: one document written by the gate is saved both ways in child processes, the files are compared object by object with streams inflated and their cross-reference entries checked, and every shim must run |
+| `test.bat` | `check_pdf_shims_equiv` | the book's pdf-lib shims write what stock pdf-lib writes: one document written by the gate is saved both ways in child processes, the files are compared object by object with streams inflated and their cross-reference entries checked; every shim must run, and the members of pdf-lib the shims patch must be those its `PATCHES` lists, each run unless marked there as not reached |
 | `test.bat` | `check_publish_policy`, `check_gate_lists`, `check_page_baseline`, `check_book_coverage`, `check_axe_patch_equiv` | the gates on the gates |
 
 **A gate belongs in `test.bat` rather than `check.bat` if it would still mean

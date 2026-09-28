@@ -2696,6 +2696,91 @@ book, rendered from one `_site-pdf` through HEAD's `book/` and the working one: 
 `/ModDate`; 130 s and 136 s, `process: 1.3s` and `1.4s`. `compare_trees`: Fixes-PDFLib online
 and offline, the search data and `book.html`. Lint `Checked 169 files`.
 
+### C67a — `book: check_pdf_shims_equiv checks each member the shims patch`
+
+**Found while landing C67** (see Found while implementing). The gate's reach check fails a
+shim none of whose functions ran, so a shim with several patches passes while one of them
+never runs, or lands on a copy of a class. With `pdf-lib-internals.mjs` exporting a subclass of
+`PDFObjectParser`, the gate named the two shims whose only patch is on it, and not
+`fast-dict-onebuf.mjs` or `fast-array-onebuf.mjs`, whose `parseDict` and `parseArray` landed on
+the copy too.
+
+**Change.** The shimmed side lists the members of pdf-lib the shims put a function into, and
+whether each function ran. The gate checks them against a list of every member each shim
+patches, in which a member the document does not reach is marked, with the reason.
+
+**Verify.** Passes; C67's fault fails it, naming the two members; so do a patched member missing
+from the list, an unmarked member that stops running and a marked one that runs.
+
+**Landed.** In coverage mode the side snapshots the own properties of every pdf-lib module's
+exports in `require.cache`, of each function they export and of its prototype, before and
+after the shims load; a member that holds a new function, as value, getter or setter, is
+patched. The inspector gives each function's `[[FunctionLocation]]` and
+`Debugger.getScriptSource` its script, and the function's coverage entry is the one containing
+that position whose source is the function's own text. A function never called can have no
+entry at all, having never been compiled (measured: `PDFContext.prototype.delete` has none), so
+no entry counts as not run. Only functions a shim defines count. The side prints `{ streamCount,
+reached, patched }`, `patched` one `{ shim, member, ran }` per member, since
+`numberToString` and `sizeInBytes` are each installed in three modules.
+
+`PATCHES` in the gate lists 74 members of 12 shims. A measurement is behind each of the 22
+marks: 16 `the load, the change and the save do not call it`, both `computeBufferSize`
+`parallelSave does not call it`, the two factories `PDFDocument.create` alone calls (read at
+`api/PDFDocument.js:146-148`), `PDFCatalog.fromMapWithContext` (called only from the stock
+`parseDict` that `fast-dict-onebuf` replaces) and `PDFPageTree.fromMapWithContext` (under the
+shims, called only from that shim's `PDFPageTree.withContext`). The gate reports a listed
+member not patched, a patched member not listed, an unmarked member that never ran, and a
+marked member that ran; a shim that ran nothing is still reported whole, and its members are
+left out of the four lists. Now: `stock pdf-lib and 12 shims with parallelSave write the same
+22 objects; the 74 members the shims patch are as listed, and all ran but the 22 marked`, 0.49
+s. Faults through the kit's `c67a-faults.mjs`, each exit 1: the `PDFObjectParser` copy names
+`fast-parse-object` and `fast-parse-name` whole, `parseDict` and `parseArray` as not patched,
+and the two `fromMapWithContext` marks as run, since stock `parseDict` runs again and calls
+them; a `BaseParser` copy names `fast-parse-number` whole; the side without its
+`misc.delete` names `PDFDict.prototype.delete` as never run; the side calling `misc.has` names
+that mark as run; a method a shim adds to `PDFNumber.prototype` is named as not listed. The
+header, `--help`, Tools.md's list line, section and exits, Fixes-PDFLib.md and WIP.md's table
+say what the gate now checks; `check_cli`'s help case pins only the first line. Lint `Checked
+169 files`; regex safety `521 literals + 28 constructed in 129 files -- 480 safe, 69
+polynomial`. `compare_trees`: Fixes-PDFLib and Tools online and offline, the search data and
+`book.html`. CI waits for the owner's push.
+
+### C67b — `book: the shim gate reaches the members it marks`
+
+**The owner's choice (2026-09-28)**, with C67a. A Sonnet agent measured the 22 marked members
+against the real book: rendered with `NODE_V8_COVERAGE`, 2,299 pages, every one ran 0 times
+(`PDFDict.prototype.get`, for comparison, 15,124), so the gate's document is not narrower than
+the book. Twenty exist because the storage changed. The onebuf classes keep their entries in
+one buffer (`_FastArray` holds only `this.d`, `fast-array-onebuf.mjs:147-148`), and a `PDFRef`
+holds no `tag` (`fast-refs-class.mjs:74-86`), so every stock method that reads the old fields
+had to be replaced, called or not. `PDFContext.prototype.delete` has a caller,
+`fast-sync-load.mjs:92-95`, which removes an object 0 that a parsed file defines; Chromium
+never writes one. The two `computeBufferSize` overrides are the exception. No storage change
+forces them, the shim's comment calls them "patched for consistency" (`fast-sync-load.mjs:237-241`),
+`08-pdf-lib.md` finds the writer-side wins "none reliably above noise" (`:1795-1822`), and
+`ParallelStreamWriter`, which predates them, overrides the method on the book's only path
+(`parallel-deflate.mjs:50-61`). The split renderer the owner recalled, `perf/probe-parallel.mjs`,
+never loads the shims and never merges its parts; a renderer that copied pages between
+documents would need two `PDFContext`s, which the onebuf shims refuse
+(`fast-dict-onebuf.mjs:136-142`, `fast-array-onebuf.mjs:99-105`).
+
+**Change.** Delete the two `computeBufferSize` overrides from `fast-sync-load.mjs`, at the
+owner's choice, with their two `PATCHES` entries. The side's change calls each marked member
+a loaded document can reach, with each result written into the document so that the
+comparison checks it: a dictionary's and an array's `clone` registered, their `toString` and a
+reference's stored as strings, `values`, `entries`, `has`, `asMap`, `indexOf`, `asArray` and
+`getObjectRef` reduced to numbers or references stored in a dictionary, and `set` on an array.
+The fixture gains an object 0, which the parse removes through `PDFContext.prototype.delete`.
+A second pair of sides, stock and shimmed, builds a document with `PDFDocument.create`, adds
+pages and saves, since one process allows the onebuf shims one context; the gate compares the
+pair as it compares the first, and it reaches the four page-tree and catalog factories. The
+two `context` setters stay marked: each is empty by design (`fast-dict-onebuf.mjs:411`,
+`fast-array-onebuf.mjs:289`), and nothing it does reaches the output.
+
+**Verify.** The gate passes with two marks left; each newly reached member, broken through
+the kit's `c43-fault.mjs`, fails it by difference; C67a's five faults still fail. The book
+renders identically but for its dates.
+
 ### C68 — `book: the two onebuf shims share their range machinery`
 
 **A9-3 (R2).** `_registerContext` and `_appendArray` are identical apart from names in
@@ -3416,6 +3501,13 @@ Defects the review did not have, found by building something this plan asks for.
 - **Fixes.md still counted thirteen pdf-lib shims**, found while building C66: C65b deleted one
   and missed that page. Scheduled as C65e, at the owner's choice. Fixed in `docs: Fixes.md
   stops counting the pdf-lib shims`.
+- **The shim gate's reach check counted shims, not patches**, found while landing C67: with
+  `PDFObjectParser` replaced by a copy in `pdf-lib-internals.mjs`, the gate named the two shims
+  whose only patch is on it, and passed over the `parseDict` and `parseArray` patches of two
+  shims whose other functions ran. A reach check by function alone would not have closed it:
+  a patch applied to a copy is not a patch of pdf-lib at all. Scheduled as C67a, with the
+  document's reach of the members it marks as C67b, at the owner's choice. Fixed in `book:
+  check_pdf_shims_equiv checks each member the shims patch`.
 
 ## Open questions
 

@@ -79,7 +79,7 @@ The tests the toolchain has to pass. Fourteen steps, each stopping the run if it
 10. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
 11. [`scripts/check_twin_parsers.mjs`](#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
 12. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
-13. [`scripts/check_pdf_shims_equiv.mjs`](#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, and that each of them runs.
+13. [`scripts/check_pdf_shims_equiv.mjs`](#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, and run.
 14. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
@@ -565,9 +565,9 @@ Exits 1 on any failed probe or case, 2 if it cannot run.
 
 Verifies that the book's [pdf-lib patches](Fixes/PDFLib) write what pdf-lib itself writes. `book/render-book.mjs` loads Chromium's PDF, adds the metadata and the outline, and saves it, with a dozen shims replacing pdf-lib's parser, object classes and writer, and `parallelSave` in place of `save()`. This loads, changes and saves one document twice, with stock pdf-lib and with every shim `render-book.mjs` imports, each side in a process of its own, and compares the two files object by object with every stream inflated, since `node:zlib` and pdf-lib's own deflate can compress the same bytes differently. It also checks each file's cross-reference entries against the objects they locate, since pdf-lib's own parser finds objects without them. No built tree, no browser; under a second.
 
-The document is written by the gate, without pdf-lib, so the forms the shims' parsers branch on are known to be in it: names with `#` escapes, numbers in every lexical form, a classic cross-reference table, and an incremental update with an object stream and a cross-reference stream. The change mirrors `render-book.mjs`'s and adds what reaches the rest of the shims: text drawn on a page, a page inserted and one removed, and objects parsed early and edited late. A shim none of whose functions runs fails the gate too, since the document then no longer tests it, or the book does not need it. On a difference, the shimmed side runs again with each shim alone and with each left out, and the report names the shims that make it.
+The document is written by the gate, without pdf-lib, so the forms the shims' parsers branch on are known to be in it: names with `#` escapes, numbers in every lexical form, a classic cross-reference table, and an incremental update with an object stream and a cross-reference stream. The change mirrors `render-book.mjs`'s and adds what reaches the rest of the shims: text drawn on a page, a page inserted and one removed, and objects parsed early and edited late. Each member of pdf-lib that a shim puts a function into is checked against `PATCHES`, a list in the gate. A listed member that is not patched fails it, and so does a patched member that is not listed: a patch applied to a copy of a class leaves pdf-lib's own member as it was. Each listed member's function must run, unless the list marks the member as one the document does not reach and says why, and a marked member that runs fails the gate as well, so the marks stay true. A shim none of whose functions runs is reported whole, since the document then no longer tests it, or the book does not need it. On a difference, the shimmed side runs again with each shim alone and with each left out, and the report names the shims that make it.
 
-Exits 1 on a difference or a shim that did not run, 2 if it cannot run.
+Exits 1 on a difference, a shim or listed member that did not run, or a patched member that is not as listed, 2 if it cannot run.
 
 ### check_axe_patch_equiv.mjs
 {: #check-axe-patch-equiv }
