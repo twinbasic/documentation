@@ -1,15 +1,18 @@
 // One side of check_pdf_shims_equiv.mjs: loads the fixture, changes it as
 // book/render-book.mjs changes the book, and saves it, with the shims it is
-// given and no others. Each side is a process of its own, because the onebuf
-// shims allow one PDFContext per process and the stock side must load no shim.
+// given and no others; or, with no fixture, builds a document with
+// PDFDocument.create and saves that. Each side is a process of its own,
+// because the onebuf shims allow one PDFContext per process and the stock side
+// must load no shim.
 //
 //     node scripts/lib/pdf-shims-side.mjs <job as JSON>
 //
-// The job is { fixture, out, shims, parallel, coverage }: `shims` are absolute
-// paths, imported in the order given; `parallel` saves through parallelSave, as
-// the book does, and otherwise as stock pdf-lib's save would with the book's 500
-// objects per stream; `coverage` records which of the shims ran a function
-// during the load, change and save, their imports left out, and which of the
+// The job is { fixture, out, shims, parallel, coverage }: `fixture` is the PDF
+// to load, or null; `shims` are absolute paths, imported in the order given;
+// `parallel` saves through parallelSave, as the book does, and otherwise as
+// stock pdf-lib's save would with the book's 500 objects per stream; `coverage`
+// records which of the shims ran a function while the document was loaded or
+// built, changed and saved, their imports left out, and which of the
 // members of pdf-lib they put a function into, and whether each function ran.
 // The side writes the saved PDF to `out` and prints one JSON line,
 // { streamCount, reached, patched }.
@@ -159,35 +162,84 @@ const parallelSave = job.parallel ? (await import(bookLib("parallel-deflate.mjs"
 // counted as reaching a shim.
 if (session) await session.post("Profiler.takePreciseCoverage");
 
-const { PDFDocument, PDFName, PDFNumber, PDFRef, PDFStreamWriter, PDFString, rgb } = pdfLib;
-const raw = readFileSync(job.fixture);
+const { PDFCatalog, PDFDocument, PDFHexString, PDFName, PDFNumber, PDFRef, PDFStreamWriter, PDFString, rgb } = pdfLib;
+const name = (s) => PDFName.of(s);
+const doc = job.fixture ? await loadAndChange(readFileSync(job.fixture)) : await create();
 
-// As render-book.mjs does: size the onebuf shims from a measure of the input.
-const counts = measure(raw);
-for (const shim of shims) {
-  shim.setExpectedDictSlots?.(counts.dictSlots);
-  shim.setExpectedArraySlots?.(counts.arraySlots);
+async function loadAndChange(raw) {
+  // As render-book.mjs does: size the onebuf shims from a measure of the input.
+  const counts = measure(raw);
+  for (const shim of shims) {
+    shim.setExpectedDictSlots?.(counts.dictSlots);
+    shim.setExpectedArraySlots?.(counts.arraySlots);
+  }
+
+  const doc = await PDFDocument.load(raw);
+  setMetadata(doc, { title: "Fixture", subject: "check_pdf_shims_equiv", keywords: "one,two", creationDate: WHEN });
+  doc.setModificationDate(WHEN); // setMetadata stamps the time it runs
+  await setOutline(doc, OUTLINE, false);
+
+  // What the book's own change does not reach: a page drawn on, which
+  // normalizes its content streams; a page inserted and one removed, which
+  // edit /Kids; and dictionaries and an array parsed early, edited after the
+  // objects above were made.
+  const [first] = doc.getPages();
+  first.drawText("Drawn 0.5 over", { x: 72.25, y: 700.125, size: 11.5, color: rgb(0.25, 0.5, 0.75) });
+  doc.insertPage(1, [300.5, 400]);
+  doc.removePage(2);
+  const ctx = doc.context;
+  const misc = ctx.lookup(PDFRef.of(7));
+  misc.set(name("Added"), PDFNumber.of(-0.001));
+  misc.set(name("Int"), PDFString.of("replaced"));
+  misc.delete(name("Nil"));
+  const arr = ctx.lookup(PDFRef.of(12));
+  arr.push(PDFNumber.of(1e-7));
+  doc.catalog.set(name("Edited"), PDFNumber.of(2 ** 20));
+
+  // What neither change calls, each result written into the document so that
+  // the comparison checks it. misc's text holds a dictionary's, an array's and
+  // a reference's. An index or reference not found is written as null.
+  const inline = misc.get(name("Arr")).get(2); // << /K /V /Deep << /Z null >> >>
+  const found = ctx.obj({
+    Values: misc.values(),
+    Entries: misc.entries().flat(),
+    AsMap: [...misc.asMap()].flat(),
+    Has: [misc.has(name("Type")), misc.has(name("Absent")), inline.get(name("Deep")).has(name("Z"))],
+    IndexOf: [arr.indexOf(name("Name")), arr.indexOf(PDFRef.of(7)), arr.indexOf(name("Absent"))],
+    AsArray: arr.asArray(),
+    ObjectRef: [ctx.getObjectRef(misc), ctx.getObjectRef(ctx.lookup(PDFRef.of(9, 1))), ctx.getObjectRef(inline)],
+    Text: PDFHexString.fromText(misc.toString()),
+  });
+  // Each clone and its original edited after the copy, which must not reach
+  // the other.
+  const miscClone = misc.clone();
+  const arrClone = arr.clone(ctx);
+  miscClone.set(name("InClone"), PDFNumber.of(1));
+  misc.set(name("AfterClone"), PDFNumber.of(2));
+  arrClone.push(PDFNumber.of(3));
+  arr.set(0, PDFNumber.of(4));
+  doc.catalog.set(name("Found"), ctx.obj([ctx.register(found), ctx.register(miscClone), ctx.register(arrClone)]));
+  return doc;
 }
 
-const doc = await PDFDocument.load(raw);
-setMetadata(doc, { title: "Fixture", subject: "check_pdf_shims_equiv", keywords: "one,two", creationDate: WHEN });
-doc.setModificationDate(WHEN); // setMetadata stamps the time it runs
-await setOutline(doc, OUTLINE, false);
-
-// What the book's own change does not reach: a page drawn on, which
-// normalizes its content streams; a page inserted and one removed, which edit
-// /Kids; and dictionaries and an array parsed early, edited after the objects
-// above were made.
-const [first] = doc.getPages();
-first.drawText("Drawn 0.5 over", { x: 72.25, y: 700.125, size: 11.5, color: rgb(0.25, 0.5, 0.75) });
-doc.insertPage(1, [300.5, 400]);
-doc.removePage(2);
-const misc = doc.context.lookup(PDFRef.of(7));
-misc.set(PDFName.of("Added"), PDFNumber.of(-0.001));
-misc.set(PDFName.of("Int"), PDFString.of("replaced"));
-misc.delete(PDFName.of("Nil"));
-doc.context.lookup(PDFRef.of(12)).push(PDFNumber.of(1e-7));
-doc.catalog.set(PDFName.of("Edited"), PDFNumber.of(2 ** 20));
+// A document built rather than loaded, which is what reaches the page-tree
+// and catalog factories. It has no input to measure, so the onebuf shims keep
+// the capacity they start with.
+async function create() {
+  const doc = await PDFDocument.create();
+  doc.setCreationDate(WHEN);
+  doc.setModificationDate(WHEN);
+  doc.addPage();
+  const page = doc.addPage([300.5, 400]);
+  page.drawText("Created", { x: 20.5, y: 300, size: 9 });
+  doc.insertPage(0, [200, 200.25]);
+  // pdf-lib calls this only from the parseDict fast-dict-onebuf replaces, so
+  // nothing reaches it but a direct call.
+  const copy = PDFCatalog.fromMapWithContext(doc.catalog.asMap(), doc.context);
+  copy.set(name("Copied"), PDFNumber.of(1));
+  doc.catalog.set(name("Copy"), doc.context.register(copy));
+  return doc;
+}
 
 let bytes;
 let streamCount = null;

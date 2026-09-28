@@ -2781,6 +2781,46 @@ two `context` setters stay marked: each is empty by design (`fast-dict-onebuf.mj
 the kit's `c43-fault.mjs`, fails it by difference; C67a's five faults still fail. The book
 renders identically but for its dates.
 
+**Landed.** `fast-sync-load.mjs` loses both `computeBufferSize` overrides, the `Size` name only
+they used and eleven imports; `pdf-lib-internals.mjs` loses the eleven exports no shim imports
+any more (the four `core/document` classes, `PDFInvalidObject`, `PDFNumber`, `PDFStream`,
+`PDFCrossRefStream`, `PDFObjectStream`, `PDFStreamWriter` and `last`), keeping 33. The shim's
+header, which said eight methods and listed nine, `render-book.mjs`'s summary and
+Fixes-PDFLib.md now name the seven it replaces, and say the writers' own `computeBufferSize`
+stay as pdf-lib has them.
+
+The side keeps its job's shape: a null `fixture` builds the document with `PDFDocument.create`
+(both dates set to the fixed one, two pages added, text drawn on one, a third inserted at 0),
+and sizes nothing, so the onebuf shims keep their initial capacities (2.4 million dictionary
+slots, 800,000 array slots). Then it calls `PDFCatalog.fromMapWithContext` on a copy of the
+catalog's map and registers the result (see Where the plan was wrong). The loaded document's
+change ends with a registered `/Found` dictionary holding what `values`, `entries`, `asMap`,
+`has` (one of them on a null value), `indexOf`, `asArray` and `getObjectRef` (one of them for a
+generation-1 object) return, a null standing for an index or reference not found, and
+`misc.toString()` as a hex string, which calls a dictionary's, an array's and a reference's
+`toString`; then both clones are registered, and each clone and its original edited after the
+copy, which also calls an array's `set`. The fixture's object 0 is removed by the parse on both
+sides. The gate runs the four sides at once, compares each pair, runs the diagnosis for a
+document that differs, and counts a member as run if it ran in either shimmed side. Only the
+two `context` setters stay marked.
+
+Now: `stock pdf-lib and 12 shims with parallelSave write the same 25 objects for a loaded
+document and the same 11 for a created one; the 72 members the shims patch are as listed, and
+all ran but the 2 marked`, about 0.5 s. The kit's `c67b-faults.mjs` breaks each of the 18
+newly reached members, and each fault exits 1 by a difference in the document that reaches it,
+with the diagnosis naming that member's shim alone; the `delete` fault keeps object 0, which
+shifts every entry of the object stream. C67a's five faults still exit 1 (`c67a-faults.mjs`,
+its `runs` case now setting a dictionary's `context`, since `has` is no longer marked). The
+gate's header and help, Tools.md's section and WIP.md's table describe the created document.
+The book, rendered from one `_site-pdf` through HEAD's `book/` and the working one: 2,299 pages
+and 2,466 outline entries each, identical but for `/CreationDate` and `/ModDate`, whose object
+stream deflates a byte longer (29,132,071 and 29,132,072 bytes); 85-103 s a render, `process:
+1.1s`-`1.2s`. HEAD's first render, which ran beside `test.bat`, differed from its second in 34
+objects, all Chromium's structure-node ids shifted by one (`/ID (node00151028)` against
+`node00151029`): two renders of one tree are not always byte-identical, so a render pair that
+differs outside its dates needs a repeat render before the change is blamed. Lint `Checked 169 files`; regex safety unchanged. `compare_trees`: Fixes-PDFLib and
+Tools online and offline, the search data and `book.html`. CI waits for the owner's push.
+
 ### C68 — `book: the two onebuf shims share their range machinery`
 
 **A9-3 (R2).** `_registerContext` and `_appendArray` are identical apart from names in
@@ -3258,6 +3298,13 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   files are compared as written, with streams inflated, rather than as pdf-lib parses them:
   its parser finds objects without the cross-reference offsets and reads `0.50` as `0.5`, so a wrong
   `sizeInBytes` or a `0.50` would pass a comparison of parsed objects. See C66's Landed note.
+- **C67b: `PDFDocument.create` reaches three of the four factories.** The entry has the
+  created document reach all four page-tree and catalog factories. pdf-lib calls
+  `PDFCatalog.fromMapWithContext` only from the stock `parseDict`
+  (`core/parser/PDFObjectParser.js:159`), which `fast-dict-onebuf` replaces, and the shim's
+  `PDFCatalog.withContextAndPages` builds its catalog without it (`fast-dict-onebuf.mjs:455-461`),
+  so the created side calls it directly, on a copy of the created catalog's map. See C67b's
+  Landed note.
 
 ## Found while implementing
 

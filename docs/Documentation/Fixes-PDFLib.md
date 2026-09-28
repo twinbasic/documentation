@@ -94,7 +94,7 @@ Both caches converge on the same `PDFName` instance per logical name. Direct `PD
 
 **Problem.** pdf-lib's parser and writer methods are compiled from TypeScript `async function`s to tslib's `__awaiter` + `__generator` state machines. On browsers, these yield periodically via `objectsPerTick` / `waitForTick()` to keep the page responsive. In Node with `objectsPerTick: Infinity` (the `parseSpeed: Fastest` configuration), the yield gate never fires --- the entire generator runs in one tick --- yet every indirect object (~50 000 on the book) still paid the state-machine dispatch overhead for a single `case 0` fall-through.
 
-**Fix.** Eight methods are replaced with plain synchronous equivalents.
+**Fix.** Seven methods are replaced with plain synchronous equivalents.
 
 Load side:
 - `PDFParser.parseDocument`, `parseDocumentSection`, `parseIndirectObjects`, `parseIndirectObject`
@@ -103,7 +103,8 @@ Load side:
 
 Save side:
 - `PDFWriter.serializeToBuffer` (kept `async` because `ParallelStreamWriter.computeBufferSize` is genuinely async via `Promise.all` over libuv)
-- `PDFWriter.computeBufferSize` and `PDFStreamWriter.computeBufferSize`
+
+The writers' own `computeBufferSize` methods are left as pdf-lib has them. The book calls neither, since `parallelSave`'s `ParallelStreamWriter` overrides the stream writer's.
 
 `PDFDocument.load` returns a plain `PDFDocument` value rather than a Promise. `await PDFDocument.load(...)` at existing call sites still works, because `await` on a non-thenable resolves immediately to the value.
 

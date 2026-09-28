@@ -12,8 +12,8 @@
 // still pays the state-machine dispatch + Promise allocation for a
 // single fall-through `case 0`.
 //
-// Eight methods participate in this pattern; this shim replaces all
-// of them with synchronous (or, where a legitimate await remains,
+// This shim replaces the seven methods the book calls that follow
+// this pattern with synchronous (or, where a legitimate await remains,
 // awaiterless `async`) twins:
 //
 //   Load side (parser):
@@ -29,8 +29,10 @@
 //       (kept `async` because the inherited path awaits the
 //        ParallelStreamWriter override of computeBufferSize, which
 //        does genuine Promise.all-driven libuv-pool concurrency)
-//     PDFWriter.prototype.computeBufferSize
-//     PDFStreamWriter.prototype.computeBufferSize
+//
+// The writers' own computeBufferSize methods follow it too, and stay
+// as pdf-lib has them: the book calls neither, since
+// ParallelStreamWriter overrides the stream writer's.
 //
 // The load-side patches have to land together: each method awaits
 // the next one down, so desugaring any one in isolation still leaves
@@ -51,11 +53,10 @@
 
 import {
   PDFParser, PDFObjectStreamParser, PDFXRefStreamParser,
-  PDFRawStream, PDFRef, PDFName, PDFNumber, PDFStream, PDFInvalidObject,
-  PDFDocument, PDFWriter, PDFStreamWriter,
-  PDFHeader, PDFTrailer, PDFTrailerDict, PDFCrossRefSection, PDFCrossRefStream, PDFObjectStream,
+  PDFRawStream, PDFRef, PDFName,
+  PDFDocument, PDFWriter,
   CharCodes, ReparseError, StalledParserError, IsDigit, Keywords,
-  toUint8Array, copyStringIntoBuffer, last,
+  toUint8Array, copyStringIntoBuffer,
 } from './pdf-lib-internals.mjs';
 
 // Pool-deduped PDFName instances are reference-stable for the whole
@@ -65,7 +66,6 @@ const TypeName   = PDFName.of('Type');
 const ObjStmName = PDFName.of('ObjStm');
 const XRefName   = PDFName.of('XRef');
 const RefZero    = PDFRef.of(0);
-const SizeName   = PDFName.of('Size');
 
 if (!PDFParser.prototype.__fastSyncLoadInstalled) {
 
@@ -232,95 +232,6 @@ if (!PDFParser.prototype.__fastSyncLoadInstalled) {
     }
     offset += trailer.copyBytesInto(buffer, offset);
     return buffer;
-  };
-
-  // PDFWriter.computeBufferSize -- the basic (non-stream) writer's
-  // sizing pass. Not on our pipeline's hot path (we route through
-  // PDFStreamWriter via ParallelStreamWriter, both of which override
-  // this method) but patched for consistency: the only async thing
-  // upstream is the conditional waitForTick yield in its loop.
-  PDFWriter.prototype.computeBufferSize = function computeBufferSizeBaseSync() {
-    const header = PDFHeader.forVersion(1, 7);
-    let size = header.sizeInBytes() + 2;
-    const xref = PDFCrossRefSection.create();
-    const indirectObjects = this.context.enumerateIndirectObjects();
-    for (let idx = 0, len = indirectObjects.length; idx < len; idx++) {
-      const indirectObject = indirectObjects[idx];
-      const ref = indirectObject[0];
-      xref.addEntry(ref, size);
-      size += this.computeIndirectObjectSize(indirectObject);
-    }
-    const xrefOffset = size;
-    size += xref.sizeInBytes() + 1;
-    const trailerDict = PDFTrailerDict.of(this.createTrailerDict());
-    size += trailerDict.sizeInBytes() + 2;
-    const trailer = PDFTrailer.forLastCrossRefSectionOffset(xrefOffset);
-    size += trailer.sizeInBytes();
-    return { size, header, indirectObjects, xref, trailerDict, trailer };
-  };
-
-  // PDFStreamWriter.computeBufferSize -- the upstream stream writer's
-  // sizing pass with two waitForTick gates (one per loop). Not on our
-  // pipeline's hot path (ParallelStreamWriter overrides this with its
-  // own three-phase parallel-deflate version) but patched for
-  // consistency. Logic mirrors the upstream method body exactly.
-  PDFStreamWriter.prototype.computeBufferSize = function computeBufferSizeStreamSync() {
-    let objectNumber = this.context.largestObjectNumber + 1;
-    const header = PDFHeader.forVersion(1, 7);
-    let size = header.sizeInBytes() + 2;
-    const xrefStream = PDFCrossRefStream.create(this.createTrailerDict(), this.encodeStreams);
-
-    const uncompressedObjects = [];
-    const compressedObjects = [];
-    const objectStreamRefs = [];
-
-    const indirectObjects = this.context.enumerateIndirectObjects();
-    for (let idx = 0, len = indirectObjects.length; idx < len; idx++) {
-      const indirectObject = indirectObjects[idx];
-      const ref = indirectObject[0];
-      const object = indirectObject[1];
-      const shouldNotCompress =
-        ref === this.context.trailerInfo.Encrypt ||
-        object instanceof PDFStream ||
-        object instanceof PDFInvalidObject ||
-        ref.generationNumber !== 0;
-      if (shouldNotCompress) {
-        uncompressedObjects.push(indirectObject);
-        xrefStream.addUncompressedEntry(ref, size);
-        size += this.computeIndirectObjectSize(indirectObject);
-      } else {
-        let chunk = last(compressedObjects);
-        let objectStreamRef = last(objectStreamRefs);
-        if (!chunk || chunk.length % this.objectsPerStream === 0) {
-          chunk = [];
-          compressedObjects.push(chunk);
-          objectStreamRef = PDFRef.of(objectNumber++);
-          objectStreamRefs.push(objectStreamRef);
-        }
-        xrefStream.addCompressedEntry(ref, objectStreamRef, chunk.length);
-        chunk.push(indirectObject);
-      }
-    }
-
-    for (let idx = 0, len = compressedObjects.length; idx < len; idx++) {
-      const chunk = compressedObjects[idx];
-      const ref = objectStreamRefs[idx];
-      const objectStream = PDFObjectStream.withContextAndObjects(this.context, chunk, this.encodeStreams);
-      xrefStream.addUncompressedEntry(ref, size);
-      size += this.computeIndirectObjectSize([ref, objectStream]);
-      uncompressedObjects.push([ref, objectStream]);
-    }
-
-    const xrefStreamRef = PDFRef.of(objectNumber++);
-    xrefStream.dict.set(SizeName, PDFNumber.of(objectNumber));
-    xrefStream.addUncompressedEntry(xrefStreamRef, size);
-    const xrefOffset = size;
-    size += this.computeIndirectObjectSize([xrefStreamRef, xrefStream]);
-    uncompressedObjects.push([xrefStreamRef, xrefStream]);
-
-    const trailer = PDFTrailer.forLastCrossRefSectionOffset(xrefOffset);
-    size += trailer.sizeInBytes();
-    return { size, header, indirectObjects: uncompressedObjects, trailer };
   };
 
   PDFParser.prototype.__fastSyncLoadInstalled = true;

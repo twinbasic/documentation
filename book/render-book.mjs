@@ -121,9 +121,7 @@ import { parseCli, withUsageError } from '../lib/cli.mjs';
 //     shouldWaitForTick / waitForTick machinery out of both pdf-lib's
 //     load path (PDFDocument.load + five PDFParser /
 //     PDFObjectStreamParser methods underneath it) and its save path
-//     (PDFWriter.serializeToBuffer + computeBufferSize, plus the
-//     unreachable PDFStreamWriter.computeBufferSize patched for
-//     consistency). Each upstream method is wrapped in __awaiter so
+//     (PDFWriter.serializeToBuffer). Each upstream method is wrapped in __awaiter so
 //     on browsers it can yield to the event loop every objectsPerTick
 //     objects; in Node the gate never fires but every indirect object
 //     still paid for the generator state machine + Promise
