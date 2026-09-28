@@ -47,12 +47,17 @@
 // through fast-decode-name -- correct, since those calls don't have
 // a byte range to work with.
 //
+// At load it checks that what it replaces is as in pdf-lib 1.17.1 (see
+// shim-targets.mjs), and throws otherwise. It goes when pdf-lib is replaced;
+// when a release changes what it patches, it is re-derived or removed.
+//
 // Side-effecting import. Import once before PDFDocument.load runs;
 // idempotent.
 
 import {
   PDFObjectParser, PDFName, CharCodes, IsWhitespace, IsDelimiter,
 } from './pdf-lib-internals.mjs';
+import { checkTargets } from './shim-targets.mjs';
 
 const FORWARD_SLASH = CharCodes.ForwardSlash;
 
@@ -77,6 +82,9 @@ function _bytesEqual(a, buf, start, end) {
 }
 
 if (!PDFObjectParser.prototype.__fastParseNameInstalled) {
+  checkTargets(import.meta.url, { PDFObjectParser }, {
+    'PDFObjectParser.prototype.parseName': [0, '7881ea54990b'],
+  });
   const orig = PDFObjectParser.prototype.parseName;
 
   PDFObjectParser.prototype.parseName = function fastParseName() {

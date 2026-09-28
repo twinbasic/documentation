@@ -38,6 +38,10 @@
 // chain: utils/numbers (source), utils/index (the barrel PDFNumber
 // reads from), and pdf-lib's top-level index (the public surface).
 //
+// At load it checks that what it replaces is as in pdf-lib 1.17.1 (see
+// shim-targets.mjs), and throws otherwise. It goes when pdf-lib is replaced;
+// when a release changes what it patches, it is re-derived or removed.
+//
 // Side-effecting import. Import once before any pdf-lib operation:
 //
 //   import "./lib/fast-number-to-string.mjs";
@@ -45,8 +49,14 @@
 // Idempotent -- repeated imports do nothing after the first.
 
 import { numbers, utilsBarrel, topBarrel } from './pdf-lib-internals.mjs';
+import { checkTargets } from './shim-targets.mjs';
 
 if (!numbers.__fastNumberToStringInstalled) {
+  checkTargets(import.meta.url, { numbers, utilsBarrel, topBarrel }, {
+    'numbers.numberToString':     [1, 'cffe79177032'],
+    'utilsBarrel.numberToString': [1, 'cffe79177032'],
+    'topBarrel.numberToString':   [1, 'cffe79177032'],
+  });
   const original = numbers.numberToString;
   const fastNumberToString = function fastNumberToString(num) {
     const numStr = String(num);

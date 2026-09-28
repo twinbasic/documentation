@@ -45,6 +45,10 @@
 // parallelSave drops `objectsPerTick` from its public API in step
 // with this shim.
 //
+// At load it checks that what it replaces is as in pdf-lib 1.17.1 (see
+// shim-targets.mjs), and throws otherwise. It goes when pdf-lib is replaced;
+// when a release changes what it patches, it is re-derived or removed.
+//
 // Side-effecting import. Import once before any pdf-lib operation:
 //
 //   import "./lib/fast-sync-load.mjs";
@@ -58,6 +62,7 @@ import {
   CharCodes, ReparseError, StalledParserError, IsDigit, Keywords,
   toUint8Array, copyStringIntoBuffer,
 } from './pdf-lib-internals.mjs';
+import { checkTargets } from './shim-targets.mjs';
 
 // Pool-deduped PDFName instances are reference-stable for the whole
 // load. Capture the three sentinels parseIndirectObject's Type-dispatch
@@ -68,6 +73,15 @@ const XRefName   = PDFName.of('XRef');
 const RefZero    = PDFRef.of(0);
 
 if (!PDFParser.prototype.__fastSyncLoadInstalled) {
+  checkTargets(import.meta.url, { PDFDocument, PDFParser, PDFObjectStreamParser, PDFWriter }, {
+    'PDFDocument.load':                                 [2, '2210a96a2600'],
+    'PDFParser.prototype.parseDocument':                [0, 'cd50190ce6db'],
+    'PDFParser.prototype.parseDocumentSection':         [0, '3b44d9ed7bfa'],
+    'PDFParser.prototype.parseIndirectObjects':         [0, '06726e96f501'],
+    'PDFParser.prototype.parseIndirectObject':          [0, '80737430e7b7'],
+    'PDFObjectStreamParser.prototype.parseIntoContext': [0, '88169eabbeb7'],
+    'PDFWriter.prototype.serializeToBuffer':            [0, '906a4bbe8d47'],
+  });
 
   // ----- Load side ---------------------------------------------------
 

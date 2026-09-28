@@ -48,11 +48,18 @@
 //
 // Mutually exclusive with --fast-dict-double / --fast-dict-view /
 // --fast-dict-array.
+//
+// At load it checks that what it replaces is as in pdf-lib 1.17.1 (see
+// shim-targets.mjs), the constructors of PDFDict and its three subclasses
+// included, since no instance is built with them; and throws otherwise. It
+// goes when pdf-lib is replaced; when a release changes what it patches, it
+// is re-derived or removed.
 
 import {
   PDFDict, PDFCatalog, PDFPageTree, PDFPageLeaf, PDFName, PDFNull, PDFObjectParser, CharCodes,
 } from './pdf-lib-internals.mjs';
 import { onebufRange } from './onebuf-range.mjs';
+import { checkTargets, ABSENT } from './shim-targets.mjs';
 
 const TypeName    = PDFName.of('Type');
 const CatalogName = PDFName.of('Catalog');
@@ -157,6 +164,36 @@ function mapToArray(map) {
 }
 
 if (!PDFDict.prototype.__fastDictOnebufInstalled) {
+  checkTargets(import.meta.url, { PDFDict, PDFCatalog, PDFPageTree, PDFPageLeaf, PDFObjectParser }, {
+    'PDFDict':                                [2, '60eaf0675cb7'],
+    'PDFDict.withContext':                    [1, 'b79783f2d4dd'],
+    'PDFDict.fromMapWithContext':             [2, 'dc931ea57734'],
+    'PDFDict.prototype.context':              ABSENT,
+    'PDFDict.prototype.keys':                 [0, '91d41cc6de06'],
+    'PDFDict.prototype.values':               [0, 'b00e6e0e9a70'],
+    'PDFDict.prototype.entries':              [0, 'c7d0666742c0'],
+    'PDFDict.prototype.set':                  [2, '8f7998a17fbe'],
+    'PDFDict.prototype.get':                  [2, 'f2fc35be96de'],
+    'PDFDict.prototype.has':                  [1, 'c0f455563c27'],
+    'PDFDict.prototype.delete':               [1, 'ed89c9b2480e'],
+    'PDFDict.prototype.asMap':                [0, '2406d1634030'],
+    'PDFDict.prototype.clone':                [1, '42c1d3265d15'],
+    'PDFDict.prototype.toString':             [0, 'a718a21ad3b3'],
+    'PDFDict.prototype.sizeInBytes':          [0, 'ad72e2c097c3'],
+    'PDFDict.prototype.copyBytesInto':        [2, '8b0e4be9ce23'],
+    'PDFCatalog':                             [0, 'f30b610c8906'],
+    'PDFCatalog.withContextAndPages':         [2, 'feba5de98084'],
+    'PDFCatalog.fromMapWithContext':          [2, 'de86988a4da7'],
+    'PDFPageTree':                            [0, 'f90f91df0873'],
+    'PDFPageTree.withContext':                [2, 'adff8ad3530b'],
+    'PDFPageTree.fromMapWithContext':         [2, '3a685cbe77d3'],
+    'PDFPageLeaf':                            [3, '6af6b6fbd5e3'],
+    'PDFPageLeaf.withContextAndParent':       [2, '37706c20ca6b'],
+    'PDFPageLeaf.fromMapWithContext':         [3, '291ad87437e0'],
+    'PDFPageLeaf.prototype.normalized':       ABSENT,
+    'PDFPageLeaf.prototype.autoNormalizeCTM': ABSENT,
+    'PDFObjectParser.prototype.parseDict':    [0, '8056773f38fb'],
+  });
 
   // ---- PDFDict.prototype --------------------------------------------
 

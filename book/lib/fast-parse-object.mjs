@@ -38,6 +38,10 @@
 // Mutating PDFObjectParser.prototype.parseObject is global -- every
 // parser instance created after this shim loads picks it up.
 //
+// At load it checks that what it replaces is as in pdf-lib 1.17.1 (see
+// shim-targets.mjs), and throws otherwise. It goes when pdf-lib is replaced;
+// when a release changes what it patches, it is re-derived or removed.
+//
 // Side-effecting import. Import once before PDFDocument.load runs:
 //
 //   import "./lib/fast-parse-object.mjs";
@@ -47,6 +51,7 @@
 import {
   PDFObjectParser, PDFBool, PDFNull, CharCodes, Keywords, IsNumeric, PDFObjectParsingError,
 } from './pdf-lib-internals.mjs';
+import { checkTargets } from './shim-targets.mjs';
 
 const KwTrue  = Keywords.true;
 const KwFalse = Keywords.false;
@@ -61,6 +66,9 @@ const f_code            = CharCodes.f;
 const n_code            = CharCodes.n;
 
 if (!PDFObjectParser.prototype.__fastParseObjectInstalled) {
+  checkTargets(import.meta.url, { PDFObjectParser }, {
+    'PDFObjectParser.prototype.parseObject': [0, '96b386d327ae'],
+  });
   PDFObjectParser.prototype.parseObject = function fastParseObject() {
     this.skipWhitespaceAndComments();
     const bytes = this.bytes;

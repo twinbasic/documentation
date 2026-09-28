@@ -38,9 +38,15 @@
 //
 // Composes with --fast-dict-onebuf. Mutually exclusive with
 // --fast-dict-encoded (which subsumes both via its own encoded shape).
+//
+// At load it checks that what it replaces is as in pdf-lib 1.17.1 (see
+// shim-targets.mjs), PDFArray's constructor included, since no instance is
+// built with it; and throws otherwise. It goes when pdf-lib is replaced;
+// when a release changes what it patches, it is re-derived or removed.
 
 import { PDFArray, PDFObjectParser, CharCodes } from './pdf-lib-internals.mjs';
 import { onebufRange } from './onebuf-range.mjs';
+import { checkTargets, ABSENT } from './shim-targets.mjs';
 
 // ---- Construction --------------------------------------------------
 //
@@ -87,6 +93,24 @@ export function setExpectedArraySlots(slots, slack = 1.0) {
 }
 
 if (!PDFArray.prototype.__fastArrayOnebufInstalled) {
+  checkTargets(import.meta.url, { PDFArray, PDFObjectParser }, {
+    'PDFArray':                             [1, 'b05b46a2fecd'],
+    'PDFArray.withContext':                 [1, '48fa5b16b9ac'],
+    'PDFArray.prototype.context':           ABSENT,
+    'PDFArray.prototype.size':              [0, '7b9a440e025c'],
+    'PDFArray.prototype.push':              [1, '66baea7b877c'],
+    'PDFArray.prototype.insert':            [2, '0ca5e6c28a34'],
+    'PDFArray.prototype.indexOf':           [1, 'c043853ad8e8'],
+    'PDFArray.prototype.remove':            [1, '8c270493978b'],
+    'PDFArray.prototype.set':               [2, '85504942af56'],
+    'PDFArray.prototype.get':               [1, 'a2c3fc7788bc'],
+    'PDFArray.prototype.asArray':           [0, 'd3d28f8e6178'],
+    'PDFArray.prototype.clone':             [1, 'd4378f452c27'],
+    'PDFArray.prototype.toString':          [0, '8485a123e118'],
+    'PDFArray.prototype.sizeInBytes':       [0, 'f45594859246'],
+    'PDFArray.prototype.copyBytesInto':     [2, 'df948c1f1d7d'],
+    'PDFObjectParser.prototype.parseArray': [0, '045f8aca220b'],
+  });
 
   // ---- PDFArray.prototype -----------------------------------------
 

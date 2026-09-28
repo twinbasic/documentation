@@ -461,7 +461,7 @@ No template engine, no framework, no bundler, no postinstall hooks. For the site
 
 - `@biomejs/biome` --- a new release can add or change a rule, which would change the linter's verdict on code nobody touched. [PLAN-TOOLING-REVIEW.md](https://github.com/twinbasic/documentation/blob/main/builder/PLAN-TOOLING-REVIEW.md), decision 4, records why the pin is exact.
 - `axe-core` --- the scan injects a copy of its bundle patched at source level, and its rules decide the accessibility gate's verdict. [PLAN-axe-perf.md](https://github.com/twinbasic/documentation/blob/main/builder/PLAN-axe-perf.md) records why the pin is exact.
-- `pdf-lib` --- the shims under `book/lib/` are line-by-line ports of this release's source, and pdf-lib is no longer maintained; [08-pdf-lib.md](https://github.com/twinbasic/documentation/blob/main/perf/notes/08-pdf-lib.md) records the pin.
+- `pdf-lib` --- the shims under `book/lib/` are line-by-line ports of this release's source, and pdf-lib is no longer maintained. Each shim checks at load that what it replaces is this release's, so another release stops the book rather than changing it, and the pin keeps an update from getting that far; [08-pdf-lib.md](https://github.com/twinbasic/documentation/blob/main/perf/notes/08-pdf-lib.md) records the pin.
 - `puppeteer` --- the book renderer and the accessibility gate measure what its Chromium renders, and the performance notes reason about that version at source level. It was pinned in the same change as `pdf-lib`.
 - `recheck` --- the regex-safety gate reports its analysis, and finds its native backend itself, because this release cannot find it on Windows; [WIP.Build.md](https://github.com/twinbasic/documentation/blob/main/WIP.Build.md) records the workaround.
 

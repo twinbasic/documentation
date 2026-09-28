@@ -40,6 +40,10 @@
 // sort: dense-array iteration is already in ascending objectNumber
 // order. (The Map-sourced gen!=0 entries are merged in sorted.)
 //
+// At load it checks that what it replaces is as in pdf-lib 1.17.1 (see
+// shim-targets.mjs), and throws otherwise. It goes when pdf-lib is replaced;
+// when a release changes what it patches, it is re-derived or removed.
+//
 // Side-effecting import. Import once before any PDFDocument.load:
 //
 //   import "./lib/fast-indirect-objects.mjs";
@@ -47,10 +51,19 @@
 // Idempotent -- repeated imports do nothing after the first.
 
 import { PDFContext, PDFRef, PDFNull, UnexpectedObjectTypeError } from './pdf-lib-internals.mjs';
+import { checkTargets } from './shim-targets.mjs';
 
 const byAscendingObjectNumber = ([a], [b]) => a.objectNumber - b.objectNumber;
 
 if (!PDFContext.prototype.__fastIndirectObjectsInstalled) {
+  checkTargets(import.meta.url, { PDFContext }, {
+    'PDFContext.prototype.assign':                   [2, '5a54add382ef'],
+    'PDFContext.prototype.delete':                   [1, 'eaed088d9bc8'],
+    'PDFContext.prototype.lookupMaybe':              [1, 'b6066d63ce03'],
+    'PDFContext.prototype.lookup':                   [1, '5fcfc6aef545'],
+    'PDFContext.prototype.getObjectRef':             [1, 'e5c04aab2cb9'],
+    'PDFContext.prototype.enumerateIndirectObjects': [0, 'c16a955c69f1'],
+  });
 
   // ---- assign -------------------------------------------------------
   // Hot path. gen=0 → dense array store; gen!=0 → Map. Maintains

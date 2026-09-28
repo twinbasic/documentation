@@ -32,6 +32,10 @@
 // CJS internal path. Mutating BaseParser.prototype affects every subclass (PDFParser,
 // PDFObjectParser, PDFObjectStreamParser, PDFXRefStreamParser).
 //
+// At load it checks that what it replaces is as in pdf-lib 1.17.1 (see
+// shim-targets.mjs), and throws otherwise. It goes when pdf-lib is replaced;
+// when a release changes what it patches, it is re-derived or removed.
+//
 // Side-effecting import. Import once before PDFDocument.load runs:
 //
 //   import "./lib/fast-parse-number.mjs";
@@ -39,6 +43,7 @@
 // Idempotent -- repeated imports do nothing after the first.
 
 import { BaseParser, IsDigit } from './pdf-lib-internals.mjs';
+import { checkTargets } from './shim-targets.mjs';
 
 const ZERO = 0x30;   // '0'
 const PERIOD = 0x2E; // '.'
@@ -50,6 +55,10 @@ const MINUS = 0x2D;  // '-'
 const MAX_SAFE_INT_DIGITS = 15;
 
 if (!BaseParser.__fastParseNumberInstalled) {
+  checkTargets(import.meta.url, { BaseParser }, {
+    'BaseParser.prototype.parseRawInt':    [0, '3d5dd7302180'],
+    'BaseParser.prototype.parseRawNumber': [0, 'a3bd30d0e8b3'],
+  });
   const origParseRawNumber = BaseParser.prototype.parseRawNumber;
   const origParseRawInt = BaseParser.prototype.parseRawInt;
 

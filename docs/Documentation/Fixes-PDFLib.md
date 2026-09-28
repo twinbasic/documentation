@@ -13,6 +13,8 @@ The files under `book/lib/fast-*.mjs` and `book/lib/parallel-deflate.mjs` are si
 
 A patch that reaches a pdf-lib class or module by its CommonJS path under `pdf-lib/cjs/`, rather than through the `pdf-lib` package's index, imports it from `book/lib/pdf-lib-internals.mjs`, which requires each one in a single place. `pdf-lib` itself resolves to `pdf-lib/cjs/index.js`, so each is the instance the library uses.
 
+Each patch was written against the source of pdf-lib 1.17.1, which `package.json` pins exact, and checks at load that what it replaces is still that source. Before it patches anything, it passes `book/lib/shim-targets.mjs` a table: the arity and a fingerprint of the source of each member it overwrites, and of the constructor of each class whose objects it builds without calling it, and each member it adds, which must be absent. A patch whose targets differ throws at import, naming itself and each member that differs, so a different pdf-lib stops the book instead of changing it. The patch is then re-derived from the new source, or removed.
+
 The root cause of the need for all these patches is the same: pdf-lib is designed for general-purpose use in both browsers and Node, and optimises for generality rather than throughput on a single large document.
 
 Each patch must leave the output unchanged. [`check_pdf_shims_equiv.mjs`](../Tools#check-pdf-shims-equiv), one of `test.bat`'s gates, saves one document with stock pdf-lib and with every patch `render-book.mjs` imports, compares the two files object by object, and fails if the patches are not the ones the gate lists, or if one never runs that the list does not mark as unreached.

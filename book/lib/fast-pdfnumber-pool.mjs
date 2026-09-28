@@ -29,14 +29,22 @@
 // (numberValue and stringValue are set in the constructor and never
 // mutated), so sharing instances is safe.
 //
+// At load it checks that what it replaces is as in pdf-lib 1.17.1 (see
+// shim-targets.mjs), and throws otherwise. It goes when pdf-lib is replaced;
+// when a release changes what it patches, it is re-derived or removed.
+//
 // Side-effecting import. Import once before any pdf-lib operation.
 // Idempotent.
 
 import { PDFNumber } from "pdf-lib";
+import { checkTargets } from "./shim-targets.mjs";
 
 const POOL_SIZE = 16384;
 
 if (!PDFNumber.__fastPoolInstalled) {
+  checkTargets(import.meta.url, { PDFNumber }, {
+    "PDFNumber.of": [1, "f86986605078"],
+  });
   const original = PDFNumber.of;
   const intPool = new Array(POOL_SIZE);   // sparse, holes for unused slots
   const otherPool = new Map();             // floats / negatives / large ints

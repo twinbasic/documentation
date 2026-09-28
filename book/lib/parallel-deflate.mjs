@@ -29,10 +29,17 @@
 // Parallelism is bounded by UV_THREADPOOL_SIZE (default 4). Bump it via
 // `process.env.UV_THREADPOOL_SIZE = '8'` before any libuv work fires
 // if you want more concurrency.
+//
+// At load it checks that what it copies is as in pdf-lib 1.17.1 (see
+// shim-targets.mjs): PDFStreamWriter's constructor and computeBufferSize,
+// and PDFDocument.save, whose steps before serializing parallelSave
+// repeats. It throws otherwise. It goes when pdf-lib is replaced; when a
+// release changes what it copies, it is re-derived or removed.
 
 import { deflate, deflateSync } from 'node:zlib';
 import { promisify } from 'node:util';
 import {
+  PDFDocument,
   PDFStreamWriter,
   PDFObjectStream,
   PDFCrossRefStream,
@@ -44,6 +51,13 @@ import {
   PDFHeader,
   PDFTrailer,
 } from 'pdf-lib';
+import { checkTargets } from './shim-targets.mjs';
+
+checkTargets(import.meta.url, { PDFStreamWriter, PDFDocument }, {
+  'PDFStreamWriter':                             [4, 'cd5bc5d1816a'],
+  'PDFStreamWriter.prototype.computeBufferSize': [0, '5c50ff2801f3'],
+  'PDFDocument.prototype.save':                  [1, '696cb8a85b9f'],
+});
 
 const deflateAsync = promisify(deflate);
 

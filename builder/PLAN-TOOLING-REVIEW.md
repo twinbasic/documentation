@@ -2899,6 +2899,50 @@ shim goes when pdf-lib is replaced, or when a release changes what it patches.
 **Verify.** With a target altered in a scratch copy of pdf-lib, the named shim throws at load;
 `check_pdf_shims_equiv.mjs` passes; `book.bat` renders.
 
+**Landed.** A new module, `book/lib/shim-targets.mjs`, exports `checkTargets(shimUrl, roots,
+targets)`, `ABSENT` and `fingerprint(fn)` (the first 12 hex digits of the SHA-256 of
+`Function.prototype.toString`); it installs nothing and imports nothing from pdf-lib. Each of
+the twelve shims calls it inside its install guard, before it patches anything, and
+`parallel-deflate.mjs` at module level, which is its guard. A table's keys are paths from the
+pdf-lib objects the shim imports (`'PDFDict.prototype.get'`, `'topBarrel.numberToString'`,
+`'PDFRef'` for a constructor), and each value is `[arity, fingerprint]` or `ABSENT`. A member
+missing, of another arity or another source, or an `ABSENT` member present, makes the import
+throw one error naming the shim (from its `import.meta.url`) and every member that differs,
+with its fingerprint now. The tables hold 78 targets: the gate's 72 members with each getter
+and setter pair as one `ABSENT` entry (64 functions and 4 absences), `PDFRef.prototype
+.generationNumber` (absent; `fast-refs-class` adds it as a data property the gate does not
+list), and, at the owner's choice, the constructor of each class a shim builds instances of
+without calling it (`PDFRef`, `PDFArray`, and `PDFDict` with its three subclasses) and
+`PDFDocument.prototype.save`, whose steps before serializing `parallelSave` repeats; with
+`PDFStreamWriter`'s constructor and `computeBufferSize` that is 66 functions, 7 of them
+constructors, and 5 absences. Each header says the shim checks at load and goes when pdf-lib is
+replaced, or is re-derived or removed when a release changes what it patches; the onebuf,
+refs and deflate headers name the constructors. Fixes-PDFLib.md describes the check, and
+Builder.md's pdf-lib pin says what it adds to the pin. Fingerprints were taken from stock
+pdf-lib 1.17.1 with no shim loaded (the kit's `c69-stock.mjs`).
+
+The kit's `c43-fault.mjs` does not reach pdf-lib's CommonJS files: `module.register`'s hooks
+never see a file loaded by `require`, and a fault on `PDFNumber.js` left the fingerprint as it
+was. The kit's new `c69-cjs-fault.mjs` registers `module.registerHooks`' synchronous `load`,
+which does, so each case alters pdf-lib's source as it loads, the in-memory equivalent of the
+entry's scratch copy, with nothing under `node_modules` edited. `c69-faults.mjs` runs 16 cases
+through `c69-load.mjs` (the thirteen files in `render-book.mjs`'s order): a changed source for
+one member of each shim and for each of `parallel-deflate`'s three, a constructor (`PDFRef`,
+`PDFDict`, `PDFStreamWriter`), an arity (`parseRawInt` given a parameter), a member removed
+(`PDFArray.prototype.asArray`) and an absent member added (`PDFPageLeaf.prototype
+.normalized`). Each exits 1 from the named shim, listing exactly the members altered: three
+for `numberToString` and three for `sizeInBytes`, whose barrels hold one function. The control
+loads all thirteen. The gate's line is unchanged. Loading the thirteen files took 197 ms, and
+248 ms at HEAD, one run each: pdf-lib's own load dominates, and the checks are within its
+noise.
+
+The book, one render a side from one `_site-pdf` through `render-book.mjs` with `book.bat`'s
+arguments: 2,299 pages and 2,466 outline entries each, 29,140,555 bytes each, and the two files
+differ in 5 bytes, all in `/CreationDate` and `/ModDate` inside one object stream; `process:`
+1.2 s at HEAD and 1.3 s now. `build.bat`, `check.bat` and `test.bat` clean; lint `Checked 171
+files`; regex safety unchanged. `compare_trees`: Builder and Fixes-PDFLib online and offline,
+the search data and `book.html`.
+
 *impexp (decision (b)): C70.*
 
 ### C70 — `scripts: check_impexp_parity.mjs, the two impexp editions compared`
@@ -3614,6 +3658,11 @@ Defects the review did not have, found by building something this plan asks for.
   side now sets a new key on the page before drawing on it. Folded into
   C68, at the owner's choice. Fixed in `book: the two onebuf shims share their range
   machinery`.
+- **Nothing checks that a shim's table covers what it patches**, found while landing C69: a
+  shim that gains a patch and no table entry passes, since the gate's `PATCHES` lists the
+  members each shim patches and nothing compares that with the shim's own `checkTargets`
+  table. The side already lists each shim's patched members, so each shim could export its
+  table for the side to compare. Left for a commit of its own, at the owner's choice.
 
 ## Open questions
 
