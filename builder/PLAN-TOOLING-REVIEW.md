@@ -2526,6 +2526,36 @@ run of 28,991 bytes, inside one object stream of 500 objects; inflated, the two 
 only in `/CreationDate` and `/ModDate`, the render times. `compare_trees`: Builder.html and
 Fixes/PDFLib.html online and offline, the search data, and `book.html`.
 
+### C65c — `book: fast-parse-number reads a decimal as Number() does`
+
+**Found while building C66** (see Found while implementing). `fast-parse-number.mjs` read a
+decimal as `intPart + frac / scale`, which rounds twice, and accumulated a fraction of any
+length, so `2.28` read as `2.2800000000000002` and `-40.8933` as `-40.893299999999996`, where
+stock pdf-lib's `Number()` gives the double nearest the decimal. The book is not affected
+today: none of the 70,978 decimals in the object streams of the render of 2026-09-25 has the 15
+or more significant digits that a misread number is written with.
+
+**Change.** Divide once, `(intPart * scale + frac) / scale`: while the number has at most 15
+digits both operands are exact integers, and IEEE 754's correctly rounded division gives what
+`Number()` gives. Past 15 digits, the fraction's included, rewind and delegate to the original,
+as a long integer already did. Fixes-PDFLib.md's section says so.
+
+**Verify.** The kit's `c65c-oracle.mjs` runs stock `parseRawNumber`, HEAD's shim and the
+working one over the same numbers; the book renders the same through HEAD's shims and the
+working ones.
+
+**Landed.** As the entry says; the shim's header says the 15 digits include the fraction's.
+The kit's `c65c-oracle.mjs` over 289,724 numbers (16 fixed, the rest random: a sign or none, up
+to 17 integer digits, up to 19 after the period, or a bare period): HEAD's shim differs from
+stock `parseRawNumber` on 1,747, `2.28`, `-40.8933` and `1.610936` among them; the working one
+on none, in value (`-0` told apart), end offset and throw alike. The book rendered twice from
+one `_site-pdf`, through HEAD's `book/` and `lib/` and through the working tree's: 91 s and
+88 s, both `process: 1.1s`, 2,298 pages, 2,466 outline entries and 29,111,771 bytes each,
+differing in one object stream and there only in `/CreationDate` and `/ModDate`. C66's gate,
+not yet committed, passes over the fixture that found the defect, with its page insertion
+taken out until C65d. `compare_trees`: Fixes/PDFLib.html online and offline, the search data,
+and `book.html`.
+
 *The book's pdf-lib shims (decision (c)): C66–C69.*
 
 ### C66 — `book: check_pdf_shims_equiv.mjs, the shims against stock pdf-lib`
@@ -3253,6 +3283,11 @@ Defects the review did not have, found by building something this plan asks for.
   `FlateStream` (the kit's `c66-inflate-count.mjs`). The owner chose deletion, `pako`
   included. Fixed in `book: delete fast-inflate.mjs, which patched a function pdf-lib never
   calls`.
+- **`fast-parse-number.mjs` read some decimals as a different double than stock**, found
+  while building C66: its gate, over a fixture holding `/Sum 2.28`, found the shimmed save
+  writing `2.2800000000000002`, and named the shim both ways (the only one to differ alone, and
+  the only one whose removal made the output match). Scheduled as C65c, at the owner's choice.
+  Fixed in `book: fast-parse-number reads a decimal as Number() does`.
 
 ## Open questions
 
