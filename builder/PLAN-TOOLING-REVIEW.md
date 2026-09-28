@@ -2399,6 +2399,22 @@ compile, 0 finding(s), 142.7s -- clean`, as in C61.
 **Verify.** The `examples.bat` summary and `addin-test.bat` unchanged (harness runs, one at a
 time).
 
+**Landed.** `tb-registry.mjs` exports `alive` and `norm` under their own names, each with a
+line saying what it is, and `addin_test.mjs` imports them and drops its copies. `tb-ide.mjs`
+exports `COMPILE_TIMEOUT` (180,000 ms) above `waitForCompile`. There were eight sites in five
+files, not seven in four: `tbbuild.mjs`'s `--timeout` default, 180 in seconds, is the eighth,
+and now reads `COMPILE_TIMEOUT / 1000`; its header still states 180, and the constant's comment
+says so. The two JSDoc lines that said `default 180000` name the constant. `check_examples.mjs`
+has a module-level `unitKey(fence)` above `makeBatches`, carrying the comment that stood over
+the arrow function it replaces, and `unitsOf` calls it too. The two sites held the same
+expression, so a clean run, which never splits a batch, covers `makeBatches` only, and
+`unitsOf` is the same code by reading. `examples.bat`, whose lanes run `tbbuild` with its
+default: exit 0 after 138 s, `1134 sample(s) from 598 page(s) in 43 project(s), 4 lane(s)`,
+then `1134 compile, 0 finding(s), 135.3s -- clean`, the layout and result of C61 and C63.
+`addin-test.bat` through the kit's `c25-run.mjs`: `10 of 10 lane(s) ran: 10 passed`, the
+registry put back as in C63, the snapshots identical. `tbrun` on `tbrun-probes/clean`: exit 0,
+`one`, `two`.
+
 ### C65 — `test: one scenario preamble and one linesSince for the add-in tests`
 
 **A7-8 / L4-14 (R2).** All ten `test/addin/*.test.mjs` files write their own lane preamble

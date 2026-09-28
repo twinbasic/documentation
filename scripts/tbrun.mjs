@@ -104,7 +104,7 @@ import path from "node:path";
 import { parseCli } from "../lib/cli.mjs";
 import { click } from "./lib/tb-click.mjs";
 import { compilerExe, findIde } from "./lib/tb-install.mjs";
-import { BUILD_FAILED, TARGETS, attachIde, compileOutcome, keepClears, keptClears,
+import { BUILD_FAILED, COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, keepClears, keptClears,
          killTree, launchIde, readConsole, setBuildTarget, shutdownIde, summaryLine,
          waitForCompile, wantShow } from "./lib/tb-ide.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
@@ -281,7 +281,7 @@ const cdp = await attachIde(port);
 if (!cdp) failBuild(2, "the IDE never exposed a debug port");
 
 let outcome = compileOutcome(
-  await waitForCompile(cdp, { project: projPath, timeout: 180 * 1000 }), { name: projPath });
+  await waitForCompile(cdp, { project: projPath, timeout: COMPILE_TIMEOUT }), { name: projPath });
 if (!outcome.ok) failBuild(2, outcome.message);
 
 // The target, set on every run, win32 included (setBuildTarget says why). The
@@ -290,7 +290,7 @@ if (!outcome.ok) failBuild(2, outcome.message);
 // measured on BETA 983 with LenB of a LongPtr, ProcessorArchitecture(),
 // PROCESSOR_ARCHITECTURE, IsWow64Process and the module path of the process.
 try {
-  const target = await setBuildTarget(cdp, arch, { project: projPath, timeout: 180 * 1000 });
+  const target = await setBuildTarget(cdp, arch, { project: projPath, timeout: COMPILE_TIMEOUT });
   // Only a target the IDE remembered is worth a word: a new path opens in win32.
   if (target.from !== TARGETS[0]) {
     console.error(`note: the IDE remembered ${target.from} for this path; the probe is built for ${arch}`);

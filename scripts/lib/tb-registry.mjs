@@ -459,7 +459,9 @@ export function deleteSettings(apps) {
 }
 
 const ARCH_MEMORY = "targetArchitectureMemory";
-const norm = (p) => String(p).split("/").join("\\").toLowerCase();
+
+/** A path as the harness compares those the IDE stores: backslashed and lower case. */
+export const norm = (p) => String(p).split("/").join("\\").toLowerCase();
 
 // The build targets the IDE remembers, as an object, or null when there is no
 // value or it is not a JSON object -- which is not the harness's to repair.
@@ -585,7 +587,8 @@ function asTempFolder(p) {
   return r.endsWith(path.sep) ? r : r + path.sep;
 }
 
-function alive(pid) {
+/** Whether process.kill(pid, 0) finds a running process with this id. */
+export function alive(pid) {
   try { process.kill(pid, 0); return true; } catch { return false; }
 }
 

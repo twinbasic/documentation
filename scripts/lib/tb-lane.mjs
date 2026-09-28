@@ -36,8 +36,8 @@ import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";
 import { buildAddin } from "./tb-addin.mjs";
 import { addAddin, makeIdeCopy, removeIdeCopy } from "./tb-ide-copy.mjs";
-import { attachIde, awaitCrashName, checkAddinsRoot, compileOutcome, compilerPid, launchIde, readCrash,
-         setBuildTarget, shutdownIde, summaryLine, waitForCompile } from "./tb-ide.mjs";
+import { attachIde, awaitCrashName, checkAddinsRoot, COMPILE_TIMEOUT, compileOutcome, compilerPid, launchIde,
+         readCrash, setBuildTarget, shutdownIde, summaryLine, waitForCompile } from "./tb-ide.mjs";
 import { compilerExe, runCompiler } from "./tb-install.mjs";
 import { restartCompiler } from "./tb-operate.mjs";
 import { laneProjectId, stageProject } from "./tb-project.mjs";
@@ -182,13 +182,13 @@ export class Lane {
    *
    * @param {string} src        an exported tree: the folder holding Settings and Sources
    * @param {object} [o]
-   * @param {number} [o.timeout]  milliseconds for the compile to settle (default 180000)
+   * @param {number} [o.timeout]  milliseconds for the compile to settle (default COMPILE_TIMEOUT)
    * @param {object} [o.env]      extra environment for the IDE, as launchIde takes it.
    *                              An add-in reads it with Environ$, since it runs in the
    *                              compiler's process, which the IDE starts (P10)
    * @returns {Promise<object>} the connection (attachIde's), which the tb-operate.mjs calls take
    */
-  async open(src, { timeout = 180 * 1000, env = {} } = {}) {
+  async open(src, { timeout = COMPILE_TIMEOUT, env = {} } = {}) {
     if (this.run) throw new Error(`lane ${this.name} has a project open already: one IDE at a time`);
     const exe = this.copy();
     const project = path.join(this.work, "project.twinproj");
@@ -234,7 +234,7 @@ export class Lane {
    *
    * @returns {Promise<number>} the new compiler's process id
    */
-  async restartCompiler({ timeout = 180 * 1000 } = {}) {
+  async restartCompiler({ timeout = COMPILE_TIMEOUT } = {}) {
     if (!this.c) throw new Error(`lane ${this.name} has no project open`);
     const { pid, waited } = await restartCompiler(this.c, { project: this.project, timeout });
     this.checkCompile(waited, `${this.src}, after the restart,`);
@@ -250,7 +250,7 @@ export class Lane {
    *
    * @returns {Promise<number>} the process id of the compiler now running
    */
-  async setBuildTarget(arch, { timeout = 180 * 1000 } = {}) {
+  async setBuildTarget(arch, { timeout = COMPILE_TIMEOUT } = {}) {
     if (!this.c) throw new Error(`lane ${this.name} has no project open`);
     const { waited } = await setBuildTarget(this.c, arch, { project: this.project, timeout });
     if (waited) this.checkCompile(waited, `${this.src}, built for ${arch},`);

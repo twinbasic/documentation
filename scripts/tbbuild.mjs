@@ -53,7 +53,7 @@ import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { parseCli, withUsageError } from "../lib/cli.mjs";
 import { findIde } from "./lib/tb-install.mjs";
-import { TARGETS, attachIde, compileOutcome, launchIde, setBuildTarget, shutdownIde,
+import { COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, launchIde, setBuildTarget, shutdownIde,
          summaryLine, waitForCompile, wantShow } from "./lib/tb-ide.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
@@ -104,7 +104,7 @@ function positive(n, d, { whole = false } = {}) {
 const IDE = findIde(values.ide);
 const port = positive("port", 9333, { whole: true });
 const arch = values.arch ?? TARGETS[0];
-const timeout = positive("timeout", 180) * 1000;
+const timeout = positive("timeout", COMPILE_TIMEOUT / 1000) * 1000;
 const asJson = values.json;
 const keep = values.keep;
 const show = wantShow({ show: values.show, hide: values.hide });

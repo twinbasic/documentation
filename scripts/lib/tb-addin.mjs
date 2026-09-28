@@ -27,7 +27,7 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { compilerExe } from "./tb-install.mjs";
-import { attachIde, buildProject, checkAddinsRoot, compileOutcome, launchIde, normPath,
+import { attachIde, buildProject, checkAddinsRoot, COMPILE_TIMEOUT, compileOutcome, launchIde, normPath,
          setBuildTarget, shutdownIde, summaryLine, TARGETS, waitForCompile } from "./tb-ide.mjs";
 import { laneProjectId, stageProject } from "./tb-project.mjs";
 
@@ -107,14 +107,14 @@ function failure(exitCode, message) {
  *                             <appdata>\twinBASIC\addins rather than the user's
  *                             own (P6), which checkAddinsRoot confirms
  * @param {number} [o.timeout] milliseconds for the compile to settle, and again
- *                             for the build (default 180000)
+ *                             for the build (default COMPILE_TIMEOUT)
  * @returns {Promise<{dll: string, arch: string, diagnostics: string[], log: string[]}>}
  *   `diagnostics` holds the warnings, hints and infos; `log` is the build log
  * @throws an Error with an `exitCode` (see failure above); a compile error's
  *   message lists every diagnostic
  */
 export async function buildAddin({ ide, src, work, port, arch = "win32", show = false, appdata,
-                                   timeout = 180 * 1000 }) {
+                                   timeout = COMPILE_TIMEOUT }) {
   if (!TARGETS.includes(arch)) throw failure(2, `no such build target: "${arch}"`);
   const project = path.join(work, "addin.twinproj");
   mkdirSync(path.join(work, "out"), { recursive: true });

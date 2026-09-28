@@ -58,8 +58,8 @@ import { removeTree } from "./lib/tb-ide-copy.mjs";
 import { wantShow } from "./lib/tb-ide.mjs";
 import { buildNumber, findIde } from "./lib/tb-install.mjs";
 import { LANE_ENV } from "./lib/tb-lane.mjs";
-import { deleteSettings, finishTidy, ideLists, restoreKeys, SETTINGS_ROOT, settingsKey, snapshotKeys,
-         startTidy, subkeyNames, sweepArchitectureMemory } from "./lib/tb-registry.mjs";
+import { alive, deleteSettings, finishTidy, ideLists, norm, restoreKeys, SETTINGS_ROOT, settingsKey,
+         snapshotKeys, startTidy, subkeyNames, sweepArchitectureMemory } from "./lib/tb-registry.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const SUITE = path.join(REPO_ROOT, "test", "addin");
@@ -115,7 +115,6 @@ for (const l of lanes) {
 
 // startTidy leaves the registry to a live owner that is not this process, and
 // such an owner would tidy only its own folders, not the lanes'.
-const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
 const owner = Number(process.env.TB_REGISTRY_OWNER);
 if (owner && owner !== process.pid && alive(owner)) {
   die(2, `process ${owner} already owns the registry for a run (TB_REGISTRY_OWNER); ` +
@@ -240,7 +239,6 @@ try {
 // differ from what was recorded. Another session's IDE that is open meanwhile
 // can write its own copy of the recent list back, which is the one way an
 // entry could return (WIP.Harness.md).
-const norm = (p) => String(p).split("/").join("\\").toLowerCase();
 const folders = lanes.map((l) => norm(l.work) + "\\");
 try {
   const lists = ideLists();

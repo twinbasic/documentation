@@ -414,6 +414,20 @@ function checkGroups(all, selected) {
 // the packer keeps the names each open batch has already taken and puts a
 // colliding sample in the next batch that has room for it.
 
+// The unit a sample is placed with. Samples sharing a `projname` are placed as
+// ONE unit, because they are one program: the Assert tutorial defines PadLeft
+// in one fence and tests it in the next three, and any of those alone is not a
+// sample anybody wrote.
+//
+// Nothing groups by accident. An ungrouped sample is its own unit, so a
+// sample can never quietly come to depend on a neighbour that a later edit
+// moves to another project -- which is exactly how the survey and the gate
+// came to disagree about the same tutorial, one run finding PadLeft in the
+// batch and the other not.
+function unitKey(fence) {
+  return fence.keys.get("projname") ? `@${fence.keys.get("projname")}` : `#${fence.id}`;
+}
+
 function makeBatches(fences) {
   // A `hidden` fence is not a unit of its own: it is the PAGE's context, and
   // it joins every project that holds a sample from that page. So a page can
@@ -442,16 +456,6 @@ function makeBatches(fences) {
     if (!byProject.has(f.project)) byProject.set(f.project, []);
     byProject.get(f.project).push(f);
   }
-  // Samples sharing a `projname` are placed as ONE unit, because they are one
-  // program: the Assert tutorial defines PadLeft in one fence and tests it in
-  // the next three, and any of those alone is not a sample anybody wrote.
-  //
-  // Nothing groups by accident. An ungrouped sample is its own unit, so a
-  // sample can never quietly come to depend on a neighbour that a later edit
-  // moves to another project -- which is exactly how the survey and the gate
-  // came to disagree about the same tutorial, one run finding PadLeft in the
-  // batch and the other not.
-  const unit = (f) => (f.keys.get("projname") ? `@${f.keys.get("projname")}` : `#${f.id}`);
   // Fill the lanes rather than the batches. Filling each batch to --batch
   // before opening another one put 120, 55, 4 and 3 samples on four lanes, and
   // a lane's cost is ~8 s of IDE startup plus a compile that is nearly free --
@@ -466,7 +470,7 @@ function makeBatches(fences) {
     // selection and nothing else.
     const units = new Map();
     for (const fence of list) {
-      const key = unit(fence);
+      const key = unitKey(fence);
       if (!units.has(key)) units.set(key, []);
       units.get(key).push(fence);
     }
@@ -709,7 +713,7 @@ function unitsOf(batch) {
   const units = new Map();
   for (const f of batch.fences) {
     if (travels(f)) continue;
-    const key = f.keys.get("projname") ? `@${f.keys.get("projname")}` : `#${f.id}`;
+    const key = unitKey(f);
     if (!units.has(key)) units.set(key, []);
     units.get(key).push(f);
   }

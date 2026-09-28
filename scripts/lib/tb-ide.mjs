@@ -416,6 +416,12 @@ export async function awaitCrashName(c, crash, { timeout = 5000 } = {}) {
 }
 
 /**
+ * How long, in milliseconds, the harness gives a compile to settle when its
+ * caller names no time of its own. tbbuild's header states it in seconds.
+ */
+export const COMPILE_TIMEOUT = 180 * 1000;
+
+/**
  * Wait for the project to open and its compile to settle.
  *
  * twinBASIC runs the compiler in the same process as user code, so a project
