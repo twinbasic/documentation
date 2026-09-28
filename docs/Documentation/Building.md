@@ -80,6 +80,7 @@ Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from a
       && node scripts/check_symbol_index.mjs \
       && node scripts/check_twin_parsers.mjs \
       && node scripts/check_cli.mjs \
+      && node scripts/check_pdf_shims_equiv.mjs \
       && node scripts/check_axe_patch_equiv.mjs
 
 `book.bat` has one step that is invisible from the command it ends with. `render-book.mjs` writes the PDF with a plain file write and never creates the directory above it, so `docs/_pdf/` has to exist first --- otherwise the render fails with `ENOENT` at the very last moment, after the whole page-breaking pass has already run. The deploy workflow does the same `mkdir` before its render, for the same reason:

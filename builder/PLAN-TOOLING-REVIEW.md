@@ -2618,6 +2618,48 @@ Registered in the composite action, Tools.md and WIP.md.
 **Verify.** Passes; a deliberately broken shim fails it, and the report names the shim. CI
 waits for the owner's push.
 
+**Landed.** `scripts/check_pdf_shims_equiv.mjs` and `scripts/lib/pdf-shims-side.mjs`, one side
+per process; the gate itself never imports pdf-lib (see Where the plan was wrong). The shims
+are every module `render-book.mjs` imports from `book/lib/`, in its order, less the four the
+side calls as `render-book.mjs` does (`measure-pass`, `postprocesser`, `outline`,
+`parallel-deflate`), so a new shim is checked without an edit. The document is written by the
+gate: a classic section with a generation-1 object, then an incremental update whose object
+stream redefines a page and holds a dictionary and an array of every lexical form the parse
+shims branch on, with a cross-reference stream. The side sizes the onebuf shims from
+`measure()`, loads, calls `setMetadata` (then pins `/ModDate`, which it stamps with the time)
+and `setOutline` with a closed entry, draws text on a page, inserts and removes a page, edits
+two early dictionaries and an array, and saves: the shimmed side through `parallelSave` with
+500 objects to a stream, the stock side with `save()`'s own steps and
+`PDFStreamWriter.forContext(ctx, Infinity, true, 500)`.
+
+The comparison reads each file as pdf-lib writes it: every object by number, where it is
+(top level, generation, or object stream and entry) and its bytes, streams inflated, each
+`/Length` and the cross-reference stream's `/W` masked. Each file's cross-reference entries
+and `startxref` must locate their objects; a problem in stock's output is the harness failing
+(exit 2), in the shimmed output a finding. The reach check is V8 precise coverage in the
+shimmed side, taken once after the imports to reset the counts: a shim with no function run
+fails the gate, and `parallel-deflate.mjs` fails if `parallelSave` deflated no object stream.
+On a difference the shimmed side reruns with each shim alone and each left out, four at a
+time, and the report names the shims that differ alone and those whose removal makes the
+output match. `--help` and an unknown option are `check_cli`'s cases 255 and 256.
+
+Building it found three defects, fixed first at the owner's choice: C65c (the gate named
+`fast-parse-number.mjs` both ways), C65d (the shimmed side failed at `insertPage`) and C65e.
+Now: `stock pdf-lib and 12 shims with parallelSave write the same 22 objects; every shim ran`,
+0.49-0.54 s. Faults through the kit's `c43-fault.mjs` in `NODE_OPTIONS`, so the sides load it:
+`fast-dict-onebuf.mjs`'s `sizeInBytes` one byte long gives an output the reader cannot place
+(`byte 2054 is neither an object nor the trailer`), named both ways; `fast-number-to-string.mjs`
+writing `0.50` for `0.5`, which parses to the same values, differs in six objects, the drawn
+content stream among them, named both ways; `fast-pdfnumber-pool.mjs` never installed, and
+`parallelSave`'s thread-pool branch switched off, are each named by the reach check; a stock
+side that throws exits 2. No temporary folder is left behind. Registered in `test.bat` before
+`check_axe_patch_equiv`, the composite action, Tools.md (the list, its count, the POSIX block,
+the counts after it and a section), Building.md's POSIX block and WIP.md (the table, the
+`test.bat` bullet, the count); Fixes-PDFLib.md points to it. `check_gate_lists`: `test.bat
+(14)`; `check_ci_workflows`: `the wrappers' 17 gates`; lint `Checked 168 files`; regex safety
+`519 literals + 28 constructed in 129 files -- 479 safe, 68 polynomial`. CI waits for the
+owner's push.
+
 ### C67 — `book: one module for pdf-lib's internal requires`
 
 **A9-5 (R3).** The `createRequire` and `require('pdf-lib/cjs/...').default` block is repeated
@@ -3097,6 +3139,14 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   which also strips U+00A0, and its comment says why it keeps that; `search.mjs` strips ASCII
   only. Folding either way changes one of them, so both stay, and C58 landed as `builder: fold
   five small duplicates`. See C58's Landed note.
+
+- **C66 (A9-2): both sides run in child processes, and the comparison reads bytes.** The
+  entry runs stock pdf-lib in a child and the shims in the gate's own process. Under the onebuf
+  shims a process may hold one `PDFContext`, and the diagnosis needs a fresh shimmed process
+  per combination, so both sides are children and the gate never imports pdf-lib. The two
+  files are compared as written, with streams inflated, rather than as pdf-lib parses them:
+  its parser finds objects without the cross-reference offsets and reads `0.50` as `0.5`, so a wrong
+  `sizeInBytes` or a `0.50` would pass a comparison of parsed objects. See C66's Landed note.
 
 ## Found while implementing
 

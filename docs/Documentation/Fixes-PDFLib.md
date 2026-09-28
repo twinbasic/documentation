@@ -13,6 +13,8 @@ The files under `book/lib/fast-*.mjs` and `book/lib/parallel-deflate.mjs` are si
 
 The root cause of the need for all these patches is the same: pdf-lib is designed for general-purpose use in both browsers and Node, and optimises for generality rather than throughput on a single large document.
 
+Each patch must leave the output unchanged. [`check_pdf_shims_equiv.mjs`](../Tools#check-pdf-shims-equiv), one of `test.bat`'s gates, saves one document with stock pdf-lib and with every patch `render-book.mjs` imports, compares the two files object by object, and fails if any patch never runs.
+
 * TOC goes here
 {:toc}
 

@@ -160,6 +160,14 @@ runs:
     - name: Verify the command-line parser and the tools' cases (check_cli.mjs)
       shell: bash
       run: node scripts/check_cli.mjs
+    # The book's pdf-lib shims replace pdf-lib's parser, object classes and
+    # writer, and nothing else compares what they write with what pdf-lib
+    # writes. This saves one document with each, in child processes, and
+    # compares the two object by object with streams inflated; a shim that
+    # never runs fails it too. No browser, no built tree.
+    - name: Verify the book's pdf-lib shims against stock (check_pdf_shims_equiv.mjs)
+      shell: bash
+      run: node scripts/check_pdf_shims_equiv.mjs
     # Graphviz sizes each node box from a width table; the browser paints the
     # label with a real font. Nothing in the build compares the two, so a
     # mismatch ships as text hanging outside its box on a green build -- which
