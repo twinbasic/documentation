@@ -168,6 +168,15 @@ runs:
     - name: Verify the book's pdf-lib shims against stock (check_pdf_shims_equiv.mjs)
       shell: bash
       run: node scripts/check_pdf_shims_equiv.mjs
+    # impexp.mjs and impexp.py are one published tool in two languages, and
+    # Tools.md promises the same output and the same bytes. Both built-in test
+    # suites, then one sequence of commands through each edition, comparing
+    # exit codes, output and written files. The runner's own python3 serves;
+    # without one the gate fails here, because GitHub sets CI=true, where
+    # test.bat on a machine without Python reports it skipped.
+    - name: Verify the two impexp editions agree (check_impexp_parity.mjs)
+      shell: bash
+      run: node scripts/check_impexp_parity.mjs
     # Graphviz sizes each node box from a width table; the browser paints the
     # label with a real font. Nothing in the build compares the two, so a
     # mismatch ships as text hanging outside its box on a green build -- which

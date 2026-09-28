@@ -2965,6 +2965,43 @@ and WIP.md.
 **Verify.** Passes; a copy of one edition with one output line changed fails it. CI waits for
 the owner's push.
 
+**Landed.** `scripts/check_impexp_parity.mjs` runs both `--self-test` suites, which must exit 0
+with every line `[PASS]` and print the same once the line naming the temporary folder is
+dropped (19 tests each), and then 21 commands through each edition, each edition in a scratch
+folder of its own holding copies of `indexer/sample.twinpack` and
+`test/example-projects/console`. The commands run in order, so each sees what the ones before
+wrote: `--help`; export, refused (3), with `--overwrite`, and warned (6) over a file the
+project lacks; import of the exported folder and of the console project, given a README with a
+CRLF and a non-ASCII character and a code file in LF first, refused (3) and with
+`--overwrite`; an export of that; the four printing commands, with `readme` missing (4) from
+the sample; a missing project (4), a folder with no Settings (5), a damaged project (5), and
+three command lines refused (2). After each, both editions must give the exit code the command
+names, the same stdout and stderr, and the same files as bytes; a differing file is reported
+once, at the command that made it. On Windows Python's text streams write CRLF, so there
+printed output is compared with CRLF read as LF; on Linux as written. Python is `python3`,
+`python`, then `py -3` on Windows, 3.6 or later. Without one it prints `SKIPPED` and a line
+saying the editions were not compared, and exits 0, unless `CI` is `true`, when it exits 2.
+The two editions run each command at the same time; about 4 s here, most of it Python starting
+(~180 ms a process against Node's ~80 ms). Registered in `test.bat` after the shim gate, the
+composite action, Tools.md's list, POSIX block and a section (the impexp section points to
+it), Building.md's POSIX block, WIP.md's bullet, table and counts, and two `check_cli` cases.
+
+The kit's `c70-faults.mjs` runs seven cases: four alter `impexp.mjs` through `c43-fault.mjs`
+in `NODE_OPTIONS` (a progress line, the refusal's exit code, the LF-to-CRLF extensions, a test
+name), one alters what `impexp.py` prints through a `sitecustomize.py` on `PYTHONPATH`
+(`c70-pyfault/`), and two run with only Node on `PATH`, with `CI` empty and `true`. Each exits
+as it should (1, 1, 1, 1, 1, 0, 2), naming the command and the line or file that differs; the
+extensions fault also fails the Node edition's own LF-to-CRLF test, and the exit-code fault its
+exit-code test. `check_cli: 258 probes`; `check_ci_workflows: ... the wrappers' 18 gates`;
+`check_gate_lists: check.bat (4) + test.bat (15)`; lint `Checked 172 files`; regex safety `524
+literals + 28 constructed in 130 files ... 483 safe, 69 polynomial, 0 undecided, 0
+exponential` (the gate's three literals, all safe). `build.bat`, `check.bat` and `test.bat`
+clean; `test.bat` took 23 s, so WIP.md's "~9 s" was stale before this gate, and now says ~23 s,
+with the regex-safety gate ~9 s of it. `compare_trees`: Building and Tools online and offline,
+the search data and `book.html`. CI waits for the owner's push: a new step, `Verify the two
+impexp editions agree (check_impexp_parity.mjs)`, printing the summary line with the runner's
+Python version, is this gate's first run on Linux, with the runner's own `python3`: read it.
+
 ## Phase 3: conventions users see
 
 Decision (e): converge on `impexp.mjs`'s discipline. `--help` prints usage to stdout and exits

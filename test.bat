@@ -142,6 +142,15 @@ node scripts/check_cli.mjs
 @rem it. No tree, no browser, ~0.5 s.
 node scripts/check_pdf_shims_equiv.mjs
 @if errorlevel 1 goto :fail
+@rem impexp.mjs and impexp.py are one published tool in two languages, and
+@rem Tools.md promises they print the same and write the same bytes. Both
+@rem built-in test suites must pass with the same names, and one sequence
+@rem of commands runs through each edition, comparing exit codes, output
+@rem and written files. Without Python it says SKIPPED and passes here;
+@rem in CI (CI=true) it fails instead. No tree, no browser, ~4 s, most of
+@rem it Python starting 21 times.
+node scripts/check_impexp_parity.mjs
+@if errorlevel 1 goto :fail
 @rem check_a11y.mjs injects a PATCHED axe bundle (plain-color-fields,
 @rem -26 % on a realistic page set). The patch asserts its substitution
 @rem targets, so an axe-core bump fails loudly; this catches the other

@@ -65,7 +65,7 @@ One of the four does not mean the same thing locally as it does in CI, on any pl
 
     test.bat
 
-The tests the toolchain has to pass. Fourteen steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Fifteen steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
 2. [`scripts/check_gate_lists.mjs`](#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
@@ -80,7 +80,8 @@ The tests the toolchain has to pass. Fourteen steps, each stopping the run if it
 11. [`scripts/check_twin_parsers.mjs`](#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
 12. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
 13. [`scripts/check_pdf_shims_equiv.mjs`](#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, and run.
-14. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+14. [`scripts/check_impexp_parity.mjs`](#check-impexp-parity) --- verifies the two editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI.
+15. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
@@ -97,9 +98,10 @@ POSIX:
       && node scripts/check_twin_parsers.mjs \
       && node scripts/check_cli.mjs \
       && node scripts/check_pdf_shims_equiv.mjs \
+      && node scripts/check_impexp_parity.mjs \
       && node scripts/check_axe_patch_equiv.mjs
 
-**Eleven of the fourteen cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all fourteen unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
+**Twelve of the fifteen cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all fifteen unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
 
 The three exceptions are [`check_code_regions.mjs`](#check-code-regions), [`check_gate_lists.mjs`](#check-gate-lists), which reads this page, and [`check_lint.mjs`](#check-lint), which lints the site's scripts in `docs/assets/js/`. The first is worth knowing in detail. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes are a different matter: they run against their own sources whatever the tree holds, and they cover the *mirror* fault, where a rewrite silently stops firing. The sweep cannot see that one --- text the rewrite skipped is stashed and restored unchanged, so every region still matches. Add a page with an unusual code construct and run `test.bat`, but read the built page too.
 
@@ -568,6 +570,17 @@ Verifies that the book's [pdf-lib patches](Fixes/PDFLib) write what pdf-lib itse
 The document is written by the gate, without pdf-lib, so the forms the shims' parsers branch on are known to be in it: names with `#` escapes, numbers in every lexical form, a classic cross-reference table, and an incremental update with an object stream and a cross-reference stream. The change mirrors `render-book.mjs`'s and adds what reaches the rest of the shims: text drawn on a page that has just been given a new key, which moves the page's entries in `fast-dict-onebuf`'s buffer and must keep the page's two flags with them, a page inserted and one removed, objects parsed early and edited late, and a call of each patched method the book does not make, its result written into the document so that the comparison checks it. The created document reaches the factories that build a page tree and a catalog. Each member of pdf-lib that a shim puts a function into is checked against `PATCHES`, a list in the gate. A listed member that is not patched fails it, and so does a patched member that is not listed: a patch applied to a copy of a class leaves pdf-lib's own member as it was. Each listed member's function must run, unless the list marks the member as one neither document reaches and says why, and a marked member that runs fails the gate as well, so the marks stay true. A shim none of whose functions runs is reported whole, since the documents then no longer test it, or the book does not need it. On a difference, that document's shimmed side runs again with each shim alone and with each left out, and the report names the shims that make it.
 
 Exits 1 on a difference, a shim or listed member that did not run, or a patched member that is not as listed, 2 if it cannot run.
+
+### check_impexp_parity.mjs
+{: #check-impexp-parity }
+
+    node scripts/check_impexp_parity.mjs
+
+Verifies that the two editions of the [impexp tool](#impexp), `scripts/impexp.mjs` and `scripts/impexp.py`, behave the same, as that section promises. Both `--self-test` suites must pass, with the same test names in the same order. Then one sequence of commands runs through each edition, each in a scratch folder of its own holding copies of `indexer/sample.twinpack` and `test/example-projects/console`: export and import, the printing commands, and each refusal, failure and warning the exit codes name. After every command, both editions must give the exit code the command is there for, print the same on each stream, and leave the same files, compared as bytes. On Windows, Python writes CRLF to the console, so there a CRLF in the printed output is read as LF on both sides; on Linux, as in CI, the output is compared as written. About four seconds, most of it Python starting once a command.
+
+Without Python 3.6 or later on the `PATH` (it tries `python3`, then `python`, then `py -3` on Windows), the gate prints `SKIPPED` and exits 0, so `test.bat` passes on a machine without Python. When `CI` is `true`, as GitHub sets it, the same case fails instead: CI must compare the two.
+
+Exits 1 on a difference or a failed built-in test, 2 if it cannot run or finds no Python in CI.
 
 ### check_axe_patch_equiv.mjs
 {: #check-axe-patch-equiv }
@@ -1078,7 +1091,7 @@ The report ends with what the scanner could not resolve, and **that section is e
     node scripts/impexp.mjs settings|licence|changelog|readme <project>
     node scripts/impexp.mjs --self-test
 
-Standalone `.twinproj` / `.twinpack` unpacker and packer, with the compiler executable's own command line: the same six commands, the project file first, and `--overwrite` required to replace anything. `scripts/impexp.py` is the same tool, run as `python scripts/impexp.py ...`; the two editions print the same output and write byte-identical project files. Neither has dependencies; the Node edition needs Node 18+, the Python edition Python 3.6+. The exit code says what happened --- `0` done, `3` refused to overwrite, `6` done with a warning, and four more --- so a caller need not read the output; [Import/Export Tool](../../Features/Packages/Import-Export-Tool#checking-the-result) has the table. `--self-test` needs nothing but the script, and adds a round trip of `indexer/sample.twinpack` when run from this repository.
+Standalone `.twinproj` / `.twinpack` unpacker and packer, with the compiler executable's own command line: the same six commands, the project file first, and `--overwrite` required to replace anything. `scripts/impexp.py` is the same tool, run as `python scripts/impexp.py ...`; the two editions print the same output and write byte-identical project files, which [`check_impexp_parity.mjs`](#check-impexp-parity) checks. Neither has dependencies; the Node edition needs Node 18+, the Python edition Python 3.6+. The exit code says what happened --- `0` done, `3` refused to overwrite, `6` done with a warning, and four more --- so a caller need not read the output; [Import/Export Tool](../../Features/Packages/Import-Export-Tool#checking-the-result) has the table. `--self-test` needs nothing but the script, and adds a round trip of `indexer/sample.twinpack` when run from this repository.
 
 **Neither is build tooling.** They are published downloads: `_config.yml`'s `bundle_extra` copies both into `Features/Packages/downloads/`, and [Import/Export Tool](../../Features/Packages/Import-Export-Tool) offers them to readers as the two editions of one tool. That is why `impexp.py` is one of only two `.py` files in a repository whose tooling is otherwise all Node --- porting it would delete a deliberate offering rather than tidy anything up. The `bundle_extra` exemption is by exact path, so moving either file breaks the download; see [`check_publish_policy.mjs`](#check-publish-policy).
 
