@@ -128,6 +128,8 @@ An additional optimisation in `parseIndirectObjects`: the upstream implementatio
 
 **Fix.** The same one-buffer strategy as `fast-dict-onebuf`, applied to `PDFArray`. A single append-only Array (`arrayMain`) shared across all `PDFArray` instances. Each `PDFArray` holds one encoded integer (`d`) packing `start` (24 bits) and `length` (16 bits). `arrayMain[start..start+length]` holds array elements as plain JavaScript references --- no encoding, no decode step on reads. `PDFObjectParser.parseArray` uses a per-parser `_arrayTemp` stack, committing each completed frame to `arrayMain` in one contiguous append. Mutations follow the same copy-on-write logic as `fast-dict-onebuf`.
 
+Both shims take that logic from one module, `book/lib/onebuf-range.mjs`: packing and reading `d`, appending to the buffer, copying a range to its end, and checking that only one `PDFContext` is used. Each shim calls it with its own bit layout and its own constructors, and gets a buffer and a context of its own, so either shim works without the other.
+
 `setExpectedArraySlots(n)` from `measure-pass.mjs` resizes `arrayMain` in-place before parse for the same reason as `setExpectedDictSlots`: in-place resize preserves V8's inline-cache slots.
 
 ## parallel-deflate.mjs

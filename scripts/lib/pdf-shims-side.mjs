@@ -182,8 +182,12 @@ async function loadAndChange(raw) {
   // What the book's own change does not reach: a page drawn on, which
   // normalizes its content streams; a page inserted and one removed, which
   // edit /Kids; and dictionaries and an array parsed early, edited after the
-  // objects above were made.
+  // objects above were made. The page gets a new key first, which moves its
+  // entries to the end of fast-dict-onebuf's buffer: the draw wraps its old
+  // content in a saved graphics state only if the page's autoNormalizeCTM
+  // flag moved with them.
   const [first] = doc.getPages();
+  first.node.set(name("Probe"), PDFNumber.of(5));
   first.drawText("Drawn 0.5 over", { x: 72.25, y: 700.125, size: 11.5, color: rgb(0.25, 0.5, 0.75) });
   doc.insertPage(1, [300.5, 400]);
   doc.removePage(2);

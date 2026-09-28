@@ -30,107 +30,17 @@
 //   - push(v) at HWM:    in-place extend (no other arrays follow)
 //   - push(v) not at HWM: COW the range to tail, then push
 //   - insert / remove:   always COW (shifts would corrupt neighbours)
-// Same at-HWM-determines-safety logic as fast-dict-onebuf; no owned
-// bit needed (see fast-dict-onebuf commit 7e8b1f7).
 //
-// Singleton PDFContext (one PDFDocument.load per process in our
-// pipeline). The singleton is duplicated rather than shared with
-// fast-dict-onebuf -- the mechanism is ten lines and keeping each
-// shim independently injectable is worth more than dedup'ing it.
-// Both shims end up holding references to the same PDFContext.
+// The range machinery -- packing, appends, copy-on-write and the
+// singleton PDFContext -- is onebuf-range.mjs's, shared with
+// fast-dict-onebuf. The buffer and the context are this shim's own, so
+// it loads without that one.
 //
 // Composes with --fast-dict-onebuf. Mutually exclusive with
 // --fast-dict-encoded (which subsumes both via its own encoded shape).
 
 import { PDFArray, PDFObjectParser, CharCodes } from './pdf-lib-internals.mjs';
-
-// ---- The single buffer ---------------------------------------------
-
-// Pre-sized to total array slots + slack on the book. Other workloads
-// grow it naturally from this starting size. When the measure-pass
-// shim runs first, it calls setExpectedArraySlots() before parse,
-// which resizes `arrayMain` to exact measured demand via
-// `arrayMain.length = N`.
-const ARRAY_MAIN_INITIAL_CAP = 800000;
-const arrayMain = new Array(ARRAY_MAIN_INITIAL_CAP);
-let arrayMainLen = 0;
-
-export { arrayMain };
-export function getArrayMainLen() { return arrayMainLen; }
-
-// Resize arrayMain in place. Must be called before any parseArray /
-// withContext (i.e. while arrayMainLen is still 0). `slack` is a
-// multiplier on `slots`; default 1.0 (exact). Same in-place-resize
-// rationale as fast-dict-onebuf's setExpectedDictSlots: reassigning
-// the module-level binding invalidates V8's inline-cache slots in
-// every closure that reads it, and the deopt + recompile shows up as
-// a parse-time allocation spike.
-export function setExpectedArraySlots(slots, slack = 1.0) {
-  if (arrayMainLen > 0) {
-    throw new Error(
-      `fast-array-onebuf: setExpectedArraySlots called after parse started (arrayMainLen=${arrayMainLen})`,
-    );
-  }
-  arrayMain.length = Math.ceil(slots * slack);
-}
-
-// ---- Bit-packing helpers -------------------------------------------
-
-const POW_24 = 16777216;          // 2^24
-const MASK_24 = 0xFFFFFF;
-const MASK_16 = 0xFFFF;
-
-const MAX_START  = POW_24;          // exclusive
-const MAX_LENGTH = 1 << 16;         // 65 536, exclusive
-
-function pack(start, length) {
-  if (start  >= MAX_START)  throw new Error(`fast-array-onebuf: start ${start} exceeds 24-bit budget`);
-  if (length >= MAX_LENGTH) throw new Error(`fast-array-onebuf: length ${length} exceeds 16-bit budget`);
-  return start + length * POW_24;
-}
-
-function _start(d)  { return d & MASK_24; }
-function _length(d) { return Math.floor(d / POW_24) & MASK_16; }
-
-// ---- Singleton context ---------------------------------------------
-
-let _singletonContext = null;
-
-function _registerContext(ctx) {
-  if (_singletonContext === null) {
-    _singletonContext = ctx;
-  } else if (_singletonContext !== ctx) {
-    throw new Error('fast-array-onebuf: expected a singleton PDFContext, got a second distinct one.');
-  }
-}
-
-// ---- Append + COW helpers ------------------------------------------
-
-function _appendFromTemp(temp, fromOffset, lenSlots) {
-  for (let i = 0; i < lenSlots; i++) {
-    arrayMain[arrayMainLen + i] = temp[fromOffset + i];
-  }
-  arrayMainLen += lenSlots;
-}
-
-function _appendArray(arr) {
-  const len = arr.length;
-  for (let i = 0; i < len; i++) arrayMain[arrayMainLen + i] = arr[i];
-  arrayMainLen += len;
-}
-
-// COW: copy this array's range to arrayMain's tail. If already at
-// the HWM, nothing to copy -- return d unchanged.
-function _cow(pa) {
-  const d = pa.d;
-  const start = _start(d);
-  const length = _length(d);
-  if (start + length === arrayMainLen) return d;   // at HWM
-  const newStart = arrayMainLen;
-  for (let i = 0; i < length; i++) arrayMain[arrayMainLen + i] = arrayMain[start + i];
-  arrayMainLen += length;
-  return pack(newStart, length);
-}
+import { onebufRange } from './onebuf-range.mjs';
 
 // ---- Construction --------------------------------------------------
 //
@@ -147,15 +57,33 @@ function _cow(pa) {
 function _FastArray(d) { this.d = d; }
 _FastArray.prototype = PDFArray.prototype;
 
-function _makeFromRange(start, length, ctx) {
-  _registerContext(ctx);
-  return new _FastArray(pack(start, length));
+function _construct(_ProtoClass, d) {
+  return new _FastArray(d);
 }
 
-function _makeFromAppend(arr, ctx) {
-  const start = arrayMainLen;
-  _appendArray(arr);
-  return _makeFromRange(start, arr.length, ctx);
+// ---- The single buffer ---------------------------------------------
+
+// Pre-sized to total array slots + slack on the book. Other workloads
+// grow it naturally from this starting size. When the measure-pass
+// shim runs first, it calls setExpectedArraySlots() before parse,
+// which resizes `arrayMain` to exact measured demand.
+const ranges = onebufRange({
+  name: 'fast-array-onebuf',
+  capacity: 800000,
+  startBits: 24,
+  construct: _construct,
+});
+const arrayMain = ranges.slots;
+const _start = ranges.startOf;
+const _length = ranges.lengthOf;
+
+export { arrayMain };
+export function getArrayMainLen() { return ranges.used(); }
+
+// Must be called before any parseArray / withContext. `slack` is a
+// multiplier on `slots`; default 1.0 (exact).
+export function setExpectedArraySlots(slots, slack = 1.0) {
+  ranges.reserve(slots, slack);
 }
 
 if (!PDFArray.prototype.__fastArrayOnebufInstalled) {
@@ -167,16 +95,7 @@ if (!PDFArray.prototype.__fastArrayOnebufInstalled) {
   };
 
   PDFArray.prototype.push = function (object) {
-    const d0 = this.d;
-    const start0 = _start(d0);
-    const length0 = _length(d0);
-    let dNow = d0;
-    if (start0 + length0 !== arrayMainLen) {
-      dNow = _cow(this);
-    }
-    arrayMain[arrayMainLen++] = object;
-    const start = _start(dNow);
-    this.d = pack(start, length0 + 1);
+    ranges.push(this, object);
   };
 
   PDFArray.prototype.get = function (index) {
@@ -198,33 +117,11 @@ if (!PDFArray.prototype.__fastArrayOnebufInstalled) {
   };
 
   PDFArray.prototype.insert = function (index, object) {
-    // Always COW -- shifting elements in place would corrupt other
-    // arrays' ranges past this one.
-    const d0 = this.d;
-    const start0 = _start(d0);
-    const length0 = _length(d0);
-    const newStart = arrayMainLen;
-    for (let i = 0; i < index; i++) {
-      arrayMain[arrayMainLen++] = arrayMain[start0 + i];
-    }
-    arrayMain[arrayMainLen++] = object;
-    for (let i = index; i < length0; i++) {
-      arrayMain[arrayMainLen++] = arrayMain[start0 + i];
-    }
-    this.d = pack(newStart, length0 + 1);
+    ranges.insert(this, index, object);
   };
 
   PDFArray.prototype.remove = function (index) {
-    // Always COW (same reason as insert).
-    const d0 = this.d;
-    const start0 = _start(d0);
-    const length0 = _length(d0);
-    const newStart = arrayMainLen;
-    for (let i = 0; i < length0; i++) {
-      if (i === index) continue;
-      arrayMain[arrayMainLen++] = arrayMain[start0 + i];
-    }
-    this.d = pack(newStart, length0 - 1);
+    ranges.cut(this, index, 1);
   };
 
   PDFArray.prototype.asArray = function () {
@@ -237,14 +134,7 @@ if (!PDFArray.prototype.__fastArrayOnebufInstalled) {
   };
 
   PDFArray.prototype.clone = function (context) {
-    const d = this.d;
-    const start = _start(d);
-    const length = _length(d);
-    const newStart = arrayMainLen;
-    for (let i = 0; i < length; i++) arrayMain[arrayMainLen + i] = arrayMain[start + i];
-    arrayMainLen += length;
-    _registerContext(context || _singletonContext);
-    return new _FastArray(pack(newStart, length));
+    return ranges.clone(this, PDFArray, context);
   };
 
   PDFArray.prototype.toString = function () {
@@ -285,7 +175,7 @@ if (!PDFArray.prototype.__fastArrayOnebufInstalled) {
   // and dispatch through our overrides.
 
   Object.defineProperty(PDFArray.prototype, 'context', {
-    get() { return _singletonContext; },
+    get() { return ranges.context(); },
     set(_ctx) { /* singleton is source of truth */ },
     configurable: true,
   });
@@ -293,7 +183,7 @@ if (!PDFArray.prototype.__fastArrayOnebufInstalled) {
   // ---- PDFArray factory -------------------------------------------
 
   PDFArray.withContext = function (context) {
-    return _makeFromAppend([], context);
+    return ranges.viewOf(PDFArray, [], context);
   };
 
   // ---- PDFObjectParser.prototype.parseArray -----------------------
@@ -324,11 +214,10 @@ if (!PDFArray.prototype.__fastArrayOnebufInstalled) {
     bytes.assertNext(CharCodes.RightSquareBracket);
 
     const frameLen = this._arrayTempLen - frameStart;
-    const start = arrayMainLen;
-    _appendFromTemp(temp, frameStart, frameLen);
+    const start = ranges.append(temp, frameStart, frameLen);
     this._arrayTempLen = frameStart;
 
-    return _makeFromRange(start, frameLen, this.context);
+    return ranges.view(PDFArray, start, frameLen, this.context);
   };
 
   PDFArray.prototype.__fastArrayOnebufInstalled = true;

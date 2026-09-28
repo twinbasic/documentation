@@ -77,9 +77,10 @@ import { parseCli, withUsageError } from '../lib/cli.mjs';
 //     per-instance temp array as a stack of recursion frames; each
 //     parseDict invocation appends to temp, commits its frame to
 //     main in one contiguous append, and pops temp back. PDFDicts
-//     only ever read from main, so a packed (start, length, owned)
-//     Number is the whole instance state -- no separate bufIdx.
-//     Owned dicts (factory-created post-parse) also append to main.
+//     only ever read from main, so a packed (start, flags, length)
+//     Number is the whole instance state -- no separate bufIdx; the
+//     two flag bits are PDFPageLeaf's. Dicts the factories make
+//     after the parse also append to main.
 //     Mutations: in-place replace for existing keys, COW (copy
 //     range to tail, push new pair) for new keys or delete.
 //     PDFContext is a singleton -- one PDFDocument.load per

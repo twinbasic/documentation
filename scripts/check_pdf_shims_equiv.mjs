@@ -18,8 +18,9 @@
 // numbers in every lexical form, a classic cross-reference table followed by
 // an incremental update with an object stream and a cross-reference stream.
 // The change (scripts/lib/pdf-shims-side.mjs) mirrors render-book.mjs and adds
-// what reaches the rest of the shims: text drawn on a page, a page inserted
-// and one removed, dictionaries parsed early and edited late, and a call of
+// what reaches the rest of the shims: text drawn on a page given a new key
+// first, which moves the page's entries and must keep its flags, a page
+// inserted and one removed, dictionaries parsed early and edited late, and a call of
 // each patched method the book does not make, its result written into the
 // document. The created document reaches the page-tree and catalog factories.
 //

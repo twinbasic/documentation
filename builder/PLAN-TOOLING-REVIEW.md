@@ -2834,6 +2834,54 @@ renamed variables.
 **Verify.** `check_pdf_shims_equiv.mjs`; the book's page count and outline unchanged; render
 time within noise of before, since these shims exist for speed.
 
+**Landed.** `onebufRange({ name, capacity, startBits, gapBits, construct })` builds one buffer
+per call, with its length and its singleton `PDFContext` inside the closure, so the two shims
+share code and no state. The layout comes from `startBits` and `gapBits` (the dictionary 23
+and 2, the array 24 and 0): the gap mask is the bits between the two fields, zero for the
+array, so one `cow` and one repack serve both. `construct(ProtoClass, d)` is each shim's
+dispatch: the dictionary's picks among its four constructors as `_makeFromRange` did, the
+array's ignores the class. Beyond the review's two identical helpers, `_appendEntries` and
+`_appendFromTemp` were a third pair and the two sizers a fourth; those two loops,
+`_appendArray` and the copies inside `_cow` and both `clone`s are now one
+`append(source, from, count)`. Every append goes through the module (`append`, `view`,
+`viewOf`, `push`, `pushPair`, `cut`, `insert`, `clone`); a shim reads its buffer directly and
+overwrites slots inside a range, so the hot read paths (`get`, `copyBytesInto`,
+`sizeInBytes`, the parsers' type scan) are unchanged. Every function installed on pdf-lib
+stays in its shim: the side attributes a member to the file that defines the function, and
+skips one defined anywhere else, so moving `set` or `push` into the module would have shown
+as unpatched. Each shim keeps `main` / `arrayMain`, its sizer and its length getter as
+exports. One message changed: a sizer called after parse now says `the buffer was sized after
+parse started (<n> slots in use)`; nothing calls one late. A Sonnet agent compared every
+changed function with HEAD's and found no other difference for any argument pdf-lib passes
+(`remove` now differs only for an index that is not an integer). The array's header lost its
+paragraph on why the singleton was duplicated, and both headers the history of the dropped
+owned bit; `render-book.mjs`'s summary of the dictionary shim still described that bit (see
+Found while implementing). Fixes-PDFLib.md names the module under fast-array-onebuf.
+
+The gate's side now gives the drawn page a new key before drawing on it (see Found while
+implementing): the page's entries move to the end of the buffer while `autoNormalizeCTM` is
+set, and the draw wraps the old content only if the flag moved with them. The kit's
+`c68-faults.mjs` drops the gap bits in `cow`, which passed the gate before and fails it now by
+difference, with the diagnosis naming `fast-dict-onebuf.mjs` alone; its faults on `cut`,
+`insert`, `push` and `pushPair` fail it by difference too, and its `singleton` mode shows each
+shim alone refusing a second `PDFDocument.create`, at HEAD and now, with the same message.
+The counts are unchanged: the same 25 and 11 objects, and the same 72 members, all run but
+the 2 marked. C67b's faults moved with the code (the two `clone` cases now cut the clone's
+first entry, the two `fromMapWithContext` cases name `ranges.viewOf`), and all 18 still fail
+by difference; C67a's five still exit 1. The gate's header and Tools.md's section describe the
+new key.
+
+The book, three renders a side from one `_site-pdf`, alternating HEAD's `book/` and the working
+one: 2,299 pages and 2,466 outline entries each; `process:` 1.3, 1.1 and 1.2 s at HEAD, 1.0,
+1.2 and 1.0 s now; totals 95.6, 85.2 and 94.4 s at HEAD, 90.3, 99.6 and 88.7 s now. HEAD's
+three files were 29,132,946 bytes each; the working tree's 29,132,892, 29,132,951 and
+29,132,946, and that last pair is identical but for `/CreationDate` and `/ModDate`, so the
+same code wrote the other two and their sizes are the render's own variation (the owner:
+around a second is fast enough beside the other phases, so they were not taken apart).
+`build.bat`, `check.bat` and `test.bat` clean; lint `Checked 170 files`; regex safety
+unchanged. `compare_trees`: Fixes-PDFLib and Tools online and offline, the search data and
+`book.html`. CI waits for the owner's push.
+
 ### C69 — `book: each pdf-lib shim checks what it overwrites`
 
 **A9-1 (R2).** The twelve production shims (thirteen before C65b) each guard against being installed twice and
@@ -3555,6 +3603,17 @@ Defects the review did not have, found by building something this plan asks for.
   a patch applied to a copy is not a patch of pdf-lib at all. Scheduled as C67a, with the
   document's reach of the members it marks as C67b, at the owner's choice. Fixed in `book:
   check_pdf_shims_equiv checks each member the shims patch`.
+- **`render-book.mjs` described the dictionary shim's `d` with an owned bit**, found while
+  landing C68: its summary said "a packed (start, length, owned) Number" and named "Owned
+  dicts", a bit the shim dropped long before. Folded into C68, at the owner's choice. Fixed in
+  `book: the two onebuf shims share their range machinery`.
+- **The shim gate passed with PDFPageLeaf's flags dropped in a copy-on-write**, found while
+  landing C68: a fault removing the gap bits from the new module's `cow` left the gate green.
+  pdf-lib reads `autoNormalizeCTM` only inside `normalize()`, and the one copy of the drawn
+  page's range came from the `/Annots` key that `normalize()` adds last, after that read. The
+  side now sets a new key on the page before drawing on it. Folded into
+  C68, at the owner's choice. Fixed in `book: the two onebuf shims share their range
+  machinery`.
 
 ## Open questions
 
