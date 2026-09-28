@@ -278,7 +278,7 @@ export class Lane {
     if (problems.length) throw new Error(`lane ${this.name}: ${problems.join("; ")}`);
   }
 
-  /** closeProject, then delete the lane's copy of the install. For after(). */
+  /** closeProject, then delete the lane's copy of the install. For scenario(). */
   async close() {
     try {
       await this.closeProject();

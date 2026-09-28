@@ -2469,6 +2469,27 @@ found at close fails the lane only because the close is a test.
 **Verify.** The scratch test with a lane whose `close` throws exits 1 under `node --test`,
 and 0 with one whose `close` works; `addin-test.bat` green, all ten lanes (a harness run).
 
+**Landed.** After `fn` has declared the block's hooks and tests, `scenario()` declares one more
+test, `the lane closes with nothing found`, and gives the `after` hook the same function. That
+function runs once, whichever calls it first, so the hook closes the lane only when the test
+never ran, and the function a scenario returns, called in the close's `finally`, runs once too.
+A flag rather than `Lane.close`'s own idempotence keeps it to one run. `scenario.mjs`'s
+comments say why the close is a test, WIP.Harness.md's runner section says so as well, and
+`Lane.close`'s comment says it is for `scenario()` rather than `after()`. Each lane reports one
+test more.
+
+The kit's `c65-scenario.mjs` runs a scratch scenario seven ways, with `addinLane()` replaced
+through `c43-fault.mjs` by a lane whose `close` logs and optionally throws. On HEAD a close
+that throws exits 0, run directly and under `--test`; now it exits 1 both ways, with the close
+test under "failing tests" and its `close failed`. A close that works exits 0 with `pass 2`;
+with no lane the block is skipped (`tests 0`). A `before` hook that throws exits 1 on both
+sides, and the close still runs, from the `after` hook. In the six cases with a lane, the close
+and the returned function run once each, in that order.
+
+`addin-test.bat` through the kit's `c25-run.mjs`, twice: exit 0 after 131.8 s and 131.4 s, `10
+of 10 lane(s) ran: 10 passed`, the registry put back as in C63 and the snapshots identical.
+The second run counted the close test's result lines in the lanes' output: ten, one per lane.
+
 *The book's pdf-lib shims (decision (c)): C66–C69.*
 
 ### C66 — `book: check_pdf_shims_equiv.mjs, the shims against stock pdf-lib`
@@ -3188,7 +3209,8 @@ Defects the review did not have, found by building something this plan asks for.
   hook. On Node 24.13.0 a throwing `after` hook marks its suite failed but leaves `fail 0`, and
   the file exits 0 under `node --test`, even when the hook sets `process.exitCode = 1` (scratch
   tests, run directly and under `--test`). `addin_test.mjs` judges a lane by that exit code.
-  Scheduled as C65a, at the owner's choice.
+  Scheduled as C65a, at the owner's choice. Fixed in `test: a lane fails when closing it finds
+  a problem`.
 
 ## Open questions
 

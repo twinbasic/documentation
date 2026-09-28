@@ -1051,8 +1051,11 @@ the lane if the compiler crashed meanwhile, or if a javascript dialog opened tha
 scenario did not take out of `c.dialogs`, since the IDE opens one only on an error path;
 then it deletes the copy. A scenario file is one `scenario()` block, from
 [test/addin/scenario.mjs](test/addin/scenario.mjs), which gives it the lane and closes the
-lane after it. Run outside the runner, the block is skipped, so a bare `node --test` never
-starts an IDE.
+lane in the block's last test. **What the close finds fails the lane only because the close is
+a test:** a throw from an `after` hook marks the file `✖` but leaves `node --test`'s exit code
+0, and the runner judges a lane by that code. The block's `after` hook closes the lane only
+when that test never ran, as when a `before` hook fails. Run outside the runner, the block is
+skipped, so a bare `node --test` never starts an IDE.
 
 **A process per lane, not `node:test`'s own concurrency.** `node --test` can run files in
 parallel, but it cannot hand each file an environment of its own, and the runner has to
