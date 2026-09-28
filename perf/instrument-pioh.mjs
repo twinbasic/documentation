@@ -28,7 +28,6 @@
 // Run: node --expose-gc perf/instrument-pioh.mjs
 
 import '../book/lib/fast-refs-class.mjs';
-import '../book/lib/fast-inflate.mjs';
 import '../book/lib/fast-parse-number.mjs';
 import '../book/lib/fast-decode-name.mjs';
 import '../book/lib/fast-number-to-string.mjs';

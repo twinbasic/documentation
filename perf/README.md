@@ -73,7 +73,7 @@ The mirror command for CPU-profiling the pdf-lib roundtrip (run from
 `perf/`):
 
 ```
-node measure.mjs --fast-refs-class --parallel-deflate --fast-decode-name --fast-number-to-string --fast-size-in-bytes --fast-inflate --fast-parse-number --fast-dict-onebuf --fast-array-onebuf --measure-pass --fast-parse-object --fast-parse-name --fast-sync-load --fast-indirect-objects --fast-pdfnumber-pool --cpu-profile-process --cpu-sampling 100 --out results/<label>
+node measure.mjs --fast-refs-class --parallel-deflate --fast-decode-name --fast-number-to-string --fast-size-in-bytes --fast-parse-number --fast-dict-onebuf --fast-array-onebuf --measure-pass --fast-parse-object --fast-parse-name --fast-sync-load --fast-indirect-objects --fast-pdfnumber-pool --cpu-profile-process --cpu-sampling 100 --out results/<label>
 ```
 
 `--out results/<label>` is optional but recommended: omit it and the
@@ -167,13 +167,6 @@ Flag rationale:
   are 1-2 byte values so a `n < 0x100 ? 1 : ...` ladder catches
   most calls in one compare. Production runs through it. ~60 ms
   saved on process.
-- `--fast-inflate` -- inject
-  [book/lib/fast-inflate.mjs](../book/lib/fast-inflate.mjs), swapping
-  `pako.inflate` for `node:zlib.inflateSync` on the one path
-  pdf-lib uses it (the compressed xref stream during load).
-  Negligible wall-clock; flag exists so paired A/Bs against pure
-  upstream pdf-lib can keep the rest of the perf set on while
-  isolating this swap. Production runs through it.
 - `--fast-parse-number` -- inject
   [book/lib/fast-parse-number.mjs](../book/lib/fast-parse-number.mjs),
   replacing `BaseParser.parseRawNumber` / `parseRawInt` with
@@ -381,7 +374,7 @@ process phase -- "where is pdf-lib allocating bytes?" rather than
 "where is it spending cycles?" (run from `perf/`):
 
 ```
-node measure.mjs --fast-refs-class --parallel-deflate --fast-decode-name --fast-number-to-string --fast-size-in-bytes --fast-inflate --fast-parse-number --fast-dict-onebuf --fast-array-onebuf --measure-pass --fast-parse-object --fast-parse-name --fast-sync-load --fast-indirect-objects --fast-pdfnumber-pool --heap-profile-process --heap-sampling 512 --out results/<label>
+node measure.mjs --fast-refs-class --parallel-deflate --fast-decode-name --fast-number-to-string --fast-size-in-bytes --fast-parse-number --fast-dict-onebuf --fast-array-onebuf --measure-pass --fast-parse-object --fast-parse-name --fast-sync-load --fast-indirect-objects --fast-pdfnumber-pool --heap-profile-process --heap-sampling 512 --out results/<label>
 ```
 
 Same `--out` / labelling note as the CPU command above: omit it for a
@@ -658,7 +651,6 @@ run.bat --parallel-deflate                # parallelSave with objectsPerStream=5
 run.bat --fast-decode-name                # skip decodeName regex when name has no # (also ships; opt-in here for A/B)
 run.bat --fast-number-to-string           # skip numberToString redundant toString/split when no exponential (also ships; opt-in here for A/B)
 run.bat --fast-size-in-bytes              # non-allocating ladder for xref byte-width (also ships; opt-in here for A/B)
-run.bat --fast-inflate                    # swap pako.inflate for node:zlib.inflateSync (also ships; opt-in here for A/B)
 run.bat --fast-parse-number               # direct-integer accumulator for parseRawNumber/parseRawInt (also ships; opt-in here for A/B)
 run.bat --fast-dict-iter                  # in-place Map.forEach for PDFDict.sizeInBytes/copyBytesInto (Map-shape baseline; production now runs --fast-dict-onebuf)
 run.bat --fast-parse-dict                 # hoist Type/Catalog/Pages/Page sentinel PDFNames out of parseDict (Map-shape baseline; production now runs --fast-dict-onebuf)

@@ -2490,6 +2490,42 @@ and the returned function run once each, in that order.
 of 10 lane(s) ran: 10 passed`, the registry put back as in C63 and the snapshots identical.
 The second run counted the close test's result lines in the lanes' output: ten, one per lane.
 
+### C65b — `book: delete fast-inflate.mjs, which patched a function pdf-lib never calls`
+
+**Found while designing C66** (see Found while implementing). `fast-inflate.mjs` replaces
+`pako.inflate` with `zlib.inflateSync`, and pdf-lib 1.17.1 never calls `pako.inflate`: its
+`cjs/` tree, the build Node loads, calls only `pako.deflate`, and a load decodes the
+cross-reference stream and object streams through pdf-lib's own `FlateStream`. The shim changes
+nothing, and three documents describe a call site that does not exist: its Fixes-PDFLib.md
+section, `render-book.mjs`'s header, and Builder.md's reason for declaring and pinning `pako`.
+No code of ours imports `pako` without it.
+
+**Change.** Delete the shim and its import; drop its Fixes-PDFLib.md section, its line in
+`render-book.mjs`'s header and the `perf/` rigs' `--fast-inflate` flag and imports; `npm
+uninstall pako` (the owner's choice, which confirmed the uninstall), with Builder.md's
+Dependencies updated. pdf-lib still installs pako 1.0.11 as its own dependency. C66 and C69
+then cover twelve shims.
+
+**Verify.** `book.bat` renders with the same page count and outline; the lockfile loses only
+the root's `pako` line.
+
+**Landed.** As the entry says. `render-book.mjs` loses the import and the shim's four lines in
+its header; Fixes-PDFLib.md loses the section, which no page linked to; Builder.md loses
+`pako` from its Dependencies block, from the sentence on the PDF renderer's packages and from
+the pin list. In `perf/`, `measure.mjs` loses the flag, its comment, variable, argument branch
+and import, `instrument-objclasses.mjs`, `instrument-pioh.mjs` and `phase0-measure.mjs` their
+import, and `perf/README.md` the flag's bullet and its mentions in three command lines (done by
+a Sonnet agent: 33 calls, ~126k, 2 min; accurate). `perf/notes/` is the record of the
+measurements and keeps its account. `npm uninstall pako` removed one line from each of
+`package.json` and `package-lock.json`, and `node_modules/pako` is still 1.0.11.
+
+The book rendered twice from one `_site-pdf`, through HEAD's `book/` and `lib/` archived into
+a scratch folder and through the working tree's: 92 s and 93 s, both `process: 1.1s` and
+`1.0s`, 2,298 pages, 2,466 outline entries and 29,111,771 bytes each. The files differ in one
+run of 28,991 bytes, inside one object stream of 500 objects; inflated, the two streams differ
+only in `/CreationDate` and `/ModDate`, the render times. `compare_trees`: Builder.html and
+Fixes/PDFLib.html online and offline, the search data, and `book.html`.
+
 *The book's pdf-lib shims (decision (c)): C66–C69.*
 
 ### C66 — `book: check_pdf_shims_equiv.mjs, the shims against stock pdf-lib`
@@ -2498,8 +2534,8 @@ The second run counted the close test's result lines in the lanes' output: ten, 
 one-off notes in `perf/notes/08-pdf-lib.md`.
 
 **Change.** A `test.bat` gate modelled on `check_axe_patch_equiv.mjs`. The same document is
-loaded, changed and saved by stock pdf-lib in a child process and by pdf-lib with the thirteen
-shims installed here, and the two results are compared object by object, with streams
+loaded, changed and saved by stock pdf-lib in a child process and by pdf-lib with the twelve
+shims (thirteen before C65b) installed here, and the two results are compared object by object, with streams
 decompressed, since a different deflate can give different bytes for the same content. The
 document is generated in the gate to reach every shimmed path (parsing, arrays and
 dictionaries, the parallel deflate, the inflate replacement), so the gate needs no built tree.
@@ -2533,7 +2569,7 @@ time within noise of before, since these shims exist for speed.
 
 ### C69 — `book: each pdf-lib shim checks what it overwrites`
 
-**A9-1 (R2).** The thirteen production shims each guard against being installed twice and
+**A9-1 (R2).** The twelve production shims (thirteen before C65b) each guard against being installed twice and
 never check what they replace, and `parallel-deflate.mjs:50`'s `PDFStreamWriter` subclass has
 no guard at all. Only the exact pin protects them (recorded in `08-pdf-lib.md:1751-1757`),
 and it catches an accidental `npm update`, not a deliberate upgrade or a mistaken edit.
@@ -3211,6 +3247,12 @@ Defects the review did not have, found by building something this plan asks for.
   tests, run directly and under `--test`). `addin_test.mjs` judges a lane by that exit code.
   Scheduled as C65a, at the owner's choice. Fixed in `test: a lane fails when closing it finds
   a problem`.
+- **`fast-inflate.mjs` patched a function pdf-lib never calls**, found while designing C66 (a
+  Sonnet survey of the shims, then measured). A stock load of a PDF with a cross-reference
+  stream and object streams made no `pako.inflate` call and decoded both through pdf-lib's own
+  `FlateStream` (the kit's `c66-inflate-count.mjs`). The owner chose deletion, `pako`
+  included. Fixed in `book: delete fast-inflate.mjs, which patched a function pdf-lib never
+  calls`.
 
 ## Open questions
 

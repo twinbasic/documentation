@@ -31,7 +31,7 @@
 //                    [--clone-count] [--render-only]
 //                    [--parallel-deflate]
 //                    [--fast-decode-name] [--fast-number-to-string]
-//                    [--fast-size-in-bytes] [--fast-inflate]
+//                    [--fast-size-in-bytes]
 //                    [--fast-parse-number]
 //                    [--fast-parse-object] [--fast-sync-load]
 //                    [--fast-indirect-objects]
@@ -135,13 +135,6 @@
 // from PDFCrossRefStream's xref writer; the dominant inputs are
 // 1-2 byte values (type, gen, index, small obj-stream refs) so a
 // `n < 0x100 ? 1 : ...` ladder is the right shape.
-//
-// --fast-inflate swaps pako.inflate for node:zlib.inflateSync on
-// pdf-lib's one remaining pako call site (PDFCrossRefStreamParser
-// inflating the compressed cross-reference stream during
-// PDFDocument.load). One call per load, negligible wall-clock; flag
-// exists so paired A/Bs can compare against pure-pdf-lib behaviour.
-// Production runs through it.
 //
 // --fast-parse-number replaces pdf-lib's BaseParser.parseRawNumber
 // and parseRawInt with direct-integer accumulators (n = n*10 +
@@ -266,7 +259,6 @@ let parallelDeflate = false;
 let fastDecodeName = false;
 let fastNumberToString = false;
 let fastSizeInBytes = false;
-let fastInflate = false;
 let fastParseNumber = false;
 let fastParseObject = false;
 let fastParseName = false;
@@ -306,7 +298,6 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--fast-decode-name') fastDecodeName = true;
   else if (a === '--fast-number-to-string') fastNumberToString = true;
   else if (a === '--fast-size-in-bytes') fastSizeInBytes = true;
-  else if (a === '--fast-inflate') fastInflate = true;
   else if (a === '--fast-parse-number') fastParseNumber = true;
   else if (a === '--fast-parse-object') fastParseObject = true;
   else if (a === '--fast-parse-name') fastParseName = true;
@@ -399,10 +390,6 @@ if (fastNumberToString) {
 if (fastSizeInBytes) {
   await import('../book/lib/fast-size-in-bytes.mjs');
   console.log('[harness] fast-size-in-bytes: non-allocating ladder for xref byte-width');
-}
-if (fastInflate) {
-  await import('../book/lib/fast-inflate.mjs');
-  console.log('[harness] fast-inflate: swap pako.inflate for node:zlib.inflateSync');
 }
 if (fastParseNumber) {
   await import('../book/lib/fast-parse-number.mjs');
