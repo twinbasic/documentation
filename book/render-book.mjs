@@ -32,7 +32,7 @@ import { dirname, resolve } from 'node:path';
 import { writeFileSync, existsSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
-import { parseCli, withUsageError } from '../lib/cli.mjs';
+import { parseCli, printHelpAndExit, withUsageError } from '../lib/cli.mjs';
 // Side-effecting imports. Mutate pdf-lib's live module exports
 // before any pdf-lib operation -- order doesn't matter. See
 // perf/notes/08-pdf-lib.md.
@@ -196,24 +196,40 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // --- arg parsing --------------------------------------------------------
 
+// A missing input or output prints the first line alone.
+const SYNOPSIS = 'usage: node render-book.mjs <input.html> -o <output.pdf> [--outline-tags ...] [-t ms] [--additional-script path]...';
+const USAGE = `${SYNOPSIS} [-h, --help]
+
+Renders an HTML book to a PDF with paged.js and headless Chromium.
+
+  <input.html>               the book to render
+  -o, --output <output.pdf>  the PDF to write
+  --outline-tags <tags>      headings to put in the PDF outline (default h1,h2,h3,h4)
+  -t, --timeout <ms>         per-operation timeout in milliseconds; 0 disables (default 0)
+  --additional-script <path> a script to inject after paged.js; repeatable
+  -h, --help                 print this text and exit`;
+
 const { values, positionals } = withUsageError(() => parseCli(process.argv.slice(2), {
   options: {
     output: { type: 'string', short: 'o' },
     'outline-tags': { type: 'string', default: 'h1,h2,h3,h4' },
     timeout: { type: 'string', short: 't', default: '0' },
     'additional-script': { type: 'string', multiple: true },
+    help: { type: 'boolean', short: 'h' },
   },
   positionals: { max: 1 },
   unknown: 'error',
   acceptsValue: () => true,
+  stopAt: ['help'],
 }), { format: (err) => `unknown arg: ${err.arg}`, exitCode: 2 });
+if (values.help) printHelpAndExit(USAGE);
 const inputArg = positionals[0];
 const outputArg = values.output;
 const outlineTagsArg = values.outlineTags;
 const timeoutMs = parseInt(values.timeout, 10);
 const additionalScripts = values.additionalScript;
 if (!inputArg || !outputArg) {
-  console.error('usage: node render-book.mjs <input.html> -o <output.pdf> [--outline-tags ...] [-t ms] [--additional-script path]...');
+  console.error(SYNOPSIS);
   process.exit(2);
 }
 

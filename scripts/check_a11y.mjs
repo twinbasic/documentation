@@ -60,7 +60,19 @@ import {
   runMatrix,
 } from "./lib/axe-scan.mjs";
 import { withBrowser } from "./lib/browser.mjs";
-import { parseCli, withUsageError } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+
+const USAGE = `usage: node scripts/check_a11y.mjs [--root-dir DIR] [--theme light|dark|both] [--viewport desktop|mobile|both] [--stock-axe] [--minified] [-h, --help]
+
+Scans the sample pages of the built offline site with axe-core against WCAG
+2.0, 2.1 and 2.2 at Level A and AA. Needs build.bat to have produced the site.
+
+  --root-dir DIR   the tree to scan (default docs/_site-offline)
+  --theme T        light, dark or both (default both)
+  --viewport V     desktop, mobile or both (default both)
+  --stock-axe      run stock axe, without the source patches
+  --minified       with --stock-axe, run the minified axe build
+  -h, --help       print this text and exit`;
 
 const { values } = withUsageError(
   () =>
@@ -71,11 +83,14 @@ const { values } = withUsageError(
         viewport: { type: "string", default: "both" },
         "stock-axe": { type: "boolean", default: false },
         minified: { type: "boolean", default: false },
+        help: { type: "boolean", short: "h" },
       },
       acceptsValue: Boolean,
+      stopAt: ["help"],
     }),
   { format: (err) => `unknown arg: ${err.arg}` },
 );
+if (values.help) printHelpAndExit(USAGE);
 let rootDir = values.rootDir;
 let themeArg = values.theme;
 let viewportArg = values.viewport;

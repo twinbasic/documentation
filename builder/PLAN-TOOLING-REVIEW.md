@@ -877,6 +877,44 @@ it. `gen_attribute_probes.mjs:1147-1158` takes a bare `--help` as its output fol
 **Verify.** `check_cli.mjs` gains a `--help` case for every tool, safe to run for all of them
 once this lands; no file or folder appears.
 
+**Landed.** Every Node tool, 45 in all (the `tbdocs` builder, `render-book`, `wisdom`, the six
+`eval/` tools and every command under `scripts/`, the seven that read no arguments included),
+answers `--help` and `-h` by printing its usage to stdout and exiting 0 (the owner's four
+choices, 2026-09-28: every tool; the parse stops at `--help`; `-h` everywhere; a short usage
+text where there was none). Each declares `help` with `short: "h"` and `stopAt: ["help"]`, so
+arguments before it are read as before and nothing after it is, and answers it straight after
+the parse, before any number, project or install check. The seven argument-less gates parse
+with `unknown: "ignore"` and no positionals, so every other argument is still ignored.
+`builder/command-line.mjs` exports `USAGE` and returns `{ ...DEFAULTS, help: true }` when the
+parse stops at help. 28 tools gained or rewrote a `USAGE` constant: the usage line, one sentence,
+the options; no exit codes, which are C74's. `check_lint` and `render-book` keep their pinned
+one-line error message as a `SYNOPSIS` that `USAGE` starts with; `tbbuild`, `tbrun`,
+`crawl_check` and `survey_tooling` print the whole `USAGE` on their usage errors, which keep
+their stream and exit code. `transcript`'s `-h` is help, not a file name. `wisdom` answers
+`--help` as its command or after one. Unchanged: `impexp.mjs`, already so, and `check_links`,
+whose raw-argument test already answered both; a bare invocation, or a missing project or
+input, keeps its old answer everywhere. `check_regex_safety`'s internal `--shard` is not in
+its usage. Two Found items folded in: `census_attributes` now prints a `USAGE` with
+`--dump-sites` (its header points there), and `check_links`' help says a missing sitemap or
+search file prints a warning. Tools.md's introduction says every Node tool answers `--help`
+(`build_fonts.py` reads no arguments).
+
+`check_cli` gains `HELP_TOOLS`, which adds a `--help` and a `-h` case for every tool the
+table does not already hold (61 cases), and a probe after every case whose arguments hold
+`--help` or `-h` that its scratch folder is still empty (104); 24 existing cases changed their
+expectation, among them `tbbuild x.twinproj --port 0 --help`, `check_examples --jobs 0
+--help`, `build_corpus -hq` (the parse stops at the `h` of the group) and `wisdom bogus
+--help`, all now usage on stdout and exit 0; `compare_trees --bogus --help` still exits 2.
+`check_cli: 423 probes, all pass` (258 before). With `gen_attribute_probes`' `help` option
+removed through `c43-fault.mjs` in `NODE_OPTIONS`, it fails 4 probes, two of them the empty
+folder (`--help`, `--help-2`, `--help-explore`, `probe-key.md` appeared, and the same for `-h`).
+A Sonnet agent checked each new usage text against its code; the eight wrong claims and five
+missing options it found were fixed. `compare_trees`: Tools online and offline, the search
+data and `book.html`. Lint `Checked 172 files`; regex safety `528 literals + 30 constructed in
+130 files ... 489 safe, 69 polynomial, 0 undecided, 0 exponential` (the new ones all safe);
+`build.bat`, `check.bat` and `test.bat` clean. On the owner's next push CI prints
+`check_cli: 423 probes, all pass` and the regex-safety line above.
+
 ### C72 — `scripts, book, eval, wisdom: an unknown flag or a bad value exits 2`
 
 **L1-7, L1-5 (R2), A5-1's typo half, A10-1.** Eleven tools ignore an unknown flag,
@@ -1291,6 +1329,11 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   `PDFCatalog.withContextAndPages` builds its catalog without it (`fast-dict-onebuf.mjs:455-461`),
   so the created side calls it directly, on a copy of the created catalog's map. See C67b's
   Landed note.
+- **C71: `tbdocs` answers `--help` too.** The entry's subject leaves out `builder/`, whose
+  `tbdocs` refused `--help` and `-h` with exit 4. At the owner's choice (2026-09-28) every Node
+  tool answers them, `tbdocs` and the argument-less gates included, so it landed as `builder,
+  scripts, book, eval, wisdom: --help prints usage to stdout and exits 0`. See C71's Landed
+  note.
 
 ## Found while implementing
 
@@ -1557,6 +1600,14 @@ Defects the review did not have, found by building something this plan asks for.
   members each shim patches and nothing compares that with the shim's own `checkTargets`
   table. The side already lists each shim's patched members, so each shim could export its
   table for the side to compare. Left for a commit of its own, at the owner's choice.
+- **`census_attributes`' `--help` left out `--dump-sites`**, found while landing C49: it
+  printed a slice of the header comment, whose option list lacked the flag and whose first
+  printed line was empty. Folded into C71, at the owner's choice. Fixed in `builder, scripts,
+  book, eval, wisdom: --help prints usage to stdout and exits 0`.
+- **`check_links`' help said `--check-sitemap` and `--check-search` were skipped silently**
+  when their file is absent; each prints a `warning:` line and skips the check. Folded into
+  C71, at the owner's choice. Fixed in `builder, scripts, book, eval, wisdom: --help prints
+  usage to stdout and exits 0`.
 
 ## Open questions
 

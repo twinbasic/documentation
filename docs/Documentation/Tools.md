@@ -8,7 +8,7 @@ permalink: /Documentation/Development/Tools
 # Tools and Scripts
 {: .no_toc }
 
-One-line-per-tool reference for every executable in the documentation repository: the seven Windows batch wrappers at the repository root, the Node and Python scripts under `scripts/` (cross-platform except for [`tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE), the `tbdocs` orchestrator and its CLI flags, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper.
+One-line-per-tool reference for every executable in the documentation repository: the seven Windows batch wrappers at the repository root, the Node and Python scripts under `scripts/` (cross-platform except for [`tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE), the `tbdocs` orchestrator and its CLI flags, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper. Every Node tool answers `--help` or `-h` by printing its usage to standard output and exiting 0, without doing any of its work.
 
 * TOC goes here
 {:toc}

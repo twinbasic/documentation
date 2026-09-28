@@ -188,28 +188,28 @@ export function printDigest(s, { calls = false, report = false } = {}) {
   return a;
 }
 
+const USAGE =
+  "Usage: node eval/transcript.mjs <case.jsonl> [--calls] [--report] [-h, --help]\n\n" +
+  "Summarises an evaluator's session and audits the order of its channels.\n" +
+  "See eval/README.md.";
+
 function main(argv) {
   const { values, positionals } = parseCli(argv, {
     options: {
       calls: { type: "boolean", default: false },
       report: { type: "boolean", default: false },
-      // No short "h": a lone -h is taken as the file, so it prints the usage
-      // and exits 0, where --help alone exits 1. C71 makes both exit 0.
-      help: { type: "boolean" },
+      // -h and --help print the usage and exit 0. An unknown flag is a
+      // positional, and the file is the first positional that does not start
+      // with --; with none, the usage is printed and the exit is 1.
+      help: { type: "boolean", short: "h" },
     },
     positionals: { max: Infinity },
     unknown: "positional",
+    stopAt: ["help"],
   });
+  if (values.help) printHelpAndExit(USAGE);
   const file = positionals.find((a) => !a.startsWith("--"));
-  const help = values.help || positionals.includes("-h");
-  if (!file || help) {
-    printHelpAndExit(
-      "Usage: node eval/transcript.mjs <case.jsonl> [--calls] [--report]\n\n" +
-      "Summarises an evaluator's session and audits the order of its channels.\n" +
-      "See eval/README.md.",
-      { exitCode: file ? 0 : 1 },
-    );
-  }
+  if (!file) printHelpAndExit(USAGE, { exitCode: 1 });
   printDigest(summarize(readTranscript(file)), { calls: values.calls, report: values.report });
 }
 

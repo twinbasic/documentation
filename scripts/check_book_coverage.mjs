@@ -20,9 +20,25 @@
 //     node scripts/check_book_coverage.mjs
 
 import { resolveBookChapters, bookCoverage, formatBookCoverage } from "../builder/book.mjs";
+import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
 import { createProbes, exitOnCrash } from "./lib/gate-probes.mjs";
 
 exitOnCrash();
+
+const USAGE = `usage: node scripts/check_book_coverage.mjs [-h, --help]
+
+Checks that each of the book-coverage warnings of builder/book.mjs still fires,
+against pages and a manifest built in memory.
+
+  -h, --help  print this text and exit`;
+
+// Every other argument is ignored.
+if (parseCli(process.argv.slice(2), {
+  options: { help: { type: "boolean", short: "h" } },
+  unknown: "ignore",
+  positionals: { min: 0, max: 0 },
+  stopAt: ["help"],
+}).values.help) printHelpAndExit(USAGE);
 
 const page = (srcRel, permalink, title, frontmatter = {}) => ({
   srcRel, permalink, navPath: title, frontmatter: { title, permalink, ...frontmatter },

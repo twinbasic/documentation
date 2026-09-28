@@ -50,7 +50,7 @@ const cli = withUsageError(
   { format: (err) => `unknown arg: ${err.arg}` },
 );
 if (cli.stopped === "help") {
-  printHelpAndExit("usage: node scripts/check_axe_patch_equiv.mjs [--patch NAME]");
+  printHelpAndExit("usage: node scripts/check_axe_patch_equiv.mjs [--patch NAME] [-h, --help]");
 }
 let patchName = cli.values.patch;
 

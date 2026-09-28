@@ -173,12 +173,14 @@ Integrity checks (share the existing htmlparser2 SAX parse pass):
                              file under the section's Images/ folder.
   --check-sitemap            Every .html file in the input is in
                              sitemap.xml (or is a known exclusion).
-                             Reads <root-dir>/sitemap.xml; skipped
-                             silently if the file is absent.
+                             Reads <root-dir>/sitemap.xml; if the file is
+                             absent, prints a warning and skips the
+                             check without failing.
   --check-search             Every .html file in the input has at least
                              one entry in assets/js/search-data.json.
-                             Reads from <root-dir>; skipped silently if
-                             the file is absent.
+                             Reads from <root-dir>; if the file is
+                             absent, prints a warning and skips the
+                             check without failing.
   --check-canonical          Every page's <link rel="canonical" href>
                              URL path matches the page's own deployment
                              URL. Catches canonical URLs that include

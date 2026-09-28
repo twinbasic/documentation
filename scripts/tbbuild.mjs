@@ -51,15 +51,26 @@
 // front of you".
 import { existsSync, statSync } from "node:fs";
 import path from "node:path";
-import { parseCli, withUsageError } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { findIde } from "./lib/tb-install.mjs";
 import { COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, launchIde, setBuildTarget, shutdownIde,
          summaryLine, waitForCompile, wantShow } from "./lib/tb-ide.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
-const USAGE = "usage: node scripts/tbbuild.mjs <project.twinproj> " +
-  "[--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--json] " +
-  "[--keep] [--show|--hide]";
+const USAGE = `usage: node scripts/tbbuild.mjs <project.twinproj> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--json] [--keep] [--show|--hide] [-h, --help]
+
+Compiles a packed .twinproj in the twinBASIC IDE and prints its diagnostics.
+
+  --ide <path>      twinBASIC.exe (default: $TB_IDE, else the newest
+                    twinBASIC_IDE_BETA_* on the Desktop)
+  --port <n>        DevTools port to start the IDE on (default 9333)
+  --arch <target>   win32 or win64 (default win32)
+  --timeout <secs>  give up waiting for the compile (default 180)
+  --json            emit one JSON object instead of text
+  --keep            leave the IDE running; its pid is printed as \`ide-pid: N\`
+  --show, --hide    show the IDE on the desktop, or keep it on a private one
+                    (default: hidden, unless TBBUILD_SHOW is set)
+  -h, --help        print this text and exit`;
 
 function usage(why) {
   if (why) console.error(why);
@@ -78,13 +89,15 @@ const { values, positionals } = withUsageError(
       keep: { type: "boolean", default: false },
       show: { type: "boolean", default: false },
       hide: { type: "boolean", default: false },
-      help: { type: "boolean", default: false },
+      help: { type: "boolean", short: "h", default: false },
     },
     unknown: "ignore",
     positionals: { min: 0, max: 1 },
+    stopAt: ["help"],
   }),
   { format: (err) => `${err.message}\n${USAGE}` },
 );
+if (values.help) printHelpAndExit(USAGE);
 
 // A number that is not positive, or a port that is not whole, is refused too.
 // Anything Number() cannot read is NaN, and a NaN timeout ends
@@ -110,7 +123,7 @@ const keep = values.keep;
 const show = wantShow({ show: values.show, hide: values.hide });
 
 const proj = positionals[0];
-if (!proj || values.help || !TARGETS.includes(arch)) usage();
+if (!proj || !TARGETS.includes(arch)) usage();
 // Refuse anything that is not a .twinproj, rather than discovering it two
 // minutes later. A source directory is the tempting mistake -- it is what
 // `tbrun` takes -- and handing one to the IDE does not fail: the IDE starts,

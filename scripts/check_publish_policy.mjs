@@ -22,16 +22,26 @@ import {
   publishPolicyFor, unpublishableSourceFiles, unpublishableTreePaths,
   SOURCE_EXTENSIONS, BUILD_EXTENSIONS,
 } from "../builder/publish-policy.mjs";
-import { parseCli } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
 import { exitOnCrash } from "./lib/gate-probes.mjs";
 
 exitOnCrash();
 
+const USAGE = `usage: node scripts/check_publish_policy.mjs [--src DIR] [-h, --help]
+
+Checks that the publish allowlist of builder/publish-policy.mjs still refuses
+the file types it should, and that the source tree holds nothing it refuses.
+
+  --src DIR   the source tree to check (default docs)
+  -h, --help  print this text and exit`;
+
 const { values } = parseCli(process.argv.slice(2), {
-  options: { src: { type: "string", default: "docs" } },
+  options: { src: { type: "string", default: "docs" }, help: { type: "boolean", short: "h" } },
   unknown: "ignore",
   acceptsValue: () => true,
+  stopAt: ["help"],
 });
+if (values.help) printHelpAndExit(USAGE);
 const SRC = values.src;
 
 // Each probe names why refusing it matters. A probe that starts passing

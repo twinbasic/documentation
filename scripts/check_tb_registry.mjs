@@ -49,11 +49,27 @@ import assert from "node:assert/strict";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
 import { exitOnCrash } from "./lib/gate-probes.mjs";
 import * as R from "./lib/tb-registry.mjs";
 
 // A crash exits 2; the catch below passes on everything but a failed assertion.
 exitOnCrash();
+
+const USAGE = `usage: node scripts/check_tb_registry.mjs [-h, --help]
+
+Tests the harness's registry tidy in scripts/lib/tb-registry.mjs, under
+HKCU\\Software\\tbharness-selftest. Windows only, and not a gate.
+
+  -h, --help  print this text and exit`;
+
+// Every other argument is ignored.
+if (parseCli(process.argv.slice(2), {
+  options: { help: { type: "boolean", short: "h" } },
+  unknown: "ignore",
+  positionals: { min: 0, max: 0 },
+  stopAt: ["help"],
+}).values.help) printHelpAndExit(USAGE);
 
 const BASE = "Software\\tbharness-selftest";
 const ROOT = BASE + "\\twinBASIC_IDE";

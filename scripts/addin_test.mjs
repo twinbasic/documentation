@@ -53,7 +53,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { parseCli } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
 import { wantShow } from "./lib/tb-ide.mjs";
 import { buildNumber, findIde } from "./lib/tb-install.mjs";
@@ -64,6 +64,20 @@ import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const SUITE = path.join(REPO_ROOT, "test", "addin");
 
+const USAGE = `usage: node scripts/addin_test.mjs [--only REGEX] [--port N] [--jobs N] [--timeout S] [--ide <twinBASIC.exe>] [--show|--hide] [-h, --help]
+
+Runs the IDE add-in scenarios: every lane in test/addin/lanes.mjs, each in a
+process of its own with its own IDE copy, DevTools port and work folder.
+
+  --only <regex>    only the lanes whose name matches
+  --port <n>        base DevTools port (default 9560); the lanes get n, n+1, ...
+  --jobs <n>        lanes at once (default 2)
+  --timeout <secs>  a lane still running after this long is ended (default 600)
+  --ide <path>      the twinBASIC.exe to copy (default: $TB_IDE, else the
+                    newest twinBASIC_IDE_BETA_* on the Desktop)
+  --show, --hide    as tbbuild's
+  -h, --help        print this text and exit`;
+
 const { values } = parseCli(process.argv.slice(2), {
   options: {
     only: { type: "string" },
@@ -73,18 +87,15 @@ const { values } = parseCli(process.argv.slice(2), {
     ide: { type: "string" },
     show: { type: "boolean", default: false },
     hide: { type: "boolean", default: false },
-    help: { type: "boolean", default: false },
+    help: { type: "boolean", short: "h", default: false },
   },
   unknown: "ignore",
   positionals: 0,
   acceptsValue: () => true,
+  stopAt: ["help"],
 });
+if (values.help) printHelpAndExit(USAGE);
 const die = (code, msg) => { console.error(msg); process.exit(code); };
-
-if (values.help) {
-  die(2, "usage: node scripts/addin_test.mjs [--only REGEX] [--port N] [--jobs N] " +
-         "[--timeout S] [--ide <twinBASIC.exe>] [--show|--hide]");
-}
 const only = values.only ? new RegExp(values.only) : null;
 const basePort = Number(values.port || 9560);
 const jobs = Math.max(1, Number(values.jobs || 2));

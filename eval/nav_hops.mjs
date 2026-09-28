@@ -40,7 +40,7 @@ import { REPO_ROOT } from "../lib/repo-paths.mjs";
 const SITE_HOST = /^https?:\/\/docs\.twinbasic\.com/i;
 
 const USAGE =
-  "Usage: node eval/nav_hops.mjs [--from <page>] [--src <root>] <url-regex> [...]\n\n" +
+  "Usage: node eval/nav_hops.mjs [--from <page>] [--src <root>] [-h, --help] <url-regex> [...]\n\n" +
   "Shortest path by links from the start page (default docs/index.md) to the first page\n" +
   "whose permalink matches each regex. See eval/README.md.";
 
@@ -54,6 +54,7 @@ function parseArgs(argv) {
     positionals: { max: Infinity },
     unknown: "positional",
     acceptsValue: () => true,
+    stopAt: ["help"],
   });
   return {
     from: values.from,

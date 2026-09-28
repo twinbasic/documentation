@@ -105,6 +105,7 @@ function parseArgs(argv) {
     positionals: 0,
     unknown: "error",
     acceptsValue: () => true,
+    stopAt: ["help"],
   }), { format: (err) => `unknown argument: ${err.arg}`, exitCode: 1 });
   return {
     src: "src" in values ? path.resolve(values.src) : REPO_ROOT,
@@ -206,7 +207,7 @@ function report(dest, counts) {
 const opts = parseArgs(process.argv.slice(2));
 if (opts.help || !opts.dest) {
   printHelpAndExit(
-    "Usage: node eval/build_corpus.mjs --dest <path> [--src <path>] [--quiet]\n\n" +
+    "Usage: node eval/build_corpus.mjs --dest <path> [--src <path>] [--quiet] [-h, --help]\n\n" +
     "Mirrors the repository with every non-prose file replaced by an unreadable\n" +
     "stub, so a documentation evaluation cannot silently read the implementation.\n" +
     "See eval/README.md.",

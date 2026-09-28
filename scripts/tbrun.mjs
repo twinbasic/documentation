@@ -101,7 +101,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, mkdirSync, statSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { parseCli } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
 import { click } from "./lib/tb-click.mjs";
 import { compilerExe, findIde } from "./lib/tb-install.mjs";
 import { BUILD_FAILED, COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, keepClears, keptClears,
@@ -109,6 +109,26 @@ import { BUILD_FAILED, COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, keep
          waitForCompile, wantShow } from "./lib/tb-ide.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
+
+const USAGE = `usage: node scripts/tbrun.mjs <source-dir> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] [--show|--hide] [-h, --help]
+
+Builds an exported twinBASIC source tree in the IDE, runs it, and prints what it
+writes to the DEBUG CONSOLE.
+
+  --ide <path>        as tbbuild's
+  --port <n>          DevTools port to start the IDE on (default 9346)
+  --arch <target>     win32 or win64 (default win32)
+  --timeout <secs>    give up waiting for console output (default 120)
+  --quiet <ms>        output is complete after this long with no change
+                      (default 2500)
+  --json              emit one JSON object instead of text
+  --raw               do not strip the console's timestamp column
+  --keep              leave the IDE running afterwards (implies --no-reap)
+  --no-reap           do not harvest automation servers the probe left behind
+  --reap-images a,b   comma-separated image names to harvest (default: the
+                      Office suite)
+  --show, --hide      as tbbuild's
+  -h, --help          print this text and exit`;
 
 const { values, positionals } = parseCli(process.argv.slice(2), {
   options: {
@@ -124,22 +144,20 @@ const { values, positionals } = parseCli(process.argv.slice(2), {
     "no-reap": { type: "boolean", default: false },
     show: { type: "boolean", default: false },
     hide: { type: "boolean", default: false },
-    help: { type: "boolean", default: false },
+    help: { type: "boolean", short: "h", default: false },
   },
   unknown: "ignore",
   positionals: { min: 0, max: 1 },
   acceptsValue: () => true,
+  stopAt: ["help"],
 });
+if (values.help) printHelpAndExit(USAGE);
 
 const die = (code, msg) => { console.error(msg); process.exit(code); };
 
 const arch = values.arch || TARGETS[0];
 
-if (!positionals.length || values.help || !TARGETS.includes(arch)) {
-  die(2, "usage: node scripts/tbrun.mjs <source-dir> [--port N] [--arch win32|win64] " +
-         "[--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] " +
-         "[--reap-images a,b] [--show|--hide]");
-}
+if (!positionals.length || !TARGETS.includes(arch)) die(2, USAGE);
 
 const srcDir = path.resolve(positionals[0]);
 if (!existsSync(srcDir) || !statSync(srcDir).isDirectory()) {

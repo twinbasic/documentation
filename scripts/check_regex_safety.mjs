@@ -78,7 +78,7 @@ import * as walk from "acorn-walk";
 import fg from "fast-glob";
 
 import { foldConstructedRegexes, moduleExports } from "./lib/regex-fold.mjs";
-import { parseCli } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 // ── Backend selection ────────────────────────────────────────────────────────
@@ -581,14 +581,25 @@ async function selfTest() {
   return 0;
 }
 
+const USAGE = `usage: node scripts/check_regex_safety.mjs [--census] [--self-test] [-h, --help]
+
+Refuses a regex literal in the tree that can backtrack exponentially.
+
+  --census     list the full classification of every regex
+  --self-test  prove the gate still detects an exponential regex
+  -h, --help   print this text and exit`;
+
 const { values } = parseCli(process.argv.slice(2), {
   options: {
     shard: { type: "boolean" },
     "self-test": { type: "boolean" },
     census: { type: "boolean" },
+    help: { type: "boolean", short: "h" },
   },
   unknown: "ignore",
+  stopAt: ["help"],
 });
+if (values.help) printHelpAndExit(USAGE);
 if (values.shard) {
   // Worker half of checkAll(): a slice in on stdin, its verdicts out on
   // stdout. Not meant to be run by hand.

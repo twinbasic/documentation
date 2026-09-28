@@ -147,8 +147,7 @@ const cli = withUsageError(
 if (cli.stopped === "help") {
   printHelpAndExit(
     "usage: node scripts/pick_a11y_sample.mjs [--check|--propose|--census] [--fresh]\n"
-      + "                                        [--root-dir DIR] [--sweep FILE] [--budget MS]",
-    { stream: "stderr" },
+      + "                                        [--root-dir DIR] [--sweep FILE] [--budget MS] [-h, --help]",
   );
 }
 const modeTokens = cli.tokens.filter((t) => t.key === "check" || t.key === "propose" || t.key === "census");

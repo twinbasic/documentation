@@ -146,6 +146,7 @@ function parseArgs(argv) {
     positionals: 0,
     unknown: "error",
     acceptsValue: () => true,
+    stopAt: ["help"],
   }), { format: (err) => `unrecognised argument: ${err.arg}`, exitCode: 1 });
   return {
     site: "site" in values ? path.resolve(values.site) : path.join(REPO_ROOT, "docs/_site"),
@@ -696,7 +697,7 @@ function main() {
   if (opts.help) {
     printHelpAndExit(
       "Usage: node eval/search_quality.mjs [--site docs/_site] [--save file] " +
-      "[--compare file] [--worst N] [--sample N] [--failures N]\n\nSee the header comment in this file."
+      "[--compare file] [--worst N] [--sample N] [--failures N] [-h, --help]\n\nSee the header comment in this file."
     );
   }
 

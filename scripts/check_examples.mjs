@@ -107,13 +107,37 @@ const { values } = withUsageError(
       keep: { type: "boolean", default: false },
       show: { type: "boolean", default: false },
       hide: { type: "boolean", default: false },
-      help: { type: "boolean", default: false },
+      help: { type: "boolean", short: "h", default: false },
     },
     unknown: "ignore",
     positionals: 0,
+    stopAt: ["help"],
   }),
   { format: (err) => `check_examples: ${err.message}` },
 );
+
+const USAGE = `usage: node scripts/check_examples.mjs [options]
+
+Compiles the documentation's own twinBASIC code samples, every tb fence marked
+\`${MARKER}\`, and reports the ones the compiler refuses.
+
+  --only <regex>   restrict to pages whose path matches
+  --census         classify every tb fence and print the table; no compiler
+  --propose        treat every classifiable fence as marked, and say which pass
+  --apply          with --propose, add \`${MARKER}\` to the fences that passed
+  --report <file>  group the findings of a saved \`--propose --json\` survey by
+                   diagnostic, section, undeclared symbol and page; no compiler
+  --jobs <n>       concurrent IDE lanes (default 4)
+  --port <n>       base DevTools port (default 9480)
+  --batch <n>      samples per generated project (default 120)
+  --ide <path>     twinBASIC.exe (default: $TB_IDE, else the newest on the Desktop)
+  --keep           leave the generated projects on disk and say where
+  --show, --hide   as tbbuild's
+  --verbose        also print warnings, not only errors
+  --json           one JSON object instead of a report
+  -h, --help       print this text and exit`;
+
+if (values.help) printHelpAndExit(USAGE);
 
 // A count or a port that is not a positive whole number is refused: Number()
 // makes NaN of anything it cannot read.
@@ -133,24 +157,6 @@ const only = values.only ? new RegExp(values.only) : null;
 const jobs = positiveInteger("jobs", 4);
 const basePort = positiveInteger("port", 9480);
 const batchSize = positiveInteger("batch", 120);
-
-if (values.help) {
-  printHelpAndExit(`usage: node scripts/check_examples.mjs [options]
-
-  --only <regex>   restrict to pages whose path matches
-  --census         classify every tb fence and print the table; no compiler
-  --propose        treat every classifiable fence as marked, and say which pass
-  --apply          with --propose, add \`${MARKER}\` to the fences that passed
-  --report <file>  group the findings of a saved \`--propose --json\` survey by
-                   diagnostic, section, undeclared symbol and page; no compiler
-  --jobs <n>       concurrent IDE lanes (default 4)
-  --port <n>       base DevTools port (default 9480)
-  --batch <n>      samples per generated project (default 120)
-  --ide <path>     twinBASIC.exe (default: $TB_IDE, else the newest on the Desktop)
-  --keep           leave the generated projects on disk and say where
-  --verbose        also print warnings, not only errors
-  --json           one JSON object instead of a report`);
-}
 
 // A page's template, when its fence does not name one. Inferred from the path
 // because the package a sample needs is what the page is ABOUT -- stating

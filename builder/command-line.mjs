@@ -6,7 +6,8 @@
 // boolean given a value and a value flag given none (or one that starts with
 // a dash) are all refused. Flags are then applied in the order they were
 // given, because --no-check undoes the check flags before it and not the
-// ones after.
+// ones after. -h and --help end the parse where they stand: nothing after
+// them is read, and the options returned say only `help`.
 
 import { CliError, numberOption, parseCli } from "../lib/cli.mjs";
 
@@ -32,7 +33,45 @@ export const OPTIONS = {
   serve: { type: "boolean" },
   port: { type: "string" },
   "stall-timeout": { type: "string" },
+  help: { type: "boolean", short: "h" },
 };
+
+// What -h and --help print. The flags are listed in the order of OPTIONS.
+export const USAGE = `usage: node builder/tbdocs.mjs [options]
+
+Builds the documentation site into three trees: the online copy, a file://
+browsable copy and the source of the PDF book. Flags are read in the order
+given, and a flag that takes a value takes it as the next argument or as
+--flag=value.
+
+  --src <path>                 source root (default docs)
+  --dest <path>                online-tree destination (default <src>/_site, or
+                               <src>/_serve with --serve); the offline tree is
+                               <dest>-offline, the PDF tree <dest>-pdf
+  --baseurl <prefix>           override _config.yml's baseurl
+  --url <origin>               override _config.yml's url
+  --dry-run                    build without writing the trees; the check does not
+                               run, and a baseline update still writes its file
+  --no-offline                 skip the offline tree
+  --no-pdf                     skip the PDF tree
+  --tolerate-missing-images    downgrade a missing book image from an error to a warning
+  --fetch-assets               download missing remote assets, even when $CI is set
+  --no-fetch-assets            never download; a missing remote asset is an error
+  --profile-offline            print per-substep timing for the offline tree
+  --check                      run the link and integrity check over the built HTML
+  --no-check                   turn off the check flags given before it
+  --check-audit-index          implies --check; also diff the derived tree index
+                               against the files written
+  --check-findings <path>      implies --check; write the findings to a JSON file
+  --update-page-baseline       record this build's page and static-file counts as
+                               the new baseline
+  --update-symbol-baseline     record this build's symbol-index URLs as the new baseline
+  --symbol-gaps <path>         write the public symbols no page documents to a JSON file
+  --serve                      start the dev server: watch, rebuild, live-reload
+  --port <N>                   port for --serve (default 4000)
+  --stall-timeout <seconds>    give up when no task completes for this long
+                               (default 120; 0 disables)
+  -h, --help                   print this text and exit`;
 
 // fetchAssets is left out: absent, the build downloads unless $CI is set.
 export const DEFAULTS = Object.freeze({
@@ -65,7 +104,7 @@ export const DEFAULTS = Object.freeze({
 // argument as it was given, `-xy` and `--dry-run=1` whole.
 function parse(argv) {
   try {
-    return parseCli(argv, { options: OPTIONS });
+    return parseCli(argv, { options: OPTIONS, stopAt: ["help"] });
   } catch (err) {
     if (!(err instanceof CliError) || err.code === "missing-value") throw err;
     throw new CliError(err.code, `Unknown argument: ${err.arg}`, { arg: err.arg });
@@ -74,7 +113,12 @@ function parse(argv) {
 
 export function parseCommandLine(argv) {
   const args = { ...DEFAULTS };
-  for (const t of parse(argv).tokens) {
+  const cli = parse(argv);
+  // -h and --help are answered before any value is read, so a bad --port
+  // before one does not stop it. `help` is present only then, which keeps the
+  // options of every other command line equal to DEFAULTS.
+  if (cli.stopped === "help") return { ...args, help: true };
+  for (const t of cli.tokens) {
     if (t.kind !== "option") continue;
     switch (t.key) {
       case "src": args.src = t.value; break;

@@ -119,7 +119,7 @@ if (cli.stopped === "help") {
   printHelpAndExit(
     "usage: node scripts/check_a11y_fingerprint.mjs [--baseline SCHEME] " +
       "[--candidate SCHEME] [--root-dir DIR] [--theme T] [--viewport V] " +
-      "[--pages P,P] [--json FILE] [--unminified] [--list]"
+      "[--pages P,P] [--json FILE] [--unminified] [--patches NAME,NAME] [--list] [-h, --help]"
   );
 }
 

@@ -45,7 +45,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { createMarkdownIt } from "../builder/render.mjs";
-import { parseCli } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
 import { blockRegions, mapLines, splitCodeSpans } from "../lib/markdown.mjs";
 import { markdownFiles } from "../lib/markdown-files.mjs";
 import { DOCS_DIR } from "../lib/repo-paths.mjs";
@@ -126,8 +126,21 @@ function byPathParts(a, b) {
   return x.length - y.length;
 }
 
+const USAGE = `usage: node scripts/convert_em_dash_separators.mjs [--check] [-h, --help]
+
+Rewrites literal en- and em-dashes in docs/ markdown source to the ASCII forms
+the typographer converts at build time, leaving code as it is.
+
+  --check     report the files that hold a literal dash and change nothing
+  -h, --help  print this text and exit`;
+
 async function main(argv) {
-  const { values } = parseCli(argv, { options: { check: { type: "boolean" } }, unknown: "ignore" });
+  const { values } = parseCli(argv, {
+    options: { check: { type: "boolean" }, help: { type: "boolean", short: "h" } },
+    unknown: "ignore",
+    stopAt: ["help"],
+  });
+  if (values.help) printHelpAndExit(USAGE);
   const check = values.check;
   let files = 0;
   let sep = 0;

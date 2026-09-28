@@ -556,6 +556,7 @@ function parseArgs(argv) {
       },
       positionals: 0,
       acceptsValue: () => true,
+      stopAt: ["help"],
     }));
   } catch (err) {
     throw new Error(`unknown argument: ${err.arg}`);
@@ -582,6 +583,7 @@ function printHelp() {
                       fail unless the difference is reported
   --list              list cases and sides, then exit
   -v, --verbose       print per-case finding counts even when clean
+  -h, --help          print this text and exit
 `);
 }
 

@@ -94,6 +94,7 @@ function parseArgs(argv) {
     positionals: 0,
     unknown: "error",
     acceptsValue: () => true,
+    stopAt: ["help"],
   }), { format: (err) => `unknown argument: ${err.arg}`, exitCode: 2 });
   const o = {
     corpus: "corpus" in values ? path.resolve(values.corpus) : undefined,
@@ -252,7 +253,7 @@ function runClaude(o, prompt, cwd, binDir) {
 const USAGE =
   "Usage: node eval/run_case.mjs --corpus <dir> --site <snapshot> --protocol <repo|site>\n" +
   "                              --goal <file> --out <prefix> [--claude <exe>] [--model <m>]\n" +
-  "                              [--timeout <min>] [--prompt-only]\n" +
+  "                              [--timeout <min>] [--prompt-only] [-h, --help]\n" +
   "       node eval/run_case.mjs --smoke --corpus <dir> --site <snapshot> --out <prefix>\n\n" +
   "Runs one use-case evaluator as an isolated Claude Code process and audits its\n" +
   "session. See eval/README.md.";

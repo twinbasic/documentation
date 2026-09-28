@@ -7,10 +7,11 @@
 //        [--check | --no-check] [--check-audit-index]
 //        [--check-findings <path>] [--serve] [--port <N>]
 //        [--update-page-baseline] [--update-symbol-baseline]
-//        [--symbol-gaps <path>] [--stall-timeout <seconds>]
+//        [--symbol-gaps <path>] [--stall-timeout <seconds>] [-h | --help]
 //
 // builder/command-line.mjs reads these, in the order given; a flag that
-// takes a value also takes it as --flag=value.
+// takes a value also takes it as --flag=value. -h and --help print the
+// USAGE text there and exit 0 before anything is built.
 //
 // --check runs the link + integrity check over the HTML the build
 // already holds in worker memory, instead of writing ~270 MB out and
@@ -41,10 +42,10 @@ import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 import pc   from "picocolors";
 
-import { withUsageError } from "../lib/cli.mjs";
+import { printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
-import { parseCommandLine } from "./command-line.mjs";
+import { parseCommandLine, USAGE } from "./command-line.mjs";
 import { WorkerPool } from "./worker-pool.mjs";
 import { Scheduler }  from "./scheduler.mjs";
 import { renderGantt } from "./gantt.mjs";
@@ -1515,6 +1516,7 @@ export async function runBuild(opts) {
 // before any task runs, with `commandLine` for the same exit.
 async function main() {
   const opts = withUsageError(() => parseCommandLine(process.argv.slice(2)), { exitCode: EXIT_COMMAND_LINE });
+  if (opts.help) printHelpAndExit(USAGE);
   if (opts.serve) {
     const { runServe } = await import("./serve.mjs");
     await runServe(opts);

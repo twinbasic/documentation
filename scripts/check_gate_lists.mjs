@@ -81,7 +81,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { createMarkdownIt } from "../builder/render.mjs";
-import { parseCli } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
 import { splitOnMarker } from "../lib/markdown.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { gateName, gatesFromBat } from "./lib/gate-roster.mjs";
@@ -551,11 +551,22 @@ function selfTest() {
 
 // ------------------------------------------------------------------ main
 
+const USAGE = `usage: node scripts/check_gate_lists.mjs [--verbose] [--self-test] [-h, --help]
+
+Checks that check.bat and test.bat still match the two gate lists in Tools.md,
+and that no developer page states a gate count that disagrees with them.
+
+  --verbose    print every probe and every wrapper that agrees
+  --self-test  run the probes only, to prove the check still detects a wrong list
+  -h, --help   print this text and exit`;
+
 async function main(argv) {
   const { values } = parseCli(argv, {
-    options: { verbose: { type: "boolean" }, "self-test": { type: "boolean" } },
+    options: { verbose: { type: "boolean" }, "self-test": { type: "boolean" }, help: { type: "boolean", short: "h" } },
     unknown: "ignore",
+    stopAt: ["help"],
   });
+  if (values.help) printHelpAndExit(USAGE);
   const verbose = values.verbose;
   const onlySelfTest = values.selfTest;
 

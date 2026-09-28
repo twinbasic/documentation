@@ -46,10 +46,24 @@ import path from "node:path";
 import { buildNumber, findIde } from "./lib/tb-install.mjs";
 import { defaultCache, exportPackages, packageName } from "./lib/tb-packages.mjs";
 import { apiSnapshot, parsePackage } from "./lib/twin-api.mjs";
-import { parseCli, withUsageError } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const OUT = path.join(REPO_ROOT, "builder", "package-api.json");
+
+const USAGE = `usage: node scripts/build_package_api.mjs [options]
+
+Records the public API of the packages a twinBASIC install ships, as the package
+half of the documentation's symbol index, in builder/package-api.json.
+
+  --check         fail if the file is stale, instead of writing it
+  --ide <path>    the install root, or its twinBASIC.exe (default: $TB_IDE,
+                  else the newest Desktop\\twinBASIC_IDE_BETA_<n>)
+  --src <dir>     read an existing export of the packages instead
+  --cache <dir>   where exports are kept (default %TEMP%\\tb-census\\beta-<n>)
+  --refresh       export again even if the cache has this build
+  --out <file>    write somewhere other than builder/package-api.json
+  -h, --help      print this text and exit`;
 
 const { values } = withUsageError(() =>
   parseCli(process.argv.slice(2), {
@@ -60,10 +74,13 @@ const { values } = withUsageError(() =>
       out: { type: "string" },
       refresh: { type: "boolean", default: false },
       check: { type: "boolean", default: false },
+      help: { type: "boolean", short: "h", default: false },
     },
     unknown: "ignore",
     positionals: 0,
+    stopAt: ["help"],
   }));
+if (values.help) printHelpAndExit(USAGE);
 const die = (code, msg) => { console.error(msg); process.exit(code); };
 
 function sources() {

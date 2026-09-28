@@ -29,10 +29,18 @@ import { listDotSources } from "../builder/dot.mjs";
 import { withBrowser } from "./lib/browser.mjs";
 import { exitOnCrash } from "./lib/gate-probes.mjs";
 import { openInterPage } from "./lib/inter-page.mjs";
-import { parseCli } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 
 exitOnCrash();
+
+const USAGE = `usage: node scripts/check_dot_fit.mjs [--verbose] [-h, --help]
+
+Checks that the text of every committed DOT diagram still fits the boxes
+Graphviz drew for it, by measuring the text in a browser.
+
+  --verbose   also print the tolerance under each diagram that fits
+  -h, --help  print this text and exit`;
 
 // A label may sit this far past its box edge before it counts as a failure.
 // Kerning is the irreducible part: a per-character table cannot express it,
@@ -42,7 +50,13 @@ exitOnCrash();
 // tens of units rather than ones.
 const TOLERANCE = 1.0;
 
-const verbose = parseCli(process.argv.slice(2), { options: { verbose: { type: "boolean" } }, unknown: "ignore" }).values.verbose === true;
+const cli = parseCli(process.argv.slice(2), {
+  options: { verbose: { type: "boolean" }, help: { type: "boolean", short: "h" } },
+  unknown: "ignore",
+  stopAt: ["help"],
+});
+if (cli.values.help) printHelpAndExit(USAGE);
+const verbose = cli.values.verbose === true;
 
 // The committed SVG of every diagram the build renders, found as it finds them.
 const svgs = [];

@@ -52,7 +52,7 @@ import { builtinModules } from "node:module";
 import path from "node:path";
 import * as acorn from "acorn";
 import * as walk from "acorn-walk";
-import { parseCli, withUsageError } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const TOOLING_DIRS = ["builder", "scripts", "lib", "book", "eval", "wisdom", "test", "perf"];
@@ -61,8 +61,17 @@ const LAB = "perf/";
 const MAX_OCCURRENCES = 40;
 const ARG_HELPERS = new Set(["flag", "opt", "die"]);
 
-const USAGE = "usage: node scripts/survey_tooling.mjs [--root DIR] [--summary] " +
-  "[--window N] [--top N] [--include-perf]";
+const USAGE = `usage: node scripts/survey_tooling.mjs [--root DIR] [--summary] [--window N] [--top N] [--include-perf]
+
+Measures the repository's own tooling for repeated code and structure, over the
+files git tracks. It is a measurement taken by hand and is not a gate.
+
+  --root DIR       measure another checkout (default: this one)
+  --summary        print the summary only, without the listings
+  --window N       tokens two places must share to count as a clone (default 60)
+  --top N          list at most N clone regions (default 45)
+  --include-perf   list what involves perf/ too
+  -h, --help       print this text and exit`;
 
 const { values } = withUsageError(
   () =>
@@ -73,16 +82,14 @@ const { values } = withUsageError(
         window: { type: "string", default: "60" },
         top: { type: "string", default: "45" },
         "include-perf": { type: "boolean", default: false },
-        help: { type: "boolean", default: false },
+        help: { type: "boolean", short: "h", default: false },
       },
       positionals: 0,
+      stopAt: ["help"],
     }),
   { format: (err) => `${err.message}\n${USAGE}` },
 );
-if (values.help) {
-  console.log(USAGE);
-  process.exit(0);
-}
+if (values.help) printHelpAndExit(USAGE);
 const WINDOW = positiveInt("window", values.window);
 const TOP = positiveInt("top", values.top);
 const ROOT = path.resolve(values.root ?? REPO_ROOT);

@@ -96,8 +96,8 @@ if (cli.stopped === "help") {
   printHelpAndExit(
     "usage: node scripts/sweep_a11y.mjs [--theme T] [--viewport V] [--filter SUBSTR]\n"
       + "                                   [--limit N] [--out FILE] [--resume] [--report]\n"
-      + "                                   [--stock-axe] [--root-dir DIR]",
-    { stream: "stderr" },
+      + "                                   [--stock-axe] [--root-dir DIR] [--recycle-every N]\n"
+      + "                                   [-h, --help]",
   );
 }
 

@@ -19,7 +19,17 @@
 import { Parser } from "htmlparser2";
 import { forEachLink } from "../builder/link-check.mjs";
 import { splitFragment } from "../builder/url.mjs";
-import { parseCli, withUsageError } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+
+const USAGE = `usage: node scripts/crawl_check.mjs <start-url> [--concurrency N] [--timeout MS] [--skip-external] [-h, --help]
+
+Crawls a deployed site from <start-url> and checks that every link responds 2xx
+and every anchor exists.
+
+  --concurrency N  requests at once (default 10)
+  --timeout MS     give up on a request after this long (default 15000)
+  --skip-external  do not check links to other sites
+  -h, --help       print this text and exit`;
 
 const { values, positionals } = withUsageError(
   () =>
@@ -28,18 +38,21 @@ const { values, positionals } = withUsageError(
         concurrency: { type: "string", default: "10" },
         timeout: { type: "string", default: "15000" },
         "skip-external": { type: "boolean" },
+        help: { type: "boolean", short: "h" },
       },
       positionals: { min: 0 },
       acceptsValue: () => true,
+      stopAt: ["help"],
     }),
   { format: (err) => `unknown flag: ${err.arg}` },
 );
+if (values.help) printHelpAndExit(USAGE);
 const startArg = positionals[0];
 const concurrency = Number(values.concurrency);
 const timeoutMs = Number(values.timeout);
 const skipExternal = values.skipExternal;
 if (!startArg) {
-  console.error("usage: node scripts/crawl_check.mjs <start-url> [--concurrency N] [--timeout MS] [--skip-external]");
+  console.error(USAGE);
   process.exit(2);
 }
 

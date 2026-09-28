@@ -16,8 +16,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 
 function parseArgs(argv) {
   const [command, ...rest] = argv.slice(2)
+  if (command === '--help' || command === '-h') printHelpAndExit(USAGE)
   const { values } = withUsageError(() => parseCli(rest, {
     options: {
+      help: { type: 'boolean', short: 'h' },
       guild: { type: 'string' },
       channel: { type: 'string', multiple: true },
       since: { type: 'string' },
@@ -35,7 +37,9 @@ function parseArgs(argv) {
     positionals: 0,
     unknown: 'error',
     acceptsValue: () => true,
+    stopAt: ['help'],
   }), { format: (err) => `Unknown option: ${err.arg}`, exitCode: 1 })
+  if (values.help) printHelpAndExit(USAGE)
 
   const flags = { channels: values.channel }
   if ('guild' in values) flags.guild = values.guild
@@ -221,6 +225,8 @@ Commands:
   export    Fetch Discord messages to data/raw/
   process   Convert raw JSON to structured .md files
   extract   Prepare data for Claude-agent knowledge extraction
+
+Any command, or none, also takes -h, --help: print this text and exit.
 
 Export options:
   --guild <id>          Guild (server) ID

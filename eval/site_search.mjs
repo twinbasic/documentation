@@ -41,6 +41,7 @@ function parseArgs(argv) {
     positionals: { max: Infinity },
     unknown: "positional",
     acceptsValue: () => true,
+    stopAt: ["help"],
   });
   return {
     site: "site" in values ? path.resolve(values.site) : path.join(REPO_ROOT, "docs/_site"),
@@ -528,7 +529,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const opts = parseArgs(process.argv.slice(2));
   if (opts.help || (!opts.composition && !opts.terms.length)) {
     printHelpAndExit(
-      'Usage: node eval/site_search.mjs "<query>" [--n <count>] [--site <path>]\n' +
+      'Usage: node eval/site_search.mjs "<query>" [--n <count>] [--site <path>] [-h, --help]\n' +
       "       node eval/site_search.mjs --composition\n\n" +
       "Queries the built site's real lunr index with the real query logic.\n" +
       "See eval/README.md.",

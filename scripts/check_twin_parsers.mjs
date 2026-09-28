@@ -21,6 +21,7 @@
 //   - parseTargets (scripts/lib/attributes-doc.mjs), which turns an
 //     `Applicable to:` line into gen_attribute_probes.mjs's targets.
 
+import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
 import { parseTargets } from "./lib/attributes-doc.mjs";
 import { createProbes, exitOnCrash } from "./lib/gate-probes.mjs";
 import { classify } from "./lib/tb-fences.mjs";
@@ -28,6 +29,21 @@ import { parseTwin } from "./lib/twin-api.mjs";
 import { MODIFIERS, declarationKind } from "./lib/twin-declarations.mjs";
 
 exitOnCrash();
+
+const USAGE = `usage: node scripts/check_twin_parsers.mjs [-h, --help]
+
+Runs the probes of the scanners that read twinBASIC source and the attribute
+reference, each a shape one of them once misread.
+
+  -h, --help  print this text and exit`;
+
+// Every other argument is ignored.
+if (parseCli(process.argv.slice(2), {
+  options: { help: { type: "boolean", short: "h" } },
+  unknown: "ignore",
+  positionals: { min: 0, max: 0 },
+  stopAt: ["help"],
+}).values.help) printHelpAndExit(USAGE);
 
 const { check, report } = createProbes("check_twin_parsers");
 const show = (x) => JSON.stringify(x);

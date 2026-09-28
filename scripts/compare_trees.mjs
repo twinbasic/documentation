@@ -87,7 +87,7 @@ const NORMALISERS = [
 
 const TEXT_EXT = /\.(?:html?|css|js|mjs|json|xml|svg|txt|md|map|py|yml)$/i;
 
-const USAGE = `usage: node scripts/compare_trees.mjs [--before <ref>] [--keep] [--max <n>] [-- <tbdocs args>]
+const USAGE = `usage: node scripts/compare_trees.mjs [--before <ref>] [--keep] [--max <n>] [-h, --help] [-- <tbdocs args>]
 
 Builds <ref> (default HEAD) and the working tree, each from a git worktree
 under .compare-trees/ with tbdocs --no-fetch-assets and CI=1, and compares the
@@ -96,7 +96,9 @@ online, offline and PDF trees byte for byte.
   --before <ref>  the commit to build as the before side (default HEAD)
   --keep          leave .compare-trees/ in place: both worktrees, their trees
                   and both build logs
-  --max <n>       list at most n differences per tree (default 20)
+  --max <n>       list at most n files of each kind of difference per tree
+                  (default 20)
+  -h, --help      print this text and exit
   --              everything after it is passed to both tbdocs builds
 
 Exit codes: 0 the trees match, 1 they differ, 2 the tool failed.

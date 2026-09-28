@@ -80,7 +80,7 @@ const cli = withUsageError(
 );
 if (cli.stopped === "help") {
   printHelpAndExit(
-    "usage: node scripts/check_tree_fresh.mjs [--tree DIR] [--marker FILE] [--source DIR ...]",
+    "usage: node scripts/check_tree_fresh.mjs [--tree DIR] [--marker FILE] [--source DIR ...] [-h, --help]",
   );
 }
 let tree = cli.values.tree;
