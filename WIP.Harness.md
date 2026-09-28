@@ -11,7 +11,8 @@ Read it before changing `scripts/tbbuild.mjs`, `scripts/tbrun.mjs`,
 `scripts/addin_test.mjs`, `scripts/lib/tb-ide.mjs`, `scripts/lib/tb-cdp.mjs`,
 `scripts/lib/tb-launch.ps1`, `scripts/lib/tb-registry.mjs`,
 `scripts/lib/tb-ide-copy.mjs`, `scripts/lib/tb-project.mjs`,
-`scripts/lib/tb-addin.mjs`, `scripts/lib/tb-operate.mjs`, `scripts/lib/tb-lane.mjs`,
+`scripts/lib/tb-addin.mjs`, `scripts/lib/tb-click.mjs`, `scripts/lib/tb-operate.mjs`,
+`scripts/lib/tb-lane.mjs`,
 anything under `test/addin/`, or `scripts/census_attributes.mjs`, and before
 concluding anything about twinBASIC syntax from a sweep of exported sources.
 

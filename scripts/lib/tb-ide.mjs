@@ -13,6 +13,7 @@ import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { attach } from "./tb-cdp.mjs";
+import { click } from "./tb-click.mjs";
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -795,8 +796,10 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
     return { ok: false, log: [], message: "no debugConsoleContent.dataNodes in this IDE, " +
       "so the build log cannot be read" };
   }
-  if (!await clickCenter(c, "buildIcon")) {
-    return { ok: false, log: [], message: "no #buildIcon in the IDE page -- did the project load?" };
+  try {
+    await click(c, "buildIcon");
+  } catch (e) {
+    return { ok: false, log: [], message: e.message };
   }
   const t0 = Date.now();
   let log = [], failedAt = 0;
@@ -875,28 +878,4 @@ export async function checkAddinsRoot(c, appdata) {
       "loaded the add-ins in the user's own %APPDATA%\\twinBASIC\\addins (P6 in WIP.HelpAddin.md)");
   }
   return root;
-}
-
-/**
- * Click the centre of the element with this id, with a real press and release.
- *
- * A JavaScript .click() on the IDE's own controls does nothing: `#buildIcon`,
- * for one, is a plain DIV wired through the IDE's pointer handling, and only
- * CDP Input.dispatchMouseEvent presses at its centre reach it.
- *
- * @returns {Promise<boolean>} false when there is no such element, or it has no size
- */
-export async function clickCenter(c, id) {
-  const rect = await c.evaluate(`(() => {
-    const b = document.getElementById(${JSON.stringify(id)});
-    if (!b) return null;
-    const r = b.getBoundingClientRect();
-    return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: r.width };
-  })()`);
-  if (!rect || !rect.w) return false;
-  for (const type of ["mousePressed", "mouseReleased"]) {
-    await c.send("Input.dispatchMouseEvent",
-                 { type, x: rect.x, y: rect.y, button: "left", clickCount: 1 });
-  }
-  return true;
 }

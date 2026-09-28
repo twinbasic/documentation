@@ -2359,6 +2359,33 @@ why.
 **Verify.** `addin-test.bat` green, all ten lanes; the `examples.bat` summary unchanged
 (harness runs, one at a time).
 
+**Landed.** The click moved down into a new `scripts/lib/tb-click.mjs`, word for word from
+`tb-operate.mjs`: `targetJs` (now exported), `named`, `clickAt` and `click`. Its `sleep` is
+`node:timers/promises`' `setTimeout`, because `tb-ide.mjs`, which exports the other one,
+imports this module. `tb-ide.mjs` imports `click` and `clickCenter` is gone. `buildProject`
+returns `click`'s error as its `message` (`cannot click #buildIcon: <why>`) where it returned
+`no #buildIcon in the IDE page -- did the project load?`, and `tbrun` throws it where it threw
+that. `tb-operate.mjs` keeps `elementRect`, imports `targetJs`, `click` and `clickAt`, and
+re-exports the last two, so no scenario's import changed. WIP.Harness.md's list of files to
+read it before changing names the new module. The build icon now gets what every other control
+gets: the pointer moved there first, a scroll into view, a hit test, and up to five seconds for
+the icon to be there, sized and uncovered. Where `clickCenter` returned false at once for a
+missing icon, the click now throws after five seconds; where it pressed whatever covered the
+icon, and the build then waited out its timeout, the click throws naming what covers it.
+
+`tbrun` on the kit's `tbrun-probes/clean`, before and after: exit 0 (23 s, 22 s), `one`,
+`two`. The kit's `c63-faults.mjs` puts two faults in through `c43-fault.mjs`: an overlay over
+the whole page, added before the first hit test, gives exit 2 after 24.8 s and `tbrun: cannot
+click #buildIcon: its centre is covered by #c63cover`; a Build button that is not there gives
+exit 2 after 40.3 s and `there is no such element`. `addin-test.bat` through the kit's
+`c25-run.mjs`: exit 0 after 145.9 s, `10 of 10 lane(s) ran: 10 passed`, `registry: put back
+(20 project-state, 21 recent-list and 3 association writes)`, the snapshots before and after
+identical. Eight of the ten lanes, all but `symbols` and `ideserver`, build add-ins through
+`buildProject`, ten builds in all, so the Build button was pressed through the new click ten
+times. `examples.bat`, which presses no Build button (`tbbuild` only compiles), shows that
+`tb-ide.mjs` still loads and does what it did: exit 0 after 146 s, `1134 sample(s), 1134
+compile, 0 finding(s), 142.7s -- clean`, as in C61.
+
 ### C64 — `scripts: three small harness duplicates`
 
 - **A7-4 (R2):** `alive` and `norm`, private in `tb-registry.mjs` (`:588-590`, `:462`) and
