@@ -65,7 +65,7 @@ One of the four does not mean the same thing locally as it does in CI, on any pl
 
     test.bat
 
-The tests the toolchain has to pass. Twelve steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Thirteen steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
 2. [`scripts/check_gate_lists.mjs`](#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
@@ -77,8 +77,9 @@ The tests the toolchain has to pass. Twelve steps, each stopping the run if it f
 8. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
 9. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
 10. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
-11. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
-12. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+11. [`scripts/check_twin_parsers.mjs`](#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
+12. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
+13. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
@@ -92,10 +93,11 @@ POSIX:
       && node scripts/check_page_baseline.mjs \
       && node scripts/check_book_coverage.mjs \
       && node scripts/check_symbol_index.mjs \
+      && node scripts/check_twin_parsers.mjs \
       && node scripts/check_cli.mjs \
       && node scripts/check_axe_patch_equiv.mjs
 
-**Nine of the twelve cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all twelve unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
+**Ten of the thirteen cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all thirteen unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
 
 The three exceptions are [`check_code_regions.mjs`](#check-code-regions), [`check_gate_lists.mjs`](#check-gate-lists), which reads this page, and [`check_lint.mjs`](#check-lint), which lints the site's scripts in `docs/assets/js/`. The first is worth knowing in detail. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes are a different matter: they run against their own sources whatever the tree holds, and they cover the *mirror* fault, where a rewrite silently stops firing. The sweep cannot see that one --- text the rewrite skipped is stashed and restored unchanged, so every region still matches. Add a page with an unusual code construct and run `test.bat`, but read the built page too.
 
@@ -527,6 +529,17 @@ Exits 1 on any failed probe, 2 if it cannot run.
 Verifies the [symbol index](Building#the-symbol-index) still places each kind of symbol, and that its drift guard still refuses a URL the index has stopped publishing. Every probe is a fixture of its own --- a few lines of twinBASIC, a page or three, a scratch baseline file --- so it needs no built tree and no twinBASIC install, and never touches `builder/symbol-baseline.json`. Under a second.
 
 A build that indexes the reference cleanly says nothing about the rules that did not fire on it, so each rule is asserted against the case that made it necessary. The `.twin` scanner's: a `Type` whose `Sub`s have bodies, an `Interface` line inside a `CoClass`, `[Hidden]` on a module whose members are global, a `$` name escaped in brackets. The derivation's: a member on a page of its own and under a heading, an inherited member found on its declaring type's page, a page filed under one module and declared in another, a `$` form, a `## Properties` heading on a type that has a `Properties` property, and the ellipsis the typographer puts in a Core page's heading. And the guard's: a lost anchor fails and is named, and CI never writes the list.
+
+Exits 1 on any failed probe, 2 if it cannot run.
+
+### check_twin_parsers.mjs
+{: #check-twin-parsers }
+
+    node scripts/check_twin_parsers.mjs
+
+Verifies the scanners that read twinBASIC source and the attribute reference still read the shapes each of them once misread. None of them says so when it misreads: a line read as the wrong kind is counted, generated or skipped as that kind. Every probe is a fixed input, so it needs no built tree and no twinBASIC install. Under a second.
+
+The modifier words that may precede a declaration keyword are one list, in `scripts/lib/twin-declarations.mjs`, and a word missing from it makes the keyword after it invisible. So each word is run through all three scanners that use the list: the attribute census's `declarationKind`, `scripts/lib/twin-api.mjs`'s `parseTwin` and `scripts/lib/tb-fences.mjs`'s `classify`. The census's declaration kinds are asserted too, including an inline block comment before the keyword and a `Const` kept apart from a variable, and so are the targets `parseTargets` in `scripts/lib/attributes-doc.mjs` reads from an `Applicable to:` line, including the phrases that must be matched before the line is split on commas and "and".
 
 Exits 1 on any failed probe, 2 if it cannot run.
 

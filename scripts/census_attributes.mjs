@@ -78,6 +78,7 @@ import { fileURLToPath } from "node:url";
 import { parseAttributes } from "./lib/attributes-doc.mjs";
 import { findIde } from "./lib/tb-install.mjs";
 import { defaultCache, exportPackages, packageName } from "./lib/tb-packages.mjs";
+import { MODIFIERS, declarationKind, decomment } from "./lib/twin-declarations.mjs";
 import { parseCli, withUsageError } from "../lib/cli.mjs";
 import { DOCS_DIR } from "../lib/repo-paths.mjs";
 
@@ -144,14 +145,6 @@ function exportAll(root, cacheDir, includeSamples) {
 
 // ------------------------------------------------------------- the scanner
 const TYPE_KEYWORDS = ["Class", "Module", "Interface", "CoClass", "Enum", "Type", "Union"];
-const MODS = "(?:Public|Private|Friend|Global|Protected|Static|ReadOnly|WriteOnly|Default|" +
-  // NotDispatchable is here because the corpus uses it and nothing else would
-  // say so: a modifier this list does not know stops the block being pushed at
-  // all, and the mismatched `End Class` then pops somebody else's block. Swept
-  // for empirically -- Private, Public, Protected and NotDispatchable are the
-  // only words that precede a block keyword in BETA 983.
-  "Shared|Overrides|Virtual|Const|WithEvents|Partial|MustOverride|NotInheritable|" +
-  "NotDispatchable)";
 // The name after the keyword is captured so a FIELD named after a block keyword
 // can be rejected. Four UDTs in the packages declare `Type As Long`, and read as
 // an opener that never closes it swallowed the rest of the file: one of them put
@@ -161,15 +154,8 @@ const MODS = "(?:Public|Private|Friend|Global|Protected|Static|ReadOnly|WriteOnl
 // skipped the open -- so its `End Module` 1,277 lines later popped a block it
 // did not own.
 const OPEN_RE = new RegExp(
-  `^\\s*(?:${MODS}\\s+)*(${TYPE_KEYWORDS.join("|")})\\b\\s+([A-Za-z_]\\w*|\\[[^\\]]*\\])`, "i");
+  `^\\s*(?:(?:${MODIFIERS}|Const)\\s+)*(${TYPE_KEYWORDS.join("|")})\\b\\s+([A-Za-z_]\\w*|\\[[^\\]]*\\])`, "i");
 const CLOSE_RE = new RegExp(`^\\s*End\\s+(${TYPE_KEYWORDS.join("|")})\\b`, "i");
-const DECL_RE = new RegExp(
-  `^\\s*(?:${MODS}\\s+)*(Class|Module|Interface|CoClass|Enum|Type|Union|Sub|Function|` +
-  `Property|Event|DeclareWide|Declare|Implements)\\b`, "i");
-const VAR_RE = new RegExp(`^\\s*(?:${MODS}|Dim)\\s+[\\w\\[]`, "i");
-const BLOCK_COMMENT_RE = /\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\//g;
-
-const decomment = (s) => s.replace(BLOCK_COMMENT_RE, " ");
 
 // Blank string contents in place, preserving length and quotes, so offsets stay
 // valid and no comma or bracket inside a literal is ever read as syntax.
@@ -266,27 +252,6 @@ function attrNames(group) {
   return names;
 }
 
-function classify(decl, container) {
-  const d = decomment(decl);
-  const m = DECL_RE.exec(d);
-  if (m) {
-    const k = m[1];
-    return k[0].toUpperCase() + k.slice(1).replace(/^eclarewide$/i, "eclareWide");
-  }
-  if (/^\s*End\s+\w/i.test(d)) return null;              // unresolved
-  if (container === "Enum" && /^\s*\[?\w/.test(d)) return "EnumMember";
-  if (container === "Type" || container === "Union") {
-    if (/^\s*\w+\s+As\s+/i.test(d)) return "TypeMember";
-  }
-  // `Const` is in MODS, so DECL_RE consumes it as a modifier and never reports
-  // it as a kind. The distinction is load-bearing: `Attributes.md` states
-  // "constants in a module" and "variables in a Class" as different targets,
-  // and [DllExport] is documented on a Const and refused on a variable.
-  if (/^\s*(?:\w+\s+)*Const\b/i.test(d)) return "Const";
-  if (VAR_RE.test(d) || /^\s*\w+\s+As\s+/i.test(d)) return "Variable";
-  return null;
-}
-
 function scanFile(file, pkg) {
   const raw = readFileSync(file, "utf8").replace(/^﻿/, "");
   const lines = raw.split(/\r?\n/);
@@ -321,7 +286,7 @@ function scanFile(file, pkg) {
           decl = decomment(lines[j] ?? "");
         }
         const container = stack.at(-1)?.kind ?? "(file)";
-        const kind = classify(decl, container);
+        const kind = declarationKind(decl, container);
         const names = run.groups.flatMap(attrNames);
         for (const n of names) {
           // An Enum member may BE an escaped identifier -- Report.twin declares

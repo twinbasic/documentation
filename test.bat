@@ -116,6 +116,14 @@ node scripts/check_book_coverage.mjs
 @rem Fixtures only: no tree, no install, ~100 ms.
 node scripts/check_symbol_index.mjs
 @if errorlevel 1 goto :fail
+@rem The scanners of twinBASIC source and of Attributes.md misread in
+@rem silence: a line read as the wrong kind is counted, generated or skipped
+@rem as that kind. These probes run the shared modifier list through all
+@rem three scanners, and assert the census's declaration kinds and the probe
+@rem generator's targets against the shapes each once got wrong. Fixed
+@rem inputs only: no tree, no install.
+node scripts/check_twin_parsers.mjs
+@if errorlevel 1 goto :fail
 @rem Nothing else tests how a tool reads its command line, which is how a
 @rem value flag given no value came to be read as NaN or as the next flag.
 @rem lib/cli.mjs's probes, then each tool's recorded command-line errors:

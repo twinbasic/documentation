@@ -2303,6 +2303,48 @@ composite action, Tools.md and WIP.md.
 `gen_attribute_probes.mjs`'s output unchanged; removing `Overridable` from the list fails a
 probe. CI waits for the owner's push.
 
+**Landed.** `scripts/lib/twin-declarations.mjs` exports `MODIFIERS`, the words allowed
+before a declaration keyword as regex alternatives, and census's line classifier, moved
+there so a gate can import it: `decomment` and `declarationKind(decl, container)` (census's
+`classify`, with `DECL_RE` and `VAR_RE`). `MODIFIERS` is the union of the three lists less
+`Optional`, `Dim` and `Const`: 30 words. `Dim` and `Const` open declarations of their own, and
+the two scanners that read one as a modifier add it (census `Const`, twin-api `Dim`).
+`Optional` is a parameter keyword: in the census it turned seven parameter-continuation lines
+from unresolved into `Variable`. The list is one string literal, because
+`check_regex_safety` folds an imported `const` only when its initialiser is a literal; as a
+concatenation, the three constructions built from it went unresolvable (28 constructed and 9
+unresolvable became 26 and 11). `census_attributes.mjs` keeps `OPEN_RE` and `CLOSE_RE`, built
+from `MODIFIERS` plus `Const`; `twin-api.mjs`'s `MODIFIER_RE` and `tb-fences.mjs`'s `rx` build
+from it too. `parseTargets`, its two rule tables and `stripDots` moved unchanged from
+`gen_attribute_probes.mjs` to `scripts/lib/attributes-doc.mjs` (a script compared the cut text
+with the moved text). The two structural divergences are left alone: census reads its source
+a physical line at a time, so its `blankStrings` and its per-line `/* */` stay as they are.
+
+The new gate `scripts/check_twin_parsers.mjs` (in `test.bat`, the composite action, Tools.md's
+list, POSIX block and a section, Building.md's POSIX block, and WIP.md's bullet and table) runs
+121 probes: `Public <word> Sub Foo()` for each of the 30 words through `declarationKind`,
+`parseTwin` and `classify`, 19 `declarationKind` shapes and 12 `parseTargets` lines. Tools.md
+now says "Thirteen steps", which `check_gate_lists` could not read: its number words stopped at
+twelve, and now run to twenty. The kit's `c62-faults.mjs` puts five faults in through
+`c43-fault.mjs`, and each fails the gate on the probes named after it: `Overridable` out of the
+list (three), no `decomment` (one), a `Const` read as a variable (two), no whole-phrase rules
+(two), the singular `const` rule (one). A `check_gate_lists` word list off by one fails it
+three times.
+
+The kit's `c62-oracle.mjs` runs HEAD copies of `census_attributes.mjs` and
+`gen_attribute_probes.mjs` beside the real ones (census `--json` and the Markdown report over
+the BETA 987 cache, no compiler; the generator's project and key), and all 137 files written are
+identical. It also runs HEAD's `classify` and `declarationKind` over every line of the 661
+`.twin` files under four containers: 128 of 415,428 pairs differ, all of them the 32
+`Overridable` procedure lines, now read as `Sub` or `Function` (A8-1's fix; none carries an
+attribute, so the census does not move). C61's `c61-oracle.mjs` finds `classify` identical on
+all 1,226 fences and `parseTwin` on all 661 files. `check_regex_safety`: `503 literals + 28
+constructed in 125 files ... 463 safe, 68 polynomial ... 9 construction(s) not resolvable`.
+
+Found, not fixed: `declarationKind` reads a field named `Type` inside a `Type` block as a
+`Type` declaration, since `DECL_RE` is tried before the container rules. It takes an attribute
+on such a field to matter, and the census output shows none.
+
 ### C63 — `scripts: click the build icon like every other control`
 
 **A7-3 (R2).** `tb-ide.mjs:848-861`'s `clickCenter` has no scroll into view, hit test or

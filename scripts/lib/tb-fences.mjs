@@ -71,6 +71,7 @@ import MarkdownIt from "markdown-it";
 
 import { markdownFiles } from "../../lib/markdown-files.mjs";
 import { logicalLines } from "./twin-api.mjs";
+import { MODIFIERS } from "./twin-declarations.mjs";
 
 /** The bare flag that opts a fence in to compilation. */
 export const MARKER = "check_build";
@@ -331,19 +332,9 @@ export async function collectFences(root) {
 
 // ----------------------------------------------------------------- classifier
 
-// Modifiers that may precede a declaration keyword. A modifier this list does
-// not know makes the keyword after it invisible, which is the silent
-// misclassification scripts/census_attributes.mjs records paying for
-// (`NotDispatchable`, there).
-// The vocabulary is measured, not guessed: `Overridable` has 32 uses across the
-// shipped packages and 3 in docs/, and leaving it out cost three fences, which
-// came back as "End Function closing Class" -- a missed opener always surfaces
-// as a mismatch somewhere later, never where it happened.
-const MODS = "(?:Public|Private|Friend|Global|Protected|Static|Shared|Partial|" +
-  "NotDispatchable|Overridable|Overrides|Overloads|Virtual|Abstract|Default|" +
-  "Iterator|Async|MustOverride|MustInherit|NotInheritable|Optional|PtrSafe|Naked|" +
-  "CDecl|StdCall|Unsafe|Extern|Inline)";
-const rx = (body) => new RegExp("^(?:" + MODS + "\\s+)*" + body, "i");
+// Modifiers that may precede a declaration keyword: twin-declarations.mjs's,
+// shared with the two scanners of the packages' source.
+const rx = (body) => new RegExp("^(?:(?:" + MODIFIERS + ")\\s+)*" + body, "i");
 
 // Every opener demands a NAME after the keyword. Without that guard a UDT field
 // called `Type As Long` -- four of them in the shipped packages -- reads as an
