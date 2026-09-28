@@ -2556,6 +2556,37 @@ not yet committed, passes over the fixture that found the defect, with its page 
 taken out until C65d. `compare_trees`: Fixes/PDFLib.html online and offline, the search data,
 and `book.html`.
 
+### C65d — `book: fast-dict-onebuf builds new pages and page trees in its buffer`
+
+**Found while building C66** (see Found while implementing). `fast-dict-onebuf.mjs` replaces
+`PDFDict`'s methods with ones that read a dictionary's entries from one shared buffer, and
+replaces six of pdf-lib's eight factories for `PDFDict`, `PDFCatalog`, `PDFPageTree` and
+`PDFPageLeaf` to build there. The other two, `PDFPageTree.withContext` and
+`PDFPageLeaf.withContextAndParent`, still build on a `Map` with `new`, and the replaced methods
+cannot read what they make: `insertPage` and `addPage` fail (`Expected instance of PDFArray,
+but got instance of undefined`, from the new page's `/MediaBox`), and `PDFDocument.create`
+would. The book never adds a page; `parallelSave` would, only for a document with none.
+
+**Change.** Replace the two, building pdf-lib's entries in pdf-lib's order through the shim's
+own `fromMapWithContext`. Fixes-PDFLib.md's section names the eight factories.
+
+**Verify.** `create`, `addPage`, `insertPage` and a save give stock's bytes under the shim
+alone and under every shim; C66's gate passes with its page insertion; the book renders the
+same.
+
+**Landed.** As the entry says. pdf-lib 1.17.1 has exactly these eight static factories on the
+four classes, and C65d's two are the ones `PDFDocument.create` (`PDFDocument.js:146`) and
+`PDFPage.create` (`PDFPage.js:1435`) call. The kit's `c65d-oracle.mjs` runs `create`,
+`addPage`, `insertPage`, `drawText`, another `addPage` and `save` in a process per shim set:
+stock gives 3 pages and 1,019 bytes; HEAD's shim fails at `insertPage` alone and with every
+shim; the working one gives stock's bytes (same sha256) both ways. C66's gate, not yet
+committed, passes with nothing taken out of its change: 22 objects, every shim run. The book
+rendered through HEAD's `book/` and `lib/` and through the working tree's: 88 s each,
+`process: 1.1s` and `1.0s`, 2,298 pages, 2,466 outline entries and 29,108,192 bytes each (the
+count moved with C65c's edit to Fixes-PDFLib.md), differing only in `/CreationDate` and
+`/ModDate`. `compare_trees`: Fixes/PDFLib.html online and offline, the search data, and
+`book.html`.
+
 *The book's pdf-lib shims (decision (c)): C66–C69.*
 
 ### C66 — `book: check_pdf_shims_equiv.mjs, the shims against stock pdf-lib`
@@ -3288,6 +3319,11 @@ Defects the review did not have, found by building something this plan asks for.
   writing `2.2800000000000002`, and named the shim both ways (the only one to differ alone, and
   the only one whose removal made the output match). Scheduled as C65c, at the owner's choice.
   Fixed in `book: fast-parse-number reads a decimal as Number() does`.
+- **Under `fast-dict-onebuf.mjs`, pdf-lib could not add a page**, found while building C66:
+  the shimmed side of its gate failed at `insertPage`, and so did `fast-dict-onebuf.mjs` alone.
+  Two of pdf-lib's dictionary factories were left unreplaced, and the replaced methods cannot
+  read what they build. Scheduled as C65d, at the owner's choice. Fixed in `book:
+  fast-dict-onebuf builds new pages and page trees in its buffer`.
 
 ## Open questions
 

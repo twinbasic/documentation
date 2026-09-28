@@ -481,6 +481,29 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
     return d;
   };
 
+  // pdf-lib's own versions of these two build on a Map, with `new`, and
+  // the methods above cannot read such a dict: addPage, insertPage and
+  // PDFDocument.create would fail. The entries are pdf-lib's, in its order.
+  PDFPageTree.withContext = function (context, parent) {
+    const map = new Map([
+      [PDFName.of('Type'), PDFName.of('Pages')],
+      [PDFName.of('Kids'), context.obj([])],
+      [PDFName.of('Count'), context.obj(0)],
+    ]);
+    if (parent) map.set(PDFName.of('Parent'), parent);
+    return PDFPageTree.fromMapWithContext(map, context);
+  };
+
+  PDFPageLeaf.withContextAndParent = function (context, parent) {
+    const map = new Map([
+      [PDFName.of('Type'), PDFName.of('Page')],
+      [PDFName.of('Parent'), parent],
+      [PDFName.of('Resources'), context.obj({})],
+      [PDFName.of('MediaBox'), context.obj([0, 0, 612, 792])],
+    ]);
+    return PDFPageLeaf.fromMapWithContext(map, context, false);
+  };
+
   // ---- PDFObjectParser.prototype.parseDict --------------------------
   //
   // Each parser instance carries its own temp array (small; sized to
