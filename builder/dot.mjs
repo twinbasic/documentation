@@ -33,7 +33,7 @@
 //     correct SVG beats a fresh wrong one.
 //   - CONTENT (one .dot has a syntax error, gv.dot throws): warn + keep
 //     that diagram's old SVG + continue the rest of the batch. The
-//     orchestrator (tbdocs.mjs) flips process.exitCode = 1 on the
+//     orchestrator (tbdocs.mjs) sets exit bit EXIT_FAILED on the
 //     returned `failed` count so a broken diagram surfaces in CI.
 
 import { promises as fs } from "node:fs";

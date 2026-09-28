@@ -2211,6 +2211,31 @@ assignments are safe only because they run before the ones that OR (V1's third n
 both 3, a command-line error 4, a baseline drift 1. A scratch copy that moves an assignment
 after an OR still exits with both bits.
 
+**Landed.** `tbdocs.mjs` exports `EXIT_FAILED` (1), `EXIT_INTEGRITY` (2) and
+`EXIT_COMMAND_LINE` (4), with the reasons for the scheme beside them, and has a private
+`failBuild(bit)` that ORs a bit into `process.exitCode`. All seven sites call it: the three
+plain assignments (vendorAssets, dot, scss), the check's combined code (now one call per bit)
+and its recheck-only branch, and the two baseline guards. `main()`'s usage error, its `--dest`
+refusal and its crash exit use the constants, and so do `serve.mjs`'s refusal and its two
+`process.exit(1)`s, since it imports from `tbdocs.mjs` already. The comments that justified
+each OR in place (one of them the history of the clobbered bits) are gone; `failBuild`'s says
+why. Pipeline-Stages.md has a row for the constants and names `failBuild` in `checkReport`'s
+exit-code line; Builder.md, Building.md, Pipeline-Stages.md's vendorAssets paragraph, and the
+`dot.mjs` and `scss.mjs` headers say "exit bit 1" where they quoted `process.exitCode = 1`;
+WIP.Build.md's rule now names `failBuild`.
+
+The kit's `c60-exits.mjs` builds scratch sources made from the `check-src` fixture from a `git
+archive` copy of HEAD and from the working tree, 17 cases each: clean 0, a broken link 1, a
+duplicate id 2, both 3, a broken diagram 1, a broken stylesheet 1, a diagram with an integrity
+failure 3, a stylesheet with a link 1, and through `c43-fault.mjs` a failed asset fetch 1 (with
+an integrity failure 3), a baseline drift 1 (3), a crash in `discover` 1, and an unknown flag,
+a `--dest` over the source and the same under `--serve`, each 4. Every case exits and prints
+the same on both sides, before the change and after. The one designed to differ puts a bit-0
+failure after the check has set bit 2: HEAD's form, `process.exitCode = 1`, exits 1, losing
+the integrity failure, and the working tree's, `failBuild(EXIT_FAILED)`, exits 3. `compare_trees`:
+the three pages edited differ, with the search data and `book.html`, and nothing else. No
+non-zero exit literal is left in `builder/*.mjs`.
+
 *The harness: C61–C65.*
 
 ### C61 — `scripts: one logicalLines for twinBASIC source`

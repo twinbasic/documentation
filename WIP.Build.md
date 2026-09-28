@@ -507,8 +507,9 @@ page and symbol guards share, and the second in
   page half-deleted in an editor would lower the baseline and a half-added one
   would raise it.
 
-**OR the exit code on this path, never assign it.** Plain `process.exitCode = 1`
-after the link check has already set bits 1 and 2 reports only the later failure.
+**Set an exit bit through `failBuild`, never by assigning `process.exitCode`.**
+An assignment after the link check has set bits 1 and 2 reports only the later
+failure; `failBuild` ORs.
 
 `scripts/check_page_baseline.mjs` is the gate on the gate, in `test.bat` and
 both CI workflows: eleven probes against a scratch baseline, no browser, no

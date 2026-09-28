@@ -192,7 +192,7 @@ vendorAssets.expected = ["discover"]
 vendorAssets.execute() → { videos, images, files, fetched, failed }
 ```
 
-Calls `vendorAssets(srcRoot, pages, { baseurl, allowFetch })` from `vendor-assets.mjs`. Scans the discovered markdown for YouTube video markers and GitHub user-attachment URLs, downloads anything not already committed into `docs/assets/thumbnails/` or `docs/assets/attachments/`, and hands the new files to the static-file copy pass. Idempotent --- a file already present is never re-fetched --- and the artifacts are committed to git exactly like the generated DOT SVGs. `submit()` puts the two lookup maps on `state.site` (where `dispatch` picks them up for the render workers), appends new descriptors to `state.staticFiles`, and flips `process.exitCode = 1` if any fetch failed.
+Calls `vendorAssets(srcRoot, pages, { baseurl, allowFetch })` from `vendor-assets.mjs`. Scans the discovered markdown for YouTube video markers and GitHub user-attachment URLs, downloads anything not already committed into `docs/assets/thumbnails/` or `docs/assets/attachments/`, and hands the new files to the static-file copy pass. Idempotent --- a file already present is never re-fetched --- and the artifacts are committed to git exactly like the generated DOT SVGs. `submit()` puts the two lookup maps on `state.site` (where `dispatch` picks them up for the render workers), appends new descriptors to `state.staticFiles`, and sets exit bit 1 (`EXIT_FAILED`) if any fetch failed.
 
 `markdownInit` and `writeAssets` both depend on this: the render plugins need the maps to rewrite a marker into a local poster frame, and the copy pass needs the files.
 
@@ -499,7 +499,7 @@ checkReport.execute({ linkJoin, checkBook }) → void
 
 Formats every tree's result, decides the exit code, and optionally writes the machine-readable findings.
 
-- **Exit code** follows the same scheme `check_links.mjs` has always used, so CI can tell the two apart: `1` link failures, `2` integrity failures, `3` both. Set via `process.exitCode`, never by throwing.
+- **Exit code** follows the same scheme as `check_links.mjs`, so CI can tell the two apart: `1` link failures, `2` integrity failures, `3` both. Set through `failBuild`, which ORs each bit into `process.exitCode`, never by throwing.
 - **`--check-findings <path>`** writes the findings as JSON for [`check_links_diff.mjs`](Tools#check-links-diff) to diff against the standalone script's. Written *before* the exit code is decided, so a failing check still produces the file that says what it found.
 - **`--check-audit-index`** additionally diffs the tree index the build derived from its own records against what actually landed on disk. This is the one failure mode the two-checker findings comparison structurally cannot see: a *missing* index entry turns a working link into a reported break, which is loud, but a *spurious* one makes the oracle answer "exists" for a path that 404s in production, and on a clean site nothing links to a path that does not exist, so nothing would ever notice. Cost is one `readdir` per tree.
 
@@ -979,6 +979,7 @@ The handler table is built from the imported `HANDLERS` constant:
 | Symbol | Signature | Description |
 |---|---|---|
 | `runBuild` | `(opts) → Promise<{ pages, staticFiles, site, destRoot }>` | Runs the full pipeline. Allocates the SAB, spawns or reuses the pool, sends `init` to every worker, awaits `scheduler.start(ctx)`, logs the summary, injects the Gantt chart, returns the final state. |
+| `EXIT_FAILED`, `EXIT_INTEGRITY`, `EXIT_COMMAND_LINE` | `number` | `1`, `2` and `4`: the exit bits for a link failure or any other failed step and for an integrity failure, and the value for a command-line error, outside both bits. `runBuild` sets a bit through a private `failBuild(bit)`, which ORs it into `process.exitCode`, so a build that fails two ways exits with both bits. `serve.mjs` exits with the same values. |
 | `createWorkerPool` | `() → WorkerPool` | Factory for `serve.mjs`. Lets the dev server construct one pool at startup and pass it to every `runBuild()` call without importing `WorkerPool` itself. |
 
 `BuildOpts` fields:
