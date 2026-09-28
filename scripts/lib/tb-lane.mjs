@@ -16,21 +16,9 @@
 // checks each IDE's add-ins folder (checkAddinsRoot in tb-ide.mjs) rather than
 // trusting that it did.
 //
-// A scenario file reads, in outline:
-//
-//     const lane = addinLane();
-//     describe("...", { skip: lane ? false : "run it with addin-test.bat" }, () => {
-//       let c;
-//       before(async () => {
-//         await lane.addSample("Sample 15");
-//         c = await lane.open(HOST);
-//       });
-//       after(() => lane.close());
-//       test("...", async () => { ...tb-operate.mjs calls on c... });
-//     });
-//
-// Outside the runner addinLane() returns null and the suite is skipped, so a
-// bare `node --test` never starts an IDE.
+// A scenario file gets its lane through scenario() in test/addin/scenario.mjs,
+// which shows the outline of one. Outside the runner addinLane() returns null
+// and the scenario is skipped, so a bare `node --test` never starts an IDE.
 
 import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";

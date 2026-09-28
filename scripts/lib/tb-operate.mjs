@@ -15,7 +15,7 @@
 // document.querySelector cannot see into.
 
 import { click, clickAt, targetJs } from "./tb-click.mjs";
-import { awaitNewCompiler, COMPILE_TIMEOUT, compilerPid, readConsole, sleep, waitForCompile } from "./tb-ide.mjs";
+import { awaitNewCompiler, COMPILE_TIMEOUT, compilerPid, linesSince, sleep, waitForCompile } from "./tb-ide.mjs";
 
 // ------------------------------------------------------------------ finding
 
@@ -235,9 +235,7 @@ export const notifications = (c) => c.evaluate(`[...document.querySelectorAll(".
  *                            was printed after it
  */
 export async function openedUrls(c, { since = null } = {}) {
-  const text = await readConsole(c, { since });
-  return (text ?? "").split("\n").map((l) => /^open (\S+)$/.exec(l.trim())).filter(Boolean)
-    .map((m) => m[1]);
+  return (await linesSince(c, since)).map((l) => /^open (\S+)$/.exec(l)).filter(Boolean).map((m) => m[1]);
 }
 
 // ------------------------------------------------------------------ the compiler

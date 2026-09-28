@@ -2428,6 +2428,31 @@ beside `readConsole`.
 
 **Verify.** `addin-test.bat` green, all ten lanes (a harness run).
 
+**Landed.** The new `test/addin/scenario.mjs` exports `scenario(title, fn)`: the file's lane
+from `addinLane`, a `describe` block skipped with the one reason when there is none, and an
+`after` hook that closes the lane. `fn` gets the lane, and a function it returns runs after the
+close in a `finally`, which is how `panes.test.mjs` keeps closing its page server when closing
+the lane fails. All ten files are one `scenario()` block now, with no `addinLane`, skip object
+or `after` of their own; `tb-lane.mjs`'s header points to the module for the outline it used
+to show, and WIP.Harness.md's runner section names it. `tb-ide.mjs` exports `linesSince(c,
+mark, { prefix })` after `consoleMark`: `readConsole`'s text since the mark, split and each
+line trimmed, and with `prefix` only the lines that start with it, without it, which replaces
+`appdata`'s and `panes`' `slice(15)` and `slice(13)`. `arch`, `reload`, `entry`, `keys` and
+both of `sample10`'s reads use it, and so do `buildProject` and `tb-operate.mjs`'s
+`openedUrls`, which read the console the same way. `keys.test.mjs`'s substring search for
+`[KeysProbe] registered` still reads the text. Two reads changed slightly: `sample10`'s
+`[WaynesWorldAddin]` lines are trimmed before the prefix test, and its one-line wait reads the
+non-empty lines joined, where it trimmed the whole text. Both give the same answer for what the
+add-in prints. The ten files were converted by one Sonnet agent from a brief (69 calls, ~193k,
+3.6 min; one comment needed correcting) after a Sonnet Explore survey (24 calls, ~139k, 4.2
+min).
+
+A scratch test through `c43-fault.mjs`, with `addinLane()` replaced by a lane whose `close`
+logs and optionally throws, shows the order: the close, then the returned function, also when
+the close throws; with no lane the block is skipped. `addin-test.bat` through the kit's
+`c25-run.mjs`: exit 0 after 130.0 s, `10 of 10 lane(s) ran: 10 passed`, the registry put back
+as in C63, the snapshots identical, and no `✖` line in any lane's output.
+
 *The book's pdf-lib shims (decision (c)): C66–C69.*
 
 ### C66 — `book: check_pdf_shims_equiv.mjs, the shims against stock pdf-lib`

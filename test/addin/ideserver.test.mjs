@@ -19,14 +19,13 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { after, before, describe, test } from "node:test";
+import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { addinLane } from "../../scripts/lib/tb-lane.mjs";
 import { waitFor } from "../../scripts/lib/tb-operate.mjs";
+import { scenario } from "./scenario.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HOST = path.join(HERE, "host");
-const lane = addinLane();
 
 // ------------------------------------------------------------------ the files
 
@@ -67,7 +66,7 @@ const fetchFromPage = (c, rel) => c.evaluate(`(async () => {
 
 // ------------------------------------------------------------------ the tests
 
-describe("P13: files placed under the install's ide folder", { skip: lane ? false : "run it with addin-test.bat" }, () => {
+scenario("P13: files placed under the install's ide folder", (lane) => {
   let c, ideDir;
   before(async () => {
     ideDir = path.join(path.dirname(lane.copy()), "ide");
@@ -80,7 +79,6 @@ describe("P13: files placed under the install's ide folder", { skip: lane ? fals
     }
     c = await lane.open(HOST);
   });
-  after(() => lane?.close());
 
   test("every file is served below the page's base URL, byte for byte", async () => {
     assert.match(await c.evaluate("document.baseURI"), /^http:\/\/localhost:\d+\/%7B[0-9A-F-]{36}%7D\/$/i);

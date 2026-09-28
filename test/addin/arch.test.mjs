@@ -15,21 +15,20 @@
 import assert from "node:assert/strict";
 import { copyFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
-import { after, before, describe, test } from "node:test";
+import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { dllInfo } from "../../scripts/lib/tb-addin.mjs";
-import { compilerPid, consoleMark, loadedAddins, normPath, readConsole, sleep } from "../../scripts/lib/tb-ide.mjs";
-import { addinLane } from "../../scripts/lib/tb-lane.mjs";
+import { compilerPid, consoleMark, linesSince, loadedAddins, normPath, sleep } from "../../scripts/lib/tb-ide.mjs";
 import { waitFor } from "../../scripts/lib/tb-operate.mjs";
+import { scenario } from "./scenario.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HOST = path.join(HERE, "host");
 const PROBE = path.join(HERE, "probes", "arch");
-const lane = addinLane();
 
 // What the copies of the probe printed since a mark, sorted by file.
-const loadsSince = async (c, mark) => ((await readConsole(c, { since: mark })) ?? "").split("\n")
-  .map((l) => /^\[ArchProbe\] (\d+)-bit \| (.+) \| (.+)$/.exec(l.trim())).filter(Boolean)
+const loadsSince = async (c, mark) => (await linesSince(c, mark))
+  .map((l) => /^\[ArchProbe\] (\d+)-bit \| (.+) \| (.+)$/.exec(l)).filter(Boolean)
   .map(([, bits, process, file]) => ({ bits: Number(bits), process: path.basename(process), file: normPath(file) }))
   .sort((a, b) => a.file.localeCompare(b.file));
 
@@ -41,7 +40,7 @@ async function waitLoads(c, mark) {
   return loadsSince(c, mark);
 }
 
-describe("P7: build targets and add-in folders", { skip: lane ? false : "run it with addin-test.bat" }, () => {
+scenario("P7: build targets and add-in folders", (lane) => {
   let c, built;
   // Where each copy of the probe goes, by bitness, as loadsSince reports files.
   const where = {};
@@ -56,7 +55,6 @@ describe("P7: build targets and add-in folders", { skip: lane ? false : "run it 
     }
     c = await lane.open(HOST);
   });
-  after(() => lane?.close());
 
   test("the builds are a 32-bit and a 64-bit DLL, each exporting tbCreateCompilerAddin_v3 alone", () => {
     for (const arch of ["win32", "win64"]) {

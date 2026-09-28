@@ -23,17 +23,16 @@
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { after, before, describe, test } from "node:test";
+import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { dllInfo } from "../../scripts/lib/tb-addin.mjs";
-import { loadedAddins, readConsole, sleep } from "../../scripts/lib/tb-ide.mjs";
-import { addinLane } from "../../scripts/lib/tb-lane.mjs";
+import { linesSince, loadedAddins, sleep } from "../../scripts/lib/tb-ide.mjs";
 import { waitFor } from "../../scripts/lib/tb-operate.mjs";
+import { scenario } from "./scenario.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HOST = path.join(HERE, "host");
 const PROBE = path.join(HERE, "probes", "entry");
-const lane = addinLane();
 
 // The copies, and the name each one exports.
 const COPIES = {
@@ -57,11 +56,11 @@ function renameExport(dll, name) {
 }
 
 // The files the probe printed that it was loaded from, by name.
-const loadedFrom = async (c) => ((await readConsole(c)) ?? "").split("\n")
-  .map((l) => /^\[EntryProbe\] loaded from (.+)$/.exec(l.trim())).filter(Boolean)
+const loadedFrom = async (c) => (await linesSince(c))
+  .map((l) => /^\[EntryProbe\] loaded from (.+)$/.exec(l)).filter(Boolean)
   .map((m) => path.basename(m[1])).sort();
 
-describe("P14: the add-in entry point", { skip: lane ? false : "run it with addin-test.bat" }, () => {
+scenario("P14: the add-in entry point", (lane) => {
   let c, built;
   before(async () => {
     built = await lane.buildAddin(PROBE);
@@ -74,7 +73,6 @@ describe("P14: the add-in entry point", { skip: lane ? false : "run it with addi
     }
     c = await lane.open(HOST);
   });
-  after(() => lane?.close());
 
   test("the linker exports tbCreateCompilerAddin as tbCreateCompilerAddin_v3, and under no other name", () => {
     assert.deepEqual(dllInfo(built.dll).exports.map((e) => e.name), ["tbCreateCompilerAddin_v3"]);
@@ -88,7 +86,7 @@ describe("P14: the add-in entry point", { skip: lane ? false : "run it with addi
   });
 
   test("a DLL with none of them is refused as built for a newer IDE, and listed as Unknown Addin", async () => {
-    const lines = ((await readConsole(c)) ?? "").split("\n").map((l) => l.trim());
+    const lines = await linesSince(c);
     assert.ok(lines.includes("[EntryV4.dll] Failed to load addin.  Entry point not found.  " +
                              "Addin may have been compiled for a newer version of the twinBASIC IDE."),
               `no such line in the DEBUG CONSOLE:\n${lines.filter((l) => l.includes("EntryV4")).join("\n")}`);

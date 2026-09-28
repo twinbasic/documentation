@@ -22,17 +22,16 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import http from "node:http";
 import path from "node:path";
-import { after, before, describe, test } from "node:test";
+import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { consoleMark, loadedAddins, readConsole, sleep } from "../../scripts/lib/tb-ide.mjs";
-import { addinLane } from "../../scripts/lib/tb-lane.mjs";
+import { consoleMark, linesSince, loadedAddins, sleep } from "../../scripts/lib/tb-ide.mjs";
 import { click, clickAt, pressKey, toolWindow, waitFor } from "../../scripts/lib/tb-operate.mjs";
+import { scenario } from "./scenario.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HOST = path.join(HERE, "host");
 const PROBE = path.join(HERE, "probes", "panes");
 const W = "PanesProbeData";            // the id the probe gives ToolWindows.Add
-const lane = addinLane();
 
 // ------------------------------------------------------------------ the pages
 
@@ -83,8 +82,7 @@ async function servePages() {
 // ------------------------------------------------------------------ reading
 
 // The probe's lines in the DEBUG CONSOLE since a mark, without the prefix.
-const probeLines = async (c, mark) => ((await readConsole(c, { since: mark })) ?? "").split("\n")
-  .map((l) => l.trim()).filter((l) => l.startsWith("[PanesProbe] ")).map((l) => l.slice(13));
+const probeLines = (c, mark) => linesSince(c, mark, { prefix: "[PanesProbe] " });
 
 // The frame, and an expression evaluated in its document, in an isolated world
 // of the test's own so that nothing of the page's script is touched.
@@ -132,7 +130,7 @@ function windowsAppModeDark() {
 
 // ------------------------------------------------------------------ the tests
 
-describe("P3, P4 and P12: HTML and a web page in a tool window", { skip: lane ? false : "run it with addin-test.bat" }, () => {
+scenario("P3, P4 and P12: HTML and a web page in a tool window", (lane) => {
   let c, pages, origin;
   const exceptions = [];
   before(async () => {
@@ -146,9 +144,6 @@ describe("P3, P4 and P12: HTML and a web page in a tool window", { skip: lane ? 
       const d = m.params.exceptionDetails;
       exceptions.push((d.exception?.description ?? d.text ?? "").split("\n")[0]);
     });
-  });
-  after(async () => {
-    try { await lane?.close(); } finally { pages?.close(); }
   });
 
   test("the add-in loads, and its button opens its tool window", async () => {
@@ -277,4 +272,7 @@ describe("P3, P4 and P12: HTML and a web page in a tool window", { skip: lane ? 
                            divs: [...w.bodyElement.querySelectorAll("div[id^='noid']")].map((d) => d.id) }))`),
     [{ id: "", title: "NO ID 2", divs: ["noid2", "noid1again"] }]);
   });
+
+  // After the lane is closed, even when closing it fails.
+  return () => pages?.close();
 });

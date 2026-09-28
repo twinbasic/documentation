@@ -1049,8 +1049,10 @@ read), builds an add-in and puts it in the copy (`addAddin`), and opens a projec
 one IDE at a time, refusing one that does not compile. `close` ends the IDE and then fails
 the lane if the compiler crashed meanwhile, or if a javascript dialog opened that the
 scenario did not take out of `c.dialogs`, since the IDE opens one only on an error path;
-then it deletes the copy. Run outside the runner, a scenario file skips itself, so a bare
-`node --test` never starts an IDE.
+then it deletes the copy. A scenario file is one `scenario()` block, from
+[test/addin/scenario.mjs](test/addin/scenario.mjs), which gives it the lane and closes the
+lane after it. Run outside the runner, the block is skipped, so a bare `node --test` never
+starts an IDE.
 
 **A process per lane, not `node:test`'s own concurrency.** `node --test` can run files in
 parallel, but it cannot hand each file an environment of its own, and the runner has to

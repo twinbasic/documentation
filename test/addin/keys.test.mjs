@@ -12,21 +12,17 @@
 
 import assert from "node:assert/strict";
 import path from "node:path";
-import { after, before, describe, test } from "node:test";
+import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { consoleMark, loadedAddins, readConsole, sleep } from "../../scripts/lib/tb-ide.mjs";
-import { addinLane } from "../../scripts/lib/tb-lane.mjs";
+import { consoleMark, linesSince, loadedAddins, readConsole, sleep } from "../../scripts/lib/tb-ide.mjs";
 import { editorState, editorText, openFile, pressKey, setCursor, waitFor } from "../../scripts/lib/tb-operate.mjs";
+import { scenario } from "./scenario.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HOST = path.join(HERE, "host");
 const PROBE = path.join(HERE, "probes", "keys");
-const lane = addinLane();
 
-// The DEBUG CONSOLE's lines since a mark, and the key strings the probe says
-// fired in them, in order.
-const linesSince = async (c, mark) =>
-  ((await readConsole(c, { since: mark })) ?? "").split("\n").map((l) => l.trim());
+// The key strings the probe says fired since a mark, in order.
 const firedSince = async (c, mark) => (await linesSince(c, mark))
   .map((l) => /^\[KeysProbe\] fired (.+)$/.exec(l)).filter(Boolean).map((m) => m[1]);
 
@@ -64,13 +60,12 @@ const menuOpen = (c) => c.evaluate("typeof currentMenuDescriptor !== 'undefined'
 const paletteOpen = (c) => c.evaluate(`[...document.querySelectorAll(".quick-input-widget")]
   .some((e) => getComputedStyle(e).display !== "none")`);
 
-describe("P1 and P2: add-in keyboard shortcuts", { skip: lane ? false : "run it with addin-test.bat" }, () => {
+scenario("P1 and P2: add-in keyboard shortcuts", (lane) => {
   let c;
   before(async () => {
     await lane.addAddin(PROBE);
     c = await lane.open(HOST);
   });
-  after(() => lane?.close());
 
   test("the add-in loads and registers its shortcuts, lowercased", async () => {
     const names = (await loadedAddins(c)).map((a) => a.name);

@@ -738,6 +738,23 @@ const CONSOLE_MARK_JS = `(() => {
  */
 export const consoleMark = (c) => c.evaluate(CONSOLE_MARK_JS);
 
+/**
+ * The DEBUG CONSOLE's lines since a mark, each trimmed: readConsole's text,
+ * split. A console that is empty, or that this IDE does not have, gives one
+ * empty line.
+ *
+ * @param {object} c                  a tb-cdp connection
+ * @param {object | null} [mark]      a mark from consoleMark; null reads every line
+ * @param {object} [o]
+ * @param {string} [o.prefix]         only the lines that start with this, without it
+ * @returns {Promise<string[]>}
+ */
+export async function linesSince(c, mark = null, { prefix } = {}) {
+  const lines = ((await readConsole(c, { since: mark })) ?? "").split("\n").map((l) => l.trim());
+  return prefix === undefined ? lines
+    : lines.filter((l) => l.startsWith(prefix)).map((l) => l.slice(prefix.length));
+}
+
 // What each clear erased. The page's global clearDebugConsole() empties the
 // console, and BETA 983's main.js calls it by name from the compiler's
 // event_clearDebugConsole, which a program's Debug.Cls raises, from the pane's
@@ -811,8 +828,7 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
   let log = [], failedAt = 0;
   while (Date.now() - t0 < timeout) {
     await sleep(250);
-    const text = await readConsole(c, { since: mark });
-    const lines = text ? text.split("\n").map((l) => l.trim()) : [];
+    const lines = await linesSince(c, mark);
     const start = lines.indexOf(BUILD_START);
     if (start < 0) continue;
     log = lines.slice(start);
