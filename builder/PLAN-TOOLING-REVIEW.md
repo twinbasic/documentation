@@ -2453,6 +2453,22 @@ the close throws; with no lane the block is skipped. `addin-test.bat` through th
 `c25-run.mjs`: exit 0 after 130.0 s, `10 of 10 lane(s) ran: 10 passed`, the registry put back
 as in C63, the snapshots identical, and no `✖` line in any lane's output.
 
+### C65a — `test: a lane fails when closing it finds a problem`
+
+**Found while landing C65** (see Found while implementing). What `Lane.close` finds, a
+compiler crash or a javascript dialog, never fails a lane, because a throwing `after` hook
+leaves a `node --test` file's exit code 0.
+
+**Change.** `scenario()` closes the lane in a test of its own, the block's last, so that what
+the close finds is a failing test. The `after` hook stays, for a block whose tests never ran;
+closing a lane a second time does nothing (`closeProject` finds no connection, `shutdownIde`
+returns on null, the copy is already gone). The function a scenario returns still runs after
+the close, whichever of the two closed it. WIP.Harness.md's runner section says a problem
+found at close fails the lane only because the close is a test.
+
+**Verify.** The scratch test with a lane whose `close` throws exits 1 under `node --test`,
+and 0 with one whose `close` works; `addin-test.bat` green, all ten lanes (a harness run).
+
 *The book's pdf-lib shims (decision (c)): C66–C69.*
 
 ### C66 — `book: check_pdf_shims_equiv.mjs, the shims against stock pdf-lib`
@@ -3167,6 +3183,12 @@ Defects the review did not have, found by building something this plan asks for.
   `node scripts/` lines, so the two roster gates could not see a `node --test` step in
   `test.bat`. Fixed in `scripts: the gate roster reads node --test lines; CI runs the search
   tests`.
+- **A lane whose close finds a problem passes**, found while landing C65. `Lane.close` throws
+  when the compiler crashed or the IDE opened a javascript dialog, and it runs in an `after`
+  hook. On Node 24.13.0 a throwing `after` hook marks its suite failed but leaves `fail 0`, and
+  the file exits 0 under `node --test`, even when the hook sets `process.exitCode = 1` (scratch
+  tests, run directly and under `--test`). `addin_test.mjs` judges a lane by that exit code.
+  Scheduled as C65a, at the owner's choice.
 
 ## Open questions
 
