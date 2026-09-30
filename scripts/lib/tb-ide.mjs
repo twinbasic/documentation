@@ -7,7 +7,7 @@
 // comments that explain it moved with it. See WIP.Harness.md, "Compiling a
 // twinBASIC project without the IDE in front of you", for the history.
 
-import { execFileSync, spawn } from "node:child_process";
+import { execFile, execFileSync, spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import net from "node:net";
 import path from "node:path";
@@ -212,6 +212,27 @@ export function shutdownIde(ide) {
   // closes the job, which ends anything the tree kill missed.
   try { ide.launcher?.kill(); } catch { /* already gone */ }
   waitForExit(ide.pid, 5000);
+}
+
+/**
+ * shutdownIde without blocking the event loop, for a caller that ends an IDE
+ * while other work is going on in the same process. shutdownIde's `taskkill` and
+ * its wait each hold the process still, up to five seconds for the wait, and
+ * with four builds at once that is four lanes' CDP timers running out while
+ * their answers sit unread in a socket. The sync version stays for the paths
+ * that end in process.exit(), where nothing else is waiting.
+ */
+export async function shutdownIdeAsync(ide) {
+  if (!ide) return;
+  await new Promise((resolve) => {
+    execFile("taskkill", ["/PID", String(ide.pid), "/T", "/F"], { windowsHide: true }, () => resolve());
+  });
+  try { ide.launcher?.kill(); } catch { /* already gone */ }
+  const until = Date.now() + 5000;
+  while (Date.now() < until) {
+    try { process.kill(ide.pid, 0); } catch { return; }
+    await sleep(100);
+  }
 }
 
 /**
@@ -473,9 +494,12 @@ export async function waitForCompile(c, { project, timeout }) {
  * @param {object} waited      waitForCompile's result
  * @param {object} o
  * @param {string} o.name      the project as the caller should name it in a message
- * @returns {{ok: true, rows: string[], counts: number[]} | {ok: false, code: number, message: string}}
+ * @returns {{ok: true, rows: string[], counts: number[]}
+ *   | {ok: false, code: number, message: string, crashFiles?: string[]}}
  *   `counts` is errors, warnings, hints, infos. `code` is 4 for a compiler
- *   crash and 3 for a compile that never settled.
+ *   crash and 3 for a compile that never settled. For a crash `crashFiles` names,
+ *   as the array `message` prints on its `last parsing:` line, the files the
+ *   compiler died parsing.
  */
 export function compileOutcome({ loaded, crash, drops, last, blocked }, { name }) {
   // A crash is reported by the file the compiler died parsing, because in a batch
@@ -487,6 +511,7 @@ export function compileOutcome({ loaded, crash, drops, last, blocked }, { name }
       message: `the compiler crashed ${crash.n}x -- this project takes it down` +
         (crash.files?.length ? `\nlast parsing: ${crash.files.join(", ")}` : "") +
         "\n(read the IDE's DEBUG CONSOLE with --keep for the exception detail)",
+      crashFiles: crash.files ?? [],
     };
   }
   if (drops >= 2) {

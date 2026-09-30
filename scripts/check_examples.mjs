@@ -67,7 +67,6 @@
 // and the rest without it, a crash that names none bisects, O(log n) builds, and
 // one that needs several samples at once is reported with all of them.
 
-import { spawn } from "node:child_process";
 import {
   cpSync, existsSync, mkdirSync, promises as fs, readdirSync, readFileSync, rmSync,
   writeFileSync,
@@ -81,6 +80,8 @@ import {
   BODY_SLOTS, CONCAT_KEY, HIDDEN_MARKER, MARKER, RUN_MARKER, SLOTS, classify,
   collectFences, concatFences, moduleName, parseInfo, partOf, resourcePath, wrapFence,
 } from "./lib/tb-fences.mjs";
+import { compileProject } from "./lib/tb-build.mjs";
+import { wantShow } from "./lib/tb-ide.mjs";
 import { buildNumber, compilerExe, findIde, runCompiler } from "./lib/tb-install.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
@@ -627,19 +628,17 @@ const COMPILER = IDE ? compilerExe(IDE) : null;
 let tidy = null;
 
 /**
- * The samples of a staged batch that tbbuild's crash report says the compiler
- * died parsing, as fence ids.
+ * The samples of a staged batch that the compiler died parsing, as fence ids.
  *
- * tbbuild names them on its `last parsing:` line by the file's base name, which
- * for a sample is its generated module's: `last parsing: tbx_df66b6fa33.twin`
- * for a batch of nine holding the crash fixture. A file that is no sample of
- * the batch -- the template's own source -- names nothing, and neither does a
- * report without the line.
+ * `files` is compileProject's `crashFiles`, the base names of the files the
+ * compiler was parsing when it went down. For a sample that is its generated
+ * module's: `tbx_df66b6fa33.twin` for a batch of nine holding the crash
+ * fixture. A file that is no sample of the batch -- the template's own
+ * source -- names nothing, and neither does a crash that named no file.
  */
-function crashedIn(report, map) {
+function crashedIn(files, map) {
   const ids = new Set();
-  const line = /^last parsing: (.+)$/m.exec(report)?.[1] ?? "";
-  for (const file of line.split(",")) {
+  for (const file of files) {
     const entry = map.get(file.trim().split(/[\\/]/).pop());
     if (entry) ids.add(entry.fence.id);
   }
@@ -648,31 +647,15 @@ function crashedIn(report, map) {
 
 /** Build one staged batch; returns per-fence errors, or a crash marker. */
 async function buildStaged(staged, port) {
-  const args = [path.join(REPO_ROOT, "scripts", "tbbuild.mjs"), staged.proj,
-    "--port", String(port), "--json"];
-  if (IDE) args.push("--ide", IDE);
-  if (values.show) args.push("--show");
-  if (values.hide) args.push("--hide");
-
-  const child = spawn(process.execPath, args, { stdio: ["ignore", "pipe", "pipe"] });
-  let out = "", err = "";
-  child.stdout.on("data", (d) => { out += d; });
-  child.stderr.on("data", (d) => { err += d; });
-  // A child that cannot start emits "error" and never "exit". "close" comes
-  // only once its output has been read to the end, which "exit" does not wait
-  // for.
-  const code = await new Promise((resolve, reject) => {
-    child.on("error", reject);
-    child.on("close", resolve);
+  const r = await compileProject({
+    project: staged.proj, ide: IDE, port, show: wantShow({ show: values.show, hide: values.hide }),
   });
 
-  if (code === 4) return { crashed: true, detail: err.trim(), named: crashedIn(err, staged.map) };
-  if (code !== 0 && code !== 1) {
-    throw new Error(`tbbuild exited ${code} on ${staged.proj}\n${err.trim() || out.trim()}`);
+  if (r.code === 4) return { crashed: true, detail: r.message, named: crashedIn(r.crashFiles, staged.map) };
+  if (r.code !== 0 && r.code !== 1) {
+    throw new Error(`tbbuild exited ${r.code} on ${staged.proj}\n${r.message}`);
   }
-  let result;
-  try { result = JSON.parse(out); }
-  catch { throw new Error(`tbbuild produced no JSON on ${staged.proj}\n${err.trim()}`); }
+  const result = { diagnostics: r.rows };
 
   const perFence = new Map();
   // A row in a shape this does not parse. Nothing in it names a file, so no
@@ -688,8 +671,8 @@ async function buildStaged(staged, port) {
     const m = /^\{(\w+)\}\s+(\S+)\s+\[(\d+),(\d+)\]:\s*(.*)$/.exec(row);
     if (!m) { unreadable.push(row); continue; }
     const [, severity, file, lineRaw, , message] = m;
+    const base = file.split(/[\\/]/).pop();
     if (severity !== "ERROR" && !VERBOSE) continue;
-    const base = file.split("/").pop();
     const entry = staged.map.get(base);
     if (!entry) {
       if (severity === "ERROR") unattributed.push(row);
@@ -1448,20 +1431,17 @@ async function runProbes() {
   if (takeOut(mixed, new Set(["mh"])) !== null) {
     failures.push("take out: a page's hidden context was taken out as a unit");
   }
-  // What is taken out is read off tbbuild's crash report, which names a sample
-  // by its generated module's file. This is a report as tbbuild printed it.
+  // What is taken out is read off the files the compiler died parsing, which name
+  // a sample by its generated module's file: the `crashFiles` of a build.
   const staged9 = new Map([["tbx_df66b6fa33.twin", { fence: { id: "P.md#5" } }]]);
-  const report = "the compiler crashed 2x -- this project takes it down\n" +
-    "last parsing: tbx_df66b6fa33.twin\n" +
-    "(read the IDE's DEBUG CONSOLE with --keep for the exception detail)\n";
-  if ([...crashedIn(report, staged9)].join() !== "P.md#5") {
-    failures.push("crash report: the sample tbbuild named was not read off it");
+  if ([...crashedIn(["tbx_df66b6fa33.twin"], staged9)].join() !== "P.md#5") {
+    failures.push("crash files: the sample the compiler died parsing was not read off them");
   }
-  if (crashedIn(report.replace("tbx_df66b6fa33", "tbxMain"), staged9).size) {
-    failures.push("crash report: the template's own file named a sample");
+  if (crashedIn(["tbxMain.twin"], staged9).size) {
+    failures.push("crash files: the template's own file named a sample");
   }
-  if (crashedIn("the compiler crashed 1x -- this project takes it down\n", staged9).size) {
-    failures.push("crash report: a report naming no file named a sample");
+  if (crashedIn([], staged9).size) {
+    failures.push("crash files: a crash naming no file named a sample");
   }
   // Isolation itself, run by runBatch against a fake lane. `crash` gets the ids
   // of a build's samples and says whether the compiler goes down, and which of
@@ -1726,9 +1706,9 @@ async function main() {
 
   // Every lane's IDE records its projects in the user's recent list and saved
   // project state (lib/tb-registry.mjs). This process owns the tidying for all
-  // of them: the tbbuild children see TB_REGISTRY_OWNER and leave the registry
-  // alone, because each restoring its own snapshot would put back whatever the
-  // registry held when that lane happened to start. Everything is under `work`,
+  // of them: compileProject never tidies, because each build restoring its own
+  // snapshot would put back whatever the registry held when that lane happened
+  // to start. Everything is under `work`,
   // so one sweep by that folder at the end takes the lot -- and the sweep here
   // at the start takes whatever a run on this --port left when it died.
   tidy = startTidy({ prefixes: [work] });

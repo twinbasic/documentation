@@ -33,11 +33,13 @@
 //     as it was, since a run can switch the target of the project it opens
 //     (restoreArchitectureMemory).
 //
-// ONE PROCESS OWNS THIS PER RUN. check_examples starts many tbbuild processes
-// at once; each snapshotting and restoring on its own would put back whichever
-// state it happened to see, in whichever order the lanes finished. The first
-// process to call startTidy sets TB_REGISTRY_OWNER, the children inherit it and
-// leave the registry alone, and the owner sweeps once at the end.
+// ONE PROCESS OWNS THIS PER RUN. check_examples and sweep_attributes build many
+// projects at once, in one process (lib/tb-build.mjs, which never tidies); each
+// snapshotting and restoring on its own would put back whichever state it
+// happened to see, in whichever order the lanes finished. The first process to
+// call startTidy sets TB_REGISTRY_OWNER, which a child process inherits, so a
+// tbbuild started from it would leave the registry alone too; the owner sweeps
+// once at the end.
 //
 // The work is done by .NET's registry API through PowerShell, and not by
 // reg.exe. reg.exe prints value names in the console code page when its output
