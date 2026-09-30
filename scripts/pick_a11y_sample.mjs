@@ -139,10 +139,8 @@ const cli = withUsageError(
         budget: { type: "string" },
         help: { type: "boolean", short: "h" },
       },
-      acceptsValue: Boolean,
       stopAt: ["help"],
     }),
-  { format: (err) => `unknown arg: ${err.arg}` },
 );
 if (cli.stopped === "help") {
   printHelpAndExit(

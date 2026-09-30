@@ -103,10 +103,8 @@ function parseArgs(argv) {
       help: { type: "boolean", short: "h" },
     },
     positionals: 0,
-    unknown: "error",
-    acceptsValue: () => true,
     stopAt: ["help"],
-  }), { format: (err) => `unknown argument: ${err.arg}`, exitCode: 1 });
+  }));
   return {
     src: "src" in values ? path.resolve(values.src) : REPO_ROOT,
     dest: "dest" in values ? path.resolve(values.dest) : null,
@@ -211,7 +209,7 @@ if (opts.help || !opts.dest) {
     "Mirrors the repository with every non-prose file replaced by an unreadable\n" +
     "stub, so a documentation evaluation cannot silently read the implementation.\n" +
     "See eval/README.md.",
-    { exitCode: opts.help ? 0 : 1 },
+    opts.help ? {} : { stream: "stderr", exitCode: 2 },
   );
 }
 build(opts);

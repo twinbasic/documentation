@@ -45,7 +45,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { createMarkdownIt } from "../builder/render.mjs";
-import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { blockRegions, mapLines, splitCodeSpans } from "../lib/markdown.mjs";
 import { markdownFiles } from "../lib/markdown-files.mjs";
 import { DOCS_DIR } from "../lib/repo-paths.mjs";
@@ -135,11 +135,10 @@ the typographer converts at build time, leaving code as it is.
   -h, --help  print this text and exit`;
 
 async function main(argv) {
-  const { values } = parseCli(argv, {
+  const { values } = withUsageError(() => parseCli(argv, {
     options: { check: { type: "boolean" }, help: { type: "boolean", short: "h" } },
-    unknown: "ignore",
     stopAt: ["help"],
-  });
+  }));
   if (values.help) printHelpAndExit(USAGE);
   const check = values.check;
   let files = 0;

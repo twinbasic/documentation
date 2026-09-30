@@ -93,10 +93,8 @@ const cli = withUsageError(
         list: { type: "boolean" },
         help: { type: "boolean", short: "h" },
       },
-      acceptsValue: Boolean,
       stopAt: ["list", "help"],
     }),
-  { format: (err) => `unknown arg: ${err.arg}` },
 );
 
 if (cli.stopped === "list") {

@@ -29,7 +29,7 @@ import { listDotSources } from "../builder/dot.mjs";
 import { withBrowser } from "./lib/browser.mjs";
 import { exitOnCrash } from "./lib/gate-probes.mjs";
 import { openInterPage } from "./lib/inter-page.mjs";
-import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 
 exitOnCrash();
@@ -50,11 +50,10 @@ Graphviz drew for it, by measuring the text in a browser.
 // tens of units rather than ones.
 const TOLERANCE = 1.0;
 
-const cli = parseCli(process.argv.slice(2), {
+const cli = withUsageError(() => parseCli(process.argv.slice(2), {
   options: { verbose: { type: "boolean" }, help: { type: "boolean", short: "h" } },
-  unknown: "ignore",
   stopAt: ["help"],
-});
+}));
 if (cli.values.help) printHelpAndExit(USAGE);
 const verbose = cli.values.verbose === true;
 

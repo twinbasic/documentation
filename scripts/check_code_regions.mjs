@@ -88,7 +88,7 @@ import { validateCountNames } from "../builder/counts.mjs";
 import { discover } from "../builder/discover.mjs";
 import { applyPostRenderRewrites, applyPreRenderRewrites, createMarkdownIt } from "../builder/render.mjs";
 import { injectAnchorHeadings } from "../builder/template.mjs";
-import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { parseFrontmatter, unquotedHashValues } from "../lib/frontmatter.mjs";
 import { blockRegions, mapLines, maskCode, splitCodeSpans, splitOnMarker } from "../lib/markdown.mjs";
 import { markdownFiles } from "../lib/markdown-files.mjs";
@@ -457,11 +457,10 @@ runs the probes of the modules that decide what is code.
   -h, --help   print this text and exit`;
 
 async function main(argv) {
-  const { values } = parseCli(argv, {
+  const { values } = withUsageError(() => parseCli(argv, {
     options: { verbose: { type: "boolean" }, "self-test": { type: "boolean" }, help: { type: "boolean", short: "h" } },
-    unknown: "ignore",
     stopAt: ["help"],
-  });
+  }));
   if (values.help) printHelpAndExit(USAGE);
   const verbose = values.verbose;
 

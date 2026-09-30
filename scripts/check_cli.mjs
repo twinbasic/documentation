@@ -1,4 +1,4 @@
-// Self-test for lib/cli.mjs, the command-line parser the tools move onto, and
+// Self-test for lib/cli.mjs, the command-line parser every tool reads through, and
 // the tools' own command-line cases.
 //
 //     node scripts/check_cli.mjs
@@ -14,9 +14,8 @@
 // makes the order of its flags matter.
 //
 // The recorded cases: invocations that stop while the tool reads its command
-// line, each with the exit code and the text printed on each stream. A tool's
-// cases are recorded from its behaviour before it moves onto lib/cli.mjs, so
-// the move has to keep them. A case pins the tool's own words for the error
+// line, each with the exit code and the text printed on each stream. A case
+// pins the tool's own words for the error
 // exactly; a usage text printed after it is matched by its opening, so adding
 // a flag to a tool's usage does not fail this gate. A string is the whole
 // stream; a RegExp must match it; a stream a case does not name must be empty.
@@ -53,13 +52,10 @@ cases of every tool, each in an empty folder with no IDE and no browser.
 
   -h, --help  print this text and exit`;
 
-// Every other argument is ignored.
-if (parseCli(process.argv.slice(2), {
+if (withUsageError(() => parseCli(process.argv.slice(2), {
   options: { help: { type: "boolean", short: "h" } },
-  unknown: "ignore",
-  positionals: { min: 0, max: 0 },
   stopAt: ["help"],
-}).values.help) printHelpAndExit(USAGE);
+})).values.help) printHelpAndExit(USAGE);
 
 const { check, report } = createProbes("check_cli");
 const show = (x) => JSON.stringify(x);
@@ -122,21 +118,18 @@ const OPTIONS = {
   check("a positional the tool does not take is an error", extra?.arg === "a" && extra.message === "unexpected argument: a", show(extra));
 }
 {
-  const spec = { options: OPTIONS, positionals: { max: 1 }, unknown: "ignore" };
-  const r = parseCli(["--bogus", "x", "t", "--verbose=1", "--port", "80", "-q", "u"], spec);
-  check("unknown: ignore drops unknown options, a boolean's value and surplus positionals, in order",
-    show(r.values) === show({ port: "80", forbid: [] }) && show(r.positionals) === show(["x"])
-      && show(r.ignored) === show(["--bogus", "t", "--verbose=1", "-q", "u"]),
-    show(r));
-  const err = cliError(() => parseCli(["--bogus", "--port"], spec), "missing-value");
-  check("unknown: ignore still refuses a value flag with no value", err?.option === "--port", show(err));
-}
-{
-  const r = parseCli(["--x", "-5", "-ab", "t", "--verbose", "--y=1"], { options: OPTIONS, positionals: { max: Infinity }, unknown: "positional" });
-  check("unknown: positional makes each unknown option one positional, as given",
-    show(r.positionals) === show(["--x", "-5", "-ab", "t", "--y=1"]) && r.values.verbose === true, show(r));
-  const err = cliError(() => parseCli(["--x", "t"], { options: OPTIONS, positionals: 1, unknown: "positional" }), "unexpected-positional");
-  check("unknown: positional counts them", err?.arg === "t", show(err));
+  const spec = { options: OPTIONS, positionals: { max: Infinity } };
+  const bare = cliError(() => parseCli(["a", "--x", "b"], spec), "unknown-option");
+  check("an unknown option is refused even where positionals are taken", bare?.option === "--x", show(bare));
+  const short = cliError(() => parseCli(["-ab"], spec), "unknown-option");
+  check("a short option cluster with an unknown letter is refused", short?.option === "-a", show(short));
+  const r = parseCli(["--", "--x", "-5", "-ab", "--y=1"], spec);
+  check("after -- an argument that starts with a dash is a positional",
+    show(r.positionals) === show(["--x", "-5", "-ab", "--y=1"]), show(r));
+  const one = cliError(() => parseCli(["a", "b"], { options: OPTIONS, positionals: 1 }), "unexpected-positional");
+  check("a positional beyond max is refused, naming it", one?.arg === "b", show(one));
+  const value = cliError(() => parseCli(["--verbose=1", "--port"], spec), "unexpected-value");
+  check("the first fault is the one reported", value?.option === "--verbose", show(value));
 }
 {
   const few = cliError(() => parseCli([], { options: OPTIONS, positionals: 1 }), "missing-positional");
@@ -156,26 +149,49 @@ const OPTIONS = {
     show(r.tokens.map((t) => t.key ?? t.value)) === show(["noCheck", "x", "check", "verbose"]), show(r.tokens));
 }
 {
-  const truthy = { options: OPTIONS, acceptsValue: (v) => Boolean(v) };
-  check("acceptsValue can take a flag as a value", parseCli(["--port", "--verbose"], truthy).values.port === "--verbose");
-  check("acceptsValue can refuse an empty value", Boolean(cliError(() => parseCli(["--port", ""], truthy), "missing-value")));
-  const any = parseCli(["--port"], { options: { port: { type: "string", default: "d" } }, acceptsValue: () => true }).values;
-  check("a value acceptsValue takes is stored as it is, undefined included", "port" in any && any.port === undefined, show(any));
+  const apart = cliError(() => parseCli(["--port", ""], { options: OPTIONS }), "empty-value");
+  check("an empty value given separately is refused", apart?.option === "--port" && apart.value === "" && apart.message === "--port needs a non-empty value",
+    show(apart));
+  const inline = cliError(() => parseCli(["--port="], { options: OPTIONS }), "empty-value");
+  check("an empty value given inline is refused", inline?.arg === "--port=" && inline.message === "--port needs a non-empty value", show(inline));
+  const short = cliError(() => parseCli(["-p", ""], { options: OPTIONS }), "empty-value");
+  check("the empty-value error names the flag as typed", short?.message === "-p needs a non-empty value", show(short));
+  const many = cliError(() => parseCli(["--forbid", "a", "--forbid", ""], { options: OPTIONS }), "empty-value");
+  check("an empty value of a multiple option is refused", many?.option === "--forbid" && many.message === "--forbid needs a non-empty value", show(many));
+  const manyInline = cliError(() => parseCli(["--forbid="], { options: OPTIONS }), "empty-value");
+  check("an empty inline value of a multiple option is refused", Boolean(manyInline), show(manyInline));
+  const first = cliError(() => parseCli(["--port", "--", "--forbid="], { options: OPTIONS }), "missing-value");
+  check("a value that looks like an option is missing, not empty", first?.option === "--port", show(first));
+}
+{
+  const options = { ...OPTIONS, port: { type: "string", empty: true }, forbid: { type: "string", multiple: true, empty: true } };
+  check("empty: true accepts an empty value, separate or inline",
+    parseCli(["--port", ""], { options }).values.port === "" && parseCli(["--port="], { options }).values.port === "");
+  check("empty: true accepts empty values of a multiple option",
+    show(parseCli(["--forbid=", "--forbid", "", "--forbid", "x"], { options }).values.forbid) === show(["", "", "x"]));
+  const missing = cliError(() => parseCli(["--port"], { options }), "missing-value");
+  check("empty: true does not excuse a missing value", Boolean(missing), show(missing));
+  const other = cliError(() => parseCli(["--root-dir", ""], { options }), "empty-value");
+  check("empty: true is per option", other?.option === "--root-dir", show(other));
+  check("empty is not passed to parseArgs", caught(() => parseCli([], { options })) === null);
 }
 {
   const spec = { options: { ...OPTIONS, help: { type: "boolean", short: "h" } }, positionals: 1, stopAt: ["help"] };
-  const r = parseCli(["--port", "80", "-h", "--bogus", "--port"], spec);
+  const r = parseCli(["--port", "80", "-h", "--bogus", "--port", "--verbose=1", "a", "b"], spec);
   check("stopAt ends the parse at the option, reading nothing after it and counting no positionals",
-    r.stopped === "help" && r.values.port === "80" && r.values.help === true, show(r));
+    r.stopped === "help" && r.values.port === "80" && r.values.help === true && r.positionals.length === 0, show(r));
   check("stopAt does not excuse an error before the option",
     Boolean(cliError(() => parseCli(["--bogus", "--help"], spec), "unknown-option")));
+  check("stopAt does not excuse an empty value before the option",
+    Boolean(cliError(() => parseCli(["--port=", "--help"], spec), "empty-value")));
   check("without its option, stopAt changes nothing", parseCli(["a"], spec).stopped === undefined
     && Boolean(cliError(() => parseCli([], spec), "missing-positional")));
 }
-check("unknown takes only its three values", caught(() => parseCli([], { unknown: "warn" })) instanceof TypeError);
 
-// With the defaults, parseCli refuses what a strict parseArgs refuses, in the
-// same kind, and otherwise returns the same values and positionals.
+// parseCli refuses what a strict parseArgs refuses, in the same kind, and
+// otherwise returns the same values and positionals. An empty value is the
+// exception: a strict parseArgs takes it and parseCli refuses it, so the lists
+// hold none, and the probes above cover it.
 {
   const KINDS = {
     ERR_PARSE_ARGS_UNKNOWN_OPTION: ["unknown-option"],
@@ -197,8 +213,8 @@ check("unknown takes only its three values", caught(() => parseCli([], { unknown
   };
   const LISTS = [
     [], ["--verbose"], ["-v"], ["--port", "80"], ["--port=80"], ["-p", "80"], ["-p80"], ["-vp", "80"], ["-pv"],
-    ["--port"], ["-p"], ["--port", "--verbose"], ["--port", "-5"], ["--port=-5"], ["--port", "-"], ["--port", ""],
-    ["--port="], ["--port", "--"], ["--verbose=1"], ["--verbose="], ["--bogus"], ["--bogus=1"], ["-x"], ["-5"], ["--no-verbose"],
+    ["--port"], ["-p"], ["--port", "--verbose"], ["--port", "-5"], ["--port=-5"], ["--port", "-"],
+    ["--port", "--"], ["--verbose=1"], ["--verbose="], ["--bogus"], ["--bogus=1"], ["-x"], ["-5"], ["--no-verbose"],
     ["--forbid", "a", "--forbid", "b"], ["--port", "1", "--port", "2"], ["--root-dir", "x"],
     ["a"], ["a", "--verbose", "b"], ["--", "--verbose"], ["--port", "1", "--", "-x"],
   ];
@@ -210,7 +226,7 @@ check("unknown takes only its three values", caught(() => parseCli([], { unknown
       if (strict !== ours) differ.push(`${allow ? "" : "no positionals: "}${show(args)}\n  parseArgs ${strict}\n  parseCli  ${ours}`);
     }
   }
-  check(`the defaults agree with a strict parseArgs on ${LISTS.length * 2} argument lists`, differ.length === 0, differ.join("\n"));
+  check(`parseCli agrees with a strict parseArgs on ${LISTS.length * 2} argument lists`, differ.length === 0, differ.join("\n"));
 }
 
 // ------------------------------------------------------------ numberOption
@@ -284,7 +300,8 @@ function capture(fn) {
     parsed(["--no-check", "--check"]).check === true && parsed(["--check", "--no-check"]).check === false);
   check("tbdocs's last of --fetch-assets and --no-fetch-assets wins",
     parsed(["--fetch-assets", "--no-fetch-assets"]).fetchAssets === false && parsed(["--no-fetch-assets", "--fetch-assets"]).fetchAssets === true);
-  check("tbdocs reads --stall-timeout= as 0, disabling the watchdog", parsed(["--stall-timeout="]).stallTimeoutMs === 0);
+  check("tbdocs reads --stall-timeout 0 as disabling the watchdog", parsed(["--stall-timeout", "0"]).stallTimeoutMs === 0);
+  check("tbdocs reads --baseurl= as the site root, an empty value", parsed(["--baseurl="]).baseurl === "" && parsed(["--baseurl", ""]).baseurl === "");
   check("tbdocs reads --stall-timeout in seconds", parsed(["--stall-timeout", "1.5"]).stallTimeoutMs === 1500);
   check("tbdocs takes --name=value for every value flag",
     pick(["--check-findings=f", "--symbol-gaps=g", "--port=81", "--dest=d"], ["check", "checkFindings", "symbolGaps", "port", "dest"])
@@ -300,14 +317,14 @@ const CASES = [
   // tbdocs and check_links exits 4, outside the 1/2/3 bitmask of the link and
   // integrity checks, so it never reads as a broken link. A value flag has no
   // value at the end of the list or before another flag, and --port is a whole
-  // number from 1 to 65535. check_links prints on stdout, and requires a value
-  // only at the end: before a flag, it takes the flag as the value.
+  // number from 1 to 65535. check_links prints its errors on stderr, after
+  // "error: ".
   { tool: "builder/tbdocs.mjs", args: ["--port"], exit: 4, stderr: "--port needs a value\n" },
   { tool: "builder/tbdocs.mjs", args: ["--dest", "--no-pdf"], exit: 4, stderr: "--dest needs a value\n" },
   { tool: "builder/tbdocs.mjs", args: ["--port=0"], exit: 4, stderr: "--port expects a port number from 1 to 65535, got: 0\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--bogus"], exit: 4, stderr: "Unknown argument: --bogus\n" },
-  { tool: "scripts/check_links.mjs", args: ["no-such-tree", "--root-dir"], exit: 4, stdout: "error: --root-dir requires a value\n" },
-  { tool: "scripts/check_links.mjs", args: ["no-such-tree", "--forbid"], exit: 4, stdout: "error: --forbid requires a value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--bogus"], exit: 4, stderr: "unknown option: --bogus\n" },
+  { tool: "scripts/check_links.mjs", args: ["no-such-tree", "--root-dir"], exit: 4, stderr: "error: --root-dir needs a value\n" },
+  { tool: "scripts/check_links.mjs", args: ["no-such-tree", "--forbid"], exit: 4, stderr: "error: --forbid needs a value\n" },
 
   // Recorded in C47, from the behaviour C17 settled: in the four harness tools
   // that check, a value flag with no value, at the end or before another flag,
@@ -321,50 +338,50 @@ const CASES = [
   { tool: "scripts/build_package_api.mjs", args: ["--out"], exit: 2, stderr: "--out needs a value\n" },
   { tool: "scripts/build_package_api.mjs", args: ["--src", "--check"], exit: 2, stderr: "--src needs a value\n" },
 
-  // Recorded in C48, before the a11y and diagram tools moved onto lib/cli.mjs.
-  // A value flag given nothing, at the end or as "", reads as an unknown
-  // argument; one followed by another flag takes the flag as its value, so that
-  // is no case. Each of them answers --help on stdout with exit 0 (C71).
+  // Recorded in C48, for the a11y and diagram tools. A value flag given
+  // nothing, at the end or as "", or followed by another flag, is refused.
+  // Each of them answers --help on stdout with exit 0 (C71).
   // --theme and --viewport are checked against their lists (C20).
-  // check_dot_fit and build_dot_metrics ignore every argument but --help and -h,
-  // so neither has another case.
+  // check_dot_fit and build_dot_metrics take one flag of their own besides
+  // --help and -h, and neither has a case beyond those and the generated ones.
   { tool: "scripts/check_a11y.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_a11y\.mjs / },
-  { tool: "scripts/check_a11y.mjs", args: ["--bogus"], exit: 2, stderr: "unknown arg: --bogus\n" },
-  { tool: "scripts/check_a11y.mjs", args: ["--root-dir"], exit: 2, stderr: "unknown arg: --root-dir\n" },
-  { tool: "scripts/check_a11y.mjs", args: ["--theme", ""], exit: 2, stderr: "unknown arg: --theme\n" },
+  { tool: "scripts/check_a11y.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "scripts/check_a11y.mjs", args: ["--root-dir"], exit: 2, stderr: "--root-dir needs a value\n" },
+  { tool: "scripts/check_a11y.mjs", args: ["--root-dir", "--theme", "dark"], exit: 2, stderr: "--root-dir needs a value\n" },
+  { tool: "scripts/check_a11y.mjs", args: ["--theme", ""], exit: 2, stderr: "--theme needs a non-empty value\n" },
   { tool: "scripts/check_a11y.mjs", args: ["--theme", "drak"], exit: 2, stderr: 'unknown --theme "drak"; expected one of light, dark or both\n' },
   { tool: "scripts/check_a11y.mjs", args: ["--viewport", "huge"], exit: 2, stderr: 'unknown --viewport "huge"; expected one of desktop, mobile or both\n' },
   { tool: "scripts/check_a11y_fingerprint.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_a11y_fingerprint\.mjs / },
-  { tool: "scripts/check_a11y_fingerprint.mjs", args: ["--bogus"], exit: 2, stderr: "unknown arg: --bogus\n" },
-  { tool: "scripts/check_a11y_fingerprint.mjs", args: ["--pages"], exit: 2, stderr: "unknown arg: --pages\n" },
+  { tool: "scripts/check_a11y_fingerprint.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "scripts/check_a11y_fingerprint.mjs", args: ["--pages"], exit: 2, stderr: "--pages needs a value\n" },
   { tool: "scripts/check_a11y_fingerprint.mjs", args: ["--theme", "drak"], exit: 2, stderr: 'unknown --theme "drak"; expected one of light, dark or both\n' },
   { tool: "scripts/check_axe_patch_equiv.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_axe_patch_equiv\.mjs / },
-  { tool: "scripts/check_axe_patch_equiv.mjs", args: ["--bogus"], exit: 2, stderr: "unknown arg: --bogus\n" },
-  { tool: "scripts/check_axe_patch_equiv.mjs", args: ["--patch"], exit: 2, stderr: "unknown arg: --patch\n" },
+  { tool: "scripts/check_axe_patch_equiv.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "scripts/check_axe_patch_equiv.mjs", args: ["--patch"], exit: 2, stderr: "--patch needs a value\n" },
   { tool: "scripts/check_pdf_shims_equiv.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_pdf_shims_equiv\.mjs\n/ },
   { tool: "scripts/check_pdf_shims_equiv.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
   { tool: "scripts/check_impexp_parity.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_impexp_parity\.mjs\n/ },
   { tool: "scripts/check_impexp_parity.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
   { tool: "scripts/check_tree_fresh.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_tree_fresh\.mjs / },
-  { tool: "scripts/check_tree_fresh.mjs", args: ["--bogus"], exit: 2, stderr: "unknown arg: --bogus\n" },
-  { tool: "scripts/check_tree_fresh.mjs", args: ["--source"], exit: 2, stderr: "unknown arg: --source\n" },
-  { tool: "scripts/check_tree_fresh.mjs", args: ["--tree"], exit: 2, stderr: "unknown arg: --tree\n" },
+  { tool: "scripts/check_tree_fresh.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "scripts/check_tree_fresh.mjs", args: ["--source"], exit: 2, stderr: "--source needs a value\n" },
+  { tool: "scripts/check_tree_fresh.mjs", args: ["--tree"], exit: 2, stderr: "--tree needs a value\n" },
   { tool: "scripts/pick_a11y_sample.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/pick_a11y_sample\.mjs / },
-  { tool: "scripts/pick_a11y_sample.mjs", args: ["--bogus"], exit: 2, stderr: "unknown arg: --bogus\n" },
-  { tool: "scripts/pick_a11y_sample.mjs", args: ["--budget"], exit: 2, stderr: "unknown arg: --budget\n" },
+  { tool: "scripts/pick_a11y_sample.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "scripts/pick_a11y_sample.mjs", args: ["--budget"], exit: 2, stderr: "--budget needs a value\n" },
   { tool: "scripts/sweep_a11y.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/sweep_a11y\.mjs / },
-  { tool: "scripts/sweep_a11y.mjs", args: ["--bogus"], exit: 2, stderr: "unknown arg: --bogus\n" },
-  { tool: "scripts/sweep_a11y.mjs", args: ["--limit"], exit: 2, stderr: "unknown arg: --limit\n" },
+  { tool: "scripts/sweep_a11y.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "scripts/sweep_a11y.mjs", args: ["--limit"], exit: 2, stderr: "--limit needs a value\n" },
   { tool: "scripts/sweep_a11y.mjs", args: ["--theme", "drak"], exit: 2, stderr: 'unknown --theme "drak"; expected one of light, dark or both\n' },
   { tool: "scripts/sweep_a11y.mjs", args: ["--viewport", "huge"], exit: 2, stderr: 'unknown --viewport "huge"; expected one of desktop, mobile or both\n' },
 
-  // Recorded in C49, before the harness tools moved onto lib/cli.mjs. All of
-  // them ignore an unknown flag, and answer --help and -h on stdout with exit 0
-  // before any other check, a number or a missing project included (C71).
-  // tbbuild finds its project anywhere in the list (C17). tbrun and addin_test
-  // give a value flag with nothing after it, or "", its default, and a value
-  // flag takes the argument after it whatever it is. gen_attribute_probes takes
-  // any other argument as its output folder, so only its empty list is a case.
+  // Recorded in C49, for the harness tools. All of them answer --help and -h
+  // on stdout with exit 0 before any other check, a number or a missing
+  // project included (C71). tbbuild finds its project anywhere in the list
+  // (C17). An unknown option, a value flag with no value or an empty one is
+  // refused, and tbbuild and tbrun follow the message with their usage.
+  // gen_attribute_probes takes one output folder and an optional key file, so
+  // only its empty list is a case here.
   { tool: "scripts/tbbuild.mjs", args: [], exit: 2, stderr: /^usage: node scripts\/tbbuild\.mjs / },
   { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--help"], exit: 0, stdout: /^usage: node scripts\/tbbuild\.mjs / },
   { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--arch", "win99"], exit: 2, stderr: /^usage: node scripts\/tbbuild\.mjs / },
@@ -372,17 +389,20 @@ const CASES = [
   { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--timeout", "abc"], exit: 2, stderr: /^--timeout takes a positive number\nusage: node scripts\/tbbuild\.mjs / },
   { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--timeout", "-3"], exit: 2, stderr: /^--timeout needs a value\nusage: node scripts\/tbbuild\.mjs / },
   { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--port", "0", "--help"], exit: 0, stdout: /^usage: node scripts\/tbbuild\.mjs / },
-  { tool: "scripts/tbbuild.mjs", args: ["--bogus", "--keep", "x.twinproj"], exit: 2, stderr: "no such project: x.twinproj\n" },
+  { tool: "scripts/tbbuild.mjs", args: ["--bogus", "--keep", "x.twinproj"], exit: 2, stderr: /^unknown option: --bogus\nusage: node scripts\/tbbuild\.mjs / },
+  { tool: "scripts/tbbuild.mjs", args: ["--keep", "x.twinproj"], exit: 2, stderr: "no such project: x.twinproj\n" },
   { tool: "scripts/tbrun.mjs", args: [], exit: 2, stderr: /^usage: node scripts\/tbrun\.mjs / },
   { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--help"], exit: 0, stdout: /^usage: node scripts\/tbrun\.mjs / },
   { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch", "win99"], exit: 2, stderr: /^usage: node scripts\/tbrun\.mjs / },
   { tool: "scripts/tbrun.mjs", args: ["--port", "no-such-dir"], exit: 2, stderr: /^usage: node scripts\/tbrun\.mjs / },
-  { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch"], exit: 2, stderr: /^not a directory: .*no-such-dir\ntbrun takes an exported source tree / },
-  { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch", ""], exit: 2, stderr: /^not a directory: .*no-such-dir\ntbrun takes an exported source tree / },
-  { tool: "scripts/tbrun.mjs", args: ["--bogus", "no-such-dir"], exit: 2, stderr: /^not a directory: .*no-such-dir\ntbrun takes an exported source tree / },
+  { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch"], exit: 2, stderr: /^--arch needs a value\nusage: node scripts\/tbrun\.mjs / },
+  { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch", ""], exit: 2, stderr: /^--arch needs a non-empty value\nusage: node scripts\/tbrun\.mjs / },
+  { tool: "scripts/tbrun.mjs", args: ["--bogus", "no-such-dir"], exit: 2, stderr: /^unknown option: --bogus\nusage: node scripts\/tbrun\.mjs / },
+  { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch", "win64"], exit: 2, stderr: /^not a directory: .*no-such-dir\ntbrun takes an exported source tree / },
   { tool: "scripts/addin_test.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/addin_test\.mjs / },
-  { tool: "scripts/addin_test.mjs", args: ["--ide"], exit: 2, stderr: /^no twinBASIC IDE found: pass --ide / },
-  { tool: "scripts/addin_test.mjs", args: ["--ide", ""], exit: 2, stderr: /^no twinBASIC IDE found: pass --ide / },
+  { tool: "scripts/addin_test.mjs", args: ["--ide"], exit: 2, stderr: "--ide needs a value\n" },
+  { tool: "scripts/addin_test.mjs", args: ["--ide", ""], exit: 2, stderr: "--ide needs a non-empty value\n" },
+  { tool: "scripts/addin_test.mjs", args: ["--ide", "no-such.exe"], exit: 2, stderr: /^no twinBASIC IDE found: pass --ide / },
   { tool: "scripts/check_examples.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_examples\.mjs \[options\]\n/ },
   { tool: "scripts/check_examples.mjs", args: ["--jobs", "0"], exit: 2, stderr: "check_examples: --jobs takes a positive whole number\n" },
   { tool: "scripts/check_examples.mjs", args: ["--batch", "1.5"], exit: 2, stderr: "check_examples: --batch takes a positive whole number\n" },
@@ -392,156 +412,157 @@ const CASES = [
   { tool: "scripts/census_attributes.mjs", args: ["--help", "--attr"], exit: 0, stdout: /^usage: node scripts\/census_attributes\.mjs \[options\]\n/ },
   { tool: "scripts/census_attributes.mjs", args: ["--dump-sites"], exit: 2, stderr: "--dump-sites needs a value\n" },
   { tool: "scripts/build_package_api.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/build_package_api\.mjs \[options\]\n/ },
-  { tool: "scripts/gen_attribute_probes.mjs", args: [], exit: 2, stdout: /^Generate a twinBASIC probe project for Reference\/Attributes\.md applicability\.\n/ },
+  { tool: "scripts/gen_attribute_probes.mjs", args: [], exit: 2, stderr: /^Generate a twinBASIC probe project for Reference\/Attributes\.md applicability\.\n/ },
 
-  // Recorded in C50, before the gates and link tools moved onto lib/cli.mjs.
-  // check_links prints on stdout and exits 4; an unknown flag is warned about
-  // and takes the argument after it along, unless that starts with a dash, and
-  // a value flag takes whatever follows. check_links_diff, crawl_check and
-  // compare_trees refuse an unknown argument, and a value flag in crawl_check
-  // takes whatever follows. check_publish_policy reads only --src and ignores
-  // the rest; check_lint takes --staged alone, --help, or nothing. survey_tooling's words for a parse error
-  // were node:util's, so only the line and the usage after it are pinned.
-  // check_regex_safety, check_code_regions, check_gate_lists and
-  // convert_em_dash_separators ignore every argument they do not know, so none
-  // has a case beyond --help and -h.
+  // Recorded in C50, for the gates and link tools. check_links prints its
+  // errors on stderr, after "error: ", and exits 4. Every one of them refuses
+  // an unknown option, a stray argument, a value given to a flag that takes
+  // none, and a value flag with no value, and crawl_check, compare_trees and
+  // survey_tooling follow the message with their usage. check_lint prints its
+  // name, the message and its usage line. check_regex_safety,
+  // check_code_regions, check_gate_lists and convert_em_dash_separators take
+  // only flags of their own, and none has a case beyond --help, -h and the
+  // generated ones below.
   { tool: "scripts/check_links.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node check_links\.mjs \[options\] <inputs\.\.\.>\n/ },
-  { tool: "scripts/check_links.mjs", args: ["no-such-tree"], exit: 4, stdout: "error: --offline is required. Online (network) checking is not implemented by this tool.\n" },
-  { tool: "scripts/check_links.mjs", args: ["--offline"], exit: 4, stdout: "error: at least one input file or directory is required\n" },
-  { tool: "scripts/check_links.mjs", args: ["--offline", "--bogus", "no-such-tree"], exit: 4, stdout: "warning: ignoring unrecognised arguments: --bogus no-such-tree\nerror: at least one input file or directory is required\n" },
-  { tool: "scripts/check_links.mjs", args: ["--offline", "-x", "--bogus=1"], exit: 4, stdout: "warning: ignoring unrecognised arguments: -x --bogus=1\nerror: at least one input file or directory is required\n" },
-  { tool: "scripts/check_links.mjs", args: ["--offline", "--root-dir", "--forbid"], exit: 4, stdout: "error: at least one input file or directory is required\n" },
+  { tool: "scripts/check_links.mjs", args: ["no-such-tree"], exit: 4, stderr: "error: --offline is required. Online (network) checking is not implemented by this tool.\n" },
+  { tool: "scripts/check_links.mjs", args: ["--offline"], exit: 4, stderr: "error: at least one input file or directory is required\n" },
+  { tool: "scripts/check_links.mjs", args: ["--offline", "--bogus", "no-such-tree"], exit: 4, stderr: "error: unknown option: --bogus\n" },
+  { tool: "scripts/check_links.mjs", args: ["--offline", "-x", "--bogus=1"], exit: 4, stderr: "error: unknown option: -x\n" },
+  { tool: "scripts/check_links.mjs", args: ["--offline", "--root-dir", "--forbid"], exit: 4, stderr: "error: --root-dir needs a value\n" },
   { tool: "scripts/check_links_diff.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node scripts\/check_links_diff\.mjs \[options\]\n/ },
   { tool: "scripts/check_links_diff.mjs", args: [], exit: 2, stderr: /^error: --a and --b are both 'script', which compares nothing\.\n/ },
-  { tool: "scripts/check_links_diff.mjs", args: ["--bogus"], exit: 2, stderr: "error: unknown argument: --bogus\n" },
-  { tool: "scripts/check_links_diff.mjs", args: ["stray"], exit: 2, stderr: "error: unknown argument: stray\n" },
-  { tool: "scripts/check_links_diff.mjs", args: ["--list=1"], exit: 2, stderr: "error: unknown argument: --list=1\n" },
+  { tool: "scripts/check_links_diff.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "scripts/check_links_diff.mjs", args: ["stray"], exit: 2, stderr: "unexpected argument: stray\n" },
+  { tool: "scripts/check_links_diff.mjs", args: ["--list=1"], exit: 2, stderr: "--list takes no value\n" },
   { tool: "scripts/crawl_check.mjs", args: [], exit: 2, stderr: /^usage: node scripts\/crawl_check\.mjs <start-url> / },
   { tool: "scripts/crawl_check.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/crawl_check\.mjs <start-url> / },
-  { tool: "scripts/crawl_check.mjs", args: ["--bogus", "http://127.0.0.1:9/"], exit: 2, stderr: "unknown flag: --bogus\n" },
-  { tool: "scripts/crawl_check.mjs", args: ["--timeout", "5", "-x"], exit: 2, stderr: "unknown flag: -x\n" },
-  { tool: "scripts/crawl_check.mjs", args: ["--skip-external=1"], exit: 2, stderr: "unknown flag: --skip-external=1\n" },
-  { tool: "scripts/crawl_check.mjs", args: ["--concurrency", "--bogus"], exit: 2, stderr: /^usage: node scripts\/crawl_check\.mjs <start-url> / },
-  { tool: "scripts/check_publish_policy.mjs", args: ["--src"], exit: 2, stderr: /^TypeError \[ERR_INVALID_ARG_TYPE\]: The "path" argument must be of type string\. Received undefined\n/ },
+  { tool: "scripts/crawl_check.mjs", args: ["--bogus", "http://127.0.0.1:9/"], exit: 2, stderr: /^unknown option: --bogus\nusage: node scripts\/crawl_check\.mjs <start-url> / },
+  { tool: "scripts/crawl_check.mjs", args: ["--timeout", "5", "-x"], exit: 2, stderr: /^unknown option: -x\nusage: node scripts\/crawl_check\.mjs <start-url> / },
+  { tool: "scripts/crawl_check.mjs", args: ["--skip-external=1"], exit: 2, stderr: /^--skip-external takes no value\nusage: node scripts\/crawl_check\.mjs <start-url> / },
+  { tool: "scripts/crawl_check.mjs", args: ["--concurrency", "--bogus"], exit: 2, stderr: /^--concurrency needs a value\nusage: node scripts\/crawl_check\.mjs <start-url> / },
+  { tool: "scripts/check_publish_policy.mjs", args: ["--src"], exit: 2, stderr: "--src needs a value\n" },
   { tool: "scripts/survey_tooling.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/survey_tooling\.mjs \[--root DIR\] / },
-  { tool: "scripts/survey_tooling.mjs", args: ["--bogus"], exit: 2, stderr: /^[^\n]+\nusage: node scripts\/survey_tooling\.mjs \[--root DIR\] / },
-  { tool: "scripts/survey_tooling.mjs", args: ["stray"], exit: 2, stderr: /^[^\n]+\nusage: node scripts\/survey_tooling\.mjs \[--root DIR\] / },
-  { tool: "scripts/survey_tooling.mjs", args: ["--root"], exit: 2, stderr: /^[^\n]+\nusage: node scripts\/survey_tooling\.mjs \[--root DIR\] / },
+  { tool: "scripts/survey_tooling.mjs", args: ["--bogus"], exit: 2, stderr: /^unknown option: --bogus\nusage: node scripts\/survey_tooling\.mjs \[--root DIR\] / },
+  { tool: "scripts/survey_tooling.mjs", args: ["stray"], exit: 2, stderr: /^unexpected argument: stray\nusage: node scripts\/survey_tooling\.mjs \[--root DIR\] / },
+  { tool: "scripts/survey_tooling.mjs", args: ["--root"], exit: 2, stderr: /^--root needs a value\nusage: node scripts\/survey_tooling\.mjs \[--root DIR\] / },
   { tool: "scripts/survey_tooling.mjs", args: ["--window", "0"], exit: 2, stderr: /^--window expects a positive integer, got: 0\nusage: node scripts\/survey_tooling\.mjs / },
   { tool: "scripts/survey_tooling.mjs", args: ["--top", "1.5"], exit: 2, stderr: /^--top expects a positive integer, got: 1\.5\nusage: node scripts\/survey_tooling\.mjs / },
   { tool: "scripts/survey_tooling.mjs", args: ["--window", "0", "--help"], exit: 0, stdout: /^usage: node scripts\/survey_tooling\.mjs \[--root DIR\] / },
   { tool: "scripts/check_lint.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_lint\.mjs \[--staged\]\n/ },
-  { tool: "scripts/check_lint.mjs", args: ["--staged", "--staged"], exit: 2, stderr: "check_lint: usage: node scripts/check_lint.mjs [--staged]\n" },
-  { tool: "scripts/check_lint.mjs", args: ["--staged", "x"], exit: 2, stderr: "check_lint: usage: node scripts/check_lint.mjs [--staged]\n" },
-  { tool: "scripts/check_lint.mjs", args: ["--"], exit: 2, stderr: "check_lint: usage: node scripts/check_lint.mjs [--staged]\n" },
-  { tool: "scripts/check_lint.mjs", args: ["--staged=1"], exit: 2, stderr: "check_lint: usage: node scripts/check_lint.mjs [--staged]\n" },
+  { tool: "scripts/check_lint.mjs", args: ["--staged", "--staged"], exit: 2, stderr: "check_lint: --staged given more than once\nusage: node scripts/check_lint.mjs [--staged]\n" },
+  { tool: "scripts/check_lint.mjs", args: ["--staged", "x"], exit: 2, stderr: "check_lint: unexpected argument: x\nusage: node scripts/check_lint.mjs [--staged]\n" },
+  { tool: "scripts/check_lint.mjs", args: ["--"], exit: 2, stderr: "check_lint: unexpected argument: --\nusage: node scripts/check_lint.mjs [--staged]\n" },
+  { tool: "scripts/check_lint.mjs", args: ["--staged=1"], exit: 2, stderr: "check_lint: --staged takes no value\nusage: node scripts/check_lint.mjs [--staged]\n" },
+  { tool: "scripts/check_lint.mjs", args: ["--bogus"], exit: 2, stderr: "check_lint: unknown option: --bogus\nusage: node scripts/check_lint.mjs [--staged]\n" },
   { tool: "scripts/compare_trees.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/compare_trees\.mjs \[--before <ref>\] / },
-  { tool: "scripts/compare_trees.mjs", args: ["--bogus"], exit: 2, stderr: /^compare_trees: unknown argument "--bogus"\n\nusage: node scripts\/compare_trees\.mjs / },
-  { tool: "scripts/compare_trees.mjs", args: ["stray"], exit: 2, stderr: /^compare_trees: unknown argument "stray"\n\nusage: node scripts\/compare_trees\.mjs / },
+  { tool: "scripts/compare_trees.mjs", args: ["--bogus"], exit: 2, stderr: /^compare_trees: unknown option: --bogus\n\nusage: node scripts\/compare_trees\.mjs / },
+  { tool: "scripts/compare_trees.mjs", args: ["stray"], exit: 2, stderr: /^compare_trees: unexpected argument: stray\n\nusage: node scripts\/compare_trees\.mjs / },
   { tool: "scripts/compare_trees.mjs", args: ["--before"], exit: 2, stderr: /^compare_trees: --before needs a value\n\nusage: node scripts\/compare_trees\.mjs / },
   { tool: "scripts/compare_trees.mjs", args: ["--max", "--keep"], exit: 2, stderr: /^compare_trees: --max needs a value\n\nusage: node scripts\/compare_trees\.mjs / },
   { tool: "scripts/compare_trees.mjs", args: ["--max", "1.5"], exit: 2, stderr: /^compare_trees: --max takes a whole number, not "1\.5"\n\nusage: node scripts\/compare_trees\.mjs / },
-  { tool: "scripts/compare_trees.mjs", args: ["--bogus", "--help"], exit: 2, stderr: /^compare_trees: unknown argument "--bogus"\n\nusage: node scripts\/compare_trees\.mjs / },
+  { tool: "scripts/compare_trees.mjs", args: ["--bogus", "--help"], exit: 2, stderr: /^compare_trees: unknown option: --bogus\n\nusage: node scripts\/compare_trees\.mjs / },
   { tool: "scripts/compare_trees.mjs", args: ["--before", "--", "x"], exit: 2, stderr: /^compare_trees: --before needs a value\n\nusage: node scripts\/compare_trees\.mjs / },
-  { tool: "scripts/compare_trees.mjs", args: ["--keep=1"], exit: 2, stderr: /^compare_trees: unknown argument "--keep=1"\n\nusage: node scripts\/compare_trees\.mjs / },
+  { tool: "scripts/compare_trees.mjs", args: ["--keep=1"], exit: 2, stderr: /^compare_trees: --keep takes no value\n\nusage: node scripts\/compare_trees\.mjs / },
 
-  // Recorded in C51, before render-book, eval/ and wisdom moved onto
-  // lib/cli.mjs. In every one of them a value flag takes whatever follows it,
-  // so a missing value shows only where the value is used. render-book
-  // refuses an unknown flag and a second input with "unknown arg".
-  // build_corpus threw on an unknown argument, so only its message is pinned,
-  // as are the other crashes here. Node names a file it cannot open with its
-  // folder on Windows and as given on Linux, so a crash's file name may
-  // follow a folder or stand alone. run_case and search_quality refuse one in
-  // their own words. nav_hops and site_search take an unknown
-  // flag as a pattern or a search term. transcript's file is its first
-  // argument that does not start with --, and no file exits 1. wisdom takes its
-  // first argument as the command; --help there or after it prints the usage.
+  // Recorded in C51, for render-book, eval/ and wisdom. In every one of them an
+  // unknown option, a value flag with no value and a value given to a boolean
+  // are refused at the parse, in the parser's own words, exit 2, and so is an
+  // argument beyond those a tool takes (nav_hops and site_search take any
+  // number). A search term or a file name that starts with a dash goes after
+  // --. build_corpus, nav_hops, run_case, site_search and transcript print
+  // their usage on stderr when an argument they need is
+  // missing; wisdom does when no command is given, and names an unknown one.
   // Every tool here answers -h and --help on stdout with exit 0 (C71), and
-  // reads nothing after it. Any other unknown option
-  // or stray argument is refused before any command runs, and the command in
-  // these cases is never a real one, so that none can start an export.
+  // reads nothing after it. The command in the wisdom cases is never a real
+  // one, so that none can start an export. render-book's missing input file is
+  // not a usage error and exits 1, as does a --site that holds no search index.
   { tool: "book/render-book.mjs", args: ["--help"], exit: 0, stdout: /^usage: node render-book\.mjs <input\.html> / },
   { tool: "book/render-book.mjs", args: [], exit: 2, stderr: "usage: node render-book.mjs <input.html> -o <output.pdf> [--outline-tags ...] [-t ms] [--additional-script path]...\n" },
-  { tool: "book/render-book.mjs", args: ["a.html", "b.html"], exit: 2, stderr: "unknown arg: b.html\n" },
-  { tool: "book/render-book.mjs", args: ["a.html", "-o"], exit: 2, stderr: /^usage: node render-book\.mjs <input\.html> / },
-  { tool: "book/render-book.mjs", args: ["-o", "--bogus", "a.html"], exit: 1, stderr: /^input not found: .*a\.html\n$/ },
-  { tool: "book/render-book.mjs", args: ["a.html", "-o", "out.pdf", "--outline-tags"], exit: 1, stderr: /TypeError: Cannot read properties of undefined \(reading 'split'\)\r?\n/ },
+  { tool: "book/render-book.mjs", args: ["a.html", "b.html"], exit: 2, stderr: "unexpected argument: b.html\n" },
+  { tool: "book/render-book.mjs", args: ["a.html", "-o"], exit: 2, stderr: "-o needs a value\n" },
+  { tool: "book/render-book.mjs", args: ["-o", "--bogus", "a.html"], exit: 2, stderr: "-o needs a value\n" },
+  { tool: "book/render-book.mjs", args: ["a.html", "-o", "out.pdf", "--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "book/render-book.mjs", args: ["a.html", "-o", "out.pdf", "--outline-tags"], exit: 2, stderr: "--outline-tags needs a value\n" },
   { tool: "book/render-book.mjs", args: ["a.html", "-o", "out.pdf", "-t", "abc"], exit: 1, stderr: /^input not found: .*a\.html\n$/ },
-  { tool: "book/render-book.mjs", args: ["-x"], exit: 2, stderr: "unknown arg: -x\n" },
+  { tool: "book/render-book.mjs", args: ["-x"], exit: 2, stderr: "unknown option: -x\n" },
   { tool: "eval/build_corpus.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node eval\/build_corpus\.mjs --dest <path> / },
-  { tool: "eval/build_corpus.mjs", args: [], exit: 1, stdout: /^Usage: node eval\/build_corpus\.mjs --dest <path> / },
-  { tool: "eval/build_corpus.mjs", args: ["--bogus"], exit: 1, stderr: /(^|\n)(Error: )?unknown argument: --bogus\r?\n/ },
-  { tool: "eval/build_corpus.mjs", args: ["stray"], exit: 1, stderr: /(^|\n)(Error: )?unknown argument: stray\r?\n/ },
+  { tool: "eval/build_corpus.mjs", args: [], exit: 2, stderr: /^Usage: node eval\/build_corpus\.mjs --dest <path> / },
+  { tool: "eval/build_corpus.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "eval/build_corpus.mjs", args: ["stray"], exit: 2, stderr: "unexpected argument: stray\n" },
   { tool: "eval/build_corpus.mjs", args: ["--help", "--bogus"], exit: 0, stdout: /^Usage: node eval\/build_corpus\.mjs --dest <path> / },
-  { tool: "eval/build_corpus.mjs", args: ["--quiet=1"], exit: 1, stderr: /(^|\n)(Error: )?unknown argument: --quiet=1\r?\n/ },
+  { tool: "eval/build_corpus.mjs", args: ["--quiet=1"], exit: 2, stderr: "--quiet takes no value\n" },
   { tool: "eval/build_corpus.mjs", args: ["-hq"], exit: 0, stdout: /^Usage: node eval\/build_corpus\.mjs --dest <path> / },
-  { tool: "eval/build_corpus.mjs", args: ["--src"], exit: 1, stderr: /TypeError \[ERR_INVALID_ARG_TYPE\]: The "paths\[0\]" argument must be of type string\. Received undefined\r?\n/ },
+  { tool: "eval/build_corpus.mjs", args: ["--src"], exit: 2, stderr: "--src needs a value\n" },
   { tool: "eval/nav_hops.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node eval\/nav_hops\.mjs \[--from <page>\] / },
-  { tool: "eval/nav_hops.mjs", args: [], exit: 2, stdout: /^Usage: node eval\/nav_hops\.mjs \[--from <page>\] / },
+  { tool: "eval/nav_hops.mjs", args: [], exit: 2, stderr: /^Usage: node eval\/nav_hops\.mjs \[--from <page>\] / },
   { tool: "eval/nav_hops.mjs", args: ["--from", "nope.md", "x"], exit: 2, stderr: /^no start page: .*[\\/]nope\.md\n$/ },
-  { tool: "eval/nav_hops.mjs", args: ["--src", "nowhere", "--bogus"], exit: 2, stderr: /^no start page: .*[\\/]nowhere[\\/]docs[\\/]index\.md\n$/ },
-  { tool: "eval/nav_hops.mjs", args: ["--help=1", "--src", "nowhere"], exit: 2, stderr: /^no start page: .*[\\/]nowhere[\\/]docs[\\/]index\.md\n$/ },
-  { tool: "eval/nav_hops.mjs", args: ["--from", "--src", "x"], exit: 2, stderr: /^no start page: .*[\\/]--src\n$/ },
-  { tool: "eval/nav_hops.mjs", args: ["--bogus", "C:/x"], exit: 2, stderr: "these patterns arrived as Windows paths: C:/x\nGit Bash converted them. Run with MSYS_NO_PATHCONV=1 set, or from another shell.\n" },
-  { tool: "eval/nav_hops.mjs", args: ["--src"], exit: 2, stderr: /^TypeError \[ERR_INVALID_ARG_TYPE\]: The "paths\[0\]" argument must be of type string\. Received undefined\n/ },
-  { tool: "eval/nav_hops.mjs", args: ["x", "--from"], exit: 2, stderr: /^TypeError \[ERR_INVALID_ARG_TYPE\]: The "paths\[1\]" argument must be of type string\. Received undefined\n/ },
+  { tool: "eval/nav_hops.mjs", args: ["--src", "nowhere", "--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "eval/nav_hops.mjs", args: ["--src", "nowhere", "--", "--bogus"], exit: 2, stderr: /^no start page: .*[\\/]nowhere[\\/]docs[\\/]index\.md\n$/ },
+  { tool: "eval/nav_hops.mjs", args: ["--help=1", "--src", "nowhere"], exit: 2, stderr: "--help takes no value\n" },
+  { tool: "eval/nav_hops.mjs", args: ["--from", "--src", "x"], exit: 2, stderr: "--from needs a value\n" },
+  { tool: "eval/nav_hops.mjs", args: ["--", "C:/x"], exit: 2, stderr: "these patterns arrived as Windows paths: C:/x\nGit Bash converted them. Run with MSYS_NO_PATHCONV=1 set, or from another shell.\n" },
+  { tool: "eval/nav_hops.mjs", args: ["--src"], exit: 2, stderr: "--src needs a value\n" },
+  { tool: "eval/nav_hops.mjs", args: ["x", "--from"], exit: 2, stderr: "--from needs a value\n" },
   { tool: "eval/run_case.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node eval\/run_case\.mjs --corpus <dir> / },
-  { tool: "eval/run_case.mjs", args: [], exit: 2, stdout: /^Usage: node eval\/run_case\.mjs --corpus <dir> / },
-  { tool: "eval/run_case.mjs", args: ["--bogus"], exit: 2, stderr: "unknown argument: --bogus\n" },
-  { tool: "eval/run_case.mjs", args: ["stray"], exit: 2, stderr: "unknown argument: stray\n" },
+  { tool: "eval/run_case.mjs", args: [], exit: 2, stderr: /^Usage: node eval\/run_case\.mjs --corpus <dir> / },
+  { tool: "eval/run_case.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "eval/run_case.mjs", args: ["stray"], exit: 2, stderr: "unexpected argument: stray\n" },
   { tool: "eval/run_case.mjs", args: ["--help", "--bogus"], exit: 0, stdout: /^Usage: node eval\/run_case\.mjs --corpus <dir> / },
-  { tool: "eval/run_case.mjs", args: ["--prompt-only=1"], exit: 2, stderr: "unknown argument: --prompt-only=1\n" },
-  { tool: "eval/run_case.mjs", args: ["--corpus"], exit: 2, stderr: 'The "paths[0]" argument must be of type string. Received undefined\n' },
+  { tool: "eval/run_case.mjs", args: ["--prompt-only=1"], exit: 2, stderr: "--prompt-only takes no value\n" },
+  { tool: "eval/run_case.mjs", args: ["--corpus"], exit: 2, stderr: "--corpus needs a value\n" },
   { tool: "eval/run_case.mjs", args: ["--smoke", "--corpus", "c", "--site", "s", "--out", "o"], exit: 2, stderr: /^missing: .*[\\/]c[\\/]docs, .*search-data\.json, .*lunr\.min\.js\n$/ },
   { tool: "eval/run_case.mjs", args: ["--smoke", "--corpus", "c", "--site", "s", "--out", "o", "--timeout", "abc"], exit: 2, stderr: /^missing: .*[\\/]c[\\/]docs, / },
-  { tool: "eval/run_case.mjs", args: ["--corpus", "c", "--site", "s", "--out", "o", "--protocol", "--smoke"], exit: 2, stdout: /^Usage: node eval\/run_case\.mjs --corpus <dir> / },
+  { tool: "eval/run_case.mjs", args: ["--corpus", "c", "--site", "s", "--out", "o", "--protocol", "repo"], exit: 2, stderr: /^Usage: node eval\/run_case\.mjs --corpus <dir> / },
+  { tool: "eval/run_case.mjs", args: ["--corpus", "c", "--site", "s", "--out", "o", "--protocol", "--smoke"], exit: 2, stderr: "--protocol needs a value\n" },
   { tool: "eval/site_search.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node eval\/site_search\.mjs "<query>" / },
-  { tool: "eval/site_search.mjs", args: [], exit: 1, stdout: /^Usage: node eval\/site_search\.mjs "<query>" / },
-  { tool: "eval/site_search.mjs", args: ["--site", "nowhere", "--bogus"], exit: 1, stderr: /^missing .*search-data\.json\nRun build\.bat / },
-  { tool: "eval/site_search.mjs", args: ["--help=1", "--site", "nowhere"], exit: 1, stderr: /^missing .*search-data\.json\nRun build\.bat / },
+  { tool: "eval/site_search.mjs", args: [], exit: 2, stderr: /^Usage: node eval\/site_search\.mjs "<query>" / },
+  { tool: "eval/site_search.mjs", args: ["--site", "nowhere", "--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "eval/site_search.mjs", args: ["--site", "nowhere", "--", "--bogus"], exit: 1, stderr: /^missing .*search-data\.json\nRun build\.bat / },
+  { tool: "eval/site_search.mjs", args: ["--help=1", "--site", "nowhere"], exit: 2, stderr: "--help takes no value\n" },
   { tool: "eval/site_search.mjs", args: ["--composition", "--site", "nowhere"], exit: 1, stderr: /^missing .*search-data\.json\nRun build\.bat / },
-  { tool: "eval/site_search.mjs", args: ["--site"], exit: 1, stderr: /TypeError \[ERR_INVALID_ARG_TYPE\]: The "paths\[0\]" argument must be of type string\. Received undefined\r?\n/ },
+  { tool: "eval/site_search.mjs", args: ["--site"], exit: 2, stderr: "--site needs a value\n" },
   { tool: "eval/search_quality.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node eval\/search_quality\.mjs \[--site docs\/_site\] / },
-  { tool: "eval/search_quality.mjs", args: ["--bogus"], exit: 1, stderr: "unrecognised argument: --bogus\n" },
-  { tool: "eval/search_quality.mjs", args: ["stray"], exit: 1, stderr: "unrecognised argument: stray\n" },
+  { tool: "eval/search_quality.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "eval/search_quality.mjs", args: ["stray"], exit: 2, stderr: "unexpected argument: stray\n" },
   { tool: "eval/search_quality.mjs", args: ["--help", "--bogus"], exit: 0, stdout: /^Usage: node eval\/search_quality\.mjs \[--site docs\/_site\] / },
-  { tool: "eval/search_quality.mjs", args: ["--help=1"], exit: 1, stderr: "unrecognised argument: --help=1\n" },
-  { tool: "eval/search_quality.mjs", args: ["-x"], exit: 1, stderr: "unrecognised argument: -x\n" },
+  { tool: "eval/search_quality.mjs", args: ["--help=1"], exit: 2, stderr: "--help takes no value\n" },
+  { tool: "eval/search_quality.mjs", args: ["-x"], exit: 2, stderr: "unknown option: -x\n" },
   { tool: "eval/search_quality.mjs", args: ["--site", "nowhere"], exit: 1, stderr: /^missing .*search-data\.json\nRun build\.bat / },
   { tool: "eval/search_quality.mjs", args: ["--site", "nowhere", "--sample", "abc"], exit: 1, stderr: /^missing .*search-data\.json\nRun build\.bat / },
-  { tool: "eval/search_quality.mjs", args: ["--site", "--help"], exit: 1, stderr: /^missing .*[\\/]--help[\\/]assets[\\/]js[\\/]search-data\.json\nRun build\.bat / },
-  { tool: "eval/search_quality.mjs", args: ["--site"], exit: 1, stderr: /TypeError \[ERR_INVALID_ARG_TYPE\]: The "paths\[0\]" argument must be of type string\. Received undefined\r?\n/ },
-  { tool: "eval/search_quality.mjs", args: ["--site", "nowhere", "--save"], exit: 1, stderr: /TypeError \[ERR_INVALID_ARG_TYPE\]: The "paths\[0\]" argument must be of type string\. Received undefined\r?\n/ },
+  { tool: "eval/search_quality.mjs", args: ["--site", "--help"], exit: 2, stderr: "--site needs a value\n" },
+  { tool: "eval/search_quality.mjs", args: ["--site"], exit: 2, stderr: "--site needs a value\n" },
+  { tool: "eval/search_quality.mjs", args: ["--site", "nowhere", "--save"], exit: 2, stderr: "--save needs a value\n" },
   { tool: "eval/transcript.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node eval\/transcript\.mjs <case\.jsonl> / },
   { tool: "eval/transcript.mjs", args: ["-h"], exit: 0, stdout: /^Usage: node eval\/transcript\.mjs <case\.jsonl> / },
-  { tool: "eval/transcript.mjs", args: [], exit: 1, stdout: /^Usage: node eval\/transcript\.mjs <case\.jsonl> / },
+  { tool: "eval/transcript.mjs", args: [], exit: 2, stderr: /^Usage: node eval\/transcript\.mjs <case\.jsonl> / },
   { tool: "eval/transcript.mjs", args: ["nope.jsonl", "--help"], exit: 0, stdout: /^Usage: node eval\/transcript\.mjs <case\.jsonl> / },
-  { tool: "eval/transcript.mjs", args: ["--bogus"], exit: 1, stdout: /^Usage: node eval\/transcript\.mjs <case\.jsonl> / },
-  { tool: "eval/transcript.mjs", args: ["--help=1"], exit: 1, stdout: /^Usage: node eval\/transcript\.mjs <case\.jsonl> / },
+  { tool: "eval/transcript.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "eval/transcript.mjs", args: ["--help=1"], exit: 2, stderr: "--help takes no value\n" },
   { tool: "eval/transcript.mjs", args: ["nope.jsonl"], exit: 1, stderr: /Error: ENOENT: no such file or directory, open '[^']*nope\.jsonl'\r?\n/ },
-  { tool: "eval/transcript.mjs", args: ["--bogus", "nope.jsonl"], exit: 1, stderr: /Error: ENOENT: no such file or directory, open '[^']*nope\.jsonl'\r?\n/ },
-  { tool: "eval/transcript.mjs", args: ["-x"], exit: 1, stderr: /Error: ENOENT: no such file or directory, open '(?:[^']*[\\/])?-x'\r?\n/ },
-  { tool: "eval/transcript.mjs", args: ["a.jsonl", "b.jsonl"], exit: 1, stderr: /Error: ENOENT: no such file or directory, open '[^']*a\.jsonl'\r?\n/ },
-  { tool: "wisdom/wisdom.mjs", args: [], exit: 0, stderr: /^Usage: node wisdom\/wisdom\.mjs <command> \[options\]\n/ },
+  { tool: "eval/transcript.mjs", args: ["--bogus", "nope.jsonl"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "eval/transcript.mjs", args: ["-x"], exit: 2, stderr: "unknown option: -x\n" },
+  { tool: "eval/transcript.mjs", args: ["--", "-x"], exit: 1, stderr: /Error: ENOENT: no such file or directory, open '(?:[^']*[\\/])?-x'\r?\n/ },
+  { tool: "eval/transcript.mjs", args: ["a.jsonl", "b.jsonl"], exit: 2, stderr: "unexpected argument: b.jsonl\n" },
+  { tool: "wisdom/wisdom.mjs", args: [], exit: 2, stderr: /^Usage: node wisdom\/wisdom\.mjs <command> \[options\]\n/ },
   { tool: "wisdom/wisdom.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node wisdom\/wisdom\.mjs <command> \[options\]\n/ },
-  { tool: "wisdom/wisdom.mjs", args: ["bogus"], exit: 1, stderr: /^Usage: node wisdom\/wisdom\.mjs <command> \[options\]\n/ },
-  { tool: "wisdom/wisdom.mjs", args: ["bogus", "--guild", "--bogus"], exit: 1, stderr: /^Usage: node wisdom\/wisdom\.mjs <command> \[options\]\n/ },
-  { tool: "wisdom/wisdom.mjs", args: ["bogus", "--cap"], exit: 1, stderr: /^Usage: node wisdom\/wisdom\.mjs <command> \[options\]\n/ },
-  { tool: "wisdom/wisdom.mjs", args: ["bogus", "--bogus"], exit: 1, stderr: "Unknown option: --bogus\n" },
-  { tool: "wisdom/wisdom.mjs", args: ["bogus", "stray"], exit: 1, stderr: "Unknown option: stray\n" },
+  { tool: "wisdom/wisdom.mjs", args: ["bogus"], exit: 2, stderr: /^unknown command: bogus\nUsage: node wisdom\/wisdom\.mjs <command> \[options\]\n/ },
+  { tool: "wisdom/wisdom.mjs", args: ["bogus", "--guild", "--bogus"], exit: 2, stderr: "--guild needs a value\n" },
+  { tool: "wisdom/wisdom.mjs", args: ["bogus", "--cap"], exit: 2, stderr: "--cap needs a value\n" },
+  { tool: "wisdom/wisdom.mjs", args: ["bogus", "--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "wisdom/wisdom.mjs", args: ["bogus", "stray"], exit: 2, stderr: "unexpected argument: stray\n" },
   { tool: "wisdom/wisdom.mjs", args: ["bogus", "--help"], exit: 0, stdout: /^Usage: node wisdom\/wisdom\.mjs <command> \[options\]\n/ },
-  { tool: "wisdom/wisdom.mjs", args: ["bogus", "--force=1"], exit: 1, stderr: "Unknown option: --force=1\n" },
-  { tool: "wisdom/wisdom.mjs", args: ["bogus", "-x"], exit: 1, stderr: "Unknown option: -x\n" },
-  { tool: "wisdom/wisdom.mjs", args: ["bogus", "--guild", "x", "--bogus"], exit: 1, stderr: "Unknown option: --bogus\n" },
+  { tool: "wisdom/wisdom.mjs", args: ["bogus", "--force=1"], exit: 2, stderr: "--force takes no value\n" },
+  { tool: "wisdom/wisdom.mjs", args: ["bogus", "-x"], exit: 2, stderr: "unknown option: -x\n" },
+  { tool: "wisdom/wisdom.mjs", args: ["bogus", "--guild", "x", "--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
 
-  // Recorded in C52, before tbdocs moved onto lib/cli.mjs, with C47's four
-  // above. Every command-line error exits 4. A value flag refuses a missing
-  // value and one that starts with a dash, "--" included; an unknown option, a
-  // positional and a boolean given a value are all "Unknown argument", named
-  // as given. Each --port and --stall-timeout is checked where it stands, so a
-  // bad one fails even when a later one is good. A --dest the build refuses
-  // exits 4 too, after the command line has been read.
+  // Recorded in C52, for tbdocs, with C47's four above. Every command-line
+  // error exits 4. A value flag refuses a missing value and one that starts
+  // with a dash, "--" included; an unknown option is refused as given, as is a
+  // positional, and a boolean given a value. Each --port and --stall-timeout
+  // is checked where it stands, so a bad one fails even when a later one is
+  // good. A --dest the build refuses exits 4 too, after the command line has
+  // been read. --baseurl takes an empty value, meaning the site root; the
+  // other value flags refuse one.
   { tool: "builder/tbdocs.mjs", args: ["--src"], exit: 4, stderr: "--src needs a value\n" },
   { tool: "builder/tbdocs.mjs", args: ["--url"], exit: 4, stderr: "--url needs a value\n" },
   { tool: "builder/tbdocs.mjs", args: ["--check-findings"], exit: 4, stderr: "--check-findings needs a value\n" },
@@ -549,17 +570,18 @@ const CASES = [
   { tool: "builder/tbdocs.mjs", args: ["--dest", "--"], exit: 4, stderr: "--dest needs a value\n" },
   { tool: "builder/tbdocs.mjs", args: ["--stall-timeout"], exit: 4, stderr: "--stall-timeout needs a value\n" },
   { tool: "builder/tbdocs.mjs", args: ["--stall-timeout", "-1"], exit: 4, stderr: "--stall-timeout needs a value\n" },
-  { tool: "builder/tbdocs.mjs", args: ["foo"], exit: 4, stderr: "Unknown argument: foo\n" },
-  { tool: "builder/tbdocs.mjs", args: ["-"], exit: 4, stderr: "Unknown argument: -\n" },
-  { tool: "builder/tbdocs.mjs", args: ["-x"], exit: 4, stderr: "Unknown argument: -x\n" },
-  { tool: "builder/tbdocs.mjs", args: ["-xy"], exit: 4, stderr: "Unknown argument: -xy\n" },
+  { tool: "builder/tbdocs.mjs", args: ["foo"], exit: 4, stderr: "unexpected argument: foo\n" },
+  { tool: "builder/tbdocs.mjs", args: ["-"], exit: 4, stderr: "unexpected argument: -\n" },
+  { tool: "builder/tbdocs.mjs", args: ["-x"], exit: 4, stderr: "unknown option: -x\n" },
+  { tool: "builder/tbdocs.mjs", args: ["-xy"], exit: 4, stderr: "unknown option: -xy\n" },
   { tool: "builder/tbdocs.mjs", args: ["-h"], exit: 0, stdout: /^usage: node builder\/tbdocs\.mjs \[options\]\n/ },
   { tool: "builder/tbdocs.mjs", args: ["--help"], exit: 0, stdout: /^usage: node builder\/tbdocs\.mjs \[options\]\n/ },
-  { tool: "builder/tbdocs.mjs", args: ["--dry-run=1"], exit: 4, stderr: "Unknown argument: --dry-run=1\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--no-check=1"], exit: 4, stderr: "Unknown argument: --no-check=1\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--no-check", "--bogus"], exit: 4, stderr: "Unknown argument: --bogus\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--dry-run=1"], exit: 4, stderr: "--dry-run takes no value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--no-check=1"], exit: 4, stderr: "--no-check takes no value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--no-check", "--bogus"], exit: 4, stderr: "unknown option: --bogus\n" },
   { tool: "builder/tbdocs.mjs", args: ["--port", "abc"], exit: 4, stderr: "--port expects a port number from 1 to 65535, got: abc\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--port="], exit: 4, stderr: "--port expects a port number from 1 to 65535, got: \n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port="], exit: 4, stderr: "--port needs a non-empty value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout="], exit: 4, stderr: "--stall-timeout needs a non-empty value\n" },
   { tool: "builder/tbdocs.mjs", args: ["--port=65536"], exit: 4, stderr: "--port expects a port number from 1 to 65535, got: 65536\n" },
   { tool: "builder/tbdocs.mjs", args: ["--port=1.5"], exit: 4, stderr: "--port expects a port number from 1 to 65535, got: 1.5\n" },
   { tool: "builder/tbdocs.mjs", args: ["--port=80", "--port=0"], exit: 4, stderr: "--port expects a port number from 1 to 65535, got: 0\n" },
@@ -633,6 +655,84 @@ for (const [tool, start] of Object.entries(HELP_TOOLS)) {
   }
 }
 
+// Recorded in C72. Every tool refuses an unknown flag and an empty value at
+// the parse, so each has a case for the first and, where it has a value
+// option, for the second: `tool: [option, extras]`, the option given as
+// `--option=`. Both exit 2, or 4 in tbdocs and check_links, print the refusal on
+// stderr and nothing on stdout. `prefix` is the text a tool puts before its
+// message. `args` replaces `--bogus` where the tool must never get further than
+// the parse: convert_em_dash_separators would rewrite docs/ but for --check, and
+// wisdom needs a command that is not a real one. A case the table above already
+// holds, the same tool with the same arguments, is not added again.
+const REFUSALS = {
+  "builder/tbdocs.mjs": ["src", { exit: 4 }],
+  "book/render-book.mjs": ["output"],
+  "wisdom/wisdom.mjs": ["guild", { args: ["bogus", "--bogus"], empty: ["bogus", "--guild="] }],
+  "eval/build_corpus.mjs": ["dest"],
+  "eval/nav_hops.mjs": ["from"],
+  "eval/run_case.mjs": ["corpus"],
+  "eval/search_quality.mjs": ["site"],
+  "eval/site_search.mjs": ["site"],
+  "eval/transcript.mjs": [null],
+  "scripts/addin_test.mjs": ["ide"],
+  "scripts/build_dot_metrics.mjs": [null],
+  "scripts/build_package_api.mjs": ["out"],
+  "scripts/census_attributes.mjs": ["out"],
+  "scripts/check_a11y.mjs": ["root-dir"],
+  "scripts/check_a11y_fingerprint.mjs": ["pages"],
+  "scripts/check_axe_patch_equiv.mjs": ["patch"],
+  "scripts/check_book_coverage.mjs": [null],
+  "scripts/check_ci_workflows.mjs": [null],
+  "scripts/check_cli.mjs": [null],
+  "scripts/check_code_regions.mjs": [null],
+  "scripts/check_dot_fit.mjs": [null],
+  "scripts/check_examples.mjs": ["only", { prefix: "check_examples: " }],
+  "scripts/check_gate_lists.mjs": [null],
+  "scripts/check_impexp_parity.mjs": [null],
+  "scripts/check_links.mjs": ["root-dir", { exit: 4, prefix: "error: " }],
+  "scripts/check_links_diff.mjs": ["a"],
+  "scripts/check_lint.mjs": [null, { prefix: "check_lint: " }],
+  "scripts/check_page_baseline.mjs": [null],
+  "scripts/check_pdf_shims_equiv.mjs": [null],
+  "scripts/check_publish_policy.mjs": ["src"],
+  "scripts/check_regex_safety.mjs": [null],
+  "scripts/check_symbol_index.mjs": [null],
+  "scripts/check_tb_registry.mjs": [null],
+  "scripts/check_tree_fresh.mjs": ["tree"],
+  "scripts/check_twin_parsers.mjs": [null],
+  "scripts/compare_trees.mjs": ["before", { prefix: "compare_trees: " }],
+  "scripts/convert_em_dash_separators.mjs": [null, { args: ["--check", "--bogus"] }],
+  "scripts/crawl_check.mjs": ["timeout"],
+  "scripts/gen_attribute_probes.mjs": [null],
+  "scripts/impexp.mjs": [null, { prefix: "ERROR: " }],
+  "scripts/pick_a11y_sample.mjs": ["sweep"],
+  "scripts/survey_tooling.mjs": ["root"],
+  "scripts/sweep_a11y.mjs": ["out"],
+  "scripts/tbbuild.mjs": ["ide"],
+  "scripts/tbrun.mjs": ["ide"],
+};
+// The cases whose folder must stay empty, as for a help request: a refusal
+// starts no IDE or browser and writes nothing, and a tool that read the flag as
+// a folder name would create one.
+const LEAVES_EMPTY = new Set();
+for (const tool of Object.keys(HELP_TOOLS)) {
+  if (!(tool in REFUSALS)) throw new Error(`HELP_TOOLS names ${tool}, which REFUSALS does not`);
+}
+for (const [tool, [option, { exit = 2, prefix = "", args, empty } = {}]] of Object.entries(REFUSALS)) {
+  if (!(tool in HELP_TOOLS)) throw new Error(`REFUSALS names ${tool}, which HELP_TOOLS does not`);
+  const wanted = [{ args: args ?? ["--bogus"], stderr: new RegExp(`^${literal(`${prefix}unknown option: --bogus\n`)}`) }];
+  if (option) wanted.push({ args: empty ?? [`--${option}=`], stderr: new RegExp(`^${literal(`${prefix}--${option} needs a non-empty value\n`)}`) });
+  for (const w of wanted) {
+    const held = CASES.find((c) => c.tool === tool && c.args.length === w.args.length && c.args.every((a, i) => a === w.args[i]));
+    if (held) LEAVES_EMPTY.add(held);
+    else {
+      const made = { tool, args: w.args, exit, stderr: w.stderr };
+      CASES.push(made);
+      LEAVES_EMPTY.add(made);
+    }
+  }
+}
+
 const TIMEOUT_MS = 30_000;
 
 function runCase({ tool, args }, cwd, env) {
@@ -666,7 +766,7 @@ try {
       const cwd = path.join(scratch, `case-${i}`);
       await mkdir(cwd);
       results[i] = await runCase(CASES[i], cwd, env);
-      if (asksForHelp(CASES[i])) results[i].left = await readdir(cwd);
+      if (asksForHelp(CASES[i]) || LEAVES_EMPTY.has(CASES[i])) results[i].left = await readdir(cwd);
     }
   };
   await Promise.all(Array.from({ length: Math.min(availableParallelism(), CASES.length) }, lane));

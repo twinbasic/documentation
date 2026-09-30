@@ -930,6 +930,110 @@ both comments are corrected. Any exception a tool keeps is stated in its usage t
 
 **Verify.** `check_cli.mjs` gains an unknown-flag case and an empty-value case for every tool.
 
+**Landed** as `builder, scripts, book, eval, wisdom: a refused command line exits 2` (see
+"Where the plan was wrong"), on the owner's four choices of 2026-09-29: strict everywhere,
+with a term that starts with a dash given after `--`; an empty value refused by `lib/cli.mjs`;
+every usage error reported one way; the values a tool reads after the parse left to C72a.
+`parseCli` has lost `unknown`, `acceptsValue` and the `ignored` result, and refuses an
+unknown option, a boolean given a value, a value flag with none, an empty value (code
+`empty-value`, `--x needs a non-empty value`) unless the option's spec says `empty: true`,
+and a positional beyond the tool's count. Only `tbdocs`' `--baseurl` allows an empty value
+(the site root), so `--stall-timeout=` is refused where it was 0. Every tool but the four
+already strict (`check_impexp_parity`, `check_pdf_shims_equiv`, `survey_tooling` and
+`impexp.mjs`, which has its own parser) drops its leniency: the gates that ignored every argument but `--help`, the harness tools that
+ignored an unknown flag, `tbrun`'s and `addin_test`'s empty value taking the default,
+`check_publish_policy`'s, `crawl_check`'s and the `eval/` tools' flag at the end taken as
+`undefined`, the a11y tools' flag taken as the value before it. `crawl_check` takes one start
+URL, `transcript` one file (simply the positional), `gen_attribute_probes` a folder and a key;
+`nav_hops`, `site_search`, `transcript` and `gen_attribute_probes` say in their usage that a
+term, file or folder starting with a dash goes after `--`, and so does `eval/protocol.md` for
+the evaluator's `site-search`. `check_links`' tolerance goes whole: the unrecognised-argument
+warning, the rule that an unknown `--flag` took the positional after it, and `--threads`
+(accepted and unused; nothing passed it). The plan's `check_links.mjs:307-314` and `:406-412`
+no longer held the `check.bat` comments, which went with C50's migration.
+
+Every usage error goes to stderr with exit 2, or 4 in `tbdocs` and `check_links`, in the
+`CliError`'s own words (`unknown option: --bogus`, `--theme needs a value`, `unexpected
+argument: x`). The rewordings that misnamed the fault went: the a11y tools' `unknown arg:`
+for a missing value, `crawl_check`'s `unknown flag:`, `check_links_diff`'s and the
+`eval/` tools' `unknown argument:`, `search_quality`'s `unrecognised argument:`, `wisdom`'s
+`Unknown option:`, `tbdocs`' `Unknown argument:`. A tool's name prefix stays
+(`check_examples: `, `compare_trees: `, `check_lint: `, `check_links`' `error: `), and so does
+a usage text printed after the message; `check_lint` names the fault before its synopsis
+line, where it printed the synopsis alone. `build_corpus`, `search_quality`, `site_search`,
+`transcript` and `wisdom` exit 2 where they exited 1; `wisdom` with no command exits 2 where it
+exited 0, and names an unknown command; a missing required argument prints the usage on
+stderr in `gen_attribute_probes`, `nav_hops`, `run_case`, `site_search`, `transcript` and
+`build_corpus`; `check_links` writes its command-line errors, and its usage after no
+arguments, to stderr. `render-book`'s missing input stays exit 1: it is not a usage error.
+`wisdom`'s 2 is now also its request cap's code, a code with two meanings for C74. Tools.md
+states the rule once beside the `--help` sentence and in the `tbdocs`, `check_links`,
+`crawl_check` and `check_cli` sections; Extending.md's, PDF-Generation.md's and Wisdom.md's
+exit tables, Pipeline-Stages.md's `command-line.mjs` table, `eval/README.md`, WIP.md's `check_cli` row and `wisdom/PLAN-3.md` (whose
+`extract` listed `--threads` for `--in`) follow. Two Found items close with it:
+`build_corpus --dest ""` removed the current folder, and `convert_em_dash_separators --chek`
+rewrote `docs/`.
+
+`check_cli: 568 probes, all pass` (423 before). The probes of `unknown` and `acceptsValue`
+became strict ones (an unknown letter in a short group, a dash-led positional after `--`, a
+fault after `--help` not read while one before it is), with empty-value probes (separate,
+inline, short, `multiple`, and `empty: true`); the comparison with a strict `parseArgs`
+leaves out the empty values, which it accepts. Every case whose tool changed was re-pointed
+rather than dropped, but for `check_links`' two warning cases, which went with the warning:
+an ignored flag's case keeps its later failure with the flag removed (`tbbuild --keep
+x.twinproj`), a term case moves after `--`. A `REFUSALS` table,
+beside `HELP_TOOLS` and checked against it, adds an unknown-flag case for all 45 tools and an
+empty-value case for the 26 with a value option (`convert_em_dash_separators --check --bogus`,
+`wisdom bogus --bogus`, so a regression does no work), and every such case also checks that
+its folder stays empty. With `lib/cli.mjs`'s unknown-option refusal turned into a `continue`
+through `c43-fault.mjs` in `NODE_OPTIONS`, 69 of 568 fail. A Sonnet agent checked every new
+text against the code: its eleven findings in the comments, Tools.md, `eval/README.md`,
+Pipeline-Stages.md and this note were fixed, and its note that exit-code texts leave out a
+refused command line is C74's; its twelfth, that Extending.md's gate table should give
+`check_links`' 4, was wrong, since no wrapper runs `check_links`. `compare_trees`: Extending, Pipeline-Stages,
+PDF-Generation, Tools and Wisdom online and offline, the search data and `book.html`. Lint
+`Checked 172 files`; regex safety unchanged at `528 literals + 30 constructed in 130 files
+... 489 safe, 69 polynomial, 0 undecided, 0 exponential`; `build.bat`, `check.bat` and
+`test.bat` clean. On the owner's next push CI prints `check_cli: 568 probes, all pass`.
+
+### C72a — `scripts, book, eval, wisdom: a bad value exits 2`
+
+**Split from C72** (the owner, 2026-09-29). C72 makes the parse strict; the values each tool
+reads after the parse are still unchecked. A survey of the code for C72 found these (read
+before editing, not run):
+
+- **Numbers read with `Number`, `parseInt` or `parseFloat` and never checked**, so text gives
+  `NaN` and `12abc` gives 12: `crawl_check`'s `--concurrency` and `--timeout` (a `NaN` timeout
+  reports every link broken; 0 workers check nothing and pass); `sweep_a11y`'s `--limit` (a
+  `NaN` sweeps nothing) and `--recycle-every`; `pick_a11y_sample`'s `--budget` (`NaN` makes it
+  unlimited); `run_case`'s `--timeout` (`NaN` or 0 kills its `claude` child at once);
+  `search_quality`'s `--sample`, `--worst` and `--failures`; `site_search`'s `-n`; `wisdom`'s
+  `--concurrency`, `--rate-limit` and `--cap`; `tbrun`'s `--port`, `--timeout` and `--quiet`;
+  `addin_test`'s `--port`, `--jobs` and `--timeout`; `render-book`'s `-t`;
+  `check_links_diff`'s `--max-lines`. The checks that exist accept `0x10` and `1e3`
+  (`tbbuild`, `check_examples`, `survey_tooling`, `compare_trees`, `tbdocs`'s
+  `--stall-timeout`), and `tbbuild`'s `--port` has no upper bound.
+- **Regexes that crash with exit 1**: `addin_test`'s and `check_examples`' `--only`; a bad
+  `nav_hops` term exits 2 with a stack.
+- **A URL**: `crawl_check`'s start URL, uncaught at module level, exit 1 with a stack.
+- **Fixed sets and dates**: `check_links`' `--oracle` (anything but `index` is `fs`);
+  `wisdom`'s `--min-confidence` and `--since` (`Date.parse` gives `NaN`);
+  `check_a11y_fingerprint`'s `--baseline` and `--candidate` (an unknown scheme throws
+  uncaught, exit 1); `run_case`'s `--protocol`.
+- **Conflicts that pass silently**: `site_search`'s `--composition` with terms (the terms are
+  ignored); `pick_a11y_sample`'s `--check` with `--propose` (the last wins).
+- **A destination removed before writing**: `build_corpus` removes its `--dest` recursively
+  (`build_corpus.mjs:148`), so `--dest .` deletes the current folder and `--dest ..` can
+  delete the repository. It refuses a `--dest` that is the repository, contains it, or
+  contains the current folder, as `tbdocs` refuses a `--dest` that overlaps its source (the
+  owner, 2026-09-30).
+
+**Change.** Every number through `numberOption`, and every regex, URL, date and value from a
+fixed set checked straight after the parse, refused on stderr with exit 2 (C18's 4 in the two
+link tools), in the tool's usage-error form.
+
+**Verify.** `check_cli.mjs` gains a bad-value case for each.
+
 ### C73 — `scripts: one meaning each for --json and --src`
 
 **L1-8 (R2), L1-9 (R3).** `--json` prints to stdout in `tbbuild`, `tbrun`, `check_examples`
@@ -1334,6 +1438,13 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   tool answers them, `tbdocs` and the argument-less gates included, so it landed as `builder,
   scripts, book, eval, wisdom: --help prints usage to stdout and exits 0`. See C71's Landed
   note.
+- **C72: the values a tool reads after the parse are C72a's.** The entry's "a bad value"
+  covered two kinds of fault: what the parse can see (a missing, empty or flag-like value, an
+  unknown flag, an extra argument) and what only the tool can judge (a number, a regex, a URL,
+  a value from a fixed set). At the owner's choice (2026-09-29) C72 did the first and C72a
+  takes the second. `tbdocs`' `builder/command-line.mjs` changed too, and the empty-value
+  case exists only for a tool with a value option (26 of 45), so it landed as `builder,
+  scripts, book, eval, wisdom: a refused command line exits 2`. See C72's Landed note.
 
 ## Found while implementing
 
@@ -1608,6 +1719,18 @@ Defects the review did not have, found by building something this plan asks for.
   when their file is absent; each prints a `warning:` line and skips the check. Folded into
   C71, at the owner's choice. Fixed in `builder, scripts, book, eval, wisdom: --help prints
   usage to stdout and exits 0`.
+- **`eval/build_corpus.mjs --dest ""` deleted the current folder**, found while landing C72:
+  the empty value resolved to the working folder, which `build()` removes recursively before
+  writing (`build_corpus.mjs:148`). C72's empty-value refusal closes that form; `--dest .` and
+  `--dest ..` still reach the removal. The guard goes into C72a, at the owner's choice.
+  Fixed, for the empty value, in `builder, scripts, book, eval, wisdom: a refused command line
+  exits 2`.
+- **`convert_em_dash_separators --chek` rewrote `docs/`**, found while landing C72: a
+  misspelt `--check` was ignored, and the tool converts in place unless `--check` is given.
+  Fixed in `builder, scripts, book, eval, wisdom: a refused command line exits 2`.
+- **`wisdom/PLAN-3.md` listed `--threads <dir>` for `extract`**, which takes `--in`; ignored
+  before, refused once C72 lands. Fixed in `builder, scripts, book, eval, wisdom: a refused
+  command line exits 2`.
 
 ## Open questions
 

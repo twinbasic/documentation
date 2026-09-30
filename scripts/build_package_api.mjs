@@ -76,8 +76,6 @@ const { values } = withUsageError(() =>
       check: { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
-    unknown: "ignore",
-    positionals: 0,
     stopAt: ["help"],
   }));
 if (values.help) printHelpAndExit(USAGE);

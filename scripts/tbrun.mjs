@@ -101,7 +101,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, mkdirSync, statSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { click } from "./lib/tb-click.mjs";
 import { compilerExe, findIde } from "./lib/tb-install.mjs";
 import { BUILD_FAILED, COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, keepClears, keptClears,
@@ -130,27 +130,28 @@ writes to the DEBUG CONSOLE.
   --show, --hide      as tbbuild's
   -h, --help          print this text and exit`;
 
-const { values, positionals } = parseCli(process.argv.slice(2), {
-  options: {
-    port: { type: "string" },
-    arch: { type: "string" },
-    timeout: { type: "string" },
-    quiet: { type: "string" },
-    ide: { type: "string" },
-    "reap-images": { type: "string" },
-    json: { type: "boolean", default: false },
-    raw: { type: "boolean", default: false },
-    keep: { type: "boolean", default: false },
-    "no-reap": { type: "boolean", default: false },
-    show: { type: "boolean", default: false },
-    hide: { type: "boolean", default: false },
-    help: { type: "boolean", short: "h", default: false },
-  },
-  unknown: "ignore",
-  positionals: { min: 0, max: 1 },
-  acceptsValue: () => true,
-  stopAt: ["help"],
-});
+const { values, positionals } = withUsageError(
+  () => parseCli(process.argv.slice(2), {
+    options: {
+      port: { type: "string" },
+      arch: { type: "string" },
+      timeout: { type: "string" },
+      quiet: { type: "string" },
+      ide: { type: "string" },
+      "reap-images": { type: "string" },
+      json: { type: "boolean", default: false },
+      raw: { type: "boolean", default: false },
+      keep: { type: "boolean", default: false },
+      "no-reap": { type: "boolean", default: false },
+      show: { type: "boolean", default: false },
+      hide: { type: "boolean", default: false },
+      help: { type: "boolean", short: "h", default: false },
+    },
+    positionals: { min: 0, max: 1 },
+    stopAt: ["help"],
+  }),
+  { format: (err) => `${err.message}\n${USAGE}` },
+);
 if (values.help) printHelpAndExit(USAGE);
 
 const die = (code, msg) => { console.error(msg); process.exit(code); };

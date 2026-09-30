@@ -24,7 +24,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
 /** Every event in a stream-json session, in order. */
 export function readTranscript(file) {
@@ -191,25 +191,21 @@ export function printDigest(s, { calls = false, report = false } = {}) {
 const USAGE =
   "Usage: node eval/transcript.mjs <case.jsonl> [--calls] [--report] [-h, --help]\n\n" +
   "Summarises an evaluator's session and audits the order of its channels.\n" +
-  "See eval/README.md.";
+  "A file name that starts with a dash goes after --. See eval/README.md.";
 
 function main(argv) {
-  const { values, positionals } = parseCli(argv, {
+  const { values, positionals } = withUsageError(() => parseCli(argv, {
     options: {
       calls: { type: "boolean", default: false },
       report: { type: "boolean", default: false },
-      // -h and --help print the usage and exit 0. An unknown flag is a
-      // positional, and the file is the first positional that does not start
-      // with --; with none, the usage is printed and the exit is 1.
       help: { type: "boolean", short: "h" },
     },
-    positionals: { max: Infinity },
-    unknown: "positional",
+    positionals: { min: 0, max: 1 },
     stopAt: ["help"],
-  });
+  }));
   if (values.help) printHelpAndExit(USAGE);
-  const file = positionals.find((a) => !a.startsWith("--"));
-  if (!file) printHelpAndExit(USAGE, { exitCode: 1 });
+  const [file] = positionals;
+  if (!file) printHelpAndExit(USAGE, { stream: "stderr", exitCode: 2 });
   printDigest(summarize(readTranscript(file)), { calls: values.calls, report: values.report });
 }
 

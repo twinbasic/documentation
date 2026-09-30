@@ -44,10 +44,8 @@ const cli = withUsageError(
         patch: { type: "string", default: "plain-color-fields" },
         help: { type: "boolean", short: "h" },
       },
-      acceptsValue: Boolean,
       stopAt: ["help"],
     }),
-  { format: (err) => `unknown arg: ${err.arg}` },
 );
 if (cli.stopped === "help") {
   printHelpAndExit("usage: node scripts/check_axe_patch_equiv.mjs [--patch NAME] [-h, --help]");

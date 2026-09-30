@@ -218,10 +218,8 @@ const { values, positionals } = withUsageError(() => parseCli(process.argv.slice
     help: { type: 'boolean', short: 'h' },
   },
   positionals: { max: 1 },
-  unknown: 'error',
-  acceptsValue: () => true,
   stopAt: ['help'],
-}), { format: (err) => `unknown arg: ${err.arg}`, exitCode: 2 });
+}));
 if (values.help) printHelpAndExit(USAGE);
 const inputArg = positionals[0];
 const outputArg = values.output;

@@ -35,10 +35,8 @@ function parseArgs(argv) {
       all: { type: 'boolean' },
     },
     positionals: 0,
-    unknown: 'error',
-    acceptsValue: () => true,
     stopAt: ['help'],
-  }), { format: (err) => `Unknown option: ${err.arg}`, exitCode: 1 })
+  }))
   if (values.help) printHelpAndExit(USAGE)
 
   const flags = { channels: values.channel }
@@ -276,5 +274,6 @@ switch (command) {
     else await runExtract(flags)
     break
   default:
-    printHelpAndExit(USAGE, { stream: 'stderr', exitCode: command ? 1 : 0 })
+    if (command) console.error(`unknown command: ${command}`)
+    printHelpAndExit(USAGE, { stream: 'stderr', exitCode: 2 })
 }

@@ -87,10 +87,8 @@ const cli = withUsageError(
         "recycle-every": { type: "string" },
         help: { type: "boolean", short: "h" },
       },
-      acceptsValue: Boolean,
       stopAt: ["help"],
     }),
-  { format: (err) => `unknown arg: ${err.arg}` },
 );
 if (cli.stopped === "help") {
   printHelpAndExit(

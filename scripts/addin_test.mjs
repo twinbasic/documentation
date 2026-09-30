@@ -53,7 +53,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
 import { wantShow } from "./lib/tb-ide.mjs";
 import { buildNumber, findIde } from "./lib/tb-install.mjs";
@@ -78,7 +78,7 @@ process of its own with its own IDE copy, DevTools port and work folder.
   --show, --hide    as tbbuild's
   -h, --help        print this text and exit`;
 
-const { values } = parseCli(process.argv.slice(2), {
+const { values } = withUsageError(() => parseCli(process.argv.slice(2), {
   options: {
     only: { type: "string" },
     port: { type: "string" },
@@ -89,11 +89,8 @@ const { values } = parseCli(process.argv.slice(2), {
     hide: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
   },
-  unknown: "ignore",
-  positionals: 0,
-  acceptsValue: () => true,
   stopAt: ["help"],
-});
+}));
 if (values.help) printHelpAndExit(USAGE);
 const die = (code, msg) => { console.error(msg); process.exit(code); };
 const only = values.only ? new RegExp(values.only) : null;

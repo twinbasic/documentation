@@ -81,7 +81,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { createMarkdownIt } from "../builder/render.mjs";
-import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { splitOnMarker } from "../lib/markdown.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { gateName, gatesFromBat } from "./lib/gate-roster.mjs";
@@ -561,11 +561,10 @@ and that no developer page states a gate count that disagrees with them.
   -h, --help   print this text and exit`;
 
 async function main(argv) {
-  const { values } = parseCli(argv, {
+  const { values } = withUsageError(() => parseCli(argv, {
     options: { verbose: { type: "boolean" }, "self-test": { type: "boolean" }, help: { type: "boolean", short: "h" } },
-    unknown: "ignore",
     stopAt: ["help"],
-  });
+  }));
   if (values.help) printHelpAndExit(USAGE);
   const verbose = values.verbose;
   const onlySelfTest = values.selfTest;

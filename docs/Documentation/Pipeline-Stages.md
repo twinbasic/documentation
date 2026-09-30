@@ -970,9 +970,9 @@ The handler table is built from the imported `HANDLERS` constant:
 
 | Symbol | Signature | Description |
 |---|---|---|
-| `OPTIONS` | `{ [flag]: { type } }` | `tbdocs`'s flags, in the table shape `lib/cli.mjs`'s `parseCli` reads: `"string"` for a flag that takes a value, `"boolean"` for the rest. `--no-check`, `--no-offline`, `--no-pdf` and `--no-fetch-assets` are flags of their own, not negations. |
+| `OPTIONS` | `{ [flag]: { type, empty? } }` | `tbdocs`'s flags, in the table shape `lib/cli.mjs`'s `parseCli` reads: `"string"` for a flag that takes a value, `"boolean"` for the rest. `--baseurl` alone has `empty: true`, since an empty base URL is the site root. `--no-check`, `--no-offline`, `--no-pdf` and `--no-fetch-assets` are flags of their own, not negations. |
 | `DEFAULTS` | frozen `BuildOpts` | The options a build takes with no flags given --- the defaults in the `BuildOpts` table below. `fetchAssets` is left out. |
-| `parseCommandLine` | `(argv) → BuildOpts` | Reads `argv` (without Node's own two entries) through `parseCli`, then applies the flags in the order given, so a `--no-check` undoes only the check flags before it. Throws a `CliError` whose message `main()` prints before it exits 4: `<flag> needs a value`, `Unknown argument: <arg>`, or a `--port` or `--stall-timeout` value that is not one. |
+| `parseCommandLine` | `(argv) → BuildOpts` | Reads `argv` (without Node's own two entries) through `parseCli`, then applies the flags in the order given, so a `--no-check` undoes only the check flags before it. Throws a `CliError` whose message `main()` prints before it exits 4: `unknown option: <arg>`, `unexpected argument: <arg>`, `<flag> takes no value`, `<flag> needs a value`, `<flag> needs a non-empty value`, or a `--port` or `--stall-timeout` value that is not one. |
 
 ### `tbdocs.mjs` orchestrator
 

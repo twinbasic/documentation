@@ -649,7 +649,7 @@ The split exists so that an edit confined to `docs/` usually has to pay for `che
 |---|---|
 | `0` | The checked thing is fine. |
 | `1` | The checked thing failed. This is the finding. |
-| `2` | The harness or the environment failed --- an unknown argument, an absent tree, an unhandled throw. Nothing was checked. |
+| `2` | The harness or the environment failed --- a command line the tool refuses (an unknown flag, a flag without its value or with an empty one, an unexpected argument), an absent tree, an unhandled throw. Nothing was checked. |
 
 Separating 1 from 2 is what stops a broken gate reading as a clean site, and it has to hold at the top level too. End the script with `main().catch((err) => { console.error(err); process.exit(2); })`, the way `check_a11y.mjs` does, so a crash cannot fall through to node's default exit 1 and be mistaken for a finding. A script that runs at top level, with no `main()`, calls `exitOnCrash()` from `scripts/lib/gate-probes.mjs` before it does anything else; that handler also catches a rejected top-level await.
 

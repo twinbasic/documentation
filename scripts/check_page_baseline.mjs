@@ -26,7 +26,7 @@
 import { readFile } from "node:fs/promises";
 import { GUARDED_SRC } from "../builder/baseline.mjs";
 import { checkPageBaseline } from "../builder/page-baseline.mjs";
-import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { baselineFixture, createProbes, exitOnCrash } from "./lib/gate-probes.mjs";
 
 exitOnCrash();
@@ -38,13 +38,10 @@ refuses what it exists to refuse, against a scratch baseline file.
 
   -h, --help  print this text and exit`;
 
-// Every other argument is ignored.
-if (parseCli(process.argv.slice(2), {
+if (withUsageError(() => parseCli(process.argv.slice(2), {
   options: { help: { type: "boolean", short: "h" } },
-  unknown: "ignore",
-  positionals: { min: 0, max: 0 },
   stopAt: ["help"],
-}).values.help) printHelpAndExit(USAGE);
+})).values.help) printHelpAndExit(USAGE);
 
 const BASE = { src: GUARDED_SRC, pages: 908, staticFiles: 247 };
 

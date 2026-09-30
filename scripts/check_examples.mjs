@@ -109,8 +109,6 @@ const { values } = withUsageError(
       hide: { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
-    unknown: "ignore",
-    positionals: 0,
     stopAt: ["help"],
   }),
   { format: (err) => `check_examples: ${err.message}` },

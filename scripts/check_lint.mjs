@@ -36,7 +36,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
-import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { exitOnCrash } from "./lib/gate-probes.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
@@ -47,7 +47,7 @@ function cannotLint(message) {
   process.exit(2);
 }
 
-// A command-line error prints the first line alone, after the tool's name.
+// A command-line error prints the message, then the first line of the usage.
 const SYNOPSIS = "usage: node scripts/check_lint.mjs [--staged]";
 const USAGE = `${SYNOPSIS}
 
@@ -56,18 +56,21 @@ warning as well as an error.
 
   --staged    lint only the scripts the next commit adds or changes
   -h, --help  print this text and exit`;
-let cli;
-try {
-  cli = parseCli(process.argv.slice(2), {
-    options: { staged: { type: "boolean", default: false }, help: { type: "boolean", short: "h" } },
-    positionals: 0,
-    stopAt: ["help"],
-  });
-} catch {
-  cannotLint(SYNOPSIS);
-}
+const cli = withUsageError(
+  () =>
+    parseCli(process.argv.slice(2), {
+      options: { staged: { type: "boolean", default: false }, help: { type: "boolean", short: "h" } },
+      positionals: 0,
+      stopAt: ["help"],
+    }),
+  { format: (err) => `check_lint: ${err.message}\n${SYNOPSIS}` },
+);
 if (cli.values.help) printHelpAndExit(USAGE);
-if (cli.tokens.length > (cli.values.staged ? 1 : 0)) cannotLint(SYNOPSIS);
+if (cli.tokens.length > (cli.values.staged ? 1 : 0)) {
+  const bare = cli.tokens.some((t) => t.kind === "option-terminator");
+  console.error(`check_lint: ${bare ? "unexpected argument: --" : "--staged given more than once"}\n${SYNOPSIS}`);
+  process.exit(2);
+}
 const staged = cli.values.staged;
 
 // The scripts the next commit adds or changes that are still on disk, by the

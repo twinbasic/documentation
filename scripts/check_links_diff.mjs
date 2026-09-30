@@ -79,7 +79,7 @@ import * as path from "node:path";
 import { performance } from "node:perf_hooks";
 
 import { runCheck, selfTest as scriptSelfTest } from "./check_links.mjs";
-import { parseCli } from "../lib/cli.mjs";
+import { parseCli, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const BASE_PATH = "/twinBASIC-docs";
@@ -341,9 +341,9 @@ const SIDES = {
     describe: "scripts/check_links.mjs with --oracle fs, in-process",
     run(argv) {
       argv = [...argv, "--oracle", "fs"];
-      const { findings, exitCode, output } = runCheck(argv, { structured: true });
+      const { findings, exitCode, error } = runCheck(argv, { structured: true });
       if (!findings) {
-        throw new Error(`runCheck refused the arguments (exit ${exitCode}):\n${output}`);
+        throw new Error(`runCheck refused the arguments (exit ${exitCode}):\n${error}`);
       }
       return findings;
     },
@@ -539,28 +539,21 @@ function ensureBasePathTree(dir, allowBuild) {
 // ── Main ────────────────────────────────────────────────────────────
 
 function parseArgs(argv) {
-  let values;
-  try {
-    ({ values } = parseCli(argv, {
-      options: {
-        a: { type: "string", default: "script" },
-        b: { type: "string", default: "script" },
-        case: { type: "string", multiple: true },
-        "max-lines": { type: "string", default: "12" },
-        "base-path-tree": { type: "string", default: DEFAULT_BASEPATH_TREE },
-        "build-base-path": { type: "boolean" },
-        "self-test": { type: "boolean" },
-        list: { type: "boolean" },
-        verbose: { type: "boolean", short: "v" },
-        help: { type: "boolean", short: "h" },
-      },
-      positionals: 0,
-      acceptsValue: () => true,
-      stopAt: ["help"],
-    }));
-  } catch (err) {
-    throw new Error(`unknown argument: ${err.arg}`);
-  }
+  const { values } = withUsageError(() => parseCli(argv, {
+    options: {
+      a: { type: "string", default: "script" },
+      b: { type: "string", default: "script" },
+      case: { type: "string", multiple: true },
+      "max-lines": { type: "string", default: "12" },
+      "base-path-tree": { type: "string", default: DEFAULT_BASEPATH_TREE },
+      "build-base-path": { type: "boolean" },
+      "self-test": { type: "boolean" },
+      list: { type: "boolean" },
+      verbose: { type: "boolean", short: "v" },
+      help: { type: "boolean", short: "h" },
+    },
+    stopAt: ["help"],
+  }));
   const o = {
     a: values.a, b: values.b, cases: values.case, verbose: values.verbose, list: values.list,
     maxLines: Number(values.maxLines), basePathTree: values.basePathTree, buildBasePath: values.buildBasePath,
@@ -615,9 +608,7 @@ function selfTest(opts) {
 }
 
 function main() {
-  let opts;
-  try { opts = parseArgs(process.argv.slice(2)); }
-  catch (e) { console.error(`error: ${e.message}`); process.exit(2); }
+  const opts = parseArgs(process.argv.slice(2));
 
   if (opts.help) { printHelp(); return 0; }
   if (opts.selfTest) return selfTest(opts);

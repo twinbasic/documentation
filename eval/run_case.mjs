@@ -92,10 +92,8 @@ function parseArgs(argv) {
       help: { type: "boolean", short: "h" },
     },
     positionals: 0,
-    unknown: "error",
-    acceptsValue: () => true,
     stopAt: ["help"],
-  }), { format: (err) => `unknown argument: ${err.arg}`, exitCode: 2 });
+  }));
   const o = {
     corpus: "corpus" in values ? path.resolve(values.corpus) : undefined,
     site: "site" in values ? path.resolve(values.site) : undefined,
@@ -262,7 +260,8 @@ async function main(argv) {
   const o = parseArgs(argv);
   const complete = o.corpus && o.site && o.out &&
     (o.smoke || (o.goal && ["repo", "site"].includes(o.protocol)));
-  if (o.help || !complete) return printHelpAndExit(USAGE, { exitCode: o.help ? 0 : 2 });
+  if (o.help) return printHelpAndExit(USAGE);
+  if (!complete) return printHelpAndExit(USAGE, { stream: "stderr", exitCode: 2 });
 
   const cwd = o.protocol === "site" ? path.join(o.corpus, "docs") : o.corpus;
   const needed = [cwd, path.join(o.site, "assets/js/search-data.json"), path.join(o.site, "assets/js/vendor/lunr.min.js")];

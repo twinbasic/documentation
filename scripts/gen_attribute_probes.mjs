@@ -38,7 +38,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { parseAttributes, parseTargets } from "./lib/attributes-doc.mjs";
-import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { DOCS_DIR } from "../lib/repo-paths.mjs";
 
 const ATTR_DOC = path.join(DOCS_DIR, "Reference", "Attributes.md");
@@ -53,7 +53,9 @@ diagnostic naming a probe module is a finding.
 
   <out_dir>   the folder to write the probe project into
   key.md      where to write the key (default: probe-key.md beside <out_dir>)
-  -h, --help  print this text and exit`;
+  -h, --help  print this text and exit
+
+A folder or key that starts with a dash is given after \`--\`.`;
 
 // --------------------------------------------------------------- arguments
 // An attribute with a mandatory argument needs a value that is itself valid, or
@@ -1032,15 +1034,14 @@ const MAIN_TWIN = "' Startup object for the probe project. Does nothing.\n\n" +
   "Module ProbeMain\n    Public Sub Main()\n    End Sub\nEnd Module\n";
 
 async function main(argv) {
-  const { values, positionals } = parseCli(argv, {
+  const { values, positionals } = withUsageError(() => parseCli(argv, {
     options: { help: { type: "boolean", short: "h" } },
-    unknown: "positional",
-    positionals: { min: 0 },
+    positionals: { min: 0, max: 2 },
     stopAt: ["help"],
-  });
+  }));
   if (values.help) printHelpAndExit(USAGE);
   if (positionals.length < 1) {
-    console.log(USAGE);
+    console.error(USAGE);
     return 2;
   }
   const out = positionals[0];

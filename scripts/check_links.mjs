@@ -77,7 +77,7 @@ import {
   FsOracle, formatLinkReport, formatIntegrityReport,
   resolve, OUTSIDE_BASEPATH_MARKER,
 } from "../builder/link-check.mjs";
-import { parseCli } from "../lib/cli.mjs";
+import { CliError, parseCli } from "../lib/cli.mjs";
 
 // Tree-relative POSIX path, the space check.mjs works and reports in, so
 // the same tree checked with a relative --root-dir, an absolute one, or
@@ -101,8 +101,8 @@ function readIfPresent(p) {
   try { return fs.readFileSync(p, "utf8"); } catch { return null; }
 }
 
-function printHelp() {
-  process.stdout.write(`Usage: node check_links.mjs [options] <inputs...>
+function printHelp(stream = process.stdout) {
+  stream.write(`Usage: node check_links.mjs [options] <inputs...>
        node check_links.mjs <args1...> /sep/ <args2...> [/sep/ ...]
 
 Offline link checker for static sites. Only offline checking is
@@ -142,7 +142,6 @@ Options:
                              Pages. 'index' compares strings and is
                              case-sensitive on every platform. See
                              builder/link-check.mjs.
-  --threads N                Accepted for CLI compatibility; ignored.
   -v, --verbose              Print per-stage timing breakdown.
   -h, --help                 Show this help and exit.
 
@@ -191,16 +190,17 @@ Exit codes:
   1  Link / forbidden-prefix check failed.
   2  Integrity check failed (no link failures).
   3  Both link and integrity checks failed.
-  4  Command-line error: no arguments, a flag without its value,
-     no --offline, or no input.
+  4  Command-line error, reported on stderr: no arguments, an unknown
+     option, a flag without its value or with an empty one, no
+     --offline, or no input.
 
 Inputs are files or directories; directories are searched recursively
 for *.html.
 `);
 }
 
-// `forbid` is the only repeatable flag. `threads` is accepted and unused, and
-// `help` is answered before any argument list is parsed.
+// `forbid` is the only repeatable flag, and `help` is answered before any
+// argument list is parsed.
 const LINK_OPTIONS = {
   offline: { type: "boolean", default: false },
   "include-fragments": { type: "boolean", default: false },
@@ -210,7 +210,6 @@ const LINK_OPTIONS = {
   "base-path": { type: "string", default: "" },
   forbid: { type: "string", multiple: true },
   "no-fail": { type: "boolean", default: false },
-  threads: { type: "string" },
   verbose: { type: "boolean", short: "v", default: false },
   help: { type: "boolean", short: "h", default: false },
   "check-html": { type: "boolean", default: false },
@@ -233,20 +232,7 @@ const LINK_OPTIONS = {
 };
 
 function parseArgs(argv) {
-  let cli;
-  try {
-    cli = parseCli(argv, {
-      options: LINK_OPTIONS,
-      unknown: "ignore",
-      positionals: { min: 0 },
-      acceptsValue: (v) => v !== undefined,
-    });
-  } catch (err) {
-    if (err.code === "missing-value") throw new Error(`${err.option} requires a value`);
-    throw err;
-  }
-
-  const { values } = cli;
+  const { values, positionals } = parseCli(argv, { options: LINK_OPTIONS, positionals: { min: 0 } });
   const opts = {
     offline: values.offline,
     includeFragments: values.includeFragments,
@@ -267,32 +253,7 @@ function parseArgs(argv) {
     oracle: values.oracle,
   };
 
-  // An index is covered once it is a kept token's own index, or the index
-  // right after a kept value option that took its value as a separate
-  // argument -- the two positions the parse actually looked at.
-  const covered = new Set();
-  const positionalAt = new Map();
-  for (const t of cli.tokens) {
-    covered.add(t.index);
-    if (t.kind === "option" && t.value !== undefined && !t.inlineValue) covered.add(t.index + 1);
-    if (t.kind === "positional") positionalAt.set(t.index, t.value);
-  }
-
-  // Everything else went unrecognised, and is warned about rather than
-  // refused. An unknown --flag with no "=" takes the positional right after
-  // it along, so that one goes to `unknown` too, not `inputs`.
-  const inputs = [];
-  const unknown = [];
-  for (let i = 0; i < argv.length; i++) {
-    if (positionalAt.has(i)) {
-      const prev = argv[i - 1];
-      if (i > 0 && !covered.has(i - 1) && prev.startsWith("--") && !prev.includes("=")) unknown.push(argv[i]);
-      else inputs.push(positionalAt.get(i));
-    } else if (!covered.has(i)) {
-      unknown.push(argv[i]);
-    }
-  }
-  return { opts, inputs, unknown };
+  return { opts, inputs: positionals };
 }
 
 function collectHtmlFiles(inputs) {
@@ -340,7 +301,9 @@ function collectAllRelFiles(rootStr) {
 }
 
 // Run a single check pass.  All output is collected into a buffer;
-// nothing is written to stdout/stderr.  Returns { output, exitCode }.
+// nothing is written to stdout/stderr.  Returns { output, exitCode }, and
+// for a command-line error (exit 4) an empty output and `error`, the line for
+// stderr.
 //
 // With `structured: true` the result additionally carries a `findings`
 // object -- builder/check.mjs's findingsFor, the same conclusions the
@@ -351,31 +314,25 @@ export function runCheck(argv, { structured = false } = {}) {
   const buf = [];
   const write = (s) => buf.push(s);
 
+  const commandLineError = (error) => ({ output: "", exitCode: 4, error });
+
   let parsed;
   try {
     parsed = parseArgs(argv);
   } catch (e) {
-    write(`error: ${e.message}\n`);
-    return { output: buf.join(""), exitCode: 4 };
+    if (!(e instanceof CliError)) throw e;
+    return commandLineError(`error: ${e.message}`);
   }
-  const { opts, inputs, unknown } = parsed;
-
-  if (unknown.length) {
-    write(
-      `warning: ignoring unrecognised arguments: ${unknown.join(" ")}\n`
-    );
-  }
+  const { opts, inputs } = parsed;
 
   if (!opts.offline) {
-    write(
+    return commandLineError(
       "error: --offline is required. Online (network) checking is not " +
-      "implemented by this tool.\n"
+      "implemented by this tool."
     );
-    return { output: buf.join(""), exitCode: 4 };
   }
   if (!inputs.length) {
-    write("error: at least one input file or directory is required\n");
-    return { output: buf.join(""), exitCode: 4 };
+    return commandLineError("error: at least one input file or directory is required");
   }
 
   // --root-dir is used in the shape it was given. checkChunk joins it to
@@ -562,8 +519,8 @@ export function selfTest() {
       const argv = ["--offline", "--check-sitemap", "--check-search", "--check-canonical",
                     "--root-dir", tmp, tmp];
       if (bp) argv.push("--base-path", bp);
-      const { findings, output } = runCheck(argv, { structured: true });
-      if (!findings) throw new Error(`runCheck refused the self-test's arguments:\n${output}`);
+      const { findings, error } = runCheck(argv, { structured: true });
+      if (!findings) throw new Error(`runCheck refused the self-test's arguments:\n${error}`);
       return findings;
     };
 
@@ -664,14 +621,15 @@ if (!isMainThread && workerData?.argv) {
   const segments = commands.filter(c => c.length > 0);
 
   if (segments.length === 0) {
-    printHelp();
+    printHelp(process.stderr);
     process.exit(4);
   }
 
   if (segments.length === 1) {
     // Single command -- run inline, no worker overhead.
-    const { output, exitCode } = runCheck(segments[0]);
+    const { output, exitCode, error } = runCheck(segments[0]);
     process.stdout.write(output);
+    if (error) process.stderr.write(`${error}\n`);
     process.exit(exitCode);
   }
 
@@ -711,6 +669,7 @@ if (!isMainThread && workerData?.argv) {
     if (settled[i].status === "fulfilled") {
       const r = settled[i].value;
       process.stdout.write(r.output);
+      if (r.error) process.stderr.write(`${r.error}\n`);
       if (r.exitCode !== 0 && exitCode === 0) exitCode = r.exitCode;
     } else {
       process.stdout.write(`INTERNAL ERROR: ${settled[i].reason}\n`);

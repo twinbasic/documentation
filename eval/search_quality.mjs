@@ -16,8 +16,9 @@
 //     node eval/search_quality.mjs --sample 500        # fast iteration
 //     node eval/search_quality.mjs --failures 20       # queries not at rank 1
 //
-// Exit code is always 0: this is a measuring tool, not a pass/fail check
-// (scripts/ is for those).
+// Exit code is 0 whatever the measurement finds: this is a measuring tool,
+// not a pass/fail check (scripts/ is for those). A command line it refuses
+// exits 2, and a site with no search index 1.
 //
 // GROUND TRUTH
 //
@@ -144,10 +145,8 @@ function parseArgs(argv) {
       help: { type: "boolean", short: "h" },
     },
     positionals: 0,
-    unknown: "error",
-    acceptsValue: () => true,
     stopAt: ["help"],
-  }), { format: (err) => `unrecognised argument: ${err.arg}`, exitCode: 1 });
+  }));
   return {
     site: "site" in values ? path.resolve(values.site) : path.join(REPO_ROOT, "docs/_site"),
     save: "save" in values ? path.resolve(values.save) : null,

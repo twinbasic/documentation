@@ -73,10 +73,8 @@ const cli = withUsageError(
         source: { type: "string", multiple: true },
         help: { type: "boolean", short: "h" },
       },
-      acceptsValue: Boolean,
       stopAt: ["help"],
     }),
-  { format: (err) => `unknown arg: ${err.arg}` },
 );
 if (cli.stopped === "help") {
   printHelpAndExit(

@@ -114,7 +114,7 @@ Outputs raw JSON under `wisdom/data/raw/`. Supports incremental runs --- a manif
 | `--dry-run` | Discover channels/threads; do not fetch messages |
 | `--force` | Ignore manifest; re-fetch all history |
 
-When the session request cap is reached, the tool exits with code 2 --- re-run to continue where it left off.
+When the session request cap is reached, the tool exits with code 2 --- re-run to continue where it left off. A command line the tool cannot use --- an unknown command or flag, a flag without its value or with an empty one, an unexpected argument --- is refused on standard error and also exits with code 2, so read the message to tell the two apart.
 
 ### Phase 2 --- Process
 

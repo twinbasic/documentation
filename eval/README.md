@@ -91,6 +91,11 @@ node eval/nav_hops.mjs '^/tB/Modules/ErrObject/Number$' # hops by link from docs
 node eval/nav_hops.mjs --from README.md '^/Documentation/Development/Tools$'
 ```
 
+Each of these refuses an unknown flag and a flag without its value on stderr and exits 2, and
+`transcript.mjs` also refuses a second file. A search term, regex or file name that starts
+with a dash goes after `--`:
+`node eval/site_search.mjs -- "-1 as an error code"`.
+
 ## Why an evaluator is a separate process
 
 Rounds 1--7 ran each evaluator as a subagent of the session orchestrating the round. **A

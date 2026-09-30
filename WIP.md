@@ -504,7 +504,7 @@ wrapper:
 | `test.bat` | `check_regex_safety` | no regex in the tree can backtrack exponentially |
 | `test.bat` | `check_symbol_index` | the symbol index still places each kind of symbol, from fixtures |
 | `test.bat` | `check_twin_parsers` | every word of the shared modifier list reaches all three scanners of twinBASIC source; the census's declaration kinds and `parseTargets`' targets hold for the shapes each once misread |
-| `test.bat` | `check_cli` | `lib/cli.mjs` parses as a strict `parseArgs` does, and keeps a lenient tool's leniency where asked; each tool's recorded command-line errors still exit and print as recorded, run with an IDE and a browser that do not exist |
+| `test.bat` | `check_cli` | `lib/cli.mjs` parses as a strict `parseArgs` does, and also refuses an empty value unless the option allows one; every tool refuses an unknown flag, and every tool with a value option an empty value; each tool's recorded command-line errors still exit and print as recorded, run with an IDE and a browser that do not exist |
 | `test.bat` | `check_ci_workflows` | both CI workflows run every wrapper gate, with the same arguments and order, and build with `build.bat`'s flags |
 | `test.bat` | `check_lint` | Biome finds nothing in the tooling, warnings included, and checked at least one script |
 | `test.bat` | `test/search.test.mjs` | the search entries `builder/search.mjs` writes hold what they should, and the copies of the search client still agree. Run by `node --test`; the gate roster reads such a line as a gate, named by its path |

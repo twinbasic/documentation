@@ -49,7 +49,7 @@ import assert from "node:assert/strict";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { exitOnCrash } from "./lib/gate-probes.mjs";
 import * as R from "./lib/tb-registry.mjs";
 
@@ -63,13 +63,10 @@ HKCU\\Software\\tbharness-selftest. Windows only, and not a gate.
 
   -h, --help  print this text and exit`;
 
-// Every other argument is ignored.
-if (parseCli(process.argv.slice(2), {
+if (withUsageError(() => parseCli(process.argv.slice(2), {
   options: { help: { type: "boolean", short: "h" } },
-  unknown: "ignore",
-  positionals: { min: 0, max: 0 },
   stopAt: ["help"],
-}).values.help) printHelpAndExit(USAGE);
+})).values.help) printHelpAndExit(USAGE);
 
 const BASE = "Software\\tbharness-selftest";
 const ROOT = BASE + "\\twinBASIC_IDE";

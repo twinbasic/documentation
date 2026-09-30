@@ -3,18 +3,19 @@
 // parseCommandLine(argv) returns the options runBuild() and runServe() read,
 // or throws a CliError whose message is what tbdocs prints before it exits 4.
 // The table is lib/cli.mjs's strict one: an unknown option, a positional, a
-// boolean given a value and a value flag given none (or one that starts with
-// a dash) are all refused. Flags are then applied in the order they were
-// given, because --no-check undoes the check flags before it and not the
-// ones after. -h and --help end the parse where they stand: nothing after
-// them is read, and the options returned say only `help`.
+// boolean given a value, a value flag given none (or one that starts with a
+// dash) and an empty value, except --baseurl's, are all refused. Flags are
+// then applied in the order they were given, because --no-check undoes the
+// check flags before it and not the ones after. -h and --help end the parse
+// where they stand: nothing after them is read, and the options returned say
+// only `help`.
 
 import { CliError, numberOption, parseCli } from "../lib/cli.mjs";
 
 export const OPTIONS = {
   src: { type: "string" },
   dest: { type: "string" },
-  baseurl: { type: "string" },
+  baseurl: { type: "string", empty: true },
   url: { type: "string" },
   "dry-run": { type: "boolean" },
   "no-offline": { type: "boolean" },
@@ -48,7 +49,8 @@ given, and a flag that takes a value takes it as the next argument or as
   --dest <path>                online-tree destination (default <src>/_site, or
                                <src>/_serve with --serve); the offline tree is
                                <dest>-offline, the PDF tree <dest>-pdf
-  --baseurl <prefix>           override _config.yml's baseurl
+  --baseurl <prefix>           override _config.yml's baseurl; an empty value is the
+                               site root
   --url <origin>               override _config.yml's url
   --dry-run                    build without writing the trees; the check does not
                                run, and a baseline update still writes its file
@@ -100,20 +102,9 @@ export const DEFAULTS = Object.freeze({
   stallTimeoutMs: 120000,
 });
 
-// A value flag's own complaint names the flag; every other refusal names the
-// argument as it was given, `-xy` and `--dry-run=1` whole.
-function parse(argv) {
-  try {
-    return parseCli(argv, { options: OPTIONS, stopAt: ["help"] });
-  } catch (err) {
-    if (!(err instanceof CliError) || err.code === "missing-value") throw err;
-    throw new CliError(err.code, `Unknown argument: ${err.arg}`, { arg: err.arg });
-  }
-}
-
 export function parseCommandLine(argv) {
   const args = { ...DEFAULTS };
-  const cli = parse(argv);
+  const cli = parseCli(argv, { options: OPTIONS, stopAt: ["help"] });
   // -h and --help are answered before any value is read, so a bad --port
   // before one does not stop it. `help` is present only then, which keeps the
   // options of every other command line equal to DEFAULTS.
@@ -171,7 +162,7 @@ export function parseCommandLine(argv) {
         });
         break;
       case "stallTimeout": {
-        // Not numberOption, which refuses blank: --stall-timeout= is 0.
+        // Seconds, fractions included; 0 disables the watchdog.
         const secs = Number(t.value);
         if (!Number.isFinite(secs) || secs < 0) {
           throw new CliError("bad-number", `--stall-timeout expects seconds (0 disables), got: ${t.value}`,

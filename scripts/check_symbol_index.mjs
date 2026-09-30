@@ -30,7 +30,7 @@ import { readFile } from "node:fs/promises";
 import { GUARDED_SRC } from "../builder/baseline.mjs";
 import { checkSymbolBaseline } from "../builder/symbol-baseline.mjs";
 import { deriveSymbolIndex, headingsOf, serializeSymbolIndex } from "../builder/symbols.mjs";
-import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { baselineFixture, createProbes, exitOnCrash } from "./lib/gate-probes.mjs";
 import { apiSnapshot, isPublicType, parseTwin } from "./lib/twin-api.mjs";
 
@@ -43,13 +43,10 @@ the .twin declaration scanner, the derivation from the pages and the drift guard
 
   -h, --help  print this text and exit`;
 
-// Every other argument is ignored.
-if (parseCli(process.argv.slice(2), {
+if (withUsageError(() => parseCli(process.argv.slice(2), {
   options: { help: { type: "boolean", short: "h" } },
-  unknown: "ignore",
-  positionals: { min: 0, max: 0 },
   stopAt: ["help"],
-}).values.help) printHelpAndExit(USAGE);
+})).values.help) printHelpAndExit(USAGE);
 
 const { check, report } = createProbes("check_symbol_index");
 const show = (x) => JSON.stringify(x);

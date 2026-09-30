@@ -85,10 +85,8 @@ const { values } = withUsageError(
         minified: { type: "boolean", default: false },
         help: { type: "boolean", short: "h" },
       },
-      acceptsValue: Boolean,
       stopAt: ["help"],
     }),
-  { format: (err) => `unknown arg: ${err.arg}` },
 );
 if (values.help) printHelpAndExit(USAGE);
 let rootDir = values.rootDir;

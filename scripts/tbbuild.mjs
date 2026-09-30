@@ -91,7 +91,6 @@ const { values, positionals } = withUsageError(
       hide: { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
-    unknown: "ignore",
     positionals: { min: 0, max: 1 },
     stopAt: ["help"],
   }),

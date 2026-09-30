@@ -25,24 +25,22 @@ import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import fs from "node:fs";
 import path from "node:path";
-import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const require = createRequire(import.meta.url);
 
 function parseArgs(argv) {
-  const { values, positionals } = parseCli(argv, {
+  const { values, positionals } = withUsageError(() => parseCli(argv, {
     options: {
       site: { type: "string" },
       n: { type: "string" },
       composition: { type: "boolean" },
       help: { type: "boolean", short: "h" },
     },
-    positionals: { max: Infinity },
-    unknown: "positional",
-    acceptsValue: () => true,
+    positionals: { min: 0 },
     stopAt: ["help"],
-  });
+  }));
   return {
     site: "site" in values ? path.resolve(values.site) : path.join(REPO_ROOT, "docs/_site"),
     n: "n" in values ? Number(values.n) : 8,
@@ -532,8 +530,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       'Usage: node eval/site_search.mjs "<query>" [--n <count>] [--site <path>] [-h, --help]\n' +
       "       node eval/site_search.mjs --composition\n\n" +
       "Queries the built site's real lunr index with the real query logic.\n" +
-      "See eval/README.md.",
-      { exitCode: opts.help ? 0 : 1 },
+      "A term that starts with a dash goes after --. See eval/README.md.",
+      opts.help ? {} : { stream: "stderr", exitCode: 2 },
     );
   }
 

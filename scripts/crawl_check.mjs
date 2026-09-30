@@ -40,11 +40,10 @@ const { values, positionals } = withUsageError(
         "skip-external": { type: "boolean" },
         help: { type: "boolean", short: "h" },
       },
-      positionals: { min: 0 },
-      acceptsValue: () => true,
+      positionals: { min: 0, max: 1 },
       stopAt: ["help"],
     }),
-  { format: (err) => `unknown flag: ${err.arg}` },
+  { format: (err) => `${err.message}\n${USAGE}` },
 );
 if (values.help) printHelpAndExit(USAGE);
 const startArg = positionals[0];

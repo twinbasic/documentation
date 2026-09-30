@@ -42,7 +42,7 @@ import { spawnSync } from "node:child_process";
 import { closeSync, existsSync, openSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { parseCli } from "../lib/cli.mjs";
+import { CliError, parseCli } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const WORK = path.join(REPO_ROOT, ".compare-trees");
@@ -126,14 +126,11 @@ function parseArgs(argv) {
         keep: { type: "boolean", default: false },
         help: { type: "boolean", short: "h" },
       },
-      positionals: 0,
-      // A single-dash value such as -1 is taken; a double-dash one is not,
-      // so a flag with no value never eats the option that follows it.
-      acceptsValue: (v) => v !== undefined && !v.startsWith("--"),
       stopAt: ["help"],
     });
   } catch (err) {
-    usageError(err.code === "missing-value" ? err.message : `unknown argument "${err.arg}"`);
+    if (!(err instanceof CliError)) throw err;
+    usageError(err.message);
   }
   if (cli.stopped === "help") { process.stdout.write(USAGE); process.exit(0); }
 

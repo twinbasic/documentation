@@ -87,8 +87,6 @@ const { values } = withUsageError(() =>
       quiet: { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
-    unknown: "ignore",
-    positionals: 0,
     stopAt: ["help"],
   }));
 const die = (code, msg) => { console.error(msg); process.exit(code); };

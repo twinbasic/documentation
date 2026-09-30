@@ -31,7 +31,7 @@ import path from "node:path";
 import yaml from "js-yaml";
 import { exitOnCrash } from "./lib/gate-probes.mjs";
 import { buildArgs, gateSteps, workflowSteps } from "./lib/gate-roster.mjs";
-import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 exitOnCrash();
@@ -43,13 +43,10 @@ arguments and in the same order.
 
   -h, --help  print this text and exit`;
 
-// Every other argument is ignored.
-if (parseCli(process.argv.slice(2), {
+if (withUsageError(() => parseCli(process.argv.slice(2), {
   options: { help: { type: "boolean", short: "h" } },
-  unknown: "ignore",
-  positionals: { min: 0, max: 0 },
   stopAt: ["help"],
-}).values.help) printHelpAndExit(USAGE);
+})).values.help) printHelpAndExit(USAGE);
 
 const JOB = "build";
 const WORKFLOWS = ["checks.yml", "tbdocs-gh-pages.yml"];

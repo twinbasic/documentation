@@ -31,7 +31,7 @@ logic:
 
 Run it as a command of its own, exactly like that: it is on your PATH and works from any
 directory. Chained after a `cd`, or piped into another command, it is refused, as every
-other shell command is.
+other shell command is. A search term that starts with a dash goes after `--`.
 
 It prints ranked results as title + URL + snippet. A URL like
 `/Documentation/Development/Extending#adding-a-pipeline-task` corresponds to the corpus file
