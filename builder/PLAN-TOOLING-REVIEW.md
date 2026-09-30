@@ -1019,6 +1019,39 @@ candidate: half of it is its own data table.
 **Verify.** `check_examples.mjs --census` and the `examples.bat` summary unchanged (a harness
 run).
 
+**Landed** at the owner's choice (2026-09-30) as one module and a new gate (see "Where the
+plan was wrong"). `scripts/lib/example-batches.mjs` holds what the probes call and the
+probes: `joinConcatGroups`, the batching, the canaries, crash isolation from `crashedIn` to
+`runBatch`, `sectionOf`, `diagKind`, `unresolvedName` and `runProbes`, 1,103 lines moved
+word for word. The lane that stages and builds for real (`stageBatch`, `buildStaged`,
+`laneOf`, `runAll`) stays in `check_examples.mjs`, with everything else that reads the
+command line. Three things changed in the moved code. `makeBatches` takes `{ batchSize,
+jobs }`, defaulting to the new `DEFAULT_BATCH` and `DEFAULT_JOBS`, which the tool's own
+defaults now use. `runProbes` takes `say`. Two dynamic imports gained a `../`. So `--census
+--batch 1` passes its probes now (see Found). The tool still runs the probes before every
+run. The new gate `test/example-batches.test.mjs` (`node --test`, one test, ~0.4 s) runs them
+too. It is registered in `test.bat`, the composite action, Tools.md's list, section and
+POSIX block, Building.md's POSIX block, and WIP.md's table, bullet and count. Tools.md's
+`check_examples` section and WIP.ExamplesBuild.md name the module. With `splitBatch` faulted
+to drop the hidden context, and with `makeBatches` faulted to a target of 1, it fails
+naming the probe.
+
+Registering it found the roster gates blind to a hyphen (see Found). The three name patterns
+allow one now. Three new probes in `check_gate_lists` (a hyphenated test, a hyphenated
+script, both listed) bring it to 24. With the hyphen taken out of the list reader, the list
+reader's test half, or `gate-roster.mjs`, a probe fails each time. The command-block
+reader has no probes. With its hyphen taken out, only the real POSIX blocks catch it, and
+only for a test file.
+
+`--census` is byte-identical (sha1 `d90a5e44c260`, 137 probes, 1,187 fences, 1,136 marked).
+`examples.bat`: `1136 sample(s) from 598 page(s) in 43 project(s), 4 lane(s), BETA 987`,
+`1136 compile, 0 finding(s), 146.3s -- clean`.
+`check_regex_safety` still reads 36 constructed and 12 not resolvable, in 138 files.
+`check_gate_lists: check.bat (4) + test.bat (19)`; `check_ci_workflows: ... the wrappers'
+22 gates`. The tree comparison is identical but for the Tools and Building pages, the search
+data and the book. CI must show a new step, `Unit-test check_examples' batches
+(test/example-batches.test.mjs)`, and the count of the wrappers' gates one higher.
+
 ### C81 — `scripts: tb-ide's console reading and add-in introspection move out`
 
 Both separate cleanly from the build-state core, which stays together.
@@ -1384,6 +1417,13 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   choice (2026-09-30) only three misplaced helpers moved, inside the file. It landed as
   `builder: book.mjs's image-path helpers move beside their one caller`. See C79's Landed
   note.
+- **C80: one module, not two, and a gate.** The entry moves the bisection and the probes
+  into modules of their own. Measured, they change together (six of the last 25 commits to
+  the file touched both, as a feature and its probe), so separating them from each other
+  splits code that changes together. What argued for a move was elsewhere: the file does
+  all its work when it loads, so nothing could import the probes, and `makeBatches` read the
+  run's flags (see Found). At the owner's choice (2026-09-30) both moved into one module, and
+  the probes became a `test.bat` gate. See C80's Landed note.
 
 ## Found while implementing
 
@@ -1686,6 +1726,14 @@ Defects the review did not have, found by building something this plan asks for.
 - **A crash in a `check_regex_safety --shard` worker exits 1**. The parent reports it as a
   failed shard and exits 2, so no user sees the 1. Found while landing C74, and left at the
   owner's choice.
+- **`check_examples`' probes batched with the run's own `--batch` and `--jobs`**, because
+  `makeBatches` read both from module scope. `check_examples.mjs --census --batch 1` failed
+  five probes and exited 2 on a valid command line. Found while measuring C80. Fixed in C80.
+- **The roster gates did not read a gate whose file name holds a hyphen.** The three name
+  patterns (`check_gate_lists.mjs`' list and command-block readers, `gate-roster.mjs`'s
+  wrapper reader) allowed letters, digits, `_` and, for a test, `.`, so a hyphenated gate
+  could leave a wrapper or CI with both roster gates green. Found when C80's gate was the
+  first such name. Fixed in C80.
 
 ## Open questions
 
