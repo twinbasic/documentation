@@ -71,24 +71,27 @@ One of the four does not mean the same thing locally as it does in CI, on any pl
 
     test.bat
 
-The tests the toolchain has to pass. Sixteen steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Nineteen steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
 2. [`scripts/check_gate_lists.mjs`](#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
 3. [`scripts/check_ci_workflows.mjs`](#check-ci-workflows) --- verifies both CI workflows run the gates the wrappers run, and build as `build.bat` does.
 4. [`scripts/check_lint.mjs`](#check-lint) --- runs Biome over the tooling and fails on any finding, warnings included.
 5. [`test/search.test.mjs`](#search-test) --- unit tests for the site search: what the search entries hold, and that the copies of the search client agree.
-6. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
-7. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span, that the rewrites over rendered HTML leave a raw `<pre>` or `<code>` alone, and that `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes.
-8. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
-9. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
-10. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
-11. [`scripts/check_twin_parsers.mjs`](#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
-12. [`scripts/check_attribute_sweep.mjs`](#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
-13. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
-14. [`scripts/check_pdf_shims_equiv.mjs`](#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, and run.
-15. [`scripts/check_impexp_parity.mjs`](#check-impexp-parity) --- verifies the two editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI.
-16. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+6. [`test/render.test.mjs`](#render-test) --- unit tests for the markdown-it plugins, on inputs no page holds.
+7. [`test/strftime.test.mjs`](#strftime-test) --- unit tests for the footer's date formatter, which no build calls.
+8. [`test/example-batches.test.mjs`](#example-batches-test) --- runs `check_examples.mjs`'s probes, which test how samples are batched and how a crashed batch is cut down, without an IDE.
+9. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
+10. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span, that the rewrites over rendered HTML leave a raw `<pre>` or `<code>` alone, and that `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes.
+11. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
+12. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
+13. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
+14. [`scripts/check_twin_parsers.mjs`](#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
+15. [`scripts/check_attribute_sweep.mjs`](#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
+16. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
+17. [`scripts/check_pdf_shims_equiv.mjs`](#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, and run.
+18. [`scripts/check_impexp_parity.mjs`](#check-impexp-parity) --- verifies the two editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI.
+19. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
@@ -97,6 +100,9 @@ POSIX:
       && node scripts/check_ci_workflows.mjs \
       && node scripts/check_lint.mjs \
       && node --test test/search.test.mjs \
+      && node --test test/render.test.mjs \
+      && node --test test/strftime.test.mjs \
+      && node --test test/example-batches.test.mjs \
       && node scripts/check_regex_safety.mjs \
       && node scripts/check_code_regions.mjs \
       && node scripts/check_page_baseline.mjs \
@@ -111,7 +117,7 @@ POSIX:
 
 Exit codes: **0** every step passed; otherwise the code of the step that stopped the run, as that step's entry gives it.
 
-**Thirteen of the sixteen cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all sixteen unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
+**Sixteen of the nineteen cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all nineteen unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
 
 The three exceptions are [`check_code_regions.mjs`](#check-code-regions), [`check_gate_lists.mjs`](#check-gate-lists), which reads this page, and [`check_lint.mjs`](#check-lint), which lints the site's scripts in `docs/assets/js/`. The first is worth knowing in detail. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes are a different matter: they run against their own sources whatever the tree holds, and they cover the *mirror* fault, where a rewrite silently stops firing. The sweep cannot see that one --- text the rewrite skipped is stashed and restored unchanged, so every region still matches. Add a page with an unusual code construct and run `test.bat`, but read the built page too.
 
@@ -542,6 +548,33 @@ Unit tests for the site search, run by Node's own test runner rather than as a s
 
 Exit codes: **0** every test passed, **1** a test failed.
 
+### render.test.mjs
+{: #render-test }
+
+    node --test test/render.test.mjs
+
+Unit tests for the markdown-it plugins in `builder/render.mjs`, run by Node's own test runner through the site's own `createMarkdownIt`. The build compares whole pages, so a plugin that is wrong only on input no page holds passes it; these tests give each plugin such input. They cover the ellipsis plugin, which keeps the dots past the third in a run such as `....`, next to code spans, dashes, guillemets, quotes and autolinks. No browser, no built tree, well under a second.
+
+Exit codes: **0** every test passed, **1** a test failed.
+
+### strftime.test.mjs
+{: #strftime-test }
+
+    node --test test/strftime.test.mjs
+
+Unit tests for `builder/strftime.mjs`, which formats the "Page last modified" line in a page's footer. That line is written only for a page that sets `last_modified_date`, and no page does, so no build calls the formatter and the build's output cannot catch a fault in it. These call it directly: the site's own format, the day of the year, an unknown token and a value that is not a date. No browser, no built tree, well under a second.
+
+Exit codes: **0** every test passed, **1** a test failed.
+
+### example-batches.test.mjs
+{: #example-batches-test }
+
+    node --test test/example-batches.test.mjs
+
+Runs the probes of [`check_examples.mjs`](#check-examples) under Node's own test runner. They live in `scripts/lib/example-batches.mjs`, beside what they test: how samples are packed into projects, how a batch whose build crashed the compiler is cut down to the samples that crash it, the canary every batch carries, and the fence classifier. `check_examples.mjs` runs them before every run too, but it needs a twinBASIC install, so it runs only by hand and never in CI. The probes need no IDE: crash isolation is driven through a fake lane whose builds crash on the samples a probe chooses. No browser, no built tree, well under a second.
+
+Exit codes: **0** every test passed, **1** a test failed.
+
 ### check_page_baseline.mjs
 {: #check-page-baseline }
 
@@ -787,7 +820,7 @@ twinBASIC has no command-line build. The compiler executable's whole surface is 
 
 **It leaves the IDE's own settings as it found them.** Every IDE it starts writes to the same registry keys as your own IDE: a saved state for the project (open tabs, watch expressions, Debug Console history), a place at the top of the recent-projects list, and, when the run switches the target, the target the IDE remembers for the project. Once the IDE has exited, `tbbuild` puts all three back. An entry the run created is deleted, and a project that already had one --- one of your own --- gets its old state, its old place in the list and its old target back. The `.twinproj` file association is restored too, if the IDE changed it. When [`check_examples.mjs`](#check-examples) or [`sweep_attributes.mjs`](#sweep-attributes) builds many projects, it does this once for all its lanes instead.
 
-Five files under `scripts/lib/` belong to it and are never run directly. `tb-build.mjs` is `tbbuild` without its command line: `compileProject` opens a project in the IDE and returns its diagnostics as an array, which is how `check_examples.mjs` and `sweep_attributes.mjs` build many projects without starting a process for each. It never exits the process and never tidies the registry, so its caller owns both. `tb-ide.mjs` holds the mechanics `tb-build.mjs` and `tbrun.mjs` share: starting the IDE, attaching to it, waiting for the compile, and reading the diagnostics and the DEBUG CONSOLE. `tb-registry.mjs` records and restores the registry entries described above, through .NET's registry API by way of PowerShell, because `reg.exe` mangles any path holding a character outside the console code page; [`check_tb_registry.mjs`](#check-tb-registry) is its self-test. `tb-cdp.mjs` is a minimal CDP client over Node's global `WebSocket`, raw rather than puppeteer because a pending `alert()` blocks the renderer and puppeteer's `connect()` handshake talks to the renderer --- so it hangs on precisely the state you need to recover from. Every call it makes has a time limit, so a blocked page ends a run with a message rather than holding it forever. `tb-launch.ps1` holds the Win32 calls Node cannot make without a native FFI addon: `CreateDesktop` and `CreateProcess` with `STARTUPINFO.lpDesktop` for the private desktop, and the job object described above. It is the only PowerShell file under `scripts/`, and it is not executed as a file: `tb-ide.mjs` reads the text and passes it through `-EncodedCommand`, so the execution policy never comes into it and nobody has to be told to bypass one.
+Six files under `scripts/lib/` belong to it and are never run directly. `tb-build.mjs` is `tbbuild` without its command line: `compileProject` opens a project in the IDE and returns its diagnostics as an array, which is how `check_examples.mjs` and `sweep_attributes.mjs` build many projects without starting a process for each. It never exits the process and never tidies the registry, so its caller owns both. `tb-ide.mjs` holds the mechanics `tb-build.mjs` and `tbrun.mjs` share: starting the IDE, attaching to it, waiting for the compile, and reading the diagnostics. `tb-ide-console.mjs` reads the IDE's DEBUG CONSOLE, which is where `tbrun` finds what a probe printed. `tb-registry.mjs` records and restores the registry entries described above, through .NET's registry API by way of PowerShell, because `reg.exe` mangles any path holding a character outside the console code page; [`check_tb_registry.mjs`](#check-tb-registry) is its self-test. `tb-cdp.mjs` is a minimal CDP client over Node's global `WebSocket`, raw rather than puppeteer because a pending `alert()` blocks the renderer and puppeteer's `connect()` handshake talks to the renderer --- so it hangs on precisely the state you need to recover from. Every call it makes has a time limit, so a blocked page ends a run with a message rather than holding it forever. `tb-launch.ps1` holds the Win32 calls Node cannot make without a native FFI addon: `CreateDesktop` and `CreateProcess` with `STARTUPINFO.lpDesktop` for the private desktop, and the job object described above. It is the only PowerShell file under `scripts/`, and it is not executed as a file: `tb-ide.mjs` reads the text and passes it through `-EncodedCommand`, so the execution policy never comes into it and nobody has to be told to bypass one.
 
 Exit codes: **0** the project compiled without errors; **1** the project has errors; **2** a refused command line (a path that is not a `.twinproj` included), no IDE, an IDE that did not start or expose a debug port, or a crash; **3** the compile never settled: the IDE did not report the project open, or its diagnostics did not match its status bar; **4** the project crashes the compiler.
 
@@ -1096,11 +1129,13 @@ isolates it, after one build of the template with nothing in it decides whether 
 the template's own rather than any sample's. A split never cuts a `projname` group in half,
 and never separates a page's `hidden` context from the samples that need it.
 
-Two files under `scripts/lib/` belong to it. `tb-fences.mjs` is the half that needs no
+Three files under `scripts/lib/` belong to it. `tb-fences.mjs` is the half that needs no
 compiler --- fence extraction, the markup, and the classifier --- and is where a new key or
-a new slot goes. `tb-install.mjs` finds the IDE and the compiler beside it, and is shared
-with the two IDE-driving tools so the three cannot come to disagree about where an install
-is.
+a new slot goes. `example-batches.mjs` packs samples into batches and cuts a crashed batch
+down, and holds the probes, which run before every run and in
+[`example-batches.test.mjs`](#example-batches-test). `tb-install.mjs` finds the IDE and the
+compiler beside it, and is shared with the two IDE-driving tools so the three cannot come to
+disagree about where an install is.
 
 Exit codes: **0** every marked sample compiles, or none is marked (`--report` always, and `--propose` when it found only unmarked samples that fail, which is advisory); **1** a marked sample does not compile, a marker is misused, a template does not compile, or the compiler crashed on a project (the report names each); **2** the harness could not run: a refused command line, a failed self-test probe, no IDE or compiler, an unreadable `--report` file, a work folder it could not clear, or a crash.
 

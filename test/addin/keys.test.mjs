@@ -14,7 +14,9 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { consoleMark, linesSince, loadedAddins, readConsole, sleep } from "../../scripts/lib/tb-ide.mjs";
+import { sleep } from "../../scripts/lib/tb-ide.mjs";
+import { loadedAddins } from "../../scripts/lib/tb-ide-addins.mjs";
+import { consoleMark, linesSince, readConsole } from "../../scripts/lib/tb-ide-console.mjs";
 import { editorState, editorText, openFile, pressKey, setCursor, waitFor } from "../../scripts/lib/tb-operate.mjs";
 import { scenario } from "./scenario.mjs";
 

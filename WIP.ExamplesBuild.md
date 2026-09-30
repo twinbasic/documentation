@@ -74,7 +74,7 @@ compile; only `--propose` knows that.
 fragment row is where they differ most, and the reason is worth keeping: a fence that reads
 as unbalanced is usually a classifier that does not know the language rather than a sample
 that is genuinely incomplete. Three gaps accounted for nearly all of it, and each is now a
-probe in `check_examples.mjs`:
+probe in `scripts/lib/example-batches.mjs`, which `check_examples.mjs` and `test.bat` both run:
 
 - **an `Interface` body holds prototypes.** `Sub Bar()` inside one has no `End Sub`, so
   pushing it as a block eats the `End Interface` after it. Seven fences.

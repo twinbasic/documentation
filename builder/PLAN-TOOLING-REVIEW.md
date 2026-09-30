@@ -172,7 +172,10 @@ Phase 2 (C31–C70, with C32a, C41a–C41c, C51a, C51b, C65a–C65e, C67a and C6
 2026-09-28, and their full text is in this file as it stood before `builder: cut Phase 2's
 landed entries in the tooling plan`. Those of Phase 3 (C71–C75, with C72a, C72b and C74a) were
 cut on 2026-09-30, and their full text is in this file as it stood before `builder: cut
-Phase 3's landed entries in the tooling plan`. A pointer below to a cut entry's Landed note means that
+Phase 3's landed entries in the tooling plan`. Those of Phase 4 (C76–C81, with C76a, C78a
+and C81a) were cut on 2026-09-30, and their full text is in this file as it stood before
+`builder: cut Phase 4's landed entries in the tooling plan`. A pointer below to a cut entry's
+Landed note means that
 text. Line numbers are the review's, at `fe9ce12b`, and move as the commits land.
 
 ### The organising idea
@@ -893,58 +896,68 @@ worth keeping.
 
 ### C76 — `render: split along its plugin seams`
 
-The strongest evidence. The image rule order matters and nothing says so (`svgInlinePlugin`
-at `:518` must run before `remoteImagePlugin` at `:520`); the ellipsis plugin assumes the
-dashes plugin has run (`:515-516`); the plugins anchor on a third-party rule name
-(`"curly_attributes"`); no plugin is tested alone; the two fence parsers sat 1,550 lines apart
-until C32 and C33. First each ordering becomes explicit and tested, with a probe that
-registers the plugins in the wrong order and fails; then the plugins move into modules along
-those seams.
+Landed.
 
-**Verify.** The tree comparison identical; each ordering probe fails with its order reversed.
+### C76a — `render: the ellipsis plugin counts each dot run where it is`
+
+**Carried forward.** `kramdownEllipsisPlugin` counts each dot run in the text token that
+holds it, tracking no source, and `test/render.test.mjs` (`node --test`) pins it on inputs no
+page holds. No page exercises the plugin's miscounting cases, so the tree comparison cannot
+see a regression there. Its CI step is among those listed under C80.
 
 ### C77 — `builder: tbdocs's Gantt and timing code moves beside gantt.mjs`
 
-`tbdocs.mjs:1268-1403` computes what `gantt.mjs` draws, and A1-1 is what the separation cost.
-Further candidates, taken on evidence: the `TASKS` literal, which mixes the graph's shape with
-the task bodies over 61 % of the file (`:260-1257`); `dispatch`'s `submit()`, which is SAB
-machinery (`:788-911`); the check glue (`:1085-1256`); the console report (`:1478-1525`).
-
-**Verify.** The tree comparison identical; the chart names the same tasks in the same rows.
+**Carried forward.** `builder/gantt.mjs` exports `GANTT_SECTION` and `groupGanttTimings`,
+pure code over the scheduler's timings, so the chart can be grouped and drawn without a build; `injectGanttChart` and `recheckInjected` stay in
+`tbdocs.mjs`. Builder.md and Extending.md name `gantt.mjs` for `GANTT_SECTION`.
 
 ### C78 — `builder: template.mjs's date formatter moves to its own module`
 
-**A3-7 (R2).** After C53 and C54 take the URL and escape helpers, the strftime tables and
-`formatDate`/`parseDate` (`:940-989`) are the one job left in the file that is not
-templating. Its `navActivationCss` deferral (`PLAN-4.md` §3) is close to its trigger, and may
-remove more.
+**Carried forward.** `builder/strftime.mjs` exports `formatDate`, and Builder.md's module
+map has a row for it. `renderFooterLegal` calls it only for a page whose frontmatter sets
+`last_modified_date`, which no page does, so no build exercises it and the tree comparison
+cannot see a change to it. `test/strftime.test.mjs` (C78a) is what does.
 
-**Verify.** The tree comparison identical, every formatted date included.
+### C78a — `builder: strftime's %j is the calendar day, in three digits`
+
+**Carried forward.** `formatDate`'s `%j` is the calendar day, in three digits, and the gate
+`test/strftime.test.mjs` (`node --test`) calls `formatDate` directly. Its CI step is among
+those listed under C80.
 
 ### C79 — `builder: book.mjs as a resolver, an assembler and a coverage check`
 
-Its §A resolver, its §B–F assembly of `book.html` (with `rewriteBookHrefs`) and its §G
-coverage check are separate concerns, and `pdf.mjs` already imports them as though they were
-separate modules.
-
-**Verify.** The tree comparison identical, `book.html` above all; `check_book_coverage.mjs`
-passes.
+Landed.
 
 ### C80 — `scripts: check_examples' bisection and probe suite in their own modules`
 
-Eight jobs share one file; bisection (`:657-927`, 270 lines in 14 functions) and the 425-line
-probe suite (`:1157-1581`) are the clearest to separate. `gen_attribute_probes.mjs` is not a
-candidate: half of it is its own data table.
-
-**Verify.** `check_examples.mjs --census` and the `examples.bat` summary unchanged (a harness
-run).
+**Carried forward.** `scripts/lib/example-batches.mjs` holds the batching (`makeBatches`,
+which takes `{ batchSize, jobs }` and defaults to `DEFAULT_BATCH` and `DEFAULT_JOBS`), the
+canaries, crash isolation (`crashedIn` to `runBatch`), `sectionOf`, `diagKind`,
+`unresolvedName` and `runProbes(say)`; the lane that stages and builds (`stageBatch`,
+`buildStaged`, `laneOf`, `runAll`) stays in `check_examples.mjs`. The gate
+`test/example-batches.test.mjs` runs the probes with no IDE. **The owner's next push is the
+first CI run of the three `node --test` steps this phase added**, `Unit-test the markdown
+plugins (test/render.test.mjs)`, `Unit-test the date formatter (test/strftime.test.mjs)` and
+`Unit-test check_examples' batches (test/example-batches.test.mjs)`, and of the wrappers' 22
+gates as `check_ci_workflows` counts them.
 
 ### C81 — `scripts: tb-ide's console reading and add-in introspection move out`
 
-Both separate cleanly from the build-state core, which stays together.
+**Carried forward.** `scripts/lib/tb-ide-console.mjs` holds the console reading
+(`readConsole`, `consoleMark`, `linesSince`, `keepClears`, `keptClears`) and
+`scripts/lib/tb-ide-addins.mjs` holds `loadedAddins`, `addinsRoot` and `checkAddinsRoot`;
+`tb-ide.mjs` re-exports neither, and its importers take the names from the new modules.
+Tools.md's `tbbuild` section counts six library files, `tb-ide-console.mjs` among them; no
+page under `docs/` names `tb-ide-addins.mjs`, and WIP.Harness.md and WIP.HelpAddin.md cite
+both modules.
 
-**Verify.** `addin-test.bat` green and the `examples.bat` summary unchanged (harness runs, one
-at a time).
+### C81a — `scripts: launchIde's port refusal names what holds the port`
+
+**Carried forward.** When `launchIde` (`scripts/lib/tb-ide.mjs`) finds its DevTools port
+still taken after 10 s, its refusal names what holds the port, through `portListeners`
+(netstat, then tasklist), or reports the bind's error code and points at `netsh int ipv4 show
+excludedportrange protocol=tcp` when nothing listens. No gate covers it, since it runs
+Windows' netstat and CI has no IDE.
 
 ## Phase 5: documentation and measurement
 
@@ -1270,6 +1283,54 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   `tbrun`), moved every could-not-run case that exited 1 to 2, and gave every tool a crash
   handler. That touched `builder/`, `book/`, `eval/` and `wisdom/`, so it landed as `builder,
   scripts, book, eval, wisdom: one exit-code table per tool`. See C74's Landed note.
+- **C76: no split, because the orderings it rested on do not hold.** Measured on
+  2026-09-30 by building `createMarkdownIt` with each pair swapped and rendering all 912 pages
+  under `docs/`, plus fuzzed and hand-built inputs. (A) `svgInlinePlugin` and
+  `remoteImagePlugin` both wrap the `image` renderer, but they act on different sources and
+  `meta.svgInline` is set at core time from the unrewritten `src`. Swapping them changed no
+  page and none of 60,000 fuzzed documents. (B) The ellipsis rule runs *before* the dashes
+  rule, because a second `after("replacements")` is inserted ahead of the first. Swapping them
+  changed no page. It changed only lines that hold `<<` or `>>` together with a run of four or
+  more dots, and that difference comes from a defect in the ellipsis plugin's dot counting,
+  not from a dependency between the two plugins; C76a fixes it. (C) Only `standalone-ial-attach`
+  anchors on `"curly_attributes"`, and `tocPlugin` anchors on the plugin's own `header-id`
+  rule. Registering either before its anchor throws `Parser rule not found` when
+  `createMarkdownIt` runs, so a wrong order already fails loudly. No hidden dependency is left
+  for decision 2's test, and size alone does not qualify, so at the owner's choice
+  (2026-09-30) nothing moved. C76 corrected `matchTocMarker`'s comment, which said the toc rule
+  ran before `standalone-ial-attach`, and landed as `render: correct the toc marker's comment;
+  C76's split not taken`.
+- **C77: the grouping moved, the rest stayed.** The entry moves the Gantt and timing code and
+  weighs four further candidates. Only `GANTT_SECTION` and `groupGanttTimings` had evidence
+  beyond size, being the section list `gantt.mjs`'s bands must agree with, so at the
+  supervisor's reading of decision 2 only they moved. The chart's injection and recheck write
+  the trees and run the check, and stayed. It landed as `builder: the Gantt sections and their
+  grouping move into gantt.mjs`. See C77's Landed note.
+- **C79: no split, because nothing but size argues for one.** The entry splits `book.mjs`
+  into a resolver, an assembler and a coverage check. Measured against decision 2's three
+  tests, none holds. The sections depend on each other through named calls in the one file
+  (coverage calls the resolver's `collectMatches`, the href rewrite calls §B's anchor
+  helpers). `check_book_coverage.mjs` already tests the resolver and the coverage check
+  without a build. And the review's eight commits to the file each crossed sections for one
+  shared reason (the escapers, the URL module, the code guard, lint). `pdf.mjs` importing
+  `assembleBook` and the coverage pair from one module is an ordinary import. At the owner's
+  choice (2026-09-30) only three misplaced helpers moved, inside the file. It landed as
+  `builder: book.mjs's image-path helpers move beside their one caller`. See C79's Landed
+  note.
+- **C80: one module, not two, and a gate.** The entry moves the bisection and the probes
+  into modules of their own. Measured, they change together (six of the last 25 commits to
+  the file touched both, as a feature and its probe), so separating them from each other
+  splits code that changes together. What argued for a move was elsewhere: the file does
+  all its work when it loads, so nothing could import the probes, and `makeBatches` read the
+  run's flags (see Found). At the owner's choice (2026-09-30) both moved into one module, and
+  the probes became a `test.bat` gate. See C80's Landed note.
+- **C81: moved as the entry says, though decision 2's tests did not hold.** Measured, the
+  module has no mutable state. The console reading reads nothing else in it, and the add-in
+  introspection reads only `normPath`, so no dependency was hidden. The file does no work when
+  it loads, so a test could already import it. Of the file's 19 commits, the console reading
+  changed alone in two and the introspection in one. Five of the seven that touched either
+  also touched the rest of the file for the same feature. The recommendation was no split.
+  At the owner's choice (2026-09-30) both parts moved. See C81's Landed note.
 
 ## Found while implementing
 
@@ -1572,6 +1633,21 @@ Defects the review did not have, found by building something this plan asks for.
 - **A crash in a `check_regex_safety --shard` worker exits 1**. The parent reports it as a
   failed shard and exits 2, so no user sees the 1. Found while landing C74, and left at the
   owner's choice.
+- **`check_examples`' probes batched with the run's own `--batch` and `--jobs`**, because
+  `makeBatches` read both from module scope. `check_examples.mjs --census --batch 1` failed
+  five probes and exited 2 on a valid command line. Found while measuring C80. Fixed in C80.
+- **The roster gates did not read a gate whose file name holds a hyphen.** The three name
+  patterns (`check_gate_lists.mjs`' list and command-block readers, `gate-roster.mjs`'s
+  wrapper reader) allowed letters, digits, `_` and, for a test, `.`, so a hyphenated gate
+  could leave a wrapper or CI with both roster gates green. Found when C80's gate was the
+  first such name. Fixed in C80.
+- **`launchIde` refused a taken DevTools port without saying what held it.** One
+  `examples.bat` run stopped after 37 s. Lane 0, starting batch b4, found port 9480 still
+  taken after the 10 s `launchIde` allows, and refused. Minutes later nothing listened on
+  9480 and no twinBASIC process ran, so the holder could not be named. `portTaken` also
+  counted any bind error as taken, so a port Windows had reserved (`EACCES`, nothing
+  listening) read as another IDE. Found while running C81's check. Fixed in C81a, which names
+  the holder, so a repeat can be diagnosed; the cause is still unknown.
 
 ## Open questions
 

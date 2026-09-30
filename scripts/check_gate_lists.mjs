@@ -128,7 +128,7 @@ function sectionBody(src, heading) {
 function gatesFromDoc(body) {
   const out = [];
   for (const line of body.split(/\r?\n/)) {
-    const m = /^\s*\d+\.\s+\[`(?:scripts[\\/]([A-Za-z0-9_]+\.mjs)|test[\\/]([A-Za-z0-9_.]+\.mjs))/.exec(line);
+    const m = /^\s*\d+\.\s+\[`(?:scripts[\\/]([A-Za-z0-9_-]+\.mjs)|test[\\/]([A-Za-z0-9_.-]+\.mjs))/.exec(line);
     if (m) out.push(gateName(m[1], m[2]));
   }
   return out;
@@ -159,7 +159,7 @@ function commandRuns(src, file) {
     cur = null;
   };
   src.split(/\r?\n/).forEach((line, i) => {
-    const m = /^\s*(&&\s*)?node\s+(?:scripts[\\/]([A-Za-z0-9_]+\.mjs)|--test\s+test[\\/]([A-Za-z0-9_.]+\.mjs))/.exec(line);
+    const m = /^\s*(&&\s*)?node\s+(?:scripts[\\/]([A-Za-z0-9_-]+\.mjs)|--test\s+test[\\/]([A-Za-z0-9_.-]+\.mjs))/.exec(line);
     if (!m) { flush(); return; }
     if (!cur) cur = { file, line: i + 1, gates: [], chained: true };
     else if (!m[1]) cur.chained = false;
@@ -439,6 +439,19 @@ const PROBES = [
     bat: "node scripts/a.mjs\nnode --test test/a.test.mjs\n",
     doc: "### x.bat\n\nOne step:\n\n1. [`scripts/a.mjs`](#a) --- a.\n\n### next\n",
   },
+  {
+    // A name with a hyphen was not read at all, in a wrapper or a list, so
+    // a hyphenated gate could leave a wrapper, or CI, with both roster gates
+    // green. These two fail when one is not read.
+    name: "a hyphenated test file the docs do not list",
+    bat: "node scripts/a.mjs\nnode --test test/a-b.test.mjs\n",
+    doc: "### x.bat\n\nOne step:\n\n1. [`scripts/a.mjs`](#a) --- a.\n\n### next\n",
+  },
+  {
+    name: "a hyphenated script the docs do not list",
+    bat: "node scripts/a.mjs\nnode scripts/a-b.mjs\n",
+    doc: "### x.bat\n\nOne step:\n\n1. [`scripts/a.mjs`](#a) --- a.\n\n### next\n",
+  },
 ];
 
 // Must NOT fire.
@@ -455,6 +468,11 @@ const NEGATIVES = [
     name: "a test file listed by its path is a step",
     bat: "node scripts/a.mjs\r\nnode --test test\\a.test.mjs\r\n",
     doc: "### x.bat\n\nTwo steps:\n\n1. [`scripts/a.mjs`](#a) --- a.\n2. [`test/a.test.mjs`](#a-test) --- tests.\n\n### next\n",
+  },
+  {
+    name: "hyphenated names listed by their paths are steps",
+    bat: "node scripts/a-b.mjs\nnode --test test/a-b.test.mjs\n",
+    doc: "### x.bat\n\nTwo steps:\n\n1. [`scripts/a-b.mjs`](#a-b) --- a.\n2. [`test/a-b.test.mjs`](#a-b-test) --- tests.\n\n### next\n",
   },
 ];
 

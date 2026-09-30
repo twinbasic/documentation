@@ -97,6 +97,7 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 | [`highlight.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/highlight.mjs) | Shiki bootstrap + the bundled twinBASIC grammar. Emits the just-the-docs wrapper structure. |
 | [`highlight-theme.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/highlight-theme.mjs) | Loads `Light.theme` + `Dark.theme`, emits `tb-highlight.css` + scope-to-class lookup. Clamps any token colour that falls below 4.5:1 against the code-block background --- moving lightness away from the background while preserving hue and saturation --- so highlighted code meets WCAG AA; the emitted rule includes a `raised to 4.5:1` comment naming the original colour. |
 | [`template.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/template.mjs) | `templatePhase` (per-page layout wrap) + `buildInitConfig` + `renderSidebar`. JS template literals; no template engine. Also `injectAnchorHeadings(html, headingsOut)`, which adds the permalink icon to each heading and collects the heading list as it goes, and `renderSectionLinks`, which spends that list on the per-page disclosure at the top of the footer. |
+| [`strftime.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/strftime.mjs) | `formatDate`, the strftime formatter for the footer's "Page last modified" line, written only for a page that sets `last_modified_date`. |
 | [`compress.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/compress.mjs) | Whitespace compression outside `<pre>` blocks. |
 
 **Write phase**
@@ -136,7 +137,7 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 | File | Role |
 |---|---|
 | [`serve.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/serve.mjs) | Long-lived dev server: HTTP, recursive watcher, SSE reload, persistent worker pool. |
-| [`gantt.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/gantt.mjs) | Inline SVG Gantt chart of the build timeline. Injected into the [Build Info](BuildInfo) page at the end of each build. |
+| [`gantt.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/gantt.mjs) | Inline SVG Gantt chart of the build timeline, and the section each task is charted in. Injected into the [Build Info](BuildInfo) page at the end of each build. |
 
 ## The pull-based SAB scheduler
 
@@ -419,11 +420,11 @@ The residual 0.5% is kerning, which a per-character table cannot express. It err
 
 ## Gantt chart and build introspection
 
-Every build emits an inline-SVG Gantt chart of its task timeline. [`gantt.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/gantt.mjs)'s `renderGantt(grouped)` takes the `Map<section, taskTiming[]>` the scheduler accumulates and renders one SVG row per main-thread task plus one row per worker lane. The main-thread rows are grouped in four bands --- Seeds, Spine, Write and Check --- with Render's main-thread tasks in the Spine band and the worker rows between Spine and Write; the `Join` barriers are not drawn. Each worker's row has one coloured rectangle per task it ran, in the order they started, and the colour encodes the task's section. The start-up bars share that row, labelled `cold`, `warm` and `env`: the worker's cold start, drawn on the first build only, since on a rebuild the workers are already running, then `warmInit` and `renderEnvInit`.
+Every build emits an inline-SVG Gantt chart of its task timeline. [`gantt.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/gantt.mjs)'s `groupGanttTimings` sorts the scheduler's timings into a `Map<section, taskTiming[]>`, and its `renderGantt(grouped)` renders one SVG row per main-thread task plus one row per worker lane. The main-thread rows are grouped in four bands --- Seeds, Spine, Write and Check --- with Render's main-thread tasks in the Spine band and the worker rows between Spine and Write; the `Join` barriers are not drawn. Each worker's row has one coloured rectangle per task it ran, in the order they started, and the colour encodes the task's section. The start-up bars share that row, labelled `cold`, `warm` and `env`: the worker's cold start, drawn on the first build only, since on a rebuild the workers are already running, then `warmInit` and `renderEnvInit`.
 
 The Gantt chart flows through the same SVG inlining pipeline as other diagrams. The [Build Info](BuildInfo) page contains a standard markdown image reference to a placeholder `gantt.svg`; during the render pass it becomes an inline SVG wrapper with zoom and export controls. After `writeOffline` completes, `tbdocs.mjs:injectGanttChart` locates the wrapper's `data-svg-src` marker in the rendered HTML and swaps the placeholder SVG content for the real Gantt chart. Both the online and offline copies of the page are patched; the on-disk `gantt.svg` file is also updated so the offline mirror's fallback stays current.
 
-When adding a new task to `TASKS`, give it a section in `GANTT_SECTION` in `tbdocs.mjs`: `Seeds`, `Spine`, `Render`, `Write` or `Check`. The build fails, naming the task, if a task has no section or one the chart does not draw. Only a `unique_per_worker` task needs none: its timings are drawn in each worker's lane.
+When adding a new task to `TASKS`, give it a section in `GANTT_SECTION` in `gantt.mjs`: `Seeds`, `Spine`, `Render`, `Write` or `Check`. The build fails, naming the task, if a task has no section or one the chart does not draw. Only a `unique_per_worker` task needs none: its timings are drawn in each worker's lane.
 
 ## Dependencies
 

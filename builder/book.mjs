@@ -186,47 +186,6 @@ function sortWithinGroup(members) {
   return [...indexes, ...withOrder, ...withoutOrder];
 }
 
-// Chapter transforms rewrite attributes across a whole rendered body, so
-// each goes through replaceOutsideCode (code-guard.mjs says why). The pages
-// documenting this builder are the ones whose code samples hold `id="`,
-// `href="#` and `src="/`.
-
-// PLAN-9 §5.9: per-chapter image-path collector. Three top-level
-// alternatives: <code>/<pre> (consumed atomically so src= inside code
-// samples doesn't count), then a real page-relative `src="..."`
-// attribute. The code/pre branches leave m[1] (the quote char)
-// undefined; we skip those.
-const IMG_SRC_RE_BOOK = new RegExp(
-  String.raw`${CODE_OR_PRE.source}|\bsrc=(["'])((?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\1`, "g");
-
-// Mutates `seen`. Called once per emitted chapter body so the post-
-// pass scan in pdf.mjs's deriveBookOutputs is no longer needed.
-function collectImagePaths(body, seen) {
-  for (const m of body.matchAll(IMG_SRC_RE_BOOK)) {
-    if (m[1] === undefined) continue;
-    const url = m[2];
-    const cleanPath = decodeUrlPath(url.split(/[?#]/, 1)[0]);
-    if (!cleanPath || seen.has(cleanPath)) continue;
-    seen.add(cleanPath);
-  }
-}
-
-// A src is a URL, and the renderer percent-encodes it: the file
-// `IDE/Images/project settings description text.png` is referenced as
-// `project%20settings%20description%20text.png`. Every consumer of the
-// collected paths wants the name on disk -- pdf.mjs looks it up among the
-// source files and copies it out under that name, and the browser that
-// renders book.html decodes the URL before it opens the file. Left
-// encoded, the lookup missed and the missing-image check stopped the
-// build the first time a page with such an image entered the book.
-function decodeUrlPath(p) {
-  try {
-    return decodeURIComponent(p);
-  } catch {
-    return p; // a stray `%` that begins no escape is part of the name
-  }
-}
-
 // ---------------------------------------------------------------------------
 // §B  Chapter anchor + URL helpers
 // ---------------------------------------------------------------------------
@@ -271,6 +230,11 @@ function parentUrlOf(url) {
 // ---------------------------------------------------------------------------
 // §C  Per-chapter body transform (port of book-chapter-transform.rb)
 // ---------------------------------------------------------------------------
+
+// Chapter transforms rewrite attributes across a whole rendered body, so
+// each goes through replaceOutsideCode (code-guard.mjs says why). The pages
+// documenting this builder are the ones whose code samples hold `id="`,
+// `href="#` and `src="/`.
 
 // PLAN-8 §6.3 / book-chapter-transform.rb WHITESPACE_PATTERNS. Longest
 // first; reordering would change the post-transform body and break
@@ -412,6 +376,42 @@ export function bookChapterTransform(body, baseurl, headingShiftN, chapterAnchor
 // ---------------------------------------------------------------------------
 // §D  Article wrapper assembly (port of book-chapter-body.html)
 // ---------------------------------------------------------------------------
+
+// PLAN-9 §5.9: per-chapter image-path collector. Three top-level
+// alternatives: <code>/<pre> (consumed atomically so src= inside code
+// samples doesn't count), then a real page-relative `src="..."`
+// attribute. The code/pre branches leave m[1] (the quote char)
+// undefined; we skip those.
+const IMG_SRC_RE_BOOK = new RegExp(
+  String.raw`${CODE_OR_PRE.source}|\bsrc=(["'])((?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\1`, "g");
+
+// Mutates `seen`. Called once per emitted chapter body so the post-
+// pass scan in pdf.mjs's deriveBookOutputs is no longer needed.
+function collectImagePaths(body, seen) {
+  for (const m of body.matchAll(IMG_SRC_RE_BOOK)) {
+    if (m[1] === undefined) continue;
+    const url = m[2];
+    const cleanPath = decodeUrlPath(url.split(/[?#]/, 1)[0]);
+    if (!cleanPath || seen.has(cleanPath)) continue;
+    seen.add(cleanPath);
+  }
+}
+
+// A src is a URL, and the renderer percent-encodes it: the file
+// `IDE/Images/project settings description text.png` is referenced as
+// `project%20settings%20description%20text.png`. Every consumer of the
+// collected paths wants the name on disk -- pdf.mjs looks it up among the
+// source files and copies it out under that name, and the browser that
+// renders book.html decodes the URL before it opens the file. Left
+// encoded, the lookup missed and the missing-image check stopped the
+// build the first time a page with such an image entered the book.
+function decodeUrlPath(p) {
+  try {
+    return decodeURIComponent(p);
+  } catch {
+    return p; // a stray `%` that begins no escape is part of the name
+  }
+}
 
 // PLAN-8 §6.4: per-chapter article wrap. Sub-page detection + kind/name
 // capture (1.6a/1.6c), heading-shift level computation, chapter anchor

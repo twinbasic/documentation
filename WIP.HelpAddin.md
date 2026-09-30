@@ -61,7 +61,7 @@ the compiler what a symbol is.** Each of those gaps shapes a stage below.
   `addins\win32\` and `addins\win64\` beside `bin\`, each holding
   `tbGlobalSearchAddIn1.dll` --- so every IDE that `tbbuild`, `tbrun` and `examples.bat`
   start today loads the Global Search add-in. Measured through the compiler's own list
-  (`loadedAddins` in `tb-ide.mjs`): the real install's IDE reports `GlobalSearchAddIn
+  (`loadedAddins` in `tb-ide-addins.mjs`): the real install's IDE reports `GlobalSearchAddIn
   AddIn`, and a copy of it with empty `addins` folders reports none. The other is the
   user's, in the next item.
 - **The compiler also loads the add-ins in `%APPDATA%\twinBASIC\addins\<arch>` (P6).** The
@@ -551,7 +551,7 @@ Everything after this stage is developed against it.
    `%APPDATA%\twinBASIC\addins` held a DLL until P6 said the folder matters, and then that
    refusal became an `APPDATA` of each lane's own: every IDE a lane starts, the add-in
    builds' included, gets `<work>\appdata`, and the lane checks afterwards that the IDE's
-   add-ins folder is under it (`checkAddinsRoot` in `tb-ide.mjs`). So the user's add-ins
+   add-ins folder is under it (`checkAddinsRoot` in `tb-ide-addins.mjs`). So the user's add-ins
    never load into a test IDE, and the user need not move them out to run the tests;
    verified with a stand-in `%APPDATA%` holding the Global Search add-in, where the P6 lane's
    IDE loaded its own probe alone. **Item 7 also corrected the recent list.** The
@@ -589,7 +589,7 @@ Everything after this stage is developed against it.
      `code` values, less than 500 ms apart;
    - click: real `Input.dispatchMouseEvent` presses at the element's centre. The IDE's own
      controls ignore `element.click()` --- `tbrun` learned that on `#buildIcon`;
-   - ask which add-ins loaded: `loadedAddins(c)` in `tb-ide.mjs` (done for item 2), which
+   - ask which add-ins loaded: `loadedAddins(c)` in `tb-ide-addins.mjs` (done for item 2), which
      lists a DLL that failed to load as `Unknown Addin`;
    - build the open project: `buildProject(c)` in `tb-ide.mjs` (done for item 4);
    - read a tool window through `toolWindowsById[<guid>].bodyElement`; read the DEBUG
@@ -622,7 +622,7 @@ Everything after this stage is developed against it.
    add-ins the user has installed, on a desktop nobody watches; a caller's `env` can set it
    otherwise, or leave it out with the value `undefined`. `openedUrls(c, { since })` in
    [tb-operate.mjs](scripts/lib/tb-operate.mjs) reads the `open <url>` lines back, and
-   `consoleMark(c)` in `tb-ide.mjs` takes the mark that `since` names, so a scenario asks what
+   `consoleMark(c)` in `tb-ide-console.mjs` takes the mark that `since` names, so a scenario asks what
    was opened after the key it pressed. A line counts only when what follows `open ` has no
    white space in it, as a URL has none, so an ordinary line that starts with the word is not
    read as one. `PrintText` stores its text escaped (`<b>` as `&lt;b&gt;`), so a URL comes

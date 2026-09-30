@@ -533,50 +533,36 @@ function flattenAdjacentStrongPlugin(md) {
 // (`.{2,}`) to a single ellipsis `…`. kramdown is stricter: it converts
 // exactly THREE consecutive dots to `…` and leaves any extra dots as
 // plain dots. The two behaviours diverge on `....`, `.....`, etc.:
-// kramdown writes `….`, `…..`, ...; markdown-it writes `…`, `…`, ....
-// Walk text tokens after typographer has run; for each contiguous run of
-// `…` immediately following a word/punctuation char (i.e. not in
-// `?…` / `!…` patterns the upstream regex already special-cases),
-// recover the missing dots if the source had >3 dots in a row.
+// kramdown writes `….`, `…..`, ...; markdown-it writes `…` for any run of
+// two or more dots. Keep the dots past the third: before `replacements`,
+// each of them becomes HELD_DOT, which the `.{2,}` rule does not match, so
+// the run's first three collapse to `…`; straight after it, HELD_DOT turns
+// back into a dot. The run is counted in the text token that holds it, so
+// code spans, links and the other typographic rules cannot put it out of
+// step. A run after `?` or `!` is left alone: markdown-it writes `?..`
+// there, and so does this.
+const HELD_DOT = "\u{E000}";
+const LONG_DOT_RUN_RE = /(?<![?!.])\.{4,}/g;
+
 function kramdownEllipsisPlugin(md) {
-  md.core.ruler.after("replacements", "kramdown-ellipsis", (state) => {
-    // The replacements rule has already collapsed `.{2,}` -> `…` (with
-    // `?…` / `!…` -> `?..` / `!..` exceptions). We can't recover the
-    // pre-collapse count from the token alone -- examine the inline
-    // token's source content, count consecutive dots in the source, and
-    // pad the rendered `…` with N-3 trailing dots when N > 3.
+  // Only the tokens the first rule changed are restored, so a HELD_DOT
+  // written in a page stays as written.
+  const held = new WeakSet();
+  md.core.ruler.before("replacements", "kramdown-ellipsis-hold", (state) => {
     for (const blk of state.tokens) {
       if (blk.type !== "inline" || !blk.children) continue;
-      const src = blk.content;
-      if (!/\.{4,}/.test(src)) continue;
-      // Walk text children left-to-right tracking source position by
-      // counting characters consumed. For each `…` we encounter in the
-      // text content, peek the source string to count how many dots
-      // were originally there.
-      let srcPos = 0;
       for (const t of blk.children) {
-        if (t.type !== "text" || !t.content) continue;
-        let out = "";
-        for (let i = 0; i < t.content.length; i++) {
-          const ch = t.content[i];
-          if (ch === "…") {
-            // Find the matching dot run starting at or near srcPos.
-            const m = src.slice(srcPos).match(/^[^.…]*\.{3,}/);
-            const dotCount = m ? m[0].match(/\.+$/)[0].length : 3;
-            out += "…";
-            for (let k = 3; k < dotCount; k++) out += ".";
-            srcPos += (m ? m[0].length : 3);
-          } else if (ch === "—" || ch === "–") {
-            out += ch;
-            // skip 2-3 source chars for en/em-dash conversions
-            const skip = src.startsWith("---", srcPos) ? 3 : (src.startsWith("--", srcPos) ? 2 : 1);
-            srcPos += skip;
-          } else {
-            out += ch;
-            srcPos++;
-          }
-        }
-        t.content = out;
+        if (t.type !== "text" || !t.content.includes("....") || t.content.includes(HELD_DOT)) continue;
+        t.content = t.content.replace(LONG_DOT_RUN_RE, (run) => "..." + HELD_DOT.repeat(run.length - 3));
+        held.add(t);
+      }
+    }
+  });
+  md.core.ruler.after("replacements", "kramdown-ellipsis", (state) => {
+    for (const blk of state.tokens) {
+      if (blk.type !== "inline" || !blk.children) continue;
+      for (const t of blk.children) {
+        if (held.has(t)) t.content = t.content.replaceAll(HELD_DOT, ".");
       }
     }
   });
@@ -1369,8 +1355,8 @@ function tocPlugin(md) {
 // bullet list whose item is "TOC", followed by a `{:toc}` IAL that
 // markdown-it-attrs has applied as an attribute on the bullet list.
 // We treat any bullet_list_open with a `toc` attribute as the marker.
-// The standaloneIalForwardPlugin would otherwise move the `{:toc}` to
-// the FOLLOWING block; we run before it (`after("curly_attributes")`).
+// standaloneIalForwardPlugin never moves it: it moves only an IAL left
+// as a paragraph of its own, and this one is on the list.
 function matchTocMarker(toks, i) {
   const open = toks[i];
   if (open?.type !== "bullet_list_open") return -1;

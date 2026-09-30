@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { loadedAddins } from "../../scripts/lib/tb-ide.mjs";
+import { loadedAddins } from "../../scripts/lib/tb-ide-addins.mjs";
 import { click, editorState, toolWindow, typeText, waitFor } from "../../scripts/lib/tb-operate.mjs";
 import { savedSettings } from "../../scripts/lib/tb-registry.mjs";
 import { scenario } from "./scenario.mjs";
