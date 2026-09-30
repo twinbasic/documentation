@@ -17,8 +17,10 @@
 // check instead of a case, on the site-entry protocol, and asserts what came
 // back. Run it once per round, before the cases. See eval/README.md.
 //
-// Exit: 0 the run finished (--smoke: every check passed), 1 it did not
-// (--smoke: a check failed), 2 it could not start.
+// Exit: 0 the run finished (--smoke: every check passed), 1 it did not (timed
+// out, claude failed; --smoke: a check failed), 2 it could not start (a refused
+// command line, a missing corpus or site file, claude not installed or not
+// signed in) or crashed.
 //
 // ---------------------------------------------------------------- why
 //
@@ -263,7 +265,13 @@ const USAGE =
   "                              [--timeout <min>] [--prompt-only] [-h, --help]\n" +
   "       node eval/run_case.mjs --smoke --corpus <dir> --site <snapshot> --out <prefix>\n\n" +
   "Runs one use-case evaluator as an isolated Claude Code process and audits its\n" +
-  "session. See eval/README.md.";
+  "session. See eval/README.md.\n\n" +
+  "Exit codes:\n" +
+  "  0  the run finished; with --smoke, every check passed\n" +
+  "  1  the run timed out, or claude exited with an error or wrote no report; with\n" +
+  "     --smoke, a check failed\n" +
+  "  2  a refused command line, a corpus or site file that is missing, a memory file in\n" +
+  "     the corpus, claude not installed or not signed in, or a crash";
 
 async function main(argv) {
   const o = parseArgs(argv);
@@ -313,7 +321,7 @@ async function main(argv) {
 
   if (s.result?.is_error && /authenticat/i.test(s.report)) {
     console.log("\nclaude is not signed in: run `claude auth login`, then run this again.");
-    return 1;
+    return 2;
   }
   if (run.timedOut) {
     console.log(`\ntimed out after ${o.timeout} min`);

@@ -1169,6 +1169,61 @@ user must act on.
 **Verify.** Each table checked against the code; `check_cli.mjs` for the codes it can reach;
 `addin-test.bat` green (a harness run).
 
+**Landed** on the owner's choices of 2026-09-30. Each tool's usage text ends with one
+`Exit codes:` block, a line per code, and its Tools.md section ends with the same codes on one
+`Exit codes:` line. The six eval tools and `wisdom` have no Tools.md section, so theirs are in
+`eval/README.md` and Wisdom.md. `impexp.mjs` keeps the table it shares with `impexp.py`,
+which `check_impexp_parity` holds the two editions to, and Tools.md points to it. The
+convention is 0 clean, 1 a finding, 2 the tool could not do its job, with a tool's own codes
+above 2. Three codes that meant two things are split: `addin_test` exits **3** when the
+registry or a work folder was not put back, which wins over a failed lane; `wisdom` exits
+**3** when it reaches its request cap (re-run to continue), so 2 is left for a refused command
+line; `tbrun` exits **4** when the compiler crashed, as `tbbuild` does. A compile that never
+settled stays 2 in `tbrun`, whose 3 is "no output". Several tools exited 1 when they could
+not run at all, and now exit 2: `render-book` for a missing input or support file and for a
+render that threw, so it has no 1; `site_search` and `search_quality` with no search index;
+`wisdom` when an earlier phase has not run; and `run_case` when not signed in. A crash exits 2
+in every tool. `exitOnCrash` moved from `scripts/lib/gate-probes.mjs` to `lib/cli.mjs`, which
+`eval/`, `wisdom/`, `book/` and `builder/` may import, and its 16 importers followed.
+Seventeen tools gained it, and it is installed only at the entry point in `tbdocs`,
+`site_search` and `transcript`, which other modules import. A Sonnet agent then checked every
+table against the code. Four of its eight findings were fixed here:
+- `tbdocs --serve` exited 1 on a server error other than a port in use, and on a failed
+  watcher, both thrown outside `main()`.
+- `wisdom` crashed with 2 when it reached the cap during discovery; that now exits 3, as it
+  does in the member and message fetches.
+- `census_attributes`' table named a failed export, which leaves the package out of the
+  census and does not stop the run.
+- A comment in `check_cli`.
+
+Three more are in Found; the eighth was wording. The docs agent also found `WIP.Build.md`
+still giving `tbdocs`' old 1/2/3 check codes, which C72b had left behind, and `serve.bat`
+returning 0 whatever `tbdocs` returns, which Tools.md now states and C75 fixes.
+
+`check_cli: 860 probes, all pass` (816 before). 44 of the new probes check that a tool's
+`--help` output ends with exactly one exit-code table; there is one per tool but `impexp`.
+Five cases were re-pointed from 1 to 2: `site_search` twice, `search_quality`, and
+`transcript` twice, whose unreadable input is a crash. With a tool's table faulted through
+`c43-fault.mjs` in `NODE_OPTIONS`, only that tool's table probe fails, in three cases: the
+heading renamed, a code line malformed, and a second heading. `addin-test.bat`: `10 of 10
+lane(s) ran: 10 passed`, `registry: put back (20 project-state, 21 recent-list and 3
+association writes)`. `compare_trees`: Extending, PDF-Generation, Tools and Wisdom, online and
+offline, the search data and `book.html`. Lint stays at `Checked 172 files`; regex safety
+`536 literals + 34 constructed in 130 files ... 501 safe, 69 polynomial, 0 undecided, 0
+exponential; 8 construction(s) not resolvable` (the table pattern is the new literal);
+`build.bat`, `check.bat` and `test.bat` clean. On the owner's next push CI prints
+`check_cli: 860 probes, all pass` and that regex-safety line.
+
+### C74a — `scripts: addin_test puts the registry back after a crash`
+
+**Found while landing C74** (the owner's choice, 2026-09-30; it lands after C75). A crash
+after `addin_test` has recorded the registry exits 2 through `exitOnCrash`, and nothing puts
+the registry or the settings back, though the tool's table gives 3 for a registry that was not
+put back. **Change.** The crash path restores what the run recorded, as the end of a run does,
+and exits 3 if that fails. **Verify.** A throw put in after the snapshot through
+`c43-fault.mjs`, with the kit's `reg-snap.mjs` before and after: identical registry, exit 2; a
+throw from the restore as well: exit 3.
+
 ### C75 — `serve.bat: return tbdocs's exit code`
 
 **A6-5 (R3).** `serve.bat` does not pass its child's exit code back, unlike the other
@@ -1562,6 +1617,11 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   meaning a repository root, and at the owner's choice (2026-09-30) they take `--repo` now. The
   three `perf/` rigs' `--json FILE` changed too, so C73 landed as `scripts, eval, perf: one
   meaning each for --json and --src`. See C73's Landed note.
+- **C74: the codes changed as well as their tables.** The entry splits one code with two
+  meanings. At the owner's choice (2026-09-30) it split three (`addin_test`, `wisdom`,
+  `tbrun`), moved every could-not-run case that exited 1 to 2, and gave every tool a crash
+  handler. That touched `builder/`, `book/`, `eval/` and `wisdom/`, so it landed as `builder,
+  scripts, book, eval, wisdom: one exit-code table per tool`. See C74's Landed note.
 
 ## Found while implementing
 
@@ -1852,6 +1912,18 @@ Defects the review did not have, found by building something this plan asks for.
   removed the write it fed and left the flag, so `jsonOut` was set and never read. The rig
   writes `per-rule-measures.json` into its `--out DIR`. The flag is deleted, at the owner's
   choice. Fixed in `scripts, eval, perf: one meaning each for --json and --src`.
+- **A crash in `addin_test` after the registry snapshot leaves the registry unrestored**,
+  found while landing C74. It exits 2, where the table gives 3 for a registry that was not
+  put back. C74a fixes it.
+- **`scripts/lib/axe-scan.mjs:220-230` throws while it loads**, when `STATE_AUDITS` names a
+  page that `SAMPLE_PAGES` lacks or an unknown state. That runs before any crash handler, so
+  the five a11y tools exit 1, which `check_a11y` gives for a violation. Found while landing
+  C74, and left at the owner's choice.
+- **A failed self-test probe exits 1 in `check_gate_lists`**, but 2 in `check_ci_workflows`
+  and `check_regex_safety`. Found while landing C74, and left at the owner's choice.
+- **A crash in a `check_regex_safety --shard` worker exits 1**. The parent reports it as a
+  failed shard and exits 2, so no user sees the 1. Found while landing C74, and left at the
+  owner's choice.
 
 ## Open questions
 

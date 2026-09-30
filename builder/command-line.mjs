@@ -73,7 +73,14 @@ given, and a flag that takes a value takes it as the next argument or as
   --port <N>                   port for --serve (default 4000)
   --stall-timeout <seconds>    give up when no task completes for this long
                                (default 120; 0 disables)
-  -h, --help                   print this text and exit`;
+  -h, --help                   print this text and exit
+
+Exit codes:
+  0  nothing to report; with --serve, the server was stopped with Ctrl+C
+  1  the build or its check found a problem: a link or integrity failure, a failed
+     build step, a fall in the page count, or a symbol-index URL lost
+  2  a refused command line (a --dest the build refuses included), a build stopped by
+     the stall watchdog, with --serve a failed first build or a port in use, or a crash`;
 
 // fetchAssets is left out: absent, the build downloads unless $CI is set.
 export const DEFAULTS = Object.freeze({

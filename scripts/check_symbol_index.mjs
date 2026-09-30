@@ -30,8 +30,8 @@ import { readFile } from "node:fs/promises";
 import { GUARDED_SRC } from "../builder/baseline.mjs";
 import { checkSymbolBaseline } from "../builder/symbol-baseline.mjs";
 import { deriveSymbolIndex, headingsOf, serializeSymbolIndex } from "../builder/symbols.mjs";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
-import { baselineFixture, createProbes, exitOnCrash } from "./lib/gate-probes.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { baselineFixture, createProbes } from "./lib/gate-probes.mjs";
 import { apiSnapshot, isPublicType, parseTwin } from "./lib/twin-api.mjs";
 
 exitOnCrash();
@@ -41,7 +41,12 @@ const USAGE = `usage: node scripts/check_symbol_index.mjs [-h, --help]
 Checks that the symbol index still places each kind of symbol, from fixtures:
 the .twin declaration scanner, the derivation from the pages and the drift guard.
 
-  -h, --help  print this text and exit`;
+  -h, --help  print this text and exit
+
+Exit codes:
+  0  every probe passed
+  1  a probe failed
+  2  the gate could not run: a refused command line, or a crash`;
 
 if (withUsageError(() => parseCli(process.argv.slice(2), {
   options: { help: { type: "boolean", short: "h" } },

@@ -38,8 +38,10 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { parseAttributes, parseTargets } from "./lib/attributes-doc.mjs";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { DOCS_DIR } from "../lib/repo-paths.mjs";
+
+exitOnCrash();
 
 const ATTR_DOC = path.join(DOCS_DIR, "Reference", "Attributes.md");
 
@@ -55,7 +57,11 @@ diagnostic naming a probe module is a finding.
   key.md      where to write the key (default: probe-key.md beside <out_dir>)
   -h, --help  print this text and exit
 
-A folder or key that starts with a dash is given after \`--\`.`;
+A folder or key that starts with a dash is given after \`--\`.
+
+Exit codes:
+  0  the probe project and the key were written
+  2  a refused command line, or a crash`;
 
 // --------------------------------------------------------------- arguments
 // An attribute with a mandatory argument needs a value that is itself valid, or

@@ -24,7 +24,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
 /** Every event in a stream-json session, in order. */
 export function readTranscript(file) {
@@ -191,7 +191,10 @@ export function printDigest(s, { calls = false, report = false } = {}) {
 const USAGE =
   "Usage: node eval/transcript.mjs <case.jsonl> [--calls] [--report] [-h, --help]\n\n" +
   "Summarises an evaluator's session and audits the order of its channels.\n" +
-  "A file name that starts with a dash goes after --. See eval/README.md.";
+  "A file name that starts with a dash goes after --. See eval/README.md.\n\n" +
+  "Exit codes:\n" +
+  "  0  the digest was printed\n" +
+  "  2  a refused command line, a session file that cannot be read, or a crash";
 
 function main(argv) {
   const { values, positionals } = withUsageError(() => parseCli(argv, {
@@ -210,5 +213,6 @@ function main(argv) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  exitOnCrash();
   main(process.argv.slice(2));
 }

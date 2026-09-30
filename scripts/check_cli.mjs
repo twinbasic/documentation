@@ -40,10 +40,10 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 import { DEFAULTS, parseCommandLine } from "../builder/command-line.mjs";
 import {
-  CliError, choiceOption, dateOption, numberOption, parseCli, printHelpAndExit, refuseTogether, regexOption, urlOption, withUsageError,
+  CliError, choiceOption, dateOption, exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, regexOption, urlOption, withUsageError,
 } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
-import { createProbes, exitOnCrash } from "./lib/gate-probes.mjs";
+import { createProbes } from "./lib/gate-probes.mjs";
 
 exitOnCrash();
 
@@ -52,7 +52,12 @@ const USAGE = `usage: node scripts/check_cli.mjs [-h, --help]
 Tests lib/cli.mjs, the command-line parser, and runs the recorded command-line
 cases of every tool, each in an empty folder with no IDE and no browser.
 
-  -h, --help  print this text and exit`;
+  -h, --help  print this text and exit
+
+Exit codes:
+  0  every probe and recorded case passed
+  1  a probe or a recorded case failed
+  2  the gate could not run: a refused command line, or a crash`;
 
 if (withUsageError(() => parseCli(process.argv.slice(2), {
   options: { help: { type: "boolean", short: "h" } },
@@ -568,7 +573,8 @@ const CASES = [
   // Every tool here answers -h and --help on stdout with exit 0 (C71), and
   // reads nothing after it. The command in the wisdom cases is never a real
   // one, so that none can start an export. render-book's missing input file is
-  // not a usage error and exits 1, as does a --site that holds no search index.
+  // not a usage error, but exits 2 as one does, and so does a --site that holds
+  // no search index.
   { tool: "book/render-book.mjs", args: ["--help"], exit: 0, stdout: /^usage: node render-book\.mjs <input\.html> / },
   { tool: "book/render-book.mjs", args: [], exit: 2, stderr: "usage: node render-book.mjs <input.html> -o <output.pdf> [--outline-tags ...] [-t ms] [--additional-script path]...\n" },
   { tool: "book/render-book.mjs", args: ["a.html", "b.html"], exit: 2, stderr: "unexpected argument: b.html\n" },
@@ -612,9 +618,9 @@ const CASES = [
   { tool: "eval/site_search.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node eval\/site_search\.mjs "<query>" / },
   { tool: "eval/site_search.mjs", args: [], exit: 2, stderr: /^Usage: node eval\/site_search\.mjs "<query>" / },
   { tool: "eval/site_search.mjs", args: ["--site", "nowhere", "--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
-  { tool: "eval/site_search.mjs", args: ["--site", "nowhere", "--", "--bogus"], exit: 1, stderr: /^missing .*search-data\.json\nRun build\.bat / },
+  { tool: "eval/site_search.mjs", args: ["--site", "nowhere", "--", "--bogus"], exit: 2, stderr: /^missing .*search-data\.json\nRun build\.bat / },
   { tool: "eval/site_search.mjs", args: ["--help=1", "--site", "nowhere"], exit: 2, stderr: "--help takes no value\n" },
-  { tool: "eval/site_search.mjs", args: ["--composition", "--site", "nowhere"], exit: 1, stderr: /^missing .*search-data\.json\nRun build\.bat / },
+  { tool: "eval/site_search.mjs", args: ["--composition", "--site", "nowhere"], exit: 2, stderr: /^missing .*search-data\.json\nRun build\.bat / },
   { tool: "eval/site_search.mjs", args: ["--site"], exit: 2, stderr: "--site needs a value\n" },
   { tool: "eval/search_quality.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node eval\/search_quality\.mjs \[--site docs\/_site\] / },
   { tool: "eval/search_quality.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
@@ -622,7 +628,7 @@ const CASES = [
   { tool: "eval/search_quality.mjs", args: ["--help", "--bogus"], exit: 0, stdout: /^Usage: node eval\/search_quality\.mjs \[--site docs\/_site\] / },
   { tool: "eval/search_quality.mjs", args: ["--help=1"], exit: 2, stderr: "--help takes no value\n" },
   { tool: "eval/search_quality.mjs", args: ["-x"], exit: 2, stderr: "unknown option: -x\n" },
-  { tool: "eval/search_quality.mjs", args: ["--site", "nowhere"], exit: 1, stderr: /^missing .*search-data\.json\nRun build\.bat / },
+  { tool: "eval/search_quality.mjs", args: ["--site", "nowhere"], exit: 2, stderr: /^missing .*search-data\.json\nRun build\.bat / },
   { tool: "eval/search_quality.mjs", args: ["--site", "nowhere", "--sample", "abc"], exit: 2, stderr: "--sample expects a whole number of at least 1, got: abc\n" },
   { tool: "eval/search_quality.mjs", args: ["--site", "--help"], exit: 2, stderr: "--site needs a value\n" },
   { tool: "eval/search_quality.mjs", args: ["--site"], exit: 2, stderr: "--site needs a value\n" },
@@ -633,10 +639,10 @@ const CASES = [
   { tool: "eval/transcript.mjs", args: ["nope.jsonl", "--help"], exit: 0, stdout: /^Usage: node eval\/transcript\.mjs <case\.jsonl> / },
   { tool: "eval/transcript.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
   { tool: "eval/transcript.mjs", args: ["--help=1"], exit: 2, stderr: "--help takes no value\n" },
-  { tool: "eval/transcript.mjs", args: ["nope.jsonl"], exit: 1, stderr: /Error: ENOENT: no such file or directory, open '[^']*nope\.jsonl'\r?\n/ },
+  { tool: "eval/transcript.mjs", args: ["nope.jsonl"], exit: 2, stderr: /Error: ENOENT: no such file or directory, open '[^']*nope\.jsonl'\r?\n/ },
   { tool: "eval/transcript.mjs", args: ["--bogus", "nope.jsonl"], exit: 2, stderr: "unknown option: --bogus\n" },
   { tool: "eval/transcript.mjs", args: ["-x"], exit: 2, stderr: "unknown option: -x\n" },
-  { tool: "eval/transcript.mjs", args: ["--", "-x"], exit: 1, stderr: /Error: ENOENT: no such file or directory, open '(?:[^']*[\\/])?-x'\r?\n/ },
+  { tool: "eval/transcript.mjs", args: ["--", "-x"], exit: 2, stderr: /Error: ENOENT: no such file or directory, open '(?:[^']*[\\/])?-x'\r?\n/ },
   { tool: "eval/transcript.mjs", args: ["a.jsonl", "b.jsonl"], exit: 2, stderr: "unexpected argument: b.jsonl\n" },
   { tool: "wisdom/wisdom.mjs", args: [], exit: 2, stderr: /^Usage: node wisdom\/wisdom\.mjs <command> \[options\]\n/ },
   { tool: "wisdom/wisdom.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node wisdom\/wisdom\.mjs <command> \[options\]\n/ },
@@ -748,7 +754,16 @@ for (const [tool, start] of Object.entries(HELP_TOOLS)) {
     if (CASES.some((c) => c.tool === tool && c.args.length === 1 && c.args[0] === flag)) continue;
     CASES.push({ tool, args: [flag], exit: 0, stdout: new RegExp(`^${opening}`) });
   }
+  if (tool === "scripts/impexp.mjs") continue;
+  CASES.find((c) => c.tool === tool && c.args.length === 1 && c.args[0] === "--help").exitCodes = true;
 }
+
+// Every usage text ends with its tool's one table of exit codes: a line
+// `Exit codes:`, then a line for each code, `  <code>  <meaning>`, a long
+// meaning wrapped under itself. impexp keeps the table it shares with
+// impexp.py, which check_impexp_parity holds the two editions to.
+const EXIT_TABLE = /\nExit codes:\n(?: {2}\d {2}[^\n]*\n| {5}[^\n]*\n)+$/;
+const oneExitTable = (text) => EXIT_TABLE.test(text) && text.split("Exit codes:").length === 2;
 
 // Recorded in C72. Every tool refuses an unknown flag and an empty value at
 // the parse, so each has a case for the first and, where it has a value
@@ -1031,6 +1046,7 @@ try {
     check(`${label}: exit ${c.exit}, ${c.stdout ? "stdout" : "stderr"}`, ok,
       `expected exit ${c.exit}, stdout ${expectation(c.stdout)}, stderr ${expectation(c.stderr)}\n`
         + `got      exit ${got.exit}, stdout ${clip(got.stdout)}, stderr ${clip(got.stderr)}`);
+    if (c.exitCodes) check(`${label}: ends with one table of exit codes`, oneExitTable(got.stdout), `got stdout ${clip(got.stdout.slice(-400))}`);
     if (got.left) check(`${label}: leaves its folder empty`, got.left.length === 0, `appeared in the folder: ${show(got.left)}`);
   });
 } finally {

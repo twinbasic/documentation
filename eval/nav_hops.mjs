@@ -43,7 +43,12 @@ const USAGE =
   "Usage: node eval/nav_hops.mjs [--from <page>] [--repo <root>] [-h, --help] <url-regex> [...]\n\n" +
   "Shortest path by links from the start page (default docs/index.md) to the first page\n" +
   "whose permalink matches each regex. A regex that starts with a dash goes after --.\n" +
-  "See eval/README.md.";
+  "See eval/README.md.\n\n" +
+  "Exit codes:\n" +
+  "  0  every target is reachable by links\n" +
+  "  1  a target is not reachable by links from the start page\n" +
+  "  2  a refused command line (no targets, a pattern Git Bash turned into a Windows\n" +
+  "     path included), no start page, or a crash";
 
 function parseArgs(argv) {
   const { values, positionals, patterns } = withUsageError(() => {

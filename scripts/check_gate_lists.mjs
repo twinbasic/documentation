@@ -75,8 +75,8 @@
 // design notes and frozen audit snapshots, and rewriting one to match a later
 // change destroys the only thing it is for.
 //
-// Exit codes: 0 clean, 1 a list or a stated count disagrees, 2 the gate could
-// not run.
+// Exit codes: 0 clean, 1 a list or a stated count disagrees or a probe failed, 2 the
+// gate could not run (a refused command line, or a crash).
 
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
@@ -558,7 +558,12 @@ and that no developer page states a gate count that disagrees with them.
 
   --verbose    print every probe and every wrapper that agrees
   --self-test  run the probes only, to prove the check still detects a wrong list
-  -h, --help   print this text and exit`;
+  -h, --help   print this text and exit
+
+Exit codes:
+  0  the wrappers match the gate lists, every stated count agrees, and every probe passed
+  1  a list or a stated count disagrees, or a probe failed
+  2  the gate could not run: a refused command line, or a crash`;
 
 async function main(argv) {
   const { values } = withUsageError(() => parseCli(argv, {

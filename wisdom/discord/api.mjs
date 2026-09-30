@@ -7,7 +7,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const API_BASE = 'https://discord.com/api/v10'
 const DISCORD_EPOCH = 1420070400000n
 
-export const EXIT_CAP_REACHED = 2
+export const EXIT_CAP_REACHED = 3
 
 export function snowflakeToTimestamp(snowflake) {
   return Number((BigInt(snowflake) >> 22n) + DISCORD_EPOCH)

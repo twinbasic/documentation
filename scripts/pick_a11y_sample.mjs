@@ -47,8 +47,7 @@ import { resolve, join, relative, sep } from "node:path";
 import {
   DEFAULT_ROOT_DIR, REPO_ROOT, SAMPLE_PAGES, discoverPages, median, pad, splitStubs,
 } from "./lib/axe-scan.mjs";
-import { exitOnCrash } from "./lib/gate-probes.mjs";
-import { numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
+import { exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
 
 // A crash exits 2, where 1 is a coverage gap.
 exitOnCrash();
@@ -145,7 +144,12 @@ const cli = withUsageError(
 if (cli.stopped === "help") {
   printHelpAndExit(
     "usage: node scripts/pick_a11y_sample.mjs [--check|--propose|--census] [--fresh]\n"
-      + "                                        [--root-dir DIR] [--sweep FILE] [--budget MS] [-h, --help]",
+      + "                                        [--root-dir DIR] [--sweep FILE] [--budget MS] [-h, --help]\n\n"
+      + "Exit codes:\n"
+      + "  0  the mode ran; with --check, every construct family in use is covered\n"
+      + "  1  with --check, a construct family has no sample page, or a SAMPLE_PAGES entry\n"
+      + "     is not in the built tree\n"
+      + "  2  a refused command line, no built tree (run build.bat first), or a crash",
   );
 }
 const budget = withUsageError(() => {

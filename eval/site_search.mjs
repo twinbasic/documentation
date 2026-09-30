@@ -25,7 +25,7 @@ import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import fs from "node:fs";
 import path from "node:path";
-import { CliError, numberOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { CliError, exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const require = createRequire(import.meta.url);
@@ -323,7 +323,7 @@ export function load(site) {
         `missing ${path.relative(REPO_ROOT, p)}\n` +
         "Run build.bat (or `node builder/tbdocs.mjs --src docs`) first."
       );
-      process.exit(1);
+      process.exit(2);
     }
   }
   const lunr = loadLunr(lunrPath);
@@ -532,13 +532,18 @@ function composition(docs) {
 // Only run the CLI when this file is executed directly -- eval/search_quality.mjs
 // imports load()/buildIndex()/search() from here and must not trigger it.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  exitOnCrash();
   const opts = parseArgs(process.argv.slice(2));
   if (opts.help || (!opts.composition && !opts.terms.length)) {
     printHelpAndExit(
       'Usage: node eval/site_search.mjs "<query>" [--n <count>] [--site <path>] [-h, --help]\n' +
       "       node eval/site_search.mjs --composition\n\n" +
       "Queries the built site's real lunr index with the real query logic.\n" +
-      "A term that starts with a dash goes after --. See eval/README.md.",
+      "A term that starts with a dash goes after --. See eval/README.md.\n\n" +
+      "Exit codes:\n" +
+      "  0  the query ran, even with no results\n" +
+      "  2  a refused command line, a site with no search index (run build.bat first),\n" +
+      "     or a crash",
       opts.help ? {} : { stream: "stderr", exitCode: 2 },
     );
   }

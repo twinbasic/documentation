@@ -3,7 +3,8 @@
 //
 //     node scripts/census_attributes.mjs [options]
 //
-// The options, and the exit codes, are in USAGE below, which --help prints.
+// The options, and the exit codes (0 the report was produced, 2 the tool could
+// not do its job or crashed), are in USAGE below, which --help prints.
 //
 // ---------------------------------------------------------------- why this
 //
@@ -67,8 +68,10 @@ import { parseAttributes } from "./lib/attributes-doc.mjs";
 import { findIde } from "./lib/tb-install.mjs";
 import { defaultCache, exportPackages, packageName } from "./lib/tb-packages.mjs";
 import { MODIFIERS, declarationKind, decomment } from "./lib/twin-declarations.mjs";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { DOCS_DIR } from "../lib/repo-paths.mjs";
+
+exitOnCrash();
 
 const ATTR_DOC = path.join(DOCS_DIR, "Reference", "Attributes.md");
 
@@ -111,7 +114,10 @@ declaration keyword and by enclosing construct.
   --quiet              suppress progress on stderr
   -h, --help           print this text and exit
 
-Exit codes: 0 report produced, 2 the harness failed.`;
+Exit codes:
+  0  the report was produced
+  2  a refused command line, no install, an install with no compiler or no package
+     project, or a crash (a package that fails to export is left out of the census)`;
 
 if (values.help) printHelpAndExit(USAGE);
 

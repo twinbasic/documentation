@@ -21,7 +21,8 @@ rem   addin-test.bat --port 9600         lanes on ports 9600, 9601, ...
 rem   addin-test.bat --jobs 1            one lane at a time
 rem
 rem Exit: 0 every lane passed and the registry is as it was found, 1 a lane
-rem failed, 2 the harness failed or could not put the registry back.
+rem failed, 2 the harness could not run, 3 the registry or a work folder was
+rem not put back.
 node scripts/addin_test.mjs %*
 @rem popd resets ERRORLEVEL, so capture it first -- otherwise a failing lane
 @rem would report success to whatever called addin-test.bat.

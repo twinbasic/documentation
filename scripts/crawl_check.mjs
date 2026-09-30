@@ -29,7 +29,12 @@ and every anchor exists.
   --concurrency N  requests at once (default 10)
   --timeout MS     give up on a request after this long (default 15000)
   --skip-external  do not check links to other sites
-  -h, --help       print this text and exit`;
+  -h, --help       print this text and exit
+
+Exit codes:
+  0  every link is reachable and every anchor exists
+  1  a link is broken or an anchor is missing
+  2  a refused command line, or a crash`;
 
 const { values, positionals } = withUsageError(
   () =>

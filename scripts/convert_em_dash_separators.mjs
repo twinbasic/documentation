@@ -6,7 +6,8 @@
 //     node scripts/convert_em_dash_separators.mjs --check    # report, change nothing
 //
 // Exit codes: 0 nothing to report, or converted; 1 --check found a literal
-// dash; 2 the tool failed, so that a crash cannot read as a finding.
+// dash; 2 a refused command line or a crash, so that a crash cannot read as a
+// finding.
 //
 // The typographer (enabled in builder/render.mjs) renders:
 //
@@ -45,11 +46,10 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { createMarkdownIt } from "../builder/render.mjs";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { blockRegions, mapLines, splitCodeSpans } from "../lib/markdown.mjs";
 import { markdownFiles } from "../lib/markdown-files.mjs";
 import { DOCS_DIR } from "../lib/repo-paths.mjs";
-import { exitOnCrash } from "./lib/gate-probes.mjs";
 
 const EM_DASH = "—";
 const EN_DASH = "–";
@@ -132,7 +132,12 @@ Rewrites literal en- and em-dashes in docs/ markdown source to the ASCII forms
 the typographer converts at build time, leaving code as it is.
 
   --check     report the files that hold a literal dash and change nothing
-  -h, --help  print this text and exit`;
+  -h, --help  print this text and exit
+
+Exit codes:
+  0  the dashes were converted, or with --check there were none
+  1  with --check, a file holds a literal dash
+  2  a refused command line, or a crash`;
 
 async function main(argv) {
   const { values } = withUsageError(() => parseCli(argv, {

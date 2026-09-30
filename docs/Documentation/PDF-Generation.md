@@ -81,7 +81,7 @@ The renderer relays three kinds of in-browser fault, each with its own prefix:
 
 - **`[request failed] <url> <errorText>`** --- Chromium could not load a resource. Under `file://` a file missing from `_site-pdf/` appears here as `net::ERR_FILE_NOT_FOUND` with its path, which is the quickest way to spot an incomplete Phase 8 tree.
 - **`[page error] <message>`** --- an uncaught exception inside the page.
-- **`[render-book] error: <error>`** --- the top-level catch. It closes the browser and sets the exit code to 1.
+- **`[render-book] error: <error>`** --- the top-level catch. It closes the browser and sets the exit code to 2.
 
 A paged.js stylesheet fetch that fails arrives as `error on LINK: <url>`. paged.js throws an undecorated `ProgressEvent` there; the driver unwraps it so the message carries the URL.
 
@@ -121,7 +121,7 @@ The gate compares against everything under `docs/` and `builder/`, including fil
      2. your cache path is incorrectly configured (which is: <cache path>).
     For (2), check out our guide on configuring puppeteer at https://pptr.dev/guides/configuration.
 
-`<version>` is the Chrome build the installed `puppeteer` pins and `<cache path>` is the machine's own; the rest is fixed text from puppeteer. Nothing prefixes it, because `puppeteer.launch()` runs above the driver's `try` block --- the throw is an unhandled rejection, not something the driver catches and reports. The exit code is 1.
+`<version>` is the Chrome build the installed `puppeteer` pins and `<cache path>` is the machine's own; the rest is fixed text from puppeteer. Nothing prefixes it, because `puppeteer.launch()` runs above the driver's `try` block --- the throw is an unhandled rejection, not something the driver catches and reports. The exit code is 2, because the driver treats a crash like any other failed render.
 
 **`book.bat`'s `npm install` does not fix this.** It runs only when `node_modules\puppeteer\package.json` is absent, and that file says nothing about the browser. `puppeteer`'s postinstall script is what downloads Chromium, so an install run with `--ignore-scripts` or with `PUPPETEER_SKIP_DOWNLOAD` set, or a puppeteer cache cleared afterwards, leaves the package in place and the browser missing --- the test passes and the launch still fails. Install the browser yourself; see [Building and Deployment](Building#requirements).
 
@@ -147,25 +147,26 @@ The same fork checks fonts on the same principle:
 
 ### Exit codes
 
-`render-book.mjs` has three:
+`render-book.mjs` has two, and no 1:
 
 | Code | Meaning |
 |---|---|
 | `0` | The PDF was written. |
-| `1` | A file the run needs is missing --- the input HTML, `lib/paged.browser.js`, `lib/progress-handler.js`, or an `--additional-script` path --- or the render threw. |
-| `2` | Bad arguments: an unknown flag, a flag without its value or with an empty one, a `-t` that is not a whole number of milliseconds from 0 to 2147483647, a second input file, or a missing `<input.html>` or `-o`. |
+| `2` | The run could not produce the PDF: a refused command line (an unknown flag, a flag without its value or with an empty one, a `-t` that is not a whole number of milliseconds from 0 to 2147483647, a second input file, or a missing `<input.html>` or `-o`), a file the run needs that does not exist (the input HTML, `lib/paged.browser.js`, `lib/progress-handler.js`, or an `--additional-script` path), a render that threw, or a crash. |
 
-**`book.bat` propagates all three.** It copies `%ERRORLEVEL%` into a variable immediately after the renderer runs and exits with that variable once `popd` has restored the caller's directory --- the same pattern `build.bat` and `check.bat` already used. A batch file's exit code is otherwise its last command's, and an unguarded `popd` resets `ERRORLEVEL` to `0`; `book.bat` used to end on a bare `popd`, so a failed render always reported success to whatever launched it. A script can check `book.bat`'s own exit code directly now. Calling `node book\render-book.mjs` directly and reading its exit code, or watching for the `saved:` line, remain equally valid.
+`node book/render-book.mjs --help` ends with the same codes.
 
-**`book.bat`'s own pre-flight refusals never reach the renderer, and they reuse the same two numbers.** [`check_tree_fresh.mjs`](Tools#check-tree-fresh) exits 2 for an absent `_site-pdf/` and 1 for a stale one, and a failed `npm install` exits 1. So what a script sees from `book.bat` is:
+**`book.bat` propagates both.** It copies `%ERRORLEVEL%` into a variable immediately after the renderer runs and exits with that variable once `popd` has restored the caller's directory --- the same pattern `build.bat` and `check.bat` already used. A batch file's exit code is otherwise its last command's, and an unguarded `popd` resets `ERRORLEVEL` to `0`; `book.bat` used to end on a bare `popd`, so a failed render always reported success to whatever launched it. A script can check `book.bat`'s own exit code directly now. Calling `node book\render-book.mjs` directly and reading its exit code, or watching for the `saved:` line, remain equally valid.
+
+**`book.bat`'s own pre-flight refusals never reach the renderer, and they share the renderer's 2.** [`check_tree_fresh.mjs`](Tools#check-tree-fresh) exits 2 for an absent `_site-pdf/` and 1 for a stale one, and a failed `npm install` exits 1. So what a script sees from `book.bat` is:
 
 | Code | Sources |
 |---|---|
 | `0` | The PDF was written. |
-| `1` | A stale `_site-pdf/`, a failed `npm install`, or a failed render. |
-| `2` | `_site-pdf/` is absent. |
+| `1` | A stale `_site-pdf/`, or a failed `npm install`. |
+| `2` | `_site-pdf/` is absent, or the render failed. |
 
-Code 2 is unambiguous: the renderer's own 2 means bad arguments, and `book.bat` passes it a fixed argument list. Code 1 is not, and stderr separates the cases --- a pre-flight refusal prints one message beginning `check_tree_fresh:` and nothing runs after it, so any further output means the gate passed.
+Code 1 is unambiguous, because the renderer has no 1. Code 2 is not, and stderr separates the cases --- a pre-flight refusal prints one message beginning `check_tree_fresh:` and nothing runs after it, so any further output means the gate passed.
 
 One case runs the other way and is worth stating on its own: **`build.bat && book.bat` skips the render whenever the link and integrity check reports anything.** That check sets a non-zero exit code while still writing a complete tree, so `&&` suppresses the book over a broken link that has no bearing on it. Run the two as separate statements.
 

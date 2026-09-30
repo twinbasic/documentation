@@ -8,7 +8,8 @@
 //     node scripts/check_examples.mjs --propose --apply  # ...and mark the ones that pass
 //     node scripts/check_examples.mjs --report survey.json  # group a saved survey
 //
-// Exit: 0 clean, 1 a sample does not compile, 2 the harness failed.
+// Exit: 0 clean, 1 a sample does not compile, 2 the harness could not run (a refused
+// command line, no IDE, or a crash).
 //
 // ------------------------------------------------------------------ why
 //
@@ -131,7 +132,16 @@ Compiles the documentation's own twinBASIC code samples, every tb fence marked
   --show, --hide   as tbbuild's
   --verbose        also print warnings, not only errors
   --json           one JSON object instead of a report
-  -h, --help       print this text and exit`;
+  -h, --help       print this text and exit
+
+Exit codes:
+  0  every marked sample compiles, or none is marked; --report always, and --propose
+     when it found only unmarked samples that fail (advisory)
+  1  a marked sample does not compile, a marker is misused, a template does not
+     compile, or the compiler crashed on a project; the report names each
+  2  the harness could not run: a refused command line, a failed self-test probe, no
+     IDE or compiler, an unreadable --report file, a work folder it could not clear,
+     or a crash`;
 
 if (values.help) printHelpAndExit(USAGE);
 

@@ -18,11 +18,13 @@
 //       --show / --hide   as tbbuild's
 //
 // Exit: 0 captured output, 1 the project has compile errors, 2 the harness
-// failed -- a build that fails after a clean compile included, and a
+// could not run (a refused command line included), a compile never settled, or
+// it crashed -- a build that fails after a clean compile included, and a
 // [RunAfterBuild] Sub that fails code generation, since the probe never runs,
 // and a procedure the probe calls that fails it, since the probe stops at the
 // call -- 3 no output: the build produced none in the console before the
-// timeout, or the probe ran and printed none after its last Debug.Cls.
+// timeout, or the probe ran and printed none after its last Debug.Cls -- 4 the
+// compiler crashed, or restarted twice, while compiling the project.
 //
 // ---------------------------------------------------------------- why
 //
@@ -101,7 +103,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, mkdirSync, statSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { choiceOption, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
+import { choiceOption, exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
 import { click } from "./lib/tb-click.mjs";
 import { compilerExe, findIde } from "./lib/tb-install.mjs";
 import { BUILD_FAILED, COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, keepClears, keptClears,
@@ -109,6 +111,8 @@ import { BUILD_FAILED, COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, keep
          waitForCompile, wantShow } from "./lib/tb-ide.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
+
+exitOnCrash();
 
 const USAGE = `usage: node scripts/tbrun.mjs <source-dir> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] [--show|--hide] [-h, --help]
 
@@ -128,7 +132,18 @@ writes to the DEBUG CONSOLE.
   --reap-images a,b   comma-separated image names to harvest (default: the
                       Office suite)
   --show, --hide      as tbbuild's
-  -h, --help          print this text and exit`;
+  -h, --help          print this text and exit
+
+Exit codes:
+  0  the probe ran and its output was captured
+  1  the project has compile errors; the diagnostics are printed
+  2  a refused command line (a source folder that is missing or has no Settings file
+     included), no IDE or compiler, an IDE that did not start, a compile that never
+     settled, a build that failed after a clean compile, a probe that never ran or
+     stopped at a procedure that failed code generation, or a crash
+  3  no output: the console held none before the timeout, or the probe printed none
+     after its last Debug.Cls
+  4  the compiler crashed, or restarted twice, while compiling the project`;
 
 const { values, positionals } = withUsageError(
   () => parseCli(process.argv.slice(2), {
@@ -285,7 +300,7 @@ const tidy = values.keep ? null : startTidy({ prefixes: [work] });
 let ideRun = null;
 // A failure before the console is read: said on stdout, as it was when this
 // phase was tbbuild's output relayed, and ended with tbbuild's meaning of 1
-// (compile errors) or 2 (anything else).
+// (compile errors) or 4 (the compiler crashed), and 2 for anything else.
 function failBuild(code, text) {
   process.stdout.write(text + "\n");
   shutdown();
@@ -306,7 +321,7 @@ if (!cdp) failBuild(2, "the IDE never exposed a debug port");
 
 let outcome = compileOutcome(
   await waitForCompile(cdp, { project: projPath, timeout: COMPILE_TIMEOUT }), { name: projPath });
-if (!outcome.ok) failBuild(2, outcome.message);
+if (!outcome.ok) failBuild(outcome.code === 4 ? 4 : 2, outcome.message);
 
 // The target, set on every run, win32 included (setBuildTarget says why). The
 // probe runs in the compiler that builds it, so under win64 it runs in the
@@ -321,7 +336,7 @@ try {
   }
   if (target.waited) {
     outcome = compileOutcome(target.waited, { name: projPath });
-    if (!outcome.ok) failBuild(2, outcome.message);
+    if (!outcome.ok) failBuild(outcome.code === 4 ? 4 : 2, outcome.message);
   }
 } catch (e) {
   failBuild(2, e.message);

@@ -30,10 +30,12 @@
 // origin -- e.g. https://kubao.github.io -- so canonical URLs match
 // the actual deployment instead of the configured production host).
 //
-// Exit codes, as in every tool: 0 clean; 1 the build or its check found a
-// problem (a link or integrity failure, a failed build step, a page-count or
-// symbol-baseline drop); 2 it could not do its job (a command-line error, a
-// --dest the build refuses included, or a crash).
+// Exit codes, as in every tool: 0 clean (with --serve, stopped with Ctrl+C);
+// 1 the build or its check found a problem (a link or integrity failure, a
+// failed build step, a page-count or symbol-baseline drop); 2 it could not do
+// its job (a command-line error, a --dest the build refuses included, the
+// stall watchdog, with --serve a failed first build or a port in use, or a
+// crash).
 
 import { promises as fs } from "node:fs";
 import os from "node:os";
@@ -43,7 +45,7 @@ import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 import pc   from "picocolors";
 
-import { printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { exitOnCrash, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 import { parseCommandLine, USAGE } from "./command-line.mjs";
@@ -1524,6 +1526,9 @@ async function main() {
 
 const isEntry = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 if (isEntry) {
+  // main().catch covers what main() awaits; this covers a throw from an event
+  // handler, such as the server's or the watcher's under --serve.
+  exitOnCrash();
   main().catch((err) => {
     if (err?.commandLine) {
       console.error(err.message);

@@ -24,14 +24,13 @@
 //
 //   node scripts/check_ci_workflows.mjs
 //
-// Exit codes: 0 clean, 1 a finding, 2 a probe failed or the gate crashed.
+// Exit codes: 0 clean, 1 a finding, 2 a refused command line, a failed probe or a crash.
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import yaml from "js-yaml";
-import { exitOnCrash } from "./lib/gate-probes.mjs";
 import { buildArgs, gateSteps, workflowSteps } from "./lib/gate-roster.mjs";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 exitOnCrash();
@@ -41,7 +40,12 @@ const USAGE = `usage: node scripts/check_ci_workflows.mjs [-h, --help]
 Checks that both CI workflows run every gate the wrappers run, with the same
 arguments and in the same order.
 
-  -h, --help  print this text and exit`;
+  -h, --help  print this text and exit
+
+Exit codes:
+  0  both workflows run every gate the wrappers run, and its own probes pass
+  1  a workflow differs from the wrappers: a finding is listed
+  2  the gate could not run: a refused command line, a failed probe, or a crash`;
 
 if (withUsageError(() => parseCli(process.argv.slice(2), {
   options: { help: { type: "boolean", short: "h" } },

@@ -97,6 +97,8 @@ The extract step automatically partitions large thread sets into batches of 200,
 
 All commands run from the repository root via `node wisdom/wisdom.mjs <command> [options]`.
 
+Exit codes: **0** the command finished, or a dry run did; **2** a refused command line, input that an earlier command should have written (run that command first), or a crash; **3** the request cap was reached (re-run to continue).
+
 ### Phase 1 --- Export
 
 Fetches messages from Discord channels and forum threads.
@@ -114,7 +116,7 @@ Outputs raw JSON under `wisdom/data/raw/`. Supports incremental runs --- a manif
 | `--dry-run` | Discover channels/threads; do not fetch messages |
 | `--force` | Ignore manifest; re-fetch all history |
 
-When the session request cap is reached, the tool exits with code 2 --- re-run to continue where it left off. A command line the tool cannot use --- an unknown command or flag, a flag without its value or with an empty one, an unexpected argument --- is refused on standard error and also exits with code 2, so read the message to tell the two apart. So is a value it cannot use: a `--concurrency` or `--cap` that is not a whole number of at least 1, a `--rate-limit` that is not greater than 0, a `--since` that is not an ISO 8601 date no earlier than 2015-01-01, a `--min-confidence` other than `high`, `medium` or `low`, and two of `extract`'s `--since`, `--all` and `--force` given together (`--merge` reads none of the three).
+When the session request cap is reached, the tool stops --- re-run to continue where it left off. A command line the tool cannot use --- an unknown command or flag, a flag without its value or with an empty one, an unexpected argument --- is refused on standard error. So is a value it cannot use: a `--concurrency` or `--cap` that is not a whole number of at least 1, a `--rate-limit` that is not greater than 0, a `--since` that is not an ISO 8601 date no earlier than 2015-01-01, a `--min-confidence` other than `high`, `medium` or `low`, and two of `extract`'s `--since`, `--all` and `--force` given together (`--merge` reads none of the three).
 
 ### Phase 2 --- Process
 
@@ -213,7 +215,7 @@ Also defines `runConcurrent(items, concurrency, fn)` --- a simple worker-pool: s
 
 - **Auth detection.** Probes `/users/@me` with `Bot <token>` first; on failure, retries with the bare token (user-token auth). Sets `tier` to `'bot'` or `'user'`, which selects the rate-limit profile from config.
 - **Rate limiter.** Enforces `requests_per_second` via a minimum inter-request delay. User-tier adds +/-20% jitter. Also reads Discord's `X-RateLimit-Remaining` / `X-RateLimit-Reset-After` headers and sleeps when a route bucket is exhausted.
-- **Session cap.** Throws `CapReachedError` when `queryCount` reaches the configured cap. The caller catches this and exits with code 2; re-running resumes via the export manifest.
+- **Session cap.** Throws `CapReachedError` when `queryCount` reaches the configured cap. The caller catches this and exits with code 3; re-running resumes via the export manifest.
 - **429 handling.** On HTTP 429, reads `retry_after` from the response body and recursively retries.
 - **Snowflake utilities.** `snowflakeToTimestamp()` and `timestampToSnowflake()` convert between Discord snowflake IDs and Unix-millis timestamps using BigInt arithmetic (shift by 22 bits + the Discord epoch).
 

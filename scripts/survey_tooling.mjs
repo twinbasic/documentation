@@ -52,8 +52,10 @@ import { builtinModules } from "node:module";
 import path from "node:path";
 import * as acorn from "acorn";
 import * as walk from "acorn-walk";
-import { numberOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
+
+exitOnCrash();
 
 const TOOLING_DIRS = ["builder", "scripts", "lib", "book", "eval", "wisdom", "test", "perf"];
 const VENDORED = [/^book\/lib\/paged\.browser\.js$/, /^builder\/vendor\//];
@@ -71,7 +73,11 @@ files git tracks. It is a measurement taken by hand and is not a gate.
   --window N       tokens two places must share to count as a clone (default 60)
   --top N          list at most N clone regions (default 45)
   --include-perf   list what involves perf/ too
-  -h, --help       print this text and exit`;
+  -h, --help       print this text and exit
+
+Exit codes:
+  0  the survey was printed
+  2  a refused command line, a folder that is not a git checkout, or a crash`;
 
 const { values } = withUsageError(
   () =>

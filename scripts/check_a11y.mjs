@@ -72,7 +72,12 @@ Scans the sample pages of the built offline site with axe-core against WCAG
   --viewport V     desktop, mobile or both (default both)
   --stock-axe      run stock axe, without the source patches
   --minified       with --stock-axe, run the minified axe build
-  -h, --help       print this text and exit`;
+  -h, --help       print this text and exit
+
+Exit codes:
+  0  no page has a violation; incomplete checks are reported but do not fail
+  1  at least one page has a violation
+  2  the scan could not run: a refused command line, or a crash`;
 
 const { values } = withUsageError(
   () =>

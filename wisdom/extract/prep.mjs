@@ -17,7 +17,7 @@ export async function runExtract(flags) {
 
   if (!existsSync(threadsDir)) {
     process.stderr.write('[wisdom] Threads directory not found — run process first\n')
-    process.exit(1)
+    process.exit(2)
   }
 
   // Mode resolution: --since, --all, --force are mutually exclusive primary
@@ -222,7 +222,7 @@ export async function runMerge(flags) {
 
   if (!existsSync(outDir)) {
     process.stderr.write('[wisdom] Findings directory not found\n')
-    process.exit(1)
+    process.exit(2)
   }
 
   // Determine mode from the prep / manifest file (whichever exists)
@@ -247,7 +247,7 @@ export async function runMerge(flags) {
 
   if (!files.length) {
     process.stderr.write('[wisdom] No result files (extract-results-*.json) to merge\n')
-    process.exit(1)
+    process.exit(2)
   }
 
   let allAdditions = []

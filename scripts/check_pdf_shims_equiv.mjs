@@ -37,7 +37,8 @@
 //     node scripts/check_pdf_shims_equiv.mjs
 //
 // Exit codes: 0 the same, 1 a difference, a shim or patched member not reached
-// or a patched member not as PATCHES lists it, 2 the check itself failed.
+// or a patched member not as PATCHES lists it, 2 a refused command line, a failure of
+// the check itself, or a crash.
 
 import { spawn } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -45,8 +46,7 @@ import { availableParallelism, tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { deflateSync, inflateSync } from "node:zlib";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
-import { exitOnCrash } from "./lib/gate-probes.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
 exitOnCrash();
 
@@ -59,9 +59,15 @@ if (cli.stopped === "help") {
 Loads, changes and saves one PDF with stock pdf-lib and with the book's pdf-lib
 shims, and creates and saves another, compares each pair of files object by
 object, streams inflated, and checks the members of pdf-lib the shims patch
-against the list in this file. Exit 0 the same, 1 a difference, a shim or
-patched member the documents no longer reach, or a patched member not as
-listed, 2 the check itself failed.`);
+against the list in this file.
+
+Exit codes:
+  0  the shims write what stock pdf-lib writes, and every shim and patched member
+     is reached and as listed
+  1  a pair of files differs, a shim or patched member is no longer reached, or a
+     patched member is not as listed
+  2  the check could not run: a refused command line, a failure of the check
+     itself, or a crash`);
 }
 
 const TOOL = "check_pdf_shims_equiv";

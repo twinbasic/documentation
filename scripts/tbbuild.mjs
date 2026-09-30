@@ -23,8 +23,9 @@
 //                         Default: hidden, unless TBBUILD_SHOW is set --
 //                         export that for a session you are watching.
 //
-// Exit codes: 0 clean, 1 the project has errors, 2 the harness failed,
-// 3 the compile never settled, 4 the project crashes the compiler.
+// Exit codes: 0 clean, 1 the project has errors, 2 the harness could not run (a
+// refused command line included) or crashed, 3 the compile never settled,
+// 4 the project crashes the compiler.
 //
 // ---------------------------------------------------------------- why this
 //
@@ -51,11 +52,13 @@
 // front of you".
 import { existsSync, statSync } from "node:fs";
 import path from "node:path";
-import { choiceOption, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
+import { choiceOption, exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
 import { findIde } from "./lib/tb-install.mjs";
 import { COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, launchIde, setBuildTarget, shutdownIde,
          summaryLine, waitForCompile, wantShow } from "./lib/tb-ide.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
+
+exitOnCrash();
 
 const USAGE = `usage: node scripts/tbbuild.mjs <project.twinproj> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--json] [--keep] [--show|--hide] [-h, --help]
 
@@ -70,7 +73,16 @@ Compiles a packed .twinproj in the twinBASIC IDE and prints its diagnostics.
   --keep            leave the IDE running; its pid is printed as \`ide-pid: N\`
   --show, --hide    show the IDE on the desktop, or keep it on a private one
                     (default: hidden, unless TBBUILD_SHOW is set)
-  -h, --help        print this text and exit`;
+  -h, --help        print this text and exit
+
+Exit codes:
+  0  the project compiled without errors
+  1  the project has errors
+  2  a refused command line (a path that is not a .twinproj included), no IDE, an IDE
+     that did not start or expose a debug port, or a crash
+  3  the compile never settled: the IDE did not report the project open, or its
+     diagnostics did not match its status bar
+  4  the project crashes the compiler`;
 
 function usage() {
   console.error(USAGE);

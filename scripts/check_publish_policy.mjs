@@ -22,8 +22,7 @@ import {
   publishPolicyFor, unpublishableSourceFiles, unpublishableTreePaths,
   SOURCE_EXTENSIONS, BUILD_EXTENSIONS,
 } from "../builder/publish-policy.mjs";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
-import { exitOnCrash } from "./lib/gate-probes.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
 exitOnCrash();
 
@@ -33,7 +32,12 @@ Checks that the publish allowlist of builder/publish-policy.mjs still refuses
 the file types it should, and that the source tree holds nothing it refuses.
 
   --src DIR   the source tree to check (default docs)
-  -h, --help  print this text and exit`;
+  -h, --help  print this text and exit
+
+Exit codes:
+  0  every assertion held, and the source tree holds no file the allowlist refuses
+  1  an assertion failed, or the source tree holds a file the allowlist refuses
+  2  the gate could not run: a refused command line, or a crash`;
 
 const { values } = withUsageError(() => parseCli(process.argv.slice(2), {
   options: { src: { type: "string", default: "docs" }, help: { type: "boolean", short: "h" } },

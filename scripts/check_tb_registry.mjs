@@ -2,8 +2,9 @@
 //
 //     node scripts/check_tb_registry.mjs
 //
-// Exit: 0 every assertion held, 1 one did not, 2 something else threw, such as
-// PowerShell failing, so the test could not run to its end.
+// Exit: 0 every assertion held, 1 one did not, 2 a refused command line, or
+// something else threw, such as PowerShell failing, so the test could not run to its
+// end.
 //
 // NOT A GATE, and it must not join test.bat: it needs Windows and a real
 // registry, and the CI runners are Ubuntu while the rule for test.bat is that
@@ -49,8 +50,7 @@ import assert from "node:assert/strict";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
-import { exitOnCrash } from "./lib/gate-probes.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import * as R from "./lib/tb-registry.mjs";
 
 // A crash exits 2; the catch below passes on everything but a failed assertion.
@@ -61,7 +61,13 @@ const USAGE = `usage: node scripts/check_tb_registry.mjs [-h, --help]
 Tests the harness's registry tidy in scripts/lib/tb-registry.mjs, under
 HKCU\\Software\\tbharness-selftest. Windows only, and not a gate.
 
-  -h, --help  print this text and exit`;
+  -h, --help  print this text and exit
+
+Exit codes:
+  0  every assertion held
+  1  an assertion failed
+  2  the test could not run to its end: a refused command line, PowerShell failing,
+     or a crash`;
 
 if (withUsageError(() => parseCli(process.argv.slice(2), {
   options: { help: { type: "boolean", short: "h" } },

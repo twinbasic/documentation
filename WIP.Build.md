@@ -154,7 +154,7 @@ Older notes under `builder/PLAN-*.md` still place `check_publish_policy.mjs` and
 
 **The link and integrity check runs inside the build.** `build.bat` passes `--check-audit-index`, which implies `--check`, and the check walks the HTML on the worker lanes that produced it -- both trees' final strings are already decoded and in memory at `flush()`, so the ~270 MB the two trees weigh is never written out only to be read back. It also audits the tree index the build derives from its own records against what landed on disk -- the one direction the two-checker comparison structurally cannot see, since a spurious entry makes the oracle answer "exists" for a path that 404s in production. It catches broken intra-site links, missing pages, malformed `redirect_from` entries (the most common breakage when adding new pages or moving content between sections), duplicate ids, remote `<img src>`, badly nested tags, sitemap and search-index gaps, canonical mismatches, and (via a forbidden-prefix rule on the offline tree) any extracted link that still points at the live docs site after the offlinify rewrite. A clean `build.bat && check.bat` is the bar for "ready to commit".
 
-A failing check never aborts the build: a broken link still produces a site you want on disk to inspect. It sets the exit code instead, using the same scheme `check_links.mjs` has always used -- 1 for link failures, 2 for integrity failures, 3 for both -- so CI can tell them apart.
+A failing check never aborts the build: a broken link still produces a site you want on disk to inspect. It sets the exit code to 1 instead, whether the check found link failures, integrity failures or both (the summary lines say which), and keeps 2 for a build that could not do its job: the same scheme `check_links.mjs` uses. A 2 means a refused command line, a stall or a crash.
 
 The remote-asset rule fails the run on any `<img src>` resolving off-box (`http://`, `https://`, or protocol-relative `//host`). In the build it is unconditional -- `checkRemoteAssets: true` on both trees in `builder/check.mjs`'s `TREES` -- and is *not* reachable by a flag: `tbdocs` rejects `--check-remote-assets` as an unknown argument. That name belongs to the standalone `scripts/check_links.mjs`, where it is opt-in. The PDF pass over `book.html` is informational, so enforcement comes from the `_site/` pass -- every page in the book is also in `_site/`, making it a superset. The check is deliberately scoped to `<img>` only; `<iframe>` is untouched.
 
@@ -388,7 +388,8 @@ node scripts/check_tree_fresh.mjs --tree docs/_site-pdf --marker book.html
 **`--marker` is what makes that work on this tree.** The script identifies a tree
 by its `index.html`, which every output tree has *except* `_site-pdf/` --- that one
 holds a single `book.html`. Exit codes are the script's: **2** when the tree is
-absent, **1** when it is older than `docs/` or `builder/`.
+absent, **1** when it is older than `docs/` or `builder/`. The renderer that runs after it
+has no 1, so `book.bat`'s 1 means a stale tree (or a failed `npm install`) and nothing about the render.
 
 > **One batch detail that is easy to get wrong:** `%ERRORLEVEL%` inside a parenthesised `if errorlevel 1 (...)`
 > block expands when the block is **parsed**, not when it runs, so the value

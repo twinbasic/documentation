@@ -15,9 +15,11 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { CliError, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { CliError, exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { isOutputTree } from "../lib/markdown-files.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
+
+exitOnCrash();
 
 // ---------------------------------------------------------------------------
 // What stays readable is an ALLOWLIST, and that is the whole design.
@@ -236,8 +238,12 @@ if (opts.help || !opts.dest) {
     "Usage: node eval/build_corpus.mjs --dest <path> [--repo <path>] [--quiet] [-h, --help]\n\n" +
     "Mirrors the repository with every non-prose file replaced by an unreadable\n" +
     "stub, so a documentation evaluation cannot silently read the implementation.\n" +
-    "See eval/README.md.",
-    opts.help ? {} : { stream: "stderr", exitCode: 2 },
+    "See eval/README.md.\n\n" +
+    "Exit codes:\n" +
+    "  0  the corpus was built\n" +
+    "  2  a refused command line (a --dest that is or contains the repository, the\n" +
+    "     working folder or --repo included), or a crash",
+    opts.help ? {} :{ stream: "stderr", exitCode: 2 },
   );
 }
 build(opts);

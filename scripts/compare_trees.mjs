@@ -36,7 +36,8 @@
 // A run that fails keeps .compare-trees/ so its logs can be read; the next
 // run removes it before starting.
 //
-// Exit codes: 0 the trees match, 1 they differ, 2 the tool failed.
+// Exit codes: 0 the trees match, 1 they differ, 2 the tool could not do its job
+// (a refused command line, a git command or a build that failed, or a crash).
 
 import { spawnSync } from "node:child_process";
 import { closeSync, existsSync, openSync } from "node:fs";
@@ -101,7 +102,11 @@ online, offline and PDF trees byte for byte.
   -h, --help      print this text and exit
   --              everything after it is passed to both tbdocs builds
 
-Exit codes: 0 the trees match, 1 they differ, 2 the tool failed.
+Exit codes:
+  0  the trees match
+  1  the trees differ
+  2  a refused command line, a git command or a build that failed to produce its
+     tree, or a crash
 `;
 
 function usageError(message) {

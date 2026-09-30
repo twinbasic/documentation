@@ -16,7 +16,7 @@ export async function runProcess(flags) {
   const guildPath = join(inDir, 'guild.json')
   if (!existsSync(guildPath)) {
     process.stderr.write('[wisdom] guild.json not found — run export first\n')
-    process.exit(1)
+    process.exit(2)
   }
   const channels = JSON.parse(readFileSync(guildPath, 'utf-8'))
   const { tagMap, channelMap } = buildLookups(channels)
@@ -29,7 +29,7 @@ export async function runProcess(flags) {
   const threadsDir = join(inDir, 'threads')
   if (!existsSync(threadsDir)) {
     process.stderr.write('[wisdom] No threads directory found — run export first\n')
-    process.exit(1)
+    process.exit(2)
   }
 
   const files = readdirSync(threadsDir).filter(f => f.endsWith('.json')).sort()

@@ -14,7 +14,9 @@
 //       --show / --hide   as tbbuild's
 //
 // Exit: 0 every lane passed and the registry is as it was found, 1 a lane
-// failed, 2 the harness failed or could not put the registry back.
+// failed or the run was interrupted, 2 the harness could not run (a refused
+// command line included) or crashed, 3 the registry or the work folders could
+// not be put back (the registry is what to repair, so 3 wins over 1).
 //
 // Not a gate, for the reasons examples.bat is not one: it needs Windows and a
 // twinBASIC install. addin-test.bat is the wrapper.
@@ -53,7 +55,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { numberOption, parseCli, printHelpAndExit, refuseTogether, regexOption, withUsageError } from "../lib/cli.mjs";
+import { exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, regexOption, withUsageError } from "../lib/cli.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
 import { wantShow } from "./lib/tb-ide.mjs";
 import { buildNumber, findIde } from "./lib/tb-install.mjs";
@@ -61,6 +63,8 @@ import { LANE_ENV } from "./lib/tb-lane.mjs";
 import { alive, deleteSettings, finishTidy, ideLists, norm, restoreKeys, SETTINGS_ROOT, settingsKey,
          snapshotKeys, startTidy, subkeyNames, sweepArchitectureMemory } from "./lib/tb-registry.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
+
+exitOnCrash();
 
 const SUITE = path.join(REPO_ROOT, "test", "addin");
 
@@ -76,7 +80,14 @@ process of its own with its own IDE copy, DevTools port and work folder.
   --ide <path>      the twinBASIC.exe to copy (default: $TB_IDE, else the
                     newest twinBASIC_IDE_BETA_* on the Desktop)
   --show, --hide    as tbbuild's
-  -h, --help        print this text and exit`;
+  -h, --help        print this text and exit
+
+Exit codes:
+  0  every lane passed, and the registry is as it was found
+  1  a lane failed, or the run was interrupted
+  2  the harness could not run: a refused command line, no IDE, no matching lane, a
+     registry it could not record, or a crash
+  3  the registry or a work folder was not put back; see the lines above`;
 
 const { values } = withUsageError(() => parseCli(process.argv.slice(2), {
   options: {
@@ -296,4 +307,4 @@ console.log(problems.length
 console.log(`${results.length} of ${lanes.length} lane(s) ran: ${results.length - failed.length} passed` +
             (failed.length ? `, ${failed.length} failed (${failed.map((r) => r.lane.name).join(", ")})` : "") +
             (interrupted ? "; interrupted" : ""));
-process.exit(problems.length ? 2 : failed.length || interrupted ? 1 : 0);
+process.exit(problems.length ? 3 : failed.length || interrupted ? 1 : 0);

@@ -32,7 +32,7 @@ import { dirname, resolve } from 'node:path';
 import { writeFileSync, existsSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
-import { numberOption, parseCli, printHelpAndExit, withUsageError } from '../lib/cli.mjs';
+import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError } from '../lib/cli.mjs';
 // Side-effecting imports. Mutate pdf-lib's live module exports
 // before any pdf-lib operation -- order doesn't matter. See
 // perf/notes/08-pdf-lib.md.
@@ -194,6 +194,8 @@ import { parallelSave }             from './lib/parallel-deflate.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+exitOnCrash();
+
 // --- arg parsing --------------------------------------------------------
 
 // A missing input or output prints the first line alone.
@@ -207,7 +209,12 @@ Renders an HTML book to a PDF with paged.js and headless Chromium.
   --outline-tags <tags>      headings to put in the PDF outline (default h1,h2,h3,h4)
   -t, --timeout <ms>         per-operation timeout in milliseconds; 0 disables (default 0)
   --additional-script <path> a script to inject after paged.js; repeatable
-  -h, --help                 print this text and exit`;
+  -h, --help                 print this text and exit
+
+Exit codes:
+  0  the PDF was written
+  2  a refused command line, an input or script that does not exist, a render that
+     failed, or a crash`;
 
 const { values, positionals, timeoutMs } = withUsageError(() => {
   const cli = parseCli(process.argv.slice(2), {
@@ -241,7 +248,7 @@ const outlineTags = outlineTagsArg.split(',').map(s => s.trim()).filter(Boolean)
 
 if (!existsSync(inputPath)) {
   console.error(`input not found: ${inputPath}`);
-  process.exit(1);
+  process.exit(2);
 }
 
 const pagedScriptPath    = resolve(__dirname, 'lib', 'paged.browser.js');
@@ -249,14 +256,14 @@ const progressScriptPath = resolve(__dirname, 'lib', 'progress-handler.js');
 for (const p of [pagedScriptPath, progressScriptPath]) {
   if (!existsSync(p)) {
     console.error(`required file not found: ${p}`);
-    process.exit(1);
+    process.exit(2);
   }
 }
 for (const s of additionalScripts) {
   const p = resolve(process.cwd(), s);
   if (!existsSync(p)) {
     console.error(`additional script not found: ${p}`);
-    process.exit(1);
+    process.exit(2);
   }
 }
 
@@ -452,7 +459,7 @@ try {
   console.log(`total:    ${fmtMs(Date.now() - t0)}`);
 } catch (err) {
   console.error('[render-book] error:', err);
-  exitCode = 1;
+  exitCode = 2;
 } finally {
   await browser.close();
 }

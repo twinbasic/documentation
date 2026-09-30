@@ -18,7 +18,7 @@
 //
 // Usage:  node scripts/check_axe_patch_equiv.mjs [--patch NAME]
 //
-// Exit codes: 0 equivalent, 1 a value differs, 2 harness error.
+// Exit codes: 0 equivalent, 1 a value differs, 2 a refused command line or a crash.
 //
 // One difference is expected and allowed: `plain-color-fields` turns the six
 // private fields into own properties, so `Object.keys(color)` returns them.
@@ -49,7 +49,14 @@ const cli = withUsageError(
     }),
 );
 if (cli.stopped === "help") {
-  printHelpAndExit("usage: node scripts/check_axe_patch_equiv.mjs [--patch NAME] [-h, --help]");
+  printHelpAndExit(
+    "usage: node scripts/check_axe_patch_equiv.mjs [--patch NAME] [-h, --help]\n" +
+      "\n" +
+      "Exit codes:\n" +
+      "  0  the patched bundle gives the same colour values as stock axe\n" +
+      "  1  at least one colour value differs\n" +
+      "  2  the check could not run: a refused command line, or a crash"
+  );
 }
 const patchName = withUsageError(
   () => choiceOption(cli.values.patch, { option: "--patch", choices: Object.keys(SOURCE_PATCHES) }),

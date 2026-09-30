@@ -77,8 +77,7 @@ import {
   FsOracle, formatLinkReport, formatIntegrityReport,
   resolve, OUTSIDE_BASEPATH_MARKER,
 } from "../builder/link-check.mjs";
-import { CliError, choiceOption, parseCli } from "../lib/cli.mjs";
-import { exitOnCrash } from "./lib/gate-probes.mjs";
+import { CliError, choiceOption, exitOnCrash, parseCli } from "../lib/cli.mjs";
 
 // Tree-relative POSIX path, the space check.mjs works and reports in, so
 // the same tree checked with a relative --root-dir, an absolute one, or
@@ -129,8 +128,9 @@ Options:
                              URL prefix. The bare prefix and 'prefix/'
                              are exempt (intentional "go to live site"
                              links). Repeatable.
-  --no-fail                  Always exit 0, even if errors are found.
-                             Errors are still printed. Useful for
+  --no-fail                  Exit 0 when the check finds errors. Errors
+                             are still printed. A command-line error or
+                             a crash still exits 2. Useful for
                              informational checks that should not block.
   --oracle fs|index          How to answer "does this path exist".
                              'index' walks --root-dir once and answers
@@ -186,16 +186,15 @@ Integrity checks (share the existing htmlparser2 SAX parse pass):
                              URL. Catches canonical URLs that include
                              --base-path / the wrong baseurl.
 
-Exit codes:
-  0  All checks passed.
-  1  A link, forbidden-prefix or integrity check failed. The summary
-     lines say which.
-  2  The check could not run. Either a command-line error, reported on
-     stderr (no arguments, an unknown option, a flag without its value
-     or with an empty one, no --offline, or no input), or a crash.
-
 Inputs are files or directories; directories are searched recursively
 for *.html.
+
+Exit codes:
+  0  every check passed, or --no-fail turned the findings into 0
+  1  a link, forbidden-prefix or integrity check failed; the summary lines say
+     which (with /sep/ segments, the highest code of any segment)
+  2  the check could not run: a refused command line (no arguments, an unknown
+     option, a flag without its value, no --offline, or no input), or a crash
 `);
 }
 

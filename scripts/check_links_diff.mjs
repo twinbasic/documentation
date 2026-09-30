@@ -32,7 +32,8 @@
 //   --base-path-tree     check a tree built with a --baseurl prefix
 //   --build-base-path P  the base path to build that tree with
 //
-// Exits 0 when the two sides agree, 1 on a difference, 2 on a harness error.
+// Exits 0 when the two sides agree, 1 on a difference, 2 when the comparison could not
+// run (a refused command line, a failed build, or a crash).
 //   node scripts/check_links_diff.mjs --case online --case book -v
 //   node scripts/check_links_diff.mjs --list
 //
@@ -79,8 +80,10 @@ import * as path from "node:path";
 import { performance } from "node:perf_hooks";
 
 import { runCheck, selfTest as scriptSelfTest } from "./check_links.mjs";
-import { numberOption, parseCli, withUsageError } from "../lib/cli.mjs";
+import { exitOnCrash, numberOption, parseCli, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
+
+exitOnCrash();
 
 const BASE_PATH = "/twinBASIC-docs";
 const DEFAULT_BASEPATH_TREE = "docs/_site-basepath";
@@ -583,7 +586,12 @@ function printHelp() {
   --list              list cases and sides, then exit
   -v, --verbose       print per-case finding counts even when clean
   -h, --help          print this text and exit
-`);
+
+Exit codes:
+  0  the two sides agree in every case
+  1  the sides differ, a fixture's category counts drifted, or --self-test failed
+  2  the comparison could not run: a refused command line, an unknown side or
+     case, --a equal to --b, a failed build, or a crash`);
 }
 
 // Guard on the guard. Everything below reduces to "the two sides agreed",

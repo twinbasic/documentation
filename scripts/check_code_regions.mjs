@@ -6,7 +6,7 @@
 //     node scripts/check_code_regions.mjs --self-test  # prove it still detects
 //
 // Exit: 0 clean, 1 a code region changed or a probe failed, 2 the gate itself
-// could not run.
+// could not run (a refused command line, or a crash).
 //
 // WHY THIS EXISTS
 //
@@ -454,7 +454,14 @@ runs the probes of the modules that decide what is code.
 
   --verbose    print the detail of every finding
   --self-test  prove the comparison still detects an altered code region
-  -h, --help   print this text and exit`;
+  -h, --help   print this text and exit
+
+Exit codes:
+  0  no code region was altered, and every probe passed (--self-test: the comparison
+     detects the altered region)
+  1  a code region was altered, a probe failed or the two parses disagree (--self-test:
+     the comparison missed the altered region)
+  2  the gate could not run: a refused command line, or a crash`;
 
 async function main(argv) {
   const { values } = withUsageError(() => parseCli(argv, {

@@ -3,7 +3,7 @@
 import { mkdirSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { choiceOption, dateOption, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from '../lib/cli.mjs'
+import { choiceOption, dateOption, exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from '../lib/cli.mjs'
 import { loadConfig } from './config.mjs'
 import { readJsonFile, writeFileAtomic } from './files.mjs'
 import { createClient, CapReachedError, timestampToSnowflake, EXIT_CAP_REACHED } from './discord/api.mjs'
@@ -11,6 +11,8 @@ import { discoverChannels, fetchMembers } from './discord/discover.mjs'
 import { fetchMessages, appendMessages, loadManifest, saveManifest, highestSnowflake } from './discord/messages.mjs'
 import { runProcess } from './process/thread.mjs'
 import { runExtract, runMerge } from './extract/prep.mjs'
+
+exitOnCrash()
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -109,8 +111,17 @@ async function runExport(flags) {
   const client = await createClient(config)
 
   // Discovery (always runs in full — picks up new channels/threads on incremental runs)
-  const { allChannels, textChannels, forumChannels, threads } =
-    await discoverChannels(client, config, flags.channels.length ? flags.channels : null)
+  let discovered
+  try {
+    discovered = await discoverChannels(client, config, flags.channels.length ? flags.channels : null)
+  } catch (err) {
+    if (err instanceof CapReachedError) {
+      process.stderr.write('[wisdom] Cap reached during discovery\n')
+      process.exit(EXIT_CAP_REACHED)
+    }
+    throw err
+  }
+  const { allChannels, textChannels, forumChannels, threads } = discovered
 
   if (flags.dryRun) {
     process.stderr.write(
@@ -275,6 +286,12 @@ Extract options:
   Default mode is incremental: only threads whose last_message_id or message_count
   has changed since the last successful merge are re-extracted.
   --since, --all, and --force are mutually exclusive primary modes.
+
+Exit codes:
+  0  the command finished, or a dry run did
+  2  a refused command line, input that an earlier command should have written (run
+     that command first), or a crash
+  3  the request cap was reached; re-run to continue
 `
 
 const { command, flags } = parseArgs(process.argv)

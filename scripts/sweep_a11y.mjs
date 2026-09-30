@@ -62,7 +62,9 @@ import {
   splitStubs,
 } from "./lib/axe-scan.mjs";
 import { withBrowser } from "./lib/browser.mjs";
-import { numberOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+
+exitOnCrash();
 
 // The production scheme, read from the one registry check_a11y.mjs reads --
 // same bundle, same patches, same run options.  A survey run against a
@@ -95,7 +97,11 @@ if (cli.stopped === "help") {
     "usage: node scripts/sweep_a11y.mjs [--theme T] [--viewport V] [--filter SUBSTR]\n"
       + "                                   [--limit N] [--out FILE] [--resume] [--report]\n"
       + "                                   [--stock-axe] [--root-dir DIR] [--recycle-every N]\n"
-      + "                                   [-h, --help]",
+      + "                                   [-h, --help]\n\n"
+      + "Exit codes:\n"
+      + "  0  no accessibility violation was found\n"
+      + "  1  the sweep found at least one violation\n"
+      + "  2  a refused command line (a bad --theme or --viewport included), or a crash",
   );
 }
 

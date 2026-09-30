@@ -53,7 +53,7 @@
 // MSYS_NO_PATHCONV=1, or use PowerShell / cmd, where it passes through intact.
 //
 // Requires `build.bat` to have produced an up-to-date _site-offline/.
-// Exit codes: 0 identical, 1 fingerprints differ, 2 harness error.
+// Exit codes: 0 identical, 1 fingerprints differ, 2 a refused command line or a crash.
 
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -117,7 +117,12 @@ if (cli.stopped === "help") {
   printHelpAndExit(
     "usage: node scripts/check_a11y_fingerprint.mjs [--baseline SCHEME] " +
       "[--candidate SCHEME] [--root-dir DIR] [--theme T] [--viewport V] " +
-      "[--pages P,P] [--out FILE] [--unminified] [--patches NAME,NAME] [--list] [-h, --help]"
+      "[--pages P,P] [--out FILE] [--unminified] [--patches NAME,NAME] [--list] [-h, --help]\n" +
+      "\n" +
+      "Exit codes:\n" +
+      "  0  every fingerprint is identical, or --list printed the schemes\n" +
+      "  1  at least one fingerprint differs\n" +
+      "  2  the check could not run: a refused command line, or a crash"
   );
 }
 

@@ -20,15 +20,14 @@
 //     node scripts/check_impexp_parity.mjs
 //
 // Exit codes: 0 the same, or skipped outside CI; 1 a difference or a failed
-// built-in test; 2 the check itself failed, or found no Python in CI.
+// built-in test; 2 a refused command line, no Python in CI, or a crash.
 
 import { spawn, spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
-import { exitOnCrash } from "./lib/gate-probes.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
 exitOnCrash();
 
@@ -40,9 +39,14 @@ if (cli.stopped === "help") {
 
 Runs the built-in tests of scripts/impexp.mjs and scripts/impexp.py, and one
 sequence of commands through each, comparing exit codes, printed output and
-written files. Without Python 3.6 or later it reports the check skipped and
-exits 0, or fails when CI=true. Exit 0 the same or skipped, 1 a difference or
-a failed test, 2 the check itself failed or found no Python in CI.`);
+written files. Without Python 3.6 or later it reports the check skipped, or
+fails when CI=true.
+
+Exit codes:
+  0  the two editions agree, or the check was skipped because no Python was found
+  1  the editions differ, or a built-in test failed
+  2  the check could not run: a refused command line, no Python when CI=true, or a
+     crash`);
 }
 
 const TOOL = "check_impexp_parity";

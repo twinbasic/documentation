@@ -28,16 +28,15 @@
 //   node scripts/check_lint.mjs              # the whole scope: test.bat and CI
 //   node scripts/check_lint.mjs --staged     # the staged scripts: the hook
 //
-// Exit codes: 0 clean, 1 a finding, 2 Biome could not lint or, over the whole
-// scope, checked no script.
+// Exit codes: 0 clean, 1 a finding, 2 a refused command line, Biome could not lint or,
+// over the whole scope, checked no script, or a crash.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
-import { exitOnCrash } from "./lib/gate-probes.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 exitOnCrash();
@@ -55,7 +54,13 @@ Runs the pinned Biome over the tooling and the site's scripts, and fails on a
 warning as well as an error.
 
   --staged    lint only the scripts the next commit adds or changes
-  -h, --help  print this text and exit`;
+  -h, --help  print this text and exit
+
+Exit codes:
+  0  Biome found nothing (--staged: or no script is staged, so nothing was linted)
+  1  Biome found an error or a warning
+  2  the gate could not lint: a refused command line, git or Biome failing to run,
+     Biome checking no script over the whole scope, or a crash`;
 const cli = withUsageError(
   () =>
     parseCli(process.argv.slice(2), {

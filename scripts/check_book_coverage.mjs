@@ -20,8 +20,8 @@
 //     node scripts/check_book_coverage.mjs
 
 import { resolveBookChapters, bookCoverage, formatBookCoverage } from "../builder/book.mjs";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
-import { createProbes, exitOnCrash } from "./lib/gate-probes.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { createProbes } from "./lib/gate-probes.mjs";
 
 exitOnCrash();
 
@@ -30,7 +30,12 @@ const USAGE = `usage: node scripts/check_book_coverage.mjs [-h, --help]
 Checks that each of the book-coverage warnings of builder/book.mjs still fires,
 against pages and a manifest built in memory.
 
-  -h, --help  print this text and exit`;
+  -h, --help  print this text and exit
+
+Exit codes:
+  0  every probe passed
+  1  a probe failed
+  2  the gate could not run: a refused command line, or a crash`;
 
 if (withUsageError(() => parseCli(process.argv.slice(2), {
   options: { help: { type: "boolean", short: "h" } },

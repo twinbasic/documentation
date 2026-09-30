@@ -16,7 +16,8 @@
 //   node scripts/check_tree_fresh.mjs [--tree DIR] [--marker FILE] [--source DIR ...]
 //
 // Exits 0 when the tree is at least as new as its inputs, 1 when it is
-// stale (naming build.bat), 2 when the tree is absent.
+// stale (naming build.bat), 2 when the tree is absent, the command line is refused or
+// the check crashes.
 //
 // `--marker` names the file inside the tree whose mtime stands for the
 // build. It defaults to index.html, which every tree has EXCEPT
@@ -29,9 +30,11 @@
 import { readdirSync, statSync, existsSync } from "node:fs";
 import { join, resolve, relative, sep } from "node:path";
 
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { isOutputTree } from "../lib/markdown-files.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
+
+exitOnCrash();
 
 // Output trees live under docs/, so walking docs/ naively would compare
 // the build against itself and always pass. They are skipped at the top of
@@ -78,7 +81,13 @@ const cli = withUsageError(
 );
 if (cli.stopped === "help") {
   printHelpAndExit(
-    "usage: node scripts/check_tree_fresh.mjs [--tree DIR] [--marker FILE] [--source DIR ...] [-h, --help]",
+    "usage: node scripts/check_tree_fresh.mjs [--tree DIR] [--marker FILE] [--source DIR ...] [-h, --help]\n" +
+      "\n" +
+      "Exit codes:\n" +
+      "  0  the tree is at least as new as its inputs\n" +
+      "  1  the tree is stale; run build.bat\n" +
+      "  2  the check could not run: a refused command line, no built tree or marker file,\n" +
+      "     or a crash",
   );
 }
 let tree = cli.values.tree;

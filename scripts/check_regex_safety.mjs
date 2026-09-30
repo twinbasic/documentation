@@ -61,9 +61,9 @@
 //   node scripts/check_regex_safety.mjs --self-test # prove it still detects
 //
 // Exits 0 clean, 1 on an exponential regex, 2 when the gate itself failed
-// -- a file it could not parse, a regex recheck could not analyse, a probe
-// that came back wrong, or a throw. Each of those leaves something
-// unchecked, so it must not read as either a clean tree or a finding.
+// -- a refused command line, a file it could not parse, a regex recheck could
+// not analyse, a probe that came back wrong, or a throw. Each of those leaves
+// something unchecked, so it must not read as either a clean tree or a finding.
 
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
@@ -587,7 +587,15 @@ Refuses a regex literal in the tree that can backtrack exponentially.
 
   --census     list the full classification of every regex
   --self-test  prove the gate still detects an exponential regex
-  -h, --help   print this text and exit`;
+  -h, --help   print this text and exit
+
+Exit codes:
+  0  no regex can backtrack exponentially (--self-test: every probe was classified
+     correctly)
+  1  a regex can backtrack exponentially
+  2  the gate could not run, and 2 wins over 1: a refused command line, a file it
+     could not parse, a regex it could not analyse, a probe that came back wrong
+     (also --self-test), or a crash`;
 
 const { values } = withUsageError(() => parseCli(process.argv.slice(2), {
   options: {
