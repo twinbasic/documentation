@@ -47,7 +47,7 @@ node eval/run_case.mjs --corpus <corpus> --site <snapshot> --protocol repo \
 ```
 
 `build_corpus.mjs` empties `--dest` before it writes, so it refuses a `--dest` that is or
-contains the repository root, the current folder or `--src`, on stderr with exit 2.
+contains the repository root, the current folder or `--repo`, on stderr with exit 2.
 `run_case.mjs` likewise refuses a `--timeout` (minutes) that is not a number greater than 0
 and at most 35791, and a
 `--protocol` other than `repo` or `site`.

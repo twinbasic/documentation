@@ -1138,6 +1138,27 @@ follow.
 
 **Verify.** `check_cli.mjs`; `git grep` finds no old spelling in the documents or scripts.
 
+**Landed** on the owner's choices of 2026-09-30. `check_a11y_fingerprint`'s file-taking
+`--json FILE` is `--out FILE`, as in `census_attributes`, `build_package_api`, `sweep_a11y`
+and `run_case`. The package-tree `--src <dir>` of `census_attributes` and `build_package_api` is
+`--exported <dir>`. The survey found a third meaning the review had missed: in
+`eval/build_corpus.mjs` and `eval/nav_hops.mjs`, `--src` names a repository root that holds
+`docs/`, so a reader following `tbdocs` would pass `docs` and get `docs/docs`. Both now take
+`--repo`, and `build_corpus`'s `--dest` refusal names `--repo`. The owner also asked for the
+three `perf/` rigs, which are outside the review's scope and which no gate runs.
+`probe-axe-dom` and `probe-axe-scaling` take `--out FILE`. `ab-axe` already had `--out DIR`
+for its output root, and its `--json` did nothing (see Found), so the flag is deleted there.
+`--json` is now always a boolean that prints to stdout, and `--src` is always a docs root
+(`tbdocs`, `check_publish_policy`). An old spelling is refused as an unknown option, with no
+hint. Tools.md and `eval/README.md` follow. WIP.A11y.md and WIP.Harness.md cite neither
+spelling, so they are unchanged. `builder/REVIEW-USECASES-16969e5.md:329` keeps `--src`,
+because it is a record of that round. `check_cli: 816 probes, all pass` (810 before):
+eight re-pointed cases and two re-pointed `build_corpus` refusals, one case per renamed option
+showing that the old spelling is refused, and `check_a11y_fingerprint --out` without a value.
+The `git grep` for the old spellings finds only those refusal cases. `compare_trees`: Tools
+online and offline, the search data and `book.html`. Lint stays at `Checked 172 files`
+(`perf/` is not linted). On the owner's next push, CI prints `check_cli: 816 probes, all pass`.
+
 ### C74 — `scripts: one exit-code table per tool, and no code with two meanings`
 
 **Decision (e).** Each tool's usage text and its Tools.md entry get one table of exit codes.
@@ -1536,6 +1557,11 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   takes the second. `tbdocs`' `builder/command-line.mjs` changed too, and the empty-value
   case exists only for a tool with a value option (26 of 45), so it landed as `builder,
   scripts, book, eval, wisdom: a refused command line exits 2`. See C72's Landed note.
+- **C73: `--src` had a third meaning, and `perf/` came in.** The entry renames only the
+  review's three options. `eval/build_corpus.mjs` and `eval/nav_hops.mjs` also take a `--src`,
+  meaning a repository root, and at the owner's choice (2026-09-30) they take `--repo` now. The
+  three `perf/` rigs' `--json FILE` changed too, so C73 landed as `scripts, eval, perf: one
+  meaning each for --json and --src`. See C73's Landed note.
 
 ## Found while implementing
 
@@ -1822,6 +1848,10 @@ Defects the review did not have, found by building something this plan asks for.
 - **`wisdom/PLAN-3.md` listed `--threads <dir>` for `extract`**, which takes `--in`; ignored
   before, refused once C72 lands. Fixed in `builder, scripts, book, eval, wisdom: a refused
   command line exits 2`.
+- **`perf/ab-axe.mjs`'s `--json FILE` did nothing**, found while landing C73: `9c722f17`
+  removed the write it fed and left the flag, so `jsonOut` was set and never read. The rig
+  writes `per-rule-measures.json` into its `--out DIR`. The flag is deleted, at the owner's
+  choice. Fixed in `scripts, eval, perf: one meaning each for --json and --src`.
 
 ## Open questions
 

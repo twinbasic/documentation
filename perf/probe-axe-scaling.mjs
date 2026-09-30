@@ -28,7 +28,7 @@
 //   node probe-axe-scaling.mjs
 //   node probe-axe-scaling.mjs --targets 2000,4000,8000,16000 --iters 3
 //   node probe-axe-scaling.mjs --rules color-contrast      # curve for one rule
-//   node probe-axe-scaling.mjs --json scaling.json
+//   node probe-axe-scaling.mjs --out scaling.json
 //   node probe-axe-scaling.mjs --targets 2380,9475 --cpu-profile prof/   # Phase 2
 //
 // Requires build.bat to have produced an up-to-date docs/_site-offline/.
@@ -79,7 +79,7 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--rules') rulesArg = args[++i];
   else if (a === '--scheme') schemeArg = args[++i];
   else if (a === '--root-dir') rootDir = resolve(args[++i]);
-  else if (a === '--json') jsonOut = args[++i];
+  else if (a === '--out') jsonOut = args[++i];
   else if (a === '--keep') keep = true;
   else if (a === '--cpu-profile') cpuProfileDir = resolve(args[++i]);
   else if (a === '--cpu-sampling') cpuSampling = parseInt(args[++i], 10);
@@ -88,7 +88,7 @@ for (let i = 0; i < args.length; i++) {
     console.error('usage: node probe-axe-scaling.mjs [--page P] [--targets N,N,N] [--iters N]');
     console.error('                                  [--rules a,b | --scheme NAME] [--theme T]');
     console.error('                                  [--viewport V]');
-    console.error('                                  [--json FILE] [--keep] [--no-affinity]');
+    console.error('                                  [--out FILE] [--keep] [--no-affinity]');
     console.error('                                  [--cpu-profile DIR] [--cpu-sampling US]');
     console.error('');
     console.error('  --cpu-profile writes one .cpuprofile per size. Comparing the bottom-up');

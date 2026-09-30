@@ -45,7 +45,7 @@
 //   --patches NAME,NAME apply source patches to the CANDIDATE bundle
 //   --unminified        inject axe.js rather than axe.min.js (the source
 //                       patches need the unminified bundle)
-//   --json FILE         write both fingerprint lists + the diff
+//   --out FILE          write both fingerprint lists + the diff
 //   --list              print the scheme registry and exit
 //
 // Git Bash on Windows rewrites a leading-slash argument into a Windows path,
@@ -87,7 +87,7 @@ const cli = withUsageError(
         theme: { type: "string", default: "both" },
         viewport: { type: "string", default: "both" },
         pages: { type: "string" },
-        json: { type: "string" },
+        out: { type: "string" },
         unminified: { type: "boolean", default: false },
         patches: { type: "string", default: "" },
         list: { type: "boolean" },
@@ -117,7 +117,7 @@ if (cli.stopped === "help") {
   printHelpAndExit(
     "usage: node scripts/check_a11y_fingerprint.mjs [--baseline SCHEME] " +
       "[--candidate SCHEME] [--root-dir DIR] [--theme T] [--viewport V] " +
-      "[--pages P,P] [--json FILE] [--unminified] [--patches NAME,NAME] [--list] [-h, --help]"
+      "[--pages P,P] [--out FILE] [--unminified] [--patches NAME,NAME] [--list] [-h, --help]"
   );
 }
 
@@ -127,7 +127,7 @@ let rootDir = cli.values.rootDir;
 let themeArg = cli.values.theme;
 let viewportArg = cli.values.viewport;
 let pagesArg = cli.values.pages !== undefined ? cli.values.pages.split(",") : null;
-let jsonOut = cli.values.json ?? null;
+let outFile = cli.values.out ?? null;
 let unminified = cli.values.unminified;
 let patchesArg = cli.values.patches;
 
@@ -284,9 +284,9 @@ async function main() {
     }
   }
 
-  if (jsonOut) {
+  if (outFile) {
     writeFileSync(
-      resolve(jsonOut),
+      resolve(outFile),
       JSON.stringify(
         {
           axeCore: axeVersion(),
@@ -299,7 +299,7 @@ async function main() {
         2
       )
     );
-    console.log(`\nwrote ${resolve(jsonOut)}`);
+    console.log(`\nwrote ${resolve(outFile)}`);
   }
 
   if (mismatches === 0) {

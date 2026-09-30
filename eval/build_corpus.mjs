@@ -8,7 +8,7 @@
 // because a capable evaluator that quietly reads the source measures how good
 // the source is, reports a clean pass, and tells you nothing about the docs.
 //
-//     node eval/build_corpus.mjs [--dest <path>] [--src <path>] [--quiet]
+//     node eval/build_corpus.mjs [--dest <path>] [--repo <path>] [--quiet]
 //
 // See eval/README.md for how a round uses it.
 
@@ -103,11 +103,11 @@ function isInside(outer, inner) {
 
 // build() empties `dest` before it writes anything, so a `dest` that is or
 // contains a folder the tool runs from or reads would delete it.
-function refuseDest(dest, src) {
+function refuseDest(dest, repo) {
   const doomed = [
     ["the repository root", REPO_ROOT],
     ["the current folder", process.cwd()],
-    [`--src ${src}`, src],
+    [`--repo ${repo}`, repo],
   ];
   for (const [what, folder] of doomed) {
     if (isInside(dest, path.resolve(folder))) {
@@ -120,7 +120,7 @@ function parseArgs(argv) {
   const { values } = withUsageError(() => {
     const cli = parseCli(argv, {
       options: {
-        src: { type: "string" },
+        repo: { type: "string" },
         dest: { type: "string" },
         quiet: { type: "boolean", default: false },
         help: { type: "boolean", short: "h" },
@@ -129,12 +129,12 @@ function parseArgs(argv) {
       stopAt: ["help"],
     });
     if (cli.stopped !== "help" && "dest" in cli.values) {
-      refuseDest(path.resolve(cli.values.dest), "src" in cli.values ? path.resolve(cli.values.src) : REPO_ROOT);
+      refuseDest(path.resolve(cli.values.dest), "repo" in cli.values ? path.resolve(cli.values.repo) : REPO_ROOT);
     }
     return cli;
   });
   return {
-    src: "src" in values ? path.resolve(values.src) : REPO_ROOT,
+    repo: "repo" in values ? path.resolve(values.repo) : REPO_ROOT,
     dest: "dest" in values ? path.resolve(values.dest) : null,
     quiet: values.quiet,
     help: values.help,
@@ -162,24 +162,24 @@ function classify(rel) {
   return { kind: "stubbed", ext: ext || base };
 }
 
-function* walk(dir, srcRoot) {
+function* walk(dir, repoRoot) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const abs = path.join(dir, entry.name);
-    const rel = path.relative(srcRoot, abs).split(path.sep).join("/");
+    const rel = path.relative(repoRoot, abs).split(path.sep).join("/");
     if (isExcluded(rel)) continue;
-    if (entry.isDirectory()) yield* walk(abs, srcRoot);
+    if (entry.isDirectory()) yield* walk(abs, repoRoot);
     else if (entry.isFile()) yield { abs, rel };
   }
 }
 
-function build({ src, dest, quiet }) {
+function build({ repo, dest, quiet }) {
   fs.rmSync(dest, { recursive: true, force: true });
   fs.mkdirSync(dest, { recursive: true });
 
   const counts = { readable: new Map(), stubbed: new Map(), binary: 0, withheld: [] };
   const bump = (m, k) => m.set(k, (m.get(k) ?? 0) + 1);
 
-  for (const { abs, rel } of walk(src, src)) {
+  for (const { abs, rel } of walk(repo, repo)) {
     const c = classify(rel);
     if (c.kind === "binary") { counts.binary++; continue; }
     if (c.kind === "withheld") { counts.withheld.push({ rel, why: c.why }); continue; }
@@ -233,7 +233,7 @@ function report(dest, counts) {
 const opts = parseArgs(process.argv.slice(2));
 if (opts.help || !opts.dest) {
   printHelpAndExit(
-    "Usage: node eval/build_corpus.mjs --dest <path> [--src <path>] [--quiet] [-h, --help]\n\n" +
+    "Usage: node eval/build_corpus.mjs --dest <path> [--repo <path>] [--quiet] [-h, --help]\n\n" +
     "Mirrors the repository with every non-prose file replaced by an unreadable\n" +
     "stub, so a documentation evaluation cannot silently read the implementation.\n" +
     "See eval/README.md.",

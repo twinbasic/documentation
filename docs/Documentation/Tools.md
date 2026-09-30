@@ -596,7 +596,7 @@ Value-equivalence check for the vendored axe source patches. Builds the same col
     node scripts/check_a11y_fingerprint.mjs [--candidate <scheme>] [--baseline <scheme>]
                                             [--patches <name>] [--unminified]
                                             [--root-dir <path>] [--pages <list>]
-                                            [--theme <t>] [--viewport <v>] [--json]
+                                            [--theme <t>] [--viewport <v>] [--out <file>]
 
 The gate for any change to *what the scan runs*. axe is the site's correctness oracle, which makes it dangerous to tune: a change can make axe see **less** and still report a clean pass. That nearly shipped once --- blocking `just-the-docs.js` looked like a 130 ms win and quietly dropped the colour-contrast node count on one page from 54 to 2. This runs the full page × theme × viewport matrix twice, once under each of two named schemes from `axe-scan.mjs`'s registry, against one build in one process, and diffs the findings audit by audit (violations by `ruleId:nodeCount`, incomplete by rule-id set).
 
@@ -651,7 +651,7 @@ Measures Inter's advance widths in a browser and writes `builder/inter-metrics.j
 
 Writes `builder/package-api.json`: every type the packages of a twinBASIC install declare, public or not, and the public members of each with their kinds. The [symbol index](Building#the-symbol-index) takes its entries from the pages and this file annotates them --- the kind of a member documented on a page of its own, an enumeration's values, the interface a CoClass's members are declared on --- and says which public symbols no page documents. Development tooling like [`build_dot_metrics.mjs`](#build-dot-metrics): the JSON is committed and the build never runs the generator, because running it needs a twinBASIC install, so it is Windows-only in the way [`census_attributes.mjs`](#census-attributes) is. Run it when the reference is re-indexed against a newer build, and commit the result with the pages.
 
-It shares [`census_attributes.mjs`](#census-attributes)'s export and cache, and takes the same `--ide`, `--src`, `--cache` and `--refresh` flags; `--out` writes elsewhere. Packages are keyed by the name code uses for them --- the project name, which is not always the folder's: TwinBasicAssertions is `Assert`, and the three CEF builds are one `cefPackage`, whose APIs the tool checks are identical. Exits 0 when written or up to date, 1 when `--check` finds the file stale, and 2 when the install or an export cannot be read.
+It shares [`census_attributes.mjs`](#census-attributes)'s export and cache, and takes the same `--ide`, `--exported`, `--cache` and `--refresh` flags; `--out` writes elsewhere. Packages are keyed by the name code uses for them --- the project name, which is not always the folder's: TwinBasicAssertions is `Assert`, and the three CEF builds are one `cefPackage`, whose APIs the tool checks are identical. Exits 0 when written or up to date, 1 when `--check` finds the file stale, and 2 when the install or an export cannot be read.
 
 ### convert_em_dash_separators.mjs
 {: #convert-em-dash-separators }
@@ -1057,7 +1057,7 @@ It also writes a key naming the `Attributes.md` line each probe came from, besid
 ### census_attributes.mjs
 {: #census-attributes }
 
-    node scripts/census_attributes.mjs [--ide <install>] [--src <dir>] [--cache <dir>]
+    node scripts/census_attributes.mjs [--ide <install>] [--exported <dir>] [--cache <dir>]
                                        [--refresh] [--samples] [--attr <name>]
                                        [--json] [--out <file>] [--dump-sites <file>] [--quiet]
 
@@ -1072,7 +1072,7 @@ Grouping is by enclosing construct *and* declaration keyword, because the keywor
 | Flag | Effect |
 |---|---|
 | `--ide <install>` | The install root to census. Defaults to `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_*` on the Desktop. |
-| `--src <dir>` | Census an already-exported tree and skip the export entirely. |
+| `--exported <dir>` | Census an already-exported tree and skip the export entirely. |
 | `--cache <dir>` | Where exports are kept. Defaults to a per-build folder under the system temp directory. |
 | `--refresh` | Re-export even when the cache already holds this build. |
 | `--samples` | Also census `projects/` and `addins/`, not only `packages/`. |

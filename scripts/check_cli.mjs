@@ -423,9 +423,11 @@ const CASES = [
   { tool: "scripts/check_examples.mjs", args: ["--jobs"], exit: 2, stderr: "check_examples: --jobs needs a value\n" },
   { tool: "scripts/check_examples.mjs", args: ["--port", "--json"], exit: 2, stderr: "check_examples: --port needs a value\n" },
   { tool: "scripts/census_attributes.mjs", args: ["--out"], exit: 2, stderr: "--out needs a value\n" },
-  { tool: "scripts/census_attributes.mjs", args: ["--src", "--json"], exit: 2, stderr: "--src needs a value\n" },
+  { tool: "scripts/census_attributes.mjs", args: ["--exported", "--json"], exit: 2, stderr: "--exported needs a value\n" },
+  { tool: "scripts/census_attributes.mjs", args: ["--src", "x"], exit: 2, stderr: "unknown option: --src\n" },
   { tool: "scripts/build_package_api.mjs", args: ["--out"], exit: 2, stderr: "--out needs a value\n" },
-  { tool: "scripts/build_package_api.mjs", args: ["--src", "--check"], exit: 2, stderr: "--src needs a value\n" },
+  { tool: "scripts/build_package_api.mjs", args: ["--exported", "--check"], exit: 2, stderr: "--exported needs a value\n" },
+  { tool: "scripts/build_package_api.mjs", args: ["--src", "x"], exit: 2, stderr: "unknown option: --src\n" },
 
   // Recorded in C48, for the a11y and diagram tools. A value flag given
   // nothing, at the end or as "", or followed by another flag, is refused.
@@ -443,6 +445,8 @@ const CASES = [
   { tool: "scripts/check_a11y_fingerprint.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_a11y_fingerprint\.mjs / },
   { tool: "scripts/check_a11y_fingerprint.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
   { tool: "scripts/check_a11y_fingerprint.mjs", args: ["--pages"], exit: 2, stderr: "--pages needs a value\n" },
+  { tool: "scripts/check_a11y_fingerprint.mjs", args: ["--out"], exit: 2, stderr: "--out needs a value\n" },
+  { tool: "scripts/check_a11y_fingerprint.mjs", args: ["--json", "x"], exit: 2, stderr: "unknown option: --json\n" },
   { tool: "scripts/check_a11y_fingerprint.mjs", args: ["--theme", "drak"], exit: 2, stderr: 'unknown --theme "drak"; expected one of light, dark or both\n' },
   { tool: "scripts/check_axe_patch_equiv.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_axe_patch_equiv\.mjs / },
   { tool: "scripts/check_axe_patch_equiv.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
@@ -581,16 +585,18 @@ const CASES = [
   { tool: "eval/build_corpus.mjs", args: ["--help", "--bogus"], exit: 0, stdout: /^Usage: node eval\/build_corpus\.mjs --dest <path> / },
   { tool: "eval/build_corpus.mjs", args: ["--quiet=1"], exit: 2, stderr: "--quiet takes no value\n" },
   { tool: "eval/build_corpus.mjs", args: ["-hq"], exit: 0, stdout: /^Usage: node eval\/build_corpus\.mjs --dest <path> / },
-  { tool: "eval/build_corpus.mjs", args: ["--src"], exit: 2, stderr: "--src needs a value\n" },
+  { tool: "eval/build_corpus.mjs", args: ["--repo"], exit: 2, stderr: "--repo needs a value\n" },
+  { tool: "eval/build_corpus.mjs", args: ["--src", "x"], exit: 2, stderr: "unknown option: --src\n" },
   { tool: "eval/nav_hops.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node eval\/nav_hops\.mjs \[--from <page>\] / },
   { tool: "eval/nav_hops.mjs", args: [], exit: 2, stderr: /^Usage: node eval\/nav_hops\.mjs \[--from <page>\] / },
   { tool: "eval/nav_hops.mjs", args: ["--from", "nope.md", "x"], exit: 2, stderr: /^no start page: .*[\\/]nope\.md\n$/ },
-  { tool: "eval/nav_hops.mjs", args: ["--src", "nowhere", "--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
-  { tool: "eval/nav_hops.mjs", args: ["--src", "nowhere", "--", "--bogus"], exit: 2, stderr: /^no start page: .*[\\/]nowhere[\\/]docs[\\/]index\.md\n$/ },
-  { tool: "eval/nav_hops.mjs", args: ["--help=1", "--src", "nowhere"], exit: 2, stderr: "--help takes no value\n" },
-  { tool: "eval/nav_hops.mjs", args: ["--from", "--src", "x"], exit: 2, stderr: "--from needs a value\n" },
+  { tool: "eval/nav_hops.mjs", args: ["--repo", "nowhere", "--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "eval/nav_hops.mjs", args: ["--repo", "nowhere", "--", "--bogus"], exit: 2, stderr: /^no start page: .*[\\/]nowhere[\\/]docs[\\/]index\.md\n$/ },
+  { tool: "eval/nav_hops.mjs", args: ["--help=1", "--repo", "nowhere"], exit: 2, stderr: "--help takes no value\n" },
+  { tool: "eval/nav_hops.mjs", args: ["--from", "--repo", "x"], exit: 2, stderr: "--from needs a value\n" },
+  { tool: "eval/nav_hops.mjs", args: ["--src", "x", "y"], exit: 2, stderr: "unknown option: --src\n" },
   { tool: "eval/nav_hops.mjs", args: ["--", "C:/x"], exit: 2, stderr: "these patterns arrived as Windows paths: C:/x\nGit Bash converted them. Run with MSYS_NO_PATHCONV=1 set, or from another shell.\n" },
-  { tool: "eval/nav_hops.mjs", args: ["--src"], exit: 2, stderr: "--src needs a value\n" },
+  { tool: "eval/nav_hops.mjs", args: ["--repo"], exit: 2, stderr: "--repo needs a value\n" },
   { tool: "eval/nav_hops.mjs", args: ["x", "--from"], exit: 2, stderr: "--from needs a value\n" },
   { tool: "eval/run_case.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node eval\/run_case\.mjs --corpus <dir> / },
   { tool: "eval/run_case.mjs", args: [], exit: 2, stderr: /^Usage: node eval\/run_case\.mjs --corpus <dir> / },
@@ -942,7 +948,7 @@ bad("eval/nav_hops.mjs", ["("], REGEX_REASON("<url-regex>", "("));
 bad("eval/nav_hops.mjs", ["Reference", "[a-"], REGEX_REASON("<url-regex>", "[a-"));
 
 // build_corpus empties its --dest before it writes, so it refuses one that is or
-// contains the repository root, the folder it runs from or --src, checked in
+// contains the repository root, the folder it runs from or --repo, checked in
 // that order. Every one of these stops at the command line. Each --dest is a
 // folder that must never be emptied.
 {
@@ -953,8 +959,8 @@ bad("eval/nav_hops.mjs", ["Reference", "[a-"], REGEX_REASON("<url-regex>", "[a-"
   bad(tool, ["--dest", path.dirname(REPO_ROOT)], refuse(literal(path.dirname(REPO_ROOT)), "the repository root"));
   bad(tool, ["--dest", "."], refuse(".+", "the current folder"));
   bad(tool, ["--dest", ".."], refuse(".+", "the current folder"));
-  bad(tool, ["--src", path.join(docs, "Reference"), "--dest", docs], refuse(literal(docs), literal(`--src ${path.join(docs, "Reference")}`)));
-  bad(tool, ["--src", docs, "--dest", docs], refuse(literal(docs), literal(`--src ${docs}`)));
+  bad(tool, ["--repo", path.join(docs, "Reference"), "--dest", docs], refuse(literal(docs), literal(`--repo ${path.join(docs, "Reference")}`)));
+  bad(tool, ["--repo", docs, "--dest", docs], refuse(literal(docs), literal(`--repo ${docs}`)));
 }
 
 // wisdom's command in these is never a real one, so that none can start an

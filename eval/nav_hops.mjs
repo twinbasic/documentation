@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // The navigation channel, measured from the links rather than from a report.
 //
-//     node eval/nav_hops.mjs [--from <page>] [--src <root>] <url-regex> [...]
+//     node eval/nav_hops.mjs [--from <page>] [--repo <root>] <url-regex> [...]
 //
 // Breadth-first from a start page --- docs/index.md, the published welcome page,
 // unless --from names another, such as README.md for a repo-protocol case ---
@@ -40,7 +40,7 @@ import { REPO_ROOT } from "../lib/repo-paths.mjs";
 const SITE_HOST = /^https?:\/\/docs\.twinbasic\.com/i;
 
 const USAGE =
-  "Usage: node eval/nav_hops.mjs [--from <page>] [--src <root>] [-h, --help] <url-regex> [...]\n\n" +
+  "Usage: node eval/nav_hops.mjs [--from <page>] [--repo <root>] [-h, --help] <url-regex> [...]\n\n" +
   "Shortest path by links from the start page (default docs/index.md) to the first page\n" +
   "whose permalink matches each regex. A regex that starts with a dash goes after --.\n" +
   "See eval/README.md.";
@@ -50,7 +50,7 @@ function parseArgs(argv) {
     const cli = parseCli(argv, {
       options: {
         from: { type: "string", default: "docs/index.md" },
-        src: { type: "string" },
+        repo: { type: "string" },
         help: { type: "boolean", short: "h" },
       },
       positionals: { min: 0, max: Infinity },
@@ -61,7 +61,7 @@ function parseArgs(argv) {
   });
   return {
     from: values.from,
-    src: "src" in values ? path.resolve(values.src) : REPO_ROOT,
+    repo: "repo" in values ? path.resolve(values.repo) : REPO_ROOT,
     help: values.help,
     targets: positionals,
     patterns,
@@ -73,12 +73,12 @@ const pageKey = (url) =>
   decodeURI(url.replace(/[#?].*$/, "").replace(/\.(html|md)$/i, "").replace(/\/+$/, "")).toLowerCase() || "/";
 
 /** Every page under docs/: permalink by file, and file by permalink or redirect alias. */
-async function loadPages(src) {
-  // The walker comes from this repository, never from --src: a corpus built by
+async function loadPages(repo) {
+  // The walker comes from this repository, never from --repo: a corpus built by
   // eval/build_corpus.mjs holds every script only as an unreadable stub, so
   // importing it from there failed with "markdownFiles is not a function".
   const { markdownFiles } = await import(pathToFileURL(path.join(REPO_ROOT, "lib/markdown-files.mjs")).href);
-  const docs = path.join(src, "docs");
+  const docs = path.join(repo, "docs");
   const urlOf = new Map();
   const byKey = new Map();
   const aliases = [];
@@ -138,12 +138,12 @@ async function main(argv) {
       "Git Bash converted them. Run with MSYS_NO_PATHCONV=1 set, or from another shell.");
     return 2;
   }
-  const start = path.resolve(o.src, o.from);
+  const start = path.resolve(o.repo, o.from);
   if (!fs.existsSync(start)) {
     console.error(`no start page: ${start}`);
     return 2;
   }
-  const pages = await loadPages(o.src);
+  const pages = await loadPages(o.repo);
 
   const prev = new Map([[start, null]]);
   const queue = [start];
@@ -157,7 +157,7 @@ async function main(argv) {
     }
   }
 
-  const show = (f) => path.relative(o.src, f).split(path.sep).join("/");
+  const show = (f) => path.relative(o.repo, f).split(path.sep).join("/");
   let unreachable = 0;
   for (const [i, t] of o.targets.entries()) {
     const re = o.patterns[i];

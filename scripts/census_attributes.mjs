@@ -76,7 +76,7 @@ const { values } = withUsageError(() =>
   parseCli(process.argv.slice(2), {
     options: {
       ide: { type: "string" },
-      src: { type: "string" },
+      exported: { type: "string" },
       cache: { type: "string" },
       attr: { type: "string" },
       out: { type: "string" },
@@ -99,7 +99,7 @@ declaration keyword and by enclosing construct.
 
   --ide <path>         twinBASIC install root (default: $TB_IDE, else the
                        newest %USERPROFILE%/Desktop/twinBASIC_IDE_BETA_*)
-  --src <dir>          census an already-exported tree and do not export
+  --exported <dir>     census an already-exported tree and do not export
   --cache <dir>        where exports are kept (default: %TEMP%/tb-census/beta-<n>)
   --refresh            re-export even if the cache already has this build
   --samples            also census projects/ and addins/, not just packages/
@@ -500,21 +500,21 @@ function collectTwinFiles(dir, out = []) {
 
 function main() {
   let projects, install = null, build = "n/a";
-  const srcDir = values.src;
+  const exportedDir = values.exported;
 
-  if (srcDir) {
-    if (!existsSync(srcDir) || !statSync(srcDir).isDirectory()) die(2, `not a directory: ${srcDir}`);
-    install = srcDir;
-    projects = readdirSync(srcDir, { withFileTypes: true })
+  if (exportedDir) {
+    if (!existsSync(exportedDir) || !statSync(exportedDir).isDirectory()) die(2, `not a directory: ${exportedDir}`);
+    install = exportedDir;
+    projects = readdirSync(exportedDir, { withFileTypes: true })
       .filter((e) => e.isDirectory())
       .flatMap((e) => {
-        const g = path.join(srcDir, e.name);
+        const g = path.join(exportedDir, e.name);
         const inner = readdirSync(g, { withFileTypes: true }).filter((x) => x.isDirectory());
         return inner.length
           ? inner.map((x) => ({ name: x.name, dir: path.join(g, x.name) }))
           : [{ name: e.name, dir: g }];
       });
-    if (!projects.length) projects = [{ name: path.basename(srcDir), dir: srcDir }];
+    if (!projects.length) projects = [{ name: path.basename(exportedDir), dir: exportedDir }];
   } else {
     install = findInstall();
     build = buildNumberOf(install);
