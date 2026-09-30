@@ -30,6 +30,15 @@ The [**Dim**](Dim), [**Private**](Private), [**Public**](Public), [**ReDim**](Re
 
 The following example illustrates how **Dim** is used to declare an array with the type `Form1`. No instance of `Form1` actually exists. **Set** then assigns references to new instances of `Form1` to the `myChildForms` variable. Such code might be used to create child forms in an MDI application.
 
+```tb hidden
+' Context for the sample below: the form it creates four of. In a real project
+' the designer declares this class; here it is written out so the sample has the
+' type it names.
+Class Form1
+    Inherits Form
+End Class
+```
+
 ```tb check_build
 Dim myChildForms(1 To 4) As Form1
 Set myChildForms(1) = New Form1
