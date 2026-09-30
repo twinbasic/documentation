@@ -963,6 +963,19 @@ remove more.
 
 **Verify.** The tree comparison identical, every formatted date included.
 
+**Landed** at the owner's choice (2026-09-30): `formatDate`, `parseDate` and the strftime
+tables moved word for word into `builder/strftime.mjs`, which exports `formatDate`, and
+Builder.md's module map has a row for it. The verification the entry names sees nothing:
+`renderFooterLegal` formats a date only for a page whose frontmatter sets
+`last_modified_date`, no page does, and the builder never sets it (PLAN-4.md's D14), so no
+build calls the formatter. The oracle is the kit's `c78-oracle.mjs`, which cuts HEAD's
+`formatDate` out of `template.mjs` and runs it beside the module's over 155,416 cases (a
+date every 7 h 13 min 17 s from 1999 to 2030, four strings, five non-dates, four formats
+holding every token) and two unknown tokens: none differ, and with `%j`'s padding faulted
+957 do. The tree comparison is identical but for Builder.md's page and the search data.
+Moving it showed that `%j` pads to two digits and counts across DST in local time; C78a
+fixes it.
+
 ### C79 — `builder: book.mjs as a resolver, an assembler and a coverage check`
 
 Its §A resolver, its §B–F assembly of `book.html` (with `rewriteBookHrefs`) and its §G
