@@ -1105,6 +1105,17 @@ Measured by a Sonnet agent, per file through `biome format --stdin-file-path`: C
 lines fall from 20,819 to 18,300, over the same 162 files. Biome reports no unused
 suppression; lint `Checked 185 files`, clean.
 
+### C85b — `test: search.test reads KIND_WORDS as a literal, not as JSON`
+
+Found in C86: `extractKindWords` in `test/search.test.mjs` cut `KIND_WORDS = [...]` out of
+`eval/site_search.mjs` and `just-the-docs.js` and read it with `JSON.parse`, so the test
+depended on the literal's layout, and the formatter's trailing comma failed it with a
+`SyntaxError`.
+
+**Landed.** At the owner's choice the extractor evaluates the literal with `new Function`, as
+`extractExactName` beside it already does. The test passes on the one-line lists and on the
+formatted ones (checked by applying C86 on top before committing).
+
 ### C86 — `format: apply the formatter`
 
 Mechanical, and nothing else.

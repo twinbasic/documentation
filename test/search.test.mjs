@@ -604,7 +604,7 @@ describe("reader-intent guard: online client, offline client, eval replica", () 
   function extractKindWords(src, label) {
     const m = src.match(/KIND_WORDS = (\[[^\]]*\])/);
     assert.ok(m, `${label} has no KIND_WORDS`);
-    return JSON.parse(m[1].replaceAll("'", '"'));
+    return new Function(`return ${m[1]};`)();
   }
 
   test("the online client and the eval replica write names and kind words the same way", () => {
