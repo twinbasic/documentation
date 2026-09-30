@@ -1,6 +1,6 @@
 // Adapted verbatim from pagedjs-cli 0.4.3 src/postprocesser.js
 // (https://github.com/pagedjs/pagedjs-cli) -- MIT, Copyright (c) 2018
-// Adam Hyde. Pulled in directly so we no longer need the pagedjs-cli
+// Adam Hyde. Pulled in directly to avoid the pagedjs-cli
 // dependency.
 //
 // setTrimBoxes(pdfDoc, pages) -- sets the PDF /TrimBox on each page

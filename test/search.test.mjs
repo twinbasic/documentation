@@ -5,9 +5,9 @@
 // "Example", ...) back into the member they belong to instead of letting
 // them dilute the index with short, generic-titled entries.
 //
-// Before this file, nothing checked what a search entry *contains* --
-// only URL coverage was checked (`checkSearch`, which strips `#` and so
-// never saw section granularity at all).
+// The build's own check covers only URL coverage (`checkSearch`, which strips
+// `#` and so never sees section granularity); this file checks what a search
+// entry *contains*.
 //
 // Runs with a bare `node --test test/search.test.mjs`, unlike test/addin's
 // scenarios: it exercises pure functions over synthetic pages, needs no

@@ -412,9 +412,9 @@ async function split(batch, lane, why) {
  * built on its own and the rest without it, two builds where halving pays two
  * for every level. With no sample of the batch named, halve. Either way a
  * crash can need several samples at once, and then no part crashes by itself
- * -- the named sample and the rest both build, or both halves do. That used to
- * end with every sample of the batch counted as compiling; `together` finds the
- * samples the crash needs instead.
+ * -- the named sample and the rest both build, or both halves do. Counting
+ * every sample of the batch as compiling would be wrong there; `together` finds
+ * the samples the crash needs instead.
  *
  * The result is marked `fromCrash`, because a part that crashed may come back
  * with nothing in `crashed` -- its crash needed several samples too -- and
@@ -490,8 +490,8 @@ async function together(batch, a, b, lane) {
  * diagnostic is the subtler of the two: the sample that caused it may have no
  * diagnostic of its own at all -- a generic instantiated with a type the
  * project does not have reports inside the PACKAGE's source, against the
- * generic's own type parameter -- so before this the sample was counted as
- * compiling while the run failed with a row naming no page.
+ * generic's own type parameter -- so without this the sample is counted as
+ * compiling while the run fails with a row naming no page.
  */
 export async function runBatch(batch, lane) {
   let result = await lane.build(batch);
@@ -854,8 +854,8 @@ export async function runProbes(say) {
   // of a build's samples and says whether the compiler goes down, and which of
   // them the report names. Each shape a crash can take has to end in exactly
   // one finding, on the samples it needs -- never in a batch whose samples all
-  // count as compiling, which is what a crash that needs two of them used to
-  // become once halving had separated them.
+  // count as compiling, which is what a crash that needs two of them would
+  // become once halving has separated them.
   const fakeLane = (crash) => {
     const lane = {
       found: [], builds: 0,

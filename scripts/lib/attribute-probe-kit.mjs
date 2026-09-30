@@ -5,8 +5,8 @@
 //
 // Held once because the values are hard-won. An attribute with a mandatory
 // argument needs one that is itself valid, or the compiler reports the argument
-// instead of the applicability, and each entry below was found by getting it
-// wrong. Two tools with two copies would drift, and the drift would read as a
+// instead of the applicability, and each entry below is what the compiler
+// accepts. Two tools with two copies would drift, and the drift would read as a
 // finding about the compiler.
 
 import { mkdirSync, promises as fs, writeFileSync } from "node:fs";
@@ -26,10 +26,9 @@ export const FIXED_ARGS = {
   IdeButton: '("probe")',
   PackingAlignment: "(4)",
   CompileIf: "(True)",
-  // The five below were once in UNSYNTHESISABLE, four of them for want of a
-  // usable argument value. `Attributes.md` states each shape but no value, and
-  // the shipped packages turned out to carry one apiece -- so these are copied
-  // from code the compiler already accepts rather than guessed:
+  // The five below are not UNSYNTHESISABLE, although `Attributes.md` states
+  // each shape but no value: the shipped packages carry one apiece, so these
+  // are copied from code the compiler already accepts rather than guessed:
   //
   //   [CoClassCustomConstructor("CreatePropertyBagObject")]  VBRUN/PropertyBag
   //   [CustomControl("/miscellaneous/frmButton.png")]        CustomControlsPackage
@@ -47,8 +46,8 @@ export const FIXED_ARGS = {
   CustomControl: '("/miscellaneous/probe.png")',
   PopulateFrom: '("json", "/Resources/PROBE/Strings.json", "events", "name", "id")',
   IgnoreWarnings: "(TB0001)",
-  // Documented as an optional Bool until the package census showed all 44 uses
-  // passing a toolbox image path. "no_designer" is the other accepted value and
+  // The package census shows every use passing a toolbox image path.
+  // "no_designer" is the other accepted value and
   // is what the probe uses, because it needs no file to resolve against.
   WindowsControl: '("no_designer")',
   // The entry documents +llvm, +optimize, +optimizesize and +optimizespeed.

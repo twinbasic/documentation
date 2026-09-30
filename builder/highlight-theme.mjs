@@ -157,9 +157,9 @@ function hslToRgb([h, sat, l]) {
 // cannot do its job: a value that is not a plain hex literal (so the ratio
 // cannot be computed at all) and one that does not reach the threshold even
 // at pure black or white. Neither is reachable with the current .theme
-// files, and both used to return the colour unchanged with no warning and
-// nothing in the emitted CSS, which is how a below-threshold token would
-// have shipped looking exactly like a passing one.
+// files, and returning the colour unchanged with no warning and nothing in
+// the emitted CSS would let a below-threshold token look exactly like a
+// passing one.
 function clampContrast(value, bgHex) {
   const fg = parseHex(value);
   const bg = parseHex(bgHex);

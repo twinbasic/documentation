@@ -31,9 +31,9 @@
 // tbbuild.mjs answers "does this compile". It cannot answer "what does this
 // print", and some questions only runtime can settle -- the one that prompted
 // this script was the width of a Debug.Print print zone, which no shipped
-// source demonstrates and no amount of reading the documentation established.
+// source demonstrates and no amount of reading the documentation establishes.
 // (14 characters, and positive numbers carry a leading sign space, so values
-// land at columns 1, 15, 29 rather than 0, 14, 28. Measured with this.)
+// land at columns 1, 15, 29 rather than 0, 14, 28.)
 //
 // The mechanism is the [RunAfterBuild] attribute: a Sub marked with it runs in
 // the IDE once the exe is built, so anything it writes with Debug.Print lands
@@ -395,7 +395,7 @@ if (failure) die(2, `tbrun: ${failure}`);
 // IDE's own build log in the console. The probe's first statement is Debug.Cls,
 // which would have erased that log, so its survival means the capture is not the
 // probe's output. Returned as output, a `[TYPELIB] failed to finalize
-// typelibrary` build exited 0 twice in round 8's fix pass. A [RunAfterBuild] Sub
+// typelibrary` build would exit 0. A [RunAfterBuild] Sub
 // that fails code generation leaves the log too: the build succeeds, and then
 // nothing in the Sub runs, Debug.Cls included. BUILD_FAILED is buildProject's
 // list of failure lines, the code-generation one among them.
@@ -442,10 +442,9 @@ if (values.json) {
 
 // ------------------------------------------------------------------ helpers
 
-// Trim blank lines off both ends. That is all this has to do now: reading
+// Trim blank lines off both ends. That is all this has to do: reading
 // dataNodes rather than the pane means the header, the ">" input prompt and
-// the timestamp column never arrive in the first place, so the three filters
-// that used to live here are gone along with the guesswork in them. Given `raw`,
+// the timestamp column never arrive in the first place. Given `raw`,
 // the same console read with its timestamps, it returns the same entries from
 // that instead, since a line holding a timestamp is never blank.
 function strip(text, raw = null) {

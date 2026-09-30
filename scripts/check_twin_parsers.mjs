@@ -8,9 +8,9 @@
 // crash. It reads
 // nothing from the tree: every probe is a fixed input.
 //
-// Each of these has shipped a silent misparse, and none says so when it
+// Each of these can misparse silently, and none says so when it
 // misreads: a line read as the wrong kind is counted, generated or skipped as
-// that kind. So each probe is a shape one of them once got wrong, or a
+// that kind. So each probe is a shape one of them can get wrong, or a
 // shape the next edit could lose:
 //
 //   - the shared modifier list (scripts/lib/twin-declarations.mjs), through

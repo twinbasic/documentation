@@ -49,13 +49,13 @@ function computeNavPaths(pages) {
 // tree. This one deliberately does not: Reference/Built-In/CEF/ publishes at
 // /tB/Packages/CEF/. So outside Features/ the derived URL is structurally
 // wrong, and it is wrong silently -- the page builds, links into it 404, and
-// nothing reports either. That is exactly how the whole AppGlobalClassObject
-// package came to sit at /Reference/Built-In/AppGlobalClassObject/index.html.
+// nothing reports either: a package without permalinks sits at its file
+// path, e.g. /Reference/Built-In/AppGlobalClassObject/index.html.
 //
 // It is also the URL the IDE help system resolves against, so a permalink
-// nobody chose is a contract nobody agreed to. 906 of 908 pages already
-// declared one when this check was added; it makes a settled convention
-// enforceable rather than introducing a new rule.
+// nobody chose is a contract nobody agreed to. Nearly every page declares
+// one, so this check makes a settled convention enforceable rather than
+// introducing a new rule.
 //
 // Deliberately covers every page, not just nav-visible ones: a page carrying
 // nav_exclude is reachable by URL and still needs a stable one.

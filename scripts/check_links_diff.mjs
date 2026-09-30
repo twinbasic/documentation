@@ -653,9 +653,9 @@ function main() {
     }
   }
 
-  // A bare invocation used to default both sides to `script` and print
-  // "No differences across 6 case(s)" having compared nothing. The
-  // comparison that costs two builds is the one worth asking for.
+  // Defaulting both sides to `script` would print "No differences across 6
+  // case(s)" having compared nothing. The comparison that costs two builds is
+  // the one worth asking for.
   if (opts.a === opts.b) {
     console.error(
       `error: --a and --b are both '${opts.a}', which compares nothing.

@@ -14,10 +14,9 @@
 // the built-in core-PostScript width tables. An unknown family falls back to
 // Times, so `fontname="Inter"` measures byte-identically to
 // `fontname="NoSuchFontXYZ"` -- and Times is much narrower than Inter, so
-// every box came out too small. Measured across the site's diagram labels,
-// Graphviz under-sized them by 11.4% on average and 18.0% at worst, which put
-// 27 labels past their box edges on the three diagrams that shipped before
-// this existed.
+// every box comes out too small: Graphviz under-sizes the site's diagram
+// labels by 11.4% on average and 18.0% at worst, which puts labels past
+// their box edges.
 //
 // The numbers below come from the browser rather than from the font binary on
 // purpose: the browser's shaped advance is what actually gets painted, so

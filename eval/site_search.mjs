@@ -7,9 +7,9 @@
 // exactly (field boosts, trailing wildcard, the edit-distance fallback).
 //
 // It exists because navigation and search fail on DIFFERENT pages, so judging
-// discoverability by either one alone is misleading. Round 1 measured a page
-// that is search rank #1 and six navigation hops away, and another that is two
-// navigation hops away and missed by four of four searches.
+// discoverability by either one alone is misleading. A page can be search
+// rank #1 and six navigation hops away, and another two navigation hops away
+// and missed by every search.
 //
 //     node eval/site_search.mjs "how do I add a build task"
 //     node eval/site_search.mjs --composition
@@ -501,7 +501,7 @@ export function search({ lunr, index, docs }, input) {
   return boostWholeTitles(lunr, results, docs, baseTokens, titleKeys.get(docs));
 }
 
-// The composition report is why round 1's worst discoverability scores were
+// The composition report shows why the worst discoverability scores are
 // structural rather than per-page: the developer documentation competes for its
 // own search against the language reference, which shares its entire
 // vocabulary -- font, add, download, colour, build and image are all twinBASIC

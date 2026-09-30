@@ -12,22 +12,21 @@
 //
 // builder/render.mjs applies several kramdown-parity rewrites to raw markdown
 // source, before markdown-it has parsed anything. A rewrite at that layer has
-// no idea what is code, and this site's subject matter IS code. Four separate
-// defects of exactly that shape shipped:
+// no idea what is code, and this site's subject matter IS code. The failures
+// of that shape are:
 //
-//   * stripLiquidRawTags removed `{% raw %}` inside fenced blocks, so no page
-//     could show the tag it existed to handle (deleted in 3fc95ee).
-//   * rewriteAdmonitions' body strip ate the indentation of code inside an
-//     admonition -- Reference/Default/VBA/Interaction/InputBox shipped its
-//     If/ElseIf/Else bodies flush left.
-//   * encodeSpacesInMediaUrls turned `Items[1](a, b)` into `Items[1](a,%20b)`.
-//   * rewriteListItemSetextHeadings DELETED the closing `---` of a YAML sample
-//     and promoted the line above it to a heading.
+//   * a Liquid `{% raw %}` strip removes the tag inside fenced blocks, so no
+//     page can show the tag it exists to handle.
+//   * an admonition body strip eats the indentation of code inside an
+//     admonition, leaving If/ElseIf/Else bodies flush left.
+//   * a media-URL space encoder turns `Items[1](a, b)` into `Items[1](a,%20b)`.
+//   * a list-item setext rewrite DELETES the closing `---` of a YAML sample
+//     and promotes the line above it to a heading.
 //
-// None of them was caught by anything. The link check, integrity check,
-// publish allowlist, regex-safety gate and axe scan all pass on a tree with
-// corrupted code samples in it, because the corruption is inside <code> and no
-// gate inspects that.
+// Nothing else catches them. The link check, integrity check, publish
+// allowlist, regex-safety gate and axe scan all pass on a tree with corrupted
+// code samples in it, because the corruption is inside <code> and no gate
+// inspects that.
 //
 // HOW IT WORKS
 //
@@ -141,8 +140,8 @@ function compare(src) {
 
 // Probes ride along inside the normal run rather than behind a flag nobody
 // remembers: a green line saying "no rewrite touches code" is otherwise
-// indistinguishable from a gate that has stopped detecting. Each is a real
-// defect this repository shipped.
+// indistinguishable from a gate that has stopped detecting. Each is a
+// corruption a real rewrite can cause.
 const PROBES = [
   ["admonition strips code indent",
     "> [!NOTE]\n> text\n>\n> ```tb\n> If x Then\n>     y\n> End If\n> ```\n"],
@@ -163,12 +162,12 @@ const PROBES = [
 // The mirror of the probes above, and the region comparison structurally
 // cannot make it: a rewrite that misreads what is code can also fail to fire
 // on real prose, and the regions still come back identical because the text
-// was merely stashed and restored. Reference/Attributes.md shipped all six of
-// its admonitions as the literal text "[!NOTE]" for exactly that reason -- a
-// [Description(...)] sample whose argument is a Markdown string containing
-// "```basic" and "```" as twinBASIC string literals, which the fence stasher
-// closed the surrounding ```tb fence on. Every pairing after it was off by
-// one, so for the rest of the page prose and code were the wrong way round.
+// was merely stashed and restored. Example: a [Description(...)] sample whose
+// argument is a Markdown string containing "```basic" and "```" as twinBASIC
+// string literals, which the fence stasher closes the surrounding ```tb fence
+// on. Every pairing after it is off by one, so for the rest of the page prose
+// and code are the wrong way round and admonitions render as the literal text
+// "[!NOTE]".
 //
 // Each probe is a source that MUST produce an admonition.
 //

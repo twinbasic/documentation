@@ -8,18 +8,16 @@
 //
 // WHY THE AUDIT EXISTS
 //
-// An evaluator's account of its own channels is not reliable. Of the first two
-// evaluators run as isolated processes, one opened with a full-text search of
-// the whole corpus for the gate's name --- before a single site search or
-// navigation hop --- and then reported that Channel 3 was "not needed"; the
-// other found the answer by search and walked the navigation path afterwards,
-// to confirm links it already knew. Its hops are real links, but they were not
-// found blind. Both reports read as clean.
+// An evaluator's account of its own channels is not reliable. An evaluator can
+// open with a full-text search of the whole corpus for the gate's name, before
+// a single site search or navigation hop, and then report that Channel 3 was
+// "not needed"; or find the answer by search and walk the navigation path
+// afterwards, to confirm links it already knew. Such hops are real links, but
+// they were not found blind, and both reports read as clean.
 //
-// Rounds 1-7 ran evaluators as subagents, which hand back only their final
-// report, so no round before this one could have seen either. The session
-// records every call in order, and the order is what the protocol's channels
-// are about. The audit reads it back; it does not score anything.
+// A subagent hands back only its final report, so it cannot show either. The
+// session records every call in order, and the order is what the protocol's
+// channels are about. The audit reads it back; it does not score anything.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -72,7 +70,7 @@ const RECURSIVE = /\s-[a-zA-Z]*[rR]|--recursive/;
 
 /**
  * The search box in command position, by name or by a path to the shim. A bare
- * substring match counted round 9's `which site-search; type site-search`, two
+ * substring match would count `which site-search; type site-search`, two
  * lookups of the shim, as two queries.
  */
 const SEARCH_CALL = /(?:^|[;&|(]\s*)"?(?:[^\s;&|()"]*[\\/])?site-search\b/g;
@@ -116,8 +114,7 @@ function claimsChannel3Unused(report) {
 
 /**
  * How many queries one search call ran. An evaluator can chain several in one
- * command --- round 8's UC-58 ran four in a single call --- and a timeline of one
- * letter per call then reads as one search.
+ * command, and a timeline of one letter per call then reads as one search.
  */
 function queriesIn(call) {
   return call.tool === "Bash" ? (String(call.input.command ?? "").match(SEARCH_CALL) ?? []).length : 0;
@@ -129,8 +126,8 @@ export function audit(s) {
   const firstSearch = s.calls.findIndex((c, i) => kinds[i] === "search" && c.ok !== false);
   const fulltext = s.calls.filter((_, i) => kinds[i] === "fulltext");
   const early = fulltext.filter((c) => firstSearch < 0 || c.n - 1 < firstSearch);
-  // A refused call ran no query, so it is counted apart: round 9's UC-65 had
-  // five queries refused, and a total that included them read as eleven.
+  // A refused call ran no query, so it is counted apart: a total that
+  // included refused queries would overstate the searches made.
   const allSearchCalls = s.calls.filter((_, i) => kinds[i] === "search");
   const searchCalls = allSearchCalls.filter((c) => c.ok !== false);
   const refusedSearches = allSearchCalls.length - searchCalls.length;

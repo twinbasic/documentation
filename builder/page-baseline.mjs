@@ -1,21 +1,17 @@
 // The page-count drift guard: does this build publish fewer pages than the
 // last build anyone committed?
 //
-// It replaces `if (pages.length < 836)` in tbdocs.mjs, a constant written when
-// the site had 836 pages and never touched again. By the time anyone measured,
-// the site had 908, so the guard was carrying a 72-page margin -- and the
-// failure it exists to catch was a 37-page loss. `_config.yml`'s `exclude:`
-// once held a blanket `**/_*/**` rule that swallowed the whole `_App/` folder
-// of AppGlobalClassObject; 37 pages stopped being published and nothing said
-// so. Repeat that today and the count lands at 871, comfortably above 836, and
-// the guard stays silent through the whole thing. A floor is not a drift
-// check.
+// A fixed constant floor is not a drift check: the site outgrows it, leaving a
+// wide margin, and a blanket `exclude:` rule that swallows a whole folder of
+// pages (the `_App/` folder of AppGlobalClassObject is the example) drops the
+// count well above the floor, so the guard stays silent through the whole
+// thing.
 //
-// Raising the constant to a tight floor is not the fix either: it would then
-// fire on every legitimate page removal, and a gate that fires on ordinary work
-// gets switched off. What is needed is a figure that moves with the tree, which
+// A tight constant floor is not the fix either: it would fire on every
+// legitimate page removal, and a gate that fires on ordinary work gets
+// switched off. What is needed is a figure that moves with the tree, which
 // means a committed artifact rather than a literal -- the same shape as
-// builder/inter-metrics.json, and what PLAN-counts.md predicts this would need.
+// builder/inter-metrics.json.
 //
 // So:
 //
@@ -26,8 +22,8 @@
 //
 // A rise is never a fault, so accepting one costs nothing. A fall always is,
 // even when it is intended -- "intended" is exactly what a discover regression
-// looks like from inside the build, which is the whole reason the `_App` loss
-// went unnoticed. Accepting a real removal is one flagged run, which puts the
+// looks like from inside the build, which is why a loss like `_App` goes
+// unnoticed. Accepting a real removal is one flagged run, which puts the
 // lowered number in the same commit as the deletion that caused it.
 //
 // staticFiles is guarded the same way and for the same reason: it is the other

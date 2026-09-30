@@ -14,10 +14,9 @@
 // ------------------------------------------------------------------ why
 //
 // A ```tb fence is something check_code_regions.mjs protects the CONTENTS of
-// and nothing ever evaluates. Two samples that do not compile shipped that way:
-// WinNativeCommonCtls/ListView's flagship example passes an icon key in a slot
-// the same package's prose says raises 35613, and Core/Event's first sample was
-// a Sub with no name. Every gate was green over both.
+// and nothing ever evaluates. A sample that does not compile -- an icon key
+// passed in a slot the same package's prose says raises 35613, or a Sub with
+// no name -- passes every other gate.
 //
 // This is the tool that asks the compiler. It is NEVER part of build.bat,
 // check.bat, test.bat or either CI workflow, for three reasons that are not
@@ -197,9 +196,8 @@ function defaultProject(rel) {
 /**
  * Which template a template is a delta of.
  *
- * A template used to be a whole exported tree, and five of them meant five
- * copies of a stage set that is mostly the same list -- which is the
- * duplication WIP.ExamplesBuild.md predicted would bite once a third appeared.
+ * A template is not a whole exported tree, which would repeat a stage set that
+ * is mostly the same list in every copy.
  * A template named here holds only the files that DIFFER from its base:
  * `vb-private` is a Settings with one reference rewritten, `cef` and
  * `webview2` are one stage file each.

@@ -1,7 +1,7 @@
 // Pool PDFNumber instances by value.
 //
-// After fast-refs / fast-indirect-objects / fast-dict-array shipped,
-// the residual heap profile attributed ~15 MB of self-size to
+// With fast-refs / fast-indirect-objects / fast-dict-array applied,
+// the residual heap profile attributes ~15 MB of self-size to
 // PDFObjectParser.parseNumberOrRef -- mostly inlined `new
 // PDFNumber(value)` calls (each of which also allocates a fresh
 // stringValue via `numberToString(value)`):

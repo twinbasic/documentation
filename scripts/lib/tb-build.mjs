@@ -4,8 +4,8 @@
 // that builds many projects (check_examples, sweep_attributes) calls it directly
 // and gets a result it does not have to parse: the diagnostics as an array, the
 // files the compiler died parsing as an array, and the exit code tbbuild would
-// have had. It used to start `tbbuild` as a subprocess and read its JSON and its
-// stderr back, and every one of those readers carried its own copy of the parse.
+// have had. Starting `tbbuild` as a subprocess would mean every caller reading
+// its JSON and stderr back with its own copy of the parse.
 //
 // What it does not do is what a caller owns:
 //
@@ -17,7 +17,7 @@
 //     do it in the middle of the other lanes' builds.
 //   * It does not check that the project or the IDE exists. The command line
 //     refuses those with a usage error; a caller with a bad path gets code 3
-//     after the timeout, exactly as tbbuild used to.
+//     after the timeout, exactly as tbbuild does.
 //
 // It always ends its IDE before it returns, unless `keep` is set. Node holds the
 // IDE's launcher in a job of its own (launchIde), so an IDE also goes when the

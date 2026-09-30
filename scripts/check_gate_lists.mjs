@@ -8,24 +8,13 @@
 //
 // ---------------------------------------------------------------- why
 //
-// This gate exists because the thing it checks has now rotted three times, and
-// the last two were a fix decaying rather than a fresh mistake.
-//
-// Round 2 of the use-case evaluation found `test.bat` documented as three
-// gates when it had four. That was fixed in Tools.md. Building.md's parallel
-// copy of the same sentence was not touched, a fifth gate landed, and round 3
-// found Building.md naming three of five -- and asserting, as the stated
-// reason for skipping test.bat on a docs-only edit, that "none of them reads a
-// page of documentation". check_code_regions.mjs reads all 906 of them. The
-// same round found Extending.md -- the page written to guide adding a gate --
-// claiming check.bat runs six, listing two test.bat gates among them, and
-// never mentioning test.bat at all.
-//
-// Six wrong numbers and two wrong lists across three pages, none of which
-// broke a link, failed a gate, or read any differently from a right one. That
-// is the same argument `{{tbdocs:...}}` already won for page counts, and the
-// remedy here is the same in spirit: stop asserting by hand what can be
-// derived from the artifact.
+// A gate count or list restated by hand in prose drifts: the wrong number
+// breaks no link, fails no gate, and reads no differently from a right one.
+// That is the same argument `{{tbdocs:...}}` makes for page counts, and the
+// remedy is the same in spirit: stop asserting by hand what can be derived
+// from the artifact. A page that says test.bat reads no page of documentation
+// would also route an author past a gate that does (check_code_regions.mjs
+// reads every markdown file).
 //
 // -------------------------------------------------------------- the design
 //
@@ -33,15 +22,10 @@
 // numbered lists; Building.md and Extending.md link to its entries instead of
 // restating them.
 //
-// **That convention is not self-enforcing, and the first version of this gate
-// assumed it was.** Its header used to end "if a third page starts restating
-// them, this gate will not notice -- which is the argument for not letting
-// one." Building.md was already that third page and README.md a fourth, both
-// wrong, in the same commit that shipped the gate green. Round 4 found three
-// evaluators tripping over one of them independently. A gate scoped to one
-// page is a guard against one file, not against a class -- so the prose sweep
-// below reads README.md and every page under docs/Documentation/ and checks
-// every gate count they state, wherever it is stated.
+// **That convention is not self-enforcing.** A gate scoped to one page is a
+// guard against one file, not against a class of restatement -- so the prose
+// sweep below reads README.md and every page under docs/Documentation/ and
+// checks every gate count they state, wherever it is stated.
 //
 // **The batch file is the source of truth, not the documentation.** A gate
 // that compared the two pages against each other would be satisfied by two
@@ -69,7 +53,7 @@
 // way round: a section that opens with a subset claim is reported. That is
 // deliberate rather than tolerated -- the remedy is to delete the number, and
 // the failure message says so, because a subset count restated in prose is
-// the same thing that drifted three times.
+// the same thing that drifts.
 //
 // **Anything outside README.md and docs/Documentation/.** builder/*.md are
 // design notes and frozen audit snapshots, and rewriting one to match a later
@@ -378,9 +362,9 @@ function compareWrapper({ bat, heading }, batSrc, toolsMd) {
     );
   }
 
-  // A stated count that disagrees with its own list is the exact shape round 3
-  // found three times, so it is worth reporting separately from the membership
-  // failure -- the two have different fixes.
+  // A stated count that disagrees with its own list is a common drift, so it
+  // is reported separately from the membership failure -- the two have
+  // different fixes.
   const stated = statedCount(body);
   if (stated === null) {
     findings.push(
@@ -399,9 +383,8 @@ function compareWrapper({ bat, heading }, batSrc, toolsMd) {
 // ------------------------------------------------------------- self-test
 //
 // The probes ride along in the normal run rather than hiding behind a flag,
-// for the reason this repository keeps relearning: on a healthy tree a gate
-// that has stopped detecting prints exactly what a working one prints. Each
-// probe is a defect that actually shipped.
+// because on a healthy tree a gate that has stopped detecting prints exactly
+// what a working one prints. Each probe is a real shape of drift.
 
 const PROBES = [
   {
@@ -476,9 +459,8 @@ const NEGATIVES = [
   },
 ];
 
-// Probes for the prose sweep. Every positive is a sentence that was on a
-// published page at 4f97bac, against the counts that were true at the time
-// (check.bat four, test.bat six).
+// Probes for the prose sweep. Every positive is a sentence of the kind a
+// published page states, against fixed counts (check.bat four, test.bat six).
 const REAL_COUNTS = new Map([["check.bat", 4], ["test.bat", 6]]);
 
 const PROSE_PROBES = [
@@ -625,9 +607,8 @@ async function main(argv) {
 
   // Command blocks and stated counts anywhere a developer page can carry
   // them. Building.md restates both wrappers as POSIX command blocks, which
-  // is legitimate and is exactly the kind of second copy that drifted last
-  // time; README.md is here because three of round 4's findings were on it
-  // and nothing had ever read it.
+  // is legitimate and is exactly the kind of second copy that drifts;
+  // README.md is here because it states counts too.
   const docsDir = path.join(REPO_ROOT, "docs/Documentation");
   const wanted = [...wrapperGates.values()].map((g) => g.join("\0"));
   const counts = new Map([...wrapperGates].map(([bat, g]) => [bat, g.length]));

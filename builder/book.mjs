@@ -386,7 +386,7 @@ const IMG_SRC_RE_BOOK = new RegExp(
   String.raw`${CODE_OR_PRE.source}|\bsrc=(["'])((?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\1`, "g");
 
 // Mutates `seen`. Called once per emitted chapter body so the post-
-// pass scan in pdf.mjs's deriveBookOutputs is no longer needed.
+// pass scan in pdf.mjs's deriveBookOutputs is not needed.
 function collectImagePaths(body, seen) {
   for (const m of body.matchAll(IMG_SRC_RE_BOOK)) {
     if (m[1] === undefined) continue;

@@ -7,7 +7,7 @@
 // computeIndirectObjectSize on each. sizeInBytes() walks the Cache,
 // which lazy-populates via a deflate of the unencoded contents. The
 // whole pass is synchronous, so the per-chunk zlib work runs serially
-// -- accounted for ~30 % of save() wall time on the book before this.
+// -- ~30 % of save() wall time on the book without this.
 //
 // What: same construction logic as PDFStreamWriter, split into three
 // phases:

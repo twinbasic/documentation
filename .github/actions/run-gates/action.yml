@@ -33,7 +33,7 @@ runs:
     # The publish allowlist (builder/publish-policy.mjs) is enforced inside
     # the build, so a green build already says nothing unpublishable is in
     # docs/. It does NOT say the allowlist still refuses anything: one widened
-    # until it refuses nothing reports the same clean pass. This asserts the
+    # to refuse nothing reports the same clean pass. This asserts the
     # refusals against named probes -- a stray .bak, a .pem, a scratch .md
     # with no frontmatter. No browser, no built tree, ~40 ms.
     - name: Verify the publish allowlist (check_publish_policy.mjs)
@@ -41,9 +41,8 @@ runs:
       run: node scripts/check_publish_policy.mjs
     # The two gate lists on Tools.md against the wrappers that run them, plus
     # every gate count stated in prose in README.md or under
-    # docs/Documentation/. Documented gate counts have rotted three times; the
-    # third was round 3's own fix pass, on the two pages the first version of
-    # this gate did not read. Pure text, ~50 ms.
+    # docs/Documentation/. A stale gate count breaks no link and fails no other
+    # gate, so nothing else notices it. Pure text, ~50 ms.
     - name: Verify the documented gate lists (check_gate_lists.mjs)
       shell: bash
       run: node scripts/check_gate_lists.mjs
@@ -91,16 +90,14 @@ runs:
       run: node --test test/example-batches.test.mjs
     # A regex that backtracks exponentially does not fail a build, it stops
     # one: the corpus passes until a page happens to contain the trigger, and
-    # then a render worker sits inside String.replace forever. VOID_TAGS_RE
-    # shipped that way for as long as no alt text contained a slash, and its
-    # first fix was still exponential on a subtler witness. Nothing else here
-    # can see it, because there is nothing to see until the content changes.
+    # then a render worker sits inside String.replace forever. Nothing else
+    # here can see it, because there is nothing to see until the content
+    # changes.
     #
     # Reads regex literals AND every `new RegExp(...)` the source decides the
     # arguments of. That second half is not a refinement: assembling a pattern
-    # from shared string constants is ordinary JavaScript, and for as long as
-    # this read literals only it was also a way out of the gate. Six such
-    # regexes went into one gate unseen, one of them polynomial.
+    # from shared string constants is ordinary JavaScript, and a gate that
+    # read literals only would be blind to it.
     #
     # Gates on exponential only -- about a fifth of the patterns here are
     # polynomial, nearly all the ordinary `<tag[^>]*>` shape on bounded input,
@@ -118,11 +115,11 @@ runs:
       run: node scripts/check_regex_safety.mjs
     # render.mjs applies several kramdown-parity rewrites to RAW markdown,
     # before anything has been parsed, so none of them can tell prose from
-    # code -- on a site whose subject matter is code. Four defects of that
-    # shape shipped: `{% raw %}` stripped inside fences, admonition bodies
-    # losing the indentation of the code they contain, `Items[1](a, b)`
-    # percent-encoded inside a fence, and a YAML sample's closing `---`
-    # deleted with the line above it promoted to a heading.
+    # code -- on a site whose subject matter is code. Such a rewrite can strip
+    # `{% raw %}` inside fences, lose the indentation of the code in an
+    # admonition body, percent-encode `Items[1](a, b)` inside a fence, or
+    # delete a YAML sample's closing `---` and promote the line above it to a
+    # heading.
     #
     # No other gate can see any of it: the corruption is inside <code>, and
     # the link, integrity, publish and axe checks all pass over it. Tokenise
@@ -135,16 +132,15 @@ runs:
     # The page-count drift guard reports nothing on a healthy tree, so a green
     # build says exactly what a guard that had stopped working says. These
     # probes make the other assertion, against a scratch baseline rather than
-    # the committed one. The first replays the defect that motivated it: 37
-    # pages of AppGlobalClassObject lost to a blanket exclude rule, under a
-    # guard that knew only a floor of 836 against a real 908. No browser, no
-    # built tree.
+    # the committed one. The first replays a whole package lost to a blanket
+    # exclude rule, which a guard that knows only a floor cannot see. No
+    # browser, no built tree.
     - name: Verify the page-count drift guard (check_page_baseline.mjs)
       shell: bash
       run: node scripts/check_page_baseline.mjs
     # The book-coverage warnings say nothing when every page has an entry in
     # docs/_book.yml, which is also all a check that had stopped working would
-    # say. Before they existed, whole sections dropped out of the PDF without a
+    # say. Without the warnings, whole sections drop out of the PDF without a
     # word. These probes give each of the five findings a fault to report, on
     # a manifest and pages built in memory. No browser, no built tree.
     - name: Verify the book-coverage warnings (check_book_coverage.mjs)
@@ -163,7 +159,7 @@ runs:
     # silence: a line read as the wrong kind is counted, generated or skipped
     # as that kind. These probes run the shared modifier list through all
     # three scanners, and assert the census's declaration kinds and the probe
-    # generator's targets against the shapes each once got wrong. Fixed
+    # generator's targets against the shapes each can get wrong. Fixed
     # inputs only: no tree, no install.
     - name: Verify the twinBASIC source and attribute scanners (check_twin_parsers.mjs)
       shell: bash
@@ -178,7 +174,7 @@ runs:
       shell: bash
       run: node scripts/check_attribute_sweep.mjs
     # Nothing else tests how a tool reads its command line, which is how a
-    # value flag given no value came to be read as NaN or as the next flag.
+    # value flag given no value can be read as NaN or as the next flag.
     # lib/cli.mjs's probes, then each tool's recorded command-line errors, each
     # run with a twinBASIC IDE and a browser that do not exist, so a case that
     # gets past its command line fails rather than starting either. No

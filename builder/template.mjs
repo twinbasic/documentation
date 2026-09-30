@@ -697,10 +697,10 @@ function renderBreadcrumbs(page, baseurl) {
 const HEADING_REGEX = /<(h[1-6])(\s[^>]*?)?>([\s\S]*?)<\/\1>/g;
 const ID_ATTR_REGEX = /\bid="([^"]+)"/;
 // The icon is deliberately out of the accessibility tree and out of the tab
-// order. `aria-labelledby` used to point at the enclosing heading, which made
-// the accessible name the heading text verbatim -- so every heading appeared a
+// order. An `aria-labelledby` pointing at the enclosing heading would make
+// the accessible name the heading text verbatim -- so every heading would appear a
 // second time in a screen reader's links list, named identically, with nothing
-// saying it was a permalink. 7,031 of them across the site. It stays a real
+// saying it was a permalink. It stays a real
 // `<a href>` so the mouse affordances that people actually use to copy these
 // (right-click Copy Link Address, middle-click, the status-bar URL preview) are
 // untouched; the keyboard/AT equivalent is the section-links disclosure that
@@ -739,7 +739,7 @@ export function injectAnchorHeadings(html, headingsOut) {
 // A closed <details> subtree is `notRendered`: it contributes nothing to the
 // accessibility tree and nothing to the tab order beyond the <summary>
 // itself. So the whole feature costs one tab stop and zero links-list entries
-// per page, against the 7,031 entries the per-heading icons used to cost, and
+// per page, against one entry per heading for per-heading icons, and
 // expands on demand to the full set.
 //
 // Emitted from the template rather than from the markdown render, which is

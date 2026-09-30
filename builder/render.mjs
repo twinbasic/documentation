@@ -246,21 +246,17 @@ function kramdownHardBreakNewline(state, silent) {
 // passes through verbatim. Rewrite those to match.
 //
 // The attributes are one flat `[^>]*`, and the trailing `/` is removed
-// afterwards rather than described in the pattern. That is deliberate,
-// and the history is worth keeping because the obvious shape was tried
-// twice and was wrong twice.
-//
-// This used to spell the attribute list out as
-// `(?:\s+[^>/]+(?:="[^"]*"|='[^']*')?)*`. `[^>/]` matches a space and so
-// does `\s`, which makes it the classic `(a+)+`: one run of attribute
-// text can be partitioned in exponentially many ways, and every
+// afterwards rather than described in the pattern. That is deliberate:
+// spelling the attribute list out as
+// `(?:\s+[^>/]+(?:="[^"]*"|='[^']*')?)*` is wrong, because `[^>/]` matches
+// a space and so does `\s`, which makes it the classic `(a+)+`: one run of
+// attribute text can be partitioned in exponentially many ways, and every
 // partition gets tried when the match fails -- which it does on any `/`
-// the quoted-value alternative does not cover. `Line/Column` in the alt
-// text of IDE/Menu/Edit.md and `/Packages/WinDevLib` in
-// Features/Packages/Updating a package.md each hung a render worker
-// outright: two of 152 chunks stayed CLAIMED, the renderJoin and
-// flushJoin barriers behind them never reached a dep count of zero, and
-// the build printed its last line and sat there forever.
+// the quoted-value alternative does not cover, such as `Line/Column` in
+// alt text. Such a page hangs a render worker outright: its chunk stays
+// CLAIMED, the renderJoin and flushJoin barriers behind it never reach a
+// dep count of zero, and the build prints its last line and sits there
+// forever.
 //
 // Narrowing the class to `[^\s>/]+` fixed those two strings and did not
 // fix the regex: `[^\s>/]` still matches `=`, `"` and `'`, so an
@@ -1621,13 +1617,11 @@ const ADMONITION_RE = /(^|\n)([ \t]*)>[ \t]*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTI
 // INSIDE an admonition is a region too, and the rewrite must still strip its
 // `> ` markers with the rest of the body.
 //
-// It used to find fences with a line scan of its own, and that scan is where
-// two defects lived that shipped admonitions as the literal text "[!NOTE]": it
-// once paired a fence with a marker in the middle of a line (the six
-// admonitions of Reference/Attributes.md), and it once saw backtick fences
-// only, so a tilde fence holding a ``` line swallowed the prose after it.
-// WIP.Build.md tells both. A private scan can also disagree with the parser
-// without anyone noticing, which the tooling review's A3-1 reproduced;
+// It does not find fences with a line scan of its own: such a scan can pair a
+// fence with a marker in the middle of a line, or see backtick fences only, so
+// a tilde fence holding a ``` line swallows the prose after it, and either
+// leaves admonitions as the literal text "[!NOTE]". WIP.Build.md tells both.
+// A private scan can also disagree with the parser without anyone noticing;
 // check_code_regions.mjs probes each shape through the whole chain.
 export function rewriteAdmonitions(src, md) {
   if (!md) throw new TypeError("rewriteAdmonitions: pass the site's markdown-it instance");
@@ -1652,13 +1646,12 @@ export function rewriteAdmonitions(src, md) {
     // `>` marker and AT MOST ONE following space, which is what blockquote
     // unwrapping means.
     //
-    // The gem's `gsub(/^#{indent}\s*>\s*/, "")` was mirrored literally here
-    // and the trailing `\s*` is greedy over `\s`, which includes newlines --
-    // so it also ate the body's own indentation and swallowed blank lines.
+    // The gem's `gsub(/^#{indent}\s*>\s*/, "")` has a trailing `\s*` that is
+    // greedy over `\s`, which includes newlines -- so mirrored literally it
+    // also eats the body's own indentation and swallows blank lines.
     // A fence inside an admonition is stripped with the rest of the body, so
-    // this ran over real code samples: Reference/Default/VBA/Interaction/InputBox
-    // shipped its If/ElseIf/Else bodies flush left, and Reference/Core/Option
-    // lost the blank line between its Module and Class examples.
+    // this runs over real code samples: a literal mirror leaves If/ElseIf/Else
+    // bodies flush left and loses blank lines between examples.
     const stripRe = indent
       ? new RegExp(`^${escapeRegExp(indent)}[ \\t]*>[ \\t]?`, "gm")
       : /^[ \t]*>[ \t]?/gm;

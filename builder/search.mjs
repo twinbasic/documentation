@@ -1,12 +1,9 @@
-// Phase 6 AUXILIARIES -- search-data.json. Originally a byte-for-byte port
-// of the just-the-docs theme's `assets/js/zzzz-search-data.json` Liquid
-// template plus the empty `_includes/lunr/custom-data.json` (which
-// rendered as a blank indented line between the `url` and `relUrl`
-// fields). That parity mattered only up to the Jekyll cutover, when this
-// was still being checked against Jekyll's own output; nothing has
-// compared against Jekyll since, and the search granularity now
-// intentionally diverges from it (see below). The output is still the
-// lunr index input that client-side `initSearch()` in
+// Phase 6 AUXILIARIES -- search-data.json. The per-entry shape follows the
+// just-the-docs theme's `assets/js/zzzz-search-data.json` Liquid template
+// plus the empty `_includes/lunr/custom-data.json` (which renders as a
+// blank indented line between the `url` and `relUrl` fields), but the
+// search granularity intentionally diverges from Jekyll's (see below). The
+// output is the lunr index input that client-side `initSearch()` in
 // `just-the-docs.js` feeds into `lunr(...)`.
 //
 // One entry per heading-bounded section of each titled page, up to
@@ -408,7 +405,7 @@ function isPrimarySymbol(s, moduleNames) {
 
 // Per-entry JSON shape matching the upstream Liquid template's output
 // byte-for-byte: doc / title / content / url, then a blank-indented
-// line where the empty lunr/custom-data.json include used to render,
+// line where the empty lunr/custom-data.json include renders,
 // then relUrl. Closing brace has 2-space indent. No trailing newline
 // on the returned string -- the outer join with "," handles separation.
 //

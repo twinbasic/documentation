@@ -15,9 +15,8 @@
 // to Times for anything it does not know, so `fontname="Inter"` measures
 // byte-identically to `fontname="NoSuchFontXYZ"`. Times is much narrower than
 // Inter through the lowercase -- Inter's `a` is 557/1000 em against Times'
-// 444 -- so every box came out too small: 11.4% under on average, 18.0% at
-// worst, which put 27 labels past their box edges across the three diagrams
-// that shipped before this existed.
+// 444 -- so every box comes out too small: 11.4% under on average, 18.0% at
+// worst, which puts labels past their box edges.
 //
 // WHAT THIS DOES.  After `Graphviz.load()`, the table lives in the module's
 // linear memory, which `_module.HEAPU8` exposes, and it is read on every
@@ -79,7 +78,7 @@ export class DotMetricsError extends Error {}
 // `Graphviz.load()` memoises its module, so serve.bat's second and every
 // later rebuild hand back the instance already patched. Searching that heap
 // for the Times signature finds nothing -- Inter's widths are sitting where
-// it used to be -- and the failure reads like an upstream bump, which is the
+// it was -- and the failure reads like an upstream bump, which is the
 // wrong place to go looking. Remember what has been patched instead, and
 // re-verify rather than re-write.
 const patched = new WeakSet();

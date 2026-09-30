@@ -4,10 +4,9 @@
 // IDE. It records each project it opens under
 // `VB and VBA Program Settings\twinBASIC_IDE\ProjectState` (open tabs, watch
 // expressions, DEBUG CONSOLE history) and puts it at the top of
-// `...\RecentlyOpened`. Measured on 2026-09-23, before this module existed,
-// 318 of 424 ProjectState values were harness temp projects, and all 21 slots
-// of the recent list were: the user's own recent projects had been pushed out
-// of the IDE entirely. An IDE started from an install the association does not
+// `...\RecentlyOpened`. Left alone, harness temp projects fill
+// ProjectState and all 21 slots of the recent list, pushing the user's own
+// recent projects out of the IDE entirely. An IDE started from an install the association does not
 // point at also re-points `.twinproj` at itself, which matters once a harness
 // runs private copies of the IDE (WIP.HelpAddin.md, Stage 1 item 2).
 //
@@ -505,8 +504,8 @@ function editArchitectureMemory(root, edit) {
  * project it opens again starts in that target. A harness project's path is
  * used run after run -- tbrun's work folder is keyed to its port -- so an
  * entry one run leaves, when somebody switches a --keep IDE to win64, sets the
- * target of every later run on that path, and nothing says so. On 2026-09-24
- * tbrun on ports 9372 and 9373 built 64-bit for that reason.
+ * target of every later run on that path, and nothing says so: tbrun then builds
+ * 64-bit unasked.
  *
  * Entries for any other path are left alone here, the user's own projects
  * among them. Opening a project only reads its entry; one is written when the

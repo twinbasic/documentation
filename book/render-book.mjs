@@ -132,8 +132,8 @@ import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError }
 //     in step with this shim.
 //   fast-indirect-objects -- replace PDFContext.indirectObjects
 //     (Map<PDFRef, PDFObject>) with a dense array indexed by
-//     objectNumber for the gen=0 path. After fast-dict-array shipped,
-//     PDFContext.assign's `this.indirectObjects.set(ref, object)` was
+//     objectNumber for the gen=0 path. With fast-dict-array applied,
+//     PDFContext.assign's `this.indirectObjects.set(ref, object)` is
 //     the only hot Map.set left in the heap profile (~7 MB of set
 //     traffic from the parser's once-per-indirect-object assign).
 //     Mirror of the fast-refs trick on the value side: dense array
@@ -426,10 +426,10 @@ try {
 
   // Process -- pdf-lib roundtrip with outline + metadata attached.
   // fast-sync-load strips the waitForTick yield gates on both load
-  // and save sides entirely (load was ~40 s under pdf-lib's Slow
-  // default that yields every 100 objects; ~5 s on Fastest; now
-  // ~1 s with the gates ripped out -- so parseSpeed / objectsPerTick
-  // no longer matter and drop from the call sites).
+  // and save sides entirely (load is ~40 s under pdf-lib's Slow
+  // default that yields every 100 objects; ~5 s on Fastest; ~1 s
+  // with the gates removed -- so parseSpeed / objectsPerTick do not
+  // matter and are not passed).
   //
   // parallelSave (vs the default pdfDoc.save):
   //  - objectsPerStream: 500 -- larger object-stream chunks compress

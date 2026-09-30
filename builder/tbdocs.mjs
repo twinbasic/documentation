@@ -135,11 +135,11 @@ const workerCount = os.availableParallelism();
 // in that window is _claimMainTask's check that every name in `expected`
 // is already in the results map.
 //
-// renderJoin went without it and silently lost data: render:i's submit()
-// is what fills scheduler.state.searchChunks[i], the array starts life
-// as `new Array(N)` (holes, not undefined), and Array.prototype.flat()
-// skips holes without a word. One chunk arriving late meant ~6 pages
-// quietly missing from search-data.json.
+// Without it a join silently loses data: render:i's submit() is what
+// fills scheduler.state.searchChunks[i], the array starts life as
+// `new Array(N)` (holes, not undefined), and Array.prototype.flat() skips
+// holes without a word. One chunk arriving late leaves its pages quietly
+// missing from search-data.json.
 //
 // The Map entry is replaced with a shallow clone bearing a fresh
 // `expected` array, so the shared TASKS def stays untouched across

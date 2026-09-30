@@ -105,10 +105,10 @@ export const SAMPLE_PAGES = [
 // `notRendered`: absent from the accessibility tree, and absent from the
 // audit.  That property is exactly what makes the per-page section-links
 // disclosure cheap -- one tab stop, nothing in the links list -- and it is
-// also a hole in this scan.  The construct is on 707 pages, and the state a
-// reader sees after one click was never audited at all.  It shipped with
-// `target-size` violations on every link inside it (69.6x14 against a 24px
-// floor) while check.bat reported a clean pass.
+// also a hole in this scan.  The construct is on most pages, and the state a
+// reader sees after one click is not audited without a state audit; a
+// `target-size` violation on every link inside it (69.6x14 against a 24px
+// floor) would leave check.bat reporting a clean pass.
 //
 // A state is a DOM mutation applied after gotoPage and before the audit.  The
 // function is serialised into the page, so it must not close over anything in
@@ -137,13 +137,12 @@ export const PAGE_STATES = {
   },
 
   // The section-links disclosure is one construct; the ones the docs
-  // themselves use are another, and PAGE_STATES covered only the first.
-  // FAQ.html carries 29 of them and is not in SAMPLE_PAGES at all, and
-  // Menu/Window's three stayed closed during its own state audit -- so
-  // the content a reader sees after clicking a disclosure was audited
-  // nowhere. No live defect was found once they were opened, but at the
-  // mobile viewport this state takes colour-contrast from 0 incomplete
-  // nodes to 118, which is the measure of what was not being looked at.
+  // themselves use are another, and PAGE_STATES covers only the first.
+  // Their content stays closed during a page's own state audit, so the
+  // content a reader sees after clicking a disclosure would be audited
+  // nowhere. At the mobile viewport this state takes colour-contrast from
+  // 0 incomplete nodes to 118, which is the measure of what is not looked
+  // at otherwise.
   "content-details-open": () => {
     const found = [...document.querySelectorAll("details")]
       .filter((d) => !d.classList.contains("section-links"));
@@ -238,11 +237,11 @@ export const VIEWPORTS = {
 export const THEMES = ["light", "dark"];
 
 // A --theme or --viewport value: "both", or one of `allowed`. Validated, not
-// trusted. An unrecognised value used to sail through: `--theme drak` set
-// data-theme="drak", which renders light, and then labelled every line of the
+// trusted. An unrecognised value would sail through: `--theme drak` sets
+// data-theme="drak", which renders light, and labels every line of the
 // report `[drak, ...]` -- a full run of the light theme presented as a run of
-// something else. `--viewport tiny` passed undefined to setViewport, which
-// Puppeteer accepts, so the run went ahead at a size nobody chose, labelled
+// something else. `--viewport tiny` passes undefined to setViewport, which
+// Puppeteer accepts, so the run goes ahead at a size nobody chose, labelled
 // `tiny`.
 export function pick(name, value, allowed) {
   if (value === "both") return allowed;

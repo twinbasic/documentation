@@ -15,8 +15,7 @@
 // The IDE is what is slow and what cannot run here, so the parts that decide
 // what an answer MEANS are in scripts/lib/attribute-sweep.mjs and
 // scripts/lib/attribute-sites.mjs, and these probe them. Each is a shape the
-// tool once got wrong in review or in its first runs, or one the next edit
-// could lose:
+// tool can get wrong, or one the next edit could lose:
 //
 //   - the site skeletons: what renders, where the attribute goes, that a name
 //     is unique to its probe, that a `$&` in an attribute is not read as a

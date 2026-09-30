@@ -1018,6 +1018,21 @@ rule's reason stays, in the present tense.
 
 **Verify.** `compare_trees` identical; lint and the three wrappers clean.
 
+**Landed.** One Sonnet general-purpose agent (235 calls, ~207k, 6.5 min) edited comments in
+55 files across `builder/`, `lib/`, `scripts/`, `book/`, `eval/`, `test/`, the wrappers,
+the composite action and both workflows. It cut round numbers, plan ids (`check_cli.mjs`'s
+"Recorded in C47" and the like), commit ids, dated measurements and incident stories,
+keeping each rule's reason in the present tense; it kept the pointers to WIP.Search.md's
+section "What shipped, third round: the index pilot", which is that file's own title. The
+kit's `c82a-comments-only.mjs` compares HEAD and the working copy of every changed file
+with comments removed (acorn tokens for `.mjs`, non-`@rem` lines for `.bat`, non-comment
+lines for `.yml`): `55 files, 0 with code changes; more non-ASCII in: none`. A grep of the
+added lines for "used to", "shipped", round numbers and plan ids finds one hit, "the
+shipped packages", which describes the packages. `compare_trees` matches; `build.bat`,
+`check.bat`, `test.bat` (`check_ci_workflows: ... the wrappers' 22 gates`, regex safety
+`550 literals + 36 constructed ... 12 construction(s) not resolvable`, unchanged) and lint
+clean.
+
 ### C83 — `builder: the tooling survey re-run against its baseline`
 
 `node scripts/survey_tooling.mjs --summary`, recorded as an *after* column in this file's
@@ -1692,7 +1707,7 @@ Defects the review did not have, found by building something this plan asks for.
 - **Tooling comments tell incident history that no rule needs.** Found by C82's agents: the
   headers of `check_code_regions.mjs` and `check_gate_lists.mjs`, `test.bat`'s comments,
   `tbdocs.mjs:138`, `check_tree_fresh.mjs:42`. The owner chose a commit of its own
-  (2026-09-30): C82a.
+  (2026-09-30). Fixed in C82a.
 
 ## Open questions
 

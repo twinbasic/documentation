@@ -16,8 +16,8 @@
 //     the compiler accepts it there.
 //   * gen_attribute_probes.mjs probes the targets the page CLAIMS. It cannot find
 //     a target the page does not name, so an entry that is too short stays too
-//     short. `[ComExport]` shipped documented as "constants in a Module" because
-//     the two targets tried were a Sub and a Const; an API `Declare` was never
+//     short. `[ComExport]` documented as "constants in a Module" would stay so
+//     if the targets tried were a Sub and a Const, with an API `Declare` never
 //     among them.
 //   * its EXPLORATORY list asks the questions a person thought of.
 //

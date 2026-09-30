@@ -10,14 +10,13 @@
 //
 // WHY
 //
-// Search ranks have always been re-measured mechanically, with site_search.mjs.
-// Navigation had nothing: an evaluator's hop count was checked by hand or not at
-// all, and it is no more reliable than the rest of a report. In round 9, UC-63
-// reported that pure link-following STALLED on a link "broken in three places";
-// the link works, and the table it was after is two hops from the welcome page.
-// The evaluator's permalink lookup had failed on the corpus's line endings, not
-// on the site. Two other evaluators navigated by directory listing, which a
-// reader of the published site does not have.
+// Search ranks are re-measured mechanically, with site_search.mjs. An
+// evaluator's hop count is no more reliable than the rest of a report, so this
+// measures navigation the same way. An evaluator can report that pure
+// link-following STALLED on a link "broken in three places" when its own
+// permalink lookup failed on the corpus's line endings, not the site; or
+// navigate by directory listing, which a reader of the published site does
+// not have.
 //
 // HOW A LINK RESOLVES
 //

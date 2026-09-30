@@ -6,10 +6,10 @@
 // `check_regex_safety.mjs` reads regex *literals*. A pattern assembled from
 // strings is invisible to it, and writing one is not an exotic thing to do --
 // the shared-fragment style (`const NUM = ...; new RegExp(`${WRAP}${NUM}`)`)
-// is how you avoid repeating a sub-pattern six times. Round 4's own fix pass
-// wrote six of them into one gate, and one came back **polynomial degree 3**
-// when finally put through recheck by hand. Nothing in the repository would
-// have said so: the blind spot was a number in `--census` and nothing more.
+// is how you avoid repeating a sub-pattern six times. Such a pattern can be
+// **polynomial degree 3** and nothing in the repository would say so if the
+// gate could not see it: the blind spot would be a number in `--census` and
+// nothing more.
 //
 // So the gate folds what it can. A construction whose arguments reduce to
 // constants is checked exactly like a literal; one that does not is listed

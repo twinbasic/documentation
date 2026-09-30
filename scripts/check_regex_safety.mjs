@@ -50,11 +50,10 @@
 // exact. A construction that cannot be folded is listed by `--census` with
 // the reason, which is a better blind spot than a count.
 //
-// That scope used to be literals only, and the cost of it was measured:
-// the shared-fragment style -- `const NUM = ...; new RegExp(`${W}${NUM}`)`
-// -- is how anyone avoids repeating a sub-pattern six times, and it made
-// six regexes in one gate invisible here. One of them was polynomial, and
-// was found only by someone running recheck against it by hand.
+// The scope is not literals only: the shared-fragment style
+// -- `const NUM = ...; new RegExp(`${W}${NUM}`)` -- is how anyone avoids
+// repeating a sub-pattern six times, and a gate that read literals alone
+// would miss every regex written that way, polynomial ones included.
 //
 //   node scripts/check_regex_safety.mjs             # the gate
 //   node scripts/check_regex_safety.mjs --census    # full classification
@@ -134,15 +133,12 @@ const IGNORE = ["**/node_modules/**", "**/vendor/**", "book/lib/**"];
 
 // Probes for --self-test. A pass here means "nothing exponential was
 // found", which is also what a gate that has stopped working reports, so
-// assert against known answers in both directions. The first two are the
-// real faults this gate was written after.
-// The first three are real regexes this repo shipped. The second is
-// worth keeping for its own sake: it was the *fix* for the first, it
-// looked obviously correct, and it was still exponential -- the name
-// class no longer matched a space but still matched `=`, `"` and `'`,
-// so an attribute could be consumed either by the name or by the
-// quoted-value alternative. This gate is what caught that, which is the
-// clearest argument for keeping it.
+// assert against known answers in both directions. The first three are
+// real exponential regexes. The second is worth keeping for its own sake:
+// it is a fix for the first that looks obviously correct and is still
+// exponential -- the name class does not match a space but still matches
+// `=`, `"` and `'`, so an attribute can be consumed either by the name or
+// by the quoted-value alternative.
 const PROBES = [
   { name: "shipped VOID_TAGS_RE (original)",        expect: "exponential",
     pattern: String.raw`<(br|hr|img)((?:\s+[^>/]+(?:="[^"]*"|='[^']*')?)*)\s*\/?>`, flags: "gi" },
@@ -434,8 +430,7 @@ function printFinding(r) {
     // fault, and later to prove the rewrite, is re.test(witness) -- and
     // a witness cut to 70 characters has fewer repetitions of its pump,
     // so it can return at once from a regex that is still exponential.
-    // Two of the three shipped exponential regexes have witnesses of 148
-    // and 492 characters.
+    // Real witnesses run to hundreds of characters.
     console.error(`    witness (${r.attack.length} chars): ${JSON.stringify(r.attack)}`);
   }
 }
@@ -534,8 +529,8 @@ async function gate({ census }) {
     console.error(`\nFAIL: ${exponential.length} regex(es) can backtrack exponentially:`);
     for (const r of exponential) printFinding(r);
     // The advice agrees with Extending.md#regex-refused and Tools.md's
-    // entry. It used to say "narrow one of them", which is the move that
-    // left VOID_TAGS_RE's first fix exponential one level down.
+    // entry. It does not say "narrow one of them", which leaves the regex
+    // exponential one level down.
     console.error(
       "\n  An exponential regex is a hang waiting for the right input, not a slow one.\n" +
       "  The cause is two parts of the pattern that can match the same character:\n" +

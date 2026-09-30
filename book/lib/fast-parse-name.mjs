@@ -2,13 +2,12 @@
 // calls on the book) return the existing PDFName without allocating
 // the lookup string at all.
 //
-// Step 1 of this optimisation (commit history shows the failed
-// attempt) hand-inlined parseName's byte loop to skip the
-// `this.bytes.peek() / .next() / .done()` per-byte method dispatch
-// while keeping the original cons-string accumulator. CPU didn't move:
-// V8 was already optimising the cons-string path well, and the saved
-// method-call cost just shifted attribution to the callers
-// (fastParseDictOneBuf / fastParseObject). Heap was flat too.
+// Hand-inlining parseName's byte loop to skip the
+// `this.bytes.peek() / .next() / .done()` per-byte method dispatch, while
+// keeping the original cons-string accumulator, does not help: V8 already
+// optimises the cons-string path well, the saved method-call cost just
+// shifts attribution to the callers (fastParseDictOneBuf /
+// fastParseObject), and the heap stays flat.
 //
 // This shim attacks the actual transient cost: each call builds a
 // throwaway string (cons-chain of ~8 chars on average, then flattened

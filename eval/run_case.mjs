@@ -49,13 +49,13 @@
 //     to the session that started it.
 //
 // The search box is a generated shim on the child's PATH rather than the
-// command protocol.md used to give, `node eval/site_search.mjs ...`. Under
-// dontAsk, a command naming the script by its path was refused whatever the
-// allow rule said: the rule passed with --allowedTools, the rule passed with
-// --settings, the rule for the subst-ed O:\ form of the path, and a bare
-// --help were all refused, and the debug log showed only that the rule had
-// loaded. `site-search "..."` passes. Which part of the path matching refuses
-// was not isolated.
+// command `node eval/site_search.mjs ...`. Under
+// dontAsk, a command naming the script by its path is refused whatever the
+// allow rule said: a rule passed with --allowedTools or with --settings, a
+// rule for the subst-ed O:\ form of the path, and a bare --help are all
+// refused, and the debug log shows only that the rule loaded.
+// `site-search "..."` passes. Which part of the path matching refuses is not
+// isolated.
 
 import { spawn } from "node:child_process";
 import fs from "node:fs";

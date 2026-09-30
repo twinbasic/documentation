@@ -62,8 +62,8 @@ const BINARY_EXTENSIONS = new Set([
 const EXCLUDED_PATHS = [
   ".git", "node_modules", ".claude", ".claire", ".font-cache",
   // Gitignored and local: a one-line "@WIP.md" import shim that no clone
-  // has. Mirrored, it points every evaluator at a file WITHHELD removes ---
-  // round 7's UC-40 evaluator opened it first and reported the dead end.
+  // has. Mirrored, it points every evaluator at a file WITHHELD removes, and
+  // the evaluator reports a dead end.
   "CLAUDE.md",
   "docs/assets/fonts",
   "wisdom/data", "perf/results", "package-lock.json",
@@ -88,11 +88,10 @@ const WITHHELD = [
 
 // Other builder/REVIEW-*.md and PLAN-REVIEW-*.md files are NOT withheld, and
 // the distinction is deliberate. They are audit snapshots a real developer has
-// in the tree, and round 1 produced a genuine finding precisely because one was
-// present: the only in-tree document naming docs/_sass/custom/_fonts.scss was a
-// frozen snapshot that builder/README.md explicitly disclaims as "not
-// maintained reference documentation". Withholding those would measure a
-// repository nobody works in.
+// in the tree, and their presence can produce a genuine finding: a frozen
+// snapshot that builder/README.md disclaims as "not maintained reference
+// documentation" can be the only in-tree document naming a file. Withholding
+// those would measure a repository nobody works in.
 
 const STUB = "/* [ source withheld for this exercise -- treat this file as unreadable ] */\n";
 
@@ -145,9 +144,9 @@ function parseArgs(argv) {
 
 function isExcluded(rel) {
   // The build's output trees under docs/, by the test every tool that walks
-  // docs/ uses. This list used to name them, and a build given --dest
-  // docs/_site-basepath also writes _site-basepath-offline and
-  // _site-basepath-pdf, which it missed.
+  // docs/ uses. A list of names would miss the siblings a build given --dest
+  // docs/_site-basepath also writes: _site-basepath-offline and
+  // _site-basepath-pdf.
   const [top, sub] = rel.split("/");
   if (top === "docs" && sub !== undefined && isOutputTree(sub)) return true;
   return EXCLUDED_PATHS.some((p) => rel === p || rel.startsWith(p + "/"));
@@ -191,8 +190,7 @@ function build({ repo, dest, quiet }) {
     if (c.kind === "readable") {
       // LF, as the repository stores it. A Windows checkout with autocrlf
       // hands the corpus CRLF, and a permalink grep anchored with `$` then
-      // matches nothing: round 9's UC-63 evaluator reported a working link
-      // as broken, three times over, from exactly that. latin1 maps every byte
+      // matches nothing, so a working link reads as broken. latin1 maps every byte
       // to one character and back, so nothing but the CRs changes.
       fs.writeFileSync(out, fs.readFileSync(abs, "latin1").replace(/\r\n/g, "\n"), "latin1");
       bump(counts.readable, c.ext);

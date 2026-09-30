@@ -160,8 +160,7 @@ export async function listDotSources(srcRoot) {
 // which is what happens to every one of these -- render.mjs's svgInlinePlugin
 // drops the whole thing into the page, where an HTML parser turns the
 // `<?xml ...?>` into a bogus comment node and discards the in-body DOCTYPE as
-// a parse error. It rendered anyway, which is why it went unnoticed on the
-// three diagrams that shipped with it.
+// a parse error. It renders anyway, so the fault is invisible on the page.
 //
 // They buy nothing in a standalone file either: the XML declaration is
 // optional for UTF-8, and the W3C discourages the SVG 1.1 DOCTYPE outright.
@@ -176,8 +175,8 @@ function stripXmlPrologue(svgXml, label) {
     .replace(/^\s*<\?xml[\s\S]*?\?>\s*/i, "")
     .replace(/^\s*<!DOCTYPE[\s\S]*?>\s*/i, "");
 
-  // Assert rather than hope: a Graphviz that changed its preamble would
-  // otherwise slip a parse error back into six pages, silently again.
+  // Assert rather than hope: a Graphviz that changes its preamble would
+  // otherwise slip a parse error back into the pages, silently.
   if (/<\?xml|<!DOCTYPE/i.test(out)) {
     throw new Error(
       `${label}: an XML declaration or DOCTYPE survived stripping -- ` +
@@ -198,9 +197,7 @@ function svgFor(src) {
 // second half is not pedantry: changing this module or the width table leaves
 // every `.dot` untouched, so an mtime check that only looked at sources would
 // call the whole batch fresh and quietly keep serving output the current code
-// would no longer produce. That happened twice while this was being written --
-// once installing the Inter metrics, once stripping the XML prologue -- and
-// both times the build reported "regenerated: 0" on a change that altered
+// would no longer produce, reporting "regenerated: 0" on a change that alters
 // every diagram.
 //
 // Cost of getting it wrong is a silent stale artifact; cost of the guard is

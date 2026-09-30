@@ -1,8 +1,8 @@
 // Replace PDFContext.indirectObjects (Map<PDFRef, PDFObject>) with a
 // dense array keyed by objectNumber for the gen=0 path.
 //
-// Motivation. After fast-dict-array shipped, the only remaining hot
-// Map.set in the process-phase heap profile was
+// Motivation. With fast-dict-array applied, the only remaining hot
+// Map.set in the process-phase heap profile is
 // PDFContext.assign's `this.indirectObjects.set(ref, object)`:
 //
 //     $ node find-heap-callers.mjs <post-ship>.heapprofile set
@@ -36,7 +36,7 @@
 // pipeline, but reasonable to defensive-preserve) continues to see a
 // Map-shaped object -- just usually empty.
 //
-// As a side benefit, `enumerateIndirectObjects` no longer needs to
+// As a side benefit, `enumerateIndirectObjects` does not need to
 // sort: dense-array iteration is already in ascending objectNumber
 // order. (The Map-sourced gen!=0 entries are merged in sorted.)
 //

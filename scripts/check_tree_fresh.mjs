@@ -39,12 +39,10 @@ exitOnCrash();
 // Output trees live under docs/, so walking docs/ naively would compare
 // the build against itself and always pass. They are skipped at the top of
 // each source root by the prefix list the markdown walk uses, in
-// lib/markdown-files.mjs. This file used to name them one at a time,
-// and missed four that sat beside the others: _site-basepath-offline and
-// _site-basepath-pdf, which a build into _site-basepath writes, and the empty
-// _serve-offline and _serve-pdf that serve mode left behind until it stopped
-// preparing them. All four were read as sources. These two are skipped at
-// every depth.
+// lib/markdown-files.mjs. A list of names would miss siblings such as
+// _site-basepath-offline and _site-basepath-pdf, which a build into
+// _site-basepath writes, and they would be read as sources. These two are
+// skipped at every depth.
 const IGNORED_DIRS = new Set([".git", "node_modules"]);
 
 // Files the build WRITES into a source directory. They are outputs, so their

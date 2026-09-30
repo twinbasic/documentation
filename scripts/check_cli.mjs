@@ -20,7 +20,7 @@
 // a flag to a tool's usage does not fail this gate. A string is the whole
 // stream; a RegExp must match it; a stream a case does not name must be empty.
 //
-// Every tool answers --help and -h with its usage on stdout and exit 0 (C71),
+// Every tool answers --help and -h with its usage on stdout and exit 0,
 // so each has a case for both, and after each of them the folder it ran in must
 // still be empty: a help request starts no IDE or browser and writes nothing.
 //
@@ -426,9 +426,8 @@ function capture(fn) {
 // ------------------------------------------------------------ the recorded cases
 
 const CASES = [
-  // Recorded in C47, from the behaviour C18 settled: a command-line error in
-  // tbdocs and check_links exits 2, as in every tool, and never reads as a
-  // finding, which exits 1. A value flag has no
+  // A command-line error in tbdocs and check_links exits 2, as in every tool,
+  // and never reads as a finding, which exits 1. A value flag has no
   // value at the end of the list or before another flag, and --port is a whole
   // number from 1 to 65535. check_links prints its errors on stderr, after
   // "error: ".
@@ -439,8 +438,7 @@ const CASES = [
   { tool: "scripts/check_links.mjs", args: ["no-such-tree", "--root-dir"], exit: 2, stderr: "error: --root-dir needs a value\n" },
   { tool: "scripts/check_links.mjs", args: ["no-such-tree", "--forbid"], exit: 2, stderr: "error: --forbid needs a value\n" },
 
-  // Recorded in C47, from the behaviour C17 settled: in the four harness tools
-  // that check, a value flag with no value, at the end or before another flag,
+  // In the four harness tools that check, a value flag with no value, at the end or before another flag,
   // exits 2. tbbuild follows the message with its usage line.
   { tool: "scripts/tbbuild.mjs", args: ["--port"], exit: 2, stderr: /^--port needs a value\nusage: node scripts\/tbbuild\.mjs / },
   { tool: "scripts/tbbuild.mjs", args: ["--timeout", "--keep"], exit: 2, stderr: /^--timeout needs a value\nusage: node scripts\/tbbuild\.mjs / },
@@ -453,10 +451,10 @@ const CASES = [
   { tool: "scripts/build_package_api.mjs", args: ["--exported", "--check"], exit: 2, stderr: "--exported needs a value\n" },
   { tool: "scripts/build_package_api.mjs", args: ["--src", "x"], exit: 2, stderr: "unknown option: --src\n" },
 
-  // Recorded in C48, for the a11y and diagram tools. A value flag given
+  // The a11y and diagram tools. A value flag given
   // nothing, at the end or as "", or followed by another flag, is refused.
-  // Each of them answers --help on stdout with exit 0 (C71).
-  // --theme and --viewport are checked against their lists (C20).
+  // Each of them answers --help on stdout with exit 0.
+  // --theme and --viewport are checked against their lists.
   // check_dot_fit and build_dot_metrics take one flag of their own besides
   // --help and -h, and neither has a case beyond those and the generated ones.
   { tool: "scripts/check_a11y.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_a11y\.mjs / },
@@ -492,10 +490,10 @@ const CASES = [
   { tool: "scripts/sweep_a11y.mjs", args: ["--theme", "drak"], exit: 2, stderr: 'unknown --theme "drak"; expected one of light, dark or both\n' },
   { tool: "scripts/sweep_a11y.mjs", args: ["--viewport", "huge"], exit: 2, stderr: 'unknown --viewport "huge"; expected one of desktop, mobile or both\n' },
 
-  // Recorded in C49, for the harness tools. All of them answer --help and -h
+  // The harness tools. All of them answer --help and -h
   // on stdout with exit 0 before any other check, a number or a missing
-  // project included (C71). tbbuild finds its project anywhere in the list
-  // (C17). An unknown option, a value flag with no value or an empty one is
+  // project included. tbbuild finds its project anywhere in the list.
+  // An unknown option, a value flag with no value or an empty one is
   // refused, and tbbuild and tbrun follow the message with their usage.
   // gen_attribute_probes takes one output folder and an optional key file, so
   // only its empty list is a case here.
@@ -531,7 +529,7 @@ const CASES = [
   { tool: "scripts/build_package_api.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/build_package_api\.mjs \[options\]\n/ },
   { tool: "scripts/gen_attribute_probes.mjs", args: [], exit: 2, stderr: /^Generate a twinBASIC probe project for Reference\/Attributes\.md applicability\.\n/ },
 
-  // Recorded in C50, for the gates and link tools. check_links prints its
+  // The gates and link tools. check_links prints its
   // errors on stderr, after "error: ", and exits 2. Every one of them refuses
   // an unknown option, a stray argument, a value given to a flag that takes
   // none, and a value flag with no value, and crawl_check, compare_trees and
@@ -581,7 +579,7 @@ const CASES = [
   { tool: "scripts/compare_trees.mjs", args: ["--before", "--", "x"], exit: 2, stderr: /^compare_trees: --before needs a value\n\nusage: node scripts\/compare_trees\.mjs / },
   { tool: "scripts/compare_trees.mjs", args: ["--keep=1"], exit: 2, stderr: /^compare_trees: --keep takes no value\n\nusage: node scripts\/compare_trees\.mjs / },
 
-  // Recorded in C51, for render-book, eval/ and wisdom. In every one of them an
+  // render-book, eval/ and wisdom. In every one of them an
   // unknown option, a value flag with no value and a value given to a boolean
   // are refused at the parse, in the parser's own words, exit 2, and so is an
   // argument beyond those a tool takes (nav_hops and site_search take any
@@ -589,7 +587,7 @@ const CASES = [
   // --. build_corpus, nav_hops, run_case, site_search and transcript print
   // their usage on stderr when an argument they need is
   // missing; wisdom does when no command is given, and names an unknown one.
-  // Every tool here answers -h and --help on stdout with exit 0 (C71), and
+  // Every tool here answers -h and --help on stdout with exit 0, and
   // reads nothing after it. The command in the wisdom cases is never a real
   // one, so that none can start an export. render-book's missing input file is
   // not a usage error, but exits 2 as one does, and so does a --site that holds
@@ -675,7 +673,7 @@ const CASES = [
   { tool: "wisdom/wisdom.mjs", args: ["bogus", "-x"], exit: 2, stderr: "unknown option: -x\n" },
   { tool: "wisdom/wisdom.mjs", args: ["bogus", "--guild", "x", "--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
 
-  // Recorded in C52, for tbdocs, with C47's four above. Every command-line
+  // tbdocs, beyond the cases above. Every command-line
   // error exits 2. A value flag refuses a missing value and one that starts
   // with a dash, "--" included; an unknown option is refused as given, as is a
   // positional, and a boolean given a value. Each --port and --stall-timeout
@@ -714,7 +712,7 @@ const CASES = [
     stderr: /^refusing --dest (.+)[\\/]sub: it is inside the source tree, so a build would read its output back as source, or serve would rebuild on its own writes\. Use a folder directly under \1 whose name starts with _site, _serve, _pdf, or one inside such a folder, or one outside \1\.\n$/ },
 ];
 
-// Recorded in C71. Every tool prints its usage on stdout and exits 0 for
+// Every tool prints its usage on stdout and exits 0 for
 // --help and for -h, so each is a case, the two forms alike, unless the table
 // above already holds it. The value is the start of the tool's text where that
 // is not `usage: node <tool>`: an older text that opens otherwise, or one that
@@ -786,7 +784,7 @@ for (const [tool, start] of Object.entries(HELP_TOOLS)) {
 const EXIT_TABLE = /\nExit codes:\n(?: {2}\d {2}[^\n]*\n| {5}[^\n]*\n)+$/;
 const oneExitTable = (text) => EXIT_TABLE.test(text) && text.split("Exit codes:").length === 2;
 
-// Recorded in C72. Every tool refuses an unknown flag and an empty value at
+// Every tool refuses an unknown flag and an empty value at
 // the parse, so each has a case for the first and, where it has a value
 // option, for the second: `tool: [option, extras]`, the option given as
 // `--option=`. Both exit 2, print the refusal on

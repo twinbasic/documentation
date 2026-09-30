@@ -12,12 +12,11 @@
 //
 // That is not hypothetical. Graphviz has no font machinery at all and falls
 // back to Times for any family it does not know, so `fontname="Inter"`
-// measured identically to `fontname="NoSuchFontXYZ"` and every box came out
-// ~11% too narrow. Twenty-seven labels across three diagrams were hanging
-// past their edges, on pages that had been through the full accessibility
-// sweep, because axe does not evaluate SVG <text> geometry either.
-// builder/dot-metrics.mjs fixed the cause; this is what proves it stayed
-// fixed.
+// measures identically to `fontname="NoSuchFontXYZ"` and every box comes out
+// ~11% too narrow, leaving labels hanging past their edges on pages that pass
+// the full accessibility sweep, because axe does not evaluate SVG <text>
+// geometry either. builder/dot-metrics.mjs removes the cause; this proves it
+// stays removed.
 //
 // It runs in check.bat rather than in the build for the same reason the axe
 // scan does: it needs a browser, and builder/dot.mjs is deliberately free of

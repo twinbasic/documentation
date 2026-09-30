@@ -47,14 +47,15 @@
 //      by a declaration, an escaped identifier by `.`, `=` or `(`.
 //   5. DAO.twin writes declarations as `/* voffset &H00A8*/ Property Get X()`,
 //      so an inline block comment has to be removed, not used to skip the line.
-//      Skipping cost 14 Interface-member sites, which then read as `End Interface`.
+//      Skipping the line loses the Interface-member sites, which then read as
+//      `End Interface`.
 //   6. Attributes are also written inline -- `[Default] Interface X` -- so the
 //      declaration is not always on the next line.
 //
 // One result to read before calling a row impossible: **a twinBASIC `Type` can
 // contain `DeclareWide` members.** `CustomControls.twin`'s `Type SerializeInfo`
 // holds a dozen, so `Type / DeclareWide` is a real construct and not a stack
-// fault. It was assumed to be one here, and the assumption was wrong.
+// fault.
 //
 // Only TYPE blocks are tracked for the enclosing construct. Procedures are
 // deliberately not pushed: an Interface prototype (`Sub Ping()`) has no body and

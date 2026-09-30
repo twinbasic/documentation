@@ -5,12 +5,11 @@
 // tree, run occasionally, to answer the question a sample cannot -- what is
 // actually wrong out there, and what would it cost to audit it routinely.
 //
-// It exists because the sample was found to be unrepresentative.  SAMPLE_PAGES
-// spans 2,175-2,694 elements against a site maximum of 5,231, and contains no
-// page with a table, an image, a disclosure widget or a video card.  A sample
-// that never sees a construct cannot report a defect in it, so "0 violations"
-// from the gate was a statement about six pages, not about the site.  Widening
-// the gate sensibly needs two things this produces:
+// It exists because a hand-picked sample can be unrepresentative: one with no
+// page holding a table, an image, a disclosure widget or a video card cannot
+// report a defect in them, so "0 violations" from the gate is a statement
+// about a few pages, not about the site.  Widening the gate sensibly needs
+// two things this produces:
 //
 //   * the violation census -- which rules fire, where, and on what construct,
 //     so the widened set can be chosen to cover the constructs that break;
