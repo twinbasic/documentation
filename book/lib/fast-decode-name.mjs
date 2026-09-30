@@ -45,6 +45,10 @@
 // pdf-lib's pool is already populated with the canonical instances
 // the parser will see.
 //
+// At load it checks that what it replaces is as in pdf-lib 1.17.1 (see
+// shim-targets.mjs), and throws otherwise. It goes when pdf-lib is replaced;
+// when a release changes what it patches, it is re-derived or removed.
+//
 // Side-effecting import. Import once before any pdf-lib operation:
 //
 //   import "./lib/fast-decode-name.mjs";
@@ -52,8 +56,12 @@
 // Idempotent -- repeated imports do nothing after the first.
 
 import { PDFName } from "pdf-lib";
+import { checkTargets } from "./shim-targets.mjs";
 
 if (!PDFName.__fastDecodeNameInstalled) {
+  checkTargets(import.meta.url, { PDFName }, {
+    "PDFName.of": [1, "69a406b28b28"],
+  });
   const original = PDFName.of;
   const fastCache = new Map();
   PDFName.of = function fastOf(name) {

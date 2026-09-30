@@ -80,6 +80,8 @@ Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from a
       && node scripts/check_symbol_index.mjs \
       && node scripts/check_twin_parsers.mjs \
       && node scripts/check_cli.mjs \
+      && node scripts/check_pdf_shims_equiv.mjs \
+      && node scripts/check_impexp_parity.mjs \
       && node scripts/check_axe_patch_equiv.mjs
 
 `book.bat` has one step that is invisible from the command it ends with. `render-book.mjs` writes the PDF with a plain file write and never creates the directory above it, so `docs/_pdf/` has to exist first --- otherwise the render fails with `ENOENT` at the very last moment, after the whole page-breaking pass has already run. The deploy workflow does the same `mkdir` before its render, for the same reason:
@@ -164,7 +166,7 @@ that will never return: an unbounded loop, a promise that never settles, or a
 graph can notice by itself --- the wedged task's successors are waiting on a
 message that is not coming --- so the build has a watchdog. When no task has
 completed for two minutes it abandons the run, prints what was outstanding, and
-exits 1:
+exits 2:
 
     BUILD STALLED -- no task completed for 121s.
     13 of 335 tasks outstanding.
@@ -245,7 +247,7 @@ The link check is part of the build. `build.bat` passes `--check-audit-index`, a
 
 It covers all three trees --- `_site/` (the online tree), `_site-offline/` (the `file://`-browsable mirror, which also carries `--forbid 'https://docs.twinbasic.com'` so a surviving live-site link is flagged: the offline mirror should never navigate back to the live docs site), and `_site-pdf/book.html` (informational, and listing as `OUT OF BOOK` every link that leaves the book for the website). Every tree is also checked for HTML well-formedness, duplicate `id`s, anchor resolution, accessibility hints and remote `<img src>`; the online tree adds sitemap, search-index and canonical-URL integrity. The same check runs in CI on every pull request and on every push to `staging`.
 
-A failing check does not abort the build --- a broken link still produces a site worth looking at --- so it sets the exit code instead: 1 for link failures, 2 for integrity failures, 3 for both.
+A failing check does not abort the build --- a broken link still produces a site worth looking at --- so it sets the exit code to 1 instead, whether the check found link failures, integrity failures or both. The summary lines say which.
 
 [`scripts/check_links.mjs`](Tools#check-links) is still the tool for a tree this build did not produce: a release zip, a bisect, someone else's artifact.
 
@@ -509,7 +511,7 @@ At render time, any markdown image reference to a build-local `.svg` is replaced
 The renderer calls `@hpcc-js/wasm-graphviz` directly: one WASM module load (~50 ms) covers the whole batch, then each diagram is a synchronous `gv.dot(src)` call. No headless browser and no Chromium dependency for diagrams. Two failure modes are handled distinctly:
 
 - **Setup failures** (`@hpcc-js/wasm-graphviz` not installed, WASM load fails) emit a one-line warning, retain the existing on-disk SVGs, and let the build exit 0 --- a fresh checkout without `npm install` still builds against the committed SVGs.
-- **Content failures** (broken DOT syntax, render throws) emit the error verbatim, leave that diagram's previous SVG in place, continue rendering the rest of the batch, and set exit bit 1 so CI catches the bad diagram.
+- **Content failures** (broken DOT syntax, render throws) emit the error verbatim, leave that diagram's previous SVG in place, continue rendering the rest of the batch, and set exit code 1 so CI catches the bad diagram.
 
 In serve mode the watcher ignores any `.svg` that has a `.dot` sibling. The `.dot` is the source of truth; the `.svg` is the build artifact the renderer emits back under `srcRoot`. Without the filter, each `.dot` edit would fire two rebuilds (one on the edit, one on the SVG write) and the browser would reload twice for one user change.
 

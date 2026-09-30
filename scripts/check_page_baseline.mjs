@@ -26,9 +26,27 @@
 import { readFile } from "node:fs/promises";
 import { GUARDED_SRC } from "../builder/baseline.mjs";
 import { checkPageBaseline } from "../builder/page-baseline.mjs";
-import { baselineFixture, createProbes, exitOnCrash } from "./lib/gate-probes.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { baselineFixture, createProbes } from "./lib/gate-probes.mjs";
 
 exitOnCrash();
+
+const USAGE = `usage: node scripts/check_page_baseline.mjs [-h, --help]
+
+Checks that the page-count drift guard of builder/page-baseline.mjs still
+refuses what it exists to refuse, against a scratch baseline file.
+
+  -h, --help  print this text and exit
+
+Exit codes:
+  0  every probe passed
+  1  a probe failed
+  2  the gate could not run: a refused command line, or a crash`;
+
+if (withUsageError(() => parseCli(process.argv.slice(2), {
+  options: { help: { type: "boolean", short: "h" } },
+  stopAt: ["help"],
+})).values.help) printHelpAndExit(USAGE);
 
 const BASE = { src: GUARDED_SRC, pages: 908, staticFiles: 247 };
 

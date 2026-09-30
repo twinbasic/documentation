@@ -135,7 +135,7 @@ export function isUnderProject(destRoot) {
 // discover skips but the watcher does not rebuilds on its own writes.
 // Cleaning a destination that is or contains the source tree deletes the
 // source. runBuild calls this before discover, which is the first to fail.
-// The refusal is marked as a command-line error, which tbdocs exits 4 on.
+// The refusal is marked as a command-line error, which tbdocs exits 2 on.
 export function assertDestinationClearOfSource(srcRoot, destRoot) {
   const refuse = (message) => Object.assign(new Error(message), { commandLine: true });
   const rel = path.relative(srcRoot, destRoot);

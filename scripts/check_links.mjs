@@ -53,10 +53,10 @@
 // Integrity checks (--check-html, --check-a11y, --check-ids,
 // --check-sitemap, --check-search, --check-remote-assets):
 //   These share the existing htmlparser2 SAX parse pass -- no
-//   second file read.  Exit codes are a bitwise pair so CI can tell
-//   the two apart: 0 clean, 1 link failures, 2 integrity failures,
-//   3 both.  --no-fail forces 0.  A command-line error exits 4, which
-//   no check can produce, so it is never read as a failed check.
+//   second file read.  Exit codes, as in every tool: 0 clean, 1 a link
+//   or integrity failure was found, 2 the check could not run (a
+//   command-line error or a crash), so it is never read as a failed
+//   check.  --no-fail forces 0 over findings, not over a code 2.
 
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -77,7 +77,7 @@ import {
   FsOracle, formatLinkReport, formatIntegrityReport,
   resolve, OUTSIDE_BASEPATH_MARKER,
 } from "../builder/link-check.mjs";
-import { parseCli } from "../lib/cli.mjs";
+import { CliError, choiceOption, exitOnCrash, parseCli } from "../lib/cli.mjs";
 
 // Tree-relative POSIX path, the space check.mjs works and reports in, so
 // the same tree checked with a relative --root-dir, an absolute one, or
@@ -101,8 +101,8 @@ function readIfPresent(p) {
   try { return fs.readFileSync(p, "utf8"); } catch { return null; }
 }
 
-function printHelp() {
-  process.stdout.write(`Usage: node check_links.mjs [options] <inputs...>
+function printHelp(stream = process.stdout) {
+  stream.write(`Usage: node check_links.mjs [options] <inputs...>
        node check_links.mjs <args1...> /sep/ <args2...> [/sep/ ...]
 
 Offline link checker for static sites. Only offline checking is
@@ -128,8 +128,9 @@ Options:
                              URL prefix. The bare prefix and 'prefix/'
                              are exempt (intentional "go to live site"
                              links). Repeatable.
-  --no-fail                  Always exit 0, even if errors are found.
-                             Errors are still printed. Useful for
+  --no-fail                  Exit 0 when the check finds errors. Errors
+                             are still printed. A command-line error or
+                             a crash still exits 2. Useful for
                              informational checks that should not block.
   --oracle fs|index          How to answer "does this path exist".
                              'index' walks --root-dir once and answers
@@ -142,7 +143,6 @@ Options:
                              Pages. 'index' compares strings and is
                              case-sensitive on every platform. See
                              builder/link-check.mjs.
-  --threads N                Accepted for CLI compatibility; ignored.
   -v, --verbose              Print per-stage timing breakdown.
   -h, --help                 Show this help and exit.
 
@@ -173,32 +173,33 @@ Integrity checks (share the existing htmlparser2 SAX parse pass):
                              file under the section's Images/ folder.
   --check-sitemap            Every .html file in the input is in
                              sitemap.xml (or is a known exclusion).
-                             Reads <root-dir>/sitemap.xml; skipped
-                             silently if the file is absent.
+                             Reads <root-dir>/sitemap.xml; if the file is
+                             absent, prints a warning and skips the
+                             check without failing.
   --check-search             Every .html file in the input has at least
                              one entry in assets/js/search-data.json.
-                             Reads from <root-dir>; skipped silently if
-                             the file is absent.
+                             Reads from <root-dir>; if the file is
+                             absent, prints a warning and skips the
+                             check without failing.
   --check-canonical          Every page's <link rel="canonical" href>
                              URL path matches the page's own deployment
                              URL. Catches canonical URLs that include
                              --base-path / the wrong baseurl.
 
-Exit codes:
-  0  All checks passed.
-  1  Link / forbidden-prefix check failed.
-  2  Integrity check failed (no link failures).
-  3  Both link and integrity checks failed.
-  4  Command-line error: no arguments, a flag without its value,
-     no --offline, or no input.
-
 Inputs are files or directories; directories are searched recursively
 for *.html.
+
+Exit codes:
+  0  every check passed, or --no-fail turned the findings into 0
+  1  a link, forbidden-prefix or integrity check failed; the summary lines say
+     which (with /sep/ segments, the highest code of any segment)
+  2  the check could not run: a refused command line (no arguments, an unknown
+     option, a flag without its value, no --offline, or no input), or a crash
 `);
 }
 
-// `forbid` is the only repeatable flag. `threads` is accepted and unused, and
-// `help` is answered before any argument list is parsed.
+// `forbid` is the only repeatable flag, and `help` is answered before any
+// argument list is parsed.
 const LINK_OPTIONS = {
   offline: { type: "boolean", default: false },
   "include-fragments": { type: "boolean", default: false },
@@ -208,7 +209,6 @@ const LINK_OPTIONS = {
   "base-path": { type: "string", default: "" },
   forbid: { type: "string", multiple: true },
   "no-fail": { type: "boolean", default: false },
-  threads: { type: "string" },
   verbose: { type: "boolean", short: "v", default: false },
   help: { type: "boolean", short: "h", default: false },
   "check-html": { type: "boolean", default: false },
@@ -231,20 +231,7 @@ const LINK_OPTIONS = {
 };
 
 function parseArgs(argv) {
-  let cli;
-  try {
-    cli = parseCli(argv, {
-      options: LINK_OPTIONS,
-      unknown: "ignore",
-      positionals: { min: 0 },
-      acceptsValue: (v) => v !== undefined,
-    });
-  } catch (err) {
-    if (err.code === "missing-value") throw new Error(`${err.option} requires a value`);
-    throw err;
-  }
-
-  const { values } = cli;
+  const { values, positionals } = parseCli(argv, { options: LINK_OPTIONS, positionals: { min: 0 } });
   const opts = {
     offline: values.offline,
     includeFragments: values.includeFragments,
@@ -262,35 +249,10 @@ function parseArgs(argv) {
     checkSitemap: values.checkSitemap,
     checkSearch: values.checkSearch,
     checkCanonical: values.checkCanonical,
-    oracle: values.oracle,
+    oracle: choiceOption(values.oracle, { option: "--oracle", choices: ["fs", "index"] }),
   };
 
-  // An index is covered once it is a kept token's own index, or the index
-  // right after a kept value option that took its value as a separate
-  // argument -- the two positions the parse actually looked at.
-  const covered = new Set();
-  const positionalAt = new Map();
-  for (const t of cli.tokens) {
-    covered.add(t.index);
-    if (t.kind === "option" && t.value !== undefined && !t.inlineValue) covered.add(t.index + 1);
-    if (t.kind === "positional") positionalAt.set(t.index, t.value);
-  }
-
-  // Everything else went unrecognised, and is warned about rather than
-  // refused. An unknown --flag with no "=" takes the positional right after
-  // it along, so that one goes to `unknown` too, not `inputs`.
-  const inputs = [];
-  const unknown = [];
-  for (let i = 0; i < argv.length; i++) {
-    if (positionalAt.has(i)) {
-      const prev = argv[i - 1];
-      if (i > 0 && !covered.has(i - 1) && prev.startsWith("--") && !prev.includes("=")) unknown.push(argv[i]);
-      else inputs.push(positionalAt.get(i));
-    } else if (!covered.has(i)) {
-      unknown.push(argv[i]);
-    }
-  }
-  return { opts, inputs, unknown };
+  return { opts, inputs: positionals };
 }
 
 function collectHtmlFiles(inputs) {
@@ -337,8 +299,15 @@ function collectAllRelFiles(rootStr) {
   return rels;
 }
 
+// EXIT_FOUND: the check found a problem.  EXIT_ERROR: it could not run, a
+// refused command line or a crash.
+const EXIT_FOUND = 1;
+const EXIT_ERROR = 2;
+
 // Run a single check pass.  All output is collected into a buffer;
-// nothing is written to stdout/stderr.  Returns { output, exitCode }.
+// nothing is written to stdout/stderr.  Returns { output, exitCode }, and
+// for a command-line error (EXIT_ERROR) an empty output and `error`, the line
+// for stderr.
 //
 // With `structured: true` the result additionally carries a `findings`
 // object -- builder/check.mjs's findingsFor, the same conclusions the
@@ -349,31 +318,25 @@ export function runCheck(argv, { structured = false } = {}) {
   const buf = [];
   const write = (s) => buf.push(s);
 
+  const commandLineError = (error) => ({ output: "", exitCode: EXIT_ERROR, error });
+
   let parsed;
   try {
     parsed = parseArgs(argv);
   } catch (e) {
-    write(`error: ${e.message}\n`);
-    return { output: buf.join(""), exitCode: 4 };
+    if (!(e instanceof CliError)) throw e;
+    return commandLineError(`error: ${e.message}`);
   }
-  const { opts, inputs, unknown } = parsed;
-
-  if (unknown.length) {
-    write(
-      `warning: ignoring unrecognised arguments: ${unknown.join(" ")}\n`
-    );
-  }
+  const { opts, inputs } = parsed;
 
   if (!opts.offline) {
-    write(
+    return commandLineError(
       "error: --offline is required. Online (network) checking is not " +
-      "implemented by this tool.\n"
+      "implemented by this tool."
     );
-    return { output: buf.join(""), exitCode: 4 };
   }
   if (!inputs.length) {
-    write("error: at least one input file or directory is required\n");
-    return { output: buf.join(""), exitCode: 4 };
+    return commandLineError("error: at least one input file or directory is required");
   }
 
   // --root-dir is used in the shape it was given. checkChunk joins it to
@@ -512,10 +475,10 @@ export function runCheck(argv, { structured = false } = {}) {
     write(`Integrity: ${integrityIssueCount} issue(s)\n`);
   }
 
-  // Exit codes: 1 = link failures, 2 = integrity failures, 3 = both.
+  // Exit code: EXIT_FOUND for a link or an integrity failure, 0 otherwise.
   const linksFailed = r.broken.length > 0 || forbiddenCount > 0;
   const integrityFailed = integrityIssueCount > 0;
-  let exitCode = (linksFailed ? 1 : 0) | (integrityFailed ? 2 : 0);
+  let exitCode = linksFailed || integrityFailed ? EXIT_FOUND : 0;
   if (opts.noFail) exitCode = 0;
 
   if (!structured) return { output: buf.join(""), exitCode };
@@ -560,8 +523,8 @@ export function selfTest() {
       const argv = ["--offline", "--check-sitemap", "--check-search", "--check-canonical",
                     "--root-dir", tmp, tmp];
       if (bp) argv.push("--base-path", bp);
-      const { findings, output } = runCheck(argv, { structured: true });
-      if (!findings) throw new Error(`runCheck refused the self-test's arguments:\n${output}`);
+      const { findings, error } = runCheck(argv, { structured: true });
+      if (!findings) throw new Error(`runCheck refused the self-test's arguments:\n${error}`);
       return findings;
     };
 
@@ -638,6 +601,10 @@ if (!isMainThread && workerData?.argv) {
   const result = runCheck(workerData.argv);
   parentPort.postMessage(result);
 } else if (isEntry) {
+  // A throw nothing here catches, a rejected top-level await included, is a
+  // crash: it exits EXIT_ERROR rather than Node's own 1, which means "found".
+  exitOnCrash();
+
   const rawArgv = process.argv.slice(2);
 
   if (rawArgv.includes("-h") || rawArgv.includes("--help")) {
@@ -662,14 +629,15 @@ if (!isMainThread && workerData?.argv) {
   const segments = commands.filter(c => c.length > 0);
 
   if (segments.length === 0) {
-    printHelp();
-    process.exit(4);
+    printHelp(process.stderr);
+    process.exit(EXIT_ERROR);
   }
 
   if (segments.length === 1) {
     // Single command -- run inline, no worker overhead.
-    const { output, exitCode } = runCheck(segments[0]);
+    const { output, exitCode, error } = runCheck(segments[0]);
     process.stdout.write(output);
+    if (error) process.stderr.write(`${error}\n`);
     process.exit(exitCode);
   }
 
@@ -709,10 +677,11 @@ if (!isMainThread && workerData?.argv) {
     if (settled[i].status === "fulfilled") {
       const r = settled[i].value;
       process.stdout.write(r.output);
-      if (r.exitCode !== 0 && exitCode === 0) exitCode = r.exitCode;
+      if (r.error) process.stderr.write(`${r.error}\n`);
+      exitCode = Math.max(exitCode, r.exitCode);
     } else {
       process.stdout.write(`INTERNAL ERROR: ${settled[i].reason}\n`);
-      if (exitCode === 0) exitCode = 1;
+      exitCode = EXIT_ERROR;
     }
   }
 

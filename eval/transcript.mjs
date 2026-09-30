@@ -24,7 +24,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseCli, printHelpAndExit } from "../lib/cli.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
 /** Every event in a stream-json session, in order. */
 export function readTranscript(file) {
@@ -188,31 +188,31 @@ export function printDigest(s, { calls = false, report = false } = {}) {
   return a;
 }
 
+const USAGE =
+  "Usage: node eval/transcript.mjs <case.jsonl> [--calls] [--report] [-h, --help]\n\n" +
+  "Summarises an evaluator's session and audits the order of its channels.\n" +
+  "A file name that starts with a dash goes after --. See eval/README.md.\n\n" +
+  "Exit codes:\n" +
+  "  0  the digest was printed\n" +
+  "  2  a refused command line, a session file that cannot be read, or a crash";
+
 function main(argv) {
-  const { values, positionals } = parseCli(argv, {
+  const { values, positionals } = withUsageError(() => parseCli(argv, {
     options: {
       calls: { type: "boolean", default: false },
       report: { type: "boolean", default: false },
-      // No short "h": a lone -h is taken as the file, so it prints the usage
-      // and exits 0, where --help alone exits 1. C71 makes both exit 0.
-      help: { type: "boolean" },
+      help: { type: "boolean", short: "h" },
     },
-    positionals: { max: Infinity },
-    unknown: "positional",
-  });
-  const file = positionals.find((a) => !a.startsWith("--"));
-  const help = values.help || positionals.includes("-h");
-  if (!file || help) {
-    printHelpAndExit(
-      "Usage: node eval/transcript.mjs <case.jsonl> [--calls] [--report]\n\n" +
-      "Summarises an evaluator's session and audits the order of its channels.\n" +
-      "See eval/README.md.",
-      { exitCode: file ? 0 : 1 },
-    );
-  }
+    positionals: { min: 0, max: 1 },
+    stopAt: ["help"],
+  }));
+  if (values.help) printHelpAndExit(USAGE);
+  const [file] = positionals;
+  if (!file) printHelpAndExit(USAGE, { stream: "stderr", exitCode: 2 });
   printDigest(summarize(readTranscript(file)), { calls: values.calls, report: values.report });
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  exitOnCrash();
   main(process.argv.slice(2));
 }

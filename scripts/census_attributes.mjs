@@ -3,18 +3,8 @@
 //
 //     node scripts/census_attributes.mjs [options]
 //
-//       --ide <path>       twinBASIC install root (default: $TB_IDE, else the
-//                          newest %USERPROFILE%/Desktop/twinBASIC_IDE_BETA_*)
-//       --src <dir>        census an already-exported tree and do not export
-//       --cache <dir>      where exports are kept (default: %TEMP%/tb-census)
-//       --refresh          re-export even if the cache already has this build
-//       --samples          also census projects/ and addins/, not just packages/
-//       --attr <name>      restrict the report to one attribute
-//       --json             emit JSON instead of markdown
-//       --out <file>       write the report to a file instead of stdout
-//       --quiet            suppress progress on stderr
-//
-// Exit codes: 0 report produced, 2 the harness failed.
+// The options, and the exit codes (0 the report was produced, 2 the tool could
+// not do its job or crashed), are in USAGE below, which --help prints.
 //
 // ---------------------------------------------------------------- why this
 //
@@ -74,13 +64,14 @@
 // how the wrong answer gets published with a number beside it.
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { parseAttributes } from "./lib/attributes-doc.mjs";
 import { findIde } from "./lib/tb-install.mjs";
 import { defaultCache, exportPackages, packageName } from "./lib/tb-packages.mjs";
 import { MODIFIERS, declarationKind, decomment } from "./lib/twin-declarations.mjs";
-import { parseCli, withUsageError } from "../lib/cli.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { DOCS_DIR } from "../lib/repo-paths.mjs";
+
+exitOnCrash();
 
 const ATTR_DOC = path.join(DOCS_DIR, "Reference", "Attributes.md");
 
@@ -88,7 +79,7 @@ const { values } = withUsageError(() =>
   parseCli(process.argv.slice(2), {
     options: {
       ide: { type: "string" },
-      src: { type: "string" },
+      exported: { type: "string" },
       cache: { type: "string" },
       attr: { type: "string" },
       out: { type: "string" },
@@ -97,19 +88,38 @@ const { values } = withUsageError(() =>
       samples: { type: "boolean", default: false },
       json: { type: "boolean", default: false },
       quiet: { type: "boolean", default: false },
-      help: { type: "boolean", default: false },
+      help: { type: "boolean", short: "h", default: false },
     },
-    unknown: "ignore",
-    positionals: 0,
+    stopAt: ["help"],
   }));
 const die = (code, msg) => { console.error(msg); process.exit(code); };
 const log = (...a) => { if (!values.quiet) console.error(...a); };
 
-if (values.help) {
-  console.log(readFileSync(fileURLToPath(import.meta.url), "utf8")
-    .split("\n").filter((l) => l.startsWith("//")).slice(1, 18).map((l) => l.slice(3)).join("\n"));
-  process.exit(0);
-}
+const USAGE = `usage: node scripts/census_attributes.mjs [options]
+
+Counts every attribute used by the twinBASIC packages an IDE install ships, by
+declaration keyword and by enclosing construct.
+
+  --ide <path>         twinBASIC install root (default: $TB_IDE, else the
+                       newest %USERPROFILE%/Desktop/twinBASIC_IDE_BETA_*)
+  --exported <dir>     census an already-exported tree and do not export
+  --cache <dir>        where exports are kept (default: %TEMP%/tb-census/beta-<n>)
+  --refresh            re-export even if the cache already has this build
+  --samples            also census projects/ and addins/, not just packages/
+  --attr <name>        restrict the report to one attribute
+  --json               emit JSON instead of markdown
+  --out <file>         write the report to a file instead of stdout
+  --dump-sites <file>  write every raw site, or with --attr those of that
+                       attribute, to a JSON file, to find the file behind a row
+  --quiet              suppress progress on stderr
+  -h, --help           print this text and exit
+
+Exit codes:
+  0  the report was produced
+  2  a refused command line, no install, an install with no compiler or no package
+     project, or a crash (a package that fails to export is left out of the census)`;
+
+if (values.help) printHelpAndExit(USAGE);
 
 // ------------------------------------------------------------- the install
 // Found as every harness tool finds it, by scripts/lib/tb-install.mjs's
@@ -496,21 +506,21 @@ function collectTwinFiles(dir, out = []) {
 
 function main() {
   let projects, install = null, build = "n/a";
-  const srcDir = values.src;
+  const exportedDir = values.exported;
 
-  if (srcDir) {
-    if (!existsSync(srcDir) || !statSync(srcDir).isDirectory()) die(2, `not a directory: ${srcDir}`);
-    install = srcDir;
-    projects = readdirSync(srcDir, { withFileTypes: true })
+  if (exportedDir) {
+    if (!existsSync(exportedDir) || !statSync(exportedDir).isDirectory()) die(2, `not a directory: ${exportedDir}`);
+    install = exportedDir;
+    projects = readdirSync(exportedDir, { withFileTypes: true })
       .filter((e) => e.isDirectory())
       .flatMap((e) => {
-        const g = path.join(srcDir, e.name);
+        const g = path.join(exportedDir, e.name);
         const inner = readdirSync(g, { withFileTypes: true }).filter((x) => x.isDirectory());
         return inner.length
           ? inner.map((x) => ({ name: x.name, dir: path.join(g, x.name) }))
           : [{ name: e.name, dir: g }];
       });
-    if (!projects.length) projects = [{ name: path.basename(srcDir), dir: srcDir }];
+    if (!projects.length) projects = [{ name: path.basename(exportedDir), dir: exportedDir }];
   } else {
     install = findInstall();
     build = buildNumberOf(install);

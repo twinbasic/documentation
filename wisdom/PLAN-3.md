@@ -373,7 +373,7 @@ Cross-batch grouping and duplicate detection are part of the merge step — addi
 ```
 node wisdom/wisdom.mjs extract [options]
 
-  --threads <dir>      Input directory of processed .md files  [default: wisdom/data/threads]
+  --in <dir>           Input directory of processed .md files  [default: wisdom/data/threads]
   --out <dir>          Output directory for findings  [default: wisdom/data/findings]
   --channel <name>     Restrict to threads from this channel name (repeatable)
   --min-confidence <l> Skip findings below this level: high | medium | low  [default: low]

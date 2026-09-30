@@ -28,16 +28,15 @@
 //   node scripts/check_lint.mjs              # the whole scope: test.bat and CI
 //   node scripts/check_lint.mjs --staged     # the staged scripts: the hook
 //
-// Exit codes: 0 clean, 1 a finding, 2 Biome could not lint or, over the whole
-// scope, checked no script.
+// Exit codes: 0 clean, 1 a finding, 2 a refused command line, Biome could not lint or,
+// over the whole scope, checked no script, or a crash.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
-import { parseCli } from "../lib/cli.mjs";
-import { exitOnCrash } from "./lib/gate-probes.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 exitOnCrash();
@@ -47,14 +46,36 @@ function cannotLint(message) {
   process.exit(2);
 }
 
-const USAGE = "usage: node scripts/check_lint.mjs [--staged]";
-let cli;
-try {
-  cli = parseCli(process.argv.slice(2), { options: { staged: { type: "boolean", default: false } }, positionals: 0 });
-} catch {
-  cannotLint(USAGE);
+// A command-line error prints the message, then the first line of the usage.
+const SYNOPSIS = "usage: node scripts/check_lint.mjs [--staged]";
+const USAGE = `${SYNOPSIS}
+
+Runs the pinned Biome over the tooling and the site's scripts, and fails on a
+warning as well as an error.
+
+  --staged    lint only the scripts the next commit adds or changes
+  -h, --help  print this text and exit
+
+Exit codes:
+  0  Biome found nothing (--staged: or no script is staged, so nothing was linted)
+  1  Biome found an error or a warning
+  2  the gate could not lint: a refused command line, git or Biome failing to run,
+     Biome checking no script over the whole scope, or a crash`;
+const cli = withUsageError(
+  () =>
+    parseCli(process.argv.slice(2), {
+      options: { staged: { type: "boolean", default: false }, help: { type: "boolean", short: "h" } },
+      positionals: 0,
+      stopAt: ["help"],
+    }),
+  { format: (err) => `check_lint: ${err.message}\n${SYNOPSIS}` },
+);
+if (cli.values.help) printHelpAndExit(USAGE);
+if (cli.tokens.length > (cli.values.staged ? 1 : 0)) {
+  const bare = cli.tokens.some((t) => t.kind === "option-terminator");
+  console.error(`check_lint: ${bare ? "unexpected argument: --" : "--staged given more than once"}\n${SYNOPSIS}`);
+  process.exit(2);
 }
-if (cli.tokens.length > (cli.values.staged ? 1 : 0)) cannotLint(USAGE);
 const staged = cli.values.staged;
 
 // The scripts the next commit adds or changes that are still on disk, by the

@@ -31,8 +31,14 @@
 // raw, aligned to 16 B by V8 -- versus 12 + 2*4 = 20 B raw, aligned to
 // 24 B for a 2-slot instance. Saves 8 B per gen=0 PDFRef * ~226 k unique
 // = ~1.8 MB heap on the book.
+//
+// At load it checks that what it replaces is as in pdf-lib 1.17.1 (see
+// shim-targets.mjs), PDFRef's constructor included, since no instance is
+// built with it; and throws otherwise. It goes when pdf-lib is replaced;
+// when a release changes what it patches, it is re-derived or removed.
 
 import { PDFRef } from 'pdf-lib';
+import { checkTargets, ABSENT } from './shim-targets.mjs';
 
 // ---- helpers -----------------------------------------------------------
 
@@ -86,6 +92,14 @@ function _FastRefGen(objectNumber, generationNumber) {
 _FastRefGen.prototype = PDFRef.prototype;
 
 if (!PDFRef.__fastRefsClassInstalled) {
+  checkTargets(import.meta.url, { PDFRef }, {
+    'PDFRef':                           [3, 'caa1a139b254'],
+    'PDFRef.of':                        [2, '0a2fd82dd164'],
+    'PDFRef.prototype.generationNumber': ABSENT,
+    'PDFRef.prototype.toString':        [0, 'eef3fb80e9cb'],
+    'PDFRef.prototype.sizeInBytes':     [0, 'dd38686c5b40'],
+    'PDFRef.prototype.copyBytesInto':   [2, '127b12f52ae2'],
+  });
   const pool0 = [];                // dense gen=0 cache, indexed by objectNumber
   const poolGenN = new Map();      // gen!=0 cache, keyed by "N M" string
 

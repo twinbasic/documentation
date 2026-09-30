@@ -17,8 +17,10 @@
 // check instead of a case, on the site-entry protocol, and asserts what came
 // back. Run it once per round, before the cases. See eval/README.md.
 //
-// Exit: 0 the run finished (--smoke: every check passed), 1 it did not
-// (--smoke: a check failed), 2 it could not start.
+// Exit: 0 the run finished (--smoke: every check passed), 1 it did not (timed
+// out, claude failed; --smoke: a check failed), 2 it could not start (a refused
+// command line, a missing corpus or site file, claude not installed or not
+// signed in) or crashed.
 //
 // ---------------------------------------------------------------- why
 //
@@ -58,7 +60,7 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { choiceOption, numberOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { blockRegions } from "../lib/markdown.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { printDigest, readTranscript, summarize } from "./transcript.mjs";
@@ -77,24 +79,32 @@ const MEMORY_FILES = ["CLAUDE.md", "CLAUDE.local.md", "AGENTS.md"];
 const fwd = (p) => p.split(path.sep).join("/");
 
 function parseArgs(argv) {
-  const { values } = withUsageError(() => parseCli(argv, {
-    options: {
-      corpus: { type: "string" },
-      site: { type: "string" },
-      goal: { type: "string" },
-      out: { type: "string" },
-      protocol: { type: "string" },
-      claude: { type: "string", default: process.env.EVAL_CLAUDE || "claude" },
-      model: { type: "string", default: "sonnet" },
-      timeout: { type: "string" },
-      smoke: { type: "boolean" },
-      "prompt-only": { type: "boolean" },
-      help: { type: "boolean", short: "h" },
-    },
-    positionals: 0,
-    unknown: "error",
-    acceptsValue: () => true,
-  }), { format: (err) => `unknown argument: ${err.arg}`, exitCode: 2 });
+  const { values, timeout } = withUsageError(() => {
+    const cli = parseCli(argv, {
+      options: {
+        corpus: { type: "string" },
+        site: { type: "string" },
+        goal: { type: "string" },
+        out: { type: "string" },
+        protocol: { type: "string" },
+        claude: { type: "string", default: process.env.EVAL_CLAUDE || "claude" },
+        model: { type: "string", default: "sonnet" },
+        timeout: { type: "string" },
+        smoke: { type: "boolean" },
+        "prompt-only": { type: "boolean" },
+        help: { type: "boolean", short: "h" },
+      },
+      positionals: 0,
+      stopAt: ["help"],
+    });
+    if (cli.stopped === "help") return { values: cli.values };
+    // Minutes; the timer takes at most 2147483647 ms.
+    const minutes = "timeout" in cli.values
+      ? numberOption(cli.values.timeout, { option: "--timeout", above: 0, max: 35791 })
+      : 20;
+    if ("protocol" in cli.values) choiceOption(cli.values.protocol, { option: "--protocol", choices: ["repo", "site"] });
+    return { values: cli.values, timeout: minutes };
+  });
   const o = {
     corpus: "corpus" in values ? path.resolve(values.corpus) : undefined,
     site: "site" in values ? path.resolve(values.site) : undefined,
@@ -103,7 +113,7 @@ function parseArgs(argv) {
     protocol: values.protocol,
     claude: values.claude,
     model: values.model,
-    timeout: "timeout" in values ? Number(values.timeout) : 20,
+    timeout,
     smoke: values.smoke,
     promptOnly: values.promptOnly,
     help: values.help,
@@ -252,16 +262,23 @@ function runClaude(o, prompt, cwd, binDir) {
 const USAGE =
   "Usage: node eval/run_case.mjs --corpus <dir> --site <snapshot> --protocol <repo|site>\n" +
   "                              --goal <file> --out <prefix> [--claude <exe>] [--model <m>]\n" +
-  "                              [--timeout <min>] [--prompt-only]\n" +
+  "                              [--timeout <min>] [--prompt-only] [-h, --help]\n" +
   "       node eval/run_case.mjs --smoke --corpus <dir> --site <snapshot> --out <prefix>\n\n" +
   "Runs one use-case evaluator as an isolated Claude Code process and audits its\n" +
-  "session. See eval/README.md.";
+  "session. See eval/README.md.\n\n" +
+  "Exit codes:\n" +
+  "  0  the run finished; with --smoke, every check passed\n" +
+  "  1  the run timed out, or claude exited with an error or wrote no report; with\n" +
+  "     --smoke, a check failed\n" +
+  "  2  a refused command line, a corpus or site file that is missing, a memory file in\n" +
+  "     the corpus, claude not installed or not signed in, or a crash";
 
 async function main(argv) {
   const o = parseArgs(argv);
   const complete = o.corpus && o.site && o.out &&
     (o.smoke || (o.goal && ["repo", "site"].includes(o.protocol)));
-  if (o.help || !complete) return printHelpAndExit(USAGE, { exitCode: o.help ? 0 : 2 });
+  if (o.help) return printHelpAndExit(USAGE);
+  if (!complete) return printHelpAndExit(USAGE, { stream: "stderr", exitCode: 2 });
 
   const cwd = o.protocol === "site" ? path.join(o.corpus, "docs") : o.corpus;
   const needed = [cwd, path.join(o.site, "assets/js/search-data.json"), path.join(o.site, "assets/js/vendor/lunr.min.js")];
@@ -304,7 +321,7 @@ async function main(argv) {
 
   if (s.result?.is_error && /authenticat/i.test(s.report)) {
     console.log("\nclaude is not signed in: run `claude auth login`, then run this again.");
-    return 1;
+    return 2;
   }
   if (run.timedOut) {
     console.log(`\ntimed out after ${o.timeout} min`);

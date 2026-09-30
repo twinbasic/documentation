@@ -18,17 +18,23 @@
 //
 // The fast path accumulates the integer directly (n = n*10 + (byte -
 // 0x30)). parseRawNumber additionally descends into decimal handling
-// when a period appears. Both fall back to the original for:
-//   - Numbers with > 15 integer digits (where direct accumulation
-//     could exceed Number.MAX_SAFE_INTEGER and lose precision).
+// when a period appears, and divides once, so a decimal reads as the
+// same double Number() gives. Both fall back to the original for:
+//   - Numbers with > 15 digits, the fraction's included (where direct
+//     accumulation could exceed Number.MAX_SAFE_INTEGER and lose
+//     precision).
 //   - Empty-digit cases (e.g., bare sign or lone "."), so upstream's
 //     NumberParsingError keeps its diagnostic context.
 // Both fallback paths are vanishingly rare on real PDFs.
 //
-// Mechanism: BaseParser isn't re-exported by pdf-lib's index, so we
-// import it via the package's CJS internal path through createRequire.
-// Mutating BaseParser.prototype affects every subclass (PDFParser,
+// Mechanism: BaseParser isn't re-exported by pdf-lib's index, so it
+// comes from pdf-lib-internals.mjs, which requires it by the package's
+// CJS internal path. Mutating BaseParser.prototype affects every subclass (PDFParser,
 // PDFObjectParser, PDFObjectStreamParser, PDFXRefStreamParser).
+//
+// At load it checks that what it replaces is as in pdf-lib 1.17.1 (see
+// shim-targets.mjs), and throws otherwise. It goes when pdf-lib is replaced;
+// when a release changes what it patches, it is re-derived or removed.
 //
 // Side-effecting import. Import once before PDFDocument.load runs:
 //
@@ -36,11 +42,8 @@
 //
 // Idempotent -- repeated imports do nothing after the first.
 
-import { createRequire } from 'node:module';
-
-const require = createRequire(import.meta.url);
-const BaseParser = require('pdf-lib/cjs/core/parser/BaseParser.js').default;
-const { IsDigit } = require('pdf-lib/cjs/core/syntax/Numeric.js');
+import { BaseParser, IsDigit } from './pdf-lib-internals.mjs';
+import { checkTargets } from './shim-targets.mjs';
 
 const ZERO = 0x30;   // '0'
 const PERIOD = 0x2E; // '.'
@@ -52,6 +55,10 @@ const MINUS = 0x2D;  // '-'
 const MAX_SAFE_INT_DIGITS = 15;
 
 if (!BaseParser.__fastParseNumberInstalled) {
+  checkTargets(import.meta.url, { BaseParser }, {
+    'BaseParser.prototype.parseRawInt':    [0, '3d5dd7302180'],
+    'BaseParser.prototype.parseRawNumber': [0, 'a3bd30d0e8b3'],
+  });
   const origParseRawNumber = BaseParser.prototype.parseRawNumber;
   const origParseRawInt = BaseParser.prototype.parseRawInt;
 
@@ -129,9 +136,17 @@ if (!BaseParser.__fastParseNumberInstalled) {
     // Decimal part
     let frac = 0;
     let scale = 1;
+    let digits = intDigits;
     while (!bytes.done() && IsDigit[byte]) {
+      if (digits >= MAX_SAFE_INT_DIGITS) {
+        // Past 15 digits in all, the numerator below is no longer exact
+        // -- rewind and delegate, as for a long integer.
+        bytes.moveTo(start);
+        return origParseRawNumber.call(this);
+      }
       frac = frac * 10 + (byte - ZERO);
       scale *= 10;
+      digits++;
       bytes.next();
       byte = bytes.peek();
     }
@@ -143,7 +158,10 @@ if (!BaseParser.__fastParseNumberInstalled) {
       return origParseRawNumber.call(this);
     }
 
-    const value = frac === 0 ? intPart : intPart + frac / scale;
+    // One division of two exact integers, which IEEE 754 rounds to the
+    // double nearest the decimal, as Number() does. Adding frac / scale
+    // to intPart would round twice: 2.28 would read as 2.2800000000000002.
+    const value = (intPart * scale + frac) / scale;
     return neg ? -value : value;
   };
 

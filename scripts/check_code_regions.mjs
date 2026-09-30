@@ -6,7 +6,7 @@
 //     node scripts/check_code_regions.mjs --self-test  # prove it still detects
 //
 // Exit: 0 clean, 1 a code region changed or a probe failed, 2 the gate itself
-// could not run.
+// could not run (a refused command line, or a crash).
 //
 // WHY THIS EXISTS
 //
@@ -88,7 +88,7 @@ import { validateCountNames } from "../builder/counts.mjs";
 import { discover } from "../builder/discover.mjs";
 import { applyPostRenderRewrites, applyPreRenderRewrites, createMarkdownIt } from "../builder/render.mjs";
 import { injectAnchorHeadings } from "../builder/template.mjs";
-import { parseCli } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { parseFrontmatter, unquotedHashValues } from "../lib/frontmatter.mjs";
 import { blockRegions, mapLines, maskCode, splitCodeSpans, splitOnMarker } from "../lib/markdown.mjs";
 import { markdownFiles } from "../lib/markdown-files.mjs";
@@ -447,11 +447,28 @@ const DISCOVER_PROBES = [
   ["discover's warning about an unquoted value that ends in #", hashProbe],
 ];
 
+const USAGE = `usage: node scripts/check_code_regions.mjs [--verbose] [--self-test] [-h, --help]
+
+Checks that no rewrite of page source or rendered HTML alters a code region, and
+runs the probes of the modules that decide what is code.
+
+  --verbose    print the detail of every finding
+  --self-test  prove the comparison still detects an altered code region
+  -h, --help   print this text and exit
+
+Exit codes:
+  0  no code region was altered, and every probe passed (--self-test: the comparison
+     detects the altered region)
+  1  a code region was altered, a probe failed or the two parses disagree (--self-test:
+     the comparison missed the altered region)
+  2  the gate could not run: a refused command line, or a crash`;
+
 async function main(argv) {
-  const { values } = parseCli(argv, {
-    options: { verbose: { type: "boolean" }, "self-test": { type: "boolean" } },
-    unknown: "ignore",
-  });
+  const { values } = withUsageError(() => parseCli(argv, {
+    options: { verbose: { type: "boolean" }, "self-test": { type: "boolean" }, help: { type: "boolean", short: "h" } },
+    stopAt: ["help"],
+  }));
+  if (values.help) printHelpAndExit(USAGE);
   const verbose = values.verbose;
 
   if (values.selfTest) {

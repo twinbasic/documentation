@@ -36,13 +36,14 @@
 // A run that fails keeps .compare-trees/ so its logs can be read; the next
 // run removes it before starting.
 //
-// Exit codes: 0 the trees match, 1 they differ, 2 the tool failed.
+// Exit codes: 0 the trees match, 1 they differ, 2 the tool could not do its job
+// (a refused command line, a git command or a build that failed, or a crash).
 
 import { spawnSync } from "node:child_process";
 import { closeSync, existsSync, openSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { parseCli } from "../lib/cli.mjs";
+import { CliError, numberOption, parseCli } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const WORK = path.join(REPO_ROOT, ".compare-trees");
@@ -87,7 +88,7 @@ const NORMALISERS = [
 
 const TEXT_EXT = /\.(?:html?|css|js|mjs|json|xml|svg|txt|md|map|py|yml)$/i;
 
-const USAGE = `usage: node scripts/compare_trees.mjs [--before <ref>] [--keep] [--max <n>] [-- <tbdocs args>]
+const USAGE = `usage: node scripts/compare_trees.mjs [--before <ref>] [--keep] [--max <n>] [-h, --help] [-- <tbdocs args>]
 
 Builds <ref> (default HEAD) and the working tree, each from a git worktree
 under .compare-trees/ with tbdocs --no-fetch-assets and CI=1, and compares the
@@ -96,10 +97,16 @@ online, offline and PDF trees byte for byte.
   --before <ref>  the commit to build as the before side (default HEAD)
   --keep          leave .compare-trees/ in place: both worktrees, their trees
                   and both build logs
-  --max <n>       list at most n differences per tree (default 20)
+  --max <n>       list at most n files of each kind of difference per tree
+                  (default 20)
+  -h, --help      print this text and exit
   --              everything after it is passed to both tbdocs builds
 
-Exit codes: 0 the trees match, 1 they differ, 2 the tool failed.
+Exit codes:
+  0  the trees match
+  1  the trees differ
+  2  a refused command line, a git command or a build that failed to produce its
+     tree, or a crash
 `;
 
 function usageError(message) {
@@ -116,30 +123,24 @@ function parseArgs(argv) {
   const tbdocs = sep === -1 ? [] : argv.slice(sep + 1);
 
   let cli;
+  let max;
   try {
     cli = parseCli(head, {
       options: {
         before: { type: "string", default: "HEAD" },
-        max: { type: "string" },
+        max: { type: "string", default: "20" },
         keep: { type: "boolean", default: false },
         help: { type: "boolean", short: "h" },
       },
-      positionals: 0,
-      // A single-dash value such as -1 is taken; a double-dash one is not,
-      // so a flag with no value never eats the option that follows it.
-      acceptsValue: (v) => v !== undefined && !v.startsWith("--"),
       stopAt: ["help"],
     });
+    if (cli.stopped !== "help") max = numberOption(cli.values.max, { option: "--max", integer: true, min: 0 });
   } catch (err) {
-    usageError(err.code === "missing-value" ? err.message : `unknown argument "${err.arg}"`);
+    if (!(err instanceof CliError)) throw err;
+    usageError(err.message);
   }
   if (cli.stopped === "help") { process.stdout.write(USAGE); process.exit(0); }
 
-  let max = 20;
-  if (cli.values.max !== undefined) {
-    max = Number(cli.values.max);
-    if (!Number.isInteger(max) || max < 0) usageError(`--max takes a whole number, not "${cli.values.max}"`);
-  }
   return { before: cli.values.before, keep: cli.values.keep, max, tbdocs };
 }
 

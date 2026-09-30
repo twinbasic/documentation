@@ -32,7 +32,8 @@
 //   --base-path-tree     check a tree built with a --baseurl prefix
 //   --build-base-path P  the base path to build that tree with
 //
-// Exits 0 when the two sides agree, 1 on a difference, 2 on a harness error.
+// Exits 0 when the two sides agree, 1 on a difference, 2 when the comparison could not
+// run (a refused command line, a failed build, or a crash).
 //   node scripts/check_links_diff.mjs --case online --case book -v
 //   node scripts/check_links_diff.mjs --list
 //
@@ -79,8 +80,10 @@ import * as path from "node:path";
 import { performance } from "node:perf_hooks";
 
 import { runCheck, selfTest as scriptSelfTest } from "./check_links.mjs";
-import { parseCli } from "../lib/cli.mjs";
+import { exitOnCrash, numberOption, parseCli, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
+
+exitOnCrash();
 
 const BASE_PATH = "/twinBASIC-docs";
 const DEFAULT_BASEPATH_TREE = "docs/_site-basepath";
@@ -341,9 +344,9 @@ const SIDES = {
     describe: "scripts/check_links.mjs with --oracle fs, in-process",
     run(argv) {
       argv = [...argv, "--oracle", "fs"];
-      const { findings, exitCode, output } = runCheck(argv, { structured: true });
+      const { findings, exitCode, error } = runCheck(argv, { structured: true });
       if (!findings) {
-        throw new Error(`runCheck refused the arguments (exit ${exitCode}):\n${output}`);
+        throw new Error(`runCheck refused the arguments (exit ${exitCode}):\n${error}`);
       }
       return findings;
     },
@@ -539,9 +542,8 @@ function ensureBasePathTree(dir, allowBuild) {
 // ── Main ────────────────────────────────────────────────────────────
 
 function parseArgs(argv) {
-  let values;
-  try {
-    ({ values } = parseCli(argv, {
+  const { values, maxLines } = withUsageError(() => {
+    const cli = parseCli(argv, {
       options: {
         a: { type: "string", default: "script" },
         b: { type: "string", default: "script" },
@@ -554,15 +556,16 @@ function parseArgs(argv) {
         verbose: { type: "boolean", short: "v" },
         help: { type: "boolean", short: "h" },
       },
-      positionals: 0,
-      acceptsValue: () => true,
-    }));
-  } catch (err) {
-    throw new Error(`unknown argument: ${err.arg}`);
-  }
+      stopAt: ["help"],
+    });
+    return {
+      values: cli.values,
+      maxLines: cli.stopped === "help" ? undefined : numberOption(cli.values.maxLines, { option: "--max-lines", integer: true, min: 0 }),
+    };
+  });
   const o = {
     a: values.a, b: values.b, cases: values.case, verbose: values.verbose, list: values.list,
-    maxLines: Number(values.maxLines), basePathTree: values.basePathTree, buildBasePath: values.buildBasePath,
+    maxLines, basePathTree: values.basePathTree, buildBasePath: values.buildBasePath,
     selfTest: values.selfTest, help: values.help,
   };
   if (!o.cases.length) o.cases = [...DEFAULT_CASES];
@@ -582,7 +585,13 @@ function printHelp() {
                       fail unless the difference is reported
   --list              list cases and sides, then exit
   -v, --verbose       print per-case finding counts even when clean
-`);
+  -h, --help          print this text and exit
+
+Exit codes:
+  0  the two sides agree in every case
+  1  the sides differ, a fixture's category counts drifted, or --self-test failed
+  2  the comparison could not run: a refused command line, an unknown side or
+     case, --a equal to --b, a failed build, or a crash`);
 }
 
 // Guard on the guard. Everything below reduces to "the two sides agreed",
@@ -613,9 +622,7 @@ function selfTest(opts) {
 }
 
 function main() {
-  let opts;
-  try { opts = parseArgs(process.argv.slice(2)); }
-  catch (e) { console.error(`error: ${e.message}`); process.exit(2); }
+  const opts = parseArgs(process.argv.slice(2));
 
   if (opts.help) { printHelp(); return 0; }
   if (opts.selfTest) return selfTest(opts);

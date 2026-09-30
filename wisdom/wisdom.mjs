@@ -3,7 +3,7 @@
 import { mkdirSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { parseCli, printHelpAndExit, withUsageError } from '../lib/cli.mjs'
+import { choiceOption, dateOption, exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from '../lib/cli.mjs'
 import { loadConfig } from './config.mjs'
 import { readJsonFile, writeFileAtomic } from './files.mjs'
 import { createClient, CapReachedError, timestampToSnowflake, EXIT_CAP_REACHED } from './discord/api.mjs'
@@ -12,39 +12,60 @@ import { fetchMessages, appendMessages, loadManifest, saveManifest, highestSnowf
 import { runProcess } from './process/thread.mjs'
 import { runExtract, runMerge } from './extract/prep.mjs'
 
+exitOnCrash()
+
 const __dirname = dirname(fileURLToPath(import.meta.url))
+
+// No Discord message is older than this.
+const DISCORD_EPOCH = '2015-01-01'
 
 function parseArgs(argv) {
   const [command, ...rest] = argv.slice(2)
-  const { values } = withUsageError(() => parseCli(rest, {
-    options: {
-      guild: { type: 'string' },
-      channel: { type: 'string', multiple: true },
-      since: { type: 'string' },
-      in: { type: 'string' },
-      out: { type: 'string' },
-      concurrency: { type: 'string' },
-      'rate-limit': { type: 'string' },
-      cap: { type: 'string' },
-      'min-confidence': { type: 'string' },
-      force: { type: 'boolean' },
-      'dry-run': { type: 'boolean' },
-      merge: { type: 'boolean' },
-      all: { type: 'boolean' },
-    },
-    positionals: 0,
-    unknown: 'error',
-    acceptsValue: () => true,
-  }), { format: (err) => `Unknown option: ${err.arg}`, exitCode: 1 })
+  if (command === '--help' || command === '-h') printHelpAndExit(USAGE)
+  const { values, concurrency, rateLimit, cap } = withUsageError(() => {
+    const cli = parseCli(rest, {
+      options: {
+        help: { type: 'boolean', short: 'h' },
+        guild: { type: 'string' },
+        channel: { type: 'string', multiple: true },
+        since: { type: 'string' },
+        in: { type: 'string' },
+        out: { type: 'string' },
+        concurrency: { type: 'string' },
+        'rate-limit': { type: 'string' },
+        cap: { type: 'string' },
+        'min-confidence': { type: 'string' },
+        force: { type: 'boolean' },
+        'dry-run': { type: 'boolean' },
+        merge: { type: 'boolean' },
+        all: { type: 'boolean' },
+      },
+      positionals: 0,
+      stopAt: ['help'],
+    })
+    if (cli.stopped === 'help') return cli
+    const v = cli.values
+    if ('since' in v) dateOption(v.since, { option: '--since', min: DISCORD_EPOCH })
+    if ('minConfidence' in v) choiceOption(v.minConfidence, { option: '--min-confidence', choices: ['high', 'medium', 'low'] })
+    // --merge grafts results already on disk and reads none of the three modes.
+    if (command === 'extract' && !v.merge) refuseTogether(v, ['since', 'all', 'force'])
+    return {
+      ...cli,
+      concurrency: 'concurrency' in v ? numberOption(v.concurrency, { option: '--concurrency', integer: true, min: 1 }) : undefined,
+      rateLimit: 'rateLimit' in v ? numberOption(v.rateLimit, { option: '--rate-limit', above: 0 }) : undefined,
+      cap: 'cap' in v ? numberOption(v.cap, { option: '--cap', integer: true, min: 1 }) : undefined,
+    }
+  })
+  if (values.help) printHelpAndExit(USAGE)
 
   const flags = { channels: values.channel }
   if ('guild' in values) flags.guild = values.guild
   if ('since' in values) flags.since = values.since
   if ('in' in values) flags.in = values.in
   if ('out' in values) flags.out = values.out
-  if ('concurrency' in values) flags.concurrency = parseInt(values.concurrency, 10)
-  if ('rateLimit' in values) flags.rateLimit = parseFloat(values.rateLimit)
-  if ('cap' in values) flags.cap = parseInt(values.cap, 10)
+  if (concurrency !== undefined) flags.concurrency = concurrency
+  if (rateLimit !== undefined) flags.rateLimit = rateLimit
+  if (cap !== undefined) flags.cap = cap
   if ('minConfidence' in values) flags.minConfidence = values.minConfidence
   if (values.force) flags.force = true
   if (values.dryRun) flags.dryRun = true
@@ -90,8 +111,17 @@ async function runExport(flags) {
   const client = await createClient(config)
 
   // Discovery (always runs in full — picks up new channels/threads on incremental runs)
-  const { allChannels, textChannels, forumChannels, threads } =
-    await discoverChannels(client, config, flags.channels.length ? flags.channels : null)
+  let discovered
+  try {
+    discovered = await discoverChannels(client, config, flags.channels.length ? flags.channels : null)
+  } catch (err) {
+    if (err instanceof CapReachedError) {
+      process.stderr.write('[wisdom] Cap reached during discovery\n')
+      process.exit(EXIT_CAP_REACHED)
+    }
+    throw err
+  }
+  const { allChannels, textChannels, forumChannels, threads } = discovered
 
   if (flags.dryRun) {
     process.stderr.write(
@@ -222,6 +252,8 @@ Commands:
   process   Convert raw JSON to structured .md files
   extract   Prepare data for Claude-agent knowledge extraction
 
+Any command, or none, also takes -h, --help: print this text and exit.
+
 Export options:
   --guild <id>          Guild (server) ID
   --channel <id>        Restrict to this channel (repeatable)
@@ -254,6 +286,12 @@ Extract options:
   Default mode is incremental: only threads whose last_message_id or message_count
   has changed since the last successful merge are re-extracted.
   --since, --all, and --force are mutually exclusive primary modes.
+
+Exit codes:
+  0  the command finished, or a dry run did
+  2  a refused command line, input that an earlier command should have written (run
+     that command first), or a crash
+  3  the request cap was reached; re-run to continue
 `
 
 const { command, flags } = parseArgs(process.argv)
@@ -270,5 +308,6 @@ switch (command) {
     else await runExtract(flags)
     break
   default:
-    printHelpAndExit(USAGE, { stream: 'stderr', exitCode: command ? 1 : 0 })
+    if (command) console.error(`unknown command: ${command}`)
+    printHelpAndExit(USAGE, { stream: 'stderr', exitCode: 2 })
 }

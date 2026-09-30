@@ -8,7 +8,8 @@
 //     node scripts/check_examples.mjs --propose --apply  # ...and mark the ones that pass
 //     node scripts/check_examples.mjs --report survey.json  # group a saved survey
 //
-// Exit: 0 clean, 1 a sample does not compile, 2 the harness failed.
+// Exit: 0 clean, 1 a sample does not compile, 2 the harness could not run (a refused
+// command line, no IDE, or a crash).
 //
 // ------------------------------------------------------------------ why
 //
@@ -74,7 +75,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { CliError, numberOption, parseCli, printHelpAndExit, refuseTogether, regexOption, withUsageError } from "../lib/cli.mjs";
 import { mapLines } from "../lib/markdown.mjs";
 import {
   BODY_SLOTS, CONCAT_KEY, HIDDEN_MARKER, MARKER, RUN_MARKER, SLOTS, classify,
@@ -87,8 +88,6 @@ import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 const TEMPLATES = path.join(REPO_ROOT, "test", "example-projects");
 
 // ---------------------------------------------------------------- arguments
-
-const usageError = (why) => { console.error(`check_examples: ${why}`); process.exit(2); };
 
 const { values } = withUsageError(
   () => parseCli(process.argv.slice(2), {
@@ -107,35 +106,17 @@ const { values } = withUsageError(
       keep: { type: "boolean", default: false },
       show: { type: "boolean", default: false },
       hide: { type: "boolean", default: false },
-      help: { type: "boolean", default: false },
+      help: { type: "boolean", short: "h", default: false },
     },
-    unknown: "ignore",
-    positionals: 0,
+    stopAt: ["help"],
   }),
   { format: (err) => `check_examples: ${err.message}` },
 );
 
-// A count or a port that is not a positive whole number is refused: Number()
-// makes NaN of anything it cannot read.
-function positiveInteger(n, d) {
-  const v = Number(values[n] ?? d);
-  if (!Number.isInteger(v) || v < 1) usageError(`--${n} takes a positive whole number`);
-  return v;
-}
+const USAGE = `usage: node scripts/check_examples.mjs [options]
 
-const MODE_CENSUS = values.census;
-const MODE_PROPOSE = values.propose;
-const MODE_REPORT = values.report ?? null;
-const APPLY = values.apply;
-const VERBOSE = values.verbose;
-const AS_JSON = values.json;
-const only = values.only ? new RegExp(values.only) : null;
-const jobs = positiveInteger("jobs", 4);
-const basePort = positiveInteger("port", 9480);
-const batchSize = positiveInteger("batch", 120);
-
-if (values.help) {
-  printHelpAndExit(`usage: node scripts/check_examples.mjs [options]
+Compiles the documentation's own twinBASIC code samples, every tb fence marked
+\`${MARKER}\`, and reports the ones the compiler refuses.
 
   --only <regex>   restrict to pages whose path matches
   --census         classify every tb fence and print the table; no compiler
@@ -148,9 +129,42 @@ if (values.help) {
   --batch <n>      samples per generated project (default 120)
   --ide <path>     twinBASIC.exe (default: $TB_IDE, else the newest on the Desktop)
   --keep           leave the generated projects on disk and say where
+  --show, --hide   as tbbuild's
   --verbose        also print warnings, not only errors
-  --json           one JSON object instead of a report`);
-}
+  --json           one JSON object instead of a report
+  -h, --help       print this text and exit
+
+Exit codes:
+  0  every marked sample compiles, or none is marked; --report always, and --propose
+     when it found only unmarked samples that fail (advisory)
+  1  a marked sample does not compile, a marker is misused, a template does not
+     compile, or the compiler crashed on a project; the report names each
+  2  the harness could not run: a refused command line, a failed self-test probe, no
+     IDE or compiler, an unreadable --report file, a work folder it could not clear,
+     or a crash`;
+
+if (values.help) printHelpAndExit(USAGE);
+
+// The values are read before anything runs. --report, --census and --propose
+// are three modes of one run, and --apply is a part of --propose.
+const { only, jobs, basePort, batchSize } = withUsageError(() => {
+  refuseTogether(values, ["report", "census", "propose"]);
+  refuseTogether(values, ["show", "hide"]);
+  if (values.apply && !values.propose) throw new CliError("conflict", "--apply needs --propose", { option: "--apply" });
+  return {
+    only: values.only ? regexOption(values.only, { option: "--only" }) : null,
+    jobs: numberOption(values.jobs ?? "4", { option: "--jobs", integer: true, min: 1 }),
+    basePort: numberOption(values.port ?? "9480", { option: "--port", integer: true, min: 1, max: 65535 }),
+    batchSize: numberOption(values.batch ?? "120", { option: "--batch", integer: true, min: 1 }),
+  };
+}, { format: (err) => `check_examples: ${err.message}` });
+
+const MODE_CENSUS = values.census;
+const MODE_PROPOSE = values.propose;
+const MODE_REPORT = values.report ?? null;
+const APPLY = values.apply;
+const VERBOSE = values.verbose;
+const AS_JSON = values.json;
 
 // A page's template, when its fence does not name one. Inferred from the path
 // because the package a sample needs is what the page is ABOUT -- stating

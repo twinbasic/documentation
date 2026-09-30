@@ -34,13 +34,25 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { withBrowser } from "./lib/browser.mjs";
-import { exitOnCrash } from "./lib/gate-probes.mjs";
 import { openInterPage } from "./lib/inter-page.mjs";
-import { parseCli } from "../lib/cli.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 // A crash exits 2, where 1 is --check finding the table stale.
 exitOnCrash();
+
+const USAGE = `usage: node scripts/build_dot_metrics.mjs [--check] [-h, --help]
+
+Regenerates builder/inter-metrics.json, the Inter width table that Graphviz is
+given, by measuring the font in a browser.
+
+  --check     fail if the table is stale, instead of writing it
+  -h, --help  print this text and exit
+
+Exit codes:
+  0  the table was written or is unchanged; with --check, it is current
+  1  with --check, the table is stale
+  2  a refused command line, a browser that would not start, or a crash`;
 
 const OUT = path.join(REPO_ROOT, "builder", "inter-metrics.json");
 
@@ -57,7 +69,12 @@ const VARIANTS = [
   { key: "boldItalic", weight: 700, style: "italic" },
 ];
 
-const check = parseCli(process.argv.slice(2), { options: { check: { type: "boolean" } }, unknown: "ignore" }).values.check === true;
+const cli = withUsageError(() => parseCli(process.argv.slice(2), {
+  options: { check: { type: "boolean" }, help: { type: "boolean", short: "h" } },
+  stopAt: ["help"],
+}));
+if (cli.values.help) printHelpAndExit(USAGE);
+const check = cli.values.check === true;
 
 const table = await withBrowser(async (browser) => {
   const page = await openInterPage(browser, "dot-metrics", { css: "body{margin:0}" });

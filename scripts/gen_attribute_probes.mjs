@@ -38,18 +38,30 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { parseAttributes, parseTargets } from "./lib/attributes-doc.mjs";
-import { parseCli } from "../lib/cli.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { DOCS_DIR } from "../lib/repo-paths.mjs";
+
+exitOnCrash();
 
 const ATTR_DOC = path.join(DOCS_DIR, "Reference", "Attributes.md");
 
 const USAGE = `Generate a twinBASIC probe project for Reference/Attributes.md applicability.
 
-    node scripts/gen_attribute_probes.mjs <out_dir> [key.md]
+    node scripts/gen_attribute_probes.mjs <out_dir> [key.md] [-h, --help]
 
 Writes one source file per claimed attribute target, plus a key naming the
 Attributes.md line each probe came from. Every probe is expected to compile; a
-diagnostic naming a probe module is a finding.`;
+diagnostic naming a probe module is a finding.
+
+  <out_dir>   the folder to write the probe project into
+  key.md      where to write the key (default: probe-key.md beside <out_dir>)
+  -h, --help  print this text and exit
+
+A folder or key that starts with a dash is given after \`--\`.
+
+Exit codes:
+  0  the probe project and the key were written
+  2  a refused command line, or a crash`;
 
 // --------------------------------------------------------------- arguments
 // An attribute with a mandatory argument needs a value that is itself valid, or
@@ -1028,9 +1040,14 @@ const MAIN_TWIN = "' Startup object for the probe project. Does nothing.\n\n" +
   "Module ProbeMain\n    Public Sub Main()\n    End Sub\nEnd Module\n";
 
 async function main(argv) {
-  const { positionals } = parseCli(argv, { unknown: "positional", positionals: { min: 0 } });
+  const { values, positionals } = withUsageError(() => parseCli(argv, {
+    options: { help: { type: "boolean", short: "h" } },
+    positionals: { min: 0, max: 2 },
+    stopAt: ["help"],
+  }));
+  if (values.help) printHelpAndExit(USAGE);
   if (positionals.length < 1) {
-    console.log(USAGE);
+    console.error(USAGE);
     return 2;
   }
   const out = positionals[0];

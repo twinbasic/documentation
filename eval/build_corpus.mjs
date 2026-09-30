@@ -8,16 +8,18 @@
 // because a capable evaluator that quietly reads the source measures how good
 // the source is, reports a clean pass, and tells you nothing about the docs.
 //
-//     node eval/build_corpus.mjs [--dest <path>] [--src <path>] [--quiet]
+//     node eval/build_corpus.mjs [--dest <path>] [--repo <path>] [--quiet]
 //
 // See eval/README.md for how a round uses it.
 
 import fs from "node:fs";
 import path from "node:path";
 
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { CliError, exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { isOutputTree } from "../lib/markdown-files.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
+
+exitOnCrash();
 
 // ---------------------------------------------------------------------------
 // What stays readable is an ALLOWLIST, and that is the whole design.
@@ -94,20 +96,47 @@ const WITHHELD = [
 
 const STUB = "/* [ source withheld for this exercise -- treat this file as unreadable ] */\n";
 
+// Whether `inner` is `outer` or lies under it; path.relative compares
+// case-insensitively on Windows.
+function isInside(outer, inner) {
+  const rel = path.relative(outer, inner);
+  return rel === "" || (rel !== ".." && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
+}
+
+// build() empties `dest` before it writes anything, so a `dest` that is or
+// contains a folder the tool runs from or reads would delete it.
+function refuseDest(dest, repo) {
+  const doomed = [
+    ["the repository root", REPO_ROOT],
+    ["the current folder", process.cwd()],
+    [`--repo ${repo}`, repo],
+  ];
+  for (const [what, folder] of doomed) {
+    if (isInside(dest, path.resolve(folder))) {
+      throw new CliError("bad-dest", `refusing --dest ${dest}: it is or contains ${what}, which cleaning it would delete`, { option: "--dest", value: dest });
+    }
+  }
+}
+
 function parseArgs(argv) {
-  const { values } = withUsageError(() => parseCli(argv, {
-    options: {
-      src: { type: "string" },
-      dest: { type: "string" },
-      quiet: { type: "boolean", default: false },
-      help: { type: "boolean", short: "h" },
-    },
-    positionals: 0,
-    unknown: "error",
-    acceptsValue: () => true,
-  }), { format: (err) => `unknown argument: ${err.arg}`, exitCode: 1 });
+  const { values } = withUsageError(() => {
+    const cli = parseCli(argv, {
+      options: {
+        repo: { type: "string" },
+        dest: { type: "string" },
+        quiet: { type: "boolean", default: false },
+        help: { type: "boolean", short: "h" },
+      },
+      positionals: 0,
+      stopAt: ["help"],
+    });
+    if (cli.stopped !== "help" && "dest" in cli.values) {
+      refuseDest(path.resolve(cli.values.dest), "repo" in cli.values ? path.resolve(cli.values.repo) : REPO_ROOT);
+    }
+    return cli;
+  });
   return {
-    src: "src" in values ? path.resolve(values.src) : REPO_ROOT,
+    repo: "repo" in values ? path.resolve(values.repo) : REPO_ROOT,
     dest: "dest" in values ? path.resolve(values.dest) : null,
     quiet: values.quiet,
     help: values.help,
@@ -135,24 +164,24 @@ function classify(rel) {
   return { kind: "stubbed", ext: ext || base };
 }
 
-function* walk(dir, srcRoot) {
+function* walk(dir, repoRoot) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const abs = path.join(dir, entry.name);
-    const rel = path.relative(srcRoot, abs).split(path.sep).join("/");
+    const rel = path.relative(repoRoot, abs).split(path.sep).join("/");
     if (isExcluded(rel)) continue;
-    if (entry.isDirectory()) yield* walk(abs, srcRoot);
+    if (entry.isDirectory()) yield* walk(abs, repoRoot);
     else if (entry.isFile()) yield { abs, rel };
   }
 }
 
-function build({ src, dest, quiet }) {
+function build({ repo, dest, quiet }) {
   fs.rmSync(dest, { recursive: true, force: true });
   fs.mkdirSync(dest, { recursive: true });
 
   const counts = { readable: new Map(), stubbed: new Map(), binary: 0, withheld: [] };
   const bump = (m, k) => m.set(k, (m.get(k) ?? 0) + 1);
 
-  for (const { abs, rel } of walk(src, src)) {
+  for (const { abs, rel } of walk(repo, repo)) {
     const c = classify(rel);
     if (c.kind === "binary") { counts.binary++; continue; }
     if (c.kind === "withheld") { counts.withheld.push({ rel, why: c.why }); continue; }
@@ -206,11 +235,15 @@ function report(dest, counts) {
 const opts = parseArgs(process.argv.slice(2));
 if (opts.help || !opts.dest) {
   printHelpAndExit(
-    "Usage: node eval/build_corpus.mjs --dest <path> [--src <path>] [--quiet]\n\n" +
+    "Usage: node eval/build_corpus.mjs --dest <path> [--repo <path>] [--quiet] [-h, --help]\n\n" +
     "Mirrors the repository with every non-prose file replaced by an unreadable\n" +
     "stub, so a documentation evaluation cannot silently read the implementation.\n" +
-    "See eval/README.md.",
-    { exitCode: opts.help ? 0 : 1 },
+    "See eval/README.md.\n\n" +
+    "Exit codes:\n" +
+    "  0  the corpus was built\n" +
+    "  2  a refused command line (a --dest that is or contains the repository, the\n" +
+    "     working folder or --repo included), or a crash",
+    opts.help ? {} :{ stream: "stderr", exitCode: 2 },
   );
 }
 build(opts);

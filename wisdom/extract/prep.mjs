@@ -17,15 +17,12 @@ export async function runExtract(flags) {
 
   if (!existsSync(threadsDir)) {
     process.stderr.write('[wisdom] Threads directory not found — run process first\n')
-    process.exit(1)
+    process.exit(2)
   }
 
-  // Mode resolution: --since, --all, --force are mutually exclusive primary modes.
+  // Mode resolution: --since, --all, --force are mutually exclusive primary
+  // modes; wisdom.mjs refuses two of them on the command line.
   const modeFlags = [flags.since && 'since', flags.all && 'all', flags.force && 'force'].filter(Boolean)
-  if (modeFlags.length > 1) {
-    process.stderr.write(`[wisdom] --since, --all, and --force are mutually exclusive (got: ${modeFlags.join(', ')})\n`)
-    process.exit(1)
-  }
   const mode = modeFlags[0] || 'incremental'
 
   // Build docs sitemap
@@ -225,7 +222,7 @@ export async function runMerge(flags) {
 
   if (!existsSync(outDir)) {
     process.stderr.write('[wisdom] Findings directory not found\n')
-    process.exit(1)
+    process.exit(2)
   }
 
   // Determine mode from the prep / manifest file (whichever exists)
@@ -250,7 +247,7 @@ export async function runMerge(flags) {
 
   if (!files.length) {
     process.stderr.write('[wisdom] No result files (extract-results-*.json) to merge\n')
-    process.exit(1)
+    process.exit(2)
   }
 
   let allAdditions = []

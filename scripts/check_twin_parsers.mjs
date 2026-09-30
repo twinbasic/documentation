@@ -4,7 +4,8 @@
 //
 //     node scripts/check_twin_parsers.mjs
 //
-// Exits 0 when every probe passes, 1 when one fails, 2 on a crash. It reads
+// Exits 0 when every probe passes, 1 when one fails, 2 on a refused command line or a
+// crash. It reads
 // nothing from the tree: every probe is a fixed input.
 //
 // Each of these has shipped a silent misparse, and none says so when it
@@ -21,13 +22,31 @@
 //   - parseTargets (scripts/lib/attributes-doc.mjs), which turns an
 //     `Applicable to:` line into gen_attribute_probes.mjs's targets.
 
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { parseTargets } from "./lib/attributes-doc.mjs";
-import { createProbes, exitOnCrash } from "./lib/gate-probes.mjs";
+import { createProbes } from "./lib/gate-probes.mjs";
 import { classify } from "./lib/tb-fences.mjs";
 import { parseTwin } from "./lib/twin-api.mjs";
 import { MODIFIERS, declarationKind } from "./lib/twin-declarations.mjs";
 
 exitOnCrash();
+
+const USAGE = `usage: node scripts/check_twin_parsers.mjs [-h, --help]
+
+Runs the probes of the scanners that read twinBASIC source and the attribute
+reference, each a shape one of them once misread.
+
+  -h, --help  print this text and exit
+
+Exit codes:
+  0  every probe passed
+  1  a probe failed
+  2  the gate could not run: a refused command line, or a crash`;
+
+if (withUsageError(() => parseCli(process.argv.slice(2), {
+  options: { help: { type: "boolean", short: "h" } },
+  stopAt: ["help"],
+})).values.help) printHelpAndExit(USAGE);
 
 const { check, report } = createProbes("check_twin_parsers");
 const show = (x) => JSON.stringify(x);

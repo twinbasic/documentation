@@ -98,7 +98,6 @@ let pagePath = '/tB/Core/Select-Case.html';
 let theme = 'light';
 let viewport = 'desktop';
 let rootDir = DEFAULT_ROOT_DIR;
-let jsonOut = null;
 let top = 0;
 let perRule = false;
 let noOnly = false;
@@ -121,7 +120,6 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--theme') theme = args[++i];
   else if (a === '--viewport') viewport = args[++i];
   else if (a === '--root-dir') rootDir = resolve(args[++i]);
-  else if (a === '--json') jsonOut = args[++i];
   else if (a === '--per-rule') perRule = true;
   else if (a === '--top') top = parseInt(args[++i], 10);
   else if (a === '--no-only') noOnly = true;
@@ -139,7 +137,7 @@ for (let i = 0; i < args.length; i++) {
     console.error('                       [--page PATH] [--theme T] [--viewport V] [--root-dir DIR]');
     console.error('                       [--per-rule] [--top N] [--no-only] [--iters N]');
     console.error('                       [--in-page-warmup N]');
-    console.error('                       [--warmup N] [--reuse-browser] [--json FILE]');
+    console.error('                       [--warmup N] [--reuse-browser]');
     console.error('                       [--light-trace]   # ~40 MB -> ~3 MB per trace; no Blink columns');
     console.error('                       [--minified] [--no-affinity]');
     console.error('');

@@ -36,6 +36,8 @@ node eval/search_quality.mjs --compare eval/search_baseline.json    # measure a 
 node eval/search_quality.mjs --failures 20                          # what misses rank 1
 ```
 
+`search_quality.mjs` exit codes: **0** the measurement ran, whatever it found; **2** a refused command line, a site with no search index (run `build.bat` first), or a crash.
+
 ## Running a round
 
 ```sh
@@ -46,6 +48,14 @@ node eval/run_case.mjs --corpus <corpus> --site <snapshot> --protocol repo \
     --goal <dir>/UC-56.goal.md --out <dir>/UC-56
 ```
 
+`build_corpus.mjs` empties `--dest` before it writes, so it refuses a `--dest` that is or
+contains the repository root, the current folder or `--repo`, on stderr.
+`run_case.mjs` likewise refuses a `--timeout` (minutes) that is not a number greater than 0
+and at most 35791, and a
+`--protocol` other than `repo` or `site`.
+
+`build_corpus.mjs` exit codes: **0** the corpus was built; **2** a refused command line (a `--dest` that is or contains the repository, the working folder or `--repo` included), or a crash.
+
 Each case is **one goal** from [usecases.md](usecases.md), in a file of its own, and
 nothing else. Never tell the evaluator what the case is testing or that a hazard exists.
 `run_case.mjs` puts the evaluator-facing part of [protocol.md](protocol.md) in front of the
@@ -55,10 +65,12 @@ out.
 The runner starts the evaluator as its own `claude -p` process, so the Claude Code CLI has
 to be installed and signed in (`claude auth status`). **Never run an evaluator as a subagent
 instead** --- [the next section](#why-an-evaluator-is-a-separate-process) says why. Run
-`--smoke` first: it checks the evaluator's isolation in one short session and exits 1 if
-any of it fails. Each case leaves the prompt it was given, its whole session as
+`--smoke` first: it checks the evaluator's isolation in one short session and fails if
+any of it does. Each case leaves the prompt it was given, its whole session as
 stream-json, its report and a `.meta.json` recording the model and the Claude Code version,
 and prints the session's digest --- see [Reading the results](#reading-the-results).
+
+`run_case.mjs` exit codes: **0** the run finished (with `--smoke`, every check passed); **1** the run timed out, or `claude` exited with an error or wrote no report (with `--smoke`, a check failed); **2** a refused command line, a corpus or site file that is missing, a memory file in the corpus, `claude` not installed or not signed in, or a crash.
 
 **Pin the Claude Code build when a round re-runs an earlier one.** `--claude <exe>` names it;
 without it the runner takes whatever `claude` is on `PATH`, which changes with every install.
@@ -90,6 +102,17 @@ node eval/transcript.mjs <dir>/UC-56.jsonl --calls      # a finished case's sess
 node eval/nav_hops.mjs '^/tB/Modules/ErrObject/Number$' # hops by link from docs/index.md
 node eval/nav_hops.mjs --from README.md '^/Documentation/Development/Tools$'
 ```
+
+Each of these refuses an unknown flag and a flag without its value on stderr;
+`site_search.mjs` also refuses a `--n` that is not a whole number of at least 1 and search
+terms given with `--composition`, `nav_hops.mjs` a regular expression that does not
+compile, and `transcript.mjs` a second file. A search term, regex or file name that starts
+with a dash goes after `--`:
+`node eval/site_search.mjs -- "-1 as an error code"`.
+
+- `site_search.mjs` exit codes: **0** the query ran, even with no results; **2** a refused command line, a site with no search index (run `build.bat` first), or a crash.
+- `transcript.mjs` exit codes: **0** the digest was printed; **2** a refused command line, a session file that cannot be read, or a crash.
+- `nav_hops.mjs` exit codes: **0** every target is reachable by links; **1** a target is not reachable by links from the start page; **2** a refused command line (no targets, a pattern Git Bash turned into a Windows path included), no start page, or a crash.
 
 ## Why an evaluator is a separate process
 

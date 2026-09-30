@@ -29,7 +29,7 @@
 //   SETUP   -- sass not installed: throw. There is no pre-compiled fallback;
 //              `npm install` is the fix. The error message points there.
 //   CONTENT -- SCSS syntax error: warn, return { failed: true }. The caller
-//              sets exit bit EXIT_FAILED so CI surfaces it. The site still
+//              exits EXIT_FOUND (1) so CI surfaces it. The site still
 //              renders but without the just-the-docs theme (the previous
 //              build's CSS lingers under <destRoot>/, if any).
 //

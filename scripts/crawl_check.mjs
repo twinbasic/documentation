@@ -19,7 +19,22 @@
 import { Parser } from "htmlparser2";
 import { forEachLink } from "../builder/link-check.mjs";
 import { splitFragment } from "../builder/url.mjs";
-import { parseCli, withUsageError } from "../lib/cli.mjs";
+import { numberOption, parseCli, printHelpAndExit, urlOption, withUsageError } from "../lib/cli.mjs";
+
+const USAGE = `usage: node scripts/crawl_check.mjs <start-url> [--concurrency N] [--timeout MS] [--skip-external] [-h, --help]
+
+Crawls a deployed site from <start-url> and checks that every link responds 2xx
+and every anchor exists.
+
+  --concurrency N  requests at once (default 10)
+  --timeout MS     give up on a request after this long (default 15000)
+  --skip-external  do not check links to other sites
+  -h, --help       print this text and exit
+
+Exit codes:
+  0  every link is reachable and every anchor exists
+  1  a link is broken or an anchor is missing
+  2  a refused command line, or a crash`;
 
 const { values, positionals } = withUsageError(
   () =>
@@ -28,22 +43,30 @@ const { values, positionals } = withUsageError(
         concurrency: { type: "string", default: "10" },
         timeout: { type: "string", default: "15000" },
         "skip-external": { type: "boolean" },
+        help: { type: "boolean", short: "h" },
       },
-      positionals: { min: 0 },
-      acceptsValue: () => true,
+      positionals: { min: 0, max: 1 },
+      stopAt: ["help"],
     }),
-  { format: (err) => `unknown flag: ${err.arg}` },
+  { format: (err) => `${err.message}\n${USAGE}` },
 );
+if (values.help) printHelpAndExit(USAGE);
 const startArg = positionals[0];
-const concurrency = Number(values.concurrency);
-const timeoutMs = Number(values.timeout);
 const skipExternal = values.skipExternal;
 if (!startArg) {
-  console.error("usage: node scripts/crawl_check.mjs <start-url> [--concurrency N] [--timeout MS] [--skip-external]");
+  console.error(USAGE);
   process.exit(2);
 }
 
-const startUrl = new URL(startArg);
+// AbortSignal.timeout's timer fires at once for more than 2147483647 ms.
+const { concurrency, timeoutMs, startUrl } = withUsageError(
+  () => ({
+    concurrency: numberOption(values.concurrency, { option: "--concurrency", integer: true, min: 1 }),
+    timeoutMs: numberOption(values.timeout, { option: "--timeout", integer: true, min: 1, max: 2147483647 }),
+    startUrl: urlOption(startArg, { option: "<start-url>" }),
+  }),
+  { format: (err) => `${err.message}\n${USAGE}` },
+);
 const origin = startUrl.origin;
 const basePath = startUrl.pathname.endsWith("/") ? startUrl.pathname : startUrl.pathname + "/";
 

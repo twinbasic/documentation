@@ -45,7 +45,7 @@
 //   --patches NAME,NAME apply source patches to the CANDIDATE bundle
 //   --unminified        inject axe.js rather than axe.min.js (the source
 //                       patches need the unminified bundle)
-//   --json FILE         write both fingerprint lists + the diff
+//   --out FILE          write both fingerprint lists + the diff
 //   --list              print the scheme registry and exit
 //
 // Git Bash on Windows rewrites a leading-slash argument into a Windows path,
@@ -53,7 +53,7 @@
 // MSYS_NO_PATHCONV=1, or use PowerShell / cmd, where it passes through intact.
 //
 // Requires `build.bat` to have produced an up-to-date _site-offline/.
-// Exit codes: 0 identical, 1 fingerprints differ, 2 harness error.
+// Exit codes: 0 identical, 1 fingerprints differ, 2 a refused command line or a crash.
 
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -74,7 +74,7 @@ import {
   SOURCE_PATCHES,
 } from "./lib/axe-scan.mjs";
 import { withBrowser } from "./lib/browser.mjs";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { choiceOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
 // ---- CLI ------------------------------------------------------------------
 const cli = withUsageError(
@@ -87,16 +87,14 @@ const cli = withUsageError(
         theme: { type: "string", default: "both" },
         viewport: { type: "string", default: "both" },
         pages: { type: "string" },
-        json: { type: "string" },
+        out: { type: "string" },
         unminified: { type: "boolean", default: false },
         patches: { type: "string", default: "" },
         list: { type: "boolean" },
         help: { type: "boolean", short: "h" },
       },
-      acceptsValue: Boolean,
       stopAt: ["list", "help"],
     }),
-  { format: (err) => `unknown arg: ${err.arg}` },
 );
 
 if (cli.stopped === "list") {
@@ -119,7 +117,12 @@ if (cli.stopped === "help") {
   printHelpAndExit(
     "usage: node scripts/check_a11y_fingerprint.mjs [--baseline SCHEME] " +
       "[--candidate SCHEME] [--root-dir DIR] [--theme T] [--viewport V] " +
-      "[--pages P,P] [--json FILE] [--unminified] [--list]"
+      "[--pages P,P] [--out FILE] [--unminified] [--patches NAME,NAME] [--list] [-h, --help]\n" +
+      "\n" +
+      "Exit codes:\n" +
+      "  0  every fingerprint is identical, or --list printed the schemes\n" +
+      "  1  at least one fingerprint differs\n" +
+      "  2  the check could not run: a refused command line, or a crash"
   );
 }
 
@@ -129,12 +132,21 @@ let rootDir = cli.values.rootDir;
 let themeArg = cli.values.theme;
 let viewportArg = cli.values.viewport;
 let pagesArg = cli.values.pages !== undefined ? cli.values.pages.split(",") : null;
-let jsonOut = cli.values.json ?? null;
+let outFile = cli.values.out ?? null;
 let unminified = cli.values.unminified;
 let patchesArg = cli.values.patches;
 
-const baseline = getScheme(baselineLabel);
-const candidate = getScheme(candidateLabel);
+const schemeNames = Object.keys(SCHEMES);
+const patchNames = Object.keys(SOURCE_PATCHES);
+const { baseline, candidate } = withUsageError(() => {
+  for (const name of patchesArg.split(",").map((x) => x.trim()).filter(Boolean)) {
+    choiceOption(name, { option: "--patches", choices: patchNames });
+  }
+  return {
+    baseline: getScheme(choiceOption(baselineLabel, { option: "--baseline", choices: schemeNames })),
+    candidate: getScheme(choiceOption(candidateLabel, { option: "--candidate", choices: schemeNames })),
+  };
+});
 rootDir = resolve(rootDir);
 
 const matrix = buildMatrix({
@@ -277,9 +289,9 @@ async function main() {
     }
   }
 
-  if (jsonOut) {
+  if (outFile) {
     writeFileSync(
-      resolve(jsonOut),
+      resolve(outFile),
       JSON.stringify(
         {
           axeCore: axeVersion(),
@@ -292,7 +304,7 @@ async function main() {
         2
       )
     );
-    console.log(`\nwrote ${resolve(jsonOut)}`);
+    console.log(`\nwrote ${resolve(outFile)}`);
   }
 
   if (mismatches === 0) {

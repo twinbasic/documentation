@@ -11,7 +11,13 @@ permalink: /Documentation/Development/Fixes/PDFLib
 
 The files under `book/lib/fast-*.mjs` and `book/lib/parallel-deflate.mjs` are side-effecting ES modules that patch pdf-lib's live exports. All are imported at the top of `render-book.mjs` before any pdf-lib operation runs; they are mutually compatible and idempotent (each guards its installation with a flag on the patched prototype or module). Together they reduce the process phase --- parsing Chromium's raw PDF output, adding bookmarks and metadata, and serialising the result --- from ~40 seconds to ~1.6 seconds on a 1,651-page book.
 
+A patch that reaches a pdf-lib class or module by its CommonJS path under `pdf-lib/cjs/`, rather than through the `pdf-lib` package's index, imports it from `book/lib/pdf-lib-internals.mjs`, which requires each one in a single place. `pdf-lib` itself resolves to `pdf-lib/cjs/index.js`, so each is the instance the library uses.
+
+Each patch was written against the source of pdf-lib 1.17.1, which `package.json` pins exact, and checks at load that what it replaces is still that source. Before it patches anything, it passes `book/lib/shim-targets.mjs` a table: the arity and a fingerprint of the source of each member it overwrites, and of the constructor of each class whose objects it builds without calling it, and each member it adds, which must be absent. A patch whose targets differ throws at import, naming itself and each member that differs, so a different pdf-lib stops the book instead of changing it. The patch is then re-derived from the new source, or removed.
+
 The root cause of the need for all these patches is the same: pdf-lib is designed for general-purpose use in both browsers and Node, and optimises for generality rather than throughput on a single large document.
+
+Each patch must leave the output unchanged. [`check_pdf_shims_equiv.mjs`](../Tools#check-pdf-shims-equiv), one of `test.bat`'s gates, saves one document with stock pdf-lib and with every patch `render-book.mjs` imports, compares the two files object by object, and fails if the patches are not the ones the gate lists, or if one never runs that the list does not mark as unreached.
 
 * TOC goes here
 {:toc}
@@ -26,9 +32,9 @@ The root cause of the need for all these patches is the same: pdf-lib is designe
 
 **Problem.** `BaseParser.parseRawNumber` and `BaseParser.parseRawInt` built numeric values by appending one character at a time to a JavaScript string (`value += charFromCode(byte)`), then called `Number(value)` to convert the string back to a number. Every numeric token in a PDF --- object numbers, generation numbers, byte lengths, coordinates, font sizes, array indices --- flows through one of these paths. Each call allocated a temporary string that was immediately discarded. On the book this fired hundreds of thousands of times.
 
-**Fix.** Direct integer accumulators: `n = n * 10 + (byte - 0x30)`, consuming each byte once. `parseRawNumber` additionally handles the decimal part with a separate accumulator and a `scale` divisor. Both implementations fall back to the original when the integer part would exceed 15 digits (preserving `Number.MAX_SAFE_INTEGER` semantics for pathological inputs) or when the input has no digits at all.
+**Fix.** Direct integer accumulators: `n = n * 10 + (byte - 0x30)`, consuming each byte once. `parseRawNumber` additionally accumulates the digits after the period and divides once, `(integer * scale + fraction) / scale`: both operands are exact integers, and a single division rounds to the double nearest the decimal, as `Number` does. Adding the fraction's quotient to the integer part instead would round twice, and read `2.28` as `2.2800000000000002`. Both implementations fall back to the original when the number has more than 15 digits, the fraction's included (preserving `Number.MAX_SAFE_INTEGER` semantics for pathological inputs), or no digits at all.
 
-**Mechanism.** `BaseParser` is not re-exported from pdf-lib's public index; it is imported via `createRequire` through the CJS internal path `pdf-lib/cjs/core/parser/BaseParser.js`. Mutating `BaseParser.prototype` affects all subclasses: `PDFParser`, `PDFObjectParser`, `PDFObjectStreamParser`, and `PDFXRefStreamParser`.
+**Mechanism.** `BaseParser` is not re-exported from pdf-lib's public index; it comes from `pdf-lib-internals.mjs`, which requires it by the CJS internal path `pdf-lib/cjs/core/parser/BaseParser.js`. Mutating `BaseParser.prototype` affects all subclasses: `PDFParser`, `PDFObjectParser`, `PDFObjectStreamParser`, and `PDFXRefStreamParser`.
 
 ## fast-decode-name.mjs
 
@@ -66,7 +72,7 @@ The four-byte case covers all PDFs under 4 GB; the fallback handles larger value
 
 **Problem.** Each `PDFDict` instance held its key-value pairs in a `Map`. Maps have ~200 bytes of per-instance overhead when empty and ~50 bytes per entry. On the book, ~260 000 `PDFDict` instances are created during `PDFDocument.load`. As the document grows during parse, the Maps repeatedly doubled their internal hash-table storage and discarded each previous arena to GC.
 
-**Fix.** A single append-only Array (`main`) shared across all `PDFDict` instances for the document's lifetime. Each `PDFDict` holds one encoded integer (`d`) that packs a `start` index (23 bits) and entry-pair `length` count (16 bits) into a single JavaScript number. `main[start..start+length]` holds alternating key and value references. Mutations that add a new entry either extend the dict's range in-place when it is at the array's high-water mark, or copy the range to the tail first (copy-on-write). `PDFCatalog`, `PDFPageTree`, and `PDFPageLeaf` share the same backing array; `PDFPageLeaf`'s `normalized` and `autoNormalizeCTM` booleans are encoded in two spare bits of `d` (bits 23 and 24). `PDFObjectParser.parseDict` uses a per-parser temp array as a recursion-frame stack, committing each completed frame to `main` as a single contiguous append.
+**Fix.** A single append-only Array (`main`) shared across all `PDFDict` instances for the document's lifetime. Each `PDFDict` holds one encoded integer (`d`) that packs a `start` index (23 bits) and entry-pair `length` count (16 bits) into a single JavaScript number. `main[start..start+length]` holds alternating key and value references. Mutations that add a new entry either extend the dict's range in-place when it is at the array's high-water mark, or copy the range to the tail first (copy-on-write). `PDFCatalog`, `PDFPageTree`, and `PDFPageLeaf` share the same backing array, and pdf-lib's eight factories for the four classes all build in `main`, since the replaced methods cannot read a dictionary built on a `Map`: `fromMapWithContext` on each, `PDFDict.withContext`, `PDFCatalog.withContextAndPages`, `PDFPageTree.withContext` and `PDFPageLeaf.withContextAndParent`. `PDFPageLeaf`'s `normalized` and `autoNormalizeCTM` booleans are encoded in two spare bits of `d` (bits 23 and 24). `PDFObjectParser.parseDict` uses a per-parser temp array as a recursion-frame stack, committing each completed frame to `main` as a single contiguous append.
 
 The `measure-pass.mjs` pre-pass counts total `dictSlots` in the raw PDF byte stream. Calling `setExpectedDictSlots(n)` before `PDFDocument.load` resizes `main` in-place to the exact required size via `main.length = n`, eliminating V8 growth reallocations during parse. An in-place resize is used rather than replacing the module-level binding; replacing it would invalidate V8's inline-cache slots in every closure that reads `main`, causing a parse-time deoptimisation spike.
 
@@ -90,7 +96,7 @@ Both caches converge on the same `PDFName` instance per logical name. Direct `PD
 
 **Problem.** pdf-lib's parser and writer methods are compiled from TypeScript `async function`s to tslib's `__awaiter` + `__generator` state machines. On browsers, these yield periodically via `objectsPerTick` / `waitForTick()` to keep the page responsive. In Node with `objectsPerTick: Infinity` (the `parseSpeed: Fastest` configuration), the yield gate never fires --- the entire generator runs in one tick --- yet every indirect object (~50 000 on the book) still paid the state-machine dispatch overhead for a single `case 0` fall-through.
 
-**Fix.** Eight methods are replaced with plain synchronous equivalents.
+**Fix.** Seven methods are replaced with plain synchronous equivalents.
 
 Load side:
 - `PDFParser.parseDocument`, `parseDocumentSection`, `parseIndirectObjects`, `parseIndirectObject`
@@ -99,7 +105,8 @@ Load side:
 
 Save side:
 - `PDFWriter.serializeToBuffer` (kept `async` because `ParallelStreamWriter.computeBufferSize` is genuinely async via `Promise.all` over libuv)
-- `PDFWriter.computeBufferSize` and `PDFStreamWriter.computeBufferSize`
+
+The writers' own `computeBufferSize` methods are left as pdf-lib has them. The book calls neither, since `parallelSave`'s `ParallelStreamWriter` overrides the stream writer's.
 
 `PDFDocument.load` returns a plain `PDFDocument` value rather than a Promise. `await PDFDocument.load(...)` at existing call sites still works, because `await` on a non-thenable resolves immediately to the value.
 
@@ -122,6 +129,8 @@ An additional optimisation in `parseIndirectObjects`: the upstream implementatio
 **Problem.** Each `PDFArray` instance allocated a per-instance `this.array = []` in its constructor. On the book, these per-instance allocations contributed ~19 MB of heap. Each `this.array` was a short-lived Array grown on demand, causing V8 to perform repeated backing-store reallocations for small arrays.
 
 **Fix.** The same one-buffer strategy as `fast-dict-onebuf`, applied to `PDFArray`. A single append-only Array (`arrayMain`) shared across all `PDFArray` instances. Each `PDFArray` holds one encoded integer (`d`) packing `start` (24 bits) and `length` (16 bits). `arrayMain[start..start+length]` holds array elements as plain JavaScript references --- no encoding, no decode step on reads. `PDFObjectParser.parseArray` uses a per-parser `_arrayTemp` stack, committing each completed frame to `arrayMain` in one contiguous append. Mutations follow the same copy-on-write logic as `fast-dict-onebuf`.
+
+Both shims take that logic from one module, `book/lib/onebuf-range.mjs`: packing and reading `d`, appending to the buffer, copying a range to its end, and checking that only one `PDFContext` is used. Each shim calls it with its own bit layout and its own constructors, and gets a buffer and a context of its own, so either shim works without the other.
 
 `setExpectedArraySlots(n)` from `measure-pass.mjs` resizes `arrayMain` in-place before parse for the same reason as `setExpectedDictSlots`: in-place resize preserves V8's inline-cache slots.
 

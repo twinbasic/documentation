@@ -445,6 +445,11 @@ Four smaller things it knows, each of which cost a run:
   starts, so the probe's first `Debug.Cls` erases the build log from `[BUILD] Starting...` on.
   `event_clearDebugConsole` writes an empty line after its clear, so the record of a second
   `Debug.Cls` begins with one.
+- **`tbrun` exits 4 when the compiler crashed**, as `tbbuild` does.
+  A crash and a failed build after a clean compile are different faults with different
+  remedies (rerun the second, isolate the probe for the first), and `check_examples` already
+  isolated a sample on `tbbuild`'s 4. `tbrun` exits 3 for no output at all, and 2 for a
+  compile that never settled, which `tbbuild` reports as 3.
 
 A reader of the console that is not `tbrun` should **compare the whole console before and
 after, not read on from an index**: new text can be appended to an entry that is still open.
@@ -1068,7 +1073,7 @@ lane's folder before the first lane starts, so the lanes inherit `TB_REGISTRY_OW
 leave the registry alone, and `finishTidy` once the last has ended. Then it checks rather
 than trusts: no project-state or recent-list entry may name a lane's folder, a second sweep
 of the remembered build targets must find none, and the add-ins' settings must be as
-recorded. Any failure is exit code 2.
+recorded. Any failure is exit code 3, which wins over a lane's failure (1): the registry is what to repair.
 
 **An add-in's own settings are the runner's too.** `SaveSetting` writes under
 `HKCU\Software\VB and VBA Program Settings\<app>`, the same key as any installed copy of the
@@ -1208,8 +1213,8 @@ probe lanes:
   recent list, two of them and then 21, identical both times.
 - With Global Search settings planted beforehand (Match case on, and one extra value), the
   lane began with every option off, and the key came back exactly, the extra value
-  included. With `settings` taken out of `lanes.mjs`, the run failed with exit code 2 and
-  named `GlobalSearchAddIn`.
+  included. With `settings` taken out of `lanes.mjs`, the run failed and named
+  `GlobalSearchAddIn`.
 - An `--only` that matches nothing was refused with exit code 2, and so, until P6 was
   answered, was a DLL in a stand-in `%APPDATA%`; now the lanes run beside it, and the P6
   lane's IDE loaded its own probe alone. `--timeout 8` ended both lanes mid-build, and left

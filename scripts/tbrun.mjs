@@ -18,11 +18,13 @@
 //       --show / --hide   as tbbuild's
 //
 // Exit: 0 captured output, 1 the project has compile errors, 2 the harness
-// failed -- a build that fails after a clean compile included, and a
+// could not run (a refused command line included), a compile never settled, or
+// it crashed -- a build that fails after a clean compile included, and a
 // [RunAfterBuild] Sub that fails code generation, since the probe never runs,
 // and a procedure the probe calls that fails it, since the probe stops at the
 // call -- 3 no output: the build produced none in the console before the
-// timeout, or the probe ran and printed none after its last Debug.Cls.
+// timeout, or the probe ran and printed none after its last Debug.Cls -- 4 the
+// compiler crashed, or restarted twice, while compiling the project.
 //
 // ---------------------------------------------------------------- why
 //
@@ -101,7 +103,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, mkdirSync, statSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { parseCli } from "../lib/cli.mjs";
+import { choiceOption, exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
 import { click } from "./lib/tb-click.mjs";
 import { compilerExe, findIde } from "./lib/tb-install.mjs";
 import { BUILD_FAILED, COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, keepClears, keptClears,
@@ -110,36 +112,77 @@ import { BUILD_FAILED, COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, keep
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
-const { values, positionals } = parseCli(process.argv.slice(2), {
-  options: {
-    port: { type: "string" },
-    arch: { type: "string" },
-    timeout: { type: "string" },
-    quiet: { type: "string" },
-    ide: { type: "string" },
-    "reap-images": { type: "string" },
-    json: { type: "boolean", default: false },
-    raw: { type: "boolean", default: false },
-    keep: { type: "boolean", default: false },
-    "no-reap": { type: "boolean", default: false },
-    show: { type: "boolean", default: false },
-    hide: { type: "boolean", default: false },
-    help: { type: "boolean", default: false },
-  },
-  unknown: "ignore",
-  positionals: { min: 0, max: 1 },
-  acceptsValue: () => true,
-});
+exitOnCrash();
+
+const USAGE = `usage: node scripts/tbrun.mjs <source-dir> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] [--show|--hide] [-h, --help]
+
+Builds an exported twinBASIC source tree in the IDE, runs it, and prints what it
+writes to the DEBUG CONSOLE.
+
+  --ide <path>        as tbbuild's
+  --port <n>          DevTools port to start the IDE on (default 9346)
+  --arch <target>     win32 or win64 (default win32)
+  --timeout <secs>    give up waiting for console output (default 120)
+  --quiet <ms>        output is complete after this long with no change
+                      (default 2500)
+  --json              emit one JSON object instead of text
+  --raw               do not strip the console's timestamp column
+  --keep              leave the IDE running afterwards (implies --no-reap)
+  --no-reap           do not harvest automation servers the probe left behind
+  --reap-images a,b   comma-separated image names to harvest (default: the
+                      Office suite)
+  --show, --hide      as tbbuild's
+  -h, --help          print this text and exit
+
+Exit codes:
+  0  the probe ran and its output was captured
+  1  the project has compile errors; the diagnostics are printed
+  2  a refused command line (a source folder that is missing or has no Settings file
+     included), no IDE or compiler, an IDE that did not start, a compile that never
+     settled, a build that failed after a clean compile, a probe that never ran or
+     stopped at a procedure that failed code generation, or a crash
+  3  no output: the console held none before the timeout, or the probe printed none
+     after its last Debug.Cls
+  4  the compiler crashed, or restarted twice, while compiling the project`;
+
+const { values, positionals } = withUsageError(
+  () => parseCli(process.argv.slice(2), {
+    options: {
+      port: { type: "string" },
+      arch: { type: "string" },
+      timeout: { type: "string" },
+      quiet: { type: "string" },
+      ide: { type: "string" },
+      "reap-images": { type: "string" },
+      json: { type: "boolean", default: false },
+      raw: { type: "boolean", default: false },
+      keep: { type: "boolean", default: false },
+      "no-reap": { type: "boolean", default: false },
+      show: { type: "boolean", default: false },
+      hide: { type: "boolean", default: false },
+      help: { type: "boolean", short: "h", default: false },
+    },
+    positionals: { min: 0, max: 1 },
+    stopAt: ["help"],
+  }),
+  { format: (err) => `${err.message}\n${USAGE}` },
+);
+if (values.help) printHelpAndExit(USAGE);
 
 const die = (code, msg) => { console.error(msg); process.exit(code); };
 
-const arch = values.arch || TARGETS[0];
+// The values are read before anything starts.
+const { port, arch, timeoutMs, quietMs } = withUsageError(() => {
+  refuseTogether(values, ["show", "hide"]);
+  return {
+    port: numberOption(values.port ?? "9346", { option: "--port", integer: true, min: 1, max: 65535 }),
+    arch: choiceOption(values.arch ?? TARGETS[0], { option: "--arch", choices: TARGETS }),
+    timeoutMs: numberOption(values.timeout ?? "120", { option: "--timeout", above: 0 }) * 1000,
+    quietMs: numberOption(values.quiet ?? "2500", { option: "--quiet", integer: true, min: 0 }),
+  };
+}, { format: (err) => `${err.message}\n${USAGE}` });
 
-if (!positionals.length || values.help || !TARGETS.includes(arch)) {
-  die(2, "usage: node scripts/tbrun.mjs <source-dir> [--port N] [--arch win32|win64] " +
-         "[--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] " +
-         "[--reap-images a,b] [--show|--hide]");
-}
+if (!positionals.length) die(2, USAGE);
 
 const srcDir = path.resolve(positionals[0]);
 if (!existsSync(srcDir) || !statSync(srcDir).isDirectory()) {
@@ -151,10 +194,6 @@ if (!existsSync(srcDir) || !statSync(srcDir).isDirectory()) {
 
 const settingsPath = path.join(srcDir, "Settings");
 if (!existsSync(settingsPath)) die(2, `no Settings file in ${srcDir}`);
-
-const port = Number(values.port || 9346);
-const timeoutMs = Number(values.timeout || 120) * 1000;
-const quietMs = Number(values.quiet || 2500);
 
 // Images a probe can leave behind through COM activation. Office is the set that
 // prompted this; --reap-images replaces the list for anything else. Only out-of-
@@ -261,7 +300,7 @@ const tidy = values.keep ? null : startTidy({ prefixes: [work] });
 let ideRun = null;
 // A failure before the console is read: said on stdout, as it was when this
 // phase was tbbuild's output relayed, and ended with tbbuild's meaning of 1
-// (compile errors) or 2 (anything else).
+// (compile errors) or 4 (the compiler crashed), and 2 for anything else.
 function failBuild(code, text) {
   process.stdout.write(text + "\n");
   shutdown();
@@ -282,7 +321,7 @@ if (!cdp) failBuild(2, "the IDE never exposed a debug port");
 
 let outcome = compileOutcome(
   await waitForCompile(cdp, { project: projPath, timeout: COMPILE_TIMEOUT }), { name: projPath });
-if (!outcome.ok) failBuild(2, outcome.message);
+if (!outcome.ok) failBuild(outcome.code === 4 ? 4 : 2, outcome.message);
 
 // The target, set on every run, win32 included (setBuildTarget says why). The
 // probe runs in the compiler that builds it, so under win64 it runs in the
@@ -297,7 +336,7 @@ try {
   }
   if (target.waited) {
     outcome = compileOutcome(target.waited, { name: projPath });
-    if (!outcome.ok) failBuild(2, outcome.message);
+    if (!outcome.ok) failBuild(outcome.code === 4 ? 4 : 2, outcome.message);
   }
 } catch (e) {
   failBuild(2, e.message);

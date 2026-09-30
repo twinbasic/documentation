@@ -23,8 +23,9 @@
 //                         Default: hidden, unless TBBUILD_SHOW is set --
 //                         export that for a session you are watching.
 //
-// Exit codes: 0 clean, 1 the project has errors, 2 the harness failed,
-// 3 the compile never settled, 4 the project crashes the compiler.
+// Exit codes: 0 clean, 1 the project has errors, 2 the harness could not run (a
+// refused command line included) or crashed, 3 the compile never settled,
+// 4 the project crashes the compiler.
 //
 // ---------------------------------------------------------------- why this
 //
@@ -51,21 +52,44 @@
 // front of you".
 import { existsSync, statSync } from "node:fs";
 import path from "node:path";
-import { parseCli, withUsageError } from "../lib/cli.mjs";
+import { choiceOption, exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
 import { findIde } from "./lib/tb-install.mjs";
 import { COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, launchIde, setBuildTarget, shutdownIde,
          summaryLine, waitForCompile, wantShow } from "./lib/tb-ide.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
-const USAGE = "usage: node scripts/tbbuild.mjs <project.twinproj> " +
-  "[--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--json] " +
-  "[--keep] [--show|--hide]";
+exitOnCrash();
 
-function usage(why) {
-  if (why) console.error(why);
+const USAGE = `usage: node scripts/tbbuild.mjs <project.twinproj> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--json] [--keep] [--show|--hide] [-h, --help]
+
+Compiles a packed .twinproj in the twinBASIC IDE and prints its diagnostics.
+
+  --ide <path>      twinBASIC.exe (default: $TB_IDE, else the newest
+                    twinBASIC_IDE_BETA_* on the Desktop)
+  --port <n>        DevTools port to start the IDE on (default 9333)
+  --arch <target>   win32 or win64 (default win32)
+  --timeout <secs>  give up waiting for the compile (default 180)
+  --json            emit one JSON object instead of text
+  --keep            leave the IDE running; its pid is printed as \`ide-pid: N\`
+  --show, --hide    show the IDE on the desktop, or keep it on a private one
+                    (default: hidden, unless TBBUILD_SHOW is set)
+  -h, --help        print this text and exit
+
+Exit codes:
+  0  the project compiled without errors
+  1  the project has errors
+  2  a refused command line (a path that is not a .twinproj included), no IDE, an IDE
+     that did not start or expose a debug port, or a crash
+  3  the compile never settled: the IDE did not report the project open, or its
+     diagnostics did not match its status bar
+  4  the project crashes the compiler`;
+
+function usage() {
   console.error(USAGE);
   process.exit(2);
 }
+
+const usageError = { format: (err) => `${err.message}\n${USAGE}` };
 
 const { values, positionals } = withUsageError(
   () => parseCli(process.argv.slice(2), {
@@ -78,39 +102,37 @@ const { values, positionals } = withUsageError(
       keep: { type: "boolean", default: false },
       show: { type: "boolean", default: false },
       hide: { type: "boolean", default: false },
-      help: { type: "boolean", default: false },
+      help: { type: "boolean", short: "h", default: false },
     },
-    unknown: "ignore",
     positionals: { min: 0, max: 1 },
+    stopAt: ["help"],
   }),
-  { format: (err) => `${err.message}\n${USAGE}` },
+  usageError,
 );
+if (values.help) printHelpAndExit(USAGE);
 
-// A number that is not positive, or a port that is not whole, is refused too.
-// Anything Number() cannot read is NaN, and a NaN timeout ends
+// The values are read before anything starts. A NaN timeout would end
 // waitForCompile's loop before its first pass, which then reports that the IDE
 // never opened the project.
-function positive(n, d, { whole = false } = {}) {
-  const v = Number(values[n] ?? d);
-  if (!(v > 0) || (whole && !Number.isInteger(v))) {
-    usage(`--${n} takes a positive ${whole ? "whole " : ""}number`);
-  }
-  return v;
-}
+const { port, arch, timeout } = withUsageError(() => {
+  refuseTogether(values, ["show", "hide"]);
+  return {
+    port: numberOption(values.port ?? "9333", { option: "--port", integer: true, min: 1, max: 65535 }),
+    arch: choiceOption(values.arch ?? TARGETS[0], { option: "--arch", choices: TARGETS }),
+    timeout: numberOption(values.timeout ?? String(COMPILE_TIMEOUT / 1000), { option: "--timeout", above: 0 }) * 1000,
+  };
+}, usageError);
 
 // An install path is a home directory, so it is never hardcoded here: pass
 // --ide, set TB_IDE, or let tb-install find the newest BETA on the Desktop,
 // which is where the IDE's own zip tells people to unpack it.
 const IDE = findIde(values.ide);
-const port = positive("port", 9333, { whole: true });
-const arch = values.arch ?? TARGETS[0];
-const timeout = positive("timeout", COMPILE_TIMEOUT / 1000) * 1000;
 const asJson = values.json;
 const keep = values.keep;
 const show = wantShow({ show: values.show, hide: values.hide });
 
 const proj = positionals[0];
-if (!proj || values.help || !TARGETS.includes(arch)) usage();
+if (!proj) usage();
 // Refuse anything that is not a .twinproj, rather than discovering it two
 // minutes later. A source directory is the tempting mistake -- it is what
 // `tbrun` takes -- and handing one to the IDE does not fail: the IDE starts,

@@ -34,11 +34,13 @@
 // keyword still falls through to the same PDFObjectParsingError
 // throw.
 //
-// Mechanism: PDFObjectParser isn't re-exported from pdf-lib's index,
-// so we reach in through the CJS internals via createRequire (same
-// shape as fast-sync-load.mjs). Mutating
-// PDFObjectParser.prototype.parseObject is global -- every parser
-// instance created after this shim loads picks it up.
+// Mechanism: PDFObjectParser comes from pdf-lib-internals.mjs.
+// Mutating PDFObjectParser.prototype.parseObject is global -- every
+// parser instance created after this shim loads picks it up.
+//
+// At load it checks that what it replaces is as in pdf-lib 1.17.1 (see
+// shim-targets.mjs), and throws otherwise. It goes when pdf-lib is replaced;
+// when a release changes what it patches, it is re-derived or removed.
 //
 // Side-effecting import. Import once before PDFDocument.load runs:
 //
@@ -46,16 +48,10 @@
 //
 // Idempotent -- repeated imports do nothing after the first.
 
-import { createRequire } from 'node:module';
-
-const require = createRequire(import.meta.url);
-const PDFObjectParser = require('pdf-lib/cjs/core/parser/PDFObjectParser.js').default;
-const PDFBool         = require('pdf-lib/cjs/core/objects/PDFBool.js').default;
-const PDFNull         = require('pdf-lib/cjs/core/objects/PDFNull.js').default;
-const CharCodes       = require('pdf-lib/cjs/core/syntax/CharCodes.js').default;
-const { Keywords }    = require('pdf-lib/cjs/core/syntax/Keywords.js');
-const { IsNumeric }   = require('pdf-lib/cjs/core/syntax/Numeric.js');
-const { PDFObjectParsingError } = require('pdf-lib/cjs/core/errors.js');
+import {
+  PDFObjectParser, PDFBool, PDFNull, CharCodes, Keywords, IsNumeric, PDFObjectParsingError,
+} from './pdf-lib-internals.mjs';
+import { checkTargets } from './shim-targets.mjs';
 
 const KwTrue  = Keywords.true;
 const KwFalse = Keywords.false;
@@ -70,6 +66,9 @@ const f_code            = CharCodes.f;
 const n_code            = CharCodes.n;
 
 if (!PDFObjectParser.prototype.__fastParseObjectInstalled) {
+  checkTargets(import.meta.url, { PDFObjectParser }, {
+    'PDFObjectParser.prototype.parseObject': [0, '96b386d327ae'],
+  });
   PDFObjectParser.prototype.parseObject = function fastParseObject() {
     this.skipWhitespaceAndComments();
     const bytes = this.bytes;

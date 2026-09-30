@@ -75,13 +75,13 @@
 // design notes and frozen audit snapshots, and rewriting one to match a later
 // change destroys the only thing it is for.
 //
-// Exit codes: 0 clean, 1 a list or a stated count disagrees, 2 the gate could
-// not run.
+// Exit codes: 0 clean, 1 a list or a stated count disagrees or a probe failed, 2 the
+// gate could not run (a refused command line, or a crash).
 
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { createMarkdownIt } from "../builder/render.mjs";
-import { parseCli } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { splitOnMarker } from "../lib/markdown.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { gateName, gatesFromBat } from "./lib/gate-roster.mjs";
@@ -551,11 +551,26 @@ function selfTest() {
 
 // ------------------------------------------------------------------ main
 
+const USAGE = `usage: node scripts/check_gate_lists.mjs [--verbose] [--self-test] [-h, --help]
+
+Checks that check.bat and test.bat still match the two gate lists in Tools.md,
+and that no developer page states a gate count that disagrees with them.
+
+  --verbose    print every probe and every wrapper that agrees
+  --self-test  run the probes only, to prove the check still detects a wrong list
+  -h, --help   print this text and exit
+
+Exit codes:
+  0  the wrappers match the gate lists, every stated count agrees, and every probe passed
+  1  a list or a stated count disagrees, or a probe failed
+  2  the gate could not run: a refused command line, or a crash`;
+
 async function main(argv) {
-  const { values } = parseCli(argv, {
-    options: { verbose: { type: "boolean" }, "self-test": { type: "boolean" } },
-    unknown: "ignore",
-  });
+  const { values } = withUsageError(() => parseCli(argv, {
+    options: { verbose: { type: "boolean" }, "self-test": { type: "boolean" }, help: { type: "boolean", short: "h" } },
+    stopAt: ["help"],
+  }));
+  if (values.help) printHelpAndExit(USAGE);
   const verbose = values.verbose;
   const onlySelfTest = values.selfTest;
 

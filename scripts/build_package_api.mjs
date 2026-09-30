@@ -5,16 +5,16 @@
 //     node scripts/build_package_api.mjs            # regenerate builder/package-api.json
 //     node scripts/build_package_api.mjs --check    # fail if it is stale
 //
-//       --ide <path>    the install root, or its twinBASIC.exe (default: $TB_IDE,
-//                       else the newest Desktop\twinBASIC_IDE_BETA_<n>)
-//       --src <dir>     read an existing export of the packages instead
-//       --cache <dir>   where exports are kept (default %TEMP%\tb-census\beta-<n>,
-//                       shared with scripts/census_attributes.mjs)
-//       --refresh       export again even if the cache has this build
-//       --out <file>    write somewhere other than builder/package-api.json
+//       --ide <path>       the install root, or its twinBASIC.exe (default: $TB_IDE,
+//                          else the newest Desktop\twinBASIC_IDE_BETA_<n>)
+//       --exported <dir>   read an existing export of the packages instead
+//       --cache <dir>      where exports are kept (default %TEMP%\tb-census\beta-<n>,
+//                          shared with scripts/census_attributes.mjs)
+//       --refresh          export again even if the cache has this build
+//       --out <file>       write somewhere other than builder/package-api.json
 //
 // Exit codes: 0 written (or up to date, with --check), 1 stale (--check), 2 the
-// tool failed.
+// tool could not do its job (a refused command line included) or crashed.
 //
 // Dev tooling, not part of the render pipeline, in the same way as
 // scripts/build_dot_metrics.mjs: tbdocs reads builder/package-api.json and never
@@ -46,32 +46,55 @@ import path from "node:path";
 import { buildNumber, findIde } from "./lib/tb-install.mjs";
 import { defaultCache, exportPackages, packageName } from "./lib/tb-packages.mjs";
 import { apiSnapshot, parsePackage } from "./lib/twin-api.mjs";
-import { parseCli, withUsageError } from "../lib/cli.mjs";
+import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
+exitOnCrash();
+
 const OUT = path.join(REPO_ROOT, "builder", "package-api.json");
+
+const USAGE = `usage: node scripts/build_package_api.mjs [options]
+
+Records the public API of the packages a twinBASIC install ships, as the package
+half of the documentation's symbol index, in builder/package-api.json.
+
+  --check            fail if the file is stale, instead of writing it
+  --ide <path>       the install root, or its twinBASIC.exe (default: $TB_IDE,
+                     else the newest Desktop\\twinBASIC_IDE_BETA_<n>)
+  --exported <dir>   read an existing export of the packages instead
+  --cache <dir>      where exports are kept (default %TEMP%\\tb-census\\beta-<n>)
+  --refresh          export again even if the cache has this build
+  --out <file>       write somewhere other than builder/package-api.json
+  -h, --help         print this text and exit
+
+Exit codes:
+  0  the file was written; with --check, it is up to date
+  1  with --check, the file is stale
+  2  a refused command line, no install, an export that failed, packages that
+     declare different APIs under one name, or a crash`;
 
 const { values } = withUsageError(() =>
   parseCli(process.argv.slice(2), {
     options: {
       ide: { type: "string" },
-      src: { type: "string" },
+      exported: { type: "string" },
       cache: { type: "string" },
       out: { type: "string" },
       refresh: { type: "boolean", default: false },
       check: { type: "boolean", default: false },
+      help: { type: "boolean", short: "h", default: false },
     },
-    unknown: "ignore",
-    positionals: 0,
+    stopAt: ["help"],
   }));
+if (values.help) printHelpAndExit(USAGE);
 const die = (code, msg) => { console.error(msg); process.exit(code); };
 
 function sources() {
-  // --src takes a folder of exports, or a cache holding `packages\` and more:
+  // --exported takes a folder of exports, or a cache holding `packages\` and more:
   // a folder with a Settings file is an export, and one without is looked into.
-  const src = values.src;
-  if (src) {
-    if (!existsSync(src) || !statSync(src).isDirectory()) die(2, `not a directory: ${src}`);
+  const exported = values.exported;
+  if (exported) {
+    if (!existsSync(exported) || !statSync(exported).isDirectory()) die(2, `not a directory: ${exported}`);
     const packages = [];
     const look = (dir, depth) => {
       for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -81,8 +104,8 @@ function sources() {
         else if (depth > 0) look(d, depth - 1);
       }
     };
-    look(src, 1);
-    if (!packages.length) die(2, `no exported package under ${src}`);
+    look(exported, 1);
+    if (!packages.length) die(2, `no exported package under ${exported}`);
     return { build: null, packages };
   }
   // --ide and TB_IDE may name the install root or the executable in it.

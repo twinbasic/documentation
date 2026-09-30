@@ -16,8 +16,9 @@
 //     node eval/search_quality.mjs --sample 500        # fast iteration
 //     node eval/search_quality.mjs --failures 20       # queries not at rank 1
 //
-// Exit code is always 0: this is a measuring tool, not a pass/fail check
-// (scripts/ is for those).
+// Exit code is 0 whatever the measurement finds: this is a measuring tool,
+// not a pass/fail check (scripts/ is for those). A command line it refuses, a
+// site with no search index, and a crash exit 2.
 //
 // GROUND TRUTH
 //
@@ -125,35 +126,46 @@ import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { performance } from "node:perf_hooks";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 import { load, buildIndex, search, KIND_WORDS } from "./site_search.mjs";
 
+exitOnCrash();
+
 // ---------------------------------------------------------------- arg parsing
 
 function parseArgs(argv) {
-  const { values } = withUsageError(() => parseCli(argv, {
-    options: {
-      site: { type: "string" },
-      save: { type: "string" },
-      compare: { type: "string" },
-      sample: { type: "string" },
-      worst: { type: "string" },
-      failures: { type: "string" },
-      help: { type: "boolean", short: "h" },
-    },
-    positionals: 0,
-    unknown: "error",
-    acceptsValue: () => true,
-  }), { format: (err) => `unrecognised argument: ${err.arg}`, exitCode: 1 });
+  const { values, sample, worstN, failures } = withUsageError(() => {
+    const cli = parseCli(argv, {
+      options: {
+        site: { type: "string" },
+        save: { type: "string" },
+        compare: { type: "string" },
+        sample: { type: "string" },
+        worst: { type: "string" },
+        failures: { type: "string" },
+        help: { type: "boolean", short: "h" },
+      },
+      positionals: 0,
+      stopAt: ["help"],
+    });
+    if (cli.stopped === "help") return cli;
+    const v = cli.values;
+    return {
+      ...cli,
+      sample: "sample" in v ? numberOption(v.sample, { option: "--sample", integer: true, min: 1 }) : null,
+      worstN: "worst" in v ? numberOption(v.worst, { option: "--worst", integer: true, min: 0 }) : 15,
+      failures: "failures" in v ? numberOption(v.failures, { option: "--failures", integer: true, min: 0 }) : 0,
+    };
+  });
   return {
     site: "site" in values ? path.resolve(values.site) : path.join(REPO_ROOT, "docs/_site"),
     save: "save" in values ? path.resolve(values.save) : null,
     compare: "compare" in values ? path.resolve(values.compare) : null,
-    sample: "sample" in values ? Number(values.sample) : null,
-    worstN: "worst" in values ? Number(values.worst) : 15,
-    failures: "failures" in values ? Number(values.failures) : 0,
+    sample,
+    worstN,
+    failures,
     help: values.help,
   };
 }
@@ -696,7 +708,11 @@ function main() {
   if (opts.help) {
     printHelpAndExit(
       "Usage: node eval/search_quality.mjs [--site docs/_site] [--save file] " +
-      "[--compare file] [--worst N] [--sample N] [--failures N]\n\nSee the header comment in this file."
+      "[--compare file] [--worst N] [--sample N] [--failures N] [-h, --help]\n\nSee the header comment in this file.\n\n" +
+      "Exit codes:\n" +
+      "  0  the measurement ran, whatever it found\n" +
+      "  2  a refused command line, a site with no search index (run build.bat first),\n" +
+      "     or a crash"
     );
   }
 

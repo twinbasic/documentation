@@ -1,20 +1,11 @@
-// What the gates' self-tests share: the crash handler, the probe accumulator
-// and its report, and a scratch baseline file for the two drift guards.
+// What the gates' self-tests share: the probe accumulator and its report, and a
+// scratch baseline file for the two drift guards.
 //
-// Every export here does its work when called, never on import, so a module
-// that can be imported as well as run -- convert_em_dash_separators.mjs is one
-// -- installs nothing in the process that imports it.
+// Every export here does its work when called, never on import.
 
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-
-// A crash is the harness failing, not a finding: exit 2, as Extending.md's gate
-// conventions require. A script that runs at top level has no main().catch to
-// do it; this handler also catches a rejected top-level await.
-export function exitOnCrash() {
-  process.on("uncaughtException", (err) => { console.error(err); process.exit(2); });
-}
 
 // A probe list for the gate `tool`. `check(name, ok, detail)` records one probe;
 // `report()` prints a line for each, with a failed probe's detail under it,

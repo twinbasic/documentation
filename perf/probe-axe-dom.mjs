@@ -13,7 +13,7 @@
 //   node probe-axe-dom.mjs --rules color-contrast,target-size
 //   node probe-axe-dom.mjs --schemes no-html,no-selectors
 //   node probe-axe-dom.mjs --page /tB/Core/Dim.html --theme dark
-//   node probe-axe-dom.mjs --json out.json
+//   node probe-axe-dom.mjs --out out.json
 //
 // Requires build.bat to have produced an up-to-date docs/_site-offline/.
 
@@ -57,12 +57,12 @@ for (let i = 0; i < args.length; i++) {
   else if (a === '--schemes') schemesArg = args[++i];
   else if (a === '--all-rules') allRules = true;
   else if (a === '--root-dir') rootDir = resolve(args[++i]);
-  else if (a === '--json') jsonOut = args[++i];
+  else if (a === '--out') jsonOut = args[++i];
   else if (a === '--top') top = parseInt(args[++i], 10);
   else if (a === '-h' || a === '--help') {
     console.error('usage: node probe-axe-dom.mjs [--page P] [--theme T] [--viewport V]');
     console.error('                              [--rules a,b | --all-rules] [--schemes a,b]');
-    console.error('                              [--top N] [--json FILE] [--root-dir DIR]');
+    console.error('                              [--top N] [--out FILE] [--root-dir DIR]');
     console.error('');
     console.error(`  schemes: ${Object.keys(SCHEMES).join(', ')}`);
     process.exit(0);

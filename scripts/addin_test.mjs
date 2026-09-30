@@ -14,7 +14,9 @@
 //       --show / --hide   as tbbuild's
 //
 // Exit: 0 every lane passed and the registry is as it was found, 1 a lane
-// failed, 2 the harness failed or could not put the registry back.
+// failed or the run was interrupted, 2 the harness could not run (a refused
+// command line included) or crashed, 3 the registry or the work folders could
+// not be put back (the registry is what to repair, so 3 wins over 1).
 //
 // Not a gate, for the reasons examples.bat is not one: it needs Windows and a
 // twinBASIC install. addin-test.bat is the wrapper.
@@ -53,7 +55,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { parseCli } from "../lib/cli.mjs";
+import { exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, regexOption, withUsageError } from "../lib/cli.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
 import { wantShow } from "./lib/tb-ide.mjs";
 import { buildNumber, findIde } from "./lib/tb-install.mjs";
@@ -62,9 +64,33 @@ import { alive, deleteSettings, finishTidy, ideLists, norm, restoreKeys, SETTING
          snapshotKeys, startTidy, subkeyNames, sweepArchitectureMemory } from "./lib/tb-registry.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
+exitOnCrash();
+
 const SUITE = path.join(REPO_ROOT, "test", "addin");
 
-const { values } = parseCli(process.argv.slice(2), {
+const USAGE = `usage: node scripts/addin_test.mjs [--only REGEX] [--port N] [--jobs N] [--timeout S] [--ide <twinBASIC.exe>] [--show|--hide] [-h, --help]
+
+Runs the IDE add-in scenarios: every lane in test/addin/lanes.mjs, each in a
+process of its own with its own IDE copy, DevTools port and work folder.
+
+  --only <regex>    only the lanes whose name matches
+  --port <n>        base DevTools port (default 9560); the lanes get n, n+1, ...
+  --jobs <n>        lanes at once (default 2)
+  --timeout <secs>  a lane still running after this long is ended (default 600)
+  --ide <path>      the twinBASIC.exe to copy (default: $TB_IDE, else the
+                    newest twinBASIC_IDE_BETA_* on the Desktop)
+  --show, --hide    as tbbuild's
+  -h, --help        print this text and exit
+
+Exit codes:
+  0  every lane passed, and the registry is as it was found
+  1  a lane failed, or the run was interrupted
+  2  the harness could not run: a refused command line, no IDE, no matching lane, a
+     registry it could not record, or a crash after which the registry was put back
+  3  the registry or a work folder was not put back, at the end of a run or after a
+     crash; see the lines above`;
+
+const { values } = withUsageError(() => parseCli(process.argv.slice(2), {
   options: {
     only: { type: "string" },
     port: { type: "string" },
@@ -73,22 +99,22 @@ const { values } = parseCli(process.argv.slice(2), {
     ide: { type: "string" },
     show: { type: "boolean", default: false },
     hide: { type: "boolean", default: false },
-    help: { type: "boolean", default: false },
+    help: { type: "boolean", short: "h", default: false },
   },
-  unknown: "ignore",
-  positionals: 0,
-  acceptsValue: () => true,
-});
+  stopAt: ["help"],
+}));
+if (values.help) printHelpAndExit(USAGE);
 const die = (code, msg) => { console.error(msg); process.exit(code); };
-
-if (values.help) {
-  die(2, "usage: node scripts/addin_test.mjs [--only REGEX] [--port N] [--jobs N] " +
-         "[--timeout S] [--ide <twinBASIC.exe>] [--show|--hide]");
-}
-const only = values.only ? new RegExp(values.only) : null;
-const basePort = Number(values.port || 9560);
-const jobs = Math.max(1, Number(values.jobs || 2));
-const laneTimeout = Number(values.timeout || 600) * 1000;
+// setTimeout takes at most 2147483647 ms, so a lane's timeout is at most 2147483 s.
+const { only, basePort, jobs, laneTimeout } = withUsageError(() => {
+  refuseTogether(values, ["show", "hide"]);
+  return {
+    only: values.only ? regexOption(values.only, { option: "--only" }) : null,
+    basePort: numberOption(values.port ?? "9560", { option: "--port", integer: true, min: 1, max: 65535 }),
+    jobs: numberOption(values.jobs ?? "2", { option: "--jobs", integer: true, min: 1 }),
+    laneTimeout: numberOption(values.timeout ?? "600", { option: "--timeout", above: 0, max: 2147483 }) * 1000,
+  };
+});
 const show = wantShow({ show: values.show, hide: values.hide });
 
 // ---------------------------------------------------------------- refusals
@@ -137,17 +163,41 @@ try {
   // named: an add-in saving settings nobody told the runner about.
   appsBefore = subkeyNames(SETTINGS_ROOT).map((n) => n.toLowerCase());
 } catch (e) {
-  finishTidy(tidy);
-  die(2, `could not record the add-ins' settings: ${e.message}`);
+  const tidied = finishTidy(tidy);
+  die(tidied ? 2 : 3, `could not record the add-ins' settings: ${e.message}`);
 }
+
+let interrupted = false;
+const children = new Set();
+
+// A crash from here on still puts back what the run recorded, as the end of a
+// run does: the lanes are ended first, as Ctrl+C ends them, so that no IDE
+// writes to the registry after it is put back. It exits 3 if the registry or a
+// work folder was not put back, and 2 if it was. A crash while putting it back
+// leaves the registry as it happens to be, so it exits 3 at once.
+let crashed = false, putBackStarted = false, putBackResult = null;
+process.removeAllListeners("uncaughtException");
+process.on("uncaughtException", (err) => {
+  console.error(err);
+  if (putBackResult) process.exit(putBackResult.problems.length ? 3 : 2);
+  if (crashed || putBackStarted) process.exit(3);
+  crashed = true;
+  for (const child of children) child.kill();
+  const deadline = Date.now() + 10_000;
+  const wait = setInterval(() => {
+    if (children.size && Date.now() < deadline) return;
+    clearInterval(wait);
+    const { tidied, problems } = putBack();
+    console.error(registryLine(tidied, problems));
+    process.exit(problems.length ? 3 : 2);
+  }, 100);
+});
 
 // ---------------------------------------------------------------- the lanes
 
 console.log(`addin-test: BETA ${buildNumber(ide) ?? "?"}, ${lanes.length} lane(s) on ports ` +
             `${basePort}-${basePort + lanes.length - 1}, ${Math.min(jobs, lanes.length)} at a time`);
 
-let interrupted = false;
-const children = new Set();
 process.on("SIGINT", () => {
   if (interrupted) return;
   interrupted = true;
@@ -222,64 +272,78 @@ async function runAll() {
 }
 
 const results = await runAll();
+// A crash ended the lanes, so runAll returned; the crash handler puts the
+// registry back and exits, and its timer keeps the process alive until then.
+if (crashed) await new Promise(() => {});
 
 // ---------------------------------------------------------------- putting it back
 
-const problems = [];
-const tidied = finishTidy(tidy);
-if (!tidied) problems.push("the IDE's registry entries could not be put back (see the warning above)");
-try {
-  if (apps.length) restoreKeys(settingsBefore);
-} catch (e) {
-  problems.push(`the add-ins' settings could not be put back: ${e.message}`);
-}
+// Called once every lane has ended, at the end of a run or after a crash.
+function putBack() {
+  putBackStarted = true;
+  const problems = [];
+  const tidied = finishTidy(tidy);
+  if (!tidied) problems.push("the IDE's registry entries could not be put back (see the warning above)");
+  try {
+    if (apps.length) restoreKeys(settingsBefore);
+  } catch (e) {
+    problems.push(`the add-ins' settings could not be put back: ${e.message}`);
+  }
 
-// The check that the run left nothing: an entry naming a lane's folder in the
-// IDE's lists, a build target remembered for one, or an add-in's settings that
-// differ from what was recorded. Another session's IDE that is open meanwhile
-// can write its own copy of the recent list back, which is the one way an
-// entry could return (WIP.Harness.md).
-const folders = lanes.map((l) => norm(l.work) + "\\");
-try {
-  const lists = ideLists();
-  const left = [...lists.projectState, ...lists.recentlyOpened]
-    .filter((p) => p && folders.some((f) => norm(p).startsWith(f)));
-  if (left.length) problems.push(`the IDE's lists still name the lanes' folders: ${left.join(", ")}`);
-  const targets = sweepArchitectureMemory(lanes.map((l) => l.work));
-  if (targets) problems.push(`${targets} build target(s) were still remembered for the lanes' folders`);
-  const settingsAfter = snapshotSettings();
-  for (let i = 0; i < apps.length; i++) {
-    if (JSON.stringify(settingsAfter[i]) !== JSON.stringify(settingsBefore[i])) {
-      problems.push(`the settings of ${apps[i]} are not as they were found`);
+  // The check that the run left nothing: an entry naming a lane's folder in the
+  // IDE's lists, a build target remembered for one, or an add-in's settings that
+  // differ from what was recorded. Another session's IDE that is open meanwhile
+  // can write its own copy of the recent list back, which is the one way an
+  // entry could return (WIP.Harness.md).
+  const folders = lanes.map((l) => norm(l.work) + "\\");
+  try {
+    const lists = ideLists();
+    const left = [...lists.projectState, ...lists.recentlyOpened]
+      .filter((p) => p && folders.some((f) => norm(p).startsWith(f)));
+    if (left.length) problems.push(`the IDE's lists still name the lanes' folders: ${left.join(", ")}`);
+    const targets = sweepArchitectureMemory(lanes.map((l) => l.work));
+    if (targets) problems.push(`${targets} build target(s) were still remembered for the lanes' folders`);
+    const settingsAfter = snapshotSettings();
+    for (let i = 0; i < apps.length; i++) {
+      if (JSON.stringify(settingsAfter[i]) !== JSON.stringify(settingsBefore[i])) {
+        problems.push(`the settings of ${apps[i]} are not as they were found`);
+      }
     }
+    const named = apps.map((a) => a.toLowerCase());
+    const created = subkeyNames(SETTINGS_ROOT)
+      .filter((n) => !appsBefore.includes(n.toLowerCase()) && !named.includes(n.toLowerCase()));
+    if (created.length) {
+      problems.push(`HKCU\\${SETTINGS_ROOT} gained ${created.map((n) => `"${n}"`).join(", ")} during the ` +
+        "run, which no lane names in test/addin/lanes.mjs. An add-in under test that saves settings " +
+        "must be named there, or its settings stay behind; the key is left as it is");
+    }
+  } catch (e) {
+    problems.push(`could not check the registry: ${e.message}`);
   }
-  const named = apps.map((a) => a.toLowerCase());
-  const created = subkeyNames(SETTINGS_ROOT)
-    .filter((n) => !appsBefore.includes(n.toLowerCase()) && !named.includes(n.toLowerCase()));
-  if (created.length) {
-    problems.push(`HKCU\\${SETTINGS_ROOT} gained ${created.map((n) => `"${n}"`).join(", ")} during the ` +
-      "run, which no lane names in test/addin/lanes.mjs. An add-in under test that saves settings " +
-      "must be named there, or its settings stay behind; the key is left as it is");
+
+  // A folder that will not delete is held open by a process that outlived its
+  // lane, which is worth hearing about (WIP.Harness.md, The IDE runs inside a job).
+  for (const l of lanes) {
+    try { removeTree(l.work); }
+    catch (e) { problems.push(`${l.work} could not be deleted (${e.code}): is a process of its lane still running?`); }
   }
-} catch (e) {
-  problems.push(`could not check the registry: ${e.message}`);
+  putBackResult = { tidied, problems };
+  return putBackResult;
 }
 
-// A folder that will not delete is held open by a process that outlived its
-// lane, which is worth hearing about (WIP.Harness.md, The IDE runs inside a job).
-for (const l of lanes) {
-  try { removeTree(l.work); }
-  catch (e) { problems.push(`${l.work} could not be deleted (${e.code}): is a process of its lane still running?`); }
+function registryLine(tidied, problems) {
+  const settingsNote = apps.length ? `, and the settings of ${apps.join(", ")} as found` : "";
+  return problems.length
+    ? `registry and work folders: ${problems.length} problem(s)\n  ${problems.join("\n  ")}`
+    : `registry: put back (${tidied.projectState} project-state, ${tidied.recentlyOpened} recent-list ` +
+      `and ${tidied.association ?? "no"} association writes); nothing names the lanes' folders${settingsNote}`;
 }
 
+const { tidied, problems } = putBack();
 const failed = results.filter((r) => r.code !== 0);
-const settingsNote = apps.length ? `, and the settings of ${apps.join(", ")} as found` : "";
 console.log("");
-console.log(problems.length
-  ? `registry and work folders: ${problems.length} problem(s)\n  ${problems.join("\n  ")}`
-  : `registry: put back (${tidied.projectState} project-state, ${tidied.recentlyOpened} recent-list ` +
-    `and ${tidied.association ?? "no"} association writes); nothing names the lanes' folders${settingsNote}`);
+console.log(registryLine(tidied, problems));
 console.log(`${results.length} of ${lanes.length} lane(s) ran: ${results.length - failed.length} passed` +
             (failed.length ? `, ${failed.length} failed (${failed.map((r) => r.lane.name).join(", ")})` : "") +
             (interrupted ? "; interrupted" : ""));
-process.exit(problems.length ? 2 : failed.length || interrupted ? 1 : 0);
+process.exit(problems.length ? 3 : failed.length || interrupted ? 1 : 0);

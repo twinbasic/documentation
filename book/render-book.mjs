@@ -32,7 +32,7 @@ import { dirname, resolve } from 'node:path';
 import { writeFileSync, existsSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
-import { parseCli, withUsageError } from '../lib/cli.mjs';
+import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError } from '../lib/cli.mjs';
 // Side-effecting imports. Mutate pdf-lib's live module exports
 // before any pdf-lib operation -- order doesn't matter. See
 // perf/notes/08-pdf-lib.md.
@@ -77,9 +77,10 @@ import { parseCli, withUsageError } from '../lib/cli.mjs';
 //     per-instance temp array as a stack of recursion frames; each
 //     parseDict invocation appends to temp, commits its frame to
 //     main in one contiguous append, and pops temp back. PDFDicts
-//     only ever read from main, so a packed (start, length, owned)
-//     Number is the whole instance state -- no separate bufIdx.
-//     Owned dicts (factory-created post-parse) also append to main.
+//     only ever read from main, so a packed (start, flags, length)
+//     Number is the whole instance state -- no separate bufIdx; the
+//     two flag bits are PDFPageLeaf's. Dicts the factories make
+//     after the parse also append to main.
 //     Mutations: in-place replace for existing keys, COW (copy
 //     range to tail, push new pair) for new keys or delete.
 //     PDFContext is a singleton -- one PDFDocument.load per
@@ -121,9 +122,7 @@ import { parseCli, withUsageError } from '../lib/cli.mjs';
 //     shouldWaitForTick / waitForTick machinery out of both pdf-lib's
 //     load path (PDFDocument.load + five PDFParser /
 //     PDFObjectStreamParser methods underneath it) and its save path
-//     (PDFWriter.serializeToBuffer + computeBufferSize, plus the
-//     unreachable PDFStreamWriter.computeBufferSize patched for
-//     consistency). Each upstream method is wrapped in __awaiter so
+//     (PDFWriter.serializeToBuffer). Each upstream method is wrapped in __awaiter so
 //     on browsers it can yield to the event loop every objectsPerTick
 //     objects; in Node the gate never fires but every indirect object
 //     still paid for the generator state machine + Promise
@@ -195,26 +194,51 @@ import { parallelSave }             from './lib/parallel-deflate.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+exitOnCrash();
+
 // --- arg parsing --------------------------------------------------------
 
-const { values, positionals } = withUsageError(() => parseCli(process.argv.slice(2), {
-  options: {
-    output: { type: 'string', short: 'o' },
-    'outline-tags': { type: 'string', default: 'h1,h2,h3,h4' },
-    timeout: { type: 'string', short: 't', default: '0' },
-    'additional-script': { type: 'string', multiple: true },
-  },
-  positionals: { max: 1 },
-  unknown: 'error',
-  acceptsValue: () => true,
-}), { format: (err) => `unknown arg: ${err.arg}`, exitCode: 2 });
+// A missing input or output prints the first line alone.
+const SYNOPSIS = 'usage: node render-book.mjs <input.html> -o <output.pdf> [--outline-tags ...] [-t ms] [--additional-script path]...';
+const USAGE = `${SYNOPSIS} [-h, --help]
+
+Renders an HTML book to a PDF with paged.js and headless Chromium.
+
+  <input.html>               the book to render
+  -o, --output <output.pdf>  the PDF to write
+  --outline-tags <tags>      headings to put in the PDF outline (default h1,h2,h3,h4)
+  -t, --timeout <ms>         per-operation timeout in milliseconds; 0 disables (default 0)
+  --additional-script <path> a script to inject after paged.js; repeatable
+  -h, --help                 print this text and exit
+
+Exit codes:
+  0  the PDF was written
+  2  a refused command line, an input or script that does not exist, a render that
+     failed, or a crash`;
+
+const { values, positionals, timeoutMs } = withUsageError(() => {
+  const cli = parseCli(process.argv.slice(2), {
+    options: {
+      output: { type: 'string', short: 'o' },
+      'outline-tags': { type: 'string', default: 'h1,h2,h3,h4' },
+      timeout: { type: 'string', short: 't', default: '0' },
+      'additional-script': { type: 'string', multiple: true },
+      help: { type: 'boolean', short: 'h' },
+    },
+    positionals: { max: 1 },
+    stopAt: ['help'],
+  });
+  if (cli.stopped === 'help') return cli;
+  // Puppeteer's timer fires at once for more than 2147483647 ms.
+  return { ...cli, timeoutMs: numberOption(cli.values.timeout, { option: '--timeout', integer: true, min: 0, max: 2147483647 }) };
+});
+if (values.help) printHelpAndExit(USAGE);
 const inputArg = positionals[0];
 const outputArg = values.output;
 const outlineTagsArg = values.outlineTags;
-const timeoutMs = parseInt(values.timeout, 10);
 const additionalScripts = values.additionalScript;
 if (!inputArg || !outputArg) {
-  console.error('usage: node render-book.mjs <input.html> -o <output.pdf> [--outline-tags ...] [-t ms] [--additional-script path]...');
+  console.error(SYNOPSIS);
   process.exit(2);
 }
 
@@ -224,7 +248,7 @@ const outlineTags = outlineTagsArg.split(',').map(s => s.trim()).filter(Boolean)
 
 if (!existsSync(inputPath)) {
   console.error(`input not found: ${inputPath}`);
-  process.exit(1);
+  process.exit(2);
 }
 
 const pagedScriptPath    = resolve(__dirname, 'lib', 'paged.browser.js');
@@ -232,14 +256,14 @@ const progressScriptPath = resolve(__dirname, 'lib', 'progress-handler.js');
 for (const p of [pagedScriptPath, progressScriptPath]) {
   if (!existsSync(p)) {
     console.error(`required file not found: ${p}`);
-    process.exit(1);
+    process.exit(2);
   }
 }
 for (const s of additionalScripts) {
   const p = resolve(process.cwd(), s);
   if (!existsSync(p)) {
     console.error(`additional script not found: ${p}`);
-    process.exit(1);
+    process.exit(2);
   }
 }
 
@@ -435,7 +459,7 @@ try {
   console.log(`total:    ${fmtMs(Date.now() - t0)}`);
 } catch (err) {
   console.error('[render-book] error:', err);
-  exitCode = 1;
+  exitCode = 2;
 } finally {
   await browser.close();
 }

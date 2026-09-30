@@ -18,7 +18,7 @@
 //
 // Usage:  node scripts/check_axe_patch_equiv.mjs [--patch NAME]
 //
-// Exit codes: 0 equivalent, 1 a value differs, 2 harness error.
+// Exit codes: 0 equivalent, 1 a value differs, 2 a refused command line or a crash.
 //
 // One difference is expected and allowed: `plain-color-fields` turns the six
 // private fields into own properties, so `Object.keys(color)` returns them.
@@ -32,10 +32,11 @@ import {
   VIEWPORTS,
   gotoPage,
   newAuditPage,
+  SOURCE_PATCHES,
   readAxeSource,
 } from "./lib/axe-scan.mjs";
 import { withBrowser } from "./lib/browser.mjs";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { choiceOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
 const cli = withUsageError(
   () =>
@@ -44,15 +45,22 @@ const cli = withUsageError(
         patch: { type: "string", default: "plain-color-fields" },
         help: { type: "boolean", short: "h" },
       },
-      acceptsValue: Boolean,
       stopAt: ["help"],
     }),
-  { format: (err) => `unknown arg: ${err.arg}` },
 );
 if (cli.stopped === "help") {
-  printHelpAndExit("usage: node scripts/check_axe_patch_equiv.mjs [--patch NAME]");
+  printHelpAndExit(
+    "usage: node scripts/check_axe_patch_equiv.mjs [--patch NAME] [-h, --help]\n" +
+      "\n" +
+      "Exit codes:\n" +
+      "  0  the patched bundle gives the same colour values as stock axe\n" +
+      "  1  at least one colour value differs\n" +
+      "  2  the check could not run: a refused command line, or a crash"
+  );
 }
-let patchName = cli.values.patch;
+const patchName = withUsageError(
+  () => choiceOption(cli.values.patch, { option: "--patch", choices: Object.keys(SOURCE_PATCHES) }),
+);
 
 // Runs in the page against whichever bundle was injected.
 const PROBE = () => {

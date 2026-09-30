@@ -34,20 +34,25 @@
 // object we mutate first, so it picks up the fast path without a
 // separate patch.
 //
+// At load it checks that what it replaces is as in pdf-lib 1.17.1 (see
+// shim-targets.mjs), and throws otherwise. It goes when pdf-lib is replaced;
+// when a release changes what it patches, it is re-derived or removed.
+//
 // Side-effecting import. Import once before any pdf-lib operation:
 //
 //   import "./lib/fast-size-in-bytes.mjs";
 //
 // Idempotent -- repeated imports do nothing after the first.
 
-import { createRequire } from 'node:module';
-
-const require = createRequire(import.meta.url);
-const numbers     = require('pdf-lib/cjs/utils/numbers.js');
-const utilsBarrel = require('pdf-lib/cjs/utils/index.js');
-const topBarrel   = require('pdf-lib/cjs/index.js');
+import { numbers, utilsBarrel, topBarrel } from './pdf-lib-internals.mjs';
+import { checkTargets } from './shim-targets.mjs';
 
 if (!numbers.__fastSizeInBytesInstalled) {
+  checkTargets(import.meta.url, { numbers, utilsBarrel, topBarrel }, {
+    'numbers.sizeInBytes':     [1, '9d66145407d5'],
+    'utilsBarrel.sizeInBytes': [1, '9d66145407d5'],
+    'topBarrel.sizeInBytes':   [1, '9d66145407d5'],
+  });
   const fastSizeInBytes = function fastSizeInBytes(n) {
     if (n < 0x100) return 1;
     if (n < 0x10000) return 2;
