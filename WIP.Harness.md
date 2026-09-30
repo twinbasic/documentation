@@ -534,7 +534,7 @@ Four smaller things it knows, each of which cost a run:
   there, and `tbrun` used to exit 0 with that partial output (measured with and without
   `Debug.Cls` on BETA 983). Since the tooling review's C25a, `tbrun` wraps the page's global
   `clearDebugConsole()` before it presses Build, and keeps what each clear erases
-  (`keepClears` in `tb-ide.mjs`). A `BUILD_FAILED` line in that record after the last
+  (`keepClears` in `tb-ide-console.mjs`). A `BUILD_FAILED` line in that record after the last
   `[BUILD] Executing` line exits 2, naming the line and printing the partial output. `main.js`
   calls that function by name from the compiler's `event_clearDebugConsole`, which
   `Debug.Cls` raises, from the pane's Clear command, and on closing the project; no other
@@ -855,7 +855,7 @@ between ending the IDE and deleting the copy. The lane code deletes the copy the
 IDE has gone, and the first delete failed. `removeTree` in `tb-ide-copy.mjs` retries for up
 to five seconds, and `removeIdeCopy` and the add-in runner both use it.
 
-**`loadedAddins(c)`** in `tb-ide.mjs` is the check that the copy is what it claims to be.
+**`loadedAddins(c)`** in `tb-ide-addins.mjs` is the check that the copy is what it claims to be.
 It asks the page's `root.getAddinsList`, which asks the compiler over its root socket
 (`RequestAddinsStateList`), so the answer is the compiler's own, not an inference from files
 on disk. It is the same list the Add-Ins menu shows.
@@ -1190,7 +1190,7 @@ also loads the add-ins in `%APPDATA%\twinBASIC\addins\<arch>` (P6 in WIP.HelpAdd
 from the folder the page sends it, which the page makes by expanding `%APPDATA%` in the
 IDE's own environment. So `Lane.open` and `Lane.buildAddin` start their IDEs with `APPDATA`
 naming the lane's folder, and each checks, once the compile has settled, that the page's
-folder is under it (`checkAddinsRoot` in `tb-ide.mjs`): an IDE that stopped taking the
+folder is under it (`checkAddinsRoot` in `tb-ide-addins.mjs`): an IDE that stopped taking the
 folder from its environment may have loaded the user's add-ins, and the lane fails rather
 than test something else. The check runs after the fact, because the add-ins load
 while the project opens.

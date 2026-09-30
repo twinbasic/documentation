@@ -13,7 +13,7 @@
 // compiler also loads the add-ins in %APPDATA%\twinBASIC\addins\<arch>, as the
 // IDE's environment expands %APPDATA% (P6 in WIP.HelpAddin.md), so without it
 // every add-in the user keeps there would load into every test IDE. The lane
-// checks each IDE's add-ins folder (checkAddinsRoot in tb-ide.mjs) rather than
+// checks each IDE's add-ins folder (checkAddinsRoot in tb-ide-addins.mjs) rather than
 // trusting that it did.
 //
 // A scenario file gets its lane through scenario() in test/addin/scenario.mjs,
@@ -24,8 +24,9 @@ import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";
 import { buildAddin } from "./tb-addin.mjs";
 import { addAddin, makeIdeCopy, removeIdeCopy } from "./tb-ide-copy.mjs";
-import { attachIde, awaitCrashName, checkAddinsRoot, COMPILE_TIMEOUT, compileOutcome, compilerPid, launchIde,
+import { attachIde, awaitCrashName, COMPILE_TIMEOUT, compileOutcome, compilerPid, launchIde,
          readCrash, setBuildTarget, shutdownIde, summaryLine, waitForCompile } from "./tb-ide.mjs";
+import { checkAddinsRoot } from "./tb-ide-addins.mjs";
 import { compilerExe, runCompiler } from "./tb-install.mjs";
 import { restartCompiler } from "./tb-operate.mjs";
 import { laneProjectId, stageProject } from "./tb-project.mjs";

@@ -7,7 +7,7 @@
 // add-in with the lane's private copy of the IDE (tb-ide-copy.mjs), ends that
 // IDE, puts the DLL into the copy's addins folder with addAddin, and starts the
 // copy again on the project it tests with. That IDE's compiler loads the add-in
-// as it starts, and loadedAddins in tb-ide.mjs asks it which add-ins it loaded.
+// as it starts, and loadedAddins in tb-ide-addins.mjs asks it which add-ins it loaded.
 // One project per IDE, as everywhere in this harness.
 //
 // The DLL is built into the lane's work folder, not straight into the addins
@@ -27,8 +27,9 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { compilerExe } from "./tb-install.mjs";
-import { attachIde, buildProject, checkAddinsRoot, COMPILE_TIMEOUT, compileOutcome, launchIde, normPath,
+import { attachIde, buildProject, COMPILE_TIMEOUT, compileOutcome, launchIde, normPath,
          setBuildTarget, shutdownIde, summaryLine, TARGETS, waitForCompile } from "./tb-ide.mjs";
+import { checkAddinsRoot } from "./tb-ide-addins.mjs";
 import { laneProjectId, stageProject } from "./tb-project.mjs";
 
 // The PE machine types of the two targets.

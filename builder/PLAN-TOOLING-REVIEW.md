@@ -1059,6 +1059,26 @@ Both separate cleanly from the build-state core, which stays together.
 **Verify.** `addin-test.bat` green and the `examples.bat` summary unchanged (harness runs, one
 at a time).
 
+**Landed** at the owner's choice (2026-09-30), against a recommendation not to split (see
+"Where the plan was wrong"). `scripts/lib/tb-ide-console.mjs` holds the console reading,
+`consoleJs` to `keptClears` (164 lines), and `scripts/lib/tb-ide-addins.mjs` holds
+`loadedAddins`, `addinsRoot` and `checkAddinsRoot` (49 lines), both moved word for word by line
+range. `tb-ide.mjs` is 714 lines, down from 928, and imports `consoleMark` and `linesSince` for
+`buildProject`. `tb-ide-addins.mjs` imports `normPath` from `tb-ide.mjs`, so there is no
+cycle. Nothing re-exports the moved names. The importers now import from the new modules:
+`tbrun`, `tb-operate`, `tb-addin`, `tb-lane` and the eight add-in tests. A source check
+resolved all 96 names imported from the three modules. The citations in WIP.Harness.md,
+WIP.HelpAddin.md and three comments name the new module, and Tools.md's `tbbuild` section
+counts six library files, with `tb-ide-console.mjs` among them. `check_regex_safety` still
+reads 36 constructed and 12 not resolvable, in 140 files.
+
+`addin-test.bat`: `10 of 10 lane(s) ran: 10 passed`, `registry: put back (20 project-state,
+21 recent-list and 3 association writes)`. `examples.bat`: `1136 sample(s) from 598 page(s)
+in 43 project(s), 4 lane(s), BETA 987`, `1136 compile, 0 finding(s), 148.0s -- clean`, on a
+second run; the first stopped on a port held too long, which is not this move's (see Found,
+C81a). `tbrun` on a probe printing two lines: exit 0, both lines. The tree comparison is
+identical but for the Tools page, the search data and the book.
+
 ## Phase 5: documentation and measurement
 
 Written last, against the code as it then is, with every claim re-read against the file it
@@ -1424,6 +1444,13 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   all its work when it loads, so nothing could import the probes, and `makeBatches` read the
   run's flags (see Found). At the owner's choice (2026-09-30) both moved into one module, and
   the probes became a `test.bat` gate. See C80's Landed note.
+- **C81: moved as the entry says, though decision 2's tests did not hold.** Measured, the
+  module has no mutable state. The console reading reads nothing else in it, and the add-in
+  introspection reads only `normPath`, so no dependency was hidden. The file does no work when
+  it loads, so a test could already import it. Of the file's 19 commits, the console reading
+  changed alone in two and the introspection in one. Five of the seven that touched either
+  also touched the rest of the file for the same feature. The recommendation was no split.
+  At the owner's choice (2026-09-30) both parts moved. See C81's Landed note.
 
 ## Found while implementing
 

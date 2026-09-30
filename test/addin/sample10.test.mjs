@@ -9,7 +9,8 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { consoleMark, linesSince, loadedAddins } from "../../scripts/lib/tb-ide.mjs";
+import { loadedAddins } from "../../scripts/lib/tb-ide-addins.mjs";
+import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
 import { answerMessageBox, click, messageBoxes, notifications, toolWindow,
          waitFor } from "../../scripts/lib/tb-operate.mjs";
 import { scenario } from "./scenario.mjs";

@@ -26,7 +26,9 @@ import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { dllInfo } from "../../scripts/lib/tb-addin.mjs";
-import { linesSince, loadedAddins, sleep } from "../../scripts/lib/tb-ide.mjs";
+import { sleep } from "../../scripts/lib/tb-ide.mjs";
+import { loadedAddins } from "../../scripts/lib/tb-ide-addins.mjs";
+import { linesSince } from "../../scripts/lib/tb-ide-console.mjs";
 import { waitFor } from "../../scripts/lib/tb-operate.mjs";
 import { scenario } from "./scenario.mjs";
 

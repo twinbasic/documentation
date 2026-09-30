@@ -106,9 +106,9 @@ import path from "node:path";
 import { choiceOption, exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
 import { click } from "./lib/tb-click.mjs";
 import { compilerExe, findIde } from "./lib/tb-install.mjs";
-import { BUILD_FAILED, COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, keepClears, keptClears,
-         killTree, launchIde, readConsole, setBuildTarget, shutdownIde, summaryLine,
-         waitForCompile, wantShow } from "./lib/tb-ide.mjs";
+import { BUILD_FAILED, COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, killTree, launchIde,
+         setBuildTarget, shutdownIde, summaryLine, waitForCompile, wantShow } from "./lib/tb-ide.mjs";
+import { keepClears, keptClears, readConsole } from "./lib/tb-ide-console.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 

@@ -24,7 +24,9 @@ import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { removeTree } from "../../scripts/lib/tb-ide-copy.mjs";
-import { compilerPid, consoleMark, linesSince, loadedAddins, sleep } from "../../scripts/lib/tb-ide.mjs";
+import { compilerPid, sleep } from "../../scripts/lib/tb-ide.mjs";
+import { loadedAddins } from "../../scripts/lib/tb-ide-addins.mjs";
+import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
 import { pressKey, waitFor } from "../../scripts/lib/tb-operate.mjs";
 import { scenario } from "./scenario.mjs";
 

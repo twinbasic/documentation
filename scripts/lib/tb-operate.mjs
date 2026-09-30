@@ -15,7 +15,8 @@
 // document.querySelector cannot see into.
 
 import { click, clickAt, targetJs } from "./tb-click.mjs";
-import { awaitNewCompiler, COMPILE_TIMEOUT, compilerPid, linesSince, sleep, waitForCompile } from "./tb-ide.mjs";
+import { awaitNewCompiler, COMPILE_TIMEOUT, compilerPid, sleep, waitForCompile } from "./tb-ide.mjs";
+import { linesSince } from "./tb-ide-console.mjs";
 
 // ------------------------------------------------------------------ finding
 
@@ -231,7 +232,7 @@ export const notifications = (c) => c.evaluate(`[...document.querySelectorAll(".
  * line that only begins with the word is not taken for one.
  *
  * @param {object} [o]
- * @param {object} [o.since]  a mark from consoleMark in tb-ide.mjs: only what
+ * @param {object} [o.since]  a mark from consoleMark in tb-ide-console.mjs: only what
  *                            was printed after it
  */
 export async function openedUrls(c, { since = null } = {}) {
