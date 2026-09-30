@@ -1090,6 +1090,21 @@ formatting yet, and the lint gate is unchanged (`Checked 185 files`). At the own
 the densest literal tables keep their hand layout through `biome-ignore format` comments, in
 a commit of their own before C86 so that C86 stays mechanical.
 
+### C85a — `format: the dense literal tables keep their hand layout`
+
+Found in C85: the formatter spreads a table written one record per line over one field per
+line (`check_cli.mjs` alone is ~1,580 of C86's changed lines). The owner chose to keep them.
+
+**Landed.** 34 `// biome-ignore format: a table, one entry per line` comments across 19 files,
+each above the whole statement holding a literal table (probe and case tables, lookup maps,
+hand-wrapped word lists, and one `return [` of rewrite pairs in `book.mjs`), and nothing else
+changed (`git diff`: 34 lines added, none removed, all that one line). A table qualified when
+its comment saved at least 20 of the file's changed lines; records holding functions,
+configuration passed to a call, and assertion arguments were left to the formatter as code.
+Measured by a Sonnet agent, per file through `biome format --stdin-file-path`: C86's changed
+lines fall from 20,819 to 18,300, over the same 162 files. Biome reports no unused
+suppression; lint `Checked 185 files`, clean.
+
 ### C86 — `format: apply the formatter`
 
 Mechanical, and nothing else.

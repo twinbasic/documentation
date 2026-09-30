@@ -847,6 +847,7 @@ function render(target, tag, attr, needsHintEnum, idx) {
   }
 }
 
+// biome-ignore format: a table, one entry per line
 const HUMAN = {
   MODULE: "on a Module", CLASS: "on a Class", INTERFACE: "on an Interface",
   COCLASS: "on a CoClass", PROC_MODULE: "on a Sub in a Module",

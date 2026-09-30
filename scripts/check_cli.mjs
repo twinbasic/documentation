@@ -219,6 +219,7 @@ const OPTIONS = {
       return strict ? show(KINDS[err.code] ?? err.code) : show(Object.values(KINDS).find((k) => k.includes(err.code)) ?? err.code);
     }
   };
+  // biome-ignore format: a table, one entry per line
   const LISTS = [
     [], ["--verbose"], ["-v"], ["--port", "80"], ["--port=80"], ["-p", "80"], ["-p80"], ["-vp", "80"], ["-pv"],
     ["--port"], ["-p"], ["--port", "--verbose"], ["--port", "-5"], ["--port=-5"], ["--port", "-"],
@@ -425,6 +426,7 @@ function capture(fn) {
 
 // ------------------------------------------------------------ the recorded cases
 
+// biome-ignore format: a table, one entry per line
 const CASES = [
   // A command-line error in tbdocs and check_links exits 2, as in every tool,
   // and never reads as a finding, which exits 1. A value flag has no
@@ -717,6 +719,7 @@ const CASES = [
 // above already holds it. The value is the start of the tool's text where that
 // is not `usage: node <tool>`: an older text that opens otherwise, or one that
 // names the tool without its folder.
+// biome-ignore format: a table, one entry per line
 const HELP_TOOLS = {
   "builder/tbdocs.mjs": null,
   "book/render-book.mjs": "usage: node render-book.mjs <input.html> ",
@@ -793,6 +796,7 @@ const oneExitTable = (text) => EXIT_TABLE.test(text) && text.split("Exit codes:"
 // the parse: convert_em_dash_separators would rewrite docs/ but for --check, and
 // wisdom needs a command that is not a real one. A case the table above already
 // holds, the same tool with the same arguments, is not added again.
+// biome-ignore format: a table, one entry per line
 const REFUSALS = {
   "builder/tbdocs.mjs": ["src"],
   "book/render-book.mjs": ["output"],

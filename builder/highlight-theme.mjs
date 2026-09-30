@@ -40,6 +40,7 @@ const CSS_PROP = {
 // identifiers, illegal tokens, HTML tag names) are absent here; tokens
 // matching only those emit no <span> wrap and inherit the default text
 // colour from the surrounding .highlight rule.
+// biome-ignore format: a table, one entry per line
 const SCOPE_TO_SYMBOL = [
   ["punctuation.line-continuation",  "ContinuationCharacter"],
   ["constant.language.boolean",      "LiteralBoolean"],

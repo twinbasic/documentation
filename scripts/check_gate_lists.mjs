@@ -88,6 +88,7 @@ const WRAPPERS = [
 
 // Tools.md spells step counts as words, which is house style for a small
 // number in prose. Only as far as we could plausibly grow.
+// biome-ignore format: a table, one entry per line
 const NUMBER_WORDS = [
   "zero", "one", "two", "three", "four", "five",
   "six", "seven", "eight", "nine", "ten", "eleven", "twelve",

@@ -25,6 +25,7 @@
  * members are project-global, so two probes sharing one collide with TB5000,
  * which reads like a finding and is not.
  */
+// biome-ignore format: a table, one entry per line
 const SITES = [
   // ---- whole declarations ------------------------------------------------
   ["MODULE", "on a Module",
@@ -228,6 +229,7 @@ export const SITE_IDS = new Set(SITE_LIST.map((s) => s.id));
  * says `procedure in a Class` and means all four of these; if the compiler
  * accepts three and refuses one, that is a qualification the page does not make.
  */
+// biome-ignore format: a table, one entry per line
 export const FAMILIES = {
   MODULE: ["MODULE"],
   CLASS: ["CLASS", "CLASS_PRIVATE", "CLASS_GENERIC"],
@@ -271,6 +273,7 @@ export const FAMILIES = {
  * owes. Without this, `procedure in a Class` would be reported partly false
  * because `Class_Initialize` is refused.
  */
+// biome-ignore format: a table, one entry per line
 export const OPTIONAL_SITES = new Set([
   "CLASS_INITIALIZE", "SUB_MODULE_PRIVATE", "SUB_STATIC_MODULE", "SUB_GENERIC", "FUNC_MODULE_OBJECT", "DECLARE_PRIVATE",
   "DECLARE_PTRSAFE", "DECLARE_WIDE", "CONST_PRIVATE", "VAR_CLASS_PRIVATE", "VAR_MODULE_PRIVATE", "VAR_MODULE_INIT",

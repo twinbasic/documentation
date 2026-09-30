@@ -139,6 +139,7 @@ const IGNORE = ["**/node_modules/**", "**/vendor/**", "book/lib/**"];
 // exponential -- the name class does not match a space but still matches
 // `=`, `"` and `'`, so an attribute can be consumed either by the name or
 // by the quoted-value alternative.
+// biome-ignore format: a table, one entry per line
 const PROBES = [
   { name: "shipped VOID_TAGS_RE (original)",        expect: "exponential",
     pattern: String.raw`<(br|hr|img)((?:\s+[^>/]+(?:="[^"]*"|='[^']*')?)*)\s*\/?>`, flags: "gi" },
@@ -169,6 +170,7 @@ const PROBES = [
 // including a pattern it cannot actually know -- is the worse failure.
 //
 // These run in-process in a few milliseconds; nothing here calls recheck.
+// biome-ignore format: a table, one entry per line
 const FOLD_PROBES = [
   { name: "a template over module consts",
     src: 'const A = "^(a"; const B = "+)+$"; const R = new RegExp(`${A}${B}`, "g");',
@@ -210,6 +212,7 @@ const FOLD_PROBES = [
     expect: [{ pattern: "ab", flags: "g" }] },
 ];
 
+// biome-ignore format: a table, one entry per line
 const FOLD_NEGATIVES = [
   { name: "a function parameter is not resolved",
     src: 'function f(p) { return new RegExp(`^${p}$`); }', reason: /function parameter/ },

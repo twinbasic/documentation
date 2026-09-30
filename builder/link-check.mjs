@@ -38,6 +38,7 @@ import { Parser } from "htmlparser2";
 // link references. Covers the standard set of HTML link-bearing
 // attributes (href / src / srcset / longdesc / formaction / action /
 // data / cite / poster).
+// biome-ignore format: a table, one entry per line
 const LINK_ATTR_TABLE = new Map([
   ["a",          ["href"]],
   ["area",       ["href"]],

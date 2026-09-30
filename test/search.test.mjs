@@ -660,6 +660,7 @@ describe("qualified-name guard: online client, eval replica", () => {
   });
 
   test("the replica ranks the member a qualified name names first", () => {
+    // biome-ignore format: a table, one entry per line
     const docs = {
       0: { doc: "FileListBox", title: "FileListBox", content: "A list of files. Name, Font.", names: "FileListBox", primary: "FileListBox", relUrl: "/FileListBox" },
       1: { doc: "FileListBox", title: "Name", content: "The control's name.", names: "Name", qualified: "FileListBox.Name", relUrl: "/FileListBox#name" },
@@ -745,6 +746,7 @@ describe("qualified-name guard: online client, eval replica", () => {
   });
 
   test("the replica tells stem twins apart, typed with a dot or as two words", () => {
+    // biome-ignore format: a table, one entry per line
     const docs = {
       0: { doc: "Printer", title: "Printer", content: "The printer. Font, Fonts.", names: "Printer", primary: "Printer", relUrl: "/Printer" },
       1: { doc: "Printer", title: "Font", content: "The font to print with.", names: "Font", qualified: "Printer.Font", relUrl: "/Printer#font" },
@@ -954,6 +956,7 @@ describe("index-term guard: online client, offline client, eval replica", () => 
   });
 
   test("the replica ranks a marked entry first, and its secondary entry next", () => {
+    // biome-ignore format: a table, one entry per line
     const docs = {
       0: { doc: "Glossary", title: "late binding and early binding", content: "late binding late binding late binding", relUrl: "/Gloss#late" },
       1: { doc: "Data types", title: "Object", content: "Calls resolve at run time.", relUrl: "/Types#object", index: ["late binding"] },
@@ -1269,6 +1272,7 @@ describe("kind-word guard: online client, eval replica", () => {
   });
 
   test("the replica finds a member its section doesn't call a property, and keeps a titled match", () => {
+    // biome-ignore format: a table, one entry per line
     const docs = {
       0: { doc: "Form", title: "Form class", content: "A window. Its sizes are set by properties such as MaxHeight.", names: "Form", primary: "Form", relUrl: "/Form#form-class" },
       1: { doc: "Form", title: "MaxHeight", content: "The largest height the user can size the form to.", names: "MaxHeight", relUrl: "/Form#maxheight" },

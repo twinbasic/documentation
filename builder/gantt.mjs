@@ -37,6 +37,7 @@ const BAR_PAD   = 4;
 
 // The section each task is charted in, by task id. A timing that names
 // its own `ganttSection` is charted there instead.
+// biome-ignore format: a table, one entry per line
 export const GANTT_SECTION = {
   config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", scss: "Write", dot: "Spine",
   highlighterInit: "Seeds", loadData: "Seeds",

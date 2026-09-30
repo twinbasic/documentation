@@ -50,6 +50,7 @@ const READABLE_NAMES = new Set(["CNAME", "LICENSE", ".gitignore", ".nojekyll"]);
 
 /** Binary and generated assets. Omitted entirely rather than stubbed: an
  *  evaluator cannot read them anyway, and they weigh ~130 MB. */
+// biome-ignore format: a table, one entry per line
 const BINARY_EXTENSIONS = new Set([
   ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".svg",
   ".woff", ".woff2", ".ttf", ".otf", ".eot",

@@ -142,6 +142,7 @@ function compare(src) {
 // remembers: a green line saying "no rewrite touches code" is otherwise
 // indistinguishable from a gate that has stopped detecting. Each is a
 // corruption a real rewrite can cause.
+// biome-ignore format: a table, one entry per line
 const PROBES = [
   ["admonition strips code indent",
     "> [!NOTE]\n> text\n>\n> ```tb\n> If x Then\n>     y\n> End If\n> ```\n"],
@@ -177,6 +178,7 @@ const PROBES = [
 // the first draft of this probe had no trailing fence and passed happily
 // against the very stasher it was written to catch. The page it is modelled on
 // has 22 fences; the damage is always to the prose BETWEEN two of them.
+// biome-ignore format: a table, one entry per line
 const ADMONITION_PROBES = [
   ["admonition between a fence whose body contains a fence marker, and the next fence",
     'prose\n\n```tb\nx = "```basic" & vbCrLf & _\n    "```"\n```\n\n' +
@@ -222,6 +224,7 @@ const UNCHANGED_PROBES = [
 // it. Each page holds a raw `<pre>` or `<code>` that must come through as
 // written, and outside it a match that must still be rewritten. A rewrite
 // that throws fails its probe.
+// biome-ignore format: a table, one entry per line
 const POST_RENDER_PROBES = [
   ["an empty table cell inside a raw <pre>", applyPostRenderRewrites,
     "<pre><table><tr><td></td></tr></table></pre><table><tr><td></td></tr></table>",
@@ -244,6 +247,7 @@ const POST_RENDER_PROBES = [
 // first probe is that shape. The scan also never saw a fence indented four
 // spaces or more, or behind `> ` or `: `, an indented code block or an HTML
 // block, and the typographer converts none of them.
+// biome-ignore format: a table, one entry per line
 const DASH_PROBES = [
   ["a fence after an earlier fence, with CRLF and lone CR endings",
     "```tb\r\na \u{2014} b\r\n```\r\n\r\nc \u{2014} d\re \u{2013} f\r\n",
@@ -401,6 +405,7 @@ const MODULE_PROBES = [
 // code span and a definition-list fence, none of them references, then an
 // unknown name in prose on line 16. Counted in the masked content after the
 // frontmatter, where each fence is one line, it was reported at line 9.
+// biome-ignore format: a table, one entry per line
 const COUNT_PAGE = [
   "---", "title: T", "---", "",
   "```tb", "{{tbdocs:a}}", "```", "",

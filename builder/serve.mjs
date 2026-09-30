@@ -16,6 +16,7 @@ import path from "node:path";
 import { isOutputTree } from "../lib/markdown-files.mjs";
 import { runBuild, createWorkerPool, EXIT_ERROR } from "./tbdocs.mjs";
 
+// biome-ignore format: a table, one entry per line
 const MIME = {
   ".html": "text/html; charset=utf-8",
   ".css":  "text/css; charset=utf-8",

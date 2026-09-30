@@ -242,6 +242,7 @@ function actionOf(gates) {
   return { runs: { using: "composite", steps: gates.map((g) => ({ name: g, shell: "bash", run: runOf(g) })) } };
 }
 
+// biome-ignore format: a table, one entry per line
 const PROBES = [
   ["the recorded differences alone", {}, []],
   ["a gate missing from one workflow",

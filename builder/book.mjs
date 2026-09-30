@@ -248,6 +248,7 @@ const WHITESPACE_PATTERNS = (() => {
   const S8 = "        ";
   const S12 = "            ";
   const S16 = "                ";
+  // biome-ignore format: a table, one entry per line
   return [
     [`</span>${SP}${NL}${SP}${NL}<span`,
      `</span><span class="w">${SP}${NL}${SP}${NL}</span><span`],
@@ -540,6 +541,7 @@ function pickHeaderTitle(chapter, opts, isSubPage, state) {
 // §E  Top-level walker (port of book.html's Liquid)
 // ---------------------------------------------------------------------------
 
+// biome-ignore format: a table, one entry per line
 const ROMAN = [
   "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
   "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX",

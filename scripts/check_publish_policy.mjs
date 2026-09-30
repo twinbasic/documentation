@@ -49,6 +49,7 @@ const SRC = values.src;
 // Each probe names why refusing it matters. A probe that starts passing
 // is the allowlist having been widened -- deliberately or not -- and the
 // failure should say which line of publish-policy.mjs to look at.
+// biome-ignore format: a table, one entry per line
 const MUST_REFUSE = [
   ["Reference/NOTES.md",          "markdown with no frontmatter is served as raw markdown (the AppGlobalClassObject bug)"],
   ["Reference/Core/Dim.md.bak",   "editor backup of a real page"],

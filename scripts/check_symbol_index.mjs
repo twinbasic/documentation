@@ -221,6 +221,7 @@ const api = {
 
 const h = (level, text, id = null) => ({ level, text, id });
 const page = (src, url, title, parent, headings, extra = {}) => ({ src, url, title, parent, headings, ...extra });
+// biome-ignore format: a table, one entry per line
 const pages = [
   page("Reference/Default/VBA/index.md", "/tB/Packages/VBA", "VBA Package", undefined, [h(1, "VBA Package")]),
   page("Reference/Default/VBA/Strings/index.md", "/tB/Modules/Strings/", "Strings Module", "VBA Package", [h(1, "Strings module")]),

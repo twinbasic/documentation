@@ -171,6 +171,7 @@ try {
   const PROBE1 = TEMPDIR + "\\p1.twinproj", PROBE2 = TEMPDIR + "\\p2.twinproj";
   const OTHERRUN = path.join(tmpdir(), "tbharness-selftest-Łukasz", "tbrun", "9999", "o.twinproj");
   const full = Array.from({ length: 21 }, (_, i) => `D:\\full\\p${i}.twinproj`);
+  // biome-ignore format: a table, one entry per line
   const recentCases = [
     ["a short list's empty slots filled with copies of its last entry",
       ["D:\\x.twinproj"], [PROBE2, PROBE1, ...Array(19).fill("D:\\x.twinproj")], ["D:\\x.twinproj"]],

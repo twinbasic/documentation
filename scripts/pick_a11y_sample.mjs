@@ -71,6 +71,7 @@ exitOnCrash();
 // runs.  AXE_RUN_OPTIONS selects by WCAG tag and enables exactly one
 // best-practice rule (heading-order), so naming a best-practice-only rule here
 // tells a maintainer to feed a rule that is switched off.
+// biome-ignore format: a table, one entry per line
 const FAMILIES = {
   img: { re: /<img[\s>]/g, min: 1, why: "image-alt" },
   table: { re: /<table[\s>]/g, min: 1, why: "th-has-data-cells, td-headers-attr" },

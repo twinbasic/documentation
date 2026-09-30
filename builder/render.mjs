@@ -1762,6 +1762,7 @@ function blockHtmlRecursionPlugin(md) {
 // list small -- bareword expansion is a syntactic kramdown quirk, not a
 // validation step, and over-broad matching would rewrite arbitrary
 // author-written HTML.
+// biome-ignore format: a table, one entry per line
 const HTML_BOOL_ATTRS = new Set([
   "allowfullscreen", "async", "autofocus", "autoplay", "checked",
   "controls", "default", "defer", "disabled", "formnovalidate", "hidden",
