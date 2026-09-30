@@ -919,6 +919,19 @@ code span, a link destination or `<<` puts it out of step, and every later run i
 paragraph comes out short: `.. and ....` rendered `… and …`, and `x.. y... z....` rendered
 `x… y… z…`.
 
+**Landed.** The plugin tracks no source now. A rule before `replacements` turns each dot
+past the third in a run of four or more into U+E000, which `.{2,}` does not match, and a
+rule straight after `replacements` turns them back into dots, in the tokens the first rule
+changed only. So each run is counted in the text token that holds it. A run after `?` or `!`
+is left alone, so markdown-it's `?..` stands, as before. The tree comparison is identical: no
+page held a run the old plugin miscounted. The new gate `test/render.test.mjs` (`node
+--test`, 12 tests) pins the plugin on inputs no page holds. It is registered in `test.bat`,
+the composite action, Tools.md's list and WIP.md's table and bullet. With the hold rule
+faulted to leave the run as written (through the kit's `c43-fault.mjs`), 10 of the 12 fail,
+and the old plugin gave `… and …` for the two-dot case. CI must show a new step,
+`Unit-test the markdown plugins (test/render.test.mjs)`, and `check_ci_workflows`' count of
+the wrappers' gates one higher.
+
 ### C77 — `builder: tbdocs's Gantt and timing code moves beside gantt.mjs`
 
 `tbdocs.mjs:1268-1403` computes what `gantt.mjs` draws, and A1-1 is what the separation cost.

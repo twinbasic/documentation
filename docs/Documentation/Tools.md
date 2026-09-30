@@ -71,24 +71,25 @@ One of the four does not mean the same thing locally as it does in CI, on any pl
 
     test.bat
 
-The tests the toolchain has to pass. Sixteen steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Seventeen steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
 2. [`scripts/check_gate_lists.mjs`](#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
 3. [`scripts/check_ci_workflows.mjs`](#check-ci-workflows) --- verifies both CI workflows run the gates the wrappers run, and build as `build.bat` does.
 4. [`scripts/check_lint.mjs`](#check-lint) --- runs Biome over the tooling and fails on any finding, warnings included.
 5. [`test/search.test.mjs`](#search-test) --- unit tests for the site search: what the search entries hold, and that the copies of the search client agree.
-6. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
-7. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span, that the rewrites over rendered HTML leave a raw `<pre>` or `<code>` alone, and that `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes.
-8. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
-9. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
-10. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
-11. [`scripts/check_twin_parsers.mjs`](#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
-12. [`scripts/check_attribute_sweep.mjs`](#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
-13. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
-14. [`scripts/check_pdf_shims_equiv.mjs`](#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, and run.
-15. [`scripts/check_impexp_parity.mjs`](#check-impexp-parity) --- verifies the two editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI.
-16. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+6. [`test/render.test.mjs`](#render-test) --- unit tests for the markdown-it plugins, on inputs no page holds.
+7. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
+8. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span, that the rewrites over rendered HTML leave a raw `<pre>` or `<code>` alone, and that `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes.
+9. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
+10. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
+11. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
+12. [`scripts/check_twin_parsers.mjs`](#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
+13. [`scripts/check_attribute_sweep.mjs`](#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
+14. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
+15. [`scripts/check_pdf_shims_equiv.mjs`](#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, and run.
+16. [`scripts/check_impexp_parity.mjs`](#check-impexp-parity) --- verifies the two editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI.
+17. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
@@ -97,6 +98,7 @@ POSIX:
       && node scripts/check_ci_workflows.mjs \
       && node scripts/check_lint.mjs \
       && node --test test/search.test.mjs \
+      && node --test test/render.test.mjs \
       && node scripts/check_regex_safety.mjs \
       && node scripts/check_code_regions.mjs \
       && node scripts/check_page_baseline.mjs \
@@ -111,7 +113,7 @@ POSIX:
 
 Exit codes: **0** every step passed; otherwise the code of the step that stopped the run, as that step's entry gives it.
 
-**Thirteen of the sixteen cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all sixteen unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
+**Fourteen of the seventeen cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all seventeen unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
 
 The three exceptions are [`check_code_regions.mjs`](#check-code-regions), [`check_gate_lists.mjs`](#check-gate-lists), which reads this page, and [`check_lint.mjs`](#check-lint), which lints the site's scripts in `docs/assets/js/`. The first is worth knowing in detail. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes are a different matter: they run against their own sources whatever the tree holds, and they cover the *mirror* fault, where a rewrite silently stops firing. The sweep cannot see that one --- text the rewrite skipped is stashed and restored unchanged, so every region still matches. Add a page with an unusual code construct and run `test.bat`, but read the built page too.
 
@@ -539,6 +541,15 @@ Exit codes: **0** Biome found nothing (with `--staged`, also when no script is s
     node --test test/search.test.mjs
 
 Unit tests for the site search, run by Node's own test runner rather than as a script under `scripts/`. The first group builds search entries from small synthetic pages through `builder/search.mjs` and checks what each entry holds: the split at headings, the folding of generic sections such as See Also into the member they belong to, index marks, the join with the symbol index, and output that is the same byte for byte from one build to the next. The build's own check sees only which URLs the index covers. The rest are guards that the copies of the search client's query code still agree --- the online client under `builder/vendor/just-the-docs/`, the offline client in `builder/offline.mjs` and the replica in `eval/site_search.mjs`, all three or two of them --- and that the online client's index, built in slices, is the index lunr builds in one call. No browser, no built tree, well under a second.
+
+Exit codes: **0** every test passed, **1** a test failed.
+
+### render.test.mjs
+{: #render-test }
+
+    node --test test/render.test.mjs
+
+Unit tests for the markdown-it plugins in `builder/render.mjs`, run by Node's own test runner through the site's own `createMarkdownIt`. The build compares whole pages, so a plugin that is wrong only on input no page holds passes it; these tests give each plugin such input. They cover the ellipsis plugin, which keeps the dots past the third in a run such as `....`, next to code spans, dashes, guillemets, quotes and autolinks. No browser, no built tree, well under a second.
 
 Exit codes: **0** every test passed, **1** a test failed.
 

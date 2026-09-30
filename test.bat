@@ -63,6 +63,11 @@ node scripts/check_lint.mjs
 @rem no browser, well under a second.
 node --test test/search.test.mjs
 @if errorlevel 1 goto :fail
+@rem Unit tests for builder/render.mjs's markdown-it plugins, on inputs
+@rem the corpus does not hold, so a plugin that is wrong only there still
+@rem fails. No tree, no browser, well under a second.
+node --test test/render.test.mjs
+@if errorlevel 1 goto :fail
 @rem A regex that backtracks exponentially is a hang waiting for the
 @rem right input, and nothing that reads the site can see it: the corpus
 @rem passes until some page happens to contain the trigger, and then the
