@@ -170,7 +170,9 @@ C22a–C22j, C25a–C25f, C27a and C27b) were cut the same day, and their full t
 file as it stood before `builder: cut Phase 1's landed entries in the tooling plan`. Those of
 Phase 2 (C31–C70, with C32a, C41a–C41c, C51a, C51b, C65a–C65e, C67a and C67b) were cut on
 2026-09-28, and their full text is in this file as it stood before `builder: cut Phase 2's
-landed entries in the tooling plan`. A pointer below to a cut entry's Landed note means that
+landed entries in the tooling plan`. Those of Phase 3 (C71–C75, with C72a, C72b and C74a) were
+cut on 2026-09-30, and their full text is in this file as it stood before `builder: cut
+Phase 3's landed entries in the tooling plan`. A pointer below to a cut entry's Landed note means that
 text. Line numbers are the review's, at `fe9ce12b`, and move as the commits land.
 
 ### The organising idea
@@ -369,22 +371,11 @@ saved-segment check looks for a `BUILD_FAILED` line the same way.
 
 ### C17 — `scripts: harness CLIs reject a missing value; tbbuild finds its project`
 
-**Carried forward.** In `tbbuild`, `check_examples`, `census_attributes` and
-`build_package_api` (and in `tbdocs`, under C18), a value flag given no value, whether at the end of
-the command line or followed immediately by another flag, is a usage error. This matches
-Node's strict `parseArgs` (confirmed on Node 24.13, which also accepts a lone `-` as a value),
-so `lib/cli.mjs` (C47) needs no behaviour change here when C49 migrates these tools onto it.
-Ports and counts must be whole numbers; a timeout may be any positive number. The check runs
-before `--help` is handled.
+Landed.
 
 ### C18 — `builder, scripts: a command-line error exits outside the link bitmask`
 
-**Carried forward.** A command-line error in `tbdocs` and in `check_links.mjs` exits 4, a
-value outside the existing 1 (link failure) / 2 (integrity failure) / 3 (both) bitmask. This
-covers a value flag given no value or followed by another flag, an out-of-range `--port`, and
-(from C13a) a `--dest` that overlaps the source tree. C47, C49, C52 and C60 build on this
-value; Phase 3 (C71, C72) treats these two tools as the exception to "an unknown flag or a bad
-value exits 2."
+Landed.
 
 ### C19 — `scripts: close the browser on every exit path, through lib/browser.mjs`
 
@@ -660,52 +651,15 @@ every other argument.
 
 ### C49 — `scripts: the harness tools parse through lib/cli.mjs`
 
-**Carried forward.** `tbbuild`, `check_examples`, `census_attributes` and
-`build_package_api` take the default `acceptsValue` and print a `CliError` on stderr with exit
-2: `tbbuild` the message and then its usage line, `check_examples` with a `check_examples: `
-prefix, the other two the message alone. `tbbuild` and `check_examples` check their numbers
-before `--help`. `tbrun` and `addin_test` take `acceptsValue: () => true` and read each value
-as `values.x || default`, so a value flag at the end of the list, or given `""`, gets its
-default and any other argument after it is its value; C72 removes this. All six ignore an
-unknown flag (`unknown: "ignore"`), and `tbbuild` and `tbrun` take one positional and ignore
-a second. `gen_attribute_probes` takes `unknown: "positional"` with no maximum, so a bare
-`--help` is still its output folder (C71). `check_examples` prints its help through
-`printHelpAndExit`; `census_attributes` prints the slice of its own header comment with
-`console.log`; `build_package_api` has no `--help`; `check_tb_registry` reads no arguments.
+Landed.
 
 ### C50 — `scripts: the gates and link tools parse through lib/cli.mjs`
 
-**Carried forward.** The four gates that read their flags with `includes`
-(`check_regex_safety`, `check_code_regions`, `check_gate_lists`,
-`convert_em_dash_separators`) and `check_publish_policy` take `unknown: "ignore"`;
-`check_publish_policy` reads `--src` with `acceptsValue: () => true`, so given last it is
-undefined. `check_links` keeps its collect-and-warn handling of unknown flags (`unknown:
-"ignore"`, `acceptsValue: (v) => v !== undefined`, a missing value reported as `--x requires a
-value`, and a warning list rebuilt from the kept tokens' indexes, since an unknown `--flag`
-without `=` takes the positional after it along); C72 removes it. `check_links_diff` and
-`crawl_check` take `acceptsValue: () => true`, so a value flag given last is `undefined`
-(`NaN` once read as a number), and turn every `CliError` into their own words, `unknown
-argument: X` and `unknown flag: X`. `compare_trees` splits its list at the first `--` before
-parsing, and parses the rest with its old value guard (`v !== undefined && !v.startsWith("--")`)
-and `stopAt: ["help"]`. `check_lint` refuses any error and any token beyond `--staged`.
-`survey_tooling` parses through `parseCli`'s strict rules, with its usage line after each
-error.
+Landed.
 
 ### C51 — `book, eval, wisdom: parse through lib/cli.mjs`
 
-**Carried forward.** `render-book`, `build_corpus`, the `eval/` scripts (`run_case`,
-`search_quality`, `nav_hops`, `site_search`, `transcript`) and `wisdom` take `acceptsValue: ()
-=> true` and convert a value only when one was given, so a trailing value flag still fails as
-it did (a path `TypeError`, a `NaN`, a `split` of undefined). Five refuse an unknown argument
-through `withUsageError`: `render-book` with `unknown arg: X` (exit 2), `build_corpus` with
-`unknown argument: X` (1), `run_case` with `unknown argument: X` (2), `search_quality` with
-`unrecognised argument: X` (1) and `wisdom` with `Unknown option: X` (1). `nav_hops`,
-`site_search` and `transcript` take `unknown: "positional"`, since an unknown flag was a
-pattern, a search term or an ignored argument to them. `transcript` declares `--help` without
-`-h`, because a lone `-h` is its file argument, so `-h` alone exits 0 and `--help` alone exits
-1 until C71. `wisdom`'s command is its first argument, whatever that is, and the rest is parsed
-against one table for all three commands. `printHelpAndExit` prints each tool's help, keeping
-each one's exit-code condition, and `wisdom`'s dispatch default prints to stderr.
+Landed.
 
 ### C51a — `scripts: check_cli's transcript -x case passes on Linux`
 
@@ -717,13 +671,7 @@ Landed.
 
 ### C52 — `builder: tbdocs parses through lib/cli.mjs`
 
-**Carried forward.** `builder/command-line.mjs` exports `OPTIONS`, `DEFAULTS` and
-`parseCommandLine(argv)`. `tbdocs` is already strict: it parses with `unknown: "error"`, no
-positionals and the default value rule, through `withUsageError` with exit 4 (C18). A refusal
-reads `Unknown argument: <arg>` as given, a missing value `--x needs a value`, and an argument
-after `--` is refused under its own name. `--stall-timeout` keeps a hand check, because
-`numberOption` refuses the blank value that `--stall-timeout=` gives, and that disables the
-watchdog.
+Landed.
 
 *`builder/`'s helpers, defined twice: C53–C60.*
 
@@ -869,403 +817,69 @@ expectations, the usage texts and Tools.md together.
 
 ### C71 — `scripts, book, eval, wisdom: --help prints usage to stdout and exits 0`
 
-**L1-6 (R2), A5-1's help half, A10-1.** `--help` is handled four ways, and twelve tools ignore
-it. `gen_attribute_probes.mjs:1147-1158` takes a bare `--help` as its output folder and creates
-`--help/Sources`; `render-book.mjs:210-220` rejects it as unknown; `transcript.mjs` exits 1.
-
-**Change.** Every tool prints its usage to stdout and exits 0, with no side effect.
-
-**Verify.** `check_cli.mjs` gains a `--help` case for every tool, safe to run for all of them
-once this lands; no file or folder appears.
-
-**Landed.** Every Node tool, 45 in all (the `tbdocs` builder, `render-book`, `wisdom`, the six
-`eval/` tools and every command under `scripts/`, the seven that read no arguments included),
-answers `--help` and `-h` by printing its usage to stdout and exiting 0 (the owner's four
-choices, 2026-09-28: every tool; the parse stops at `--help`; `-h` everywhere; a short usage
-text where there was none). Each declares `help` with `short: "h"` and `stopAt: ["help"]`, so
-arguments before it are read as before and nothing after it is, and answers it straight after
-the parse, before any number, project or install check. The seven argument-less gates parse
-with `unknown: "ignore"` and no positionals, so every other argument is still ignored.
-`builder/command-line.mjs` exports `USAGE` and returns `{ ...DEFAULTS, help: true }` when the
-parse stops at help. 28 tools gained or rewrote a `USAGE` constant: the usage line, one sentence,
-the options; no exit codes, which are C74's. `check_lint` and `render-book` keep their pinned
-one-line error message as a `SYNOPSIS` that `USAGE` starts with; `tbbuild`, `tbrun`,
-`crawl_check` and `survey_tooling` print the whole `USAGE` on their usage errors, which keep
-their stream and exit code. `transcript`'s `-h` is help, not a file name. `wisdom` answers
-`--help` as its command or after one. Unchanged: `impexp.mjs`, already so, and `check_links`,
-whose raw-argument test already answered both; a bare invocation, or a missing project or
-input, keeps its old answer everywhere. `check_regex_safety`'s internal `--shard` is not in
-its usage. Two Found items folded in: `census_attributes` now prints a `USAGE` with
-`--dump-sites` (its header points there), and `check_links`' help says a missing sitemap or
-search file prints a warning. Tools.md's introduction says every Node tool answers `--help`
-(`build_fonts.py` reads no arguments).
-
-`check_cli` gains `HELP_TOOLS`, which adds a `--help` and a `-h` case for every tool the
-table does not already hold (61 cases), and a probe after every case whose arguments hold
-`--help` or `-h` that its scratch folder is still empty (104); 24 existing cases changed their
-expectation, among them `tbbuild x.twinproj --port 0 --help`, `check_examples --jobs 0
---help`, `build_corpus -hq` (the parse stops at the `h` of the group) and `wisdom bogus
---help`, all now usage on stdout and exit 0; `compare_trees --bogus --help` still exits 2.
-`check_cli: 423 probes, all pass` (258 before). With `gen_attribute_probes`' `help` option
-removed through `c43-fault.mjs` in `NODE_OPTIONS`, it fails 4 probes, two of them the empty
-folder (`--help`, `--help-2`, `--help-explore`, `probe-key.md` appeared, and the same for `-h`).
-A Sonnet agent checked each new usage text against its code; the eight wrong claims and five
-missing options it found were fixed. `compare_trees`: Tools online and offline, the search
-data and `book.html`. Lint `Checked 172 files`; regex safety `528 literals + 30 constructed in
-130 files ... 489 safe, 69 polynomial, 0 undecided, 0 exponential` (the new ones all safe);
-`build.bat`, `check.bat` and `test.bat` clean. On the owner's next push CI prints
-`check_cli: 423 probes, all pass` and the regex-safety line above.
+**Carried forward.** Every Node tool answers `--help` and `-h` by printing its `USAGE` to
+stdout and exiting 0. Each declares `help` with `short: "h"` and `stopAt: ["help"]`, answers it
+straight after the parse, before any number, project or install check, and has a `USAGE`
+constant (the usage line, one sentence, the options, and the `Exit codes:` block). A new tool
+is added to `HELP_TOOLS` in `scripts/check_cli.mjs`, which checks that its help exits 0 and
+leaves its scratch folder empty.
 
 ### C72 — `scripts, book, eval, wisdom: an unknown flag or a bad value exits 2`
 
-**L1-7, L1-5 (R2), A5-1's typo half, A10-1.** Eleven tools ignore an unknown flag,
-`check_links.mjs` warns, eight refuse it with 2, some throw to 1 or 2, and `wisdom` refuses it
-with 1. `check_links.mjs:307-314` still tolerates flags "passed through via check.bat's %*",
-and the comment at `:406-412` still says `check.bat` passes it arguments; `check.bat` no
-longer calls it (`PLAN-checks.md:14`). `tbrun` and `addin_test`
-substitute their default for an explicit empty value.
-
-**Change.** Strict parsing everywhere: an unknown flag or a bad value is an error on stderr,
-with exit 2, or C18's value in the two link tools. `check_links.mjs`'s tolerance goes, and
-both comments are corrected. Any exception a tool keeps is stated in its usage text and in Tools.md.
-
-**Verify.** `check_cli.mjs` gains an unknown-flag case and an empty-value case for every tool.
-
-**Landed** as `builder, scripts, book, eval, wisdom: a refused command line exits 2` (see
-"Where the plan was wrong"), on the owner's four choices of 2026-09-29: strict everywhere,
-with a term that starts with a dash given after `--`; an empty value refused by `lib/cli.mjs`;
-every usage error reported one way; the values a tool reads after the parse left to C72a.
-`parseCli` has lost `unknown`, `acceptsValue` and the `ignored` result, and refuses an
-unknown option, a boolean given a value, a value flag with none, an empty value (code
-`empty-value`, `--x needs a non-empty value`) unless the option's spec says `empty: true`,
-and a positional beyond the tool's count. Only `tbdocs`' `--baseurl` allows an empty value
-(the site root), so `--stall-timeout=` is refused where it was 0. Every tool but the four
-already strict (`check_impexp_parity`, `check_pdf_shims_equiv`, `survey_tooling` and
-`impexp.mjs`, which has its own parser) drops its leniency: the gates that ignored every argument but `--help`, the harness tools that
-ignored an unknown flag, `tbrun`'s and `addin_test`'s empty value taking the default,
-`check_publish_policy`'s, `crawl_check`'s and the `eval/` tools' flag at the end taken as
-`undefined`, the a11y tools' flag taken as the value before it. `crawl_check` takes one start
-URL, `transcript` one file (simply the positional), `gen_attribute_probes` a folder and a key;
-`nav_hops`, `site_search`, `transcript` and `gen_attribute_probes` say in their usage that a
-term, file or folder starting with a dash goes after `--`, and so does `eval/protocol.md` for
-the evaluator's `site-search`. `check_links`' tolerance goes whole: the unrecognised-argument
-warning, the rule that an unknown `--flag` took the positional after it, and `--threads`
-(accepted and unused; nothing passed it). The plan's `check_links.mjs:307-314` and `:406-412`
-no longer held the `check.bat` comments, which went with C50's migration.
-
-Every usage error goes to stderr with exit 2, or 4 in `tbdocs` and `check_links`, in the
-`CliError`'s own words (`unknown option: --bogus`, `--theme needs a value`, `unexpected
-argument: x`). The rewordings that misnamed the fault went: the a11y tools' `unknown arg:`
-for a missing value, `crawl_check`'s `unknown flag:`, `check_links_diff`'s and the
-`eval/` tools' `unknown argument:`, `search_quality`'s `unrecognised argument:`, `wisdom`'s
-`Unknown option:`, `tbdocs`' `Unknown argument:`. A tool's name prefix stays
-(`check_examples: `, `compare_trees: `, `check_lint: `, `check_links`' `error: `), and so does
-a usage text printed after the message; `check_lint` names the fault before its synopsis
-line, where it printed the synopsis alone. `build_corpus`, `search_quality`, `site_search`,
-`transcript` and `wisdom` exit 2 where they exited 1; `wisdom` with no command exits 2 where it
-exited 0, and names an unknown command; a missing required argument prints the usage on
-stderr in `gen_attribute_probes`, `nav_hops`, `run_case`, `site_search`, `transcript` and
-`build_corpus`; `check_links` writes its command-line errors, and its usage after no
-arguments, to stderr. `render-book`'s missing input stays exit 1: it is not a usage error.
-`wisdom`'s 2 is now also its request cap's code, a code with two meanings for C74. Tools.md
-states the rule once beside the `--help` sentence and in the `tbdocs`, `check_links`,
-`crawl_check` and `check_cli` sections; Extending.md's, PDF-Generation.md's and Wisdom.md's
-exit tables, Pipeline-Stages.md's `command-line.mjs` table, `eval/README.md`, WIP.md's `check_cli` row and `wisdom/PLAN-3.md` (whose
-`extract` listed `--threads` for `--in`) follow. Two Found items close with it:
-`build_corpus --dest ""` removed the current folder, and `convert_em_dash_separators --chek`
-rewrote `docs/`.
-
-`check_cli: 568 probes, all pass` (423 before). The probes of `unknown` and `acceptsValue`
-became strict ones (an unknown letter in a short group, a dash-led positional after `--`, a
-fault after `--help` not read while one before it is), with empty-value probes (separate,
-inline, short, `multiple`, and `empty: true`); the comparison with a strict `parseArgs`
-leaves out the empty values, which it accepts. Every case whose tool changed was re-pointed
-rather than dropped, but for `check_links`' two warning cases, which went with the warning:
-an ignored flag's case keeps its later failure with the flag removed (`tbbuild --keep
-x.twinproj`), a term case moves after `--`. A `REFUSALS` table,
-beside `HELP_TOOLS` and checked against it, adds an unknown-flag case for all 45 tools and an
-empty-value case for the 26 with a value option (`convert_em_dash_separators --check --bogus`,
-`wisdom bogus --bogus`, so a regression does no work), and every such case also checks that
-its folder stays empty. With `lib/cli.mjs`'s unknown-option refusal turned into a `continue`
-through `c43-fault.mjs` in `NODE_OPTIONS`, 69 of 568 fail. A Sonnet agent checked every new
-text against the code: its eleven findings in the comments, Tools.md, `eval/README.md`,
-Pipeline-Stages.md and this note were fixed, and its note that exit-code texts leave out a
-refused command line is C74's; its twelfth, that Extending.md's gate table should give
-`check_links`' 4, was wrong, since no wrapper runs `check_links`. `compare_trees`: Extending, Pipeline-Stages,
-PDF-Generation, Tools and Wisdom online and offline, the search data and `book.html`. Lint
-`Checked 172 files`; regex safety unchanged at `528 literals + 30 constructed in 130 files
-... 489 safe, 69 polynomial, 0 undecided, 0 exponential`; `build.bat`, `check.bat` and
-`test.bat` clean. On the owner's next push CI prints `check_cli: 568 probes, all pass`.
+**Carried forward.** Every tool parses through `lib/cli.mjs`'s `parseCli` (`tbdocs` through
+`builder/command-line.mjs`, which wraps it), and the parse is strict: an unknown option, a
+boolean given a value, a value option with none, an empty value unless the option's spec says
+`empty: true` (only `tbdocs`' `--baseurl`), and a positional beyond the tool's count are each a
+`CliError`, reported on stderr with exit 2 through `withUsageError`. A term that starts with a
+dash goes after `--`. A new tool needs an unknown-flag case in `REFUSALS`, and an empty-value
+case if it has a value option, in `scripts/check_cli.mjs`, which checks `REFUSALS` against
+`HELP_TOOLS`.
 
 ### C72a — `scripts, book, eval, wisdom: a bad value exits 2`
 
-**Split from C72** (the owner, 2026-09-29). C72 makes the parse strict; the values each tool
-reads after the parse are still unchecked. A survey of the code for C72 found these (read
-before editing, not run):
-
-- **Numbers read with `Number`, `parseInt` or `parseFloat` and never checked**, so text gives
-  `NaN` and `12abc` gives 12: `crawl_check`'s `--concurrency` and `--timeout` (a `NaN` timeout
-  reports every link broken; 0 workers check nothing and pass); `sweep_a11y`'s `--limit` (a
-  `NaN` sweeps nothing) and `--recycle-every`; `pick_a11y_sample`'s `--budget` (`NaN` makes it
-  unlimited); `run_case`'s `--timeout` (`NaN` or 0 kills its `claude` child at once);
-  `search_quality`'s `--sample`, `--worst` and `--failures`; `site_search`'s `-n`; `wisdom`'s
-  `--concurrency`, `--rate-limit` and `--cap`; `tbrun`'s `--port`, `--timeout` and `--quiet`;
-  `addin_test`'s `--port`, `--jobs` and `--timeout`; `render-book`'s `-t`;
-  `check_links_diff`'s `--max-lines`. The checks that exist accept `0x10` and `1e3`
-  (`tbbuild`, `check_examples`, `survey_tooling`, `compare_trees`, `tbdocs`'s
-  `--stall-timeout`), and `tbbuild`'s `--port` has no upper bound.
-- **Regexes that crash with exit 1**: `addin_test`'s and `check_examples`' `--only`; a bad
-  `nav_hops` term exits 2 with a stack.
-- **A URL**: `crawl_check`'s start URL, uncaught at module level, exit 1 with a stack.
-- **Fixed sets and dates**: `check_links`' `--oracle` (anything but `index` is `fs`);
-  `wisdom`'s `--min-confidence` and `--since` (`Date.parse` gives `NaN`);
-  `check_a11y_fingerprint`'s `--baseline` and `--candidate` (an unknown scheme throws
-  uncaught, exit 1); `run_case`'s `--protocol`.
-- **Conflicts that pass silently**: `site_search`'s `--composition` with terms (the terms are
-  ignored); `pick_a11y_sample`'s `--check` with `--propose` (the last wins).
-- **A destination removed before writing**: `build_corpus` removes its `--dest` recursively
-  (`build_corpus.mjs:148`), so `--dest .` deletes the current folder and `--dest ..` can
-  delete the repository. It refuses a `--dest` that is the repository, contains it, or
-  contains the current folder, as `tbdocs` refuses a `--dest` that overlaps its source (the
-  owner, 2026-09-30).
-
-**Change.** Every number through `numberOption`, and every regex, URL, date and value from a
-fixed set checked straight after the parse, refused on stderr with exit 2 (C18's 4 in the two
-link tools), in the tool's usage-error form.
-
-**Verify.** `check_cli.mjs` gains a bad-value case for each.
-
-**Landed** on the owner's choices of 2026-09-30: numbers are read as `Number()` reads them
-(so `0x10` and `1e3` pass, `12abc` and blank text do not), with fractions refused where the
-value is a count, a port or a millisecond count an API needs whole; 0 only where it has a
-stated meaning (`tbdocs`' `--stall-timeout`, `compare_trees`' `--max`, `search_quality`'s
-`--worst` and `--failures`, `check_links_diff`'s `--max-lines`, `tbrun`'s `--quiet`, and
-`render-book`'s `-t`, which PDF-Generation.md documents as disabling the timeout);
-`numberOption`'s one wording everywhere; and every silent conflict refused. `lib/cli.mjs`
-gains `choiceOption`, `regexOption`, `urlOption`, `dateOption` (ISO 8601, the day read back
-as written, since `Date.parse` takes `12` as a date in 2001 and `2024-02-30` as March) and
-`refuseTogether`, and `numberOption` gains `above` (greater than) and loses `message`, whose
-one caller, `tbdocs`' `--port`, now takes the default wording. Every check runs straight after
-the parse, before an IDE, browser, registry snapshot, request or file removal, in the tool's
-usage-error form. The survey's list held, and it had missed more: `crawl_check --concurrency
-abc` and `addin_test --jobs abc` looped for ever (the second after its registry snapshot),
-`addin_test`'s and `run_case`'s timeouts of 0 or text killed every child at once, `wisdom`'s
-`--rate-limit` or `--cap` given text turned the guard off, and `tbdocs --url foo` crashed
-partway through the build. Also checked: `tbdocs`' `--url`; `tbbuild`'s and `tbrun`'s `--arch`
-through `choiceOption` (they printed the bare usage); `check_a11y_fingerprint`'s `--patches`
-and `check_axe_patch_equiv`'s `--patch` against the patch names; `wisdom`'s `--since` no
-earlier than 2015-01-01 and its `--min-confidence`. Conflicts refused: `--show` with `--hide`
-in `tbbuild`, `tbrun`, `addin_test` and `check_examples`; two of `check_examples`' `--report`,
-`--census` and `--propose`, and `--apply` without `--propose`; two of `pick_a11y_sample`'s
-modes (the last won); `site_search`'s `--composition` with terms; and `wisdom extract`'s
-`--since`, `--all` and `--force`, moved from `prep.mjs` (exit 1) to the parse, and still not
-under `--merge`, which reads none of them. `build_corpus` refuses a `--dest` that is or
-contains the repository root, the current folder or `--src` (the last beyond the owner's two,
-the same harm). Tools.md's refusal sentence covers a value a tool cannot use; its `tbdocs`,
-`crawl_check`, `pick_a11y_sample`, the a11y fingerprint and `check_cli` sections,
-Pipeline-Stages.md, PDF-Generation.md, Extending.md, Wisdom.md and `eval/README.md` follow.
-
-`check_cli: 810 probes, all pass` (568 before): 21 cases re-pointed to the new wording (three
-`render-book`, `run_case` and `search_quality` cases now stop at the value, before the missing
-input they stopped at), 39 probes of the new checkers, 102 bad-value cases in a `BAD_VALUES`
-block, each with its empty-folder probe, and one probe gone with `message`. With
-`numberOption`'s test made to pass everything through `c43-fault.mjs` in `NODE_OPTIONS`, 88 of
-810 fail; with `choiceOption`'s, 16. A Sonnet agent checked every new text against the code; its six findings were fixed, among
-them two limits: `crawl_check`'s `--timeout` allowed up to 4294967295 ms, which
-`AbortSignal.timeout` accepts but whose timer then fires at once (measured: a 3,000,000,000 ms
-signal is aborted within 50 ms, a 2,147,483,647 ms one is not), and `render-book`'s `-t` had
-no maximum; both now stop at 2147483647. `urlOption` uses `new URL` in a `try` rather than
-`URL.parse`, which needs Node 22.1 where the docs say 22. `compare_trees`: Extending,
-PDF-Generation, Pipeline-Stages, Tools and Wisdom online and offline, the search data and
-`book.html`. Lint `Checked 172 files`; regex safety `535
-literals + 34 constructed in 130 files ... 500 safe, 69 polynomial, 0 undecided, 0
-exponential; 8 construction(s) not resolvable`; `build.bat`, `check.bat` and `test.bat`
-clean. On the owner's next push CI prints `check_cli: 810 probes, all pass` and that
-regex-safety line.
+**Carried forward.** A tool checks each value it reads after the parse straight after the
+parse, before it starts an IDE or browser, records a registry, makes a request or removes a
+file, and refuses a bad one on stderr with exit 2, in its usage-error form. It does so through
+`lib/cli.mjs`'s `numberOption` (read as `Number()` reads, so `0x10` passes and `12abc` does
+not), `choiceOption`, `regexOption`, `urlOption`, `dateOption` and `refuseTogether`, and a
+new option that takes a number, regex, URL, date or fixed set needs a case in `BAD_VALUES` in
+`scripts/check_cli.mjs`.
 
 ### C72b — `builder, scripts: tbdocs and check_links exit 0, 1 or 2 like every tool`
 
-**Raised by the owner** (2026-09-30). Every other tool exits 1 when it finds a problem and 2
-when it cannot do its job (a refused command line since C72, a crash since C28). `tbdocs`
-exits with a bitmask, 1 for a failed page, diagram, stylesheet, baseline drift, link failure
-or crash, 2 for an integrity failure, 3 for both, and 4 for a refused command line (C18,
-departure 1); `check_links.mjs` gives 1 for links, 2 for integrity, 3 for both and 4 for its
-command line. Nothing reads a bit: every wrapper tests `errorlevel 1`, CI tests non-zero, and
-`check_links.mjs:56`'s "so CI can tell" has no reader. Building.md's "1 for link failures"
-already leaves out the other failures 1 carries.
-
-**Change** (the owner's choice, 2026-09-30). Both tools exit 0 clean, 1 when the build or check
-found a problem of any kind, and 2 on a refused command line or a crash (`tbdocs`' crash exits
-1 today, through `main().catch`); the summary lines already name which check failed. The exit
-constants in `tbdocs.mjs`, `serve.mjs`'s use of them, `write.mjs`'s `--dest` refusal,
-`check_links`' usage text and header, Building.md, Tools.md's refusal sentence and its `tbdocs`
-and `check_links` sections, Pipeline-Stages.md, `check_cli`'s cases and `REFUSALS` entries
-that expect 4, and C75's note follow. Departure 1 is superseded.
-
-**Verify.** `check_cli.mjs`; `build.bat` over a fixture with a broken link and one with an
-integrity failure exits 1; a crash through `c43-fault.mjs` exits 2.
-
-**Landed.** `tbdocs.mjs` exports `EXIT_FOUND` (1) and `EXIT_ERROR` (2) in place of
-`EXIT_FAILED`, `EXIT_INTEGRITY` and `EXIT_COMMAND_LINE`, and `failBuild()` sets 1 where it ORed
-a bit. 2 is a refused command line (every `CliError`, and `write.mjs`'s `--dest` refusal), a
-crash through `main().catch`, and so also the stall watchdog, which throws there (it exited
-1); `serve.mjs` exits 2 on a failed start and on a port in use, both of which exited 1.
-`check_links.mjs` has the same two constants; `--no-fail` still forces 0 on findings alone; it
-gained `exitOnCrash`, so a throw exits 2 where Node gave 1; and a run of several commands
-separated by `/sep/` exits with the highest code among them where it took the first non-zero.
-Nothing read a bit (the wrappers test `errorlevel 1`, CI and `compare_trees` test non-zero).
-Comments in `check.mjs`, `command-line.mjs`, `dot.mjs`, `scss.mjs`, `write.mjs` and the
-`checks.yml` build step (a comment only, so CI shows nothing new), `check_links`' help text,
-Tools.md, Building.md, Builder.md and Pipeline-Stages.md follow; `PLAN-12.md` and
-`PLAN-checks.md` are design records and keep their codes. The fixture build (`--src
-test/fixtures/check-src --check`) exits 1 where it exited 3; the same build with a throw put
-into `runBuild` through `c43-fault.mjs` exits 2; `tbdocs --bogus` and `check_links --bogus`
-exit 2. `check_cli: 810 probes, all pass`, with every `tbdocs` and `check_links` case
-expecting 2 and the `REFUSALS` overrides of 4 gone. `compare_trees`: Builder, Building,
-Pipeline-Stages and Tools online and offline, the search data and `book.html`. Lint, regex
-safety and the a11y line unchanged; `build.bat`, `check.bat` and `test.bat` clean.
+**Carried forward.** `tbdocs.mjs` and `scripts/check_links.mjs` each define `EXIT_FOUND` (1,
+the build or check found a problem of any kind) and `EXIT_ERROR` (2, a refused command line,
+a crash, or `tbdocs`' stall watchdog), and neither exits 3 or 4; `--no-fail` still forces 0 on
+findings alone.
 
 ### C73 — `scripts: one meaning each for --json and --src`
 
-**L1-8 (R2), L1-9 (R3).** `--json` prints to stdout in `tbbuild`, `tbrun`, `check_examples`
-and `census_attributes`, and takes a file in `check_a11y_fingerprint.mjs`. `--src` is the
-documentation root in `tbdocs` and `check_publish_policy`, and the exported package tree in
-`census_attributes` and `build_package_api`.
-
-**Change.** The odd ones out are renamed: `check_a11y_fingerprint.mjs`'s file option and the
-two package-tree options get names of their own. WIP.A11y.md, WIP.Harness.md and Tools.md
-follow.
-
-**Verify.** `check_cli.mjs`; `git grep` finds no old spelling in the documents or scripts.
-
-**Landed** on the owner's choices of 2026-09-30. `check_a11y_fingerprint`'s file-taking
-`--json FILE` is `--out FILE`, as in `census_attributes`, `build_package_api`, `sweep_a11y`
-and `run_case`. The package-tree `--src <dir>` of `census_attributes` and `build_package_api` is
-`--exported <dir>`. The survey found a third meaning the review had missed: in
-`eval/build_corpus.mjs` and `eval/nav_hops.mjs`, `--src` names a repository root that holds
-`docs/`, so a reader following `tbdocs` would pass `docs` and get `docs/docs`. Both now take
-`--repo`, and `build_corpus`'s `--dest` refusal names `--repo`. The owner also asked for the
-three `perf/` rigs, which are outside the review's scope and which no gate runs.
-`probe-axe-dom` and `probe-axe-scaling` take `--out FILE`. `ab-axe` already had `--out DIR`
-for its output root, and its `--json` did nothing (see Found), so the flag is deleted there.
-`--json` is now always a boolean that prints to stdout, and `--src` is always a docs root
-(`tbdocs`, `check_publish_policy`). An old spelling is refused as an unknown option, with no
-hint. Tools.md and `eval/README.md` follow. WIP.A11y.md and WIP.Harness.md cite neither
-spelling, so they are unchanged. `builder/REVIEW-USECASES-16969e5.md:329` keeps `--src`,
-because it is a record of that round. `check_cli: 816 probes, all pass` (810 before):
-eight re-pointed cases and two re-pointed `build_corpus` refusals, one case per renamed option
-showing that the old spelling is refused, and `check_a11y_fingerprint --out` without a value.
-The `git grep` for the old spellings finds only those refusal cases. It missed one sentence,
-Tools.md's note that the two package tools run anywhere when given an export, which kept
-`--src`. That was found while landing C75, and fixed in `docs: Tools.md names --exported for
-the package tools`, because folding it into this commit would have rewritten history. `compare_trees`: Tools
-online and offline, the search data and `book.html`. Lint stays at `Checked 172 files`
-(`perf/` is not linted). On the owner's next push, CI prints `check_cli: 816 probes, all pass`.
+**Carried forward.** `--json` is a boolean that prints to stdout, and `--out FILE` names an
+output file (`check_a11y_fingerprint`, `census_attributes`, `build_package_api`, `sweep_a11y`,
+`run_case`). `--src` is a documentation root (`tbdocs`, `check_publish_policy`), `--exported`
+the exported package tree (`census_attributes`, `build_package_api`) and `--repo` a repository
+root that holds `docs/` (`eval/build_corpus.mjs`, `eval/nav_hops.mjs`). An old spelling is
+refused as an unknown option, so Tools.md and `eval/README.md` must use these names.
 
 ### C74 — `scripts: one exit-code table per tool, and no code with two meanings`
 
-**Decision (e).** Each tool's usage text and its Tools.md entry get one table of exit codes.
-A code that means two things is split: `addin_test.mjs`'s 2 covers both a harness that failed
-and a registry it could not restore (L1's notes in the ledger), and the second is the one the
-user must act on.
-
-**Verify.** Each table checked against the code; `check_cli.mjs` for the codes it can reach;
-`addin-test.bat` green (a harness run).
-
-**Landed** on the owner's choices of 2026-09-30. Each tool's usage text ends with one
-`Exit codes:` block, a line per code, and its Tools.md section ends with the same codes on one
-`Exit codes:` line. The six eval tools and `wisdom` have no Tools.md section, so theirs are in
-`eval/README.md` and Wisdom.md. `impexp.mjs` keeps the table it shares with `impexp.py`,
-which `check_impexp_parity` holds the two editions to, and Tools.md points to it. The
-convention is 0 clean, 1 a finding, 2 the tool could not do its job, with a tool's own codes
-above 2. Three codes that meant two things are split: `addin_test` exits **3** when the
-registry or a work folder was not put back, which wins over a failed lane; `wisdom` exits
-**3** when it reaches its request cap (re-run to continue), so 2 is left for a refused command
-line; `tbrun` exits **4** when the compiler crashed, as `tbbuild` does. A compile that never
-settled stays 2 in `tbrun`, whose 3 is "no output". Several tools exited 1 when they could
-not run at all, and now exit 2: `render-book` for a missing input or support file and for a
-render that threw, so it has no 1; `site_search` and `search_quality` with no search index;
-`wisdom` when an earlier phase has not run; and `run_case` when not signed in. A crash exits 2
-in every tool. `exitOnCrash` moved from `scripts/lib/gate-probes.mjs` to `lib/cli.mjs`, which
-`eval/`, `wisdom/`, `book/` and `builder/` may import, and its 16 importers followed.
-Seventeen tools gained it, and it is installed only at the entry point in `tbdocs`,
-`site_search` and `transcript`, which other modules import. A Sonnet agent then checked every
-table against the code. Four of its eight findings were fixed here:
-- `tbdocs --serve` exited 1 on a server error other than a port in use, and on a failed
-  watcher, both thrown outside `main()`.
-- `wisdom` crashed with 2 when it reached the cap during discovery; that now exits 3, as it
-  does in the member and message fetches.
-- `census_attributes`' table named a failed export, which leaves the package out of the
-  census and does not stop the run.
-- A comment in `check_cli`.
-
-Three more are in Found; the eighth was wording. The docs agent also found `WIP.Build.md`
-still giving `tbdocs`' old 1/2/3 check codes, which C72b had left behind, and `serve.bat`
-returning 0 whatever `tbdocs` returns, which Tools.md now states and C75 fixes.
-
-`check_cli: 860 probes, all pass` (816 before). 44 of the new probes check that a tool's
-`--help` output ends with exactly one exit-code table; there is one per tool but `impexp`.
-Five cases were re-pointed from 1 to 2: `site_search` twice, `search_quality`, and
-`transcript` twice, whose unreadable input is a crash. With a tool's table faulted through
-`c43-fault.mjs` in `NODE_OPTIONS`, only that tool's table probe fails, in three cases: the
-heading renamed, a code line malformed, and a second heading. `addin-test.bat`: `10 of 10
-lane(s) ran: 10 passed`, `registry: put back (20 project-state, 21 recent-list and 3
-association writes)`. `compare_trees`: Extending, PDF-Generation, Tools and Wisdom, online and
-offline, the search data and `book.html`. Lint stays at `Checked 172 files`; regex safety
-`536 literals + 34 constructed in 130 files ... 501 safe, 69 polynomial, 0 undecided, 0
-exponential; 8 construction(s) not resolvable` (the table pattern is the new literal);
-`build.bat`, `check.bat` and `test.bat` clean. On the owner's next push CI prints
-`check_cli: 860 probes, all pass` and that regex-safety line.
+**Carried forward.** Every tool exits 0 clean, 1 a finding, 2 the tool could not do its job
+(a refused command line, a missing input, a crash), and its own codes above 2: `addin_test`
+3 (the registry or a work folder was not put back, after a crash too), `wisdom` 3 (the
+request cap), `tbbuild` 3 (the compile never settled) and 4 (the compiler crashed), `tbrun` 3
+(no output) and 4 (the compiler crashed), and `impexp` 3 to 6 (the table it shares with
+`impexp.py`, which has no `Exit codes:` probe). Each tool's usage text ends with one `Exit codes:` block,
+which `check_cli` checks, and each Tools.md section (`eval/README.md` and Wisdom.md for the
+tools without one) ends with the same codes on one `Exit codes:` line. `exitOnCrash` is in
+`lib/cli.mjs`; a tool that other modules import installs it at its entry point only.
 
 ### C74a — `scripts: addin_test puts the registry back after a crash`
 
-**Found while landing C74** (the owner's choice, 2026-09-30; it lands after C75). A crash
-after `addin_test` has recorded the registry exits 2 through `exitOnCrash`, and nothing puts
-the registry or the settings back, though the tool's table gives 3 for a registry that was not
-put back. **Change.** The crash path restores what the run recorded, as the end of a run does,
-and exits 3 if that fails. **Verify.** A throw put in after the snapshot through
-`c43-fault.mjs`, with the kit's `reg-snap.mjs` before and after: identical registry, exit 2; a
-throw from the restore as well: exit 3.
-
-**Landed.** Once `addin_test` has recorded the registry and the add-ins' settings, it replaces
-`exitOnCrash`'s handler with its own. A crash prints its error, ends the lanes as Ctrl+C does,
-waits up to 10 s for them to close, and then runs the same put-back as the end of a run:
-`putBack()`, now a function both paths call, restores the IDE's entries and the settings,
-checks that nothing names a lane's folder, and deletes the work folders. The run exits 2 if
-that found no problem and 3 if it found one, and a crash during the put-back exits 3 at once.
-If the lanes' ending lets `runAll` return, the main path waits and leaves the exit to the
-handler. A failure to record the settings, which already put the registry back, now exits 3
-when that fails, not 2. The usage text's 2 and 3 lines and Tools.md's section say so. With
-`--only sample15` between two `reg-snap.mjs` snapshots, through `c43-fault.mjs` (whose hooks
-now take a list of faults), the kit's `c74a-faults.mjs` gave: a throw before the lanes start,
-exit 2; a throw from a lane's output while its IDE runs, exit 2 after `registry: put back (2
-project-state, 21 recent-list and 3 association writes)`; the same with the put-back made to
-report a problem, exit 3; the same with a throw inside the put-back after the restore, exit 3.
-The registry was identical before and after in all four (sha256 `41c09aafafe70eac`).
-`addin-test.bat`: `10 of 10 lane(s) ran: 10 passed`, `registry: put back (20 project-state, 21
-recent-list and 3 association writes)`. `compare_trees`: Tools, online and offline, the search
-data and `book.html`. Lint, `check_cli` (860) and regex safety unchanged; `build.bat`,
-`check.bat` and `test.bat` clean.
+Landed.
 
 ### C75 — `serve.bat: return tbdocs's exit code`
 
-**A6-5 (R3).** `serve.bat` does not pass its child's exit code back, unlike the other
-wrappers, which capture it before `popd`.
-
-**Change.** The same idiom.
-
-**Verify.** A `serve.bat` that cannot start, because its port is taken, exits non-zero.
-
-**Landed.** `serve.bat` captures `tbdocs`'s exit code before `popd`, as `build.bat` and the
-other wrappers do, so a failed first build, a port in use, a refused command line and a crash
-come back as 2. Tools.md's `serve.bat` section had said, since C74, that it always returns 0;
-it now gives `tbdocs`'s codes. The port has to be held on every interface: `tbdocs` listens
-on all of them, and a server bound to 127.0.0.1 alone does not clash with it on Windows (the
-first attempt served for two minutes). With port 4395 held by a `net` server on all
-interfaces, and `--dest docs/_serve-c75`, HEAD's `serve.bat` printed `serve: port 4395
-already in use` and exited 0; the working one prints the same and exits 2. The scratch
-`--dest` and the copy of HEAD's wrapper were removed. `compare_trees`: Tools, online and
-offline, the search data and `book.html`. Lint, `check_cli` and regex safety are unchanged.
+Landed.
 
 ## Phase 4: splits
 
@@ -1964,7 +1578,8 @@ Defects the review did not have, found by building something this plan asks for.
 Each is settled in the commit named, on the recommendation given there, unless the owner
 decides otherwise:
 
-- the exit value for a command-line error in `tbdocs` and `check_links.mjs`: C18 recommends 4;
+- the exit value for a command-line error in `tbdocs` and `check_links.mjs`: C18 made it 4,
+  and C72b settled it at 2, as in every tool;
 - Biome or ESLint: C05's evaluation decides;
 - whether `test.bat` without Python fails or skips `check_impexp_parity.mjs` loudly: C70,
   decision (b)'s open question, which the owner settled on 2026-09-25: it skips, loudly;
