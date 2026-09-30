@@ -1155,7 +1155,10 @@ spelling, so they are unchanged. `builder/REVIEW-USECASES-16969e5.md:329` keeps 
 because it is a record of that round. `check_cli: 816 probes, all pass` (810 before):
 eight re-pointed cases and two re-pointed `build_corpus` refusals, one case per renamed option
 showing that the old spelling is refused, and `check_a11y_fingerprint --out` without a value.
-The `git grep` for the old spellings finds only those refusal cases. `compare_trees`: Tools
+The `git grep` for the old spellings finds only those refusal cases. It missed one sentence,
+Tools.md's note that the two package tools run anywhere when given an export, which kept
+`--src`. That was found while landing C75, and fixed in `docs: Tools.md names --exported for
+the package tools`, because folding it into this commit would have rewritten history. `compare_trees`: Tools
 online and offline, the search data and `book.html`. Lint stays at `Checked 172 files`
 (`perf/` is not linted). On the owner's next push, CI prints `check_cli: 816 probes, all pass`.
 
