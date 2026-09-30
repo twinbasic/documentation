@@ -1253,3 +1253,45 @@ IDE's add-in samples leaves the id out.
 
 **Observed** on 2026-09-25 with the panes probe's third button, operated by
 `test/addin/panes.test.mjs`, which reads `toolWindowsById` over CDP.
+
+## `[PopulateFrom]` with no arguments crashes the compiler
+
+**Build:** BETA 987
+**Severity:** the compiler process dies while the project is being parsed, which
+`tbbuild` reports as a crash (its exit code 4), so a person who forgets the arguments is not
+told what is missing.
+
+The whole reproduction is one Enum:
+
+```
+Public Module CrashProbe
+    [PopulateFrom]
+    Public Enum E
+    End Enum
+End Module
+```
+
+The Enum's body does not matter: the same crash comes with a member in it, and with the
+Enum inside a Class instead of a Module. The documented shape is five strings,
+`("json", "/Resources/PROBE/Strings.json", "events", "name", "id")`, and the other wrong
+shapes tried are handled:
+
+| argument list | result |
+|---|---|
+| none, `[PopulateFrom]` | **the compiler crashes** |
+| `(True)`, `(False)`, `(1)` | TB5155 `This attribute is not supported in this context` |
+| `("probe")`, on the reproduction above | TB5083 `unsupported data source` |
+| the documented five strings, with a resource that exists | compiles |
+
+So a missing argument list is the one wrong shape that is not checked.
+
+**Observed** on 2026-09-30 in two ways. `scripts/sweep_attributes.mjs` builds every attribute
+at every declaration site in batches of 400 and halves a batch the compiler crashes on; each
+of the three Enum sites (an Enum with a member, an empty Enum, an Enum in a Class) was
+narrowed to one probe beside the three canaries the tool adds to every batch, which build
+clean without it. The four-line reproduction above was then built **exactly as written**, in
+a project holding only it and a two-line `Sub Main`, with no resources: `tbbuild` exits 4,
+`the compiler crashed 2x -- this project takes it down`, `last parsing: CrashProbe.twin`.
+The same project with `[PopulateFrom("probe")]` builds and reports the one TB5083 row. The
+rows for `(True)`, `(False)` and `(1)` come from the sweep's batches, not from that
+project.

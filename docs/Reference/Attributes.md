@@ -167,14 +167,31 @@ Indicates whether the class can be created through COM. It does not govern [**Ne
 
 Syntax: **[ComExport** [ **( True** \| **False )** ] **]**
 
-Applicable to: constants in a [**Module**](Module)
+Applicable to: [**Declare** (API declaration)](Declare) and constants, in a [**Module**](Module)
 
-The COM counterpart of [DllExport](#dllexport), and it takes the same target: a **Public Const**, not a procedure and not a variable.
+The attribute marks a given API for export from the ActiveX control DLL being built from the project the attribute is used in.
 
-<!-- Applicability from probes X05, X06 and X16 against BETA 983: rejected on
-     a procedure with TB5155; clean on a Public Const in both the bare form
-     and [ComExport(True)]. No package or sample uses it, so what it exports
-     is not established. -->
+The **Declare** can be a **Function** or a **Sub**, including the **PtrSafe** and **DeclareWide** forms. The compiler rejects the attribute on a procedure with a body, on a variable, and on a **Declare** or a constant inside a class.
+
+```tb check_build
+[ComExport]
+Public Declare Function GetTickCount Lib "kernel32" () As Long
+```
+
+<!-- Applicability from the attribute sweep (scripts/sweep_attributes.mjs) against
+     BETA 987, each of the bare form, (True) and (False): accepted on a Public
+     Declare Function, a Public Declare Sub, a Private Declare Function, a
+     Declare PtrSafe Function and a DeclareWide Function in a module, and on a
+     Public and a Private Const in a module; refused with TB5155 on a Sub,
+     Function or Property Get in a module (Public, Private, Static and generic)
+     and on a module variable, and with TB5182 on a Declare or a Const in a
+     class. Earlier probes X05, X06 and X16 (BETA 983) had tried only a Sub
+     and a Const. A clean build
+     shows the compiler accepts the attribute, not what it makes a built file
+     contain, and no package or sample uses it, so its effect is not
+     established. -->
+
+See also [DllExport](#dllexport).
 
 ## COMExtensible  (optional Bool)
 {: #comextensible }
@@ -583,7 +600,7 @@ Applicable to: [**Class**](Class), [**CoClass**](CoClass), [**Interface**](Inter
 Hides the declaration from certain IntelliSense and other lists. It applies to a whole type --- a **Class**, **CoClass**, **Interface** or **Module** --- and equally to a single member of one, so a member can be kept out of those lists without hiding the type that declares it. Within a **Class** that covers procedures, variables, constants and events; within an **Interface**, the member prototypes; within a **Module**, procedures, variables, constants and [**Declare**](Declare) statements.
 
 > [!NOTE]
-> A **CoClass** can only be hidden whole. Its body holds nothing but **Interface** lines, and the attribute is refused there with TB5155 --- unlike [**Default**](#default) and [**Source**](#source), which are interface-line attributes. It is likewise refused on an **Enum** or [**Type**](Type) declaration, on a **Type** member, and on a procedure parameter, though an individual **Enum** *member* does accept it.
+> A **CoClass** can only be hidden whole. Its body holds nothing but **Interface** lines, and the attribute is refused there with TB5155 --- unlike [**Default**](#default) and [**Source**](#source), which are interface-line attributes. It is likewise refused on an **Enum** or [**Type**](Type) declaration, on a **Type** member, and on a procedure parameter. An individual **Enum** *member* is hidden the same way: the **Encoding** constants of [**Open**](Open) are marked `[Hidden, Restricted]`.
 
 <!-- Applicability from scripts/census_attributes.mjs over BETA 983 (269 sites)
      plus one probe per target via gen_attribute_probes.mjs + tbbuild.mjs.
@@ -591,8 +608,12 @@ Hides the declaration from certain IntelliSense and other lists. It applies to a
      / variable 7 / Event 1, Interface Property 10 / Function 6 / Sub 3, whole
      CoClass 3, whole Module 2, whole Interface 2.
      Probed clean: all four whole types, the Class and Interface members above,
-     a Private Const in a Class, a Module Sub/variable/Const, a Declare, and an
-     Enum member (the [Hidden, Restricted] shape Core/Open documents).
+     a Private Const in a Class, a Module Sub/variable/Const and a Declare.
+     The Enum member (the [Hidden, Restricted] shape Core/Open documents) also
+     compiled, but that proves nothing: the attribute sweep (BETA 987) found an
+     Enum body accepts ANY attribute on its own line, [ClassId("guid")] and
+     [Hidden(True)] included, and refuses every attribute written inline.
+     Core/Open's Encoding constants are the only evidence for it.
      Probed TB5155: the Interface line inside a CoClass, a whole Enum, a whole
      Type. TB5182: a Type member, a procedure parameter.
      Note the census finds NO use on a whole Class, though the probe compiles
