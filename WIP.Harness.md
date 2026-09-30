@@ -143,6 +143,75 @@ confusion publishes a wrong number with nothing to notice it by. The bar is that
 report's unresolved count is **0**, which it currently is; a non-zero one is a scanner bug,
 not a corpus oddity.
 
+## Sweeping every attribute at every site
+
+A census says where the packages *use* an attribute, and `gen_attribute_probes.mjs` probes
+only the targets `Attributes.md` already claims, so an entry that was too short stayed too
+short: `[ComExport]` was documented as "constants in a Module" because a Sub and a Const were
+the two targets tried, and an API `Declare` never was.
+[scripts/sweep_attributes.mjs](scripts/sweep_attributes.mjs) asks every question --- every
+name (the page's, the compiler's token table's, `--names`) at each of about 60 sites in
+[scripts/lib/attribute-sites.mjs](scripts/lib/attribute-sites.mjs), in each argument shape ---
+and lays the answers against the page. Its reader-facing description is
+[Tools and Scripts](docs/Documentation/Tools.md#sweep-attributes); this is why it is built as
+it is.
+
+**Against BETA 987: 34,526 probes in 134 builds, 8 to 16 minutes on four lanes** (three runs
+took 667, 946 and 489 seconds; the middle one carried a stage 2 inflated by a noise site since
+removed). That is the whole matrix, and nothing in it was slow enough to need the sampling the
+design first allowed for. **A run of one name is a minute or a few, not always one:** an
+attribute the compiler allows once per project (`[RunAfterBuild]`, `[RunBeforeStartupObject]`)
+goes in one probe per batch, so it needs about a hundred builds by itself.
+
+**The token table is a string, and it holds the names you cannot guess.** The compiler binary
+has one 2,496-character run of 261 pipe-separated identifiers, from `On|Off|Explicit` to
+`UserDefinedTypeIsAnAlias`, with `DllExport|ComExport` in the middle of it; it is where
+`ComExport` was first seen. It mixes
+keywords, attributes and object members (`Debug`, `Circle`, `PSet`), so a name in it is only a
+candidate. Swept, exactly one name the page does not document was accepted anywhere:
+`[PropertyPage]`, at eighteen sites, all of them members of a Class or an Interface. The
+other 193 were refused at every site.
+
+**Six things the sweep had to learn, each of which produced a wrong report first**, found by
+the Opus review that was run over the tool and by its own first output:
+
+- **`parseCli` camel-cases its keys.** `values["dry-run"]` is `undefined`, so `--dry-run` was
+  ignored and the first "dry run" was a full four-lane sweep. Read `values.dryRun`; a new
+  tool that takes a hyphenated option should be run once with each of them before it is
+  trusted.
+- **A control must be refused for a site to mean anything.** An unknown name is built at every
+  site, and a site whose control *compiles* is voided. An Enum body accepts any own-line
+  `[...]` --- `[ClassId("guid")]` and `[Hidden(True)]` included, neither of which can be a
+  member name --- so what it does with the line is unchecked, and nothing accepted there is
+  evidence. Inline, `[Name] X = 1`, the compiler refuses every attribute, `[Hidden]` included,
+  though the page documents it on an Enum member. An Enum member target is therefore reported
+  as one the sweep cannot test, which is true. (The mechanism is not established; only the
+  behaviour was measured.) A local variable is different: an own-line `[Name]` in a Sub is a
+  *call* statement, so that variant was dropped and only the inline one is kept.
+- **A probe that draws what the control draws is a refusal, whatever the code.** The signature
+  compared has the attribute's name (whole word, any case) and the probe's own generated names
+  (`S000062`, `S000062_U`) taken out, or the control's message never equals the probe's.
+- **What a canary must draw is fixed in the script.** Reading it from the preflight lets a
+  build that contains the very masking the canaries exist to catch calibrate the check to it.
+  The tool builds the canaries alone first and stops unless they draw what is recorded.
+- **Batch by shuffle, and one probe per singleton.** `[RunAfterBuild]` is once per project
+  (TB5114), read as acceptance if a second reaches the same batch, and `[PopulateFrom]` fills
+  an enum with the same two members every time, and enum members are project-global. Member
+  names are unique per probe (`Probe` becomes `S000062_m`) for the same reason.
+- **A form nobody built cannot be refused.** A cell whose other forms were refused and whose
+  one form able to pass never compiled is inconclusive, not refused, and the same holds for a
+  run cut short.
+
+**It found a compiler crash the documentation never would:** a bare `[PopulateFrom]` on an
+Enum kills the compiler, at all three Enum sites; the tool isolated it by halving to one
+probe beside the canaries. It is in [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md).
+
+**Read the report's "accepted at most sites" section before believing an acceptance.**
+`[Description]` is taken at 53 of 61 sites and `[Hidden]` and `[Restricted]` at 42: either
+they apply nearly everywhere or the compiler tolerates what it does not check. The sweep
+cannot say which, and neither can a clean build, which is also why *accepted but not
+documented* is a list to read and not a list to copy into the page.
+
 ## Compiling a twinBASIC project without the IDE in front of you
 
 Exported sources say what the compiler *accepts today*; they cannot answer a question no
@@ -189,6 +258,34 @@ around it, and the add-in harness planned in [WIP.HelpAddin.md](WIP.HelpAddin.md
 on it. Moving the code there was checked against 14 fixture cases run before and after ---
 every exit code and every line of output the same, apart from the two fixes below --- and
 against a full `examples.bat` run.
+
+**A build is also a function, [scripts/lib/tb-build.mjs](scripts/lib/tb-build.mjs)'s
+`compileProject`**, which is `tbbuild` without its command line and returns
+`{code, message, rows, counts, dialogs, crashFiles, ...}`. `check_examples` and
+`sweep_attributes` used to start `tbbuild` as a subprocess and read its JSON and its stderr
+back, each with its own copy of that parse, and `check_examples` took the crashed files out of a
+regex over the stderr text. The cost of the subprocess was never speed (about 100 ms against an
+IDE start of about 10 s); it was that parse, and that a harness failure and a compile error
+both arrived as an exit code. Moving `tbbuild` onto the function was checked the same way as the
+move above: seven cases (clean, errors, `--json`, warnings only, a compiler crash, `--arch
+win64`, a relative path) run before and after with every stdout, stderr and exit code
+identical, and a full `check_examples` run (1,135 samples, no findings; the old code took 174 s
+for 1,134 and the new 145 s, on a machine that was not quiet, so no speedup is claimed).
+
+Running in one process changes four things, each of which is a rule now:
+
+- **The function never tidies the registry and never exits.** The caller owns both; a tool that
+  builds many projects calls `startTidy` once, and `tbbuild` does it for its one.
+- **It ends its IDE with `shutdownIdeAsync`.** `shutdownIde`'s `taskkill` and its wait hold the
+  event loop still (up to five seconds), which with four lanes lets the others' CDP timers run
+  out with their answers unread in a socket. The sync version stays for the paths that end in
+  `process.exit()`.
+- **An uncaught exception ends every lane's work, not one child's.** `exitOnCrash(cleanup)` runs
+  a cleanup first; `sweep_attributes` uses it to write the report of what it had learned
+  (`salvage`), and `tb-cdp` drops a frame that is not JSON instead of throwing from an event
+  callback.
+- **The name.** tb-ide already exports a `buildProject(c)` that builds an exe through an open
+  connection, and the notes below mean that one; the new function is `compileProject`.
 
 Two bugs came out of the move, and neither had been noticed:
 
@@ -604,11 +701,12 @@ leave everything as it was found**, and it takes four forms:
   `JSON.stringify`, which is how the IDE writes it, so the other entries keep their exact
   text and order, and the write is refused if the value changed after it was read.
 
-**One process owns the registry per run.** `check_examples` runs four lanes of `tbbuild`
-children at once; each restoring its own snapshot would put back whatever the registry held
-when that lane started, in whatever order the lanes finished. `startTidy` sets
-`TB_REGISTRY_OWNER`, the children inherit it and leave the registry alone, and the owner
-sweeps once after the last lane. An owner pid that is no longer running does not count, or a
+**One process owns the registry per run.** `check_examples` and `sweep_attributes` run four
+lanes of builds at once, in one process (`compileProject`, which never tidies); each
+restoring its own snapshot would put back whatever the registry held when that lane started,
+in whatever order the lanes finished. The tool calls `startTidy` once, which sets
+`TB_REGISTRY_OWNER` --- a `tbbuild` started from that process would inherit it and leave the
+registry alone --- and sweeps once after the last lane. An owner pid that is no longer running does not count, or a
 variable left set in a shell would switch tidying off for good. Under `--keep` nothing is
 tidied, because the kept IDE is still writing. `shutdownIde` waits for the IDE's process to
 be gone before anything is tidied, because `taskkill` only asks.
@@ -789,9 +887,10 @@ WebView2 processes and two console hosts. WebView2 runs inside the job without c
 the children it spawns into a kill-on-close job of its own, so when the Node process ends,
 the launcher ends with it, closing the IDE's job. Normally that is exactly what is wanted:
 killing only `tbbuild` in the middle of a compile now takes its whole IDE down with it,
-where before the IDE lived on, on a desktop nobody could see. `check_examples` should get
-the same protection one level up, since its `tbbuild` children die with it by the same
-mechanism; that step has not been measured separately.
+where before the IDE lived on, on a desktop nobody could see. `check_examples` and
+`sweep_attributes` build in their own process (`compileProject`), so their IDEs are
+launched by it and go when it does, by the same mechanism; that has not been measured
+separately.
 
 **A kept IDE is the exception, and it gets no job.** Both other arrangements were tried, and
 both fail:

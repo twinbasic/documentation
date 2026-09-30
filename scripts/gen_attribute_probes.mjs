@@ -38,6 +38,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { parseAttributes, parseTargets } from "./lib/attributes-doc.mjs";
+import { MAIN_TWIN, NOT_FAITHFULLY_PROBEABLE, PROBE_FACTORY_TWIN, SETTINGS, UNSYNTHESISABLE, attrText, pad, writeCrlf, writeProbeResources, writeRaw } from "./lib/attribute-probe-kit.mjs";
 import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { DOCS_DIR } from "../lib/repo-paths.mjs";
 
@@ -63,96 +64,11 @@ Exit codes:
   0  the probe project and the key were written
   2  a refused command line, or a crash`;
 
-// --------------------------------------------------------------- arguments
-// An attribute with a mandatory argument needs a value that is itself valid, or
-// the compiler reports the argument instead of the applicability. GUIDs are
-// unique per probe so two probes can never collide on one id.
-const GUID_ATTRS = new Set([
-  "ClassId", "CoClassId", "InterfaceId", "EventInterfaceId",
-  "EnumId", "FormDesignerId",
-]);
-const FIXED_ARGS = {
-  Description: '("attribute applicability probe")',
-  DispId: "(1000)",
-  IdeButton: '("probe")',
-  PackingAlignment: "(4)",
-  CompileIf: "(True)",
-  // The five below were once in UNSYNTHESISABLE, four of them for want of a
-  // usable argument value. `Attributes.md` states each shape but no value, and
-  // the shipped packages turned out to carry one apiece -- so these are copied
-  // from code the compiler already accepts rather than guessed:
-  //
-  //   [CoClassCustomConstructor("CreatePropertyBagObject")]  VBRUN/PropertyBag
-  //   [CustomControl("/miscellaneous/frmButton.png")]        CustomControlsPackage
-  //   [PopulateFrom("json", "/Resources/MESSAGETABLE/Strings.json",
-  //                 "events", "name", "id")]                 Sample 22
-  //   [IgnoreWarnings(TB0001)]                               VB/QRCodeHelper
-  //
-  // The image and .json those two point at are written into the tree beside the
-  // probes, and the factory into `_ProbeFactory.twin`; see the emission in
-  // main(). All five probes build clean on BETA 983.
-  //
-  // Qualified, because the documented shape is "fully qualified path to factory
-  // method" and that is the claim under test. VBRUN uses the bare form too.
-  CoClassCustomConstructor: '("ProbeFactoryModule.ProbeFactory")',
-  CustomControl: '("/miscellaneous/probe.png")',
-  PopulateFrom: '("json", "/Resources/PROBE/Strings.json", "events", "name", "id")',
-  IgnoreWarnings: "(TB0001)",
-  // Documented as an optional Bool until the package census showed all 44 uses
-  // passing a toolbox image path. "no_designer" is the other accepted value and
-  // is what the probe uses, because it needs no file to resolve against.
-  WindowsControl: '("no_designer")',
-  // Listed as unsynthesisable on the grounds that "the option string vocabulary
-  // is not documented". It is: the entry documents +llvm, +optimize,
-  // +optimizesize and +optimizespeed. `+optimize` is used here rather than
-  // `+llvm`, which the page says cannot compile procedures taking objects,
-  // strings or dynamic arrays -- a probe should fail on its applicability or
-  // not at all. An empty string is also accepted, confirmed by the X04 probe.
-  CompilerOptions: '("+optimize")',
-  // Names a module procedure the compiler must resolve, and whose signature has
-  // to match the member carrying the attribute; `_ProbeFactory.twin` declares a
-  // matching `Sub ProbeRedirect()`.
-  //
-  // This probe is the reason the exercise was worth doing on entries written
-  // from a usage census: the census grouped uses by *declaration keyword* and
-  // reported "on a Property Get, a Function and a Sub", so the entry went out
-  // saying `procedure in a Class`. The probe put it on a class method and got
-  // TB5155. Grouping the same 82 uses by *enclosing construct* instead shows
-  // every one of them is inside an Interface -- `_App`, `_Clipboard`, `_Screen`,
-  // `_Forms`, `VBGlobal`. A census answers the question it was asked, and
-  // "which keyword" is not "where it is applicable".
-  RedirectToStaticImplementation: '("ProbeFactoryModule.ProbeRedirect")',
-};
+// The argument shapes, the resource files they point at and the project's
+// Settings are shared with sweep_attributes.mjs: see lib/attribute-probe-kit.mjs.
 
-// Targets the packages evidence but a generic skeleton cannot probe
-// faithfully. Excluded deliberately, and named in the key, because a probe that
-// tests the wrong thing is worse than no probe: it fails for a reason that is
-// not the documentation's and sends the reader after a defect that is not there.
-const NOT_FAITHFULLY_PROBEABLE = {
-  CustomDesigner: "the designer name has to suit the property's type -- " +
-    "`designer_SpectrumWindows` is for an OLE_COLOR, `designer_MultiLineText` for a " +
-    "String -- so a rejection could mean the applicability or the pairing, and the " +
-    "probe could not tell you which. Applicability evidenced by 154 uses across " +
-    "four packages",
-  Enumerator: "the member has to return stdole.IUnknown or a Variant; the generic " +
-    "procedure skeleton returns neither, so the probe would test the return type " +
-    "rather than the applicability. Evidenced by 25 uses across five packages",
-  SpecialCompilerBinding: "the argument is an index into the compiler's own internal " +
-    "implementations -- the six uses in the VB package pass 1, 2, 3, 4 and 254 -- so " +
-    "there is no value a probe could pass that would test the applicability " +
-    "rather than the number. Evidenced by those six uses, on a Sub, a Declare " +
-    "and a Property Get",
-};
-// Arguments that cannot be synthesised without something else being true.
-// FormDesignerId earned its place the hard way: probed on a Class it reached
-// TB5247 `unable to find matching form designer JSON`, which is the compiler
-// accepting the applicability and then failing a lookup. That confirms the
-// documented applicability and tells us nothing further, so it is not worth a
-// probe.
-const UNSYNTHESISABLE = {
-  FormDesignerId: "needs a form designer JSON to match; probing it reached TB5247, " +
-    "which already confirms the documented applicability on a Class",
-};
+// NOT_FAITHFULLY_PROBEABLE and UNSYNTHESISABLE live in lib/attribute-probe-kit.mjs,
+// where sweep_attributes.mjs reads them too.
 
 // Attributes the compiler allows only once per project, so their second and
 // later targets cannot share a project with the first. TB5114 for
@@ -176,35 +92,6 @@ const SINGLETON = {
 // parser now covers it and the extra probes would only duplicate themselves.
 const EXTRA_PROBES = [];
 
-// Resources the argument forms above refer to. `import` packs the whole tree,
-// so these ride along into the .twinproj exactly as a hand-made project's would.
-//
-// The PNG is a 1x1 opaque black image, written as bytes rather than fetched:
-// [CustomControl] needs a real image at the path, not merely a path.
-const PROBE_PNG = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9" +
-  "awAAAABJRU5ErkJggg==",
-  "base64",
-);
-const PROBE_STRINGS_JSON = JSON.stringify(
-  { events: [{ id: 1, name: "probe_event_one" }, { id: 2, name: "probe_event_two" }] },
-  null,
-  4,
-) + "\n";
-// [CoClassCustomConstructor] names a factory the compiler must be able to
-// resolve. VBRUN's real one is `() As stdole.IUnknown`; this mirrors it.
-const PROBE_FACTORY_TWIN =
-  "' Targets that probes name by string. ProbeFactory is for\n" +
-  "' [CoClassCustomConstructor] and mirrors VBRUN's CreatePropertyBagObject,\n" +
-  "' which is `() As stdole.IUnknown`. ProbeRedirect is for\n" +
-  "' [RedirectToStaticImplementation], and its signature must match the\n" +
-  "' PROC_CLASS skeleton's `Public Sub Probe()`.\n\n" +
-  "Public Module ProbeFactoryModule\n" +
-  "    Public Function ProbeFactory() As stdole.IUnknown\n" +
-  "    End Function\n\n" +
-  "    Public Sub ProbeRedirect()\n" +
-  "    End Sub\n" +
-  "End Module\n";
 
 // ------------------------------------------------------------ exploratory
 // A third project, `AttributeExplore`, on the opposite contract to the probes
@@ -863,14 +750,7 @@ const EXPLORATORY = [
   },
 ];
 
-const pad = (n, width) => String(n).padStart(width, "0");
 
-function attrText(name, idx) {
-  if (GUID_ATTRS.has(name)) return `[${name}("00000000-0000-0000-0000-${pad(idx, 12)}")]`;
-  if (Object.hasOwn(FIXED_ARGS, name)) return `[${name}${FIXED_ARGS[name]}]`;
-  if (name === "TypeHint") return `[TypeHint(ProbeHintEnum${pad(idx, 3)})]`;
-  return `[${name}]`;
-}
 
 // --------------------------------------------------------------- renderers
 // Returns the body of a .twin file placing `attr` at `target`.
@@ -984,60 +864,8 @@ const HUMAN = {
   EVENT_CLASS: "on an Event in a Class",
 };
 
-// Built as an object and serialised, rather than held as a literal blob, so the
-// backslashes in the paths are escaped by JSON.stringify rather than by hand.
-// Tab indent and key order match what the IDE writes.
-const SETTINGS_OBJ = {
-  "configuration.inherits": "Defaults",
-  "project.appTitle": "Attribute applicability probes",
-  "project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
-  "project.buildType": "Standard EXE",
-  "project.description": "Generated from docs/Reference/Attributes.md. Every module is expected to compile; a diagnostic is a finding.",
-  "project.exportPathIsV2": true,
-  "project.id": "{A77B1BE0-0000-4000-8000-000000000001}",
-  "project.name": "AttributeProbes",
-  "project.optionExplicit": true,
-  "project.references": [
-    {
-      id: "{00020430-0000-0000-C000-000000000046}",
-      lcid: 0,
-      name: "OLE Automation",
-      path32: "C:\\Windows\\SysWOW64\\stdole2.tlb",
-      path64: "C:\\Windows\\System32\\stdole2.tlb",
-      symbolId: "stdole",
-      versionMajor: 2,
-      versionMinor: 0,
-    },
-    {
-      hasBeenSplit: true,
-      id: "{F50B82D0-DCAB-43FE-9631-11959D4A4728}",
-      isCompilerPackage: true,
-      licence: "MIT",
-      name: "[COMPILER PACKAGE] twinBASIC - VB Compatibility Package (Forms)",
-      path32: "",
-      path64: "",
-      publisher: "TWINBASIC-COMPILER",
-      symbolId: "VB",
-      versionBuild: 0,
-      versionMajor: 0,
-      versionMinor: 0,
-      versionRevision: 31,
-    },
-  ],
-  "project.settingsVersion": 1,
-  "project.startupObject": "Sub Main",
-  "project.warnings": { errors: [], hints: [], ignored: [], info: [], warnings: [] },
-  "runtime.useUnicodeStandardLibrary": true,
-};
-const SETTINGS = JSON.stringify(SETTINGS_OBJ, null, "\t") + "\n";
 
-// The .twin sources are written CRLF; the Settings blob and the key are written
-// exactly as composed.
-const writeCrlf = (file, text) => fs.writeFile(file, text.replace(/\n/g, "\r\n"), "utf8");
-const writeRaw = (file, text) => fs.writeFile(file, text, "utf8");
 
-const MAIN_TWIN = "' Startup object for the probe project. Does nothing.\n\n" +
-  "Module ProbeMain\n    Public Sub Main()\n    End Sub\nEnd Module\n";
 
 async function main(argv) {
   const { values, positionals } = withUsageError(() => parseCli(argv, {
@@ -1137,14 +965,7 @@ async function main(argv) {
   await writeCrlf(path.join(srcDir, "_ProbeFactory.twin"), PROBE_FACTORY_TWIN);
   await writeRaw(path.join(out, "Settings"), SETTINGS);
 
-  // Resource folders the argument forms point at. Named to match the paths in
-  // FIXED_ARGS; the leading `/` in those paths is project-root-relative, and
-  // the lookup is case-insensitive (the packages write `/miscellaneous/` for a
-  // folder the IDE shows as `Miscellaneous`).
-  await fs.mkdir(path.join(out, "Miscellaneous"), { recursive: true });
-  await fs.writeFile(path.join(out, "Miscellaneous", "probe.png"), PROBE_PNG);
-  await fs.mkdir(path.join(out, "Resources", "PROBE"), { recursive: true });
-  await writeRaw(path.join(out, "Resources", "PROBE", "Strings.json"), PROBE_STRINGS_JSON);
+  await writeProbeResources(out);
   if (overflow.length) {
     await writeCrlf(path.join(overflowSrc, "_ProbeMain.twin"), MAIN_TWIN);
     await writeRaw(

@@ -79,6 +79,7 @@ Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from a
       && node scripts/check_book_coverage.mjs \
       && node scripts/check_symbol_index.mjs \
       && node scripts/check_twin_parsers.mjs \
+      && node scripts/check_attribute_sweep.mjs \
       && node scripts/check_cli.mjs \
       && node scripts/check_pdf_shims_equiv.mjs \
       && node scripts/check_impexp_parity.mjs \

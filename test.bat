@@ -124,6 +124,14 @@ node scripts/check_symbol_index.mjs
 @rem inputs only: no tree, no install.
 node scripts/check_twin_parsers.mjs
 @if errorlevel 1 goto :fail
+@rem The attribute sweep asks the compiler where every attribute is legal, and
+@rem none of its failures announces itself: a wrong site skeleton reads as
+@rem "every attribute is refused here", an ignored control as a recognised
+@rem attribute, a refusal taken for an acceptance as a finding about the
+@rem compiler. The IDE is what cannot run here, so the parts that decide what an
+@rem answer means are probed on fixed inputs: no IDE, no tree, no install.
+node scripts/check_attribute_sweep.mjs
+@if errorlevel 1 goto :fail
 @rem Nothing else tests how a tool reads its command line, which is how a
 @rem value flag given no value came to be read as NaN or as the next flag.
 @rem lib/cli.mjs's probes, then each tool's recorded command-line errors:
