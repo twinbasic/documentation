@@ -151,7 +151,9 @@ same way. Why each measure moved:
   arguments with them now: each defines `die` as an exit helper used after `lib/cli.mjs`'
   parse, and `sweep_attributes.mjs`' `opt` is the object its parse returns. Four of the `die`s
   are the same line (`addin_test`, `build_package_api`, `census_attributes`, `tbrun`); the
-  ones in `sweep_attributes.mjs` and `check_examples.mjs` also tidy the registry.
+  ones in `sweep_attributes.mjs` and `check_examples.mjs` also tidy the registry. C83a
+  moved the four into `lib/cli.mjs`, after which the survey counts 3: `lib/cli.mjs` and the
+  two that tidy.
 - **Undeclared packages** are 0 since C09 declared `picocolors` and `pako`.
 - **By area**, `builder`/`builder` fell from 39 to 28. `builder`/`scripts` rose from 55 to 72
   through literal tables alone: `highlight-theme.mjs`' scope table against
@@ -220,7 +222,9 @@ landed entries in the tooling plan`. Those of Phase 3 (C71–C75, with C72a, C72
 cut on 2026-09-30, and their full text is in this file as it stood before `builder: cut
 Phase 3's landed entries in the tooling plan`. Those of Phase 4 (C76–C81, with C76a, C78a
 and C81a) were cut on 2026-09-30, and their full text is in this file as it stood before
-`builder: cut Phase 4's landed entries in the tooling plan`. A pointer below to a cut entry's
+`builder: cut Phase 4's landed entries in the tooling plan`. Those of Phase 5 (C82–C83, with C82a
+and C83a) were cut on 2026-09-30, and their full text is in this file as it stood before
+`builder: cut Phase 5's landed entries in the tooling plan`. A pointer below to a cut entry's
 Landed note means that
 text. Line numbers are the review's, at `fe9ce12b`, and move as the commits land.
 
@@ -1013,113 +1017,19 @@ ran.
 
 ### C82 — `docs: the module map, Tools.md, WIP.Build.md and Extending.md, as they now are`
 
-Builder.md's module map (the new `builder/` modules, and `lib/`); Tools.md's entries for the
-new tools and gates, added in their commits and re-read here; WIP.Build.md, with the markdown
-module as the one answer to what is code and the rewrite rules restated against it;
-Extending.md's conventions (`lib/cli.mjs`, `gate-probes.mjs`, `lib/repo-paths.mjs`); WIP.md's
-gate table and wrapper bullets; and `PLAN-10.md:692`, which still cites
-`convert_em_dash_separators.py` (V2's second note).
-
-**Verify.** Every changed claim re-read against its file; `build.bat` and `check.bat` for the
-anchors.
-
-**Landed.** Four Sonnet agents, one per page on disjoint files (Builder.md with
-`lib/README.md`; Tools.md; Extending.md; WIP.Build.md with WIP.md's wrapper bullets and gate
-table), each checking every claim against its file from a common brief
-(`c82-brief-common.md` in the kit); then two Sonnet Explore agents checked every added
-sentence against the code and every WIP.Build.md cut for a lost rule. Their findings were
-fixed by hand: CI runs `check_links_diff` on fixture cases only, three in `checks.yml` and
-one in the shared action; `gate-roster.mjs`, not `gatesFromBat`, is what
-`check_ci_workflows` shares; `applyPreRenderRewrites`, not `maskCode`, refuses a missing
-markdown-it; four verification rules the cuts had dropped are restated (the void-tag regexes
-against `compare_trees`, a rewrite moved outside the mask, a wrong count put back in a page,
-and the reason for sharding the regex gate). At the owner's choice (2026-09-30) past-tense
-history that no rule needs was cut from Tools.md, WIP.Build.md, Builder.md and Extending.md,
-each rule's reason kept in the present tense, and four Found items were folded in: Tools.md's
-list of `lib/markdown-files.mjs` users (eight, not two), its "Upgrading axe-core" naming
-`test.bat`, `gen_attribute_probes.mjs`' header without its counts, and Fixes-PDFLib.md
-saying `parallel-deflate.mjs` patches nothing (the twelve `fast-*` shims each set an install
-flag, checked by grep). `PLAN-10.md:692` names `convert_em_dash_separators.mjs`. Found by
-the agents and fixed here: Builder.md had no row for `lib/` and counted six exact pins where
-`package.json` has five; Extending.md said every tool calls `exitOnCrash()` (some end with
-`main().catch`), and gave the gate registration as three places where there are four;
-Pipeline-Stages.md's plugin table lacked `searchIndexMarksPlugin` (nineteen plugins, not
-eighteen); WIP.Build.md named `stripLiquidRawTags`, which no longer exists, and gave
-`check_tree_fresh`'s sources without `lib`; WIP.ExamplesBuild.md and WIP.md counted 1,129
-samples (`--census`: 1,187 fences, 1,136 marked, 51 inert); `builder/counts.mjs`' header
-named `assertNoPlaceholders` for `findSurvivingPlaceholder`; `test.bat` and
-`check_regex_safety.mjs`' header gave the gate ~5 s and "a fifth" polynomial (~10 s; 71 of
-586). `build.bat`, `check.bat` (`0 violation(s), 42 incomplete`), `test.bat` (`check_cli:
-901 probes, all pass`; `check_gate_lists: check.bat (4) + test.bat (19)`) and lint (`Checked
-185 files`) clean. `compare_trees` differs only in the five edited pages, the two search-data
-files and `book.html`.
+Landed.
 
 ### C82a — `tooling: comments state their rules without the incidents behind them`
 
-The history rule applied to tooling comments, as C82 applied it to the pages: the headers of
-`check_code_regions.mjs` and `check_gate_lists.mjs`, `test.bat`'s comments,
-`builder/tbdocs.mjs:138` and `scripts/check_tree_fresh.mjs:42`, and any other comment a grep
-for "used to", "shipped", "round N" and commit ids finds under the tooling folders. Each
-rule's reason stays, in the present tense.
-
-**Verify.** `compare_trees` identical; lint and the three wrappers clean.
-
-**Landed.** One Sonnet general-purpose agent (235 calls, ~207k, 6.5 min) edited comments in
-55 files across `builder/`, `lib/`, `scripts/`, `book/`, `eval/`, `test/`, the wrappers,
-the composite action and both workflows. It cut round numbers, plan ids (`check_cli.mjs`'s
-"Recorded in C47" and the like), commit ids, dated measurements and incident stories,
-keeping each rule's reason in the present tense; it kept the pointers to WIP.Search.md's
-section "What shipped, third round: the index pilot", which is that file's own title. The
-kit's `c82a-comments-only.mjs` compares HEAD and the working copy of every changed file
-with comments removed (acorn tokens for `.mjs`, non-`@rem` lines for `.bat`, non-comment
-lines for `.yml`): `55 files, 0 with code changes; more non-ASCII in: none`. A grep of the
-added lines for "used to", "shipped", round numbers and plan ids finds one hit, "the
-shipped packages", which describes the packages. `compare_trees` matches; `build.bat`,
-`check.bat`, `test.bat` (`check_ci_workflows: ... the wrappers' 22 gates`, regex safety
-`550 literals + 36 constructed ... 12 construction(s) not resolvable`, unchanged) and lint
-clean.
+Landed.
 
 ### C83 — `builder: the tooling survey re-run against its baseline`
 
-`node scripts/survey_tooling.mjs --summary`, recorded as an *after* column in this file's
-baseline survey table, with the reason for each measure's movement. Expected: private
-`flag`/`opt`/`die` copies from 6 to 0, `parseArgs` users from none to every migrated tool,
-undeclared packages from 2 to 0, and clone regions and repeated names well below 571 (266
-outside `perf/`) and 74 (54).
-
-**Verify.** The recorded column re-read against the survey's own output; each measure that did
-not move as expected has its reason written down.
-
-**Landed.** The after column is in the baseline survey table, with a reason for each measure.
-The entry's expected figures (571 and 74) predate the script's first commit; a worktree at
-`fe9ce12b` measured with today's script (`--root`) gives the table's 680/318, 77/57, 32, 6
-and 2 exactly, so the columns are comparable. Only undeclared packages moved as expected. The
-breakdown of clone regions and repeated names comes from the kit's `c83-classify.mjs`, over
-both full listings (`--top 2000`) and the baseline worktree's file list; the `parseArgs` and
-`flag`/`opt`/`die` rows were read by grep. At the owner's choice (2026-09-30) the added lab
-folder is recorded as the survey measures it, not excluded like `perf/`, and the repeated
-`die` is folded into `lib/cli.mjs` by C83a.
+Landed.
 
 ### C83a — `lib, scripts: one die in lib/cli.mjs for four tools`
 
-Found by C83's survey: `addin_test`, `build_package_api`, `census_attributes` and `tbrun`
-each define the same line, `const die = (code, msg) => { console.error(msg);
-process.exit(code); }`. `lib/cli.mjs` exports it as `die(code, message)` and the four import
-it. The two `die`s that also tidy the registry, in `sweep_attributes.mjs` and
-`check_examples.mjs`, stay their own.
-
-**Verify.** `check_cli`'s recorded cases for the four tools unchanged; lint and the three
-wrappers clean; `tbrun` on the kit's `tbrun-probes/clean`.
-
-**Landed.** `die` prints through `console.error`, as the four copies did, so a message that
-ends in a newline prints as before (`tbrun` passes its usage text). Each tool's definition went
-by an exact replacement that fails on a miss, and its import gained `die`; nothing else in the
-four files changed. Extending.md's command-line conventions gain a bullet for it, and
-Builder.md's module row and `lib/README.md` name it. The survey's `flag`/`opt`/`die` count
-is now 3: `lib/cli.mjs`, and the two tidying `die`s (with `sweep_attributes.mjs`' `opt`).
-Lint (`Checked 185 files`), `build.bat`, `check.bat` (`0 violation(s), 42 incomplete`) and
-`test.bat` (`check_cli: 901 probes, all pass`; regex safety unchanged) clean; `tbrun` on
-`tbrun-probes/clean` exit 0, `one`, `two`, 25 s.
+Landed.
 
 ## Phase 6: formatting
 
