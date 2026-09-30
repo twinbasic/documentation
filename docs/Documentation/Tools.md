@@ -43,7 +43,7 @@ POSIX:
 
 Starts a long-lived dev process. Wraps `node builder/tbdocs.mjs --src docs --serve` and forwards extra arguments through `%*`. After an initial build, an HTTP server binds to port 4000 (pass `--port <N>` to use a different port), a recursive source-tree watcher fires a debounced rebuild on each change, and a browser connected to the page auto-reloads via SSE on each successful rebuild. Offline and PDF passes are skipped each rebuild. Ctrl+C exits cleanly. **Only failures (4xx, 5xx, server exceptions) are logged** --- successful requests are silent. The watcher covers `docs/` and the worker pool is reused across rebuilds, so **an edit under `builder/` does not reach a running preview** and needs a restart --- see [why `serve.bat` does not show a builder change](Extending#serve-does-not-reload).
 
-Exit codes: always **0**. `serve.bat` ends with `popd`, which resets the code, so it does not return `tbdocs`'s **2** for a failed first build or a port already in use; run `node builder/tbdocs.mjs --src docs --serve` to see it.
+Exit codes: `tbdocs`'s own, as the other wrappers return theirs: **0** the server was stopped with Ctrl+C, **2** a refused command line, a failed first build, a port already in use, or a crash.
 
 ### check.bat
 

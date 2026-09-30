@@ -1236,6 +1236,17 @@ wrappers, which capture it before `popd`.
 
 **Verify.** A `serve.bat` that cannot start, because its port is taken, exits non-zero.
 
+**Landed.** `serve.bat` captures `tbdocs`'s exit code before `popd`, as `build.bat` and the
+other wrappers do, so a failed first build, a port in use, a refused command line and a crash
+come back as 2. Tools.md's `serve.bat` section had said, since C74, that it always returns 0;
+it now gives `tbdocs`'s codes. The port has to be held on every interface: `tbdocs` listens
+on all of them, and a server bound to 127.0.0.1 alone does not clash with it on Windows (the
+first attempt served for two minutes). With port 4395 held by a `net` server on all
+interfaces, and `--dest docs/_serve-c75`, HEAD's `serve.bat` printed `serve: port 4395
+already in use` and exited 0; the working one prints the same and exits 2. The scratch
+`--dest` and the copy of HEAD's wrapper were removed. `compare_trees`: Tools, online and
+offline, the search data and `book.html`. Lint, `check_cli` and regex safety are unchanged.
+
 ## Phase 4: splits
 
 Decision 2: a split is taken only where the evidence says good practice calls for it, and
