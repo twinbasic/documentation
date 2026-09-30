@@ -1003,6 +1003,13 @@ separate modules.
 **Verify.** The tree comparison identical, `book.html` above all; `check_book_coverage.mjs`
 passes.
 
+**Landed** as a move inside the file, with no split, at the owner's choice (2026-09-30): the
+evidence is size alone (see "Where the plan was wrong"). `IMG_SRC_RE_BOOK`,
+`collectImagePaths` and `decodeUrlPath` sat in §A, the resolver, and only §D's
+`emitChapter` calls them; they moved word for word to the head of §D. The comment on the
+code guard above them describes §C's attribute rewrites, and moved to the head of §C. The
+tree comparison is identical, `book.html` included.
+
 ### C80 — `scripts: check_examples' bisection and probe suite in their own modules`
 
 Eight jobs share one file; bisection (`:657-927`, 270 lines in 14 functions) and the 425-line
@@ -1366,6 +1373,17 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   supervisor's reading of decision 2 only they moved. The chart's injection and recheck write
   the trees and run the check, and stayed. It landed as `builder: the Gantt sections and their
   grouping move into gantt.mjs`. See C77's Landed note.
+- **C79: no split, because nothing but size argues for one.** The entry splits `book.mjs`
+  into a resolver, an assembler and a coverage check. Measured against decision 2's three
+  tests, none holds. The sections depend on each other through named calls in the one file
+  (coverage calls the resolver's `collectMatches`, the href rewrite calls §B's anchor
+  helpers). `check_book_coverage.mjs` already tests the resolver and the coverage check
+  without a build. And the review's eight commits to the file each crossed sections for one
+  shared reason (the escapers, the URL module, the code guard, lint). `pdf.mjs` importing
+  `assembleBook` and the coverage pair from one module is an ordinary import. At the owner's
+  choice (2026-09-30) only three misplaced helpers moved, inside the file. It landed as
+  `builder: book.mjs's image-path helpers move beside their one caller`. See C79's Landed
+  note.
 
 ## Found while implementing
 
