@@ -1369,8 +1369,8 @@ function tocPlugin(md) {
 // bullet list whose item is "TOC", followed by a `{:toc}` IAL that
 // markdown-it-attrs has applied as an attribute on the bullet list.
 // We treat any bullet_list_open with a `toc` attribute as the marker.
-// The standaloneIalForwardPlugin would otherwise move the `{:toc}` to
-// the FOLLOWING block; we run before it (`after("curly_attributes")`).
+// standaloneIalForwardPlugin never moves it: it moves only an IAL left
+// as a paragraph of its own, and this one is on the list.
 function matchTocMarker(toks, i) {
   const open = toks[i];
   if (open?.type !== "bullet_list_open") return -1;

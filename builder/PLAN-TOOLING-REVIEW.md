@@ -903,6 +903,22 @@ those seams.
 
 **Verify.** The tree comparison identical; each ordering probe fails with its order reversed.
 
+**Landed** as a comment fix, with no split. The three orderings were measured before any move,
+and none is a hidden dependency: see "Where the plan was wrong". The one difference a swap
+produced came from a defect in the ellipsis plugin, and C76a fixes it. `matchTocMarker`'s
+comment said the toc rule runs before `standalone-ial-attach`. It runs after `header-id`, and
+markdown-it-attrs puts `{:toc}` on the list, which `standaloneIalForwardPlugin` never moves.
+The comment says that now. The tree comparison is identical.
+
+### C76a — `render: the ellipsis plugin counts each dot run where it is`
+
+**Found** while measuring C76's orderings. `kramdownEllipsisPlugin` pads a rendered `…` back
+out to the dots its source had, and it finds that run by stepping through the source one
+character per character of text. A two-dot run, which markdown-it also writes as `…`, a
+code span, a link destination or `<<` puts it out of step, and every later run in the
+paragraph comes out short: `.. and ....` rendered `… and …`, and `x.. y... z....` rendered
+`x… y… z…`.
+
 ### C77 — `builder: tbdocs's Gantt and timing code moves beside gantt.mjs`
 
 `tbdocs.mjs:1268-1403` computes what `gantt.mjs` draws, and A1-1 is what the separation cost.
@@ -1270,6 +1286,23 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   `tbrun`), moved every could-not-run case that exited 1 to 2, and gave every tool a crash
   handler. That touched `builder/`, `book/`, `eval/` and `wisdom/`, so it landed as `builder,
   scripts, book, eval, wisdom: one exit-code table per tool`. See C74's Landed note.
+- **C76: no split, because the orderings it rested on do not hold.** Measured on
+  2026-09-30 by building `createMarkdownIt` with each pair swapped and rendering all 912 pages
+  under `docs/`, plus fuzzed and hand-built inputs. (A) `svgInlinePlugin` and
+  `remoteImagePlugin` both wrap the `image` renderer, but they act on different sources and
+  `meta.svgInline` is set at core time from the unrewritten `src`. Swapping them changed no
+  page and none of 60,000 fuzzed documents. (B) The ellipsis rule runs *before* the dashes
+  rule, because a second `after("replacements")` is inserted ahead of the first. Swapping them
+  changed no page. It changed only lines that hold `<<` or `>>` together with a run of four or
+  more dots, and that difference comes from a defect in the ellipsis plugin's dot counting,
+  not from a dependency between the two plugins; C76a fixes it. (C) Only `standalone-ial-attach`
+  anchors on `"curly_attributes"`, and `tocPlugin` anchors on the plugin's own `header-id`
+  rule. Registering either before its anchor throws `Parser rule not found` when
+  `createMarkdownIt` runs, so a wrong order already fails loudly. No hidden dependency is left
+  for decision 2's test, and size alone does not qualify, so at the owner's choice
+  (2026-09-30) nothing moved. C76 corrected `matchTocMarker`'s comment, which said the toc rule
+  ran before `standalone-ial-attach`, and landed as `render: correct the toc marker's comment;
+  C76's split not taken`.
 
 ## Found while implementing
 
