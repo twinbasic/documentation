@@ -87,7 +87,7 @@ node --test test/example-batches.test.mjs
 @rem arguments the source decides -- assembling a pattern from constants
 @rem was a way out of this gate until it did. Its own probes ride along
 @rem in the same run, so a green line cannot be a dead gate. No tree, no
-@rem browser, ~5 s.
+@rem browser, ~10 s.
 node scripts/check_regex_safety.mjs
 @if errorlevel 1 goto :fail
 @rem The pre-render rewrites in render.mjs run over RAW markdown, so none

@@ -25,7 +25,7 @@
 // What it gates on, and what it does not
 // --------------------------------------
 // **Exponential only.** recheck also reports polynomial blowup, and about
-// a fifth of the regexes here are polynomial -- almost all of them the
+// one regex in eight here is polynomial -- almost all of them the
 // ordinary `<tag[^>]*>` shape, degree 2, applied to bounded inputs. A gate
 // that failed on those would fail on day one against fifty findings, and a
 // gate that fails on day one gets switched off. Exponential is the class

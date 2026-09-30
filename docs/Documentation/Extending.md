@@ -58,8 +58,8 @@ partial reload. What *is* watched is everything under `docs/` --- page content a
 ## When `test.bat` says a regex can backtrack exponentially
 {: #regex-refused }
 
-`check_regex_safety.mjs` reads every regex under `builder/`, `scripts/`, `lib/`,
-`book/`, `eval/` and `wisdom/`, and refuses one that can take exponential time on some input.
+`check_regex_safety.mjs` reads every regex in the `.mjs` files under `builder/`, `scripts/`, `lib/`,
+`book/`, `eval/` and `wisdom/` (vendored code excluded), and refuses one that can take exponential time on some input.
 It runs in `test.bat` and as a step of its own in the gates both CI workflows run, so a regex added
 to the builder can pass the build and `check.bat` and still be refused. The report
 starts with
@@ -77,8 +77,7 @@ full. The short form:
    worked, because the site's pages passed before the change and pass after it.
 2. **Find the two parts of the pattern that can match the same character.** That is
    the cause every time. Narrowing a character class usually leaves the same ambiguity
-   one level down --- the first attempt at fixing `VOID_TAGS_RE` did exactly that and
-   was still exponential.
+   one level down, so the pattern is still exponential.
 3. **Stop describing the structure between the delimiters.** Match `<tag([^>]*)>`,
    and take the attributes apart afterwards in ordinary JavaScript, which cannot
    backtrack.
@@ -103,8 +102,13 @@ Run `node scripts/check_code_regions.mjs --verbose` to see each region before an
 which usually shows which rewrite did it.
 
 The rewrites in `render.mjs` run over raw markdown, before markdown-it has parsed
-anything, so a rewrite cannot tell prose from code on its own. The fix is in where the
-rewrite runs:
+anything, so a rewrite cannot tell prose from code on its own. What is code in markdown
+source is decided in one place, [`lib/markdown.mjs`](https://github.com/twinbasic/documentation/blob/main/lib/markdown.mjs), by a
+block parse: `blockRegions` lists the fences, code blocks and HTML blocks with their lines,
+`maskCode` hides the code around a rewrite, `splitCodeSpans` cuts a line into prose and code
+spans, and `splitOnMarker` and `mapLines` split and rewrite by line. A rewrite, or a tool that
+scans page source, asks these rather than deciding with a regex of its own. The fix is in where
+the rewrite runs:
 
 1. **For a fence or an inline span, move the rewrite behind the mask.** In
    `applyPreRenderRewrites`, code regions are replaced by placeholders before the
@@ -406,10 +410,9 @@ scheduler.tasks.set(rName, {
 > list the chunks were sliced from, so a page the callback cannot find means a chunk
 > produced something the build never dispatched. Skipping it silently drops that
 > page's `renderedContent`, and every consumer of that field --- the search index,
-> the PDF book --- skips a page that has none rather than complaining. That is
-> exactly how ~6 pages went missing from `search-data.json` on about one build in
-> three, undetected. Every skip on the chunk-merge path has since been made loud;
-> new fan-out code must keep it that way.
+> the PDF book --- skips a page that has none rather than complaining, so the page
+> vanishes from `search-data.json` with no error. Every skip on the chunk-merge path
+> throws; new fan-out code must do the same.
 
 **Step 6d.** Write a consolidator task that runs after `renderJoin`:
 
@@ -445,11 +448,11 @@ That is the full pattern: per-chunk compute on the render workers, merge into th
 
 ### Background
 
-`createMarkdownIt` in `render.mjs` builds the configured markdown-it instance. Seventeen plugins are applied in a fixed order: three from npm (`markdown-it-attrs`, `markdown-it-deflist`, `markdown-it-footnote`) interleaved with fourteen defined in `render.mjs` itself. A new plugin becomes part of that order.
+`createMarkdownIt` in `render.mjs` builds the configured markdown-it instance. The plugins are applied in a fixed order: three from npm (`markdown-it-attrs`, `markdown-it-deflist`, `markdown-it-footnote`) interleaved with those defined in `render.mjs` itself, and `countPlugin` from `counts.mjs` registered last. A new plugin becomes part of that order.
 
-Those in-tree plugins cover token-stream transforms --- `svgInlinePlugin` embeds SVG diagrams, `headingLevelNormalizePlugin` repairs legacy pages that skip from `h1` to `h3` --- alongside link, slug, and typography helpers, most of them closing a behavioural gap between markdown-it and the kramdown dialect the content was authored against. [Pipeline Stages](Pipeline-Stages#the-plugin-chain) tabulates all eighteen in registration order, with what each one does.
+Those in-tree plugins cover token-stream transforms --- `svgInlinePlugin` embeds SVG diagrams, `headingLevelNormalizePlugin` repairs legacy pages that skip from `h1` to `h3` --- alongside link, slug, and typography helpers, most of them closing a behavioural gap between markdown-it and the kramdown dialect the content was authored against. [Pipeline Stages](Pipeline-Stages#the-plugin-chain) tabulates the chain in registration order, with what each one does.
 
-The same factory is called twice on main (once for the shared site-level SEO instance via `markdownInit`, and once per dev-tooling harness that re-renders) and once per render worker (via `renderEnvInit`). Plugins that reach for module-scope state must therefore work across worker boundaries --- in practice, that means no mutable closure-captured state, since each worker has its own module-scope instance.
+The same factory is called once on main (the shared site-level SEO instance, via `markdownInit`), once per render worker (via `renderEnvInit`), and once by each script that renders outside the build, such as `check_code_regions.mjs`. Plugins that reach for module-scope state must therefore work across worker boundaries --- in practice, that means no mutable closure-captured state, since each worker has its own module-scope instance.
 
 ### 1. Write the plugin
 
@@ -472,7 +475,7 @@ md.renderer.rules.table_close = (tokens, idx, opts, _env, slf) =>
 Three decisions sit in those six lines, and a rewrite drops all three:
 
 - **The default renderer runs first and its output is rewritten,** rather than the tag being built by hand. `renderToken` is what applies markdown-it's per-token block-prefix whitespace, so calling it keeps the leading newline the parser would have emitted when the table opens a list item, a definition, or a blockquote child. A wrapper concatenated around a literal `<table>` string loses it.
-- **`tabindex="0"` is an accessibility fix.** just-the-docs's `tables.scss` gives `.table-wrapper` `overflow-x: auto`, and a scroll container that cannot take focus cannot be scrolled without a pointer; axe's `scrollable-region-focusable` rule keys on exactly that, and it failed across 44 pages before the attribute was added. It is unconditional for the same reason `highlight.mjs` marks every `div.highlight`: whether a table overflows depends on the viewport, so there is no answer at render time. `custom/custom.scss` gives the resulting focus a visible ring.
+- **`tabindex="0"` is an accessibility fix.** just-the-docs's `tables.scss` gives `.table-wrapper` `overflow-x: auto`, and a scroll container that cannot take focus cannot be scrolled without a pointer, and axe's `scrollable-region-focusable` rule reports exactly that. It is unconditional for the same reason `highlight.mjs` marks every `div.highlight`: whether a table overflows depends on the viewport, so there is no answer at render time. `custom/custom.scss` gives the resulting focus a visible ring.
 - **The wrapper exists because tbdocs renders no Liquid.** just-the-docs emitted it from an `_includes/table_wrappers.html` pass; the theme's vendored `_sass` still keys its table rules on `.table-wrapper`, so the div has to come from the renderer instead.
 
 > [!IMPORTANT]
@@ -550,9 +553,11 @@ export function createMarkdownIt(ctx) {
 
 Run `build.bat` and open an affected page. **`serve.bat` will not show a plugin change** --- its worker pool is persistent, so a running preview goes on using the old plugin; the NOTE at the top of this page has the detail. Ctrl+C and re-run it first, and then it gives live feedback on the pages themselves as normal. A plugin that traverses the full token stream on every page runs N+1 times per build (one main thread + N workers), so check the per-task render timing in the summary or the Gantt chart for any spike.
 
-Then run `test.bat`, which is where a `render.mjs` edit is judged. Two of its gates key on exactly this file: `check_regex_safety.mjs` refuses a regex that can backtrack exponentially, and `render.mjs` is where the two that shipped that way lived; `check_code_regions.mjs` refuses a pre-render rewrite that alters the contents of a code fence or code span.
+Then write a unit test for the plugin in [`test/render.test.mjs`](https://github.com/twinbasic/documentation/blob/main/test/render.test.mjs), which builds the site's own `createMarkdownIt` and renders small inputs, one plugin per `describe` block. The build compares whole pages, so a plugin that is wrong only on input no page holds passes it; the test pins that input. Run it alone with `node --test test/render.test.mjs`; `test.bat` and both CI workflows run it too.
 
-**Assembling a pattern from string constants does not put it out of reach of that first gate, and it used to.** `new RegExp(`${A}${B}`)` is read if the source decides what `A` and `B` are; if it does not --- a function parameter, a `let` built in a loop --- `node scripts/check_regex_safety.mjs --census` says so by name, and the pattern is then yours to reason about. The resolvable shapes are the ones a reader can work out from that description --- a literal, a template, `+` concatenation, `String.raw`, a `const` declared once, `.source` of a `const` regex, a `join` over a `const` array, and a ternary checked both ways --- and the census is what tells you which bucket yours landed in; see [`check_regex_safety.mjs`](Tools#check-regex-safety).
+Then run `test.bat`, which is where a `render.mjs` edit is judged. Two of its gates read this file: `check_regex_safety.mjs` refuses a regex that can backtrack exponentially, and `check_code_regions.mjs` refuses a pre-render rewrite that alters the contents of a code fence or code span.
+
+**Assembling a pattern from string constants does not put it out of reach of the regex gate.** `new RegExp(`${A}${B}`)` is read if the source decides what `A` and `B` are; if it does not --- a function parameter, a `let` built in a loop --- `node scripts/check_regex_safety.mjs --census` says so by name, and the pattern is then yours to reason about. The resolvable shapes are the ones a reader can work out from that description --- a literal, a template, `+` concatenation, `String.raw`, a `const` declared once, `.source` of a `const` regex, a `join` over a `const` array, and a ternary checked both ways --- and the census is what tells you which bucket yours landed in; see [`check_regex_safety.mjs`](Tools#check-regex-safety).
 
 **If the plugin emits markup the site has not carried before --- a new wrapper element, a widget, a figure, a control --- register a construct family for it in [`scripts/pick_a11y_sample.mjs`](Tools#pick-a11y-sample) in the same change.** The accessibility scan audits thirteen sample pages out of ~1,160, and a construct no sample page carries is a construct no axe rule keyed on it ever runs against. Leaving it out is not neutral: the gate goes on reporting a clean pass while covering less than it did before, which is the failure mode the derived sample exists to prevent. `node scripts/pick_a11y_sample.mjs --census` shows what the existing families are and which pages carry them; `--check` names the gaps and the cheapest page that closes each. The same obligation applies to a new task or sub-stage that changes the emitted HTML, and to a template change.
 
@@ -626,7 +631,7 @@ Then extend `dispatch.submit`'s `render:i` callback to merge the new field, exac
 
 A gate runs after the build and decides whether what the build produced is acceptable. Two batch wrappers run them: [`check.bat`](Tools#checkbat) and [`test.bat`](Tools#testbat). Those two entries on [Tools and Scripts](Tools) are the authoritative list of which gate each wrapper runs, in the order they run --- read it there rather than from a copy, and give a new gate its own entry on that page in the same change.
 
-**First decide whether it is a gate at all.** The link and integrity check used to be one and now runs inside the build, because both trees' final HTML is already decoded in worker memory when `flush:i` runs --- checking it on disk meant writing ~270 MB out to read it straight back. The test is whether the check needs something the build does not already hold: a browser, a real font, a second implementation to compare against, a tree from an earlier run. If it needs none of those, it is a pipeline task, and the walkthroughs above apply instead.
+**First decide whether it is a gate at all.** The link and integrity check runs inside the build, not as a gate, because both trees' final HTML is already decoded in worker memory when `flush:i` runs --- checking it on disk would mean writing ~270 MB out to read it straight back. The test is whether the check needs something the build does not already hold: a browser, a real font, a second implementation to compare against, a tree from an earlier run. If it needs none of those, it is a pipeline task, and the walkthroughs above apply instead.
 
 ### Which wrapper it goes in
 
@@ -636,12 +641,22 @@ That is a rule about what the gate *interrogates*, not about what it happens to 
 
 Two worked applications of the rule:
 
-- **A regression test for a build-time rewrite that has stopped firing** interrogates the rewrite, not the corpus, so it goes in `test.bat`. [`check_code_regions.mjs`](Tools#check-code-regions) is the gate of that shape already in the tree, and its admonition probes are the pattern to copy: each one is a defect the repository shipped, asserted in the normal run rather than behind a flag.
+- **A regression test for a build-time rewrite that has stopped firing** interrogates the rewrite, not the corpus, so it goes in `test.bat`. [`check_code_regions.mjs`](Tools#check-code-regions) is the gate of that shape already in the tree, and its admonition probes are the pattern to copy: each one asserts a defect that must stay fixed, in the normal run rather than behind a flag.
 - **A gate that compares this build's output against an earlier build's** interrogates the built tree, and says nothing at all about an empty `docs/`, so it goes in `check.bat`.
 
 The split exists so that an edit confined to `docs/` usually has to pay for `check.bat` only. Two `test.bat` gates are the exception and are worth knowing before you assume a content edit cannot go red there: [`check_code_regions.mjs`](Tools#check-code-regions) tokenises every markdown file under `docs/`, and [`check_gate_lists.mjs`](Tools#check-gate-lists) reads `README.md` and every page under `docs/Documentation/`. Both CI workflows run every gate from both wrappers unconditionally, each as its own step, so the wrapper choice changes what a local edit costs and nothing about what reaches `staging`.
 
 ### Conventions
+
+**The command line goes through `lib/cli.mjs`.** `parseCli(argv, { options, positionals, stopAt })` is a strict parse over `node:util`'s `parseArgs`: an unknown option, a boolean given a value, a value flag without its value or with an empty one, and a positional the tool does not take are each a `CliError`. `options` is keyed by long name (`{ type: "string" | "boolean", short, multiple, default, empty }`), `positionals` is a count or `{ min, max }`, and the result's `values` is keyed by the camelCase of each name. A new tool follows one shape, which `check_tree_fresh.mjs` and `check_dot_fit.mjs` show in full:
+
+- **Help first.** Declare `help: { type: "boolean", short: "h" }` and pass `stopAt: ["help"]`, so nothing after `--help` is read or checked. Answer it straight after the parse with `printHelpAndExit(USAGE)`, which prints to standard output and exits 0.
+- **Refusals exit 2.** Wrap the parse in `withUsageError(() => parseCli(...))`, which prints a `CliError`'s message to standard error and exits 2.
+- **Check values straight after the parse,** before the tool does any work: `numberOption`, `choiceOption`, `regexOption`, `urlOption` and `dateOption` read one value and throw a `CliError` that names the option, and `refuseTogether(values, names)` refuses options that exclude each other. Do not leave a value to fail later as `NaN`.
+- **Install `exitOnCrash()` at the entry point,** before anything else runs (see the exit codes below).
+- **End the usage text with an `Exit codes:` block,** one `  <code>  <meaning>` line per code, a long meaning wrapped under itself.
+
+[`scripts/check_cli.mjs`](Tools#check-cli) holds every tool to this. A new tool is added to its `HELP_TOOLS` list, which makes the tool answer `--help` and `-h` with exit 0 and end its usage with exactly one `Exit codes:` table, and to its `REFUSALS` list, which gives it a case for an unknown flag and for an empty value; the script throws on start if the two lists disagree. A tool that checks a value after the parse gets a case of its own in the script's bad-value list.
 
 **Exit codes.** Three values, and a new gate in either wrapper uses them this way:
 
@@ -651,7 +666,7 @@ The split exists so that an edit confined to `docs/` usually has to pay for `che
 | `1` | The checked thing failed. This is the finding. |
 | `2` | The harness or the environment failed --- a command line the tool refuses (an unknown flag, a flag without its value or with an empty one, an unexpected argument, a value it cannot use), an absent tree, a crash. Nothing was checked. |
 
-Separating 1 from 2 is what stops a broken gate reading as a clean site, and it has to hold at the top level too. Node's own exit for an uncaught exception is 1, which reads as a finding. So every tool calls `exitOnCrash()` from `lib/cli.mjs` before it does anything else; it makes an uncaught exception, or a rejection nothing awaits, print the error and exit 2, and it also catches a rejected top-level await. A script with a `main()` may still end with `main().catch((err) => { console.error(err); process.exit(2); })`, the way `check_a11y.mjs` does.
+Separating 1 from 2 is what stops a broken gate reading as a clean site, and it has to hold at the top level too. Node's own exit for an uncaught exception is 1, which reads as a finding. So a new tool calls `exitOnCrash()` from `lib/cli.mjs` before it does anything else; it makes an uncaught exception, or a rejection nothing awaits, print the error and exit 2, and it also catches a rejected top-level await. It installs when called, never on import, so a module that can also be imported calls it only when it is the entry point. `exitOnCrash(cleanup)` runs `cleanup(err)` first for a tool that holds something the exit would lose. A script with a `main()` can instead end with `main().catch((err) => { console.error(err); process.exit(2); })`, as `check_a11y.mjs` does; either way a crash must not leave Node's own exit 1.
 
 The rule is not limited to gates. Every tool under `builder/`, `scripts/`, `book/`, `eval/` and `wisdom/` reports a finding as 1 where it has findings, and everything that stops it doing its job as 2. A tool with more outcomes to tell apart adds codes above 2 --- `tbbuild` and `tbrun` use 3 and 4, `addin_test` and `wisdom` use 3 --- and `impexp` keeps a table of its own, shared with its Python edition. **Each tool ends its `--help` text with an `Exit codes:` block, one line per code, and that block is the source of truth**: [Tools and Scripts](Tools) states the same codes once in each tool's entry, and a change to one goes into the other.
 
@@ -659,19 +674,28 @@ The rule is not limited to gates. Every tool under `builder/`, `scripts/`, `book
 
 **Name the artifact and the remedy.** A gate's output is read by someone who was in the middle of something else. `check_dot_fit.mjs` names the failing diagram, then `builder/dot-metrics.mjs` and an `@hpcc-js/wasm-graphviz` bump as the usual cause, then `build.bat` as the fix. `check_tree_fresh.mjs` names the source file that is newer than the tree and says to run `build.bat`. `pick_a11y_sample.mjs --check` names the uncovered construct *and* the cheapest page that would cover it.
 
-**Resolve paths from the repository root in `lib/repo-paths.mjs`.** Import `REPO_ROOT`, or `DOCS_DIR` for `docs/`, rather than deriving either from `import.meta.url` or the working directory, and the gate works from any directory. `check_publish_policy.mjs` is the one gate that does not, with a working-directory-relative `docs` default, which is why the batch wrappers `pushd` to the repository root before running anything.
+**Resolve paths from the repository root in `lib/repo-paths.mjs`.** Import `REPO_ROOT`, or `DOCS_DIR` for `docs/`, rather than deriving either from `import.meta.url`, a private `path.resolve(__dirname, ...)` or the working directory, and the gate works from any directory. A path the user gives on the command line still resolves against the working directory, as someone typing a relative path expects. `check_publish_policy.mjs` is the one gate whose default is working-directory-relative (`--src` defaults to `docs`), which is why the batch wrappers `pushd` to the repository root before running anything.
+
+**Find markdown through `lib/markdown-files.mjs`.** `markdownFiles(root)` lists the markdown under a tree and never enters the build's output trees (`_site*`, `_serve*`, `_pdf*`), which a running `serve.bat` rewrites while a private walk reads them. A walk that must read `docs/` some other way decides what an output tree is with `isOutputTree(name)` from the same module, as `check_tree_fresh.mjs` does. What is code inside a markdown file is a separate question, answered by `lib/markdown.mjs` (see [When `test.bat` fails in `check_code_regions`](#code-regions-altered)).
 
 **Be explicit about what may already have run.** Both wrappers stop at the first failure, so a gate's position decides what it can assume --- and the two do not offer the same guarantees. `check_tree_fresh.mjs` runs first in `check.bat`, so every later gate there may assume `_site-offline/` is current. `test.bat` has no freshness gate at all, and its one gate that opens a built page does not need one: `check_axe_patch_equiv.mjs` loads a single page and never reads that page's DOM, so a stale tree cannot change its result. Nothing in either wrapper may assume the build's own link check passed: a link failure sets the build's exit code without aborting the build, so a tree that failed it is still on disk and still fresh.
 
-**Register it in three places** --- the wrapper it belongs in, `.github/actions/run-gates/action.yml`, and that wrapper's numbered list in [Tools and Scripts](Tools#checkbat). The action is the one list of gates both CI workflows run, so a gate goes into CI once. The first two each take a comment saying what the gate protects against, which is the convention already in both files. CI runs every gate from both wrappers, each as its own step of the action, so the wrapper choice does not change what CI does. Leaving a gate out of CI is a decision, not an omission, and is written down with its reason in `check_ci_workflows.mjs`'s list of allowed differences: `check_tree_fresh.mjs` is left out because CI builds in the same job and cannot have a stale tree.
+**Register it everywhere a gate is listed.** A `node --test test/<name>.test.mjs` file is a gate too, and is registered the same way, named by its path.
 
-Two checks enforce the registration, and they are the only ones you will be told about. [`check_gate_lists.mjs`](Tools#check-gate-lists) compares both wrappers against `Tools.md`'s two numbered lists --- membership, order, and the step count each section states --- so adding a gate without the entry fails `test.bat` naming the disagreement. It then sweeps `README.md` and every page under `docs/Documentation/` for a gate count stated anywhere in prose and fails on those too, which is what makes one edit enough: `Tools.md` owns the lists and nothing else restates them. If you find yourself writing a gate count into a second page, that is the thing not to do. [`check_ci_workflows.mjs`](Tools#check-ci-workflows) does the same for CI: both workflows, read through the action, must run every wrapper gate with the same arguments and in the same order, and any difference not on its list of allowed ones fails `test.bat`.
+- **The wrapper** it belongs in (`check.bat` or `test.bat`), at the position its assumptions need, with a comment saying what the gate protects against. Each step is followed by `if errorlevel 1 goto :fail`.
+- **`.github/actions/run-gates/action.yml`**, the one list of gates both CI workflows run, so a gate goes into CI once. Give it a step named after the gate, with the same arguments and in the same order as the wrapper.
+- **[Tools and Scripts](Tools)**: the gate's own entry under CLI tools (with its `{: #check-... }` anchor and its exit codes), a line in the wrapper's numbered list in [`check.bat`](Tools#checkbat) or [`test.bat`](Tools#testbat), the step count that section states, and the POSIX command block under the list.
+- **`WIP.md`**, the maintainers' file: the gate's row in its table of gates, and the wrapper's bullet under Build / preview.
+
+CI runs every gate from both wrappers, each as its own step of the action, so the wrapper choice does not change what CI does. Leaving a gate out of CI is a decision, not an omission, and is written down with its reason in `check_ci_workflows.mjs`'s list of allowed differences: `check_tree_fresh.mjs` is left out because CI builds in the same job and cannot have a stale tree.
+
+Two checks enforce the registration, and neither reads the POSIX command blocks or `WIP.md`, so those two are a matter of care. [`check_gate_lists.mjs`](Tools#check-gate-lists) compares both wrappers against `Tools.md`'s two numbered lists --- membership, order, and the step count each section states --- so adding a gate without the entry fails `test.bat` naming the disagreement. It then sweeps `README.md` and every page under `docs/Documentation/` for a gate count stated anywhere in prose and fails on those too, which is what makes one edit enough: `Tools.md` owns the lists and nothing else restates them. If you find yourself writing a gate count into a second page, that is the thing not to do. [`check_ci_workflows.mjs`](Tools#check-ci-workflows) does the same for CI: both workflows, read through the action, must run every wrapper gate with the same arguments and in the same order, and any difference not on its list of allowed ones fails `test.bat`.
 
 ### It must be able to fail
 
 **A gate that silently checks less reports exactly what a clean site reports.** A green run is therefore not evidence about the site until something independent says the gate can still go red.
 
-That is not a style note. The accessibility sample reported a clean pass over six hand-picked pages while 54 pages carried violations, every one in a construct no sample page had. Separately, blocking one more script during the scan looked like a 130 ms win and cut the colour-contrast node count on one page from 54 to 2 --- axe seeing less, reported as a pass. Both were green throughout.
+That is not a style note. A hand-picked accessibility sample can report a clean pass while pages outside it carry violations, and an optimisation that makes axe see fewer nodes can report a pass too; both stay green while covering less.
 
 So a new gate needs a second assertion of the opposite sign, and there are four shapes in the repository to copy:
 
@@ -680,7 +704,7 @@ So a new gate needs a second assertion of the opposite sign, and there are four 
 - **A fixture that provokes one fault of each kind,** with the count asserted afterwards. The real site is clean, so without one every category compares empty against empty --- and a category that has stopped being checked looks identical to a category with nothing to find.
 - **An A/A control.** Running `check_a11y_fingerprint.mjs` with the same scheme on both sides says whether the harness is stable, before any A/B result from it is believed.
 
-A self-test made of named probes, such as `check_page_baseline.mjs`, records them with `createProbes` from `scripts/lib/gate-probes.mjs`, which prints a line for each probe and a summary, and returns the exit code.
+A self-test made of named probes, such as `check_page_baseline.mjs`, records them with `createProbes(tool, onFailure)` from `scripts/lib/gate-probes.mjs`. `check(name, ok, detail)` records one probe; `report()` prints a line for each, with a failed probe's detail under it, then a summary, and returns the exit code (0, or 1 if any probe failed). The optional `onFailure` text ends the summary of a failed run, to say what a failed probe means. A drift guard whose baseline is a JSON file under `builder/` is probed against a scratch copy, through `baselineFixture(name)` from the same module, so no probe touches the committed baseline.
 
 When the gate cannot assert its own correctness from the inside, the proof goes in a sibling script and is named in the gate's header comment, so whoever changes the gate next finds it in the file they are already reading.
 
@@ -729,7 +753,7 @@ as one that returns the right one.
 
 ## What a change obliges in the documentation
 
-Everything in [Verify](#7-verify) and [Testing](#testing) is a code gate. Not one of them compares a documentation page against the task graph it describes. So a contributor who follows this page exactly can ship a correct task, a green `build.bat`, a green `check.bat`, a green `test.bat`, and a pipeline reference that describes a build which no longer exists --- and nothing anywhere will report it. Most of the defects two successive documentation audits turned up were made that way, which is why the obligation is written down here rather than left to be reconstructed.
+Everything in [Verify](#7-verify) and [Testing](#testing) is a code gate. Not one of them compares a documentation page against the task graph it describes. So a contributor who follows this page exactly can ship a correct task, a green `build.bat`, a green `check.bat`, a green `test.bat`, and a pipeline reference that describes a build which no longer exists --- and nothing anywhere will report it. That is why the obligation is written down here rather than left to be reconstructed.
 
 Four files under `docs/` model the task graph: `Pipeline-Stages.md`, `Builder.md`, this page, and `scheduler-dag.dot`. None of them is generated from `TASKS`. Every surface below is maintained by hand.
 
@@ -739,7 +763,7 @@ Three surfaces, and the second is the one that gets missed.
 
 **The task's own section.** One `###` heading per task, under the numbered section matching its Gantt section, opening with a fenced block that gives its `expected` array --- and its `execute()` return shape where the return value matters --- followed by prose for what `submit()` merges into `SharedState`. A per-lane start-up task, which the chart draws in the worker rows rather than in a section, goes under Render, as `warmInit` and `renderEnvInit` do. A new predecessor, a new field on the returned delta, a new key written to `state`: each is an edit here.
 
-**The reverse edges.** A task's position in the graph is stated once in its own section and again in the `expected` line of every task that depends on it. Add `myTask` to `writeAux.expected` in the code and `writeAux`'s section goes on printing the old list, because nothing connects the two. `Pipeline-Stages.md` names `renderJoin` on nine lines; two of them are the `expected` declarations belonging to `searchData` and `writePdf`. Grep the task name across the whole file rather than editing only the section that carries its name.
+**The reverse edges.** A task's position in the graph is stated once in its own section and again in the `expected` line of every task that depends on it. Add `myTask` to `writeAux.expected` in the code and `writeAux`'s section goes on printing the old list, because nothing connects the two. `Pipeline-Stages.md` names `renderJoin` on many lines; three of them are the `expected` declarations belonging to `searchData`, `symbolIndex` and `writePdf`. Grep the task name across the whole file rather than editing only the section that carries its name.
 
 **The module export table.** [Module export tables](Pipeline-Stages#module-export-tables) gives the signature of the function each task calls, return shape included --- so a return shape is documented twice on one page, and the two copies go stale independently.
 
@@ -793,7 +817,7 @@ Five commands cover the loop:
 1. **`build.bat`** --- full pipeline, including the link and integrity check over both trees while their HTML is still in worker memory. A clean exit and a sensible Gantt placement is the bar.
 2. **`serve.bat`** --- live-reload dev server for visual checks. Remember the persistent pool: Ctrl+C and restart after handler-code or task-graph changes. Check both themes if the change touches anything visible.
 3. **`check.bat`** --- the gates that read the built site. [Tools and Scripts](Tools#checkbat) lists them in the order they run.
-4. **`test.bat`** --- the gates that test the toolchain itself, listed at [Tools and Scripts](Tools#testbat). Every change under `builder/`, `scripts/`, `lib/`, `book/`, `eval/` or `wisdom/` needs this one, which is every change this page describes. Most content edits do not, with two exceptions: `check_code_regions.mjs` sweeps every markdown file under `docs/`, and `check_gate_lists.mjs` reads `README.md` and every page under `docs/Documentation/`.
+4. **`test.bat`** --- the gates that test the toolchain itself, listed at [Tools and Scripts](Tools#testbat). Every change under `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, or to a wrapper or workflow, needs this one, which is every change this page describes. Most content edits do not, with two exceptions: `check_code_regions.mjs` sweeps every markdown file under `docs/`, and `check_gate_lists.mjs` reads `README.md` and every page under `docs/Documentation/`.
 5. **`book.bat`** --- re-renders the PDF if your change affects `_site-pdf/` or any chapter body.
 
 A clean run of all five is the bar for "ready to commit".

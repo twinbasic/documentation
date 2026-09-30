@@ -977,6 +977,47 @@ gate table and wrapper bullets; and `PLAN-10.md:692`, which still cites
 **Verify.** Every changed claim re-read against its file; `build.bat` and `check.bat` for the
 anchors.
 
+**Landed.** Four Sonnet agents, one per page on disjoint files (Builder.md with
+`lib/README.md`; Tools.md; Extending.md; WIP.Build.md with WIP.md's wrapper bullets and gate
+table), each checking every claim against its file from a common brief
+(`c82-brief-common.md` in the kit); then two Sonnet Explore agents checked every added
+sentence against the code and every WIP.Build.md cut for a lost rule. Their findings were
+fixed by hand: CI runs `check_links_diff` on fixture cases only, three in `checks.yml` and
+one in the shared action; `gate-roster.mjs`, not `gatesFromBat`, is what
+`check_ci_workflows` shares; `applyPreRenderRewrites`, not `maskCode`, refuses a missing
+markdown-it; four verification rules the cuts had dropped are restated (the void-tag regexes
+against `compare_trees`, a rewrite moved outside the mask, a wrong count put back in a page,
+and the reason for sharding the regex gate). At the owner's choice (2026-09-30) past-tense
+history that no rule needs was cut from Tools.md, WIP.Build.md, Builder.md and Extending.md,
+each rule's reason kept in the present tense, and four Found items were folded in: Tools.md's
+list of `lib/markdown-files.mjs` users (eight, not two), its "Upgrading axe-core" naming
+`test.bat`, `gen_attribute_probes.mjs`' header without its counts, and Fixes-PDFLib.md
+saying `parallel-deflate.mjs` patches nothing (the twelve `fast-*` shims each set an install
+flag, checked by grep). `PLAN-10.md:692` names `convert_em_dash_separators.mjs`. Found by
+the agents and fixed here: Builder.md had no row for `lib/` and counted six exact pins where
+`package.json` has five; Extending.md said every tool calls `exitOnCrash()` (some end with
+`main().catch`), and gave the gate registration as three places where there are four;
+Pipeline-Stages.md's plugin table lacked `searchIndexMarksPlugin` (nineteen plugins, not
+eighteen); WIP.Build.md named `stripLiquidRawTags`, which no longer exists, and gave
+`check_tree_fresh`'s sources without `lib`; WIP.ExamplesBuild.md and WIP.md counted 1,129
+samples (`--census`: 1,187 fences, 1,136 marked, 51 inert); `builder/counts.mjs`' header
+named `assertNoPlaceholders` for `findSurvivingPlaceholder`; `test.bat` and
+`check_regex_safety.mjs`' header gave the gate ~5 s and "a fifth" polynomial (~10 s; 71 of
+586). `build.bat`, `check.bat` (`0 violation(s), 42 incomplete`), `test.bat` (`check_cli:
+901 probes, all pass`; `check_gate_lists: check.bat (4) + test.bat (19)`) and lint (`Checked
+185 files`) clean. `compare_trees` differs only in the five edited pages, the two search-data
+files and `book.html`.
+
+### C82a — `tooling: comments state their rules without the incidents behind them`
+
+The history rule applied to tooling comments, as C82 applied it to the pages: the headers of
+`check_code_regions.mjs` and `check_gate_lists.mjs`, `test.bat`'s comments,
+`builder/tbdocs.mjs:138` and `scripts/check_tree_fresh.mjs:42`, and any other comment a grep
+for "used to", "shipped", "round N" and commit ids finds under the tooling folders. Each
+rule's reason stays, in the present tense.
+
+**Verify.** `compare_trees` identical; lint and the three wrappers clean.
+
 ### C83 — `builder: the tooling survey re-run against its baseline`
 
 `node scripts/survey_tooling.mjs --summary`, recorded as an *after* column in this file's
@@ -1648,6 +1689,10 @@ Defects the review did not have, found by building something this plan asks for.
   counted any bind error as taken, so a port Windows had reserved (`EACCES`, nothing
   listening) read as another IDE. Found while running C81's check. Fixed in C81a, which names
   the holder, so a repeat can be diagnosed; the cause is still unknown.
+- **Tooling comments tell incident history that no rule needs.** Found by C82's agents: the
+  headers of `check_code_regions.mjs` and `check_gate_lists.mjs`, `test.bat`'s comments,
+  `tbdocs.mjs:138`, `check_tree_fresh.mjs:42`. The owner chose a commit of its own
+  (2026-09-30): C82a.
 
 ## Open questions
 

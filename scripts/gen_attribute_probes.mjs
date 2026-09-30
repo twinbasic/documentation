@@ -3,10 +3,10 @@
 //
 //     node scripts/gen_attribute_probes.mjs <out_dir> [key.md]
 //
-// `Attributes.md` states an `Applicable to:` line for 52 of its 57 attributes,
-// and none of them had been checked against the compiler --- the one that was
-// checked turned out to be wrong. twinBASIC cannot compile a project from the
-// command line (see Features/Packages/Import-Export-Tool), so this does the
+// `Attributes.md` states an `Applicable to:` line for each attribute it
+// documents in full, and a claim nobody has put in front of the compiler can
+// be wrong. twinBASIC cannot
+// compile a project from the command line (see Features/Packages/Import-Export-Tool), so this does the
 // next best thing: it writes one source file per claimed target, so a single
 // IDE build answers every claim at once.
 //

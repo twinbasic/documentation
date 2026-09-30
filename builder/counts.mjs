@@ -26,7 +26,7 @@
 //   ```fence``` / indent  fence,        untouched, block tokens with no
 //                         code_block    children -- an inline walk never
 //                                       reaches them at all
-//   raw HTML block        html_block    untouched, and see assertNoPlaceholders
+//   raw HTML block        html_block    untouched, and see findSurvivingPlaceholder
 //   <span>text</span>     html_inline   the text between the tags IS a text
 //                                       token, so substituted
 //   image alt             image         only via the recursive descent below
@@ -57,7 +57,7 @@
 //   - `validateCountNames` scans the source, with code masked as the
 //     pre-render rewrites mask it, and rejects an unknown name. This is the
 //     typo case, and it names the file, the line and the nearest match.
-//   - `assertNoPlaceholders` scans the rendered HTML for a placeholder that
+//   - `findSurvivingPlaceholder` scans the rendered HTML for a placeholder that
 //     survived, outside `<code>` and `<pre>`. Source validation cannot see
 //     this case: a placeholder inside a raw HTML block has a perfectly good
 //     name, passes the first check, and still renders literally.
