@@ -55,7 +55,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, regexOption, withUsageError } from "../lib/cli.mjs";
+import { die, exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, regexOption, withUsageError } from "../lib/cli.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
 import { wantShow } from "./lib/tb-ide.mjs";
 import { buildNumber, findIde } from "./lib/tb-install.mjs";
@@ -104,7 +104,6 @@ const { values } = withUsageError(() => parseCli(process.argv.slice(2), {
   stopAt: ["help"],
 }));
 if (values.help) printHelpAndExit(USAGE);
-const die = (code, msg) => { console.error(msg); process.exit(code); };
 // setTimeout takes at most 2147483647 ms, so a lane's timeout is at most 2147483 s.
 const { only, basePort, jobs, laneTimeout } = withUsageError(() => {
   refuseTogether(values, ["show", "hide"]);

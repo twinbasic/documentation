@@ -103,7 +103,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, mkdirSync, statSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { choiceOption, exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
+import { choiceOption, die, exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
 import { click } from "./lib/tb-click.mjs";
 import { compilerExe, findIde } from "./lib/tb-install.mjs";
 import { BUILD_FAILED, COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, killTree, launchIde,
@@ -168,8 +168,6 @@ const { values, positionals } = withUsageError(
   { format: (err) => `${err.message}\n${USAGE}` },
 );
 if (values.help) printHelpAndExit(USAGE);
-
-const die = (code, msg) => { console.error(msg); process.exit(code); };
 
 // The values are read before anything starts.
 const { port, arch, timeoutMs, quietMs } = withUsageError(() => {

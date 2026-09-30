@@ -46,7 +46,7 @@ import path from "node:path";
 import { buildNumber, findIde } from "./lib/tb-install.mjs";
 import { defaultCache, exportPackages, packageName } from "./lib/tb-packages.mjs";
 import { apiSnapshot, parsePackage } from "./lib/twin-api.mjs";
-import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { die, exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 exitOnCrash();
@@ -87,7 +87,6 @@ const { values } = withUsageError(() =>
     stopAt: ["help"],
   }));
 if (values.help) printHelpAndExit(USAGE);
-const die = (code, msg) => { console.error(msg); process.exit(code); };
 
 function sources() {
   // --exported takes a folder of exports, or a cache holding `packages\` and more:

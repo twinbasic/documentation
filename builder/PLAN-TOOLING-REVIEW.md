@@ -1111,6 +1111,16 @@ it. The two `die`s that also tidy the registry, in `sweep_attributes.mjs` and
 **Verify.** `check_cli`'s recorded cases for the four tools unchanged; lint and the three
 wrappers clean; `tbrun` on the kit's `tbrun-probes/clean`.
 
+**Landed.** `die` prints through `console.error`, as the four copies did, so a message that
+ends in a newline prints as before (`tbrun` passes its usage text). Each tool's definition went
+by an exact replacement that fails on a miss, and its import gained `die`; nothing else in the
+four files changed. Extending.md's command-line conventions gain a bullet for it, and
+Builder.md's module row and `lib/README.md` name it. The survey's `flag`/`opt`/`die` count
+is now 3: `lib/cli.mjs`, and the two tidying `die`s (with `sweep_attributes.mjs`' `opt`).
+Lint (`Checked 185 files`), `build.bat`, `check.bat` (`0 violation(s), 42 incomplete`) and
+`test.bat` (`check_cli: 901 probes, all pass`; regex safety unchanged) clean; `tbrun` on
+`tbrun-probes/clean` exit 0, `one`, `two`, 25 s.
+
 ## Phase 6: formatting
 
 Decision 4's second half, once every fix is in, so that the review's citations stayed valid

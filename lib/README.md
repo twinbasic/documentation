@@ -31,7 +31,8 @@ problem, which `withUsageError` prints with exit code 2. It also reads a value
 that must be a number, one of a set, a regular expression, a URL or a date
 (`numberOption`, `choiceOption`, `regexOption`, `urlOption`, `dateOption`),
 refuses options that exclude each other (`refuseTogether`), prints a usage
-text and exits 0 (`printHelpAndExit`), and makes a crash exit 2 (`exitOnCrash`).
+text and exits 0 (`printHelpAndExit`), prints a message and exits with a
+given code (`die`), and makes a crash exit 2 (`exitOnCrash`).
 `scripts/check_cli.mjs` carries its probes and the tools' recorded
 command-line cases.
 

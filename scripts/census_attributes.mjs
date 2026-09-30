@@ -69,7 +69,7 @@ import { parseAttributes } from "./lib/attributes-doc.mjs";
 import { findIde } from "./lib/tb-install.mjs";
 import { defaultCache, exportPackages, packageName } from "./lib/tb-packages.mjs";
 import { MODIFIERS, declarationKind, decomment } from "./lib/twin-declarations.mjs";
-import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { die, exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { DOCS_DIR } from "../lib/repo-paths.mjs";
 
 exitOnCrash();
@@ -93,7 +93,6 @@ const { values } = withUsageError(() =>
     },
     stopAt: ["help"],
   }));
-const die = (code, msg) => { console.error(msg); process.exit(code); };
 const log = (...a) => { if (!values.quiet) console.error(...a); };
 
 const USAGE = `usage: node scripts/census_attributes.mjs [options]
