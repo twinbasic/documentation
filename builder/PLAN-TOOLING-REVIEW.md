@@ -172,7 +172,10 @@ Phase 2 (C31–C70, with C32a, C41a–C41c, C51a, C51b, C65a–C65e, C67a and C6
 2026-09-28, and their full text is in this file as it stood before `builder: cut Phase 2's
 landed entries in the tooling plan`. Those of Phase 3 (C71–C75, with C72a, C72b and C74a) were
 cut on 2026-09-30, and their full text is in this file as it stood before `builder: cut
-Phase 3's landed entries in the tooling plan`. A pointer below to a cut entry's Landed note means that
+Phase 3's landed entries in the tooling plan`. Those of Phase 4 (C76–C81, with C76a, C78a
+and C81a) were cut on 2026-09-30, and their full text is in this file as it stood before
+`builder: cut Phase 4's landed entries in the tooling plan`. A pointer below to a cut entry's
+Landed note means that
 text. Line numbers are the review's, at `fe9ce12b`, and move as the commits land.
 
 ### The organising idea
@@ -893,208 +896,68 @@ worth keeping.
 
 ### C76 — `render: split along its plugin seams`
 
-The strongest evidence. The image rule order matters and nothing says so (`svgInlinePlugin`
-at `:518` must run before `remoteImagePlugin` at `:520`); the ellipsis plugin assumes the
-dashes plugin has run (`:515-516`); the plugins anchor on a third-party rule name
-(`"curly_attributes"`); no plugin is tested alone; the two fence parsers sat 1,550 lines apart
-until C32 and C33. First each ordering becomes explicit and tested, with a probe that
-registers the plugins in the wrong order and fails; then the plugins move into modules along
-those seams.
-
-**Verify.** The tree comparison identical; each ordering probe fails with its order reversed.
-
-**Landed** as a comment fix, with no split. The three orderings were measured before any move,
-and none is a hidden dependency: see "Where the plan was wrong". The one difference a swap
-produced came from a defect in the ellipsis plugin, and C76a fixes it. `matchTocMarker`'s
-comment said the toc rule runs before `standalone-ial-attach`. It runs after `header-id`, and
-markdown-it-attrs puts `{:toc}` on the list, which `standaloneIalForwardPlugin` never moves.
-The comment says that now. The tree comparison is identical.
+Landed.
 
 ### C76a — `render: the ellipsis plugin counts each dot run where it is`
 
-**Found** while measuring C76's orderings. `kramdownEllipsisPlugin` pads a rendered `…` back
-out to the dots its source had, and it finds that run by stepping through the source one
-character per character of text. A two-dot run, which markdown-it also writes as `…`, a
-code span, a link destination or `<<` puts it out of step, and every later run in the
-paragraph comes out short: `.. and ....` rendered `… and …`, and `x.. y... z....` rendered
-`x… y… z…`.
-
-**Landed.** The plugin tracks no source now. A rule before `replacements` turns each dot
-past the third in a run of four or more into U+E000, which `.{2,}` does not match, and a
-rule straight after `replacements` turns them back into dots, in the tokens the first rule
-changed only. So each run is counted in the text token that holds it. A run after `?` or `!`
-is left alone, so markdown-it's `?..` stands, as before. The tree comparison is identical: no
-page held a run the old plugin miscounted. The new gate `test/render.test.mjs` (`node
---test`, 12 tests) pins the plugin on inputs no page holds. It is registered in `test.bat`,
-the composite action, Tools.md's list and WIP.md's table and bullet. With the hold rule
-faulted to leave the run as written (through the kit's `c43-fault.mjs`), 10 of the 12 fail,
-and the old plugin gave `… and …` for the two-dot case. CI must show a new step,
-`Unit-test the markdown plugins (test/render.test.mjs)`, and `check_ci_workflows`' count of
-the wrappers' gates one higher.
+**Carried forward.** `kramdownEllipsisPlugin` counts each dot run in the text token that
+holds it, tracking no source, and `test/render.test.mjs` (`node --test`) pins it on inputs no
+page holds. No page exercises the plugin's miscounting cases, so the tree comparison cannot
+see a regression there. Its CI step is among those listed under C80.
 
 ### C77 — `builder: tbdocs's Gantt and timing code moves beside gantt.mjs`
 
-`tbdocs.mjs:1268-1403` computes what `gantt.mjs` draws, and A1-1 is what the separation cost.
-Further candidates, taken on evidence: the `TASKS` literal, which mixes the graph's shape with
-the task bodies over 61 % of the file (`:260-1257`); `dispatch`'s `submit()`, which is SAB
-machinery (`:788-911`); the check glue (`:1085-1256`); the console report (`:1478-1525`).
-
-**Verify.** The tree comparison identical; the chart names the same tasks in the same rows.
-
-**Landed** as the grouping only. `GANTT_SECTION`, its section order, `CHECK_TASKS` and
-`groupGanttTimings` moved from `tbdocs.mjs` into `gantt.mjs`, beside the bands and colours
-they must agree with, which is the split A1-1 went wrong across. They are pure code over the
-scheduler's timings, so the chart can now be grouped and drawn without a build.
-`injectGanttChart` and `recheckInjected` stayed: they write the two trees and run the check,
-which is `tbdocs.mjs`'s work. The further candidates were not taken, because nothing but
-their size argues for them: `TASKS` holds the graph's shape and its bodies together by
-design, and `submit()`, the check glue and the console report each have one caller and
-change with it. Builder.md and Extending.md name `gantt.mjs` for `GANTT_SECTION` now. The
-tree comparison is identical but for those two pages and the search data, and the built
-chart's 31 main-thread labels, section headings included, are the same on both sides and in
-the same rows (the worker lanes' bars fall differently from one run to the next).
+**Carried forward.** `builder/gantt.mjs` exports `GANTT_SECTION` and `groupGanttTimings`,
+pure code over the scheduler's timings, so the chart can be grouped and drawn without a build; `injectGanttChart` and `recheckInjected` stay in
+`tbdocs.mjs`. Builder.md and Extending.md name `gantt.mjs` for `GANTT_SECTION`.
 
 ### C78 — `builder: template.mjs's date formatter moves to its own module`
 
-**A3-7 (R2).** After C53 and C54 take the URL and escape helpers, the strftime tables and
-`formatDate`/`parseDate` (`:940-989`) are the one job left in the file that is not
-templating. Its `navActivationCss` deferral (`PLAN-4.md` §3) is close to its trigger, and may
-remove more.
-
-**Verify.** The tree comparison identical, every formatted date included.
-
-**Landed** at the owner's choice (2026-09-30): `formatDate`, `parseDate` and the strftime
-tables moved word for word into `builder/strftime.mjs`, which exports `formatDate`, and
-Builder.md's module map has a row for it. The verification the entry names sees nothing:
-`renderFooterLegal` formats a date only for a page whose frontmatter sets
-`last_modified_date`, no page does, and the builder never sets it (PLAN-4.md's D14), so no
-build calls the formatter. The oracle is the kit's `c78-oracle.mjs`, which cuts HEAD's
-`formatDate` out of `template.mjs` and runs it beside the module's over 155,416 cases (a
-date every 7 h 13 min 17 s from 1999 to 2030, four strings, five non-dates, four formats
-holding every token) and two unknown tokens: none differ, and with `%j`'s padding faulted
-957 do. The tree comparison is identical but for Builder.md's page and the search data.
-Moving it showed that `%j` pads to two digits and counts across DST in local time; C78a
-fixes it.
+**Carried forward.** `builder/strftime.mjs` exports `formatDate`, and Builder.md's module
+map has a row for it. `renderFooterLegal` calls it only for a page whose frontmatter sets
+`last_modified_date`, which no page does, so no build exercises it and the tree comparison
+cannot see a change to it. `test/strftime.test.mjs` (C78a) is what does.
 
 ### C78a — `builder: strftime's %j is the calendar day, in three digits`
 
-**Found** while moving the formatter in C78. `%j` padded the day of the year to two digits
-(`45` for 14 February, which strftime writes `045`), and it divided the time since the
-year's start by a day's length in local time, so a date past a DST change came out a day
-early at some times of day. The site's format does not use `%j`, and no build calls the
-formatter (see C78), so nothing shipped wrong. Fixed at the owner's choice (2026-09-30).
-
-**Landed.** `%j` counts calendar days between two `Date.UTC` values built from the date's
-local year, month and day, and pads to three digits. The new gate `test/strftime.test.mjs`
-(`node --test`, 4 tests) calls `formatDate` directly: the site's format, `%j` on four dates,
-`%j` at 00:00 and 23:59 of 36 days, an unknown token and non-dates. Run against C78's code, the
-two `%j` tests fail; the second failed on this machine's time zone, which has DST. It is
-registered in `test.bat`, the composite action, Tools.md's list, both POSIX blocks and
-WIP.md's table and bullet. The tree comparison is identical but for the Tools and Building
-pages, the search data and the book. CI must show a new step, `Unit-test the date formatter
-(test/strftime.test.mjs)`.
+**Carried forward.** `formatDate`'s `%j` is the calendar day, in three digits, and the gate
+`test/strftime.test.mjs` (`node --test`) calls `formatDate` directly. Its CI step is among
+those listed under C80.
 
 ### C79 — `builder: book.mjs as a resolver, an assembler and a coverage check`
 
-Its §A resolver, its §B–F assembly of `book.html` (with `rewriteBookHrefs`) and its §G
-coverage check are separate concerns, and `pdf.mjs` already imports them as though they were
-separate modules.
-
-**Verify.** The tree comparison identical, `book.html` above all; `check_book_coverage.mjs`
-passes.
-
-**Landed** as a move inside the file, with no split, at the owner's choice (2026-09-30): the
-evidence is size alone (see "Where the plan was wrong"). `IMG_SRC_RE_BOOK`,
-`collectImagePaths` and `decodeUrlPath` sat in §A, the resolver, and only §D's
-`emitChapter` calls them; they moved word for word to the head of §D. The comment on the
-code guard above them describes §C's attribute rewrites, and moved to the head of §C. The
-tree comparison is identical, `book.html` included.
+Landed.
 
 ### C80 — `scripts: check_examples' bisection and probe suite in their own modules`
 
-Eight jobs share one file; bisection (`:657-927`, 270 lines in 14 functions) and the 425-line
-probe suite (`:1157-1581`) are the clearest to separate. `gen_attribute_probes.mjs` is not a
-candidate: half of it is its own data table.
-
-**Verify.** `check_examples.mjs --census` and the `examples.bat` summary unchanged (a harness
-run).
-
-**Landed** at the owner's choice (2026-09-30) as one module and a new gate (see "Where the
-plan was wrong"). `scripts/lib/example-batches.mjs` holds what the probes call and the
-probes: `joinConcatGroups`, the batching, the canaries, crash isolation from `crashedIn` to
-`runBatch`, `sectionOf`, `diagKind`, `unresolvedName` and `runProbes`, 1,103 lines moved
-word for word. The lane that stages and builds for real (`stageBatch`, `buildStaged`,
-`laneOf`, `runAll`) stays in `check_examples.mjs`, with everything else that reads the
-command line. Three things changed in the moved code. `makeBatches` takes `{ batchSize,
-jobs }`, defaulting to the new `DEFAULT_BATCH` and `DEFAULT_JOBS`, which the tool's own
-defaults now use. `runProbes` takes `say`. Two dynamic imports gained a `../`. So `--census
---batch 1` passes its probes now (see Found). The tool still runs the probes before every
-run. The new gate `test/example-batches.test.mjs` (`node --test`, one test, ~0.4 s) runs them
-too. It is registered in `test.bat`, the composite action, Tools.md's list, section and
-POSIX block, Building.md's POSIX block, and WIP.md's table, bullet and count. Tools.md's
-`check_examples` section and WIP.ExamplesBuild.md name the module. With `splitBatch` faulted
-to drop the hidden context, and with `makeBatches` faulted to a target of 1, it fails
-naming the probe.
-
-Registering it found the roster gates blind to a hyphen (see Found). The three name patterns
-allow one now. Three new probes in `check_gate_lists` (a hyphenated test, a hyphenated
-script, both listed) bring it to 24. With the hyphen taken out of the list reader, the list
-reader's test half, or `gate-roster.mjs`, a probe fails each time. The command-block
-reader has no probes. With its hyphen taken out, only the real POSIX blocks catch it, and
-only for a test file.
-
-`--census` is byte-identical (sha1 `d90a5e44c260`, 137 probes, 1,187 fences, 1,136 marked).
-`examples.bat`: `1136 sample(s) from 598 page(s) in 43 project(s), 4 lane(s), BETA 987`,
-`1136 compile, 0 finding(s), 146.3s -- clean`.
-`check_regex_safety` still reads 36 constructed and 12 not resolvable, in 138 files.
-`check_gate_lists: check.bat (4) + test.bat (19)`; `check_ci_workflows: ... the wrappers'
-22 gates`. The tree comparison is identical but for the Tools and Building pages, the search
-data and the book. CI must show a new step, `Unit-test check_examples' batches
-(test/example-batches.test.mjs)`, and the count of the wrappers' gates one higher.
+**Carried forward.** `scripts/lib/example-batches.mjs` holds the batching (`makeBatches`,
+which takes `{ batchSize, jobs }` and defaults to `DEFAULT_BATCH` and `DEFAULT_JOBS`), the
+canaries, crash isolation (`crashedIn` to `runBatch`), `sectionOf`, `diagKind`,
+`unresolvedName` and `runProbes(say)`; the lane that stages and builds (`stageBatch`,
+`buildStaged`, `laneOf`, `runAll`) stays in `check_examples.mjs`. The gate
+`test/example-batches.test.mjs` runs the probes with no IDE. **The owner's next push is the
+first CI run of the three `node --test` steps this phase added**, `Unit-test the markdown
+plugins (test/render.test.mjs)`, `Unit-test the date formatter (test/strftime.test.mjs)` and
+`Unit-test check_examples' batches (test/example-batches.test.mjs)`, and of the wrappers' 22
+gates as `check_ci_workflows` counts them.
 
 ### C81 — `scripts: tb-ide's console reading and add-in introspection move out`
 
-Both separate cleanly from the build-state core, which stays together.
-
-**Verify.** `addin-test.bat` green and the `examples.bat` summary unchanged (harness runs, one
-at a time).
-
-**Landed** at the owner's choice (2026-09-30), against a recommendation not to split (see
-"Where the plan was wrong"). `scripts/lib/tb-ide-console.mjs` holds the console reading,
-`consoleJs` to `keptClears` (164 lines), and `scripts/lib/tb-ide-addins.mjs` holds
-`loadedAddins`, `addinsRoot` and `checkAddinsRoot` (49 lines), both moved word for word by line
-range. `tb-ide.mjs` is 714 lines, down from 928, and imports `consoleMark` and `linesSince` for
-`buildProject`. `tb-ide-addins.mjs` imports `normPath` from `tb-ide.mjs`, so there is no
-cycle. Nothing re-exports the moved names. The importers now import from the new modules:
-`tbrun`, `tb-operate`, `tb-addin`, `tb-lane` and the eight add-in tests. A source check
-resolved all 96 names imported from the three modules. The citations in WIP.Harness.md,
-WIP.HelpAddin.md and three comments name the new module, and Tools.md's `tbbuild` section
-counts six library files, with `tb-ide-console.mjs` among them. `check_regex_safety` still
-reads 36 constructed and 12 not resolvable, in 140 files.
-
-`addin-test.bat`: `10 of 10 lane(s) ran: 10 passed`, `registry: put back (20 project-state,
-21 recent-list and 3 association writes)`. `examples.bat`: `1136 sample(s) from 598 page(s)
-in 43 project(s), 4 lane(s), BETA 987`, `1136 compile, 0 finding(s), 148.0s -- clean`, on a
-second run; the first stopped on a port held too long, which is not this move's (see Found,
-C81a). `tbrun` on a probe printing two lines: exit 0, both lines. The tree comparison is
-identical but for the Tools page, the search data and the book.
+**Carried forward.** `scripts/lib/tb-ide-console.mjs` holds the console reading
+(`readConsole`, `consoleMark`, `linesSince`, `keepClears`, `keptClears`) and
+`scripts/lib/tb-ide-addins.mjs` holds `loadedAddins`, `addinsRoot` and `checkAddinsRoot`;
+`tb-ide.mjs` re-exports neither, and its importers take the names from the new modules.
+Tools.md's `tbbuild` section counts six library files, `tb-ide-console.mjs` among them; no
+page under `docs/` names `tb-ide-addins.mjs`, and WIP.Harness.md and WIP.HelpAddin.md cite
+both modules.
 
 ### C81a — `scripts: launchIde's port refusal names what holds the port`
 
-**Landed** at the owner's choice (2026-09-30), for the Found item on a port held too long.
-`portTaken` resolves to the bind's error code, or null when the port is free. When the 10 s
-wait runs out, `launchIde` asks the new `portListeners` (netstat, then tasklist) which
-processes listen on the port. If any do, the refusal names them, as `pid 1234 (name.exe)`,
-in the old message. If none do, it says the port cannot be bound, gives the error code, and
-names `netsh int ipv4 show excludedportrange protocol=tcp`, since Windows refuses a port it
-has reserved with `EACCES`. If netstat fails, the holder reads as a process netstat could not
-name, with the error code. No gate covers it: the refusal runs Windows' netstat and
-tasklist, and CI runs on Linux with no IDE. The kit's `c81a-port.mjs` checks all three with an exe that does not exist: `listen` (the
-script holds the port: it names its own pid and `node.exe`), `reserved` (`c43-fault.mjs`
-makes the bind fail with `EACCES`) and `nonetstat` (the fault renames netstat). Each refuses
-after about 10 s with the expected message. `check_regex_safety` reads one more literal (550),
-still 36 constructed and 12 not resolvable. `addin-test.bat`: `10 of 10 lane(s) ran: 10
-passed`, registry put back. `examples.bat`: `1136 compile, 0 finding(s), 126.7s -- clean`.
+**Carried forward.** When `launchIde` (`scripts/lib/tb-ide.mjs`) finds its DevTools port
+still taken after 10 s, its refusal names what holds the port, through `portListeners`
+(netstat, then tasklist), or reports the bind's error code and points at `netsh int ipv4 show
+excludedportrange protocol=tcp` when nothing listens. No gate covers it, since it runs
+Windows' netstat and CI has no IDE.
 
 ## Phase 5: documentation and measurement
 
