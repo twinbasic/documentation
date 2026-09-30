@@ -27,8 +27,10 @@ export function formatDate(input, format) {
       case "H": return pad2(d.getHours());
       case "I": return pad2(((d.getHours() + 11) % 12) + 1);
       case "j": {
-        const start = new Date(d.getFullYear(), 0, 0);
-        return pad2(Math.floor((d - start) / 86400000));
+        // Calendar days, counted in UTC so a DST change cannot shorten one.
+        const day = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+        const n = (day - Date.UTC(d.getFullYear(), 0, 1)) / 86400000 + 1;
+        return String(n).padStart(3, "0");
       }
       case "m": return pad2(d.getMonth() + 1);
       case "M": return pad2(d.getMinutes());

@@ -68,6 +68,11 @@ node --test test/search.test.mjs
 @rem fails. No tree, no browser, well under a second.
 node --test test/render.test.mjs
 @if errorlevel 1 goto :fail
+@rem Unit tests for builder/strftime.mjs, the footer's date formatter,
+@rem which no build calls today because no page sets a date for it.
+@rem No tree, no browser, well under a second.
+node --test test/strftime.test.mjs
+@if errorlevel 1 goto :fail
 @rem A regex that backtracks exponentially is a hang waiting for the
 @rem right input, and nothing that reads the site can see it: the corpus
 @rem passes until some page happens to contain the trigger, and then the

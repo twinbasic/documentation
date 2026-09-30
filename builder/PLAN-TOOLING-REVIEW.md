@@ -976,6 +976,24 @@ holding every token) and two unknown tokens: none differ, and with `%j`'s paddin
 Moving it showed that `%j` pads to two digits and counts across DST in local time; C78a
 fixes it.
 
+### C78a — `builder: strftime's %j is the calendar day, in three digits`
+
+**Found** while moving the formatter in C78. `%j` padded the day of the year to two digits
+(`45` for 14 February, which strftime writes `045`), and it divided the time since the
+year's start by a day's length in local time, so a date past a DST change came out a day
+early at some times of day. The site's format does not use `%j`, and no build calls the
+formatter (see C78), so nothing shipped wrong. Fixed at the owner's choice (2026-09-30).
+
+**Landed.** `%j` counts calendar days between two `Date.UTC` values built from the date's
+local year, month and day, and pads to three digits. The new gate `test/strftime.test.mjs`
+(`node --test`, 4 tests) calls `formatDate` directly: the site's format, `%j` on four dates,
+`%j` at 00:00 and 23:59 of 36 days, an unknown token and non-dates. Run against C78's code, the
+two `%j` tests fail; the second failed on this machine's time zone, which has DST. It is
+registered in `test.bat`, the composite action, Tools.md's list, both POSIX blocks and
+WIP.md's table and bullet. The tree comparison is identical but for the Tools and Building
+pages, the search data and the book. CI must show a new step, `Unit-test the date formatter
+(test/strftime.test.mjs)`.
+
 ### C79 — `builder: book.mjs as a resolver, an assembler and a coverage check`
 
 Its §A resolver, its §B–F assembly of `book.html` (with `rewriteBookHrefs`) and its §G

@@ -71,7 +71,7 @@ One of the four does not mean the same thing locally as it does in CI, on any pl
 
     test.bat
 
-The tests the toolchain has to pass. Seventeen steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Eighteen steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
 2. [`scripts/check_gate_lists.mjs`](#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
@@ -79,17 +79,18 @@ The tests the toolchain has to pass. Seventeen steps, each stopping the run if i
 4. [`scripts/check_lint.mjs`](#check-lint) --- runs Biome over the tooling and fails on any finding, warnings included.
 5. [`test/search.test.mjs`](#search-test) --- unit tests for the site search: what the search entries hold, and that the copies of the search client agree.
 6. [`test/render.test.mjs`](#render-test) --- unit tests for the markdown-it plugins, on inputs no page holds.
-7. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
-8. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span, that the rewrites over rendered HTML leave a raw `<pre>` or `<code>` alone, and that `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes.
-9. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
-10. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
-11. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
-12. [`scripts/check_twin_parsers.mjs`](#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
-13. [`scripts/check_attribute_sweep.mjs`](#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
-14. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
-15. [`scripts/check_pdf_shims_equiv.mjs`](#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, and run.
-16. [`scripts/check_impexp_parity.mjs`](#check-impexp-parity) --- verifies the two editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI.
-17. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+7. [`test/strftime.test.mjs`](#strftime-test) --- unit tests for the footer's date formatter, which no build calls.
+8. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
+9. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span, that the rewrites over rendered HTML leave a raw `<pre>` or `<code>` alone, and that `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes.
+10. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
+11. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
+12. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
+13. [`scripts/check_twin_parsers.mjs`](#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
+14. [`scripts/check_attribute_sweep.mjs`](#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
+15. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
+16. [`scripts/check_pdf_shims_equiv.mjs`](#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, and run.
+17. [`scripts/check_impexp_parity.mjs`](#check-impexp-parity) --- verifies the two editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI.
+18. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
@@ -99,6 +100,7 @@ POSIX:
       && node scripts/check_lint.mjs \
       && node --test test/search.test.mjs \
       && node --test test/render.test.mjs \
+      && node --test test/strftime.test.mjs \
       && node scripts/check_regex_safety.mjs \
       && node scripts/check_code_regions.mjs \
       && node scripts/check_page_baseline.mjs \
@@ -113,7 +115,7 @@ POSIX:
 
 Exit codes: **0** every step passed; otherwise the code of the step that stopped the run, as that step's entry gives it.
 
-**Fourteen of the seventeen cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all seventeen unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
+**Fifteen of the eighteen cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all eighteen unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
 
 The three exceptions are [`check_code_regions.mjs`](#check-code-regions), [`check_gate_lists.mjs`](#check-gate-lists), which reads this page, and [`check_lint.mjs`](#check-lint), which lints the site's scripts in `docs/assets/js/`. The first is worth knowing in detail. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes are a different matter: they run against their own sources whatever the tree holds, and they cover the *mirror* fault, where a rewrite silently stops firing. The sweep cannot see that one --- text the rewrite skipped is stashed and restored unchanged, so every region still matches. Add a page with an unusual code construct and run `test.bat`, but read the built page too.
 
@@ -550,6 +552,15 @@ Exit codes: **0** every test passed, **1** a test failed.
     node --test test/render.test.mjs
 
 Unit tests for the markdown-it plugins in `builder/render.mjs`, run by Node's own test runner through the site's own `createMarkdownIt`. The build compares whole pages, so a plugin that is wrong only on input no page holds passes it; these tests give each plugin such input. They cover the ellipsis plugin, which keeps the dots past the third in a run such as `....`, next to code spans, dashes, guillemets, quotes and autolinks. No browser, no built tree, well under a second.
+
+Exit codes: **0** every test passed, **1** a test failed.
+
+### strftime.test.mjs
+{: #strftime-test }
+
+    node --test test/strftime.test.mjs
+
+Unit tests for `builder/strftime.mjs`, which formats the "Page last modified" line in a page's footer. That line is written only for a page that sets `last_modified_date`, and no page does, so no build calls the formatter and the build's output cannot catch a fault in it. These call it directly: the site's own format, the day of the year, an unknown token and a value that is not a date. No browser, no built tree, well under a second.
 
 Exit codes: **0** every test passed, **1** a test failed.
 
