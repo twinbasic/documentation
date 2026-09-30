@@ -1073,6 +1073,23 @@ double quotes, as `builder/`, `scripts/`, `test/` and `eval/` use, where `book/`
 **Verify.** The formatter's check runs clean on its own configuration and lists the files C86
 will change.
 
+**Landed.** `biome.jsonc` switches the formatter on: two-space indent, `lineWidth` 120, LF,
+double quotes, semicolons always, trailing commas `all` (`es5` in the override for
+`docs/assets/js/`, whose scripts ship as written), arrow parentheses always, bracket spacing.
+Each setting was measured by formatting a scratch worktree and counting the lines changed:
+from 13,597 added and 7,222 removed at these settings, every single alternative tried changes
+more (four-space indent or tabs ~75k lines, single quotes ~33k, semicolons as needed ~49k,
+trailing commas `none` ~22k; `es5` ties within three lines). The width was the owner's choice
+(2026-09-30) between 80 (~34.5k lines), 100 (~25.3k), 120 (~20.8k) and 160 (~17.8k): comments
+are hand-wrapped at 80, where the tree's line lengths fall off a cliff, but code shows no hand
+limit, and 98.5% of the scope's 55,122 lines already fit in 120. Biome was already pinned
+exact since C05, so `package.json` is unchanged; Builder.md's Dependencies now call it the
+linter and formatter, and its pin's reason covers a layout change. The config is formatted by
+itself (one array wrapped). `biome format` flags 162 of the 185 files in scope. Nothing checks
+formatting yet, and the lint gate is unchanged (`Checked 185 files`). At the owner's choice,
+the densest literal tables keep their hand layout through `biome-ignore format` comments, in
+a commit of their own before C86 so that C86 stays mechanical.
+
 ### C86 — `format: apply the formatter`
 
 Mechanical, and nothing else.
