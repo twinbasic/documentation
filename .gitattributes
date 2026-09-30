@@ -3,3 +3,8 @@
 # Windows checkout, say -- hands the hook to the kernel, which reads the
 # carriage return after #!/bin/sh as part of the interpreter's name.
 .githooks/* text eol=lf
+
+# The Workflow tool refuses a script that contains a carriage return, and the
+# Wisdom extract script is passed to it by path, so a CRLF checkout of it
+# cannot be run.
+wisdom/extract/workflow.mjs text eol=lf
