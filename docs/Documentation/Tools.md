@@ -71,7 +71,7 @@ One of the four does not mean the same thing locally as it does in CI, on any pl
 
     test.bat
 
-The tests the toolchain has to pass. Fifteen steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Sixteen steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
 2. [`scripts/check_gate_lists.mjs`](#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
@@ -84,10 +84,11 @@ The tests the toolchain has to pass. Fifteen steps, each stopping the run if it 
 9. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
 10. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
 11. [`scripts/check_twin_parsers.mjs`](#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
-12. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
-13. [`scripts/check_pdf_shims_equiv.mjs`](#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, and run.
-14. [`scripts/check_impexp_parity.mjs`](#check-impexp-parity) --- verifies the two editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI.
-15. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+12. [`scripts/check_attribute_sweep.mjs`](#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
+13. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
+14. [`scripts/check_pdf_shims_equiv.mjs`](#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, and run.
+15. [`scripts/check_impexp_parity.mjs`](#check-impexp-parity) --- verifies the two editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI.
+16. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
@@ -102,6 +103,7 @@ POSIX:
       && node scripts/check_book_coverage.mjs \
       && node scripts/check_symbol_index.mjs \
       && node scripts/check_twin_parsers.mjs \
+      && node scripts/check_attribute_sweep.mjs \
       && node scripts/check_cli.mjs \
       && node scripts/check_pdf_shims_equiv.mjs \
       && node scripts/check_impexp_parity.mjs \
@@ -109,7 +111,7 @@ POSIX:
 
 Exit codes: **0** every step passed; otherwise the code of the step that stopped the run, as that step's entry gives it.
 
-**Twelve of the fifteen cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all fifteen unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
+**Thirteen of the sixteen cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all sixteen unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
 
 The three exceptions are [`check_code_regions.mjs`](#check-code-regions), [`check_gate_lists.mjs`](#check-gate-lists), which reads this page, and [`check_lint.mjs`](#check-lint), which lints the site's scripts in `docs/assets/js/`. The first is worth knowing in detail. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes are a different matter: they run against their own sources whatever the tree holds, and they cover the *mirror* fault, where a rewrite silently stops firing. The sweep cannot see that one --- text the rewrite skipped is stashed and restored unchanged, so every region still matches. Add a page with an unusual code construct and run `test.bat`, but read the built page too.
 
@@ -588,6 +590,19 @@ The modifier words that may precede a declaration keyword are one list, in `scri
 
 Exit codes: **0** every probe passed, **1** a probe failed, **2** the gate could not run: a refused command line, or a crash.
 
+### check_attribute_sweep.mjs
+{: #check-attribute-sweep }
+
+    node scripts/check_attribute_sweep.mjs
+
+Verifies the logic of [`sweep_attributes.mjs`](#sweep-attributes), the tool that asks the compiler where every attribute is legal. None of that tool's failures announces itself: a site skeleton that is wrong reads as "every attribute is refused here", a control the classifier ignores reads as a recognised attribute, and a refusal taken for an acceptance is published as a finding about the compiler. The IDE is what cannot run here, so the parts that decide what an answer *means* live in `scripts/lib/attribute-sweep.mjs` and `scripts/lib/attribute-sites.mjs`, and every probe is a fixed input: no IDE, no built tree and no twinBASIC install. Under a second.
+
+The probes cover, in turn: the site skeletons --- what each renders, that the attribute lands on the line `attributeLine` names, that every name a skeleton declares belongs to its probe alone, that a `$&` in an attribute is written literally, and that every site is in a family of `Applicable to:` targets or is listed in the gate as being in none, so a new site is a decision and not an accident; how a probe's diagnostics are read, including which refusal wins, what counts as accepted, the errors a skeleton draws by itself, and what the control's fold does and does not fold; which probe each of the compiler's rows belongs to; the argument shapes each name is tried in, and the batches, in which every probe appears once and none holds two of an attribute the compiler allows once per project; how probes become one cell per site, where a form nobody built and the `(False)` form must not decide the answer; and how an `Applicable to:` line is read and laid against the cells, including every `Applicable to:` line the page has, each pinned to the targets it reads to. The runner that isolates what goes wrong is probed with a scripted fake in place of the IDE, which is what lets a crash that names the probe, one that names an innocent one, one that needs two probes together, a hang, a disturbed canary, a stray error row and a build that could not run each be checked, along with the cap on every one of them; so are the preflight's verdict on a site and the comparison `--verify` makes.
+
+The probes were checked the way a gate should be, by breaking the code they guard: twenty-three injected faults, one at a time, each failing at least one probe.
+
+Exit codes: **0** every probe passed, **1** a probe failed, **2** the gate could not run: a refused command line, or a crash.
+
 ### check_cli.mjs
 {: #check-cli }
 
@@ -770,9 +785,9 @@ twinBASIC has no command-line build. The compiler executable's whole surface is 
 
 **The IDE it starts ends with it.** The IDE runs inside a Windows job object, so when `tbbuild` ends --- finished, failed, or stopped with Ctrl+C --- every process the IDE started ends too. That includes a compiler the IDE was restarting after a crash, which a plain process-tree kill can miss and leave running. Two exceptions: under `--keep` the IDE runs outside the job and lives until you close it, and under `--show` it is started directly on your desktop, without the job.
 
-**It leaves the IDE's own settings as it found them.** Every IDE it starts writes to the same registry keys as your own IDE: a saved state for the project (open tabs, watch expressions, Debug Console history), a place at the top of the recent-projects list, and, when the run switches the target, the target the IDE remembers for the project. Once the IDE has exited, `tbbuild` puts all three back. An entry the run created is deleted, and a project that already had one --- one of your own --- gets its old state, its old place in the list and its old target back. The `.twinproj` file association is restored too, if the IDE changed it. When [`check_examples.mjs`](#check-examples) runs `tbbuild`, `check_examples` does this once for all its lanes instead.
+**It leaves the IDE's own settings as it found them.** Every IDE it starts writes to the same registry keys as your own IDE: a saved state for the project (open tabs, watch expressions, Debug Console history), a place at the top of the recent-projects list, and, when the run switches the target, the target the IDE remembers for the project. Once the IDE has exited, `tbbuild` puts all three back. An entry the run created is deleted, and a project that already had one --- one of your own --- gets its old state, its old place in the list and its old target back. The `.twinproj` file association is restored too, if the IDE changed it. When [`check_examples.mjs`](#check-examples) or [`sweep_attributes.mjs`](#sweep-attributes) builds many projects, it does this once for all its lanes instead.
 
-Four files under `scripts/lib/` belong to it and are never run directly. `tb-ide.mjs` holds the mechanics `tbbuild.mjs` and `tbrun.mjs` share: starting the IDE, attaching to it, waiting for the compile, and reading the diagnostics and the DEBUG CONSOLE. `tb-registry.mjs` records and restores the registry entries described above, through .NET's registry API by way of PowerShell, because `reg.exe` mangles any path holding a character outside the console code page; [`check_tb_registry.mjs`](#check-tb-registry) is its self-test. `tb-cdp.mjs` is a minimal CDP client over Node's global `WebSocket`, raw rather than puppeteer because a pending `alert()` blocks the renderer and puppeteer's `connect()` handshake talks to the renderer --- so it hangs on precisely the state you need to recover from. Every call it makes has a time limit, so a blocked page ends a run with a message rather than holding it forever. `tb-launch.ps1` holds the Win32 calls Node cannot make without a native FFI addon: `CreateDesktop` and `CreateProcess` with `STARTUPINFO.lpDesktop` for the private desktop, and the job object described above. It is the only PowerShell file under `scripts/`, and it is not executed as a file: `tb-ide.mjs` reads the text and passes it through `-EncodedCommand`, so the execution policy never comes into it and nobody has to be told to bypass one.
+Five files under `scripts/lib/` belong to it and are never run directly. `tb-build.mjs` is `tbbuild` without its command line: `compileProject` opens a project in the IDE and returns its diagnostics as an array, which is how `check_examples.mjs` and `sweep_attributes.mjs` build many projects without starting a process for each. It never exits the process and never tidies the registry, so its caller owns both. `tb-ide.mjs` holds the mechanics `tb-build.mjs` and `tbrun.mjs` share: starting the IDE, attaching to it, waiting for the compile, and reading the diagnostics and the DEBUG CONSOLE. `tb-registry.mjs` records and restores the registry entries described above, through .NET's registry API by way of PowerShell, because `reg.exe` mangles any path holding a character outside the console code page; [`check_tb_registry.mjs`](#check-tb-registry) is its self-test. `tb-cdp.mjs` is a minimal CDP client over Node's global `WebSocket`, raw rather than puppeteer because a pending `alert()` blocks the renderer and puppeteer's `connect()` handshake talks to the renderer --- so it hangs on precisely the state you need to recover from. Every call it makes has a time limit, so a blocked page ends a run with a message rather than holding it forever. `tb-launch.ps1` holds the Win32 calls Node cannot make without a native FFI addon: `CreateDesktop` and `CreateProcess` with `STARTUPINFO.lpDesktop` for the private desktop, and the job object described above. It is the only PowerShell file under `scripts/`, and it is not executed as a file: `tb-ide.mjs` reads the text and passes it through `-EncodedCommand`, so the execution policy never comes into it and nobody has to be told to bypass one.
 
 Exit codes: **0** the project compiled without errors; **1** the project has errors; **2** a refused command line (a path that is not a `.twinproj` included), no IDE, an IDE that did not start or expose a debug port, or a crash; **3** the compile never settled: the IDE did not report the project open, or its diagnostics did not match its status bar; **4** the project crashes the compiler.
 
@@ -994,7 +1009,7 @@ usually run, and [Authoring Pages](Authoring#checking-that-a-sample-compiles) is
 sample opts in.
 
 Each marked sample is generated into its own `Module tbx_<hash>`, packed with a template
-project, and handed to [`tbbuild.mjs`](#tbbuild). A diagnostic comes back against a
+project, and built the way [`tbbuild.mjs`](#tbbuild) builds. A diagnostic comes back against a
 generated file and a generated line; the report converts both, so what you read is the page
 and the line in it:
 
@@ -1058,6 +1073,10 @@ is O(log n) extra builds. A crash can also need several samples at once, so that
 the batch crashes by itself. The samples it needs are then searched for as a set, and all
 of them are reported. The cost is paid only on failure. The finding names the sample, or
 the set, and points at `BUGS-TO-REPORT.md`.
+
+**A batch can report nothing when it should report something.** `tbbuild` does not wait for a build: it reads the IDE's own window, the status bar and the Problems panel for the project the IDE has open, once the compiler's status reads OPERATIONAL and has stopped changing. An IDE under load can be OPERATIONAL with an empty panel before it has published its diagnostics, and a batch read then reports every sample as compiling, which looks exactly like a batch with nothing wrong. So every batch carries a canary: a module holding a `#Warning` directive, whose warning (`TB0005`) is known. A read with no errors in it must report the canary, or it is not believed. The module carries `[EnforceWarnings(TB0005)]`, so a project setting that ignores the warning, or turns it into an error, does not change it. The warning is reported whatever else the batch holds: unterminated blocks, stray `End` statements, broken classes and many undefined names in other files do not hide it. It is a warning rather than an error so that a batch with nothing wrong still builds clean. A batch that crashes the compiler reports nothing at all and is isolated as a crash; its canary is never read.
+
+The canary proves only that the IDE published something, not that it published everything: a read that includes the canary but not a sample's later diagnostics would still pass that sample. So a read that holds real errors needs no canary --- the IDE was plainly not silent --- and is taken as read, whatever the canary did. Real errors here are errors in the batch's samples, and errors outside every sample that the template does not draw by itself; a template's own errors do not count, or a template that always draws one would switch the canary off for every batch built from it. A canary missing beside real errors has never been seen, and is printed as a note if it happens. A read with no errors and no canary is built once more, because a read that came too early says nothing about the batch. If it is silent again, the batch is split in half repeatedly, as for a crash, until each part reports the canary or errors of its own. A single unit --- one sample, or a group compiled as one program --- that is still silent stops the run with exit code 2 and its name, because its clean result cannot be trusted and it is not blamed for errors nobody saw. The template built with no samples, which is how the tool learns the errors a template draws by itself, follows the same rule: it needs its canary only if it has no errors, is read again when it is silent, and stops the run when it is silent twice.
 
 **A sample can be compiled against a file.** A fence carrying `resource=<project-relative
 path>` --- in any language, typically ` ```json ` --- is written into the generated project at
@@ -1140,6 +1159,52 @@ Grouping is by enclosing construct *and* declaration keyword, because the keywor
 The report ends with what the scanner could not resolve, and **that section is expected to be empty**. A census that quietly buckets its own confusion publishes a wrong number with nothing to notice it by, so an unresolved site is reported as a scanner bug rather than absorbed. Reaching zero took handling several things this corpus does that a simpler sweep gets wrong: attributes spanning lines (`[Description("..." & vbCrLf & _` accounts for 3.8% of all attribute lines), comma-separated lists, arguments containing commas, escaped identifiers that look exactly like attributes (`[_HiddenModule].Foo`, and Enum members genuinely named `[A4 Portrait]`), comments in four different positions, and block-tracking traps such as a UDT field called `Type As Long` or a module named `[_HiddenModule]`.
 
 Exit codes: **0** the report was produced, **2** a refused command line, no install, an install with no compiler or no package project, or a crash (a package that fails to export is left out of the census).
+
+### sweep_attributes.mjs
+{: #sweep-attributes }
+
+    node scripts/sweep_attributes.mjs [--ide <twinBASIC.exe>] [--names <a,b,...>] [--sites <a,b,...>]
+                                      [--forms bare|smart|all] [--no-tokens] [--jobs <n>] [--port <n>]
+                                      [--batch-size <n>] [--verify <n>] [--out <file>]
+                                      [--dump-results <file>] [--work <dir>] [--keep] [--preflight]
+                                      [--dry-run] [--list-sites] [--show | --hide] [--timeout <secs>]
+
+Asks the compiler where every attribute is legal. It writes each attribute name at each declaration site --- a Module, a Class member, an API `Declare`, a Type field, a parameter, an `Implements ... Via` statement, and so on --- in each argument shape, builds the projects the way [`tbbuild.mjs`](#tbbuild) does, and lays the answers against the `Applicable to:` lines in `Reference/Attributes.md`. The report lists the documented targets the compiler refuses, the targets that hold only partly, and the sites it accepts that the page never mentions.
+
+It exists because the two older tools each leave a gap. [`census_attributes.mjs`](#census-attributes) says where the shipped packages *use* an attribute, and [`gen_attribute_probes.mjs`](#gen-attribute-probes) probes only the targets the page already *claims*, so an entry that is too short stays too short. `[ComExport]` was documented as "constants in a Module" because a Sub and a Const were the two targets tried; an API `Declare` never was. This tool asks every question, so a missing target shows up as a row of the report and not as something a person has to think of.
+
+The names come from three places: every entry in `Attributes.md`, every name in the compiler's own token table (a long pipe-separated string in the compiler binary, holding keywords, attributes and object members together), and `--names`. A token-table name is a *candidate*: it is called an attribute only if some site accepts it. `Debug` and `ExecuteHostCommand` are in the table and neither is one.
+
+**How an answer is made readable.** A clean build is not proof by itself, so the tool guards against the ways one goes wrong:
+
+- **Baselines.** Every site is built with no attribute first, and one that does not build clean is voided, so a wrong skeleton cannot read as "every attribute is refused here".
+- **Controls.** TB5155 and TB5182 do not separate "wrong place" from "no such attribute". An invented name is built at every site, and a probe that draws exactly what the control draws is a refusal whatever its code. A site whose control compiles is voided.
+- **Canaries.** Three probes (one clean, one refused for context, one unknown) ride in every batch. What they must draw is fixed in the script, not read from a build, and the tool builds them alone first and stops unless they draw it. A batch whose canaries differ, or that holds an error row belonging to no probe, is halved rather than believed. That is what would catch a compiler that stops reporting after so many errors, or a syntax error that suppresses the diagnostics of other files.
+- **Isolation.** Halving also finds the probe behind a compiler crash or hang, and a crash that needs several probes together is reported as such.
+- **Batching.** Batches are shuffled, and an attribute the compiler allows once per project (`[RunAfterBuild]`) goes in one probe to a batch, or its TB5114 would read as acceptance.
+- **`--verify N`** rebuilds N random probes in fresh batches and compares.
+
+| Flag | Effect |
+|---|---|
+| `--names`, `--sites` | Restrict to these attribute names (any case) or site ids. `--list-sites` prints the ids. |
+| `--forms` | `bare`, `smart` (the default) or `all`. Smart gives every documented attribute every argument shape, a token-table name its bare form, and more shapes only where a site recognised it. A shape known to be required is always tried. |
+| `--no-tokens` | Leave out the token table. |
+| `--jobs`, `--port` | Concurrent IDE lanes (default 4) and the first DevTools port; a lane uses one more each (default 9560). |
+| `--batch-size` | Probes per project (default 400). |
+| `--verify N` | Rebuild N random probes and compare. |
+| `--out <file>` | Write the Markdown report there. Without it the report goes to standard output. |
+| `--dump-results <file>` | Also write every result, raw, as JSON: each name at each site with the answer for each argument shape. |
+| `--work`, `--keep` | Where projects are staged, which must be under the system temp folder, and whether to keep them. |
+| `--preflight` | Build only the canaries, baselines and controls, and stop. About 20 seconds, and the way to check a change to a site. |
+| `--dry-run` | Count the probes and build nothing. |
+
+**An Enum member cannot be tested.** An Enum body accepts any attribute written on its own line, including one that applies nowhere, and refuses every attribute written inline, so the site is voided and a target on an Enum member is reported as one the sweep could not test.
+
+**A clean build says the compiler accepts an attribute at a site.** It does not say the attribute does anything, and the IDE's background compile is what is read, so a check made only when linking is not seen. Where the report points at a target worth documenting, an A/B probe like X29 to X33 in `gen_attribute_probes.mjs` is what shows the effect.
+
+Like [`check_examples.mjs`](#check-examples) it needs a twinBASIC install and Windows with a private desktop, so it is outside every gate and outside CI. **Pass `--out` and `--dump-results`.** The report is the only product, and a run piped through `tail` keeps one line of it.
+
+Exit codes: **0** the report was produced and its self-checks held; **1** a self-check found a fault --- a probe disturbed the canaries even beside nothing else, or `--verify` found a probe that answered differently the second time; **2** a refused command line, no install, canaries that do not draw what the script records, a harness failure, a run cut short (its report is written all the same, and says so at the top), or a crash.
 
 ### impexp.mjs and impexp.py
 {: #impexp }

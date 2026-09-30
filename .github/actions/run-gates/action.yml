@@ -151,6 +151,15 @@ runs:
     - name: Verify the twinBASIC source and attribute scanners (check_twin_parsers.mjs)
       shell: bash
       run: node scripts/check_twin_parsers.mjs
+    # The attribute sweep asks the compiler where every attribute is legal, and
+    # none of its failures announces itself: a wrong site skeleton reads as
+    # "every attribute is refused here", an ignored control as a recognised
+    # attribute, a refusal taken for an acceptance as a finding about the
+    # compiler. The IDE is what cannot run here, so the parts that decide what
+    # an answer means are probed on fixed inputs: no IDE, no tree, no install.
+    - name: Verify the attribute sweep's logic (check_attribute_sweep.mjs)
+      shell: bash
+      run: node scripts/check_attribute_sweep.mjs
     # Nothing else tests how a tool reads its command line, which is how a
     # value flag given no value came to be read as NaN or as the next flag.
     # lib/cli.mjs's probes, then each tool's recorded command-line errors, each

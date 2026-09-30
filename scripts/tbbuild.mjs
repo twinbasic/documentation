@@ -38,9 +38,12 @@
 // The IDE's user interface, though, is a WebView2 page, and WebView2 honours
 // WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS. So the IDE can be started with a
 // Chrome DevTools port, driven over CDP, and its DIAGNOSTICS pane read out.
-// That is all this is. The mechanics -- starting the IDE, attaching, waiting
-// for the compile, reading the diagnostics -- live in scripts/lib/tb-ide.mjs,
-// which scripts/tbrun.mjs shares; this file is the command line around them.
+// That is all this is. The build itself -- start the IDE, attach, wait for the
+// compile, read the diagnostics, end the IDE -- is compileProject in
+// scripts/lib/tb-build.mjs, over the mechanics in scripts/lib/tb-ide.mjs that
+// scripts/tbrun.mjs also uses; this file is the command line around it, and
+// what a command line owns: the checks on its input, the registry tidy, and the
+// printing.
 //
 // The diagnostics come from the IDE's own "copy compilation error report"
 // walk, minus the clipboard write, so the text is exactly what that command
@@ -54,8 +57,8 @@ import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { choiceOption, exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
 import { findIde } from "./lib/tb-install.mjs";
-import { COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, launchIde, setBuildTarget, shutdownIde,
-         summaryLine, waitForCompile, wantShow } from "./lib/tb-ide.mjs";
+import { compileProject } from "./lib/tb-build.mjs";
+import { COMPILE_TIMEOUT, TARGETS, summaryLine, wantShow } from "./lib/tb-ide.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
 exitOnCrash();
@@ -164,63 +167,34 @@ if (!IDE || !existsSync(IDE)) {
   process.exit(2);
 }
 
-let ide;
 let tidy = null;
-// Tidies whether or not an IDE was started, as tbrun does: `ide` is unset when
-// the launch failed, and shutdownIde then has nothing to end. A failed launch
-// has written nothing to the registry so far, since tb-launch.ps1 never lets
-// the IDE run on a path that prints no pid, but the tidy does not rely on that.
-function shutdown() {
-  if (keep) return;
-  shutdownIde(ide);
-  finishTidy(tidy);
-}
-
-function die(code, msg) {
-  if (msg) console.error(msg);
-  shutdown();
-  process.exit(code);
-}
 
 // The IDE puts the project at the top of the user's recent list and saves
 // state for it -- see lib/tb-registry.mjs, and WIP.Harness.md for the numbers.
 // Both go back as they were once the IDE has exited: an entry the run created
 // is deleted, and the user's own project, if this was one, gets its old state
 // back. Not under --keep, because a kept IDE is still writing; and not when
-// check_examples started this process, because it tidies once for every lane.
+// another process owns the tidy (startTidy then returns null), as a tool that
+// runs many builds does for every lane.
 if (!keep) tidy = startTidy({ paths: [path.resolve(proj)] });
 
+// compileProject ends its IDE before it returns, unless --keep, so the tidy comes
+// after the IDE has gone. Tidies whether or not an IDE was started, as tbrun
+// does: a failed launch has written nothing to the registry so far, since
+// tb-launch.ps1 never lets the IDE run on a path that prints no pid, but the
+// tidy does not rely on that.
+let r;
 try {
-  ide = await launchIde({ exe: IDE, project: proj, port, show, keep });
-} catch (e) {
-  die(2, e.message);
+  r = await compileProject({ project: proj, ide: IDE, port, arch, timeout, show, keep });
+} finally {
+  finishTidy(tidy);
 }
 
-const c = await attachIde(port);
-if (!c) die(2, "the IDE never exposed a debug port");
-
-// Every alert the IDE opens is recorded and dismissed by the connection
-// (attachIde), and reported with the diagnostics.
-const dialogs = c.dialogs;
-
-let outcome = compileOutcome(await waitForCompile(c, { project: proj, timeout }), { name: proj });
-if (!outcome.ok) die(outcome.code, outcome.message);
-
-// Set on every run, win32 included, and what is reported is the compile under
-// it: see setBuildTarget. Switching restarts the compiler, which compiles the
-// project again, so a run that switches takes a few seconds longer.
-let openedIn;
-try {
-  const target = await setBuildTarget(c, arch, { project: proj, timeout });
-  openedIn = target.from;
-  if (target.waited) {
-    outcome = compileOutcome(target.waited, { name: proj });
-    if (!outcome.ok) die(outcome.code, outcome.message);
-  }
-} catch (e) {
-  die(2, e.message);
+if (r.code >= 2) {
+  if (r.message) console.error(r.message);
+  process.exit(r.code);
 }
-const { rows, counts } = outcome;
+const { rows, counts, dialogs, openedIn } = r;
 
 // The IDE's pid is reported so a caller can clean up precisely. It matters most
 // under --keep, where this process leaves the IDE running and something else has
@@ -230,8 +204,8 @@ if (asJson) {
   console.log(JSON.stringify({
     project: proj, arch, openedIn,
     errors: counts[0], warnings: counts[1], hints: counts[2], infos: counts[3],
-    idePid: ide?.pid ?? null, kept: keep,
-    diagnostics: rows, dialogs: dialogs.map((d) => d.message),
+    idePid: r.idePid, kept: keep,
+    diagnostics: rows, dialogs,
   }, null, 2));
 } else {
   // Said only when either target is not the default, so the usual report is
@@ -241,13 +215,11 @@ if (asJson) {
     console.log(`target: ${arch}` +
       (openedIn !== TARGETS[0] ? ` (the IDE remembered ${openedIn} for this project)` : ""));
   }
-  for (const r of rows) console.log(r);
+  for (const row of rows) console.log(row);
   console.log(summaryLine(counts));
-  if (dialogs.length) console.log("dialogs:", JSON.stringify(dialogs.map((d) => d.message)));
+  if (dialogs.length) console.log("dialogs:", JSON.stringify(dialogs));
   // Only under --keep, where the pid is still alive and therefore actionable.
-  if (keep && ide?.pid) console.log(`ide-pid: ${ide.pid}`);
+  if (keep && r.idePid) console.log(`ide-pid: ${r.idePid}`);
 }
 
-c.close();
-shutdown();
-process.exit(counts[0] > 0 ? 1 : 0);
+process.exit(r.code);

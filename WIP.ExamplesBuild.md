@@ -408,6 +408,77 @@ Two things a batch runner must do that a single-fence runner need not:
   the same finding and the other eight still reporting. Until then the name went unread ---
   `buildStaged` kept `tbbuild`'s report and nothing looked at it --- so every crash paid for
   the whole bisect.
+- **A batch that reports nothing is not a clean batch: a canary rides in every one.**
+  `waitForCompile` reads the IDE's window --- the status counters and the Problems panel of
+  the open project --- once the compiler status is OPERATIONAL and five one-second samples
+  match. It waits for no build. An IDE under load can sit OPERATIONAL with an empty panel
+  before it has published anything, and every sample of that batch then reads as compiling,
+  with nothing to tell it from a batch that has no errors. `sweep_attributes` met it first,
+  because its canaries exist to: one build in 136 of its last full run drew `ACCEPT` for all
+  three of them, including the invented name that can only ever draw an error, while
+  `build.bat`, `check.bat` and `test.bat` ran on the same machine (a coincidence, not a
+  measurement of the cause; none of the earlier full runs had one). `check_examples` had no
+  such protection, so that read would have passed every sample of its batch. Each batch now
+  carries `tbxCanary`, a module with `[EnforceWarnings(TB0005)]` and a `#Warning` directive,
+  which must draw the warning TB0005. Its rows are taken out, at any severity, before
+  anything else reads them.
+
+  **It is a warning, and enforced, because that measured robust and leaves a clean batch
+  clean** (BETA 987, `canary-warn.mjs`, ten cases). TB0005 appeared beside an unterminated
+  `Sub`, an `If` with no `End If`, a stray `End Sub` with garbage after it, a class inheriting
+  itself with an unknown type, ten undefined names, under Option Explicit off, and beside a
+  module with `[IgnoreWarnings(TB0005)]`. A plain `#Warning` vanished in a project that
+  ignores TB0005 and became an ERROR in one that promotes it; the enforced form stayed a
+  warning in both. No template changes `project.warnings` today (the defaults leave every
+  warning on), so the attribute is insurance, not a fix. An error canary put an error in
+  every batch, so `tbbuild` never exited 0; with the warning a clean batch does.
+
+  The history: the first version carried two error canaries, an unknown attribute (TB5182)
+  and an undefined symbol (TB5079). The second is only the warning TB0002 under **Option
+  Explicit off**, where the name is declared implicitly, and stopped a full run on
+  `Core/Deftype.md:56`, a sample that compiles, in the `[implicit]` template. The next version
+  kept TB5182 alone; the warning replaced it at the user's suggestion. A batch that crashes the
+  compiler returns no rows at all, canary included; `runBatch` hands a crash to
+  `isolateCrash` before it reads the canary, so that case never reaches it.
+
+  **Measured with real failures** (a temporary page of 14 samples, deleted after): ten
+  failing samples across the console and `[implicit]` templates, among them an unterminated
+  `Sub`, garbage after a stray `End Sub` and an `If` with no `End If`, were each reported
+  with their own errors, with no canary event and no split, in about 13 s --- with the TB5182
+  canary and again with the warning, the same result both times.
+
+  **The canary is required only by a read with no errors in it** (the user's rule). It
+  proves that the IDE published something, never that it published everything --- a read
+  that includes it and misses a later file's diagnostics would still pass that file --- so a
+  read holding real errors has already shown what the canary would, and is taken as read:
+  no rebuild, no split, no stop. `heard()` decides what is real: an ERROR in one of the
+  batch's samples, or an unattributed row the template does not draw by itself. **The
+  template's own rows do not count**, or a template that always draws one would switch the
+  canary off for every batch of it; an earlier version let an early read holding only such
+  a row pass the sample (found by review). A canary missing *beside* real errors is printed
+  as a note and not acted on: it has never been seen, and would be the first sign of a read
+  that holds some files and not others.
+
+  A silent read (no errors, no canary) is built once more; then split, as for a crash, until
+  each part reports the canary or errors of its own. A unit that is still silent stops the
+  run (exit 2, its name) without being blamed, since its clean may be false and a finding
+  would claim something about its code that a build with no diagnostics cannot. A
+  `projname` group is one program and cannot be split, and needs no splitting: if any member
+  fails, the read was not silent. This is what keeps a corpus that legitimately fails (a
+  `--propose` survey) from ever being stopped or slowed by the canary; the version before
+  it stopped the run on a group with only some members failing.
+
+  `ownRowsOf`'s empty-template build follows the same rule: a silent read is read again and
+  refused when silent twice, and a read with rows of its own needs no canary. It is
+  memoised for the whole run, and a silent read there believed would leave `own` empty, so
+  every batch with a template-own row would bisect to single samples and blame each one.
+
+  Tested against a fake lane: an early read answered by one build; a sample that hides it,
+  with no errors of its own, found and named; the same sample with errors of its own taken as
+  read in one build, with the note; a group with only some members failing taken as read in
+  one build; the hiding sample with only the template's own row named; two that hide it only
+  together separated by halving; a batch that never reports; the empty template read again,
+  refused when it never reports, and believed in one read when it has rows of its own.
 - **A crash that needs two samples used to vanish.** Halving separates any pair by the time
   it reaches single samples; both halves then build clean, and every sample in the batch
   counted as compiling --- the false clean that the crash check exists to prevent, one level

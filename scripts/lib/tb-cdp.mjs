@@ -42,7 +42,12 @@ export async function attach(port, match = "main.htm", { timeout = 30 * 1000 } =
   const pending = new Map();
   const listeners = [];
   ws.onmessage = (ev) => {
-    const m = JSON.parse(ev.data);
+    // A frame that is not JSON is dropped. It is an event callback, so a throw
+    // here is an uncaught exception, which ends the whole process -- once a tool
+    // builds in-process, every lane's build and not one child's. A request it
+    // was the answer to times out through its own timer.
+    let m;
+    try { m = JSON.parse(ev.data); } catch { return; }
     if (m.id && pending.has(m.id)) {
       const { res, rej } = pending.get(m.id);
       pending.delete(m.id);

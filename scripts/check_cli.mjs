@@ -37,6 +37,7 @@ import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { availableParallelism, tmpdir } from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { DEFAULTS, parseCommandLine } from "../builder/command-line.mjs";
 import {
@@ -370,6 +371,24 @@ function capture(fn) {
   check("printHelpAndExit prints the text and exits 0", out.text === "usage: tool\n" && out.code === 0, show(out));
   const err = capture((stream, exit) => printHelpAndExit("usage: tool\n", { stream, exit, exitCode: 2 }));
   check("printHelpAndExit takes the tool's exit code", err.text === "usage: tool\n" && err.code === 2, show(err));
+}
+{
+  // exitOnCrash, in a process of its own since it ends the one it is in: a crash
+  // exits 2, the cleanup runs first, and a cleanup that throws changes neither.
+  const crash = (cleanup) => new Promise((resolve) => {
+    const cli = JSON.stringify(pathToFileURL(path.join(REPO_ROOT, "lib", "cli.mjs")).href);
+    execFile(process.execPath, ["--input-type=module", "-e",
+      `import { exitOnCrash } from ${cli}; exitOnCrash(${cleanup}); setTimeout(() => { throw new Error("boom"); }, 0);`],
+    (error, stdout, stderr) => resolve({ code: error?.code ?? 0, stdout, stderr }));
+  });
+  const bare = await crash("");
+  check("exitOnCrash: a crash prints the error and exits 2", bare.code === 2 && bare.stderr.includes("boom"), show(bare));
+  const saved = await crash(`() => console.log("saved")`);
+  check("exitOnCrash: the cleanup runs before the exit, and the exit is still 2",
+    saved.code === 2 && saved.stdout.trim() === "saved" && saved.stderr.includes("boom"), show(saved));
+  const failing = await crash(`() => { throw new Error("cleanup failed"); }`);
+  check("exitOnCrash: a cleanup that throws does not stop the exit or hide the crash",
+    failing.code === 2 && failing.stderr.includes("boom") && failing.stderr.includes("cleanup failed"), show(failing));
 }
 
 // ------------------------------------------------------------ tbdocs's command line
@@ -717,6 +736,7 @@ const HELP_TOOLS = {
   "scripts/check_a11y.mjs": null,
   "scripts/check_a11y_fingerprint.mjs": null,
   "scripts/check_axe_patch_equiv.mjs": null,
+  "scripts/check_attribute_sweep.mjs": null,
   "scripts/check_book_coverage.mjs": null,
   "scripts/check_ci_workflows.mjs": null,
   "scripts/check_cli.mjs": null,
@@ -744,6 +764,7 @@ const HELP_TOOLS = {
   "scripts/pick_a11y_sample.mjs": null,
   "scripts/survey_tooling.mjs": null,
   "scripts/sweep_a11y.mjs": null,
+  "scripts/sweep_attributes.mjs": null,
   "scripts/tbbuild.mjs": null,
   "scripts/tbrun.mjs": null,
 };
@@ -791,6 +812,7 @@ const REFUSALS = {
   "scripts/check_a11y.mjs": ["root-dir"],
   "scripts/check_a11y_fingerprint.mjs": ["pages"],
   "scripts/check_axe_patch_equiv.mjs": ["patch"],
+  "scripts/check_attribute_sweep.mjs": [null],
   "scripts/check_book_coverage.mjs": [null],
   "scripts/check_ci_workflows.mjs": [null],
   "scripts/check_cli.mjs": [null],
@@ -818,6 +840,7 @@ const REFUSALS = {
   "scripts/pick_a11y_sample.mjs": ["sweep"],
   "scripts/survey_tooling.mjs": ["root"],
   "scripts/sweep_a11y.mjs": ["out"],
+  "scripts/sweep_attributes.mjs": ["out"],
   "scripts/tbbuild.mjs": ["ide"],
   "scripts/tbrun.mjs": ["ide"],
 };
@@ -882,6 +905,25 @@ for (const [tool, first] of [["scripts/tbbuild.mjs", "x.twinproj"], ["scripts/tb
   bad(tool, [first, "--show", "--hide"], thenUsage("--show and --hide cannot be given together", tool));
 }
 bad("scripts/tbrun.mjs", ["no-such-dir", "--quiet=-1"], thenUsage(NOT_WHOLE("--quiet", -1), "scripts/tbrun.mjs"));
+
+// sweep_attributes reads its values before it looks for an IDE, and follows the
+// message with its usage.
+{
+  const tool = "scripts/sweep_attributes.mjs";
+  bad(tool, ["--jobs", "0"], thenUsage(NOT_COUNT("--jobs", 0), tool));
+  bad(tool, ["--port", "0"], thenUsage(NOT_PORT(0), tool));
+  bad(tool, ["--port=65536"], thenUsage(NOT_PORT(65536), tool));
+  bad(tool, ["--port", "65535", "--jobs", "2"], thenUsage("--port 65535 with --jobs 2 runs past port 65535", tool));
+  bad(tool, ["--batch-size", "3"], thenUsage("--batch-size expects a whole number of at least 4, got: 3", tool));
+  bad(tool, ["--verify=-1"], thenUsage(NOT_WHOLE("--verify", -1), tool));
+  bad(tool, ["--timeout", "0"], thenUsage(NOT_ABOVE_ZERO("--timeout", 0), tool));
+  bad(tool, ["--forms", "some"], thenUsage("--forms expects bare, smart or all, got: some", tool));
+  bad(tool, ["--sites", "NO_SUCH_SITE"], thenUsage("unknown site: NO_SUCH_SITE (--list-sites names them)", tool));
+  // The drive root is outside the temp folder however the case is run; a relative name would resolve
+  // under it, where the case runs.
+  bad(tool, ["--work=/"], new RegExp(`^--work must be under .+, not .+\\nusage: node ${literal(tool)} `));
+  bad(tool, ["--show", "--hide"], thenUsage("--show and --hide cannot be given together", tool));
+}
 bad("scripts/tbrun.mjs", ["no-such-dir", "--quiet", "1.5"], thenUsage(NOT_WHOLE("--quiet", 1.5), "scripts/tbrun.mjs"));
 
 bad("scripts/addin_test.mjs", ["--only", "("], REGEX_REASON("--only", "("));

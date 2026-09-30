@@ -67,7 +67,6 @@
 // and the rest without it, a crash that names none bisects, O(log n) builds, and
 // one that needs several samples at once is reported with all of them.
 
-import { spawn } from "node:child_process";
 import {
   cpSync, existsSync, mkdirSync, promises as fs, readdirSync, readFileSync, rmSync,
   writeFileSync,
@@ -81,6 +80,8 @@ import {
   BODY_SLOTS, CONCAT_KEY, HIDDEN_MARKER, MARKER, RUN_MARKER, SLOTS, classify,
   collectFences, concatFences, moduleName, parseInfo, partOf, resourcePath, wrapFence,
 } from "./lib/tb-fences.mjs";
+import { compileProject } from "./lib/tb-build.mjs";
+import { wantShow } from "./lib/tb-ide.mjs";
 import { buildNumber, compilerExe, findIde, runCompiler } from "./lib/tb-install.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
@@ -553,6 +554,57 @@ function makeBatches(fences) {
   return batches;
 }
 
+// -------------------------------------------------------------------- canaries
+//
+// waitForCompile reads the IDE's own window: the status bar's counters and the
+// Problems panel for the project it has open, once the tB Services indicator
+// reads OPERATIONAL and the sample has been the same for five seconds. That is
+// the IDE's live analysis, not a build, and an IDE under load can sit
+// OPERATIONAL with an empty panel before it has published anything. A batch
+// read then reports every sample clean -- and with no reason to doubt it, since
+// a project with no errors looks exactly the same.
+//
+// So every batch carries a file whose diagnostic is KNOWN, and a batch that
+// does not report it is not believed. The same idea as sweep_attributes.mjs's
+// canaries, whose first run met the fault: a batch of two probes read with no
+// diagnostics at all.
+//
+// The canary is a #Warning directive, TB0005, on a module that enforces it.
+// Measured on BETA 987, it was reported beside samples with an unterminated
+// Sub, an If with no End If, a stray End Sub and garbage, a class that inherits
+// itself, and ten undefined names; under Option Explicit off; in a project that
+// ignores TB0005 or makes it an error, where [EnforceWarnings(TB0005)] keeps it
+// a warning; and beside a module that ignores TB0005 for itself. A warning
+// rather than an error, because an error in every batch left no batch clean:
+// tbbuild could never exit 0. The first canaries were errors, and one of them,
+// an undefined symbol, is only a warning (TB0002) under Option Explicit off,
+// which stopped a run on a sample that compiles. A batch that crashes the
+// compiler yields no rows at all, canary included, and is never asked: runBatch
+// sends a crash to isolateCrash before it reads the canary.
+const CANARIES = [
+  {
+    file: "tbxCanary.twin", code: "TB0005",
+    text: "[EnforceWarnings(TB0005)]\nPublic Module tbxCanary\n#Warning \"check_examples canary\"\nEnd Module\n",
+  },
+];
+const CANARY_FILES = new Map(CANARIES.map((c) => [c.file.toLowerCase(), c]));
+
+/**
+ * What a batch's canaries did not report, or null if each drew its diagnostic.
+ * There is one canary today; the list is kept so another can be added.
+ *
+ * @param {Map<string, string[]>} drawn  lower-cased canary file name -> the messages of its rows
+ */
+function canaryProblem(drawn) {
+  const missing = CANARIES
+    .filter((c) => !(drawn.get(c.file.toLowerCase()) ?? []).some((m) => m.startsWith(c.code)))
+    .map((c) => {
+      const got = drawn.get(c.file.toLowerCase()) ?? [];
+      return `${c.file} drew ${got.length ? got.join("; ") : "nothing"}, and should draw ${c.code}`;
+    });
+  return missing.length ? missing.join("; ") : null;
+}
+
 // ------------------------------------------------------------------ generation
 
 let stageCounter = 0;
@@ -601,6 +653,11 @@ function stageBatch(batch, work) {
       text.replace(/\r\n?/g, "\n").replace(/\n/g, "\r\n"), "utf8");
     map.set(`${mod}.twin`, { fence, offset });
   }
+  // The canaries go in every batch, an empty one included: a template's own
+  // rows are worked out from one (see ownRowsOf), and its canaries draw theirs.
+  for (const c of CANARIES) {
+    writeFileSync(path.join(dir, "Sources", c.file), c.text.replace(/\n/g, "\r\n"), "utf8");
+  }
 
   const proj = path.join(work, `b${index}.twinproj`);
   // Pure Windows paths: the compiler prefixes \\?\, which does not accept
@@ -627,19 +684,17 @@ const COMPILER = IDE ? compilerExe(IDE) : null;
 let tidy = null;
 
 /**
- * The samples of a staged batch that tbbuild's crash report says the compiler
- * died parsing, as fence ids.
+ * The samples of a staged batch that the compiler died parsing, as fence ids.
  *
- * tbbuild names them on its `last parsing:` line by the file's base name, which
- * for a sample is its generated module's: `last parsing: tbx_df66b6fa33.twin`
- * for a batch of nine holding the crash fixture. A file that is no sample of
- * the batch -- the template's own source -- names nothing, and neither does a
- * report without the line.
+ * `files` is compileProject's `crashFiles`, the base names of the files the
+ * compiler was parsing when it went down. For a sample that is its generated
+ * module's: `tbx_df66b6fa33.twin` for a batch of nine holding the crash
+ * fixture. A file that is no sample of the batch -- the template's own
+ * source -- names nothing, and neither does a crash that named no file.
  */
-function crashedIn(report, map) {
+function crashedIn(files, map) {
   const ids = new Set();
-  const line = /^last parsing: (.+)$/m.exec(report)?.[1] ?? "";
-  for (const file of line.split(",")) {
+  for (const file of files) {
     const entry = map.get(file.trim().split(/[\\/]/).pop());
     if (entry) ids.add(entry.fence.id);
   }
@@ -648,31 +703,15 @@ function crashedIn(report, map) {
 
 /** Build one staged batch; returns per-fence errors, or a crash marker. */
 async function buildStaged(staged, port) {
-  const args = [path.join(REPO_ROOT, "scripts", "tbbuild.mjs"), staged.proj,
-    "--port", String(port), "--json"];
-  if (IDE) args.push("--ide", IDE);
-  if (values.show) args.push("--show");
-  if (values.hide) args.push("--hide");
-
-  const child = spawn(process.execPath, args, { stdio: ["ignore", "pipe", "pipe"] });
-  let out = "", err = "";
-  child.stdout.on("data", (d) => { out += d; });
-  child.stderr.on("data", (d) => { err += d; });
-  // A child that cannot start emits "error" and never "exit". "close" comes
-  // only once its output has been read to the end, which "exit" does not wait
-  // for.
-  const code = await new Promise((resolve, reject) => {
-    child.on("error", reject);
-    child.on("close", resolve);
+  const r = await compileProject({
+    project: staged.proj, ide: IDE, port, show: wantShow({ show: values.show, hide: values.hide }),
   });
 
-  if (code === 4) return { crashed: true, detail: err.trim(), named: crashedIn(err, staged.map) };
-  if (code !== 0 && code !== 1) {
-    throw new Error(`tbbuild exited ${code} on ${staged.proj}\n${err.trim() || out.trim()}`);
+  if (r.code === 4) return { crashed: true, detail: r.message, named: crashedIn(r.crashFiles, staged.map) };
+  if (r.code !== 0 && r.code !== 1) {
+    throw new Error(`tbbuild exited ${r.code} on ${staged.proj}\n${r.message}`);
   }
-  let result;
-  try { result = JSON.parse(out); }
-  catch { throw new Error(`tbbuild produced no JSON on ${staged.proj}\n${err.trim()}`); }
+  const result = { diagnostics: r.rows };
 
   const perFence = new Map();
   // A row in a shape this does not parse. Nothing in it names a file, so no
@@ -684,12 +723,21 @@ async function buildStaged(staged, port) {
   // source inside a referenced PACKAGE. `runBatch` isolates one of those to the
   // sample that caused it, because it usually has one.
   const unattributed = [];
+  // What each canary drew, at any severity. Their rows are taken out here,
+  // before anything else reads them: a canary's diagnostic is expected, and one
+  // left in could read as a diagnostic in a file that is no sample.
+  const drawn = new Map();
   for (const row of result.diagnostics ?? []) {
     const m = /^\{(\w+)\}\s+(\S+)\s+\[(\d+),(\d+)\]:\s*(.*)$/.exec(row);
     if (!m) { unreadable.push(row); continue; }
     const [, severity, file, lineRaw, , message] = m;
+    const base = file.split(/[\\/]/).pop();
+    if (CANARY_FILES.has(base.toLowerCase())) {
+      if (!drawn.has(base.toLowerCase())) drawn.set(base.toLowerCase(), []);
+      drawn.get(base.toLowerCase()).push(message);
+      continue;
+    }
     if (severity !== "ERROR" && !VERBOSE) continue;
-    const base = file.split("/").pop();
     const entry = staged.map.get(base);
     if (!entry) {
       if (severity === "ERROR") unattributed.push(row);
@@ -706,7 +754,7 @@ async function buildStaged(staged, port) {
     if (!perFence.has(entry.fence.id)) perFence.set(entry.fence.id, []);
     perFence.get(entry.fence.id).push({ severity, pageLine, message, rel: owner.rel });
   }
-  return { perFence, unreadable, unattributed };
+  return { perFence, unreadable, unattributed, canaryProblem: canaryProblem(drawn) };
 }
 
 /**
@@ -798,7 +846,17 @@ const templateOwnRows = new Map();
 function ownRowsOf(project, lane) {
   if (!templateOwnRows.has(project)) {
     templateOwnRows.set(project, (async () => {
-      const result = await lane.build({ project, fences: [] });
+      // A read with no rows and no canary is read once more, and never believed:
+      // it would leave every row of the template counted as a sample's, for the
+      // rest of the run. A read with rows of its own was not silent, and needs
+      // no canary, as in runBatch.
+      const silent = (r) => !r.crashed && r.canaryProblem && !(r.unattributed ?? []).length;
+      let result = await lane.build({ project, fences: [] });
+      if (silent(result)) result = await lane.build({ project, fences: [] });
+      if (silent(result)) {
+        throw new Error(`the canary did not report in the \`${project}\` template built with no samples, ` +
+          `twice (${result.canaryProblem}): the IDE is reporting before its diagnostics are ready`);
+      }
       const rows = result.crashed
         ? [`the ${project} template crashes the compiler with no samples in it`]
         : [...(result.unattributed ?? []), ...(result.unreadable ?? [])];
@@ -810,6 +868,21 @@ function ownRowsOf(project, lane) {
     })());
   }
   return templateOwnRows.get(project);
+}
+
+/**
+ * Whether a build's read shows the IDE was not silent: an ERROR against one of
+ * the batch's samples, or one outside every sample that the template does not
+ * draw by itself. The template's own rows do not count, since a template that
+ * always draws one would otherwise turn the canary off for every batch of it.
+ */
+async function heard(result, project, lane) {
+  for (const rows of result.perFence.values()) {
+    if (rows.some((d) => d.severity === "ERROR")) return true;
+  }
+  if (!(result.unattributed ?? []).length) return false;
+  const own = await ownRowsOf(project, lane);
+  return result.unattributed.some((r) => !own.has(sameRow(r)));
 }
 
 /**
@@ -951,8 +1024,44 @@ async function together(batch, a, b, lane) {
  * compiling while the run failed with a row naming no page.
  */
 async function runBatch(batch, lane) {
-  const result = await lane.build(batch);
+  let result = await lane.build(batch);
   if (result.crashed) return isolateCrash(batch, result.named, lane);
+
+  // The canary is needed only by a read that holds no error: that is the read
+  // an IDE that published nothing returns, and it looks exactly like a clean
+  // batch. A read with errors in it shows the IDE was not silent, and the canary
+  // adds nothing there -- it never proved that EVERY file was reported, only that
+  // something was (see CANARIES).
+  if (result.canaryProblem && !(await heard(result, batch.project, lane))) {
+    // The same build once more first: an IDE that read its diagnostics early
+    // has said nothing about the batch, and a second read is the cheap answer.
+    lane.note(`  the canary did not report in ${batch.fences.length} sample(s) [${batch.project}] ` +
+      `(${result.canaryProblem}), and nothing else did: building it again`);
+    result = await lane.build(batch);
+    if (result.crashed) return isolateCrash(batch, result.named, lane);
+    if (result.canaryProblem && !(await heard(result, batch.project, lane))) {
+      // Twice silent: either the IDE keeps reading early under this load, or a
+      // sample in the batch hides the diagnostics of the rest. Halving finds
+      // which, down to parts that report the canary or errors of their own.
+      const deeper = await split(batch, lane, "a canary that did not report");
+      if (deeper) return deeper;
+      // One unit, built twice, and silent both times. Its clean may be a false
+      // one, and nothing here can tell, so the run stops rather than pass it --
+      // or blame it for errors nobody saw.
+      const { rep } = leafOf(batch);
+      throw new Error(`the canary did not report beside ${rep.rel}:${rep.line} even when it was built ` +
+        `twice on its own (${result.canaryProblem}), and nothing else did either: either the IDE ` +
+        "reported before its diagnostics were ready, or that sample hides the diagnostics of every other file");
+    }
+  }
+  // Beside errors a missing canary is not acted on. It has never been seen --
+  // the canary was reported beside every kind of broken sample measured -- and
+  // would be the first sign of a read that holds some files and not others, so
+  // it is said.
+  if (result.canaryProblem) {
+    lane.note(`  note: the canary did not report in ${batch.fences.length} sample(s) [${batch.project}] ` +
+      `(${result.canaryProblem}), though errors did; the errors are taken as found`);
+  }
 
   const unreadable = result.unreadable ?? [];
   const rows = [...new Set((result.unattributed ?? []).map(sameRow))];
@@ -1448,20 +1557,17 @@ async function runProbes() {
   if (takeOut(mixed, new Set(["mh"])) !== null) {
     failures.push("take out: a page's hidden context was taken out as a unit");
   }
-  // What is taken out is read off tbbuild's crash report, which names a sample
-  // by its generated module's file. This is a report as tbbuild printed it.
+  // What is taken out is read off the files the compiler died parsing, which name
+  // a sample by its generated module's file: the `crashFiles` of a build.
   const staged9 = new Map([["tbx_df66b6fa33.twin", { fence: { id: "P.md#5" } }]]);
-  const report = "the compiler crashed 2x -- this project takes it down\n" +
-    "last parsing: tbx_df66b6fa33.twin\n" +
-    "(read the IDE's DEBUG CONSOLE with --keep for the exception detail)\n";
-  if ([...crashedIn(report, staged9)].join() !== "P.md#5") {
-    failures.push("crash report: the sample tbbuild named was not read off it");
+  if ([...crashedIn(["tbx_df66b6fa33.twin"], staged9)].join() !== "P.md#5") {
+    failures.push("crash files: the sample the compiler died parsing was not read off them");
   }
-  if (crashedIn(report.replace("tbx_df66b6fa33", "tbxMain"), staged9).size) {
-    failures.push("crash report: the template's own file named a sample");
+  if (crashedIn(["tbxMain.twin"], staged9).size) {
+    failures.push("crash files: the template's own file named a sample");
   }
-  if (crashedIn("the compiler crashed 1x -- this project takes it down\n", staged9).size) {
-    failures.push("crash report: a report naming no file named a sample");
+  if (crashedIn([], staged9).size) {
+    failures.push("crash files: a crash naming no file named a sample");
   }
   // Isolation itself, run by runBatch against a fake lane. `crash` gets the ids
   // of a build's samples and says whether the compiler goes down, and which of
@@ -1504,6 +1610,105 @@ async function runProbes() {
   const cheap = fakeLane((ids) => when("c")(ids) && naming("c")(ids));
   await runBatch(five, cheap);
   if (cheap.builds !== 3) failures.push(`isolation: a named crash took ${cheap.builds} builds, want 3`);
+  // The canaries: what a batch's rows say about them, and what runBatch does when
+  // they are not there. A batch with no rows at all is the one that matters, since
+  // it is what an IDE that read its diagnostics early returns.
+  const drew = (rows) => canaryProblem(new Map([["tbxcanary.twin", rows]]));
+  if (drew(["TB0005 #Warning directive: \"check_examples canary\""]) !== null) {
+    failures.push("canaries: a batch that drew the canary was not believed");
+  }
+  if (drew(["TB0005 x", "TB5000 y"]) !== null) {
+    failures.push("canaries: an extra error beside the expected one was refused");
+  }
+  if (!drew([])?.includes("tbxCanary.twin drew nothing")) {
+    failures.push("canaries: a missing canary was not named");
+  }
+  if (!drew(["TB5000 other"])?.includes("TB5000 other")) {
+    failures.push("canaries: a canary that drew the wrong diagnostic was believed");
+  }
+  if (canaryProblem(new Map()) === null) failures.push("canaries: a batch with no rows at all was believed");
+  // `errs` gives the samples that have errors of their own in a build, and
+  // `stray` the rows it draws outside every sample.
+  const canaryLane = (bad, errs = () => [], stray = () => []) => {
+    const lane = {
+      builds: 0, notes: [],
+      async build(b) {
+        lane.builds++;
+        const ids = new Set(b.fences.map((f) => f.id));
+        const problem = bad(ids, lane.builds);
+        const perFence = new Map(errs(ids).map((id) =>
+          [id, [{ severity: "ERROR", pageLine: 1, message: "TB5079 x", rel: "X.md" }]]));
+        return { perFence, unreadable: [], unattributed: stray(ids), canaryProblem: problem };
+      },
+      finding: () => {},
+      note: (m) => lane.notes.push(m),
+    };
+    return lane;
+  };
+  // Each probe starts with no template rows remembered: ownRowsOf keeps what
+  // the first build of a template said, a refusal included.
+  const outcome = async (lane, batch) => {
+    templateOwnRows.clear();
+    try { await runBatch(batch, lane); return null; } catch (e) { return e.message; }
+  };
+  let cl = canaryLane((_ids, n) => (n === 1 ? "no error" : null));
+  let threw = await outcome(cl, five);
+  if (threw !== null || cl.builds !== 2) {
+    failures.push(`canaries: an early read was not answered by one more build (${cl.builds} builds, ${threw})`);
+  }
+  cl = canaryLane((ids) => (ids.has("c") ? "masked" : null));
+  threw = await outcome(cl, five);
+  if (!threw || !threw.includes("did not report beside X.md:1")) {
+    failures.push(`canaries: a sample that hides them was not found and named (${threw})`);
+  }
+  // The same sample with errors of its own: the read was not silent, so the
+  // batch is taken as read in one build, and the missing canary is only said.
+  cl = canaryLane((ids) => (ids.has("c") ? "masked" : null), (ids) => [...ids].filter((id) => id === "c"));
+  threw = await outcome(cl, five);
+  if (threw !== null || cl.builds !== 1 || !cl.notes.some((m) => m.includes("though errors did"))) {
+    failures.push(`canaries: a batch with errors was not taken as read (${cl.builds} builds, ${threw})`);
+  }
+  // A group where only some members fail, and the canary is missing: the same.
+  cl = canaryLane((ids) => (ids.has("t2") ? "masked" : null), (ids) => [...ids].filter((id) => id === "t1"));
+  threw = await outcome(cl, grouped);
+  if (threw !== null || cl.builds !== 1) {
+    failures.push(`canaries: a group with some members failing was not taken as read (${cl.builds} builds, ${threw})`);
+  }
+  // ...but a row the template draws on its own is no error of the sample's: an
+  // early read that holds only that row is still a false clean.
+  const ownRow = "{ERROR} /DocSamples1/Sources/Template.twin [1,1]: TB5079 t";
+  cl = canaryLane((ids) => (ids.has("c") ? "masked" : null), () => [], () => [ownRow]);
+  threw = await outcome(cl, five);
+  if (!threw?.includes("did not report beside X.md:1")) {
+    failures.push(`canaries: a hiding sample with only the template's own row was passed (${threw})`);
+  }
+  // The template built with no samples is read again when its canary is missing,
+  // and refused when it is missing twice.
+  templateOwnRows.clear();
+  cl = canaryLane((_ids, n) => (n === 1 ? "no error" : null));
+  await ownRowsOf("console", cl);
+  if (cl.builds !== 2) failures.push(`canaries: an empty template read early was not read again (${cl.builds} builds)`);
+  templateOwnRows.clear();
+  threw = await ownRowsOf("console", canaryLane(() => "no error")).then(() => null, (e) => e.message);
+  if (!threw?.includes("template built with no samples")) {
+    failures.push(`canaries: an empty template that never reports was believed (${threw})`);
+  }
+  // ...but one with rows of its own was not silent, and is believed in one read.
+  templateOwnRows.clear();
+  cl = canaryLane(() => "no error", () => [], () => [ownRow]);
+  const ownSet = await ownRowsOf("console", cl).catch(() => null);
+  if (!ownSet?.has(sameRow(ownRow)) || cl.builds !== 1) {
+    failures.push(`canaries: an empty template with rows of its own was not believed (${cl.builds} builds)`);
+  }
+  templateOwnRows.clear();
+  cl = canaryLane((ids) => (ids.has("a") && ids.has("e") ? "masked" : null));
+  threw = await outcome(cl, five);
+  if (threw !== null || cl.builds <= 2) {
+    failures.push(`canaries: two samples that hide them only together were not separated by halving (${cl.builds} builds, ${threw})`);
+  }
+  cl = canaryLane(() => "no error");
+  threw = await outcome(cl, five);
+  if (!threw?.includes("did not report")) failures.push("canaries: a batch that never reports did not stop the run");
   // Two builds of one template differ only by the stage index in every path, and
   // a template's own fault is recognised by comparing those rows.
   const row = (n) => `{ERROR} /DocSamples${n}/Packages/P/Sources/S.twin [10,20]: TB5079 x`;
@@ -1633,9 +1838,11 @@ async function runProbes() {
   }
   // 10 line-map (5 slots x 2 bases) + 4 wrapper container + 7 batching
   // + 5 splitting + 5 taking out + 3 crash report + 7 isolation + 9 concat
-  // + 10 resource + 8 report + 6 markup.
-  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 74} probes: ` +
-    "classifier, markup, line mapping, batching, splitting, crash isolation, concat, " +
+  // + 10 resource + 8 report + 6 markup + 15 canaries (5 of what a batch's rows say,
+  // 7 of what runBatch does about a batch whose canary did not report, 3 of the
+  // template built with no samples).
+  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 89} probes: ` +
+    "classifier, markup, line mapping, batching, splitting, crash isolation, canaries, concat, " +
     "resources and the report");
   return true;
 }
@@ -1726,9 +1933,9 @@ async function main() {
 
   // Every lane's IDE records its projects in the user's recent list and saved
   // project state (lib/tb-registry.mjs). This process owns the tidying for all
-  // of them: the tbbuild children see TB_REGISTRY_OWNER and leave the registry
-  // alone, because each restoring its own snapshot would put back whatever the
-  // registry held when that lane happened to start. Everything is under `work`,
+  // of them: compileProject never tidies, because each build restoring its own
+  // snapshot would put back whatever the registry held when that lane happened
+  // to start. Everything is under `work`,
   // so one sweep by that folder at the end takes the lot -- and the sweep here
   // at the start takes whatever a run on this --port left when it died.
   tidy = startTidy({ prefixes: [work] });
