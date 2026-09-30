@@ -35,6 +35,47 @@ const AXIS_H    = 28;
 const CHAR_W    = 6.2;
 const BAR_PAD   = 4;
 
+// The section each task is charted in, by task id. A timing that names
+// its own `ganttSection` is charted there instead.
+export const GANTT_SECTION = {
+  config: "Seeds", buildInfo: "Seeds", scssLight: "Seeds", scssDark: "Seeds", scss: "Write", dot: "Spine",
+  highlighterInit: "Seeds", loadData: "Seeds",
+  discover: "Spine", vendorAssets: "Spine", nav: "Spine", markdownInit: "Spine", buildInit: "Spine",
+  resolveBookChapters: "Spine",
+  deriveRedirects: "Spine", deriveSitemap: "Spine",
+  dispatch: "Render", prepDest: "Render", prepPageDirs: "Render",
+  renderJoin: "Render", flushJoin: "Write",
+  writeAssets: "Write", searchData: "Write", symbolIndex: "Write", writeAux: "Write", writeOffline: "Write", writePdf: "Write",
+  linkJoin: "Check", checkBook: "Check", checkReport: "Check",
+};
+const GANTT_SECTION_ORDER = ["Seeds", "Spine", "Render", "Write", "Check"];
+const CHECK_TASKS = new Set(["linkJoin", "checkBook", "checkReport"]);
+
+// The scheduler's timings, relative to the first start and grouped by
+// section, as renderGantt takes them.
+export function groupGanttTimings(timings, { check = false } = {}) {
+  if (timings.size === 0) return null;
+  const t0 = Math.min(...[...timings.values()].map(t => t.start));
+
+  const grouped = new Map(GANTT_SECTION_ORDER.map(s => [s, []]));
+  for (const [id, { start, end, t3, workerStart, workerEnd, lane, consolidate, ganttSection }] of [...timings.entries()].sort((a, b) => a[1].start - b[1].start)) {
+    if (id.endsWith("Join")) continue;
+    // Without --check these are no-ops; charting three zero-width bars
+    // would only make a plain build's Gantt harder to read.
+    if (!check && CHECK_TASKS.has(id)) continue;
+    const section = ganttSection ?? GANTT_SECTION[id];
+    if (!section) throw new Error(`gantt: task ${id} has no section; add it to GANTT_SECTION`);
+    if (!grouped.has(section)) grouped.set(section, []);
+    const entry = { id, start: start - t0, end: end - t0 };
+    if (t3 != null) entry.t3 = t3 - t0;
+    if (workerStart != null) { entry.workerStart = workerStart - t0; entry.workerEnd = workerEnd - t0; }
+    if (lane != null) entry.lane = lane;
+    if (consolidate)  entry.consolidate = true;
+    grouped.get(section).push(entry);
+  }
+  return grouped;
+}
+
 export function renderGantt(grouped) {
   const all = [...grouped.values()].flat();
   if (all.length === 0) return "";

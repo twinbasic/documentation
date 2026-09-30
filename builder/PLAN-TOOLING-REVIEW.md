@@ -941,6 +941,19 @@ machinery (`:788-911`); the check glue (`:1085-1256`); the console report (`:147
 
 **Verify.** The tree comparison identical; the chart names the same tasks in the same rows.
 
+**Landed** as the grouping only. `GANTT_SECTION`, its section order, `CHECK_TASKS` and
+`groupGanttTimings` moved from `tbdocs.mjs` into `gantt.mjs`, beside the bands and colours
+they must agree with, which is the split A1-1 went wrong across. They are pure code over the
+scheduler's timings, so the chart can now be grouped and drawn without a build.
+`injectGanttChart` and `recheckInjected` stayed: they write the two trees and run the check,
+which is `tbdocs.mjs`'s work. The further candidates were not taken, because nothing but
+their size argues for them: `TASKS` holds the graph's shape and its bodies together by
+design, and `submit()`, the check glue and the console report each have one caller and
+change with it. Builder.md and Extending.md name `gantt.mjs` for `GANTT_SECTION` now. The
+tree comparison is identical but for those two pages and the search data, and the built
+chart's 31 main-thread labels, section headings included, are the same on both sides and in
+the same rows (the worker lanes' bars fall differently from one run to the next).
+
 ### C78 — `builder: template.mjs's date formatter moves to its own module`
 
 **A3-7 (R2).** After C53 and C54 take the URL and escape helpers, the strftime tables and
@@ -1316,6 +1329,12 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   (2026-09-30) nothing moved. C76 corrected `matchTocMarker`'s comment, which said the toc rule
   ran before `standalone-ial-attach`, and landed as `render: correct the toc marker's comment;
   C76's split not taken`.
+- **C77: the grouping moved, the rest stayed.** The entry moves the Gantt and timing code and
+  weighs four further candidates. Only `GANTT_SECTION` and `groupGanttTimings` had evidence
+  beyond size, being the section list `gantt.mjs`'s bands must agree with, so at the
+  supervisor's reading of decision 2 only they moved. The chart's injection and recheck write
+  the trees and run the check, and stayed. It landed as `builder: the Gantt sections and their
+  grouping move into gantt.mjs`. See C77's Landed note.
 
 ## Found while implementing
 
