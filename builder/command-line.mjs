@@ -1,7 +1,7 @@
 // tbdocs's command line: the option table, the defaults, and the parse.
 //
 // parseCommandLine(argv) returns the options runBuild() and runServe() read,
-// or throws a CliError whose message is what tbdocs prints before it exits 4.
+// or throws a CliError whose message is what tbdocs prints before it exits 2.
 // The table is lib/cli.mjs's strict one: an unknown option, a positional, a
 // boolean given a value, a value flag given none (or one that starts with a
 // dash) and an empty value, except --baseurl's, are all refused. Flags are

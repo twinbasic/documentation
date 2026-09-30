@@ -14,7 +14,7 @@ import { readFile, stat, watch } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { isOutputTree } from "../lib/markdown-files.mjs";
-import { runBuild, createWorkerPool, EXIT_FAILED, EXIT_COMMAND_LINE } from "./tbdocs.mjs";
+import { runBuild, createWorkerPool, EXIT_ERROR } from "./tbdocs.mjs";
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -230,8 +230,9 @@ export async function runServe(opts) {
   } catch (err) {
     console.error("serve: initial build failed:", describeBuildError(err));
     await pool.destroy();
-    // A --dest the build refuses is a command-line error, as in tbdocs's main().
-    process.exit(err?.commandLine ? EXIT_COMMAND_LINE : EXIT_FAILED);
+    // A --dest the build refuses is a command-line error and any other throw a
+    // crash; both exit EXIT_ERROR, as in tbdocs's main().
+    process.exit(EXIT_ERROR);
   }
 
   const staticHandler = createStaticHandler(destRoot);
@@ -248,7 +249,7 @@ export async function runServe(opts) {
   server.on("error", (err) => {
     if (err.code === "EADDRINUSE") {
       console.error(`serve: port ${port} already in use. Pass --port <other> to choose another, or stop the process bound to ${port}.`);
-      process.exit(EXIT_FAILED);
+      process.exit(EXIT_ERROR);
     }
     throw err;
   });

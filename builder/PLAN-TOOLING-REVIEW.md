@@ -227,7 +227,8 @@ is implemented.
 
 1. **A command-line error in `tbdocs` cannot exit 2 (L1-4).** Fixed by C18, which gives a
    command-line error one value outside the bitmask in both `tbdocs` and `check_links.mjs`,
-   whose own argument errors the review did not list.
+   whose own argument errors the review did not list. Superseded by C72b, which drops the
+   bitmask in both tools, so a command-line error exits 2 as in every tool.
 2. **`builder/` cannot import `isOutputTree` (L2-1).** `serve.mjs` is in `builder/`, which
    must not import `scripts/` (`render.mjs:383`), and `isOutputTree` is in
    `scripts/lib/markdown-files.mjs`. C12 moves that module into the new top-level `lib/`
@@ -1103,6 +1104,26 @@ that expect 4, and C75's note follow. Departure 1 is superseded.
 
 **Verify.** `check_cli.mjs`; `build.bat` over a fixture with a broken link and one with an
 integrity failure exits 1; a crash through `c43-fault.mjs` exits 2.
+
+**Landed.** `tbdocs.mjs` exports `EXIT_FOUND` (1) and `EXIT_ERROR` (2) in place of
+`EXIT_FAILED`, `EXIT_INTEGRITY` and `EXIT_COMMAND_LINE`, and `failBuild()` sets 1 where it ORed
+a bit. 2 is a refused command line (every `CliError`, and `write.mjs`'s `--dest` refusal), a
+crash through `main().catch`, and so also the stall watchdog, which throws there (it exited
+1); `serve.mjs` exits 2 on a failed start and on a port in use, both of which exited 1.
+`check_links.mjs` has the same two constants; `--no-fail` still forces 0 on findings alone; it
+gained `exitOnCrash`, so a throw exits 2 where Node gave 1; and a run of several commands
+separated by `/sep/` exits with the highest code among them where it took the first non-zero.
+Nothing read a bit (the wrappers test `errorlevel 1`, CI and `compare_trees` test non-zero).
+Comments in `check.mjs`, `command-line.mjs`, `dot.mjs`, `scss.mjs`, `write.mjs` and the
+`checks.yml` build step (a comment only, so CI shows nothing new), `check_links`' help text,
+Tools.md, Building.md, Builder.md and Pipeline-Stages.md follow; `PLAN-12.md` and
+`PLAN-checks.md` are design records and keep their codes. The fixture build (`--src
+test/fixtures/check-src --check`) exits 1 where it exited 3; the same build with a throw put
+into `runBuild` through `c43-fault.mjs` exits 2; `tbdocs --bogus` and `check_links --bogus`
+exit 2. `check_cli: 810 probes, all pass`, with every `tbdocs` and `check_links` case
+expecting 2 and the `REFUSALS` overrides of 4 gone. `compare_trees`: Builder, Building,
+Pipeline-Stages and Tools online and offline, the search data and `book.html`. Lint, regex
+safety and the a11y line unchanged; `build.bat`, `check.bat` and `test.bat` clean.
 
 ### C73 — `scripts: one meaning each for --json and --src`
 

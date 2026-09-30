@@ -504,8 +504,8 @@ export function findingsFor(r) {
     // broken links as failures here even though it never fails a build.
     linksFailed:     r.broken.length > 0 || forbiddenCount > 0,
     // An error means the check did not complete. formatReport counts it
-    // as an integrity failure and the process exits 2; omitting it here
-    // let --check-findings report `false` for a run that exited 2.
+    // as an integrity failure and the process exits 1; omitting it here
+    // let --check-findings report `false` for a run that exited 1.
     integrityFailed: integrityCount > 0 || r.errors.length > 0,
   };
 }

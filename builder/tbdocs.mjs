@@ -30,9 +30,10 @@
 // origin -- e.g. https://kubao.github.io -- so canonical URLs match
 // the actual deployment instead of the configured production host).
 //
-// Exit codes: 0 clean; 1 a link failure, a failed build step, a page-count
-// or symbol-baseline drop, or a crash; 2 an integrity failure; 3 both. A
-// command-line error, a --dest the build refuses included, exits 4.
+// Exit codes, as in every tool: 0 clean; 1 the build or its check found a
+// problem (a link or integrity failure, a failed build step, a page-count or
+// symbol-baseline drop); 2 it could not do its job (a command-line error, a
+// --dest the build refuses included, or a crash).
 
 import { promises as fs } from "node:fs";
 import os from "node:os";
@@ -95,20 +96,17 @@ import {
 const CPU_WORKER_URL = new URL("./cpu-worker.mjs", import.meta.url);
 const PACKAGE_API_PATH = new URL("./package-api.json", import.meta.url);
 
-// The exit codes in the header. The link and integrity bits are the ones
-// scripts/check_links.mjs sets, so CI can tell a broken link from malformed
-// output; EXIT_FAILED also carries every other failure. The command-line
-// value is outside both bits, so a mistyped flag never reads as a broken
-// link.
-export const EXIT_FAILED       = 1;
-export const EXIT_INTEGRITY    = 2;
-export const EXIT_COMMAND_LINE = 4;
+// The exit codes in the header. EXIT_FOUND is every problem the build reports
+// and still writes a site for; EXIT_ERROR is a refused command line or a crash,
+// where the build did not finish its job, so a mistyped flag never reads as a
+// broken link.
+export const EXIT_FOUND = 1;
+export const EXIT_ERROR = 2;
 
-// Sets `bit` in the exit code and keeps the bits already set, so a build
-// that fails two ways reports both. runBuild sets the exit code only through
-// this; an assignment would report the last failure alone.
-function failBuild(bit) {
-  process.exitCode = (process.exitCode ?? 0) | bit;
+// Marks the build failed. runBuild sets the exit code only through this, so
+// no later step can clear it.
+function failBuild() {
+  process.exitCode = EXIT_FOUND;
 }
 
 // ── Task graph ────────────────────────────────────────────────────────────────
@@ -454,7 +452,7 @@ const TASKS = {
       for (const f of out.files) {
         if (!known.has(f.srcRel)) state.staticFiles.push(f);
       }
-      if (out.failed > 0) failBuild(EXIT_FAILED);
+      if (out.failed > 0) failBuild();
     },
   },
 
@@ -1373,8 +1371,8 @@ export async function runBuild(opts) {
     if (dotStats.failed > 0) parts.push(`failed ${dotStats.failed}`);
     console.log(`dot: ${parts.join(", ")} of ${dotStats.processed} SVG(s)`);
   }
-  if (dotStats.failed > 0) failBuild(EXIT_FAILED);
-  if (scssResult.failed)   failBuild(EXIT_FAILED);
+  if (dotStats.failed > 0) failBuild();
+  if (scssResult.failed)   failBuild();
 
   const flushStats    = results.get("flushJoin");
   const assetStats    = results.get("writeAssets");
@@ -1467,11 +1465,10 @@ export async function runBuild(opts) {
     console.log(`  ${pc.bold("check:")}`);
     process.stdout.write(checkResult.text);
     process.stdout.write(recheck.text);
-    if (checkResult.linksFailed) failBuild(EXIT_FAILED);
-    if (checkResult.integrityFailed || recheck.failed) failBuild(EXIT_INTEGRITY);
+    if (checkResult.linksFailed || checkResult.integrityFailed || recheck.failed) failBuild();
   } else if (recheck.failed) {
     process.stdout.write(recheck.text);
-    failBuild(EXIT_INTEGRITY);
+    failBuild();
   }
 
   console.log(scheduler.summary());
@@ -1493,7 +1490,7 @@ export async function runBuild(opts) {
     force: !!opts.updatePageBaseline,
   });
   if (drift.text) process.stdout.write(drift.text);
-  if (drift.failed) failBuild(EXIT_FAILED);
+  if (drift.failed) failBuild();
 
   // The same guard over the URLs tB/symbols.json has published, which an
   // installed IDE help add-in holds a copy of -- see symbol-baseline.mjs.
@@ -1505,17 +1502,17 @@ export async function runBuild(opts) {
       force: !!opts.updateSymbolBaseline,
     });
     if (lost.text) process.stdout.write(lost.text);
-    if (lost.failed) failBuild(EXIT_FAILED);
+    if (lost.failed) failBuild();
   }
 
   return { pages, staticFiles, site, destRoot };
 }
 
 // A command-line error is reported by its message alone and exits
-// EXIT_COMMAND_LINE. write.mjs marks its --dest refusal, which runBuild makes
+// EXIT_ERROR. write.mjs marks its --dest refusal, which runBuild makes
 // before any task runs, with `commandLine` for the same exit.
 async function main() {
-  const opts = withUsageError(() => parseCommandLine(process.argv.slice(2)), { exitCode: EXIT_COMMAND_LINE });
+  const opts = withUsageError(() => parseCommandLine(process.argv.slice(2)), { exitCode: EXIT_ERROR });
   if (opts.help) printHelpAndExit(USAGE);
   if (opts.serve) {
     const { runServe } = await import("./serve.mjs");
@@ -1530,13 +1527,13 @@ if (isEntry) {
   main().catch((err) => {
     if (err?.commandLine) {
       console.error(err.message);
-      process.exit(EXIT_COMMAND_LINE);
+      process.exit(EXIT_ERROR);
     }
     // A stall report is the diagnostic; the Error wrapping it carries a
     // stack pointing at the watchdog's own setInterval, which tells the
     // reader nothing and buries the part that does.
     if (err?.stalled && err.cause?.message) console.error(err.cause.message);
     else console.error(err);
-    process.exit(EXIT_FAILED);
+    process.exit(EXIT_ERROR);
   });
 }

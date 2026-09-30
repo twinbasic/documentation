@@ -403,17 +403,17 @@ function capture(fn) {
 
 const CASES = [
   // Recorded in C47, from the behaviour C18 settled: a command-line error in
-  // tbdocs and check_links exits 4, outside the 1/2/3 bitmask of the link and
-  // integrity checks, so it never reads as a broken link. A value flag has no
+  // tbdocs and check_links exits 2, as in every tool, and never reads as a
+  // finding, which exits 1. A value flag has no
   // value at the end of the list or before another flag, and --port is a whole
   // number from 1 to 65535. check_links prints its errors on stderr, after
   // "error: ".
-  { tool: "builder/tbdocs.mjs", args: ["--port"], exit: 4, stderr: "--port needs a value\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--dest", "--no-pdf"], exit: 4, stderr: "--dest needs a value\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--port=0"], exit: 4, stderr: "--port expects a whole number from 1 to 65535, got: 0\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--bogus"], exit: 4, stderr: "unknown option: --bogus\n" },
-  { tool: "scripts/check_links.mjs", args: ["no-such-tree", "--root-dir"], exit: 4, stderr: "error: --root-dir needs a value\n" },
-  { tool: "scripts/check_links.mjs", args: ["no-such-tree", "--forbid"], exit: 4, stderr: "error: --forbid needs a value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port"], exit: 2, stderr: "--port needs a value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--dest", "--no-pdf"], exit: 2, stderr: "--dest needs a value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port=0"], exit: 2, stderr: "--port expects a whole number from 1 to 65535, got: 0\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "scripts/check_links.mjs", args: ["no-such-tree", "--root-dir"], exit: 2, stderr: "error: --root-dir needs a value\n" },
+  { tool: "scripts/check_links.mjs", args: ["no-such-tree", "--forbid"], exit: 2, stderr: "error: --forbid needs a value\n" },
 
   // Recorded in C47, from the behaviour C17 settled: in the four harness tools
   // that check, a value flag with no value, at the end or before another flag,
@@ -504,7 +504,7 @@ const CASES = [
   { tool: "scripts/gen_attribute_probes.mjs", args: [], exit: 2, stderr: /^Generate a twinBASIC probe project for Reference\/Attributes\.md applicability\.\n/ },
 
   // Recorded in C50, for the gates and link tools. check_links prints its
-  // errors on stderr, after "error: ", and exits 4. Every one of them refuses
+  // errors on stderr, after "error: ", and exits 2. Every one of them refuses
   // an unknown option, a stray argument, a value given to a flag that takes
   // none, and a value flag with no value, and crawl_check, compare_trees and
   // survey_tooling follow the message with their usage. check_lint prints its
@@ -513,11 +513,11 @@ const CASES = [
   // only flags of their own, and none has a case beyond --help, -h and the
   // generated ones below.
   { tool: "scripts/check_links.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node check_links\.mjs \[options\] <inputs\.\.\.>\n/ },
-  { tool: "scripts/check_links.mjs", args: ["no-such-tree"], exit: 4, stderr: "error: --offline is required. Online (network) checking is not implemented by this tool.\n" },
-  { tool: "scripts/check_links.mjs", args: ["--offline"], exit: 4, stderr: "error: at least one input file or directory is required\n" },
-  { tool: "scripts/check_links.mjs", args: ["--offline", "--bogus", "no-such-tree"], exit: 4, stderr: "error: unknown option: --bogus\n" },
-  { tool: "scripts/check_links.mjs", args: ["--offline", "-x", "--bogus=1"], exit: 4, stderr: "error: unknown option: -x\n" },
-  { tool: "scripts/check_links.mjs", args: ["--offline", "--root-dir", "--forbid"], exit: 4, stderr: "error: --root-dir needs a value\n" },
+  { tool: "scripts/check_links.mjs", args: ["no-such-tree"], exit: 2, stderr: "error: --offline is required. Online (network) checking is not implemented by this tool.\n" },
+  { tool: "scripts/check_links.mjs", args: ["--offline"], exit: 2, stderr: "error: at least one input file or directory is required\n" },
+  { tool: "scripts/check_links.mjs", args: ["--offline", "--bogus", "no-such-tree"], exit: 2, stderr: "error: unknown option: --bogus\n" },
+  { tool: "scripts/check_links.mjs", args: ["--offline", "-x", "--bogus=1"], exit: 2, stderr: "error: unknown option: -x\n" },
+  { tool: "scripts/check_links.mjs", args: ["--offline", "--root-dir", "--forbid"], exit: 2, stderr: "error: --root-dir needs a value\n" },
   { tool: "scripts/check_links_diff.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node scripts\/check_links_diff\.mjs \[options\]\n/ },
   { tool: "scripts/check_links_diff.mjs", args: [], exit: 2, stderr: /^error: --a and --b are both 'script', which compares nothing\.\n/ },
   { tool: "scripts/check_links_diff.mjs", args: ["--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
@@ -645,41 +645,41 @@ const CASES = [
   { tool: "wisdom/wisdom.mjs", args: ["bogus", "--guild", "x", "--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
 
   // Recorded in C52, for tbdocs, with C47's four above. Every command-line
-  // error exits 4. A value flag refuses a missing value and one that starts
+  // error exits 2. A value flag refuses a missing value and one that starts
   // with a dash, "--" included; an unknown option is refused as given, as is a
   // positional, and a boolean given a value. Each --port and --stall-timeout
   // is checked where it stands, so a bad one fails even when a later one is
-  // good. A --dest the build refuses exits 4 too, after the command line has
+  // good. A --dest the build refuses exits 2 too, after the command line has
   // been read. --baseurl takes an empty value, meaning the site root; the
   // other value flags refuse one.
-  { tool: "builder/tbdocs.mjs", args: ["--src"], exit: 4, stderr: "--src needs a value\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--url"], exit: 4, stderr: "--url needs a value\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--check-findings"], exit: 4, stderr: "--check-findings needs a value\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--symbol-gaps", "--serve"], exit: 4, stderr: "--symbol-gaps needs a value\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--dest", "--"], exit: 4, stderr: "--dest needs a value\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout"], exit: 4, stderr: "--stall-timeout needs a value\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout", "-1"], exit: 4, stderr: "--stall-timeout needs a value\n" },
-  { tool: "builder/tbdocs.mjs", args: ["foo"], exit: 4, stderr: "unexpected argument: foo\n" },
-  { tool: "builder/tbdocs.mjs", args: ["-"], exit: 4, stderr: "unexpected argument: -\n" },
-  { tool: "builder/tbdocs.mjs", args: ["-x"], exit: 4, stderr: "unknown option: -x\n" },
-  { tool: "builder/tbdocs.mjs", args: ["-xy"], exit: 4, stderr: "unknown option: -xy\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--src"], exit: 2, stderr: "--src needs a value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--url"], exit: 2, stderr: "--url needs a value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--check-findings"], exit: 2, stderr: "--check-findings needs a value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--symbol-gaps", "--serve"], exit: 2, stderr: "--symbol-gaps needs a value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--dest", "--"], exit: 2, stderr: "--dest needs a value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout"], exit: 2, stderr: "--stall-timeout needs a value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout", "-1"], exit: 2, stderr: "--stall-timeout needs a value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["foo"], exit: 2, stderr: "unexpected argument: foo\n" },
+  { tool: "builder/tbdocs.mjs", args: ["-"], exit: 2, stderr: "unexpected argument: -\n" },
+  { tool: "builder/tbdocs.mjs", args: ["-x"], exit: 2, stderr: "unknown option: -x\n" },
+  { tool: "builder/tbdocs.mjs", args: ["-xy"], exit: 2, stderr: "unknown option: -xy\n" },
   { tool: "builder/tbdocs.mjs", args: ["-h"], exit: 0, stdout: /^usage: node builder\/tbdocs\.mjs \[options\]\n/ },
   { tool: "builder/tbdocs.mjs", args: ["--help"], exit: 0, stdout: /^usage: node builder\/tbdocs\.mjs \[options\]\n/ },
-  { tool: "builder/tbdocs.mjs", args: ["--dry-run=1"], exit: 4, stderr: "--dry-run takes no value\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--no-check=1"], exit: 4, stderr: "--no-check takes no value\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--no-check", "--bogus"], exit: 4, stderr: "unknown option: --bogus\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--port", "abc"], exit: 4, stderr: "--port expects a whole number from 1 to 65535, got: abc\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--port="], exit: 4, stderr: "--port needs a non-empty value\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout="], exit: 4, stderr: "--stall-timeout needs a non-empty value\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--port=65536"], exit: 4, stderr: "--port expects a whole number from 1 to 65535, got: 65536\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--port=1.5"], exit: 4, stderr: "--port expects a whole number from 1 to 65535, got: 1.5\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--port=80", "--port=0"], exit: 4, stderr: "--port expects a whole number from 1 to 65535, got: 0\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--port=abc", "--port=80"], exit: 4, stderr: "--port expects a whole number from 1 to 65535, got: abc\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout=-1"], exit: 4, stderr: "--stall-timeout expects a number of at least 0, got: -1\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout=abc"], exit: 4, stderr: "--stall-timeout expects a number of at least 0, got: abc\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--src", ".", "--dest", "."], exit: 4,
+  { tool: "builder/tbdocs.mjs", args: ["--dry-run=1"], exit: 2, stderr: "--dry-run takes no value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--no-check=1"], exit: 2, stderr: "--no-check takes no value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--no-check", "--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port", "abc"], exit: 2, stderr: "--port expects a whole number from 1 to 65535, got: abc\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port="], exit: 2, stderr: "--port needs a non-empty value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout="], exit: 2, stderr: "--stall-timeout needs a non-empty value\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port=65536"], exit: 2, stderr: "--port expects a whole number from 1 to 65535, got: 65536\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port=1.5"], exit: 2, stderr: "--port expects a whole number from 1 to 65535, got: 1.5\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port=80", "--port=0"], exit: 2, stderr: "--port expects a whole number from 1 to 65535, got: 0\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port=abc", "--port=80"], exit: 2, stderr: "--port expects a whole number from 1 to 65535, got: abc\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout=-1"], exit: 2, stderr: "--stall-timeout expects a number of at least 0, got: -1\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout=abc"], exit: 2, stderr: "--stall-timeout expects a number of at least 0, got: abc\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--src", ".", "--dest", "."], exit: 2,
     stderr: /^refusing --dest (.+): it is or contains the source tree \1, which cleaning it would delete\n$/ },
-  { tool: "builder/tbdocs.mjs", args: ["--src=.", "--dest=sub"], exit: 4,
+  { tool: "builder/tbdocs.mjs", args: ["--src=.", "--dest=sub"], exit: 2,
     stderr: /^refusing --dest (.+)[\\/]sub: it is inside the source tree, so a build would read its output back as source, or serve would rebuild on its own writes\. Use a folder directly under \1 whose name starts with _site, _serve, _pdf, or one inside such a folder, or one outside \1\.\n$/ },
 ];
 
@@ -747,14 +747,14 @@ for (const [tool, start] of Object.entries(HELP_TOOLS)) {
 // Recorded in C72. Every tool refuses an unknown flag and an empty value at
 // the parse, so each has a case for the first and, where it has a value
 // option, for the second: `tool: [option, extras]`, the option given as
-// `--option=`. Both exit 2, or 4 in tbdocs and check_links, print the refusal on
+// `--option=`. Both exit 2, print the refusal on
 // stderr and nothing on stdout. `prefix` is the text a tool puts before its
 // message. `args` replaces `--bogus` where the tool must never get further than
 // the parse: convert_em_dash_separators would rewrite docs/ but for --check, and
 // wisdom needs a command that is not a real one. A case the table above already
 // holds, the same tool with the same arguments, is not added again.
 const REFUSALS = {
-  "builder/tbdocs.mjs": ["src", { exit: 4 }],
+  "builder/tbdocs.mjs": ["src"],
   "book/render-book.mjs": ["output"],
   "wisdom/wisdom.mjs": ["guild", { args: ["bogus", "--bogus"], empty: ["bogus", "--guild="] }],
   "eval/build_corpus.mjs": ["dest"],
@@ -778,7 +778,7 @@ const REFUSALS = {
   "scripts/check_examples.mjs": ["only", { prefix: "check_examples: " }],
   "scripts/check_gate_lists.mjs": [null],
   "scripts/check_impexp_parity.mjs": [null],
-  "scripts/check_links.mjs": ["root-dir", { exit: 4, prefix: "error: " }],
+  "scripts/check_links.mjs": ["root-dir", { prefix: "error: " }],
   "scripts/check_links_diff.mjs": ["a"],
   "scripts/check_lint.mjs": [null, { prefix: "check_lint: " }],
   "scripts/check_page_baseline.mjs": [null],
@@ -843,12 +843,12 @@ const NOT_URL = (option, v) => `${option} expects an absolute http or https URL,
 const START = "http://127.0.0.1:9/";
 const REGEX_REASON = (option, v) => new RegExp(`^${literal(`${option} expects a regular expression, got: ${v} (`)}.+\\)\\n$`);
 
-// tbdocs and check_links exit 4; tbdocs prints the message alone, check_links after `error: `.
-bad("builder/tbdocs.mjs", ["--url", "foo"], NOT_URL("--url", "foo") + "\n", 4);
-bad("builder/tbdocs.mjs", ["--url=mailto:x"], NOT_URL("--url", "mailto:x") + "\n", 4);
-bad("builder/tbdocs.mjs", ["--stall-timeout", "abc"], "--stall-timeout expects a number of at least 0, got: abc\n", 4);
-bad("scripts/check_links.mjs", ["--offline", "--oracle", "x", "no-such-tree"], "error: --oracle expects fs or index, got: x\n", 4);
-bad("scripts/check_links.mjs", ["--offline", "--oracle=", "no-such-tree"], "error: --oracle needs a non-empty value\n", 4);
+// tbdocs prints the message alone, check_links after `error: `.
+bad("builder/tbdocs.mjs", ["--url", "foo"], NOT_URL("--url", "foo") + "\n");
+bad("builder/tbdocs.mjs", ["--url=mailto:x"], NOT_URL("--url", "mailto:x") + "\n");
+bad("builder/tbdocs.mjs", ["--stall-timeout", "abc"], "--stall-timeout expects a number of at least 0, got: abc\n");
+bad("scripts/check_links.mjs", ["--offline", "--oracle", "x", "no-such-tree"], "error: --oracle expects fs or index, got: x\n");
+bad("scripts/check_links.mjs", ["--offline", "--oracle=", "no-such-tree"], "error: --oracle needs a non-empty value\n");
 
 // tbbuild and tbrun follow the message with their usage.
 for (const [tool, first] of [["scripts/tbbuild.mjs", "x.twinproj"], ["scripts/tbrun.mjs", "no-such-dir"]]) {

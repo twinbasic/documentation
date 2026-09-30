@@ -95,8 +95,8 @@ jobs:
         # links the offline rewrite missed), and _site-pdf/book.html
         # (informational). A failing check never aborts the build -- a
         # broken link still produces a site worth inspecting -- so the
-        # step fails on the exit code: 1 for link failures, 2 for
-        # integrity failures, 3 for both.
+        # step fails on the exit code: 1 when the check found a problem,
+        # 2 when the build could not run.
         run: node builder/tbdocs.mjs --src docs --no-fetch-assets --check-audit-index
       # The gates both workflows run, in one list: see
       # .github/actions/run-gates/action.yml, which check_ci_workflows.mjs

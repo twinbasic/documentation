@@ -53,10 +53,10 @@
 // Integrity checks (--check-html, --check-a11y, --check-ids,
 // --check-sitemap, --check-search, --check-remote-assets):
 //   These share the existing htmlparser2 SAX parse pass -- no
-//   second file read.  Exit codes are a bitwise pair so CI can tell
-//   the two apart: 0 clean, 1 link failures, 2 integrity failures,
-//   3 both.  --no-fail forces 0.  A command-line error exits 4, which
-//   no check can produce, so it is never read as a failed check.
+//   second file read.  Exit codes, as in every tool: 0 clean, 1 a link
+//   or integrity failure was found, 2 the check could not run (a
+//   command-line error or a crash), so it is never read as a failed
+//   check.  --no-fail forces 0 over findings, not over a code 2.
 
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -78,6 +78,7 @@ import {
   resolve, OUTSIDE_BASEPATH_MARKER,
 } from "../builder/link-check.mjs";
 import { CliError, choiceOption, parseCli } from "../lib/cli.mjs";
+import { exitOnCrash } from "./lib/gate-probes.mjs";
 
 // Tree-relative POSIX path, the space check.mjs works and reports in, so
 // the same tree checked with a relative --root-dir, an absolute one, or
@@ -187,12 +188,11 @@ Integrity checks (share the existing htmlparser2 SAX parse pass):
 
 Exit codes:
   0  All checks passed.
-  1  Link / forbidden-prefix check failed.
-  2  Integrity check failed (no link failures).
-  3  Both link and integrity checks failed.
-  4  Command-line error, reported on stderr: no arguments, an unknown
-     option, a flag without its value or with an empty one, no
-     --offline, or no input.
+  1  A link, forbidden-prefix or integrity check failed. The summary
+     lines say which.
+  2  The check could not run. Either a command-line error, reported on
+     stderr (no arguments, an unknown option, a flag without its value
+     or with an empty one, no --offline, or no input), or a crash.
 
 Inputs are files or directories; directories are searched recursively
 for *.html.
@@ -300,10 +300,15 @@ function collectAllRelFiles(rootStr) {
   return rels;
 }
 
+// EXIT_FOUND: the check found a problem.  EXIT_ERROR: it could not run, a
+// refused command line or a crash.
+const EXIT_FOUND = 1;
+const EXIT_ERROR = 2;
+
 // Run a single check pass.  All output is collected into a buffer;
 // nothing is written to stdout/stderr.  Returns { output, exitCode }, and
-// for a command-line error (exit 4) an empty output and `error`, the line for
-// stderr.
+// for a command-line error (EXIT_ERROR) an empty output and `error`, the line
+// for stderr.
 //
 // With `structured: true` the result additionally carries a `findings`
 // object -- builder/check.mjs's findingsFor, the same conclusions the
@@ -314,7 +319,7 @@ export function runCheck(argv, { structured = false } = {}) {
   const buf = [];
   const write = (s) => buf.push(s);
 
-  const commandLineError = (error) => ({ output: "", exitCode: 4, error });
+  const commandLineError = (error) => ({ output: "", exitCode: EXIT_ERROR, error });
 
   let parsed;
   try {
@@ -471,10 +476,10 @@ export function runCheck(argv, { structured = false } = {}) {
     write(`Integrity: ${integrityIssueCount} issue(s)\n`);
   }
 
-  // Exit codes: 1 = link failures, 2 = integrity failures, 3 = both.
+  // Exit code: EXIT_FOUND for a link or an integrity failure, 0 otherwise.
   const linksFailed = r.broken.length > 0 || forbiddenCount > 0;
   const integrityFailed = integrityIssueCount > 0;
-  let exitCode = (linksFailed ? 1 : 0) | (integrityFailed ? 2 : 0);
+  let exitCode = linksFailed || integrityFailed ? EXIT_FOUND : 0;
   if (opts.noFail) exitCode = 0;
 
   if (!structured) return { output: buf.join(""), exitCode };
@@ -597,6 +602,10 @@ if (!isMainThread && workerData?.argv) {
   const result = runCheck(workerData.argv);
   parentPort.postMessage(result);
 } else if (isEntry) {
+  // A throw nothing here catches, a rejected top-level await included, is a
+  // crash: it exits EXIT_ERROR rather than Node's own 1, which means "found".
+  exitOnCrash();
+
   const rawArgv = process.argv.slice(2);
 
   if (rawArgv.includes("-h") || rawArgv.includes("--help")) {
@@ -622,7 +631,7 @@ if (!isMainThread && workerData?.argv) {
 
   if (segments.length === 0) {
     printHelp(process.stderr);
-    process.exit(4);
+    process.exit(EXIT_ERROR);
   }
 
   if (segments.length === 1) {
@@ -670,10 +679,10 @@ if (!isMainThread && workerData?.argv) {
       const r = settled[i].value;
       process.stdout.write(r.output);
       if (r.error) process.stderr.write(`${r.error}\n`);
-      if (r.exitCode !== 0 && exitCode === 0) exitCode = r.exitCode;
+      exitCode = Math.max(exitCode, r.exitCode);
     } else {
       process.stdout.write(`INTERNAL ERROR: ${settled[i].reason}\n`);
-      if (exitCode === 0) exitCode = 1;
+      exitCode = EXIT_ERROR;
     }
   }
 
