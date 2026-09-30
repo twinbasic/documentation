@@ -74,7 +74,7 @@ import {
   SOURCE_PATCHES,
 } from "./lib/axe-scan.mjs";
 import { withBrowser } from "./lib/browser.mjs";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { choiceOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
 // ---- CLI ------------------------------------------------------------------
 const cli = withUsageError(
@@ -131,8 +131,17 @@ let jsonOut = cli.values.json ?? null;
 let unminified = cli.values.unminified;
 let patchesArg = cli.values.patches;
 
-const baseline = getScheme(baselineLabel);
-const candidate = getScheme(candidateLabel);
+const schemeNames = Object.keys(SCHEMES);
+const patchNames = Object.keys(SOURCE_PATCHES);
+const { baseline, candidate } = withUsageError(() => {
+  for (const name of patchesArg.split(",").map((x) => x.trim()).filter(Boolean)) {
+    choiceOption(name, { option: "--patches", choices: patchNames });
+  }
+  return {
+    baseline: getScheme(choiceOption(baselineLabel, { option: "--baseline", choices: schemeNames })),
+    candidate: getScheme(choiceOption(candidateLabel, { option: "--candidate", choices: schemeNames })),
+  };
+});
 rootDir = resolve(rootDir);
 
 const matrix = buildMatrix({

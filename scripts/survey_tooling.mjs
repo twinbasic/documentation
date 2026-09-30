@@ -52,7 +52,7 @@ import { builtinModules } from "node:module";
 import path from "node:path";
 import * as acorn from "acorn";
 import * as walk from "acorn-walk";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { numberOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const TOOLING_DIRS = ["builder", "scripts", "lib", "book", "eval", "wisdom", "test", "perf"];
@@ -90,19 +90,15 @@ const { values } = withUsageError(
   { format: (err) => `${err.message}\n${USAGE}` },
 );
 if (values.help) printHelpAndExit(USAGE);
-const WINDOW = positiveInt("window", values.window);
-const TOP = positiveInt("top", values.top);
+const { WINDOW, TOP } = withUsageError(
+  () => ({
+    WINDOW: numberOption(values.window, { option: "--window", integer: true, min: 1 }),
+    TOP: numberOption(values.top, { option: "--top", integer: true, min: 1 }),
+  }),
+  { format: (err) => `${err.message}\n${USAGE}` },
+);
 const ROOT = path.resolve(values.root ?? REPO_ROOT);
 const listed = (f) => values.includePerf || !f.startsWith(LAB);
-
-function positiveInt(name, raw) {
-  const n = Number(raw);
-  if (!Number.isInteger(n) || n < 1) {
-    console.error(`--${name} expects a positive integer, got: ${raw}\n${USAGE}`);
-    process.exit(2);
-  }
-  return n;
-}
 
 function gitFiles(...args) {
   try {

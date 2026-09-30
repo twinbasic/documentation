@@ -42,7 +42,7 @@ import { spawnSync } from "node:child_process";
 import { closeSync, existsSync, openSync } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { CliError, parseCli } from "../lib/cli.mjs";
+import { CliError, numberOption, parseCli } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const WORK = path.join(REPO_ROOT, ".compare-trees");
@@ -118,27 +118,24 @@ function parseArgs(argv) {
   const tbdocs = sep === -1 ? [] : argv.slice(sep + 1);
 
   let cli;
+  let max;
   try {
     cli = parseCli(head, {
       options: {
         before: { type: "string", default: "HEAD" },
-        max: { type: "string" },
+        max: { type: "string", default: "20" },
         keep: { type: "boolean", default: false },
         help: { type: "boolean", short: "h" },
       },
       stopAt: ["help"],
     });
+    if (cli.stopped !== "help") max = numberOption(cli.values.max, { option: "--max", integer: true, min: 0 });
   } catch (err) {
     if (!(err instanceof CliError)) throw err;
     usageError(err.message);
   }
   if (cli.stopped === "help") { process.stdout.write(USAGE); process.exit(0); }
 
-  let max = 20;
-  if (cli.values.max !== undefined) {
-    max = Number(cli.values.max);
-    if (!Number.isInteger(max) || max < 0) usageError(`--max takes a whole number, not "${cli.values.max}"`);
-  }
   return { before: cli.values.before, keep: cli.values.keep, max, tbdocs };
 }
 

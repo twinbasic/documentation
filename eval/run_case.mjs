@@ -58,7 +58,7 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { choiceOption, numberOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { blockRegions } from "../lib/markdown.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { printDigest, readTranscript, summarize } from "./transcript.mjs";
@@ -77,23 +77,32 @@ const MEMORY_FILES = ["CLAUDE.md", "CLAUDE.local.md", "AGENTS.md"];
 const fwd = (p) => p.split(path.sep).join("/");
 
 function parseArgs(argv) {
-  const { values } = withUsageError(() => parseCli(argv, {
-    options: {
-      corpus: { type: "string" },
-      site: { type: "string" },
-      goal: { type: "string" },
-      out: { type: "string" },
-      protocol: { type: "string" },
-      claude: { type: "string", default: process.env.EVAL_CLAUDE || "claude" },
-      model: { type: "string", default: "sonnet" },
-      timeout: { type: "string" },
-      smoke: { type: "boolean" },
-      "prompt-only": { type: "boolean" },
-      help: { type: "boolean", short: "h" },
-    },
-    positionals: 0,
-    stopAt: ["help"],
-  }));
+  const { values, timeout } = withUsageError(() => {
+    const cli = parseCli(argv, {
+      options: {
+        corpus: { type: "string" },
+        site: { type: "string" },
+        goal: { type: "string" },
+        out: { type: "string" },
+        protocol: { type: "string" },
+        claude: { type: "string", default: process.env.EVAL_CLAUDE || "claude" },
+        model: { type: "string", default: "sonnet" },
+        timeout: { type: "string" },
+        smoke: { type: "boolean" },
+        "prompt-only": { type: "boolean" },
+        help: { type: "boolean", short: "h" },
+      },
+      positionals: 0,
+      stopAt: ["help"],
+    });
+    if (cli.stopped === "help") return { values: cli.values };
+    // Minutes; the timer takes at most 2147483647 ms.
+    const minutes = "timeout" in cli.values
+      ? numberOption(cli.values.timeout, { option: "--timeout", above: 0, max: 35791 })
+      : 20;
+    if ("protocol" in cli.values) choiceOption(cli.values.protocol, { option: "--protocol", choices: ["repo", "site"] });
+    return { values: cli.values, timeout: minutes };
+  });
   const o = {
     corpus: "corpus" in values ? path.resolve(values.corpus) : undefined,
     site: "site" in values ? path.resolve(values.site) : undefined,
@@ -102,7 +111,7 @@ function parseArgs(argv) {
     protocol: values.protocol,
     claude: values.claude,
     model: values.model,
-    timeout: "timeout" in values ? Number(values.timeout) : 20,
+    timeout,
     smoke: values.smoke,
     promptOnly: values.promptOnly,
     help: values.help,

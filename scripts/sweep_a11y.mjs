@@ -62,7 +62,7 @@ import {
   splitStubs,
 } from "./lib/axe-scan.mjs";
 import { withBrowser } from "./lib/browser.mjs";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { numberOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
 // The production scheme, read from the one registry check_a11y.mjs reads --
 // same bundle, same patches, same run options.  A survey run against a
@@ -103,13 +103,16 @@ let rootDir = cli.values.rootDir;
 let themeArg = cli.values.theme;
 let viewportArg = cli.values.viewport;
 let filter = cli.values.filter ?? null;
-let limit = cli.values.limit !== undefined ? parseInt(cli.values.limit, 10) : Infinity;
 let outPath = cli.values.out ?? null;
 let resume = cli.values.resume;
 let reportOnly = cli.values.report;
 if (reportOnly) resume = true;
 let stockAxe = cli.values.stockAxe;
-let recycleEvery = cli.values.recycleEvery !== undefined ? parseInt(cli.values.recycleEvery, 10) : 100;
+
+const { limit, recycleEvery } = withUsageError(() => ({
+  limit: cli.values.limit !== undefined ? numberOption(cli.values.limit, { option: "--limit", integer: true, min: 1 }) : Infinity,
+  recycleEvery: numberOption(cli.values.recycleEvery ?? "100", { option: "--recycle-every", integer: true, min: 1 }),
+}));
 
 rootDir = resolve(rootDir);
 outPath = resolve(outPath ?? join(REPO_ROOT, "perf/results/a11y-sweep.jsonl"));

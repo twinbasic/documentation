@@ -32,7 +32,7 @@ import { dirname, resolve } from 'node:path';
 import { writeFileSync, existsSync } from 'node:fs';
 import puppeteer from 'puppeteer';
 import { PDFDocument } from 'pdf-lib';
-import { parseCli, printHelpAndExit, withUsageError } from '../lib/cli.mjs';
+import { numberOption, parseCli, printHelpAndExit, withUsageError } from '../lib/cli.mjs';
 // Side-effecting imports. Mutate pdf-lib's live module exports
 // before any pdf-lib operation -- order doesn't matter. See
 // perf/notes/08-pdf-lib.md.
@@ -209,22 +209,26 @@ Renders an HTML book to a PDF with paged.js and headless Chromium.
   --additional-script <path> a script to inject after paged.js; repeatable
   -h, --help                 print this text and exit`;
 
-const { values, positionals } = withUsageError(() => parseCli(process.argv.slice(2), {
-  options: {
-    output: { type: 'string', short: 'o' },
-    'outline-tags': { type: 'string', default: 'h1,h2,h3,h4' },
-    timeout: { type: 'string', short: 't', default: '0' },
-    'additional-script': { type: 'string', multiple: true },
-    help: { type: 'boolean', short: 'h' },
-  },
-  positionals: { max: 1 },
-  stopAt: ['help'],
-}));
+const { values, positionals, timeoutMs } = withUsageError(() => {
+  const cli = parseCli(process.argv.slice(2), {
+    options: {
+      output: { type: 'string', short: 'o' },
+      'outline-tags': { type: 'string', default: 'h1,h2,h3,h4' },
+      timeout: { type: 'string', short: 't', default: '0' },
+      'additional-script': { type: 'string', multiple: true },
+      help: { type: 'boolean', short: 'h' },
+    },
+    positionals: { max: 1 },
+    stopAt: ['help'],
+  });
+  if (cli.stopped === 'help') return cli;
+  // Puppeteer's timer fires at once for more than 2147483647 ms.
+  return { ...cli, timeoutMs: numberOption(cli.values.timeout, { option: '--timeout', integer: true, min: 0, max: 2147483647 }) };
+});
 if (values.help) printHelpAndExit(USAGE);
 const inputArg = positionals[0];
 const outputArg = values.output;
 const outlineTagsArg = values.outlineTags;
-const timeoutMs = parseInt(values.timeout, 10);
 const additionalScripts = values.additionalScript;
 if (!inputArg || !outputArg) {
   console.error(SYNOPSIS);

@@ -114,7 +114,7 @@ Outputs raw JSON under `wisdom/data/raw/`. Supports incremental runs --- a manif
 | `--dry-run` | Discover channels/threads; do not fetch messages |
 | `--force` | Ignore manifest; re-fetch all history |
 
-When the session request cap is reached, the tool exits with code 2 --- re-run to continue where it left off. A command line the tool cannot use --- an unknown command or flag, a flag without its value or with an empty one, an unexpected argument --- is refused on standard error and also exits with code 2, so read the message to tell the two apart.
+When the session request cap is reached, the tool exits with code 2 --- re-run to continue where it left off. A command line the tool cannot use --- an unknown command or flag, a flag without its value or with an empty one, an unexpected argument --- is refused on standard error and also exits with code 2, so read the message to tell the two apart. So is a value it cannot use: a `--concurrency` or `--cap` that is not a whole number of at least 1, a `--rate-limit` that is not greater than 0, a `--since` that is not an ISO 8601 date no earlier than 2015-01-01, a `--min-confidence` other than `high`, `medium` or `low`, and two of `extract`'s `--since`, `--all` and `--force` given together (`--merge` reads none of the three).
 
 ### Phase 2 --- Process
 
@@ -154,8 +154,8 @@ The prep step also writes two shared reference files that workflow agents read f
 | `--since <date>` | Only analyse threads created after this date |
 | `--channel <name>` | Restrict to threads from this channel **name** (repeatable) |
 | `--min-confidence <level>` | Skip findings below `high`, `medium`, or `low` (default: `low`) |
-| `--all` | Bootstrap: process all threads, ignoring state and channel filter |
-| `--force` | Re-process threads even if their watermark matches state |
+| `--all` | Bootstrap: process all threads, ignoring state and channel filter. Not with `--since` or `--force` |
+| `--force` | Re-process threads even if their watermark matches state. Not with `--since` or `--all` |
 | `--dry-run` | Write the prep file but do not invoke the workflow |
 | `--merge` | Graft extract-results-\*.json into staging.md and advance state (no agents) |
 

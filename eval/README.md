@@ -46,6 +46,12 @@ node eval/run_case.mjs --corpus <corpus> --site <snapshot> --protocol repo \
     --goal <dir>/UC-56.goal.md --out <dir>/UC-56
 ```
 
+`build_corpus.mjs` empties `--dest` before it writes, so it refuses a `--dest` that is or
+contains the repository root, the current folder or `--src`, on stderr with exit 2.
+`run_case.mjs` likewise refuses a `--timeout` (minutes) that is not a number greater than 0
+and at most 35791, and a
+`--protocol` other than `repo` or `site`.
+
 Each case is **one goal** from [usecases.md](usecases.md), in a file of its own, and
 nothing else. Never tell the evaluator what the case is testing or that a hazard exists.
 `run_case.mjs` puts the evaluator-facing part of [protocol.md](protocol.md) in front of the
@@ -91,8 +97,10 @@ node eval/nav_hops.mjs '^/tB/Modules/ErrObject/Number$' # hops by link from docs
 node eval/nav_hops.mjs --from README.md '^/Documentation/Development/Tools$'
 ```
 
-Each of these refuses an unknown flag and a flag without its value on stderr and exits 2, and
-`transcript.mjs` also refuses a second file. A search term, regex or file name that starts
+Each of these refuses an unknown flag and a flag without its value on stderr and exits 2;
+`site_search.mjs` also refuses a `--n` that is not a whole number of at least 1 and search
+terms given with `--composition`, `nav_hops.mjs` a regular expression that does not
+compile, and `transcript.mjs` a second file. A search term, regex or file name that starts
 with a dash goes after `--`:
 `node eval/site_search.mjs -- "-1 as an error code"`.
 

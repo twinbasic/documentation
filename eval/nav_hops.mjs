@@ -32,7 +32,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { parseCli, printHelpAndExit, regexOption, withUsageError } from "../lib/cli.mjs";
 import { parseFrontmatter } from "../lib/frontmatter.mjs";
 import { blockRegions } from "../lib/markdown.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
@@ -46,20 +46,25 @@ const USAGE =
   "See eval/README.md.";
 
 function parseArgs(argv) {
-  const { values, positionals } = withUsageError(() => parseCli(argv, {
-    options: {
-      from: { type: "string", default: "docs/index.md" },
-      src: { type: "string" },
-      help: { type: "boolean", short: "h" },
-    },
-    positionals: { min: 0, max: Infinity },
-    stopAt: ["help"],
-  }));
+  const { values, positionals, patterns } = withUsageError(() => {
+    const cli = parseCli(argv, {
+      options: {
+        from: { type: "string", default: "docs/index.md" },
+        src: { type: "string" },
+        help: { type: "boolean", short: "h" },
+      },
+      positionals: { min: 0, max: Infinity },
+      stopAt: ["help"],
+    });
+    if (cli.stopped === "help") return cli;
+    return { ...cli, patterns: cli.positionals.map((t) => regexOption(t, { option: "<url-regex>", flags: "i" })) };
+  });
   return {
     from: values.from,
     src: "src" in values ? path.resolve(values.src) : REPO_ROOT,
     help: values.help,
     targets: positionals,
+    patterns,
   };
 }
 
@@ -154,8 +159,8 @@ async function main(argv) {
 
   const show = (f) => path.relative(o.src, f).split(path.sep).join("/");
   let unreachable = 0;
-  for (const t of o.targets) {
-    const re = new RegExp(t, "i");
+  for (const [i, t] of o.targets.entries()) {
+    const re = o.patterns[i];
     // Breadth-first order: the first reachable match is a nearest one.
     const hit = [...prev.keys()].find((f) => re.test(pages.urlOf.get(f) ?? ""));
     if (!hit) {

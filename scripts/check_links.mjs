@@ -77,7 +77,7 @@ import {
   FsOracle, formatLinkReport, formatIntegrityReport,
   resolve, OUTSIDE_BASEPATH_MARKER,
 } from "../builder/link-check.mjs";
-import { CliError, parseCli } from "../lib/cli.mjs";
+import { CliError, choiceOption, parseCli } from "../lib/cli.mjs";
 
 // Tree-relative POSIX path, the space check.mjs works and reports in, so
 // the same tree checked with a relative --root-dir, an absolute one, or
@@ -250,7 +250,7 @@ function parseArgs(argv) {
     checkSitemap: values.checkSitemap,
     checkSearch: values.checkSearch,
     checkCanonical: values.checkCanonical,
-    oracle: values.oracle,
+    oracle: choiceOption(values.oracle, { option: "--oracle", choices: ["fs", "index"] }),
   };
 
   return { opts, inputs: positionals };

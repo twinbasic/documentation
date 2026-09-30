@@ -39,7 +39,9 @@ import { availableParallelism, tmpdir } from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
 import { DEFAULTS, parseCommandLine } from "../builder/command-line.mjs";
-import { CliError, numberOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import {
+  CliError, choiceOption, dateOption, numberOption, parseCli, printHelpAndExit, refuseTogether, regexOption, urlOption, withUsageError,
+} from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { createProbes, exitOnCrash } from "./lib/gate-probes.mjs";
 
@@ -242,8 +244,95 @@ const OPTIONS = {
   check("numberOption takes a fraction otherwise", numberOption("1.5", { option: "--t", min: 0 }) === 1.5);
   const nan = cliError(() => numberOption("abc", { option: "--t", min: 0 }), "bad-number");
   check("numberOption refuses text that is not a number", nan?.message === "--t expects a number of at least 0, got: abc", show(nan));
-  const own = cliError(() => numberOption(undefined, { option: "--t", message: (v) => `--t: ${v}?` }), "bad-number");
-  check("numberOption takes the tool's own message", own?.message === "--t: undefined?", show(own));
+  const above = { option: "--t", above: 0 };
+  const zero = cliError(() => numberOption("0", above), "bad-number");
+  check("numberOption above 0 refuses 0, saying greater than 0", zero?.message === "--t expects a number greater than 0, got: 0" && zero.option === "--t" && zero.value === "0",
+    show(zero));
+  check("numberOption above 0 takes 0.5 and refuses a negative", numberOption("0.5", above) === 0.5 && Boolean(cliError(() => numberOption("-1", above), "bad-number")));
+  const capped = { option: "--t", above: 0, max: 5 };
+  const over = cliError(() => numberOption("6", capped), "bad-number");
+  check("numberOption above 0 with a max names both", over?.message === "--t expects a number greater than 0 and at most 5, got: 6", show(over));
+  check("numberOption above 0 with a max takes the max itself", numberOption("5", capped) === 5);
+  const whole = cliError(() => numberOption("0", { option: "--t", integer: true, above: 0 }), "bad-number");
+  check("numberOption above 0 for a whole number says so", whole?.message === "--t expects a whole number greater than 0, got: 0", show(whole));
+  const atMost = cliError(() => numberOption("10", { option: "--t", max: 9 }), "bad-number");
+  check("numberOption with only a max names it", atMost?.message === "--t expects a number of at most 9, got: 10", show(atMost));
+  const free = cliError(() => numberOption("x", { option: "--t" }), "bad-number");
+  check("numberOption with no range names none", free?.message === "--t expects a number, got: x", show(free));
+  check("numberOption reads what Number reads: hex, exponent and padding",
+    numberOption("0x10", { option: "--t" }) === 16 && numberOption("1e3", { option: "--t" }) === 1000 && numberOption(" 7 ", { option: "--t" }) === 7);
+  check("numberOption refuses trailing text, blank text, a missing value and Infinity",
+    ["12abc", "  ", "", undefined, "Infinity"].every((v) => cliError(() => numberOption(v, { option: "--t" }), "bad-number")));
+}
+
+// ------------------------------------------------------------ the other checkers
+
+{
+  const pick = { option: "--oracle", choices: ["fs", "index"] };
+  check("choiceOption returns a listed value", choiceOption("index", pick) === "index");
+  const bad = cliError(() => choiceOption("x", pick), "bad-choice");
+  check("choiceOption refuses another, listing the choices", bad?.message === "--oracle expects fs or index, got: x" && bad.option === "--oracle" && bad.value === "x",
+    show(bad));
+  const three = cliError(() => choiceOption("d", { option: "--c", choices: ["a", "b", "c"] }), "bad-choice");
+  check("choiceOption lists three with a comma and or", three?.message === "--c expects a, b or c, got: d", show(three));
+  const one = cliError(() => choiceOption("d", { option: "--c", choices: ["a"] }), "bad-choice");
+  check("choiceOption names a single choice alone", one?.message === "--c expects a, got: d", show(one));
+  check("choiceOption is case-sensitive", Boolean(cliError(() => choiceOption("FS", pick), "bad-choice")));
+}
+{
+  const re = regexOption("^a+$", { option: "--only", flags: "i" });
+  check("regexOption returns the RegExp, with its flags", re instanceof RegExp && re.flags === "i" && re.test("AA"), show(re));
+  check("regexOption has no flags by default", regexOption("a", { option: "--only" }).flags === "");
+  const bad = cliError(() => regexOption("(", { option: "--only" }), "bad-regex");
+  check("regexOption refuses a pattern that does not compile, naming it and the reason",
+    bad?.option === "--only" && bad.value === "(" && /^--only expects a regular expression, got: \( \(.+\)$/.test(bad.message), show(bad));
+  check("regexOption refuses a flag that does not exist", Boolean(cliError(() => regexOption("a", { option: "--only", flags: "q" }), "bad-regex")));
+}
+{
+  const url = urlOption("https://example.org/a/b?c=1", { option: "--url" });
+  check("urlOption returns a URL for an http or https address", url instanceof URL && url.hostname === "example.org" && url.pathname === "/a/b", show(url));
+  check("urlOption takes http", urlOption("http://127.0.0.1:9/", { option: "--url" }).port === "9");
+  const rel = cliError(() => urlOption("foo", { option: "--url" }), "bad-url");
+  check("urlOption refuses text that is not an absolute URL", rel?.message === "--url expects an absolute http or https URL, got: foo" && rel.option === "--url" && rel.value === "foo",
+    show(rel));
+  const mail = cliError(() => urlOption("mailto:x", { option: "--url" }), "bad-url");
+  check("urlOption refuses another scheme", mail?.message === "--url expects an absolute http or https URL, got: mailto:x", show(mail));
+  check("urlOption refuses a path", Boolean(cliError(() => urlOption("/docs/", { option: "--url" }), "bad-url")));
+  check("urlOption takes the schemes it is given",
+    urlOption("ftp://h/f", { option: "--u", protocols: ["ftp:"] }).protocol === "ftp:"
+      && cliError(() => urlOption("https://h/", { option: "--u", protocols: ["ftp:"] }), "bad-url")?.message === "--u expects an absolute ftp URL, got: https://h/");
+}
+{
+  const since = { option: "--since", min: "2015-01-01" };
+  check("dateOption returns the time in ms of a date", dateOption("2024-02-29", { option: "--since" }) === Date.parse("2024-02-29"));
+  check("dateOption takes a time after a T", dateOption("2024-02-03T10:00Z", { option: "--since" }) === Date.parse("2024-02-03T10:00Z"));
+  const bare = cliError(() => dateOption("12", { option: "--since" }), "bad-date");
+  check("dateOption refuses 12, which Date.parse reads as a date in 2001",
+    bare?.message === "--since expects an ISO 8601 date (YYYY-MM-DD), got: 12" && bare.option === "--since" && bare.value === "12", show(bare));
+  const march = cliError(() => dateOption("2024-02-30", { option: "--since" }), "bad-date");
+  check("dateOption refuses a day the month does not have", march?.message === "--since expects an ISO 8601 date (YYYY-MM-DD), got: 2024-02-30", show(march));
+  check("dateOption refuses 29 February of a common year", Boolean(cliError(() => dateOption("2023-02-29", { option: "--since" }), "bad-date")));
+  check("dateOption refuses other shapes",
+    ["2024-2-3", "2024/02/03", "Feb 3 2024", "", "2024-02-03 10:00", "2024-13-01"].every((v) => cliError(() => dateOption(v, { option: "--since" }), "bad-date")));
+  const early = cliError(() => dateOption("2014-12-31", since), "bad-date");
+  check("dateOption refuses a date before min, naming it",
+    early?.message === "--since expects an ISO 8601 date (YYYY-MM-DD) no earlier than 2015-01-01, got: 2014-12-31", show(early));
+  check("dateOption takes min itself and a later date", dateOption("2015-01-01", since) === Date.parse("2015-01-01") && dateOption("2024-02-03T10:00Z", since) > Date.parse("2015-01-01"));
+}
+{
+  const names = ["check", "propose", "census"];
+  check("refuseTogether takes none of the names given", refuseTogether({}, names) === undefined && refuseTogether({ other: true }, names) === undefined);
+  check("refuseTogether takes one", refuseTogether({ check: true }, names) === undefined);
+  const two = cliError(() => refuseTogether({ check: true, census: true }, names), "conflict");
+  check("refuseTogether refuses two, naming both", two?.message === "--check and --census cannot be given together" && show(two.options) === show(["--check", "--census"]),
+    show(two));
+  const three = cliError(() => refuseTogether({ check: true, propose: true, census: true }, names), "conflict");
+  check("refuseTogether refuses three, naming all", three?.message === "--check, --propose and --census cannot be given together", show(three));
+  check("refuseTogether does not count false or undefined",
+    refuseTogether({ check: true, propose: false, census: undefined }, names) === undefined && refuseTogether({ check: false, propose: false }, names) === undefined);
+  const keyed = cliError(() => refuseTogether({ rootDir: "a", showAll: true }, ["root-dir", "show-all"]), "conflict");
+  check("refuseTogether reads a long name through its camelCase key", keyed?.message === "--root-dir and --show-all cannot be given together", show(keyed));
+  check("refuseTogether counts a value that is not false", Boolean(cliError(() => refuseTogether({ check: "x", propose: 0 }, names), "conflict")));
 }
 
 // ------------------------------------------------------------ printing and exiting
@@ -321,7 +410,7 @@ const CASES = [
   // "error: ".
   { tool: "builder/tbdocs.mjs", args: ["--port"], exit: 4, stderr: "--port needs a value\n" },
   { tool: "builder/tbdocs.mjs", args: ["--dest", "--no-pdf"], exit: 4, stderr: "--dest needs a value\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--port=0"], exit: 4, stderr: "--port expects a port number from 1 to 65535, got: 0\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port=0"], exit: 4, stderr: "--port expects a whole number from 1 to 65535, got: 0\n" },
   { tool: "builder/tbdocs.mjs", args: ["--bogus"], exit: 4, stderr: "unknown option: --bogus\n" },
   { tool: "scripts/check_links.mjs", args: ["no-such-tree", "--root-dir"], exit: 4, stderr: "error: --root-dir needs a value\n" },
   { tool: "scripts/check_links.mjs", args: ["no-such-tree", "--forbid"], exit: 4, stderr: "error: --forbid needs a value\n" },
@@ -384,17 +473,17 @@ const CASES = [
   // only its empty list is a case here.
   { tool: "scripts/tbbuild.mjs", args: [], exit: 2, stderr: /^usage: node scripts\/tbbuild\.mjs / },
   { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--help"], exit: 0, stdout: /^usage: node scripts\/tbbuild\.mjs / },
-  { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--arch", "win99"], exit: 2, stderr: /^usage: node scripts\/tbbuild\.mjs / },
-  { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--port", "1.5"], exit: 2, stderr: /^--port takes a positive whole number\nusage: node scripts\/tbbuild\.mjs / },
-  { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--timeout", "abc"], exit: 2, stderr: /^--timeout takes a positive number\nusage: node scripts\/tbbuild\.mjs / },
+  { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--arch", "win99"], exit: 2, stderr: /^--arch expects win32 or win64, got: win99\nusage: node scripts\/tbbuild\.mjs / },
+  { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--port", "1.5"], exit: 2, stderr: /^--port expects a whole number from 1 to 65535, got: 1\.5\nusage: node scripts\/tbbuild\.mjs / },
+  { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--timeout", "abc"], exit: 2, stderr: /^--timeout expects a number greater than 0, got: abc\nusage: node scripts\/tbbuild\.mjs / },
   { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--timeout", "-3"], exit: 2, stderr: /^--timeout needs a value\nusage: node scripts\/tbbuild\.mjs / },
   { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--port", "0", "--help"], exit: 0, stdout: /^usage: node scripts\/tbbuild\.mjs / },
   { tool: "scripts/tbbuild.mjs", args: ["--bogus", "--keep", "x.twinproj"], exit: 2, stderr: /^unknown option: --bogus\nusage: node scripts\/tbbuild\.mjs / },
   { tool: "scripts/tbbuild.mjs", args: ["--keep", "x.twinproj"], exit: 2, stderr: "no such project: x.twinproj\n" },
   { tool: "scripts/tbrun.mjs", args: [], exit: 2, stderr: /^usage: node scripts\/tbrun\.mjs / },
   { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--help"], exit: 0, stdout: /^usage: node scripts\/tbrun\.mjs / },
-  { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch", "win99"], exit: 2, stderr: /^usage: node scripts\/tbrun\.mjs / },
-  { tool: "scripts/tbrun.mjs", args: ["--port", "no-such-dir"], exit: 2, stderr: /^usage: node scripts\/tbrun\.mjs / },
+  { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch", "win99"], exit: 2, stderr: /^--arch expects win32 or win64, got: win99\nusage: node scripts\/tbrun\.mjs / },
+  { tool: "scripts/tbrun.mjs", args: ["--port", "no-such-dir"], exit: 2, stderr: /^--port expects a whole number from 1 to 65535, got: no-such-dir\nusage: node scripts\/tbrun\.mjs / },
   { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch"], exit: 2, stderr: /^--arch needs a value\nusage: node scripts\/tbrun\.mjs / },
   { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch", ""], exit: 2, stderr: /^--arch needs a non-empty value\nusage: node scripts\/tbrun\.mjs / },
   { tool: "scripts/tbrun.mjs", args: ["--bogus", "no-such-dir"], exit: 2, stderr: /^unknown option: --bogus\nusage: node scripts\/tbrun\.mjs / },
@@ -404,8 +493,8 @@ const CASES = [
   { tool: "scripts/addin_test.mjs", args: ["--ide", ""], exit: 2, stderr: "--ide needs a non-empty value\n" },
   { tool: "scripts/addin_test.mjs", args: ["--ide", "no-such.exe"], exit: 2, stderr: /^no twinBASIC IDE found: pass --ide / },
   { tool: "scripts/check_examples.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_examples\.mjs \[options\]\n/ },
-  { tool: "scripts/check_examples.mjs", args: ["--jobs", "0"], exit: 2, stderr: "check_examples: --jobs takes a positive whole number\n" },
-  { tool: "scripts/check_examples.mjs", args: ["--batch", "1.5"], exit: 2, stderr: "check_examples: --batch takes a positive whole number\n" },
+  { tool: "scripts/check_examples.mjs", args: ["--jobs", "0"], exit: 2, stderr: "check_examples: --jobs expects a whole number of at least 1, got: 0\n" },
+  { tool: "scripts/check_examples.mjs", args: ["--batch", "1.5"], exit: 2, stderr: "check_examples: --batch expects a whole number of at least 1, got: 1.5\n" },
   { tool: "scripts/check_examples.mjs", args: ["--jobs", "0", "--help"], exit: 0, stdout: /^usage: node scripts\/check_examples\.mjs \[options\]\n/ },
   { tool: "scripts/check_examples.mjs", args: ["--help", "--jobs"], exit: 0, stdout: /^usage: node scripts\/check_examples\.mjs \[options\]\n/ },
   { tool: "scripts/census_attributes.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/census_attributes\.mjs \[options\]\n/ },
@@ -445,8 +534,8 @@ const CASES = [
   { tool: "scripts/survey_tooling.mjs", args: ["--bogus"], exit: 2, stderr: /^unknown option: --bogus\nusage: node scripts\/survey_tooling\.mjs \[--root DIR\] / },
   { tool: "scripts/survey_tooling.mjs", args: ["stray"], exit: 2, stderr: /^unexpected argument: stray\nusage: node scripts\/survey_tooling\.mjs \[--root DIR\] / },
   { tool: "scripts/survey_tooling.mjs", args: ["--root"], exit: 2, stderr: /^--root needs a value\nusage: node scripts\/survey_tooling\.mjs \[--root DIR\] / },
-  { tool: "scripts/survey_tooling.mjs", args: ["--window", "0"], exit: 2, stderr: /^--window expects a positive integer, got: 0\nusage: node scripts\/survey_tooling\.mjs / },
-  { tool: "scripts/survey_tooling.mjs", args: ["--top", "1.5"], exit: 2, stderr: /^--top expects a positive integer, got: 1\.5\nusage: node scripts\/survey_tooling\.mjs / },
+  { tool: "scripts/survey_tooling.mjs", args: ["--window", "0"], exit: 2, stderr: /^--window expects a whole number of at least 1, got: 0\nusage: node scripts\/survey_tooling\.mjs / },
+  { tool: "scripts/survey_tooling.mjs", args: ["--top", "1.5"], exit: 2, stderr: /^--top expects a whole number of at least 1, got: 1\.5\nusage: node scripts\/survey_tooling\.mjs / },
   { tool: "scripts/survey_tooling.mjs", args: ["--window", "0", "--help"], exit: 0, stdout: /^usage: node scripts\/survey_tooling\.mjs \[--root DIR\] / },
   { tool: "scripts/check_lint.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_lint\.mjs \[--staged\]\n/ },
   { tool: "scripts/check_lint.mjs", args: ["--staged", "--staged"], exit: 2, stderr: "check_lint: --staged given more than once\nusage: node scripts/check_lint.mjs [--staged]\n" },
@@ -459,7 +548,7 @@ const CASES = [
   { tool: "scripts/compare_trees.mjs", args: ["stray"], exit: 2, stderr: /^compare_trees: unexpected argument: stray\n\nusage: node scripts\/compare_trees\.mjs / },
   { tool: "scripts/compare_trees.mjs", args: ["--before"], exit: 2, stderr: /^compare_trees: --before needs a value\n\nusage: node scripts\/compare_trees\.mjs / },
   { tool: "scripts/compare_trees.mjs", args: ["--max", "--keep"], exit: 2, stderr: /^compare_trees: --max needs a value\n\nusage: node scripts\/compare_trees\.mjs / },
-  { tool: "scripts/compare_trees.mjs", args: ["--max", "1.5"], exit: 2, stderr: /^compare_trees: --max takes a whole number, not "1\.5"\n\nusage: node scripts\/compare_trees\.mjs / },
+  { tool: "scripts/compare_trees.mjs", args: ["--max", "1.5"], exit: 2, stderr: /^compare_trees: --max expects a whole number of at least 0, got: 1\.5\n\nusage: node scripts\/compare_trees\.mjs / },
   { tool: "scripts/compare_trees.mjs", args: ["--bogus", "--help"], exit: 2, stderr: /^compare_trees: unknown option: --bogus\n\nusage: node scripts\/compare_trees\.mjs / },
   { tool: "scripts/compare_trees.mjs", args: ["--before", "--", "x"], exit: 2, stderr: /^compare_trees: --before needs a value\n\nusage: node scripts\/compare_trees\.mjs / },
   { tool: "scripts/compare_trees.mjs", args: ["--keep=1"], exit: 2, stderr: /^compare_trees: --keep takes no value\n\nusage: node scripts\/compare_trees\.mjs / },
@@ -483,7 +572,7 @@ const CASES = [
   { tool: "book/render-book.mjs", args: ["-o", "--bogus", "a.html"], exit: 2, stderr: "-o needs a value\n" },
   { tool: "book/render-book.mjs", args: ["a.html", "-o", "out.pdf", "--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
   { tool: "book/render-book.mjs", args: ["a.html", "-o", "out.pdf", "--outline-tags"], exit: 2, stderr: "--outline-tags needs a value\n" },
-  { tool: "book/render-book.mjs", args: ["a.html", "-o", "out.pdf", "-t", "abc"], exit: 1, stderr: /^input not found: .*a\.html\n$/ },
+  { tool: "book/render-book.mjs", args: ["a.html", "-o", "out.pdf", "-t", "abc"], exit: 2, stderr: "--timeout expects a whole number from 0 to 2147483647, got: abc\n" },
   { tool: "book/render-book.mjs", args: ["-x"], exit: 2, stderr: "unknown option: -x\n" },
   { tool: "eval/build_corpus.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node eval\/build_corpus\.mjs --dest <path> / },
   { tool: "eval/build_corpus.mjs", args: [], exit: 2, stderr: /^Usage: node eval\/build_corpus\.mjs --dest <path> / },
@@ -511,7 +600,7 @@ const CASES = [
   { tool: "eval/run_case.mjs", args: ["--prompt-only=1"], exit: 2, stderr: "--prompt-only takes no value\n" },
   { tool: "eval/run_case.mjs", args: ["--corpus"], exit: 2, stderr: "--corpus needs a value\n" },
   { tool: "eval/run_case.mjs", args: ["--smoke", "--corpus", "c", "--site", "s", "--out", "o"], exit: 2, stderr: /^missing: .*[\\/]c[\\/]docs, .*search-data\.json, .*lunr\.min\.js\n$/ },
-  { tool: "eval/run_case.mjs", args: ["--smoke", "--corpus", "c", "--site", "s", "--out", "o", "--timeout", "abc"], exit: 2, stderr: /^missing: .*[\\/]c[\\/]docs, / },
+  { tool: "eval/run_case.mjs", args: ["--smoke", "--corpus", "c", "--site", "s", "--out", "o", "--timeout", "abc"], exit: 2, stderr: "--timeout expects a number greater than 0 and at most 35791, got: abc\n" },
   { tool: "eval/run_case.mjs", args: ["--corpus", "c", "--site", "s", "--out", "o", "--protocol", "repo"], exit: 2, stderr: /^Usage: node eval\/run_case\.mjs --corpus <dir> / },
   { tool: "eval/run_case.mjs", args: ["--corpus", "c", "--site", "s", "--out", "o", "--protocol", "--smoke"], exit: 2, stderr: "--protocol needs a value\n" },
   { tool: "eval/site_search.mjs", args: ["--help"], exit: 0, stdout: /^Usage: node eval\/site_search\.mjs "<query>" / },
@@ -528,7 +617,7 @@ const CASES = [
   { tool: "eval/search_quality.mjs", args: ["--help=1"], exit: 2, stderr: "--help takes no value\n" },
   { tool: "eval/search_quality.mjs", args: ["-x"], exit: 2, stderr: "unknown option: -x\n" },
   { tool: "eval/search_quality.mjs", args: ["--site", "nowhere"], exit: 1, stderr: /^missing .*search-data\.json\nRun build\.bat / },
-  { tool: "eval/search_quality.mjs", args: ["--site", "nowhere", "--sample", "abc"], exit: 1, stderr: /^missing .*search-data\.json\nRun build\.bat / },
+  { tool: "eval/search_quality.mjs", args: ["--site", "nowhere", "--sample", "abc"], exit: 2, stderr: "--sample expects a whole number of at least 1, got: abc\n" },
   { tool: "eval/search_quality.mjs", args: ["--site", "--help"], exit: 2, stderr: "--site needs a value\n" },
   { tool: "eval/search_quality.mjs", args: ["--site"], exit: 2, stderr: "--site needs a value\n" },
   { tool: "eval/search_quality.mjs", args: ["--site", "nowhere", "--save"], exit: 2, stderr: "--save needs a value\n" },
@@ -579,15 +668,15 @@ const CASES = [
   { tool: "builder/tbdocs.mjs", args: ["--dry-run=1"], exit: 4, stderr: "--dry-run takes no value\n" },
   { tool: "builder/tbdocs.mjs", args: ["--no-check=1"], exit: 4, stderr: "--no-check takes no value\n" },
   { tool: "builder/tbdocs.mjs", args: ["--no-check", "--bogus"], exit: 4, stderr: "unknown option: --bogus\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--port", "abc"], exit: 4, stderr: "--port expects a port number from 1 to 65535, got: abc\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port", "abc"], exit: 4, stderr: "--port expects a whole number from 1 to 65535, got: abc\n" },
   { tool: "builder/tbdocs.mjs", args: ["--port="], exit: 4, stderr: "--port needs a non-empty value\n" },
   { tool: "builder/tbdocs.mjs", args: ["--stall-timeout="], exit: 4, stderr: "--stall-timeout needs a non-empty value\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--port=65536"], exit: 4, stderr: "--port expects a port number from 1 to 65535, got: 65536\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--port=1.5"], exit: 4, stderr: "--port expects a port number from 1 to 65535, got: 1.5\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--port=80", "--port=0"], exit: 4, stderr: "--port expects a port number from 1 to 65535, got: 0\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--port=abc", "--port=80"], exit: 4, stderr: "--port expects a port number from 1 to 65535, got: abc\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout=-1"], exit: 4, stderr: "--stall-timeout expects seconds (0 disables), got: -1\n" },
-  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout=abc"], exit: 4, stderr: "--stall-timeout expects seconds (0 disables), got: abc\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port=65536"], exit: 4, stderr: "--port expects a whole number from 1 to 65535, got: 65536\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port=1.5"], exit: 4, stderr: "--port expects a whole number from 1 to 65535, got: 1.5\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port=80", "--port=0"], exit: 4, stderr: "--port expects a whole number from 1 to 65535, got: 0\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--port=abc", "--port=80"], exit: 4, stderr: "--port expects a whole number from 1 to 65535, got: abc\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout=-1"], exit: 4, stderr: "--stall-timeout expects a number of at least 0, got: -1\n" },
+  { tool: "builder/tbdocs.mjs", args: ["--stall-timeout=abc"], exit: 4, stderr: "--stall-timeout expects a number of at least 0, got: abc\n" },
   { tool: "builder/tbdocs.mjs", args: ["--src", ".", "--dest", "."], exit: 4,
     stderr: /^refusing --dest (.+): it is or contains the source tree \1, which cleaning it would delete\n$/ },
   { tool: "builder/tbdocs.mjs", args: ["--src=.", "--dest=sub"], exit: 4,
@@ -731,6 +820,165 @@ for (const [tool, [option, { exit = 2, prefix = "", args, empty } = {}]] of Obje
       LEAVES_EMPTY.add(made);
     }
   }
+}
+
+// A value a tool reads after the parse is checked straight after it: a number,
+// a regular expression, a URL, a date, a choice, an option that excludes
+// another. Each of these is refused before the tool starts anything, so the
+// case leaves its folder empty. `bad` is the message; a tool that prints its
+// usage after it is matched by the message and the opening of that usage. The
+// value that shows each rule is the one given: a word, 0, a fraction, a value
+// past the largest allowed, or `--x=-1`, the form that reaches the check (a
+// separate -1 is refused by the parse as a missing value).
+const BAD_VALUES = [];
+const bad = (tool, args, stderr, exit = 2) => BAD_VALUES.push({ tool, args, exit, stderr });
+// The message, then the opening of the tool's usage; `blank` when the tool puts
+// an empty line between them.
+const thenUsage = (message, tool, blank = false) => new RegExp(`^${literal(message)}\\n${blank ? "\\n" : ""}usage: node ${literal(tool)} `);
+const NOT_PORT = (v) => `--port expects a whole number from 1 to 65535, got: ${v}`;
+const NOT_COUNT = (option, v) => `${option} expects a whole number of at least 1, got: ${v}`;
+const NOT_WHOLE = (option, v) => `${option} expects a whole number of at least 0, got: ${v}`;
+const NOT_ABOVE_ZERO = (option, v) => `${option} expects a number greater than 0, got: ${v}`;
+const NOT_URL = (option, v) => `${option} expects an absolute http or https URL, got: ${v}`;
+const START = "http://127.0.0.1:9/";
+const REGEX_REASON = (option, v) => new RegExp(`^${literal(`${option} expects a regular expression, got: ${v} (`)}.+\\)\\n$`);
+
+// tbdocs and check_links exit 4; tbdocs prints the message alone, check_links after `error: `.
+bad("builder/tbdocs.mjs", ["--url", "foo"], NOT_URL("--url", "foo") + "\n", 4);
+bad("builder/tbdocs.mjs", ["--url=mailto:x"], NOT_URL("--url", "mailto:x") + "\n", 4);
+bad("builder/tbdocs.mjs", ["--stall-timeout", "abc"], "--stall-timeout expects a number of at least 0, got: abc\n", 4);
+bad("scripts/check_links.mjs", ["--offline", "--oracle", "x", "no-such-tree"], "error: --oracle expects fs or index, got: x\n", 4);
+bad("scripts/check_links.mjs", ["--offline", "--oracle=", "no-such-tree"], "error: --oracle needs a non-empty value\n", 4);
+
+// tbbuild and tbrun follow the message with their usage.
+for (const [tool, first] of [["scripts/tbbuild.mjs", "x.twinproj"], ["scripts/tbrun.mjs", "no-such-dir"]]) {
+  bad(tool, [first, "--port", "0"], thenUsage(NOT_PORT(0), tool));
+  bad(tool, [first, "--port=65536"], thenUsage(NOT_PORT(65536), tool));
+  bad(tool, [first, "--port", "abc"], thenUsage(NOT_PORT("abc"), tool));
+  bad(tool, [first, "--timeout", "0"], thenUsage(NOT_ABOVE_ZERO("--timeout", 0), tool));
+  bad(tool, [first, "--timeout=-1"], thenUsage(NOT_ABOVE_ZERO("--timeout", -1), tool));
+  bad(tool, [first, "--arch", "WIN32"], thenUsage("--arch expects win32 or win64, got: WIN32", tool));
+  bad(tool, [first, "--show", "--hide"], thenUsage("--show and --hide cannot be given together", tool));
+}
+bad("scripts/tbrun.mjs", ["no-such-dir", "--quiet=-1"], thenUsage(NOT_WHOLE("--quiet", -1), "scripts/tbrun.mjs"));
+bad("scripts/tbrun.mjs", ["no-such-dir", "--quiet", "1.5"], thenUsage(NOT_WHOLE("--quiet", 1.5), "scripts/tbrun.mjs"));
+
+bad("scripts/addin_test.mjs", ["--only", "("], REGEX_REASON("--only", "("));
+bad("scripts/addin_test.mjs", ["--port", "0"], NOT_PORT(0) + "\n");
+bad("scripts/addin_test.mjs", ["--port=1.5"], NOT_PORT(1.5) + "\n");
+bad("scripts/addin_test.mjs", ["--jobs", "0"], NOT_COUNT("--jobs", 0) + "\n");
+bad("scripts/addin_test.mjs", ["--jobs=1.5"], NOT_COUNT("--jobs", 1.5) + "\n");
+bad("scripts/addin_test.mjs", ["--timeout", "0"], "--timeout expects a number greater than 0 and at most 2147483, got: 0\n");
+bad("scripts/addin_test.mjs", ["--timeout", "2147484"], "--timeout expects a number greater than 0 and at most 2147483, got: 2147484\n");
+bad("scripts/addin_test.mjs", ["--show", "--hide"], "--show and --hide cannot be given together\n");
+
+// check_examples prints "check_examples: " before the message.
+{
+  const tool = "scripts/check_examples.mjs";
+  const say = (message) => `check_examples: ${message}\n`;
+  bad(tool, ["--jobs", "abc"], say(NOT_COUNT("--jobs", "abc")));
+  bad(tool, ["--batch", "0"], say(NOT_COUNT("--batch", 0)));
+  bad(tool, ["--port", "0"], say(NOT_PORT(0)));
+  bad(tool, ["--port=65536"], say(NOT_PORT(65536)));
+  bad(tool, ["--only", "("], new RegExp(`^check_examples: ${literal("--only expects a regular expression, got: ( (")}.+\\)\\n$`));
+  bad(tool, ["--apply"], say("--apply needs --propose"));
+  bad(tool, ["--apply", "--census"], say("--apply needs --propose"));
+  bad(tool, ["--census", "--propose"], say("--census and --propose cannot be given together"));
+  bad(tool, ["--report", "survey.json", "--census"], say("--report and --census cannot be given together"));
+  bad(tool, ["--report", "survey.json", "--census", "--propose"], say("--report, --census and --propose cannot be given together"));
+  bad(tool, ["--show", "--hide"], say("--show and --hide cannot be given together"));
+}
+
+bad("scripts/survey_tooling.mjs", ["--window", "abc"], thenUsage(NOT_COUNT("--window", "abc"), "scripts/survey_tooling.mjs"));
+bad("scripts/survey_tooling.mjs", ["--top=-1"], thenUsage(NOT_COUNT("--top", -1), "scripts/survey_tooling.mjs"));
+bad("scripts/compare_trees.mjs", ["--max=-1"], thenUsage(`compare_trees: ${NOT_WHOLE("--max", -1)}`, "scripts/compare_trees.mjs", true));
+bad("scripts/compare_trees.mjs", ["--max", "abc"], thenUsage(`compare_trees: ${NOT_WHOLE("--max", "abc")}`, "scripts/compare_trees.mjs", true));
+
+{
+  const tool = "scripts/crawl_check.mjs";
+  bad(tool, ["--concurrency", "0", START], thenUsage(NOT_COUNT("--concurrency", 0), tool));
+  bad(tool, ["--concurrency=1.5", START], thenUsage(NOT_COUNT("--concurrency", 1.5), tool));
+  bad(tool, ["--timeout", "0", START], thenUsage("--timeout expects a whole number from 1 to 2147483647, got: 0", tool));
+  bad(tool, ["--timeout", "2147483648", START], thenUsage("--timeout expects a whole number from 1 to 2147483647, got: 2147483648", tool));
+  bad(tool, ["--timeout", "abc", START], thenUsage("--timeout expects a whole number from 1 to 2147483647, got: abc", tool));
+  bad(tool, ["foo"], thenUsage(NOT_URL("<start-url>", "foo"), tool));
+  bad(tool, ["mailto:x"], thenUsage(NOT_URL("<start-url>", "mailto:x"), tool));
+}
+
+bad("scripts/sweep_a11y.mjs", ["--limit", "0"], NOT_COUNT("--limit", 0) + "\n");
+bad("scripts/sweep_a11y.mjs", ["--limit=1.5"], NOT_COUNT("--limit", 1.5) + "\n");
+bad("scripts/sweep_a11y.mjs", ["--recycle-every", "0"], NOT_COUNT("--recycle-every", 0) + "\n");
+bad("scripts/sweep_a11y.mjs", ["--recycle-every", "abc"], NOT_COUNT("--recycle-every", "abc") + "\n");
+bad("scripts/pick_a11y_sample.mjs", ["--budget", "0"], NOT_ABOVE_ZERO("--budget", 0) + "\n");
+bad("scripts/pick_a11y_sample.mjs", ["--budget=-1"], NOT_ABOVE_ZERO("--budget", -1) + "\n");
+bad("scripts/pick_a11y_sample.mjs", ["--check", "--propose"], "--check and --propose cannot be given together\n");
+bad("scripts/pick_a11y_sample.mjs", ["--propose", "--census"], "--propose and --census cannot be given together\n");
+bad("scripts/pick_a11y_sample.mjs", ["--check", "--propose", "--census"], "--check, --propose and --census cannot be given together\n");
+bad("scripts/check_a11y_fingerprint.mjs", ["--baseline", "nope"], /^--baseline expects production, .+, got: nope\n$/);
+bad("scripts/check_a11y_fingerprint.mjs", ["--candidate", "nope"], /^--candidate expects production, .+, got: nope\n$/);
+bad("scripts/check_a11y_fingerprint.mjs", ["--patches", "nope"], /^--patches expects .+, got: nope\n$/);
+bad("scripts/check_a11y_fingerprint.mjs", ["--patches=plain-color-fields,nope"], /^--patches expects .+, got: nope\n$/);
+bad("scripts/check_axe_patch_equiv.mjs", ["--patch", "nope"], /^--patch expects .+, got: nope\n$/);
+bad("scripts/check_links_diff.mjs", ["--max-lines", "abc"], NOT_WHOLE("--max-lines", "abc") + "\n");
+bad("scripts/check_links_diff.mjs", ["--max-lines=-1"], NOT_WHOLE("--max-lines", -1) + "\n");
+bad("scripts/check_links_diff.mjs", ["--max-lines=1.5"], NOT_WHOLE("--max-lines", 1.5) + "\n");
+
+const NOT_MS = (v) => `--timeout expects a whole number from 0 to 2147483647, got: ${v}\n`;
+bad("book/render-book.mjs", ["a.html", "-o", "out.pdf", "--timeout=-1"], NOT_MS(-1));
+bad("book/render-book.mjs", ["a.html", "-o", "out.pdf", "-t", "1.5"], NOT_MS(1.5));
+bad("book/render-book.mjs", ["a.html", "-o", "out.pdf", "-t", "2147483648"], NOT_MS(2147483648));
+
+bad("eval/run_case.mjs", ["--timeout", "0"], "--timeout expects a number greater than 0 and at most 35791, got: 0\n");
+bad("eval/run_case.mjs", ["--timeout", "35792"], "--timeout expects a number greater than 0 and at most 35791, got: 35792\n");
+bad("eval/run_case.mjs", ["--protocol", "x"], "--protocol expects repo or site, got: x\n");
+bad("eval/search_quality.mjs", ["--sample", "0"], NOT_COUNT("--sample", 0) + "\n");
+bad("eval/search_quality.mjs", ["--worst=-1"], NOT_WHOLE("--worst", -1) + "\n");
+bad("eval/search_quality.mjs", ["--worst", "abc"], NOT_WHOLE("--worst", "abc") + "\n");
+bad("eval/search_quality.mjs", ["--failures=1.5"], NOT_WHOLE("--failures", 1.5) + "\n");
+bad("eval/site_search.mjs", ["--n", "0", "term"], NOT_COUNT("--n", 0) + "\n");
+bad("eval/site_search.mjs", ["--n=1.5", "term"], NOT_COUNT("--n", 1.5) + "\n");
+bad("eval/site_search.mjs", ["--composition", "term"], "--composition takes no search terms\n");
+bad("eval/nav_hops.mjs", ["("], REGEX_REASON("<url-regex>", "("));
+bad("eval/nav_hops.mjs", ["Reference", "[a-"], REGEX_REASON("<url-regex>", "[a-"));
+
+// build_corpus empties its --dest before it writes, so it refuses one that is or
+// contains the repository root, the folder it runs from or --src, checked in
+// that order. Every one of these stops at the command line. Each --dest is a
+// folder that must never be emptied.
+{
+  const tool = "eval/build_corpus.mjs";
+  const refuse = (dest, what) => new RegExp(`^refusing --dest ${dest}: it is or contains ${what}, which cleaning it would delete\\n$`);
+  const docs = path.join(REPO_ROOT, "docs");
+  bad(tool, ["--dest", REPO_ROOT], refuse(literal(REPO_ROOT), "the repository root"));
+  bad(tool, ["--dest", path.dirname(REPO_ROOT)], refuse(literal(path.dirname(REPO_ROOT)), "the repository root"));
+  bad(tool, ["--dest", "."], refuse(".+", "the current folder"));
+  bad(tool, ["--dest", ".."], refuse(".+", "the current folder"));
+  bad(tool, ["--src", path.join(docs, "Reference"), "--dest", docs], refuse(literal(docs), literal(`--src ${path.join(docs, "Reference")}`)));
+  bad(tool, ["--src", docs, "--dest", docs], refuse(literal(docs), literal(`--src ${docs}`)));
+}
+
+// wisdom's command in these is never a real one, so that none can start an
+// export, except extract, whose modes are refused before it reads a thing.
+{
+  const tool = "wisdom/wisdom.mjs";
+  const since = (v) => `--since expects an ISO 8601 date (YYYY-MM-DD) no earlier than 2015-01-01, got: ${v}\n`;
+  bad(tool, ["bogus", "--concurrency", "0"], NOT_COUNT("--concurrency", 0) + "\n");
+  bad(tool, ["bogus", "--concurrency=1.5"], NOT_COUNT("--concurrency", 1.5) + "\n");
+  bad(tool, ["bogus", "--cap=-1"], NOT_COUNT("--cap", -1) + "\n");
+  bad(tool, ["bogus", "--cap", "abc"], NOT_COUNT("--cap", "abc") + "\n");
+  bad(tool, ["bogus", "--rate-limit", "0"], NOT_ABOVE_ZERO("--rate-limit", 0) + "\n");
+  bad(tool, ["bogus", "--rate-limit", "abc"], NOT_ABOVE_ZERO("--rate-limit", "abc") + "\n");
+  bad(tool, ["bogus", "--since", "12"], since("12"));
+  bad(tool, ["bogus", "--since", "2024-02-30"], since("2024-02-30"));
+  bad(tool, ["bogus", "--since", "2014-12-31"], since("2014-12-31"));
+  bad(tool, ["bogus", "--min-confidence", "x"], "--min-confidence expects high, medium or low, got: x\n");
+  bad(tool, ["extract", "--all", "--force"], "--all and --force cannot be given together\n");
+  bad(tool, ["extract", "--since", "2024-01-01", "--force"], "--since and --force cannot be given together\n");
+  bad(tool, ["extract", "--since", "2024-01-01", "--all", "--force"], "--since, --all and --force cannot be given together\n");
+}
+for (const made of BAD_VALUES) {
+  CASES.push(made);
+  LEAVES_EMPTY.add(made);
 }
 
 const TIMEOUT_MS = 30_000;

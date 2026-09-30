@@ -10,7 +10,7 @@
 // where they stand: nothing after them is read, and the options returned say
 // only `help`.
 
-import { CliError, numberOption, parseCli } from "../lib/cli.mjs";
+import { numberOption, parseCli, urlOption } from "../lib/cli.mjs";
 
 export const OPTIONS = {
   src: { type: "string" },
@@ -115,7 +115,7 @@ export function parseCommandLine(argv) {
       case "src": args.src = t.value; break;
       case "dest": args.dest = t.value; break;
       case "baseurl": args.baseurl = t.value; break;
-      case "url": args.url = t.value; break;
+      case "url": urlOption(t.value, { option: "--url" }); args.url = t.value; break;
       case "dryRun": args.dryRun = true; break;
       case "noOffline": args.skipOffline = true; break;
       case "noPdf": args.skipPdf = true; break;
@@ -156,21 +156,12 @@ export function parseCommandLine(argv) {
         break;
       case "serve": args.serve = true; break;
       case "port":
-        args.port = numberOption(t.value, {
-          option: "--port", integer: true, min: 1, max: 65535,
-          message: (raw) => `--port expects a port number from 1 to 65535, got: ${raw}`,
-        });
+        args.port = numberOption(t.value, { option: "--port", integer: true, min: 1, max: 65535 });
         break;
-      case "stallTimeout": {
+      case "stallTimeout":
         // Seconds, fractions included; 0 disables the watchdog.
-        const secs = Number(t.value);
-        if (!Number.isFinite(secs) || secs < 0) {
-          throw new CliError("bad-number", `--stall-timeout expects seconds (0 disables), got: ${t.value}`,
-            { option: "--stall-timeout", value: t.value });
-        }
-        args.stallTimeoutMs = secs * 1000;
+        args.stallTimeoutMs = numberOption(t.value, { option: "--stall-timeout", min: 0 }) * 1000;
         break;
-      }
     }
   }
   return args;

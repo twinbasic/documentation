@@ -3,7 +3,7 @@
 import { mkdirSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { parseCli, printHelpAndExit, withUsageError } from '../lib/cli.mjs'
+import { choiceOption, dateOption, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from '../lib/cli.mjs'
 import { loadConfig } from './config.mjs'
 import { readJsonFile, writeFileAtomic } from './files.mjs'
 import { createClient, CapReachedError, timestampToSnowflake, EXIT_CAP_REACHED } from './discord/api.mjs'
@@ -14,29 +14,46 @@ import { runExtract, runMerge } from './extract/prep.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
+// No Discord message is older than this.
+const DISCORD_EPOCH = '2015-01-01'
+
 function parseArgs(argv) {
   const [command, ...rest] = argv.slice(2)
   if (command === '--help' || command === '-h') printHelpAndExit(USAGE)
-  const { values } = withUsageError(() => parseCli(rest, {
-    options: {
-      help: { type: 'boolean', short: 'h' },
-      guild: { type: 'string' },
-      channel: { type: 'string', multiple: true },
-      since: { type: 'string' },
-      in: { type: 'string' },
-      out: { type: 'string' },
-      concurrency: { type: 'string' },
-      'rate-limit': { type: 'string' },
-      cap: { type: 'string' },
-      'min-confidence': { type: 'string' },
-      force: { type: 'boolean' },
-      'dry-run': { type: 'boolean' },
-      merge: { type: 'boolean' },
-      all: { type: 'boolean' },
-    },
-    positionals: 0,
-    stopAt: ['help'],
-  }))
+  const { values, concurrency, rateLimit, cap } = withUsageError(() => {
+    const cli = parseCli(rest, {
+      options: {
+        help: { type: 'boolean', short: 'h' },
+        guild: { type: 'string' },
+        channel: { type: 'string', multiple: true },
+        since: { type: 'string' },
+        in: { type: 'string' },
+        out: { type: 'string' },
+        concurrency: { type: 'string' },
+        'rate-limit': { type: 'string' },
+        cap: { type: 'string' },
+        'min-confidence': { type: 'string' },
+        force: { type: 'boolean' },
+        'dry-run': { type: 'boolean' },
+        merge: { type: 'boolean' },
+        all: { type: 'boolean' },
+      },
+      positionals: 0,
+      stopAt: ['help'],
+    })
+    if (cli.stopped === 'help') return cli
+    const v = cli.values
+    if ('since' in v) dateOption(v.since, { option: '--since', min: DISCORD_EPOCH })
+    if ('minConfidence' in v) choiceOption(v.minConfidence, { option: '--min-confidence', choices: ['high', 'medium', 'low'] })
+    // --merge grafts results already on disk and reads none of the three modes.
+    if (command === 'extract' && !v.merge) refuseTogether(v, ['since', 'all', 'force'])
+    return {
+      ...cli,
+      concurrency: 'concurrency' in v ? numberOption(v.concurrency, { option: '--concurrency', integer: true, min: 1 }) : undefined,
+      rateLimit: 'rateLimit' in v ? numberOption(v.rateLimit, { option: '--rate-limit', above: 0 }) : undefined,
+      cap: 'cap' in v ? numberOption(v.cap, { option: '--cap', integer: true, min: 1 }) : undefined,
+    }
+  })
   if (values.help) printHelpAndExit(USAGE)
 
   const flags = { channels: values.channel }
@@ -44,9 +61,9 @@ function parseArgs(argv) {
   if ('since' in values) flags.since = values.since
   if ('in' in values) flags.in = values.in
   if ('out' in values) flags.out = values.out
-  if ('concurrency' in values) flags.concurrency = parseInt(values.concurrency, 10)
-  if ('rateLimit' in values) flags.rateLimit = parseFloat(values.rateLimit)
-  if ('cap' in values) flags.cap = parseInt(values.cap, 10)
+  if (concurrency !== undefined) flags.concurrency = concurrency
+  if (rateLimit !== undefined) flags.rateLimit = rateLimit
+  if (cap !== undefined) flags.cap = cap
   if ('minConfidence' in values) flags.minConfidence = values.minConfidence
   if (values.force) flags.force = true
   if (values.dryRun) flags.dryRun = true

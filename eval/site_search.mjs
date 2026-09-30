@@ -25,25 +25,33 @@ import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 import fs from "node:fs";
 import path from "node:path";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { CliError, numberOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const require = createRequire(import.meta.url);
 
 function parseArgs(argv) {
-  const { values, positionals } = withUsageError(() => parseCli(argv, {
-    options: {
-      site: { type: "string" },
-      n: { type: "string" },
-      composition: { type: "boolean" },
-      help: { type: "boolean", short: "h" },
-    },
-    positionals: { min: 0 },
-    stopAt: ["help"],
-  }));
+  const { values, positionals, n } = withUsageError(() => {
+    const cli = parseCli(argv, {
+      options: {
+        site: { type: "string" },
+        n: { type: "string" },
+        composition: { type: "boolean" },
+        help: { type: "boolean", short: "h" },
+      },
+      positionals: { min: 0 },
+      stopAt: ["help"],
+    });
+    if (cli.stopped === "help") return cli;
+    const n = "n" in cli.values ? numberOption(cli.values.n, { option: "--n", integer: true, min: 1 }) : 8;
+    if (cli.values.composition && cli.positionals.length) {
+      throw new CliError("conflict", "--composition takes no search terms", { option: "--composition" });
+    }
+    return { ...cli, n };
+  });
   return {
     site: "site" in values ? path.resolve(values.site) : path.join(REPO_ROOT, "docs/_site"),
-    n: "n" in values ? Number(values.n) : 8,
+    n,
     composition: values.composition,
     help: values.help,
     terms: positionals,

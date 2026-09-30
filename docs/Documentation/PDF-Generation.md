@@ -35,7 +35,7 @@ node book/render-book.mjs <input.html> -o <output.pdf>
 | `<input.html>` | required | Path to the assembled HTML file (usually `_site-pdf/book.html`). |
 | `-o` / `--output` | required | Destination PDF path. |
 | `--outline-tags` | `h1,h2,h3,h4` | Comma-separated heading tags to include in the PDF bookmark tree. |
-| `-t` / `--timeout` | `0` (disabled) | Per-operation puppeteer timeout in milliseconds. |
+| `-t` / `--timeout` | `0` (disabled) | Per-operation puppeteer timeout in milliseconds, a whole number from 0 to 2147483647. |
 | `--additional-script` | --- | Inject an extra in-page script after the paged.js bundle. Repeatable. |
 
 `book.bat` runs the standard production invocation:
@@ -153,7 +153,7 @@ The same fork checks fonts on the same principle:
 |---|---|
 | `0` | The PDF was written. |
 | `1` | A file the run needs is missing --- the input HTML, `lib/paged.browser.js`, `lib/progress-handler.js`, or an `--additional-script` path --- or the render threw. |
-| `2` | Bad arguments: an unknown flag, a flag without its value or with an empty one, a second input file, or a missing `<input.html>` or `-o`. |
+| `2` | Bad arguments: an unknown flag, a flag without its value or with an empty one, a `-t` that is not a whole number of milliseconds from 0 to 2147483647, a second input file, or a missing `<input.html>` or `-o`. |
 
 **`book.bat` propagates all three.** It copies `%ERRORLEVEL%` into a variable immediately after the renderer runs and exits with that variable once `popd` has restored the caller's directory --- the same pattern `build.bat` and `check.bat` already used. A batch file's exit code is otherwise its last command's, and an unguarded `popd` resets `ERRORLEVEL` to `0`; `book.bat` used to end on a bare `popd`, so a failed render always reported success to whatever launched it. A script can check `book.bat`'s own exit code directly now. Calling `node book\render-book.mjs` directly and reading its exit code, or watching for the `saved:` line, remain equally valid.
 

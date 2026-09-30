@@ -1034,6 +1034,76 @@ link tools), in the tool's usage-error form.
 
 **Verify.** `check_cli.mjs` gains a bad-value case for each.
 
+**Landed** on the owner's choices of 2026-09-30: numbers are read as `Number()` reads them
+(so `0x10` and `1e3` pass, `12abc` and blank text do not), with fractions refused where the
+value is a count, a port or a millisecond count an API needs whole; 0 only where it has a
+stated meaning (`tbdocs`' `--stall-timeout`, `compare_trees`' `--max`, `search_quality`'s
+`--worst` and `--failures`, `check_links_diff`'s `--max-lines`, `tbrun`'s `--quiet`, and
+`render-book`'s `-t`, which PDF-Generation.md documents as disabling the timeout);
+`numberOption`'s one wording everywhere; and every silent conflict refused. `lib/cli.mjs`
+gains `choiceOption`, `regexOption`, `urlOption`, `dateOption` (ISO 8601, the day read back
+as written, since `Date.parse` takes `12` as a date in 2001 and `2024-02-30` as March) and
+`refuseTogether`, and `numberOption` gains `above` (greater than) and loses `message`, whose
+one caller, `tbdocs`' `--port`, now takes the default wording. Every check runs straight after
+the parse, before an IDE, browser, registry snapshot, request or file removal, in the tool's
+usage-error form. The survey's list held, and it had missed more: `crawl_check --concurrency
+abc` and `addin_test --jobs abc` looped for ever (the second after its registry snapshot),
+`addin_test`'s and `run_case`'s timeouts of 0 or text killed every child at once, `wisdom`'s
+`--rate-limit` or `--cap` given text turned the guard off, and `tbdocs --url foo` crashed
+partway through the build. Also checked: `tbdocs`' `--url`; `tbbuild`'s and `tbrun`'s `--arch`
+through `choiceOption` (they printed the bare usage); `check_a11y_fingerprint`'s `--patches`
+and `check_axe_patch_equiv`'s `--patch` against the patch names; `wisdom`'s `--since` no
+earlier than 2015-01-01 and its `--min-confidence`. Conflicts refused: `--show` with `--hide`
+in `tbbuild`, `tbrun`, `addin_test` and `check_examples`; two of `check_examples`' `--report`,
+`--census` and `--propose`, and `--apply` without `--propose`; two of `pick_a11y_sample`'s
+modes (the last won); `site_search`'s `--composition` with terms; and `wisdom extract`'s
+`--since`, `--all` and `--force`, moved from `prep.mjs` (exit 1) to the parse, and still not
+under `--merge`, which reads none of them. `build_corpus` refuses a `--dest` that is or
+contains the repository root, the current folder or `--src` (the last beyond the owner's two,
+the same harm). Tools.md's refusal sentence covers a value a tool cannot use; its `tbdocs`,
+`crawl_check`, `pick_a11y_sample`, the a11y fingerprint and `check_cli` sections,
+Pipeline-Stages.md, PDF-Generation.md, Extending.md, Wisdom.md and `eval/README.md` follow.
+
+`check_cli: 810 probes, all pass` (568 before): 21 cases re-pointed to the new wording (three
+`render-book`, `run_case` and `search_quality` cases now stop at the value, before the missing
+input they stopped at), 39 probes of the new checkers, 102 bad-value cases in a `BAD_VALUES`
+block, each with its empty-folder probe, and one probe gone with `message`. With
+`numberOption`'s test made to pass everything through `c43-fault.mjs` in `NODE_OPTIONS`, 88 of
+810 fail; with `choiceOption`'s, 16. A Sonnet agent checked every new text against the code; its six findings were fixed, among
+them two limits: `crawl_check`'s `--timeout` allowed up to 4294967295 ms, which
+`AbortSignal.timeout` accepts but whose timer then fires at once (measured: a 3,000,000,000 ms
+signal is aborted within 50 ms, a 2,147,483,647 ms one is not), and `render-book`'s `-t` had
+no maximum; both now stop at 2147483647. `urlOption` uses `new URL` in a `try` rather than
+`URL.parse`, which needs Node 22.1 where the docs say 22. `compare_trees`: Extending,
+PDF-Generation, Pipeline-Stages, Tools and Wisdom online and offline, the search data and
+`book.html`. Lint `Checked 172 files`; regex safety `535
+literals + 34 constructed in 130 files ... 500 safe, 69 polynomial, 0 undecided, 0
+exponential; 8 construction(s) not resolvable`; `build.bat`, `check.bat` and `test.bat`
+clean. On the owner's next push CI prints `check_cli: 810 probes, all pass` and that
+regex-safety line.
+
+### C72b — `builder, scripts: tbdocs and check_links exit 0, 1 or 2 like every tool`
+
+**Raised by the owner** (2026-09-30). Every other tool exits 1 when it finds a problem and 2
+when it cannot do its job (a refused command line since C72, a crash since C28). `tbdocs`
+exits with a bitmask, 1 for a failed page, diagram, stylesheet, baseline drift, link failure
+or crash, 2 for an integrity failure, 3 for both, and 4 for a refused command line (C18,
+departure 1); `check_links.mjs` gives 1 for links, 2 for integrity, 3 for both and 4 for its
+command line. Nothing reads a bit: every wrapper tests `errorlevel 1`, CI tests non-zero, and
+`check_links.mjs:56`'s "so CI can tell" has no reader. Building.md's "1 for link failures"
+already leaves out the other failures 1 carries.
+
+**Change** (the owner's choice, 2026-09-30). Both tools exit 0 clean, 1 when the build or check
+found a problem of any kind, and 2 on a refused command line or a crash (`tbdocs`' crash exits
+1 today, through `main().catch`); the summary lines already name which check failed. The exit
+constants in `tbdocs.mjs`, `serve.mjs`'s use of them, `write.mjs`'s `--dest` refusal,
+`check_links`' usage text and header, Building.md, Tools.md's refusal sentence and its `tbdocs`
+and `check_links` sections, Pipeline-Stages.md, `check_cli`'s cases and `REFUSALS` entries
+that expect 4, and C75's note follow. Departure 1 is superseded.
+
+**Verify.** `check_cli.mjs`; `build.bat` over a fixture with a broken link and one with an
+integrity failure exits 1; a crash through `c43-fault.mjs` exits 2.
+
 ### C73 — `scripts: one meaning each for --json and --src`
 
 **L1-8 (R2), L1-9 (R3).** `--json` prints to stdout in `tbbuild`, `tbrun`, `check_examples`

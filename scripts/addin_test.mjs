@@ -53,7 +53,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { numberOption, parseCli, printHelpAndExit, refuseTogether, regexOption, withUsageError } from "../lib/cli.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
 import { wantShow } from "./lib/tb-ide.mjs";
 import { buildNumber, findIde } from "./lib/tb-install.mjs";
@@ -93,10 +93,16 @@ const { values } = withUsageError(() => parseCli(process.argv.slice(2), {
 }));
 if (values.help) printHelpAndExit(USAGE);
 const die = (code, msg) => { console.error(msg); process.exit(code); };
-const only = values.only ? new RegExp(values.only) : null;
-const basePort = Number(values.port || 9560);
-const jobs = Math.max(1, Number(values.jobs || 2));
-const laneTimeout = Number(values.timeout || 600) * 1000;
+// setTimeout takes at most 2147483647 ms, so a lane's timeout is at most 2147483 s.
+const { only, basePort, jobs, laneTimeout } = withUsageError(() => {
+  refuseTogether(values, ["show", "hide"]);
+  return {
+    only: values.only ? regexOption(values.only, { option: "--only" }) : null,
+    basePort: numberOption(values.port ?? "9560", { option: "--port", integer: true, min: 1, max: 65535 }),
+    jobs: numberOption(values.jobs ?? "2", { option: "--jobs", integer: true, min: 1 }),
+    laneTimeout: numberOption(values.timeout ?? "600", { option: "--timeout", above: 0, max: 2147483 }) * 1000,
+  };
+});
 const show = wantShow({ show: values.show, hide: values.hide });
 
 // ---------------------------------------------------------------- refusals

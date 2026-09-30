@@ -32,10 +32,11 @@ import {
   VIEWPORTS,
   gotoPage,
   newAuditPage,
+  SOURCE_PATCHES,
   readAxeSource,
 } from "./lib/axe-scan.mjs";
 import { withBrowser } from "./lib/browser.mjs";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { choiceOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
 const cli = withUsageError(
   () =>
@@ -50,7 +51,9 @@ const cli = withUsageError(
 if (cli.stopped === "help") {
   printHelpAndExit("usage: node scripts/check_axe_patch_equiv.mjs [--patch NAME] [-h, --help]");
 }
-let patchName = cli.values.patch;
+const patchName = withUsageError(
+  () => choiceOption(cli.values.patch, { option: "--patch", choices: Object.keys(SOURCE_PATCHES) }),
+);
 
 // Runs in the page against whichever bundle was injected.
 const PROBE = () => {

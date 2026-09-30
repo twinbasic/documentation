@@ -79,7 +79,7 @@ import * as path from "node:path";
 import { performance } from "node:perf_hooks";
 
 import { runCheck, selfTest as scriptSelfTest } from "./check_links.mjs";
-import { parseCli, withUsageError } from "../lib/cli.mjs";
+import { numberOption, parseCli, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 const BASE_PATH = "/twinBASIC-docs";
@@ -539,24 +539,30 @@ function ensureBasePathTree(dir, allowBuild) {
 // ── Main ────────────────────────────────────────────────────────────
 
 function parseArgs(argv) {
-  const { values } = withUsageError(() => parseCli(argv, {
-    options: {
-      a: { type: "string", default: "script" },
-      b: { type: "string", default: "script" },
-      case: { type: "string", multiple: true },
-      "max-lines": { type: "string", default: "12" },
-      "base-path-tree": { type: "string", default: DEFAULT_BASEPATH_TREE },
-      "build-base-path": { type: "boolean" },
-      "self-test": { type: "boolean" },
-      list: { type: "boolean" },
-      verbose: { type: "boolean", short: "v" },
-      help: { type: "boolean", short: "h" },
-    },
-    stopAt: ["help"],
-  }));
+  const { values, maxLines } = withUsageError(() => {
+    const cli = parseCli(argv, {
+      options: {
+        a: { type: "string", default: "script" },
+        b: { type: "string", default: "script" },
+        case: { type: "string", multiple: true },
+        "max-lines": { type: "string", default: "12" },
+        "base-path-tree": { type: "string", default: DEFAULT_BASEPATH_TREE },
+        "build-base-path": { type: "boolean" },
+        "self-test": { type: "boolean" },
+        list: { type: "boolean" },
+        verbose: { type: "boolean", short: "v" },
+        help: { type: "boolean", short: "h" },
+      },
+      stopAt: ["help"],
+    });
+    return {
+      values: cli.values,
+      maxLines: cli.stopped === "help" ? undefined : numberOption(cli.values.maxLines, { option: "--max-lines", integer: true, min: 0 }),
+    };
+  });
   const o = {
     a: values.a, b: values.b, cases: values.case, verbose: values.verbose, list: values.list,
-    maxLines: Number(values.maxLines), basePathTree: values.basePathTree, buildBasePath: values.buildBasePath,
+    maxLines, basePathTree: values.basePathTree, buildBasePath: values.buildBasePath,
     selfTest: values.selfTest, help: values.help,
   };
   if (!o.cases.length) o.cases = [...DEFAULT_CASES];

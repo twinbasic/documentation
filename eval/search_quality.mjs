@@ -126,7 +126,7 @@ import fs from "node:fs";
 import path from "node:path";
 import zlib from "node:zlib";
 import { performance } from "node:perf_hooks";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { numberOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 import { load, buildIndex, search, KIND_WORDS } from "./site_search.mjs";
@@ -134,26 +134,36 @@ import { load, buildIndex, search, KIND_WORDS } from "./site_search.mjs";
 // ---------------------------------------------------------------- arg parsing
 
 function parseArgs(argv) {
-  const { values } = withUsageError(() => parseCli(argv, {
-    options: {
-      site: { type: "string" },
-      save: { type: "string" },
-      compare: { type: "string" },
-      sample: { type: "string" },
-      worst: { type: "string" },
-      failures: { type: "string" },
-      help: { type: "boolean", short: "h" },
-    },
-    positionals: 0,
-    stopAt: ["help"],
-  }));
+  const { values, sample, worstN, failures } = withUsageError(() => {
+    const cli = parseCli(argv, {
+      options: {
+        site: { type: "string" },
+        save: { type: "string" },
+        compare: { type: "string" },
+        sample: { type: "string" },
+        worst: { type: "string" },
+        failures: { type: "string" },
+        help: { type: "boolean", short: "h" },
+      },
+      positionals: 0,
+      stopAt: ["help"],
+    });
+    if (cli.stopped === "help") return cli;
+    const v = cli.values;
+    return {
+      ...cli,
+      sample: "sample" in v ? numberOption(v.sample, { option: "--sample", integer: true, min: 1 }) : null,
+      worstN: "worst" in v ? numberOption(v.worst, { option: "--worst", integer: true, min: 0 }) : 15,
+      failures: "failures" in v ? numberOption(v.failures, { option: "--failures", integer: true, min: 0 }) : 0,
+    };
+  });
   return {
     site: "site" in values ? path.resolve(values.site) : path.join(REPO_ROOT, "docs/_site"),
     save: "save" in values ? path.resolve(values.save) : null,
     compare: "compare" in values ? path.resolve(values.compare) : null,
-    sample: "sample" in values ? Number(values.sample) : null,
-    worstN: "worst" in values ? Number(values.worst) : 15,
-    failures: "failures" in values ? Number(values.failures) : 0,
+    sample,
+    worstN,
+    failures,
     help: values.help,
   };
 }

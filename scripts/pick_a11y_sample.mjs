@@ -48,7 +48,7 @@ import {
   DEFAULT_ROOT_DIR, REPO_ROOT, SAMPLE_PAGES, discoverPages, median, pad, splitStubs,
 } from "./lib/axe-scan.mjs";
 import { exitOnCrash } from "./lib/gate-probes.mjs";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
 
 // A crash exits 2, where 1 is a coverage gap.
 exitOnCrash();
@@ -148,11 +148,13 @@ if (cli.stopped === "help") {
       + "                                        [--root-dir DIR] [--sweep FILE] [--budget MS] [-h, --help]",
   );
 }
-const modeTokens = cli.tokens.filter((t) => t.key === "check" || t.key === "propose" || t.key === "census");
-let mode = modeTokens.length ? modeTokens[modeTokens.length - 1].key : "check";
+const budget = withUsageError(() => {
+  refuseTogether(cli.values, ["check", "propose", "census"]);
+  return cli.values.budget !== undefined ? numberOption(cli.values.budget, { option: "--budget", above: 0 }) : Infinity;
+});
+const mode = ["check", "propose", "census"].find((m) => cli.values[m]) ?? "check";
 let rootDir = cli.values.rootDir;
 let sweepPath = cli.values.sweep;
-let budget = cli.values.budget !== undefined ? parseFloat(cli.values.budget) : Infinity;
 let fresh = cli.values.fresh;
 rootDir = resolve(rootDir);
 

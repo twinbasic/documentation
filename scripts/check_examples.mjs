@@ -74,7 +74,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { CliError, numberOption, parseCli, printHelpAndExit, refuseTogether, regexOption, withUsageError } from "../lib/cli.mjs";
 import { mapLines } from "../lib/markdown.mjs";
 import {
   BODY_SLOTS, CONCAT_KEY, HIDDEN_MARKER, MARKER, RUN_MARKER, SLOTS, classify,
@@ -87,8 +87,6 @@ import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 const TEMPLATES = path.join(REPO_ROOT, "test", "example-projects");
 
 // ---------------------------------------------------------------- arguments
-
-const usageError = (why) => { console.error(`check_examples: ${why}`); process.exit(2); };
 
 const { values } = withUsageError(
   () => parseCli(process.argv.slice(2), {
@@ -137,13 +135,19 @@ Compiles the documentation's own twinBASIC code samples, every tb fence marked
 
 if (values.help) printHelpAndExit(USAGE);
 
-// A count or a port that is not a positive whole number is refused: Number()
-// makes NaN of anything it cannot read.
-function positiveInteger(n, d) {
-  const v = Number(values[n] ?? d);
-  if (!Number.isInteger(v) || v < 1) usageError(`--${n} takes a positive whole number`);
-  return v;
-}
+// The values are read before anything runs. --report, --census and --propose
+// are three modes of one run, and --apply is a part of --propose.
+const { only, jobs, basePort, batchSize } = withUsageError(() => {
+  refuseTogether(values, ["report", "census", "propose"]);
+  refuseTogether(values, ["show", "hide"]);
+  if (values.apply && !values.propose) throw new CliError("conflict", "--apply needs --propose", { option: "--apply" });
+  return {
+    only: values.only ? regexOption(values.only, { option: "--only" }) : null,
+    jobs: numberOption(values.jobs ?? "4", { option: "--jobs", integer: true, min: 1 }),
+    basePort: numberOption(values.port ?? "9480", { option: "--port", integer: true, min: 1, max: 65535 }),
+    batchSize: numberOption(values.batch ?? "120", { option: "--batch", integer: true, min: 1 }),
+  };
+}, { format: (err) => `check_examples: ${err.message}` });
 
 const MODE_CENSUS = values.census;
 const MODE_PROPOSE = values.propose;
@@ -151,10 +155,6 @@ const MODE_REPORT = values.report ?? null;
 const APPLY = values.apply;
 const VERBOSE = values.verbose;
 const AS_JSON = values.json;
-const only = values.only ? new RegExp(values.only) : null;
-const jobs = positiveInteger("jobs", 4);
-const basePort = positiveInteger("port", 9480);
-const batchSize = positiveInteger("batch", 120);
 
 // A page's template, when its fence does not name one. Inferred from the path
 // because the package a sample needs is what the page is ABOUT -- stating

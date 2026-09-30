@@ -15,7 +15,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { CliError, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { isOutputTree } from "../lib/markdown-files.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
@@ -94,17 +94,45 @@ const WITHHELD = [
 
 const STUB = "/* [ source withheld for this exercise -- treat this file as unreadable ] */\n";
 
+// Whether `inner` is `outer` or lies under it; path.relative compares
+// case-insensitively on Windows.
+function isInside(outer, inner) {
+  const rel = path.relative(outer, inner);
+  return rel === "" || (rel !== ".." && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
+}
+
+// build() empties `dest` before it writes anything, so a `dest` that is or
+// contains a folder the tool runs from or reads would delete it.
+function refuseDest(dest, src) {
+  const doomed = [
+    ["the repository root", REPO_ROOT],
+    ["the current folder", process.cwd()],
+    [`--src ${src}`, src],
+  ];
+  for (const [what, folder] of doomed) {
+    if (isInside(dest, path.resolve(folder))) {
+      throw new CliError("bad-dest", `refusing --dest ${dest}: it is or contains ${what}, which cleaning it would delete`, { option: "--dest", value: dest });
+    }
+  }
+}
+
 function parseArgs(argv) {
-  const { values } = withUsageError(() => parseCli(argv, {
-    options: {
-      src: { type: "string" },
-      dest: { type: "string" },
-      quiet: { type: "boolean", default: false },
-      help: { type: "boolean", short: "h" },
-    },
-    positionals: 0,
-    stopAt: ["help"],
-  }));
+  const { values } = withUsageError(() => {
+    const cli = parseCli(argv, {
+      options: {
+        src: { type: "string" },
+        dest: { type: "string" },
+        quiet: { type: "boolean", default: false },
+        help: { type: "boolean", short: "h" },
+      },
+      positionals: 0,
+      stopAt: ["help"],
+    });
+    if (cli.stopped !== "help" && "dest" in cli.values) {
+      refuseDest(path.resolve(cli.values.dest), "src" in cli.values ? path.resolve(cli.values.src) : REPO_ROOT);
+    }
+    return cli;
+  });
   return {
     src: "src" in values ? path.resolve(values.src) : REPO_ROOT,
     dest: "dest" in values ? path.resolve(values.dest) : null,

@@ -101,7 +101,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, mkdirSync, statSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { choiceOption, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
 import { click } from "./lib/tb-click.mjs";
 import { compilerExe, findIde } from "./lib/tb-install.mjs";
 import { BUILD_FAILED, COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, keepClears, keptClears,
@@ -156,9 +156,18 @@ if (values.help) printHelpAndExit(USAGE);
 
 const die = (code, msg) => { console.error(msg); process.exit(code); };
 
-const arch = values.arch || TARGETS[0];
+// The values are read before anything starts.
+const { port, arch, timeoutMs, quietMs } = withUsageError(() => {
+  refuseTogether(values, ["show", "hide"]);
+  return {
+    port: numberOption(values.port ?? "9346", { option: "--port", integer: true, min: 1, max: 65535 }),
+    arch: choiceOption(values.arch ?? TARGETS[0], { option: "--arch", choices: TARGETS }),
+    timeoutMs: numberOption(values.timeout ?? "120", { option: "--timeout", above: 0 }) * 1000,
+    quietMs: numberOption(values.quiet ?? "2500", { option: "--quiet", integer: true, min: 0 }),
+  };
+}, { format: (err) => `${err.message}\n${USAGE}` });
 
-if (!positionals.length || !TARGETS.includes(arch)) die(2, USAGE);
+if (!positionals.length) die(2, USAGE);
 
 const srcDir = path.resolve(positionals[0]);
 if (!existsSync(srcDir) || !statSync(srcDir).isDirectory()) {
@@ -170,10 +179,6 @@ if (!existsSync(srcDir) || !statSync(srcDir).isDirectory()) {
 
 const settingsPath = path.join(srcDir, "Settings");
 if (!existsSync(settingsPath)) die(2, `no Settings file in ${srcDir}`);
-
-const port = Number(values.port || 9346);
-const timeoutMs = Number(values.timeout || 120) * 1000;
-const quietMs = Number(values.quiet || 2500);
 
 // Images a probe can leave behind through COM activation. Office is the set that
 // prompted this; --reap-images replaces the list for anything else. Only out-of-
