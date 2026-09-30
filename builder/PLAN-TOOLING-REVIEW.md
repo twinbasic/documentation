@@ -105,14 +105,60 @@ normalised, windows of 60 tokens) and an import graph over the 185 first-party J
 files, `perf/` included and vendored code excluded. `--summary` prints the first six rows;
 `--root` measures a checkout of `fe9ce12b` itself, which does not contain the script.
 
-| Measure | At `fe9ce12b` |
-|---|---|
-| clone regions of 60+ tokens | 680, of which 318 do not involve `perf/` |
-| top-level function names defined in two or more files | 77, of which 57 outside `perf/` |
-| command-line tools outside `perf/` that read `process.argv` | 32, none using `node:util` `parseArgs` |
-| tools with a private copy of `flag`/`opt`/`die` | 6, with `opt` in three different versions |
-| packages imported but not declared | 2: `picocolors` (installed for `@babel/code-frame`), `pako` (for `pdf-lib`) |
-| clone regions by pair of areas: `builder`/`scripts`, `scripts`/`scripts`, `builder`/`builder` | 55, 95, 39 |
+| Measure | At `fe9ce12b` | After, at `532dd269` (C83) |
+|---|---|---|
+| clone regions of 60+ tokens | 680, of which 318 do not involve `perf/` | 1,759, of which 1,510 do not involve `perf/` |
+| top-level function names defined in two or more files | 77, of which 57 outside `perf/` | 101, of which 81 outside `perf/` |
+| command-line tools outside `perf/` that read `process.argv` | 32, none using `node:util` `parseArgs` | 57, of which the survey counts 1 importing `parseArgs` |
+| tools with a private copy of `flag`/`opt`/`die` | 6, with `opt` in three different versions | 6 |
+| packages imported but not declared | 2: `picocolors` (installed for `@babel/code-frame`), `pako` (for `pdf-lib`) | 0 |
+| clone regions by pair of areas: `builder`/`scripts`, `scripts`/`scripts`, `builder`/`builder` | 55, 95, 39 | 72, 619, 28 |
+
+The after column is `--summary` and the area table of the full listing at `532dd269`: 253
+files and 441,106 tokens, against 185 and 309,618. Re-run today's script against a worktree
+at `fe9ce12b` (`--root`) and it prints the before column exactly, so the two are measured the
+same way. Why each measure moved:
+
+- **Clone regions rose because of what was added, not because code was copied.** Of the 1,510
+  outside `perf/`, 437 (49,328 tokens) involve `eval/search-experiments/`, 29 lab scripts that
+  the search work added on 2026-09-26, after the baseline and outside this review; 848
+  (63,812 tokens) involve a gate's probe tables or a test file (`check_cli.mjs`'s case table
+  alone is in clones worth 68,517 tokens, counted on each side), against 56 at the baseline;
+  and 225 (17,725 tokens) are the rest. Among files present at both commits, the rest fell
+  from 262 regions and 21,185 tokens to 177 and 14,136. The largest falls are the book's
+  shims (`fast-sync-load.mjs` and `fast-dict-array.mjs` deleted, the onebuf pair sharing
+  `onebuf-range.mjs`), `check_examples.mjs` (16 regions with itself, now none) and the a11y
+  tools' shared discovery. Of the 48 regions in files added since, most are literal tables that
+  token normalisation makes alike: C69's `checkTargets` tables (21 regions between the two
+  onebuf shims), `pdf-lib-internals.mjs`' list of requires, `attribute-sites.mjs`' site
+  skeletons. `builder/gantt.mjs` against `gen_attribute_probes.mjs` (23) is the same pair of
+  array literals the baseline counted against `tbdocs.mjs`, moved by C77.
+- **Repeated names rose for the same reason.** Of the 81 outside `perf/`, 39 are repeated only
+  through `eval/search-experiments/`. The other 42 are down from 57: 22 of them are the
+  baseline's; 33 of the baseline's are repeated nowhere now (`flag`, `opt`, `escapeHtml`,
+  `escapeRegExp`, `logicalLines`, `walk`, the page and symbol baseline helpers, the onebuf
+  internals and more) and 2 only through the lab scripts; and 20 are new, mostly homonyms:
+  `show`, `same` and `say` are one-line local helpers, and `makeBatches` (17 lines against
+  110) and `runProbes` (17 against 442) are unrelated functions that share a name.
+- **`process.argv` readers are counted by file, and `parseArgs` by direct import.** Of the 57,
+  46 parse through `lib/cli.mjs`, which is the one that imports `parseArgs` and reads no
+  `process.argv` itself; the one the survey counts is `check_cli.mjs`, which compares
+  `lib/cli.mjs` with a strict `parseArgs`. The other 11 are nine lab scripts in
+  `eval/search-experiments/`, `impexp.mjs` (a published download with no dependencies, kept
+  in step with `impexp.py` by its parity gate) and `scripts/lib/pdf-shims-side.mjs`, which
+  reads a JSON job, not options.
+- **The `flag`/`opt`/`die` count matches names, not parsers.** None of the six files parses
+  arguments with them now: each defines `die` as an exit helper used after `lib/cli.mjs`'
+  parse, and `sweep_attributes.mjs`' `opt` is the object its parse returns. Four of the `die`s
+  are the same line (`addin_test`, `build_package_api`, `census_attributes`, `tbrun`); the
+  ones in `sweep_attributes.mjs` and `check_examples.mjs` also tidy the registry.
+- **Undeclared packages** are 0 since C09 declared `picocolors` and `pako`.
+- **By area**, `builder`/`builder` fell from 39 to 28. `builder`/`scripts` rose from 55 to 72
+  through literal tables alone: `highlight-theme.mjs`' scope table against
+  `check_code_regions.mjs`' probes (25, new) and the `gantt.mjs` pair above, while the
+  baseline's code clones there (`sab-scheduler.mjs` and `check.mjs` against `check_links.mjs`,
+  and others) are gone. `scripts`/`scripts` rose from 95 to 619, of which 476 involve
+  `check_cli.mjs`.
 
 Observed by hand at the same commit:
 
@@ -1043,6 +1089,27 @@ outside `perf/`) and 74 (54).
 
 **Verify.** The recorded column re-read against the survey's own output; each measure that did
 not move as expected has its reason written down.
+
+**Landed.** The after column is in the baseline survey table, with a reason for each measure.
+The entry's expected figures (571 and 74) predate the script's first commit; a worktree at
+`fe9ce12b` measured with today's script (`--root`) gives the table's 680/318, 77/57, 32, 6
+and 2 exactly, so the columns are comparable. Only undeclared packages moved as expected. The
+breakdown of clone regions and repeated names comes from the kit's `c83-classify.mjs`, over
+both full listings (`--top 2000`) and the baseline worktree's file list; the `parseArgs` and
+`flag`/`opt`/`die` rows were read by grep. At the owner's choice (2026-09-30) the added lab
+folder is recorded as the survey measures it, not excluded like `perf/`, and the repeated
+`die` is folded into `lib/cli.mjs` by C83a.
+
+### C83a — `lib, scripts: one die in lib/cli.mjs for four tools`
+
+Found by C83's survey: `addin_test`, `build_package_api`, `census_attributes` and `tbrun`
+each define the same line, `const die = (code, msg) => { console.error(msg);
+process.exit(code); }`. `lib/cli.mjs` exports it as `die(code, message)` and the four import
+it. The two `die`s that also tidy the registry, in `sweep_attributes.mjs` and
+`check_examples.mjs`, stay their own.
+
+**Verify.** `check_cli`'s recorded cases for the four tools unchanged; lint and the three
+wrappers clean; `tbrun` on the kit's `tbrun-probes/clean`.
 
 ## Phase 6: formatting
 
