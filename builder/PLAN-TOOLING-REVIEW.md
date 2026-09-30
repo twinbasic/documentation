@@ -1227,6 +1227,26 @@ and exits 3 if that fails. **Verify.** A throw put in after the snapshot through
 `c43-fault.mjs`, with the kit's `reg-snap.mjs` before and after: identical registry, exit 2; a
 throw from the restore as well: exit 3.
 
+**Landed.** Once `addin_test` has recorded the registry and the add-ins' settings, it replaces
+`exitOnCrash`'s handler with its own. A crash prints its error, ends the lanes as Ctrl+C does,
+waits up to 10 s for them to close, and then runs the same put-back as the end of a run:
+`putBack()`, now a function both paths call, restores the IDE's entries and the settings,
+checks that nothing names a lane's folder, and deletes the work folders. The run exits 2 if
+that found no problem and 3 if it found one, and a crash during the put-back exits 3 at once.
+If the lanes' ending lets `runAll` return, the main path waits and leaves the exit to the
+handler. A failure to record the settings, which already put the registry back, now exits 3
+when that fails, not 2. The usage text's 2 and 3 lines and Tools.md's section say so. With
+`--only sample15` between two `reg-snap.mjs` snapshots, through `c43-fault.mjs` (whose hooks
+now take a list of faults), the kit's `c74a-faults.mjs` gave: a throw before the lanes start,
+exit 2; a throw from a lane's output while its IDE runs, exit 2 after `registry: put back (2
+project-state, 21 recent-list and 3 association writes)`; the same with the put-back made to
+report a problem, exit 3; the same with a throw inside the put-back after the restore, exit 3.
+The registry was identical before and after in all four (sha256 `41c09aafafe70eac`).
+`addin-test.bat`: `10 of 10 lane(s) ran: 10 passed`, `registry: put back (20 project-state, 21
+recent-list and 3 association writes)`. `compare_trees`: Tools, online and offline, the search
+data and `book.html`. Lint, `check_cli` (860) and regex safety unchanged; `build.bat`,
+`check.bat` and `test.bat` clean.
+
 ### C75 — `serve.bat: return tbdocs's exit code`
 
 **A6-5 (R3).** `serve.bat` does not pass its child's exit code back, unlike the other

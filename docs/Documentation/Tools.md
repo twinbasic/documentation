@@ -935,7 +935,8 @@ of the same add-in shares, so a lane names its add-ins' application names in `la
 names them, so that its add-ins start from their defaults, and put back at the end. Two lanes
 that name the same one never run at once. Afterwards it confirms that no entry names a lane's
 folder and that the settings are as found, and reports any new application key that no lane
-named. Pressing Ctrl+C ends the lanes and still puts everything back.
+named. Pressing Ctrl+C ends the lanes and still puts everything back, and so does a crash of
+the runner once it has recorded the registry.
 
 **An add-in under test starts no browser.** Every IDE the harness starts, including those of
 `tbbuild`, `tbrun` and `check_examples`, has the environment variable `TB_ADDIN_TEST` set to
@@ -950,7 +951,7 @@ it takes that folder from the IDE, which builds its path from the `APPDATA` envi
 variable. Every IDE a lane starts has an `APPDATA` inside the lane's work folder, and a lane
 fails if its IDE's add-in folder turns out to be anywhere else.
 
-Exit codes: **0** every lane passed, and the registry is as it was found; **1** a lane failed, or the run was interrupted; **2** the harness could not run: a refused command line, no IDE, no matching lane, a registry it could not record, or a crash; **3** the registry or a work folder was not put back (see the lines above), which wins over a 1 because the registry is what to repair.
+Exit codes: **0** every lane passed, and the registry is as it was found; **1** a lane failed, or the run was interrupted; **2** the harness could not run: a refused command line, no IDE, no matching lane, a registry it could not record, or a crash after which the registry was put back; **3** the registry or a work folder was not put back (see the lines above), at the end of a run or after a crash, which wins over a 1 because the registry is what to repair.
 
 ### check_tb_registry.mjs
 {: #check-tb-registry }
