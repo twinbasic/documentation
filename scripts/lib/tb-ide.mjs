@@ -101,7 +101,9 @@ export function killTree(pid) {
  * An IDE ended a moment ago
  * holds its port a little longer than it lives: 13 and 16 ms after
  * shutdownIde, and once two seconds. So the port gets ten seconds to come
- * free before the launch is refused.
+ * free before the launch is refused. The refusal names the process listening
+ * on the port, or, when none is, the error the bind got: Windows refuses a
+ * port it has reserved with EACCES.
  *
  * @param {object} [o.env]    extra environment for the IDE. ADDIN_TEST_ENV is
  *                            set to "1" unless this names it; a value of
@@ -112,10 +114,17 @@ export function killTree(pid) {
  */
 export async function launchIde({ exe, project, port, show = false, keep = false, env = {} }) {
   const waitFrom = Date.now();
-  while (await portTaken(port)) {
+  for (;;) {
+    const code = await portTaken(port);
+    if (!code) break;
     if (Date.now() - waitFrom > 10 * 1000) {
-      throw new Error(`DevTools port ${port} is in use: another IDE has it, perhaps one another ` +
-        "session started, and this one could be mistaken for it. Pass a different --port.");
+      const holder = portListeners(port);
+      throw new Error(holder
+        ? `DevTools port ${port} is in use: ${holder} listens on it. Another IDE has it, perhaps ` +
+          "one another session started, and this one could be mistaken for it. Pass a different --port."
+        : `DevTools port ${port} cannot be bound (${code}), though nothing listens on it: Windows ` +
+          "may have reserved it (netsh int ipv4 show excludedportrange protocol=tcp). Pass a " +
+          "different --port.");
     }
     await sleep(100);
   }
@@ -297,13 +306,41 @@ export async function attachIde(port, { tries = 60 } = {}) {
 }
 
 // Whether something already listens on a loopback port. A DevTools server
-// binds 127.0.0.1, so binding it ourselves for a moment is the test.
+// binds 127.0.0.1, so binding it ourselves for a moment is the test. Resolves
+// to the bind's error code, or null when the port is free: a port Windows has
+// reserved refuses the bind with EACCES though nothing listens on it.
 const portTaken = (port) => new Promise((resolve) => {
   const s = net.createServer();
-  s.once("error", () => resolve(true));
-  s.once("listening", () => s.close(() => resolve(false)));
+  s.once("error", (e) => resolve(e.code ?? "an error"));
+  s.once("listening", () => s.close(() => resolve(null)));
   s.listen(port, "127.0.0.1");
 });
+
+// The processes listening on a port launchIde was refused, for its message,
+// as netstat and tasklist name them: "pid 1234 (name.exe)". Null when none
+// does. When netstat itself fails, that is said instead.
+function portListeners(port) {
+  const opts = { encoding: "utf8", windowsHide: true, timeout: 10 * 1000 };
+  let pids;
+  try {
+    pids = [...new Set(execFileSync("netstat", ["-ano", "-p", "TCP"], opts).split(/\r?\n/)
+      .map((l) => l.trim().split(/\s+/))
+      .filter((f) => f[3] === "LISTENING" && f[1]?.endsWith(`:${port}`))
+      .map((f) => f[4]))];
+  } catch (e) {
+    return `a process netstat could not name (${e.code ?? e.message.split("\n")[0]})`;
+  }
+  if (!pids.length) return null;
+  return pids.map((pid) => {
+    try {
+      const row = execFileSync("tasklist", ["/FI", `PID eq ${pid}`, "/FO", "CSV", "/NH"], opts).trim();
+      const image = /^"([^"]+)"/.exec(row)?.[1];
+      return image ? `pid ${pid} (${image})` : `pid ${pid}`;
+    } catch {
+      return `pid ${pid}`;
+    }
+  }).join(" and ");
+}
 
 // Counts and rows are read in ONE evaluate. Read separately they raced: a run
 // reported two diagnostics beside a zero error count, because the background

@@ -1079,6 +1079,23 @@ second run; the first stopped on a port held too long, which is not this move's 
 C81a). `tbrun` on a probe printing two lines: exit 0, both lines. The tree comparison is
 identical but for the Tools page, the search data and the book.
 
+### C81a — `scripts: launchIde's port refusal names what holds the port`
+
+**Landed** at the owner's choice (2026-09-30), for the Found item on a port held too long.
+`portTaken` resolves to the bind's error code, or null when the port is free. When the 10 s
+wait runs out, `launchIde` asks the new `portListeners` (netstat, then tasklist) which
+processes listen on the port. If any do, the refusal names them, as `pid 1234 (name.exe)`,
+in the old message. If none do, it says the port cannot be bound, gives the error code, and
+names `netsh int ipv4 show excludedportrange protocol=tcp`, since Windows refuses a port it
+has reserved with `EACCES`. If netstat fails, the holder reads as a process netstat could not
+name, with the error code. No gate covers it: the refusal runs Windows' netstat and
+tasklist, and CI runs on Linux with no IDE. The kit's `c81a-port.mjs` checks all three with an exe that does not exist: `listen` (the
+script holds the port: it names its own pid and `node.exe`), `reserved` (`c43-fault.mjs`
+makes the bind fail with `EACCES`) and `nonetstat` (the fault renames netstat). Each refuses
+after about 10 s with the expected message. `check_regex_safety` reads one more literal (550),
+still 36 constructed and 12 not resolvable. `addin-test.bat`: `10 of 10 lane(s) ran: 10
+passed`, registry put back. `examples.bat`: `1136 compile, 0 finding(s), 126.7s -- clean`.
+
 ## Phase 5: documentation and measurement
 
 Written last, against the code as it then is, with every claim re-read against the file it
@@ -1761,6 +1778,13 @@ Defects the review did not have, found by building something this plan asks for.
   wrapper reader) allowed letters, digits, `_` and, for a test, `.`, so a hyphenated gate
   could leave a wrapper or CI with both roster gates green. Found when C80's gate was the
   first such name. Fixed in C80.
+- **`launchIde` refused a taken DevTools port without saying what held it.** One
+  `examples.bat` run stopped after 37 s. Lane 0, starting batch b4, found port 9480 still
+  taken after the 10 s `launchIde` allows, and refused. Minutes later nothing listened on
+  9480 and no twinBASIC process ran, so the holder could not be named. `portTaken` also
+  counted any bind error as taken, so a port Windows had reserved (`EACCES`, nothing
+  listening) read as another IDE. Found while running C81's check. Fixed in C81a, which names
+  the holder, so a repeat can be diagnosed; the cause is still unknown.
 
 ## Open questions
 
