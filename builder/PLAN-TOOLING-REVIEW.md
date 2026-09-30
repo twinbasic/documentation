@@ -1046,6 +1046,24 @@ and an LF CI checkout; otherwise every local run flags 118 files.
 **Verify.** The formatter's check gives the same verdict in this working tree and in a
 worktree checked out with `core.autocrlf=false`.
 
+**Landed.** `.gitattributes` gains `*.mjs`, `*.js` and `*.jsonc text eol=lf`, beside its two
+existing LF rules (the hooks, and the Workflow script, which the new `*.mjs` rule also covers
+but whose own reason stands). Re-measured first: every one of the 240 tracked `.mjs`, `.js`
+and `.jsonc` blobs is LF (`git ls-files --eol`), and 177 were CRLF on disk, 142 of them among
+the 185 files Biome's scope holds (the plan's 118 of 140 was `fe9ce12b`'s count). Biome's own
+setting cannot settle it alone, measured with the formatter switched on through a scratch
+config and each file's formatted output compared with its source for CRLF: `lineEnding: "lf"`
+flagged those 142 here and none on an `autocrlf=false` worktree, and `"auto"`, which follows
+the platform rather than the checkout, flagged the 43 LF files here and all 185 there. After
+the change, a checkout under `autocrlf=true`, one under `false` and this working tree (its
+177 files removed and checked out again: `checkout-index --force` skips an entry whose stat
+matches) hold all 240 files byte for byte alike, so `"lf"` flags none of them for endings in
+any of the three. No blob changed; `git add` of the 177 staged nothing. `compare_trees`
+differs, online and offline alike, in the five shipped scripts whose HEAD checkout is CRLF,
+each by its line endings alone: `svg-inline.js`, `theme-toggle.js`, the vendored
+`just-the-docs.js` and `lunr.min.js`, and the `impexp.mjs` download. A local build now ships
+them LF, as CI's Linux checkout always has.
+
 ### C85 — `lint: the formatter and its style rules, set to the majority style`
 
 The formatter, the linter's own from C05, pinned exactly and configured to the majority style:

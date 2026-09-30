@@ -4,6 +4,14 @@
 # carriage return after #!/bin/sh as part of the interpreter's name.
 .githooks/* text eol=lf
 
+# The types Biome formats are LF in every checkout, whatever core.autocrlf
+# says, so its line-ending check gives one verdict on Windows and in CI.
+# Biome's own `auto` setting follows the platform, not the checkout, and
+# refuses an LF file on Windows.
+*.mjs text eol=lf
+*.js text eol=lf
+*.jsonc text eol=lf
+
 # The Workflow tool refuses a script that contains a carriage return, and the
 # Wisdom extract script is passed to it by path, so a CRLF checkout of it
 # cannot be run.
