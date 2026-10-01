@@ -980,6 +980,47 @@ and v2 runs at once.
 
 ---
 
+## A call through a `FastCall` or `ThisCall` delegate is made as stdcall on win32
+
+**Build:** BETA 995
+**Severity:** the delegate is unusable on win32; every call through it raises an error.
+
+```tb
+Public Delegate Function FastDel FastCall (ByVal a As Long, ByVal b As Long) As Long
+
+Public Function GF FastCall(ByVal a As Long, ByVal b As Long) As Long
+    Return a * 100 + b
+End Function
+
+Public Function GS(ByVal a As Long, ByVal b As Long) As Long
+    Return a * 100 + b
+End Function
+
+Dim d As FastDel = AddressOf GF
+Debug.Print d(9, 1)        ' error: "Bad DLL definition.  Stack corruption detected."
+Dim e As FastDel = AddressOf GS
+Debug.Print e(9, 1)        ' 901: a stdcall target works, after warning TB0026
+```
+
+The same with `ThisCall` in place of `FastCall`, for the delegate and the function, raises the
+same error. So the call through the delegate passes the arguments as stdcall does, whatever
+convention the delegate declares.
+
+**What does not reproduce it:**
+
+- calling `GF` directly: 901. The callee side is right: a `FastCall Naked` function that
+  returns `ECX + EDX`, and a `ThisCall Naked` one that returns `ECX + [ESP+4]` and ends
+  `ret 4`, return the right sums when called directly;
+- delegates declared stdcall (no keyword) or `CDecl`, each pointed at a function of its own
+  convention: 901;
+- a win64 build: every case above returns 901 (x64 has one calling convention).
+
+**Observed** with a `[RunAfterBuild]` probe through `tbrun`, and in the compiled EXE `tbrun`
+left, run from its `Sub Main` and writing to a file: the same five results both ways. Both
+keywords are new in BETA 990 and 992; BETA 987 refuses them (TB5182).
+
+---
+
 ## An error in the body of a generic procedure names neither the type nor the call that caused it
 
 **Build:** BETA 995
