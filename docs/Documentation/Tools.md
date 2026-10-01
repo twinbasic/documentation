@@ -845,6 +845,7 @@ Exit codes: **0** the project compiled without errors; **1** the project has err
     node scripts/tbrun.mjs <source-dir> [--port N] [--arch win32|win64] [--timeout S]
                            [--quiet MS] [--json] [--raw] [--keep] [--no-reap]
                            [--reap-images a,b] [--show|--hide]
+                           [--llvm | --compiler-options S] [--exe]
 
 Builds a probe project and captures what it writes to the IDE's
 [Debug Console](../../tB/IDE/Project/DebugConsole). Where [`tbbuild.mjs`](#tbbuild) answers
@@ -886,6 +887,18 @@ code generation is a failed run as well. Its error line is written before the pr
 statement, so the probe's `Debug.Cls` erases it, and the probe stops at the call. `tbrun`
 keeps what each clear erases, so it names that line and prints the output up to the call.
 
+**A probe that ends before it returns is a failed run, exit 5**, with what it printed
+printed all the same. `End` ends a probe that way, and so does an error raised with no
+handler in a procedure compiled with LLVM, which ends the run without a report. In the
+staged copy, `tbrun` moves the `[RunAfterBuild]` attribute to a Sub it adds to the same
+module, which calls the probe's Sub and then prints a line of its own. That line is missing
+when the probe did not return, and it is never printed. The attribute is replaced with
+spaces, so the line and column numbers in a diagnostic are still the ones in your file.
+`tbrun` warns when it cannot add the wrapper --- the Sub is in a class, takes parameters, or
+is one of several marked --- and the check is then off. A probe that stays silent for longer
+than `--quiet` while it works also ends the wait without that line, so raise `--quiet` for a
+slow one.
+
 **The capture is complete however much a probe prints**, so there is no reason to keep one
 short. `tbrun` reads the console's backing array rather than the pane, which is a virtualised
 list view holding only the rows that fit --- reading that instead returns the last ten or so
@@ -905,14 +918,35 @@ they are 4, **vbArchWin32** and `x86`.
 console shows. The IDE does this, not the probe; `Debug.Print "A"; "&"`, in one statement,
 comes back as `A&`.
 
+**`--llvm` compiles the whole probe with [LLVM](../../LLVM/)**, with no
+`[CompilerOptions("+llvm")]` on each procedure. It sets the project's compiler options in the
+staged copy: `compiler.debugOptions`, which the `[RunAfterBuild]` run is compiled with, and
+`compiler.buildOptions`, which the exe is. `--compiler-options` sets both to any other
+string, such as `"+llvm +optimize"`. A run that uses LLVM --- through either option, the
+tree's own settings or a procedure's `[CompilerOptions]` --- is refused when the IDE shows a
+Community or Personal licence. Neither of those compiles your code with LLVM, so the run would
+measure the default compiler.
+
+**`--exe` also runs the exe the build wrote**, after the probe has run in the IDE. It
+starts the exe on a private desktop, as it starts the IDE, so a message box the exe opens
+appears on no desktop you use. It also ends the exe at `--timeout`. The exe runs its
+`Sub Main`, not the `[RunAfterBuild]` Sub, so a probe for both gives the tree a `Main` that
+calls the probe, and leaves out the template's own module with an empty `Main`. A built exe
+writes nothing with `Debug.Print`, so the probe prints with `TbRun.Out`, from a module `tbrun`
+adds to the staged copy. `TbRun.Out` writes to the Debug Console in the IDE, and to a file
+`tbrun` reads in the exe. The exe's lines and its exit code follow the probe's output.
+
 | Flag | Effect |
 |---|---|
 | `--port <n>` | DevTools port for the IDE. Default 9346. Distinct ports let probes run concurrently --- the staging directory and the project id are keyed to it, so two runs never share a workspace. A port another IDE holds is refused, as for `tbbuild`. |
 | `--arch <target>` | The target to build for, `win32` or `win64`. Default `win32`, set on every run, as for `tbbuild`. A `win64` probe runs as a 64-bit process. |
 | `--timeout <secs>` | Give up waiting for console output. Default 120. |
-| `--quiet <ms>` | How long the console must stop changing before the output counts as complete. Default 2500. There is no sentinel string to match, so any probe works without telling the script anything. Raise it well above the default for a probe that drives an out-of-process server, which can take longer than that to start. |
+| `--quiet <ms>` | How long the console must stop changing before the output counts as complete, when the probe has not returned. Default 2500. Raise it well above the default for a probe that drives an out-of-process server, which can take longer than that to start. |
+| `--llvm` | Compile the whole probe, and the exe, with LLVM. The same as `--compiler-options +llvm`. |
+| `--compiler-options <s>` | The project's compiler options, for the run and the exe. |
+| `--exe` | Also run the built exe, and print what it writes with `TbRun.Out` and its exit code. |
 | `--raw` | Keep the console's timestamp column, which is otherwise stripped. |
-| `--json` | One object with the path of the built file, the target, the captured lines, the IDE pid and anything reaped. |
+| `--json` | One object with the path of the built file, the target, the captured lines, whether the probe returned, the licence an LLVM run checked, the exe's run, the IDE pid and anything reaped. |
 | `--keep` | Leave the IDE running. Implies `--no-reap`, and leaves the IDE's registry entries for the probe as they are. |
 | `--no-reap` | Do not harvest automation servers the probe left behind. |
 | `--reap-images <a,b>` | Replace the harvested image list. Default is the Office suite. |
@@ -947,7 +981,7 @@ behind. That includes the target the IDE remembers for each project, which a `wi
 writes. **A probe builds for the target `--arch` names**, whatever the IDE remembers, so a
 kept IDE switched to `win64` does not make later runs on the same port build 64-bit.
 
-Exit codes: **0** the probe ran and its output was captured; **1** the project has compile errors (the diagnostics are printed); **2** a refused command line (a source folder that is missing or has no `Settings` file included), no IDE or compiler, an IDE that did not start, a compile that never settled, a build that failed after a clean compile, a probe that never ran or stopped at a procedure that failed code generation, or a crash; **3** no output: the console held none before the timeout, or the probe printed none after its last `Debug.Cls`; **4** the compiler crashed, or restarted twice, while compiling the project.
+Exit codes: **0** the probe ran and its output was captured; **1** the project has compile errors (the diagnostics are printed); **2** a refused command line (a source folder that is missing or has no `Settings` file included), no IDE or compiler, an IDE that did not start, a compile that never settled, a build that failed after a clean compile, a probe that never ran or stopped at a procedure that failed code generation, an LLVM run on a Community or Personal licence, an `--exe` run with no exe built, or a crash; **3** no output: the console held none before the timeout, or the probe printed none after its last `Debug.Cls`; **4** the compiler crashed, or restarted twice, while compiling the project; **5** the probe ended before it returned, its output printed all the same. The exe's exit code under `--exe` is reported, not passed on.
 
 ### addin_test.mjs
 {: #addin-test }

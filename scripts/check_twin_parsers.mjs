@@ -21,11 +21,15 @@
 //     under.
 //   - parseTargets (scripts/lib/attributes-doc.mjs), which turns an
 //     `Applicable to:` line into gen_attribute_probes.mjs's targets.
+//   - wrapProbe (scripts/lib/tb-probe.mjs), which moves a tbrun probe's
+//     [RunAfterBuild] to a wrapper; a Sub it wraps wrongly runs the wrong code,
+//     and one it misses loses tbrun's check that the probe returned.
 
 import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { parseTargets } from "./lib/attributes-doc.mjs";
 import { createProbes } from "./lib/gate-probes.mjs";
 import { classify } from "./lib/tb-fences.mjs";
+import { SENTINEL, TBRUN_FILE, WRAPPER_SUB, wrapProbe } from "./lib/tb-probe.mjs";
 import { parseTwin } from "./lib/twin-api.mjs";
 import { MODIFIERS, declarationKind } from "./lib/twin-declarations.mjs";
 
@@ -128,5 +132,83 @@ for (const [app, want] of [
   const got = parseTargets(app);
   check(`parseTargets: ${app}`, show(got) === show(want), `got ${show(got)}`);
 }
+
+// ---------------------------------------------------------------- wrapProbe
+
+// Each fixture is one file, Probe.twin; `want` is the Sub wrapped, or null for
+// none. A wrapped file must keep every line where it was, and add exactly one
+// [RunAfterBuild] -- the wrapper's -- inside the probe's module.
+const probe = (body) => `Module Probe\n${body}\nEnd Module\n`;
+for (const [what, text, want] of [
+  ["a Public Sub", probe("    [RunAfterBuild]\n    Public Sub Run()\n        Debug.Cls\n    End Sub"), "Run"],
+  [
+    "a Private Sub, CRLF",
+    probe("    [RunAfterBuild]\n    Private Sub Go()\n    End Sub").replaceAll("\n", "\r\n"),
+    "Go",
+  ],
+  ["the Sub on the attribute's line", probe("    [RunAfterBuild] Sub Go\n    End Sub"), "Go"],
+  [
+    "a comment and another attribute between",
+    probe('    [RunAfterBuild]\n    \' why\n    [Description("x")]\n    Sub Go()\n    End Sub'),
+    "Go",
+  ],
+  ["a commented-out attribute", probe("    ' [RunAfterBuild]\n    Sub Go()\n    End Sub"), null],
+  ["a Sub with parameters", probe("    [RunAfterBuild]\n    Sub Go(ByVal n As Long)\n    End Sub"), null],
+  ["a Function", probe("    [RunAfterBuild]\n    Function Go() As Long\n    End Function"), null],
+  ["in a Class", "Class Probe\n    [RunAfterBuild]\n    Sub Go()\n    End Sub\nEnd Class\n", null],
+  // The End Module that follows is another module's, where Go cannot be called.
+  [
+    "in a Class before a Module",
+    "Class Probe\n    [RunAfterBuild]\n    Sub Go()\n    End Sub\nEnd Class\nModule M\nEnd Module\n",
+    null,
+  ],
+  // The container is the last one before the attribute, not the last in the file.
+  [
+    "in a Module before a Class",
+    `${probe("    [RunAfterBuild]\n    Sub Go()\n    End Sub")}Class C\nEnd Class\n`,
+    "Go",
+  ],
+  [
+    "two of them",
+    probe("    [RunAfterBuild]\n    Sub A()\n    End Sub\n    [RunAfterBuild]\n    Sub B()\n    End Sub"),
+    null,
+  ],
+  [
+    "the second of two modules",
+    `${probe("    Sub A()\n    End Sub")}Module Second\n    [RunAfterBuild]\n    Sub B()\n    End Sub\nEnd Module\n`,
+    "B",
+  ],
+]) {
+  const r = wrapProbe([{ name: "Probe.twin", text }]);
+  const out = r.files.find((f) => f.name === "Probe.twin")?.text;
+  const tbrun = r.files.some((f) => f.name === TBRUN_FILE);
+  let ok = (r.wrapped?.sub ?? null) === want && tbrun;
+  if (ok && want) {
+    const eol = text.includes("\r\n") ? "\r\n" : "\n";
+    const [before, after] = [text.split(eol), out.split(eol)];
+    const attrs = after.filter((l) => /\[RunAfterBuild\]/.test(l)).length;
+    const call = after.findIndex((l) => l.trim() === `Public Sub ${WRAPPER_SUB}()`);
+    // The wrapper is six lines, from its attribute to a blank line; without
+    // them, the file is the probe's with its attribute blanked.
+    const rest = after.filter((_, i) => i < call - 1 || i >= call + 5);
+    const kept =
+      rest.length === before.length &&
+      before.every((l, i) => rest[i] === l || rest[i] === l.replace("[RunAfterBuild]", " ".repeat(15)));
+    const endModule = after.findIndex((l, i) => i > call && /^End Module/.test(l));
+    ok =
+      kept &&
+      attrs === 1 &&
+      after[call + 1].trim() === want &&
+      after[call + 2].trim() === `Debug.Print "${SENTINEL}"` &&
+      endModule > call &&
+      !after.slice(0, call).some((l) => l.includes(WRAPPER_SUB));
+  }
+  check(`wrapProbe: ${what}`, ok, show({ wrapped: r.wrapped, why: r.why, tbrun, out }));
+}
+check(
+  "wrapProbe: a tree with its own Module TbRun gets no second one",
+  !wrapProbe([{ name: "Mine.twin", text: "Module TbRun\nEnd Module\n" }]).files.some((f) => f.name === TBRUN_FILE),
+  "",
+);
 
 process.exit(report());

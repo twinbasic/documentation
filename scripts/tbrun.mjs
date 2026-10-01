@@ -16,6 +16,14 @@
 //       --reap-images     comma-separated image names to harvest
 //                         (default: the Office suite -- see REAP_IMAGES)
 //       --show / --hide   as tbbuild's
+//       --llvm            compile the whole project with LLVM: the same as
+//                         --compiler-options +llvm
+//       --compiler-options <s>  the project's compiler options, for the run
+//                         and for the exe (compiler.debugOptions and
+//                         compiler.buildOptions); an option string with +llvm
+//                         is refused on a Community or Personal licence
+//       --exe             run the built exe as well, on a private desktop, and
+//                         capture what it writes with TbRun.Out and its exit code
 //
 // Exit: 0 captured output, 1 the project has compile errors, 2 the harness
 // could not run (a refused command line included), a compile never settled, or
@@ -24,7 +32,8 @@
 // and a procedure the probe calls that fails it, since the probe stops at the
 // call -- 3 no output: the build produced none in the console before the
 // timeout, or the probe ran and printed none after its last Debug.Cls -- 4 the
-// compiler crashed, or restarted twice, while compiling the project.
+// compiler crashed, or restarted twice, while compiling the project -- 5 the
+// probe ended before it returned, its output printed all the same.
 //
 // ---------------------------------------------------------------- why
 //
@@ -80,9 +89,14 @@
 //     generation is reported before the probe's first statement runs. So the
 //     script wraps the page's clearDebugConsole() before the build, keeps
 //     what each clear erases, and looks there too (tb-ide's keepClears).
-//  5. QUIET-PERIOD, NOT A MARKER. Waiting for a sentinel string means every
-//     probe has to print one and the script has to know it. Waiting for the
-//     console to stop changing works for any probe.
+//  5. QUIET-PERIOD, AND A MARKER THE PROBE NEVER WRITES. The run is over when
+//     the console stops changing, which works for any probe. But a probe that
+//     stops early also stops changing the console: End does, and so does an
+//     error raised in LLVM-compiled code with no handler, which ends the run
+//     without a word (measured, BETA 995). So the staged copy calls the
+//     probe's Sub from a wrapper that prints a sentinel once it returns
+//     (lib/tb-probe.mjs). Its absence is exit 5; its arrival ends the wait
+//     without the quiet period.
 //  6. EVERY RUN OWNS ITS OWN WORKSPACE AND KILLS ONLY ITS OWN IDE. Both were
 //     shared, and both broke concurrency in ways that looked like something
 //     else. The staging directory was a fixed %TEMP%/tbrun/src, so a second
@@ -100,7 +114,7 @@
 //     a blunt enough instrument to need the guard rails in reapOrphans().
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, mkdirSync, statSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, mkdirSync, statSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -123,6 +137,7 @@ import {
   compileOutcome,
   killTree,
   launchIde,
+  launchOnDesktop,
   setBuildTarget,
   shutdownIde,
   summaryLine,
@@ -130,12 +145,13 @@ import {
   wantShow,
 } from "./lib/tb-ide.mjs";
 import { keepClears, keptClears, readConsole } from "./lib/tb-ide-console.mjs";
+import { SENTINEL, wrapProbe } from "./lib/tb-probe.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
 exitOnCrash();
 
-const USAGE = `usage: node scripts/tbrun.mjs <source-dir> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] [--show|--hide] [-h, --help]
+const USAGE = `usage: node scripts/tbrun.mjs <source-dir> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--quiet MS] [--json] [--raw] [--keep] [--no-reap] [--reap-images a,b] [--show|--hide] [--llvm | --compiler-options S] [--exe] [-h, --help]
 
 Builds an exported twinBASIC source tree in the IDE, runs it, and prints what it
 writes to the DEBUG CONSOLE.
@@ -153,6 +169,13 @@ writes to the DEBUG CONSOLE.
   --reap-images a,b   comma-separated image names to harvest (default: the
                       Office suite)
   --show, --hide      as tbbuild's
+  --llvm              compile the whole project with LLVM, as
+                      --compiler-options +llvm
+  --compiler-options <s>
+                      the project's compiler options, for the run and the exe;
+                      +llvm is refused on a Community or Personal licence
+  --exe               also run the built exe on a private desktop, and print
+                      what it writes with TbRun.Out and its exit code
   -h, --help          print this text and exit
 
 Exit codes:
@@ -161,10 +184,13 @@ Exit codes:
   2  a refused command line (a source folder that is missing or has no Settings file
      included), no IDE or compiler, an IDE that did not start, a compile that never
      settled, a build that failed after a clean compile, a probe that never ran or
-     stopped at a procedure that failed code generation, or a crash
+     stopped at a procedure that failed code generation, an --llvm run on a
+     Community or Personal licence, an --exe run with no exe built, or a crash
   3  no output: the console held none before the timeout, or the probe printed none
      after its last Debug.Cls
-  4  the compiler crashed, or restarted twice, while compiling the project`;
+  4  the compiler crashed, or restarted twice, while compiling the project
+  5  the probe ended before it returned (End, or an error that ended the run); what
+     it printed is printed all the same`;
 
 const { values, positionals } = withUsageError(
   () =>
@@ -176,6 +202,9 @@ const { values, positionals } = withUsageError(
         quiet: { type: "string" },
         ide: { type: "string" },
         "reap-images": { type: "string" },
+        "compiler-options": { type: "string" },
+        llvm: { type: "boolean", default: false },
+        exe: { type: "boolean", default: false },
         json: { type: "boolean", default: false },
         raw: { type: "boolean", default: false },
         keep: { type: "boolean", default: false },
@@ -195,6 +224,7 @@ if (values.help) printHelpAndExit(USAGE);
 const { port, arch, timeoutMs, quietMs } = withUsageError(
   () => {
     refuseTogether(values, ["show", "hide"]);
+    refuseTogether(values, ["llvm", "compiler-options"]);
     return {
       port: numberOption(values.port ?? "9346", { option: "--port", integer: true, min: 1, max: 65535 }),
       arch: choiceOption(values.arch ?? TARGETS[0], { option: "--arch", choices: TARGETS }),
@@ -288,20 +318,53 @@ if (!hasHook) {
 // ------------------------------------------------------------------- pack
 
 // A packing failure is the harness's, exit 2.
+// The project's compiler options: compiler.debugOptions are what the
+// [RunAfterBuild] run is compiled with, and compiler.buildOptions what the exe
+// is -- measured on BETA 995, where +llvm in the build options alone left the
+// run's Debug.Assert evaluated and its loop at the speed of the default.
+const compilerOptions = values.llvm ? "+llvm" : values["compiler-options"];
 let wasTemplate = false,
-  projectName = "";
+  projectName = "",
+  usesLlvm = false,
+  wrap = null;
 try {
   const staged = stageProject({
     src: srcDir,
     stage,
     project: projPath,
     compiler: COMPILER,
-    settings: { "project.buildPath": buildPath, "project.id": laneProjectId(0, port) },
+    settings: {
+      "project.buildPath": buildPath,
+      "project.id": laneProjectId(0, port),
+      ...(compilerOptions === undefined
+        ? {}
+        : { "compiler.debugOptions": compilerOptions, "compiler.buildOptions": compilerOptions }),
+    },
+    prepare: (dir) => {
+      const sources = path.join(dir, "Sources");
+      const files = existsSync(sources)
+        ? readdirSync(sources)
+            .filter((f) => f.endsWith(".twin"))
+            .map((name) => ({ name, text: readFileSync(path.join(sources, name), "utf8") }))
+        : [];
+      wrap = wrapProbe(files);
+      for (const f of wrap.files) writeFileSync(path.join(sources, f.name), f.text, "utf8");
+    },
   });
   wasTemplate = /\$\{/.test(staged.original["project.buildPath"] ?? "");
   projectName = String(staged.settings["project.name"] ?? "");
+  // Any LLVM in the run: the project's options, or a procedure's own.
+  usesLlvm =
+    /\+llvm\b/i.test(
+      `${staged.settings["compiler.debugOptions"] ?? ""} ${staged.settings["compiler.buildOptions"] ?? ""}`,
+    ) || /\[\s*CompilerOptions\s*\(\s*"[^"]*\+llvm/i.test(sourceText);
 } catch (e) {
   die(2, e.message);
+}
+if (hasHook && !wrap.wrapped) {
+  console.error(
+    `warning: ${wrap.why} -- so a probe that ends before it returns cannot be told from one that finished.`,
+  );
 }
 
 // What the build wrote: the IDE expands the template, so the name is looked for
@@ -386,6 +449,33 @@ if (outcome.counts[0] > 0) {
   failBuild(1, [...outcome.rows, summaryLine(outcome.counts)].join("\n"));
 }
 
+// The licence, for a run with LLVM in it. A Community licence ignores the LLVM
+// settings and a Personal one applies them only to the built-in packages
+// (docs/LLVM/Getting-Started.md), so on either the run would measure the
+// default compiler and say nothing. The status bar's compilerLicence holds one
+// of four "<NAME> EDITION" strings once the IDE knows (ide/main.js, BETA 995),
+// and "tB Licence: ..." until then.
+let licence = null;
+if (usesLlvm) {
+  const until = Date.now() + 15 * 1000;
+  while (Date.now() < until) {
+    licence = await cdp
+      .evaluate("typeof compilerLicence === 'undefined' || !compilerLicence ? null : compilerLicence.innerText")
+      .catch(() => null);
+    if (/ EDITION$/.test(licence ?? "")) break;
+    licence = null;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  if (!licence) failBuild(2, "tbrun: the IDE never showed its licence, so an LLVM run could not be checked for one.");
+  if (/^(?:COMMUNITY|PERSONAL) /.test(licence)) {
+    failBuild(
+      2,
+      `tbrun: this IDE has a ${licence.toLowerCase()} licence, which does not compile user code with LLVM, ` +
+        "so the run would measure the default compiler. An LLVM run needs a Professional or Ultimate licence.",
+    );
+  }
+}
+
 // --------------------------------------------- build the exe, read the console
 
 let captured = null,
@@ -403,7 +493,7 @@ try {
   // (2) a real press/release pair; element.click() is ignored.
   await click(cdp, "buildIcon");
 
-  // (5) settle on a quiet period rather than a sentinel.
+  // (5) settle on the sentinel, or else a quiet period.
   const started = Date.now();
   let last = "",
     lastChange = Date.now(),
@@ -421,7 +511,9 @@ try {
     if (now !== last) {
       last = now;
       lastChange = Date.now();
-      if (strip(now).length) seen = true;
+      const lines = strip(now);
+      if (lines.length) seen = true;
+      if (wrap.wrapped && lines.at(-1) === SENTINEL) break;
     } else if (seen && Date.now() - lastChange > quietMs) break;
   }
   captured = strip(last);
@@ -481,13 +573,21 @@ if (lost) {
       (shown.length ? shown.map((l) => `  ${l}`).join("\n") : "  (nothing)"),
   );
 }
+// (5) The wrapper's sentinel says the probe returned. It is the wrapper's line,
+// not the probe's, so it is never printed.
+const returned = wrap.wrapped ? captured.at(-1) === SENTINEL : null;
+if (returned) {
+  // Without --raw, shown is captured itself.
+  if (shown !== captured) shown.pop();
+  captured.pop();
+}
 // A probe that ran leaves its Executing line among what its Debug.Cls erased,
 // so an empty console then means it printed nothing after its last clear, not
 // that it never ran.
-if (!captured.length && started >= 0) {
+if (!captured.length && started >= 0 && returned !== false) {
   die(3, `tbrun: the probe ran (${erased[started]}) but printed nothing after its last Debug.Cls.`);
 }
-if (!captured.length) {
+if (!captured.length && started < 0) {
   die(
     3,
     "tbrun: the build produced no console output before the timeout.\n" +
@@ -498,10 +598,30 @@ if (!captured.length) {
   );
 }
 
+const exeRun = values.exe ? await runExe() : null;
+
 if (values.json) {
-  console.log(JSON.stringify({ exe: builtFile(), arch, lines: shown, idePid: ideRun?.pid ?? null, reaped }, null, 2));
+  console.log(
+    JSON.stringify(
+      { exe: builtFile(), arch, lines: shown, returned, licence, exeRun, idePid: ideRun?.pid ?? null, reaped },
+      null,
+      2,
+    ),
+  );
 } else {
   for (const l of shown) console.log(l);
+  if (exeRun) {
+    console.log(`--- exe: ${exeRun.timedOut ? "still running after --timeout, ended" : `exit ${exeRun.exitCode}`}`);
+    for (const l of exeRun.lines) console.log(l);
+  }
+}
+if (returned === false) {
+  die(
+    5,
+    `tbrun: the probe ended before it returned${started >= 0 ? "" : ", and the run's start was not seen"}: ` +
+      "End, or an error that ended the run without a report -- as one raised with no handler in " +
+      "LLVM-compiled code does. Or it was still running, silent, after --quiet ms; raise --quiet for a slow probe.",
+  );
 }
 
 // ------------------------------------------------------------------ helpers
@@ -520,6 +640,45 @@ function strip(text, raw = null) {
   while (from < to && !out[from].trim()) from++;
   while (to > from && !out[to - 1].trim()) to--;
   return (raw === null ? out : lines(raw)).slice(from, to);
+}
+
+// --exe: the built exe, started as the IDE is, on a private desktop and inside
+// a kill-on-close job, so a window it opens -- a MsgBox -- is on no desktop
+// anyone uses, and nothing it starts outlives it. It inherits no handles, and
+// Debug.Print writes nothing in an exe, so what it printed is what TbRun.Out
+// appended to the file TBRUN_OUT names.
+async function runExe() {
+  const file = builtFile();
+  if (!file || !/\.exe$/i.test(file)) {
+    die(2, `tbrun: --exe, but the build wrote no exe to ${outDir}${file ? ` (it wrote ${path.basename(file)})` : ""}`);
+  }
+  const outFile = path.join(work, "exe-out.txt");
+  rmSync(outFile, { force: true });
+  let run;
+  try {
+    run = await launchOnDesktop({
+      exe: file,
+      desktop: `tbrun-exe-${port}`,
+      env: { ...process.env, TBRUN_OUT: outFile },
+    });
+  } catch (e) {
+    die(2, `tbrun: could not start the exe on a private desktop: ${e.message}`);
+  }
+  let timer;
+  const timedOut = await Promise.race([
+    run.exited.then(() => false),
+    new Promise((r) => {
+      timer = setTimeout(() => r(true), timeoutMs);
+    }),
+  ]);
+  clearTimeout(timer);
+  if (timedOut) {
+    killTree(run.pid);
+    run.launcher.kill();
+  }
+  const exitCode = await run.exited;
+  const text = existsSync(outFile) ? readFileSync(outFile, "utf8") : "";
+  return { file, exitCode: timedOut ? null : exitCode, timedOut, lines: strip(text) };
 }
 
 // (6) End OUR IDE by pid, never by image name. The tree kill takes the probe exe

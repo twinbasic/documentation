@@ -510,6 +510,16 @@ for (const [tool, first] of [
   bad(tool, [first, "--show", "--hide"], thenUsage("--show and --hide cannot be given together", tool));
 }
 bad("scripts/tbrun.mjs", ["no-such-dir", "--quiet=-1"], thenUsage(NOT_WHOLE("--quiet", -1), "scripts/tbrun.mjs"));
+bad(
+  "scripts/tbrun.mjs",
+  ["no-such-dir", "--llvm", "--compiler-options", "+llvm"],
+  thenUsage("--llvm and --compiler-options cannot be given together", "scripts/tbrun.mjs"),
+);
+bad(
+  "scripts/tbrun.mjs",
+  ["no-such-dir", "--compiler-options="],
+  thenUsage("--compiler-options needs a non-empty value", "scripts/tbrun.mjs"),
+);
 
 // sweep_attributes reads its values before it looks for an IDE, and follows the
 // message with its usage.

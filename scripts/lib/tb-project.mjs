@@ -30,15 +30,17 @@ import { runCompiler } from "./tb-install.mjs";
  * @param {string} o.compiler  the compiler executable (tb-install's compilerExe)
  * @param {object | ((original: object) => object)} [o.settings]  settings to
  *   set in the copy, or a function from the tree's own settings to them
+ * @param {(stage: string) => void} [o.prepare]  changes the copy before it is packed
  * @returns {{original: object, settings: object}} the tree's settings, and the copy's
  */
-export function stageProject({ src, stage, project, compiler, settings = {} }) {
+export function stageProject({ src, stage, project, compiler, settings = {}, prepare }) {
   rmSync(stage, { recursive: true, force: true });
   cpSync(src, stage, { recursive: true });
   const file = path.join(stage, "Settings");
   const original = JSON.parse(readFileSync(file, "utf8"));
   const staged = { ...original, ...(typeof settings === "function" ? settings(original) : settings) };
   writeFileSync(file, JSON.stringify(staged, null, "\t"), "utf8");
+  prepare?.(stage);
 
   // import's exit code does not say whether it worked -- 0 on the failures it
   // reports, 999 on a tree holding an embedded package -- so runCompiler reads

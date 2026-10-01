@@ -180,6 +180,40 @@ export async function launchIde({ exe, project, port, show = false, keep = false
   // anything could attach to it, because the launcher died with tbbuild and
   // took the job with it. With the launcher detached from Node instead,
   // PowerShell exited at once, without a pid and without a word on stderr.
+  try {
+    const { pid, launcher } = await launchOnDesktop({
+      exe: exeWin,
+      arg: target,
+      desktop: `tbbuild-${port}`,
+      job: !keep,
+      env: fullEnv,
+    });
+    return { pid, launcher };
+  } catch (e) {
+    throw new Error(
+      `could not start the IDE on a private desktop:\n${e.message}\n(--show runs it on your own desktop instead)`,
+    );
+  }
+}
+
+/**
+ * Start a program on a private desktop, inside a kill-on-close job, through
+ * lib/tb-launch.ps1. launchIde starts the IDE this way, and tbrun's --exe the
+ * probe's exe, so that neither can show a window on the user's desktop.
+ *
+ * @param {object} o
+ * @param {string} o.exe      the program, a Windows path
+ * @param {string} [o.arg]    its one argument; none when empty
+ * @param {string} o.desktop  the private desktop's name
+ * @param {boolean} [o.job]   false for no job, for a program that is to outlive
+ *                            this Node process
+ * @param {object} o.env      its whole environment
+ * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess, exited: Promise<number | null>}>}
+ *   `exited` settles with the program's exit code when it ends, or null when
+ *   the launcher ended without one -- killed, or failed. Throws, with the
+ *   launcher's error, when the program did not start.
+ */
+export async function launchOnDesktop({ exe, arg = "", desktop, job = true, env }) {
   const script = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "tb-launch.ps1"), "utf8");
   const ps = spawn(
     "powershell",
@@ -187,34 +221,32 @@ export async function launchIde({ exe, project, port, show = false, keep = false
     {
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
-      env: {
-        ...fullEnv,
-        TBBUILD_EXE: exeWin,
-        TBBUILD_ARG: target,
-        TBBUILD_DESKTOP: `tbbuild-${port}`,
-        TBBUILD_JOB: keep ? "0" : "1",
-      },
+      env: { ...env, TBBUILD_EXE: exe, TBBUILD_ARG: arg, TBBUILD_DESKTOP: desktop, TBBUILD_JOB: job ? "1" : "0" },
     },
   );
-  let err = "";
+  let err = "",
+    out = "";
   ps.stderr.on("data", (d) => {
     err += d;
   });
+  ps.stdout.on("data", (d) => {
+    out += d;
+  });
+  // "close" rather than "exit": the exit line can still be in the pipe at "exit".
+  const ended = new Promise((res) => ps.on("close", res));
   const pid = await new Promise((res) => {
-    let buf = "";
-    ps.stdout.on("data", (d) => {
-      buf += d;
-      const m = /^\s*(\d+)\s*$/m.exec(buf);
+    ps.stdout.on("data", () => {
+      const m = /^\s*(\d+)\s*$/m.exec(out);
       if (m) res(Number(m[1]));
     });
-    ps.on("exit", () => res(null));
+    ended.then(() => res(null));
   });
-  if (!pid) {
-    throw new Error(
-      `could not start the IDE on a private desktop:\n${err.trim()}\n` + "(--show runs it on your own desktop instead)",
-    );
-  }
-  return { pid, launcher: ps };
+  if (!pid) throw new Error(err.trim());
+  const exited = ended.then(() => {
+    const m = /^exit (-?\d+)\s*$/m.exec(out);
+    return m ? Number(m[1]) : null;
+  });
+  return { pid, launcher: ps, exited };
 }
 
 /**
