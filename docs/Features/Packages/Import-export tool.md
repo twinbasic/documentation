@@ -110,6 +110,7 @@ message that names only `export` and `import`; given no arguments at all, it doe
 | `export` refused because `--overwrite` is missing | writes the files that were not there yet | writes nothing |
 | Files in the folder that the project does not hold | left in place, with no warning | left in place, and listed in a warning |
 | A `.git` folder | packed by `import`, and written back by `export` | skipped by both |
+| The IDE's empty folders, when the folder lacks them | left out | added by `import`, see below |
 | A damaged project file | shows a message box and waits until it is closed | fails with an error |
 | A printing command, when the project lacks the file | prints nothing | fails with an error |
 | Error messages | on standard output | on standard error |
@@ -130,6 +131,15 @@ like this, among them the **WinNativeCommonCtls** package and the *Standard EXE 
 v1.8)* template. The script packs them. An export made by the IDE's **File → Export Project**
 stops the same way, because it holds the compiler packages under `Packages\`; see [Packing
 the export back into a project](../../tB/IDE/Project/Menu/File#packing-the-export-back-into-a-project).
+
+**The script's `import` adds the folders the IDE always writes.** Every project and package the
+IDE exports has `ImportedTypeLibraries`, `Miscellaneous`, `Packages`, `Resources` and `Sources`
+folders, even when they are empty. Git does not store an empty folder, so a tree checked out
+from a repository usually lacks some of them. `import` adds each missing one as an empty folder,
+in the project and in each package under its `Packages` folder, and lists what it added. The
+folder on disk is not changed. A package without its `Packages` folder is not only incomplete:
+once the IDE embeds it in a project, the IDE's compiler crashes each time it restarts, and
+after four tries the IDE starts in Safe Mode.
 
 ## Checking the result
 

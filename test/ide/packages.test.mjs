@@ -22,7 +22,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -121,9 +121,8 @@ scenario("Import from file... in the Packages dialog", (lane) => {
 // Both versions are generated into the lane's work folder from the v1 tree at
 // probes/packages/DocProbePkg, which the first test above uses as it is. v2
 // has its version fields in Settings at 2.0.0.0 and its function returns 2.
-// Both also get the three empty folders every exported package has,
-// ImportedTypeLibraries, Miscellaneous and Packages. Packages is the one that
-// matters: without it, BETA 995's compiler crashes on each restart after the
+// impexp.mjs adds the empty folders every exported package has; without its
+// Packages folder, BETA 995's compiler crashes on each restart after the
 // embedding Apply, and the IDE drops into Safe Mode, where nothing runs
 // (BUGS-TO-REPORT.md, "Embedding a package with no Packages folder puts the
 // compiler in a crash loop"). Each test works on a copy of the host project in its own folder,
@@ -139,9 +138,6 @@ End Module
 `;
 
 const VERSION_PREFIX = "DocProbeVersion=";
-
-// The three folders an exported package always has.
-const PACKAGE_FOLDERS = ["ImportedTypeLibraries", "Miscellaneous", "Packages"];
 
 // The References page's rows, for a failure message: the list each is in,
 // its name, and whether its tick box is ticked.
@@ -165,12 +161,11 @@ scenario("Replacing an embedded package", (lane) => {
   let v2;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  // A copy of the v1 tree in the work folder, with the empty folders, for
-  // `version`, packed to a .twinpack as the first test does.
+  // A copy of the v1 tree in the work folder for `version`, packed to a
+  // .twinpack as the first test does.
   function packVersion(version) {
     const tree = path.join(lane.work, `DocProbePkg-v${version}`);
     cpSync(PKG, tree, { recursive: true });
-    for (const folder of PACKAGE_FOLDERS) mkdirSync(path.join(tree, folder), { recursive: true });
     const settings = path.join(tree, "Settings");
     const source = path.join(tree, "Sources", "DocProbe.twin");
     writeFileSync(

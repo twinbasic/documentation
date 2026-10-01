@@ -90,6 +90,13 @@ const META_NAME = ".meta";
 // --overwrite writes it back over the live one.
 const GIT_NAME = ".git";
 
+// The folders the IDE writes into every project and package it exports, even
+// when they are empty. Git keeps no empty folder, so a tree cloned from a
+// repository lacks them, and the IDE's compiler crashes in a loop on a package
+// with no Packages folder once it is embedded. Import adds any that are
+// missing, to the project and to each package under its Packages folder.
+const STANDARD_FOLDERS = ["ImportedTypeLibraries", "Miscellaneous", "Packages", "Resources", "Sources"];
+
 const PROJECT_FILE = /\.(twinproj|twinpack)$/i;
 
 // -------------------------- Parser (binary -> tree) --------------------------
@@ -454,12 +461,25 @@ function projectNameIn(settingsPath) {
   }
 }
 
-function buildTree(dirPath, rel, self, skipped) {
+function buildTree(dirPath, rel, self, skipped, added) {
   const subdirs = [],
     files = [];
-  for (const name of fs.readdirSync(dirPath).sort(byCodePoint)) {
+  const names = fs.readdirSync(dirPath);
+  // The standard folders this tree lacks, if it is the project or a package
+  // embedded in it.
+  const missing = new Set();
+  if (rel === "" || (/^packages\/[^/]+$/i.test(rel) && names.includes("Settings"))) {
+    const have = new Set(names.map((n) => n.toLowerCase()));
+    for (const folder of STANDARD_FOLDERS) if (!have.has(folder.toLowerCase())) missing.add(folder);
+  }
+  for (const name of [...names, ...missing].sort(byCodePoint)) {
     const full = path.join(dirPath, name);
     const entryRel = rel ? `${rel}/${name}` : name;
+    if (missing.has(name)) {
+      subdirs.push(name);
+      added.push(entryRel);
+      continue;
+    }
     if (name.toLowerCase() === GIT_NAME) {
       skipped.push({ rel: entryRel, why: "Git's own folder" });
       continue;
@@ -473,7 +493,11 @@ function buildTree(dirPath, rel, self, skipped) {
 
   const children = [];
   for (const d of subdirs) {
-    children.push(buildTree(path.join(dirPath, d), rel ? `${rel}/${d}` : d, self, skipped));
+    children.push(
+      missing.has(d)
+        ? { kind: "directory", name: d, revision: 0x0000, flags: FLAGS.None, category: categoryFor(d), children: [] }
+        : buildTree(path.join(dirPath, d), rel ? `${rel}/${d}` : d, self, skipped, added),
+    );
   }
   for (const f of files) {
     children.push({
@@ -513,8 +537,9 @@ function importProject(projectPath, folder, { overwrite = false } = {}) {
   if (existing === "file" && !overwrite)
     throw new Refusal("exists", `${projectPath} already exists, and --overwrite is not set`, HINT_IMPORT);
 
-  const skipped = [];
-  const root = buildTree(path.resolve(folder), "", pathKey(projectPath), skipped);
+  const skipped = [],
+    added = [];
+  const root = buildTree(path.resolve(folder), "", pathKey(projectPath), skipped, added);
   root.name = projectNameIn(settings) ?? root.name;
   root.category = CATEGORY.Default;
   const buf = serialize(root);
@@ -531,7 +556,7 @@ function importProject(projectPath, folder, { overwrite = false } = {}) {
       }
     }
   })(root);
-  return { name: root.name, size: buf.length, files: fileCount, folders: dirCount, skipped };
+  return { name: root.name, size: buf.length, files: fileCount, folders: dirCount, skipped, added };
 }
 
 // -------------------------- Printing a root document -------------------------
@@ -711,6 +736,32 @@ function selfTest() {
       const out = at("bare", "Bare.twinproj");
       importProject(out, bare);
       eq(parse(fs.readFileSync(out)).name, "MyTree", "root name");
+    });
+
+    test("Import adds the empty folders the IDE expects, to the project and each package in it", () => {
+      const src = at("bare", "Git");
+      for (const d of ["resources", "Packages/Pkg", "Packages/Pkg/Sources", "Packages/NotPkg"]) {
+        fs.mkdirSync(path.join(src, d), { recursive: true });
+      }
+      fs.writeFileSync(path.join(src, "Settings"), "{}");
+      fs.writeFileSync(path.join(src, "Packages", "Pkg", "Settings"), "{}");
+      const r = importProject(at("bare", "Git.twinproj"), src);
+      eq(
+        r.added.join(),
+        "ImportedTypeLibraries,Miscellaneous,Sources,Packages/Pkg/ImportedTypeLibraries,Packages/Pkg/Miscellaneous," +
+          "Packages/Pkg/Packages,Packages/Pkg/Resources",
+        "added",
+      );
+      const back = parse(fs.readFileSync(at("bare", "Git.twinproj")));
+      eq(
+        [...contents(back).keys()].join(),
+        "ImportedTypeLibraries/,Miscellaneous/,Packages/,Packages/NotPkg/,Packages/Pkg/," +
+          "Packages/Pkg/ImportedTypeLibraries/,Packages/Pkg/Miscellaneous/,Packages/Pkg/Packages/," +
+          "Packages/Pkg/Resources/,Packages/Pkg/Sources/,Packages/Pkg/Settings,Sources/,resources/,Settings",
+        "contents",
+      );
+      eq(back.children.find((c) => c.name === "Miscellaneous").category, CATEGORY.Miscellaneous, "category");
+      eq(fs.readdirSync(src).sort(byCodePoint).join(), "Packages,Settings,resources", "the tree on disk changed");
     });
 
     test("Export without --overwrite refuses, and writes nothing", () => {
@@ -990,6 +1041,7 @@ function main(argv) {
     try {
       const r = verb === "export" ? exportProject(project, folder, opts) : importProject(project, folder, opts);
       for (const s of r.skipped) console.log(`  skipped ${s.rel} (${s.why})`);
+      for (const a of r.added ?? []) console.log(`  added ${a} (an empty folder the IDE expects)`);
       console.log(
         `  ${count(r.files, "file")}, ${count(r.folders, "folder")}` +
           (r.size === undefined ? "" : `, ${r.size} bytes`),
