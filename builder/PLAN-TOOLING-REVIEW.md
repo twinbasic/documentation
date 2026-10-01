@@ -25,9 +25,10 @@ every finding to its commit.
   phases. Planning against the tree turned up ten places where a finding's fix, one of its
   facts, or a detail of this charter had to change; see
   [Where this plan departs from the review](#where-this-plan-departs-from-the-review).
-  No commit of it has landed yet; C01 is next. The owner confirmed the four commands that
-  needed it (C05, C08, C09 and C40) the same day, C08 on condition that the hook runs Biome
-  and nothing else.
+  The owner confirmed the four commands that needed it (C05, C08, C09 and C40) the same day,
+  C08 on condition that the hook runs Biome and nothing else.
+- Every phase has landed, C01 to C87 with their lettered follow-ups, and each phase's entries
+  are cut to what later work needs; git keeps each commit's full Landed note.
 
 ## Decisions
 
@@ -224,7 +225,9 @@ Phase 3's landed entries in the tooling plan`. Those of Phase 4 (C76–C81, with
 and C81a) were cut on 2026-09-30, and their full text is in this file as it stood before
 `builder: cut Phase 4's landed entries in the tooling plan`. Those of Phase 5 (C82–C83, with C82a
 and C83a) were cut on 2026-09-30, and their full text is in this file as it stood before
-`builder: cut Phase 5's landed entries in the tooling plan`. A pointer below to a cut entry's
+`builder: cut Phase 5's landed entries in the tooling plan`. Those of Phase 6 (C84–C87, with C85a and
+C85b) were cut on 2026-10-01, and their full text is in this file as it stood before
+`builder: cut Phase 6's landed entries in the tooling plan`. A pointer below to a cut entry's
 Landed note means that
 text. Line numbers are the review's, at `fe9ce12b`, and move as the commits land.
 
@@ -1038,123 +1041,27 @@ while the fixes were made and the formatter touches only code that survived them
 
 ### C84 — `repo: settle line endings for the formatted file types`
 
-The repository stores LF, 118 of 140 working-tree files are CRLF under `core.autocrlf=true`,
-and there is no `.gitattributes`. Either a `.gitattributes` for the formatted types or the
-formatter's own line-ending setting, shown to give the same verdict on a CRLF Windows checkout
-and an LF CI checkout; otherwise every local run flags 118 files.
-
-**Verify.** The formatter's check gives the same verdict in this working tree and in a
-worktree checked out with `core.autocrlf=false`.
-
-**Landed.** `.gitattributes` gains `*.mjs`, `*.js` and `*.jsonc text eol=lf`, beside its two
-existing LF rules (the hooks, and the Workflow script, which the new `*.mjs` rule also covers
-but whose own reason stands). Re-measured first: every one of the 240 tracked `.mjs`, `.js`
-and `.jsonc` blobs is LF (`git ls-files --eol`), and 177 were CRLF on disk, 142 of them among
-the 185 files Biome's scope holds (the plan's 118 of 140 was `fe9ce12b`'s count). Biome's own
-setting cannot settle it alone, measured with the formatter switched on through a scratch
-config and each file's formatted output compared with its source for CRLF: `lineEnding: "lf"`
-flagged those 142 here and none on an `autocrlf=false` worktree, and `"auto"`, which follows
-the platform rather than the checkout, flagged the 43 LF files here and all 185 there. After
-the change, a checkout under `autocrlf=true`, one under `false` and this working tree (its
-177 files removed and checked out again: `checkout-index --force` skips an entry whose stat
-matches) hold all 240 files byte for byte alike, so `"lf"` flags none of them for endings in
-any of the three. No blob changed; `git add` of the 177 staged nothing. `compare_trees`
-differs, online and offline alike, in the five shipped scripts whose HEAD checkout is CRLF,
-each by its line endings alone: `svg-inline.js`, `theme-toggle.js`, the vendored
-`just-the-docs.js` and `lunr.min.js`, and the `impexp.mjs` download. A local build now ships
-them LF, as CI's Linux checkout always has.
+Landed.
 
 ### C85 — `lint: the formatter and its style rules, set to the majority style`
 
-The formatter, the linter's own from C05, pinned exactly and configured to the majority style:
-double quotes, as `builder/`, `scripts/`, `test/` and `eval/` use, where `book/` and
-`wisdom/` use single. Any style lint rules go beside it. Nothing enforces it yet.
-
-**Verify.** The formatter's check runs clean on its own configuration and lists the files C86
-will change.
-
-**Landed.** `biome.jsonc` switches the formatter on: two-space indent, `lineWidth` 120, LF,
-double quotes, semicolons always, trailing commas `all` (`es5` in the override for
-`docs/assets/js/`, whose scripts ship as written), arrow parentheses always, bracket spacing.
-Each setting was measured by formatting a scratch worktree and counting the lines changed:
-from 13,597 added and 7,222 removed at these settings, every single alternative tried changes
-more (four-space indent or tabs ~75k lines, single quotes ~33k, semicolons as needed ~49k,
-trailing commas `none` ~22k; `es5` ties within three lines). The width was the owner's choice
-(2026-09-30) between 80 (~34.5k lines), 100 (~25.3k), 120 (~20.8k) and 160 (~17.8k): comments
-are hand-wrapped at 80, where the tree's line lengths fall off a cliff, but code shows no hand
-limit, and 98.5% of the scope's 55,122 lines already fit in 120. Biome was already pinned
-exact since C05, so `package.json` is unchanged; Builder.md's Dependencies now call it the
-linter and formatter, and its pin's reason covers a layout change. The config is formatted by
-itself (one array wrapped). `biome format` flags 162 of the 185 files in scope. Nothing checks
-formatting yet, and the lint gate is unchanged (`Checked 185 files`). At the owner's choice,
-the densest literal tables keep their hand layout through `biome-ignore format` comments, in
-a commit of their own before C86 so that C86 stays mechanical.
+Landed.
 
 ### C85a — `format: the dense literal tables keep their hand layout`
 
-Found in C85: the formatter spreads a table written one record per line over one field per
-line (`check_cli.mjs` alone is ~1,580 of C86's changed lines). The owner chose to keep them.
-
-**Landed.** 34 `// biome-ignore format: a table, one entry per line` comments across 19 files,
-each above the whole statement holding a literal table (probe and case tables, lookup maps,
-hand-wrapped word lists, and one `return [` of rewrite pairs in `book.mjs`), and nothing else
-changed (`git diff`: 34 lines added, none removed, all that one line). A table qualified when
-its comment saved at least 20 of the file's changed lines; records holding functions,
-configuration passed to a call, and assertion arguments were left to the formatter as code.
-Measured by a Sonnet agent, per file through `biome format --stdin-file-path`: C86's changed
-lines fall from 20,819 to 18,300, over the same 162 files. Biome reports no unused
-suppression; lint `Checked 185 files`, clean.
+Landed.
 
 ### C85b — `test: search.test reads KIND_WORDS as a literal, not as JSON`
 
-Found in C86: `extractKindWords` in `test/search.test.mjs` cut `KIND_WORDS = [...]` out of
-`eval/site_search.mjs` and `just-the-docs.js` and read it with `JSON.parse`, so the test
-depended on the literal's layout, and the formatter's trailing comma failed it with a
-`SyntaxError`.
-
-**Landed.** At the owner's choice the extractor evaluates the literal with `new Function`, as
-`extractExactName` beside it already does. The test passes on the one-line lists and on the
-formatted ones (checked by applying C86 on top before committing).
+Landed.
 
 ### C86 — `format: apply the formatter`
 
-Mechanical, and nothing else.
-
-**Verify.** The tree comparison shows what it changed in the output: only
-`docs/assets/js/svg-inline.js` and `theme-toggle.js`, which the site ships as written, should
-differ. `test.bat`, `check.bat`, the `examples.bat` summary and `addin-test.bat` unchanged.
-
-**Landed.** `biome format --write` and nothing else: 162 files, 11,690 lines added and 6,610
-removed, all LF. The first application failed `test.bat` on a test that parsed a formatted
-literal as JSON; it was set aside for C85b and reapplied, with the same counts. `compare_trees`
-differs, online and offline, in `svg-inline.js` and in the `impexp.mjs` download, which is
-`scripts/impexp.mjs` as published; `theme-toggle.js` was already in the formatter's style. The
-gates' own counts are as before: `check_cli: 901 probes`, regex safety `550 literals + 36
-constructed ... 12 construction(s) not resolvable`, the shim gate's 25 and 11 objects and 72
-members, impexp parity's 19 tests and 21 commands, lint `Checked 185 files`; the a11y line is
-unchanged. `examples.bat`: `1136 sample(s), 1136 compile, 0 finding(s), 152.7s -- clean`.
-`addin-test.bat`: `10 of 10 lane(s) ran: 10 passed`, the registry put back with the same 20,
-21 and 3 writes.
+Landed.
 
 ### C87 — `lint: check formatting in the gate and the hook; blame ignores C86`
 
-`check_lint.mjs` and the pre-commit hook check formatting too; `.git-blame-ignore-revs` lists
-C86; WIP.md and Tools.md say so.
-
-**Verify.** A misformatted staged file is refused by the hook and fails the gate with 1;
-`git blame` on a file C86 touched skips it. CI waits for the owner's push.
-
-**Landed.** `check_lint.mjs` runs `biome check` in place of `biome lint`: one pass that lints
-and checks formatting, writing the same summary the gate reads (`Checked 185 files`). Its
-`--staged` set takes `biome.jsonc` beside the scripts. Its header, usage text and exit-code
-line say a file the formatter would change is a finding, as the hook's comment, Tools.md's
-list entry and section and WIP.md's paragraph and gate row now do; the composite action's
-step is unchanged. `.git-blame-ignore-revs` lists C86 (`4e65c9cb`). Shown: a misformatted
-import in `lib/repo-paths.mjs`, staged, fails the gate with 1 and `git hook run pre-commit`
-with 1 (`Found 1 error`, a `format` diagnostic); `git blame --porcelain builder/gantt.mjs`
-gives C86 62 lines, and with `--ignore-revs-file .git-blame-ignore-revs` none. This clone's
-`blame.ignoreRevsFile` is left unset: git configuration waits for the owner. CI waits for the
-owner's push, and should show the lint step clean on Linux, where the checkout is LF too.
+Landed.
 
 ## Coverage
 
@@ -1459,6 +1366,12 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   changed alone in two and the introspection in one. Five of the seven that touched either
   also touched the rest of the file for the same feature. The recommendation was no split.
   At the owner's choice (2026-09-30) both parts moved. See C81's Landed note.
+- **C86: the output differed in another script than the entry named.** `theme-toggle.js` was
+  already in the formatter's style and did not change. The `impexp.mjs` download did, because
+  it is `scripts/impexp.mjs` as published. Two commits came before C86 that the plan did not
+  have: C85a kept the dense literal tables' hand layout at the owner's choice, and C85b fixed
+  a test that read a literal as JSON, which the first application of the formatter failed.
+  See C86's Landed note.
 
 ## Found while implementing
 
