@@ -55,7 +55,7 @@ export function logicalLines(src) {
   const out = [];
   let buf = "";
   let start = 0;
-  let inBlock = false;          // inside /* ... */, which may span lines
+  let inBlock = false; // inside /* ... */, which may span lines
   for (let i = 0; i < raw.length; i++) {
     const s = raw[i];
     let t = "";
@@ -63,23 +63,42 @@ export function logicalLines(src) {
     for (let k = 0; k < s.length; k++) {
       const c = s[k];
       if (inBlock) {
-        if (c === "*" && s[k + 1] === "/") { inBlock = false; k++; t += " "; }
+        if (c === "*" && s[k + 1] === "/") {
+          inBlock = false;
+          k++;
+          t += " ";
+        }
         continue;
       }
       if (inStr) {
-        if (c === '"' && s[k + 1] === '"') { t += "  "; k++; continue; }
+        if (c === '"' && s[k + 1] === '"') {
+          t += "  ";
+          k++;
+          continue;
+        }
         if (c === '"') inStr = false;
         t += c === '"' ? c : " ";
         continue;
       }
-      if (c === '"') { inStr = true; t += c; continue; }
-      if (c === "/" && s[k + 1] === "*") { inBlock = true; k++; continue; }
+      if (c === '"') {
+        inStr = true;
+        t += c;
+        continue;
+      }
+      if (c === "/" && s[k + 1] === "*") {
+        inBlock = true;
+        k++;
+        continue;
+      }
       if (c === "'") break;
       t += c;
     }
     if (/^\s*Rem(\s|$)/i.test(t)) t = "";
     if (!buf) start = i + 1;
-    if (/(^|\s)_\s*$/.test(t)) { buf += t.replace(/_\s*$/, " "); continue; }
+    if (/(^|\s)_\s*$/.test(t)) {
+      buf += t.replace(/_\s*$/, " ");
+      continue;
+    }
     out.push({ text: buf + t, line: start });
     buf = "";
   }
@@ -115,8 +134,14 @@ function splitAttributes(text) {
 
 function attributeNames(inner) {
   let s = inner;
-  for (let prev = null; prev !== s;) { prev = s; s = s.replace(/\([^()]*\)/g, ""); }
-  return s.split(",").map((x) => x.trim().split(/\s/)[0]).filter(Boolean);
+  for (let prev = null; prev !== s; ) {
+    prev = s;
+    s = s.replace(/\([^()]*\)/g, "");
+  }
+  return s
+    .split(",")
+    .map((x) => x.trim().split(/\s/)[0])
+    .filter(Boolean);
 }
 
 // ------------------------------------------------------------------ parsing
@@ -127,7 +152,10 @@ const NAME = String.raw`(?:\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_]*[$%&!#@]?)`;
 const MODIFIER_RE = new RegExp(String.raw`^\s*(${MODIFIERS}|Dim)\b\s*`, "i");
 const TYPE_OPEN = new RegExp(String.raw`^(Module|Class|Interface|CoClass|Enum|Type|Union)\s+(${NAME})(.*)$`, "i");
 const TYPE_OR_PROC_END = /^End\s+(Sub|Function|Property|Module|Class|Interface|CoClass|Enum|Type|Union)\b/i;
-const DECLARE = new RegExp(String.raw`^(?:DeclareWide|Declare)\s+(?:PtrSafe\s+)?(Sub|Function|Property\s+(?:Get|Let|Set))\s+(${NAME})`, "i");
+const DECLARE = new RegExp(
+  String.raw`^(?:DeclareWide|Declare)\s+(?:PtrSafe\s+)?(Sub|Function|Property\s+(?:Get|Let|Set))\s+(${NAME})`,
+  "i",
+);
 const PROC = new RegExp(String.raw`^(Sub|Function|Property\s+(?:Get|Let|Set))\s+(${NAME})`, "i");
 const EVENT = new RegExp(String.raw`^Event\s+(${NAME})`, "i");
 const DELEGATE = new RegExp(String.raw`^Delegate\s+(?:Sub|Function)\s+(${NAME})`, "i");
@@ -143,7 +171,7 @@ const unbracket = (name) => name.replace(/^\[(.*)\]$/, "$1");
 function kindOf(keyword) {
   const k = keyword.toLowerCase();
   if (k.startsWith("property")) return "property";
-  return k;                     // sub, function
+  return k; // sub, function
 }
 
 /**
@@ -162,8 +190,8 @@ export function parseTwin(src, file = "") {
   const lines = logicalLines(src);
   const types = [];
   const problems = [];
-  const stack = [];             // open types, and {proc: true} for a body
-  let pending = [];             // attributes waiting for their declaration
+  const stack = []; // open types, and {proc: true} for a body
+  let pending = []; // attributes waiting for their declaration
 
   const openType = () => {
     for (let k = stack.length - 1; k >= 0; k--) if (stack[k].type) return stack[k].type;
@@ -174,7 +202,7 @@ export function parseTwin(src, file = "") {
   for (let li = 0; li < lines.length; li++) {
     let { text } = lines[li];
     const { line } = lines[li];
-    if (!text.trim() || /^\s*#/.test(text)) continue;       // #If, #Region, #Const
+    if (!text.trim() || /^\s*#/.test(text)) continue; // #If, #Region, #Const
 
     let split = splitAttributes(text);
     while (split.open && li + 1 < lines.length) {
@@ -208,16 +236,21 @@ export function parseTwin(src, file = "") {
     // Public As Boolean` on UserControl.
     let decl = rest;
     const modifiers = [];
-    for (let m; (m = MODIFIER_RE.exec(decl));) {
+    for (let m; (m = MODIFIER_RE.exec(decl)); ) {
       const after = decl.slice(m[0].length);
       if (modifiers.length && /^(As\b|\(|=|$)/i.test(after)) break;
       modifiers.push(m[1].toLowerCase());
       decl = after;
     }
-    const vis = modifiers.includes("private") ? "private"
-      : modifiers.includes("friend") ? "friend"
-      : modifiers.includes("protected") ? "protected"
-      : modifiers.includes("public") || modifiers.includes("global") ? "public" : null;
+    const vis = modifiers.includes("private")
+      ? "private"
+      : modifiers.includes("friend")
+        ? "friend"
+        : modifiers.includes("protected")
+          ? "protected"
+          : modifiers.includes("public") || modifiers.includes("global")
+            ? "public"
+            : null;
     const hidden = attributes.some((a) => /^(Hidden|Restricted)$/i.test(a));
     const parent = openType();
 
@@ -234,10 +267,18 @@ export function parseTwin(src, file = "") {
         continue;
       }
       const type = {
-        kind, name, file, line,
-        vis: vis ?? "public", hidden, attributes,
+        kind,
+        name,
+        file,
+        line,
+        vis: vis ?? "public",
+        hidden,
+        attributes,
         container: parent ? parent.name : null,
-        members: [], inherits: [], implements: [], interfaces: [],
+        members: [],
+        inherits: [],
+        implements: [],
+        interfaces: [],
         extends: /\bExtends\s+([\w.[\]]+)/i.exec(open[3])?.[1] ?? null,
       };
       types.push(type);
@@ -245,29 +286,45 @@ export function parseTwin(src, file = "") {
       continue;
     }
 
-    if (/^Alias\s/i.test(decl)) continue;                  // Alias X As Y
+    if (/^Alias\s/i.test(decl)) continue; // Alias X As Y
     if (!parent) {
-      if (!/^(Option|Imports)\b/i.test(decl)) problems.push({ file, line, why: `outside any type: ${rest.slice(0, 60)}` });
+      if (!/^(Option|Imports)\b/i.test(decl))
+        problems.push({ file, line, why: `outside any type: ${rest.slice(0, 60)}` });
       continue;
     }
 
     let m;
-    if ((m = /^Inherits\s+([\w.[\]]+)/i.exec(decl))) { parent.inherits.push(m[1]); continue; }
-    if ((m = /^Implements\s+([\w.[\]]+)/i.exec(decl))) { parent.implements.push(m[1]); continue; }
+    if ((m = /^Inherits\s+([\w.[\]]+)/i.exec(decl))) {
+      parent.inherits.push(m[1]);
+      continue;
+    }
+    if ((m = /^Implements\s+([\w.[\]]+)/i.exec(decl))) {
+      parent.implements.push(m[1]);
+      continue;
+    }
 
     if (parent.kind === "enum") {
       if ((m = ENUM_VALUE.exec(decl))) add(parent, m[1], "enumvalue", "public", hidden, line);
       else problems.push({ file, line, why: `not an enumeration value: ${rest.slice(0, 60)}` });
       continue;
     }
-    if ((m = DECLARE.exec(decl))) { add(parent, m[2], kindOf(m[1]), vis, hidden, line, "private"); continue; }
+    if ((m = DECLARE.exec(decl))) {
+      add(parent, m[2], kindOf(m[1]), vis, hidden, line, "private");
+      continue;
+    }
     if ((m = PROC.exec(decl))) {
       add(parent, m[2], kindOf(m[1]), vis, hidden, line, "public");
       if (WITH_BODIES.has(parent.kind) && !modifiers.includes("mustoverride")) stack.push({ proc: true });
       continue;
     }
-    if ((m = EVENT.exec(decl))) { add(parent, m[1], "event", vis, hidden, line, "public"); continue; }
-    if ((m = DELEGATE.exec(decl))) { add(parent, m[1], "delegate", vis, hidden, line, "public"); continue; }
+    if ((m = EVENT.exec(decl))) {
+      add(parent, m[1], "event", vis, hidden, line, "public");
+      continue;
+    }
+    if ((m = DELEGATE.exec(decl))) {
+      add(parent, m[1], "delegate", vis, hidden, line, "public");
+      continue;
+    }
     if ((m = /^Const\s+(.*)$/i.exec(decl))) {
       for (const piece of splitTopLevel(m[1])) {
         const n = LEADING_NAME.exec(piece);
@@ -287,7 +344,11 @@ export function parseTwin(src, file = "") {
   }
 
   for (const s of stack) {
-    problems.push({ file, line: s.type?.line ?? 0, why: `${s.type ? `${s.type.kind} ${s.type.name}` : "a procedure"} is never closed` });
+    problems.push({
+      file,
+      line: s.type?.line ?? 0,
+      why: `${s.type ? `${s.type.kind} ${s.type.name}` : "a procedure"} is never closed`,
+    });
   }
   return { types, problems };
 
@@ -307,7 +368,11 @@ function splitTopLevel(s) {
   for (const c of s) {
     if (c === "(") depth++;
     else if (c === ")") depth--;
-    if (c === "," && depth === 0) { out.push(cur); cur = ""; continue; }
+    if (c === "," && depth === 0) {
+      out.push(cur);
+      cur = "";
+      continue;
+    }
     cur += c;
   }
   if (cur.trim()) out.push(cur);
@@ -335,7 +400,11 @@ export function parsePackage(dir) {
 
 function twinFiles(dir, out = []) {
   let entries;
-  try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return out; }
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return out;
+  }
   entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
   for (const e of entries) {
     const p = path.join(dir, e.name);
@@ -350,7 +419,7 @@ function twinFiles(dir, out = []) {
  * with no modifier), and not inside a type that is not.
  */
 export function isPublicType(type, types) {
-  for (let t = type; t;) {
+  for (let t = type; t; ) {
     if (t.vis !== "public") return false;
     if (!t.container) return true;
     t = types.find((x) => x.name === t.container && x.file === t.file && x !== t) ?? null;
@@ -374,8 +443,10 @@ function resolver(parsed) {
     const dot = clean.lastIndexOf(".");
     const name = dot < 0 ? clean : clean.slice(dot + 1);
     const want = (t) => t.name.toLowerCase() === name.toLowerCase() && kinds.includes(t.kind);
-    const order = dot < 0 ? [fromPkg, ...[...parsed.keys()].filter((k) => k !== fromPkg)]
-      : [...parsed.keys()].filter((k) => k.toLowerCase() === clean.slice(0, dot).toLowerCase());
+    const order =
+      dot < 0
+        ? [fromPkg, ...[...parsed.keys()].filter((k) => k !== fromPkg)]
+        : [...parsed.keys()].filter((k) => k.toLowerCase() === clean.slice(0, dot).toLowerCase());
     for (const pkg of order) {
       const t = parsed.get(pkg)?.find(want);
       if (t) return { pkg, type: t };
@@ -417,10 +488,14 @@ export function apiSnapshot(parsed) {
   const exposed = new Set();
   const queue = [];
   for (const [pkg, types] of parsed) {
-    for (const t of types) if (["class", "coclass", "interface"].includes(t.kind) && isPublicIn(t, types)) queue.push({ pkg, t });
+    for (const t of types)
+      if (["class", "coclass", "interface"].includes(t.kind) && isPublicIn(t, types)) queue.push({ pkg, t });
   }
   const expose = (hit) => {
-    if (hit && !exposed.has(hit.type)) { exposed.add(hit.type); queue.push({ pkg: hit.pkg, t: hit.type }); }
+    if (hit && !exposed.has(hit.type)) {
+      exposed.add(hit.type);
+      queue.push({ pkg: hit.pkg, t: hit.type });
+    }
   };
   while (queue.length) {
     const { pkg, t } = queue.shift();
@@ -448,12 +523,18 @@ export function apiSnapshot(parsed) {
       }
       const qualify = (ref, kinds) => {
         const hit = resolve(ref, pkg, kinds);
-        if (!hit) { unresolved.push(`${pkg}.${t.name}: ${ref}`); return ref.replace(/[[\]]/g, ""); }
+        if (!hit) {
+          unresolved.push(`${pkg}.${t.name}: ${ref}`);
+          return ref.replace(/[[\]]/g, "");
+        }
         return `${hit.pkg}.${hit.type.name}`;
       };
       if (t.inherits.length) rec.inherits = t.inherits.map((b) => qualify(b, ["class"]));
       if (t.extends && !ROOT_INTERFACES.test(t.extends)) rec.extends = qualify(t.extends, ["interface"]);
-      if (!isPublic && !exposed.has(t)) { list.push(rec); continue; }
+      if (!isPublic && !exposed.has(t)) {
+        list.push(rec);
+        continue;
+      }
 
       const members = t.members.filter((m) => m.vis === "public");
       if (t.kind === "enum") {
@@ -477,7 +558,12 @@ export function apiSnapshot(parsed) {
 
 function unique(names) {
   const seen = new Set();
-  return names.filter((n) => { const k = n.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+  return names.filter((n) => {
+    const k = n.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 }
 
 // {name: kind}, the first declaration of a name deciding its kind -- a

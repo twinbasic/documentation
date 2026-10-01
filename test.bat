@@ -2,10 +2,8 @@
 @rem from check.bat: a content edit cannot change what most of them say,
 @rem so writing a reference page should not pay for them.
 @rem
-@rem "Most", not "none" -- this comment used to say none, and so did
-@rem three pages of the documentation, and it was false. Round 3 of the
-@rem use-case evaluation found an author routed straight past the one
-@rem gate that would have caught their defect by exactly that sentence.
+@rem "Most", not "none": saying none routes an author straight past the one
+@rem gate that would catch their defect.
 @rem check_code_regions.mjs sweeps every markdown file under docs/, and
 @rem check_gate_lists.mjs reads README.md and every page under
 @rem docs/Documentation/. Run this file too after adding an unusual code
@@ -26,17 +24,16 @@
 @pushd "%~dp0"
 @rem The publish allowlist is enforced inside the build, so a clean
 @rem build.bat already says nothing unpublishable is in docs/. It does
-@rem NOT say the allowlist still refuses anything -- one widened until it
-@rem refuses nothing reports the same clean pass. This asserts the
+@rem NOT say the allowlist still refuses anything -- one widened to refuse
+@rem nothing reports the same clean pass. This asserts the
 @rem refusals against named probes: a stray .bak, a .pem, a scratch .md
 @rem with no frontmatter. No tree, no browser, ~40 ms, so it goes first.
 node scripts/check_publish_policy.mjs
 @if errorlevel 1 goto :fail
 @rem Tools.md's two numbered gate lists against the two wrappers that
 @rem actually run them, and then every gate count stated in prose on any
-@rem developer page. The counts rotted three times without breaking a
-@rem link or failing a gate; check_gate_lists.mjs's header has the
-@rem history. Pure text, no tree, no browser, ~50 ms.
+@rem developer page. A stale count breaks no link and fails no other
+@rem gate; check_gate_lists.mjs's header says why. Pure text, no tree, no browser, ~50 ms.
 node scripts/check_gate_lists.mjs
 @if errorlevel 1 goto :fail
 @rem The same question asked of the two CI workflows, which nothing else
@@ -82,21 +79,19 @@ node --test test/example-batches.test.mjs
 @rem A regex that backtracks exponentially is a hang waiting for the
 @rem right input, and nothing that reads the site can see it: the corpus
 @rem passes until some page happens to contain the trigger, and then the
-@rem build stops rather than failing. VOID_TAGS_RE shipped that way, and
-@rem so did its first fix. Reads literals and every new RegExp(...) whose
-@rem arguments the source decides -- assembling a pattern from constants
-@rem was a way out of this gate until it did. Its own probes ride along
+@rem build stops rather than failing. Reads literals and every new
+@rem RegExp(...) whose arguments the source decides, since assembling a
+@rem pattern from constants would otherwise be a way out. Its own probes ride along
 @rem in the same run, so a green line cannot be a dead gate. No tree, no
-@rem browser, ~5 s.
+@rem browser, ~10 s.
 node scripts/check_regex_safety.mjs
 @if errorlevel 1 goto :fail
 @rem The pre-render rewrites in render.mjs run over RAW markdown, so none
 @rem of them knows what is code -- and this site's subject matter is code.
-@rem Four defects of that shape shipped: Liquid tags stripped inside
-@rem fences, admonition bodies losing their code indentation, media-URL
-@rem spaces percent-encoded inside a fence, and a YAML sample's closing
-@rem --- deleted outright. Nothing caught any of them, because the damage
-@rem is inside <code> and no other gate looks there.
+@rem Such a rewrite can strip Liquid tags inside fences, lose an
+@rem admonition body's code indentation, percent-encode media-URL spaces
+@rem inside a fence or delete a YAML sample's closing ---. No other gate
+@rem catches it, because the damage is inside <code>.
 @rem
 @rem Tokenise, rewrite, re-tokenise, compare the literal regions. Its own
 @rem probes ride along, so a clean corpus cannot masquerade as a working
@@ -106,17 +101,15 @@ node scripts/check_code_regions.mjs
 @rem The page-count drift guard reports nothing on a healthy tree, so
 @rem every ordinary build sounds exactly like one whose guard has stopped
 @rem working. These probes make the other assertion, against a scratch
-@rem baseline file rather than the committed one. The first replays the
-@rem defect that motivated it -- 37 pages of AppGlobalClassObject lost to
-@rem an exclude rule, under a guard that only knew a floor of 836. No
-@rem tree, no browser, ~60 ms.
+@rem baseline file rather than the committed one. The first replays a
+@rem whole package lost to an exclude rule, which a guard that only knows
+@rem a floor cannot see. No tree, no browser, ~60 ms.
 node scripts/check_page_baseline.mjs
 @if errorlevel 1 goto :fail
 @rem The book-coverage warnings say nothing when every page has an entry
 @rem in docs\_book.yml -- in a part, or in left_out with a reason -- which
-@rem is also all a check that had stopped working would say. Until they
-@rem existed, whole sections dropped out of the PDF without a word: the
-@rem IDE, Challenges and Videos, and Data Types and Enumerations with them.
+@rem is also all a check that had stopped working would say. Without the
+@rem warnings, whole sections drop out of the PDF without a word.
 @rem These probes give each of the five findings a fault to report, on a
 @rem manifest and pages built in memory, so they mean the same against an
 @rem empty docs\. No tree, no browser, well under a second.
@@ -136,7 +129,7 @@ node scripts/check_symbol_index.mjs
 @rem silence: a line read as the wrong kind is counted, generated or skipped
 @rem as that kind. These probes run the shared modifier list through all
 @rem three scanners, and assert the census's declaration kinds and the probe
-@rem generator's targets against the shapes each once got wrong. Fixed
+@rem generator's targets against the shapes each can get wrong. Fixed
 @rem inputs only: no tree, no install.
 node scripts/check_twin_parsers.mjs
 @if errorlevel 1 goto :fail
@@ -149,7 +142,7 @@ node scripts/check_twin_parsers.mjs
 node scripts/check_attribute_sweep.mjs
 @if errorlevel 1 goto :fail
 @rem Nothing else tests how a tool reads its command line, which is how a
-@rem value flag given no value came to be read as NaN or as the next flag.
+@rem value flag given no value can be read as NaN or as the next flag.
 @rem lib/cli.mjs's probes, then each tool's recorded command-line errors:
 @rem the tool runs with an IDE and a browser that do not exist, so a case
 @rem that gets past its command line fails rather than starting either.

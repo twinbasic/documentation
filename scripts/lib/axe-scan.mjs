@@ -105,10 +105,10 @@ export const SAMPLE_PAGES = [
 // `notRendered`: absent from the accessibility tree, and absent from the
 // audit.  That property is exactly what makes the per-page section-links
 // disclosure cheap -- one tab stop, nothing in the links list -- and it is
-// also a hole in this scan.  The construct is on 707 pages, and the state a
-// reader sees after one click was never audited at all.  It shipped with
-// `target-size` violations on every link inside it (69.6x14 against a 24px
-// floor) while check.bat reported a clean pass.
+// also a hole in this scan.  The construct is on most pages, and the state a
+// reader sees after one click is not audited without a state audit; a
+// `target-size` violation on every link inside it (69.6x14 against a 24px
+// floor) would leave check.bat reporting a clean pass.
 //
 // A state is a DOM mutation applied after gotoPage and before the audit.  The
 // function is serialised into the page, so it must not close over anything in
@@ -122,35 +122,29 @@ export const PAGE_STATES = {
   "section-links-open": () => {
     const found = document.querySelectorAll("details.section-links");
     if (found.length !== 1) {
-      throw new Error(
-        `section-links-open: expected exactly 1 details.section-links, found ${found.length}`
-      );
+      throw new Error(`section-links-open: expected exactly 1 details.section-links, found ${found.length}`);
     }
     found[0].open = true;
     const links = found[0].querySelectorAll("li > a");
     if (links.length < 2) {
-      throw new Error(
-        `section-links-open: disclosure holds ${links.length} link(s); nothing was added to the audit`
-      );
+      throw new Error(`section-links-open: disclosure holds ${links.length} link(s); nothing was added to the audit`);
     }
     return links.length;
   },
 
   // The section-links disclosure is one construct; the ones the docs
-  // themselves use are another, and PAGE_STATES covered only the first.
-  // FAQ.html carries 29 of them and is not in SAMPLE_PAGES at all, and
-  // Menu/Window's three stayed closed during its own state audit -- so
-  // the content a reader sees after clicking a disclosure was audited
-  // nowhere. No live defect was found once they were opened, but at the
-  // mobile viewport this state takes colour-contrast from 0 incomplete
-  // nodes to 118, which is the measure of what was not being looked at.
+  // themselves use are another, and PAGE_STATES covers only the first.
+  // Their content stays closed during a page's own state audit, so the
+  // content a reader sees after clicking a disclosure would be audited
+  // nowhere. At the mobile viewport this state takes colour-contrast from
+  // 0 incomplete nodes to 118, which is the measure of what is not looked
+  // at otherwise.
   "content-details-open": () => {
-    const found = [...document.querySelectorAll("details")]
-      .filter((d) => !d.classList.contains("section-links"));
+    const found = [...document.querySelectorAll("details")].filter((d) => !d.classList.contains("section-links"));
     if (found.length === 0) {
       throw new Error(
         "content-details-open: this page carries no content disclosure; " +
-        "the audit would be a second run of the default page"
+          "the audit would be a second run of the default page",
       );
     }
     let revealed = 0;
@@ -165,7 +159,7 @@ export const PAGE_STATES = {
     if (revealed === 0) {
       throw new Error(
         `content-details-open: opened ${found.length} disclosure(s) and ` +
-        "revealed no elements; nothing was added to the audit"
+          "revealed no elements; nothing was added to the audit",
       );
     }
     return revealed;
@@ -219,9 +213,7 @@ export const STATE_AUDITS = [
 
 for (const { filePath, state } of STATE_AUDITS) {
   if (!SAMPLE_PAGES.includes(filePath)) {
-    throw new Error(
-      `STATE_AUDITS: ${filePath} is not in SAMPLE_PAGES, so --pages narrowing would drop it silently`
-    );
+    throw new Error(`STATE_AUDITS: ${filePath} is not in SAMPLE_PAGES, so --pages narrowing would drop it silently`);
   }
   if (!Object.hasOwn(PAGE_STATES, state)) {
     throw new Error(`STATE_AUDITS: unknown state "${state}"`);
@@ -238,18 +230,16 @@ export const VIEWPORTS = {
 export const THEMES = ["light", "dark"];
 
 // A --theme or --viewport value: "both", or one of `allowed`. Validated, not
-// trusted. An unrecognised value used to sail through: `--theme drak` set
-// data-theme="drak", which renders light, and then labelled every line of the
+// trusted. An unrecognised value would sail through: `--theme drak` sets
+// data-theme="drak", which renders light, and labels every line of the
 // report `[drak, ...]` -- a full run of the light theme presented as a run of
-// something else. `--viewport tiny` passed undefined to setViewport, which
-// Puppeteer accepts, so the run went ahead at a size nobody chose, labelled
+// something else. `--viewport tiny` passes undefined to setViewport, which
+// Puppeteer accepts, so the run goes ahead at a size nobody chose, labelled
 // `tiny`.
 export function pick(name, value, allowed) {
   if (value === "both") return allowed;
   if (allowed.includes(value)) return [value];
-  console.error(
-    `unknown --${name} "${value}"; expected one of ${allowed.join(", ")} or both`
-  );
+  console.error(`unknown --${name} "${value}"; expected one of ${allowed.join(", ")} or both`);
   process.exit(2);
 }
 
@@ -405,9 +395,7 @@ export const SCHEMES = {
 export function getScheme(label) {
   const scheme = SCHEMES[label];
   if (!scheme) {
-    throw new Error(
-      `unknown scheme "${label}"; known: ${Object.keys(SCHEMES).join(", ")}`
-    );
+    throw new Error(`unknown scheme "${label}"; known: ${Object.keys(SCHEMES).join(", ")}`);
   }
   return { label, patches: DEFAULT_PATCHES, ...scheme };
 }
@@ -446,13 +434,13 @@ function substitute(src, name, from, to, expectedCount = null) {
   if (found === 0) {
     throw new Error(
       `patch "${name}": target not found in axe.js:\n  ${from}\n` +
-        `The bundle has changed (axe-core upgrade?); re-derive before trusting it.`
+        `The bundle has changed (axe-core upgrade?); re-derive before trusting it.`,
     );
   }
   if (expectedCount !== null && found !== expectedCount) {
     throw new Error(
       `patch "${name}": expected ${expectedCount} occurrence(s) of\n  ${from}\n` +
-        `but found ${found}. The bundle has changed; re-derive before trusting it.`
+        `but found ${found}. The bundle has changed; re-derive before trusting it.`,
     );
   }
   return parts.join(to);
@@ -478,19 +466,22 @@ export const SOURCE_PATCHES = {
     describe: "drop Babel's redeclaration guard and brand assert (Color2 hot path)",
     apply(src) {
       src = substitute(
-        src, "cheap-private-fields/field-init",
+        src,
+        "cheap-private-fields/field-init",
         "_checkPrivateRedeclaration(e, t), t.set(e, a);",
-        "t.set(e, a);"
+        "t.set(e, a);",
       );
       src = substitute(
-        src, "cheap-private-fields/method-init",
+        src,
+        "cheap-private-fields/method-init",
         "_checkPrivateRedeclaration(e, a), a.add(e);",
-        "a.add(e);"
+        "a.add(e);",
       );
       src = substitute(
-        src, "cheap-private-fields/brand",
+        src,
+        "cheap-private-fields/brand",
         "if ('function' == typeof e ? e === t : e.has(t)) {",
-        "if (true) {"
+        "if (true) {",
       );
       return src;
     },
@@ -529,30 +520,28 @@ export const SOURCE_PATCHES = {
       const n = "plain-color-fields";
 
       // The brand only gates one private method call; drop both halves.
-      src = substitute(src, n + "/brand-init",
-        "_classPrivateMethodInitSpec(this, _Class3_brand);", "", 1);
-      src = substitute(src, n + "/brand-call",
-        "_assertClassBrand(_Class3_brand, this, _add)", "_add", 1);
+      src = substitute(src, n + "/brand-init", "_classPrivateMethodInitSpec(this, _Class3_brand);", "", 1);
+      src = substitute(src, n + "/brand-call", "_assertClassBrand(_Class3_brand, this, _add)", "_add", 1);
 
       for (const f of COLOR2_FIELDS) {
-        src = substitute(src, n + "/init" + f,
+        src = substitute(
+          src,
+          n + "/init" + f,
           `_classPrivateFieldInitSpec(this, ${f}, void 0);`,
-          `this._${f} = void 0;`, 1);
+          `this._${f} = void 0;`,
+          1,
+        );
         // Counts are measured, not guessed: every field is read once (the
         // getter) and written twice (the constructor and the setter) in
         // axe-core 4.13.0.  Asserting them is what stops a bump that rebinds
         // Babel's duplicate private names to a different class from rewriting
         // that class instead -- consistently, silently, and past
         // check_axe_patch_equiv.mjs, which only reads Color2 values.
-        src = substitute(src, n + "/get" + f,
-          `_classPrivateFieldGet(${f}, this)`,
-          `this._${f}`, 1);
+        src = substitute(src, n + "/get" + f, `_classPrivateFieldGet(${f}, this)`, `this._${f}`, 1);
         // Prefix-only substitution: the original call's closing paren becomes
         // the closing paren of the assignment expression, so an arbitrary
         // nested argument expression is carried across untouched.
-        src = substitute(src, n + "/set" + f,
-          `_classPrivateFieldSet(${f}, this, `,
-          `(this._${f} = `, 2);
+        src = substitute(src, n + "/set" + f, `_classPrivateFieldSet(${f}, this, `, `(this._${f} = `, 2);
       }
       return src;
     },
@@ -563,9 +552,7 @@ export function getPatches(names) {
   return names.map((n) => {
     const p = SOURCE_PATCHES[n];
     if (!p) {
-      throw new Error(
-        `unknown patch "${n}"; known: ${Object.keys(SOURCE_PATCHES).join(", ")}`
-      );
+      throw new Error(`unknown patch "${n}"; known: ${Object.keys(SOURCE_PATCHES).join(", ")}`);
     }
     return { name: n, ...p };
   });
@@ -583,19 +570,14 @@ export function readAxeSource({ minified = true, patches = [] } = {}) {
   if (patches.length && minified) {
     throw new Error("source patches target the unminified bundle; pass minified: false");
   }
-  let src = readFileSync(
-    join(REPO_ROOT, "node_modules/axe-core", minified ? "axe.min.js" : "axe.js"),
-    "utf-8"
-  );
+  let src = readFileSync(join(REPO_ROOT, "node_modules/axe-core", minified ? "axe.min.js" : "axe.js"), "utf-8");
   for (const p of getPatches(patches)) src = p.apply(src);
   return src;
 }
 
 /** Whatever axe-core version is installed; line citations in the plan pin 4.13.0. */
 export function axeVersion() {
-  return JSON.parse(
-    readFileSync(join(REPO_ROOT, "node_modules/axe-core/package.json"), "utf-8")
-  ).version;
+  return JSON.parse(readFileSync(join(REPO_ROOT, "node_modules/axe-core/package.json"), "utf-8")).version;
 }
 
 // ---------------------------------------------------------------------------
@@ -667,7 +649,7 @@ export async function gotoPage(page, { rootDir, filePath, theme }) {
  */
 export async function runAxe(
   page,
-  { axeSource, configure = null, runOptions = AXE_RUN_OPTIONS, performanceTimer = false }
+  { axeSource, configure = null, runOptions = AXE_RUN_OPTIONS, performanceTimer = false },
 ) {
   const tInject = Date.now();
   await page.evaluate(axeSource);
@@ -677,20 +659,15 @@ export async function runAxe(
   const { results, measures } = await page.evaluate(
     async (cfg, opts, wantMeasures) => {
       if (cfg) axe.configure(cfg);
-      const results = await axe.run(
-        document,
-        wantMeasures ? { ...opts, performanceTimer: true } : opts
-      );
+      const results = await axe.run(document, wantMeasures ? { ...opts, performanceTimer: true } : opts);
       const measures = wantMeasures
-        ? performance
-            .getEntriesByType("measure")
-            .map((e) => ({ name: e.name, dur: e.duration }))
+        ? performance.getEntriesByType("measure").map((e) => ({ name: e.name, dur: e.duration }))
         : null;
       return { results, measures };
     },
     configure,
     runOptions,
-    performanceTimer
+    performanceTimer,
   );
   const runMs = Date.now() - tRun;
 
@@ -738,8 +715,8 @@ export function buildMatrix({
     if (!seen.has(s.filePath)) {
       console.warn(
         `[axe-scan] page narrowing dropped the "${s.state}" state audit ` +
-        `(${s.filePath} is not in the page list); that construct is not ` +
-        `being checked in this run`
+          `(${s.filePath} is not in the page list); that construct is not ` +
+          `being checked in this run`,
       );
     }
   }
@@ -784,7 +761,7 @@ export async function runMatrix(
     runOptions = AXE_RUN_OPTIONS,
     performanceTimer = false,
     onAudit = null,
-  }
+  },
 ) {
   const audits = [];
   let currentViewport = null;
@@ -803,9 +780,7 @@ export async function runMatrix(
     // so a front end can report how much the state actually exposed. "The
     // state ran" and "the state added something" are different claims, and
     // only the second one is worth anything.
-    const stateResult = entry.state
-      ? await page.evaluate(PAGE_STATES[entry.state])
-      : null;
+    const stateResult = entry.state ? await page.evaluate(PAGE_STATES[entry.state]) : null;
     const audit = await runAxe(page, {
       axeSource,
       configure,
@@ -851,8 +826,7 @@ export const fmtViolations = (groups) =>
     .sort()
     .join(",");
 
-export const fmtIncomplete = (groups) =>
-  [...new Set(groups.map((g) => g.id))].sort().join(",");
+export const fmtIncomplete = (groups) => [...new Set(groups.map((g) => g.id))].sort().join(",");
 
 export function fingerprint({ filePath, theme, viewport, state, results }) {
   return (

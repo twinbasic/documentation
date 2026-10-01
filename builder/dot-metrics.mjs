@@ -15,9 +15,8 @@
 // to Times for anything it does not know, so `fontname="Inter"` measures
 // byte-identically to `fontname="NoSuchFontXYZ"`. Times is much narrower than
 // Inter through the lowercase -- Inter's `a` is 557/1000 em against Times'
-// 444 -- so every box came out too small: 11.4% under on average, 18.0% at
-// worst, which put 27 labels past their box edges across the three diagrams
-// that shipped before this existed.
+// 444 -- so every box comes out too small: 11.4% under on average, 18.0% at
+// worst, which puts labels past their box edges.
 //
 // WHAT THIS DOES.  After `Graphviz.load()`, the table lives in the module's
 // linear memory, which `_module.HEAPU8` exposes, and it is read on every
@@ -64,10 +63,14 @@ const SIGNATURE_FIRST_CHAR = 33;
 // Verified separately per array, so a table that matched on its regular
 // widths but had a different variant order would still be caught.
 const TIMES_SPOT_CHECKS = [
-  { variant: 0, ch: "A", afm: 722 }, { variant: 0, ch: "a", afm: 444 },
-  { variant: 1, ch: "A", afm: 722 }, { variant: 1, ch: "a", afm: 500 },
-  { variant: 2, ch: "A", afm: 611 }, { variant: 2, ch: "a", afm: 500 },
-  { variant: 3, ch: "A", afm: 667 }, { variant: 3, ch: "a", afm: 500 },
+  { variant: 0, ch: "A", afm: 722 },
+  { variant: 0, ch: "a", afm: 444 },
+  { variant: 1, ch: "A", afm: 722 },
+  { variant: 1, ch: "a", afm: 500 },
+  { variant: 2, ch: "A", afm: 611 },
+  { variant: 2, ch: "a", afm: 500 },
+  { variant: 3, ch: "A", afm: 667 },
+  { variant: 3, ch: "a", afm: 500 },
 ];
 
 const VARIANT_ORDER = ["regular", "bold", "italic", "boldItalic"];
@@ -79,7 +82,7 @@ export class DotMetricsError extends Error {}
 // `Graphviz.load()` memoises its module, so serve.bat's second and every
 // later rebuild hand back the instance already patched. Searching that heap
 // for the Times signature finds nothing -- Inter's widths are sitting where
-// it used to be -- and the failure reads like an upstream bump, which is the
+// it was -- and the failure reads like an upstream bump, which is the
 // wrong place to go looking. Remember what has been patched instead, and
 // re-verify rather than re-write.
 const patched = new WeakSet();
@@ -98,13 +101,13 @@ export function applyInterMetrics(graphviz) {
   if (!heap) {
     throw new DotMetricsError(
       "@hpcc-js/wasm-graphviz no longer exposes _module.HEAPU8; " +
-      "Inter metrics cannot be installed (see builder/dot-metrics.mjs)",
+        "Inter metrics cannot be installed (see builder/dot-metrics.mjs)",
     );
   }
   if (METRICS.unitsPerEm !== 2048) {
     throw new DotMetricsError(
       `builder/inter-metrics.json declares unitsPerEm ${METRICS.unitsPerEm}; ` +
-      "the Times family Graphviz falls back to uses 2048",
+        "the Times family Graphviz falls back to uses 2048",
     );
   }
 
@@ -138,7 +141,10 @@ function locateTimesFamily(view) {
   for (let off = 0; off <= end; off += 2) {
     let ok = true;
     for (let i = 0; i < TIMES_SIGNATURE.length; i++) {
-      if (view.getInt16(off + i * 2, true) !== TIMES_SIGNATURE[i]) { ok = false; break; }
+      if (view.getInt16(off + i * 2, true) !== TIMES_SIGNATURE[i]) {
+        ok = false;
+        break;
+      }
     }
     if (ok) hits.push(off - SIGNATURE_FIRST_CHAR * 2);
     if (hits.length > 4) break;
@@ -146,8 +152,8 @@ function locateTimesFamily(view) {
   if (hits.length !== 1) {
     throw new DotMetricsError(
       `expected exactly one Times width table in the Graphviz heap, found ${hits.length}. ` +
-      "@hpcc-js/wasm-graphviz has probably changed; re-derive the signature " +
-      "(see builder/dot-metrics.mjs) before trusting DOT diagram geometry.",
+        "@hpcc-js/wasm-graphviz has probably changed; re-derive the signature " +
+        "(see builder/dot-metrics.mjs) before trusting DOT diagram geometry.",
     );
   }
   const base = hits[0];
@@ -156,7 +162,7 @@ function locateTimesFamily(view) {
     if (Math.abs(got - afm) > 1) {
       throw new DotMetricsError(
         `Times table at 0x${base.toString(16)} has ${VARIANT_ORDER[variant]} '${ch}' = ${got}/1000, ` +
-        `expected ${afm}. The struct layout has changed; do not patch blind.`,
+          `expected ${afm}. The struct layout has changed; do not patch blind.`,
       );
     }
   }
@@ -165,7 +171,7 @@ function locateTimesFamily(view) {
 
 function readAfm(view, base, variant, ch) {
   const raw = view.getInt16(base + variant * ARRAY_BYTES + ch.charCodeAt(0) * 2, true);
-  return Math.round(raw / 2048 * 1000);
+  return Math.round((raw / 2048) * 1000);
 }
 
 // Read all four arrays back. `assertMeasuresInter()` alone cannot stand in for
@@ -180,7 +186,7 @@ function assertBytesLanded(view, base) {
       if (got !== want[i]) {
         throw new DotMetricsError(
           `${VARIANT_ORDER[v]}[${i}] read back as ${got}, wrote ${want[i]}. ` +
-          "The Graphviz heap did not keep the width table.",
+            "The Graphviz heap did not keep the width table.",
         );
       }
     }
@@ -195,8 +201,8 @@ function assertBytesLanded(view, base) {
 // bytes into the heap had the intended effect.
 function assertMeasuresInter(graphviz) {
   const probe = "Hamburgefonstiv";
-  const src = `digraph{node[shape=box margin=0 width=0 height=0 fontsize=2048 ` +
-    `fontname="Inter"] N[label="${probe}"]}`;
+  const src =
+    `digraph{node[shape=box margin=0 width=0 height=0 fontsize=2048 ` + `fontname="Inter"] N[label="${probe}"]}`;
   const svg = graphviz.layout(src, "svg", "dot");
   const m = svg.match(/viewBox="0\.00 0\.00 ([\d.]+) /);
   if (!m) throw new DotMetricsError("could not read a viewBox back from the metrics probe");
@@ -209,7 +215,7 @@ function assertMeasuresInter(graphviz) {
   if (err > 0.005) {
     throw new DotMetricsError(
       `Graphviz measured "${probe}" as ${measured.toFixed(1)} em units, expected ` +
-      `${expected} from the Inter table (${(err * 100).toFixed(1)}% off). The patch did not take.`,
+        `${expected} from the Inter table (${(err * 100).toFixed(1)}% off). The patch did not take.`,
     );
   }
 }

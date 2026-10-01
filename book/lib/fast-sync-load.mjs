@@ -56,38 +56,52 @@
 // Idempotent -- repeated imports do nothing after the first.
 
 import {
-  PDFParser, PDFObjectStreamParser, PDFXRefStreamParser,
-  PDFRawStream, PDFRef, PDFName,
-  PDFDocument, PDFWriter,
-  CharCodes, ReparseError, StalledParserError, IsDigit, Keywords,
-  toUint8Array, copyStringIntoBuffer,
-} from './pdf-lib-internals.mjs';
-import { checkTargets } from './shim-targets.mjs';
+  PDFParser,
+  PDFObjectStreamParser,
+  PDFXRefStreamParser,
+  PDFRawStream,
+  PDFRef,
+  PDFName,
+  PDFDocument,
+  PDFWriter,
+  CharCodes,
+  ReparseError,
+  StalledParserError,
+  IsDigit,
+  Keywords,
+  toUint8Array,
+  copyStringIntoBuffer,
+} from "./pdf-lib-internals.mjs";
+import { checkTargets } from "./shim-targets.mjs";
 
 // Pool-deduped PDFName instances are reference-stable for the whole
 // load. Capture the three sentinels parseIndirectObject's Type-dispatch
 // needs.
-const TypeName   = PDFName.of('Type');
-const ObjStmName = PDFName.of('ObjStm');
-const XRefName   = PDFName.of('XRef');
-const RefZero    = PDFRef.of(0);
+const TypeName = PDFName.of("Type");
+const ObjStmName = PDFName.of("ObjStm");
+const XRefName = PDFName.of("XRef");
+const RefZero = PDFRef.of(0);
 
 if (!PDFParser.prototype.__fastSyncLoadInstalled) {
-  checkTargets(import.meta.url, { PDFDocument, PDFParser, PDFObjectStreamParser, PDFWriter }, {
-    'PDFDocument.load':                                 [2, '2210a96a2600'],
-    'PDFParser.prototype.parseDocument':                [0, 'cd50190ce6db'],
-    'PDFParser.prototype.parseDocumentSection':         [0, '3b44d9ed7bfa'],
-    'PDFParser.prototype.parseIndirectObjects':         [0, '06726e96f501'],
-    'PDFParser.prototype.parseIndirectObject':          [0, '80737430e7b7'],
-    'PDFObjectStreamParser.prototype.parseIntoContext': [0, '88169eabbeb7'],
-    'PDFWriter.prototype.serializeToBuffer':            [0, '906a4bbe8d47'],
-  });
+  checkTargets(
+    import.meta.url,
+    { PDFDocument, PDFParser, PDFObjectStreamParser, PDFWriter },
+    {
+      "PDFDocument.load": [2, "2210a96a2600"],
+      "PDFParser.prototype.parseDocument": [0, "cd50190ce6db"],
+      "PDFParser.prototype.parseDocumentSection": [0, "3b44d9ed7bfa"],
+      "PDFParser.prototype.parseIndirectObjects": [0, "06726e96f501"],
+      "PDFParser.prototype.parseIndirectObject": [0, "80737430e7b7"],
+      "PDFObjectStreamParser.prototype.parseIntoContext": [0, "88169eabbeb7"],
+      "PDFWriter.prototype.serializeToBuffer": [0, "906a4bbe8d47"],
+    },
+  );
 
   // ----- Load side ---------------------------------------------------
 
   PDFParser.prototype.parseDocument = function parseDocumentSync() {
     if (this.alreadyParsed) {
-      throw new ReparseError('PDFParser', 'parseDocument');
+      throw new ReparseError("PDFParser", "parseDocument");
     }
     this.alreadyParsed = true;
     this.context.header = this.parseHeader();
@@ -104,7 +118,7 @@ if (!PDFParser.prototype.__fastSyncLoadInstalled) {
 
     this.maybeRecoverRoot();
     if (this.context.lookup(RefZero)) {
-      console.warn('Removing parsed object: 0 0 R');
+      console.warn("Removing parsed object: 0 0 R");
       this.context.delete(RefZero);
     }
     return this.context;
@@ -153,11 +167,9 @@ if (!PDFParser.prototype.__fastSyncLoadInstalled) {
     const object = this.parseObject();
     this.skipWhitespaceAndComments();
     this.matchKeyword(Keywords.endobj);
-    if (object instanceof PDFRawStream &&
-        object.dict.lookup(TypeName) === ObjStmName) {
+    if (object instanceof PDFRawStream && object.dict.lookup(TypeName) === ObjStmName) {
       PDFObjectStreamParser.forStream(object).parseIntoContext();
-    } else if (object instanceof PDFRawStream &&
-               object.dict.lookup(TypeName) === XRefName) {
+    } else if (object instanceof PDFRawStream && object.dict.lookup(TypeName) === XRefName) {
       PDFXRefStreamParser.forStream(object).parseIntoContext();
     } else {
       this.context.assign(ref, object);
@@ -167,7 +179,7 @@ if (!PDFParser.prototype.__fastSyncLoadInstalled) {
 
   PDFObjectStreamParser.prototype.parseIntoContext = function parseIntoContextSync() {
     if (this.alreadyParsed) {
-      throw new ReparseError('PDFObjectStreamParser', 'parseIntoContext');
+      throw new ReparseError("PDFObjectStreamParser", "parseIntoContext");
     }
     this.alreadyParsed = true;
     const offsetsAndObjectNumbers = this.parseOffsetsAndObjectNumbers();
@@ -186,14 +198,12 @@ if (!PDFParser.prototype.__fastSyncLoadInstalled) {
   // The parseSpeed option is silently ignored (no more yield gate to tune).
   PDFDocument.load = function loadSync(pdf, options) {
     if (options === undefined) options = {};
-    const ignoreEncryption      = options.ignoreEncryption      === undefined ? false : options.ignoreEncryption;
-    const throwOnInvalidObject  = options.throwOnInvalidObject  === undefined ? false : options.throwOnInvalidObject;
-    const updateMetadata        = options.updateMetadata        === undefined ? true  : options.updateMetadata;
-    const capNumbers            = options.capNumbers            === undefined ? false : options.capNumbers;
+    const ignoreEncryption = options.ignoreEncryption === undefined ? false : options.ignoreEncryption;
+    const throwOnInvalidObject = options.throwOnInvalidObject === undefined ? false : options.throwOnInvalidObject;
+    const updateMetadata = options.updateMetadata === undefined ? true : options.updateMetadata;
+    const capNumbers = options.capNumbers === undefined ? false : options.capNumbers;
     const bytes = toUint8Array(pdf);
-    const context = PDFParser.forBytesWithOptions(
-      bytes, Infinity, throwOnInvalidObject, capNumbers,
-    ).parseDocument();
+    const context = PDFParser.forBytesWithOptions(bytes, Infinity, throwOnInvalidObject, capNumbers).parseDocument();
     return new PDFDocument(context, ignoreEncryption, updateMetadata);
   };
 
@@ -205,8 +215,7 @@ if (!PDFParser.prototype.__fastSyncLoadInstalled) {
   // So the wrapper stays async. The conditional waitForTick yield in
   // its main loop is the only piece we strip.
   PDFWriter.prototype.serializeToBuffer = async function serializeToBufferSync() {
-    const { size, header, indirectObjects, xref, trailerDict, trailer } =
-      await this.computeBufferSize();
+    const { size, header, indirectObjects, xref, trailerDict, trailer } = await this.computeBufferSize();
     const buffer = new Uint8Array(size);
     let offset = 0;
     offset += header.copyBytesInto(buffer, offset);

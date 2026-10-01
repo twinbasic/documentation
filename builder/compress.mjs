@@ -5,14 +5,12 @@
 // collapses every run of whitespace to a single space (Ruby's awk-mode
 // `split(" ").join(" ")`, character-for-character).
 //
-// See builder/PLAN-4.md §5.14. `<pre>` was originally the only boundary,
-// and standalone inline `<code>` was collapsed "matching the upstream
-// behaviour" -- i.e. Jekyll's. That parity is no longer a reason for
-// anything, and it was destroying real content: **Partition** returns
-// fixed-width, space-padded range strings, its reference page documents
-// exactly that padding in prose, and the table demonstrating it rendered
-// `" 0: 4"` where the function returns `"  0:  4"`. Thirteen spans on
-// that page alone stated wrong return values.
+// See builder/PLAN-4.md §5.14. Matching the upstream behaviour (Jekyll's)
+// is not a reason to collapse whitespace inside inline `<code>`, which
+// destroys real content: **Partition** returns fixed-width, space-padded
+// range strings, its reference page documents exactly that padding in
+// prose, and a collapsed table would render `" 0: 4"` where the function
+// returns `"  0:  4"`.
 //
 // Inline `<code>` is therefore preserved too. Note this is necessary but
 // not sufficient: a browser collapses runs inside inline code by default,

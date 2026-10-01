@@ -48,23 +48,27 @@
 //
 // Idempotent -- repeated imports do nothing after the first.
 
-import { numbers, utilsBarrel, topBarrel } from './pdf-lib-internals.mjs';
-import { checkTargets } from './shim-targets.mjs';
+import { numbers, utilsBarrel, topBarrel } from "./pdf-lib-internals.mjs";
+import { checkTargets } from "./shim-targets.mjs";
 
 if (!numbers.__fastNumberToStringInstalled) {
-  checkTargets(import.meta.url, { numbers, utilsBarrel, topBarrel }, {
-    'numbers.numberToString':     [1, 'cffe79177032'],
-    'utilsBarrel.numberToString': [1, 'cffe79177032'],
-    'topBarrel.numberToString':   [1, 'cffe79177032'],
-  });
+  checkTargets(
+    import.meta.url,
+    { numbers, utilsBarrel, topBarrel },
+    {
+      "numbers.numberToString": [1, "cffe79177032"],
+      "utilsBarrel.numberToString": [1, "cffe79177032"],
+      "topBarrel.numberToString": [1, "cffe79177032"],
+    },
+  );
   const original = numbers.numberToString;
   const fastNumberToString = function fastNumberToString(num) {
     const numStr = String(num);
-    if (numStr.indexOf('e') === -1) return numStr;
+    if (numStr.indexOf("e") === -1) return numStr;
     return original(num);
   };
-  numbers.numberToString     = fastNumberToString;
+  numbers.numberToString = fastNumberToString;
   utilsBarrel.numberToString = fastNumberToString;
-  topBarrel.numberToString   = fastNumberToString;
+  topBarrel.numberToString = fastNumberToString;
   numbers.__fastNumberToStringInstalled = true;
 }

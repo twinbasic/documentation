@@ -16,6 +16,7 @@ import path from "node:path";
 import { isOutputTree } from "../lib/markdown-files.mjs";
 import { runBuild, createWorkerPool, EXIT_ERROR } from "./tbdocs.mjs";
 
+// biome-ignore format: a table, one entry per line
 const MIME = {
   ".html": "text/html; charset=utf-8",
   ".css":  "text/css; charset=utf-8",
@@ -63,7 +64,9 @@ function sseHandler(req, res) {
   sseClients.add(res);
 
   const keepalive = setInterval(() => {
-    try { res.write(": keepalive\n\n"); } catch {}
+    try {
+      res.write(": keepalive\n\n");
+    } catch {}
   }, 30000);
 
   req.on("close", () => {
@@ -74,7 +77,9 @@ function sseHandler(req, res) {
 
 function notifyReload() {
   for (const res of sseClients) {
-    try { res.write("event: reload\ndata: 1\n\n"); } catch {}
+    try {
+      res.write("event: reload\ndata: 1\n\n");
+    } catch {}
   }
 }
 
@@ -94,8 +99,11 @@ function createStaticHandler(destRoot) {
     const url = urlPath.split("#")[0];
     const q = url.indexOf("?");
     let p;
-    try { p = decodeURIComponent(q < 0 ? url : url.slice(0, q)); }
-    catch { return null; }
+    try {
+      p = decodeURIComponent(q < 0 ? url : url.slice(0, q));
+    } catch {
+      return null;
+    }
     if (!p.startsWith("/")) p = "/" + p;
 
     const target = path.normalize(path.join(destRoot, p));
@@ -163,9 +171,9 @@ function createStaticHandler(destRoot) {
 
 // §D — Watcher filtering
 // The build's output trees are skipped by the test every tool that walks
-// docs/ uses, isOutputTree. This list used to name them one at a time and
-// missed the three a build given --dest docs/_site-basepath writes, so such a
-// build started a rebuild here. The two names below are not output trees.
+// docs/ uses, isOutputTree. A list of names would miss the three a build given
+// --dest docs/_site-basepath writes, so such a build would start a rebuild
+// here. The two names below are not output trees.
 const IGNORED_DIRS = ["node_modules", ".git"];
 const IGNORED_BASENAME_RE = /^\.|~$|\.tmp$|\.swp$|^4913$/;
 
@@ -182,10 +190,13 @@ function shouldRebuild(filename, srcRoot) {
   //
   // Keyed on "has a .dot sibling" rather than on a fixed folder, because a
   // diagram may live beside the page that uses it. That is also strictly
-  // more accurate than the path test it replaces: a hand-authored .svg in
-  // assets/images/dot/ used to be ignored, and no longer is.
-  if (srcRoot && (segs.at(-1) ?? "").endsWith(".svg")
-      && existsSync(path.join(srcRoot, filename).replace(/\.svg$/, ".dot"))) {
+  // more accurate than a path test: a hand-authored .svg in
+  // assets/images/dot/ is not ignored.
+  if (
+    srcRoot &&
+    (segs.at(-1) ?? "").endsWith(".svg") &&
+    existsSync(path.join(srcRoot, filename).replace(/\.svg$/, ".dot"))
+  ) {
     return false;
   }
   return true;
@@ -221,7 +232,9 @@ export async function runServe(opts) {
   async function replacePool(oldPool) {
     console.error("serve: a worker is wedged; restarting the worker pool.");
     pool = createWorkerPool();
-    try { await oldPool.destroy(); } catch {}
+    try {
+      await oldPool.destroy();
+    } catch {}
   }
 
   // Initial build
@@ -248,7 +261,9 @@ export async function runServe(opts) {
 
   server.on("error", (err) => {
     if (err.code === "EADDRINUSE") {
-      console.error(`serve: port ${port} already in use. Pass --port <other> to choose another, or stop the process bound to ${port}.`);
+      console.error(
+        `serve: port ${port} already in use. Pass --port <other> to choose another, or stop the process bound to ${port}.`,
+      );
       process.exit(EXIT_ERROR);
     }
     throw err;
@@ -266,7 +281,10 @@ export async function runServe(opts) {
   }
 
   async function fire() {
-    if (running) { pending = true; return; }
+    if (running) {
+      pending = true;
+      return;
+    }
     running = true;
     const files = [...changedFiles].sort();
     changedFiles.clear();
@@ -279,7 +297,10 @@ export async function runServe(opts) {
       if (err?.stalled) await replacePool(pool);
     } finally {
       running = false;
-      if (pending) { pending = false; schedule(); }
+      if (pending) {
+        pending = false;
+        schedule();
+      }
     }
   }
 
@@ -304,7 +325,9 @@ export async function runServe(opts) {
     console.log("serve: shutting down.");
     ac.abort();
     for (const res of sseClients) {
-      try { res.end(); } catch {}
+      try {
+        res.end();
+      } catch {}
     }
     sseClients.clear();
     pool.destroy();

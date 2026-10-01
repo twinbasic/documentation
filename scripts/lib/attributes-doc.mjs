@@ -16,12 +16,7 @@ const LINK = /\[([^\]]*)\]\([^)]*\)/g;
 
 /** The text with its links, bold markers and backslashes removed. */
 function clean(s) {
-  return s
-    .replace(LINK_BOLD, "$1")
-    .replace(LINK, "$1")
-    .replaceAll("**", "")
-    .replaceAll("\\", "")
-    .trim();
+  return s.replace(LINK_BOLD, "$1").replace(LINK, "$1").replaceAll("**", "").replaceAll("\\", "").trim();
 }
 
 let siteMd;
@@ -105,7 +100,7 @@ const RULES = [
   [/enum\s+member/i, ["ENUM_MEMBER"]],
   [/^enum\b/i, ["ENUM"]],
   // "Const", but also "constants in a module." -- \b after "const" fails on
-  // the plural, which silently dropped a target until it was noticed.
+  // the plural, which would silently drop a target.
   [/^const(ant)?s?\b/i, ["CONST"]],
   [/^sub\b/i, ["SUB_MODULE"]],
   [/^function\b/i, ["FUNC_MODULE"]],

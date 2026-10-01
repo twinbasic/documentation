@@ -47,10 +47,15 @@ Exit codes:
   1  a workflow differs from the wrappers: a finding is listed
   2  the gate could not run: a refused command line, a failed probe, or a crash`;
 
-if (withUsageError(() => parseCli(process.argv.slice(2), {
-  options: { help: { type: "boolean", short: "h" } },
-  stopAt: ["help"],
-})).values.help) printHelpAndExit(USAGE);
+if (
+  withUsageError(() =>
+    parseCli(process.argv.slice(2), {
+      options: { help: { type: "boolean", short: "h" } },
+      stopAt: ["help"],
+    }),
+  ).values.help
+)
+  printHelpAndExit(USAGE);
 
 const JOB = "build";
 const WORKFLOWS = ["checks.yml", "tbdocs-gh-pages.yml"];
@@ -109,16 +114,19 @@ function findings({ testBat, checkBat, buildBat, workflows, actions = {}, allowe
   const out = [];
   const add = (kind, where, text) => out.push({ kind, where, text });
 
-  const wrappers = [["test.bat", testBat], ["check.bat", checkBat]].map(([name, text]) => ({
+  const wrappers = [
+    ["test.bat", testBat],
+    ["check.bat", checkBat],
+  ].map(([name, text]) => ({
     name,
-    keys: gateSteps(text).filter((s) => !(s.script in allowed.localOnly)).map(keyOf),
+    keys: gateSteps(text)
+      .filter((s) => !(s.script in allowed.localOnly))
+      .map(keyOf),
   }));
   const roster = wrappers.flatMap((w) => w.keys);
   const wantBuild = buildArgs(buildBat) ?? [];
   const names = Object.keys(workflows);
-  const shared = new Set(
-    allowed.ciOnly.filter((e) => names.every((n) => e.workflows.includes(n))).map(keyOf),
-  );
+  const shared = new Set(allowed.ciOnly.filter((e) => names.every((n) => e.workflows.includes(n))).map(keyOf));
   const compared = {};
 
   for (const wf of names) {
@@ -162,7 +170,8 @@ function findings({ testBat, checkBat, buildBat, workflows, actions = {}, allowe
       add("build", wf, `the build does not pass \`${t}\`, which build.bat does`);
     }
     for (const flag of Object.keys(allowed.requiredBuildFlags)) {
-      if (!build.includes(flag)) add("build", wf, `the build does not pass \`${flag}\` (${allowed.requiredBuildFlags[flag]})`);
+      if (!build.includes(flag))
+        add("build", wf, `the build does not pass \`${flag}\` (${allowed.requiredBuildFlags[flag]})`);
     }
     const flagsHere = allowed.buildFlags[wf] ?? {};
     const expected = removeEach(build, [...wantBuild, ...Object.keys(allowed.requiredBuildFlags)]).rest;
@@ -187,8 +196,11 @@ function findings({ testBat, checkBat, buildBat, workflows, actions = {}, allowe
     if (a.join("\n") === b.join("\n")) continue;
     let at = 0;
     while (at < a.length && a[at] === b[at]) at++;
-    add("differ", `${names[0]} / ${names[i]}`,
-      `the gate steps part at step ${at + 1}: \`${a[at] ?? "(none)"}\` against \`${b[at] ?? "(none)"}\``);
+    add(
+      "differ",
+      `${names[0]} / ${names[i]}`,
+      `the gate steps part at step ${at + 1}: \`${a[at] ?? "(none)"}\` against \`${b[at] ?? "(none)"}\``,
+    );
   }
   return out;
 }
@@ -211,7 +223,8 @@ const P_ALLOWED = {
   requiredBuildFlags: { "--no-fetch-assets": "probe" },
 };
 const BUILD_ONE = "node builder/tbdocs.mjs --src docs --no-fetch-assets --check-audit-index";
-const BUILD_TWO = "node builder/tbdocs.mjs --src docs --url '${{ steps.pages.outputs.origin }}' --no-fetch-assets --check-audit-index";
+const BUILD_TWO =
+  "node builder/tbdocs.mjs --src docs --url '${{ steps.pages.outputs.origin }}' --no-fetch-assets --check-audit-index";
 const GOOD = ["a.mjs", "b.mjs", "c.mjs --check"];
 const TEST_FILE = "--test test/d.test.mjs";
 
@@ -232,7 +245,10 @@ function pair(one, two) {
 
 // A workflow whose gates are in a shared composite action, and the action.
 function wfAction(build, extra = []) {
-  const steps = [{ name: "Checkout", uses: "actions/checkout@v5" }, { name: "Build", run: build }];
+  const steps = [
+    { name: "Checkout", uses: "actions/checkout@v5" },
+    { name: "Build", run: build },
+  ];
   steps.push({ name: "Run the gates", uses: "./gates" });
   for (const g of extra) steps.push({ name: g, run: runOf(g) });
   return { jobs: { [JOB]: { steps } } };
@@ -242,6 +258,7 @@ function actionOf(gates) {
   return { runs: { using: "composite", steps: gates.map((g) => ({ name: g, shell: "bash", run: runOf(g) })) } };
 }
 
+// biome-ignore format: a table, one entry per line
 const PROBES = [
   ["the recorded differences alone", {}, []],
   ["a gate missing from one workflow",
@@ -307,7 +324,9 @@ function runProbes() {
   const failures = [];
   for (const [name, override, want] of PROBES) {
     const input = {
-      testBat: P_TEST, checkBat: P_CHECK, buildBat: P_BUILD,
+      testBat: P_TEST,
+      checkBat: P_CHECK,
+      buildBat: P_BUILD,
       workflows: pair(wf([...GOOD, "ci.mjs"], BUILD_ONE), wf(GOOD, BUILD_TWO)),
       allowed: P_ALLOWED,
       ...override,
@@ -364,6 +383,7 @@ if (found.length) {
   for (const f of found) console.error(`  ${f.where}: ${f.kind}: ${f.text}`);
   process.exit(1);
 }
-const gateCount = gateSteps(read("test.bat")).length
-  + gateSteps(read("check.bat")).filter((s) => !(s.script in ALLOWED.localOnly)).length;
+const gateCount =
+  gateSteps(read("test.bat")).length +
+  gateSteps(read("check.bat")).filter((s) => !(s.script in ALLOWED.localOnly)).length;
 console.log(`check_ci_workflows: both workflows run the wrappers' ${gateCount} gates, and build as build.bat does`);

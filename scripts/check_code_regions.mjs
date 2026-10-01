@@ -12,22 +12,21 @@
 //
 // builder/render.mjs applies several kramdown-parity rewrites to raw markdown
 // source, before markdown-it has parsed anything. A rewrite at that layer has
-// no idea what is code, and this site's subject matter IS code. Four separate
-// defects of exactly that shape shipped:
+// no idea what is code, and this site's subject matter IS code. The failures
+// of that shape are:
 //
-//   * stripLiquidRawTags removed `{% raw %}` inside fenced blocks, so no page
-//     could show the tag it existed to handle (deleted in 3fc95ee).
-//   * rewriteAdmonitions' body strip ate the indentation of code inside an
-//     admonition -- Reference/Default/VBA/Interaction/InputBox shipped its
-//     If/ElseIf/Else bodies flush left.
-//   * encodeSpacesInMediaUrls turned `Items[1](a, b)` into `Items[1](a,%20b)`.
-//   * rewriteListItemSetextHeadings DELETED the closing `---` of a YAML sample
-//     and promoted the line above it to a heading.
+//   * a Liquid `{% raw %}` strip removes the tag inside fenced blocks, so no
+//     page can show the tag it exists to handle.
+//   * an admonition body strip eats the indentation of code inside an
+//     admonition, leaving If/ElseIf/Else bodies flush left.
+//   * a media-URL space encoder turns `Items[1](a, b)` into `Items[1](a,%20b)`.
+//   * a list-item setext rewrite DELETES the closing `---` of a YAML sample
+//     and promotes the line above it to a heading.
 //
-// None of them was caught by anything. The link check, integrity check,
-// publish allowlist, regex-safety gate and axe scan all pass on a tree with
-// corrupted code samples in it, because the corruption is inside <code> and no
-// gate inspects that.
+// Nothing else catches them. The link check, integrity check, publish
+// allowlist, regex-safety gate and axe scan all pass on a tree with corrupted
+// code samples in it, because the corruption is inside <code> and no gate
+// inspects that.
 //
 // HOW IT WORKS
 //
@@ -117,7 +116,10 @@ function codeRegions(src) {
 // The block regions of a full parse, in the form regionsOf gives blockRegions'.
 const REGION_TYPES = new Set(["fence", "code_block", "html_block"]);
 function parsedRegions(src) {
-  return md.parse(src, {}).filter((t) => REGION_TYPES.has(t.type)).map((t) => `${t.type} ${t.map[0]}-${t.map[1]}`);
+  return md
+    .parse(src, {})
+    .filter((t) => REGION_TYPES.has(t.type))
+    .map((t) => `${t.type} ${t.map[0]}-${t.map[1]}`);
 }
 
 // The real chain, imported from render.mjs rather than reconstructed here.
@@ -141,8 +143,9 @@ function compare(src) {
 
 // Probes ride along inside the normal run rather than behind a flag nobody
 // remembers: a green line saying "no rewrite touches code" is otherwise
-// indistinguishable from a gate that has stopped detecting. Each is a real
-// defect this repository shipped.
+// indistinguishable from a gate that has stopped detecting. Each is a
+// corruption a real rewrite can cause.
+// biome-ignore format: a table, one entry per line
 const PROBES = [
   ["admonition strips code indent",
     "> [!NOTE]\n> text\n>\n> ```tb\n> If x Then\n>     y\n> End If\n> ```\n"],
@@ -163,12 +166,12 @@ const PROBES = [
 // The mirror of the probes above, and the region comparison structurally
 // cannot make it: a rewrite that misreads what is code can also fail to fire
 // on real prose, and the regions still come back identical because the text
-// was merely stashed and restored. Reference/Attributes.md shipped all six of
-// its admonitions as the literal text "[!NOTE]" for exactly that reason -- a
-// [Description(...)] sample whose argument is a Markdown string containing
-// "```basic" and "```" as twinBASIC string literals, which the fence stasher
-// closed the surrounding ```tb fence on. Every pairing after it was off by
-// one, so for the rest of the page prose and code were the wrong way round.
+// was merely stashed and restored. Example: a [Description(...)] sample whose
+// argument is a Markdown string containing "```basic" and "```" as twinBASIC
+// string literals, which the fence stasher closes the surrounding ```tb fence
+// on. Every pairing after it is off by one, so for the rest of the page prose
+// and code are the wrong way round and admonitions render as the literal text
+// "[!NOTE]".
 //
 // Each probe is a source that MUST produce an admonition.
 //
@@ -178,6 +181,7 @@ const PROBES = [
 // the first draft of this probe had no trailing fence and passed happily
 // against the very stasher it was written to catch. The page it is modelled on
 // has 22 fences; the damage is always to the prose BETWEEN two of them.
+// biome-ignore format: a table, one entry per line
 const ADMONITION_PROBES = [
   ["admonition between a fence whose body contains a fence marker, and the next fence",
     'prose\n\n```tb\nx = "```basic" & vbCrLf & _\n    "```"\n```\n\n' +
@@ -213,16 +217,18 @@ const ADMONITION_PROBES = [
 // parser: the line scan it had never saw a fence open after `: `, and turned
 // the sample inside into a live admonition.
 const UNCHANGED_PROBES = [
-  ["a fence the definition-list plugin makes",
-    "Term\n: ```tb\n  v = Items[1](a, b)\n  ```\n"],
-  ["an admonition written inside a fence the definition-list plugin makes",
-    "Term\n: ```md\n  > [!NOTE]\n  > body\n  ```\n"],
+  ["a fence the definition-list plugin makes", "Term\n: ```tb\n  v = Items[1](a, b)\n  ```\n"],
+  [
+    "an admonition written inside a fence the definition-list plugin makes",
+    "Term\n: ```md\n  > [!NOTE]\n  > body\n  ```\n",
+  ],
 ];
 
 // The rewrites over rendered HTML: a page, and what the rewrite must make of
 // it. Each page holds a raw `<pre>` or `<code>` that must come through as
 // written, and outside it a match that must still be rewritten. A rewrite
 // that throws fails its probe.
+// biome-ignore format: a table, one entry per line
 const POST_RENDER_PROBES = [
   ["an empty table cell inside a raw <pre>", applyPostRenderRewrites,
     "<pre><table><tr><td></td></tr></table></pre><table><tr><td></td></tr></table>",
@@ -245,6 +251,7 @@ const POST_RENDER_PROBES = [
 // first probe is that shape. The scan also never saw a fence indented four
 // spaces or more, or behind `> ` or `: `, an indented code block or an HTML
 // block, and the typographer converts none of them.
+// biome-ignore format: a table, one entry per line
 const DASH_PROBES = [
   ["a fence after an earlier fence, with CRLF and lone CR endings",
     "```tb\r\na \u{2014} b\r\n```\r\n\r\nc \u{2014} d\re \u{2013} f\r\n",
@@ -270,7 +277,10 @@ const DASH_PROBES = [
 const regionsOf = (src, options) => blockRegions(src, options).map((r) => `${r.type} ${r.start}-${r.end}`);
 
 // A line's code-span segments, code in braces, segments joined by "|".
-const spansOf = (line) => splitCodeSpans(line).map((s) => (s.code ? `{${s.text}}` : s.text)).join("|");
+const spansOf = (line) =>
+  splitCodeSpans(line)
+    .map((s) => (s.code ? `{${s.text}}` : s.text))
+    .join("|");
 
 // One per shape the scanner has to get right: an empty line, none, runs of one,
 // two and four, an unmatched run, runs of another length inside a span, spans
@@ -300,100 +310,151 @@ const MODULE_PROBES = [
   // this opens no fence and the admonition is prose. maskCodeRegions masked it
   // as a fence while stashCodeFences did not, so one rewrite saw code where
   // the next saw prose.
-  ["a backtick in a backtick fence's info string opens no fence", () => {
-    const src = "```abc`def\n> [!NOTE]\n> body\n";
-    assert.deepEqual(regionsOf(src), []);
-    assert.equal(maskCode(src).masked, src);
-    assert.deepEqual(regionsOf("~~~abc`def\nx\n~~~\n"), ["fence 0-3"]);
-  }],
-  ["a fence inside a blockquote is masked whole, markers and all", () => {
-    const src = "> text\n> ```tb\n> *** x ***\n> ```\n";
-    assert.deepEqual(regionsOf(src), ["fence 1-4"]);
-    const { masked, restore } = maskCode(src);
-    assert.equal(masked, "> text\n`\u0000CM0\u0000`\n");
-    assert.equal(restore(masked), src);
-  }],
-  ["a fence inside a list item, and inside a blockquote inside one", () => {
-    assert.deepEqual(regionsOf("- item\n\n  ```tb\n  x\n  ```\n"), ["fence 2-5"]);
-    assert.deepEqual(regionsOf("- item\n\n  > ```tb\n  > x\n  > ```\n"), ["fence 2-5"]);
-  }],
-  ["an indented code block is masked only when asked", () => {
-    const src = "text\n\n    *** x ***\n";
-    assert.deepEqual(regionsOf(src), ["code_block 2-3"]);
-    assert.equal(maskCode(src).masked, src);
-    assert.equal(maskCode(src, { indented: true }).masked, "text\n\n`\u0000CM0\u0000`\n");
-  }],
-  ["the parser a caller passes decides what is a block", () => {
-    // Only a parser with the site's definition-list plugin sees a fence after
-    // `: `. A bare one reads the closing marker as an opener instead.
-    const src = "Term\n: ```tb\n  x\n  ```\n";
-    assert.deepEqual(regionsOf(src), ["fence 3-4"]);
-    assert.deepEqual(regionsOf(src, { md: new MarkdownIt({ html: true }).use(deflist) }), ["fence 1-4"]);
-  }],
-  ["code spans: sixteen shapes", () => {
-    for (const [line, want] of CODE_SPAN_CASES) assert.equal(spansOf(line), want, JSON.stringify(line));
-  }],
-  ["CRLF and lone CR line endings come back as they went in", () => {
-    const src = "a\r\n\r\n```tb\r\n*** x ***\r\n```\r\nb `c` d\r\n";
-    assert.deepEqual(regionsOf(src), ["fence 2-5"]);
-    const { masked, restore } = maskCode(src);
-    assert.equal(masked, "a\r\n\r\n`\u0000CM0\u0000`\r\nb `\u0000CM1\u0000` d\r\n");
-    assert.equal(restore(masked), src);
-    assert.equal(mapLines("a\r\nb\nc\rd", (s) => s.toUpperCase()), "A\r\nB\nC\rD");
-    assert.deepEqual(regionsOf("x\r```tb\ry\r```\rz"), ["fence 1-4"]);
-  }],
-  ["a fenced --- does not start a section", () => {
-    const src = "top\n---\n```yaml\nk: v\n---\n```\ntail\n";
-    assert.deepEqual(splitOnMarker(src, (line) => line === "---"), [
-      { marker: null, start: 0, lines: ["top"] },
-      { marker: "---", start: 1, lines: ["```yaml", "k: v", "---", "```", "tail"] },
-    ]);
-  }],
-  ["frontmatter that markdown-it would read as a heading", () => {
-    const src = "---\ntitle: X\npermalink: /y\n---\n\n# Heading\n";
-    assert.deepEqual(parseFrontmatter(src), { data: { title: "X", permalink: "/y" }, content: "\n# Heading\n" });
-  }],
-  ["frontmatter behind a BOM, and content with CRLF endings", () => {
-    assert.deepEqual(parseFrontmatter("\u{FEFF}---\ntitle: X\n---\nbody\n"), { data: { title: "X" }, content: "body\n" });
-    assert.deepEqual(parseFrontmatter("---\r\ntitle: X\r\n---\r\nbody\r\n"), { data: { title: "X" }, content: "body\r\n" });
-    assert.deepEqual(parseFrontmatter("---\n# only a comment\n---\n"), { data: {}, content: "" });
-  }],
-  ["what is not frontmatter, and what is broken frontmatter", () => {
-    assert.equal(parseFrontmatter("----\nx: 1\n----\n"), null);
-    assert.equal(parseFrontmatter("text\n---\nx: 1\n---\n"), null);
-    assert.throws(() => parseFrontmatter("---\nx: 1\n"), /never closed/);
-    assert.throws(() => parseFrontmatter("---\n- a list\n---\n"), /not a mapping/);
-    assert.throws(() => parseFrontmatter("---\nok: 1\nbad: [\n---\n"), /\(4:1\)/);
-  }],
-  ["an unquoted value that ends in # is reported, a quoted one is not", () => {
-    assert.equal(parseFrontmatter("---\ntitle: Input #\n---\n").data.title, "Input");
-    const src = [
-      "\u{FEFF}---",
-      "title: Input #",
-      "parent: Statements",
-      'quoted: "Write #"',
-      "lang: C#  ",
-      "comment: x # a note",
-      "# title: y #",
-      "list:",
-      "  - Line Input #",
-      "  - 'kept #'",
-      "  - key: v #",
-      '  - key: "v #"',
-      "text: |",
-      "  a line #",
-      "",
-      "  - key: v #",
-      "after: z #",
-      'tail: "quoted" #',
-      "---",
-      "body: b #",
-    ].join("\r\n");
-    assert.deepEqual(unquotedHashValues(src).map((f) => f.line), [2, 5, 9, 11, 17]);
-    assert.equal(unquotedHashValues(src)[0].text, "title: Input #");
-    assert.deepEqual(unquotedHashValues("body: b #\n"), []);
-    assert.throws(() => unquotedHashValues("---\nx: 1 #\n"), /never closed/);
-  }],
+  [
+    "a backtick in a backtick fence's info string opens no fence",
+    () => {
+      const src = "```abc`def\n> [!NOTE]\n> body\n";
+      assert.deepEqual(regionsOf(src), []);
+      assert.equal(maskCode(src).masked, src);
+      assert.deepEqual(regionsOf("~~~abc`def\nx\n~~~\n"), ["fence 0-3"]);
+    },
+  ],
+  [
+    "a fence inside a blockquote is masked whole, markers and all",
+    () => {
+      const src = "> text\n> ```tb\n> *** x ***\n> ```\n";
+      assert.deepEqual(regionsOf(src), ["fence 1-4"]);
+      const { masked, restore } = maskCode(src);
+      assert.equal(masked, "> text\n`\u0000CM0\u0000`\n");
+      assert.equal(restore(masked), src);
+    },
+  ],
+  [
+    "a fence inside a list item, and inside a blockquote inside one",
+    () => {
+      assert.deepEqual(regionsOf("- item\n\n  ```tb\n  x\n  ```\n"), ["fence 2-5"]);
+      assert.deepEqual(regionsOf("- item\n\n  > ```tb\n  > x\n  > ```\n"), ["fence 2-5"]);
+    },
+  ],
+  [
+    "an indented code block is masked only when asked",
+    () => {
+      const src = "text\n\n    *** x ***\n";
+      assert.deepEqual(regionsOf(src), ["code_block 2-3"]);
+      assert.equal(maskCode(src).masked, src);
+      assert.equal(maskCode(src, { indented: true }).masked, "text\n\n`\u0000CM0\u0000`\n");
+    },
+  ],
+  [
+    "the parser a caller passes decides what is a block",
+    () => {
+      // Only a parser with the site's definition-list plugin sees a fence after
+      // `: `. A bare one reads the closing marker as an opener instead.
+      const src = "Term\n: ```tb\n  x\n  ```\n";
+      assert.deepEqual(regionsOf(src), ["fence 3-4"]);
+      assert.deepEqual(regionsOf(src, { md: new MarkdownIt({ html: true }).use(deflist) }), ["fence 1-4"]);
+    },
+  ],
+  [
+    "code spans: sixteen shapes",
+    () => {
+      for (const [line, want] of CODE_SPAN_CASES) assert.equal(spansOf(line), want, JSON.stringify(line));
+    },
+  ],
+  [
+    "CRLF and lone CR line endings come back as they went in",
+    () => {
+      const src = "a\r\n\r\n```tb\r\n*** x ***\r\n```\r\nb `c` d\r\n";
+      assert.deepEqual(regionsOf(src), ["fence 2-5"]);
+      const { masked, restore } = maskCode(src);
+      assert.equal(masked, "a\r\n\r\n`\u0000CM0\u0000`\r\nb `\u0000CM1\u0000` d\r\n");
+      assert.equal(restore(masked), src);
+      assert.equal(
+        mapLines("a\r\nb\nc\rd", (s) => s.toUpperCase()),
+        "A\r\nB\nC\rD",
+      );
+      assert.deepEqual(regionsOf("x\r```tb\ry\r```\rz"), ["fence 1-4"]);
+    },
+  ],
+  [
+    "a fenced --- does not start a section",
+    () => {
+      const src = "top\n---\n```yaml\nk: v\n---\n```\ntail\n";
+      assert.deepEqual(
+        splitOnMarker(src, (line) => line === "---"),
+        [
+          { marker: null, start: 0, lines: ["top"] },
+          { marker: "---", start: 1, lines: ["```yaml", "k: v", "---", "```", "tail"] },
+        ],
+      );
+    },
+  ],
+  [
+    "frontmatter that markdown-it would read as a heading",
+    () => {
+      const src = "---\ntitle: X\npermalink: /y\n---\n\n# Heading\n";
+      assert.deepEqual(parseFrontmatter(src), { data: { title: "X", permalink: "/y" }, content: "\n# Heading\n" });
+    },
+  ],
+  [
+    "frontmatter behind a BOM, and content with CRLF endings",
+    () => {
+      assert.deepEqual(parseFrontmatter("\u{FEFF}---\ntitle: X\n---\nbody\n"), {
+        data: { title: "X" },
+        content: "body\n",
+      });
+      assert.deepEqual(parseFrontmatter("---\r\ntitle: X\r\n---\r\nbody\r\n"), {
+        data: { title: "X" },
+        content: "body\r\n",
+      });
+      assert.deepEqual(parseFrontmatter("---\n# only a comment\n---\n"), { data: {}, content: "" });
+    },
+  ],
+  [
+    "what is not frontmatter, and what is broken frontmatter",
+    () => {
+      assert.equal(parseFrontmatter("----\nx: 1\n----\n"), null);
+      assert.equal(parseFrontmatter("text\n---\nx: 1\n---\n"), null);
+      assert.throws(() => parseFrontmatter("---\nx: 1\n"), /never closed/);
+      assert.throws(() => parseFrontmatter("---\n- a list\n---\n"), /not a mapping/);
+      assert.throws(() => parseFrontmatter("---\nok: 1\nbad: [\n---\n"), /\(4:1\)/);
+    },
+  ],
+  [
+    "an unquoted value that ends in # is reported, a quoted one is not",
+    () => {
+      assert.equal(parseFrontmatter("---\ntitle: Input #\n---\n").data.title, "Input");
+      const src = [
+        "\u{FEFF}---",
+        "title: Input #",
+        "parent: Statements",
+        'quoted: "Write #"',
+        "lang: C#  ",
+        "comment: x # a note",
+        "# title: y #",
+        "list:",
+        "  - Line Input #",
+        "  - 'kept #'",
+        "  - key: v #",
+        '  - key: "v #"',
+        "text: |",
+        "  a line #",
+        "",
+        "  - key: v #",
+        "after: z #",
+        'tail: "quoted" #',
+        "---",
+        "body: b #",
+      ].join("\r\n");
+      assert.deepEqual(
+        unquotedHashValues(src).map((f) => f.line),
+        [2, 5, 9, 11, 17],
+      );
+      assert.equal(unquotedHashValues(src)[0].text, "title: Input #");
+      assert.deepEqual(unquotedHashValues("body: b #\n"), []);
+      assert.throws(() => unquotedHashValues("---\nx: 1 #\n"), /never closed/);
+    },
+  ],
 ];
 
 // The count validator asks the same module what is code, with the site's
@@ -402,6 +463,7 @@ const MODULE_PROBES = [
 // code span and a definition-list fence, none of them references, then an
 // unknown name in prose on line 16. Counted in the masked content after the
 // frontmatter, where each fence is one line, it was reported at line 9.
+// biome-ignore format: a table, one entry per line
 const COUNT_PAGE = [
   "---", "title: T", "---", "",
   "```tb", "{{tbdocs:a}}", "```", "",
@@ -416,8 +478,10 @@ async function countProbe() {
     await fs.writeFile(path.join(dir, "x.md"), COUNT_PAGE);
     const { pages } = await discover(dir);
     const problems = validateCountNames(pages, { pages: 1 }, siteMd);
-    assert.deepEqual(problems.map((p) => p.split("\n").slice(0, 2).join(" ")),
-      ["x.md:16   unknown count name {{tbdocs:d}}"]);
+    assert.deepEqual(
+      problems.map((p) => p.split("\n").slice(0, 2).join(" ")),
+      ["x.md:16   unknown count name {{tbdocs:d}}"],
+    );
   } finally {
     await fs.rm(dir, { recursive: true, force: true });
   }
@@ -435,7 +499,10 @@ async function hashProbe() {
     await fs.writeFile(path.join(dir, "x.md"), '---\r\ntitle: Input #\r\nparent: "Write #"\r\n---\r\nbody #\r\n');
     const { pages } = await discover(dir);
     assert.equal(pages[0].frontmatter.title, "Input");
-    assert.deepEqual(warned.map((message) => message.split(": an unquoted")[0]), ["discover: x.md:2"]);
+    assert.deepEqual(
+      warned.map((message) => message.split(": an unquoted")[0]),
+      ["discover: x.md:2"],
+    );
   } finally {
     console.warn = warn;
     await fs.rm(dir, { recursive: true, force: true });
@@ -464,10 +531,16 @@ Exit codes:
   2  the gate could not run: a refused command line, or a crash`;
 
 async function main(argv) {
-  const { values } = withUsageError(() => parseCli(argv, {
-    options: { verbose: { type: "boolean" }, "self-test": { type: "boolean" }, help: { type: "boolean", short: "h" } },
-    stopAt: ["help"],
-  }));
+  const { values } = withUsageError(() =>
+    parseCli(argv, {
+      options: {
+        verbose: { type: "boolean" },
+        "self-test": { type: "boolean" },
+        help: { type: "boolean", short: "h" },
+      },
+      stopAt: ["help"],
+    }),
+  );
   if (values.help) printHelpAndExit(USAGE);
   const verbose = values.verbose;
 
@@ -557,7 +630,9 @@ async function main(argv) {
     console.log(`ok    ${PROBES.length} probes: no rewrite alters a code region`);
     console.log(`ok    ${ADMONITION_PROBES.length} probes: a rewrite still fires on prose beside code`);
     console.log(`ok    ${UNCHANGED_PROBES.length} probe(s): the chain leaves alone what the site's parser calls code`);
-    console.log(`ok    ${POST_RENDER_PROBES.length} probes: the rewrites over rendered HTML leave a raw <pre> or <code> alone`);
+    console.log(
+      `ok    ${POST_RENDER_PROBES.length} probes: the rewrites over rendered HTML leave a raw <pre> or <code> alone`,
+    );
     console.log(`ok    ${DASH_PROBES.length} probes: the dash normaliser converts prose and nothing else`);
     console.log(`ok    ${MODULE_PROBES.length} probes: lib/markdown.mjs and lib/frontmatter.mjs`);
     console.log("ok    1 probe: the count validator skips code and names the file's line");
@@ -595,8 +670,9 @@ async function main(argv) {
   }
 
   console.log(
-    `check_code_regions: ${files.length} file(s), ${touched} with altered code regions,`
-    + ` ${fences} fence(s) in the full parse` + (failed ? "" : " -- clean"),
+    `check_code_regions: ${files.length} file(s), ${touched} with altered code regions,` +
+      ` ${fences} fence(s) in the full parse` +
+      (failed ? "" : " -- clean"),
   );
   process.exit(failed ? 1 : 0);
 }

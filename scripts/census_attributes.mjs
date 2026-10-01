@@ -47,14 +47,15 @@
 //      by a declaration, an escaped identifier by `.`, `=` or `(`.
 //   5. DAO.twin writes declarations as `/* voffset &H00A8*/ Property Get X()`,
 //      so an inline block comment has to be removed, not used to skip the line.
-//      Skipping cost 14 Interface-member sites, which then read as `End Interface`.
+//      Skipping the line loses the Interface-member sites, which then read as
+//      `End Interface`.
 //   6. Attributes are also written inline -- `[Default] Interface X` -- so the
 //      declaration is not always on the next line.
 //
 // One result to read before calling a row impossible: **a twinBASIC `Type` can
 // contain `DeclareWide` members.** `CustomControls.twin`'s `Type SerializeInfo`
 // holds a dozen, so `Type / DeclareWide` is a real construct and not a stack
-// fault. It was assumed to be one here, and the assumption was wrong.
+// fault.
 //
 // Only TYPE blocks are tracked for the enclosing construct. Procedures are
 // deliberately not pushed: an Interface prototype (`Sub Ping()`) has no body and
@@ -68,7 +69,7 @@ import { parseAttributes } from "./lib/attributes-doc.mjs";
 import { findIde } from "./lib/tb-install.mjs";
 import { defaultCache, exportPackages, packageName } from "./lib/tb-packages.mjs";
 import { MODIFIERS, declarationKind, decomment } from "./lib/twin-declarations.mjs";
-import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { die, exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { DOCS_DIR } from "../lib/repo-paths.mjs";
 
 exitOnCrash();
@@ -91,9 +92,11 @@ const { values } = withUsageError(() =>
       help: { type: "boolean", short: "h", default: false },
     },
     stopAt: ["help"],
-  }));
-const die = (code, msg) => { console.error(msg); process.exit(code); };
-const log = (...a) => { if (!values.quiet) console.error(...a); };
+  }),
+);
+const log = (...a) => {
+  if (!values.quiet) console.error(...a);
+};
 
 const USAGE = `usage: node scripts/census_attributes.mjs [options]
 
@@ -135,7 +138,7 @@ function findInstall() {
   die(2, `no packages/ under ${root} -- pass the install root with --ide`);
 }
 
-const buildNumberOf = (root) => (/_BETA_(\d+)$/.exec(root)?.[1]) ?? "unknown";
+const buildNumberOf = (root) => /_BETA_(\d+)$/.exec(root)?.[1] ?? "unknown";
 
 // ------------------------------------------------------------- the export
 // scripts/lib/tb-packages.mjs, shared with scripts/build_package_api.mjs so the
@@ -144,7 +147,11 @@ const buildNumberOf = (root) => (/_BETA_(\d+)$/.exec(root)?.[1]) ?? "unknown";
 function exportAll(root, cacheDir, includeSamples) {
   try {
     const { projects, failed } = exportPackages({
-      root, cache: cacheDir, refresh: values.refresh, samples: includeSamples, log,
+      root,
+      cache: cacheDir,
+      refresh: values.refresh,
+      samples: includeSamples,
+      log,
     });
     const lost = new Set(failed.map((f) => f.name));
     return projects.filter((p) => !lost.has(p.name));
@@ -164,17 +171,27 @@ const TYPE_KEYWORDS = ["Class", "Module", "Interface", "CoClass", "Enum", "Type"
 // skipped the open -- so its `End Module` 1,277 lines later popped a block it
 // did not own.
 const OPEN_RE = new RegExp(
-  `^\\s*(?:(?:${MODIFIERS}|Const)\\s+)*(${TYPE_KEYWORDS.join("|")})\\b\\s+([A-Za-z_]\\w*|\\[[^\\]]*\\])`, "i");
+  `^\\s*(?:(?:${MODIFIERS}|Const)\\s+)*(${TYPE_KEYWORDS.join("|")})\\b\\s+([A-Za-z_]\\w*|\\[[^\\]]*\\])`,
+  "i",
+);
 const CLOSE_RE = new RegExp(`^\\s*End\\s+(${TYPE_KEYWORDS.join("|")})\\b`, "i");
 
 // Blank string contents in place, preserving length and quotes, so offsets stay
 // valid and no comma or bracket inside a literal is ever read as syntax.
 function blankStrings(s) {
-  let out = "", inStr = false;
+  let out = "",
+    inStr = false;
   for (let i = 0; i < s.length; i++) {
     const c = s[i];
-    if (c === '"') { inStr = !inStr; out += c; continue; }
-    if (!inStr && c === "'") { out += " ".repeat(s.length - i); break; }
+    if (c === '"') {
+      inStr = !inStr;
+      out += c;
+      continue;
+    }
+    if (!inStr && c === "'") {
+      out += " ".repeat(s.length - i);
+      break;
+    }
     out += inStr && c !== "\n" ? " " : c;
   }
   return out;
@@ -187,22 +204,33 @@ function readAttrRun(lines, i) {
   if (!startsWithBracket(lines[i] ?? "")) return null;
 
   const groups = [];
-  let line = i, col = decomment(lines[line]).length - decomment(lines[line]).trimStart().length;
+  let line = i,
+    col = decomment(lines[line]).length - decomment(lines[line]).trimStart().length;
   let text = decomment(lines[line]);
 
   for (;;) {
     while (col < text.length && /\s/.test(text[col])) col++;
     if (text[col] !== "[") break;
 
-    let depth = 0, inStr = false, closed = false;
+    let depth = 0,
+      inStr = false,
+      closed = false;
     const group = [];
     scan: for (;;) {
       while (col < text.length) {
         const c = text[col];
-        if (inStr) { if (c === '"') inStr = false; }
-        else if (c === '"') inStr = true;
+        if (inStr) {
+          if (c === '"') inStr = false;
+        } else if (c === '"') inStr = true;
         else if (c === "[") depth++;
-        else if (c === "]") { depth--; if (depth === 0) { col++; closed = true; break scan; } }
+        else if (c === "]") {
+          depth--;
+          if (depth === 0) {
+            col++;
+            closed = true;
+            break scan;
+          }
+        }
         group.push(c);
         col++;
       }
@@ -222,7 +250,9 @@ function readAttrRun(lines, i) {
     //     [Description("..." & vbCrLf & _
     // and stopping at the comment made the second group read as the
     // declaration, which is how 142 sites landed in the unresolved bucket.
-    let probeLine = line, probeText = text, probeCol = col;
+    let probeLine = line,
+      probeText = text,
+      probeCol = col;
     for (;;) {
       // Scan the COMMENT-STRIPPED text. WebView2.twin opens with
       //     [WindowsControl("...")]  ' [WindowsControl("...png")]
@@ -234,16 +264,23 @@ function readAttrRun(lines, i) {
       let k = probeLine + 1;
       while (k < lines.length) {
         const t = decomment(lines[k]);
-        if (!blankStrings(t).trim()) { k++; continue; }   // blank, or a ' comment
+        if (!blankStrings(t).trim()) {
+          k++;
+          continue;
+        } // blank, or a ' comment
         break;
       }
       if (k >= lines.length) break;
       const nxt = decomment(lines[k]);
       if (!nxt.trimStart().startsWith("[")) break;
-      probeLine = k; probeText = nxt; probeCol = 0;
+      probeLine = k;
+      probeText = nxt;
+      probeCol = 0;
     }
     if (probeText[probeCol] !== "[") break;
-    line = probeLine; text = probeText; col = probeCol;
+    line = probeLine;
+    text = probeText;
+    col = probeCol;
   }
 
   return { groups, endLine: line, rest: text.slice(col) };
@@ -265,7 +302,8 @@ function attrNames(group) {
 function scanFile(file, pkg) {
   const raw = readFileSync(file, "utf8").replace(/^﻿/, "");
   const lines = raw.split(/\r?\n/);
-  const sites = [], problems = [];
+  const sites = [],
+    problems = [];
   const stack = [];
 
   for (let i = 0; i < lines.length; i++) {
@@ -286,11 +324,17 @@ function scanFile(file, pkg) {
           let j = run.endLine + 1;
           while (j < lines.length) {
             const t = decomment(lines[j]);
-            if (!blankStrings(t).trim()) { j++; continue; }
+            if (!blankStrings(t).trim()) {
+              j++;
+              continue;
+            }
             // A conditional-compilation or #Region directive can sit between an
             // attribute and what it decorates -- DTPicker.twin puts
             // `#If FEATURE_OLEDRAGDROP Then` there.
-            if (/^\s*#/.test(t)) { j++; continue; }
+            if (/^\s*#/.test(t)) {
+              j++;
+              continue;
+            }
             break;
           }
           decl = decomment(lines[j] ?? "");
@@ -309,17 +353,35 @@ function scanFile(file, pkg) {
           // identifier, and nothing local decides which. This treats it as the
           // attribute, which is right for every case in BETA 983.
           if (!n.name && container === "Enum") continue;
-          if (!n.name) { problems.push({ file, pkg, line: i + 1, why: "unparsed attribute text", text: n.raw }); continue; }
+          if (!n.name) {
+            problems.push({ file, pkg, line: i + 1, why: "unparsed attribute text", text: n.raw });
+            continue;
+          }
           sites.push({
-            attr: n.name, hasArgs: n.hasArgs, pkg, file, line: i + 1,
-            container, kind: kind ?? "UNRESOLVED",
+            attr: n.name,
+            hasArgs: n.hasArgs,
+            pkg,
+            file,
+            line: i + 1,
+            container,
+            kind: kind ?? "UNRESOLVED",
             decl: decl.trim().slice(0, 100),
             inProject: stack.map((s) => s.kind).join(">"),
           });
-          if (!kind) problems.push({ file, pkg, line: i + 1, why: "declaration not classified", text: decl.trim().slice(0, 100) });
+          if (!kind)
+            problems.push({
+              file,
+              pkg,
+              line: i + 1,
+              why: "declaration not classified",
+              text: decl.trim().slice(0, 100),
+            });
         }
       }
-      if (run.endLine > i) { i = run.endLine; continue; }
+      if (run.endLine > i) {
+        i = run.endLine;
+        continue;
+      }
     }
 
     // Block tracking runs on the code AFTER any attributes on this line, so an
@@ -347,7 +409,12 @@ function scanFile(file, pkg) {
   }
 
   if (stack.length) {
-    problems.push({ file, pkg, line: stack[0].line, why: `unclosed ${stack.map((s) => s.kind).join(">")} at end of file` });
+    problems.push({
+      file,
+      pkg,
+      line: stack[0].line,
+      why: `unclosed ${stack.map((s) => s.kind).join(">")} at end of file`,
+    });
   }
   return { sites, problems };
 }
@@ -367,22 +434,26 @@ function buildReport(sites, problems, files, projects, meta) {
   }
   const doc = documentedAttributes();
 
-  const rows = [...byAttr.entries()].map(([attr, ss]) => {
-    const targets = new Map();
-    for (const s of ss) {
-      const k = `${s.container} / ${s.kind}`;
-      targets.set(k, (targets.get(k) ?? 0) + 1);
-    }
-    const pkgs = [...new Set(ss.map((s) => s.pkg))].sort();
-    return {
-      attr, uses: ss.length, packages: pkgs,
-      withArgs: ss.filter((s) => s.hasArgs).length,
-      targets: [...targets.entries()].sort((a, b) => b[1] - a[1]),
-      documented: doc ? doc.has(attr) : null,
-      applicableTo: doc?.get(attr)?.app ?? null,
-      unresolved: ss.filter((s) => s.kind === "UNRESOLVED").length,
-    };
-  }).sort((a, b) => b.uses - a.uses || a.attr.localeCompare(b.attr));
+  const rows = [...byAttr.entries()]
+    .map(([attr, ss]) => {
+      const targets = new Map();
+      for (const s of ss) {
+        const k = `${s.container} / ${s.kind}`;
+        targets.set(k, (targets.get(k) ?? 0) + 1);
+      }
+      const pkgs = [...new Set(ss.map((s) => s.pkg))].sort();
+      return {
+        attr,
+        uses: ss.length,
+        packages: pkgs,
+        withArgs: ss.filter((s) => s.hasArgs).length,
+        targets: [...targets.entries()].sort((a, b) => b[1] - a[1]),
+        documented: doc ? doc.has(attr) : null,
+        applicableTo: doc?.get(attr)?.app ?? null,
+        unresolved: ss.filter((s) => s.kind === "UNRESOLVED").length,
+      };
+    })
+    .sort((a, b) => b.uses - a.uses || a.attr.localeCompare(b.attr));
 
   const usedNames = new Set(byAttr.keys());
   const undocumented = doc ? rows.filter((r) => !r.documented).map((r) => r.attr) : [];
@@ -463,7 +534,9 @@ function renderMarkdown(rep) {
       L.push(`### ${why} (${ps.length})`);
       L.push("");
       for (const p of ps.slice(0, 25)) {
-        L.push(`- \`${p.pkg}\` ${path.basename(p.file)}:${p.line}${p.text ? ` --- \`${p.text.replace(/`/g, "'")}\`` : ""}`);
+        L.push(
+          `- \`${p.pkg}\` ${path.basename(p.file)}:${p.line}${p.text ? ` --- \`${p.text.replace(/`/g, "'")}\`` : ""}`,
+        );
       }
       if (ps.length > 25) L.push(`- ... and ${ps.length - 25} more`);
       L.push("");
@@ -495,7 +568,11 @@ function renderAttrDetail(rep, attr) {
 // --------------------------------------------------------------------- main
 function collectTwinFiles(dir, out = []) {
   let entries;
-  try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return out; }
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return out;
+  }
   for (const e of entries) {
     const p = path.join(dir, e.name);
     if (e.isDirectory()) collectTwinFiles(p, out);
@@ -505,7 +582,9 @@ function collectTwinFiles(dir, out = []) {
 }
 
 function main() {
-  let projects, install = null, build = "n/a";
+  let projects,
+    install = null,
+    build = "n/a";
   const exportedDir = values.exported;
 
   if (exportedDir) {
@@ -530,7 +609,8 @@ function main() {
     projects = exportAll(install, cache, values.samples);
   }
 
-  const allSites = [], allProblems = [];
+  const allSites = [],
+    allProblems = [];
   let fileCount = 0;
   for (const p of projects) {
     const pkg = packageName(p.name);
@@ -550,28 +630,39 @@ function main() {
   const doc = documentedAttributes();
   const rep = buildReport(allSites, allProblems, fileCount, projects.length, {
     when: new Date().toISOString().slice(0, 10),
-    install, build,
+    install,
+    build,
     documentedCount: doc ? doc.size : null,
   });
 
   const attr = values.attr;
   const text = values.json
-    ? JSON.stringify(attr ? rep.rows.find((r) => r.attr.toLowerCase() === attr.toLowerCase()) ?? null : rep, null, 2) + "\n"
-    : attr ? renderAttrDetail(rep, attr) : renderMarkdown(rep);
+    ? JSON.stringify(
+        attr ? (rep.rows.find((r) => r.attr.toLowerCase() === attr.toLowerCase()) ?? null) : rep,
+        null,
+        2,
+      ) + "\n"
+    : attr
+      ? renderAttrDetail(rep, attr)
+      : renderMarkdown(rep);
 
   // Every raw site, for answering "which file produced this row?" -- the
   // question every surprising number in the report turns into.
   const dump = values.dumpSites;
   if (dump) {
-    writeFileSync(dump, JSON.stringify(attr
-      ? allSites.filter((s) => s.attr.toLowerCase() === attr.toLowerCase())
-      : allSites, null, 1), "utf8");
+    writeFileSync(
+      dump,
+      JSON.stringify(attr ? allSites.filter((s) => s.attr.toLowerCase() === attr.toLowerCase()) : allSites, null, 1),
+      "utf8",
+    );
     log(`sites   : ${dump}`);
   }
 
   const out = values.out;
-  if (out) { writeFileSync(out, text, "utf8"); log(`report  : ${out}`); }
-  else process.stdout.write(text);
+  if (out) {
+    writeFileSync(out, text, "utf8");
+    log(`report  : ${out}`);
+  } else process.stdout.write(text);
 }
 
 main();

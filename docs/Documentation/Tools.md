@@ -76,7 +76,7 @@ The tests the toolchain has to pass. Nineteen steps, each stopping the run if it
 1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
 2. [`scripts/check_gate_lists.mjs`](#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
 3. [`scripts/check_ci_workflows.mjs`](#check-ci-workflows) --- verifies both CI workflows run the gates the wrappers run, and build as `build.bat` does.
-4. [`scripts/check_lint.mjs`](#check-lint) --- runs Biome over the tooling and fails on any finding, warnings included.
+4. [`scripts/check_lint.mjs`](#check-lint) --- runs Biome's linter and formatter check over the tooling and fails on any finding, warnings and layout included.
 5. [`test/search.test.mjs`](#search-test) --- unit tests for the site search: what the search entries hold, and that the copies of the search client agree.
 6. [`test/render.test.mjs`](#render-test) --- unit tests for the markdown-it plugins, on inputs no page holds.
 7. [`test/strftime.test.mjs`](#strftime-test) --- unit tests for the footer's date formatter, which no build calls.
@@ -156,7 +156,7 @@ Exit codes: **0** the PDF was written; **1** the tree is stale, or `npm install`
 
     node scripts/check_tree_fresh.mjs --tree docs/_site-pdf --marker book.html
 
-[`check_tree_fresh.mjs`](#check-tree-fresh) refuses a `_site-pdf/` tree older than `docs/` or `builder/`. This used to be an existence test, and an existence test was not enough: edit a page, run `book.bat` without `build.bat`, and it spent two minutes rendering the **previous** book and reported success. Nothing downstream notices, because the PDF it produces is internally consistent, correctly paginated and correctly bookmarked. It is simply the wrong book.
+[`check_tree_fresh.mjs`](#check-tree-fresh) refuses a `_site-pdf/` tree older than `docs/` or `builder/`. An existence test is not enough: edit a page, run `book.bat` without `build.bat`, and it would spend two minutes rendering the **previous** book and report success. Nothing downstream notices, because the PDF it produces is internally consistent, correctly paginated and correctly bookmarked. It is simply the wrong book.
 
 Leaving the question to the renderer does not cover it either. `render-book.mjs` refuses a missing input with `input not found:` and the resolved path, which says nothing at all about a tree that is present and stale --- the case that costs two minutes and yields a wrong artifact.
 
@@ -450,13 +450,13 @@ Refuses a regex that can backtrack exponentially. Parses every `.mjs` under `bui
 
 The cause is one shape, every time: **two parts of the pattern can match the same character**, so a single run of input can be divided between them in exponentially many ways, and a match that ultimately fails tries every division. Both regexes this repository shipped were that. `VOID_TAGS_RE` spelled a void tag's attribute list as `(?:\s+[^>/]+...)*`, and `[^>/]` matches a space exactly as `\s` does, so any run of attribute text divides arbitrarily. Narrowing the class to `[^\s>/]` looked like the fix and was not --- it still matches `"`, `'` and `=`, so an attribute could be taken either by the name class or by the quoted-value alternative, which is the same ambiguity one level down. That second version was pronounced safe by hand and refused by this gate.
 
-**The rewrite that works is to stop describing the structure between the delimiters.** Both regexes are now `<(br|hr|...)\b([^>]*)>`, and the attribute handling happens afterwards in ordinary JavaScript, where it is easier to read and cannot backtrack at all. `[^>]*` and the `>` after it share no character, so there is no division to try. **Do not reintroduce a per-attribute sub-pattern in either one**: it was written that way, fixed that way, and was wrong both times.
+**The rewrite that works is to stop describing the structure between the delimiters.** Both regexes are `<(br|hr|...)\b([^>]*)>`, and the attribute handling happens afterwards in ordinary JavaScript, where it is easier to read and cannot backtrack at all. `[^>]*` and the `>` after it share no character, so there is no division to try. **Do not reintroduce a per-attribute sub-pattern in either one**: a per-attribute sub-pattern is what made them exponential.
 
 It gates on **exponential only**. recheck also reports polynomial blowup, and about a fifth of the patterns here are polynomial --- nearly all the ordinary `<tag[^>]*>` shape on bounded input. Failing those would mean fifty findings on day one, and a gate that fails on day one gets switched off. The `degN` a census prints is worth even less than that: measured on one pattern over three runs each, the native backend calls it degree 2 and the pure-JavaScript fallback calls it degree 3. Both agree on exponential-or-not, which is the only thing the gate rests on.
 
 Two sets of probes run inside the normal pass rather than behind `--self-test`, because a green line saying *no exponential regex* is otherwise indistinguishable from a gate that has stopped detecting them. Eight are regexes with known answers in both directions, including the three this repository actually shipped. Fourteen more cover the folding: eight constructions that must resolve to an exact pattern, and six that must be refused with a reason --- a folder that quietly resolves nothing moves every construction into the unresolved list and the run still passes.
 
-A failure of the gate itself is a 2 rather than a 1, because each of those leaves something unchecked; a 2 wins over a 1 when both happen in one run. That is the [convention for a gate's exit codes](Extending#conventions), which this gate predates and followed only from round 7 of the use-case evaluation: until then it returned 1 for everything.
+A failure of the gate itself is a 2 rather than a 1, because each of those leaves something unchecked; a 2 wins over a 1 when both happen in one run. That is the [convention for a gate's exit codes](Extending#conventions).
 
 Exit codes: **0** no regex can backtrack exponentially (with `--self-test`, every probe was classified correctly); **1** a regex can backtrack exponentially; **2** the gate could not run, and 2 wins over 1: a refused command line, a file it could not parse, a regex it could not analyse, a probe that came back wrong (also `--self-test`), or a crash.
 
@@ -467,9 +467,9 @@ Exit codes: **0** no regex can backtrack exponentially (with `--self-test`, ever
 
 Verifies that no pre-render rewrite in `builder/render.mjs` alters the contents of a code fence, an indented code block or an inline code span. Tokenises every markdown file under `docs/`, applies the real rewrite chain, re-tokenises, and compares the code regions in order. No browser, no built tree, a couple of seconds.
 
-The list of files comes from `lib/markdown-files.mjs`, which [`convert_em_dash_separators.mjs`](#convert-em-dash-separators) and [`check_examples.mjs`](#check-examples) share. It never enters the build's output trees, so a running `serve.bat` cannot fail the gate: the preview deletes and rewrites `docs/_serve` on every rebuild, and a walk inside it at that moment used to die with `ENOENT`.
+The list of files comes from `lib/markdown-files.mjs`, which [`convert_em_dash_separators.mjs`](#convert-em-dash-separators), [`check_tree_fresh.mjs`](#check-tree-fresh), `scripts/lib/tb-fences.mjs` (and through it [`check_examples.mjs`](#check-examples)), `eval/nav_hops.mjs`, `eval/build_corpus.mjs`, `wisdom/extract/sitemap.mjs` and the builder's `write.mjs` and `serve.mjs` share. It never enters the build's output trees, so a running `serve.bat` cannot fail the gate: the preview deletes and rewrites `docs/_serve` on every rebuild, and a walk inside it at that moment fails with `ENOENT`.
 
-Those rewrites run over **raw markdown**, before markdown-it has parsed anything, so none of them can tell prose from code --- and this site's subject matter is code. Four defects of exactly that shape shipped: a language reference printed its `If` / `ElseIf` / `Else` bodies flush left, a page lost the blank line between two examples, a link's argument list was percent-encoded inside a fence, and a YAML sample's closing `---` was deleted outright. **No other gate can see any of it**, because the damage sits inside `<code>` and the link, integrity, publish and accessibility checks all pass over it.
+Those rewrites run over **raw markdown**, before markdown-it has parsed anything, so none of them can tell prose from code --- and this site's subject matter is code. A rewrite without a code guard can print `If` / `ElseIf` / `Else` bodies flush left, drop the blank line between two examples, percent-encode a link's argument list inside a fence, or delete a YAML sample's closing `---`. **No other gate can see any of it**, because the damage sits inside `<code>` and the link, integrity, publish and accessibility checks all pass over it.
 
 Probes ride along in the normal run, each a defect this repository actually shipped, and a passing run prints how many of each kind it ran. The corpus is clean, so a sweep that finds nothing is otherwise indistinguishable from a gate that has stopped detecting. It imports the rewrite chain rather than reconstructing it, which is what makes removing the code mask from one rewrite change what the gate runs.
 
@@ -494,15 +494,13 @@ Exit codes: **0** no code region was altered, and every probe passed (with `--se
 
 Two checks in one. It verifies that the two numbered gate lists on this page --- [`check.bat`](#checkbat) and [`test.bat`](#testbat) --- still name the same scripts, in the same order, as the wrappers that run them, and that each section's stated step count matches its own list. Then it sweeps `README.md` and every page under `docs/Documentation/` for a gate count stated in prose anywhere, and fails on any that disagrees with the wrapper. Pure text: no browser, no built tree, well under a second.
 
-It exists because this rotted three times, and the last two were a fix decaying rather than a fresh mistake. Round 2 of the use-case evaluation found `test.bat` documented as three gates when it had four, and that was fixed here. [Building and Deployment](Building)'s parallel copy of the same sentence was not touched, a fifth gate landed, and round 3 found it naming three of five --- while [Extending the Builder](Extending) claimed `check.bat` runs six, listed two `test.bat` gates among them, and never mentioned `test.bat` at all.
+A gate scoped to one page guards one file, not every page that restates a count, which is why the sweep covers `README.md` and all of `docs/Documentation/`.
 
-**The first version of this gate read only this page, and said so as if that settled it**: *"a third page that starts restating them is outside what this can see, which is the argument for not letting one."* Building was already that third page and `README.md` a fourth, both wrong on the day the gate shipped green, and round 4 found three readers tripping over one of them independently. A gate scoped to one page guards one file, not a class --- hence the sweep.
-
-Three things follow from how it works. **The wrapper is the source of truth**, not the prose: a gate comparing the pages against each other would be satisfied by two pages that agree and are both wrong. **This page owns the lists**, and every other page cites these entries rather than restating them. And **the sweep reads per section, not per line** --- the count that went wrong most often is stated in a section whose only mention of the wrapper is the command line under its heading, so a line-by-line grep finds four of seven sites and looks thorough doing it.
+Three things follow from how it works. **The wrapper is the source of truth**, not the prose: a gate comparing the pages against each other would be satisfied by two pages that agree and are both wrong. **This page owns the lists**, and every other page cites these entries rather than restating them. And **the sweep reads per section, not per line** --- a count is often stated in a section whose only mention of the wrapper is the command line under its heading, so a line-by-line grep misses most sites.
 
 When it fires on a count that is merely a subset --- *three cheaper gates run first* --- the fix is to delete the number rather than correct it. The command block or the linked list beneath it already states it, and a number nothing derives is a number that goes stale. The script's header names what the sweep deliberately does not see.
 
-Its probes ride along in the ordinary run rather than hiding behind `--self-test`, because a green line from a gate that has stopped detecting looks exactly like a green line from a working one. Thirteen of the nineteen cover the sweep. Twelve are sentences that were published at the commit round 4 reviewed; the thirteenth puts a heading-shaped line in a code fence, as in [Wisdom](Wisdom)'s `staging.md` example, inside a wrapper's section, because such a line starts no section.
+Its probes ride along in the ordinary run rather than hiding behind `--self-test`, because a green line from a gate that has stopped detecting looks exactly like a green line from a working one. Some probes are wrong gate lists, and the rest cover the sweep: count sentences as real pages word them, each of which must be reported, and correct ones, which must not. One puts a heading-shaped line in a code fence, as in [Wisdom](Wisdom)'s `staging.md` example, inside a wrapper's section, because such a line starts no section.
 
 Exit codes: **0** the wrappers match the gate lists, every stated count agrees, and every probe passed; **1** a list or a stated count disagrees, or a probe failed; **2** the gate could not run: a refused command line, or a crash.
 
@@ -527,7 +525,7 @@ Exit codes: **0** both workflows run every gate the wrappers run, and its own pr
     node scripts/check_lint.mjs
     node scripts/check_lint.mjs --staged
 
-Runs Biome, pinned to an exact version, over the tooling: `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `test/` and the site's two scripts in `docs/assets/js/`, less the exceptions that `biome.jsonc` at the repository root lists and explains. The rules are the ones that find defects --- Biome's correctness and suspicious groups --- and none about style; the configuration names the few it turns off, each with its reason. Moving and deleting code leaves unused imports and undeclared names behind, and nothing else reads the tooling for them. No browser, no built tree, a fraction of a second.
+Runs Biome, pinned to an exact version, over the tooling: `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `test/` and the site's two scripts in `docs/assets/js/`, less the exceptions that `biome.jsonc` at the repository root lists and explains. It runs `biome check`, which lints and checks formatting in one pass. The lint rules are the ones that find defects --- Biome's correctness and suspicious groups --- and none about style; the configuration names the few it turns off, each with its reason. Moving and deleting code leaves unused imports and undeclared names behind, and nothing else reads the tooling for them. Style belongs to the formatter, whose settings are in the same file: a file it would change is a finding, and `npx biome format --write` fixes it. A literal table laid out by hand keeps its layout under a `// biome-ignore format:` comment with a reason. No browser, no built tree, a fraction of a second.
 
 **Warnings fail as well as errors.** Biome reports an unused import or variable as a warning, and exits 0 on warnings, so a plain `npx biome lint` passes a file full of them. The gate also refuses to pass when Biome could not lint. Biome exits 1 for a broken `biome.jsonc`, as it does for a finding, and 0 for a scope that matches no script at all, so the gate reads the summary Biome writes beside its usual output to tell these apart.
 
@@ -535,9 +533,13 @@ Lint before every commit that touches one of those folders, or let the pre-commi
 
     git config core.hooksPath .githooks
 
-A clone without the hook is still checked, because `test.bat` and both CI workflows run this gate over the whole scope. `npx biome lint --write` applies the fixes Biome marks safe. The fixes it offers for an unused import or variable are marked unsafe and need `--unsafe` as well, so read the diff after applying them.
+A clone without the hook is still checked, because `test.bat` and both CI workflows run this gate over the whole scope. The commit that first applied the formatter changed only layout, and `.git-blame-ignore-revs` lists it so that `git blame` looks through it. GitHub reads that file by itself; a clone reads it once told to:
 
-Exit codes: **0** Biome found nothing (with `--staged`, also when no script is staged, so nothing was linted); **1** Biome found an error or a warning; **2** the gate could not lint: a refused command line, git or Biome failing to run, Biome checking no script over the whole scope, or a crash.
+    git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+`npx biome lint --write` applies the fixes Biome marks safe. The fixes it offers for an unused import or variable are marked unsafe and need `--unsafe` as well, so read the diff after applying them.
+
+Exit codes: **0** Biome found nothing (with `--staged`, also when no script is staged, so nothing was linted); **1** Biome found an error or a warning, or a file the formatter would change; **2** the gate could not lint: a refused command line, git or Biome failing to run, Biome checking no script over the whole scope, or a crash.
 
 ### search.test.mjs
 {: #search-test }
@@ -582,9 +584,7 @@ Exit codes: **0** every test passed, **1** a test failed.
 
 Verifies the [page-count drift guard](Building#the-page-count-drift-guard) still refuses what it exists to refuse. Eleven probes against a scratch baseline file in the system temp directory, so nothing here touches `builder/page-baseline.json`. No browser, no built tree, well under a second.
 
-The guard says nothing on a healthy tree, so every ordinary build sounds exactly like one whose guard has stopped working --- which is the whole reason this exists. The first probe replays the defect that motivated the guard: 37 pages of the AppGlobalClassObject package lost to a blanket `exclude:` rule, under a guard that knew only a floor of 836 against a real 908. Reverting the guard to that floor fails three of the eleven.
-
-Two probes look redundant and are the two that caught real bugs while the guard was being written. A **foreign source root must be ignored**: [`check_links_diff.mjs`](#check-links-diff) builds a three-page fixture tree, and a baseline keyed to nothing met it with *905 pages missing*. And **CI must refuse a missing baseline** rather than create one, because a run that wrote the file would record whatever drop it had been asked to catch.
+The guard says nothing on a healthy tree, so every ordinary build sounds exactly like one whose guard has stopped working --- which is the whole reason this exists. The first probe is a whole package lost to a blanket `exclude:` rule, which a fixed floor on the page count would not notice. Two probes look redundant and are not. A **foreign source root must be ignored**: [`check_links_diff.mjs`](#check-links-diff) builds a three-page fixture tree, and a baseline keyed to nothing would report every other page missing. And **CI must refuse a missing baseline** rather than create one, because a run that wrote the file would record whatever drop it had been asked to catch.
 
 Exit codes: **0** every probe passed, **1** a probe failed, **2** the gate could not run: a refused command line, or a crash.
 
@@ -595,7 +595,7 @@ Exit codes: **0** every probe passed, **1** a probe failed, **2** the gate could
 
 Verifies the build still warns about a page [`docs/_book.yml`](Book-Configuration#pages-left-out-of-the-book) does not mention. Twelve probes over a manifest and pages built in memory, so nothing here reads `docs/`. No browser, no built tree, well under a second.
 
-The warnings say nothing when every page has an entry --- in a part, or in `left_out:` with a reason --- which is also all a check that had stopped working would say. Before they existed, whole sections dropped out of the PDF with nothing to report it: the IDE, Challenges and Videos, and Data Types, Enumerations and twinBASIC Additions with them.
+The warnings say nothing when every page has an entry --- in a part, or in `left_out:` with a reason --- which is also all a check that had stopped working would say. Without them, a whole section can drop out of the PDF with nothing to report it.
 
 Eight probes give each of the five findings a fault to report: a page with no entry, a page in the book and in `left_out:`, an entry of each kind that selects no page, and a landing or foreword URL that names none. The other four hold the opposite: a consistent manifest reports nothing, and the three pages the book carries without a selector naming them --- a chaptered part's landing, a foreword, and the book page itself --- are never reported. Dropping any one emission site from `bookCoverage()` fails most of the twelve at once, and the probe named after that site says which.
 
@@ -632,7 +632,7 @@ Verifies the logic of [`sweep_attributes.mjs`](#sweep-attributes), the tool that
 
 The probes cover, in turn: the site skeletons --- what each renders, that the attribute lands on the line `attributeLine` names, that every name a skeleton declares belongs to its probe alone, that a `$&` in an attribute is written literally, and that every site is in a family of `Applicable to:` targets or is listed in the gate as being in none, so a new site is a decision and not an accident; how a probe's diagnostics are read, including which refusal wins, what counts as accepted, the errors a skeleton draws by itself, and what the control's fold does and does not fold; which probe each of the compiler's rows belongs to; the argument shapes each name is tried in, and the batches, in which every probe appears once and none holds two of an attribute the compiler allows once per project; how probes become one cell per site, where a form nobody built and the `(False)` form must not decide the answer; and how an `Applicable to:` line is read and laid against the cells, including every `Applicable to:` line the page has, each pinned to the targets it reads to. The runner that isolates what goes wrong is probed with a scripted fake in place of the IDE, which is what lets a crash that names the probe, one that names an innocent one, one that needs two probes together, a hang, a disturbed canary, a stray error row and a build that could not run each be checked, along with the cap on every one of them; so are the preflight's verdict on a site and the comparison `--verify` makes.
 
-The probes were checked the way a gate should be, by breaking the code they guard: twenty-three injected faults, one at a time, each failing at least one probe.
+A fault injected into the code the probes guard, one at a time, fails at least one probe.
 
 Exit codes: **0** every probe passed, **1** a probe failed, **2** the gate could not run: a refused command line, or a crash.
 
@@ -641,7 +641,7 @@ Exit codes: **0** every probe passed, **1** a probe failed, **2** the gate could
 
     node scripts/check_cli.mjs
 
-Verifies `lib/cli.mjs`, the module the tools read their command lines through, and each tool's recorded command-line errors. Nothing else tests how a tool reads its command line, which is how a value flag given no value came to be read as `NaN` or as the next flag. No built tree, no browser, no twinBASIC install; a few seconds.
+Verifies `lib/cli.mjs`, the module the tools read their command lines through, and each tool's recorded command-line errors. Nothing else tests how a tool reads its command line, and a hand-written parse reads a value flag given no value as `NaN` or as the next flag. No built tree, no browser, no twinBASIC install; a few seconds.
 
 The module's probes cover what `parseCli` returns and refuses, with a comparison against a strict `node:util` `parseArgs` over the same argument lists, and what `numberOption`, `choiceOption`, `regexOption`, `urlOption`, `dateOption`, `refuseTogether`, `withUsageError` and `printHelpAndExit` do. The first five are how a tool reads a value after the parse, and `refuseTogether` refuses options that exclude each other. The parse is strict for every tool: `parseCli` refuses an unknown option, a boolean flag given a value, a value flag with no value, a positional beyond the count the tool declares, and an empty value unless the option allows one --- only `tbdocs`'s `--baseurl` does. The probes cover each refusal and the `--` that ends the options. They also cover the options `builder/command-line.mjs` returns for `tbdocs`, where `--no-check` makes the order of the flags matter; no case can, since each of those command lines starts a build.
 
@@ -689,7 +689,7 @@ Exit codes: **0** the patched bundle gives the same colour values as stock axe, 
                                             [--root-dir <path>] [--pages <list>]
                                             [--theme <t>] [--viewport <v>] [--out <file>]
 
-The gate for any change to *what the scan runs*. axe is the site's correctness oracle, which makes it dangerous to tune: a change can make axe see **less** and still report a clean pass. That nearly shipped once --- blocking `just-the-docs.js` looked like a 130 ms win and quietly dropped the colour-contrast node count on one page from 54 to 2. This runs the full page × theme × viewport matrix twice, once under each of two named schemes from `axe-scan.mjs`'s registry, against one build in one process, and diffs the findings audit by audit (violations by `ruleId:nodeCount`, incomplete by rule-id set).
+The gate for any change to *what the scan runs*. axe is the site's correctness oracle, which makes it dangerous to tune: a change can make axe see **less** and still report a clean pass. Blocking `just-the-docs.js`, for example, makes the scan faster and quietly cuts the colour-contrast nodes axe examines on one page to almost none. This runs the full page × theme × viewport matrix twice, once under each of two named schemes from `axe-scan.mjs`'s registry, against one build in one process, and diffs the findings audit by audit (violations by `ruleId:nodeCount`, incomplete by rule-id set).
 
 Two limits worth knowing. It compares a candidate against a baseline produced by that same scheme's element set, so it **cannot** detect a change that stops auditing elements entirely --- anything touching viewport, visibility or request blocking has to be argued from source instead. And it compares *which* findings axe produces, never their shape, so a scheme that passes every audit can still crash the reporter. Necessary, not sufficient. Both `--baseline` and `--candidate` default to `production`, so a bare run is already that A/A control --- run it after touching the matrix. Each must name a scheme that `--list` prints, and `--patches` a list of the patches it prints.
 
@@ -707,7 +707,7 @@ The first asks whether the patched bundle still *finds* what the stock one finds
 
 Read that diff as **news, not as a regression to be suppressed.** axe ships new and revised WCAG rules between minors, so a bump can legitimately change what the scan reports. The gate exists to make the change visible, not to freeze coverage where it is.
 
-The second asks whether the patched bundle still *computes* what the stock one computes, and it is the half a reader is most likely to skip --- `check.bat` and both CI workflows run it, so a bump that breaks it surfaces as a red PR rather than as something the upgrade asked for. It is not optional for a patch to the colour maths, because the fingerprint gate compares `incomplete` as a rule-id *set*: a colour error that shifted contrast ratios without flipping any pass/fail classification produces the same set and sails through. `--patch` defaults to `plain-color-fields`, the single entry `DEFAULT_PATCHES` carries; name another, an entry of `SOURCE_PATCHES`, when adopting a new one.
+The second asks whether the patched bundle still *computes* what the stock one computes, and it is the half a reader is most likely to skip --- `test.bat` and both CI workflows run it, so a bump that breaks it surfaces as a red PR rather than as something the upgrade asked for. It is not optional for a patch to the colour maths, because the fingerprint gate compares `incomplete` as a rule-id *set*: a colour error that shifted contrast ratios without flipping any pass/fail classification produces the same set and sails through. `--patch` defaults to `plain-color-fields`, the single entry `DEFAULT_PATCHES` carries; name another, an entry of `SOURCE_PATCHES`, when adopting a new one.
 
 A third failure mode needs no gate at all: each substitution inside a patch asserts its target was found, so a bump that moves the code fails loudly rather than silently reverting to the slow path. What none of the three reaches is a result that merely looks wrong. [`check_a11y.mjs --stock-axe`](#check-a11y) injects the unmodified bundle, which says in one command whether the patch is implicated.
 
@@ -862,8 +862,8 @@ and warns again when there is no `[RunAfterBuild]` at all.
 
 **A build that fails after a clean compile is a failed run**, with the IDE's build log printed
 as the reason. The probe never runs then, so the console still holds that log --- `[BUILD] failed`,
-often after `[TYPELIB] failed to finalize typelibrary` --- and `tbrun` used to return it as the
-probe's output, as a success. Run it again: both failures seen so far passed on a second run.
+often after `[TYPELIB] failed to finalize typelibrary` --- and `tbrun` does not return it as the
+probe's output. Run it again: such a failure can pass on a second run.
 A `[RunAfterBuild]` Sub that fails code generation is a failed run the same way: the build succeeds,
 the console adds `[LINKER] compilation (codegen) error detected in '<module>.<procedure>'`,
 and nothing in the Sub runs, `Debug.Cls` included. A procedure the probe *calls* that fails
@@ -929,9 +929,8 @@ Like `tbbuild`, it leaves the IDE's registry entries as it found them. Everythin
 in its own temp folder, so it deletes every entry under that folder once the IDE has exited,
 and again at the start of a run, which removes what an earlier run on the same port left
 behind. That includes the target the IDE remembers for each project, which a `win64` run
-writes. **A probe builds for the target `--arch` names**, whatever the IDE remembers. Before
-the option, a kept IDE switched to `win64` made every later run on the same port build 64-bit,
-and nothing said so.
+writes. **A probe builds for the target `--arch` names**, whatever the IDE remembers, so a
+kept IDE switched to `win64` does not make later runs on the same port build 64-bit.
 
 Exit codes: **0** the probe ran and its output was captured; **1** the project has compile errors (the diagnostics are printed); **2** a refused command line (a source folder that is missing or has no `Settings` file included), no IDE or compiler, an IDE that did not start, a compile that never settled, a build that failed after a clean compile, a probe that never ran or stopped at a procedure that failed code generation, or a crash; **3** no output: the console held none before the timeout, or the probe printed none after its last `Debug.Cls`; **4** the compiler crashed, or restarted twice, while compiling the project.
 
@@ -1036,8 +1035,7 @@ Exit codes: **0** every assertion held, **1** an assertion failed, **2** the tes
 
 Compiles the documentation's own code samples. A ` ```tb ` fence is something
 [`check_code_regions.mjs`](#check-code-regions) protects the *contents* of and nothing ever
-evaluates, so a sample that does not compile can ship and every gate stays green --- two
-did. This is the tool that asks the compiler; [`examples.bat`](#examplesbat) is how it is
+evaluates, so a sample that does not compile can ship and every gate stays green. This is the tool that asks the compiler; [`examples.bat`](#examplesbat) is how it is
 usually run, and [Authoring Pages](Authoring#checking-that-a-sample-compiles) is where a
 sample opts in.
 
@@ -1123,8 +1121,8 @@ drive letter, no UNC --- and a refused path is a finding rather than a write.
 **A diagnostic can also land outside every sample**, inside a referenced package's own
 source. A generic instantiated with a type the project does not have is the case to know: the
 error is reported against the generic's own type parameter, in the package's file, and the
-sample that provoked it can have no diagnostic of its own at all. Such a sample used to be
-counted as compiling while the run failed with a row naming no page. The same splitting
+sample that provoked it can have no diagnostic of its own at all. Such a sample is not
+counted as compiling: the run fails with a row naming no page, and the same splitting
 isolates it, after one build of the template with nothing in it decides whether the row is
 the template's own rather than any sample's. A split never cuts a `projname` group in half,
 and never separates a page's `hidden` context from the samples that need it.
@@ -1144,7 +1142,7 @@ Exit codes: **0** every marked sample compiles, or none is marked (`--report` al
 
     node scripts/gen_attribute_probes.mjs <out_dir> [key.md]
 
-Generates twinBASIC probe projects from the `Applicable to:` lines in `Reference/Attributes.md`, for [`tbbuild.mjs`](#tbbuild) to compile. Those lines had gone unchecked against the compiler since they were written, and the one that was eventually checked turned out to be wrong. This writes one source file per claimed target, so a single build answers every claim at once. A `Syntax:` or `Applicable to:` line inside a code fence is not read, so an example that shows the page's own format is not taken for an attribute; [`census_attributes.mjs`](#census-attributes) reads the page through the same code, `scripts/lib/attributes-doc.mjs`. A misplaced attribute comes back as `This attribute is not supported in this context` (TB5155) or `Syntax error.  No handler for this symbol` (TB5182). Which of the two arrives says nothing about whether the attribute exists, only that it is not accepted there.
+Generates twinBASIC probe projects from the `Applicable to:` lines in `Reference/Attributes.md`, for [`tbbuild.mjs`](#tbbuild) to compile. An `Applicable to:` line is a claim about the compiler, and only the compiler can confirm it. This writes one source file per claimed target, so a single build answers every claim at once. A `Syntax:` or `Applicable to:` line inside a code fence is not read, so an example that shows the page's own format is not taken for an attribute; [`census_attributes.mjs`](#census-attributes) reads the page through the same code, `scripts/lib/attributes-doc.mjs`. A misplaced attribute comes back as `This attribute is not supported in this context` (TB5155) or `Syntax error.  No handler for this symbol` (TB5182). Which of the two arrives says nothing about whether the attribute exists, only that it is not accepted there.
 
 Up to three trees come out, on two contracts that must not be mixed:
 
@@ -1177,7 +1175,7 @@ Against BETA 983 that is 661 files, 9,701 attribute sites and 55 distinct attrib
 
 **A census is evidence, not applicability.** It says where an attribute *is* used, never where it *may* be used, and the two differ in both directions. The packages contain no use of `[Hidden]` on a whole **Class**, yet the compiler accepts one; they contain many on **Class** and **Interface** members, and the compiler refuses the same attribute on the **Interface** lines inside a **CoClass**. Neither fact is reachable from the other tool, so pair this with [`gen_attribute_probes.mjs`](#gen-attribute-probes) and [`tbbuild.mjs`](#tbbuild), which ask the compiler directly.
 
-Grouping is by enclosing construct *and* declaration keyword, because the keyword alone misleads. An earlier hand-written census of `[RedirectToStaticImplementation]` grouped its 82 uses by keyword, reported "a Property Get, a Function and a Sub", and produced the claim *procedure in a Class* --- which the compiler rejected with TB5155, because every one of those uses is inside an **Interface**.
+Grouping is by enclosing construct *and* declaration keyword, because the keyword alone misleads. `[RedirectToStaticImplementation]` has 82 uses, on "a Property Get, a Function and a Sub", which read by keyword suggests *procedure in a Class* --- and the compiler rejects that with TB5155, because every one of those uses is inside an **Interface**.
 
 | Flag | Effect |
 |---|---|
@@ -1191,7 +1189,7 @@ Grouping is by enclosing construct *and* declaration keyword, because the keywor
 | `--json` | Emit JSON instead of Markdown. |
 | `--out <file>` | Write to a file instead of standard output. |
 
-The report ends with what the scanner could not resolve, and **that section is expected to be empty**. A census that quietly buckets its own confusion publishes a wrong number with nothing to notice it by, so an unresolved site is reported as a scanner bug rather than absorbed. Reaching zero took handling several things this corpus does that a simpler sweep gets wrong: attributes spanning lines (`[Description("..." & vbCrLf & _` accounts for 3.8% of all attribute lines), comma-separated lists, arguments containing commas, escaped identifiers that look exactly like attributes (`[_HiddenModule].Foo`, and Enum members genuinely named `[A4 Portrait]`), comments in four different positions, and block-tracking traps such as a UDT field called `Type As Long` or a module named `[_HiddenModule]`.
+The report ends with what the scanner could not resolve, and **that section is expected to be empty**. A census that quietly buckets its own confusion publishes a wrong number with nothing to notice it by, so an unresolved site is reported as a scanner bug rather than absorbed. The scanner handles several things this corpus does that a simpler sweep gets wrong: attributes spanning lines (`[Description("..." & vbCrLf & _` accounts for 3.8% of all attribute lines), comma-separated lists, arguments containing commas, escaped identifiers that look exactly like attributes (`[_HiddenModule].Foo`, and Enum members genuinely named `[A4 Portrait]`), comments in four different positions, and block-tracking traps such as a UDT field called `Type As Long` or a module named `[_HiddenModule]`.
 
 Exit codes: **0** the report was produced, **2** a refused command line, no install, an install with no compiler or no package project, or a crash (a package that fails to export is left out of the census).
 
@@ -1206,7 +1204,7 @@ Exit codes: **0** the report was produced, **2** a refused command line, no inst
 
 Asks the compiler where every attribute is legal. It writes each attribute name at each declaration site --- a Module, a Class member, an API `Declare`, a Type field, a parameter, an `Implements ... Via` statement, and so on --- in each argument shape, builds the projects the way [`tbbuild.mjs`](#tbbuild) does, and lays the answers against the `Applicable to:` lines in `Reference/Attributes.md`. The report lists the documented targets the compiler refuses, the targets that hold only partly, and the sites it accepts that the page never mentions.
 
-It exists because the two older tools each leave a gap. [`census_attributes.mjs`](#census-attributes) says where the shipped packages *use* an attribute, and [`gen_attribute_probes.mjs`](#gen-attribute-probes) probes only the targets the page already *claims*, so an entry that is too short stays too short. `[ComExport]` was documented as "constants in a Module" because a Sub and a Const were the two targets tried; an API `Declare` never was. This tool asks every question, so a missing target shows up as a row of the report and not as something a person has to think of.
+It exists because the two older tools each leave a gap. [`census_attributes.mjs`](#census-attributes) says where the shipped packages *use* an attribute, and [`gen_attribute_probes.mjs`](#gen-attribute-probes) probes only the targets the page already *claims*, so an entry that is too short stays too short: a line checked against only a Sub and a Const says nothing about an API `Declare`. This tool asks every question, so a missing target shows up as a row of the report and not as something a person has to think of.
 
 The names come from three places: every entry in `Attributes.md`, every name in the compiler's own token table (a long pipe-separated string in the compiler binary, holding keywords, attributes and object members together), and `--names`. A token-table name is a *candidate*: it is called an attribute only if some site accepts it. `Debug` and `ExecuteHostCommand` are in the table and neither is one.
 
@@ -1232,6 +1230,8 @@ The names come from three places: every entry in `Attributes.md`, every name in 
 | `--work`, `--keep` | Where projects are staged, which must be under the system temp folder, and whether to keep them. |
 | `--preflight` | Build only the canaries, baselines and controls, and stop. About 20 seconds, and the way to check a change to a site. |
 | `--dry-run` | Count the probes and build nothing. |
+| `--timeout <secs>` | How long to wait for one build to settle. Default 180. |
+| `--show` / `--hide` | As for [`tbbuild.mjs`](#tbbuild). |
 
 **An Enum member cannot be tested.** An Enum body accepts any attribute written on its own line, including one that applies nowhere, and refuses every attribute written inline, so the site is voided and a target on an Enum member is reported as one the sweep could not test.
 
@@ -1260,8 +1260,7 @@ Exit codes: the table in [Import/Export Tool](../../Features/Packages/Import-Exp
 
     node book/render-book.mjs <input.html> -o <output.pdf> [options]
 
-The PDF renderer that `book.bat` calls. It is a generic HTML-to-PDF converter: it takes the pre-built `_site-pdf/book.html` as its sole document input and has no knowledge of `_data/book.yml` --- all chapter structure, heading levels, and outline entries are already embedded in the HTML by `tbdocs` Phase 8. Uses `puppeteer` + `paged.js` + `pdf-lib` directly, so it controls `pdf-lib`'s `parseSpeed` (the default yields the event loop between every 100 objects on load, adding ~32 seconds to a 100-second build for no reason in Node --- see [perf/README.md](https://github.com/twinbasic/documentation/blob/main/perf/README.md) for the diagnosis). Replaces an earlier `npx pagedjs-cli ...` invocation.
-
+The PDF renderer that `book.bat` calls. It is a generic HTML-to-PDF converter: it takes the pre-built `_site-pdf/book.html` as its sole document input and has no knowledge of `_data/book.yml` --- all chapter structure, heading levels, and outline entries are already embedded in the HTML by `tbdocs` Phase 8. Uses `puppeteer` + `paged.js` + `pdf-lib` directly, so it controls `pdf-lib`'s `parseSpeed` (the default yields the event loop between every 100 objects on load, adding ~32 seconds to a 100-second build for no reason in Node --- see [perf/README.md](https://github.com/twinbasic/documentation/blob/main/perf/README.md) for the diagnosis).
 Key options used by `book.bat`:
 
 | Flag | Effect |

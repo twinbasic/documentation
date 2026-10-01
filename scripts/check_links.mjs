@@ -70,12 +70,13 @@ import { isMainThread, parentPort, workerData, Worker } from "node:worker_thread
 // only what a tree on disk needs: the walk, the reads, the choice of
 // oracle, and its report's summary lines. See builder/link-check.mjs for
 // why the dependency runs this way round.
+import { checkChunk, joinChunks, findingsFor, normalizeBasePath, treeIndexFor } from "../builder/check.mjs";
 import {
-  checkChunk, joinChunks, findingsFor, normalizeBasePath, treeIndexFor,
-} from "../builder/check.mjs";
-import {
-  FsOracle, formatLinkReport, formatIntegrityReport,
-  resolve, OUTSIDE_BASEPATH_MARKER,
+  FsOracle,
+  formatLinkReport,
+  formatIntegrityReport,
+  resolve,
+  OUTSIDE_BASEPATH_MARKER,
 } from "../builder/link-check.mjs";
 import { CliError, choiceOption, exitOnCrash, parseCli } from "../lib/cli.mjs";
 
@@ -98,7 +99,11 @@ function relToRoot(rootStr, p) {
 // directory of HTML, so a deliberate omission and a bug look identical
 // here. Both checks are opt-in flags for that reason.
 function readIfPresent(p) {
-  try { return fs.readFileSync(p, "utf8"); } catch { return null; }
+  try {
+    return fs.readFileSync(p, "utf8");
+  } catch {
+    return null;
+  }
 }
 
 function printHelp(stream = process.stdout) {
@@ -260,7 +265,11 @@ function collectHtmlFiles(inputs) {
   const warnings = [];
   for (const inp of inputs) {
     let s = null;
-    try { s = fs.statSync(inp); } catch { /* reported below */ }
+    try {
+      s = fs.statSync(inp);
+    } catch {
+      /* reported below */
+    }
     if (!s) {
       warnings.push(`warning: input not found: ${inp}\n`);
       continue;
@@ -289,7 +298,9 @@ function collectAllRelFiles(rootStr) {
   let entries;
   try {
     entries = fs.readdirSync(rootStr, { recursive: true, withFileTypes: true });
-  } catch { return rels; }
+  } catch {
+    return rels;
+  }
   const rootAbs = path.resolve(rootStr);
   for (const e of entries) {
     if (!e.isFile()) continue;
@@ -331,8 +342,7 @@ export function runCheck(argv, { structured = false } = {}) {
 
   if (!opts.offline) {
     return commandLineError(
-      "error: --offline is required. Online (network) checking is not " +
-      "implemented by this tool."
+      "error: --offline is required. Online (network) checking is not " + "implemented by this tool.",
     );
   }
   if (!inputs.length) {
@@ -360,14 +370,17 @@ export function runCheck(argv, { structured = false } = {}) {
   // sniffed from their meta refresh.
   const needIntegrity = opts.checkHtml || opts.checkA11y || opts.checkIds || opts.checkRemoteAssets;
   const needRedirectStub = opts.checkSitemap || opts.checkSearch || opts.checkCanonical;
-  const checkOpts = (needIntegrity || needRedirectStub || opts.checkCanonical) ? {
-    checkHtml: opts.checkHtml,
-    checkA11y: opts.checkA11y,
-    checkIds:  opts.checkIds,
-    checkRemoteAssets: opts.checkRemoteAssets,
-    checkCanonical: opts.checkCanonical,
-    captureRedirectStub: needRedirectStub,
-  } : null;
+  const checkOpts =
+    needIntegrity || needRedirectStub || opts.checkCanonical
+      ? {
+          checkHtml: opts.checkHtml,
+          checkA11y: opts.checkA11y,
+          checkIds: opts.checkIds,
+          checkRemoteAssets: opts.checkRemoteAssets,
+          checkCanonical: opts.checkCanonical,
+          captureRedirectStub: needRedirectStub,
+        }
+      : null;
 
   // This pass's tree, in the shape of check.mjs's TREES entries.
   const tree = {
@@ -375,9 +388,12 @@ export function runCheck(argv, { structured = false } = {}) {
     checkOpts,
     forbid: opts.forbid.length ? opts.forbid : null,
     crossFile: {
-      sitemap: opts.checkSitemap, search: opts.checkSearch, canonical: opts.checkCanonical,
+      sitemap: opts.checkSitemap,
+      search: opts.checkSearch,
+      canonical: opts.checkCanonical,
     },
-    fallbackExts, indexFiles,
+    fallbackExts,
+    indexFiles,
     includeFragments: opts.includeFragments,
   };
 
@@ -391,7 +407,12 @@ export function runCheck(argv, { structured = false } = {}) {
   const docs = htmlFiles.map((file) => {
     const destPath = relToRoot(rootStr, file);
     walkPath.set(destPath, file);
-    return { destPath, get html() { return fs.readFileSync(file, "utf8"); } };
+    return {
+      destPath,
+      get html() {
+        return fs.readFileSync(file, "utf8");
+      },
+    };
   });
 
   const env = { root: rootStr, basePath, tree };
@@ -402,14 +423,14 @@ export function runCheck(argv, { structured = false } = {}) {
   const tDone = performance.now();
 
   const r = joinChunks([chunk], {
-    root: rootStr, tree, basePath,
-    relFiles: docs.map(d => d.destPath),
+    root: rootStr,
+    tree,
+    basePath,
+    relFiles: docs.map((d) => d.destPath),
     stubRels: new Set(chunk.stubs),
     aux: {
-      sitemapXml: opts.checkSitemap
-        ? readIfPresent(path.join(rootStr, "sitemap.xml")) : null,
-      searchJson: opts.checkSearch
-        ? readIfPresent(path.join(rootStr, "assets", "js", "search-data.json")) : null,
+      sitemapXml: opts.checkSitemap ? readIfPresent(path.join(rootStr, "sitemap.xml")) : null,
+      searchJson: opts.checkSearch ? readIfPresent(path.join(rootStr, "assets", "js", "search-data.json")) : null,
     },
   });
 
@@ -429,7 +450,7 @@ export function runCheck(argv, { structured = false } = {}) {
   const forbidNote = tree.forbid ? `, ${forbiddenCount} forbidden` : "";
   write(
     `Checked ${r.occurrences} occurrences (${unique} unique) in ${elapsed.toFixed(3)}s ` +
-    `-- ${okUnique} OK, ${r.brokenUnique} broken${forbidNote}\n`
+      `-- ${okUnique} OK, ${r.brokenUnique} broken${forbidNote}\n`,
   );
 
   if (opts.verbose) {
@@ -457,8 +478,7 @@ export function runCheck(argv, { structured = false } = {}) {
   const crossFile = [
     [opts.checkSitemap, r.sitemapIssues, "--check-sitemap: sitemap.xml not found in root-dir"],
     [opts.checkSearch, r.searchIssues, "--check-search: search-data.json not found in root-dir"],
-    [opts.checkCanonical, r.canonicalIssues,
-      '--check-canonical: no <link rel="canonical"> found in any page'],
+    [opts.checkCanonical, r.canonicalIssues, '--check-canonical: no <link rel="canonical"> found in any page'],
   ];
   for (const [requested, issues, skipped] of crossFile) {
     if (!requested) continue;
@@ -518,26 +538,28 @@ export function selfTest() {
     const page = path.join(tmp, "Foo.html");
     // One pass over the tree, with Foo.html declaring `canonical`.
     const run = (canonical, bp) => {
-      fs.writeFileSync(page,
-        `<html><head><link rel="canonical" href="${canonical}"></head><body>t</body></html>`);
-      const argv = ["--offline", "--check-sitemap", "--check-search", "--check-canonical",
-                    "--root-dir", tmp, tmp];
+      fs.writeFileSync(page, `<html><head><link rel="canonical" href="${canonical}"></head><body>t</body></html>`);
+      const argv = ["--offline", "--check-sitemap", "--check-search", "--check-canonical", "--root-dir", tmp, tmp];
       if (bp) argv.push("--base-path", bp);
       const { findings, error } = runCheck(argv, { structured: true });
       if (!findings) throw new Error(`runCheck refused the self-test's arguments:\n${error}`);
       return findings;
     };
 
-    fs.writeFileSync(path.join(tmp, "sitemap.xml"),
+    fs.writeFileSync(
+      path.join(tmp, "sitemap.xml"),
       `<?xml version="1.0" encoding="UTF-8"?>\n` +
-      `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-      `<url>\n<loc>https://example.com/base/Foo</loc>\n</url>\n` +
-      `</urlset>\n`);
+        `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+        `<url>\n<loc>https://example.com/base/Foo</loc>\n</url>\n` +
+        `</urlset>\n`,
+    );
 
     const assetsDir = path.join(tmp, "assets", "js");
     fs.mkdirSync(assetsDir, { recursive: true });
-    fs.writeFileSync(path.join(assetsDir, "search-data.json"),
-      JSON.stringify({ "0": { url: "/base/Foo", title: "Foo", content: "" } }));
+    fs.writeFileSync(
+      path.join(assetsDir, "search-data.json"),
+      JSON.stringify({ 0: { url: "/base/Foo", title: "Foo", content: "" } }),
+    );
 
     const bp = "/base";
 
@@ -570,11 +592,15 @@ export function selfTest() {
     // deployment URL).  Both "missing baseurl" and "wrong baseurl"
     // are mismatches.
     if (!ok.canonical || ok.canonical.length)
-      throw new Error("--check-canonical under --base-path: correct canonical flagged: " + JSON.stringify(ok.canonical));
+      throw new Error(
+        "--check-canonical under --base-path: correct canonical flagged: " + JSON.stringify(ok.canonical),
+      );
 
     const miBp = run("https://example.com/Foo", bp).canonical;
     if (!miBp || miBp.length !== 1 || !miBp[0].includes("canonical-mismatch"))
-      throw new Error("--check-canonical: should flag baseurl-less canonical under --base-path: " + JSON.stringify(miBp));
+      throw new Error(
+        "--check-canonical: should flag baseurl-less canonical under --base-path: " + JSON.stringify(miBp),
+      );
 
     // With no --base-path, canonical must NOT include any path prefix.
     const okNoBp = run("https://example.com/Foo", "").canonical;
@@ -583,7 +609,9 @@ export function selfTest() {
 
     const exNoBp = run("https://example.com/base/Foo", "").canonical;
     if (!exNoBp || exNoBp.length !== 1 || !exNoBp[0].includes("canonical-mismatch"))
-      throw new Error("--check-canonical: should flag canonical with extra prefix on root deploy: " + JSON.stringify(exNoBp));
+      throw new Error(
+        "--check-canonical: should flag canonical with extra prefix on root deploy: " + JSON.stringify(exNoBp),
+      );
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
@@ -626,7 +654,7 @@ if (!isMainThread && workerData?.argv) {
     }
   }
   commands.push(current);
-  const segments = commands.filter(c => c.length > 0);
+  const segments = commands.filter((c) => c.length > 0);
 
   if (segments.length === 0) {
     printHelp(process.stderr);
@@ -646,19 +674,22 @@ if (!isMainThread && workerData?.argv) {
   const n = segments.length;
   process.stdout.write(`Running ${n} checks in parallel...\n`);
 
-  const promises = segments.map((cmd) =>
-    new Promise((resolve, reject) => {
-      const w = new Worker(new URL(import.meta.url), {
-        workerData: { argv: cmd },
-      });
-      let result;
-      w.on("message", (msg) => { result = msg; });
-      w.on("error", reject);
-      w.on("exit", () => {
-        if (result) resolve(result);
-        else reject(new Error("worker exited without posting a result"));
-      });
-    })
+  const promises = segments.map(
+    (cmd) =>
+      new Promise((resolve, reject) => {
+        const w = new Worker(new URL(import.meta.url), {
+          workerData: { argv: cmd },
+        });
+        let result;
+        w.on("message", (msg) => {
+          result = msg;
+        });
+        w.on("error", reject);
+        w.on("exit", () => {
+          if (result) resolve(result);
+          else reject(new Error("worker exited without posting a result"));
+        });
+      }),
   );
 
   const settled = await Promise.allSettled(promises);

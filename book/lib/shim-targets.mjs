@@ -17,12 +17,12 @@
 //
 // Not a shim: it installs nothing, and imports nothing from pdf-lib.
 
-import { createHash } from 'node:crypto';
+import { createHash } from "node:crypto";
 
-export const ABSENT = Symbol('not in pdf-lib 1.17.1');
+export const ABSENT = Symbol("not in pdf-lib 1.17.1");
 
 export function fingerprint(fn) {
-  return createHash('sha256').update(Function.prototype.toString.call(fn)).digest('hex').slice(0, 12);
+  return createHash("sha256").update(Function.prototype.toString.call(fn)).digest("hex").slice(0, 12);
 }
 
 // shimUrl is the shim's import.meta.url. roots holds the pdf-lib objects the
@@ -31,19 +31,19 @@ export function fingerprint(fn) {
 export function checkTargets(shimUrl, roots, targets) {
   const faults = [];
   for (const [path, expected] of Object.entries(targets)) {
-    const names = path.split('.');
+    const names = path.split(".");
     const key = names.pop();
     let holder = roots;
     for (const name of names) holder = holder?.[name];
     if (Object(holder) !== holder) {
-      faults.push(`${path}: ${names.join('.')} is missing`);
+      faults.push(`${path}: ${names.join(".")} is missing`);
     } else if (expected === ABSENT) {
       if (key in holder) faults.push(`${path}: pdf-lib has it now, and the shim adds it`);
     } else {
       const [arity, print] = expected;
       const value = holder[key];
-      if (typeof value !== 'function') {
-        faults.push(`${path}: ${value === undefined ? 'is missing' : `is a ${typeof value}, not a function`}`);
+      if (typeof value !== "function") {
+        faults.push(`${path}: ${value === undefined ? "is missing" : `is a ${typeof value}, not a function`}`);
       } else if (value.length !== arity) {
         faults.push(`${path}: takes ${value.length} argument(s), not ${arity}`);
       } else if (fingerprint(value) !== print) {
@@ -52,9 +52,9 @@ export function checkTargets(shimUrl, roots, targets) {
     }
   }
   if (faults.length === 0) return;
-  const shim = new URL(shimUrl).pathname.split('/').pop();
+  const shim = new URL(shimUrl).pathname.split("/").pop();
   throw new Error(
-    `${shim}: pdf-lib is not what this shim replaces:\n  ${faults.join('\n  ')}\n` +
-      'Read the new source, then re-derive the shim and its table, or remove it (see book/lib/shim-targets.mjs).'
+    `${shim}: pdf-lib is not what this shim replaces:\n  ${faults.join("\n  ")}\n` +
+      "Read the new source, then re-derive the shim and its table, or remove it (see book/lib/shim-targets.mjs).",
   );
 }

@@ -27,12 +27,12 @@
 //                       paged.js bundle. Repeatable. Used by book.bat
 //                       to inject ../perf/detach-pages.js.
 
-import { pathToFileURL, fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
-import { writeFileSync, existsSync } from 'node:fs';
-import puppeteer from 'puppeteer';
-import { PDFDocument } from 'pdf-lib';
-import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError } from '../lib/cli.mjs';
+import { pathToFileURL, fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+import { writeFileSync, existsSync } from "node:fs";
+import puppeteer from "puppeteer";
+import { PDFDocument } from "pdf-lib";
+import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 // Side-effecting imports. Mutate pdf-lib's live module exports
 // before any pdf-lib operation -- order doesn't matter. See
 // perf/notes/08-pdf-lib.md.
@@ -132,8 +132,8 @@ import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError }
 //     in step with this shim.
 //   fast-indirect-objects -- replace PDFContext.indirectObjects
 //     (Map<PDFRef, PDFObject>) with a dense array indexed by
-//     objectNumber for the gen=0 path. After fast-dict-array shipped,
-//     PDFContext.assign's `this.indirectObjects.set(ref, object)` was
+//     objectNumber for the gen=0 path. With fast-dict-array applied,
+//     PDFContext.assign's `this.indirectObjects.set(ref, object)` is
 //     the only hot Map.set left in the heap profile (~7 MB of set
 //     traffic from the parser's once-per-indirect-object assign).
 //     Mirror of the fast-refs trick on the value side: dense array
@@ -175,22 +175,22 @@ import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError }
 //     heap traffic from parseArray collapses (the `this.array`
 //     allocation + grow doublings across ~79 k PDFArrays). See
 //     "One-buffer PDFArray" in perf/notes/08-pdf-lib.md.
-import './lib/fast-refs-class.mjs';
-import './lib/fast-parse-number.mjs';
-import './lib/fast-decode-name.mjs';
-import './lib/fast-number-to-string.mjs';
-import './lib/fast-size-in-bytes.mjs';
-import { setExpectedDictSlots }     from './lib/fast-dict-onebuf.mjs';
-import { setExpectedArraySlots }    from './lib/fast-array-onebuf.mjs';
-import './lib/fast-parse-object.mjs';
-import './lib/fast-parse-name.mjs';
-import './lib/fast-sync-load.mjs';
-import './lib/fast-indirect-objects.mjs';
-import './lib/fast-pdfnumber-pool.mjs';
-import { measure as measureRawPdf } from './lib/measure-pass.mjs';
-import { parseOutline, setOutline } from './lib/outline.mjs';
-import { setMetadata }              from './lib/postprocesser.mjs';
-import { parallelSave }             from './lib/parallel-deflate.mjs';
+import "./lib/fast-refs-class.mjs";
+import "./lib/fast-parse-number.mjs";
+import "./lib/fast-decode-name.mjs";
+import "./lib/fast-number-to-string.mjs";
+import "./lib/fast-size-in-bytes.mjs";
+import { setExpectedDictSlots } from "./lib/fast-dict-onebuf.mjs";
+import { setExpectedArraySlots } from "./lib/fast-array-onebuf.mjs";
+import "./lib/fast-parse-object.mjs";
+import "./lib/fast-parse-name.mjs";
+import "./lib/fast-sync-load.mjs";
+import "./lib/fast-indirect-objects.mjs";
+import "./lib/fast-pdfnumber-pool.mjs";
+import { measure as measureRawPdf } from "./lib/measure-pass.mjs";
+import { parseOutline, setOutline } from "./lib/outline.mjs";
+import { setMetadata } from "./lib/postprocesser.mjs";
+import { parallelSave } from "./lib/parallel-deflate.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -199,7 +199,8 @@ exitOnCrash();
 // --- arg parsing --------------------------------------------------------
 
 // A missing input or output prints the first line alone.
-const SYNOPSIS = 'usage: node render-book.mjs <input.html> -o <output.pdf> [--outline-tags ...] [-t ms] [--additional-script path]...';
+const SYNOPSIS =
+  "usage: node render-book.mjs <input.html> -o <output.pdf> [--outline-tags ...] [-t ms] [--additional-script path]...";
 const USAGE = `${SYNOPSIS} [-h, --help]
 
 Renders an HTML book to a PDF with paged.js and headless Chromium.
@@ -219,18 +220,21 @@ Exit codes:
 const { values, positionals, timeoutMs } = withUsageError(() => {
   const cli = parseCli(process.argv.slice(2), {
     options: {
-      output: { type: 'string', short: 'o' },
-      'outline-tags': { type: 'string', default: 'h1,h2,h3,h4' },
-      timeout: { type: 'string', short: 't', default: '0' },
-      'additional-script': { type: 'string', multiple: true },
-      help: { type: 'boolean', short: 'h' },
+      output: { type: "string", short: "o" },
+      "outline-tags": { type: "string", default: "h1,h2,h3,h4" },
+      timeout: { type: "string", short: "t", default: "0" },
+      "additional-script": { type: "string", multiple: true },
+      help: { type: "boolean", short: "h" },
     },
     positionals: { max: 1 },
-    stopAt: ['help'],
+    stopAt: ["help"],
   });
-  if (cli.stopped === 'help') return cli;
+  if (cli.stopped === "help") return cli;
   // Puppeteer's timer fires at once for more than 2147483647 ms.
-  return { ...cli, timeoutMs: numberOption(cli.values.timeout, { option: '--timeout', integer: true, min: 0, max: 2147483647 }) };
+  return {
+    ...cli,
+    timeoutMs: numberOption(cli.values.timeout, { option: "--timeout", integer: true, min: 0, max: 2147483647 }),
+  };
 });
 if (values.help) printHelpAndExit(USAGE);
 const inputArg = positionals[0];
@@ -242,17 +246,20 @@ if (!inputArg || !outputArg) {
   process.exit(2);
 }
 
-const inputPath  = resolve(process.cwd(), inputArg);
+const inputPath = resolve(process.cwd(), inputArg);
 const outputPath = resolve(process.cwd(), outputArg);
-const outlineTags = outlineTagsArg.split(',').map(s => s.trim()).filter(Boolean);
+const outlineTags = outlineTagsArg
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 if (!existsSync(inputPath)) {
   console.error(`input not found: ${inputPath}`);
   process.exit(2);
 }
 
-const pagedScriptPath    = resolve(__dirname, 'lib', 'paged.browser.js');
-const progressScriptPath = resolve(__dirname, 'lib', 'progress-handler.js');
+const pagedScriptPath = resolve(__dirname, "lib", "paged.browser.js");
+const progressScriptPath = resolve(__dirname, "lib", "progress-handler.js");
 for (const p of [pagedScriptPath, progressScriptPath]) {
   if (!existsSync(p)) {
     console.error(`required file not found: ${p}`);
@@ -268,7 +275,7 @@ for (const s of additionalScripts) {
 }
 
 const t0 = Date.now();
-const fmtMs = (ms) => (ms / 1000).toFixed(1) + 's';
+const fmtMs = (ms) => (ms / 1000).toFixed(1) + "s";
 
 // --- launch + render ---------------------------------------------------
 
@@ -288,11 +295,11 @@ const browser = await puppeteer.launch({
   // renderer is also ~120 MB lighter and generate runs ~5 s faster
   // (Skia skips a GPU init path). PDF output is byte-identical.
   args: [
-    '--no-sandbox',
-    '--disable-dev-shm-usage',
-    '--allow-file-access-from-files',
-    '--disable-gpu',
-    '--disable-software-rasterizer',
+    "--no-sandbox",
+    "--disable-dev-shm-usage",
+    "--allow-file-access-from-files",
+    "--disable-gpu",
+    "--disable-software-rasterizer",
   ],
 });
 
@@ -300,10 +307,10 @@ let exitCode = 0;
 try {
   const page = await browser.newPage();
   page.setDefaultTimeout(timeoutMs);
-  page.on('pageerror',     (err) => console.error('[page error]', err.message));
-  page.on('requestfailed', (req) => {
+  page.on("pageerror", (err) => console.error("[page error]", err.message));
+  page.on("requestfailed", (req) => {
     const f = req.failure();
-    console.error('[request failed]', req.url(), f && f.errorText);
+    console.error("[request failed]", req.url(), f && f.errorText);
   });
 
   // Live progress. Render and generate both write a per-phase status to
@@ -314,28 +321,28 @@ try {
   let progressLineLen = 0;
   const clearProgress = () => {
     if (isTty && progressLineLen > 0) {
-      process.stdout.write('\r' + ' '.repeat(progressLineLen) + '\r');
+      process.stdout.write("\r" + " ".repeat(progressLineLen) + "\r");
       progressLineLen = 0;
     }
   };
   // Render phase: progress-handler.js (loaded via addScriptTag below)
   // emits `[render-progress] page=N elapsed=Ns` from afterPageLayout.
-  page.on('console', (msg) => {
+  page.on("console", (msg) => {
     const t = msg.text();
-    if (!t.startsWith('[render-progress]')) return;
+    if (!t.startsWith("[render-progress]")) return;
     const m = t.match(/page=(\d+)\s+elapsed=([\d.]+)/);
     if (!m) return;
     const line = `rendering: ${m[1]} pages (${m[2]}s)`;
     if (isTty) {
-      process.stdout.write('\r' + line.padEnd(progressLineLen, ' '));
+      process.stdout.write("\r" + line.padEnd(progressLineLen, " "));
       progressLineLen = line.length;
     } else if (parseInt(m[1], 10) % 100 === 0) {
-      process.stdout.write(line + '\n');
+      process.stdout.write(line + "\n");
     }
   });
 
-  await page.emulateMediaType('print');
-  await page.goto(pathToFileURL(inputPath).href, { waitUntil: 'load' });
+  await page.emulateMediaType("print");
+  await page.goto(pathToFileURL(inputPath).href, { waitUntil: "load" });
   await page.evaluate(() => {
     window.PagedConfig = window.PagedConfig || {};
     window.PagedConfig.auto = false;
@@ -357,21 +364,24 @@ try {
   const tRender = Date.now();
   await page.evaluate(() => {
     if (!window.PagedPolyfill) {
-      throw new Error('paged.js bundle did not expose window.PagedPolyfill');
+      throw new Error("paged.js bundle did not expose window.PagedPolyfill");
     }
     try {
       window.PagedPolyfill.preview();
     } catch (err) {
       // Unwrap the undecorated ProgressEvent paged.js throws on fetch
       // failures so the message includes the offending URL.
-      const e = err && err.target
-        ? new Error(`${err.type || 'event'} on ${err.target.tagName || '?'}: ${err.target.src || err.target.href || ''}`)
-        : err;
+      const e =
+        err && err.target
+          ? new Error(
+              `${err.type || "event"} on ${err.target.tagName || "?"}: ${err.target.src || err.target.href || ""}`,
+            )
+          : err;
       throw e;
     }
   });
-  await page.waitForSelector('.pagedjs_pages');
-  const pageCount = await page.evaluate(() => document.querySelectorAll('.pagedjs_pages > .pagedjs_page').length);
+  await page.waitForSelector(".pagedjs_pages");
+  const pageCount = await page.evaluate(() => document.querySelectorAll(".pagedjs_pages > .pagedjs_page").length);
   clearProgress();
   console.log(`render:   ${fmtMs(Date.now() - tRender)}  (${pageCount} pages)`);
 
@@ -386,11 +396,11 @@ try {
   const tGenerate = Date.now();
   const meta = await page.evaluate(() => {
     const m = {};
-    const t = document.querySelector('title');
+    const t = document.querySelector("title");
     if (t) m.title = t.textContent.trim();
-    const lang = document.querySelector('html').getAttribute('lang');
+    const lang = document.querySelector("html").getAttribute("lang");
     if (lang) m.lang = lang;
-    for (const tag of document.querySelectorAll('meta')) {
+    for (const tag of document.querySelectorAll("meta")) {
       if (tag.name) m[tag.name] = tag.content;
     }
     return m;
@@ -401,7 +411,7 @@ try {
     const elapsed = ((Date.now() - tGenerate) / 1000).toFixed(1);
     const line = `generating: ${elapsed}s`;
     if (isTty) {
-      process.stdout.write('\r' + line.padEnd(progressLineLen, ' '));
+      process.stdout.write("\r" + line.padEnd(progressLineLen, " "));
       progressLineLen = line.length;
     }
   };
@@ -413,9 +423,9 @@ try {
   let rawPdf;
   try {
     rawPdf = await page.pdf({
-      printBackground:     true,
+      printBackground: true,
       displayHeaderFooter: false,
-      preferCSSPageSize:   true,
+      preferCSSPageSize: true,
       margin: { top: 0, right: 0, bottom: 0, left: 0 },
     });
   } finally {
@@ -426,10 +436,10 @@ try {
 
   // Process -- pdf-lib roundtrip with outline + metadata attached.
   // fast-sync-load strips the waitForTick yield gates on both load
-  // and save sides entirely (load was ~40 s under pdf-lib's Slow
-  // default that yields every 100 objects; ~5 s on Fastest; now
-  // ~1 s with the gates ripped out -- so parseSpeed / objectsPerTick
-  // no longer matter and drop from the call sites).
+  // and save sides entirely (load is ~40 s under pdf-lib's Slow
+  // default that yields every 100 objects; ~5 s on Fastest; ~1 s
+  // with the gates removed -- so parseSpeed / objectsPerTick do not
+  // matter and are not passed).
   //
   // parallelSave (vs the default pdfDoc.save):
   //  - objectsPerStream: 500 -- larger object-stream chunks compress
@@ -458,7 +468,7 @@ try {
   console.log(`saved:    ${outputPath}  (${(finalPdf.length / 1024 / 1024).toFixed(1)} MB)`);
   console.log(`total:    ${fmtMs(Date.now() - t0)}`);
 } catch (err) {
-  console.error('[render-book] error:', err);
+  console.error("[render-book] error:", err);
   exitCode = 2;
 } finally {
   await browser.close();

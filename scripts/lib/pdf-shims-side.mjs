@@ -82,7 +82,11 @@ function installedSince(holders, before) {
     const was = before.get(obj);
     for (const key of Reflect.ownKeys(obj)) {
       const now = Object.getOwnPropertyDescriptor(obj, key);
-      for (const [part, suffix] of [["value", ""], ["get", " (getter)"], ["set", " (setter)"]]) {
+      for (const [part, suffix] of [
+        ["value", ""],
+        ["get", " (getter)"],
+        ["set", " (setter)"],
+      ]) {
         const fn = now[part];
         if (typeof fn !== "function" || was.get(key)?.[part] === fn) continue;
         installed.set(fn, [...(installed.get(fn) ?? []), `${label(String(key))}${suffix}`]);
@@ -101,7 +105,10 @@ async function patchedMembers(coverage, installed, shimUrls) {
   const fns = [...installed.keys()];
   globalThis.__installedByShims = fns;
   const { result: list } = await session.post("Runtime.evaluate", { expression: "globalThis.__installedByShims" });
-  const { result: items } = await session.post("Runtime.getProperties", { objectId: list.objectId, ownProperties: true });
+  const { result: items } = await session.post("Runtime.getProperties", {
+    objectId: list.objectId,
+    ownProperties: true,
+  });
   delete globalThis.__installedByShims;
   await session.post("Debugger.enable");
   const sources = new Map();
@@ -115,13 +122,17 @@ async function patchedMembers(coverage, installed, shimUrls) {
     const script = scripts.get(at.scriptId);
     if (!script || !shimUrls.has(script.url)) continue;
     if (!sources.has(at.scriptId)) {
-      sources.set(at.scriptId, (await session.post("Debugger.getScriptSource", { scriptId: at.scriptId })).scriptSource);
+      sources.set(
+        at.scriptId,
+        (await session.post("Debugger.getScriptSource", { scriptId: at.scriptId })).scriptSource,
+      );
     }
     const source = sources.get(at.scriptId);
     const offset = lineStart(source, at.lineNumber) + at.columnNumber;
     const text = Function.prototype.toString.call(fn);
-    const entry = script.functions.find(({ ranges: [r] }) =>
-      r.startOffset <= offset && offset < r.endOffset && source.slice(r.startOffset, r.endOffset) === text
+    const entry = script.functions.find(
+      ({ ranges: [r] }) =>
+        r.startOffset <= offset && offset < r.endOffset && source.slice(r.startOffset, r.endOffset) === text,
     );
     // A function never called may never have been compiled, and then the
     // coverage has no entry for it at all.

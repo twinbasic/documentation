@@ -8,24 +8,13 @@
 //
 // ---------------------------------------------------------------- why
 //
-// This gate exists because the thing it checks has now rotted three times, and
-// the last two were a fix decaying rather than a fresh mistake.
-//
-// Round 2 of the use-case evaluation found `test.bat` documented as three
-// gates when it had four. That was fixed in Tools.md. Building.md's parallel
-// copy of the same sentence was not touched, a fifth gate landed, and round 3
-// found Building.md naming three of five -- and asserting, as the stated
-// reason for skipping test.bat on a docs-only edit, that "none of them reads a
-// page of documentation". check_code_regions.mjs reads all 906 of them. The
-// same round found Extending.md -- the page written to guide adding a gate --
-// claiming check.bat runs six, listing two test.bat gates among them, and
-// never mentioning test.bat at all.
-//
-// Six wrong numbers and two wrong lists across three pages, none of which
-// broke a link, failed a gate, or read any differently from a right one. That
-// is the same argument `{{tbdocs:...}}` already won for page counts, and the
-// remedy here is the same in spirit: stop asserting by hand what can be
-// derived from the artifact.
+// A gate count or list restated by hand in prose drifts: the wrong number
+// breaks no link, fails no gate, and reads no differently from a right one.
+// That is the same argument `{{tbdocs:...}}` makes for page counts, and the
+// remedy is the same in spirit: stop asserting by hand what can be derived
+// from the artifact. A page that says test.bat reads no page of documentation
+// would also route an author past a gate that does (check_code_regions.mjs
+// reads every markdown file).
 //
 // -------------------------------------------------------------- the design
 //
@@ -33,15 +22,10 @@
 // numbered lists; Building.md and Extending.md link to its entries instead of
 // restating them.
 //
-// **That convention is not self-enforcing, and the first version of this gate
-// assumed it was.** Its header used to end "if a third page starts restating
-// them, this gate will not notice -- which is the argument for not letting
-// one." Building.md was already that third page and README.md a fourth, both
-// wrong, in the same commit that shipped the gate green. Round 4 found three
-// evaluators tripping over one of them independently. A gate scoped to one
-// page is a guard against one file, not against a class -- so the prose sweep
-// below reads README.md and every page under docs/Documentation/ and checks
-// every gate count they state, wherever it is stated.
+// **That convention is not self-enforcing.** A gate scoped to one page is a
+// guard against one file, not against a class of restatement -- so the prose
+// sweep below reads README.md and every page under docs/Documentation/ and
+// checks every gate count they state, wherever it is stated.
 //
 // **The batch file is the source of truth, not the documentation.** A gate
 // that compared the two pages against each other would be satisfied by two
@@ -69,7 +53,7 @@
 // way round: a section that opens with a subset claim is reported. That is
 // deliberate rather than tolerated -- the remedy is to delete the number, and
 // the failure message says so, because a subset count restated in prose is
-// the same thing that drifted three times.
+// the same thing that drifts.
 //
 // **Anything outside README.md and docs/Documentation/.** builder/*.md are
 // design notes and frozen audit snapshots, and rewriting one to match a later
@@ -104,6 +88,7 @@ const WRAPPERS = [
 
 // Tools.md spells step counts as words, which is house style for a small
 // number in prose. Only as far as we could plausibly grow.
+// biome-ignore format: a table, one entry per line
 const NUMBER_WORDS = [
   "zero", "one", "two", "three", "four", "five",
   "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
@@ -159,8 +144,13 @@ function commandRuns(src, file) {
     cur = null;
   };
   src.split(/\r?\n/).forEach((line, i) => {
-    const m = /^\s*(&&\s*)?node\s+(?:scripts[\\/]([A-Za-z0-9_-]+\.mjs)|--test\s+test[\\/]([A-Za-z0-9_.-]+\.mjs))/.exec(line);
-    if (!m) { flush(); return; }
+    const m = /^\s*(&&\s*)?node\s+(?:scripts[\\/]([A-Za-z0-9_-]+\.mjs)|--test\s+test[\\/]([A-Za-z0-9_.-]+\.mjs))/.exec(
+      line,
+    );
+    if (!m) {
+      flush();
+      return;
+    }
     if (!cur) cur = { file, line: i + 1, gates: [], chained: true };
     else if (!m[1]) cur.chained = false;
     cur.gates.push(gateName(m[2], m[3]));
@@ -248,7 +238,8 @@ function splitSections(src) {
   return splitOnMarker(src, (line) => /^#{1,6}\s/.test(line), { md: siteParser() }).map((s) =>
     s.marker === null
       ? { heading: "(top of file)", start: 1, lines: s.lines }
-      : { heading: s.marker.trim(), start: s.start + 1, lines: [s.marker, ...s.lines] });
+      : { heading: s.marker.trim(), start: s.start + 1, lines: [s.marker, ...s.lines] },
+  );
 }
 
 /**
@@ -268,7 +259,7 @@ function subjectWrapper(sec) {
     // one line is what stopped this rule seeing Building.md's own section, and
     // Building.md's own section is the defect the rule was written for.
     if (/^\{:/.test(line.trim())) continue;
-    if (!/^(?: {4}|\t|```|~~~)/.test(line)) return null;   // prose, not a command
+    if (!/^(?: {4}|\t|```|~~~)/.test(line)) return null; // prose, not a command
     const m = /^[ \t`~]*(check|test)\.bat\b/.exec(line);
     if (m) return m[1];
     if (!/^(?:```|~~~)/.test(line)) return null;
@@ -285,15 +276,20 @@ function subjectWrapper(sec) {
 function proseClaims(src, file) {
   const claims = [];
   const at = (sec, body, idx) => sec.start + body.slice(0, idx).split("\n").length - 1;
-  const push = (sec, body, m, wrapper, raw, rule) => claims.push({
-    file, line: at(sec, body, m.index), wrapper: `${wrapper}.bat`,
-    count: asNumber(raw), quote: m[0].trim().replace(/\s+/g, " ").slice(0, 80), rule,
-  });
+  const push = (sec, body, m, wrapper, raw, rule) =>
+    claims.push({
+      file,
+      line: at(sec, body, m.index),
+      wrapper: `${wrapper}.bat`,
+      count: asNumber(raw),
+      quote: m[0].trim().replace(/\s+/g, " ").slice(0, 80),
+      rule,
+    });
 
   for (const sec of splitSections(src)) {
     const body = sec.lines.join("\n");
     for (const m of body.matchAll(POSSESSIVE)) push(sec, body, m, m[1], m[2], "possessive");
-    for (const m of body.matchAll(VERBAL))     push(sec, body, m, m[1], m[2], "verb");
+    for (const m of body.matchAll(VERBAL)) push(sec, body, m, m[1], m[2], "verb");
 
     sec.lines.forEach((line, i) => {
       const head = LINE_HEAD.exec(line);
@@ -301,8 +297,12 @@ function proseClaims(src, file) {
       const rest = line.slice(head[0].length, head[0].length + LINE_WINDOW);
       for (const m of rest.matchAll(COUNT_ON_LINE)) {
         claims.push({
-          file, line: sec.start + i, wrapper: `${head[1]}.bat`, count: asNumber(m[1]),
-          quote: line.trim().replace(/\s+/g, " ").slice(0, 80), rule: "line",
+          file,
+          line: sec.start + i,
+          wrapper: `${head[1]}.bat`,
+          count: asNumber(m[1]),
+          quote: line.trim().replace(/\s+/g, " ").slice(0, 80),
+          rule: "line",
         });
       }
     });
@@ -345,8 +345,7 @@ function proseFindings(src, file, counts) {
     const actual = counts.get(c.wrapper);
     if (actual === undefined || c.count === actual) continue;
     out.push(
-      `${c.file}:${c.line}: says ${c.wrapper} runs ${c.count}; it runs ${actual}.\n` +
-      `    ${c.rule}: "${c.quote}"`,
+      `${c.file}:${c.line}: says ${c.wrapper} runs ${c.count}; it runs ${actual}.\n` + `    ${c.rule}: "${c.quote}"`,
     );
   }
   return out;
@@ -373,24 +372,21 @@ function compareWrapper({ bat, heading }, batSrc, toolsMd) {
   if (documented.join("\0") !== actual.join("\0")) {
     findings.push(
       `${bat}: documented list does not match the wrapper.\n` +
-      `    ${bat}   : ${actual.join(", ")}\n` +
-      `    ${TOOLS_MD}: ${documented.join(", ") || "(none found)"}`,
+        `    ${bat}   : ${actual.join(", ")}\n` +
+        `    ${TOOLS_MD}: ${documented.join(", ") || "(none found)"}`,
     );
   }
 
-  // A stated count that disagrees with its own list is the exact shape round 3
-  // found three times, so it is worth reporting separately from the membership
-  // failure -- the two have different fixes.
+  // A stated count that disagrees with its own list is a common drift, so it
+  // is reported separately from the membership failure -- the two have
+  // different fixes.
   const stated = statedCount(body);
   if (stated === null) {
     findings.push(
-      `${bat}: the \`${heading}\` section states no step count. ` +
-      `It should, so that this gate can check it.`,
+      `${bat}: the \`${heading}\` section states no step count. ` + `It should, so that this gate can check it.`,
     );
   } else if (stated !== actual.length) {
-    findings.push(
-      `${bat}: documented as "${NUMBER_WORDS[stated]} steps", but the wrapper runs ${actual.length}.`,
-    );
+    findings.push(`${bat}: documented as "${NUMBER_WORDS[stated]} steps", but the wrapper runs ${actual.length}.`);
   }
 
   return findings;
@@ -399,9 +395,8 @@ function compareWrapper({ bat, heading }, batSrc, toolsMd) {
 // ------------------------------------------------------------- self-test
 //
 // The probes ride along in the normal run rather than hiding behind a flag,
-// for the reason this repository keeps relearning: on a healthy tree a gate
-// that has stopped detecting prints exactly what a working one prints. Each
-// probe is a defect that actually shipped.
+// because on a healthy tree a gate that has stopped detecting prints exactly
+// what a working one prints. Each probe is a real shape of drift.
 
 const PROBES = [
   {
@@ -461,8 +456,9 @@ const NEGATIVES = [
     // gate outside the numbered list.
     name: "a cross-reference in prose is not a step",
     bat: "node scripts/a.mjs\n",
-    doc: "### x.bat\n\nTests of the toolchain are [`scripts/zz.mjs`](#zz), not these. One step:\n\n" +
-         "1. [`scripts/a.mjs`](#a) --- a.\n\n### next\n",
+    doc:
+      "### x.bat\n\nTests of the toolchain are [`scripts/zz.mjs`](#zz), not these. One step:\n\n" +
+      "1. [`scripts/a.mjs`](#a) --- a.\n\n### next\n",
   },
   {
     name: "a test file listed by its path is a step",
@@ -476,10 +472,12 @@ const NEGATIVES = [
   },
 ];
 
-// Probes for the prose sweep. Every positive is a sentence that was on a
-// published page at 4f97bac, against the counts that were true at the time
-// (check.bat four, test.bat six).
-const REAL_COUNTS = new Map([["check.bat", 4], ["test.bat", 6]]);
+// Probes for the prose sweep. Every positive is a sentence of the kind a
+// published page states, against fixed counts (check.bat four, test.bat six).
+const REAL_COUNTS = new Map([
+  ["check.bat", 4],
+  ["test.bat", 6],
+]);
 
 const PROSE_PROBES = [
   {
@@ -584,10 +582,16 @@ Exit codes:
   2  the gate could not run: a refused command line, or a crash`;
 
 async function main(argv) {
-  const { values } = withUsageError(() => parseCli(argv, {
-    options: { verbose: { type: "boolean" }, "self-test": { type: "boolean" }, help: { type: "boolean", short: "h" } },
-    stopAt: ["help"],
-  }));
+  const { values } = withUsageError(() =>
+    parseCli(argv, {
+      options: {
+        verbose: { type: "boolean" },
+        "self-test": { type: "boolean" },
+        help: { type: "boolean", short: "h" },
+      },
+      stopAt: ["help"],
+    }),
+  );
   if (values.help) printHelpAndExit(USAGE);
   const verbose = values.verbose;
   const onlySelfTest = values.selfTest;
@@ -625,16 +629,14 @@ async function main(argv) {
 
   // Command blocks and stated counts anywhere a developer page can carry
   // them. Building.md restates both wrappers as POSIX command blocks, which
-  // is legitimate and is exactly the kind of second copy that drifted last
-  // time; README.md is here because three of round 4's findings were on it
-  // and nothing had ever read it.
+  // is legitimate and is exactly the kind of second copy that drifts;
+  // README.md is here because it states counts too.
   const docsDir = path.join(REPO_ROOT, "docs/Documentation");
   const wanted = [...wrapperGates.values()].map((g) => g.join("\0"));
   const counts = new Map([...wrapperGates].map(([bat, g]) => [bat, g.length]));
   const rels = [
     "README.md",
-    ...(await readdir(docsDir)).filter((n) => n.endsWith(".md"))
-      .map((n) => `docs/Documentation/${n}`),
+    ...(await readdir(docsDir)).filter((n) => n.endsWith(".md")).map((n) => `docs/Documentation/${n}`),
   ];
   let claimsSeen = 0;
   for (const rel of rels) {
@@ -646,8 +648,8 @@ async function main(argv) {
       }
       findings.push(
         `${rel}:${run.line}: a run of ${run.gates.length} gate scripts matches no wrapper.\n` +
-        `    documented : ${run.gates.join(", ")}\n` +
-        [...wrapperGates].map(([b, g]) => `    ${b.padEnd(11)}: ${g.join(", ")}`).join("\n"),
+          `    documented : ${run.gates.join(", ")}\n` +
+          [...wrapperGates].map(([b, g]) => `    ${b.padEnd(11)}: ${g.join(", ")}`).join("\n"),
       );
     }
     for (const c of proseClaims(src, rel)) {
@@ -665,27 +667,32 @@ async function main(argv) {
   if (probesFailed.length) {
     console.error(
       `\ncheck_gate_lists: ${probesFailed.length} of ${probes.length} self-test probes failed.\n` +
-      `  The gate itself is not detecting what it claims to; fix that before trusting a pass.`,
+        `  The gate itself is not detecting what it claims to; fix that before trusting a pass.`,
     );
     return 1;
   }
   if (findings.length) {
     console.error(
       `\ncheck_gate_lists: ${findings.length} disagreement(s) with the wrappers.\n` +
-      `  ${TOOLS_MD} owns these lists; every other page cites it rather than restating it.\n` +
-      `  Fix the list there -- and where a page states a count in prose, prefer deleting the\n` +
-      `  number over correcting it. The command block or the linked list carries it already.`,
+        `  ${TOOLS_MD} owns these lists; every other page cites it rather than restating it.\n` +
+        `  Fix the list there -- and where a page states a count in prose, prefer deleting the\n` +
+        `  number over correcting it. The command block or the linked list carries it already.`,
     );
     return 1;
   }
 
   console.log(
     `check_gate_lists: ${WRAPPERS.map((w) => `${w.bat} (${wrapperGates.get(w.bat).length})`).join(" + ")} ` +
-    `match ${TOOLS_MD}; ${claimsSeen} stated count(s) across ${rels.length} pages agree -- clean`,
+      `match ${TOOLS_MD}; ${claimsSeen} stated count(s) across ${rels.length} pages agree -- clean`,
   );
   return 0;
 }
 
 main(process.argv.slice(2))
-  .then((code) => { process.exitCode = code; })
-  .catch((err) => { console.error(err); process.exitCode = 2; });
+  .then((code) => {
+    process.exitCode = code;
+  })
+  .catch((err) => {
+    console.error(err);
+    process.exitCode = 2;
+  });

@@ -5,8 +5,8 @@
 //
 // Held once because the values are hard-won. An attribute with a mandatory
 // argument needs one that is itself valid, or the compiler reports the argument
-// instead of the applicability, and each entry below was found by getting it
-// wrong. Two tools with two copies would drift, and the drift would read as a
+// instead of the applicability, and each entry below is what the compiler
+// accepts. Two tools with two copies would drift, and the drift would read as a
 // finding about the compiler.
 
 import { mkdirSync, promises as fs, writeFileSync } from "node:fs";
@@ -16,8 +16,12 @@ export const pad = (n, width) => String(n).padStart(width, "0");
 
 // GUIDs are unique per probe so two probes can never collide on one id.
 export const GUID_ATTRS = new Set([
-  "ClassId", "CoClassId", "InterfaceId", "EventInterfaceId",
-  "EnumId", "FormDesignerId",
+  "ClassId",
+  "CoClassId",
+  "InterfaceId",
+  "EventInterfaceId",
+  "EnumId",
+  "FormDesignerId",
 ]);
 
 export const FIXED_ARGS = {
@@ -26,10 +30,9 @@ export const FIXED_ARGS = {
   IdeButton: '("probe")',
   PackingAlignment: "(4)",
   CompileIf: "(True)",
-  // The five below were once in UNSYNTHESISABLE, four of them for want of a
-  // usable argument value. `Attributes.md` states each shape but no value, and
-  // the shipped packages turned out to carry one apiece -- so these are copied
-  // from code the compiler already accepts rather than guessed:
+  // The five below are not UNSYNTHESISABLE, although `Attributes.md` states
+  // each shape but no value: the shipped packages carry one apiece, so these
+  // are copied from code the compiler already accepts rather than guessed:
   //
   //   [CoClassCustomConstructor("CreatePropertyBagObject")]  VBRUN/PropertyBag
   //   [CustomControl("/miscellaneous/frmButton.png")]        CustomControlsPackage
@@ -47,8 +50,8 @@ export const FIXED_ARGS = {
   CustomControl: '("/miscellaneous/probe.png")',
   PopulateFrom: '("json", "/Resources/PROBE/Strings.json", "events", "name", "id")',
   IgnoreWarnings: "(TB0001)",
-  // Documented as an optional Bool until the package census showed all 44 uses
-  // passing a toolbox image path. "no_designer" is the other accepted value and
+  // The package census shows every use passing a toolbox image path.
+  // "no_designer" is the other accepted value and
   // is what the probe uses, because it needs no file to resolve against.
   WindowsControl: '("no_designer")',
   // The entry documents +llvm, +optimize, +optimizesize and +optimizespeed.
@@ -83,15 +86,20 @@ export function attrText(name, idx) {
 // The PNG is a 1x1 opaque black image, written as bytes rather than fetched:
 // [CustomControl] needs a real image at the path, not merely a path.
 export const PROBE_PNG = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9" +
-  "awAAAABJRU5ErkJggg==",
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9" + "awAAAABJRU5ErkJggg==",
   "base64",
 );
-export const PROBE_STRINGS_JSON = JSON.stringify(
-  { events: [{ id: 1, name: "probe_event_one" }, { id: 2, name: "probe_event_two" }] },
-  null,
-  4,
-) + "\n";
+export const PROBE_STRINGS_JSON =
+  JSON.stringify(
+    {
+      events: [
+        { id: 1, name: "probe_event_one" },
+        { id: 2, name: "probe_event_two" },
+      ],
+    },
+    null,
+    4,
+  ) + "\n";
 // [CoClassCustomConstructor] names a factory the compiler must be able to
 // resolve. VBRUN's real one is `() As stdole.IUnknown`; this mirrors it.
 export const PROBE_FACTORY_TWIN =
@@ -115,7 +123,8 @@ const SETTINGS_OBJ = {
   "project.appTitle": "Attribute applicability probes",
   "project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
   "project.buildType": "Standard EXE",
-  "project.description": "Generated from docs/Reference/Attributes.md. Every module is expected to compile; a diagnostic is a finding.",
+  "project.description":
+    "Generated from docs/Reference/Attributes.md. Every module is expected to compile; a diagnostic is a finding.",
   "project.exportPathIsV2": true,
   "project.id": "{A77B1BE0-0000-4000-8000-000000000001}",
   "project.name": "AttributeProbes",
@@ -163,7 +172,8 @@ export function settingsText(overrides = {}) {
 // gen_attribute_probes writes stay byte-identical.
 export const SETTINGS = settingsText();
 
-export const MAIN_TWIN = "' Startup object for the probe project. Does nothing.\n\n" +
+export const MAIN_TWIN =
+  "' Startup object for the probe project. Does nothing.\n\n" +
   "Module ProbeMain\n    Public Sub Main()\n    End Sub\nEnd Module\n";
 
 // The .twin sources are written CRLF; the Settings blob and the key are written
@@ -197,15 +207,18 @@ export function writeProbeResourcesSync(out) {
 // tests the wrong thing is worse than no probe: it fails for a reason that is
 // not the documentation's and sends the reader after a defect that is not there.
 export const NOT_FAITHFULLY_PROBEABLE = {
-  CustomDesigner: "the designer name has to suit the property's type -- " +
+  CustomDesigner:
+    "the designer name has to suit the property's type -- " +
     "`designer_SpectrumWindows` is for an OLE_COLOR, `designer_MultiLineText` for a " +
     "String -- so a rejection could mean the applicability or the pairing, and the " +
     "probe could not tell you which. Applicability evidenced by 154 uses across " +
     "four packages",
-  Enumerator: "the member has to return stdole.IUnknown or a Variant; the generic " +
+  Enumerator:
+    "the member has to return stdole.IUnknown or a Variant; the generic " +
     "procedure skeleton returns neither, so the probe would test the return type " +
     "rather than the applicability. Evidenced by 25 uses across five packages",
-  SpecialCompilerBinding: "the argument is an index into the compiler's own internal " +
+  SpecialCompilerBinding:
+    "the argument is an index into the compiler's own internal " +
     "implementations -- the six uses in the VB package pass 1, 2, 3, 4 and 254 -- so " +
     "there is no value a probe could pass that would test the applicability " +
     "rather than the number. Evidenced by those six uses, on a Sub, a Declare " +
@@ -218,6 +231,7 @@ export const NOT_FAITHFULLY_PROBEABLE = {
 // documented applicability and tells us nothing further, so it is not worth a
 // probe.
 export const UNSYNTHESISABLE = {
-  FormDesignerId: "needs a form designer JSON to match; probing it reached TB5247, " +
+  FormDesignerId:
+    "needs a form designer JSON to match; probing it reached TB5247, " +
     "which already confirms the documented applicability on a Class",
 };

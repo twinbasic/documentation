@@ -10,7 +10,8 @@
 // check_gate_lists.mjs compares the wrappers with Tools.md's numbered lists,
 // and check_ci_workflows.mjs compares them with the two workflows.
 
-const GATE_LINE = /^\s*@?node\s+(?:scripts[\\/]([A-Za-z0-9_-]+\.mjs)|--test\s+test[\\/]([A-Za-z0-9_.-]+\.mjs))[ \t]*(.*?)\s*$/;
+const GATE_LINE =
+  /^\s*@?node\s+(?:scripts[\\/]([A-Za-z0-9_-]+\.mjs)|--test\s+test[\\/]([A-Za-z0-9_.-]+\.mjs))[ \t]*(.*?)\s*$/;
 const BUILD_LINE = /^\s*@?node\s+builder[\\/]tbdocs\.mjs[ \t]*(.*?)\s*$/;
 
 /** A gate's name from the two captures every gate pattern has: a script's file name, or a test file's. */

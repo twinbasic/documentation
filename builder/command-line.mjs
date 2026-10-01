@@ -119,18 +119,43 @@ export function parseCommandLine(argv) {
   for (const t of cli.tokens) {
     if (t.kind !== "option") continue;
     switch (t.key) {
-      case "src": args.src = t.value; break;
-      case "dest": args.dest = t.value; break;
-      case "baseurl": args.baseurl = t.value; break;
-      case "url": urlOption(t.value, { option: "--url" }); args.url = t.value; break;
-      case "dryRun": args.dryRun = true; break;
-      case "noOffline": args.skipOffline = true; break;
-      case "noPdf": args.skipPdf = true; break;
-      case "tolerateMissingImages": args.tolerateMissingImages = true; break;
-      case "fetchAssets": args.fetchAssets = true; break;
-      case "noFetchAssets": args.fetchAssets = false; break;
-      case "profileOffline": args.profileOffline = true; break;
-      case "check": args.check = true; break;
+      case "src":
+        args.src = t.value;
+        break;
+      case "dest":
+        args.dest = t.value;
+        break;
+      case "baseurl":
+        args.baseurl = t.value;
+        break;
+      case "url":
+        urlOption(t.value, { option: "--url" });
+        args.url = t.value;
+        break;
+      case "dryRun":
+        args.dryRun = true;
+        break;
+      case "noOffline":
+        args.skipOffline = true;
+        break;
+      case "noPdf":
+        args.skipPdf = true;
+        break;
+      case "tolerateMissingImages":
+        args.tolerateMissingImages = true;
+        break;
+      case "fetchAssets":
+        args.fetchAssets = true;
+        break;
+      case "noFetchAssets":
+        args.fetchAssets = false;
+        break;
+      case "profileOffline":
+        args.profileOffline = true;
+        break;
+      case "check":
+        args.check = true;
+        break;
       case "noCheck":
         // build.bat bakes in --check; this is how to ask for a plain build
         // without editing it. A later --check flag turns it back on.
@@ -161,7 +186,9 @@ export function parseCommandLine(argv) {
         // Write the public symbols no page documents, as JSON, to a file.
         args.symbolGaps = t.value;
         break;
-      case "serve": args.serve = true; break;
+      case "serve":
+        args.serve = true;
+        break;
       case "port":
         args.port = numberOption(t.value, { option: "--port", integer: true, min: 1, max: 65535 });
         break;

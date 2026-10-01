@@ -24,10 +24,17 @@ checks on every page that the block parse finds what a full parse finds.
 `REPO_ROOT`, and `docs/`, `DOCS_DIR`, so each runs the same from any folder.
 
 [cli.mjs](cli.mjs) reads a command line against a table of options, over
-`node:util`'s `parseArgs`, and throws an error naming the problem that each
-tool prints in its own words; it also reads a number that must be one, and
-prints a usage text. `scripts/check_cli.mjs` carries its probes and the tools'
-recorded command-line cases.
+`node:util`'s `parseArgs` (`parseCli`), strictly: an unknown option, a
+boolean given a value, a value flag with no value, an empty value and an
+unexpected positional are all errors. It throws a `CliError` naming the
+problem, which `withUsageError` prints with exit code 2. It also reads a value
+that must be a number, one of a set, a regular expression, a URL or a date
+(`numberOption`, `choiceOption`, `regexOption`, `urlOption`, `dateOption`),
+refuses options that exclude each other (`refuseTogether`), prints a usage
+text and exits 0 (`printHelpAndExit`), prints a message and exits with a
+given code (`die`), and makes a crash exit 2 (`exitOnCrash`).
+`scripts/check_cli.mjs` carries its probes and the tools' recorded
+command-line cases.
 
 `scripts/check_tree_fresh.mjs` counts `lib/` among the inputs that decide the
 built bytes, beside `docs/` and `builder/`, so an edit here marks every built

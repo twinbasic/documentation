@@ -38,7 +38,11 @@ export function buildIndex(lunr, docs, opts = {}) {
     this.field("names", { boost: 100 });
     this.field("qualified", { boost: 50 });
     if (x1) this.field("exact");
-    if (x1t) { this.field("exact1"); this.field("exact2"); this.field("exact3"); }
+    if (x1t) {
+      this.field("exact1");
+      this.field("exact2");
+      this.field("exact3");
+    }
     if (x2) this.field("page");
     this.field("relUrl");
     this.metadataWhitelist = ["position"];
@@ -131,7 +135,7 @@ export function search({ lunr, index }, input, opts = {}) {
     const tokens = queryTokens.filter((t) => t.str.length < 20);
     if (tokens.length) {
       results = index.query((q) =>
-        q.term(tokens, { editDistance: Math.min(2, Math.round(Math.sqrt(input.length / 2 - 1))) })
+        q.term(tokens, { editDistance: Math.min(2, Math.round(Math.sqrt(input.length / 2 - 1))) }),
       );
     }
   }

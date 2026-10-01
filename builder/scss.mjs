@@ -42,23 +42,20 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const VENDOR_JTD_SASS = path.join(__dirname, "vendor", "just-the-docs", "_sass");
 const SCSS_LIGHT_REL = path.join("assets", "css", "just-the-docs-combined.scss");
-const SCSS_DARK_REL  = path.join("assets", "css", "just-the-docs-dark.scss");
+const SCSS_DARK_REL = path.join("assets", "css", "just-the-docs-dark.scss");
 
 async function loadSass() {
   try {
     return await import("sass");
   } catch (err) {
-    throw new Error(
-      "scss: sass not installed. Run `npm install` at the repo root to fetch it.",
-      { cause: err },
-    );
+    throw new Error("scss: sass not installed. Run `npm install` at the repo root to fetch it.", { cause: err });
   }
 }
 
 function makeLoadPaths(srcRoot) {
   return [
-    path.join(srcRoot, "_sass"),  // our customizations first
-    VENDOR_JTD_SASS,              // gem fallback
+    path.join(srcRoot, "_sass"), // our customizations first
+    VENDOR_JTD_SASS, // gem fallback
   ];
 }
 
@@ -68,7 +65,9 @@ async function compileScss(srcRoot, rel, label) {
   const sass = await loadSass();
   try {
     const result = sass.compile(path.join(srcRoot, rel), {
-      style: "expanded", sourceMap: false, loadPaths: makeLoadPaths(srcRoot),
+      style: "expanded",
+      sourceMap: false,
+      loadPaths: makeLoadPaths(srcRoot),
     });
     return { compiled: true, css: result.css };
   } catch (err) {

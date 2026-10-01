@@ -20,13 +20,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import { assembleBook, bookCoverage, formatBookCoverage } from "./book.mjs";
-import {
-  WRITE_LIMIT,
-  mkdirRec,
-  runLimited,
-  safeWrite,
-  writeFileMkdirp,
-} from "./write.mjs";
+import { WRITE_LIMIT, mkdirRec, runLimited, safeWrite, writeFileMkdirp } from "./write.mjs";
 
 const PDF_SUFFIX = "-pdf";
 const REQUIRED_CSS = ["assets/css/print.css", "assets/css/tb-highlight.css"];
@@ -49,7 +43,13 @@ const LIMIT = WRITE_LIMIT;
 // §A  Top-level orchestration
 // ---------------------------------------------------------------------------
 
-export async function writePdf(pages, staticFiles, site, destRoot, { tolerateMissingImages = false, highlightCss = null, check = false } = {}) {
+export async function writePdf(
+  pages,
+  staticFiles,
+  site,
+  destRoot,
+  { tolerateMissingImages = false, highlightCss = null, check = false } = {},
+) {
   if (!destRoot) {
     throw new Error("writePdf requires a destRoot");
   }
@@ -59,9 +59,7 @@ export async function writePdf(pages, staticFiles, site, destRoot, { tolerateMis
 
   const { bookHtml, imagePaths } = deriveBookOutputs(pages, site);
 
-  const staticByDestRel = new Map(
-    staticFiles.map(s => [s.destRel.replaceAll("\\", "/"), s]),
-  );
+  const staticByDestRel = new Map(staticFiles.map((s) => [s.destRel.replaceAll("\\", "/"), s]));
   const counters = { bookBytes: 0, html: 0, css: 0, fonts: 0, images: 0, missing: 0 };
   const missingPaths = [];
 
@@ -88,8 +86,7 @@ export async function writePdf(pages, staticFiles, site, destRoot, { tolerateMis
     const missing = new Set(missingPaths);
     counters.checkBook = {
       html: bookHtml,
-      rels: ["book.html", ...REQUIRED_CSS, ...REQUIRED_FONTS,
-             ...imagePaths.filter(r => !missing.has(r))],
+      rels: ["book.html", ...REQUIRED_CSS, ...REQUIRED_FONTS, ...imagePaths.filter((r) => !missing.has(r))],
     };
   }
   return counters;
@@ -109,18 +106,17 @@ function deriveBookOutputs(pages, site) {
 // zero or multiple matches. Held for assertion only -- the actual
 // assembly walks `site.bookData` directly.
 function resolveBookPage(pages) {
-  const matches = pages.filter(p => p.frontmatter?.layout === "book-combined");
+  const matches = pages.filter((p) => p.frontmatter?.layout === "book-combined");
   if (matches.length === 0) {
     throw new Error(
       "Phase 8: no page with `layout: book-combined` found. " +
-      "Expected docs/book.html with this frontmatter; check the source tree.",
+        "Expected docs/book.html with this frontmatter; check the source tree.",
     );
   }
   if (matches.length > 1) {
-    const list = matches.map(p => p.srcRel).join(", ");
+    const list = matches.map((p) => p.srcRel).join(", ");
     throw new Error(
-      `Phase 8: multiple pages with \`layout: book-combined\` found: ${list}. ` +
-      "Only one is supported.",
+      `Phase 8: multiple pages with \`layout: book-combined\` found: ${list}. ` + "Only one is supported.",
     );
   }
   return matches[0];
@@ -181,7 +177,7 @@ async function copyPdfFonts(staticByDestRel, pdfRoot, counters) {
     if (!sf) {
       throw new Error(
         `pdf: required font ${rel} is not in the source tree. Run ` +
-        `\`python scripts/build_fonts.py\` and commit docs/assets/fonts/.`,
+          `\`python scripts/build_fonts.py\` and commit docs/assets/fonts/.`,
       );
     }
     const dest = path.join(pdfRoot, rel);
@@ -224,7 +220,9 @@ function reportMissingImages(missingPaths, tolerateMissingImages, counters) {
   }
   if (missingPaths.length === 0) return;
   if (tolerateMissingImages) {
-    console.warn(`pdf: ${missingPaths.length} image reference(s) missing; PDF render will show broken-image placeholders`);
+    console.warn(
+      `pdf: ${missingPaths.length} image reference(s) missing; PDF render will show broken-image placeholders`,
+    );
     return;
   }
   throw new Error(

@@ -1,8 +1,8 @@
 // Replace PDFContext.indirectObjects (Map<PDFRef, PDFObject>) with a
 // dense array keyed by objectNumber for the gen=0 path.
 //
-// Motivation. After fast-dict-array shipped, the only remaining hot
-// Map.set in the process-phase heap profile was
+// Motivation. With fast-dict-array applied, the only remaining hot
+// Map.set in the process-phase heap profile is
 // PDFContext.assign's `this.indirectObjects.set(ref, object)`:
 //
 //     $ node find-heap-callers.mjs <post-ship>.heapprofile set
@@ -36,7 +36,7 @@
 // pipeline, but reasonable to defensive-preserve) continues to see a
 // Map-shaped object -- just usually empty.
 //
-// As a side benefit, `enumerateIndirectObjects` no longer needs to
+// As a side benefit, `enumerateIndirectObjects` does not need to
 // sort: dense-array iteration is already in ascending objectNumber
 // order. (The Map-sourced gen!=0 entries are merged in sorted.)
 //
@@ -50,20 +50,24 @@
 //
 // Idempotent -- repeated imports do nothing after the first.
 
-import { PDFContext, PDFRef, PDFNull, UnexpectedObjectTypeError } from './pdf-lib-internals.mjs';
-import { checkTargets } from './shim-targets.mjs';
+import { PDFContext, PDFRef, PDFNull, UnexpectedObjectTypeError } from "./pdf-lib-internals.mjs";
+import { checkTargets } from "./shim-targets.mjs";
 
 const byAscendingObjectNumber = ([a], [b]) => a.objectNumber - b.objectNumber;
 
 if (!PDFContext.prototype.__fastIndirectObjectsInstalled) {
-  checkTargets(import.meta.url, { PDFContext }, {
-    'PDFContext.prototype.assign':                   [2, '5a54add382ef'],
-    'PDFContext.prototype.delete':                   [1, 'eaed088d9bc8'],
-    'PDFContext.prototype.lookupMaybe':              [1, 'b6066d63ce03'],
-    'PDFContext.prototype.lookup':                   [1, '5fcfc6aef545'],
-    'PDFContext.prototype.getObjectRef':             [1, 'e5c04aab2cb9'],
-    'PDFContext.prototype.enumerateIndirectObjects': [0, 'c16a955c69f1'],
-  });
+  checkTargets(
+    import.meta.url,
+    { PDFContext },
+    {
+      "PDFContext.prototype.assign": [2, "5a54add382ef"],
+      "PDFContext.prototype.delete": [1, "eaed088d9bc8"],
+      "PDFContext.prototype.lookupMaybe": [1, "b6066d63ce03"],
+      "PDFContext.prototype.lookup": [1, "5fcfc6aef545"],
+      "PDFContext.prototype.getObjectRef": [1, "e5c04aab2cb9"],
+      "PDFContext.prototype.enumerateIndirectObjects": [0, "c16a955c69f1"],
+    },
+  );
 
   // ---- assign -------------------------------------------------------
   // Hot path. gen=0 → dense array store; gen!=0 → Map. Maintains

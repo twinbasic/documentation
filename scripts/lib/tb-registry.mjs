@@ -4,10 +4,9 @@
 // IDE. It records each project it opens under
 // `VB and VBA Program Settings\twinBASIC_IDE\ProjectState` (open tabs, watch
 // expressions, DEBUG CONSOLE history) and puts it at the top of
-// `...\RecentlyOpened`. Measured on 2026-09-23, before this module existed,
-// 318 of 424 ProjectState values were harness temp projects, and all 21 slots
-// of the recent list were: the user's own recent projects had been pushed out
-// of the IDE entirely. An IDE started from an install the association does not
+// `...\RecentlyOpened`. Left alone, harness temp projects fill
+// ProjectState and all 21 slots of the recent list, pushing the user's own
+// recent projects out of the IDE entirely. An IDE started from an install the association does not
 // point at also re-points `.twinproj` at itself, which matters once a harness
 // runs private copies of the IDE (WIP.HelpAddin.md, Stage 1 item 2).
 //
@@ -56,10 +55,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 export const IDE_SETTINGS_KEY = "Software\\VB and VBA Program Settings\\twinBASIC_IDE";
-export const ASSOCIATION_KEYS = [
-  "Software\\Classes\\.twinproj",
-  "Software\\Classes\\twinBASIC.ProjectFile",
-];
+export const ASSOCIATION_KEYS = ["Software\\Classes\\.twinproj", "Software\\Classes\\twinBASIC.ProjectFile"];
 
 // No `${` and no backtick anywhere in this script: it is a JavaScript template
 // literal, and either one would end or splice it. A registry path separator is
@@ -342,8 +338,11 @@ function request(req) {
   let out;
   try {
     out = execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-EncodedCommand", ENCODED], {
-      input: JSON.stringify(req), encoding: "utf8", windowsHide: true,
-      stdio: ["pipe", "pipe", "pipe"], maxBuffer: 64 * 1024 * 1024,
+      input: JSON.stringify(req),
+      encoding: "utf8",
+      windowsHide: true,
+      stdio: ["pipe", "pipe", "pipe"],
+      maxBuffer: 64 * 1024 * 1024,
     });
   } catch (e) {
     // PowerShell itself failed to run the script; the script's own errors come
@@ -392,8 +391,12 @@ export function snapshotProjects(paths = [], { root = IDE_SETTINGS_KEY } = {}) {
  * @returns {{projectState: number, recentlyOpened: number}} values written or deleted
  */
 export function restoreProjects(snapshot, { prefixes = [] } = {}) {
-  return request({ op: "restoreProjects", snapshot, prefixes: prefixes.map(asTempFolder),
-                   temp: path.resolve(tmpdir()) + path.sep });
+  return request({
+    op: "restoreProjects",
+    snapshot,
+    prefixes: prefixes.map(asTempFolder),
+    temp: path.resolve(tmpdir()) + path.sep,
+  });
 }
 
 /** The names of a key's subkeys, sorted, and nothing else from under it; empty when there is no such key. */
@@ -429,8 +432,10 @@ export function settingsKey(app) {
   const name = String(app ?? "");
   if (!name || /[\\/]/.test(name)) throw new Error(`not a SaveSetting application name: "${name}"`);
   if (name.toLowerCase() === "twinbasic_ide") {
-    throw new Error("refusing the IDE's own settings key: the run's tidy puts back the parts of " +
-                    "it the IDE changes, value by value");
+    throw new Error(
+      "refusing the IDE's own settings key: the run's tidy puts back the parts of " +
+        "it the IDE changes, value by value",
+    );
   }
   return `${SETTINGS_ROOT}\\${name}`;
 }
@@ -471,7 +476,11 @@ function readArchitectureMemory(root) {
   const now = request({ op: "readValue", key: `${root}\\IDESettings`, name: ARCH_MEMORY });
   if (!now.exists) return null;
   let memory;
-  try { memory = JSON.parse(now.data); } catch { return null; }
+  try {
+    memory = JSON.parse(now.data);
+  } catch {
+    return null;
+  }
   if (!memory || typeof memory !== "object" || Array.isArray(memory)) return null;
   return { data: now.data, memory };
 }
@@ -489,8 +498,13 @@ function editArchitectureMemory(root, edit) {
     if (!now) return 0;
     const changes = edit(now.memory);
     if (!changes) return 0;
-    const w = request({ op: "writeValueIf", key: `${root}\\IDESettings`, name: ARCH_MEMORY,
-                        expected: now.data, data: JSON.stringify(now.memory) });
+    const w = request({
+      op: "writeValueIf",
+      key: `${root}\\IDESettings`,
+      name: ARCH_MEMORY,
+      expected: now.data,
+      data: JSON.stringify(now.memory),
+    });
     if (w.written) return changes;
   }
   throw new Error(`the IDE's ${ARCH_MEMORY} kept changing while it was being tidied`);
@@ -505,8 +519,8 @@ function editArchitectureMemory(root, edit) {
  * project it opens again starts in that target. A harness project's path is
  * used run after run -- tbrun's work folder is keyed to its port -- so an
  * entry one run leaves, when somebody switches a --keep IDE to win64, sets the
- * target of every later run on that path, and nothing says so. On 2026-09-24
- * tbrun on ports 9372 and 9373 built 64-bit for that reason.
+ * target of every later run on that path, and nothing says so: tbrun then builds
+ * 64-bit unasked.
  *
  * Entries for any other path are left alone here, the user's own projects
  * among them. Opening a project only reads its entry; one is written when the
@@ -536,7 +550,7 @@ export function sweepArchitectureMemory(prefixes = [], { root = IDE_SETTINGS_KEY
  */
 export function snapshotArchitectureMemory(paths = [], { root = IDE_SETTINGS_KEY } = {}) {
   const want = paths.map((p) => norm(path.resolve(p)));
-  const memory = want.length ? readArchitectureMemory(root)?.memory ?? {} : {};
+  const memory = want.length ? (readArchitectureMemory(root)?.memory ?? {}) : {};
   return { root, paths: want, entries: Object.entries(memory).filter(([p]) => want.includes(norm(p))) };
 }
 
@@ -559,10 +573,19 @@ export function restoreArchitectureMemory(snap) {
     const had = new Map(snap.entries);
     for (const p of Object.keys(memory)) {
       if (!snap.paths.includes(norm(p))) continue;
-      if (!had.has(p)) { delete memory[p]; changes++; }
-      else if (memory[p] !== had.get(p)) { memory[p] = had.get(p); changes++; }
+      if (!had.has(p)) {
+        delete memory[p];
+        changes++;
+      } else if (memory[p] !== had.get(p)) {
+        memory[p] = had.get(p);
+        changes++;
+      }
     }
-    for (const [p, v] of had) if (!(p in memory)) { memory[p] = v; changes++; }
+    for (const [p, v] of had)
+      if (!(p in memory)) {
+        memory[p] = v;
+        changes++;
+      }
     return changes;
   });
 }
@@ -571,7 +594,11 @@ export function restoreArchitectureMemory(snap) {
 // the root -- `Software`, `Software\Classes` -- would take everything under it.
 // Three segments is the shallowest key this has any business restoring.
 function deepEnough(key) {
-  if (String(key ?? "").split("\\").filter(Boolean).length < 3) {
+  if (
+    String(key ?? "")
+      .split("\\")
+      .filter(Boolean).length < 3
+  ) {
     throw new Error(`refusing to snapshot or restore a key this close to the root: "${key}"`);
   }
 }
@@ -591,7 +618,12 @@ function asTempFolder(p) {
 
 /** Whether process.kill(pid, 0) finds a running process with this id. */
 export function alive(pid) {
-  try { process.kill(pid, 0); return true; } catch { return false; }
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -615,8 +647,7 @@ export function alive(pid) {
  * @param {string[]} [o.keys]      the association keys (default ASSOCIATION_KEYS);
  *                                 the self-test passes scratch keys for both
  */
-export function startTidy({ paths = [], prefixes = [], root = IDE_SETTINGS_KEY,
-                            keys = ASSOCIATION_KEYS } = {}) {
+export function startTidy({ paths = [], prefixes = [], root = IDE_SETTINGS_KEY, keys = ASSOCIATION_KEYS } = {}) {
   const owner = Number(process.env.TB_REGISTRY_OWNER);
   if (owner && owner !== process.pid && alive(owner)) return null;
   process.env.TB_REGISTRY_OWNER = String(process.pid);
@@ -654,8 +685,10 @@ export function finishTidy(tidy) {
     // the IDEs set it, and the next IDE started from a real install points it
     // back at that install.
     if (tidy.keysInTemp) {
-      console.error("note: the .twinproj association pointed into the temp folder when this " +
-                    "run began, at another run's copy of the IDE, so it is left as it is now");
+      console.error(
+        "note: the .twinproj association pointed into the temp folder when this " +
+          "run began, at another run's copy of the IDE, so it is left as it is now",
+      );
     }
     done = { ...p, association: tidy.keysInTemp ? null : restoreKeys(tidy.keys) };
   } catch (e) {
@@ -670,9 +703,10 @@ export function finishTidy(tidy) {
 // Whether any value in a key snapshot names a path inside the temp folder.
 function namesTempFolder(snapshot) {
   const tmp = norm(path.resolve(tmpdir())) + "\\";
-  const named = (snap) => !!snap && (
-    [].concat(snap.values ?? []).some((v) => [].concat(v?.data ?? []).some((d) => norm(d).includes(tmp))) ||
-    [].concat(snap.keys ?? []).some((k) => named(k?.snap)));
+  const named = (snap) =>
+    !!snap &&
+    ([].concat(snap.values ?? []).some((v) => [].concat(v?.data ?? []).some((d) => norm(d).includes(tmp))) ||
+      [].concat(snap.keys ?? []).some((k) => named(k?.snap)));
   return [].concat(snapshot ?? []).some((e) => named(e?.snap));
 }
 
@@ -690,8 +724,9 @@ function snapshotTargets(paths, root) {
   try {
     return snapshotArchitectureMemory(paths, { root });
   } catch (e) {
-    console.error(`warning: the build targets the IDE remembers for this run's projects will ` +
-                  `not be put back: ${e.message}`);
+    console.error(
+      `warning: the build targets the IDE remembers for this run's projects will ` + `not be put back: ${e.message}`,
+    );
     return null;
   }
 }

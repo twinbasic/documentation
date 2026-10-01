@@ -84,13 +84,12 @@ jobs:
         # cannot see -- a spurious entry makes the oracle answer "exists"
         # for a path that 404s in production, and on a clean site nothing
         # links to a path that does not exist, so nothing else would
-        # notice. CI lost its previous coverage of this when the FsOracle
-        # pass was removed.
+        # notice.
         #
-        # It also removes a synchronisation point that used to be easy to
-        # get wrong. The standalone pass needed --base-path to match this
-        # step's --baseurl, in a different step, by hand; the fused check
-        # reads the baseurl off the config it just built with. Only the
+        # It also avoids a synchronisation point that is easy to get wrong:
+        # a standalone pass would need --base-path to match this step's
+        # --baseurl, in a different step, by hand; the fused check reads the
+        # baseurl off the config it just built with. Only the
         # online tree gets a base path -- the offline tree's links are all
         # relative after the rewrite.
         run: node builder/tbdocs.mjs --src docs --url '${{ steps.pages.outputs.origin }}' --baseurl '${{ steps.pages.outputs.base_path }}' --no-fetch-assets --check-audit-index

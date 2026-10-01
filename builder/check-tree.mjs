@@ -23,33 +23,37 @@ const OFFLINE_AUX = ["assets/js/search-data.js"];
 
 // Every relative path a tree receives. `which` is "online" or "offline";
 // the PDF tree's contents come from writePdf, which knows them exactly.
-export function deriveTreeRels(which, {
-  pages, staticFiles, stubs, themeAssetRels, excludePatterns,
-}) {
+export function deriveTreeRels(which, { pages, staticFiles, stubs, themeAssetRels, excludePatterns }) {
   const rels = new Set();
-  const add = which === "offline"
-    ? (rel) => { const r = posix(rel); if (!excluded(r, excludePatterns)) rels.add(r); }
-    : (rel) => rels.add(posix(rel));
+  const add =
+    which === "offline"
+      ? (rel) => {
+          const r = posix(rel);
+          if (!excluded(r, excludePatterns)) rels.add(r);
+        }
+      : (rel) => rels.add(posix(rel));
 
   for (const p of pages) {
     if (p.frontmatter?.layout === "book-combined") continue;
     add(p.destPath);
   }
-  for (const s of stubs)            add(s.destPath);
-  for (const s of staticFiles)      add(s.destRel);
+  for (const s of stubs) add(s.destPath);
+  for (const s of staticFiles) add(s.destRel);
   for (const rel of themeAssetRels) add(rel);
-  for (const rel of (which === "offline" ? OFFLINE_AUX : ONLINE_AUX)) add(rel);
+  for (const rel of which === "offline" ? OFFLINE_AUX : ONLINE_AUX) add(rel);
 
   return [...rels];
 }
 
-export function posix(p) { return String(p).replaceAll("\\", "/"); }
+export function posix(p) {
+  return String(p).replaceAll("\\", "/");
+}
 
 // offlineExcluded's rule, inlined rather than imported: offline-rewrite.mjs
 // is a much larger module and this is two functions.
 function excluded(rel, patterns) {
   if (!patterns || !patterns.length) return false;
-  return patterns.some(pat => fnmatch(pat, rel));
+  return patterns.some((pat) => fnmatch(pat, rel));
 }
 
 // File.fnmatch(..., FNM_PATHNAME): `*` does not cross `/`, `**` does.
@@ -58,8 +62,12 @@ function fnmatch(pattern, str) {
   for (let i = 0; i < pattern.length; i++) {
     const c = pattern[i];
     if (c === "*") {
-      if (pattern[i + 1] === "*") { re += ".*"; i++; }
-      else { re += "[^/]*"; }
+      if (pattern[i + 1] === "*") {
+        re += ".*";
+        i++;
+      } else {
+        re += "[^/]*";
+      }
     } else if (c === "?") {
       re += "[^/]";
     } else if (".+^$()|[]{}\\".includes(c)) {

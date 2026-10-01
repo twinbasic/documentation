@@ -51,7 +51,7 @@ import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/
 exitOnCrash();
 
 const cli = withUsageError(() =>
-  parseCli(process.argv.slice(2), { options: { help: { type: "boolean", short: "h" } }, stopAt: ["help"] })
+  parseCli(process.argv.slice(2), { options: { help: { type: "boolean", short: "h" } }, stopAt: ["help"] }),
 );
 if (cli.stopped === "help") {
   printHelpAndExit(`usage: node scripts/check_pdf_shims_equiv.mjs
@@ -240,7 +240,11 @@ function buildFixture() {
   obj(0, 0, "<< /Zero true >>");
   obj(1, 0, "<< /Type /Catalog /Pages 2 0 R /Dests 8 0 R /Misc 7 0 R /Extra 9 1 R /PageMode /UseOutlines >>");
   obj(2, 0, "<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>");
-  obj(3, 0, "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 6 0 R >>");
+  obj(
+    3,
+    0,
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 6 0 R >>",
+  );
   obj(4, 0, "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>");
   obj(5, 0, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
   stream(6, "", Buffer.from("BT /F1 12 Tf 72 720 Td (Fixture) Tj ET\n", "latin1"));
@@ -257,16 +261,19 @@ function buildFixture() {
 
   // The incremental update: an object stream holding 7, 4 and 12.
   const members = [
-    [7, [
-      "<< /Type /Misc /Name#20With#23Escapes /A#42C /Repeated /Repeated",
-      "/Int 42 /Neg -17 /Frac 3.25 /Lead .25 /NegLead -.5 /Plus +7 /Trail 3. /Paper 595.28 /Sum 2.28 /NegSum -40.8933",
-      "/Long 12345678901234567 /LongFrac 1234567890123456.5 /Huge 10000000000000000000000",
-      "/Tiny 0.0000001 /ManyDigits 0.12345678901234567890123",
-      "/True true /False false /Nil null",
-      "/Lit (a \\(nested\\) string, a \\\\ and \\053 and a newline\\n) /Hex <48656C6C6F> /OddHex <ABC> /SpacedHex <48 65 6C>",
-      "/Arr [1 [2 [3 /Repeated]] << /K /V /Deep << /Z null >> >> (s) <00FF> true 3 0 R] /Empty [] /EmptyDict << >>",
-      "/Ref 9 1 R >>",
-    ].join("\n")],
+    [
+      7,
+      [
+        "<< /Type /Misc /Name#20With#23Escapes /A#42C /Repeated /Repeated",
+        "/Int 42 /Neg -17 /Frac 3.25 /Lead .25 /NegLead -.5 /Plus +7 /Trail 3. /Paper 595.28 /Sum 2.28 /NegSum -40.8933",
+        "/Long 12345678901234567 /LongFrac 1234567890123456.5 /Huge 10000000000000000000000",
+        "/Tiny 0.0000001 /ManyDigits 0.12345678901234567890123",
+        "/True true /False false /Nil null",
+        "/Lit (a \\(nested\\) string, a \\\\ and \\053 and a newline\\n) /Hex <48656C6C6F> /OddHex <ABC> /SpacedHex <48 65 6C>",
+        "/Arr [1 [2 [3 /Repeated]] << /K /V /Deep << /Z null >> >> (s) <00FF> true 3 0 R] /Empty [] /EmptyDict << >>",
+        "/Ref 9 1 R >>",
+      ].join("\n"),
+    ],
     [4, "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Rotate 90 /Resources << >> >>"],
     [12, "[1 -2 3.5 /Name (str) <AB> true false null [[]] << /A 1 >> 7 0 R]"],
   ];
@@ -296,7 +303,11 @@ function buildFixture() {
     table.writeUInt16BE(index, i * 7 + 5);
   });
   const id = "<0123456789ABCDEF0123456789ABCDEF>";
-  stream(13, `/Type /XRef /Size 14 /Root 1 0 R /Info 10 0 R /ID [${id} ${id}] /Prev ${xref1} /W [1 4 2] /Index [4 1 7 1 11 3]`, table);
+  stream(
+    13,
+    `/Type /XRef /Size 14 /Root 1 0 R /Info 10 0 R /ID [${id} ${id}] /Prev ${xref1} /W [1 4 2] /Index [4 1 7 1 11 3]`,
+    table,
+  );
   put(`startxref\n${xref2}\n%%EOF\n`);
   return Buffer.concat(parts);
 }
@@ -335,7 +346,8 @@ function readSaved(bytes) {
       if (lengths.length !== 1) throw new Error(`stream ${num} has ${lengths.length} /Length entries`);
       const start = keyword + "\nstream\n".length;
       const end = start + Number(lengths[0][1]);
-      if (!s.startsWith("\nendstream\nendobj\n", end)) throw new Error(`stream ${num}'s /Length does not end at its endstream`);
+      if (!s.startsWith("\nendstream\nendobj\n", end))
+        throw new Error(`stream ${num}'s /Length does not end at its endstream`);
       Object.assign(at, { dict, content: bytes.subarray(start, end) });
       p = end + "\nendstream\nendobj\n".length;
     } else {
@@ -373,7 +385,8 @@ function readSaved(bytes) {
       const first = Number(/\/First (\d+)/.exec(at.dict)?.[1]);
       const text = data.toString("latin1");
       const head = text.slice(0, first).trim().split(/\s+/).map(Number);
-      if (head.length !== 2 * n || head.some(Number.isNaN)) throw new Error(`object stream ${num}'s header does not list ${n} objects`);
+      if (head.length !== 2 * n || head.some(Number.isNaN))
+        throw new Error(`object stream ${num}'s header does not list ${n} objects`);
       for (let k = 0; k < n; k++) {
         const end = k + 1 < n ? first + head[2 * k + 3] : text.length;
         add(head[2 * k], { gen: 0, container: num, entry: k, text: text.slice(first + head[2 * k + 1], end) });
@@ -402,7 +415,8 @@ function readSaved(bytes) {
     const located = new Set();
     for (let i = 0; i < index.length; i += 2) {
       for (let num = index[i]; num < index[i] + index[i + 1]; num++) {
-        if (q + w[0] + w[1] + w[2] > xref.data.length) throw new Error("its cross-reference stream is shorter than its /Index");
+        if (q + w[0] + w[1] + w[2] > xref.data.length)
+          throw new Error("its cross-reference stream is shorter than its /Index");
         const type = field(w[0], 1);
         const f2 = field(w[1], 0);
         const f3 = field(w[2], 0);
@@ -410,11 +424,15 @@ function readSaved(bytes) {
         if (type === 1) {
           const at = top.get(num);
           if (!at || at.offset !== f2 || at.gen !== f3) {
-            problems.push(`the cross-reference entry for object ${num} gives byte ${f2}, generation ${f3}, where ${at ? `it starts at byte ${at.offset}, generation ${at.gen}` : "no such object is written at the top level"}`);
+            problems.push(
+              `the cross-reference entry for object ${num} gives byte ${f2}, generation ${f3}, where ${at ? `it starts at byte ${at.offset}, generation ${at.gen}` : "no such object is written at the top level"}`,
+            );
           }
         } else if (type === 2) {
           if (!o || o.container !== f2 || o.entry !== f3) {
-            problems.push(`the cross-reference entry for object ${num} gives object stream ${f2}, entry ${f3}, where it is ${o ? where(o) : "not written"}`);
+            problems.push(
+              `the cross-reference entry for object ${num} gives object stream ${f2}, entry ${f3}, where it is ${o ? where(o) : "not written"}`,
+            );
           }
         } else {
           continue;
@@ -422,10 +440,13 @@ function readSaved(bytes) {
         located.add(num);
       }
     }
-    if (q !== xref.data.length) problems.push(`its cross-reference stream has ${xref.data.length - q} bytes after its last entry`);
-    for (const num of objects.keys()) if (!located.has(num)) problems.push(`object ${num} has no cross-reference entry`);
+    if (q !== xref.data.length)
+      problems.push(`its cross-reference stream has ${xref.data.length - q} bytes after its last entry`);
+    for (const num of objects.keys())
+      if (!located.has(num)) problems.push(`object ${num} has no cross-reference entry`);
     const xrefAt = top.get(xref.num).offset;
-    if (Number(startxref[1]) !== xrefAt) problems.push(`startxref gives byte ${startxref[1]}, where the cross-reference stream starts at byte ${xrefAt}`);
+    if (Number(startxref[1]) !== xrefAt)
+      problems.push(`startxref gives byte ${startxref[1]}, where the cross-reference stream starts at byte ${xrefAt}`);
   }
   return { objects, problems };
 }
@@ -444,12 +465,15 @@ function differences(stock, shimmed) {
     const b = shimmed.objects.get(num);
     if (!b) found.push(`object ${num} is missing; stock writes it in ${where(a)}`);
     else if (!a) found.push(`object ${num} is written in ${where(b)}, and stock does not write it`);
-    else if (where(a) !== where(b)) found.push(`object ${num} is written in ${where(b)}; stock writes it in ${where(a)}`);
+    else if (where(a) !== where(b))
+      found.push(`object ${num} is written in ${where(b)}; stock writes it in ${where(a)}`);
     else if (a.text !== b.text) {
       let i = 0;
       while (a.text[i] === b.text[i]) i++;
       const around = (t) => JSON.stringify(t.slice(Math.max(0, i - 30), i + 30));
-      found.push(`object ${num}, in ${where(a)}, from byte ${i} of its text:\n  stock:   ${around(a.text)}\n  shimmed: ${around(b.text)}`);
+      found.push(
+        `object ${num}, in ${where(a)}, from byte ${i} of its text:\n  stock:   ${around(a.text)}\n  shimmed: ${around(b.text)}`,
+      );
     }
   }
   return found;
@@ -466,13 +490,20 @@ function runSide(dir, name, fixture, { shims, parallel, coverage = false }) {
     const child = spawn(process.execPath, [SIDE, job], { stdio: ["ignore", "pipe", "pipe"], timeout: SIDE_TIMEOUT_MS });
     let stdout = "";
     let stderr = "";
-    child.stdout.on("data", (d) => { stdout += d; });
-    child.stderr.on("data", (d) => { stderr += d; });
+    child.stdout.on("data", (d) => {
+      stdout += d;
+    });
+    child.stderr.on("data", (d) => {
+      stderr += d;
+    });
     child.on("error", (err) => resolve({ error: err.message }));
     child.on("close", (code, signal) => {
       if (code !== 0) {
         const why = signal ? `was ended by ${signal}` : `exited ${code}`;
-        const lines = stderr.trim().split(/\r?\n/).filter((l) => !l.startsWith("Parsed number that is too large"));
+        const lines = stderr
+          .trim()
+          .split(/\r?\n/)
+          .filter((l) => !l.startsWith("Parsed number that is too large"));
         resolve({ error: `${why}${lines.length ? `: ${lines.slice(0, 6).join("\n    ")}` : ""}` });
         return;
       }
@@ -518,7 +549,7 @@ async function diagnose(dir, document, shims, stock) {
   ];
   const sides = await pool(
     variants.map((v, i) => () => runSide(dir, `${document.name}-variant-${i}`, document.fixture, v)),
-    Math.min(4, availableParallelism())
+    Math.min(4, availableParallelism()),
   );
   return variants.map((v, i) => ({ ...v, differs: against(stock, sides[i]).length > 0 }));
 }
@@ -551,14 +582,16 @@ try {
         runSide(dir, `${document.name}-stock`, document.fixture, { shims: [], parallel: false }),
         runSide(dir, `${document.name}-shimmed`, document.fixture, { shims, parallel: true, coverage: true }),
       ]);
-    })
+    }),
   );
   for (const document of documents) {
     const { name, stockSide, shimmedSide } = document;
     if (stockSide.error) throw new Error(`the stock side for the ${name} document ${stockSide.error}`);
     document.stock = readSaved(stockSide.bytes);
     if (document.stock.problems.length) {
-      throw new Error(`stock pdf-lib's output for the ${name} document fails the reader here:\n  ${document.stock.problems.join("\n  ")}`);
+      throw new Error(
+        `stock pdf-lib's output for the ${name} document fails the reader here:\n  ${document.stock.problems.join("\n  ")}`,
+      );
     }
     document.found = against(document.stock, shimmedSide);
   }
@@ -566,22 +599,27 @@ try {
   const shimmedSides = documents.map((d) => d.shimmedSide);
   const ok = shimmedSides.every((side) => !side.error);
   const unreached = ok ? shims.filter((s) => !shimmedSides.some((side) => side.reached.includes(s))).map(shimName) : [];
-  if (ok && shimmedSides.some((side) => side.streamCount === 0)) unreached.push("parallel-deflate.mjs (no object stream was deflated on the thread pool)");
+  if (ok && shimmedSides.some((side) => side.streamCount === 0))
+    unreached.push("parallel-deflate.mjs (no object stream was deflated on the thread pool)");
   const patched = ok ? mergePatched(shimmedSides) : null;
   const members = ok ? againstPatches(patched, unreached) : null;
-  const faults = members ? members.missing.length + members.unlisted.length + members.notRun.length + members.nowRun.length : 0;
+  const faults = members
+    ? members.missing.length + members.unlisted.length + members.notRun.length + members.nowRun.length
+    : 0;
   const [loaded, created] = documents;
 
   if (documents.every((d) => d.found.length === 0) && unreached.length === 0 && faults === 0) {
     console.log(
       `${TOOL}: stock pdf-lib and ${shims.length} shims with parallelSave write the same ${loaded.stock.objects.size} objects ` +
         `for a loaded document and the same ${created.stock.objects.size} for a created one; ` +
-        `the ${patched.length} members the shims patch are as listed, and all ran but the ${members.marked} marked`
+        `the ${patched.length} members the shims patch are as listed, and all ran but the ${members.marked} marked`,
     );
   } else {
     for (const document of documents.filter((d) => d.found.length)) {
       const { name, found } = document;
-      console.log(`${TOOL}: the shimmed output for the ${name} document differs from stock pdf-lib's in ${found.length} place(s):`);
+      console.log(
+        `${TOOL}: the shimmed output for the ${name} document differs from stock pdf-lib's in ${found.length} place(s):`,
+      );
       for (const line of found.slice(0, 5)) console.log(`  ${line.replaceAll("\n", "\n  ")}`);
       if (found.length > 5) console.log(`  ... and ${found.length - 5} more`);
       const verdicts = await diagnose(dir, document, shims, document.stock);
@@ -590,7 +628,9 @@ try {
       console.log(`  matches with only this left out: ${list(verdicts.filter((v) => !v.alone && !v.differs))}`);
     }
     if (unreached.length) {
-      console.log(`${TOOL}: ${unreached.length} shim(s) did nothing while the documents were loaded or created, changed and saved:`);
+      console.log(
+        `${TOOL}: ${unreached.length} shim(s) did nothing while the documents were loaded or created, changed and saved:`,
+      );
       for (const name of unreached) console.log(`  book/lib/${name}`);
       console.log("  The documents no longer reach the shim, or the book does not need it.");
     }
@@ -601,9 +641,21 @@ try {
       console.log(`  ${why}`);
     };
     if (members) {
-      report(members.missing, "member(s) PATCHES lists are not patched", "The shim no longer patches pdf-lib's own object, or PATCHES is out of date.");
-      report(members.unlisted, "patched member(s) are not in PATCHES", "Add each to PATCHES, marked with a reason if neither document reaches it.");
-      report(members.notRun, "patched member(s) never ran", "The documents no longer reach the function, or the book does not need it; PATCHES can mark it, with the reason.");
+      report(
+        members.missing,
+        "member(s) PATCHES lists are not patched",
+        "The shim no longer patches pdf-lib's own object, or PATCHES is out of date.",
+      );
+      report(
+        members.unlisted,
+        "patched member(s) are not in PATCHES",
+        "Add each to PATCHES, marked with a reason if neither document reaches it.",
+      );
+      report(
+        members.notRun,
+        "patched member(s) never ran",
+        "The documents no longer reach the function, or the book does not need it; PATCHES can mark it, with the reason.",
+      );
       report(members.nowRun, "member(s) PATCHES marks as not reached ran", "Remove the mark from PATCHES.");
     }
     process.exitCode = 1;

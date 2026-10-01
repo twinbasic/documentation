@@ -56,9 +56,7 @@ const EN_DASH = "–";
 
 // First em-dash after a `[link](url)` on a bullet line. The negated class stops
 // at a backtick so the match cannot reach into an inline-code span.
-const SEPARATOR_RE = new RegExp(
-  String.raw`^(- \[.*?\]\(.*?\)[^` + EM_DASH + String.raw`\x60]*)` + EM_DASH,
-);
+const SEPARATOR_RE = new RegExp(String.raw`^(- \[.*?\]\(.*?\)[^` + EM_DASH + String.raw`\x60]*)` + EM_DASH);
 
 function countOf(haystack, needle) {
   let n = 0;
@@ -140,10 +138,12 @@ Exit codes:
   2  a refused command line, or a crash`;
 
 async function main(argv) {
-  const { values } = withUsageError(() => parseCli(argv, {
-    options: { check: { type: "boolean" }, help: { type: "boolean", short: "h" } },
-    stopAt: ["help"],
-  }));
+  const { values } = withUsageError(() =>
+    parseCli(argv, {
+      options: { check: { type: "boolean" }, help: { type: "boolean", short: "h" } },
+      stopAt: ["help"],
+    }),
+  );
   if (values.help) printHelpAndExit(USAGE);
   const check = values.check;
   let files = 0;

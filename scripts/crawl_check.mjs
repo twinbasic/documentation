@@ -75,9 +75,9 @@ const FRAGMENT_TARGETS = new Map(); // url (no fragment) -> Set of ids found
 
 const crawlQueue = [startUrl.href];
 const crawled = new Set();
-const linkStatus = new Map();       // url -> { ok, status, error?, redirected? }
-const linkSources = new Map();      // url -> Set of source pages
-const linkFragments = new Map();    // url (no fragment) -> Set of [fragment, source]
+const linkStatus = new Map(); // url -> { ok, status, error?, redirected? }
+const linkSources = new Map(); // url -> Set of source pages
+const linkFragments = new Map(); // url (no fragment) -> Set of [fragment, source]
 
 function shouldSkip(href) {
   if (!href) return true;
@@ -190,7 +190,11 @@ async function crawlOne(url) {
   for (const rawHref of links) {
     if (shouldSkip(rawHref)) continue;
     let abs;
-    try { abs = new URL(rawHref, res.url); } catch { continue; }
+    try {
+      abs = new URL(rawHref, res.url);
+    } catch {
+      continue;
+    }
     if (abs.protocol !== "http:" && abs.protocol !== "https:") continue;
 
     const [bare, frag] = splitFragment(abs.href);
@@ -213,12 +217,14 @@ async function workerPool(items, fn, n) {
   let i = 0;
   const workers = [];
   for (let k = 0; k < n; k++) {
-    workers.push((async () => {
-      while (i < items.length) {
-        const idx = i++;
-        await fn(items[idx]);
-      }
-    })());
+    workers.push(
+      (async () => {
+        while (i < items.length) {
+          const idx = i++;
+          await fn(items[idx]);
+        }
+      })(),
+    );
   }
   await Promise.all(workers);
 }
@@ -306,7 +312,10 @@ async function main() {
     }
   }
 
-  process.exitCode = (broken.length > 0 || fragmentMisses.length > 0) ? 1 : 0;
+  process.exitCode = broken.length > 0 || fragmentMisses.length > 0 ? 1 : 0;
 }
 
-main().catch((e) => { console.error(e); process.exitCode = 2; });
+main().catch((e) => {
+  console.error(e);
+  process.exitCode = 2;
+});

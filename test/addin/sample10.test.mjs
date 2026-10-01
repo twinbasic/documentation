@@ -11,12 +11,18 @@ import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { loadedAddins } from "../../scripts/lib/tb-ide-addins.mjs";
 import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
-import { answerMessageBox, click, messageBoxes, notifications, toolWindow,
-         waitFor } from "../../scripts/lib/tb-operate.mjs";
+import {
+  answerMessageBox,
+  click,
+  messageBoxes,
+  notifications,
+  toolWindow,
+  waitFor,
+} from "../../scripts/lib/tb-operate.mjs";
 import { scenario } from "./scenario.mjs";
 
 const HOST = path.join(path.dirname(fileURLToPath(import.meta.url)), "host");
-const W = "WaynesWindowData";          // the id Sample 10 gives ToolWindows.Add
+const W = "WaynesWindowData"; // the id Sample 10 gives ToolWindows.Add
 
 // The message box on top, with its text trimmed, or undefined.
 async function topBox(c) {
@@ -50,7 +56,10 @@ scenario("Sample 10: WaynesWorld", (lane) => {
 
   test("its other button opens its tool window", async () => {
     await click(c, "addinButton-ShowToolWindow");
-    const w = await waitFor(c, async (c) => { const t = await toolWindow(c, W); return t?.visible && t; });
+    const w = await waitFor(c, async (c) => {
+      const t = await toolWindow(c, W);
+      return t?.visible && t;
+    });
     assert.ok(w, "the tool window did not appear");
     assert.match(w.text, /11\. ShowMessageBox/);
   });
@@ -58,11 +67,17 @@ scenario("Sample 10: WaynesWorld", (lane) => {
   test("a three-button message box, answered with its second button", async () => {
     await click(c, { toolWindow: W, css: "#myButton11" });
     const first = await waitFor(c, topBox);
-    assert.deepEqual(first, { title: "Choose an option", text: "Hello there from WaynesWorldAddIn!",
-                              buttons: ["button1", "button2", "button3"] });
+    assert.deepEqual(first, {
+      title: "Choose an option",
+      text: "Hello there from WaynesWorldAddIn!",
+      buttons: ["button1", "button2", "button3"],
+    });
     await answerMessageBox(c, "button2");
     // The add-in's call returns the button's index, and it answers with a second box.
-    const second = await waitFor(c, async (c) => { const b = await topBox(c); return b?.title === "option" && b; });
+    const second = await waitFor(c, async (c) => {
+      const b = await topBox(c);
+      return b?.title === "option" && b;
+    });
     assert.deepEqual(second, { title: "option", text: "you selected button2", buttons: ["ok"] });
     await answerMessageBox(c, "ok");
     assert.ok(await noBoxes(c), "a message box is still open");
@@ -70,7 +85,9 @@ scenario("Sample 10: WaynesWorld", (lane) => {
 
   test("a notification", async () => {
     await click(c, { toolWindow: W, css: "#myButton10" });
-    const shown = await waitFor(c, async (c) => (await notifications(c)).find((t) => t.trim() === "Hello there from WaynesWorldAddIn!"));
+    const shown = await waitFor(c, async (c) =>
+      (await notifications(c)).find((t) => t.trim() === "Hello there from WaynesWorldAddIn!"),
+    );
     assert.ok(shown, `notifications: ${JSON.stringify(await notifications(c))}`);
   });
 

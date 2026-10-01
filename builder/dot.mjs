@@ -54,30 +54,35 @@ export async function regenerateDot(srcRoot) {
     if (!(await isUpToDate(svg, src))) stale.push({ src, svg });
   }
   if (stale.length === 0) {
-    return { processed: sources.length, regenerated: 0,
-             svgFiles: await statSvgFiles(sources, srcRoot) };
+    return { processed: sources.length, regenerated: 0, svgFiles: await statSvgFiles(sources, srcRoot) };
   }
 
   let Graphviz;
   try {
     ({ Graphviz } = await import("@hpcc-js/wasm-graphviz"));
   } catch (err) {
-    console.warn(
-      `dot: skipped batch (${explainLoadFailure(err)}); existing SVGs retained`,
-    );
-    return { processed: sources.length, regenerated: 0, failed: 0, setupSkipped: true,
-             svgFiles: await statSvgFiles(sources, srcRoot) };
+    console.warn(`dot: skipped batch (${explainLoadFailure(err)}); existing SVGs retained`);
+    return {
+      processed: sources.length,
+      regenerated: 0,
+      failed: 0,
+      setupSkipped: true,
+      svgFiles: await statSvgFiles(sources, srcRoot),
+    };
   }
 
   let gv;
   try {
     gv = await Graphviz.load();
   } catch (err) {
-    console.warn(
-      `dot: skipped batch (WASM load failed: ${err.message}); existing SVGs retained`,
-    );
-    return { processed: sources.length, regenerated: 0, failed: 0, setupSkipped: true,
-             svgFiles: await statSvgFiles(sources, srcRoot) };
+    console.warn(`dot: skipped batch (WASM load failed: ${err.message}); existing SVGs retained`);
+    return {
+      processed: sources.length,
+      regenerated: 0,
+      failed: 0,
+      setupSkipped: true,
+      svgFiles: await statSvgFiles(sources, srcRoot),
+    };
   }
 
   // Graphviz measures with Times unless told otherwise, and the diagrams are
@@ -86,11 +91,13 @@ export async function regenerateDot(srcRoot) {
   try {
     applyInterMetrics(gv);
   } catch (err) {
-    console.warn(
-      `dot: skipped batch (Inter metrics unavailable: ${err.message}); existing SVGs retained`,
-    );
-    return { processed: sources.length, regenerated: 0, failed: stale.length,
-             svgFiles: await statSvgFiles(sources, srcRoot) };
+    console.warn(`dot: skipped batch (Inter metrics unavailable: ${err.message}); existing SVGs retained`);
+    return {
+      processed: sources.length,
+      regenerated: 0,
+      failed: stale.length,
+      svgFiles: await statSvgFiles(sources, srcRoot),
+    };
   }
 
   let regenerated = 0;
@@ -102,14 +109,11 @@ export async function regenerateDot(srcRoot) {
       await fs.writeFile(svg, svgXml, "utf8");
       regenerated++;
     } catch (err) {
-      console.warn(
-        `dot: skipped ${path.basename(src)} (${err.message}); existing SVG retained`,
-      );
+      console.warn(`dot: skipped ${path.basename(src)} (${err.message}); existing SVG retained`);
       failed++;
     }
   }
-  return { processed: sources.length, regenerated, failed,
-           svgFiles: await statSvgFiles(sources, srcRoot) };
+  return { processed: sources.length, regenerated, failed, svgFiles: await statSvgFiles(sources, srcRoot) };
 }
 
 async function statSvgFiles(sources, srcRoot) {
@@ -160,8 +164,7 @@ export async function listDotSources(srcRoot) {
 // which is what happens to every one of these -- render.mjs's svgInlinePlugin
 // drops the whole thing into the page, where an HTML parser turns the
 // `<?xml ...?>` into a bogus comment node and discards the in-body DOCTYPE as
-// a parse error. It rendered anyway, which is why it went unnoticed on the
-// three diagrams that shipped with it.
+// a parse error. It renders anyway, so the fault is invisible on the page.
 //
 // They buy nothing in a standalone file either: the XML declaration is
 // optional for UTF-8, and the W3C discourages the SVG 1.1 DOCTYPE outright.
@@ -176,12 +179,12 @@ function stripXmlPrologue(svgXml, label) {
     .replace(/^\s*<\?xml[\s\S]*?\?>\s*/i, "")
     .replace(/^\s*<!DOCTYPE[\s\S]*?>\s*/i, "");
 
-  // Assert rather than hope: a Graphviz that changed its preamble would
-  // otherwise slip a parse error back into six pages, silently again.
+  // Assert rather than hope: a Graphviz that changes its preamble would
+  // otherwise slip a parse error back into the pages, silently.
   if (/<\?xml|<!DOCTYPE/i.test(out)) {
     throw new Error(
       `${label}: an XML declaration or DOCTYPE survived stripping -- ` +
-      "Graphviz's preamble has changed shape; update stripXmlPrologue()",
+        "Graphviz's preamble has changed shape; update stripXmlPrologue()",
     );
   }
   if (!out.includes("<svg")) {
@@ -198,32 +201,32 @@ function svgFor(src) {
 // second half is not pedantry: changing this module or the width table leaves
 // every `.dot` untouched, so an mtime check that only looked at sources would
 // call the whole batch fresh and quietly keep serving output the current code
-// would no longer produce. That happened twice while this was being written --
-// once installing the Inter metrics, once stripping the XML prologue -- and
-// both times the build reported "regenerated: 0" on a change that altered
+// would no longer produce, reporting "regenerated: 0" on a change that alters
 // every diagram.
 //
 // Cost of getting it wrong is a silent stale artifact; cost of the guard is
 // re-rendering five diagrams, which is sub-millisecond each after the WASM
 // load. A fresh clone regenerates once and then settles.
-const GENERATOR_FILES = ["dot.mjs", "dot-metrics.mjs", "inter-metrics.json"]
-  .map((f) => fileURLToPath(new URL(f, import.meta.url)));
+const GENERATOR_FILES = ["dot.mjs", "dot-metrics.mjs", "inter-metrics.json"].map((f) =>
+  fileURLToPath(new URL(f, import.meta.url)),
+);
 
 let generatorMtimePromise = null;
 function generatorMtime() {
   generatorMtimePromise ??= Promise.all(
-    GENERATOR_FILES.map((f) => fs.stat(f).then((s) => s.mtimeMs, () => 0)),
+    GENERATOR_FILES.map((f) =>
+      fs.stat(f).then(
+        (s) => s.mtimeMs,
+        () => 0,
+      ),
+    ),
   ).then((times) => Math.max(0, ...times));
   return generatorMtimePromise;
 }
 
 async function isUpToDate(svg, src) {
   try {
-    const [srcStat, svgStat, genMtime] = await Promise.all([
-      fs.stat(src),
-      fs.stat(svg),
-      generatorMtime(),
-    ]);
+    const [srcStat, svgStat, genMtime] = await Promise.all([fs.stat(src), fs.stat(svg), generatorMtime()]);
     return svgStat.mtimeMs >= srcStat.mtimeMs && svgStat.mtimeMs >= genMtime;
   } catch {
     return false;

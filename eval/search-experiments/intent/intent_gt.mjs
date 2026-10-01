@@ -77,16 +77,20 @@ export function buildIntentGroundTruth(symbols) {
 
     let tier, chosen;
     if (typeCands.length) {
-      tier = "type"; chosen = typeCands;
+      tier = "type";
+      chosen = typeCands;
       if (coreCands.length || enumCands.length) {
         doubtful.push({ name: group[0].name, tier, reason: "also has core/enum candidates, type wins", group });
       }
     } else if (coreCands.length) {
-      tier = "core"; chosen = coreCands;
+      tier = "core";
+      chosen = coreCands;
     } else if (enumCands.length) {
-      tier = "enum"; chosen = enumCands;
+      tier = "enum";
+      chosen = enumCands;
     } else {
-      tier = "member"; chosen = group;
+      tier = "member";
+      chosen = group;
     }
     tierCounts[tier]++;
 
@@ -94,7 +98,12 @@ export function buildIntentGroundTruth(symbols) {
     // (ambiguous even within its own tier) -- worth listing as doubtful.
     const distinctUrls = new Set(chosen.map((s) => normalizeUrl(s.url).split("#")[0]));
     if (tier !== "member" && distinctUrls.size > 1) {
-      doubtful.push({ name: group[0].name, tier, reason: `${distinctUrls.size} distinct pages within tier ${tier}`, group: chosen });
+      doubtful.push({
+        name: group[0].name,
+        tier,
+        reason: `${distinctUrls.size} distinct pages within tier ${tier}`,
+        group: chosen,
+      });
     }
 
     queries.push({

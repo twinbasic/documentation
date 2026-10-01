@@ -9,8 +9,18 @@
 // with everything else that reads the command line.
 
 import {
-  BODY_SLOTS, CONCAT_KEY, HIDDEN_MARKER, MARKER, RUN_MARKER, SLOTS, classify,
-  concatFences, parseInfo, partOf, resourcePath, wrapFence,
+  BODY_SLOTS,
+  CONCAT_KEY,
+  HIDDEN_MARKER,
+  MARKER,
+  RUN_MARKER,
+  SLOTS,
+  classify,
+  concatFences,
+  parseInfo,
+  partOf,
+  resourcePath,
+  wrapFence,
 } from "./tb-fences.mjs";
 
 /** check_examples.mjs's defaults for `--jobs` and `--batch`, which the probes batch with. */
@@ -30,19 +40,24 @@ export function joinConcatGroups(fences) {
   const out = [];
   for (const fence of fences) {
     const name = fence.keys.get(CONCAT_KEY);
-    if (!name) { out.push(fence); continue; }
+    if (!name) {
+      out.push(fence);
+      continue;
+    }
     // A group is its page's own, the way hidden context is. Keyed by name
     // alone, two pages that picked the same name would be stitched into one
     // unit -- a class opened on one page and closed on another -- and nothing
     // would say so, because the join happens before anything is classified.
     const key = `${fence.rel}\u0000${name}`;
-    if (!groups.has(key)) { groups.set(key, []); out.push({ concatPlaceholder: key }); }
+    if (!groups.has(key)) {
+      groups.set(key, []);
+      out.push({ concatPlaceholder: key });
+    }
     groups.get(key).push(fence);
   }
   return out.flatMap((f) => {
     if (!f.concatPlaceholder) return [f];
-    const parts = groups.get(f.concatPlaceholder)
-      .sort((a, b) => a.rel.localeCompare(b.rel) || a.line - b.line);
+    const parts = groups.get(f.concatPlaceholder).sort((a, b) => a.rel.localeCompare(b.rel) || a.line - b.line);
     return [concatFences(parts)];
   });
 }
@@ -84,7 +99,10 @@ export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_
   const hiddenByPage = new Map();
   const visible = [];
   for (const f of fences) {
-    if (!f.flags.has(HIDDEN_MARKER) && !f.isResource) { visible.push(f); continue; }
+    if (!f.flags.has(HIDDEN_MARKER) && !f.isResource) {
+      visible.push(f);
+      continue;
+    }
     const key = `${f.project}\u0000${f.rel}`;
     if (!hiddenByPage.has(key)) hiddenByPage.set(key, []);
     hiddenByPage.get(key).push(f);
@@ -120,8 +138,7 @@ export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_
       // Only the slots that put declarations at container scope export
       // anything. A `sub` or `method` sample's declarations are inside a
       // Private Sub and cannot collide with anything.
-      const nameOf = (f) =>
-        (BODY_SLOTS.has(f.slot) ? [] : (f.inferred?.names ?? [])).map((n) => n.toLowerCase());
+      const nameOf = (f) => (BODY_SLOTS.has(f.slot) ? [] : (f.inferred?.names ?? [])).map((n) => n.toLowerCase());
       const pages = new Set(members.map((f) => f.rel));
       const names = members.flatMap(nameOf);
       // What the unit's pages' hidden context would ADD to a batch. It is kept
@@ -143,7 +160,11 @@ export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_
         const own = new Set(names);
         for (const rel of pages) for (const n of hiddenNamesFor(rel)) own.add(n);
         batches.push({
-          project, fences: [...members], names: own, pages, group: key.slice(1),
+          project,
+          fences: [...members],
+          names: own,
+          pages,
+          group: key.slice(1),
         });
         continue;
       }
@@ -208,8 +229,9 @@ export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_
 // sends a crash to isolateCrash before it reads the canary.
 export const CANARIES = [
   {
-    file: "tbxCanary.twin", code: "TB0005",
-    text: "[EnforceWarnings(TB0005)]\nPublic Module tbxCanary\n#Warning \"check_examples canary\"\nEnd Module\n",
+    file: "tbxCanary.twin",
+    code: "TB0005",
+    text: '[EnforceWarnings(TB0005)]\nPublic Module tbxCanary\n#Warning "check_examples canary"\nEnd Module\n',
   },
 ];
 export const CANARY_FILES = new Map(CANARIES.map((c) => [c.file.toLowerCase(), c]));
@@ -221,12 +243,12 @@ export const CANARY_FILES = new Map(CANARIES.map((c) => [c.file.toLowerCase(), c
  * @param {Map<string, string[]>} drawn  lower-cased canary file name -> the messages of its rows
  */
 export function canaryProblem(drawn) {
-  const missing = CANARIES
-    .filter((c) => !(drawn.get(c.file.toLowerCase()) ?? []).some((m) => m.startsWith(c.code)))
-    .map((c) => {
-      const got = drawn.get(c.file.toLowerCase()) ?? [];
-      return `${c.file} drew ${got.length ? got.join("; ") : "nothing"}, and should draw ${c.code}`;
-    });
+  const missing = CANARIES.filter(
+    (c) => !(drawn.get(c.file.toLowerCase()) ?? []).some((m) => m.startsWith(c.code)),
+  ).map((c) => {
+    const got = drawn.get(c.file.toLowerCase()) ?? [];
+    return `${c.file} drew ${got.length ? got.join("; ") : "nothing"}, and should draw ${c.code}`;
+  });
   return missing.length ? missing.join("; ") : null;
 }
 
@@ -305,17 +327,24 @@ function takeOut(batch, ids) {
   const { list, hidden } = unitsOf(batch);
   const named = list.filter((u) => u.some((f) => ids.has(f.id)));
   if (!named.length || named.length === list.length) return null;
-  return [batchOf(batch, named, hidden),
-          batchOf(batch, list.filter((u) => !named.includes(u)), hidden)];
+  return [
+    batchOf(batch, named, hidden),
+    batchOf(
+      batch,
+      list.filter((u) => !named.includes(u)),
+      hidden,
+    ),
+  ];
 }
 
 /** The visible samples of a leaf batch, and how to describe it in a finding. */
 function leafOf(batch) {
   const visible = batch.fences.filter((f) => !f.flags.has(HIDDEN_MARKER) && !f.isResource);
-  const rest = visible.length > 1
-    ? ` -- one of the ${visible.length} samples in group \`${batch.group ?? "?"}\`, ` +
-      "which is compiled as one program and cannot be split further"
-    : "";
+  const rest =
+    visible.length > 1
+      ? ` -- one of the ${visible.length} samples in group \`${batch.group ?? "?"}\`, ` +
+        "which is compiled as one program and cannot be split further"
+      : "";
   return { rep: visible[0] ?? batch.fences[0], ids: visible.map((f) => f.id), rest };
 }
 
@@ -336,27 +365,34 @@ const sameRow = (row) => row.replace(/[/\\]DocSamples\d+[/\\]/, "/");
 const templateOwnRows = new Map();
 function ownRowsOf(project, lane) {
   if (!templateOwnRows.has(project)) {
-    templateOwnRows.set(project, (async () => {
-      // A read with no rows and no canary is read once more, and never believed:
-      // it would leave every row of the template counted as a sample's, for the
-      // rest of the run. A read with rows of its own was not silent, and needs
-      // no canary, as in runBatch.
-      const silent = (r) => !r.crashed && r.canaryProblem && !(r.unattributed ?? []).length;
-      let result = await lane.build({ project, fences: [] });
-      if (silent(result)) result = await lane.build({ project, fences: [] });
-      if (silent(result)) {
-        throw new Error(`the canary did not report in the \`${project}\` template built with no samples, ` +
-          `twice (${result.canaryProblem}): the IDE is reporting before its diagnostics are ready`);
-      }
-      const rows = result.crashed
-        ? [`the ${project} template crashes the compiler with no samples in it`]
-        : [...(result.unattributed ?? []), ...(result.unreadable ?? [])];
-      if (rows.length) {
-        lane.note(`  note: template \`${project}\` does not build clean on its own; ` +
-          `${rows.length} row(s) are its own, not any sample's`);
-      }
-      return new Set(rows.map(sameRow));
-    })());
+    templateOwnRows.set(
+      project,
+      (async () => {
+        // A read with no rows and no canary is read once more, and never believed:
+        // it would leave every row of the template counted as a sample's, for the
+        // rest of the run. A read with rows of its own was not silent, and needs
+        // no canary, as in runBatch.
+        const silent = (r) => !r.crashed && r.canaryProblem && !(r.unattributed ?? []).length;
+        let result = await lane.build({ project, fences: [] });
+        if (silent(result)) result = await lane.build({ project, fences: [] });
+        if (silent(result)) {
+          throw new Error(
+            `the canary did not report in the \`${project}\` template built with no samples, ` +
+              `twice (${result.canaryProblem}): the IDE is reporting before its diagnostics are ready`,
+          );
+        }
+        const rows = result.crashed
+          ? [`the ${project} template crashes the compiler with no samples in it`]
+          : [...(result.unattributed ?? []), ...(result.unreadable ?? [])];
+        if (rows.length) {
+          lane.note(
+            `  note: template \`${project}\` does not build clean on its own; ` +
+              `${rows.length} row(s) are its own, not any sample's`,
+          );
+        }
+        return new Set(rows.map(sameRow));
+      })(),
+    );
   }
   return templateOwnRows.get(project);
 }
@@ -379,7 +415,11 @@ async function heard(result, project, lane) {
 // A function, not a shared object: spreading one would hand every caller the
 // same arrays, and a recursion that pushes into them is a bug waiting.
 const blank = () => ({
-  perFence: new Map(), templateFaults: [], crashed: [], blamed: [], blamedRows: new Map(),
+  perFence: new Map(),
+  templateFaults: [],
+  crashed: [],
+  blamed: [],
+  blamedRows: new Map(),
 });
 
 /** Several parts' results, as one batch's. */
@@ -412,9 +452,9 @@ async function split(batch, lane, why) {
  * built on its own and the rest without it, two builds where halving pays two
  * for every level. With no sample of the batch named, halve. Either way a
  * crash can need several samples at once, and then no part crashes by itself
- * -- the named sample and the rest both build, or both halves do. That used to
- * end with every sample of the batch counted as compiling; `together` finds the
- * samples the crash needs instead.
+ * -- the named sample and the rest both build, or both halves do. Counting
+ * every sample of the batch as compiling would be wrong there; `together` finds
+ * the samples the crash needs instead.
  *
  * The result is marked `fromCrash`, because a part that crashed may come back
  * with nothing in `crashed` -- its crash needed several samples too -- and
@@ -427,8 +467,11 @@ async function isolateCrash(batch, named, lane) {
   else if ((parts = splitBatch(batch))) lane.note(`  ${where}: splitting to find it`);
   else {
     const { rep, ids, rest } = leafOf(batch);
-    lane.finding(rep, "crashes the twinBASIC compiler" + rest,
-      "the compiler dies parsing this sample; record it in BUGS-TO-REPORT.md");
+    lane.finding(
+      rep,
+      "crashes the twinBASIC compiler" + rest,
+      "the compiler dies parsing this sample; record it in BUGS-TO-REPORT.md",
+    );
     // Named back to the caller, because a crashed sample produced no
     // diagnostics and would otherwise be counted as one that compiled -- the
     // same false-clean shape tbbuild's own crash check exists to close.
@@ -465,19 +508,25 @@ async function together(batch, a, b, lane) {
     if (await crashes([...fixed, ...x])) return partners(fixed, x);
     if (await crashes([...fixed, ...y])) return partners(fixed, y);
     const inX = await partners([...fixed, ...y], x);
-    return [...inX, ...await partners([...fixed, ...inX], y)];
+    return [...inX, ...(await partners([...fixed, ...inX], y))];
   };
-  const inA = unitsOf(a).list, inB = unitsOf(b).list;
+  const inA = unitsOf(a).list,
+    inB = unitsOf(b).list;
   const needB = await partners(inA, inB);
   const needA = await partners(needB, inA);
   const found = await crashes([...needA, ...needB]);
-  const members = (found ? [...needA, ...needB] : [...inA, ...inB]).flat()
+  const members = (found ? [...needA, ...needB] : [...inA, ...inB])
+    .flat()
     .filter((f) => !f.flags.has(HIDDEN_MARKER) && !f.isResource);
   const [rep, ...others] = members;
-  lane.finding(rep, `crashes the twinBASIC compiler when built with ${others.length} other ` +
-    `sample(s), though none of the ${members.length} does on its own`,
+  lane.finding(
+    rep,
+    `crashes the twinBASIC compiler when built with ${others.length} other ` +
+      `sample(s), though none of the ${members.length} does on its own`,
     `the others: ${others.map((f) => `${f.rel}:${f.line}`).join(", ")}` +
-    (found ? "" : "; no smaller set that crashes was found") + " -- record it in BUGS-TO-REPORT.md");
+      (found ? "" : "; no smaller set that crashes was found") +
+      " -- record it in BUGS-TO-REPORT.md",
+  );
   return { ...blank(), blamed: members.map((f) => f.id) };
 }
 
@@ -490,8 +539,8 @@ async function together(batch, a, b, lane) {
  * diagnostic is the subtler of the two: the sample that caused it may have no
  * diagnostic of its own at all -- a generic instantiated with a type the
  * project does not have reports inside the PACKAGE's source, against the
- * generic's own type parameter -- so before this the sample was counted as
- * compiling while the run failed with a row naming no page.
+ * generic's own type parameter -- so without this the sample is counted as
+ * compiling while the run fails with a row naming no page.
  */
 export async function runBatch(batch, lane) {
   let result = await lane.build(batch);
@@ -505,8 +554,10 @@ export async function runBatch(batch, lane) {
   if (result.canaryProblem && !(await heard(result, batch.project, lane))) {
     // The same build once more first: an IDE that read its diagnostics early
     // has said nothing about the batch, and a second read is the cheap answer.
-    lane.note(`  the canary did not report in ${batch.fences.length} sample(s) [${batch.project}] ` +
-      `(${result.canaryProblem}), and nothing else did: building it again`);
+    lane.note(
+      `  the canary did not report in ${batch.fences.length} sample(s) [${batch.project}] ` +
+        `(${result.canaryProblem}), and nothing else did: building it again`,
+    );
     result = await lane.build(batch);
     if (result.crashed) return isolateCrash(batch, result.named, lane);
     if (result.canaryProblem && !(await heard(result, batch.project, lane))) {
@@ -519,9 +570,11 @@ export async function runBatch(batch, lane) {
       // one, and nothing here can tell, so the run stops rather than pass it --
       // or blame it for errors nobody saw.
       const { rep } = leafOf(batch);
-      throw new Error(`the canary did not report beside ${rep.rel}:${rep.line} even when it was built ` +
-        `twice on its own (${result.canaryProblem}), and nothing else did either: either the IDE ` +
-        "reported before its diagnostics were ready, or that sample hides the diagnostics of every other file");
+      throw new Error(
+        `the canary did not report beside ${rep.rel}:${rep.line} even when it was built ` +
+          `twice on its own (${result.canaryProblem}), and nothing else did either: either the IDE ` +
+          "reported before its diagnostics were ready, or that sample hides the diagnostics of every other file",
+      );
     }
   }
   // Beside errors a missing canary is not acted on. It has never been seen --
@@ -529,8 +582,10 @@ export async function runBatch(batch, lane) {
   // would be the first sign of a read that holds some files and not others, so
   // it is said.
   if (result.canaryProblem) {
-    lane.note(`  note: the canary did not report in ${batch.fences.length} sample(s) [${batch.project}] ` +
-      `(${result.canaryProblem}), though errors did; the errors are taken as found`);
+    lane.note(
+      `  note: the canary did not report in ${batch.fences.length} sample(s) [${batch.project}] ` +
+        `(${result.canaryProblem}), though errors did; the errors are taken as found`,
+    );
   }
 
   const unreadable = result.unreadable ?? [];
@@ -556,7 +611,10 @@ export async function runBatch(batch, lane) {
   // errors of its own as well reads as one finding instead of two.
   const { rep, ids, rest } = leafOf(batch);
   return {
-    perFence: result.perFence, templateFaults: unreadable, crashed: [], blamed: ids,
+    perFence: result.perFence,
+    templateFaults: unreadable,
+    crashed: [],
+    blamed: ids,
     blamedRows: new Map([[rep.id, { rows: mine, rest }]]),
   };
 }
@@ -588,14 +646,15 @@ export function sectionOf(rel) {
  * identifier is not lost -- it is what the unresolved-name tally counts.
  */
 export function diagKind(message) {
-  const flat = String(message ?? "").replace(/'[^']*'/g, "'...'").trim();
+  const flat = String(message ?? "")
+    .replace(/'[^']*'/g, "'...'")
+    .trim();
   return flat.length > 72 ? flat.slice(0, 69) + "..." : flat;
 }
 
 /** The name a diagnostic says it could not resolve, or null. */
 export function unresolvedName(message) {
-  const m = /Unrecognized (?:datatype symbol|symbol|member|token)\s+'([^']+)'/
-    .exec(String(message ?? ""));
+  const m = /Unrecognized (?:datatype symbol|symbol|member|token)\s+'([^']+)'/.exec(String(message ?? ""));
   return m ? m[1] : null;
 }
 
@@ -608,7 +667,7 @@ export function unresolvedName(message) {
 const CLASSIFIER_PROBES = [
   ["a whole Class", "Class Foo\n    Public Sub Bar()\n    End Sub\nEnd Class\n", "file"],
   ["a whole procedure", "Private Sub Foo()\n    Debug.Print 1\nEnd Sub\n", "module"],
-  ["a Declare", "Public Declare PtrSafe Function Beep Lib \"kernel32\" (ByVal a As Long) As Long\n", "module"],
+  ["a Declare", 'Public Declare PtrSafe Function Beep Lib "kernel32" (ByVal a As Long) As Long\n', "module"],
   ["loose statements", "Dim x As Long\nx = 1\nDebug.Print x\n", "sub"],
   ["declarations only", "Dim MyString As String\n", "sub"],
   // An Interface body holds PROTOTYPES: a Sub line in one has no End Sub, and a
@@ -622,7 +681,7 @@ const CLASSIFIER_PROBES = [
   // Microsoft's spaced form, which the VBA-derived pages inherited.
   ["a spaced elision", "ReDim X(10)\n. . .\nReDim Preserve X(15)\n", null],
   // ...but a With-block member line is dots and code, not dots alone.
-  ["a With member line", "With Label1\n    .Caption = \"hi\"\nEnd With\n", "sub"],
+  ["a With member line", 'With Label1\n    .Caption = "hi"\nEnd With\n', "sub"],
   ["an unclosed If", "If x Then\n    Debug.Print 1\n", null],
   ["an End with no opener", "    Debug.Print 1\nEnd Sub\n", null],
   ["a continuation line", "Dim a As Long, _\n    b As Long\n", "sub"],
@@ -636,9 +695,9 @@ const CLASSIFIER_PROBES = [
   // be called Me. Getting one of these wrong wraps an ordinary Module sample
   // in a Class, which fails with a diagnostic about the wrapper -- a report
   // pointing at code that is correct.
-  ["a procedure using Me", "Private Sub Form_Load()\n    Me.Caption = \"x\"\nEnd Sub\n", "class"],
-  ["loose statements using Me", "Me.Print \"hello\"\n", "method"],
-  ["Me inside a string literal", "Debug.Print \"Use Me instead\"\n", "sub"],
+  ["a procedure using Me", 'Private Sub Form_Load()\n    Me.Caption = "x"\nEnd Sub\n', "class"],
+  ["loose statements using Me", 'Me.Print "hello"\n', "method"],
+  ["Me inside a string literal", 'Debug.Print "Use Me instead"\n', "sub"],
   ["Me as somebody's member", "Debug.Print foo.Me\n", "sub"],
   ["Me inside a comment", "Dim x As Long    ' Me is fine here\n", "sub"],
   ["Meridian is not Me", "Dim Meridian As Long\nMeridian = 1\n", "sub"],
@@ -669,8 +728,7 @@ const CLASSIFIER_PROBES = [
 const INFO_PROBES = [
   ["bare language", "tb", (p) => !p.flags.size && !p.bad.length],
   ["the marker", `tb ${MARKER}`, (p) => p.flags.has(MARKER) && !p.bad.length],
-  [`${RUN_MARKER} implies ${MARKER}`, `tb ${RUN_MARKER}`,
-    (p) => p.flags.has(MARKER) && p.flags.has(RUN_MARKER)],
+  [`${RUN_MARKER} implies ${MARKER}`, `tb ${RUN_MARKER}`, (p) => p.flags.has(MARKER) && p.flags.has(RUN_MARKER)],
   ["a key", `tb ${MARKER} slot=module`, (p) => p.keys.get("slot") === "module"],
   ["a group name", `tb ${MARKER} projname=padleft`, (p) => p.keys.get("projname") === "padleft"],
   ["a typo is refused", "tb check_bild", (p) => p.bad.length === 1 && !p.flags.has(MARKER)],
@@ -680,8 +738,11 @@ const INFO_PROBES = [
   ["an unknown key is refused", `tb ${MARKER} mode=x`, (p) => p.bad.length === 1],
   ["a bad slot is refused", `tb ${MARKER} slot=banana`, (p) => p.bad.length === 1],
   ["a base class", `tb ${MARKER} inherits=Form`, (p) => p.keys.get("inherits") === "Form"],
-  [`${HIDDEN_MARKER} implies ${MARKER}`, `tb ${HIDDEN_MARKER}`,
-    (p) => p.flags.has(MARKER) && p.flags.has(HIDDEN_MARKER)],
+  [
+    `${HIDDEN_MARKER} implies ${MARKER}`,
+    `tb ${HIDDEN_MARKER}`,
+    (p) => p.flags.has(MARKER) && p.flags.has(HIDDEN_MARKER),
+  ],
   ["another language is untouched", "js", (p) => p.lang === "js"],
 ];
 
@@ -719,8 +780,12 @@ export async function runProbes(say) {
 
   // The container a slot generates, and that a base reaches the source only
   // where a Class is generated -- `Module X / Inherits Form` is not a thing.
-  for (const [slot, want] of [["module", "Module"], ["sub", "Module"],
-    ["class", "Class"], ["method", "Class"]]) {
+  for (const [slot, want] of [
+    ["module", "Module"],
+    ["sub", "Module"],
+    ["class", "Class"],
+    ["method", "Class"],
+  ]) {
     const { text } = wrapFence(fence, slot, "tbx_probe", "Form");
     if (!text.includes(`${want} tbx_probe`)) failures.push(`wrapper: ${slot} is not a ${want}`);
     const inherits = text.includes("Inherits Form");
@@ -734,15 +799,18 @@ export async function runProbes(say) {
   // between two runs that the `projname` key exists to end. A group stays
   // whole AND stays alone; an ungrouped sample never lands in it.
   const fake = (id, group, names = [], opts = {}) => ({
-    id, rel: opts.rel ?? "X.md", line: 1,
-    slot: names.length ? "module" : "sub", project: "console",
+    id,
+    rel: opts.rel ?? "X.md",
+    line: 1,
+    slot: names.length ? "module" : "sub",
+    project: "console",
     keys: new Map(group ? [["projname", group]] : []),
     flags: new Set(opts.hidden ? [HIDDEN_MARKER, MARKER] : [MARKER]),
     inferred: { names },
   });
-  const batched = makeBatches([
-    fake("a", "g"), fake("b", null), fake("c", "g"), fake("d", "g"),
-  ].map((f) => ({ ...f, project: "console" })));
+  const batched = makeBatches(
+    [fake("a", "g"), fake("b", null), fake("c", "g"), fake("d", "g")].map((f) => ({ ...f, project: "console" })),
+  );
   const groupBatch = batched.find((b) => b.fences.some((f) => f.id === "a"));
   if (!["a", "c", "d"].every((id) => groupBatch?.fences.some((f) => f.id === id))) {
     failures.push("batching: a projname group was split across projects");
@@ -791,8 +859,7 @@ export async function runProbes(say) {
     fake("h3", null, ["Ctx"], { hidden: true, rel: "B.md" }),
     fake("b1", null, [], { rel: "B.md" }),
   ]);
-  if (hiddenClash.some((b) => b.fences.some((f) => f.id === "a1") &&
-                              b.fences.some((f) => f.id === "b1"))) {
+  if (hiddenClash.some((b) => b.fences.some((f) => f.id === "a1") && b.fences.some((f) => f.id === "b1"))) {
     failures.push("batching: two pages whose hidden context collides shared a project");
   }
 
@@ -829,7 +896,11 @@ export async function runProbes(say) {
     failures.push("take out: a page's hidden context did not stay with its sample");
   }
   const grouped = { project: "console", fences: [fake("t1", "t"), fake("t2", "t"), fake("u1", null)] };
-  if (takeOut(grouped, new Set(["t2"]))?.[0].fences.map((f) => f.id).join() !== "t1,t2") {
+  if (
+    takeOut(grouped, new Set(["t2"]))?.[0]
+      .fences.map((f) => f.id)
+      .join() !== "t1,t2"
+  ) {
     failures.push("take out: a projname group was cut apart");
   }
   if (takeOut(soleGroup, new Set(["g1"])) !== null) {
@@ -854,16 +925,18 @@ export async function runProbes(say) {
   // of a build's samples and says whether the compiler goes down, and which of
   // them the report names. Each shape a crash can take has to end in exactly
   // one finding, on the samples it needs -- never in a batch whose samples all
-  // count as compiling, which is what a crash that needs two of them used to
-  // become once halving had separated them.
+  // count as compiling, which is what a crash that needs two of them would
+  // become once halving has separated them.
   const fakeLane = (crash) => {
     const lane = {
-      found: [], builds: 0,
+      found: [],
+      builds: 0,
       async build(b) {
         lane.builds++;
         const c = crash(new Set(b.fences.map((f) => f.id)));
-        return c ? { crashed: true, named: new Set(c.named ?? []) }
-                 : { perFence: new Map(), unreadable: [], unattributed: [] };
+        return c
+          ? { crashed: true, named: new Set(c.named ?? []) }
+          : { perFence: new Map(), unreadable: [], unattributed: [] };
       },
       finding: (fence) => lane.found.push(fence.id),
       note: () => {},
@@ -871,7 +944,10 @@ export async function runProbes(say) {
     return lane;
   };
   const five = { project: "console", fences: ["a", "b", "c", "d", "e"].map((id) => fake(id, null)) };
-  const when = (...need) => (ids) => need.every((id) => ids.has(id));
+  const when =
+    (...need) =>
+    (ids) =>
+      need.every((id) => ids.has(id));
   const naming = (id) => (ids) => ({ named: ids.has(id) ? [id] : [] });
   for (const [shape, crashes, names, alone, set] of [
     ["a named sample that crashes alone", when("c"), naming("c"), ["c"], []],
@@ -895,7 +971,7 @@ export async function runProbes(say) {
   // they are not there. A batch with no rows at all is the one that matters, since
   // it is what an IDE that read its diagnostics early returns.
   const drew = (rows) => canaryProblem(new Map([["tbxcanary.twin", rows]]));
-  if (drew(["TB0005 #Warning directive: \"check_examples canary\""]) !== null) {
+  if (drew(['TB0005 #Warning directive: "check_examples canary"']) !== null) {
     failures.push("canaries: a batch that drew the canary was not believed");
   }
   if (drew(["TB0005 x", "TB5000 y"]) !== null) {
@@ -912,13 +988,15 @@ export async function runProbes(say) {
   // `stray` the rows it draws outside every sample.
   const canaryLane = (bad, errs = () => [], stray = () => []) => {
     const lane = {
-      builds: 0, notes: [],
+      builds: 0,
+      notes: [],
       async build(b) {
         lane.builds++;
         const ids = new Set(b.fences.map((f) => f.id));
         const problem = bad(ids, lane.builds);
-        const perFence = new Map(errs(ids).map((id) =>
-          [id, [{ severity: "ERROR", pageLine: 1, message: "TB5079 x", rel: "X.md" }]]));
+        const perFence = new Map(
+          errs(ids).map((id) => [id, [{ severity: "ERROR", pageLine: 1, message: "TB5079 x", rel: "X.md" }]]),
+        );
         return { perFence, unreadable: [], unattributed: stray(ids), canaryProblem: problem };
       },
       finding: () => {},
@@ -930,7 +1008,12 @@ export async function runProbes(say) {
   // the first build of a template said, a refusal included.
   const outcome = async (lane, batch) => {
     templateOwnRows.clear();
-    try { await runBatch(batch, lane); return null; } catch (e) { return e.message; }
+    try {
+      await runBatch(batch, lane);
+      return null;
+    } catch (e) {
+      return e.message;
+    }
   };
   let cl = canaryLane((_ids, n) => (n === 1 ? "no error" : null));
   let threw = await outcome(cl, five);
@@ -944,13 +1027,19 @@ export async function runProbes(say) {
   }
   // The same sample with errors of its own: the read was not silent, so the
   // batch is taken as read in one build, and the missing canary is only said.
-  cl = canaryLane((ids) => (ids.has("c") ? "masked" : null), (ids) => [...ids].filter((id) => id === "c"));
+  cl = canaryLane(
+    (ids) => (ids.has("c") ? "masked" : null),
+    (ids) => [...ids].filter((id) => id === "c"),
+  );
   threw = await outcome(cl, five);
   if (threw !== null || cl.builds !== 1 || !cl.notes.some((m) => m.includes("though errors did"))) {
     failures.push(`canaries: a batch with errors was not taken as read (${cl.builds} builds, ${threw})`);
   }
   // A group where only some members fail, and the canary is missing: the same.
-  cl = canaryLane((ids) => (ids.has("t2") ? "masked" : null), (ids) => [...ids].filter((id) => id === "t1"));
+  cl = canaryLane(
+    (ids) => (ids.has("t2") ? "masked" : null),
+    (ids) => [...ids].filter((id) => id === "t1"),
+  );
   threw = await outcome(cl, grouped);
   if (threw !== null || cl.builds !== 1) {
     failures.push(`canaries: a group with some members failing was not taken as read (${cl.builds} builds, ${threw})`);
@@ -958,7 +1047,11 @@ export async function runProbes(say) {
   // ...but a row the template draws on its own is no error of the sample's: an
   // early read that holds only that row is still a false clean.
   const ownRow = "{ERROR} /DocSamples1/Sources/Template.twin [1,1]: TB5079 t";
-  cl = canaryLane((ids) => (ids.has("c") ? "masked" : null), () => [], () => [ownRow]);
+  cl = canaryLane(
+    (ids) => (ids.has("c") ? "masked" : null),
+    () => [],
+    () => [ownRow],
+  );
   threw = await outcome(cl, five);
   if (!threw?.includes("did not report beside X.md:1")) {
     failures.push(`canaries: a hiding sample with only the template's own row was passed (${threw})`);
@@ -970,13 +1063,23 @@ export async function runProbes(say) {
   await ownRowsOf("console", cl);
   if (cl.builds !== 2) failures.push(`canaries: an empty template read early was not read again (${cl.builds} builds)`);
   templateOwnRows.clear();
-  threw = await ownRowsOf("console", canaryLane(() => "no error")).then(() => null, (e) => e.message);
+  threw = await ownRowsOf(
+    "console",
+    canaryLane(() => "no error"),
+  ).then(
+    () => null,
+    (e) => e.message,
+  );
   if (!threw?.includes("template built with no samples")) {
     failures.push(`canaries: an empty template that never reports was believed (${threw})`);
   }
   // ...but one with rows of its own was not silent, and is believed in one read.
   templateOwnRows.clear();
-  cl = canaryLane(() => "no error", () => [], () => [ownRow]);
+  cl = canaryLane(
+    () => "no error",
+    () => [],
+    () => [ownRow],
+  );
   const ownSet = await ownRowsOf("console", cl).catch(() => null);
   if (!ownSet?.has(sameRow(ownRow)) || cl.builds !== 1) {
     failures.push(`canaries: an empty template with rows of its own was not believed (${cl.builds} builds)`);
@@ -985,7 +1088,9 @@ export async function runProbes(say) {
   cl = canaryLane((ids) => (ids.has("a") && ids.has("e") ? "masked" : null));
   threw = await outcome(cl, five);
   if (threw !== null || cl.builds <= 2) {
-    failures.push(`canaries: two samples that hide them only together were not separated by halving (${cl.builds} builds, ${threw})`);
+    failures.push(
+      `canaries: two samples that hide them only together were not separated by halving (${cl.builds} builds, ${threw})`,
+    );
   }
   cl = canaryLane(() => "no error");
   threw = await outcome(cl, five);
@@ -1008,10 +1113,10 @@ export async function runProbes(say) {
     failures.push("concat: two halves of a Class did not join into a whole one");
   }
   for (const [bodyLine, wantRel, wantPage] of [
-    [1, "P.md", 11],    // `Class Thing`      -- first line of the first fence
-    [2, "P.md", 12],    // `Public A As Long`
-    [3, "P.md", 31],    // `Public B As Long` -- first line of the SECOND fence
-    [4, "P.md", 32],    // `End Class`
+    [1, "P.md", 11], // `Class Thing`      -- first line of the first fence
+    [2, "P.md", 12], // `Public A As Long`
+    [3, "P.md", 31], // `Public B As Long` -- first line of the SECOND fence
+    [4, "P.md", 32], // `End Class`
   ]) {
     const got = partOf(joined.concatParts, bodyLine);
     if (!got || got.fence.rel !== wantRel || got.pageLine !== wantPage) {
@@ -1022,16 +1127,30 @@ export async function runProbes(say) {
   // A hidden header and footer around a visible method: the unit is the
   // method's sample, not page context that only travels with other samples.
   const hide = (f) => ({ ...f, flags: new Set([HIDDEN_MARKER, MARKER]) });
-  const method = { rel: "P.md", line: 20, id: "P.md#2", flags: new Set([MARKER]),
-    content: "    Sub Paint()\n    End Sub\n" };
-  const around = concatFences([hide(half1), method,
-    hide({ rel: "P.md", line: 40, id: "P.md#3", content: "End Class\n" })]);
+  const method = {
+    rel: "P.md",
+    line: 20,
+    id: "P.md#2",
+    flags: new Set([MARKER]),
+    content: "    Sub Paint()\n    End Sub\n",
+  };
+  const around = concatFences([
+    hide(half1),
+    method,
+    hide({ rel: "P.md", line: 40, id: "P.md#3", content: "End Class\n" }),
+  ]);
   if (around.id !== "P.md#2" || around.flags.has(HIDDEN_MARKER)) {
     failures.push("concat: a hidden header made the visible part's sample into page context");
   }
   // Two pages that chose the same group name are two units.
-  const member = (rel) => ({ rel, line: 1, id: `${rel}#1`, flags: new Set([MARKER]),
-    keys: new Map([[CONCAT_KEY, "same-name"]]), content: "Sub S()\nEnd Sub\n" });
+  const member = (rel) => ({
+    rel,
+    line: 1,
+    id: `${rel}#1`,
+    flags: new Set([MARKER]),
+    keys: new Map([[CONCAT_KEY, "same-name"]]),
+    content: "Sub S()\nEnd Sub\n",
+  });
   if (joinConcatGroups([member("A.md"), member("B.md")]).length !== 2) {
     failures.push("concat: two pages' groups of one name were joined into one unit");
   }
@@ -1053,7 +1172,8 @@ export async function runProbes(say) {
     ["   ", null],
   ]) {
     const got = resourcePath(raw);
-    if (got !== want) failures.push(`resource path: ${JSON.stringify(raw)} -> ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
+    if (got !== want)
+      failures.push(`resource path: ${JSON.stringify(raw)} -> ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
   }
   // ...and a resource fence is collected whatever language it carries, while an
   // ordinary fence in that language is not.
@@ -1091,8 +1211,7 @@ export async function runProbes(say) {
   // pipeline -- createMarkdownIt plus the highlighter -- because a bare
   // markdown-it is a different renderer, which is the mistake WIP.md's
   // "Source dashes" section records paying for.
-  const { createMarkdownIt, initHighlighter, applyPreRenderRewrites } =
-    await import("../../builder/render.mjs");
+  const { createMarkdownIt, initHighlighter, applyPreRenderRewrites } = await import("../../builder/render.mjs");
   const { maskCode } = await import("../../lib/markdown.mjs");
   const highlighter = await initHighlighter();
   const md = createMarkdownIt({ highlighter, linkTables: null, baseurl: "", staticFiles: new Set() });
@@ -1122,8 +1241,10 @@ export async function runProbes(say) {
   // + 10 resource + 8 report + 6 markup + 15 canaries (5 of what a batch's rows say,
   // 7 of what runBatch does about a batch whose canary did not report, 3 of the
   // template built with no samples).
-  say(`ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 89} probes: ` +
-    "classifier, markup, line mapping, batching, splitting, crash isolation, canaries, concat, " +
-    "resources and the report");
+  say(
+    `ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 89} probes: ` +
+      "classifier, markup, line mapping, batching, splitting, crash isolation, canaries, concat, " +
+      "resources and the report",
+  );
   return true;
 }

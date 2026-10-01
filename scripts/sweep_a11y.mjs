@@ -5,12 +5,11 @@
 // tree, run occasionally, to answer the question a sample cannot -- what is
 // actually wrong out there, and what would it cost to audit it routinely.
 //
-// It exists because the sample was found to be unrepresentative.  SAMPLE_PAGES
-// spans 2,175-2,694 elements against a site maximum of 5,231, and contains no
-// page with a table, an image, a disclosure widget or a video card.  A sample
-// that never sees a construct cannot report a defect in it, so "0 violations"
-// from the gate was a statement about six pages, not about the site.  Widening
-// the gate sensibly needs two things this produces:
+// It exists because a hand-picked sample can be unrepresentative: one with no
+// page holding a table, an image, a disclosure widget or a video card cannot
+// report a defect in them, so "0 violations" from the gate is a statement
+// about a few pages, not about the site.  Widening the gate sensibly needs
+// two things this produces:
 //
 //   * the violation census -- which rules fire, where, and on what construct,
 //     so the widened set can be chosen to cover the constructs that break;
@@ -37,12 +36,7 @@
 //
 // Requires build.bat to have produced an up-to-date docs/_site-offline/.
 
-import {
-  readFileSync,
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-} from "node:fs";
+import { readFileSync, appendFileSync, existsSync, mkdirSync } from "node:fs";
 import { resolve, join, dirname } from "node:path";
 import {
   axeVersion,
@@ -73,35 +67,34 @@ exitOnCrash();
 const PRODUCTION = getScheme("production");
 const AXE_PATCHES = PRODUCTION.patches;
 
-const cli = withUsageError(
-  () =>
-    parseCli(process.argv.slice(2), {
-      options: {
-        "root-dir": { type: "string", default: DEFAULT_ROOT_DIR },
-        theme: { type: "string", default: "both" },
-        viewport: { type: "string", default: "both" },
-        filter: { type: "string" },
-        limit: { type: "string" },
-        out: { type: "string" },
-        resume: { type: "boolean", default: false },
-        report: { type: "boolean", default: false },
-        "stock-axe": { type: "boolean", default: false },
-        "recycle-every": { type: "string" },
-        help: { type: "boolean", short: "h" },
-      },
-      stopAt: ["help"],
-    }),
+const cli = withUsageError(() =>
+  parseCli(process.argv.slice(2), {
+    options: {
+      "root-dir": { type: "string", default: DEFAULT_ROOT_DIR },
+      theme: { type: "string", default: "both" },
+      viewport: { type: "string", default: "both" },
+      filter: { type: "string" },
+      limit: { type: "string" },
+      out: { type: "string" },
+      resume: { type: "boolean", default: false },
+      report: { type: "boolean", default: false },
+      "stock-axe": { type: "boolean", default: false },
+      "recycle-every": { type: "string" },
+      help: { type: "boolean", short: "h" },
+    },
+    stopAt: ["help"],
+  }),
 );
 if (cli.stopped === "help") {
   printHelpAndExit(
-    "usage: node scripts/sweep_a11y.mjs [--theme T] [--viewport V] [--filter SUBSTR]\n"
-      + "                                   [--limit N] [--out FILE] [--resume] [--report]\n"
-      + "                                   [--stock-axe] [--root-dir DIR] [--recycle-every N]\n"
-      + "                                   [-h, --help]\n\n"
-      + "Exit codes:\n"
-      + "  0  no accessibility violation was found\n"
-      + "  1  the sweep found at least one violation\n"
-      + "  2  a refused command line (a bad --theme or --viewport included), or a crash",
+    "usage: node scripts/sweep_a11y.mjs [--theme T] [--viewport V] [--filter SUBSTR]\n" +
+      "                                   [--limit N] [--out FILE] [--resume] [--report]\n" +
+      "                                   [--stock-axe] [--root-dir DIR] [--recycle-every N]\n" +
+      "                                   [-h, --help]\n\n" +
+      "Exit codes:\n" +
+      "  0  no accessibility violation was found\n" +
+      "  1  the sweep found at least one violation\n" +
+      "  2  a refused command line (a bad --theme or --viewport included), or a crash",
   );
 }
 
@@ -116,7 +109,10 @@ if (reportOnly) resume = true;
 let stockAxe = cli.values.stockAxe;
 
 const { limit, recycleEvery } = withUsageError(() => ({
-  limit: cli.values.limit !== undefined ? numberOption(cli.values.limit, { option: "--limit", integer: true, min: 1 }) : Infinity,
+  limit:
+    cli.values.limit !== undefined
+      ? numberOption(cli.values.limit, { option: "--limit", integer: true, min: 1 })
+      : Infinity,
   recycleEvery: numberOption(cli.values.recycleEvery ?? "100", { option: "--recycle-every", integer: true, min: 1 }),
 }));
 
@@ -176,12 +172,12 @@ if (!reportOnly && matrix.length) {
   console.error(
     stockAxe
       ? `[sweep] axe-core ${axeVersion()} (stock)`
-      : `[sweep] axe-core ${axeVersion()} + ${AXE_PATCHES.join(", ")}`
+      : `[sweep] axe-core ${axeVersion()} + ${AXE_PATCHES.join(", ")}`,
   );
   console.error(
     `[sweep] ${selected.length} pages of ${content.length} content ` +
       `(${stubs.length} redirect stubs excluded) x ${themes.length} theme(s) ` +
-      `x ${viewports.length} viewport(s)`
+      `x ${viewports.length} viewport(s)`,
   );
   console.error(`[sweep] ${matrix.length} audits to run, ${done.size} already recorded`);
   console.error(`[sweep] -> ${outPath}`);
@@ -213,9 +209,7 @@ if (!reportOnly && matrix.length) {
         configure: PRODUCTION.configure,
         runOptions: PRODUCTION.runOptions,
       });
-      const elements = await page.evaluate(
-        () => document.getElementsByTagName("*").length
-      );
+      const elements = await page.evaluate(() => document.getElementsByTagName("*").length);
 
       const rec = {
         label: entry.label,
@@ -244,7 +238,7 @@ if (!reportOnly && matrix.length) {
         console.error(
           `[sweep] ${String(i + 1).padStart(5)}/${matrix.length}  ` +
             `${elapsed.toFixed(0)}s elapsed, ETA ${(eta / 60).toFixed(1)}m  ` +
-            `${rec.violations.length ? rec.violations.length + " viol" : "ok"}  ${entry.label}`
+            `${rec.violations.length ? rec.violations.length + " viol" : "ok"}  ${entry.label}`,
         );
       }
     }
@@ -286,12 +280,7 @@ if (byRule.size === 0) {
 } else {
   console.log("VIOLATIONS by rule:");
   console.log(
-    "  rule".padEnd(34) +
-      pad("impact", 10) +
-      pad("audits", 8) +
-      pad("pages", 7) +
-      pad("nodes", 8) +
-      "  axes"
+    "  rule".padEnd(34) + pad("impact", 10) + pad("audits", 8) + pad("pages", 7) + pad("nodes", 8) + "  axes",
   );
   const sorted = [...byRule.entries()].sort((a, b) => b[1].nodes - a[1].nodes);
   for (const [id, e] of sorted) {
@@ -305,7 +294,7 @@ if (byRule.size === 0) {
         "  " +
         [...e.themes].join("+") +
         " / " +
-        [...e.viewports].join("+")
+        [...e.viewports].join("+"),
     );
   }
   console.log("");
@@ -326,7 +315,7 @@ console.log(
     ([...incRules.entries()]
       .sort((a, b) => b[1] - a[1])
       .map(([id, n]) => `${id}(${n})`)
-      .join(", ") || "none")
+      .join(", ") || "none"),
 );
 
 console.log("");
@@ -358,12 +347,10 @@ console.log("");
 console.log(`  ${pageRows.length} pages, one audit each: ${(totalMs / 1000).toFixed(1)}s`);
 console.log(
   `  median page ${median(pageRows.map((r) => r.ms)).toFixed(0)}ms, ` +
-    `mean ${(totalMs / pageRows.length).toFixed(0)}ms`
+    `mean ${(totalMs / pageRows.length).toFixed(0)}ms`,
 );
 const top20 = pageRows.slice(0, 20).reduce((s, r) => s + r.ms, 0);
-console.log(
-  `  the 20 most expensive account for ${((top20 / totalMs) * 100).toFixed(1)}% of that total`
-);
+console.log(`  the 20 most expensive account for ${((top20 / totalMs) * 100).toFixed(1)}% of that total`);
 
 console.log(`\nrecords: ${outPath}`);
 

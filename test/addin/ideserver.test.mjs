@@ -42,12 +42,15 @@ const FILES = {
   "p13/Form Designer.html": page("P13 spaced name", "<p>a space in the name</p>"),
   "p13/page.htm": page("P13 htm", "<p>.htm</p>"),
   "p13/style.css": "body { color: rgb(255, 0, 0); }\n",
-  "p13/script.js": "window.__p13 = \"script ran\";\n",
+  "p13/script.js": 'window.__p13 = "script ran";\n',
   "p13/module.mjs": "export const p13 = 1;\n",
-  "p13/data.json": "{\"p13\": true}\n",
-  "p13/image.svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"4\" height=\"4\"><rect width=\"4\" height=\"4\"/></svg>\n",
+  "p13/data.json": '{"p13": true}\n',
+  "p13/image.svg": '<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4"/></svg>\n',
   "p13/notes.txt": "plain text\n",
-  "p13/image.png": BYTES, "p13/image.jpg": BYTES, "p13/image.gif": BYTES, "p13/font.woff2": BYTES,
+  "p13/image.png": BYTES,
+  "p13/image.jpg": BYTES,
+  "p13/image.gif": BYTES,
+  "p13/font.woff2": BYTES,
   "p13/big.js": `// ${"x".repeat(4 * 1024 * 1024)}\n`,
 };
 const sha = (b) => createHash("sha256").update(b).digest("hex");
@@ -55,14 +58,18 @@ const url = (rel) => rel.split("/").map(encodeURIComponent).join("/");
 
 // Fetch from the IDE's page, relative to its base URL: status, content type
 // and a hash of the body.
-const fetchFromPage = (c, rel) => c.evaluate(`(async () => {
+const fetchFromPage = (c, rel) =>
+  c.evaluate(
+    `(async () => {
   const u = new URL(${JSON.stringify(rel)}, document.baseURI);
   const r = await fetch(u, { cache: "no-store" });
   const b = new Uint8Array(await r.arrayBuffer());
   const h = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", b)),
                        (x) => x.toString(16).padStart(2, "0")).join("");
   return { href: u.href, status: r.status, type: r.headers.get("content-type"), sha: h };
-})()`, { awaitPromise: true, timeout: 30000 });
+})()`,
+    { awaitPromise: true, timeout: 30000 },
+  );
 
 // ------------------------------------------------------------------ the tests
 
@@ -101,9 +108,18 @@ scenario("P13: files placed under the install's ide folder", (lane) => {
     const types = {};
     for (const name of Object.keys(FILES)) types[path.extname(name)] = (await fetchFromPage(c, url(name))).type;
     assert.deepEqual(types, {
-      ".htm": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
-      ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml", ".png": "image/png", ".gif": "image/gif",
-      ".html": null, ".mjs": null, ".json": null, ".txt": null, ".jpg": null, ".woff2": null,
+      ".htm": "text/html; charset=utf-8",
+      ".css": "text/css; charset=utf-8",
+      ".js": "text/javascript; charset=utf-8",
+      ".svg": "image/svg+xml",
+      ".png": "image/png",
+      ".gif": "image/gif",
+      ".html": null,
+      ".mjs": null,
+      ".json": null,
+      ".txt": null,
+      ".jpg": null,
+      ".woff2": null,
     });
   });
 
@@ -126,8 +142,13 @@ scenario("P13: files placed under the install's ide folder", (lane) => {
       f.style.cssText = "position:fixed;left:0;top:0;width:400px;height:300px;z-index:99999";
       f.src = "p13/page.html"; document.body.appendChild(f); })()`);
     try {
-      assert.ok(await waitFor(c, (c) => c.evaluate(`(() => { const d = document.getElementById("p13frame").contentDocument;
-        return !!d && d.readyState === "complete" && d.title === "P13 page"; })()`)), "the frame did not load the page");
+      assert.ok(
+        await waitFor(c, (c) =>
+          c.evaluate(`(() => { const d = document.getElementById("p13frame").contentDocument;
+        return !!d && d.readyState === "complete" && d.title === "P13 page"; })()`),
+        ),
+        "the frame did not load the page",
+      );
       const r = await c.evaluate(`(() => { const w = document.getElementById("p13frame").contentWindow;
         return { href: w.location.href, base: document.baseURI, color: w.getComputedStyle(w.document.body).color,
                  script: w.__p13, reach: typeof w.parent.openEditors }; })()`);

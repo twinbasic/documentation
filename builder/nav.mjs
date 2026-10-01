@@ -34,7 +34,7 @@ function computeNavPaths(pages) {
     if (title == null || title === "") continue;
     const parts = [];
     if (page.frontmatter.grand_parent) parts.push(String(page.frontmatter.grand_parent));
-    if (page.frontmatter.parent)        parts.push(String(page.frontmatter.parent));
+    if (page.frontmatter.parent) parts.push(String(page.frontmatter.parent));
     parts.push(String(title));
     page.navPath = parts.join("/");
   }
@@ -49,24 +49,24 @@ function computeNavPaths(pages) {
 // tree. This one deliberately does not: Reference/Built-In/CEF/ publishes at
 // /tB/Packages/CEF/. So outside Features/ the derived URL is structurally
 // wrong, and it is wrong silently -- the page builds, links into it 404, and
-// nothing reports either. That is exactly how the whole AppGlobalClassObject
-// package came to sit at /Reference/Built-In/AppGlobalClassObject/index.html.
+// nothing reports either: a package without permalinks sits at its file
+// path, e.g. /Reference/Built-In/AppGlobalClassObject/index.html.
 //
 // It is also the URL the IDE help system resolves against, so a permalink
-// nobody chose is a contract nobody agreed to. 906 of 908 pages already
-// declared one when this check was added; it makes a settled convention
-// enforceable rather than introducing a new rule.
+// nobody chose is a contract nobody agreed to. Nearly every page declares
+// one, so this check makes a settled convention enforceable rather than
+// introducing a new rule.
 //
 // Deliberately covers every page, not just nav-visible ones: a page carrying
 // nav_exclude is reachable by URL and still needs a stable one.
 function validatePermalinks(pages) {
-  const missing = pages.filter(p => !isNonEmpty(p.frontmatter.permalink));
+  const missing = pages.filter((p) => !isNonEmpty(p.frontmatter.permalink));
   if (missing.length === 0) return;
 
   const lines = [
     `Missing permalink in ${missing.length} page(s). Every page must declare ` +
-    `its own URL -- the derived fallback is "/<source path>.html", which is ` +
-    `not this site's URL scheme:`,
+      `its own URL -- the derived fallback is "/<source path>.html", which is ` +
+      `not this site's URL scheme:`,
   ];
   for (const p of missing) {
     lines.push(`  ${p.srcRel}: would publish at ${p.permalink}`);
@@ -77,10 +77,10 @@ function validatePermalinks(pages) {
 // ---------- §5.2 nav-integrity-check ---------------------------------------
 
 function validateNavIntegrity(pages) {
-  const titled = pages.filter(p => isNonEmpty(p.frontmatter.title));
-  const navVisible = titled.filter(p => !p.frontmatter.nav_exclude);
+  const titled = pages.filter((p) => isNonEmpty(p.frontmatter.title));
+  const navVisible = titled.filter((p) => !p.frontmatter.nav_exclude);
 
-  const byTitle = groupBy(navVisible, p => String(p.frontmatter.title));
+  const byTitle = groupBy(navVisible, (p) => String(p.frontmatter.title));
 
   const ambiguous = [];
   const orphaned = [];
@@ -106,7 +106,7 @@ function validateNavIntegrity(pages) {
       continue;
     }
 
-    const filtered = candidates.filter(c => c.frontmatter.parent === gp);
+    const filtered = candidates.filter((c) => c.frontmatter.parent === gp);
     if (filtered.length > 1) {
       ambiguous.push({
         page,
@@ -137,25 +137,19 @@ function validateNavIntegrity(pages) {
 // ---------- §6.1 shared state ----------------------------------------------
 
 function buildSharedNavState(pages, config) {
-  const titled = pages.filter(p => isNonEmpty(p.frontmatter.title));
-  const byTitle = groupBy(titled, p => String(p.frontmatter.title));
-  const byParentTitle = groupBy(
-    titled,
-    p => isNonEmpty(p.frontmatter.parent) ? String(p.frontmatter.parent) : "",
-  );
+  const titled = pages.filter((p) => isNonEmpty(p.frontmatter.title));
+  const byTitle = groupBy(titled, (p) => String(p.frontmatter.title));
+  const byParentTitle = groupBy(titled, (p) => (isNonEmpty(p.frontmatter.parent) ? String(p.frontmatter.parent) : ""));
   const caseInsensitive = config?.nav_sort === "case_insensitive";
 
   const topLevel = sortPages(
-    (byParentTitle.get("") || []).filter(p => !p.frontmatter.nav_exclude),
+    (byParentTitle.get("") || []).filter((p) => !p.frontmatter.nav_exclude),
     caseInsensitive,
   );
 
   const orderedChildren = new Map();
   for (const parent of titled) {
-    orderedChildren.set(
-      parent.permalink,
-      orderedChildrenFor(parent, byParentTitle, caseInsensitive),
-    );
+    orderedChildren.set(parent.permalink, orderedChildrenFor(parent, byParentTitle, caseInsensitive));
   }
 
   return { titled, byTitle, byParentTitle, caseInsensitive, topLevel, orderedChildren };
@@ -168,7 +162,7 @@ function buildSharedNavState(pages, config) {
 function orderedChildrenFor(parent, byParentTitle, caseInsensitive) {
   const parentTitle = String(parent.frontmatter.title);
   const candidates = byParentTitle.get(parentTitle) || [];
-  const filtered = candidates.filter(c => {
+  const filtered = candidates.filter((c) => {
     if (c.frontmatter.nav_exclude) return false;
     const gp = c.frontmatter.grand_parent;
     return gp == null || gp === parent.frontmatter.parent;
@@ -183,7 +177,10 @@ function orderedChildrenFor(parent, byParentTitle, caseInsensitive) {
 // ---------- §6.2 four-bucket sort ------------------------------------------
 
 function sortPages(pages, caseInsensitive) {
-  const navNum = [], navStr = [], titleNum = [], titleStr = [];
+  const navNum = [],
+    navStr = [],
+    titleNum = [],
+    titleStr = [];
   for (const p of pages) {
     if (p.frontmatter.nav_order != null) {
       (typeof p.frontmatter.nav_order === "number" ? navNum : navStr).push(p);
@@ -192,11 +189,13 @@ function sortPages(pages, caseInsensitive) {
     }
   }
   navNum.sort((a, b) => a.frontmatter.nav_order - b.frontmatter.nav_order);
-  navStr.sort((a, b) => cmp(sortKey(a.frontmatter.nav_order, caseInsensitive),
-                            sortKey(b.frontmatter.nav_order, caseInsensitive)));
+  navStr.sort((a, b) =>
+    cmp(sortKey(a.frontmatter.nav_order, caseInsensitive), sortKey(b.frontmatter.nav_order, caseInsensitive)),
+  );
   titleNum.sort((a, b) => a.frontmatter.title - b.frontmatter.title);
-  titleStr.sort((a, b) => cmp(sortKey(a.frontmatter.title, caseInsensitive),
-                              sortKey(b.frontmatter.title, caseInsensitive)));
+  titleStr.sort((a, b) =>
+    cmp(sortKey(a.frontmatter.title, caseInsensitive), sortKey(b.frontmatter.title, caseInsensitive)),
+  );
   return [...navNum, ...navStr, ...titleNum, ...titleStr];
 }
 
@@ -205,20 +204,21 @@ function sortKey(value, caseInsensitive) {
   return caseInsensitive ? s.toLowerCase() : s;
 }
 
-function cmp(a, b) { return a < b ? -1 : a > b ? 1 : 0; }
+function cmp(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
 
 // ---------- §5.3 nav-tree ---------------------------------------------------
 
 function buildNavTree(state) {
-  return state.topLevel.map(top => buildNavNode(top, [top], state.orderedChildren, 0));
+  return state.topLevel.map((top) => buildNavNode(top, [top], state.orderedChildren, 0));
 }
 
 function buildNavNode(page, chain, orderedChildren, depth) {
   const rawChildren = orderedChildren.get(page.permalink) || [];
-  const children = rawChildren.filter(child => !chain.some(c => c.permalink === child.permalink));
-  const childNodes = depth < NAV_TREE_MAX_DEPTH
-    ? children.map(c => buildNavNode(c, [...chain, c], orderedChildren, depth + 1))
-    : [];
+  const children = rawChildren.filter((child) => !chain.some((c) => c.permalink === child.permalink));
+  const childNodes =
+    depth < NAV_TREE_MAX_DEPTH ? children.map((c) => buildNavNode(c, [...chain, c], orderedChildren, depth + 1)) : [];
   return {
     title: page.frontmatter.title,
     url: page.permalink,
@@ -230,12 +230,16 @@ function buildNavNode(page, chain, orderedChildren, depth) {
 
 function computeNavLevels(_pages, state) {
   const topIndex = new Map();
-  state.topLevel.forEach((p, i) => { topIndex.set(p.permalink, i + 1); });
+  state.topLevel.forEach((p, i) => {
+    topIndex.set(p.permalink, i + 1);
+  });
 
   const childIndex = new Map();
   for (const [parentUrl, list] of state.orderedChildren) {
     const m = new Map();
-    list.forEach((c, i) => { m.set(c.permalink, i + 1); });
+    list.forEach((c, i) => {
+      m.set(c.permalink, i + 1);
+    });
     childIndex.set(parentUrl, m);
   }
 
@@ -255,7 +259,7 @@ function walkNavSubtree(node, chain, paths, orderedChildren, depth) {
 
   const children = orderedChildren.get(node.permalink) || [];
   for (const child of children) {
-    if (chain.some(p => p.permalink === child.permalink)) continue;
+    if (chain.some((p) => p.permalink === child.permalink)) continue;
     walkNavSubtree(child, [...chain, child], paths, orderedChildren, depth + 1);
   }
 }
@@ -306,7 +310,7 @@ function resolveParent(parentTitle, grandParentTitle, byTitle) {
   if (!candidates || candidates.length === 0) return null;
 
   if (grandParentTitle != null) {
-    const narrowed = candidates.find(c => c.frontmatter.parent === grandParentTitle);
+    const narrowed = candidates.find((c) => c.frontmatter.parent === grandParentTitle);
     if (narrowed) return narrowed;
   }
   return candidates[0];
@@ -317,7 +321,7 @@ function resolveParent(parentTitle, grandParentTitle, byTitle) {
 function computeChildren(_pages, state) {
   for (const page of state.titled) {
     const candidates = state.byParentTitle.get(String(page.frontmatter.title)) || [];
-    const filtered = candidates.filter(c => {
+    const filtered = candidates.filter((c) => {
       const gp = c.frontmatter.grand_parent;
       return gp == null || gp === page.frontmatter.parent;
     });
@@ -325,7 +329,7 @@ function computeChildren(_pages, state) {
     if (REVERSE_FLAGS.has(String(page.frontmatter.child_nav_order || ""))) {
       sorted.reverse();
     }
-    page.children = sorted.map(c => ({
+    page.children = sorted.map((c) => ({
       title: c.frontmatter.title,
       url: c.permalink,
       summary: c.frontmatter.summary,
@@ -346,7 +350,10 @@ function groupBy(items, keyFn) {
   for (const item of items) {
     const key = keyFn(item);
     let arr = out.get(key);
-    if (!arr) { arr = []; out.set(key, arr); }
+    if (!arr) {
+      arr = [];
+      out.set(key, arr);
+    }
     arr.push(item);
   }
   return out;

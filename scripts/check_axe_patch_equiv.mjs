@@ -27,26 +27,18 @@
 // strings into result data (axe.js:27284-27285), never a Color instance.
 // It is reported, not treated as a failure.
 
-import {
-  DEFAULT_ROOT_DIR,
-  VIEWPORTS,
-  gotoPage,
-  newAuditPage,
-  SOURCE_PATCHES,
-  readAxeSource,
-} from "./lib/axe-scan.mjs";
+import { DEFAULT_ROOT_DIR, VIEWPORTS, gotoPage, newAuditPage, SOURCE_PATCHES, readAxeSource } from "./lib/axe-scan.mjs";
 import { withBrowser } from "./lib/browser.mjs";
 import { choiceOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
-const cli = withUsageError(
-  () =>
-    parseCli(process.argv.slice(2), {
-      options: {
-        patch: { type: "string", default: "plain-color-fields" },
-        help: { type: "boolean", short: "h" },
-      },
-      stopAt: ["help"],
-    }),
+const cli = withUsageError(() =>
+  parseCli(process.argv.slice(2), {
+    options: {
+      patch: { type: "string", default: "plain-color-fields" },
+      help: { type: "boolean", short: "h" },
+    },
+    stopAt: ["help"],
+  }),
 );
 if (cli.stopped === "help") {
   printHelpAndExit(
@@ -55,11 +47,11 @@ if (cli.stopped === "help") {
       "Exit codes:\n" +
       "  0  the patched bundle gives the same colour values as stock axe\n" +
       "  1  at least one colour value differs\n" +
-      "  2  the check could not run: a refused command line, or a crash"
+      "  2  the check could not run: a refused command line, or a crash",
   );
 }
-const patchName = withUsageError(
-  () => choiceOption(cli.values.patch, { option: "--patch", choices: Object.keys(SOURCE_PATCHES) }),
+const patchName = withUsageError(() =>
+  choiceOption(cli.values.patch, { option: "--patch", choices: Object.keys(SOURCE_PATCHES) }),
 );
 
 // Runs in the page against whichever bundle was injected.
@@ -70,9 +62,17 @@ const PROBE = () => {
   // Parsing: every string form color-contrast can meet, including the hsl
   // angle units that route through Color2.parseString's regex rewrite.
   for (const str of [
-    "rgb(0, 0, 0)", "rgb(255, 255, 255)", "#27201c", "#fff", "#1a1a1aE6",
-    "rgba(12, 34, 56, 0.5)", "hsl(210, 50%, 40%)", "hsl(0.5turn, 60%, 30%)",
-    "hsl(2rad, 60%, 30%)", "rgb(1 2 3 / 40%)", "transparent",
+    "rgb(0, 0, 0)",
+    "rgb(255, 255, 255)",
+    "#27201c",
+    "#fff",
+    "#1a1a1aE6",
+    "rgba(12, 34, 56, 0.5)",
+    "hsl(210, 50%, 40%)",
+    "hsl(0.5turn, 60%, 30%)",
+    "hsl(2rad, 60%, 30%)",
+    "rgb(1 2 3 / 40%)",
+    "transparent",
   ]) {
     const c = new C();
     try {
@@ -90,9 +90,16 @@ const PROBE = () => {
   for (const v of [0, 1, 127, 128, 254, 255]) {
     const c = new C(v, 255 - v, 128, 0.75);
     out.push([
-      "ctor:" + v, JSON.stringify(c.toJSON()),
-      c.r, c.g, c.b, c.red, c.green, c.blue,
-      c.getRelativeLuminance(), c.toHexString(),
+      "ctor:" + v,
+      JSON.stringify(c.toJSON()),
+      c.r,
+      c.g,
+      c.b,
+      c.red,
+      c.green,
+      c.blue,
+      c.getRelativeLuminance(),
+      c.toHexString(),
     ]);
   }
 

@@ -50,7 +50,11 @@ const WORK = path.join(REPO_ROOT, ".compare-trees");
 const SIDES = ["before", "after"];
 
 // The three trees one build writes, by the suffix tbdocs adds to --dest.
-const TREES = [["online", ""], ["offline", "-offline"], ["pdf", "-pdf"]];
+const TREES = [
+  ["online", ""],
+  ["offline", "-offline"],
+  ["pdf", "-pdf"],
+];
 
 // Files whose bytes differ between any two builds of the same source. Each
 // normalise() returns the text with the varying region replaced, or null when
@@ -139,7 +143,10 @@ function parseArgs(argv) {
     if (!(err instanceof CliError)) throw err;
     usageError(err.message);
   }
-  if (cli.stopped === "help") { process.stdout.write(USAGE); process.exit(0); }
+  if (cli.stopped === "help") {
+    process.stdout.write(USAGE);
+    process.exit(0);
+  }
 
   return { before: cli.values.before, keep: cli.values.keep, max, tbdocs };
 }
@@ -147,7 +154,11 @@ function parseArgs(argv) {
 class ToolError extends Error {}
 
 function git(args, { env, allowFail = false } = {}) {
-  const r = spawnSync("git", args, { cwd: REPO_ROOT, encoding: "utf8", env: env ? { ...process.env, ...env } : process.env });
+  const r = spawnSync("git", args, {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+    env: env ? { ...process.env, ...env } : process.env,
+  });
   if (r.error) throw new ToolError(`git ${args.join(" ")}: ${r.error.message}`);
   if (r.status !== 0 && !allowFail) {
     throw new ToolError(`git ${args.join(" ")} exited ${r.status}: ${(r.stderr || "").trim()}`);
@@ -175,13 +186,17 @@ function snapshotWorkingTree() {
   const index = path.join(WORK, "index");
   const env = {
     GIT_INDEX_FILE: index,
-    GIT_AUTHOR_NAME: "compare_trees", GIT_AUTHOR_EMAIL: "compare_trees@localhost",
-    GIT_COMMITTER_NAME: "compare_trees", GIT_COMMITTER_EMAIL: "compare_trees@localhost",
+    GIT_AUTHOR_NAME: "compare_trees",
+    GIT_AUTHOR_EMAIL: "compare_trees@localhost",
+    GIT_COMMITTER_NAME: "compare_trees",
+    GIT_COMMITTER_EMAIL: "compare_trees@localhost",
   };
   return fs.copyFile(path.join(gitDir, "index"), index).then(() => {
     git(["add", "-A"], { env });
     const tree = git(["write-tree"], { env }).stdout.trim();
-    const commit = git(["commit-tree", tree, "-p", "HEAD", "-m", "compare_trees: the working tree"], { env }).stdout.trim();
+    const commit = git(["commit-tree", tree, "-p", "HEAD", "-m", "compare_trees: the working tree"], {
+      env,
+    }).stdout.trim();
     return { tree, commit };
   });
 }
@@ -260,7 +275,10 @@ async function compareTree(name, before, after, applied) {
       const ny = n.normalise(y.toString("utf8"));
       if (nx === null || ny === null) {
         if (!x.equals(y)) {
-          differ.push({ rel, detail: `the normaliser for ${n.reason} found nothing to replace\n      ${firstDifference(rel, x, y)}` });
+          differ.push({
+            rel,
+            detail: `the normaliser for ${n.reason} found nothing to replace\n      ${firstDifference(rel, x, y)}`,
+          });
         }
         continue;
       }
@@ -298,7 +316,9 @@ async function main() {
       git(["worktree", "add", "--detach", path.join(WORK, side), commits[side]]);
       dest[side] = path.join(WORK, side, ".compare-out", "site");
     }
-    console.log(`compare_trees: before = ${opts.before} (${before.slice(0, 9)}), after = the working tree${unchanged ? " (the same files)" : ""}`);
+    console.log(
+      `compare_trees: before = ${opts.before} (${before.slice(0, 9)}), after = the working tree${unchanged ? " (the same files)" : ""}`,
+    );
     const b = build("before", path.join(WORK, "before"), dest.before, opts.tbdocs);
     const a = build("after", path.join(WORK, "after"), dest.after, opts.tbdocs);
     console.log(`  builds: before ${b.seconds} s (exit ${b.status}), after ${a.seconds} s (exit ${a.status})`);
@@ -312,7 +332,9 @@ async function main() {
     let differences = b.status === a.status ? 0 : 1;
     for (const r of results) {
       const same = r.total - r.differ.length - r.onlyBefore.length - r.onlyAfter.length;
-      console.log(`  ${r.name.padEnd(8)} ${String(r.total).padStart(5)} files: ${same} identical, ${r.differ.length} differ, ${r.onlyBefore.length} only before, ${r.onlyAfter.length} only after`);
+      console.log(
+        `  ${r.name.padEnd(8)} ${String(r.total).padStart(5)} files: ${same} identical, ${r.differ.length} differ, ${r.onlyBefore.length} only before, ${r.onlyAfter.length} only after`,
+      );
       differences += r.differ.length + r.onlyBefore.length + r.onlyAfter.length;
     }
     if (applied.length) {

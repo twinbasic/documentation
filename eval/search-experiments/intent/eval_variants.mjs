@@ -24,7 +24,9 @@ function pathOnly(u) {
 }
 
 const TYPE_KINDS = new Set(["class", "module", "interface", "enum", "control", "object", "type", "package"]);
-function kindGroup(kind) { return TYPE_KINDS.has(kind) ? "type" : "member"; }
+function kindGroup(kind) {
+  return TYPE_KINDS.has(kind) ? "type" : "member";
+}
 
 // Tier of an individual symbol occurrence, for X1t (see buildTieredExactFields
 // below) and the tier-order/recall analysis. Tier 1 = type or core language
@@ -40,7 +42,8 @@ function buildContainerKindMap(symbols) {
 function tierOfSymbol(s, containerKind) {
   if (TYPE_KINDS.has(s.kind)) return 1;
   if (CORE_ONLY_KINDS.has(s.kind) && s.package === null) return 1;
-  if (MODULE_MEMBER_KINDS.has(s.kind) && s.container && containerKind.get(s.container.toLowerCase()) === "module") return 1;
+  if (MODULE_MEMBER_KINDS.has(s.kind) && s.container && containerKind.get(s.container.toLowerCase()) === "module")
+    return 1;
   if (s.kind === "enumvalue") return 3;
   return 2;
 }
@@ -94,7 +97,10 @@ function buildTieredExactFields(docsRaw, symbols) {
       const lower = n.toLowerCase();
       let tier = exactByUrl.get(full)?.get(lower);
       if (tier === undefined) tier = exactByPath.get(p)?.get(lower);
-      if (tier === undefined) { tier = byNameAny.get(lower) ?? 2; approxFallbacks++; }
+      if (tier === undefined) {
+        tier = byNameAny.get(lower) ?? 2;
+        approxFallbacks++;
+      }
       tiers[tier].push(lower + "_");
     }
     docsWithTiers[id] = { ...d, exact1: tiers[1].join(" "), exact2: tiers[2].join(" "), exact3: tiers[3].join(" ") };
@@ -113,7 +119,12 @@ function buildOldQuerySet(symbols, proseQueries) {
   for (const [, group] of byName) {
     const expected = [...new Set(group.map((s) => normalizeUrl(s.url)))];
     const kinds = [...new Set(group.map((s) => kindGroup(s.kind)))];
-    queries.push({ category: "symbol-bare", kindGroup: kinds.length === 1 ? kinds[0] : "mixed", q: group[0].name, expected });
+    queries.push({
+      category: "symbol-bare",
+      kindGroup: kinds.length === 1 ? kinds[0] : "mixed",
+      q: group[0].name,
+      expected,
+    });
   }
   const byPair = new Map();
   for (const s of symbols) {
@@ -124,17 +135,38 @@ function buildOldQuerySet(symbols, proseQueries) {
   }
   for (const [, group] of byPair) {
     const expected = [...new Set(group.map((s) => normalizeUrl(s.url)))];
-    queries.push({ category: "symbol-qualified", kindGroup: kindGroup(group[0].kind), q: `${group[0].container}.${group[0].name}`, expected });
+    queries.push({
+      category: "symbol-qualified",
+      kindGroup: kindGroup(group[0].kind),
+      q: `${group[0].container}.${group[0].name}`,
+      expected,
+    });
   }
-  queries.push(...proseQueries.map((r) => ({ category: "prose", q: r.q, expected: r.expected.map(normalizeUrl), pathOnlyMatch: true })));
+  queries.push(
+    ...proseQueries.map((r) => ({
+      category: "prose",
+      q: r.q,
+      expected: r.expected.map(normalizeUrl),
+      pathOnlyMatch: true,
+    })),
+  );
   return queries;
 }
 
 function buildIntentQuerySet(symbols, proseQueriesFixed) {
   const { queries: bareIntent, tierCounts, doubtful } = buildIntentGroundTruth(symbols);
   const qualified = buildOldQuerySet(symbols, []).filter((q) => q.category === "symbol-qualified");
-  const prose = proseQueriesFixed.map((r) => ({ category: "prose", q: r.q, expected: r.expected.map(normalizeUrl), pathOnlyMatch: true }));
-  return { queries: [...bareIntent.map((q) => ({ ...q, category: "symbol-bare" })), ...qualified, ...prose], tierCounts, doubtful };
+  const prose = proseQueriesFixed.map((r) => ({
+    category: "prose",
+    q: r.q,
+    expected: r.expected.map(normalizeUrl),
+    pathOnlyMatch: true,
+  }));
+  return {
+    queries: [...bareIntent.map((q) => ({ ...q, category: "symbol-bare" })), ...qualified, ...prose],
+    tierCounts,
+    doubtful,
+  };
 }
 
 function evaluate(ctx, queries, searchFn, opts) {
@@ -145,14 +177,28 @@ function evaluate(ctx, queries, searchFn, opts) {
     const results = searchFn(ctx, query.q, opts);
     latencies.push(performance.now() - t0);
     const expectedSet = new Set(query.expected);
-    const matches = (u) => query.pathOnlyMatch ? query.expected.some((e) => pathOnly(u) === pathOnly(e)) : expectedSet.has(normalizeUrl(u));
-    let firstHitRank = null, anyCorrect = false;
+    const matches = (u) =>
+      query.pathOnlyMatch ? query.expected.some((e) => pathOnly(u) === pathOnly(e)) : expectedSet.has(normalizeUrl(u));
+    let firstHitRank = null,
+      anyCorrect = false;
     for (let i = 0; i < results.length; i++) {
       const url = ctx.docs[results[i].ref]?.relUrl;
-      if (matches(url)) { anyCorrect = true; if (firstHitRank === null) firstHitRank = i + 1; }
+      if (matches(url)) {
+        anyCorrect = true;
+        if (firstHitRank === null) firstHitRank = i + 1;
+      }
     }
     const cappedRank = firstHitRank !== null && firstHitRank <= 20 ? firstHitRank : null;
-    perQuery.push({ q: query.q, category: query.category, tier: query.tier, firstHitRank, reciprocalRank: cappedRank ? 1 / cappedRank : 0, hit1: firstHitRank === 1, hit10: firstHitRank !== null && firstHitRank <= 10, zeroCorrect: !anyCorrect });
+    perQuery.push({
+      q: query.q,
+      category: query.category,
+      tier: query.tier,
+      firstHitRank,
+      reciprocalRank: cappedRank ? 1 / cappedRank : 0,
+      hit1: firstHitRank === 1,
+      hit10: firstHitRank !== null && firstHitRank <= 10,
+      zeroCorrect: !anyCorrect,
+    });
   }
   latencies.sort((a, b) => a - b);
   return { perQuery, medianLatencyMs: latencies[Math.floor(latencies.length / 2)] || 0 };
@@ -167,7 +213,26 @@ function summarize(perQuery, filterFn) {
   return { n, hit1: pct((r) => r.hit1), hit10: pct((r) => r.hit10), mrr };
 }
 
-const EIGHTEEN = ["symbol index", "VB", "Lock", "Time$", "Column", "64-bit compilation", "CheckBox", "PropertyPage", "vbForm", "vbListBox", "ListImage", "ColumnHeader", "ListItem", "Node", "ToolWindow", "conditional compilation", "array bounds checks", "Fusion"];
+const EIGHTEEN = [
+  "symbol index",
+  "VB",
+  "Lock",
+  "Time$",
+  "Column",
+  "64-bit compilation",
+  "CheckBox",
+  "PropertyPage",
+  "vbForm",
+  "vbListBox",
+  "ListImage",
+  "ColumnHeader",
+  "ListItem",
+  "Node",
+  "ToolWindow",
+  "conditional compilation",
+  "array bounds checks",
+  "Fusion",
+];
 
 function runConfig(lunr, docsRaw, oldQueries, intentQueries, opts, label) {
   const ctx = { lunr, index: buildIndex(lunr, docsRaw, opts), docs: docsRaw };
@@ -180,8 +245,18 @@ function runConfig(lunr, docsRaw, oldQueries, intentQueries, opts, label) {
   }
   return {
     label,
-    old: { overall: summarize(oldEval.perQuery), bare: summarize(oldEval.perQuery, (r) => r.category === "symbol-bare"), qualified: summarize(oldEval.perQuery, (r) => r.category === "symbol-qualified"), prose: summarize(oldEval.perQuery, (r) => r.category === "prose") },
-    intent: { overall: summarize(intentEval.perQuery), bare: summarize(intentEval.perQuery, (r) => r.category === "symbol-bare"), qualified: summarize(intentEval.perQuery, (r) => r.category === "symbol-qualified"), prose: summarize(intentEval.perQuery, (r) => r.category === "prose") },
+    old: {
+      overall: summarize(oldEval.perQuery),
+      bare: summarize(oldEval.perQuery, (r) => r.category === "symbol-bare"),
+      qualified: summarize(oldEval.perQuery, (r) => r.category === "symbol-qualified"),
+      prose: summarize(oldEval.perQuery, (r) => r.category === "prose"),
+    },
+    intent: {
+      overall: summarize(intentEval.perQuery),
+      bare: summarize(intentEval.perQuery, (r) => r.category === "symbol-bare"),
+      qualified: summarize(intentEval.perQuery, (r) => r.category === "symbol-qualified"),
+      prose: summarize(intentEval.perQuery, (r) => r.category === "prose"),
+    },
     eighteen,
     perQueryOld: oldEval.perQuery,
     perQueryIntent: intentEval.perQuery,
@@ -204,8 +279,11 @@ function tierOrderAnalysis(ctx, symbols, searchFn, opts) {
     if (!byName.has(k)) byName.set(k, []);
     byName.get(k).push(s);
   }
-  let queriesConsidered = 0, violatingQueries = 0, totalViolationPairs = 0;
-  let recall10Sum = 0, recall20Sum = 0;
+  let queriesConsidered = 0,
+    violatingQueries = 0,
+    totalViolationPairs = 0;
+  let recall10Sum = 0,
+    recall20Sum = 0;
   const violationExamples = [];
   for (const [, group] of byName) {
     const urlTier = new Map(); // normalizedUrl -> {tier, name}
@@ -286,7 +364,9 @@ async function main() {
   const oldQueries = buildOldQuerySet(symIdx.symbols, proseQueries);
   const { queries: intentQueries, tierCounts, doubtful } = buildIntentQuerySet(symIdx.symbols, proseQueries);
   const { docsWithTiers, approxFallbacks } = buildTieredExactFields(docsRaw, symIdx.symbols);
-  console.error(`tiered-field approximation fallbacks: ${approxFallbacks} of ${Object.values(docsRaw).reduce((a, d) => a + (d.names || "").split(/\s+/).filter(Boolean).length, 0)} name occurrences`);
+  console.error(
+    `tiered-field approximation fallbacks: ${approxFallbacks} of ${Object.values(docsRaw).reduce((a, d) => a + (d.names || "").split(/\s+/).filter(Boolean).length, 0)} name occurrences`,
+  );
 
   const configs = [
     ["baseline", docsRaw, {}],
@@ -309,13 +389,22 @@ async function main() {
   // configs to run the expensive 7-run cost + heap measurement on (all of
   // them would multiply total runtime; the recommended combo and baseline
   // are what the report needs numbers for).
-  const costConfigs = new Set(["baseline", "X1-B200", "X1t(200/100/50)", "X1t(200/100/50)+X2(20)+X3", "X1(200)+X2(20)+X3"]);
+  const costConfigs = new Set([
+    "baseline",
+    "X1-B200",
+    "X1t(200/100/50)",
+    "X1t(200/100/50)+X2(20)+X3",
+    "X1(200)+X2(20)+X3",
+  ]);
 
   const results = [];
   for (const [label, docsForRun, opts] of configs) {
     const r = runConfig(lunr, docsForRun, oldQueries, intentQueries, opts, label);
     if (costConfigs.has(label)) {
-      r.cost = { medianBuildMs: medianBuildTime(lunr, docsForRun, opts), heapDeltaBytes: heapFor(lunr, docsForRun, opts) };
+      r.cost = {
+        medianBuildMs: medianBuildTime(lunr, docsForRun, opts),
+        heapDeltaBytes: heapFor(lunr, docsForRun, opts),
+      };
     }
     const ctx = { lunr, index: buildIndex(lunr, docsForRun, opts), docs: docsForRun };
     r.tierAnalysis = tierOrderAnalysis(ctx, symIdx.symbols, search, opts);
@@ -323,7 +412,10 @@ async function main() {
     console.error(`done: ${label}`);
   }
 
-  fs.writeFileSync(path.resolve("out_results.json"), JSON.stringify({ tierCounts, doubtful, approxFallbacks, results }, null, 1));
+  fs.writeFileSync(
+    path.resolve("out_results.json"),
+    JSON.stringify({ tierCounts, doubtful, approxFallbacks, results }, null, 1),
+  );
   console.log("wrote out_results.json");
 }
 

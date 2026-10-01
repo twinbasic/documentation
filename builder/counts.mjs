@@ -2,11 +2,10 @@
 // the number of pages this build discovered.
 //
 // Designed in PLAN-counts.md. The point is not to fix wrong numbers; it is to
-// remove a class of decay. Round 2 of the use-case evaluation found stale
-// figures across the developer documentation and the interesting ones were not
-// mistakes -- they were correct when written, derived by hand, and attached to
-// nothing that would notice when they stopped being correct. A wrong count
-// breaks no link, fails no gate, and reads exactly like a right one.
+// remove a class of decay. A figure derived by hand is correct when written
+// and attached to nothing that would notice when it stops being correct. A
+// wrong count breaks no link, fails no gate, and reads exactly like a right
+// one.
 //
 // **A name is a derivation over build state, never a constant.** Getting that
 // wrong wastes the exercise: a registry holding `{ pages: 908 }` has not
@@ -26,14 +25,14 @@
 //   ```fence``` / indent  fence,        untouched, block tokens with no
 //                         code_block    children -- an inline walk never
 //                                       reaches them at all
-//   raw HTML block        html_block    untouched, and see assertNoPlaceholders
+//   raw HTML block        html_block    untouched, and see findSurvivingPlaceholder
 //   <span>text</span>     html_inline   the text between the tags IS a text
 //                                       token, so substituted
 //   image alt             image         only via the recursive descent below
 //
 // So no rewrite has to be taught what code is, which is the hazard
 // WIP.Build.md's "Never rewrite markdown source without knowing what is code"
-// records four shipped instances of.
+// describes.
 //
 // Two things about `text` tokens are easy to get wrong. They are inline text
 // *runs* after inline parsing, not raw markdown -- by the time this rule runs
@@ -44,8 +43,7 @@
 // rule does not descend into an image token's children, so a flat walk would
 // leave a placeholder literal in the alt attribute. (`kramdownDashesPlugin`
 // in render.mjs recurses for the same reason, which is why dashes in alt text
-// DO convert -- a note in WIP.md once concluded the opposite from this same
-// asymmetry.)
+// DO convert.)
 //
 // ------------------------------------------------------------- the failures
 //
@@ -57,7 +55,7 @@
 //   - `validateCountNames` scans the source, with code masked as the
 //     pre-render rewrites mask it, and rejects an unknown name. This is the
 //     typo case, and it names the file, the line and the nearest match.
-//   - `assertNoPlaceholders` scans the rendered HTML for a placeholder that
+//   - `findSurvivingPlaceholder` scans the rendered HTML for a placeholder that
 //     survived, outside `<code>` and `<pre>`. Source validation cannot see
 //     this case: a placeholder inside a raw HTML block has a perfectly good
 //     name, passes the first check, and still renders literally.
@@ -79,18 +77,16 @@ export const PLACEHOLDER_RE = /\{\{tbdocs:([A-Za-z][A-Za-z0-9]*)\}\}/g;
 const REF_PREFIX = "Reference/";
 const DOC_PREFIX = "Documentation/";
 
-// Packages live one level under Reference/Default/ and Reference/Built-In/ --
-// `58a5e1c` split them into the three every project references and the ten the
-// IDE ships but references on demand. Counting directories rather than index
+// Packages live one level under Reference/Default/ (the three every project
+// references) and Reference/Built-In/ (the ten the IDE ships but references on
+// demand). Counting directories rather than index
 // pages keeps the number right for a package whose landing page is missing.
 const PACKAGE_ROOTS = ["Reference/Default/", "Reference/Built-In/"];
 
 // Counted per root as well as in total, because the site's prose needs all
-// three numbers and only ever had a name for one of them. Round 3 of the
-// use-case evaluation found `Reference/index.md` calling all thirteen
-// "built-in" while `Reference/Packages.md` reserved the word for the ten --
-// both arithmetically right, and a reader cannot tell that from either page.
-// A sentence that says `{{tbdocs:builtInPackages}}` cannot drift into the
+// three numbers. Two pages can call different sets "built-in" (all thirteen,
+// or the ten) and both be arithmetically right, and a reader cannot tell that
+// from either page. A sentence that says `{{tbdocs:builtInPackages}}` cannot drift into the
 // other set's number.
 function countPackages(pages, root = null) {
   const roots = root ? [root] : PACKAGE_ROOTS;
@@ -108,8 +104,8 @@ function countPackages(pages, root = null) {
 
 // Pinned heading ids in the attribute reference. These are a published URL
 // contract -- Permanent-Links.md lists every one, and the build's link check
-// resolves them -- so the count is worth stating and worth being derived. It
-// went from 56 to 58 in the session that noticed it was 56, and again since.
+// resolves them -- so the count is worth stating and worth being derived, since
+// it moves whenever an anchor is added.
 function countAttributeAnchors(pages) {
   const page = pages.find((p) => p.srcRel === "Reference/Attributes.md");
   if (!page) return 0;
@@ -129,7 +125,7 @@ function proseLines(src) {
 // index in Reference/Enumerations.md -- which that page calls the complete
 // list ("This page indexes all of them either way"), because a nested enum is
 // documented on its declaring class's page and so has no page of its own to
-// count. The by-package section above it holds the same 140 today; this reads
+// count. The by-package section above it holds the same set; this reads
 // one of the two rather than both, because the user-facing total is the index.
 //
 // Same shape and same exposure as countAttributeAnchors: it scans one page's
@@ -183,9 +179,8 @@ export function deriveCounts(state, extra) {
     folderStyleIndexes: folderStyle.length,
     // Of those, the ones whose permalink ends in a slash -- one extra URL
     // segment, which is what makes cross-section links from them asymmetric.
-    folderStyleSlashPermalinks: folderStyle.filter(
-      (p) => typeof p.permalink === "string" && p.permalink.endsWith("/"),
-    ).length,
+    folderStyleSlashPermalinks: folderStyle.filter((p) => typeof p.permalink === "string" && p.permalink.endsWith("/"))
+      .length,
     packages: countPackages(pages),
     // The two halves of that split, named separately because the prose uses
     // each on its own and the words for them collide.
@@ -238,8 +233,7 @@ export function countPlugin(md, ctx) {
 }
 
 function substitute(text, counts) {
-  return text.replace(PLACEHOLDER_RE, (whole, name) =>
-    Object.hasOwn(counts, name) ? String(counts[name]) : whole);
+  return text.replace(PLACEHOLDER_RE, (whole, name) => (Object.hasOwn(counts, name) ? String(counts[name]) : whole));
 }
 
 // -------------------------------------------------------------- validation
@@ -269,10 +263,14 @@ export function findCountRefs(rawContent, md) {
 // Closest known name by a cheap edit distance, so the error can say "did you
 // mean". Bounded at 3 because beyond that the suggestion is noise.
 function nearest(name, names) {
-  let best = null, bestD = 4;
+  let best = null,
+    bestD = 4;
   for (const n of names) {
     const d = editDistance(name.toLowerCase(), n.toLowerCase());
-    if (d < bestD) { best = n; bestD = d; }
+    if (d < bestD) {
+      best = n;
+      bestD = d;
+    }
   }
   return best;
 }
@@ -282,11 +280,7 @@ function editDistance(a, b) {
   for (let i = 1; i <= a.length; i++) {
     const cur = [i];
     for (let j = 1; j <= b.length; j++) {
-      cur[j] = Math.min(
-        prev[j] + 1,
-        cur[j - 1] + 1,
-        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
-      );
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
     }
     prev = cur;
   }
@@ -314,9 +308,9 @@ export function validateCountNames(pages, counts, md) {
       const guess = nearest(name, names);
       problems.push(
         `${p.srcRel}:${line + (p.contentLine ?? 1) - 1}\n` +
-        `  unknown count name {{tbdocs:${name}}}\n` +
-        (guess ? `  did you mean: ${guess}?\n` : "") +
-        `  available: ${names.join(", ")}`,
+          `  unknown count name {{tbdocs:${name}}}\n` +
+          (guess ? `  did you mean: ${guess}?\n` : "") +
+          `  available: ${names.join(", ")}`,
       );
     }
   }
@@ -327,7 +321,9 @@ export function validateCountNames(pages, counts, md) {
 // alternation (code-guard.mjs), so a placeholder the documentation is
 // deliberately SHOWING does not trip the assertion.
 const SURVIVING_PLACEHOLDER_RE = new RegExp(
-  String.raw`${CODE_OR_PRE.source}|(\{\{tbdocs:[A-Za-z][A-Za-z0-9]*\}\})`, "g");
+  String.raw`${CODE_OR_PRE.source}|(\{\{tbdocs:[A-Za-z][A-Za-z0-9]*\}\})`,
+  "g",
+);
 
 /**
  * Reject a placeholder that survived rendering, outside code.

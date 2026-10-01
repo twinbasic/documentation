@@ -688,7 +688,7 @@ Considered but **not** added:
   (Example, See Also). Defer to a follow-up if the value
   emerges.
 - **No literal em-dash / en-dash in `docs/**/*.md`**. The WIP.md
-  "Don'ts" rule. Already enforced by `scripts/convert_em_dash_separators.py`
+  "Don'ts" rule. Already enforced by `scripts/convert_em_dash_separators.mjs`
   on demand; pre-commit hook would be the right home, not the
   integrity checker.
 - **`parent:` / `grand_parent:` frontmatter resolves**.

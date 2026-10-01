@@ -1,8 +1,9 @@
 {
-  // Biome as the repository's linter (builder/PLAN-TOOLING-REVIEW.md,
-  // decision 4): rules that find defects -- the correctness and suspicious
-  // groups -- and nothing about style. The formatter stays off until the
-  // review's last phase. scripts/check_lint.mjs runs this configuration.
+  // Biome as the repository's linter and formatter
+  // (builder/PLAN-TOOLING-REVIEW.md, decision 4). The linter runs the rules
+  // that find defects -- the correctness and suspicious groups -- and nothing
+  // about style; the formatter owns style, set to the style most of the tree
+  // was already written in. scripts/check_lint.mjs runs this configuration.
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "root": true,
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
@@ -32,7 +33,19 @@
       "!test/fixtures"
     ]
   },
-  "formatter": { "enabled": false },
+  // Each setting is the one that changes the fewest lines of the tree as it
+  // was written. Comments are never reflowed; they stay wrapped at 80 columns
+  // by hand. Line endings are LF in every checkout (.gitattributes).
+  "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 120, "lineEnding": "lf" },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "always",
+      "trailingCommas": "all",
+      "arrowParentheses": "always",
+      "bracketSpacing": true
+    }
+  },
   "assist": { "enabled": false },
   "linter": {
     "enabled": true,
@@ -52,7 +65,9 @@
   "overrides": [
     {
       // ES5-style scripts that ship to readers as written.
+      // A trailing comma after a call's last argument is ES2017.
       "includes": ["docs/assets/js/*.js"],
+      "javascript": { "formatter": { "trailingCommas": "es5" } },
       "linter": { "rules": { "correctness": { "noInnerDeclarations": "off" } } }
     },
     {
@@ -87,7 +102,14 @@
               "options": {
                 "patterns": [
                   {
-                    "group": ["**/builder/**", "**/scripts/**", "**/book/**", "**/eval/**", "**/wisdom/**", "**/test/**"],
+                    "group": [
+                      "**/builder/**",
+                      "**/scripts/**",
+                      "**/book/**",
+                      "**/eval/**",
+                      "**/wisdom/**",
+                      "**/test/**"
+                    ],
                     "message": "lib/ must not import builder/, scripts/, book/, eval/, wisdom/ or test/."
                   }
                 ]

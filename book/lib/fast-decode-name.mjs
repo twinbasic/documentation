@@ -59,9 +59,13 @@ import { PDFName } from "pdf-lib";
 import { checkTargets } from "./shim-targets.mjs";
 
 if (!PDFName.__fastDecodeNameInstalled) {
-  checkTargets(import.meta.url, { PDFName }, {
-    "PDFName.of": [1, "69a406b28b28"],
-  });
+  checkTargets(
+    import.meta.url,
+    { PDFName },
+    {
+      "PDFName.of": [1, "69a406b28b28"],
+    },
+  );
   const original = PDFName.of;
   const fastCache = new Map();
   PDFName.of = function fastOf(name) {

@@ -14,10 +14,9 @@
 // the built-in core-PostScript width tables. An unknown family falls back to
 // Times, so `fontname="Inter"` measures byte-identically to
 // `fontname="NoSuchFontXYZ"` -- and Times is much narrower than Inter, so
-// every box came out too small. Measured across the site's diagram labels,
-// Graphviz under-sized them by 11.4% on average and 18.0% at worst, which put
-// 27 labels past their box edges on the three diagrams that shipped before
-// this existed.
+// every box comes out too small: Graphviz under-sizes the site's diagram
+// labels by 11.4% on average and 18.0% at worst, which puts labels past
+// their box edges.
 //
 // The numbers below come from the browser rather than from the font binary on
 // purpose: the browser's shaped advance is what actually gets painted, so
@@ -69,53 +68,61 @@ const VARIANTS = [
   { key: "boldItalic", weight: 700, style: "italic" },
 ];
 
-const cli = withUsageError(() => parseCli(process.argv.slice(2), {
-  options: { check: { type: "boolean" }, help: { type: "boolean", short: "h" } },
-  stopAt: ["help"],
-}));
+const cli = withUsageError(() =>
+  parseCli(process.argv.slice(2), {
+    options: { check: { type: "boolean" }, help: { type: "boolean", short: "h" } },
+    stopAt: ["help"],
+  }),
+);
 if (cli.values.help) printHelpAndExit(USAGE);
 const check = cli.values.check === true;
 
 const table = await withBrowser(async (browser) => {
   const page = await openInterPage(browser, "dot-metrics", { css: "body{margin:0}" });
 
-  return await page.evaluate(async (variants, upm) => {
-    for (const v of variants) {
-      await document.fonts.load(`${v.style === "italic" ? "italic " : ""}${v.weight} 16px Inter`);
-    }
-    await document.fonts.ready;
-
-    const ctx = document.createElement("canvas").getContext("2d");
-    const font = (v, px) => `${v.style === "italic" ? "italic " : ""}${v.weight} ${px}px Inter`;
-
-    // Advances must scale linearly with size, or a table measured at one size
-    // cannot stand in for every size Graphviz will ask about. Chromium's
-    // canvas uses unhinted advances, so they do -- but assert it rather than
-    // assume it, because a hinted path would silently skew the whole table.
-    const v0 = variants[0];
-    ctx.font = font(v0, 2048);
-    const big = ctx.measureText("Hamburgefonstiv").width;
-    ctx.font = font(v0, 128);
-    const small = ctx.measureText("Hamburgefonstiv").width * 16;
-    const drift = Math.abs(big - small) / big;
-    if (drift > 0.002) {
-      throw new Error(`advances are not linear in size (drift ${(drift * 100).toFixed(3)}%) -- ` +
-        `the table cannot be measured at a single size`);
-    }
-
-    const out = {};
-    for (const v of variants) {
-      // Measuring at exactly `upm` px makes the returned advance the em-unit
-      // value directly, with no scaling step to get wrong.
-      ctx.font = font(v, upm);
-      const arr = new Array(128).fill(-1);
-      for (let cc = 32; cc < 127; cc++) {
-        arr[cc] = Math.round(ctx.measureText(String.fromCharCode(cc)).width);
+  return await page.evaluate(
+    async (variants, upm) => {
+      for (const v of variants) {
+        await document.fonts.load(`${v.style === "italic" ? "italic " : ""}${v.weight} 16px Inter`);
       }
-      out[v.key] = arr;
-    }
-    return { unitsPerEm: upm, widths: out, probe: Math.round(big) };
-  }, VARIANTS, UNITS_PER_EM);
+      await document.fonts.ready;
+
+      const ctx = document.createElement("canvas").getContext("2d");
+      const font = (v, px) => `${v.style === "italic" ? "italic " : ""}${v.weight} ${px}px Inter`;
+
+      // Advances must scale linearly with size, or a table measured at one size
+      // cannot stand in for every size Graphviz will ask about. Chromium's
+      // canvas uses unhinted advances, so they do -- but assert it rather than
+      // assume it, because a hinted path would silently skew the whole table.
+      const v0 = variants[0];
+      ctx.font = font(v0, 2048);
+      const big = ctx.measureText("Hamburgefonstiv").width;
+      ctx.font = font(v0, 128);
+      const small = ctx.measureText("Hamburgefonstiv").width * 16;
+      const drift = Math.abs(big - small) / big;
+      if (drift > 0.002) {
+        throw new Error(
+          `advances are not linear in size (drift ${(drift * 100).toFixed(3)}%) -- ` +
+            `the table cannot be measured at a single size`,
+        );
+      }
+
+      const out = {};
+      for (const v of variants) {
+        // Measuring at exactly `upm` px makes the returned advance the em-unit
+        // value directly, with no scaling step to get wrong.
+        ctx.font = font(v, upm);
+        const arr = new Array(128).fill(-1);
+        for (let cc = 32; cc < 127; cc++) {
+          arr[cc] = Math.round(ctx.measureText(String.fromCharCode(cc)).width);
+        }
+        out[v.key] = arr;
+      }
+      return { unitsPerEm: upm, widths: out, probe: Math.round(big) };
+    },
+    VARIANTS,
+    UNITS_PER_EM,
+  );
 });
 
 for (const v of VARIANTS) {
@@ -125,15 +132,20 @@ for (const v of VARIANTS) {
   if (bad.length) throw new Error(`${v.key}: ${bad.length} width(s) outside the int16 range`);
 }
 
-const next = JSON.stringify({
-  _comment: [
-    "Generated by scripts/build_dot_metrics.mjs -- do not hand-edit.",
-    "Inter advance widths in em units, for Graphviz's FontFamilyMetrics.",
-    "Indexed by ASCII code point; -1 means 'no data', as Graphviz uses it.",
-  ],
-  unitsPerEm: table.unitsPerEm,
-  widths: table.widths,
-}, null, 1) + "\n";
+const next =
+  JSON.stringify(
+    {
+      _comment: [
+        "Generated by scripts/build_dot_metrics.mjs -- do not hand-edit.",
+        "Inter advance widths in em units, for Graphviz's FontFamilyMetrics.",
+        "Indexed by ASCII code point; -1 means 'no data', as Graphviz uses it.",
+      ],
+      unitsPerEm: table.unitsPerEm,
+      widths: table.widths,
+    },
+    null,
+    1,
+  ) + "\n";
 
 const prev = await fs.readFile(OUT, "utf8").catch(() => null);
 const rel = path.relative(REPO_ROOT, OUT).replace(/\\/g, "/");

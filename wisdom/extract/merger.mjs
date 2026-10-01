@@ -14,23 +14,23 @@
 // Atomic writes: temp file + rename, previous staging.md retained as
 // staging.md.bak for one generation.
 
-import { existsSync, mkdirSync, readFileSync, copyFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { blockRegions, splitOnMarker } from '../../lib/markdown.mjs'
-import { writeFileAtomic } from '../files.mjs'
-import { buildEmissionKeySet, emissionKey } from './state.mjs'
+import { existsSync, mkdirSync, readFileSync, copyFileSync } from "node:fs";
+import { join } from "node:path";
+import { blockRegions, splitOnMarker } from "../../lib/markdown.mjs";
+import { writeFileAtomic } from "../files.mjs";
+import { buildEmissionKeySet, emissionKey } from "./state.mjs";
 
-const STAGING_FILE = 'staging.md'
-const BACKUP_FILE = 'staging.md.bak'
+const STAGING_FILE = "staging.md";
+const BACKUP_FILE = "staging.md.bak";
 
-const STAGING_H1 = '# Wisdom Extract -- Staging'
-const UNMAPPED_H1 = '# Unmapped Findings'
+const STAGING_H1 = "# Wisdom Extract -- Staging";
+const UNMAPPED_H1 = "# Unmapped Findings";
 const UNMAPPED_PREAMBLE =
-  '_These findings do not map to an existing documentation page. The reviewer ' +
-  'decides: create a new page, attach to a package index, fold into an existing page, ' +
-  'or discard._'
+  "_These findings do not map to an existing documentation page. The reviewer " +
+  "decides: create a new page, attach to a package index, fold into an existing page, " +
+  "or discard._";
 
-const REFINED_MARKER = 'REFINED? -- previously processed; please diff against current docs page'
+const REFINED_MARKER = "REFINED? -- previously processed; please diff against current docs page";
 
 // ----------------------------------------------------------------------
 // Public API
@@ -43,48 +43,48 @@ const REFINED_MARKER = 'REFINED? -- previously processed; please diff against cu
  * Returns a stats object: { replaced, inserted, refined, total }.
  */
 export function graftAdditions(outDir, additions, state) {
-  const stagingPath = join(outDir, STAGING_FILE)
-  const backupPath = join(outDir, BACKUP_FILE)
+  const stagingPath = join(outDir, STAGING_FILE);
+  const backupPath = join(outDir, BACKUP_FILE);
 
-  let parsed
+  let parsed;
   if (existsSync(stagingPath)) {
-    const content = readFileSync(stagingPath, 'utf-8')
-    parsed = parseStaging(content)
+    const content = readFileSync(stagingPath, "utf-8");
+    parsed = parseStaging(content);
   } else {
-    parsed = freshStaging()
+    parsed = freshStaging();
   }
 
-  const emissionKeys = buildEmissionKeySet(state)
-  const stats = mergeIntoParsed(parsed, additions, emissionKeys)
+  const emissionKeys = buildEmissionKeySet(state);
+  const stats = mergeIntoParsed(parsed, additions, emissionKeys);
 
   // Record emissions per thread so future runs can detect refinements.
-  const byThread = new Map()
+  const byThread = new Map();
   for (const add of additions) {
-    const ids = add.finding_ids || []
+    const ids = add.finding_ids || [];
     for (const tid of ids) {
-      if (!byThread.has(tid)) byThread.set(tid, [])
+      if (!byThread.has(tid)) byThread.set(tid, []);
       byThread.get(tid).push({
         target_page: add.target_page,
         section: add.section,
         finding_ids: ids,
-      })
+      });
     }
   }
   // Caller will use the returned per-thread emissions to update state.
-  stats.emissionsByThread = byThread
+  stats.emissionsByThread = byThread;
 
   // Ensure UNMAPPED H1 is present if any UNMAPPED sections exist.
-  ensureUnmappedHeader(parsed)
+  ensureUnmappedHeader(parsed);
 
   // Atomic write: backup current, write to temp, rename.
-  const serialized = serializeStaging(parsed)
-  mkdirSync(outDir, { recursive: true })
+  const serialized = serializeStaging(parsed);
+  mkdirSync(outDir, { recursive: true });
   if (existsSync(stagingPath)) {
-    copyFileSync(stagingPath, backupPath)
+    copyFileSync(stagingPath, backupPath);
   }
-  writeFileAtomic(stagingPath, serialized)
+  writeFileAtomic(stagingPath, serialized);
 
-  return stats
+  return stats;
 }
 
 /**
@@ -93,10 +93,10 @@ export function graftAdditions(outDir, additions, state) {
  * the canonical staging file.
  */
 export function renderSideband(additions) {
-  const parsed = freshStaging()
-  mergeIntoParsed(parsed, additions, new Set())
-  ensureUnmappedHeader(parsed)
-  return serializeStaging(parsed)
+  const parsed = freshStaging();
+  mergeIntoParsed(parsed, additions, new Set());
+  ensureUnmappedHeader(parsed);
+  return serializeStaging(parsed);
 }
 
 // ----------------------------------------------------------------------
@@ -119,94 +119,98 @@ export function renderSideband(additions) {
 export function parseStaging(content) {
   // Split on lines that are exactly "---", except inside a code sample, which
   // may hold one. Each chunk keeps its first line number for the errors below.
-  const parts = splitOnMarker(content, (line) => line === '---')
-  const lines = parts.flatMap((p) => (p.marker === null ? p.lines : [p.marker, ...p.lines]))
+  const parts = splitOnMarker(content, (line) => line === "---");
+  const lines = parts.flatMap((p) => (p.marker === null ? p.lines : [p.marker, ...p.lines]));
   for (const r of blockRegions(content)) {
-    if (r.end < lines.length) continue
-    const dash = lines.slice(r.start, r.end).indexOf('---')
-    if (dash < 0) continue
-    const what = r.type === 'fence' ? 'a fence that is never closed' : 'a block that runs to the end of the file'
-    throw new Error(`staging.md line ${r.start + 1} opens ${what}, so the "---" on line ` +
-                    `${r.start + dash + 1} and every one after it split no sections: close it`)
+    if (r.end < lines.length) continue;
+    const dash = lines.slice(r.start, r.end).indexOf("---");
+    if (dash < 0) continue;
+    const what = r.type === "fence" ? "a fence that is never closed" : "a block that runs to the end of the file";
+    throw new Error(
+      `staging.md line ${r.start + 1} opens ${what}, so the "---" on line ` +
+        `${r.start + dash + 1} and every one after it split no sections: close it`,
+    );
   }
-  const chunks = parts.map((p) => p.lines)
-  const starts = parts.map((p) => (p.marker === null ? 1 : p.start + 2))
+  const chunks = parts.map((p) => p.lines);
+  const starts = parts.map((p) => (p.marker === null ? 1 : p.start + 2));
 
   // First chunk = preamble + first section.  Subsequent chunks = sections.
   // Trailing chunk after the last `---` is usually blank lines; preserve as
   // a trailing-blank count.
-  let preamble = []
-  let firstSectionLines = null
+  let preamble = [];
+  let firstSectionLines = null;
   for (let i = 0; i < chunks[0].length; i++) {
-    if (chunks[0][i].startsWith('## ')) {
-      preamble = chunks[0].slice(0, i)
-      firstSectionLines = chunks[0].slice(i)
-      break
+    if (chunks[0][i].startsWith("## ")) {
+      preamble = chunks[0].slice(0, i);
+      firstSectionLines = chunks[0].slice(i);
+      break;
     }
   }
-  if (!firstSectionLines) preamble = chunks[0]
+  if (!firstSectionLines) preamble = chunks[0];
 
-  const sections = []
+  const sections = [];
   if (firstSectionLines && firstSectionLines.length) {
-    const s = parseSection(firstSectionLines)
-    if (s) sections.push(s)
+    const s = parseSection(firstSectionLines);
+    if (s) sections.push(s);
   }
   for (let i = 1; i < chunks.length; i++) {
-    if (!chunks[i].length) continue
-    const s = parseSection(chunks[i])
+    if (!chunks[i].length) continue;
+    const s = parseSection(chunks[i]);
     if (s) {
-      sections.push(s)
-      continue
+      sections.push(s);
+      continue;
     }
     // parseSection returns null for a chunk of blank lines, which is dropped,
     // and for one that does not start with "## ", which is refused.
-    const first = chunks[i].findIndex((l) => l !== '')
+    const first = chunks[i].findIndex((l) => l !== "");
     if (first >= 0) {
-      throw new Error(`staging.md line ${starts[i] + first} follows a "---" line but is not a ` +
-                      `"## " heading, so it belongs to no section: ${chunks[i][first]}`)
+      throw new Error(
+        `staging.md line ${starts[i] + first} follows a "---" line but is not a ` +
+          `"## " heading, so it belongs to no section: ${chunks[i][first]}`,
+      );
     }
   }
 
   // Strip leading/trailing blank lines from preamble.
-  while (preamble.length && preamble[preamble.length - 1] === '') preamble.pop()
+  while (preamble.length && preamble[preamble.length - 1] === "") preamble.pop();
 
-  return { preamble, sections }
+  return { preamble, sections };
 }
 
 function parseSection(lines) {
   // Strip leading/trailing blank lines.
-  const buf = lines.slice()
-  while (buf.length && buf[0] === '') buf.shift()
-  while (buf.length && buf[buf.length - 1] === '') buf.pop()
-  if (!buf.length) return null
-  if (!buf[0].startsWith('## ')) return null
+  const buf = lines.slice();
+  while (buf.length && buf[0] === "") buf.shift();
+  while (buf.length && buf[buf.length - 1] === "") buf.pop();
+  if (!buf.length) return null;
+  if (!buf[0].startsWith("## ")) return null;
 
-  const heading = buf[0]
-  const parsedHeading = parseHeading(heading)
+  const heading = buf[0];
+  const parsedHeading = parseHeading(heading);
 
   // Walk backward to collect trailing meta lines (those wrapped in `_..._`).
-  const meta = []
-  let bodyEnd = buf.length
+  const meta = [];
+  let bodyEnd = buf.length;
   for (let i = buf.length - 1; i >= 1; i--) {
-    const ln = buf[i]
-    if (ln === '') {
-      bodyEnd = i
-      continue
+    const ln = buf[i];
+    if (ln === "") {
+      bodyEnd = i;
+      continue;
     }
-    if (ln.startsWith('_') && ln.endsWith('_')) {
-      meta.unshift(ln)
-      bodyEnd = i
-      continue
+    if (ln.startsWith("_") && ln.endsWith("_")) {
+      meta.unshift(ln);
+      bodyEnd = i;
+      continue;
     }
-    break
+    break;
   }
 
   // Body = everything between the heading and the meta block, trimmed.
-  let body = buf.slice(1, bodyEnd)
-  while (body.length && body[0] === '') body.shift()
-  while (body.length && body[body.length - 1] === '') body.pop()
+  let body = buf.slice(1, bodyEnd);
+  while (body.length && body[0] === "") body.shift();
+  while (body.length && body[body.length - 1] === "") body.pop();
 
-  const metaParsed = parseMeta(meta)
+  const metaParsed = parseMeta(meta);
 
   return {
     heading,
@@ -214,74 +218,77 @@ function parseSection(lines) {
     target_page: parsedHeading.target_page,
     section: parsedHeading.section,
     marker: parsedHeading.marker,
-    locked: parsedHeading.marker ? parsedHeading.marker.includes('LOCKED') : false,
+    locked: parsedHeading.marker ? parsedHeading.marker.includes("LOCKED") : false,
     body,
     finding_ids: metaParsed.finding_ids,
     confidence: metaParsed.confidence,
     date_earliest: metaParsed.date_earliest,
     date_latest: metaParsed.date_latest,
     reviewer_note: metaParsed.reviewer_note,
-  }
+  };
 }
 
 function parseHeading(line) {
   // line = "## <target_page> · <section>" or with trailing " [<marker>]"
-  if (!line.startsWith('## ')) return { target_page: '', section: '', marker: null }
-  let rest = line.slice(3).trim()
+  if (!line.startsWith("## ")) return { target_page: "", section: "", marker: null };
+  let rest = line.slice(3).trim();
 
-  let marker = null
-  if (rest.endsWith(']')) {
-    const openIdx = rest.lastIndexOf(' [')
+  let marker = null;
+  if (rest.endsWith("]")) {
+    const openIdx = rest.lastIndexOf(" [");
     if (openIdx > 0) {
-      marker = rest.slice(openIdx + 2, rest.length - 1)
-      rest = rest.slice(0, openIdx)
+      marker = rest.slice(openIdx + 2, rest.length - 1);
+      rest = rest.slice(0, openIdx);
     }
   }
 
-  const sepIdx = rest.lastIndexOf(' · ')
-  if (sepIdx < 0) return { target_page: rest, section: '', marker }
+  const sepIdx = rest.lastIndexOf(" · ");
+  if (sepIdx < 0) return { target_page: rest, section: "", marker };
   return {
     target_page: rest.slice(0, sepIdx),
     section: rest.slice(sepIdx + 3),
     marker,
-  }
+  };
 }
 
 function parseMeta(metaLines) {
-  let finding_ids = []
-  let confidence = null
-  let date_earliest = null
-  let date_latest = null
-  let reviewer_note = null
+  let finding_ids = [];
+  let confidence = null;
+  let date_earliest = null;
+  let date_latest = null;
+  let reviewer_note = null;
 
   for (const m of metaLines) {
-    const src = m.match(/^_Source threads:\s*(.+?)\s*·\s*confidence:\s*(\w+)_$/)
+    const src = m.match(/^_Source threads:\s*(.+?)\s*·\s*confidence:\s*(\w+)_$/);
     if (src) {
-      finding_ids = src[1].split('·').map(s => s.trim()).filter(Boolean)
-      confidence = src[2]
-      continue
+      finding_ids = src[1]
+        .split("·")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      confidence = src[2];
+      continue;
     }
-    const date = m.match(/^_Date range:\s*(.+?)_$/)
+    const date = m.match(/^_Date range:\s*(.+?)_$/);
     if (date) {
-      const range = date[1].trim()
-      const idx = range.indexOf(' to ')
+      const range = date[1].trim();
+      const idx = range.indexOf(" to ");
       if (idx > 0) {
-        date_earliest = range.slice(0, idx).trim()
-        date_latest = range.slice(idx + 4).trim()
+        date_earliest = range.slice(0, idx).trim();
+        date_latest = range.slice(idx + 4).trim();
       } else {
-        date_earliest = range
-        date_latest = range
+        date_earliest = range;
+        date_latest = range;
       }
-      continue
+      continue;
     }
-    const rev = m.match(/^_Reviewer note:\s*(.+)_$/)
+    const rev = m.match(/^_Reviewer note:\s*(.+)_$/);
     if (rev) {
-      reviewer_note = rev[1].trim()
-      continue
+      reviewer_note = rev[1].trim();
+      continue;
     }
   }
 
-  return { finding_ids, confidence, date_earliest, date_latest, reviewer_note }
+  return { finding_ids, confidence, date_earliest, date_latest, reviewer_note };
 }
 
 // ----------------------------------------------------------------------
@@ -289,73 +296,73 @@ function parseMeta(metaLines) {
 // ----------------------------------------------------------------------
 
 function mergeIntoParsed(parsed, additions, emissionKeys) {
-  const stats = { replaced: 0, inserted: 0, refined: 0, total: additions.length }
+  const stats = { replaced: 0, inserted: 0, refined: 0, total: additions.length };
 
   // Build index of existing sections by match key (skip locked).
-  const index = new Map()
+  const index = new Map();
   for (let i = 0; i < parsed.sections.length; i++) {
-    const s = parsed.sections[i]
-    if (s.locked) continue
-    const k = emissionKey(s)
-    if (!index.has(k)) index.set(k, i)
+    const s = parsed.sections[i];
+    if (s.locked) continue;
+    const k = emissionKey(s);
+    if (!index.has(k)) index.set(k, i);
   }
 
   for (const add of additions) {
-    const normalised = normaliseAddition(add)
-    const k = emissionKey(normalised)
+    const normalised = normaliseAddition(add);
+    const k = emissionKey(normalised);
 
     if (index.has(k)) {
       // Replace in place — preserve heading marker (so [DUPLICATE?] etc.
       // carry through).
-      const idx = index.get(k)
-      const existing = parsed.sections[idx]
-      parsed.sections[idx] = sectionFromAddition(normalised, existing.marker)
-      stats.replaced++
-      continue
+      const idx = index.get(k);
+      const existing = parsed.sections[idx];
+      parsed.sections[idx] = sectionFromAddition(normalised, existing.marker);
+      stats.replaced++;
+      continue;
     }
 
-    const isRefined = emissionKeys.has(k)
-    const marker = isRefined ? REFINED_MARKER : null
-    const newSection = sectionFromAddition(normalised, marker)
+    const isRefined = emissionKeys.has(k);
+    const marker = isRefined ? REFINED_MARKER : null;
+    const newSection = sectionFromAddition(normalised, marker);
 
     // Insert at end of the target_page's contiguous group.
-    let insertIdx = -1
+    let insertIdx = -1;
     for (let i = parsed.sections.length - 1; i >= 0; i--) {
       if (parsed.sections[i].target_page === normalised.target_page) {
-        insertIdx = i + 1
-        break
+        insertIdx = i + 1;
+        break;
       }
     }
 
     if (insertIdx === -1) {
       // New target_page: UNMAPPED goes at the top (before mapped pages);
       // mapped pages go at the end.
-      if (normalised.target_page === 'UNMAPPED') {
+      if (normalised.target_page === "UNMAPPED") {
         // Find the first non-UNMAPPED section, insert before it.
-        let firstMapped = parsed.sections.findIndex(s => s.target_page !== 'UNMAPPED')
-        if (firstMapped === -1) firstMapped = parsed.sections.length
-        parsed.sections.splice(firstMapped, 0, newSection)
-        insertIdx = firstMapped
+        let firstMapped = parsed.sections.findIndex((s) => s.target_page !== "UNMAPPED");
+        if (firstMapped === -1) firstMapped = parsed.sections.length;
+        parsed.sections.splice(firstMapped, 0, newSection);
+        insertIdx = firstMapped;
       } else {
-        parsed.sections.push(newSection)
-        insertIdx = parsed.sections.length - 1
+        parsed.sections.push(newSection);
+        insertIdx = parsed.sections.length - 1;
       }
     } else {
-      parsed.sections.splice(insertIdx, 0, newSection)
+      parsed.sections.splice(insertIdx, 0, newSection);
     }
 
     // Shift indices of existing entries at or after the insertion point.
     for (const [otherKey, otherIdx] of [...index.entries()]) {
-      if (otherIdx >= insertIdx) index.set(otherKey, otherIdx + 1)
+      if (otherIdx >= insertIdx) index.set(otherKey, otherIdx + 1);
     }
     // Record the new section's index so later additions can match.
-    index.set(k, insertIdx)
+    index.set(k, insertIdx);
 
-    if (isRefined) stats.refined++
-    else stats.inserted++
+    if (isRefined) stats.refined++;
+    else stats.inserted++;
   }
 
-  return stats
+  return stats;
 }
 
 function normaliseAddition(add) {
@@ -363,31 +370,31 @@ function normaliseAddition(add) {
     target_page: add.target_page,
     section: add.section,
     finding_ids: [...(add.finding_ids || [])].sort(),
-    confidence: add.confidence || 'medium',
+    confidence: add.confidence || "medium",
     date_earliest: add.date_earliest || null,
     date_latest: add.date_latest || null,
-    draft: add.draft || '',
+    draft: add.draft || "",
     reviewer_note: add.reviewer_note || null,
-  }
+  };
 }
 
 function sectionFromAddition(add, marker) {
-  const headingPrefix = `## ${add.target_page} · ${add.section}`
-  const heading = marker ? `${headingPrefix} [${marker}]` : headingPrefix
+  const headingPrefix = `## ${add.target_page} · ${add.section}`;
+  const heading = marker ? `${headingPrefix} [${marker}]` : headingPrefix;
   return {
     heading,
     headingRaw: heading,
     target_page: add.target_page,
     section: add.section,
     marker: marker || null,
-    locked: marker ? marker.includes('LOCKED') : false,
-    body: add.draft.split('\n'),
+    locked: marker ? marker.includes("LOCKED") : false,
+    body: add.draft.split("\n"),
     finding_ids: add.finding_ids,
     confidence: add.confidence,
     date_earliest: add.date_earliest,
     date_latest: add.date_latest,
     reviewer_note: add.reviewer_note,
-  }
+  };
 }
 
 // ----------------------------------------------------------------------
@@ -398,24 +405,24 @@ function freshStaging() {
   return {
     preamble: [STAGING_H1],
     sections: [],
-  }
+  };
 }
 
 function ensureUnmappedHeader(parsed) {
-  const hasUnmapped = parsed.sections.some(s => s.target_page === 'UNMAPPED')
-  const preambleStr = parsed.preamble.join('\n')
-  const hasHeader = preambleStr.includes(UNMAPPED_H1)
+  const hasUnmapped = parsed.sections.some((s) => s.target_page === "UNMAPPED");
+  const preambleStr = parsed.preamble.join("\n");
+  const hasHeader = preambleStr.includes(UNMAPPED_H1);
 
   if (hasUnmapped && !hasHeader) {
     // Inject the UNMAPPED H1 + descriptive paragraph after the main H1.
-    const mainH1Idx = parsed.preamble.findIndex(ln => ln.startsWith('# Wisdom Extract'))
-    const insertAt = mainH1Idx >= 0 ? mainH1Idx + 1 : parsed.preamble.length
-    parsed.preamble.splice(insertAt, 0, '', UNMAPPED_H1, '', UNMAPPED_PREAMBLE)
+    const mainH1Idx = parsed.preamble.findIndex((ln) => ln.startsWith("# Wisdom Extract"));
+    const insertAt = mainH1Idx >= 0 ? mainH1Idx + 1 : parsed.preamble.length;
+    parsed.preamble.splice(insertAt, 0, "", UNMAPPED_H1, "", UNMAPPED_PREAMBLE);
   }
 
   // Ensure the main H1 exists.
-  if (!preambleStr.includes('# Wisdom Extract')) {
-    parsed.preamble.unshift(STAGING_H1)
+  if (!preambleStr.includes("# Wisdom Extract")) {
+    parsed.preamble.unshift(STAGING_H1);
   }
 }
 
@@ -424,42 +431,41 @@ function ensureUnmappedHeader(parsed) {
 // ----------------------------------------------------------------------
 
 function serializeStaging(parsed) {
-  const out = []
-  for (const line of parsed.preamble) out.push(line)
+  const out = [];
+  for (const line of parsed.preamble) out.push(line);
 
   // Group sections: UNMAPPED first, then mapped (preserving in-group order).
-  const unmapped = parsed.sections.filter(s => s.target_page === 'UNMAPPED')
-  const mapped = parsed.sections.filter(s => s.target_page !== 'UNMAPPED')
-  const ordered = [...unmapped, ...mapped]
+  const unmapped = parsed.sections.filter((s) => s.target_page === "UNMAPPED");
+  const mapped = parsed.sections.filter((s) => s.target_page !== "UNMAPPED");
+  const ordered = [...unmapped, ...mapped];
 
   for (const s of ordered) {
-    if (out.length && out[out.length - 1] !== '') out.push('')
-    out.push(s.heading, '')
-    for (const ln of s.body) out.push(ln)
-    out.push('')
-    out.push(formatSourceMeta(s))
-    if (s.date_earliest || s.date_latest) out.push(formatDateMeta(s))
-    if (s.reviewer_note) out.push(formatReviewerMeta(s))
-    out.push('', '---', '')
+    if (out.length && out[out.length - 1] !== "") out.push("");
+    out.push(s.heading, "");
+    for (const ln of s.body) out.push(ln);
+    out.push("");
+    out.push(formatSourceMeta(s));
+    if (s.date_earliest || s.date_latest) out.push(formatDateMeta(s));
+    if (s.reviewer_note) out.push(formatReviewerMeta(s));
+    out.push("", "---", "");
   }
 
   // Trim trailing blanks but keep a single trailing newline.
-  while (out.length && out[out.length - 1] === '') out.pop()
-  return out.join('\n') + '\n'
+  while (out.length && out[out.length - 1] === "") out.pop();
+  return out.join("\n") + "\n";
 }
 
 function formatSourceMeta(s) {
-  const ids = (s.finding_ids || []).join(' · ')
-  return `_Source threads: ${ids} · confidence: ${s.confidence || 'medium'}_`
+  const ids = (s.finding_ids || []).join(" · ");
+  return `_Source threads: ${ids} · confidence: ${s.confidence || "medium"}_`;
 }
 
 function formatDateMeta(s) {
-  const range = s.date_earliest === s.date_latest
-    ? s.date_earliest
-    : `${s.date_earliest || '?'} to ${s.date_latest || '?'}`
-  return `_Date range: ${range}_`
+  const range =
+    s.date_earliest === s.date_latest ? s.date_earliest : `${s.date_earliest || "?"} to ${s.date_latest || "?"}`;
+  return `_Date range: ${range}_`;
 }
 
 function formatReviewerMeta(s) {
-  return `_Reviewer note: ${s.reviewer_note}_`
+  return `_Reviewer note: ${s.reviewer_note}_`;
 }

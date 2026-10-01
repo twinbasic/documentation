@@ -122,8 +122,7 @@ export function load(site) {
   for (const p of [dataPath, lunrPath]) {
     if (!fs.existsSync(p)) {
       console.error(
-        `missing ${path.relative(REPO_ROOT, p)}\n` +
-        "Run build.bat (or `node builder/tbdocs.mjs --src docs`) first."
+        `missing ${path.relative(REPO_ROOT, p)}\n` + "Run build.bat (or `node builder/tbdocs.mjs --src docs`) first.",
       );
       process.exit(1);
     }
@@ -170,7 +169,7 @@ export function search({ lunr, index }, input) {
       // Capped at 2, as the patched just-the-docs.js is. Uncapped, a query of
       // three unindexed API names ran this replica out of memory.
       results = index.query((q) =>
-        q.term(tokens, { editDistance: Math.min(2, Math.round(Math.sqrt(input.length / 2 - 1))) })
+        q.term(tokens, { editDistance: Math.min(2, Math.round(Math.sqrt(input.length / 2 - 1))) }),
       );
     }
   }
@@ -184,11 +183,15 @@ export function search({ lunr, index }, input) {
 // API names.
 function composition(docs) {
   const slice = (u) =>
-    u.startsWith("/Documentation") ? "Documentation (developer docs)"
-    : u.startsWith("/tB") ? "twinBASIC reference"
-    : u.startsWith("/Features") ? "Features"
-    : u.startsWith("/Tutorials") ? "Tutorials"
-    : "other";
+    u.startsWith("/Documentation")
+      ? "Documentation (developer docs)"
+      : u.startsWith("/tB")
+        ? "twinBASIC reference"
+        : u.startsWith("/Features")
+          ? "Features"
+          : u.startsWith("/Tutorials")
+            ? "Tutorials"
+            : "other";
   const counts = new Map();
   const ids = Object.keys(docs);
   for (const id of ids) {
@@ -201,7 +204,7 @@ function composition(docs) {
   }
   console.log(
     "\nOnly published pages are indexed. builder/*.md, perf/*.md, test/README.md" +
-    "\nand the repository-root notes are unreachable by site search entirely."
+      "\nand the repository-root notes are unreachable by site search entirely.",
   );
 }
 
@@ -212,9 +215,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   if (opts.help || (!opts.composition && !opts.terms.length)) {
     console.log(
       'Usage: node eval/site_search.mjs "<query>" [--n <count>] [--site <path>]\n' +
-      "       node eval/site_search.mjs --composition\n\n" +
-      "Queries the built site's real lunr index with the real query logic.\n" +
-      "See eval/README.md."
+        "       node eval/site_search.mjs --composition\n\n" +
+        "Queries the built site's real lunr index with the real query logic.\n" +
+        "See eval/README.md.",
     );
     process.exit(opts.help ? 0 : 1);
   }
@@ -225,10 +228,14 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   } else {
     const input = opts.terms.join(" ");
     const hits = search(ctx, input);
-    console.log(`query: ${JSON.stringify(input)} -- ${hits.length} result(s), showing ${Math.min(opts.n, hits.length)}\n`);
+    console.log(
+      `query: ${JSON.stringify(input)} -- ${hits.length} result(s), showing ${Math.min(opts.n, hits.length)}\n`,
+    );
     hits.slice(0, opts.n).forEach((h, i) => {
       const d = ctx.docs[h.ref];
-      const snippet = String(d.content ?? "").replace(/\s+/g, " ").slice(0, 130);
+      const snippet = String(d.content ?? "")
+        .replace(/\s+/g, " ")
+        .slice(0, 130);
       console.log(`${String(i + 1).padStart(2)}. ${d.title}`);
       console.log(`    ${d.relUrl}`);
       if (snippet) console.log(`    ${snippet}...`);

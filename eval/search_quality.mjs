@@ -196,9 +196,7 @@ function pathOnly(u) {
 // The kinds tB/symbols.json uses that name a *type* (a page of its own) vs
 // a *member* (something documented on/under a type's page). See
 // builder/symbols.mjs's typeKind()/memberKind() for where these come from.
-const TYPE_KINDS = new Set([
-  "class", "module", "interface", "enum", "control", "object", "type", "package",
-]);
+const TYPE_KINDS = new Set(["class", "module", "interface", "enum", "control", "object", "type", "package"]);
 
 function kindGroup(kind) {
   return TYPE_KINDS.has(kind) ? "type" : "member";
@@ -250,7 +248,7 @@ function checkProseUrlsExist(proseQueries, docs) {
   if (missing.length) {
     console.error(
       "warning: eval/search_prose_queries.json expects URLs not found in this build:\n" +
-      missing.map((m) => `  ${m}`).join("\n")
+        missing.map((m) => `  ${m}`).join("\n"),
     );
   }
 }
@@ -300,7 +298,13 @@ function buildTitleQueries(docs) {
   }
 
   const toQueries = (map, category, pathOnlyMatch) =>
-    [...map.values()].map(({ q, expected }) => ({ category, kindGroup: "n/a", q, expected: [...expected], pathOnlyMatch }));
+    [...map.values()].map(({ q, expected }) => ({
+      category,
+      kindGroup: "n/a",
+      q,
+      expected: [...expected],
+      pathOnlyMatch,
+    }));
   return [...toQueries(titles, "title", true), ...toQueries(pageSections, "section", false)];
 }
 
@@ -425,7 +429,8 @@ function evaluate(ctx, queries) {
         anyCorrect = true;
         if (firstHitRank === null) firstHitRank = i + 1;
       }
-      if (query.behind?.length && behindRank === null && query.behind.some((e) => pathOnly(url) === pathOnly(e))) behindRank = i + 1;
+      if (query.behind?.length && behindRank === null && query.behind.some((e) => pathOnly(url) === pathOnly(e)))
+        behindRank = i + 1;
       if (query.urlTier && anyPageRank === null && query.urlTier.has(normalizeUrl(url))) anyPageRank = i + 1;
     }
 
@@ -497,7 +502,14 @@ function summarize(perQuery, filterFn) {
   if (n === 0) return null;
   const pct = (f) => (100 * rows.filter(f).length) / n;
   const mrr = rows.reduce((a, r) => a + r.reciprocalRank, 0) / n;
-  return { n, hit1: pct((r) => r.hit1), hit5: pct((r) => r.hit5), hit10: pct((r) => r.hit10), mrr, zeroCorrectPct: pct((r) => r.zeroCorrect) };
+  return {
+    n,
+    hit1: pct((r) => r.hit1),
+    hit5: pct((r) => r.hit5),
+    hit10: pct((r) => r.hit10),
+    mrr,
+    zeroCorrectPct: pct((r) => r.zeroCorrect),
+  };
 }
 
 // ---------------------------------------------------------------------- cost
@@ -533,7 +545,10 @@ function printTable(result) {
     ["raw bytes", fmtBytes(result.cost.rawBytes)],
     ["gzip bytes", fmtBytes(result.cost.gzipBytes)],
     ["median build time (3 runs)", fmtMs(result.cost.medianBuildMs)],
-    ["heap delta (3rd build)", result.cost.heapDeltaBytes == null ? "n/a (run with --expose-gc)" : fmtBytes(result.cost.heapDeltaBytes)],
+    [
+      "heap delta (3rd build)",
+      result.cost.heapDeltaBytes == null ? "n/a (run with --expose-gc)" : fmtBytes(result.cost.heapDeltaBytes),
+    ],
     ["median query latency", fmtMs(result.medianLatencyMs)],
     ["--- overall ranking quality ---", ""],
     ["# queries", String(result.overall.n)],
@@ -548,7 +563,14 @@ function printTable(result) {
 
   const line = (s) => (s ? `${fmtPct(s.hit1)} / ${fmtPct(s.hit10)} / ${s.mrr.toFixed(3)} / ${s.n}` : "n/a");
   console.log("\nBreakdown by category (hit@1 / hit@10 / MRR / n):");
-  for (const [label, key] of [["symbol-bare", "symbol-bare"], ["symbol-qualified", "symbol-qualified"], ["name and kind", "symbol-kind"], ["prose", "prose"], ["page title", "title"], ["page plus section", "section"]]) {
+  for (const [label, key] of [
+    ["symbol-bare", "symbol-bare"],
+    ["symbol-qualified", "symbol-qualified"],
+    ["name and kind", "symbol-kind"],
+    ["prose", "prose"],
+    ["page title", "title"],
+    ["page plus section", "section"],
+  ]) {
     console.log(label.padEnd(labelWidth) + " | " + line(result.byCategory[key]));
   }
   const ordered = result.perQuery.filter((r) => r.behind);
@@ -589,8 +611,11 @@ function printFailures(perQuery, n) {
   }
   const unordered = perQuery.filter((r) => r.behind && !r.behind.met);
   if (unordered.length) {
-    console.log(`\nProse without its \`behind\` page right behind it (expected rank, behind rank): ${unordered.length}`);
-    for (const r of unordered.slice(0, n)) console.log(`    ${r.q}: ${r.firstHitRank ?? "none"}, ${r.behind.rank ?? "none"}`);
+    console.log(
+      `\nProse without its \`behind\` page right behind it (expected rank, behind rank): ${unordered.length}`,
+    );
+    for (const r of unordered.slice(0, n))
+      console.log(`    ${r.q}: ${r.firstHitRank ?? "none"}, ${r.behind.rank ?? "none"}`);
   }
 }
 
@@ -606,8 +631,22 @@ function printFailures(perQuery, n) {
 // sets; intent-5 the name-and-kind set.
 const GROUND_TRUTH = "intent-5";
 
-const CATEGORY_CODE = { "symbol-bare": "b", "symbol-qualified": "q", "symbol-kind": "k", prose: "p", title: "t", section: "s" };
-const CATEGORY_NAME = { b: "symbol-bare", q: "symbol-qualified", k: "symbol-kind", p: "prose", t: "title", s: "section" };
+const CATEGORY_CODE = {
+  "symbol-bare": "b",
+  "symbol-qualified": "q",
+  "symbol-kind": "k",
+  prose: "p",
+  title: "t",
+  section: "s",
+};
+const CATEGORY_NAME = {
+  b: "symbol-bare",
+  q: "symbol-qualified",
+  k: "symbol-kind",
+  p: "prose",
+  t: "title",
+  s: "section",
+};
 
 function rankKey(category, q) {
   return `${CATEGORY_CODE[category] ?? category}:${q}`;
@@ -642,7 +681,7 @@ function printCompare(current, saved, worstN) {
   if (saved.groundTruth !== GROUND_TRUTH) {
     console.log(
       `\nwarning: the baseline was saved with ground truth "${saved.groundTruth ?? "any-page"}", ` +
-      `this run uses "${GROUND_TRUTH}"; ranks the two judge differently are not comparable.`
+        `this run uses "${GROUND_TRUTH}"; ranks the two judge differently are not comparable.`,
     );
   }
   const oldRanks = saved.ranks ?? rankMap(saved.perQuery ?? []);
@@ -658,7 +697,9 @@ function printCompare(current, saved, worstN) {
     diffs.push({ category: CATEGORY_NAME[code] ?? code, q, oldRank: oldRanks[key], newRank: newRanks[key] });
   }
 
-  let worse = 0, better = 0, unchanged = 0;
+  let worse = 0,
+    better = 0,
+    unchanged = 0;
   for (const d of diffs) {
     const a = rankValue(d.oldRank);
     const b = rankValue(d.newRank);
@@ -708,11 +749,11 @@ function main() {
   if (opts.help) {
     printHelpAndExit(
       "Usage: node eval/search_quality.mjs [--site docs/_site] [--save file] " +
-      "[--compare file] [--worst N] [--sample N] [--failures N] [-h, --help]\n\nSee the header comment in this file.\n\n" +
-      "Exit codes:\n" +
-      "  0  the measurement ran, whatever it found\n" +
-      "  2  a refused command line, a site with no search index (run build.bat first),\n" +
-      "     or a crash"
+        "[--compare file] [--worst N] [--sample N] [--failures N] [-h, --help]\n\nSee the header comment in this file.\n\n" +
+        "Exit codes:\n" +
+        "  0  the measurement ran, whatever it found\n" +
+        "  2  a refused command line, a site with no search index (run build.bat first),\n" +
+        "     or a crash",
     );
   }
 
@@ -732,8 +773,8 @@ function main() {
   const count = (category) => queries.filter((q) => q.category === category).length;
   console.log(
     `Evaluating ${queries.length} queries ` +
-    `(${count("symbol-bare")} bare, ${count("symbol-qualified")} qualified, ${count("symbol-kind")} name and kind, ${count("prose")} prose, ` +
-    `${count("title")} page titles, ${count("section")} page plus section) against ${opts.site}\n`
+      `(${count("symbol-bare")} bare, ${count("symbol-qualified")} qualified, ${count("symbol-kind")} name and kind, ${count("prose")} prose, ` +
+      `${count("title")} page titles, ${count("section")} page plus section) against ${opts.site}\n`,
   );
 
   const evalResult = evaluate(ctx, queries);
@@ -758,7 +799,7 @@ function main() {
     byTier: Object.fromEntries(
       [...new Set(bare.map((r) => r.tier))]
         .sort()
-        .map((tier) => [tier, summarize(evalResult.perQuery, (r) => r.category === "symbol-bare" && r.tier === tier)])
+        .map((tier) => [tier, summarize(evalResult.perQuery, (r) => r.category === "symbol-bare" && r.tier === tier)]),
     ),
     bareAnyPageHit10: bare.length ? (100 * bare.filter((r) => r.anyPageHit10).length) / bare.length : 0,
     tierOrder: summarizeTierOrder(evalResult.perQuery),
@@ -786,7 +827,13 @@ function main() {
       byTier: result.byTier,
       bareAnyPageHit10: result.bareAnyPageHit10,
       tierOrder: result.tierOrder,
-      cost: { entries: result.cost.entries, rawBytes: result.cost.rawBytes, gzipBytes: result.cost.gzipBytes, medianBuildMs: result.cost.medianBuildMs, heapDeltaBytes: result.cost.heapDeltaBytes },
+      cost: {
+        entries: result.cost.entries,
+        rawBytes: result.cost.rawBytes,
+        gzipBytes: result.cost.gzipBytes,
+        medianBuildMs: result.cost.medianBuildMs,
+        heapDeltaBytes: result.cost.heapDeltaBytes,
+      },
       medianLatencyMs: result.medianLatencyMs,
       ranks: rankMap(result.perQuery),
     };

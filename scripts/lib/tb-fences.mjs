@@ -107,7 +107,14 @@ const FLAGS = new Set([MARKER, RUN_MARKER, HIDDEN_MARKER]);
  * fence and tests it in the next three.
  */
 const KEYS = new Set([
-  "slot", "project", "projname", "id", "expect-error", "inherits", "resource", "inert",
+  "slot",
+  "project",
+  "projname",
+  "id",
+  "expect-error",
+  "inherits",
+  "resource",
+  "inert",
   "concat_group",
 ]);
 
@@ -139,7 +146,7 @@ export const CONCAT_KEY = "concat_group";
 export function concatFences(parts) {
   const bodies = parts.map((p) => p.content.replace(/\n+$/, ""));
   const ranges = [];
-  let at = 1;                                   // 1-based line within the body
+  let at = 1; // 1-based line within the body
   bodies.forEach((body, i) => {
     const lines = body.split("\n").length;
     ranges.push({ fence: parts[i], from: at, to: at + lines - 1 });
@@ -181,13 +188,13 @@ export function partOf(ranges, bodyLine) {
  * not inert. That one should trend to zero; the inert count should not.
  */
 export const INERT_REASONS = new Set([
-  "skeleton",   // placeholder identifiers -- `Inherits base_interface`, `<name>`
-  "signature",  // a procedure's signature, shown deliberately without a body
-  "excerpt",    // deliberately continues another fence, or shows part of one
-  "pseudo",     // prose, a table or a protocol listing dressed as code
-  "contrast",   // shows invalid code on purpose, beside the valid form
-  "external",   // needs a file or environment the harness cannot stage
-  "designer",   // needs a real form designer: TB5247, or a Handles on its fields
+  "skeleton", // placeholder identifiers -- `Inherits base_interface`, `<name>`
+  "signature", // a procedure's signature, shown deliberately without a body
+  "excerpt", // deliberately continues another fence, or shows part of one
+  "pseudo", // prose, a table or a protocol listing dressed as code
+  "contrast", // shows invalid code on purpose, beside the valid form
+  "external", // needs a file or environment the harness cannot stage
+  "designer", // needs a real form designer: TB5247, or a Handles on its fields
   // Correct code that a PRODUCT defect stops compiling. The sample is what the
   // API ought to accept, so rewriting it would document around the bug; it is
   // recorded in BUGS-TO-REPORT.md instead and re-checked when that is fixed.
@@ -215,12 +222,14 @@ export const RESOURCE_KEY = "resource";
 export function resourcePath(raw) {
   // The UNC and drive-letter tests run BEFORE the leading slashes come off, or
   // `//server/share` passes as the innocent-looking `server/share`.
-  const flat = String(raw ?? "").trim().replace(/\\/g, "/");
+  const flat = String(raw ?? "")
+    .trim()
+    .replace(/\\/g, "/");
   if (!flat || /^[A-Za-z]:/.test(flat) || flat.startsWith("//")) return null;
   const parts = [];
   for (const seg of flat.replace(/^\/+/, "").split("/")) {
     if (!seg || seg === ".") continue;
-    if (seg === "..") return null;                  // no climbing out, ever
+    if (seg === "..") return null; // no climbing out, ever
     parts.push(seg);
   }
   return parts.length ? parts.join("/") : null;
@@ -265,12 +274,22 @@ export function parseInfo(info) {
       else bad.push(part);
       continue;
     }
-    const key = part.slice(0, eq), value = part.slice(eq + 1);
-    if (!KEYS.has(key)) { bad.push(part); continue; }
-    if (key === "slot" && !SLOTS.includes(value)) { bad.push(part); continue; }
+    const key = part.slice(0, eq),
+      value = part.slice(eq + 1);
+    if (!KEYS.has(key)) {
+      bad.push(part);
+      continue;
+    }
+    if (key === "slot" && !SLOTS.includes(value)) {
+      bad.push(part);
+      continue;
+    }
     // A reason nobody recognises is worse than no reason: it reads as settled
     // and says nothing, so it is refused the way a bad slot is.
-    if (key === "inert" && !INERT_REASONS.has(value)) { bad.push(part); continue; }
+    if (key === "inert" && !INERT_REASONS.has(value)) {
+      bad.push(part);
+      continue;
+    }
     keys.set(key, value);
   }
   // These imply a build: a hidden fence that is not compiled is text nobody can
@@ -299,7 +318,8 @@ export async function collectFences(root) {
   const out = [];
   for (const rel of await markdownFiles(root)) {
     const src = await fs.readFile(path.join(root, rel), "utf8");
-    let ordinal = 0, resources = 0;
+    let ordinal = 0,
+      resources = 0;
     const walk = (tokens) => {
       for (const t of tokens) {
         if (t.type === "fence") {
@@ -313,7 +333,9 @@ export async function collectFences(root) {
           if (parsed.lang === "tb" || isResource) {
             const n = isResource ? (resources += 1) : (ordinal += 1);
             out.push({
-              rel, ordinal: n, isResource,
+              rel,
+              ordinal: n,
+              isResource,
               id: parsed.keys.get("id") ?? `${rel}#${isResource ? "r" : ""}${n}`,
               line: t.map ? t.map[0] + 1 : 0,
               info: t.info.trim(),
@@ -356,18 +378,19 @@ const WITHEVENTS = rx("WithEvents\\b");
 const ACCESS_DECL = /^(?:Public|Private|Friend|Global)\s+/i;
 // The VB6 default-type statements, which are module-level only. The list is the
 // full set the compiler accepts, not the ones this corpus happens to use.
-const DEFTYPE =
-  /^Def(?:Bool|Byte|Cur|Date|Dbl|Dec|Int|LngLng|LngPtr|Lng|Obj|Sng|Str|Var)\s+[A-Z]/i;
+const DEFTYPE = /^Def(?:Bool|Byte|Cur|Date|Dbl|Dec|Int|LngLng|LngPtr|Lng|Obj|Sng|Str|Var)\s+[A-Z]/i;
 const OPTION_RE = /^Option\s+/i;
 const ATTRIBUTE_RE = /^\[[A-Za-z_]/;
 const DIMLIKE = rx("(?:Dim|Const|ReDim)\\b");
 const DIRECTIVE_RE = /^#/;
-const END_RE = /^End\s+(Sub|Function|Property|Class|Module|Interface|CoClass|Library|Namespace|Enum|Type|Structure|Operator|Constructor|Destructor)\b/i;
+const END_RE =
+  /^End\s+(Sub|Function|Property|Class|Module|Interface|CoClass|Library|Namespace|Enum|Type|Structure|Operator|Constructor|Destructor)\b/i;
 // A whole procedure on one line: `Sub MySub(Of T)(a As T): End Sub`, which
 // Features/Language/Generics.md writes five times. Without this the opener is
 // pushed and never popped, and the fence reads as an unclosed fragment.
 const SELF_CLOSING_RE = /:\s*End\s+(?:Sub|Function|Property|Operator)\s*$/i;
-const KIND_RE = /\b(Class|Module|Interface|CoClass|Library|Namespace|Enum|Type|Structure|Sub|Function|Property|Operator|Constructor|Destructor)\b/i;
+const KIND_RE =
+  /\b(Class|Module|Interface|CoClass|Library|Namespace|Enum|Type|Structure|Sub|Function|Property|Operator|Constructor|Destructor)\b/i;
 // A declared name, for the collision check the batcher makes -- and the set of
 // kinds it applies to is measured rather than assumed, because guessing it
 // wide is expensive. Two generated modules in one project may each declare
@@ -388,7 +411,8 @@ const KIND_RE = /\b(Class|Module|Interface|CoClass|Library|Namespace|Enum|Type|S
 // the names a sample can be made ambiguous BY, not only the ones two samples
 // would duplicate.
 const COLLIDES = /^(?:Class|Module|Interface|CoClass|Library|Namespace|Enum|Type|Structure)$/i;
-const NAME_RE = /\b(?:Class|Module|Interface|CoClass|Library|Namespace|Enum|Type|Structure)\s+\[?([A-Za-z_][A-Za-z0-9_]*)\]?/i;
+const NAME_RE =
+  /\b(?:Class|Module|Interface|CoClass|Library|Namespace|Enum|Type|Structure)\s+\[?([A-Za-z_][A-Za-z0-9_]*)\]?/i;
 
 // Statement blocks, which have to balance for a statement run to be wrappable.
 const INNER_OPEN = [
@@ -401,9 +425,14 @@ const INNER_OPEN = [
   [/^Try\b/i, "Try"],
 ];
 const INNER_CLOSE = [
-  [/^End\s+If\b/i, "If"], [/^Next\b/i, "For"], [/^Loop\b/i, "Do"],
-  [/^Wend\b/i, "While"], [/^End\s+While\b/i, "While"], [/^End\s+With\b/i, "With"],
-  [/^End\s+Select\b/i, "Select"], [/^End\s+Try\b/i, "Try"],
+  [/^End\s+If\b/i, "If"],
+  [/^Next\b/i, "For"],
+  [/^Loop\b/i, "Do"],
+  [/^Wend\b/i, "While"],
+  [/^End\s+While\b/i, "While"],
+  [/^End\s+With\b/i, "With"],
+  [/^End\s+Select\b/i, "Select"],
+  [/^End\s+Try\b/i, "Try"],
 ];
 
 const kindOf = (text) => (KIND_RE.exec(text)?.[1] ?? "?").toLowerCase();
@@ -436,7 +465,9 @@ export function classify(content) {
   // read as a loose statement instead of as empty. The strings arrive blanked,
   // so a sentence in a `[Description("...")]` argument is never read as a
   // declaration.
-  const lines = logicalLines(content).map((l) => l.text.trim()).filter(Boolean);
+  const lines = logicalLines(content)
+    .map((l) => l.text.trim())
+    .filter(Boolean);
   if (!lines.length) return { slot: null, reason: "empty", names: [] };
   // An elision is the one fragment marker the docs use deliberately, and the
   // VBA-derived pages inherited Microsoft's SPACED form -- `. . .` on a line of
@@ -445,26 +476,30 @@ export function classify(content) {
   // markable and to fail with "Expected a symbol following the dot operator" on
   // a line that is not code at all. The line must be nothing but dots and
   // spaces, so a `.Value = 1` inside a With block is untouched.
-  if (/(^|\n)[ \t]*\.[ \t]*\.[ \t.]*(\n|$)/.test(content) ||
-      /(^|\n)[ \t]*…[ \t]*(\n|$)/.test(content)) {
+  if (/(^|\n)[ \t]*\.[ \t]*\.[ \t.]*(\n|$)/.test(content) || /(^|\n)[ \t]*…[ \t]*(\n|$)/.test(content)) {
     return { slot: null, reason: "elided with ...", names: [] };
   }
 
-  const stack = [];                 // open blocks, innermost last
-  const inner = [];                 // open statement blocks at fence top level
+  const stack = []; // open blocks, innermost last
+  const inner = []; // open statement blocks at fence top level
   const names = [];
-  let sawContainer = false, sawProc = false, sawModuleOnly = false, sawLoose = false;
-  let sawWithEvents = false, sawClassOnly = false;
+  let sawContainer = false,
+    sawProc = false,
+    sawModuleOnly = false,
+    sawLoose = false;
+  let sawWithEvents = false,
+    sawClassOnly = false;
 
   for (const text of lines) {
-    if (DIRECTIVE_RE.test(text)) continue;          // #If / #End If / #Const
+    if (DIRECTIVE_RE.test(text)) continue; // #If / #End If / #Const
 
     const end = END_RE.exec(text);
     if (end) {
       const kind = end[1].toLowerCase();
       if (!stack.length) return { slot: null, reason: `${text} with no opener`, names };
       const open = stack[stack.length - 1];
-      const matches = open === kind ||
+      const matches =
+        open === kind ||
         (open === "property" && kind === "property") ||
         (["constructor", "destructor"].includes(open) && kind === "sub");
       if (!matches) return { slot: null, reason: `End ${kind} closing ${open}`, names };
@@ -481,25 +516,32 @@ export function classify(content) {
     // A Type IS a container in twinBASIC, unlike VBA: a UDT may declare
     // Type_Initialize, Type_Assignment and Type_Conversion procedures, which is
     // what Features/Language/UDTs.md is about. An Enum may not.
-    const inContainer = open === undefined ||
-      ["class", "module", "library", "namespace", "type", "structure"].includes(open);
+    const inContainer =
+      open === undefined || ["class", "module", "library", "namespace", "type", "structure"].includes(open);
     if (!inContainer) continue;
 
-    if (ATTRIBUTE_RE.test(text)) continue;          // decorates what follows
+    if (ATTRIBUTE_RE.test(text)) continue; // decorates what follows
     const selfClosing = SELF_CLOSING_RE.test(text);
     const top = stack.length === 0;
 
     if (CONTAINER_OPEN.test(text)) {
-      if (top) { sawContainer = true; pushName(names, text); }
+      if (top) {
+        sawContainer = true;
+        pushName(names, text);
+      }
       stack.push(kindOf(text));
       continue;
     }
-    if (DECLARE.test(text)) {                        // before PROC_OPEN: a
-      if (top) sawModuleOnly = true;                 // Declare names a
-      continue;                                      // Function or a Sub but
-    }                                                // opens no block
+    if (DECLARE.test(text)) {
+      // before PROC_OPEN: a
+      if (top) sawModuleOnly = true; // Declare names a
+      continue; // Function or a Sub but
+    } // opens no block
     if (BLOCK_DECL.test(text)) {
-      if (top) { sawModuleOnly = true; pushName(names, text); }
+      if (top) {
+        sawModuleOnly = true;
+        pushName(names, text);
+      }
       if (!selfClosing) stack.push(kindOf(text));
       continue;
     }
@@ -549,9 +591,12 @@ export function classify(content) {
       if (top) sawModuleOnly = true;
       continue;
     }
-    if (!top) continue;                              // body of a block we own
+    if (!top) continue; // body of a block we own
 
-    if (DIMLIKE.test(text)) { sawLoose = true; continue; }  // legal in both slots
+    if (DIMLIKE.test(text)) {
+      sawLoose = true;
+      continue;
+    } // legal in both slots
 
     for (const [re, kind] of INNER_CLOSE) {
       if (!re.test(text)) continue;
@@ -559,7 +604,10 @@ export function classify(content) {
       break;
     }
     for (const [re, kind] of INNER_OPEN) {
-      if (re.test(text)) { inner.push(kind); break; }
+      if (re.test(text)) {
+        inner.push(kind);
+        break;
+      }
     }
     sawLoose = true;
   }

@@ -36,7 +36,11 @@ export const WRITE_LIMIT = LIMIT;
 const mkdirCache = new Set();
 const mkdirInflight = new Map();
 
-export async function writePhase(pages, staticFiles, { destRoot, dryRun = false, generatedAssets = [], baseurl = "", skipPages = false } = {}) {
+export async function writePhase(
+  pages,
+  staticFiles,
+  { destRoot, dryRun = false, generatedAssets = [], baseurl = "", skipPages = false } = {},
+) {
   if (!destRoot) {
     throw new Error("writePhase requires a destRoot");
   }
@@ -45,11 +49,13 @@ export async function writePhase(pages, staticFiles, { destRoot, dryRun = false,
   mkdirInflight.clear();
 
   if (dryRun) {
-    const pagesToWrite = pages.filter(p => p.html !== undefined).length;
+    const pagesToWrite = pages.filter((p) => p.html !== undefined).length;
     const skipped = pages.length - pagesToWrite;
-    console.log(`[dry-run] would write ${pagesToWrite} pages (${skipped} skipped), ` +
-                `theme assets from ${BUILDER_ASSETS}, ${generatedAssets.length} generated assets, ` +
-                `${staticFiles.length} static files to ${destRoot}`);
+    console.log(
+      `[dry-run] would write ${pagesToWrite} pages (${skipped} skipped), ` +
+        `theme assets from ${BUILDER_ASSETS}, ${generatedAssets.length} generated assets, ` +
+        `${staticFiles.length} static files to ${destRoot}`,
+    );
     return {
       pages: { written: pagesToWrite, skipped },
       theme: { copied: 0 },
@@ -99,13 +105,15 @@ export async function prepareDestinations(roots, dryRun) {
     for (const root of roots) console.log(`[dry-run] would clean ${root}`);
     return;
   }
-  await Promise.all(roots.map(async (root) => {
-    if (!isUnderProject(root)) {
-      throw new Error(`refusing to clean ${root}: not under the project tree`);
-    }
-    await fs.rm(root, { recursive: true, force: true });
-    await fs.mkdir(root, { recursive: true });
-  }));
+  await Promise.all(
+    roots.map(async (root) => {
+      if (!isUnderProject(root)) {
+        throw new Error(`refusing to clean ${root}: not under the project tree`);
+      }
+      await fs.rm(root, { recursive: true, force: true });
+      await fs.mkdir(root, { recursive: true });
+    }),
+  );
 }
 
 // Pre-create all page output directories so writePages can skip mkdir
@@ -119,7 +127,7 @@ export async function preparePageDirs(pages, staticFiles, destRoot, offlineRoot)
       if (offlineRoot) dirs.add(path.dirname(path.join(offlineRoot, page.destPath)));
     }
   }
-  await Promise.all([...dirs].map(d => fs.mkdir(d, { recursive: true })));
+  await Promise.all([...dirs].map((d) => fs.mkdir(d, { recursive: true })));
 }
 
 export function isUnderProject(destRoot) {
@@ -142,13 +150,16 @@ export function assertDestinationClearOfSource(srcRoot, destRoot) {
   if (path.isAbsolute(rel)) return;
   const segs = rel.split(path.sep);
   if (segs.every((s) => s === ".." || s === "")) {
-    throw refuse(`refusing --dest ${destRoot}: it is or contains the source tree ${srcRoot}, which cleaning it would delete`);
+    throw refuse(
+      `refusing --dest ${destRoot}: it is or contains the source tree ${srcRoot}, which cleaning it would delete`,
+    );
   }
   if (segs[0] === ".." || isOutputTree(segs[0])) return;
   throw refuse(
     `refusing --dest ${destRoot}: it is inside the source tree, so a build would read its output back as source, ` +
-    `or serve would rebuild on its own writes. Use a folder directly under ${srcRoot} whose name starts with ` +
-    `${OUTPUT_TREES.join(", ")}, or one inside such a folder, or one outside ${srcRoot}.`);
+      `or serve would rebuild on its own writes. Use a folder directly under ${srcRoot} whose name starts with ` +
+      `${OUTPUT_TREES.join(", ")}, or one inside such a folder, or one outside ${srcRoot}.`,
+  );
 }
 
 // ---------- §5.2 writePages ---------------------------------------------
@@ -180,9 +191,7 @@ async function copyTheme(builderAssetsRoot, destRoot, limit, baseurl) {
     destAssets,
     limit,
     (name) => name !== "README.md",
-    baseurl
-      ? { transform: cssBaseurlTransformer(baseurl), extensions: [".css"] }
-      : null,
+    baseurl ? { transform: cssBaseurlTransformer(baseurl), extensions: [".css"] } : null,
   );
 }
 
@@ -196,10 +205,8 @@ async function copyTheme(builderAssetsRoot, destRoot, limit, baseurl) {
 // Protocol-relative URLs (`url("//cdn.../foo")`) are left alone via
 // the negative lookahead.
 function cssBaseurlTransformer(baseurl) {
-  return (css) => css.replace(
-    /url\((["']?)\/(?!\/)([^)"']*)\1\)/g,
-    (_whole, q, rest) => `url(${q}${baseurl}/${rest}${q})`,
-  );
+  return (css) =>
+    css.replace(/url\((["']?)\/(?!\/)([^)"']*)\1\)/g, (_whole, q, rest) => `url(${q}${baseurl}/${rest}${q})`);
 }
 
 // ---------- §5.4 copyStaticFiles ----------------------------------------
@@ -224,17 +231,11 @@ async function copyStaticFiles(staticFiles, destRoot, limit, baseurl) {
 // ---------- §6.4 assertNoDestinationCollisions --------------------------
 
 export function assertNoDestinationCollisions(pages, staticFiles) {
-  const pageDests = new Set(
-    pages.filter(p => p.html !== undefined).map(p => p.destPath),
-  );
-  const collisions = staticFiles.filter(s => pageDests.has(s.destRel));
+  const pageDests = new Set(pages.filter((p) => p.html !== undefined).map((p) => p.destPath));
+  const collisions = staticFiles.filter((s) => pageDests.has(s.destRel));
   if (collisions.length > 0) {
-    const detail = collisions
-      .map(c => `  ${c.destRel} (from ${c.srcPath})`)
-      .join("\n");
-    throw new Error(
-      `destination collision: ${collisions.length} static files would overwrite pages:\n${detail}`,
-    );
+    const detail = collisions.map((c) => `  ${c.destRel} (from ${c.srcPath})`).join("\n");
+    throw new Error(`destination collision: ${collisions.length} static files would overwrite pages:\n${detail}`);
   }
 }
 
@@ -257,15 +258,12 @@ export async function mkdirRec(dir) {
 export async function runLimited(items, limit, fn) {
   if (items.length === 0) return;
   let next = 0;
-  const workers = Array.from(
-    { length: Math.min(limit, items.length) },
-    async () => {
-      while (next < items.length) {
-        const i = next++;
-        await fn(items[i]);
-      }
-    },
-  );
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const i = next++;
+      await fn(items[i]);
+    }
+  });
   await Promise.all(workers);
 }
 
@@ -283,13 +281,11 @@ async function copyTree(src, dest, limit, filter = null, transformSpec = null) {
   const entries = await collectTreeEntries(src, dest, filter);
   // Directories first, sorted shallow-to-deep, so all mkdir lands before
   // any copyFile.
-  const dirs = entries
-    .filter(e => e.isDir)
-    .sort((a, b) => a.destAbs.length - b.destAbs.length);
+  const dirs = entries.filter((e) => e.isDir).sort((a, b) => a.destAbs.length - b.destAbs.length);
   for (const d of dirs) {
     await mkdirRec(d.destAbs);
   }
-  const files = entries.filter(e => e.isFile);
+  const files = entries.filter((e) => e.isFile);
   const transformExts = transformSpec ? new Set(transformSpec.extensions) : null;
   await runLimited(files, limit, async (f) => {
     if (transformExts && transformExts.has(path.extname(f.srcAbs))) {

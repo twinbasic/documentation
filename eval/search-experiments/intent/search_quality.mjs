@@ -132,9 +132,7 @@ function pathOnly(u) {
 // The kinds tB/symbols.json uses that name a *type* (a page of its own) vs
 // a *member* (something documented on/under a type's page). See
 // builder/symbols.mjs's typeKind()/memberKind() for where these come from.
-const TYPE_KINDS = new Set([
-  "class", "module", "interface", "enum", "control", "object", "type", "package",
-]);
+const TYPE_KINDS = new Set(["class", "module", "interface", "enum", "control", "object", "type", "package"]);
 
 function kindGroup(kind) {
   return TYPE_KINDS.has(kind) ? "type" : "member";
@@ -163,7 +161,7 @@ function checkProseUrlsExist(proseQueries, docs) {
   if (missing.length) {
     console.error(
       "warning: eval/search_prose_queries.json expects URLs not found in this build:\n" +
-      missing.map((m) => `  ${m}`).join("\n")
+        missing.map((m) => `  ${m}`).join("\n"),
     );
   }
 }
@@ -276,7 +274,14 @@ function summarize(perQuery, filterFn) {
   if (n === 0) return null;
   const pct = (f) => (100 * rows.filter(f).length) / n;
   const mrr = rows.reduce((a, r) => a + r.reciprocalRank, 0) / n;
-  return { n, hit1: pct((r) => r.hit1), hit5: pct((r) => r.hit5), hit10: pct((r) => r.hit10), mrr, zeroCorrectPct: pct((r) => r.zeroCorrect) };
+  return {
+    n,
+    hit1: pct((r) => r.hit1),
+    hit5: pct((r) => r.hit5),
+    hit10: pct((r) => r.hit10),
+    mrr,
+    zeroCorrectPct: pct((r) => r.zeroCorrect),
+  };
 }
 
 // ---------------------------------------------------------------------- cost
@@ -312,7 +317,10 @@ function printTable(result) {
     ["raw bytes", fmtBytes(result.cost.rawBytes)],
     ["gzip bytes", fmtBytes(result.cost.gzipBytes)],
     ["median build time (3 runs)", fmtMs(result.cost.medianBuildMs)],
-    ["heap delta (3rd build)", result.cost.heapDeltaBytes == null ? "n/a (run with --expose-gc)" : fmtBytes(result.cost.heapDeltaBytes)],
+    [
+      "heap delta (3rd build)",
+      result.cost.heapDeltaBytes == null ? "n/a (run with --expose-gc)" : fmtBytes(result.cost.heapDeltaBytes),
+    ],
     ["median query latency", fmtMs(result.medianLatencyMs)],
     ["--- overall ranking quality ---", ""],
     ["# queries", String(result.overall.n)],
@@ -326,13 +334,20 @@ function printTable(result) {
   for (const [label, value] of rows) console.log(label.padEnd(labelWidth) + " | " + value);
 
   console.log("\nBreakdown by category (hit@10 / MRR / n):");
-  for (const [label, key] of [["symbol-bare", "symbol-bare"], ["symbol-qualified", "symbol-qualified"], ["prose", "prose"]]) {
+  for (const [label, key] of [
+    ["symbol-bare", "symbol-bare"],
+    ["symbol-qualified", "symbol-qualified"],
+    ["prose", "prose"],
+  ]) {
     const s = result.byCategory[key];
     console.log(label.padEnd(labelWidth) + " | " + (s ? `${fmtPct(s.hit10)}/${s.mrr.toFixed(3)}/${s.n}` : "n/a"));
   }
 
   console.log("\nBreakdown by symbol kind group (hit@10 / MRR / n):");
-  for (const [label, key] of [["kind: type", "type"], ["kind: member", "member"]]) {
+  for (const [label, key] of [
+    ["kind: type", "type"],
+    ["kind: member", "member"],
+  ]) {
     const s = result.byKind[key];
     console.log(label.padEnd(labelWidth) + " | " + (s ? `${fmtPct(s.hit10)}/${s.mrr.toFixed(3)}/${s.n}` : "n/a"));
   }
@@ -387,7 +402,9 @@ function printCompare(current, saved, worstN) {
     diffs.push({ category: CATEGORY_NAME[code] ?? code, q, oldRank: oldRanks[key], newRank: newRanks[key] });
   }
 
-  let worse = 0, better = 0, unchanged = 0;
+  let worse = 0,
+    better = 0,
+    unchanged = 0;
   for (const d of diffs) {
     const a = rankValue(d.oldRank);
     const b = rankValue(d.newRank);
@@ -437,7 +454,7 @@ function main() {
   if (opts.help) {
     console.log(
       "Usage: node eval/search_quality.mjs [--site docs/_site] [--save file] " +
-      "[--compare file] [--worst N] [--sample N]\n\nSee the header comment in this file."
+        "[--compare file] [--worst N] [--sample N]\n\nSee the header comment in this file.",
     );
     process.exit(0);
   }
@@ -457,9 +474,9 @@ function main() {
   const queries = buildQuerySet(symbolIndex, proseQueries, opts.sample);
   console.log(
     `Evaluating ${queries.length} queries ` +
-    `(${queries.filter((q) => q.category === "symbol-bare").length} bare, ` +
-    `${queries.filter((q) => q.category === "symbol-qualified").length} qualified, ` +
-    `${queries.filter((q) => q.category === "prose").length} prose) against ${opts.site}\n`
+      `(${queries.filter((q) => q.category === "symbol-bare").length} bare, ` +
+      `${queries.filter((q) => q.category === "symbol-qualified").length} qualified, ` +
+      `${queries.filter((q) => q.category === "prose").length} prose) against ${opts.site}\n`,
   );
 
   const evalResult = evaluate(ctx, queries);
@@ -496,7 +513,13 @@ function main() {
       overall: result.overall,
       byCategory: result.byCategory,
       byKind: result.byKind,
-      cost: { entries: result.cost.entries, rawBytes: result.cost.rawBytes, gzipBytes: result.cost.gzipBytes, medianBuildMs: result.cost.medianBuildMs, heapDeltaBytes: result.cost.heapDeltaBytes },
+      cost: {
+        entries: result.cost.entries,
+        rawBytes: result.cost.rawBytes,
+        gzipBytes: result.cost.gzipBytes,
+        medianBuildMs: result.cost.medianBuildMs,
+        heapDeltaBytes: result.cost.heapDeltaBytes,
+      },
       medianLatencyMs: result.medianLatencyMs,
       ranks: rankMap(result.perQuery),
     };

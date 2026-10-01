@@ -26,16 +26,38 @@ let hit1 = 0;
 for (const { q, exp } of byPair.values()) {
   const r = search(ctx, q);
   let rank = null;
-  for (let i = 0; i < r.length && i < 50; i++) if (exp.has(norm(ctx.docs[r[i].ref].relUrl))) { rank = i + 1; break; }
+  for (let i = 0; i < r.length && i < 50; i++)
+    if (exp.has(norm(ctx.docs[r[i].ref].relUrl))) {
+      rank = i + 1;
+      break;
+    }
   out[q] = rank;
   if (rank === 1) hit1++;
 }
 fs.writeFileSync(process.argv[2], JSON.stringify(out));
-console.log(`spaced: ${byPair.size} queries, hit@1 ${(100 * hit1 / byPair.size).toFixed(2)}%`);
-const probes = ["Form events", "ListView events", "TextBox properties", "Printer object", "DTPicker format",
-  "Slider value", "FileListBox Name", "Debug Print", "Printer Fonts", "Printer Font", "Collection Item",
-  "Fonts property", "Item method", "File I/O", "error handling", "With statement", "New Functions"];
+console.log(`spaced: ${byPair.size} queries, hit@1 ${((100 * hit1) / byPair.size).toFixed(2)}%`);
+const probes = [
+  "Form events",
+  "ListView events",
+  "TextBox properties",
+  "Printer object",
+  "DTPicker format",
+  "Slider value",
+  "FileListBox Name",
+  "Debug Print",
+  "Printer Fonts",
+  "Printer Font",
+  "Collection Item",
+  "Fonts property",
+  "Item method",
+  "File I/O",
+  "error handling",
+  "With statement",
+  "New Functions",
+];
 for (const p of probes) {
-  const r = search(ctx, p).slice(0, 3).map((x) => ctx.docs[x.ref].relUrl);
+  const r = search(ctx, p)
+    .slice(0, 3)
+    .map((x) => ctx.docs[x.ref].relUrl);
   console.log(`${p.padEnd(20)} ${r.join("  ")}`);
 }

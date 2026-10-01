@@ -27,8 +27,19 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { compilerExe } from "./tb-install.mjs";
-import { attachIde, buildProject, COMPILE_TIMEOUT, compileOutcome, launchIde, normPath,
-         setBuildTarget, shutdownIde, summaryLine, TARGETS, waitForCompile } from "./tb-ide.mjs";
+import {
+  attachIde,
+  buildProject,
+  COMPILE_TIMEOUT,
+  compileOutcome,
+  launchIde,
+  normPath,
+  setBuildTarget,
+  shutdownIde,
+  summaryLine,
+  TARGETS,
+  waitForCompile,
+} from "./tb-ide.mjs";
 import { checkAddinsRoot } from "./tb-ide-addins.mjs";
 import { laneProjectId, stageProject } from "./tb-project.mjs";
 
@@ -51,7 +62,9 @@ const MACHINES = { 0x14c: "win32", 0x8664: "win64" };
  */
 export function dllInfo(file) {
   const b = readFileSync(file);
-  const fail = (why) => { throw new Error(`${file} is not a DLL: ${why}`); };
+  const fail = (why) => {
+    throw new Error(`${file} is not a DLL: ${why}`);
+  };
   if (b.length < 64 || b.toString("latin1", 0, 2) !== "MZ") fail("no MZ header");
   const pe = b.readUInt32LE(0x3c);
   if (pe + 24 > b.length || b.toString("latin1", pe, pe + 4) !== "PE\0\0") fail("no PE header");
@@ -66,7 +79,8 @@ export function dllInfo(file) {
   const offsetOf = (rva) => {
     for (let i = 0; i < sections; i++) {
       const s = table + 40 * i;
-      const va = b.readUInt32LE(s + 12), size = Math.max(b.readUInt32LE(s + 8), b.readUInt32LE(s + 16));
+      const va = b.readUInt32LE(s + 12),
+        size = Math.max(b.readUInt32LE(s + 8), b.readUInt32LE(s + 16));
       if (rva >= va && rva < va + size) return rva - va + b.readUInt32LE(s + 20);
     }
     return fail(`RVA 0x${rva.toString(16)} is in no section`);
@@ -114,8 +128,16 @@ function failure(exitCode, message) {
  * @throws an Error with an `exitCode` (see failure above); a compile error's
  *   message lists every diagnostic
  */
-export async function buildAddin({ ide, src, work, port, arch = "win32", show = false, appdata,
-                                   timeout = COMPILE_TIMEOUT }) {
+export async function buildAddin({
+  ide,
+  src,
+  work,
+  port,
+  arch = "win32",
+  show = false,
+  appdata,
+  timeout = COMPILE_TIMEOUT,
+}) {
   if (!TARGETS.includes(arch)) throw failure(2, `no such build target: "${arch}"`);
   const project = path.join(work, "addin.twinproj");
   mkdirSync(path.join(work, "out"), { recursive: true });
@@ -123,7 +145,10 @@ export async function buildAddin({ ide, src, work, port, arch = "win32", show = 
   let staged;
   try {
     staged = stageProject({
-      src, stage: path.join(work, "addin-src"), project, compiler: compilerExe(ide),
+      src,
+      stage: path.join(work, "addin-src"),
+      project,
+      compiler: compilerExe(ide),
       settings: (original) => {
         dll = path.join(work, "out", `${original["project.name"]}.dll`);
         return { "project.buildPath": dll, "project.id": laneProjectId(1, port) };
@@ -134,12 +159,10 @@ export async function buildAddin({ ide, src, work, port, arch = "win32", show = 
   }
   const type = staged.original["project.buildType"];
   if (type !== "Standard DLL") {
-    throw failure(2, `${src} builds a ${type ?? "project of no stated type"}, and an add-in ` +
-                     "is a Standard DLL");
+    throw failure(2, `${src} builds a ${type ?? "project of no stated type"}, and an add-in ` + "is a Standard DLL");
   }
 
-  const run = await launchIde({ exe: ide, project, port, show,
-                                env: appdata ? { APPDATA: appdata } : {} });
+  const run = await launchIde({ exe: ide, project, port, show, env: appdata ? { APPDATA: appdata } : {} });
   let built;
   try {
     const c = await attachIde(port);
@@ -147,7 +170,10 @@ export async function buildAddin({ ide, src, work, port, arch = "win32", show = 
     try {
       let outcome = compileOutcome(await waitForCompile(c, { project, timeout }), { name: project });
       if (!outcome.ok) throw failure(outcome.code, outcome.message);
-      if (appdata) await checkAddinsRoot(c, appdata).catch((e) => { throw failure(2, e.message); });
+      if (appdata)
+        await checkAddinsRoot(c, appdata).catch((e) => {
+          throw failure(2, e.message);
+        });
       // Set even for win32, the target a path with no memory opens in: an entry
       // the tidy missed would otherwise decide the build without a word. The
       // switch restarts the compiler, which compiles the add-in again.
@@ -189,8 +215,11 @@ export async function buildAddin({ ide, src, work, port, arch = "win32", show = 
     throw failure(2, `the linker built ${dll} for machine 0x${info.machine.toString(16)}, not for ${arch}`);
   }
   if (!info.exports.some((e) => /^tbCreateCompilerAddin(_v[23])?$/.test(e.name))) {
-    throw failure(2, `${dll} exports ${info.exports.map((e) => e.name).join(", ") || "nothing"}, ` +
-                     "and no IDE loads it without tbCreateCompilerAddin, _v2 or _v3");
+    throw failure(
+      2,
+      `${dll} exports ${info.exports.map((e) => e.name).join(", ") || "nothing"}, ` +
+        "and no IDE loads it without tbCreateCompilerAddin, _v2 or _v3",
+    );
   }
   return { dll, arch, diagnostics: built.diagnostics, log: built.log };
 }

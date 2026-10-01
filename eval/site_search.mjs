@@ -7,9 +7,9 @@
 // exactly (field boosts, trailing wildcard, the edit-distance fallback).
 //
 // It exists because navigation and search fail on DIFFERENT pages, so judging
-// discoverability by either one alone is misleading. Round 1 measured a page
-// that is search rank #1 and six navigation hops away, and another that is two
-// navigation hops away and missed by four of four searches.
+// discoverability by either one alone is misleading. A page can be search
+// rank #1 and six navigation hops away, and another two navigation hops away
+// and missed by every search.
 //
 //     node eval/site_search.mjs "how do I add a build task"
 //     node eval/site_search.mjs --composition
@@ -116,7 +116,7 @@ function decodeTokenEntities(token) {
       const code = name.charAt(1) === "x" ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10);
       // Lowercased, as lunr's tokenizer lowercases everything else.
       return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code).toLowerCase() : m;
-    })
+    }),
   );
 }
 
@@ -254,7 +254,10 @@ function stemTwins(lunr, docs) {
 // them, so a query naming one finds it and not its twin.
 function qualifiedField(lunr, doc, twins) {
   const qualified = doc.qualified || "";
-  const whole = lunr.tokenizer(qualified).filter((t) => twins.has(t.str)).map((t) => exactName(t.str));
+  const whole = lunr
+    .tokenizer(qualified)
+    .filter((t) => twins.has(t.str))
+    .map((t) => exactName(t.str));
   return whole.length ? `${qualified} ${whole.join(" ")}` : qualified;
 }
 
@@ -267,7 +270,10 @@ function phraseKey(lunr, tokens) {
 }
 
 function indexTermKey(lunr, term) {
-  const tokens = lunr.tokenizer(term).map((t) => lunr.trimmer(t)).filter((t) => t.str !== "");
+  const tokens = lunr
+    .tokenizer(term)
+    .map((t) => lunr.trimmer(t))
+    .filter((t) => t.str !== "");
   return tokens.length ? phraseKey(lunr, tokens) : "";
 }
 
@@ -277,7 +283,10 @@ function indexTermKey(lunr, term) {
 // the index.
 function indexField(lunr, doc) {
   const main = (doc.index || []).map((t) => indexTermKey(lunr, t)).filter(Boolean);
-  const also = (doc.index_also || []).map((t) => indexTermKey(lunr, t)).filter(Boolean).map((k) => k + "_");
+  const also = (doc.index_also || [])
+    .map((t) => indexTermKey(lunr, t))
+    .filter(Boolean)
+    .map((k) => k + "_");
   return main.concat(also).join(" ");
 }
 
@@ -313,15 +322,36 @@ const PLAIN_FIELDS = ["title", "content", "names", "page", "relUrl"];
 // less `enumvalue`, which nobody types. A query naming one thing plus its
 // kind -- `With statement`, `AddressOf operator` -- is treated as naming
 // that thing. Exported for eval/search_quality.mjs's name-and-kind set.
-export const KIND_WORDS = ["operator", "statement", "attribute", "keyword", "directive", "class", "method", "property", "module", "function", "constant", "enum", "object", "member", "sub", "package", "interface", "control", "event", "type", "field"];
+export const KIND_WORDS = [
+  "operator",
+  "statement",
+  "attribute",
+  "keyword",
+  "directive",
+  "class",
+  "method",
+  "property",
+  "module",
+  "function",
+  "constant",
+  "enum",
+  "object",
+  "member",
+  "sub",
+  "package",
+  "interface",
+  "control",
+  "event",
+  "type",
+  "field",
+];
 
 export function load(site) {
   const { dataPath, lunrPath } = resolvePaths(site);
   for (const p of [dataPath, lunrPath]) {
     if (!fs.existsSync(p)) {
       console.error(
-        `missing ${path.relative(REPO_ROOT, p)}\n` +
-        "Run build.bat (or `node builder/tbdocs.mjs --src docs`) first."
+        `missing ${path.relative(REPO_ROOT, p)}\n` + "Run build.bat (or `node builder/tbdocs.mjs --src docs`) first.",
       );
       process.exit(2);
     }
@@ -372,7 +402,10 @@ function boostWholeTitles(lunr, results, docs, baseTokens, keys) {
 function namesTheThing(lunr, result, name) {
   const metadata = result.matchData.metadata;
   if (Object.values(metadata).some((m) => m.exact || m.primary)) return true;
-  const keys = lunr.tokenizer(name).map((t) => lunr.stemmer(lunr.trimmer(t)).toString()).filter(Boolean);
+  const keys = lunr
+    .tokenizer(name)
+    .map((t) => lunr.stemmer(lunr.trimmer(t)).toString())
+    .filter(Boolean);
   return keys.length > 0 && keys.every((k) => metadata[k] && metadata[k].title);
 }
 
@@ -386,7 +419,10 @@ export function search({ lunr, index, docs }, input) {
   // left empty. That includes tokens made only of asterisks, which would
   // otherwise reach lunr.Query.wildcard.TRAILING and throw inside lunr's
   // query engine instead of matching nothing.
-  const baseTokens = lunr.tokenizer(input).map((t) => lunr.trimmer(t)).filter((t) => t.str !== "");
+  const baseTokens = lunr
+    .tokenizer(input)
+    .map((t) => lunr.trimmer(t))
+    .filter((t) => t.str !== "");
   const queryTokens = [];
   const qualifiedTokens = [];
   for (const token of baseTokens) {
@@ -410,7 +446,8 @@ export function search({ lunr, index, docs }, input) {
   const pairTokens = [];
   for (let i = 0; i + 1 < baseTokens.length; i++) {
     const [a, b] = [baseTokens[i], baseTokens[i + 1]];
-    if (!qualifiedTokens.includes(a) && !qualifiedTokens.includes(b)) pairTokens.push(a.clone(() => `${a.str}.${b.str}`));
+    if (!qualifiedTokens.includes(a) && !qualifiedTokens.includes(b))
+      pairTokens.push(a.clone(() => `${a.str}.${b.str}`));
   }
   // Exact name, matching just-the-docs.js: a query naming one thing also
   // matches that whole name, in `exact` and, if it is a type or language
@@ -465,9 +502,19 @@ export function search({ lunr, index, docs }, input) {
         const stem = lunr.stemmer(token.clone()).toString();
         const wildcard = lunr.Query.wildcard.TRAILING;
         if (!optionalKinds || !KIND_WORDS.includes(token.str)) {
-          q.term(stem, { fields: TEXT_FIELDS, wildcard, usePipeline: false, presence: lunr.Query.presence.REQUIRED, boost: 0 });
+          q.term(stem, {
+            fields: TEXT_FIELDS,
+            wildcard,
+            usePipeline: false,
+            presence: lunr.Query.presence.REQUIRED,
+            boost: 0,
+          });
         }
-        q.term(stem, { fields: qualifiedTokens.includes(token) ? TEXT_FIELDS : PLAIN_FIELDS, wildcard, usePipeline: false });
+        q.term(stem, {
+          fields: qualifiedTokens.includes(token) ? TEXT_FIELDS : PLAIN_FIELDS,
+          wildcard,
+          usePipeline: false,
+        });
       }
     });
   // Kind words, matching just-the-docs.js: a query naming one thing and its
@@ -493,7 +540,7 @@ export function search({ lunr, index, docs }, input) {
       // Capped at 2, as the patched just-the-docs.js is. Uncapped, a query of
       // three unindexed API names ran this replica out of memory.
       results = index.query((q) =>
-        q.term(tokens, { editDistance: Math.min(2, Math.round(Math.sqrt(input.length / 2 - 1))) })
+        q.term(tokens, { editDistance: Math.min(2, Math.round(Math.sqrt(input.length / 2 - 1))) }),
       );
     }
   }
@@ -501,18 +548,22 @@ export function search({ lunr, index, docs }, input) {
   return boostWholeTitles(lunr, results, docs, baseTokens, titleKeys.get(docs));
 }
 
-// The composition report is why round 1's worst discoverability scores were
+// The composition report shows why the worst discoverability scores are
 // structural rather than per-page: the developer documentation competes for its
 // own search against the language reference, which shares its entire
 // vocabulary -- font, add, download, colour, build and image are all twinBASIC
 // API names.
 function composition(docs) {
   const slice = (u) =>
-    u.startsWith("/Documentation") ? "Documentation (developer docs)"
-    : u.startsWith("/tB") ? "twinBASIC reference"
-    : u.startsWith("/Features") ? "Features"
-    : u.startsWith("/Tutorials") ? "Tutorials"
-    : "other";
+    u.startsWith("/Documentation")
+      ? "Documentation (developer docs)"
+      : u.startsWith("/tB")
+        ? "twinBASIC reference"
+        : u.startsWith("/Features")
+          ? "Features"
+          : u.startsWith("/Tutorials")
+            ? "Tutorials"
+            : "other";
   const counts = new Map();
   const ids = Object.keys(docs);
   for (const id of ids) {
@@ -525,7 +576,7 @@ function composition(docs) {
   }
   console.log(
     "\nOnly published pages are indexed. builder/*.md, perf/*.md, test/README.md" +
-    "\nand the repository-root notes are unreachable by site search entirely."
+      "\nand the repository-root notes are unreachable by site search entirely.",
   );
 }
 
@@ -537,13 +588,13 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   if (opts.help || (!opts.composition && !opts.terms.length)) {
     printHelpAndExit(
       'Usage: node eval/site_search.mjs "<query>" [--n <count>] [--site <path>] [-h, --help]\n' +
-      "       node eval/site_search.mjs --composition\n\n" +
-      "Queries the built site's real lunr index with the real query logic.\n" +
-      "A term that starts with a dash goes after --. See eval/README.md.\n\n" +
-      "Exit codes:\n" +
-      "  0  the query ran, even with no results\n" +
-      "  2  a refused command line, a site with no search index (run build.bat first),\n" +
-      "     or a crash",
+        "       node eval/site_search.mjs --composition\n\n" +
+        "Queries the built site's real lunr index with the real query logic.\n" +
+        "A term that starts with a dash goes after --. See eval/README.md.\n\n" +
+        "Exit codes:\n" +
+        "  0  the query ran, even with no results\n" +
+        "  2  a refused command line, a site with no search index (run build.bat first),\n" +
+        "     or a crash",
       opts.help ? {} : { stream: "stderr", exitCode: 2 },
     );
   }
@@ -554,10 +605,14 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   } else {
     const input = opts.terms.join(" ");
     const hits = search(ctx, input);
-    console.log(`query: ${JSON.stringify(input)} -- ${hits.length} result(s), showing ${Math.min(opts.n, hits.length)}\n`);
+    console.log(
+      `query: ${JSON.stringify(input)} -- ${hits.length} result(s), showing ${Math.min(opts.n, hits.length)}\n`,
+    );
     hits.slice(0, opts.n).forEach((h, i) => {
       const d = ctx.docs[h.ref];
-      const snippet = String(d.content ?? "").replace(/\s+/g, " ").slice(0, 130);
+      const snippet = String(d.content ?? "")
+        .replace(/\s+/g, " ")
+        .slice(0, 130);
       console.log(`${String(i + 1).padStart(2)}. ${d.title}`);
       console.log(`    ${d.relUrl}`);
       if (snippet) console.log(`    ${snippet}...`);

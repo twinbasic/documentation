@@ -39,21 +39,26 @@ const SHOWN = 25;
 
 const SYMBOL_GUARD = {
   name: "symbol",
-  missing: "so nothing checks that the symbol\n"
-    + "       index still has every URL it has published.\n",
+  missing: "so nothing checks that the symbol\n" + "       index still has every URL it has published.\n",
   created: (record) => `${record.urls.length} URLs`,
   updated: (baseline, record) => `${baseline?.urls?.length ?? "-"} -> ${record.urls.length} URLs`,
   lost(baseline, record) {
     const now = new Set(record.urls);
     const lost = (baseline.urls ?? []).filter((u) => !now.has(u));
     if (!lost.length) return "";
-    const shown = lost.slice(0, SHOWN).map((u) => `         ${u}\n`).join("");
+    const shown = lost
+      .slice(0, SHOWN)
+      .map((u) => `         ${u}\n`)
+      .join("");
     const more = lost.length > SHOWN ? `         ... and ${lost.length - SHOWN} more\n` : "";
-    return `ERROR: ${lost.length} URL(s) the symbol index has published are no longer in it:\n`
-      + shown + more
-      + "       An installed IDE help add-in keeps these. A reworded heading moves its anchor:\n"
-      + "       pin the old one on it, as `{: #add }`. If the symbol is retired, follow\n"
-      + "       Permanent Links and record the removal in the same commit:\n";
+    return (
+      `ERROR: ${lost.length} URL(s) the symbol index has published are no longer in it:\n` +
+      shown +
+      more +
+      "       An installed IDE help add-in keeps these. A reworded heading moves its anchor:\n" +
+      "       pin the old one on it, as `{: #add }`. If the symbol is retired, follow\n" +
+      "       Permanent Links and record the removal in the same commit:\n"
+    );
   },
   gained(baseline, record) {
     const known = new Set(baseline.urls ?? []);

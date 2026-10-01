@@ -12,12 +12,11 @@
 //
 // That is not hypothetical. Graphviz has no font machinery at all and falls
 // back to Times for any family it does not know, so `fontname="Inter"`
-// measured identically to `fontname="NoSuchFontXYZ"` and every box came out
-// ~11% too narrow. Twenty-seven labels across three diagrams were hanging
-// past their edges, on pages that had been through the full accessibility
-// sweep, because axe does not evaluate SVG <text> geometry either.
-// builder/dot-metrics.mjs fixed the cause; this is what proves it stayed
-// fixed.
+// measures identically to `fontname="NoSuchFontXYZ"` and every box comes out
+// ~11% too narrow, leaving labels hanging past their edges on pages that pass
+// the full accessibility sweep, because axe does not evaluate SVG <text>
+// geometry either. builder/dot-metrics.mjs removes the cause; this proves it
+// stays removed.
 //
 // It runs in check.bat rather than in the build for the same reason the axe
 // scan does: it needs a browser, and builder/dot.mjs is deliberately free of
@@ -54,10 +53,12 @@ Exit codes:
 // tens of units rather than ones.
 const TOLERANCE = 1.0;
 
-const cli = withUsageError(() => parseCli(process.argv.slice(2), {
-  options: { verbose: { type: "boolean" }, help: { type: "boolean", short: "h" } },
-  stopAt: ["help"],
-}));
+const cli = withUsageError(() =>
+  parseCli(process.argv.slice(2), {
+    options: { verbose: { type: "boolean" }, help: { type: "boolean", short: "h" } },
+    stopAt: ["help"],
+  }),
+);
 if (cli.values.help) printHelpAndExit(USAGE);
 const verbose = cli.values.verbose === true;
 
@@ -65,7 +66,13 @@ const verbose = cli.values.verbose === true;
 const svgs = [];
 for (const dot of await listDotSources(DOCS_DIR)) {
   const svg = dot.replace(/\.dot$/, ".svg");
-  if (await fs.stat(svg).then(() => true, () => false)) svgs.push(svg);
+  if (
+    await fs.stat(svg).then(
+      () => true,
+      () => false,
+    )
+  )
+    svgs.push(svg);
 }
 svgs.sort();
 if (svgs.length === 0) {
@@ -77,7 +84,8 @@ let failures = 0;
 let checked = 0;
 await withBrowser(async (browser) => {
   const page = await openInterPage(browser, "dot-fit", {
-    css: "body{font-family:Inter,system-ui,sans-serif;margin:0}\n" +
+    css:
+      "body{font-family:Inter,system-ui,sans-serif;margin:0}\n" +
       "#host{width:1200px}#host svg{width:1200px;height:auto}",
     body: '<div id="host"></div>',
   });
@@ -95,51 +103,55 @@ await withBrowser(async (browser) => {
     const rel = path.relative(REPO_ROOT, svgPath).replace(/\\/g, "/");
     const svg = await fs.readFile(svgPath, "utf8");
 
-    const result = await page.evaluate((markup, tol) => {
-      document.getElementById("host").innerHTML = markup;
-      const root = document.querySelector("#host svg");
-      if (!root) return { error: "no <svg> element" };
+    const result = await page.evaluate(
+      (markup, tol) => {
+        document.getElementById("host").innerHTML = markup;
+        const root = document.querySelector("#host svg");
+        if (!root) return { error: "no <svg> element" };
 
-      const runs = [];
-      // Nodes: the label is centred in its box, so both edges matter and the
-      // off-centre figure is meaningful.
-      for (const g of root.querySelectorAll("g.node")) {
-        const shape = g.querySelector("path, polygon, ellipse, rect");
-        if (!shape) continue;
-        const sb = shape.getBBox();
-        for (const t of g.querySelectorAll("text")) {
-          const tb = t.getBBox();
-          runs.push({
-            txt: t.textContent.trim().slice(0, 44),
-            over: Math.max((tb.x + tb.width) - (sb.x + sb.width), sb.x - tb.x),
-            skew: (tb.x + tb.width / 2) - (sb.x + sb.width / 2),
-          });
+        const runs = [];
+        // Nodes: the label is centred in its box, so both edges matter and the
+        // off-centre figure is meaningful.
+        for (const g of root.querySelectorAll("g.node")) {
+          const shape = g.querySelector("path, polygon, ellipse, rect");
+          if (!shape) continue;
+          const sb = shape.getBBox();
+          for (const t of g.querySelectorAll("text")) {
+            const tb = t.getBBox();
+            runs.push({
+              txt: t.textContent.trim().slice(0, 44),
+              over: Math.max(tb.x + tb.width - (sb.x + sb.width), sb.x - tb.x),
+              skew: tb.x + tb.width / 2 - (sb.x + sb.width / 2),
+            });
+          }
         }
-      }
-      // Clusters: the label is left-justified along the top edge, so only the
-      // right edge can be outrun and `skew` would mean nothing. Worth checking
-      // even though the cluster is sized by its contents -- shorten the nodes
-      // inside one and the label becomes the widest thing in it.
-      for (const g of root.querySelectorAll("g.cluster")) {
-        const shape = g.querySelector("path, polygon, ellipse, rect");
-        if (!shape) continue;
-        const sb = shape.getBBox();
-        for (const t of g.querySelectorAll("text")) {
-          const tb = t.getBBox();
-          runs.push({
-            txt: t.textContent.trim().slice(0, 44),
-            over: (tb.x + tb.width) - (sb.x + sb.width),
-            skew: 0,
-          });
+        // Clusters: the label is left-justified along the top edge, so only the
+        // right edge can be outrun and `skew` would mean nothing. Worth checking
+        // even though the cluster is sized by its contents -- shorten the nodes
+        // inside one and the label becomes the widest thing in it.
+        for (const g of root.querySelectorAll("g.cluster")) {
+          const shape = g.querySelector("path, polygon, ellipse, rect");
+          if (!shape) continue;
+          const sb = shape.getBBox();
+          for (const t of g.querySelectorAll("text")) {
+            const tb = t.getBBox();
+            runs.push({
+              txt: t.textContent.trim().slice(0, 44),
+              over: tb.x + tb.width - (sb.x + sb.width),
+              skew: 0,
+            });
+          }
         }
-      }
-      if (runs.length === 0) return { error: "no text runs -- did the SVG render?" };
-      return {
-        total: runs.length,
-        bad: runs.filter((r) => r.over > tol).sort((a, b) => b.over - a.over),
-        maxSkew: runs.reduce((a, r) => (Math.abs(r.skew) > Math.abs(a) ? r.skew : a), 0),
-      };
-    }, svg, TOLERANCE);
+        if (runs.length === 0) return { error: "no text runs -- did the SVG render?" };
+        return {
+          total: runs.length,
+          bad: runs.filter((r) => r.over > tol).sort((a, b) => b.over - a.over),
+          maxSkew: runs.reduce((a, r) => (Math.abs(r.skew) > Math.abs(a) ? r.skew : a), 0),
+        };
+      },
+      svg,
+      TOLERANCE,
+    );
 
     checked++;
     if (result.error) {
@@ -164,9 +176,9 @@ await withBrowser(async (browser) => {
 if (failures) {
   console.error(
     `\ncheck_dot_fit: ${failures} of ${checked} diagram(s) have text outside their boxes.\n` +
-    "Graphviz sized those boxes with a different font from the one the page paints with.\n" +
-    "Check that builder/dot-metrics.mjs still installs Inter's widths -- a bump of\n" +
-    "@hpcc-js/wasm-graphviz is the usual cause -- then re-render with build.bat.",
+      "Graphviz sized those boxes with a different font from the one the page paints with.\n" +
+      "Check that builder/dot-metrics.mjs still installs Inter's widths -- a bump of\n" +
+      "@hpcc-js/wasm-graphviz is the usual cause -- then re-render with build.bat.",
   );
   process.exit(1);
 }

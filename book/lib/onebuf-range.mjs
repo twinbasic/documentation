@@ -38,13 +38,13 @@
 //   construct  (ProtoClass, d) => a new object of that pdf-lib class holding
 //              `d`. The dispatch to each class's constructor is the shim's.
 
-const LENGTH_LIMIT = 1 << 16;       // 65 536, exclusive
-const LENGTH_MASK = 0xFFFF;
+const LENGTH_LIMIT = 1 << 16; // 65 536, exclusive
+const LENGTH_MASK = 0xffff;
 
 export function onebufRange({ name, capacity, startBits, gapBits = 0, construct }) {
-  const START_LIMIT = 2 ** startBits;                 // exclusive
+  const START_LIMIT = 2 ** startBits; // exclusive
   const START_MASK = START_LIMIT - 1;
-  const LENGTH_BASE = 2 ** (startBits + gapBits);     // length multiplier
+  const LENGTH_BASE = 2 ** (startBits + gapBits); // length multiplier
   const GAP_MASK = LENGTH_BASE - START_LIMIT;
 
   const slots = new Array(capacity);
@@ -52,13 +52,17 @@ export function onebufRange({ name, capacity, startBits, gapBits = 0, construct 
   let context = null;
 
   function pack(start, length) {
-    if (start  >= START_LIMIT)  throw new Error(`${name}: start ${start} exceeds ${startBits}-bit budget`);
+    if (start >= START_LIMIT) throw new Error(`${name}: start ${start} exceeds ${startBits}-bit budget`);
     if (length >= LENGTH_LIMIT) throw new Error(`${name}: length ${length} exceeds 16-bit budget`);
     return start + length * LENGTH_BASE;
   }
 
-  function startOf(d)  { return d & START_MASK; }
-  function lengthOf(d) { return Math.floor(d / LENGTH_BASE) & LENGTH_MASK; }
+  function startOf(d) {
+    return d & START_MASK;
+  }
+  function lengthOf(d) {
+    return Math.floor(d / LENGTH_BASE) & LENGTH_MASK;
+  }
 
   // Resizes the buffer to `count * slack` in place. A new Array would
   // invalidate V8's inline caches in every closure that reads the buffer,

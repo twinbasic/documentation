@@ -39,12 +39,10 @@ exitOnCrash();
 // Output trees live under docs/, so walking docs/ naively would compare
 // the build against itself and always pass. They are skipped at the top of
 // each source root by the prefix list the markdown walk uses, in
-// lib/markdown-files.mjs. This file used to name them one at a time,
-// and missed four that sat beside the others: _site-basepath-offline and
-// _site-basepath-pdf, which a build into _site-basepath writes, and the empty
-// _serve-offline and _serve-pdf that serve mode left behind until it stopped
-// preparing them. All four were read as sources. These two are skipped at
-// every depth.
+// lib/markdown-files.mjs. A list of names would miss siblings such as
+// _site-basepath-offline and _site-basepath-pdf, which a build into
+// _site-basepath writes, and they would be read as sources. These two are
+// skipped at every depth.
 const IGNORED_DIRS = new Set([".git", "node_modules"]);
 
 // Files the build WRITES into a source directory. They are outputs, so their
@@ -67,17 +65,16 @@ const DEFAULT_SOURCES = ["docs", "builder", "lib"];
 const DEFAULT_TREE = "docs/_site-offline";
 const DEFAULT_MARKER = "index.html";
 
-const cli = withUsageError(
-  () =>
-    parseCli(process.argv.slice(2), {
-      options: {
-        tree: { type: "string", default: DEFAULT_TREE },
-        marker: { type: "string", default: DEFAULT_MARKER },
-        source: { type: "string", multiple: true },
-        help: { type: "boolean", short: "h" },
-      },
-      stopAt: ["help"],
-    }),
+const cli = withUsageError(() =>
+  parseCli(process.argv.slice(2), {
+    options: {
+      tree: { type: "string", default: DEFAULT_TREE },
+      marker: { type: "string", default: DEFAULT_MARKER },
+      source: { type: "string", multiple: true },
+      help: { type: "boolean", short: "h" },
+    },
+    stopAt: ["help"],
+  }),
 );
 if (cli.stopped === "help") {
   printHelpAndExit(
@@ -100,7 +97,7 @@ const marker = join(treeDir, markerName);
 if (!existsSync(marker)) {
   console.error(
     `check_tree_fresh: ${relative(REPO_ROOT, marker).replaceAll(sep, "/")} does not exist.\n` +
-    `  Run build.bat first -- there is no built tree to check.`
+      `  Run build.bat first -- there is no built tree to check.`,
   );
   process.exit(2);
 }
@@ -112,14 +109,25 @@ function newestUnder(dir) {
   let best = null;
   const walk = (d, top) => {
     let entries;
-    try { entries = readdirSync(d, { withFileTypes: true }); } catch { return; }
+    try {
+      entries = readdirSync(d, { withFileTypes: true });
+    } catch {
+      return;
+    }
     for (const e of entries) {
       if (IGNORED_DIRS.has(e.name) || (top && isOutputTree(e.name))) continue;
       const p = join(d, e.name);
-      if (e.isDirectory()) { walk(p, false); continue; }
+      if (e.isDirectory()) {
+        walk(p, false);
+        continue;
+      }
       if (!e.isFile() || IGNORED_FILES.has(e.name)) continue;
       let st;
-      try { st = statSync(p); } catch { continue; }
+      try {
+        st = statSync(p);
+      } catch {
+        continue;
+      }
       if (!best || st.mtimeMs > best.mtimeMs) best = { path: p, mtimeMs: st.mtimeMs };
     }
   };
@@ -138,8 +146,8 @@ if (newest && newest.mtimeMs > builtAt) {
   const ageS = ((newest.mtimeMs - builtAt) / 1000).toFixed(0);
   console.error(
     `check_tree_fresh: ${tree} is ${ageS}s older than ${rel}.\n` +
-    `  Run build.bat first. Scanning a stale tree reports a pass for the\n` +
-    `  previous build, which is the one thing these gates must never do.`
+      `  Run build.bat first. Scanning a stale tree reports a pass for the\n` +
+      `  previous build, which is the one thing these gates must never do.`,
   );
   process.exit(1);
 }

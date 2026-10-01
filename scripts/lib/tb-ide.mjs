@@ -46,9 +46,10 @@ export const ADDIN_TEST_ENV = "TB_ADDIN_TEST";
  * than something to remember on every invocation.
  */
 export function wantShow({ show = false, hide = false } = {}) {
-  return show ||
-    (!hide && !!process.env.TBBUILD_SHOW &&
-      !["0", "false", "no", ""].includes(process.env.TBBUILD_SHOW.toLowerCase()));
+  return (
+    show ||
+    (!hide && !!process.env.TBBUILD_SHOW && !["0", "false", "no", ""].includes(process.env.TBBUILD_SHOW.toLowerCase()))
+  );
 }
 
 /**
@@ -61,8 +62,11 @@ export function wantShow({ show = false, hide = false } = {}) {
  * in is what ends those.
  */
 export function killTree(pid) {
-  try { execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore" }); }
-  catch { /* already gone */ }
+  try {
+    execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore" });
+  } catch {
+    /* already gone */
+  }
 }
 
 /**
@@ -119,12 +123,14 @@ export async function launchIde({ exe, project, port, show = false, keep = false
     if (!code) break;
     if (Date.now() - waitFrom > 10 * 1000) {
       const holder = portListeners(port);
-      throw new Error(holder
-        ? `DevTools port ${port} is in use: ${holder} listens on it. Another IDE has it, perhaps ` +
-          "one another session started, and this one could be mistaken for it. Pass a different --port."
-        : `DevTools port ${port} cannot be bound (${code}), though nothing listens on it: Windows ` +
-          "may have reserved it (netsh int ipv4 show excludedportrange protocol=tcp). Pass a " +
-          "different --port.");
+      throw new Error(
+        holder
+          ? `DevTools port ${port} is in use: ${holder} listens on it. Another IDE has it, perhaps ` +
+              "one another session started, and this one could be mistaken for it. Pass a different --port."
+          : `DevTools port ${port} cannot be bound (${code}), though nothing listens on it: Windows ` +
+              "may have reserved it (netsh int ipv4 show excludedportrange protocol=tcp). Pass a " +
+              "different --port.",
+      );
     }
     await sleep(100);
   }
@@ -134,8 +140,7 @@ export async function launchIde({ exe, project, port, show = false, keep = false
   // undefined, so `env` can remove one as well as set it.
   const fullEnv = {
     ...process.env,
-    WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS:
-      `--remote-debugging-port=${port} --remote-allow-origins=*`,
+    WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port} --remote-allow-origins=*`,
     WEBVIEW2_USER_DATA_FOLDER: `${process.env.TEMP}/tbbuild-wv2-${port}`,
     [ADDIN_TEST_ENV]: "1",
     ...env,
@@ -175,20 +180,26 @@ export async function launchIde({ exe, project, port, show = false, keep = false
   // anything could attach to it, because the launcher died with tbbuild and
   // took the job with it. With the launcher detached from Node instead,
   // PowerShell exited at once, without a pid and without a word on stderr.
-  const script = readFileSync(
-    path.join(path.dirname(fileURLToPath(import.meta.url)), "tb-launch.ps1"), "utf8");
-  const ps = spawn("powershell", [
-    "-NoProfile", "-NonInteractive",
-    "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64"),
-  ], {
-    stdio: ["ignore", "pipe", "pipe"], windowsHide: true,
-    env: {
-      ...fullEnv, TBBUILD_EXE: exeWin, TBBUILD_ARG: target, TBBUILD_DESKTOP: `tbbuild-${port}`,
-      TBBUILD_JOB: keep ? "0" : "1",
+  const script = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "tb-launch.ps1"), "utf8");
+  const ps = spawn(
+    "powershell",
+    ["-NoProfile", "-NonInteractive", "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")],
+    {
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+      env: {
+        ...fullEnv,
+        TBBUILD_EXE: exeWin,
+        TBBUILD_ARG: target,
+        TBBUILD_DESKTOP: `tbbuild-${port}`,
+        TBBUILD_JOB: keep ? "0" : "1",
+      },
     },
-  });
+  );
   let err = "";
-  ps.stderr.on("data", (d) => { err += d; });
+  ps.stderr.on("data", (d) => {
+    err += d;
+  });
   const pid = await new Promise((res) => {
     let buf = "";
     ps.stdout.on("data", (d) => {
@@ -199,8 +210,9 @@ export async function launchIde({ exe, project, port, show = false, keep = false
     ps.on("exit", () => res(null));
   });
   if (!pid) {
-    throw new Error(`could not start the IDE on a private desktop:\n${err.trim()}\n` +
-      "(--show runs it on your own desktop instead)");
+    throw new Error(
+      `could not start the IDE on a private desktop:\n${err.trim()}\n` + "(--show runs it on your own desktop instead)",
+    );
   }
   return { pid, launcher: ps };
 }
@@ -221,7 +233,11 @@ export function shutdownIde(ide) {
   // The launcher holds the private desktop open and the only handle to the
   // IDE's job. It exits once the IDE does, but do not wait on that: killing it
   // closes the job, which ends anything the tree kill missed.
-  try { ide.launcher?.kill(); } catch { /* already gone */ }
+  try {
+    ide.launcher?.kill();
+  } catch {
+    /* already gone */
+  }
   waitForExit(ide.pid, 5000);
 }
 
@@ -238,10 +254,18 @@ export async function shutdownIdeAsync(ide) {
   await new Promise((resolve) => {
     execFile("taskkill", ["/PID", String(ide.pid), "/T", "/F"], { windowsHide: true }, () => resolve());
   });
-  try { ide.launcher?.kill(); } catch { /* already gone */ }
+  try {
+    ide.launcher?.kill();
+  } catch {
+    /* already gone */
+  }
   const until = Date.now() + 5000;
   while (Date.now() < until) {
-    try { process.kill(ide.pid, 0); } catch { return; }
+    try {
+      process.kill(ide.pid, 0);
+    } catch {
+      return;
+    }
     await sleep(100);
   }
 }
@@ -258,7 +282,11 @@ export function waitForExit(pid, timeoutMs) {
   const cell = new Int32Array(new SharedArrayBuffer(4));
   while (Date.now() < until) {
     // Signal 0 tests whether the process exists; it throws once it does not.
-    try { process.kill(pid, 0); } catch { return true; }
+    try {
+      process.kill(pid, 0);
+    } catch {
+      return true;
+    }
     Atomics.wait(cell, 0, 0, 100);
   }
   return false;
@@ -289,17 +317,26 @@ export async function attachIde(port, { tries = 60 } = {}) {
   for (let i = 0; i < tries; i++) {
     await sleep(1000);
     let c;
-    try { c = await attach(port); } catch { continue; }  // still starting
+    try {
+      c = await attach(port);
+    } catch {
+      continue;
+    } // still starting
     c.dialogs = [];
     c.pageBlocked = false;
     c.on((m) => {
       if (m.method !== "Page.javascriptDialogOpening") return;
       const { type, message } = m.params;
       c.dialogs.push({ type, message, at: Date.now() });
-      c.send("Page.handleJavaScriptDialog", { accept: type === "alert" || type === "beforeunload" })
-        .catch(() => { /* already answered, or the page is gone */ });
+      c.send("Page.handleJavaScriptDialog", { accept: type === "alert" || type === "beforeunload" }).catch(() => {
+        /* already answered, or the page is gone */
+      });
     });
-    try { await c.send("Page.enable"); } catch { c.pageBlocked = true; }
+    try {
+      await c.send("Page.enable");
+    } catch {
+      c.pageBlocked = true;
+    }
     return c;
   }
   return null;
@@ -309,12 +346,13 @@ export async function attachIde(port, { tries = 60 } = {}) {
 // binds 127.0.0.1, so binding it ourselves for a moment is the test. Resolves
 // to the bind's error code, or null when the port is free: a port Windows has
 // reserved refuses the bind with EACCES though nothing listens on it.
-const portTaken = (port) => new Promise((resolve) => {
-  const s = net.createServer();
-  s.once("error", (e) => resolve(e.code ?? "an error"));
-  s.once("listening", () => s.close(() => resolve(null)));
-  s.listen(port, "127.0.0.1");
-});
+const portTaken = (port) =>
+  new Promise((resolve) => {
+    const s = net.createServer();
+    s.once("error", (e) => resolve(e.code ?? "an error"));
+    s.once("listening", () => s.close(() => resolve(null)));
+    s.listen(port, "127.0.0.1");
+  });
 
 // The processes listening on a port launchIde was refused, for its message,
 // as netstat and tasklist name them: "pid 1234 (name.exe)". Null when none
@@ -323,23 +361,30 @@ function portListeners(port) {
   const opts = { encoding: "utf8", windowsHide: true, timeout: 10 * 1000 };
   let pids;
   try {
-    pids = [...new Set(execFileSync("netstat", ["-ano", "-p", "TCP"], opts).split(/\r?\n/)
-      .map((l) => l.trim().split(/\s+/))
-      .filter((f) => f[3] === "LISTENING" && f[1]?.endsWith(`:${port}`))
-      .map((f) => f[4]))];
+    pids = [
+      ...new Set(
+        execFileSync("netstat", ["-ano", "-p", "TCP"], opts)
+          .split(/\r?\n/)
+          .map((l) => l.trim().split(/\s+/))
+          .filter((f) => f[3] === "LISTENING" && f[1]?.endsWith(`:${port}`))
+          .map((f) => f[4]),
+      ),
+    ];
   } catch (e) {
     return `a process netstat could not name (${e.code ?? e.message.split("\n")[0]})`;
   }
   if (!pids.length) return null;
-  return pids.map((pid) => {
-    try {
-      const row = execFileSync("tasklist", ["/FI", `PID eq ${pid}`, "/FO", "CSV", "/NH"], opts).trim();
-      const image = /^"([^"]+)"/.exec(row)?.[1];
-      return image ? `pid ${pid} (${image})` : `pid ${pid}`;
-    } catch {
-      return `pid ${pid}`;
-    }
-  }).join(" and ");
+  return pids
+    .map((pid) => {
+      try {
+        const row = execFileSync("tasklist", ["/FI", `PID eq ${pid}`, "/FO", "CSV", "/NH"], opts).trim();
+        const image = /^"([^"]+)"/.exec(row)?.[1];
+        return image ? `pid ${pid} (${image})` : `pid ${pid}`;
+      } catch {
+        return `pid ${pid}`;
+      }
+    })
+    .join(" and ");
 }
 
 // Counts and rows are read in ONE evaluate. Read separately they raced: a run
@@ -470,7 +515,11 @@ export async function awaitCrashName(c, crash, { timeout = 5000 } = {}) {
   const until = Date.now() + timeout;
   while (!crash.files?.length && Date.now() < until) {
     await sleep(250);
-    try { crash = (await readCrash(c)) ?? crash; } catch { /* keep what we have */ }
+    try {
+      crash = (await readCrash(c)) ?? crash;
+    } catch {
+      /* keep what we have */
+    }
   }
   return crash;
 }
@@ -506,13 +555,25 @@ export const COMPILE_TIMEOUT = 180 * 1000;
 export async function waitForCompile(c, { project, timeout }) {
   const want = normPath(path.resolve(project));
   const t0 = Date.now();
-  let last = null, stable = 0, loaded = false, seenUp = false, drops = 0, crash = null;
+  let last = null,
+    stable = 0,
+    loaded = false,
+    seenUp = false,
+    drops = 0,
+    crash = null;
   while (Date.now() - t0 < timeout) {
     await sleep(1000);
     let s;
-    try { s = await readBuildState(c); } catch { continue; }
+    try {
+      s = await readBuildState(c);
+    } catch {
+      continue;
+    }
     const v = JSON.parse(s);
-    if (!loaded) { if (v.p && normPath(v.p) === want) loaded = true; else continue; }
+    if (!loaded) {
+      if (v.p && normPath(v.p) === want) loaded = true;
+      else continue;
+    }
     if (v.crash) {
       // Caught on sight, but reported with the file the compiler died parsing,
       // which only a later crash names -- see awaitCrashName.
@@ -520,8 +581,11 @@ export async function waitForCompile(c, { project, timeout }) {
       break;
     }
     const up = v.st === "tB Services: OPERATIONAL";
-    if (up) seenUp = true; else if (seenUp && ++drops >= 2) break;
-    if (up && s === last) { if (++stable >= 5) break; } else stable = 0;
+    if (up) seenUp = true;
+    else if (seenUp && ++drops >= 2) break;
+    if (up && s === last) {
+      if (++stable >= 5) break;
+    } else stable = 0;
     last = s;
   }
   return { loaded, crash, drops, last, blocked: !!c.pageBlocked };
@@ -546,8 +610,10 @@ export function compileOutcome({ loaded, crash, drops, last, blocked }, { name }
   // take out, and a caller bisecting the batch has somewhere to start.
   if (crash) {
     return {
-      ok: false, code: 4,
-      message: `the compiler crashed ${crash.n}x -- this project takes it down` +
+      ok: false,
+      code: 4,
+      message:
+        `the compiler crashed ${crash.n}x -- this project takes it down` +
         (crash.files?.length ? `\nlast parsing: ${crash.files.join(", ")}` : "") +
         "\n(read the IDE's DEBUG CONSOLE with --keep for the exception detail)",
       crashFiles: crash.files ?? [],
@@ -555,23 +621,31 @@ export function compileOutcome({ loaded, crash, drops, last, blocked }, { name }
   }
   if (drops >= 2) {
     return {
-      ok: false, code: 4,
+      ok: false,
+      code: 4,
       message: `the compiler restarted ${drops}x -- this project crashes it\nlast status: ${last}`,
     };
   }
   if (!loaded) {
     return {
-      ok: false, code: 3,
-      message: `the IDE never reported ${name} as open` + (blocked
-        ? "\nIts page did not answer when the harness attached. A dialog it opened before then " +
-          "is the likely cause, and one cannot be answered over CDP; --show puts it on screen."
-        : ""),
+      ok: false,
+      code: 3,
+      message:
+        `the IDE never reported ${name} as open` +
+        (blocked
+          ? "\nIts page did not answer when the harness attached. A dialog it opened before then " +
+            "is the likely cause, and one cannot be answered over CDP; --show puts it on screen."
+          : ""),
     };
   }
 
   const final = JSON.parse(last ?? "{}");
   const rows = (final.rows ?? []).map((r) =>
-    r.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim());
+    r
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
   const counts = ["e", "w", "h", "i"].map((k) => Number(final[k] ?? 0));
 
   // A row count that disagrees with the status bar means the compile was still
@@ -587,7 +661,8 @@ export function compileOutcome({ loaded, crash, drops, last, blocked }, { name }
   // sides count the same things and a real race is again the only way to trip it.
   if (counts.reduce((a, b) => a + b, 0) !== rows.length) {
     return {
-      ok: false, code: 3,
+      ok: false,
+      code: 3,
       message: `unsettled: ${rows.length} rows against ${counts.join("/")} in the status bar`,
     };
   }
@@ -657,8 +732,8 @@ export async function setBuildTarget(c, arch, { project, timeout }) {
 }
 
 /** The process id of the compiler the page is talking to, or null while there is none. */
-export const compilerPid = (c) => c.evaluate(
-  "typeof g_CurrentCompilerProcessId === 'undefined' ? null : g_CurrentCompilerProcessId || null");
+export const compilerPid = (c) =>
+  c.evaluate("typeof g_CurrentCompilerProcessId === 'undefined' ? null : g_CurrentCompilerProcessId || null");
 
 /**
  * Wait until the page is talking to a compiler other than the one whose
@@ -680,7 +755,11 @@ export async function awaitNewCompiler(c, before, { why = "restarting it", timeo
   for (;;) {
     await sleep(250);
     let pid = null;
-    try { pid = await compilerPid(c); } catch { /* the page is busy with the restart */ }
+    try {
+      pid = await compilerPid(c);
+    } catch {
+      /* the page is busy with the restart */
+    }
     if (pid && pid !== before) return pid;
     if (Date.now() - t0 > timeout) {
       throw new Error(`the compiler did not restart within ${timeout / 1000} s of ${why}`);
@@ -715,8 +794,11 @@ export const BUILD_FAILED = /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[
 export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
   const mark = await consoleMark(c);
   if (!mark) {
-    return { ok: false, log: [], message: "no debugConsoleContent.dataNodes in this IDE, " +
-      "so the build log cannot be read" };
+    return {
+      ok: false,
+      log: [],
+      message: "no debugConsoleContent.dataNodes in this IDE, " + "so the build log cannot be read",
+    };
   }
   try {
     await click(c, "buildIcon");
@@ -724,7 +806,8 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
     return { ok: false, log: [], message: e.message };
   }
   const t0 = Date.now();
-  let log = [], failedAt = 0;
+  let log = [],
+    failedAt = 0;
   while (Date.now() - t0 < timeout) {
     await sleep(250);
     const lines = await linesSince(c, mark);
@@ -743,7 +826,8 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
     }
   }
   return {
-    ok: false, log,
+    ok: false,
+    log,
     message: log.length
       ? `the build started and reported nothing for ${timeout / 1000} s`
       : `the build did not start in ${timeout / 1000} s -- is a dialog open? A template ` +

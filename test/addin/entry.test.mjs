@@ -58,9 +58,12 @@ function renameExport(dll, name) {
 }
 
 // The files the probe printed that it was loaded from, by name.
-const loadedFrom = async (c) => (await linesSince(c))
-  .map((l) => /^\[EntryProbe\] loaded from (.+)$/.exec(l)).filter(Boolean)
-  .map((m) => path.basename(m[1])).sort();
+const loadedFrom = async (c) =>
+  (await linesSince(c))
+    .map((l) => /^\[EntryProbe\] loaded from (.+)$/.exec(l))
+    .filter(Boolean)
+    .map((m) => path.basename(m[1]))
+    .sort();
 
 scenario("P14: the add-in entry point", (lane) => {
   let c, built;
@@ -71,13 +74,19 @@ scenario("P14: the add-in entry point", (lane) => {
     for (const [file, name] of Object.entries(COPIES)) {
       writeFileSync(path.join(dir, file), renameExport(built.dll, name));
       lane.placeAddin(path.join(dir, file));
-      assert.deepEqual(dllInfo(path.join(dir, file)).exports.map((e) => e.name), [name]);
+      assert.deepEqual(
+        dllInfo(path.join(dir, file)).exports.map((e) => e.name),
+        [name],
+      );
     }
     c = await lane.open(HOST);
   });
 
   test("the linker exports tbCreateCompilerAddin as tbCreateCompilerAddin_v3, and under no other name", () => {
-    assert.deepEqual(dllInfo(built.dll).exports.map((e) => e.name), ["tbCreateCompilerAddin_v3"]);
+    assert.deepEqual(
+      dllInfo(built.dll).exports.map((e) => e.name),
+      ["tbCreateCompilerAddin_v3"],
+    );
   });
 
   test("the loader takes tbCreateCompilerAddin, _v2 and _v3 alike", async () => {
@@ -89,10 +98,18 @@ scenario("P14: the add-in entry point", (lane) => {
 
   test("a DLL with none of them is refused as built for a newer IDE, and listed as Unknown Addin", async () => {
     const lines = await linesSince(c);
-    assert.ok(lines.includes("[EntryV4.dll] Failed to load addin.  Entry point not found.  " +
-                             "Addin may have been compiled for a newer version of the twinBASIC IDE."),
-              `no such line in the DEBUG CONSOLE:\n${lines.filter((l) => l.includes("EntryV4")).join("\n")}`);
-    assert.deepEqual((await loadedAddins(c)).map((a) => a.name).sort(),
-                     ["EntryProbe AddIn", "EntryProbe AddIn", "EntryProbe AddIn", "Unknown Addin"]);
+    assert.ok(
+      lines.includes(
+        "[EntryV4.dll] Failed to load addin.  Entry point not found.  " +
+          "Addin may have been compiled for a newer version of the twinBASIC IDE.",
+      ),
+      `no such line in the DEBUG CONSOLE:\n${lines.filter((l) => l.includes("EntryV4")).join("\n")}`,
+    );
+    assert.deepEqual((await loadedAddins(c)).map((a) => a.name).sort(), [
+      "EntryProbe AddIn",
+      "EntryProbe AddIn",
+      "EntryProbe AddIn",
+      "Unknown Addin",
+    ]);
   });
 });

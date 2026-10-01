@@ -26,12 +26,12 @@
 // State is updated only on successful merge.  A workflow failure mid-pipeline
 // leaves state untouched, so the next run retries the same threads.
 
-import { existsSync, mkdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { writeFileAtomic } from '../files.mjs'
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { writeFileAtomic } from "../files.mjs";
 
-const STATE_FILE = 'extract-state.json'
-const STATE_VERSION = 1
+const STATE_FILE = "extract-state.json";
+const STATE_VERSION = 1;
 
 /**
  * Load state from outDir/extract-state.json, or return an empty state if the
@@ -39,24 +39,24 @@ const STATE_VERSION = 1
  * rather than silent reset (we never want to lose the emission log by accident).
  */
 export function loadState(outDir) {
-  const path = join(outDir, STATE_FILE)
+  const path = join(outDir, STATE_FILE);
   if (!existsSync(path)) {
-    return { version: STATE_VERSION, lastRun: null, processedThreads: {} }
+    return { version: STATE_VERSION, lastRun: null, processedThreads: {} };
   }
-  let data
+  let data;
   try {
-    data = JSON.parse(readFileSync(path, 'utf-8'))
+    data = JSON.parse(readFileSync(path, "utf-8"));
   } catch (err) {
-    throw new Error(`extract-state.json is corrupt: ${err.message}. Delete it to reset state.`)
+    throw new Error(`extract-state.json is corrupt: ${err.message}. Delete it to reset state.`);
   }
   if (data.version !== STATE_VERSION) {
     throw new Error(
       `extract-state.json version mismatch (file: ${data.version}, expected: ${STATE_VERSION}). ` +
-      `Delete it to reset state, or migrate manually.`,
-    )
+        `Delete it to reset state, or migrate manually.`,
+    );
   }
-  if (!data.processedThreads) data.processedThreads = {}
-  return data
+  if (!data.processedThreads) data.processedThreads = {};
+  return data;
 }
 
 /**
@@ -64,13 +64,13 @@ export function loadState(outDir) {
  * timestamp.
  */
 export function saveState(outDir, state) {
-  mkdirSync(outDir, { recursive: true })
+  mkdirSync(outDir, { recursive: true });
   const serialized = {
     version: STATE_VERSION,
-    lastRun: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
+    lastRun: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"),
     processedThreads: state.processedThreads || {},
-  }
-  writeFileAtomic(join(outDir, STATE_FILE), JSON.stringify(serialized, null, 2))
+  };
+  writeFileAtomic(join(outDir, STATE_FILE), JSON.stringify(serialized, null, 2));
 }
 
 /**
@@ -81,11 +81,11 @@ export function saveState(outDir, state) {
  * avoid float precision loss on 19-digit values) and numeric on message_count.
  */
 export function isThreadChanged(state, threadId, last_message_id, message_count) {
-  const entry = state.processedThreads?.[threadId]
-  if (!entry) return true
-  if (entry.last_message_id !== last_message_id) return true
-  if (entry.message_count !== message_count) return true
-  return false
+  const entry = state.processedThreads?.[threadId];
+  if (!entry) return true;
+  if (entry.last_message_id !== last_message_id) return true;
+  if (entry.message_count !== message_count) return true;
+  return false;
 }
 
 /**
@@ -99,23 +99,23 @@ export function isThreadChanged(state, threadId, last_message_id, message_count)
  * Mutates state in place; caller is responsible for saveState() after a batch.
  */
 export function recordEmission(state, threadId, last_message_id, message_count, emissions) {
-  if (!state.processedThreads) state.processedThreads = {}
-  const existing = state.processedThreads[threadId] || { emitted: [] }
-  if (!existing.emitted) existing.emitted = []
+  if (!state.processedThreads) state.processedThreads = {};
+  const existing = state.processedThreads[threadId] || { emitted: [] };
+  if (!existing.emitted) existing.emitted = [];
 
   // Dedup the merged emission log.
-  const seen = new Set()
-  const merged = []
+  const seen = new Set();
+  const merged = [];
   for (const list of [existing.emitted, emissions]) {
     for (const e of list) {
-      const k = emissionKey(e)
-      if (seen.has(k)) continue
-      seen.add(k)
+      const k = emissionKey(e);
+      if (seen.has(k)) continue;
+      seen.add(k);
       merged.push({
         target_page: e.target_page,
         section: e.section,
         finding_ids: [...(e.finding_ids || [])].sort(),
-      })
+      });
     }
   }
 
@@ -123,7 +123,7 @@ export function recordEmission(state, threadId, last_message_id, message_count, 
     last_message_id,
     message_count,
     emitted: merged,
-  }
+  };
 }
 
 /**
@@ -133,13 +133,13 @@ export function recordEmission(state, threadId, last_message_id, message_count, 
  * integrated) — those get a [REFINED?] marker on re-emission.
  */
 export function buildEmissionKeySet(state) {
-  const set = new Set()
+  const set = new Set();
   for (const tid of Object.keys(state.processedThreads || {})) {
     for (const e of state.processedThreads[tid].emitted || []) {
-      set.add(emissionKey(e))
+      set.add(emissionKey(e));
     }
   }
-  return set
+  return set;
 }
 
 /**
@@ -147,6 +147,6 @@ export function buildEmissionKeySet(state) {
  * Used both for in-staging.md section indexing and for the emission log.
  */
 export function emissionKey(e) {
-  const ids = [...(e.finding_ids || [])].sort().join(',')
-  return `${e.target_page}\t${e.section}\t${ids}`
+  const ids = [...(e.finding_ids || [])].sort().join(",");
+  return `${e.target_page}\t${e.section}\t${ids}`;
 }

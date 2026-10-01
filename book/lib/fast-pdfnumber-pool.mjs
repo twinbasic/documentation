@@ -1,7 +1,7 @@
 // Pool PDFNumber instances by value.
 //
-// After fast-refs / fast-indirect-objects / fast-dict-array shipped,
-// the residual heap profile attributed ~15 MB of self-size to
+// With fast-refs / fast-indirect-objects / fast-dict-array applied,
+// the residual heap profile attributes ~15 MB of self-size to
 // PDFObjectParser.parseNumberOrRef -- mostly inlined `new
 // PDFNumber(value)` calls (each of which also allocates a fresh
 // stringValue via `numberToString(value)`):
@@ -42,12 +42,16 @@ import { checkTargets } from "./shim-targets.mjs";
 const POOL_SIZE = 16384;
 
 if (!PDFNumber.__fastPoolInstalled) {
-  checkTargets(import.meta.url, { PDFNumber }, {
-    "PDFNumber.of": [1, "f86986605078"],
-  });
+  checkTargets(
+    import.meta.url,
+    { PDFNumber },
+    {
+      "PDFNumber.of": [1, "f86986605078"],
+    },
+  );
   const original = PDFNumber.of;
-  const intPool = new Array(POOL_SIZE);   // sparse, holes for unused slots
-  const otherPool = new Map();             // floats / negatives / large ints
+  const intPool = new Array(POOL_SIZE); // sparse, holes for unused slots
+  const otherPool = new Map(); // floats / negatives / large ints
 
   PDFNumber.of = function fastNumberOf(value) {
     // Hot path: non-negative integer within pool range.

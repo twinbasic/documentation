@@ -55,13 +55,34 @@ import { existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, regexOption, withUsageError } from "../lib/cli.mjs";
+import {
+  die,
+  exitOnCrash,
+  numberOption,
+  parseCli,
+  printHelpAndExit,
+  refuseTogether,
+  regexOption,
+  withUsageError,
+} from "../lib/cli.mjs";
 import { removeTree } from "./lib/tb-ide-copy.mjs";
 import { wantShow } from "./lib/tb-ide.mjs";
 import { buildNumber, findIde } from "./lib/tb-install.mjs";
 import { LANE_ENV } from "./lib/tb-lane.mjs";
-import { alive, deleteSettings, finishTidy, ideLists, norm, restoreKeys, SETTINGS_ROOT, settingsKey,
-         snapshotKeys, startTidy, subkeyNames, sweepArchitectureMemory } from "./lib/tb-registry.mjs";
+import {
+  alive,
+  deleteSettings,
+  finishTidy,
+  ideLists,
+  norm,
+  restoreKeys,
+  SETTINGS_ROOT,
+  settingsKey,
+  snapshotKeys,
+  startTidy,
+  subkeyNames,
+  sweepArchitectureMemory,
+} from "./lib/tb-registry.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 exitOnCrash();
@@ -90,21 +111,22 @@ Exit codes:
   3  the registry or a work folder was not put back, at the end of a run or after a
      crash; see the lines above`;
 
-const { values } = withUsageError(() => parseCli(process.argv.slice(2), {
-  options: {
-    only: { type: "string" },
-    port: { type: "string" },
-    jobs: { type: "string" },
-    timeout: { type: "string" },
-    ide: { type: "string" },
-    show: { type: "boolean", default: false },
-    hide: { type: "boolean", default: false },
-    help: { type: "boolean", short: "h", default: false },
-  },
-  stopAt: ["help"],
-}));
+const { values } = withUsageError(() =>
+  parseCli(process.argv.slice(2), {
+    options: {
+      only: { type: "string" },
+      port: { type: "string" },
+      jobs: { type: "string" },
+      timeout: { type: "string" },
+      ide: { type: "string" },
+      show: { type: "boolean", default: false },
+      hide: { type: "boolean", default: false },
+      help: { type: "boolean", short: "h", default: false },
+    },
+    stopAt: ["help"],
+  }),
+);
 if (values.help) printHelpAndExit(USAGE);
-const die = (code, msg) => { console.error(msg); process.exit(code); };
 // setTimeout takes at most 2147483647 ms, so a lane's timeout is at most 2147483 s.
 const { only, basePort, jobs, laneTimeout } = withUsageError(() => {
   refuseTogether(values, ["show", "hide"]);
@@ -121,20 +143,31 @@ const show = wantShow({ show: values.show, hide: values.hide });
 
 const ide = findIde(values.ide || undefined);
 if (!ide || !existsSync(ide)) {
-  die(2, "no twinBASIC IDE found: pass --ide <twinBASIC.exe>, set TB_IDE, " +
-         "or unpack a twinBASIC_IDE_BETA_<n> folder on your Desktop");
+  die(
+    2,
+    "no twinBASIC IDE found: pass --ide <twinBASIC.exe>, set TB_IDE, " +
+      "or unpack a twinBASIC_IDE_BETA_<n> folder on your Desktop",
+  );
 }
 
 const manifest = (await import(pathToFileURL(path.join(SUITE, "lanes.mjs")).href)).default;
 const lanes = manifest
   .map((l) => ({ ...l, name: l.name ?? path.basename(l.file).replace(/\.test\.mjs$/, "") }))
   .filter((l) => !only || only.test(l.name))
-  .map((l, i) => ({ ...l, settings: l.settings ?? [], port: basePort + i,
-                    work: path.join(tmpdir(), "tbaddin", String(basePort + i)) }));
+  .map((l, i) => ({
+    ...l,
+    settings: l.settings ?? [],
+    port: basePort + i,
+    work: path.join(tmpdir(), "tbaddin", String(basePort + i)),
+  }));
 if (!lanes.length) die(2, `no lane in ${path.join(SUITE, "lanes.mjs")} matches ${only}`);
 for (const l of lanes) {
   if (!existsSync(path.join(SUITE, l.file))) die(2, `lane ${l.name}: no file ${path.join(SUITE, l.file)}`);
-  try { l.settings.forEach(settingsKey); } catch (e) { die(2, `lane ${l.name}: ${e.message}`); }
+  try {
+    l.settings.forEach(settingsKey);
+  } catch (e) {
+    die(2, `lane ${l.name}: ${e.message}`);
+  }
 }
 
 // ---------------------------------------------------------------- the registry
@@ -143,11 +176,15 @@ for (const l of lanes) {
 // such an owner would tidy only its own folders, not the lanes'.
 const owner = Number(process.env.TB_REGISTRY_OWNER);
 if (owner && owner !== process.pid && alive(owner)) {
-  die(2, `process ${owner} already owns the registry for a run (TB_REGISTRY_OWNER); ` +
-         "run the add-in tests on their own");
+  die(
+    2,
+    `process ${owner} already owns the registry for a run (TB_REGISTRY_OWNER); ` + "run the add-in tests on their own",
+  );
 }
 for (const l of lanes) {
-  try { removeTree(l.work); } catch (e) {
+  try {
+    removeTree(l.work);
+  } catch (e) {
     die(2, `${l.work} could not be emptied (${e.code}): is a process from an earlier run still running?`);
   }
   mkdirSync(l.work, { recursive: true });
@@ -175,7 +212,9 @@ const children = new Set();
 // writes to the registry after it is put back. It exits 3 if the registry or a
 // work folder was not put back, and 2 if it was. A crash while putting it back
 // leaves the registry as it happens to be, so it exits 3 at once.
-let crashed = false, putBackStarted = false, putBackResult = null;
+let crashed = false,
+  putBackStarted = false,
+  putBackResult = null;
 process.removeAllListeners("uncaughtException");
 process.on("uncaughtException", (err) => {
   console.error(err);
@@ -195,8 +234,10 @@ process.on("uncaughtException", (err) => {
 
 // ---------------------------------------------------------------- the lanes
 
-console.log(`addin-test: BETA ${buildNumber(ide) ?? "?"}, ${lanes.length} lane(s) on ports ` +
-            `${basePort}-${basePort + lanes.length - 1}, ${Math.min(jobs, lanes.length)} at a time`);
+console.log(
+  `addin-test: BETA ${buildNumber(ide) ?? "?"}, ${lanes.length} lane(s) on ports ` +
+    `${basePort}-${basePort + lanes.length - 1}, ${Math.min(jobs, lanes.length)} at a time`,
+);
 
 process.on("SIGINT", () => {
   if (interrupted) return;
@@ -230,15 +271,24 @@ function runLane(l) {
     }
     console.log(`  ${l.name}: started on port ${l.port}`);
     const child = spawn(process.execPath, ["--test", "--test-reporter=spec", path.join(SUITE, l.file)], {
-      cwd: REPO_ROOT, stdio: ["ignore", "pipe", "pipe"], windowsHide: true,
-      env: { ...process.env,
-             [LANE_ENV]: JSON.stringify({ name: l.name, port: l.port, work: l.work, ide, show }) },
+      cwd: REPO_ROOT,
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+      env: { ...process.env, [LANE_ENV]: JSON.stringify({ name: l.name, port: l.port, work: l.work, ide, show }) },
     });
     children.add(child);
-    let out = "", timedOut = false;
-    child.stdout.on("data", (d) => { out += d; });
-    child.stderr.on("data", (d) => { out += d; });
-    const timer = setTimeout(() => { timedOut = true; child.kill(); }, laneTimeout);
+    let out = "",
+      timedOut = false;
+    child.stdout.on("data", (d) => {
+      out += d;
+    });
+    child.stderr.on("data", (d) => {
+      out += d;
+    });
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill();
+    }, laneTimeout);
     child.on("error", (e) => {
       clearTimeout(timer);
       children.delete(child);
@@ -260,11 +310,20 @@ async function runAll() {
   const running = new Map();
   const clash = (a, b) => a.settings.some((s) => b.settings.includes(s));
   while ((pending.length && !interrupted) || running.size) {
-    for (let i = 0; i < pending.length && running.size < jobs && !interrupted;) {
+    for (let i = 0; i < pending.length && running.size < jobs && !interrupted; ) {
       const l = pending[i];
-      if ([...running.keys()].some((r) => clash(l, r))) { i++; continue; }
+      if ([...running.keys()].some((r) => clash(l, r))) {
+        i++;
+        continue;
+      }
       pending.splice(i, 1);
-      running.set(l, runLane(l).then((r) => { results.push(r); running.delete(l); }));
+      running.set(
+        l,
+        runLane(l).then((r) => {
+          results.push(r);
+          running.delete(l);
+        }),
+      );
     }
     if (running.size) await Promise.race(running.values());
   }
@@ -298,8 +357,9 @@ function putBack() {
   const folders = lanes.map((l) => norm(l.work) + "\\");
   try {
     const lists = ideLists();
-    const left = [...lists.projectState, ...lists.recentlyOpened]
-      .filter((p) => p && folders.some((f) => norm(p).startsWith(f)));
+    const left = [...lists.projectState, ...lists.recentlyOpened].filter(
+      (p) => p && folders.some((f) => norm(p).startsWith(f)),
+    );
     if (left.length) problems.push(`the IDE's lists still name the lanes' folders: ${left.join(", ")}`);
     const targets = sweepArchitectureMemory(lanes.map((l) => l.work));
     if (targets) problems.push(`${targets} build target(s) were still remembered for the lanes' folders`);
@@ -310,12 +370,15 @@ function putBack() {
       }
     }
     const named = apps.map((a) => a.toLowerCase());
-    const created = subkeyNames(SETTINGS_ROOT)
-      .filter((n) => !appsBefore.includes(n.toLowerCase()) && !named.includes(n.toLowerCase()));
+    const created = subkeyNames(SETTINGS_ROOT).filter(
+      (n) => !appsBefore.includes(n.toLowerCase()) && !named.includes(n.toLowerCase()),
+    );
     if (created.length) {
-      problems.push(`HKCU\\${SETTINGS_ROOT} gained ${created.map((n) => `"${n}"`).join(", ")} during the ` +
-        "run, which no lane names in test/addin/lanes.mjs. An add-in under test that saves settings " +
-        "must be named there, or its settings stay behind; the key is left as it is");
+      problems.push(
+        `HKCU\\${SETTINGS_ROOT} gained ${created.map((n) => `"${n}"`).join(", ")} during the ` +
+          "run, which no lane names in test/addin/lanes.mjs. An add-in under test that saves settings " +
+          "must be named there, or its settings stay behind; the key is left as it is",
+      );
     }
   } catch (e) {
     problems.push(`could not check the registry: ${e.message}`);
@@ -324,8 +387,11 @@ function putBack() {
   // A folder that will not delete is held open by a process that outlived its
   // lane, which is worth hearing about (WIP.Harness.md, The IDE runs inside a job).
   for (const l of lanes) {
-    try { removeTree(l.work); }
-    catch (e) { problems.push(`${l.work} could not be deleted (${e.code}): is a process of its lane still running?`); }
+    try {
+      removeTree(l.work);
+    } catch (e) {
+      problems.push(`${l.work} could not be deleted (${e.code}): is a process of its lane still running?`);
+    }
   }
   putBackResult = { tidied, problems };
   return putBackResult;
@@ -336,14 +402,16 @@ function registryLine(tidied, problems) {
   return problems.length
     ? `registry and work folders: ${problems.length} problem(s)\n  ${problems.join("\n  ")}`
     : `registry: put back (${tidied.projectState} project-state, ${tidied.recentlyOpened} recent-list ` +
-      `and ${tidied.association ?? "no"} association writes); nothing names the lanes' folders${settingsNote}`;
+        `and ${tidied.association ?? "no"} association writes); nothing names the lanes' folders${settingsNote}`;
 }
 
 const { tidied, problems } = putBack();
 const failed = results.filter((r) => r.code !== 0);
 console.log("");
 console.log(registryLine(tidied, problems));
-console.log(`${results.length} of ${lanes.length} lane(s) ran: ${results.length - failed.length} passed` +
-            (failed.length ? `, ${failed.length} failed (${failed.map((r) => r.lane.name).join(", ")})` : "") +
-            (interrupted ? "; interrupted" : ""));
+console.log(
+  `${results.length} of ${lanes.length} lane(s) ran: ${results.length - failed.length} passed` +
+    (failed.length ? `, ${failed.length} failed (${failed.map((r) => r.lane.name).join(", ")})` : "") +
+    (interrupted ? "; interrupted" : ""),
+);
 process.exit(problems.length ? 3 : failed.length || interrupted ? 1 : 0);

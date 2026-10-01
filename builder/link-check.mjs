@@ -38,6 +38,7 @@ import { Parser } from "htmlparser2";
 // link references. Covers the standard set of HTML link-bearing
 // attributes (href / src / srcset / longdesc / formaction / action /
 // data / cite / poster).
+// biome-ignore format: a table, one entry per line
 const LINK_ATTR_TABLE = new Map([
   ["a",          ["href"]],
   ["area",       ["href"]],
@@ -68,8 +69,20 @@ const SRCSET_ATTRS = new Set(["srcset"]);
 // these the moment the open tag ends, so --check-html has to let them
 // through or it would report every <img> and <meta> on the site.
 const HTML5_VOID_ELEMENTS = new Set([
-  "area","base","br","col","embed","hr","img","input",
-  "link","meta","param","source","track","wbr",
+  "area",
+  "base",
+  "br",
+  "col",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr",
 ]);
 
 // Inside SVG and MathML, `<path/>` is ordinary markup and htmlparser2
@@ -138,41 +151,43 @@ export function extractFromHtml(html, captureIds, forbidPrefixes, checkOpts) {
   const ids = captureIds ? new Set() : null;
   const hasForbid = forbidPrefixes && forbidPrefixes.length > 0;
   const forbidden = hasForbid ? [] : null;
-  const checkForbid = hasForbid ? (url) => {
-    for (const prefix of forbidPrefixes) {
-      if (!url.startsWith(prefix)) continue;
-      const tail = url.slice(prefix.length);
-      if (tail === "" || tail === "/") return;
-      forbidden.push({ prefix, url });
-      return;
-    }
-  } : null;
+  const checkForbid = hasForbid
+    ? (url) => {
+        for (const prefix of forbidPrefixes) {
+          if (!url.startsWith(prefix)) continue;
+          const tail = url.slice(prefix.length);
+          if (tail === "" || tail === "/") return;
+          forbidden.push({ prefix, url });
+          return;
+        }
+      }
+    : null;
   const addLink = (url) => {
     links.push(url);
     if (checkForbid) checkForbid(url);
   };
 
   // Integrity state -- only allocated when requested.
-  const doHtml      = checkOpts?.checkHtml  ?? false;
-  const doA11y      = checkOpts?.checkA11y  ?? false;
-  const doIds       = checkOpts?.checkIds   ?? false;
+  const doHtml = checkOpts?.checkHtml ?? false;
+  const doA11y = checkOpts?.checkA11y ?? false;
+  const doIds = checkOpts?.checkIds ?? false;
   const doCanonical = checkOpts?.checkCanonical ?? false;
-  const doStub      = checkOpts?.captureRedirectStub ?? false;
-  const doRemote    = checkOpts?.checkRemoteAssets ?? false;
+  const doStub = checkOpts?.captureRedirectStub ?? false;
+  const doRemote = checkOpts?.checkRemoteAssets ?? false;
 
   const htmlErrors = doHtml ? [] : null;
-  let foreignDepth = 0;   // inside <svg>/<math>
-  let atEof = false;      // set just before parser.end(), see below
+  let foreignDepth = 0; // inside <svg>/<math>
+  let atEof = false; // set just before parser.end(), see below
   const a11yErrors = doA11y ? [] : null;
-  const idMap      = doIds  ? new Map() : null;
+  const idMap = doIds ? new Map() : null;
   const remoteAssets = doRemote ? [] : null;
 
   // a11y anchor-tracking state.
-  let inAnchor        = false;
-  let anchorHasText   = false;
-  let anchorHasChild  = false;  // any element child (img, svg, span, ...)
-  let isRedirectStub  = false;
-  let canonicalHref   = null;
+  let inAnchor = false;
+  let anchorHasText = false;
+  let anchorHasChild = false; // any element child (img, svg, span, ...)
+  let isRedirectStub = false;
+  let canonicalHref = null;
 
   const handlers = {
     onopentag(name, attribs) {
@@ -221,31 +236,28 @@ export function extractFromHtml(html, captureIds, forbidPrefixes, checkOpts) {
         }
         // track anchor content for empty-anchor check
         if (name === "a") {
-          inAnchor      = true;
-          anchorHasText  = false;
+          inAnchor = true;
+          anchorHasText = false;
           anchorHasChild = false;
         } else if (inAnchor) {
-          anchorHasChild = true;  // any child element -- link carries content
+          anchorHasChild = true; // any child element -- link carries content
         }
       }
 
       // ── redirect stub detection ────────────────────────────────
-      if (doStub && name === "meta" &&
-          (attribs["http-equiv"] ?? "").toLowerCase() === "refresh") {
+      if (doStub && name === "meta" && (attribs["http-equiv"] ?? "").toLowerCase() === "refresh") {
         isRedirectStub = true;
       }
 
       // ── canonical URL capture ─────────────────────────────────
-      if (doCanonical && name === "link" &&
-          (attribs.rel ?? "").toLowerCase() === "canonical" &&
-          attribs.href) {
+      if (doCanonical && name === "link" && (attribs.rel ?? "").toLowerCase() === "canonical" && attribs.href) {
         canonicalHref = attribs.href;
       }
     },
   };
 
   if (doA11y) {
-    handlers.ontext = function(text) {
+    handlers.ontext = function (text) {
       if (inAnchor && text.trim()) anchorHasText = true;
     };
   }
@@ -270,7 +282,7 @@ export function extractFromHtml(html, captureIds, forbidPrefixes, checkOpts) {
     // without telling anyone, so catching those would need tokenizer
     // access. They are also the harmless case -- the rendered DOM is
     // unaffected.
-    handlers.onclosetag = function(name, isImplied) {
+    handlers.onclosetag = function (name, isImplied) {
       if (doHtml) {
         if (FOREIGN_ROOTS.has(name)) foreignDepth--;
         if (isImplied && !HTML5_VOID_ELEMENTS.has(name) && foreignDepth === 0) {
@@ -348,7 +360,11 @@ function normalizeUrlPath(p) {
 // URL-decode (sitemap entries percent-encode spaces and Unicode;
 // deriveUrlPath produces literal characters from the filename).
 function decodePath(p) {
-  try { return decodeURIComponent(p); } catch { return p; }
+  try {
+    return decodeURIComponent(p);
+  } catch {
+    return p;
+  }
 }
 
 // Coerce a base-path arg into the canonical '/prefix' form (leading
@@ -431,7 +447,11 @@ export function resolve(href, sourceDir, sourcePath, rootStr, basePath) {
   let pathStr = pathPart;
 
   if (pathStr.indexOf("%") >= 0) {
-    try { pathStr = decodeURIComponent(pathStr); } catch { /* keep raw */ }
+    try {
+      pathStr = decodeURIComponent(pathStr);
+    } catch {
+      /* keep raw */
+    }
   }
 
   const isDirLink = pathStr.endsWith("/") || pathStr.endsWith("/.");
@@ -462,21 +482,30 @@ export function resolve(href, sourceDir, sourcePath, rootStr, basePath) {
 // backed by the build's own output records.
 
 function statSafe(p) {
-  try { return fs.statSync(p); } catch { return null; }
+  try {
+    return fs.statSync(p);
+  } catch {
+    return null;
+  }
 }
 
-export const ABSENT = 0, FILE = 1, DIRECTORY = 2;
+export const ABSENT = 0,
+  FILE = 1,
+  DIRECTORY = 2;
 
 export function FsOracle() {
   return {
-    isFile(p) { const s = statSafe(p); return s !== null && s.isFile(); },
+    isFile(p) {
+      const s = statSafe(p);
+      return s !== null && s.isFile();
+    },
     // Both questions off one stat, since checkPath always wants to know
     // which of the two a target is. Keeping it on the interface lets an
     // index-backed oracle answer in one lookup too.
-    stat(p)   {
+    stat(p) {
       const s = statSafe(p);
       if (s === null) return ABSENT;
-      return s.isFile() ? FILE : (s.isDirectory() ? DIRECTORY : ABSENT);
+      return s.isFile() ? FILE : s.isDirectory() ? DIRECTORY : ABSENT;
     },
   };
 }
@@ -528,7 +557,7 @@ function indexKey(p) {
   let k = path.normalize(p);
   while (k.length > 1 && (k.endsWith(path.sep) || k.endsWith("/"))) {
     const trimmed = k.slice(0, -1);
-    if (trimmed.endsWith(":")) break;   // a drive root, C:\ -- leave it
+    if (trimmed.endsWith(":")) break; // a drive root, C:\ -- leave it
     k = trimmed;
   }
   return k;
@@ -537,10 +566,12 @@ function indexKey(p) {
 export function IndexOracle(treeIndex) {
   const { files, dirs } = treeIndex;
   return {
-    isFile(p) { return files.has(indexKey(p)); },
+    isFile(p) {
+      return files.has(indexKey(p));
+    },
     stat(p) {
       const k = indexKey(p);
-      return files.has(k) ? FILE : (dirs.has(k) ? DIRECTORY : ABSENT);
+      return files.has(k) ? FILE : dirs.has(k) ? DIRECTORY : ABSENT;
     },
   };
 }
@@ -595,10 +626,11 @@ export function checkPath(targetStr, isDirLink, fallbackExts, indexFiles, oracle
 // `pendingFragments` for a later join rather than being reported broken.
 // That is what lets a build worker settle same-page fragments (92 % of
 // them) without leaving its lane.
-export function resolveOccurrences(occurrences, oracle, {
-  rootStr, basePath, fallbackExts, indexFiles,
-  includeFragments, localIds, deferFragments = false, caches = null,
-}) {
+export function resolveOccurrences(
+  occurrences,
+  oracle,
+  { rootStr, basePath, fallbackExts, indexFiles, includeFragments, localIds, deferFragments = false, caches = null },
+) {
   // Memoize resolution by (sourceDir, href). Nested Map<srcDir,
   // Map<href, resolved>> avoids the per-occurrence composite-key
   // string allocation that a flat Map<srcDir+sep+href, _> would cost
@@ -612,7 +644,7 @@ export function resolveOccurrences(occurrences, oracle, {
   // entirely disappears. Measured, hoisting them is worth roughly 3x on
   // the resolve stage.
   const resolutionCache = caches?.resolution ?? new Map();
-  const pathCache       = caches?.path       ?? new Map();
+  const pathCache = caches?.path ?? new Map();
   // Same trick on the dedup side: Map<target, Map<isDirFrag, entry>>.
   // The inner key is a short string built from (isDir + (frag || ""))
   // -- no fresh allocation per occurrence beyond what JS would have
@@ -625,7 +657,9 @@ export function resolveOccurrences(occurrences, oracle, {
   const t0 = performance.now();
 
   for (let oi = 0; oi < occurrences.length; oi += 3) {
-    const src = occurrences[oi], srcDir = occurrences[oi + 1], href = occurrences[oi + 2];
+    const src = occurrences[oi],
+      srcDir = occurrences[oi + 1],
+      href = occurrences[oi + 2];
     let r;
     // A link with nothing before the '#' resolves to the *source page*,
     // so its result is not a function of (srcDir, href) and must not go
@@ -639,7 +673,10 @@ export function resolveOccurrences(occurrences, oracle, {
       r = resolve(href, srcDir, src, rootStr, basePath);
     } else {
       let dirCache = resolutionCache.get(srcDir);
-      if (!dirCache) { dirCache = new Map(); resolutionCache.set(srcDir, dirCache); }
+      if (!dirCache) {
+        dirCache = new Map();
+        resolutionCache.set(srcDir, dirCache);
+      }
       if (dirCache.has(href)) {
         r = dirCache.get(href);
       } else {
@@ -648,9 +685,14 @@ export function resolveOccurrences(occurrences, oracle, {
       }
     }
     if (r === null) continue;
-    const target = r[0], isDir = r[1], frag = r[2];
+    const target = r[0],
+      isDir = r[1],
+      frag = r[2];
     let inner = uniqueByTarget.get(target);
-    if (!inner) { inner = new Map(); uniqueByTarget.set(target, inner); }
+    if (!inner) {
+      inner = new Map();
+      uniqueByTarget.set(target, inner);
+    }
     const innerKey = (isDir ? "1" : "0") + (frag === null ? "" : frag);
     let entry = inner.get(innerKey);
     if (!entry) {
@@ -668,7 +710,8 @@ export function resolveOccurrences(occurrences, oracle, {
   // most two lookups.
   for (const [target, inner] of uniqueByTarget) {
     let resolvedFile, resolvedDir;
-    let computedFile = false, computedDir = false;
+    let computedFile = false,
+      computedDir = false;
     for (const entry of inner.values()) {
       if (entry.isDir) {
         if (!computedDir) {
@@ -697,8 +740,8 @@ export function resolveOccurrences(occurrences, oracle, {
 
   const tFragments = performance.now();
 
-  const broken = [];            // (src, href, reason) triples flattened
-  const pendingFragments = [];  // { target, frag, sources } for the join
+  const broken = []; // (src, href, reason) triples flattened
+  const pendingFragments = []; // { target, frag, sources } for the join
   // One key per *entry* that broke, so a chunked run can count unique
   // breakages globally: the same dead link on 400 pages is one finding,
   // and per-chunk counts would otherwise sum it 400 times.
@@ -723,7 +766,8 @@ export function resolveOccurrences(occurrences, oracle, {
       const ids = localIds ? localIds.get(entry.resolved) : null;
       if (ids === undefined && deferFragments) {
         pendingFragments.push({
-          target: entry.resolved, frag: entry.frag,
+          target: entry.resolved,
+          frag: entry.frag,
           // The key must match entryKey's, which uses the PRE-resolution
           // target.  `resolved` has been through the .html / index
           // fallback, so keying on it would give the same broken
@@ -733,7 +777,8 @@ export function resolveOccurrences(occurrences, oracle, {
           // brokenUnique is a count of distinct findings; it must not
           // depend on the chunk arrangement.
           href: entry.target,
-          isDir: entry.isDir, sources: entry.sources,
+          isDir: entry.isDir,
+          sources: entry.sources,
         });
         continue;
       }
@@ -748,14 +793,17 @@ export function resolveOccurrences(occurrences, oracle, {
   }
 
   return {
-    broken, brokenUniqueCount, brokenKeys, pendingFragments,
+    broken,
+    brokenUniqueCount,
+    brokenKeys,
+    pendingFragments,
     uniqueCount: uniqueEntries.length,
     fragmentTargets,
     stages: {
-      resolve:    tResolve - t0,
+      resolve: tResolve - t0,
       checkPaths: tCheckPaths - tResolve,
-      fragments:  tFragments - tCheckPaths,
-      report:     performance.now() - tFragments,
+      fragments: tFragments - tCheckPaths,
+      report: performance.now() - tFragments,
     },
   };
 }
@@ -767,7 +815,10 @@ export function resolveOccurrences(occurrences, oracle, {
 // the win is entirely cross-call.
 function cachedCheckPath(pathCache, target, isDir, fallbackExts, indexFiles, oracle) {
   let byDir = pathCache.get(target);
-  if (!byDir) { byDir = new Map(); pathCache.set(target, byDir); }
+  if (!byDir) {
+    byDir = new Map();
+    pathCache.set(target, byDir);
+  }
   if (byDir.has(isDir)) return byDir.get(isDir);
   const r = checkPath(target, isDir, fallbackExts, indexFiles, oracle);
   byDir.set(isDir, r);
@@ -849,7 +900,9 @@ export function checkSearch(searchData, relFiles, basePath, optOut = null) {
   // pages without explicit permalink keep .html; URLs are
   // percent-encoded for spaces / Unicode.
   const searchPageUrls = new Set(
-    Object.values(searchData).map(e => normalizeUrlPath(decodePath(stripBasePath((e.url ?? "").split("#")[0], basePath))))
+    Object.values(searchData).map((e) =>
+      normalizeUrlPath(decodePath(stripBasePath((e.url ?? "").split("#")[0], basePath))),
+    ),
   );
 
   const issues = [];
@@ -914,15 +967,23 @@ export function formatLinkReport(broken, forbiddenBySource, { tag = "FORBIDDEN",
 
   const bySource = new Map();
   for (let i = 0; i < broken.length; i += 3) {
-    const src = broken[i], href = broken[i + 1], reason = broken[i + 2];
+    const src = broken[i],
+      href = broken[i + 1],
+      reason = broken[i + 2];
     let set = bySource.get(src);
-    if (!set) { set = new Set(); bySource.set(src, set); }
+    if (!set) {
+      set = new Set();
+      bySource.set(src, set);
+    }
     set.add("E\0" + href + "\0" + reason);
   }
   if (forbiddenBySource) {
     for (const [src, fhits] of forbiddenBySource) {
       let set = bySource.get(src);
-      if (!set) { set = new Set(); bySource.set(src, set); }
+      if (!set) {
+        set = new Set();
+        bySource.set(src, set);
+      }
       for (const fh of fhits) {
         set.add(`F\0${fh.url}\0${reason ?? `forbidden prefix '${fh.prefix}'`}`);
       }
@@ -952,8 +1013,7 @@ export function formatLinkReport(broken, forbiddenBySource, { tag = "FORBIDDEN",
 // terse -- see findingsFor in check.mjs. The report adds the part a
 // reader needs to know what to do about it.
 const HTML_ERROR_HINT = {
-  "unclosed-tag":
-    "the document never closed it",
+  "unclosed-tag": "the document never closed it",
   "closed-early":
     "something else closed around it, so the parser closed it first " +
     "(usually invalid nesting, e.g. a <div> inside a <p>)",

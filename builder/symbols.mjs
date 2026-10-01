@@ -70,7 +70,11 @@ const ATTRIBUTES_PAGE = "Reference/Attributes.md";
 
 // Section headings under which every heading names a member, and the kind
 // each gives one the packages do not declare.
-const MEMBER_SECTIONS = new Map([["properties", "property"], ["methods", "method"], ["events", "event"]]);
+const MEMBER_SECTIONS = new Map([
+  ["properties", "property"],
+  ["methods", "method"],
+  ["events", "event"],
+]);
 // Headings that open a section of members rather than name one. Such a heading
 // is never a member's, even when the type has a member of that name -- tbIDE's
 // HtmlElement has a Properties property, and its page's `## Properties` is the
@@ -78,7 +82,8 @@ const MEMBER_SECTIONS = new Map([["properties", "property"], ["methods", "method
 const SECTION_TITLES = new Set(["properties", "methods", "events", "members", "fields", "constants", "values"]);
 
 // What a title or first heading adds to the name it documents.
-const DECORATION = /\s+(?:class|module|interface|coclass|enumeration|enum|type|package|control|object|statement|function|property|method|event|operators?|directives?)$/i;
+const DECORATION =
+  /\s+(?:class|module|interface|coclass|enumeration|enum|type|package|control|object|statement|function|property|method|event|operators?|directives?)$/i;
 const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*[$]?$/;
 const DIRECTIVE = /^#[A-Za-z]+$/;
 const OPERATOR = /^[-+*/\\^&<>=]+$/;
@@ -116,7 +121,9 @@ export function headingsOf(html) {
     const gt = s.indexOf(">", i);
     const close = gt < 0 ? -1 : s.indexOf(`</h${level}>`, gt);
     if (close < 0) break;
-    const text = decode(s.slice(gt + 1, close).replace(TAG, "")).replace(/\s+/g, " ").trim();
+    const text = decode(s.slice(gt + 1, close).replace(TAG, ""))
+      .replace(/\s+/g, " ")
+      .trim();
     out.push({ level, id: ID_ATTRIBUTE.exec(s.slice(i, gt))?.[1] ?? null, text });
     i = close;
   }
@@ -146,14 +153,18 @@ function membersOf(type, model, models, seen = new Set()) {
   const out = new Map();
   if (!type || seen.has(type)) return out;
   seen.add(type);
-  const put = (name, kind) => { const k = name.toLowerCase(); if (!out.has(k)) out.set(k, { name, kind, from: type }); };
+  const put = (name, kind) => {
+    const k = name.toLowerCase();
+    if (!out.has(k)) out.set(k, { name, kind, from: type });
+  };
   for (const [name, kind] of Object.entries(type.members ?? {})) put(name, memberKind(kind, type.kind));
   for (const v of type.values ?? []) put(v, "enumvalue");
   for (const f of type.fields ?? []) put(f, "field");
   const follow = (ref, as) => {
     const target = lookup(ref, model, models);
     if (!target) return;
-    for (const [k, m] of membersOf(target, model, models, seen)) if (!out.has(k)) out.set(k, as ? { ...m, kind: as } : m);
+    for (const [k, m] of membersOf(target, model, models, seen))
+      if (!out.has(k)) out.set(k, as ? { ...m, kind: as } : m);
   };
   if (type.default) follow(type.default);
   for (const s of type.source ?? []) follow(s, "event");
@@ -171,11 +182,16 @@ function lookup(ref, model, models) {
 function memberKind(kind, container) {
   const inModule = container === "module";
   switch (kind) {
-    case "sub": return inModule ? "sub" : "method";
-    case "function": return inModule ? "function" : "method";
-    case "field": return inModule ? "variable" : container === "class" ? "property" : "field";
-    case "const": return "constant";
-    default: return kind;               // property, event, delegate, enumvalue
+    case "sub":
+      return inModule ? "sub" : "method";
+    case "function":
+      return inModule ? "function" : "method";
+    case "field":
+      return inModule ? "variable" : container === "class" ? "property" : "field";
+    case "const":
+      return "constant";
+    default:
+      return kind; // property, event, delegate, enumvalue
   }
 }
 
@@ -183,7 +199,7 @@ function typeKind(type) {
   if (type.control) return "control";
   if (type.kind === "coclass") return "class";
   if (type.kind === "union") return "type";
-  return type.kind;                     // module, class, interface, enum, type
+  return type.kind; // module, class, interface, enum, type
 }
 
 // ------------------------------------------------------------------ pages
@@ -263,8 +279,14 @@ export function deriveSymbolIndex({ pages, api }) {
   // By code unit, not localeCompare, whose order depends on the machine's
   // locale: two builds of one tree must write one file.
   const cmp = (x, y) => (x < y ? -1 : x > y ? 1 : 0);
-  symbols.sort((a, b) => cmp(a.url, b.url) || cmp(a.name, b.name) || cmp(a.kind, b.kind) ||
-    cmp(String(a.package), String(b.package)) || cmp(String(a.container), String(b.container)));
+  symbols.sort(
+    (a, b) =>
+      cmp(a.url, b.url) ||
+      cmp(a.name, b.name) ||
+      cmp(a.kind, b.kind) ||
+      cmp(String(a.package), String(b.package)) ||
+      cmp(String(a.container), String(b.container)),
+  );
   return { symbols, interfaces, packages, gaps, unplaced };
 }
 
@@ -301,8 +323,11 @@ function packageLabel(pages, folder) {
 // A folder's landing page -- CustomControls' Styles, WebView2's Enumerations --
 // is a list of other pages, not a symbol's.
 function isSectionPage(page, folder) {
-  return /\/index\.md$/.test(page.src) && page.src !== `${folder}/index.md` &&
-    cleanName(page.title) === page.src.split("/").slice(-2)[0];
+  return (
+    /\/index\.md$/.test(page.src) &&
+    page.src !== `${folder}/index.md` &&
+    cleanName(page.title) === page.src.split("/").slice(-2)[0]
+  );
 }
 
 // Place a folder's projects on its pages -- CustomControls' folder documents
@@ -317,13 +342,19 @@ function placeFolder({ folder, projects, pages, models, add, gaps, interfaces })
   // placed: a page that is one project's type is no other type's member.
   const states = projects.map((pr) => {
     const model = models.get(pr) ?? projectModel(pr, null);
-    if (folderIndex) { add(entry(pr, pr, null, "package", folderIndex.url)); used.add(folderIndex); }
+    if (folderIndex) {
+      add(entry(pr, pr, null, "package", folderIndex.url));
+      used.add(folderIndex);
+    }
     const typePage = findTypePages(model, pages, names, folderIndex);
     for (const p of typePage.values()) typePages.add(p);
     const state = { pr, model, typePage, members: new Map(), urls: new Map() };
     state.put = (t, name, url, kind) => {
       const k = name.toLowerCase();
-      if (!state.members.has(t)) { state.members.set(t, membersOf(t, model, models)); state.urls.set(t, new Map()); }
+      if (!state.members.has(t)) {
+        state.members.set(t, membersOf(t, model, models));
+        state.urls.set(t, new Map());
+      }
       const u = state.urls.get(t);
       if (u.has(k)) return;
       u.set(k, url);
@@ -374,20 +405,28 @@ function placeOwnPages(s, { pages, names, typePages, models, add, used, interfac
     used.add(page);
     add(entry(t.name, pr, t.in ?? null, typeKind(t), page.url));
     if (t.kind === "coclass" && t.default) interfaces[`${pr}.${t.default}`] = `${pr}.${t.name}`;
-    if (!s.members.has(t)) { s.members.set(t, membersOf(t, model, models)); s.urls.set(t, new Map()); }
+    if (!s.members.has(t)) {
+      s.members.set(t, membersOf(t, model, models));
+      s.urls.set(t, new Map());
+    }
     const ms = s.members.get(t);
 
     const title = cleanName(page.title).toLowerCase();
     for (const child of pages) {
       if (child === page || typePages.has(child) || cleanName(child.parent).toLowerCase() !== title) continue;
-      for (const n of names.get(child)) if (ms.has(n)) { put(t, n, child.url); used.add(child); }
+      for (const n of names.get(child))
+        if (ms.has(n)) {
+          put(t, n, child.url);
+          used.add(child);
+        }
     }
     placeHeadings(page, t.name, (name, url, kind) => {
       if (ms.has(name.toLowerCase())) put(t, name, url);
       else if (kind) put(t, name, url, kind);
     });
     for (const m of ms.values()) {
-      if (m.kind === "enumvalue" || m.kind === "field" || (m.kind === "constant" && t.kind === "module")) put(t, m.name, page.url);
+      if (m.kind === "enumvalue" || m.kind === "field" || (m.kind === "constant" && t.kind === "module"))
+        put(t, m.name, page.url);
     }
   }
 }
@@ -447,7 +486,9 @@ function placeObjects(s, { pages, typePages, folderIndex, add, used }) {
     const own = cleanName(p.title);
     if (!IDENTIFIER.test(own)) continue;
     const found = [];
-    placeHeadings(p, own, (name, url, kind, qualified) => { if (qualified || kind) found.push([name, url, kind]); });
+    placeHeadings(p, own, (name, url, kind, qualified) => {
+      if (qualified || kind) found.push([name, url, kind]);
+    });
     if (!found.length) continue;
     add(entry(own, s.pr, null, "object", p.url));
     for (const [name, url, kind] of found) add(entry(name, s.pr, own, kind ?? "member", url));
@@ -472,14 +513,18 @@ function collectGaps(s, gaps) {
   const { pr, model, typePage, members, urls } = s;
   for (const [t, page] of typePage) {
     for (const [k, m] of members.get(t)) {
-      if (!urls.get(t).has(k) && !isInternal(m)) gaps.push({ package: pr, container: t.name, name: m.name, kind: m.kind, page: page.url });
+      if (!urls.get(t).has(k) && !isInternal(m))
+        gaps.push({ package: pr, container: t.name, name: m.name, kind: m.kind, page: page.url });
     }
   }
   const bases = new Set();
   const walk = (t) => {
     for (const ref of t.inherits ?? []) {
       const b = lookup(ref, model, new Map([[pr, model]]));
-      if (b && !bases.has(b)) { bases.add(b); walk(b); }
+      if (b && !bases.has(b)) {
+        bases.add(b);
+        walk(b);
+      }
     }
   };
   for (const t of typePage.keys()) walk(t);
@@ -511,9 +556,16 @@ function placeHeadings(page, typeName, found) {
   let section = null;
   let inMembers = false;
   for (const h of page.headings) {
-    if (h.level === 1) { section = null; inMembers = false; continue; }
+    if (h.level === 1) {
+      section = null;
+      inMembers = false;
+      continue;
+    }
     const text = h.text.toLowerCase();
-    if (h.level === 2) { section = MEMBER_SECTIONS.get(text) ?? null; inMembers = SECTION_TITLES.has(text); }
+    if (h.level === 2) {
+      section = MEMBER_SECTIONS.get(text) ?? null;
+      inMembers = SECTION_TITLES.has(text);
+    }
     if (!h.id || (h.level === 2 && SECTION_TITLES.has(text))) continue;
     const parts = h.text.split(/,\s*/).map((x) => x.trim());
     const qualified = parts.every((x) => x.toLowerCase().startsWith(prefix));
@@ -550,7 +602,10 @@ export function symbolPages(pages) {
     .map((p) => {
       const fm = p.frontmatter ?? {};
       return {
-        src: p.srcRel, url: p.permalink, title: fm.title, parent: fm.parent,
+        src: p.srcRel,
+        url: p.permalink,
+        title: fm.title,
+        parent: fm.parent,
         symbols: fm.symbols == null ? null : [].concat(fm.symbols).map(String),
         excludeFromDocs: fm.exclude_from_docs == null ? null : [].concat(fm.exclude_from_docs).map(String),
         headings: headingsOf(p.renderedContent),
@@ -572,7 +627,9 @@ export function serializeSymbolIndex({ symbols, interfaces, packages }, api) {
   const lines = ["{"];
   for (const [k, v] of Object.entries(head)) lines.push(`  ${JSON.stringify(k)}: ${JSON.stringify(v)},`);
   lines.push(`  "symbols": [`);
-  symbols.forEach((s, i) => { lines.push(`    ${JSON.stringify(s)}${i < symbols.length - 1 ? "," : ""}`); });
+  symbols.forEach((s, i) => {
+    lines.push(`    ${JSON.stringify(s)}${i < symbols.length - 1 ? "," : ""}`);
+  });
   lines.push("  ]", "}");
   return lines.join("\n") + "\n";
 }
@@ -584,16 +641,18 @@ export function serializeSymbolIndex({ symbols, interfaces, packages }, api) {
  * the types inside them -- and types declared inside a type that is not public.
  */
 export function reportableGaps(result, pages, api) {
-  const excluded = new Map();                      // project -> Set of lowercased names
+  const excluded = new Map(); // project -> Set of lowercased names
   for (const { folder, projects } of PACKAGE_FOLDERS) {
     const index = pages.find((p) => p.src === `${folder}/index.md`);
     const names = new Set((index?.excludeFromDocs ?? []).map((n) => n.toLowerCase()));
     for (const pr of projects) excluded.set(pr, names);
   }
-  const typeOf = (pr, name) => (api?.packages?.[pr]?.types ?? []).find((t) => t.name.toLowerCase() === String(name).toLowerCase());
+  const typeOf = (pr, name) =>
+    (api?.packages?.[pr]?.types ?? []).find((t) => t.name.toLowerCase() === String(name).toLowerCase());
   return result.gaps.filter((g) => {
     const skip = excluded.get(g.package) ?? new Set();
-    if (skip.has(String(g.container ?? "").toLowerCase()) || (!g.container && skip.has(g.name.toLowerCase()))) return false;
+    if (skip.has(String(g.container ?? "").toLowerCase()) || (!g.container && skip.has(g.name.toLowerCase())))
+      return false;
     if (g.page === null && g.container) {
       const container = typeOf(g.package, g.container);
       if (container?.public === false || skip.has(String(container?.in ?? "").toLowerCase())) return false;

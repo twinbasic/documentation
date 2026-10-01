@@ -25,9 +25,10 @@ every finding to its commit.
   phases. Planning against the tree turned up ten places where a finding's fix, one of its
   facts, or a detail of this charter had to change; see
   [Where this plan departs from the review](#where-this-plan-departs-from-the-review).
-  No commit of it has landed yet; C01 is next. The owner confirmed the four commands that
-  needed it (C05, C08, C09 and C40) the same day, C08 on condition that the hook runs Biome
-  and nothing else.
+  The owner confirmed the four commands that needed it (C05, C08, C09 and C40) the same day,
+  C08 on condition that the hook runs Biome and nothing else.
+- Every phase has landed, C01 to C87 with their lettered follow-ups, and each phase's entries
+  are cut to what later work needs; git keeps each commit's full Landed note.
 
 ## Decisions
 
@@ -105,14 +106,62 @@ normalised, windows of 60 tokens) and an import graph over the 185 first-party J
 files, `perf/` included and vendored code excluded. `--summary` prints the first six rows;
 `--root` measures a checkout of `fe9ce12b` itself, which does not contain the script.
 
-| Measure | At `fe9ce12b` |
-|---|---|
-| clone regions of 60+ tokens | 680, of which 318 do not involve `perf/` |
-| top-level function names defined in two or more files | 77, of which 57 outside `perf/` |
-| command-line tools outside `perf/` that read `process.argv` | 32, none using `node:util` `parseArgs` |
-| tools with a private copy of `flag`/`opt`/`die` | 6, with `opt` in three different versions |
-| packages imported but not declared | 2: `picocolors` (installed for `@babel/code-frame`), `pako` (for `pdf-lib`) |
-| clone regions by pair of areas: `builder`/`scripts`, `scripts`/`scripts`, `builder`/`builder` | 55, 95, 39 |
+| Measure | At `fe9ce12b` | After, at `532dd269` (C83) |
+|---|---|---|
+| clone regions of 60+ tokens | 680, of which 318 do not involve `perf/` | 1,759, of which 1,510 do not involve `perf/` |
+| top-level function names defined in two or more files | 77, of which 57 outside `perf/` | 101, of which 81 outside `perf/` |
+| command-line tools outside `perf/` that read `process.argv` | 32, none using `node:util` `parseArgs` | 57, of which the survey counts 1 importing `parseArgs` |
+| tools with a private copy of `flag`/`opt`/`die` | 6, with `opt` in three different versions | 6 |
+| packages imported but not declared | 2: `picocolors` (installed for `@babel/code-frame`), `pako` (for `pdf-lib`) | 0 |
+| clone regions by pair of areas: `builder`/`scripts`, `scripts`/`scripts`, `builder`/`builder` | 55, 95, 39 | 72, 619, 28 |
+
+The after column is `--summary` and the area table of the full listing at `532dd269`: 253
+files and 441,106 tokens, against 185 and 309,618. Re-run today's script against a worktree
+at `fe9ce12b` (`--root`) and it prints the before column exactly, so the two are measured the
+same way. Why each measure moved:
+
+- **Clone regions rose because of what was added, not because code was copied.** Of the 1,510
+  outside `perf/`, 437 (49,328 tokens) involve `eval/search-experiments/`, 29 lab scripts that
+  the search work added on 2026-09-26, after the baseline and outside this review; 848
+  (63,812 tokens) involve a gate's probe tables or a test file (`check_cli.mjs`'s case table
+  alone is in clones worth 68,517 tokens, counted on each side), against 56 at the baseline;
+  and 225 (17,725 tokens) are the rest. Among files present at both commits, the rest fell
+  from 262 regions and 21,185 tokens to 177 and 14,136. The largest falls are the book's
+  shims (`fast-sync-load.mjs` and `fast-dict-array.mjs` deleted, the onebuf pair sharing
+  `onebuf-range.mjs`), `check_examples.mjs` (16 regions with itself, now none) and the a11y
+  tools' shared discovery. Of the 48 regions in files added since, most are literal tables that
+  token normalisation makes alike: C69's `checkTargets` tables (21 regions between the two
+  onebuf shims), `pdf-lib-internals.mjs`' list of requires, `attribute-sites.mjs`' site
+  skeletons. `builder/gantt.mjs` against `gen_attribute_probes.mjs` (23) is the same pair of
+  array literals the baseline counted against `tbdocs.mjs`, moved by C77.
+- **Repeated names rose for the same reason.** Of the 81 outside `perf/`, 39 are repeated only
+  through `eval/search-experiments/`. The other 42 are down from 57: 22 of them are the
+  baseline's; 33 of the baseline's are repeated nowhere now (`flag`, `opt`, `escapeHtml`,
+  `escapeRegExp`, `logicalLines`, `walk`, the page and symbol baseline helpers, the onebuf
+  internals and more) and 2 only through the lab scripts; and 20 are new, mostly homonyms:
+  `show`, `same` and `say` are one-line local helpers, and `makeBatches` (17 lines against
+  110) and `runProbes` (17 against 442) are unrelated functions that share a name.
+- **`process.argv` readers are counted by file, and `parseArgs` by direct import.** Of the 57,
+  46 parse through `lib/cli.mjs`, which is the one that imports `parseArgs` and reads no
+  `process.argv` itself; the one the survey counts is `check_cli.mjs`, which compares
+  `lib/cli.mjs` with a strict `parseArgs`. The other 11 are nine lab scripts in
+  `eval/search-experiments/`, `impexp.mjs` (a published download with no dependencies, kept
+  in step with `impexp.py` by its parity gate) and `scripts/lib/pdf-shims-side.mjs`, which
+  reads a JSON job, not options.
+- **The `flag`/`opt`/`die` count matches names, not parsers.** None of the six files parses
+  arguments with them now: each defines `die` as an exit helper used after `lib/cli.mjs`'
+  parse, and `sweep_attributes.mjs`' `opt` is the object its parse returns. Four of the `die`s
+  are the same line (`addin_test`, `build_package_api`, `census_attributes`, `tbrun`); the
+  ones in `sweep_attributes.mjs` and `check_examples.mjs` also tidy the registry. C83a
+  moved the four into `lib/cli.mjs`, after which the survey counts 3: `lib/cli.mjs` and the
+  two that tidy.
+- **Undeclared packages** are 0 since C09 declared `picocolors` and `pako`.
+- **By area**, `builder`/`builder` fell from 39 to 28. `builder`/`scripts` rose from 55 to 72
+  through literal tables alone: `highlight-theme.mjs`' scope table against
+  `check_code_regions.mjs`' probes (25, new) and the `gantt.mjs` pair above, while the
+  baseline's code clones there (`sab-scheduler.mjs` and `check.mjs` against `check_links.mjs`,
+  and others) are gone. `scripts`/`scripts` rose from 95 to 619, of which 476 involve
+  `check_cli.mjs`.
 
 Observed by hand at the same commit:
 
@@ -174,7 +223,11 @@ landed entries in the tooling plan`. Those of Phase 3 (C71–C75, with C72a, C72
 cut on 2026-09-30, and their full text is in this file as it stood before `builder: cut
 Phase 3's landed entries in the tooling plan`. Those of Phase 4 (C76–C81, with C76a, C78a
 and C81a) were cut on 2026-09-30, and their full text is in this file as it stood before
-`builder: cut Phase 4's landed entries in the tooling plan`. A pointer below to a cut entry's
+`builder: cut Phase 4's landed entries in the tooling plan`. Those of Phase 5 (C82–C83, with C82a
+and C83a) were cut on 2026-09-30, and their full text is in this file as it stood before
+`builder: cut Phase 5's landed entries in the tooling plan`. Those of Phase 6 (C84–C87, with C85a and
+C85b) were cut on 2026-10-01, and their full text is in this file as it stood before
+`builder: cut Phase 6's landed entries in the tooling plan`. A pointer below to a cut entry's
 Landed note means that
 text. Line numbers are the review's, at `fe9ce12b`, and move as the commits land.
 
@@ -967,26 +1020,19 @@ ran.
 
 ### C82 — `docs: the module map, Tools.md, WIP.Build.md and Extending.md, as they now are`
 
-Builder.md's module map (the new `builder/` modules, and `lib/`); Tools.md's entries for the
-new tools and gates, added in their commits and re-read here; WIP.Build.md, with the markdown
-module as the one answer to what is code and the rewrite rules restated against it;
-Extending.md's conventions (`lib/cli.mjs`, `gate-probes.mjs`, `lib/repo-paths.mjs`); WIP.md's
-gate table and wrapper bullets; and `PLAN-10.md:692`, which still cites
-`convert_em_dash_separators.py` (V2's second note).
+Landed.
 
-**Verify.** Every changed claim re-read against its file; `build.bat` and `check.bat` for the
-anchors.
+### C82a — `tooling: comments state their rules without the incidents behind them`
+
+Landed.
 
 ### C83 — `builder: the tooling survey re-run against its baseline`
 
-`node scripts/survey_tooling.mjs --summary`, recorded as an *after* column in this file's
-baseline survey table, with the reason for each measure's movement. Expected: private
-`flag`/`opt`/`die` copies from 6 to 0, `parseArgs` users from none to every migrated tool,
-undeclared packages from 2 to 0, and clone regions and repeated names well below 571 (266
-outside `perf/`) and 74 (54).
+Landed.
 
-**Verify.** The recorded column re-read against the survey's own output; each measure that did
-not move as expected has its reason written down.
+### C83a — `lib, scripts: one die in lib/cli.mjs for four tools`
+
+Landed.
 
 ## Phase 6: formatting
 
@@ -995,38 +1041,27 @@ while the fixes were made and the formatter touches only code that survived them
 
 ### C84 — `repo: settle line endings for the formatted file types`
 
-The repository stores LF, 118 of 140 working-tree files are CRLF under `core.autocrlf=true`,
-and there is no `.gitattributes`. Either a `.gitattributes` for the formatted types or the
-formatter's own line-ending setting, shown to give the same verdict on a CRLF Windows checkout
-and an LF CI checkout; otherwise every local run flags 118 files.
-
-**Verify.** The formatter's check gives the same verdict in this working tree and in a
-worktree checked out with `core.autocrlf=false`.
+Landed.
 
 ### C85 — `lint: the formatter and its style rules, set to the majority style`
 
-The formatter, the linter's own from C05, pinned exactly and configured to the majority style:
-double quotes, as `builder/`, `scripts/`, `test/` and `eval/` use, where `book/` and
-`wisdom/` use single. Any style lint rules go beside it. Nothing enforces it yet.
+Landed.
 
-**Verify.** The formatter's check runs clean on its own configuration and lists the files C86
-will change.
+### C85a — `format: the dense literal tables keep their hand layout`
+
+Landed.
+
+### C85b — `test: search.test reads KIND_WORDS as a literal, not as JSON`
+
+Landed.
 
 ### C86 — `format: apply the formatter`
 
-Mechanical, and nothing else.
-
-**Verify.** The tree comparison shows what it changed in the output: only
-`docs/assets/js/svg-inline.js` and `theme-toggle.js`, which the site ships as written, should
-differ. `test.bat`, `check.bat`, the `examples.bat` summary and `addin-test.bat` unchanged.
+Landed.
 
 ### C87 — `lint: check formatting in the gate and the hook; blame ignores C86`
 
-`check_lint.mjs` and the pre-commit hook check formatting too; `.git-blame-ignore-revs` lists
-C86; WIP.md and Tools.md say so.
-
-**Verify.** A misformatted staged file is refused by the hook and fails the gate with 1;
-`git blame` on a file C86 touched skips it. CI waits for the owner's push.
+Landed.
 
 ## Coverage
 
@@ -1331,6 +1366,12 @@ text, gains a Landed note, and the correction is listed here, as in the last rev
   changed alone in two and the introspection in one. Five of the seven that touched either
   also touched the rest of the file for the same feature. The recommendation was no split.
   At the owner's choice (2026-09-30) both parts moved. See C81's Landed note.
+- **C86: the output differed in another script than the entry named.** `theme-toggle.js` was
+  already in the formatter's style and did not change. The `impexp.mjs` download did, because
+  it is `scripts/impexp.mjs` as published. Two commits came before C86 that the plan did not
+  have: C85a kept the dense literal tables' hand layout at the owner's choice, and C85b fixed
+  a test that read a literal as JSON, which the first application of the formatter failed.
+  See C86's Landed note.
 
 ## Found while implementing
 
@@ -1648,6 +1689,10 @@ Defects the review did not have, found by building something this plan asks for.
   counted any bind error as taken, so a port Windows had reserved (`EACCES`, nothing
   listening) read as another IDE. Found while running C81's check. Fixed in C81a, which names
   the holder, so a repeat can be diagnosed; the cause is still unknown.
+- **Tooling comments tell incident history that no rule needs.** Found by C82's agents: the
+  headers of `check_code_regions.mjs` and `check_gate_lists.mjs`, `test.bat`'s comments,
+  `tbdocs.mjs:138`, `check_tree_fresh.mjs:42`. The owner chose a commit of its own
+  (2026-09-30). Fixed in C82a.
 
 ## Open questions
 

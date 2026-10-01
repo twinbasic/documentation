@@ -6,10 +6,10 @@
 // `check_regex_safety.mjs` reads regex *literals*. A pattern assembled from
 // strings is invisible to it, and writing one is not an exotic thing to do --
 // the shared-fragment style (`const NUM = ...; new RegExp(`${WRAP}${NUM}`)`)
-// is how you avoid repeating a sub-pattern six times. Round 4's own fix pass
-// wrote six of them into one gate, and one came back **polynomial degree 3**
-// when finally put through recheck by hand. Nothing in the repository would
-// have said so: the blind spot was a number in `--census` and nothing more.
+// is how you avoid repeating a sub-pattern six times. Such a pattern can be
+// **polynomial degree 3** and nothing in the repository would say so if the
+// gate could not see it: the blind spot would be a number in `--census` and
+// nothing more.
 //
 // So the gate folds what it can. A construction whose arguments reduce to
 // constants is checked exactly like a literal; one that does not is listed
@@ -70,9 +70,12 @@ function isEscapeHelper(fn) {
   const params = fn?.params ?? [];
   if (params.length !== 1 || params[0].type !== "Identifier") return false;
   const body = fn.body?.type === "BlockStatement" ? fn.body.body : null;
-  const expr = body?.length === 1 && body[0].type === "ReturnStatement"
-    ? body[0].argument
-    : fn.body?.type !== "BlockStatement" ? fn.body : null;
+  const expr =
+    body?.length === 1 && body[0].type === "ReturnStatement"
+      ? body[0].argument
+      : fn.body?.type !== "BlockStatement"
+        ? fn.body
+        : null;
   if (expr?.type !== "CallExpression") return false;
   const callee = expr.callee;
   if (callee?.type !== "MemberExpression" || callee.property?.name !== "replace") return false;
@@ -117,12 +120,21 @@ function collectBindings(ast, exportsOf) {
     VariableDeclaration(node) {
       for (const d of node.declarations) {
         if (d.id.type !== "Identifier") continue;
-        if (node.kind !== "const") { mutable.add(d.id.name); continue; }
+        if (node.kind !== "const") {
+          mutable.add(d.id.name);
+          continue;
+        }
         // A `for (const x of ...)` declarator has no initialiser.
-        if (!d.init) { loopBound.add(d.id.name); continue; }
+        if (!d.init) {
+          loopBound.add(d.id.name);
+          continue;
+        }
         noteConst(d.id.name, d.init);
-        if ((d.init.type === "FunctionExpression" || d.init.type === "ArrowFunctionExpression")
-            && isEscapeHelper(d.init)) escapers.add(d.id.name);
+        if (
+          (d.init.type === "FunctionExpression" || d.init.type === "ArrowFunctionExpression") &&
+          isEscapeHelper(d.init)
+        )
+          escapers.add(d.id.name);
       }
     },
     FunctionDeclaration(node) {
@@ -184,7 +196,8 @@ export function moduleExports(ast) {
 /** Why a name could not be resolved. */
 function whyUnbound(name, ctx) {
   if (ctx.mutable.has(name)) return `\`${name}\` is a \`let\` or \`var\`, so its value is not fixed`;
-  if (ctx.duplicated.has(name)) return `\`${name}\` is declared more than once in this file, so which declaration is in scope cannot be decided here`;
+  if (ctx.duplicated.has(name))
+    return `\`${name}\` is declared more than once in this file, so which declaration is in scope cannot be decided here`;
   if (ctx.loopBound.has(name)) return `\`${name}\` is bound by a loop, not to a constant`;
   if (ctx.params.has(name)) return `\`${name}\` is a function parameter -- check the call sites`;
   return `\`${name}\` is not a \`const\` in this file (an import or a global)`;
@@ -221,9 +234,11 @@ function foldExpr(node, ctx, seen = new Set()) {
 
     case "TaggedTemplateExpression": {
       const tag = node.tag;
-      const isRaw = tag?.type === "MemberExpression"
-        && tag.object?.type === "Identifier" && tag.object.name === "String"
-        && tag.property?.name === "raw";
+      const isRaw =
+        tag?.type === "MemberExpression" &&
+        tag.object?.type === "Identifier" &&
+        tag.object.name === "String" &&
+        tag.property?.name === "raw";
       if (!isRaw) return fail(`a \`${srcName(tag)}\` tagged template`);
       const parts = [];
       for (let i = 0; i < node.quasi.quasis.length; i++) {
@@ -277,8 +292,11 @@ function foldExpr(node, ctx, seen = new Set()) {
     case "CallExpression": {
       const callee = node.callee;
       // A.join(sep) over a const array of string literals.
-      if (callee?.type === "MemberExpression" && callee.property?.name === "join"
-          && callee.object?.type === "Identifier") {
+      if (
+        callee?.type === "MemberExpression" &&
+        callee.property?.name === "join" &&
+        callee.object?.type === "Identifier"
+      ) {
         const arr = ctx.consts.get(callee.object.name);
         if (!arr) return fail(whyUnbound(callee.object.name, ctx));
         if (arr.type !== "ArrayExpression") {
@@ -370,13 +388,17 @@ export function foldConstructedRegexes(ast, rel, exportsOf = () => undefined) {
     }
     combos.forEach(([pattern, flagStr], i) => {
       resolved.push({
-        pattern, flags: flagStr, file: rel, line,
+        pattern,
+        flags: flagStr,
+        file: rel,
+        line,
         constructed: true,
         modelled: pat.modelled || flags.modelled,
         // A ternary yields more than one pattern from one call site, and a
         // finding on the second would otherwise look like a finding on a
         // pattern that is not written anywhere.
-        variant: i + 1, variants: combos.length,
+        variant: i + 1,
+        variants: combos.length,
       });
     });
   };

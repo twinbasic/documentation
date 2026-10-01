@@ -31,9 +31,9 @@
 // tbbuild.mjs answers "does this compile". It cannot answer "what does this
 // print", and some questions only runtime can settle -- the one that prompted
 // this script was the width of a Debug.Print print zone, which no shipped
-// source demonstrates and no amount of reading the documentation established.
+// source demonstrates and no amount of reading the documentation establishes.
 // (14 characters, and positive numbers carry a leading sign space, so values
-// land at columns 1, 15, 29 rather than 0, 14, 28. Measured with this.)
+// land at columns 1, 15, 29 rather than 0, 14, 28.)
 //
 // The mechanism is the [RunAfterBuild] attribute: a Sub marked with it runs in
 // the IDE once the exe is built, so anything it writes with Debug.Print lands
@@ -103,11 +103,32 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, mkdirSync, statSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { choiceOption, exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
+import {
+  choiceOption,
+  die,
+  exitOnCrash,
+  numberOption,
+  parseCli,
+  printHelpAndExit,
+  refuseTogether,
+  withUsageError,
+} from "../lib/cli.mjs";
 import { click } from "./lib/tb-click.mjs";
 import { compilerExe, findIde } from "./lib/tb-install.mjs";
-import { BUILD_FAILED, COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, killTree, launchIde,
-         setBuildTarget, shutdownIde, summaryLine, waitForCompile, wantShow } from "./lib/tb-ide.mjs";
+import {
+  BUILD_FAILED,
+  COMPILE_TIMEOUT,
+  TARGETS,
+  attachIde,
+  compileOutcome,
+  killTree,
+  launchIde,
+  setBuildTarget,
+  shutdownIde,
+  summaryLine,
+  waitForCompile,
+  wantShow,
+} from "./lib/tb-ide.mjs";
 import { keepClears, keptClears, readConsole } from "./lib/tb-ide-console.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
@@ -146,50 +167,55 @@ Exit codes:
   4  the compiler crashed, or restarted twice, while compiling the project`;
 
 const { values, positionals } = withUsageError(
-  () => parseCli(process.argv.slice(2), {
-    options: {
-      port: { type: "string" },
-      arch: { type: "string" },
-      timeout: { type: "string" },
-      quiet: { type: "string" },
-      ide: { type: "string" },
-      "reap-images": { type: "string" },
-      json: { type: "boolean", default: false },
-      raw: { type: "boolean", default: false },
-      keep: { type: "boolean", default: false },
-      "no-reap": { type: "boolean", default: false },
-      show: { type: "boolean", default: false },
-      hide: { type: "boolean", default: false },
-      help: { type: "boolean", short: "h", default: false },
-    },
-    positionals: { min: 0, max: 1 },
-    stopAt: ["help"],
-  }),
+  () =>
+    parseCli(process.argv.slice(2), {
+      options: {
+        port: { type: "string" },
+        arch: { type: "string" },
+        timeout: { type: "string" },
+        quiet: { type: "string" },
+        ide: { type: "string" },
+        "reap-images": { type: "string" },
+        json: { type: "boolean", default: false },
+        raw: { type: "boolean", default: false },
+        keep: { type: "boolean", default: false },
+        "no-reap": { type: "boolean", default: false },
+        show: { type: "boolean", default: false },
+        hide: { type: "boolean", default: false },
+        help: { type: "boolean", short: "h", default: false },
+      },
+      positionals: { min: 0, max: 1 },
+      stopAt: ["help"],
+    }),
   { format: (err) => `${err.message}\n${USAGE}` },
 );
 if (values.help) printHelpAndExit(USAGE);
 
-const die = (code, msg) => { console.error(msg); process.exit(code); };
-
 // The values are read before anything starts.
-const { port, arch, timeoutMs, quietMs } = withUsageError(() => {
-  refuseTogether(values, ["show", "hide"]);
-  return {
-    port: numberOption(values.port ?? "9346", { option: "--port", integer: true, min: 1, max: 65535 }),
-    arch: choiceOption(values.arch ?? TARGETS[0], { option: "--arch", choices: TARGETS }),
-    timeoutMs: numberOption(values.timeout ?? "120", { option: "--timeout", above: 0 }) * 1000,
-    quietMs: numberOption(values.quiet ?? "2500", { option: "--quiet", integer: true, min: 0 }),
-  };
-}, { format: (err) => `${err.message}\n${USAGE}` });
+const { port, arch, timeoutMs, quietMs } = withUsageError(
+  () => {
+    refuseTogether(values, ["show", "hide"]);
+    return {
+      port: numberOption(values.port ?? "9346", { option: "--port", integer: true, min: 1, max: 65535 }),
+      arch: choiceOption(values.arch ?? TARGETS[0], { option: "--arch", choices: TARGETS }),
+      timeoutMs: numberOption(values.timeout ?? "120", { option: "--timeout", above: 0 }) * 1000,
+      quietMs: numberOption(values.quiet ?? "2500", { option: "--quiet", integer: true, min: 0 }),
+    };
+  },
+  { format: (err) => `${err.message}\n${USAGE}` },
+);
 
 if (!positionals.length) die(2, USAGE);
 
 const srcDir = path.resolve(positionals[0]);
 if (!existsSync(srcDir) || !statSync(srcDir).isDirectory()) {
-  die(2, `not a directory: ${srcDir}\n` +
-         `tbrun takes an exported source tree (the folder holding Sources/ and Settings), ` +
-         `because it has to pin the build path before packing. Export one with:\n` +
-         `  twinBASIC_win32.exe export <project.twinproj> <dir>\\ --overwrite`);
+  die(
+    2,
+    `not a directory: ${srcDir}\n` +
+      `tbrun takes an exported source tree (the folder holding Sources/ and Settings), ` +
+      `because it has to pin the build path before packing. Export one with:\n` +
+      `  twinBASIC_win32.exe export <project.twinproj> <dir>\\ --overwrite`,
+  );
 }
 
 const settingsPath = path.join(srcDir, "Settings");
@@ -199,10 +225,7 @@ if (!existsSync(settingsPath)) die(2, `no Settings file in ${srcDir}`);
 // prompted this; --reap-images replaces the list for anything else. Only out-of-
 // process (LocalServer32) servers can outlive the probe at all -- an in-process
 // one dies with it -- so this list is short by nature rather than by omission.
-const REAP_IMAGES = [
-  "excel", "winword", "powerpnt", "msaccess", "outlook",
-  "onenote", "mspub", "visio", "winproj",
-];
+const REAP_IMAGES = ["excel", "winword", "powerpnt", "msaccess", "outlook", "onenote", "mspub", "visio", "winproj"];
 
 // ---------------------------------------------------------------- the IDE
 
@@ -239,8 +262,10 @@ const projPath = path.join(work, "tbrun-probe.twinproj");
 const sourceText = (() => {
   const dir = path.join(srcDir, "Sources");
   if (!existsSync(dir)) return "";
-  return readdirSync(dir).filter((f) => f.endsWith(".twin"))
-    .map((f) => readFileSync(path.join(dir, f), "utf8")).join(String.fromCharCode(10));
+  return readdirSync(dir)
+    .filter((f) => f.endsWith(".twin"))
+    .map((f) => readFileSync(path.join(dir, f), "utf8"))
+    .join(String.fromCharCode(10));
 })();
 const hasHook = /\[RunAfterBuild\]/i.test(sourceText);
 const hasCls = /Debug\s*\.\s*Cls/i.test(sourceText);
@@ -249,20 +274,28 @@ const hasCls = /Debug\s*\.\s*Cls/i.test(sourceText);
 // with its output mixed into [LINKER] chatter. Debug.Cls as the probe's first
 // statement is what makes the capture clean, and it is cheap to check for.
 if (!hasHook) {
-  console.error("warning: no [RunAfterBuild] in Sources/*.twin -- nothing of yours will " +
-                "run after the build, so you will capture the IDE's build log and nothing else.");
+  console.error(
+    "warning: no [RunAfterBuild] in Sources/*.twin -- nothing of yours will " +
+      "run after the build, so you will capture the IDE's build log and nothing else.",
+  );
 } else if (!hasCls) {
-  console.error("warning: the probe does not call Debug.Cls -- the IDE's build log will be " +
-                "mixed into the captured output. Make Debug.Cls the first statement.");
+  console.error(
+    "warning: the probe does not call Debug.Cls -- the IDE's build log will be " +
+      "mixed into the captured output. Make Debug.Cls the first statement.",
+  );
 }
 
 // ------------------------------------------------------------------- pack
 
 // A packing failure is the harness's, exit 2.
-let wasTemplate = false, projectName = "";
+let wasTemplate = false,
+  projectName = "";
 try {
   const staged = stageProject({
-    src: srcDir, stage, project: projPath, compiler: COMPILER,
+    src: srcDir,
+    stage,
+    project: projPath,
+    compiler: COMPILER,
     settings: { "project.buildPath": buildPath, "project.id": laneProjectId(0, port) },
   });
   wasTemplate = /\$\{/.test(staged.original["project.buildPath"] ?? "");
@@ -278,7 +311,11 @@ function builtFile() {
   const stem = `${projectName}_${arch}.`.toLowerCase();
   for (const f of readdirSync(outDir).filter((n) => n.toLowerCase().startsWith(stem))) {
     const file = path.join(outDir, f);
-    try { if (readFileSync(file).subarray(0, 2).toString("latin1") === "MZ") return file; } catch { /* gone */ }
+    try {
+      if (readFileSync(file).subarray(0, 2).toString("latin1") === "MZ") return file;
+    } catch {
+      /* gone */
+    }
   }
   return null;
 }
@@ -309,7 +346,10 @@ function failBuild(code, text) {
 
 try {
   ideRun = await launchIde({
-    exe: ide, project: projPath, port, keep: values.keep,
+    exe: ide,
+    project: projPath,
+    port,
+    keep: values.keep,
     show: wantShow({ show: values.show, hide: values.hide }),
   });
 } catch (e) {
@@ -319,8 +359,9 @@ try {
 const cdp = await attachIde(port);
 if (!cdp) failBuild(2, "the IDE never exposed a debug port");
 
-let outcome = compileOutcome(
-  await waitForCompile(cdp, { project: projPath, timeout: COMPILE_TIMEOUT }), { name: projPath });
+let outcome = compileOutcome(await waitForCompile(cdp, { project: projPath, timeout: COMPILE_TIMEOUT }), {
+  name: projPath,
+});
 if (!outcome.ok) failBuild(outcome.code === 4 ? 4 : 2, outcome.message);
 
 // The target, set on every run, win32 included (setBuildTarget says why). The
@@ -347,29 +388,41 @@ if (outcome.counts[0] > 0) {
 
 // --------------------------------------------- build the exe, read the console
 
-let captured = null, shown = null, erased = null, failure = null;
+let captured = null,
+  shown = null,
+  erased = null,
+  failure = null;
 try {
   // (4) Keep what each clear erases, for the check after the run.
-  if (!await keepClears(cdp)) {
-    throw new Error("no clearDebugConsole() in this IDE -- a probe's Debug.Cls could erase a " +
-                    "failure unseen. Refusing rather than returning what it left as complete.");
+  if (!(await keepClears(cdp))) {
+    throw new Error(
+      "no clearDebugConsole() in this IDE -- a probe's Debug.Cls could erase a " +
+        "failure unseen. Refusing rather than returning what it left as complete.",
+    );
   }
   // (2) a real press/release pair; element.click() is ignored.
   await click(cdp, "buildIcon");
 
   // (5) settle on a quiet period rather than a sentinel.
   const started = Date.now();
-  let last = "", lastChange = Date.now(), seen = false;
+  let last = "",
+    lastChange = Date.now(),
+    seen = false;
   while (Date.now() - started < timeoutMs) {
     await new Promise((r) => setTimeout(r, 400));
     const now = await readConsole(cdp);
     if (now === null) {
-      throw new Error("no debugConsoleContent.dataNodes in this IDE -- the DEBUG CONSOLE " +
-                      "was never created, or this build moved it. Refusing rather than " +
-                      "falling back to scraping the pane, which silently truncates.");
+      throw new Error(
+        "no debugConsoleContent.dataNodes in this IDE -- the DEBUG CONSOLE " +
+          "was never created, or this build moved it. Refusing rather than " +
+          "falling back to scraping the pane, which silently truncates.",
+      );
     }
-    if (now !== last) { last = now; lastChange = Date.now(); if (strip(now).length) seen = true; }
-    else if (seen && Date.now() - lastChange > quietMs) break;
+    if (now !== last) {
+      last = now;
+      lastChange = Date.now();
+      if (strip(now).length) seen = true;
+    } else if (seen && Date.now() - lastChange > quietMs) break;
   }
   captured = strip(last);
   // --raw changes what is printed, never what is checked. BUILD_FAILED needs a
@@ -379,8 +432,10 @@ try {
   shown = values.raw ? strip(last, await readConsole(cdp, { timestamps: true })) : captured;
   const kept = await keptClears(cdp);
   if (!kept) {
-    throw new Error("the IDE page no longer holds what the DEBUG CONSOLE's clears erased, so " +
-                    "a failure they erased cannot be ruled out");
+    throw new Error(
+      "the IDE page no longer holds what the DEBUG CONSOLE's clears erased, so " +
+        "a failure they erased cannot be ruled out",
+    );
   }
   erased = kept.flatMap((text) => text.split("\n"));
   cdp.close();
@@ -395,14 +450,17 @@ if (failure) die(2, `tbrun: ${failure}`);
 // IDE's own build log in the console. The probe's first statement is Debug.Cls,
 // which would have erased that log, so its survival means the capture is not the
 // probe's output. Returned as output, a `[TYPELIB] failed to finalize
-// typelibrary` build exited 0 twice in round 8's fix pass. A [RunAfterBuild] Sub
+// typelibrary` build would exit 0. A [RunAfterBuild] Sub
 // that fails code generation leaves the log too: the build succeeds, and then
 // nothing in the Sub runs, Debug.Cls included. BUILD_FAILED is buildProject's
 // list of failure lines, the code-generation one among them.
 if (captured.some((l) => BUILD_FAILED.test(l))) {
-  die(2, "tbrun: the build or the probe's code generation failed, so the probe never ran. " +
-         "The console holds the IDE's build log, not the probe's output:\n" +
-         shown.map((l) => `  ${l}`).join("\n"));
+  die(
+    2,
+    "tbrun: the build or the probe's code generation failed, so the probe never ran. " +
+      "The console holds the IDE's build log, not the probe's output:\n" +
+      shown.map((l) => `  ${l}`).join("\n"),
+  );
 }
 // A procedure the probe calls that fails code generation is reported straight
 // after the "[BUILD] Executing '<project>.<module>.<Sub>'..." line, before the
@@ -415,10 +473,13 @@ if (captured.some((l) => BUILD_FAILED.test(l))) {
 const started = erased.findLastIndex((l) => /^\[BUILD\] Executing '/.test(l));
 const lost = started < 0 ? undefined : erased.slice(started + 1).find((l) => BUILD_FAILED.test(l));
 if (lost) {
-  die(2, "tbrun: the probe's Debug.Cls erased a failure the IDE reported as the probe started:\n" +
-         `  ${lost}\n` +
-         "What the probe printed, which stops where it called the procedure that failed:\n" +
-         (shown.length ? shown.map((l) => `  ${l}`).join("\n") : "  (nothing)"));
+  die(
+    2,
+    "tbrun: the probe's Debug.Cls erased a failure the IDE reported as the probe started:\n" +
+      `  ${lost}\n` +
+      "What the probe printed, which stops where it called the procedure that failed:\n" +
+      (shown.length ? shown.map((l) => `  ${l}`).join("\n") : "  (nothing)"),
+  );
 }
 // A probe that ran leaves its Executing line among what its Debug.Cls erased,
 // so an empty console then means it printed nothing after its last clear, not
@@ -427,32 +488,35 @@ if (!captured.length && started >= 0) {
   die(3, `tbrun: the probe ran (${erased[started]}) but printed nothing after its last Debug.Cls.`);
 }
 if (!captured.length) {
-  die(3, "tbrun: the build produced no console output before the timeout.\n" +
-         (hasHook ? "  The [RunAfterBuild] Sub may not have run -- check the IDE for a modal."
-                  : "  There is no [RunAfterBuild] Sub to produce any.") +
-         (wasTemplate ? "" : "\n  buildPath was already explicit, so a Save dialog is unlikely."));
+  die(
+    3,
+    "tbrun: the build produced no console output before the timeout.\n" +
+      (hasHook
+        ? "  The [RunAfterBuild] Sub may not have run -- check the IDE for a modal."
+        : "  There is no [RunAfterBuild] Sub to produce any.") +
+      (wasTemplate ? "" : "\n  buildPath was already explicit, so a Save dialog is unlikely."),
+  );
 }
 
 if (values.json) {
-  console.log(JSON.stringify({ exe: builtFile(), arch, lines: shown, idePid: ideRun?.pid ?? null,
-                               reaped }, null, 2));
+  console.log(JSON.stringify({ exe: builtFile(), arch, lines: shown, idePid: ideRun?.pid ?? null, reaped }, null, 2));
 } else {
   for (const l of shown) console.log(l);
 }
 
 // ------------------------------------------------------------------ helpers
 
-// Trim blank lines off both ends. That is all this has to do now: reading
+// Trim blank lines off both ends. That is all this has to do: reading
 // dataNodes rather than the pane means the header, the ">" input prompt and
-// the timestamp column never arrive in the first place, so the three filters
-// that used to live here are gone along with the guesswork in them. Given `raw`,
+// the timestamp column never arrive in the first place. Given `raw`,
 // the same console read with its timestamps, it returns the same entries from
 // that instead, since a line holding a timestamp is never blank.
 function strip(text, raw = null) {
   if (!text) return [];
   const lines = (s) => s.split("\n").map((l) => l.replace(/\r$/, ""));
   const out = lines(text);
-  let from = 0, to = out.length;
+  let from = 0,
+    to = out.length;
   while (from < to && !out[from].trim()) from++;
   while (to > from && !out[to - 1].trim()) to--;
   return (raw === null ? out : lines(raw)).slice(from, to);
@@ -462,7 +526,7 @@ function strip(text, raw = null) {
 // and anything it spawned with CreateProcess; what it cannot take is a COM
 // server, which is what reapOrphans is for.
 function shutdown() {
-  if (values.keep) return null;          // the IDE is the caller's problem now
+  if (values.keep) return null; // the IDE is the caller's problem now
   shutdownIde(ideRun);
   finishTidy(tidy);
   return values.noReap ? null : reapOrphans();
@@ -471,18 +535,20 @@ function shutdown() {
 // Identity is pid + start time, because a pid alone is reused and a run that
 // reaped a recycled pid would be killing a stranger.
 function snapshotProcesses() {
-  const ps = "Get-Process | Select-Object Id, ProcessName, " +
+  const ps =
+    "Get-Process | Select-Object Id, ProcessName, " +
     "@{n='Start';e={try{$_.StartTime.ToFileTimeUtc()}catch{0}}}, " +
     "@{n='Win';e={$_.MainWindowTitle}} | ConvertTo-Json -Compress";
   try {
-    const out = execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps],
-                             { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
-                               maxBuffer: 32 * 1024 * 1024 });
+    const out = execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      maxBuffer: 32 * 1024 * 1024,
+    });
     const parsed = JSON.parse(out);
-    return new Map((Array.isArray(parsed) ? parsed : [parsed])
-      .map((p) => [`${p.Id}:${p.Start}`, p]));
+    return new Map((Array.isArray(parsed) ? parsed : [parsed]).map((p) => [`${p.Id}:${p.Start}`, p]));
   } catch {
-    return null;                          // reaping degrades to off, never to guessing
+    return null; // reaping degrades to off, never to guessing
   }
 }
 
@@ -508,22 +574,37 @@ function reapOrphans() {
   const after = snapshotProcesses();
   if (!after) return null;
 
-  const images = new Set((values.reapImages || "")
-    .split(",").map((s) => s.trim().toLowerCase().replace(/\.exe$/, "")).filter(Boolean));
+  const images = new Set(
+    (values.reapImages || "")
+      .split(",")
+      .map((s) =>
+        s
+          .trim()
+          .toLowerCase()
+          .replace(/\.exe$/, ""),
+      )
+      .filter(Boolean),
+  );
   const wanted = images.size ? images : new Set(REAP_IMAGES);
 
-  const killed = [], skipped = [];
+  const killed = [],
+    skipped = [];
   for (const [key, p] of after) {
     if (processesBefore.has(key)) continue;
     if (!wanted.has(String(p.ProcessName).toLowerCase())) continue;
-    if (p.Win && String(p.Win).trim()) { skipped.push(p); continue; }
+    if (p.Win && String(p.Win).trim()) {
+      skipped.push(p);
+      continue;
+    }
     killTree(p.Id);
     killed.push({ pid: p.Id, image: p.ProcessName });
   }
 
   for (const p of skipped) {
-    console.error(`note: ${p.ProcessName} (pid ${p.Id}) started during this run but has a ` +
-                  `window open, so it was left alone -- close it yourself if it is a leak.`);
+    console.error(
+      `note: ${p.ProcessName} (pid ${p.Id}) started during this run but has a ` +
+        `window open, so it was left alone -- close it yourself if it is a leak.`,
+    );
   }
   if (killed.length) {
     console.error("reaped: " + killed.map((k) => `${k.image} (pid ${k.pid})`).join(", "));

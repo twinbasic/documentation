@@ -4,8 +4,8 @@
 // that builds many projects (check_examples, sweep_attributes) calls it directly
 // and gets a result it does not have to parse: the diagnostics as an array, the
 // files the compiler died parsing as an array, and the exit code tbbuild would
-// have had. It used to start `tbbuild` as a subprocess and read its JSON and its
-// stderr back, and every one of those readers carried its own copy of the parse.
+// have had. Starting `tbbuild` as a subprocess would mean every caller reading
+// its JSON and stderr back with its own copy of the parse.
 //
 // What it does not do is what a caller owns:
 //
@@ -17,7 +17,7 @@
 //     do it in the middle of the other lanes' builds.
 //   * It does not check that the project or the IDE exists. The command line
 //     refuses those with a usage error; a caller with a bad path gets code 3
-//     after the timeout, exactly as tbbuild used to.
+//     after the timeout, exactly as tbbuild does.
 //
 // It always ends its IDE before it returns, unless `keep` is set. Node holds the
 // IDE's launcher in a job of its own (launchIde), so an IDE also goes when the
@@ -30,8 +30,16 @@
 // one call's, so a tool that runs many calls installs a handler through
 // exitOnCrash's cleanup (see sweep_attributes.mjs's `salvage`).
 
-import { COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, launchIde, setBuildTarget, shutdownIdeAsync,
-         waitForCompile } from "./tb-ide.mjs";
+import {
+  COMPILE_TIMEOUT,
+  TARGETS,
+  attachIde,
+  compileOutcome,
+  launchIde,
+  setBuildTarget,
+  shutdownIdeAsync,
+  waitForCompile,
+} from "./tb-ide.mjs";
 
 /**
  * @param {object} o
@@ -51,13 +59,29 @@ import { COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, launchIde, setBuil
  *   and 4 and is empty otherwise. `counts` is errors, warnings, hints, infos.
  *   `crashFiles` names, for 4, the files the compiler died parsing.
  */
-export async function compileProject({ project, ide, port = 9333, arch = TARGETS[0], timeout = COMPILE_TIMEOUT,
-                                     show = false, keep = false }) {
+export async function compileProject({
+  project,
+  ide,
+  port = 9333,
+  arch = TARGETS[0],
+  timeout = COMPILE_TIMEOUT,
+  show = false,
+  keep = false,
+}) {
   let handle = null;
   let c = null;
   const result = (code, fields = {}) => ({
-    code, message: "", rows: [], counts: [0, 0, 0, 0], dialogs: c ? c.dialogs.map((d) => d.message) : [],
-    openedIn: null, arch, idePid: handle?.pid ?? null, kept: keep, crashFiles: [], ...fields,
+    code,
+    message: "",
+    rows: [],
+    counts: [0, 0, 0, 0],
+    dialogs: c ? c.dialogs.map((d) => d.message) : [],
+    openedIn: null,
+    arch,
+    idePid: handle?.pid ?? null,
+    kept: keep,
+    crashFiles: [],
+    ...fields,
   });
   try {
     try {
@@ -80,7 +104,8 @@ export async function compileProject({ project, ide, port = 9333, arch = TARGETS
       openedIn = target.from;
       if (target.waited) {
         outcome = compileOutcome(target.waited, { name: project });
-        if (!outcome.ok) return result(outcome.code, { message: outcome.message, crashFiles: outcome.crashFiles ?? [] });
+        if (!outcome.ok)
+          return result(outcome.code, { message: outcome.message, crashFiles: outcome.crashFiles ?? [] });
       }
     } catch (e) {
       return result(2, { message: e.message });
@@ -88,7 +113,11 @@ export async function compileProject({ project, ide, port = 9333, arch = TARGETS
     return result(outcome.counts[0] > 0 ? 1 : 0, { rows: outcome.rows, counts: outcome.counts, openedIn });
   } finally {
     // A close that threw must not skip ending the IDE, or mask what was thrown.
-    try { c?.close(); } catch { /* the IDE is about to be ended */ }
+    try {
+      c?.close();
+    } catch {
+      /* the IDE is about to be ended */
+    }
     if (!keep) await shutdownIdeAsync(handle);
   }
 }

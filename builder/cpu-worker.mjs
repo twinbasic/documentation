@@ -7,23 +7,31 @@ import { promises as fsP } from "node:fs";
 import path from "node:path";
 import { parentPort, workerData } from "node:worker_threads";
 import { compileLightScss, compileDarkScss } from "./scss.mjs";
-import { regenerateDot }     from "./dot.mjs";
-import { captureBuildInfo }  from "./build-info.mjs";
+import { regenerateDot } from "./dot.mjs";
+import { captureBuildInfo } from "./build-info.mjs";
 
-import { createMarkdownIt, renderPhase }      from "./render.mjs";
-import { templatePhase }                      from "./template.mjs";
-import { unpackShared }                       from "./sab-broadcast.mjs";
-import { deriveSearchEntries }                from "./search.mjs";
-import { computeChunkSeo }                    from "./seo.mjs";
-import { deriveOfflinePage, deriveOfflinePageCached,
-         sliceNavBlock, posixDirname }        from "./offline-rewrite.mjs";
-import { normalizeBaseurl }                   from "./url.mjs";
+import { createMarkdownIt, renderPhase } from "./render.mjs";
+import { templatePhase } from "./template.mjs";
+import { unpackShared } from "./sab-broadcast.mjs";
+import { deriveSearchEntries } from "./search.mjs";
+import { computeChunkSeo } from "./seo.mjs";
+import { deriveOfflinePage, deriveOfflinePageCached, sliceNavBlock, posixDirname } from "./offline-rewrite.mjs";
+import { normalizeBaseurl } from "./url.mjs";
 
 import {
-  createViews, scanAndClaim, onTaskDone, readTaskMeta,
+  createViews,
+  scanAndClaim,
+  onTaskDone,
+  readTaskMeta,
   HANDLERS,
-  READY, CLAIMED, DONE, FAILED, F_ON_DEMAND, F_RUN_ON_MAIN,
-  F_RUN_WHEN_IDLE, F_UNIQUE_PER_WORKER,
+  READY,
+  CLAIMED,
+  DONE,
+  FAILED,
+  F_ON_DEMAND,
+  F_RUN_ON_MAIN,
+  F_RUN_WHEN_IDLE,
+  F_UNIQUE_PER_WORKER,
   MAX_LANES,
 } from "./sab-scheduler.mjs";
 
@@ -33,11 +41,11 @@ const myLane = workerData?.lane ?? 0;
 
 // ── Mutable state set by init / dynamicData messages ────────────────────────
 
-let views     = null;   // Int32Array views into the scheduling SAB
-let ctx       = null;   // { srcRoot, destRoot, opts, workerCount }
+let views = null; // Int32Array views into the scheduling SAB
+let ctx = null; // { srcRoot, destRoot, opts, workerCount }
 
-let _payloadSAB = null;   // SharedArrayBuffer with packed per-task payloads
-let _sharedSAB  = null;   // SharedArrayBuffer with packed shared payload
+let _payloadSAB = null; // SharedArrayBuffer with packed per-task payloads
+let _sharedSAB = null; // SharedArrayBuffer with packed shared payload
 
 // ── Handler table ───────────────────────────────────────────────────────────
 
@@ -50,32 +58,49 @@ const handlers = {
 
   async renderEnvInit() {
     while (!_sharedSAB) {
-      await new Promise(resolve => setImmediate(resolve));
+      await new Promise((resolve) => setImmediate(resolve));
     }
 
-    const { siteData, initData, linkTablesData, staticFilesArr,
-            baseurl, buildInfo, sitePathsArr,
-            skipOffline, svgContentsMap, checkTrees,
-            vendoredVideosObj, vendoredImagesObj, counts } = unpackShared(_sharedSAB);
+    const {
+      siteData,
+      initData,
+      linkTablesData,
+      staticFilesArr,
+      baseurl,
+      buildInfo,
+      sitePathsArr,
+      skipOffline,
+      svgContentsMap,
+      checkTrees,
+      vendoredVideosObj,
+      vendoredImagesObj,
+      counts,
+    } = unpackShared(_sharedSAB);
 
     const { initHighlighter } = await import("./highlight.mjs");
     const highlighter = await initHighlighter();
-    const linkTables  = reconstructLinkTables(linkTablesData);
+    const linkTables = reconstructLinkTables(linkTablesData);
     const staticFiles = new Set(staticFilesArr);
     const svgContents = new Map(Object.entries(svgContentsMap ?? {}));
     const vendoredVideos = new Map(Object.entries(vendoredVideosObj ?? {}));
     const vendoredImages = new Map(Object.entries(vendoredImagesObj ?? {}));
-    const markdown    = createMarkdownIt({
-      highlighter, linkTables, baseurl, staticFiles, svgContents,
-      vendoredVideos, vendoredImages, counts,
+    const markdown = createMarkdownIt({
+      highlighter,
+      linkTables,
+      baseurl,
+      staticFiles,
+      svgContents,
+      vendoredVideos,
+      vendoredImages,
+      counts,
     });
-    const site        = { ...siteData, markdown, buildInfo };
+    const site = { ...siteData, markdown, buildInfo };
 
     let offlineBase = null;
     if (!skipOffline) {
       offlineBase = {
         sitePaths: new Set(sitePathsArr),
-        baseurl:   normalizeBaseurl(baseurl),
+        baseurl: normalizeBaseurl(baseurl),
       };
     }
 
@@ -83,14 +108,15 @@ const handlers = {
     // must not pay it on sixteen lanes. Hence the dynamic import here
     // rather than a static one at module scope.
     if (checkTrees) {
-      const { checkChunk, treeIndexFor, normalizeBasePath: normBase, TREES } =
-        await import("./check.mjs");
+      const { checkChunk, treeIndexFor, normalizeBasePath: normBase, TREES } = await import("./check.mjs");
       _checkChunk = checkChunk;
       _checkEnv = {};
       for (const [which, { rels, baseurl: bu }] of Object.entries(checkTrees)) {
         const root = ctx.destRoot + TREES[which].suffix;
         _checkEnv[which] = {
-          root, tree: TREES[which], basePath: normBase(bu),
+          root,
+          tree: TREES[which],
+          basePath: normBase(bu),
           index: treeIndexFor(root, rels),
         };
       }
@@ -102,7 +128,9 @@ const handlers = {
 
   async flush() {
     const items = _pendingFlush.shift() ?? [];
-    let written = 0, offlineWritten = 0, offlineMisses = 0;
+    let written = 0,
+      offlineWritten = 0,
+      offlineMisses = 0;
 
     // The check rides along here rather than becoming its own task
     // because this is the one moment both trees' final HTML is already
@@ -164,9 +192,7 @@ const handlers = {
   async render(taskIdx) {
     const offset = Atomics.load(views.payloadOffset, taskIdx);
     const length = Atomics.load(views.payloadLength, taskIdx);
-    const chunk = JSON.parse(
-      new TextDecoder().decode(new Uint8Array(_payloadSAB, offset, length)),
-    );
+    const chunk = JSON.parse(new TextDecoder().decode(new Uint8Array(_payloadSAB, offset, length)));
 
     const env = _renderEnv;
 
@@ -175,7 +201,8 @@ const handlers = {
     await templatePhase(chunk, env.site, env.initData);
 
     if (env.offlineBase) {
-      const offlineState = { ...env.offlineBase,
+      const offlineState = {
+        ...env.offlineBase,
         caches: { rawResolution: new Map(), seg: new Map(), result: new Map() },
       };
 
@@ -196,12 +223,15 @@ const handlers = {
       // its pre-rewrite nav block matches the cached `input` byte-for-byte.
       // On miss it falls back to the full rewrite with a warning -- the
       // cache is purely an optimisation, never a correctness dependency.
-      const writable = chunk.filter(p => p.html !== undefined);
+      const writable = chunk.filter((p) => p.html !== undefined);
       const byDir = new Map();
       for (const p of writable) {
         const destDir = posixDirname(p.destPath);
         let g = byDir.get(destDir);
-        if (!g) { g = []; byDir.set(destDir, g); }
+        if (!g) {
+          g = [];
+          byDir.set(destDir, g);
+        }
         g.push(p);
       }
       const navCache = new Map();
@@ -229,9 +259,9 @@ const handlers = {
     for (const p of chunk) {
       if (p.html !== undefined) {
         batch.push({
-          destPath:      p.destPath,
-          html:          p.html,
-          offlineHtml:   p.offlineHtml,
+          destPath: p.destPath,
+          html: p.html,
+          offlineHtml: p.offlineHtml,
           offlineMisses: p.offlineMisses,
         });
       }
@@ -242,16 +272,21 @@ const handlers = {
     // Drop `sourcePage` (workers hold cloned page objects, not master
     // refs) and `i` (chunk-local indices are meaningless; main assigns
     // global indices during consolidation).
-    const searchEntries = deriveSearchEntries(chunk, env.site)
-      .map(e => ({ doc: e.doc, title: e.title, content: e.content,
-                   url: e.url, relUrl: e.relUrl,
-                   index: e.index, index_also: e.index_also }));
+    const searchEntries = deriveSearchEntries(chunk, env.site).map((e) => ({
+      doc: e.doc,
+      title: e.title,
+      content: e.content,
+      url: e.url,
+      relUrl: e.relUrl,
+      index: e.index,
+      index_also: e.index_also,
+    }));
 
     return {
-      pages: chunk.map(p => ({
-        destPath:        p.destPath,
+      pages: chunk.map((p) => ({
+        destPath: p.destPath,
         renderedContent: p.renderedContent,
-        offlineMisses:   p.offlineMisses,
+        offlineMisses: p.offlineMisses,
       })),
       searchEntries,
     };
@@ -263,10 +298,10 @@ const handlers = {
 const handlerById = [];
 for (const [name, id] of Object.entries(HANDLERS)) handlerById[id] = handlers[name];
 
-let _renderEnv    = null;
+let _renderEnv = null;
 let _pendingFlush = [];
-let _checkEnv     = null;   // set by renderEnvInit when --check is on
-let _checkChunk   = null;   // builder/check.mjs's checkChunk, imported with it
+let _checkEnv = null; // set by renderEnvInit when --check is on
+let _checkChunk = null; // builder/check.mjs's checkChunk, imported with it
 
 // One chunk of pages, checked against every tree it was written to.
 //
@@ -281,17 +316,18 @@ async function runChunkCheck(items) {
     // page in the lane, so a page without offlineHtml means the rewrite
     // did not happen -- and dropping it here would shrink the chunk
     // quietly, checking fewer pages and still reporting a pass.
-    const docs = which === "offline"
-      ? items.map(p => {
-          if (p.offlineHtml === undefined) {
-            throw new Error(
-              `${p.destPath} reached the offline check with no offlineHtml; ` +
-              `the chunk would have covered fewer pages than the lane holds`
-            );
-          }
-          return { destPath: p.destPath, html: p.offlineHtml };
-        })
-      : items.map(p => ({ destPath: p.destPath, html: p.html }));
+    const docs =
+      which === "offline"
+        ? items.map((p) => {
+            if (p.offlineHtml === undefined) {
+              throw new Error(
+                `${p.destPath} reached the offline check with no offlineHtml; ` +
+                  `the chunk would have covered fewer pages than the lane holds`,
+              );
+            }
+            return { destPath: p.destPath, html: p.offlineHtml };
+          })
+        : items.map((p) => ({ destPath: p.destPath, html: p.html }));
     try {
       out[which] = _checkChunk(docs, env);
     } catch (err) {
@@ -305,19 +341,19 @@ async function runChunkCheck(items) {
 
 parentPort.on("message", (msg) => {
   if (msg.init) {
-    views     = createViews(msg.sab);
-    ctx       = msg.ctx;
-    _payloadSAB   = null;
-    _sharedSAB    = null;
-    _renderEnv    = null;
-    _checkEnv     = null;
+    views = createViews(msg.sab);
+    ctx = msg.ctx;
+    _payloadSAB = null;
+    _sharedSAB = null;
+    _renderEnv = null;
+    _checkEnv = null;
     _pendingFlush = [];
     pullLoop();
     return;
   }
   if (msg.dynamicData) {
     _payloadSAB = msg.payloadSAB;
-    _sharedSAB  = msg.sharedSAB;
+    _sharedSAB = msg.sharedSAB;
     return;
   }
 });
@@ -331,18 +367,23 @@ function findIdleTask(views, lane) {
   for (let i = 0; i < count; i++) {
     if (!(Atomics.load(views.flags, i) & F_RUN_WHEN_IDLE)) continue;
     const meta = readTaskMeta(views, i);
-    const pri  = meta.idlePriority;
+    const pri = meta.idlePriority;
     if (pri >= bestPri) continue;
     if (Atomics.load(views.flags, i) & F_UNIQUE_PER_WORKER) {
-      if (Atomics.load(views.perWorkerDone, i * MAX_LANES + lane) !== 0)
-        continue;
+      if (Atomics.load(views.perWorkerDone, i * MAX_LANES + lane) !== 0) continue;
       let skip = false;
       for (const predIdx of meta.expectedDeps) {
-        if (Atomics.load(views.status, predIdx) !== DONE) { skip = true; break; }
+        if (Atomics.load(views.status, predIdx) !== DONE) {
+          skip = true;
+          break;
+        }
       }
       if (skip) continue;
       for (const depIdx of meta.perWorkerDeps) {
-        if (Atomics.load(views.perWorkerDone, depIdx * MAX_LANES + lane) === 0) { skip = true; break; }
+        if (Atomics.load(views.perWorkerDone, depIdx * MAX_LANES + lane) === 0) {
+          skip = true;
+          break;
+        }
       }
       if (skip) continue;
       bestIdx = i;
@@ -355,8 +396,7 @@ function findIdleTask(views, lane) {
   }
   // For non-unique_per_worker tasks, CAS-claim at the end.
   if (bestIdx !== -1 && !(Atomics.load(views.flags, bestIdx) & F_UNIQUE_PER_WORKER)) {
-    if (Atomics.compareExchange(views.status, bestIdx, READY, CLAIMED) !== READY)
-      return -1;
+    if (Atomics.compareExchange(views.status, bestIdx, READY, CLAIMED) !== READY) return -1;
   }
   return bestIdx;
 }
@@ -380,8 +420,8 @@ async function runPerWorkerTask(taskIdx, meta) {
   parentPort.postMessage({
     perWorkerTiming: true,
     taskIdx,
-    timing:  { start: t0, end: t1 },
-    lane:    myLane,
+    timing: { start: t0, end: t1 },
+    lane: myLane,
     output,
   });
   return true;
@@ -397,7 +437,7 @@ async function pullLoop() {
       // Speculative: run idle-eligible tasks before sleeping.
       const idleTask = findIdleTask(views, myLane);
       if (idleTask !== -1) {
-        if (!await runPerWorkerTask(idleTask, readTaskMeta(views, idleTask))) return;
+        if (!(await runPerWorkerTask(idleTask, readTaskMeta(views, idleTask)))) return;
         continue;
       }
 
@@ -424,7 +464,7 @@ async function pullLoop() {
     if (unsatisfied !== null) {
       const depFlags = Atomics.load(views.flags, unsatisfied);
 
-      if ((depFlags & F_ON_DEMAND) && !(depFlags & F_RUN_ON_MAIN)) {
+      if (depFlags & F_ON_DEMAND && !(depFlags & F_RUN_ON_MAIN)) {
         const depMeta = readTaskMeta(views, unsatisfied);
 
         // Check the dep's own perWorkerDeps (e.g. renderEnvInit → warmInit).
@@ -438,12 +478,12 @@ async function pullLoop() {
 
         if (nestedUnsatisfied !== null) {
           const nestedFlags = Atomics.load(views.flags, nestedUnsatisfied);
-          if ((nestedFlags & F_ON_DEMAND) && !(nestedFlags & F_RUN_ON_MAIN)) {
+          if (nestedFlags & F_ON_DEMAND && !(nestedFlags & F_RUN_ON_MAIN)) {
             Atomics.store(views.status, taskIdx, READY);
             Atomics.add(views.notify, 0, 1);
             Atomics.notify(views.notify, 0, 1);
 
-            if (!await runPerWorkerTask(nestedUnsatisfied, readTaskMeta(views, nestedUnsatisfied))) return;
+            if (!(await runPerWorkerTask(nestedUnsatisfied, readTaskMeta(views, nestedUnsatisfied)))) return;
             continue;
           }
           Atomics.store(views.status, taskIdx, READY);
@@ -472,7 +512,7 @@ async function pullLoop() {
         Atomics.add(views.notify, 0, 1);
         Atomics.notify(views.notify, 0, 1);
 
-        if (!await runPerWorkerTask(unsatisfied, depMeta)) return;
+        if (!(await runPerWorkerTask(unsatisfied, depMeta))) return;
         continue;
       }
 
@@ -513,10 +553,10 @@ async function pullLoop() {
     // `expected` list (see registerBarrier in tbdocs.mjs), not this
     // ordering.
     parentPort.postMessage({
-      done:   taskIdx,
+      done: taskIdx,
       output: result,
       timing: { start: t0, end: t1 },
-      lane:   myLane,
+      lane: myLane,
     });
 
     const { readyCount, wakeMain } = onTaskDone(views, taskIdx, myLane);

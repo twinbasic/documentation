@@ -30,10 +30,7 @@ const HTML_ESCAPE = {
 
 // jekyll-seo-tag's HOMEPAGE_OR_ABOUT_REGEX expanded; toggles JSON-LD
 // @type between WebSite and WebPage.
-const HOMEPAGE_URLS = new Set([
-  "/", "/index.html", "/index.htm",
-  "/about/", "/about/index.html", "/about/index.htm",
-]);
+const HOMEPAGE_URLS = new Set(["/", "/index.html", "/index.htm", "/about/", "/about/index.html", "/about/index.htm"]);
 
 // Site-level SEO constants: seoSiteTitle (rendered config.title) and
 // seoLogoUrl (absolute, uri-escaped). Folded into markdownInit on main so
@@ -55,9 +52,7 @@ export function computeSiteSeo(config, markdown) {
   }
   const seoSiteTitle = renderTitle(config.title, markdown);
   const logo = config.logo;
-  const seoLogoUrl = logo != null
-    ? uriEscape(absoluteUrl(String(logo), config))
-    : null;
+  const seoLogoUrl = logo != null ? uriEscape(absoluteUrl(String(logo), config)) : null;
   return { seoSiteTitle, seoLogoUrl };
 }
 
@@ -69,9 +64,7 @@ export function computeChunkSeo(pages, seoSiteTitle, config, markdown) {
     const rawTitle = page.frontmatter.title;
     const seoTitle = isNonEmpty(rawTitle) ? renderTitle(rawTitle, markdown) : seoSiteTitle;
     page.seoTitle = seoTitle;
-    page.seoFullTitle = seoTitle === seoSiteTitle
-      ? seoTitle
-      : `${seoTitle} | ${seoSiteTitle}`;
+    page.seoFullTitle = seoTitle === seoSiteTitle ? seoTitle : `${seoTitle} | ${seoSiteTitle}`;
 
     const url = String(page.permalink);
     // Canonical = deployment URL of the content.  Strip both
@@ -80,9 +73,7 @@ export function computeChunkSeo(pages, seoSiteTitle, config, markdown) {
     // extensionless URL GitHub Pages serves -- the same form every
     // permalinked page uses, so links to the same content all
     // canonicalise consistently.
-    const canonicalInput = url
-      .replace(/\/index\.html$/, "/")
-      .replace(/\.html$/, "");
+    const canonicalInput = url.replace(/\/index\.html$/, "/").replace(/\.html$/, "");
     page.seoCanonical = absoluteUrl(canonicalInput, config);
     page.seoIsHome = HOMEPAGE_URLS.has(url);
   }
@@ -98,7 +89,7 @@ export function renderTitle(text, markdown) {
   const html = markdown.render(s);
   const stripped = stripHtml(html);
   const collapsed = stripped.replace(/\s+/g, " ").trim();
-  return collapsed.replace(HTML_ESCAPE_ONCE_REGEXP, m => HTML_ESCAPE[m]);
+  return collapsed.replace(HTML_ESCAPE_ONCE_REGEXP, (m) => HTML_ESCAPE[m]);
 }
 
 // Liquid's `strip_html` filter: drop <script>/<style> blocks and HTML

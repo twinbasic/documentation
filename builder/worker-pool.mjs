@@ -16,10 +16,10 @@ export class WorkerPool {
     this._buildCount = 0;
 
     // Callbacks wired by the caller after construction.
-    this.onWorkerDone      = null;      // ({ done, output, timing, lane }) => void
-    this.onWorkerError     = null;      // ({ taskFailed, message, stack }) => void
-    this.onPerWorkerTiming = null;      // ({ perWorkerTiming, taskIdx, timing, lane }) => void
-    this.onMainTaskReady   = null;      // () => void
+    this.onWorkerDone = null; // ({ done, output, timing, lane }) => void
+    this.onWorkerError = null; // ({ taskFailed, message, stack }) => void
+    this.onPerWorkerTiming = null; // ({ perWorkerTiming, taskIdx, timing, lane }) => void
+    this.onMainTaskReady = null; // () => void
 
     this._workers = Array.from({ length: size }, (_, i) => this._spawn(i));
   }
@@ -28,11 +28,26 @@ export class WorkerPool {
     const spawnTime = Date.now();
     const w = new Worker(this._workerUrl, { workerData: { lane, spawnTime } });
     w.on("message", (msg) => {
-      if (msg.coldBoot) { this.bootTimings.push({ lane, type: "cold", ...msg.coldBoot }); return; }
-      if (msg.perWorkerTiming) { this.onPerWorkerTiming?.(msg); return; }
-      if (msg.done != null)   { this.onWorkerDone?.(msg); return; }
-      if (msg.taskFailed != null) { this.onWorkerError?.(msg); return; }
-      if (msg.mainTaskReady || msg.triggerMainTask != null) { this.onMainTaskReady?.(); return; }
+      if (msg.coldBoot) {
+        this.bootTimings.push({ lane, type: "cold", ...msg.coldBoot });
+        return;
+      }
+      if (msg.perWorkerTiming) {
+        this.onPerWorkerTiming?.(msg);
+        return;
+      }
+      if (msg.done != null) {
+        this.onWorkerDone?.(msg);
+        return;
+      }
+      if (msg.taskFailed != null) {
+        this.onWorkerError?.(msg);
+        return;
+      }
+      if (msg.mainTaskReady || msg.triggerMainTask != null) {
+        this.onMainTaskReady?.();
+        return;
+      }
     });
     w.on("error", (err) => {
       this.onWorkerError?.({ taskFailed: -1, message: err.message, stack: err.stack });
@@ -54,6 +69,6 @@ export class WorkerPool {
   }
 
   destroy() {
-    return Promise.all(this._workers.map(w => w.terminate()));
+    return Promise.all(this._workers.map((w) => w.terminate()));
   }
 }

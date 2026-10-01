@@ -35,9 +35,11 @@ const HOST = path.join(HERE, "host");
 const PROBE = path.join(HERE, "probes", "reload");
 
 // The probe's lines since a mark, as "<build> loaded in <pid>" and "<build> key".
-const probeSince = async (c, mark) => (await linesSince(c, mark))
-  .map((l) => /^\[ReloadProbe\] build ([AB]) (loaded in \d+|key)$/.exec(l)).filter(Boolean)
-  .map(([, build, what]) => `${build} ${what}`);
+const probeSince = async (c, mark) =>
+  (await linesSince(c, mark))
+    .map((l) => /^\[ReloadProbe\] build ([AB]) (loaded in \d+|key)$/.exec(l))
+    .filter(Boolean)
+    .map(([, build, what]) => `${build} ${what}`);
 
 // What the add-ins have put in the page: toolbar buttons, shortcuts and tool
 // windows. A tool window has a body, where the add-in's elements go, and an
@@ -67,8 +69,8 @@ async function pressShiftF1(c) {
 scenario("P9: loading an add-in again without ending the IDE", (lane) => {
   let c, buildA, buildB, dest, openedIn, recordFile;
   // What the probe's Class_Terminate handlers wrote, a line each.
-  const recorded = () => (existsSync(recordFile) ? readFileSync(recordFile, "utf8") : "")
-    .split(/\r?\n/).filter(Boolean);
+  const recorded = () =>
+    (existsSync(recordFile) ? readFileSync(recordFile, "utf8") : "").split(/\r?\n/).filter(Boolean);
   before(async () => {
     recordFile = path.join(lane.work, "reload-record.txt");
     buildA = await lane.buildAddin(PROBE);
@@ -92,13 +94,19 @@ scenario("P9: loading an add-in again without ending the IDE", (lane) => {
     const state = await ideState(c);
     assert.deepEqual(state.buttons, [{ id: "addinButton-ReloadProbe", title: "Reload probe A" }]);
     assert.deepEqual(state.shortcuts, ["{shift}f1"]);
-    assert.deepEqual(state.windows.map((w) => [w.title, w.body, w.text, w.empty]), [
-      ["Reload probe A", "block", "build A", "none"],
-      ["Reload probe, no id, A", "block", "build A", "none"],
-    ]);
+    assert.deepEqual(
+      state.windows.map((w) => [w.title, w.body, w.text, w.empty]),
+      [
+        ["Reload probe A", "block", "build A", "none"],
+        ["Reload probe, no id, A", "block", "build A", "none"],
+      ],
+    );
     // A window given no id is filed under "", which every such window shares
     // (the last test of panes.test.mjs).
-    assert.deepEqual(state.windows.map((w) => w.id), ["ReloadProbeWindow", ""]);
+    assert.deepEqual(
+      state.windows.map((w) => w.id),
+      ["ReloadProbeWindow", ""],
+    );
     assert.deepEqual(await pressShiftF1(c), ["A key"]);
     // The object it dropped as it loaded shows that a Class_Terminate that
     // runs reaches the file.
@@ -122,10 +130,13 @@ scenario("P9: loading an add-in again without ending the IDE", (lane) => {
     assert.deepEqual(state.shortcuts, []);
     // Each window stays where it was, with build A's elements in its hidden
     // body and the page's own text in its place.
-    assert.deepEqual(state.windows.map((w) => [w.title, w.body, w.text, w.empty, w.emptyText]), [
-      ["Reload probe A", "none", "build A", "flex", "(currently unavailable)"],
-      ["Reload probe, no id, A", "none", "build A", "flex", "(currently unavailable)"],
-    ]);
+    assert.deepEqual(
+      state.windows.map((w) => [w.title, w.body, w.text, w.empty, w.emptyText]),
+      [
+        ["Reload probe A", "none", "build A", "flex", "(currently unavailable)"],
+        ["Reload probe, no id, A", "none", "build A", "flex", "(currently unavailable)"],
+      ],
+    );
     assert.deepEqual(await pressShiftF1(c), []);
     // The compiler that held the renamed file has ended, so it can go.
     removeTree(`${dest}.old`, { timeout: 2000 });
@@ -140,26 +151,36 @@ scenario("P9: loading an add-in again without ending the IDE", (lane) => {
     const mark = await consoleMark(c);
     const t0 = Date.now();
     const restart = lane.restartCompiler();
-    restart.catch(() => { /* awaited below; a failure then fails the test */ });
-    const loaded = await waitFor(c, async (c) => (await probeSince(c, mark)).length > 0,
-                                 { timeout: 60 * 1000, interval: 100 });
+    restart.catch(() => {
+      /* awaited below; a failure then fails the test */
+    });
+    const loaded = await waitFor(c, async (c) => (await probeSince(c, mark)).length > 0, {
+      timeout: 60 * 1000,
+      interval: 100,
+    });
     const ms = Date.now() - t0;
     await restart;
     t.diagnostic(`build B printed its first line ${ms} ms after the restart button was clicked`);
     assert.ok(loaded, "build B never loaded");
     assert.deepEqual(await probeSince(c, mark), [`B loaded in ${await compilerPid(c)}`]);
     assert.deepEqual(recorded(), ["build A control terminated", "build B control terminated"]);
-    assert.deepEqual((await loadedAddins(c)).map((a) => a.name), ["ReloadProbe AddIn"]);
+    assert.deepEqual(
+      (await loadedAddins(c)).map((a) => a.name),
+      ["ReloadProbe AddIn"],
+    );
     const state = await ideState(c);
     assert.deepEqual(state.buttons, [{ id: "addinButton-ReloadProbe", title: "Reload probe B" }]);
     assert.deepEqual(state.shortcuts, ["{shift}f1"]);
     // ToolWindows.Add of an id the page has already empties that window and
     // returns it, and shows it again, so build B has the two windows build A
     // had, not two more.
-    assert.deepEqual(state.windows.map((w) => [w.id, w.title, w.body, w.text, w.empty]), [
-      ["ReloadProbeWindow", "Reload probe B", "block", "build B", "none"],
-      ["", "Reload probe, no id, B", "block", "build B", "none"],
-    ]);
+    assert.deepEqual(
+      state.windows.map((w) => [w.id, w.title, w.body, w.text, w.empty]),
+      [
+        ["ReloadProbeWindow", "Reload probe B", "block", "build B", "none"],
+        ["", "Reload probe, no id, B", "block", "build B", "none"],
+      ],
+    );
     assert.deepEqual(await pressShiftF1(c), ["B key"]);
   });
 });

@@ -3,15 +3,14 @@
 // Scans sample pages using puppeteer + axe-core against WCAG 2.0, 2.1 and
 // 2.2 at Level A + AA, plus the heading-order best-practice rule.
 //
-// The sample is thirteen pages out of ~1,160, so which thirteen decides what
-// this script can possibly report.  They are no longer chosen by hand: the list in
+// The sample is a few pages out of the whole site, so which pages decides what
+// this script can possibly report.  They are not chosen by hand: the list in
 // lib/axe-scan.mjs is derived to cover every markup construct the site uses,
 // and `scripts/pick_a11y_sample.mjs --check` fails check.bat when the site
-// grows one the sample has no page for.  That guard exists because the previous
-// hand-picked six covered none of the site's tables, images, disclosure widgets
-// or video cards, and reported a clean pass while a full-site sweep found six
-// violation classes on 54 pages.  See sweep_a11y.mjs for the survey that
-// found them.
+// grows one the sample has no page for.  That guard exists because a
+// hand-picked sample can miss whole constructs (tables, images, disclosure
+// widgets, video cards) and report a clean pass while a full-site sweep finds
+// violations.  See sweep_a11y.mjs for the full-site survey.
 //
 // Three details matter for the results to mean anything:
 //
@@ -79,19 +78,18 @@ Exit codes:
   1  at least one page has a violation
   2  the scan could not run: a refused command line, or a crash`;
 
-const { values } = withUsageError(
-  () =>
-    parseCli(process.argv.slice(2), {
-      options: {
-        "root-dir": { type: "string", default: DEFAULT_ROOT_DIR },
-        theme: { type: "string", default: "both" },
-        viewport: { type: "string", default: "both" },
-        "stock-axe": { type: "boolean", default: false },
-        minified: { type: "boolean", default: false },
-        help: { type: "boolean", short: "h" },
-      },
-      stopAt: ["help"],
-    }),
+const { values } = withUsageError(() =>
+  parseCli(process.argv.slice(2), {
+    options: {
+      "root-dir": { type: "string", default: DEFAULT_ROOT_DIR },
+      theme: { type: "string", default: "both" },
+      viewport: { type: "string", default: "both" },
+      "stock-axe": { type: "boolean", default: false },
+      minified: { type: "boolean", default: false },
+      help: { type: "boolean", short: "h" },
+    },
+    stopAt: ["help"],
+  }),
 );
 if (values.help) printHelpAndExit(USAGE);
 let rootDir = values.rootDir;
@@ -150,18 +148,16 @@ const AXE_PATCHES = stockAxe ? [] : PRODUCTION.patches;
 // Minification is a SEPARATE axis from patching, and the two flags are kept
 // separate so each isolates one thing.
 //
-// --stock-axe used to switch the bundle to the minified build as well, so it
-// answered "the patch, or the minification?" -- which is not what a
-// first-response diagnostic is for. It now changes only the patch list; the
-// bundle stays unminified, exactly as the shipped scan runs it, and any
-// difference it shows is the patch.
+// --stock-axe changes only the patch list; the bundle stays unminified,
+// exactly as the production scan runs it, so any difference it shows is the
+// patch and not the minification.
 //
 // --minified asks the other question. Patches target the unminified source,
 // so it only makes sense alongside --stock-axe.
 if (minified && AXE_PATCHES.length) {
   console.error(
     "--minified needs --stock-axe: the source patches target the unminified " +
-    "bundle. Pass both to run stock minified axe."
+      "bundle. Pass both to run stock minified axe.",
   );
   process.exit(2);
 }
@@ -170,8 +166,8 @@ const AXE_MINIFIED = minified;
 async function main() {
   console.log(
     `axe-core ${axeVersion()} ` +
-    (AXE_PATCHES.length ? `+ ${AXE_PATCHES.join(", ")}` : "(stock)") +
-    (AXE_MINIFIED ? " [minified]" : " [unminified]")
+      (AXE_PATCHES.length ? `+ ${AXE_PATCHES.join(", ")}` : "(stock)") +
+      (AXE_MINIFIED ? " [minified]" : " [unminified]"),
   );
 
   let totalViolations = 0;
@@ -198,9 +194,7 @@ async function main() {
           console.log(`\n== ${label} ==`);
 
           for (const v of violations) {
-            console.log(
-              `  VIOLATION [${v.impact}] ${v.id}: ${v.help} (${v.helpUrl})`
-            );
+            console.log(`  VIOLATION [${v.impact}] ${v.id}: ${v.help} (${v.helpUrl})`);
             for (const node of v.nodes.slice(0, 3)) {
               console.log(`    ${node.html.slice(0, 120)}`);
             }
@@ -241,7 +235,7 @@ async function main() {
       `${viewports.length} viewport(s)` +
       (stateAudits ? ` + ${stateAudits} state audit(s)` : "") +
       ` checked: ` +
-      `${totalViolations} violation(s), ${totalIncomplete} incomplete check(s)`
+      `${totalViolations} violation(s), ${totalIncomplete} incomplete check(s)`,
   );
 
   if (totalViolations > 0) {

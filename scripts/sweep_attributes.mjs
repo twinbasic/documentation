@@ -16,8 +16,8 @@
 //     the compiler accepts it there.
 //   * gen_attribute_probes.mjs probes the targets the page CLAIMS. It cannot find
 //     a target the page does not name, so an entry that is too short stays too
-//     short. `[ComExport]` shipped documented as "constants in a Module" because
-//     the two targets tried were a Sub and a Const; an API `Declare` was never
+//     short. `[ComExport]` documented as "constants in a Module" would stay so
+//     if the targets tried were a Sub and a Const, with an API `Declare` never
 //     among them.
 //   * its EXPLORATORY list asks the questions a person thought of.
 //
@@ -68,18 +68,51 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { parseAttributes } from "./lib/attributes-doc.mjs";
-import { MAIN_TWIN, PROBE_FACTORY_TWIN, pad, settingsText, writeProbeResourcesSync } from "./lib/attribute-probe-kit.mjs";
 import {
-  CANARY_SPECS, CONTROL_NAME, EXPECTED_CANARIES, aggregate, argsOf, canaryOk, classify, compare, createRunner,
-  firm, formDependence, inconclusive, judgePreflight, makeBatches, parseTokenRun, recognised, sortRows, soft,
-  stage1Forms, stage2Forms, verifyMismatches,
+  MAIN_TWIN,
+  PROBE_FACTORY_TWIN,
+  pad,
+  settingsText,
+  writeProbeResourcesSync,
+} from "./lib/attribute-probe-kit.mjs";
+import {
+  CANARY_SPECS,
+  CONTROL_NAME,
+  EXPECTED_CANARIES,
+  aggregate,
+  argsOf,
+  canaryOk,
+  classify,
+  compare,
+  createRunner,
+  firm,
+  formDependence,
+  inconclusive,
+  judgePreflight,
+  makeBatches,
+  parseTokenRun,
+  recognised,
+  sortRows,
+  soft,
+  stage1Forms,
+  stage2Forms,
+  verifyMismatches,
 } from "./lib/attribute-sweep.mjs";
 import { SITE_LIST, renderSite } from "./lib/attribute-sites.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
 import { sleep, wantShow } from "./lib/tb-ide.mjs";
 import { compilerExe, buildNumber, findIde, runCompiler } from "./lib/tb-install.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
-import { CliError, choiceOption, exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
+import {
+  CliError,
+  choiceOption,
+  exitOnCrash,
+  numberOption,
+  parseCli,
+  printHelpAndExit,
+  refuseTogether,
+  withUsageError,
+} from "../lib/cli.mjs";
 import { DOCS_DIR } from "../lib/repo-paths.mjs";
 
 // What a crash has to be able to write: the run's build number and its verify
@@ -141,21 +174,35 @@ Exit codes:
      all the same), or a crash`;
 
 const usageError = { format: (err) => `${err.message}\n${USAGE}` };
-const { values } = withUsageError(() => parseCli(process.argv.slice(2), {
-  options: {
-    ide: { type: "string" }, names: { type: "string" }, sites: { type: "string" },
-    forms: { type: "string" }, "no-tokens": { type: "boolean", default: false },
-    jobs: { type: "string" }, port: { type: "string" }, "batch-size": { type: "string" },
-    verify: { type: "string" }, out: { type: "string" }, "dump-results": { type: "string" },
-    work: { type: "string" }, keep: { type: "boolean", default: false },
-    preflight: { type: "boolean", default: false }, "dry-run": { type: "boolean", default: false },
-    "list-sites": { type: "boolean", default: false },
-    show: { type: "boolean", default: false }, hide: { type: "boolean", default: false },
-    timeout: { type: "string" },
-    help: { type: "boolean", short: "h", default: false },
-  },
-  stopAt: ["help"],
-}), usageError);
+const { values } = withUsageError(
+  () =>
+    parseCli(process.argv.slice(2), {
+      options: {
+        ide: { type: "string" },
+        names: { type: "string" },
+        sites: { type: "string" },
+        forms: { type: "string" },
+        "no-tokens": { type: "boolean", default: false },
+        jobs: { type: "string" },
+        port: { type: "string" },
+        "batch-size": { type: "string" },
+        verify: { type: "string" },
+        out: { type: "string" },
+        "dump-results": { type: "string" },
+        work: { type: "string" },
+        keep: { type: "boolean", default: false },
+        preflight: { type: "boolean", default: false },
+        "dry-run": { type: "boolean", default: false },
+        "list-sites": { type: "boolean", default: false },
+        show: { type: "boolean", default: false },
+        hide: { type: "boolean", default: false },
+        timeout: { type: "string" },
+        help: { type: "boolean", short: "h", default: false },
+      },
+      stopAt: ["help"],
+    }),
+  usageError,
+);
 if (values.help) printHelpAndExit(USAGE);
 if (values.listSites) {
   for (const s of SITE_LIST) console.log(`${s.id.padEnd(22)} ${s.human}`);
@@ -165,7 +212,13 @@ if (values.listSites) {
 const opt = withUsageError(() => {
   refuseTogether(values, ["show", "hide"]);
   const forms = choiceOption(values.forms ?? "smart", { option: "--forms", choices: ["bare", "smart", "all"] });
-  const csv = (v) => (v === undefined ? null : v.split(",").map((s) => s.trim()).filter(Boolean));
+  const csv = (v) =>
+    v === undefined
+      ? null
+      : v
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
   const names = csv(values.names);
   const sites = csv(values.sites);
   for (const s of sites ?? []) {
@@ -184,29 +237,44 @@ const opt = withUsageError(() => {
   // the tidy would be lost for every build of the run.
   const workRoot = path.resolve(values.work ?? path.join(tmpdir(), "tbsweep", String(basePort)));
   const tmpRoot = path.resolve(tmpdir());
-  if (workRoot.toLowerCase() === tmpRoot.toLowerCase()
-    || !(workRoot.toLowerCase() + path.sep).startsWith(tmpRoot.toLowerCase() + path.sep)) {
-    throw new CliError("bad-value", `--work must be under ${tmpRoot}, not ${workRoot}`, { option: "--work", value: workRoot });
+  if (
+    workRoot.toLowerCase() === tmpRoot.toLowerCase() ||
+    !(workRoot.toLowerCase() + path.sep).startsWith(tmpRoot.toLowerCase() + path.sep)
+  ) {
+    throw new CliError("bad-value", `--work must be under ${tmpRoot}, not ${workRoot}`, {
+      option: "--work",
+      value: workRoot,
+    });
   }
   return {
-    forms, names, sites, basePort, workRoot,
+    forms,
+    names,
+    sites,
+    basePort,
+    workRoot,
     jobs,
     batchSize: numberOption(values.batchSize ?? "400", { option: "--batch-size", integer: true, min: 4 }),
     verify: numberOption(values.verify ?? "0", { option: "--verify", integer: true, min: 0 }),
-    timeout: values.timeout === undefined ? null
-      : numberOption(values.timeout, { option: "--timeout", above: 0 }),
+    timeout: values.timeout === undefined ? null : numberOption(values.timeout, { option: "--timeout", above: 0 }),
   };
 }, usageError);
 
 const say = (msg) => console.error(msg);
 let tidy = null;
-const die = (code, msg) => { console.error(msg); finishTidy(tidy); process.exit(code); };
+const die = (code, msg) => {
+  console.error(msg);
+  finishTidy(tidy);
+  process.exit(code);
+};
 
 // ------------------------------------------------------------- the install
 const IDE = findIde(values.ide);
 if (!values.dryRun && (!IDE || !existsSync(IDE))) {
-  die(EXIT_ERROR, (IDE ? `no twinBASIC IDE at ${IDE}: ` : "no twinBASIC IDE found: ") +
-    "pass --ide <twinBASIC.exe>, set TB_IDE, or unpack a twinBASIC_IDE_BETA_<n> folder on your Desktop");
+  die(
+    EXIT_ERROR,
+    (IDE ? `no twinBASIC IDE at ${IDE}: ` : "no twinBASIC IDE found: ") +
+      "pass --ide <twinBASIC.exe>, set TB_IDE, or unpack a twinBASIC_IDE_BETA_<n> folder on your Desktop",
+  );
 }
 const COMPILER = IDE ? compilerExe(IDE) : null;
 const SHOW = wantShow({ show: values.show, hide: values.hide });
@@ -234,7 +302,10 @@ if (!values.noTokens && IDE && existsSync(IDE)) {
   for (const t of tokens) {
     const known = byLower.get(t.toLowerCase());
     if (known) universe.get(known).token = true;
-    else { universe.set(t, { name: t, doc: null, token: true }); byLower.set(t.toLowerCase(), t); }
+    else {
+      universe.set(t, { name: t, doc: null, token: true });
+      byLower.set(t.toLowerCase(), t);
+    }
   }
 }
 if (opt.names) {
@@ -243,7 +314,10 @@ if (opt.names) {
   for (const n of opt.names) {
     const known = byLower.get(n.toLowerCase());
     if (known) wanted.add(known);
-    else { universe.set(n, { name: n, doc: null, token: false }); wanted.add(n); }
+    else {
+      universe.set(n, { name: n, doc: null, token: false });
+      wanted.add(n);
+    }
   }
   for (const n of [...universe.keys()]) if (!wanted.has(n)) universe.delete(n);
 }
@@ -288,18 +362,22 @@ function stageBatch(probes, lane) {
   const src = path.join(dir, "Sources");
   mkdirSync(src, { recursive: true });
   const name = `AttrSweep${index}`;
-  writeFileSync(path.join(dir, "Settings"), settingsText({
-    "project.name": name,
-    "project.appTitle": "Attribute sweep",
-    "project.description": "Generated by scripts/sweep_attributes.mjs. A diagnostic is an answer, not a defect.",
-    // Keyed per batch: two projects sharing an id confuse the IDE's recents list.
-    // Role digit 6 is this tool's, after tb-project's 0-2 and check_examples' 4-5.
-    "project.id": `{7B247600-0000-4000-9000-7B2476${index.toString(16).padStart(6, "0")}}`,
-    // An explicit file, never the ${SourcePath} template: that opens a native
-    // Save dialog on the build, invisible on the private desktop, and the build
-    // simply never happens while every health check says the IDE is fine.
-    "project.buildPath": path.join(dir, `${name}.exe`).split("/").join("\\"),
-  }), "utf8");
+  writeFileSync(
+    path.join(dir, "Settings"),
+    settingsText({
+      "project.name": name,
+      "project.appTitle": "Attribute sweep",
+      "project.description": "Generated by scripts/sweep_attributes.mjs. A diagnostic is an answer, not a defect.",
+      // Keyed per batch: two projects sharing an id confuse the IDE's recents list.
+      // Role digit 6 is this tool's, after tb-project's 0-2 and check_examples' 4-5.
+      "project.id": `{7B247600-0000-4000-9000-7B2476${index.toString(16).padStart(6, "0")}}`,
+      // An explicit file, never the ${SourcePath} template: that opens a native
+      // Save dialog on the build, invisible on the private desktop, and the build
+      // simply never happens while every health check says the IDE is fine.
+      "project.buildPath": path.join(dir, `${name}.exe`).split("/").join("\\"),
+    }),
+    "utf8",
+  );
   const crlf = (t) => t.replace(/\r\n?/g, "\n").replace(/\n/g, "\r\n");
   const put = (file, text) => writeFileSync(path.join(src, file), crlf(text), "utf8");
   put("_ProbeMain.twin", MAIN_TWIN);
@@ -320,7 +398,6 @@ function stageBatch(probes, lane) {
   return { proj, dir, files };
 }
 
-
 /**
  * One build of `probes` plus the canaries.
  *
@@ -336,7 +413,10 @@ async function buildOnce(probes, lane) {
     try {
       staged = stageBatch(all, lane);
       r = await compileProject({
-        project: staged.proj, ide: IDE, port: lane.port, show: SHOW,
+        project: staged.proj,
+        ide: IDE,
+        port: lane.port,
+        show: SHOW,
         ...(opt.timeout ? { timeout: opt.timeout * 1000 } : {}),
       });
     } catch (e) {
@@ -345,7 +425,8 @@ async function buildOnce(probes, lane) {
     if (staged && !values.keep) rmSync(staged.dir, { recursive: true, force: true });
     if (staged && !values.keep) rmSync(staged.proj, { force: true });
     if (r.code === 0 || r.code === 1 || r.code === 3 || r.code === 4) break;
-    if (attempt === 1 || !staged) return { kind: "harness", why: `tbbuild exited ${r.code}: ${r.message.split("\n")[0]}` };
+    if (attempt === 1 || !staged)
+      return { kind: "harness", why: `tbbuild exited ${r.code}: ${r.message.split("\n")[0]}` };
     await sleep(3000);
   }
   if (r.code === 4) {
@@ -359,11 +440,11 @@ async function buildOnce(probes, lane) {
   if (r.code === 3) return { kind: "hung" };
   const { byFile, strays } = sortRows(r.rows, staged.files, all);
   const canaries = {};
-  for (const p of all) if (p.kind.startsWith("canary:")) canaries[p.kind.slice(7)] = classify(p, byFile.get(p), controlSig).state;
+  for (const p of all)
+    if (p.kind.startsWith("canary:")) canaries[p.kind.slice(7)] = classify(p, byFile.get(p), controlSig).state;
   for (const p of all) if (p.kind.startsWith("canary:")) byFile.delete(p);
   return { kind: "ok", byFile, strays, canaries };
 }
-
 
 // The isolating runner is in lib/attribute-sweep.mjs, with the IDE behind `buildOnce`, so a fake can
 // be probed by scripts/check_attribute_sweep.mjs.
@@ -386,7 +467,8 @@ async function runAll(probes, label) {
         // One lane's failure does not take the others' work with it: the run
         // stops taking batches, the lanes settle, and what is known is reported.
         stats.cutShort ??= e.message;
-        for (const p of batch) if (!results.has(p.id)) results.set(p.id, { state: "HARNESS", codes: [], msgs: [e.message] });
+        for (const p of batch)
+          if (!results.has(p.id)) results.set(p.id, { state: "HARNESS", codes: [], msgs: [e.message] });
       }
       done += batch.length;
       say(`  ${label}: ${done}/${probes.length} probes (lane ${i})`);
@@ -398,11 +480,14 @@ async function runAll(probes, label) {
 
 // -------------------------------------------------------------- the sweep
 const outcomeOf = new Map(); // probe id -> outcome
-const probeOf = new Map();   // probe id -> probe
+const probeOf = new Map(); // probe id -> probe
 const voidSites = new Map(); // site id -> why
 const controlState = new Map(); // site id -> { state, codes }
 
-function register(probes) { for (const p of probes) probeOf.set(p.id, p); return probes; }
+function register(probes) {
+  for (const p of probes) probeOf.set(p.id, p);
+  return probes;
+}
 
 function planStage1() {
   const list = [];
@@ -446,13 +531,24 @@ async function preflight() {
   // compiler changed, or a support file is broken, and either needs a person.
   stats.builds++;
   const c = await buildOnce([], lane);
-  if (c.kind !== "ok") die(EXIT_ERROR, `the canary-only build ${c.kind === "harness" ? c.why : c.kind === "crash" ? "crashed the compiler" : "never settled"}`);
+  if (c.kind !== "ok")
+    die(
+      EXIT_ERROR,
+      `the canary-only build ${c.kind === "harness" ? c.why : c.kind === "crash" ? "crashed the compiler" : "never settled"}`,
+    );
   if (!canaryOk(c.canaries)) {
-    die(EXIT_ERROR, `the canaries draw ${JSON.stringify(c.canaries)} on their own, and this file records ${JSON.stringify(EXPECTED_CANARIES)}.\n` +
-      "If the compiler has changed, check by hand what `[Description]` on a Module, `[Hidden]` on an Interface line in a\n" +
-      "CoClass and an invented name each draw, then update EXPECTED_CANARIES; do not just copy what was drawn.");
+    die(
+      EXIT_ERROR,
+      `the canaries draw ${JSON.stringify(c.canaries)} on their own, and this file records ${JSON.stringify(EXPECTED_CANARIES)}.\n` +
+        "If the compiler has changed, check by hand what `[Description]` on a Module, `[Hidden]` on an Interface line in a\n" +
+        "CoClass and an invented name each draw, then update EXPECTED_CANARIES; do not just copy what was drawn.",
+    );
   }
-  if (c.strays.length) die(EXIT_ERROR, `the template project draws error rows of its own, so no batch can be attributed:\n${c.strays.join("\n")}`);
+  if (c.strays.length)
+    die(
+      EXIT_ERROR,
+      `the template project draws error rows of its own, so no batch can be attributed:\n${c.strays.join("\n")}`,
+    );
 
   const base = register(SITES.map((s) => makeProbe("baseline", s, null, "bare")));
   const ctrl = register(SITES.map((s) => makeProbe("control", s, CONTROL_NAME, "bare")));
@@ -473,31 +569,48 @@ function report(agg, dep, meta) {
   a(`# Attribute sweep -- BETA ${meta.build}`);
   a();
   if (meta.incomplete) {
-    a(`> **INCOMPLETE.** The run was cut short: ${meta.incomplete}. Probes not built are shown as HARNESS or absent, and nothing below is a complete answer.`);
+    a(
+      `> **INCOMPLETE.** The run was cut short: ${meta.incomplete}. Probes not built are shown as HARNESS or absent, and nothing below is a complete answer.`,
+    );
     a();
   }
-  a(`${meta.attrProbes} attribute probes over ${agg.size} names and ${SITES.length - voidSites.size} of ${SITES.length} sites ` +
-    `(${voidSites.size} voided), ${stats.builds} builds, ${stats.splits} splits. ` +
-    `Forms: \`${opt.forms}\`. Compared against \`Reference/Attributes.md\` (${docEntries.length} entries).`);
+  a(
+    `${meta.attrProbes} attribute probes over ${agg.size} names and ${SITES.length - voidSites.size} of ${SITES.length} sites ` +
+      `(${voidSites.size} voided), ${stats.builds} builds, ${stats.splits} splits. ` +
+      `Forms: \`${opt.forms}\`. Compared against \`Reference/Attributes.md\` (${docEntries.length} entries).`,
+  );
   a();
-  a("A clean build says the compiler ACCEPTS the attribute there. It does not say the attribute does anything, or that it survives a full build.");
+  a(
+    "A clean build says the compiler ACCEPTS the attribute there. It does not say the attribute does anything, or that it survives a full build.",
+  );
   a();
   a("## Self-checks");
   a();
-  a(`- The canaries drew \`${JSON.stringify(EXPECTED_CANARIES)}\` alone, as this tool records, and ` +
-    `${stats.canaryFails} batch(es) drew otherwise and were split.`);
+  a(
+    `- The canaries drew \`${JSON.stringify(EXPECTED_CANARIES)}\` alone, as this tool records, and ` +
+      `${stats.canaryFails} batch(es) drew otherwise and were split.`,
+  );
   if (meta.verify) {
-    a(`- \`--verify ${meta.verify.n}\`: ${meta.verify.bad.length} of ${meta.verify.n} probes answered differently on a rebuild` +
-      (meta.verify.unjudged ? `, and ${meta.verify.unjudged} could not be rebuilt to a conclusive answer, which says nothing either way.` : "."));
+    a(
+      `- \`--verify ${meta.verify.n}\`: ${meta.verify.bad.length} of ${meta.verify.n} probes answered differently on a rebuild` +
+        (meta.verify.unjudged
+          ? `, and ${meta.verify.unjudged} could not be rebuilt to a conclusive answer, which says nothing either way.`
+          : "."),
+    );
   }
-  a(`- ${dep.multi} (name, site) cells were tried with two or more argument shapes (not counting \`false\`); ` +
-    (dep.list.length
-      ? `**${dep.list.length} of them changed the placement answer** -- listed at the end, and a token-table name tried bare only is not safe from this.`
-      : "none changed the placement answer. That covers the names tried with several shapes; a token-table name no site recognised was tried bare only."));
-  if (stats.crashes.length) a(`- **${stats.crashes.length} probe(s) crash the compiler** -- see below; report them in BUGS-TO-REPORT.md.`);
+  a(
+    `- ${dep.multi} (name, site) cells were tried with two or more argument shapes (not counting \`false\`); ` +
+      (dep.list.length
+        ? `**${dep.list.length} of them changed the placement answer** -- listed at the end, and a token-table name tried bare only is not safe from this.`
+        : "none changed the placement answer. That covers the names tried with several shapes; a token-table name no site recognised was tried bare only."),
+  );
+  if (stats.crashes.length)
+    a(`- **${stats.crashes.length} probe(s) crash the compiler** -- see below; report them in BUGS-TO-REPORT.md.`);
   if (stats.hung.length) a(`- **${stats.hung.length} probe(s) never settled.**`);
-  if (stats.comboCrashes.length) a(`- **${stats.comboCrashes.length} crash(es) or hang(s) need several probes together** -- see below.`);
-  if (stats.interferes.length) a(`- **${stats.interferes.length} probe(s) each change what the canaries draw** -- shown as INTERFERES.`);
+  if (stats.comboCrashes.length)
+    a(`- **${stats.comboCrashes.length} crash(es) or hang(s) need several probes together** -- see below.`);
+  if (stats.interferes.length)
+    a(`- **${stats.interferes.length} probe(s) each change what the canaries draw** -- shown as INTERFERES.`);
   if (stats.harness.length) a(`- **${stats.harness.length} build(s) could not be run**; their probes are HARNESS.`);
   if (stats.strays.length) a(`- ${stats.strays.length} error row(s) belong to no probe's file -- see below.`);
   if (tokenNote) a(`- The token table was not read: ${tokenNote}.`);
@@ -509,7 +622,9 @@ function report(agg, dep, meta) {
   a("|---|---|---|---|");
   for (const s of SITES) {
     const c = controlState.get(s.id);
-    a(`| \`${s.id}\` | ${s.human} | ${c ? `${c.state} ${c.codes.join(",")}` : "--"} | ${voidSites.has(s.id) ? `**voided**: ${voidSites.get(s.id)}` : "ok"} |`);
+    a(
+      `| \`${s.id}\` | ${s.human} | ${c ? `${c.state} ${c.codes.join(",")}` : "--"} | ${voidSites.has(s.id) ? `**voided**: ${voidSites.get(s.id)}` : "ok"} |`,
+    );
   }
   a();
 
@@ -526,20 +641,30 @@ function report(agg, dep, meta) {
     const u = universe.get(name);
     const c = compare(u, agg.get(name));
     if (!c) continue;
-    if (c.unfaithful) { notFaithful.push([name, c.unfaithful]); continue; }
+    if (c.unfaithful) {
+      notFaithful.push([name, c.unfaithful]);
+      continue;
+    }
     const bits = [];
     if (!c.hasLine) bits.push("**no `Applicable to:` line**");
     for (const m of c.missing) {
-      bits.push(`documented target \`${m.target}\` is **refused** at ${m.sites.map((s) => `\`${s}\``).join(", ")}` +
-        (m.soft.length ? ` (recognised, but with an error, at ${m.soft.map((s) => `\`${s}\``).join(", ")})` : ""));
+      bits.push(
+        `documented target \`${m.target}\` is **refused** at ${m.sites.map((s) => `\`${s}\``).join(", ")}` +
+          (m.soft.length ? ` (recognised, but with an error, at ${m.soft.map((s) => `\`${s}\``).join(", ")})` : ""),
+      );
     }
     for (const p of c.partial) {
-      bits.push(`documented target \`${p.target}\` holds only partly: accepted at ${p.yes.map((s) => `\`${s}\``).join(", ")}; ` +
-        `**refused** at ${p.no.map((s) => `\`${s}\``).join(", ")}`);
+      bits.push(
+        `documented target \`${p.target}\` holds only partly: accepted at ${p.yes.map((s) => `\`${s}\``).join(", ")}; ` +
+          `**refused** at ${p.no.map((s) => `\`${s}\``).join(", ")}`,
+      );
     }
     if (c.extra.length) bits.push(`**accepted but not documented**: ${c.extra.map((s) => `\`${s}\``).join(", ")}`);
-    if (c.extraSoft.length) bits.push(`recognised, with an error, at sites not documented: ${c.extraSoft.map((s) => `\`${s}\``).join(", ")}`);
-    if (!bits.length) { (c.untestable.length ? agreeSome : agree).push(name); }
+    if (c.extraSoft.length)
+      bits.push(`recognised, with an error, at sites not documented: ${c.extraSoft.map((s) => `\`${s}\``).join(", ")}`);
+    if (!bits.length) {
+      (c.untestable.length ? agreeSome : agree).push(name);
+    }
     if (bits.length || c.untestable.length) {
       if (bits.length) disagreements++;
       a(`### \`[${name}]\` (Attributes.md:${u.doc.line})`);
@@ -551,12 +676,16 @@ function report(agg, dep, meta) {
       a();
     }
   }
-  a(`${disagreements} of ${docNames.length} documented attributes disagree. ` +
-    `${agree.length} agree on every target: ${agree.map((n) => `\`${n}\``).join(", ") || "none"}. ` +
-    `${agreeSome.length} agree on what could be tested but have a target that could not be: ${agreeSome.map((n) => `\`${n}\``).join(", ") || "none"}.`);
+  a(
+    `${disagreements} of ${docNames.length} documented attributes disagree. ` +
+      `${agree.length} agree on every target: ${agree.map((n) => `\`${n}\``).join(", ") || "none"}. ` +
+      `${agreeSome.length} agree on what could be tested but have a target that could not be: ${agreeSome.map((n) => `\`${n}\``).join(", ") || "none"}.`,
+  );
   a();
   if (notFaithful.length) {
-    a("Not compared, because a generic skeleton cannot probe them faithfully (the reason gen_attribute_probes.mjs records):");
+    a(
+      "Not compared, because a generic skeleton cannot probe them faithfully (the reason gen_attribute_probes.mjs records):",
+    );
     a();
     for (const [n, why] of notFaithful) a(`- \`[${n}]\` -- ${why}`);
     a();
@@ -571,34 +700,54 @@ function report(agg, dep, meta) {
     a();
     for (const n of placed) {
       const cells = [...agg.get(n)].filter(([, c]) => recognised(c.state));
-      a(`- \`[${n}]\`: ` + cells.map(([s, c]) => `\`${s}\` ${c.state}${soft(c.state) ? ` (${[...c.msgs].slice(0, 1).join("")})` : ""}` +
-        ` via ${Object.entries(c.forms).filter(([, st]) => recognised(st)).map(([k]) => k).join("/")}`).join("; "));
+      a(
+        `- \`[${n}]\`: ` +
+          cells
+            .map(
+              ([s, c]) =>
+                `\`${s}\` ${c.state}${soft(c.state) ? ` (${[...c.msgs].slice(0, 1).join("")})` : ""}` +
+                ` via ${Object.entries(c.forms)
+                  .filter(([, st]) => recognised(st))
+                  .map(([k]) => k)
+                  .join("/")}`,
+            )
+            .join("; "),
+      );
     }
   } else a("None was recognised at any site.");
   a();
-  a(`${unplaced.length} further name(s) were refused at every site, in every form tried. They are keywords, object members, ` +
-    "or attributes for a site this matrix lacks: " + (unplaced.map((n) => `\`${n}\``).join(" ") || "none") + ".");
+  a(
+    `${unplaced.length} further name(s) were refused at every site, in every form tried. They are keywords, object members, ` +
+      "or attributes for a site this matrix lacks: " +
+      (unplaced.map((n) => `\`${n}\``).join(" ") || "none") +
+      ".",
+  );
   a();
 
   // A name taken almost everywhere is more likely a name the parser skips than
   // an attribute that applies to everything.
-  const suspect = [...agg].filter(([, m]) => {
-    const probed = [...m.values()].filter((c) => !inconclusive(c.state));
-    const yes = probed.filter((c) => firm(c.state)).length;
-    return probed.length >= 15 && yes / probed.length >= 0.6;
-  }).map(([n, m]) => `\`${n}\` (${[...m.values()].filter((c) => firm(c.state)).length} of ${m.size})`);
+  const suspect = [...agg]
+    .filter(([, m]) => {
+      const probed = [...m.values()].filter((c) => !inconclusive(c.state));
+      const yes = probed.filter((c) => firm(c.state)).length;
+      return probed.length >= 15 && yes / probed.length >= 0.6;
+    })
+    .map(([n, m]) => `\`${n}\` (${[...m.values()].filter((c) => firm(c.state)).length} of ${m.size})`);
   if (suspect.length) {
     a("## Accepted at most sites");
     a();
-    a("Accepted at 60% or more of the sites tried. Either the attribute applies nearly everywhere, or the parser skips what it does not know here; " +
-      `read the control column above before believing it: ${suspect.join(", ")}.`);
+    a(
+      "Accepted at 60% or more of the sites tried. Either the attribute applies nearly everywhere, or the parser skips what it does not know here; " +
+        `read the control column above before believing it: ${suspect.join(", ")}.`,
+    );
     a();
   }
 
   if (dep.list.length) {
     a("## Argument shape changed the placement answer");
     a();
-    for (const d of dep.list) a(`- \`[${d.name}]\` at \`${d.site}\`: taken with ${d.takes.join(", ")}; refused with ${d.refuses.join(", ")}`);
+    for (const d of dep.list)
+      a(`- \`[${d.name}]\` at \`${d.site}\`: taken with ${d.takes.join(", ")}; refused with ${d.refuses.join(", ")}`);
     a();
   }
   if (stats.crashes.length || stats.hung.length || stats.comboCrashes.length) {
@@ -627,18 +776,31 @@ function report(agg, dep, meta) {
 
   a("## Full matrix, documented attributes");
   a();
-  a("`A` accepted, `a` accepted after a later error, `e` recognised, the declaration then erred, `R` recognised with an error on the attribute, `.` refused, `!` crash, hang or harness failure, `-` voided.");
+  a(
+    "`A` accepted, `a` accepted after a later error, `e` recognised, the declaration then erred, `R` recognised with an error on the attribute, `.` refused, `!` crash, hang or harness failure, `-` voided.",
+  );
   a();
   const ids = SITES.map((s) => s.id);
   a(`| attribute | ${ids.join(" | ")} |`);
   a(`|---|${ids.map(() => "---").join("|")}|`);
   const glyph = {
-    ACCEPT: "A", ACCEPT_LATER: "a", ACCEPT_ERR: "e", RECOGNISED: "R", REJECT_CONTEXT: ".", REJECT_SYNTAX: ".",
-    CRASH: "!", HUNG: "!", HARNESS: "!", INTERFERES: "!", VOID: "-",
+    ACCEPT: "A",
+    ACCEPT_LATER: "a",
+    ACCEPT_ERR: "e",
+    RECOGNISED: "R",
+    REJECT_CONTEXT: ".",
+    REJECT_SYNTAX: ".",
+    CRASH: "!",
+    HUNG: "!",
+    HARNESS: "!",
+    INTERFERES: "!",
+    VOID: "-",
   };
   for (const name of docNames) {
     const bySite = agg.get(name);
-    a(`| \`${name}\` | ${ids.map((s) => (voidSites.has(s) ? "-" : glyph[bySite.get(s)?.state ?? "VOID"])).join(" | ")} |`);
+    a(
+      `| \`${name}\` | ${ids.map((s) => (voidSites.has(s) ? "-" : glyph[bySite.get(s)?.state ?? "VOID"])).join(" | ")} |`,
+    );
   }
   a();
   return L.join("\n") + "\n";
@@ -656,35 +818,69 @@ function emit(build, verify, incomplete) {
   const dep = formDependence(agg);
   const attrProbes = [...probeOf.values()].filter((p) => p.kind === "attr").length;
   const text = report(agg, dep, { build, attrProbes, verify, incomplete });
-  if (values.out) writeFileSync(values.out, text, "utf8"); else process.stdout.write(text);
+  if (values.out) writeFileSync(values.out, text, "utf8");
+  else process.stdout.write(text);
   if (values.dumpResults) {
-    writeFileSync(values.dumpResults, JSON.stringify({
-      build, forms: opt.forms, incomplete: incomplete ?? null, canaries: EXPECTED_CANARIES,
-      voidSites: Object.fromEntries(voidSites),
-      controls: Object.fromEntries([...controlState].map(([k, v]) => [k, { state: v.state, codes: v.codes, msgs: v.msgs }])),
-      results: Object.fromEntries([...agg].map(([n, m]) => [n, Object.fromEntries([...m].map(([s, c]) => [s, {
-        state: c.state, forms: c.forms, codes: [...c.codes], msgs: [...c.msgs],
-      }]))])),
-      crashes: stats.crashes.map((p) => ({ attr: p.attr, site: p.site.id })),
-      hung: stats.hung.map((p) => ({ attr: p.attr, site: p.site.id })),
-      interferes: stats.interferes.map((p) => ({ attr: p.attr, site: p.site.id })),
-      comboCrashes: stats.comboCrashes, strays: stats.strays, harness: stats.harness,
-      formDependence: dep.list, verify,
-    }, null, 2), "utf8");
+    writeFileSync(
+      values.dumpResults,
+      JSON.stringify(
+        {
+          build,
+          forms: opt.forms,
+          incomplete: incomplete ?? null,
+          canaries: EXPECTED_CANARIES,
+          voidSites: Object.fromEntries(voidSites),
+          controls: Object.fromEntries(
+            [...controlState].map(([k, v]) => [k, { state: v.state, codes: v.codes, msgs: v.msgs }]),
+          ),
+          results: Object.fromEntries(
+            [...agg].map(([n, m]) => [
+              n,
+              Object.fromEntries(
+                [...m].map(([s, c]) => [
+                  s,
+                  {
+                    state: c.state,
+                    forms: c.forms,
+                    codes: [...c.codes],
+                    msgs: [...c.msgs],
+                  },
+                ]),
+              ),
+            ]),
+          ),
+          crashes: stats.crashes.map((p) => ({ attr: p.attr, site: p.site.id })),
+          hung: stats.hung.map((p) => ({ attr: p.attr, site: p.site.id })),
+          interferes: stats.interferes.map((p) => ({ attr: p.attr, site: p.site.id })),
+          comboCrashes: stats.comboCrashes,
+          strays: stats.strays,
+          harness: stats.harness,
+          formDependence: dep.list,
+          verify,
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
   }
 }
 
 // -------------------------------------------------------------------- main
 async function main() {
-  const build = IDE ? buildNumber(IDE) ?? "?" : "?";
+  const build = IDE ? (buildNumber(IDE) ?? "?") : "?";
   run.build = build;
-  say(`sweep: ${universe.size} names (${[...universe.values()].filter((u) => u.doc).length} documented), ` +
-    `${SITES.length} sites, BETA ${build}`);
+  say(
+    `sweep: ${universe.size} names (${[...universe.values()].filter((u) => u.doc).length} documented), ` +
+      `${SITES.length} sites, BETA ${build}`,
+  );
   if (values.dryRun) {
     let n = 0;
     for (const u of universe.values()) n += stage1Forms(u, opt.forms).length * SITES.length;
-    console.log(`stage 1: ${n} probes in ${Math.ceil(n / opt.batchSize)} or more batches of ${opt.batchSize}, ` +
-      `${opt.jobs} lane(s); the canaries ride in every batch, and stage 2 adds more for token-table names some site recognises`);
+    console.log(
+      `stage 1: ${n} probes in ${Math.ceil(n / opt.batchSize)} or more batches of ${opt.batchSize}, ` +
+        `${opt.jobs} lane(s); the canaries ride in every batch, and stage 2 adds more for token-table names some site recognises`,
+    );
     return 0;
   }
   const started = Date.now();
@@ -695,7 +891,9 @@ async function main() {
     await preflight();
     if (values.preflight) {
       for (const [id, why] of voidSites) console.log(`voided ${id}: ${why}`);
-      console.log(`canaries: ${JSON.stringify(EXPECTED_CANARIES)}; ${SITES.length - voidSites.size} of ${SITES.length} sites usable`);
+      console.log(
+        `canaries: ${JSON.stringify(EXPECTED_CANARIES)}; ${SITES.length - voidSites.size} of ${SITES.length} sites usable`,
+      );
       finishTidy(tidy);
       return 0;
     }
@@ -711,8 +909,9 @@ async function main() {
     }
 
     if (opt.verify && !stats.cutShort) {
-      const pool = [...probeOf.values()].filter((p) => p.kind === "attr" && outcomeOf.get(p.id)
-        && !inconclusive(outcomeOf.get(p.id).state));
+      const pool = [...probeOf.values()].filter(
+        (p) => p.kind === "attr" && outcomeOf.get(p.id) && !inconclusive(outcomeOf.get(p.id).state),
+      );
       const pick = [];
       while (pick.length < Math.min(opt.verify, pool.length)) {
         pick.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
@@ -737,7 +936,11 @@ async function main() {
     // Whatever was learned is still worth having: a cut-short run says so at the
     // top of the report rather than leaving nothing.
     console.error(e.stack ?? e.message);
-    try { if (outcomeOf.size) emit(build, verify, e.message); } catch (e2) { console.error(`the report could not be written: ${e2.message}`); }
+    try {
+      if (outcomeOf.size) emit(build, verify, e.message);
+    } catch (e2) {
+      console.error(`the report could not be written: ${e2.message}`);
+    }
     finishTidy(tidy);
     return EXIT_ERROR;
   }

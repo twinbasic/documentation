@@ -9,7 +9,7 @@ permalink: /Documentation/Development/Fixes/PDFLib
 # pdf-lib Patches
 {: .no_toc }
 
-The files under `book/lib/fast-*.mjs` and `book/lib/parallel-deflate.mjs` are side-effecting ES modules that patch pdf-lib's live exports. All are imported at the top of `render-book.mjs` before any pdf-lib operation runs; they are mutually compatible and idempotent (each guards its installation with a flag on the patched prototype or module). Together they reduce the process phase --- parsing Chromium's raw PDF output, adding bookmarks and metadata, and serialising the result --- from ~40 seconds to ~1.6 seconds on a 1,651-page book.
+The files under `book/lib/fast-*.mjs` are side-effecting ES modules that patch pdf-lib's live exports; `book/lib/parallel-deflate.mjs` patches nothing and exports `parallelSave`, which `render-book.mjs` calls in place of `pdfDoc.save`. All are imported at the top of `render-book.mjs` before any pdf-lib operation runs. The patches are mutually compatible and idempotent: each `fast-*` module guards its installation with a flag on the patched prototype, class or module. Together they reduce the process phase --- parsing Chromium's raw PDF output, adding bookmarks and metadata, and serialising the result --- from ~40 seconds to ~1.6 seconds on a 1,651-page book.
 
 A patch that reaches a pdf-lib class or module by its CommonJS path under `pdf-lib/cjs/`, rather than through the `pdf-lib` package's index, imports it from `book/lib/pdf-lib-internals.mjs`, which requires each one in a single place. `pdf-lib` itself resolves to `pdf-lib/cjs/index.js`, so each is the instance the library uses.
 

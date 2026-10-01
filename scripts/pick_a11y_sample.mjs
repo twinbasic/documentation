@@ -44,9 +44,7 @@
 
 import { readFileSync, existsSync } from "node:fs";
 import { resolve, join, relative, sep } from "node:path";
-import {
-  DEFAULT_ROOT_DIR, REPO_ROOT, SAMPLE_PAGES, discoverPages, median, pad, splitStubs,
-} from "./lib/axe-scan.mjs";
+import { DEFAULT_ROOT_DIR, REPO_ROOT, SAMPLE_PAGES, discoverPages, median, pad, splitStubs } from "./lib/axe-scan.mjs";
 import { exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
 
 // A crash exits 2, where 1 is a coverage gap.
@@ -71,6 +69,7 @@ exitOnCrash();
 // runs.  AXE_RUN_OPTIONS selects by WCAG tag and enables exactly one
 // best-practice rule (heading-order), so naming a best-practice-only rule here
 // tells a maintainer to feed a rule that is switched off.
+// biome-ignore format: a table, one entry per line
 const FAMILIES = {
   img: { re: /<img[\s>]/g, min: 1, why: "image-alt" },
   table: { re: /<table[\s>]/g, min: 1, why: "th-has-data-cells, td-headers-attr" },
@@ -125,31 +124,30 @@ const ANCHORS = {
 // CLI
 // ---------------------------------------------------------------------------
 
-const cli = withUsageError(
-  () =>
-    parseCli(process.argv.slice(2), {
-      options: {
-        check: { type: "boolean" },
-        propose: { type: "boolean" },
-        census: { type: "boolean" },
-        fresh: { type: "boolean", default: false },
-        "root-dir": { type: "string", default: DEFAULT_ROOT_DIR },
-        sweep: { type: "string", default: join(REPO_ROOT, "perf/results/a11y-sweep.jsonl") },
-        budget: { type: "string" },
-        help: { type: "boolean", short: "h" },
-      },
-      stopAt: ["help"],
-    }),
+const cli = withUsageError(() =>
+  parseCli(process.argv.slice(2), {
+    options: {
+      check: { type: "boolean" },
+      propose: { type: "boolean" },
+      census: { type: "boolean" },
+      fresh: { type: "boolean", default: false },
+      "root-dir": { type: "string", default: DEFAULT_ROOT_DIR },
+      sweep: { type: "string", default: join(REPO_ROOT, "perf/results/a11y-sweep.jsonl") },
+      budget: { type: "string" },
+      help: { type: "boolean", short: "h" },
+    },
+    stopAt: ["help"],
+  }),
 );
 if (cli.stopped === "help") {
   printHelpAndExit(
-    "usage: node scripts/pick_a11y_sample.mjs [--check|--propose|--census] [--fresh]\n"
-      + "                                        [--root-dir DIR] [--sweep FILE] [--budget MS] [-h, --help]\n\n"
-      + "Exit codes:\n"
-      + "  0  the mode ran; with --check, every construct family in use is covered\n"
-      + "  1  with --check, a construct family has no sample page, or a SAMPLE_PAGES entry\n"
-      + "     is not in the built tree\n"
-      + "  2  a refused command line, no built tree (run build.bat first), or a crash",
+    "usage: node scripts/pick_a11y_sample.mjs [--check|--propose|--census] [--fresh]\n" +
+      "                                        [--root-dir DIR] [--sweep FILE] [--budget MS] [-h, --help]\n\n" +
+      "Exit codes:\n" +
+      "  0  the mode ran; with --check, every construct family in use is covered\n" +
+      "  1  with --check, a construct family has no sample page, or a SAMPLE_PAGES entry\n" +
+      "     is not in the built tree\n" +
+      "  2  a refused command line, no built tree (run build.bat first), or a crash",
   );
 }
 const budget = withUsageError(() => {
@@ -231,9 +229,7 @@ if (measured.size) {
   }
 }
 const costOf = (p) =>
-  measured.has(p.filePath)
-    ? median(measured.get(p.filePath))
-    : refMs * Math.pow(p.tags / refTags, EXPONENT);
+  measured.has(p.filePath) ? median(measured.get(p.filePath)) : refMs * Math.pow(p.tags / refTags, EXPONENT);
 
 const costSource = measured.size
   ? `measured (${measured.size} pages from ${relative(REPO_ROOT, sweepPath).split(sep).join("/")})`
@@ -247,12 +243,20 @@ if (mode === "census") {
   console.log(`construct census over ${content.length} content pages (+${stubs.length} redirect stubs)`);
   console.log(`cost: ${costSource}`);
   console.log("");
-  console.log("  family".padEnd(18) + pad("min", 5) + pad("floor", 7) + pad("pages", 7) + pad("max", 6) + "  heaviest page");
+  console.log(
+    "  family".padEnd(18) + pad("min", 5) + pad("floor", 7) + pad("pages", 7) + pad("max", 6) + "  heaviest page",
+  );
   for (const name of Object.keys(FAMILIES)) {
     const hits = content.filter((p) => covers(p, name)).sort((a, b) => b.own[name] - a.own[name]);
     console.log(
-      "  " + name.padEnd(16) + pad(FAMILIES[name].min, 5) + pad(floor[name], 7) +
-      pad(hits.length, 7) + pad(hits[0]?.own[name] ?? 0, 6) + "  " + (hits[0]?.filePath ?? "-- none --")
+      "  " +
+        name.padEnd(16) +
+        pad(FAMILIES[name].min, 5) +
+        pad(floor[name], 7) +
+        pad(hits.length, 7) +
+        pad(hits[0]?.own[name] ?? 0, 6) +
+        "  " +
+        (hits[0]?.filePath ?? "-- none --"),
     );
   }
   if (absent.length) {
@@ -264,9 +268,7 @@ if (mode === "census") {
 
 if (mode === "check") {
   const sample = content.filter((p) => SAMPLE_PAGES.includes(p.filePath));
-  const missingPages = SAMPLE_PAGES.filter(
-    (f) => !pages.some((p) => p.filePath === f)
-  );
+  const missingPages = SAMPLE_PAGES.filter((f) => !pages.some((p) => p.filePath === f));
 
   const gaps = present.filter((name) => !sample.some((p) => covers(p, name)));
 
@@ -284,7 +286,9 @@ if (mode === "check") {
     for (const name of gaps) {
       const best = content.filter((p) => covers(p, name)).sort((a, b) => costOf(a) - costOf(b));
       console.log(`  ${name.padEnd(16)} ${FAMILIES[name].why}`);
-      console.log(`  ${"".padEnd(16)} cheapest page that covers it: ${best[0].filePath} (${costOf(best[0]).toFixed(0)}ms)`);
+      console.log(
+        `  ${"".padEnd(16)} cheapest page that covers it: ${best[0].filePath} (${costOf(best[0]).toFixed(0)}ms)`,
+      );
     }
     console.log("");
     console.log("Run --propose for a set that covers everything, or widen FAMILIES if a");
@@ -350,10 +354,14 @@ console.log(`cost: ${costSource}`);
 console.log("");
 console.log("  page".padEnd(52) + pad("tags", 7) + pad("ms", 8) + "  why");
 for (const c of chosen) {
-  console.log("  " + c.page.filePath.padEnd(50) + pad(c.page.tags, 7) + pad(costOf(c.page).toFixed(0), 8) + "  " + c.reason);
+  console.log(
+    "  " + c.page.filePath.padEnd(50) + pad(c.page.tags, 7) + pad(costOf(c.page).toFixed(0), 8) + "  " + c.reason,
+  );
 }
 console.log("");
-console.log(`  one audit each: ${(totalMs / 1000).toFixed(1)}s; x2 themes x2 viewports: ${((totalMs * 4) / 1000).toFixed(1)}s of audit`);
+console.log(
+  `  one audit each: ${(totalMs / 1000).toFixed(1)}s; x2 themes x2 viewports: ${((totalMs * 4) / 1000).toFixed(1)}s of audit`,
+);
 if (uncovered.size) console.log(`  STILL UNCOVERED: ${[...uncovered].join(", ")}`);
 console.log("");
 console.log("export const SAMPLE_PAGES = [");

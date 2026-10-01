@@ -50,7 +50,7 @@ export const SOURCE_EXTENSIONS = new Set([
   ".js",
   ".png",
   ".svg",
-  ".txt",     // the three font licences under assets/fonts/
+  ".txt", // the three font licences under assets/fonts/
   ".woff2",
 ]);
 
@@ -59,17 +59,12 @@ export const SOURCE_EXTENSIONS = new Set([
 // SOURCE_EXTENSIONS on purpose -- folding them in would bless a stray
 // `docs/secrets.json`, and `.json` is one of the extensions most worth
 // refusing at source.
-export const BUILD_EXTENSIONS = new Set([
-  ".json",
-  ".xml",
-]);
+export const BUILD_EXTENSIONS = new Set([".json", ".xml"]);
 
 // Files that legitimately have no extension. CNAME is GitHub Pages'
 // custom-domain marker and has to sit at the site root under that exact
 // name.
-export const EXTENSIONLESS_FILENAMES = new Set([
-  "CNAME",
-]);
+export const EXTENSIONLESS_FILENAMES = new Set(["CNAME"]);
 
 // ── Policy ──────────────────────────────────────────────────────────
 
@@ -112,8 +107,10 @@ function refuse(rel, extensions, declared) {
     // parse fault. What is left is parseFrontmatter finding no frontmatter
     // block at all -- either there is none, or the file's first line is
     // something other than `---`.
-    return "markdown with no frontmatter block -- it would be served as " +
-           "raw markdown (the opening `---` must be the first line)";
+    return (
+      "markdown with no frontmatter block -- it would be served as " +
+      "raw markdown (the opening `---` must be the first line)"
+    );
   }
   return `${ext} is not a publishable type`;
 }
@@ -161,9 +158,9 @@ export function unpublishableTreePaths(rels, policy) {
 // failure. It goes last, and says what it costs.
 export function formatPublishRefusal(findings, { surface, label }) {
   const one = findings.length === 1;
-  const lines = findings.map(f => f.from
-    ? `  ${f.rel}\n      from ${f.from}\n      ${f.why}`
-    : `  ${f.rel}\n      ${f.why}`);
+  const lines = findings.map((f) =>
+    f.from ? `  ${f.rel}\n      from ${f.from}\n      ${f.why}` : `  ${f.rel}\n      ${f.why}`,
+  );
   return (
     `${findings.length} file${one ? "" : "s"} would be published from ` +
     `${label} but ${one ? "is" : "are"} not a publishable ` +
@@ -185,4 +182,6 @@ export function formatPublishRefusal(findings, { surface, label }) {
   );
 }
 
-function byRel(a, b) { return a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0; }
+function byRel(a, b) {
+  return a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0;
+}

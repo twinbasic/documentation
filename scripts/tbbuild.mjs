@@ -55,7 +55,15 @@
 // front of you".
 import { existsSync, statSync } from "node:fs";
 import path from "node:path";
-import { choiceOption, exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, withUsageError } from "../lib/cli.mjs";
+import {
+  choiceOption,
+  exitOnCrash,
+  numberOption,
+  parseCli,
+  printHelpAndExit,
+  refuseTogether,
+  withUsageError,
+} from "../lib/cli.mjs";
 import { findIde } from "./lib/tb-install.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
 import { COMPILE_TIMEOUT, TARGETS, summaryLine, wantShow } from "./lib/tb-ide.mjs";
@@ -95,21 +103,22 @@ function usage() {
 const usageError = { format: (err) => `${err.message}\n${USAGE}` };
 
 const { values, positionals } = withUsageError(
-  () => parseCli(process.argv.slice(2), {
-    options: {
-      ide: { type: "string" },
-      port: { type: "string" },
-      arch: { type: "string" },
-      timeout: { type: "string" },
-      json: { type: "boolean", default: false },
-      keep: { type: "boolean", default: false },
-      show: { type: "boolean", default: false },
-      hide: { type: "boolean", default: false },
-      help: { type: "boolean", short: "h", default: false },
-    },
-    positionals: { min: 0, max: 1 },
-    stopAt: ["help"],
-  }),
+  () =>
+    parseCli(process.argv.slice(2), {
+      options: {
+        ide: { type: "string" },
+        port: { type: "string" },
+        arch: { type: "string" },
+        timeout: { type: "string" },
+        json: { type: "boolean", default: false },
+        keep: { type: "boolean", default: false },
+        show: { type: "boolean", default: false },
+        hide: { type: "boolean", default: false },
+        help: { type: "boolean", short: "h", default: false },
+      },
+      positionals: { min: 0, max: 1 },
+      stopAt: ["help"],
+    }),
   usageError,
 );
 if (values.help) printHelpAndExit(USAGE);
@@ -144,11 +153,13 @@ if (!proj) usage();
 // and reads like a wedged IDE. Pack the tree first, or use tbrun, which packs
 // it for you.
 if (proj && !/\.twinproj$/i.test(proj)) {
-  console.error(`not a .twinproj: ${proj}\n` +
-    (existsSync(proj) && statSync(proj).isDirectory()
-      ? "  That is a source tree. tbbuild takes a packed project; scripts/tbrun.mjs\n" +
-        "  takes a source tree, and packs it for you."
-      : "  tbbuild takes a packed project file."));
+  console.error(
+    `not a .twinproj: ${proj}\n` +
+      (existsSync(proj) && statSync(proj).isDirectory()
+        ? "  That is a source tree. tbbuild takes a packed project; scripts/tbrun.mjs\n" +
+          "  takes a source tree, and packs it for you."
+        : "  tbbuild takes a packed project file."),
+  );
   process.exit(2);
 }
 // A path that merely ENDS in .twinproj gets the same treatment, because the
@@ -162,8 +173,10 @@ if (proj && !existsSync(proj)) {
 // A named IDE that is not there is refused here, naming the path, as tbrun and
 // addin_test refuse it, rather than left for the launch to fail on.
 if (!IDE || !existsSync(IDE)) {
-  console.error((IDE ? `no twinBASIC IDE at ${IDE}: ` : "no twinBASIC IDE found: ") +
-    "pass --ide <twinBASIC.exe>, set TB_IDE, or unpack a twinBASIC_IDE_BETA_<n> folder on your Desktop");
+  console.error(
+    (IDE ? `no twinBASIC IDE at ${IDE}: ` : "no twinBASIC IDE found: ") +
+      "pass --ide <twinBASIC.exe>, set TB_IDE, or unpack a twinBASIC_IDE_BETA_<n> folder on your Desktop",
+  );
   process.exit(2);
 }
 
@@ -201,19 +214,33 @@ const { rows, counts, dialogs, openedIn } = r;
 // to end it: killing by image name instead takes out every concurrent run's IDE,
 // and the user's own open IDE with it.
 if (asJson) {
-  console.log(JSON.stringify({
-    project: proj, arch, openedIn,
-    errors: counts[0], warnings: counts[1], hints: counts[2], infos: counts[3],
-    idePid: r.idePid, kept: keep,
-    diagnostics: rows, dialogs,
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        project: proj,
+        arch,
+        openedIn,
+        errors: counts[0],
+        warnings: counts[1],
+        hints: counts[2],
+        infos: counts[3],
+        idePid: r.idePid,
+        kept: keep,
+        diagnostics: rows,
+        dialogs,
+      },
+      null,
+      2,
+    ),
+  );
 } else {
   // Said only when either target is not the default, so the usual report is
   // unchanged, and the summary stays the last line. A project opens in win32
   // unless the IDE remembered another target for its path.
   if (arch !== TARGETS[0] || openedIn !== TARGETS[0]) {
-    console.log(`target: ${arch}` +
-      (openedIn !== TARGETS[0] ? ` (the IDE remembered ${openedIn} for this project)` : ""));
+    console.log(
+      `target: ${arch}` + (openedIn !== TARGETS[0] ? ` (the IDE remembered ${openedIn} for this project)` : ""),
+    );
   }
   for (const row of rows) console.log(row);
   console.log(summaryLine(counts));

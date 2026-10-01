@@ -26,19 +26,9 @@ import { fileURLToPath } from "node:url";
 import * as acorn from "acorn";
 import * as acornWalk from "acorn-walk";
 
-import {
-  WRITE_LIMIT,
-  mkdirRec,
-  runLimited,
-  safeWrite,
-  writeFileMkdirp,
-} from "./write.mjs";
+import { WRITE_LIMIT, mkdirRec, runLimited, safeWrite, writeFileMkdirp } from "./write.mjs";
 
-import {
-  offlineExcluded,
-  deriveOfflineCss,
-  deriveOfflineRedirect,
-} from "./offline-rewrite.mjs";
+import { offlineExcluded, deriveOfflineCss, deriveOfflineRedirect } from "./offline-rewrite.mjs";
 import { normalizeBaseurl } from "./url.mjs";
 import { posix } from "./paths.mjs";
 
@@ -60,7 +50,7 @@ function makeTimer() {
       last = now;
     },
     summary() {
-      return laps.map(l => `${l.label}=${l.ms}ms`).join(" ");
+      return laps.map((l) => `${l.label}=${l.ms}ms`).join(" ");
     },
   };
 }
@@ -69,7 +59,12 @@ function makeTimer() {
 // §A  Top-level orchestration
 // ---------------------------------------------------------------------------
 
-export async function writeOffline(staticFiles, site, destRoot, { auxStats, profileOffline = false, sitePaths, check = false } = {}) {
+export async function writeOffline(
+  staticFiles,
+  site,
+  destRoot,
+  { auxStats, profileOffline = false, sitePaths, check = false } = {},
+) {
   if (!destRoot) {
     throw new Error("writeOffline requires a destRoot");
   }
@@ -83,9 +78,7 @@ export async function writeOffline(staticFiles, site, destRoot, { auxStats, prof
   // writers race on the same destination and Windows fails the second open
   // with EBUSY. Claiming them for the statics branch keeps a single writer
   // per path.
-  const staticDestRels = new Set(
-    (staticFiles ?? []).map((f) => posix(f.destRel)),
-  );
+  const staticDestRels = new Set((staticFiles ?? []).map((f) => posix(f.destRel)));
   const deps = {
     ...state,
     staticDestRels,
@@ -108,10 +101,7 @@ export async function writeOffline(staticFiles, site, destRoot, { auxStats, prof
   const jtdDest = path.join(deps.offlineRoot, "assets/js/just-the-docs.js");
   const jtdPatches = await patchJustTheDocsJs(jtdSrc, jtdDest);
   subT?.lap("jtdPatch");
-  await writeSearchDataJs(
-    path.join(deps.offlineRoot, "assets/js/search-data.js"),
-    auxStats?.search?.json ?? null,
-  );
+  await writeSearchDataJs(path.join(deps.offlineRoot, "assets/js/search-data.js"), auxStats?.search?.json ?? null);
   subT?.lap("searchDataJs");
 
   // PLAN-9 §5.7: per-branch timing. The three Promise.all branches
@@ -128,11 +118,19 @@ export async function writeOffline(staticFiles, site, destRoot, { auxStats, prof
   // Only redirect stubs, static files, and theme assets are written here.
   if (subT) {
     const t0Pages = Date.now();
-    let dRedirects = 0, dStatics = 0, dThemes = 0;
+    let dRedirects = 0,
+      dStatics = 0,
+      dThemes = 0;
     const branches = [
-      writeOfflineRedirects(auxStats?.redirects?.stubs ?? [], deps).then(() => { dRedirects = Date.now() - t0Pages; }),
-      copyOfflineStatics(staticFiles, deps).then(() => { dStatics = Date.now() - t0Pages; }),
-      copyOfflineThemeAssets(deps).then(() => { dThemes = Date.now() - t0Pages; }),
+      writeOfflineRedirects(auxStats?.redirects?.stubs ?? [], deps).then(() => {
+        dRedirects = Date.now() - t0Pages;
+      }),
+      copyOfflineStatics(staticFiles, deps).then(() => {
+        dStatics = Date.now() - t0Pages;
+      }),
+      copyOfflineThemeAssets(deps).then(() => {
+        dThemes = Date.now() - t0Pages;
+      }),
     ];
     await Promise.all(branches);
     subT.lap("parallel");
@@ -153,9 +151,7 @@ export async function writeOffline(staticFiles, site, destRoot, { auxStats, prof
 // The state the URL rewrite reads: the site-paths Set, the resolution
 // caches, and the base URL and exclusions from the site config.
 function buildOfflineState(site, destRoot, sitePaths) {
-  const excludePatterns = Array.isArray(site.config?.offline_exclude)
-    ? site.config.offline_exclude.map(String)
-    : [];
+  const excludePatterns = Array.isArray(site.config?.offline_exclude) ? site.config.offline_exclude.map(String) : [];
   return {
     destRoot,
     sitePaths,
@@ -477,7 +473,12 @@ export function deriveOfflineJtdJs(src) {
       if (node.id.name === "navLink") {
         edits.push({ start: node.start, end: node.end, replacement: JTD_NAVLINK_REPLACEMENT, label: "navLink()" });
       } else if (node.id.name === "initSearch") {
-        edits.push({ start: node.start, end: node.end, replacement: JTD_INITSEARCH_FN_REPLACEMENT, label: "initSearch()" });
+        edits.push({
+          start: node.start,
+          end: node.end,
+          replacement: JTD_INITSEARCH_FN_REPLACEMENT,
+          label: "initSearch()",
+        });
       }
     },
   });
@@ -499,13 +500,12 @@ export function deriveOfflineJtdJs(src) {
   if (!found.has("navLink()")) {
     warnings.push(
       "offline: AST walk found no navLink() declaration in just-the-docs.js -- " +
-      "nav-active detection will be broken under file://.",
+        "nav-active detection will be broken under file://.",
     );
   }
   if (!found.has("initSearch()")) {
     warnings.push(
-      "offline: AST walk found no initSearch() declaration in just-the-docs.js -- " +
-      "offline search will not work.",
+      "offline: AST walk found no initSearch() declaration in just-the-docs.js -- " + "offline search will not work.",
     );
   }
   return { js: out, patches, warnings };
@@ -540,9 +540,7 @@ export function deriveOfflineSearchDataJs(jsonBytes) {
 async function collectThemeFiles(themeRoot) {
   const out = [];
   async function walk(relPath) {
-    const dirents = await fs.readdir(
-      path.join(themeRoot, relPath), { withFileTypes: true },
-    );
+    const dirents = await fs.readdir(path.join(themeRoot, relPath), { withFileTypes: true });
     for (const d of dirents) {
       const childRel = relPath === "" ? d.name : path.posix.join(relPath, d.name);
       if (d.isDirectory()) {

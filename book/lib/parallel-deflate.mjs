@@ -7,7 +7,7 @@
 // computeIndirectObjectSize on each. sizeInBytes() walks the Cache,
 // which lazy-populates via a deflate of the unencoded contents. The
 // whole pass is synchronous, so the per-chunk zlib work runs serially
-// -- accounted for ~30 % of save() wall time on the book before this.
+// -- ~30 % of save() wall time on the book without this.
 //
 // What: same construction logic as PDFStreamWriter, split into three
 // phases:
@@ -36,8 +36,8 @@
 // repeats. It throws otherwise. It goes when pdf-lib is replaced; when a
 // release changes what it copies, it is re-derived or removed.
 
-import { deflate, deflateSync } from 'node:zlib';
-import { promisify } from 'node:util';
+import { deflate, deflateSync } from "node:zlib";
+import { promisify } from "node:util";
 import {
   PDFDocument,
   PDFStreamWriter,
@@ -50,14 +50,18 @@ import {
   PDFStream,
   PDFHeader,
   PDFTrailer,
-} from 'pdf-lib';
-import { checkTargets } from './shim-targets.mjs';
+} from "pdf-lib";
+import { checkTargets } from "./shim-targets.mjs";
 
-checkTargets(import.meta.url, { PDFStreamWriter, PDFDocument }, {
-  'PDFStreamWriter':                             [4, 'cd5bc5d1816a'],
-  'PDFStreamWriter.prototype.computeBufferSize': [0, '5c50ff2801f3'],
-  'PDFDocument.prototype.save':                  [1, '696cb8a85b9f'],
-});
+checkTargets(
+  import.meta.url,
+  { PDFStreamWriter, PDFDocument },
+  {
+    PDFStreamWriter: [4, "cd5bc5d1816a"],
+    "PDFStreamWriter.prototype.computeBufferSize": [0, "5c50ff2801f3"],
+    "PDFDocument.prototype.save": [1, "696cb8a85b9f"],
+  },
+);
 
 const deflateAsync = promisify(deflate);
 
@@ -76,10 +80,7 @@ class ParallelStreamWriter extends PDFStreamWriter {
     let objectNumber = this.context.largestObjectNumber + 1;
     const header = PDFHeader.forVersion(1, 7);
     let size = header.sizeInBytes() + 2;
-    const xrefStream = PDFCrossRefStream.create(
-      this.createTrailerDict(),
-      this.encodeStreams,
-    );
+    const xrefStream = PDFCrossRefStream.create(this.createTrailerDict(), this.encodeStreams);
 
     const uncompressedObjects = [];
     const compressedChunks = [];
@@ -115,7 +116,7 @@ class ParallelStreamWriter extends PDFStreamWriter {
     }
 
     // ----- Phase 2: instantiate object streams and parallel-deflate -----
-    const objectStreams = compressedChunks.map(chunk =>
+    const objectStreams = compressedChunks.map((chunk) =>
       PDFObjectStream.withContextAndObjects(this.context, chunk, this.encodeStreams),
     );
 
@@ -124,9 +125,7 @@ class ParallelStreamWriter extends PDFStreamWriter {
       // so deflate of stream N runs concurrently with the build of
       // N+1..453 instead of after all 453 builds finish. Saves the
       // main-thread idle wait at the Promise.all (~30 ms on the book).
-      const deflated = await Promise.all(
-        objectStreams.map(os => deflateAsync(os.getUnencodedContents())),
-      );
+      const deflated = await Promise.all(objectStreams.map((os) => deflateAsync(os.getUnencodedContents())));
       for (let i = 0; i < objectStreams.length; i++) {
         objectStreams[i].contentsCache.value = deflated[i];
       }
@@ -151,7 +150,7 @@ class ParallelStreamWriter extends PDFStreamWriter {
     // is a cache hit (otherwise pdf-lib's lazy populate would run its
     // own deflate library on the main thread).
     const xrefStreamRef = PDFRef.of(objectNumber++);
-    xrefStream.dict.set(PDFName.of('Size'), PDFNumber.of(objectNumber));
+    xrefStream.dict.set(PDFName.of("Size"), PDFNumber.of(objectNumber));
     xrefStream.addUncompressedEntry(xrefStreamRef, size);
     const xrefOffset = size;
     if (this.encodeStreams) {
@@ -190,12 +189,7 @@ export async function parallelSave(pdfDoc, options = {}) {
   }
   await pdfDoc.flush();
 
-  const writer = new ParallelStreamWriter(
-    pdfDoc.context,
-    encodeStreams,
-    objectsPerStream,
-    parallel,
-  );
+  const writer = new ParallelStreamWriter(pdfDoc.context, encodeStreams, objectsPerStream, parallel);
   const bytes = await writer.serializeToBuffer();
   return { bytes, streamCount: writer._lastPrecompressed };
 }

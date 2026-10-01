@@ -49,16 +49,28 @@ scenario("P6: add-ins in %APPDATA%\\twinBASIC\\addins", (lane) => {
 
   test("the page makes the add-ins' root by expanding %APPDATA% in the IDE's environment, and fills it", async () => {
     assert.equal(await addinsRoot(c), `${path.join(lane.appdata, "twinBASIC")}\\`);
-    assert.deepEqual(readdirSync(path.join(lane.appdata, "twinBASIC")).sort(),
-                     ["addins", "locale", "packages", "themes"]);
-    assert.deepEqual(readdirSync(path.join(lane.appdata, "twinBASIC", "addins"), { withFileTypes: true })
-      .filter((e) => e.isDirectory()).map((e) => e.name).sort(), ["win32", "win64"]);
+    assert.deepEqual(readdirSync(path.join(lane.appdata, "twinBASIC")).sort(), [
+      "addins",
+      "locale",
+      "packages",
+      "themes",
+    ]);
+    assert.deepEqual(
+      readdirSync(path.join(lane.appdata, "twinBASIC", "addins"), { withFileTypes: true })
+        .filter((e) => e.isDirectory())
+        .map((e) => e.name)
+        .sort(),
+      ["win32", "win64"],
+    );
   });
 
   test("the compiler loads the add-in in its addins\\win32, not the copy in addins itself", async () => {
     const names = (await loadedAddins(c)).map((a) => a.name);
     assert.deepEqual(names, ["AppDataProbe AddIn"]);
-    const lines = await waitFor(c, async (c) => { const l = await probeLines(c, null); return l.length >= 2 && l; });
+    const lines = await waitFor(c, async (c) => {
+      const l = await probeLines(c, null);
+      return l.length >= 2 && l;
+    });
     assert.ok(lines, "the add-in printed nothing");
     assert.deepEqual(lines.length, 2, `loaded more than once: ${JSON.stringify(lines)}`);
     assert.ok(same(lines[0].replace(/^loaded from /, ""), dll), lines[0]);
@@ -80,10 +92,25 @@ scenario("P6: add-ins in %APPDATA%\\twinBASIC\\addins", (lane) => {
     await c.evaluate(`commonFolderRootPath = ${JSON.stringify(`${second}\\`)}`);
     const mark = await consoleMark(c);
     await click(c, "restartIcon");
-    assert.ok(await waitFor(c, async (c) => { const p = await c.evaluate("g_CurrentCompilerProcessId"); return p && p !== pid; },
-                            { timeout: 30000 }), "the compiler did not restart");
-    const lines = await waitFor(c, async (c) => { const l = await probeLines(c, mark); return l.length >= 2 && l; },
-                                { timeout: 30000 });
+    assert.ok(
+      await waitFor(
+        c,
+        async (c) => {
+          const p = await c.evaluate("g_CurrentCompilerProcessId");
+          return p && p !== pid;
+        },
+        { timeout: 30000 },
+      ),
+      "the compiler did not restart",
+    );
+    const lines = await waitFor(
+      c,
+      async (c) => {
+        const l = await probeLines(c, mark);
+        return l.length >= 2 && l;
+      },
+      { timeout: 30000 },
+    );
     assert.ok(lines, "the restarted compiler's add-in printed nothing");
     assert.ok(same(lines[0].replace(/^loaded from /, ""), dll2), lines[0]);
     assert.ok(same(lines[1].replace(/^APPDATA /, ""), lane.appdata), lines[1]);

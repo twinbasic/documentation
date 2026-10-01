@@ -20,7 +20,7 @@
 // a flag to a tool's usage does not fail this gate. A string is the whole
 // stream; a RegExp must match it; a stream a case does not name must be empty.
 //
-// Every tool answers --help and -h with its usage on stdout and exit 0 (C71),
+// Every tool answers --help and -h with its usage on stdout and exit 0,
 // so each has a case for both, and after each of them the folder it ran in must
 // still be empty: a help request starts no IDE or browser and writes nothing.
 //
@@ -41,7 +41,17 @@ import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { DEFAULTS, parseCommandLine } from "../builder/command-line.mjs";
 import {
-  CliError, choiceOption, dateOption, exitOnCrash, numberOption, parseCli, printHelpAndExit, refuseTogether, regexOption, urlOption, withUsageError,
+  CliError,
+  choiceOption,
+  dateOption,
+  exitOnCrash,
+  numberOption,
+  parseCli,
+  printHelpAndExit,
+  refuseTogether,
+  regexOption,
+  urlOption,
+  withUsageError,
 } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { createProbes } from "./lib/gate-probes.mjs";
@@ -60,10 +70,15 @@ Exit codes:
   1  a probe or a recorded case failed
   2  the gate could not run: a refused command line, or a crash`;
 
-if (withUsageError(() => parseCli(process.argv.slice(2), {
-  options: { help: { type: "boolean", short: "h" } },
-  stopAt: ["help"],
-})).values.help) printHelpAndExit(USAGE);
+if (
+  withUsageError(() =>
+    parseCli(process.argv.slice(2), {
+      options: { help: { type: "boolean", short: "h" } },
+      stopAt: ["help"],
+    }),
+  ).values.help
+)
+  printHelpAndExit(USAGE);
 
 const { check, report } = createProbes("check_cli");
 const show = (x) => JSON.stringify(x);
@@ -93,20 +108,35 @@ const OPTIONS = {
   const { values } = parseCli([], {
     options: { ...OPTIONS, "root-dir": { type: "string", default: "docs" } },
   });
-  check("an absent option takes its default, a multiple one [], any other none", show(values) === show({ rootDir: "docs", forbid: [] }),
-    show(values));
+  check(
+    "an absent option takes its default, a multiple one [], any other none",
+    show(values) === show({ rootDir: "docs", forbid: [] }),
+    show(values),
+  );
 }
 {
-  const { values } = parseCli(["--root-dir", "a", "--root-dir=b", "-v", "--forbid", "x", "--forbid=y"], { options: OPTIONS });
-  check("values are keyed in camelCase; a repeat keeps the last, a multiple one all in order",
-    show(values) === show({ rootDir: "b", verbose: true, forbid: ["x", "y"] }), show(values));
+  const { values } = parseCli(["--root-dir", "a", "--root-dir=b", "-v", "--forbid", "x", "--forbid=y"], {
+    options: OPTIONS,
+  });
+  check(
+    "values are keyed in camelCase; a repeat keeps the last, a multiple one all in order",
+    show(values) === show({ rootDir: "b", verbose: true, forbid: ["x", "y"] }),
+    show(values),
+  );
 }
 {
   const err = cliError(() => parseCli(["--port"], { options: OPTIONS }), "missing-value");
-  check("a value flag at the end has no value", err?.option === "--port" && err.value === undefined && err.message === "--port needs a value",
-    show(err));
+  check(
+    "a value flag at the end has no value",
+    err?.option === "--port" && err.value === undefined && err.message === "--port needs a value",
+    show(err),
+  );
   const short = cliError(() => parseCli(["-p"], { options: OPTIONS }), "missing-value");
-  check("the error names the flag as typed", short?.option === "-p" && short.message === "-p needs a value", show(short));
+  check(
+    "the error names the flag as typed",
+    short?.option === "-p" && short.message === "-p needs a value",
+    show(short),
+  );
 }
 {
   const err = cliError(() => parseCli(["--port", "--verbose"], { options: OPTIONS }), "missing-value");
@@ -118,12 +148,19 @@ const OPTIONS = {
 }
 {
   const err = cliError(() => parseCli(["--bogus=1"], { options: OPTIONS }), "unknown-option");
-  check("an unknown option is an error that names it as given",
-    err?.option === "--bogus" && err.arg === "--bogus=1" && err.message === "unknown option: --bogus=1", show(err));
+  check(
+    "an unknown option is an error that names it as given",
+    err?.option === "--bogus" && err.arg === "--bogus=1" && err.message === "unknown option: --bogus=1",
+    show(err),
+  );
   const bool = cliError(() => parseCli(["--verbose=1"], { options: OPTIONS }), "unexpected-value");
   check("a boolean given a value is an error", bool?.message === "--verbose takes no value", show(bool));
   const extra = cliError(() => parseCli(["a"], { options: OPTIONS }), "unexpected-positional");
-  check("a positional the tool does not take is an error", extra?.arg === "a" && extra.message === "unexpected argument: a", show(extra));
+  check(
+    "a positional the tool does not take is an error",
+    extra?.arg === "a" && extra.message === "unexpected argument: a",
+    show(extra),
+  );
 }
 {
   const spec = { options: OPTIONS, positionals: { max: Infinity } };
@@ -132,8 +169,11 @@ const OPTIONS = {
   const short = cliError(() => parseCli(["-ab"], spec), "unknown-option");
   check("a short option cluster with an unknown letter is refused", short?.option === "-a", show(short));
   const r = parseCli(["--", "--x", "-5", "-ab", "--y=1"], spec);
-  check("after -- an argument that starts with a dash is a positional",
-    show(r.positionals) === show(["--x", "-5", "-ab", "--y=1"]), show(r));
+  check(
+    "after -- an argument that starts with a dash is a positional",
+    show(r.positionals) === show(["--x", "-5", "-ab", "--y=1"]),
+    show(r),
+  );
   const one = cliError(() => parseCli(["a", "b"], { options: OPTIONS, positionals: 1 }), "unexpected-positional");
   check("a positional beyond max is refused, naming it", one?.arg === "b", show(one));
   const value = cliError(() => parseCli(["--verbose=1", "--port"], spec), "unexpected-value");
@@ -142,41 +182,69 @@ const OPTIONS = {
 {
   const few = cliError(() => parseCli([], { options: OPTIONS, positionals: 1 }), "missing-positional");
   check("too few positionals is an error", few?.message === "expected at least 1 argument, got 0", show(few));
-  const many = cliError(() => parseCli(["a", "b"], { options: OPTIONS, positionals: { min: 1, max: 1 } }), "unexpected-positional");
+  const many = cliError(
+    () => parseCli(["a", "b"], { options: OPTIONS, positionals: { min: 1, max: 1 } }),
+    "unexpected-positional",
+  );
   check("too many positionals is an error naming the first extra", many?.arg === "b", show(many));
   const r = parseCli(["--", "--verbose"], { options: OPTIONS, positionals: 1 });
-  check("after -- every argument is a positional", show(r.positionals) === show(["--verbose"]) && !("verbose" in r.values)
-    && r.tokens[0].kind === "option-terminator", show(r));
+  check(
+    "after -- every argument is a positional",
+    show(r.positionals) === show(["--verbose"]) && !("verbose" in r.values) && r.tokens[0].kind === "option-terminator",
+    show(r),
+  );
 }
 {
   const r = parseCli(["--no-check", "x", "--check", "-v"], {
     options: { "no-check": { type: "boolean" }, check: { type: "boolean" }, verbose: { type: "boolean", short: "v" } },
     positionals: 1,
   });
-  check("tokens keep the order, each option's with its key",
-    show(r.tokens.map((t) => t.key ?? t.value)) === show(["noCheck", "x", "check", "verbose"]), show(r.tokens));
+  check(
+    "tokens keep the order, each option's with its key",
+    show(r.tokens.map((t) => t.key ?? t.value)) === show(["noCheck", "x", "check", "verbose"]),
+    show(r.tokens),
+  );
 }
 {
   const apart = cliError(() => parseCli(["--port", ""], { options: OPTIONS }), "empty-value");
-  check("an empty value given separately is refused", apart?.option === "--port" && apart.value === "" && apart.message === "--port needs a non-empty value",
-    show(apart));
+  check(
+    "an empty value given separately is refused",
+    apart?.option === "--port" && apart.value === "" && apart.message === "--port needs a non-empty value",
+    show(apart),
+  );
   const inline = cliError(() => parseCli(["--port="], { options: OPTIONS }), "empty-value");
-  check("an empty value given inline is refused", inline?.arg === "--port=" && inline.message === "--port needs a non-empty value", show(inline));
+  check(
+    "an empty value given inline is refused",
+    inline?.arg === "--port=" && inline.message === "--port needs a non-empty value",
+    show(inline),
+  );
   const short = cliError(() => parseCli(["-p", ""], { options: OPTIONS }), "empty-value");
   check("the empty-value error names the flag as typed", short?.message === "-p needs a non-empty value", show(short));
   const many = cliError(() => parseCli(["--forbid", "a", "--forbid", ""], { options: OPTIONS }), "empty-value");
-  check("an empty value of a multiple option is refused", many?.option === "--forbid" && many.message === "--forbid needs a non-empty value", show(many));
+  check(
+    "an empty value of a multiple option is refused",
+    many?.option === "--forbid" && many.message === "--forbid needs a non-empty value",
+    show(many),
+  );
   const manyInline = cliError(() => parseCli(["--forbid="], { options: OPTIONS }), "empty-value");
   check("an empty inline value of a multiple option is refused", Boolean(manyInline), show(manyInline));
   const first = cliError(() => parseCli(["--port", "--", "--forbid="], { options: OPTIONS }), "missing-value");
   check("a value that looks like an option is missing, not empty", first?.option === "--port", show(first));
 }
 {
-  const options = { ...OPTIONS, port: { type: "string", empty: true }, forbid: { type: "string", multiple: true, empty: true } };
-  check("empty: true accepts an empty value, separate or inline",
-    parseCli(["--port", ""], { options }).values.port === "" && parseCli(["--port="], { options }).values.port === "");
-  check("empty: true accepts empty values of a multiple option",
-    show(parseCli(["--forbid=", "--forbid", "", "--forbid", "x"], { options }).values.forbid) === show(["", "", "x"]));
+  const options = {
+    ...OPTIONS,
+    port: { type: "string", empty: true },
+    forbid: { type: "string", multiple: true, empty: true },
+  };
+  check(
+    "empty: true accepts an empty value, separate or inline",
+    parseCli(["--port", ""], { options }).values.port === "" && parseCli(["--port="], { options }).values.port === "",
+  );
+  check(
+    "empty: true accepts empty values of a multiple option",
+    show(parseCli(["--forbid=", "--forbid", "", "--forbid", "x"], { options }).values.forbid) === show(["", "", "x"]),
+  );
   const missing = cliError(() => parseCli(["--port"], { options }), "missing-value");
   check("empty: true does not excuse a missing value", Boolean(missing), show(missing));
   const other = cliError(() => parseCli(["--root-dir", ""], { options }), "empty-value");
@@ -186,14 +254,23 @@ const OPTIONS = {
 {
   const spec = { options: { ...OPTIONS, help: { type: "boolean", short: "h" } }, positionals: 1, stopAt: ["help"] };
   const r = parseCli(["--port", "80", "-h", "--bogus", "--port", "--verbose=1", "a", "b"], spec);
-  check("stopAt ends the parse at the option, reading nothing after it and counting no positionals",
-    r.stopped === "help" && r.values.port === "80" && r.values.help === true && r.positionals.length === 0, show(r));
-  check("stopAt does not excuse an error before the option",
-    Boolean(cliError(() => parseCli(["--bogus", "--help"], spec), "unknown-option")));
-  check("stopAt does not excuse an empty value before the option",
-    Boolean(cliError(() => parseCli(["--port=", "--help"], spec), "empty-value")));
-  check("without its option, stopAt changes nothing", parseCli(["a"], spec).stopped === undefined
-    && Boolean(cliError(() => parseCli([], spec), "missing-positional")));
+  check(
+    "stopAt ends the parse at the option, reading nothing after it and counting no positionals",
+    r.stopped === "help" && r.values.port === "80" && r.values.help === true && r.positionals.length === 0,
+    show(r),
+  );
+  check(
+    "stopAt does not excuse an error before the option",
+    Boolean(cliError(() => parseCli(["--bogus", "--help"], spec), "unknown-option")),
+  );
+  check(
+    "stopAt does not excuse an empty value before the option",
+    Boolean(cliError(() => parseCli(["--port=", "--help"], spec), "empty-value")),
+  );
+  check(
+    "without its option, stopAt changes nothing",
+    parseCli(["a"], spec).stopped === undefined && Boolean(cliError(() => parseCli([], spec), "missing-positional")),
+  );
 }
 
 // parseCli refuses what a strict parseArgs refuses, in the same kind, and
@@ -216,9 +293,12 @@ const OPTIONS = {
         .sort(([a], [b]) => a.localeCompare(b));
       return show({ values: entries, positionals });
     } catch (err) {
-      return strict ? show(KINDS[err.code] ?? err.code) : show(Object.values(KINDS).find((k) => k.includes(err.code)) ?? err.code);
+      return strict
+        ? show(KINDS[err.code] ?? err.code)
+        : show(Object.values(KINDS).find((k) => k.includes(err.code)) ?? err.code);
     }
   };
+  // biome-ignore format: a table, one entry per line
   const LISTS = [
     [], ["--verbose"], ["-v"], ["--port", "80"], ["--port=80"], ["-p", "80"], ["-p80"], ["-vp", "80"], ["-pv"],
     ["--port"], ["-p"], ["--port", "--verbose"], ["--port", "-5"], ["--port=-5"], ["--port", "-"],
@@ -230,11 +310,19 @@ const OPTIONS = {
   for (const allow of [true, false]) {
     for (const args of LISTS) {
       const strict = outcome(() => parseArgs({ args, options: OPTIONS, strict: true, allowPositionals: allow }), true);
-      const ours = outcome(() => parseCli(args, { options: OPTIONS, positionals: allow ? { max: Infinity } : 0 }), false);
-      if (strict !== ours) differ.push(`${allow ? "" : "no positionals: "}${show(args)}\n  parseArgs ${strict}\n  parseCli  ${ours}`);
+      const ours = outcome(
+        () => parseCli(args, { options: OPTIONS, positionals: allow ? { max: Infinity } : 0 }),
+        false,
+      );
+      if (strict !== ours)
+        differ.push(`${allow ? "" : "no positionals: "}${show(args)}\n  parseArgs ${strict}\n  parseCli  ${ours}`);
     }
   }
-  check(`parseCli agrees with a strict parseArgs on ${LISTS.length * 2} argument lists`, differ.length === 0, differ.join("\n"));
+  check(
+    `parseCli agrees with a strict parseArgs on ${LISTS.length * 2} argument lists`,
+    differ.length === 0,
+    differ.join("\n"),
+  );
 }
 
 // ------------------------------------------------------------ numberOption
@@ -243,32 +331,71 @@ const OPTIONS = {
   const port = { option: "--port", integer: true, min: 1, max: 65535 };
   check("numberOption reads a number in range", numberOption("8080", port) === 8080);
   const low = cliError(() => numberOption("0", port), "bad-number");
-  check("numberOption refuses one out of range, naming the range",
-    low?.message === "--port expects a whole number from 1 to 65535, got: 0" && low.option === "--port", show(low));
-  check("numberOption refuses blank text, which Number reads as 0", Boolean(cliError(() => numberOption("", port), "bad-number")));
-  check("numberOption refuses a fraction where a whole number is wanted", Boolean(cliError(() => numberOption("1.5", port), "bad-number")));
+  check(
+    "numberOption refuses one out of range, naming the range",
+    low?.message === "--port expects a whole number from 1 to 65535, got: 0" && low.option === "--port",
+    show(low),
+  );
+  check(
+    "numberOption refuses blank text, which Number reads as 0",
+    Boolean(cliError(() => numberOption("", port), "bad-number")),
+  );
+  check(
+    "numberOption refuses a fraction where a whole number is wanted",
+    Boolean(cliError(() => numberOption("1.5", port), "bad-number")),
+  );
   check("numberOption takes a fraction otherwise", numberOption("1.5", { option: "--t", min: 0 }) === 1.5);
   const nan = cliError(() => numberOption("abc", { option: "--t", min: 0 }), "bad-number");
-  check("numberOption refuses text that is not a number", nan?.message === "--t expects a number of at least 0, got: abc", show(nan));
+  check(
+    "numberOption refuses text that is not a number",
+    nan?.message === "--t expects a number of at least 0, got: abc",
+    show(nan),
+  );
   const above = { option: "--t", above: 0 };
   const zero = cliError(() => numberOption("0", above), "bad-number");
-  check("numberOption above 0 refuses 0, saying greater than 0", zero?.message === "--t expects a number greater than 0, got: 0" && zero.option === "--t" && zero.value === "0",
-    show(zero));
-  check("numberOption above 0 takes 0.5 and refuses a negative", numberOption("0.5", above) === 0.5 && Boolean(cliError(() => numberOption("-1", above), "bad-number")));
+  check(
+    "numberOption above 0 refuses 0, saying greater than 0",
+    zero?.message === "--t expects a number greater than 0, got: 0" && zero.option === "--t" && zero.value === "0",
+    show(zero),
+  );
+  check(
+    "numberOption above 0 takes 0.5 and refuses a negative",
+    numberOption("0.5", above) === 0.5 && Boolean(cliError(() => numberOption("-1", above), "bad-number")),
+  );
   const capped = { option: "--t", above: 0, max: 5 };
   const over = cliError(() => numberOption("6", capped), "bad-number");
-  check("numberOption above 0 with a max names both", over?.message === "--t expects a number greater than 0 and at most 5, got: 6", show(over));
+  check(
+    "numberOption above 0 with a max names both",
+    over?.message === "--t expects a number greater than 0 and at most 5, got: 6",
+    show(over),
+  );
   check("numberOption above 0 with a max takes the max itself", numberOption("5", capped) === 5);
   const whole = cliError(() => numberOption("0", { option: "--t", integer: true, above: 0 }), "bad-number");
-  check("numberOption above 0 for a whole number says so", whole?.message === "--t expects a whole number greater than 0, got: 0", show(whole));
+  check(
+    "numberOption above 0 for a whole number says so",
+    whole?.message === "--t expects a whole number greater than 0, got: 0",
+    show(whole),
+  );
   const atMost = cliError(() => numberOption("10", { option: "--t", max: 9 }), "bad-number");
-  check("numberOption with only a max names it", atMost?.message === "--t expects a number of at most 9, got: 10", show(atMost));
+  check(
+    "numberOption with only a max names it",
+    atMost?.message === "--t expects a number of at most 9, got: 10",
+    show(atMost),
+  );
   const free = cliError(() => numberOption("x", { option: "--t" }), "bad-number");
   check("numberOption with no range names none", free?.message === "--t expects a number, got: x", show(free));
-  check("numberOption reads what Number reads: hex, exponent and padding",
-    numberOption("0x10", { option: "--t" }) === 16 && numberOption("1e3", { option: "--t" }) === 1000 && numberOption(" 7 ", { option: "--t" }) === 7);
-  check("numberOption refuses trailing text, blank text, a missing value and Infinity",
-    ["12abc", "  ", "", undefined, "Infinity"].every((v) => cliError(() => numberOption(v, { option: "--t" }), "bad-number")));
+  check(
+    "numberOption reads what Number reads: hex, exponent and padding",
+    numberOption("0x10", { option: "--t" }) === 16 &&
+      numberOption("1e3", { option: "--t" }) === 1000 &&
+      numberOption(" 7 ", { option: "--t" }) === 7,
+  );
+  check(
+    "numberOption refuses trailing text, blank text, a missing value and Infinity",
+    ["12abc", "  ", "", undefined, "Infinity"].every((v) =>
+      cliError(() => numberOption(v, { option: "--t" }), "bad-number"),
+    ),
+  );
 }
 
 // ------------------------------------------------------------ the other checkers
@@ -277,68 +404,153 @@ const OPTIONS = {
   const pick = { option: "--oracle", choices: ["fs", "index"] };
   check("choiceOption returns a listed value", choiceOption("index", pick) === "index");
   const bad = cliError(() => choiceOption("x", pick), "bad-choice");
-  check("choiceOption refuses another, listing the choices", bad?.message === "--oracle expects fs or index, got: x" && bad.option === "--oracle" && bad.value === "x",
-    show(bad));
+  check(
+    "choiceOption refuses another, listing the choices",
+    bad?.message === "--oracle expects fs or index, got: x" && bad.option === "--oracle" && bad.value === "x",
+    show(bad),
+  );
   const three = cliError(() => choiceOption("d", { option: "--c", choices: ["a", "b", "c"] }), "bad-choice");
-  check("choiceOption lists three with a comma and or", three?.message === "--c expects a, b or c, got: d", show(three));
+  check(
+    "choiceOption lists three with a comma and or",
+    three?.message === "--c expects a, b or c, got: d",
+    show(three),
+  );
   const one = cliError(() => choiceOption("d", { option: "--c", choices: ["a"] }), "bad-choice");
   check("choiceOption names a single choice alone", one?.message === "--c expects a, got: d", show(one));
   check("choiceOption is case-sensitive", Boolean(cliError(() => choiceOption("FS", pick), "bad-choice")));
 }
 {
   const re = regexOption("^a+$", { option: "--only", flags: "i" });
-  check("regexOption returns the RegExp, with its flags", re instanceof RegExp && re.flags === "i" && re.test("AA"), show(re));
+  check(
+    "regexOption returns the RegExp, with its flags",
+    re instanceof RegExp && re.flags === "i" && re.test("AA"),
+    show(re),
+  );
   check("regexOption has no flags by default", regexOption("a", { option: "--only" }).flags === "");
   const bad = cliError(() => regexOption("(", { option: "--only" }), "bad-regex");
-  check("regexOption refuses a pattern that does not compile, naming it and the reason",
-    bad?.option === "--only" && bad.value === "(" && /^--only expects a regular expression, got: \( \(.+\)$/.test(bad.message), show(bad));
-  check("regexOption refuses a flag that does not exist", Boolean(cliError(() => regexOption("a", { option: "--only", flags: "q" }), "bad-regex")));
+  check(
+    "regexOption refuses a pattern that does not compile, naming it and the reason",
+    bad?.option === "--only" &&
+      bad.value === "(" &&
+      /^--only expects a regular expression, got: \( \(.+\)$/.test(bad.message),
+    show(bad),
+  );
+  check(
+    "regexOption refuses a flag that does not exist",
+    Boolean(cliError(() => regexOption("a", { option: "--only", flags: "q" }), "bad-regex")),
+  );
 }
 {
   const url = urlOption("https://example.org/a/b?c=1", { option: "--url" });
-  check("urlOption returns a URL for an http or https address", url instanceof URL && url.hostname === "example.org" && url.pathname === "/a/b", show(url));
+  check(
+    "urlOption returns a URL for an http or https address",
+    url instanceof URL && url.hostname === "example.org" && url.pathname === "/a/b",
+    show(url),
+  );
   check("urlOption takes http", urlOption("http://127.0.0.1:9/", { option: "--url" }).port === "9");
   const rel = cliError(() => urlOption("foo", { option: "--url" }), "bad-url");
-  check("urlOption refuses text that is not an absolute URL", rel?.message === "--url expects an absolute http or https URL, got: foo" && rel.option === "--url" && rel.value === "foo",
-    show(rel));
+  check(
+    "urlOption refuses text that is not an absolute URL",
+    rel?.message === "--url expects an absolute http or https URL, got: foo" &&
+      rel.option === "--url" &&
+      rel.value === "foo",
+    show(rel),
+  );
   const mail = cliError(() => urlOption("mailto:x", { option: "--url" }), "bad-url");
-  check("urlOption refuses another scheme", mail?.message === "--url expects an absolute http or https URL, got: mailto:x", show(mail));
+  check(
+    "urlOption refuses another scheme",
+    mail?.message === "--url expects an absolute http or https URL, got: mailto:x",
+    show(mail),
+  );
   check("urlOption refuses a path", Boolean(cliError(() => urlOption("/docs/", { option: "--url" }), "bad-url")));
-  check("urlOption takes the schemes it is given",
-    urlOption("ftp://h/f", { option: "--u", protocols: ["ftp:"] }).protocol === "ftp:"
-      && cliError(() => urlOption("https://h/", { option: "--u", protocols: ["ftp:"] }), "bad-url")?.message === "--u expects an absolute ftp URL, got: https://h/");
+  check(
+    "urlOption takes the schemes it is given",
+    urlOption("ftp://h/f", { option: "--u", protocols: ["ftp:"] }).protocol === "ftp:" &&
+      cliError(() => urlOption("https://h/", { option: "--u", protocols: ["ftp:"] }), "bad-url")?.message ===
+        "--u expects an absolute ftp URL, got: https://h/",
+  );
 }
 {
   const since = { option: "--since", min: "2015-01-01" };
-  check("dateOption returns the time in ms of a date", dateOption("2024-02-29", { option: "--since" }) === Date.parse("2024-02-29"));
-  check("dateOption takes a time after a T", dateOption("2024-02-03T10:00Z", { option: "--since" }) === Date.parse("2024-02-03T10:00Z"));
+  check(
+    "dateOption returns the time in ms of a date",
+    dateOption("2024-02-29", { option: "--since" }) === Date.parse("2024-02-29"),
+  );
+  check(
+    "dateOption takes a time after a T",
+    dateOption("2024-02-03T10:00Z", { option: "--since" }) === Date.parse("2024-02-03T10:00Z"),
+  );
   const bare = cliError(() => dateOption("12", { option: "--since" }), "bad-date");
-  check("dateOption refuses 12, which Date.parse reads as a date in 2001",
-    bare?.message === "--since expects an ISO 8601 date (YYYY-MM-DD), got: 12" && bare.option === "--since" && bare.value === "12", show(bare));
+  check(
+    "dateOption refuses 12, which Date.parse reads as a date in 2001",
+    bare?.message === "--since expects an ISO 8601 date (YYYY-MM-DD), got: 12" &&
+      bare.option === "--since" &&
+      bare.value === "12",
+    show(bare),
+  );
   const march = cliError(() => dateOption("2024-02-30", { option: "--since" }), "bad-date");
-  check("dateOption refuses a day the month does not have", march?.message === "--since expects an ISO 8601 date (YYYY-MM-DD), got: 2024-02-30", show(march));
-  check("dateOption refuses 29 February of a common year", Boolean(cliError(() => dateOption("2023-02-29", { option: "--since" }), "bad-date")));
-  check("dateOption refuses other shapes",
-    ["2024-2-3", "2024/02/03", "Feb 3 2024", "", "2024-02-03 10:00", "2024-13-01"].every((v) => cliError(() => dateOption(v, { option: "--since" }), "bad-date")));
+  check(
+    "dateOption refuses a day the month does not have",
+    march?.message === "--since expects an ISO 8601 date (YYYY-MM-DD), got: 2024-02-30",
+    show(march),
+  );
+  check(
+    "dateOption refuses 29 February of a common year",
+    Boolean(cliError(() => dateOption("2023-02-29", { option: "--since" }), "bad-date")),
+  );
+  check(
+    "dateOption refuses other shapes",
+    ["2024-2-3", "2024/02/03", "Feb 3 2024", "", "2024-02-03 10:00", "2024-13-01"].every((v) =>
+      cliError(() => dateOption(v, { option: "--since" }), "bad-date"),
+    ),
+  );
   const early = cliError(() => dateOption("2014-12-31", since), "bad-date");
-  check("dateOption refuses a date before min, naming it",
-    early?.message === "--since expects an ISO 8601 date (YYYY-MM-DD) no earlier than 2015-01-01, got: 2014-12-31", show(early));
-  check("dateOption takes min itself and a later date", dateOption("2015-01-01", since) === Date.parse("2015-01-01") && dateOption("2024-02-03T10:00Z", since) > Date.parse("2015-01-01"));
+  check(
+    "dateOption refuses a date before min, naming it",
+    early?.message === "--since expects an ISO 8601 date (YYYY-MM-DD) no earlier than 2015-01-01, got: 2014-12-31",
+    show(early),
+  );
+  check(
+    "dateOption takes min itself and a later date",
+    dateOption("2015-01-01", since) === Date.parse("2015-01-01") &&
+      dateOption("2024-02-03T10:00Z", since) > Date.parse("2015-01-01"),
+  );
 }
 {
   const names = ["check", "propose", "census"];
-  check("refuseTogether takes none of the names given", refuseTogether({}, names) === undefined && refuseTogether({ other: true }, names) === undefined);
+  check(
+    "refuseTogether takes none of the names given",
+    refuseTogether({}, names) === undefined && refuseTogether({ other: true }, names) === undefined,
+  );
   check("refuseTogether takes one", refuseTogether({ check: true }, names) === undefined);
   const two = cliError(() => refuseTogether({ check: true, census: true }, names), "conflict");
-  check("refuseTogether refuses two, naming both", two?.message === "--check and --census cannot be given together" && show(two.options) === show(["--check", "--census"]),
-    show(two));
+  check(
+    "refuseTogether refuses two, naming both",
+    two?.message === "--check and --census cannot be given together" &&
+      show(two.options) === show(["--check", "--census"]),
+    show(two),
+  );
   const three = cliError(() => refuseTogether({ check: true, propose: true, census: true }, names), "conflict");
-  check("refuseTogether refuses three, naming all", three?.message === "--check, --propose and --census cannot be given together", show(three));
-  check("refuseTogether does not count false or undefined",
-    refuseTogether({ check: true, propose: false, census: undefined }, names) === undefined && refuseTogether({ check: false, propose: false }, names) === undefined);
+  check(
+    "refuseTogether refuses three, naming all",
+    three?.message === "--check, --propose and --census cannot be given together",
+    show(three),
+  );
+  check(
+    "refuseTogether does not count false or undefined",
+    refuseTogether({ check: true, propose: false, census: undefined }, names) === undefined &&
+      refuseTogether({ check: false, propose: false }, names) === undefined,
+  );
   const keyed = cliError(() => refuseTogether({ rootDir: "a", showAll: true }, ["root-dir", "show-all"]), "conflict");
-  check("refuseTogether reads a long name through its camelCase key", keyed?.message === "--root-dir and --show-all cannot be given together", show(keyed));
-  check("refuseTogether counts a value that is not false", Boolean(cliError(() => refuseTogether({ check: "x", propose: 0 }, names), "conflict")));
+  check(
+    "refuseTogether reads a long name through its camelCase key",
+    keyed?.message === "--root-dir and --show-all cannot be given together",
+    show(keyed),
+  );
+  check(
+    "refuseTogether counts a value that is not false",
+    Boolean(cliError(() => refuseTogether({ check: "x", propose: 0 }, names), "conflict")),
+  );
 }
 
 // ------------------------------------------------------------ printing and exiting
@@ -346,24 +558,59 @@ const OPTIONS = {
 const EXITED = Symbol("exited");
 function capture(fn) {
   const out = { text: "", code: null };
-  const stream = { write: (s) => { out.text += s; } };
-  const exit = (code) => { out.code = code; throw EXITED; };
+  const stream = {
+    write: (s) => {
+      out.text += s;
+    },
+  };
+  const exit = (code) => {
+    out.code = code;
+    throw EXITED;
+  };
   const err = caught(() => fn(stream, exit));
   if (err !== null && err !== EXITED) throw err;
   return out;
 }
 {
   let result;
-  const quiet = capture((stream, exit) => { result = withUsageError(() => 42, { stream, exit }); });
-  check("withUsageError returns what fn returns, printing nothing", result === 42 && quiet.text === "" && quiet.code === null, show(quiet));
-  const out = capture((stream, exit) => withUsageError(() => parseCli(["--port"], { options: OPTIONS }), { stream, exit, exitCode: 4 }));
-  check("withUsageError prints the message and exits with the code", out.text === "--port needs a value\n" && out.code === 4, show(out));
-  const own = capture((stream, exit) => withUsageError(() => parseCli(["--bogus"], { options: OPTIONS }), {
-    stream, exit, format: (err) => `usage: tool\n${err.code}\n`,
-  }));
-  check("withUsageError prints the tool's own text, adding no second newline", own.text === "usage: tool\nunknown-option\n" && own.code === 2,
-    show(own));
-  const other = caught(() => capture((stream, exit) => withUsageError(() => { throw new RangeError("boom"); }, { stream, exit })));
+  const quiet = capture((stream, exit) => {
+    result = withUsageError(() => 42, { stream, exit });
+  });
+  check(
+    "withUsageError returns what fn returns, printing nothing",
+    result === 42 && quiet.text === "" && quiet.code === null,
+    show(quiet),
+  );
+  const out = capture((stream, exit) =>
+    withUsageError(() => parseCli(["--port"], { options: OPTIONS }), { stream, exit, exitCode: 4 }),
+  );
+  check(
+    "withUsageError prints the message and exits with the code",
+    out.text === "--port needs a value\n" && out.code === 4,
+    show(out),
+  );
+  const own = capture((stream, exit) =>
+    withUsageError(() => parseCli(["--bogus"], { options: OPTIONS }), {
+      stream,
+      exit,
+      format: (err) => `usage: tool\n${err.code}\n`,
+    }),
+  );
+  check(
+    "withUsageError prints the tool's own text, adding no second newline",
+    own.text === "usage: tool\nunknown-option\n" && own.code === 2,
+    show(own),
+  );
+  const other = caught(() =>
+    capture((stream, exit) =>
+      withUsageError(
+        () => {
+          throw new RangeError("boom");
+        },
+        { stream, exit },
+      ),
+    ),
+  );
   check("withUsageError throws on anything but a CliError", other instanceof RangeError);
 }
 {
@@ -375,20 +622,37 @@ function capture(fn) {
 {
   // exitOnCrash, in a process of its own since it ends the one it is in: a crash
   // exits 2, the cleanup runs first, and a cleanup that throws changes neither.
-  const crash = (cleanup) => new Promise((resolve) => {
-    const cli = JSON.stringify(pathToFileURL(path.join(REPO_ROOT, "lib", "cli.mjs")).href);
-    execFile(process.execPath, ["--input-type=module", "-e",
-      `import { exitOnCrash } from ${cli}; exitOnCrash(${cleanup}); setTimeout(() => { throw new Error("boom"); }, 0);`],
-    (error, stdout, stderr) => resolve({ code: error?.code ?? 0, stdout, stderr }));
-  });
+  const crash = (cleanup) =>
+    new Promise((resolve) => {
+      const cli = JSON.stringify(pathToFileURL(path.join(REPO_ROOT, "lib", "cli.mjs")).href);
+      execFile(
+        process.execPath,
+        [
+          "--input-type=module",
+          "-e",
+          `import { exitOnCrash } from ${cli}; exitOnCrash(${cleanup}); setTimeout(() => { throw new Error("boom"); }, 0);`,
+        ],
+        (error, stdout, stderr) => resolve({ code: error?.code ?? 0, stdout, stderr }),
+      );
+    });
   const bare = await crash("");
-  check("exitOnCrash: a crash prints the error and exits 2", bare.code === 2 && bare.stderr.includes("boom"), show(bare));
+  check(
+    "exitOnCrash: a crash prints the error and exits 2",
+    bare.code === 2 && bare.stderr.includes("boom"),
+    show(bare),
+  );
   const saved = await crash(`() => console.log("saved")`);
-  check("exitOnCrash: the cleanup runs before the exit, and the exit is still 2",
-    saved.code === 2 && saved.stdout.trim() === "saved" && saved.stderr.includes("boom"), show(saved));
+  check(
+    "exitOnCrash: the cleanup runs before the exit, and the exit is still 2",
+    saved.code === 2 && saved.stdout.trim() === "saved" && saved.stderr.includes("boom"),
+    show(saved),
+  );
   const failing = await crash(`() => { throw new Error("cleanup failed"); }`);
-  check("exitOnCrash: a cleanup that throws does not stop the exit or hide the crash",
-    failing.code === 2 && failing.stderr.includes("boom") && failing.stderr.includes("cleanup failed"), show(failing));
+  check(
+    "exitOnCrash: a cleanup that throws does not stop the exit or hide the crash",
+    failing.code === 2 && failing.stderr.includes("boom") && failing.stderr.includes("cleanup failed"),
+    show(failing),
+  );
 }
 
 // ------------------------------------------------------------ tbdocs's command line
@@ -399,36 +663,65 @@ function capture(fn) {
   const parsed = (args) => parseCommandLine(args);
   const pick = (args, keys) => show(Object.fromEntries(keys.map((k) => [k, parsed(args)[k]])));
   const CHECKS = ["check", "auditIndex", "checkFindings"];
-  check("tbdocs's defaults are DEFAULTS, with no fetchAssets", show(parsed([])) === show(DEFAULTS) && !("fetchAssets" in parsed([])));
-  check("tbdocs's --no-check undoes the check flags before it",
-    pick(["--check-audit-index", "--check-findings", "f", "--no-check"], CHECKS) === show({ check: false, auditIndex: false, checkFindings: null }),
-    pick(["--check-audit-index", "--check-findings", "f", "--no-check"], CHECKS));
-  check("tbdocs's --no-check leaves the check flags after it",
-    pick(["--no-check", "--check-findings", "f"], CHECKS) === show({ check: true, auditIndex: false, checkFindings: "f" }),
-    pick(["--no-check", "--check-findings", "f"], CHECKS));
-  check("tbdocs's --check-audit-index after --no-check turns the check on",
-    pick(["--src", "docs", "--no-check", "--check-audit-index"], CHECKS) === show({ check: true, auditIndex: true, checkFindings: null }),
-    pick(["--src", "docs", "--no-check", "--check-audit-index"], CHECKS));
-  check("tbdocs's last --check or --no-check wins",
-    parsed(["--no-check", "--check"]).check === true && parsed(["--check", "--no-check"]).check === false);
-  check("tbdocs's last of --fetch-assets and --no-fetch-assets wins",
-    parsed(["--fetch-assets", "--no-fetch-assets"]).fetchAssets === false && parsed(["--no-fetch-assets", "--fetch-assets"]).fetchAssets === true);
-  check("tbdocs reads --stall-timeout 0 as disabling the watchdog", parsed(["--stall-timeout", "0"]).stallTimeoutMs === 0);
-  check("tbdocs reads --baseurl= as the site root, an empty value", parsed(["--baseurl="]).baseurl === "" && parsed(["--baseurl", ""]).baseurl === "");
+  check(
+    "tbdocs's defaults are DEFAULTS, with no fetchAssets",
+    show(parsed([])) === show(DEFAULTS) && !("fetchAssets" in parsed([])),
+  );
+  check(
+    "tbdocs's --no-check undoes the check flags before it",
+    pick(["--check-audit-index", "--check-findings", "f", "--no-check"], CHECKS) ===
+      show({ check: false, auditIndex: false, checkFindings: null }),
+    pick(["--check-audit-index", "--check-findings", "f", "--no-check"], CHECKS),
+  );
+  check(
+    "tbdocs's --no-check leaves the check flags after it",
+    pick(["--no-check", "--check-findings", "f"], CHECKS) ===
+      show({ check: true, auditIndex: false, checkFindings: "f" }),
+    pick(["--no-check", "--check-findings", "f"], CHECKS),
+  );
+  check(
+    "tbdocs's --check-audit-index after --no-check turns the check on",
+    pick(["--src", "docs", "--no-check", "--check-audit-index"], CHECKS) ===
+      show({ check: true, auditIndex: true, checkFindings: null }),
+    pick(["--src", "docs", "--no-check", "--check-audit-index"], CHECKS),
+  );
+  check(
+    "tbdocs's last --check or --no-check wins",
+    parsed(["--no-check", "--check"]).check === true && parsed(["--check", "--no-check"]).check === false,
+  );
+  check(
+    "tbdocs's last of --fetch-assets and --no-fetch-assets wins",
+    parsed(["--fetch-assets", "--no-fetch-assets"]).fetchAssets === false &&
+      parsed(["--no-fetch-assets", "--fetch-assets"]).fetchAssets === true,
+  );
+  check(
+    "tbdocs reads --stall-timeout 0 as disabling the watchdog",
+    parsed(["--stall-timeout", "0"]).stallTimeoutMs === 0,
+  );
+  check(
+    "tbdocs reads --baseurl= as the site root, an empty value",
+    parsed(["--baseurl="]).baseurl === "" && parsed(["--baseurl", ""]).baseurl === "",
+  );
   check("tbdocs reads --stall-timeout in seconds", parsed(["--stall-timeout", "1.5"]).stallTimeoutMs === 1500);
-  check("tbdocs takes --name=value for every value flag",
-    pick(["--check-findings=f", "--symbol-gaps=g", "--port=81", "--dest=d"], ["check", "checkFindings", "symbolGaps", "port", "dest"])
-      === show({ check: true, checkFindings: "f", symbolGaps: "g", port: 81, dest: "d" }));
-  check("tbdocs keeps the flags the negations set",
-    pick(["--no-offline", "--no-pdf"], ["skipOffline", "skipPdf"]) === show({ skipOffline: true, skipPdf: true }));
+  check(
+    "tbdocs takes --name=value for every value flag",
+    pick(
+      ["--check-findings=f", "--symbol-gaps=g", "--port=81", "--dest=d"],
+      ["check", "checkFindings", "symbolGaps", "port", "dest"],
+    ) === show({ check: true, checkFindings: "f", symbolGaps: "g", port: 81, dest: "d" }),
+  );
+  check(
+    "tbdocs keeps the flags the negations set",
+    pick(["--no-offline", "--no-pdf"], ["skipOffline", "skipPdf"]) === show({ skipOffline: true, skipPdf: true }),
+  );
 }
 
 // ------------------------------------------------------------ the recorded cases
 
+// biome-ignore format: a table, one entry per line
 const CASES = [
-  // Recorded in C47, from the behaviour C18 settled: a command-line error in
-  // tbdocs and check_links exits 2, as in every tool, and never reads as a
-  // finding, which exits 1. A value flag has no
+  // A command-line error in tbdocs and check_links exits 2, as in every tool,
+  // and never reads as a finding, which exits 1. A value flag has no
   // value at the end of the list or before another flag, and --port is a whole
   // number from 1 to 65535. check_links prints its errors on stderr, after
   // "error: ".
@@ -439,8 +732,7 @@ const CASES = [
   { tool: "scripts/check_links.mjs", args: ["no-such-tree", "--root-dir"], exit: 2, stderr: "error: --root-dir needs a value\n" },
   { tool: "scripts/check_links.mjs", args: ["no-such-tree", "--forbid"], exit: 2, stderr: "error: --forbid needs a value\n" },
 
-  // Recorded in C47, from the behaviour C17 settled: in the four harness tools
-  // that check, a value flag with no value, at the end or before another flag,
+  // In the four harness tools that check, a value flag with no value, at the end or before another flag,
   // exits 2. tbbuild follows the message with its usage line.
   { tool: "scripts/tbbuild.mjs", args: ["--port"], exit: 2, stderr: /^--port needs a value\nusage: node scripts\/tbbuild\.mjs / },
   { tool: "scripts/tbbuild.mjs", args: ["--timeout", "--keep"], exit: 2, stderr: /^--timeout needs a value\nusage: node scripts\/tbbuild\.mjs / },
@@ -453,10 +745,10 @@ const CASES = [
   { tool: "scripts/build_package_api.mjs", args: ["--exported", "--check"], exit: 2, stderr: "--exported needs a value\n" },
   { tool: "scripts/build_package_api.mjs", args: ["--src", "x"], exit: 2, stderr: "unknown option: --src\n" },
 
-  // Recorded in C48, for the a11y and diagram tools. A value flag given
+  // The a11y and diagram tools. A value flag given
   // nothing, at the end or as "", or followed by another flag, is refused.
-  // Each of them answers --help on stdout with exit 0 (C71).
-  // --theme and --viewport are checked against their lists (C20).
+  // Each of them answers --help on stdout with exit 0.
+  // --theme and --viewport are checked against their lists.
   // check_dot_fit and build_dot_metrics take one flag of their own besides
   // --help and -h, and neither has a case beyond those and the generated ones.
   { tool: "scripts/check_a11y.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_a11y\.mjs / },
@@ -492,10 +784,10 @@ const CASES = [
   { tool: "scripts/sweep_a11y.mjs", args: ["--theme", "drak"], exit: 2, stderr: 'unknown --theme "drak"; expected one of light, dark or both\n' },
   { tool: "scripts/sweep_a11y.mjs", args: ["--viewport", "huge"], exit: 2, stderr: 'unknown --viewport "huge"; expected one of desktop, mobile or both\n' },
 
-  // Recorded in C49, for the harness tools. All of them answer --help and -h
+  // The harness tools. All of them answer --help and -h
   // on stdout with exit 0 before any other check, a number or a missing
-  // project included (C71). tbbuild finds its project anywhere in the list
-  // (C17). An unknown option, a value flag with no value or an empty one is
+  // project included. tbbuild finds its project anywhere in the list.
+  // An unknown option, a value flag with no value or an empty one is
   // refused, and tbbuild and tbrun follow the message with their usage.
   // gen_attribute_probes takes one output folder and an optional key file, so
   // only its empty list is a case here.
@@ -531,7 +823,7 @@ const CASES = [
   { tool: "scripts/build_package_api.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/build_package_api\.mjs \[options\]\n/ },
   { tool: "scripts/gen_attribute_probes.mjs", args: [], exit: 2, stderr: /^Generate a twinBASIC probe project for Reference\/Attributes\.md applicability\.\n/ },
 
-  // Recorded in C50, for the gates and link tools. check_links prints its
+  // The gates and link tools. check_links prints its
   // errors on stderr, after "error: ", and exits 2. Every one of them refuses
   // an unknown option, a stray argument, a value given to a flag that takes
   // none, and a value flag with no value, and crawl_check, compare_trees and
@@ -581,7 +873,7 @@ const CASES = [
   { tool: "scripts/compare_trees.mjs", args: ["--before", "--", "x"], exit: 2, stderr: /^compare_trees: --before needs a value\n\nusage: node scripts\/compare_trees\.mjs / },
   { tool: "scripts/compare_trees.mjs", args: ["--keep=1"], exit: 2, stderr: /^compare_trees: --keep takes no value\n\nusage: node scripts\/compare_trees\.mjs / },
 
-  // Recorded in C51, for render-book, eval/ and wisdom. In every one of them an
+  // render-book, eval/ and wisdom. In every one of them an
   // unknown option, a value flag with no value and a value given to a boolean
   // are refused at the parse, in the parser's own words, exit 2, and so is an
   // argument beyond those a tool takes (nav_hops and site_search take any
@@ -589,7 +881,7 @@ const CASES = [
   // --. build_corpus, nav_hops, run_case, site_search and transcript print
   // their usage on stderr when an argument they need is
   // missing; wisdom does when no command is given, and names an unknown one.
-  // Every tool here answers -h and --help on stdout with exit 0 (C71), and
+  // Every tool here answers -h and --help on stdout with exit 0, and
   // reads nothing after it. The command in the wisdom cases is never a real
   // one, so that none can start an export. render-book's missing input file is
   // not a usage error, but exits 2 as one does, and so does a --site that holds
@@ -675,7 +967,7 @@ const CASES = [
   { tool: "wisdom/wisdom.mjs", args: ["bogus", "-x"], exit: 2, stderr: "unknown option: -x\n" },
   { tool: "wisdom/wisdom.mjs", args: ["bogus", "--guild", "x", "--bogus"], exit: 2, stderr: "unknown option: --bogus\n" },
 
-  // Recorded in C52, for tbdocs, with C47's four above. Every command-line
+  // tbdocs, beyond the cases above. Every command-line
   // error exits 2. A value flag refuses a missing value and one that starts
   // with a dash, "--" included; an unknown option is refused as given, as is a
   // positional, and a boolean given a value. Each --port and --stall-timeout
@@ -714,11 +1006,12 @@ const CASES = [
     stderr: /^refusing --dest (.+)[\\/]sub: it is inside the source tree, so a build would read its output back as source, or serve would rebuild on its own writes\. Use a folder directly under \1 whose name starts with _site, _serve, _pdf, or one inside such a folder, or one outside \1\.\n$/ },
 ];
 
-// Recorded in C71. Every tool prints its usage on stdout and exits 0 for
+// Every tool prints its usage on stdout and exits 0 for
 // --help and for -h, so each is a case, the two forms alike, unless the table
 // above already holds it. The value is the start of the tool's text where that
 // is not `usage: node <tool>`: an older text that opens otherwise, or one that
 // names the tool without its folder.
+// biome-ignore format: a table, one entry per line
 const HELP_TOOLS = {
   "builder/tbdocs.mjs": null,
   "book/render-book.mjs": "usage: node render-book.mjs <input.html> ",
@@ -786,7 +1079,7 @@ for (const [tool, start] of Object.entries(HELP_TOOLS)) {
 const EXIT_TABLE = /\nExit codes:\n(?: {2}\d {2}[^\n]*\n| {5}[^\n]*\n)+$/;
 const oneExitTable = (text) => EXIT_TABLE.test(text) && text.split("Exit codes:").length === 2;
 
-// Recorded in C72. Every tool refuses an unknown flag and an empty value at
+// Every tool refuses an unknown flag and an empty value at
 // the parse, so each has a case for the first and, where it has a value
 // option, for the second: `tool: [option, extras]`, the option given as
 // `--option=`. Both exit 2, print the refusal on
@@ -795,6 +1088,7 @@ const oneExitTable = (text) => EXIT_TABLE.test(text) && text.split("Exit codes:"
 // the parse: convert_em_dash_separators would rewrite docs/ but for --check, and
 // wisdom needs a command that is not a real one. A case the table above already
 // holds, the same tool with the same arguments, is not added again.
+// biome-ignore format: a table, one entry per line
 const REFUSALS = {
   "builder/tbdocs.mjs": ["src"],
   "book/render-book.mjs": ["output"],
@@ -853,10 +1147,18 @@ for (const tool of Object.keys(HELP_TOOLS)) {
 }
 for (const [tool, [option, { exit = 2, prefix = "", args, empty } = {}]] of Object.entries(REFUSALS)) {
   if (!(tool in HELP_TOOLS)) throw new Error(`REFUSALS names ${tool}, which HELP_TOOLS does not`);
-  const wanted = [{ args: args ?? ["--bogus"], stderr: new RegExp(`^${literal(`${prefix}unknown option: --bogus\n`)}`) }];
-  if (option) wanted.push({ args: empty ?? [`--${option}=`], stderr: new RegExp(`^${literal(`${prefix}--${option} needs a non-empty value\n`)}`) });
+  const wanted = [
+    { args: args ?? ["--bogus"], stderr: new RegExp(`^${literal(`${prefix}unknown option: --bogus\n`)}`) },
+  ];
+  if (option)
+    wanted.push({
+      args: empty ?? [`--${option}=`],
+      stderr: new RegExp(`^${literal(`${prefix}--${option} needs a non-empty value\n`)}`),
+    });
   for (const w of wanted) {
-    const held = CASES.find((c) => c.tool === tool && c.args.length === w.args.length && c.args.every((a, i) => a === w.args[i]));
+    const held = CASES.find(
+      (c) => c.tool === tool && c.args.length === w.args.length && c.args.every((a, i) => a === w.args[i]),
+    );
     if (held) LEAVES_EMPTY.add(held);
     else {
       const made = { tool, args: w.args, exit, stderr: w.stderr };
@@ -878,24 +1180,33 @@ const BAD_VALUES = [];
 const bad = (tool, args, stderr, exit = 2) => BAD_VALUES.push({ tool, args, exit, stderr });
 // The message, then the opening of the tool's usage; `blank` when the tool puts
 // an empty line between them.
-const thenUsage = (message, tool, blank = false) => new RegExp(`^${literal(message)}\\n${blank ? "\\n" : ""}usage: node ${literal(tool)} `);
+const thenUsage = (message, tool, blank = false) =>
+  new RegExp(`^${literal(message)}\\n${blank ? "\\n" : ""}usage: node ${literal(tool)} `);
 const NOT_PORT = (v) => `--port expects a whole number from 1 to 65535, got: ${v}`;
 const NOT_COUNT = (option, v) => `${option} expects a whole number of at least 1, got: ${v}`;
 const NOT_WHOLE = (option, v) => `${option} expects a whole number of at least 0, got: ${v}`;
 const NOT_ABOVE_ZERO = (option, v) => `${option} expects a number greater than 0, got: ${v}`;
 const NOT_URL = (option, v) => `${option} expects an absolute http or https URL, got: ${v}`;
 const START = "http://127.0.0.1:9/";
-const REGEX_REASON = (option, v) => new RegExp(`^${literal(`${option} expects a regular expression, got: ${v} (`)}.+\\)\\n$`);
+const REGEX_REASON = (option, v) =>
+  new RegExp(`^${literal(`${option} expects a regular expression, got: ${v} (`)}.+\\)\\n$`);
 
 // tbdocs prints the message alone, check_links after `error: `.
 bad("builder/tbdocs.mjs", ["--url", "foo"], NOT_URL("--url", "foo") + "\n");
 bad("builder/tbdocs.mjs", ["--url=mailto:x"], NOT_URL("--url", "mailto:x") + "\n");
 bad("builder/tbdocs.mjs", ["--stall-timeout", "abc"], "--stall-timeout expects a number of at least 0, got: abc\n");
-bad("scripts/check_links.mjs", ["--offline", "--oracle", "x", "no-such-tree"], "error: --oracle expects fs or index, got: x\n");
+bad(
+  "scripts/check_links.mjs",
+  ["--offline", "--oracle", "x", "no-such-tree"],
+  "error: --oracle expects fs or index, got: x\n",
+);
 bad("scripts/check_links.mjs", ["--offline", "--oracle=", "no-such-tree"], "error: --oracle needs a non-empty value\n");
 
 // tbbuild and tbrun follow the message with their usage.
-for (const [tool, first] of [["scripts/tbbuild.mjs", "x.twinproj"], ["scripts/tbrun.mjs", "no-such-dir"]]) {
+for (const [tool, first] of [
+  ["scripts/tbbuild.mjs", "x.twinproj"],
+  ["scripts/tbrun.mjs", "no-such-dir"],
+]) {
   bad(tool, [first, "--port", "0"], thenUsage(NOT_PORT(0), tool));
   bad(tool, [first, "--port=65536"], thenUsage(NOT_PORT(65536), tool));
   bad(tool, [first, "--port", "abc"], thenUsage(NOT_PORT("abc"), tool));
@@ -931,8 +1242,16 @@ bad("scripts/addin_test.mjs", ["--port", "0"], NOT_PORT(0) + "\n");
 bad("scripts/addin_test.mjs", ["--port=1.5"], NOT_PORT(1.5) + "\n");
 bad("scripts/addin_test.mjs", ["--jobs", "0"], NOT_COUNT("--jobs", 0) + "\n");
 bad("scripts/addin_test.mjs", ["--jobs=1.5"], NOT_COUNT("--jobs", 1.5) + "\n");
-bad("scripts/addin_test.mjs", ["--timeout", "0"], "--timeout expects a number greater than 0 and at most 2147483, got: 0\n");
-bad("scripts/addin_test.mjs", ["--timeout", "2147484"], "--timeout expects a number greater than 0 and at most 2147483, got: 2147484\n");
+bad(
+  "scripts/addin_test.mjs",
+  ["--timeout", "0"],
+  "--timeout expects a number greater than 0 and at most 2147483, got: 0\n",
+);
+bad(
+  "scripts/addin_test.mjs",
+  ["--timeout", "2147484"],
+  "--timeout expects a number greater than 0 and at most 2147483, got: 2147484\n",
+);
 bad("scripts/addin_test.mjs", ["--show", "--hide"], "--show and --hide cannot be given together\n");
 
 // check_examples prints "check_examples: " before the message.
@@ -943,27 +1262,59 @@ bad("scripts/addin_test.mjs", ["--show", "--hide"], "--show and --hide cannot be
   bad(tool, ["--batch", "0"], say(NOT_COUNT("--batch", 0)));
   bad(tool, ["--port", "0"], say(NOT_PORT(0)));
   bad(tool, ["--port=65536"], say(NOT_PORT(65536)));
-  bad(tool, ["--only", "("], new RegExp(`^check_examples: ${literal("--only expects a regular expression, got: ( (")}.+\\)\\n$`));
+  bad(
+    tool,
+    ["--only", "("],
+    new RegExp(`^check_examples: ${literal("--only expects a regular expression, got: ( (")}.+\\)\\n$`),
+  );
   bad(tool, ["--apply"], say("--apply needs --propose"));
   bad(tool, ["--apply", "--census"], say("--apply needs --propose"));
   bad(tool, ["--census", "--propose"], say("--census and --propose cannot be given together"));
   bad(tool, ["--report", "survey.json", "--census"], say("--report and --census cannot be given together"));
-  bad(tool, ["--report", "survey.json", "--census", "--propose"], say("--report, --census and --propose cannot be given together"));
+  bad(
+    tool,
+    ["--report", "survey.json", "--census", "--propose"],
+    say("--report, --census and --propose cannot be given together"),
+  );
   bad(tool, ["--show", "--hide"], say("--show and --hide cannot be given together"));
 }
 
-bad("scripts/survey_tooling.mjs", ["--window", "abc"], thenUsage(NOT_COUNT("--window", "abc"), "scripts/survey_tooling.mjs"));
+bad(
+  "scripts/survey_tooling.mjs",
+  ["--window", "abc"],
+  thenUsage(NOT_COUNT("--window", "abc"), "scripts/survey_tooling.mjs"),
+);
 bad("scripts/survey_tooling.mjs", ["--top=-1"], thenUsage(NOT_COUNT("--top", -1), "scripts/survey_tooling.mjs"));
-bad("scripts/compare_trees.mjs", ["--max=-1"], thenUsage(`compare_trees: ${NOT_WHOLE("--max", -1)}`, "scripts/compare_trees.mjs", true));
-bad("scripts/compare_trees.mjs", ["--max", "abc"], thenUsage(`compare_trees: ${NOT_WHOLE("--max", "abc")}`, "scripts/compare_trees.mjs", true));
+bad(
+  "scripts/compare_trees.mjs",
+  ["--max=-1"],
+  thenUsage(`compare_trees: ${NOT_WHOLE("--max", -1)}`, "scripts/compare_trees.mjs", true),
+);
+bad(
+  "scripts/compare_trees.mjs",
+  ["--max", "abc"],
+  thenUsage(`compare_trees: ${NOT_WHOLE("--max", "abc")}`, "scripts/compare_trees.mjs", true),
+);
 
 {
   const tool = "scripts/crawl_check.mjs";
   bad(tool, ["--concurrency", "0", START], thenUsage(NOT_COUNT("--concurrency", 0), tool));
   bad(tool, ["--concurrency=1.5", START], thenUsage(NOT_COUNT("--concurrency", 1.5), tool));
-  bad(tool, ["--timeout", "0", START], thenUsage("--timeout expects a whole number from 1 to 2147483647, got: 0", tool));
-  bad(tool, ["--timeout", "2147483648", START], thenUsage("--timeout expects a whole number from 1 to 2147483647, got: 2147483648", tool));
-  bad(tool, ["--timeout", "abc", START], thenUsage("--timeout expects a whole number from 1 to 2147483647, got: abc", tool));
+  bad(
+    tool,
+    ["--timeout", "0", START],
+    thenUsage("--timeout expects a whole number from 1 to 2147483647, got: 0", tool),
+  );
+  bad(
+    tool,
+    ["--timeout", "2147483648", START],
+    thenUsage("--timeout expects a whole number from 1 to 2147483647, got: 2147483648", tool),
+  );
+  bad(
+    tool,
+    ["--timeout", "abc", START],
+    thenUsage("--timeout expects a whole number from 1 to 2147483647, got: abc", tool),
+  );
   bad(tool, ["foo"], thenUsage(NOT_URL("<start-url>", "foo"), tool));
   bad(tool, ["mailto:x"], thenUsage(NOT_URL("<start-url>", "mailto:x"), tool));
 }
@@ -976,7 +1327,11 @@ bad("scripts/pick_a11y_sample.mjs", ["--budget", "0"], NOT_ABOVE_ZERO("--budget"
 bad("scripts/pick_a11y_sample.mjs", ["--budget=-1"], NOT_ABOVE_ZERO("--budget", -1) + "\n");
 bad("scripts/pick_a11y_sample.mjs", ["--check", "--propose"], "--check and --propose cannot be given together\n");
 bad("scripts/pick_a11y_sample.mjs", ["--propose", "--census"], "--propose and --census cannot be given together\n");
-bad("scripts/pick_a11y_sample.mjs", ["--check", "--propose", "--census"], "--check, --propose and --census cannot be given together\n");
+bad(
+  "scripts/pick_a11y_sample.mjs",
+  ["--check", "--propose", "--census"],
+  "--check, --propose and --census cannot be given together\n",
+);
 bad("scripts/check_a11y_fingerprint.mjs", ["--baseline", "nope"], /^--baseline expects production, .+, got: nope\n$/);
 bad("scripts/check_a11y_fingerprint.mjs", ["--candidate", "nope"], /^--candidate expects production, .+, got: nope\n$/);
 bad("scripts/check_a11y_fingerprint.mjs", ["--patches", "nope"], /^--patches expects .+, got: nope\n$/);
@@ -992,7 +1347,11 @@ bad("book/render-book.mjs", ["a.html", "-o", "out.pdf", "-t", "1.5"], NOT_MS(1.5
 bad("book/render-book.mjs", ["a.html", "-o", "out.pdf", "-t", "2147483648"], NOT_MS(2147483648));
 
 bad("eval/run_case.mjs", ["--timeout", "0"], "--timeout expects a number greater than 0 and at most 35791, got: 0\n");
-bad("eval/run_case.mjs", ["--timeout", "35792"], "--timeout expects a number greater than 0 and at most 35791, got: 35792\n");
+bad(
+  "eval/run_case.mjs",
+  ["--timeout", "35792"],
+  "--timeout expects a number greater than 0 and at most 35791, got: 35792\n",
+);
 bad("eval/run_case.mjs", ["--protocol", "x"], "--protocol expects repo or site, got: x\n");
 bad("eval/search_quality.mjs", ["--sample", "0"], NOT_COUNT("--sample", 0) + "\n");
 bad("eval/search_quality.mjs", ["--worst=-1"], NOT_WHOLE("--worst", -1) + "\n");
@@ -1010,13 +1369,18 @@ bad("eval/nav_hops.mjs", ["Reference", "[a-"], REGEX_REASON("<url-regex>", "[a-"
 // folder that must never be emptied.
 {
   const tool = "eval/build_corpus.mjs";
-  const refuse = (dest, what) => new RegExp(`^refusing --dest ${dest}: it is or contains ${what}, which cleaning it would delete\\n$`);
+  const refuse = (dest, what) =>
+    new RegExp(`^refusing --dest ${dest}: it is or contains ${what}, which cleaning it would delete\\n$`);
   const docs = path.join(REPO_ROOT, "docs");
   bad(tool, ["--dest", REPO_ROOT], refuse(literal(REPO_ROOT), "the repository root"));
   bad(tool, ["--dest", path.dirname(REPO_ROOT)], refuse(literal(path.dirname(REPO_ROOT)), "the repository root"));
   bad(tool, ["--dest", "."], refuse(".+", "the current folder"));
   bad(tool, ["--dest", ".."], refuse(".+", "the current folder"));
-  bad(tool, ["--repo", path.join(docs, "Reference"), "--dest", docs], refuse(literal(docs), literal(`--repo ${path.join(docs, "Reference")}`)));
+  bad(
+    tool,
+    ["--repo", path.join(docs, "Reference"), "--dest", docs],
+    refuse(literal(docs), literal(`--repo ${path.join(docs, "Reference")}`)),
+  );
   bad(tool, ["--repo", docs, "--dest", docs], refuse(literal(docs), literal(`--repo ${docs}`)));
 }
 
@@ -1037,7 +1401,11 @@ bad("eval/nav_hops.mjs", ["Reference", "[a-"], REGEX_REASON("<url-regex>", "[a-"
   bad(tool, ["bogus", "--min-confidence", "x"], "--min-confidence expects high, medium or low, got: x\n");
   bad(tool, ["extract", "--all", "--force"], "--all and --force cannot be given together\n");
   bad(tool, ["extract", "--since", "2024-01-01", "--force"], "--since and --force cannot be given together\n");
-  bad(tool, ["extract", "--since", "2024-01-01", "--all", "--force"], "--since, --all and --force cannot be given together\n");
+  bad(
+    tool,
+    ["extract", "--since", "2024-01-01", "--all", "--force"],
+    "--since, --all and --force cannot be given together\n",
+  );
 }
 for (const made of BAD_VALUES) {
   CASES.push(made);
@@ -1048,11 +1416,15 @@ const TIMEOUT_MS = 30_000;
 
 function runCase({ tool, args }, cwd, env) {
   return new Promise((resolve) => {
-    execFile(process.execPath, [path.join(REPO_ROOT, tool), ...args], { cwd, env, timeout: TIMEOUT_MS, windowsHide: true },
+    execFile(
+      process.execPath,
+      [path.join(REPO_ROOT, tool), ...args],
+      { cwd, env, timeout: TIMEOUT_MS, windowsHide: true },
       (error, stdout, stderr) => {
         const exit = !error ? 0 : error.killed ? `killed after ${TIMEOUT_MS / 1000} s` : error.code;
         resolve({ exit, stdout, stderr });
-      });
+      },
+    );
   });
 }
 
@@ -1085,11 +1457,20 @@ try {
     const got = results[i];
     const ok = got.exit === c.exit && matches(c.stdout, got.stdout) && matches(c.stderr, got.stderr);
     const label = `${path.basename(c.tool, ".mjs")} ${c.args.join(" ")}`;
-    check(`${label}: exit ${c.exit}, ${c.stdout ? "stdout" : "stderr"}`, ok,
-      `expected exit ${c.exit}, stdout ${expectation(c.stdout)}, stderr ${expectation(c.stderr)}\n`
-        + `got      exit ${got.exit}, stdout ${clip(got.stdout)}, stderr ${clip(got.stderr)}`);
-    if (c.exitCodes) check(`${label}: ends with one table of exit codes`, oneExitTable(got.stdout), `got stdout ${clip(got.stdout.slice(-400))}`);
-    if (got.left) check(`${label}: leaves its folder empty`, got.left.length === 0, `appeared in the folder: ${show(got.left)}`);
+    check(
+      `${label}: exit ${c.exit}, ${c.stdout ? "stdout" : "stderr"}`,
+      ok,
+      `expected exit ${c.exit}, stdout ${expectation(c.stdout)}, stderr ${expectation(c.stderr)}\n` +
+        `got      exit ${got.exit}, stdout ${clip(got.stdout)}, stderr ${clip(got.stderr)}`,
+    );
+    if (c.exitCodes)
+      check(
+        `${label}: ends with one table of exit codes`,
+        oneExitTable(got.stdout),
+        `got stdout ${clip(got.stdout.slice(-400))}`,
+      );
+    if (got.left)
+      check(`${label}: leaves its folder empty`, got.left.length === 0, `appeared in the folder: ${show(got.left)}`);
   });
 } finally {
   await rm(scratch, { recursive: true, force: true });

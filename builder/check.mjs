@@ -41,10 +41,17 @@ import * as path from "node:path";
 import { performance } from "node:perf_hooks";
 
 import {
-  extractFromHtml, resolveOccurrences, settleFragments,
-  buildTreeIndex, IndexOracle, normalizeBasePath,
-  checkSitemap, checkSearch, checkCanonical,
-  formatLinkReport, formatIntegrityReport,
+  extractFromHtml,
+  resolveOccurrences,
+  settleFragments,
+  buildTreeIndex,
+  IndexOracle,
+  normalizeBasePath,
+  checkSitemap,
+  checkSearch,
+  checkCanonical,
+  formatLinkReport,
+  formatIntegrityReport,
 } from "./link-check.mjs";
 import { posix } from "./check-tree.mjs";
 
@@ -57,41 +64,47 @@ export { normalizeBasePath };
 // tree and an expected, listed one in the book, and the book pass is
 // informational.
 export const FALLBACK_EXTS = ["html"];
-export const INDEX_FILES   = ["index.html", "."];
+export const INDEX_FILES = ["index.html", "."];
 
 export const TREES = {
   online: {
     suffix: "",
-    label:  "_site",
+    label: "_site",
     checkOpts: {
-      checkHtml: true, checkA11y: true, checkIds: true,
-      checkRemoteAssets: true, checkCanonical: true,
-      captureRedirectStub: false,   // the build knows its own stubs
+      checkHtml: true,
+      checkA11y: true,
+      checkIds: true,
+      checkRemoteAssets: true,
+      checkCanonical: true,
+      captureRedirectStub: false, // the build knows its own stubs
     },
     forbid: null,
     crossFile: { sitemap: true, search: true, canonical: true },
     fallbackExts: FALLBACK_EXTS,
-    indexFiles:   INDEX_FILES,
+    indexFiles: INDEX_FILES,
     includeFragments: true,
   },
   offline: {
     suffix: "-offline",
-    label:  "_site-offline",
+    label: "_site-offline",
     checkOpts: {
-      checkHtml: true, checkA11y: true, checkIds: true,
-      checkRemoteAssets: true, checkCanonical: false,
+      checkHtml: true,
+      checkA11y: true,
+      checkIds: true,
+      checkRemoteAssets: true,
+      checkCanonical: false,
       captureRedirectStub: false,
     },
     // Catches live-site links the offlinify rewrite missed.
     forbid: ["https://docs.twinbasic.com"],
     crossFile: { sitemap: false, search: false, canonical: false },
     fallbackExts: FALLBACK_EXTS,
-    indexFiles:   INDEX_FILES,
+    indexFiles: INDEX_FILES,
     includeFragments: true,
   },
   pdf: {
     suffix: "-pdf",
-    label:  "_site-pdf",
+    label: "_site-pdf",
     checkOpts: null,
     // Every link book.mjs sent to the website because the page it names
     // is not in the book. They are collected the way the offline tree
@@ -105,7 +118,7 @@ export const TREES = {
     // entirely internal fragments; there is no directory structure to
     // fall back through.
     fallbackExts: [],
-    indexFiles:   [],
+    indexFiles: [],
     includeFragments: true,
     noFail: true,
   },
@@ -159,10 +172,15 @@ export function checkChunk(docs, env) {
       for (const f of r.forbidden) forbidden.push(doc.destPath, f.url, f.prefix);
     }
     if (r.htmlErrors?.length || r.a11yErrors?.length || r.dupIds?.length || r.remoteAssets?.length) {
-      integrity.push([doc.destPath, {
-        htmlErrors: r.htmlErrors, a11yErrors: r.a11yErrors,
-        dupIds: r.dupIds, remoteAssets: r.remoteAssets,
-      }]);
+      integrity.push([
+        doc.destPath,
+        {
+          htmlErrors: r.htmlErrors,
+          a11yErrors: r.a11yErrors,
+          dupIds: r.dupIds,
+          remoteAssets: r.remoteAssets,
+        },
+      ]);
     }
     if (r.canonicalHref) canonicals.push([doc.destPath, r.canonicalHref]);
     if (r.isRedirectStub) stubs.push(doc.destPath);
@@ -170,9 +188,10 @@ export function checkChunk(docs, env) {
   const extract = performance.now() - t0;
 
   const res = resolveOccurrences(occurrences, env.oracle, {
-    rootStr: root, basePath,
+    rootStr: root,
+    basePath,
     fallbackExts: tree.fallbackExts,
-    indexFiles:   tree.indexFiles,
+    indexFiles: tree.indexFiles,
     includeFragments: tree.includeFragments,
     localIds,
     deferFragments: true,
@@ -192,10 +211,12 @@ export function checkChunk(docs, env) {
     occurrences: occurrences.length / 3,
     uniqueLocal: res.uniqueCount,
     broken,
-    brokenKeys:  res.brokenKeys,
+    brokenKeys: res.brokenKeys,
     forbidden,
-    pending:     res.pendingFragments,
-    ids, integrity, canonicals,
+    pending: res.pendingFragments,
+    ids,
+    integrity,
+    canonicals,
     // Only the standalone script uses these three. The build knows its
     // own stubs (captureRedirectStub is off in every TREES entry, so
     // `stubs` stays empty), and the script checks a whole tree as one
@@ -224,10 +245,9 @@ function relTo(root, p) {
 // and search-data.json as the build wrote them, not as re-read from
 // disk. Checking the string the build emitted is checking the same
 // bytes the tree received.
-export function joinChunks(chunks, {
-  root, tree, basePath = "", relFiles = [], stubRels = null, aux = {},
-}) {
-  let occurrences = 0, files = 0;
+export function joinChunks(chunks, { root, tree, basePath = "", relFiles = [], stubRels = null, aux = {} }) {
+  let occurrences = 0,
+    files = 0;
   const broken = [];
   const brokenKeys = new Set();
   const forbiddenBySource = tree.forbid ? new Map() : null;
@@ -248,23 +268,29 @@ export function joinChunks(chunks, {
     if (!c) {
       throw new Error(
         `joinChunks(${tree.label}): a chunk produced no result; the check ` +
-        `would have covered only part of the tree`
+          `would have covered only part of the tree`,
       );
     }
-    if (c.error) { errors.push(c.error); continue; }
+    if (c.error) {
+      errors.push(c.error);
+      continue;
+    }
     occurrences += c.occurrences;
-    files       += c.files;
-    for (const x of c.broken)     broken.push(x);
+    files += c.files;
+    for (const x of c.broken) broken.push(x);
     for (const k of c.brokenKeys) brokenKeys.add(k);
-    for (const [k, v] of c.ids)        idsByTarget.set(k, new Set(v));
-    for (const [k, v] of c.integrity)  integrityByFile.set(k, v);
+    for (const [k, v] of c.ids) idsByTarget.set(k, new Set(v));
+    for (const [k, v] of c.integrity) integrityByFile.set(k, v);
     for (const [k, v] of c.canonicals) canonicalByRel.set(k, v);
     for (const p of c.pending) pending.push(p);
     if (forbiddenBySource) {
       for (let i = 0; i < c.forbidden.length; i += 3) {
         const src = c.forbidden[i];
         let list = forbiddenBySource.get(src);
-        if (!list) { list = []; forbiddenBySource.set(src, list); }
+        if (!list) {
+          list = [];
+          forbiddenBySource.set(src, list);
+        }
         list.push({ url: c.forbidden[i + 1], prefix: c.forbidden[i + 2] });
       }
     }
@@ -281,9 +307,7 @@ export function joinChunks(chunks, {
   // Redirect stubs are excluded from all three cross-file checks. The
   // standalone script detects them by sniffing for a meta refresh; the
   // build simply knows which pages it generated as stubs.
-  const contentRels = stubRels
-    ? relFiles.filter(r => !stubRels.has(r))
-    : relFiles;
+  const contentRels = stubRels ? relFiles.filter((r) => !stubRels.has(r)) : relFiles;
 
   // Each of the three is `null` when it did not run, and `[]` when it
   // ran and found nothing. formatReport cannot tell those apart -- it
@@ -291,16 +315,16 @@ export function joinChunks(chunks, {
   // stopped being met would take a check dark and still read as a pass.
   // Every `null` therefore gets a reason, printed in the same shape the
   // standalone script uses for the same situation.
-  let sitemapIssues = null, searchIssues = null, canonicalIssues = null;
+  let sitemapIssues = null,
+    searchIssues = null,
+    canonicalIssues = null;
   const skipped = [];
   if (!tree.crossFile.sitemap) {
     // Not a skip: this tree's definition does not include the check.
   } else if (aux.sitemapXml == null) {
     skipped.push("sitemap: sitemap.xml was not generated, skipping");
   } else {
-    sitemapIssues = checkSitemap(
-      aux.sitemapXml, contentRels, basePath, aux.sitemapOptOut
-    ).sort();
+    sitemapIssues = checkSitemap(aux.sitemapXml, contentRels, basePath, aux.sitemapOptOut).sort();
   }
 
   if (!tree.crossFile.search) {
@@ -309,11 +333,13 @@ export function joinChunks(chunks, {
     skipped.push("search: search-data.json was not generated, skipping");
   } else {
     let data = null;
-    try { data = JSON.parse(aux.searchJson); } catch { data = null; }
+    try {
+      data = JSON.parse(aux.searchJson);
+    } catch {
+      data = null;
+    }
     if (data) {
-      searchIssues = checkSearch(
-        data, contentRels, basePath, aux.searchOptOut
-      ).sort();
+      searchIssues = checkSearch(data, contentRels, basePath, aux.searchOptOut).sort();
     } else {
       skipped.push("search: search-data.json did not parse as JSON, skipping");
     }
@@ -342,7 +368,9 @@ export function joinChunks(chunks, {
     broken,
     forbiddenBySource,
     integrityByFile,
-    sitemapIssues, searchIssues, canonicalIssues,
+    sitemapIssues,
+    searchIssues,
+    canonicalIssues,
     skipped,
     errors,
   };
@@ -375,7 +403,7 @@ export function formatReport(r) {
   let integrityCount = integrity.count;
   for (const issues of [r.sitemapIssues, r.searchIssues, r.canonicalIssues]) {
     if (!issues || !issues.length) continue;
-    out.push("\n" + issues.map(i => `${r.label}/${i}`).join("\n") + "\n");
+    out.push("\n" + issues.map((i) => `${r.label}/${i}`).join("\n") + "\n");
     integrityCount += issues.length;
   }
 
@@ -402,15 +430,15 @@ export function formatReport(r) {
   } else if (r.forbiddenBySource) {
     forbidNote = `, ${forbiddenCount} forbidden`;
   }
-  const failNote   = r.noFail && (linksFailed || integrityFailed) ? "  (informational)" : "";
+  const failNote = r.noFail && (linksFailed || integrityFailed) ? "  (informational)" : "";
   out.push(
     `  ${r.label.padEnd(14)} ${String(r.occurrences).padStart(7)} occurrences -- ` +
-    `${r.brokenUnique} broken${forbidNote}, ${integrityCount} integrity${failNote}\n`
+      `${r.brokenUnique} broken${forbidNote}, ${integrityCount} integrity${failNote}\n`,
   );
 
   return {
     text: out.join(""),
-    linksFailed:     r.noFail ? false : linksFailed,
+    linksFailed: r.noFail ? false : linksFailed,
     integrityFailed: r.noFail ? false : integrityFailed,
   };
 }
@@ -456,14 +484,17 @@ export function findingsFor(r) {
     }
   }
 
-  const html = [], a11y = [], dupIds = [], remoteAssets = [];
+  const html = [],
+    a11y = [],
+    dupIds = [],
+    remoteAssets = [];
   for (const [src, rec] of r.integrityByFile) {
     const s = posix(src);
     for (const e of rec.htmlErrors ?? []) html.push(`${s}: html-${e.type}: <${e.tag}>`);
     for (const e of rec.a11yErrors ?? []) {
-      if (e.type === "img-missing-alt")   a11y.push(`${s}: a11y-img-missing-alt: src=${e.src}`);
+      if (e.type === "img-missing-alt") a11y.push(`${s}: a11y-img-missing-alt: src=${e.src}`);
       else if (e.type === "empty-anchor") a11y.push(`${s}: a11y-empty-anchor`);
-      else if (e.type === "empty-href")   a11y.push(`${s}: a11y-empty-href: <${e.tag}>`);
+      else if (e.type === "empty-href") a11y.push(`${s}: a11y-empty-href: <${e.tag}>`);
     }
     for (const e of rec.dupIds ?? []) dupIds.push(`${s}: duplicate-id: '${e.id}' appears ${e.count} times`);
     for (const e of rec.remoteAssets ?? []) remoteAssets.push(`${s}: remote-asset: <${e.tag} src="${e.src}">`);
@@ -471,8 +502,7 @@ export function findingsFor(r) {
 
   const crossFileCount =
     (r.sitemapIssues?.length ?? 0) + (r.searchIssues?.length ?? 0) + (r.canonicalIssues?.length ?? 0);
-  const integrityCount =
-    html.length + a11y.length + dupIds.length + remoteAssets.length + crossFileCount;
+  const integrityCount = html.length + a11y.length + dupIds.length + remoteAssets.length + crossFileCount;
 
   let forbiddenCount = 0;
   if (r.forbiddenBySource) {
@@ -480,15 +510,15 @@ export function findingsFor(r) {
   }
 
   return {
-    broken:       brokenOut.sort(),
-    forbidden:    gate(r.tree.forbid !== null, forbiddenOut),
-    html:         gate(on.checkHtml, html),
-    a11y:         gate(on.checkA11y, a11y),
-    dupIds:       gate(on.checkIds, dupIds),
+    broken: brokenOut.sort(),
+    forbidden: gate(r.tree.forbid !== null, forbiddenOut),
+    html: gate(on.checkHtml, html),
+    a11y: gate(on.checkA11y, a11y),
+    dupIds: gate(on.checkIds, dupIds),
     remoteAssets: gate(on.checkRemoteAssets, remoteAssets),
-    sitemap:      r.sitemapIssues,
-    search:       r.searchIssues,
-    canonical:    r.canonicalIssues,
+    sitemap: r.sitemapIssues,
+    search: r.searchIssues,
+    canonical: r.canonicalIssues,
     counts: {
       files: r.files,
       occurrences: r.occurrences,
@@ -502,7 +532,7 @@ export function findingsFor(r) {
     skipped: r.skipped ?? [],
     // Raw, before --no-fail is applied: the book pass reports its ten
     // broken links as failures here even though it never fails a build.
-    linksFailed:     r.broken.length > 0 || forbiddenCount > 0,
+    linksFailed: r.broken.length > 0 || forbiddenCount > 0,
     // An error means the check did not complete. formatReport counts it
     // as an integrity failure and the process exits 1; omitting it here
     // let --check-findings report `false` for a run that exited 1.
@@ -522,7 +552,9 @@ export async function auditIndex(root, rels) {
   let entries;
   try {
     entries = await fsP.readdir(root, { recursive: true, withFileTypes: true });
-  } catch { return { missing: [], spurious: [], unreadable: true }; }
+  } catch {
+    return { missing: [], spurious: [], unreadable: true };
+  }
   for (const e of entries) {
     if (!e.isFile()) continue;
     const abs = path.join(e.parentPath || root, e.name);
@@ -530,8 +562,8 @@ export async function auditIndex(root, rels) {
   }
   const derived = new Set(rels.map(posix));
   return {
-    missing:  [...onDisk].filter(r => !derived.has(r)).sort(),
-    spurious: [...derived].filter(r => !onDisk.has(r)).sort(),
+    missing: [...onDisk].filter((r) => !derived.has(r)).sort(),
+    spurious: [...derived].filter((r) => !onDisk.has(r)).sort(),
     unreadable: false,
   };
 }

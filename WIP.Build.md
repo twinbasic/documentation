@@ -1,29 +1,28 @@
 # twinBASIC Documentation --- The Build Pipeline and Its Gates
 
-Every gate's failure history: what it caught, what shipped green past it, and
-the rule that came out of that. Split out of [WIP.md](WIP.md), which keeps the
-roster, the wrapper commands and the rules themselves under [The gates, and
+Why the pipeline and each gate are built the way they are: what each one checks,
+the failure it guards against, and the rule that follows. [WIP.md](WIP.md) keeps
+the roster, the wrapper commands and the rules themselves under [The gates, and
 where their internals are](WIP.md#the-gates-and-where-their-internals-are).
 
 **Read this before adding a gate, changing one, or adding any rewrite over
-markdown source or rendered HTML.** Most of what is here was written after
-something shipped broken with every gate green over it, and the recurring shape
-is a check that quietly stopped checking --- which reports exactly what a
-healthy tree reports.
+markdown source or rendered HTML.** Each gate here guards a failure that every
+other gate passes, and the recurring shape is a check that quietly stops
+checking --- which reports exactly what a healthy tree reports.
 
 ## The pipeline
 
-**Before adding a fan-out to the task graph, read [why a dep count of zero does not mean the submits have run](builder/PLAN-sab-pull-scheduler.md#a-dep-count-of-zero-does-not-mean-the-submits-have-run).** A worker posts its result and *then* decrements its successors' dependency counts in shared memory, so a barrier's count can reach zero while results are still queued and the `submit()` calls that merge them into build state have not run --- the shared counter orders the work, not the state. A dynamic barrier must therefore list every chunk task in its `expected`, even when its own `execute()` ignores the inputs; that list is the only thing the scheduler checks before it lets the barrier proceed. `renderJoin` went without it and silently dropped ~6 pages from `search-data.json` on about one build in three, because the index is built by flattening a `new Array(N)` and `Array.prototype.flat()` skips holes without reporting anything. Two silent failures combining into one invisible one. Both halves are fixed, and every skip on the chunk-merge path that used to tolerate a missing piece now refuses to continue --- see [where the completeness checks are](builder/PLAN-sab-pull-scheduler.md#where-the-completeness-checks-are). Keep it that way: on this path, "the piece is missing" is a bug, not a case to handle.
+**Before adding a fan-out to the task graph, read [why a dep count of zero does not mean the submits have run](builder/PLAN-sab-pull-scheduler.md#a-dep-count-of-zero-does-not-mean-the-submits-have-run).** A worker posts its result and *then* decrements its successors' dependency counts in shared memory, so a barrier's count can reach zero while results are still queued and the `submit()` calls that merge them into build state have not run --- the shared counter orders the work, not the state. A dynamic barrier must therefore list every chunk task in its `expected`, even when its own `execute()` ignores the inputs; that list is the only thing the scheduler checks before it lets the barrier proceed. A barrier without the list drops pages from `search-data.json` on some builds, because the index is built by flattening a `new Array(N)` and `Array.prototype.flat()` skips holes without reporting anything: a race and a silent skip combine into one invisible failure. Every skip on the chunk-merge path therefore refuses to continue when a piece is missing --- see [where the completeness checks are](builder/PLAN-sab-pull-scheduler.md#where-the-completeness-checks-are). On this path, "the piece is missing" is a bug, not a case to handle.
 
 **A sort key on this path must be total.** `discover()` fills `pages` from inside
 a `Promise.all`, so a page is pushed when its `readFile` resolves, not in
 `allFiles` order; `pages.sort(byName)` is stable and Jekyll's key is the
-*basename*, so every tie kept that I/O completion order --- and ~111 folder-style
-classes are all named `index.md`. That reordered the chunking and made
-`search-data.json` differ between two builds of one commit, 545 of 3,724 entries
-every time. `byName` breaks ties on `srcRel` now. Two builds of a commit are
-byte-identical except for `BuildInfo.html` and `gantt.svg`, which record build
-timings and cannot be.
+*basename*, so a tie would keep that I/O completion order --- and over a hundred
+folder-style classes are all named `index.md`. Tied pages would reorder the
+chunking and make `search-data.json` differ between two builds of one commit.
+`byName` breaks ties on `srcRel`. Two builds of a commit are byte-identical
+except for `BuildInfo.html` and `gantt.svg`, which record build timings and
+cannot be.
 
 **`scripts/compare_trees.mjs` is the check that relies on it.** It builds a
 commit and the working tree from two git worktrees and compares all three trees
@@ -33,9 +32,8 @@ different days. Run it after any change to `builder/` that should leave the
 output alone; a change meant to alter the output is checked the same way, and
 what it reports should be the intended differences and nothing else. Build the
 working tree from a checkout, never in place: under `core.autocrlf` a file a
-tool has rewritten holds LF where a fresh checkout writes CRLF, and every file
-the build copies verbatim then differs, which is what the tool's first version
-found.
+tool has rewritten holds LF where a fresh checkout writes CRLF, so every file
+the build copies verbatim would differ.
 
 ### A hung build times out and says where it hung
 
@@ -52,7 +50,7 @@ last log line on screen --- no error, no exit code, nothing to grep. Nothing in
 the SAB protocol can notice, because the scheduler is waiting on a message that
 is not coming.
 
-`Scheduler` now watches for that: if no task completes for `--stall-timeout`
+`Scheduler` watches for that: if no task completes for `--stall-timeout`
 seconds (default **120**, `0` disables), it prints what was outstanding and
 fails the build. The default is deliberately generous --- the longest single task
 here is worker cold boot at ~1.6 s, so a loaded CI box may be an order of
@@ -73,16 +71,16 @@ together buries the two names that matter under a dozen that do not:
   fault.
 - **Blocked on a predecessor** --- the consequence, with the missing input names.
 
-Two details worth knowing. `Worker.terminate()` *does* kill a thread spinning
-inside a regex, so the abort really does end the process rather than adding a
-second hang --- verified against the real fault. And under `--serve` the pool
+Two details worth knowing. `Worker.terminate()` kills a thread spinning
+inside a regex, so the abort ends the process rather than adding a second hang.
+And under `--serve` the pool
 outlives a rebuild, so a wedged worker would poison every later build (the
 per-worker tasks wait on every lane); the stall error carries a `stalled` flag
 and `serve.mjs` replaces the whole pool when it sees one. Replacing just the
 wedged lane would mean identifying it, and the SAB records the lane a task
 *completed* on, not the one that claimed it.
 
-Folding `check.bat`'s gates into that same graph is designed in [builder/PLAN-checks.md](builder/PLAN-checks.md). Phase A, the link checker, is **implemented**: extraction runs inside `flush`, where both trees' final HTML is already in worker memory, so the build no longer writes ~270 MB out only to read it back and re-parse it. The `pick_a11y_sample.mjs --check` census and the axe scan's orchestration are follow-ons, seeded with measurements and open questions but not yet designed.
+Folding `check.bat`'s gates into that same graph is designed in [builder/PLAN-checks.md](builder/PLAN-checks.md). Phase A, the link checker, is **implemented**: extraction runs inside `flush`, where both trees' final HTML is already in worker memory, so the build never writes ~270 MB out only to read it back and re-parse it. The `pick_a11y_sample.mjs --check` census and the axe scan's orchestration are follow-ons, seeded with measurements and open questions but not yet designed.
 
 Historical engineering notes from the Jekyll era --- the original build pipeline, the HTML-compress plugin, the per-phase optimisation passes that preceded the JS port, the migration notes, and the Phase 11 parity-update retrospective --- live in [WIP.OldJekyll.md](WIP.OldJekyll.md).
 
@@ -91,11 +89,11 @@ Historical engineering notes from the Jekyll era --- the original build pipeline
 ### Tooling is JavaScript, and the two remaining `.py` files each have a reason
 
 Everything under `scripts/`, `builder/`, `lib/`, `book/`, `eval/` and `wisdom/` is Node.js.
-One trap the ports away from Python left behind: **a tool that rewrites a file must
-preserve its line endings byte-exactly.** Python's `Path.read_text` / `write_text`
-round-trip applies universal-newline translation, rewriting any LF file it touches to
-CRLF on Windows --- a whole-file diff for a one-character fix. 24 of the tree's 906
-markdown files are LF.
+One trap: **a tool that rewrites a file must preserve its line endings
+byte-exactly.** Python's `Path.read_text` / `write_text` round-trip applies
+universal-newline translation, rewriting any LF file it touches to CRLF on Windows
+--- a whole-file diff for a one-character fix. Some of the tree's markdown files
+are LF, so the trap is live.
 
 Two `.py` files stay, and neither is an oversight:
 
@@ -150,7 +148,7 @@ that are individually true. Mine this file for cases: it is substantially a cata
 
 Older notes under `builder/PLAN-*.md` still place `check_publish_policy.mjs` and `check_axe_patch_equiv.mjs` in `check.bat`; both are in `test.bat`, and those notes are historical.
 
-**Both CI workflows run every one of these scripts as its own step, unconditionally**, and always did --- CI never invoked the `.bat` files. So the split changes what a *local* content edit has to pay for and nothing about what reaches `staging`; a tooling regression cannot get in by someone skipping `test.bat`.
+**Both CI workflows run every one of these scripts as its own step, unconditionally** --- CI never invokes the `.bat` files. So the split changes what a *local* content edit has to pay for and nothing about what reaches `staging`; a tooling regression cannot get in by someone skipping `test.bat`.
 
 **The link and integrity check runs inside the build.** `build.bat` passes `--check-audit-index`, which implies `--check`, and the check walks the HTML on the worker lanes that produced it -- both trees' final strings are already decoded and in memory at `flush()`, so the ~270 MB the two trees weigh is never written out only to be read back. It also audits the tree index the build derives from its own records against what landed on disk -- the one direction the two-checker comparison structurally cannot see, since a spurious entry makes the oracle answer "exists" for a path that 404s in production. It catches broken intra-site links, missing pages, malformed `redirect_from` entries (the most common breakage when adding new pages or moving content between sections), duplicate ids, remote `<img src>`, badly nested tags, sitemap and search-index gaps, canonical mismatches, and (via a forbidden-prefix rule on the offline tree) any extracted link that still points at the live docs site after the offlinify rewrite. A clean `build.bat && check.bat` is the bar for "ready to commit".
 
@@ -160,7 +158,7 @@ The remote-asset rule fails the run on any `<img src>` resolving off-box (`http:
 
 ### The link check's two front ends, and the gate that catches divergence
 
-[scripts/check_links.mjs](scripts/check_links.mjs) is still the tool for a tree the build did not produce -- a release zip, a bisect, someone else's artifact -- and both CI workflows still run it, though not directly: they invoke `check_links_diff.mjs`, which calls the script in-process as its `script` side (only the `fused` side spawns, and it spawns `tbdocs`). It is exercised only against the fixtures, never against the real trees. Both front ends run the check in [builder/check.mjs](builder/check.mjs), over the pure core in [builder/link-check.mjs](builder/link-check.mjs); the script keeps only its command line, its walk and reads of the tree, and its report's summary lines. [builder/check-tree.mjs](builder/check-tree.mjs) is the build's alone.
+[scripts/check_links.mjs](scripts/check_links.mjs) is the tool for a tree the build did not produce -- a release zip, a bisect, someone else's artifact -- and both CI workflows run it, though not directly: the shared gates action invokes `check_links_diff.mjs --case fixture --a script --b index`, which calls the script in-process as its `script` side (only a `fused` side spawns, and it spawns `tbdocs`). In CI it is exercised only against fixtures, never against the real trees. Both front ends run the check in [builder/check.mjs](builder/check.mjs), over the pure core in [builder/link-check.mjs](builder/link-check.mjs); the script keeps only its command line, its walk and reads of the tree, and its report's summary lines. [builder/check-tree.mjs](builder/check-tree.mjs) is the build's alone.
 
 The two still read the tree differently -- the build from memory, through an index of what it wrote and in chunks across its workers -- and **a checker that silently checks less reports a clean pass.** [scripts/check_links_diff.mjs](scripts/check_links_diff.mjs) is the gate against that, and it plays the same role on this side that `check_a11y_fingerprint.mjs` plays on the axe side. Run it whenever `link-check.mjs`, `check.mjs` or `check_links.mjs` changes:
 
@@ -168,24 +166,24 @@ The two still read the tree differently -- the build from memory, through an ind
 node scripts/check_links_diff.mjs --a script --b fused
 ```
 
-It diffs the two front ends' findings category by category across the real invocations -- `_site/` with sitemap + search + canonical, `_site-offline/` with the forbidden-prefix rule, `book.html` with the same rule (there it collects the links that leave the book for the website, reported as `OUT OF BOOK`), and a `--baseurl` tree checked with the matching base path. It is deliberately *not* in `check.bat`: the script side costs ~3 s, which is the whole saving.
+It diffs the two front ends' findings category by category across the real invocations -- `_site/` with sitemap + search + canonical, `_site-offline/` with the forbidden-prefix rule, `book.html` with the same rule (there it collects the links that leave the book for the website, reported as `OUT OF BOOK`), and a `--baseurl` tree checked with the matching base path. It is deliberately *not* in `check.bat`, and CI runs only its fixture cases --- `fixture` in the shared gates action, and `fixture-built` and `fixture-built-offline` against a `fused` side in `checks.yml` alone: the script side over the real trees costs ~3 s, which is the whole saving.
 
 Two further modes matter:
 
 - `--self-test` diffs the script against a deliberately corrupted side and fails unless the difference is reported. Everything else the harness prints reduces to "the two sides agreed", which is also what a harness comparing nothing says.
 - `tbdocs --src docs --check-audit-index` diffs the tree index the build derives from its own records against what actually landed on disk. This is the one failure mode the findings comparison structurally cannot see: a *missing* index entry turns a working link into a reported break, which is loud, but a *spurious* one masks a real break, and on a clean site nothing links to a path that does not exist, so nothing would ever notice.
 
-The harness carries a synthetic `fixture` case for the same reason -- the real site is clean, so every other case compares empty against empty in eight of the nine categories. The fixture provokes one fault of each kind and asserts the count, so a fixture that stops provoking one fails loudly instead of quietly going back to empty-vs-empty.
+The harness carries synthetic cases for the same reason -- the real site is clean, so every real case compares empty against empty in eight of the nine categories. `fixture` is a hand-written tree, and `fixture-built` and `fixture-built-offline` are trees the build produces from `test/fixtures/check-src`, which is the only way the fused side is held to a fault. Each provokes faults of known kinds and asserts the count, so a fixture that stops provoking one fails loudly instead of quietly going back to empty-vs-empty.
 
 ### The publish allowlist
 
 **`discover()` files every non-page it finds under `docs/` as a static file, and
 `write.mjs` copies it verbatim, so the source tree's shape *is* the site's shape.**
-The only filter used to be `_config.yml`'s `exclude:`, and a denylist can only
-refuse what someone thought to name in advance. Measured against the real config:
-a scratch `.md` with no frontmatter, a `.bak`, a `.twin`, a `secrets.json`, a
-`.docx`, a `deploy.pem`, `Thumbs.db` and a `build.log`, all planted in `docs/`,
-every one published at a public URL on a green build.
+`_config.yml`'s `exclude:` alone is a denylist, and a denylist can only
+refuse what someone thought to name in advance: a scratch `.md` with no
+frontmatter, a `.bak`, a `.twin`, a `secrets.json`, a `.docx`, a `deploy.pem`,
+`Thumbs.db` or a `build.log` planted in `docs/` would each be published at a
+public URL on a green build.
 
 Two publish surfaces reach the world from those trees: the deploy workflow
 uploads `docs/_site/` wholesale to Pages, and the manual-dispatch path zips
@@ -217,9 +215,8 @@ Three details of the policy are load-bearing:
   refusing at source. Folding the two together would pass every other assertion
   in the self-test, so the self-test asserts the disjointness directly.
 - **`.md` is deliberately absent from both.** A markdown file that reaches the
-  check is one `discover` found no frontmatter block in --- the
-  AppGlobalClassObject shape, where the raw markdown was served verbatim for
-  months. The two causes that come to mind first are both handled upstream: a
+  check is one `discover` found no frontmatter block in, so it would be
+  served as raw markdown. The two causes that come to mind first are both handled upstream: a
   **UTF-8 BOM** is stripped before parsing, and **malformed YAML** inside the
   block throws `Failed to parse frontmatter in <file>` from `discover.mjs`. What
   reaches here is a file with no block at all, or one where something precedes
@@ -252,31 +249,44 @@ years from now.
 
 ### Never rewrite markdown source without knowing what is code
 
+**[lib/markdown.mjs](lib/markdown.mjs) is the one answer to what is code in a
+markdown source.** Its exports: `blockRegions` (every fence, indented code block
+and HTML block, with its lines, from a block-only markdown-it parse), `maskCode`
+(hide the code, rewrite the prose, restore the code), `splitCodeSpans` (one line
+cut into prose and code-span segments), `splitOnMarker` (sections split on a
+marker line outside any region) and `mapLines` (rewrite each line, keeping its own
+line ending). A tool that decides for itself what is code disagrees with the
+renderer somewhere --- on a backtick fence whose info string holds a backtick, on
+a fence a definition list makes --- so every tool that rewrites or scans page
+source asks this module, with the site's parser when the site's syntax matters. Its
+importers: `builder/render.mjs` (`applyPreRenderRewrites`, `rewriteAdmonitions`),
+`builder/counts.mjs` (the count validator), `scripts/check_code_regions.mjs` (the
+gate), `scripts/convert_em_dash_separators.mjs`, `scripts/check_examples.mjs` and
+`scripts/lib/example-batches.mjs`, `scripts/check_gate_lists.mjs`,
+`scripts/lib/attributes-doc.mjs`, `eval/nav_hops.mjs`, `eval/run_case.mjs` and
+`wisdom/extract/merger.mjs`. A new one joins them; it does not write a private
+fence regex. [lib/frontmatter.mjs](lib/frontmatter.mjs) plays the same part for
+where a page's frontmatter ends.
+
 `render.mjs` applies several kramdown-parity rewrites to **raw markdown**, before
 markdown-it has parsed anything. A rewrite at that layer cannot tell prose from
-code, and this site's subject matter *is* code. Four defects of exactly that
-shape shipped, none of them caught by anything:
+code, and this site's subject matter *is* code, so an unguarded rewrite corrupts
+code samples. What each one does when it is not guarded:
 
-| rewrite | what it did |
+| rewrite | damage without a guard |
 |---|---|
-| `stripLiquidRawTags` | removed `{% raw %}` inside fences, so no page could show the tag it existed to handle |
-| `rewriteAdmonitions` body strip | ate the indentation of code inside an admonition |
-| `encodeSpacesInMediaUrls` | turned `Items[1](a, b)` into `Items[1](a,%20b)` |
-| `rewriteListItemSetextHeadings` | **deleted** a YAML sample's closing `---` and promoted the line above it to a heading |
-
-`Reference/Default/VBA/Interaction/InputBox` shipped its `If`/`ElseIf`/`Else`
-bodies flush left --- wrong control flow, in a language reference. Fixing the
-admonition strip corrected **11 pages, not three**: the greedy `\s*` had also
-been merging paragraphs inside admonition *prose*, which a code-focused audit
-never thinks to look for.
+| `rewriteAdmonitions` body strip | eats the indentation of code inside an admonition, leaving `If`/`ElseIf`/`Else` bodies flush left --- wrong control flow, in a language reference. The same greedy strip also merges paragraphs inside admonition *prose*, which a code-focused audit never thinks to look for |
+| `encodeSpacesInMediaUrls` | turns `Items[1](a, b)` into `Items[1](a,%20b)` |
+| `rewriteTripleAsteriskEmphasis` | turns `' *** banner ***` into `' **_ banner _**` |
+| `rewriteListItemSetextHeadings` | **deletes** a YAML sample's closing `---` and promotes the line above it to a heading |
+| a Liquid-tag strip | removes `{% raw %}` inside fences, so no page could show the tag; no rewrite does this, and a probe in `check_code_regions.mjs` keeps it so |
 
 **The same class exists on rendered HTML.** `book.mjs`'s chapter transforms
 rewrite `id="`, `href="#` and `src="/` across a whole body. An inline code span
 is emitted through `escapeMarkup`, which escapes only `&`, `<` and `>`, so
-quotes survive as literal bytes and all three patterns match inside a sample.
-Every one of the six exposed code spans in the corpus was corrupted in the
-published PDF --- `<style id="jtd-nav-activation">` read
-`<style id="ch-Documentation-Development-Pipeline-Stages-jtd-nav-activation">`.
+quotes survive as literal bytes and all three patterns match inside a sample:
+`<style id="jtd-nav-activation">` would read `<style id="ch-...-jtd-nav-activation">`
+in the PDF.
 
 Highlighted *blocks* escape this only by accident: the highlighter splits
 attributes across `<span>` boundaries, so `src="/vs/loader.js"` never appears as
@@ -287,10 +297,13 @@ Three mechanisms exist, and a new rewrite must use one of them:
 
 - **Source rewrites** go inside `applyPreRenderRewrites` in
   [builder/render.mjs](builder/render.mjs), between `maskCode` and its
-  `restore`. `maskCode` lives in [lib/markdown.mjs](lib/markdown.mjs) and masks
-  every fence the site's parser finds --- including one inside a blockquote or
-  admonition, inside a list item, or one the definition-list plugin makes after
-  `: ` --- plus every inline code span.
+  `restore`. The chain between them is `rewriteTripleAsteriskEmphasis`,
+  `encodeSpacesInMediaUrls`, `rewriteListItemSetextHeadings` and
+  `absorbTrailingHtmlComments`. `maskCode` masks every fence the site's parser
+  finds --- including one inside a blockquote or admonition, inside a list item,
+  or one the definition-list plugin makes after `: ` --- plus every inline code
+  span outside a fence. `applyPreRenderRewrites` takes the site's markdown-it
+  instance and throws without one, because a bare parser would mask differently from the build.
 - **Rendered-HTML rewrites** use `replaceOutsideCode` from
   [builder/code-guard.mjs](builder/code-guard.mjs), or compose their pattern
   from its `CODE_OR_PRE`, a leading alternative that consumes `<code>` and
@@ -308,10 +321,12 @@ Three mechanisms exist, and a new rewrite must use one of them:
   token types of their own (`code_inline`, `fence`, `code_block`).
 
 **One gap is deliberate and stated rather than hidden:** the chain does not
-mask **indented** (4-space) code blocks, since it calls `maskCode` without
-`indented: true`. `check_code_regions.mjs`
-*does* compare them, so a rewrite that damages one is reported --- and must be
-fixed at the rewrite, not by widening the mask.
+mask **indented** (4-space) code blocks or HTML blocks, since it calls `maskCode`
+without `indented: true` (which masks indented blocks; HTML blocks are never
+masked). `check_code_regions.mjs` *does* compare indented blocks, so a rewrite that
+damages one is reported --- and must be fixed at the rewrite, not by widening the
+mask. Code inside a raw HTML block is invisible to the gate: it is one `html_block`
+token, which the comparison does not read.
 
 `rewriteAdmonitions` deliberately runs **outside** the mask. It finds an
 admonition's lines by their `>` markers and strips them, and a masked fence
@@ -320,64 +335,46 @@ inside an admonition takes its markers with it into the stash. It asks
 
 ### Whitespace inside inline code is content
 
-`compress.mjs` split the page on `<pre>` only, and collapsed every whitespace
-run outside it --- including inside inline `<code>`. The comment said this
-matched "the upstream behaviour", meaning Jekyll's. **That parity is not a
-reason for anything any more, and it was destroying documented values.**
+A documented value can be a padded string: [Partition](docs/Reference/Default/VBA/Interaction/Partition.md)
+returns fixed-width, space-padded range strings, and `Debug.Print` with comma
+separators emits print-zone padding that *is* the behaviour a page shows. A
+pipeline that collapses whitespace runs inside inline `<code>` renders
+`"  0:  4"` as `" 0: 4"` and states a wrong return value. Matching Jekyll's
+compressor is not a reason to do it.
 
-[Partition](docs/Reference/Default/VBA/Interaction/Partition.md) returns
-fixed-width, space-padded range strings. Its page says so in prose --- "pads
-each end of the range with leading spaces" --- and the table demonstrating it
-rendered `" 0: 4"` where the function returns `"  0:  4"`. Thirteen spans on
-that one page stated wrong return values, and the page contradicted itself.
+**The padding has to be in the page's source, and be the measured value.** A
+pipeline can only preserve padding that reaches it. Check a claim about padding
+by running the page's own sample through `tbrun`: a positive number carries a
+leading space where its sign would be, and a trailing space, and a print zone is
+thirteen spaces wide.
 
-Fixing it turned up three more of the same defect: `Features/Language/Pointers`
-and `Features/Standard-Library/New-Functions` document what `Debug.Print` emits
-with comma separators, where the print-zone padding *is* the behaviour being
-shown, and both rendered it as single spaces.
+**An inline code span cannot carry a leading or trailing space naively.**
+CommonMark strips one space from each end of a code span whose content is not all
+spaces, so writing `` ` 1 … 3 ` `` renders as `1 … 3` --- the exact value the page
+is trying to state, silently de-padded by the parser rather than by anything in
+`builder/`. Double the outer spaces to defeat it, and verify in the built HTML
+rather than by eye.
 
-> **Those two pages were still wrong after that fix**, because a pipeline can
-> only preserve padding that reaches it and the padding was never in their
-> *source*. Measured through `tbrun` against the pages' own samples, five claims
-> were wrong: each missing the leading space a positive number carries where its
-> sign would be, and the trailing space, and two showing a thirteen-space print
-> zone as two spaces.
->
-> **An inline code span cannot carry a leading or trailing space naively**, which
-> is the trap that keeps this defect coming back. CommonMark strips one space
-> from each end of a code span whose content is not all spaces, so writing
-> `` ` 1 … 3 ` `` renders as `1 … 3` --- the exact value the page is trying to
-> state, silently de-padded by the parser rather than by anything in `builder/`.
-> Double the outer spaces to defeat it, and verify in the built HTML rather than
-> by eye. Four sites were fixed this way and the rendered `<code>` now matches
-> the measured output byte for byte.
+**Two behaviours, and neither works alone:**
 
-**Two changes, and neither works alone:**
-
-- `compress.mjs` now treats inline `<code>` as a preserved region as well as
-  `<pre>`, so the bytes survive compression.
+- `compress.mjs` treats inline `<code>` as a preserved region as well as `<pre>`
+  (`CODE_BLOCK_RE`), so the bytes survive compression.
 - `custom/custom.scss` and `print.css` give inline code `white-space: pre-wrap`,
   because a browser collapses runs inside inline code by default. `pre-wrap`
   rather than `pre` so a long snippet still wraps instead of forcing a
-  horizontal scroll --- measured at the mobile viewport: no page overflow, and
-  the table's own wrapper scrolls as it already did.
+  horizontal scroll.
 
-**One trap in making `<code>` a split boundary**, worth knowing if this is ever
-touched again. The collapse function trimmed each segment's ends, which was
-harmless when the only boundaries were block-level `<pre>`. Adding inline
-`<code>` created boundaries *inside* sentences, and trimming there welds the
-code to the word beside it --- `a <code>x</code> b` came out as `ax b`. Trimming
-is now conditional on which element bounds the segment, so `<pre>` boundaries
-stay byte-identical to what they produced before.
-
-Blast radius across the whole site was 6 pages plus the two stylesheets; every
-change was a padded value being restored.
+**Making `<code>` a split boundary has one trap.** The collapse function trims
+each segment's ends, which is harmless beside a block-level `<pre>` but, beside
+an inline `<code>`, welds the code to the word next to it --- `a <code>x</code> b`
+would come out as `ax b`. Trimming is conditional on which element bounds the
+segment, so `<pre>` boundaries trim as they always did.
 
 ### The book refuses a stale source tree
 
 Testing only that `docs\_site-pdf\book.html` **exists** is not enough: edit a
-page, run `book.bat` without `build.bat`, and it spends two minutes rendering the
-*previous* book and reports success. Nothing downstream can notice --- the PDF is
+page, run `book.bat` without `build.bat`, and it would spend two minutes rendering
+the *previous* book and report success. Nothing downstream can notice --- the PDF is
 internally consistent, correctly paginated and correctly bookmarked, simply the
 wrong book. So the freshness gate runs first:
 
@@ -388,7 +385,7 @@ node scripts/check_tree_fresh.mjs --tree docs/_site-pdf --marker book.html
 **`--marker` is what makes that work on this tree.** The script identifies a tree
 by its `index.html`, which every output tree has *except* `_site-pdf/` --- that one
 holds a single `book.html`. Exit codes are the script's: **2** when the tree is
-absent, **1** when it is older than `docs/` or `builder/`. The renderer that runs after it
+absent, **1** when it is older than `docs/`, `builder/` or `lib/`. The renderer that runs after it
 has no 1, so `book.bat`'s 1 means a stale tree (or a failed `npm install`) and nothing about the render.
 
 > **One batch detail that is easy to get wrong:** `%ERRORLEVEL%` inside a parenthesised `if errorlevel 1 (...)`
@@ -397,36 +394,44 @@ has no 1, so `book.bat`'s 1 means a stale tree (or a failed `npm install`) and n
 > `goto :fail` and captures outside the block, which is the same shape
 > `test.bat` already uses, and for the same reason.
 
-**Known false positive, inherited rather than introduced.** `DEFAULT_SOURCES` is
-`["docs", "builder"]` and does not distinguish code from notes, so editing a
-`builder/PLAN-*.md` or `REVIEW-*.md` marks every tree stale even though nothing
-in the build reads those files. It errs toward refusing, which is the safe
-direction, and a rebuild is ~4 s --- but wiring the check into `book.bat` means
-a pure note edit now also blocks a render until you rebuild.
+**Known false positive.** `DEFAULT_SOURCES` is `["docs", "builder", "lib"]` and
+does not distinguish code from notes, so editing a `builder/PLAN-*.md` or
+`REVIEW-*.md` marks every tree stale even though nothing in the build reads those
+files. It errs toward refusing, which is the safe direction, and a rebuild is
+~4 s --- but a pure note edit blocks a `book.bat` render until you rebuild.
 
-**Which folders under `docs/` are outputs comes from one list.** The script used to
-name them one at a time, and missed four that sat beside the ones it named, all
-read as sources. Two were real outputs: a build given `--dest docs/_site-basepath`
-writes `_site-basepath-offline` and `_site-basepath-pdf` as well. The other two,
-`_serve-offline` and `_serve-pdf`, should never have existed. `prepDest` in
-`builder/tbdocs.mjs` prepared `<dest>-offline` and `<dest>-pdf` for every run, so
-serve mode --- which runs neither pass --- recreated both, empty, on every rebuild. It
-now prepares `_serve` alone, and the two were deleted. All four were empty, so
-nothing had gone wrong yet; a file planted in one made the old script call a fresh
-tree stale. It now skips the top-level folders that `isOutputTree` in
-[lib/markdown-files.mjs](lib/markdown-files.mjs) names --- the
-prefix list the markdown walk uses --- and keeps only `.git` and `node_modules` as
-names of its own.
+**Which folders under `docs/` are outputs comes from one list.** A build given
+`--dest docs/_site-basepath` writes `_site-basepath-offline` and
+`_site-basepath-pdf` as well, so naming output folders one at a time misses some
+and reads them as sources. The script skips the top-level folders that
+`isOutputTree` in [lib/markdown-files.mjs](lib/markdown-files.mjs) names --- the
+prefix list (`_site`, `_serve`, `_pdf`) the markdown walk uses --- and keeps only
+`.git` and `node_modules` as names of its own. Serve mode prepares `_serve` alone
+(`prepDest` in `builder/tbdocs.mjs`), so it leaves no `_serve-offline` or
+`_serve-pdf` beside it.
+
+**Files the build writes into a source folder are not sources.**
+`page-baseline.json` and `symbol-baseline.json` (`IGNORED_FILES`) are written
+after the tree, so counting them would mark every tree that added a page or a
+heading stale on the next `check.bat`. `package-api.json` is an input: the build
+reads it and it decides the bytes of `tB/symbols.json`.
 
 ### The code-region gate
 
 [scripts/check_code_regions.mjs](scripts/check_code_regions.mjs) tokenises every
-markdown file, applies the real `applyPreRenderRewrites` chain, re-tokenises,
-and compares the `fence` / `code_block` / `code_inline` contents in order. Any
-difference fails. Its probes also run `applyPostRenderRewrites` and
-`injectAnchorHeadings` over a raw `<pre>` and `<code>`, which must come through
-as written. In `test.bat` and both CI workflows; ~2 s, no browser, no built
-tree.
+markdown file under `docs/` (`markdownFiles`), applies the real
+`applyPreRenderRewrites` chain, re-tokenises, and compares the `fence` /
+`code_block` / `code_inline` contents in order. Any difference fails. It also
+checks on every page that `blockRegions`, which parses blocks only, finds exactly
+the fences, code blocks and HTML blocks of the full parse. It is the gate on
+`lib/markdown.mjs` and `lib/frontmatter.mjs` too (twelve module probes), and
+holds the tools that ask them what is code: `builder/counts.mjs`'s count
+validator, `builder/discover.mjs`'s warning about an unquoted frontmatter value
+that ends in `#`, and `scripts/convert_em_dash_separators.mjs`'s dash normaliser.
+Its other probes run `applyPostRenderRewrites` and `injectAnchorHeadings` over a
+raw `<pre>` and `<code>`, which must come through as written. In `test.bat` and
+both CI workflows; a few seconds, no browser, no built tree. Exit 0 clean, 1 a
+code region changed or a probe failed, 2 the gate could not run.
 
 ```sh
 node scripts/check_code_regions.mjs
@@ -436,154 +441,135 @@ node scripts/check_code_regions.mjs --self-test
 
 Two details are load-bearing. **It imports the chain rather than reconstructing
 it**, so removing the mask from one rewrite changes what the gate runs and is
-caught --- a gate that exercised `maskCode` alone would have passed. And
-**its seven probes ride along in the normal run**, each a defect this repository
-actually shipped, because the corpus is clean: a sweep that finds nothing is
-otherwise indistinguishable from a gate that has stopped detecting. Verified by
-reverting a rewrite to run outside the mask, which the probes catch while the
-906-file sweep still reports zero.
+caught --- a gate that exercised `maskCode` alone would pass. And **its probes
+ride along in the normal run**, because the corpus is clean: a sweep that finds
+nothing is otherwise indistinguishable from a gate that has stopped detecting. A
+rewrite moved outside the mask is caught by the seven region probes (one or two
+per damage in the table above, and a doubled-backtick span) while the sweep still
+reports zero. After changing the chain or `maskCode`, move one rewrite outside the
+mask and confirm a probe fails.
+
+**The mirror fault needs probes of its own.** A rewrite that mistakes prose for
+code corrupts nothing --- the text is stashed and restored unchanged, so every
+region matches --- it simply never runs, and the sweep structurally cannot see
+that. The six admonition probes and two "chain leaves alone" probes assert it: an
+admonition must still be converted between two ordinary fences, beside a fence
+whose body holds a fence marker, after a tilde fence, after a fence closed by a
+longer run, after a line whose backtick info string keeps it from opening a fence,
+and before any fence, and must be left alone inside a fence the definition-list
+plugin makes. **Writing one
+correctly is not obvious**: a mis-paired fence opener swallows text only as far as
+the next fence marker, so a probe with no fence *after* the admonition passes
+against the very fault it was written to catch. The damage is always to the prose
+**between** two fences. `rewriteAdmonitions` asks `blockRegions` with the site's
+parser which lines are code, and leaves an admonition alone when its `[!TYPE]`
+line is in a region; a fence *inside* an admonition is a region too, and the
+rewrite still strips its `>` markers. The docs corpus holds no tilde fence, so the
+sweep could never find a fault there.
 
 **Nothing else can see this class.** The link check, integrity check, publish
-allowlist, regex-safety gate and axe scan all passed green on a tree with six
-corrupted code samples in the published book, because the corruption is inside
-`<code>` and none of them looks there.
+allowlist, regex-safety gate and axe scan all pass on a tree with corrupted code
+samples in the published book, because the corruption is inside `<code>` and none
+of them looks there.
 
-**Its sweep used to crash while `serve.bat` was running**, over nothing in any page.
-The walk was a recursive `readdir` of `docs/` that dropped the output trees from
-its results afterwards, so it had already descended into `_serve` --- which a
-running preview deletes and rewrites on every rebuild --- and died with `ENOENT`
-when a folder vanished under it. `test.bat` failed that way on 2026-09-23. Two
-other tools carried their own copies of the same walk, and one of them did not
-skip the output trees at all, so all three now call
-[lib/markdown-files.mjs](lib/markdown-files.mjs), which skips
-`_site*`, `_serve*` and `_pdf*` before entering them. Measured against a live
-preview: the old walk hit `ENOENT` during a rebuild, while the new one opens 142
-folders, none of them inside an output tree, returns the same 910 files, and
-stayed clean through 642 walks and five full gate runs timed into rebuilds.
+**Walk `docs/` for markdown with `markdownFiles`, never a private `readdir`.** A
+recursive `readdir` that drops the output trees from its results afterwards has
+already descended into `_serve`, which a running preview deletes and rewrites on
+every rebuild, and dies with `ENOENT` when a folder vanishes under it.
+[lib/markdown-files.mjs](lib/markdown-files.mjs) skips the top-level `_site*`,
+`_serve*` and `_pdf*` folders before entering them.
 
 ### The page-count drift guard
 
-`tbdocs.mjs` ended with `if (pages.length < 836)`, described in
-[Builder.md](docs/Documentation/Builder.md) as catching "a discover-rule
-regression that silently drops content". **A floor is not a drift check**, and
-this one had stopped being even a loose one: the constant was written when the
-site had 836 pages, the site has **908**, and the loss it exists to catch was
-**37**. Repeat the `_App` disaster today --- the blanket `**/_*/**` exclude that
-swallowed AppGlobalClassObject's 37 pages --- and the count lands at 871, well
-clear of 836, and the build says nothing at all.
+**A floor is not a drift check.** A constant floor on the page count catches a
+loss only while the site is close to it: a site of 914 pages that loses 37 to a
+blanket `**/_*/**` exclude (the AppGlobalClassObject pages live under `_App/`)
+still clears a floor written for 836, and the build says nothing at all. The
+guard is `builder/page-baseline.json`, a committed artifact of the same kind as
+`inter-metrics.json`, holding the page and static-file counts:
+**a rise rewrites it and says so, a fall fails the build.** A tight floor is the
+wrong alternative --- it fires on every legitimate page removal, and a gate that
+fires on ordinary work gets switched off. A rise costs nothing, so the number
+stays current by itself; only a fall wants a decision, and
+`--update-page-baseline` records it, in the same commit as the deletion.
 
-The baseline is now `builder/page-baseline.json`, a committed artifact of the
-same kind as `inter-metrics.json`: **a rise rewrites it and says so, a fall
-fails the build.** Raising the constant to a tight floor was the obvious
-alternative and is wrong --- it would fire on every legitimate page removal, and
-a gate that fires on ordinary work gets switched off. A rise costs nothing, so
-the number stays current by itself; only a fall wants a decision, and
-`--update-page-baseline` is how it is recorded, in the same commit as the
-deletion.
-
-**Three things about it were learned by getting them wrong**, and each is now a
-comment where it is decided: the first and third in
-[builder/baseline.mjs](builder/baseline.mjs), which holds the comparison the
-page and symbol guards share, and the second in
+Three rules about it, each a comment where it is decided: the first and third in
+[builder/baseline.mjs](builder/baseline.mjs), which holds the comparison the page
+and symbol guards share, and the second in
 [scripts/check_tree_fresh.mjs](scripts/check_tree_fresh.mjs):
 
-- **The baseline has to be keyed to a source tree.** `tbdocs` is not only run
-  over `docs/`: `check_links_diff.mjs` spawns it over
-  `test/fixtures/check-src`, three pages, to compare the two link checkers.
-  Against an unkeyed baseline that build reports **905 pages missing** --- a
-  loud, confident, entirely wrong finding, on the one harness whose whole job is
-  noticing when two front ends disagree. `GUARDED_SRC` names the tree the
+- **The baseline is keyed to a source tree.** `tbdocs` is not only run over
+  `docs/`: `check_links_diff.mjs` spawns it over `test/fixtures/check-src`, three
+  pages. Against an unkeyed baseline that build would report hundreds of pages
+  missing --- a loud, confident, entirely wrong finding, on the one harness whose
+  job is noticing when two front ends disagree. `GUARDED_SRC` names the tree the
   numbers are of and every other root is skipped in silence.
-- **The build now writes a tracked file, and `check_tree_fresh.mjs` watches
-  `builder/`.** The write happens after the tree, so without an exclusion the
-  very next `check.bat` would call the tree it had just built stale --- on
-  exactly the builds that added a page. `IGNORED_FILES` closes it, and the
-  reasoning is not a special case: the script's own comment says its sources are
-  "the inputs that decide the built bytes", and a baseline decides none of them.
-  `dot` and `vendorAssets` write into `docs/` and escape this only because they
-  run early.
+- **The build writes a tracked file, so `check_tree_fresh.mjs` must not count
+  it.** The write happens after the tree, so without `IGNORED_FILES` the next
+  `check.bat` would call the tree it had just built stale, on exactly the builds
+  that added a page. That is not a special case: the script's sources are "the
+  inputs that decide the built bytes", and a baseline decides none of them. `dot`
+  and `vendorAssets` write into `docs/` and escape this only because they run
+  early.
 - **Neither CI nor `--serve` may write.** A CI run that rewrote the file would
   record the drop it was asked to catch, so there a missing baseline is an error
   rather than a first run. `--serve` rebuilds on every save under `docs/`, so a
   page half-deleted in an editor would lower the baseline and a half-added one
   would raise it.
 
-**Set an exit bit through `failBuild`, never by assigning `process.exitCode`.**
-An assignment after the link check has set bits 1 and 2 reports only the later
-failure; `failBuild` ORs.
+**Mark a build failed through `failBuild`, never by assigning
+`process.exitCode`.** `failBuild` is the one place `runBuild` sets the found-problems
+exit code (1), so no later step can clear it; a refused command line or a crash
+exits 2 instead.
 
 `scripts/check_page_baseline.mjs` is the gate on the gate, in `test.bat` and
 both CI workflows: eleven probes against a scratch baseline, no browser, no
 built tree. **It is not optional bookkeeping** --- the guard is silent on a
 healthy tree, so a green build is exactly what a guard that has stopped working
-produces. Reverting the comparison to the old floor fails three of the eleven,
-including the `_App` replay; the two probes that look redundant (foreign source
-root, missing baseline under CI) are the two that caught the real bugs above.
+produces. One probe replays the loss of 37 pages; the two that look redundant
+(foreign source root, missing baseline under CI) each guard one of the rules
+above.
 
-#### The mirror fault: a rewrite that does not fire
+### The mirror fault: a rewrite that does not fire
 
-The gate above compares code regions, and there is a second way the same
-confusion shows up that it **structurally cannot see**. A rewrite that mistakes
-prose for code does not corrupt anything --- the text is stashed and restored
-unchanged, so every region matches --- it simply never runs.
+The region comparison has a blind spot, which [the code-region
+gate](#the-code-region-gate) closes with probes of its own. A rewrite that
+mistakes prose for code corrupts nothing --- the text is stashed and restored
+unchanged, so every region matches --- it simply never runs. The case to hold in
+mind is a fence marker in the middle of a line:
+[Reference/Attributes.md](docs/Reference/Attributes.md)'s `[Description(...)]`
+sample builds a Markdown string out of twinBASIC string literals, two of which
+are triple-backtick markers. A scan that pairs an opening fence with the next
+marker *anywhere* closes the `tb` fence on the literal and mis-pairs every fence
+after it, so the page's admonitions render as the literal text `[!NOTE]` in a
+plain blockquote --- and every gate stays green, since the region comparison
+matches, the links resolve and axe has no opinion about a blockquote. CommonMark
+closes a fence only on a line holding nothing but the fence character, repeated at
+least as often as in the opener: a rule about lines, not something to express as
+one regex over a document. That is why `rewriteAdmonitions` asks `blockRegions`
+instead of scanning for fences itself.
 
-`rewriteAdmonitions` stashed fences with one regex that paired an opening fence
-with the next fence marker **anywhere**, including one in the middle of a line.
-[Reference/Attributes.md](docs/Reference/Attributes.md) has exactly that: the
-`[Description(...)]` entry's sample builds a Markdown string out of twinBASIC
-string literals, two of which are ``` markers. The `tb` fence around it closed on
-the literal, and every pairing for the rest of the file was off by one --- so
-from there on the stasher had prose and code the wrong way round.
-
-**All six of that page's admonitions shipped as the literal text `[!NOTE]`**,
-inside a plain blockquote, on one page of 869. Every gate was green: the region
-comparison matched, the link check passed, and axe has no opinion about a
-blockquote. It was found only because a new entry added to that page rendered
-the same way and looked wrong.
-
-The stasher became a line scan --- CommonMark closes a fence on a line that is
-only the fence character, repeated at least as often as in the opener, which is
-a rule about lines rather than something to express as one regex over a whole
-document. Measured across the site, that fix changed four files: `Attributes.html`,
-`search-data.json` (which indexes it), and the two that record build timings.
-
-The same stasher had a second way to fail: it recognised *backtick* fences only,
-reasoning that `maskCodeRegions` knew about tildes --- but `rewriteAdmonitions` runs
-**outside** the mask by design, so nothing protected a tilde fence. Its opener test
-was made to accept either character and close on the one that opened. `docs/`
-contains no tilde fence, which is why the corpus sweep could never have found it ---
-the same blind spot that makes the ADMONITION_PROBES necessary.
-
-**The stasher is gone.** A scan of its own could still disagree with the parser
-that renders the page: it never saw a fence opened after a definition list's `: `,
-so an admonition written inside one as a sample became a live one. `rewriteAdmonitions`
-asks `blockRegions` from `lib/markdown.mjs`, with the site's parser, and leaves an
-admonition alone when its `[!TYPE]` line is in a region. A fence *inside* an
-admonition is a region too, and the rewrite still strips its `>` markers.
-
-Six probes in `check_code_regions.mjs` assert this direction, and **writing one
-correctly is not obvious**: a mis-paired opener swallows text only as far as the next
-fence marker, so a probe with no fence *after* the admonition passes against the very
-stasher it was written to catch. The damage is always to the prose **between** two
-fences.
+`rewriteAdmonitions` asks `blockRegions` with the site's parser, so it sees a fence
+a definition list's `: ` makes, and leaves an admonition alone when its `[!TYPE]`
+line is in a region. A fence *inside* an admonition is a region too, and the
+rewrite still strips its `>` markers. The probes that assert this direction are in
+[the code-region gate](#the-code-region-gate).
 
 ### The book-coverage warnings
 
-**A page no `_book.yml` entry selected was left out of the PDF without a word**, and
-by September 2026 that had taken 52 pages out of the book. Some were deliberate ---
-the 404 page, Videos, Challenges --- and some were not: Data Types, Enumerations and
-twinBASIC Additions are as plainly reference material as anything the book carries,
-and nothing recorded why they were missing. The IDE section's pages with real prose
-went the same way as its placeholders. The only trace was the book pass of the link
-check, which listed the 32 links from the book to pages it did not carry as `BROKEN`,
-on a pass marked informational --- so the list read as noise.
+**A page no `_book.yml` entry selects is left out of the PDF without a word**
+unless something says so. Some pages are out deliberately --- the 404 page,
+Videos, Challenges --- and some would be left out by accident; with nothing
+recorded, the two look the same. The book pass of the link check lists the links
+from the book to pages it does not carry, but on a pass marked informational that
+list reads as noise.
 
-Two halves fixed it, and the second is what makes the first worth having. **`left_out:`
-in `_book.yml` names every page that is out on purpose, with a `reason:`**, and
-`bookCoverage()` in `builder/book.mjs` warns about a page that is in neither. Every
-page has an entry one way or the other, so a warning is a decision nobody has made.
-Without the list the warning fired for 37 pages on every build, which is a warning
-nobody reads after the first week.
+Two halves make it work, and the second is what makes the first worth having.
+**`left_out:` in `_book.yml` names every page that is out on purpose, with a
+`reason:`**, and `bookCoverage()` in `builder/book.mjs` warns about a page that is
+in neither. Every page has an entry one way or the other, so a warning is a
+decision nobody has made. Without the list the warning fires for dozens of pages
+on every build, which is a warning nobody reads after the first week.
 
 It reports five things, all empty on a consistent manifest: a page in no entry, a page
 in the book and in `left_out:`, a book entry that selects no page, a `left_out:` entry
@@ -622,9 +608,8 @@ Three decisions about the build side, each with the alternative it rules out:
   classes documented though declared `Private`) in the wrong place.
 - **The snapshot is committed, like `inter-metrics.json`, because making it needs a
   twinBASIC install.** `scripts/build_package_api.mjs` exports the packages through
-  `scripts/lib/tb-packages.mjs` (shared with `census_attributes.mjs`, whose output was
-  verified identical across the move), scans them with `scripts/lib/twin-api.mjs`, and
-  writes 255 KB. `package-api.json` is a build *input*, so `check_tree_fresh.mjs`
+  `scripts/lib/tb-packages.mjs` (shared with `census_attributes.mjs`), scans them with
+  `scripts/lib/twin-api.mjs`, and writes ~255 KB. `package-api.json` is a build *input*, so `check_tree_fresh.mjs`
   watches it; `symbol-baseline.json` is an output and is in its `IGNORED_FILES`.
 - **The heading scan is `indexOf`, not a regex.** `/<h([1-6])\b([^>]*)>([\s\S]*?)<\/h\1>/`
   is cubic in the regex gate's census, and it runs over every reference page; the scan
@@ -637,27 +622,22 @@ names it; a build that adds one rewrites the list; CI, `--serve` and `--dry-run`
 write; a source root other than `docs` is skipped; `--update-symbol-baseline` records a
 removal. It exists because **an anchor has no `redirect_from:`** --- a reworded member
 heading moves its id, an installed add-in keeps the old URL, and the link check only
-follows links made inside the site, so before this nothing noticed. The failure message
+follows links made inside the site, so nothing else would notice. The failure message
 leads with the usual fix, pinning the old id on the reworded heading.
 
 `scripts/check_symbol_index.mjs` is the gate on all three pieces, in `test.bat` and both
 CI workflows: forty-six probes on fixtures, no tree, no install. The scanner's probes are
-the traps the BETA 983 packages actually contain; the derivation's are each a rule that the
-real site exercised only once or twice (`symbols:`, the section heading named like a
-member, the ellipsis the typographer puts in a Core H1 --- whose absence from the rules
-was found only because `Do…Loop`'s first heading never split).
+the traps the packages' `.twin` sources contain; the derivation's are each a rule the real
+site exercises only once or twice (`symbols:`, a section heading named like a member, the
+ellipsis the typographer puts in a Core H1).
 
-**The guard caught the first two defects it met, before either was committed.** Six
-`### Example` and `#### Example` headings, placed among a class's members, went into the
-index as members named `Example` by the rule that a heading under Properties or Methods is
-a member. With that rule narrowed to headings one level under the section and not named
-like prose, the six URLs left the index and the build failed naming them. Then the
-snapshot learned the members of VB's `Screen`, declared on a private interface, and
-`Screen.Fonts` moved from `#fonts-1`, its `### Fonts` under Properties, to `#fonts`, a
-prose section above it --- because the first heading of a member's name on the page won.
-The build named that URL too, and the fix, placing headings under a section of members
-first, moved three more entries back from prose sections to their properties (`Style` on
-ComboBox and ListBox, `CheckBoxes` on TreeView). A probe now holds each shape.
+Two placement rules each hold a probe, because the wrong answer is a URL that leaves
+the index or moves. **A heading is a member only when it is one level under its
+Properties or Methods section and is not named like prose** (`### Example` and
+`#### Example` among a class's members are prose). **Headings under a section of
+members are placed before the rest**, so a member's URL is the heading under
+Properties and not a prose section of the same name above it (`Screen.Fonts` is
+`#fonts-1`, its `### Fonts`, not a prose `#fonts`).
 
 ### Build-time counts as named values
 
@@ -673,15 +653,15 @@ are live, and most of the prose is still hand-written.
 the page *is* the list. It reads the index alone, so an entry added only to the
 by-package section above it is still a half-edit that nothing reports.
 
-`defaultPackages` and `builtInPackages` exist because `packages` alone could not
-express either sentence the site writes: `Reference/index.md` called all thirteen
-"built-in" while `Reference/Packages.md` reserved the word for the ten, both
-arithmetically right, and no reader could tell that from either page. **A count name
-is also a way of naming the set**, which is a second thing it buys beyond not going
-stale.
+`defaultPackages` and `builtInPackages` exist because `packages` alone cannot
+express both sentences the site writes: all the packages, and the ones the IDE
+ships but a project references on demand, for which "built-in" is reserved. A
+sentence that says `{{tbdocs:builtInPackages}}` cannot drift into the other set's
+number. **A count name is also a way of naming the set**, which is a second thing
+it buys beyond not going stale.
 
 **A name is a derivation over build state, never a constant.** A registry
-holding `pages: 908` would not have removed the stale figure, only moved it
+holding a fixed page count would not remove the stale figure, only move it
 from a page a contributor reads into a module nobody opens. If a number cannot
 be derived it does not get a name.
 
@@ -694,7 +674,7 @@ more than it sounds: it is the same hazard as [Never rewrite markdown source
 without knowing what is code](#never-rewrite-markdown-source-without-knowing-what-is-code),
 avoided by construction rather than by a mask.
 
-Three things fell out of building it that the design had not predicted:
+Three consequences of that design:
 
 - **The walk has to recurse, for image alt.** An `image` token carries its alt
   as its own children, so a flat walk stops at the image. markdown-it's own
@@ -708,9 +688,8 @@ Three things fell out of building it that the design had not predicted:
   on the other side of the render: `findSurvivingPlaceholder` scans the
   rendered HTML for a placeholder outside `<code>` and `<pre>`. One string
   scan per page, and it catches every cause rather than the anticipated ones.
-- **`markdownInit` gained a dependency on `deriveRedirects`**, for
-  `redirectStubs` alone. No cycle, but it is a task-graph edge added for a
-  count.
+- **`markdownInit` depends on `deriveRedirects`**, for `redirectStubs` alone.
+  No cycle, but it is a task-graph edge that exists for a count.
 
 **Validation is on main, before any worker renders**, because an unknown name
 cannot be an error inside the rule: markdown-it emits an unrecognised inline
@@ -726,12 +705,12 @@ step count each section states --- and then sweeps `README.md` and every page
 under `docs/Documentation/` for a gate count asserted anywhere in prose. In
 `test.bat` and both CI workflows; ~50 ms, no browser, no built tree.
 
-**A gate scoped to one page guards one file, not a class.** The first version read
-`Tools.md` alone, on the convention that one page owns the lists and the others cite
-it --- and `Building.md` and `README.md` were already restating them, wrong, in the
-commit that shipped the gate green. Hence the sweep.
+**A gate scoped to one page guards one file, not a class.** One page, `Tools.md`,
+owns the lists and the others cite it, but nothing enforces that convention: any
+page can restate a count, wrongly. Hence the sweep over `README.md` and every
+developer page.
 
-Four shapes are recognised, each taken from a site that really published:
+Five shapes are recognised, each a form a count can take in prose:
 
 | shape | example |
 |---|---|
@@ -739,15 +718,16 @@ Four shapes are recognised, each taken from a site that really published:
 | verb | ``` `test.bat` is six more ```, ``` `check.bat` runs six further gates ``` |
 | line-initial | `check.bat     # six more gates`, a table cell restating a wrapper |
 | section total | a wrapper's own section opening *"Five gates that ..."* |
+| back-reference | "four of the five", where the number matches the section's own total |
 
-**The fourth is why the sweep is per section, and it is the one a first attempt
-misses.** `Building.md:248` states the count in a section whose only mention of
-the wrapper is the indented command under its heading, so nothing on that line
-names a wrapper and a line-by-line scan reports nothing. A section's subject is
-the wrapper in its heading, else the wrapper on the first command line beneath
-it --- and **the kramdown attribute block has to be skipped to get there**
-(`{: #tests-of-the-toolchain }` sits between the two), which is a one-line
-detail that silently cost the rule the only section it was written for.
+**The section total is why the sweep is per section, and it is the one a first
+attempt misses.** A section can state the count where its only mention of the
+wrapper is the indented command under its heading, so nothing on that line names a
+wrapper and a line-by-line scan reports nothing. A section's subject is the
+wrapper in its heading, else the wrapper on the first command line beneath it ---
+and **the kramdown attribute block has to be skipped to get there**
+(`{: #tests-of-the-toolchain }` sits between the two), or the rule silently skips
+the one section it exists for.
 
 Two judgement calls worth keeping:
 
@@ -755,26 +735,33 @@ Two judgement calls worth keeping:
   total.** Later ones are legitimate subset claims. The cost runs the other
   way: a section that *opens* with a subset claim is reported, and the fix is
   to delete the number rather than correct it --- which is what the failure
-  message says, because that is the editorial remedy the round asked for.
-- **Verbs, not proximity.** `Tools.md` narrates this gate's own history,
-  including the numbers that were wrong at the time. A proximity rule read
-  *"found `test.bat` documented as three gates when it had four"* as a false
-  claim, so the verb list is explicit.
+  message says, because a subset count restated in prose is what drifts.
+- **Verbs, not proximity.** Developer pages may quote a past wrong number as
+  history, such as *"found `test.bat` documented as three gates when it had
+  four"*. A proximity rule reads that true sentence as a false claim, so the
+  verb list is explicit.
 
-Thirteen of its nineteen probes cover the sweep, eight positive and five
-negative. Twelve are taken from the real corpus; the thirteenth puts a fenced
-`## ` line, the shape of Wisdom.md's `staging.md` example, inside a wrapper's
-section, since sections are split through `lib/markdown.mjs`'s `splitOnMarker`
-and a heading-shaped line in a region starts none. The verification that means anything
-is reverting the offending pages to the commit that shipped them and confirming
-the gate names every site.
+Which gates a wrapper runs is read by `scripts/lib/gate-roster.mjs`
+(`gatesFromBat`); `check_ci_workflows.mjs` reads the wrappers and workflows
+through the same module.
 
-**Its six patterns are built with `new RegExp(...)` from shared constants, and that
-is what made [check_regex_safety.mjs](#the-regex-safety-gate) read constructed
-regexes** --- as literals-only it could not see them, and the line-initial rule was
-in fact polynomial (a lazy gap and the count after it could divide the same text).
-It is two steps now, anchored at the head of the line with no division to try. All
-six are `safe`, and all six are checked on every run.
+A change to the sweep is checked on real pages, not only on the probes: put a wrong
+count back into a page, in each of the five shapes, and confirm the gate names every
+site.
+
+Thirteen of its twenty-four probes cover the sweep, eight positive and five
+negative. One puts a fenced `## ` line, the shape of Wisdom.md's `staging.md`
+example, inside a wrapper's section, since sections are split through
+`lib/markdown.mjs`'s `splitOnMarker` and a heading-shaped line in a region starts
+none.
+
+**Its patterns are built with `new RegExp(...)` from shared constants, which is
+why [check_regex_safety.mjs](#the-regex-safety-gate) reads constructed regexes**
+--- a literals-only scan cannot see them, and a gate whose own patterns escape the
+regex gate is not covered by it. The line-initial rule is two steps, anchored at
+the head of the line and then a bounded search of what follows, because one regex
+with a lazy gap and the count after it can divide the same text, which is
+polynomial. Every one of the constructions classifies `safe`.
 
 ### The regex-safety gate
 
@@ -782,7 +769,8 @@ six are `safe`, and all six are checked on every run.
 `.mjs` under `builder/`, `scripts/`, `lib/`, `book/`, `eval/` and `wisdom/` with
 acorn, takes the regex literals *and* every `new RegExp(...)` whose arguments the
 source decides, and refuses any that can backtrack exponentially. In `test.bat`
-and both CI workflows; ~5 s, no browser, no built tree.
+and both CI workflows; ~10 s, no browser, no built tree. Exit 0 no exponential
+regex, 1 one found or a probe wrong, 2 the gate could not run.
 
 ```sh
 node scripts/check_regex_safety.mjs           # the gate
@@ -790,47 +778,42 @@ node scripts/check_regex_safety.mjs --census  # full classification, by kind
 node scripts/check_regex_safety.mjs --self-test
 ```
 
-**An exponential regex does not fail a build, it stops one.** `VOID_TAGS_RE` in
-[builder/render.mjs](builder/render.mjs) spelled a void tag's attribute list as
-`(?:\s+[^>/]+...)*`. `[^>/]` matches a space and so does `\s`, so one run of
-attribute text could be partitioned in exponentially many ways, and every
-partition got tried whenever the match failed --- which it did on any `/` the
-quoted-value alternative did not cover. Two alt strings in `docs/` contained one,
-`Line/Column` and `/Packages/WinDevLib`, and each hung a render worker outright:
-two of 152 chunks stayed CLAIMED, the barriers behind them never reached a dep
-count of zero, and the build printed its last line and sat there. Three such
-processes accumulated in one session before the cause was found.
+**An exponential regex does not fail a build, it stops one.** A void tag's
+attribute list written as `(?:\s+[^>/]+...)*` is exponential: `[^>/]` matches a
+space and so does `\s`, so one run of attribute text can be partitioned in
+exponentially many ways, and every partition is tried whenever the match fails ---
+on any `/` the quoted-value alternative does not cover. An alt string such as
+`Line/Column` in a page then hangs a render worker outright: its chunk stays
+CLAIMED, the barriers behind it never reach a dep count of zero, and the build
+prints its last line and sits there.
 
-Nothing existing could have caught it. The regex looks ordinary, the corpus
-passed for as long as no page happened to contain the trigger, and the failure
-was a hang rather than an error. This gate asks the question of the regex itself,
-so it does not wait for content to ask it.
+Nothing else catches it. The regex looks ordinary, the corpus passes for as long
+as no page happens to contain the trigger, and the failure is a hang rather than
+an error. This gate asks the question of the regex itself, so it does not wait for
+content to ask it. Its probes hold two shapes:
 
-**Two things it found immediately, and both are the argument for keeping it.**
-`STANDALONE_INLINE_HTML_RE`, sitting in the same file, was exponential too and
-nobody knew: `[^>]*\/?` spells an optional slash that `[^>]` already covers, so
-each tag parses two ways and an html_block of *n* of them parses 2^n ways ---
-measured at 22 tags in 106 ms, rising ~4x per two added tags. And the *first*
-fix for `VOID_TAGS_RE` --- narrowing the name class to `[^\s>/]+`, which does
-stop both real alt strings --- was **still exponential**, because `[^\s>/]` still
-matches `=`, `"` and `'`, so an attribute could be consumed either by the name
-class or by the quoted-value alternative. That is the same 2^n one level down,
-and hand-reasoning had pronounced it fixed. The witness is `<BR\tG=` followed by
-`""\t"=''\t=='/">'\tG=` repeated: 186 characters took 97 ms.
+- `[^>]*\/?` spells an optional slash that `[^>]` already covers, so each tag
+  parses two ways and an html_block of *n* of them parses 2^n ways.
+- Narrowing the name class to `[^\s>/]+` still leaves it exponential, because
+  `[^\s>/]` still matches `=`, `"` and `'`, so an attribute can be consumed either
+  by the name class or by the quoted-value alternative --- the same 2^n one level
+  down, which hand-reasoning pronounces fixed. The witness is `<BR\tG=` followed
+  by `""\t"=''\t=='/">'\tG=` repeated.
 
-Both regexes now match to the first `>` and nothing else ---
-`<(br|hr|...)\b([^>]*)>` --- with the trailing `/` removed afterwards by
-`stripSelfClose()`. `[^>]*` and the `>` after it share no character, so there is
-nothing to partition. Verified byte-identical against every void tag in the built
-site (4,137 distinct tags) and against a full two-tree build diff.
+`VOID_TAGS_RE` and `STANDALONE_INLINE_HTML_RE` in
+[builder/render.mjs](builder/render.mjs) therefore match to the first `>` and
+nothing else --- `<(br|hr|...)\b([^>]*)>` --- with the trailing `/` removed
+afterwards by `stripSelfClose()`. `[^>]*` and the `>` after it share no character,
+so there is nothing to partition. A change to either regex is checked with
+`compare_trees.mjs`, and must leave every void tag in the built site byte-identical.
 
-> **Do not reintroduce a per-attribute sub-pattern in either of them.** It was
-> written that way, fixed that way, and was wrong both times.
+> **Do not reintroduce a per-attribute sub-pattern in either of them.** Both
+> natural ways of writing one are exponential.
 
 **It gates on exponential only.** recheck also reports polynomial blowup, and
-about a fifth of the patterns here are polynomial --- nearly all the ordinary
-`<tag[^>]*>` shape, degree 2, on bounded input. A gate that failed on those would
-fail on day one against fifty findings, and a gate that fails on day one gets
+about one regex in eight here is polynomial --- nearly all the ordinary
+`<tag[^>]*>` shape, low degree, on bounded input. A gate that failed on those would
+fail on day one against dozens of findings, and a gate that fails on day one gets
 switched off. Exponential is the class that turns a content edit into an
 unbounded hang.
 
@@ -844,7 +827,7 @@ Three implementation details are load-bearing:
 
 - **The self-test probes ride along inside the normal run**, not behind a
   `--self-test` nobody remembers. Eight classification probes, both directions:
-  the three regexes this repo actually shipped (including the incomplete fix),
+  the three regexes this repo has shipped (including the incomplete fix),
   `^(a+)+$`, and four that must *not* be flagged --- plus nineteen fold probes,
   below. A green line saying "no exponential regex" is otherwise
   indistinguishable from a gate that has stopped detecting.
@@ -852,7 +835,8 @@ Three implementation details are load-bearing:
   long-lived agent and feeds it requests one at a time, so awaiting several
   checks concurrently in a single process buys nothing --- measured at 42.5 s for
   concurrency 1 against 37.5 s for 16. Sharding across the CPUs, each shard its
-  own process and its own agent, is what takes it from ~19 s to ~4 s.
+  own process and its own agent, is what brings the run from tens of seconds to
+  about ten; concurrency inside one process does not help.
 - **recheck 4.5.0 cannot find its own backend on Windows**, and the failure is
   quiet. It locates both `recheck-jar` and `recheck-<platform>-<arch>` by
   stripping `/package.json` with a forward-slash regex from a path Node returns
@@ -871,11 +855,10 @@ passing one (currently 0; `--census` prints them).
 #### It reads constructed regexes too
 
 **Building a pattern out of shared fragments is the ordinary way to avoid writing
-a sub-pattern six times**, and a literals-only scan cannot see one --- so a gate
+a sub-pattern several times**, and a literals-only scan cannot see one --- so a gate
 whose coverage you leave by writing idiomatic JavaScript is not covering much.
-`check_gate_lists.mjs` has six such patterns and one of them was polynomial; while
-the scan counted constructions in `--census` instead of folding them, nothing in
-the repository would have said so.
+`check_gate_lists.mjs` builds all its patterns this way; a scan that only counted
+constructions would never say whether one was polynomial.
 
 [scripts/lib/regex-fold.mjs](scripts/lib/regex-fold.mjs) folds a construction to
 the pattern it builds, where the source decides that: string and template
@@ -883,9 +866,9 @@ literals, `+` concatenation, `String.raw`, a `const` declared once in the file,
 `X.source` of a `const` regex, `A.join(sep)` over a `const` array of string
 literals, and a ternary (checked as both branches). A `const` imported by a
 relative path resolves too, when its module declares it with a string or regex
-literal, which is how `builder/code-guard.mjs`'s `CODE_OR_PRE` reaches the three
-patterns composed from it. Most of the tree's constructions resolve, and the
-summary line counts the rest; each one resolved is checked exactly as a literal is.
+literal, which is how `builder/code-guard.mjs`'s `CODE_OR_PRE` reaches the patterns
+composed from it. Most of the tree's constructions resolve, and the summary line
+counts the rest; each one resolved is checked exactly as a literal is.
 
 **One rule is a model rather than an exact fold, and it is marked as one.** A
 call to an escaping helper --- `escapeRegExp(x)` and anything written to the same
@@ -897,21 +880,20 @@ any finding. The gap is stated rather than hidden: an escaped splice *inside a
 quantified alternation* could be ambiguous with a sibling branch in a way the
 placeholder is not --- `(${esc}|a)+` is exponential when `esc` holds `a` and safe
 when it holds `x`. A fixed sequence cannot be a quantified atom by itself, so the
-surrounding pattern has to quantify a group containing it; none of the three
-calls in the tree does.
+surrounding pattern has to quantify a group containing it; none of the tree's
+modelled calls does (`--census` lists them).
 
-**The remaining six are a list with a reason each, not a count.** *`pattern` is a
-function parameter --- check the call sites* says where to look; *`re` is a `let`,
-so its value is not fixed* says not to bother, because it is a glob compiler
-building a pattern character by character. That is the difference between a blind
-spot someone can close and one they can only watch.
+**The unresolved constructions are a list with a reason each, not a count.**
+*`pattern` is a function parameter --- check the call sites* says where to look;
+*`re` is a `let`, so its value is not fixed* says not to bother, because it is a
+glob compiler building a pattern character by character. That is the difference
+between a blind spot someone can close and one they can only watch.
 
-Fourteen more probes ride along in the normal run, eight that must resolve to an
-exact pattern and six that must be refused with a reason. **The negative six are
-the ones that matter**: a folder that resolves less than it claims does not fail,
+Nineteen fold probes ride along in the normal run, eleven that must resolve to an
+exact pattern and eight that must be refused with a reason. **The negative eight
+are the ones that matter**: a folder that resolves less than it claims does not fail,
 it moves constructions into the unresolved list, where nothing checks them and
-the run goes green --- which is what the gate looked like before it could fold at
-all. A folder that resolves *more* than it can know is worse, and the negatives
+the run goes green. A folder that resolves *more* than it can know is worse, and the negatives
 are what say it does not.
 
 ### Remote-asset vendoring
