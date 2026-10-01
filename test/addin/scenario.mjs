@@ -11,7 +11,8 @@
 //       test("...", async () => { ...tb-operate.mjs calls on c... });
 //     });
 //
-// Outside addin-test.bat there is no lane, so the block is skipped and a bare
+// The scenario files under test/ide use it too. Outside addin-test.bat and
+// ide-test.bat there is no lane, so the block is skipped and a bare
 // `node --test` never starts an IDE.
 
 import { after, describe, test } from "node:test";
@@ -33,7 +34,7 @@ import { addinLane } from "../../scripts/lib/tb-lane.mjs";
  */
 export function scenario(title, fn) {
   const lane = addinLane();
-  describe(title, { skip: lane ? false : "run it with addin-test.bat" }, () => {
+  describe(title, { skip: lane ? false : "run it with addin-test.bat or ide-test.bat" }, () => {
     const cleanup = fn(lane);
     let closed = false;
     const close = async () => {

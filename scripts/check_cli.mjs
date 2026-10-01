@@ -812,6 +812,10 @@ const CASES = [
   { tool: "scripts/addin_test.mjs", args: ["--ide"], exit: 2, stderr: "--ide needs a value\n" },
   { tool: "scripts/addin_test.mjs", args: ["--ide", ""], exit: 2, stderr: "--ide needs a non-empty value\n" },
   { tool: "scripts/addin_test.mjs", args: ["--ide", "no-such.exe"], exit: 2, stderr: /^no twinBASIC IDE found: pass --ide / },
+  { tool: "scripts/ide_test.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/ide_test\.mjs / },
+  { tool: "scripts/ide_test.mjs", args: ["--ide"], exit: 2, stderr: "--ide needs a value\n" },
+  { tool: "scripts/ide_test.mjs", args: ["--ide", ""], exit: 2, stderr: "--ide needs a non-empty value\n" },
+  { tool: "scripts/ide_test.mjs", args: ["--ide", "no-such.exe"], exit: 2, stderr: /^no twinBASIC IDE found: pass --ide / },
   { tool: "scripts/check_examples.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_examples\.mjs \[options\]\n/ },
   { tool: "scripts/check_examples.mjs", args: ["--jobs", "0"], exit: 2, stderr: "check_examples: --jobs expects a whole number of at least 1, got: 0\n" },
   { tool: "scripts/check_examples.mjs", args: ["--batch", "1.5"], exit: 2, stderr: "check_examples: --batch expects a whole number of at least 1, got: 1.5\n" },
@@ -1023,6 +1027,7 @@ const HELP_TOOLS = {
   "eval/site_search.mjs": "Usage: node eval/site_search.mjs ",
   "eval/transcript.mjs": "Usage: node eval/transcript.mjs ",
   "scripts/addin_test.mjs": null,
+  "scripts/ide_test.mjs": null,
   "scripts/build_dot_metrics.mjs": null,
   "scripts/build_package_api.mjs": null,
   "scripts/census_attributes.mjs": null,
@@ -1100,6 +1105,7 @@ const REFUSALS = {
   "eval/site_search.mjs": ["site"],
   "eval/transcript.mjs": [null],
   "scripts/addin_test.mjs": ["ide"],
+  "scripts/ide_test.mjs": ["ide"],
   "scripts/build_dot_metrics.mjs": [null],
   "scripts/build_package_api.mjs": ["out"],
   "scripts/census_attributes.mjs": ["out"],
@@ -1253,6 +1259,23 @@ bad(
   "--timeout expects a number greater than 0 and at most 2147483, got: 2147484\n",
 );
 bad("scripts/addin_test.mjs", ["--show", "--hide"], "--show and --hide cannot be given together\n");
+
+bad("scripts/ide_test.mjs", ["--only", "("], REGEX_REASON("--only", "("));
+bad("scripts/ide_test.mjs", ["--port", "0"], NOT_PORT(0) + "\n");
+bad("scripts/ide_test.mjs", ["--port=1.5"], NOT_PORT(1.5) + "\n");
+bad("scripts/ide_test.mjs", ["--jobs", "0"], NOT_COUNT("--jobs", 0) + "\n");
+bad("scripts/ide_test.mjs", ["--jobs=1.5"], NOT_COUNT("--jobs", 1.5) + "\n");
+bad(
+  "scripts/ide_test.mjs",
+  ["--timeout", "0"],
+  "--timeout expects a number greater than 0 and at most 2147483, got: 0\n",
+);
+bad(
+  "scripts/ide_test.mjs",
+  ["--timeout", "2147484"],
+  "--timeout expects a number greater than 0 and at most 2147483, got: 2147484\n",
+);
+bad("scripts/ide_test.mjs", ["--show", "--hide"], "--show and --hide cannot be given together\n");
 
 // check_examples prints "check_examples: " before the message.
 {
