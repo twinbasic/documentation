@@ -510,7 +510,7 @@ wrapper:
 | `test.bat` | `check_attribute_sweep` | the sweep's site skeletons render and are each in a family of `Applicable to:` targets or listed as in none; its reading of a probe's diagnostics puts the refusals, the control's fold and a skeleton's own errors in the right states; every real `Applicable to:` line reads to its pinned targets; probes batch once each and never two of a once-per-project attribute; a cell missing a form is not reported refused; and the isolating runner, against a scripted fake in place of the IDE, finds a crash, a hang, a disturbed canary or a stray row and stops at each cap |
 | `test.bat` | `check_cli` | `lib/cli.mjs` parses as a strict `parseArgs` does, and also refuses an empty value unless the option allows one; every tool refuses an unknown flag, and every tool with a value option an empty value; each tool's recorded command-line errors still exit and print as recorded, run with an IDE and a browser that do not exist; every tool's `--help` and `-h` print its usage to stdout with exit 0 and start nothing, and each usage text ends in one `Exit codes:` block |
 | `test.bat` | `check_ci_workflows` | both CI workflows run every wrapper gate, with the same arguments and order, and build with `build.bat`'s flags |
-| `test.bat` | `check_lint` | Biome finds nothing in the tooling, warnings included, and checked at least one script |
+| `test.bat` | `check_lint` | Biome finds nothing in the tooling, warnings included, the formatter would change no file, and it checked at least one script |
 | `test.bat` | `test/search.test.mjs` | the search entries `builder/search.mjs` writes hold what they should, and the copies of the search client still agree. Run by `node --test`; the gate roster reads such a line as a gate, named by its path |
 | `test.bat` | `test/render.test.mjs` | `builder/render.mjs`'s markdown-it plugins, one at a time, on inputs no page holds --- today the ellipsis plugin's dot counting. Run by `node --test` |
 | `test.bat` | `test/strftime.test.mjs` | `builder/strftime.mjs`'s `formatDate`, which no build calls because no page sets `last_modified_date`. Run by `node --test` |
@@ -546,8 +546,13 @@ inline `<code>` is content.
 Favor concise one-line git commit messages.
 
 **Lint before every commit:** `node scripts/check_lint.mjs`, a fraction of a second. It
-runs Biome over the tooling and the site's two scripts, and fails on a warning as well as an
-error, because Biome reports an unused import as a warning. `test.bat` and CI run it too.
+runs Biome's linter and formatter check over the tooling and the site's two scripts, and
+fails on a warning as well as an error, because Biome reports an unused import as a warning,
+and on any file the formatter would change: run `npx biome format --write` before committing.
+A hand-laid-out literal table keeps its layout under `// biome-ignore format: <reason>`.
+`.git-blame-ignore-revs` lists the commit that applied the formatter; tell a clone to read it
+with `git config blame.ignoreRevsFile .git-blame-ignore-revs`. `test.bat` and CI run the gate
+too.
 The pre-commit hook in `.githooks/` runs it on the staged scripts and nothing else; enable it
 in a clone with `git config core.hooksPath .githooks`.
 

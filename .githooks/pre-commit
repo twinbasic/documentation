@@ -1,5 +1,6 @@
 #!/bin/sh
-# Lints the scripts this commit stages with the pinned Biome, through
+# Lints the scripts this commit stages and checks their formatting with the
+# pinned Biome, through
 # scripts/check_lint.mjs --staged: the check test.bat and both CI workflows
 # run over the whole scope, on the files being committed. It runs nothing
 # else, and a commit that stages no script returns before Biome starts.

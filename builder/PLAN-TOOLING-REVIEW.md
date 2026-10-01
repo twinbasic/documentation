@@ -1144,6 +1144,18 @@ C86; WIP.md and Tools.md say so.
 **Verify.** A misformatted staged file is refused by the hook and fails the gate with 1;
 `git blame` on a file C86 touched skips it. CI waits for the owner's push.
 
+**Landed.** `check_lint.mjs` runs `biome check` in place of `biome lint`: one pass that lints
+and checks formatting, writing the same summary the gate reads (`Checked 185 files`). Its
+`--staged` set takes `biome.jsonc` beside the scripts. Its header, usage text and exit-code
+line say a file the formatter would change is a finding, as the hook's comment, Tools.md's
+list entry and section and WIP.md's paragraph and gate row now do; the composite action's
+step is unchanged. `.git-blame-ignore-revs` lists C86 (`4e65c9cb`). Shown: a misformatted
+import in `lib/repo-paths.mjs`, staged, fails the gate with 1 and `git hook run pre-commit`
+with 1 (`Found 1 error`, a `format` diagnostic); `git blame --porcelain builder/gantt.mjs`
+gives C86 62 lines, and with `--ignore-revs-file .git-blame-ignore-revs` none. This clone's
+`blame.ignoreRevsFile` is left unset: git configuration waits for the owner. CI waits for the
+owner's push, and should show the lint step clean on Linux, where the checkout is LF too.
+
 ## Coverage
 
 Every finding in the review, mapped to the commit that addresses it. A finding closed by more

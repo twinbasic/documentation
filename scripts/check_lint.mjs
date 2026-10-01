@@ -1,10 +1,12 @@
 #!/usr/bin/env node
-// The lint gate: the pinned Biome over the scope biome.jsonc names.
+// The lint gate: the pinned Biome over the scope biome.jsonc names, through
+// `biome check`, which lints and checks formatting in one pass.
 //
-// The rules are the ones that find defects -- Biome's correctness and
+// The lint rules are the ones that find defects -- Biome's correctness and
 // suspicious groups -- and none about style. Moving and deleting code leaves
 // unused imports and undeclared names behind, and nothing else reads the
-// tooling for them.
+// tooling for them. Style is the formatter's: a file it would change is a
+// finding, which `biome format --write` fixes.
 //
 // Warnings fail as well as errors. Biome reports noUnusedImports and
 // noUnusedVariables as warnings and exits 0 on warnings, so a plain
@@ -19,11 +21,11 @@
 // it cannot read leaves no summary; the summary counts the findings, and the
 // files checked.
 //
-// With --staged it lints only the scripts the next commit adds or changes,
+// With --staged it checks only the scripts the next commit adds or changes,
 // which is how the pre-commit hook in .githooks/ runs it. Biome keeps those
 // its scope includes, and a commit whose scripts it excludes checks none and
 // is clean. A commit that stages no script returns before Biome starts. A
-// partly staged file is linted as it is in the working tree.
+// partly staged file is checked as it is in the working tree.
 //
 //   node scripts/check_lint.mjs              # the whole scope: test.bat and CI
 //   node scripts/check_lint.mjs --staged     # the staged scripts: the hook
@@ -50,15 +52,16 @@ function cannotLint(message) {
 const SYNOPSIS = "usage: node scripts/check_lint.mjs [--staged]";
 const USAGE = `${SYNOPSIS}
 
-Runs the pinned Biome over the tooling and the site's scripts, and fails on a
-warning as well as an error.
+Runs the pinned Biome's linter and formatter check over the tooling and the
+site's scripts, and fails on a warning as well as an error, and on a file the
+formatter would change.
 
-  --staged    lint only the scripts the next commit adds or changes
+  --staged    check only the scripts the next commit adds or changes
   -h, --help  print this text and exit
 
 Exit codes:
   0  Biome found nothing (--staged: or no script is staged, so nothing was linted)
-  1  Biome found an error or a warning
+  1  Biome found an error or a warning, or a file the formatter would change
   2  the gate could not lint: a refused command line, git or Biome failing to run,
      Biome checking no script over the whole scope, or a crash`;
 const cli = withUsageError(
@@ -79,7 +82,7 @@ if (cli.tokens.length > (cli.values.staged ? 1 : 0)) {
 const staged = cli.values.staged;
 
 // The scripts the next commit adds or changes that are still on disk, by the
-// two extensions the scope in biome.jsonc is made of.
+// extensions the scope in biome.jsonc is made of: the scripts, and biome.jsonc.
 function stagedScripts() {
   const r = spawnSync("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"], {
     cwd: REPO_ROOT,
@@ -87,7 +90,7 @@ function stagedScripts() {
   });
   if (r.error) cannotLint(`could not run git: ${r.error.message}`);
   if (r.status !== 0) cannotLint(`git diff --cached failed: ${r.stderr.trim()}`);
-  return r.stdout.split("\0").filter((f) => /\.m?js$/.test(f) && existsSync(path.join(REPO_ROOT, f)));
+  return r.stdout.split("\0").filter((f) => /\.(?:m?js|jsonc)$/.test(f) && existsSync(path.join(REPO_ROOT, f)));
 }
 
 const scripts = staged ? stagedScripts() : [];
@@ -119,7 +122,7 @@ let run;
 let summary;
 try {
   const file = path.join(dir, "summary.txt");
-  const args = ["lint", "--error-on-warnings", "--reporter=default", "--reporter=summary", `--reporter-file=${file}`];
+  const args = ["check", "--error-on-warnings", "--reporter=default", "--reporter=summary", `--reporter-file=${file}`];
   if (staged) args.push("--no-errors-on-unmatched", "--", ...scripts);
   run = spawnSync(process.execPath, [biome, ...args], { cwd: REPO_ROOT, stdio: ["ignore", "inherit", "inherit"] });
   summary = readSummary(file);

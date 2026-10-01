@@ -1,0 +1,6 @@
+# Commits that changed only layout, which `git blame` should look through.
+# GitHub reads this file by name; a clone reads it once told to:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# format: apply the formatter
+4e65c9cb20d93750d48a98af8e516284cf72444b
