@@ -835,7 +835,7 @@ dialog calls after its folder picker --- and `root.saveProjectAs()` over DevTool
 
 ## An out-of-range index raises `&H8002000B` or `&H80004005`, not VBA's error 9
 
-**Build:** BETA 983 --- the IDE and a compiled EXE alike
+**Build:** BETA 995 in the IDE; BETA 983 in the IDE and a compiled EXE alike
 **Severity:** VBA code that handles `Err.Number = 9` does not recognise the error, with no
 diagnostic.
 
