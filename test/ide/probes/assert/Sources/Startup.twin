@@ -1,0 +1,16 @@
+' The project test/ide/assert.test.mjs runs in the debugger. TestPadLeft's
+' assertion fails, and the error is raised inside the Assert package; each line
+' around it prints, so the DEBUG CONSOLE shows how far the program got.
+Module Startup
+    Public Sub Main()
+        Debug.Print "main start"
+        TestPadLeft
+        Debug.Print "All PadLeft tests passed."
+    End Sub
+
+    Private Sub TestPadLeft()
+        Debug.Print "test start"
+        Assert.Exact.AreEqual "   hi", "hi" ' FAILS
+        Debug.Print "test after assert"
+    End Sub
+End Module

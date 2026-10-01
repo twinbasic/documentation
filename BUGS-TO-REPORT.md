@@ -884,7 +884,7 @@ runs on from the next line as the panel says.
 
 ## Stop at a run-time error ends only the procedure that raised it
 
-**Build:** BETA 995 (`ide-test.bat`'s `debugger` lane asserts it); BETA 983 for the `Assert` case
+**Build:** BETA 995 (`ide-test.bat`'s `debugger` and `assert` lanes assert it, and pass on BETA 983 as well)
 **Severity:** the program goes on running after the user asked it to stop.
 
 A `Sub Main` that calls a procedure which raises an untrapped error, and prints a line after
@@ -898,9 +898,10 @@ prints `aborted` and ends the whole run.
 **Its worst consequence is a false pass.** At a failed `Assert` --- whose error is raised by the
 assertion's own procedure --- **Stop**, and **Run → End** too, end only that procedure: the test
 carries on past the failed check, and a runner in the shape `Testing-with-Assert.md` teaches then
-prints `All PadLeft tests passed.` Three trials, one per button (**Ignore (Resume Next)** does the
-same, as it should). Moving execution to the test's `End Sub` with **Set Next Statement** and then
-choosing **Run → End** makes it an ordinary break, and the run is aborted (two trials).
+prints `All PadLeft tests passed.` The `assert` lane checks the panel's **Stop** and the Stop
+command that the toolbar and **Run → End** run. By hand on BETA 983, **Ignore (Resume Next)** did
+the same, as it should, and moving execution to the test's `End Sub` with **Set Next Statement**
+and then choosing **Run → End** made it an ordinary break, and the run was aborted (two trials).
 
 **Found by** the same probe; the assertion case by the fix pass for the Assert tutorial.
 
@@ -1159,7 +1160,8 @@ key events and checks each result. Every case in the table is a test in that lan
 
 ## F1 and the fold icon toggle the signature help, then fail
 
-**Build:** BETA 995 for F1 (`addin-test.bat`'s `keys` lane asserts it); BETA 983 for the fold icon
+**Build:** BETA 995 for F1 (`addin-test.bat`'s `keys` lane asserts it); the fold icon was
+clicked on BETA 983, and `toggleSigHelp` and both callers are unchanged in BETA 995's `ide/main.js`
 **Severity:** cosmetic --- the toggle works, but every F1 adds `command failed:
 "tbHelp_ToggleExpandSignatureHelp"` to the DEBUG CONSOLE, and every click on the icon throws
 in the page.
@@ -1184,7 +1186,8 @@ line, and the click in a harness IDE with `Runtime.exceptionThrown` recorded ove
 
 ## Typing just after a file opens at a position puts the text at that position, in reverse
 
-**Build:** BETA 983
+**Build:** BETA 983; `parseDocumentDecorations` and `revealLineInEditor` are unchanged in BETA
+995's `ide/main.js`
 **Severity:** typed text goes to the wrong place and in the wrong order, and nothing shows
 that it happened.
 
