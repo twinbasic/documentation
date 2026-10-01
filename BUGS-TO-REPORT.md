@@ -21,7 +21,7 @@ What an entry owes a reader:
 
 ## The recent-projects list fills its empty slots with copies of its last entry
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** cosmetic, but it shows on a new installation, which is exactly when the
 list has empty slots --- the same project repeated down the Recent tab.
 
@@ -134,7 +134,7 @@ candidate, and the interface cycle compiled instead of crashing.
 
 ## `--buildAndExit32` writes nothing, exits 0 on a project with errors, and hangs on a failing build
 
-**Build:** BETA 983
+**Build:** BETA 995; the silence on stdout and stderr was measured on BETA 983
 **Severity:** makes the documented unattended-build switch unusable.
 
 The IDE executable accepts `--buildAndExit32` and `--buildAndExit64`; `parseCommandLine()`
@@ -343,7 +343,7 @@ member it implements, and its description of the attribute says why.
 
 ## `import` stops with exit code 999 on any folder inside `Packages`, so a project that embeds a package cannot be packed
 
-**Build:** BETA 983 --- `twinBASIC_win32.exe` and `twinBASIC_win64.exe` alike
+**Build:** BETA 995 --- `twinBASIC_win32.exe`; on BETA 983 `twinBASIC_win64.exe` as well
 **Severity:** the command line cannot pack any project that embeds a package, and the
 failure prints neither `... DONE` nor `... FAILED`.
 
@@ -401,7 +401,7 @@ included, which `export` does not write.
 
 ## `export` and `import` stop at the 260-character path limit, apart from the one path they prefix with `\\?\`
 
-**Build:** BETA 983 --- `twinBASIC_win32.exe`, on a machine with `LongPathsEnabled` set to 1
+**Build:** BETA 995 --- `twinBASIC_win32.exe`, on a machine with `LongPathsEnabled` set to 1
 **Severity:** an `export` to a deep folder writes part of the tree and exits 0, and the
 errors it prints blame permissions and storage space.
 
@@ -439,7 +439,8 @@ trees as complete.
 
 ## A damaged project file opens a message box, and the command waits until it is closed
 
-**Build:** BETA 983 --- `twinBASIC_win32.exe`
+**Build:** BETA 983 --- `twinBASIC_win32.exe`; not re-run on BETA 995, since the box opens
+on the desktop of whoever runs the command
 **Severity:** an unattended `export`, `settings` or `readme` never finishes; once the box is
 closed, `export` reports success.
 
@@ -471,7 +472,7 @@ known.
 
 ## `export` refused for lack of `--overwrite` still writes part of the tree
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** a refused export leaves the folder a mixture of the old tree and the project.
 
 Export the HelloWorld sample into a folder, delete the exported `Settings`, edit
@@ -496,7 +497,7 @@ writes one copy and then refuses the other because of the file it has just writt
 
 ## The IDE has written the same name twice into project files it ships
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** a folder can hold only one of them, so unpacking keeps one copy; which copy the
 IDE itself uses is not known.
 
@@ -520,7 +521,7 @@ the repeated entries in a warning.
 
 ## `export` needs a full, backslashed project path, and no folder path may use forward slashes
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** ordinary relative and forward-slashed paths fail, with messages that say the
 file or folder does not exist.
 
@@ -541,7 +542,7 @@ creates every missing level of its output folder.
 
 ## `import` of a folder with no `Settings` file fails without saying why
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** minor --- the refusal is right, and the silence is not.
 
 Given a folder with no `Settings` file at its top, `import` lists the files it read, ends
