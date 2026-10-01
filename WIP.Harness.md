@@ -26,16 +26,16 @@ compiler's `export` verb unpacks any of them without opening the IDE:
 "$TB/bin/twinBASIC_win32.exe" export "<some>.twinproj" "C:\out\dir\" --overwrite
 ```
 
-Against BETA 983 that yields **820 `.twin` files** --- 661 from the sixteen packages under
-`packages/`, 159 from the thirty-two sample and template projects under `projects/` and
-`addins/`. All of it is code the compiler accepts, which makes it the strongest available
-evidence for anything the documentation asserts about legal syntax.
+Against BETA 983 and 995 alike that yields **820 `.twin` files** --- 661 from the sixteen
+packages under `packages/`, 159 from the thirty-two sample and template projects under
+`projects/` (`addins/` holds no `.twinproj`). All of it is code the compiler accepts, which
+makes it the strongest available evidence for anything the documentation asserts about legal
+syntax.
 
 Two operational notes, both learned the annoying way. **Use backslashes.** A folder named
 with forward slashes fails with `output folder does not exist and could not be created`
-whether it exists or not. This note used to say that the folder must already exist and that
-only one level of it is created; measured against BETA 983, `export` given backslashes
-creates every missing level, three deep in the test. Its project path must also be a full
+whether it exists or not, creates nothing, and still exits 0. Given backslashes, `export`
+creates every missing level, three deep in the test (BETA 983 and 995). Its project path must also be a full
 one, because it is prefixed with `\\?\`. And **redirect stdin** when looping (`</dev/null`),
 or the executable consumes the loop's input and the second iteration never runs.
 
@@ -85,7 +85,8 @@ node scripts/census_attributes.mjs --attr Hidden          # one attribute
 node scripts/census_attributes.mjs --attr Hidden --dump-sites sites.json
 ```
 
-Against BETA 983: **661 files, 9,701 attribute sites, 55 distinct attributes**, and every
+Against BETA 995: **661 files, 9,713 attribute sites, 55 distinct attributes** (BETA 983
+gave 9,701 sites; 987 to 995 added a hidden VBA declare and a `[DispId]` on `QueryUnload`), and every
 one of the 55 is already in `Attributes.md` --- the "used but undocumented" section comes
 back empty. Sixteen documented attributes are used by no package, which is not a defect
 but does mean the census offers no evidence for those `Applicable to:` lines and a probe
@@ -532,7 +533,7 @@ Four smaller things it knows, each of which cost a run:
   comes straight after the `[BUILD] Executing` line, before the probe's first statement runs.
   The probe's `Debug.Cls` erases it, the probe prints what comes before the call and stops
   there, and `tbrun` used to exit 0 with that partial output (measured with and without
-  `Debug.Cls` on BETA 983). Since the tooling review's C25a, `tbrun` wraps the page's global
+  `Debug.Cls` on BETA 983 and 995: with it the probe prints exactly its lines, without it `tbrun` warns and the build log lines precede them, exit 0 either way). Since the tooling review's C25a, `tbrun` wraps the page's global
   `clearDebugConsole()` before it presses Build, and keeps what each clear erases
   (`keepClears` in `tb-ide-console.mjs`). A `BUILD_FAILED` line in that record after the last
   `[BUILD] Executing` line exits 2, naming the line and printing the partial output. `main.js`
@@ -813,10 +814,12 @@ exactly what the lane puts there. The compiler loads the DLLs in
 `%APPDATA%\twinBASIC\addins\<arch>` as well (P6), and the `APPDATA` each lane gives its
 IDEs keeps the user's out ([The add-in test runner](#the-add-in-test-runner)).
 
-**Measured, against BETA 983:**
+**Measured, against BETA 983 (and 995 where stated):**
 
 - **An IDE session writes nothing into its install.** A compile, a compiler crash and a
-  `tbrun` build-and-run each left all 233 files byte-identical, down to the mtimes. A
+  `tbrun` build-and-run each left all 233 files byte-identical, down to the mtimes; on
+  BETA 995 the install (235 files) was byte-identical after exports, a `tbbuild` and two
+  `tbrun` runs. A
   compile also left the per-user `%APPDATA%\twinBASIC` unchanged; that folder holds the
   user's downloaded packages and empty `addins`, `locale` and `themes` folders, and is
   shared by every install. So a compile's whole footprint outside its temp folders is the

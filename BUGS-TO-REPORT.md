@@ -534,7 +534,8 @@ file or folder does not exist.
 
 The echo line explains the first two: `exporting from "\\?\hello.twinproj"`. The project path
 is prefixed with `\\?\`, which turns off Windows' path normalisation, so only a full path with
-backslashes survives it. **What does not reproduce it:** `import`'s project path and the
+backslashes survives it. The forward-slashed folder ends `... FAILED`, creates nothing, and
+exits 0 (BETA 995), so a script sees success unless it reads the output. **What does not reproduce it:** `import`'s project path and the
 printing commands' take relative and forward-slashed paths, and with backslashes `export`
 creates every missing level of its output folder.
 
