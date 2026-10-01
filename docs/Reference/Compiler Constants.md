@@ -15,6 +15,8 @@ The list includes the constants that VBA documents, even those twinBASIC does no
 
 ## Predefined constants
 
+Each value below is the one a module sees unless it redefines the constant. `#Const` can redefine any of them, and the new value applies only in the module that declares it: after `#Const Win32 = 0`, `#If Win32` is false in that module and still true everywhere else. See [Predefined compiler constants](../tB/Core/Topic-Preprocessor#predefined-compiler-constants).
+
 ### `Win16`
 
 **Purpose:** Indicates a 16-bit Windows compatible platform.\

@@ -29,6 +29,8 @@ The **ReDim** statement is used to size or resize a dynamic array that has alrea
 
 Use the **ReDim** statement repeatedly to change the number of elements and dimensions in an array. However, an array declared with one data type cannot later be changed to another data type by **ReDim**, unless the array is contained in a **Variant**. If the array is contained in a **Variant**, the type of the elements can be changed by using an **As** *type* clause, unless the **Preserve** keyword is used, in which case no changes of data type are permitted.
 
+**ReDim** also works on a **Variant** that holds a value other than an array, or nothing at all: the value is discarded and the **Variant** then holds the new array. **ReDim Preserve** on a **Variant** that holds a value other than an array raises error 13 (*Type mismatch*).
+
 With the **Preserve** keyword, only the last array dimension can be resized, and the number of dimensions cannot change. For example, when the array has only one dimension, that dimension can be resized because it is the last and only dimension. However, when the array has two or more dimensions, only the size of the last dimension can change while still preserving the contents of the array.
 
 The following example shows how to increase the size of the last dimension of a dynamic array without erasing any existing data contained in the array.
