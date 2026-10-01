@@ -51,7 +51,10 @@
     "enabled": true,
     "rules": {
       "preset": "none",
-      "correctness": { "preset": "recommended" },
+      // A name a module uses but never declares or imports. Off in the
+      // recommended set; a function moved to a module of its own without its
+      // imports passed every gate until the script ran.
+      "correctness": { "preset": "recommended", "noUndeclaredVariables": "error" },
       "suspicious": {
         "preset": "recommended",
         // `while ((m = re.exec(s)))` is how this tree walks a regex's matches.
@@ -63,6 +66,17 @@
     }
   },
   "overrides": [
+    {
+      // Functions these hand to puppeteer's page.evaluate run in the page,
+      // after axe-core has been injected into it as the global `axe`.
+      "includes": ["scripts/lib/axe-scan.mjs", "scripts/check_axe_patch_equiv.mjs"],
+      "javascript": { "globals": ["axe"] }
+    },
+    {
+      // Loaded into the book's page by pagedjs, which defines `Paged`.
+      "includes": ["book/lib/progress-handler.js"],
+      "javascript": { "globals": ["Paged"] }
+    },
     {
       // ES5-style scripts that ship to readers as written.
       // A trailing comma after a call's last argument is ES2017.
