@@ -60,7 +60,7 @@ This option supports full inheritance and OOP: `Protected` methods and variables
 ### Example: Animal Class Hierarchy
 
 > [!IMPORTANT]
-> Every class in this example is declared `Private Class`, because each one has a `Sub New` that takes arguments. A class that is not `Private` is exposed to COM, and COM creates objects without arguments. So a public class --- base or derived --- whose `Sub New` takes arguments fails to compile with TB5135, unless it also has a constructor that takes none. There are three fixes: declare the class `Private`, add the `[COMCreatable(False)]` attribute, or add a constructor without arguments, such as `Class_Initialize`. See [Parameterized Class Constructors](../Advanced/Classes-and-Modules#parameterized-class-constructors).
+> Every class in this example is declared `Private Class`, because each one has a `Sub New` that takes arguments. A class that is not `Private` is exposed to COM, and COM creates objects without arguments. So a public class --- base or derived --- whose `Sub New` takes arguments fails to compile with TB5135, unless it also has a constructor that takes none. There are three fixes: declare the class `Private`, add the `[COMCreatable(False)]` attribute, or add a constructor without arguments, such as `Class_Initialize`. Only the third lets the class be declared `As New`; without it, `As New` fails with TB5121. See [Parameterized Class Constructors](../Advanced/Classes-and-Modules#parameterized-class-constructors).
 
 Starting with a base class:
 

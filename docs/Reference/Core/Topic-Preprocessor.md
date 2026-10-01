@@ -57,6 +57,8 @@ Conditional compiler constants are always evaluated at the module level regardle
 
 twinBASIC provides a set of built-in compiler constants --- `Win64`, `Win32`, `TWINBASIC`, `TWINBASIC_BUILD`, `VBA7`, etc. See the dedicated [Compiler Constants](../../Reference/Compiler-Constants) page for the full list and what each one means.
 
+`#Const` can redefine a built-in compiler constant. As with any `#Const`, the new value applies only in the module that declares it: after `#Const Win32 = 0`, `#If Win32` is false in that module and still true everywhere else.
+
 ### Example
 
 This example uses the `Win64` predefined constant to select platform-specific imports, and a project-defined `DEBUG_BUILD` constant to enable extra logging only in debug builds.

@@ -42,7 +42,7 @@ twinBASIC supports generic types and generic modules using the `Of` keyword. A g
 
 ### New declaration keywords
 
-- [**Delegate**](../tB/Core/Delegate) -- declares a typed function-pointer type; enables type-safe `AddressOf` and CDecl callbacks
+- [**Delegate**](../tB/Core/Delegate) -- declares a typed function-pointer type; enables type-safe `AddressOf` and callbacks in the CDecl, ThisCall and FastCall calling conventions
 - **Enum** member ranges -- enum members can now reference other members by name rather than only literal integers
 
 ### Flow control
@@ -167,7 +167,7 @@ The [**Emit**](../tB/Modules/HiddenModule/Emit) / [**EmitAny**](../tB/Modules/Hi
 Beyond the standard `Declare`, twinBASIC adds:
 
 - `DeclareWide` --- disables ANSI/Unicode conversion for string arguments
-- `CDecl` calling convention on both declares and regular functions
+- `CDecl`, `ThisCall` and `FastCall` calling conventions on declares, procedures, delegates and interface members
 - `ByVal` UDT passing
 - Variadic (`CDecl` + `ParamArray ... As Any()`) parameter lists
 

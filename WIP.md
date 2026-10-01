@@ -164,6 +164,12 @@ addin-test.bat --only sample15     # one lane; --port N moves the lanes' ports
 - **A test never opens a real browser.** Every IDE the harness starts has `TB_ADDIN_TEST=1`, and an add-in under test prints `open <url>` to the DEBUG CONSOLE instead. Never start a test IDE with the variable removed unless its add-in opens nothing either way.
 - **Name in `lanes.mjs` every application an add-in under test passes to `SaveSetting`**, or its settings stay changed after the run: `SaveSetting` writes the key the user's own copy of the add-in reads.
 
+**Testing the IDE itself** (the debugger, Export Project, the Packages dialog) is
+`ide-test.bat`, the same runner (`scripts/lib/lane-runner.mjs`) over `test/ide/lanes.mjs`,
+with base port 9660 against the add-in runner's 9560. Every rule above applies to it
+unchanged: the private `APPDATA`, `TB_ADDIN_TEST=1`, and ending an IDE by its pid. Its
+scenario files import `scenario` from `test/addin/scenario.mjs`.
+
 ## Authoring a page
 
 **[WIP.Authoring.md](WIP.Authoring.md) is required reading before writing or
@@ -459,6 +465,7 @@ Why the report separates the wedged task from the merely blocked ones, and why
 
 - `examples.bat` — compiles the documentation's own twinBASIC code samples, every `tb` fence marked `check_build`, and reports the ones the compiler refuses against the line in the page they came from. Needs a twinBASIC install and Windows, so it is outside every gate and outside CI; ~120 s over the 1,136 samples marked. Two modes need no compiler at all: `--census` classifies every fence and says how many classifiable ones are still unmarked, and `--report <survey.json>` groups a saved `--propose --json` survey by diagnostic, section and unresolved name. `--propose` itself does compile. See [Compiling the reference's own code samples](#compiling-the-references-own-code-samples) and [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md).
 - `addin-test.bat` — tests IDE add-ins by operating an IDE: every lane in `test/addin/lanes.mjs` builds the add-ins it tests into a private copy of the install, opens a project and checks what the add-in does. Outside every gate and outside CI for the same reasons as `examples.bat`; ~140 s for the ten lanes today: Samples 10 and 15, and the eight probe lanes behind Stage 2's answers in [WIP.HelpAddin.md](WIP.HelpAddin.md). Exit 0 every lane passed and the registry is as it was found, 1 a lane failed, 2 the harness failed, 3 the registry or a work folder was not put back. See [Driving the twinBASIC compiler](#driving-the-twinbasic-compiler) for its rules.
+- `ide-test.bat` --- the same runner for scenarios that operate the IDE itself rather than an add-in: every lane in `test/ide/lanes.mjs`, base port 9660. Same exit codes, same standing outside every gate and outside CI, same rules.
 
 Three generators sit outside that loop and produce committed artifacts rather than build output — none runs during a build, and none is needed for one. `python scripts/build_fonts.py` rebuilds the subset webfaces under `docs/assets/fonts/` and needs a network connection; `node scripts/build_dot_metrics.mjs` regenerates `builder/inter-metrics.json` from those webfaces and needs only a browser. See [Typography](#typography). `node scripts/build_package_api.mjs` regenerates `builder/package-api.json`, the packages' declared API that the build's symbol index (`tB/symbols.json`, for the IDE help add-in) is annotated from; it needs a twinBASIC install, so **run it when the reference is re-indexed against a newer build** and commit it with the pages. See [WIP.HelpAddin.md, Stage 3](WIP.HelpAddin.md#stage-3-the-symbol-index-generated-by-the-docs-build).
 

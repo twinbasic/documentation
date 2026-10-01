@@ -1,0 +1,6 @@
+' The package test/ide/packages.test.mjs imports.
+Module DocProbe
+    Public Function DocProbeVersion() As Long
+        Return 1
+    End Function
+End Module

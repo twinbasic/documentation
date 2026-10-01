@@ -6,7 +6,7 @@
 // as the code editor's intellisense does (getLiveDebugIntellisenseMonaco).
 // Only page script can ask any of them; the add-in API has no such call.
 //
-// Each test states what BETA 983 and 987 do. If one fails after an IDE update, the
+// Each test states what BETA 983, 987 and 995 do. If one fails after an IDE update, the
 // IDE has changed: update P5 in WIP.HelpAddin.md, and the entry in
 // BUGS-TO-REPORT.md that the last hover test rests on, and then this file.
 //
@@ -125,7 +125,7 @@ scenario("P5: what the compiler says about the name under the cursor", (lane) =>
   test("hover on a variable gives its declaration, and on Debug.Print and a statement nothing", async () => {
     assert.equal(await hover(c, "c.Add", "c"), "*local variable* Dim c As Collection");
     assert.equal(await hover(c, "Nothing, count", "count"), "*parameter* ByVal count As Long");
-    // BETA 983 gives no hover here, and BETA 987 one whose text is empty.
+    // BETA 983 gives no hover here, and BETA 987 and 995 one whose text is empty.
     const nothing = [
       ["Debug.Print FindTheNeedle", "Debug"],
       ["Debug.Print FindTheNeedle", "Print"],

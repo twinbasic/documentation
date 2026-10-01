@@ -21,6 +21,9 @@ Syntax: **FileCopy** *source*, *destination*
 
 An error occurs when **FileCopy** is used on a file that is currently open.
 
+> [!NOTE]
+> twinBASIC raises run-time error -2147467259 (`&H80004005`, *Unspecified error*) for a file that is open, for **Input** as well as for **Append**. VB6 raises error 55 (*File already open*) for a file open for **Append**, and copies a file open for **Input** without an error.
+
 ### Example
 
 This example uses the **FileCopy** statement to copy one file to another. For the purposes of this example, assume that the file contains some data.

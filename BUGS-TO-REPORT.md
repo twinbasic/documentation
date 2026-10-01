@@ -21,7 +21,7 @@ What an entry owes a reader:
 
 ## The recent-projects list fills its empty slots with copies of its last entry
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** cosmetic, but it shows on a new installation, which is exactly when the
 list has empty slots --- the same project repeated down the Recent tab.
 
@@ -62,7 +62,7 @@ opens then trips this.
 
 ## Compiler crashes on an `Interface` named by an angle-bracket placeholder that has an `Extends` clause
 
-**Build:** BETA 983 (`twinBASIC_win32.dll+00141F7A`)
+**Build:** BETA 995; BETA 983 at `twinBASIC_win32.dll+00141F7A`
 **Severity:** crash --- takes the compiler down, three restarts, then the IDE gives up.
 
 This two-line file is the whole reproduction:
@@ -101,7 +101,7 @@ costs the whole batch its result, which is why that tool isolates the sample on 
 
 ## An `Interface` that extends itself compiles without a diagnostic
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** invalid code accepted --- the same cycle through a class is refused.
 
 This two-line file compiles with no error, warning, hint or info:
@@ -134,7 +134,7 @@ candidate, and the interface cycle compiled instead of crashing.
 
 ## `--buildAndExit32` writes nothing, exits 0 on a project with errors, and hangs on a failing build
 
-**Build:** BETA 983
+**Build:** BETA 995; the silence on stdout and stderr was measured on BETA 983
 **Severity:** makes the documented unattended-build switch unusable.
 
 The IDE executable accepts `--buildAndExit32` and `--buildAndExit64`; `parseCommandLine()`
@@ -154,7 +154,7 @@ records the same measurements.
 
 ## Public members are typed with Private components, so a default project cannot use them
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** documented APIs need the consumer to expose the package's internals; one
 event asks for a type it then refuses.
 
@@ -250,7 +250,7 @@ compiled in a default project.
 
 ## `Err.Raise` rejects `HelpContext` as a named argument, while its three siblings work
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** VBA-compatible code that names the fifth argument does not compile, and the
 diagnostic does not say which name was wrong.
 
@@ -293,7 +293,7 @@ whose sample was written in the named form. The page uses the positional form no
 
 ## An interface member marked `[PreserveSig]` cannot be implemented by a class
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** an interface the language lets you declare cannot be implemented at all, and
 the diagnostic asks for the signature that is already written.
 
@@ -313,8 +313,10 @@ End Class
 
 ```
 TB5004 unable to match this implementation to its interface member. The expected signature was: Private Function IProbeD_F() As Long
-TB5000 Missing implementation of member Function F() As Long
+TB65535 Missing implementation of member Function F() As Long
 ```
+
+BETA 983 gave the second message as TB5000.
 
 **The "expected" signature is character for character the one on the line the error is
 reported against.** Whatever the compiler is comparing, it is not what it prints.
@@ -341,7 +343,7 @@ member it implements, and its description of the attribute says why.
 
 ## `import` stops with exit code 999 on any folder inside `Packages`, so a project that embeds a package cannot be packed
 
-**Build:** BETA 983 --- `twinBASIC_win32.exe` and `twinBASIC_win64.exe` alike
+**Build:** BETA 995 --- `twinBASIC_win32.exe`; on BETA 983 `twinBASIC_win64.exe` as well
 **Severity:** the command line cannot pack any project that embeds a package, and the
 failure prints neither `... DONE` nor `... FAILED`.
 
@@ -399,7 +401,7 @@ included, which `export` does not write.
 
 ## `export` and `import` stop at the 260-character path limit, apart from the one path they prefix with `\\?\`
 
-**Build:** BETA 983 --- `twinBASIC_win32.exe`, on a machine with `LongPathsEnabled` set to 1
+**Build:** BETA 995 --- `twinBASIC_win32.exe`, on a machine with `LongPathsEnabled` set to 1
 **Severity:** an `export` to a deep folder writes part of the tree and exits 0, and the
 errors it prints blame permissions and storage space.
 
@@ -437,7 +439,8 @@ trees as complete.
 
 ## A damaged project file opens a message box, and the command waits until it is closed
 
-**Build:** BETA 983 --- `twinBASIC_win32.exe`
+**Build:** BETA 983 --- `twinBASIC_win32.exe`; not re-run on BETA 995, since the box opens
+on the desktop of whoever runs the command
 **Severity:** an unattended `export`, `settings` or `readme` never finishes; once the box is
 closed, `export` reports success.
 
@@ -469,7 +472,7 @@ known.
 
 ## `export` refused for lack of `--overwrite` still writes part of the tree
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** a refused export leaves the folder a mixture of the old tree and the project.
 
 Export the HelloWorld sample into a folder, delete the exported `Settings`, edit
@@ -494,7 +497,7 @@ writes one copy and then refuses the other because of the file it has just writt
 
 ## The IDE has written the same name twice into project files it ships
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** a folder can hold only one of them, so unpacking keeps one copy; which copy the
 IDE itself uses is not known.
 
@@ -518,7 +521,7 @@ the repeated entries in a warning.
 
 ## `export` needs a full, backslashed project path, and no folder path may use forward slashes
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** ordinary relative and forward-slashed paths fail, with messages that say the
 file or folder does not exist.
 
@@ -531,7 +534,8 @@ file or folder does not exist.
 
 The echo line explains the first two: `exporting from "\\?\hello.twinproj"`. The project path
 is prefixed with `\\?\`, which turns off Windows' path normalisation, so only a full path with
-backslashes survives it. **What does not reproduce it:** `import`'s project path and the
+backslashes survives it. The forward-slashed folder ends `... FAILED`, creates nothing, and
+exits 0 (BETA 995), so a script sees success unless it reads the output. **What does not reproduce it:** `import`'s project path and the
 printing commands' take relative and forward-slashed paths, and with backslashes `export`
 creates every missing level of its output folder.
 
@@ -539,7 +543,7 @@ creates every missing level of its output folder.
 
 ## `import` of a folder with no `Settings` file fails without saying why
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** minor --- the refusal is right, and the silence is not.
 
 Given a folder with no `Settings` file at its top, `import` lists the files it read, ends
@@ -548,44 +552,9 @@ cause.
 
 ---
 
-## `\` and `Mod` on the most negative `Integer` or `Long` by -1 raise a native exception that `On Error` cannot handle
-
-**Build:** BETA 983, 32-bit target
-**Severity:** a division that should raise the trappable error 6 stops the procedure instead; the
-`LongLong` form returns a wrong value with no error at all.
-
-```
-Dim a As Integer = -32768
-Dim b As Integer = -1
-On Error Resume Next
-Debug.Print a \ b
-```
-
-The DEBUG CONSOLE shows `NATIVE EXCEPTION: NT_OVERFLOW /<file>; <module>.<procedure> LINE <n>
-[CONTINUABLE]` for the division's line, then `[IDE] auto-activated TRACE-MODE in this session`,
-and nothing after that line runs, `On Error Resume Next` notwithstanding.
-
-| operands | `\` | `Mod` |
-|---|---|---|
-| `Integer` -32768 and -1 | native exception | native exception |
-| `Long` -2147483648 and -1 | native exception | native exception |
-| `LongLong` -9223372036854775808 and -1 | **-9223372036854775808**, no error | 0 (right) |
-| a `Variant` holding the `Integer` -32768, and -1 | `Long` 32768 (right) | --- |
-| a `Variant` holding the `Long` -2147483648, and -1 | error 6 (right) | --- |
-
-**What does not reproduce it:** every other overflow measured raises error 6 as it should ---
-`32767 + 1`, `32767 * 32767` and `-(-32768)` on typed `Integer` values, and the same kind of
-overflow on `Long`, `LongLong`, `Single`, `Double`, `Currency` and `Decimal` --- and division by
-zero raises error 11. Only the one quotient that does not fit its type fails this way.
-
-**Found by** probing the arithmetic operators' result types for `Reference/Operators.md`. The
-probe's first run lost every case after this one.
-
----
-
 ## Shifting a `Single`, `Double`, `Date`, `Boolean` or `String` compiles clean, then fails code generation
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** the compiler accepts the expression with no diagnostic, and the procedure that
 contains it never runs.
 
@@ -616,26 +585,15 @@ floating-point operands are truncated before shifting.
 
 ---
 
-## `>>` gives three different results for the same value, and a `Variant` shift can return `Empty`
+## A `Variant` shift multiplies a fractional value, and can return `Empty`
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** wrong values, with no diagnostic.
 
-```
-Dim n As Long = -8
-Dim v As Variant = CLng(-8)
-Debug.Print -8& >> 1    ' -4           constants: an arithmetic shift
-Debug.Print n >> 1      ' 2147483644   a Long variable: a logical shift
-Debug.Print v >> 1      ' -4           a Variant: a division, truncated toward zero
-```
-
-The logical shift is what a typed variable gets and what the documentation describes. The
-constant folder disagrees with the code generator: `-1 >> 1` and `-1& >> 1` are both -1, where an
-`Integer` variable holding -1 gives 32767 and a `Long` variable gives 2147483647.
-
-A `Variant` operand is not shifted but multiplied or divided --- a `Variant` holding the `Double`
-7.9, shifted left by 1, is 15.8 --- and a count as large as the width of the type it holds gives
-`Empty` rather than 0:
+A `Variant` holding the `Double` 7.9, shifted left by 1, is 15.8: the value is multiplied, not
+shifted, and so is a `Currency` or `Decimal` holding 7.9. Shifted right by 1, the `Variant` and
+the `Decimal` give 3 but the `Currency` gives 3.95. A count as large as the width of the type the `Variant` holds gives `Empty` rather
+than 0:
 
 | expression | result |
 |---|---|
@@ -644,14 +602,15 @@ A `Variant` operand is not shifted but multiplied or divided --- a `Variant` hol
 | a `Variant` holding `CLng(1)`, `<< 31` | `Long` -2147483648 |
 | a `Long` variable holding 1, `<< 32` | 0 |
 
-**Found by** probing the operators for `Reference/Core/LeftShift.md` and `RightShift.md`, whose
-examples said `-1 >> 1` returns `&H7FFFFFFF`. It returns -1.
+**Found by** probing the operators for `Reference/Core/LeftShift.md` and `RightShift.md`. The
+same probe found `>>` logical on a typed variable and arithmetic on a constant, up to BETA 983;
+BETA 984 made both arithmetic.
 
 ---
 
 ## Overloads on `Date` and `Double` resolve by declaration order, not by the argument's type
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** the wrong overload runs, with no diagnostic.
 
 ```
@@ -684,7 +643,7 @@ measuring the operators for `Reference/Operators.md`.
 
 ## `Boolean \ String` and `Boolean Mod String` convert the `String` to `Boolean`
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** a wrong value and a wrong type, with no diagnostic.
 
 ```
@@ -711,7 +670,7 @@ the other way round: `"2" \ b` is the `Long` -2.
 
 ## Export Project follows a directory junction in its folder and deletes what it points to
 
-**Build:** BETA 983
+**Build:** BETA 995 (`ide-test.bat`'s `export` lane asserts it)
 **Severity:** data loss outside the folder the user chose. Export Project empties its folder
 before writing, as the *Export Path* setting warns; it does not stop at a junction.
 
@@ -734,7 +693,7 @@ before writing, as the *Export Path* setting warns; it does not stop at a juncti
 
 ## Export Project stops at a read-only file after deleting everything before it, and the IDE reports nothing
 
-**Build:** BETA 983
+**Build:** BETA 995 (`ide-test.bat`'s `export` lane asserts it)
 **Severity:** a partly emptied folder, with the only record in the Debug Console. On a Git
 working copy it breaks the repository, because Git makes its object files read-only.
 
@@ -762,7 +721,7 @@ completely --- `.git` included, with no prompt.
 
 ## Export Path refuses `${SourcePath}` alone, but not the same folder written as a path
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** the project file is deleted when the export folder is the folder that holds it.
 
 The Settings editor's check on `project.exportPath` in `ide/main.js` compares the text with
@@ -773,14 +732,17 @@ logged `[EXPORT]  DELETED: \\?\<folder>\<project>.twinproj` and completed. A **S
 wrote the file back; closing without saving loses it.
 
 **Found by** the same probe. The compiler's side was measured, by calling `exportProjectTo()`
-with the folder; that the editor accepts the same folder typed as a path is read from the
-check's code, not tried.
+with the folder, and `ide-test.bat`'s `export` lane asserts it; that the editor accepts the
+same folder typed as a path is read from the check's code, not tried. The Save that writes
+the file back was seen on BETA 983 only.
 
 ---
 
 ## Export Project writes the compiler packages, which the project does not hold, and the command line cannot pack the result
 
-**Build:** BETA 983
+**Build:** BETA 995 for the export and the command line's `import` of it, which
+`ide-test.bat`'s `export` lane asserts; the IDE's own import and the dead copy were measured
+on BETA 983
 **Severity:** the IDE's export of a project cannot be packed back into a project by the
 supported tool, so it cannot serve for version control; and a two-file project exports as
 477 files.
@@ -835,7 +797,7 @@ dialog calls after its folder picker --- and `root.saveProjectAs()` over DevTool
 
 ## An out-of-range index raises `&H8002000B` or `&H80004005`, not VBA's error 9
 
-**Build:** BETA 983 --- the IDE and a compiled EXE alike
+**Build:** BETA 995 in the IDE; BETA 983 in the IDE and a compiled EXE alike
 **Severity:** VBA code that handles `Err.Number = 9` does not recognise the error, with no
 diagnostic.
 
@@ -867,7 +829,7 @@ varies between runs --- *Unspecified error* in one, *Automation error* in anothe
 
 ## Reading `Forms` by index returns a broken reference, and the process then crashes
 
-**Build:** BETA 983 --- the IDE and a compiled EXE alike
+**Build:** BETA 995 as a compiled EXE; BETA 983 in the IDE and a compiled EXE alike
 **Severity:** crash (`0xC0000005`), from a form of access the documentation shows.
 
 With one form loaded (`Load Form1`):
@@ -877,9 +839,12 @@ Dim s As String
 s = Forms(0).Name        ' s is "", and the process later dies with 0xC0000005
 ```
 
-`Set f = Forms(0)` followed by `f.Name` does the same, and so does `s = Forms(n).Name` with
-`n` a variable. Inside `For k = 0 To Forms.Count - 1`, `Set f = Forms(k)` corrupts the loop
-variable: `k` read 0, 0, 0, then 8195702.
+`Set f = Forms(0)` followed by `f.Name` does the same when `f` is declared `As Form`, and so
+does `s = Forms(n).Name` with `n` a variable. Inside `For k = 0 To Forms.Count - 1`,
+`Set f = Forms(k)` with `f` declared `As Form` corrupts the loop variable: `k` read 0, 0, 0,
+then 8195702. With three forms loaded, BETA 995 and 983 alike log `k=0` twice, then a
+corrupted string, and exit `0xC0000005`. With `f` declared `As Form1` or `As Object`, the same
+code returns the form and exits 0.
 
 **What does not reproduce it:** `n = 0: Set f = Forms(n)` outside a loop returns the form
 (`f.Name` is `Form1`) and the program exits 0; `For Each f In Forms` and `Unload Forms(i)` work;
@@ -896,7 +861,7 @@ and as the built EXE, with identical results.
 
 ## A step key pressed on the line that raised an error leaves a step pending
 
-**Build:** BETA 983
+**Build:** BETA 995 (`ide-test.bat`'s `debugger` lane asserts it)
 **Severity:** the debugger stops where it was not asked to, and one command no longer means one
 thing.
 
@@ -907,8 +872,9 @@ thing.
    Moving past the line with **Set Next Statement** (CTRL+F9) instead, each F5 then advances
    one line.
 
-Seen in three runs. In the one followed to the end, it lasted until the procedure returned; in
-another, a fix-then-F5 stopped once. Which of the two applies was not isolated.
+In `ide-test.bat`'s `debugger` lane, on BETA 983 and 995 alike, the waiting step is used up by
+that one stop: the next F5 runs on to the loop's next error. An earlier run by hand, followed to
+the end, saw it last until the procedure returned; what differed there is not known.
 
 **What does not reproduce it:** choosing **Ignore** without pressing a step key first, which
 runs on from the next line as the panel says.
@@ -919,7 +885,7 @@ runs on from the next line as the panel says.
 
 ## Stop at a run-time error ends only the procedure that raised it
 
-**Build:** BETA 983
+**Build:** BETA 995 (`ide-test.bat`'s `debugger` and `assert` lanes assert it, and pass on BETA 983 as well)
 **Severity:** the program goes on running after the user asked it to stop.
 
 A `Sub Main` that calls a procedure which raises an untrapped error, and prints a line after
@@ -933,9 +899,10 @@ prints `aborted` and ends the whole run.
 **Its worst consequence is a false pass.** At a failed `Assert` --- whose error is raised by the
 assertion's own procedure --- **Stop**, and **Run → End** too, end only that procedure: the test
 carries on past the failed check, and a runner in the shape `Testing-with-Assert.md` teaches then
-prints `All PadLeft tests passed.` Three trials, one per button (**Ignore (Resume Next)** does the
-same, as it should). Moving execution to the test's `End Sub` with **Set Next Statement** and then
-choosing **Run → End** makes it an ordinary break, and the run is aborted (two trials).
+prints `All PadLeft tests passed.` The `assert` lane checks the panel's **Stop** and the Stop
+command that the toolbar and **Run → End** run. By hand on BETA 983, **Ignore (Resume Next)** did
+the same, as it should, and moving execution to the test's `End Sub` with **Set Next Statement**
+and then choosing **Run → End** made it an ordinary break, and the run was aborted (two trials).
 
 **Found by** the same probe; the assertion case by the fix pass for the Assert tutorial.
 
@@ -943,7 +910,10 @@ choosing **Run → End** makes it an ordinary break, and the run is aborted (two
 
 ## A `Static` declaration cannot initialise with a constructor that takes arguments
 
-**Build:** BETA 983
+**Build:** BETA 983 --- **not reproduced on a re-check**: a `Static s As Dog = New Dog("Rex")`,
+in a Module procedure, a Function, a Class method and a Property Get, with `Dog` a Private or a
+`[COMCreatable(False)]` class with a one-parameter `Sub New`, compiled and ran on BETA 983 and
+995 alike. What else the original case held is not recorded; find it before filing.
 **Severity:** a valid declaration does not compile; the workaround is a `Static` without an
 initialiser and a `Set` on first use.
 
@@ -973,7 +943,7 @@ no arguments (`Static c As Collection = New Collection`); and a `Static` of a va
 
 ## *Import from file...* leaves the imported package unticked
 
-**Build:** BETA 983
+**Build:** BETA 995 (`ide-test.bat`'s `packages` lane asserts it); BETA 983 by hand
 **Severity:** the package is imported but not referenced, and the documentation says it is.
 
 Settings → References → Available Packages → *Import from file...*, and choose a `.twinpack`. The
@@ -981,7 +951,8 @@ compiler answers the IDE's `importPackage` request with
 `success: true, body: { packageSymbol: "DocProbePkg" }`, and the package appears in the list
 unticked, so nothing in the project can use it until it is ticked by hand.
 `packageLoadFromFile` in `ide/main.js` reads `packageSymbol` from the response itself rather
-than from its `body`, which is consistent with what is seen; that part is read, not traced.
+than from its `body`, while the online import path beside it, `importPackage`, reads
+`t.body.packageSymbol`.
 
 **Found by** the package probe for round 8's UC-60, which drove the import over DevTools with
 the file's path in place of the native picker.
@@ -990,7 +961,8 @@ the file's path in place of the native picker.
 
 ## Replacing an embedded package under one Apply keeps running the old copy
 
-**Build:** BETA 983
+**Build:** BETA 995, asserted by `ide-test.bat`'s `packages` lane with the two-Apply path as
+its control; the linked-copy rows below were measured on BETA 983
 **Severity:** the project builds and runs the old package after the user has replaced it.
 
 1. A project embeds a package built locally, `DocProbePkg` v1.
@@ -1010,9 +982,78 @@ and v2 runs at once.
 
 ---
 
+## Embedding a package with no `Packages` folder puts the compiler in a crash loop
+
+**Build:** BETA 995
+**Severity:** low. The input is invalid, and nothing in a normal workflow makes it: every package
+the IDE writes has the folder, and `scripts/impexp.mjs` and `impexp.py` add it when a tree
+lacks it. A crash is still a poor answer to it.
+
+1. Pack a package tree that has no `Packages` folder into a `.twinpack`. The tB executable's
+   `import` packs such a tree as it is; the repository's scripts no longer do. The tree may lack
+   `ImportedTypeLibraries` and `Miscellaneous` as well; neither matters.
+2. In a project, Settings → References → Available Packages → *Import from file...* the
+   `.twinpack`, tick it, and apply.
+3. The console shows `[PROJECT] twinBASIC project saving to disk [DONE]`, then `restarting from
+   FILE` four times about two seconds apart, and the IDE reports "Compiler crash loop detected.
+   Restarting in SAFE mode."
+
+An empty `Packages` folder in the package tree is enough to prevent it: the same steps with that
+folder alone, or with all three, restart the compiler once and run the package.
+
+**What does not reproduce it:** a project with the same package already embedded under
+`Packages\DocProbePkg`, without the folder, and opened cold compiles clean (also on BETA 983). So the loop needs the package to be embedded by the IDE.
+BETA 983 has not been tried through the IDE: in a lane its References page never finishes loading.
+
+**Found by** `ide-test.bat`'s `packages` lane, with the package's folders varied one at a time,
+and one run watched with `--show`.
+
+---
+
+## A call through a `FastCall` or `ThisCall` delegate is made as stdcall on win32
+
+**Build:** BETA 995
+**Severity:** the delegate is unusable on win32; every call through it raises an error.
+
+```tb
+Public Delegate Function FastDel FastCall (ByVal a As Long, ByVal b As Long) As Long
+
+Public Function GF FastCall(ByVal a As Long, ByVal b As Long) As Long
+    Return a * 100 + b
+End Function
+
+Public Function GS(ByVal a As Long, ByVal b As Long) As Long
+    Return a * 100 + b
+End Function
+
+Dim d As FastDel = AddressOf GF
+Debug.Print d(9, 1)        ' error: "Bad DLL definition.  Stack corruption detected."
+Dim e As FastDel = AddressOf GS
+Debug.Print e(9, 1)        ' 901: a stdcall target works, after warning TB0026
+```
+
+The same with `ThisCall` in place of `FastCall`, for the delegate and the function, raises the
+same error. So the call through the delegate passes the arguments as stdcall does, whatever
+convention the delegate declares.
+
+**What does not reproduce it:**
+
+- calling `GF` directly: 901. The callee side is right: a `FastCall Naked` function that
+  returns `ECX + EDX`, and a `ThisCall Naked` one that returns `ECX + [ESP+4]` and ends
+  `ret 4`, return the right sums when called directly;
+- delegates declared stdcall (no keyword) or `CDecl`, each pointed at a function of its own
+  convention: 901;
+- a win64 build: every case above returns 901 (x64 has one calling convention).
+
+**Observed** with a `[RunAfterBuild]` probe through `tbrun`, and in the compiled EXE `tbrun`
+left, run from its `Sub Main` and writing to a file: the same five results both ways. Both
+keywords are new in BETA 990 and 992; BETA 987 refuses them (TB5182).
+
+---
+
 ## An error in the body of a generic procedure names neither the type nor the call that caused it
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** a diagnostic that points at correct code. In a project with many calls to a
 generic procedure, nothing says which call to fix.
 
@@ -1043,7 +1084,7 @@ nothing to say which types it accepts.
 
 ## Text that continues a `Debug.Print` line is escaped twice in the DEBUG CONSOLE
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** cosmetic, but it changes what a program appears to print: `&`, `<` and `>` in
 the continued part of a line show as `&amp;`, `&lt;` and `&gt;`.
 
@@ -1081,7 +1122,7 @@ that the IDE appends to an open console line.
 
 ## An add-in's keyboard shortcut does not fire if it includes `{CTRL}` or `{ALT}`
 
-**Build:** BETA 983
+**Build:** BETA 995 (`addin-test.bat`'s `keys` lane asserts it)
 **Severity:** the SDK's own example, `{CTRL}{SHIFT}d` in `KeyboardShortcuts.Add`'s
 description, cannot be used, and nothing says why.
 
@@ -1120,7 +1161,8 @@ key events and checks each result. Every case in the table is a test in that lan
 
 ## F1 and the fold icon toggle the signature help, then fail
 
-**Build:** BETA 983
+**Build:** BETA 995 for F1 (`addin-test.bat`'s `keys` lane asserts it); the fold icon was
+clicked on BETA 983, and `toggleSigHelp` and both callers are unchanged in BETA 995's `ide/main.js`
 **Severity:** cosmetic --- the toggle works, but every F1 adds `command failed:
 "tbHelp_ToggleExpandSignatureHelp"` to the DEBUG CONSOLE, and every click on the icon throws
 in the page.
@@ -1145,7 +1187,8 @@ line, and the click in a harness IDE with `Runtime.exceptionThrown` recorded ove
 
 ## Typing just after a file opens at a position puts the text at that position, in reverse
 
-**Build:** BETA 983
+**Build:** BETA 983; `parseDocumentDecorations` and `revealLineInEditor` are unchanged in BETA
+995's `ide/main.js`
 **Severity:** typed text goes to the wrong place and in the wrong order, and nothing shows
 that it happened.
 
@@ -1180,7 +1223,7 @@ opening a file (`afterReveal` in `scripts/lib/tb-operate.mjs`).
 
 ## Hover says a `ByVal` parameter was auto-generated because `Option Explicit` is off
 
-**Build:** BETA 983
+**Build:** BETA 995 (`addin-test.bat`'s `symbols` lane asserts it)
 **Severity:** cosmetic, but it tells the user to turn on an option that is already on, over
 a parameter they declared.
 
@@ -1221,7 +1264,7 @@ checks every row of the table). The text is the markdown the IDE's hover shows.
 
 ## Every tool window given no id is the same window
 
-**Build:** BETA 983
+**Build:** BETA 995 (`addin-test.bat`'s `panes` lane asserts it)
 **Severity:** an add-in's windows overwrite each other, or another add-in's, and nothing
 says so. The id is declared `Optional`, so leaving it out looks correct.
 
@@ -1256,7 +1299,7 @@ IDE's add-in samples leaves the id out.
 
 ## `[PopulateFrom]` with no arguments crashes the compiler
 
-**Build:** BETA 987
+**Build:** BETA 995; first seen on BETA 987
 **Severity:** the compiler process dies while the project is being parsed, which
 `tbbuild` reports as a crash (its exit code 4), so a person who forgets the arguments is not
 told what is missing.
@@ -1295,3 +1338,66 @@ a project holding only it and a two-line `Sub Main`, with no resources: `tbbuild
 The same project with `[PopulateFrom("probe")]` builds and reports the one TB5083 row. The
 rows for `(True)`, `(False)` and `(1)` come from the sweep's batches, not from that
 project.
+
+## `As New` refuses a class whose only constructor has all-`Optional` arguments
+
+**Build:** BETA 995; BETA 983 accepts it and runs it
+**Severity:** code that compiled before BETA 993 stops compiling, and the two checks for "can
+this class be created without arguments" disagree.
+
+```
+Class COpt
+    Public V As Long
+    Public Sub New(Optional ByVal n As Long = 3)
+        V = n
+    End Sub
+End Class
+
+Module Probe
+    Public Sub T()
+        Dim x As New COpt
+        Debug.Print x.V
+    End Sub
+End Module
+```
+
+fails on the `Dim` with TB5121 `can't use this type with As-New syntax as it doesn't have a
+parameterless constructor`. The same class satisfies TB5135, the check for COM exposure: it
+compiles as a public class without `[COMCreatable(False)]`, so that check counts the
+constructor as one that takes no arguments. On BETA 983 the reproduction compiles, and `x.V`
+prints `3`. TB5121 is the diagnostic BETA 993's notes describe ("classes with
+[COMCreatable(False)] set on them cannot be used as an As-New datatype"), corrected in 995.
+
+**What does not reproduce it:** a class with a `Class_Initialize` beside a `Sub New` that takes
+a required argument, or with a second `Sub New` with no parameters, is accepted. A class whose
+only `Sub New` takes a required argument is refused, `Private` or `[COMCreatable(False)]`
+alike, which is the diagnostic working as intended.
+
+**Observed** on 2026-10-01 with compile probes through `tbbuild`, each case a project of its
+own, on BETA 995 and BETA 983; the run on 983 was a compiled EXE through `tbrun`.
+
+## `FileCopy` of an open file raises `&H80004005`, where VB6 raises 55 or copies it
+
+**Build:** BETA 995; BETA 983 copied an open file with no error
+**Severity:** code that handles VB6's error 55 does not recognise the error, and a copy that
+VB6 makes is refused.
+
+```
+Dim f As String = Environ$("TEMP") & "\probe.txt"
+Open f For Output As #1: Print #1, "one": Close #1
+On Error Resume Next
+Open f For Append As #2
+FileCopy f, f & ".copy"
+Debug.Print Err.Number, Err.Description
+```
+
+prints `-2147467259 Unspecified error`. VB6 prints `55 File already open`. With the file
+open `For Input` instead, twinBASIC raises the same `-2147467259`, and VB6 copies the file
+without an error. BETA 984's notes list the change ("FileSystem.FileCopy function would
+previously allow copying of an already open file without error"); only the error number and
+the `Input` case differ from VB6.
+
+**What does not reproduce it:** the file closed.
+
+**Observed** on 2026-10-01: the twinBASIC lines through `tbrun` on BETA 995 and BETA 983, the
+VB6 lines from the same statements compiled by `VB6.EXE /make` and run.

@@ -16,6 +16,7 @@ A class can have a `Sub New` constructor, and the constructor can take arguments
 - `New MyClass(123)` runs `Sub New(Value As Long)`. `Class_Initialize` is not raised.
 - In a class that also has a `Class_Initialize`, a plain `New MyClass` runs `Class_Initialize`. `Sub New` does not run.
 - A class that has both a `Class_Initialize` and a `Sub New` with no parameters cannot be created with a plain `New`. The call matches both, and fails with TB5073.
+- A class whose only `Sub New` takes arguments, with no `Class_Initialize`, cannot be declared [`As New`](../../tB/Core/New), which creates the object without arguments. The declaration fails with TB5121. This holds even when every argument is `Optional`.
 
 ### Example
 

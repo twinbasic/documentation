@@ -657,7 +657,7 @@ The split exists so that an edit confined to `docs/` usually has to pay for `che
 - **Stop with `die(code, message)`** when the tool cannot go on: it prints the message to standard error and exits with the code. A tool that has something to put back first, as `sweep_attributes.mjs` has the registry, defines its own.
 - **End the usage text with an `Exit codes:` block,** one `  <code>  <meaning>` line per code, a long meaning wrapped under itself.
 
-[`scripts/check_cli.mjs`](Tools#check-cli) holds every tool to this. A new tool is added to its `HELP_TOOLS` list, which makes the tool answer `--help` and `-h` with exit 0 and end its usage with exactly one `Exit codes:` table, and to its `REFUSALS` list, which gives it a case for an unknown flag and for an empty value; the script throws on start if the two lists disagree. A tool that checks a value after the parse gets a case of its own in the script's bad-value list.
+[`scripts/check_cli.mjs`](Tools#check-cli) holds every tool to this, and its cases are in `scripts/lib/cli-cases.mjs`. A new tool is added to that file's `HELP_TOOLS` list, which makes the tool answer `--help` and `-h` with exit 0 and end its usage with exactly one `Exit codes:` table, and to its `REFUSALS` list, which gives it a case for an unknown flag and for an empty value; the gate throws on start if the two lists disagree. A tool that checks a value after the parse gets a case of its own in the same file's bad-value list.
 
 **Exit codes.** Three values, and a new gate in either wrapper uses them this way:
 

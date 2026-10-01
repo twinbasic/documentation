@@ -11,7 +11,7 @@ Declares the name, arguments, and code that form the body of a **Sub** procedure
 
 Syntax:
 > [ *attributes* ]  
-> [ **Public** \| **Private** \| **Friend** \| **Protected** ] [ **Static** ] [ **Overridable** ] **Sub** *name* [ **(** **Of** *typevars* **)** ] [ **(** *arglist* **)** ] [ *binding-clause* ]  
+> [ **Public** \| **Private** \| **Friend** \| **Protected** ] [ **Static** ] [ **Overridable** ] **Sub** *name* [ *callconv* ] [ **(** **Of** *typevars* **)** ] [ **(** *arglist* **)** ] [ *binding-clause* ]  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ **Exit Sub** ] ...  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
@@ -40,6 +40,9 @@ Syntax:
 
 *name*
 : Name of the **Sub**; follows standard variable naming conventions. The special name `New` declares an instance constructor --- see [Inheritance](../../Features/Language/Inheritance) for chained construction with `*baseclass*.New(...)`.
+
+*callconv*
+: *optional* The calling convention: **CDecl**, **ThisCall** or **FastCall**. The default is stdcall. Needed when native code calls the procedure through a pointer, or when it implements an interface member declared with a convention. See [Calling Conventions](../../Features/Advanced/API-Declarations#calling-conventions).
 
 **Of** *typevars*
 : *optional* One or more type variable names, following standard variable naming conventions. The names are separated by commas. Causes the procedure to be a generic **Sub**.

@@ -98,7 +98,7 @@ To run on to the end instead, correct the value and press <kbd>F5</kbd>, or pres
 - **A step key leaves a step waiting.** After <kbd>F8</kbd> on the failing line, **Ignore (Resume Next)** stops again on the next line instead of going on. Press <kbd>F5</kbd> to go on.
 - **At an error, Stop ends only the procedure that failed.** The procedure that called it goes on from its next line: if `Sub Main` called `FillTable`, the rest of `Sub Main` still runs. The panel's **Stop**, the toolbar's **Stop** and **Run → End** all do this. At a failed **Assert** check, **Stop** ends only the check, and the test goes on past it as if the check had passed. To end the whole run, first move the arrow to a later line with <kbd>CTRL</kbd> + <kbd>F9</kbd>, then press **Stop**. Away from an error --- at a breakpoint, after a step, or after Set Next Statement --- **Stop** ends the run.
 
-The last two are defects, as of BETA 983.
+The last two are defects, as of BETA 995.
 
 ## Debugger Options
 

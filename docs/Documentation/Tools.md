@@ -8,14 +8,14 @@ permalink: /Documentation/Development/Tools
 # Tools and Scripts
 {: .no_toc }
 
-One-line-per-tool reference for every executable in the documentation repository: the seven Windows batch wrappers at the repository root, the Node and Python scripts under `scripts/` (cross-platform except for [`tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE), the `tbdocs` orchestrator and its CLI flags, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper. Every Node tool answers `--help` or `-h` by printing its usage to standard output and exiting 0, without doing any of its work. A command line a tool cannot use is refused the same way by every Node tool: an unknown flag, a flag without its value or with an empty one, and an unexpected argument are reported on standard error and exit **2**. So is a crash. So is a value a tool cannot use, before it does any work: a number that is not one or is out of range (a fraction where a whole number is needed), a regular expression that does not compile, a URL that is not an absolute `http` or `https` one, a date that is not ISO 8601, a value outside a fixed set, and options that exclude each other. A tool that reads its command line through `lib/cli.mjs` and takes search terms, file names or folder names takes one that starts with a dash after `--`.
+One-line-per-tool reference for every executable in the documentation repository: the eight Windows batch wrappers at the repository root, the Node and Python scripts under `scripts/` (cross-platform except for [`tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE), the `tbdocs` orchestrator and its CLI flags, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper. Every Node tool answers `--help` or `-h` by printing its usage to standard output and exiting 0, without doing any of its work. A command line a tool cannot use is refused the same way by every Node tool: an unknown flag, a flag without its value or with an empty one, and an unexpected argument are reported on standard error and exit **2**. So is a crash. So is a value a tool cannot use, before it does any work: a number that is not one or is out of range (a fraction where a whole number is needed), a regular expression that does not compile, a URL that is not an absolute `http` or `https` one, a date that is not ISO 8601, a value outside a fixed set, and options that exclude each other. A tool that reads its command line through `lib/cli.mjs` and takes search terms, file names or folder names takes one that starts with a dash after `--`.
 
 * TOC goes here
 {:toc}
 ## Batch wrappers at the repository root
 {: #batch-wrappers }
 
-All seven sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. `examples.bat` and `addin-test.bat` are the exceptions to "each entry below gives the POSIX equivalent": they need a twinBASIC install and drive the IDE, so they are Windows-only, and neither is part of the site build. Four other tools are Windows-specific for the same reason and are likewise not part of it: [`scripts/tbbuild.mjs`](#tbbuild) and [`scripts/tbrun.mjs`](#tbrun), which drive the twinBASIC IDE, and [`census_attributes.mjs`](#census-attributes) and [`build_package_api.mjs`](#build-package-api), which run the twinBASIC compiler's `export` verb --- though those two are cross-platform when given an already-exported tree with `--exported`. Nothing else in the repository is: `tbdocs` and every gate in both wrappers is a Node script, and CI runs all of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
+All eight sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. `examples.bat`, `addin-test.bat` and `ide-test.bat` are the exceptions to "each entry below gives the POSIX equivalent": they need a twinBASIC install and drive the IDE, so they are Windows-only, and neither is part of the site build. Four other tools are Windows-specific for the same reason and are likewise not part of it: [`scripts/tbbuild.mjs`](#tbbuild) and [`scripts/tbrun.mjs`](#tbrun), which drive the twinBASIC IDE, and [`census_attributes.mjs`](#census-attributes) and [`build_package_api.mjs`](#build-package-api), which run the twinBASIC compiler's `export` verb --- though those two are cross-platform when given an already-exported tree with `--exported`. Nothing else in the repository is: `tbdocs` and every gate in both wrappers is a Node script, and CI runs all of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
 
 ### build.bat
 
@@ -202,6 +202,21 @@ Tests twinBASIC IDE add-ins by machine: it builds each add-in under test, loads 
 **It is not one of the gates either**, and for the reasons `examples.bat` is not: it needs a twinBASIC install, and it needs Windows, a private desktop and a CDP-reachable WebView2. It is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows.
 
 Exit codes: those of [`addin_test.mjs`](#addin-test), returned as they are: **0** every lane passed and the registry is as it was found, **1** a lane failed, **2** the harness failed, **3** the registry or a work folder was not put back.
+
+### ide-test.bat
+{: #ide-testbat }
+
+    ide-test.bat [flags]
+
+One invocation of [`ide_test.mjs`](#ide-test), with every flag passed straight through:
+
+    node scripts/ide_test.mjs [flags]
+
+Tests the twinBASIC IDE itself by machine: it opens a project in an IDE, operates the IDE the way a person would (the debugger, Export Project, the Packages dialog), and checks what the IDE did. It is the runner of [`addin-test.bat`](#addin-testbat) for scenarios that test the IDE rather than an add-in.
+
+**It is not one of the gates either**, and for the reasons `examples.bat` is not: it needs a twinBASIC install, and it needs Windows, a private desktop and a CDP-reachable WebView2. It is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows.
+
+Exit codes: those of [`ide_test.mjs`](#ide-test), returned as they are: **0** every lane passed and the registry is as it was found, **1** a lane failed, **2** the harness failed, **3** the registry or a work folder was not put back.
 
 ## CLI tools
 
@@ -525,7 +540,7 @@ Exit codes: **0** both workflows run every gate the wrappers run, and its own pr
     node scripts/check_lint.mjs
     node scripts/check_lint.mjs --staged
 
-Runs Biome, pinned to an exact version, over the tooling: `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `test/` and the site's two scripts in `docs/assets/js/`, less the exceptions that `biome.jsonc` at the repository root lists and explains. It runs `biome check`, which lints and checks formatting in one pass. The lint rules are the ones that find defects --- Biome's correctness and suspicious groups --- and none about style; the configuration names the few it turns off, each with its reason. Moving and deleting code leaves unused imports and undeclared names behind, and nothing else reads the tooling for them. Style belongs to the formatter, whose settings are in the same file: a file it would change is a finding, and `npx biome format --write` fixes it. A literal table laid out by hand keeps its layout under a `// biome-ignore format:` comment with a reason. No browser, no built tree, a fraction of a second.
+Runs Biome, pinned to an exact version, over the tooling: `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `test/` and the site's two scripts in `docs/assets/js/`, less the exceptions that `biome.jsonc` at the repository root lists and explains. It runs `biome check`, which lints and checks formatting in one pass. The lint rules are the ones that find defects --- Biome's correctness and suspicious groups --- and none about style; the configuration names the few it turns off and the one it adds, `noUndeclaredVariables`, each with its reason, and declares the page globals --- `axe`, `Paged` --- only for the files whose code runs in that page. Moving and deleting code leaves unused imports and undeclared names behind, and nothing else reads the tooling for them. Style belongs to the formatter, whose settings are in the same file: a file it would change is a finding, and `npx biome format --write` fixes it. A literal table laid out by hand keeps its layout under a `// biome-ignore format:` comment with a reason. No browser, no built tree, a fraction of a second.
 
 **Warnings fail as well as errors.** Biome reports an unused import or variable as a warning, and exits 0 on warnings, so a plain `npx biome lint` passes a file full of them. The gate also refuses to pass when Biome could not lint. Biome exits 1 for a broken `biome.jsonc`, as it does for a finding, and 0 for a scope that matches no script at all, so the gate reads the summary Biome writes beside its usual output to tell these apart.
 
@@ -1000,6 +1015,28 @@ fails if its IDE's add-in folder turns out to be anywhere else.
 
 Exit codes: **0** every lane passed, and the registry is as it was found; **1** a lane failed, or the run was interrupted; **2** the harness could not run: a refused command line, no IDE, no matching lane, a registry it could not record, or a crash after which the registry was put back; **3** the registry or a work folder was not put back (see the lines above), at the end of a run or after a crash, which wins over a 1 because the registry is what to repair.
 
+### ide_test.mjs
+{: #ide-test }
+
+    node scripts/ide_test.mjs [--only <regex>] [--port N] [--jobs N] [--timeout S]
+                              [--ide <path>] [--show|--hide]
+
+Runs the IDE scenarios under `test/ide/`: the scenarios that operate the IDE itself, such as
+the debugger, Export Project and the Packages dialog, rather than an add-in. It is the same
+runner as [`addin_test.mjs`](#addin-test), with the same flags, the same kind of lanes and the
+same exit codes: each file listed in `test/ide/lanes.mjs` is one **lane**, run by
+[`ide-test.bat`](#ide-testbat) in a process of its own, with its own DevTools port, work
+folder and private copy of the twinBASIC install. Run on its own, a scenario skips itself.
+The two differences are the suite and the default base port, which is 9660 here, so that a
+run of each tool never takes the other's ports. A run whose `test/ide/lanes.mjs` lists no lane
+matching `--only` is refused, as for `addin_test.mjs`.
+
+It leaves the registry as it found it, and checks, exactly as `addin_test.mjs` does. The rules
+of that tool apply here unchanged: every IDE it starts has a private `APPDATA` and
+`TB_ADDIN_TEST` set to `1`, and an IDE is ended by its process id and never by its image name.
+
+Exit codes: **0** every lane passed, and the registry is as it was found; **1** a lane failed, or the run was interrupted; **2** the harness could not run: a refused command line, no IDE, no matching lane, a registry it could not record, or a crash after which the registry was put back; **3** the registry or a work folder was not put back (see the lines above), at the end of a run or after a crash, which wins over a 1 because the registry is what to repair.
+
 ### check_tb_registry.mjs
 {: #check-tb-registry }
 
@@ -1171,7 +1208,7 @@ Exit codes: **0** the probe project and the key were written, **2** a refused co
 
 Reports, for every attribute the twinBASIC packages use, **which enclosing construct and which kind of declaration it decorates**. It exports each package of an IDE install with the compiler's own `export` verb, scans the `.twin` sources, and writes a Markdown or JSON report. No arguments are needed: it finds the newest `twinBASIC_IDE_BETA_*` the same way [`tbbuild.mjs`](#tbbuild) does, caches the export under the build number, and reuses it on later runs. It is not part of the site build and nothing calls it during one.
 
-Against BETA 983 that is 661 files, 9,701 attribute sites and 55 distinct attributes.
+Against BETA 995 that is 661 files, 9,713 attribute sites and 55 distinct attributes.
 
 **A census is evidence, not applicability.** It says where an attribute *is* used, never where it *may* be used, and the two differ in both directions. The packages contain no use of `[Hidden]` on a whole **Class**, yet the compiler accepts one; they contain many on **Class** and **Interface** members, and the compiler refuses the same attribute on the **Interface** lines inside a **CoClass**. Neither fact is reachable from the other tool, so pair this with [`gen_attribute_probes.mjs`](#gen-attribute-probes) and [`tbbuild.mjs`](#tbbuild), which ask the compiler directly.
 

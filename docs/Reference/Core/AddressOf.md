@@ -33,7 +33,7 @@ In classic VBA, *procedurename* must name a procedure in a standard [**Module**]
 
 - **Indirect calls back through Basic.** A delegate variable holding an **AddressOf** value can be called directly: `Dim op As Operation = AddressOf Add: r = op(5, 6)`. Classic VBA can pass such pointers between procedures but cannot invoke through them inside Basic. See [**Delegate**](Delegate).
 - **Class, form, and user-control members.** **AddressOf** accepts methods declared on a class, form, or user-control. Take a pointer to an instance method by qualifying the name with the object reference: `AddressOf myInstance.MyMethod`. The resulting pointer remembers the instance --- calling through it dispatches to that object.
-- **CDecl callbacks.** Mark both the target procedure and the matching [**Delegate**](Delegate) (or [**Declare**](Declare) parameter) with **CDecl** to model `cdecl` callbacks. Classic VBA's **AddressOf** is hard-wired to `__stdcall`. See [API Declarations](../../Features/Advanced/API-Declarations#cdecl-callbacks).
+- **Other calling conventions.** Mark both the target procedure and the matching [**Delegate**](Delegate) with **CDecl**, **ThisCall** or **FastCall** to model a callback of that convention. Classic VBA's **AddressOf** is hard-wired to `__stdcall`. See [Calling Conventions](../../Features/Advanced/API-Declarations#calling-conventions).
 - **No `FARPROC` shim needed.** Assigning a function pointer to a local variable is direct --- `Dim lpfn As LongPtr = AddressOf MyFunc` --- without writing an intermediate forwarding procedure.
 
 ### Example

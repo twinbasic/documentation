@@ -11,6 +11,9 @@ is input for three tools:
   ([WIP.ExamplesBuild.md](../WIP.ExamplesBuild.md)).
 - `addin/` for [`scripts/addin_test.mjs`](../scripts/addin_test.mjs), which `addin-test.bat`
   runs: the IDE add-in scenarios ([test/addin](#testaddin), at the end).
+- `ide/` for [`scripts/ide_test.mjs`](../scripts/ide_test.mjs), which `ide-test.bat` runs:
+  the scenarios that operate the IDE itself. It is the add-in runner over its own
+  `lanes.mjs`, and its scenario files use `scenario` from `addin/scenario.mjs`.
 
 If a fixture case has just gone red, start at [The invariant, and how it
 breaks](#the-invariant-and-how-it-breaks) --- the commit that broke it need not have touched

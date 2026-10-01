@@ -13,7 +13,7 @@
 // function called tbCreateCompilerAddin to tbCreateCompilerAddin_v3. This lane
 // checks both by what they do.
 //
-// Each test states what BETA 983 does. If one fails after an IDE update, the
+// Each test states what BETA 983 and 995 do. If one fails after an IDE update, the
 // IDE has changed: update P14 in WIP.HelpAddin.md, the entry point's NOTE on
 // the tbIDE package page (docs/Reference/Built-In/tbIDE/index.md) and the
 // messages on the Add Ins page (docs/IDE/AddIns/index.md), and then this file.

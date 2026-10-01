@@ -25,18 +25,13 @@ import { WRITE_LIMIT, mkdirRec, runLimited, safeWrite, writeFileMkdirp } from ".
 const PDF_SUFFIX = "-pdf";
 const REQUIRED_CSS = ["assets/css/print.css", "assets/css/tb-highlight.css"];
 
-// The six faces print.css declares, copied into the sparse tree so its
+// The faces print.css declares, copied into the sparse tree so its
 // `url("../fonts/...")` resolves under the file:// URL render-book.mjs loads.
-// This list has to stay in step with the @font-face block at the top of
-// print.css.
-const REQUIRED_FONTS = [
-  "assets/fonts/source-serif-4-variable.woff2",
-  "assets/fonts/source-serif-4-variable-italic.woff2",
-  "assets/fonts/inter-variable.woff2",
-  "assets/fonts/inter-variable-italic.woff2",
-  "assets/fonts/cascadia-mono-variable.woff2",
-  "assets/fonts/cascadia-mono-variable-italic.woff2",
-];
+// They are read from print.css itself, so a face added to its @font-face
+// block is copied without a second list to keep in step.
+const PRINT_CSS = "assets/css/print.css";
+const FONT_URL = /url\(\s*["']?\.\.\/fonts\/([^"')\s]+)["']?\s*\)/g;
+const CSS_COMMENT = /\/\*[\s\S]*?\*\//g;
 const LIMIT = WRITE_LIMIT;
 
 // ---------------------------------------------------------------------------
@@ -62,11 +57,12 @@ export async function writePdf(
   const staticByDestRel = new Map(staticFiles.map((s) => [s.destRel.replaceAll("\\", "/"), s]));
   const counters = { bookBytes: 0, html: 0, css: 0, fonts: 0, images: 0, missing: 0 };
   const missingPaths = [];
+  const requiredFonts = await printCssFonts(staticByDestRel);
 
   await Promise.all([
     writePdfBook(bookHtml, pdfRoot, counters),
     copyPdfCss(staticByDestRel, highlightCss, pdfRoot, counters),
-    copyPdfFonts(staticByDestRel, pdfRoot, counters),
+    copyPdfFonts(requiredFonts, staticByDestRel, pdfRoot, counters),
     copyPdfImages(imagePaths, staticByDestRel, pdfRoot, counters, missingPaths),
   ]);
 
@@ -86,7 +82,7 @@ export async function writePdf(
     const missing = new Set(missingPaths);
     counters.checkBook = {
       html: bookHtml,
-      rels: ["book.html", ...REQUIRED_CSS, ...REQUIRED_FONTS, ...imagePaths.filter((r) => !missing.has(r))],
+      rels: ["book.html", ...REQUIRED_CSS, ...requiredFonts, ...imagePaths.filter((r) => !missing.has(r))],
     };
   }
   return counters;
@@ -161,6 +157,16 @@ async function copyPdfCss(staticByDestRel, highlightCss, pdfRoot, counters) {
   for (const w of warnings) console.warn(`pdf: ${w}`);
 }
 
+// The tree-relative path of every face print.css points at, in its order.
+// Comments are dropped first: print.css's own header names the url() form.
+// A missing print.css gives none: copyPdfCss already warns about it.
+async function printCssFonts(staticByDestRel) {
+  const sf = staticByDestRel.get(PRINT_CSS);
+  if (!sf) return [];
+  const css = (await fs.readFile(sf.srcPath, "utf8")).replace(CSS_COMMENT, "");
+  return [...new Set(Array.from(css.matchAll(FONT_URL), (m) => `assets/fonts/${m[1]}`))];
+}
+
 // Copy the webfaces print.css declares into <pdfRoot>/assets/fonts/.
 //
 // This throws where copyPdfCss warns and copyPdfImages collects, because a
@@ -171,8 +177,8 @@ async function copyPdfCss(staticByDestRel, highlightCss, pdfRoot, counters) {
 // rejects a face whose fetch errored, but a declared face the layout never
 // exercises is never fetched at all and passes silently. Failing here names
 // the path instead.
-async function copyPdfFonts(staticByDestRel, pdfRoot, counters) {
-  await runLimited(REQUIRED_FONTS, LIMIT, async (rel) => {
+async function copyPdfFonts(requiredFonts, staticByDestRel, pdfRoot, counters) {
+  await runLimited(requiredFonts, LIMIT, async (rel) => {
     const sf = staticByDestRel.get(rel);
     if (!sf) {
       throw new Error(

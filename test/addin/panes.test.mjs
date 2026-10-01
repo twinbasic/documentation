@@ -11,7 +11,7 @@
 // The last test is what ToolWindows.Add does with windows given no id, which
 // P9 turned up.
 //
-// Each test states what BETA 983 does. If one fails after an IDE update, the
+// Each test states what BETA 983 and 995 do. If one fails after an IDE update, the
 // IDE has changed: update P3, P4 and P12 in WIP.HelpAddin.md and the tbIDE
 // pages that rest on them (HtmlElement, HtmlElementProperties, HtmlElements,
 // ToolWindow, ToolWindows), and then this file.

@@ -22,6 +22,8 @@ Data read with **Line Input #** is usually written to a file with [**Print #**](
 
 The **Line Input #** statement reads from a file one character at a time until it encounters a carriage return (**Chr**(13)) or carriage return-linefeed (**Chr**(13) + **Chr**(10)) sequence. Carriage return-linefeed sequences are skipped rather than appended to the character string.
 
+Reading past the last line of the file raises run-time error 62 (*Input past end of file*), and leaves *varname* unchanged. Test for the end of the file with [**EOF**](../Modules/FileSystem/EOF) before each read.
+
 ### Example
 
 This example uses the **Line Input #** statement to read a line from a sequential file and assign it to a variable. This example assumes that `TESTFILE` is a text file with a few lines of sample data.

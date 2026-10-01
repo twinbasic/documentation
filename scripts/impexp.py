@@ -88,6 +88,14 @@ META_NAME = '.meta'
 # --overwrite writes it back over the live one.
 GIT_NAME = '.git'
 
+# The folders the IDE writes into every project and package it exports, even
+# when they are empty. Git keeps no empty folder, so a tree cloned from a
+# repository lacks them, and the IDE's compiler crashes in a loop on a package
+# with no Packages folder once it is embedded. Import adds any that are
+# missing, to the project and to each package under its Packages folder.
+STANDARD_FOLDERS = ('ImportedTypeLibraries', 'Miscellaneous', 'Packages',
+                    'Resources', 'Sources')
+
 PROJECT_FILE = re.compile(r'\.(twinproj|twinpack)$', re.IGNORECASE)
 
 # -------------------------- Parser (binary -> tree) --------------------------
@@ -460,11 +468,23 @@ def _project_name_in(settings_path):
     return name if isinstance(name, str) and name else None
 
 
-def _build_tree(dir_path, rel, self_key, skipped):
+def _build_tree(dir_path, rel, self_key, skipped, added):
     subdirs, files = [], []
-    for name in sorted(os.listdir(dir_path)):
+    names = os.listdir(dir_path)
+    # The standard folders this tree lacks, if it is the project or a package
+    # embedded in it.
+    missing = set()
+    if rel == '' or (re.fullmatch(r'packages/[^/]+', rel, re.IGNORECASE)
+                     and 'Settings' in names):
+        have = {n.lower() for n in names}
+        missing = {f for f in STANDARD_FOLDERS if f.lower() not in have}
+    for name in sorted(names + list(missing)):
         full = os.path.join(dir_path, name)
         entry_rel = f'{rel}/{name}' if rel else name
+        if name in missing:
+            subdirs.append(name)
+            added.append(entry_rel)
+            continue
         if name.lower() == GIT_NAME:
             skipped.append(dict(rel=entry_rel, why="Git's own folder"))
             continue
@@ -480,9 +500,16 @@ def _build_tree(dir_path, rel, self_key, skipped):
 
     children = []
     for d in subdirs:
+        if d in missing:
+            children.append(dict(
+                kind='directory', name=d,
+                revision=0x0000, flags=FLAGS_NONE,
+                category=_category_for(d), children=[],
+            ))
+            continue
         children.append(_build_tree(os.path.join(dir_path, d),
                                     f'{rel}/{d}' if rel else d,
-                                    self_key, skipped))
+                                    self_key, skipped, added))
     for f in files:
         with open(os.path.join(dir_path, f), 'rb') as fh:
             content = fh.read()
@@ -519,9 +546,9 @@ def import_project(project_path, folder, overwrite=False):
         raise Refusal('exists', f'{project_path} already exists, and '
                       '--overwrite is not set', HINT_IMPORT)
 
-    skipped = []
+    skipped, added = [], []
     root = _build_tree(os.path.abspath(folder), '', _path_key(project_path),
-                       skipped)
+                       skipped, added)
     root['name'] = _project_name_in(settings) or root['name']
     root['category'] = CATEGORY_DEFAULT
     buf = serialize(root)
@@ -539,7 +566,7 @@ def import_project(project_path, folder, overwrite=False):
 
     count(root)
     return dict(name=root['name'], size=len(buf), files=tally['files'],
-                folders=tally['folders'], skipped=skipped)
+                folders=tally['folders'], skipped=skipped, added=added)
 
 
 # -------------------------- Printing a root document -------------------------
@@ -738,6 +765,34 @@ def _self_test():
             eq(read_parsed(out)['name'], 'MyTree', 'root name')
         test('Import names the root after the folder when Settings has no name',
              t_fallback_name)
+
+        def t_standard_folders():
+            src = at('bare', 'Git')
+            for d in ('resources', 'Packages/Pkg', 'Packages/Pkg/Sources',
+                      'Packages/NotPkg'):
+                os.makedirs(os.path.join(src, d))
+            with open(os.path.join(src, 'Settings'), 'w') as f:
+                f.write('{}')
+            with open(os.path.join(src, 'Packages', 'Pkg', 'Settings'), 'w') as f:
+                f.write('{}')
+            r = import_project(at('bare', 'Git.twinproj'), src)
+            eq(','.join(r['added']),
+               'ImportedTypeLibraries,Miscellaneous,Sources,'
+               'Packages/Pkg/ImportedTypeLibraries,Packages/Pkg/Miscellaneous,'
+               'Packages/Pkg/Packages,Packages/Pkg/Resources', 'added')
+            back = read_parsed(at('bare', 'Git.twinproj'))
+            eq(','.join(contents(back)),
+               'ImportedTypeLibraries/,Miscellaneous/,Packages/,Packages/NotPkg/,'
+               'Packages/Pkg/,Packages/Pkg/ImportedTypeLibraries/,'
+               'Packages/Pkg/Miscellaneous/,Packages/Pkg/Packages/,'
+               'Packages/Pkg/Resources/,Packages/Pkg/Sources/,Packages/Pkg/Settings,'
+               'Sources/,resources/,Settings', 'contents')
+            misc = [c for c in back['children'] if c['name'] == 'Miscellaneous'][0]
+            eq(misc['category'], CATEGORY_MISCELLANEOUS, 'category')
+            eq(','.join(sorted(os.listdir(src))), 'Packages,Settings,resources',
+               'the tree on disk changed')
+        test('Import adds the empty folders the IDE expects, to the project and '
+             'each package in it', t_standard_folders)
 
         def t_export_refuses():
             os.remove(os.path.join(tree, 'Settings'))
@@ -1073,6 +1128,8 @@ def main(argv):
                 r = import_project(project, folder, overwrite=overwrite)
             for s in r['skipped']:
                 _out(f"  skipped {s['rel']} ({s['why']})")
+            for a in r.get('added', []):
+                _out(f'  added {a} (an empty folder the IDE expects)')
             _out(f"  {_count(r['files'], 'file')}, {_count(r['folders'], 'folder')}"
                  + (f", {r['size']} bytes" if 'size' in r else ''))
             if r.get('repeated'):

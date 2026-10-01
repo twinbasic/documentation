@@ -77,7 +77,7 @@ Advanced programming capabilities:
 - Multithreading support via direct API calls
 - Direct assembly insertion with `Emit()`
 - Static linking of OBJ and LIB files
-- Enhanced API declarations (CDecl, variadic args, ByVal UDTs)
+- Enhanced API declarations (CDecl, ThisCall and FastCall calling conventions, variadic args, ByVal UDTs)
 - Parameterized constructors and class exports
 
 ### [Compiler and IDE Features](Compiler-IDE/)

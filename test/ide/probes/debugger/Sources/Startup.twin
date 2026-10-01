@@ -1,0 +1,20 @@
+' The project test/ide/debugger.test.mjs runs in the debugger. FillTable fails
+' on every pass of its loop, at the line marked FAILS; each line around it
+' prints, so the DEBUG CONSOLE shows how far the program got.
+Module Startup
+    Public Sub Main()
+        Debug.Print "main start"
+        FillTable
+        Debug.Print "main after call"
+    End Sub
+
+    Private Sub FillTable()
+        Dim a(3) As Long, i As Long, idx As Long = 5
+        For i = 0 To 2
+            Debug.Print "loop " & i
+            a(idx) = i ' FAILS
+            Debug.Print "after fail " & i
+        Next
+        Debug.Print "fill end"
+    End Sub
+End Module

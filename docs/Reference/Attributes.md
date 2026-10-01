@@ -160,7 +160,7 @@ Syntax: **[COMCreatable** [ **( True** \| **False )** ] **]**
 
 Applicable to:  [**Class**](Class), [**CoClass**](CoClass)
 
-Indicates whether the class can be created through COM. It does not govern [**New**](New) inside the project: a `[COMCreatable(False)]` class is created with **New** as usual. A COM-creatable class needs a constructor that takes no arguments, so a class whose only `Sub New` takes arguments fails with TB5135 --- *error generating implicit default constructor ... (for COM exposure)* --- unless it is marked `[COMCreatable(False)]`, is **Private**, or has a constructor without arguments as well. See [Parameterized Class Constructors](../../Features/Advanced/Classes-and-Modules#parameterized-class-constructors).
+Indicates whether the class can be created through COM. It does not govern [**New**](New) inside the project: a `[COMCreatable(False)]` class is created with **New** as usual. A COM-creatable class needs a constructor that takes no arguments, so a class whose only `Sub New` takes arguments fails with TB5135 --- *error generating implicit default constructor ... (for COM exposure)* --- unless it is marked `[COMCreatable(False)]`, is **Private**, or has a constructor without arguments as well. The first two fixes leave the class with no constructor that takes no arguments, so it still cannot be declared [**As New**](New): that fails with TB5121. See [Parameterized Class Constructors](../../Features/Advanced/Classes-and-Modules#parameterized-class-constructors).
 
 ## ComExport  (optional Bool)
 {: #comexport }
@@ -179,14 +179,13 @@ Public Declare Function GetTickCount Lib "kernel32" () As Long
 ```
 
 <!-- Applicability from the attribute sweep (scripts/sweep_attributes.mjs) against
-     BETA 987, each of the bare form, (True) and (False): accepted on a Public
+     BETA 995, each of the bare form, (True) and (False): accepted on a Public
      Declare Function, a Public Declare Sub, a Private Declare Function, a
      Declare PtrSafe Function and a DeclareWide Function in a module, and on a
      Public and a Private Const in a module; refused with TB5155 on a Sub,
      Function or Property Get in a module (Public, Private, Static and generic)
      and on a module variable, and with TB5182 on a Declare or a Const in a
-     class. Earlier probes X05, X06 and X16 (BETA 983) had tried only a Sub
-     and a Const. A clean build
+     class. A clean build
      shows the compiler accepts the attribute, not what it makes a built file
      contain, and no package or sample uses it, so its effect is not
      established. -->
@@ -602,24 +601,22 @@ Hides the declaration from certain IntelliSense and other lists. It applies to a
 > [!NOTE]
 > A **CoClass** can only be hidden whole. Its body holds nothing but **Interface** lines, and the attribute is refused there with TB5155 --- unlike [**Default**](#default) and [**Source**](#source), which are interface-line attributes. It is likewise refused on an **Enum** or [**Type**](Type) declaration, on a **Type** member, and on a procedure parameter. An individual **Enum** *member* is hidden the same way: the **Encoding** constants of [**Open**](Open) are marked `[Hidden, Restricted]`.
 
-<!-- Applicability from scripts/census_attributes.mjs over BETA 983 (269 sites)
-     plus one probe per target via gen_attribute_probes.mjs + tbbuild.mjs.
-     Census: Module DeclareWide 158, Module Const 50, Class Property 18 / Sub 9
+<!-- Applicability from scripts/census_attributes.mjs over BETA 995 (270 sites)
+     plus the attribute sweep (scripts/sweep_attributes.mjs), BETA 995.
+     Census: Module DeclareWide 159, Module Const 50, Class Property 18 / Sub 9
      / variable 7 / Event 1, Interface Property 10 / Function 6 / Sub 3, whole
      CoClass 3, whole Module 2, whole Interface 2.
-     Probed clean: all four whole types, the Class and Interface members above,
-     a Private Const in a Class, a Module Sub/variable/Const and a Declare.
+     Swept clean: all four whole types, every procedure, variable, Const,
+     Event and Declare site in a Class, Module or Interface.
      The Enum member (the [Hidden, Restricted] shape Core/Open documents) also
-     compiled, but that proves nothing: the attribute sweep (BETA 987) found an
-     Enum body accepts ANY attribute on its own line, [ClassId("guid")] and
-     [Hidden(True)] included, and refuses every attribute written inline.
-     Core/Open's Encoding constants are the only evidence for it.
-     Probed TB5155: the Interface line inside a CoClass, a whole Enum, a whole
-     Type. TB5182: a Type member, a procedure parameter.
+     compiles, but that proves nothing: an Enum body accepts ANY attribute on
+     its own line, an attribute that does not exist included, so the sweep
+     voids that site. Core/Open's Encoding constants are the only evidence.
+     Swept TB5155: the Interface line inside a CoClass, a whole Enum, a whole
+     Type, a Delegate, Implements and Inherits. TB5182: a Type member, a
+     procedure parameter.
      Note the census finds NO use on a whole Class, though the probe compiles
-     and this entry has always claimed it -- which is the census/probe split
-     working: absence of a use is not absence of applicability.
-     This entry named only Class, CoClass and Interface until then. -->
+     -- absence of a use is not absence of applicability. -->
 
 
 ## IdeButton  (String)
@@ -679,8 +676,9 @@ Elsewhere in the project, `Honk` is callable on a **CCar** and `Diagnostics` is 
 
 For an overview of the `Implements ... Via` mechanism itself, see [Implements Via for basic inheritance](../../Features/Language/Inheritance#implements-via-for-basic-inheritance).
 
-<!-- Applicability by probe, BETA 983; no package or sample uses this
-     attribute. Accepted on `Implements <Class> Via <field> = <expr>` and on
+<!-- Applicability by probe, BETA 983, and by the attribute sweep, BETA 995,
+     which gives the same answers; no package or sample uses this
+     attribute. The control and the effect below were measured on 983. Accepted on `Implements <Class> Via <field> = <expr>` and on
      `Implements <Interface> Via <Class>`; rejected on a plain Implements
      statement (TB5155), on the Class (TB5182), on the Interface (TB5182), on
      an Inherits statement (TB5155) and on an Interface line in a CoClass

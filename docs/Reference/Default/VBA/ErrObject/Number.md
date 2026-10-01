@@ -26,7 +26,7 @@ Err.Raise Number:=vbObjectError + 1051, Source:="SomeClass"
 {: #error-numbers-that-differ-from-vba }
 
 > [!NOTE]
-> As of BETA 983, twinBASIC does not raise error 9, *Subscript out of range*, for an array index that is out of range or for a **Collection** member that does not exist. VBA's documentation gives error 9 for each case below; twinBASIC raises a different number.
+> As of BETA 995, twinBASIC does not raise error 9, *Subscript out of range*, for an array index that is out of range or for a **Collection** member that does not exist. VBA's documentation gives error 9 for each case below; twinBASIC raises a different number.
 
 | Access | VBA | twinBASIC |
 |---|---|---|

@@ -24,9 +24,9 @@
    ("unloaded") as normal. It does still abort if a face is mid-flight or
    errored when the page-breaking pass starts; see its loadFonts() patch.
 
-   What is NOT fine is declaring a face that builder/pdf.mjs does not copy
-   into the sparse _site-pdf/ tree: keep this block and its REQUIRED_FONTS
-   list in step. */
+   builder/pdf.mjs copies into the sparse _site-pdf/ tree every file this
+   block names as url("../fonts/..."), and fails the build on one that is
+   not under docs/assets/fonts/. There is no second list to keep in step. */
 
 @font-face {
   font-family: "Source Serif 4";

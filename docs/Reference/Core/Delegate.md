@@ -12,7 +12,8 @@ Declares a function-pointer type --- a named signature that variables, parameter
 > The **Delegate** statement is a twinBASIC extension. In classic VBA, function pointers are untyped **LongPtr** values produced by **AddressOf** and called indirectly through custom mechanisms (`DispCallFunc`, `CallWindowProc` shims, etc.).
 
 Syntax:
-> { **Public** \| **Private** } **Delegate Function** *name* [ **CDecl** ] **(** [ *arglist* ] **)** **As** *type*
+- > { **Public** \| **Private** } **Delegate Function** *name* [ *callconv* ] **(** [ *arglist* ] **)** **As** *type*
+- > { **Public** \| **Private** } **Delegate Sub** *name* [ *callconv* ] **(** [ *arglist* ] **)**
 
 **Public**
 : *required*, or **Private**: a declaration with neither is a syntax error, TB5182. In an ActiveX project, exports the delegate type to the type library so consumers in other projects see *name*. Not allowed in a class, where a delegate must be **Private** (TB5227, *Delegate declarations in class modules must be Private*).
@@ -23,14 +24,14 @@ Syntax:
 *name*
 : The identifier naming the delegate type. Must be a valid twinBASIC identifier.
 
-**CDecl**
-: *optional* Marks the delegate as using the C calling convention (`cdecl` --- caller cleans the stack), used to model callbacks expected by C-runtime APIs such as `qsort`. The default is `stdcall`. See [API Declarations](../../Features/Advanced/API-Declarations#cdecl-callbacks).
+*callconv*
+: *optional* The calling convention of the procedures the delegate refers to: **CDecl**, **ThisCall** or **FastCall**. The default is stdcall. A C-runtime callback such as the comparator of `qsort` is **CDecl**. See [Calling Conventions](../../Features/Advanced/API-Declarations#calling-conventions), which also describes a defect in BETA 995 that affects calls through **ThisCall** and **FastCall** delegates on 32-bit builds.
 
 *arglist*
 : *optional* Parameter signature, written exactly as for a [**Sub**](Sub) or [**Function**](Function) --- comma-separated `[ ByVal | ByRef ] [ Optional ] *varname* [ As *type* ]` parts.
 
 *type*
-: Return type of the delegate's signature.
+: Return type of a **Function** delegate's signature.
 
 After the declaration, *name* may be used wherever a type is allowed: to declare variables and parameters of function-pointer type, as the type of a member of a [**Type**](Type) (UDT), or as a parameter type in a [**Declare**](Declare) statement or an [**Interface**](Interface) member.
 

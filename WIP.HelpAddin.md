@@ -17,7 +17,7 @@ the detached HEAD of an old worktree keeps it --- so everything in it worth keep
 corrected, and nothing depends on it surviving. [What changed from the June
 draft](#what-changed-from-the-june-draft) lists the corrections.
 
-Facts about the IDE are from **BETA 983**. An offset like `main.js@611152` is a byte offset
+Facts about the IDE are from **BETA 983**, and were re-checked on BETA 995 where the text says so. An offset like `main.js@611152` is a byte offset
 into the one-line `ide/main.js`; offsets move with every build, so in any other build search
 for the quoted text instead. Each fact is one of three kinds:
 
@@ -70,7 +70,7 @@ the compiler what a symbol is.** Each of those gaps shapes a stage below.
   own environment, creates `packages`, `themes`, `locale`, `addins\win32` and
   `addins\win64` in, and returns. The page keeps the path as `commonFolderRootPath` and
   sends it with `RequestStartCompiler` and `RequestLoadAddins` (`main.js@1047705` and
-  `@1048667`). Measured on BETA 983 by
+  `@1048667`). Measured on BETA 983 and 995 by
   [test/addin/appdata.test.mjs](test/addin/appdata.test.mjs), with a probe add-in that
   prints the file it was loaded from: an IDE started with `APPDATA` naming a folder of the
   lane's own loaded the probe from `<APPDATA>\twinBASIC\addins\win32`, and not a second
@@ -107,7 +107,7 @@ the compiler what a symbol is.** Each of those gaps shapes a stage below.
   `shiftKeyDown` follows the keymap's `tbMisc_ShiftKeyStateDown` and `...Up` actions, so a
   test that presses Shift must not do it while a project is opening.
 - **The linker exports `tbCreateCompilerAddin` as `tbCreateCompilerAddin_v3`, and the
-  loader takes three names (P14).** Read in the compiler's code and measured on BETA 983 by
+  loader takes three names (P14).** Read in the compiler's code and measured on BETA 983 and 995 by
   [test/addin/entry.test.mjs](test/addin/entry.test.mjs). The loader --- in BETA 983 the
   code at `0x1EAB6275` in `twinBASIC_win32.dll`, and in another build the code that pushes
   the address of the string `tbCreateCompilerAddin_v2`, found with `dumpbin /disasm`; the
@@ -124,13 +124,13 @@ the compiler what a symbol is.** Each of those gaps shapes a stage below.
   `_v3` all loaded, and `_v4` did not, with `[EntryV4.dll] Failed to load addin.  Entry point
   not found.  Addin may have been compiled for a newer version of the twinBASIC IDE.` in the
   DEBUG CONSOLE and an `Unknown Addin` in the compiler's list. Both of P7's builds, win32 and
-  win64, exported `_v3` alone. Every install on this machine, BETA 947 to 983, has the same
+  win64, exported `_v3` alone. Every install on this machine, BETA 947 to 995, has the same
   three names in its loader, and each one's shipped Global Search add-in exports `_v3` alone,
   so both stamps are older than BETA 947.
 - **Add-ins cannot be switched off.** The Add-Ins menu lists the loaded add-ins with ticks,
   and every item calls `notSupportedMenuOption()` *(reported)*.
 - **A compiler restart loads every add-in again, from the file in its folder then (P9).**
-  Measured on BETA 983 by [test/addin/reload.test.mjs](test/addin/reload.test.mjs). A
+  Measured on BETA 983 and 995 by [test/addin/reload.test.mjs](test/addin/reload.test.mjs). A
   restart is the toolbar's restart button, every switch of the build target (below), and the
   IDE's own restart after a compiler crash. The page's `restartCompiler` (`main.js@153451`)
   first takes away what every add-in added: `removeAddinAlterations` removes their toolbar
@@ -162,7 +162,7 @@ the compiler what a symbol is.** Each of those gaps shapes a stage below.
   `addins\win64` alone. **Switching the target of an open project (Ctrl+F1 / Ctrl+F2)
   restarts the compiler in the other bitness, and the new one loads the other folders.**
   `changedActiveBuildConfig` in `ide/main2.js` records the new target and kills the
-  compiler. Measured on BETA 983 by [test/addin/arch.test.mjs](test/addin/arch.test.mjs),
+  compiler. Measured on BETA 983 and 995 by [test/addin/arch.test.mjs](test/addin/arch.test.mjs),
   with a 32-bit and a 64-bit build of a probe in both folders of their bitness, the install's
   and `%APPDATA%`'s: the project opened in win32, whose compiler loaded the two 32-bit copies
   alone; a switch to win64 started `twinBASIC_win64_noDEP.exe`, which loaded the two 64-bit
@@ -173,7 +173,7 @@ the compiler what a symbol is.** Each of those gaps shapes a stage below.
 
 ### Keyboard shortcuts
 
-Read at `main.js@608242`, `@610953` and `@611152`, and measured on BETA 983 by P1 and P2,
+Read at `main.js@608242`, `@610953` and `@611152`, and measured on BETA 983 and 995 by P1 and P2,
 whose lane is [test/addin/keys.test.mjs](test/addin/keys.test.mjs).
 
 - `KeyboardShortcuts.Add` lowercases the key string, deletes its whitespace and stores it
@@ -216,7 +216,7 @@ whose lane is [test/addin/keys.test.mjs](test/addin/keys.test.mjs).
 ### Tool windows
 
 Read at `main.js@1002292` (`toolWindowElementAddChild`) and `@1005960`
-(`toolWindowElementSetProperty`), and measured on BETA 983 by P3, P4 and P12, whose lane is
+(`toolWindowElementSetProperty`), and measured on BETA 983 and 995 by P3, P4 and P12, whose lane is
 [test/addin/panes.test.mjs](test/addin/panes.test.mjs).
 
 - **A tool window is part of the main document**, inside an open shadow root, not an iframe.
@@ -231,7 +231,7 @@ Read at `main.js@1002292` (`toolWindowElementAddChild`) and `@1005960`
   `createToolWindow` (`main.js@992211`) files a window under the second argument of
   `ToolWindows.Add`, and `createToolWindowById` returns the window the page already has
   under that id, with its body emptied, rather than a new one; the add-in's new `ToolWindow`
-  is then bound to it, since the page answers with its number. Measured on BETA 983: P9's
+  is then bound to it, since the page answers with its number. Measured on BETA 983 and 995: P9's
   window given no id was under `""`, and the last test of
   [panes.test.mjs](test/addin/panes.test.mjs) opened two windows given no id and got one,
   titled by the second, holding the second's element and what was then added through the
@@ -295,7 +295,7 @@ Read at `main.js@1002292` (`toolWindowElementAddChild`) and `@1005960`
 1. **The external browser.** `ShellExecuteW` from the add-in DLL. Certain to work; it leaves
    the IDE. The IDE itself opens links with `hostAppObject.Shell('cmd.exe /c start "link"
    "'+url+'"',1)` *(reported)* --- a host object that only page script can reach.
-2. **An `iframe` in a tool window --- it works (P3, BETA 983).** Nothing refuses the tag. No
+2. **An `iframe` in a tool window --- it works (P3, BETA 983 and 995).** Nothing refuses the tag. No
    file under `ide\` sets a Content-Security-Policy --- there is no
    `Content-Security-Policy`, `http-equiv` or `frame-ancestors` in any `ide\*.htm` --- and
    neither does the compiler's HTTP header template *(reported)*. The host DLL,
@@ -341,7 +341,7 @@ Read at `main.js@1002292` (`toolWindowElementAddChild`) and `@1005960`
 **Offline** is harder. `_site-offline/` works over `file://`, and a page served from
 `http://localhost` cannot frame a `file://` URL. The options are `srcdoc` with rewritten
 links, or files under the IDE's `ide\` folder. **The IDE serves any file placed there (P13,
-BETA 983)**, measured by [test/addin/ideserver.test.mjs](test/addin/ideserver.test.mjs)
+BETA 983 and 995)**, measured by [test/addin/ideserver.test.mjs](test/addin/ideserver.test.mjs)
 with files put in a lane's copy of the install:
 
 - The server is the page server, `bin\twinBASIC_win32.exe --ide=<pid>`, not the compiler:
@@ -372,7 +372,7 @@ have: writing into the install, which every new build replaces. Still deferred.
   4](#stage-4-the-add-in-in-increments)) and, for context, its own parser of the project's
   source.
 - **The compiler knows, and names the package, the container and the kind (P5).** Measured
-  on BETA 983 by [test/addin/symbols.test.mjs](test/addin/symbols.test.mjs), which puts each
+  on BETA 983 and 995 by [test/addin/symbols.test.mjs](test/addin/symbols.test.mjs), which puts each
   question the way the IDE's own code does. Hover (`textDocument/hover`, `main.js@842393`)
   returns markdown: for a procedure, its declaration, then a heading naming where it is
   declared, then its `[Description]` text, which for a VBA function is several paragraphs:
@@ -391,7 +391,7 @@ have: writing into the install, which every new build replaces. Still deferred.
   says `*class* **Collection** ... in package VBA` and lists `*[default]* VBA._Collection`.
   A variable gives its declaration, `*local variable* Dim c As Collection`. `Debug`,
   `Debug.Print` and a statement such as `Dim` give nothing, and a type such as `Long` a line
-  about it. BETA 983 gives no hover for those three, and BETA 987 a hover whose text is
+  about it. BETA 983 gives no hover for those three, and BETA 987 and 995 a hover whose text is
   empty, so the add-in must treat both as nothing. Over a procedure's name in its own declaration, hover gives a debug block
   instead, `TB-DEBUG CODEGEN SIZE: [NOT-READY]`; over a `ByVal` parameter of a class,
   `String`, `Variant` or `Object` it adds a wrong note about `Option Explicit`
@@ -449,7 +449,7 @@ have: writing into the install, which every new build replaces. Still deferred.
   1](#stage-1-testing-add-ins-by-machine) fixes this for every harness tool, not only for
   add-in tests.
 - **The `.twinproj` association** is `HKCU\Software\Classes\.twinproj` →
-  `twinBASIC.ProjectFile`, and it currently points at the BETA 983 `twinBASIC.exe`. A
+  `twinBASIC.ProjectFile`, and it currently points at the newest install's (BETA 995) `twinBASIC.exe`. A
   harvested finding said every launch re-registers it. Key timestamps say otherwise:
   `DefaultIcon` and `shell\open\command` were last written when BETA 983 was installed, and
   a day of launches of that build did not touch them. **The IDE rewrites them when its path
@@ -703,20 +703,20 @@ WebView2 preferring light.
 
 | # | Question | What it decides |
 |---|---|---|
-| P1 | Do `{ctrl}` and `{alt}` add-in shortcuts ever fire? Register `{ctrl}{shift}d`, `{alt}f`, `{shift}d`, `d` and `f1`, and press each. **Answered, BETA 983: no.** `d`, `{shift}d`, `f1` and `{shift}f1` fire; `{ctrl}{shift}d`, `{ctrl}d` and `{alt}f` fire only when the same key was pressed on its own less than 500 ms before. Queued in BUGS-TO-REPORT.md; the KeyboardShortcuts page has a NOTE. | the bug report; which key the add-in uses; the NOTE on the KeyboardShortcuts page |
-| P2 | Does the add-in's `f1` fire with focus in the code editor, and what happens with signature help showing? **Answered, BETA 983: yes.** It fires with the focus in the code editor, in the DEBUG CONSOLE and on nothing, and types nothing. With signature help showing, the IDE expands or collapses it as well, and logs `command failed: "tbHelp_ToggleExpandSignatureHelp"`. | F1 or another key --- F1 |
-| P3 | Does an `iframe` of a documentation page load and navigate inside a tool window? Size, scrolling, theme. **Answered, BETA 983: yes.** It loads, follows its own links, moves when the add-in sets `src`, scrolls, and fills the window under a wrapper's flex layout; the live site works too. Keys in the frame never reach the add-in, and the page's colour scheme is Windows', not the IDE's. | how pages are shown --- in the pane |
-| P4 | Does `innerHTML` render, and do inline handlers in it run page script? **Answered, BETA 983: yes, and yes.** It renders, and its inline handlers run as the IDE page's own script --- an `<img>`'s `onerror` with nothing clicked --- with its globals in reach. A property whose name starts with `on` is dropped, and the add-in hears no error. | how summaries are drawn; whether the page-internals route exists --- it does |
-| P5 | What does hover return for `MsgBox`, `Collection.Add`, `ToolWindows.Add` and a symbol declared in the project? What does definition return for a package symbol? **Answered, BETA 983:** hover gives the declaration, which says the kind, then a heading naming where it is declared: `in VBA.Interaction`, `in VBA._Collection`, `in tbIDE.IToolWindowsV1`, `in SymbolsProbe.Symbols` --- a class's members by its default interface, not by the class's name. Definition gives the declaration in the package's own source, `.../Packages/VBA/Sources/Interaction.twin`, which the IDE opens. Nothing for `Debug.Print` or a statement. Only page script can ask. | compiler-assisted context is possible; which route is [Stage 4](#stage-4-the-add-in-in-increments), increment 3 |
-| P6 | Does the compiler also load add-ins from `%APPDATA%\twinBASIC\addins\<arch>`? This needs a DLL placed there for a moment, and the user's own IDE would load it too --- **ask before running it.** **Answered, BETA 983: yes**, from `addins\win32` there and not from `addins` itself. The page expands `%APPDATA%` in the IDE's environment and sends the folder, and the compiler loads from what it is sent. Measured with `APPDATA` pointed at a folder of the lane's own, so no DLL went in the user's. | harness isolation --- every lane IDE gets an `APPDATA` of its own |
-| P7 | Which bitness does the compiler start in, and does switching the build target restart it in the other one and load the other `addins` folder? **Answered, BETA 983: yes, and yes.** The target a project opens in picks the compiler --- win32 when the IDE remembers none, `twinBASIC_win64_noDEP.exe` for a project remembered as win64 --- and each compiler loads the folders of its own bitness alone, the install's and `%APPDATA%`'s. Switching the target of an open project restarts the compiler in the other bitness, and the new one loads the other folders: a 64-bit build of the probe in each win64 folder loaded, and ran 64-bit, once the project was switched to win64, and the 32-bit ones again after a switch back. | building and testing both bitnesses --- `buildAddin` builds either, and a shipped add-in needs both |
-| P8 | Is a loaded add-in DLL locked against being overwritten? **Answered, BETA 983: yes.** While its IDE runs, overwriting fails (`EBUSY`) and deleting fails (`EPERM`), though renaming works; the hold outlasts the compiler's exit by a few tens of milliseconds. The P9 lane checks all three again. | the rebuild loop --- the DLL is built outside `addins`, and copied in once the IDE has ended, or renamed aside first (P9) |
-| P9 | Does a compiler restart reload add-ins from disk? **Answered, BETA 983: yes.** A restart --- the restart button, a switch of build target, or the IDE's own after a crash --- removes every add-in's buttons and shortcuts, leaves its windows showing `(currently unavailable)`, kills the old compiler, so that no `Class_Terminate` runs, and starts a compiler that loads whatever file is in the folders then. With the loaded DLL renamed aside, a restart loaded nothing; with a new build put in its place, the next restart loaded it, about a second after the click, and it got its old windows back by their ids. | a rebuild loop without restarting the IDE --- it works: rename aside, copy in, restart |
+| P1 | Do `{ctrl}` and `{alt}` add-in shortcuts ever fire? Register `{ctrl}{shift}d`, `{alt}f`, `{shift}d`, `d` and `f1`, and press each. **Answered, BETA 983 and 995: no.** `d`, `{shift}d`, `f1` and `{shift}f1` fire; `{ctrl}{shift}d`, `{ctrl}d` and `{alt}f` fire only when the same key was pressed on its own less than 500 ms before. Queued in BUGS-TO-REPORT.md; the KeyboardShortcuts page has a NOTE. | the bug report; which key the add-in uses; the NOTE on the KeyboardShortcuts page |
+| P2 | Does the add-in's `f1` fire with focus in the code editor, and what happens with signature help showing? **Answered, BETA 983 and 995: yes.** It fires with the focus in the code editor, in the DEBUG CONSOLE and on nothing, and types nothing. With signature help showing, the IDE expands or collapses it as well, and logs `command failed: "tbHelp_ToggleExpandSignatureHelp"`. | F1 or another key --- F1 |
+| P3 | Does an `iframe` of a documentation page load and navigate inside a tool window? Size, scrolling, theme. **Answered, BETA 983 and 995: yes.** It loads, follows its own links, moves when the add-in sets `src`, scrolls, and fills the window under a wrapper's flex layout; the live site works too. Keys in the frame never reach the add-in, and the page's colour scheme is Windows', not the IDE's. | how pages are shown --- in the pane |
+| P4 | Does `innerHTML` render, and do inline handlers in it run page script? **Answered, BETA 983 and 995: yes, and yes.** It renders, and its inline handlers run as the IDE page's own script --- an `<img>`'s `onerror` with nothing clicked --- with its globals in reach. A property whose name starts with `on` is dropped, and the add-in hears no error. | how summaries are drawn; whether the page-internals route exists --- it does |
+| P5 | What does hover return for `MsgBox`, `Collection.Add`, `ToolWindows.Add` and a symbol declared in the project? What does definition return for a package symbol? **Answered, BETA 983 and 995:** hover gives the declaration, which says the kind, then a heading naming where it is declared: `in VBA.Interaction`, `in VBA._Collection`, `in tbIDE.IToolWindowsV1`, `in SymbolsProbe.Symbols` --- a class's members by its default interface, not by the class's name. Definition gives the declaration in the package's own source, `.../Packages/VBA/Sources/Interaction.twin`, which the IDE opens. Nothing for `Debug.Print` or a statement. Only page script can ask. | compiler-assisted context is possible; which route is [Stage 4](#stage-4-the-add-in-in-increments), increment 3 |
+| P6 | Does the compiler also load add-ins from `%APPDATA%\twinBASIC\addins\<arch>`? This needs a DLL placed there for a moment, and the user's own IDE would load it too --- **ask before running it.** **Answered, BETA 983 and 995: yes**, from `addins\win32` there and not from `addins` itself. The page expands `%APPDATA%` in the IDE's environment and sends the folder, and the compiler loads from what it is sent. Measured with `APPDATA` pointed at a folder of the lane's own, so no DLL went in the user's. | harness isolation --- every lane IDE gets an `APPDATA` of its own |
+| P7 | Which bitness does the compiler start in, and does switching the build target restart it in the other one and load the other `addins` folder? **Answered, BETA 983 and 995: yes, and yes.** The target a project opens in picks the compiler --- win32 when the IDE remembers none, `twinBASIC_win64_noDEP.exe` for a project remembered as win64 --- and each compiler loads the folders of its own bitness alone, the install's and `%APPDATA%`'s. Switching the target of an open project restarts the compiler in the other bitness, and the new one loads the other folders: a 64-bit build of the probe in each win64 folder loaded, and ran 64-bit, once the project was switched to win64, and the 32-bit ones again after a switch back. | building and testing both bitnesses --- `buildAddin` builds either, and a shipped add-in needs both |
+| P8 | Is a loaded add-in DLL locked against being overwritten? **Answered, BETA 983 and 995: yes.** While its IDE runs, overwriting fails (`EBUSY`) and deleting fails (`EPERM`), though renaming works; the hold outlasts the compiler's exit by a few tens of milliseconds. The P9 lane checks all three again. | the rebuild loop --- the DLL is built outside `addins`, and copied in once the IDE has ended, or renamed aside first (P9) |
+| P9 | Does a compiler restart reload add-ins from disk? **Answered, BETA 983 and 995: yes.** A restart --- the restart button, a switch of build target, or the IDE's own after a crash --- removes every add-in's buttons and shortcuts, leaves its windows showing `(currently unavailable)`, kills the old compiler, so that no `Class_Terminate` runs, and starts a compiler that loads whatever file is in the folders then. With the loaded DLL renamed aside, a restart loaded nothing; with a new build put in its place, the next restart loaded it, about a second after the click, and it got its old windows back by their ids. | a rebuild loop without restarting the IDE --- it works: rename aside, copy in, restart |
 | P10 | Does an environment variable set by the harness reach the add-in (`Environ$`)? **Answered, BETA 983: yes**, through the launcher, the IDE and the compiler the IDE starts. With `TB_ADDIN_TEST=1` in `launchIde`'s environment, `Environ$` and `GetEnvironmentVariableW` both returned `1` in the add-in, and a compiler started by the restart button returned it too; left out, both said it was unset. `WEBVIEW2_USER_DATA_FOLDER`, which `launchIde` always sets, arrived with the lane's port in it. | the side-effect switch |
-| P11 | Does the IDE write into its own install folder during a session? **Answered, BETA 983: no.** A compile, a compiler crash and a `tbrun` build-and-run left all 233 files byte-identical, mtimes included. | hardlinks or copies --- copies, for safety, at 380 ms |
-| P12 | Does `raiseEvent` from plain tool-window HTML throw? **Answered, BETA 983: yes** --- `TypeError: Cannot read properties of null (reading 'rootEventHandler')`, and the listener is not called. An inline handler that calls the listener `AddEventListener` stored on its parent, `this.parentNode.<name>(event)`, reaches the add-in. | how the pane's events are written |
-| P13 | Does the compiler's HTTP server serve any file placed under `ide\`? **Answered, BETA 983: yes**, and it is the page server, `twinBASIC_win32.exe --ide=<pid>`, not the compiler. Any file, byte for byte, below the page's passkey path, including one written after the IDE started; a frame with a relative `src` shows it on the IDE page's own origin. A query string makes a 404, and `.html` has no `Content-Type`. | an offline route --- it exists ([Offline](#ways-to-show-a-page)) |
-| P14 | What do `tbCreateCompilerAddin_v2` and `_v3` expect? **Answered, BETA 983: what `tbCreateCompilerAddin` does.** The loader looks for the plain name, then `_v2`, then `_v3`, and calls whichever it finds with the `Host` alone and asks the result for `IAddInV1`. The names are version stamps: the linker exports a function named `tbCreateCompilerAddin` as `tbCreateCompilerAddin_v3` alone, and an IDE that knows none of a DLL's names refuses it as `compiled for a newer version of the twinBASIC IDE`, as a patched `_v4` was. | nothing in the design --- the add-in declares `tbCreateCompilerAddin` as the package says; the tbIDE page has a NOTE |
+| P11 | Does the IDE write into its own install folder during a session? **Answered, BETA 983 and 995: no.** On 983 a compile, a compiler crash and a `tbrun` build-and-run left all 233 files byte-identical, mtimes included. On 995 the install (235 files) was byte-identical after exports, a `tbbuild` and two `tbrun` runs; `%APPDATA%` was not re-checked. | hardlinks or copies --- copies, for safety, at 380 ms |
+| P12 | Does `raiseEvent` from plain tool-window HTML throw? **Answered, BETA 983 and 995: yes** --- `TypeError: Cannot read properties of null (reading 'rootEventHandler')`, and the listener is not called. An inline handler that calls the listener `AddEventListener` stored on its parent, `this.parentNode.<name>(event)`, reaches the add-in. | how the pane's events are written |
+| P13 | Does the compiler's HTTP server serve any file placed under `ide\`? **Answered, BETA 983 and 995: yes**, and it is the page server, `twinBASIC_win32.exe --ide=<pid>`, not the compiler. Any file, byte for byte, below the page's passkey path, including one written after the IDE started; a frame with a relative `src` shows it on the IDE page's own origin. A query string makes a 404, and `.html` has no `Content-Type`. | an offline route --- it exists ([Offline](#ways-to-show-a-page)) |
+| P14 | What do `tbCreateCompilerAddin_v2` and `_v3` expect? **Answered, BETA 983 and 995: what `tbCreateCompilerAddin` does.** The loader looks for the plain name, then `_v2`, then `_v3`, and calls whichever it finds with the `Host` alone and asks the result for `IAddInV1`. The names are version stamps: the linker exports a function named `tbCreateCompilerAddin` as `tbCreateCompilerAddin_v3` alone, and an IDE that knows none of a DLL's names refuses it as `compiled for a newer version of the twinBASIC IDE`, as a patched `_v4` was. | nothing in the design --- the add-in declares `tbCreateCompilerAddin` as the package says; the tbIDE page has a NOTE |
 
 ### Stage 3: the symbol index, generated by the docs build
 

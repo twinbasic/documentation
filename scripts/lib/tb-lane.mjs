@@ -197,12 +197,16 @@ export class Lane {
    * @param {object} [o.env]      extra environment for the IDE, as launchIde takes it.
    *                              An add-in reads it with Environ$, since it runs in the
    *                              compiler's process, which the IDE starts (P10)
+   * @param {string} [o.folder]   the folder the .twinproj is staged in (default the work
+   *                              folder); give a folder of its own to a scenario that
+   *                              writes into the project's folder
    * @returns {Promise<object>} the connection (attachIde's), which the tb-operate.mjs calls take
    */
-  async open(src, { timeout = COMPILE_TIMEOUT, env = {} } = {}) {
+  async open(src, { timeout = COMPILE_TIMEOUT, env = {}, folder = this.work } = {}) {
     if (this.run) throw new Error(`lane ${this.name} has a project open already: one IDE at a time`);
     const exe = this.copy();
-    const project = path.join(this.work, "project.twinproj");
+    mkdirSync(folder, { recursive: true });
+    const project = path.join(folder, "project.twinproj");
     stageProject({
       src,
       stage: path.join(this.work, "project-src"),
