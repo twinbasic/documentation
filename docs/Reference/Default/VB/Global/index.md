@@ -44,7 +44,7 @@ These properties are cached references --- repeated reads return the same object
 - **Forms.Add(** *Name* **)** --- creates a new instance of the form class named *Name*, adds it to the collection, and returns the new [**Form**](../Form/). The form is loaded but not shown.
 
 > [!WARNING]
-> In BETA 983, taking a form out of **Forms** by index can crash the program. `Forms(0).Name` returns an empty string, and so does the **Name** of a form taken with `Set f = Forms(0)`; the program then stops with an access violation (`0xC0000005`), in the IDE and as a compiled program alike. Inside a `For` loop, `Set f = Forms(k)` also changes the loop variable. `For Each` over **Forms**, and `Unload Forms(i)`, both work: reach a loaded form with `For Each`, or by its class name.
+> In BETA 995, taking a form out of **Forms** by index can crash the program. `Forms(0).Name` returns an empty string, and so does the **Name** of a form taken with `Set f = Forms(0)` when `f` is declared `As Form`; the program then stops with an access violation (`0xC0000005`), in the IDE and as a compiled program alike. Inside a `For` loop, `Set f = Forms(k)` also changes the loop variable. `For Each` over **Forms**, and `Unload Forms(i)`, both work, and so does `Set f = Forms(k)` when `f` is declared `As Object` or as the form's own class: reach a loaded form that way, with `For Each`, or by its class name.
 
 The collection also supports `For Each` enumeration:
 

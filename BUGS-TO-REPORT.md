@@ -867,7 +867,7 @@ varies between runs --- *Unspecified error* in one, *Automation error* in anothe
 
 ## Reading `Forms` by index returns a broken reference, and the process then crashes
 
-**Build:** BETA 983 --- the IDE and a compiled EXE alike
+**Build:** BETA 995 as a compiled EXE; BETA 983 in the IDE and a compiled EXE alike
 **Severity:** crash (`0xC0000005`), from a form of access the documentation shows.
 
 With one form loaded (`Load Form1`):
@@ -877,9 +877,12 @@ Dim s As String
 s = Forms(0).Name        ' s is "", and the process later dies with 0xC0000005
 ```
 
-`Set f = Forms(0)` followed by `f.Name` does the same, and so does `s = Forms(n).Name` with
-`n` a variable. Inside `For k = 0 To Forms.Count - 1`, `Set f = Forms(k)` corrupts the loop
-variable: `k` read 0, 0, 0, then 8195702.
+`Set f = Forms(0)` followed by `f.Name` does the same when `f` is declared `As Form`, and so
+does `s = Forms(n).Name` with `n` a variable. Inside `For k = 0 To Forms.Count - 1`,
+`Set f = Forms(k)` with `f` declared `As Form` corrupts the loop variable: `k` read 0, 0, 0,
+then 8195702. With three forms loaded, BETA 995 and 983 alike log `k=0` twice, then a
+corrupted string, and exit `0xC0000005`. With `f` declared `As Form1` or `As Object`, the same
+code returns the form and exits 0.
 
 **What does not reproduce it:** `n = 0: Set f = Forms(n)` outside a loop returns the form
 (`f.Name` is `Form1`) and the program exits 0; `For Each f In Forms` and `Unload Forms(i)` work;
