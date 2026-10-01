@@ -959,7 +959,8 @@ the file's path in place of the native picker.
 
 ## Replacing an embedded package under one Apply keeps running the old copy
 
-**Build:** BETA 983
+**Build:** BETA 995, asserted by `ide-test.bat`'s `packages` lane with the two-Apply path as
+its control; the linked-copy rows below were measured on BETA 983
 **Severity:** the project builds and runs the old package after the user has replaced it.
 
 1. A project embeds a package built locally, `DocProbePkg` v1.
