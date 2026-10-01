@@ -24,8 +24,19 @@ import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import path from "node:path";
 import { buildAddin } from "./tb-addin.mjs";
 import { addAddin, makeIdeCopy, removeIdeCopy } from "./tb-ide-copy.mjs";
-import { attachIde, awaitCrashName, COMPILE_TIMEOUT, compileOutcome, compilerPid, launchIde,
-         readCrash, setBuildTarget, shutdownIde, summaryLine, waitForCompile } from "./tb-ide.mjs";
+import {
+  attachIde,
+  awaitCrashName,
+  COMPILE_TIMEOUT,
+  compileOutcome,
+  compilerPid,
+  launchIde,
+  readCrash,
+  setBuildTarget,
+  shutdownIde,
+  summaryLine,
+  waitForCompile,
+} from "./tb-ide.mjs";
 import { checkAddinsRoot } from "./tb-ide-addins.mjs";
 import { compilerExe, runCompiler } from "./tb-install.mjs";
 import { restartCompiler } from "./tb-operate.mjs";
@@ -53,10 +64,10 @@ export class Lane {
    */
   constructor({ name, port, work, ide, show = false }) {
     Object.assign(this, { name, port, work, ide, show });
-    this.exe = null;       // the lane's copy of the install, made on first use
-    this.run = null;       // the open IDE, from launchIde
-    this.c = null;         // the connection to it
-    this.src = null;       // the tree it has open, and the .twinproj staged from it
+    this.exe = null; // the lane's copy of the install, made on first use
+    this.run = null; // the open IDE, from launchIde
+    this.c = null; // the connection to it
+    this.src = null; // the tree it has open, and the .twinproj staged from it
     this.project = null;
     this.builds = 0;
     // The APPDATA every IDE of the lane is started with; the IDE makes
@@ -98,8 +109,12 @@ export class Lane {
     mkdirSync(out, { recursive: true });
     // export wants backslashes, a full path to the project and a trailing
     // separator on the folder (WIP.md, Driving the twinBASIC compiler).
-    const r = runCompiler(compilerExe(this.copy()),
-      ["export", winPath(path.join(dir, files[0])), `${winPath(out)}\\`, "--overwrite"]);
+    const r = runCompiler(compilerExe(this.copy()), [
+      "export",
+      winPath(path.join(dir, files[0])),
+      `${winPath(out)}\\`,
+      "--overwrite",
+    ]);
     if (!r.done) throw new Error(`exporting ${sample} failed${r.why}:\n${r.tail}`);
     return out;
   }
@@ -118,8 +133,15 @@ export class Lane {
    */
   async buildAddin(src, { arch = "win32" } = {}) {
     if (this.run) throw new Error(`lane ${this.name}: close the open project before building an add-in`);
-    return buildAddin({ ide: this.copy(), src, work: path.join(this.work, `addin${++this.builds}`),
-                        port: this.port, arch, show: this.show, appdata: this.appdataDir() });
+    return buildAddin({
+      ide: this.copy(),
+      src,
+      work: path.join(this.work, `addin${++this.builds}`),
+      port: this.port,
+      arch,
+      show: this.show,
+      appdata: this.appdataDir(),
+    });
   }
 
   /**
@@ -182,15 +204,17 @@ export class Lane {
     const exe = this.copy();
     const project = path.join(this.work, "project.twinproj");
     stageProject({
-      src, stage: path.join(this.work, "project-src"), project, compiler: compilerExe(exe),
+      src,
+      stage: path.join(this.work, "project-src"),
+      project,
+      compiler: compilerExe(exe),
       settings: (original) => ({
         "project.buildPath": path.join(this.work, "out", `${original["project.name"]}.exe`),
         "project.id": laneProjectId(2, this.port),
       }),
     });
     const appdata = this.appdataDir();
-    this.run = await launchIde({ exe, project, port: this.port, show: this.show,
-                                 env: { APPDATA: appdata, ...env } });
+    this.run = await launchIde({ exe, project, port: this.port, show: this.show, env: { APPDATA: appdata, ...env } });
     Object.assign(this, { src, project });
     this.c = await attachIde(this.port);
     if (!this.c) throw new Error(`lane ${this.name}: the IDE never exposed a debug port`);
@@ -198,8 +222,9 @@ export class Lane {
     // Checked against whatever APPDATA the IDE was given: `env` can name another.
     const given = "APPDATA" in env ? env.APPDATA : appdata;
     if (typeof given === "string") {
-      await checkAddinsRoot(this.c, given)
-        .catch((e) => { throw new Error(`lane ${this.name}: ${e.message}`); });
+      await checkAddinsRoot(this.c, given).catch((e) => {
+        throw new Error(`lane ${this.name}: ${e.message}`);
+      });
     }
     return this.c;
   }
@@ -211,8 +236,9 @@ export class Lane {
     const outcome = compileOutcome(waited, { name: this.project });
     if (!outcome.ok) throw new Error(`lane ${this.name}: ${outcome.message}`);
     if (outcome.counts[0] > 0) {
-      throw new Error(`lane ${this.name}: ${what} does not compile\n` +
-                      [...outcome.rows, summaryLine(outcome.counts)].join("\n"));
+      throw new Error(
+        `lane ${this.name}: ${what} does not compile\n` + [...outcome.rows, summaryLine(outcome.counts)].join("\n"),
+      );
     }
   }
 
@@ -256,7 +282,8 @@ export class Lane {
   async closeProject() {
     const { c, run } = this;
     this.c = this.run = null;
-    let crash = null, dialogs = [];
+    let crash = null,
+      dialogs = [];
     try {
       if (c) {
         // A crash the scenario ended soon after has not named its file yet:
@@ -270,11 +297,15 @@ export class Lane {
       shutdownIde(run);
     }
     const problems = [];
-    if (crash) problems.push(`the compiler crashed ${crash.n}x` +
-                             (crash.files?.length ? `, parsing ${crash.files.join(", ")}` : ""));
+    if (crash)
+      problems.push(
+        `the compiler crashed ${crash.n}x` + (crash.files?.length ? `, parsing ${crash.files.join(", ")}` : ""),
+      );
     if (dialogs.length) {
-      problems.push(`the IDE opened ${dialogs.length} javascript dialog(s): ` +
-                    dialogs.map((d) => `${d.type} ${JSON.stringify(d.message)}`).join("; "));
+      problems.push(
+        `the IDE opened ${dialogs.length} javascript dialog(s): ` +
+          dialogs.map((d) => `${d.type} ${JSON.stringify(d.message)}`).join("; "),
+      );
     }
     if (problems.length) throw new Error(`lane ${this.name}: ${problems.join("; ")}`);
   }

@@ -46,20 +46,41 @@ export async function elementRect(c, target) {
 // other key from `key` (WIP.HelpAddin.md, Keyboard shortcuts), so both must
 // be what a real keyboard gives.
 const NAMED = {
-  Enter: ["Enter", 13, "\r"], Tab: ["Tab", 9, "\t"], Backspace: ["Backspace", 8], Escape: ["Escape", 27],
-  Delete: ["Delete", 46], Home: ["Home", 36], End: ["End", 35], PageUp: ["PageUp", 33],
-  PageDown: ["PageDown", 34], ArrowLeft: ["ArrowLeft", 37], ArrowUp: ["ArrowUp", 38],
-  ArrowRight: ["ArrowRight", 39], ArrowDown: ["ArrowDown", 40], Insert: ["Insert", 45],
+  Enter: ["Enter", 13, "\r"],
+  Tab: ["Tab", 9, "\t"],
+  Backspace: ["Backspace", 8],
+  Escape: ["Escape", 27],
+  Delete: ["Delete", 46],
+  Home: ["Home", 36],
+  End: ["End", 35],
+  PageUp: ["PageUp", 33],
+  PageDown: ["PageDown", 34],
+  ArrowLeft: ["ArrowLeft", 37],
+  ArrowUp: ["ArrowUp", 38],
+  ArrowRight: ["ArrowRight", 39],
+  ArrowDown: ["ArrowDown", 40],
+  Insert: ["Insert", 45],
 };
-const PUNCTUATION = {   // unshifted, shifted, code, virtual key
-  " ": [" ", " ", "Space", 32], "`": ["`", "~", "Backquote", 192], "-": ["-", "_", "Minus", 189],
-  "=": ["=", "+", "Equal", 187], "[": ["[", "{", "BracketLeft", 219], "]": ["]", "}", "BracketRight", 221],
-  "\\": ["\\", "|", "Backslash", 220], ";": [";", ":", "Semicolon", 186], "'": ["'", "\"", "Quote", 222],
-  ",": [",", "<", "Comma", 188], ".": [".", ">", "Period", 190], "/": ["/", "?", "Slash", 191],
+const PUNCTUATION = {
+  // unshifted, shifted, code, virtual key
+  " ": [" ", " ", "Space", 32],
+  "`": ["`", "~", "Backquote", 192],
+  "-": ["-", "_", "Minus", 189],
+  "=": ["=", "+", "Equal", 187],
+  "[": ["[", "{", "BracketLeft", 219],
+  "]": ["]", "}", "BracketRight", 221],
+  "\\": ["\\", "|", "Backslash", 220],
+  ";": [";", ":", "Semicolon", 186],
+  "'": ["'", '"', "Quote", 222],
+  ",": [",", "<", "Comma", 188],
+  ".": [".", ">", "Period", 190],
+  "/": ["/", "?", "Slash", 191],
 };
 const DIGIT_SHIFTED = ")!@#$%^&*(";
-const MODIFIERS = [   // name, key, code, virtual key, CDP modifier bit; pressed in this order
-  ["ctrl", "Control", "ControlLeft", 17, 2], ["shift", "Shift", "ShiftLeft", 16, 8],
+const MODIFIERS = [
+  // name, key, code, virtual key, CDP modifier bit; pressed in this order
+  ["ctrl", "Control", "ControlLeft", 17, 2],
+  ["shift", "Shift", "ShiftLeft", 16, 8],
   ["alt", "Alt", "AltLeft", 18, 1],
 ];
 
@@ -72,7 +93,14 @@ function keyFor(name) {
   const f = /^F([1-9]|1[0-2])$/.exec(name);
   if (f) return { key: name, code: name, vk: 111 + Number(f[1]), shift: false };
   if (name.length !== 1) throw new Error(`no such key: ${JSON.stringify(name)}`);
-  if (/[a-z]/.test(name)) return { key: name, code: `Key${name.toUpperCase()}`, vk: name.toUpperCase().charCodeAt(0), text: name, shift: false };
+  if (/[a-z]/.test(name))
+    return {
+      key: name,
+      code: `Key${name.toUpperCase()}`,
+      vk: name.toUpperCase().charCodeAt(0),
+      text: name,
+      shift: false,
+    };
   if (/[A-Z]/.test(name)) return { key: name, code: `Key${name}`, vk: name.charCodeAt(0), text: name, shift: true };
   if (/[0-9]/.test(name)) return { key: name, code: `Digit${name}`, vk: name.charCodeAt(0), text: name, shift: false };
   const d = DIGIT_SHIFTED.indexOf(name);
@@ -102,22 +130,34 @@ export async function pressKey(c, name, { ctrl = false, shift = false, alt = fal
   let bits = 0;
   for (const [, key, code, vk, bit] of held) {
     bits |= bit;
-    await c.send("Input.dispatchKeyEvent", { type: "rawKeyDown", key, code, windowsVirtualKeyCode: vk,
-                                             nativeVirtualKeyCode: vk, modifiers: bits });
+    await c.send("Input.dispatchKeyEvent", {
+      type: "rawKeyDown",
+      key,
+      code,
+      windowsVirtualKeyCode: vk,
+      nativeVirtualKeyCode: vk,
+      modifiers: bits,
+    });
   }
   // A key that types something sends its text with the key-down, which is
   // what makes it appear in an input; Ctrl or Alt held means a command, not text.
   const text = k.text !== undefined && !ctrl && !alt ? k.text : undefined;
-  const base = { key: k.key, code: k.code, windowsVirtualKeyCode: k.vk, nativeVirtualKeyCode: k.vk,
-                 modifiers: bits };
-  await c.send("Input.dispatchKeyEvent", text !== undefined
-    ? { ...base, type: "keyDown", text, unmodifiedText: text }
-    : { ...base, type: "rawKeyDown" });
+  const base = { key: k.key, code: k.code, windowsVirtualKeyCode: k.vk, nativeVirtualKeyCode: k.vk, modifiers: bits };
+  await c.send(
+    "Input.dispatchKeyEvent",
+    text !== undefined ? { ...base, type: "keyDown", text, unmodifiedText: text } : { ...base, type: "rawKeyDown" },
+  );
   await c.send("Input.dispatchKeyEvent", { ...base, type: "keyUp" });
   for (const [, key, code, vk, bit] of held.slice().reverse()) {
     bits &= ~bit;
-    await c.send("Input.dispatchKeyEvent", { type: "keyUp", key, code, windowsVirtualKeyCode: vk,
-                                             nativeVirtualKeyCode: vk, modifiers: bits });
+    await c.send("Input.dispatchKeyEvent", {
+      type: "keyUp",
+      key,
+      code,
+      windowsVirtualKeyCode: vk,
+      nativeVirtualKeyCode: vk,
+      modifiers: bits,
+    });
   }
 }
 
@@ -219,7 +259,8 @@ export const answerMessageBox = (c, caption) =>
  * one in a box of the page's own, one of three fixed ones, #msgBox1 to
  * #msgBox3, each with its text in a .msgBoxText.
  */
-export const notifications = (c) => c.evaluate(`[...document.querySelectorAll(".msgBoxText")]
+export const notifications = (c) =>
+  c.evaluate(`[...document.querySelectorAll(".msgBoxText")]
   .filter((e) => { const r = e.getBoundingClientRect(); return r.width && r.height; })
   .map((e) => e.innerText)`);
 
@@ -236,7 +277,10 @@ export const notifications = (c) => c.evaluate(`[...document.querySelectorAll(".
  *                            was printed after it
  */
 export async function openedUrls(c, { since = null } = {}) {
-  return (await linesSince(c, since)).map((l) => /^open (\S+)$/.exec(l)).filter(Boolean).map((m) => m[1]);
+  return (await linesSince(c, since))
+    .map((l) => /^open (\S+)$/.exec(l))
+    .filter(Boolean)
+    .map((m) => m[1]);
 }
 
 // ------------------------------------------------------------------ the compiler
@@ -299,8 +343,8 @@ const EDITOR_JS = `(() => {
 export const editorState = (c) => c.evaluate(EDITOR_JS);
 
 /** The whole text of the file in the code editor. */
-export const editorText = (c) => c.evaluate(
-  "typeof editor !== 'undefined' && editor.getModel() ? editor.getModel().getValue() : null");
+export const editorText = (c) =>
+  c.evaluate("typeof editor !== 'undefined' && editor.getModel() ? editor.getModel().getValue() : null");
 
 // How long the IDE may still put the cursor back where it last revealed a
 // line, in milliseconds. Opening a file at a place calls revealLineInEditor,
@@ -355,13 +399,16 @@ async function settledAt(c, file, place) {
  */
 export async function openFile(c, file, { line = 1, column = 1 } = {}) {
   const uri = file.startsWith("twinbasic:") ? file : `twinbasic:${file}`;
-  const r = await c.evaluate(`new Promise((resolve) => {
+  const r = await c.evaluate(
+    `new Promise((resolve) => {
     const node = fs.tree.resolvePath(${JSON.stringify(uri)});
     if (!node) return resolve("missing");
     setTimeout(() => resolve("timeout"), 10000);
     openEditors.openFile(node, false, false, false, ${Number(line)}, ${Number(column)}, undefined,
                          () => resolve("open"));
-  })`, { awaitPromise: true });
+  })`,
+    { awaitPromise: true },
+  );
   if (r === "missing") throw new Error(`the project has no file ${file}`);
   if (r !== "open") throw new Error(`the IDE did not report ${file} open within 10 s`);
   await settledAt(c, file, `${line}:${column}`);

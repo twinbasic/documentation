@@ -19,8 +19,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_THEMES_DIR = path.join(__dirname, "themes");
 
 const PROPERTY_LINE = /^([A-Za-z][A-Za-z0-9_]*)\s*:\s*(.+?)\s*;?\s*$/;
-const SYMBOL_PROP =
-  /^Symbol([A-Za-z]+?)(Color|FontStyle|FontWeight|TextDecoration)$/;
+const SYMBOL_PROP = /^Symbol([A-Za-z]+?)(Color|FontStyle|FontWeight|TextDecoration)$/;
 const COMMENT_RE = /\/\*[\s\S]*?\*\//g;
 
 const PROP_ORDER = ["Color", "FontStyle", "FontWeight", "TextDecoration"];
@@ -94,16 +93,14 @@ function parseHex(value) {
   if (!m) return null;
   let h = m[1];
   if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-  return [
-    parseInt(h.slice(0, 2), 16),
-    parseInt(h.slice(2, 4), 16),
-    parseInt(h.slice(4, 6), 16),
-  ];
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
 }
 
 function toHex(rgb) {
   const c = (n) =>
-    Math.round(Math.min(255, Math.max(0, n))).toString(16).padStart(2, "0");
+    Math.round(Math.min(255, Math.max(0, n)))
+      .toString(16)
+      .padStart(2, "0");
   return "#" + c(rgb[0]) + c(rgb[1]) + c(rgb[2]);
 }
 
@@ -167,7 +164,7 @@ function clampContrast(value, bgHex) {
   if (!fg || !bg) {
     console.warn(
       `highlight-theme: cannot check contrast of "${value}" on ${bgHex} -- ` +
-      `not a plain hex literal; emitting it unchanged`
+        `not a plain hex literal; emitting it unchanged`,
     );
     return { value, note: ` -- NOT CONTRAST-CHECKED (${value} is not a plain hex literal)` };
   }
@@ -189,7 +186,7 @@ function clampContrast(value, bgHex) {
   const got = contrastRatio(fg, bg).toFixed(2);
   console.warn(
     `highlight-theme: ${value} on ${bgHex} is ${got}:1 and cannot reach ` +
-    `${MIN_CONTRAST}:1 at any lightness with this hue -- emitting it unchanged`
+      `${MIN_CONTRAST}:1 at any lightness with this hue -- emitting it unchanged`,
   );
   return { value, note: ` -- ${got}:1 on ${bg}, BELOW ${MIN_CONTRAST}:1 (unreachable at this hue)` };
 }
@@ -254,15 +251,10 @@ export async function loadHighlightTheme(themesDir = DEFAULT_THEMES_DIR) {
   // the sort key is property-derived, not insertion-order-derived.
   const symbolTuple = new Map();
   for (const sym of referenced) {
-    symbolTuple.set(
-      sym,
-      propsKey(light.get(sym)) + "##" + propsKey(dark.get(sym)),
-    );
+    symbolTuple.set(sym, propsKey(light.get(sym)) + "##" + propsKey(dark.get(sym)));
   }
   const uniqueTuples = [...new Set(symbolTuple.values())].sort();
-  const tupleToClass = new Map(
-    uniqueTuples.map((t, i) => [t, `c${i + 1}`]),
-  );
+  const tupleToClass = new Map(uniqueTuples.map((t, i) => [t, `c${i + 1}`]));
 
   const symbolToClass = new Map();
   for (const sym of referenced) {
@@ -284,9 +276,7 @@ export async function loadHighlightTheme(themesDir = DEFAULT_THEMES_DIR) {
     classToSymbols.get(cls).push(sym);
   }
 
-  const scopeToClass = SCOPE_TO_SYMBOL.map(
-    ([scope, sym]) => [scope, symbolToClass.get(sym)],
-  );
+  const scopeToClass = SCOPE_TO_SYMBOL.map(([scope, sym]) => [scope, symbolToClass.get(sym)]);
 
   function classForScope(scopes) {
     for (let i = scopes.length - 1; i >= 0; i--) {
@@ -308,7 +298,10 @@ export async function loadHighlightTheme(themesDir = DEFAULT_THEMES_DIR) {
   // choice), so the syntax highlight flips in lockstep with the rest of the page.
   const orderedClasses = uniqueTuples.map((t) => tupleToClass.get(t));
   const symbolListComment = (cls) =>
-    classToSymbols.get(cls).map((s) => `Symbol${s}`).join(", ");
+    classToSymbols
+      .get(cls)
+      .map((s) => `Symbol${s}`)
+      .join(", ");
 
   const renderRule = (selector, props, comment, bg) => {
     if (!props) return "";
@@ -353,20 +346,12 @@ export async function loadHighlightTheme(themesDir = DEFAULT_THEMES_DIR) {
   // (prefers-color-scheme, unless the toggle forced light) and an explicit
   // [data-theme="dark"] choice -- mirroring docs/_sass/custom/_theme.scss.
   css += "\n/* Dark palette (system default via prefers-color-scheme). */\n";
-  const darkSystem = renderPalette(
-    (cls) => `html:not([data-theme="light"]) .highlight .${cls}`,
-    dark,
-    CODE_BG.dark,
-  );
+  const darkSystem = renderPalette((cls) => `html:not([data-theme="light"]) .highlight .${cls}`, dark, CODE_BG.dark);
   if (darkSystem) {
     css += `@media (prefers-color-scheme: dark) {\n${darkSystem}}\n`;
   }
   css += "\n/* Dark palette (explicit [data-theme=dark] override). */\n";
-  css += renderPalette(
-    (cls) => `html[data-theme="dark"] .highlight .${cls}`,
-    dark,
-    CODE_BG.dark,
-  );
+  css += renderPalette((cls) => `html[data-theme="dark"] .highlight .${cls}`, dark, CODE_BG.dark);
 
   return { classForScope, classForSymbol, css };
 }

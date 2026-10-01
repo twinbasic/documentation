@@ -16,12 +16,7 @@ const LINK = /\[([^\]]*)\]\([^)]*\)/g;
 
 /** The text with its links, bold markers and backslashes removed. */
 function clean(s) {
-  return s
-    .replace(LINK_BOLD, "$1")
-    .replace(LINK, "$1")
-    .replaceAll("**", "")
-    .replaceAll("\\", "")
-    .trim();
+  return s.replace(LINK_BOLD, "$1").replace(LINK, "$1").replaceAll("**", "").replaceAll("\\", "").trim();
 }
 
 let siteMd;

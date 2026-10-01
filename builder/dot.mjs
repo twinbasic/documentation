@@ -54,30 +54,35 @@ export async function regenerateDot(srcRoot) {
     if (!(await isUpToDate(svg, src))) stale.push({ src, svg });
   }
   if (stale.length === 0) {
-    return { processed: sources.length, regenerated: 0,
-             svgFiles: await statSvgFiles(sources, srcRoot) };
+    return { processed: sources.length, regenerated: 0, svgFiles: await statSvgFiles(sources, srcRoot) };
   }
 
   let Graphviz;
   try {
     ({ Graphviz } = await import("@hpcc-js/wasm-graphviz"));
   } catch (err) {
-    console.warn(
-      `dot: skipped batch (${explainLoadFailure(err)}); existing SVGs retained`,
-    );
-    return { processed: sources.length, regenerated: 0, failed: 0, setupSkipped: true,
-             svgFiles: await statSvgFiles(sources, srcRoot) };
+    console.warn(`dot: skipped batch (${explainLoadFailure(err)}); existing SVGs retained`);
+    return {
+      processed: sources.length,
+      regenerated: 0,
+      failed: 0,
+      setupSkipped: true,
+      svgFiles: await statSvgFiles(sources, srcRoot),
+    };
   }
 
   let gv;
   try {
     gv = await Graphviz.load();
   } catch (err) {
-    console.warn(
-      `dot: skipped batch (WASM load failed: ${err.message}); existing SVGs retained`,
-    );
-    return { processed: sources.length, regenerated: 0, failed: 0, setupSkipped: true,
-             svgFiles: await statSvgFiles(sources, srcRoot) };
+    console.warn(`dot: skipped batch (WASM load failed: ${err.message}); existing SVGs retained`);
+    return {
+      processed: sources.length,
+      regenerated: 0,
+      failed: 0,
+      setupSkipped: true,
+      svgFiles: await statSvgFiles(sources, srcRoot),
+    };
   }
 
   // Graphviz measures with Times unless told otherwise, and the diagrams are
@@ -86,11 +91,13 @@ export async function regenerateDot(srcRoot) {
   try {
     applyInterMetrics(gv);
   } catch (err) {
-    console.warn(
-      `dot: skipped batch (Inter metrics unavailable: ${err.message}); existing SVGs retained`,
-    );
-    return { processed: sources.length, regenerated: 0, failed: stale.length,
-             svgFiles: await statSvgFiles(sources, srcRoot) };
+    console.warn(`dot: skipped batch (Inter metrics unavailable: ${err.message}); existing SVGs retained`);
+    return {
+      processed: sources.length,
+      regenerated: 0,
+      failed: stale.length,
+      svgFiles: await statSvgFiles(sources, srcRoot),
+    };
   }
 
   let regenerated = 0;
@@ -102,14 +109,11 @@ export async function regenerateDot(srcRoot) {
       await fs.writeFile(svg, svgXml, "utf8");
       regenerated++;
     } catch (err) {
-      console.warn(
-        `dot: skipped ${path.basename(src)} (${err.message}); existing SVG retained`,
-      );
+      console.warn(`dot: skipped ${path.basename(src)} (${err.message}); existing SVG retained`);
       failed++;
     }
   }
-  return { processed: sources.length, regenerated, failed,
-           svgFiles: await statSvgFiles(sources, srcRoot) };
+  return { processed: sources.length, regenerated, failed, svgFiles: await statSvgFiles(sources, srcRoot) };
 }
 
 async function statSvgFiles(sources, srcRoot) {
@@ -180,7 +184,7 @@ function stripXmlPrologue(svgXml, label) {
   if (/<\?xml|<!DOCTYPE/i.test(out)) {
     throw new Error(
       `${label}: an XML declaration or DOCTYPE survived stripping -- ` +
-      "Graphviz's preamble has changed shape; update stripXmlPrologue()",
+        "Graphviz's preamble has changed shape; update stripXmlPrologue()",
     );
   }
   if (!out.includes("<svg")) {
@@ -203,24 +207,26 @@ function svgFor(src) {
 // Cost of getting it wrong is a silent stale artifact; cost of the guard is
 // re-rendering five diagrams, which is sub-millisecond each after the WASM
 // load. A fresh clone regenerates once and then settles.
-const GENERATOR_FILES = ["dot.mjs", "dot-metrics.mjs", "inter-metrics.json"]
-  .map((f) => fileURLToPath(new URL(f, import.meta.url)));
+const GENERATOR_FILES = ["dot.mjs", "dot-metrics.mjs", "inter-metrics.json"].map((f) =>
+  fileURLToPath(new URL(f, import.meta.url)),
+);
 
 let generatorMtimePromise = null;
 function generatorMtime() {
   generatorMtimePromise ??= Promise.all(
-    GENERATOR_FILES.map((f) => fs.stat(f).then((s) => s.mtimeMs, () => 0)),
+    GENERATOR_FILES.map((f) =>
+      fs.stat(f).then(
+        (s) => s.mtimeMs,
+        () => 0,
+      ),
+    ),
   ).then((times) => Math.max(0, ...times));
   return generatorMtimePromise;
 }
 
 async function isUpToDate(svg, src) {
   try {
-    const [srcStat, svgStat, genMtime] = await Promise.all([
-      fs.stat(src),
-      fs.stat(svg),
-      generatorMtime(),
-    ]);
+    const [srcStat, svgStat, genMtime] = await Promise.all([fs.stat(src), fs.stat(svg), generatorMtime()]);
     return svgStat.mtimeMs >= srcStat.mtimeMs && svgStat.mtimeMs >= genMtime;
   } catch {
     return false;

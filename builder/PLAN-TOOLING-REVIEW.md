@@ -1124,6 +1124,18 @@ Mechanical, and nothing else.
 `docs/assets/js/svg-inline.js` and `theme-toggle.js`, which the site ships as written, should
 differ. `test.bat`, `check.bat`, the `examples.bat` summary and `addin-test.bat` unchanged.
 
+**Landed.** `biome format --write` and nothing else: 162 files, 11,690 lines added and 6,610
+removed, all LF. The first application failed `test.bat` on a test that parsed a formatted
+literal as JSON; it was set aside for C85b and reapplied, with the same counts. `compare_trees`
+differs, online and offline, in `svg-inline.js` and in the `impexp.mjs` download, which is
+`scripts/impexp.mjs` as published; `theme-toggle.js` was already in the formatter's style. The
+gates' own counts are as before: `check_cli: 901 probes`, regex safety `550 literals + 36
+constructed ... 12 construction(s) not resolvable`, the shim gate's 25 and 11 objects and 72
+members, impexp parity's 19 tests and 21 commands, lint `Checked 185 files`; the a11y line is
+unchanged. `examples.bat`: `1136 sample(s), 1136 compile, 0 finding(s), 152.7s -- clean`.
+`addin-test.bat`: `10 of 10 lane(s) ran: 10 passed`, the registry put back with the same 20,
+21 and 3 writes.
+
 ### C87 — `lint: check formatting in the gate and the hook; blame ignores C86`
 
 `check_lint.mjs` and the pre-commit hook check formatting too; `.git-blame-ignore-revs` lists

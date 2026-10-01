@@ -67,21 +67,55 @@
 // one that needs several samples at once is reported with all of them.
 
 import {
-  cpSync, existsSync, mkdirSync, promises as fs, readdirSync, readFileSync, rmSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  promises as fs,
+  readdirSync,
+  readFileSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { CliError, numberOption, parseCli, printHelpAndExit, refuseTogether, regexOption, withUsageError } from "../lib/cli.mjs";
+import {
+  CliError,
+  numberOption,
+  parseCli,
+  printHelpAndExit,
+  refuseTogether,
+  regexOption,
+  withUsageError,
+} from "../lib/cli.mjs";
 import { mapLines } from "../lib/markdown.mjs";
 import {
-  CONCAT_KEY, HIDDEN_MARKER, MARKER, RUN_MARKER, SLOTS, classify,
-  collectFences, moduleName, partOf, resourcePath, wrapFence,
+  CONCAT_KEY,
+  HIDDEN_MARKER,
+  MARKER,
+  RUN_MARKER,
+  SLOTS,
+  classify,
+  collectFences,
+  moduleName,
+  partOf,
+  resourcePath,
+  wrapFence,
 } from "./lib/tb-fences.mjs";
 import {
-  CANARIES, CANARY_FILES, DEFAULT_BATCH, DEFAULT_JOBS, canaryProblem, crashedIn, diagKind,
-  joinConcatGroups, makeBatches, runBatch, runProbes, sectionOf, unresolvedName,
+  CANARIES,
+  CANARY_FILES,
+  DEFAULT_BATCH,
+  DEFAULT_JOBS,
+  canaryProblem,
+  crashedIn,
+  diagKind,
+  joinConcatGroups,
+  makeBatches,
+  runBatch,
+  runProbes,
+  sectionOf,
+  unresolvedName,
 } from "./lib/example-batches.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
 import { wantShow } from "./lib/tb-ide.mjs";
@@ -94,26 +128,27 @@ const TEMPLATES = path.join(REPO_ROOT, "test", "example-projects");
 // ---------------------------------------------------------------- arguments
 
 const { values } = withUsageError(
-  () => parseCli(process.argv.slice(2), {
-    options: {
-      only: { type: "string" },
-      report: { type: "string" },
-      jobs: { type: "string" },
-      port: { type: "string" },
-      batch: { type: "string" },
-      ide: { type: "string" },
-      census: { type: "boolean", default: false },
-      propose: { type: "boolean", default: false },
-      apply: { type: "boolean", default: false },
-      verbose: { type: "boolean", default: false },
-      json: { type: "boolean", default: false },
-      keep: { type: "boolean", default: false },
-      show: { type: "boolean", default: false },
-      hide: { type: "boolean", default: false },
-      help: { type: "boolean", short: "h", default: false },
-    },
-    stopAt: ["help"],
-  }),
+  () =>
+    parseCli(process.argv.slice(2), {
+      options: {
+        only: { type: "string" },
+        report: { type: "string" },
+        jobs: { type: "string" },
+        port: { type: "string" },
+        batch: { type: "string" },
+        ide: { type: "string" },
+        census: { type: "boolean", default: false },
+        propose: { type: "boolean", default: false },
+        apply: { type: "boolean", default: false },
+        verbose: { type: "boolean", default: false },
+        json: { type: "boolean", default: false },
+        keep: { type: "boolean", default: false },
+        show: { type: "boolean", default: false },
+        hide: { type: "boolean", default: false },
+        help: { type: "boolean", short: "h", default: false },
+      },
+      stopAt: ["help"],
+    }),
   { format: (err) => `check_examples: ${err.message}` },
 );
 
@@ -151,17 +186,21 @@ if (values.help) printHelpAndExit(USAGE);
 
 // The values are read before anything runs. --report, --census and --propose
 // are three modes of one run, and --apply is a part of --propose.
-const { only, jobs, basePort, batchSize } = withUsageError(() => {
-  refuseTogether(values, ["report", "census", "propose"]);
-  refuseTogether(values, ["show", "hide"]);
-  if (values.apply && !values.propose) throw new CliError("conflict", "--apply needs --propose", { option: "--apply" });
-  return {
-    only: values.only ? regexOption(values.only, { option: "--only" }) : null,
-    jobs: numberOption(values.jobs ?? String(DEFAULT_JOBS),{ option: "--jobs", integer: true, min: 1 }),
-    basePort: numberOption(values.port ?? "9480", { option: "--port", integer: true, min: 1, max: 65535 }),
-    batchSize: numberOption(values.batch ?? String(DEFAULT_BATCH),{ option: "--batch", integer: true, min: 1 }),
-  };
-}, { format: (err) => `check_examples: ${err.message}` });
+const { only, jobs, basePort, batchSize } = withUsageError(
+  () => {
+    refuseTogether(values, ["report", "census", "propose"]);
+    refuseTogether(values, ["show", "hide"]);
+    if (values.apply && !values.propose)
+      throw new CliError("conflict", "--apply needs --propose", { option: "--apply" });
+    return {
+      only: values.only ? regexOption(values.only, { option: "--only" }) : null,
+      jobs: numberOption(values.jobs ?? String(DEFAULT_JOBS), { option: "--jobs", integer: true, min: 1 }),
+      basePort: numberOption(values.port ?? "9480", { option: "--port", integer: true, min: 1, max: 65535 }),
+      batchSize: numberOption(values.batch ?? String(DEFAULT_BATCH), { option: "--batch", integer: true, min: 1 }),
+    };
+  },
+  { format: (err) => `check_examples: ${err.message}` },
+);
 
 const MODE_CENSUS = values.census;
 const MODE_PROPOSE = values.propose;
@@ -250,10 +289,16 @@ const say = (...a) => (AS_JSON ? console.error(...a) : console.log(...a));
 const findings = [];
 const addFinding = (fence, message, detail, extra = {}) =>
   findings.push({
-    id: fence.id, rel: fence.rel, line: fence.line, message, detail,
+    id: fence.id,
+    rel: fence.rel,
+    line: fence.line,
+    message,
+    detail,
     // The slot and template are carried rather than described, so `--report`
     // groups on fields instead of parsing them back out of the message.
-    slot: fence.slot, project: fence.project, ...extra,
+    slot: fence.slot,
+    project: fence.project,
+    ...extra,
   });
 
 function select(fences) {
@@ -266,9 +311,12 @@ function select(fences) {
     // in an info string renders identically to no token at all, so a sample
     // marked `check_bild` would never be compiled and nothing would say so.
     if (fence.bad.length) {
-      addFinding(fence, `unrecognised fence markup: ${fence.bad.join(" ")}`,
+      addFinding(
+        fence,
+        `unrecognised fence markup: ${fence.bad.join(" ")}`,
         `known flags: ${MARKER}, ${RUN_MARKER}, ${HIDDEN_MARKER}; keys: slot=${SLOTS.join("|")}, ` +
-        `inherits=, project=, projname=, id=, expect-error=, resource=, inert=, ${CONCAT_KEY}=`);
+          `inherits=, project=, projname=, id=, expect-error=, resource=, inert=, ${CONCAT_KEY}=`,
+      );
       continue;
     }
 
@@ -279,8 +327,11 @@ function select(fences) {
     if (fence.isResource) {
       const rel = resourcePath(fence.keys.get("resource"));
       if (!rel) {
-        addFinding(fence, `resource= is not a path inside the project: ${fence.keys.get("resource")}`,
-          "it must be project-relative, with no drive letter and no `..` segment");
+        addFinding(
+          fence,
+          `resource= is not a path inside the project: ${fence.keys.get("resource")}`,
+          "it must be project-relative, with no drive letter and no `..` segment",
+        );
         continue;
       }
       fence.resourceRel = rel;
@@ -292,8 +343,11 @@ function select(fences) {
     // `inert=<reason>` and `check_build` are contradictory claims about the same
     // fence, and the wrong one would win silently.
     if (fence.keys.has("inert") && fence.flags.has(MARKER)) {
-      addFinding(fence, `inert=${fence.keys.get("inert")} and \`${MARKER}\` contradict each other`,
-        "a fence is either not a program, or one this compiles -- not both");
+      addFinding(
+        fence,
+        `inert=${fence.keys.get("inert")} and \`${MARKER}\` contradict each other`,
+        "a fence is either not a program, or one this compiles -- not both",
+      );
       continue;
     }
 
@@ -322,21 +376,30 @@ function select(fences) {
     // what the backlog is.
     fence.inert = fence.keys.get("inert") ?? null;
 
-    if (MODE_CENSUS) { chosen.push(fence); continue; }
+    if (MODE_CENSUS) {
+      chosen.push(fence);
+      continue;
+    }
     if (fence.inert) continue;
 
     if (!slot) {
       // Marked but unclassifiable is a finding; unmarked and unclassifiable is
       // just a fragment, which is the normal state of most of the corpus.
       if (marked) {
-        addFinding(fence, `marked \`${MARKER}\` but its shape could not be inferred: ${inferred.reason}`,
-          `state one explicitly: slot=${SLOTS.join(" | slot=")}`);
+        addFinding(
+          fence,
+          `marked \`${MARKER}\` but its shape could not be inferred: ${inferred.reason}`,
+          `state one explicitly: slot=${SLOTS.join(" | slot=")}`,
+        );
       }
       continue;
     }
     if (!templateResolves(fence.project)) {
-      addFinding(fence, `no such template project: ${fence.project}`,
-        `templates live in test/example-projects/: ${readdirSync(TEMPLATES).join(", ")}`);
+      addFinding(
+        fence,
+        `no such template project: ${fence.project}`,
+        `templates live in test/example-projects/: ${readdirSync(TEMPLATES).join(", ")}`,
+      );
       continue;
     }
     chosen.push(fence);
@@ -376,20 +439,29 @@ function checkGroups(all, selected) {
     const cut = only ? missing.filter((f) => !only.test(f.rel)) : [];
     const unmarked = missing.filter((f) => !cut.includes(f));
     if (unmarked.length) {
-      addFinding(inRun[0], `projname=${name} is incomplete: ${inRun.length} of ${list.length} samples are in this run`,
-        "unmarked or excluded: " + unmarked.map(where).join(", "));
+      addFinding(
+        inRun[0],
+        `projname=${name} is incomplete: ${inRun.length} of ${list.length} samples are in this run`,
+        "unmarked or excluded: " + unmarked.map(where).join(", "),
+      );
     }
     if (cut.length) {
-      addFinding(inRun[0],
+      addFinding(
+        inRun[0],
         `projname=${name} is cut by --only: ${inRun.length} of ${list.length} samples are in this run`,
-        "left out: " + cut.map(where).join(", ") +
-        " -- a group is compiled as one project, so these results are not a full run's",
-        { advisory: true });
+        "left out: " +
+          cut.map(where).join(", ") +
+          " -- a group is compiled as one project, so these results are not a full run's",
+        { advisory: true },
+      );
     }
     const templates = new Set(inRun.map((f) => f.project));
     if (templates.size > 1) {
-      addFinding(inRun[0], `projname=${name} asks for more than one template: ${[...templates].join(", ")}`,
-        "one group is one project, so it is one template");
+      addFinding(
+        inRun[0],
+        `projname=${name} asks for more than one template: ${[...templates].join(", ")}`,
+        "one group is one project, so it is one template",
+      );
     }
   }
 }
@@ -414,8 +486,7 @@ function stageBatch(batch, work) {
   const name = `DocSamples${index}`;
   settings["project.name"] = name;
   // Keyed per batch: two projects sharing an id confuse the IDE's recents list.
-  settings["project.id"] =
-    `{7B247500-0000-4000-9000-7B2475${String(index).padStart(6, "0")}}`;
+  settings["project.id"] = `{7B247500-0000-4000-9000-7B2475${String(index).padStart(6, "0")}}`;
   // An explicit file, never the ${SourcePath} template. That template opens a
   // native Save dialog on build, and on tbbuild's private desktop the dialog is
   // invisible and unreachable -- so the build never happens while the WebView2
@@ -438,8 +509,11 @@ function stageBatch(batch, work) {
     const mod = moduleName(fence.id);
     const { text, offset } = wrapFence(fence, fence.slot, mod, fence.base);
     // CRLF, as the IDE writes .twin files.
-    writeFileSync(path.join(dir, "Sources", `${mod}.twin`),
-      text.replace(/\r\n?/g, "\n").replace(/\n/g, "\r\n"), "utf8");
+    writeFileSync(
+      path.join(dir, "Sources", `${mod}.twin`),
+      text.replace(/\r\n?/g, "\n").replace(/\n/g, "\r\n"),
+      "utf8",
+    );
     map.set(`${mod}.twin`, { fence, offset });
   }
   // The canaries go in every batch, an empty one included: a template's own
@@ -452,8 +526,7 @@ function stageBatch(batch, work) {
   // Pure Windows paths: the compiler prefixes \\?\, which does not accept
   // forward slashes, and a mixed path fails with "input twinproj file does not
   // exist" rather than with anything about separators.
-  const pack = runCompiler(COMPILER,
-    ["import", proj.split("/").join("\\"), dir.split("/").join("\\"), "--overwrite"]);
+  const pack = runCompiler(COMPILER, ["import", proj.split("/").join("\\"), dir.split("/").join("\\"), "--overwrite"]);
   // import's exit code does not say whether it worked -- 0 on the failures it
   // reports, 999 on a tree holding an embedded package, which a resource= fence
   // staged under Packages/ would make -- so runCompiler reads the output.
@@ -475,7 +548,10 @@ let tidy = null;
 /** Build one staged batch; returns per-fence errors, or a crash marker. */
 async function buildStaged(staged, port) {
   const r = await compileProject({
-    project: staged.proj, ide: IDE, port, show: wantShow({ show: values.show, hide: values.hide }),
+    project: staged.proj,
+    ide: IDE,
+    port,
+    show: wantShow({ show: values.show, hide: values.hide }),
   });
 
   if (r.code === 4) return { crashed: true, detail: r.message, named: crashedIn(r.crashFiles, staged.map) };
@@ -500,7 +576,10 @@ async function buildStaged(staged, port) {
   const drawn = new Map();
   for (const row of result.diagnostics ?? []) {
     const m = /^\{(\w+)\}\s+(\S+)\s+\[(\d+),(\d+)\]:\s*(.*)$/.exec(row);
-    if (!m) { unreadable.push(row); continue; }
+    if (!m) {
+      unreadable.push(row);
+      continue;
+    }
     const [, severity, file, lineRaw, , message] = m;
     const base = file.split(/[\\/]/).pop();
     if (CANARY_FILES.has(base.toLowerCase())) {
@@ -574,7 +653,8 @@ async function runAll(batches, work) {
 
 /** `n  key` lines, biggest first. */
 function tallyLines(map, limit = Infinity) {
-  return [...map].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
+  return [...map]
+    .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
     .slice(0, limit)
     .map(([k, n]) => `    ${String(n).padStart(4)}  ${k}`);
 }
@@ -592,12 +672,13 @@ function census(fences) {
   }
   const total = fences.length;
   const marked = fences.filter((f) => f.marked).length;
-  say(`${total} tb fence(s) in ${new Set(fences.map((f) => f.rel)).size} page(s), ` +
-    `${marked} marked \`${MARKER}\`\n`);
+  say(
+    `${total} tb fence(s) in ${new Set(fences.map((f) => f.rel)).size} page(s), ` + `${marked} marked \`${MARKER}\`\n`,
+  );
   say("  slot      count   share");
   for (const slot of [...SLOTS, "fragment"]) {
     const n = tally.get(slot) ?? 0;
-    say(`  ${slot.padEnd(9)} ${String(n).padStart(5)}   ${(n / total * 100).toFixed(1)}%`);
+    say(`  ${slot.padEnd(9)} ${String(n).padStart(5)}   ${((n / total) * 100).toFixed(1)}%`);
   }
   if (reasons.size) {
     say("\n  why a fragment is a fragment:");
@@ -634,8 +715,10 @@ function census(fences) {
     bySection.set(sectionOf(f.rel), (bySection.get(sectionOf(f.rel)) ?? 0) + 1);
     byPage.set(f.rel, (byPage.get(f.rel) ?? 0) + 1);
   }
-  say(`\n  undecided -- ${left.length} classifiable sample(s) that are neither ` +
-    `marked nor inert, in ${byPage.size} page(s), by section:`);
+  say(
+    `\n  undecided -- ${left.length} classifiable sample(s) that are neither ` +
+      `marked nor inert, in ${byPage.size} page(s), by section:`,
+  );
   for (const line of tallyLines(bySection)) say(line);
   say("\n  ...and the pages holding the most of them:");
   for (const line of tallyLines(byPage, 10)) say(line);
@@ -656,12 +739,18 @@ function census(fences) {
 function summarise(survey) {
   const findings = survey.findings ?? [];
   const advisory = findings.filter((f) => f.advisory).length;
-  say(`\nsurvey: ${survey.selected ?? "?"} sample(s), ${survey.passed ?? "?"} compile, ` +
-    `${findings.length} finding(s)` + (advisory ? `, ${advisory} advisory` : ""));
+  say(
+    `\nsurvey: ${survey.selected ?? "?"} sample(s), ${survey.passed ?? "?"} compile, ` +
+      `${findings.length} finding(s)` +
+      (advisory ? `, ${advisory} advisory` : ""),
+  );
   if (!findings.length) return;
 
-  const kinds = new Map(), sections = new Map(), names = new Map();
-  const wrappers = new Map(), pages = new Map();
+  const kinds = new Map(),
+    sections = new Map(),
+    names = new Map();
+  const wrappers = new Map(),
+    pages = new Map();
   const bump = (m, k) => m.set(k, (m.get(k) ?? 0) + 1);
   for (const f of findings) {
     // The FIRST diagnostic only. A sample with four of them has one cause and
@@ -726,8 +815,11 @@ async function applyMarkers(passed) {
       // those would leave a sample unmarkable for a reason that has nothing to
       // do with the sample.
       if (!/^[ \t]*(?:>[ \t]*)*(`{3,}|~{3,})tb[ \t]*$/.test(body)) {
-        addFinding(fence, "could not mark: the fence line is not what was parsed",
-          `line ${fence.line} reads ${JSON.stringify(body)}`);
+        addFinding(
+          fence,
+          "could not mark: the fence line is not what was parsed",
+          `line ${fence.line} reads ${JSON.stringify(body)}`,
+        );
         return body;
       }
       count++;
@@ -741,14 +833,18 @@ async function applyMarkers(passed) {
 // ----------------------------------------------------------------------- main
 
 async function main() {
-  if (!await runProbes(say)) process.exit(2);
+  if (!(await runProbes(say))) process.exit(2);
 
   // Reads a survey and nothing else -- no compiler, and not even the docs tree,
   // since the JSON already holds every page and line it names.
   if (MODE_REPORT) {
     let survey;
-    try { survey = JSON.parse(readFileSync(MODE_REPORT, "utf8")); }
-    catch (e) { console.error(`check_examples: cannot read ${MODE_REPORT}: ${e.message}`); process.exit(2); }
+    try {
+      survey = JSON.parse(readFileSync(MODE_REPORT, "utf8"));
+    } catch (e) {
+      console.error(`check_examples: cannot read ${MODE_REPORT}: ${e.message}`);
+      process.exit(2);
+    }
     summarise(survey);
     process.exit(0);
   }
@@ -770,8 +866,10 @@ async function main() {
   }
 
   if (!IDE) {
-    console.error("no twinBASIC IDE found: pass --ide <twinBASIC.exe>, set TB_IDE, " +
-      "or unpack a twinBASIC_IDE_BETA_<n> folder on your Desktop");
+    console.error(
+      "no twinBASIC IDE found: pass --ide <twinBASIC.exe>, set TB_IDE, " +
+        "or unpack a twinBASIC_IDE_BETA_<n> folder on your Desktop",
+    );
     process.exit(2);
   }
   if (!existsSync(COMPILER)) {
@@ -781,8 +879,11 @@ async function main() {
 
   if (!selected.length) {
     reportFindings();
-    say(`check_examples: no sample is marked \`${MARKER}\`` +
-      (only ? " in the selected pages" : "") + " -- nothing to compile");
+    say(
+      `check_examples: no sample is marked \`${MARKER}\`` +
+        (only ? " in the selected pages" : "") +
+        " -- nothing to compile",
+    );
     process.exit(findings.some((f) => !f.advisory) ? 1 : 0);
   }
 
@@ -798,28 +899,34 @@ async function main() {
     // runs inside a job") -- so the likely owner is an IDE from a run of the
     // harness from before that, or a compiler orphaned by one.
     if (e.code !== "EPERM" && e.code !== "EBUSY") throw e;
-    console.error(`check_examples: cannot clear ${work} (${e.code}).\n` +
-      "  An IDE from an earlier run on this --port still has it open: look for\n" +
-      "  twinBASIC.exe processes whose command line names a project under that folder,\n" +
-      "  and for twinBASIC_win32_noDEP.exe compilers whose parent has gone. Stop them,\n" +
-      "  and run again -- or pass a different --port.");
+    console.error(
+      `check_examples: cannot clear ${work} (${e.code}).\n` +
+        "  An IDE from an earlier run on this --port still has it open: look for\n" +
+        "  twinBASIC.exe processes whose command line names a project under that folder,\n" +
+        "  and for twinBASIC_win32_noDEP.exe compilers whose parent has gone. Stop them,\n" +
+        "  and run again -- or pass a different --port.",
+    );
     process.exit(2);
   }
   mkdirSync(work, { recursive: true });
 
   const staged = selected.length - samples.length;
-  say(`check_examples: ${samples.length} sample(s) from ` +
-    `${new Set(samples.map((f) => f.rel)).size} page(s) in ${batches.length} project(s), ` +
-    `${Math.min(jobs, batches.length)} lane(s), BETA ${buildNumber(IDE) ?? "?"}` +
-    (staged ? `, ${staged} staged file(s)` : ""));
+  say(
+    `check_examples: ${samples.length} sample(s) from ` +
+      `${new Set(samples.map((f) => f.rel)).size} page(s) in ${batches.length} project(s), ` +
+      `${Math.min(jobs, batches.length)} lane(s), BETA ${buildNumber(IDE) ?? "?"}` +
+      (staged ? `, ${staged} staged file(s)` : ""),
+  );
 
   // Said out loud rather than passed over in silence: a sample asking to be RUN
   // is only being compiled today, and a reader of this output would otherwise
   // have no way to tell which of the two happened.
   const wantRun = selected.filter((f) => f.flags.has(RUN_MARKER)).length;
   if (wantRun) {
-    say(`  note: ${wantRun} sample(s) ask for \`${RUN_MARKER}\`; execution is not ` +
-      `implemented yet, so they were compiled only`);
+    say(
+      `  note: ${wantRun} sample(s) ask for \`${RUN_MARKER}\`; execution is not ` +
+        `implemented yet, so they were compiled only`,
+    );
   }
 
   // Every lane's IDE records its projects in the user's recent list and saved
@@ -833,8 +940,13 @@ async function main() {
 
   const t0 = Date.now();
   let results;
-  try { results = await runAll(batches, work); }
-  catch (e) { console.error(`check_examples: ${e.message}`); finishTidy(tidy); process.exit(2); }
+  try {
+    results = await runAll(batches, work);
+  } catch (e) {
+    console.error(`check_examples: ${e.message}`);
+    finishTidy(tidy);
+    process.exit(2);
+  }
   finishTidy(tidy);
   tidy = null;
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
@@ -854,8 +966,8 @@ async function main() {
 
   const passed = [];
   for (const fence of selected) {
-    if (fence.isResource) continue;              // a staged file, not a sample
-    if (crashed.has(fence.id)) continue;         // reported already, and never a pass
+    if (fence.isResource) continue; // a staged file, not a sample
+    if (crashed.has(fence.id)) continue; // reported already, and never a pass
     const diags = (errorsById.get(fence.id) ?? []).filter((d) => d.severity === "ERROR");
 
     // A sample whose error landed in a package's own source. It comes first
@@ -864,10 +976,15 @@ async function main() {
     const blame = blamedRows.get(fence.id);
     if (blame) {
       findings.push({
-        id: fence.id, rel: fence.rel, line: fence.line,
+        id: fence.id,
+        rel: fence.rel,
+        line: fence.line,
         advisory: MODE_PROPOSE && !fence.marked,
-        slot: fence.slot, project: fence.project, marked: fence.marked,
-        message: "a diagnostic landed outside this sample, in a package or " +
+        slot: fence.slot,
+        project: fence.project,
+        marked: fence.marked,
+        message:
+          "a diagnostic landed outside this sample, in a package or " +
           `template source (${fence.slot}, ${fence.project})${blame.rest}`,
         detail: blame.rows.join("  |  "),
         diagnostics: diags,
@@ -878,8 +995,7 @@ async function main() {
     const expect = fence.keys.get("expect-error");
     if (expect !== undefined) {
       if (!diags.length) {
-        addFinding(fence, "expected not to compile, but it did",
-          expect ? `expected ${expect}` : undefined);
+        addFinding(fence, "expected not to compile, but it did", expect ? `expected ${expect}` : undefined);
       } else if (expect && !diags.some((d) => d.message.includes(expect))) {
         addFinding(fence, `expected ${expect}, got: ${diags.map((d) => d.message).join("; ")}`);
       } else {
@@ -895,12 +1011,16 @@ async function main() {
       continue;
     }
     findings.push({
-      id: fence.id, rel: fence.rel, line: fence.line,
+      id: fence.id,
+      rel: fence.rel,
+      line: fence.line,
       // A sample that has not been marked has not claimed anything, so under
       // --propose its errors are information rather than a failure -- that mode
       // is a survey and must not exit 1 for doing its job.
       advisory: MODE_PROPOSE && !fence.marked,
-      slot: fence.slot, project: fence.project, marked: fence.marked,
+      slot: fence.slot,
+      project: fence.project,
+      marked: fence.marked,
       message: `does not compile (${fence.slot}${fence.slotStated ? "" : ", inferred"}, ${fence.project})`,
       diagnostics: diags,
     });
@@ -914,8 +1034,10 @@ async function main() {
 
   if (MODE_PROPOSE) {
     const unmarked = passed.filter((f) => !f.marked);
-    say(`\n${passed.length} of ${samples.length} sample(s) compile; ` +
-      `${unmarked.length} of them are not yet marked \`${MARKER}\``);
+    say(
+      `\n${passed.length} of ${samples.length} sample(s) compile; ` +
+        `${unmarked.length} of them are not yet marked \`${MARKER}\``,
+    );
     const byPage = new Map();
     for (const f of unmarked) byPage.set(f.rel, (byPage.get(f.rel) ?? 0) + 1);
     for (const [rel, n] of [...byPage].sort()) {
@@ -941,8 +1063,11 @@ async function main() {
     if (MODE_PROPOSE) {
       summarise({ selected: samples.length, passed: passed.length, findings });
     }
-    say(`\ncheck_examples: ${samples.length} sample(s), ${passed.length} compile, ` +
-      `${real} finding(s), ${secs}s` + (real ? "" : " -- clean"));
+    say(
+      `\ncheck_examples: ${samples.length} sample(s), ${passed.length} compile, ` +
+        `${real} finding(s), ${secs}s` +
+        (real ? "" : " -- clean"),
+    );
   }
   if (values.keep) say(`generated projects kept in ${work}`);
   else rmSync(work, { recursive: true, force: true });
@@ -967,7 +1092,11 @@ function reportFindings() {
 
 // Whatever escapes main() -- a throw inside an event handler, a rejection
 // nothing awaits -- still puts the registry back, and the run exits 2.
-function die(err) { console.error(err); finishTidy(tidy); process.exit(2); }
+function die(err) {
+  console.error(err);
+  finishTidy(tidy);
+  process.exit(2);
+}
 process.on("uncaughtException", die);
 process.on("unhandledRejection", die);
 main().catch(die);

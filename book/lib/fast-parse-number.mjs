@@ -42,23 +42,27 @@
 //
 // Idempotent -- repeated imports do nothing after the first.
 
-import { BaseParser, IsDigit } from './pdf-lib-internals.mjs';
-import { checkTargets } from './shim-targets.mjs';
+import { BaseParser, IsDigit } from "./pdf-lib-internals.mjs";
+import { checkTargets } from "./shim-targets.mjs";
 
-const ZERO = 0x30;   // '0'
-const PERIOD = 0x2E; // '.'
-const PLUS = 0x2B;   // '+'
-const MINUS = 0x2D;  // '-'
+const ZERO = 0x30; // '0'
+const PERIOD = 0x2e; // '.'
+const PLUS = 0x2b; // '+'
+const MINUS = 0x2d; // '-'
 
 // Number.MAX_SAFE_INTEGER == 9007199254740991 (16 digits). 15-digit
 // integers are guaranteed to accumulate exactly without precision loss.
 const MAX_SAFE_INT_DIGITS = 15;
 
 if (!BaseParser.__fastParseNumberInstalled) {
-  checkTargets(import.meta.url, { BaseParser }, {
-    'BaseParser.prototype.parseRawInt':    [0, '3d5dd7302180'],
-    'BaseParser.prototype.parseRawNumber': [0, 'a3bd30d0e8b3'],
-  });
+  checkTargets(
+    import.meta.url,
+    { BaseParser },
+    {
+      "BaseParser.prototype.parseRawInt": [0, "3d5dd7302180"],
+      "BaseParser.prototype.parseRawNumber": [0, "a3bd30d0e8b3"],
+    },
+  );
   const origParseRawNumber = BaseParser.prototype.parseRawNumber;
   const origParseRawInt = BaseParser.prototype.parseRawInt;
 

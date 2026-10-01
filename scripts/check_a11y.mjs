@@ -78,19 +78,18 @@ Exit codes:
   1  at least one page has a violation
   2  the scan could not run: a refused command line, or a crash`;
 
-const { values } = withUsageError(
-  () =>
-    parseCli(process.argv.slice(2), {
-      options: {
-        "root-dir": { type: "string", default: DEFAULT_ROOT_DIR },
-        theme: { type: "string", default: "both" },
-        viewport: { type: "string", default: "both" },
-        "stock-axe": { type: "boolean", default: false },
-        minified: { type: "boolean", default: false },
-        help: { type: "boolean", short: "h" },
-      },
-      stopAt: ["help"],
-    }),
+const { values } = withUsageError(() =>
+  parseCli(process.argv.slice(2), {
+    options: {
+      "root-dir": { type: "string", default: DEFAULT_ROOT_DIR },
+      theme: { type: "string", default: "both" },
+      viewport: { type: "string", default: "both" },
+      "stock-axe": { type: "boolean", default: false },
+      minified: { type: "boolean", default: false },
+      help: { type: "boolean", short: "h" },
+    },
+    stopAt: ["help"],
+  }),
 );
 if (values.help) printHelpAndExit(USAGE);
 let rootDir = values.rootDir;
@@ -158,7 +157,7 @@ const AXE_PATCHES = stockAxe ? [] : PRODUCTION.patches;
 if (minified && AXE_PATCHES.length) {
   console.error(
     "--minified needs --stock-axe: the source patches target the unminified " +
-    "bundle. Pass both to run stock minified axe."
+      "bundle. Pass both to run stock minified axe.",
   );
   process.exit(2);
 }
@@ -167,8 +166,8 @@ const AXE_MINIFIED = minified;
 async function main() {
   console.log(
     `axe-core ${axeVersion()} ` +
-    (AXE_PATCHES.length ? `+ ${AXE_PATCHES.join(", ")}` : "(stock)") +
-    (AXE_MINIFIED ? " [minified]" : " [unminified]")
+      (AXE_PATCHES.length ? `+ ${AXE_PATCHES.join(", ")}` : "(stock)") +
+      (AXE_MINIFIED ? " [minified]" : " [unminified]"),
   );
 
   let totalViolations = 0;
@@ -195,9 +194,7 @@ async function main() {
           console.log(`\n== ${label} ==`);
 
           for (const v of violations) {
-            console.log(
-              `  VIOLATION [${v.impact}] ${v.id}: ${v.help} (${v.helpUrl})`
-            );
+            console.log(`  VIOLATION [${v.impact}] ${v.id}: ${v.help} (${v.helpUrl})`);
             for (const node of v.nodes.slice(0, 3)) {
               console.log(`    ${node.html.slice(0, 120)}`);
             }
@@ -238,7 +235,7 @@ async function main() {
       `${viewports.length} viewport(s)` +
       (stateAudits ? ` + ${stateAudits} state audit(s)` : "") +
       ` checked: ` +
-      `${totalViolations} violation(s), ${totalIncomplete} incomplete check(s)`
+      `${totalViolations} violation(s), ${totalIncomplete} incomplete check(s)`,
   );
 
   if (totalViolations > 0) {

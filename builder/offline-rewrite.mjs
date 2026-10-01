@@ -60,7 +60,7 @@ export function buildSitePathsSync(pages, staticFiles, excludePatterns, stubs, t
 // `*` does NOT cross `/`, `**` does.
 export function offlineExcluded(rel, patterns) {
   if (!patterns.length) return false;
-  return patterns.some(pat => fnmatchPathname(pat, rel));
+  return patterns.some((pat) => fnmatchPathname(pat, rel));
 }
 
 export function fnmatchPathname(pattern, str) {
@@ -68,8 +68,12 @@ export function fnmatchPathname(pattern, str) {
   for (let i = 0; i < pattern.length; i++) {
     const c = pattern[i];
     if (c === "*") {
-      if (pattern[i + 1] === "*") { re += ".*"; i++; }
-      else { re += "[^/]*"; }
+      if (pattern[i + 1] === "*") {
+        re += ".*";
+        i++;
+      } else {
+        re += "[^/]*";
+      }
     } else if (c === "?") {
       re += "[^/]";
     } else if (".+^$()|[]{}\\".includes(c)) {
@@ -145,7 +149,10 @@ export function resolveRaw(raw, sitePaths, baseurl) {
   }
   let sitePath = null;
   for (const c of candidates) {
-    if (sitePaths.has(c)) { sitePath = c; break; }
+    if (sitePaths.has(c)) {
+      sitePath = c;
+      break;
+    }
   }
   return [sep, tail, sitePath];
 }
@@ -173,11 +180,21 @@ export function computeRelUrl(raw, fileSegs, sitePaths) {
 
   let candidates;
   if (probePath.endsWith("/")) {
-    candidates = [["", probePath], ["index.html", probePath + "index.html"]];
+    candidates = [
+      ["", probePath],
+      ["index.html", probePath + "index.html"],
+    ];
   } else if (probePath.includes(".")) {
-    candidates = [["", probePath], ["/index.html", probePath + "/index.html"]];
+    candidates = [
+      ["", probePath],
+      ["/index.html", probePath + "/index.html"],
+    ];
   } else {
-    candidates = [["", probePath], [".html", probePath + ".html"], ["/index.html", probePath + "/index.html"]];
+    candidates = [
+      ["", probePath],
+      [".html", probePath + ".html"],
+      ["/index.html", probePath + "/index.html"],
+    ];
   }
 
   for (const [suffix, full] of candidates) {
@@ -189,7 +206,7 @@ export function computeRelUrl(raw, fileSegs, sitePaths) {
 // Cached decoded/encoded segments for a site-rooted path.
 export function buildSegs(sitePath) {
   const decoded = sitePath.slice(1).split("/");
-  const encoded = decoded.map(seg => {
+  const encoded = decoded.map((seg) => {
     if (!PATH_SAFE_RE.test(seg)) return seg;
     // Encode per UTF-8 byte so non-ASCII characters in future content
     // round-trip correctly.
@@ -256,8 +273,7 @@ export const SEO_BLOCK_RE = /<!-- Begin Jekyll SEO tag.*?<!-- End Jekyll SEO tag
 // ERR_FAILED and logs it.  The @font-face fetch itself still succeeds and the
 // faces still load, so the preload buys the offline reader nothing and costs
 // two red lines in the console.  Drop it from this tree.
-export const FONT_PRELOAD_RE =
-  /[ \t]*<link rel="preload"[^>]*as="font"[^>]*>\r?\n?/g;
+export const FONT_PRELOAD_RE = /[ \t]*<link rel="preload"[^>]*as="font"[^>]*>\r?\n?/g;
 
 export const TITLE_RE = /<title>.*?<\/title>/s;
 
@@ -289,7 +305,9 @@ export function stripSeo(html) {
 // `xlink:href` is a real URL attribute and there are 75,129 of them in
 // the built tree.
 export const HTML_COMBINED_RE = new RegExp(
-  String.raw`${CODE_OR_PRE.source}|(?<!-)\b(href|src)=(["'])(\/(?!\/)[^"']*|(?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\2`, "g");
+  String.raw`${CODE_OR_PRE.source}|(?<!-)\b(href|src)=(["'])(\/(?!\/)[^"']*|(?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\2`,
+  "g",
+);
 
 // How many distinct unresolved URLs a single rewrite reports back. The
 // count is the headline; this is what makes it actionable. Capped so a
@@ -339,9 +357,11 @@ export const JTD_SCRIPT_TAG_RE = /<script\s+src="([^"]*)just-the-docs\.js"/;
 export function injectSearchSetup(html, fileSegs) {
   return html.replace(JTD_SCRIPT_TAG_RE, (match, prefix) => {
     const siteRoot = fileSegs.length === 0 ? "" : "../".repeat(fileSegs.length);
-    return `<script>window.OFFLINE_SITE_ROOT="${siteRoot}";</script>\n` +
+    return (
+      `<script>window.OFFLINE_SITE_ROOT="${siteRoot}";</script>\n` +
       `<script src="${prefix}search-data.js"></script>` +
-      match;
+      match
+    );
   });
 }
 
@@ -383,14 +403,13 @@ export function deriveOfflinePageCached(page, deps) {
   if (idx === -1) {
     console.warn(
       `offline nav cache miss for ${page.srcRel}: ` +
-      `nav block doesn't match first page in ${destDir}; ` +
-      `falling back to full rewrite`,
+        `nav block doesn't match first page in ${destDir}; ` +
+        `falling back to full rewrite`,
     );
     return deriveOfflinePage(page, deps);
   }
 
-  const stubbed = page.html.slice(0, idx) + NAV_PLACEHOLDER +
-                  page.html.slice(idx + cached.input.length);
+  const stubbed = page.html.slice(0, idx) + NAV_PLACEHOLDER + page.html.slice(idx + cached.input.length);
   const stubbedPage = { ...page, html: stubbed };
   const { html: stubbedOut, misses } = deriveOfflinePage(stubbedPage, deps);
   const out = stubbedOut.replace(NAV_PLACEHOLDER, cached.output);
@@ -422,10 +441,7 @@ export function deriveOfflinePage(page, state) {
 // so it is worth a warning, not just a tally at the end.
 export function warnMisses(where, misses, missed) {
   const more = misses > missed.length ? ` (+${misses - missed.length} more)` : "";
-  console.warn(
-    `offline: ${where}: ${misses} URL(s) not rewritten: ` +
-    `${missed.join(", ")}${more}`
-  );
+  console.warn(`offline: ${where}: ${misses} URL(s) not rewritten: ` + `${missed.join(", ")}${more}`);
 }
 
 // ---------------------------------------------------------------------------

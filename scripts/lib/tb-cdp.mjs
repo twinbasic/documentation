@@ -25,17 +25,23 @@
  *                              call can pass its own
  */
 export async function attach(port, match = "main.htm", { timeout = 30 * 1000 } = {}) {
-  const list = await (await fetch(`http://127.0.0.1:${port}/json/list`,
-    { signal: AbortSignal.timeout(10 * 1000) })).json();
+  const list = await (
+    await fetch(`http://127.0.0.1:${port}/json/list`, { signal: AbortSignal.timeout(10 * 1000) })
+  ).json();
   const t = list.find((x) => x.type === "page" && x.url.includes(match));
   if (!t) throw new Error(`no page target matching ${JSON.stringify(match)} on port ${port}`);
 
   const ws = new WebSocket(t.webSocketDebuggerUrl);
   await new Promise((res, rej) => {
-    const timer = setTimeout(() => rej(new Error(`the DevTools socket on port ${port} did not open`)),
-                             10 * 1000);
-    ws.onopen = () => { clearTimeout(timer); res(); };
-    ws.onerror = (e) => { clearTimeout(timer); rej(e); };
+    const timer = setTimeout(() => rej(new Error(`the DevTools socket on port ${port} did not open`)), 10 * 1000);
+    ws.onopen = () => {
+      clearTimeout(timer);
+      res();
+    };
+    ws.onerror = (e) => {
+      clearTimeout(timer);
+      rej(e);
+    };
   });
 
   let id = 0;
@@ -47,7 +53,11 @@ export async function attach(port, match = "main.htm", { timeout = 30 * 1000 } =
     // builds in-process, every lane's build and not one child's. A request it
     // was the answer to times out through its own timer.
     let m;
-    try { m = JSON.parse(ev.data); } catch { return; }
+    try {
+      m = JSON.parse(ev.data);
+    } catch {
+      return;
+    }
     if (m.id && pending.has(m.id)) {
       const { res, rej } = pending.get(m.id);
       pending.delete(m.id);
@@ -66,13 +76,23 @@ export async function attach(port, match = "main.htm", { timeout = 30 * 1000 } =
       const i = ++id;
       const timer = setTimeout(() => {
         pending.delete(i);
-        rej(new Error(`${method} had no answer in ${ms / 1000} s -- the page may be blocked ` +
-                      "by a javascript dialog or a synchronous host call"));
+        rej(
+          new Error(
+            `${method} had no answer in ${ms / 1000} s -- the page may be blocked ` +
+              "by a javascript dialog or a synchronous host call",
+          ),
+        );
       }, ms);
       timer.unref?.();
       pending.set(i, {
-        res: (v) => { clearTimeout(timer); res(v); },
-        rej: (e) => { clearTimeout(timer); rej(e); },
+        res: (v) => {
+          clearTimeout(timer);
+          res(v);
+        },
+        rej: (e) => {
+          clearTimeout(timer);
+          rej(e);
+        },
       });
       try {
         ws.send(JSON.stringify({ id: i, method, params }));
@@ -84,11 +104,9 @@ export async function attach(port, match = "main.htm", { timeout = 30 * 1000 } =
     });
 
   const evaluate = async (expression, { awaitPromise = false, timeout: ms = timeout } = {}) => {
-    const r = await send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise },
-                         { timeout: ms });
+    const r = await send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise }, { timeout: ms });
     if (r.exceptionDetails) {
-      throw new Error(r.exceptionDetails.exception?.description ??
-        JSON.stringify(r.exceptionDetails));
+      throw new Error(r.exceptionDetails.exception?.description ?? JSON.stringify(r.exceptionDetails));
     }
     return r.result.value;
   };

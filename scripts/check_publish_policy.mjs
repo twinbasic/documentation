@@ -19,8 +19,11 @@ import yaml from "js-yaml";
 
 import { discover } from "../builder/discover.mjs";
 import {
-  publishPolicyFor, unpublishableSourceFiles, unpublishableTreePaths,
-  SOURCE_EXTENSIONS, BUILD_EXTENSIONS,
+  publishPolicyFor,
+  unpublishableSourceFiles,
+  unpublishableTreePaths,
+  SOURCE_EXTENSIONS,
+  BUILD_EXTENSIONS,
 } from "../builder/publish-policy.mjs";
 import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
@@ -39,10 +42,12 @@ Exit codes:
   1  an assertion failed, or the source tree holds a file the allowlist refuses
   2  the gate could not run: a refused command line, or a crash`;
 
-const { values } = withUsageError(() => parseCli(process.argv.slice(2), {
-  options: { src: { type: "string", default: "docs" }, help: { type: "boolean", short: "h" } },
-  stopAt: ["help"],
-}));
+const { values } = withUsageError(() =>
+  parseCli(process.argv.slice(2), {
+    options: { src: { type: "string", default: "docs" }, help: { type: "boolean", short: "h" } },
+    stopAt: ["help"],
+  }),
+);
 if (values.help) printHelpAndExit(USAGE);
 const SRC = values.src;
 
@@ -69,16 +74,19 @@ const MUST_REFUSE = [
 // Passing these matters as much as refusing the others: a policy that
 // refuses everything also reports a clean sweep over a tree it rejected.
 const MUST_ALLOW = [
-  ["Reference/Core/Dim.html",     "a rendered page"],
-  ["assets/images/x.png",         "an image"],
-  ["assets/images/X.PNG",         "an image, shouting -- the extension test is case-insensitive"],
-  ["assets/fonts/inter.woff2",    "a webfont"],
+  ["Reference/Core/Dim.html", "a rendered page"],
+  ["assets/images/x.png", "an image"],
+  ["assets/images/X.PNG", "an image, shouting -- the extension test is case-insensitive"],
+  ["assets/fonts/inter.woff2", "a webfont"],
   ["assets/fonts/Inter-LICENSE.txt", "the licence beside it"],
-  ["CNAME",                       "GitHub Pages' custom-domain marker"],
+  ["CNAME", "GitHub Pages' custom-domain marker"],
 ];
 
 let failures = 0;
-const fail = (msg) => { failures++; console.error(`  FAIL  ${msg}`); };
+const fail = (msg) => {
+  failures++;
+  console.error(`  FAIL  ${msg}`);
+};
 
 // ── 1. The real source tree is clean ────────────────────────────────
 const config = yaml.load(await fs.readFile(path.join(SRC, "_config.yml"), "utf8"));
@@ -95,11 +103,9 @@ if (live.length) {
 }
 
 // ── 2. The probes ───────────────────────────────────────────────────
-const asSource = (rels) => rels.map(r => ({ destRel: r, srcPath: `${SRC}/${r}` }));
+const asSource = (rels) => rels.map((r) => ({ destRel: r, srcPath: `${SRC}/${r}` }));
 
-const refused = new Set(
-  unpublishableSourceFiles(asSource(MUST_REFUSE.map(p => p[0])), policy).map(f => f.rel),
-);
+const refused = new Set(unpublishableSourceFiles(asSource(MUST_REFUSE.map((p) => p[0])), policy).map((f) => f.rel));
 for (const [rel, why] of MUST_REFUSE) {
   if (!refused.has(rel)) fail(`${rel} is now publishable, but should not be: ${why}`);
 }
@@ -107,9 +113,9 @@ if (refused.size === MUST_REFUSE.length) {
   console.log(`  ok    ${MUST_REFUSE.length} probe types still refused at source`);
 }
 
-const allowed = unpublishableSourceFiles(asSource(MUST_ALLOW.map(p => p[0])), policy);
+const allowed = unpublishableSourceFiles(asSource(MUST_ALLOW.map((p) => p[0])), policy);
 for (const f of allowed) {
-  const why = MUST_ALLOW.find(p => p[0] === f.rel)?.[1];
+  const why = MUST_ALLOW.find((p) => p[0] === f.rel)?.[1];
   fail(`${f.rel} is refused, but should publish (${why}): ${f.why}`);
 }
 if (!allowed.length) console.log(`  ok    ${MUST_ALLOW.length} legitimate types still publish`);
@@ -138,8 +144,7 @@ if (!failures) console.log(`  ok    bundle_extra exemptions are path-scoped`);
 // the two sets together would pass every other assertion here.
 for (const ext of BUILD_EXTENSIONS) {
   if (SOURCE_EXTENSIONS.has(ext)) {
-    fail(`${ext} is in both SOURCE_EXTENSIONS and BUILD_EXTENSIONS -- ` +
-         `the source surface no longer refuses it`);
+    fail(`${ext} is in both SOURCE_EXTENSIONS and BUILD_EXTENSIONS -- ` + `the source surface no longer refuses it`);
   }
   const probe = [`Reference/probe${ext}`];
   if (!unpublishableSourceFiles(asSource(probe), policy).length) {
@@ -184,22 +189,28 @@ if (!failures) console.log(`  ok    build-only types (${[...BUILD_EXTENSIONS].jo
     // this assertion into a no-op that still passes.
     const bom = await probe("bom", "\u{FEFF}" + FM);
     if (bom !== "page") {
-      fail(`a UTF-8 BOM now yields "${bom}", not a page -- discover.mjs's ` +
-           `stripBom() is gone, and publish-policy.mjs's .md message should ` +
-           `name the BOM again`);
+      fail(
+        `a UTF-8 BOM now yields "${bom}", not a page -- discover.mjs's ` +
+          `stripBom() is gone, and publish-policy.mjs's .md message should ` +
+          `name the BOM again`,
+      );
     }
 
     const bad = await probe("badyaml", "---\ntitle: [unclosed\n---\nbody\n");
     if (!bad.startsWith("throws:")) {
-      fail(`malformed frontmatter YAML now yields "${bad}" instead of its own ` +
-           `error -- it would reach the publish policy, whose .md message does ` +
-           `not mention it`);
+      fail(
+        `malformed frontmatter YAML now yields "${bad}" instead of its own ` +
+          `error -- it would reach the publish policy, whose .md message does ` +
+          `not mention it`,
+      );
     }
 
     const lead = await probe("leadingblank", "\n" + FM);
     if (lead !== "static") {
-      fail(`a blank line before the opening delimiter now yields "${lead}" -- ` +
-           `the .md message's advice no longer describes a real fault`);
+      fail(
+        `a blank line before the opening delimiter now yields "${lead}" -- ` +
+          `the .md message's advice no longer describes a real fault`,
+      );
     }
   } finally {
     await fs.rm(tmp, { recursive: true, force: true });
@@ -208,8 +219,7 @@ if (!failures) console.log(`  ok    build-only types (${[...BUILD_EXTENSIONS].jo
 }
 
 if (failures) {
-  console.error(`\ncheck_publish_policy: ${failures} failure(s). ` +
-                `See builder/publish-policy.mjs.`);
+  console.error(`\ncheck_publish_policy: ${failures} failure(s). ` + `See builder/publish-policy.mjs.`);
   process.exit(1);
 }
 console.log("check_publish_policy: ok");

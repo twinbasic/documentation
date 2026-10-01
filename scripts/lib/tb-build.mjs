@@ -30,8 +30,16 @@
 // one call's, so a tool that runs many calls installs a handler through
 // exitOnCrash's cleanup (see sweep_attributes.mjs's `salvage`).
 
-import { COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, launchIde, setBuildTarget, shutdownIdeAsync,
-         waitForCompile } from "./tb-ide.mjs";
+import {
+  COMPILE_TIMEOUT,
+  TARGETS,
+  attachIde,
+  compileOutcome,
+  launchIde,
+  setBuildTarget,
+  shutdownIdeAsync,
+  waitForCompile,
+} from "./tb-ide.mjs";
 
 /**
  * @param {object} o
@@ -51,13 +59,29 @@ import { COMPILE_TIMEOUT, TARGETS, attachIde, compileOutcome, launchIde, setBuil
  *   and 4 and is empty otherwise. `counts` is errors, warnings, hints, infos.
  *   `crashFiles` names, for 4, the files the compiler died parsing.
  */
-export async function compileProject({ project, ide, port = 9333, arch = TARGETS[0], timeout = COMPILE_TIMEOUT,
-                                     show = false, keep = false }) {
+export async function compileProject({
+  project,
+  ide,
+  port = 9333,
+  arch = TARGETS[0],
+  timeout = COMPILE_TIMEOUT,
+  show = false,
+  keep = false,
+}) {
   let handle = null;
   let c = null;
   const result = (code, fields = {}) => ({
-    code, message: "", rows: [], counts: [0, 0, 0, 0], dialogs: c ? c.dialogs.map((d) => d.message) : [],
-    openedIn: null, arch, idePid: handle?.pid ?? null, kept: keep, crashFiles: [], ...fields,
+    code,
+    message: "",
+    rows: [],
+    counts: [0, 0, 0, 0],
+    dialogs: c ? c.dialogs.map((d) => d.message) : [],
+    openedIn: null,
+    arch,
+    idePid: handle?.pid ?? null,
+    kept: keep,
+    crashFiles: [],
+    ...fields,
   });
   try {
     try {
@@ -80,7 +104,8 @@ export async function compileProject({ project, ide, port = 9333, arch = TARGETS
       openedIn = target.from;
       if (target.waited) {
         outcome = compileOutcome(target.waited, { name: project });
-        if (!outcome.ok) return result(outcome.code, { message: outcome.message, crashFiles: outcome.crashFiles ?? [] });
+        if (!outcome.ok)
+          return result(outcome.code, { message: outcome.message, crashFiles: outcome.crashFiles ?? [] });
       }
     } catch (e) {
       return result(2, { message: e.message });
@@ -88,7 +113,11 @@ export async function compileProject({ project, ide, port = 9333, arch = TARGETS
     return result(outcome.counts[0] > 0 ? 1 : 0, { rows: outcome.rows, counts: outcome.counts, openedIn });
   } finally {
     // A close that threw must not skip ending the IDE, or mask what was thrown.
-    try { c?.close(); } catch { /* the IDE is about to be ended */ }
+    try {
+      c?.close();
+    } catch {
+      /* the IDE is about to be ended */
+    }
     if (!keep) await shutdownIdeAsync(handle);
   }
 }

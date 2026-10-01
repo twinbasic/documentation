@@ -179,9 +179,8 @@ export function deriveCounts(state, extra) {
     folderStyleIndexes: folderStyle.length,
     // Of those, the ones whose permalink ends in a slash -- one extra URL
     // segment, which is what makes cross-section links from them asymmetric.
-    folderStyleSlashPermalinks: folderStyle.filter(
-      (p) => typeof p.permalink === "string" && p.permalink.endsWith("/"),
-    ).length,
+    folderStyleSlashPermalinks: folderStyle.filter((p) => typeof p.permalink === "string" && p.permalink.endsWith("/"))
+      .length,
     packages: countPackages(pages),
     // The two halves of that split, named separately because the prose uses
     // each on its own and the words for them collide.
@@ -234,8 +233,7 @@ export function countPlugin(md, ctx) {
 }
 
 function substitute(text, counts) {
-  return text.replace(PLACEHOLDER_RE, (whole, name) =>
-    Object.hasOwn(counts, name) ? String(counts[name]) : whole);
+  return text.replace(PLACEHOLDER_RE, (whole, name) => (Object.hasOwn(counts, name) ? String(counts[name]) : whole));
 }
 
 // -------------------------------------------------------------- validation
@@ -265,10 +263,14 @@ export function findCountRefs(rawContent, md) {
 // Closest known name by a cheap edit distance, so the error can say "did you
 // mean". Bounded at 3 because beyond that the suggestion is noise.
 function nearest(name, names) {
-  let best = null, bestD = 4;
+  let best = null,
+    bestD = 4;
   for (const n of names) {
     const d = editDistance(name.toLowerCase(), n.toLowerCase());
-    if (d < bestD) { best = n; bestD = d; }
+    if (d < bestD) {
+      best = n;
+      bestD = d;
+    }
   }
   return best;
 }
@@ -278,11 +280,7 @@ function editDistance(a, b) {
   for (let i = 1; i <= a.length; i++) {
     const cur = [i];
     for (let j = 1; j <= b.length; j++) {
-      cur[j] = Math.min(
-        prev[j] + 1,
-        cur[j - 1] + 1,
-        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
-      );
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
     }
     prev = cur;
   }
@@ -310,9 +308,9 @@ export function validateCountNames(pages, counts, md) {
       const guess = nearest(name, names);
       problems.push(
         `${p.srcRel}:${line + (p.contentLine ?? 1) - 1}\n` +
-        `  unknown count name {{tbdocs:${name}}}\n` +
-        (guess ? `  did you mean: ${guess}?\n` : "") +
-        `  available: ${names.join(", ")}`,
+          `  unknown count name {{tbdocs:${name}}}\n` +
+          (guess ? `  did you mean: ${guess}?\n` : "") +
+          `  available: ${names.join(", ")}`,
       );
     }
   }
@@ -323,7 +321,9 @@ export function validateCountNames(pages, counts, md) {
 // alternation (code-guard.mjs), so a placeholder the documentation is
 // deliberately SHOWING does not trip the assertion.
 const SURVIVING_PLACEHOLDER_RE = new RegExp(
-  String.raw`${CODE_OR_PRE.source}|(\{\{tbdocs:[A-Za-z][A-Za-z0-9]*\}\})`, "g");
+  String.raw`${CODE_OR_PRE.source}|(\{\{tbdocs:[A-Za-z][A-Za-z0-9]*\}\})`,
+  "g",
+);
 
 /**
  * Reject a placeholder that survived rendering, outside code.

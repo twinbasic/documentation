@@ -27,7 +27,7 @@ export function createProbes(tool, onFailure) {
       console.log(
         failures
           ? `${tool}: ${failures} of ${results.length} probes failed${onFailure ? ` -- ${onFailure}` : ""}`
-          : `${tool}: ${results.length} probes, all pass`
+          : `${tool}: ${results.length} probes, all pass`,
       );
       return failures ? 1 : 0;
     },

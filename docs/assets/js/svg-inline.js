@@ -29,16 +29,16 @@
   var SCRIPT_SRC = (document.currentScript && document.currentScript.src) || "";
 
   var FONT_FILES = {
-    "Inter": {
+    Inter: {
       weight: "100 900",
       normal: "../fonts/inter-variable.woff2",
-      italic: "../fonts/inter-variable-italic.woff2"
+      italic: "../fonts/inter-variable-italic.woff2",
     },
     "Cascadia Mono": {
       weight: "200 700",
       normal: "../fonts/cascadia-mono-variable.woff2",
-      italic: "../fonts/cascadia-mono-variable-italic.woff2"
-    }
+      italic: "../fonts/cascadia-mono-variable-italic.woff2",
+    },
   };
 
   // rel -> Promise<base64 string | null>. Null means "could not read it";
@@ -50,24 +50,37 @@
   function fontData(rel) {
     if (fontCache[rel]) return fontCache[rel];
     var url;
-    try { url = new URL(rel, SCRIPT_SRC).href; } catch (_e) { url = null; }
+    try {
+      url = new URL(rel, SCRIPT_SRC).href;
+    } catch (_e) {
+      url = null;
+    }
     if (!url) return (fontCache[rel] = Promise.resolve(null));
-    fontCache[rel] = fetch(url).then(function (r) {
-      if (!r.ok) throw new Error(r.status + " " + r.statusText);
-      return r.arrayBuffer();
-    }).then(function (buf) {
-      var u8 = new Uint8Array(buf), bin = "";
-      // Chunked: String.fromCharCode.apply blows the argument limit on a
-      // 150 KB array in one call.
-      for (var i = 0; i < u8.length; i += 0x8000) {
-        bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
-      }
-      return btoa(bin);
-    }).catch(function (err) {
-      console.warn("svg-inline: could not embed " + rel + " in the export (" +
-        err.message + "); it will use the viewer's fonts instead.");
-      return null;
-    });
+    fontCache[rel] = fetch(url)
+      .then(function (r) {
+        if (!r.ok) throw new Error(r.status + " " + r.statusText);
+        return r.arrayBuffer();
+      })
+      .then(function (buf) {
+        var u8 = new Uint8Array(buf),
+          bin = "";
+        // Chunked: String.fromCharCode.apply blows the argument limit on a
+        // 150 KB array in one call.
+        for (var i = 0; i < u8.length; i += 0x8000) {
+          bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+        }
+        return btoa(bin);
+      })
+      .catch(function (err) {
+        console.warn(
+          "svg-inline: could not embed " +
+            rel +
+            " in the export (" +
+            err.message +
+            "); it will use the viewer's fonts instead."
+        );
+        return null;
+      });
     return fontCache[rel];
   }
 
@@ -80,13 +93,17 @@
     var wanted = {};
     var nodes = svg.querySelectorAll("*");
     for (var i = 0; i < nodes.length; i++) {
-      var el = nodes[i], hasText = false;
+      var el = nodes[i],
+        hasText = false;
       for (var j = 0; j < el.childNodes.length; j++) {
         if (el.childNodes[j].nodeType === 3 && el.childNodes[j].nodeValue.trim()) hasText = true;
       }
       if (!hasText) continue;
       var cs = getComputedStyle(el);
-      var first = cs.fontFamily.split(",")[0].trim().replace(/^["']|["']$/g, "");
+      var first = cs.fontFamily
+        .split(",")[0]
+        .trim()
+        .replace(/^["']|["']$/g, "");
       if (!FONT_FILES[first]) continue;
       var style = cs.fontStyle === "italic" || cs.fontStyle === "oblique" ? "italic" : "normal";
       wanted[first + "|" + style] = true;
@@ -98,15 +115,27 @@
   // Falls back to a plain serialization if the bytes cannot be read.
   function serializeWithFonts(svg) {
     var keys = facesUsedBy(svg);
-    return Promise.all(keys.map(function (k) {
-      var parts = k.split("|"), family = parts[0], style = parts[1];
-      return fontData(FONT_FILES[family][style]).then(function (b64) {
-        if (!b64) return "";
-        return '@font-face{font-family:"' + family + '";font-style:' + style +
-          ";font-weight:" + FONT_FILES[family].weight +
-          ";src:url(data:font/woff2;base64," + b64 + ') format("woff2")}';
-      });
-    })).then(function (faces) {
+    return Promise.all(
+      keys.map(function (k) {
+        var parts = k.split("|"),
+          family = parts[0],
+          style = parts[1];
+        return fontData(FONT_FILES[family][style]).then(function (b64) {
+          if (!b64) return "";
+          return (
+            '@font-face{font-family:"' +
+            family +
+            '";font-style:' +
+            style +
+            ";font-weight:" +
+            FONT_FILES[family].weight +
+            ";src:url(data:font/woff2;base64," +
+            b64 +
+            ') format("woff2")}'
+          );
+        });
+      })
+    ).then(function (faces) {
       var css = faces.join("");
       var clone = svg.cloneNode(true);
       if (css) {
@@ -122,9 +151,17 @@
     var svg = container.querySelector("svg");
     var bg = getComputedStyle(document.body).backgroundColor;
     Object.assign(container.style, {
-      position: "fixed", top: "0", left: "0", width: "100vw", height: "100vh",
-      zIndex: "9999", background: bg, padding: "1rem", boxSizing: "border-box",
-      overflow: "auto", cursor: "zoom-out"
+      position: "fixed",
+      top: "0",
+      left: "0",
+      width: "100vw",
+      height: "100vh",
+      zIndex: "9999",
+      background: bg,
+      padding: "1rem",
+      boxSizing: "border-box",
+      overflow: "auto",
+      cursor: "zoom-out",
     });
     if (svg) svg.style.maxWidth = "100%";
     container.dataset.zoomed = "1";
@@ -137,10 +174,18 @@
     closeBtn.setAttribute("aria-label", "Close zoom");
     closeBtn.textContent = "×";
     Object.assign(closeBtn.style, {
-      position: "fixed", top: "0.5rem", right: "0.5rem", zIndex: "10000",
-      fontSize: "1.5rem", lineHeight: "1", padding: "0.25rem 0.5rem",
-      background: "rgba(0,0,0,0.5)", color: "#fff", border: "none",
-      borderRadius: "4px", cursor: "pointer"
+      position: "fixed",
+      top: "0.5rem",
+      right: "0.5rem",
+      zIndex: "10000",
+      fontSize: "1.5rem",
+      lineHeight: "1",
+      padding: "0.25rem 0.5rem",
+      background: "rgba(0,0,0,0.5)",
+      color: "#fff",
+      border: "none",
+      borderRadius: "4px",
+      cursor: "pointer",
     });
     container.appendChild(closeBtn);
     closeBtn.focus();
@@ -221,12 +266,16 @@
   });
 
   // Escape closes zoom
-  document.addEventListener("keydown", function (e) {
-    if (e.key !== "Escape") return;
-    var zoomed = document.querySelector(".svg-container[data-zoomed]");
-    if (!zoomed) return;
-    zoomOut(zoomed);
-  }, { capture: true });
+  document.addEventListener(
+    "keydown",
+    function (e) {
+      if (e.key !== "Escape") return;
+      var zoomed = document.querySelector(".svg-container[data-zoomed]");
+      if (!zoomed) return;
+      zoomOut(zoomed);
+    },
+    { capture: true }
+  );
 
   // SVG action buttons (download/copy)
   document.addEventListener("click", function (e) {
@@ -249,22 +298,22 @@
     // click: an export in the wrong font is worth having, an export that
     // silently does not happen is not. (fontData already swallows its own
     // failures, so this only fires on something unforeseen.)
-    serializeWithFonts(svg).catch(function (err) {
-      console.warn("svg-inline: embedding fonts failed (" + err.message +
-        "); exporting without them.");
-      return new XMLSerializer().serializeToString(svg);
-    }).then(function (data) {
-      if (action === "download-svg") {
-        triggerDownload(new Blob([data], { type: "image/svg+xml;charset=utf-8" }),
-          filename + ".svg");
-      } else if (action === "copy-svg") {
-        navigator.clipboard.writeText(data).catch(function (err) {
-          exportFailed("SVG copy", "the clipboard refused the write (" + err.message + ").");
-        });
-      } else if (action === "download-png" || action === "copy-png") {
-        rasterise(svg, data, action, filename);
-      }
-    });
+    serializeWithFonts(svg)
+      .catch(function (err) {
+        console.warn("svg-inline: embedding fonts failed (" + err.message + "); exporting without them.");
+        return new XMLSerializer().serializeToString(svg);
+      })
+      .then(function (data) {
+        if (action === "download-svg") {
+          triggerDownload(new Blob([data], { type: "image/svg+xml;charset=utf-8" }), filename + ".svg");
+        } else if (action === "copy-svg") {
+          navigator.clipboard.writeText(data).catch(function (err) {
+            exportFailed("SVG copy", "the clipboard refused the write (" + err.message + ").");
+          });
+        } else if (action === "download-png" || action === "copy-png") {
+          rasterise(svg, data, action, filename);
+        }
+      });
   });
 
   // SVG -> PNG via an offscreen canvas.
@@ -286,9 +335,11 @@
     };
     img.onload = function () {
       var vb = svg.viewBox.baseVal;
-      var w = 2048, h = Math.round(vb.height * (w / vb.width));
+      var w = 2048,
+        h = Math.round(vb.height * (w / vb.width));
       var c = document.createElement("canvas");
-      c.width = w; c.height = h;
+      c.width = w;
+      c.height = h;
       c.getContext("2d").drawImage(img, 0, 0, w, h);
       URL.revokeObjectURL(url);
       try {
@@ -299,16 +350,18 @@
           // denied permission both reject here -- and the rejection used to
           // go nowhere, so the click looked like it had worked. Say so, the
           // same way the SVG copy branch does.
-          navigator.clipboard.write([new ClipboardItem({ "image/png": b })])
-            .catch(function (err) {
-              exportFailed("PNG copy", "the clipboard refused the write (" + err.message + ").");
-            });
+          navigator.clipboard.write([new ClipboardItem({ "image/png": b })]).catch(function (err) {
+            exportFailed("PNG copy", "the clipboard refused the write (" + err.message + ").");
+          });
         }, "image/png");
       } catch (err) {
-        exportFailed("PNG export", err && err.name === "SecurityError"
-          ? "this diagram uses embedded HTML labels, which the browser will not " +
-            "let a page read back out of a canvas. Use Download SVG instead."
-          : "the image could not be encoded (" + (err && err.message) + ").");
+        exportFailed(
+          "PNG export",
+          err && err.name === "SecurityError"
+            ? "this diagram uses embedded HTML labels, which the browser will not " +
+                "let a page read back out of a canvas. Use Download SVG instead."
+            : "the image could not be encoded (" + (err && err.message) + ")."
+        );
       }
     };
     img.src = url;
@@ -326,7 +379,9 @@
     }
     // Cleared first so an identical repeat message is still announced.
     el.textContent = "";
-    setTimeout(function () { el.textContent = what + " failed: " + why; }, 50);
+    setTimeout(function () {
+      el.textContent = what + " failed: " + why;
+    }, 50);
   }
 
   function triggerDownload(blob, name) {

@@ -87,7 +87,7 @@ exitOnCrash();
 
 const BASE_PATH = "/twinBASIC-docs";
 const DEFAULT_BASEPATH_TREE = "docs/_site-basepath";
-const FIXTURE_SRC  = "test/fixtures/check-src";
+const FIXTURE_SRC = "test/fixtures/check-src";
 const FIXTURE_TREE = "test/fixtures/_out";
 
 // What each fixture case expects to find. Asserted after the run, so a
@@ -110,8 +110,15 @@ const FIXTURE_TREE = "test/fixtures/_out";
 // drops close tags for elements that were never opened without telling
 // anyone, so the check cannot see them.)
 const FIXTURE_EXPECTED = {
-  broken: 2, forbidden: 1, html: 2, a11y: 3, dupIds: 1,
-  remoteAssets: 1, sitemap: 1, search: 1, canonical: 1,
+  broken: 2,
+  forbidden: 1,
+  html: 2,
+  a11y: 3,
+  dupIds: 1,
+  remoteAssets: 1,
+  sitemap: 1,
+  search: 1,
+  canonical: 1,
 };
 
 // The built fixture, per tree. Measured against test/fixtures/check-src.
@@ -124,13 +131,27 @@ const FIXTURE_EXPECTED = {
 // an indexable page. Weird.md exists to hold that claim to the awkward
 // case -- a permalink ending in the literal text `index.html`.
 const FIXTURE_BUILT_ONLINE = {
-  broken: 3, forbidden: null, html: 1, a11y: 3, dupIds: 1,
-  remoteAssets: 1, sitemap: 0, search: 0, canonical: 1,
+  broken: 3,
+  forbidden: null,
+  html: 1,
+  a11y: 3,
+  dupIds: 1,
+  remoteAssets: 1,
+  sitemap: 0,
+  search: 0,
+  canonical: 1,
 };
 
 const FIXTURE_BUILT_OFFLINE = {
-  broken: 3, forbidden: 1, html: 1, a11y: 3, dupIds: 1,
-  remoteAssets: 1, sitemap: null, search: null, canonical: null,
+  broken: 3,
+  forbidden: 1,
+  html: 1,
+  a11y: 3,
+  dupIds: 1,
+  remoteAssets: 1,
+  sitemap: null,
+  search: null,
+  canonical: null,
 };
 
 // ── Cases ───────────────────────────────────────────────────────────
@@ -144,11 +165,22 @@ const CASES = {
     fused: { tree: "online", baseurl: "" },
     root: () => "docs/_site",
     argv: (root) => [
-      "--offline", "--include-fragments",
-      "--check-html", "--check-a11y", "--check-ids", "--check-remote-assets",
-      "--check-sitemap", "--check-search", "--check-canonical",
-      "--fallback-extensions", "html", "--index-files", "index.html,.",
-      "--root-dir", root, root,
+      "--offline",
+      "--include-fragments",
+      "--check-html",
+      "--check-a11y",
+      "--check-ids",
+      "--check-remote-assets",
+      "--check-sitemap",
+      "--check-search",
+      "--check-canonical",
+      "--fallback-extensions",
+      "html",
+      "--index-files",
+      "index.html,.",
+      "--root-dir",
+      root,
+      root,
     ],
   },
 
@@ -164,11 +196,21 @@ const CASES = {
     fused: { tree: "offline", baseurl: "" },
     root: () => "docs/_site-offline",
     argv: (root) => [
-      "--offline", "--include-fragments",
-      "--check-html", "--check-a11y", "--check-ids", "--check-remote-assets",
-      "--forbid", "https://docs.twinbasic.com",
-      "--fallback-extensions", "html", "--index-files", "index.html,.",
-      "--root-dir", root, root,
+      "--offline",
+      "--include-fragments",
+      "--check-html",
+      "--check-a11y",
+      "--check-ids",
+      "--check-remote-assets",
+      "--forbid",
+      "https://docs.twinbasic.com",
+      "--fallback-extensions",
+      "html",
+      "--index-files",
+      "index.html,.",
+      "--root-dir",
+      root,
+      root,
     ],
   },
 
@@ -179,9 +221,14 @@ const CASES = {
     fused: { tree: "pdf", baseurl: "" },
     root: () => "docs/_site-pdf",
     argv: (root) => [
-      "--offline", "--no-fail", "--include-fragments",
-      "--forbid", "https://docs.twinbasic.com",
-      "--root-dir", root, path.posix.join(root.replace(/\\/g, "/"), "book.html"),
+      "--offline",
+      "--no-fail",
+      "--include-fragments",
+      "--forbid",
+      "https://docs.twinbasic.com",
+      "--root-dir",
+      root,
+      path.posix.join(root.replace(/\\/g, "/"), "book.html"),
     ],
   },
 
@@ -190,10 +237,7 @@ const CASES = {
     fused: { tree: "online", baseurl: BASE_PATH, dest: DEFAULT_BASEPATH_TREE },
     needsBasePathTree: true,
     root: (opts) => opts.basePathTree,
-    argv: (root) => [
-      ...CASES.online.argv(root),
-      "--base-path", BASE_PATH,
-    ],
+    argv: (root) => [...CASES.online.argv(root), "--base-path", BASE_PATH],
   },
 
   // A tiny synthetic tree carrying one fault of every kind. The real
@@ -206,10 +250,7 @@ const CASES = {
     needsFixture: true,
     expect: FIXTURE_EXPECTED,
     root: (opts) => opts.fixtureDir,
-    argv: (root) => [
-      ...CASES.online.argv(root),
-      "--forbid", "https://docs.twinbasic.com",
-    ],
+    argv: (root) => [...CASES.online.argv(root), "--forbid", "https://docs.twinbasic.com"],
   },
 
   // The same idea as `fixture`, but a tree the BUILD produced -- which is
@@ -241,8 +282,14 @@ const CASES = {
 };
 
 const DEFAULT_CASES = [
-  "online", "online-abs", "offline", "book", "basepath", "fixture",
-  "fixture-built", "fixture-built-offline",
+  "online",
+  "online-abs",
+  "offline",
+  "book",
+  "basepath",
+  "fixture",
+  "fixture-built",
+  "fixture-built-offline",
 ];
 
 function writeFixture(dir) {
@@ -254,7 +301,9 @@ function writeFixture(dir) {
 
   // Two broken links (a missing target and a missing fragment), a
   // forbidden prefix, and a directory link that must resolve.
-  w("index.html", `<!DOCTYPE html><html><head>
+  w(
+    "index.html",
+    `<!DOCTYPE html><html><head>
 <link rel="canonical" href="https://example.invalid/">
 </head><body id="top">
 <a href="ok.html">ok</a>
@@ -265,26 +314,38 @@ function writeFixture(dir) {
 <a href="#top">self</a>
 <a href="https://docs.twinbasic.com/tB/Core/Dim">live site</a>
 <a href="https://example.com/">external</a>
-</body></html>\n`);
+</body></html>\n`,
+  );
 
-  w("ok.html", `<!DOCTYPE html><html><head>
+  w(
+    "ok.html",
+    `<!DOCTYPE html><html><head>
 <link rel="canonical" href="https://example.invalid/ok">
-</head><body><p>ok</p></body></html>\n`);
+</head><body><p>ok</p></body></html>\n`,
+  );
 
-  w("other.html", `<!DOCTYPE html><html><head>
+  w(
+    "other.html",
+    `<!DOCTYPE html><html><head>
 <link rel="canonical" href="https://example.invalid/other">
-</head><body><h2 id="real">real</h2></body></html>\n`);
+</head><body><h2 id="real">real</h2></body></html>\n`,
+  );
 
-  w("sub/index.html", `<!DOCTYPE html><html><head>
+  w(
+    "sub/index.html",
+    `<!DOCTYPE html><html><head>
 <link rel="canonical" href="https://example.invalid/sub/">
-</head><body><p>sub</p></body></html>\n`);
+</head><body><p>sub</p></body></html>\n`,
+  );
 
   // One of each integrity fault, plus a canonical that does not match
   // the page's own URL path. The two malformed shapes are a crossed
   // pair (<em> closed early by </strong>) and a <div> the document
   // never closes -- the parser repairs both, and reporting them is the
   // whole point of --check-html.
-  w("bad.html", `<!DOCTYPE html><html><head>
+  w(
+    "bad.html",
+    `<!DOCTYPE html><html><head>
 <link rel="canonical" href="https://example.invalid/somewhere-else">
 </head><body>
 <span id="dup">a</span><span id="dup">b</span>
@@ -294,33 +355,43 @@ function writeFixture(dir) {
 <a href="">empty</a>
 <strong><em>crossed</strong></em>
 <div>never closed
-</body></html>\n`);
+</body></html>\n`,
+  );
 
   // A redirect stub: excluded from the sitemap / search / canonical
   // checks, so its absence from both indexes must NOT be reported.
-  w("stub.html", `<!DOCTYPE html><html><head>
+  w(
+    "stub.html",
+    `<!DOCTYPE html><html><head>
 <meta http-equiv="refresh" content="0; url=ok.html">
 <link rel="canonical" href="https://example.invalid/nowhere">
-</head><body><a href="ok.html">ok</a></body></html>\n`);
+</head><body><a href="ok.html">ok</a></body></html>\n`,
+  );
 
   w("ok.png", "not really a png");
 
   // other.html is deliberately absent from both indexes -- one
   // sitemap-missing and one search-missing.
-  w("sitemap.xml", `<?xml version="1.0" encoding="UTF-8"?>
+  w(
+    "sitemap.xml",
+    `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url><loc>https://example.invalid/</loc></url>
 <url><loc>https://example.invalid/ok</loc></url>
 <url><loc>https://example.invalid/sub/</loc></url>
 <url><loc>https://example.invalid/bad</loc></url>
-</urlset>\n`);
+</urlset>\n`,
+  );
 
-  w("assets/js/search-data.json", JSON.stringify({
-    0: { url: "/",        title: "Home", content: "" },
-    1: { url: "/ok",      title: "Ok",   content: "" },
-    2: { url: "/sub/",    title: "Sub",  content: "" },
-    3: { url: "/bad#dup", title: "Bad",  content: "" },
-  }));
+  w(
+    "assets/js/search-data.json",
+    JSON.stringify({
+      0: { url: "/", title: "Home", content: "" },
+      1: { url: "/ok", title: "Ok", content: "" },
+      2: { url: "/sub/", title: "Sub", content: "" },
+      3: { url: "/bad#dup", title: "Bad", content: "" },
+    }),
+  );
 }
 
 // ── Sides ───────────────────────────────────────────────────────────
@@ -381,8 +452,7 @@ const SIDES = {
       const all = fusedBuild(c.fused);
       const f = all[c.fused.tree];
       if (!f) {
-        throw new Error(`the build produced no '${c.fused.tree}' findings ` +
-                        `(was the tree skipped?)`);
+        throw new Error(`the build produced no '${c.fused.tree}' findings ` + `(was the tree skipped?)`);
       }
       return f;
     },
@@ -451,10 +521,7 @@ function fusedBuild({ baseurl = "", dest = null, src = "docs", offline = false }
 
 // ── Diffing ─────────────────────────────────────────────────────────
 
-const CATEGORIES = [
-  "broken", "forbidden", "html", "a11y", "dupIds", "remoteAssets",
-  "sitemap", "search", "canonical",
-];
+const CATEGORIES = ["broken", "forbidden", "html", "a11y", "dupIds", "remoteAssets", "sitemap", "search", "canonical"];
 
 function symmetricDifference(a, b) {
   // `null` is "check not requested / input absent" and is deliberately
@@ -462,13 +529,12 @@ function symmetricDifference(a, b) {
   // entirely must not compare equal to one that ran it and found nothing.
   if (a === null || b === null) {
     if (a === b) return null;
-    return { nullMismatch: [a === null ? "null" : `${a.length} entries`,
-                            b === null ? "null" : `${b.length} entries`] };
+    return { nullMismatch: [a === null ? "null" : `${a.length} entries`, b === null ? "null" : `${b.length} entries`] };
   }
   const setB = new Set(b);
   const setA = new Set(a);
-  const onlyA = a.filter(x => !setB.has(x));
-  const onlyB = b.filter(x => !setA.has(x));
+  const onlyA = a.filter((x) => !setB.has(x));
+  const onlyB = b.filter((x) => !setA.has(x));
   if (!onlyA.length && !onlyB.length) return null;
   return { onlyA, onlyB };
 }
@@ -502,8 +568,7 @@ function printDiffs(label, aName, bName, diffs, maxLines) {
       continue;
     }
     if (d.nullMismatch) {
-      console.log(`  ${d.cat}: ${d.nullMismatch[0]} != ${d.nullMismatch[1]}  ` +
-                  `(one side did not run this check)`);
+      console.log(`  ${d.cat}: ${d.nullMismatch[0]} != ${d.nullMismatch[1]}  ` + `(one side did not run this check)`);
       continue;
     }
     console.log(`  ${d.cat}: ${d.onlyA.length} only in ${aName}, ${d.onlyB.length} only in ${bName}`);
@@ -527,10 +592,11 @@ function ensureBasePathTree(dir, allowBuild) {
     return false;
   }
   console.log(`  building ${dir} with --baseurl ${BASE_PATH} ...`);
-  const r = spawnSync(process.execPath, [
-    "builder/tbdocs.mjs", "--src", "docs", "--dest", dir,
-    "--baseurl", BASE_PATH, "--no-offline", "--no-pdf",
-  ], { cwd: REPO_ROOT, stdio: "pipe", encoding: "utf8" });
+  const r = spawnSync(
+    process.execPath,
+    ["builder/tbdocs.mjs", "--src", "docs", "--dest", dir, "--baseurl", BASE_PATH, "--no-offline", "--no-pdf"],
+    { cwd: REPO_ROOT, stdio: "pipe", encoding: "utf8" },
+  );
   if (r.status !== 0) {
     console.error(r.stdout ?? "");
     console.error(r.stderr ?? "");
@@ -560,13 +626,23 @@ function parseArgs(argv) {
     });
     return {
       values: cli.values,
-      maxLines: cli.stopped === "help" ? undefined : numberOption(cli.values.maxLines, { option: "--max-lines", integer: true, min: 0 }),
+      maxLines:
+        cli.stopped === "help"
+          ? undefined
+          : numberOption(cli.values.maxLines, { option: "--max-lines", integer: true, min: 0 }),
     };
   });
   const o = {
-    a: values.a, b: values.b, cases: values.case, verbose: values.verbose, list: values.list,
-    maxLines, basePathTree: values.basePathTree, buildBasePath: values.buildBasePath,
-    selfTest: values.selfTest, help: values.help,
+    a: values.a,
+    b: values.b,
+    cases: values.case,
+    verbose: values.verbose,
+    list: values.list,
+    maxLines,
+    basePathTree: values.basePathTree,
+    buildBasePath: values.buildBasePath,
+    selfTest: values.selfTest,
+    help: values.help,
   };
   if (!o.cases.length) o.cases = [...DEFAULT_CASES];
   return o;
@@ -610,9 +686,9 @@ function selfTest(opts) {
 
   const argv = CASES.online.argv(CASES.online.root(opts));
   const diffs = diffFindings(SIDES.script.run(argv), SIDES.mutant.run(argv));
-  const cats = new Set(diffs.map(d => d.cat));
+  const cats = new Set(diffs.map((d) => d.cat));
   const wanted = ["broken", "canonical", "counts.files"];
-  const missed = wanted.filter(c => !cats.has(c));
+  const missed = wanted.filter((c) => !cats.has(c));
   if (missed.length) {
     console.error(`self-test FAILED: no difference reported for ${missed.join(", ")}`);
     return 1;
@@ -624,7 +700,10 @@ function selfTest(opts) {
 function main() {
   const opts = parseArgs(process.argv.slice(2));
 
-  if (opts.help) { printHelp(); return 0; }
+  if (opts.help) {
+    printHelp();
+    return 0;
+  }
   if (opts.selfTest) return selfTest(opts);
 
   if (opts.list) {
@@ -660,9 +739,9 @@ function main() {
     console.error(
       `error: --a and --b are both '${opts.a}', which compares nothing.
 ` +
-      `  The comparison this harness exists for is --a script --b fused.
+        `  The comparison this harness exists for is --a script --b fused.
 ` +
-      `  (--self-test is how to check the harness itself.)`
+        `  (--self-test is how to check the harness itself.)`,
     );
     return 2;
   }
@@ -740,8 +819,9 @@ function compare(opts) {
           const n = got === null ? null : Array.isArray(got) ? got.length : got;
           if (n === want) continue;
           const wanted = want === null ? "the check not to run" : `${want} finding(s)`;
-          console.log(`\nFIXTURE  [${side}] ${cat}: expected ${wanted}, got ` +
-                      `${n === null ? "null (did not run)" : n}`);
+          console.log(
+            `\nFIXTURE  [${side}] ${cat}: expected ${wanted}, got ` + `${n === null ? "null (did not run)" : n}`,
+          );
           if (Array.isArray(got)) for (const line of got) console.log(`    ${line}`);
           differences++;
         }
@@ -770,7 +850,8 @@ function compare(opts) {
     const twin = CASES[name].sameAs;
     if (!twin || !opts.cases.includes(twin)) continue;
     for (const side of new Set([opts.a, opts.b])) {
-      const x = findings[side][name], y = findings[side][twin];
+      const x = findings[side][name],
+        y = findings[side][twin];
       if (!x || !y) continue;
       const diffs = diffFindings(x, y);
       if (diffs.length) {

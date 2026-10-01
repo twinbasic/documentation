@@ -29,7 +29,11 @@ export function readTranscript(file) {
   const events = [];
   for (const line of fs.readFileSync(file, "utf8").split("\n")) {
     if (!line.trim()) continue;
-    try { events.push(JSON.parse(line)); } catch { /* not an event */ }
+    try {
+      events.push(JSON.parse(line));
+    } catch {
+      /* not an event */
+    }
   }
   return events;
 }
@@ -46,7 +50,10 @@ export function summarize(events) {
     else if (e.type === "result") s.result = e;
     else if (e.type === "assistant") {
       for (const c of e.message?.content ?? []) {
-        if (c.type === "text" && c.text.trim()) { s.texts.push(c.text); s.report = c.text; }
+        if (c.type === "text" && c.text.trim()) {
+          s.texts.push(c.text);
+          s.report = c.text;
+        }
         if (c.type !== "tool_use") continue;
         const call = { n: s.calls.length + 1, tool: c.name, input: c.input ?? {}, ok: null, output: "" };
         s.calls.push(call);
@@ -93,14 +100,24 @@ export function classify(call) {
     case "Grep":
       if (/permalink/i.test(String(call.input.pattern ?? ""))) return "permalink";
       return /\.md$/i.test(String(call.input.path ?? "")) ? "find" : "fulltext";
-    case "Read": return "read";
-    case "Glob": return "list";
-    default: return "other";
+    case "Read":
+      return "read";
+    case "Glob":
+      return "list";
+    default:
+      return "other";
   }
 }
 
 const LETTER = {
-  search: "S", fulltext: "F", permalink: "P", find: "I", read: "R", list: "L", shell: "X", other: "O",
+  search: "S",
+  fulltext: "F",
+  permalink: "P",
+  find: "I",
+  read: "R",
+  list: "L",
+  shell: "X",
+  other: "O",
 };
 
 /** True when a line of the report says Channel 3 went unused. */
@@ -138,14 +155,23 @@ export function audit(s) {
   if (fulltext.length && claimsChannel3Unused(s.report)) {
     flags.push(`the report says Channel 3 was not used, and the session has ${fulltext.length} full-text search(es)`);
   }
-  const timeline = kinds.map((k, i) => {
-    const letter = s.calls[i].ok === false ? LETTER[k].toLowerCase() : LETTER[k];
-    const n = k === "search" ? queriesIn(s.calls[i]) : 1;
-    return n > 1 ? `${letter}${n}` : letter;
-  }).join(" ");
+  const timeline = kinds
+    .map((k, i) => {
+      const letter = s.calls[i].ok === false ? LETTER[k].toLowerCase() : LETTER[k];
+      const n = k === "search" ? queriesIn(s.calls[i]) : 1;
+      return n > 1 ? `${letter}${n}` : letter;
+    })
+    .join(" ");
   return {
-    kinds, firstSearch: firstSearch < 0 ? null : firstSearch + 1, fulltext, early, flags, timeline,
-    queries, searchCalls: searchCalls.length, refusedSearches,
+    kinds,
+    firstSearch: firstSearch < 0 ? null : firstSearch + 1,
+    fulltext,
+    early,
+    flags,
+    timeline,
+    queries,
+    searchCalls: searchCalls.length,
+    refusedSearches,
   };
 }
 
@@ -161,17 +187,23 @@ export function printDigest(s, { calls = false, report = false } = {}) {
   const i = s.init ?? {};
   const r = s.result ?? {};
   const refused = s.calls.filter((c) => c.ok === false).length;
-  console.log(`model ${i.model ?? "?"} -- Claude Code ${i.claude_code_version ?? "?"} -- ${i.permissionMode ?? "?"} -- tools ${(i.tools ?? []).join(",")}`);
+  console.log(
+    `model ${i.model ?? "?"} -- Claude Code ${i.claude_code_version ?? "?"} -- ${i.permissionMode ?? "?"} -- tools ${(i.tools ?? []).join(",")}`,
+  );
   console.log(`cwd   ${i.cwd ?? "?"}`);
-  console.log(`${r.num_turns ?? "?"} turns -- ${Math.round((r.duration_ms ?? 0) / 1000)} s -- ` +
-    `$${(r.total_cost_usd ?? 0).toFixed(3)} -- ${s.calls.length} calls, ${refused} refused or failed`);
+  console.log(
+    `${r.num_turns ?? "?"} turns -- ${Math.round((r.duration_ms ?? 0) / 1000)} s -- ` +
+      `$${(r.total_cost_usd ?? 0).toFixed(3)} -- ${s.calls.length} calls, ${refused} refused or failed`,
+  );
   console.log(`\ntimeline  ${a.timeline || "(no calls)"}`);
   console.log("          S site search  F full-text search  P permalink lookup  I find in one page");
   console.log("          R read  L listing  X other shell  (lower case: refused or failed)");
   console.log("          a number after a letter: that many queries in the one call");
   console.log(`\nfirst site search: ${a.firstSearch ? `call ${a.firstSearch}` : "none"}`);
-  console.log(`site searches: ${a.queries} quer${a.queries === 1 ? "y" : "ies"} in ${a.searchCalls} call(s)` +
-    (a.refusedSearches ? `, and ${a.refusedSearches} refused call(s) that ran none` : ""));
+  console.log(
+    `site searches: ${a.queries} quer${a.queries === 1 ? "y" : "ies"} in ${a.searchCalls} call(s)` +
+      (a.refusedSearches ? `, and ${a.refusedSearches} refused call(s) that ran none` : ""),
+  );
   console.log(`full-text searches: ${a.fulltext.length}`);
   for (const c of a.fulltext) console.log(`  #${c.n} ${brief(c).slice(0, 160)}`);
   for (const f of a.flags) console.log(`FLAG  ${f}`);
@@ -194,15 +226,17 @@ const USAGE =
   "  2  a refused command line, a session file that cannot be read, or a crash";
 
 function main(argv) {
-  const { values, positionals } = withUsageError(() => parseCli(argv, {
-    options: {
-      calls: { type: "boolean", default: false },
-      report: { type: "boolean", default: false },
-      help: { type: "boolean", short: "h" },
-    },
-    positionals: { min: 0, max: 1 },
-    stopAt: ["help"],
-  }));
+  const { values, positionals } = withUsageError(() =>
+    parseCli(argv, {
+      options: {
+        calls: { type: "boolean", default: false },
+        report: { type: "boolean", default: false },
+        help: { type: "boolean", short: "h" },
+      },
+      positionals: { min: 0, max: 1 },
+      stopAt: ["help"],
+    }),
+  );
   if (values.help) printHelpAndExit(USAGE);
   const [file] = positionals;
   if (!file) printHelpAndExit(USAGE, { stream: "stderr", exitCode: 2 });

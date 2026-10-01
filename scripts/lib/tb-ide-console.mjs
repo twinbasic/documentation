@@ -129,8 +129,7 @@ export const consoleMark = (c) => c.evaluate(CONSOLE_MARK_JS);
  */
 export async function linesSince(c, mark = null, { prefix } = {}) {
   const lines = ((await readConsole(c, { since: mark })) ?? "").split("\n").map((l) => l.trim());
-  return prefix === undefined ? lines
-    : lines.filter((l) => l.startsWith(prefix)).map((l) => l.slice(prefix.length));
+  return prefix === undefined ? lines : lines.filter((l) => l.startsWith(prefix)).map((l) => l.slice(prefix.length));
 }
 
 // What each clear erased. The page's global clearDebugConsole() empties the
@@ -164,5 +163,4 @@ export const keepClears = (c) => c.evaluate(KEEP_CLEARS_JS);
  * one line per entry, as readConsole returns them. Null when this page keeps
  * no such record.
  */
-export const keptClears = (c) =>
-  c.evaluate(`Array.isArray(window.__tbKeptClears) ? window.__tbKeptClears : null`);
+export const keptClears = (c) => c.evaluate(`Array.isArray(window.__tbKeptClears) ? window.__tbKeptClears : null`);

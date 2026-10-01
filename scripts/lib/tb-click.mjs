@@ -50,8 +50,13 @@ export function targetJs(target) {
 // A target as a message names it.
 function named(target) {
   if (typeof target === "string") return `#${target}`;
-  return [target.css, target.text !== undefined ? `with the text ${JSON.stringify(target.text)}` : "",
-          target.toolWindow ? `in tool window ${target.toolWindow}` : ""].filter(Boolean).join(" ");
+  return [
+    target.css,
+    target.text !== undefined ? `with the text ${JSON.stringify(target.text)}` : "",
+    target.toolWindow ? `in tool window ${target.toolWindow}` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 // ------------------------------------------------------------------ mouse

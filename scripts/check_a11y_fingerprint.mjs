@@ -77,24 +77,23 @@ import { withBrowser } from "./lib/browser.mjs";
 import { choiceOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 
 // ---- CLI ------------------------------------------------------------------
-const cli = withUsageError(
-  () =>
-    parseCli(process.argv.slice(2), {
-      options: {
-        baseline: { type: "string", default: "production" },
-        candidate: { type: "string", default: "production" },
-        "root-dir": { type: "string", default: DEFAULT_ROOT_DIR },
-        theme: { type: "string", default: "both" },
-        viewport: { type: "string", default: "both" },
-        pages: { type: "string" },
-        out: { type: "string" },
-        unminified: { type: "boolean", default: false },
-        patches: { type: "string", default: "" },
-        list: { type: "boolean" },
-        help: { type: "boolean", short: "h" },
-      },
-      stopAt: ["list", "help"],
-    }),
+const cli = withUsageError(() =>
+  parseCli(process.argv.slice(2), {
+    options: {
+      baseline: { type: "string", default: "production" },
+      candidate: { type: "string", default: "production" },
+      "root-dir": { type: "string", default: DEFAULT_ROOT_DIR },
+      theme: { type: "string", default: "both" },
+      viewport: { type: "string", default: "both" },
+      pages: { type: "string" },
+      out: { type: "string" },
+      unminified: { type: "boolean", default: false },
+      patches: { type: "string", default: "" },
+      list: { type: "boolean" },
+      help: { type: "boolean", short: "h" },
+    },
+    stopAt: ["list", "help"],
+  }),
 );
 
 if (cli.stopped === "list") {
@@ -122,7 +121,7 @@ if (cli.stopped === "help") {
       "Exit codes:\n" +
       "  0  every fingerprint is identical, or --list printed the schemes\n" +
       "  1  at least one fingerprint differs\n" +
-      "  2  the check could not run: a refused command line, or a crash"
+      "  2  the check could not run: a refused command line, or a crash",
   );
 }
 
@@ -139,7 +138,10 @@ let patchesArg = cli.values.patches;
 const schemeNames = Object.keys(SCHEMES);
 const patchNames = Object.keys(SOURCE_PATCHES);
 const { baseline, candidate } = withUsageError(() => {
-  for (const name of patchesArg.split(",").map((x) => x.trim()).filter(Boolean)) {
+  for (const name of patchesArg
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean)) {
     choiceOption(name, { option: "--patches", choices: patchNames });
   }
   return {
@@ -212,7 +214,7 @@ async function main() {
   if (candidate.gates === false) {
     console.log(
       `\n  NOTE: "${candidate.label}" is an ablation, not a landing candidate.\n` +
-        `  It is expected to change the findings; the diff below is the point.`
+        `  It is expected to change the findings; the diff below is the point.`,
     );
   }
   console.log(`matrix     ${matrix.length} audits\n`);
@@ -229,7 +231,10 @@ async function main() {
   // obligation -- does the patched bundle still see what the stock one sees --
   // and it would be a no-op if both sides kept their scheme's list.
   const patchIds = patchesArg
-    ? patchesArg.split(",").map((x) => x.trim()).filter(Boolean)
+    ? patchesArg
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean)
     : [];
   const basePatches = patchIds.length ? [] : baseline.patches;
   const candPatches = patchIds.length ? patchIds : candidate.patches;
@@ -239,16 +244,13 @@ async function main() {
       patches,
     });
   const baseSource = sourceFor(basePatches);
-  const candSource =
-    candPatches.join(",") === basePatches.join(",")
-      ? baseSource
-      : sourceFor(candPatches);
+  const candSource = candPatches.join(",") === basePatches.join(",") ? baseSource : sourceFor(candPatches);
   if (patchIds.length) {
     console.log(`patches    ${patchIds.join(", ")}  (candidate side only)`);
   } else if (basePatches.length || candPatches.length) {
     console.log(
       `patches    baseline ${basePatches.join(", ") || "(stock)"}  ` +
-        `candidate ${candPatches.join(", ") || "(stock)"}`
+        `candidate ${candPatches.join(", ") || "(stock)"}`,
     );
   }
   let base, cand;
@@ -272,7 +274,7 @@ async function main() {
   const pct = ((delta / base.wallMs) * 100).toFixed(1);
   console.log(
     `\nwall clock ${base.wallMs} -> ${cand.wallMs} ms (${delta >= 0 ? "-" : "+"}${Math.abs(delta)} ms, ${pct} %)` +
-      `  [indicative only -- unpinned single run; use perf/ab-axe.mjs to measure]`
+      `  [indicative only -- unpinned single run; use perf/ab-axe.mjs to measure]`,
   );
 
   const baseFps = base.audits.map(fingerprint);
@@ -301,8 +303,8 @@ async function main() {
           mismatches,
         },
         null,
-        2
-      )
+        2,
+      ),
     );
     console.log(`\nwrote ${resolve(outFile)}`);
   }
@@ -313,7 +315,7 @@ async function main() {
   }
   console.log(
     `\n  ${mismatches}/${matrix.length} audits differ -- gate FAILS` +
-      (candidate.gates === false ? " (expected for an ablation scheme)" : "")
+      (candidate.gates === false ? " (expected for an ablation scheme)" : ""),
   );
   process.exit(1);
 }

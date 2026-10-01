@@ -33,7 +33,7 @@ import { scenario } from "./scenario.mjs";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const HOST = path.join(HERE, "host");
 const PROBE = path.join(HERE, "probes", "panes");
-const W = "PanesProbeData";            // the id the probe gives ToolWindows.Add
+const W = "PanesProbeData"; // the id the probe gives ToolWindows.Add
 
 // ------------------------------------------------------------------ the pages
 
@@ -42,8 +42,11 @@ const page = (title, body) => `<!doctype html><html><head><meta charset="utf-8">
 <style>body{font:14px sans-serif;margin:8px}@media (prefers-color-scheme: dark){body{background:#111;color:#eee}}</style>
 </head><body><h1>${title}</h1>${body}</body></html>`;
 const PAGES = {
-  "/a.html": page("Fixture A", `<p><a id="toB" href="b.html">to page B</a></p>` +
-                  Array.from({ length: 200 }, (_, i) => `<p>line ${i + 1}</p>`).join("")),
+  "/a.html": page(
+    "Fixture A",
+    `<p><a id="toB" href="b.html">to page B</a></p>` +
+      Array.from({ length: 200 }, (_, i) => `<p>line ${i + 1}</p>`).join(""),
+  ),
   "/b.html": page("Fixture B", `<p><a id="toA" href="a.html">to page A</a></p>`),
   "/c.html": page("Fixture C", "<p>page C</p>"),
 };
@@ -60,20 +63,28 @@ async function servePages() {
     res.writeHead(body ? 200 : 404, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
     res.end(body ?? "");
   };
-  const listen = (host, port) => new Promise((resolve, reject) => {
-    const s = http.createServer(handler);
-    s.once("error", reject);
-    s.listen(port, host, () => resolve(s));
-  });
+  const listen = (host, port) =>
+    new Promise((resolve, reject) => {
+      const s = http.createServer(handler);
+      s.once("error", reject);
+      s.listen(port, host, () => resolve(s));
+    });
   for (let tries = 0; tries < 5; tries++) {
     const v4 = await listen("127.0.0.1", 0);
     const port = v4.address().port;
     try {
       const v6 = await listen("::1", port);
-      return { port, requests, close: () => { v4.close(); v6.close(); } };
+      return {
+        port,
+        requests,
+        close: () => {
+          v4.close();
+          v6.close();
+        },
+      };
     } catch (e) {
       if (e.code === "EADDRNOTAVAIL" || e.code === "EAFNOSUPPORT") {
-        return { port, requests, close: () => v4.close() };      // no IPv6 loopback at all
+        return { port, requests, close: () => v4.close() }; // no IPv6 loopback at all
       }
       v4.close();
     }
@@ -95,15 +106,19 @@ async function frameOf(c, origin) {
 async function frameEval(c, origin, expression) {
   const frame = await frameOf(c, origin);
   if (!frame) throw new Error(`no frame on ${origin}`);
-  const { executionContextId } = await c.send("Page.createIsolatedWorld",
-    { frameId: frame.id, worldName: "panes-test" });
+  const { executionContextId } = await c.send("Page.createIsolatedWorld", {
+    frameId: frame.id,
+    worldName: "panes-test",
+  });
   const r = await c.send("Runtime.evaluate", { expression, contextId: executionContextId, returnByValue: true });
-  if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description ?? JSON.stringify(r.exceptionDetails));
+  if (r.exceptionDetails)
+    throw new Error(r.exceptionDetails.exception?.description ?? JSON.stringify(r.exceptionDetails));
   return r.result.value;
 }
 
 // An element of the tool window, as a rectangle in the page's coordinates.
-const rectOf = (c, css) => c.evaluate(`(() => {
+const rectOf = (c, css) =>
+  c.evaluate(`(() => {
   const e = toolWindowsById[${JSON.stringify(W)}].bodyElement.querySelector(${JSON.stringify(css)});
   if (!e) return null;
   const r = e.getBoundingClientRect();
@@ -113,8 +128,12 @@ const rectOf = (c, css) => c.evaluate(`(() => {
 // Click an element of the page in the frame, at its centre, as a person would.
 async function clickInFrame(c, origin, css) {
   const f = await rectOf(c, "#p3frame");
-  const e = await frameEval(c, origin, `(() => { const r = document.querySelector(${JSON.stringify(css)})
-    .getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+  const e = await frameEval(
+    c,
+    origin,
+    `(() => { const r = document.querySelector(${JSON.stringify(css)})
+    .getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`,
+  );
   await clickAt(c, f.x + e.x, f.y + e.y);
 }
 
@@ -122,11 +141,14 @@ async function clickInFrame(c, origin, css) {
 // unless its host says otherwise: AppsUseLightTheme 0 is dark.
 function windowsAppModeDark() {
   try {
-    const out = execFileSync("reg", ["query", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
-                                     "/v", "AppsUseLightTheme"], { encoding: "utf8", windowsHide: true });
+    const out = execFileSync(
+      "reg",
+      ["query", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize", "/v", "AppsUseLightTheme"],
+      { encoding: "utf8", windowsHide: true },
+    );
     return /AppsUseLightTheme\s+REG_DWORD\s+0x0\b/.test(out);
   } catch {
-    return false;                      // no value: Windows' default, light
+    return false; // no value: Windows' default, light
   }
 }
 
@@ -154,22 +176,30 @@ scenario("P3, P4 and P12: HTML and a web page in a tool window", (lane) => {
     const mark = await consoleMark(c);
     await click(c, "addinButton-PanesProbeShow");
     assert.ok(await waitFor(c, async (c) => (await toolWindow(c, W))?.visible), "the tool window did not appear");
-    assert.ok(await waitFor(c, async (c) => (await probeLines(c, mark)).includes("shown")),
-              "the add-in did not finish building its tool window");
+    assert.ok(
+      await waitFor(c, async (c) => (await probeLines(c, mark)).includes("shown")),
+      "the add-in did not finish building its tool window",
+    );
   });
 
   test("P4: innerHTML renders, and its inline handlers run as the IDE page's own script", async () => {
-    assert.equal(await c.evaluate(`toolWindowsById[${JSON.stringify(W)}].bodyElement.querySelector("#p4bold")?.tagName`), "B");
+    assert.equal(
+      await c.evaluate(`toolWindowsById[${JSON.stringify(W)}].bodyElement.querySelector("#p4bold")?.tagName`),
+      "B",
+    );
     // The <img>'s onerror ran with nothing clicked, and saw the page's internals.
     assert.equal(await waitFor(c, (c) => c.evaluate("window.__p4error")), "object");
     await click(c, { toolWindow: W, css: "#p4click" });
     assert.equal(await waitFor(c, (c) => c.evaluate("window.__p4click")), "object");
   });
 
-  test("P4: a property whose name starts with \"on\" is dropped, and the add-in is told nothing", async () => {
+  test('P4: a property whose name starts with "on" is dropped, and the add-in is told nothing', async () => {
     assert.ok((await probeLines(c, null)).includes("onclick property set, error 0"));
-    assert.deepEqual(await c.evaluate(`(() => { const e = toolWindowsById[${JSON.stringify(W)}].bodyElement
-      .querySelector("#p4onprop"); return [e.onclick, e.getAttribute("onclick")]; })()`), [null, null]);
+    assert.deepEqual(
+      await c.evaluate(`(() => { const e = toolWindowsById[${JSON.stringify(W)}].bodyElement
+      .querySelector("#p4onprop"); return [e.onclick, e.getAttribute("onclick")]; })()`),
+      [null, null],
+    );
   });
 
   test("P12: raiseEvent from plain tool-window HTML throws, and the add-in hears nothing", async () => {
@@ -179,15 +209,20 @@ scenario("P3, P4 and P12: HTML and a web page in a tool window", (lane) => {
     assert.ok(await waitFor(c, () => exceptions.length > n), "raiseEvent threw nothing");
     assert.match(exceptions[n], /^TypeError: Cannot read properties of null \(reading 'rootEventHandler'\)/);
     await sleep(1500);
-    assert.deepEqual((await probeLines(c, mark)).filter((l) => l.startsWith("p12Event")), []);
+    assert.deepEqual(
+      (await probeLines(c, mark)).filter((l) => l.startsWith("p12Event")),
+      [],
+    );
   });
 
   test("P12: an inline handler that calls the listener AddEventListener put on its parent reaches the add-in", async () => {
     const mark = await consoleMark(c);
     const n = exceptions.length;
     await click(c, { toolWindow: W, css: "#p12direct" });
-    assert.ok(await waitFor(c, async (c) => (await probeLines(c, mark)).includes("p12Event from p12direct")),
-              `the add-in's listener was not called: ${JSON.stringify(await probeLines(c, mark))}`);
+    assert.ok(
+      await waitFor(c, async (c) => (await probeLines(c, mark)).includes("p12Event from p12direct")),
+      `the add-in's listener was not called: ${JSON.stringify(await probeLines(c, mark))}`,
+    );
     assert.deepEqual(exceptions.slice(n), []);
   });
 
@@ -197,27 +232,36 @@ scenario("P3, P4 and P12: HTML and a web page in a tool window", (lane) => {
       .getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()`);
     const frame = await rectOf(c, "#p3frame");
     assert.ok(Math.abs(frame.width - body.width) < 2, `frame ${JSON.stringify(frame)} in body ${JSON.stringify(body)}`);
-    assert.ok(Math.abs(frame.y + frame.height - (body.y + body.height)) < 2,
-              `the frame does not reach the bottom: frame ${JSON.stringify(frame)}, body ${JSON.stringify(body)}`);
+    assert.ok(
+      Math.abs(frame.y + frame.height - (body.y + body.height)) < 2,
+      `the frame does not reach the bottom: frame ${JSON.stringify(frame)}, body ${JSON.stringify(body)}`,
+    );
     assert.ok(frame.height > 150, `the frame kept its default height: ${JSON.stringify(frame)}`);
   });
 
   test("P3: the frame loads the page, and the add-in hears its load event", async () => {
-    const loaded = await waitFor(c, async (c) => (await frameOf(c, origin))?.url === `${origin}a.html` &&
-      await frameEval(c, origin, "document.readyState") === "complete");
+    const loaded = await waitFor(
+      c,
+      async (c) =>
+        (await frameOf(c, origin))?.url === `${origin}a.html` &&
+        (await frameEval(c, origin, "document.readyState")) === "complete",
+    );
     assert.ok(loaded, `the frame did not load ${origin}a.html`);
     assert.equal(await frameEval(c, origin, "document.title"), "Fixture A");
     assert.deepEqual(pages.requests[0], { url: "/a.html", dest: "iframe" });
-    assert.ok(await waitFor(c, async (c) => (await probeLines(c, null)).includes("frame load")),
-              "the add-in's load listener was not called");
+    assert.ok(
+      await waitFor(c, async (c) => (await probeLines(c, null)).includes("frame load")),
+      "the add-in's load listener was not called",
+    );
   });
 
   test("P3: the mouse wheel scrolls the page in the frame", async () => {
     const f = await rectOf(c, "#p3frame");
-    const x = f.x + f.width / 2, y = f.y + f.height / 2;
+    const x = f.x + f.width / 2,
+      y = f.y + f.height / 2;
     await c.send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
     await c.send("Input.dispatchMouseEvent", { type: "mouseWheel", x, y, deltaX: 0, deltaY: 400 });
-    assert.ok(await waitFor(c, async (c) => await frameEval(c, origin, "scrollY") > 0), "the page did not scroll");
+    assert.ok(await waitFor(c, async (c) => (await frameEval(c, origin, "scrollY")) > 0), "the page did not scroll");
     await frameEval(c, origin, "scrollTo(0, 0)");
   });
 
@@ -227,20 +271,27 @@ scenario("P3, P4 and P12: HTML and a web page in a tool window", (lane) => {
     let mark = await consoleMark(c);
     await pressKey(c, "F1");
     await sleep(1500);
-    assert.deepEqual((await probeLines(c, mark)).filter((l) => l === "fired f1"), []);
+    assert.deepEqual(
+      (await probeLines(c, mark)).filter((l) => l === "fired f1"),
+      [],
+    );
     // The control: back in the IDE's own document, F1 fires.
     await click(c, { toolWindow: W, css: "#p4bold" });
     mark = await consoleMark(c);
     await pressKey(c, "F1");
-    assert.ok(await waitFor(c, async (c) => (await probeLines(c, mark)).includes("fired f1")),
-              "F1 did not fire outside the frame either");
+    assert.ok(
+      await waitFor(c, async (c) => (await probeLines(c, mark)).includes("fired f1")),
+      "F1 did not fire outside the frame either",
+    );
   });
 
   test("P3: a link in the page navigates the frame", async () => {
     const mark = await consoleMark(c);
     await clickInFrame(c, origin, "#toB");
-    assert.ok(await waitFor(c, async (c) => (await frameOf(c, origin))?.url === `${origin}b.html`),
-              `the frame is at ${(await frameOf(c, origin))?.url}`);
+    assert.ok(
+      await waitFor(c, async (c) => (await frameOf(c, origin))?.url === `${origin}b.html`),
+      `the frame is at ${(await frameOf(c, origin))?.url}`,
+    );
     assert.ok(await waitFor(c, async (c) => (await probeLines(c, mark)).includes("frame load")));
     assert.ok(pages.requests.some((r) => r.url === "/b.html" && r.dest === "iframe"));
   });
@@ -248,16 +299,20 @@ scenario("P3, P4 and P12: HTML and a web page in a tool window", (lane) => {
   test("P3: the add-in moves the frame to another page by setting its src", async () => {
     const mark = await consoleMark(c);
     await click(c, "addinButton-PanesProbeNavigate");
-    assert.ok(await waitFor(c, async (c) => (await frameOf(c, origin))?.url === `${origin}c.html`),
-              `the frame is at ${(await frameOf(c, origin))?.url}`);
+    assert.ok(
+      await waitFor(c, async (c) => (await frameOf(c, origin))?.url === `${origin}c.html`),
+      `the frame is at ${(await frameOf(c, origin))?.url}`,
+    );
     assert.ok(await waitFor(c, async (c) => (await probeLines(c, mark)).includes("frame load")));
     assert.equal(await waitFor(c, (c) => frameEval(c, origin, "document.title")), "Fixture C");
   });
 
   test("P3: the page's colour scheme is Windows' app mode", async (t) => {
     const dark = await frameEval(c, origin, `matchMedia("(prefers-color-scheme: dark)").matches`);
-    t.diagnostic(`frame dark: ${dark}; Windows app mode dark: ${windowsAppModeDark()}; ` +
-                 `IDE theme: ${await c.evaluate("getBaseThemeName()")}`);
+    t.diagnostic(
+      `frame dark: ${dark}; Windows app mode dark: ${windowsAppModeDark()}; ` +
+        `IDE theme: ${await c.evaluate("getBaseThemeName()")}`,
+    );
     assert.equal(dark, windowsAppModeDark());
   });
 
@@ -267,12 +322,16 @@ scenario("P3, P4 and P12: HTML and a web page in a tool window", (lane) => {
   test("ToolWindows.Add: two windows given no id are one window, emptied by the second Add", async () => {
     const mark = await consoleMark(c);
     await click(c, "addinButton-PanesProbeNoId");
-    assert.ok(await waitFor(c, async (c) => (await probeLines(c, mark)).includes("no id windows")),
-              "the add-in did not finish opening its windows");
-    assert.deepEqual(await c.evaluate(`Object.entries(toolWindowsById).filter(([id]) => id !== ${JSON.stringify(W)})
+    assert.ok(
+      await waitFor(c, async (c) => (await probeLines(c, mark)).includes("no id windows")),
+      "the add-in did not finish opening its windows",
+    );
+    assert.deepEqual(
+      await c.evaluate(`Object.entries(toolWindowsById).filter(([id]) => id !== ${JSON.stringify(W)})
       .map(([id, w]) => ({ id, title: w.titleElement.textContent,
                            divs: [...w.bodyElement.querySelectorAll("div[id^='noid']")].map((d) => d.id) }))`),
-    [{ id: "", title: "NO ID 2", divs: ["noid2", "noid1again"] }]);
+      [{ id: "", title: "NO ID 2", divs: ["noid2", "noid1again"] }],
+    );
   });
 
   // After the lane is closed, even when closing it fails.

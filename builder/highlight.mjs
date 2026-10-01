@@ -38,16 +38,16 @@ const SILENT_LANGS = new Set(["plaintext", "text", "txt", ""]);
 // `unknown fence language "<name>"` naming this list. Watch the build output:
 // nothing else reports it, and the page looks deliberate either way.
 const SHIKI_LANGS = [
-  "js",       // 64 blocks (CEF/WebView2 interop tutorials)
-  "yaml",     // 15 blocks (config snippets, CI workflow excerpts)
-  "json",     //  7 blocks
-  "c",        //  3 blocks (Win32 API examples, comment style demos)
-  "html",     //  3 blocks (transitively loads css + javascript)
+  "js", // 64 blocks (CEF/WebView2 interop tutorials)
+  "yaml", // 15 blocks (config snippets, CI workflow excerpts)
+  "json", //  7 blocks
+  "c", //  3 blocks (Win32 API examples, comment style demos)
+  "html", //  3 blocks (transitively loads css + javascript)
   "markdown", //  2 blocks (authoring guide, showing page source)
-  "scss",     //  1 block (Builder.md's project styling section)
-  "xml",      //  1 block
-  "sql",      //  1 block
-  "batch",    //  1 block (Windows .bat examples)
+  "scss", //  1 block (Builder.md's project styling section)
+  "xml", //  1 block
+  "sql", //  1 block
+  "batch", //  1 block (Windows .bat examples)
 ];
 
 // Phase 11 (B5) server-side copy-button: emitted inside the wrapper
@@ -90,7 +90,8 @@ export async function initHighlighter() {
     warned.add(lang);
     console.warn(
       `highlight: unknown fence language "${lang}" -- falling back to plain text. ` +
-      `Add it to highlight.mjs's SHIKI_LANGS to enable highlighting.`);
+        `Add it to highlight.mjs's SHIKI_LANGS to enable highlighting.`,
+    );
   };
 
   cached = {
@@ -161,7 +162,7 @@ function renderThemedSpans(lines, theme) {
   const cmClass = theme.classForSymbol("Comment");
 
   const parts = [];
-  let runCls = undefined;    // undefined = no run; null = unclassed run; string = class
+  let runCls = undefined; // undefined = no run; null = unclassed run; string = class
   let runText = "";
   let pendingNewlines = "";
 
@@ -170,9 +171,7 @@ function renderThemedSpans(lines, theme) {
       runCls = undefined;
       return;
     }
-    parts.push(
-      runCls ? `<span class="${runCls}">${runText}</span>` : runText,
-    );
+    parts.push(runCls ? `<span class="${runCls}">${runText}</span>` : runText);
     runText = "";
     runCls = undefined;
   };

@@ -58,9 +58,9 @@ export async function writeSearchDataFromChunks(searchChunks, destRoot, symbols)
   if (missing.length) {
     throw new Error(
       `search index is incomplete: ${missing.length} of ${searchChunks.length} ` +
-      `chunks never arrived (${missing.slice(0, 8).join(", ")}` +
-      `${missing.length > 8 ? ", ..." : ""}). This is a scheduling bug, not a ` +
-      `content one -- see the barrier wiring in dispatch.submit().`,
+        `chunks never arrived (${missing.slice(0, 8).join(", ")}` +
+        `${missing.length > 8 ? ", ..." : ""}). This is a scheduling bug, not a ` +
+        `content one -- see the barrier wiring in dispatch.submit().`,
     );
   }
 
@@ -106,17 +106,11 @@ export function deriveSearchEntries(pages, site) {
     // bug once removed six pages per build without anyone noticing.
     if (typeof page.renderedContent !== "string") {
       throw new Error(
-        `search index: ${page.destPath} has no renderedContent; refusing to ` +
-        `drop it from the index silently`,
+        `search index: ${page.destPath} has no renderedContent; refusing to ` + `drop it from the index silently`,
       );
     }
 
-    const { sections, titleFound, prefixContent } = extractSections(
-      page,
-      String(title),
-      headingLevel,
-      foldSet,
-    );
+    const { sections, titleFound, prefixContent } = extractSections(page, String(title), headingLevel, foldSet);
 
     // Each entry with the heading ids its section holds, for the index
     // marks below; the ids never leave this function.
@@ -179,7 +173,9 @@ function attachIndexMarks(page, held, pageEntry) {
   for (const mark of page.searchIndexMarks ?? []) {
     const holder = held.find((h) => h.ids.includes(mark.id));
     if (!holder) {
-      throw new Error(`${where}: heading #${mark.id} carries a search index entry, but no search entry holds that heading`);
+      throw new Error(
+        `${where}: heading #${mark.id} carries a search index entry, but no search entry holds that heading`,
+      );
     }
     for (const field of INDEX_FIELDS) {
       if (mark[field] != null) add(holder.entry, field, mark[field], `heading #${mark.id}'s \`${field}\``);
@@ -204,7 +200,10 @@ export function parseIndexTerms(value, where) {
   if (!items || items.some((v) => typeof v !== "string")) {
     throw new Error(`${where}: expected a term or a list of terms, got ${JSON.stringify(value)}`);
   }
-  return items.flatMap((v) => v.split(";")).map((t) => t.replace(/\s+/g, " ").trim()).filter(Boolean);
+  return items
+    .flatMap((v) => v.split(";"))
+    .map((t) => t.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
 }
 
 // A term is the main index entry of one place only, as in a book's index:
@@ -226,8 +225,8 @@ export function checkIndexTerms(entries) {
   if (dup.length) {
     throw new Error(
       "search index: a term can be the main index entry of one place only; " +
-      "mark the others with index_also:\n" +
-      dup.map(([t, urls]) => `  "${t}": ${urls.join(", ")}`).join("\n"),
+        "mark the others with index_also:\n" +
+        dup.map(([t, urls]) => `  "${t}": ${urls.join(", ")}`).join("\n"),
     );
   }
 }
@@ -258,9 +257,7 @@ function extractSections(page, pageTitle, headingLevel, foldSet = new Set()) {
   // on this site) further iterations fold deeper headings into the
   // splitter's boundary set.
   for (let lvl = 2; lvl <= headingLevel; lvl++) {
-    content = content
-      .replaceAll(`<h${lvl}`, "<h1")
-      .replaceAll(`</h${lvl}`, "</h1");
+    content = content.replaceAll(`<h${lvl}`, "<h1").replaceAll(`</h${lvl}`, "</h1");
   }
 
   const parts = content.split("<h1");
@@ -422,7 +419,8 @@ export function renderEntryString(e) {
   if (e.primary) extra += `    "primary": ${JSON.stringify(e.primary)},\n`;
   if (e.index?.length) extra += `    "index": ${JSON.stringify(e.index)},\n`;
   if (e.index_also?.length) extra += `    "index_also": ${JSON.stringify(e.index_also)},\n`;
-  return `"${e.i}": {\n` +
+  return (
+    `"${e.i}": {\n` +
     `    "doc": ${JSON.stringify(e.doc)},\n` +
     `    "title": ${JSON.stringify(e.title)},\n` +
     `    "content": ${JSON.stringify(e.content)},\n` +
@@ -430,7 +428,8 @@ export function renderEntryString(e) {
     `    "url": "${e.url}",\n` +
     `    \n` +
     `    "relUrl": "${e.relUrl}"\n` +
-    `  }`;
+    `  }`
+  );
 }
 
 // Content sanitiser. Port of the Liquid filter chain in the template's
@@ -440,20 +439,20 @@ export function renderEntryString(e) {
 // trailing-space append. The order is load-bearing for byte parity.
 function sanitiseContent(html) {
   let s = String(html ?? "")
-    .replaceAll("</h",  " . </h")
-    .replaceAll("<hr",  " . <hr")
-    .replaceAll("</p",  " . </p")
-    .replaceAll("<ul",  " . <ul")
+    .replaceAll("</h", " . </h")
+    .replaceAll("<hr", " . <hr")
+    .replaceAll("</p", " . </p")
+    .replaceAll("<ul", " . <ul")
     .replaceAll("</ul", " . </ul")
-    .replaceAll("<ol",  " . <ol")
+    .replaceAll("<ol", " . <ol")
     .replaceAll("</ol", " . </ol")
     .replaceAll("</tr", " . </tr")
-    .replaceAll("<li",  " | <li")
+    .replaceAll("<li", " | <li")
     .replaceAll("</li", " | </li")
     .replaceAll("</td", " | </td")
-    .replaceAll("<td",  " | <td")
+    .replaceAll("<td", " | <td")
     .replaceAll("</th", " | </th")
-    .replaceAll("<th",  " | <th");
+    .replaceAll("<th", " | <th");
   s = stripHtml(s);
   s = s.replaceAll("Table of contents", "");
   // Jekyll's normalize_whitespace = collapse runs of `\s` + strip,

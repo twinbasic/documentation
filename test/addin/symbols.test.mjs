@@ -39,17 +39,21 @@ function at(text, word) {
 
 // One request over the compiler's language socket, and its answer's result.
 async function lsp(c, method, params) {
-  const m = await c.evaluate(`new Promise((resolve) => {
+  const m = await c.evaluate(
+    `new Promise((resolve) => {
     const timer = setTimeout(() => resolve({ timedOut: true }), 10000);
     lspSocket.request(${JSON.stringify(method)}, ${JSON.stringify(params)}, (m) => { clearTimeout(timer); resolve(m); });
-  })`, { awaitPromise: true, timeout: 15000 });
+  })`,
+    { awaitPromise: true, timeout: 15000 },
+  );
   assert.ok(!m.timedOut, `${method} had no answer`);
   return m.result;
 }
 const doc = { uri: `twinbasic:${FILE}` };
 const hover = async (c, text, word) =>
   (await lsp(c, "textDocument/hover", { textDocument: doc, position: at(text, word) }))?.contents.value ?? null;
-const definition = (c, text, word) => lsp(c, "textDocument/definition", { textDocument: doc, position: at(text, word) });
+const definition = (c, text, word) =>
+  lsp(c, "textDocument/definition", { textDocument: doc, position: at(text, word) });
 
 // The heading a procedure's documentation starts with names where it is
 // declared: "## **MsgBox** &nbsp; ... `in VBA.Interaction`".
@@ -61,8 +65,9 @@ const firstLine = (markdown) => (markdown ?? "").split(/\r?\n/)[0];
 // cursor is there, the character before it being the trigger.
 async function signatures(c, text, after) {
   const line = SOURCE.findIndex((s) => s.includes(text));
-  const character = SOURCE[line].indexOf(after) + after.length;      // the cursor, 0-based
-  const r = await c.evaluate(`new Promise((resolve) => {
+  const character = SOURCE[line].indexOf(after) + after.length; // the cursor, 0-based
+  const r = await c.evaluate(
+    `new Promise((resolve) => {
     const node = openEditors.selectedEditorNode.fileNode;
     const timer = setTimeout(() => resolve(null), 10000);
     lspSocket.request("textDocument/completion", {
@@ -71,7 +76,9 @@ async function signatures(c, text, after) {
       context: { triggerCharacter: ${JSON.stringify(after.at(-1))} },
       origCaretLine: ${line + 1}, origCaretColumn: ${character + 1},
     }, (m) => { clearTimeout(timer); resolve(m.result); });
-  })`, { awaitPromise: true, timeout: 15000 });
+  })`,
+    { awaitPromise: true, timeout: 15000 },
+  );
   assert.ok(r, `no completion answer after ${JSON.stringify(after)}`);
   return r.signatures ?? [];
 }
@@ -119,7 +126,11 @@ scenario("P5: what the compiler says about the name under the cursor", (lane) =>
     assert.equal(await hover(c, "c.Add", "c"), "*local variable* Dim c As Collection");
     assert.equal(await hover(c, "Nothing, count", "count"), "*parameter* ByVal count As Long");
     // BETA 983 gives no hover here, and BETA 987 one whose text is empty.
-    const nothing = [["Debug.Print FindTheNeedle", "Debug"], ["Debug.Print FindTheNeedle", "Print"], ["Dim c As New", "Dim"]];
+    const nothing = [
+      ["Debug.Print FindTheNeedle", "Debug"],
+      ["Debug.Print FindTheNeedle", "Print"],
+      ["Dim c As New", "Dim"],
+    ];
     for (const [text, word] of nothing) {
       const h = await hover(c, text, word);
       assert.ok(h === null || h === "", `${word} in ${text}: ${JSON.stringify(h)}`);
@@ -130,15 +141,26 @@ scenario("P5: what the compiler says about the name under the cursor", (lane) =>
   test("hover says a ByVal parameter of String, Variant, Object or a class was made because Option Explicit is off, which it is not", async () => {
     // BUGS-TO-REPORT.md. The project has project.optionExplicit true.
     const NOTE = "***note:*** *this variable was auto-generated due to* ***Option Explicit*** *being Off*";
-    const noted = { "Debug.Print h Is": "h", "count, col Is": "col", "Nothing, o Is": "o", "IsEmpty(v)": "v",
-                    "Nothing, s,": "s", "Host.ToolWindows": "Host" };
+    const noted = {
+      "Debug.Print h Is": "h",
+      "count, col Is": "col",
+      "Nothing, o Is": "o",
+      "IsEmpty(v)": "v",
+      "Nothing, s,": "s",
+      "Host.ToolWindows": "Host",
+    };
     for (const [text, word] of Object.entries(noted)) {
       const h = await hover(c, text, word);
       assert.match(h, /^\*parameter\* ByVal /, `${word}: ${JSON.stringify(h)}`);
       assert.ok(h.includes(NOTE), `${word} no longer has the note: ${JSON.stringify(h)}`);
     }
-    const plain = { "Nothing, count": "count", "Debug.Print n": "n", "Return CStr(k)": "k", "(v), r Is": "r",
-                    "s, d Is": "d" };
+    const plain = {
+      "Nothing, count": "count",
+      "Debug.Print n": "n",
+      "Return CStr(k)": "k",
+      "(v), r Is": "r",
+      "s, d Is": "d",
+    };
     for (const [text, word] of Object.entries(plain)) {
       const h = await hover(c, text, word);
       assert.ok(!h.includes("Option Explicit"), `${word}: ${JSON.stringify(h)}`);
@@ -160,7 +182,10 @@ scenario("P5: what the compiler says about the name under the cursor", (lane) =>
     }
     const own = await definition(c, "Debug.Print FindTheNeedle", "FindTheNeedle");
     assert.equal(own.uri, `twinbasic:${FILE}`);
-    assert.equal(own.range.start.line, SOURCE.findIndex((s) => s.includes("Function FindTheNeedle")));
+    assert.equal(
+      own.range.start.line,
+      SOURCE.findIndex((s) => s.includes("Function FindTheNeedle")),
+    );
     assert.equal(await definition(c, "Debug.Print FindTheNeedle", "Print"), null);
   });
 
@@ -181,7 +206,8 @@ scenario("P5: what the compiler says about the name under the cursor", (lane) =>
   test("a completion's details give the file and line of its declaration, as Go To Definition does", async () => {
     const line = SOURCE.findIndex((s) => s.includes("c.Add 1"));
     const character = SOURCE[line].indexOf("c.") + 2;
-    const r = await c.evaluate(`new Promise((resolve) => {
+    const r = await c.evaluate(
+      `new Promise((resolve) => {
       const node = openEditors.selectedEditorNode.fileNode;
       lspSocket.request("textDocument/completion", {
         textDocument: { uri: node.getFullPath(), version: node.ideVersionId },
@@ -193,7 +219,9 @@ scenario("P5: what the compiler says about the name under the cursor", (lane) =>
         lspSocket.request("textDocument/lazyCompletion", { lazyRequestId: m.result.lazyRequestId,
           requests: [{ x: 0, i: item.i }] }, (z) => resolve(z.results?.[0] ?? null));
       });
-    })`, { awaitPromise: true, timeout: 15000 });
+    })`,
+      { awaitPromise: true, timeout: 15000 },
+    );
     assert.ok(r, "no Add among the completions after c.");
     const d = await definition(c, "c.Add", "Add");
     // The same file as the definition's, without "twinbasic:", on the same line.

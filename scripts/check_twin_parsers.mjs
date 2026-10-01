@@ -43,10 +43,15 @@ Exit codes:
   1  a probe failed
   2  the gate could not run: a refused command line, or a crash`;
 
-if (withUsageError(() => parseCli(process.argv.slice(2), {
-  options: { help: { type: "boolean", short: "h" } },
-  stopAt: ["help"],
-})).values.help) printHelpAndExit(USAGE);
+if (
+  withUsageError(() =>
+    parseCli(process.argv.slice(2), {
+      options: { help: { type: "boolean", short: "h" } },
+      stopAt: ["help"],
+    }),
+  ).values.help
+)
+  printHelpAndExit(USAGE);
 
 const { check, report } = createProbes("check_twin_parsers");
 const show = (x) => JSON.stringify(x);
@@ -77,9 +82,9 @@ for (const [decl, container, want] of [
   ["Private Class Inner", "Module", "Class"],
   ["CoClass Foo", "(file)", "CoClass"],
   ["Implements IFoo", "Class", "Implements"],
-  ["Public Declare PtrSafe Function Beep Lib \"kernel32\" () As Long", "Module", "Declare"],
-  ["Public DeclareWide PtrSafe Function Beep Lib \"kernel32\" () As Long", "Module", "DeclareWide"],
-  ["Public declarewide Function Beep Lib \"kernel32\" () As Long", "Module", "DeclareWide"],
+  ['Public Declare PtrSafe Function Beep Lib "kernel32" () As Long', "Module", "Declare"],
+  ['Public DeclareWide PtrSafe Function Beep Lib "kernel32" () As Long', "Module", "DeclareWide"],
+  ['Public declarewide Function Beep Lib "kernel32" () As Long', "Module", "DeclareWide"],
   // An inline block comment before the keyword is removed, not a reason to
   // give up on the line: giving up lost 14 Interface members to the census.
   ["/* voffset &H00A8*/ Property Get X() As Long", "Interface", "Property"],

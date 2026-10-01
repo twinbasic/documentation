@@ -4,31 +4,36 @@
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-export const MAX_TASKS  = 512;
-export const MAX_LANES  = 64;
-export const MAX_EDGES  = 2048;
+export const MAX_TASKS = 512;
+export const MAX_LANES = 64;
+export const MAX_EDGES = 2048;
 export const SLICES_PER_WORKER = 10;
 
 // Status values (Int32)
 export const NOT_READY = 0;
-export const READY     = 1;
-export const CLAIMED   = 2;
-export const DONE      = 3;
-export const FAILED    = 4;
+export const READY = 1;
+export const CLAIMED = 2;
+export const DONE = 3;
+export const FAILED = 4;
 
 // Flag bits
-export const F_ON_DEMAND         = 1;
+export const F_ON_DEMAND = 1;
 export const F_UNIQUE_PER_WORKER = 2;
-export const F_RUN_ON_MAIN       = 4;
-export const F_PIN_TO_PRED       = 8;
-export const F_RUN_WHEN_IDLE    = 16;
+export const F_RUN_ON_MAIN = 4;
+export const F_PIN_TO_PRED = 8;
+export const F_RUN_WHEN_IDLE = 16;
 
 // Handler name → integer ID registry.  Workers build the reverse table
 // (handlerById) at startup from the imported HANDLERS constant.
 export const HANDLERS = {
-  warmInit: 0, renderEnvInit: 1, flush: 2,
-  scssLight: 3, scssDark: 4, dot: 5,
-  buildInfo: 6, render: 7,
+  warmInit: 0,
+  renderEnvInit: 1,
+  flush: 2,
+  scssLight: 3,
+  scssDark: 4,
+  dot: 5,
+  buildInfo: 6,
+  render: 7,
 };
 
 // ── SAB layout ───────────────────────────────────────────────────────────────
@@ -37,30 +42,34 @@ export const HANDLERS = {
 
 const L = (() => {
   let o = 0;
-  const a = n => { const off = o; o += n; return off; };
+  const a = (n) => {
+    const off = o;
+    o += n;
+    return off;
+  };
   return {
-    taskCount:       a(1),
-    depCount:        a(MAX_TASKS),
-    status:          a(MAX_TASKS),
-    flags:           a(MAX_TASKS),
-    succOffset:      a(MAX_TASKS),
-    succCount:       a(MAX_TASKS),
-    succList:        a(MAX_EDGES),
-    affinityLane:    a(MAX_TASKS),
-    pinnedTo:        a(MAX_TASKS),
+    taskCount: a(1),
+    depCount: a(MAX_TASKS),
+    status: a(MAX_TASKS),
+    flags: a(MAX_TASKS),
+    succOffset: a(MAX_TASKS),
+    succCount: a(MAX_TASKS),
+    succList: a(MAX_EDGES),
+    affinityLane: a(MAX_TASKS),
+    pinnedTo: a(MAX_TASKS),
     completedOnLane: a(MAX_TASKS),
-    perWorkerDone:   a(MAX_TASKS * MAX_LANES),
-    edgeCount:       a(1),
-    notify:          a(1),
-    firstReady:      a(1),
-    buildDone:       a(1),
-    handlerIdx:      a(MAX_TASKS),
-    perWorkerDep:    a(MAX_TASKS * 2),
-    expectedDep:     a(MAX_TASKS * 2),
-    idlePriority:    a(MAX_TASKS),
-    priority:        a(MAX_TASKS),
-    payloadOffset:   a(MAX_TASKS),
-    payloadLength:   a(MAX_TASKS),
+    perWorkerDone: a(MAX_TASKS * MAX_LANES),
+    edgeCount: a(1),
+    notify: a(1),
+    firstReady: a(1),
+    buildDone: a(1),
+    handlerIdx: a(MAX_TASKS),
+    perWorkerDep: a(MAX_TASKS * 2),
+    expectedDep: a(MAX_TASKS * 2),
+    idlePriority: a(MAX_TASKS),
+    priority: a(MAX_TASKS),
+    payloadOffset: a(MAX_TASKS),
+    payloadLength: a(MAX_TASKS),
     TOTAL: o,
   };
 })();
@@ -72,28 +81,28 @@ export const SAB_BYTE_LENGTH = L.TOTAL * 4;
 export function createViews(sab) {
   const v = (off, len) => new Int32Array(sab, off * 4, len);
   return {
-    taskCount:       v(L.taskCount,       1),
-    depCount:        v(L.depCount,        MAX_TASKS),
-    status:          v(L.status,          MAX_TASKS),
-    flags:           v(L.flags,           MAX_TASKS),
-    succOffset:      v(L.succOffset,      MAX_TASKS),
-    succCount:       v(L.succCount,       MAX_TASKS),
-    succList:        v(L.succList,        MAX_EDGES),
-    affinityLane:    v(L.affinityLane,    MAX_TASKS),
-    pinnedTo:        v(L.pinnedTo,        MAX_TASKS),
+    taskCount: v(L.taskCount, 1),
+    depCount: v(L.depCount, MAX_TASKS),
+    status: v(L.status, MAX_TASKS),
+    flags: v(L.flags, MAX_TASKS),
+    succOffset: v(L.succOffset, MAX_TASKS),
+    succCount: v(L.succCount, MAX_TASKS),
+    succList: v(L.succList, MAX_EDGES),
+    affinityLane: v(L.affinityLane, MAX_TASKS),
+    pinnedTo: v(L.pinnedTo, MAX_TASKS),
     completedOnLane: v(L.completedOnLane, MAX_TASKS),
-    perWorkerDone:   v(L.perWorkerDone,   MAX_TASKS * MAX_LANES),
-    edgeCount:       v(L.edgeCount,       1),
-    notify:          v(L.notify,          1),
-    firstReady:      v(L.firstReady,      1),
-    buildDone:       v(L.buildDone,       1),
-    handlerIdx:      v(L.handlerIdx,      MAX_TASKS),
-    perWorkerDep:    v(L.perWorkerDep,    MAX_TASKS * 2),
-    expectedDep:     v(L.expectedDep,     MAX_TASKS * 2),
-    idlePriority:    v(L.idlePriority,    MAX_TASKS),
-    priority:        v(L.priority,        MAX_TASKS),
-    payloadOffset:   v(L.payloadOffset,   MAX_TASKS),
-    payloadLength:   v(L.payloadLength,   MAX_TASKS),
+    perWorkerDone: v(L.perWorkerDone, MAX_TASKS * MAX_LANES),
+    edgeCount: v(L.edgeCount, 1),
+    notify: v(L.notify, 1),
+    firstReady: v(L.firstReady, 1),
+    buildDone: v(L.buildDone, 1),
+    handlerIdx: v(L.handlerIdx, MAX_TASKS),
+    perWorkerDep: v(L.perWorkerDep, MAX_TASKS * 2),
+    expectedDep: v(L.expectedDep, MAX_TASKS * 2),
+    idlePriority: v(L.idlePriority, MAX_TASKS),
+    priority: v(L.priority, MAX_TASKS),
+    payloadOffset: v(L.payloadOffset, MAX_TASKS),
+    payloadLength: v(L.payloadLength, MAX_TASKS),
   };
 }
 
@@ -103,29 +112,27 @@ export function createViews(sab) {
 // allocSchedulerSAB (static), dispatch.submit (dynamic), the pull loop
 // and idle scan (reads) — go through these two functions.
 
-export function writeTaskMeta(views, idx, {
-  handlerIdx, perWorkerDeps, expectedDeps, idlePriority, priority,
-}) {
-  Atomics.store(views.handlerIdx,   idx, handlerIdx);
-  Atomics.store(views.perWorkerDep, idx * 2,     perWorkerDeps?.[0] ?? -1);
+export function writeTaskMeta(views, idx, { handlerIdx, perWorkerDeps, expectedDeps, idlePriority, priority }) {
+  Atomics.store(views.handlerIdx, idx, handlerIdx);
+  Atomics.store(views.perWorkerDep, idx * 2, perWorkerDeps?.[0] ?? -1);
   Atomics.store(views.perWorkerDep, idx * 2 + 1, perWorkerDeps?.[1] ?? -1);
-  Atomics.store(views.expectedDep,  idx * 2,     expectedDeps?.[0]  ?? -1);
-  Atomics.store(views.expectedDep,  idx * 2 + 1, expectedDeps?.[1]  ?? -1);
+  Atomics.store(views.expectedDep, idx * 2, expectedDeps?.[0] ?? -1);
+  Atomics.store(views.expectedDep, idx * 2 + 1, expectedDeps?.[1] ?? -1);
   Atomics.store(views.idlePriority, idx, idlePriority ?? 0);
-  Atomics.store(views.priority,     idx, priority ?? 0);
+  Atomics.store(views.priority, idx, priority ?? 0);
 }
 
 export function readTaskMeta(views, idx) {
   const d0 = Atomics.load(views.perWorkerDep, idx * 2);
   const d1 = Atomics.load(views.perWorkerDep, idx * 2 + 1);
-  const e0 = Atomics.load(views.expectedDep,  idx * 2);
-  const e1 = Atomics.load(views.expectedDep,  idx * 2 + 1);
+  const e0 = Atomics.load(views.expectedDep, idx * 2);
+  const e1 = Atomics.load(views.expectedDep, idx * 2 + 1);
   return {
-    handlerIdx:    Atomics.load(views.handlerIdx, idx),
+    handlerIdx: Atomics.load(views.handlerIdx, idx),
     perWorkerDeps: d1 !== -1 ? [d0, d1] : d0 !== -1 ? [d0] : [],
-    expectedDeps:  e1 !== -1 ? [e0, e1] : e0 !== -1 ? [e0] : [],
-    idlePriority:  Atomics.load(views.idlePriority, idx),
-    priority:      Atomics.load(views.priority, idx),
+    expectedDeps: e1 !== -1 ? [e0, e1] : e0 !== -1 ? [e0] : [],
+    idlePriority: Atomics.load(views.idlePriority, idx),
+    priority: Atomics.load(views.priority, idx),
   };
 }
 
@@ -136,8 +143,7 @@ export function allocSchedulerSAB(taskDefs, workerCount, opts = {}) {
   // (it pre-fills perWorkerDone, which only those tasks consult).
   for (const [name, def] of Object.entries(taskDefs)) {
     if (def.survives_reset && !def.unique_per_worker)
-      throw new Error(
-        `"${name}" has survives_reset without unique_per_worker`);
+      throw new Error(`"${name}" has survives_reset without unique_per_worker`);
   }
 
   // 1. Assign indices to static tasks in definition order.
@@ -150,9 +156,8 @@ export function allocSchedulerSAB(taskDefs, workerCount, opts = {}) {
   }
 
   const DYNAMIC_BASE = idxToName.length;
-  const totalTasks   = DYNAMIC_BASE;  // dynamic slots allocated at runtime
-  if (totalTasks > MAX_TASKS)
-    throw new Error(`${totalTasks} static tasks exceeds MAX_TASKS (${MAX_TASKS})`);
+  const totalTasks = DYNAMIC_BASE; // dynamic slots allocated at runtime
+  if (totalTasks > MAX_TASKS) throw new Error(`${totalTasks} static tasks exceeds MAX_TASKS (${MAX_TASKS})`);
 
   // 2. Build successor adjacency list by inverting expected[] predecessors.
   const successors = Array.from({ length: totalTasks }, () => []);
@@ -161,14 +166,13 @@ export function allocSchedulerSAB(taskDefs, workerCount, opts = {}) {
     const taskIdx = nameToIdx.get(name);
     for (const pred of def.expected) {
       const predIdx = nameToIdx.get(pred);
-      if (predIdx == null)
-        throw new Error(`"${name}" expects unknown predecessor "${pred}"`);
+      if (predIdx == null) throw new Error(`"${name}" expects unknown predecessor "${pred}"`);
       successors[predIdx].push(taskIdx);
     }
   }
 
   // 3. Allocate SAB and create views.
-  const sab   = new SharedArrayBuffer(SAB_BYTE_LENGTH);
+  const sab = new SharedArrayBuffer(SAB_BYTE_LENGTH);
   const views = createViews(sab);
 
   Atomics.store(views.taskCount, 0, totalTasks);
@@ -190,38 +194,36 @@ export function allocSchedulerSAB(taskDefs, workerCount, opts = {}) {
 
   for (let i = 0; i < totalTasks; i++) {
     const name = idxToName[i];
-    const def  = taskDefs[name];
+    const def = taskDefs[name];
 
     views.depCount[i] = def.expected.length;
 
     // flags
     let f = 0;
-    if (def.on_demand)           f |= F_ON_DEMAND;
-    if (def.unique_per_worker)   f |= F_UNIQUE_PER_WORKER;
-    if (def.runOnMain)           f |= F_RUN_ON_MAIN;
-    if (def.pin_to_predecessor)  f |= F_PIN_TO_PRED;
-    if (def.run_when_idle)       f |= F_RUN_WHEN_IDLE;
+    if (def.on_demand) f |= F_ON_DEMAND;
+    if (def.unique_per_worker) f |= F_UNIQUE_PER_WORKER;
+    if (def.runOnMain) f |= F_RUN_ON_MAIN;
+    if (def.pin_to_predecessor) f |= F_PIN_TO_PRED;
+    if (def.run_when_idle) f |= F_RUN_WHEN_IDLE;
     views.flags[i] = f;
 
     // successor edges
     const succs = successors[i];
     views.succOffset[i] = edgePos;
-    views.succCount[i]  = succs.length;
+    views.succCount[i] = succs.length;
     for (const s of succs) {
-      if (edgePos >= MAX_EDGES)
-        throw new Error(`Edge count exceeds MAX_EDGES (${MAX_EDGES})`);
+      if (edgePos >= MAX_EDGES) throw new Error(`Edge count exceeds MAX_EDGES (${MAX_EDGES})`);
       views.succList[edgePos++] = s;
     }
 
     // defaults
-    views.affinityLane[i]    = -1;
+    views.affinityLane[i] = -1;
     views.completedOnLane[i] = -1;
 
     // pinnedTo
     if (def.pin_to_predecessor) {
       const pinIdx = nameToIdx.get(def.pin_to_predecessor);
-      if (pinIdx == null)
-        throw new Error(`"${name}" pinned to unknown "${def.pin_to_predecessor}"`);
+      if (pinIdx == null) throw new Error(`"${name}" pinned to unknown "${def.pin_to_predecessor}"`);
       views.pinnedTo[i] = pinIdx;
     } else {
       views.pinnedTo[i] = -1;
@@ -240,31 +242,28 @@ export function allocSchedulerSAB(taskDefs, workerCount, opts = {}) {
   for (const [name, def] of Object.entries(taskDefs)) {
     if (def.runOnMain) continue;
 
-    const idx         = nameToIdx.get(name);
+    const idx = nameToIdx.get(name);
     const handlerName = def.handler ?? name;
-    const hIdx        = HANDLERS[handlerName];
-    if (hIdx == null)
-      throw new Error(`"${name}" has unknown handler "${handlerName}"`);
+    const hIdx = HANDLERS[handlerName];
+    if (hIdx == null) throw new Error(`"${name}" has unknown handler "${handlerName}"`);
 
-    const perWorkerDeps = (def.perWorkerDeps ?? []).map(depName => {
+    const perWorkerDeps = (def.perWorkerDeps ?? []).map((depName) => {
       const depIdx = nameToIdx.get(depName);
-      if (depIdx == null)
-        throw new Error(`"${name}" has unknown perWorkerDep "${depName}"`);
+      if (depIdx == null) throw new Error(`"${name}" has unknown perWorkerDep "${depName}"`);
       return depIdx;
     });
 
     let expectedDeps = [];
     if (def.unique_per_worker && def.expected.length > 0) {
-      expectedDeps = def.expected.map(predName => {
+      expectedDeps = def.expected.map((predName) => {
         const predIdx = nameToIdx.get(predName);
-        if (predIdx == null)
-          throw new Error(`"${name}" has unknown expected predecessor "${predName}"`);
+        if (predIdx == null) throw new Error(`"${name}" has unknown expected predecessor "${predName}"`);
         return predIdx;
       });
     }
 
     writeTaskMeta(views, idx, {
-      handlerIdx:   hIdx,
+      handlerIdx: hIdx,
       perWorkerDeps,
       expectedDeps,
       idlePriority: def.idle_priority ?? 0,
@@ -304,18 +303,21 @@ export function scanAndClaim(views, myLane) {
   const count = Atomics.load(views.taskCount, 0);
   while (true) {
     const start = Atomics.load(views.firstReady, 0);
-    let bestIdx = -1, bestPri = -1;
+    let bestIdx = -1,
+      bestPri = -1;
     for (let i = start; i < count; i++) {
       if (Atomics.load(views.status, i) !== READY) continue;
       if (Atomics.load(views.flags, i) & F_RUN_ON_MAIN) continue;
       const aff = Atomics.load(views.affinityLane, i);
       if (aff !== -1 && aff !== myLane) continue;
       const pri = Atomics.load(views.priority, i);
-      if (pri > bestPri) { bestPri = pri; bestIdx = i; }
+      if (pri > bestPri) {
+        bestPri = pri;
+        bestIdx = i;
+      }
     }
     if (bestIdx === -1) return -1;
-    if (Atomics.compareExchange(views.status, bestIdx, READY, CLAIMED) === READY)
-      return bestIdx;
+    if (Atomics.compareExchange(views.status, bestIdx, READY, CLAIMED) === READY) return bestIdx;
     // CAS lost: another worker claimed bestIdx.  Retry full scan.
   }
 }
@@ -326,7 +328,7 @@ export function onTaskDone(views, taskIdx, lane) {
   advanceFirstReady(views, taskIdx);
 
   let readyCount = 0;
-  let wakeMain   = false;
+  let wakeMain = false;
 
   const off = Atomics.load(views.succOffset, taskIdx);
   const cnt = Atomics.load(views.succCount, taskIdx);
@@ -353,7 +355,7 @@ export function onTaskDone(views, taskIdx, lane) {
 
 export function advanceFirstReady(views, taskIdx) {
   const count = Atomics.load(views.taskCount, 0);
-  const cur   = Atomics.load(views.firstReady, 0);
+  const cur = Atomics.load(views.firstReady, 0);
   if (taskIdx !== cur) return;
   let next = cur;
   while (next < count && Atomics.load(views.status, next) === DONE) next++;
@@ -371,12 +373,10 @@ const encoder = new TextEncoder();
 // Reserve `count` contiguous slots from the dynamic pool.  Returns the base index.
 export function allocDynamicSlots(views, idMapping, count) {
   const base = idMapping.DYNAMIC_BASE + idMapping.nextDynamic;
-  if (base + count > MAX_TASKS)
-    throw new Error(`dynamic tasks exceed MAX_TASKS (${MAX_TASKS})`);
+  if (base + count > MAX_TASKS) throw new Error(`dynamic tasks exceed MAX_TASKS (${MAX_TASKS})`);
   idMapping.nextDynamic += count;
   const newCount = base + count;
-  if (newCount > Atomics.load(views.taskCount, 0))
-    Atomics.store(views.taskCount, 0, newCount);
+  if (newCount > Atomics.load(views.taskCount, 0)) Atomics.store(views.taskCount, 0, newCount);
   return base;
 }
 
@@ -386,10 +386,9 @@ export function allocDynamicSlots(views, idMapping, count) {
 export function wireDynamicEdges(views, edges) {
   let edgePos = Atomics.load(views.edgeCount, 0);
   for (const { from, to } of edges) {
-    if (edgePos + to.length > MAX_EDGES)
-      throw new Error(`dynamic edges exceed MAX_EDGES (${MAX_EDGES})`);
+    if (edgePos + to.length > MAX_EDGES) throw new Error(`dynamic edges exceed MAX_EDGES (${MAX_EDGES})`);
     Atomics.store(views.succOffset, from, edgePos);
-    Atomics.store(views.succCount,  from, to.length);
+    Atomics.store(views.succCount, from, to.length);
     for (const s of to) views.succList[edgePos++] = s;
   }
   Atomics.store(views.edgeCount, 0, edgePos);
@@ -403,16 +402,13 @@ export function appendDynamicSuccessors(views, edges) {
   let edgePos = Atomics.load(views.edgeCount, 0);
   for (const { from, to } of edges) {
     const oldOff = Atomics.load(views.succOffset, from);
-    const oldCnt = Atomics.load(views.succCount,  from);
-    const total  = oldCnt + to.length;
-    if (edgePos + total > MAX_EDGES)
-      throw new Error(`dynamic edges exceed MAX_EDGES (${MAX_EDGES})`);
-    for (let i = 0; i < oldCnt; i++)
-      views.succList[edgePos + i] = views.succList[oldOff + i];
-    for (let i = 0; i < to.length; i++)
-      views.succList[edgePos + oldCnt + i] = to[i];
+    const oldCnt = Atomics.load(views.succCount, from);
+    const total = oldCnt + to.length;
+    if (edgePos + total > MAX_EDGES) throw new Error(`dynamic edges exceed MAX_EDGES (${MAX_EDGES})`);
+    for (let i = 0; i < oldCnt; i++) views.succList[edgePos + i] = views.succList[oldOff + i];
+    for (let i = 0; i < to.length; i++) views.succList[edgePos + oldCnt + i] = to[i];
     Atomics.store(views.succOffset, from, edgePos);
-    Atomics.store(views.succCount,  from, total);
+    Atomics.store(views.succCount, from, total);
     edgePos += total;
   }
   Atomics.store(views.edgeCount, 0, edgePos);
@@ -444,7 +440,7 @@ export function activateDynamicTasks(views, base, count) {
 // JSON-serialize each payload, concatenate into one SharedArrayBuffer, and
 // write per-task payloadOffset / payloadLength into the scheduling SAB.
 export function packPayloads(views, base, payloads) {
-  const buffers = payloads.map(p => encoder.encode(JSON.stringify(p)));
+  const buffers = payloads.map((p) => encoder.encode(JSON.stringify(p)));
   const totalBytes = buffers.reduce((sum, b) => sum + b.byteLength, 0);
   const sab = new SharedArrayBuffer(totalBytes);
   const full = new Uint8Array(sab);
@@ -466,10 +462,9 @@ export function verifySchedulerSAB(taskDefs, views, idMapping) {
 
   // Verify dep counts for static tasks.
   for (const [name, def] of Object.entries(taskDefs)) {
-    const idx    = nameToIdx.get(name);
+    const idx = nameToIdx.get(name);
     const actual = views.depCount[idx];
-    if (actual !== def.expected.length)
-      errors.push(`depCount "${name}": got ${actual}, want ${def.expected.length}`);
+    if (actual !== def.expected.length) errors.push(`depCount "${name}": got ${actual}, want ${def.expected.length}`);
   }
 
   // Verify successor edges (rebuild expected set and compare).
@@ -490,37 +485,32 @@ export function verifySchedulerSAB(taskDefs, views, idMapping) {
     for (let i = off; i < off + cnt; i++) got.add(views.succList[i]);
 
     for (const s of want) {
-      if (!got.has(s))
-        errors.push(`missing edge: ${idxToName[predIdx]} -> ${idxToName[s]}`);
+      if (!got.has(s)) errors.push(`missing edge: ${idxToName[predIdx]} -> ${idxToName[s]}`);
     }
     for (const s of got) {
-      if (!want.has(s))
-        errors.push(`extra edge: ${idxToName[predIdx]} -> ${idxToName[s]}`);
+      if (!want.has(s)) errors.push(`extra edge: ${idxToName[predIdx]} -> ${idxToName[s]}`);
     }
   }
 
   // Verify flags.
   for (const [name, def] of Object.entries(taskDefs)) {
     const idx = nameToIdx.get(name);
-    let want  = 0;
-    if (def.on_demand)           want |= F_ON_DEMAND;
-    if (def.unique_per_worker)   want |= F_UNIQUE_PER_WORKER;
-    if (def.runOnMain)           want |= F_RUN_ON_MAIN;
-    if (def.pin_to_predecessor)  want |= F_PIN_TO_PRED;
-    if (def.run_when_idle)       want |= F_RUN_WHEN_IDLE;
-    if (views.flags[idx] !== want)
-      errors.push(`flags "${name}": got ${views.flags[idx]}, want ${want}`);
+    let want = 0;
+    if (def.on_demand) want |= F_ON_DEMAND;
+    if (def.unique_per_worker) want |= F_UNIQUE_PER_WORKER;
+    if (def.runOnMain) want |= F_RUN_ON_MAIN;
+    if (def.pin_to_predecessor) want |= F_PIN_TO_PRED;
+    if (def.run_when_idle) want |= F_RUN_WHEN_IDLE;
+    if (views.flags[idx] !== want) errors.push(`flags "${name}": got ${views.flags[idx]}, want ${want}`);
   }
 
   // Verify seed status.
   for (const [name, def] of Object.entries(taskDefs)) {
-    const idx    = nameToIdx.get(name);
+    const idx = nameToIdx.get(name);
     const isSeed = def.expected.length === 0 && !def.on_demand;
     const status = views.status[idx];
-    if (isSeed && status !== READY)
-      errors.push(`seed "${name}" should be READY, got ${status}`);
-    if (!isSeed && status !== NOT_READY)
-      errors.push(`non-seed "${name}" should be NOT_READY, got ${status}`);
+    if (isSeed && status !== READY) errors.push(`seed "${name}" should be READY, got ${status}`);
+    if (!isSeed && status !== NOT_READY) errors.push(`non-seed "${name}" should be NOT_READY, got ${status}`);
   }
 
   // Verify SAB-based task metadata.
@@ -532,8 +522,7 @@ export function verifySchedulerSAB(taskDefs, views, idMapping) {
     } else {
       const handlerName = def.handler ?? name;
       const wantH = HANDLERS[handlerName];
-      if (wantH == null)
-        errors.push(`"${name}" has unknown handler "${handlerName}"`);
+      if (wantH == null) errors.push(`"${name}" has unknown handler "${handlerName}"`);
       else if (views.handlerIdx[idx] !== wantH)
         errors.push(`handlerIdx "${name}": got ${views.handlerIdx[idx]}, want ${wantH}`);
 
@@ -543,6 +532,5 @@ export function verifySchedulerSAB(taskDefs, views, idMapping) {
     }
   }
 
-  if (errors.length > 0)
-    throw new Error("SAB verification failed:\n  " + errors.join("\n  "));
+  if (errors.length > 0) throw new Error("SAB verification failed:\n  " + errors.join("\n  "));
 }

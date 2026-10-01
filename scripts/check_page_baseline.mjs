@@ -43,10 +43,15 @@ Exit codes:
   1  a probe failed
   2  the gate could not run: a refused command line, or a crash`;
 
-if (withUsageError(() => parseCli(process.argv.slice(2), {
-  options: { help: { type: "boolean", short: "h" } },
-  stopAt: ["help"],
-})).values.help) printHelpAndExit(USAGE);
+if (
+  withUsageError(() =>
+    parseCli(process.argv.slice(2), {
+      options: { help: { type: "boolean", short: "h" } },
+      stopAt: ["help"],
+    }),
+  ).values.help
+)
+  printHelpAndExit(USAGE);
 
 const BASE = { src: GUARDED_SRC, pages: 908, staticFiles: 247 };
 
@@ -59,10 +64,12 @@ const readJson = async (file) => JSON.parse(await readFile(file, "utf8"));
 
 await withBaseline(BASE, async (file) => {
   const r = await checkPageBaseline({ ...BASE, pages: 871, write: true, file });
-  check("the _App loss repeated (-37 pages) fails",
-        r.failed && r.text.includes("871") && r.text.includes("908"), r.text.trim());
-  check("a fall does not lower the baseline by itself",
-        (await readJson(file)).pages === 908);
+  check(
+    "the _App loss repeated (-37 pages) fails",
+    r.failed && r.text.includes("871") && r.text.includes("908"),
+    r.text.trim(),
+  );
+  check("a fall does not lower the baseline by itself", (await readJson(file)).pages === 908);
 });
 
 await withBaseline(BASE, async (file) => {
@@ -84,44 +91,58 @@ await withBaseline(BASE, async (file) => {
 
 await withBaseline(BASE, async (file) => {
   const r = await checkPageBaseline({ ...BASE, pages: 920, write: true, file });
-  check("a rise is accepted and recorded",
-        !r.failed && (await readJson(file)).pages === 920, r.text.trim());
+  check("a rise is accepted and recorded", !r.failed && (await readJson(file)).pages === 920, r.text.trim());
 });
 
 await withBaseline(BASE, async (file) => {
   const r = await checkPageBaseline({ ...BASE, pages: 920, write: false, file });
-  check("a rise with write:false leaves the file alone",
-        !r.failed && (await readJson(file)).pages === 908, r.text.trim());
+  check(
+    "a rise with write:false leaves the file alone",
+    !r.failed && (await readJson(file)).pages === 908,
+    r.text.trim(),
+  );
 });
 
 // --- --update-page-baseline is the only way down -----------------------------
 
 await withBaseline(BASE, async (file) => {
   await checkPageBaseline({ ...BASE, pages: 871, write: false, force: true, file });
-  check("--update-page-baseline lowers it on request",
-        (await readJson(file)).pages === 871);
+  check("--update-page-baseline lowers it on request", (await readJson(file)).pages === 871);
 });
 
 // --- the two that caught real bugs -------------------------------------------
 
 await withBaseline(BASE, async (file) => {
   const r = await checkPageBaseline({
-    src: "test/fixtures/check-src", pages: 3, staticFiles: 5, write: true, file,
+    src: "test/fixtures/check-src",
+    pages: 3,
+    staticFiles: 5,
+    write: true,
+    file,
   });
-  check("a foreign source root is ignored, not measured",
-        !r.failed && r.text === "" && (await readJson(file)).pages === 908, r.text.trim());
+  check(
+    "a foreign source root is ignored, not measured",
+    !r.failed && r.text === "" && (await readJson(file)).pages === 908,
+    r.text.trim(),
+  );
 });
 
 await withBaseline(null, async (file) => {
   const r = await checkPageBaseline({ ...BASE, write: false, file });
-  check("a missing baseline fails where the build may not write (CI)",
-        r.failed && r.text.includes("missing"), r.text.trim());
+  check(
+    "a missing baseline fails where the build may not write (CI)",
+    r.failed && r.text.includes("missing"),
+    r.text.trim(),
+  );
 });
 
 await withBaseline(null, async (file) => {
   const r = await checkPageBaseline({ ...BASE, write: true, file });
-  check("a missing baseline is created where it may write",
-        !r.failed && (await readJson(file)).pages === 908, r.text.trim());
+  check(
+    "a missing baseline is created where it may write",
+    !r.failed && (await readJson(file)).pages === 908,
+    r.text.trim(),
+  );
 });
 
 // --- report ------------------------------------------------------------------

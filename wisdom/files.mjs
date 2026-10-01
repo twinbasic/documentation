@@ -6,17 +6,17 @@
 // that does not parse is reported by its path, not as a bare SyntaxError, and
 // so is a frontmatter block.
 
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { parseFrontmatter } from '../lib/frontmatter.mjs'
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { parseFrontmatter } from "../lib/frontmatter.mjs";
 
 /**
  * Write `text` to `path` through a temp file and a rename.  The caller makes
  * sure the folder exists.
  */
 export function writeFileAtomic(path, text) {
-  const tmpPath = path + '.tmp'
-  writeFileSync(tmpPath, text)
-  renameSync(tmpPath, path)
+  const tmpPath = path + ".tmp";
+  writeFileSync(tmpPath, text);
+  renameSync(tmpPath, path);
 }
 
 /**
@@ -25,12 +25,12 @@ export function writeFileAtomic(path, text) {
  * `remedy`, which says what deleting the file costs.
  */
 export function readJsonFile(path, fallback, remedy) {
-  if (!existsSync(path)) return fallback
-  const text = readFileSync(path, 'utf-8')
+  if (!existsSync(path)) return fallback;
+  const text = readFileSync(path, "utf-8");
   try {
-    return JSON.parse(text)
+    return JSON.parse(text);
   } catch (err) {
-    throw new Error(`${path} is not valid JSON (${err.message}). ${remedy}`)
+    throw new Error(`${path} is not valid JSON (${err.message}). ${remedy}`);
   }
 }
 
@@ -41,8 +41,8 @@ export function readJsonFile(path, fallback, remedy) {
  */
 export function readFrontmatter(path) {
   try {
-    return parseFrontmatter(readFileSync(path, 'utf-8'))?.data ?? {}
+    return parseFrontmatter(readFileSync(path, "utf-8"))?.data ?? {};
   } catch (err) {
-    throw new Error(`${path} has frontmatter that does not parse (${err.message})`)
+    throw new Error(`${path} has frontmatter that does not parse (${err.message})`);
   }
 }

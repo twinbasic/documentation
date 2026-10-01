@@ -218,7 +218,10 @@ const SITES = [
 // (or `ProbeConst`, for [DllExport] and [ComExport]) would collide with each
 // other and the collision would read as a finding about the attribute.
 export const SITE_LIST = SITES.map(([id, human, template, opts = {}]) => ({
-  id, human, template: template.replace(/\bProbe(Const|Var)?\b/g, () => "${M}"), inline: !!opts.inline,
+  id,
+  human,
+  template: template.replace(/\bProbe(Const|Var)?\b/g, () => "${M}"),
+  inline: !!opts.inline,
   // Codes the skeleton draws with no attribute at all, and that are not the attribute's doing.
   baselineCodes: new Set(opts.baselineCodes ?? []),
 }));
@@ -301,7 +304,10 @@ export function renderSite(site, tag, attr) {
   // Baseline. An inline site loses the attribute and keeps its statement; a
   // stand-alone one loses the whole line, which would otherwise be blank.
   if (site.inline) return filled.replaceAll("${A} ", "").replaceAll("${A}", "");
-  return filled.split("\n").filter((l) => l.trim() !== "${A}").join("\n");
+  return filled
+    .split("\n")
+    .filter((l) => l.trim() !== "${A}")
+    .join("\n");
 }
 
 /** Which line (1-based) of the rendered probe holds the attribute. */

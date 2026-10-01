@@ -49,26 +49,36 @@
 // Idempotent -- repeated imports do nothing after the first.
 
 import {
-  PDFObjectParser, PDFBool, PDFNull, CharCodes, Keywords, IsNumeric, PDFObjectParsingError,
-} from './pdf-lib-internals.mjs';
-import { checkTargets } from './shim-targets.mjs';
+  PDFObjectParser,
+  PDFBool,
+  PDFNull,
+  CharCodes,
+  Keywords,
+  IsNumeric,
+  PDFObjectParsingError,
+} from "./pdf-lib-internals.mjs";
+import { checkTargets } from "./shim-targets.mjs";
 
-const KwTrue  = Keywords.true;
+const KwTrue = Keywords.true;
 const KwFalse = Keywords.false;
-const KwNull  = Keywords.null;
+const KwNull = Keywords.null;
 
-const LessThan          = CharCodes.LessThan;
-const ForwardSlash      = CharCodes.ForwardSlash;
+const LessThan = CharCodes.LessThan;
+const ForwardSlash = CharCodes.ForwardSlash;
 const LeftSquareBracket = CharCodes.LeftSquareBracket;
-const LeftParen         = CharCodes.LeftParen;
-const t_code            = CharCodes.t;
-const f_code            = CharCodes.f;
-const n_code            = CharCodes.n;
+const LeftParen = CharCodes.LeftParen;
+const t_code = CharCodes.t;
+const f_code = CharCodes.f;
+const n_code = CharCodes.n;
 
 if (!PDFObjectParser.prototype.__fastParseObjectInstalled) {
-  checkTargets(import.meta.url, { PDFObjectParser }, {
-    'PDFObjectParser.prototype.parseObject': [0, '96b386d327ae'],
-  });
+  checkTargets(
+    import.meta.url,
+    { PDFObjectParser },
+    {
+      "PDFObjectParser.prototype.parseObject": [0, "96b386d327ae"],
+    },
+  );
   PDFObjectParser.prototype.parseObject = function fastParseObject() {
     this.skipWhitespaceAndComments();
     const bytes = this.bytes;
@@ -78,12 +88,12 @@ if (!PDFObjectParser.prototype.__fastParseObjectInstalled) {
       if (bytes.peekAhead(1) === LessThan) return this.parseDictOrStream();
       return this.parseHexString();
     }
-    if (byte === ForwardSlash)      return this.parseName();
+    if (byte === ForwardSlash) return this.parseName();
     if (byte === LeftSquareBracket) return this.parseArray();
-    if (byte === LeftParen)         return this.parseString();
-    if (byte === t_code && this.matchKeyword(KwTrue))  return PDFBool.True;
+    if (byte === LeftParen) return this.parseString();
+    if (byte === t_code && this.matchKeyword(KwTrue)) return PDFBool.True;
     if (byte === f_code && this.matchKeyword(KwFalse)) return PDFBool.False;
-    if (byte === n_code && this.matchKeyword(KwNull))  return PDFNull;
+    if (byte === n_code && this.matchKeyword(KwNull)) return PDFNull;
     throw new PDFObjectParsingError(bytes.position(), byte);
   };
 

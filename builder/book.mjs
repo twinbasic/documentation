@@ -75,7 +75,7 @@ function buildChapterList(entry, pages, byUrl) {
   if (landing) list.push(landing);
 
   let rest = collectMatches(entry, pages);
-  if (landingUrl) rest = rest.filter(p => p.permalink !== landingUrl);
+  if (landingUrl) rest = rest.filter((p) => p.permalink !== landingUrl);
   list.push(...sortByNavOrder(rest));
   return list;
 }
@@ -122,9 +122,7 @@ function collectMatches(entry, pages) {
 export function sortByNavOrder(input) {
   const pages = [...new Set(input)];
 
-  const indexUrls = pages
-    .filter(p => p.permalink.endsWith("/"))
-    .map(p => p.permalink);
+  const indexUrls = pages.filter((p) => p.permalink.endsWith("/")).map((p) => p.permalink);
 
   const groups = new Map();
   for (const p of pages) {
@@ -133,13 +131,14 @@ export function sortByNavOrder(input) {
     if (url.endsWith("/")) {
       key = url;
     } else {
-      const owners = indexUrls.filter(iu => url.startsWith(iu));
-      key = owners.length > 0
-        ? owners.reduce((a, b) => a.length >= b.length ? a : b)
-        : url;
+      const owners = indexUrls.filter((iu) => url.startsWith(iu));
+      key = owners.length > 0 ? owners.reduce((a, b) => (a.length >= b.length ? a : b)) : url;
     }
     let bucket = groups.get(key);
-    if (!bucket) { bucket = []; groups.set(key, bucket); }
+    if (!bucket) {
+      bucket = [];
+      groups.set(key, bucket);
+    }
     bucket.push(p);
   }
 
@@ -159,16 +158,16 @@ export function sortByNavOrder(input) {
     return at < bt ? -1 : at > bt ? 1 : 0;
   });
 
-  return orderedKeys.flatMap(k => sortedGroups.get(k));
+  return orderedKeys.flatMap((k) => sortedGroups.get(k));
 }
 
 function sortWithinGroup(members) {
-  const indexes = members.filter(p => p.permalink.endsWith("/"));
-  indexes.sort((a, b) => a.permalink < b.permalink ? -1 : a.permalink > b.permalink ? 1 : 0);
+  const indexes = members.filter((p) => p.permalink.endsWith("/"));
+  indexes.sort((a, b) => (a.permalink < b.permalink ? -1 : a.permalink > b.permalink ? 1 : 0));
 
-  const leaves = members.filter(p => !p.permalink.endsWith("/"));
-  const withOrder = leaves.filter(p => p.frontmatter.nav_order != null);
-  const withoutOrder = leaves.filter(p => p.frontmatter.nav_order == null);
+  const leaves = members.filter((p) => !p.permalink.endsWith("/"));
+  const withOrder = leaves.filter((p) => p.frontmatter.nav_order != null);
+  const withoutOrder = leaves.filter((p) => p.frontmatter.nav_order == null);
 
   withOrder.sort((a, b) => {
     const d = a.frontmatter.nav_order - b.frontmatter.nav_order;
@@ -196,9 +195,7 @@ function sortWithinGroup(members) {
 // empty seed; fall back to a slug of `fallbackTitle` so it reads
 // `ch-introduction` rather than just `ch-`.
 export function chapterAnchorFromUrl(url, fallbackTitle = null) {
-  let seed = String(url).replaceAll("/", "-")
-    .replace(/^-/, "")
-    .replace(/-$/, "");
+  let seed = String(url).replaceAll("/", "-").replace(/^-/, "").replace(/-$/, "");
   if (seed === "" && fallbackTitle) {
     seed = String(fallbackTitle).toLowerCase().replaceAll(" ", "-");
   }
@@ -210,11 +207,11 @@ export function chapterAnchorFromUrl(url, fallbackTitle = null) {
 function chapterDividerId(chEntry) {
   let idSeed;
   if (chEntry.landing_page) {
-    idSeed = String(chEntry.landing_page).replaceAll("/", "-")
-      .replace(/^-/, "")
-      .replace(/-$/, "");
+    idSeed = String(chEntry.landing_page).replaceAll("/", "-").replace(/^-/, "").replace(/-$/, "");
   } else {
-    idSeed = String(chEntry.title ?? "").toLowerCase().replaceAll(" ", "-");
+    idSeed = String(chEntry.title ?? "")
+      .toLowerCase()
+      .replaceAll(" ", "-");
   }
   return `chd-${idSeed}`;
 }
@@ -289,14 +286,14 @@ const WHITESPACE_PATTERNS = (() => {
 // resulting post-compress bytes are identical for kramdown's input
 // (the duplicate `\n` collapses to one space) and now match for
 // markdown-it's input too.
-const DETAILS_OPEN_RE       = /<details[^>]*>/gi;
-const DETAILS_CLOSE_RE      = /<\/details>/gi;
-const SUMMARY_CLOSE_RE      = /<\/summary>/gi;
+const DETAILS_OPEN_RE = /<details[^>]*>/gi;
+const DETAILS_CLOSE_RE = /<\/details>/gi;
+const SUMMARY_CLOSE_RE = /<\/summary>/gi;
 // Open-tag variants: first capture summaries with an id= (preserve the id
 // as a lightweight anchor so intra-article href="#..." links still resolve
 // after the details/summary are unwrapped); then strip the rest.
-const SUMMARY_OPEN_WITH_ID  = /<summary\b[^>]*\bid="([^"]+)"[^>]*>/gi;
-const SUMMARY_OPEN_RE       = /<summary[^>]*>/gi;
+const SUMMARY_OPEN_WITH_ID = /<summary\b[^>]*\bid="([^"]+)"[^>]*>/gi;
+const SUMMARY_OPEN_RE = /<summary[^>]*>/gi;
 const HEADING_SHIFT_RE = /<(\/?)h([1-6])\b/g;
 
 // PLAN-8 §6.3 / book-chapter-transform.rb#book_chapter_transform. Five
@@ -384,7 +381,9 @@ export function bookChapterTransform(body, baseurl, headingShiftN, chapterAnchor
 // attribute. The code/pre branches leave m[1] (the quote char)
 // undefined; we skip those.
 const IMG_SRC_RE_BOOK = new RegExp(
-  String.raw`${CODE_OR_PRE.source}|\bsrc=(["'])((?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\1`, "g");
+  String.raw`${CODE_OR_PRE.source}|\bsrc=(["'])((?![#/]|[a-zA-Z][a-zA-Z0-9+.\-]*:)[^"']+)\1`,
+  "g",
+);
 
 // Mutates `seen`. Called once per emitted chapter body so the post-
 // pass scan in pdf.mjs's deriveBookOutputs is not needed.
@@ -435,7 +434,7 @@ function emitChapter(out, chapter, opts, subPageState, baseurl, imagePaths) {
   if (typeof chapter.renderedContent !== "string") {
     throw new Error(
       `book: chapter ${chapter.permalink ?? chapter.destPath ?? "(unknown)"} has no ` +
-      `renderedContent; refusing to drop it from the book silently`,
+        `renderedContent; refusing to drop it from the book silently`,
     );
   }
   let body = chapter.renderedContent;
@@ -454,8 +453,7 @@ function emitChapter(out, chapter, opts, subPageState, baseurl, imagePaths) {
   if (isSubPage) n++;
   if (opts.extraHeadingShift) n++;
 
-  const chapterAnchor = opts.chapterAnchorOverride
-    ?? chapterAnchorFromUrl(chapter.permalink);
+  const chapterAnchor = opts.chapterAnchorOverride ?? chapterAnchorFromUrl(chapter.permalink);
 
   body = bookChapterTransform(body, baseurl, n, chapterAnchor);
   if (!body.trim()) return;
@@ -468,7 +466,7 @@ function emitChapter(out, chapter, opts, subPageState, baseurl, imagePaths) {
   if (imagePaths) collectImagePaths(body, imagePaths);
 
   const articleClass = pickArticleClass(opts, isSubPage);
-  const headerTitle  = pickHeaderTitle(chapter, opts, isSubPage, subPageState);
+  const headerTitle = pickHeaderTitle(chapter, opts, isSubPage, subPageState);
 
   // Article structure mirrors book-chapter-body.html lines 171-174:
   //   <article class="..." id="...">
@@ -477,7 +475,9 @@ function emitChapter(out, chapter, opts, subPageState, baseurl, imagePaths) {
   //   </article>
   // Pre-compress; the html-compress pass at the end collapses the
   // surrounding whitespace.
-  out.push(`<article class="${articleClass}" id="${chapterAnchor}"${opts.markArticleClosed ? ' data-pdf-bookmark-closed' : ''}>\n`);
+  out.push(
+    `<article class="${articleClass}" id="${chapterAnchor}"${opts.markArticleClosed ? " data-pdf-bookmark-closed" : ""}>\n`,
+  );
   out.push(`<span class="header-string">${headerTitle}</span>\n`);
   // landing_is_target: chapter title heading injected here so it lands
   // inside the landing-page article (making the PDF bookmark navigate to
@@ -512,7 +512,9 @@ function updateSubPageState(chapter, opts, state) {
     // lowercase, look for 'module'" heuristic gives the same answer
     // on the rendered HTML because the H1 text survives kramdown's
     // emit unchanged.
-    const head = String(chapter.renderedContent ?? "").slice(0, 200).toLowerCase();
+    const head = String(chapter.renderedContent ?? "")
+      .slice(0, 200)
+      .toLowerCase();
     state.currentIndexKind = head.includes("module") ? "module" : "class";
     return false;
   }
@@ -548,8 +550,18 @@ const ROMAN = [
 ];
 
 const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 // PLAN-8 §5.2 / PLAN-9 §5.9: assembleBook. Walks site.bookData and
@@ -574,7 +586,9 @@ export function assembleBook(site, pages) {
   out.push("\n<body>\n");
   out.push(renderTitlePage(site));
   emitFrontMatter(out, bookData, baseurl, imagePaths);
-  (bookData.parts ?? []).forEach((part, i) => { emitPart(out, part, i, site, baseurl, imagePaths); });
+  (bookData.parts ?? []).forEach((part, i) => {
+    emitPart(out, part, i, site, baseurl, imagePaths);
+  });
   out.push("\n</body>\n</html>\n");
 
   let bookHtml = out.join("");
@@ -612,9 +626,10 @@ function renderTitlePage(site) {
   const buildDate = formatBuildDateNow();
   let buildLine;
   if (commit !== "unknown") {
-    buildLine = commitDate !== "unknown"
-      ? `Built ${buildDate} from commit ${commit} (${commitDate}).`
-      : `Built ${buildDate} from commit ${commit}.`;
+    buildLine =
+      commitDate !== "unknown"
+        ? `Built ${buildDate} from commit ${commit} (${commitDate}).`
+        : `Built ${buildDate} from commit ${commit}.`;
   } else {
     buildLine = `Built ${buildDate}.`;
   }
@@ -673,10 +688,7 @@ function renderPartDivider(part, partNum, site) {
     if (!md) {
       throw new Error("Phase 8: site.markdown is unset; Phase 3 didn't run before assembleBook.");
     }
-    const renderedSubtitle = md.render(String(part.subtitle))
-      .replaceAll("<p>", "")
-      .replaceAll("</p>", "")
-      .trim();
+    const renderedSubtitle = md.render(String(part.subtitle)).replaceAll("<p>", "").replaceAll("</p>", "").trim();
     out += `\n  <p class="part-subtitle">${renderedSubtitle}</p>`;
   }
   if (part.intro) {
@@ -722,16 +734,26 @@ function emitFrontMatter(out, bookData, baseurl, imagePaths) {
   const state = { currentIndexUrl: "", currentIndexKind: "class", currentIndexName: "" };
   for (const fm of bookData.front_matter ?? []) {
     for (const chapter of fm._chapters ?? []) {
-      const fmAnchor = chapter.permalink === "/"
-        ? `ch-${String(fm.title ?? "").toLowerCase().replaceAll(" ", "-")}`
-        : null;
+      const fmAnchor =
+        chapter.permalink === "/"
+          ? `ch-${String(fm.title ?? "")
+              .toLowerCase()
+              .replaceAll(" ", "-")}`
+          : null;
       // No inter-article whitespace -- Jekyll's `{%- for -%}` and
       // `{%- include -%}` strip everything around the include.
-      emitChapter(out, chapter, {
-        articleClassOverride: "front-matter",
-        chapterAnchorOverride: fmAnchor,
-        skipSubPageDetection: true,
-      }, state, baseurl, imagePaths);
+      emitChapter(
+        out,
+        chapter,
+        {
+          articleClassOverride: "front-matter",
+          chapterAnchorOverride: fmAnchor,
+          skipSubPageDetection: true,
+        },
+        state,
+        baseurl,
+        imagePaths,
+      );
     }
   }
 }
@@ -746,11 +768,18 @@ function emitPart(out, part, partIdx, site, baseurl, imagePaths) {
 
   if (part.foreword_page && part._foreword) {
     const state = { currentIndexUrl: "", currentIndexKind: "class", currentIndexName: "" };
-    emitChapter(out, part._foreword, {
-      articleClassOverride: "part-foreword",
-      skipSubPageDetection: true,
-      skipBaseHeadingShift: !!part.no_heading_shift,
-    }, state, baseurl, imagePaths);
+    emitChapter(
+      out,
+      part._foreword,
+      {
+        articleClassOverride: "part-foreword",
+        skipSubPageDetection: true,
+        skipBaseHeadingShift: !!part.no_heading_shift,
+      },
+      state,
+      baseurl,
+      imagePaths,
+    );
   }
 
   if (part.chapters && part.landing_page && part._landing) {
@@ -779,8 +808,7 @@ function emitPart(out, part, partIdx, site, baseurl, imagePaths) {
           flags.markArticleClosed = true;
           closedPending = false;
         }
-        if (chEntry.landing_is_target && chEntry.landing_page &&
-            chapter.permalink === chEntry.landing_page) {
+        if (chEntry.landing_is_target && chEntry.landing_page && chapter.permalink === chEntry.landing_page) {
           const dividerId = chapterDividerId(chEntry);
           const closedAttr = chEntry.outline_closed ? ` data-pdf-bookmark-closed` : ``;
           flags.prependHtml = `<h2 data-divider-heading id="${dividerId}-title"${closedAttr}>${chEntry.title}</h2>\n`;
@@ -880,16 +908,14 @@ export function rewriteBookHrefs(html, site, pages) {
 
 function rewriteBodyHrefs(body, parentUrl, urlToAnchor, baseurl, siteUrl) {
   return replaceOutsideCode(body, /href="([^"]*)"/g, (whole, href) => {
-    if (EXTERNAL_PREFIXES.some(p => href.startsWith(p))) return whole;
+    if (EXTERNAL_PREFIXES.some((p) => href.startsWith(p))) return whole;
     const abs = resolveHref(href, parentUrl);
     if (!abs || !abs.startsWith("/")) return whole;
     const [pathPart, fragPart] = splitHash(abs);
     const lookupPath = stripBaseurl(pathPart, baseurl);
     const target = urlToAnchor.get(lookupPath);
     if (target) {
-      return fragPart
-        ? `href="#${target}-${fragPart}"`
-        : `href="#${target}"`;
+      return fragPart ? `href="#${target}-${fragPart}"` : `href="#${target}"`;
     }
     // Not in the book. A site path is dead in a PDF -- the viewer
     // resolves it against the file on the reader's disk -- so the link
@@ -897,9 +923,7 @@ function rewriteBodyHrefs(body, parentUrl, urlToAnchor, baseurl, siteUrl) {
     // lists each one as OUT OF BOOK (check.mjs, TREES.pdf): that list is
     // what says which pages the book leaves out and still links to.
     const missPath = fragPart ? `${lookupPath}#${fragPart}` : lookupPath;
-    return siteUrl
-      ? `href="${siteUrl}${baseurl}${missPath}"`
-      : `href="${missPath}"`;
+    return siteUrl ? `href="${siteUrl}${baseurl}${missPath}"` : `href="${missPath}"`;
   });
 }
 
@@ -911,9 +935,7 @@ function resolveHref(href, parentUrl) {
   try {
     const base = "http://x" + parentUrl;
     const merged = new URL(href, base);
-    return merged.hash
-      ? `${merged.pathname}${merged.hash}`
-      : merged.pathname;
+    return merged.hash ? `${merged.pathname}${merged.hash}` : merged.pathname;
   } catch {
     return null;
   }
@@ -1088,10 +1110,7 @@ function buildAnchorToParent(bookData, pages) {
   const map = new Map();
   for (const entry of bookEntries(bookData)) {
     for (const page of entryPages(entry, pages)) {
-      map.set(
-        chapterAnchorFromUrl(page.permalink, entry.title),
-        parentUrlOf(page.permalink),
-      );
+      map.set(chapterAnchorFromUrl(page.permalink, entry.title), parentUrlOf(page.permalink));
     }
   }
   return map;
@@ -1157,7 +1176,7 @@ export function bookCoverage(bookData, pages) {
   out.unlisted.sort(bySrc);
   out.both.sort(bySrc);
 
-  const urls = new Set(pages.map(p => p.permalink));
+  const urls = new Set(pages.map((p) => p.permalink));
   const checkUrl = (where, key, url) => {
     if (url && !urls.has(url)) out.missingUrls.push(`${where} ${key}: ${url}`);
   };
@@ -1193,24 +1212,34 @@ export function formatBookCoverage(c) {
     lines.push(head);
     for (const x of items) lines.push(`  ${fmt(x)}`);
   };
-  const page = p => `${p.srcRel}  (${p.permalink})`;
-  section(c.unlisted,
+  const page = (p) => `${p.srcRel}  (${p.permalink})`;
+  section(
+    c.unlisted,
     `${count(c.unlisted.length, "page has", "pages have")} no entry in _book.yml -- ` +
-    `add each to a part, or to left_out with a reason:`,
-    page);
-  section(c.both,
+      `add each to a part, or to left_out with a reason:`,
+    page,
+  );
+  section(
+    c.both,
     `${count(c.both.length, "page is", "pages are")} in the book and in left_out as well -- ` +
-    `remove the left_out entry:`,
-    page);
-  section(c.emptyEntries,
+      `remove the left_out entry:`,
+    page,
+  );
+  section(
+    c.emptyEntries,
     `${count(c.emptyEntries.length, "book entry selects", "book entries select")} no page:`,
-    x => x);
-  section(c.emptyLeftOut,
+    (x) => x,
+  );
+  section(
+    c.emptyLeftOut,
     `${count(c.emptyLeftOut.length, "left_out entry matches", "left_out entries match")} no page -- ` +
-    `remove or correct:`,
-    x => x);
-  section(c.missingUrls,
+      `remove or correct:`,
+    (x) => x,
+  );
+  section(
+    c.missingUrls,
     `${count(c.missingUrls.length, "landing or foreword URL names", "landing or foreword URLs name")} no page:`,
-    x => x);
+    (x) => x,
+  );
   return lines;
 }

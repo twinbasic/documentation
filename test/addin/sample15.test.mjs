@@ -15,13 +15,14 @@ import { savedSettings } from "../../scripts/lib/tb-registry.mjs";
 import { scenario } from "./scenario.mjs";
 
 const HOST = path.join(path.dirname(fileURLToPath(import.meta.url)), "host");
-const W = "GlobalSearchAddInData";     // the id Sample 15 gives ToolWindows.Add
+const W = "GlobalSearchAddInData"; // the id Sample 15 gives ToolWindows.Add
 
 // The search's results, read from the list view's data rather than its rows,
 // since a list view draws only the rows that fit. One entry per file, sorted by
 // path: its match count as the add-in words it, and each match's line of text
 // with the [line,column] label the add-in puts beside it.
-const results = (c) => c.evaluate(`(() => {
+const results = (c) =>
+  c.evaluate(`(() => {
   const w = toolWindowsById[${JSON.stringify(W)}];
   const e = w && w.bodyElement.querySelector("#resultsList");
   const lv = e && e.listview;
@@ -41,7 +42,8 @@ const results = (c) => c.evaluate(`(() => {
 const matchCount = (r) => r.reduce((n, f) => n + f.matches.length, 0);
 
 // The option boxes, by id, checked or not.
-const options = (c) => c.evaluate(`Object.fromEntries([...toolWindowsById[${JSON.stringify(W)}]
+const options = (c) =>
+  c.evaluate(`Object.fromEntries([...toolWindowsById[${JSON.stringify(W)}]
   .bodyElement.querySelectorAll("input[type=checkbox]")].map((e) => [e.id, e.checked]))`);
 
 scenario("Sample 15: Global Search", (lane) => {
@@ -58,13 +60,18 @@ scenario("Sample 15: Global Search", (lane) => {
 
   test("its toolbar button opens its tool window, with every option off", async () => {
     await click(c, "addinButton-GlobalSearchAddInButton");
-    const w = await waitFor(c, async (c) => { const t = await toolWindow(c, W); return t?.visible && t; });
+    const w = await waitFor(c, async (c) => {
+      const t = await toolWindow(c, W);
+      return t?.visible && t;
+    });
     assert.ok(w, "the tool window did not appear");
     assert.equal(w.title, "GLOBAL SEARCH");
     // Off, because the runner deleted the add-in's saved settings before the lane started.
     assert.deepEqual(await options(c), {
-      searchBarInsidePackages: false, searchBarMatchCase: false,
-      searchBarMatchWholeWordOnly: false, searchBarExcludeComments: false,
+      searchBarInsidePackages: false,
+      searchBarMatchCase: false,
+      searchBarMatchWholeWordOnly: false,
+      searchBarExcludeComments: false,
     });
   });
 
@@ -73,21 +80,32 @@ scenario("Sample 15: Global Search", (lane) => {
     await typeText(c, "needle");
     // The add-in searches a second after the last key-up, and adds one file's
     // entry at a time.
-    const found = await waitFor(c, async (c) => { const r = await results(c); return r?.length === 2 && r; });
+    const found = await waitFor(c, async (c) => {
+      const r = await results(c);
+      return r?.length === 2 && r;
+    });
     assert.deepEqual(found, [
-      { path: "twinbasic:/AddinHost/Sources/Haystack.twin", count: "5 matches", matches: [
-        ["' A haystack with a needle in it.", "[2,25]"],
-        ["Public Function FindTheNeedle(ByVal n As Long) As Long", "[3,28]"],
-        ["Dim needleCount As Long", "[4,13]"],
-        ["needleCount = n * 2", "[5,9]"],
-        ["Return needleCount", "[6,16]"],
-      ] },
-      { path: "twinbasic:/AddinHost/Sources/Main.twin", count: "4 matches", matches: [
-        ["Dim needle As Long", "[3,13]"],
-        ["needle = FindTheNeedle(3)", "[4,9]"],
-        ["needle = FindTheNeedle(3)", "[4,25]"],
-        ["Debug.Print needle", "[5,21]"],
-      ] },
+      {
+        path: "twinbasic:/AddinHost/Sources/Haystack.twin",
+        count: "5 matches",
+        matches: [
+          ["' A haystack with a needle in it.", "[2,25]"],
+          ["Public Function FindTheNeedle(ByVal n As Long) As Long", "[3,28]"],
+          ["Dim needleCount As Long", "[4,13]"],
+          ["needleCount = n * 2", "[5,9]"],
+          ["Return needleCount", "[6,16]"],
+        ],
+      },
+      {
+        path: "twinbasic:/AddinHost/Sources/Main.twin",
+        count: "4 matches",
+        matches: [
+          ["Dim needle As Long", "[3,13]"],
+          ["needle = FindTheNeedle(3)", "[4,9]"],
+          ["needle = FindTheNeedle(3)", "[4,25]"],
+          ["Debug.Print needle", "[5,21]"],
+        ],
+      },
     ]);
   });
 
@@ -105,13 +123,26 @@ scenario("Sample 15: Global Search", (lane) => {
 
   test("Match case narrows the search, and the add-in saves the option", async () => {
     await click(c, { toolWindow: W, css: "#searchBarMatchCase" });
-    const found = await waitFor(c, async (c) => { const r = await results(c); return r?.length === 2 && matchCount(r) === 7 && r; });
+    const found = await waitFor(c, async (c) => {
+      const r = await results(c);
+      return r?.length === 2 && matchCount(r) === 7 && r;
+    });
     assert.ok(found, `the results did not narrow to 7 matches: ${JSON.stringify(await results(c))}`);
-    assert.deepEqual(found.map((f) => f.count), ["4 matches", "3 matches"]);
-    assert.ok(!found.some((f) => f.matches.some(([line]) => line.includes("FindTheNeedle(ByVal"))),
-              "FindTheNeedle's declaration still matched");
-    assert.deepEqual(savedSettings("GlobalSearchAddIn"), { Settings: {
-      insidePackages: "FALSE", matchCase: "TRUE", matchWholeWord: "FALSE", excludeComments: "FALSE",
-    } });
+    assert.deepEqual(
+      found.map((f) => f.count),
+      ["4 matches", "3 matches"],
+    );
+    assert.ok(
+      !found.some((f) => f.matches.some(([line]) => line.includes("FindTheNeedle(ByVal"))),
+      "FindTheNeedle's declaration still matched",
+    );
+    assert.deepEqual(savedSettings("GlobalSearchAddIn"), {
+      Settings: {
+        insidePackages: "FALSE",
+        matchCase: "TRUE",
+        matchWholeWord: "FALSE",
+        excludeComments: "FALSE",
+      },
+    });
   });
 });

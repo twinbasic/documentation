@@ -144,8 +144,13 @@ function commandRuns(src, file) {
     cur = null;
   };
   src.split(/\r?\n/).forEach((line, i) => {
-    const m = /^\s*(&&\s*)?node\s+(?:scripts[\\/]([A-Za-z0-9_-]+\.mjs)|--test\s+test[\\/]([A-Za-z0-9_.-]+\.mjs))/.exec(line);
-    if (!m) { flush(); return; }
+    const m = /^\s*(&&\s*)?node\s+(?:scripts[\\/]([A-Za-z0-9_-]+\.mjs)|--test\s+test[\\/]([A-Za-z0-9_.-]+\.mjs))/.exec(
+      line,
+    );
+    if (!m) {
+      flush();
+      return;
+    }
     if (!cur) cur = { file, line: i + 1, gates: [], chained: true };
     else if (!m[1]) cur.chained = false;
     cur.gates.push(gateName(m[2], m[3]));
@@ -233,7 +238,8 @@ function splitSections(src) {
   return splitOnMarker(src, (line) => /^#{1,6}\s/.test(line), { md: siteParser() }).map((s) =>
     s.marker === null
       ? { heading: "(top of file)", start: 1, lines: s.lines }
-      : { heading: s.marker.trim(), start: s.start + 1, lines: [s.marker, ...s.lines] });
+      : { heading: s.marker.trim(), start: s.start + 1, lines: [s.marker, ...s.lines] },
+  );
 }
 
 /**
@@ -253,7 +259,7 @@ function subjectWrapper(sec) {
     // one line is what stopped this rule seeing Building.md's own section, and
     // Building.md's own section is the defect the rule was written for.
     if (/^\{:/.test(line.trim())) continue;
-    if (!/^(?: {4}|\t|```|~~~)/.test(line)) return null;   // prose, not a command
+    if (!/^(?: {4}|\t|```|~~~)/.test(line)) return null; // prose, not a command
     const m = /^[ \t`~]*(check|test)\.bat\b/.exec(line);
     if (m) return m[1];
     if (!/^(?:```|~~~)/.test(line)) return null;
@@ -270,15 +276,20 @@ function subjectWrapper(sec) {
 function proseClaims(src, file) {
   const claims = [];
   const at = (sec, body, idx) => sec.start + body.slice(0, idx).split("\n").length - 1;
-  const push = (sec, body, m, wrapper, raw, rule) => claims.push({
-    file, line: at(sec, body, m.index), wrapper: `${wrapper}.bat`,
-    count: asNumber(raw), quote: m[0].trim().replace(/\s+/g, " ").slice(0, 80), rule,
-  });
+  const push = (sec, body, m, wrapper, raw, rule) =>
+    claims.push({
+      file,
+      line: at(sec, body, m.index),
+      wrapper: `${wrapper}.bat`,
+      count: asNumber(raw),
+      quote: m[0].trim().replace(/\s+/g, " ").slice(0, 80),
+      rule,
+    });
 
   for (const sec of splitSections(src)) {
     const body = sec.lines.join("\n");
     for (const m of body.matchAll(POSSESSIVE)) push(sec, body, m, m[1], m[2], "possessive");
-    for (const m of body.matchAll(VERBAL))     push(sec, body, m, m[1], m[2], "verb");
+    for (const m of body.matchAll(VERBAL)) push(sec, body, m, m[1], m[2], "verb");
 
     sec.lines.forEach((line, i) => {
       const head = LINE_HEAD.exec(line);
@@ -286,8 +297,12 @@ function proseClaims(src, file) {
       const rest = line.slice(head[0].length, head[0].length + LINE_WINDOW);
       for (const m of rest.matchAll(COUNT_ON_LINE)) {
         claims.push({
-          file, line: sec.start + i, wrapper: `${head[1]}.bat`, count: asNumber(m[1]),
-          quote: line.trim().replace(/\s+/g, " ").slice(0, 80), rule: "line",
+          file,
+          line: sec.start + i,
+          wrapper: `${head[1]}.bat`,
+          count: asNumber(m[1]),
+          quote: line.trim().replace(/\s+/g, " ").slice(0, 80),
+          rule: "line",
         });
       }
     });
@@ -330,8 +345,7 @@ function proseFindings(src, file, counts) {
     const actual = counts.get(c.wrapper);
     if (actual === undefined || c.count === actual) continue;
     out.push(
-      `${c.file}:${c.line}: says ${c.wrapper} runs ${c.count}; it runs ${actual}.\n` +
-      `    ${c.rule}: "${c.quote}"`,
+      `${c.file}:${c.line}: says ${c.wrapper} runs ${c.count}; it runs ${actual}.\n` + `    ${c.rule}: "${c.quote}"`,
     );
   }
   return out;
@@ -358,8 +372,8 @@ function compareWrapper({ bat, heading }, batSrc, toolsMd) {
   if (documented.join("\0") !== actual.join("\0")) {
     findings.push(
       `${bat}: documented list does not match the wrapper.\n` +
-      `    ${bat}   : ${actual.join(", ")}\n` +
-      `    ${TOOLS_MD}: ${documented.join(", ") || "(none found)"}`,
+        `    ${bat}   : ${actual.join(", ")}\n` +
+        `    ${TOOLS_MD}: ${documented.join(", ") || "(none found)"}`,
     );
   }
 
@@ -369,13 +383,10 @@ function compareWrapper({ bat, heading }, batSrc, toolsMd) {
   const stated = statedCount(body);
   if (stated === null) {
     findings.push(
-      `${bat}: the \`${heading}\` section states no step count. ` +
-      `It should, so that this gate can check it.`,
+      `${bat}: the \`${heading}\` section states no step count. ` + `It should, so that this gate can check it.`,
     );
   } else if (stated !== actual.length) {
-    findings.push(
-      `${bat}: documented as "${NUMBER_WORDS[stated]} steps", but the wrapper runs ${actual.length}.`,
-    );
+    findings.push(`${bat}: documented as "${NUMBER_WORDS[stated]} steps", but the wrapper runs ${actual.length}.`);
   }
 
   return findings;
@@ -445,8 +456,9 @@ const NEGATIVES = [
     // gate outside the numbered list.
     name: "a cross-reference in prose is not a step",
     bat: "node scripts/a.mjs\n",
-    doc: "### x.bat\n\nTests of the toolchain are [`scripts/zz.mjs`](#zz), not these. One step:\n\n" +
-         "1. [`scripts/a.mjs`](#a) --- a.\n\n### next\n",
+    doc:
+      "### x.bat\n\nTests of the toolchain are [`scripts/zz.mjs`](#zz), not these. One step:\n\n" +
+      "1. [`scripts/a.mjs`](#a) --- a.\n\n### next\n",
   },
   {
     name: "a test file listed by its path is a step",
@@ -462,7 +474,10 @@ const NEGATIVES = [
 
 // Probes for the prose sweep. Every positive is a sentence of the kind a
 // published page states, against fixed counts (check.bat four, test.bat six).
-const REAL_COUNTS = new Map([["check.bat", 4], ["test.bat", 6]]);
+const REAL_COUNTS = new Map([
+  ["check.bat", 4],
+  ["test.bat", 6],
+]);
 
 const PROSE_PROBES = [
   {
@@ -567,10 +582,16 @@ Exit codes:
   2  the gate could not run: a refused command line, or a crash`;
 
 async function main(argv) {
-  const { values } = withUsageError(() => parseCli(argv, {
-    options: { verbose: { type: "boolean" }, "self-test": { type: "boolean" }, help: { type: "boolean", short: "h" } },
-    stopAt: ["help"],
-  }));
+  const { values } = withUsageError(() =>
+    parseCli(argv, {
+      options: {
+        verbose: { type: "boolean" },
+        "self-test": { type: "boolean" },
+        help: { type: "boolean", short: "h" },
+      },
+      stopAt: ["help"],
+    }),
+  );
   if (values.help) printHelpAndExit(USAGE);
   const verbose = values.verbose;
   const onlySelfTest = values.selfTest;
@@ -615,8 +636,7 @@ async function main(argv) {
   const counts = new Map([...wrapperGates].map(([bat, g]) => [bat, g.length]));
   const rels = [
     "README.md",
-    ...(await readdir(docsDir)).filter((n) => n.endsWith(".md"))
-      .map((n) => `docs/Documentation/${n}`),
+    ...(await readdir(docsDir)).filter((n) => n.endsWith(".md")).map((n) => `docs/Documentation/${n}`),
   ];
   let claimsSeen = 0;
   for (const rel of rels) {
@@ -628,8 +648,8 @@ async function main(argv) {
       }
       findings.push(
         `${rel}:${run.line}: a run of ${run.gates.length} gate scripts matches no wrapper.\n` +
-        `    documented : ${run.gates.join(", ")}\n` +
-        [...wrapperGates].map(([b, g]) => `    ${b.padEnd(11)}: ${g.join(", ")}`).join("\n"),
+          `    documented : ${run.gates.join(", ")}\n` +
+          [...wrapperGates].map(([b, g]) => `    ${b.padEnd(11)}: ${g.join(", ")}`).join("\n"),
       );
     }
     for (const c of proseClaims(src, rel)) {
@@ -647,27 +667,32 @@ async function main(argv) {
   if (probesFailed.length) {
     console.error(
       `\ncheck_gate_lists: ${probesFailed.length} of ${probes.length} self-test probes failed.\n` +
-      `  The gate itself is not detecting what it claims to; fix that before trusting a pass.`,
+        `  The gate itself is not detecting what it claims to; fix that before trusting a pass.`,
     );
     return 1;
   }
   if (findings.length) {
     console.error(
       `\ncheck_gate_lists: ${findings.length} disagreement(s) with the wrappers.\n` +
-      `  ${TOOLS_MD} owns these lists; every other page cites it rather than restating it.\n` +
-      `  Fix the list there -- and where a page states a count in prose, prefer deleting the\n` +
-      `  number over correcting it. The command block or the linked list carries it already.`,
+        `  ${TOOLS_MD} owns these lists; every other page cites it rather than restating it.\n` +
+        `  Fix the list there -- and where a page states a count in prose, prefer deleting the\n` +
+        `  number over correcting it. The command block or the linked list carries it already.`,
     );
     return 1;
   }
 
   console.log(
     `check_gate_lists: ${WRAPPERS.map((w) => `${w.bat} (${wrapperGates.get(w.bat).length})`).join(" + ")} ` +
-    `match ${TOOLS_MD}; ${claimsSeen} stated count(s) across ${rels.length} pages agree -- clean`,
+      `match ${TOOLS_MD}; ${claimsSeen} stated count(s) across ${rels.length} pages agree -- clean`,
   );
   return 0;
 }
 
 main(process.argv.slice(2))
-  .then((code) => { process.exitCode = code; })
-  .catch((err) => { console.error(err); process.exitCode = 2; });
+  .then((code) => {
+    process.exitCode = code;
+  })
+  .catch((err) => {
+    console.error(err);
+    process.exitCode = 2;
+  });

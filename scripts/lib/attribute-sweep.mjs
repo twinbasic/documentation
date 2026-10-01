@@ -9,9 +9,7 @@
 // outcomes -- is passed in.
 
 import { parseTargets } from "./attributes-doc.mjs";
-import {
-  FIXED_ARGS, GUID_ATTRS, NOT_FAITHFULLY_PROBEABLE, UNSYNTHESISABLE, pad,
-} from "./attribute-probe-kit.mjs";
+import { FIXED_ARGS, GUID_ATTRS, NOT_FAITHFULLY_PROBEABLE, UNSYNTHESISABLE, pad } from "./attribute-probe-kit.mjs";
 import { FAMILIES, OPTIONAL_SITES, attributeLine } from "./attribute-sites.mjs";
 import { escapeRegExp } from "../../builder/escape.mjs";
 
@@ -49,7 +47,10 @@ export function parseTokenRun(s) {
   let b = anchor;
   while (a > 0 && ok.test(s[a - 1])) a--;
   while (b < s.length && ok.test(s[b])) b++;
-  const tokens = s.slice(a, b).split("|").filter((t) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(t));
+  const tokens = s
+    .slice(a, b)
+    .split("|")
+    .filter((t) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(t));
   return { tokens: [...new Set(tokens)], why: null };
 }
 
@@ -58,8 +59,14 @@ export function parseTokenRun(s) {
 // because they are also the validation set: whether a shape can change the
 // answer about PLACEMENT is read off them (see `formDependence`), which is what
 // lets a token-table name be tried bare first without assuming it cannot.
-const BOOL_FORMS = [["true", "(True)"], ["false", "(False)"]];
-const GUESS_FORMS = [["str", '("probe")'], ["int", "(1)"]];
+const BOOL_FORMS = [
+  ["true", "(True)"],
+  ["false", "(False)"],
+];
+const GUESS_FORMS = [
+  ["str", '("probe")'],
+  ["int", "(1)"],
+];
 export const EXTRA_FORMS = [...BOOL_FORMS, ...GUESS_FORMS].map(([k]) => k);
 
 // The compiler allows these once per project (TB5114 on a second), so a batch
@@ -99,9 +106,8 @@ export function stage1Forms(u, mode) {
   return SINGLETON_NAMES.has(u.name) ? keys.filter((k) => k === "bare" || k === "true") : keys;
 }
 /** The forms a token-table name gets once some site has recognised it. */
-export const stage2Forms = (u) => (SINGLETON_NAMES.has(u.name)
-  ? ["true"]
-  : [...(hasFixed(u.name) ? ["fixed"] : []), ...EXTRA_FORMS]);
+export const stage2Forms = (u) =>
+  SINGLETON_NAMES.has(u.name) ? ["true"] : [...(hasFixed(u.name) ? ["fixed"] : []), ...EXTRA_FORMS];
 
 /** The argument text of a form (`""`, `"(True)"`, ...); null for a `fixed` form with no known shape. */
 export function argsOf(key, name, id) {
@@ -140,8 +146,17 @@ export function argsOf(key, name, id) {
  */
 const ACCEPT_LATER_CODES = new Set(["TB5114", "TB5247"]);
 export const RANK = {
-  ACCEPT: 0, ACCEPT_LATER: 1, ACCEPT_ERR: 2, RECOGNISED: 3,
-  REJECT_CONTEXT: 4, REJECT_SYNTAX: 5, CRASH: 6, HUNG: 7, HARNESS: 8, INTERFERES: 9, VOID: 10,
+  ACCEPT: 0,
+  ACCEPT_LATER: 1,
+  ACCEPT_ERR: 2,
+  RECOGNISED: 3,
+  REJECT_CONTEXT: 4,
+  REJECT_SYNTAX: 5,
+  CRASH: 6,
+  HUNG: 7,
+  HARNESS: 8,
+  INTERFERES: 9,
+  VOID: 10,
 };
 export const codeOf = (msg) => /\bTB\d{4}\b/.exec(msg)?.[0] ?? null;
 export const firm = (s) => s === "ACCEPT" || s === "ACCEPT_LATER";
@@ -210,9 +225,15 @@ export function sortRows(rows, files, probes) {
     const m = ROW.exec(row);
     // Only an ERROR is a stray. A row this cannot parse and that is not one is
     // a warning or a note about the project, which changes no answer.
-    if (!m) { if (/^\{ERROR\}/.test(row)) strays.push(row); continue; }
+    if (!m) {
+      if (/^\{ERROR\}/.test(row)) strays.push(row);
+      continue;
+    }
     const p = files.get(m[2].split("/").pop().split("\\").pop().toLowerCase());
-    if (!p) { if (m[1] === "ERROR") strays.push(row); continue; }
+    if (!p) {
+      if (m[1] === "ERROR") strays.push(row);
+      continue;
+    }
     byFile.get(p).push({ severity: m[1], line: Number(m[3]), col: Number(m[4]), message: m[5] });
   }
   return { byFile, strays };
@@ -246,7 +267,10 @@ export function makeBatches(probes, batchSize) {
   for (const p of order) {
     const k = singletonKey(p);
     let b = batches.find((x) => x.list.length < batchSize && (!k || !x.keys.has(k)));
-    if (!b) { b = { list: [], keys: new Set() }; batches.push(b); }
+    if (!b) {
+      b = { list: [], keys: new Set() };
+      batches.push(b);
+    }
     b.list.push(p);
     if (k) b.keys.add(k);
   }
@@ -267,12 +291,16 @@ export function aggregate(probes, outcomeOf) {
     const o = outcomeOf.get(p.id);
     if (!agg.has(p.name)) agg.set(p.name, new Map());
     const bySite = agg.get(p.name);
-    if (!bySite.has(p.site.id)) bySite.set(p.site.id, { state: "VOID", forms: {}, codes: new Set(), msgs: new Set(), pending: false });
+    if (!bySite.has(p.site.id))
+      bySite.set(p.site.id, { state: "VOID", forms: {}, codes: new Set(), msgs: new Set(), pending: false });
     const cell = bySite.get(p.site.id);
     // A form that was planned and has no answer (the run was cut short) or whose
     // build failed is pending, and a refusal from the other forms cannot stand
     // for it: the form able to pass may be exactly the one never compiled.
-    if (!o) { if (p.form !== "false") cell.pending = true; continue; }
+    if (!o) {
+      if (p.form !== "false") cell.pending = true;
+      continue;
+    }
     if (inconclusive(o.state) && p.form !== "false") cell.pending = true;
     cell.forms[p.form] = o.state;
     for (const c of o.codes) cell.codes.add(c);
@@ -306,7 +334,8 @@ export function formDependence(agg) {
       if (states.length > 1) multi++;
       const takes = states.filter(([, s]) => recognised(s));
       const refuses = states.filter(([, s]) => refused(s));
-      if (takes.length && refuses.length) out.push({ name, site, takes: takes.map(([k]) => k), refuses: refuses.map(([k]) => k) });
+      if (takes.length && refuses.length)
+        out.push({ name, site, takes: takes.map(([k]) => k), refuses: refuses.map(([k]) => k) });
     }
   }
   return { list: out, multi };
@@ -327,11 +356,15 @@ export function targetsOf(app) {
   // A place named by a LATER phrase covers the earlier ones: "procedures and
   // constants in a module" puts the procedures in a module too.
   const phrases = app.split(/,|\band\b/);
-  const bareProcedure = phrases.some((p, i) => /\b(procedures?|methods?)\b/i.test(p)
-    && !/\b(module|class|interface|prototype|parameter)/i.test(p)
-    && !phrases.slice(i + 1).some((q) => /\bin an?\s+(module|class|interface)\b/i.test(q)));
+  const bareProcedure = phrases.some(
+    (p, i) =>
+      /\b(procedures?|methods?)\b/i.test(p) &&
+      !/\b(module|class|interface|prototype|parameter)/i.test(p) &&
+      !phrases.slice(i + 1).some((q) => /\bin an?\s+(module|class|interface)\b/i.test(q)),
+  );
   if (bareProcedure) t = [...t.filter((x) => x !== "PROC_MODULE"), "PROC_ANY"];
-  if (t.includes("PROC_CLASS") && /class\s+or\s+interface/i.test(app) && !t.includes("PROC_INTERFACE")) t.push("PROC_INTERFACE");
+  if (t.includes("PROC_CLASS") && /class\s+or\s+interface/i.test(app) && !t.includes("PROC_INTERFACE"))
+    t.push("PROC_INTERFACE");
   return t;
 }
 
@@ -345,7 +378,8 @@ export const FAITHFUL_SITES = {
 };
 // A prototype in an Interface is not a procedure definition, so `procedures`
 // does not owe one.
-export const optionalFor = (target, site) => OPTIONAL_SITES.has(site) || (target === "PROC_ANY" && /_INTERFACE/.test(site));
+export const optionalFor = (target, site) =>
+  OPTIONAL_SITES.has(site) || (target === "PROC_ANY" && /_INTERFACE/.test(site));
 
 /**
  * One documented attribute laid against what the compiler did with it.
@@ -356,7 +390,7 @@ export const optionalFor = (target, site) => OPTIONAL_SITES.has(site) || (target
 export function compare(u, bySite) {
   const doc = u.doc;
   if (!doc) return null;
-  const why = FAITHFUL_SITES[u.name] ? null : UNSYNTHESISABLE[u.name] ?? NOT_FAITHFULLY_PROBEABLE[u.name];
+  const why = FAITHFUL_SITES[u.name] ? null : (UNSYNTHESISABLE[u.name] ?? NOT_FAITHFULLY_PROBEABLE[u.name]);
   if (why) return { unfaithful: why };
   const targets = targetsOf(doc.app);
   const faithful = FAITHFUL_SITES[u.name];
@@ -371,10 +405,18 @@ export function compare(u, bySite) {
   if (doc.app && !targets.length) untestable.push(`\`${doc.app}\`: no target this tool can read`);
   for (const t of targets) {
     const fam = FAMILIES[t];
-    if (!fam) { untestable.push(`\`${t}\`: no site in the matrix can be written for it`); continue; }
+    if (!fam) {
+      untestable.push(`\`${t}\`: no site in the matrix can be written for it`);
+      continue;
+    }
     for (const s of fam) covered.add(s);
-    const live = fam.filter((s) => bySite.has(s) && !inconclusive(bySite.get(s).state) && (!faithful || faithful.has(s)));
-    if (!live.length) { untestable.push(`\`${t}\`: every site for it was voided, left out, or inconclusive`); continue; }
+    const live = fam.filter(
+      (s) => bySite.has(s) && !inconclusive(bySite.get(s).state) && (!faithful || faithful.has(s)),
+    );
+    if (!live.length) {
+      untestable.push(`\`${t}\`: every site for it was voided, left out, or inconclusive`);
+      continue;
+    }
     const yes = live.filter((s) => firmAt.has(s));
     const required = live.filter((s) => !optionalFor(t, s));
     if (!yes.length) {
@@ -412,7 +454,11 @@ export function judgePreflight(baselines, controls, outcomeOf) {
     // codes as ACCEPT, so anything else -- a crash, a hang, a build that could
     // not run -- voids the site. (Those carry no codes, so a test on the codes
     // alone would pass them.)
-    if (o.state !== "ACCEPT") voidSites.set(p.site.id, `its baseline, with no attribute, does not build clean: ${o.state} ${o.msgs.join("; ")}`);
+    if (o.state !== "ACCEPT")
+      voidSites.set(
+        p.site.id,
+        `its baseline, with no attribute, does not build clean: ${o.state} ${o.msgs.join("; ")}`,
+      );
   }
   for (const p of controls) {
     const o = outcomeOf.get(p.id);
@@ -422,7 +468,10 @@ export function judgePreflight(baselines, controls, outcomeOf) {
     // an Enum body takes ANY own-line `[...]`, `[ClassId("guid")]` included, as
     // measured on BETA 987. It is voided rather than read.
     if (!voidSites.has(p.site.id) && (firm(o.state) || inconclusive(o.state))) {
-      voidSites.set(p.site.id, `an attribute that does not exist ${inconclusive(o.state) ? `could not be judged (${o.state})` : `was accepted here (${o.state})`}`);
+      voidSites.set(
+        p.site.id,
+        `an attribute that does not exist ${inconclusive(o.state) ? `could not be judged (${o.state})` : `was accepted here (${o.state})`}`,
+      );
     }
   }
   return { voidSites, controlState, controlSig };
@@ -446,7 +495,10 @@ export function verifyMismatches(first, again, got, outcomeOf) {
   again.forEach((q, i) => {
     const before = outcomeOf.get(first[i].id).state;
     const after = got.get(q.id)?.state;
-    if (after === undefined || inconclusive(after)) { unjudged++; return; }
+    if (after === undefined || inconclusive(after)) {
+      unjudged++;
+      return;
+    }
     if (before !== after) bad.push({ probe: first[i].attr, site: first[i].site.id, first: before, second: after });
   });
   return { bad, unjudged };
@@ -478,8 +530,17 @@ export const MAX_INTERFERING_PROBES = 25;
  */
 export function createRunner({ buildOnce, controlSig, say = () => {} }) {
   const stats = {
-    builds: 0, splits: 0, crashes: [], hung: [], strays: [], strayProbes: 0, canaryFails: 0, harness: [], interferes: [],
-    comboCrashes: [], cutShort: null,
+    builds: 0,
+    splits: 0,
+    crashes: [],
+    hung: [],
+    strays: [],
+    strayProbes: 0,
+    canaryFails: 0,
+    harness: [],
+    interferes: [],
+    comboCrashes: [],
+    cutShort: null,
   };
 
   /**
@@ -508,7 +569,9 @@ export function createRunner({ buildOnce, controlSig, say = () => {} }) {
       stats.builds++;
       const alone = await buildOnce([], lane);
       if (alone.kind !== "ok") {
-        throw new Error("the compile never settles even with only the canaries in it, so the IDE or the harness is unwell rather than any probe");
+        throw new Error(
+          "the compile never settles even with only the canaries in it, so the IDE or the harness is unwell rather than any probe",
+        );
       }
     }
     // Every error row that belongs to no probe: the preflight has already refused
@@ -519,18 +582,25 @@ export function createRunner({ buildOnce, controlSig, say = () => {} }) {
       for (const [p, rows] of r.byFile) out.set(p.id, classify(p, rows, controlSig));
       return out;
     }
-    const why = r.kind === "ok"
-      ? (!canariesFine
-        ? `canaries drew ${JSON.stringify(r.canaries)}, expected ${JSON.stringify(EXPECTED_CANARIES)}`
-        : `${newStrays.length} error row(s) belong to no probe`)
-      : r.kind === "crash" ? "the compiler crashed" : "the compile never settled";
+    const why =
+      r.kind === "ok"
+        ? !canariesFine
+          ? `canaries drew ${JSON.stringify(r.canaries)}, expected ${JSON.stringify(EXPECTED_CANARIES)}`
+          : `${newStrays.length} error row(s) belong to no probe`
+        : r.kind === "crash"
+          ? "the compiler crashed"
+          : "the compile never settled";
     if (r.kind === "ok" && !canariesFine) stats.canaryFails++;
     // Counted per subtree, in `out.failures`, because the lanes run at once and a
     // shared counter would credit one lane's isolation to another's batch.
     out.failures = 1;
     if (probes.length === 1) {
       const p = probes[0];
-      if (r.kind === "crash") { stats.crashes.push(p); out.set(p.id, { state: "CRASH", codes: [], msgs: [] }); return out; }
+      if (r.kind === "crash") {
+        stats.crashes.push(p);
+        out.set(p.id, { state: "CRASH", codes: [], msgs: [] });
+        return out;
+      }
       if (r.kind === "hung") {
         stats.hung.push(p);
         out.set(p.id, { state: "HUNG", codes: [], msgs: [] });
@@ -541,7 +611,9 @@ export function createRunner({ buildOnce, controlSig, say = () => {} }) {
         stats.interferes.push(p);
         out.set(p.id, { state: "INTERFERES", codes: [], msgs: [why] });
         if (stats.interferes.length > MAX_INTERFERING_PROBES) {
-          throw new Error(`more than ${MAX_INTERFERING_PROBES} probes each disturb the canaries beside nothing else; the canaries are not a usable check on this compiler`);
+          throw new Error(
+            `more than ${MAX_INTERFERING_PROBES} probes each disturb the canaries beside nothing else; the canaries are not a usable check on this compiler`,
+          );
         }
         return out;
       }
@@ -550,8 +622,10 @@ export function createRunner({ buildOnce, controlSig, say = () => {} }) {
       const o = classify(p, r.byFile.get(p), controlSig);
       stats.strays.push(...newStrays.map((s) => `${p.attr} at ${p.site.id}: ${s}`));
       if (++stats.strayProbes > MAX_STRAY_PROBES) {
-        throw new Error(`more than ${MAX_STRAY_PROBES} probes each draw an error row belonging to no probe; ` +
-          "the template project probably draws it in every build");
+        throw new Error(
+          `more than ${MAX_STRAY_PROBES} probes each draw an error row belonging to no probe; ` +
+            "the template project probably draws it in every build",
+        );
       }
       out.set(p.id, o.state === "ACCEPT" ? { state: "RECOGNISED", codes: [], msgs: newStrays } : o);
       return out;
@@ -577,8 +651,10 @@ export function createRunner({ buildOnce, controlSig, say = () => {} }) {
     // their answers are still good. What is lost is the cause itself -- for a
     // crash, the compiler bug -- so it is named here rather than dropped.
     if (below === 0) {
-      stats.comboCrashes.push(`${why} in a batch of ${probes.length} probes (${probes[0].tag}..${probes.at(-1).tag}) ` +
-        "that neither half reproduces; it needs several probes together");
+      stats.comboCrashes.push(
+        `${why} in a batch of ${probes.length} probes (${probes[0].tag}..${probes.at(-1).tag}) ` +
+          "that neither half reproduces; it needs several probes together",
+      );
     }
     return out;
   }

@@ -74,7 +74,12 @@ function parseArgs(argv) {
 
 /** A URL reduced to what identifies a page: no fragment, query, extension or trailing slash. */
 const pageKey = (url) =>
-  decodeURI(url.replace(/[#?].*$/, "").replace(/\.(html|md)$/i, "").replace(/\/+$/, "")).toLowerCase() || "/";
+  decodeURI(
+    url
+      .replace(/[#?].*$/, "")
+      .replace(/\.(html|md)$/i, "")
+      .replace(/\/+$/, ""),
+  ).toLowerCase() || "/";
 
 /** Every page under docs/: permalink by file, and file by permalink or redirect alias. */
 async function loadPages(repo) {
@@ -138,8 +143,10 @@ async function main(argv) {
   // every target then reports as unreachable, which reads as a finding.
   const mangled = o.targets.filter((t) => /^\^?[A-Za-z]:[\\/]/.test(t));
   if (mangled.length) {
-    console.error(`these patterns arrived as Windows paths: ${mangled.join(", ")}\n` +
-      "Git Bash converted them. Run with MSYS_NO_PATHCONV=1 set, or from another shell.");
+    console.error(
+      `these patterns arrived as Windows paths: ${mangled.join(", ")}\n` +
+        "Git Bash converted them. Run with MSYS_NO_PATHCONV=1 set, or from another shell.",
+    );
     return 2;
   }
   const start = path.resolve(o.repo, o.from);
@@ -175,12 +182,17 @@ async function main(argv) {
     const chain = [];
     for (let f = hit; f; f = prev.get(f)) chain.unshift(f);
     console.log(`${t}: ${chain.length - 1} hop(s)`);
-    chain.forEach((f, i) => { console.log(`  ${i}. ${show(f)}${pages.urlOf.has(f) ? `  ${pages.urlOf.get(f)}` : ""}`); });
+    chain.forEach((f, i) => {
+      console.log(`  ${i}. ${show(f)}${pages.urlOf.has(f) ? `  ${pages.urlOf.get(f)}` : ""}`);
+    });
   }
   return unreachable ? 1 : 0;
 }
 
 main(process.argv.slice(2)).then(
   (code) => process.exit(code),
-  (e) => { console.error(e.stack ?? e.message); process.exit(2); },
+  (e) => {
+    console.error(e.stack ?? e.message);
+    process.exit(2);
+  },
 );

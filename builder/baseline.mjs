@@ -61,8 +61,10 @@ async function writeBaseline(file, record) {
 // check, on the change most likely to have broken links. Both forms are given
 // because the wrapper is Windows-only and the docs are not.
 function acceptCommands(name) {
-  return `         build.bat --update-${name}-baseline\n`
-    + `         node builder/tbdocs.mjs --src ${GUARDED_SRC} --check-audit-index --update-${name}-baseline\n`;
+  return (
+    `         build.bat --update-${name}-baseline\n` +
+    `         node builder/tbdocs.mjs --src ${GUARDED_SRC} --check-audit-index --update-${name}-baseline\n`
+  );
 }
 
 /**
@@ -103,9 +105,10 @@ export async function checkBaseline(guard, { record, write, force = false, file 
     if (!write) {
       return {
         failed: true,
-        text: `ERROR: builder/${guard.name}-baseline.json is missing, ${guard.missing}`
-            + "       Restore it from git, or regenerate it with:\n"
-            + acceptCommands(guard.name),
+        text:
+          `ERROR: builder/${guard.name}-baseline.json is missing, ${guard.missing}` +
+          "       Restore it from git, or regenerate it with:\n" +
+          acceptCommands(guard.name),
       };
     }
     await writeBaseline(file, record);

@@ -18,8 +18,8 @@ import { normPath } from "./tb-ide.mjs";
  * DEBUG CONSOLE says what went wrong, in a line that starts with the file's
  * name in brackets: "[x.dll] Failed to load addin.  LoadLibrary() failed."
  */
-export const loadedAddins = (c) => c.evaluate(
-  "new Promise((resolve) => root.getAddinsList(resolve))", { awaitPromise: true });
+export const loadedAddins = (c) =>
+  c.evaluate("new Promise((resolve) => root.getAddinsList(resolve))", { awaitPromise: true });
 
 /**
  * The folder whose addins\win32 or \win64 the IDE's compiler loads add-ins
@@ -32,8 +32,8 @@ export const loadedAddins = (c) => c.evaluate(
  * own %APPDATA%. So an IDE started with APPDATA naming another folder loads
  * none of the add-ins in the user's %APPDATA%\twinBASIC\addins.
  */
-export const addinsRoot = (c) => c.evaluate(
-  "typeof commonFolderRootPath === 'undefined' || !commonFolderRootPath ? null : commonFolderRootPath");
+export const addinsRoot = (c) =>
+  c.evaluate("typeof commonFolderRootPath === 'undefined' || !commonFolderRootPath ? null : commonFolderRootPath");
 
 /**
  * Throw unless the IDE's add-ins root (addinsRoot) is `<appdata>\twinBASIC`,
@@ -47,9 +47,11 @@ export async function checkAddinsRoot(c, appdata) {
   const root = await addinsRoot(c);
   const want = path.join(appdata, "twinBASIC");
   if (!root || normPath(path.resolve(root)) !== normPath(path.resolve(want))) {
-    throw new Error(`the IDE's add-ins folder is under ${JSON.stringify(root)}, not ${want}: it did ` +
-      "not take %APPDATA% from the environment it was started with, and its compiler may have " +
-      "loaded the add-ins in the user's own %APPDATA%\\twinBASIC\\addins (P6 in WIP.HelpAddin.md)");
+    throw new Error(
+      `the IDE's add-ins folder is under ${JSON.stringify(root)}, not ${want}: it did ` +
+        "not take %APPDATA% from the environment it was started with, and its compiler may have " +
+        "loaded the add-ins in the user's own %APPDATA%\\twinBASIC\\addins (P6 in WIP.HelpAddin.md)",
+    );
   }
   return root;
 }

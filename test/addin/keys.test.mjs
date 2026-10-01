@@ -25,13 +25,22 @@ const HOST = path.join(HERE, "host");
 const PROBE = path.join(HERE, "probes", "keys");
 
 // The key strings the probe says fired since a mark, in order.
-const firedSince = async (c, mark) => (await linesSince(c, mark))
-  .map((l) => /^\[KeysProbe\] fired (.+)$/.exec(l)).filter(Boolean).map((m) => m[1]);
+const firedSince = async (c, mark) =>
+  (await linesSince(c, mark))
+    .map((l) => /^\[KeysProbe\] fired (.+)$/.exec(l))
+    .filter(Boolean)
+    .map((m) => m[1]);
 
 // Wait for the probe to report `key`, and return everything it reported.
 const waitFired = (c, mark, key) =>
-  waitFor(c, async (c) => { const f = await firedSince(c, mark); return f.includes(key) && f; },
-          { timeout: 5000 });
+  waitFor(
+    c,
+    async (c) => {
+      const f = await firedSince(c, mark);
+      return f.includes(key) && f;
+    },
+    { timeout: 5000 },
+  );
 
 // Press keys with nothing focused, then q, whose shortcut always fires, and
 // return what fired before q. Once q's line is back, every key pressed before
@@ -53,13 +62,15 @@ async function pressThenQ(c, presses) {
 }
 const pressAlone = (c, key, mods) => pressThenQ(c, [[key, mods]]);
 
-const blurAll = (c) => c.evaluate(`(() => {
+const blurAll = (c) =>
+  c.evaluate(`(() => {
   if (document.activeElement) document.activeElement.blur();
   return document.activeElement === document.body;
 })()`);
 const menuOpen = (c) => c.evaluate("typeof currentMenuDescriptor !== 'undefined' && !!currentMenuDescriptor");
 // Monaco binds F1 to its command palette.
-const paletteOpen = (c) => c.evaluate(`[...document.querySelectorAll(".quick-input-widget")]
+const paletteOpen = (c) =>
+  c.evaluate(`[...document.querySelectorAll(".quick-input-widget")]
   .some((e) => getComputedStyle(e).display !== "none")`);
 
 scenario("P1 and P2: add-in keyboard shortcuts", (lane) => {
@@ -72,10 +83,20 @@ scenario("P1 and P2: add-in keyboard shortcuts", (lane) => {
   test("the add-in loads and registers its shortcuts, lowercased", async () => {
     const names = (await loadedAddins(c)).map((a) => a.name);
     assert.ok(names.includes("KeysProbe AddIn"), `loaded: ${JSON.stringify(names)}`);
-    assert.ok(await waitFor(c, async (c) => ((await readConsole(c)) ?? "").includes("[KeysProbe] registered")),
-              "the add-in never printed that it had registered its shortcuts");
-    assert.deepEqual((await c.evaluate("Object.keys(addinKeys)")).sort(),
-                     ["d", "f1", "q", "{alt}f", "{ctrl}d", "{ctrl}{shift}d", "{shift}d", "{shift}f1"]);
+    assert.ok(
+      await waitFor(c, async (c) => ((await readConsole(c)) ?? "").includes("[KeysProbe] registered")),
+      "the add-in never printed that it had registered its shortcuts",
+    );
+    assert.deepEqual((await c.evaluate("Object.keys(addinKeys)")).sort(), [
+      "d",
+      "f1",
+      "q",
+      "{alt}f",
+      "{ctrl}d",
+      "{ctrl}{shift}d",
+      "{shift}d",
+      "{shift}f1",
+    ]);
     assert.ok(await blurAll(c), "the focus stayed on an element");
   });
 
@@ -94,9 +115,16 @@ scenario("P1 and P2: add-in keyboard shortcuts", (lane) => {
   });
 
   test("P1: a Ctrl or Alt key fires when the same key was pressed alone just before", async () => {
-    assert.deepEqual(await pressThenQ(c, [["d"], ["d", { ctrl: true }], ["d", { ctrl: true, shift: true }],
-                                          ["f"], ["f", { alt: true }]]),
-                     ["d", "{ctrl}d", "{ctrl}{shift}d", "{alt}f"]);
+    assert.deepEqual(
+      await pressThenQ(c, [
+        ["d"],
+        ["d", { ctrl: true }],
+        ["d", { ctrl: true, shift: true }],
+        ["f"],
+        ["f", { alt: true }],
+      ]),
+      ["d", "{ctrl}d", "{ctrl}{shift}d", "{alt}f"],
+    );
   });
 
   test("P2: in the code editor F1 fires and types nothing, and a plain letter fires and types", async () => {
@@ -124,8 +152,10 @@ scenario("P1 and P2: add-in keyboard shortcuts", (lane) => {
     // cursor back where openFile put it (afterReveal in tb-operate.mjs).
     await setCursor(c, 4, 32);
     await pressKey(c, " ", { ctrl: true });
-    assert.ok(await waitFor(c, (c) => c.evaluate("context.activeSignatureHelp.value === true")),
-              "Ctrl+Space inside FindTheNeedle( did not show signature help");
+    assert.ok(
+      await waitFor(c, (c) => c.evaluate("context.activeSignatureHelp.value === true")),
+      "Ctrl+Space inside FindTheNeedle( did not show signature help",
+    );
     const expanded = await c.evaluate("sigHelpIsExpanded");
     const mark = await consoleMark(c);
     await pressKey(c, "F1");
@@ -135,8 +165,10 @@ scenario("P1 and P2: add-in keyboard shortcuts", (lane) => {
     assert.deepEqual(fired, ["f1"]);
     assert.equal(await c.evaluate("sigHelpIsExpanded"), !expanded, "F1 did not toggle signature help");
     // toggleSigHelp() dereferences the event it is not given (BUGS-TO-REPORT.md).
-    assert.ok(lines.includes('command failed: "tbHelp_ToggleExpandSignatureHelp"'),
-              `the IDE no longer reports the toggle failing: ${JSON.stringify(lines)}`);
+    assert.ok(
+      lines.includes('command failed: "tbHelp_ToggleExpandSignatureHelp"'),
+      `the IDE no longer reports the toggle failing: ${JSON.stringify(lines)}`,
+    );
     await pressKey(c, "Escape");
   });
 });

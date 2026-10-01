@@ -25,28 +25,30 @@ export async function discover(srcRoot, ignore = []) {
   const pages = [];
   const staticFiles = [];
 
-  await Promise.all(allFiles.map(async (srcRel) => {
-    const srcPath = path.join(srcRoot, srcRel);
+  await Promise.all(
+    allFiles.map(async (srcRel) => {
+      const srcPath = path.join(srcRoot, srcRel);
 
-    if (PAGE_EXT.test(srcRel)) {
-      const raw = await fs.readFile(srcPath, "utf8");
-      const parsed = readFrontmatter(raw, srcRel);
-      if (parsed) {
-        pages.push(buildPage(srcRoot, srcRel, parsed));
-        return;
+      if (PAGE_EXT.test(srcRel)) {
+        const raw = await fs.readFile(srcPath, "utf8");
+        const parsed = readFrontmatter(raw, srcRel);
+        if (parsed) {
+          pages.push(buildPage(srcRoot, srcRel, parsed));
+          return;
+        }
+        // .md/.html without frontmatter falls through to static treatment.
       }
-      // .md/.html without frontmatter falls through to static treatment.
-    }
 
-    const stat = await fs.stat(srcPath);
-    const srcRelPosix = toPosix(srcRel);
-    staticFiles.push({
-      srcPath,
-      srcRel: srcRelPosix,
-      destRel: srcRelPosix,
-      size: stat.size,
-    });
-  }));
+      const stat = await fs.stat(srcPath);
+      const srcRelPosix = toPosix(srcRel);
+      staticFiles.push({
+        srcPath,
+        srcRel: srcRelPosix,
+        destRel: srcRelPosix,
+        size: stat.size,
+      });
+    }),
+  );
 
   // Jekyll sorts site.pages by basename (`name` = basename with
   // extension) via `lib/jekyll/reader.rb:44`'s `site.pages.sort_by!
@@ -113,7 +115,9 @@ function readFrontmatter(raw, srcRel) {
   }
   if (!parsed) return null;
   for (const { line, text } of unquotedHashValues(raw)) {
-    console.warn(`discover: ${srcRel}:${line}: an unquoted value ends in #, and YAML drops a # after a space as a comment; quote the value to keep it: ${text.trim()}`);
+    console.warn(
+      `discover: ${srcRel}:${line}: an unquoted value ends in #, and YAML drops a # after a space as a comment; quote the value to keep it: ${text.trim()}`,
+    );
   }
   const { data, content } = parsed;
   const block = raw.slice(0, raw.length - content.length);

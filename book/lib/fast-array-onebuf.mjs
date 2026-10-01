@@ -44,9 +44,9 @@
 // built with it; and throws otherwise. It goes when pdf-lib is replaced;
 // when a release changes what it patches, it is re-derived or removed.
 
-import { PDFArray, PDFObjectParser, CharCodes } from './pdf-lib-internals.mjs';
-import { onebufRange } from './onebuf-range.mjs';
-import { checkTargets, ABSENT } from './shim-targets.mjs';
+import { PDFArray, PDFObjectParser, CharCodes } from "./pdf-lib-internals.mjs";
+import { onebufRange } from "./onebuf-range.mjs";
+import { checkTargets, ABSENT } from "./shim-targets.mjs";
 
 // ---- Construction --------------------------------------------------
 //
@@ -60,7 +60,9 @@ import { checkTargets, ABSENT } from './shim-targets.mjs';
 // No subclass dispatch needed -- PDFArray has no subclasses in
 // pdf-lib (unlike PDFDict's PDFCatalog / PDFPageTree / PDFPageLeaf).
 
-function _FastArray(d) { this.d = d; }
+function _FastArray(d) {
+  this.d = d;
+}
 _FastArray.prototype = PDFArray.prototype;
 
 function _construct(_ProtoClass, d) {
@@ -74,7 +76,7 @@ function _construct(_ProtoClass, d) {
 // shim runs first, it calls setExpectedArraySlots() before parse,
 // which resizes `arrayMain` to exact measured demand.
 const ranges = onebufRange({
-  name: 'fast-array-onebuf',
+  name: "fast-array-onebuf",
   capacity: 800000,
   startBits: 24,
   construct: _construct,
@@ -84,7 +86,9 @@ const _start = ranges.startOf;
 const _length = ranges.lengthOf;
 
 export { arrayMain };
-export function getArrayMainLen() { return ranges.used(); }
+export function getArrayMainLen() {
+  return ranges.used();
+}
 
 // Must be called before any parseArray / withContext. `slack` is a
 // multiplier on `slots`; default 1.0 (exact).
@@ -93,24 +97,28 @@ export function setExpectedArraySlots(slots, slack = 1.0) {
 }
 
 if (!PDFArray.prototype.__fastArrayOnebufInstalled) {
-  checkTargets(import.meta.url, { PDFArray, PDFObjectParser }, {
-    'PDFArray':                             [1, 'b05b46a2fecd'],
-    'PDFArray.withContext':                 [1, '48fa5b16b9ac'],
-    'PDFArray.prototype.context':           ABSENT,
-    'PDFArray.prototype.size':              [0, '7b9a440e025c'],
-    'PDFArray.prototype.push':              [1, '66baea7b877c'],
-    'PDFArray.prototype.insert':            [2, '0ca5e6c28a34'],
-    'PDFArray.prototype.indexOf':           [1, 'c043853ad8e8'],
-    'PDFArray.prototype.remove':            [1, '8c270493978b'],
-    'PDFArray.prototype.set':               [2, '85504942af56'],
-    'PDFArray.prototype.get':               [1, 'a2c3fc7788bc'],
-    'PDFArray.prototype.asArray':           [0, 'd3d28f8e6178'],
-    'PDFArray.prototype.clone':             [1, 'd4378f452c27'],
-    'PDFArray.prototype.toString':          [0, '8485a123e118'],
-    'PDFArray.prototype.sizeInBytes':       [0, 'f45594859246'],
-    'PDFArray.prototype.copyBytesInto':     [2, 'df948c1f1d7d'],
-    'PDFObjectParser.prototype.parseArray': [0, '045f8aca220b'],
-  });
+  checkTargets(
+    import.meta.url,
+    { PDFArray, PDFObjectParser },
+    {
+      PDFArray: [1, "b05b46a2fecd"],
+      "PDFArray.withContext": [1, "48fa5b16b9ac"],
+      "PDFArray.prototype.context": ABSENT,
+      "PDFArray.prototype.size": [0, "7b9a440e025c"],
+      "PDFArray.prototype.push": [1, "66baea7b877c"],
+      "PDFArray.prototype.insert": [2, "0ca5e6c28a34"],
+      "PDFArray.prototype.indexOf": [1, "c043853ad8e8"],
+      "PDFArray.prototype.remove": [1, "8c270493978b"],
+      "PDFArray.prototype.set": [2, "85504942af56"],
+      "PDFArray.prototype.get": [1, "a2c3fc7788bc"],
+      "PDFArray.prototype.asArray": [0, "d3d28f8e6178"],
+      "PDFArray.prototype.clone": [1, "d4378f452c27"],
+      "PDFArray.prototype.toString": [0, "8485a123e118"],
+      "PDFArray.prototype.sizeInBytes": [0, "f45594859246"],
+      "PDFArray.prototype.copyBytesInto": [2, "df948c1f1d7d"],
+      "PDFObjectParser.prototype.parseArray": [0, "045f8aca220b"],
+    },
+  );
 
   // ---- PDFArray.prototype -----------------------------------------
 
@@ -165,9 +173,9 @@ if (!PDFArray.prototype.__fastArrayOnebufInstalled) {
     const d = this.d;
     const start = _start(d);
     const length = _length(d);
-    let s = '[ ';
-    for (let i = 0; i < length; i++) s += arrayMain[start + i].toString() + ' ';
-    return s + ']';
+    let s = "[ ";
+    for (let i = 0; i < length; i++) s += arrayMain[start + i].toString() + " ";
+    return s + "]";
   };
 
   PDFArray.prototype.sizeInBytes = function () {
@@ -198,9 +206,13 @@ if (!PDFArray.prototype.__fastArrayOnebufInstalled) {
   // upstream prototype -- they call this.get / this.size / this.set
   // and dispatch through our overrides.
 
-  Object.defineProperty(PDFArray.prototype, 'context', {
-    get() { return ranges.context(); },
-    set(_ctx) { /* singleton is source of truth */ },
+  Object.defineProperty(PDFArray.prototype, "context", {
+    get() {
+      return ranges.context();
+    },
+    set(_ctx) {
+      /* singleton is source of truth */
+    },
     configurable: true,
   });
 
@@ -224,14 +236,14 @@ if (!PDFArray.prototype.__fastArrayOnebufInstalled) {
     this.skipWhitespaceAndComments();
 
     if (this._arrayTemp === undefined) {
-      this._arrayTemp = new Array(64);   // grows naturally if needed
+      this._arrayTemp = new Array(64); // grows naturally if needed
       this._arrayTempLen = 0;
     }
     const temp = this._arrayTemp;
     const frameStart = this._arrayTempLen;
 
     while (bytes.peek() !== CharCodes.RightSquareBracket) {
-      const element = this.parseObject();   // may recurse
+      const element = this.parseObject(); // may recurse
       temp[this._arrayTempLen++] = element;
       this.skipWhitespaceAndComments();
     }

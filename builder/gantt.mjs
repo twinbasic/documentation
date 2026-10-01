@@ -4,14 +4,14 @@
 import { escapeMarkup } from "./escape.mjs";
 
 const COLORS = {
-  Seeds:  { light: "#86c7a3", dark: "#3d8b5e" },
-  Spine:  { light: "#6eb5d9", dark: "#3c7db0" },
+  Seeds: { light: "#86c7a3", dark: "#3d8b5e" },
+  Spine: { light: "#6eb5d9", dark: "#3c7db0" },
   Render: { light: "#b09cd8", dark: "#8066a8" },
-  Write:  { light: "#e8a756", dark: "#c08030" },
-  Check:  { light: "#e59ac6", dark: "#b35c8c" },
-  Boot:   { light: "#e57373", dark: "#c62828" },
-  Cold:   { light: "#5b7fb5", dark: "#2c4a7c" },
-  Env:    { light: "#e8a756", dark: "#c08030" },
+  Write: { light: "#e8a756", dark: "#c08030" },
+  Check: { light: "#e59ac6", dark: "#b35c8c" },
+  Boot: { light: "#e57373", dark: "#c62828" },
+  Cold: { light: "#5b7fb5", dark: "#2c4a7c" },
+  Env: { light: "#e8a756", dark: "#c08030" },
 };
 
 // The bands a main-thread task can be drawn in, top to bottom; the
@@ -23,17 +23,17 @@ const BAND_OF = { Render: "Spine" };
 const SECTION_W = 24;
 
 const BOOT_STYLE = {
-  cold:          { label: "cold", cls: "cold" },
-  warmInit:      { label: "warm", cls: "boot" },
-  renderEnvInit: { label: "env",  cls: "env"  },
+  cold: { label: "cold", cls: "cold" },
+  warmInit: { label: "warm", cls: "boot" },
+  renderEnvInit: { label: "env", cls: "env" },
 };
-const SVG_W     = 900;
-const CHART_W   = SVG_W - SECTION_W - 20;
-const ROW_H     = 20;
-const BAR_H     = 14;
-const AXIS_H    = 28;
-const CHAR_W    = 6.2;
-const BAR_PAD   = 4;
+const SVG_W = 900;
+const CHART_W = SVG_W - SECTION_W - 20;
+const ROW_H = 20;
+const BAR_H = 14;
+const AXIS_H = 28;
+const CHAR_W = 6.2;
+const BAR_PAD = 4;
 
 // The section each task is charted in, by task id. A timing that names
 // its own `ganttSection` is charted there instead.
@@ -56,10 +56,12 @@ const CHECK_TASKS = new Set(["linkJoin", "checkBook", "checkReport"]);
 // section, as renderGantt takes them.
 export function groupGanttTimings(timings, { check = false } = {}) {
   if (timings.size === 0) return null;
-  const t0 = Math.min(...[...timings.values()].map(t => t.start));
+  const t0 = Math.min(...[...timings.values()].map((t) => t.start));
 
-  const grouped = new Map(GANTT_SECTION_ORDER.map(s => [s, []]));
-  for (const [id, { start, end, t3, workerStart, workerEnd, lane, consolidate, ganttSection }] of [...timings.entries()].sort((a, b) => a[1].start - b[1].start)) {
+  const grouped = new Map(GANTT_SECTION_ORDER.map((s) => [s, []]));
+  for (const [id, { start, end, t3, workerStart, workerEnd, lane, consolidate, ganttSection }] of [
+    ...timings.entries(),
+  ].sort((a, b) => a[1].start - b[1].start)) {
     if (id.endsWith("Join")) continue;
     // Without --check these are no-ops; charting three zero-width bars
     // would only make a plain build's Gantt harder to read.
@@ -69,9 +71,12 @@ export function groupGanttTimings(timings, { check = false } = {}) {
     if (!grouped.has(section)) grouped.set(section, []);
     const entry = { id, start: start - t0, end: end - t0 };
     if (t3 != null) entry.t3 = t3 - t0;
-    if (workerStart != null) { entry.workerStart = workerStart - t0; entry.workerEnd = workerEnd - t0; }
+    if (workerStart != null) {
+      entry.workerStart = workerStart - t0;
+      entry.workerEnd = workerEnd - t0;
+    }
     if (lane != null) entry.lane = lane;
-    if (consolidate)  entry.consolidate = true;
+    if (consolidate) entry.consolidate = true;
     grouped.get(section).push(entry);
   }
   return grouped;
@@ -80,7 +85,7 @@ export function groupGanttTimings(timings, { check = false } = {}) {
 export function renderGantt(grouped) {
   const all = [...grouped.values()].flat();
   if (all.length === 0) return "";
-  const maxT = Math.max(...all.map(t => t.end));
+  const maxT = Math.max(...all.map((t) => t.end));
   if (maxT <= 0) return "";
 
   // Any task with a lane ran on a worker — pull it into the Workers
@@ -88,13 +93,15 @@ export function renderGantt(grouped) {
   // task goes in its section's band. A task the chart has no place for
   // fails the build rather than vanishing from the chart, as the Check
   // tasks and vendorAssets once did.
-  const bands = new Map(BANDS.map(s => [s, []]));
+  const bands = new Map(BANDS.map((s) => [s, []]));
   const laneTasks = [];
   for (const [section, tasks] of grouped) {
     for (const t of tasks) {
       const band = t.lane == null ? bands.get(BAND_OF[section] ?? section) : null;
-      if (t.lane != null && COLORS[section]) { t._color = section; laneTasks.push(t); }
-      else if (band) band.push(t);
+      if (t.lane != null && COLORS[section]) {
+        t._color = section;
+        laneTasks.push(t);
+      } else if (band) band.push(t);
       else throw new Error(`gantt: the chart has no place for task ${t.id} in section "${section}"`);
     }
   }
@@ -105,21 +112,22 @@ export function renderGantt(grouped) {
     if (!lanes.has(t.lane)) lanes.set(t.lane, []);
     lanes.get(t.lane).push(t);
   }
-  for (const tasks of lanes.values())
-    tasks.sort((a, b) => a.workerStart - b.workerStart);
+  for (const tasks of lanes.values()) tasks.sort((a, b) => a.workerStart - b.workerStart);
   const sortedLanes = [...lanes.entries()].sort((a, b) => a[0] - b[0]);
 
   let rows = sortedLanes.length;
   for (const [, tasks] of mainSections) rows += tasks.length;
   const h = AXIS_H + rows * ROW_H + 5;
-  const xOf = t => SECTION_W + (t / maxT) * CHART_W;
+  const xOf = (t) => SECTION_W + (t / maxT) * CHART_W;
 
   const tick = niceInterval(maxT);
   const ticks = [];
   for (let t = 0; t <= maxT + 0.5; t += tick) ticks.push(t);
 
   const o = [];
-  o.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SVG_W} ${h}" style="width:100%;max-width:${SVG_W}px">`);
+  o.push(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${SVG_W} ${h}" style="width:100%;max-width:${SVG_W}px">`,
+  );
   o.push(`<title>Build task timeline</title>`);
 
   // Dark palette rule bodies (theme-neutral selectors); emitted below under
@@ -132,7 +140,7 @@ export function renderGantt(grouped) {
     `.gg{stroke:#44434d}`,
     ...Object.entries(COLORS).map(([s, c]) => `.gb-${s.toLowerCase()}{fill:${c.dark}}`),
   ];
-  const darkScoped = prefix => darkRules.map(r => `${prefix} ${r}`).join("");
+  const darkScoped = (prefix) => darkRules.map((r) => `${prefix} ${r}`).join("");
   const css = [
     // Same stack the page uses (docs/_sass/custom/_fonts.scss). The chart
     // is inlined into the DOM, not loaded through <img>, so the
@@ -164,8 +172,10 @@ export function renderGantt(grouped) {
   if (sortedLanes.length > 0) {
     o.push(`<line x1="0" y1="${y}" x2="${SVG_W}" y2="${y}" class="gg" stroke-width=".5"/>`);
     const lx = Math.round(SECTION_W / 2);
-    const ly = rd(y + sortedLanes.length * ROW_H / 2);
-    o.push(`<text x="${lx}" y="${ly}" class="gs" font-size="12" text-anchor="middle" dominant-baseline="central" transform="rotate(-90,${lx},${ly})">Workers</text>`);
+    const ly = rd(y + (sortedLanes.length * ROW_H) / 2);
+    o.push(
+      `<text x="${lx}" y="${ly}" class="gs" font-size="12" text-anchor="middle" dominant-baseline="central" transform="rotate(-90,${lx},${ly})">Workers</text>`,
+    );
     for (let li = 0; li < sortedLanes.length; li++) {
       const [, tasks] = sortedLanes[li];
       const ty = rd(y + ROW_H / 2 + 3.5);
@@ -203,8 +213,10 @@ function renderMainSection(o, section, tasks, y, xOf) {
   o.push(`<line x1="0" y1="${y}" x2="${SVG_W}" y2="${y}" class="gg" stroke-width=".5"/>`);
   const cls = `gb-${section.toLowerCase()}`;
   const lx = Math.round(SECTION_W / 2);
-  const ly = rd(y + tasks.length * ROW_H / 2);
-  o.push(`<text x="${lx}" y="${ly}" class="gs" font-size="12" text-anchor="middle" dominant-baseline="central" transform="rotate(-90,${lx},${ly})">${escapeMarkup(section)}</text>`);
+  const ly = rd(y + (tasks.length * ROW_H) / 2);
+  o.push(
+    `<text x="${lx}" y="${ly}" class="gs" font-size="12" text-anchor="middle" dominant-baseline="central" transform="rotate(-90,${lx},${ly})">${escapeMarkup(section)}</text>`,
+  );
   for (let i = 0; i < tasks.length; i++) {
     const t = tasks[i];
     const bx = rd(xOf(t.start));
@@ -213,11 +225,13 @@ function renderMainSection(o, section, tasks, y, xOf) {
     const ty = rd(y + ROW_H / 2 + 3.5);
     o.push(`<rect x="${bx}" y="${by}" width="${bw}" height="${BAR_H}" class="${cls}" rx="2"/>`);
     if (t.t3 != null) {
-      const t3x  = rd(xOf(t.t3));
-      const t3w  = rd(Math.max(t3x - (bx + bw), 1));
-      const t3h  = Math.round(BAR_H / 2);
+      const t3x = rd(xOf(t.t3));
+      const t3w = rd(Math.max(t3x - (bx + bw), 1));
+      const t3h = Math.round(BAR_H / 2);
       const t3by = rd(by + BAR_H - t3h);
-      o.push(`<rect x="${rd(bx + bw)}" y="${t3by}" width="${t3w}" height="${t3h}" class="${cls}" rx="2" opacity="0.7"/>`);
+      o.push(
+        `<rect x="${rd(bx + bw)}" y="${t3by}" width="${t3w}" height="${t3h}" class="${cls}" rx="2" opacity="0.7"/>`,
+      );
     }
     const lbl = taskLabel(t);
     const textW = lbl.length * CHAR_W;
@@ -226,7 +240,9 @@ function renderMainSection(o, section, tasks, y, xOf) {
     } else if (bx + bw + 4 + textW <= SVG_W) {
       o.push(`<text x="${rd(bx + bw + 4)}" y="${ty}" class="gl" font-size="11">${escapeMarkup(lbl)}</text>`);
     } else {
-      o.push(`<text x="${rd(bx - 4)}" y="${ty}" text-anchor="end" class="gl" font-size="11">${escapeMarkup(lbl)}</text>`);
+      o.push(
+        `<text x="${rd(bx - 4)}" y="${ty}" text-anchor="end" class="gl" font-size="11">${escapeMarkup(lbl)}</text>`,
+      );
     }
     y += ROW_H;
   }
@@ -234,8 +250,7 @@ function renderMainSection(o, section, tasks, y, xOf) {
 }
 
 function niceInterval(max) {
-  for (const c of [100, 200, 250, 500, 1000, 2000, 2500, 5000])
-    if (max / c <= 10) return c;
+  for (const c of [100, 200, 250, 500, 1000, 2000, 2500, 5000]) if (max / c <= 10) return c;
   return Math.ceil(max / 10000) * 1000;
 }
 
@@ -248,8 +263,8 @@ function taskLabel(t) {
   if (t.workerStart != null) {
     const d = t.end - t.start;
     if (d > 0) {
-      const a = Math.round((t.workerStart - t.start) / d * 100);
-      const b = Math.round((t.workerEnd - t.workerStart) / d * 100);
+      const a = Math.round(((t.workerStart - t.start) / d) * 100);
+      const b = Math.round(((t.workerEnd - t.workerStart) / d) * 100);
       s += ` (${a}%+${b}%)`;
     }
   }
@@ -261,4 +276,6 @@ function workerLabel(t) {
   return BOOT_STYLE[base]?.label ?? base;
 }
 
-function rd(n) { return Math.round(n * 10) / 10; }
+function rd(n) {
+  return Math.round(n * 10) / 10;
+}

@@ -69,10 +69,15 @@ Exit codes:
   2  the test could not run to its end: a refused command line, PowerShell failing,
      or a crash`;
 
-if (withUsageError(() => parseCli(process.argv.slice(2), {
-  options: { help: { type: "boolean", short: "h" } },
-  stopAt: ["help"],
-})).values.help) printHelpAndExit(USAGE);
+if (
+  withUsageError(() =>
+    parseCli(process.argv.slice(2), {
+      options: { help: { type: "boolean", short: "h" } },
+      stopAt: ["help"],
+    }),
+  ).values.help
+)
+  printHelpAndExit(USAGE);
 
 const BASE = "Software\\tbharness-selftest";
 const ROOT = BASE + "\\twinBASIC_IDE";
@@ -82,26 +87,38 @@ const ABSENT = BASE + "\\Classes\\.notthere";
 // Setup and teardown through .NET, the request on stdin, so the test data can
 // hold the same characters the module has to survive.
 function ps(script, input) {
-  const enc = Buffer.from("$ErrorActionPreference='Stop';$ProgressPreference='SilentlyContinue';" +
-    "$u=New-Object System.Text.UTF8Encoding $false;[Console]::InputEncoding=$u;" +
-    "[Console]::OutputEncoding=$u;$in=[Console]::In.ReadToEnd()|ConvertFrom-Json;" +
-    "$hk=[Microsoft.Win32.Registry]::CurrentUser;" + script, "utf16le").toString("base64");
-  return execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-EncodedCommand", enc],
-    { input: JSON.stringify(input ?? {}), encoding: "utf8", stdio: ["pipe", "pipe", "inherit"] });
+  const enc = Buffer.from(
+    "$ErrorActionPreference='Stop';$ProgressPreference='SilentlyContinue';" +
+      "$u=New-Object System.Text.UTF8Encoding $false;[Console]::InputEncoding=$u;" +
+      "[Console]::OutputEncoding=$u;$in=[Console]::In.ReadToEnd()|ConvertFrom-Json;" +
+      "$hk=[Microsoft.Win32.Registry]::CurrentUser;" +
+      script,
+    "utf16le",
+  ).toString("base64");
+  return execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-EncodedCommand", enc], {
+    input: JSON.stringify(input ?? {}),
+    encoding: "utf8",
+    stdio: ["pipe", "pipe", "inherit"],
+  });
 }
 const wipe = () => ps("if ($hk.OpenSubKey($in.base)) { $hk.DeleteSubKeyTree($in.base) }", { base: BASE });
 // Pairs rather than an object: PowerShell 5.1's ConvertFrom-Json refuses an
 // empty property name, and a key's default value is named by the empty string.
-const setValues = (key, values) => ps(
-  "$k=$hk.CreateSubKey($in.key); foreach ($p in @($in.pairs)) " +
-  "{ $k.SetValue([string]$p.n, [string]$p.v, 'String') }; $k.Close()",
-  { key, pairs: Object.entries(values).map(([n, v]) => ({ n, v })) });
-const deleteValues = (key, names) => ps(
-  "$k=$hk.OpenSubKey($in.key, $true); foreach ($n in $in.names) { $k.DeleteValue($n) }; $k.Close()",
-  { key, names });
-const readValue = (key, name) => JSON.parse(ps(
-  "$k=$hk.OpenSubKey($in.key); $v=$k.GetValue($in.name); $k.Close(); " +
-  "ConvertTo-Json -InputObject $v -Compress", { key, name }).replace(/^﻿/, ""));
+const setValues = (key, values) =>
+  ps(
+    "$k=$hk.CreateSubKey($in.key); foreach ($p in @($in.pairs)) " +
+      "{ $k.SetValue([string]$p.n, [string]$p.v, 'String') }; $k.Close()",
+    { key, pairs: Object.entries(values).map(([n, v]) => ({ n, v })) },
+  );
+const deleteValues = (key, names) =>
+  ps("$k=$hk.OpenSubKey($in.key, $true); foreach ($n in $in.names) { $k.DeleteValue($n) }; $k.Close()", { key, names });
+const readValue = (key, name) =>
+  JSON.parse(
+    ps(
+      "$k=$hk.OpenSubKey($in.key); $v=$k.GetValue($in.name); $k.Close(); " + "ConvertTo-Json -InputObject $v -Compress",
+      { key, name },
+    ).replace(/^﻿/, ""),
+  );
 
 const USER = "D:\\work\\Real Project\\Mine.twinproj";
 const OTHER = "D:\\work\\Other\\Other.twinproj";
@@ -110,8 +127,7 @@ const NEWPROJ = "D:\\work\\Scratch\\Made By Run.twinproj";
 // under a name outside every console code page.
 const TEMPDIR = path.join(tmpdir(), "tbharness-selftest-Łukasz", "tbrun", "9346");
 const LOOKALIKE = path.join(tmpdir(), "tbharness-selftest-Łukasz", "tbrun", "93460", "y.twinproj");
-const slots = (list) => Object.fromEntries(
-  Array.from({ length: 21 }, (_, i) => [String(i), list[i] ?? ""]));
+const slots = (list) => Object.fromEntries(Array.from({ length: 21 }, (_, i) => [String(i), list[i] ?? ""]));
 
 wipe();
 try {
@@ -120,7 +136,7 @@ try {
   const recentBefore = ["D:\\a.twinproj", "D:\\b.twinproj", OTHER, USER, "D:\\c.twinproj"];
   setValues(ROOT + "\\RecentlyOpened", slots(recentBefore));
   setValues(ASSOC, { "": "twinBASIC Project" });
-  setValues(ASSOC + "\\shell\\open\\command", { "": "\"C:\\IDE\\twinBASIC.exe\" \"%1\"" });
+  setValues(ASSOC + "\\shell\\open\\command", { "": '"C:\\IDE\\twinBASIC.exe" "%1"' });
   setValues(ASSOC + "\\DefaultIcon", { "": "C:\\IDE\\twinBASIC.exe" });
 
   const snap = R.snapshotProjects([USER, NEWPROJ], { root: ROOT });
@@ -133,17 +149,25 @@ try {
 
   // ------------------------------------------------ what a run does
   setValues(ROOT + "\\ProjectState", {
-    [USER]: "RUN-STATE",                                         // the IDE rewrote it
-    [NEWPROJ]: "NEW",                                            // the run created it
+    [USER]: "RUN-STATE", // the IDE rewrote it
+    [NEWPROJ]: "NEW", // the run created it
     [TEMPDIR + "\\tbrun-probe.twinproj"]: "T1",
-    [TEMPDIR.split("\\").join("/") + "/src/x.twinproj"]: "T2",   // forward slashes
+    [TEMPDIR.split("\\").join("/") + "/src/x.twinproj"]: "T2", // forward slashes
     [LOOKALIKE]: "NOT-MINE",
   });
-  setValues(ROOT + "\\RecentlyOpened", slots([
-    TEMPDIR + "\\tbrun-probe.twinproj", NEWPROJ, USER,
-    "D:\\a.twinproj", "D:\\b.twinproj", OTHER, "D:\\c.twinproj",
-  ]));
-  setValues(ASSOC + "\\shell\\open\\command", { "": "\"C:\\Temp\\copy\\twinBASIC.exe\" \"%1\"" });
+  setValues(
+    ROOT + "\\RecentlyOpened",
+    slots([
+      TEMPDIR + "\\tbrun-probe.twinproj",
+      NEWPROJ,
+      USER,
+      "D:\\a.twinproj",
+      "D:\\b.twinproj",
+      OTHER,
+      "D:\\c.twinproj",
+    ]),
+  );
+  setValues(ASSOC + "\\shell\\open\\command", { "": '"C:\\Temp\\copy\\twinBASIC.exe" "%1"' });
   setValues(ASSOC, { Extra: "added by run" });
   deleteValues(ASSOC + "\\DefaultIcon", [""]);
   setValues(ASSOC + "\\ShellNew", { FileName: "C:\\Temp\\copy\\x.twinproj" });
@@ -153,12 +177,21 @@ try {
   R.restoreProjects(snap, { prefixes: [TEMPDIR] });
   const writes = R.restoreKeys(keys);
   const after = R.ideLists({ root: ROOT });
-  assert.deepEqual(after.recentlyOpened, Object.values(slots(recentBefore)),
-    "the recent list is exactly as it was, padded to 21 slots");
-  assert.deepEqual(after.projectState.slice().sort(), [OTHER, USER, LOOKALIKE].sort(),
-    "the run's entries are gone; the user's, and a lookalike folder's, are kept");
-  assert.equal(R.snapshotProjects([USER], { root: ROOT }).entries[0].state, "USER-STATE",
-    "the user's project has its old state back");
+  assert.deepEqual(
+    after.recentlyOpened,
+    Object.values(slots(recentBefore)),
+    "the recent list is exactly as it was, padded to 21 slots",
+  );
+  assert.deepEqual(
+    after.projectState.slice().sort(),
+    [OTHER, USER, LOOKALIKE].sort(),
+    "the run's entries are gone; the user's, and a lookalike folder's, are kept",
+  );
+  assert.equal(
+    R.snapshotProjects([USER], { root: ROOT }).entries[0].state,
+    "USER-STATE",
+    "the user's project has its old state back",
+  );
   assert.deepEqual(R.snapshotKeys([ASSOC, ABSENT]), keys, "the association keys are as they were");
   assert.ok(writes >= 5, `association writes counted (${writes})`);
 
@@ -168,7 +201,8 @@ try {
 
   // ------------------------------------------------ what the IDE does to the recent list
   // Each case: the list as found, the list after the run, the list put back.
-  const PROBE1 = TEMPDIR + "\\p1.twinproj", PROBE2 = TEMPDIR + "\\p2.twinproj";
+  const PROBE1 = TEMPDIR + "\\p1.twinproj",
+    PROBE2 = TEMPDIR + "\\p2.twinproj";
   const OTHERRUN = path.join(tmpdir(), "tbharness-selftest-Łukasz", "tbrun", "9999", "o.twinproj");
   const full = Array.from({ length: 21 }, (_, i) => `D:\\full\\p${i}.twinproj`);
   // biome-ignore format: a table, one entry per line
@@ -201,22 +235,29 @@ try {
   // A sweep with no list in hand, as startTidy makes first, only deletes.
   setValues(ROOT + "\\RecentlyOpened", slots([PROBE1, "D:\\x.twinproj", "D:\\x.twinproj"]));
   R.restoreProjects({ root: ROOT, entries: [] }, { prefixes: [TEMPDIR] });
-  assert.deepEqual(R.ideLists({ root: ROOT }).recentlyOpened,
-    Object.values(slots(["D:\\x.twinproj", "D:\\x.twinproj"])), "a sweep with no snapshot only deletes");
+  assert.deepEqual(
+    R.ideLists({ root: ROOT }).recentlyOpened,
+    Object.values(slots(["D:\\x.twinproj", "D:\\x.twinproj"])),
+    "a sweep with no snapshot only deletes",
+  );
 
   // ------------------------------------------------ remembered build targets
   const SETTINGS = ROOT + "\\IDESettings";
   const MEMORY = "targetArchitectureMemory";
   const PROBE = TEMPDIR + "\\tbrun-probe.twinproj";
   const PROBE_FWD = TEMPDIR.split("\\").join("/") + "/src/x.twinproj";
-  const memory = { [USER]: "win64", [PROBE]: "win64", [LOOKALIKE]: "win64", [PROBE_FWD]: "win32",
-                   [OTHER]: "win32" };
+  const memory = { [USER]: "win64", [PROBE]: "win64", [LOOKALIKE]: "win64", [PROBE_FWD]: "win32", [OTHER]: "win32" };
   setValues(SETTINGS, { [MEMORY]: JSON.stringify(memory) });
-  assert.equal(R.sweepArchitectureMemory([TEMPDIR], { root: ROOT }), 2,
-    "both of the run's entries are deleted, whichever separator they use");
-  assert.equal(readValue(SETTINGS, MEMORY),
+  assert.equal(
+    R.sweepArchitectureMemory([TEMPDIR], { root: ROOT }),
+    2,
+    "both of the run's entries are deleted, whichever separator they use",
+  );
+  assert.equal(
+    readValue(SETTINGS, MEMORY),
     JSON.stringify({ [USER]: "win64", [LOOKALIKE]: "win64", [OTHER]: "win32" }),
-    "every other entry is kept, in its order, written as the IDE writes it");
+    "every other entry is kept, in its order, written as the IDE writes it",
+  );
   assert.equal(R.sweepArchitectureMemory([TEMPDIR], { root: ROOT }), 0, "a second sweep deletes nothing");
   setValues(SETTINGS, { [MEMORY]: "{not json" });
   assert.equal(R.sweepArchitectureMemory([TEMPDIR], { root: ROOT }), 0);
@@ -231,10 +272,14 @@ try {
   const kept = { [OTHER]: "win32", [USER]: "win64", "D:\\z.twinproj": "win64" };
   setValues(SETTINGS, { [MEMORY]: JSON.stringify(kept) });
   const targets = R.snapshotArchitectureMemory([USER, NEWPROJ], { root: ROOT });
-  setValues(SETTINGS, { [MEMORY]: JSON.stringify(
-    { ...kept, [USER]: "win32", [NEWPROJ]: "win64", [USER.toLowerCase()]: "win32" }) });
-  assert.equal(R.restoreArchitectureMemory(targets), 3,
-    "the user's entry gets its value back; the run's other spelling of it, and its new project's, go");
+  setValues(SETTINGS, {
+    [MEMORY]: JSON.stringify({ ...kept, [USER]: "win32", [NEWPROJ]: "win64", [USER.toLowerCase()]: "win32" }),
+  });
+  assert.equal(
+    R.restoreArchitectureMemory(targets),
+    3,
+    "the user's entry gets its value back; the run's other spelling of it, and its new project's, go",
+  );
   assert.equal(readValue(SETTINGS, MEMORY), JSON.stringify(kept), "every entry as it was, in its order");
   assert.equal(R.restoreArchitectureMemory(targets), 0, "a second restore writes nothing");
   setValues(SETTINGS, { [MEMORY]: JSON.stringify({ [OTHER]: "win32", "D:\\z.twinproj": "win64" }) });
@@ -250,29 +295,34 @@ try {
   // ------------------------------------------------ an association another run's copy held
   // startTidy and finishTidy, the whole tidy, on the scratch keys.
   const COMMAND = ASSOC + "\\shell\\open\\command";
-  const REAL = "\"C:\\IDE\\twinBASIC.exe\" \"%1\"";
+  const REAL = '"C:\\IDE\\twinBASIC.exe" "%1"';
   const COPY = `"${path.join(tmpdir(), "tbaddin", "9870", "ide", "twinBASIC.exe")}" "%1"`;
-  setValues(COMMAND, { "": COPY });                  // another run's copy has it
+  setValues(COMMAND, { "": COPY }); // another run's copy has it
   const dirty = R.startTidy({ root: ROOT, keys: [ASSOC] });
-  setValues(COMMAND, { "": REAL });                  // an IDE from a real install takes it back
+  setValues(COMMAND, { "": REAL }); // an IDE from a real install takes it back
   assert.equal(R.finishTidy(dirty).association, null);
   assert.equal(readValue(COMMAND, ""), REAL, "an association naming the temp folder is never put back");
   const clean = R.startTidy({ root: ROOT, keys: [ASSOC] });
-  setValues(COMMAND, { "": COPY });                  // this run's copy takes it
+  setValues(COMMAND, { "": COPY }); // this run's copy takes it
   assert.ok(R.finishTidy(clean).association >= 1);
   assert.equal(readValue(COMMAND, ""), REAL, "one that did not is put back");
 
   // ------------------------------------------------ the guards
   assert.throws(() => R.restoreKeys([{ path: "Software", snap: null }]), /close to the root/);
   assert.throws(() => R.snapshotKeys(["Software\\Classes"]), /close to the root/);
-  assert.throws(() => R.restoreProjects({ root: ROOT, entries: [] }, { prefixes: ["C:\\"] }),
-    /outside/);
-  assert.throws(() => R.restoreProjects({ root: ROOT, entries: [] }, { prefixes: [tmpdir()] }),
-    /outside/, "the temp folder itself is not a sweepable prefix");
+  assert.throws(() => R.restoreProjects({ root: ROOT, entries: [] }, { prefixes: ["C:\\"] }), /outside/);
   assert.throws(
-    () => R.restoreKeys([{ path: BASE + "\\Classes\\bad",
-      snap: { values: [{ name: "x", kind: "NotAKind", data: "1" }], keys: [] } }]),
-    (e) => /registry restoreKeys failed: .*NotAKind/.test(e.message) && !/CLIXML/.test(e.message));
+    () => R.restoreProjects({ root: ROOT, entries: [] }, { prefixes: [tmpdir()] }),
+    /outside/,
+    "the temp folder itself is not a sweepable prefix",
+  );
+  assert.throws(
+    () =>
+      R.restoreKeys([
+        { path: BASE + "\\Classes\\bad", snap: { values: [{ name: "x", kind: "NotAKind", data: "1" }], keys: [] } },
+      ]),
+    (e) => /registry restoreKeys failed: .*NotAKind/.test(e.message) && !/CLIXML/.test(e.message),
+  );
 
   // ------------------------------------------------ the ownership rule
   // Pid 1 is never a live process on Windows, so it stands for a dead owner.
@@ -280,11 +330,12 @@ try {
   process.env.TB_REGISTRY_OWNER = "1";
   assert.ok(R.startTidy(), "a dead owner does not block tidying");
   assert.equal(process.env.TB_REGISTRY_OWNER, String(process.pid));
-  const lib = pathToFileURL(path.join(path.dirname(fileURLToPath(import.meta.url)),
-    "lib", "tb-registry.mjs")).href;
-  const child = execFileSync(process.execPath, ["-e",
-    `import(${JSON.stringify(lib)}).then(m => console.log(m.startTidy() === null ? "deferred" : "took over"))`],
-    { encoding: "utf8", env: process.env }).trim();
+  const lib = pathToFileURL(path.join(path.dirname(fileURLToPath(import.meta.url)), "lib", "tb-registry.mjs")).href;
+  const child = execFileSync(
+    process.execPath,
+    ["-e", `import(${JSON.stringify(lib)}).then(m => console.log(m.startTidy() === null ? "deferred" : "took over"))`],
+    { encoding: "utf8", env: process.env },
+  ).trim();
   assert.equal(child, "deferred", "a child of a live owner leaves the registry alone");
 
   console.log("check_tb_registry: every assertion holds");

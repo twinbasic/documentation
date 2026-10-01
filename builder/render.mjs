@@ -36,23 +36,26 @@ export async function renderPhase(pages, site, staticFiles = []) {
     site.markdown = md;
   }
 
-  await Promise.all(pages.map(async (page) => {
-    page.renderedContent = renderPage(page, md);
-    // A count placeholder that reached the output is the failure the feature
-    // exists to prevent, arriving by a new route. Source validation cannot see
-    // this case -- a placeholder inside a raw HTML block has a perfectly good
-    // name, so it passes there, and markdown-it keeps an html_block as one
-    // opaque token the substitution rule never enters. One string scan per
-    // page, and it catches every cause rather than the ones anticipated.
-    const survivor = findSurvivingPlaceholder(page.renderedContent);
-    if (survivor) {
-      throw new Error(
-        `${page.srcRel}: ${survivor} survived rendering.\n` +
-        "  The name is known, so this is a placement markdown-it cannot reach --\n" +
-        "  a raw HTML block is the usual one. Put it in prose, or write the\n" +
-        "  number by hand and say in the page why it is not derived.");
-    }
-  }));
+  await Promise.all(
+    pages.map(async (page) => {
+      page.renderedContent = renderPage(page, md);
+      // A count placeholder that reached the output is the failure the feature
+      // exists to prevent, arriving by a new route. Source validation cannot see
+      // this case -- a placeholder inside a raw HTML block has a perfectly good
+      // name, so it passes there, and markdown-it keeps an html_block as one
+      // opaque token the substitution rule never enters. One string scan per
+      // page, and it catches every cause rather than the ones anticipated.
+      const survivor = findSurvivingPlaceholder(page.renderedContent);
+      if (survivor) {
+        throw new Error(
+          `${page.srcRel}: ${survivor} survived rendering.\n` +
+            "  The name is known, so this is a placement markdown-it cannot reach --\n" +
+            "  a raw HTML block is the usual one. Put it in prose, or write the\n" +
+            "  number by hand and say in the page why it is not derived.",
+        );
+      }
+    }),
+  );
 }
 
 function renderPage(page, md) {
@@ -84,8 +87,7 @@ export function applyPostRenderRewrites(html) {
 // kramdown emits a nbsp in it, and so does this. A regular space would look
 // the same, but Phase 4's compress would collapse it differently.
 function padEmptyCells(html) {
-  return replaceOutsideCode(html, /<(t[dh])([^>]*)><\/\1>/g,
-    (_, tag, attrs) => `<${tag}${attrs}>\u{a0}</${tag}>`);
+  return replaceOutsideCode(html, /<(t[dh])([^>]*)><\/\1>/g, (_, tag, attrs) => `<${tag}${attrs}>\u{a0}</${tag}>`);
 }
 
 // The whole pre-render rewrite chain, exactly as renderPage applies it.
@@ -180,10 +182,10 @@ function absorbTrailingHtmlComments(src) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (
-      i > 0
-      && HTML_COMMENT_LINE_RE.test(line)
-      && PARAGRAPH_CONTINUATION_RE.test(lines[i - 1])
-      && (i + 1 >= lines.length || lines[i + 1].trim() === "")
+      i > 0 &&
+      HTML_COMMENT_LINE_RE.test(line) &&
+      PARAGRAPH_CONTINUATION_RE.test(lines[i - 1]) &&
+      (i + 1 >= lines.length || lines[i + 1].trim() === "")
     ) {
       // Append to the previous emitted line with a single space.
       out[out.length - 1] = `${out[out.length - 1]} ${line.trim()}`;
@@ -211,7 +213,7 @@ function rewriteListItemSetextHeadings(src) {
 // spaces). Otherwise identical to the upstream rule.
 function kramdownHardBreakNewline(state, silent) {
   let pos = state.pos;
-  if (state.src.charCodeAt(pos) !== 0x0A) return false;
+  if (state.src.charCodeAt(pos) !== 0x0a) return false;
 
   const pmax = state.pending.length - 1;
   const max = state.posMax;
@@ -283,8 +285,7 @@ function stripSelfClose(attrs) {
 }
 
 function normaliseVoidTags(html) {
-  return replaceOutsideCode(html, VOID_TAGS_RE, (_, tag, attrs) =>
-    `<${tag.toLowerCase()}${stripSelfClose(attrs)} />`);
+  return replaceOutsideCode(html, VOID_TAGS_RE, (_, tag, attrs) => `<${tag.toLowerCase()}${stripSelfClose(attrs)} />`);
 }
 
 // ---------- markdown-it configuration ---------------------------------------
@@ -381,9 +382,7 @@ export function createMarkdownIt(ctx) {
   // whether a given table overflows depends on the viewport, so there is no
   // render-time answer. custom.scss gives the focus a visible ring.
   md.renderer.rules.table_open = (tokens, idx, opts, _env, slf) =>
-    slf
-      .renderToken(tokens, idx, opts)
-      .replace(/<table>/, `<div class="table-wrapper" tabindex="0"><table>`);
+    slf.renderToken(tokens, idx, opts).replace(/<table>/, `<div class="table-wrapper" tabindex="0"><table>`);
   md.renderer.rules.table_close = (tokens, idx, opts, _env, slf) =>
     `</table></div>` + slf.renderToken(tokens, idx, opts).replace(/<\/table>/, "");
 
@@ -482,16 +481,19 @@ function flattenAdjacentStrongPlugin(md) {
         //   [i+5] text          (level L+1)   -- non-empty, "outer-right"
         //   [i+6] strong_close (level L)
         const t0 = children[i];
-        if (t0 && t0.type === "strong_open"
-            && children[i + 1]?.type === "text"
-            && children[i + 2]?.type === "strong_open"
-            && children[i + 3]?.type === "text"
-            && children[i + 4]?.type === "strong_close"
-            && children[i + 5]?.type === "text"
-            && children[i + 6]?.type === "strong_close"
-            && children[i + 2].markup === t0.markup
-            && children[i + 4].markup === t0.markup
-            && children[i + 6].markup === t0.markup) {
+        if (
+          t0 &&
+          t0.type === "strong_open" &&
+          children[i + 1]?.type === "text" &&
+          children[i + 2]?.type === "strong_open" &&
+          children[i + 3]?.type === "text" &&
+          children[i + 4]?.type === "strong_close" &&
+          children[i + 5]?.type === "text" &&
+          children[i + 6]?.type === "strong_close" &&
+          children[i + 2].markup === t0.markup &&
+          children[i + 4].markup === t0.markup &&
+          children[i + 6].markup === t0.markup
+        ) {
           // Repair the nesting:
           //   inner strong_open  -> outer strong_close
           //   inner strong_close -> outer strong_open
@@ -647,9 +649,11 @@ function kramdownDashesPlugin(md) {
         if ((first === '"' || first === "'") && isEmphasisOpen(children[i - 1])) {
           const charAfter = t.content.length >= 2 ? t.content[1] : "";
           let closing = false;
-          if (charAfter === "") closing = true;                       // rule 7 EOL branch
-          else if (SQ_PUNCT_RE.test(charAfter)) closing = true;        // rule 1
-          else if (/\s/.test(charAfter)) closing = true;               // rule 7 \s branch
+          if (charAfter === "")
+            closing = true; // rule 7 EOL branch
+          else if (SQ_PUNCT_RE.test(charAfter))
+            closing = true; // rule 1
+          else if (/\s/.test(charAfter)) closing = true; // rule 7 \s branch
           if (closing) {
             t.content = (first === '"' ? "”" : "’") + t.content.slice(1);
           } else {
@@ -714,7 +718,10 @@ function applyKramdownSmartQuotes(body) {
     const ch = body[i];
     if (ch === "<") {
       const end = body.indexOf(">", i);
-      if (end < 0) { out += body.slice(i); break; }
+      if (end < 0) {
+        out += body.slice(i);
+        break;
+      }
       out += body.slice(i, end + 1);
       i = end + 1;
       prev = ">";
@@ -732,7 +739,7 @@ function applyKramdownSmartQuotes(body) {
       const closingByS = !isDouble && next === "s" && !/\w/.test(body[i + 2] || "");
       const closingByPrev = prev !== "" && !SQ_CLOSE_EXCLUDED.has(prev);
       const closing = closingByPunct || closingByWS || closingByS || closingByPrev;
-      out += closing ? (isDouble ? "”" : "’") : (isDouble ? "“" : "‘");
+      out += closing ? (isDouble ? "”" : "’") : isDouble ? "“" : "‘";
       prev = ch;
       i++;
       continue;
@@ -799,9 +806,7 @@ function standaloneIalForwardPlugin(md) {
       if (!open.attrs || open.attrs.length === 0) continue;
       const inline = toks[i + 1];
       if (inline?.type !== "inline") continue;
-      const hasVisibleContent = (inline.children || []).some(
-        (c) => c.type !== "text" || c.content !== "",
-      );
+      const hasVisibleContent = (inline.children || []).some((c) => c.type !== "text" || c.content !== "");
       if (hasVisibleContent) continue;
       const close = toks[i + 2];
       if (close?.type !== "paragraph_close") continue;
@@ -823,9 +828,7 @@ function standaloneIalForwardPlugin(md) {
       // attrs of the first paragraph but emits them in REVERSE source
       // order. Detect the multi-line IAL paragraph (map spans 2+ lines)
       // and reverse to match kramdown's source-order output.
-      const attrsList = open.map && open.map[1] - open.map[0] > 1
-        ? [...open.attrs].reverse()
-        : open.attrs;
+      const attrsList = open.map && open.map[1] - open.map[0] > 1 ? [...open.attrs].reverse() : open.attrs;
       mergeAttrs(target, attrsList);
       // Record the IAL's source line range so a following IAL one
       // line away still counts as adjacent to the heading.
@@ -920,7 +923,10 @@ function tightLooseListPlugin(md) {
       let close = -1;
       for (let j = i + 1; j < toks.length; j++) {
         const t = toks[j];
-        if (t.level === itemLevel && t.type === "list_item_close") { close = j; break; }
+        if (t.level === itemLevel && t.type === "list_item_close") {
+          close = j;
+          break;
+        }
         if (t.type === "paragraph_open" && t.level === itemLevel + 1) {
           if (firstParaOpenIdx < 0) firstParaOpenIdx = j;
           else extraParagraphs = true;
@@ -928,11 +934,15 @@ function tightLooseListPlugin(md) {
         // First level-+1 block AFTER the first paragraph (nested list,
         // code block, etc.). Captures the start line so we can tell
         // whether the paragraph and that block are blank-separated.
-        if (firstParaOpenIdx >= 0 && nextBlockAfterParaMap === null &&
-            t.level === itemLevel + 1 &&
-            j > firstParaOpenIdx &&
-            t.type !== "inline" && t.type !== "paragraph_close" &&
-            t.type !== "paragraph_open") {
+        if (
+          firstParaOpenIdx >= 0 &&
+          nextBlockAfterParaMap === null &&
+          t.level === itemLevel + 1 &&
+          j > firstParaOpenIdx &&
+          t.type !== "inline" &&
+          t.type !== "paragraph_close" &&
+          t.type !== "paragraph_open"
+        ) {
           nextBlockAfterParaMap = t.map;
         }
       }
@@ -947,8 +957,7 @@ function tightLooseListPlugin(md) {
       let listOpenIdx = -1;
       for (let k = i - 1; k >= 0; k--) {
         const t = toks[k];
-        if (t.level === itemLevel - 1 &&
-            (t.type === "bullet_list_open" || t.type === "ordered_list_open")) {
+        if (t.level === itemLevel - 1 && (t.type === "bullet_list_open" || t.type === "ordered_list_open")) {
           listOpenIdx = k;
           break;
         }
@@ -980,7 +989,10 @@ function tightLooseListPlugin(md) {
       let anyEarlierTight = false;
       for (let k = 0; k < items.length - 1; k++) {
         const d = decisions.get(items[k]);
-        if (d && d.wouldBeTight) { anyEarlierTight = true; break; }
+        if (d && d.wouldBeTight) {
+          anyEarlierTight = true;
+          break;
+        }
       }
       if (!anyEarlierTight) {
         lastDecision.wouldBeTight = false;
@@ -1010,8 +1022,11 @@ function paragraphHasTrailingBlank(srcLines, paraMap, nextBlockMap) {
 function hasSiblingBlank(srcLines, toks, openIdx, closeIdx, itemMap) {
   if (!itemMap) return false;
   const lastIdx = itemMap[1] - 1;
-  if (lastIdx >= itemMap[0] && (srcLines[lastIdx] ?? "").trim() === "" &&
-      toks[closeIdx + 1]?.type === "list_item_open") {
+  if (
+    lastIdx >= itemMap[0] &&
+    (srcLines[lastIdx] ?? "").trim() === "" &&
+    toks[closeIdx + 1]?.type === "list_item_open"
+  ) {
     return true;
   }
   const prevClose = toks[openIdx - 1];
@@ -1066,10 +1081,18 @@ function looseDeflistPlugin(md) {
         let nextBlockAfterParaMap = null;
         for (let j = i + 1; j < toks.length; j++) {
           const u = toks[j];
-          if (u.level === ddLevel && u.type === "dd_close") { ddClose = j; break; }
-          if (j > i + 1 && u.level === ddLevel + 1 &&
-              u.type !== "paragraph_close" && u.type !== "inline" &&
-              u.type !== "paragraph_open" && nextBlockAfterParaMap === null) {
+          if (u.level === ddLevel && u.type === "dd_close") {
+            ddClose = j;
+            break;
+          }
+          if (
+            j > i + 1 &&
+            u.level === ddLevel + 1 &&
+            u.type !== "paragraph_close" &&
+            u.type !== "inline" &&
+            u.type !== "paragraph_open" &&
+            nextBlockAfterParaMap === null
+          ) {
             nextBlockAfterParaMap = u.map;
           }
         }
@@ -1134,8 +1157,7 @@ function configureFootnotes(md) {
     return `<li id="fn:${n}">\n`;
   };
 
-  md.renderer.rules.footnote_block_open = () =>
-    `<div class="footnotes" role="doc-endnotes">\n<ol>\n`;
+  md.renderer.rules.footnote_block_open = () => `<div class="footnotes" role="doc-endnotes">\n<ol>\n`;
 
   md.renderer.rules.footnote_block_close = () => `</ol>\n</div>\n`;
 }
@@ -1264,8 +1286,9 @@ function searchIndexMarksPlugin(md) {
       if (!name) return;
       throw new Error(
         `${state.env?.page?.srcRel ?? "(unknown page)"}: \`{: ${name}="..." }\` on ` +
-        `${t.tag ? `<${t.tag}>` : t.type}; only a heading can carry a search index entry. ` +
-        "For the whole page, use `index:` in the front matter.");
+          `${t.tag ? `<${t.tag}>` : t.type}; only a heading can carry a search index entry. ` +
+          "For the whole page, use `index:` in the front matter.",
+      );
     };
     for (const t of state.tokens) {
       if (t.type === "heading_open") {
@@ -1489,9 +1512,7 @@ function resolveLink(href, tables, baseurl) {
     path = href;
   }
   const trimmed = path.replace(/\/$/, "");
-  const target = tables.byPath.get(path)
-              ?? tables.byUrl.get(trimmed)
-              ?? tables.byRedirect.get(trimmed);
+  const target = tables.byPath.get(path) ?? tables.byUrl.get(trimmed) ?? tables.byRedirect.get(trimmed);
   return target ? `${baseurl}${target.permalink}` : null;
 }
 
@@ -1542,7 +1563,9 @@ function resolveAsset(resolved, ctx) {
   // `path%20with%20space`). The staticFiles set keys on the unencoded
   // POSIX path Phase 1 stashed; decode before lookup.
   let key = resolved;
-  try { key = decodeURIComponent(resolved); } catch {}
+  try {
+    key = decodeURIComponent(resolved);
+  } catch {}
   if (ctx.staticFiles.has(key)) {
     return `${ctx.baseurl}/${resolved}`;
   }
@@ -1591,25 +1614,31 @@ function walkTokens(tokens, fn) {
 //   2. Attribute order: class, viewBox, version, width, height,
 //      aria-hidden -- the order the gem's `to_svg` walks `@options`.
 
-const ICON_INFO = '<svg class="octicon octicon-info" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>';
-const ICON_LIGHT_BULB = '<svg class="octicon octicon-light-bulb" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M8 1.5c-2.363 0-4 1.69-4 3.75 0 .984.424 1.625.984 2.304l.214.253c.223.264.47.556.673.848.284.411.537.896.621 1.49a.75.75 0 0 1-1.484.211c-.04-.282-.163-.547-.37-.847a8.456 8.456 0 0 0-.542-.68c-.084-.1-.173-.205-.268-.32C3.201 7.75 2.5 6.766 2.5 5.25 2.5 2.31 4.863 0 8 0s5.5 2.31 5.5 5.25c0 1.516-.701 2.5-1.328 3.259-.095.115-.184.22-.268.319-.207.245-.383.453-.541.681-.208.3-.33.565-.37.847a.751.751 0 0 1-1.485-.212c.084-.593.337-1.078.621-1.489.203-.292.45-.584.673-.848.075-.088.147-.173.213-.253.561-.679.985-1.32.985-2.304 0-2.06-1.637-3.75-4-3.75ZM5.75 12h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5ZM6 15.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z"></path></svg>';
-const ICON_REPORT = '<svg class="octicon octicon-report" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>';
-const ICON_ALERT = '<svg class="octicon octicon-alert" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>';
-const ICON_STOP = '<svg class="octicon octicon-stop" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M4.47.22A.749.749 0 0 1 5 0h6c.199 0 .389.079.53.22l4.25 4.25c.141.14.22.331.22.53v6a.749.749 0 0 1-.22.53l-4.25 4.25A.749.749 0 0 1 11 16H5a.749.749 0 0 1-.53-.22L.22 11.53A.749.749 0 0 1 0 11V5c0-.199.079-.389.22-.53Zm.84 1.28L1.5 5.31v5.38l3.81 3.81h5.38l3.81-3.81V5.31L10.69 1.5ZM8 4a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>';
+const ICON_INFO =
+  '<svg class="octicon octicon-info" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>';
+const ICON_LIGHT_BULB =
+  '<svg class="octicon octicon-light-bulb" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M8 1.5c-2.363 0-4 1.69-4 3.75 0 .984.424 1.625.984 2.304l.214.253c.223.264.47.556.673.848.284.411.537.896.621 1.49a.75.75 0 0 1-1.484.211c-.04-.282-.163-.547-.37-.847a8.456 8.456 0 0 0-.542-.68c-.084-.1-.173-.205-.268-.32C3.201 7.75 2.5 6.766 2.5 5.25 2.5 2.31 4.863 0 8 0s5.5 2.31 5.5 5.25c0 1.516-.701 2.5-1.328 3.259-.095.115-.184.22-.268.319-.207.245-.383.453-.541.681-.208.3-.33.565-.37.847a.751.751 0 0 1-1.485-.212c.084-.593.337-1.078.621-1.489.203-.292.45-.584.673-.848.075-.088.147-.173.213-.253.561-.679.985-1.32.985-2.304 0-2.06-1.637-3.75-4-3.75ZM5.75 12h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5ZM6 15.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z"></path></svg>';
+const ICON_REPORT =
+  '<svg class="octicon octicon-report" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>';
+const ICON_ALERT =
+  '<svg class="octicon octicon-alert" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>';
+const ICON_STOP =
+  '<svg class="octicon octicon-stop" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M4.47.22A.749.749 0 0 1 5 0h6c.199 0 .389.079.53.22l4.25 4.25c.141.14.22.331.22.53v6a.749.749 0 0 1-.22.53l-4.25 4.25A.749.749 0 0 1 11 16H5a.749.749 0 0 1-.53-.22L.22 11.53A.749.749 0 0 1 0 11V5c0-.199.079-.389.22-.53Zm.84 1.28L1.5 5.31v5.38l3.81 3.81h5.38l3.81-3.81V5.31L10.69 1.5ZM8 4a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>';
 
 const ADMONITION_TYPES = {
-  note:      { title: "Note",      icon: ICON_INFO,       role: "note" },
-  tip:       { title: "Tip",       icon: ICON_LIGHT_BULB, role: "note" },
-  important: { title: "Important", icon: ICON_REPORT,     role: "note" },
-  warning:   { title: "Warning",   icon: ICON_ALERT,      role: "alert" },
-  caution:   { title: "Caution",   icon: ICON_STOP,       role: "alert" },
+  note: { title: "Note", icon: ICON_INFO, role: "note" },
+  tip: { title: "Tip", icon: ICON_LIGHT_BULB, role: "note" },
+  important: { title: "Important", icon: ICON_REPORT, role: "note" },
+  warning: { title: "Warning", icon: ICON_ALERT, role: "alert" },
+  caution: { title: "Caution", icon: ICON_STOP, role: "alert" },
 };
 
 // Matches an admonition fence with optional leading indent. Indented
 // admonitions inside a list item or blockquote share the parent's
 // indentation; the gem's regex captures that into \1 and uses it as a
 // per-line anchor on the body lines.
-const ADMONITION_RE = /(^|\n)([ \t]*)>[ \t]*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][^\n]*\n((?:\2[ \t]*>[ \t]*[^\n]*(?:\n|$))(?:(?![ \t]*>[ \t]*\[!)\2[ \t]*>[ \t]*[^\n]*(?:\n|$))*)?/g;
+const ADMONITION_RE =
+  /(^|\n)([ \t]*)>[ \t]*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][^\n]*\n((?:\2[ \t]*>[ \t]*[^\n]*(?:\n|$))(?:(?![ \t]*>[ \t]*\[!)\2[ \t]*>[ \t]*[^\n]*(?:\n|$))*)?/g;
 // An admonition written inside a code region is a sample of the syntax, and is
 // left as it is. This rewrite runs outside the mask, so it asks lib/markdown
 // where the regions are, with the site's parser for the reason
@@ -1652,9 +1681,7 @@ export function rewriteAdmonitions(src, md) {
     // A fence inside an admonition is stripped with the rest of the body, so
     // this runs over real code samples: a literal mirror leaves If/ElseIf/Else
     // bodies flush left and loses blank lines between examples.
-    const stripRe = indent
-      ? new RegExp(`^${escapeRegExp(indent)}[ \\t]*>[ \\t]?`, "gm")
-      : /^[ \t]*>[ \t]?/gm;
+    const stripRe = indent ? new RegExp(`^${escapeRegExp(indent)}[ \\t]*>[ \\t]?`, "gm") : /^[ \t]*>[ \t]?/gm;
     const body = (bodyRaw ?? "").replace(stripRe, "").trimEnd();
 
     // The gem emits the replacement <div> at column 0 regardless of how
@@ -1791,7 +1818,8 @@ function expandBoolAttrs(attrSpan) {
 // `<tag></tag>` with no inner whitespace or newline. Drawn from
 // kramdown's HTML_CONTENT_MODEL_BLOCK list (most relevant: iframe,
 // details, summary, video, audio).
-const WS_COLLAPSE_TAGS_RE = /<(iframe|details|summary|video|audio|object|figure|figcaption|aside|section|nav|header|footer|article|main|form|fieldset)(\s[^>]*)?>\s+<\/\1>/gi;
+const WS_COLLAPSE_TAGS_RE =
+  /<(iframe|details|summary|video|audio|object|figure|figcaption|aside|section|nav|header|footer|article|main|form|fieldset)(\s[^>]*)?>\s+<\/\1>/gi;
 
 function normaliseBlockHtml(content) {
   let out = content.replace(START_TAG_RE, (whole, tag, attrSpan) => {
@@ -1836,8 +1864,7 @@ const STANDALONE_INLINE_HTML_RE = /^(?:<(br|hr|img)\b[^>]*>\s*)+$/i;
 // the build), so a miss here means the link is marked `.video` but does
 // not point at YouTube. That is an authoring mistake, not a fetch
 // failure: warn and leave the plain link alone.
-const VIDEO_URL_RE =
-  /^https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{6,})/;
+const VIDEO_URL_RE = /^https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{6,})/;
 
 function videoLinkPlugin(md, ctx) {
   // One core rule rather than renderer overrides: the link text has to be
@@ -1873,7 +1900,8 @@ function videoLinkPlugin(md, ctx) {
           continue;
         }
 
-        const alt = kids.slice(i + 1, closeIdx)
+        const alt = kids
+          .slice(i + 1, closeIdx)
           .filter((t) => t.type === "text" || t.type === "code_inline")
           .map((t) => t.content)
           .join("")
@@ -1927,7 +1955,10 @@ function setClass(token, name) {
   // replacing the attribute outright dropped every sibling class from the
   // same `{: .video .float-right }` shorthand, silently.
   const i = token.attrIndex("class");
-  if (i < 0) { token.attrPush(["class", name]); return; }
+  if (i < 0) {
+    token.attrPush(["class", name]);
+    return;
+  }
   if (!hasClass(token, name)) token.attrs[i][1] = `${token.attrs[i][1]} ${name}`;
 }
 
@@ -1936,7 +1967,9 @@ function setClass(token, name) {
 function removeClass(token, name) {
   const i = token.attrIndex("class");
   if (i < 0) return;
-  const kept = String(token.attrs[i][1]).split(/\s+/).filter(c => c && c !== name);
+  const kept = String(token.attrs[i][1])
+    .split(/\s+/)
+    .filter((c) => c && c !== name);
   if (kept.length) token.attrs[i][1] = kept.join(" ");
   else token.attrs.splice(i, 1);
 }
@@ -1947,8 +1980,7 @@ function removeClass(token, name) {
 // remote would cost a redirect-plus-S3 round trip on every page view,
 // break the offline mirror, and abort the PDF book render -- the forked
 // paged.js raises on an image that has not finished loading.
-const GH_ATTACH_SRC_RE =
-  /^https:\/\/github\.com\/user-attachments\/assets\/([0-9a-fA-F-]{36})/;
+const GH_ATTACH_SRC_RE = /^https:\/\/github\.com\/user-attachments\/assets\/([0-9a-fA-F-]{36})/;
 
 // Shared between the markdown `![]()` path below and the raw-HTML path:
 // given a src/href string, returns the local vendored path if it's a GH
@@ -2072,7 +2104,10 @@ function svgInlinePlugin(md, ctx) {
     const svgContent = ctx.svgContents.get(srcRel);
 
     const alt = self.renderInlineAsText(token.children, options, env);
-    const stem = srcRel.split("/").pop().replace(/\.svg$/, "");
+    const stem = srcRel
+      .split("/")
+      .pop()
+      .replace(/\.svg$/, "");
 
     if (env?.page) env.page.hasSvg = true;
 
@@ -2080,8 +2115,7 @@ function svgInlinePlugin(md, ctx) {
 
     function fallback() {
       if (orig) return orig(tokens, idx, options, env, self);
-      token.attrs[token.attrIndex("alt")][1] =
-        self.renderInlineAsText(token.children, options, env);
+      token.attrs[token.attrIndex("alt")][1] = self.renderInlineAsText(token.children, options, env);
       return self.renderToken(tokens, idx, options);
     }
   };
@@ -2100,12 +2134,13 @@ function buildSvgWrapper(svgContent, alt, stem, srcRel) {
   if (!labelled) {
     console.warn(
       `render: ${srcRel} is embedded with no alt text -- the diagram will have ` +
-        `no accessible name. Add one: ![describe the diagram](...)`
+        `no accessible name. Add one: ![describe the diagram](...)`,
     );
   }
   const imgRole = labelled ? ` role="img" aria-label="${esc(alt)}"` : "";
 
-  return `<div class="svg-inline-wrap">` +
+  return (
+    `<div class="svg-inline-wrap">` +
     `<div class="svg-controls">` +
     `<button type="button" class="btn-reset" data-action="download-svg" data-filename="${esc(stem)}">Download SVG</button>` +
     `<button type="button" class="btn-reset" data-action="copy-svg">Copy SVG</button>` +
@@ -2116,5 +2151,6 @@ function buildSvgWrapper(svgContent, alt, stem, srcRel) {
     `<div class="svg-container" data-svg-src="${esc(srcRel)}"${imgRole}>` +
     svgContent +
     `</div>` +
-    `</div>`;
+    `</div>`
+  );
 }

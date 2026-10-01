@@ -65,17 +65,16 @@ const DEFAULT_SOURCES = ["docs", "builder", "lib"];
 const DEFAULT_TREE = "docs/_site-offline";
 const DEFAULT_MARKER = "index.html";
 
-const cli = withUsageError(
-  () =>
-    parseCli(process.argv.slice(2), {
-      options: {
-        tree: { type: "string", default: DEFAULT_TREE },
-        marker: { type: "string", default: DEFAULT_MARKER },
-        source: { type: "string", multiple: true },
-        help: { type: "boolean", short: "h" },
-      },
-      stopAt: ["help"],
-    }),
+const cli = withUsageError(() =>
+  parseCli(process.argv.slice(2), {
+    options: {
+      tree: { type: "string", default: DEFAULT_TREE },
+      marker: { type: "string", default: DEFAULT_MARKER },
+      source: { type: "string", multiple: true },
+      help: { type: "boolean", short: "h" },
+    },
+    stopAt: ["help"],
+  }),
 );
 if (cli.stopped === "help") {
   printHelpAndExit(
@@ -98,7 +97,7 @@ const marker = join(treeDir, markerName);
 if (!existsSync(marker)) {
   console.error(
     `check_tree_fresh: ${relative(REPO_ROOT, marker).replaceAll(sep, "/")} does not exist.\n` +
-    `  Run build.bat first -- there is no built tree to check.`
+      `  Run build.bat first -- there is no built tree to check.`,
   );
   process.exit(2);
 }
@@ -110,14 +109,25 @@ function newestUnder(dir) {
   let best = null;
   const walk = (d, top) => {
     let entries;
-    try { entries = readdirSync(d, { withFileTypes: true }); } catch { return; }
+    try {
+      entries = readdirSync(d, { withFileTypes: true });
+    } catch {
+      return;
+    }
     for (const e of entries) {
       if (IGNORED_DIRS.has(e.name) || (top && isOutputTree(e.name))) continue;
       const p = join(d, e.name);
-      if (e.isDirectory()) { walk(p, false); continue; }
+      if (e.isDirectory()) {
+        walk(p, false);
+        continue;
+      }
       if (!e.isFile() || IGNORED_FILES.has(e.name)) continue;
       let st;
-      try { st = statSync(p); } catch { continue; }
+      try {
+        st = statSync(p);
+      } catch {
+        continue;
+      }
       if (!best || st.mtimeMs > best.mtimeMs) best = { path: p, mtimeMs: st.mtimeMs };
     }
   };
@@ -136,8 +146,8 @@ if (newest && newest.mtimeMs > builtAt) {
   const ageS = ((newest.mtimeMs - builtAt) / 1000).toFixed(0);
   console.error(
     `check_tree_fresh: ${tree} is ${ageS}s older than ${rel}.\n` +
-    `  Run build.bat first. Scanning a stale tree reports a pass for the\n` +
-    `  previous build, which is the one thing these gates must never do.`
+      `  Run build.bat first. Scanning a stale tree reports a pass for the\n` +
+      `  previous build, which is the one thing these gates must never do.`,
   );
   process.exit(1);
 }

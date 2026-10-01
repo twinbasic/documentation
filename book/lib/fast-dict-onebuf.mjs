@@ -56,23 +56,30 @@
 // is re-derived or removed.
 
 import {
-  PDFDict, PDFCatalog, PDFPageTree, PDFPageLeaf, PDFName, PDFNull, PDFObjectParser, CharCodes,
-} from './pdf-lib-internals.mjs';
-import { onebufRange } from './onebuf-range.mjs';
-import { checkTargets, ABSENT } from './shim-targets.mjs';
+  PDFDict,
+  PDFCatalog,
+  PDFPageTree,
+  PDFPageLeaf,
+  PDFName,
+  PDFNull,
+  PDFObjectParser,
+  CharCodes,
+} from "./pdf-lib-internals.mjs";
+import { onebufRange } from "./onebuf-range.mjs";
+import { checkTargets, ABSENT } from "./shim-targets.mjs";
 
-const TypeName    = PDFName.of('Type');
-const CatalogName = PDFName.of('Catalog');
-const PagesName   = PDFName.of('Pages');
-const PageName    = PDFName.of('Page');
+const TypeName = PDFName.of("Type");
+const CatalogName = PDFName.of("Catalog");
+const PagesName = PDFName.of("Pages");
+const PageName = PDFName.of("Page");
 
 // ---- Gap bits -------------------------------------------------------
 
 // The two bits onebuf-range.mjs leaves between a 23-bit start and the
 // length. Every repack carries them over; they are zero on every dict
 // but a PDFPageLeaf.
-const NORM_BIT = 1 << 23;           // bit 23: PDFPageLeaf `normalized`
-const AUTO_BIT = 1 << 24;           // bit 24: PDFPageLeaf `autoNormalizeCTM`
+const NORM_BIT = 1 << 23; // bit 23: PDFPageLeaf `normalized`
+const AUTO_BIT = 1 << 24; // bit 24: PDFPageLeaf `autoNormalizeCTM`
 
 // ---- Construction ---------------------------------------------------
 //
@@ -98,27 +105,35 @@ const AUTO_BIT = 1 << 24;           // bit 24: PDFPageLeaf `autoNormalizeCTM`
 // Object.create path so the shim doesn't crash on downstream
 // extensions (none in our pipeline; defensive only).
 
-function _FastDict(d) { this.d = d; }
+function _FastDict(d) {
+  this.d = d;
+}
 _FastDict.prototype = PDFDict.prototype;
 
-function _FastCatalog(d) { this.d = d; }
+function _FastCatalog(d) {
+  this.d = d;
+}
 _FastCatalog.prototype = PDFCatalog.prototype;
 
-function _FastPageTree(d) { this.d = d; }
+function _FastPageTree(d) {
+  this.d = d;
+}
 _FastPageTree.prototype = PDFPageTree.prototype;
 
 // d arrives from onebuf-range.mjs's pack(start, length), so bits 23-24
 // are zero; `+ AUTO_BIT` sets bit 24 unconditionally (autoNormalizeCTM
 // = true default). Use addition not `|`: if length >= 32, d > 2^30 (HeapNumber)
 // and `|` would truncate to Int32 losing high bits.
-function _FastPageLeaf(d) { this.d = d + AUTO_BIT; }
+function _FastPageLeaf(d) {
+  this.d = d + AUTO_BIT;
+}
 _FastPageLeaf.prototype = PDFPageLeaf.prototype;
 
 function _construct(ProtoClass, d) {
-  if (ProtoClass === PDFDict)      return new _FastDict(d);
-  if (ProtoClass === PDFPageLeaf)  return new _FastPageLeaf(d);
-  if (ProtoClass === PDFCatalog)   return new _FastCatalog(d);
-  if (ProtoClass === PDFPageTree)  return new _FastPageTree(d);
+  if (ProtoClass === PDFDict) return new _FastDict(d);
+  if (ProtoClass === PDFPageLeaf) return new _FastPageLeaf(d);
+  if (ProtoClass === PDFCatalog) return new _FastCatalog(d);
+  if (ProtoClass === PDFPageTree) return new _FastPageTree(d);
   // Defensive fallback for any unknown subclass.
   const pd = Object.create(ProtoClass.prototype);
   pd.d = d;
@@ -133,7 +148,7 @@ function _construct(ProtoClass, d) {
 // setExpectedDictSlots() before parse, which resizes `main` to exact
 // measured demand.
 const ranges = onebufRange({
-  name: 'fast-dict-onebuf',
+  name: "fast-dict-onebuf",
   capacity: 2400000,
   startBits: 23,
   gapBits: 2,
@@ -147,7 +162,9 @@ const _length = ranges.lengthOf;
 // The encoded `d` values held by PDFDict instances reference main by
 // (start, length); reading the slots requires access to main itself.
 export { main };
-export function getMainLen() { return ranges.used(); }
+export function getMainLen() {
+  return ranges.used();
+}
 
 // Must be called before any parseDict / withContext /
 // fromMapWithContext. `slack` is a multiplier on `slots`; default 1.0
@@ -159,41 +176,48 @@ export function setExpectedDictSlots(slots, slack = 1.0) {
 function mapToArray(map) {
   const arr = new Array(map.size * 2);
   let i = 0;
-  for (const [k, v] of map) { arr[i++] = k; arr[i++] = v; }
+  for (const [k, v] of map) {
+    arr[i++] = k;
+    arr[i++] = v;
+  }
   return arr;
 }
 
 if (!PDFDict.prototype.__fastDictOnebufInstalled) {
-  checkTargets(import.meta.url, { PDFDict, PDFCatalog, PDFPageTree, PDFPageLeaf, PDFObjectParser }, {
-    'PDFDict':                                [2, '60eaf0675cb7'],
-    'PDFDict.withContext':                    [1, 'b79783f2d4dd'],
-    'PDFDict.fromMapWithContext':             [2, 'dc931ea57734'],
-    'PDFDict.prototype.context':              ABSENT,
-    'PDFDict.prototype.keys':                 [0, '91d41cc6de06'],
-    'PDFDict.prototype.values':               [0, 'b00e6e0e9a70'],
-    'PDFDict.prototype.entries':              [0, 'c7d0666742c0'],
-    'PDFDict.prototype.set':                  [2, '8f7998a17fbe'],
-    'PDFDict.prototype.get':                  [2, 'f2fc35be96de'],
-    'PDFDict.prototype.has':                  [1, 'c0f455563c27'],
-    'PDFDict.prototype.delete':               [1, 'ed89c9b2480e'],
-    'PDFDict.prototype.asMap':                [0, '2406d1634030'],
-    'PDFDict.prototype.clone':                [1, '42c1d3265d15'],
-    'PDFDict.prototype.toString':             [0, 'a718a21ad3b3'],
-    'PDFDict.prototype.sizeInBytes':          [0, 'ad72e2c097c3'],
-    'PDFDict.prototype.copyBytesInto':        [2, '8b0e4be9ce23'],
-    'PDFCatalog':                             [0, 'f30b610c8906'],
-    'PDFCatalog.withContextAndPages':         [2, 'feba5de98084'],
-    'PDFCatalog.fromMapWithContext':          [2, 'de86988a4da7'],
-    'PDFPageTree':                            [0, 'f90f91df0873'],
-    'PDFPageTree.withContext':                [2, 'adff8ad3530b'],
-    'PDFPageTree.fromMapWithContext':         [2, '3a685cbe77d3'],
-    'PDFPageLeaf':                            [3, '6af6b6fbd5e3'],
-    'PDFPageLeaf.withContextAndParent':       [2, '37706c20ca6b'],
-    'PDFPageLeaf.fromMapWithContext':         [3, '291ad87437e0'],
-    'PDFPageLeaf.prototype.normalized':       ABSENT,
-    'PDFPageLeaf.prototype.autoNormalizeCTM': ABSENT,
-    'PDFObjectParser.prototype.parseDict':    [0, '8056773f38fb'],
-  });
+  checkTargets(
+    import.meta.url,
+    { PDFDict, PDFCatalog, PDFPageTree, PDFPageLeaf, PDFObjectParser },
+    {
+      PDFDict: [2, "60eaf0675cb7"],
+      "PDFDict.withContext": [1, "b79783f2d4dd"],
+      "PDFDict.fromMapWithContext": [2, "dc931ea57734"],
+      "PDFDict.prototype.context": ABSENT,
+      "PDFDict.prototype.keys": [0, "91d41cc6de06"],
+      "PDFDict.prototype.values": [0, "b00e6e0e9a70"],
+      "PDFDict.prototype.entries": [0, "c7d0666742c0"],
+      "PDFDict.prototype.set": [2, "8f7998a17fbe"],
+      "PDFDict.prototype.get": [2, "f2fc35be96de"],
+      "PDFDict.prototype.has": [1, "c0f455563c27"],
+      "PDFDict.prototype.delete": [1, "ed89c9b2480e"],
+      "PDFDict.prototype.asMap": [0, "2406d1634030"],
+      "PDFDict.prototype.clone": [1, "42c1d3265d15"],
+      "PDFDict.prototype.toString": [0, "a718a21ad3b3"],
+      "PDFDict.prototype.sizeInBytes": [0, "ad72e2c097c3"],
+      "PDFDict.prototype.copyBytesInto": [2, "8b0e4be9ce23"],
+      PDFCatalog: [0, "f30b610c8906"],
+      "PDFCatalog.withContextAndPages": [2, "feba5de98084"],
+      "PDFCatalog.fromMapWithContext": [2, "de86988a4da7"],
+      PDFPageTree: [0, "f90f91df0873"],
+      "PDFPageTree.withContext": [2, "adff8ad3530b"],
+      "PDFPageTree.fromMapWithContext": [2, "3a685cbe77d3"],
+      PDFPageLeaf: [3, "6af6b6fbd5e3"],
+      "PDFPageLeaf.withContextAndParent": [2, "37706c20ca6b"],
+      "PDFPageLeaf.fromMapWithContext": [3, "291ad87437e0"],
+      "PDFPageLeaf.prototype.normalized": ABSENT,
+      "PDFPageLeaf.prototype.autoNormalizeCTM": ABSENT,
+      "PDFObjectParser.prototype.parseDict": [0, "8056773f38fb"],
+    },
+  );
 
   // ---- PDFDict.prototype --------------------------------------------
 
@@ -232,7 +256,10 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
     const length0 = _length(d0);
     // Try in-place replace
     for (let i = 0; i < length0; i += 2) {
-      if (main[start0 + i] === key) { main[start0 + i + 1] = value; return; }
+      if (main[start0 + i] === key) {
+        main[start0 + i + 1] = value;
+        return;
+      }
     }
     // Append in place at main's high-water mark, else COW first.
     ranges.pushPair(this, key, value);
@@ -298,11 +325,11 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
     const d = this.d;
     const start = _start(d);
     const end = start + _length(d);
-    let s = '<<\n';
+    let s = "<<\n";
     for (let i = start; i < end; i += 2) {
-      s += main[i].toString() + ' ' + main[i + 1].toString() + '\n';
+      s += main[i].toString() + " " + main[i + 1].toString() + "\n";
     }
-    return s + '>>';
+    return s + ">>";
   };
 
   PDFDict.prototype.sizeInBytes = function () {
@@ -335,9 +362,13 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
     return offset - initialOffset;
   };
 
-  Object.defineProperty(PDFDict.prototype, 'context', {
-    get() { return ranges.context(); },
-    set(_ctx) { /* singleton is source of truth */ },
+  Object.defineProperty(PDFDict.prototype, "context", {
+    get() {
+      return ranges.context();
+    },
+    set(_ctx) {
+      /* singleton is source of truth */
+    },
     configurable: true,
   });
 
@@ -350,23 +381,27 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
   // current bit state, so high bits of HeapNumber'd d survive.
   // No-ops when the flag is already in the requested state.
 
-  Object.defineProperty(PDFPageLeaf.prototype, 'normalized', {
-    get() { return (this.d & NORM_BIT) !== 0; },
+  Object.defineProperty(PDFPageLeaf.prototype, "normalized", {
+    get() {
+      return (this.d & NORM_BIT) !== 0;
+    },
     set(v) {
       const d = this.d;
       const has = (d & NORM_BIT) !== 0;
-      if (v && !has)      this.d = d + NORM_BIT;
+      if (v && !has) this.d = d + NORM_BIT;
       else if (!v && has) this.d = d - NORM_BIT;
     },
     configurable: true,
   });
 
-  Object.defineProperty(PDFPageLeaf.prototype, 'autoNormalizeCTM', {
-    get() { return (this.d & AUTO_BIT) !== 0; },
+  Object.defineProperty(PDFPageLeaf.prototype, "autoNormalizeCTM", {
+    get() {
+      return (this.d & AUTO_BIT) !== 0;
+    },
     set(v) {
       const d = this.d;
       const has = (d & AUTO_BIT) !== 0;
-      if (v && !has)      this.d = d + AUTO_BIT;
+      if (v && !has) this.d = d + AUTO_BIT;
       else if (!v && has) this.d = d - AUTO_BIT;
     },
     configurable: true,
@@ -382,11 +417,7 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
   };
 
   PDFCatalog.withContextAndPages = function (context, pages) {
-    return ranges.viewOf(
-      PDFCatalog,
-      [PDFName.of('Type'), CatalogName, PagesName, pages],
-      context,
-    );
+    return ranges.viewOf(PDFCatalog, [PDFName.of("Type"), CatalogName, PagesName, pages], context);
   };
   PDFCatalog.fromMapWithContext = function (map, context) {
     return ranges.viewOf(PDFCatalog, mapToArray(map), context);
@@ -407,20 +438,20 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
   // PDFDocument.create would fail. The entries are pdf-lib's, in its order.
   PDFPageTree.withContext = function (context, parent) {
     const map = new Map([
-      [PDFName.of('Type'), PDFName.of('Pages')],
-      [PDFName.of('Kids'), context.obj([])],
-      [PDFName.of('Count'), context.obj(0)],
+      [PDFName.of("Type"), PDFName.of("Pages")],
+      [PDFName.of("Kids"), context.obj([])],
+      [PDFName.of("Count"), context.obj(0)],
     ]);
-    if (parent) map.set(PDFName.of('Parent'), parent);
+    if (parent) map.set(PDFName.of("Parent"), parent);
     return PDFPageTree.fromMapWithContext(map, context);
   };
 
   PDFPageLeaf.withContextAndParent = function (context, parent) {
     const map = new Map([
-      [PDFName.of('Type'), PDFName.of('Page')],
-      [PDFName.of('Parent'), parent],
-      [PDFName.of('Resources'), context.obj({})],
-      [PDFName.of('MediaBox'), context.obj([0, 0, 612, 792])],
+      [PDFName.of("Type"), PDFName.of("Page")],
+      [PDFName.of("Parent"), parent],
+      [PDFName.of("Resources"), context.obj({})],
+      [PDFName.of("MediaBox"), context.obj([0, 0, 612, 792])],
     ]);
     return PDFPageLeaf.fromMapWithContext(map, context, false);
   };
@@ -440,19 +471,17 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
     this.skipWhitespaceAndComments();
 
     if (this._dictTemp === undefined) {
-      this._dictTemp = new Array(64);   // grows naturally if needed
+      this._dictTemp = new Array(64); // grows naturally if needed
       this._dictTempLen = 0;
     }
     const temp = this._dictTemp;
     const frameStart = this._dictTempLen;
 
-    while (!bytes.done() &&
-           bytes.peek() !== CharCodes.GreaterThan &&
-           bytes.peekAhead(1) !== CharCodes.GreaterThan) {
+    while (!bytes.done() && bytes.peek() !== CharCodes.GreaterThan && bytes.peekAhead(1) !== CharCodes.GreaterThan) {
       const key = this.parseName();
-      const value = this.parseObject();    // may recurse; temp grows / shrinks
+      const value = this.parseObject(); // may recurse; temp grows / shrinks
       const len = this._dictTempLen;
-      temp[len]     = key;
+      temp[len] = key;
       temp[len + 1] = value;
       this._dictTempLen = len + 2;
       this.skipWhitespaceAndComments();
@@ -471,11 +500,14 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
     let Type;
     const end = start + frameLen;
     for (let i = start; i < end; i += 2) {
-      if (main[i] === TypeName) { Type = main[i + 1]; break; }
+      if (main[i] === TypeName) {
+        Type = main[i + 1];
+        break;
+      }
     }
-    if (Type === CatalogName) return ranges.view(PDFCatalog,  start, frameLen, this.context);
-    if (Type === PagesName)   return ranges.view(PDFPageTree, start, frameLen, this.context);
-    if (Type === PageName)    return ranges.view(PDFPageLeaf, start, frameLen, this.context);
+    if (Type === CatalogName) return ranges.view(PDFCatalog, start, frameLen, this.context);
+    if (Type === PagesName) return ranges.view(PDFPageTree, start, frameLen, this.context);
+    if (Type === PageName) return ranges.view(PDFPageLeaf, start, frameLen, this.context);
     return ranges.view(PDFDict, start, frameLen, this.context);
   };
 

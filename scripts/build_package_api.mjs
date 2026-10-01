@@ -85,7 +85,8 @@ const { values } = withUsageError(() =>
       help: { type: "boolean", short: "h", default: false },
     },
     stopAt: ["help"],
-  }));
+  }),
+);
 if (values.help) printHelpAndExit(USAGE);
 
 function sources() {
@@ -137,13 +138,15 @@ function projectName(dir, fallback) {
   try {
     const m = /"project\.name"\s*:\s*"([^"]+)"/.exec(readFileSync(path.join(dir, "Settings"), "utf8"));
     if (m) return m[1];
-  } catch { /* no Settings: an export that is not a project */ }
+  } catch {
+    /* no Settings: an export that is not a project */
+  }
   return fallback;
 }
 
 function readAll(packages) {
-  const parsed = new Map();                      // project name -> types
-  const exportsOf = new Map();                   // project name -> export names
+  const parsed = new Map(); // project name -> types
+  const exportsOf = new Map(); // project name -> export names
   const problems = [];
   // By code unit, not localeCompare: the file is committed, and a regeneration
   // on a machine with another locale must not reorder it.
@@ -154,7 +157,8 @@ function readAll(packages) {
       // Several exports under one name must declare one API, or the name
       // would stand for two things.
       const same = JSON.stringify(strip(parsed.get(project))) === JSON.stringify(strip(r.types));
-      if (!same) die(2, `${p.name} and ${exportsOf.get(project).join(", ")} are all '${project}' but declare different APIs`);
+      if (!same)
+        die(2, `${p.name} and ${exportsOf.get(project).join(", ")} are all '${project}' but declare different APIs`);
     } else {
       parsed.set(project, r.types);
       for (const x of r.problems) problems.push({ pkg: project, ...x });
@@ -166,7 +170,8 @@ function readAll(packages) {
 
 // A type as declared, without where: two builds of one package differ in
 // their line numbers.
-const strip = (types) => types.map(({ line, members, ...t }) => ({ ...t, members: members.map(({ line: _, ...m }) => m) }));
+const strip = (types) =>
+  types.map(({ line, members, ...t }) => ({ ...t, members: members.map(({ line: _, ...m }) => m) }));
 
 // One type to a line, so that a regeneration against a newer build diffs as the
 // types that changed rather than as a rewritten file.
@@ -178,7 +183,9 @@ function serialize({ build, packages, exportsOf }) {
     lines.push(`      "exports": ${JSON.stringify(exportsOf.get(pkg))},`);
     lines.push(`      "types": [`);
     const types = packages[pkg];
-    types.forEach((t, j) => { lines.push(`        ${JSON.stringify(t)}${j < types.length - 1 ? "," : ""}`); });
+    types.forEach((t, j) => {
+      lines.push(`        ${JSON.stringify(t)}${j < types.length - 1 ? "," : ""}`);
+    });
     lines.push("      ]", `    }${i < names.length - 1 ? "," : ""}`);
   });
   lines.push("  }", "}");
@@ -196,7 +203,8 @@ let types = 0;
 let members = 0;
 for (const list of Object.values(model)) {
   types += list.length;
-  for (const t of list) members += Object.keys(t.members ?? {}).length + (t.values?.length ?? 0) + (t.fields?.length ?? 0);
+  for (const t of list)
+    members += Object.keys(t.members ?? {}).length + (t.values?.length ?? 0) + (t.fields?.length ?? 0);
 }
 console.error(`read    : ${packages.length} package(s), ${types} type(s), ${members} member(s)`);
 for (const p of problems.slice(0, 20)) console.error(`  ? ${p.pkg} ${p.file}:${p.line} ${p.why}`);
@@ -206,9 +214,14 @@ for (const u of [...new Set(unresolved)].slice(0, 20)) console.error(`  ? not fo
 const out = values.out ?? OUT;
 if (values.check) {
   const committed = existsSync(out) ? readFileSync(out, "utf8").replace(/\r\n/g, "\n") : null;
-  if (committed === text) { console.error(`up to date: ${path.relative(REPO_ROOT, out)}`); process.exit(0); }
-  console.error(`STALE: ${path.relative(REPO_ROOT, out)} differs from what BETA ${build ?? "?"} gives; ` +
-    `run node scripts/build_package_api.mjs and commit the result`);
+  if (committed === text) {
+    console.error(`up to date: ${path.relative(REPO_ROOT, out)}`);
+    process.exit(0);
+  }
+  console.error(
+    `STALE: ${path.relative(REPO_ROOT, out)} differs from what BETA ${build ?? "?"} gives; ` +
+      `run node scripts/build_package_api.mjs and commit the result`,
+  );
   process.exit(1);
 }
 writeFileSync(out, text, "utf8");

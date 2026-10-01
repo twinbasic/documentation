@@ -50,7 +50,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
-export const THUMB_DIR_REL  = "assets/thumbnails";
+export const THUMB_DIR_REL = "assets/thumbnails";
 export const ATTACH_DIR_REL = "assets/attachments";
 
 // `](<url>)` immediately followed by an IAL carrying `.video`. Matching
@@ -60,8 +60,7 @@ const YT_MARKED_RE =
   /\]\(\s*https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{6,})[^)\s]*\s*\)\s*\{:[^}]*\.video\b[^}]*\}/g;
 
 // Any user-attachment URL, in markdown image syntax or a raw <img src>.
-const GH_ATTACH_RE =
-  /https:\/\/github\.com\/user-attachments\/assets\/([0-9a-fA-F-]{36})/g;
+const GH_ATTACH_RE = /https:\/\/github\.com\/user-attachments\/assets\/([0-9a-fA-F-]{36})/g;
 
 // YouTube publishes several poster sizes and not every video has the
 // largest, so fall back in order. 404 on maxresdefault is normal for
@@ -69,9 +68,9 @@ const GH_ATTACH_RE =
 const YT_VARIANTS = ["maxresdefault", "hqdefault", "mqdefault"];
 
 const CONTENT_TYPE_EXT = new Map([
-  ["image/png",  "png"],
+  ["image/png", "png"],
   ["image/jpeg", "jpg"],
-  ["image/gif",  "gif"],
+  ["image/gif", "gif"],
   ["image/webp", "webp"],
   ["image/avif", "avif"],
 ]);
@@ -122,8 +121,14 @@ function detectImageFormat(buf) {
   if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "jpeg";
   if (
     buf.length >= 8 &&
-    buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47 &&
-    buf[4] === 0x0d && buf[5] === 0x0a && buf[6] === 0x1a && buf[7] === 0x0a
+    buf[0] === 0x89 &&
+    buf[1] === 0x50 &&
+    buf[2] === 0x4e &&
+    buf[3] === 0x47 &&
+    buf[4] === 0x0d &&
+    buf[5] === 0x0a &&
+    buf[6] === 0x1a &&
+    buf[7] === 0x0a
   ) {
     return "png";
   }
@@ -350,14 +355,14 @@ export async function vendorAssets(srcRoot, pages, opts = {}) {
 
   const videos = new Map();
   const images = new Map();
-  const files  = [];
+  const files = [];
   let fetched = 0;
-  let failed  = 0;
+  let failed = 0;
   const missing = [];
 
   const urlPath = (rel) => `${baseurl}/${rel}`;
 
-  const thumbDirAbs  = path.join(srcRoot, THUMB_DIR_REL);
+  const thumbDirAbs = path.join(srcRoot, THUMB_DIR_REL);
   const attachDirAbs = path.join(srcRoot, ATTACH_DIR_REL);
 
   const record = async (destPath, rel) => {
@@ -370,7 +375,7 @@ export async function vendorAssets(srcRoot, pages, opts = {}) {
     const present = new Set(await listDir(thumbDirAbs));
     for (const id of videoIds) {
       const name = `yt-${id}.jpg`;
-      const rel  = `${THUMB_DIR_REL}/${name}`;
+      const rel = `${THUMB_DIR_REL}/${name}`;
       if (present.has(name)) {
         videos.set(id, urlPath(rel));
         continue;
@@ -432,9 +437,9 @@ export async function vendorAssets(srcRoot, pages, opts = {}) {
     const lines = missing.map((m) => `  ${m.rel}  (${m.kind} ${m.id})`).join("\n");
     throw new Error(
       `vendor-assets: ${missing.length} remote asset(s) are referenced but not committed, ` +
-      `and fetching is disabled (CI mode):\n${lines}\n` +
-      `Run a local build to download them, then commit the files under ` +
-      `docs/${THUMB_DIR_REL}/ and docs/${ATTACH_DIR_REL}/.`,
+        `and fetching is disabled (CI mode):\n${lines}\n` +
+        `Run a local build to download them, then commit the files under ` +
+        `docs/${THUMB_DIR_REL}/ and docs/${ATTACH_DIR_REL}/.`,
     );
   }
 

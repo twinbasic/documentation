@@ -44,15 +44,19 @@
 //
 // Idempotent -- repeated imports do nothing after the first.
 
-import { numbers, utilsBarrel, topBarrel } from './pdf-lib-internals.mjs';
-import { checkTargets } from './shim-targets.mjs';
+import { numbers, utilsBarrel, topBarrel } from "./pdf-lib-internals.mjs";
+import { checkTargets } from "./shim-targets.mjs";
 
 if (!numbers.__fastSizeInBytesInstalled) {
-  checkTargets(import.meta.url, { numbers, utilsBarrel, topBarrel }, {
-    'numbers.sizeInBytes':     [1, '9d66145407d5'],
-    'utilsBarrel.sizeInBytes': [1, '9d66145407d5'],
-    'topBarrel.sizeInBytes':   [1, '9d66145407d5'],
-  });
+  checkTargets(
+    import.meta.url,
+    { numbers, utilsBarrel, topBarrel },
+    {
+      "numbers.sizeInBytes": [1, "9d66145407d5"],
+      "utilsBarrel.sizeInBytes": [1, "9d66145407d5"],
+      "topBarrel.sizeInBytes": [1, "9d66145407d5"],
+    },
+  );
   const fastSizeInBytes = function fastSizeInBytes(n) {
     if (n < 0x100) return 1;
     if (n < 0x10000) return 2;
@@ -60,8 +64,8 @@ if (!numbers.__fastSizeInBytesInstalled) {
     if (n < 0x100000000) return 4;
     return 4 + Math.ceil((32 - Math.clz32(Math.floor(n / 0x100000000))) / 8);
   };
-  numbers.sizeInBytes     = fastSizeInBytes;
+  numbers.sizeInBytes = fastSizeInBytes;
   utilsBarrel.sizeInBytes = fastSizeInBytes;
-  topBarrel.sizeInBytes   = fastSizeInBytes;
+  topBarrel.sizeInBytes = fastSizeInBytes;
   numbers.__fastSizeInBytesInstalled = true;
 }

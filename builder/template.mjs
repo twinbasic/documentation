@@ -26,17 +26,19 @@ import { formatDate } from "./strftime.mjs";
 export async function templatePhase(pages, site, initData) {
   if (site.config.just_the_docs?.collections) {
     throw new Error(
-      "site.config.just_the_docs.collections is set; Phase 4 (and Phase 2) "
-      + "do not support collections. Update _config.yml or extend the port.",
+      "site.config.just_the_docs.collections is set; Phase 4 (and Phase 2) " +
+        "do not support collections. Update _config.yml or extend the port.",
     );
   }
 
   const init = initData ?? buildInit(site);
 
-  await Promise.all(pages.map(async (page) => {
-    if (page.frontmatter.layout === "book-combined") return;
-    page.html = templatePage(page, site, init);
-  }));
+  await Promise.all(
+    pages.map(async (page) => {
+      if (page.frontmatter.layout === "book-combined") return;
+      page.html = templatePage(page, site, init);
+    }),
+  );
 }
 
 // Config-only chrome fields -- no nav-tree dependency. Exported for the
@@ -45,11 +47,11 @@ export async function templatePhase(pages, site, initData) {
 // by dispatch.
 export function buildInitConfig(site) {
   return {
-    svgSprites:    buildSvgSprites(site.config),
-    header:        renderHeader(site),
-    searchFooter:  renderSearchFooter(site),
-    faviconLink:   buildFaviconLink(site.config),
-    gaSnippet:     buildGaSnippet(site.config),
+    svgSprites: buildSvgSprites(site.config),
+    header: renderHeader(site),
+    searchFooter: renderSearchFooter(site),
+    faviconLink: buildFaviconLink(site.config),
+    gaSnippet: buildGaSnippet(site.config),
     searchEnabled: site.config.search_enabled !== false,
   };
 }
@@ -91,10 +93,13 @@ function templatePage(page, site, init) {
     `<body>\n` +
     `  <a class="skip-to-main" href="#main-content">Skip to main content</a>\n` +
     `  <div id="a11y-status" class="sr-only" aria-live="polite" aria-atomic="true"></div>\n` +
-    init.svgSprites + `\n` +
-    init.sidebar + `\n` +
+    init.svgSprites +
+    `\n` +
+    init.sidebar +
+    `\n` +
     `  <div class="main" id="page-top">\n` +
-    init.header + `\n` +
+    init.header +
+    `\n` +
     `    <div class="main-content-wrap">\n` +
     renderBreadcrumbs(page, baseurl) +
     `      <div id="main-content" class="main-content">\n` +
@@ -130,15 +135,14 @@ function templatePage(page, site, init) {
 // are always made in CORS mode, and a preload whose mode does not match the
 // later @font-face fetch is not reused -- the browser downloads the file
 // twice and warns about it in the console.
-const PRELOAD_FONTS = [
-  "/assets/fonts/inter-variable.woff2",
-  "/assets/fonts/cascadia-mono-variable.woff2",
-];
+const PRELOAD_FONTS = ["/assets/fonts/inter-variable.woff2", "/assets/fonts/cascadia-mono-variable.woff2"];
 
 function fontPreloads(bu) {
-  return PRELOAD_FONTS.map(f =>
-    `  <link rel="preload" href="${escapeMarkupAndQuotes(relativeUrl(f, bu))}" as="font" ` +
-    `type="font/woff2" crossorigin>\n`).join("");
+  return PRELOAD_FONTS.map(
+    (f) =>
+      `  <link rel="preload" href="${escapeMarkupAndQuotes(relativeUrl(f, bu))}" as="font" ` +
+      `type="font/woff2" crossorigin>\n`,
+  ).join("");
 }
 
 function renderHead(page, site, init) {
@@ -151,7 +155,8 @@ function renderHead(page, site, init) {
   // whitespace) because head.html has `{%- comment -%}...{%- endcomment -%}`
   // between them that strips surrounding whitespace.
   const bu = String(site.config.baseurl ?? "");
-  return `<head>\n` +
+  return (
+    `<head>\n` +
     `  <meta charset="UTF-8">\n` +
     `  <meta http-equiv="X-UA-Compatible" content="IE=Edge"><script>\n` +
     `    try { var t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) {}\n` +
@@ -165,14 +170,19 @@ function renderHead(page, site, init) {
     navActivationCss(page) +
     `\n  </style>\n` +
     (init.gaSnippet ? init.gaSnippet + `\n` : "") +
-    (init.searchEnabled ? `  <script src="${escapeMarkupAndQuotes(relativeUrl("/assets/js/vendor/lunr.min.js", bu))}"></script>\n` : "") +
+    (init.searchEnabled
+      ? `  <script src="${escapeMarkupAndQuotes(relativeUrl("/assets/js/vendor/lunr.min.js", bu))}"></script>\n`
+      : "") +
     (bu ? `  <script>window.jtdBaseurl=${JSON.stringify(bu)};</script>\n` : "") +
     `  <script src="${escapeMarkupAndQuotes(relativeUrl("/assets/js/just-the-docs.js", bu))}"></script>\n` +
-    (page.hasSvg ? `  <script src="${escapeMarkupAndQuotes(relativeUrl("/assets/js/svg-inline.js", bu))}" defer></script>\n` : "") +
+    (page.hasSvg
+      ? `  <script src="${escapeMarkupAndQuotes(relativeUrl("/assets/js/svg-inline.js", bu))}" defer></script>\n`
+      : "") +
     `  <meta name="viewport" content="width=device-width, initial-scale=1">\n` +
     headSeoBlock(page, site) +
     init.faviconLink +
-    `</head>\n`;
+    `</head>\n`
+  );
 }
 
 // Port of docs/_includes/head_seo.html. Verbatim byte parity with
@@ -183,7 +193,8 @@ function renderHead(page, site, init) {
 // they go in verbatim. Escaping again would double-encode `&` to
 // `&amp;amp;` on titles like `&, &=`.
 function headSeoBlock(page, site) {
-  return `<!-- Begin Jekyll SEO tag v2.8.0 -->\n` +
+  return (
+    `<!-- Begin Jekyll SEO tag v2.8.0 -->\n` +
     `<title>${page.seoFullTitle ?? ""}</title>\n` +
     `<meta name="generator" content="Jekyll v4.4.1" />\n` +
     `<meta property="og:title" content="${page.seoTitle ?? ""}" />\n` +
@@ -197,7 +208,8 @@ function headSeoBlock(page, site) {
     `<script type="application/ld+json">\n` +
     jsonLd(page, site) +
     `</script>\n` +
-    `<!-- End Jekyll SEO tag -->\n`;
+    `<!-- End Jekyll SEO tag -->\n`
+  );
 }
 
 // JSON.stringify matches Liquid's `| jsonify` -- compact, no extra
@@ -245,17 +257,20 @@ function buildGaSnippet(config) {
   const ids = String(config.ga_tracking).split(",");
   const primary = ids[0];
   const configCalls = ids
-    .map(id =>
-      `      gtag('config', '${id}'${config.ga_tracking_anonymize_ip != null ? ", { 'anonymize_ip': true }" : ""});\n`,
+    .map(
+      (id) =>
+        `      gtag('config', '${id}'${config.ga_tracking_anonymize_ip != null ? ", { 'anonymize_ip': true }" : ""});\n`,
     )
     .join("");
-  return `    <script async src="https://www.googletagmanager.com/gtag/js?id=${primary}"></script>\n` +
+  return (
+    `    <script async src="https://www.googletagmanager.com/gtag/js?id=${primary}"></script>\n` +
     `    <script>\n` +
     `      window.dataLayer = window.dataLayer || [];\n` +
     `      function gtag(){dataLayer.push(arguments);}\n` +
     `      gtag('js', new Date());\n` +
     configCalls +
-    `    </script>`;
+    `    </script>`
+  );
 }
 
 // ---------- §5.3 SVG icon sprite -----------------------------------------
@@ -336,7 +351,8 @@ function buildSvgSprites(config) {
 function renderSidebar(site) {
   const config = site.config;
   const baseurl = String(config.baseurl ?? "");
-  return `  <div class="side-bar">\n` +
+  return (
+    `  <div class="side-bar">\n` +
     `    <div class="site-header" role="banner">\n` +
     `      <a href="${escapeMarkupAndQuotes(relativeUrl("/", baseurl))}" class="site-title lh-tight">${renderSiteTitle(config)}</a>\n` +
     `      <button id="menu-button" class="site-button btn-reset" aria-label="Toggle menu" aria-expanded="false" aria-controls="site-nav">\n` +
@@ -354,7 +370,8 @@ function renderSidebar(site) {
     `    <footer class="site-footer" aria-label="Site">\n` +
     `      This site uses <a href="https://github.com/just-the-docs/just-the-docs">Just the Docs</a>, a documentation theme originally for Jekyll.\n` +
     `    </footer>\n` +
-    `  </div>`;
+    `  </div>`
+  );
 }
 
 // Port of docs/_includes/title.html: when site.logo is set, the title
@@ -400,7 +417,8 @@ function renderNavTree(nodes, ancestorTitles, baseurl) {
       if (hasChildren) {
         // The upstream emits the button + svg across multiple source
         // lines; compress collapses to single spaces.
-        out += `<button class="nav-list-expander btn-reset" aria-label="toggle items in ${escapeMarkupAndQuotes(String(node.title))} category" aria-expanded="false"> ` +
+        out +=
+          `<button class="nav-list-expander btn-reset" aria-label="toggle items in ${escapeMarkupAndQuotes(String(node.title))} category" aria-expanded="false"> ` +
           `<svg viewBox="0 0 24 24" aria-hidden="true"><use xlink:href="#svg-arrow-right"></use></svg>` +
           ` </button>`;
       }
@@ -419,24 +437,29 @@ function renderNavTree(nodes, ancestorTitles, baseurl) {
 function renderNavExternalLinks(config) {
   const list = config.nav_external_links;
   if (!list || list.length === 0) return "";
-  const items = list.map(node => {
-    const opensNewTab = node.opens_in_new_tab === true
-      || (node.opens_in_new_tab == null && config.nav_external_links_new_tab);
-    // The Liquid source has a multi-line `<a ... class="..." {% if ...
-    // %}target="..." rel="..."{% endif %}>` shape; with target absent,
-    // compress collapses the whitespace inside the open tag to a single
-    // space, leaving `class="nav-list-link external" >` (note the
-    // trailing space before `>`). Mirror the exact byte form.
-    const targetAttrs = opensNewTab ? `target="_blank" rel="noopener noreferrer" ` : ``;
-    const url = absoluteUrl(node.url, config);
-    const svg = node.hide_icon ? ""
-      : ` <svg viewBox="0 0 24 24" aria-labelledby="svg-external-link-title"><use xlink:href="#svg-external-link"></use></svg>`;
-    return `<li class="nav-list-item external"> ` +
-      `<a href="${escapeMarkupAndQuotes(url)}" class="nav-list-link external" ${targetAttrs}>` +
-      ` ${escapeMarkupAndQuotes(String(node.title))}${svg} ` +
-      `</a> ` +
-      `</li>`;
-  }).join("");
+  const items = list
+    .map((node) => {
+      const opensNewTab =
+        node.opens_in_new_tab === true || (node.opens_in_new_tab == null && config.nav_external_links_new_tab);
+      // The Liquid source has a multi-line `<a ... class="..." {% if ...
+      // %}target="..." rel="..."{% endif %}>` shape; with target absent,
+      // compress collapses the whitespace inside the open tag to a single
+      // space, leaving `class="nav-list-link external" >` (note the
+      // trailing space before `>`). Mirror the exact byte form.
+      const targetAttrs = opensNewTab ? `target="_blank" rel="noopener noreferrer" ` : ``;
+      const url = absoluteUrl(node.url, config);
+      const svg = node.hide_icon
+        ? ""
+        : ` <svg viewBox="0 0 24 24" aria-labelledby="svg-external-link-title"><use xlink:href="#svg-external-link"></use></svg>`;
+      return (
+        `<li class="nav-list-item external"> ` +
+        `<a href="${escapeMarkupAndQuotes(url)}" class="nav-list-link external" ${targetAttrs}>` +
+        ` ${escapeMarkupAndQuotes(String(node.title))}${svg} ` +
+        `</a> ` +
+        `</li>`
+      );
+    })
+    .join("");
   // No trailing whitespace: the Liquid source's `{%- endif -%}</nav>`
   // strips between the closing `</ul>` and the outer `</nav>`.
   return `<ul class="nav-list">${items}</ul>`;
@@ -494,10 +517,7 @@ export function navActivationCss(page) {
     noBg.push(s);
   }
 
-  let css =
-    `    ${noBg.join(",\n    ")} {\n` +
-    `      background-image: none;\n` +
-    `    }\n\n`;
+  let css = `    ${noBg.join(",\n    ")} {\n` + `      background-image: none;\n` + `    }\n\n`;
 
   // ---- Rule 2: trailer for other collections + externals (constant) ----
   css +=
@@ -575,12 +595,12 @@ function renderHeader(site) {
   const config = site.config;
   const searchEnabled = config.search_enabled !== false;
   const auxLinks = config.aux_links;
-  return `    <div id="main-header" class="main-header">\n` +
-    (searchEnabled
-      ? renderSearchInput(config)
-      : `      <div></div>\n`) +
+  return (
+    `    <div id="main-header" class="main-header">\n` +
+    (searchEnabled ? renderSearchInput(config) : `      <div></div>\n`) +
     (auxLinks ? renderAuxNav(config) : "") +
-    `    </div>`;
+    `    </div>`
+  );
 }
 
 function renderSearchInput(config) {
@@ -588,13 +608,15 @@ function renderSearchInput(config) {
   // `Search ${site.title}`, then strip_html + strip. The site title is
   // plain text so strip_html is a no-op.
   const placeholder = `Search ${escapeMarkupAndQuotes(String(config.title ?? ""))}`;
-  return `      <div class="search" role="search">\n` +
+  return (
+    `      <div class="search" role="search">\n` +
     `        <div class="search-input-wrap">\n` +
     `          <input type="text" id="search-input" class="search-input" role="combobox" placeholder="${placeholder}" aria-label="${placeholder}" autocomplete="off" aria-haspopup="listbox" aria-expanded="false">\n` +
     `          <label for="search-input" class="search-label"><svg viewBox="0 0 24 24" class="search-icon"><use xlink:href="#svg-search"></use></svg></label>\n` +
     `        </div>\n` +
     `        <div id="search-results" class="search-results"></div>\n` +
-    `      </div>\n`;
+    `      </div>\n`
+  );
 }
 
 // Port of docs/_includes/components/aux_nav.html. The sun/moon SVG
@@ -603,21 +625,26 @@ function renderAuxNav(config) {
   const links = config.aux_links || {};
   // YAML hash → ordered [title, urls[]] pairs. `link.first` in Liquid
   // is the key; `link.last` is the value (first url).
-  const items = Object.entries(links).map(([title, urls]) => {
-    const url = Array.isArray(urls) ? urls[0] : urls;
-    const targetAttrs = config.aux_links_new_tab ? ` target="_blank" rel="noopener noreferrer"` : ``;
-    // Liquid source has a multi-line `<a ... {% if ... %}...{% endif %}>`
-    // shape; with new_tab absent, compress collapses the whitespace
-    // inside the open tag to a single space, leaving `class="site-button" >`.
-    // Liquid `{{ link.first }}` doesn't escape -- emit title verbatim.
-    return `      <li class="aux-nav-list-item">\n` +
-      `        <a href="${escapeMarkupAndQuotes(String(url ?? ""))}" class="site-button"${targetAttrs}\n` +
-      `        >\n` +
-      `          ${String(title)}\n` +
-      `        </a>\n` +
-      `      </li>`;
-  }).join("\n");
-  return `      <nav aria-label="Auxiliary" class="aux-nav">` +
+  const items = Object.entries(links)
+    .map(([title, urls]) => {
+      const url = Array.isArray(urls) ? urls[0] : urls;
+      const targetAttrs = config.aux_links_new_tab ? ` target="_blank" rel="noopener noreferrer"` : ``;
+      // Liquid source has a multi-line `<a ... {% if ... %}...{% endif %}>`
+      // shape; with new_tab absent, compress collapses the whitespace
+      // inside the open tag to a single space, leaving `class="site-button" >`.
+      // Liquid `{{ link.first }}` doesn't escape -- emit title verbatim.
+      return (
+        `      <li class="aux-nav-list-item">\n` +
+        `        <a href="${escapeMarkupAndQuotes(String(url ?? ""))}" class="site-button"${targetAttrs}\n` +
+        `        >\n` +
+        `          ${String(title)}\n` +
+        `        </a>\n` +
+        `      </li>`
+      );
+    })
+    .join("\n");
+  return (
+    `      <nav aria-label="Auxiliary" class="aux-nav">` +
     AUX_NAV_THEME_SVG +
     `        <ul class="aux-nav-list">\n` +
     `          <li class="aux-nav-list-item">\n` +
@@ -627,9 +654,11 @@ function renderAuxNav(config) {
     `              <svg width='18px' height='18px' class="theme-icon" data-icon="dark" aria-hidden="true"><use href="#svg-moon"></use></svg>\n` +
     `            </button>\n` +
     `          </li>\n` +
-    items + `\n` +
+    items +
+    `\n` +
     `        </ul>\n` +
-    `      </nav>\n`;
+    `      </nav>\n`
+  );
 }
 
 // No leading whitespace: docs/_includes/components/aux_nav.html has a
@@ -681,15 +710,20 @@ function renderBreadcrumbs(page, baseurl) {
   // Liquid `{{ entry.title }}` and `{{ page.title }}` do NOT escape.
   // Operator titles like `&, &=` render literal in Jekyll's breadcrumb;
   // escaping here would emit `&amp;, &amp;=` instead.
-  const items = chain.map(entry =>
-    `        <li class="breadcrumb-nav-list-item"><a href="${escapeMarkupAndQuotes(relativeUrl(entry.url, baseurl))}">${String(entry.title)}</a></li>`
-  ).join("\n");
-  return `      <nav aria-label="Breadcrumb" class="breadcrumb-nav">\n` +
+  const items = chain
+    .map(
+      (entry) =>
+        `        <li class="breadcrumb-nav-list-item"><a href="${escapeMarkupAndQuotes(relativeUrl(entry.url, baseurl))}">${String(entry.title)}</a></li>`,
+    )
+    .join("\n");
+  return (
+    `      <nav aria-label="Breadcrumb" class="breadcrumb-nav">\n` +
     `        <ol class="breadcrumb-nav-list">\n` +
     (items ? items + "\n" : "") +
     `          <li class="breadcrumb-nav-list-item"><span>${String(page.frontmatter.title)}</span></li>\n` +
     `        </ol>\n` +
-    `      </nav>\n`;
+    `      </nav>\n`
+  );
 }
 
 // ---------- §5.8 injectAnchorHeadings ------------------------------------
@@ -756,10 +790,12 @@ function renderSectionLinks(headings) {
   const items = headings
     .map(({ id, text }) => `          <li><a href="#${escapeMarkupAndQuotes(id)}">${text}</a></li>`)
     .join("\n");
-  return `        <details class="section-links">\n` +
+  return (
+    `        <details class="section-links">\n` +
     `        <summary>Link to a section</summary>\n` +
     `        <ul>\n${items}\n        </ul>\n` +
-    `        </details>\n`;
+    `        </details>\n`
+  );
 }
 
 // ---------- §5.9 renderChildrenNav ---------------------------------------
@@ -770,19 +806,17 @@ function renderChildrenNav(page, baseurl) {
   if (page.frontmatter.has_toc === false) return "";
   // Liquid `{{ nav_child.title }}` / `{{ nav_child.summary }}` do NOT
   // escape -- emit titles and summaries verbatim.
-  const items = children.map(child => {
-    const summary = child.summary != null && child.summary !== ""
-      ? ` - ${String(child.summary)}`
-      : "";
-    return `  <li>\n` +
-      `    <a href="${escapeMarkupAndQuotes(relativeUrl(child.url, baseurl))}">${String(child.title)}</a>${summary}\n` +
-      `  </li>`;
-  }).join("\n");
-  return `\n<hr>\n` +
-    `<h2 class="text-delta">Table of contents</h2>\n` +
-    `<ul>\n` +
-    items + `\n` +
-    `</ul>\n\n`;
+  const items = children
+    .map((child) => {
+      const summary = child.summary != null && child.summary !== "" ? ` - ${String(child.summary)}` : "";
+      return (
+        `  <li>\n` +
+        `    <a href="${escapeMarkupAndQuotes(relativeUrl(child.url, baseurl))}">${String(child.title)}</a>${summary}\n` +
+        `  </li>`
+      );
+    })
+    .join("\n");
+  return `\n<hr>\n` + `<h2 class="text-delta">Table of contents</h2>\n` + `<ul>\n` + items + `\n` + `</ul>\n\n`;
 }
 
 // ---------- §5.11 renderFooter -------------------------------------------
@@ -800,12 +834,14 @@ function renderFooter(page, site, sectionLinks) {
   const footerActions = renderFooterActions(page, config);
   if (sectionLinks === "" && footerLegal === "" && footerActions === "") return "";
 
-  return `      <hr>\n` +
+  return (
+    `      <hr>\n` +
     `      <footer role="contentinfo">\n` +
     sectionLinks +
     footerActions +
     footerLegal +
-    `      </footer>\n`;
+    `      </footer>\n`
+  );
 }
 
 // The legal row: the last-modified stamp, copyright, and the CC-BY-4.0 line
@@ -818,8 +854,7 @@ function renderFooter(page, site, sectionLinks) {
 // link that may contain prose. Keep it that way if you add to it.
 function renderFooterLegal(page, config) {
   let out = "";
-  if (config.last_edit_timestamp && config.last_edit_time_format
-    && page.frontmatter.last_modified_date) {
+  if (config.last_edit_timestamp && config.last_edit_time_format && page.frontmatter.last_modified_date) {
     const formatted = formatDate(page.frontmatter.last_modified_date, config.last_edit_time_format);
     out += `          <span>Page last modified: ${escapeMarkupAndQuotes(formatted)}.</span>\n`;
   }
@@ -831,7 +866,8 @@ function renderFooterLegal(page, config) {
   if (page.frontmatter.vba_attribution) {
     // Three items, not one: the row's flex `gap` is what separates them, and
     // as a single span the three label/link pairs ran together.
-    out += `          <span>License: <a href="https://github.com/MicrosoftDocs/VBA-Docs/blob/main/LICENSE">CC-BY-4.0</a></span>\n` +
+    out +=
+      `          <span>License: <a href="https://github.com/MicrosoftDocs/VBA-Docs/blob/main/LICENSE">CC-BY-4.0</a></span>\n` +
       `          <span>Code license: <a href="https://github.com/MicrosoftDocs/VBA-Docs/blob/main/LICENSE-CODE">MIT</a></span>\n` +
       `          <span>Attribution: <a href="https://github.com/MicrosoftDocs/VBA-Docs/tree/main">VBA-Docs</a></span>\n`;
   }
@@ -860,8 +896,12 @@ function renderFooterLegal(page, config) {
 // id, and that is the only thing pinning them.
 function renderFooterActions(page, config) {
   const showBackToTop = Boolean(config.back_to_top);
-  const showEdit = config.gh_edit_link && config.gh_edit_link_text && config.gh_edit_repository
-    && config.gh_edit_branch && config.gh_edit_view_mode;
+  const showEdit =
+    config.gh_edit_link &&
+    config.gh_edit_link_text &&
+    config.gh_edit_repository &&
+    config.gh_edit_branch &&
+    config.gh_edit_view_mode;
   const showOffline = config.gh_offline_link && config.gh_offline_link_url;
 
   let inner = "";

@@ -53,10 +53,8 @@
 // Side-effecting import. Import once before PDFDocument.load runs;
 // idempotent.
 
-import {
-  PDFObjectParser, PDFName, CharCodes, IsWhitespace, IsDelimiter,
-} from './pdf-lib-internals.mjs';
-import { checkTargets } from './shim-targets.mjs';
+import { PDFObjectParser, PDFName, CharCodes, IsWhitespace, IsDelimiter } from "./pdf-lib-internals.mjs";
+import { checkTargets } from "./shim-targets.mjs";
 
 const FORWARD_SLASH = CharCodes.ForwardSlash;
 
@@ -81,9 +79,13 @@ function _bytesEqual(a, buf, start, end) {
 }
 
 if (!PDFObjectParser.prototype.__fastParseNameInstalled) {
-  checkTargets(import.meta.url, { PDFObjectParser }, {
-    'PDFObjectParser.prototype.parseName': [0, '7881ea54990b'],
-  });
+  checkTargets(
+    import.meta.url,
+    { PDFObjectParser },
+    {
+      "PDFObjectParser.prototype.parseName": [0, "7881ea54990b"],
+    },
+  );
   const orig = PDFObjectParser.prototype.parseName;
 
   PDFObjectParser.prototype.parseName = function fastParseName() {
@@ -132,7 +134,7 @@ if (!PDFObjectParser.prototype.__fastParseNameInstalled) {
     // time so subsequent calls with the same bytes hit here.
     const slice = buf.subarray(start, idx);
     const name = PDFName.of(String.fromCharCode.apply(null, slice));
-    const key = new Uint8Array(slice);   // copy for stable cache key
+    const key = new Uint8Array(slice); // copy for stable cache key
     const entry = new Entry(key, name);
     if (bucket === undefined) {
       byteCache.set(hash, entry);

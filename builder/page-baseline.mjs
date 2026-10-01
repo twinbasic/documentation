@@ -49,22 +49,23 @@ const PAGE_GUARD = {
   name: "page",
   missing: "so the page-count drift guard has nothing to compare against.\n",
   created: figures,
-  updated: (baseline, record) => (baseline
-    ? METRICS.map(([k, label]) => `${label} ${baseline[k]} -> ${record[k]}`).join(", ")
-    : figures(record)),
+  updated: (baseline, record) =>
+    baseline ? METRICS.map(([k, label]) => `${label} ${baseline[k]} -> ${record[k]}`).join(", ") : figures(record),
   lost(baseline, record) {
-    const dropped = METRICS
-      .filter(([k]) => Number.isFinite(baseline[k]) && record[k] < baseline[k])
-      .map(([k, label]) => `${label} ${record[k]}, was ${baseline[k]} (${record[k] - baseline[k]})`);
+    const dropped = METRICS.filter(([k]) => Number.isFinite(baseline[k]) && record[k] < baseline[k]).map(
+      ([k, label]) => `${label} ${record[k]}, was ${baseline[k]} (${record[k] - baseline[k]})`,
+    );
     if (!dropped.length) return "";
-    return `ERROR: fewer than the last committed build -- ${dropped.join("; ")}\n`
-      + "       Something stopped being discovered, or content was removed on purpose.\n"
-      + "       If the removal is intended, record it in the same commit:\n";
+    return (
+      `ERROR: fewer than the last committed build -- ${dropped.join("; ")}\n` +
+      "       Something stopped being discovered, or content was removed on purpose.\n" +
+      "       If the removal is intended, record it in the same commit:\n"
+    );
   },
-  gained: (baseline, record) => METRICS
-    .filter(([k]) => record[k] > (baseline[k] ?? -1))
-    .map(([k, label]) => `${label} ${baseline[k] ?? "-"} -> ${record[k]}`)
-    .join(", "),
+  gained: (baseline, record) =>
+    METRICS.filter(([k]) => record[k] > (baseline[k] ?? -1))
+      .map(([k, label]) => `${label} ${baseline[k] ?? "-"} -> ${record[k]}`)
+      .join(", "),
 };
 
 /**
@@ -86,8 +87,6 @@ const PAGE_GUARD = {
  *                                without touching the committed file.
  * @returns {Promise<{failed: boolean, text: string}>}
  */
-export async function checkPageBaseline({
-  src, pages, staticFiles, write, force = false, file = BASELINE_PATH,
-}) {
+export async function checkPageBaseline({ src, pages, staticFiles, write, force = false, file = BASELINE_PATH }) {
   return checkBaseline(PAGE_GUARD, { record: { src, pages, staticFiles }, write, force, file });
 }

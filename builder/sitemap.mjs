@@ -24,7 +24,7 @@ export async function writeSitemap(pages, site, destRoot, precomputedUrls) {
   // §7.D10: a source-tree robots.txt page would shadow the generated
   // one. No page on this site sets permalink: /robots.txt; the check is
   // defensive.
-  const sourceHasRobots = pages.some(p => p.permalink === "/robots.txt");
+  const sourceHasRobots = pages.some((p) => p.permalink === "/robots.txt");
 
   const writes = [writeFileMkdirp(path.join(destRoot, "sitemap.xml"), xml)];
   if (!sourceHasRobots) {
@@ -48,9 +48,7 @@ export async function writeSitemap(pages, site, destRoot, precomputedUrls) {
 // against Jekyll's `_site/sitemap.xml`.
 export function deriveSitemapUrls(pages, site) {
   const config = site.config;
-  return new Set(
-    pages.filter(sitemapIncludes).map(p => sitemapUrlFor(p, config)),
-  );
+  return new Set(pages.filter(sitemapIncludes).map((p) => sitemapUrlFor(p, config)));
 }
 
 // jekyll-sitemap's two filters, as a predicate rather than an inline
@@ -80,11 +78,13 @@ function sitemapUrlFor(page, config) {
 }
 
 function renderSitemapXml(urls) {
-  const entries = urls.map(u => `<url>\n<loc>${u}</loc>\n</url>`).join("\n");
-  return `<?xml version="1.0" encoding="UTF-8"?>\n` +
+  const entries = urls.map((u) => `<url>\n<loc>${u}</loc>\n</url>`).join("\n");
+  return (
+    `<?xml version="1.0" encoding="UTF-8"?>\n` +
     `<urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
     `${entries}\n` +
-    `</urlset>\n`;
+    `</urlset>\n`
+  );
 }
 
 function renderRobotsTxt(config) {

@@ -38,10 +38,10 @@ exitOnCrash();
 
 /** Extensions whose contents an evaluator may read. Prose and configuration. */
 const READABLE_EXTENSIONS = new Set([
-  ".md",      // every page, plan, README and note -- the corpus proper
-  ".yml",     // _config.yml, _book.yml, CI workflows: configuration a reader edits
+  ".md", // every page, plan, README and note -- the corpus proper
+  ".yml", // _config.yml, _book.yml, CI workflows: configuration a reader edits
   ".yaml",
-  ".dot",     // Graphviz diagram sources are authored content, not implementation
+  ".dot", // Graphviz diagram sources are authored content, not implementation
   ".txt",
 ]);
 
@@ -61,13 +61,19 @@ const BINARY_EXTENSIONS = new Set([
  *  harness's own working data. The build's output trees are the other thing
  *  never mirrored, and isExcluded finds those by name. */
 const EXCLUDED_PATHS = [
-  ".git", "node_modules", ".claude", ".claire", ".font-cache",
+  ".git",
+  "node_modules",
+  ".claude",
+  ".claire",
+  ".font-cache",
   // Gitignored and local: a one-line "@WIP.md" import shim that no clone
   // has. Mirrored, it points every evaluator at a file WITHHELD removes, and
   // the evaluator reports a dead end.
   "CLAUDE.md",
   "docs/assets/fonts",
-  "wisdom/data", "perf/results", "package-lock.json",
+  "wisdom/data",
+  "perf/results",
+  "package-lock.json",
   // The harness itself. eval/usecases.md names the hazard each case probes,
   // so leaving it in the corpus hands every evaluator the answer key.
   "eval",
@@ -78,8 +84,9 @@ const EXCLUDED_PATHS = [
 const WITHHELD = [
   {
     match: (rel) => rel === "WIP.md" || /^WIP\..+\.md$/.test(rel),
-    why: "maintainer's private notes -- withheld so that \"the answer exists " +
-         "only in WIP.md\" is a measurable outcome rather than an invisible rescue",
+    why:
+      "maintainer's private notes -- withheld so that \"the answer exists " +
+      'only in WIP.md" is a measurable outcome rather than an invisible rescue',
   },
   {
     match: (rel) => /(^|\/)REVIEW-USECASES-[^/]*\.md$/.test(rel),
@@ -113,7 +120,11 @@ function refuseDest(dest, repo) {
   ];
   for (const [what, folder] of doomed) {
     if (isInside(dest, path.resolve(folder))) {
-      throw new CliError("bad-dest", `refusing --dest ${dest}: it is or contains ${what}, which cleaning it would delete`, { option: "--dest", value: dest });
+      throw new CliError(
+        "bad-dest",
+        `refusing --dest ${dest}: it is or contains ${what}, which cleaning it would delete`,
+        { option: "--dest", value: dest },
+      );
     }
   }
 }
@@ -183,8 +194,14 @@ function build({ repo, dest, quiet }) {
 
   for (const { abs, rel } of walk(repo, repo)) {
     const c = classify(rel);
-    if (c.kind === "binary") { counts.binary++; continue; }
-    if (c.kind === "withheld") { counts.withheld.push({ rel, why: c.why }); continue; }
+    if (c.kind === "binary") {
+      counts.binary++;
+      continue;
+    }
+    if (c.kind === "withheld") {
+      counts.withheld.push({ rel, why: c.why });
+      continue;
+    }
 
     const out = path.join(dest, rel);
     fs.mkdirSync(path.dirname(out), { recursive: true });
@@ -207,7 +224,10 @@ function build({ repo, dest, quiet }) {
 
 function report(dest, counts) {
   const fmt = (m) =>
-    [...m.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(", ");
+    [...m.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([k, n]) => `${k} ${n}`)
+      .join(", ");
   const total = (m) => [...m.values()].reduce((a, b) => a + b, 0);
 
   console.log(`corpus: ${dest}`);
@@ -225,9 +245,9 @@ function report(dest, counts) {
   }
   console.log(
     "\nThe stubbed line is the drift detector: a source type this repository " +
-    "\ngained shows up there the first time it appears. If one of those " +
-    "\nextensions belongs in the corpus as prose, add it to READABLE_EXTENSIONS " +
-    "\nrather than widening anything else."
+      "\ngained shows up there the first time it appears. If one of those " +
+      "\nextensions belongs in the corpus as prose, add it to READABLE_EXTENSIONS " +
+      "\nrather than widening anything else.",
   );
 }
 
@@ -235,14 +255,14 @@ const opts = parseArgs(process.argv.slice(2));
 if (opts.help || !opts.dest) {
   printHelpAndExit(
     "Usage: node eval/build_corpus.mjs --dest <path> [--repo <path>] [--quiet] [-h, --help]\n\n" +
-    "Mirrors the repository with every non-prose file replaced by an unreadable\n" +
-    "stub, so a documentation evaluation cannot silently read the implementation.\n" +
-    "See eval/README.md.\n\n" +
-    "Exit codes:\n" +
-    "  0  the corpus was built\n" +
-    "  2  a refused command line (a --dest that is or contains the repository, the\n" +
-    "     working folder or --repo included), or a crash",
-    opts.help ? {} :{ stream: "stderr", exitCode: 2 },
+      "Mirrors the repository with every non-prose file replaced by an unreadable\n" +
+      "stub, so a documentation evaluation cannot silently read the implementation.\n" +
+      "See eval/README.md.\n\n" +
+      "Exit codes:\n" +
+      "  0  the corpus was built\n" +
+      "  2  a refused command line (a --dest that is or contains the repository, the\n" +
+      "     working folder or --repo included), or a crash",
+    opts.help ? {} : { stream: "stderr", exitCode: 2 },
   );
 }
 build(opts);

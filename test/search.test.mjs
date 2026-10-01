@@ -57,29 +57,29 @@ describe("deriveSearchEntries: heading_level split", () => {
     `<h3 id="paintpicture">PaintPicture</h3><p>Paint body.</p>`;
 
   test("heading_level 2 leaves h3 headings embedded in their h2 parent (unchanged behaviour)", () => {
-    const entries = deriveSearchEntries(
-      [page({ title: "Widget", content })],
-      site({ heading_level: 2 }),
-    );
+    const entries = deriveSearchEntries([page({ title: "Widget", content })], site({ heading_level: 2 }));
 
     // Title heading matches the page title with nothing before it, so
     // titleFound suppresses the prefix entry: just the title section and
     // the one h2 section. The h3 heading text is still there, but only as
     // text inside the h2 section's content -- it never becomes its own
     // entry.
-    assert.deepEqual(entries.map((e) => e.title), ["Widget", "Methods"]);
+    assert.deepEqual(
+      entries.map((e) => e.title),
+      ["Widget", "Methods"],
+    );
     const methods = entries.find((e) => e.title === "Methods");
     assert.match(methods.content, /PaintPicture/);
     assert.match(methods.content, /Paint body/);
   });
 
   test("heading_level 3 splits the h3 into its own entry", () => {
-    const entries = deriveSearchEntries(
-      [page({ title: "Widget", content })],
-      site({ heading_level: 3 }),
-    );
+    const entries = deriveSearchEntries([page({ title: "Widget", content })], site({ heading_level: 3 }));
 
-    assert.deepEqual(entries.map((e) => e.title), ["Widget", "Methods", "PaintPicture"]);
+    assert.deepEqual(
+      entries.map((e) => e.title),
+      ["Widget", "Methods", "PaintPicture"],
+    );
     const methods = entries.find((e) => e.title === "Methods");
     const member = entries.find((e) => e.title === "PaintPicture");
     // The split moved the member's body out of "Methods" and into its own
@@ -104,7 +104,10 @@ describe("deriveSearchEntries: fold_headings", () => {
 
     // No standalone "See Also" entry: it was appended to PaintPicture's
     // section, which keeps PaintPicture's own title and url.
-    assert.deepEqual(entries.map((e) => e.title), ["Widget", "Methods", "PaintPicture"]);
+    assert.deepEqual(
+      entries.map((e) => e.title),
+      ["Widget", "Methods", "PaintPicture"],
+    );
     const member = entries.find((e) => e.title === "PaintPicture");
     assert.equal(member.relUrl, "/Widget/#paintpicture");
     assert.match(member.content, /Paint body/);
@@ -122,7 +125,10 @@ describe("deriveSearchEntries: fold_headings", () => {
       site({ heading_level: 2, fold_headings: ["See Also"] }),
     );
 
-    assert.deepEqual(entries.map((e) => e.title), ["See Also", "Widget"]);
+    assert.deepEqual(
+      entries.map((e) => e.title),
+      ["See Also", "Widget"],
+    );
     const seeAlso = entries.find((e) => e.title === "See Also");
     assert.match(seeAlso.content, /orphan generic body/);
     // The trailing prefix entry (titleFound stayed false) points at the
@@ -141,7 +147,10 @@ describe("deriveSearchEntries: fold_headings", () => {
       site({ heading_level: 2, fold_headings: [" See Also "] }),
     );
 
-    assert.deepEqual(entries.map((e) => e.title), ["Widget", "PaintPicture"]);
+    assert.deepEqual(
+      entries.map((e) => e.title),
+      ["Widget", "PaintPicture"],
+    );
     const member = entries.find((e) => e.title === "PaintPicture");
     assert.match(member.content, /See also body/);
   });
@@ -151,12 +160,12 @@ describe("deriveSearchEntries: fold_headings", () => {
       `<h1 id="widget">Widget</h1>` +
       `<h2 id="paintpicture">PaintPicture</h2><p>Paint body.</p>` +
       `<h2 id="see-also">See Also</h2><p>See also body.</p>`;
-    const entries = deriveSearchEntries(
-      [page({ title: "Widget", content })],
-      site({ heading_level: 2 }),
-    );
+    const entries = deriveSearchEntries([page({ title: "Widget", content })], site({ heading_level: 2 }));
 
-    assert.deepEqual(entries.map((e) => e.title), ["Widget", "PaintPicture", "See Also"]);
+    assert.deepEqual(
+      entries.map((e) => e.title),
+      ["Widget", "PaintPicture", "See Also"],
+    );
   });
 
   test("an empty fold_headings list folds nothing", () => {
@@ -169,35 +178,38 @@ describe("deriveSearchEntries: fold_headings", () => {
       site({ heading_level: 2, fold_headings: [] }),
     );
 
-    assert.deepEqual(entries.map((e) => e.title), ["Widget", "PaintPicture", "See Also"]);
+    assert.deepEqual(
+      entries.map((e) => e.title),
+      ["Widget", "PaintPicture", "See Also"],
+    );
   });
 });
 
 describe("deriveSearchEntries: titleFound / prefix entry", () => {
   test("a title heading with no preceding prose suppresses the prefix entry", () => {
     const content = `<h1 id="widget">Widget</h1><p>body.</p>`;
-    const entries = deriveSearchEntries(
-      [page({ title: "Widget", content })],
-      site({ heading_level: 2 }),
-    );
+    const entries = deriveSearchEntries([page({ title: "Widget", content })], site({ heading_level: 2 }));
 
-    assert.deepEqual(entries.map((e) => e.title), ["Widget"]);
+    assert.deepEqual(
+      entries.map((e) => e.title),
+      ["Widget"],
+    );
     assert.equal(entries[0].relUrl, "/Widget/");
   });
 
   test("prose before the first heading, or a first heading that isn't the title, adds a prefix entry", () => {
     const content = `<p>Some intro prose.</p><h1 id="widget">Widget</h1><p>body.</p>`;
-    const entries = deriveSearchEntries(
-      [page({ title: "Widget", content })],
-      site({ heading_level: 2 }),
-    );
+    const entries = deriveSearchEntries([page({ title: "Widget", content })], site({ heading_level: 2 }));
 
     // Two "Widget"-titled entries: the heading section itself (titleFound
     // stays false because prose precedes it, so it gets its own #id url,
     // same as any other heading), then the prefix entry -- prose before
     // the first heading -- appended after every section, pointing at the
     // bare permalink.
-    assert.deepEqual(entries.map((e) => e.title), ["Widget", "Widget"]);
+    assert.deepEqual(
+      entries.map((e) => e.title),
+      ["Widget", "Widget"],
+    );
     assert.match(entries[1].content, /Some intro prose/);
     assert.equal(entries[0].relUrl, "/Widget/#widget");
     assert.equal(entries[1].relUrl, "/Widget/");
@@ -211,14 +223,16 @@ describe("deriveSearchEntries: titleFound / prefix entry", () => {
       `<h1 id="widget-class">Widget class</h1><p>Intro.</p>` +
       `<h2 id="properties">Properties</h2>` +
       `<h3 id="widget">Widget</h3><p>The Widget property.</p>`;
-    const entries = deriveSearchEntries(
-      [page({ title: "Widget", content })],
-      site({ heading_level: 3 }),
-    );
+    const entries = deriveSearchEntries([page({ title: "Widget", content })], site({ heading_level: 3 }));
 
     assert.deepEqual(
       entries.map((e) => `${e.title} ${e.relUrl}`),
-      ["Widget class /Widget/#widget-class", "Properties /Widget/#properties", "Widget /Widget/#widget", "Widget /Widget/"],
+      [
+        "Widget class /Widget/#widget-class",
+        "Properties /Widget/#properties",
+        "Widget /Widget/#widget",
+        "Widget /Widget/",
+      ],
     );
     assert.match(entries[2].content, /The Widget property/);
   });
@@ -253,7 +267,10 @@ describe("deriveSearchEntries: deterministic output", () => {
     const strip = (entries) => entries.map(({ sourcePage, ...rest }) => rest);
     assert.deepEqual(strip(a), strip(b));
     // Entry indices (`i`) are sequential and stable across runs.
-    assert.deepEqual(a.map((e) => e.i), b.map((e) => e.i));
+    assert.deepEqual(
+      a.map((e) => e.i),
+      b.map((e) => e.i),
+    );
   });
 });
 
@@ -400,13 +417,13 @@ describe("renderEntryString: byte stability", () => {
     assert.equal(
       renderEntryString(entry),
       `"0": {\n` +
-      `    "doc": "Widget",\n` +
-      `    "title": "Widget",\n` +
-      `    "content": "Widget body. ",\n` +
-      `    "url": "/Widget/",\n` +
-      `    \n` +
-      `    "relUrl": "/Widget/"\n` +
-      `  }`,
+        `    "doc": "Widget",\n` +
+        `    "title": "Widget",\n` +
+        `    "content": "Widget body. ",\n` +
+        `    "url": "/Widget/",\n` +
+        `    \n` +
+        `    "relUrl": "/Widget/"\n` +
+        `  }`,
     );
   });
 
@@ -425,15 +442,15 @@ describe("renderEntryString: byte stability", () => {
     assert.equal(
       renderEntryString(entry),
       `"0": {\n` +
-      `    "doc": "Left",\n` +
-      `    "title": "Left",\n` +
-      `    "content": "Left body. ",\n` +
-      `    "names": "Left",\n` +
-      `    "primary": "Left",\n` +
-      `    "url": "/Strings/Left",\n` +
-      `    \n` +
-      `    "relUrl": "/Strings/Left"\n` +
-      `  }`,
+        `    "doc": "Left",\n` +
+        `    "title": "Left",\n` +
+        `    "content": "Left body. ",\n` +
+        `    "names": "Left",\n` +
+        `    "primary": "Left",\n` +
+        `    "url": "/Strings/Left",\n` +
+        `    \n` +
+        `    "relUrl": "/Strings/Left"\n` +
+        `  }`,
     );
   });
 
@@ -452,15 +469,15 @@ describe("renderEntryString: byte stability", () => {
     assert.equal(
       renderEntryString(entry),
       `"0": {\n` +
-      `    "doc": "Form",\n` +
-      `    "title": "PaintPicture",\n` +
-      `    "content": "Paint body. ",\n` +
-      `    "names": "PaintPicture",\n` +
-      `    "qualified": "Form.PaintPicture",\n` +
-      `    "url": "/Form/%23paintpicture",\n` +
-      `    \n` +
-      `    "relUrl": "/Form/#paintpicture"\n` +
-      `  }`,
+        `    "doc": "Form",\n` +
+        `    "title": "PaintPicture",\n` +
+        `    "content": "Paint body. ",\n` +
+        `    "names": "PaintPicture",\n` +
+        `    "qualified": "Form.PaintPicture",\n` +
+        `    "url": "/Form/%23paintpicture",\n` +
+        `    \n` +
+        `    "relUrl": "/Form/#paintpicture"\n` +
+        `  }`,
     );
   });
 });
@@ -530,7 +547,11 @@ describe("stop-word and dot-run-split guard: online client, offline client, eval
 
     const STOP_WORD_RE = /this\.pipeline\.remove\(\s*lunr\.stopWordFilter\s*\)/;
     assert.match(onlineSrc, STOP_WORD_RE, "just-the-docs.js no longer removes lunr.stopWordFilter");
-    assert.match(offlineSrc, STOP_WORD_RE, "offline.mjs's JTD_INITSEARCH_FN_REPLACEMENT no longer removes lunr.stopWordFilter");
+    assert.match(
+      offlineSrc,
+      STOP_WORD_RE,
+      "offline.mjs's JTD_INITSEARCH_FN_REPLACEMENT no longer removes lunr.stopWordFilter",
+    );
     assert.match(evalSrc, STOP_WORD_RE, "eval/site_search.mjs no longer removes lunr.stopWordFilter");
   });
 
@@ -552,7 +573,11 @@ describe("stop-word and dot-run-split guard: online client, offline client, eval
       ["eval/site_search.mjs", evalSrc],
     ]) {
       assert.match(src, /dotRunSplit/, `${label} has no dotRunSplit marker -- the dot-run-split wrapper looks missing`);
-      assert.match(src, /\\\.\{2,\}/, `${label} has no /\\.{2,}/ dot-run pattern -- the dot-run-split wrapper looks missing`);
+      assert.match(
+        src,
+        /\\\.\{2,\}/,
+        `${label} has no /\\.{2,}/ dot-run pattern -- the dot-run-split wrapper looks missing`,
+      );
       // Loose on the exact escaping (offline.mjs's copy lives inside a JS
       // template literal, so its backslashes are doubled) -- just checks
       // for "<something>.separator = /[<char class>]+/" somewhere in the
@@ -588,8 +613,16 @@ describe("reader-intent guard: online client, offline client, eval replica", () 
       ["offline.mjs", offlineSrc],
       ["eval/site_search.mjs", evalSrc],
     ]) {
-      assert.match(src, /exact:\s*\(docs\[\w+\]\.names \|\| ['"]{2}\)[^\n]*\.map\(exactName\)/, `${label} doesn't fill \`exact\` from names via exactName()`);
-      assert.match(src, /primary:\s*\(docs\[\w+\]\.primary \|\| ['"]{2}\)[^\n]*\.map\(exactName\)/, `${label} doesn't fill \`primary\` via exactName()`);
+      assert.match(
+        src,
+        /exact:\s*\(docs\[\w+\]\.names \|\| ['"]{2}\)[^\n]*\.map\(exactName\)/,
+        `${label} doesn't fill \`exact\` from names via exactName()`,
+      );
+      assert.match(
+        src,
+        /primary:\s*\(docs\[\w+\]\.primary \|\| ['"]{2}\)[^\n]*\.map\(exactName\)/,
+        `${label} doesn't fill \`primary\` via exactName()`,
+      );
       assert.match(src, /page:\s*docs\[\w+\]\.doc \|\| ['"]{2}/, `${label} doesn't fill \`page\` from doc`);
     }
   });
@@ -615,10 +648,14 @@ describe("reader-intent guard: online client, offline client, eval replica", () 
     }
     // lunr's trimmer strips non-word characters from both ends of a token,
     // so a written name must start and end with a word character.
-    for (const n of ["#If", "<>", "Time$", "*"]) assert.match(online(n), /^\w.*\w$/, `exactName(${JSON.stringify(n)}) would be trimmed`);
+    for (const n of ["#If", "<>", "Time$", "*"])
+      assert.match(online(n), /^\w.*\w$/, `exactName(${JSON.stringify(n)}) would be trimmed`);
     assert.notEqual(online("#If"), online("If"));
     assert.notEqual(online("Time$"), online("Time"));
-    assert.deepEqual(extractKindWords(evalSrc, "eval/site_search.mjs"), extractKindWords(onlineSrc, "just-the-docs.js"));
+    assert.deepEqual(
+      extractKindWords(evalSrc, "eval/site_search.mjs"),
+      extractKindWords(onlineSrc, "just-the-docs.js"),
+    );
   });
 
   test("the online client and the eval replica build the same query", () => {
@@ -627,14 +664,26 @@ describe("reader-intent guard: online client, offline client, eval replica", () 
       ["eval/site_search.mjs", evalSrc],
     ]) {
       assert.match(src, /lunr\.trimmer\(/, `${label} doesn't trim query tokens`);
-      assert.match(src, /\[\s*['"]title['"],\s*['"]content['"],\s*['"]names['"],\s*['"]qualified['"],\s*['"]page['"],\s*['"]relUrl['"]\s*\]/, `${label} has no field list without the name fields for the ordinary clauses`);
-      assert.match(src, /exactName\(name\),\s*\{\s*fields:\s*\[\s*['"]exact['"],\s*['"]primary['"]\s*\]\s*\}/, `${label} has no exact-name clause`);
+      assert.match(
+        src,
+        /\[\s*['"]title['"],\s*['"]content['"],\s*['"]names['"],\s*['"]qualified['"],\s*['"]page['"],\s*['"]relUrl['"]\s*\]/,
+        `${label} has no field list without the name fields for the ordinary clauses`,
+      );
+      assert.match(
+        src,
+        /exactName\(name\),\s*\{\s*fields:\s*\[\s*['"]exact['"],\s*['"]primary['"]\s*\]\s*\}/,
+        `${label} has no exact-name clause`,
+      );
       assert.match(src, /lunr\.stemmer\(token\.clone\(\)\)\.toString\(\)/, `${label} doesn't require words as stems`);
       assert.match(src, /presence:\s*lunr\.Query\.presence\.REQUIRED/, `${label} doesn't require every word first`);
       assert.match(src, /usePipeline:\s*false/, `${label}'s required stems would be stemmed again`);
       // A plural kind word names a topic ("Delegate Types"), so it counts
       // as a named word (WIP.Search.md, "Fixed: whole titles").
-      assert.match(src, /KIND_WORDS\.(includes|indexOf)\(w\.toLowerCase\(\)\)/, `${label} doesn't compare kind words as typed`);
+      assert.match(
+        src,
+        /KIND_WORDS\.(includes|indexOf)\(w\.toLowerCase\(\)\)/,
+        `${label} doesn't compare kind words as typed`,
+      );
     }
   });
 });
@@ -651,11 +700,31 @@ describe("qualified-name guard: online client, eval replica", () => {
       ["just-the-docs.js", read("builder/vendor/just-the-docs/assets/js/just-the-docs.js")],
       ["eval/site_search.mjs", read("eval/site_search.mjs")],
     ]) {
-      assert.match(src, /\[\s*['"]title['"],\s*['"]content['"],\s*['"]names['"],\s*['"]page['"],\s*['"]relUrl['"]\s*\]/, `${label} has no field list without \`qualified\` for plain words`);
-      assert.match(src, /term\(plainTokens, \{\s*fields: (plainFields|PLAIN_FIELDS),\s*wildcard: lunr\.Query\.wildcard\.TRAILING\s*\}\)/, `${label}'s plain words complete in \`qualified\``);
-      assert.match(src, /term\(qualifiedTokens, \{\s*fields: (textFields|TEXT_FIELDS),\s*wildcard: lunr\.Query\.wildcard\.TRAILING\s*\}\)/, `${label}'s qualified names don't complete in \`qualified\``);
-      assert.match(src, /term\(pairTokens, \{ fields: \[['"]qualified['"]\], boost: 10 \}\)/, `${label} has no clause for two words naming a member`);
-      assert.match(src, /presence: lunr\.Query\.presence\.REQUIRED,\s*boost: 0/, `${label}'s required words score in \`qualified\``);
+      assert.match(
+        src,
+        /\[\s*['"]title['"],\s*['"]content['"],\s*['"]names['"],\s*['"]page['"],\s*['"]relUrl['"]\s*\]/,
+        `${label} has no field list without \`qualified\` for plain words`,
+      );
+      assert.match(
+        src,
+        /term\(plainTokens, \{\s*fields: (plainFields|PLAIN_FIELDS),\s*wildcard: lunr\.Query\.wildcard\.TRAILING\s*\}\)/,
+        `${label}'s plain words complete in \`qualified\``,
+      );
+      assert.match(
+        src,
+        /term\(qualifiedTokens, \{\s*fields: (textFields|TEXT_FIELDS),\s*wildcard: lunr\.Query\.wildcard\.TRAILING\s*\}\)/,
+        `${label}'s qualified names don't complete in \`qualified\``,
+      );
+      assert.match(
+        src,
+        /term\(pairTokens, \{ fields: \[['"]qualified['"]\], boost: 10 \}\)/,
+        `${label} has no clause for two words naming a member`,
+      );
+      assert.match(
+        src,
+        /presence: lunr\.Query\.presence\.REQUIRED,\s*boost: 0/,
+        `${label}'s required words score in \`qualified\``,
+      );
     }
   });
 
@@ -673,16 +742,46 @@ describe("qualified-name guard: online client, eval replica", () => {
       8: { doc: "Form", title: "Events", content: "The events a form raises.", relUrl: "/Form#events" },
       9: { doc: "Form", title: "OLEDragDrop, OLEDragOver, OLEStartDrag", content: "Raised during a drag. These events of the form...", names: "OLEDragDrop OLEDragOver OLEStartDrag", qualified: "Form.OLEDragDrop Form.OLEDragOver Form.OLEStartDrag", relUrl: "/Form#ole" },
     };
-    const attributes = ["vbNormal", "vbReadOnly", "vbHidden", "vbSystem", "vbVolume", "vbDirectory", "vbArchive", "vbAlias"];
+    const attributes = [
+      "vbNormal",
+      "vbReadOnly",
+      "vbHidden",
+      "vbSystem",
+      "vbVolume",
+      "vbDirectory",
+      "vbArchive",
+      "vbAlias",
+    ];
     Object.assign(docs[4], {
       names: ["VbFileAttribute", ...attributes].join(" "),
       qualified: attributes.map((a) => `VbFileAttribute.${a}`).join(" "),
       primary: "VbFileAttribute",
     });
     for (let k = 0; k < 30; k++) {
-      docs[100 + k] = { doc: `Control${k}`, title: "KeyDown", content: "Raised when a key is pressed.", names: "KeyDown", qualified: `Control${k}.KeyDown`, relUrl: `/Control${k}#keydown` };
-      docs[200 + k] = { doc: `Control${k}`, title: "Name", content: "The control's name.", names: "Name", qualified: `Control${k}.Name`, relUrl: `/Control${k}#name` };
-      docs[300 + k] = { doc: "Form", title: `Member${k}`, content: "Runs before the form raises its other events.", names: `Member${k}`, qualified: `Form.Member${k}`, relUrl: `/Form#member${k}` };
+      docs[100 + k] = {
+        doc: `Control${k}`,
+        title: "KeyDown",
+        content: "Raised when a key is pressed.",
+        names: "KeyDown",
+        qualified: `Control${k}.KeyDown`,
+        relUrl: `/Control${k}#keydown`,
+      };
+      docs[200 + k] = {
+        doc: `Control${k}`,
+        title: "Name",
+        content: "The control's name.",
+        names: "Name",
+        qualified: `Control${k}.Name`,
+        relUrl: `/Control${k}#name`,
+      };
+      docs[300 + k] = {
+        doc: "Form",
+        title: `Member${k}`,
+        content: "Runs before the form raises its other events.",
+        names: `Member${k}`,
+        qualified: `Form.Member${k}`,
+        relUrl: `/Form#member${k}`,
+      };
     }
     const ctx = { lunr, index: buildIndex(lunr, docs), docs };
     const urls = (q) => search(ctx, q).map((r) => docs[r.ref].relUrl);
@@ -710,9 +809,17 @@ describe("qualified-name guard: online client, eval replica", () => {
       ["eval/site_search.mjs", read("eval/site_search.mjs")],
     ]) {
       assert.match(src, /twins = stemTwins\((lunr, )?docs\)/, `${label} doesn't find the stem twins`);
-      assert.match(src, /qualified:\s*qualifiedField\((lunr, )?docs\[\w+\], twins\)/, `${label} doesn't fill \`qualified\` via qualifiedField()`);
+      assert.match(
+        src,
+        /qualified:\s*qualifiedField\((lunr, )?docs\[\w+\], twins\)/,
+        `${label} doesn't fill \`qualified\` via qualifiedField()`,
+      );
       if (label === "offline.mjs") continue;
-      assert.match(src, /term\(wholeQualified, \{ fields: \[['"]qualified['"]\], boost: 10 \}\)/, `${label} has no clause for a whole qualified name`);
+      assert.match(
+        src,
+        /term\(wholeQualified, \{ fields: \[['"]qualified['"]\], boost: 10 \}\)/,
+        `${label} has no clause for a whole qualified name`,
+      );
     }
   });
 
@@ -724,7 +831,10 @@ describe("qualified-name guard: online client, eval replica", () => {
     };
     const names = ["exactName", "stemTwins", "qualifiedField"];
     const load = (src, label) => names.map((n) => fn(src, n, label)).join("\n") + `\nreturn { ${names.join(", ")} };`;
-    const online = new Function("lunr", load(read("builder/vendor/just-the-docs/assets/js/just-the-docs.js"), "just-the-docs.js"))(lunr);
+    const online = new Function(
+      "lunr",
+      load(read("builder/vendor/just-the-docs/assets/js/just-the-docs.js"), "just-the-docs.js"),
+    )(lunr);
     const replica = new Function(load(read("eval/site_search.mjs"), "eval/site_search.mjs"))();
     const docs = {
       0: { qualified: "Printer.Font Printer.FontCount" },
@@ -738,7 +848,11 @@ describe("qualified-name guard: online client, eval replica", () => {
     assert.deepEqual(Object.keys(onlineTwins).sort(), [...replicaTwins].sort());
     assert.deepEqual([...replicaTwins].sort(), ["printer.font", "printer.fonts", "strings.left", "strings.left$"]);
     for (const id in docs) {
-      assert.equal(online.qualifiedField(docs[id], onlineTwins), replica.qualifiedField(lunr, docs[id], replicaTwins), `qualifiedField(${JSON.stringify(docs[id])}) differs`);
+      assert.equal(
+        online.qualifiedField(docs[id], onlineTwins),
+        replica.qualifiedField(lunr, docs[id], replicaTwins),
+        `qualifiedField(${JSON.stringify(docs[id])}) differs`,
+      );
     }
     // A name with no twin is held as before.
     assert.equal(online.qualifiedField(docs[3], onlineTwins), "Form.PaintPicture");
@@ -752,7 +866,8 @@ describe("qualified-name guard: online client, eval replica", () => {
       1: { doc: "Printer", title: "Font", content: "The font to print with.", names: "Font", qualified: "Printer.Font", relUrl: "/Printer#font" },
       2: { doc: "Printer", title: "Fonts", content: "The fonts the printer has.", names: "Fonts", qualified: "Printer.Fonts", relUrl: "/Printer#fonts" },
     };
-    for (let k = 0; k < 30; k++) docs[100 + k] = { doc: `Page ${k}`, title: `Page ${k}`, content: "unrelated text", relUrl: `/P${k}` };
+    for (let k = 0; k < 30; k++)
+      docs[100 + k] = { doc: `Page ${k}`, title: `Page ${k}`, content: "unrelated text", relUrl: `/P${k}` };
     const ctx = { lunr, index: buildIndex(lunr, docs), docs };
     const first = (q) => docs[search(ctx, q)[0].ref].relUrl;
     // Before, both names ranked their entries in the same order, since
@@ -779,9 +894,16 @@ describe("index marks: from the page to its entries", () => {
   const byUrl = (entries) => Object.fromEntries(entries.map((e) => [e.relUrl, e]));
 
   test("front matter marks the page's own entry", () => {
-    const entries = deriveSearchEntries([page({
-      title: "Widget", content, frontmatter: { index: "late binding", index_also: ["early binding", "binding"] },
-    })], cfg);
+    const entries = deriveSearchEntries(
+      [
+        page({
+          title: "Widget",
+          content,
+          frontmatter: { index: "late binding", index_also: ["early binding", "binding"] },
+        }),
+      ],
+      cfg,
+    );
     const e = byUrl(entries)["/Widget/"];
     assert.deepEqual(e.index, ["late binding"]);
     assert.deepEqual(e.index_also, ["early binding", "binding"]);
@@ -789,21 +911,37 @@ describe("index marks: from the page to its entries", () => {
   });
 
   test("a page whose first heading isn't its title marks its prefix entry", () => {
-    const entries = deriveSearchEntries([page({
-      title: "Other", content, frontmatter: { index: "late binding" },
-    })], cfg);
+    const entries = deriveSearchEntries(
+      [
+        page({
+          title: "Other",
+          content,
+          frontmatter: { index: "late binding" },
+        }),
+      ],
+      cfg,
+    );
     assert.deepEqual(byUrl(entries)["/Widget/"].index, ["late binding"]);
     assert.equal(byUrl(entries)["/Widget/#widget"].index, undefined);
   });
 
   test("a heading's mark goes to the entry holding that heading", () => {
-    const entries = byUrl(deriveSearchEntries([page({
-      title: "Widget", content, marks: [
-        { id: "paint", index: "painting; drawing" },
-        { id: "deep", index_also: "deep term" },
-        { id: "see-also", index_also: "folded term" },
-      ],
-    })], cfg));
+    const entries = byUrl(
+      deriveSearchEntries(
+        [
+          page({
+            title: "Widget",
+            content,
+            marks: [
+              { id: "paint", index: "painting; drawing" },
+              { id: "deep", index_also: "deep term" },
+              { id: "see-also", index_also: "folded term" },
+            ],
+          }),
+        ],
+        cfg,
+      ),
+    );
     assert.deepEqual(entries["/Widget/#paint"].index, ["painting", "drawing"]);
     // #deep is an h4, below heading_level, and See Also folds: both are
     // held by the #paint entry.
@@ -811,10 +949,19 @@ describe("index marks: from the page to its entries", () => {
   });
 
   test("terms are trimmed, kept once regardless of case, and a main term is not also secondary", () => {
-    const [e] = deriveSearchEntries([page({
-      title: "Widget", content: "<h1>Widget</h1>",
-      frontmatter: { index: ["  late   binding ", "Late Binding"], index_also: "late binding; LATE binding; other" },
-    })], cfg);
+    const [e] = deriveSearchEntries(
+      [
+        page({
+          title: "Widget",
+          content: "<h1>Widget</h1>",
+          frontmatter: {
+            index: ["  late   binding ", "Late Binding"],
+            index_also: "late binding; LATE binding; other",
+          },
+        }),
+      ],
+      cfg,
+    );
     assert.deepEqual(e.index, ["late binding"]);
     assert.deepEqual(e.index_also, ["other"]);
   });
@@ -844,10 +991,11 @@ describe("index marks: from the page to its entries", () => {
 describe("index marks: one main entry per term", () => {
   test("two places claiming the same main term fail, ignoring case and hyphens", () => {
     assert.throws(
-      () => checkIndexTerms([
-        { relUrl: "/A/", index: ["64-bit compilation"] },
-        { relUrl: "/B/#x", index: ["64 Bit Compilation"] },
-      ]),
+      () =>
+        checkIndexTerms([
+          { relUrl: "/A/", index: ["64-bit compilation"] },
+          { relUrl: "/B/#x", index: ["64 Bit Compilation"] },
+        ]),
       /"64 bit compilation": \/A\/, \/B\/#x/,
     );
   });
@@ -861,19 +1009,34 @@ describe("index marks: one main entry per term", () => {
 
   test("renderEntryString writes the terms as lists after primary", () => {
     const out = renderEntryString({
-      i: 0, doc: "W", title: "W", content: "", url: "/W/", relUrl: "/W/",
-      primary: "W", index: ["late binding"], index_also: ["a", "b"],
+      i: 0,
+      doc: "W",
+      title: "W",
+      content: "",
+      url: "/W/",
+      relUrl: "/W/",
+      primary: "W",
+      index: ["late binding"],
+      index_also: ["a", "b"],
     });
     assert.match(out, /"primary": "W",\n {4}"index": \["late binding"\],\n {4}"index_also": \["a","b"\],\n {4}"url"/);
   });
 });
 
 describe("index marks: render.mjs lifts them off headings", () => {
-  const md = createMarkdownIt({ highlighter: null, linkTables: { byPath: new Map() }, baseurl: "", staticFiles: new Set() });
+  const md = createMarkdownIt({
+    highlighter: null,
+    linkTables: { byPath: new Map() },
+    baseurl: "",
+    staticFiles: new Set(),
+  });
 
   test("a heading's index and index_also leave the HTML and land in env, keyed by id", () => {
     const env = { page: { srcRel: "t.md" } };
-    const html = md.render('## Object\n{: index="late binding" index_also="object variable; COM object" }\n\ntext\n', env);
+    const html = md.render(
+      '## Object\n{: index="late binding" index_also="object variable; COM object" }\n\ntext\n',
+      env,
+    );
     assert.equal(html.includes("index"), false, html);
     assert.match(html, /<h2 id="object">Object<\/h2>/);
     assert.deepEqual(env.searchIndexMarks, [
@@ -888,8 +1051,14 @@ describe("index marks: render.mjs lifts them off headings", () => {
   });
 
   test("the attribute on anything but a heading fails the build", () => {
-    assert.throws(() => md.render('para\n{: index="x" }\n', { page: { srcRel: "p.md" } }), /p\.md: .* on <p>; only a heading/);
-    assert.throws(() => md.render('a [link](x){: index_also="x" } b\n', { page: { srcRel: "p.md" } }), /on <a>; only a heading/);
+    assert.throws(
+      () => md.render('para\n{: index="x" }\n', { page: { srcRel: "p.md" } }),
+      /p\.md: .* on <p>; only a heading/,
+    );
+    assert.throws(
+      () => md.render('a [link](x){: index_also="x" } b\n', { page: { srcRel: "p.md" } }),
+      /on <a>; only a heading/,
+    );
   });
 });
 
@@ -916,13 +1085,32 @@ describe("index-term guard: online client, offline client, eval replica", () => 
       ["offline.mjs", offlineSrc],
       ["eval/site_search.mjs", evalSrc],
     ]) {
-      assert.match(src, /index:\s*indexField\((lunr, )?docs\[\w+\]\)/, `${label} doesn't fill \`index\` via indexField()`);
-      assert.match(src, /content:\s*indexedContent\(docs\[\w+\]\)/, `${label} doesn't fill \`content\` via indexedContent()`);
+      assert.match(
+        src,
+        /index:\s*indexField\((lunr, )?docs\[\w+\]\)/,
+        `${label} doesn't fill \`index\` via indexField()`,
+      );
+      assert.match(
+        src,
+        /content:\s*indexedContent\(docs\[\w+\]\)/,
+        `${label} doesn't fill \`content\` via indexedContent()`,
+      );
       assert.match(src, /pinIndexFieldLengths\(this\)/, `${label} doesn't pin the index field's average length`);
     }
-    for (const [label, src] of [["just-the-docs.js", onlineSrc], ["eval/site_search.mjs", evalSrc]]) {
-      assert.match(src, /term\(key, \{ fields: \[['"]index['"]\], boost: 5, usePipeline: false \}\)/, `${label} has no main index-term clause`);
-      assert.match(src, /term\(key \+ ['"]_['"], \{ fields: \[['"]index['"]\], boost: 1, usePipeline: false \}\)/, `${label} has no secondary index-term clause`);
+    for (const [label, src] of [
+      ["just-the-docs.js", onlineSrc],
+      ["eval/site_search.mjs", evalSrc],
+    ]) {
+      assert.match(
+        src,
+        /term\(key, \{ fields: \[['"]index['"]\], boost: 5, usePipeline: false \}\)/,
+        `${label} has no main index-term clause`,
+      );
+      assert.match(
+        src,
+        /term\(key \+ ['"]_['"], \{ fields: \[['"]index['"]\], boost: 1, usePipeline: false \}\)/,
+        `${label} has no secondary index-term clause`,
+      );
       assert.match(src, /b - a <= 4/, `${label} doesn't match runs of up to four words`);
     }
   });
@@ -932,7 +1120,15 @@ describe("index-term guard: online client, offline client, eval replica", () => 
     const load = (src, label) => names.map((n) => fn(src, n, label)).join("\n") + `\nreturn { ${names.join(", ")} };`;
     const online = new Function("lunr", load(onlineSrc, "just-the-docs.js"))(lunr);
     const replica = new Function(load(evalSrc, "eval/site_search.mjs"))();
-    for (const t of ["late binding", "64-bit compilation", "File I/O", "Do...Loop", "#If directives", "conditional compilation", "  "]) {
+    for (const t of [
+      "late binding",
+      "64-bit compilation",
+      "File I/O",
+      "Do...Loop",
+      "#If directives",
+      "conditional compilation",
+      "  ",
+    ]) {
       assert.equal(online.indexTermKey(t), replica.indexTermKey(lunr, t), `indexTermKey(${JSON.stringify(t)}) differs`);
     }
     for (const doc of [
@@ -941,14 +1137,24 @@ describe("index-term guard: online client, offline client, eval replica", () => 
       { content: "Body.", index: ["late binding", "  "], index_also: ["64-bit compilation", "File I/O"] },
     ]) {
       assert.equal(online.indexField(doc), replica.indexField(lunr, doc), `indexField(${JSON.stringify(doc)}) differs`);
-      assert.equal(online.indexedContent(doc), replica.indexedContent(doc), `indexedContent(${JSON.stringify(doc)}) differs`);
+      assert.equal(
+        online.indexedContent(doc),
+        replica.indexedContent(doc),
+        `indexedContent(${JSON.stringify(doc)}) differs`,
+      );
     }
     assert.equal(online.indexedContent({ content: "Body." }), "Body.");
     // A secondary term is its main key with one more `_`, which is how the
     // query tells them apart.
     assert.equal(online.indexField({ index_also: ["late binding"] }), online.indexTermKey("late binding") + "_");
     assert.equal(online.indexTermKey("  "), "");
-    const queryKey = (q) => online.phraseKey(lunr.tokenizer(q).map((t) => lunr.trimmer(t)).filter((t) => t.str !== ""));
+    const queryKey = (q) =>
+      online.phraseKey(
+        lunr
+          .tokenizer(q)
+          .map((t) => lunr.trimmer(t))
+          .filter((t) => t.str !== ""),
+      );
     assert.equal(queryKey("Late-Binding"), online.indexTermKey("late binding"));
     assert.equal(queryKey("64 bit compilations"), online.indexTermKey("64-bit compilation"));
     // One token, so no field split or stemmer touches it again at index time.
@@ -966,7 +1172,8 @@ describe("index-term guard: online client, offline client, eval replica", () => 
     // Unmarked entries, as on the site, where nearly every entry is: without
     // pinIndexFieldLengths(), the index field's average length falls toward
     // zero and a marked entry's match counts for almost nothing.
-    for (let k = 4; k < 200; k++) docs[k] = { doc: `Page ${k}`, title: `Page ${k}`, content: "unrelated text", relUrl: `/P${k}` };
+    for (let k = 4; k < 200; k++)
+      docs[k] = { doc: `Page ${k}`, title: `Page ${k}`, content: "unrelated text", relUrl: `/P${k}` };
     const ctx = { lunr, index: buildIndex(lunr, docs), docs };
     const urls = (q) => search(ctx, q).map((r) => docs[r.ref].relUrl);
     assert.deepEqual(urls("late binding").slice(0, 2), ["/Types#object", "/CreateObject"]);
@@ -984,7 +1191,9 @@ describe("token-set key guard: online client, offline client, eval replica", () 
   const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
   const lunrPath = path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js");
   const lunr = loadLunr(lunrPath);
-  const lunrsOwn = new Function(`return ${read(path.relative(REPO_ROOT, lunrPath)).match(/TokenSet\.prototype\.toString=(function\(\)\{.*?return e\})/)[1]};`)();
+  const lunrsOwn = new Function(
+    `return ${read(path.relative(REPO_ROOT, lunrPath)).match(/TokenSet\.prototype\.toString=(function\(\)\{.*?return e\})/)[1]};`,
+  )();
   // From id 3, lunr's own keys give node `c` ({1 -> leaf, 5 -> leaf}) and
   // node `e` ({1 -> the node with id 656}) the one key `01656`.
   const words = ["c1", "c5", ...Array.from({ length: 491 }, (_, i) => `d${String(i).padStart(3, "0")}`), "e1x"];
@@ -1003,12 +1212,17 @@ describe("token-set key guard: online client, offline client, eval replica", () 
 
   test("lunr's own keys still invent and lose words for the fixture", () => {
     const set = tokenSet(lunrsOwn);
-    assert.ok(set.has("e1") && set.has("e5") && !set.has("e1x"), "the fixture no longer reproduces lunr's key collision; find a new one or drop the patch");
+    assert.ok(
+      set.has("e1") && set.has("e5") && !set.has("e1x"),
+      "the fixture no longer reproduces lunr's key collision; find a new one or drop the patch",
+    );
   });
 
   test("the online client's and the replica's keys keep the fixture exact", () => {
     const fake = { TokenSet: { prototype: { toString: lunrsOwn } } };
-    const src = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js").match(/function separateTokenSetKeys\(\) \{[\s\S]*?\n\}/);
+    const src = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js").match(
+      /function separateTokenSetKeys\(\) \{[\s\S]*?\n\}/,
+    );
     assert.ok(src, "just-the-docs.js has no separateTokenSetKeys()");
     new Function("lunr", `${src[0]}\nseparateTokenSetKeys();`)(fake);
     assert.notEqual(fake.TokenSet.prototype.toString, lunrsOwn);
@@ -1018,8 +1232,14 @@ describe("token-set key guard: online client, offline client, eval replica", () 
   });
 
   test("all three install the separated keys when they build the index", () => {
-    assert.match(read("builder/vendor/just-the-docs/assets/js/just-the-docs.js"), /lunr\.tokenizer = dotRunSplitTokenizer;\s*\}\s*separateTokenSetKeys\(\);/);
-    assert.match(read("builder/offline.mjs"), /lunr\.tokenizer = dotRunSplitTokenizer;\s*\}\s*(\/\/[^\n]*\n\s*)*separateTokenSetKeys\(\);/);
+    assert.match(
+      read("builder/vendor/just-the-docs/assets/js/just-the-docs.js"),
+      /lunr\.tokenizer = dotRunSplitTokenizer;\s*\}\s*separateTokenSetKeys\(\);/,
+    );
+    assert.match(
+      read("builder/offline.mjs"),
+      /lunr\.tokenizer = dotRunSplitTokenizer;\s*\}\s*(\/\/[^\n]*\n\s*)*separateTokenSetKeys\(\);/,
+    );
     assert.match(read("eval/site_search.mjs"), /\s+separateTokenSetKeys\(lunr\);\s+(\w+\(lunr\);\s+)*return lunr;/);
   });
 });
@@ -1058,7 +1278,11 @@ describe("whole-title guard: online client, eval replica", () => {
       4: {},
     };
     const results = () => [0, 1, 2, 3, 4].map((ref) => ({ ref: String(ref), score: [10, 6, 4, 1, 0.5][ref] }));
-    const tokens = (q) => lunr.tokenizer(q).map((t) => lunr.trimmer(t)).filter((t) => t.str !== "");
+    const tokens = (q) =>
+      lunr
+        .tokenizer(q)
+        .map((t) => lunr.trimmer(t))
+        .filter((t) => t.str !== "");
     const run = (q) => {
       const a = online(results(), docs, tokens(q), {});
       const b = replica(lunr, results(), docs, tokens(q), new Map());
@@ -1076,20 +1300,36 @@ describe("whole-title guard: online client, eval replica", () => {
 
   test("both apply it to the final results", () => {
     assert.match(onlineSrc, /var titleKeys = \{\};/, "just-the-docs.js keeps no keys");
-    assert.match(onlineSrc, /\}\s*results = boostWholeTitles\(results, docs, baseTokens, titleKeys\);\s*var statusEl/, "just-the-docs.js doesn't boost the final results");
-    assert.match(evalSrc, /return boostWholeTitles\(lunr, results, docs, baseTokens, titleKeys\.get\(docs\)\);\s*\}/, "the replica doesn't boost the final results");
+    assert.match(
+      onlineSrc,
+      /\}\s*results = boostWholeTitles\(results, docs, baseTokens, titleKeys\);\s*var statusEl/,
+      "just-the-docs.js doesn't boost the final results",
+    );
+    assert.match(
+      evalSrc,
+      /return boostWholeTitles\(lunr, results, docs, baseTokens, titleKeys\.get\(docs\)\);\s*\}/,
+      "the replica doesn't boost the final results",
+    );
   });
 
   test("the replica ranks a page's section first by its whole title", () => {
     const docs = {
-      0: { doc: "DTPicker", title: "DTPicker class", content: "A date and time picker control. The field shows the date, formatted per Format; its properties set the rest.", relUrl: "/DTPicker#dtpicker-class" },
+      0: {
+        doc: "DTPicker",
+        title: "DTPicker class",
+        content:
+          "A date and time picker control. The field shows the date, formatted per Format; its properties set the rest.",
+        relUrl: "/DTPicker#dtpicker-class",
+      },
       1: { doc: "DTPicker", title: "Properties", content: " ", relUrl: "/DTPicker#properties" },
     };
     // As on the site, a few percent of entries are a Properties section,
     // so lunr alone puts the class's heading first: it holds the rarer word
     // in `title`, the section only in `page`.
-    for (let k = 2; k < 20; k++) docs[k] = { doc: `Control${k}`, title: "Properties", content: " ", relUrl: `/Control${k}#properties` };
-    for (let k = 20; k < 1000; k++) docs[k] = { doc: `Page ${k}`, title: `Page ${k}`, content: "unrelated text", relUrl: `/P${k}` };
+    for (let k = 2; k < 20; k++)
+      docs[k] = { doc: `Control${k}`, title: "Properties", content: " ", relUrl: `/Control${k}#properties` };
+    for (let k = 20; k < 1000; k++)
+      docs[k] = { doc: `Page ${k}`, title: `Page ${k}`, content: "unrelated text", relUrl: `/P${k}` };
     const urls = (q) => search({ lunr, index: buildIndex(lunr, docs), docs }, q).map((r) => docs[r.ref].relUrl);
     assert.equal(urls("DTPicker Properties")[0], "/DTPicker#properties");
     assert.equal(urls("DTPicker")[0], "/DTPicker#dtpicker-class");
@@ -1111,7 +1351,11 @@ describe("entity guard: online client, offline client, eval replica", () => {
       ["offline.mjs", read("builder/offline.mjs")],
       ["eval/site_search.mjs", evalSrc],
     ]) {
-      assert.match(src, /return originalTokenizer\(input\)\.map\(decodeTokenEntities\);/, `${label}'s tokenizer wrapper doesn't decode entities`);
+      assert.match(
+        src,
+        /return originalTokenizer\(input\)\.map\(decodeTokenEntities\);/,
+        `${label}'s tokenizer wrapper doesn't decode entities`,
+      );
     }
   });
 
@@ -1127,22 +1371,41 @@ describe("entity guard: online client, offline client, eval replica", () => {
     const text = "Err &amp;H80004005 at&amp;t &lt;&lt;= &#45;&gt; &#8617; &#x41; &bogus; &#1114112; plain";
     // Tokens as lunr's tokenizer makes them: lowercased, positioned in the
     // escaped text.
-    const tokens = (decode) => text.split(" ").map((str) => decode(new lunr.Token(str.toLowerCase(), { position: [0, str.length] })));
+    const tokens = (decode) =>
+      text.split(" ").map((str) => decode(new lunr.Token(str.toLowerCase(), { position: [0, str.length] })));
     const a = tokens(online);
     const b = tokens(replica);
-    assert.deepEqual(a.map((t) => t.str), b.map((t) => t.str));
-    assert.deepEqual(a.map((t) => t.str), ["err", "&h80004005", "at&t", "<<=", "->", "↩", "a", "&bogus;", "&#1114112;", "plain"]);
-    assert.deepEqual(a[1].metadata.position, [0, "&amp;H80004005".length], "a decoded token lost its position in the escaped text");
+    assert.deepEqual(
+      a.map((t) => t.str),
+      b.map((t) => t.str),
+    );
+    assert.deepEqual(
+      a.map((t) => t.str),
+      ["err", "&h80004005", "at&t", "<<=", "->", "↩", "a", "&bogus;", "&#1114112;", "plain"],
+    );
+    assert.deepEqual(
+      a[1].metadata.position,
+      [0, "&amp;H80004005".length],
+      "a decoded token lost its position in the escaped text",
+    );
   });
 
   test("the replica finds an entity-escaped hex literal, and highlights it where it is written", () => {
     const docs = {
-      0: { doc: "Printers", title: "Indexing", content: "An invalid index raises error 5 (&amp;H80004005).", relUrl: "/Printers#indexing" },
+      0: {
+        doc: "Printers",
+        title: "Indexing",
+        content: "An invalid index raises error 5 (&amp;H80004005).",
+        relUrl: "/Printers#indexing",
+      },
       1: { doc: "Other", title: "Other", content: "Nothing to see.", relUrl: "/Other" },
     };
     const ctx = { lunr, index: buildIndex(lunr, docs), docs };
     const results = search(ctx, "&H80004005");
-    assert.deepEqual(results.map((r) => docs[r.ref].relUrl), ["/Printers#indexing"]);
+    assert.deepEqual(
+      results.map((r) => docs[r.ref].relUrl),
+      ["/Printers#indexing"],
+    );
     const [start, length] = results[0].matchData.metadata.h80004005.content.position[0];
     assert.equal(docs[0].content.slice(start, start + length), "(&amp;H80004005).");
   });
@@ -1156,7 +1419,9 @@ describe("set-union guard: online client, offline client, eval replica", () => {
   const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
   const lunrPath = path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js");
   const lunr = loadLunr(lunrPath);
-  const ownSrc = read(path.relative(REPO_ROOT, lunrPath)).match(/Set\.prototype\.union=(function\(e\)\{return .*?\)\)\})/);
+  const ownSrc = read(path.relative(REPO_ROOT, lunrPath)).match(
+    /Set\.prototype\.union=(function\(e\)\{return .*?\)\)\})/,
+  );
   const lunrsOwn = new Function("T", `return ${ownSrc[1]};`)(lunr);
   // A Set of its own, so the online client's patch can be installed on it
   // without touching the replica's lunr.
@@ -1168,7 +1433,9 @@ describe("set-union guard: online client, offline client, eval replica", () => {
     OwnSet.prototype.union = lunrsOwn;
     OwnSet.complete = lunr.Set.complete;
     OwnSet.empty = lunr.Set.empty;
-    const src = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js").match(/function accumulateSetUnions\(\) \{[\s\S]*?\r?\n\}/);
+    const src = read("builder/vendor/just-the-docs/assets/js/just-the-docs.js").match(
+      /function accumulateSetUnions\(\) \{[\s\S]*?\r?\n\}/,
+    );
     assert.ok(src, "just-the-docs.js has no accumulateSetUnions()");
     const fake = { Set: OwnSet };
     new Function("lunr", `${src[0]}\naccumulateSetUnions();`)(fake);
@@ -1193,11 +1460,29 @@ describe("set-union guard: online client, offline client, eval replica", () => {
     };
     const own = run(lunr.Set, lunrsOwn);
     const OwnSet = onlineUnion();
-    for (const [label, got] of [["just-the-docs.js", run(OwnSet, OwnSet.prototype.union)], ["eval/site_search.mjs", run(lunr.Set, lunr.Set.prototype.union)]]) {
-      assert.deepEqual(got.steps.map(([keys]) => keys), own.steps.map(([keys]) => keys), `${label}'s unions hold other elements than lunr's`);
-      assert.deepEqual(got.steps.map(([, length]) => length), own.steps.map(([, length]) => length), `${label}'s unions have other lengths than lunr's`);
-      assert.deepEqual(got.inputs.map((s) => [Object.keys(s.elements), s.length]), sets.map((keys) => [keys, keys.length]), `${label} changed a set it took in`);
-      assert.ok(got.totals[1] !== got.inputs[0] && got.totals.slice(2).every((s) => s === got.totals[1]), `${label} copies the running total instead of adding to it`);
+    for (const [label, got] of [
+      ["just-the-docs.js", run(OwnSet, OwnSet.prototype.union)],
+      ["eval/site_search.mjs", run(lunr.Set, lunr.Set.prototype.union)],
+    ]) {
+      assert.deepEqual(
+        got.steps.map(([keys]) => keys),
+        own.steps.map(([keys]) => keys),
+        `${label}'s unions hold other elements than lunr's`,
+      );
+      assert.deepEqual(
+        got.steps.map(([, length]) => length),
+        own.steps.map(([, length]) => length),
+        `${label}'s unions have other lengths than lunr's`,
+      );
+      assert.deepEqual(
+        got.inputs.map((s) => [Object.keys(s.elements), s.length]),
+        sets.map((keys) => [keys, keys.length]),
+        `${label} changed a set it took in`,
+      );
+      assert.ok(
+        got.totals[1] !== got.inputs[0] && got.totals.slice(2).every((s) => s === got.totals[1]),
+        `${label} copies the running total instead of adding to it`,
+      );
     }
     assert.equal(lunr.Set.complete.union(new lunr.Set(["1"])), lunr.Set.complete);
     assert.equal(lunr.Set.prototype.union.call(new lunr.Set(["1"]), lunr.Set.complete), lunr.Set.complete);
@@ -1207,7 +1492,12 @@ describe("set-union guard: online client, offline client, eval replica", () => {
     const words = ["alpha", "able", "about", "page", "paging", "apart", "pane", "form", "the", "a"];
     const docs = {};
     for (let i = 0; i < 60; i++) {
-      docs[i] = { doc: `Page ${i}`, title: `${words[i % 10]} ${words[(i * 7) % 10]}`, content: words.filter((_, w) => (i >> (w % 6)) & 1).join(" "), relUrl: `/P${i}` };
+      docs[i] = {
+        doc: `Page ${i}`,
+        title: `${words[i % 10]} ${words[(i * 7) % 10]}`,
+        content: words.filter((_, w) => (i >> (w % 6)) & 1).join(" "),
+        relUrl: `/P${i}`,
+      };
     }
     const ctx = { lunr, index: buildIndex(lunr, docs), docs };
     const queries = ["a page", "a p", "the form", "ab pa", "a"];
@@ -1224,9 +1514,15 @@ describe("set-union guard: online client, offline client, eval replica", () => {
   });
 
   test("all three install it when they build the index", () => {
-    assert.match(read("builder/vendor/just-the-docs/assets/js/just-the-docs.js"), /\s+separateTokenSetKeys\(\);\s*accumulateSetUnions\(\);/);
+    assert.match(
+      read("builder/vendor/just-the-docs/assets/js/just-the-docs.js"),
+      /\s+separateTokenSetKeys\(\);\s*accumulateSetUnions\(\);/,
+    );
     assert.match(read("builder/offline.mjs"), /\s+separateTokenSetKeys\(\);\s*accumulateSetUnions\(\);/);
-    assert.match(read("eval/site_search.mjs"), /\s+separateTokenSetKeys\(lunr\);\s+accumulateSetUnions\(lunr\);\s+return lunr;/);
+    assert.match(
+      read("eval/site_search.mjs"),
+      /\s+separateTokenSetKeys\(lunr\);\s+accumulateSetUnions\(lunr\);\s+return lunr;/,
+    );
   });
 });
 
@@ -1252,7 +1548,7 @@ describe("kind-word guard: online client, eval replica", () => {
       ["MaxHeight", { maxheight: { content: {} }, properti: { content: {} } }, false],
       ["MaxHeight", { maxheight: { title: {} } }, true],
       ["MaxHeight", { maxheight_: { primary: {} } }, true],
-      ["Continue", { "continu_": { exact: {} } }, true],
+      ["Continue", { continu_: { exact: {} } }, true],
       ["Date$", { date: { title: {} } }, true],
       ["Do...Loop", { do: { title: {} }, loop: { content: {} } }, false],
       ["Do...Loop", { do: { title: {} }, loop: { title: {} } }, true],
@@ -1260,15 +1556,35 @@ describe("kind-word guard: online client, eval replica", () => {
     for (const [name, metadata, expected] of cases) {
       const result = { ref: "0", score: 1, matchData: { metadata } };
       assert.equal(online(result, name), expected, `just-the-docs.js: ${name} in ${JSON.stringify(metadata)}`);
-      assert.equal(replica(lunr, result, name), expected, `eval/site_search.mjs: ${name} in ${JSON.stringify(metadata)}`);
+      assert.equal(
+        replica(lunr, result, name),
+        expected,
+        `eval/site_search.mjs: ${name} in ${JSON.stringify(metadata)}`,
+      );
     }
   });
 
   test("both make kind words optional only when nothing found names the thing", () => {
-    assert.match(onlineSrc, /if \(!optionalKinds \|\| KIND_WORDS\.indexOf\(token\.str\) === -1\) \{\s*query\.term\(stem, \{[^}]*presence: lunr\.Query\.presence\.REQUIRED/, "just-the-docs.js doesn't let kind words go unrequired");
-    assert.match(onlineSrc, /results = allWords\(false\);\s*if \(name && words\.length > 1 && !results\.some\(function\(r\) \{ return namesTheThing\(r, name\); \}\)\) \{\s*var again = allWords\(true\);\s*if \(again\.length > 0\) results = again;/, "just-the-docs.js doesn't fall back as the replica does");
-    assert.match(evalSrc, /if \(!optionalKinds \|\| !KIND_WORDS\.includes\(token\.str\)\) \{\s*q\.term\(stem, \{[^}]*presence: lunr\.Query\.presence\.REQUIRED/, "the replica doesn't let kind words go unrequired");
-    assert.match(evalSrc, /results = allWords\(false\);\s*if \(name && words\.length > 1 && !results\.some\(\(r\) => namesTheThing\(lunr, r, name\)\)\) \{\s*const again = allWords\(true\);\s*if \(again\.length\) results = again;/, "the replica doesn't fall back");
+    assert.match(
+      onlineSrc,
+      /if \(!optionalKinds \|\| KIND_WORDS\.indexOf\(token\.str\) === -1\) \{\s*query\.term\(stem, \{[^}]*presence: lunr\.Query\.presence\.REQUIRED/,
+      "just-the-docs.js doesn't let kind words go unrequired",
+    );
+    assert.match(
+      onlineSrc,
+      /results = allWords\(false\);\s*if \(name && words\.length > 1 && !results\.some\(function\(r\) \{ return namesTheThing\(r, name\); \}\)\) \{\s*var again = allWords\(true\);\s*if \(again\.length > 0\) results = again;/,
+      "just-the-docs.js doesn't fall back as the replica does",
+    );
+    assert.match(
+      evalSrc,
+      /if \(!optionalKinds \|\| !KIND_WORDS\.includes\(token\.str\)\) \{\s*q\.term\(stem, \{[^}]*presence: lunr\.Query\.presence\.REQUIRED/,
+      "the replica doesn't let kind words go unrequired",
+    );
+    assert.match(
+      evalSrc,
+      /results = allWords\(false\);\s*if \(name && words\.length > 1 && !results\.some\(\(r\) => namesTheThing\(lunr, r, name\)\)\) \{\s*const again = allWords\(true\);\s*if \(again\.length\) results = again;/,
+      "the replica doesn't fall back",
+    );
   });
 
   test("the replica finds a member its section doesn't call a property, and keeps a titled match", () => {
@@ -1280,7 +1596,8 @@ describe("kind-word guard: online client, eval replica", () => {
       3: { doc: "Mid", title: "Mid", content: "The Mid function returns part of a string.", relUrl: "/Strings/Mid#mid" },
       4: { doc: "Mid =", title: "Mid =", content: "Replaces characters in a string.", names: "Mid", primary: "Mid", relUrl: "/Core/Mid-equals" },
     };
-    for (let k = 5; k < 200; k++) docs[k] = { doc: `Page ${k}`, title: `Page ${k}`, content: "unrelated text", relUrl: `/P${k}` };
+    for (let k = 5; k < 200; k++)
+      docs[k] = { doc: `Page ${k}`, title: `Page ${k}`, content: "unrelated text", relUrl: `/P${k}` };
     const urls = (q) => search({ lunr, index: buildIndex(lunr, docs), docs }, q).map((r) => docs[r.ref].relUrl);
     // No entry holding both words is titled MaxHeight: the section, which
     // never says "property", comes first once the word is optional.
@@ -1309,7 +1626,10 @@ describe("sliced-build guard: online client against lunr()", () => {
   };
   const sliced = (sliceMs, fieldsPerPiece) => {
     assert.ok(fnSrc, "just-the-docs.js has no buildIndexInSlices()");
-    return new Function("lunr", `var INDEX_SLICE_MS = ${sliceMs};\nvar FIELDS_PER_PIECE = ${fieldsPerPiece};\n${fnSrc[0]}\nreturn buildIndexInSlices;`)(lunr);
+    return new Function(
+      "lunr",
+      `var INDEX_SLICE_MS = ${sliceMs};\nvar FIELDS_PER_PIECE = ${fieldsPerPiece};\n${fnSrc[0]}\nreturn buildIndexInSlices;`,
+    )(lunr);
   };
   const build = (buildIndexInSlices, config, docs, entry) =>
     new Promise((resolve, reject) => buildIndexInSlices(config, docs, entry, resolve, reject));
@@ -1334,8 +1654,16 @@ describe("sliced-build guard: online client against lunr()", () => {
     for (const i of Object.keys(docs)) this.add(entry(i));
   });
   const same = (index, label) => {
-    assert.equal(JSON.stringify(index.toJSON()), JSON.stringify(whole.toJSON()), `${label}: the index differs from lunr()'s`);
-    assert.deepEqual(index.tokenSet.toArray(), whole.tokenSet.toArray(), `${label}: the token set differs from lunr()'s`);
+    assert.equal(
+      JSON.stringify(index.toJSON()),
+      JSON.stringify(whole.toJSON()),
+      `${label}: the index differs from lunr()'s`,
+    );
+    assert.deepEqual(
+      index.tokenSet.toArray(),
+      whole.tokenSet.toArray(),
+      `${label}: the token set differs from lunr()'s`,
+    );
     for (const q of ["form", "f*", "window print", "debug"]) {
       assert.deepEqual(index.search(q), whole.search(q), `${label}: ${JSON.stringify(q)} finds other results`);
     }
@@ -1344,7 +1672,10 @@ describe("sliced-build guard: online client against lunr()", () => {
   test("the index is lunr()'s, sliced finely and as the site slices it", async () => {
     const idf = lunr.idf;
     same(await build(sliced(0, 3), fields, docs, entry), "one piece a slice");
-    same(await build(sliced(constant("INDEX_SLICE_MS"), constant("FIELDS_PER_PIECE")), fields, docs, entry), "the site's slices");
+    same(
+      await build(sliced(constant("INDEX_SLICE_MS"), constant("FIELDS_PER_PIECE")), fields, docs, entry),
+      "the site's slices",
+    );
     assert.equal(lunr.idf, idf, "lunr.idf was not put back");
   });
 
@@ -1354,10 +1685,20 @@ describe("sliced-build guard: online client against lunr()", () => {
     // lunr.idf swapped.
     const throwing = function () {
       fields.call(this);
-      Object.defineProperty(this._fields.title, "boost", { get: () => { throw new Error("boost"); } });
+      Object.defineProperty(this._fields.title, "boost", {
+        get: () => {
+          throw new Error("boost");
+        },
+      });
     };
     await assert.rejects(build(sliced(0, 3), throwing, docs, entry), /boost/);
     assert.equal(lunr.idf, idf, "lunr.idf was not put back after a throw");
-    await assert.rejects(build(sliced(0, 3), fields, docs, (i) => { if (i === "2") throw new Error("entry"); return entry(i); }), /entry/);
+    await assert.rejects(
+      build(sliced(0, 3), fields, docs, (i) => {
+        if (i === "2") throw new Error("entry");
+        return entry(i);
+      }),
+      /entry/,
+    );
   });
 });

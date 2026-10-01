@@ -36,7 +36,9 @@ export function findIde(explicit) {
       const build = Number(m[1]);
       if (!best || build > best.build) best = { build, exe };
     }
-  } catch { /* no Desktop, or unreadable */ }
+  } catch {
+    /* no Desktop, or unreadable */
+  }
   return best?.exe ?? null;
 }
 

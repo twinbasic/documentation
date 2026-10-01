@@ -43,14 +43,14 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
-import pc   from "picocolors";
+import pc from "picocolors";
 
 import { exitOnCrash, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 
 import { parseCommandLine, USAGE } from "./command-line.mjs";
 import { WorkerPool } from "./worker-pool.mjs";
-import { Scheduler }  from "./scheduler.mjs";
+import { Scheduler } from "./scheduler.mjs";
 import { GANTT_SECTION, groupGanttTimings, renderGantt } from "./gantt.mjs";
 
 import { discover } from "./discover.mjs";
@@ -60,13 +60,16 @@ import { vendorAssets } from "./vendor-assets.mjs";
 import { computeSiteSeo } from "./seo.mjs";
 import { resolveBookChapters } from "./book.mjs";
 import { loadData } from "./data.mjs";
-import {
-  createMarkdownIt,
-  buildLinkTables, serializeLinkTables,
-} from "./render.mjs";
+import { createMarkdownIt, buildLinkTables, serializeLinkTables } from "./render.mjs";
 import { loadHighlightTheme } from "./highlight-theme.mjs";
 import { buildInitConfig, renderSidebar } from "./template.mjs";
-import { writePhase, prepareDestinations, preparePageDirs, writeFileMkdirp, assertDestinationClearOfSource } from "./write.mjs";
+import {
+  writePhase,
+  prepareDestinations,
+  preparePageDirs,
+  writeFileMkdirp,
+  assertDestinationClearOfSource,
+} from "./write.mjs";
 import { writeRedirects, deriveRedirectStubs } from "./redirects.mjs";
 import { writeSitemap, deriveSitemapUrls } from "./sitemap.mjs";
 import { writeSearchDataFromChunks } from "./search.mjs";
@@ -82,17 +85,27 @@ import { writePdf } from "./pdf.mjs";
 import { deriveTreeRels } from "./check-tree.mjs";
 import { checkPageBaseline } from "./page-baseline.mjs";
 import { checkSymbolBaseline } from "./symbol-baseline.mjs";
-import { deriveSymbolIndex, reportableGaps, serializeSymbolIndex,
-         symbolPages, SYMBOL_INDEX_REL } from "./symbols.mjs";
-import { publishPolicyFor, unpublishableSourceFiles,
-         unpublishableTreePaths, formatPublishRefusal } from "./publish-policy.mjs";
+import { deriveSymbolIndex, reportableGaps, serializeSymbolIndex, symbolPages, SYMBOL_INDEX_REL } from "./symbols.mjs";
+import {
+  publishPolicyFor,
+  unpublishableSourceFiles,
+  unpublishableTreePaths,
+  formatPublishRefusal,
+} from "./publish-policy.mjs";
 import { packShared } from "./sab-broadcast.mjs";
 import {
-  allocSchedulerSAB, verifySchedulerSAB, SLICES_PER_WORKER,
-  HANDLERS, F_PIN_TO_PRED,
+  allocSchedulerSAB,
+  verifySchedulerSAB,
+  SLICES_PER_WORKER,
+  HANDLERS,
+  F_PIN_TO_PRED,
   writeTaskMeta,
-  allocDynamicSlots, wireDynamicEdges, appendDynamicSuccessors,
-  setDepCount, activateDynamicTasks, packPayloads,
+  allocDynamicSlots,
+  wireDynamicEdges,
+  appendDynamicSuccessors,
+  setDepCount,
+  activateDynamicTasks,
+  packPayloads,
 } from "./sab-scheduler.mjs";
 
 const CPU_WORKER_URL = new URL("./cpu-worker.mjs", import.meta.url);
@@ -214,16 +227,13 @@ const TASKS = {
       const rel = "assets/css/just-the-docs-combined.css";
       const baseurl = String(state.site.config.baseurl || "");
       const online = baseurl
-        ? combined.replace(
-            /url\((["']?)\/(?!\/)([^)"']*)\1\)/g,
-            (_, q, rest) => `url(${q}${baseurl}/${rest}${q})`,
-          )
+        ? combined.replace(/url\((["']?)\/(?!\/)([^)"']*)\1\)/g, (_, q, rest) => `url(${q}${baseurl}/${rest}${q})`)
         : combined;
       const dest = path.join(ctx.destRoot, rel);
       await fs.mkdir(path.dirname(dest), { recursive: true });
       await fs.writeFile(dest, online, "utf8");
 
-      const skipOffline = ctx.opts.skipOffline ?? (state.site.config.also_build_offline === false);
+      const skipOffline = ctx.opts.skipOffline ?? state.site.config.also_build_offline === false;
       let offlineMisses = 0;
       if (!skipOffline) {
         const offlineState = {
@@ -282,7 +292,7 @@ const TASKS = {
     runOnMain: true,
     async execute(_, ctx, state) {
       if (ctx.opts.dryRun) return {};
-      const skipOffline = ctx.opts.skipOffline ?? (state.site.config.also_build_offline === false);
+      const skipOffline = ctx.opts.skipOffline ?? state.site.config.also_build_offline === false;
       const offlineRoot = skipOffline ? null : ctx.destRoot + "-offline";
       await preparePageDirs(state.pages, state.staticFiles, ctx.destRoot, offlineRoot);
       return {};
@@ -343,7 +353,7 @@ const TASKS = {
   // The SAB dep count alone does NOT make this a barrier over the
   // *submits* -- see dispatch.submit, which populates `expected`.
   renderJoin: {
-    expected: [],   // populated by dispatch.submit
+    expected: [], // populated by dispatch.submit
     on_demand: true,
     runOnMain: true,
     execute(_inputs, _ctx, state) {
@@ -353,13 +363,16 @@ const TASKS = {
       // slipped through would vanish from their output without a word.
       // That is precisely how the missing-expected-list bug stayed
       // hidden. Assert the claim once, here, where it is made.
-      const missing = state.pages.filter(p => typeof p.renderedContent !== "string");
+      const missing = state.pages.filter((p) => typeof p.renderedContent !== "string");
       if (missing.length) {
         throw new Error(
           `${missing.length} of ${state.pages.length} pages have no renderedContent ` +
-          `(${missing.slice(0, 5).map(p => p.destPath).join(", ")}` +
-          `${missing.length > 5 ? ", ..." : ""}). A render chunk's submit() did not run ` +
-          `before the barrier -- see the expected-list wiring in dispatch.submit().`,
+            `(${missing
+              .slice(0, 5)
+              .map((p) => p.destPath)
+              .join(", ")}` +
+            `${missing.length > 5 ? ", ..." : ""}). A render chunk's submit() did not run ` +
+            `before the barrier -- see the expected-list wiring in dispatch.submit().`,
         );
       }
       return {};
@@ -372,25 +385,24 @@ const TASKS = {
   // decrements via the SAB successor edge. Aggregates the per-chunk write
   // stats from all flush:i results.
   flushJoin: {
-    expected: [],   // populated by dispatch.submit
+    expected: [], // populated by dispatch.submit
     on_demand: true,
     runOnMain: true,
     execute(inputs) {
-      let written = 0, offlineWritten = 0, offlineMisses = 0;
+      let written = 0,
+        offlineWritten = 0,
+        offlineMisses = 0;
       for (const [name, r] of Object.entries(inputs)) {
         // Asserted, not defaulted. A flush result that never arrived
         // would otherwise contribute zero and the totals would simply
         // read low -- a number nobody can tell apart from a smaller
         // site.
         if (!r || typeof r.written !== "number") {
-          throw new Error(
-            `flushJoin: ${name} produced no write stats; the page count ` +
-            `would silently read low`
-          );
+          throw new Error(`flushJoin: ${name} produced no write stats; the page count ` + `would silently read low`);
         }
-        written        += r.written;
+        written += r.written;
         offlineWritten += r.offlineWritten ?? 0;
-        offlineMisses  += r.offlineMisses  ?? 0;
+        offlineMisses += r.offlineMisses ?? 0;
       }
       return { written, offlineWritten, offlineMisses };
     },
@@ -421,7 +433,7 @@ const TASKS = {
       return { pages, staticFiles, config };
     },
     submit(out, state) {
-      state.pages       = out.pages;
+      state.pages = out.pages;
       state.staticFiles = out.staticFiles;
       state.site.config = out.config;
       for (const p of out.pages) state.pageByDest.set(p.destPath, p);
@@ -492,9 +504,9 @@ const TASKS = {
     expected: ["discover", "vendorAssets", "deriveRedirects"],
     runOnMain: true,
     execute({ deriveRedirects: { stubs } }, _ctx, state) {
-      const linkTables    = buildLinkTables(state.pages);
-      const baseurl       = String(state.site.config.baseurl || "");
-      const staticFileSet = new Set(state.staticFiles.map(s => s.srcRel));
+      const linkTables = buildLinkTables(state.pages);
+      const baseurl = String(state.site.config.baseurl || "");
+      const staticFileSet = new Set(state.staticFiles.map((s) => s.srcRel));
 
       // Derived here, on main, because a count has to exist before any page
       // renders -- and validated here for the same reason. An unknown name
@@ -503,8 +515,11 @@ const TASKS = {
       // readers rather than fail. See counts.mjs. The validation masks code
       // with the site's parser, so it follows the parser's creation.
       state.site.counts = deriveCounts(state, { redirectStubs: stubs.length });
-      state.site.markdown             = createMarkdownIt({
-        highlighter: null, linkTables, baseurl, staticFiles: staticFileSet,
+      state.site.markdown = createMarkdownIt({
+        highlighter: null,
+        linkTables,
+        baseurl,
+        staticFiles: staticFileSet,
         vendoredVideos: state.site.vendoredVideos,
         vendoredImages: state.site.vendoredImages,
         counts: state.site.counts,
@@ -512,14 +527,14 @@ const TASKS = {
       const badNames = validateCountNames(state.pages, state.site.counts, state.site.markdown);
       if (badNames.length) {
         throw new Error(
-          `unknown {{tbdocs:...}} count name in ${badNames.length} place(s):\n\n` +
-          badNames.join("\n\n"));
+          `unknown {{tbdocs:...}} count name in ${badNames.length} place(s):\n\n` + badNames.join("\n\n"),
+        );
       }
 
       state.site.linkTablesSerialized = serializeLinkTables(linkTables);
       const { seoSiteTitle, seoLogoUrl } = computeSiteSeo(state.site.config, state.site.markdown);
       state.site.seoSiteTitle = seoSiteTitle;
-      state.site.seoLogoUrl   = seoLogoUrl;
+      state.site.seoLogoUrl = seoLogoUrl;
       return {};
     },
     submit() {},
@@ -530,7 +545,7 @@ const TASKS = {
     runOnMain: true,
     async execute(_, ctx, state) {
       const data = await loadData(ctx.srcRoot);
-      state.site.data     = data;
+      state.site.data = data;
       state.site.bookData = data.book ?? null;
       return {};
     },
@@ -588,9 +603,20 @@ const TASKS = {
   dispatch: {
     expected: ["nav", "buildInit", "buildInfo", "dot", "deriveRedirects", "markdownInit"],
     runOnMain: true,
-    async execute({ nav: { sidebar }, buildInit: { initData }, buildInfo: { buildInfo }, dot: _dotSignal, markdownInit: _markdownInitSignal, deriveRedirects: { stubs } }, ctx, state) {
-      void _dotSignal;   // dependency signal only -- static files already appended in dot.submit
-      void _markdownInitSignal;  // dependency signal only -- markdown + linkTablesSerialized + seoSiteTitle/seoLogoUrl already on state.site
+    async execute(
+      {
+        nav: { sidebar },
+        buildInit: { initData },
+        buildInfo: { buildInfo },
+        dot: _dotSignal,
+        markdownInit: _markdownInitSignal,
+        deriveRedirects: { stubs },
+      },
+      ctx,
+      state,
+    ) {
+      void _dotSignal; // dependency signal only -- static files already appended in dot.submit
+      void _markdownInitSignal; // dependency signal only -- markdown + linkTablesSerialized + seoSiteTitle/seoLogoUrl already on state.site
       const chunks = chunkPages(state.pages, ctx.workerCount);
       const excludePatterns = Array.isArray(state.site.config?.offline_exclude)
         ? state.site.config.offline_exclude.map(String)
@@ -602,18 +628,21 @@ const TASKS = {
       ];
       const sitePaths = buildSitePathsSync(state.pages, state.staticFiles, excludePatterns, stubs, themeAssetRels);
       state.sitePaths = sitePaths;
-      const skipOffline = ctx.opts.skipOffline ?? (state.site.config.also_build_offline === false);
+      const skipOffline = ctx.opts.skipOffline ?? state.site.config.also_build_offline === false;
 
       // Everything deriveTreeRels needs is settled at this point: pages
       // from discover, stubs from deriveRedirects, staticFiles after dot
       // and vendorAssets have appended theirs, and the theme assets right
       // above. Two consumers below share it.
       const common = {
-        pages: state.pages, staticFiles: state.staticFiles, stubs,
-        themeAssetRels, excludePatterns,
+        pages: state.pages,
+        staticFiles: state.staticFiles,
+        stubs,
+        themeAssetRels,
+        excludePatterns,
       };
       const treeNames = skipOffline ? ["online"] : ["online", "offline"];
-      const treeRels = new Map(treeNames.map(w => [w, deriveTreeRels(w, common)]));
+      const treeRels = new Map(treeNames.map((w) => [w, deriveTreeRels(w, common)]));
 
       // Second enforcement point for the publish allowlist, over the
       // inventory each tree will actually receive. The source sweep in
@@ -626,9 +655,12 @@ const TASKS = {
       for (const [which, rels] of treeRels) {
         const strays = unpublishableTreePaths(rels, policy);
         if (strays.length) {
-          throw new Error(formatPublishRefusal(strays, {
-            surface: "tree", label: `the ${which} tree`,
-          }));
+          throw new Error(
+            formatPublishRefusal(strays, {
+              surface: "tree",
+              label: `the ${which} tree`,
+            }),
+          );
         }
       }
 
@@ -661,16 +693,16 @@ const TASKS = {
       }
       const shared = {
         siteData: {
-          config:       state.site.config,
+          config: state.site.config,
           seoSiteTitle: state.site.seoSiteTitle,
-          seoLogoUrl:   state.site.seoLogoUrl,
+          seoLogoUrl: state.site.seoLogoUrl,
         },
         initData: { ...initData, sidebar },
         buildInfo,
         linkTablesData: state.site.linkTablesSerialized,
-        staticFilesArr: state.staticFiles.map(f => f.srcRel),
-        baseurl:        String(state.site.config.baseurl || ""),
-        sitePathsArr:           [...sitePaths],
+        staticFilesArr: state.staticFiles.map((f) => f.srcRel),
+        baseurl: String(state.site.config.baseurl || ""),
+        sitePathsArr: [...sitePaths],
         offlineExcludePatterns: excludePatterns,
         skipOffline,
         svgContentsMap,
@@ -684,20 +716,20 @@ const TASKS = {
       return { chunks, sharedSAB };
     },
     submit(out, _state, scheduler) {
-      const N      = out.chunks.length;
-      const views  = scheduler._views;
-      const idMap  = scheduler._idMapping;
-      const renderJoinIdx    = idMap.nameToIdx.get("renderJoin");
-      const flushJoinIdx     = idMap.nameToIdx.get("flushJoin");
+      const N = out.chunks.length;
+      const views = scheduler._views;
+      const idMap = scheduler._idMapping;
+      const renderJoinIdx = idMap.nameToIdx.get("renderJoin");
+      const flushJoinIdx = idMap.nameToIdx.get("flushJoin");
       const renderEnvInitIdx = idMap.nameToIdx.get("renderEnvInit");
-      const prepPageDirsIdx  = idMap.nameToIdx.get("prepPageDirs");
+      const prepPageDirsIdx = idMap.nameToIdx.get("prepPageDirs");
 
       // Phase 17: pre-allocate searchChunks so each render:i.submit() can
       // assign by chunk index regardless of completion order.  After
       // renderJoin fires, scheduler.state.searchChunks[0..N-1] holds every
       // worker's per-chunk entries in pages-order.
       scheduler.state.searchChunks = new Array(N);
-      scheduler.state.checkChunks  = [];
+      scheduler.state.checkChunks = [];
       // linkJoin compares against this: a chunk that never arrived would
       // otherwise mean the link check quietly examined fewer pages and
       // still reported a clean pass.
@@ -705,17 +737,17 @@ const TASKS = {
 
       // 1. Allocate 2N slots from the generic pool.
       const renderBase = allocDynamicSlots(views, idMap, N);
-      const flushBase  = allocDynamicSlots(views, idMap, N);
+      const flushBase = allocDynamicSlots(views, idMap, N);
 
       // 2. Write metadata into the SAB.
       for (let i = 0; i < N; i++) {
         writeTaskMeta(views, renderBase + i, {
-          handlerIdx:    HANDLERS.render,
+          handlerIdx: HANDLERS.render,
           perWorkerDeps: [renderEnvInitIdx],
         });
         writeTaskMeta(views, flushBase + i, {
           handlerIdx: HANDLERS.flush,
-          priority:   1,
+          priority: 1,
         });
       }
 
@@ -724,7 +756,7 @@ const TASKS = {
       const edges = [];
       for (let i = 0; i < N; i++) {
         edges.push({ from: renderBase + i, to: [renderJoinIdx, flushBase + i] });
-        edges.push({ from: flushBase + i,  to: [flushJoinIdx] });
+        edges.push({ from: flushBase + i, to: [flushJoinIdx] });
       }
       wireDynamicEdges(views, edges);
 
@@ -739,7 +771,7 @@ const TASKS = {
       //    registerBarrier so the dep count cannot be written without
       //    the matching `expected` list -- see its comment.
       for (let i = 0; i < N; i++) {
-        setDepCount(views, flushBase + i, 2);  // gated on render:i + prepPageDirs
+        setDepCount(views, flushBase + i, 2); // gated on render:i + prepPageDirs
         Atomics.store(views.pinnedTo, flushBase + i, renderBase + i);
         views.flags[flushBase + i] |= F_PIN_TO_PRED;
       }
@@ -759,7 +791,7 @@ const TASKS = {
           // returned" is not actionable on its own; the six source
           // paths in that chunk are, because the fault is nearly always
           // one page's content.
-          describe: () => out.chunks[i].map(p => p.srcRel ?? p.srcPath),
+          describe: () => out.chunks[i].map((p) => p.srcRel ?? p.srcPath),
           submit(renderOut, state) {
             for (const r of renderOut.pages) {
               const p = state.pageByDest.get(r.destPath);
@@ -769,9 +801,7 @@ const TASKS = {
               // built from the same page list the chunks were sliced
               // from, so a miss is a bug, not a condition to tolerate.
               if (!p) {
-                throw new Error(
-                  `render:${i} returned a page the build does not know: ${r.destPath}`,
-                );
+                throw new Error(`render:${i} returned a page the build does not know: ${r.destPath}`);
               }
               p.renderedContent = r.renderedContent;
               if (r.offlineMisses !== undefined) p.offlineMisses = r.offlineMisses;
@@ -787,7 +817,7 @@ const TASKS = {
           expected: [`render:${i}`],
           consolidate: true,
           ganttSection: "Write",
-          describe: () => out.chunks[i].map(p => p.srcRel ?? p.srcPath),
+          describe: () => out.chunks[i].map((p) => p.srcRel ?? p.srcPath),
           submit(flushOut, state) {
             // --check: the per-chunk reduction rides back on flush's
             // result. Sized by findings, not by the 793k occurrences --
@@ -798,14 +828,14 @@ const TASKS = {
       }
 
       registerBarrier(scheduler, views, "renderJoin", renderJoinIdx, "render", N);
-      registerBarrier(scheduler, views, "flushJoin",  flushJoinIdx,  "flush",  N);
+      registerBarrier(scheduler, views, "flushJoin", flushJoinIdx, "flush", N);
 
       // 6. Pack payload, broadcast, account, activate.
       const payloadSAB = packPayloads(views, renderBase, out.chunks);
-      scheduler.addDynamicTasks(2 * N + 2);   // N render + N flush + renderJoin + flushJoin
+      scheduler.addDynamicTasks(2 * N + 2); // N render + N flush + renderJoin + flushJoin
       scheduler.pool.broadcastDynamicData(payloadSAB, out.sharedSAB);
-      activateDynamicTasks(views, renderBase, 2 * N);  // render:i activate (depCount 0);
-                                                       // flush:i stay NOT_READY (depCount 1)
+      activateDynamicTasks(views, renderBase, 2 * N); // render:i activate (depCount 0);
+      // flush:i stay NOT_READY (depCount 1)
     },
   },
 
@@ -823,17 +853,17 @@ const TASKS = {
     expected: ["dot", "vendorAssets", "prepPageDirs", "highlighterInit"],
     runOnMain: true,
     async execute({ dot: _dotSignal, highlighterInit: _highlightSignal }, ctx, state) {
-      void _dotSignal;        // dependency signal only; append already happened in dot.submit
-      void _highlightSignal;  // dependency signal only; highlightCss already written to state.site
+      void _dotSignal; // dependency signal only; append already happened in dot.submit
+      void _highlightSignal; // dependency signal only; highlightCss already written to state.site
       const generatedAssets = [];
       if (state.site.highlightCss) {
         generatedAssets.push({ rel: "assets/css/tb-highlight.css", content: state.site.highlightCss });
       }
       return writePhase(state.pages, state.staticFiles, {
-        destRoot:  ctx.destRoot,
-        dryRun:    ctx.opts.dryRun,
+        destRoot: ctx.destRoot,
+        dryRun: ctx.opts.dryRun,
         generatedAssets,
-        baseurl:   String(state.site.config.baseurl || ""),
+        baseurl: String(state.site.config.baseurl || ""),
         skipPages: true,
       });
     },
@@ -874,8 +904,10 @@ const TASKS = {
         api = JSON.parse(await fs.readFile(PACKAGE_API_PATH, "utf8"));
       } catch (err) {
         if (err.code !== "ENOENT") throw err;
-        throw new Error("builder/package-api.json is missing, and the symbol index needs it. " +
-          "Restore it from git, or regenerate it with node scripts/build_package_api.mjs");
+        throw new Error(
+          "builder/package-api.json is missing, and the symbol index needs it. " +
+            "Restore it from git, or regenerate it with node scripts/build_package_api.mjs",
+        );
       }
       const pages = symbolPages(state.pages);
       const result = deriveSymbolIndex({ pages, api });
@@ -924,7 +956,7 @@ const TASKS = {
     expected: ["writeAux", "writeAssets"],
     runOnMain: true,
     async execute({ writeAux: { redirectStats, sitemapStats, searchStats } }, ctx, state) {
-      const skipOffline = ctx.opts.skipOffline ?? (state.site.config.also_build_offline === false);
+      const skipOffline = ctx.opts.skipOffline ?? state.site.config.also_build_offline === false;
       if (ctx.opts.dryRun || skipOffline) return null;
       const auxStats = { redirects: redirectStats, sitemap: sitemapStats, search: searchStats };
       return writeOffline(state.staticFiles, state.site, ctx.destRoot, {
@@ -934,7 +966,9 @@ const TASKS = {
         check: !!state.checkTrees,
       });
     },
-    submit() { /* terminal */ },
+    submit() {
+      /* terminal */
+    },
   },
 
   // Produce _site-pdf/. Depends on flushJoin (pages have renderedContent),
@@ -953,7 +987,7 @@ const TASKS = {
     expected: ["flushJoin", "renderJoin", "dot", "resolveBookChapters"],
     runOnMain: true,
     async execute(_, ctx, state) {
-      const skipPdf = ctx.opts.skipPdf ?? (state.site.config.also_build_pdf === false);
+      const skipPdf = ctx.opts.skipPdf ?? state.site.config.also_build_pdf === false;
       if (ctx.opts.dryRun || skipPdf) return null;
       return writePdf(state.pages, state.staticFiles, state.site, ctx.destRoot, {
         tolerateMissingImages: ctx.opts.tolerateMissingImages,
@@ -961,7 +995,9 @@ const TASKS = {
         check: !!state.checkTrees,
       });
     },
-    submit() { /* terminal */ },
+    submit() {
+      /* terminal */
+    },
   },
 
   // ── Checks ────────────────────────────────────────────────────────
@@ -992,36 +1028,30 @@ const TASKS = {
     runOnMain: true,
     async execute({ writeAux, writeOffline: offlineResult }, ctx, state) {
       if (!state.checkTrees) return null;
-      const { checkChunk, joinChunks, treeIndexFor, normalizeBasePath: normBase, TREES } =
-        await import("./check.mjs");
+      const { checkChunk, joinChunks, treeIndexFor, normalizeBasePath: normBase, TREES } = await import("./check.mjs");
       const { sitemapIncludes } = await import("./sitemap.mjs");
-      const { searchIncludes }  = await import("./search.mjs");
+      const { searchIncludes } = await import("./search.mjs");
 
-      const stubs     = state.checkStubs ?? [];
-      const stubRels  = new Set(stubs.map(s => s.destPath.replaceAll("\\", "/")));
-      const contentPages = state.pages
-        .filter(p => p.frontmatter?.layout !== "book-combined");
-      const relOf     = p => p.destPath.replaceAll("\\", "/");
-      const pageRels  = contentPages.map(relOf);
-      const relFiles  = [...pageRels, ...stubRels];
+      const stubs = state.checkStubs ?? [];
+      const stubRels = new Set(stubs.map((s) => s.destPath.replaceAll("\\", "/")));
+      const contentPages = state.pages.filter((p) => p.frontmatter?.layout !== "book-combined");
+      const relOf = (p) => p.destPath.replaceAll("\\", "/");
+      const pageRels = contentPages.map(relOf);
+      const relFiles = [...pageRels, ...stubRels];
 
       // The cross-file checks enforce "every page the generator was asked
       // to emit", so they need the generators' own opt-out predicates --
       // otherwise the first page carrying `sitemap: false` (documented in
       // Pipeline-Stages.md) or `search_exclude: true` fails the build with
       // no hint why.
-      const sitemapOptOut = new Set(
-        contentPages.filter(p => !sitemapIncludes(p)).map(relOf)
-      );
-      const searchOptOut = new Set(
-        contentPages.filter(p => !searchIncludes(p)).map(relOf)
-      );
+      const sitemapOptOut = new Set(contentPages.filter((p) => !sitemapIncludes(p)).map(relOf));
+      const searchOptOut = new Set(contentPages.filter((p) => !searchIncludes(p)).map(relOf));
 
       // Redirect stubs never went through flush -- writeRedirects and
       // writeOfflineRedirects emit them -- so they are one extra chunk
       // per tree, checked here on main. 290 tiny files.
       const stubHtml = {
-        online:  stubs,
+        online: stubs,
         offline: offlineResult?.checkStubs ?? [],
       };
 
@@ -1030,16 +1060,17 @@ const TASKS = {
       // reported rather than tolerated. It cannot abort the build --
       // check tasks collect and report -- so it rides back as an error
       // on every tree, which formatReport turns into a failing exit code.
-      const short = state.checkChunks.length !== state.checkChunkCount
-        ? `only ${state.checkChunks.length} of ${state.checkChunkCount} page chunks ` +
-          `reached the link check; findings are incomplete`
-        : null;
+      const short =
+        state.checkChunks.length !== state.checkChunkCount
+          ? `only ${state.checkChunks.length} of ${state.checkChunkCount} page chunks ` +
+            `reached the link check; findings are incomplete`
+          : null;
 
       const results = {};
       for (const [which, { rels, baseurl }] of Object.entries(state.checkTrees)) {
-        const root     = ctx.destRoot + TREES[which].suffix;
+        const root = ctx.destRoot + TREES[which].suffix;
         const basePath = normBase(baseurl);
-        const chunks   = state.checkChunks.map((c, i) => {
+        const chunks = state.checkChunks.map((c, i) => {
           // No optional chaining here on purpose: every lane builds the
           // same tree-key set, so a chunk with no entry for this tree
           // means a lane produced something else entirely. Name the
@@ -1062,13 +1093,20 @@ const TASKS = {
         }
 
         results[which] = joinChunks(chunks, {
-          root, tree: TREES[which], basePath, relFiles, stubRels,
-          aux: which === "online" ? {
-            sitemapXml: writeAux?.sitemapStats?.xml ?? null,
-            searchJson: writeAux?.searchStats?.json ?? null,
-            sitemapOptOut,
-            searchOptOut,
-          } : {},
+          root,
+          tree: TREES[which],
+          basePath,
+          relFiles,
+          stubRels,
+          aux:
+            which === "online"
+              ? {
+                  sitemapXml: writeAux?.sitemapStats?.xml ?? null,
+                  searchJson: writeAux?.searchStats?.json ?? null,
+                  sitemapOptOut,
+                  searchOptOut,
+                }
+              : {},
         });
       }
       return results;
@@ -1087,8 +1125,7 @@ const TASKS = {
       if (!state.checkTrees || !pdfResult?.checkBook) return null;
       const { checkChunk, joinChunks, treeIndexFor, TREES } = await import("./check.mjs");
       const root = ctx.destRoot + TREES.pdf.suffix;
-      const env  = { root, tree: TREES.pdf, basePath: "",
-                     index: treeIndexFor(root, pdfResult.checkBook.rels) };
+      const env = { root, tree: TREES.pdf, basePath: "", index: treeIndexFor(root, pdfResult.checkBook.rels) };
       let chunk;
       try {
         chunk = checkChunk([{ destPath: "book.html", html: pdfResult.checkBook.html }], env);
@@ -1121,11 +1158,12 @@ const TASKS = {
       const parts = [];
       const byTree = { ...(trees ?? {}) };
       if (book) byTree.pdf = book;
-      let linksFailed = false, integrityFailed = false;
+      let linksFailed = false,
+        integrityFailed = false;
       for (const r of Object.values(byTree)) {
         const f = formatReport(r);
         parts.push(f.text);
-        linksFailed     ||= f.linksFailed;
+        linksFailed ||= f.linksFailed;
         integrityFailed ||= f.integrityFailed;
       }
 
@@ -1146,10 +1184,12 @@ const TASKS = {
         for (const [which, { rels }] of Object.entries(state.checkTrees)) {
           const root = ctx.destRoot + TREES[which].suffix;
           const { missing, spurious } = await auditIndex(root, rels);
-          parts.push(`  ${TREES[which].label.padEnd(14)} index audit: ` +
-                     `${missing.length} on disk but not indexed, ` +
-                     `${spurious.length} indexed but not on disk\n`);
-          for (const r of missing.slice(0, 20))  parts.push(`      on disk only: ${r}\n`);
+          parts.push(
+            `  ${TREES[which].label.padEnd(14)} index audit: ` +
+              `${missing.length} on disk but not indexed, ` +
+              `${spurious.length} indexed but not on disk\n`,
+          );
+          for (const r of missing.slice(0, 20)) parts.push(`      on disk only: ${r}\n`);
           for (const r of spurious.slice(0, 20)) parts.push(`      indexed only: ${r}\n`);
           if (missing.length || spurious.length) integrityFailed = true;
         }
@@ -1157,7 +1197,9 @@ const TASKS = {
 
       return { text: parts.join(""), linksFailed, integrityFailed };
     },
-    submit() { /* terminal */ },
+    submit() {
+      /* terminal */
+    },
   },
 };
 
@@ -1181,14 +1223,18 @@ function chunkPages(pages, workers) {
 async function injectGanttChart(pages, destRoot, svgContent) {
   const injected = [];
   if (!svgContent) return injected;
-  const page = pages.find(p => p.permalink === "/Documentation/Development/BuildInfo");
+  const page = pages.find((p) => p.permalink === "/Documentation/Development/BuildInfo");
   if (!page) return injected;
 
   for (const root of [destRoot, `${destRoot}-offline`]) {
     const htmlPath = path.join(root, page.destPath);
     let html;
-    try { html = await fs.readFile(htmlPath, "utf8"); }
-    catch (e) { if (e.code !== "ENOENT") throw e; continue; }
+    try {
+      html = await fs.readFile(htmlPath, "utf8");
+    } catch (e) {
+      if (e.code !== "ENOENT") throw e;
+      continue;
+    }
     const marker = 'data-svg-src="assets/images/gantt.svg"';
     const idx = html.indexOf(marker);
     if (idx < 0) continue;
@@ -1213,8 +1259,7 @@ async function injectGanttChart(pages, destRoot, svgContent) {
 // findings a second time would read as a regression.
 async function recheckInjected(injected, linkResults, state, destRoot) {
   if (!injected.length || !linkResults) return { text: "", failed: false };
-  const { checkChunk, treeIndexFor, normalizeBasePath: normBase, TREES } =
-    await import("./check.mjs");
+  const { checkChunk, treeIndexFor, normalizeBasePath: normBase, TREES } = await import("./check.mjs");
 
   const out = [];
   let failed = false;
@@ -1224,26 +1269,33 @@ async function recheckInjected(injected, linkResults, state, destRoot) {
     if (!prior || !treeCfg) continue;
     const root = destRoot + TREES[which].suffix;
     const env = {
-      root, tree: TREES[which], basePath: normBase(treeCfg.baseurl),
+      root,
+      tree: TREES[which],
+      basePath: normBase(treeCfg.baseurl),
       index: treeIndexFor(root, treeCfg.rels),
     };
 
     let now;
-    try { now = checkChunk([{ destPath, html }], env); }
-    catch (err) {
-      out.push(`  ERROR  ${TREES[which].label}: rechecking the injected ` +
-               `${destPath} failed: ${err.message}
-`);
+    try {
+      now = checkChunk([{ destPath, html }], env);
+    } catch (err) {
+      out.push(
+        `  ERROR  ${TREES[which].label}: rechecking the injected ` +
+          `${destPath} failed: ${err.message}
+`,
+      );
       failed = true;
       continue;
     }
 
     const was = JSON.stringify(prior.integrityByFile.get(destPath) ?? null);
-    const is  = JSON.stringify(now.integrity.find(([p]) => p === destPath)?.[1] ?? null);
+    const is = JSON.stringify(now.integrity.find(([p]) => p === destPath)?.[1] ?? null);
     if (was !== is) {
-      out.push(`  ${TREES[which].label}/${destPath}: the injected Gantt SVG ` +
-               `changed this page's integrity findings: ${is}
-`);
+      out.push(
+        `  ${TREES[which].label}/${destPath}: the injected Gantt SVG ` +
+          `changed this page's integrity findings: ${is}
+`,
+      );
       failed = true;
     }
 
@@ -1256,15 +1308,19 @@ async function recheckInjected(injected, linkResults, state, destRoot) {
     }
     for (let i = 0; i < now.broken.length; i += 3) {
       if (priorBroken.has(now.broken[i + 1])) continue;
-      out.push(`  ${TREES[which].label}/${destPath}: the injected Gantt SVG ` +
-               `added a broken reference: ${now.broken[i + 1]} -- ${now.broken[i + 2]}
-`);
+      out.push(
+        `  ${TREES[which].label}/${destPath}: the injected Gantt SVG ` +
+          `added a broken reference: ${now.broken[i + 1]} -- ${now.broken[i + 2]}
+`,
+      );
       failed = true;
     }
     for (let i = 0; i < now.forbidden.length; i += 3) {
-      out.push(`  ${TREES[which].label}/${destPath}: the injected Gantt SVG ` +
-               `added a forbidden URL: ${now.forbidden[i + 1]}
-`);
+      out.push(
+        `  ${TREES[which].label}/${destPath}: the injected Gantt SVG ` +
+          `added a forbidden URL: ${now.forbidden[i + 1]}
+`,
+      );
       failed = true;
     }
   }
@@ -1300,21 +1356,23 @@ export async function runBuild(opts) {
 
   const ctx = { srcRoot, destRoot, opts: ctxOpts, workerCount };
 
-  const { sab, views, idMapping } =
-    allocSchedulerSAB(TASKS, workerCount, { rebuild });
+  const { sab, views, idMapping } = allocSchedulerSAB(TASKS, workerCount, { rebuild });
   verifySchedulerSAB(TASKS, views, idMapping);
 
   const pool = externalPool ?? new WorkerPool(workerCount, CPU_WORKER_URL);
   const scheduler = new Scheduler({
-    pool, tasks: TASKS, views, idMapping,
+    pool,
+    tasks: TASKS,
+    views,
+    idMapping,
     ganttSections: GANTT_SECTION,
     stallMs: opts.stallTimeoutMs ?? 120000,
   });
 
-  pool.onWorkerDone     = (msg) => scheduler._onWorkerDone(msg);
-  pool.onWorkerError    = (msg) => scheduler._onWorkerError(msg);
+  pool.onWorkerDone = (msg) => scheduler._onWorkerDone(msg);
+  pool.onWorkerError = (msg) => scheduler._onWorkerError(msg);
   pool.onPerWorkerTiming = (msg) => scheduler._onPerWorkerTiming(msg);
-  pool.onMainTaskReady  = ()    => scheduler._onMainTaskReady();
+  pool.onMainTaskReady = () => scheduler._onMainTaskReady();
 
   pool.sendInit(sab, ctx);
 
@@ -1328,7 +1386,7 @@ export async function runBuild(opts) {
   const { pages, staticFiles } = scheduler.state;
   const site = scheduler.state.site;
 
-  const { dotStats }   = results.get("dot");
+  const { dotStats } = results.get("dot");
   const { scssResult } = results.get("scss");
 
   if (dotStats.regenerated > 0 || dotStats.failed > 0) {
@@ -1337,43 +1395,55 @@ export async function runBuild(opts) {
     console.log(`dot: ${parts.join(", ")} of ${dotStats.processed} SVG(s)`);
   }
   if (dotStats.failed > 0) failBuild();
-  if (scssResult.failed)   failBuild();
+  if (scssResult.failed) failBuild();
 
-  const flushStats    = results.get("flushJoin");
-  const assetStats    = results.get("writeAssets");
-  const auxResult     = results.get("writeAux");
+  const flushStats = results.get("flushJoin");
+  const assetStats = results.get("writeAssets");
+  const auxResult = results.get("writeAux");
   const offlineResult = results.get("writeOffline");
-  const pdfResult     = results.get("writePdf");
+  const pdfResult = results.get("writePdf");
 
-  console.log(`Done in ${pc.bold(pc.green(`${Date.now() - buildStart}ms`))}: ${pages.length} pages, ${staticFiles.length} static files`);
+  console.log(
+    `Done in ${pc.bold(pc.green(`${Date.now() - buildStart}ms`))}: ${pages.length} pages, ${staticFiles.length} static files`,
+  );
   console.log(`  ${pc.bold("wrote:")} -> ${pc.cyan(destRoot)}`);
-  console.log(`         ${flushStats.written} pages, ` +
-              `${assetStats.theme.copied} theme assets, ${assetStats.staticFiles.copied} static files`);
+  console.log(
+    `         ${flushStats.written} pages, ` +
+      `${assetStats.theme.copied} theme assets, ${assetStats.staticFiles.copied} static files`,
+  );
   if (auxResult?.redirectStats) {
-    console.log(`  ${pc.bold("aux:")}   ${auxResult.redirectStats.written} redirect stubs, ` +
-                `${auxResult.sitemapStats.entries} sitemap entries, ` +
-                `${auxResult.searchStats.entries} search-index entries`);
+    console.log(
+      `  ${pc.bold("aux:")}   ${auxResult.redirectStats.written} redirect stubs, ` +
+        `${auxResult.sitemapStats.entries} sitemap entries, ` +
+        `${auxResult.searchStats.entries} search-index entries`,
+    );
   }
   const symbolStats = results.get("symbolIndex");
   if (symbolStats) {
-    console.log(`  ${pc.bold("symbols:")} ${symbolStats.entries} entries at ${symbolStats.urls.length} URLs in ` +
-                `${SYMBOL_INDEX_REL}, ${symbolStats.gaps} public symbol(s) no page documents` +
-                (opts.symbolGaps ? ` (listed in ${opts.symbolGaps})` : ""));
+    console.log(
+      `  ${pc.bold("symbols:")} ${symbolStats.entries} entries at ${symbolStats.urls.length} URLs in ` +
+        `${SYMBOL_INDEX_REL}, ${symbolStats.gaps} public symbol(s) no page documents` +
+        (opts.symbolGaps ? ` (listed in ${opts.symbolGaps})` : ""),
+    );
     // A page in a package folder the index could not place documents something
     // it cannot find: a title that names nothing the package declares, most
     // often. `symbols:` in its frontmatter says what it is.
     for (const u of symbolStats.unplaced) {
-      console.log(`  ${pc.yellow("symbols: no entry for")} ${u.url} (${u.title}) -- ` +
-                  "its title names nothing the package declares; see symbols: in Authoring");
+      console.log(
+        `  ${pc.yellow("symbols: no entry for")} ${u.url} (${u.title}) -- ` +
+          "its title names nothing the package declares; see symbols: in Authoring",
+      );
     }
   }
   if (offlineResult) {
     console.log(`  ${pc.bold("offline:")} -> ${pc.cyan(`${destRoot}-offline`)}`);
-    console.log(`           ${flushStats.offlineWritten} HTML, ${offlineResult.css} CSS, ` +
-                `${offlineResult.redirects} redirect stubs, ` +
-                `${offlineResult.statics + offlineResult.assets} assets, ` +
-                `${offlineResult.excluded} excluded ` +
-                `(${flushStats.offlineMisses} unresolved)`);
+    console.log(
+      `           ${flushStats.offlineWritten} HTML, ${offlineResult.css} CSS, ` +
+        `${offlineResult.redirects} redirect stubs, ` +
+        `${offlineResult.statics + offlineResult.assets} assets, ` +
+        `${offlineResult.excluded} excluded ` +
+        `(${flushStats.offlineMisses} unresolved)`,
+    );
     if (opts.profileOffline && offlineResult.subT) {
       console.log(`  ${pc.bold("offline:")} ${offlineResult.subT.summary()}`);
     }
@@ -1382,8 +1452,9 @@ export async function runBuild(opts) {
     const mb = (pdfResult.bookBytes / (1024 * 1024)).toFixed(1);
     const missingClause = pdfResult.missing > 0 ? ` (${pdfResult.missing} missing)` : "";
     console.log(`  ${pc.bold("pdf:")}     -> ${pc.cyan(`${destRoot}-pdf`)}`);
-    console.log(`           book.html (${mb} MB), ${pdfResult.css} CSS, ` +
-                `${pdfResult.images} images${missingClause}`);
+    console.log(
+      `           book.html (${mb} MB), ${pdfResult.css} CSS, ` + `${pdfResult.images} images${missingClause}`,
+    );
     // Pages _book.yml says nothing about, and entries that no longer
     // match a page -- see book.mjs §G. Printed only when the book is
     // built, so a --serve session is not told about it on every save.
@@ -1406,8 +1477,10 @@ export async function runBuild(opts) {
   if (!rebuild) {
     for (const bt of pool.bootTimings) {
       scheduler.timings.set(`${bt.type}:w${bt.lane}`, {
-        start: bt.start, end: bt.end,
-        workerStart: bt.start, workerEnd: bt.end,
+        start: bt.start,
+        end: bt.end,
+        workerStart: bt.start,
+        workerEnd: bt.end,
         lane: bt.lane,
         ganttSection: "Boot",
       });
@@ -1417,13 +1490,9 @@ export async function runBuild(opts) {
   const grouped = groupGanttTimings(scheduler.timings, { check: !!opts.check });
 
   const injectStart = Date.now();
-  const injected = await injectGanttChart(
-    scheduler.state.pages, destRoot, grouped ? renderGantt(grouped) : ""
-  );
+  const injected = await injectGanttChart(scheduler.state.pages, destRoot, grouped ? renderGantt(grouped) : "");
   const injectMs = Date.now() - injectStart;
-  const recheck = await recheckInjected(
-    injected, results.get("linkJoin"), scheduler.state, destRoot
-  );
+  const recheck = await recheckInjected(injected, results.get("linkJoin"), scheduler.state, destRoot);
 
   const checkResult = results.get("checkReport");
   if (checkResult) {

@@ -108,8 +108,13 @@ const listed = (f) => values.includePerf || !f.startsWith(LAB);
 
 function gitFiles(...args) {
   try {
-    return execFileSync("git", ["ls-files", ...args], { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })
-      .split("\n").filter(Boolean);
+    return execFileSync("git", ["ls-files", ...args], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    })
+      .split("\n")
+      .filter(Boolean);
   } catch (err) {
     const reason = String(err.stderr ?? "").trim() || err.message;
     console.error(`cannot list the files git tracks under ${ROOT}: ${reason}`);
@@ -122,12 +127,16 @@ const areaOf = (f) => (f.startsWith("scripts/lib/") ? "scripts/lib" : f.split("/
 
 // ------------------------------------------------------------------ parsing
 
-const files = gitFiles("--", ...TOOLING_DIRS)
-  .filter((f) => /\.(mjs|js|cjs)$/.test(f) && !VENDORED.some((re) => re.test(f)));
+const files = gitFiles("--", ...TOOLING_DIRS).filter(
+  (f) => /\.(mjs|js|cjs)$/.test(f) && !VENDORED.some((re) => re.test(f)),
+);
 
 const ACORN_OPTIONS = {
-  ecmaVersion: "latest", allowHashBang: true, allowAwaitOutsideFunction: true,
-  allowReturnOutsideFunction: true, locations: true,
+  ecmaVersion: "latest",
+  allowHashBang: true,
+  allowAwaitOutsideFunction: true,
+  allowReturnOutsideFunction: true,
+  locations: true,
 };
 
 const parsed = new Map(); // file -> { tokens: [{ kind, line, text }], ast }
@@ -159,13 +168,20 @@ for (const f of files) {
 // Identifiers and literals compare by kind only; keywords and punctuation as themselves.
 function tokenKind(tok) {
   switch (tok.type.label) {
-    case "name": return "name";
-    case "privateId": return "name";
-    case "string": return "string";
-    case "num": return "number";
-    case "template": return "template";
-    case "regexp": return "regexp";
-    default: return tok.type.keyword ?? tok.type.label;
+    case "name":
+      return "name";
+    case "privateId":
+      return "name";
+    case "string":
+      return "string";
+    case "num":
+      return "number";
+    case "template":
+      return "template";
+    case "regexp":
+      return "regexp";
+    default:
+      return tok.type.keyword ?? tok.type.label;
   }
 }
 
@@ -174,11 +190,14 @@ function tokenKind(tok) {
 const kindIds = new Map();
 const seqs = new Map(); // file -> Int32Array of token kinds
 for (const [f, p] of parsed) {
-  seqs.set(f, Int32Array.from(p.tokens, (t) => {
-    let id = kindIds.get(t.kind);
-    if (id === undefined) kindIds.set(t.kind, (id = kindIds.size + 1));
-    return id;
-  }));
+  seqs.set(
+    f,
+    Int32Array.from(p.tokens, (t) => {
+      let id = kindIds.get(t.kind);
+      if (id === undefined) kindIds.set(t.kind, (id = kindIds.size + 1));
+      return id;
+    }),
+  );
 }
 const order = new Map([...parsed.keys()].map((f, i) => [f, i]));
 
@@ -231,17 +250,24 @@ function grow([fa, ia], [fb, ib], grown) {
   if (grown.has(key)) return null;
   grown.add(key);
   let length = 0;
-  while (aStart + length < a.length && bStart + length < b.length && a[aStart + length] === b[bStart + length]) length++;
+  while (aStart + length < a.length && bStart + length < b.length && a[aStart + length] === b[bStart + length])
+    length++;
   // Code that repeats within itself matches its own continuation; keep the two
   // regions from overlapping.
   if (fa === fb) length = Math.min(length, bStart - aStart);
   const ta = parsed.get(fa).tokens;
   const tb = parsed.get(fb).tokens;
   return {
-    a: fa, b: fb, length, aStart,
+    a: fa,
+    b: fb,
+    length,
+    aStart,
     aLines: [ta[aStart].line, ta[aStart + length - 1].line],
     bLines: [tb[bStart].line, tb[bStart + length - 1].line],
-    head: ta.slice(aStart, aStart + 14).map((t) => t.text).join(" "),
+    head: ta
+      .slice(aStart, aStart + 14)
+      .map((t) => t.text)
+      .join(" "),
   };
 }
 
@@ -270,8 +296,11 @@ for (const [f, { ast }] of parsed) {
     if (node.type === "MemberExpression" && node.object.name === "process" && node.property.name === "argv") {
       argvReaders.add(f);
     }
-    if (node.type === "ImportDeclaration" && /^(node:)?util$/.test(node.source.value) &&
-        node.specifiers.some((s) => s.imported?.name === "parseArgs")) {
+    if (
+      node.type === "ImportDeclaration" &&
+      /^(node:)?util$/.test(node.source.value) &&
+      node.specifiers.some((s) => s.imported?.name === "parseArgs")
+    ) {
       parseArgsUsers.add(f);
     }
     const specifier = moduleSpecifier(node);
@@ -298,11 +327,11 @@ function moduleSpecifier(node) {
       return node.source.type === "Literal" ? node.source.value : undefined;
     case "CallExpression":
       return node.callee.name === "require" && node.arguments[0]?.type === "Literal"
-        ? node.arguments[0].value : undefined;
+        ? node.arguments[0].value
+        : undefined;
     case "NewExpression": {
       const url = node.callee.name === "Worker" ? node.arguments[0] : undefined;
-      return url?.type === "NewExpression" && url.arguments[0]?.type === "Literal"
-        ? url.arguments[0].value : undefined;
+      return url?.type === "NewExpression" && url.arguments[0]?.type === "Literal" ? url.arguments[0].value : undefined;
     }
     default:
       return undefined;
@@ -325,18 +354,21 @@ function addImport(file, specifier) {
 }
 
 const manifest = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8"));
-const declared = new Set(["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"]
-  .flatMap((field) => Object.keys(manifest[field] ?? {})));
+const declared = new Set(
+  ["dependencies", "devDependencies", "optionalDependencies", "peerDependencies"].flatMap((field) =>
+    Object.keys(manifest[field] ?? {}),
+  ),
+);
 const undeclared = [...bareImports].filter(([pkg]) => !declared.has(pkg));
 
 // ------------------------------------------------------------------ summary
 
 const outsideLab = (f) => !f.startsWith(LAB);
 const clones = findClones();
-const repeatedNames = [...functionDefs]
-  .filter(([, defs]) => new Set(defs.map((d) => d.file)).size >= 2);
-const repeatedOutsideLab = repeatedNames
-  .filter(([, defs]) => new Set(defs.filter((d) => outsideLab(d.file)).map((d) => d.file)).size >= 2);
+const repeatedNames = [...functionDefs].filter(([, defs]) => new Set(defs.map((d) => d.file)).size >= 2);
+const repeatedOutsideLab = repeatedNames.filter(
+  ([, defs]) => new Set(defs.filter((d) => outsideLab(d.file)).map((d) => d.file)).size >= 2,
+);
 const toolsOutsideLab = [...argvReaders].filter(outsideLab);
 const totalTokens = [...seqs.values()].reduce((sum, s) => sum + s.length, 0);
 
@@ -376,7 +408,10 @@ for (const [key, agg] of [...byPair].sort((p, q) => q[1].tokens - p[1].tokens)) 
 console.log("\n## Files most involved in clone regions (tokens, counted on each side)\n");
 const byFile = new Map();
 for (const c of clones) for (const f of [c.a, c.b]) byFile.set(f, (byFile.get(f) ?? 0) + c.length);
-for (const [f, n] of [...byFile].filter(([f]) => listed(f)).sort((p, q) => q[1] - p[1]).slice(0, 30)) {
+for (const [f, n] of [...byFile]
+  .filter(([f]) => listed(f))
+  .sort((p, q) => q[1] - p[1])
+  .slice(0, 30)) {
   console.log(`${String(n).padStart(7)}  ${f} (of ${seqs.get(f).length})`);
 }
 
@@ -392,7 +427,9 @@ const shownNames = (values.includePerf ? repeatedNames : repeatedOutsideLab)
   .sort((p, q) => q[1].length - p[1].length || p[0].localeCompare(q[0]));
 console.log(`\n## ${shownNames.length} top-level function names defined in 2+ files\n`);
 for (const [name, defs] of shownNames) {
-  console.log(`${String(defs.length).padStart(3)}x ${name.padEnd(26)} ${defs.map((d) => `${d.file}:${d.line}(${d.lines})`).join("  ")}`);
+  console.log(
+    `${String(defs.length).padStart(3)}x ${name.padEnd(26)} ${defs.map((d) => `${d.file}:${d.line}(${d.lines})`).join("  ")}`,
+  );
 }
 
 console.log("\n## Undeclared packages\n");
@@ -426,14 +463,20 @@ for (const f of [...parsed.keys()].filter((f) => listed(f) && importers.get(f).s
   const run = namedBy.filter((g) => /\.(bat|ya?ml)$/.test(g) || g === "package.json");
   const code = namedBy.filter((g) => /\.(mjs|js|ps1)$/.test(g));
   const docs = namedBy.filter((g) => g.endsWith(".md"));
-  const where = run.length ? `named by ${run.join(", ")}`
-    : code.length ? `named in code: ${code.slice(0, 3).join(", ")}`
-    : docs.length ? `named only in ${docs.length} document(s)`
-    : "NAMED NOWHERE";
+  const where = run.length
+    ? `named by ${run.join(", ")}`
+    : code.length
+      ? `named in code: ${code.slice(0, 3).join(", ")}`
+      : docs.length
+        ? `named only in ${docs.length} document(s)`
+        : "NAMED NOWHERE";
   console.log(`  ${f.padEnd(48)} ${where}`);
 }
 
 console.log("\n## The most imported modules\n");
-for (const [f, from] of [...importers].filter(([f]) => listed(f)).sort((p, q) => q[1].size - p[1].size).slice(0, 20)) {
+for (const [f, from] of [...importers]
+  .filter(([f]) => listed(f))
+  .sort((p, q) => q[1].size - p[1].size)
+  .slice(0, 20)) {
   console.log(`${String(from.size).padStart(4)}  ${f}`);
 }

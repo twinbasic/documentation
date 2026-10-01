@@ -18,7 +18,8 @@
  * reads an imported `const` only when its initialiser is a literal, and three
  * files build their patterns from this one.
  */
-export const MODIFIERS = "Public|Private|Friend|Global|Protected|Static|Shared|Partial|Default|ReadOnly|WriteOnly|WithEvents|NotDispatchable|Overridable|Overrides|Overloads|Virtual|Abstract|MustOverride|MustInherit|NotInheritable|Iterator|Async|PtrSafe|Naked|CDecl|StdCall|Unsafe|Extern|Inline";
+export const MODIFIERS =
+  "Public|Private|Friend|Global|Protected|Static|Shared|Partial|Default|ReadOnly|WriteOnly|WithEvents|NotDispatchable|Overridable|Overrides|Overloads|Virtual|Abstract|MustOverride|MustInherit|NotInheritable|Iterator|Async|PtrSafe|Naked|CDecl|StdCall|Unsafe|Extern|Inline";
 
 const BLOCK_COMMENT_RE = /\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\//g;
 
@@ -30,7 +31,9 @@ export const decomment = (s) => s.replace(BLOCK_COMMENT_RE, " ");
 // kind; declarationKind's own rule for it does.
 const DECL_RE = new RegExp(
   `^\\s*(?:(?:${MODIFIERS}|Const)\\s+)*(Class|Module|Interface|CoClass|Enum|Type|Union|Sub|` +
-  `Function|Property|Event|DeclareWide|Declare|Implements)\\b`, "i");
+    `Function|Property|Event|DeclareWide|Declare|Implements)\\b`,
+  "i",
+);
 const VAR_RE = new RegExp(`^\\s*(?:${MODIFIERS}|Const|Dim)\\s+[\\w\\[]`, "i");
 
 /**
@@ -50,7 +53,7 @@ export function declarationKind(decl, container) {
     const k = m[1];
     return k[0].toUpperCase() + k.slice(1).replace(/^eclarewide$/i, "eclareWide");
   }
-  if (/^\s*End\s+\w/i.test(d)) return null;              // unresolved
+  if (/^\s*End\s+\w/i.test(d)) return null; // unresolved
   if (container === "Enum" && /^\s*\[?\w/.test(d)) return "EnumMember";
   if (container === "Type" || container === "Union") {
     if (/^\s*\w+\s+As\s+/i.test(d)) return "TypeMember";

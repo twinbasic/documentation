@@ -61,8 +61,11 @@ export function exportPackages({ root, cache, refresh = false, samples = false, 
       for (const f of readdirSync(dir)) {
         if (!f.toLowerCase().endsWith(".twinproj")) continue;
         projects.push({
-          name: packageName(entry.name), folder: entry.name, group: path.basename(r),
-          proj: path.join(dir, f), dir: path.join(cache, path.basename(r), entry.name),
+          name: packageName(entry.name),
+          folder: entry.name,
+          group: path.basename(r),
+          proj: path.join(dir, f),
+          dir: path.join(cache, path.basename(r), entry.name),
         });
       }
     }

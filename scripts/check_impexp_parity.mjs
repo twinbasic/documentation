@@ -32,7 +32,7 @@ import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/
 exitOnCrash();
 
 const cli = withUsageError(() =>
-  parseCli(process.argv.slice(2), { options: { help: { type: "boolean", short: "h" } }, stopAt: ["help"] })
+  parseCli(process.argv.slice(2), { options: { help: { type: "boolean", short: "h" } }, stopAt: ["help"] }),
 );
 if (cli.stopped === "help") {
   printHelpAndExit(`usage: node scripts/check_impexp_parity.mjs
@@ -80,7 +80,10 @@ const COMMANDS = [
     why: "with a README and a code file in LF",
     setup: (dir) => {
       writeFileSync(path.join(dir, "console", "README.md"), "# Console\r\n\r\nCaf\u{e9}, in UTF-8.\r\n");
-      writeFileSync(path.join(dir, "console", "Sources", "Extra.twin"), "Module Extra\n    Sub Nothing()\n    End Sub\nEnd Module\n");
+      writeFileSync(
+        path.join(dir, "console", "Sources", "Extra.twin"),
+        "Module Extra\n    Sub Nothing()\n    End Sub\nEnd Module\n",
+      );
     },
   },
   { args: ["import", "console.twinproj", "console"], exit: 3, why: "refused: the project exists" },
@@ -130,7 +133,7 @@ if (!python) {
   }
   console.error(
     `${TOOL}: SKIPPED -- no Python 3.6 or later found (tried ${tried}).\n` +
-      `${TOOL}: impexp.mjs and impexp.py were NOT compared; CI compares them and fails without Python.`
+      `${TOOL}: impexp.mjs and impexp.py were NOT compared; CI compares them and fails without Python.`,
   );
   process.exit(0);
 }
@@ -252,5 +255,5 @@ if (problems.length) {
 }
 console.log(
   `${TOOL}: impexp.mjs and impexp.py (Python ${python.version}) pass the same ${selfTests[0].names.length} ` +
-    `built-in tests, and ${COMMANDS.length} commands exit, print and write the same`
+    `built-in tests, and ${COMMANDS.length} commands exit, print and write the same`,
 );

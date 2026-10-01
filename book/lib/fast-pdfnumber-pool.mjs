@@ -42,12 +42,16 @@ import { checkTargets } from "./shim-targets.mjs";
 const POOL_SIZE = 16384;
 
 if (!PDFNumber.__fastPoolInstalled) {
-  checkTargets(import.meta.url, { PDFNumber }, {
-    "PDFNumber.of": [1, "f86986605078"],
-  });
+  checkTargets(
+    import.meta.url,
+    { PDFNumber },
+    {
+      "PDFNumber.of": [1, "f86986605078"],
+    },
+  );
   const original = PDFNumber.of;
-  const intPool = new Array(POOL_SIZE);   // sparse, holes for unused slots
-  const otherPool = new Map();             // floats / negatives / large ints
+  const intPool = new Array(POOL_SIZE); // sparse, holes for unused slots
+  const otherPool = new Map(); // floats / negatives / large ints
 
   PDFNumber.of = function fastNumberOf(value) {
     // Hot path: non-negative integer within pool range.

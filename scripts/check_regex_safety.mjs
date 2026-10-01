@@ -240,33 +240,49 @@ const FOLD_NEGATIVES = [
 
 function foldSelfTest() {
   const out = [];
-  const parseProbe = (src) => parse(src, {
-    ecmaVersion: "latest", sourceType: "module", locations: true, allowReturnOutsideFunction: true,
-  });
+  const parseProbe = (src) =>
+    parse(src, {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      locations: true,
+      allowReturnOutsideFunction: true,
+    });
   const fold = (p) => {
     const lib = p.lib === undefined ? undefined : moduleExports(parseProbe(p.lib));
-    return foldConstructedRegexes(parseProbe(p.src), "<probe>",
-      (source) => (source === "./lib.mjs" ? lib : undefined));
+    return foldConstructedRegexes(parseProbe(p.src), "<probe>", (source) => (source === "./lib.mjs" ? lib : undefined));
   };
   for (const p of FOLD_PROBES) {
-    let ok = false, detail = "";
+    let ok = false,
+      detail = "";
     try {
       const { resolved, unresolved } = fold(p);
       const got = resolved.map((r) => ({ pattern: r.pattern, flags: r.flags, modelled: r.modelled }));
-      ok = unresolved.length === 0 && got.length === p.expect.length &&
-        p.expect.every((e, i) => got[i].pattern === e.pattern && got[i].flags === e.flags &&
-          got[i].modelled === Boolean(e.modelled));
-      detail = ok ? "" : `got ${JSON.stringify(got)}${unresolved.length ? ` + unresolved ${JSON.stringify(unresolved.map(u => u.reason))}` : ""}`;
-    } catch (err) { detail = err.message; }
+      ok =
+        unresolved.length === 0 &&
+        got.length === p.expect.length &&
+        p.expect.every(
+          (e, i) => got[i].pattern === e.pattern && got[i].flags === e.flags && got[i].modelled === Boolean(e.modelled),
+        );
+      detail = ok
+        ? ""
+        : `got ${JSON.stringify(got)}${unresolved.length ? ` + unresolved ${JSON.stringify(unresolved.map((u) => u.reason))}` : ""}`;
+    } catch (err) {
+      detail = err.message;
+    }
     out.push([ok, `fold: ${p.name}`, detail]);
   }
   for (const p of FOLD_NEGATIVES) {
-    let ok = false, detail = "";
+    let ok = false,
+      detail = "";
     try {
       const { resolved, unresolved } = fold(p);
       ok = resolved.length === 0 && unresolved.length === 1 && p.reason.test(unresolved[0].reason);
-      detail = ok ? "" : `resolved ${JSON.stringify(resolved.map(r => r.pattern))}, unresolved ${JSON.stringify(unresolved.map(u => u.reason))}`;
-    } catch (err) { detail = err.message; }
+      detail = ok
+        ? ""
+        : `resolved ${JSON.stringify(resolved.map((r) => r.pattern))}, unresolved ${JSON.stringify(unresolved.map((u) => u.reason))}`;
+    } catch (err) {
+      detail = err.message;
+    }
     out.push([ok, `fold: ${p.name}`, detail]);
   }
   return out;
@@ -291,10 +307,15 @@ async function extractRegexes() {
       // a file whose regexes are never checked, which is the exact
       // failure mode this gate exists to prevent -- so collect it and
       // fail, rather than continuing quietly.
-      asts.set(rel, parse(src, {
-        ecmaVersion: "latest", sourceType: "module",
-        locations: true, allowReturnOutsideFunction: true,
-      }));
+      asts.set(
+        rel,
+        parse(src, {
+          ecmaVersion: "latest",
+          sourceType: "module",
+          locations: true,
+          allowReturnOutsideFunction: true,
+        }),
+      );
     } catch (err) {
       parseFailures.push(`${rel}: ${err.message}`);
     }
@@ -303,16 +324,16 @@ async function extractRegexes() {
 
   for (const [rel, ast] of asts) {
     // fast-glob gives forward-slashed paths, so an import resolves with posix joins.
-    const exportsOf = (source) => source.startsWith(".")
-      ? exported.get(path.posix.join(path.posix.dirname(rel), source))
-      : undefined;
+    const exportsOf = (source) =>
+      source.startsWith(".") ? exported.get(path.posix.join(path.posix.dirname(rel), source)) : undefined;
     walk.simple(ast, {
       Literal(node) {
         if (!node.regex) return;
         add({
           pattern: node.regex.pattern,
           flags: node.regex.flags,
-          file: rel, line: node.loc.start.line,
+          file: rel,
+          line: node.loc.start.line,
         });
       },
     });
@@ -327,7 +348,10 @@ async function extractRegexes() {
 
   const regexes = [...found.values()];
   return {
-    regexes, files, parseFailures, unresolved,
+    regexes,
+    files,
+    parseFailures,
+    unresolved,
     literals: regexes.filter((r) => !r.constructed).length,
     constructed: regexes.filter((r) => r.constructed).length,
   };
@@ -375,15 +399,21 @@ async function checkList(list) {
 function runShard(payload) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [fileURLToPath(import.meta.url), "--shard"], {
-      cwd: REPO_ROOT, stdio: ["pipe", "pipe", "inherit"],
+      cwd: REPO_ROOT,
+      stdio: ["pipe", "pipe", "inherit"],
     });
     let buf = "";
-    child.stdout.on("data", (d) => { buf += d; });
+    child.stdout.on("data", (d) => {
+      buf += d;
+    });
     child.on("error", reject);
     child.on("close", (code) => {
       if (code !== 0) return reject(new Error(`shard exited ${code}`));
-      try { resolve(JSON.parse(buf)); }
-      catch (e) { reject(new Error(`shard produced unparseable output: ${e.message}`)); }
+      try {
+        resolve(JSON.parse(buf));
+      } catch (e) {
+        reject(new Error(`shard produced unparseable output: ${e.message}`));
+      }
     });
     child.stdin.end(JSON.stringify(payload));
   });
@@ -396,7 +426,9 @@ async function checkAll(regexes) {
   // cluster by file (render.mjs alone holds 69 of them), so contiguous
   // slices would leave one shard doing nearly all the work.
   const buckets = Array.from({ length: shards }, () => []);
-  regexes.forEach((r, i) => { buckets[i % shards].push(r); });
+  regexes.forEach((r, i) => {
+    buckets[i % shards].push(r);
+  });
   const settled = await Promise.all(buckets.map(runShard));
   const merged = settled.flat();
   // A shard that returns fewer results than it was given would silently
@@ -419,7 +451,7 @@ function tagOf(r) {
   if (!r.constructed) return "";
   const bits = ["constructed"];
   if (r.variants > 1) bits.push(`branch ${r.variant} of ${r.variants}`);
-  if (r.modelled) bits.push("escaped splice modelled as \"x\"");
+  if (r.modelled) bits.push('escaped splice modelled as "x"');
   return `  [${bits.join("; ")}]`;
 }
 
@@ -449,12 +481,12 @@ async function gate({ census }) {
   // exponential regex in the tree" from "this gate has stopped
   // detecting exponential regexes".
   const tagged = [
-    ...regexes.map(r => ({ ...r, probe: null })),
-    ...PROBES.map(p => ({ ...p, file: "<probe>", line: 0, probe: p.expect })),
+    ...regexes.map((r) => ({ ...r, probe: null })),
+    ...PROBES.map((p) => ({ ...p, file: "<probe>", line: 0, probe: p.expect })),
   ];
   const all = await checkAll(tagged);
-  const results = all.filter(r => !r.probe);
-  const probeResults = all.filter(r => r.probe);
+  const results = all.filter((r) => !r.probe);
+  const probeResults = all.filter((r) => r.probe);
 
   const by = {};
   for (const r of results) (by[r.verdict] ??= []).push(r);
@@ -465,10 +497,10 @@ async function gate({ census }) {
 
   console.log(
     `regex safety: ${literals} literals + ${constructed} constructed in ${files.length} files, ${secs}s -- ` +
-    `${(by.safe ?? []).length} safe, ${(by.polynomial ?? []).length} polynomial, ` +
-    `${(by.unknown ?? []).length} undecided, ${exponential.length} exponential` +
-    `${unresolved.length ? `; ${unresolved.length} construction(s) not resolvable` : ""}` +
-    `${nativeBin ? "" : "  (no native backend: slow JS fallback)"}`,
+      `${(by.safe ?? []).length} safe, ${(by.polynomial ?? []).length} polynomial, ` +
+      `${(by.unknown ?? []).length} undecided, ${exponential.length} exponential` +
+      `${unresolved.length ? `; ${unresolved.length} construction(s) not resolvable` : ""}` +
+      `${nativeBin ? "" : "  (no native backend: slow JS fallback)"}`,
   );
 
   if (census) {
@@ -499,8 +531,9 @@ async function gate({ census }) {
   // did not check everything is not a verdict.
   let failed = false;
   let broken = false;
-  const misclassified = probeResults.filter(r =>
-    r.verdict === "error" || (r.verdict === "exponential") !== (r.probe === "exponential"));
+  const misclassified = probeResults.filter(
+    (r) => r.verdict === "error" || (r.verdict === "exponential") !== (r.probe === "exponential"),
+  );
   if (misclassified.length) {
     broken = true;
     console.error(`\nFAIL: ${misclassified.length} of ${probeResults.length} self-test probes misclassified.`);
@@ -514,7 +547,7 @@ async function gate({ census }) {
     for (const [, name, detail] of badFolds) console.error(`  ${name}${detail ? `: ${detail}` : ""}`);
     console.error(
       "  A folder that resolves less than it claims moves constructions into the\n" +
-      "  unresolved list, where nothing checks them and the run still passes.",
+        "  unresolved list, where nothing checks them and the run still passes.",
     );
   }
   if (parseFailures.length) {
@@ -536,19 +569,21 @@ async function gate({ census }) {
     // exponential one level down.
     console.error(
       "\n  An exponential regex is a hang waiting for the right input, not a slow one.\n" +
-      "  The cause is two parts of the pattern that can match the same character:\n" +
-      "  `\\s+[^>/]+` repeated, or `[^>]*\\/?` where `/` is already in the class.\n" +
-      "  Narrowing one class usually leaves the same overlap one level down. What\n" +
-      "  works is to match only the delimiters, as in `<tag([^>]*)>`, and take the\n" +
-      "  inside apart in JavaScript. Keep the witness: re.test(witness) hangs now,\n" +
-      "  and must return at once after the rewrite. The full procedure is in\n" +
-      "  docs/Documentation/Extending.md, under \"When test.bat says a regex can\n" +
-      "  backtrack exponentially\".",
+        "  The cause is two parts of the pattern that can match the same character:\n" +
+        "  `\\s+[^>/]+` repeated, or `[^>]*\\/?` where `/` is already in the class.\n" +
+        "  Narrowing one class usually leaves the same overlap one level down. What\n" +
+        "  works is to match only the delimiters, as in `<tag([^>]*)>`, and take the\n" +
+        "  inside apart in JavaScript. Keep the witness: re.test(witness) hangs now,\n" +
+        "  and must return at once after the rewrite. The full procedure is in\n" +
+        '  docs/Documentation/Extending.md, under "When test.bat says a regex can\n' +
+        '  backtrack exponentially".',
     );
   }
   if (!failed && !broken) {
-    console.log(`ok    no regex can backtrack exponentially ` +
-                `(${probeResults.length} classification + ${foldProbes.length} fold probes correct)`);
+    console.log(
+      `ok    no regex can backtrack exponentially ` +
+        `(${probeResults.length} classification + ${foldProbes.length} fold probes correct)`,
+    );
   }
   return broken ? 2 : failed ? 1 : 0;
 }
@@ -559,14 +594,13 @@ async function selfTest() {
     if (!ok) bad++;
     console.log(`  ${ok ? "ok   " : "FAIL "} ${name}${ok || !detail ? "" : `: ${detail}`}`);
   }
-  const results = await checkList(PROBES.map(p => ({ ...p })));
+  const results = await checkList(PROBES.map((p) => ({ ...p })));
   for (const r of results) {
     // An `error` verdict is never a pass, whichever way the probe was
     // expected to go -- otherwise a backend that cannot run at all
     // reports every not-exponential probe as correct, and the gate
     // looks half-healthy while measuring nothing.
-    const ok = r.verdict !== "error" &&
-      (r.verdict === "exponential") === (r.expect === "exponential");
+    const ok = r.verdict !== "error" && (r.verdict === "exponential") === (r.expect === "exponential");
     if (!ok) bad++;
     console.log(`  ${ok ? "ok   " : "FAIL "} ${r.name}: expected ${r.expect}, got ${r.verdict}`);
   }
@@ -574,8 +608,10 @@ async function selfTest() {
     console.error(`\nFAIL: ${bad} probe(s) wrong -- the gate is not measuring what it claims.`);
     return 2;
   }
-  console.log(`ok    ${results.length} classification + ${FOLD_PROBES.length + FOLD_NEGATIVES.length} ` +
-              `fold probes correct, both directions`);
+  console.log(
+    `ok    ${results.length} classification + ${FOLD_PROBES.length + FOLD_NEGATIVES.length} ` +
+      `fold probes correct, both directions`,
+  );
   return 0;
 }
 
@@ -595,15 +631,17 @@ Exit codes:
      could not parse, a regex it could not analyse, a probe that came back wrong
      (also --self-test), or a crash`;
 
-const { values } = withUsageError(() => parseCli(process.argv.slice(2), {
-  options: {
-    shard: { type: "boolean" },
-    "self-test": { type: "boolean" },
-    census: { type: "boolean" },
-    help: { type: "boolean", short: "h" },
-  },
-  stopAt: ["help"],
-}));
+const { values } = withUsageError(() =>
+  parseCli(process.argv.slice(2), {
+    options: {
+      shard: { type: "boolean" },
+      "self-test": { type: "boolean" },
+      census: { type: "boolean" },
+      help: { type: "boolean", short: "h" },
+    },
+    stopAt: ["help"],
+  }),
+);
 if (values.help) printHelpAndExit(USAGE);
 if (values.shard) {
   // Worker half of checkAll(): a slice in on stdin, its verdicts out on
@@ -614,9 +652,7 @@ if (values.shard) {
   process.stdout.write(JSON.stringify(await checkList(list)));
 } else {
   try {
-    process.exitCode = values.selfTest
-      ? await selfTest()
-      : await gate({ census: values.census });
+    process.exitCode = values.selfTest ? await selfTest() : await gate({ census: values.census });
   } catch (err) {
     // Node's own exit code for an unhandled throw is 1, which here means
     // "an exponential regex was found". A crash is the gate failing.

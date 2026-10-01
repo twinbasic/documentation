@@ -48,10 +48,15 @@ Exit codes:
   1  a probe failed
   2  the gate could not run: a refused command line, or a crash`;
 
-if (withUsageError(() => parseCli(process.argv.slice(2), {
-  options: { help: { type: "boolean", short: "h" } },
-  stopAt: ["help"],
-})).values.help) printHelpAndExit(USAGE);
+if (
+  withUsageError(() =>
+    parseCli(process.argv.slice(2), {
+      options: { help: { type: "boolean", short: "h" } },
+      stopAt: ["help"],
+    }),
+  ).values.help
+)
+  printHelpAndExit(USAGE);
 
 const { check, report } = createProbes("check_symbol_index");
 const show = (x) => JSON.stringify(x);
@@ -59,132 +64,186 @@ const show = (x) => JSON.stringify(x);
 // ------------------------------------------------------------ the scanner
 
 {
-  const { types, problems } = parseTwin([
-    "Private Module HDCModule",
-    "    Type HDC",
-    "        Value As LongPtr",
-    "        Private Sub Type_Assignment(ByVal RHS As LongPtr)",
-    "            Me.Value = RHS",
-    "        End Sub",
-    "    End Type",
-    "End Module",
-  ].join("\n"));
+  const { types, problems } = parseTwin(
+    [
+      "Private Module HDCModule",
+      "    Type HDC",
+      "        Value As LongPtr",
+      "        Private Sub Type_Assignment(ByVal RHS As LongPtr)",
+      "            Me.Value = RHS",
+      "        End Sub",
+      "    End Type",
+      "End Module",
+    ].join("\n"),
+  );
   const hdc = types.find((t) => t.name === "HDC");
-  check("a Type's Sub has a body, and its End Sub closes it", problems.length === 0 && hdc?.members.length === 2,
-    show({ problems, members: hdc?.members }));
+  check(
+    "a Type's Sub has a body, and its End Sub closes it",
+    problems.length === 0 && hdc?.members.length === 2,
+    show({ problems, members: hdc?.members }),
+  );
   check("a Type inside a Private module is not public", hdc && !isPublicType(hdc, types));
 }
 
 {
-  const { types, problems } = parseTwin([
-    "Interface _Collection",
-    "    [DispId(1)]",
-    "    Sub Add(ByRef Item As Variant)",
-    "    [DispId(-4),Hidden,Restricted] Function _NewEnum() As stdole.IUnknown",
-    "End Interface",
-    "[CoClassId(\"A4C4671C-499F-101B-BB78-00AA00383CBB\")]",
-    "CoClass Collection",
-    "    [Default] Interface _Collection",
-    "    [Source] Interface _CollectionEvents",
-    "End CoClass",
-  ].join("\n"));
+  const { types, problems } = parseTwin(
+    [
+      "Interface _Collection",
+      "    [DispId(1)]",
+      "    Sub Add(ByRef Item As Variant)",
+      "    [DispId(-4),Hidden,Restricted] Function _NewEnum() As stdole.IUnknown",
+      "End Interface",
+      '[CoClassId("A4C4671C-499F-101B-BB78-00AA00383CBB")]',
+      "CoClass Collection",
+      "    [Default] Interface _Collection",
+      "    [Source] Interface _CollectionEvents",
+      "End CoClass",
+    ].join("\n"),
+  );
   const co = types.find((t) => t.name === "Collection");
   const iface = types.find((t) => t.name === "_Collection");
-  check("an Interface line inside a CoClass is not a block", problems.length === 0 && types.length === 2, show(problems));
-  check("a CoClass knows its default and source interfaces",
-    co?.interfaces.find((i) => i.isDefault)?.name === "_Collection" && co?.interfaces.find((i) => i.isSource)?.name === "_CollectionEvents",
-    show(co?.interfaces));
-  check("an attribute on the declaration's own line applies to it",
-    iface?.members.find((m) => m.name === "_NewEnum")?.hidden === true && iface?.members.find((m) => m.name === "Add")?.hidden === false,
-    show(iface?.members));
+  check(
+    "an Interface line inside a CoClass is not a block",
+    problems.length === 0 && types.length === 2,
+    show(problems),
+  );
+  check(
+    "a CoClass knows its default and source interfaces",
+    co?.interfaces.find((i) => i.isDefault)?.name === "_Collection" &&
+      co?.interfaces.find((i) => i.isSource)?.name === "_CollectionEvents",
+    show(co?.interfaces),
+  );
+  check(
+    "an attribute on the declaration's own line applies to it",
+    iface?.members.find((m) => m.name === "_NewEnum")?.hidden === true &&
+      iface?.members.find((m) => m.name === "Add")?.hidden === false,
+    show(iface?.members),
+  );
 }
 
 {
-  const { types, problems } = parseTwin([
-    "[Hidden]",
-    "Module [_HiddenModule]",
-    "    [Description(\"Returns \" & vbCrLf & _",
-    "                  \"a [bracketed], string\")]",
-    "    Public DeclareWide PtrSafe Function [Chr$] Lib \"<strings>\" Alias \"#4\" (ByVal C As Long) As String",
-    "    Public DeclareWide PtrSafe Function Array Lib \"<hiddenmodule>\" Alias \"#-30\" (ParamArray A As Variant()) As Variant",
-    "    Private Const Secret As Long = 1",
-    "    Public Enum Paper",
-    "        [A4 Portrait] = 1",
-    "        Letter",
-    "    End Enum",
-    "End Module",
-  ].join("\n"));
+  const { types, problems } = parseTwin(
+    [
+      "[Hidden]",
+      "Module [_HiddenModule]",
+      '    [Description("Returns " & vbCrLf & _',
+      '                  "a [bracketed], string")]',
+      '    Public DeclareWide PtrSafe Function [Chr$] Lib "<strings>" Alias "#4" (ByVal C As Long) As String',
+      '    Public DeclareWide PtrSafe Function Array Lib "<hiddenmodule>" Alias "#-30" (ParamArray A As Variant()) As Variant',
+      "    Private Const Secret As Long = 1",
+      "    Public Enum Paper",
+      "        [A4 Portrait] = 1",
+      "        Letter",
+      "    End Enum",
+      "End Module",
+    ].join("\n"),
+  );
   const mod = types.find((t) => t.kind === "module");
   check("an escaped module name is read without its brackets", mod?.name === "_HiddenModule", show(mod?.name));
-  check("[Hidden] on a module is recorded, and its members are still public",
-    mod?.hidden === true && mod.members.filter((m) => m.vis === "public").map((m) => m.name).join() === "Chr$,Array",
-    show(mod?.members));
-  check("an attribute continued over lines, with brackets and commas in its string, is one attribute",
-    problems.length === 0 && mod?.members.length === 3, show({ problems, members: mod?.members }));
+  check(
+    "[Hidden] on a module is recorded, and its members are still public",
+    mod?.hidden === true &&
+      mod.members
+        .filter((m) => m.vis === "public")
+        .map((m) => m.name)
+        .join() === "Chr$,Array",
+    show(mod?.members),
+  );
+  check(
+    "an attribute continued over lines, with brackets and commas in its string, is one attribute",
+    problems.length === 0 && mod?.members.length === 3,
+    show({ problems, members: mod?.members }),
+  );
   const paper = types.find((t) => t.name === "Paper");
-  check("an escaped enumeration value keeps its space", paper?.members.map((m) => m.name).join("|") === "A4 Portrait|Letter",
-    show(paper?.members));
+  check(
+    "an escaped enumeration value keeps its space",
+    paper?.members.map((m) => m.name).join("|") === "A4 Portrait|Letter",
+    show(paper?.members),
+  );
 }
 
 {
-  const { types } = parseTwin([
-    "Class CommandButtonBaseCtl",
-    "    Public Default As Boolean",
-    "    Public Public As Boolean = True",
-    "    Public Default Property Get Caption() As String",
-    "    End Property",
-    "End Class",
-  ].join("\n"));
+  const { types } = parseTwin(
+    [
+      "Class CommandButtonBaseCtl",
+      "    Public Default As Boolean",
+      "    Public Public As Boolean = True",
+      "    Public Default Property Get Caption() As String",
+      "    End Property",
+      "End Class",
+    ].join("\n"),
+  );
   const names = types[0]?.members.map((m) => `${m.name}:${m.kind}`).join() ?? "";
-  check("a field named after a modifier is a field, and a modifier before Property is a modifier",
-    names === "Default:field,Public:field,Caption:property", names);
+  check(
+    "a field named after a modifier is a field, and a modifier before Property is a modifier",
+    names === "Default:field,Public:field,Caption:property",
+    names,
+  );
 }
 
 {
-  const parsed = new Map([["VB", parseTwin([
-    "Private Interface _Clipboard Extends stdole.IUnknown",
-    "    Function GetText() As String",
-    "End Interface",
-    "Public CoClass Clipboard",
-    "    [Default] Interface _Clipboard",
-    "End CoClass",
-    "Private Class ButtonBase",
-    "    Public Caption As String",
-    "End Class",
-    "Class CommandButton",
-    "    Inherits ButtonBase",
-    "End Class",
-    "Private Module USER32",
-    "    Public DeclareWide PtrSafe Function GetDC Lib \"user32\" (ByVal h As LongPtr) As LongPtr",
-    "End Module",
-  ].join("\n")).types]]);
+  const parsed = new Map([
+    [
+      "VB",
+      parseTwin(
+        [
+          "Private Interface _Clipboard Extends stdole.IUnknown",
+          "    Function GetText() As String",
+          "End Interface",
+          "Public CoClass Clipboard",
+          "    [Default] Interface _Clipboard",
+          "End CoClass",
+          "Private Class ButtonBase",
+          "    Public Caption As String",
+          "End Class",
+          "Class CommandButton",
+          "    Inherits ButtonBase",
+          "End Class",
+          "Private Module USER32",
+          '    Public DeclareWide PtrSafe Function GetDC Lib "user32" (ByVal h As LongPtr) As LongPtr',
+          "End Module",
+        ].join("\n"),
+      ).types,
+    ],
+  ]);
   const { packages } = apiSnapshot(parsed);
   const rec = (n) => packages.VB.find((t) => t.name === n);
-  check("a private interface a public CoClass is built on keeps its members",
-    rec("_Clipboard")?.public === false && rec("_Clipboard")?.members?.GetText === "function", show(rec("_Clipboard")));
-  check("a private class a public class inherits keeps its members",
-    rec("ButtonBase")?.members?.Caption === "field", show(rec("ButtonBase")));
-  check("a private module nothing exposes is kept by name, without its members",
-    rec("USER32")?.public === false && rec("USER32")?.members === undefined, show(rec("USER32")));
+  check(
+    "a private interface a public CoClass is built on keeps its members",
+    rec("_Clipboard")?.public === false && rec("_Clipboard")?.members?.GetText === "function",
+    show(rec("_Clipboard")),
+  );
+  check(
+    "a private class a public class inherits keeps its members",
+    rec("ButtonBase")?.members?.Caption === "field",
+    show(rec("ButtonBase")),
+  );
+  check(
+    "a private module nothing exposes is kept by name, without its members",
+    rec("USER32")?.public === false && rec("USER32")?.members === undefined,
+    show(rec("USER32")),
+  );
 }
 
 {
-  const { problems } = parseTwin([
-    "Alias HINSTANCE As LongPtr",
-    "Class Widget",
-    "    Inherits BaseWidget",
-    "    Implements IWidget",
-    "    Public Caption As String",
-    "    Public Property Get Height() As Long",
-    "        #If WIN64 Then",
-    "            Return 2",
-    "        #Else",
-    "            Return 1",
-    "        #End If",
-    "    End Property",
-    "    Event Clicked()",
-    "End Class",
-  ].join("\n"));
+  const { problems } = parseTwin(
+    [
+      "Alias HINSTANCE As LongPtr",
+      "Class Widget",
+      "    Inherits BaseWidget",
+      "    Implements IWidget",
+      "    Public Caption As String",
+      "    Public Property Get Height() As Long",
+      "        #If WIN64 Then",
+      "            Return 2",
+      "        #Else",
+      "            Return 1",
+      "        #End If",
+      "    End Property",
+      "    Event Clicked()",
+      "End Class",
+    ].join("\n"),
+  );
   check("a file-level Alias and a #If inside a body are not problems", problems.length === 0, show(problems));
 }
 
@@ -196,7 +255,11 @@ const api = {
     VBA: {
       exports: ["VBA"],
       types: [
-        { name: "Strings", kind: "module", members: { Left: "function", "Left$": "function", LeftB: "function", "LeftB$": "function" } },
+        {
+          name: "Strings",
+          kind: "module",
+          members: { Left: "function", Left$: "function", LeftB: "function", LeftB$: "function" },
+        },
         { name: "Information", kind: "module", members: { IsArray: "function" } },
         { name: "_HiddenModule", kind: "module", hidden: true, members: { Array: "function" } },
         { name: "_Collection", kind: "interface", members: { Add: "sub", Count: "property" } },
@@ -256,69 +319,145 @@ const pages = [
 ];
 
 const r = deriveSymbolIndex({ pages, api });
-const find = (name, container) => r.symbols.filter((s) => s.name === name && (container === undefined || s.container === container));
+const find = (name, container) =>
+  r.symbols.filter((s) => s.name === name && (container === undefined || s.container === container));
 const urlOf = (name, container) => find(name, container).map((s) => s.url);
 
 check("a module is its page's by the title, less 'Module'", urlOf("Strings", null).join() === "/tB/Modules/Strings/");
-check("a member with a page of its own under the module's page", urlOf("Left", "Strings").join() === "/tB/Modules/Strings/Left");
-check("a name in the first heading's list shares the page", urlOf("LeftB", "Strings").join() === "/tB/Modules/Strings/Left");
-check("a $ form goes where its base went", urlOf("Left$", "Strings").join() === "/tB/Modules/Strings/Left" &&
-  urlOf("LeftB$", "Strings").join() === "/tB/Modules/Strings/Left", show(find("LeftB$")));
-check("a page filed under one module and declared in another is the declarer's",
-  find("Array").length === 1 && find("Array")[0].container === "_HiddenModule" && find("Array")[0].url === "/tB/Modules/Information/Array",
-  show(find("Array")));
-check("symbols: names a page's subject when its title cannot", urlOf("_HiddenModule", null).join() === "/tB/Modules/HiddenModule/",
-  show(find("_HiddenModule")));
-check("a CoClass's member on its own page, by the default interface",
+check(
+  "a member with a page of its own under the module's page",
+  urlOf("Left", "Strings").join() === "/tB/Modules/Strings/Left",
+);
+check(
+  "a name in the first heading's list shares the page",
+  urlOf("LeftB", "Strings").join() === "/tB/Modules/Strings/Left",
+);
+check(
+  "a $ form goes where its base went",
+  urlOf("Left$", "Strings").join() === "/tB/Modules/Strings/Left" &&
+    urlOf("LeftB$", "Strings").join() === "/tB/Modules/Strings/Left",
+  show(find("LeftB$")),
+);
+check(
+  "a page filed under one module and declared in another is the declarer's",
+  find("Array").length === 1 &&
+    find("Array")[0].container === "_HiddenModule" &&
+    find("Array")[0].url === "/tB/Modules/Information/Array",
+  show(find("Array")),
+);
+check(
+  "symbols: names a page's subject when its title cannot",
+  urlOf("_HiddenModule", null).join() === "/tB/Modules/HiddenModule/",
+  show(find("_HiddenModule")),
+);
+check(
+  "a CoClass's member on its own page, by the default interface",
   find("Add", "Collection")[0]?.url === "/tB/Modules/Collection/Add" && find("Add", "Collection")[0]?.kind === "method",
-  show(find("Add")));
-check("an enumeration's values are on its page, not under a heading",
-  urlOf("vbOKOnly", "VbMsgBoxStyle").join() === "/tB/Modules/Constants/VbMsgBoxStyle" && find("vbOKOnly")[0]?.kind === "enumvalue");
-check("an inherited member is found on the page of the type that declares it",
-  urlOf("Close", "CodeEditor").join() === "/tB/Packages/tbIDE/Editor#close", show(find("Close")));
-check("a heading under Properties is a member whatever the package declares",
-  find("Undeclared", "CodeEditor")[0]?.kind === "property", show(find("Undeclared")));
-check("an Example heading among members, at their level or under one, is not a member",
-  !find("Example").length, show(find("Example")));
-check("a section heading is never taken for a member of the same name",
-  urlOf("Properties", "HtmlElement").join() === "/tB/Packages/tbIDE/HtmlElement#properties-1", show(find("Properties")));
-check("a member's heading under Properties wins over a prose section of the same name above it",
-  urlOf("Name", "HtmlElement").join() === "/tB/Packages/tbIDE/HtmlElement#name-1", show(find("Name")));
-check("a page no package declares, with Name.Member headings, is an object's",
-  find("Debug")[0]?.kind === "object" && urlOf("Print", "Debug").join() === "/tB/Modules/Debug#debugprint", show(find("Print")));
-check("a statement's other words are its keywords, through the typographer's ellipsis",
-  find("Loop")[0]?.kind === "keyword" && find("Do")[0]?.kind === "statement" &&
-  find("Else")[0]?.url === "/tB/Core/If-Then-Else", show(r.symbols.filter((s) => s.package === null)));
-check("an operator page's symbols: are each an operator",
-  find("<>")[0]?.kind === "operator" && find("=")[0]?.kind === "operator", show(find("<>")));
+  show(find("Add")),
+);
+check(
+  "an enumeration's values are on its page, not under a heading",
+  urlOf("vbOKOnly", "VbMsgBoxStyle").join() === "/tB/Modules/Constants/VbMsgBoxStyle" &&
+    find("vbOKOnly")[0]?.kind === "enumvalue",
+);
+check(
+  "an inherited member is found on the page of the type that declares it",
+  urlOf("Close", "CodeEditor").join() === "/tB/Packages/tbIDE/Editor#close",
+  show(find("Close")),
+);
+check(
+  "a heading under Properties is a member whatever the package declares",
+  find("Undeclared", "CodeEditor")[0]?.kind === "property",
+  show(find("Undeclared")),
+);
+check(
+  "an Example heading among members, at their level or under one, is not a member",
+  !find("Example").length,
+  show(find("Example")),
+);
+check(
+  "a section heading is never taken for a member of the same name",
+  urlOf("Properties", "HtmlElement").join() === "/tB/Packages/tbIDE/HtmlElement#properties-1",
+  show(find("Properties")),
+);
+check(
+  "a member's heading under Properties wins over a prose section of the same name above it",
+  urlOf("Name", "HtmlElement").join() === "/tB/Packages/tbIDE/HtmlElement#name-1",
+  show(find("Name")),
+);
+check(
+  "a page no package declares, with Name.Member headings, is an object's",
+  find("Debug")[0]?.kind === "object" && urlOf("Print", "Debug").join() === "/tB/Modules/Debug#debugprint",
+  show(find("Print")),
+);
+check(
+  "a statement's other words are its keywords, through the typographer's ellipsis",
+  find("Loop")[0]?.kind === "keyword" &&
+    find("Do")[0]?.kind === "statement" &&
+    find("Else")[0]?.url === "/tB/Core/If-Then-Else",
+  show(r.symbols.filter((s) => s.package === null)),
+);
+check(
+  "an operator page's symbols: are each an operator",
+  find("<>")[0]?.kind === "operator" && find("=")[0]?.kind === "operator",
+  show(find("<>")),
+);
 check("an operator page's title gives its operators", find("&=")[0]?.kind === "operator", show(find("&=")));
-check("an attribute is its ## heading's, by the id the build gave it",
-  urlOf("AppObject").join() === "/tB/Core/Attributes#appobject", show(find("AppObject")));
-check("a CoClass's default interface maps to it",
+check(
+  "an attribute is its ## heading's, by the id the build gave it",
+  urlOf("AppObject").join() === "/tB/Core/Attributes#appobject",
+  show(find("AppObject")),
+);
+check(
+  "a CoClass's default interface maps to it",
   r.interfaces["tbIDE.ICodeEditorV1"] === "tbIDE.CodeEditor" && r.interfaces["VBA._Collection"] === "VBA.Collection",
-  show(r.interfaces));
+  show(r.interfaces),
+);
 check("only /tB/ pages are read", !r.symbols.some((s) => !s.url.startsWith("/tB/")) && !find("Guide").length);
-check("a declared member no page documents is a gap, not an entry",
-  r.gaps.some((g) => g.container === "Collection" && g.name === "Count") && !find("Count").length, show(r.gaps));
+check(
+  "a declared member no page documents is a gap, not an entry",
+  r.gaps.some((g) => g.container === "Collection" && g.name === "Count") && !find("Count").length,
+  show(r.gaps),
+);
 
 {
   const text = serializeSymbolIndex(r, api);
   const back = JSON.parse(text);
-  check("the published file parses, and names its format and API build",
-    back.format === 1 && back.api === 983 && back.symbols.length === r.symbols.length);
+  check(
+    "the published file parses, and names its format and API build",
+    back.format === 1 && back.api === 983 && back.symbols.length === r.symbols.length,
+  );
   const lines = text.split("\n");
   const body = lines.slice(lines.indexOf('  "symbols": [') + 1, lines.lastIndexOf("  ]"));
-  const parsed = body.map((l) => { try { return JSON.parse(l.trim().replace(/,$/, "")); } catch { return null; } });
-  check("the published file has one entry to a line",
-    body.length === r.symbols.length && parsed.every((e, i) => e?.url === r.symbols[i].url), `${body.length} entry lines`);
+  const parsed = body.map((l) => {
+    try {
+      return JSON.parse(l.trim().replace(/,$/, ""));
+    } catch {
+      return null;
+    }
+  });
+  check(
+    "the published file has one entry to a line",
+    body.length === r.symbols.length && parsed.every((e, i) => e?.url === r.symbols[i].url),
+    `${body.length} entry lines`,
+  );
 }
 
 {
-  const got = headingsOf('<header><h1 class="x" id="a"> <a href="#a"><svg></svg></a> A &amp; B </h1></header><hr>' +
-    '<h3 id="c">C <code>D</code></h3><h2>no id</h2>');
-  check("headings are read with their ids and text, and <header> and <hr> are not headings",
-    show(got) === show([{ level: 1, id: "a", text: "A & B" }, { level: 3, id: "c", text: "C D" }, { level: 2, id: null, text: "no id" }]),
-    show(got));
+  const got = headingsOf(
+    '<header><h1 class="x" id="a"> <a href="#a"><svg></svg></a> A &amp; B </h1></header><hr>' +
+      '<h3 id="c">C <code>D</code></h3><h2>no id</h2>',
+  );
+  check(
+    "headings are read with their ids and text, and <header> and <hr> are not headings",
+    show(got) ===
+      show([
+        { level: 1, id: "a", text: "A & B" },
+        { level: 3, id: "c", text: "C D" },
+        { level: 2, id: null, text: "no id" },
+      ]),
+    show(got),
+  );
 }
 
 // ------------------------------------------------------------ the drift guard
@@ -329,17 +468,33 @@ const BASE = ["/tB/Modules/Strings/Left", "/tB/Packages/tbIDE/ToolWindows#add"];
 const BASE_FILE = { src: GUARDED_SRC, urls: BASE };
 
 await withBaseline(BASE_FILE, async (file) => {
-  const out = await checkSymbolBaseline({ src: GUARDED_SRC, urls: ["/tB/Modules/Strings/Left", "/tB/Packages/tbIDE/ToolWindows#add-method"], write: true, file });
-  check("a reworded heading's lost anchor fails, and is named",
-    out.failed && out.text.includes("ToolWindows#add") && (await urlsIn(file)).length === 2, out.text.trim());
+  const out = await checkSymbolBaseline({
+    src: GUARDED_SRC,
+    urls: ["/tB/Modules/Strings/Left", "/tB/Packages/tbIDE/ToolWindows#add-method"],
+    write: true,
+    file,
+  });
+  check(
+    "a reworded heading's lost anchor fails, and is named",
+    out.failed && out.text.includes("ToolWindows#add") && (await urlsIn(file)).length === 2,
+    out.text.trim(),
+  );
 });
 await withBaseline(BASE_FILE, async (file) => {
   const out = await checkSymbolBaseline({ src: GUARDED_SRC, urls: [...BASE, "/tB/Core/Dim"], write: true, file });
-  check("a new URL is accepted and recorded", !out.failed && (await urlsIn(file)).includes("/tB/Core/Dim"), out.text.trim());
+  check(
+    "a new URL is accepted and recorded",
+    !out.failed && (await urlsIn(file)).includes("/tB/Core/Dim"),
+    out.text.trim(),
+  );
 });
 await withBaseline(BASE_FILE, async (file) => {
   const out = await checkSymbolBaseline({ src: GUARDED_SRC, urls: [...BASE, "/tB/Core/Dim"], write: false, file });
-  check("a new URL with write:false leaves the file alone", !out.failed && (await urlsIn(file)).length === 2, out.text.trim());
+  check(
+    "a new URL with write:false leaves the file alone",
+    !out.failed && (await urlsIn(file)).length === 2,
+    out.text.trim(),
+  );
 });
 await withBaseline(BASE_FILE, async (file) => {
   const out = await checkSymbolBaseline({ src: GUARDED_SRC, urls: BASE, write: true, file });
@@ -351,15 +506,26 @@ await withBaseline(BASE_FILE, async (file) => {
 });
 await withBaseline(BASE_FILE, async (file) => {
   const out = await checkSymbolBaseline({ src: "test/fixtures/check-src", urls: [], write: true, file });
-  check("a foreign source root is ignored, not measured", !out.failed && out.text === "" && (await urlsIn(file)).length === 2);
+  check(
+    "a foreign source root is ignored, not measured",
+    !out.failed && out.text === "" && (await urlsIn(file)).length === 2,
+  );
 });
 await withBaseline(null, async (file) => {
   const out = await checkSymbolBaseline({ src: GUARDED_SRC, urls: BASE, write: false, file });
-  check("a missing list fails where the build may not write (CI)", out.failed && out.text.includes("missing"), out.text.trim());
+  check(
+    "a missing list fails where the build may not write (CI)",
+    out.failed && out.text.includes("missing"),
+    out.text.trim(),
+  );
 });
 await withBaseline(null, async (file) => {
   const out = await checkSymbolBaseline({ src: GUARDED_SRC, urls: BASE, write: true, file });
-  check("a missing list is created where it may write", !out.failed && (await urlsIn(file)).length === 2, out.text.trim());
+  check(
+    "a missing list is created where it may write",
+    !out.failed && (await urlsIn(file)).length === 2,
+    out.text.trim(),
+  );
 });
 
 // ------------------------------------------------------------ report

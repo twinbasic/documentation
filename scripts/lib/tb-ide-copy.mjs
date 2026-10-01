@@ -75,8 +75,10 @@ export function makeIdeCopy({ ide, dest, addins = {} }) {
     mkdirSync(dir, { recursive: true });
     for (const dll of addins[arch] ?? []) cpSync(dll, path.join(dir, path.basename(dll)));
   }
-  writeFileSync(path.join(root, MARKER),
-    `A private copy of ${install}, made by scripts/lib/tb-ide-copy.mjs. Safe to delete.\n`);
+  writeFileSync(
+    path.join(root, MARKER),
+    `A private copy of ${install}, made by scripts/lib/tb-ide-copy.mjs. Safe to delete.\n`,
+  );
   return path.join(root, "twinBASIC.exe");
 }
 
@@ -114,8 +116,9 @@ export function addAddin(exe, dll, arch, name = path.basename(dll)) {
       return dest;
     } catch (e) {
       if (!["EIO", "EBUSY", "EPERM"].includes(e.code) || tries >= 20) {
-        throw new Error(`could not put the add-in in "${dest}" (${e.code}) -- ` +
-          "is an IDE started from this copy still running?");
+        throw new Error(
+          `could not put the add-in in "${dest}" (${e.code}) -- ` + "is an IDE started from this copy still running?",
+        );
       }
       Atomics.wait(cell, 0, 0, 100);
     }

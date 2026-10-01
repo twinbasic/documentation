@@ -3,27 +3,24 @@
 // name-prefix matching.  See PLAN-sab-pull-scheduler.md §Phase 15.
 
 import pc from "picocolors";
-import {
-  READY, CLAIMED, DONE, F_RUN_ON_MAIN, F_PIN_TO_PRED,
-  onTaskDone as sabOnTaskDone,
-} from "./sab-scheduler.mjs";
+import { READY, CLAIMED, DONE, F_RUN_ON_MAIN, F_PIN_TO_PRED, onTaskDone as sabOnTaskDone } from "./sab-scheduler.mjs";
 
 export class SharedState {
-  pages        = [];
-  staticFiles  = [];
-  site         = {};
-  pageByDest   = new Map();
-  searchChunks = [];   // Phase 17: per-chunk search entries from render workers
+  pages = [];
+  staticFiles = [];
+  site = {};
+  pageByDest = new Map();
+  searchChunks = []; // Phase 17: per-chunk search entries from render workers
 }
 
 export class Scheduler {
   constructor({ pool, tasks, views, idMapping, ganttSections, stallMs }) {
-    this.pool       = pool;
-    this.tasks      = new Map(Object.entries(tasks));
-    this.results    = new Map();   // task name → output
-    this.timings    = new Map();
-    this.state      = new SharedState();
-    this._views     = views;
+    this.pool = pool;
+    this.tasks = new Map(Object.entries(tasks));
+    this.results = new Map(); // task name → output
+    this.timings = new Map();
+    this.state = new SharedState();
+    this._views = views;
     this._idMapping = idMapping;
     this._ganttSections = ganttSections ?? {};
 
@@ -44,9 +41,9 @@ export class Scheduler {
       if (!def.on_demand) this._remaining++;
     }
 
-    this._scanning          = false;
+    this._scanning = false;
     this._mainScanScheduled = false;
-    this._finished          = false;
+    this._finished = false;
 
     [this._doneP, this._doneResolve, this._doneReject] = deferred();
   }
@@ -86,7 +83,10 @@ export class Scheduler {
   }
 
   _stopStallWatchdog() {
-    if (this._stallTimer) { clearInterval(this._stallTimer); this._stallTimer = null; }
+    if (this._stallTimer) {
+      clearInterval(this._stallTimer);
+      this._stallTimer = null;
+    }
   }
 
   // The diagnostic a stalled build prints. Splits the outstanding tasks
@@ -96,28 +96,33 @@ export class Scheduler {
   _stallReport() {
     const views = this._views;
     const count = Atomics.load(views.taskCount, 0);
-    const secs  = Math.round((Date.now() - this._lastProgressAt) / 1000);
+    const secs = Math.round((Date.now() - this._lastProgressAt) / 1000);
 
-    const running = [];   // CLAIMED: a worker is inside the handler
-    const ready   = [];   // READY but nothing claimed it
-    const waiting = [];   // dep count not yet zero
+    const running = []; // CLAIMED: a worker is inside the handler
+    const ready = []; // READY but nothing claimed it
+    const waiting = []; // dep count not yet zero
     for (let i = 0; i < count; i++) {
       const status = Atomics.load(views.status, i);
       if (status === DONE) continue;
       const name = this._idMapping.idxToName[i] ?? `task#${i}`;
-      const def  = this.tasks.get(name);
-      if (status === CLAIMED) { running.push({ name, def }); continue; }
+      const def = this.tasks.get(name);
+      if (status === CLAIMED) {
+        running.push({ name, def });
+        continue;
+      }
       if (status === READY) {
         // A pinned task can only run on the lane its predecessor ran
         // on. If that lane is the wedged one, the task is runnable and
         // permanently unrunnable at the same time -- which looks like a
         // second, unrelated fault unless the pinning is spelled out.
-        const pin = (Atomics.load(views.flags, i) & F_PIN_TO_PRED)
-          ? this._idMapping.idxToName[Atomics.load(views.pinnedTo, i)] : null;
+        const pin =
+          Atomics.load(views.flags, i) & F_PIN_TO_PRED
+            ? this._idMapping.idxToName[Atomics.load(views.pinnedTo, i)]
+            : null;
         ready.push({ name, pin });
         continue;
       }
-      const missing = (def?.expected ?? []).filter(p => !this.results.has(p));
+      const missing = (def?.expected ?? []).filter((p) => !this.results.has(p));
       waiting.push({ name, missing, deps: Atomics.load(views.depCount, i) });
     }
 
@@ -145,9 +150,11 @@ export class Scheduler {
       out.push("");
       out.push("Blocked on a predecessor (consequence, not cause):");
       for (const { name, missing, deps } of waiting.slice(0, 20)) {
-        const why = missing.length ? missing.join(", ")
-          : deps > 0 ? `${deps} dep(s) outstanding`
-          : "on-demand, never activated";
+        const why = missing.length
+          ? missing.join(", ")
+          : deps > 0
+            ? `${deps} dep(s) outstanding`
+            : "on-demand, never activated";
         out.push(`  ${name}  <- ${why}`);
       }
       if (waiting.length > 20) out.push(`  ... and ${waiting.length - 20} more`);
@@ -210,7 +217,7 @@ export class Scheduler {
       if (Atomics.compareExchange(views.status, i, READY, CLAIMED) !== READY) continue;
 
       const name = this._idMapping.idxToName[i];
-      const def  = this.tasks.get(name);
+      const def = this.tasks.get(name);
       if (!def) {
         Atomics.store(views.status, i, DONE);
         continue;
@@ -260,7 +267,7 @@ export class Scheduler {
 
     // Timing.
     const timing = { start: t0, end: t1, t3 };
-    if (def.consolidate)  timing.consolidate  = true;
+    if (def.consolidate) timing.consolidate = true;
     if (def.ganttSection) timing.ganttSection = def.ganttSection;
     this.timings.set(name, timing);
 
@@ -289,16 +296,16 @@ export class Scheduler {
 
   _onWorkerDone({ done: taskIdx, output, timing, lane }) {
     const name = this._idMapping.idxToName[taskIdx];
-    const def  = this.tasks.get(name);
+    const def = this.tasks.get(name);
 
     // Timing.
     const t = { start: timing.start, end: timing.end };
     if (lane != null) {
       t.workerStart = timing.start;
-      t.workerEnd   = timing.end;
+      t.workerEnd = timing.end;
       t.lane = lane;
     }
-    if (def?.consolidate)  t.consolidate  = true;
+    if (def?.consolidate) t.consolidate = true;
     if (def?.ganttSection) t.ganttSection = def.ganttSection;
     this.timings.set(name, t);
 
@@ -330,7 +337,7 @@ export class Scheduler {
 
   _onWorkerError({ taskFailed: taskIdx, message, stack }) {
     const name = this._idMapping.idxToName[taskIdx] ?? `task#${taskIdx}`;
-    const err  = Object.assign(new Error(message), { stack });
+    const err = Object.assign(new Error(message), { stack });
     this._abort(name, err);
   }
 
@@ -342,8 +349,10 @@ export class Scheduler {
     this._noteProgress();
     const taskName = this._idMapping.idxToName[taskIdx];
     this.timings.set(`${taskName}:w${lane}`, {
-      start: timing.start, end: timing.end,
-      workerStart: timing.start, workerEnd: timing.end,
+      start: timing.start,
+      end: timing.end,
+      workerStart: timing.start,
+      workerEnd: timing.end,
       lane,
       consolidate: true,
       ganttSection: this._ganttSections[taskName] ?? "Boot",
@@ -383,8 +392,7 @@ export class Scheduler {
   // ── Summary ───────────────────────────────────────────────────────────────
 
   summary() {
-    const sorted = [...this.timings.entries()]
-      .sort((a, b) => a[1].start - b[1].start);
+    const sorted = [...this.timings.entries()].sort((a, b) => a[1].start - b[1].start);
 
     const consolidated = new Map();
     const parts = [];
@@ -395,7 +403,10 @@ export class Scheduler {
         const byLane = consolidated.get(section);
         const prev = byLane.get(timing.lane);
         if (!prev) byLane.set(timing.lane, { start: timing.start, end: timing.end });
-        else { prev.start = Math.min(prev.start, timing.start); prev.end = Math.max(prev.end, timing.end); }
+        else {
+          prev.start = Math.min(prev.start, timing.start);
+          prev.end = Math.max(prev.end, timing.end);
+        }
       } else {
         parts.push(`${id}=${timing.end - timing.start}ms`);
       }
@@ -404,8 +415,7 @@ export class Scheduler {
     let result = pc.dim(parts.join(" "));
     for (const [section, byLane] of consolidated) {
       const lanes = [...byLane.entries()].sort((a, b) => a[0] - b[0]);
-      const wallMs = Math.max(...lanes.map(([, t]) => t.end))
-                   - Math.min(...lanes.map(([, t]) => t.start));
+      const wallMs = Math.max(...lanes.map(([, t]) => t.end)) - Math.min(...lanes.map(([, t]) => t.start));
       const inner = lanes.map(([i, t]) => `w${i}=${t.end - t.start}ms`).join(", ");
       result += `\n${pc.bold(pc.yellow(`${section.toLowerCase()}:`))} ${pc.white(`${wallMs}ms,`)} ${pc.dim(inner)}`;
     }
@@ -415,6 +425,9 @@ export class Scheduler {
 
 function deferred() {
   let res, rej;
-  const p = new Promise((r1, r2) => { res = r1; rej = r2; });
+  const p = new Promise((r1, r2) => {
+    res = r1;
+    rej = r2;
+  });
   return [p, res, rej];
 }

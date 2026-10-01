@@ -29,10 +29,12 @@ const HOST = path.join(HERE, "host");
 const PROBE = path.join(HERE, "probes", "arch");
 
 // What the copies of the probe printed since a mark, sorted by file.
-const loadsSince = async (c, mark) => (await linesSince(c, mark))
-  .map((l) => /^\[ArchProbe\] (\d+)-bit \| (.+) \| (.+)$/.exec(l)).filter(Boolean)
-  .map(([, bits, process, file]) => ({ bits: Number(bits), process: path.basename(process), file: normPath(file) }))
-  .sort((a, b) => a.file.localeCompare(b.file));
+const loadsSince = async (c, mark) =>
+  (await linesSince(c, mark))
+    .map((l) => /^\[ArchProbe\] (\d+)-bit \| (.+) \| (.+)$/.exec(l))
+    .filter(Boolean)
+    .map(([, bits, process, file]) => ({ bits: Number(bits), process: path.basename(process), file: normPath(file) }))
+    .sort((a, b) => a.file.localeCompare(b.file));
 
 // Wait for two copies to report, then a moment longer for any third.
 async function waitLoads(c, mark) {
@@ -52,8 +54,12 @@ scenario("P7: build targets and add-in folders", (lane) => {
       const user = path.join(lane.appdataDir(), "twinBASIC", "addins", arch);
       mkdirSync(user, { recursive: true });
       copyFileSync(built[arch].dll, path.join(user, "ArchProbeUser.dll"));
-      where[arch] = [lane.placeAddin(built[arch].dll, { arch, name: "ArchProbe.dll" }),
-                     path.join(user, "ArchProbeUser.dll")].map(normPath).sort();
+      where[arch] = [
+        lane.placeAddin(built[arch].dll, { arch, name: "ArchProbe.dll" }),
+        path.join(user, "ArchProbeUser.dll"),
+      ]
+        .map(normPath)
+        .sort();
     }
     c = await lane.open(HOST);
   });
@@ -62,15 +68,23 @@ scenario("P7: build targets and add-in folders", (lane) => {
     for (const arch of ["win32", "win64"]) {
       const info = dllInfo(built[arch].dll);
       assert.equal(info.arch, arch);
-      assert.deepEqual(info.exports.map((e) => e.name), ["tbCreateCompilerAddin_v3"]);
+      assert.deepEqual(
+        info.exports.map((e) => e.name),
+        ["tbCreateCompilerAddin_v3"],
+      );
     }
   });
 
   test("a project the IDE has no target for opens in win32, and its compiler loads both win32 folders alone", async () => {
     assert.equal(await c.evaluate("buildConfigSelector.value"), "win32");
-    assert.deepEqual(await waitLoads(c, null), where.win32.map((file) =>
-      ({ bits: 32, process: "twinBASIC_win32_noDEP.exe", file })));
-    assert.deepEqual((await loadedAddins(c)).map((a) => a.name), ["ArchProbe AddIn", "ArchProbe AddIn"]);
+    assert.deepEqual(
+      await waitLoads(c, null),
+      where.win32.map((file) => ({ bits: 32, process: "twinBASIC_win32_noDEP.exe", file })),
+    );
+    assert.deepEqual(
+      (await loadedAddins(c)).map((a) => a.name),
+      ["ArchProbe AddIn", "ArchProbe AddIn"],
+    );
   });
 
   test("switching to win64 restarts the compiler as a 64-bit process, which loads both win64 folders alone", async () => {
@@ -78,15 +92,22 @@ scenario("P7: build targets and add-in folders", (lane) => {
     const mark = await consoleMark(c);
     const pid = await lane.setBuildTarget("win64");
     assert.notEqual(pid, before);
-    assert.deepEqual(await waitLoads(c, mark), where.win64.map((file) =>
-      ({ bits: 64, process: "twinBASIC_win64_noDEP.exe", file })));
-    assert.deepEqual((await loadedAddins(c)).map((a) => a.name), ["ArchProbe AddIn", "ArchProbe AddIn"]);
+    assert.deepEqual(
+      await waitLoads(c, mark),
+      where.win64.map((file) => ({ bits: 64, process: "twinBASIC_win64_noDEP.exe", file })),
+    );
+    assert.deepEqual(
+      (await loadedAddins(c)).map((a) => a.name),
+      ["ArchProbe AddIn", "ArchProbe AddIn"],
+    );
   });
 
   test("switching back to win32 loads both win32 folders again", async () => {
     const mark = await consoleMark(c);
     await lane.setBuildTarget("win32");
-    assert.deepEqual(await waitLoads(c, mark), where.win32.map((file) =>
-      ({ bits: 32, process: "twinBASIC_win32_noDEP.exe", file })));
+    assert.deepEqual(
+      await waitLoads(c, mark),
+      where.win32.map((file) => ({ bits: 32, process: "twinBASIC_win32_noDEP.exe", file })),
+    );
   });
 });

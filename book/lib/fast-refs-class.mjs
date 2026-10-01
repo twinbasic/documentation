@@ -37,8 +37,8 @@
 // built with it; and throws otherwise. It goes when pdf-lib is replaced;
 // when a release changes what it patches, it is re-derived or removed.
 
-import { PDFRef } from 'pdf-lib';
-import { checkTargets, ABSENT } from './shim-targets.mjs';
+import { PDFRef } from "pdf-lib";
+import { checkTargets, ABSENT } from "./shim-targets.mjs";
 
 // ---- helpers -----------------------------------------------------------
 
@@ -46,10 +46,17 @@ import { checkTargets, ABSENT } from './shim-targets.mjs';
 // No allocations. Returns the number of bytes written. n must be a
 // non-negative integer.
 function _writeUint(buffer, offset, n) {
-  if (n < 10) { buffer[offset] = 0x30 + n; return 1; }
+  if (n < 10) {
+    buffer[offset] = 0x30 + n;
+    return 1;
+  }
   // Count digits.
-  let m = n, d = 0;
-  while (m > 0) { d++; m = (m / 10) | 0; }
+  let m = n,
+    d = 0;
+  while (m > 0) {
+    d++;
+    m = (m / 10) | 0;
+  }
   // Write digits backwards.
   for (let i = d - 1; i >= 0; i--) {
     buffer[offset + i] = 0x30 + (n % 10);
@@ -61,14 +68,17 @@ function _writeUint(buffer, offset, n) {
 // Non-allocating decimal digit count for non-negative integers.
 // Ladder catches the common small-number cases without arithmetic.
 function _digitCount(n) {
-  if (n < 10)      return 1;
-  if (n < 100)     return 2;
-  if (n < 1000)    return 3;
-  if (n < 10000)   return 4;
-  if (n < 100000)  return 5;
+  if (n < 10) return 1;
+  if (n < 100) return 2;
+  if (n < 1000) return 3;
+  if (n < 10000) return 4;
+  if (n < 100000) return 5;
   if (n < 1000000) return 6;
   let d = 0;
-  while (n > 0) { d++; n = (n / 10) | 0; }
+  while (n > 0) {
+    d++;
+    n = (n / 10) | 0;
+  }
   return d;
 }
 
@@ -92,16 +102,20 @@ function _FastRefGen(objectNumber, generationNumber) {
 _FastRefGen.prototype = PDFRef.prototype;
 
 if (!PDFRef.__fastRefsClassInstalled) {
-  checkTargets(import.meta.url, { PDFRef }, {
-    'PDFRef':                           [3, 'caa1a139b254'],
-    'PDFRef.of':                        [2, '0a2fd82dd164'],
-    'PDFRef.prototype.generationNumber': ABSENT,
-    'PDFRef.prototype.toString':        [0, 'eef3fb80e9cb'],
-    'PDFRef.prototype.sizeInBytes':     [0, 'dd38686c5b40'],
-    'PDFRef.prototype.copyBytesInto':   [2, '127b12f52ae2'],
-  });
-  const pool0 = [];                // dense gen=0 cache, indexed by objectNumber
-  const poolGenN = new Map();      // gen!=0 cache, keyed by "N M" string
+  checkTargets(
+    import.meta.url,
+    { PDFRef },
+    {
+      PDFRef: [3, "caa1a139b254"],
+      "PDFRef.of": [2, "0a2fd82dd164"],
+      "PDFRef.prototype.generationNumber": ABSENT,
+      "PDFRef.prototype.toString": [0, "eef3fb80e9cb"],
+      "PDFRef.prototype.sizeInBytes": [0, "dd38686c5b40"],
+      "PDFRef.prototype.copyBytesInto": [2, "127b12f52ae2"],
+    },
+  );
+  const pool0 = []; // dense gen=0 cache, indexed by objectNumber
+  const poolGenN = new Map(); // gen!=0 cache, keyed by "N M" string
 
   PDFRef.of = function fastClassOf(objectNumber, generationNumber) {
     if (generationNumber === undefined || generationNumber === 0) {
@@ -113,7 +127,7 @@ if (!PDFRef.__fastRefsClassInstalled) {
     }
     // gen != 0: this path is dead on fresh-Chrome workloads except for
     // the xref "free" entry at object 0. Kept for spec correctness.
-    const key = objectNumber + ' ' + generationNumber;
+    const key = objectNumber + " " + generationNumber;
     const existing = poolGenN.get(key);
     if (existing) return existing;
     const fresh = new _FastRefGen(objectNumber, generationNumber);
@@ -130,7 +144,7 @@ if (!PDFRef.__fastRefsClassInstalled) {
   // regular data properties. The upstream `tag` string is gone -- no
   // instance carries it any more.
   PDFRef.prototype.toString = function () {
-    return this.objectNumber + ' ' + this.generationNumber + ' R';
+    return this.objectNumber + " " + this.generationNumber + " R";
   };
 
   PDFRef.prototype.sizeInBytes = function () {
@@ -140,10 +154,10 @@ if (!PDFRef.__fastRefsClassInstalled) {
   PDFRef.prototype.copyBytesInto = function (buffer, offset) {
     const start = offset;
     offset += _writeUint(buffer, offset, this.objectNumber);
-    buffer[offset++] = 0x20;  // ' '
+    buffer[offset++] = 0x20; // ' '
     offset += _writeUint(buffer, offset, this.generationNumber);
-    buffer[offset++] = 0x20;  // ' '
-    buffer[offset++] = 0x52;  // 'R'
+    buffer[offset++] = 0x20; // ' '
+    buffer[offset++] = 0x52; // 'R'
     return offset - start;
   };
 
