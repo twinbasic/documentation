@@ -856,7 +856,7 @@ and as the built EXE, with identical results.
 
 ## A step key pressed on the line that raised an error leaves a step pending
 
-**Build:** BETA 983
+**Build:** BETA 995 (`ide-test.bat`'s `debugger` lane asserts it)
 **Severity:** the debugger stops where it was not asked to, and one command no longer means one
 thing.
 
@@ -867,8 +867,9 @@ thing.
    Moving past the line with **Set Next Statement** (CTRL+F9) instead, each F5 then advances
    one line.
 
-Seen in three runs. In the one followed to the end, it lasted until the procedure returned; in
-another, a fix-then-F5 stopped once. Which of the two applies was not isolated.
+In `ide-test.bat`'s `debugger` lane, on BETA 983 and 995 alike, the waiting step is used up by
+that one stop: the next F5 runs on to the loop's next error. An earlier run by hand, followed to
+the end, saw it last until the procedure returned; what differed there is not known.
 
 **What does not reproduce it:** choosing **Ignore** without pressing a step key first, which
 runs on from the next line as the panel says.
@@ -879,7 +880,7 @@ runs on from the next line as the panel says.
 
 ## Stop at a run-time error ends only the procedure that raised it
 
-**Build:** BETA 983
+**Build:** BETA 995 (`ide-test.bat`'s `debugger` lane asserts it); BETA 983 for the `Assert` case
 **Severity:** the program goes on running after the user asked it to stop.
 
 A `Sub Main` that calls a procedure which raises an untrapped error, and prints a line after
