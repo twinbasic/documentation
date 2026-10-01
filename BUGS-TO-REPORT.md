@@ -62,7 +62,7 @@ opens then trips this.
 
 ## Compiler crashes on an `Interface` named by an angle-bracket placeholder that has an `Extends` clause
 
-**Build:** BETA 983 (`twinBASIC_win32.dll+00141F7A`)
+**Build:** BETA 995; BETA 983 at `twinBASIC_win32.dll+00141F7A`
 **Severity:** crash --- takes the compiler down, three restarts, then the IDE gives up.
 
 This two-line file is the whole reproduction:
@@ -101,7 +101,7 @@ costs the whole batch its result, which is why that tool isolates the sample on 
 
 ## An `Interface` that extends itself compiles without a diagnostic
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** invalid code accepted --- the same cycle through a class is refused.
 
 This two-line file compiles with no error, warning, hint or info:
@@ -154,7 +154,7 @@ records the same measurements.
 
 ## Public members are typed with Private components, so a default project cannot use them
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** documented APIs need the consumer to expose the package's internals; one
 event asks for a type it then refuses.
 
@@ -250,7 +250,7 @@ compiled in a default project.
 
 ## `Err.Raise` rejects `HelpContext` as a named argument, while its three siblings work
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** VBA-compatible code that names the fifth argument does not compile, and the
 diagnostic does not say which name was wrong.
 
@@ -293,7 +293,7 @@ whose sample was written in the named form. The page uses the positional form no
 
 ## An interface member marked `[PreserveSig]` cannot be implemented by a class
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** an interface the language lets you declare cannot be implemented at all, and
 the diagnostic asks for the signature that is already written.
 
@@ -313,8 +313,10 @@ End Class
 
 ```
 TB5004 unable to match this implementation to its interface member. The expected signature was: Private Function IProbeD_F() As Long
-TB5000 Missing implementation of member Function F() As Long
+TB65535 Missing implementation of member Function F() As Long
 ```
+
+BETA 983 gave the second message as TB5000.
 
 **The "expected" signature is character for character the one on the line the error is
 reported against.** Whatever the compiler is comparing, it is not what it prints.
@@ -548,44 +550,9 @@ cause.
 
 ---
 
-## `\` and `Mod` on the most negative `Integer` or `Long` by -1 raise a native exception that `On Error` cannot handle
-
-**Build:** BETA 983, 32-bit target
-**Severity:** a division that should raise the trappable error 6 stops the procedure instead; the
-`LongLong` form returns a wrong value with no error at all.
-
-```
-Dim a As Integer = -32768
-Dim b As Integer = -1
-On Error Resume Next
-Debug.Print a \ b
-```
-
-The DEBUG CONSOLE shows `NATIVE EXCEPTION: NT_OVERFLOW /<file>; <module>.<procedure> LINE <n>
-[CONTINUABLE]` for the division's line, then `[IDE] auto-activated TRACE-MODE in this session`,
-and nothing after that line runs, `On Error Resume Next` notwithstanding.
-
-| operands | `\` | `Mod` |
-|---|---|---|
-| `Integer` -32768 and -1 | native exception | native exception |
-| `Long` -2147483648 and -1 | native exception | native exception |
-| `LongLong` -9223372036854775808 and -1 | **-9223372036854775808**, no error | 0 (right) |
-| a `Variant` holding the `Integer` -32768, and -1 | `Long` 32768 (right) | --- |
-| a `Variant` holding the `Long` -2147483648, and -1 | error 6 (right) | --- |
-
-**What does not reproduce it:** every other overflow measured raises error 6 as it should ---
-`32767 + 1`, `32767 * 32767` and `-(-32768)` on typed `Integer` values, and the same kind of
-overflow on `Long`, `LongLong`, `Single`, `Double`, `Currency` and `Decimal` --- and division by
-zero raises error 11. Only the one quotient that does not fit its type fails this way.
-
-**Found by** probing the arithmetic operators' result types for `Reference/Operators.md`. The
-probe's first run lost every case after this one.
-
----
-
 ## Shifting a `Single`, `Double`, `Date`, `Boolean` or `String` compiles clean, then fails code generation
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** the compiler accepts the expression with no diagnostic, and the procedure that
 contains it never runs.
 
@@ -616,26 +583,15 @@ floating-point operands are truncated before shifting.
 
 ---
 
-## `>>` gives three different results for the same value, and a `Variant` shift can return `Empty`
+## A `Variant` shift multiplies a fractional value, and can return `Empty`
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** wrong values, with no diagnostic.
 
-```
-Dim n As Long = -8
-Dim v As Variant = CLng(-8)
-Debug.Print -8& >> 1    ' -4           constants: an arithmetic shift
-Debug.Print n >> 1      ' 2147483644   a Long variable: a logical shift
-Debug.Print v >> 1      ' -4           a Variant: a division, truncated toward zero
-```
-
-The logical shift is what a typed variable gets and what the documentation describes. The
-constant folder disagrees with the code generator: `-1 >> 1` and `-1& >> 1` are both -1, where an
-`Integer` variable holding -1 gives 32767 and a `Long` variable gives 2147483647.
-
-A `Variant` operand is not shifted but multiplied or divided --- a `Variant` holding the `Double`
-7.9, shifted left by 1, is 15.8 --- and a count as large as the width of the type it holds gives
-`Empty` rather than 0:
+A `Variant` holding the `Double` 7.9, shifted left by 1, is 15.8: the value is multiplied, not
+shifted, and so is a `Currency` or `Decimal` holding 7.9. Shifted right by 1, the `Variant` and
+the `Decimal` give 3 but the `Currency` gives 3.95. A count as large as the width of the type the `Variant` holds gives `Empty` rather
+than 0:
 
 | expression | result |
 |---|---|
@@ -644,14 +600,15 @@ A `Variant` operand is not shifted but multiplied or divided --- a `Variant` hol
 | a `Variant` holding `CLng(1)`, `<< 31` | `Long` -2147483648 |
 | a `Long` variable holding 1, `<< 32` | 0 |
 
-**Found by** probing the operators for `Reference/Core/LeftShift.md` and `RightShift.md`, whose
-examples said `-1 >> 1` returns `&H7FFFFFFF`. It returns -1.
+**Found by** probing the operators for `Reference/Core/LeftShift.md` and `RightShift.md`. The
+same probe found `>>` logical on a typed variable and arithmetic on a constant, up to BETA 983;
+BETA 984 made both arithmetic.
 
 ---
 
 ## Overloads on `Date` and `Double` resolve by declaration order, not by the argument's type
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** the wrong overload runs, with no diagnostic.
 
 ```
@@ -684,7 +641,7 @@ measuring the operators for `Reference/Operators.md`.
 
 ## `Boolean \ String` and `Boolean Mod String` convert the `String` to `Boolean`
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** a wrong value and a wrong type, with no diagnostic.
 
 ```
@@ -711,7 +668,7 @@ the other way round: `"2" \ b` is the `Long` -2.
 
 ## Export Project follows a directory junction in its folder and deletes what it points to
 
-**Build:** BETA 983
+**Build:** BETA 995 (`ide-test.bat`'s `export` lane asserts it)
 **Severity:** data loss outside the folder the user chose. Export Project empties its folder
 before writing, as the *Export Path* setting warns; it does not stop at a junction.
 
@@ -734,7 +691,7 @@ before writing, as the *Export Path* setting warns; it does not stop at a juncti
 
 ## Export Project stops at a read-only file after deleting everything before it, and the IDE reports nothing
 
-**Build:** BETA 983
+**Build:** BETA 995 (`ide-test.bat`'s `export` lane asserts it)
 **Severity:** a partly emptied folder, with the only record in the Debug Console. On a Git
 working copy it breaks the repository, because Git makes its object files read-only.
 
@@ -946,7 +903,10 @@ choosing **Run → End** makes it an ordinary break, and the run is aborted (two
 
 ## A `Static` declaration cannot initialise with a constructor that takes arguments
 
-**Build:** BETA 983
+**Build:** BETA 983 --- **not reproduced on a re-check**: a `Static s As Dog = New Dog("Rex")`,
+in a Module procedure, a Function, a Class method and a Property Get, with `Dog` a Private or a
+`[COMCreatable(False)]` class with a one-parameter `Sub New`, compiled and ran on BETA 983 and
+995 alike. What else the original case held is not recorded; find it before filing.
 **Severity:** a valid declaration does not compile; the workaround is a `Static` without an
 initialiser and a `Set` on first use.
 
@@ -1015,7 +975,7 @@ and v2 runs at once.
 
 ## An error in the body of a generic procedure names neither the type nor the call that caused it
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** a diagnostic that points at correct code. In a project with many calls to a
 generic procedure, nothing says which call to fix.
 
@@ -1046,7 +1006,7 @@ nothing to say which types it accepts.
 
 ## Text that continues a `Debug.Print` line is escaped twice in the DEBUG CONSOLE
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** cosmetic, but it changes what a program appears to print: `&`, `<` and `>` in
 the continued part of a line show as `&amp;`, `&lt;` and `&gt;`.
 
@@ -1084,7 +1044,7 @@ that the IDE appends to an open console line.
 
 ## An add-in's keyboard shortcut does not fire if it includes `{CTRL}` or `{ALT}`
 
-**Build:** BETA 983
+**Build:** BETA 995 (`addin-test.bat`'s `keys` lane asserts it)
 **Severity:** the SDK's own example, `{CTRL}{SHIFT}d` in `KeyboardShortcuts.Add`'s
 description, cannot be used, and nothing says why.
 
@@ -1123,7 +1083,7 @@ key events and checks each result. Every case in the table is a test in that lan
 
 ## F1 and the fold icon toggle the signature help, then fail
 
-**Build:** BETA 983
+**Build:** BETA 995 for F1 (`addin-test.bat`'s `keys` lane asserts it); BETA 983 for the fold icon
 **Severity:** cosmetic --- the toggle works, but every F1 adds `command failed:
 "tbHelp_ToggleExpandSignatureHelp"` to the DEBUG CONSOLE, and every click on the icon throws
 in the page.
@@ -1183,7 +1143,7 @@ opening a file (`afterReveal` in `scripts/lib/tb-operate.mjs`).
 
 ## Hover says a `ByVal` parameter was auto-generated because `Option Explicit` is off
 
-**Build:** BETA 983
+**Build:** BETA 995 (`addin-test.bat`'s `symbols` lane asserts it)
 **Severity:** cosmetic, but it tells the user to turn on an option that is already on, over
 a parameter they declared.
 
@@ -1224,7 +1184,7 @@ checks every row of the table). The text is the markdown the IDE's hover shows.
 
 ## Every tool window given no id is the same window
 
-**Build:** BETA 983
+**Build:** BETA 995 (`addin-test.bat`'s `panes` lane asserts it)
 **Severity:** an add-in's windows overwrite each other, or another add-in's, and nothing
 says so. The id is declared `Optional`, so leaving it out looks correct.
 
@@ -1259,7 +1219,7 @@ IDE's add-in samples leaves the id out.
 
 ## `[PopulateFrom]` with no arguments crashes the compiler
 
-**Build:** BETA 987
+**Build:** BETA 995; first seen on BETA 987
 **Severity:** the compiler process dies while the project is being parsed, which
 `tbbuild` reports as a crash (its exit code 4), so a person who forgets the arguments is not
 told what is missing.
