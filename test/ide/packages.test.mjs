@@ -122,11 +122,11 @@ scenario("Import from file... in the Packages dialog", (lane) => {
 // probes/packages/DocProbePkg, which the first test above uses as it is. v2
 // has its version fields in Settings at 2.0.0.0 and its function returns 2.
 // Both also get the three empty folders every exported package has,
-// ImportedTypeLibraries, Miscellaneous and Packages: BETA 995's compiler dies
-// at start on a project that embeds a package without them, three times, and
-// the IDE then drops into Safe Mode, where nothing runs. (Measured with a copy
-// of the tree with and without the folders; which of the three it needs was not
-// narrowed.) Each test works on a copy of the host project in its own folder,
+// ImportedTypeLibraries, Miscellaneous and Packages. Packages is the one that
+// matters: without it, BETA 995's compiler crashes on each restart after the
+// embedding Apply, and the IDE drops into Safe Mode, where nothing runs
+// (BUGS-TO-REPORT.md, "Embedding a package with no Packages folder puts the
+// compiler in a crash loop"). Each test works on a copy of the host project in its own folder,
 // because applying writes the project's settings. The copy's Main is empty
 // until v1 is embedded, since the host cannot compile before the package is
 // referenced; the test then writes Main in the editor.

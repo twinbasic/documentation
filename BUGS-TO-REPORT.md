@@ -980,6 +980,33 @@ and v2 runs at once.
 
 ---
 
+## Embedding a package with no `Packages` folder puts the compiler in a crash loop
+
+**Build:** BETA 995
+**Severity:** the project cannot be compiled again; the IDE drops into Safe Mode.
+
+1. Pack a package tree that has no `Packages` folder into a `.twinpack`. The tree may lack
+   `ImportedTypeLibraries` and `Miscellaneous` as well; neither matters.
+2. In a project, Settings → References → Available Packages → *Import from file...* the
+   `.twinpack`, tick it, and apply.
+3. The console shows `[PROJECT] twinBASIC project saving to disk [DONE]`, then `restarting from
+   FILE` four times about two seconds apart, and the IDE reports "Compiler crash loop detected.
+   Restarting in SAFE mode."
+
+An empty `Packages` folder in the package tree is enough to prevent it: the same steps with that
+folder alone, or with all three, restart the compiler once and run the package. Every package
+the IDE exports has all three folders, so only a hand-made tree meets this.
+
+**What does not reproduce it:** a project with the same package already embedded under
+`Packages\DocProbePkg`, without the folder, packed by `scripts/impexp.mjs` and opened cold,
+compiles clean (also on BETA 983). So the loop needs the package to be embedded by the IDE.
+BETA 983 has not been tried through the IDE: in a lane its References page never finishes loading.
+
+**Found by** `ide-test.bat`'s `packages` lane, with the package's folders varied one at a time,
+and one run watched with `--show`.
+
+---
+
 ## A call through a `FastCall` or `ThisCall` delegate is made as stdcall on win32
 
 **Build:** BETA 995
