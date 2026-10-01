@@ -1338,3 +1338,66 @@ a project holding only it and a two-line `Sub Main`, with no resources: `tbbuild
 The same project with `[PopulateFrom("probe")]` builds and reports the one TB5083 row. The
 rows for `(True)`, `(False)` and `(1)` come from the sweep's batches, not from that
 project.
+
+## `As New` refuses a class whose only constructor has all-`Optional` arguments
+
+**Build:** BETA 995; BETA 983 accepts it and runs it
+**Severity:** code that compiled before BETA 993 stops compiling, and the two checks for "can
+this class be created without arguments" disagree.
+
+```
+Class COpt
+    Public V As Long
+    Public Sub New(Optional ByVal n As Long = 3)
+        V = n
+    End Sub
+End Class
+
+Module Probe
+    Public Sub T()
+        Dim x As New COpt
+        Debug.Print x.V
+    End Sub
+End Module
+```
+
+fails on the `Dim` with TB5121 `can't use this type with As-New syntax as it doesn't have a
+parameterless constructor`. The same class satisfies TB5135, the check for COM exposure: it
+compiles as a public class without `[COMCreatable(False)]`, so that check counts the
+constructor as one that takes no arguments. On BETA 983 the reproduction compiles, and `x.V`
+prints `3`. TB5121 is the diagnostic BETA 993's notes describe ("classes with
+[COMCreatable(False)] set on them cannot be used as an As-New datatype"), corrected in 995.
+
+**What does not reproduce it:** a class with a `Class_Initialize` beside a `Sub New` that takes
+a required argument, or with a second `Sub New` with no parameters, is accepted. A class whose
+only `Sub New` takes a required argument is refused, `Private` or `[COMCreatable(False)]`
+alike, which is the diagnostic working as intended.
+
+**Observed** on 2026-10-01 with compile probes through `tbbuild`, each case a project of its
+own, on BETA 995 and BETA 983; the run on 983 was a compiled EXE through `tbrun`.
+
+## `FileCopy` of an open file raises `&H80004005`, where VB6 raises 55 or copies it
+
+**Build:** BETA 995; BETA 983 copied an open file with no error
+**Severity:** code that handles VB6's error 55 does not recognise the error, and a copy that
+VB6 makes is refused.
+
+```
+Dim f As String = Environ$("TEMP") & "\probe.txt"
+Open f For Output As #1: Print #1, "one": Close #1
+On Error Resume Next
+Open f For Append As #2
+FileCopy f, f & ".copy"
+Debug.Print Err.Number, Err.Description
+```
+
+prints `-2147467259 Unspecified error`. VB6 prints `55 File already open`. With the file
+open `For Input` instead, twinBASIC raises the same `-2147467259`, and VB6 copies the file
+without an error. BETA 984's notes list the change ("FileSystem.FileCopy function would
+previously allow copying of an already open file without error"); only the error number and
+the `Input` case differ from VB6.
+
+**What does not reproduce it:** the file closed.
+
+**Observed** on 2026-10-01: the twinBASIC lines through `tbrun` on BETA 995 and BETA 983, the
+VB6 lines from the same statements compiled by `VB6.EXE /make` and run.
