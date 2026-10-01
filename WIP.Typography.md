@@ -65,8 +65,9 @@ once, and any of the three can move.
   the later `@font-face` fetch is not reused, so the file downloads twice.
 - [docs/assets/css/print.css](docs/assets/css/print.css) --- the book's own
   `@font-face` block and three stacks.
-- [builder/pdf.mjs](builder/pdf.mjs) --- `REQUIRED_FONTS`, copied into the
-  sparse `_site-pdf/` tree. Keep it in step with print.css's `@font-face` block.
+- [builder/pdf.mjs](builder/pdf.mjs) --- copies every face print.css names
+  as `url("../fonts/...")` into the sparse `_site-pdf/` tree, reading the
+  list from print.css itself.
 
 Two rules that are easy to get wrong:
 

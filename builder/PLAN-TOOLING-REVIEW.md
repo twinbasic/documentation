@@ -877,7 +877,7 @@ expectations, the usage texts and Tools.md together.
 stdout and exiting 0. Each declares `help` with `short: "h"` and `stopAt: ["help"]`, answers it
 straight after the parse, before any number, project or install check, and has a `USAGE`
 constant (the usage line, one sentence, the options, and the `Exit codes:` block). A new tool
-is added to `HELP_TOOLS` in `scripts/check_cli.mjs`, which checks that its help exits 0 and
+is added to `HELP_TOOLS` in `scripts/lib/cli-cases.mjs`, from which `scripts/check_cli.mjs` checks that its help exits 0 and
 leaves its scratch folder empty.
 
 ### C72 — `scripts, book, eval, wisdom: an unknown flag or a bad value exits 2`
@@ -888,7 +888,7 @@ boolean given a value, a value option with none, an empty value unless the optio
 `empty: true` (only `tbdocs`' `--baseurl`), and a positional beyond the tool's count are each a
 `CliError`, reported on stderr with exit 2 through `withUsageError`. A term that starts with a
 dash goes after `--`. A new tool needs an unknown-flag case in `REFUSALS`, and an empty-value
-case if it has a value option, in `scripts/check_cli.mjs`, which checks `REFUSALS` against
+case if it has a value option, in `scripts/lib/cli-cases.mjs`, which checks `REFUSALS` against
 `HELP_TOOLS`.
 
 ### C72a — `scripts, book, eval, wisdom: a bad value exits 2`
@@ -899,7 +899,7 @@ file, and refuses a bad one on stderr with exit 2, in its usage-error form. It d
 `lib/cli.mjs`'s `numberOption` (read as `Number()` reads, so `0x10` passes and `12abc` does
 not), `choiceOption`, `regexOption`, `urlOption`, `dateOption` and `refuseTogether`, and a
 new option that takes a number, regex, URL, date or fixed set needs a case in `BAD_VALUES` in
-`scripts/check_cli.mjs`.
+`scripts/lib/cli-cases.mjs`.
 
 ### C72b — `builder, scripts: tbdocs and check_links exit 0, 1 or 2 like every tool`
 
