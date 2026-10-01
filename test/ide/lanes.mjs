@@ -15,4 +15,4 @@
 //             same one never run at once. Settings that are not named here are
 //             left changed after the run.
 
-export default [{ file: "export.test.mjs" }, { file: "debugger.test.mjs" }];
+export default [{ file: "export.test.mjs" }, { file: "debugger.test.mjs" }, { file: "packages.test.mjs" }];

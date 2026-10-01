@@ -20,7 +20,7 @@ To import a package directly from a TWINPACK file (instead of using TWINSERV), f
 ![Numbered callouts on the Project Settings icon, the Library References section and the Available Packages tab](Images/d9f1e4d9-1805-47e5-93aa-251151b4e914.png)
 - press the **Import from file...** button:
 ![A callout marking the Import from file button below the Available Packages list](Images/e35d5955-9e70-4d6e-abd7-748558da75ba.png)
-- choose the TWINPACK file you want to import. The package is added to the **Available Packages** list, but BETA 983 does not tick it: tick it yourself. It then appears, ticked, on the **Enabled Libraries** tab:
+- choose the TWINPACK file you want to import. The package is added to the **Available Packages** list, but BETA 995 does not tick it: tick it yourself. It then appears, ticked, on the **Enabled Libraries** tab:
 ![The Enabled Libraries list with the imported CSharpishStringFormater and FilePropertyExplorer packages ticked](Images/4e4b8e4d-2a1c-42e5-8f4b-5a9b3f523ee8.png)
 - press **Apply Changes**
 

@@ -937,7 +937,7 @@ no arguments (`Static c As Collection = New Collection`); and a `Static` of a va
 
 ## *Import from file...* leaves the imported package unticked
 
-**Build:** BETA 983
+**Build:** BETA 995 (`ide-test.bat`'s `packages` lane asserts it); BETA 983 by hand
 **Severity:** the package is imported but not referenced, and the documentation says it is.
 
 Settings → References → Available Packages → *Import from file...*, and choose a `.twinpack`. The
@@ -945,7 +945,8 @@ compiler answers the IDE's `importPackage` request with
 `success: true, body: { packageSymbol: "DocProbePkg" }`, and the package appears in the list
 unticked, so nothing in the project can use it until it is ticked by hand.
 `packageLoadFromFile` in `ide/main.js` reads `packageSymbol` from the response itself rather
-than from its `body`, which is consistent with what is seen; that part is read, not traced.
+than from its `body`, while the online import path beside it, `importPackage`, reads
+`t.body.packageSymbol`.
 
 **Found by** the package probe for round 8's UC-60, which drove the import over DevTools with
 the file's path in place of the native picker.
