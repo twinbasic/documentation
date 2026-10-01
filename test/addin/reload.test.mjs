@@ -10,7 +10,7 @@
 // Each also records in a file whether its Class_Terminate runs: the page ends
 // the compiler with taskkill /F (forceTerminate in main.js), so it cannot.
 //
-// Each test states what BETA 983 does. If one fails after an IDE update, the
+// Each test states what BETA 983 and 995 do. If one fails after an IDE update, the
 // IDE has changed: update P8 and P9 in WIP.HelpAddin.md, what the tbIDE
 // package page (docs/Reference/Built-In/tbIDE/index.md) says a compiler
 // restart does, and ToolWindows.Add's id on the ToolWindows page, and then

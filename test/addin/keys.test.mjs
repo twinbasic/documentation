@@ -3,7 +3,7 @@
 // editor. The KeysProbe add-in (probes/keys) registers eight key strings and
 // prints "[KeysProbe] fired <key string>" to the DEBUG CONSOLE when one fires.
 //
-// Each test states what BETA 983 does. If one fails after an IDE update, the
+// Each test states what BETA 983 and 995 do. If one fails after an IDE update, the
 // IDE has changed: update P1 and P2 in WIP.HelpAddin.md, the NOTE on
 // docs/Reference/Built-In/tbIDE/KeyboardShortcuts.md and the entry in
 // BUGS-TO-REPORT.md, and then this file.

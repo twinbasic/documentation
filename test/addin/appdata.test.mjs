@@ -9,7 +9,7 @@
 // That private APPDATA is what keeps the user's add-ins out of every other
 // lane, and these tests are what it rests on.
 //
-// Each test states what BETA 983 does. If one fails after an IDE update, the
+// Each test states what BETA 983 and 995 do. If one fails after an IDE update, the
 // IDE has changed: update P6 in WIP.HelpAddin.md and the lanes' APPDATA in
 // scripts/lib/tb-lane.mjs, and then this file.
 //

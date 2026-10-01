@@ -9,7 +9,7 @@
 // so a relative URL is a path below the ide folder. The page fetches each file
 // the way a frame's src would be resolved.
 //
-// Each test states what BETA 983 does. If one fails after an IDE update, the
+// Each test states what BETA 983 and 995 do. If one fails after an IDE update, the
 // IDE has changed: update P13 and "Offline" in WIP.HelpAddin.md, and then this
 // file.
 //

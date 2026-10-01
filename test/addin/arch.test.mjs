@@ -6,7 +6,7 @@
 // ArchProbeUser.dll. Every copy that loads prints one line: the bitness it was
 // built for, the executable of the process it runs in, and its own file.
 //
-// Each test states what BETA 983 does. If one fails after an IDE update, the
+// Each test states what BETA 983 and 995 do. If one fails after an IDE update, the
 // IDE has changed: update P7 in WIP.HelpAddin.md and the Add Ins page
 // (docs/IDE/AddIns/index.md), and then this file.
 //
