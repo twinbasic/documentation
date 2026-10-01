@@ -57,6 +57,8 @@ Building with LLVM does not currently work on Windows 7; Windows 10 or 11 is rec
 
 The main feature not yet supported is passing an error up to the calling procedure. If an error occurs in a procedure that has no error handler, its caller does not receive the error; instead, the program crashes with an unhandled error. A fix is planned.
 
+Code compiled with LLVM ignores [**Debug.Assert**](../tB/Modules/Debug#assert): the statement does not stop, and its condition is not evaluated.
+
 All other language features should work, in both 32-bit and 64-bit builds. Please [report](../FAQ#bug-reporting) any crash that LLVM causes, and any message saying "a feature used in your code is not yet supported with the LLVM compiler".
 
 ## General LLVM options

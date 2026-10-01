@@ -84,6 +84,8 @@ Syntax: **Debug.Assert** *booleanexpression*
 *booleanexpression*
 : An expression evaluating to **True** or **False**. Execution continues when it is **True** and breaks when it is **False**.
 
+In a procedure compiled with [LLVM](../../LLVM/Getting-Started), **Debug.Assert** is ignored: it does not break, and *booleanexpression* is not evaluated.
+
 Use it to state something the surrounding code relies on, so a violated assumption stops at the line that states it rather than further away.
 
 ```tb check_build
