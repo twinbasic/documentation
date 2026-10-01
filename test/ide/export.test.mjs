@@ -11,11 +11,13 @@
 // Run it with ide-test.bat, which gives it a lane; on its own it is skipped.
 
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
+import { compilerExe } from "../../scripts/lib/tb-install.mjs";
 import { messageBoxes, waitFor } from "../../scripts/lib/tb-operate.mjs";
 import { scenario } from "../addin/scenario.mjs";
 
@@ -52,9 +54,13 @@ scenario("Export Project", (lane) => {
     return lines;
   }
 
+  // The project's own folder, holding nothing but the .twinproj: the last test
+  // exports into it.
+  const projectDir = path.join(lane.work, "project");
+
   before(async () => {
     mkdirSync(root, { recursive: true });
-    c = await lane.open(PROJECT);
+    c = await lane.open(PROJECT, { folder: projectDir });
   });
 
   test("an export into an empty folder writes the compiler packages", async () => {
@@ -98,6 +104,29 @@ scenario("Export Project", (lane) => {
     ]);
     assert.deepEqual(filesUnder(out).sort(), ["m-readonly.txt", "z-last.txt"]);
     assert.deepEqual(boxes, []);
+  });
+
+  test("the command line's import refuses the IDE's export, for its compiler packages", () => {
+    const out = path.join(root, "plain");
+    const packed = path.join(root, "repacked.twinproj");
+    const r = spawnSync(compilerExe(lane.copy()), ["import", packed, `${out}\\`, "--overwrite"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    assert.equal(r.status, 999);
+    assert.equal(existsSync(packed), false);
+  });
+
+  // Last, since it deletes the open project's file. The Settings editor refuses
+  // an Export Path of ${SourcePath} alone, but the compiler checks nothing.
+  test("an export into the project's own folder deletes the project file", async () => {
+    const lines = await exportTo(projectDir);
+    assert.ok(
+      lines.includes(`DELETED: \\\\?\\${lane.project}`),
+      "the export no longer deletes the project file in its folder",
+    );
+    assert.match(lines.at(-1), /^COMPLETED \(\d+ folders, \d+ files\)$/);
+    assert.equal(existsSync(lane.project), false);
   });
 
   // The runner removes the work folder afterwards, and a read-only file would

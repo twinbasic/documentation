@@ -720,7 +720,7 @@ completely --- `.git` included, with no prompt.
 
 ## Export Path refuses `${SourcePath}` alone, but not the same folder written as a path
 
-**Build:** BETA 983
+**Build:** BETA 995
 **Severity:** the project file is deleted when the export folder is the folder that holds it.
 
 The Settings editor's check on `project.exportPath` in `ide/main.js` compares the text with
@@ -731,14 +731,17 @@ logged `[EXPORT]  DELETED: \\?\<folder>\<project>.twinproj` and completed. A **S
 wrote the file back; closing without saving loses it.
 
 **Found by** the same probe. The compiler's side was measured, by calling `exportProjectTo()`
-with the folder; that the editor accepts the same folder typed as a path is read from the
-check's code, not tried.
+with the folder, and `ide-test.bat`'s `export` lane asserts it; that the editor accepts the
+same folder typed as a path is read from the check's code, not tried. The Save that writes
+the file back was seen on BETA 983 only.
 
 ---
 
 ## Export Project writes the compiler packages, which the project does not hold, and the command line cannot pack the result
 
-**Build:** BETA 983
+**Build:** BETA 995 for the export and the command line's `import` of it, which
+`ide-test.bat`'s `export` lane asserts; the IDE's own import and the dead copy were measured
+on BETA 983
 **Severity:** the IDE's export of a project cannot be packed back into a project by the
 supported tool, so it cannot serve for version control; and a two-file project exports as
 477 files.
