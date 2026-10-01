@@ -31,13 +31,13 @@ Declare Sub...
 Syntax:
 
 - > [ *attributes* ]  
-  > [ **Public** \| **Private** ] **Declare** [ **PtrSafe** ] **Sub** *name* **Lib** "*libname*" [ **(** [ *arglist* ] **)** ]
+  > [ **Public** \| **Private** ] **Declare** [ **PtrSafe** ] **Sub** *name* [ *callconv* ] **Lib** "*libname*" [ **(** [ *arglist* ] **)** ]
 - > [ *attributes* ]  
-  > [ **Public** \| **Private** ] **Declare** [ **PtrSafe** ] **Sub** *name* **Lib** "*libname*" **Alias** "*aliasname*" [ **(** [ *arglist* ] **)** ]
+  > [ **Public** \| **Private** ] **Declare** [ **PtrSafe** ] **Sub** *name* [ *callconv* ] **Lib** "*libname*" **Alias** "*aliasname*" [ **(** [ *arglist* ] **)** ]
 - > [ *attributes* ]  
-  > [ **Public** \| **Private** ] **Declare** [ **PtrSafe** ] **Function** *name* **Lib** "*libname*" [ **(** [ *arglist* ] **)** ] [ **As** *type* ]
+  > [ **Public** \| **Private** ] **Declare** [ **PtrSafe** ] **Function** *name* [ *callconv* ] **Lib** "*libname*" [ **(** [ *arglist* ] **)** ] [ **As** *type* ]
 - > [ *attributes* ]  
-  > [ **Public** \| **Private** ] **Declare** [ **PtrSafe** ] **Function** *name* **Lib** "*libname*" **Alias** "*aliasname*" [ **(** [ *arglist* ] **)** ] [ **As** *type* ]
+  > [ **Public** \| **Private** ] **Declare** [ **PtrSafe** ] **Function** *name* [ *callconv* ] **Lib** "*libname*" **Alias** "*aliasname*" [ **(** [ *arglist* ] **)** ] [ **As** *type* ]
 
 
 *attributes*
@@ -58,6 +58,9 @@ Syntax:
 
 *name*
 : Any valid procedure name. Note that DLL entry points are case-sensitive.
+
+*callconv*
+: *optional* The calling convention of the DLL procedure: **CDecl**, **ThisCall** or **FastCall**. The default is stdcall, the convention of nearly all Windows API functions. A twinBASIC extension; see [Calling Conventions](../../Features/Advanced/API-Declarations#calling-conventions).
 
 *libname*
 : Name of the DLL or code resource that contains the declared procedure.

@@ -29,7 +29,7 @@ Syntax:
 : *optional* One or more interfaces that *name* extends. An implementing class is required to provide bodies for the inherited methods as well; in twinBASIC, a class can `Implements` *name* and rely on the inherited interfaces being satisfied automatically.
 
 *member-prototype*
-: A header-only declaration. May be a [**Sub**](Sub), [**Function**](Function), [**Property Get**](Property), [**Property Let**](Property), or [**Property Set**](Property) signature, with arguments and return type. **Public**/**Private**/**Friend** modifiers are *not* allowed on members. There is no `End Sub` / `End Function` / `End Property` --- the prototype ends at end of line.
+: A header-only declaration. May be a [**Sub**](Sub), [**Function**](Function), [**Property Get**](Property), [**Property Let**](Property), or [**Property Set**](Property) signature, with arguments and return type. **Public**/**Private**/**Friend** modifiers are *not* allowed on members. There is no `End Sub` / `End Function` / `End Property` --- the prototype ends at end of line. A member can name a calling convention after its name, as in `Function Add ThisCall(ByVal Amount As Long) As Long`, and an implementation must then name the same one; see [Calling Conventions](../../Features/Advanced/API-Declarations#calling-conventions).
 
 **Interface** blocks are valid only in `.twin` source files (not legacy `.bas` or `.cls` files), and must appear *before* the [**Class**](Class) or [**Module**](Module) statement in the file. Interfaces always have project-wide scope.
 

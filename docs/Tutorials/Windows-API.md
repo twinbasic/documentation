@@ -265,7 +265,7 @@ End Sub
 
 ## Where to go next
 
-- **Enhanced API Declarations** -- `DeclareWide`, `CDecl`, `ByVal` UDTs, variadic arguments: [Features → Enhanced API Declarations](../Features/Advanced/API-Declarations)
+- **Enhanced API Declarations** -- `DeclareWide`, calling conventions (`CDecl`, `ThisCall`, `FastCall`), `ByVal` UDTs, variadic arguments: [Features → Enhanced API Declarations](../Features/Advanced/API-Declarations)
 - **Declarations already written** -- the community package WinDevLib declares common Windows APIs and COM interfaces, with 64-bit-compatible types: [WinDevLib on GitHub](https://github.com/fafalone/WinDevLib)
 - **Forms basics** -- the standard VB controls and event model: [Forms basics](Forms)
 - **Unit testing** -- verifying functions that wrap API calls: [Writing unit tests with Assert](Testing-with-Assert)

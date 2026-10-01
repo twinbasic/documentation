@@ -23,15 +23,41 @@ Both represent a fully Unicode operation, but the allows direct use of the `Stri
 > [!WARNING]
 > This does **not** change the underlying data types-- the `String` type is a `BSTR`, not an `LPWSTR`, so in the event an API returns a pre-allocated `LPWSTR`, rather than filling a buffer you have created, it will not provide a valid `String` type. This would be the case where an API parameter is given as `[out] LPWSTR *arg`.
 
-## CDecl Support
+## Calling Conventions
 
-The cdecl calling convention is supported both for API declares and methods in your code. This includes DLL exports in standard DLLs.
+An API declaration, a procedure, a delegate or an interface member can name its calling convention. The keyword goes directly after the name. Without one, the convention is stdcall, as in VBA.
+
+| Keyword        | Convention | Arguments on win32                                  | Stack cleaned by |
+|----------------|------------|-----------------------------------------------------|------------------|
+| (none)         | stdcall    | all on the stack                                    | the callee       |
+| **CDecl**      | cdecl      | all on the stack                                    | the caller       |
+| **ThisCall**   | thiscall   | the first in the ECX register, the rest on the stack | the callee       |
+| **FastCall**   | fastcall   | the first two in ECX and EDX, the rest on the stack  | the callee       |
+
+The four follow the Microsoft C/C++ conventions of the same names: `__stdcall`, `__cdecl`, `__thiscall` and `__fastcall`. A declaration must name the convention its counterpart actually uses. A mismatch passes the arguments in the wrong places, leaves the stack unbalanced, and usually crashes.
+
+A 64-bit build has only one calling convention. There, all four keywords are accepted and have no effect.
+
+Name at most one convention. BETA 995 accepts two together without a diagnostic.
+
+> [!NOTE]
+> BETA 990 added **ThisCall** and **FastCall** in interface definitions, and BETA 992 everywhere else; earlier builds refuse them (TB5182).
 
 ### Examples
+
+An API declaration, here with **DeclareWide**:
 
 ```tb check_build
 Private DeclareWide PtrSafe Function _wtoi64 CDecl Lib "msvcrt" (ByVal psz As String) As LongLong
 ```
+
+A `__fastcall` export. On a 32-bit build, `ntdll` exports `RtlUlongByteSwap` with the fastcall convention:
+
+```tb check_build
+Private Declare PtrSafe Function RtlUlongByteSwap FastCall Lib "ntdll" (ByVal Source As Long) As Long
+```
+
+A procedure exported from a standard DLL:
 
 ```tb check_build
 [ DllExport ]
@@ -40,9 +66,46 @@ Public Function MyExportedFunction CDecl(value1 As Long, value2 As Long) As Long
 End Function
 ```
 
-### CDecl Callbacks
+### ThisCall in interfaces
 
-Support for callbacks using `CDecl` is also available. You would pass a delegate that includes `CDecl` as the definition in the prototype. Here is an example code that performs a quicksort using the [`qsort` function](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-wsprintfw):
+Some C++ interfaces are not COM interfaces, and their methods use thiscall rather than stdcall. RichEdit's `ITextServices` and `ITextHost` are examples. Mark each such member **ThisCall** in the **Interface** definition:
+
+```tb check_build projname=calling-conventions-thiscall
+[InterfaceId("FF7DD8F0-0CCC-4197-86FB-A5591A6BA9B3")]
+[OleAutomation(False)]
+Interface ICounter Extends IUnknown
+    Function Add ThisCall(ByVal Amount As Long) As Long
+    Property Get Total ThisCall() As Long
+End Interface
+```
+
+A class that implements the interface must repeat the convention on each member. An implementation without it, or with a convention the interface member does not have, is an error (TB5004, *Implemented interface member must use the same calling convention as the interface definition*).
+
+```tb check_build projname=calling-conventions-thiscall
+Class Counter
+    Implements ICounter
+
+    Private mTotal As Long
+
+    Private Function ICounter_Add ThisCall(ByVal Amount As Long) As Long Implements ICounter.Add
+        mTotal = mTotal + Amount
+        Return mTotal
+    End Function
+
+    Private Property Get ICounter_Total ThisCall() As Long Implements ICounter.Total
+        Return mTotal
+    End Property
+End Class
+```
+
+### Callbacks
+
+A callback passed to an API must use the convention the API calls it with. Declare a [**Delegate**](../../tB/Core/Delegate) with that convention, use it as the parameter type, and give the target procedure the same keyword. [**AddressOf**](../../tB/Core/AddressOf) of a procedure with a different convention is accepted with a warning only (TB0026).
+
+> [!NOTE]
+> In BETA 995, on a 32-bit build, a call made from twinBASIC code *through* a **ThisCall** or **FastCall** delegate passes its arguments as stdcall does, and fails with *Bad DLL definition*. Calling the procedure directly works. **CDecl** delegates are not affected, and neither is a 64-bit build.
+
+The following example performs a quicksort using the C runtime's [`qsort` function](https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/qsort), which calls its comparator with the cdecl convention:
 
 ```tb check_build
 Private Delegate Function LongComparator CDecl ( _

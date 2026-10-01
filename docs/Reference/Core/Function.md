@@ -11,7 +11,7 @@ Declares the name, arguments, and code that form the body of a **Function** proc
 
 Syntax:
 > [ *attributes* ]  
-> [ **Public** \| **Private** \| **Friend** \| **Protected** ] [ **Static** ] [ **Overridable** ] **Function** *name* [ **(** **Of** *typevars* **)** ] [ **(** *arglist* **)** ] [ **As** *type* ] [ *binding-clause* ]  
+> [ **Public** \| **Private** \| **Friend** \| **Protected** ] [ **Static** ] [ **Overridable** ] **Function** *name* [ *callconv* ] [ **(** **Of** *typevars* **)** ] [ **(** *arglist* **)** ] [ **As** *type* ] [ *binding-clause* ]  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ *statements* ] ...  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ [ **Let** ] *name* **=** *expression* ] ...  
 > &nbsp;&nbsp;&nbsp;&nbsp; [ **Set** *name* **=** *expression* ] ...  
@@ -44,6 +44,9 @@ Syntax:
 
 *name*
 : Name of the **Function**; follows standard variable naming conventions.
+
+*callconv*
+: *optional* The calling convention: **CDecl**, **ThisCall** or **FastCall**. The default is stdcall. Needed when native code calls the procedure through a pointer, or when it implements an interface member declared with a convention. See [Calling Conventions](../../Features/Advanced/API-Declarations#calling-conventions).
 
 **Of** *typevars*
 : *optional* One or more type variable names; following standard variable naming conventions. The names are separated by commas. Causes the function to be a generic function.
