@@ -551,11 +551,15 @@ Four smaller things it knows, each of which cost a run:
 - **`tbrun` exits 5 when the probe ended before it returned.** The quiet period cannot see
   it: on BETA 995, `Err.Raise` with no handler in a `+llvm` procedure ends the run with
   nothing in the console, and `tbrun` exited 0 with the output up to there. `End` does the
-  same, and so does an unhandled error in plain code, though that run took 30 s against
-  the others' 20 s, for a reason not looked into. `lib/tb-probe.mjs`'s `wrapProbe` moves the
+  same, and so does an unhandled error in plain code, in the same time as a probe that
+  returns (20.7-21.9 s over three runs on BETA 995, against 18.6-20.4 s; one earlier 30 s
+  run came with a 25 s clean run beside it). `lib/tb-probe.mjs`'s `wrapProbe` moves the
   attribute, blanked to spaces so diagnostics keep their positions, to a Sub appended to the
   same module, so a Private probe Sub can still be called; that Sub prints a sentinel after
   the call. `check_twin_parsers` has its fixtures.
+- **`tbrun --exe` exits 6 when the exe exited with a code other than 0**, or was still
+  running at `--timeout` and was ended. A run that would exit 5 exits 5 first, since the
+  IDE's run is the one `--exe` follows.
 
 A reader of the console that is not `tbrun` should **compare the whole console before and
 after, not read on from an index**: new text can be appended to an entry that is still open.

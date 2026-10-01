@@ -33,7 +33,9 @@
 // call -- 3 no output: the build produced none in the console before the
 // timeout, or the probe ran and printed none after its last Debug.Cls -- 4 the
 // compiler crashed, or restarted twice, while compiling the project -- 5 the
-// probe ended before it returned, its output printed all the same.
+// probe ended before it returned, its output printed all the same -- 6 with
+// --exe, the exe exited with a code other than 0, or was still running after
+// --timeout; its output and exit code printed all the same.
 //
 // ---------------------------------------------------------------- why
 //
@@ -190,7 +192,9 @@ Exit codes:
      after its last Debug.Cls
   4  the compiler crashed, or restarted twice, while compiling the project
   5  the probe ended before it returned (End, or an error that ended the run); what
-     it printed is printed all the same`;
+     it printed is printed all the same
+  6  --exe: the exe exited with a code other than 0, or was still running after
+     --timeout and was ended; its output and exit code are printed all the same`;
 
 const { values, positionals } = withUsageError(
   () =>
@@ -623,6 +627,8 @@ if (returned === false) {
       "LLVM-compiled code does. Or it was still running, silent, after --quiet ms; raise --quiet for a slow probe.",
   );
 }
+if (exeRun?.timedOut) die(6, `tbrun: the exe was still running after --timeout, and was ended.`);
+if (exeRun && exeRun.exitCode !== 0) die(6, `tbrun: the exe exited with code ${exeRun.exitCode}.`);
 
 // ------------------------------------------------------------------ helpers
 
