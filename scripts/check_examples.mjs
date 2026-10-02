@@ -62,7 +62,7 @@
 //
 // And one that does not: a sample can take the compiler down. twinBASIC runs it
 // in-process with user code, and a two-line syntax skeleton in Attributes.md
-// crashes it outright (BUGS-TO-REPORT.md). In a batch that costs every other
+// crashes it outright (twinbasic/twinbasic#2453). In a batch that costs every other
 // sample its result, so a crash is isolated, paid for only on failure: the
 // sample tbbuild names as the one the compiler died parsing is built on its own
 // and the rest without it, a crash that names none bisects, O(log n) builds, and

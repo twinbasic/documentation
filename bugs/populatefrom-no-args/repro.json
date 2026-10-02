@@ -1,6 +1,0 @@
-{
-  "mode": "compile",
-  "expect": {
-    "exit": 4
-  }
-}

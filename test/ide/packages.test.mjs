@@ -15,7 +15,7 @@
 // Each test states what BETA 995 does, which is what BETA 983 did by hand. In
 // a lane, BETA 983's References page never finishes loading, so this file
 // cannot run against it. If a test fails after an IDE update,
-// the IDE has changed: update the matching entry in BUGS-TO-REPORT.md and the
+// the IDE has changed: update the matching entry in BUGS-TO-REPORT.md or bugs/filed/ and the
 // two Packages pages under docs/Features/Packages, and then this file.
 //
 // Run it with ide-test.bat, which gives it a lane; on its own it is skipped.
@@ -124,8 +124,7 @@ scenario("Import from file... in the Packages dialog", (lane) => {
 // impexp.mjs adds the empty folders every exported package has; without its
 // Packages folder, BETA 995's compiler crashes on each restart after the
 // embedding Apply, and the IDE drops into Safe Mode, where nothing runs
-// (BUGS-TO-REPORT.md, "Embedding a package with no Packages folder puts the
-// compiler in a crash loop"). Each test works on a copy of the host project in its own folder,
+// (twinbasic/twinbasic#2442). Each test works on a copy of the host project in its own folder,
 // because applying writes the project's settings. The copy's Main is empty
 // until v1 is embedded, since the host cannot compile before the package is
 // referenced; the test then writes Main in the editor.

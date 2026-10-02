@@ -1,6 +1,0 @@
-{
-  "mode": "compile",
-  "expect": {
-    "diagnostics": ["TB5121"]
-  }
-}

@@ -1,8 +1,0 @@
-{
-  "mode": "cli",
-  "cli": ["import", "{tmp}\\packed.twinproj", "{src}\\"],
-  "expect": {
-    "exit": 999,
-    "output": ["IMPORTED FOLDER: .*Packages"]
-  }
-}

@@ -1,7 +1,0 @@
-{
-  "mode": "build",
-  "expect": {
-    "exit": 5,
-    "message": "did not start"
-  }
-}

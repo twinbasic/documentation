@@ -5,8 +5,8 @@
 // lane's work folder: one of the behaviours tested deletes through a junction.
 //
 // Each test states what BETA 983 and 995 do. If one fails after an IDE update,
-// the IDE has changed: update the matching entry in BUGS-TO-REPORT.md, and
-// then this file.
+// the IDE has changed: update the matching entry in BUGS-TO-REPORT.md or
+// bugs/filed/, and then this file.
 //
 // Run it with ide-test.bat, which gives it a lane; on its own it is skipped.
 

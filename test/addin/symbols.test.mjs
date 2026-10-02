@@ -7,8 +7,8 @@
 // Only page script can ask any of them; the add-in API has no such call.
 //
 // Each test states what BETA 983, 987 and 995 do. If one fails after an IDE update, the
-// IDE has changed: update P5 in WIP.HelpAddin.md, and the entry in
-// BUGS-TO-REPORT.md that the last hover test rests on, and then this file.
+// IDE has changed: update P5 in WIP.HelpAddin.md, and the filed report
+// that the last hover test rests on (bugs/filed/, twinbasic/twinbasic#2448), and then this file.
 //
 // Run it with addin-test.bat, which gives it a lane; on its own it is skipped.
 
@@ -139,7 +139,7 @@ scenario("P5: what the compiler says about the name under the cursor", (lane) =>
   });
 
   test("hover says a ByVal parameter of String, Variant, Object or a class was made because Option Explicit is off, which it is not", async () => {
-    // BUGS-TO-REPORT.md. The project has project.optionExplicit true.
+    // twinbasic/twinbasic#2448. The project has project.optionExplicit true.
     const NOTE = "***note:*** *this variable was auto-generated due to* ***Option Explicit*** *being Off*";
     const noted = {
       "Debug.Print h Is": "h",
