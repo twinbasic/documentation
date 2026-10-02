@@ -99,7 +99,8 @@
 //     without a word (measured, BETA 995). So the staged copy calls the
 //     probe's Sub from a wrapper that prints a sentinel once it returns
 //     (lib/tb-probe.mjs). Its absence is exit 5; its arrival ends the wait
-//     without the quiet period.
+//     without the quiet period. Only the IDE's line about forms still loaded
+//     may follow it (sentinelIndex).
 //  6. EVERY RUN OWNS ITS OWN WORKSPACE AND KILLS ONLY ITS OWN IDE. Both were
 //     shared, and both broke concurrency in ways that looked like something
 //     else. The staging directory was a fixed %TEMP%/tbrun/src, so a second
@@ -150,7 +151,7 @@ import {
   wantShow,
 } from "./lib/tb-ide.mjs";
 import { keepClears, keptClears, readConsole } from "./lib/tb-ide-console.mjs";
-import { SENTINEL, wrapProbe } from "./lib/tb-probe.mjs";
+import { sentinelIndex, wrapProbe } from "./lib/tb-probe.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
@@ -503,7 +504,7 @@ try {
       lastChange = Date.now();
       const lines = strip(now);
       if (lines.length) seen = true;
-      if (wrap.wrapped && lines.at(-1) === SENTINEL) break;
+      if (wrap.wrapped && sentinelIndex(lines) >= 0) break;
     } else if (seen && Date.now() - lastChange > quietMs) break;
   }
   captured = strip(last);
@@ -564,17 +565,20 @@ if (lost) {
   );
 }
 // (5) The wrapper's sentinel says the probe returned. It is the wrapper's line,
-// not the probe's, so it is never printed.
-const returned = wrap.wrapped ? captured.at(-1) === SENTINEL : null;
+// not the probe's, so it is never printed. The IDE's own lines after it stay:
+// one says the probe left a form loaded.
+const at = wrap.wrapped ? sentinelIndex(captured) : -1;
+const returned = wrap.wrapped ? at >= 0 : null;
 if (returned) {
   // Without --raw, shown is captured itself.
-  if (shown !== captured) shown.pop();
-  captured.pop();
+  if (shown !== captured) shown.splice(at, 1);
+  captured.splice(at, 1);
 }
 // A probe that ran leaves its Executing line among what its Debug.Cls erased,
 // so an empty console then means it printed nothing after its last clear, not
 // that it never ran.
-if (!captured.length && started >= 0 && returned !== false) {
+const printed = returned ? at : captured.length;
+if (!printed && started >= 0 && returned !== false) {
   die(3, `tbrun: the probe ran (${erased[started]}) but printed nothing after its last Debug.Cls.`);
 }
 if (!captured.length && started < 0) {

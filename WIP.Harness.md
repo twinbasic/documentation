@@ -557,7 +557,9 @@ Four smaller things it knows, each of which cost a run:
   run came with a 25 s clean run beside it). `lib/tb-probe.mjs`'s `wrapProbe` moves the
   attribute, blanked to spaces so diagnostics keep their positions, to a Sub appended to the
   same module, so a Private probe Sub can still be called; that Sub prints a sentinel after
-  the call. `check_twin_parsers` has its fixtures.
+  the call. A probe that leaves a form loaded returned too: the IDE then prints `[DEBUGGER]
+  Waiting for remaining forms to close...` after the sentinel, which `sentinelIndex` allows
+  and `tbrun` prints (measured on BETA 983 and 995). `check_twin_parsers` has fixtures for both.
 - **`tbrun --exe` exits 6 when the exe exited with a code other than 0**, or was still
   running at `--timeout` and was ended. A run that would exit 5 exits 5 first, since the
   IDE's run is the one `--exe` follows.

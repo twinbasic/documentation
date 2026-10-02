@@ -24,12 +24,14 @@
 //   - wrapProbe (scripts/lib/tb-probe.mjs), which moves a tbrun probe's
 //     [RunAfterBuild] to a wrapper; a Sub it wraps wrongly runs the wrong code,
 //     and one it misses loses tbrun's check that the probe returned.
+//   - sentinelIndex (the same module), which reads that check from the console;
+//     a line the IDE prints after a return must not read as the probe ending.
 
 import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
 import { parseTargets } from "./lib/attributes-doc.mjs";
 import { createProbes } from "./lib/gate-probes.mjs";
 import { classify } from "./lib/tb-fences.mjs";
-import { SENTINEL, TBRUN_FILE, WRAPPER_SUB, wrapProbe } from "./lib/tb-probe.mjs";
+import { SENTINEL, sentinelIndex, TBRUN_FILE, WRAPPER_SUB, wrapProbe } from "./lib/tb-probe.mjs";
 import { parseTwin } from "./lib/twin-api.mjs";
 import { MODIFIERS, declarationKind } from "./lib/twin-declarations.mjs";
 
@@ -210,5 +212,22 @@ check(
   !wrapProbe([{ name: "Mine.twin", text: "Module TbRun\nEnd Module\n" }]).files.some((f) => f.name === TBRUN_FILE),
   "",
 );
+
+// ---------------------------------------------------------------- sentinelIndex
+// What tbrun reads to tell a probe that returned from one that ended first.
+const WAITING = "[DEBUGGER] Waiting for remaining forms to close...";
+for (const [what, lines, want] of [
+  ["the sentinel last", ["a", SENTINEL], 1],
+  ["a form left loaded", ["a", SENTINEL, WAITING], 1],
+  ["nothing printed before it", [SENTINEL, WAITING], 0],
+  ["no sentinel", ["a", WAITING], -1],
+  ["the probe's own line after it", ["a", SENTINEL, "b"], -1],
+  ["an IDE line other than the wait", [SENTINEL, "[DEBUGGER] closed file #1"], -1],
+  ["the wait line, prefixed", [SENTINEL, `x${WAITING}`], -1],
+  ["an empty console", [], -1],
+]) {
+  const got = sentinelIndex(lines);
+  check(`sentinelIndex: ${what}`, got === want, `got ${got}, want ${want}`);
+}
 
 process.exit(report());

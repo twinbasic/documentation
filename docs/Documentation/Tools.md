@@ -896,7 +896,9 @@ printed all the same. `End` ends a probe that way, and so does an error raised w
 handler in a procedure compiled with LLVM, which ends the run without a report. In the
 staged copy, `tbrun` moves the `[RunAfterBuild]` attribute to a Sub it adds to the same
 module, which calls the probe's Sub and then prints a line of its own. That line is missing
-when the probe did not return, and it is never printed. The attribute is replaced with
+when the probe did not return, and it is never printed. A probe that leaves a form loaded
+has returned too: the IDE prints `[DEBUGGER] Waiting for remaining forms to close...` after
+that line, and `tbrun` prints it. The attribute is replaced with
 spaces, so the line and column numbers in a diagnostic are still the ones in your file.
 `tbrun` warns when it cannot add the wrapper --- the Sub is in a class, takes parameters, or
 is one of several marked --- and the check is then off. A probe that stays silent for longer

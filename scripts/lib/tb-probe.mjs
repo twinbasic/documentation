@@ -21,6 +21,22 @@ export const SENTINEL = "[tbrun] the probe returned";
 export const WRAPPER_SUB = "tbrun_RunProbe";
 export const TBRUN_FILE = "TbRun.twin";
 
+// Lines the IDE prints after the probe's own run has returned. A probe that
+// leaves a form loaded gets this one after SENTINEL (measured, BETA 983 and 995).
+const AFTER_RETURN_RE = /^\[DEBUGGER\] Waiting for remaining forms to close\.\.\.$/;
+
+/**
+ * Where SENTINEL is in a captured console, if the probe returned.
+ *
+ * @param {string[]} lines  the console's lines, blank ends trimmed
+ * @returns {number} SENTINEL's index when only lines the IDE prints after a
+ *   return follow it, else -1
+ */
+export function sentinelIndex(lines) {
+  const at = lines.lastIndexOf(SENTINEL);
+  return at >= 0 && lines.slice(at + 1).every((l) => AFTER_RETURN_RE.test(l)) ? at : -1;
+}
+
 const ATTRIBUTE_RE = /^([ \t]*)\[RunAfterBuild\]/gim;
 const SUB_RE = new RegExp(
   `^[ \\t]*(?:(?:${MODIFIERS})[ \\t]+)*Sub[ \\t]+(\\w+)[ \\t]*(?:\\([ \\t]*\\))?[ \\t]*(?:'.*)?$`,
