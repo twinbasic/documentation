@@ -1,0 +1,6 @@
+' A two-file project with the default references: File > Export Project writes the source of the compiler packages as well.
+Module Startup
+    Public Sub Main()
+        Debug.Print Greeting()
+    End Sub
+End Module

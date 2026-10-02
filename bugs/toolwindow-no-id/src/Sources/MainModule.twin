@@ -1,0 +1,42 @@
+' An add-in with one toolbar button. Clicking it adds two tool windows without an id, and then writes to the first one again.
+Module MainModule
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New NoIdAddin(Host)
+    End Function
+End Module
+
+Private Class NoIdAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+    Private WithEvents NoIdButton As Button
+    Private NoId1 As ToolWindow
+    Private NoId2 As ToolWindow
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "ToolWindow NoId AddIn"
+    End Property
+
+    Private Sub Host_OnProjectLoaded()
+        Set NoIdButton = Host.Toolbars(0).AddButton("NoIdButton", "No id windows")
+        Host.DebugConsole.PrintText "[NoId] loaded"
+    End Sub
+
+    ' Two windows given no id, then the first one written to again.
+    Private Sub NoIdButton_OnClick()
+        Set NoId1 = Host.ToolWindows.Add("Window one")
+        NoId1.Title = "NO ID 1"
+        NoId1.RootDomElement.ChildDomElements.Add("noid1", "div").Properties.innerText = "first"
+        NoId1.Visible = True
+        Set NoId2 = Host.ToolWindows.Add("Window two")
+        NoId2.Title = "NO ID 2"
+        NoId2.RootDomElement.ChildDomElements.Add("noid2", "div").Properties.innerText = "second"
+        NoId2.Visible = True
+        NoId1.RootDomElement.ChildDomElements.Add("noid1again", "div").Properties.innerText = "first again"
+        Host.DebugConsole.PrintText "[NoId] two windows added"
+    End Sub
+End Class

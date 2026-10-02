@@ -1,0 +1,8 @@
+' Hover over the parameters where Probe2 uses them. project.optionExplicit is true.
+Module Symbols
+    Public Sub Probe2(ByVal h As Host, ByVal count As Long, ByVal col As Collection, _
+                      ByVal o As Object, ByVal v As Variant, ByRef r As Host, ByVal s As String)
+        Dim d As Host
+        Debug.Print h Is Nothing, count, col Is Nothing, o Is Nothing, IsEmpty(v), r Is Nothing, s, d Is Nothing
+    End Sub
+End Module

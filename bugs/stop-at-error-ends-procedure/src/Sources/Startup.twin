@@ -1,0 +1,25 @@
+' Run it with F5. FillTable fails, at the line marked FAILS, and Main prints a line after calling it.
+' To try a failed assertion instead, change the call in Main from FillTable to TestPadLeft.
+Module Startup
+    Public Sub Main()
+        Debug.Print "main start"
+        FillTable
+        Debug.Print "main after call"
+    End Sub
+
+    Private Sub FillTable()
+        Dim a(3) As Long, i As Long, idx As Long = 5
+        For i = 0 To 2
+            Debug.Print "loop " & i
+            a(idx) = i ' FAILS
+            Debug.Print "after fail " & i
+        Next
+        Debug.Print "fill end"
+    End Sub
+
+    Private Sub TestPadLeft()
+        Debug.Print "test start"
+        Assert.Exact.AreEqual "   hi", "hi" ' FAILS
+        Debug.Print "test after assert"
+    End Sub
+End Module

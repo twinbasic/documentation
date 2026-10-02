@@ -61,6 +61,10 @@ How the four duties above fit it:
 - **Additional context** gives what did not reproduce it, the severity, and the builds it
   was checked on besides the one above.
 
+**An entry's paragraphs and list items are not wrapped**, one line each, unlike the rest of
+this file. A GitHub issue renders a single newline as a line break, so a wrapped paragraph
+pastes with a break in mid-sentence. Entries are separated by a `---` line.
+
 Anything meant for this repository alone (which test asserts the behaviour, which page
 states it, what to update when it is fixed) goes in an HTML comment at the end of the entry.
 GitHub does not render a comment, so it is harmless if pasted along with the rest.
@@ -195,15 +199,11 @@ costs the whole batch its result, which is why that tool isolates the sample on 
 ## An `Interface` that extends itself compiles without a diagnostic, and Build then does nothing
 
 **Describe the bug**
-An interface that extends itself, directly or through another interface, compiles with no
-error, warning, hint or info. Building the project then does nothing at all: clicking
-**Build** writes nothing to the DEBUG CONSOLE, opens no dialog and creates no file, and the
-IDE stays responsive. A cycle through classes or UDTs is refused at compile time instead.
+An interface that extends itself, directly or through another interface, compiles with no error, warning, hint or info. Building the project then does nothing at all: clicking **Build** writes nothing to the DEBUG CONSOLE, opens no dialog and creates no file, and the IDE stays responsive. A cycle through classes or UDTs is refused at compile time instead.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Open `interface-extends-itself.twinproj` (attached as `interface-extends-itself.zip`). Its
-   three source files hold the whole bug:
+1. Open `interface-extends-itself.twinproj` (attached as `interface-extends-itself.zip`). Its three source files hold the whole bug:
    ```
    ' SelfCycle.twin
    Interface IA Extends IA
@@ -219,8 +219,7 @@ Steps to reproduce the behavior:
    ```
 2. See the project compile with 0 errors, 0 warnings, 0 hints and 0 infos.
 3. Click **Build**.
-4. See nothing happen: no `[BUILD] Starting...` line in the DEBUG CONSOLE, no message, no
-   output file.
+4. See nothing happen: no `[BUILD] Starting...` line in the DEBUG CONSOLE, no message, no output file.
 
 Any one of the three files is enough on its own; so is `IB` and `IC` in one file.
 
@@ -240,15 +239,9 @@ Failing that, a build that reports why it stopped.
  - twinBASIC compiler version: BETA 995
 
 **Additional context**
-Also on BETA 983, identically. The same project without the cyclic interfaces builds in
-about 16 seconds on both, and so does one with an ordinary chain, `Interface IQ Extends IP`.
-Severity: invalid code is accepted, and the only symptom is a Build button that silently
-does nothing.
+Also on BETA 983, identically. The same project without the cyclic interfaces builds in about 16 seconds on both, and so does one with an ordinary chain, `Interface IQ Extends IP`. Severity: invalid code is accepted, and the only symptom is a Build button that silently does nothing.
 
-<!-- Measured with scripts/bug_repro.mjs and tbbuild --build (exit 5, "the build did not
-start in 120 s") on 995 and 983, control and IQ-extends-IP chain built; the silent Build
-button seen by hand on 995 (IDE shown). The class and UDT rows measured on 995 the same way.
-Found while looking for a compiler crash that needs two files. -->
+<!-- Measured with scripts/bug_repro.mjs and tbbuild --build (exit 5, "the build did not start in 120 s") on 995 and 983, control and IQ-extends-IP chain built; the silent Build button seen by hand on 995 (IDE shown). The class and UDT rows measured on 995 the same way. Found while looking for a compiler crash that needs two files. -->
 
 ---
 
@@ -790,128 +783,168 @@ the other way round: `"2" \ b` is the `Long` -2.
 
 ## Export Project follows a directory junction in its folder and deletes what it points to
 
-**Build:** BETA 995 (`ide-test.bat`'s `export` lane asserts it)
-**Severity:** data loss outside the folder the user chose. Export Project empties its folder
-before writing, as the *Export Path* setting warns; it does not stop at a junction.
+**Describe the bug**
+**File → Export Project** empties its export folder before it writes, as the *Export Path* setting warns. It does not stop at a directory junction in that folder: it goes through the junction, deletes the files in the folder the junction points to, and then deletes the junction. Data outside the export folder is lost, and the only record is the Debug Console, with *Export Verbose* on.
 
-1. In the export folder, make a junction to another folder that holds a file:
-   `mklink /J <target>\linked <outside>`, with `<outside>\precious.txt`.
-2. Run **File → Export Project** into `<target>`, with *Export Verbose* on.
-3. The Debug Console shows:
+**To Reproduce**
+**This deletes files.** Do it only in a scratch folder made for this, `<S>` below, for example `C:\Scratch\junction-test`. Everything in `<S>\outside` is deleted.
+
+Steps to reproduce the behavior:
+1. Open `export-follows-junction.twinproj` (attached as `export-follows-junction.zip`), after unzipping it into `<S>`. Its *Export Path* is `${SourcePath}\export` and *Export Verbose* is on (Project Settings, Export).
+2. In a Command Prompt, make the export folder, a folder outside it that holds a file, and a junction in the export folder to that folder:
    ```
-   [EXPORT]  DELETED: \\?\<target>\linked\precious.txt
-   [EXPORT]  DELETED: \\?\<target>\linked
+   mkdir <S>\export
+   mkdir <S>\outside
+   echo keep me> <S>\outside\precious.txt
+   mklink /J <S>\export\linked <S>\outside
    ```
-   and `<outside>` is empty afterwards.
+3. Choose **File → Export Project**.
+4. The Debug Console shows:
+   ```
+   [EXPORT]  DELETED: \\?\<S>\export\linked\precious.txt
+   [EXPORT]  DELETED: \\?\<S>\export\linked
+   ```
+   and `<S>\outside` is empty afterwards.
 
-**What does not reproduce it:** the command-line `export` verb, which deletes nothing.
+**Expected behavior**
+The export deletes the junction itself, or leaves it alone, and never what it points to. A junction (or symbolic link) is not part of the export folder's contents.
 
-**Found by** the Export Project probe for round 8's UC-55, which drove the IDE's own
-`exportProjectTo()` over DevTools on a scratch folder.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: data loss outside the folder the user chose. The command-line `export` verb does not reproduce it: it deletes nothing.
+
+<!-- Asserted by `ide-test.bat --only export` (test/ide/export.test.mjs, "a junction in the export folder is followed, and its target emptied"), which calls the IDE's own `exportProjectTo()` over DevTools on a folder in the lane's work folder; passes on BETA 995. Found by the Export Project probe for round 8's UC-55. When fixed: update that test, docs/IDE/Menu/File.md and docs/IDE/Project Settings.md if they warn about it. The reproducer is mode manual: its steps are what a person does in the IDE, and nothing here changes the reader's registry. -->
 
 ---
 
 ## Export Project stops at a read-only file after deleting everything before it, and the IDE reports nothing
 
-**Build:** BETA 995 (`ide-test.bat`'s `export` lane asserts it)
-**Severity:** a partly emptied folder, with the only record in the Debug Console. On a Git
-working copy it breaks the repository, because Git makes its object files read-only.
+**Describe the bug**
+When the export folder holds a read-only file, **File → Export Project** deletes the files and folders that sort before it, fails to delete the read-only one, and stops. Nothing is exported. The only record is three lines in the Debug Console: no dialog opens, and the compiler's response to the IDE is code 0, so the user is left with a half-emptied folder and no sign that the export failed.
 
-1. Put a read-only file in the export folder among other files.
-2. Run **File → Export Project** into it.
-3. The Debug Console shows:
+**To Reproduce**
+Do it in a scratch folder made for this, `<S>` below, for example `C:\Scratch\readonly-test`. **File → Export Project** empties `<S>\export`.
+
+Steps to reproduce the behavior:
+1. Open `export-stops-at-readonly-file.twinproj` (attached as `export-stops-at-readonly-file.zip`), after unzipping it into `<S>`. Its *Export Path* is `${SourcePath}\export` and *Export Verbose* is on (Project Settings, Export).
+2. In a Command Prompt, make three files in the export folder and mark the middle one read-only:
    ```
-   [EXPORT]  DELETE FAILED: \\?\<target>\readonly.txt
+   mkdir <S>\export
+   echo x> <S>\export\a-first.txt
+   echo x> <S>\export\m-readonly.txt
+   echo x> <S>\export\z-last.txt
+   attrib +R <S>\export\m-readonly.txt
+   ```
+3. Choose **File → Export Project**.
+4. The last three lines of the Debug Console are:
+   ```
+   [EXPORT]  DELETE FAILED: \\?\<S>\export\m-readonly.txt
    [EXPORT]  ERROR: unable to clean the output folder
    [EXPORT] export failed.
    ```
-   The files and folders that sort before the read-only one are already deleted, nothing is
-   exported, and no dialog appears: the compiler's response to the IDE is code 0.
+   `<S>\export` now holds `m-readonly.txt` and `z-last.txt`: `a-first.txt`, which sorts before the read-only file, is deleted, and nothing was exported.
+5. Afterwards: `attrib -R <S>\export\m-readonly.txt`.
 
-On a `git init` working copy with a commit, it deletes `.git\config`, `HEAD`, `index`, `hooks`
-and `info`, then stops at the first object file. `git status` there reports
-`fatal: not a git repository`.
+On a `git init` working copy with a commit, the same export deletes `.git\config`, `HEAD`, `index`, `hooks` and `info`, then stops at the first object file. `git status` there reports `fatal: not a git repository`.
 
-**What does not reproduce it:** a folder with no read-only file, which is emptied and exported
-completely --- `.git` included, with no prompt.
+**Expected behavior**
+Either the export deletes nothing when it cannot empty the whole folder, or it reports the failure to the user in a dialog, as for any other error, and says what it left behind. A failed clean-up should not leave the folder half emptied without a visible message.
 
-**Found by** the same probe.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: a partly emptied folder, with the only record in the Debug Console. On a Git working copy it breaks the repository, because Git makes its object files read-only.
+
+A folder with no read-only file does not reproduce it: it is emptied and exported completely, `.git` included, with no prompt.
+
+<!-- Asserted by `ide-test.bat --only export` (test/ide/export.test.mjs, "a read-only file stops the export part-way, and the IDE reports nothing"), which also checks that no message box is open; passes on BETA 995. The Git working-copy case was measured earlier on a `git init` folder and is not in the lane. Found by the same Export Project probe as the junction entry. When fixed: update that test and docs/IDE/Menu/File.md. -->
 
 ---
 
 ## Export Path refuses `${SourcePath}` alone, but not the same folder written as a path
 
-**Build:** BETA 995
-**Severity:** the project file is deleted when the export folder is the folder that holds it.
+**Describe the bug**
+The Settings editor refuses `${SourcePath}` as the *Export Path*, because **File → Export Project** empties its folder and `${SourcePath}` is the folder that holds the project file. The check compares the text only: the same folder typed in full is accepted, and the compiler applies no check of its own. An export into the project's own folder deletes the project file.
 
-The Settings editor's check on `project.exportPath` in `ide/main.js` compares the text with
-`${sourcepath}` and `${sourcepath}\`, with the message "This would DELETE the project file, as
-the `Export Project` command empties the output folder before exporting". It does not resolve
-the path. The compiler applies no check of its own: an export into the project's own folder
-logged `[EXPORT]  DELETED: \\?\<folder>\<project>.twinproj` and completed. A **Save** afterwards
-wrote the file back; closing without saving loses it.
+**To Reproduce**
+**This deletes the project file.** Do it in a scratch folder made for this, `<S>` below, for example `C:\Scratch\sourcepath-test`, which holds nothing but the unzipped project.
 
-**Found by** the same probe. The compiler's side was measured, by calling `exportProjectTo()`
-with the folder, and `ide-test.bat`'s `export` lane asserts it; that the editor accepts the
-same folder typed as a path is read from the check's code, not tried. The Save that writes
-the file back was seen on BETA 983 only.
+Steps to reproduce the behavior:
+1. Open `export-path-sourcepath-as-path.twinproj` (attached as `export-path-sourcepath-as-path.zip`), after unzipping it into `<S>`, so that it is the only file there. *Export Verbose* is on.
+2. In Project Settings, Export, set *Export Path* to `${SourcePath}`. The editor refuses it: "${SourcePath} on it's own is not allowed. This would DELETE the project file, as the `Export Project` command empties the output folder before exporting."
+3. Set it to `<S>` written out in full instead (`C:\Scratch\sourcepath-test`). The editor accepts it. Apply.
+4. Choose **File → Export Project**.
+5. The Debug Console shows `[EXPORT]  DELETED: \\?\<S>\export-path-sourcepath-as-path.twinproj`, and then `[EXPORT] COMPLETED`. The project file is no longer on disk. The project is still open, and **Save Project** writes the file back; closing without saving loses it.
+
+**Expected behavior**
+The check resolves the path, so that any spelling of the project's own folder (or a folder above it that the export would empty, down to the project file) is refused alike. Failing that, the compiler refuses to delete the project file it was exporting.
+
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: the project file is deleted when the export folder is the folder that holds it.
+
+The check is the `validate` function of `project.exportPath` in `ide/main.js`. It compares the lower-cased text with `${sourcepath}` and `${sourcepath}\`, and does not resolve the path. The compiler's side was measured by calling `exportProjectTo()` with the project's own folder: it logged `[EXPORT]  DELETED: \\?\<folder>\<project>.twinproj` and completed. That the editor accepts the same folder typed as a path (step 3) is read from the check's code, not tried by hand. The **Save** that writes the file back (step 5) was seen on BETA 983 only.
+
+<!-- Asserted by `ide-test.bat --only export` (test/ide/export.test.mjs, "an export into the project's own folder deletes the project file"), which exports into the project's own folder with exportProjectTo() over DevTools; passes on BETA 995. The validate() text was read again in BETA 995's ide/main.js. Found by the same Export Project probe as the junction entry. When fixed: update that test, docs/IDE/Menu/File.md ("accepts the same folder written out in full") and docs/IDE/Project Settings.md, Export Path. -->
 
 ---
 
 ## Export Project writes the compiler packages, which the project does not hold, and the command line cannot pack the result
 
-**Build:** BETA 995 for the export and the command line's `import` of it, which
-`ide-test.bat`'s `export` lane asserts; the IDE's own import and the dead copy were measured
-on BETA 983
-**Severity:** the IDE's export of a project cannot be packed back into a project by the
-supported tool, so it cannot serve for version control; and a two-file project exports as
-477 files.
+**Describe the bug**
+**File → Export Project** writes a `Packages` folder holding the full source of the compiler packages the project uses: `VB`, `VBA`, `VBRUN` and `AppGlobalClassProject` for a project with the default references. That is 475 of the 477 files an export of a two-file project wrote. The project file does not hold them: a `.twinproj` the IDE saved holds only the packages the project embeds, and `twinBASIC_win32.exe export` of it writes only those.
 
-**File → Export Project** writes a `Packages` folder holding the full source of the compiler
-packages the project uses: `VB`, `VBA`, `VBRUN` and `AppGlobalClassProject` for a project
-with the default references --- 475 of the 477 files an export of a two-file project wrote.
-The project file does not hold them. A `.twinproj` the IDE saved holds only the packages the
-project embeds, and `twinBASIC_win32.exe export` of it writes only those: for a project
-embedding WinDevLib, `Packages\WinDevLib` and no other package.
+The result is an export that cannot be packed back into a project by the supported tool, so it cannot serve for version control, and a two-file project exports as 477 files. `twinBASIC_win32.exe import` stops with exit code 999 and writes nothing on any folder under `Packages`.
 
-Then, on that 477-file export:
+**To Reproduce**
+Do it in a scratch folder made for this, `<S>` below, for example `C:\Scratch\packages-test`. **File → Export Project** empties `<S>\export`. `<IDE>` is the folder that holds `twinBASIC.exe`.
 
-- `twinBASIC_win32.exe import x.twinproj <export>\` stops with exit code 999 and writes
-  nothing (the `import` entry above), as it does for any folder under `Packages`;
-- the standalone script packs it, into a 4,220,723-byte project, against 2,055 bytes for the
-  same export with `Packages` removed. The project now embeds its own copy of the four
-  compiler packages. It compiles with no errors;
-- the IDE's own **New Project → Import from folder...** does the same, into a
-  4,222,833-byte project, against 4,207 bytes from the export with `Packages` removed.
+Steps to reproduce the behavior:
+1. Open `export-writes-compiler-packages.twinproj` (attached as `export-writes-compiler-packages.zip`), after unzipping it into `<S>`. It has two files and the default references. Its *Export Path* is `${SourcePath}\export`. In a Command Prompt: `mkdir <S>\export`.
+2. Choose **File → Export Project**.
+3. `<S>\export\Packages` holds the source of `VB`, `VBA`, `VBRUN` and `AppGlobalClassProject`.
+4. In a Command Prompt:
+   ```
+   "<IDE>\bin\twinBASIC_win32.exe" import <S>\repacked.twinproj <S>\export\ --overwrite
+   ```
+   It stops with exit code 999 and writes nothing.
+5. For comparison, `"<IDE>\bin\twinBASIC_win32.exe" export <S>\export-writes-compiler-packages.twinproj <S>\fromfile\ --overwrite` writes three files (`Settings` and the two sources) and an empty `Packages` folder, because the project file holds no package. (For a project embedding WinDevLib it writes `Packages\WinDevLib` and no other package.)
 
-**The embedded copy is dead, and every later export writes it back.** Measured on the
-IDE's import (round 10):
+Then, on the 477-file export:
+- the standalone script `scripts/impexp.mjs` packs it into a 4,220,723-byte project, against 2,055 bytes for the same export with `Packages` removed. The project now embeds its own copy of the four compiler packages. It compiles with no errors;
+- the IDE's own **New Project → Import from folder...** does the same, into a 4,222,833-byte project, against 4,207 bytes from the export with `Packages` removed.
 
+**The embedded copy is dead, and every later export writes it back.** Measured on the IDE's import:
 1. Export a project with the default references into an empty folder `E`.
-2. In `E\Packages\VBA\Sources\Math.twin`, add `Public Function ProbeEmbeddedMarker() As
-   Long` before `End Module`, and a call to it in one of the project's own modules.
-3. **Import from folder...** on `E`: TB5079, *Unrecognized symbol 'ProbeEmbeddedMarker'*.
-   The compiler uses its own VBA package, not the copy the project now holds.
-4. Save the project, and export it again: the Debug Console reports
-   `[EXPORT] COMPLETED (139 folders, 954 files)`, against `(72 folders, 479 files)` before,
-   and the exported `Math.twin` holds the marker. The export writes both copies to the same
-   paths, the embedded one last.
+2. In `E\Packages\VBA\Sources\Math.twin`, add `Public Function ProbeEmbeddedMarker() As Long` before `End Module`, and a call to it in one of the project's own modules.
+3. **Import from folder...** on `E`: TB5079, *Unrecognized symbol 'ProbeEmbeddedMarker'*. The compiler uses its own VBA package, not the copy the project now holds.
+4. Save the project, and export it again: the Debug Console reports `[EXPORT] COMPLETED (139 folders, 954 files)`, against `(72 folders, 479 files)` before, and the exported `Math.twin` holds the marker. The export writes both copies to the same paths, the embedded one last.
 
-So a project kept in Git through *Export After Save* and rebuilt from a clone keeps committing
-the package source of the IDE that first exported it, while it compiles against the current
-IDE's. Expected: a `.twinproj` the IDE saves holds no compiler packages, so **Import from
-folder** could skip them, or the export could write the IDE's own copy rather than the
-project's.
+So a project kept in Git through *Export After Save* and rebuilt from a clone keeps committing the package source of the IDE that first exported it, while it compiles against the current IDE's.
 
-**What does not reproduce it:** the command line's own `export`, which writes what the
-project file holds; and **Import from folder** on the export with the compiler packages'
-folders removed, which gives the 4,207-byte project, compiles, and exports 479 files.
+**Expected behavior**
+A `.twinproj` the IDE saves holds no compiler packages, and so the export of it should not write them either; or **Import from folder** (and `import`) should skip the compiler packages' folders, or the export should write the IDE's own copy rather than the project's. The IDE's export of a project should pack back into the same project with the supported tool.
 
-**Found by** checking round 9's UC-62 answer, which sets up *Export After Save* into a Git
-repository and rebuilds the project from a fresh clone with the tB executable. The export was
-round 8's, written by the IDE's `exportProjectTo()` over DevTools. The dead copy was measured
-following round 10's UC-66, the fresh clone, with `root.loadProjectFromFolder()` --- what the
-dialog calls after its folder picker --- and `root.saveProjectAs()` over DevTools.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: the IDE's export of a project cannot be packed back into a project by the supported tool, so it cannot serve for version control; and a two-file project exports as 477 files.
+
+Measured on BETA 995: the export writing `Packages\VBA` and the others, and the command line's `import` of it stopping with 999. The IDE's own import, the 4,222,833-byte project and the dead copy were measured on BETA 983. The two byte counts for the standalone script come from the earlier export, not from the reproducer project, whose two files differ a little.
+
+What does not reproduce it: the command line's own `export`, which writes what the project file holds; and **Import from folder** on the export with the compiler packages' folders removed, which gives the 4,207-byte project, compiles, and exports 479 files.
+
+<!-- Asserted by `ide-test.bat --only export` (test/ide/export.test.mjs: "an export into an empty folder writes the compiler packages" and "the command line's import refuses the IDE's export, for its compiler packages"); passes on BETA 995. The reproducer is manual because the export is a menu command. Found by checking round 9's UC-62 answer (Export After Save into a Git repository, rebuilt from a fresh clone with the tB executable); the export was round 8's, from exportProjectTo() over DevTools. The dead copy was measured after round 10's UC-66, with root.loadProjectFromFolder() and root.saveProjectAs(). When fixed: update that test, the `import` entry about exit 999 on a folder inside Packages, and docs/Features/Packages/Import-export tool.md and docs/IDE/Menu/File.md if they warn about it. -->
 
 ---
 
@@ -981,50 +1014,90 @@ and as the built EXE, with identical results.
 
 ## A step key pressed on the line that raised an error leaves a step pending
 
-**Build:** BETA 995 (`ide-test.bat`'s `debugger` lane asserts it)
-**Severity:** the debugger stops where it was not asked to, and one command no longer means one
-thing.
+**Describe the bug**
+At a run-time error the debugger shows the error panel. Pressing a step key (F8, F10, F11 or Shift+F8) on the failing line re-runs the line, the error recurs and the mark does not move, as expected. But the step is then still pending: choosing **Ignore (Resume Next)** afterwards stops at the next line instead of running on, and the next F5 is used up as well. One command no longer means one thing, and the debugger stops where it was not asked to.
 
-1. Run a procedure that raises an untrapped error inside a loop, and let the error panel open.
-2. Press F8 (or F10, F11, SHIFT+F8) on the failing line. The line re-runs, the error recurs,
-   and the mark does not move --- as expected.
-3. Now choose **Ignore (Resume Next)**. It stops at the next line instead of running on.
-   Moving past the line with **Set Next Statement** (CTRL+F9) instead, each F5 then advances
-   one line.
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `step-key-leaves-step-pending.twinproj` (attached as `step-key-leaves-step-pending.zip`) and press F5. `FillTable` raises an error inside a loop, at the line marked `FAILS`:
+   ```
+   Private Sub FillTable()
+       Dim a(3) As Long, i As Long, idx As Long = 5
+       For i = 0 To 2
+           Debug.Print "loop " & i
+           a(idx) = i ' FAILS
+           Debug.Print "after fail " & i
+       Next
+       Debug.Print "fill end"
+   End Sub
+   ```
+   The error panel opens. The Debug Console shows `main start` and `loop 0`.
+2. Press F8 on that line. The line runs again, the error recurs and the mark does not move.
+3. In the error panel choose **Ignore (Resume Next)**.
+4. It stops at the next line, `Debug.Print "after fail " & i`, which has not run (`after fail 0` is not in the Debug Console).
+5. Press F5. Instead of running on from there, it runs to the loop's next error: the Debug Console now ends with `after fail 0` and `loop 1`, and the error panel is open again. The step F8 asked for was used up by that one stop.
 
-In `ide-test.bat`'s `debugger` lane, on BETA 983 and 995 alike, the waiting step is used up by
-that one stop: the next F5 runs on to the loop's next error. An earlier run by hand, followed to
-the end, saw it last until the procedure returned; what differed there is not known.
+**Expected behavior**
+**Ignore (Resume Next)** runs on from the next line, whether or not a step key was pressed on the failing line first, as the panel says.
 
-**What does not reproduce it:** choosing **Ignore** without pressing a step key first, which
-runs on from the next line as the panel says.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
 
-**Found by** the IDE debugging probe for round 8's UC-61, driving real keys over DevTools.
+**Additional context**
+Also on BETA 983, identically. Moving past the failing line with **Set Next Statement** (Ctrl+F9) instead, each F5 then advances one line. An earlier run by hand, followed to the end, saw the pending step last until the procedure returned; what differed there is not known, and in the lane the step is used up by the one stop, as above.
+
+What does not reproduce it: choosing **Ignore** without pressing a step key first, which runs on from the next line, to the next pass's error, as the panel says. Severity: the debugger stops where it was not asked to.
+
+<!-- Asserted by `ide-test.bat --only debugger` (test/ide/debugger.test.mjs: "F8 on the failing line runs it again...", "after F8 there, Ignore stops on the next line instead of running on", "Ignore with no step first runs on..."); passes on BETA 995. The reproducer's Startup.twin is test/ide/probes/debugger/Sources/Startup.twin with a different header comment. Found by the IDE debugging probe for round 8's UC-61. When fixed: update that test, the Traps on docs/IDE/Menu/Debug.md and this entry. -->
 
 ---
 
 ## Stop at a run-time error ends only the procedure that raised it
 
-**Build:** BETA 995 (`ide-test.bat`'s `debugger` and `assert` lanes assert it, and pass on BETA 983 as well)
-**Severity:** the program goes on running after the user asked it to stop.
+**Describe the bug**
+When a program raises an untrapped error in the debugger and the error panel opens, **Stop** (the panel's button, the toolbar's Stop, or **Run → End**) ends only the procedure that raised the error. The caller carries on running: statements after the call still execute. The program goes on running after the user asked it to stop. Three runs, the same each time.
 
-A `Sub Main` that calls a procedure which raises an untrapped error, and prints a line after
-the call. At the error panel, choose **Stop** --- the panel's button or the toolbar's. The
-failing procedure ends, and `Main`'s following `Debug.Print` still runs. Three runs, the same
-each time.
+Its worst consequence is a false pass. At a failed `Assert`, whose error is raised by the assertion's own procedure, **Stop** ends only that procedure: the test carries on past the failed check, and a runner in the shape of the Assert tutorial (`Testing-with-Assert.md`) then prints `All PadLeft tests passed.`
 
-**What does not reproduce it:** **Stop** at an ordinary break (a breakpoint or a step), which
-prints `aborted` and ends the whole run.
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `stop-at-error-ends-procedure.twinproj` (attached as `stop-at-error-ends-procedure.zip`) and press F5. `Main` calls `FillTable`, which raises an error at the line marked `FAILS`, and prints a line after the call:
+   ```
+   Public Sub Main()
+       Debug.Print "main start"
+       FillTable
+       Debug.Print "main after call"
+   End Sub
 
-**Its worst consequence is a false pass.** At a failed `Assert` --- whose error is raised by the
-assertion's own procedure --- **Stop**, and **Run → End** too, end only that procedure: the test
-carries on past the failed check, and a runner in the shape `Testing-with-Assert.md` teaches then
-prints `All PadLeft tests passed.` The `assert` lane checks the panel's **Stop** and the Stop
-command that the toolbar and **Run → End** run. By hand on BETA 983, **Ignore (Resume Next)** did
-the same, as it should, and moving execution to the test's `End Sub` with **Set Next Statement**
-and then choosing **Run → End** made it an ordinary break, and the run was aborted (two trials).
+   Private Sub FillTable()
+       Dim a(3) As Long, i As Long, idx As Long = 5
+       For i = 0 To 2
+           Debug.Print "loop " & i
+           a(idx) = i ' FAILS
+           Debug.Print "after fail " & i
+       Next
+       Debug.Print "fill end"
+   End Sub
+   ```
+   The error panel opens. The Debug Console shows `main start` and `loop 0`.
+2. In the error panel choose **Stop**. (Or press the toolbar's Stop, or **Run → End**: the same.)
+3. `FillTable` ends, and `Main` goes on: the Debug Console shows `main after call`.
+4. A failed assertion: in `Main` change the call `FillTable` to `TestPadLeft`, which holds `Assert.Exact.AreEqual "   hi", "hi"` between two `Debug.Print` lines, and press F5. At the error panel choose **Stop**, or **Run → End**. `TestPadLeft` carries on past the failed assertion (`test after assert`) and `Main` prints `main after call`.
 
-**Found by** the same probe; the assertion case by the fix pass for the Assert tutorial.
+**Expected behavior**
+**Stop** ends the whole run, as it does at an ordinary break: nothing more is printed.
+
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Also on BETA 983: both lanes pass there as well. Severity: the program goes on running after the user asked it to stop.
+
+What does not reproduce it: **Stop** at an ordinary break (a breakpoint or a step) prints `aborted` and ends the whole run. By hand on BETA 983, **Ignore (Resume Next)** at the failed assertion did the same as **Stop**, as it should, and moving execution to the test's `End Sub` with **Set Next Statement** and then choosing **Run → End** made it an ordinary break, and the run was aborted (two trials).
+
+<!-- Asserted by `ide-test.bat --only debugger` (test/ide/debugger.test.mjs: "the panel's Stop ends only the failing procedure: Main goes on", "the Stop command, as the toolbar and Run > End give it, does the same", and the control "Stop at an ordinary break ends the whole run") and `ide-test.bat --only assert` (test/ide/assert.test.mjs, the failed-assertion case); all pass on BETA 995. The reproducer's Startup.twin joins the two probes (test/ide/probes/debugger and assert), with the assertion case as TestPadLeft, which is not called until Main is edited; that join was not itself run in a lane. Found by the same probe as the step-key entry; the assertion case by the fix pass for the Assert tutorial. When fixed: update those tests, the NOTE under "Running the tests" in docs/Tutorials/Testing-with-Assert.md, and the Traps on docs/IDE/Menu/Debug.md. -->
 
 ---
 
@@ -1063,70 +1136,95 @@ no arguments (`Static c As Collection = New Collection`); and a `Static` of a va
 
 ## *Import from file...* leaves the imported package unticked
 
-**Build:** BETA 995 (`ide-test.bat`'s `packages` lane asserts it); BETA 983 by hand
-**Severity:** the package is imported but not referenced, and the documentation says it is.
+**Describe the bug**
+In Settings → References → Available Packages, **Import from file...** imports a `.twinpack` but leaves the package unticked. The compiler answers the IDE's `importPackage` request with success and the package's symbol, and the package appears in the Available Packages list, but nothing in the project can use it until the user ticks it by hand. The online import beside it ticks the package it imports.
 
-Settings → References → Available Packages → *Import from file...*, and choose a `.twinpack`. The
-compiler answers the IDE's `importPackage` request with
-`success: true, body: { packageSymbol: "DocProbePkg" }`, and the package appears in the list
-unticked, so nothing in the project can use it until it is ticked by hand.
-`packageLoadFromFile` in `ide/main.js` reads `packageSymbol` from the response itself rather
-than from its `body`, while the online import path beside it, `importPackage`, reads
-`t.body.packageSymbol`.
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `import-package-unticked.twinproj` (attached as `import-package-unticked.zip`). The package to import is in the second attachment, `DocProbePkg.zip`: it holds `DocProbePkg.twinpack`, a package of one function, `DocProbeVersion`.
+2. Open Project Settings → References → Available Packages, press **Import from file...**, and choose `DocProbePkg.twinpack`.
+3. `DocProbePkg` appears in the Available Packages list, unticked. (In the page, the compiler's answer to `importPackage` is `success: true, body: { packageSymbol: "DocProbePkg" }`.)
 
-**Found by** the package probe for round 8's UC-60, which drove the import over DevTools with
-the file's path in place of the native picker.
+**Expected behavior**
+The imported package is ticked, as after the online import, so that **Apply** is all that is left to do.
+
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Also on BETA 983, by hand. Severity: the package is imported but not referenced, and nothing says so.
+
+The cause looks like this. `packageLoadFromFile` in `ide/main.js` reads `packageSymbol` from the response itself (`t.packageSymbol`) rather than from its `body`, so it passes `"/Packages/undefined"` to `getAvailableTypeLibrariesData` and ticks nothing; `importPackage`, the online import beside it, reads `t.body.packageSymbol`. This was read again in BETA 995's `ide/main.js`.
+
+<!-- Asserted by `ide-test.bat --only packages` (test/ide/packages.test.mjs, "the imported package is listed, but not ticked"), which clicks the real button and answers the native file picker from the page; passes on BETA 995. Its probes are test/ide/probes/packages/host and DocProbePkg, the reproducer's own project and package. Found by the package probe for round 8's UC-60. When fixed: update that test and the two Packages pages under docs/Features/Packages ("Importing a package from a TWINPACK file", "Updating a package"), which say the user must tick it. DocProbePkg.zip is not in git (bugs/**/*.zip is ignored): make it from DocProbePkg.twinpack. -->
 
 ---
 
 ## Replacing an embedded package under one Apply keeps running the old copy
 
-**Build:** BETA 995, asserted by `ide-test.bat`'s `packages` lane with the two-Apply path as
-its control; the linked-copy rows below were measured on BETA 983
-**Severity:** the project builds and runs the old package after the user has replaced it.
+**Describe the bug**
+A project embeds a package built locally. In Settings → References, replacing it by another build of the same package (untick the old one, import the new `.twinpack`, tick the new one) and pressing **Apply** once leaves the compiler running the old copy. The console shows only `[COMPILER] Project settings updated`: no compiler restart and no save. Builds and runs keep using the old package.
 
-1. A project embeds a package built locally, `DocProbePkg` v1.
-2. In Settings → References, untick it; *Import from file...* its v2; tick v2; apply once.
-3. The console shows only `[COMPILER] Project settings updated` --- no restart and no save. Builds
-   keep running v1. Save All and then a compiler restart give v2; a restart *without* saving
-   brings v1 back, under a reference numbered 1.1.0.0.
+**To Reproduce**
+Use a machine with no copy of the package in `%APPDATA%\twinBASIC\packages`: a linked copy there makes the bug go away (see below).
 
-Two runs of two, on a machine with no linked copy of the package.
+Steps to reproduce the behavior:
+1. Open `replace-embedded-package-one-apply.twinproj` (attached as `replace-embedded-package-one-apply.zip`). The two package builds are in the second attachment, `DocProbePkg-twinpacks.zip`: `DocProbePkg-v1.twinpack` and `DocProbePkg-v2.twinpack`, whose function `DocProbeVersion` returns 1 and 2.
+2. Embed v1: Project Settings → References → Available Packages → **Import from file...** `DocProbePkg-v1.twinpack`, tick it, **Apply**. Replace the body of `Main` with
+   ```
+   Debug.Print "DocProbeVersion=" & DocProbeVersion()
+   ```
+   and press F5: the Debug Console shows `DocProbeVersion=1`.
+3. Replace it with v2 under one Apply: in References untick `DocProbePkg`, then Available Packages → **Import from file...** `DocProbePkg-v2.twinpack`, tick it, and press **Apply** once.
+4. The Debug Console shows only `[COMPILER] Project settings updated`. Press F5: it prints `DocProbeVersion=1`.
 
-**What does not reproduce it:** the same steps with a linked copy of the package present in
-`%APPDATA%\twinBASIC\packages` (six runs of six), and an apply after the untick followed by
-another after the import and tick (every run): each of those restarts the compiler and saves,
-and v2 runs at once.
+Save All and then a compiler restart give v2. A restart without saving brings v1 back, under a reference numbered 1.1.0.0. Two runs of two, on a machine with no linked copy of the package.
 
-**Found by** the same probe.
+**Expected behavior**
+After the **Apply**, builds and runs use v2, as they do when the same replacement is applied in two steps (below). Or the Apply restarts the compiler and saves, as the first embedding does.
+
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: the project builds and runs the old package after the user has replaced it.
+
+What does not reproduce it: an **Apply** after the untick, followed by another after the import and tick (every run; this is the control in the lane on BETA 995): each of those restarts the compiler and saves, and v2 runs at once. Also the same steps as above with a linked copy of the package present in `%APPDATA%\twinBASIC\packages` (six runs of six, on BETA 983): the same restart and save, and v2 runs.
+
+<!-- Asserted by `ide-test.bat --only packages` (test/ide/packages.test.mjs, "one Apply after the untick, the import and the tick: no restart, no save, and v1 still runs", with "an Apply after the untick and another after the tick" as its control); both pass on BETA 995. The lane's v1 and v2 are generated from test/ide/probes/packages/DocProbePkg the way the reproducer's packages are (version 1 and 2, Return 1 and 2). Found by the package probe for round 8's UC-60. When fixed: update that test and docs/Features/Packages/Updating a package.md. The two package zips are not in git; make them from the .twinpack files. -->
 
 ---
 
 ## Embedding a package with no `Packages` folder puts the compiler in a crash loop
 
-**Build:** BETA 995
-**Severity:** low. The input is invalid, and nothing in a normal workflow makes it: every package
-the IDE writes has the folder, and `scripts/impexp.mjs` and `impexp.py` add it when a tree
-lacks it. A crash is still a poor answer to it.
+**Describe the bug**
+A `.twinpack` whose tree has no `Packages` folder, imported through Settings → References → Available Packages → **Import from file...**, ticked and applied, makes the compiler crash on each restart: `restarting from FILE` four times about two seconds apart, and then the IDE reports "Compiler crash loop detected. Restarting in SAFE mode."
 
-1. Pack a package tree that has no `Packages` folder into a `.twinpack`. The tB executable's
-   `import` packs such a tree as it is; the repository's scripts no longer do. The tree may lack
-   `ImportedTypeLibraries` and `Miscellaneous` as well; neither matters.
-2. In a project, Settings → References → Available Packages → *Import from file...* the
-   `.twinpack`, tick it, and apply.
-3. The console shows `[PROJECT] twinBASIC project saving to disk [DONE]`, then `restarting from
-   FILE` four times about two seconds apart, and the IDE reports "Compiler crash loop detected.
-   Restarting in SAFE mode."
+**To Reproduce**
+The package is invalid input, and it crashes the compiler four times: use an IDE you can restart.
 
-An empty `Packages` folder in the package tree is enough to prevent it: the same steps with that
-folder alone, or with all three, restart the compiler once and run the package.
+Steps to reproduce the behavior:
+1. Open `embed-package-without-packages-folder.twinproj` (attached as `embed-package-without-packages-folder.zip`). The package is in the second attachment, `DocProbePkg-nopackages.zip`: `DocProbePkg-nopackages.twinpack`, a package of one function, packed by `twinBASIC_win32.exe import` from a tree with a `Settings` file and `Sources\DocProbe.twin` and no other folder (the tree is `package\DocProbePkg` in the reproducer). The `import` verb writes `<name>.twinproj`; the file was renamed to `.twinpack`. The tree may lack `ImportedTypeLibraries` and `Miscellaneous` as well; neither matters.
+2. In the project, Settings → References → Available Packages → **Import from file...** `DocProbePkg-nopackages.twinpack`, tick it, and **Apply**.
+3. The Debug Console shows `[PROJECT] twinBASIC project saving to disk [DONE]`, then `restarting from FILE` four times about two seconds apart, and the IDE reports "Compiler crash loop detected. Restarting in SAFE mode."
 
-**What does not reproduce it:** a project with the same package already embedded under
-`Packages\DocProbePkg`, without the folder, and opened cold compiles clean (also on BETA 983). So the loop needs the package to be embedded by the IDE.
-BETA 983 has not been tried through the IDE: in a lane its References page never finishes loading.
+**Expected behavior**
+The compiler embeds the package, or refuses it with a diagnostic, and does not crash.
 
-**Found by** `ide-test.bat`'s `packages` lane, with the package's folders varied one at a time,
-and one run watched with `--show`.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low. The input is invalid, and nothing in a normal workflow makes it: every package the IDE writes has the folder, and `scripts/impexp.mjs` and `impexp.py` add it when a tree lacks it. A crash is still a poor answer to it.
+
+An empty `Packages` folder in the package tree is enough to prevent it: the same steps with that folder alone, or with all three (`DocProbePkg-control.twinpack` in the same attachment, which `impexp.mjs` made), restart the compiler once and run the package.
+
+What does not reproduce it: a project with the same package already embedded under `Packages\DocProbePkg`, without the folder, and opened cold compiles clean (also on BETA 983). So the loop needs the package to be embedded by the IDE. BETA 983 has not been tried through the IDE: in a lane its References page never finishes loading.
+
+<!-- Measured on BETA 995 with the packages lane's host and package, with the package's three empty folders varied one at a time: only the missing `Packages` folder made the lane's embedding Apply end in the crash loop, and one run was watched with --show. That variant is no longer in the lane, because test/ide/packages.test.mjs now packs DocProbePkg with impexp.mjs, which adds the folders (its header comment says why), so no lane asserts this entry today; the reproducer's package (made with the tB executable, no folders at all) and the host project were not run through the IDE again. Retry by hand, or put the variant back into the lane, before filing. When fixed: update the header comment of test/ide/packages.test.mjs. The two package zips are not in git; make them from the .twinpack files. -->
 
 ---
 
@@ -1242,11 +1340,8 @@ that the IDE appends to an open console line.
 
 ## An add-in's keyboard shortcut does not fire if it includes `{CTRL}` or `{ALT}`
 
-**Build:** BETA 995 (`addin-test.bat`'s `keys` lane asserts it)
-**Severity:** the SDK's own example, `{CTRL}{SHIFT}d` in `KeyboardShortcuts.Add`'s
-description, cannot be used, and nothing says why.
-
-An add-in that registers
+**Describe the bug**
+A shortcut an add-in registers with `Host.KeyboardShortcuts.Add` does not fire when its key string includes `{CTRL}` or `{ALT}`. The SDK's own example, `{CTRL}{SHIFT}d` in the description of `KeyboardShortcuts.Add`, cannot be used, and nothing says why. An add-in that registers
 
 ```
 Host.KeyboardShortcuts.Add "{CTRL}{SHIFT}d", AddressOf OnCtrlShiftD
@@ -1255,115 +1350,138 @@ Host.KeyboardShortcuts.Add "{SHIFT}d", AddressOf OnShiftD
 
 gets `OnShiftD` for Shift+D, and nothing at all for Ctrl+Shift+D.
 
+**To Reproduce**
+`addin-shortcut-ctrl-alt` is an add-in project: building it makes a DLL that the IDE's compiler loads on every start until the DLL is removed. Install it knowingly, in an IDE you can restart, and remove it afterwards.
+
+Steps to reproduce the behavior:
+1. Open `addin-shortcut-ctrl-alt.twinproj` (attached as `addin-shortcut-ctrl-alt.zip`) and build it for Win32. The DLL is written to `Build\AddinShortcutCtrlAlt_win32.dll` beside the project file. Close the IDE, copy the DLL into the IDE's `addins\win32` folder (beside `twinBASIC.exe`), and start the IDE again. Open any project: the Debug Console shows `[KeysProbe] registered`. The add-in registers eight key strings and prints `[KeysProbe] fired <key string>` when one fires:
+   ```
+   .Add "{CTRL}{SHIFT}d", AddressOf CtrlShiftD
+   .Add "{ctrl}d", AddressOf CtrlD
+   .Add "{ALT}f", AddressOf AltF
+   .Add "{SHIFT}D", AddressOf ShiftD
+   .Add "d", AddressOf PlainD
+   .Add "F1", AddressOf F1
+   .Add "{shift}f1", AddressOf ShiftF1
+   .Add "q", AddressOf PlainQ
+   ```
+2. With no text box focused (click an empty part of the toolbar), press D, Shift+D, F1 and Shift+F1, a second apart. Each prints a `fired` line: `d`, `{shift}d`, `f1`, `{shift}f1`.
+3. Press Ctrl+Shift+D, Ctrl+D and Alt+F, a second apart. Nothing is printed for any of them.
+4. Press D, then within half a second Ctrl+D and Ctrl+Shift+D; then F, and within half a second Alt+F. Now all of them print.
+5. Remove the add-in: close the IDE and delete `addins\win32\AddinShortcutCtrlAlt_win32.dll`.
+
 | registered | pressed | fires |
 |---|---|---|
 | `d`, `{SHIFT}D`, `F1`, `{shift}f1` | D, Shift+D, F1, Shift+F1 | yes |
 | `{CTRL}{SHIFT}d`, `{ctrl}d`, `{ALT}f` | Ctrl+Shift+D, Ctrl+D, Alt+F, each more than 0.5 s after any other press of D or F | **no** |
 | the same three | D alone, then Ctrl+D and Ctrl+Shift+D; F alone, then Alt+F, all inside 0.5 s | yes, all three |
 
-The last row shows the cause. `globalKeyUp` in `ide/main.js` matches an add-in's shortcut when
-the key is released, and only if `realKeyPresses` holds a press of the same key from less than
-500 ms before. `globalKeyDown` records a press only
-`if((!e.ctrlKey||e.key==="Control")&&(!e.altKey||e.key==="Alt"))`, so a key pressed with Ctrl
-or Alt held is never recorded. Its release finds either no press, or an earlier one of the same
-key made without the modifier. The IDE's own bindings are unaffected, because they are matched
-on the key-down.
+**Expected behavior**
+Each registered shortcut fires when its keys are pressed, whatever modifiers it names. The SDK's example, `{CTRL}{SHIFT}d`, works.
 
-A smaller point for the same fix: `KeyboardShortcuts.Add` stores the string as given, lowercased
-and without spaces, and the key-up builds the string it looks up as `{ctrl}`, `{shift}`, `{alt}`
-and the key, in that order. So `{SHIFT}{CTRL}d` could never match even with the recording fixed.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
 
-**Observed** on 2026-09-24 with a probe add-in whose shortcuts print to the DEBUG CONSOLE
-(`test/addin/probes/keys`), operated by `test/addin/keys.test.mjs`, which presses keys as CDP
-key events and checks each result. Every case in the table is a test in that lane.
+**Additional context**
+Severity: the SDK's own example cannot be used, and nothing says why.
+
+The last row of the table shows the cause. `globalKeyUp` in `ide/main.js` matches an add-in's shortcut when the key is released, and only if `realKeyPresses` holds a press of the same key from less than 500 ms before. `globalKeyDown` records a press only `if((!e.ctrlKey||e.key==="Control")&&(!e.altKey||e.key==="Alt"))`, so a key pressed with Ctrl or Alt held is never recorded. Its release finds either no press, or an earlier one of the same key made without the modifier. The IDE's own bindings are unaffected, because they are matched on the key-down.
+
+A smaller point for the same fix: `KeyboardShortcuts.Add` stores the string as given, lowercased and without spaces, and the key-up builds the string it looks up as `{ctrl}`, `{shift}`, `{alt}` and the key, in that order. So `{SHIFT}{CTRL}d` could never match even with the recording fixed.
+
+<!-- Asserted by `addin-test.bat --only keys` (test/addin/keys.test.mjs: "P1: plain, Shift and function keys fire", "P1: Ctrl and Alt keys do not fire", "P1: a Ctrl or Alt key fires when the same key was pressed alone just before"), which presses keys as CDP key events and passes on BETA 995 (observed first on 2026-09-24). The reproducer's add-in is test/addin/probes/keys with a new project name and header comment; its DLL name differs, and nothing else. When fixed: update P1 in WIP.HelpAddin.md, the NOTE on docs/Reference/Built-In/tbIDE/KeyboardShortcuts.md, and that test. -->
 
 ---
 
 ## F1 and the fold icon toggle the signature help, then fail
 
-**Build:** BETA 995 for F1 (`addin-test.bat`'s `keys` lane asserts it); the fold icon was
-clicked on BETA 983, and `toggleSigHelp` and both callers are unchanged in BETA 995's `ide/main.js`
-**Severity:** cosmetic --- the toggle works, but every F1 adds `command failed:
-"tbHelp_ToggleExpandSignatureHelp"` to the DEBUG CONSOLE, and every click on the icon throws
-in the page.
+**Describe the bug**
+In the code editor's signature help, F1 and a click on the fold icon both toggle the help between expanded and collapsed, and then fail. Every F1 adds `command failed: "tbHelp_ToggleExpandSignatureHelp"` to the Debug Console, and every click on the icon throws an error in the page. The toggle works, so the error is the only symptom.
 
-1. In the code editor, put the cursor inside a call's parentheses and press Ctrl+Space. The
-   signature help shows, with a fold icon whose tooltip reads *Fold/Collapse (F1)*.
-2. Press F1. The signature help expands, and the DEBUG CONSOLE shows
-   `command failed: "tbHelp_ToggleExpandSignatureHelp"`. F1 again collapses it, with a second
-   such line.
-3. Click the fold icon instead. The signature help toggles, and the page throws
-   `TypeError: Cannot read properties of undefined (reading 'stopPropagation') at toggleSigHelp`.
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `f1-fold-signature-help.twinproj` (attached as `f1-fold-signature-help.zip`) and open `Main.twin`. Put the cursor inside the parentheses of the call `FindTheNeedle(3)` and press Ctrl+Space. The signature help shows, with a fold icon whose tooltip reads *Fold/Collapse (F1)*.
+2. Press F1. The signature help expands, and the Debug Console shows `command failed: "tbHelp_ToggleExpandSignatureHelp"`. F1 again collapses it, with a second such line.
+3. Click the fold icon instead. The signature help toggles, and the page throws `TypeError: Cannot read properties of undefined (reading 'stopPropagation') at toggleSigHelp`.
 
-`toggleSigHelp(e)` in `ide/main.js` ends with `e.stopPropagation();e.preventDefault()`, and
-neither caller passes an event: the command is `internalAction:()=>{toggleSigHelp()}`, and the
-icon is `onclick='toggleSigHelp()'`. The toggle comes first, so the error is the only symptom.
-`executeKeyboardShortcuts` catches the command's error and writes the DEBUG CONSOLE line.
+**Expected behavior**
+The toggle, and no error.
 
-**Observed** on 2026-09-24: the F1 case in `test/addin/keys.test.mjs`, which checks for the
-line, and the click in a harness IDE with `Runtime.exceptionThrown` recorded over CDP.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: cosmetic. The toggle works, but every F1 adds the failure line to the Debug Console, and every click on the icon throws in the page.
+
+`toggleSigHelp(e)` in `ide/main.js` ends with `e.stopPropagation();e.preventDefault()`, and neither caller passes an event: the command is `internalAction:()=>{toggleSigHelp()}`, and the icon is `onclick='toggleSigHelp()'`. The toggle comes first, so the error is the only symptom. `executeKeyboardShortcuts` catches the command's error and writes the Debug Console line.
+
+F1 was measured on BETA 995, in a run where an add-in that registers F1 was loaded (it only shows that the shortcut fires; the IDE's own command is the one that fails). The click on the icon was measured on BETA 983, in a harness IDE with the page's exceptions recorded over CDP; `toggleSigHelp` and both callers are unchanged in BETA 995's `ide/main.js`.
+
+<!-- Asserted by `addin-test.bat --only keys` (test/addin/keys.test.mjs, "P2: F1 while signature help shows toggles it, the IDE reports a failure, and the add-in fires"), which checks for the failure line; passes on BETA 995. The reproducer is the lane's host project (test/addin/host) with header comments, with no add-in, so the F1 step is the lane's minus the add-in's shortcut: not run without it. First observed on 2026-09-24. When fixed: update P2 in WIP.HelpAddin.md and that test. -->
 
 ---
 
 ## Typing just after a file opens at a position puts the text at that position, in reverse
 
-**Build:** BETA 983; `parseDocumentDecorations` and `revealLineInEditor` are unchanged in BETA
-995's `ide/main.js`
-**Severity:** typed text goes to the wrong place and in the wrong order, and nothing shows
-that it happened.
+**Describe the bug**
+For 700 ms after the code editor opens a file at a line and column (Go To Definition, a Find in Files result, an add-in's `Editors.Open`), the IDE puts the cursor back at that place whenever the compiler's decorations for the document arrive. Every edit brings new decorations, and each time the cursor goes back the 700 ms start again. So typing that starts inside the window, and goes on without a 0.7 s pause, puts each character at the opened position, in front of the one before it. Typed text goes to the wrong place and in the wrong order, and nothing shows that it happened.
 
-For 700 ms after the code editor opens a file at a line and column --- Go To Definition, a
-Find in Files result, an add-in's `Editors.Open` --- the IDE puts the cursor back at that
-place whenever the compiler's decorations for the document arrive. Every edit brings new
-decorations, and each time the cursor goes back the 700 ms start again. So typing that
-starts inside the window, and goes on without a 0.7 s pause, puts each character at the
-opened position, in front of the one before it.
+**To Reproduce**
+This was measured by a script. By hand it needs typing without a pause of 0.7 s, which is hard to time.
 
-1. Open `Haystack.twin`, not yet open, at line 4, column 9, through
-   `openEditors.openFile(node, false, false, false, 4, 9)` --- the call Find in Files makes.
-2. 0.3 s later, move the cursor to line 3, column 1, and type `xyz`, one key every 150 ms.
-3. Line 3 starts with `x`, and line 4 reads `        zyDim needleCount As Long`.
+Steps to reproduce the behavior:
+1. Open `typing-after-open-reversed.twinproj` (attached as `typing-after-open-reversed.zip`), with `Haystack.twin` not open in an editor tab.
+2. Open `Haystack.twin` at line 4, column 9 through `openEditors.openFile(node, false, false, false, 4, 9)`, the call Find in Files makes (`node` is the file's entry in the project tree). By hand: Find in Files for `Dim needleCount` (one match, at line 4, column 9), and double-click the result.
+3. 0.3 s later, move the cursor to line 3, column 1, and type `xyz`, one key every 150 ms.
+4. Line 3 starts with `x`, and line 4 reads `        zyDim needleCount As Long`.
 
-`parseDocumentDecorations` in `ide/main.js` ends with
-`if(performance.now()-revealedLineTime<700){revealLineInEditor(revealedLine,revealedLineColumn,revealedLineViewPortTop)}`,
-and `revealLineInEditor` sets the cursor's position and `revealedLineTime` again. Logged in the
-run above: `revealLineInEditor(4,9)` from `gotFileData`, then from `parseDocumentDecorations`
-9 ms later, and again after each key. The same happens for a file that is already open, whose
-`onReveal` calls `revealLineInEditor` too.
+The cause is in `ide/main.js`: `parseDocumentDecorations` ends with `if(performance.now()-revealedLineTime<700){revealLineInEditor(revealedLine,revealedLineColumn,revealedLineViewPortTop)}`, and `revealLineInEditor` sets the cursor's position and `revealedLineTime` again. Logged in the run above: `revealLineInEditor(4,9)` from `gotFileData`, then from `parseDocumentDecorations` 9 ms later, and again after each key. The same happens for a file that is already open, whose `onReveal` calls `revealLineInEditor` too.
 
-**What does not reproduce it:** the same typing started more than 0.7 s after the file opened,
-which puts `xyz` at 3:1 in order. Keeping the view where the reveal left it may be what the
-repeat is for; setting the cursor again is what does the damage.
+**Expected behavior**
+Typing after the file opens puts `xyz` at 3:1, in order. Keeping the view where the reveal left it may be what the repeat is for; setting the cursor again is what does the damage.
 
-**Found by** the add-in harness: `MsgBox(`, typed into the code editor just after opening a
-file at line 5, came out as `gBox(s` at the start of that line, with the `M` on the line below. The harness now waits for the 700 ms to pass after
-opening a file (`afterReveal` in `scripts/lib/tb-operate.mjs`).
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 983 (not measured on BETA 995, see below)
+
+**Additional context**
+Severity: typed text goes to the wrong place and in the wrong order, and nothing shows that it happened.
+
+What does not reproduce it: the same typing started more than 0.7 s after the file opened, which puts `xyz` at 3:1 in order.
+
+Found by the add-in test harness: `MsgBox(`, typed into the code editor just after opening a file at line 5, came out as `gBox(s` at the start of that line, with the `M` on the line below.
+
+BETA 995 was not measured: no lane exercises it. `parseDocumentDecorations` and `revealLineInEditor` are unchanged in BETA 995's `ide/main.js` (the `revealedLineTime<700` test was read again), and the test harness, which runs on BETA 995, still has to wait out the 700 ms before it places a cursor.
+
+<!-- The harness waits it out with `afterReveal` in scripts/lib/tb-operate.mjs, used by openFile, setCursor and select; the keys and symbols lanes pass on BETA 995 through it. No test asserts the bug itself. The reproducer is the lane's host project (test/addin/host) with header comments; Haystack.twin's first line is a comment, so the line numbers above stay as in the entry. Measured with `openEditors.openFile(node,false,false,false,4,9)` over DevTools. To make it assertable: a lane test in test/addin that opens Haystack.twin at 4:9, types without afterReveal, and reads the text. When fixed: remove the wait from `afterReveal` and its comment. -->
 
 ---
 
 ## Hover says a `ByVal` parameter was auto-generated because `Option Explicit` is off
 
-**Build:** BETA 995 (`addin-test.bat`'s `symbols` lane asserts it)
-**Severity:** cosmetic, but it tells the user to turn on an option that is already on, over
-a parameter they declared.
+**Describe the bug**
+In a project with `Option Explicit` on, hovering over a `ByVal` parameter of type `String`, `Variant`, `Object`, a class or tbIDE's `Host` shows a note that the variable was auto-generated because `Option Explicit` is off, and recommends turning it on. The option is on, and the parameter was declared by the user.
 
-In a project with `project.optionExplicit` set to true:
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `hover-byval-option-explicit.twinproj` (attached as `hover-byval-option-explicit.zip`) and open `Symbols.twin`. `project.optionExplicit` is true in its `Settings`. The file holds:
+   ```
+   Public Sub Probe2(ByVal h As Host, ByVal count As Long, ByVal col As Collection, _
+                     ByVal o As Object, ByVal v As Variant, ByRef r As Host, ByVal s As String)
+       Dim d As Host
+       Debug.Print h Is Nothing, count, col Is Nothing, o Is Nothing, IsEmpty(v), r Is Nothing, s, d Is Nothing
+   End Sub
+   ```
+2. Hover over `s` where `Debug.Print` uses it.
+3. The hover shows:
 
-```
-Public Sub Probe2(ByVal h As Host, ByVal count As Long, ByVal col As Collection, _
-                  ByVal o As Object, ByVal v As Variant, ByRef r As Host, ByVal s As String)
-    Dim d As Host
-    Debug.Print h Is Nothing, count, col Is Nothing, o Is Nothing, IsEmpty(v), r Is Nothing, s, d Is Nothing
-End Sub
-```
-
-Hover over `s` where it is used shows
-
-> *parameter* ByVal s As String
->
-> ***note:*** *this variable was auto-generated due to* ***Option Explicit*** *being Off*
->
-> ***recommendation:*** *use Option Explicit and declare variables explicitly*
+   > *parameter* ByVal s As String
+   >
+   > ***note:*** *this variable was auto-generated due to* ***Option Explicit*** *being Off*
+   >
+   > ***recommendation:*** *use Option Explicit and declare variables explicitly*
 
 | hovered | note |
 |---|---|
@@ -1372,50 +1490,66 @@ Hover over `s` where it is used shows
 | `ByRef r As Host` | no |
 | a local, `Dim d As Host` or `Dim c As New Collection` | no |
 
-So it takes `ByVal` and a type that is not a plain number. That looks like a hidden local copy
-that the compiler makes for such a parameter, which the hover then describes as a variable it
-generated for an undeclared name.
+**Expected behavior**
+No note on any of them: `Option Explicit` is on and every one of these names is declared.
 
-**Observed** on 2026-09-24 by sending `textDocument/hover` over the compiler's language socket
-with the parameters the IDE's own hover provider sends (`test/addin/symbols.test.mjs`, which
-checks every row of the table). The text is the markdown the IDE's hover shows.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: cosmetic, but it tells the user to turn on an option that is already on, over a parameter they declared.
+
+So it takes `ByVal` and a type that is not a plain number. That looks like a hidden local copy that the compiler makes for such a parameter, which the hover then describes as a variable it generated for an undeclared name.
+
+This was measured by sending `textDocument/hover` over the compiler's language socket, with the parameters the IDE's own hover provider sends; the text above is the markdown that request returns, which is what the IDE's hover shows. The tooltip itself was not looked at in this run.
+
+<!-- Asserted by `addin-test.bat --only symbols` (test/addin/symbols.test.mjs, "hover says a ByVal parameter of String, Variant, Object or a class was made because Option Explicit is off, which it is not"), which checks every row of the table; passes on BETA 995 (observed first on 2026-09-24). The reproducer is test/addin/probes/symbols reduced to Probe2 and its Settings; the lane's own project also holds the procedures the other hover tests ask about. When fixed: update that test and P5 in WIP.HelpAddin.md. -->
 
 ---
 
 ## Every tool window given no id is the same window
 
-**Build:** BETA 995 (`addin-test.bat`'s `panes` lane asserts it)
-**Severity:** an add-in's windows overwrite each other, or another add-in's, and nothing
-says so. The id is declared `Optional`, so leaving it out looks correct.
+**Describe the bug**
+`Host.ToolWindows.Add` declares its id (`UniqueIdForPositionPersistance`) `Optional`, so leaving it out looks correct. But every tool window added without an id is the same window: the second `Add` returns the window the first one made, after emptying it, and both `ToolWindow` objects are bound to it. An add-in's windows overwrite each other, or another add-in's, and nothing says so.
 
-```
-Set w1 = Host.ToolWindows.Add("First")
-w1.Title = "First"
-w1.RootDomElement.ChildDomElements.Add("one", "div").Properties.innerText = "first"
-w1.Visible = True
-Set w2 = Host.ToolWindows.Add("Second")
-w2.Title = "Second"
-w2.RootDomElement.ChildDomElements.Add("two", "div").Properties.innerText = "second"
-w2.Visible = True
-```
+**To Reproduce**
+`toolwindow-no-id` is an add-in project: building it makes a DLL that the IDE's compiler loads on every start until the DLL is removed. Install it knowingly, in an IDE you can restart, and remove it afterwards.
 
-shows one window, titled `Second` and holding `second` alone. What is then added through
-`w1` goes into that same window.
+Steps to reproduce the behavior:
+1. Open `toolwindow-no-id.twinproj` (attached as `toolwindow-no-id.zip`) and build it for Win32. The DLL is written to `Build\ToolwindowNoId_win32.dll` beside the project file. Close the IDE, copy the DLL into the IDE's `addins\win32` folder (beside `twinBASIC.exe`), and start the IDE again. Open any project: the toolbar has a button, *No id windows*.
+2. Click the button. The add-in runs:
+   ```
+   Set NoId1 = Host.ToolWindows.Add("Window one")
+   NoId1.Title = "NO ID 1"
+   NoId1.RootDomElement.ChildDomElements.Add("noid1", "div").Properties.innerText = "first"
+   NoId1.Visible = True
+   Set NoId2 = Host.ToolWindows.Add("Window two")
+   NoId2.Title = "NO ID 2"
+   NoId2.RootDomElement.ChildDomElements.Add("noid2", "div").Properties.innerText = "second"
+   NoId2.Visible = True
+   NoId1.RootDomElement.ChildDomElements.Add("noid1again", "div").Properties.innerText = "first again"
+   ```
+3. One tool window shows, titled `NO ID 2`, holding `noid2` (`second`) and `noid1again` (`first again`). The first window is gone, and what the add-in added through `NoId1` went into the second window.
+4. Remove the add-in: close the IDE and delete `addins\win32\ToolwindowNoId_win32.dll`.
 
-`createToolWindow` in `ide/main.js` files each window under `e.guid`, which is the
-`UniqueIdForPositionPersistance` argument, and `""` when it is left out.
-`createToolWindowById(e)` returns the window it already has under that id, after
-`n.bodyElement.innerHTML=""`, instead of making another, and the page answers the compiler
-with that window's number, so both `ToolWindow` objects are bound to it. The same reuse is
-what hands an add-in its own window back after a compiler restart, when it asks again for
-the id it used before (`test/addin/reload.test.mjs`), so a fix would give each window without
-an id one of its own rather than change the reuse.
+**Expected behavior**
+Two windows, `NO ID 1` holding `first` and `first again`, and `NO ID 2` holding `second`: each window given no id is a window of its own.
 
-**What does not reproduce it:** a window given an id, or one window given none. None of the
-IDE's add-in samples leaves the id out.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
 
-**Observed** on 2026-09-25 with the panes probe's third button, operated by
-`test/addin/panes.test.mjs`, which reads `toolWindowsById` over CDP.
+**Additional context**
+Severity: an add-in's windows overwrite each other, or another add-in's, and nothing says so. The id is declared `Optional`, so leaving it out looks correct. None of the IDE's add-in samples leaves the id out.
+
+What does not reproduce it: a window given an id, or one window given none.
+
+`createToolWindow` in `ide/main.js` files each window under `e.guid`, which is the `UniqueIdForPositionPersistance` argument, and `""` when it is left out. `createToolWindowById(e)` returns the window it already has under that id, after `n.bodyElement.innerHTML=""`, instead of making another, and the page answers the compiler with that window's number, so both `ToolWindow` objects are bound to it. The same reuse is what hands an add-in its own window back after a compiler restart, when it asks again for the id it used before (`test/addin/reload.test.mjs` in this repository's harness), so a fix would give each window without an id one of its own rather than change the reuse.
+
+<!-- Asserted by `addin-test.bat --only panes` (test/addin/panes.test.mjs, "ToolWindows.Add: two windows given no id are one window, emptied by the second Add"), which reads `toolWindowsById` over CDP and finds one window with id "", titled NO ID 2, holding noid2 and noid1again; passes on BETA 995 (observed first on 2026-09-25). The reproducer's add-in is the panes probe's third button (test/addin/probes/panes) alone, with the two windows' names changed. When fixed: update that test, and the ToolWindows page's note on windows without an id (docs/Reference/Built-In/tbIDE/ToolWindows.md). -->
+
+---
 
 ## `[PopulateFrom]` with no arguments crashes the compiler
 
@@ -1459,6 +1593,8 @@ The same project with `[PopulateFrom("probe")]` builds and reports the one TB508
 rows for `(True)`, `(False)` and `(1)` come from the sweep's batches, not from that
 project.
 
+---
+
 ## `As New` refuses a class whose only constructor has all-`Optional` arguments
 
 **Build:** BETA 995; BETA 983 accepts it and runs it
@@ -1496,6 +1632,8 @@ alike, which is the diagnostic working as intended.
 **Observed** on 2026-10-01 with compile probes through `tbbuild`, each case a project of its
 own, on BETA 995 and BETA 983; the run on 983 was a compiled EXE through `tbrun`.
 
+---
+
 ## `FileCopy` of an open file raises `&H80004005`, where VB6 raises 55 or copies it
 
 **Build:** BETA 995; BETA 983 copied an open file with no error
@@ -1522,6 +1660,8 @@ the `Input` case differ from VB6.
 **Observed** on 2026-10-01: the twinBASIC lines through `tbrun` on BETA 995 and BETA 983, the
 VB6 lines from the same statements compiled by `VB6.EXE /make` and run.
 
+---
+
 ## `Err` after a handled `Err.Raise` in an LLVM-compiled procedure holds `&HEAEAEA01` and no text
 
 **Build:** BETA 995
@@ -1543,6 +1683,8 @@ and with `Err.Raise 1000`, on win32 and win64. A run-time error the procedure ca
 
 **Observed** on 2026-10-01 through `tbrun`, in the IDE's `[RunAfterBuild]` run; not run in a
 built exe.
+
+---
 
 ## `End` in an LLVM-compiled procedure restarts the IDE's compiler
 

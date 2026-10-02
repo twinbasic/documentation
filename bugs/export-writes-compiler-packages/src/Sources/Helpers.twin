@@ -1,0 +1,6 @@
+' The project's second file.
+Module Helpers
+    Public Function Greeting() As String
+        Return "hello"
+    End Function
+End Module
