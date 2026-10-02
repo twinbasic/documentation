@@ -17,6 +17,81 @@ What an entry owes a reader:
   actionable;
 - how it was **observed**, so somebody else can see the same thing.
 
+## The report template
+
+**Each entry is the report**, written to twinBASIC's GitHub bug-report template, so it is
+copied into a new issue as it stands: the entry's `##` title is the issue's title, and
+everything under it, down to the next `---`, is the issue's body. The template:
+
+```
+**Describe the bug**
+A clear and concise description of what the bug is.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Go to '...'
+2. Click on '....'
+3. Scroll down to '....'
+4. See error
+
+**Expected behavior**
+A clear and concise description of what you expected to happen.
+
+**Screenshots**
+If applicable, add screenshots to help explain your problem.
+
+**Desktop (please complete the following information):**
+ - OS: [e.g. Windows 10]
+ - twinBASIC compiler version [e.g. 0.9.1111]
+
+**Additional context**
+Add any other context about the problem here.
+```
+
+How the four duties above fit it:
+
+- **Describe the bug** says what goes wrong, in a sentence or two, and how it was
+  observed.
+- **To Reproduce** starts by opening the entry's reproducer project (see below), then gives
+  the narrowed steps.
+- **Expected behavior** says what should happen instead, and why: what VBA or VB6 does,
+  what the documentation says, or what the IDE does in the neighbouring case.
+- **Screenshots** is left out when there are none.
+- **Desktop** gives the build as `BETA <n>`, the build it was last reproduced on.
+- **Additional context** gives what did not reproduce it, the severity, and the builds it
+  was checked on besides the one above.
+
+Anything meant for this repository alone (which test asserts the behaviour, which page
+states it, what to update when it is fixed) goes in an HTML comment at the end of the entry.
+GitHub does not render a comment, so it is harmless if pasted along with the rest.
+
+**Entry titles do not change.** Comments in `scripts/` and `test/` refer to entries by
+title.
+
+## Reproducer projects
+
+**Every entry has a reproducer project** under `bugs/<slug>/`, where `<slug>` is a short
+kebab-case name for the bug, and its **To Reproduce** names the project file:
+
+| path | what it is | in git |
+|---|---|---|
+| `bugs/<slug>/src/` | the project's exported source tree: `Settings`, `Sources/` and the rest | yes, byte for byte |
+| `bugs/<slug>/<slug>.twinproj` | the project file, packed from `src/` | yes |
+| `bugs/<slug>/<slug>.zip` | the `.twinproj` zipped, because a GitHub issue does not accept a `.twinproj` attachment | no |
+
+Pack the project from its source, then zip it, in PowerShell:
+
+```powershell
+node scripts/impexp.mjs import bugs\<slug>\<slug>.twinproj bugs\<slug>\src --overwrite
+Compress-Archive -Force -Path bugs\<slug>\<slug>.twinproj -DestinationPath bugs\<slug>\<slug>.zip
+```
+
+7-Zip does the same with `7z a -tzip <zip> <twinproj>`; its installer does not put `7z` on
+`PATH`. Not `tar -a`: Git Bash's `tar` writes a tar archive under the `.zip` name and exits 0.
+
+Attach the `.zip` to the issue. When the entry is filed and deleted, its `bugs/<slug>/`
+folder is deleted with it.
+
 ---
 
 ## The recent-projects list fills its empty slots with copies of its last entry
