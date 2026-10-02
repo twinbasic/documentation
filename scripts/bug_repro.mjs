@@ -413,13 +413,15 @@ function loadRepro(slug) {
   }
   const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
   if (!isObject(json)) return bad("", "must be a JSON object");
-  const keys = ["mode", "arch", "llvm", "expect", "cli", "steps"];
+  const keys = ["mode", "arch", "llvm", "exe", "expect", "cli", "steps"];
   for (const key of Object.keys(json)) if (!keys.includes(key)) bad(key, "is not a key repro.json has");
   if (!MODES.includes(json.mode)) bad("mode", `must be one of ${MODES.join(", ")}`);
   const { mode } = json;
   if ("arch" in json && !TARGETS.includes(json.arch)) bad("arch", `must be ${TARGETS.join(" or ")}`);
   if ("llvm" in json && typeof json.llvm !== "boolean") bad("llvm", "must be true or false");
   if (json.llvm && !["build", "run"].includes(mode)) bad("llvm", "applies to the build and run modes only");
+  if ("exe" in json && typeof json.exe !== "boolean") bad("exe", "must be true or false");
+  if (json.exe && mode !== "run") bad("exe", "applies to the run mode only");
   if ("steps" in json && typeof json.steps !== "string") bad("steps", "must be a string");
   if (mode === "cli") {
     if (!Array.isArray(json.cli) || !json.cli.length || !json.cli.every((a) => typeof a === "string")) {
@@ -658,7 +660,7 @@ async function verifyOne(slug, repro, lane) {
     let table;
     if (repro.mode === "cli") r = runCli(slug, repro, o);
     else if (repro.mode === "run") {
-      r = await runProbe(slug, { ...o, llvm: repro.llvm });
+      r = await runProbe(slug, { ...o, llvm: repro.llvm, exe: repro.exe });
       table = TBRUN_EXIT;
     } else {
       r = await compileOrBuild(slug, { ...o, build: repro.mode === "build", llvm: repro.llvm });

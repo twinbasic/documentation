@@ -1026,6 +1026,7 @@ wrong type, is refused with exit 2, naming the file and the key, before anything
 | `mode` | `compile`, `build`, `run`, `cli` or `manual`. `manual` is a reproducer that cannot be automated, such as one that needs a click in the IDE. |
 | `arch` | Optional. `win32` (default) or `win64`. |
 | `llvm` | Optional, `build` and `run`. `true` builds with LLVM. |
+| `exe` | Optional, `run` only. `true` also runs the built exe, as `run --exe` does: no probe module is added, `Sub Main` runs in the exe, and an exe that exits with a code other than 0 is `tbrun`'s exit 6. `Debug.Print` writes nothing in an exe, so what `expect.output` can match is only what `TbRun.Out` wrote; a bug that crashes the exe is expected as `"exit": 6`. |
 | `expect.exit` | The exit code of `tbbuild` or `tbrun` as they print it, not this tool's mapped code; for `cli`, the compiler executable's. |
 | `expect.diagnostics` | `compile`. Diagnostic codes, such as `TB5182`, that must all be reported. |
 | `expect.noDiagnostics` | `compile`. `true` expects no error, warning, hint or information. |
