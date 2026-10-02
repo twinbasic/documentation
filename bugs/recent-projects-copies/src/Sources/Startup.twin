@@ -1,0 +1,7 @@
+' An ordinary project. Nothing to run: copy it to A, B and C .twinproj and open them in turn to fill the recent-projects list.
+Module Startup
+
+    Public Sub Main()
+    End Sub
+
+End Module

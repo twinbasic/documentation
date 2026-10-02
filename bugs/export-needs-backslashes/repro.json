@@ -1,0 +1,8 @@
+{
+  "mode": "cli",
+  "cli": ["export", "{project}", "{tmp}/"],
+  "expect": {
+    "exit": 0,
+    "output": ["ERROR: output folder does not exist and could not be created", "^\\.\\.\\. FAILED"]
+  }
+}

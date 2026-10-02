@@ -1,0 +1,1 @@
+A folder inside Packages. import stops with exit code 999 on it, whatever it holds.

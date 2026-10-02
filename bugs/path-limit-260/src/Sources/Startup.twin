@@ -1,0 +1,7 @@
+' An ordinary project. Nothing to run: export and import of it fail when a path they write is long.
+Module Startup
+
+    Public Sub Main()
+    End Sub
+
+End Module

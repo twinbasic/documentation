@@ -1,0 +1,7 @@
+' An ordinary project. Nothing to run: export of it into a folder that already holds part of the tree is refused, and still writes the rest.
+Module Startup
+
+    Public Sub Main()
+    End Sub
+
+End Module

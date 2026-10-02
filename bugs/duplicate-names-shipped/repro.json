@@ -1,0 +1,4 @@
+{
+  "mode": "manual",
+  "steps": "The reproducer is two files the installation ships, not this project (its path begins with the IDE folder, which no repro.json can name). Run, with bin\\twinBASIC_win32.exe from that install and an empty output folder, without --overwrite: export <install>\\packages\\{F50B82D0-DCAB-43FE-9631-11959D4A4728}_VB\\package.twinproj <full path>\\out1\\ and export <install>\\projects\\Sample 16.    twinBASIC IDE Addin (TODO Widgets demo)\\projectName.twinproj <full path>\\out2\\. See one ERROR: output file already exists line for Resources\\MANIFEST\\#1.xml, and seven for .addins\\WaynesTodoItemsData: the project file holds that name twice, and eight times."
+}

@@ -118,42 +118,38 @@ folder is deleted with it.
 
 ## The recent-projects list fills its empty slots with copies of its last entry
 
-**Build:** BETA 995
-**Severity:** cosmetic, but it shows on a new installation, which is exactly when the
-list has empty slots --- the same project repeated down the Recent tab.
+**Describe the bug**
+When the recent-projects list holds fewer entries than it has slots and a project is opened, the IDE writes a copy of the list's last entry into every empty slot, so the same project is repeated down the Recent tab. The list is 21 values, `"0"` to `"20"`, under `HKCU\Software\VB and VBA Program Settings\twinBASIC_IDE\RecentlyOpened`. A new installation has empty slots, so this is where it shows first.
 
-The list is 21 values, `"0"` to `"20"`, under
-`HKCU\Software\VB and VBA Program Settings\twinBASIC_IDE\RecentlyOpened`. Reproduction:
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Unzip `recent-projects-copies.zip` (it holds `recent-projects-copies.twinproj`, an ordinary project; any three projects will do) and copy the project to `A.twinproj`, `B.twinproj` and `C.twinproj` in one folder.
+2. Export the key with `reg export` first if the list matters to you. Under `RecentlyOpened`, set `"0"` to the full path of `A.twinproj` and `"1"` to that of `B.twinproj`. Delete `"2"` to `"20"`, or set them to empty strings; both reproduce it.
+3. Open `C.twinproj`: `twinBASIC.exe C:\path\C.twinproj` is enough.
+4. Read the values of the key, with the IDE still running or after it has closed.
+5. See `"0"` = `C`, `"1"` = `A`, and `"2"` to `"20"` all = `B`: nineteen copies of `B`.
 
-1. Leave two entries: `"0"` = `A.twinproj`, `"1"` = `B.twinproj`. Either delete `"2"` to
-   `"20"` or set them to empty strings; both reproduce it.
-2. Open a third project, `C.twinproj` --- on the command line is enough.
-3. The IDE writes `"0"` = `C`, `"1"` = `A`, and `"2"` to `"20"` = `B`: **nineteen copies of
-   `B`**.
+**Expected behavior**
+The slots that held nothing stay empty, as they do when the key does not exist at all: `"0"` = `C`, `"1"` = `A`, `"2"` = `B`, and the rest empty. The Recent tab then shows three projects.
 
-What does **not** reproduce it:
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: cosmetic, but it shows on a new installation, which is exactly when the list has empty slots.
+
+What does not reproduce it:
 
 | starting list | result |
 |---|---|
-| no `RecentlyOpened` key at all | `C` and 20 empty strings --- correct |
-| 21 distinct entries | 21 distinct entries, the oldest dropped --- correct, read at the end of 41 successive opens |
-| `C` already at the top | unchanged --- the opened project itself is never duplicated |
+| no `RecentlyOpened` key at all | `C` and 20 empty strings, which is correct |
+| 21 distinct entries | 21 distinct entries, the oldest dropped, which is correct; read at the end of 41 successive opens |
+| `C` already at the top | unchanged: the opened project itself is never duplicated |
 
-So it takes at least one existing entry and at least one slot with nothing in it, which
-looks like each slot being read with the previous slot's value as its default. Once a
-duplicate is there, the next opened project keeps it: 18 copies of one project became 20
-after one more open, with the new project on top.
+So it takes at least one existing entry and at least one slot with nothing in it, which looks like each slot being read with the previous slot's value as its default. Once a duplicate is there, the next opened project keeps it: 18 copies of one project became 20 after one more open, with the new project on top. Both variants of step 2 (deleted slots, empty strings) were measured on BETA 995, ending with 21 values and 3 distinct projects.
 
-**Observed** on 2026-09-23 by reading the registry values after `tbbuild --keep` opened a
-fixture project on a private desktop and the IDE was killed: once for each variant of step
-1, and in two successive sessions on one project for the third row and the growth from 18
-copies to 20. The first row was seen when the key had been deleted and the next harness run
-recreated it, the second at the end of a `check_examples` run. The
-harness records it because its own runs trip it: every IDE a run starts opens a project, and
-a run that began on a list holding one entry ended with seventeen copies of it. The registry
-tidy (`scripts/lib/tb-registry.mjs`) now puts the list back as it found it, without the
-copies; a list that was short to begin with is left short, and the next project the user
-opens then trips this.
+<!-- Manual in bugs/recent-projects-copies/repro.json because it changes the user's own registry. Stated in WIP.Harness.md (the recent-list tidy, which exists because of it) and scripts/lib/tb-registry.mjs; when fixed, the note there that a short list trips it can go. Measured 2026-09-23 on BETA 983 by reading the registry after tbbuild --keep opened a fixture project on a private desktop and the IDE was ended by its pid, and again on BETA 995 on 2026-10-01 (cli995/rec-995-*.txt). The harness trips it because every IDE a run starts opens a project: a run that began on a list of one entry once ended with seventeen copies of it. -->
 
 ---
 
@@ -198,6 +194,8 @@ costs the whole batch its result, which is why that tool isolates the sample on 
 
 ## An `Interface` that extends itself compiles without a diagnostic, and Build then does nothing
 
+*FILED #2434*
+
 **Describe the bug**
 An interface that extends itself, directly or through another interface, compiles with no error, warning, hint or info. Building the project then does nothing at all: clicking **Build** writes nothing to the DEBUG CONSOLE, opens no dialog and creates no file, and the IDE stays responsive. A cycle through classes or UDTs is refused at compile time instead.
 
@@ -208,11 +206,11 @@ Steps to reproduce the behavior:
    ' SelfCycle.twin
    Interface IA Extends IA
    End Interface
-
+   
    ' PairCycleB.twin
    Interface IB Extends IC
    End Interface
-
+   
    ' PairCycleC.twin
    Interface IC Extends IB
    End Interface
@@ -247,21 +245,47 @@ Also on BETA 983, identically. The same project without the cyclic interfaces bu
 
 ## `--buildAndExit32` writes nothing, exits 0 on a project with errors, and hangs on a failing build
 
-**Build:** BETA 995; the silence on stdout and stderr was measured on BETA 983
-**Severity:** makes the documented unattended-build switch unusable.
+**Describe the bug**
+`twinBASIC.exe --buildAndExit32 <project>` (and `--buildAndExit64`) cannot be used for an unattended build. It writes nothing about the build to stdout or stderr, it exits 0 on a project the IDE flags with an error when the error is in code nothing calls, and when the build really fails it does not exit at all. Measured on a private desktop with the process's standard output and error redirected to a file, and the process ended by its pid after 30 seconds.
 
-The IDE executable accepts `--buildAndExit32` and `--buildAndExit64`; `parseCommandLine()`
-reads them, and Personal Edition is refused by name, so they are real. Measured three ways:
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `build-and-exit-silent.twinproj` (attached as `build-and-exit-silent.zip`). Its only source file is `Sources\Startup.twin`:
+   ```
+   Module Startup
 
-- **nothing is written to stdout or stderr, ever** --- no diagnostics, no summary;
-- it **exits 0 on a project the IDE flags with errors**;
-- when the build genuinely fails it **does not exit at all**, sitting on a *"Please wait…"*
-  dialog at 100% indefinitely.
+       Public Sub Main()
+       End Sub
 
-Silent, falsely green, and hanging on the one case worth catching. This is why
-`scripts/tbbuild.mjs` drives the IDE's WebView over CDP instead --- see
-[WIP.Harness.md](WIP.Harness.md#compiling-a-twinbasic-project-without-the-ide-in-front-of-you), which
-records the same measurements.
+       Private Sub Unused()
+           NoSuchProcedure
+       End Sub
+
+   End Module
+   ```
+2. See the IDE report 1 error, TB5079 `Unrecognized symbol 'NoSuchProcedure'`.
+3. Close the IDE and run `twinBASIC.exe --buildAndExit32 C:\path\build-and-exit-silent.twinproj`.
+4. See the command exit 0 after a few seconds. `Build\BuildAndExitSilent_win32.exe` has been written, although the project has an error. Nothing about the build was written to stdout or stderr: with both redirected to a file, the only line is `[...:ERROR:ui\gfx\win\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412`, which is Chromium shutting down.
+5. Change `Main` to call `Unused`, so that the build really fails, and run the same command again.
+6. See the command never exit. It writes nothing to stdout or stderr and no `.exe`, and was still running when it was ended after 30 and 40 seconds. On the desktop it sat on a *Please wait...* dialog at 100%, as seen on BETA 983.
+
+**Expected behavior**
+A build switch for unattended use should report the diagnostics on stdout or stderr, exit with a non-zero code when the project has errors, and exit when the build fails instead of waiting. At the least it should not exit 0 and write an `.exe` for a project the IDE flags with an error.
+
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: it makes the switch unusable for the one job it exists for, because it is silent, falsely green and hangs on the case worth catching.
+
+Which errors hang and which exit 0, on BETA 995. All of these hang, with no `.exe` written: `NoSuchProcedure` in `Main`, `NoSuchProcedure` in a procedure that `Main` calls, a bare `Dim`, `Dim x As NoSuchType`, `y = 1` under `Option Explicit`, and a project with no `Sub Main`. The same `NoSuchProcedure` in a procedure nothing calls exits 0 with the `.exe` written. Assigning `"abc"` to a `Long` and an unused `Dim x As Long` compile without an error and exit 0, as they should. On BETA 983 the unused-procedure case exits 0, and `NoSuchProcedure` in `Main` and the missing `Sub Main` hang.
+
+So exit 0 on a project with errors happens only for an error in code nothing calls; an error in code the build reaches never exits 0.
+
+Silence on stdout and stderr: measured on BETA 983 first, and on BETA 995 by redirecting the standard handles of the process to a file. The same redirection captures the compiler executable's own output (`twinBASIC_win32.exe settings <project>` wrote the whole `Settings` file), so the capture works.
+
+<!-- Manual in bugs/build-and-exit-silent/repro.json: the switch belongs to the IDE executable, which opens a window, so nothing here may run on the user's desktop. Measured with a scratch copy of scripts/lib/tb-launch.ps1 (private desktop, kill-on-close job, TBBUILD_CMD replacing the command line, standard handles redirected to a file), with scripts/lib/tb-registry.mjs startTidy and finishTidy around the run. Stated in scripts/tbbuild.mjs (header comment) and WIP.Harness.md, "Do not reach for --buildAndExit32 instead": when fixed, those two say the switch is unusable. The exit-0-on-errors claim there was stated for BETA 983 without a reproduction; it is true only for an error in code nothing calls, so correct it either way. -->
 
 ---
 
@@ -456,25 +480,27 @@ member it implements, and its description of the attribute says why.
 
 ## `import` stops with exit code 999 on any folder inside `Packages`, so a project that embeds a package cannot be packed
 
-**Build:** BETA 995 --- `twinBASIC_win32.exe`; on BETA 983 `twinBASIC_win64.exe` as well
-**Severity:** the command line cannot pack any project that embeds a package, and the
-failure prints neither `... DONE` nor `... FAILED`.
+**Describe the bug**
+`import`, the compiler executable's verb for packing a folder tree into a project file, stops partway through when the tree's top-level `Packages` folder contains a folder. It exits with code 999, writes no project file and leaves one already at the output path untouched. The last line printed is `IMPORTED FOLDER: <tree>\\Packages\`, with no `... DONE` and no `... FAILED`, and nothing reaches stderr. A package a project uses is embedded in it by default, as a folder of its own under `Packages`, so a project that embeds a package cannot be packed from its exported tree.
 
-`import` is the compiler executable's verb for packing a folder tree into a project file.
-Given a tree whose top-level `Packages` folder contains a folder, it ends partway through:
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Unzip `import-packages-folder.zip` (it holds `import-packages-folder.twinproj`) and run `twinBASIC_win32.exe export C:\path\import-packages-folder.twinproj C:\path\tree\`. The only unusual thing in the tree is the file `Packages\Nested\x.txt`, so `Packages` holds a folder.
+2. Run `twinBASIC_win32.exe import C:\path\out.twinproj C:\path\tree\ --overwrite`.
+3. See the output end at `IMPORTED FOLDER: C:\path\tree\\Packages\`, and the exit code be 999.
+4. See that `out.twinproj` was not written, and that one already there is unchanged.
 
-```
-twinBASIC_win32.exe import out.twinproj tree\ --overwrite
-```
+**Expected behavior**
+The tree is packed, as it is when `Packages` holds no folder, and the run ends `... DONE` with exit code 0. If a folder in `Packages` is something the importer cannot accept, it should say so with an `ERROR:` line and `... FAILED`.
 
-- the exit code is **999**, where every other failure observed exits 0;
-- no project file is written, and one already at the output path is left untouched;
-- the last line printed is `  IMPORTED FOLDER: <tree>\\Packages\`, and nothing reaches
-  stderr.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
 
-**The smallest reproduction is one empty folder.** Export any project, add an empty
-`Packages\Nested\` to the tree, and import it. Every case below starts from a fresh `export`
-of the HelloWorld sample:
+**Additional context**
+Severity: the command line cannot pack any project that embeds a package, and the failure prints neither `... DONE` nor `... FAILED`. The exit code is 999, where every other failure observed exits 0. Also on BETA 983, and there with `twinBASIC_win64.exe` as well.
+
+The smallest reproduction is one empty folder: export any project, add an empty `Packages\Nested\` to the tree, and import it. Every case below starts from a fresh `export` of the HelloWorld sample:
 
 | added to the exported tree | result |
 |---|---|
@@ -484,184 +510,224 @@ of the HelloWorld sample:
 | `Packages\Nested\Settings`, a copy of the root `Settings` | **exit 999, no project** |
 | `Packages\A\B\` | **exit 999, no project** |
 | `packages\Nested\`, in lower case | **exit 999, no project** |
-| `Packages\x.txt` --- a file, no folder | exit 0, `... DONE` |
+| `Packages\x.txt` (a file, no folder) | exit 0, `... DONE` |
 | an empty `Packages\` on its own | exit 0, `... DONE` |
 | `Miscellaneous\Nested\x.txt` | exit 0, `... DONE` |
-| `Sources\Packages\Nested\` --- a `Packages` below the top level | exit 0, `... DONE` |
+| `Sources\Packages\Nested\` (a `Packages` below the top level) | exit 0, `... DONE` |
 
-So the trigger is a folder inside the top-level `Packages`, whatever it holds: an empty one
-does it, and so does one with a `Settings` file of its own, which is what a real package
-has. Leaving out `--overwrite` makes no difference: with a project already at the output
-path, `import` still stops with 999 rather than refusing to overwrite it.
+So the trigger is a folder inside the top-level `Packages`, whatever it holds: an empty one does it, and so does one with a `Settings` file of its own, which is what a real package has. Leaving out `--overwrite` makes no difference: with a project already at the output path, `import` still stops with 999 rather than refusing to overwrite it.
 
-**This is not malformed input.** A package a project uses is embedded in it by default, as
-a folder of its own under `Packages`, and `export` writes that folder out with the rest of
-the tree. Five of the 48 project and package files the IDE ships have one ---
-`WinNativeCommonCtls` (which embeds `VBComDlg`), samples 8, 17 and 23, and the *Standard
-EXE (plus VBCCR v1.8)* project template --- and each was measured: `export` succeeds, and
-`import` of the tree it has just written stops as above. None of them round-trips through
-the command line, and neither does any project created from that template. Nor does any
-export written by the IDE's **Export Project**, which always adds the compiler packages under
-`Packages` (see *Export Project writes the compiler packages*, below).
+This is not malformed input. `export` writes the embedded package out as a folder under `Packages`, and `import` of that tree then stops. Five of the 48 project and package files the IDE ships have such a folder: `WinNativeCommonCtls` (which embeds `VBComDlg`), samples 8, 17 and 23, and the *Standard EXE (plus VBCCR v1.8)* project template. Each was measured: `export` succeeds, and `import` of the tree it has just written stops as above. None of them round-trips through the command line, and neither does any project created from that template, nor any export written by the IDE's **Export Project**, which always adds the compiler packages under `Packages`.
 
-**Found by** checking `scripts/impexp.mjs` against the compiler's `import` for line-ending
-handling: a probe tree with a made-up `Packages\Nested\` folder never produced a project to
-compare. The standalone scripts pack all five exported trees with every file byte-identical
-to the original; the only files missing are `.meta` files, the embedded packages' own
-included, which `export` does not write.
+<!-- Automated: bugs/import-packages-folder/repro.json is a cli reproducer (import of a copy of src/, expecting exit 999 and the Packages line). The folder in src is a file, Packages/Nested/x.txt, because git cannot hold an empty folder. The tooling side is scripts/impexp.mjs, which packs all five exported trees with every file byte-identical to the original; the only files missing are .meta files, the embedded packages' own included, which export does not write. Measured on BETA 983 and 995 with the rows above (cli995/bae.mjs and log1-*.txt) and by bug_repro verify on 995. Found by checking impexp.mjs against the compiler's import for line-ending handling: a probe tree with a made-up Packages\Nested\ never produced a project to compare. When fixed, the Export Project entry's remark that its output cannot be packed (the compiler packages under Packages) needs the same update. -->
 
 ---
 
 ## `export` and `import` stop at the 260-character path limit, apart from the one path they prefix with `\\?\`
 
-**Build:** BETA 995 --- `twinBASIC_win32.exe`, on a machine with `LongPathsEnabled` set to 1
-**Severity:** an `export` to a deep folder writes part of the tree and exits 0, and the
-errors it prints blame permissions and storage space.
+**Describe the bug**
+`export` names its input with a `\\?\` prefix (*exporting from "\\?\C:\...\package.twinproj"*), and a 301-character input path exports normally. Every other path `export` and `import` touch is held to the ordinary Win32 limits, on a machine with `LongPathsEnabled` set to 1. A file or folder that would pass 259 or 247 characters is not created, the error blames permissions and storage space, the run ends `... FAILED` with exit code 0, and `export` carries on, so what it leaves is a partial tree.
 
-`export` names its input with a `\\?\` prefix --- *exporting from
-"\\?\C:\...\package.twinproj"* --- and a 301-character input path exports normally. Every
-other path the two verbs touch is held to the ordinary Win32 limits:
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Unzip `path-limit-260.zip` (it holds `path-limit-260.twinproj`, an ordinary project) and export it: `twinBASIC_win32.exe export C:\path\path-limit-260.twinproj C:\path\src\`.
+2. In PowerShell, make a project file name whose path is longer than 259 characters, and import the tree into it: `$file = "$env:TEMP\" + ("f" * 230) + ".twinproj"`, then `twinBASIC_win32.exe import $file C:\path\src\`. See `ERROR: failed to create output file: <that path> (check permissions and storage space)`, then `... FAILED`, exit code 0, and no project file.
+3. For the `export` side, in PowerShell: `$dir = "C:\p"; while ($dir.Length -lt 251) { $dir += "\" + ("d" * [Math]::Min(100, 250 - $dir.Length)) }`, then `New-Item -ItemType Directory $dir -Force`, then `twinBASIC_win32.exe export C:\path\path-limit-260.twinproj "$dir\"`.
+4. See `ERROR: failed to create output file: <dir>\Settings (check permissions and storage space)`, because `Settings` would be 260 characters long, and `[EXPORT]  ERROR: folder does not exist and could not be created:` for each of `Sources\`, `Resources\`, `Packages\`, `Miscellaneous\` and `ImportedTypeLibraries\`. The run ends `... FAILED` and exits 0. With `$dir` 250 characters long, `Settings` (259) is written and the folders still fail.
+
+**Expected behavior**
+Every file and folder is written, however long its path, as `export` already reads a 301-character input path. If a path cannot be used, the error should say so, and `export` should not write part of a tree and exit 0.
+
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: an `export` to a deep folder writes part of the tree and exits 0, and the errors it prints blame permissions and storage space. `LongPathsEnabled` is 1 on the machine this was measured on, so the Windows setting does not rescue it.
+
+What was observed, by path:
 
 | path | observed | what it prints |
 |---|---|---|
 | a file `export` writes | 259 characters written, 260 fails | `ERROR: failed to create output file: <path> (check permissions and storage space)` |
 | a folder `export` creates | 247 characters with its trailing `\` created, 248 fails | `[EXPORT]  ERROR: folder does not exist and could not be created: <path>\` |
-| the project file `import` writes | a 271-character path fails | `ERROR: failed to create output file: <path> (check permissions and storage space)` |
+| the project file `import` writes | a 271-character path fails (259 works, 262 fails) | `ERROR: failed to create output file: <path> (check permissions and storage space)` |
 | the tree `import` reads | a tree at a 250-character path fails | `ERROR: unable to read from folder: <tree>\\ImportedTypeLibraries\*` |
 
-Every one of those runs ends `... FAILED` and exits 0. `export` carries on past each error,
-so what it leaves is a partial tree: exporting `WebView2Package` to a 198-character folder
-wrote 45 of its 72 files. `LongPathsEnabled` is 1 on the machine this was measured on, so
-the Windows setting does not rescue it.
+Every one of those runs ends `... FAILED` and exits 0. Exporting `WebView2Package` to a 198-character folder wrote 45 of its 72 files. With the HelloWorld sample into an existing 231-character folder, `Settings` and `Sources\HelloWorld.twin` are written, at 240 and 255 characters, and `Resources\ICON\twinBASIC.ico` (260) is not; at 220 characters every file is written and the run ends `... DONE`. With the reproducer's project the first failure is a folder: into an existing 225-character folder `Settings` and `Sources\Startup.twin` are written and `ImportedTypeLibraries\` (248 with its trailing `\`) is not.
 
-**Reproduction.** Export the HelloWorld sample into an existing folder whose own path is 231
-characters long. `Settings` and `Sources\HelloWorld.twin` are written, at 240 and 255
-characters; `Resources\ICON\twinBASIC.ico` would be 260 and is not. At 220 characters every
-file is written and the run ends `... DONE`.
+What does not reproduce it: a long input path to `export`, and any output folder short enough that no file path reaches 260 characters and no folder path 248.
 
-**What does not reproduce it:** a long *input* path to `export`, and any output folder short
-enough that no file path reaches 260 characters and no folder path 248.
-
-**Found by** the attribute census, `scripts/census_attributes.mjs`, pointed at a cache folder
-inside a deep working directory: `WebView2Package` and the three `cefPackage` versions came
-back `... FAILED` while the other twelve packages exported. The census used to trust
-`export`'s exit code, so until it tested for `... DONE` it would have scanned those partial
-trees as complete.
+<!-- Automated: bugs/path-limit-260/repro.json is a cli reproducer, import to a 239-character file name in the temp folder (generated, 230 f characters plus .twinproj; the temp folder's own length adds to it, so it fails whatever TEMP is). It tests the file limit only; the export side needs an existing deep folder, which the cli mode cannot create, so it is in the steps above. Stated in WIP.Harness.md (the census trusting export's exit code, the path-length remark) and scripts/census_attributes.mjs; the census now tests for ... DONE. Measured on BETA 995, the file and folder rows with the HelloWorld sample and the reproducer's project, and the input path 303 characters long. Found by the attribute census pointed at a cache folder in a deep working directory: WebView2Package and the three cefPackage versions came back ... FAILED while the other twelve packages exported. When fixed, the census can drop its ... DONE test only if exit codes become reliable too. -->
 
 ---
 
 ## A damaged project file opens a message box, and the command waits until it is closed
 
-**Build:** BETA 983 --- `twinBASIC_win32.exe`; not re-run on BETA 995, since the box opens
-on the desktop of whoever runs the command
-**Severity:** an unattended `export`, `settings` or `readme` never finishes; once the box is
-closed, `export` reports success.
+**Describe the bug**
+Given a file that is not a valid project, the compiler executable opens a modal message box (*invalid header* and *invalid file format* were both seen) and prints nothing more until it is closed. `export`, `settings` and `readme` each waited on the box indefinitely. Once the box is closed, `export` prints `WARNING: failed to parse project file, file may be corrupt`, then `... DONE`, and exits 0.
 
-```
-twinBASIC_win32.exe export C:\probe\garbage.twinproj C:\probe\out\
-```
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Unzip `damaged-project-modal-box.zip` (it holds `damaged-project-modal-box.twinproj`, an ordinary valid project) and make damaged copies of it, in PowerShell: `$b = [IO.File]::ReadAllBytes("C:\p\damaged-project-modal-box.twinproj")`, then `$b[0] = $b[0] -bxor 0xFF; [IO.File]::WriteAllBytes("C:\p\firstbyte.twinproj", $b)` for one with its first byte changed, and `[IO.File]::WriteAllBytes("C:\p\cut.twinproj", $b[0..([int]($b.Length / 2))])` for one cut off halfway. A 20-byte text file named `garbage.twinproj`, or an empty file, is damaged enough too.
+2. Run `twinBASIC_win32.exe export C:\p\garbage.twinproj C:\p\out\`, on a desktop someone is watching.
+3. See a message box and no further output. The command was still waiting when it was ended after 25 seconds.
+4. Close the box. See `WARNING: failed to parse project file, file may be corrupt`, then `... DONE`, and exit code 0. For the project cut off halfway it also writes the one file it could read, `Settings`.
+5. Run `settings` or `readme` on the same file: each waits on a box the same way.
 
-`garbage.twinproj` can be any file that is not a project: a 20-byte text file, an empty file,
-a real project with its first byte changed, or one cut off halfway. All four were tried.
+**Expected behavior**
+No window opens from a command-line verb. The command prints the problem (`ERROR: failed to parse project file, file may be corrupt or inaccessible`, which it already prints when a folder is given where the project should be), ends `... FAILED`, and does not report `... DONE` for a file it could not read.
 
-- The executable opens a modal message box --- *invalid header* and *invalid file format*
-  were both seen across those inputs --- and prints nothing more until it is closed. Left
-  alone, each of `export`, `settings` and `readme` was still waiting when the harness killed
-  it at 25 seconds.
-- Once the box is closed, `export` prints `WARNING: failed to parse project file, file may be
-  corrupt`, then `... DONE`, and exits 0. For the project cut off halfway it also writes the
-  one file it could read, `Settings`.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 983 (the 20-byte text file was also seen on BETA 995)
 
-So the `... DONE` test that the exit code forces on every script is fooled as well. **What
-does not reproduce it:** a folder given where the project should be. `settings` then prints
-`ERROR: failed to parse project file, file may be corrupt or inaccessible` and exits, with no
-box.
+**Additional context**
+Severity: an unattended `export`, `settings` or `readme` never finishes, and once the box is closed `export` reports success, so a script that tests for `... DONE` is fooled as well.
 
-**Found by** probing the command line for the rewrite of the Import/Export Tool page. The
-boxes appeared on the desktop of the person at the machine, which is how their wording is
-known.
+All four kinds of damaged input were tried on BETA 983: a 20-byte text file, an empty file, a real project with its first byte changed, and one cut off halfway. On BETA 995 a run with a 20-second limit found `export` and `settings` on the 20-byte text file still waiting at the limit; the other inputs returned inside it, and whether each opened a box was not checked.
+
+What does not reproduce it: a folder given where the project should be. `settings` then prints `ERROR: failed to parse project file, file may be corrupt or inaccessible` and exits, with no box.
+
+<!-- Manual in bugs/damaged-project-modal-box/repro.json, and not to be run unattended: the box opens on the desktop of whoever runs the command (the probe that found it opened message boxes on the user's desktop three times on BETA 995 alone). No test or page states it. The command-line verbs are described on docs/Documentation/Tools.md (impexp) and in scripts/impexp.mjs, which does not open a box for a damaged file; check them when fixed. Found by probing the command line for the rewrite of the Import/Export Tool page; the boxes appeared on the desktop of the person at the machine, which is how their wording is known. Measured on BETA 983 with a 25 second limit, on BETA 995 with 20 (cli995/log2-995.txt). -->
 
 ---
 
 ## `export` refused for lack of `--overwrite` still writes part of the tree
 
-**Build:** BETA 995
-**Severity:** a refused export leaves the folder a mixture of the old tree and the project.
+**Describe the bug**
+When `export` is run without `--overwrite` into a folder that already holds some of the project's files, it refuses those files with an error but still writes every file that is not there yet. The folder is left a mixture of the old tree and the project, matching neither. `import` checks before it writes, so a refused `import` leaves the project file as it was.
 
-Export the HelloWorld sample into a folder, delete the exported `Settings`, edit
-`Sources\HelloWorld.twin`, and export again without `--overwrite`:
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Unzip `export-refused-partial-write.zip` (it holds `export-refused-partial-write.twinproj`) and run `twinBASIC_win32.exe export C:\path\export-refused-partial-write.twinproj C:\path\out\`. See `... DONE`.
+2. Delete `C:\path\out\Settings`, and edit `C:\path\out\Sources\Startup.twin` (add a line at the end).
+3. Run the same `export` again, without `--overwrite`.
+4. See:
+   ```
+   [EXPORT]  ERROR: output file already exists and --overwrite not set: C:\path\out\export-refused-partial-write.twinproj
+   [EXPORT]  DONE: C:\path\out\Settings
+   [EXPORT]  ERROR: output file already exists and --overwrite not set: C:\path\out\Sources\Startup.twin
+   ... FAILED
+   ```
+5. See `Settings` come back from the project while the edited `Startup.twin` stays, so the folder now matches neither the old tree nor the project. The exit code is 0.
 
-```
-[EXPORT]  ERROR: output file already exists and --overwrite not set: <out>\Resources\ICON\twinBASIC.ico
-[EXPORT]  ERROR: output file already exists and --overwrite not set: <out>\Sources\HelloWorld.twin
-[EXPORT]  DONE: <out>\Settings
-... FAILED
-```
+**Expected behavior**
+The files that would be overwritten are found first, as `import` does, and a refused `export` writes nothing.
 
-`Settings` comes back from the project while the edited `HelloWorld.twin` stays, so the folder
-now matches neither the old tree nor the project. `import` checks before it writes, so a
-refused `import` leaves the project file as it was; `export` should do the same.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
 
-The same behaviour makes **the VB package impossible to export without `--overwrite`**, even
-into an empty folder: it holds `Resources\MANIFEST\#1.xml` twice (next entry), and `export`
-writes one copy and then refuses the other because of the file it has just written.
+**Additional context**
+Severity: a refused export leaves the folder a mixture of the old tree and the project.
+
+The same behaviour makes the VB package impossible to export without `--overwrite`, even into an empty folder: it holds `Resources\MANIFEST\#1.xml` twice (see the report on names written twice into shipped project files), and `export` writes one copy and then refuses the other because of the file it has just written. Measured again on BETA 995: `export` of `packages\{F50B82D0-DCAB-43FE-9631-11959D4A4728}_VB\package.twinproj` into an empty folder prints one `output file already exists` error for that file and ends `... FAILED`.
+
+<!-- Automated: bugs/export-refused-partial-write/repro.json is a cli reproducer. A cli reproducer runs one command, so the project holds a root file named after the project file (export-refused-partial-write.twinproj), which already exists in the temp folder the command exports into: that file is refused, and Settings and Sources\Startup.twin are written, with exit 0. The steps above show the same by deleting Settings. Measured on BETA 983 and 995 with the HelloWorld sample (cli995 e6) and by bug_repro verify. Nothing in scripts/ or WIP.md states it; the standalone scripts/impexp.mjs export checks before it writes, so when fixed nothing there changes. The VB-package sentence belongs to the duplicate-names report (slug duplicate-names-shipped). -->
 
 ---
 
 ## The IDE has written the same name twice into project files it ships
 
-**Build:** BETA 995
-**Severity:** a folder can hold only one of them, so unpacking keeps one copy; which copy the
-IDE itself uses is not known.
+**Describe the bug**
+Two of the 48 project and package files an installation ships hold one name more than once, with different contents: the VB package holds `Resources/MANIFEST/#1.xml` twice, and Sample 16, *twinBASIC IDE Addin (TODO Widgets demo)*, holds `.addins/WaynesTodoItemsData` eight times. A folder can hold only one file of a name, so unpacking keeps one copy. The eight copies in Sample 16 suggest that each save of the add-in's data added an entry instead of replacing the old one, which is a guess and not a measurement.
 
-Two of the 48 project and package files an installation ships hold one name more than once,
-with different contents:
+**To Reproduce**
+Steps to reproduce the behavior:
+1. The reproducer is not an attachment: it is two files in the installation, so there is no `.zip` for this report. They are `packages\{F50B82D0-DCAB-43FE-9631-11959D4A4728}_VB\package.twinproj` and `projects\Sample 16.    twinBASIC IDE Addin (TODO Widgets demo)\projectName.twinproj`, under the IDE's folder.
+2. Run `twinBASIC_win32.exe export "<IDE folder>\packages\{F50B82D0-DCAB-43FE-9631-11959D4A4728}_VB\package.twinproj" C:\out1\`, into a folder that does not exist yet, without `--overwrite`.
+3. See one `[EXPORT]  ERROR: output file already exists and --overwrite not set: C:\out1\Resources\MANIFEST\#1.xml`, then `... FAILED`. The folder is empty before the run, so the only file that already exists is the one just written for the first copy of the name.
+4. Run `twinBASIC_win32.exe export "<IDE folder>\projects\Sample 16.    twinBASIC IDE Addin (TODO Widgets demo)\projectName.twinproj" C:\out2\` the same way.
+5. See seven of `[EXPORT]  ERROR: output file already exists and --overwrite not set: C:\out2\.addins\WaynesTodoItemsData`, then `... FAILED`: one for each copy of the name after the first.
+
+**Expected behavior**
+A project file holds each name once. Where the IDE rewrites an entry, it replaces it.
+
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: a folder can hold only one of them, so unpacking keeps one copy; which copy the IDE itself uses is not known.
 
 | file | name | copies |
 |---|---|---|
-| the VB package | `Resources/MANIFEST/#1.xml` | 2 --- 703 and 682 bytes |
+| the VB package | `Resources/MANIFEST/#1.xml` | 2, of 703 and 682 bytes |
 | Sample 16, *twinBASIC IDE Addin (TODO Widgets demo)* | `.addins/WaynesTodoItemsData` | 8, no two alike |
 
-`export` writes entries in reverse order, so with `--overwrite` the first copy in the file is
-the one left on disk. The eight Sample 16 copies suggest that each save of the add-in's data
-added an entry instead of replacing the old one --- a guess, not a measurement.
+`export` writes entries in reverse order, so with `--overwrite` the first copy in the file is the one left on disk. The same two files, and no others of the 48, hold a repeated name on BETA 983 as well as on BETA 995.
 
-**Found by** comparing the standalone scripts' `export` with the executable's over every
-shipped project file. The scripts now keep the first copy, as the executable does, and name
-the repeated entries in a warning.
+<!-- Manual in bugs/duplicate-names-shipped/repro.json, because a repro.json cannot name a path inside the install (an install path contains a username), and no project can be packed with a repeated name. The folder under bugs/ holds only a placeholder project; the entry has no zip to attach, so the folder can go when it is filed. scripts/impexp.mjs keeps the first copy, as the executable does, and warns with "1 name occurs more than once in the project" for both files (cli995/dups.mjs, run over every project and package file of both installs). The VB-package consequence for export without --overwrite is in the report on a refused export (slug export-refused-partial-write). Found by comparing the standalone scripts' export with the executable's over every shipped project file. -->
 
 ---
 
 ## `export` needs a full, backslashed project path, and no folder path may use forward slashes
 
-**Build:** BETA 995
-**Severity:** ordinary relative and forward-slashed paths fail, with messages that say the
-file or folder does not exist.
+**Describe the bug**
+`export` fails on an ordinary relative project path, on a project path with forward slashes, and on an output folder given with forward slashes, with messages that say the file or folder does not exist when it does. `import` fails the same way on an input folder with forward slashes. The forward-slashed case ends `... FAILED`, creates nothing and exits 0, so a script sees success unless it reads the output.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Unzip `export-needs-backslashes.zip` (it holds `export-needs-backslashes.twinproj`, an ordinary project) into `C:\p\`, and create the folders `C:\p\out\` and `C:\p\tree\` (any existing folders will do).
+2. Run `twinBASIC_win32.exe export C:\p\export-needs-backslashes.twinproj C:/p/out/`. See `ERROR: output folder does not exist and could not be created`, although `C:\p\out\` exists, then `... FAILED`, and exit code 0.
+3. Run the other forms in the table below.
 
 | argument | example | result |
 |---|---|---|
-| `export`'s project path, relative | `export hello.twinproj out\` | `ERROR: input twinproj file does not exist` |
-| `export`'s project path, forward slashes | `export C:/p/hello.twinproj C:\p\out\` | the same |
-| `export`'s folder, forward slashes | `export C:\p\hello.twinproj C:/p/out/` | `ERROR: output folder does not exist and could not be created`, although it exists |
+| `export`'s project path, relative | `export export-needs-backslashes.twinproj C:\p\out\` | `ERROR: input twinproj file does not exist` |
+| `export`'s project path, forward slashes | `export C:/p/export-needs-backslashes.twinproj C:\p\out\` | the same |
+| `export`'s folder, forward slashes | `export C:\p\export-needs-backslashes.twinproj C:/p/out/` | `ERROR: output folder does not exist and could not be created`, although it exists |
 | `import`'s folder, forward slashes | `import C:\p\x.twinproj C:/p/tree/` | `ERROR: input folder does not exist`, although it exists |
 
-The echo line explains the first two: `exporting from "\\?\hello.twinproj"`. The project path
-is prefixed with `\\?\`, which turns off Windows' path normalisation, so only a full path with
-backslashes survives it. The forward-slashed folder ends `... FAILED`, creates nothing, and
-exits 0 (BETA 995), so a script sees success unless it reads the output. **What does not reproduce it:** `import`'s project path and the
-printing commands' take relative and forward-slashed paths, and with backslashes `export`
-creates every missing level of its output folder.
+**Expected behavior**
+Relative paths and paths with forward slashes work for `export` and for the output folder, as they do for the project path of `import` and for the printing commands, or the error says that the form of the path is the problem. A failure should not exit with 0.
+
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: ordinary relative and forward-slashed paths fail, with messages that say the file or folder does not exist.
+
+The echo line explains the first two: `exporting from "\\?\export-needs-backslashes.twinproj"`. The project path is prefixed with `\\?\`, which turns off Windows' path normalisation, so only a full path with backslashes survives it. A folder given partly with forward slashes (an existing `C:\p\out/`) fails the same way.
+
+What does not reproduce it: `import`'s project path and the printing commands take relative and forward-slashed paths, and with backslashes `export` creates every missing level of its output folder (`C:\p\a\b\c\` was created in one run).
+
+<!-- Automated: bugs/export-needs-backslashes/repro.json is a cli reproducer, export of the packed project to the temp folder written as {tmp}/ (a forward slash after the backslashed path), expecting the could-not-be-created error and exit 0. The other three rows need a relative path, which a cli reproducer cannot give, so they are in the steps. Stated in WIP.md ("Give the executable backslashed paths") and WIP.Harness.md; those two stay true until this is fixed, then they can be relaxed. Measured on BETA 983 and 995 (cli995/log1-*.txt, ENTRY 8) and by bug_repro verify on 995. -->
 
 ---
 
 ## `import` of a folder with no `Settings` file fails without saying why
 
-**Build:** BETA 995
-**Severity:** minor --- the refusal is right, and the silence is not.
+**Describe the bug**
+Given a folder with no `Settings` file at its top, `import` lists the files it read, ends `... FAILED` with no `ERROR:` line, and writes nothing. Every other failure measured names its cause. The refusal is right, and the silence is not.
 
-Given a folder with no `Settings` file at its top, `import` lists the files it read, ends
-`... FAILED` with no `ERROR:` line, and writes nothing. Every other failure measured names its
-cause.
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Unzip `import-no-settings-silent.zip` (it holds `import-no-settings-silent.twinproj`, an ordinary project) and export it: `twinBASIC_win32.exe export C:\p\import-no-settings-silent.twinproj C:\p\src\`.
+2. Import only the folder `Sources`, which has no `Settings` file at its top: `twinBASIC_win32.exe import C:\p\x.twinproj C:\p\src\Sources\`.
+3. See:
+   ```
+   importing into "C:\p\x.twinproj" from "C:\p\src\Sources\"...
+     IMPORTED: C:\p\src\Sources\\Startup.twin
+   ... FAILED
+   ```
+4. See that there is no `ERROR:` line, the exit code is 0, and `C:\p\x.twinproj` was not written.
+
+**Expected behavior**
+An `ERROR:` line that names the cause, such as `ERROR: no Settings file in the input folder`, before `... FAILED`, as the other failures print. A failure should also not exit with 0.
+
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: minor, because the refusal is right.
+
+Also on BETA 983, where a copy of the HelloWorld sample's tree with `Settings` deleted behaves the same: it lists `Resources\ICON\twinBASIC.ico` and `Sources\HelloWorld.twin`, ends `... FAILED` and writes no project.
+
+<!-- Automated: bugs/import-no-settings-silent/repro.json is a cli reproducer, import of {src}\Sources\, expecting the IMPORTED line for Startup.twin, `... FAILED` and exit 0. A repro.json cannot assert that a line is absent, so it checks the IMPORTED line, `... FAILED` and exit 0 only: after a fix that adds an ERROR line, read the output by hand. Nothing in scripts/ or WIP.md states the compiler's behaviour; scripts/impexp.mjs import refuses a folder with no Settings file by name ("has no Settings file", with a self-test). Measured on BETA 983 and 995 (cli995/log1-*.txt, ENTRY 9) and by bug_repro verify on 995. -->
 
 ---
 
@@ -711,7 +777,7 @@ Steps to reproduce the behavior:
    Dim c As Variant = CCur(7.9)
    Debug.Print d << 1            ' 15.8
    Debug.Print c >> 1            ' 3.95
-
+   
    Dim i As Variant = CInt(1)
    Dim l As Variant = CLng(1)
    Debug.Print TypeName(i << 20) ' Empty
@@ -1105,7 +1171,7 @@ Steps to reproduce the behavior:
        FillTable
        Debug.Print "main after call"
    End Sub
-
+   
    Private Sub FillTable()
        Dim a(3) As Long, i As Long, idx As Long = 5
        For i = 0 To 2
@@ -1274,15 +1340,15 @@ Steps to reproduce the behavior:
 1. Open `fastcall-delegate-stdcall.twinproj` (attached as `fastcall-delegate-stdcall.zip`) and run it (F5) with the win32 target. Its declarations and the calls in its `Sub Main` hold the whole bug:
    ```
    Public Delegate Function FastDel FastCall (ByVal a As Long, ByVal b As Long) As Long
-
+   
    Public Function GF FastCall(ByVal a As Long, ByVal b As Long) As Long
        Return a * 100 + b
    End Function
-
+   
    Public Function GS(ByVal a As Long, ByVal b As Long) As Long
        Return a * 100 + b
    End Function
-
+   
    Dim d As FastDel = AddressOf GF
    Debug.Print d(9, 1)        ' error: "Bad DLL definition.  Stack corruption detected."
    Dim e As FastDel = AddressOf GS

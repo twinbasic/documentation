@@ -1,0 +1,7 @@
+' An ordinary project. Nothing to run: export of this file fails when a path is relative or uses forward slashes.
+Module Startup
+
+    Public Sub Main()
+    End Sub
+
+End Module

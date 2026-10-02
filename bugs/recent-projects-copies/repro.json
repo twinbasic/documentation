@@ -1,0 +1,4 @@
+{
+  "mode": "manual",
+  "steps": "Not automatable: it changes HKCU\\Software\\VB and VBA Program Settings\\twinBASIC_IDE\\RecentlyOpened, the person's own list. Export that key first with reg export, and import it back afterwards. 1. Copy recent-projects-copies.twinproj to A.twinproj, B.twinproj and C.twinproj. 2. In RecentlyOpened leave \"0\" = A.twinproj and \"1\" = B.twinproj, and delete \"2\" to \"20\" or set them to empty strings. 3. Open C.twinproj (twinBASIC.exe C.twinproj is enough). 4. Read the values: \"0\" is C, \"1\" is A and \"2\" to \"20\" are all B.twinproj, nineteen copies."
+}
