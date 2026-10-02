@@ -92,6 +92,7 @@ import {
 } from "../lib/cli.mjs";
 import { mapLines } from "../lib/markdown.mjs";
 import {
+  CLASS_SLOTS,
   CONCAT_KEY,
   HIDDEN_MARKER,
   MARKER,
@@ -222,6 +223,9 @@ const LLVM = values.llvm;
 const BUILD = values.build || LLVM;
 // The procedure a [DllExport] attribute is on, for a run that builds.
 const DLL_EXPORT_NAME = /\[\s*DllExport\b[^\]]*\][\s_]*(?:(?:Public|Private|Friend)\s+)?(?:Function|Sub)\s+(\w+)/gi;
+// A sample's own `Sub Main`, which a class body may not hold and a build has to
+// keep apart from the template's.
+const DECLARES_MAIN = /^[ \t]*(?:(?:Public|Private|Friend)[ \t]+)?Sub[ \t]+Main[ \t]*\(/im;
 
 // What a run that builds could say about each sample. A project whose compile has
 // errors is not built (the IDE refuses one), so its samples are compiled and
@@ -426,6 +430,19 @@ function select(fences) {
         `no such template project: ${fence.project}`,
         `templates live in test/example-projects/: ${readdirSync(TEMPLATES).join(", ")}`,
       );
+      continue;
+    }
+    // A class body with a `Sub Main` in it is no program: that Main is a method
+    // of the class, never the startup object. It is usually two files written
+    // as one fence, a class and the module that starts it.
+    if (CLASS_SLOTS.has(slot) && DECLARES_MAIN.test(fence.content)) {
+      if (marked) {
+        addFinding(
+          fence,
+          `declares \`Sub Main\` in a class (${slot}${fence.base ? `, inherits=${fence.base}` : stated ? "" : ", inferred"}), where it is never the startup object`,
+          "put the startup Main in a fence of its own, which a module slot holds",
+        );
+      }
       continue;
     }
     chosen.push(fence);
@@ -939,7 +956,6 @@ async function main() {
   // A build binds the startup object, and fails on a template Main beside a
   // sample's own ("'Main' is ambiguous"), which a compile accepts; so a run that
   // builds gives such a unit a project of its own without the template's.
-  const DECLARES_MAIN = /^[ \t]*(?:(?:Public|Private|Friend)[ \t]+)?Sub[ \t]+Main[ \t]*\(/im;
   const alone = BUILD ? (members) => members.some((f) => DECLARES_MAIN.test(f.content)) : null;
   const errorPages = new Set(selected.filter(expectsError).map((f) => f.rel));
   const hiddenOfErrorPage = (f) => f.flags.has(HIDDEN_MARKER) && errorPages.has(f.rel);

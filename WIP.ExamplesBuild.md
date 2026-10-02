@@ -592,6 +592,13 @@ that fails only the second is one LLVM cannot generate code for.
     `MyExportedFunction` (API-Declarations, Classes-and-Modules) compile together, and the
     linker refuses them ("duplicate [DLLExport] functions detected"); as names, the batcher
     keeps them apart.
+- **A marked `Sub Main` in a class slot is a finding**, in a compile as in a build. It is a
+  method of the class, never the startup object, so the sample is no program: usually a
+  class and the module that starts it, written as one fence. A compile passes it and a
+  build fails with no startup object, so `select` refuses it before batching. Split it, with
+  the startup Main in a fence of its own. The class slot may come from `inherits=` or from
+  the inference: a top-level `WithEvents` field is TB5182 in a module, whether `Private`,
+  `Dim` or `Public` (measured on BETA 995).
 
 ## Traps already paid for
 

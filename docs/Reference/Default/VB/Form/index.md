@@ -34,7 +34,9 @@ End Sub
 Private Sub Form_QueryUnload(Cancel As Integer, UnloadMode As Integer)
     If MsgBox("Quit?", vbYesNo) = vbNo Then Cancel = 1
 End Sub
+```
 
+```tb check_build
 ' In a startup module:
 Sub Main()
     Form1.Show vbModal
