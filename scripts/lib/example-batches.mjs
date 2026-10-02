@@ -83,7 +83,13 @@ function unitKey(fence) {
   return fence.keys.get("projname") ? `@${fence.keys.get("projname")}` : `#${fence.id}`;
 }
 
-export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_JOBS } = {}) {
+/**
+ * `alone`, given a unit's fences, says whether the unit is to be built in a
+ * project of its own with no template Main (`noMain` on the batch): a run that
+ * builds passes one for a unit declaring its own `Sub Main`, because a build,
+ * unlike a compile, fails on two.
+ */
+export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_JOBS, alone = null } = {}) {
   // A `hidden` fence is not a unit of its own: it is the PAGE's context, and
   // it joins every project that holds a sample from that page. So a page can
   // carry the declarations its samples assume -- the class its prose describes
@@ -156,7 +162,9 @@ export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_
       // author can actually reason about: what compiles is what they grouped,
       // plus the template. It costs one project per group, and groups are
       // written by hand, so there are never many.
-      if (key.startsWith("@")) {
+      // A unit `alone` picks gets one too, built without the template's Main.
+      const solo = !!alone?.(members);
+      if (key.startsWith("@") || solo) {
         const own = new Set(names);
         for (const rel of pages) for (const n of hiddenNamesFor(rel)) own.add(n);
         batches.push({
@@ -164,7 +172,8 @@ export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_
           fences: [...members],
           names: own,
           pages,
-          group: key.slice(1),
+          ...(key.startsWith("@") ? { group: key.slice(1) } : {}),
+          ...(solo ? { noMain: true } : {}),
         });
         continue;
       }
@@ -382,7 +391,11 @@ function ownRowsOf(project, lane) {
           );
         }
         const rows = result.crashed
-          ? [`the ${project} template crashes the compiler with no samples in it`]
+          ? [
+              result.buildFailed
+                ? `the ${project} template fails the build with no samples in it`
+                : `the ${project} template crashes the compiler with no samples in it`,
+            ]
           : [...(result.unattributed ?? []), ...(result.unreadable ?? [])];
         if (rows.length) {
           lane.note(
@@ -460,18 +473,26 @@ async function split(batch, lane, why) {
  * with nothing in `crashed` -- its crash needed several samples too -- and
  * whether a part crashed is what decides the next step.
  */
-async function isolateCrash(batch, named, lane) {
-  const where = `a compiler crash in ${batch.fences.length} sample(s) [${batch.project}]`;
+async function isolateCrash(batch, named, lane, failed = false, detail = "") {
+  const where = `${failed ? "a failed build" : "a compiler crash"} in ${batch.fences.length} sample(s) [${batch.project}]`;
   let parts = takeOut(batch, named);
   if (parts) lane.note(`  ${where}: building the sample it died parsing on its own`);
   else if ((parts = splitBatch(batch))) lane.note(`  ${where}: splitting to find it`);
   else {
     const { rep, ids, rest } = leafOf(batch);
-    lane.finding(
-      rep,
-      "crashes the twinBASIC compiler" + rest,
-      "the compiler dies parsing this sample; record it in BUGS-TO-REPORT.md",
-    );
+    if (failed) {
+      lane.finding(
+        rep,
+        "fails the build" + rest,
+        `${buildName(lane)} fails on this sample${detail ? ` (${detail})` : ""}; record it in BUGS-TO-REPORT.md if it is the compiler's fault`,
+      );
+    } else {
+      lane.finding(
+        rep,
+        "crashes the twinBASIC compiler" + rest,
+        "the compiler dies parsing this sample; record it in BUGS-TO-REPORT.md",
+      );
+    }
     // Named back to the caller, because a crashed sample produced no
     // diagnostics and would otherwise be counted as one that compiled -- the
     // same false-clean shape tbbuild's own crash check exists to close.
@@ -480,9 +501,35 @@ async function isolateCrash(batch, named, lane) {
   const subs = [];
   for (const part of parts) subs.push(await runBatch(part, lane));
   if (subs.some((s) => s.fromCrash)) return { ...merge(subs), fromCrash: true };
-  lane.note("  neither part crashes on its own: looking for the samples it needs together");
-  return { ...merge([...subs, await together(batch, ...parts, lane)]), fromCrash: true };
+  lane.note(
+    `  neither part ${failed ? "fails the build" : "crashes"} on its own: looking for the samples it needs together`,
+  );
+  return { ...merge([...subs, await together(batch, ...parts, lane, failed)]), fromCrash: true };
 }
+
+/**
+ * Build a batch, and build it once more if the build failed after a clean
+ * compile.
+ *
+ * Lanes building at once fail builds that pass alone: "[LINKER] FAILED to
+ * create type library" on samples that built clean with one lane (BETA 995,
+ * and BETA 983 under tbrun). A failure is believed only if the same batch fails
+ * twice running, and so is each part the halving that follows builds.
+ */
+async function buildTwiceOnFailure(batch, lane) {
+  const first = await lane.build(batch);
+  if (!first.crashed || !first.buildFailed) return first;
+  lane.note(
+    `  a failed build in ${batch.fences.length} sample(s) [${batch.project}] (${first.detail}): building it again`,
+  );
+  return lane.build(batch);
+}
+
+/**
+ * What the lane's build is called in a finding: LLVM is the point of an --llvm
+ * run, and the plain build is its control.
+ */
+const buildName = (lane) => (lane.llvm ? "the LLVM build" : "the build");
 
 /**
  * The samples a crash needs when it needs several: `a` and `b` each built
@@ -498,7 +545,7 @@ async function isolateCrash(batch, named, lane) {
  * Every member built clean in `a` or `b`, so each has its own result. They are
  * blamed rather than passed, because together they take the compiler down.
  */
-async function together(batch, a, b, lane) {
+async function together(batch, a, b, lane, failed = false) {
   const { hidden } = unitsOf(batch);
   const crashes = async (units) => !!(await lane.build(batchOf(batch, units, hidden))).crashed;
   const partners = async (fixed, pool) => {
@@ -519,14 +566,24 @@ async function together(batch, a, b, lane) {
     .flat()
     .filter((f) => !f.flags.has(HIDDEN_MARKER) && !f.isResource);
   const [rep, ...others] = members;
-  lane.finding(
-    rep,
-    `crashes the twinBASIC compiler when built with ${others.length} other ` +
-      `sample(s), though none of the ${members.length} does on its own`,
-    `the others: ${others.map((f) => `${f.rel}:${f.line}`).join(", ")}` +
-      (found ? "" : "; no smaller set that crashes was found") +
-      " -- record it in BUGS-TO-REPORT.md",
-  );
+  const theOthers = `the others: ${others.map((f) => `${f.rel}:${f.line}`).join(", ")}`;
+  if (failed) {
+    lane.finding(
+      rep,
+      `fails the build when built with ${others.length} other ` +
+        `sample(s), though none of the ${members.length} does on its own`,
+      theOthers +
+        (found ? "" : "; no smaller set that fails was found") +
+        `; ${buildName(lane)} fails on them together -- record it in BUGS-TO-REPORT.md if it is the compiler's fault`,
+    );
+  } else {
+    lane.finding(
+      rep,
+      `crashes the twinBASIC compiler when built with ${others.length} other ` +
+        `sample(s), though none of the ${members.length} does on its own`,
+      theOthers + (found ? "" : "; no smaller set that crashes was found") + " -- record it in BUGS-TO-REPORT.md",
+    );
+  }
   return { ...blank(), blamed: members.map((f) => f.id) };
 }
 
@@ -543,8 +600,8 @@ async function together(batch, a, b, lane) {
  * compiling while the run fails with a row naming no page.
  */
 export async function runBatch(batch, lane) {
-  let result = await lane.build(batch);
-  if (result.crashed) return isolateCrash(batch, result.named, lane);
+  let result = await buildTwiceOnFailure(batch, lane);
+  if (result.crashed) return isolateCrash(batch, result.named, lane, !!result.buildFailed, result.detail);
 
   // The canary is needed only by a read that holds no error: that is the read
   // an IDE that published nothing returns, and it looks exactly like a clean
@@ -558,8 +615,8 @@ export async function runBatch(batch, lane) {
       `  the canary did not report in ${batch.fences.length} sample(s) [${batch.project}] ` +
         `(${result.canaryProblem}), and nothing else did: building it again`,
     );
-    result = await lane.build(batch);
-    if (result.crashed) return isolateCrash(batch, result.named, lane);
+    result = await buildTwiceOnFailure(batch, lane);
+    if (result.crashed) return isolateCrash(batch, result.named, lane, !!result.buildFailed, result.detail);
     if (result.canaryProblem && !(await heard(result, batch.project, lane))) {
       // Twice silent: either the IDE keeps reading early under this load, or a
       // sample in the batch hides the diagnostics of the rest. Halving finds
@@ -868,6 +925,13 @@ export async function runProbes(say) {
   // definitions its tests need, and a page's hidden context left in the other
   // half takes away the declarations it exists to supply -- and the hidden
   // fences sit at the END of batch.fences, where a plain slice drops them.
+  // A unit `alone` picks is a project of its own, marked to leave out the
+  // template's Main; the rest batch as before.
+  const solo = makeBatches([fake("s1"), fake("s2"), fake("s3")], { alone: (m) => m.some((f) => f.id === "s2") });
+  const soloShape = solo.map((b) => `${b.fences.map((f) => f.id)}${b.noMain ? "!" : ""}`).join(" ");
+  if (soloShape !== "s2! s1,s3" && soloShape !== "s1,s3 s2!") {
+    failures.push(`batching: a unit alone picks -> ${soloShape}, want s2 alone and marked`);
+  }
   const soleGroup = makeBatches([fake("g1", "g"), fake("g2", "g")])[0];
   if (splitBatch(soleGroup) !== null) failures.push("split: a projname group was cut in half");
   const mixed = makeBatches([
@@ -935,10 +999,19 @@ export async function runProbes(say) {
         lane.builds++;
         const c = crash(new Set(b.fences.map((f) => f.id)));
         return c
-          ? { crashed: true, named: new Set(c.named ?? []) }
+          ? {
+              crashed: true,
+              buildFailed: !!c.failed,
+              detail: c.failed ? "[BUILD] FAILED boom" : undefined,
+              named: new Set(c.named ?? []),
+            }
           : { perFence: new Map(), unreadable: [], unattributed: [] };
       },
-      finding: (fence) => lane.found.push(fence.id),
+      said: [],
+      finding: (fence, message, detail) => {
+        lane.found.push(fence.id);
+        lane.said.push([message, detail]);
+      },
       note: () => {},
     };
     return lane;
@@ -967,6 +1040,48 @@ export async function runProbes(say) {
   const cheap = fakeLane((ids) => when("c")(ids) && naming("c")(ids));
   await runBatch(five, cheap);
   if (cheap.builds !== 3) failures.push(`isolation: a named crash took ${cheap.builds} builds, want 3`);
+  // A build that fails after a clean compile names no sample, so it is halved to
+  // the one that fails it, and reported in the build's words -- the LLVM build
+  // under --llvm, the build without it -- never as a compiler crash.
+  const failsBuild = (...need) => fakeLane((ids) => when(...need)(ids) && { failed: true });
+  const lone = failsBuild("d");
+  lone.llvm = true;
+  const loneResult = await runBatch(five, lone);
+  const loneSaid = lone.said[0] ?? [];
+  if (`${loneResult.crashed} / ${lone.found}` !== "d / d") {
+    failures.push(`failed build: a sample that fails alone -> ${loneResult.crashed} / ${lone.found}, want d / d`);
+  }
+  if (loneSaid[0] !== "fails the build" || !loneSaid[1]?.includes("the LLVM build fails on this sample")) {
+    failures.push(`failed build: an --llvm finding was worded ${JSON.stringify(loneSaid)}`);
+  }
+  if (!loneSaid[1]?.includes("([BUILD] FAILED boom)")) {
+    failures.push("failed build: the finding does not quote the build's failing line");
+  }
+  if (!loneSaid[1]?.includes("BUGS-TO-REPORT.md if it is the compiler's fault")) {
+    failures.push("failed build: the finding does not say when to record it");
+  }
+  const control = failsBuild("d");
+  await runBatch(five, control);
+  if (!control.said[0]?.[1]?.startsWith("the build fails on this sample")) {
+    failures.push(`failed build: a plain build's finding was worded ${JSON.stringify(control.said[0])}`);
+  }
+  // A failure that does not repeat is no finding: the batch is built again.
+  let calls = 0;
+  const flaky = fakeLane(() => ++calls === 1 && { failed: true });
+  const flakyResult = await runBatch(five, flaky);
+  if (flaky.found.length || flakyResult.crashed.length || flaky.builds !== 2) {
+    failures.push(
+      `failed build: one that passed when built again -> ${flaky.found} / ${flakyResult.crashed} in ${flaky.builds} builds`,
+    );
+  }
+  const pair = failsBuild("b", "d");
+  const pairResult = await runBatch(five, pair);
+  if (
+    `${[...pairResult.blamed].sort()}` !== "b,d" ||
+    !pair.said[0]?.[0].startsWith("fails the build when built with 1 other sample(s)")
+  ) {
+    failures.push(`failed build: two samples that fail only together -> ${JSON.stringify(pair.said[0])}`);
+  }
   // The canaries: what a batch's rows say about them, and what runBatch does when
   // they are not there. A batch with no rows at all is the one that matters, since
   // it is what an IDE that read its diagnostics early returns.
@@ -1236,14 +1351,15 @@ export async function runProbes(say) {
     for (const f of failures) say(`FAIL  probe: ${f}`);
     return false;
   }
-  // 10 line-map (5 slots x 2 bases) + 4 wrapper container + 7 batching
-  // + 5 splitting + 5 taking out + 3 crash report + 7 isolation + 9 concat
+  // 10 line-map (5 slots x 2 bases) + 4 wrapper container + 8 batching
+  // (1 of a unit built alone) + 5 splitting + 5 taking out + 3 crash report + 7 isolation + 9 concat
   // + 10 resource + 8 report + 6 markup + 15 canaries (5 of what a batch's rows say,
   // 7 of what runBatch does about a batch whose canary did not report, 3 of the
-  // template built with no samples).
+  // template built with no samples) + 7 of a failed build (wording, when to
+  // record it, one that passes when built again, a pair that fails only together).
   say(
-    `ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 89} probes: ` +
-      "classifier, markup, line mapping, batching, splitting, crash isolation, canaries, concat, " +
+    `ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 97} probes: ` +
+      "classifier, markup, line mapping, batching, splitting, crash isolation, failed builds, canaries, concat, " +
       "resources and the report",
   );
   return true;

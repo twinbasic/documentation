@@ -56,7 +56,9 @@
 // `Sub Main` is not one of them, though it was once listed as one. The template
 // brings a Main, and a sample may bring its own beside it: two `Public Sub
 // Main`s in different modules compile (measured, BETA 983), which is how the
-// WinServicesLib `Module Startup` samples build as written.
+// WinServicesLib `Module Startup` samples build as written. That holds for a
+// compile; a build refuses two Mains, and two [DllExport]s of one name, and a
+// project with an error at all, so --build and --llvm batch around those three.
 //
 // And one that does not: a sample can take the compiler down. twinBASIC runs it
 // in-process with user code, and a two-line syntax skeleton in Attributes.md
@@ -143,6 +145,8 @@ const { values } = withUsageError(
         verbose: { type: "boolean", default: false },
         json: { type: "boolean", default: false },
         keep: { type: "boolean", default: false },
+        build: { type: "boolean", default: false },
+        llvm: { type: "boolean", default: false },
         show: { type: "boolean", default: false },
         hide: { type: "boolean", default: false },
         help: { type: "boolean", short: "h", default: false },
@@ -167,6 +171,10 @@ Compiles the documentation's own twinBASIC code samples, every tb fence marked
   --port <n>       base DevTools port (default 9480)
   --batch <n>      samples per generated project (default 120)
   --ide <path>     twinBASIC.exe (default: $TB_IDE, else the newest on the Desktop)
+  --build          also build each project that compiles without errors; a project
+                   whose build fails is cut down to the samples that fail it
+  --llvm           build with LLVM (implies --build); needs a Professional or
+                   Ultimate licence, and --build alone is its control
   --keep           leave the generated projects on disk and say where
   --show, --hide   as tbbuild's
   --verbose        also print warnings, not only errors
@@ -177,10 +185,11 @@ Exit codes:
   0  every marked sample compiles, or none is marked; --report always, and --propose
      when it found only unmarked samples that fail (advisory)
   1  a marked sample does not compile, a marker is misused, a template does not
-     compile, or the compiler crashed on a project; the report names each
+     compile, the compiler crashed on a project, or --build or --llvm found a sample
+     that fails the build; the report names each
   2  the harness could not run: a refused command line, a failed self-test probe, no
      IDE or compiler, an unreadable --report file, a work folder it could not clear,
-     or a crash`;
+     an --llvm run on a Community or Personal licence, or a crash`;
 
 if (values.help) printHelpAndExit(USAGE);
 
@@ -208,6 +217,18 @@ const MODE_REPORT = values.report ?? null;
 const APPLY = values.apply;
 const VERBOSE = values.verbose;
 const AS_JSON = values.json;
+const LLVM = values.llvm;
+// --llvm is a build, so the one switch the rest of the file reads is BUILD.
+const BUILD = values.build || LLVM;
+// The procedure a [DllExport] attribute is on, for a run that builds.
+const DLL_EXPORT_NAME = /\[\s*DllExport\b[^\]]*\][\s_]*(?:(?:Public|Private|Friend)\s+)?(?:Function|Sub)\s+(\w+)/gi;
+
+// What a run that builds could say about each sample. A project whose compile has
+// errors is not built (the IDE refuses one), so its samples are compiled and
+// nothing more; a sample is counted as unbuilt only if no build of any project
+// that held it, a smaller one from isolating a larger included, ever ran.
+const builtIds = new Set();
+const unbuiltIds = new Set();
 
 // A page's template, when its fence does not name one. Inferred from the path
 // because the package a sample needs is what the page is ABOUT -- stating
@@ -362,7 +383,12 @@ function select(fences) {
     // fact written twice, and the pair could then disagree.
     fence.base = fence.keys.get("inherits") ?? null;
     if (fence.base && slot) slot = PROMOTE_TO_CLASS[slot] ?? slot;
-    fence.inferred = inferred;
+    // A [DllExport] name is the exe's, whatever module declares it, and a build
+    // refuses two ("[LINKER] FAILED duplicate [DLLExport] functions detected"),
+    // which a compile accepts. Counted among the names, it keeps two samples
+    // exporting one name out of one project, as a clash of names does.
+    const exported = BUILD ? [...fence.content.matchAll(DLL_EXPORT_NAME)].map((m) => `[DllExport] ${m[1]}`) : [];
+    fence.inferred = exported.length ? { ...inferred, names: [...(inferred.names ?? []), ...exported] } : inferred;
     fence.slot = slot;
     fence.slotStated = Boolean(stated);
     fence.project = fence.keys.get("project") ?? defaultProject(fence.rel);
@@ -480,6 +506,8 @@ function stageBatch(batch, work) {
   for (const name of templateChain(batch.project)) {
     cpSync(path.join(TEMPLATES, name), dir, { recursive: true });
   }
+  // The sample brings the project's Main (see makeBatches' `alone`).
+  if (batch.noMain) rmSync(path.join(dir, "Sources", "tbxMain.twin"), { force: true });
 
   const settingsPath = path.join(dir, "Settings");
   const settings = JSON.parse(readFileSync(settingsPath, "utf8"));
@@ -492,6 +520,11 @@ function stageBatch(batch, work) {
   // invisible and unreachable -- so the build never happens while the WebView2
   // renderer stays responsive and every health check says the IDE is fine.
   settings["project.buildPath"] = path.join(dir, `${name}.exe`).split("/").join("\\");
+  // The run's compiler options and the exe's alike, as tbrun's --llvm sets them.
+  if (LLVM) {
+    settings["compiler.debugOptions"] = "+llvm";
+    settings["compiler.buildOptions"] = "+llvm";
+  }
   writeFileSync(settingsPath, JSON.stringify(settings, null, "\t") + "\n", "utf8");
 
   const map = new Map();
@@ -552,11 +585,21 @@ async function buildStaged(staged, port) {
     ide: IDE,
     port,
     show: wantShow({ show: values.show, hide: values.hide }),
+    build: BUILD,
+    llvm: LLVM,
   });
 
   if (r.code === 4) return { crashed: true, detail: r.message, named: crashedIn(r.crashFiles, staged.map) };
+  // A build that failed after a clean compile is isolated as a crash is: nothing
+  // names a sample, so it is cut down by halving. `named` is empty for that.
+  if (r.code === 5) return { crashed: true, buildFailed: true, named: new Set(), detail: r.message };
   if (r.code !== 0 && r.code !== 1) {
     throw new Error(`tbbuild exited ${r.code} on ${staged.proj}\n${r.message}`);
+  }
+  if (BUILD) {
+    for (const entry of staged.map.values()) (r.code === 0 ? builtIds : unbuiltIds).add(entry.fence.id);
+    const first = r.rows.find((row) => row.startsWith("{ERROR}"));
+    if (r.code === 1) say(`  not built: ${path.basename(staged.proj)} has errors, the first ${first}`);
   }
   const result = { diagnostics: r.rows };
 
@@ -625,6 +668,7 @@ function laneOf(port, work) {
     },
     finding: addFinding,
     note: say,
+    llvm: LLVM,
   };
 }
 
@@ -887,7 +931,32 @@ async function main() {
     process.exit(findings.some((f) => !f.advisory) ? 1 : 0);
   }
 
-  const batches = makeBatches(selected, { batchSize, jobs });
+  // A project with an error is not built, and an `expect-error` sample is one on
+  // purpose; batched with the rest it would leave every sample beside it unbuilt.
+  // So a run that builds batches those samples apart, each with its page's
+  // hidden blocks, which the rest of the page keeps as well.
+  const expectsError = (f) => f.keys.has("expect-error");
+  // A build binds the startup object, and fails on a template Main beside a
+  // sample's own ("'Main' is ambiguous"), which a compile accepts; so a run that
+  // builds gives such a unit a project of its own without the template's.
+  const DECLARES_MAIN = /^[ \t]*(?:(?:Public|Private|Friend)[ \t]+)?Sub[ \t]+Main[ \t]*\(/im;
+  const alone = BUILD ? (members) => members.some((f) => DECLARES_MAIN.test(f.content)) : null;
+  const errorPages = new Set(selected.filter(expectsError).map((f) => f.rel));
+  const hiddenOfErrorPage = (f) => f.flags.has(HIDDEN_MARKER) && errorPages.has(f.rel);
+  const batches = BUILD
+    ? [
+        ...makeBatches(
+          selected.filter((f) => !expectsError(f)),
+          { batchSize, jobs, alone },
+        ),
+        ...(errorPages.size
+          ? makeBatches(
+              selected.filter((f) => expectsError(f) || hiddenOfErrorPage(f)),
+              { batchSize, jobs, alone },
+            )
+          : []),
+      ]
+    : makeBatches(selected, { batchSize, jobs });
   const work = path.join(tmpdir(), "tbexamples", String(basePort));
   try {
     rmSync(work, { recursive: true, force: true });
@@ -1068,6 +1137,11 @@ async function main() {
         `${real} finding(s), ${secs}s` +
         (real ? "" : " -- clean"),
     );
+    // A project with errors is never built, so the build asked nothing of these.
+    if (BUILD) {
+      const unbuilt = samples.filter((f) => unbuiltIds.has(f.id) && !builtIds.has(f.id)).length;
+      if (unbuilt) say(`${unbuilt} sample(s) in batches with errors were compiled but not built`);
+    }
   }
   if (values.keep) say(`generated projects kept in ${work}`);
   else rmSync(work, { recursive: true, force: true });

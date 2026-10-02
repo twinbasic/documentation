@@ -55,9 +55,10 @@ export function stageProject({ src, stage, project, compiler, settings = {}, pre
  *
  * Every harness id starts 7B247, and the digit after that is the role: 0 is
  * tbrun's probe, 1 an add-in being built, 2 the project an add-in test opens,
- * and 4 and 5 are check_examples' template and batches, which it numbers
- * itself. The last six hex digits are the lane's DevTools port, which is what
- * already has to differ between runs going on at once.
+ * 3 the project tbbuild stages for --build or --llvm, and 4 and 5 are
+ * check_examples' template and batches, which it numbers itself. The last six
+ * hex digits are the lane's DevTools port, which is what already has to differ
+ * between runs going on at once.
  */
 export const laneProjectId = (role, port) =>
   `{7B247${role}00-0000-4000-9000-7B247${role}${port.toString(16).padStart(6, "0")}}`;

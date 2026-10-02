@@ -15,7 +15,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { attach } from "./tb-cdp.mjs";
 import { click } from "./tb-click.mjs";
-import { consoleMark, linesSince } from "./tb-ide-console.mjs";
+import { consoleMark, keepClears, keptClears, linesSince, readConsole } from "./tb-ide-console.mjs";
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -806,7 +806,68 @@ export async function awaitNewCompiler(c, before, { why = "restarting it", timeo
 // ...", "[BUILD] failed" and "[LINKER] compilation (codegen) error ...".
 const BUILD_START = "[BUILD] Starting...";
 const BUILD_OK = /^\[LINKER\] SUCCESS created output file '(.+)'$/;
-export const BUILD_FAILED = /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[LINKER\] compilation \(codegen\) error/;
+// The last is LLVM's refusal of a procedure, which has no bracketed prefix:
+// "LLVM compilation error in 'Probe.Stopper': Unable to compile due to use of
+// datatype that is not yet supported for LLVM compilation" (BETA 983).
+export const BUILD_FAILED =
+  /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[LINKER\] compilation \(codegen\) error|^LLVM compilation error in /;
+// A compiler that crashes while building -- measured under LLVM, BETA 995 --
+// writes "<n> <time> NATIVE EXCEPTION: ..." and then restarts, and the build
+// never reports again. The line carries the console's own prefix, so it is not
+// anchored.
+const BUILD_CRASHED = /\bNATIVE EXCEPTION:/;
+
+/**
+ * Whether the IDE's licence lets a project compile user code with LLVM.
+ *
+ * A Community licence ignores the LLVM settings and a Personal one applies them
+ * only to the built-in packages (docs/LLVM/Getting-Started.md), so on either an
+ * LLVM run measures the default compiler and says nothing. The status bar's
+ * compilerLicence holds one of four "<NAME> EDITION" strings once the IDE knows
+ * (ide/main.js, BETA 995), and "tB Licence: ..." until then, so it is polled.
+ *
+ * @param {object} c                  a tb-cdp connection
+ * @param {object} [o]
+ * @param {number} [o.timeout]        milliseconds to wait for the licence (default 15000)
+ * @returns {Promise<{licence: string | null, refusal: string | null}>} `refusal`
+ *   is null when LLVM may be used, and otherwise the sentence saying why not
+ */
+export async function llvmLicence(c, { timeout = 15 * 1000 } = {}) {
+  let licence = null;
+  const until = Date.now() + timeout;
+  while (Date.now() < until) {
+    licence = await c
+      .evaluate("typeof compilerLicence === 'undefined' || !compilerLicence ? null : compilerLicence.innerText")
+      .catch(() => null);
+    if (/ EDITION$/.test(licence ?? "")) break;
+    licence = null;
+    await sleep(250);
+  }
+  if (!licence)
+    return { licence, refusal: "the IDE never showed its licence, so an LLVM run could not be checked for one." };
+  if (/^(?:COMMUNITY|PERSONAL) /.test(licence)) {
+    return {
+      licence,
+      refusal:
+        `this IDE has a ${licence.toLowerCase()} licence, which does not compile user code with LLVM, ` +
+        "so the run would measure the default compiler. An LLVM run needs a Professional or Ultimate licence.",
+    };
+  }
+  return { licence, refusal: null };
+}
+
+/**
+ * The console's lines since `mark`, with what any clear since then erased put
+ * back in front: the first clear's record from the mark's entry count on, each
+ * later record whole, then the console as it is. `clearsBefore` is how many
+ * clears were on record at the mark, or null when no record is kept.
+ */
+async function buildLines(c, mark, clearsBefore) {
+  const kept = clearsBefore === null ? [] : ((await keptClears(c)) ?? []).slice(clearsBefore);
+  if (!kept.length) return linesSince(c, mark);
+  const split = (text) => text.split("\n").map((l) => l.trim());
+  return [...split(kept[0]).slice(mark.n), ...kept.slice(1).flatMap(split), ...split((await readConsole(c)) ?? "")];
+}
 
 /**
  * Build the open project, as the toolbar's Build button does, and wait for the
@@ -832,6 +893,11 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
       message: "no debugConsoleContent.dataNodes in this IDE, " + "so the build log cannot be read",
     };
   }
+  // A [RunAfterBuild] procedure runs during the build, and its Debug.Cls would
+  // erase the log being read; what each clear erases is kept, and the clears
+  // already on record before this build are not this build's.
+  const keeping = await keepClears(c).catch(() => false);
+  const clearsBefore = keeping ? ((await keptClears(c)) ?? []).length : 0;
   try {
     await click(c, "buildIcon");
   } catch (e) {
@@ -842,7 +908,7 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
     failedAt = 0;
   while (Date.now() - t0 < timeout) {
     await sleep(250);
-    const lines = await linesSince(c, mark);
+    const lines = await buildLines(c, mark, keeping ? clearsBefore : null);
     const start = lines.indexOf(BUILD_START);
     if (start < 0) continue;
     log = lines.slice(start);
@@ -852,9 +918,10 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
     // failed to use project.iconForm setting", and whether a build goes on
     // after that one has not been seen -- so one decides only after two
     // seconds with no success line after it.
-    if (!failedAt && log.some((l) => BUILD_FAILED.test(l))) failedAt = Date.now();
+    const failed = (l) => BUILD_FAILED.test(l) || BUILD_CRASHED.test(l);
+    if (!failedAt && log.some(failed)) failedAt = Date.now();
     if (failedAt && Date.now() - failedAt > 2000) {
-      return { ok: false, message: log.find((l) => BUILD_FAILED.test(l)), log };
+      return { ok: false, message: log.find(failed), log };
     }
   }
   return {

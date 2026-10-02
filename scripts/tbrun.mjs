@@ -140,6 +140,7 @@ import {
   killTree,
   launchIde,
   launchOnDesktop,
+  llvmLicence,
   setBuildTarget,
   shutdownIde,
   summaryLine,
@@ -453,31 +454,13 @@ if (outcome.counts[0] > 0) {
   failBuild(1, [...outcome.rows, summaryLine(outcome.counts)].join("\n"));
 }
 
-// The licence, for a run with LLVM in it. A Community licence ignores the LLVM
-// settings and a Personal one applies them only to the built-in packages
-// (docs/LLVM/Getting-Started.md), so on either the run would measure the
-// default compiler and say nothing. The status bar's compilerLicence holds one
-// of four "<NAME> EDITION" strings once the IDE knows (ide/main.js, BETA 995),
-// and "tB Licence: ..." until then.
+// The licence, for a run with LLVM in it: llvmLicence says why a Community or
+// Personal one measures nothing.
 let licence = null;
 if (usesLlvm) {
-  const until = Date.now() + 15 * 1000;
-  while (Date.now() < until) {
-    licence = await cdp
-      .evaluate("typeof compilerLicence === 'undefined' || !compilerLicence ? null : compilerLicence.innerText")
-      .catch(() => null);
-    if (/ EDITION$/.test(licence ?? "")) break;
-    licence = null;
-    await new Promise((r) => setTimeout(r, 250));
-  }
-  if (!licence) failBuild(2, "tbrun: the IDE never showed its licence, so an LLVM run could not be checked for one.");
-  if (/^(?:COMMUNITY|PERSONAL) /.test(licence)) {
-    failBuild(
-      2,
-      `tbrun: this IDE has a ${licence.toLowerCase()} licence, which does not compile user code with LLVM, ` +
-        "so the run would measure the default compiler. An LLVM run needs a Professional or Ultimate licence.",
-    );
-  }
+  const found = await llvmLicence(cdp);
+  licence = found.licence;
+  if (found.refusal) failBuild(2, `tbrun: ${found.refusal}`);
 }
 
 // --------------------------------------------- build the exe, read the console

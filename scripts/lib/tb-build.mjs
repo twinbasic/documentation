@@ -34,8 +34,10 @@ import {
   COMPILE_TIMEOUT,
   TARGETS,
   attachIde,
+  buildProject,
   compileOutcome,
   launchIde,
+  llvmLicence,
   setBuildTarget,
   shutdownIdeAsync,
   waitForCompile,
@@ -50,14 +52,27 @@ import {
  * @param {number} [o.timeout] ms to wait for the compile (default COMPILE_TIMEOUT)
  * @param {boolean} [o.show]   on the user's desktop instead of a private one
  * @param {boolean} [o.keep]   leave the IDE running, and report its pid
+ * @param {boolean} [o.build]  after a compile with no errors, build the project
+ *   as the toolbar's Build button does. The project's settings decide what is
+ *   built and how: the caller stages them (lib/tb-project.mjs), because a
+ *   project opened in place has the template's build path, whose Save dialog
+ *   a private desktop hides
+ * @param {boolean} [o.llvm]   refuse a licence that does not compile user code
+ *   with LLVM. It checks the licence and changes no setting; the project's
+ *   own `compiler.buildOptions` is what asks for LLVM
+ * @param {number} [o.buildTimeout] ms to wait for the build (default buildProject's)
  * @returns {Promise<{
  *   code: number, message: string, rows: string[], counts: number[], dialogs: string[],
  *   openedIn: string | null, arch: string, idePid: number | null, kept: boolean, crashFiles: string[],
+ *   built: string | null, buildLog: string[],
  * }>} `code` is tbbuild's exit code: 0 clean, 1 the project has errors, 2 the IDE
- *   could not be started or attached, 3 the compile never settled, 4 the project
- *   crashes the compiler. `message` is what tbbuild prints on stderr for 2, 3
- *   and 4 and is empty otherwise. `counts` is errors, warnings, hints, infos.
- *   `crashFiles` names, for 4, the files the compiler died parsing.
+ *   could not be started or attached or the licence refuses LLVM, 3 the compile
+ *   never settled, 4 the project crashes the compiler, 5 the build failed after
+ *   a clean compile. `message` is what tbbuild prints on stderr for 2 to 5 and
+ *   is empty otherwise: for 5 the failing line of the log. `counts` is errors,
+ *   warnings, hints, infos. `crashFiles` names, for 4, the files the compiler
+ *   died parsing. `built` is the file a successful build wrote, and `buildLog`
+ *   the console from the build's first line on.
  */
 export async function compileProject({
   project,
@@ -67,6 +82,9 @@ export async function compileProject({
   timeout = COMPILE_TIMEOUT,
   show = false,
   keep = false,
+  build = false,
+  llvm = false,
+  buildTimeout,
 }) {
   let handle = null;
   let c = null;
@@ -81,6 +99,8 @@ export async function compileProject({
     idePid: handle?.pid ?? null,
     kept: keep,
     crashFiles: [],
+    built: null,
+    buildLog: [],
     ...fields,
   });
   try {
@@ -110,7 +130,24 @@ export async function compileProject({
     } catch (e) {
       return result(2, { message: e.message });
     }
-    return result(outcome.counts[0] > 0 ? 1 : 0, { rows: outcome.rows, counts: outcome.counts, openedIn });
+    const found = { rows: outcome.rows, counts: outcome.counts, openedIn };
+
+    // The licence is read once the compile has settled, which is when the IDE
+    // knows it. A project that is to be built with LLVM on a licence that does
+    // not compile user code with LLVM would build with the default compiler and
+    // say nothing, so it is refused whatever the compile found.
+    if (llvm) {
+      const { refusal } = await llvmLicence(c);
+      if (refusal) return result(2, { ...found, message: refusal });
+    }
+    if (outcome.counts[0] > 0) return result(1, found);
+
+    // The IDE does not build a project it flags with errors, so a build is asked
+    // of a clean compile only. A warning does not stop one.
+    if (!build) return result(0, found);
+    const built = await buildProject(c, { timeout: buildTimeout });
+    if (!built.ok) return result(5, { ...found, message: built.message, buildLog: built.log });
+    return result(0, { ...found, built: built.file, buildLog: built.log });
   } finally {
     // A close that threw must not skip ending the IDE, or mask what was thrown.
     try {

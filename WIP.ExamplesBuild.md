@@ -537,6 +537,62 @@ quiet about it deliberately, on the grounds that the filter is the caller's own 
 says so as an advisory finding. **A narrowed run's results are not a full run's, and the tool
 has to be the thing that says which.**
 
+### `--build` and `--llvm`: what a compile does not ask
+
+**A compile asks the front end; code generation runs in a build.** A sample can compile
+clean and still fail the build, and under LLVM the IDE reports "a feature used in your code
+is not yet supported with the LLVM compiler". `--build` presses Build on each project whose
+compile has no errors, through `compileProject`'s `build` option, and `--llvm` (which implies
+`--build`) writes `+llvm` into each batch's `compiler.buildOptions` and
+`compiler.debugOptions`. A plain `--build` run is the control for an `--llvm` one: a sample
+that fails only the second is one LLVM cannot generate code for.
+
+- **A failed build is a crash, for isolation.** `compileProject` returns code 5 and
+  `buildStaged` turns it into `{ crashed: true, buildFailed: true, named: <empty set> }`.
+  Nothing in a build log names a sample, so `runBatch` halves the batch, and `together`
+  finds a set that fails only in combination. The notes and findings are worded by kind:
+  "fails the build", and a second line naming "the LLVM build" under `--llvm` and "the
+  build" otherwise, with the advice to record it in `BUGS-TO-REPORT.md` if it is the
+  compiler's fault. The lane's `llvm` field chooses the wording.
+- **The canary does not stop a build.** `[EnforceWarnings(TB0005)]` keeps its `#Warning` a
+  warning whatever the project's settings say, and a warning does not stop the IDE building:
+  a probe with the canary module beside it builds and runs (tbrun, exit 0, BETA 995).
+- **A project with compile errors is compiled and not built.** The run ends by counting
+  the samples that only ever sat in such a project: "N sample(s) in batches with errors were
+  compiled but not built". A sample counts as built if any project that held it, a smaller
+  one from isolating a larger included, was built.
+- **`--llvm` needs a Professional or Ultimate licence.** `llvmLicence` in `tb-ide.mjs`,
+  shared with `tbrun`, reads the status bar's licence once the compile has settled, and
+  `compileProject` returns code 2 for a Community or Personal one.
+- **A build that ends the compiler writes no failure line.** A native exception during an
+  LLVM build (`NATIVE EXCEPTION: ACCESS_VIOLATION`, then "restarting from MEMORY") leaves
+  the log without a success or a failure line, so `buildProject` treats the exception line
+  as a failure; before that it waited out its whole timeout.
+- **A `[RunAfterBuild]` that calls `Debug.Cls` would erase the build log.** `buildProject`
+  wraps the page's `clearDebugConsole` (`keepClears`, as `tbrun` does) and reads what each
+  clear after its mark erased in front of the console, so Tools.md's own tbrun sample builds.
+- **A failed build is believed when it repeats.** With four lanes, samples that build clean
+  alone fail with `[LINKER] FAILED to create type library`, a different one each run (BETA
+  995: Inheritance.md in one full run, CEF's EnvironmentOptions.md in a narrowed one; both
+  clean with `--jobs 1`). `buildTwiceOnFailure` builds a failed batch again before halving,
+  and every part the halving builds the same way. The cause, a file the lanes share or
+  something else, was not found.
+- **A project with errors says which.** `not built: b<n>.twinproj has errors, the first ...`
+  prints when a compile has errors, and the run ends counting the samples never built.
+- **A build adds three collision rules a compile does not have**, each measured on BETA 995
+  as a false finding in the first full `--build` run:
+  - **`expect-error` samples are batched apart.** One such sample (Option.md, TB5079) left
+    the 129 samples beside it unbuilt, since a project with an error is not built.
+  - **A unit declaring its own `Sub Main` gets a project of its own, without `tbxMain`.**
+    Two Mains compile, but binding the startup object fails the build ("'Main' is
+    ambiguous"), as `tbxMain.twin`'s header says. `makeBatches`' `alone` picks the unit,
+    the batch carries `noMain`, and `stageBatch` leaves out `tbxMain.twin`. HelpFile,
+    PrevInstance, Project-Types and the two WinServicesLib groups failed this way.
+  - **A `[DllExport]` name counts among a sample's names.** Two samples exporting
+    `MyExportedFunction` (API-Declarations, Classes-and-Modules) compile together, and the
+    linker refuses them ("duplicate [DLLExport] functions detected"); as names, the batcher
+    keeps them apart.
+
 ## Traps already paid for
 
 Each cost a run, either during the probing that produced this file or during the
