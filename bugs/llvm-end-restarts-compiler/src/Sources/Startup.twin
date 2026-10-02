@@ -1,0 +1,15 @@
+' End in an LLVM-compiled procedure, run in the IDE, restarts the IDE's compiler.
+Module Startup
+
+    [CompilerOptions("+llvm")]
+    Private Sub Stopper()
+        Debug.Print "before End"
+        End
+    End Sub
+
+    Public Sub Main()
+        Stopper
+        Debug.Print "after End: not reached"
+    End Sub
+
+End Module

@@ -1,0 +1,15 @@
+' Text that continues a Debug.Print line is escaped twice in the DEBUG CONSOLE.
+Module Startup
+
+    Public Sub Main()
+        Debug.Print "A";
+        Debug.Print "&"              ' the console shows A&amp; instead of A&
+
+        Debug.Print "a < b";         ' the text that opens the line is right
+        Debug.Print " and c > d"     ' the console shows  and c &gt; d
+
+        Debug.Print "B"; "&"         ' the same text in one statement is right: B&
+        Debug.Print "a < b & c"      ' a whole line is right
+    End Sub
+
+End Module

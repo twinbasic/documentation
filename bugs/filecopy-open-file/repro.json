@@ -1,0 +1,11 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^open For Append: -2147467259 ",
+      "^open For Input:  -2147467259 ",
+      "^closed:\\s+0\\s*$"
+    ]
+  }
+}

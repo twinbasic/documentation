@@ -1,0 +1,17 @@
+' Reading Forms(k) through a variable declared As Form returns a broken reference, and the EXE crashes.
+' Build the project and run the EXE (Debug.Print writes nothing there): it ends with 0xC0000005.
+Module Startup
+
+    Public Sub Main()
+        Dim f As Form                ' the crash needs As Form; As Form1 or As Object works
+        Dim k As Long
+
+        Load Form1
+        For k = 0 To Forms.Count - 1
+            Set f = Forms(k)
+            Debug.Print "k = "; k; " name = "; f.Name
+        Next k
+        End
+    End Sub
+
+End Module

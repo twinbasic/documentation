@@ -1,0 +1,13 @@
+{
+  "mode": "run",
+  "arch": "win32",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^GF directly:\\s+901",
+      "^FastCall delegate:\\s+-353703419 Bad DLL definition",
+      "^ThisCall delegate:\\s+-353703419 Bad DLL definition",
+      "^FastCall delegate to a stdcall function:\\s+901"
+    ]
+  }
+}

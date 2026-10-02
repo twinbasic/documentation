@@ -1,0 +1,10 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^plain:\\s+5\\s+/\\s+MySrc\\s+/\\s+my text$",
+      "^LLVM:\\s+-353703423\\s+/\\s+/\\s+Application-defined or object-defined error$"
+    ]
+  }
+}

@@ -1,0 +1,39 @@
+' A call through a FastCall or ThisCall delegate is made as stdcall on win32.
+' Build for win32: on win64 every case below returns 901.
+Module Startup
+
+    Public Delegate Function FastDel FastCall (ByVal a As Long, ByVal b As Long) As Long
+    Public Delegate Function ThisDel ThisCall (ByVal a As Long, ByVal b As Long) As Long
+
+    Public Function GF FastCall(ByVal a As Long, ByVal b As Long) As Long
+        Return a * 100 + b
+    End Function
+
+    Public Function GT ThisCall(ByVal a As Long, ByVal b As Long) As Long
+        Return a * 100 + b
+    End Function
+
+    Public Function GS(ByVal a As Long, ByVal b As Long) As Long
+        Return a * 100 + b
+    End Function
+
+    Public Sub Main()
+        Debug.Print "GF directly: "; GF(9, 1)             ' 901
+        Debug.Print "GT directly: "; GT(9, 1)             ' 901
+
+        On Error Resume Next
+        Dim f As FastDel = AddressOf GF
+        Debug.Print "FastCall delegate: "; f(9, 1)        ' expected 901
+        Debug.Print Err.Number; Err.Description           ' got: Stack corruption detected
+        Err.Clear
+
+        Dim t As ThisDel = AddressOf GT
+        Debug.Print "ThisCall delegate: "; t(9, 1)        ' expected 901
+        Debug.Print Err.Number; Err.Description
+        Err.Clear
+
+        Dim e As FastDel = AddressOf GS                   ' warning TB0026: a stdcall target works
+        Debug.Print "FastCall delegate to a stdcall function: "; e(9, 1)    ' 901
+    End Sub
+
+End Module

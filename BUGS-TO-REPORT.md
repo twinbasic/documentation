@@ -700,13 +700,24 @@ floating-point operands are truncated before shifting.
 
 ## A `Variant` shift multiplies a fractional value, and can return `Empty`
 
-**Build:** BETA 995
-**Severity:** wrong values, with no diagnostic.
+**Describe the bug**
+A `Variant` holding a `Double`, `Currency` or `Decimal` of 7.9, shifted left by 1, gives 15.8: the value is multiplied by 2, not shifted. Shifted right by 1, the `Double` and the `Decimal` give 3, but the `Currency` gives 3.95. A `Variant` holding an `Integer` or a `Long` shifted left by a count as large as the type's width gives `Empty` rather than 0. There is no diagnostic.
 
-A `Variant` holding the `Double` 7.9, shifted left by 1, is 15.8: the value is multiplied, not
-shifted, and so is a `Currency` or `Decimal` holding 7.9. Shifted right by 1, the `Variant` and
-the `Decimal` give 3 but the `Currency` gives 3.95. A count as large as the width of the type the `Variant` holds gives `Empty` rather
-than 0:
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `variant-shift.twinproj` (attached as `variant-shift.zip`) and run it (F5). Its `Sub Main` holds the whole bug:
+   ```
+   Dim d As Variant = CDbl(7.9)
+   Dim c As Variant = CCur(7.9)
+   Debug.Print d << 1            ' 15.8
+   Debug.Print c >> 1            ' 3.95
+
+   Dim i As Variant = CInt(1)
+   Dim l As Variant = CLng(1)
+   Debug.Print TypeName(i << 20) ' Empty
+   Debug.Print TypeName(l << 32) ' Empty
+   ```
+2. See the DEBUG CONSOLE show 15.8, 3.95, `Empty` and `Empty`. The project prints the same for a `Decimal` too.
 
 | expression | result |
 |---|---|
@@ -715,9 +726,17 @@ than 0:
 | a `Variant` holding `CLng(1)`, `<< 31` | `Long` -2147483648 |
 | a `Long` variable holding 1, `<< 32` | 0 |
 
-**Found by** probing the operators for `Reference/Core/LeftShift.md` and `RightShift.md`. The
-same probe found `>>` logical on a typed variable and arithmetic on a constant, up to BETA 983;
-BETA 984 made both arithmetic.
+**Expected behavior**
+A shift moves bits, so a fractional value should be truncated first, as the right shift of the `Double` and the `Decimal` already does: `7.9 << 1` is 14 and `7.9 >> 1` is 3. A count as large as the width of the type should give 0 and keep the type, as the `Long` variable's shift does, not `Empty`.
+
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: wrong values, with no diagnostic. Also on BETA 983, with the same results, except that the right shift of a `Variant` holding 7.9 gave 4 there for all three types (BETA 984 made `>>` arithmetic). A `Long` variable's shift by 32 gives 0 on both builds.
+
+<!-- Stated by the Variant note in docs/Reference/Core/LeftShift.md; when fixed, remove the note, and check RightShift.md for the Currency result. Measured with scripts/bug_repro.mjs (run mode, verify) on 995 and 983. Found by probing the operators for those two pages; the same probe found `>>` logical on a typed variable and arithmetic on a constant, up to BETA 983. -->
 
 ---
 
@@ -756,28 +775,36 @@ measuring the operators for `Reference/Operators.md`.
 
 ## `Boolean \ String` and `Boolean Mod String` convert the `String` to `Boolean`
 
-**Build:** BETA 995
-**Severity:** a wrong value and a wrong type, with no diagnostic.
+**Describe the bug**
+With a `Boolean` on the left and a `String` on the right, `\` and `Mod` convert the `String` to `Boolean` instead of to a number, so the result has the wrong value and the wrong type. There is no diagnostic.
 
-```
-Dim b As Boolean = True
-Debug.Print TypeName(b \ "2")
-```
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `boolean-intdiv-string.twinproj` (attached as `boolean-intdiv-string.zip`) and run it (F5). Its `Sub Main` holds the whole bug:
+   ```
+   Dim b As Boolean = True
+   Debug.Print TypeName(b \ "2")
+   ```
+2. See `Boolean`, where `Long` is expected. The project prints these:
 
-| expression | result | expected |
-|---|---|---|
-| `b \ "2"` | `Boolean` True | `Long` 0, as `b \ 2.0` gives |
-| `b Mod "2"` | `Boolean` False | `Long` -1, as `b Mod 2.0` gives |
+   | expression | result | expected |
+   |---|---|---|
+   | `b \ "2"` | `Boolean` True | `Long` 0, as `b \ 2.0` gives |
+   | `b Mod "2"` | `Boolean` False | `Long` -1, as `b Mod 2.0` gives |
 
-The results are consistent with converting `"2"` to `Boolean` (`True`, -1) first: -1 \ -1 is 1,
-stored as `True`, and -1 Mod -1 is 0, stored as `False`. A `String` literal and a `String`
-variable on the right both reproduce it.
+The results are consistent with converting `"2"` to `Boolean` (`True`, -1) first: -1 \ -1 is 1, stored as `True`, and -1 Mod -1 is 0, stored as `False`. A `String` literal and a `String` variable on the right both reproduce it.
 
-**What does not reproduce it:** every other operator converts the `String` to a number --- `b +
-"2"` is the `Double` 1, `b / "2"` the `Double` -0.5 --- and so do `\` and `Mod` with the operands
-the other way round: `"2" \ b` is the `Long` -2.
+**Expected behavior**
+The `String` should be converted to a number, as every other operator does: `b + "2"` is the `Double` 1 and `b / "2"` the `Double` -0.5. `b \ "2"` should be the `Long` 0, and `b Mod "2"` the `Long` -1, the same as with the number 2.0.
 
-**Found by** the result-type probe for `Reference/Operators.md`.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+What does not reproduce it: every other operator converts the `String` to a number, as `b + "2"` and `b / "2"` above show, and so do `\` and `Mod` with the operands the other way round: `"2" \ b` is the `Long` -2. Also on BETA 983, with the same results. Severity: a wrong value and a wrong type, with no diagnostic.
+
+<!-- No docs page states this defect; docs/Reference/Operators.md describes the String conversion and the `\` and `Mod` result types, and was written against the correct behaviour. Measured with scripts/bug_repro.mjs (run mode, verify) on 995 and 983. Found by the result-type probe for that page. -->
 
 ---
 
@@ -950,65 +977,74 @@ What does not reproduce it: the command line's own `export`, which writes what t
 
 ## An out-of-range index raises `&H8002000B` or `&H80004005`, not VBA's error 9
 
-**Build:** BETA 995 in the IDE; BETA 983 in the IDE and a compiled EXE alike
-**Severity:** VBA code that handles `Err.Number = 9` does not recognise the error, with no
-diagnostic.
+**Describe the bug**
+An array or `Collection` index that is out of range raises -2147352565 (`&H8002000B`, *Invalid index.*) or -2147467259 (`&H80004005`, *Unspecified error*). VBA raises error 9, *Subscript out of range*, so code that handles `Err.Number = 9` does not recognise the error. There is no diagnostic.
 
-```
-Dim a(5) As Long
-On Error Resume Next
-a(7) = 1
-Debug.Print Err.Number, Hex$(Err.Number), Err.Description
-```
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `index-error-numbers.twinproj` (attached as `index-error-numbers.zip`) and run it (F5). Its `Sub Main` holds the whole bug:
+   ```
+   Dim a(5) As Long
+   On Error Resume Next
+   a(7) = 1
+   Debug.Print Err.Number, Hex$(Err.Number), Err.Description
+   ```
+2. See `-2147352565  8002000B  Invalid index.` for this case. The project goes on to try the other cases, one line each:
 
-prints `-2147352565  8002000B  Invalid index.`. Every case measured, reading `Err.Number` in
-the program:
+   | access | twinBASIC | VBA, per VBA-Docs' *Subscript out of range (Error 9)* |
+   |---|---|---|
+   | past a fixed or dynamic array's bound, a `Variant` array's, or `Split("x y")(5)` | -2147352565 (`8002000B`) *Invalid index.* | 9 |
+   | an element of an array never dimensioned: `Dim u() As Integer: u(8) = 234`, VBA-Docs' own example | -2147467259 (`80004005`) *Unspecified error* | 9 |
+   | a `Collection` member by a missing index or key | -2147467259 *Unspecified error* | 9 for a missing member |
+   | `Forms(99)`, `Forms.Item(-1)` | -2147467259 *Unspecified error* | --- |
 
-| access | twinBASIC | VBA, per VBA-Docs' *Subscript out of range (Error 9)* |
-|---|---|---|
-| past a fixed or dynamic array's bound, a `Variant` array's, or `Split("x y")(5)` | -2147352565 (`8002000B`) *Invalid index.* | 9 |
-| an element of an array never dimensioned: `Dim u() As Integer: u(8) = 234`, VBA-Docs' own example | -2147467259 (`80004005`) *Unspecified error* | 9 |
-| a `Collection` member by a missing index or key | -2147467259 *Unspecified error* | 9 for a missing member |
-| `Forms(99)`, `Forms.Item(-1)` | -2147467259 *Unspecified error* | --- |
+**Expected behavior**
+Error 9, as in VBA, for each of these. `Err.Raise 9` already gives 9 with the description *Subscript out of range*.
 
-**What does not reproduce it:** `UBound` of an erased array, `Printers(99)` and `Err.Raise 9`
-all give 9, and division by zero gives 11. The IDE's run-time error panel shows the same number
-`Err.Number` holds, for the array case. An erased array behaves as one never dimensioned:
-`-2147467259` for an element, 9 from `LBound` and `UBound`. `Printers` raises 9 past its end but
-`-2147467259` for a negative index and for an unknown name. The description of `-2147467259`
-varies between runs --- *Unspecified error* in one, *Automation error* in another.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Also on BETA 983, in the IDE and in a compiled EXE alike. Severity: VBA code that handles `Err.Number = 9` does not recognise the error, with no diagnostic. What does not reproduce it: `UBound` of an erased array, `Printers(99)` and `Err.Raise 9` all give 9, and division by zero gives 11. The IDE's run-time error panel shows the same number `Err.Number` holds, for the array case. An erased array behaves as one never dimensioned: `-2147467259` for an element, 9 from `LBound` and `UBound`. `Printers` raises 9 past its end but `-2147467259` for a negative index and for an unknown name. The description of `-2147467259` varies between runs: *Unspecified error* in one, *Automation error* in another. The project's output on BETA 995 matches the table's first three rows; the `Forms` row and the other facts in this paragraph are from earlier runs of the same kind, not re-run for this report.
+
+<!-- Stated by docs/Reference/Default/VBA/ErrObject/Number.md (the table of error numbers that differ from VBA) and by docs/Reference/Core/On-Error.md; when fixed, update both. Measured with scripts/bug_repro.mjs (run mode, verify) on 995; earlier by compile probes through tbrun, in the IDE and as a built EXE on 983. -->
 
 ---
 
 ## Reading `Forms` by index returns a broken reference, and the process then crashes
 
-**Build:** BETA 995 as a compiled EXE; BETA 983 in the IDE and a compiled EXE alike
-**Severity:** crash (`0xC0000005`), from a form of access the documentation shows.
+**Describe the bug**
+In a loop over `Forms.Count`, `Set f = Forms(k)` with `f` declared `As Form`, followed by a read of `f.Name`, ends in an access violation (`0xC0000005`). As a compiled EXE the process exits with that code. Run in the IDE, the DEBUG CONSOLE reports `NATIVE EXCEPTION: ACCESS_VIOLATION` at the line that reads `f.Name`, and the run ends without returning.
 
-With one form loaded (`Load Form1`):
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `forms-by-index-crash.twinproj` (attached as `forms-by-index-crash.zip`). It is a Standard EXE project with one empty form, `Form1`, and a `Sub Main` that loads it:
+   ```
+   Dim f As Form
+   Dim k As Long
+   Load Form1
+   For k = 0 To Forms.Count - 1
+       Set f = Forms(k)
+       Debug.Print "k = "; k; " name = "; f.Name
+   Next k
+   ```
+2. Build the project and run the EXE, or run it in the IDE (F5).
+3. See the process end with `0xC0000005` (exit code -1073741819), or the access violation in the DEBUG CONSOLE.
 
-```
-Dim s As String
-s = Forms(0).Name        ' s is "", and the process later dies with 0xC0000005
-```
+Declaring `f` As `Form1` or As `Object` instead, with everything else the same, returns the form and the program exits 0. With three forms loaded, the loop crashes the same way, and an earlier probe saw the loop variable corrupted: `k` read 0, 0, 0, then 8195702.
 
-`Set f = Forms(0)` followed by `f.Name` does the same when `f` is declared `As Form`, and so
-does `s = Forms(n).Name` with `n` a variable. Inside `For k = 0 To Forms.Count - 1`,
-`Set f = Forms(k)` with `f` declared `As Form` corrupts the loop variable: `k` read 0, 0, 0,
-then 8195702. With three forms loaded, BETA 995 and 983 alike log `k=0` twice, then a
-corrupted string, and exit `0xC0000005`. With `f` declared `As Form1` or `As Object`, the same
-code returns the form and exits 0.
+**Expected behavior**
+`Forms(k)` returns the loaded form, `f.Name` is `Form1`, and the program exits 0, as it does with `f` declared `As Object`.
 
-**What does not reproduce it:** `n = 0: Set f = Forms(n)` outside a loop returns the form
-(`f.Name` is `Form1`) and the program exits 0; `For Each f In Forms` and `Unload Forms(i)` work;
-`Printers(0)` with a literal index works.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
 
-**Found by** the fix pass for round 8's error-number findings: an EXE that logs a line before
-each statement, run once per case with crash dialogs suppressed. The crash itself was
-reproduced by the orchestrator; the loop-variable corruption was measured by the fix agent only.
+**Additional context**
+Also on BETA 983, as a compiled EXE (reproduced again with this project). Severity: crash (`0xC0000005`), from a form of access the documentation shows. What does not reproduce it, measured on BETA 995 as a compiled EXE: `Set f = Forms(0)` with the literal index 0 and no loop, then `f.Name`, returns `Form1` and the program exits 0; so does `s = Forms(0).Name`, and `Debug.Print Forms(0).Name`. An earlier entry said `s = Forms(0).Name` returns an empty string and the process later dies; this was not seen again here, and the loop is the smallest form found. From earlier probes: `n = 0: Set f = Forms(n)` outside a loop returns the form and the program exits 0; `For Each f In Forms` and `Unload Forms(i)` work; `Printers(0)` with a literal index works. A variant of the loop that wrote the name with a helper `Sub` instead of `Debug.Print` did not crash in one run; the crash was seen with `Debug.Print`, and with `Dim t As String = f.Name` and no printing.
 
-**Found by** the IDE debugging probe for round 8's UC-61, then a probe of its own run in the IDE
-and as the built EXE, with identical results.
+<!-- Stated by the note at docs/Reference/Default/VB/Global/index.md line 47, and by builder/REVIEW-USECASES-5b4cd37.md item 26. That note says `Forms(0).Name` returns an empty string and the same for `Set f = Forms(0)` outside a loop; neither reproduced on 995 in the EXE with this project, so re-check the note's wording before filing: the loop is what reproduces. Measured with scripts/bug_repro.mjs run mode with "exe": true (tbrun --exe), verify, on 995 and 983; the IDE run (F5) also crashes on 995. Earlier entry text: found by the fix pass for round 8's error-number findings and by the IDE debugging probe for round 8's UC-61. -->
 
 ---
 
@@ -1230,42 +1266,46 @@ What does not reproduce it: a project with the same package already embedded und
 
 ## A call through a `FastCall` or `ThisCall` delegate is made as stdcall on win32
 
-**Build:** BETA 995
-**Severity:** the delegate is unusable on win32; every call through it raises an error.
+**Describe the bug**
+On win32, a call through a delegate declared `FastCall` or `ThisCall` passes its arguments as stdcall does, whatever convention the delegate declares, and raises *Bad DLL definition. Stack corruption detected.* The delegate is unusable on win32: every call through it raises an error.
 
-```tb
-Public Delegate Function FastDel FastCall (ByVal a As Long, ByVal b As Long) As Long
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `fastcall-delegate-stdcall.twinproj` (attached as `fastcall-delegate-stdcall.zip`) and run it (F5) with the win32 target. Its declarations and the calls in its `Sub Main` hold the whole bug:
+   ```
+   Public Delegate Function FastDel FastCall (ByVal a As Long, ByVal b As Long) As Long
 
-Public Function GF FastCall(ByVal a As Long, ByVal b As Long) As Long
-    Return a * 100 + b
-End Function
+   Public Function GF FastCall(ByVal a As Long, ByVal b As Long) As Long
+       Return a * 100 + b
+   End Function
 
-Public Function GS(ByVal a As Long, ByVal b As Long) As Long
-    Return a * 100 + b
-End Function
+   Public Function GS(ByVal a As Long, ByVal b As Long) As Long
+       Return a * 100 + b
+   End Function
 
-Dim d As FastDel = AddressOf GF
-Debug.Print d(9, 1)        ' error: "Bad DLL definition.  Stack corruption detected."
-Dim e As FastDel = AddressOf GS
-Debug.Print e(9, 1)        ' 901: a stdcall target works, after warning TB0026
-```
+   Dim d As FastDel = AddressOf GF
+   Debug.Print d(9, 1)        ' error: "Bad DLL definition.  Stack corruption detected."
+   Dim e As FastDel = AddressOf GS
+   Debug.Print e(9, 1)        ' 901: a stdcall target works, after warning TB0026
+   ```
+2. See the error for the call through `d`, and 901 for the call through `e`. The project declares a `ThisCall` delegate and function as well, and the same call through it raises the same error.
 
-The same with `ThisCall` in place of `FastCall`, for the delegate and the function, raises the
-same error. So the call through the delegate passes the arguments as stdcall does, whatever
-convention the delegate declares.
+**Expected behavior**
+901 from each call through `d`, as from calling `GF` directly.
 
-**What does not reproduce it:**
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
 
-- calling `GF` directly: 901. The callee side is right: a `FastCall Naked` function that
-  returns `ECX + EDX`, and a `ThisCall Naked` one that returns `ECX + [ESP+4]` and ends
-  `ret 4`, return the right sums when called directly;
-- delegates declared stdcall (no keyword) or `CDecl`, each pointed at a function of its own
-  convention: 901;
-- a win64 build: every case above returns 901 (x64 has one calling convention).
+**Additional context**
+Severity: the delegate is unusable on win32. What does not reproduce it:
+- calling `GF` directly: 901. The callee side is right: a `FastCall Naked` function that returns `ECX + EDX`, and a `ThisCall Naked` one that returns `ECX + [ESP+4]` and ends `ret 4`, return the right sums when called directly;
+- delegates declared stdcall (no keyword) or `CDecl`, each pointed at a function of its own convention: 901;
+- a win64 build: every case above returns 901 (x64 has one calling convention; this project run with the win64 target prints 901 for all of them).
 
-**Observed** with a `[RunAfterBuild]` probe through `tbrun`, and in the compiled EXE `tbrun`
-left, run from its `Sub Main` and writing to a file: the same five results both ways. Both
-keywords are new in BETA 990 and 992; BETA 987 refuses them (TB5182).
+Both keywords are new in BETA 990 and 992; BETA 987 refuses them (TB5182), and BETA 983 reports errors for this project at compile time. Measured in the IDE's `[RunAfterBuild]` run, and in the compiled EXE that `tbrun` left, run from its `Sub Main` and writing to a file: the same five results both ways.
+
+<!-- Stated by docs/Features/Advanced/API-Declarations.md (the calling-conventions section, which describes the defect) and docs/Reference/Core/Delegate.md; when fixed, update both. Measured with scripts/bug_repro.mjs (run mode, verify) on 995 win32 and win64 and 983; the Naked callee, CDecl and stdcall controls and the exe run are from earlier tbrun probes in .claude/tooling-review-scratch/beta995-probes/callconv. -->
 
 ---
 
@@ -1302,39 +1342,29 @@ nothing to say which types it accepts.
 
 ## Text that continues a `Debug.Print` line is escaped twice in the DEBUG CONSOLE
 
-**Build:** BETA 995
-**Severity:** cosmetic, but it changes what a program appears to print: `&`, `<` and `>` in
-the continued part of a line show as `&amp;`, `&lt;` and `&gt;`.
+**Describe the bug**
+When a `Debug.Print` statement ends with `;`, the next `Debug.Print` continues the same line, and the DEBUG CONSOLE escapes that continued text twice: `&`, `<` and `>` show as `&amp;`, `&lt;` and `&gt;`. The text that opens the line comes out right.
 
-Two statements in a `[RunAfterBuild]` Sub are the whole reproduction:
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `debug-print-escaped-twice.twinproj` (attached as `debug-print-escaped-twice.zip`) and run it (F5). Its `Sub Main` holds the whole bug:
+   ```
+   Debug.Print "A";
+   Debug.Print "&"
+   ```
+2. See the DEBUG CONSOLE show `A&amp;`. The project's other lines show the rest: `Debug.Print "a < b";` followed by `Debug.Print " and c > d"` shows `a < b and c &gt; d`. After three statements, `Debug.Print "C";`, `Debug.Print "D";` and `Debug.Print "<&>"`, the line reads `CD&lt;&amp;&gt;`.
 
-```
-Debug.Print "A";
-Debug.Print "&"
-```
+**Expected behavior**
+`A&`, `a < b and c > d` and `CD<&>`: the console shows what the program printed, whether it is one statement or several.
 
-The DEBUG CONSOLE shows `A&amp;`. The text that opens the line comes out right ---
-`Debug.Print "a < b";` shows `a < b` --- and everything printed after it until the line
-ends is escaped twice: after `Debug.Print "C";`, `Debug.Print "D";` and
-`Debug.Print "<&>"`, the line reads `CD&lt;&amp;&gt;`.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
 
-**What does not reproduce it:** a whole line (`Debug.Print "a < b & c"` shows exactly that),
-and the same text in one statement (`Debug.Print "B"; "&"` shows `B&`).
+**Additional context**
+Severity: cosmetic, but it changes what a program appears to print. Also on BETA 983, with the same output. What does not reproduce it: a whole line (`Debug.Print "a < b & c"` shows exactly that), and the same text in one statement (`Debug.Print "B"; "&"` shows `B&`). The cause looks to be `debugOutputPartial` in `ide/main.js`, which takes all of a program's output, and an add-in's `PrintText` too, and adds to a line that is still open: it passes the new text through `TEXTtoHTML` twice, once as it builds the text and again as it stores it. When the new text's colour differs from the line's, the `</span><span class='...'>` it puts in to change colour goes through the second pass too, so the tags themselves show as text. The colour comes from the output: a program's plain output is `debugConsoleOutputText`, and a `PrintText` is `debugConsoleOutputTextYELLOW`. With a line left open in the first, made by calling `debugOutputPartial` from the page, a `PrintText` from the IDE's own Sample 10 add-in showed as `</span><span class='debugConsoleOutputTextYELLOW'>Hello there from WaynesWorldAddIn!`. A program's own open line followed by a `PrintText` was not tried.
 
-`debugOutputPartial` in `ide/main.js`, which takes all of a program's output, and an
-add-in's `PrintText` too, and adds to a line that is still open, passes the new text through
-`TEXTtoHTML` twice: once as it builds the text and again as it stores it. When the new
-text's colour differs from the line's, the `</span><span class='...'>` it puts in to change
-colour goes through the second pass too, so the tags themselves show as text. The colour
-comes from the output: a program's plain output is `debugConsoleOutputText`, and a
-`PrintText` is `debugConsoleOutputTextYELLOW`. With a line left open in the first, made by
-calling `debugOutputPartial` from the page, a `PrintText` from the IDE's own Sample 10 add-in
-showed as `</span><span class='debugConsoleOutputTextYELLOW'>Hello there from
-WaynesWorldAddIn!`. A program's own open line followed by a `PrintText` was not tried.
-
-**Observed** on 2026-09-24 with `scripts/tbrun.mjs`, which decodes the console's stored
-entries once, as the pane renders them. Found while making the add-in harness read text
-that the IDE appends to an open console line.
+<!-- Recorded in scripts/lib/tb-ide-console.mjs (comment at line 39), which decodes the console's stored entries once, as the pane renders them; when fixed, check that decode. Measured with scripts/bug_repro.mjs (run mode, verify) on 995 and 983 (the 983 output is identical). Found while making the add-in harness read text that the IDE appends to an open console line. -->
 
 ---
 
@@ -1636,72 +1666,94 @@ own, on BETA 995 and BETA 983; the run on 983 was a compiled EXE through `tbrun`
 
 ## `FileCopy` of an open file raises `&H80004005`, where VB6 raises 55 or copies it
 
-**Build:** BETA 995; BETA 983 copied an open file with no error
-**Severity:** code that handles VB6's error 55 does not recognise the error, and a copy that
-VB6 makes is refused.
+**Describe the bug**
+`FileCopy` of a file that is open raises -2147467259 (`&H80004005`, *Unspecified error*), whatever mode the file is open in. VB6 raises error 55, *File already open*, for a file open `For Append`, and copies a file open `For Input` without an error. Code that handles VB6's error 55 does not recognise the error, and a copy that VB6 makes is refused.
 
-```
-Dim f As String = Environ$("TEMP") & "\probe.txt"
-Open f For Output As #1: Print #1, "one": Close #1
-On Error Resume Next
-Open f For Append As #2
-FileCopy f, f & ".copy"
-Debug.Print Err.Number, Err.Description
-```
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `filecopy-open-file.twinproj` (attached as `filecopy-open-file.zip`) and run it (F5). Its `Sub Main` makes a file in `%TEMP%` and then does this:
+   ```
+   On Error Resume Next
+   Open f For Append As #2
+   FileCopy f, f & ".copy"
+   Debug.Print Err.Number, Err.Description
+   ```
+2. See `-2147467259 Unspecified error`. VB6 prints `55 File already open`.
+3. See the second line the project prints: with the file open `For Input` instead, twinBASIC raises the same `-2147467259`, and VB6 copies the file without an error.
 
-prints `-2147467259 Unspecified error`. VB6 prints `55 File already open`. With the file
-open `For Input` instead, twinBASIC raises the same `-2147467259`, and VB6 copies the file
-without an error. BETA 984's notes list the change ("FileSystem.FileCopy function would
-previously allow copying of an already open file without error"); only the error number and
-the `Input` case differ from VB6.
+**Expected behavior**
+Error 55 for the file open `For Append`, and a successful copy for the file open `For Input`, as in VB6.
 
-**What does not reproduce it:** the file closed.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
 
-**Observed** on 2026-10-01: the twinBASIC lines through `tbrun` on BETA 995 and BETA 983, the
-VB6 lines from the same statements compiled by `VB6.EXE /make` and run.
+**Additional context**
+BETA 983 copied an open file with no error, in both modes (the project prints 0 for all three lines); BETA 984's notes list the change ("FileSystem.FileCopy function would previously allow copying of an already open file without error"), and only the error number and the `Input` case differ from VB6. What does not reproduce it: the file closed (the third line the project prints is 0). Severity: code that handles VB6's error 55 does not recognise the error, and a copy that VB6 makes is refused.
+
+<!-- Stated by docs/Reference/Default/VBA/FileSystem/FileCopy.md (the note at line 25); when fixed, update it. Measured with scripts/bug_repro.mjs (run mode, verify) on 995 and 983; the VB6 results are from the same statements compiled by `VB6.EXE /make` and run, on 2026-10-01. -->
 
 ---
 
 ## `Err` after a handled `Err.Raise` in an LLVM-compiled procedure holds `&HEAEAEA01` and no text
 
-**Build:** BETA 995
-**Severity:** an error handler in LLVM-compiled code cannot tell which error it caught.
+**Describe the bug**
+In a procedure compiled with LLVM, an `Err.Raise` that the procedure handles leaves `Err.Number` at -353703423 (`&HEAEAEA01`), with an empty `Err.Source` and the generic description *Application-defined or object-defined error*. The handler cannot tell which error it caught.
 
-```tb
-[CompilerOptions("+llvm")]
-Private Sub ErrResume()
-    On Error Resume Next
-    Err.Raise 5, "MySrc", "my text"
-    Debug.Print Err.Number & " / " & Err.Source & " / " & Err.Description
-End Sub
-```
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `llvm-err-after-raise.twinproj` (attached as `llvm-err-after-raise.zip`). It needs an LLVM licence (Ultimate): the procedure below is compiled with LLVM by its attribute. Run it (F5).
+   ```
+   [CompilerOptions("+llvm")]
+   Private Sub LlvmRaise()
+       On Error Resume Next
+       Err.Raise 5, "MySrc", "my text"
+       Debug.Print Err.Number & " / " & Err.Source & " / " & Err.Description
+   End Sub
+   ```
+2. See `-353703423 /  / Application-defined or object-defined error`. The project also calls the same procedure without the attribute, and that one prints `5 / MySrc / my text`.
 
-prints `-353703423 /  / Application-defined or object-defined error`. Without the attribute it
-prints `5 / MySrc / my text`. The same with `On Error GoTo` and a handler, with `Err.Raise 11`
-and with `Err.Raise 1000`, on win32 and win64. A run-time error the procedure causes itself,
-`1 \ 0` on a `Long`, reads correctly as 11, and `Err.Number = 7` assigned directly reads 7.
+**Expected behavior**
+`5 / MySrc / my text`, as without the attribute.
 
-**Observed** on 2026-10-01 through `tbrun`, in the IDE's `[RunAfterBuild]` run; not run in a
-built exe.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: an error handler in LLVM-compiled code cannot tell which error it caught. The same happens with `On Error GoTo` and a handler, with `Err.Raise 11` and with `Err.Raise 1000`, on win32 and win64. What does not reproduce it: a run-time error the procedure causes itself, `1 \ 0` on a `Long`, reads correctly as 11, and `Err.Number = 7` assigned directly reads 7. Measured in the IDE's run only (a `[RunAfterBuild]` probe through `tbrun`); not run in a built exe. BETA 983 refuses the project's LLVM procedure ("Unable to compile due to use of datatype that is not yet supported for LLVM compilation"), so it was not compared there.
+
+<!-- Stated by docs/LLVM/Getting-Started.md (the note at line 61), and the page's samples are measured on 995; when fixed, update it. Measured with scripts/bug_repro.mjs (run mode, verify) on 995; the On Error GoTo, Err.Raise 11 and 1000 and win64 variants from tbrun probes on 2026-10-01 and not re-run for this report. -->
 
 ---
 
 ## `End` in an LLVM-compiled procedure restarts the IDE's compiler
 
-**Build:** BETA 995; BETA 983 ignored the `End` and went on (fixed in 985 for built programs)
-**Severity:** low; the IDE recovers, but the project is compiled again and LLVM-compiled code
-run in the IDE is not recommended anyway.
+**Describe the bug**
+Running a project in the IDE (F5), an `End` statement in a procedure compiled with LLVM ends the run, and the DEBUG CONSOLE then shows `restarting from MEMORY [<project>]`: the compiler restarts and compiles the project again. The IDE recovers.
 
-```tb
-[CompilerOptions("+llvm")]
-Private Sub Stopper()
-    Debug.Print "before End"
-    End
-End Sub
-```
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `llvm-end-restarts-compiler.twinproj` (attached as `llvm-end-restarts-compiler.zip`). It needs an LLVM licence (Ultimate): the procedure below is compiled with LLVM by its attribute.
+   ```
+   [CompilerOptions("+llvm")]
+   Private Sub Stopper()
+       Debug.Print "before End"
+       End
+   End Sub
+   ```
+   `Sub Main` calls `Stopper`.
+2. Run the project in the IDE (F5).
+3. See `before End` in the DEBUG CONSOLE, and then `restarting from MEMORY [<project>]`.
 
-called from a `[RunAfterBuild]` procedure prints `before End`, and the console then shows
-`restarting from MEMORY [<project>]`. Without the attribute the run ends with no restart. In a
-built exe, with or without LLVM, `End` ends the program with exit code 0.
+**Expected behavior**
+The run ends, as it does without the attribute, with no restart of the compiler.
 
-**Observed** on 2026-10-01 through `tbrun` and `tbrun --exe`, on BETA 995 and BETA 983.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low; the IDE recovers, but the project is compiled again, and LLVM-compiled code run in the IDE is not recommended anyway. Without the attribute the run ends with no restart. In a built exe, with or without LLVM, `End` ends the program with exit code 0 (this project run with `tbrun --exe` on 995 exits 0). BETA 983 ignored the `End` and went on (fixed in 985 for built programs); this project's LLVM procedure is refused by 983 ("Unable to compile due to use of datatype that is not yet supported for LLVM compilation"), so that was not re-measured with it.
+
+<!-- No docs page states this (docs/LLVM/Getting-Started.md does not mention End); when fixed, nothing to update. Measured with scripts/bug_repro.mjs (run mode: tbrun exit 5, output "before End" then "restarting from MEMORY"; verify) on 995, and the exe with `run --exe` on 995; the 983 behaviour from tbrun and tbrun --exe on 2026-10-01. -->
