@@ -85,7 +85,7 @@ kebab-case name for the bug, and its **To Reproduce** names the project file:
 |---|---|---|
 | `bugs/<slug>/src/` | the project's exported source tree: `Settings`, `Sources/` and the rest | yes, byte for byte |
 | `bugs/<slug>/<slug>.twinproj` | the project file, packed from `src/` | yes |
-| `bugs/<slug>/<slug>.zip` | the `.twinproj` zipped, because a GitHub issue does not accept a `.twinproj` attachment | no |
+| `bugs/<slug>/<slug>.zip` | the `.twinproj` zipped, because a GitHub issue does not accept a `.twinproj` attachment, with any file `repro.json`'s `attach` names, such as a `.twinpack` | no |
 
 `scripts/bug_repro.mjs` makes and checks them (the tool's page is
 [Tools and Scripts](docs/Documentation/Tools.md#bug-repro)):
@@ -103,7 +103,7 @@ node scripts/bug_repro.mjs file --marked                # the same for every mar
 
 `new` starts the project from the console template, with an empty `Sub Main` in a `Startup`
 module; edit `src/Sources/`, then `pack`. What `pack` does is the importer, then a zip of the
-one file it writes, which the tool does itself:
+file it writes and of the files `attach` names, which the tool does itself:
 
 ```sh
 node scripts/impexp.mjs import bugs/<slug>/<slug>.twinproj bugs/<slug>/src --overwrite
@@ -615,7 +615,7 @@ In Settings → References → Available Packages, **Import from file...** impor
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Open `import-package-unticked.twinproj` (attached as `import-package-unticked.zip`). The package to import is in the second attachment, `DocProbePkg.zip`: it holds `DocProbePkg.twinpack`, a package of one function, `DocProbeVersion`.
+1. Open `import-package-unticked.twinproj` (attached as `import-package-unticked.zip`). The zip also holds the package to import, `DocProbePkg.twinpack`, a package of one function, `DocProbeVersion`.
 2. Open Project Settings → References → Available Packages, press **Import from file...**, and choose `DocProbePkg.twinpack`.
 3. `DocProbePkg` appears in the Available Packages list, unticked. (In the page, the compiler's answer to `importPackage` is `success: true, body: { packageSymbol: "DocProbePkg" }`.)
 
@@ -646,7 +646,7 @@ A project embeds a package built locally. In Settings → References, replacing 
 Use a machine with no copy of the package in `%APPDATA%\twinBASIC\packages`: a linked copy there makes the bug go away (see below).
 
 Steps to reproduce the behavior:
-1. Open `replace-embedded-package-one-apply.twinproj` (attached as `replace-embedded-package-one-apply.zip`). The two package builds are in the second attachment, `DocProbePkg-twinpacks.zip`: `DocProbePkg-v1.twinpack` and `DocProbePkg-v2.twinpack`, whose function `DocProbeVersion` returns 1 and 2.
+1. Open `replace-embedded-package-one-apply.twinproj` (attached as `replace-embedded-package-one-apply.zip`). The zip also holds the two package builds, `DocProbePkg-v1.twinpack` and `DocProbePkg-v2.twinpack`, whose function `DocProbeVersion` returns 1 and 2.
 2. Embed v1: Project Settings → References → Available Packages → **Import from file...** `DocProbePkg-v1.twinpack`, tick it, **Apply**. Replace the body of `Main` with
    ```
    Debug.Print "DocProbeVersion=" & DocProbeVersion()

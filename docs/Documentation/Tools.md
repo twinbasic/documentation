@@ -1010,7 +1010,7 @@ outside every gate and outside CI, and `verify` is run by a person only.
 | Command | Effect |
 |---|---|
 | `new <slug> "<title>"` | Creates `bugs/<slug>/src/` from the console template under `test/example-projects/`, with the project named after the slug in PascalCase, a fresh project id, the description `Reproduces: <title>` and a `Startup` module holding an empty `Sub Main`. Also writes `bugs/<slug>/repro.json` with `"mode": "manual"`. Refused, with exit 3, when `bugs/<slug>` exists. |
-| `pack <slug>` | Runs `node scripts/impexp.mjs import` on `src/`, to `<slug>.twinproj`, and then writes `<slug>.zip` holding that one file. The zip is written by the script itself, so neither PowerShell nor 7-Zip is needed. An `impexp` exit of 0 or 6 counts as a pack, and its output is printed. |
+| `pack <slug>` | Runs `node scripts/impexp.mjs import` on `src/`, to `<slug>.twinproj`, and then writes `<slug>.zip` holding that file and the files `repro.json`'s `attach` names. The zip is written by the script itself, so neither PowerShell nor 7-Zip is needed. An `impexp` exit of 0 or 6 counts as a pack, and its output is printed. |
 | `compile <slug>` | Packs, then compiles the project with `tbbuild --json` and prints its diagnostics. |
 | `build <slug>` | Packs, then compiles and builds it with `tbbuild --build`, or `--llvm` when that is given. A build that fails prints the build log and the failing line. |
 | `run <slug>` | Copies `src/` to `%TEMP%\bugrepro\<port>\<slug>`, adds a `TbRunProbe` module whose `[RunAfterBuild]` Sub calls `Debug.Cls` and then `Main`, runs `tbrun` on the copy and prints what it captured. The tree under `bugs/` is not changed. With `--exe` no probe module is added: `tbrun` runs `Sub Main` in the built exe. |
@@ -1029,7 +1029,7 @@ wrong type, is refused with exit 2, naming the file and the key, before anything
 
 | Key | Meaning |
 |---|---|
-| `mode` | `compile`, `build`, `run`, `cli` or `manual`. `manual` is a reproducer that cannot be automated, such as one that needs a click in the IDE. |
+| `mode` | `compile`, `build`, `run`, `cli` or `manual`. `manual` is a reproducer that cannot be automated, such as one that needs a click in the IDE. A `cli` or `manual` reproducer may have no `src/`, when the bug is in files the installation ships; `verify` then runs it without packing, and `{project}` and `{src}` are refused. |
 | `arch` | Optional. `win32` (default) or `win64`. |
 | `llvm` | Optional, `build` and `run`. `true` builds with LLVM. |
 | `exe` | Optional, `run` only. `true` also runs the built exe, as `run --exe` does: no probe module is added, `Sub Main` runs in the exe, and an exe that exits with a code other than 0 is `tbrun`'s exit 6. `Debug.Print` writes nothing in an exe, so what `expect.output` can match is only what `TbRun.Out` wrote; a bug that crashes the exe is expected as `"exit": 6`. |
@@ -1038,8 +1038,10 @@ wrong type, is refused with exit 2, naming the file and the key, before anything
 | `expect.noDiagnostics` | `compile`. `true` expects no error, warning, hint or information. |
 | `expect.message` | `build`. A regular expression the message `tbbuild` prints on standard error must match. |
 | `expect.output` | `run` and `cli`. Regular expressions, each of which must match the output. They are matched line by line, so `^` and `$` hold at each line. |
-| `cli` | `cli` mode. The arguments for the compiler executable, `bin\twinBASIC_win32.exe`. `{tmp}` stands for a new temp folder, deleted afterwards; `{project}` for a copy of the packed `.twinproj` in it, and `{src}` for a copy of `src/`, so a command that writes either never touches the committed reproducer. Give an output folder with backslashes and a trailing one, as `export` requires. |
+| `expect.absent` | `run` and `cli`. Regular expressions, none of which may match the output, such as an `ERROR` line the bug's fix would print. |
+| `cli` | `cli` mode. The arguments for the compiler executable, `bin\twinBASIC_win32.exe`, or a list of such lists, run in turn; their output is joined, and their exit code is the one they all gave, or the codes joined by commas, such as `0,999`. `{tmp}` stands for a new temp folder, deleted afterwards; `{project}` for a copy of the packed `.twinproj` in it, and `{src}` for a copy of `src/`, so a command that writes either never touches the committed reproducer; `{ide}` for the folder of the IDE that `--ide` names or that is found, so a file the installation ships can be named without a user name. Give an output folder with backslashes and a trailing one, as `export` requires. |
 | `steps` | `manual`. What a person does to see the bug. `verify` prints it. |
+| `attach` | Optional. Files besides the project that the issue needs, such as a `.twinpack`: paths relative to the reproducer's folder, with forward slashes. `pack` adds each to `<slug>.zip`. |
 | `issue` | Optional. A positive whole number, the number of the `twinbasic/twinbasic` issue the bug was filed as. `file` writes it. |
 | `existing` | Optional, with `issue` only. `true` when the issue was not filed for this bug but already covered it. `file --existing` writes it. |
 

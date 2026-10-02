@@ -113,7 +113,8 @@ Commands:
                         project of the slug's name and a Startup module, and
                         bugs/<slug>/repro.json with "mode": "manual"
   pack <slug>           pack src/ into <slug>.twinproj with scripts/impexp.mjs, and
-                        write <slug>.zip, the file a GitHub issue accepts
+                        write <slug>.zip, the file a GitHub issue accepts, with the
+                        files repro.json's "attach" names
   compile <slug>        pack, then compile the project in the IDE (tbbuild) and
                         print its diagnostics
   build <slug>          pack, then compile and build it (tbbuild --build)
@@ -384,61 +385,74 @@ function newReproducer(slug, entryTitle) {
 // ------------------------------------------------------------------------ zip
 
 /**
- * A zip file of one file, as the bytes: a local header, the deflated data, a
- * central directory entry and the end record, with the file's own modified time.
+ * A zip file, as the bytes: for each file a local header and the deflated data,
+ * then a central directory entry for each and the end record. Each file is
+ * `{ name, data, mtime }`, and keeps its own modified time.
  */
-function zipOne(name, data, mtime) {
-  const compressed = zlib.deflateRawSync(data, { level: 9 });
-  const crc = zlib.crc32(data);
-  const nameBytes = Buffer.from(name, "utf8");
-  const time = (mtime.getHours() << 11) | (mtime.getMinutes() << 5) | (mtime.getSeconds() >> 1);
-  const date = ((Math.max(mtime.getFullYear(), 1980) - 1980) << 9) | ((mtime.getMonth() + 1) << 5) | mtime.getDate();
+function zipFiles(files) {
   const UTF8 = 0x0800;
+  const locals = [];
+  const centrals = [];
+  let offset = 0;
+  for (const { name, data, mtime } of files) {
+    const compressed = zlib.deflateRawSync(data, { level: 9 });
+    const crc = zlib.crc32(data);
+    const nameBytes = Buffer.from(name, "utf8");
+    const time = (mtime.getHours() << 11) | (mtime.getMinutes() << 5) | (mtime.getSeconds() >> 1);
+    const date = ((Math.max(mtime.getFullYear(), 1980) - 1980) << 9) | ((mtime.getMonth() + 1) << 5) | mtime.getDate();
 
-  const local = Buffer.alloc(30);
-  local.writeUInt32LE(0x04034b50, 0);
-  local.writeUInt16LE(20, 4); // version needed: deflate
-  local.writeUInt16LE(UTF8, 6);
-  local.writeUInt16LE(8, 8); // method: deflate
-  local.writeUInt16LE(time, 10);
-  local.writeUInt16LE(date, 12);
-  local.writeUInt32LE(crc, 14);
-  local.writeUInt32LE(compressed.length, 18);
-  local.writeUInt32LE(data.length, 22);
-  local.writeUInt16LE(nameBytes.length, 26);
-  // extra field length (28) stays 0
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4); // version needed: deflate
+    local.writeUInt16LE(UTF8, 6);
+    local.writeUInt16LE(8, 8); // method: deflate
+    local.writeUInt16LE(time, 10);
+    local.writeUInt16LE(date, 12);
+    local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(compressed.length, 18);
+    local.writeUInt32LE(data.length, 22);
+    local.writeUInt16LE(nameBytes.length, 26);
+    // extra field length (28) stays 0
 
-  const central = Buffer.alloc(46);
-  central.writeUInt32LE(0x02014b50, 0);
-  central.writeUInt16LE(20, 4); // version made by
-  central.writeUInt16LE(20, 6); // version needed
-  central.writeUInt16LE(UTF8, 8);
-  central.writeUInt16LE(8, 10);
-  central.writeUInt16LE(time, 12);
-  central.writeUInt16LE(date, 14);
-  central.writeUInt32LE(crc, 16);
-  central.writeUInt32LE(compressed.length, 20);
-  central.writeUInt32LE(data.length, 24);
-  central.writeUInt16LE(nameBytes.length, 28);
-  // extra, comment, disk, internal and external attributes (30-41) stay 0
-  central.writeUInt32LE(0, 42); // offset of the local header
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(20, 4); // version made by
+    central.writeUInt16LE(20, 6); // version needed
+    central.writeUInt16LE(UTF8, 8);
+    central.writeUInt16LE(8, 10);
+    central.writeUInt16LE(time, 12);
+    central.writeUInt16LE(date, 14);
+    central.writeUInt32LE(crc, 16);
+    central.writeUInt32LE(compressed.length, 20);
+    central.writeUInt32LE(data.length, 24);
+    central.writeUInt16LE(nameBytes.length, 28);
+    // extra, comment, disk, internal and external attributes (30-41) stay 0
+    central.writeUInt32LE(offset, 42); // offset of the local header
 
-  const localSize = local.length + nameBytes.length + compressed.length;
+    locals.push(local, nameBytes, compressed);
+    centrals.push(central, nameBytes);
+    offset += local.length + nameBytes.length + compressed.length;
+  }
+  const directory = Buffer.concat(centrals);
   const end = Buffer.alloc(22);
   end.writeUInt32LE(0x06054b50, 0);
-  end.writeUInt16LE(1, 8); // entries on this disk
-  end.writeUInt16LE(1, 10); // entries in all
-  end.writeUInt32LE(central.length + nameBytes.length, 12);
-  end.writeUInt32LE(localSize, 16);
+  end.writeUInt16LE(files.length, 8); // entries on this disk
+  end.writeUInt16LE(files.length, 10); // entries in all
+  end.writeUInt32LE(directory.length, 12);
+  end.writeUInt32LE(offset, 16);
 
-  return Buffer.concat([local, nameBytes, compressed, central, nameBytes, end]);
+  return Buffer.concat([...locals, directory, end]);
 }
 
-// Packs src/ into the .twinproj with impexp, then zips it. Returns what impexp
-// printed, which the caller prints or not.
+const fileEntry = (name, file) => ({ name, data: readFileSync(file), mtime: statSync(file).mtime });
+
+// Packs src/ into the .twinproj with impexp, then zips it with the files
+// repro.json's `attach` names. Returns what impexp printed, which the caller
+// prints or not.
 function pack(slug) {
   const p = where(slug);
   if (!existsSync(path.join(p.src, "Settings"))) throw new Fail(`no ${rel(p.src)}/Settings: nothing to pack`);
+  const attach = existsSync(p.repro) ? (loadRepro(slug).attach ?? []) : [];
   const r = spawnSync(process.execPath, [IMPEXP, "import", p.twinproj, p.src, "--overwrite"], {
     encoding: "utf8",
     cwd: REPO_ROOT,
@@ -450,9 +464,10 @@ function pack(slug) {
       `impexp import ${r.error ? `failed (${r.error.message})` : `exited ${r.status}`}:\n${said.trimEnd()}`,
     );
   }
-  const file = readFileSync(p.twinproj);
-  writeFileSync(p.zip, zipOne(`${slug}.twinproj`, file, statSync(p.twinproj).mtime));
-  return `${said}packed ${rel(p.twinproj)} and ${rel(p.zip)}`;
+  const files = [fileEntry(`${slug}.twinproj`, p.twinproj), ...attach.map((a) => fileEntry(a, path.join(p.dir, a)))];
+  writeFileSync(p.zip, zipFiles(files));
+  const also = attach.length ? `, with ${attach.join(", ")}` : "";
+  return `${said}packed ${rel(p.twinproj)} and ${rel(p.zip)}${also}`;
 }
 
 // ------------------------------------------------------------ repro.json
@@ -462,8 +477,8 @@ const MODES = ["compile", "build", "run", "cli", "manual"];
 const EXPECT_KEYS = {
   compile: ["exit", "diagnostics", "noDiagnostics"],
   build: ["exit", "message"],
-  run: ["exit", "output"],
-  cli: ["exit", "output"],
+  run: ["exit", "output", "absent"],
+  cli: ["exit", "output", "absent"],
 };
 
 /**
@@ -486,10 +501,34 @@ function loadRepro(slug) {
   }
   const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
   if (!isObject(json)) return bad("", "must be a JSON object");
-  const keys = ["mode", "arch", "llvm", "exe", "expect", "cli", "steps", "issue", "existing"];
+  const keys = ["mode", "arch", "llvm", "exe", "expect", "cli", "steps", "attach", "issue", "existing"];
   for (const key of Object.keys(json)) if (!keys.includes(key)) bad(key, "is not a key repro.json has");
   if (!MODES.includes(json.mode)) bad("mode", `must be one of ${MODES.join(", ")}`);
   const { mode } = json;
+  // A cli or manual reproducer may have no project of its own: a cli one can
+  // name the files an installation ships by {ide}.
+  const p = where(slug);
+  const hasSrc = existsSync(path.join(p.src, "Settings"));
+  if (!hasSrc && !["cli", "manual"].includes(mode))
+    bad("mode", `${mode} needs a project, and there is no ${rel(p.src)}/Settings`);
+  if ("attach" in json) {
+    if (!hasSrc) bad("attach", `goes into ${slug}.zip, which pack writes only from ${rel(p.src)}/`);
+    const own = [`${slug}.twinproj`, `${slug}.zip`, "repro.json", "REPORT.md"];
+    if (!Array.isArray(json.attach) || !json.attach.length) {
+      bad("attach", "must be a list of paths, relative to the reproducer's folder");
+    }
+    json.attach.forEach((a, i) => {
+      const key = `attach[${i}]`;
+      if (typeof a !== "string" || !a) bad(key, "must be a path, relative to the reproducer's folder");
+      if (a.includes("\\") || path.posix.isAbsolute(a) || a.split("/").some((s) => s === ".." || s === "." || !s)) {
+        bad(key, "must be a relative path with forward slashes, inside the reproducer's folder");
+      }
+      if (own.includes(a)) bad(key, `names ${a}, which is not an attachment`);
+      if (json.attach.indexOf(a) !== i) bad(key, `names ${a} twice`);
+      const file = path.join(p.dir, a);
+      if (!existsSync(file) || !statSync(file).isFile()) bad(key, `names ${a}, which is not a file in ${rel(p.dir)}/`);
+    });
+  }
   if ("issue" in json && !(Number.isInteger(json.issue) && json.issue > 0)) {
     bad("issue", "must be a positive whole number, the number of a twinbasic/twinbasic issue");
   }
@@ -504,8 +543,17 @@ function loadRepro(slug) {
   if (json.exe && mode !== "run") bad("exe", "applies to the run mode only");
   if ("steps" in json && typeof json.steps !== "string") bad("steps", "must be a string");
   if (mode === "cli") {
-    if (!Array.isArray(json.cli) || !json.cli.length || !json.cli.every((a) => typeof a === "string")) {
-      bad("cli", "must be a list of strings, the compiler executable's arguments");
+    // One command, a list of arguments, or several, a list of such lists.
+    const isArgs = (v) => Array.isArray(v) && v.length && v.every((a) => typeof a === "string");
+    const commands = Array.isArray(json.cli) && json.cli.every(Array.isArray) ? json.cli : [json.cli];
+    if (!commands.length || !commands.every(isArgs)) {
+      bad("cli", "must be a list of strings, the compiler executable's arguments, or a list of such lists");
+    }
+    if (!hasSrc) {
+      for (const arg of commands.flat()) {
+        const name = /\{(project|src)\}/.exec(arg)?.[0];
+        if (name) bad("cli", `names ${name}, and there is no ${rel(p.src)}/Settings to make it from`);
+      }
     }
   } else if ("cli" in json) bad("cli", "applies to the cli mode only");
 
@@ -517,7 +565,7 @@ function loadRepro(slug) {
   if (!isObject(json.expect)) bad("expect", "is required, an object, for every mode but manual");
   const e = json.expect;
   for (const key of Object.keys(e)) {
-    if (!["exit", "diagnostics", "noDiagnostics", "output", "message"].includes(key)) {
+    if (!["exit", "diagnostics", "noDiagnostics", "output", "absent", "message"].includes(key)) {
       bad(`expect.${key}`, "is not a key expect has");
     }
     if (!EXPECT_KEYS[mode].includes(key)) bad(`expect.${key}`, `does not apply to the ${mode} mode`);
@@ -537,9 +585,10 @@ function loadRepro(slug) {
     }
   };
   const expect = { ...e };
-  if ("output" in e) {
-    if (!Array.isArray(e.output)) bad("expect.output", "must be a list of regular expressions");
-    expect.output = e.output.map((text, i) => regex(`expect.output[${i}]`, text));
+  for (const key of ["output", "absent"]) {
+    if (!(key in e)) continue;
+    if (!Array.isArray(e[key])) bad(`expect.${key}`, "must be a list of regular expressions");
+    expect[key] = e[key].map((text, i) => regex(`expect.${key}[${i}]`, text));
   }
   if ("message" in e) expect.message = regex("expect.message", e.message);
   if (!Object.keys(e).length) bad("expect", "is empty: say what a reproduction looks like");
@@ -639,36 +688,59 @@ async function runProbe(slug, o) {
   }
 }
 
-/** The compiler executable, on the packed project, as a cli repro.json says. */
+/**
+ * The compiler executable, as a cli repro.json says: one command, or several in
+ * turn in the one temp folder. Their output is joined, and their exit code is
+ * the one they all gave, or the codes joined by commas when they differ.
+ */
 function runCli(slug, repro, o) {
-  const exe = compilerExe(findTools(o.ide));
+  const ide = findTools(o.ide);
+  const exe = compilerExe(ide);
   if (!existsSync(exe)) throw new Fail(`no compiler beside the IDE at ${exe}`);
   const scratch = mkdtempSync(path.join(tmpdir(), "bugrepro-cli-"));
   try {
     // Copies, so a command that writes its project or its folder (an import, an
-    // export --overwrite) never touches the committed reproducer.
+    // export --overwrite) never touches the committed reproducer. A reproducer
+    // with no src/ has neither, and loadRepro refused {project} and {src} for it.
     const p = where(slug);
     const project = path.join(scratch, path.basename(p.twinproj));
     const src = path.join(scratch, "src");
-    copyFileSync(p.twinproj, project);
-    cpSync(p.src, src, { recursive: true });
-    const argv = repro.cli.map((a) =>
-      a.replaceAll("{project}", project).replaceAll("{src}", src).replaceAll("{tmp}", scratch),
-    );
-    const limit = (o.timeout ?? 120) * 1000;
-    const r = spawnSync(exe, argv, {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-      timeout: limit,
-      windowsHide: true,
-    });
-    if (r.error) {
-      throw new Fail(
-        r.error.code === "ETIMEDOUT" ? `the compiler executable ran past ${limit / 1000} s` : r.error.message,
-      );
+    if (existsSync(path.join(p.src, "Settings"))) {
+      copyFileSync(p.twinproj, project);
+      cpSync(p.src, src, { recursive: true });
     }
-    const output = `${r.stdout ?? ""}${r.stderr ?? ""}`;
-    return { code: r.status, stdout: r.stdout ?? "", stderr: r.stderr ?? "", json: null, message: "", output };
+    const commands = repro.cli.every(Array.isArray) ? repro.cli : [repro.cli];
+    const limit = (o.timeout ?? 120) * 1000;
+    const codes = [];
+    let stdout = "";
+    let stderr = "";
+    let output = "";
+    for (const command of commands) {
+      const argv = command.map((a) =>
+        a
+          .replaceAll("{project}", project)
+          .replaceAll("{src}", src)
+          .replaceAll("{tmp}", scratch)
+          .replaceAll("{ide}", path.resolve(path.dirname(ide))),
+      );
+      const r = spawnSync(exe, argv, {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: limit,
+        windowsHide: true,
+      });
+      if (r.error) {
+        throw new Fail(
+          r.error.code === "ETIMEDOUT" ? `the compiler executable ran past ${limit / 1000} s` : r.error.message,
+        );
+      }
+      codes.push(r.status);
+      stdout += r.stdout ?? "";
+      stderr += r.stderr ?? "";
+      output += `${r.stdout ?? ""}${r.stderr ?? ""}`;
+    }
+    const code = codes.every((c) => c === codes[0]) ? codes[0] : codes.join(",");
+    return { code, stdout, stderr, json: null, message: "", output };
   } finally {
     rmSync(scratch, { recursive: true, force: true });
   }
@@ -701,11 +773,13 @@ function printRun(r) {
   if (r.stderr.trim()) process.stderr.write(r.stderr.endsWith("\n") ? r.stderr : `${r.stderr}\n`);
 }
 
-const requireReproducer = (slug) => {
+// A reproducer is a folder with src/Settings; for verify, one with a repro.json
+// will do, since a cli reproducer may name only files an installation ships.
+const requireReproducer = (slug, { project = true } = {}) => {
   const p = where(slug);
-  if (!existsSync(path.join(p.src, "Settings"))) {
-    throw new Fail(`no such reproducer: ${rel(p.dir)} (no src/Settings)`);
-  }
+  if (existsSync(path.join(p.src, "Settings"))) return;
+  if (!project && existsSync(p.repro)) return;
+  throw new Fail(`no such reproducer: ${rel(p.dir)} (no src/Settings${project ? "" : " and no repro.json"})`);
 };
 
 // --------------------------------------------------------------------- verify
@@ -726,6 +800,7 @@ function mismatches(repro, r) {
     else if (total) problems.push(`expected no diagnostics, got ${total}`);
   }
   for (const re of e.output ?? []) if (!re.test(r.output)) problems.push(`the output does not match /${re.source}/`);
+  for (const re of e.absent ?? []) if (re.test(r.output)) problems.push(`the output matches /${re.source}/`);
   if (e.message && !e.message.test(r.message)) problems.push(`the message does not match /${e.message.source}/`);
   return problems;
 }
@@ -735,7 +810,7 @@ async function verifyOne(slug, repro, lane) {
   if (repro.mode === "manual") return { slug, status: "manual", detail: repro.steps ?? "(no steps recorded)" };
   const o = { ide: values.ide, port: lane, arch: repro.arch, timeout, show: values.show, hide: values.hide };
   try {
-    pack(slug);
+    if (existsSync(path.join(where(slug).src, "Settings"))) pack(slug);
     let r;
     let table;
     if (repro.mode === "cli") r = runCli(slug, repro, o);
@@ -791,7 +866,7 @@ async function verify() {
   // fix, and not a reason to have run the others.
   const repros = new Map();
   for (const slug of all) {
-    requireReproducer(slug);
+    requireReproducer(slug, { project: false });
     repros.set(slug, loadRepro(slug));
   }
   const automatic = all.filter((s) => ["compile", "build", "run"].includes(repros.get(s).mode));

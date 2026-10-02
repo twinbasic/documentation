@@ -1,7 +1,0 @@
-' A placeholder: the reproducer is a file in the installation (the VB package, and Sample 16), not this project.
-Module Startup
-
-    Public Sub Main()
-    End Sub
-
-End Module

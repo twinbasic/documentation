@@ -586,7 +586,7 @@ bad("scripts/tbrun.mjs", ["no-such-dir", "--quiet", "1.5"], thenUsage(NOT_WHOLE(
     thenUsage("--show and --hide cannot be given together", tool),
   );
   bad(tool, ["run", "no-such-bug"], "no such reproducer: bugs/no-such-bug (no src/Settings)\n");
-  bad(tool, ["verify", "no-such-bug"], "no such reproducer: bugs/no-such-bug (no src/Settings)\n");
+  bad(tool, ["verify", "no-such-bug"], "no such reproducer: bugs/no-such-bug (no src/Settings and no repro.json)\n");
   // `file` moves things, so these are the refusals only: every one is decided from the
   // command line or from a reproducer that does not exist, before anything is read or written.
   const fileNeeds = "file needs a slug and an issue number: file <slug> <issue>";

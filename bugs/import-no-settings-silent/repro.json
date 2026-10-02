@@ -3,6 +3,7 @@
   "cli": ["import", "{tmp}\\packed.twinproj", "{src}\\Sources\\"],
   "expect": {
     "exit": 0,
-    "output": ["IMPORTED: .*Startup\\.twin", "^\\.\\.\\. FAILED"]
+    "output": ["IMPORTED: .*Startup\\.twin", "^\\.\\.\\. FAILED"],
+    "absent": ["ERROR"]
   }
 }
