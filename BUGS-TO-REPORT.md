@@ -1401,3 +1401,45 @@ the `Input` case differ from VB6.
 
 **Observed** on 2026-10-01: the twinBASIC lines through `tbrun` on BETA 995 and BETA 983, the
 VB6 lines from the same statements compiled by `VB6.EXE /make` and run.
+
+## `Err` after a handled `Err.Raise` in an LLVM-compiled procedure holds `&HEAEAEA01` and no text
+
+**Build:** BETA 995
+**Severity:** an error handler in LLVM-compiled code cannot tell which error it caught.
+
+```tb
+[CompilerOptions("+llvm")]
+Private Sub ErrResume()
+    On Error Resume Next
+    Err.Raise 5, "MySrc", "my text"
+    Debug.Print Err.Number & " / " & Err.Source & " / " & Err.Description
+End Sub
+```
+
+prints `-353703423 /  / Application-defined or object-defined error`. Without the attribute it
+prints `5 / MySrc / my text`. The same with `On Error GoTo` and a handler, with `Err.Raise 11`
+and with `Err.Raise 1000`, on win32 and win64. A run-time error the procedure causes itself,
+`1 \ 0` on a `Long`, reads correctly as 11, and `Err.Number = 7` assigned directly reads 7.
+
+**Observed** on 2026-10-01 through `tbrun`, in the IDE's `[RunAfterBuild]` run; not run in a
+built exe.
+
+## `End` in an LLVM-compiled procedure restarts the IDE's compiler
+
+**Build:** BETA 995; BETA 983 ignored the `End` and went on (fixed in 985 for built programs)
+**Severity:** low; the IDE recovers, but the project is compiled again and LLVM-compiled code
+run in the IDE is not recommended anyway.
+
+```tb
+[CompilerOptions("+llvm")]
+Private Sub Stopper()
+    Debug.Print "before End"
+    End
+End Sub
+```
+
+called from a `[RunAfterBuild]` procedure prints `before End`, and the console then shows
+`restarting from MEMORY [<project>]`. Without the attribute the run ends with no restart. In a
+built exe, with or without LLVM, `End` ends the program with exit code 0.
+
+**Observed** on 2026-10-01 through `tbrun` and `tbrun --exe`, on BETA 995 and BETA 983.
