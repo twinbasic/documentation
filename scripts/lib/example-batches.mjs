@@ -1442,8 +1442,17 @@ export async function runProbes(say) {
     "dispatcher: two samples are not called in order between their markers",
   );
   expect(
-    dLines.filter((l) => l === "On Error Resume Next").length === 2 && dLines.at(-4) === `Debug.Print "${RUN_DONE}"`,
-    "dispatcher: each call is not guarded, or the done line is missing",
+    [0, 1].every(
+      (i) =>
+        dLines.indexOf(`On Error GoTo tbxError${i}`) < dLines.indexOf(`tbx_${i ? "bbb" : "aaa"}.tbxBody`) &&
+        dLines.indexOf(`On Error GoTo tbxError${i}`) >= 0 &&
+        dLines.includes(`tbxError${i}:`) &&
+        dLines.includes(`Resume tbxNext${i}`) &&
+        dLines.includes(`tbxNext${i}:`),
+    ) &&
+      !dLines.includes("On Error Resume Next") &&
+      dLines.at(-4) === `Debug.Print "${RUN_DONE}"`,
+    "dispatcher: each call does not have a handler of its own (On Error GoTo, label, Resume), or the done line is missing",
   );
   // The markers are what parseRun reads, so the dispatcher's own text is run
   // through it: what it prints for a sample that returns is a match.

@@ -562,7 +562,9 @@ A `check_run` sample states what it prints in one of two ways, and the checker r
 the sample's own text, so the page needs nothing extra. A trailing comment on a
 `Debug.Print` line gives that line's output. A comment line that is exactly `' Output:`
 gives the whole output, one line per comment line below it. A sample that states
-nothing is still run, and must return without raising an error. When a sample states
+nothing is still run, and must return without raising an error. An error the sample
+handles itself is not raised, so a sample can show an error with `On Error Resume Next`
+and print `Err.Number`. When a sample states
 anything, it must print exactly as many lines as it states. Each line is compared with
 the spaces at both ends removed, because twinBASIC prints a space before a positive
 number.

@@ -391,9 +391,16 @@ attributes. Only allowed one per-project.` So `check_run` cannot batch the naive
 uses one generated dispatcher per run batch (`Module tbxRun`, `lib/example-run.mjs`'s
 `dispatcherText`) that calls each sample's `tbxBody` in turn, with a marker line printed
 around each call so the output can be attributed and a sample that throws does not silently
-swallow the rest. **The caller's `On Error Resume Next` catches an error raised unhandled
-inside the callee** (measured, BETA 995: `InStr(0, "abc", "a")` in a sample's body printed
-`[tbx-run] error 5 Invalid procedure call or argument`, and the next sample ran).
+swallow the rest. **Each call has an `On Error GoTo` handler of its own, not `On Error
+Resume Next` and a test of `Err.Number` after the call.** A procedure that handles an error
+with `On Error Resume Next` and returns, by `End Sub` or `Exit Sub`, leaves `Err` set for its
+caller, in VB6 and in twinBASIC alike; only a `Resume` from an `On Error GoTo` handler, or
+any `On Error` statement, clears it (measured, VB6 against BETA 995, identical; kit
+`s69/errpersist/`). So the first dispatcher reported InStr.md's sample that demonstrates
+error 5 under its own `On Error Resume Next` as raising it. The caller's handler is reached
+only by an error the callee did not handle (measured: `InStr(0, "abc", "a")` unhandled in a
+sample's body printed `[tbx-run] error 5 Invalid procedure call or argument`, and the next
+sample ran), and `Resume tbxNext<n>` clears it before the next call.
 
 Two things a batch runner must do that a single-fence runner need not:
 

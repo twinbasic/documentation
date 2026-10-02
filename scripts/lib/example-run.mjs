@@ -199,10 +199,15 @@ export function judgeOutput(expected, output) {
 /**
  * The generated `[RunAfterBuild]` Sub, calling each module's `tbxBody` in turn.
  *
- * `On Error Resume Next` is there so one sample's error does not end the rest,
- * and the error line is the way the run says which one raised it. The first
- * statement is `Debug.Cls`, which erases the IDE's own build log from the
- * console, so what is left is the dispatcher's.
+ * Each call has an `On Error GoTo` handler of its own, so one sample's error
+ * does not end the rest, and the error line is the way the run says which one
+ * raised it. The handler is reached only by an error the sample did not handle.
+ * Testing `Err.Number` after the call would not do: a procedure that handles an
+ * error with `On Error Resume Next` returns with `Err` still set, in VB6 and in
+ * twinBASIC alike (measured, BETA 995), so a sample that demonstrates an error
+ * would be reported as raising it. The first statement is `Debug.Cls`, which
+ * erases the IDE's own build log from the console, so what is left is the
+ * dispatcher's.
  *
  * @param {string[]} modules  the generated module names, in the order the
  *   samples are numbered
@@ -213,9 +218,13 @@ export function dispatcherText(modules) {
     out.push(
       `        Debug.Print "${RUN_TAG} begin ${i}"`,
       "        Err.Clear",
-      "        On Error Resume Next",
+      `        On Error GoTo tbxError${i}`,
       `        ${module}.tbxBody`,
-      `        If Err.Number <> 0 Then Debug.Print "${RUN_TAG} error " & Err.Number & " " & Err.Description`,
+      `        GoTo tbxNext${i}`,
+      `tbxError${i}:`,
+      `        Debug.Print "${RUN_TAG} error " & Err.Number & " " & Err.Description`,
+      `        Resume tbxNext${i}`,
+      `tbxNext${i}:`,
       "        On Error GoTo 0",
       `        Debug.Print "${RUN_TAG} end ${i}"`,
     );
