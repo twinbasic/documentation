@@ -138,6 +138,7 @@ import {
   TARGETS,
   attachIde,
   compileOutcome,
+  keptIdeLines,
   killTree,
   launchIde,
   launchOnDesktop,
@@ -604,7 +605,7 @@ if (values.json) {
     for (const l of exeRun.lines) console.log(l);
   }
   // Only under --keep, where the pid is still alive and therefore actionable.
-  if (values.keep && ideRun?.pid) console.log(`ide-pid: ${ideRun.pid}`);
+  if (values.keep && ideRun?.pid) for (const l of keptIdeLines(ideRun.pid)) console.log(l);
 }
 if (returned === false) {
   die(

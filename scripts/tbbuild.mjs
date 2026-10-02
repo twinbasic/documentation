@@ -77,7 +77,7 @@ import {
 } from "../lib/cli.mjs";
 import { compilerExe, findIde, runCompiler } from "./lib/tb-install.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
-import { COMPILE_TIMEOUT, TARGETS, summaryLine, wantShow } from "./lib/tb-ide.mjs";
+import { COMPILE_TIMEOUT, keptIdeLines, TARGETS, summaryLine, wantShow } from "./lib/tb-ide.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
@@ -101,7 +101,8 @@ With --build or --llvm it then builds the project.
                     options set to +llvm; refused on a Community or Personal
                     licence. Without it, --build is the control for an --llvm run
   --json            emit one JSON object instead of text
-  --keep            leave the IDE running; its pid is printed as \`ide-pid: N\`
+  --keep            leave the IDE running; its pid is printed as \`ide-pid: N\`,
+                    with the taskkill command that ends it
   --show, --hide    show the IDE on the desktop, or keep it on a private one
                     (default: hidden, unless TBBUILD_SHOW is set)
   -h, --help        print this text and exit
@@ -320,7 +321,7 @@ if (asJson) {
   if (r.built) console.log(`built: ${r.built}`);
   if (dialogs.length) console.log("dialogs:", JSON.stringify(dialogs));
   // Only under --keep, where the pid is still alive and therefore actionable.
-  if (keep && r.idePid) console.log(`ide-pid: ${r.idePid}`);
+  if (keep && r.idePid) for (const l of keptIdeLines(r.idePid)) console.log(l);
 }
 
 process.exit(r.code);

@@ -250,6 +250,20 @@ export async function launchOnDesktop({ exe, arg = "", desktop, job = true, env 
 }
 
 /**
+ * What a tool prints under --keep: the kept IDE's pid, and the commands that end
+ * it with every process it started (/T takes the compiler and the rest of its
+ * tree), in each shell's spelling; Git Bash would read /PID as a path.
+ */
+export function keptIdeLines(pid) {
+  return [
+    `ide-pid: ${pid}`,
+    "to end the IDE and every process it started:",
+    `  cmd or PowerShell:  taskkill /PID ${pid} /T /F`,
+    `  Git Bash:           taskkill //PID ${pid} //T //F`,
+  ];
+}
+
+/**
  * End an IDE started by launchIde, and the launcher holding its desktop, and
  * wait until the IDE's process is gone.
  *

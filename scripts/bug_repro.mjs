@@ -94,7 +94,7 @@ import {
   withUsageError,
 } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
-import { summaryLine, TARGETS } from "./lib/tb-ide.mjs";
+import { keptIdeLines, summaryLine, TARGETS } from "./lib/tb-ide.mjs";
 import { compilerExe, findIde } from "./lib/tb-install.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
@@ -763,7 +763,7 @@ function printBuild(r) {
     if (r.code === 5) for (const line of j.buildLog ?? []) console.log(line);
     if (j.built) console.log(`built: ${j.built}`);
     if (j.dialogs?.length) console.log("dialogs:", JSON.stringify(j.dialogs));
-    if (j.kept && j.idePid) console.log(`ide-pid: ${j.idePid}`);
+    if (j.kept && j.idePid) for (const l of keptIdeLines(j.idePid)) console.log(l);
   } else if (r.stdout.trim()) process.stdout.write(r.stdout);
   if (r.stderr.trim()) process.stderr.write(r.stderr.endsWith("\n") ? r.stderr : `${r.stderr}\n`);
 }
