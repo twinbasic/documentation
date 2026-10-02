@@ -571,12 +571,18 @@ that fails only the second is one LLVM cannot generate code for.
 - **A `[RunAfterBuild]` that calls `Debug.Cls` would erase the build log.** `buildProject`
   wraps the page's `clearDebugConsole` (`keepClears`, as `tbrun` does) and reads what each
   clear after its mark erased in front of the console, so Tools.md's own tbrun sample builds.
-- **A failed build is believed when it repeats.** With four lanes, samples that build clean
-  alone fail with `[LINKER] FAILED to create type library`, a different one each run (BETA
-  995: Inheritance.md in one full run, CEF's EnvironmentOptions.md in a narrowed one; both
-  clean with `--jobs 1`). `buildTwiceOnFailure` builds a failed batch again before halving,
-  and every part the halving builds the same way. The cause, a file the lanes share or
-  something else, was not found.
+- **A failed build is believed when it repeats.** `buildTwiceOnFailure` builds a failed
+  batch again before halving, and every part the halving builds the same way: a build can
+  fail once and pass when repeated, as one that reported nothing for 120 s did in a full
+  `--llvm` run (BETA 995).
+- **Each IDE has a temp folder of its own**, `%TEMP%\tbbuild-tmp-<port>`, set as its `TEMP`
+  and `TMP` by `launchIde`. IDEs building at once in one temp folder fail now and then with
+  `[TYPELIB] failed to finalize typelibrary.  Disk error?` and `[LINKER] FAILED to create
+  type library`, on samples that build clean alone: 8 of 192 builds, eight at once, against
+  0 of 192 with a folder each (BETA 995). With the folders, a full `--build` run and a full
+  `--llvm` run retried no type-library failure. The compiler imports `GetTempFileNameW`, and
+  writes the type library to a file it then reads back; a name two processes both take fits
+  the counts, but is not proved.
 - **A project with errors says which.** `not built: b<n>.twinproj has errors, the first ...`
   prints when a compile has errors, and the run ends counting the samples never built.
 - **A build adds three collision rules a compile does not have**, each measured on BETA 995

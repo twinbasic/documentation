@@ -9,7 +9,7 @@
 // twinBASIC project without the IDE in front of you", for the history.
 
 import { execFile, execFileSync, spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -136,10 +136,23 @@ export async function launchIde({ exe, project, port, show = false, keep = false
   }
   const exeWin = exe.split("/").join("\\");
   const target = path.resolve(project).split("/").join("\\");
+  // Each IDE has a temp folder of its own, emptied at each launch on its port.
+  // Builds sharing one fail now and then with `[TYPELIB] failed to finalize
+  // typelibrary.  Disk error?`: 0 in 192 with a folder per IDE, 8 in 192 with
+  // one for all eight at once (BETA 995).
+  const ideTemp = path.join(process.env.TEMP, `tbbuild-tmp-${port}`);
+  try {
+    rmSync(ideTemp, { recursive: true, force: true });
+  } catch {
+    // a file still held open: the IDE gets the folder as it is
+  }
+  mkdirSync(ideTemp, { recursive: true });
   // Node leaves out of a child's environment any variable whose value is
   // undefined, so `env` can remove one as well as set it.
   const fullEnv = {
     ...process.env,
+    TEMP: ideTemp,
+    TMP: ideTemp,
     WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port} --remote-allow-origins=*`,
     WEBVIEW2_USER_DATA_FOLDER: `${process.env.TEMP}/tbbuild-wv2-${port}`,
     [ADDIN_TEST_ENV]: "1",

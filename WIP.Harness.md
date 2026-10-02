@@ -457,7 +457,7 @@ compilation. That number was once guessed at "roughly 40 seconds" and is out by 
 of four: time it before quoting it.
 
 **Concurrency works and is the route to a fast probe suite.** Distinct `--port` values give
-distinct DevTools ports, WebView2 user-data folders and private desktops, so instances do
+distinct DevTools ports, WebView2 user-data folders, temp folders and private desktops, so instances do
 not collide. Three projects: **26 s sequentially, 10 s in parallel**, with each run
 reporting its own diagnostics and no bleed between them.
 
@@ -522,7 +522,8 @@ Four smaller things it knows, each of which cost a run:
   library`, `[BUILD] failed`. `tbrun` returned exactly that as the probe's output, with exit 0,
   twice in round 8's fix pass --- five runs going at once on ports 9740--9744, and both passed
   when repeated. It now exits 2 on a `[BUILD] failed` or `[LINKER] FAILED` line, which the
-  probe's own `Debug.Cls` would have erased. What made the type library fail was not isolated.
+  probe's own `Debug.Cls` would have erased. The type library failed because the IDEs shared
+  one temp folder; `launchIde` now gives each its own (see WIP.ExamplesBuild.md).
   Since the tooling review's C16 it exits 2 on any line `buildProject`'s `BUILD_FAILED`
   matches, which adds `[BUILD] ERROR` and `[LINKER] compilation (codegen) error`. The second
   was measured: a `[RunAfterBuild]` Sub that shifts a `Single` (BUGS-TO-REPORT.md) builds with

@@ -511,10 +511,11 @@ async function isolateCrash(batch, named, lane, failed = false, detail = "") {
  * Build a batch, and build it once more if the build failed after a clean
  * compile.
  *
- * Lanes building at once fail builds that pass alone: "[LINKER] FAILED to
- * create type library" on samples that built clean with one lane (BETA 995,
- * and BETA 983 under tbrun). A failure is believed only if the same batch fails
- * twice running, and so is each part the halving that follows builds.
+ * A build can fail once and pass when repeated: one that reported nothing for
+ * 120 s, once in a full --llvm run (BETA 995). Lanes whose IDEs shared a temp
+ * folder failed with "[LINKER] FAILED to create type library" too, which
+ * launchIde's folder per IDE prevents. A failure is believed only if the same
+ * batch fails twice running, and so is each part the halving that follows builds.
  */
 async function buildTwiceOnFailure(batch, lane) {
   const first = await lane.build(batch);
