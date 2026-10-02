@@ -276,7 +276,7 @@ The host's extender wrapper around this **UserControl**, as an **Object**. Read-
 ### FillColor
 {: .no_toc }
 
-The fill colour for closed shapes drawn by [**Circle**](#circle) and the rectangle form of [**Line**](#line). **OLE_COLOR**, default `0` (black). Used only when [**FillStyle**](#fillstyle) is not **vbFSTransparent**.
+The fill colour for closed shapes drawn by [**Circle**](#circle) and the rectangle form of [**Line**](#line) without **F**. **OLE_COLOR**, default `0` (black). Used only when [**FillStyle**](#fillstyle) is not **vbFSTransparent**.
 
 ### FillStyle
 {: .no_toc }
@@ -649,10 +649,10 @@ Syntax: *object*.**Line** [ [ **Step** ] ( *X1*, *Y1* ) ] -[ **Step** ] ( *X2*, 
 : *optional* An **OLE_COLOR** for the line; defaults to [**ForeColor**](#forecolor).
 
 **B**
-: *optional* Draw a rectangle whose opposite corners are (*X1*, *Y1*) and (*X2*, *Y2*) instead of a line.
+: *optional* Draw a rectangle whose opposite corners are (*X1*, *Y1*) and (*X2*, *Y2*) instead of a line. Without **F**, the interior is filled with [**FillColor**](#fillcolor) in the current [**FillStyle**](#fillstyle); **vbFSTransparent** leaves it unfilled.
 
 **F**
-: *optional* When combined with **B**, fill the rectangle with [**ForeColor**](#forecolor) instead of [**FillColor**](#fillcolor)/[**FillStyle**](#fillstyle).
+: *optional* Used with **B**. Fills the rectangle with its outline colour --- *Color*, or [**ForeColor**](#forecolor) when *Color* is omitted --- instead of [**FillColor**](#fillcolor)/[**FillStyle**](#fillstyle).
 
 ### OLEDrag
 {: .no_toc }

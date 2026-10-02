@@ -201,7 +201,7 @@ Determines whether the control accepts user input. **Boolean**, default **True**
 ### FillColor
 {: .no_toc }
 
-The colour used to fill closed shapes drawn by [**Line**](#line) (with the `F` flag) and [**Circle**](#circle), as an **OLE_COLOR**. Default **0** (black). Honoured only when [**FillStyle**](#fillstyle) is not **vbFSTransparent**.
+The colour used to fill closed shapes drawn by [**Line**](#line) with **B** and without **F**, and by [**Circle**](#circle), as an **OLE_COLOR**. Default **0** (black). Honoured only when [**FillStyle**](#fillstyle) is not **vbFSTransparent**.
 
 ### FillStyle
 {: .no_toc }
@@ -504,10 +504,10 @@ Syntax: *object*.**Line** [ [ **Step** ] ( *X1*, *Y1* ) ] **-** [ **Step** ] ( *
 : *optional* An **OLE_COLOR** for the line. Defaults to [**ForeColor**](#forecolor).
 
 *B*
-: *optional* When present, draws a rectangle whose opposite corners are *(X1, Y1)* and *(X2, Y2)* instead of a line.
+: *optional* When present, draws a rectangle whose opposite corners are *(X1, Y1)* and *(X2, Y2)* instead of a line. Without **F**, the interior is filled with [**FillColor**](#fillcolor) in the current [**FillStyle**](#fillstyle); **vbFSTransparent** leaves it unfilled.
 
 *F*
-: *optional* Only valid with **B**. Fills the rectangle with [**FillColor**](#fillcolor) at the current [**FillStyle**](#fillstyle).
+: *optional* Only valid with **B**. Fills the rectangle with its outline colour --- *Color*, or [**ForeColor**](#forecolor) when *Color* is omitted --- instead of [**FillColor**](#fillcolor) at the current [**FillStyle**](#fillstyle).
 
 [**CurrentX**](#currentx) / [**CurrentY**](#currenty) are left at *(X2, Y2)*.
 
