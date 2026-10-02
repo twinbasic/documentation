@@ -987,6 +987,64 @@ kept IDE switched to `win64` does not make later runs on the same port build 64-
 
 Exit codes: **0** the probe ran and its output was captured; **1** the project has compile errors (the diagnostics are printed); **2** a refused command line (a source folder that is missing or has no `Settings` file included), no IDE or compiler, an IDE that did not start, a compile that never settled, a build that failed after a clean compile, a probe that never ran or stopped at a procedure that failed code generation, an LLVM run on a Community or Personal licence, an `--exe` run with no exe built, or a crash; **3** no output: the console held none before the timeout, or the probe printed none after its last `Debug.Cls`; **4** the compiler crashed, or restarted twice, while compiling the project; **5** the probe ended before it returned, its output printed all the same; **6** under `--exe`, the exe exited with a code other than 0, or was still running after `--timeout` and was ended, its output and exit code printed all the same. A run that would exit 5 exits 5 whatever the exe did.
 
+### bug_repro.mjs
+{: #bug-repro }
+
+    node scripts/bug_repro.mjs new <slug> "<entry title>"
+    node scripts/bug_repro.mjs pack <slug>
+    node scripts/bug_repro.mjs compile|build|run <slug> [--ide <twinBASIC.exe>] [--port N]
+                               [--arch win32|win64] [--timeout S] [--llvm] [--exe] [--keep] [--show|--hide]
+    node scripts/bug_repro.mjs verify [slug ...] [--ide <twinBASIC.exe>] [--port N] [--timeout S]
+                               [--jobs N] [--show|--hide]
+
+Keeps the reproducer projects of `BUGS-TO-REPORT.md` --- one folder, `bugs/<slug>/`, for each
+entry --- and puts them in front of the compiler. A slug is kebab-case, lowercase letters and
+digits joined by single hyphens, and anything else is refused. Like [`tbbuild.mjs`](#tbbuild)
+and [`tbrun.mjs`](#tbrun), which it runs, it needs a twinBASIC install and Windows. It is
+outside every gate and outside CI, and `verify` is run by a person only.
+
+| Command | Effect |
+|---|---|
+| `new <slug> "<title>"` | Creates `bugs/<slug>/src/` from the console template under `test/example-projects/`, with the project named after the slug in PascalCase, a fresh project id, the description `Reproduces: <title>` and a `Startup` module holding an empty `Sub Main`. Also writes `bugs/<slug>/repro.json` with `"mode": "manual"`. Refused, with exit 3, when `bugs/<slug>` exists. |
+| `pack <slug>` | Runs `node scripts/impexp.mjs import` on `src/`, to `<slug>.twinproj`, and then writes `<slug>.zip` holding that one file. The zip is written by the script itself, so neither PowerShell nor 7-Zip is needed. An `impexp` exit of 0 or 6 counts as a pack, and its output is printed. |
+| `compile <slug>` | Packs, then compiles the project with `tbbuild --json` and prints its diagnostics. |
+| `build <slug>` | Packs, then compiles and builds it with `tbbuild --build`, or `--llvm` when that is given. A build that fails prints the build log and the failing line. |
+| `run <slug>` | Copies `src/` to `%TEMP%\bugrepro\<port>\<slug>`, adds a `TbRunProbe` module whose `[RunAfterBuild]` Sub calls `Debug.Cls` and then `Main`, runs `tbrun` on the copy and prints what it captured. The tree under `bugs/` is not changed. With `--exe` no probe module is added: `tbrun` runs `Sub Main` in the built exe. |
+| `verify [slug ...]` | Reads `repro.json` for each named reproducer, or every one under `bugs/`, runs what it says and reports one line each. |
+
+The options of `compile`, `build` and `run` are those of `tbbuild` and `tbrun` of the same
+name, and are passed to them: `--ide`, `--port` (default 9440), `--arch`, `--timeout`,
+`--keep` and `--show` / `--hide`, with `--llvm` for `build` and `run`, and `--exe` for `run`.
+An option that does not apply to a command is refused, not ignored.
+
+**`repro.json` says how to ask the compiler about a reproducer.** It is committed with the
+reproducer and is not part of the `.twinproj`. A key it does not have, or a value of the
+wrong type, is refused with exit 2, naming the file and the key, before anything runs.
+
+| Key | Meaning |
+|---|---|
+| `mode` | `compile`, `build`, `run`, `cli` or `manual`. `manual` is a reproducer that cannot be automated, such as one that needs a click in the IDE. |
+| `arch` | Optional. `win32` (default) or `win64`. |
+| `llvm` | Optional, `build` and `run`. `true` builds with LLVM. |
+| `expect.exit` | The exit code of `tbbuild` or `tbrun` as they print it, not this tool's mapped code; for `cli`, the compiler executable's. |
+| `expect.diagnostics` | `compile`. Diagnostic codes, such as `TB5182`, that must all be reported. |
+| `expect.noDiagnostics` | `compile`. `true` expects no error, warning, hint or information. |
+| `expect.message` | `build`. A regular expression the message `tbbuild` prints on standard error must match. |
+| `expect.output` | `run` and `cli`. Regular expressions, each of which must match the output. They are matched line by line, so `^` and `$` hold at each line. |
+| `cli` | `cli` mode. The arguments for the compiler executable, `bin\twinBASIC_win32.exe`. `{tmp}` stands for a new temp folder, deleted afterwards; `{project}` for a copy of the packed `.twinproj` in it, and `{src}` for a copy of `src/`, so a command that writes either never touches the committed reproducer. Give an output folder with backslashes and a trailing one, as `export` requires. |
+| `steps` | `manual`. What a person does to see the bug. `verify` prints it. |
+
+A `verify` line is one of four things. **reproduces**: everything `expect` names is as
+expected. **NO LONGER REPRODUCES**: it ran, and something expected is not so; the bug may
+be fixed in this build, and the entry may be ready to retire. **manual**: not automatable,
+and `steps` is printed. **harness failed**: the tool could not do its job, as for a
+`tbbuild` or `tbrun` exit of 2, or a compile that never settled; that says nothing about
+the bug unless `expect.exit` names it. Reproducers run one at a time. `--jobs N` runs N at
+once, each in the IDE on its own port, from `--port` up. `verify` tidies the IDE's registry
+entries once for all of them, as [`check_examples.mjs`](#check-examples) does.
+
+Exit codes: **0** done --- a project that compiled, built or ran as it should, or, for `verify`, every reproducer that can be run on its own still reproduces; **1** a finding: the project has errors, or its build failed after a clean compile, or, for `verify`, at least one reproducer no longer reproduces; **2** a refused command line, a `repro.json` that is not valid, no IDE, a project that could not be packed, a harness that failed, or a crash; for `verify`, a lane's harness failed; **3** `new` found `bugs/<slug>` already there; **4** the compile never settled; **5** the project crashes the compiler; **6** `run`: the probe printed nothing; **7** `run`: the probe ended before it returned; **8** `run --exe`: the exe exited with a code other than 0, or was still running after `--timeout`.
+
 ### addin_test.mjs
 {: #addin-test }
 

@@ -103,6 +103,8 @@ const CASES = [
   { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch", ""], exit: 2, stderr: /^--arch needs a non-empty value\nusage: node scripts\/tbrun\.mjs / },
   { tool: "scripts/tbrun.mjs", args: ["--bogus", "no-such-dir"], exit: 2, stderr: /^unknown option: --bogus\nusage: node scripts\/tbrun\.mjs / },
   { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch", "win64"], exit: 2, stderr: /^not a directory: .*no-such-dir\ntbrun takes an exported source tree / },
+  { tool: "scripts/bug_repro.mjs", args: [], exit: 2, stderr: /^usage: node scripts\/bug_repro\.mjs / },
+  { tool: "scripts/bug_repro.mjs", args: ["compile", "--help", "--bogus"], exit: 0, stdout: /^usage: node scripts\/bug_repro\.mjs / },
   { tool: "scripts/addin_test.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/addin_test\.mjs / },
   { tool: "scripts/addin_test.mjs", args: ["--ide"], exit: 2, stderr: "--ide needs a value\n" },
   { tool: "scripts/addin_test.mjs", args: ["--ide", ""], exit: 2, stderr: "--ide needs a non-empty value\n" },
@@ -323,6 +325,7 @@ const HELP_TOOLS = {
   "eval/transcript.mjs": "Usage: node eval/transcript.mjs ",
   "scripts/addin_test.mjs": null,
   "scripts/ide_test.mjs": null,
+  "scripts/bug_repro.mjs": null,
   "scripts/build_dot_metrics.mjs": null,
   "scripts/build_package_api.mjs": null,
   "scripts/census_attributes.mjs": null,
@@ -394,6 +397,7 @@ const REFUSALS = {
   "eval/transcript.mjs": [null],
   "scripts/addin_test.mjs": ["ide"],
   "scripts/ide_test.mjs": ["ide"],
+  "scripts/bug_repro.mjs": ["ide"],
   "scripts/build_dot_metrics.mjs": [null],
   "scripts/build_package_api.mjs": ["out"],
   "scripts/census_attributes.mjs": ["out"],
@@ -540,6 +544,49 @@ bad(
   bad(tool, ["--show", "--hide"], thenUsage("--show and --hide cannot be given together", tool));
 }
 bad("scripts/tbrun.mjs", ["no-such-dir", "--quiet", "1.5"], thenUsage(NOT_WHOLE("--quiet", 1.5), "scripts/tbrun.mjs"));
+
+// bug_repro follows the message with its usage. It reads and checks its command
+// line before it looks for a reproducer or an IDE, and the reproducers it is
+// asked for here do not exist.
+{
+  const tool = "scripts/bug_repro.mjs";
+  const slugMessage = (slug) =>
+    `not a valid slug: ${slug} (lowercase letters and digits joined by single hyphens, such as my-bug)`;
+  bad(tool, ["frobnicate"], thenUsage("unknown command: frobnicate", tool));
+  bad(tool, ["new"], thenUsage("new needs a slug", tool));
+  bad(
+    tool,
+    ["new", "no-such-bug"],
+    thenUsage(`new needs a slug and the entry's title, quoted: new <slug> "<title>"`, tool),
+  );
+  bad(tool, ["new", "Bad_Slug", "title"], thenUsage(slugMessage("Bad_Slug"), tool));
+  bad(tool, ["new", "no-such-bug", " "], thenUsage("the entry's title is empty", tool));
+  bad(tool, ["pack", "-x"], thenUsage("unknown option: -x", tool));
+  bad(tool, ["pack", "bad--slug"], thenUsage(slugMessage("bad--slug"), tool));
+  bad(tool, ["compile"], thenUsage("compile needs a slug", tool));
+  bad(tool, ["compile", "no-such-bug", "other"], thenUsage("unexpected argument: other", tool));
+  bad(tool, ["compile", "no-such-bug", "--llvm"], thenUsage("--llvm does not apply to compile", tool));
+  bad(tool, ["build", "no-such-bug", "--exe"], thenUsage("--exe does not apply to build", tool));
+  bad(tool, ["pack", "no-such-bug", "--port", "9440"], thenUsage("--port does not apply to pack", tool));
+  bad(tool, ["verify", "--keep"], thenUsage("--keep does not apply to verify", tool));
+  bad(tool, ["verify", "--arch", "win32"], thenUsage("--arch does not apply to verify", tool));
+  bad(tool, ["compile", "no-such-bug", "--port", "0"], thenUsage(NOT_PORT(0), tool));
+  bad(tool, ["run", "no-such-bug", "--timeout", "0"], thenUsage(NOT_ABOVE_ZERO("--timeout", 0), tool));
+  bad(tool, ["run", "no-such-bug", "--arch", "WIN32"], thenUsage("--arch expects win32 or win64, got: WIN32", tool));
+  bad(tool, ["verify", "--jobs", "0"], thenUsage(NOT_COUNT("--jobs", 0), tool));
+  bad(
+    tool,
+    ["verify", "--port", "65535", "--jobs", "2"],
+    thenUsage("--port 65535 with --jobs 2 runs past port 65535", tool),
+  );
+  bad(
+    tool,
+    ["compile", "no-such-bug", "--show", "--hide"],
+    thenUsage("--show and --hide cannot be given together", tool),
+  );
+  bad(tool, ["run", "no-such-bug"], "no such reproducer: bugs/no-such-bug (no src/Settings)\n");
+  bad(tool, ["verify", "no-such-bug"], "no such reproducer: bugs/no-such-bug (no src/Settings)\n");
+}
 
 bad("scripts/addin_test.mjs", ["--only", "("], REGEX_REASON("--only", "("));
 bad("scripts/addin_test.mjs", ["--port", "0"], NOT_PORT(0) + "\n");
