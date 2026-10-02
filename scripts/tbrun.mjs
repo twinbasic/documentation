@@ -11,7 +11,8 @@
 //                         (default 2500)
 //       --json            emit one JSON object instead of text
 //       --raw             do not strip the console's timestamp column
-//       --keep            leave the IDE running afterwards (implies --no-reap)
+//       --keep            leave the IDE running afterwards, and print its pid
+//                         (implies --no-reap)
 //       --no-reap         do not harvest automation servers the probe left behind
 //       --reap-images     comma-separated image names to harvest
 //                         (default: the Office suite -- see REAP_IMAGES)
@@ -167,7 +168,8 @@ writes to the DEBUG CONSOLE.
                       (default 2500)
   --json              emit one JSON object instead of text
   --raw               do not strip the console's timestamp column
-  --keep              leave the IDE running afterwards (implies --no-reap)
+  --keep              leave the IDE running afterwards, and print its pid
+                      (implies --no-reap)
   --no-reap           do not harvest automation servers the probe left behind
   --reap-images a,b   comma-separated image names to harvest (default: the
                       Office suite)
@@ -601,6 +603,8 @@ if (values.json) {
     console.log(`--- exe: ${exeRun.timedOut ? "still running after --timeout, ended" : `exit ${exeRun.exitCode}`}`);
     for (const l of exeRun.lines) console.log(l);
   }
+  // Only under --keep, where the pid is still alive and therefore actionable.
+  if (values.keep && ideRun?.pid) console.log(`ide-pid: ${ideRun.pid}`);
 }
 if (returned === false) {
   die(
@@ -612,6 +616,9 @@ if (returned === false) {
 }
 if (exeRun?.timedOut) die(6, `tbrun: the exe was still running after --timeout, and was ended.`);
 if (exeRun && exeRun.exitCode !== 0) die(6, `tbrun: the exe exited with code ${exeRun.exitCode}.`);
+// Explicitly: under --keep the launcher, and the pipes to it, live as long as the
+// IDE, and would keep this process waiting for it.
+process.exit(0);
 
 // ------------------------------------------------------------------ helpers
 
