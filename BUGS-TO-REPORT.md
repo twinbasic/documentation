@@ -79,15 +79,33 @@ kebab-case name for the bug, and its **To Reproduce** names the project file:
 | `bugs/<slug>/<slug>.twinproj` | the project file, packed from `src/` | yes |
 | `bugs/<slug>/<slug>.zip` | the `.twinproj` zipped, because a GitHub issue does not accept a `.twinproj` attachment | no |
 
-Pack the project from its source, then zip it, in PowerShell:
+`scripts/bug_repro.mjs` makes and checks them (the tool's page is
+[Tools and Scripts](docs/Documentation/Tools.md#bug-repro)):
 
-```powershell
-node scripts/impexp.mjs import bugs\<slug>\<slug>.twinproj bugs\<slug>\src --overwrite
-Compress-Archive -Force -Path bugs\<slug>\<slug>.twinproj -DestinationPath bugs\<slug>\<slug>.zip
+```sh
+node scripts/bug_repro.mjs new <slug> "<entry title>"   # bugs/<slug>/src/ and repro.json
+node scripts/bug_repro.mjs pack <slug>                  # src/ -> <slug>.twinproj -> <slug>.zip
+node scripts/bug_repro.mjs compile <slug>               # compile it in the IDE, print the diagnostics
+node scripts/bug_repro.mjs build <slug>                 # and build it
+node scripts/bug_repro.mjs run <slug>                   # run Sub Main, print the DEBUG CONSOLE
+node scripts/bug_repro.mjs verify [<slug> ...]          # does each entry still reproduce?
 ```
 
-7-Zip does the same with `7z a -tzip <zip> <twinproj>`; its installer does not put `7z` on
-`PATH`. Not `tar -a`: Git Bash's `tar` writes a tar archive under the `.zip` name and exits 0.
+`new` starts the project from the console template, with an empty `Sub Main` in a `Startup`
+module; edit `src/Sources/`, then `pack`. What `pack` does is the importer, then a zip of the
+one file it writes, which the tool does itself:
+
+```sh
+node scripts/impexp.mjs import bugs/<slug>/<slug>.twinproj bugs/<slug>/src --overwrite
+```
+
+`bugs/<slug>/repro.json` says how to ask the compiler about the entry, and is committed with
+the reproducer: a `mode` of `compile`, `build`, `run`, `cli` (the compiler executable's own
+command line) or `manual`, and what a reproduction looks like in `expect`, such as the exit
+code of `tbbuild`, the diagnostic codes, or a regular expression the output must match.
+`verify` reads it for every entry and reports `reproduces`, `NO LONGER REPRODUCES` (the bug
+may be fixed on this build) or `manual`, which prints the `steps` it holds. It needs a
+twinBASIC install, and is run by a person, never by a gate or by CI.
 
 Attach the `.zip` to the issue. When the entry is filed and deleted, its `bugs/<slug>/`
 folder is deleted with it.
@@ -174,36 +192,63 @@ costs the whole batch its result, which is why that tool isolates the sample on 
 
 ---
 
-## An `Interface` that extends itself compiles without a diagnostic
+## An `Interface` that extends itself compiles without a diagnostic, and Build then does nothing
 
-**Build:** BETA 995
-**Severity:** invalid code accepted --- the same cycle through a class is refused.
+**Describe the bug**
+An interface that extends itself, directly or through another interface, compiles with no
+error, warning, hint or info. Building the project then does nothing at all: clicking
+**Build** writes nothing to the DEBUG CONSOLE, opens no dialog and creates no file, and the
+IDE stays responsive. A cycle through classes or UDTs is refused at compile time instead.
 
-This two-line file compiles with no error, warning, hint or info:
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `interface-extends-itself.twinproj` (attached as `interface-extends-itself.zip`). Its
+   three source files hold the whole bug:
+   ```
+   ' SelfCycle.twin
+   Interface IA Extends IA
+   End Interface
 
-```
-Interface IA Extends IA
-End Interface
-```
+   ' PairCycleB.twin
+   Interface IB Extends IC
+   End Interface
 
-A cycle through two interfaces is accepted the same way, in one file or split across two:
-`Interface IA Extends IB` and `Interface IB Extends IA`. The other kinds of cycle are
-diagnosed:
+   ' PairCycleC.twin
+   Interface IC Extends IB
+   End Interface
+   ```
+2. See the project compile with 0 errors, 0 warnings, 0 hints and 0 infos.
+3. Click **Build**.
+4. See nothing happen: no `[BUILD] Starting...` line in the DEBUG CONSOLE, no message, no
+   output file.
+
+Any one of the three files is enough on its own; so is `IB` and `IC` in one file.
+
+**Expected behavior**
+A compile error, as the other kinds of cycle get:
 
 | source | result |
 |---|---|
 | `Class CA` + `Inherits CA` + `End Class` | TB5127 circular reference |
-| `Class CA` inheriting `CB` and `Class CB` inheriting `CA`, two files | TB5127 circular reference, TB5022 failed to import inherited members |
+| `Class CA` inheriting `CB` and `Class CB` inheriting `CA`, two files | TB5127 circular reference, TB5022 and TB5135 failed to import inherited members |
 | `Type TA` holding a `TB` and `Type TB` holding a `TA`, two modules | TB5101 unable to finalize User Defined Type, possible circular reference |
 
-So a cycle is checked for classes and UDTs, and not for interfaces. What happens when such a
-project is built --- its type library has to describe the cycle --- was not tried.
+Failing that, a build that reports why it stopped.
 
-**Observed** on 2026-09-24 with `tbbuild`, a project of its own for each source: exit 0 and
-`0 error(s), 0 warning(s), 0 hint(s), 0 info` for the three interface cases, and the
-diagnostics above for the rest. **Found by** looking for a compiler crash that needs two
-files, to test `check_examples`' handling of one: a cycle between two files was the likeliest
-candidate, and the interface cycle compiled instead of crashing.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Also on BETA 983, identically. The same project without the cyclic interfaces builds in
+about 16 seconds on both, and so does one with an ordinary chain, `Interface IQ Extends IP`.
+Severity: invalid code is accepted, and the only symptom is a Build button that silently
+does nothing.
+
+<!-- Measured with scripts/bug_repro.mjs and tbbuild --build (exit 5, "the build did not
+start in 120 s") on 995 and 983, control and IQ-extends-IP chain built; the silent Build
+button seen by hand on 995 (IDE shown). The class and UDT rows measured on 995 the same way.
+Found while looking for a compiler crash that needs two files. -->
 
 ---
 
