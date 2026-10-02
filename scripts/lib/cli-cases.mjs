@@ -552,6 +552,7 @@ bad("scripts/tbrun.mjs", ["no-such-dir", "--quiet", "1.5"], thenUsage(NOT_WHOLE(
   const tool = "scripts/bug_repro.mjs";
   const slugMessage = (slug) =>
     `not a valid slug: ${slug} (lowercase letters and digits joined by single hyphens, such as my-bug)`;
+  const FILED_MESSAGE = "not a valid slug: filed (it is the folder the filed reproducers are moved to)";
   bad(tool, ["frobnicate"], thenUsage("unknown command: frobnicate", tool));
   bad(tool, ["new"], thenUsage("new needs a slug", tool));
   bad(
@@ -586,6 +587,36 @@ bad("scripts/tbrun.mjs", ["no-such-dir", "--quiet", "1.5"], thenUsage(NOT_WHOLE(
   );
   bad(tool, ["run", "no-such-bug"], "no such reproducer: bugs/no-such-bug (no src/Settings)\n");
   bad(tool, ["verify", "no-such-bug"], "no such reproducer: bugs/no-such-bug (no src/Settings)\n");
+  // `file` moves things, so these are the refusals only: every one is decided from the
+  // command line or from a reproducer that does not exist, before anything is read or written.
+  const fileNeeds = "file needs a slug and an issue number: file <slug> <issue>";
+  bad(tool, ["file"], thenUsage(fileNeeds, tool));
+  bad(tool, ["file", "no-such-bug"], thenUsage(fileNeeds, tool));
+  bad(
+    tool,
+    ["file", "no-such-bug", "x"],
+    thenUsage("the issue number expects a whole number of at least 1, got: x", tool),
+  );
+  bad(
+    tool,
+    ["file", "no-such-bug", "0"],
+    thenUsage("the issue number expects a whole number of at least 1, got: 0", tool),
+  );
+  bad(tool, ["file", "no-such-bug", "12", "13"], thenUsage("unexpected argument: 13", tool));
+  bad(tool, ["file", "Bad_Slug", "12"], thenUsage(slugMessage("Bad_Slug"), tool));
+  bad(tool, ["file", "filed", "12"], thenUsage(FILED_MESSAGE, tool));
+  bad(tool, ["new", "filed", "title"], thenUsage(FILED_MESSAGE, tool));
+  bad(tool, ["verify", "filed"], thenUsage(FILED_MESSAGE, tool));
+  bad(tool, ["file", "--marked", "no-such-bug"], thenUsage("--marked takes no slug or issue", tool));
+  bad(
+    tool,
+    ["file", "--marked", "--existing"],
+    thenUsage("--existing does not apply with --marked: an entry's mark says it", tool),
+  );
+  bad(tool, ["file", "no-such-bug", "12", "--port", "9440"], thenUsage("--port does not apply to file", tool));
+  bad(tool, ["compile", "no-such-bug", "--marked"], thenUsage("--marked does not apply to compile", tool));
+  bad(tool, ["verify", "--existing"], thenUsage("--existing does not apply to verify", tool));
+  bad(tool, ["file", "no-such-bug", "12"], "no such reproducer: bugs/no-such-bug\n");
 }
 
 bad("scripts/addin_test.mjs", ["--only", "("], REGEX_REASON("--only", "("));

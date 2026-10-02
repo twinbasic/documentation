@@ -1,9 +1,13 @@
 # twinBASIC bugs to report
 
 A queue, not a record. Each entry is a **product** bug --- something twinBASIC itself does
-wrong --- observed while working on this documentation. **Delete an entry once it has been
-filed upstream**; nothing here is meant to accumulate, and an entry that stays after it is
-filed turns this file into a second, worse issue tracker.
+wrong --- observed while working on this documentation. **Mark an entry once it has been
+filed upstream**, and `node scripts/bug_repro.mjs file --marked` moves it to
+`bugs/filed/<slug>/REPORT.md`; nothing here is meant to accumulate, and an entry that stays
+after it is filed turns this file into a second, worse issue tracker. A filed bug is not a
+fixed one, so its reproducer stays until a fix is released and `verify` says it no longer
+reproduces: then the docs its HTML comment names are updated, and its folder under
+`bugs/filed/` is deleted.
 
 Documentation defects do not belong here. They are fixed in `docs/`, and the ones that are
 not yet fixed are recorded in the relevant `WIP.*.md`.
@@ -40,7 +44,7 @@ A clear and concise description of what you expected to happen.
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: [e.g. Windows 10]
  - twinBASIC compiler version [e.g. 0.9.1111]
 
@@ -93,6 +97,8 @@ node scripts/bug_repro.mjs compile <slug>               # compile it in the IDE,
 node scripts/bug_repro.mjs build <slug>                 # and build it
 node scripts/bug_repro.mjs run <slug>                   # run Sub Main, print the DEBUG CONSOLE
 node scripts/bug_repro.mjs verify [<slug> ...]          # does each entry still reproduce?
+node scripts/bug_repro.mjs file <slug> <issue>          # move a filed entry out of the queue
+node scripts/bug_repro.mjs file --marked                # the same for every marked entry
 ```
 
 `new` starts the project from the console template, with an empty `Sub Main` in a `Startup`
@@ -111,8 +117,32 @@ code of `tbbuild`, the diagnostic codes, or a regular expression the output must
 may be fixed on this build) or `manual`, which prints the `steps` it holds. It needs a
 twinBASIC install, and is run by a person, never by a gate or by CI.
 
-Attach the `.zip` to the issue. When the entry is filed and deleted, its `bugs/<slug>/`
-folder is deleted with it.
+Attach the `.zip` to the issue. When the entry is filed, its folder moves to
+`bugs/filed/<slug>/`; see [Filed bugs](#filed-bugs).
+
+## Filed bugs
+
+The owner marks an entry while filing it, with a line directly under its `##` title:
+
+- `*FILED #2453*` --- filed as issue 2453;
+- `*CAPTURED IN EXISTING #841*` or `*CAPTURED IN \#841*` --- an existing issue covers it.
+
+Issues are at `https://github.com/twinbasic/twinbasic/issues/<n>`. `file --marked` takes the
+issue from each mark and the reproducer from the `<slug>.twinproj` the entry names (an entry
+whose reproducer is not an attachment names `bugs/<slug>/` in its closing comment). It moves
+the entry out of this file, with one `---` still between its neighbours, into
+`bugs/filed/<slug>/REPORT.md`, whose first line links the issue and which holds no mark line.
+It moves `bugs/<slug>/` beside it and records `issue` in its `repro.json`, and `existing` when
+an existing issue covered the bug. If any marked entry cannot be filed, none is.
+`file <slug> <issue> [--existing]` does the same for one entry without a mark.
+
+`verify` checks the filed reproducers as well as the queued ones, labels each filed one with
+its issue, such as `(filed #2453)`, and counts them on a line of their own. For a filed bug,
+`NO LONGER REPRODUCES` is the signal that it was fixed.
+
+An entry marked `*DEFERRED until after v1*` is held on purpose, and is not forgotten. It stays
+in this file with its reproducer, `verify` still checks it, and `file --marked` skips it. It is
+filed when the owner decides.
 
 ---
 
@@ -132,7 +162,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 The slots that held nothing stay empty, as they do when the key does not exist at all: `"0"` = `C`, `"1"` = `A`, `"2"` = `B`, and the rest empty. The Recent tab then shows three projects.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -182,7 +212,7 @@ It takes a placeholder name and an `Extends` clause, and what the clause names d
 **Expected behavior**
 A syntax error (TB5182, as for the same line without the `Extends` clause), not a crash.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -233,7 +263,7 @@ A compile error, as the other kinds of cycle get:
 
 Failing that, a build that reports why it stopped.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -273,7 +303,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 A build switch for unattended use should report the diagnostics on stdout or stderr, exit with a non-zero code when the project has errors, and exit when the build fails instead of waiting. At the least it should not exit 0 and write an `.exe` for a project the IDE flags with an error.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -340,7 +370,7 @@ Neither the bare member (`ImlDrawTransparent`), the enum name (`ImlDrawConstants
 **Expected behavior**
 A type that appears in the signature of a public member is itself public, so a default project can write the handler, declare the `Border()`, and pass the enum, without importing the package's private half. If the types are meant to be internal, the members that hand them out should not be public.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -378,7 +408,7 @@ What does work, each verified on its own: the same call with `Source:=`, `Descri
 **Expected behavior**
 The call compiles. `HelpContext` is what VBA itself names that parameter. Read out of the VBA type library on the machine this was found on (`VBE7.DLL` 7.01.1158, VBA7.1, via `LoadTypeLibEx` and `ITypeInfo::GetNames` on `_ErrObject`), the method is `Raise(Number, Source, Description, HelpFile, HelpContext)`. All five names are exactly the ones the failing call uses, and the call is Microsoft's own `Err.Source` example, named arguments and all, so the code twinBASIC rejects is the code a VBA developer is most likely to have copied. Four of the five names are accepted here; only the fifth is not.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -425,7 +455,7 @@ What does not matter: a parameter, or a `Boolean` return (the case it was found 
 **Expected behavior**
 The implementation is accepted, as it is without the attribute. If `[PreserveSig]` members are not meant to be implemented in twinBASIC, a diagnostic saying so at the declaration.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -453,7 +483,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 The tree is packed, as it is when `Packages` holds no folder, and the run ends `... DONE` with exit code 0. If a folder in `Packages` is something the importer cannot accept, it should say so with an `ERROR:` line and `... FAILED`.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -498,7 +528,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 Every file and folder is written, however long its path, as `export` already reads a 301-character input path. If a path cannot be used, the error should say so, and `export` should not write part of a tree and exit 0.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -538,7 +568,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 No window opens from a command-line verb. The command prints the problem (`ERROR: failed to parse project file, file may be corrupt or inaccessible`, which it already prints when a folder is given where the project should be), ends `... FAILED`, and does not report `... DONE` for a file it could not read.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 983 (the 20-byte text file was also seen on BETA 995)
 
@@ -575,7 +605,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 The files that would be overwritten are found first, as `import` does, and a refused `export` writes nothing.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -606,7 +636,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 A project file holds each name once. Where the IDE rewrites an entry, it replaces it.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -645,7 +675,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 Relative paths and paths with forward slashes work for `export` and for the output folder, as they do for the project path of `import` and for the printing commands, or the error says that the form of the path is the problem. A failure should not exit with 0.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -680,7 +710,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 An `ERROR:` line that names the cause, such as `ERROR: no Settings file in the input folder`, before `... FAILED`, as the other failures print. A failure should also not exit with 0.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -727,7 +757,7 @@ Precedence reaches it too: `"x" & n << 2` parses as `("x" & n) << 2`, a `String`
 **Expected behavior**
 Either a compile-time diagnostic at the shift, or a working shift. The documentation had said floating-point operands are truncated before shifting.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -771,7 +801,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 A shift moves bits, so a fractional value should be truncated first, as the right shift of the `Double` and the `Decimal` already does: `7.9 << 1` is 14 and `7.9 >> 1` is 3. A count as large as the width of the type should give 0 and keep the type, as the `Long` variable's shift does, not `Empty`.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -813,7 +843,7 @@ What does not reproduce it: a `Date` overload beside a `String` one resolves cor
 **Expected behavior**
 Each call reaches the overload for its argument's type: `Double` for the `Double` variable and `Date` for the three `Date` arguments, whichever overload is declared first. `Date` and `Double` are stored alike but are different types, and the other types in the overload set above are told apart.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -850,7 +880,7 @@ The results are consistent with converting `"2"` to `Boolean` (`True`, -1) first
 **Expected behavior**
 The `String` should be converted to a number, as every other operator does: `b + "2"` is the `Double` 1 and `b / "2"` the `Double` -0.5. `b \ "2"` should be the `Long` 0, and `b Mod "2"` the `Long` -1, the same as with the number 2.0.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -891,7 +921,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 The export deletes the junction itself, or leaves it alone, and never what it points to. A junction (or symbolic link) is not part of the export folder's contents.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -935,7 +965,7 @@ On a `git init` working copy with a commit, the same export deletes `.git\config
 **Expected behavior**
 Either the export deletes nothing when it cannot empty the whole folder, or it reports the failure to the user in a dialog, as for any other error, and says what it left behind. A failed clean-up should not leave the folder half emptied without a visible message.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -968,7 +998,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 The check resolves the path, so that any spelling of the project's own folder (or a folder above it that the export would empty, down to the project file) is refused alike. Failing that, the compiler refuses to delete the project file it was exporting.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1019,7 +1049,7 @@ So a project kept in Git through *Export After Save* and rebuilt from a clone ke
 **Expected behavior**
 A `.twinproj` the IDE saves holds no compiler packages, and so the export of it should not write them either; or **Import from folder** (and `import`) should skip the compiler packages' folders, or the export should write the IDE's own copy rather than the project's. The IDE's export of a project should pack back into the same project with the supported tool.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1062,7 +1092,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 Error 9, as in VBA, for each of these. `Err.Raise 9` already gives 9 with the description *Subscript out of range*.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1100,7 +1130,7 @@ Declaring `f` As `Form1` or As `Object` instead, with everything else the same, 
 **Expected behavior**
 `Forms(k)` returns the loaded form, `f.Name` is `Form1`, and the program exits 0, as it does with `f` declared `As Object`.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1139,7 +1169,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 **Ignore (Resume Next)** runs on from the next line, whether or not a step key was pressed on the failing line first, as the panel says.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1189,7 +1219,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 **Stop** ends the whole run, as it does at an ordinary break: nothing more is printed.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1238,7 +1268,7 @@ What does not reproduce it, each measured with the class declared later than the
 **Expected behavior**
 The declaration compiles whichever of the Module and the class comes first, as `Dim` does and as `Static` does when the class is first.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1263,7 +1293,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 The imported package is ticked, as after the online import, so that **Apply** is all that is left to do.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1299,7 +1329,7 @@ Save All and then a compiler restart give v2. A restart without saving brings v1
 **Expected behavior**
 After the **Apply**, builds and runs use v2, as they do when the same replacement is applied in two steps (below). Or the Apply restarts the compiler and saves, as the first embedding does.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1330,7 +1360,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 The compiler embeds the package, or refuses it with a diagnostic, and does not crash.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1376,7 +1406,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 901 from each call through `d`, as from calling `GF` directly.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1424,7 +1454,7 @@ What does not reproduce it: calls with `Long`, `Double` and `String`, deduced or
 **Expected behavior**
 A diagnostic that names the type argument and the call that supplied it. The `>` on a `Collection` is a legitimate error for this call, but it is the call that has to change, so that is where a person needs to be pointed.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1454,7 +1484,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 `A&`, `a < b and c > d` and `CD<&>`: the console shows what the program printed, whether it is one statement or several.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1508,7 +1538,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 Each registered shortcut fires when its keys are pressed, whatever modifiers it names. The SDK's example, `{CTRL}{SHIFT}d`, works.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1539,7 +1569,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 The toggle, and no error.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1575,7 +1605,7 @@ The cause is in `ide/main.js`: `parseDocumentDecorations` ends with `if(performa
 **Expected behavior**
 Typing after the file opens puts `xyz` at 3:1, in order. Keeping the view where the reveal left it may be what the repeat is for; setting the cursor again is what does the damage.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 983 (not measured on BETA 995, see below)
 
@@ -1628,7 +1658,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 No note on any of them: `Option Explicit` is on and every one of these names is declared.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1673,7 +1703,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 Two windows, `NO ID 1` holding `first` and `first again`, and `NO ID 2` holding `second`: each window given no id is a window of its own.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1719,7 +1749,7 @@ The body of the Enum does not matter: the same crash comes with a member in it, 
 **Expected behavior**
 A diagnostic naming the missing arguments, as the other wrong argument lists get (TB5155 or TB5083), not a crash. A missing argument list is the one wrong shape that is not checked.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1762,7 +1792,7 @@ What does not reproduce it: a class with a `Class_Initialize` beside a `Sub New`
 **Expected behavior**
 The project compiles, and `x.V` prints `3`, as it does on BETA 983. A constructor whose arguments are all `Optional` can be called without arguments, which is what `As New` needs.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1795,7 +1825,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 Error 55 for the file open `For Append`, and a successful copy for the file open `For Input`, as in VB6.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1829,7 +1859,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 `5 / MySrc / my text`, as without the attribute.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
@@ -1862,7 +1892,7 @@ Steps to reproduce the behavior:
 **Expected behavior**
 The run ends, as it does without the attribute, with no restart of the compiler.
 
-**Desktop (please complete the following information):**
+**Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 

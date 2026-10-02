@@ -5,9 +5,14 @@
 //     node scripts/bug_repro.mjs pack <slug>
 //     node scripts/bug_repro.mjs compile|build|run <slug> [options]
 //     node scripts/bug_repro.mjs verify [slug ...] [options]
+//     node scripts/bug_repro.mjs file <slug> <issue> [--existing]
+//     node scripts/bug_repro.mjs file --marked
 //
 // What a reproducer is, and where it lives, is the preamble of BUGS-TO-REPORT.md
-// ("Reproducer projects"). This tool keeps the three files in step -- the source
+// ("Reproducer projects"). A reproducer is bugs/<slug>/ while its entry is queued
+// and bugs/filed/<slug>/ once the entry has been filed upstream: a filed bug is not
+// a fixed one, and its reproducer is what says when it is. This tool keeps the
+// three files in step -- the source
 // tree, the packed .twinproj and the zip for the GitHub issue -- and puts a
 // reproducer in front of the compiler, through scripts/tbbuild.mjs and
 // scripts/tbrun.mjs, so that an entry can say what it saw and a later beta can be
@@ -32,7 +37,8 @@
 // that no longer reproduces on the newest beta is one to retire or to re-check.
 //
 // `verify` is never run by a wrapper, a gate or CI. It needs a twinBASIC install,
-// and Windows with a private desktop, as examples.bat does.
+// and Windows with a private desktop, as examples.bat does. For a filed bug,
+// `NO LONGER REPRODUCES` is the signal that a fix has been released.
 //
 // ------------------------------------------------------------- what it relies on
 //
@@ -69,6 +75,7 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -94,10 +101,12 @@ import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 let tidy = null;
 exitOnCrash(() => finishTidy(tidy));
 
-const USAGE = `usage: node scripts/bug_repro.mjs <command> [slug ...] [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--llvm] [--exe] [--jobs N] [--keep] [--show|--hide] [-h, --help]
+const USAGE = `usage: node scripts/bug_repro.mjs <command> [slug ...] [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--llvm] [--exe] [--jobs N] [--keep] [--show|--hide] [--existing] [--marked] [-h, --help]
 
-Reproducer projects for the entries of BUGS-TO-REPORT.md, under bugs/<slug>/.
-<slug> is kebab-case: lowercase letters and digits joined by single hyphens.
+Reproducer projects for the entries of BUGS-TO-REPORT.md, under bugs/<slug>/, or
+under bugs/filed/<slug>/ once the entry has been filed upstream.
+<slug> is kebab-case: lowercase letters and digits joined by single hyphens, and
+is never "filed".
 
 Commands:
   new <slug> "<title>"  create bugs/<slug>/src/ from the console template, with a
@@ -111,8 +120,17 @@ Commands:
   run <slug>            run a copy of src/ whose [RunAfterBuild] probe calls Sub
                         Main, and print what it writes to the DEBUG CONSOLE (tbrun)
   verify [slug ...]     run what each repro.json says, for the named reproducers or
-                        all of bugs/*, and report per reproducer whether it
-                        reproduces. Needs a twinBASIC install; run by a person only
+                        all of bugs/* and bugs/filed/*, and report per reproducer
+                        whether it reproduces; a filed one is labelled with its
+                        issue, and one that no longer reproduces is probably fixed.
+                        Needs a twinBASIC install; run by a person only
+  file <slug> <issue>   move the entry whose reproducer is <slug> out of
+                        BUGS-TO-REPORT.md into bugs/filed/<slug>/REPORT.md, move
+                        bugs/<slug>/ to bugs/filed/<slug>/, and record the issue in
+                        its repro.json
+  file --marked         do that for every entry that carries a mark line under its
+                        title: *FILED #<n>*, *CAPTURED IN EXISTING #<n>* or
+                        *CAPTURED IN \\#<n>*. If any entry cannot be filed, none is
 
 Options:
   --ide <path>      twinBASIC.exe (default: $TB_IDE, else the newest
@@ -129,18 +147,24 @@ Options:
   --keep            leave the IDE running; its pid is printed; compile, build, run
   --show, --hide    show the IDE on the desktop, or keep it on a private one
                     (default: hidden, unless TBBUILD_SHOW is set)
+  --existing        file: the issue was already open, and covers this bug; recorded
+                    as "existing" in repro.json
+  --marked          file: take the issue and the slug from the entries' marks
   -h, --help        print this text and exit
 
 Exit codes:
   0  done: a project that compiled, built or ran as it should; with verify, every
-     reproducer that can be run on its own still reproduces
+     reproducer that can be run on its own still reproduces; with file, filed
   1  a finding: the project has errors, or its build failed after a clean compile;
      with verify, at least one reproducer no longer reproduces
-  2  a refused command line (a slug that is not kebab-case, a reproducer that does
-     not exist, an option that does not apply to the command), a repro.json that
-     is not valid, no IDE, a project that could not be packed, a harness that
-     failed, or a crash; with verify, a lane's harness failed
-  3  new: bugs/<slug> already exists
+  2  a refused command line (a slug that is not kebab-case or is "filed", a
+     reproducer that does not exist or is in both bugs/ and bugs/filed/, an option
+     that does not apply to the command), a repro.json that is not valid, no IDE, a
+     project that could not be packed, a harness that failed, or a crash; with
+     verify, a lane's harness failed; with file, an entry that is missing,
+     ambiguous or marked unreadably, or a bugs/filed/<slug> that is already there
+     (nothing is changed)
+  3  new: bugs/<slug> or bugs/filed/<slug> already exists
   4  the compile never settled
   5  the project crashes the compiler
   6  run: the probe printed nothing
@@ -158,10 +182,13 @@ const APPLIES = {
   build: ["ide", "port", "arch", "timeout", "keep", "show", "hide", "llvm"],
   run: ["ide", "port", "arch", "timeout", "keep", "show", "hide", "llvm", "exe"],
   verify: ["ide", "port", "timeout", "jobs", "show", "hide"],
+  file: ["existing", "marked"],
 };
 const FLAG = (key) => `--${key}`;
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+// The folder under bugs/ that holds the reproducers of filed entries, so not a slug.
+const FILED = "filed";
 
 const { values, positionals } = withUsageError(
   () =>
@@ -177,6 +204,8 @@ const { values, positionals } = withUsageError(
         keep: { type: "boolean", default: false },
         show: { type: "boolean", default: false },
         hide: { type: "boolean", default: false },
+        existing: { type: "boolean", default: false },
+        marked: { type: "boolean", default: false },
         help: { type: "boolean", short: "h", default: false },
       },
       positionals: { min: 0, max: Infinity },
@@ -190,7 +219,7 @@ const [command, ...args] = positionals;
 if (!command) die(2, USAGE);
 
 // Everything on the command line is read before anything starts.
-const { port, arch, timeout, jobs, slugs, title } = withUsageError(() => {
+const { port, arch, timeout, jobs, slugs, title, issue } = withUsageError(() => {
   if (!(command in APPLIES)) throw new CliError("unknown-command", `unknown command: ${command}`);
   for (const key of Object.keys(values)) {
     if (key === "help" || !values[key] || APPLIES[command].includes(key)) continue;
@@ -209,8 +238,34 @@ const { port, arch, timeout, jobs, slugs, title } = withUsageError(() => {
     throw new CliError("bad-number", `--port ${read.port} with --jobs ${read.jobs} runs past port 65535`);
   }
   const named = command === "verify" ? args : args.slice(0, 1);
-  // verify takes any number of slugs, none meaning every reproducer under bugs/.
-  if (command !== "verify") {
+  let issue;
+  if (command === "file") {
+    // file <slug> <issue>, or file --marked, which takes both from the entries.
+    if (values.marked) {
+      if (args.length) {
+        throw new CliError("unexpected-positional", "--marked takes no slug or issue", { arg: args[0] });
+      }
+      if (values.existing) {
+        throw new CliError("conflict", "--existing does not apply with --marked: an entry's mark says it", {
+          options: ["--existing", "--marked"],
+        });
+      }
+      named.length = 0;
+    } else {
+      if (args.length < 2) {
+        throw new CliError("missing-positional", "file needs a slug and an issue number: file <slug> <issue>");
+      }
+      if (args.length > 2)
+        throw new CliError("unexpected-positional", `unexpected argument: ${args[2]}`, { arg: args[2] });
+      if (!/^[1-9]\d*$/.test(args[1])) {
+        throw new CliError("bad-number", `the issue number expects a whole number of at least 1, got: ${args[1]}`, {
+          value: args[1],
+        });
+      }
+      issue = Number(args[1]);
+    }
+  } else if (command !== "verify") {
+    // verify takes any number of slugs, none meaning every reproducer under bugs/.
     if (!args.length) {
       throw new CliError("missing-positional", `${command} needs a slug`);
     } else if (command === "new" && args.length !== 2) {
@@ -226,9 +281,12 @@ const { port, arch, timeout, jobs, slugs, title } = withUsageError(() => {
         `not a valid slug: ${slug} (lowercase letters and digits joined by single hyphens, such as my-bug)`,
       );
     }
+    if (slug === FILED) {
+      throw new CliError("bad-slug", `not a valid slug: ${slug} (it is the folder the filed reproducers are moved to)`);
+    }
   }
   if (command === "new" && !args[1].trim()) throw new CliError("empty-value", "the entry's title is empty");
-  return { ...read, slugs: named, title: command === "new" ? args[1] : undefined };
+  return { ...read, slugs: named, title: command === "new" ? args[1] : undefined, issue };
 }, usageError);
 
 // ------------------------------------------------------------------ the files
@@ -239,9 +297,22 @@ const IMPEXP = path.join(REPO_ROOT, "scripts", "impexp.mjs");
 const TBBUILD = path.join(REPO_ROOT, "scripts", "tbbuild.mjs");
 const TBRUN = path.join(REPO_ROOT, "scripts", "tbrun.mjs");
 
+const FILED_DIR = path.join(BUGS, FILED);
+const QUEUE = path.join(REPO_ROOT, "BUGS-TO-REPORT.md");
+
+// Where a reproducer is: bugs/<slug>/ while its entry is queued, bugs/filed/<slug>/
+// once it is filed. A slug in neither is taken to be a queued one, which is where
+// `new` makes it and what a refusal names; a slug in both is an error.
 const where = (slug) => {
-  const dir = path.join(BUGS, slug);
+  const queued = path.join(BUGS, slug);
+  const filed = path.join(FILED_DIR, slug);
+  const isFiled = existsSync(filed);
+  if (isFiled && existsSync(queued)) {
+    throw new Fail(`${rel(queued)} and ${rel(filed)} both exist: a reproducer is in one or the other`);
+  }
+  const dir = isFiled ? filed : queued;
   return {
+    filed: isFiled,
     dir,
     src: path.join(dir, "src"),
     repro: path.join(dir, "repro.json"),
@@ -291,8 +362,10 @@ function setKey(text, key, value) {
 }
 
 function newReproducer(slug, entryTitle) {
+  for (const dir of [path.join(BUGS, slug), path.join(FILED_DIR, slug)]) {
+    if (existsSync(dir)) throw new Fail(`${rel(dir)} already exists`, 3);
+  }
   const p = where(slug);
-  if (existsSync(p.dir)) throw new Fail(`${rel(p.dir)} already exists`, 3);
   if (!existsSync(TEMPLATE)) throw new Fail(`no template project at ${rel(TEMPLATE)}`);
   const name = pascal(slug);
   let settings = readFileSync(TEMPLATE, "utf8");
@@ -413,10 +486,17 @@ function loadRepro(slug) {
   }
   const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
   if (!isObject(json)) return bad("", "must be a JSON object");
-  const keys = ["mode", "arch", "llvm", "exe", "expect", "cli", "steps"];
+  const keys = ["mode", "arch", "llvm", "exe", "expect", "cli", "steps", "issue", "existing"];
   for (const key of Object.keys(json)) if (!keys.includes(key)) bad(key, "is not a key repro.json has");
   if (!MODES.includes(json.mode)) bad("mode", `must be one of ${MODES.join(", ")}`);
   const { mode } = json;
+  if ("issue" in json && !(Number.isInteger(json.issue) && json.issue > 0)) {
+    bad("issue", "must be a positive whole number, the number of a twinbasic/twinbasic issue");
+  }
+  if ("existing" in json) {
+    if (typeof json.existing !== "boolean") bad("existing", "must be true or false");
+    if (!("issue" in json)) bad("existing", "applies with issue only");
+  }
   if ("arch" in json && !TARGETS.includes(json.arch)) bad("arch", `must be ${TARGETS.join(" or ")}`);
   if ("llvm" in json && typeof json.llvm !== "boolean") bad("llvm", "must be true or false");
   if (json.llvm && !["build", "run"].includes(mode)) bad("llvm", "applies to the build and run modes only");
@@ -695,7 +775,13 @@ const LABEL = {
 async function verify() {
   let all = slugs;
   if (!all.length) {
-    all = existsSync(BUGS) ? readdirSyncDirs(BUGS).filter((s) => SLUG.test(s) && existsSync(where(s).repro)) : [];
+    // bugs/<slug>/ and bugs/filed/<slug>/. A slug in both is listed twice, and
+    // requireReproducer refuses it below.
+    const under = (dir) =>
+      existsSync(dir)
+        ? readdirSyncDirs(dir).filter((s) => SLUG.test(s) && existsSync(path.join(dir, s, "repro.json")))
+        : [];
+    all = [...under(BUGS).filter((s) => s !== FILED), ...under(FILED_DIR)];
   }
   if (!all.length) {
     console.log("no reproducers: nothing under bugs/ has a repro.json");
@@ -726,9 +812,12 @@ async function verify() {
   const lane = async (index) => {
     while (queue.length) {
       const slug = queue.shift();
-      const res = await verifyOne(slug, repros.get(slug), port + index);
+      const repro = repros.get(slug);
+      const res = { ...(await verifyOne(slug, repro, port + index)), filed: where(slug).filed };
       results.push(res);
-      console.log(`${slug}: ${LABEL[res.status]}${res.detail ? ` -- ${res.detail}` : ""}`);
+      console.log(
+        `${slug}${filedLabel(res.filed, repro)}: ${LABEL[res.status]}${res.detail ? ` -- ${res.detail}` : ""}`,
+      );
     }
   };
   try {
@@ -737,12 +826,27 @@ async function verify() {
     finishTidy(tidy);
     tidy = null;
   }
-  const count = (status) => results.filter((r) => r.status === status).length;
-  console.log(
-    `${count("reproduces")} reproduce, ${count("no-longer")} no longer reproduce, ` +
-      `${count("manual")} manual, ${count("harness")} harness failed`,
-  );
-  return count("harness") ? 2 : count("no-longer") ? 1 : 0;
+  const count = (status, filed = false) => results.filter((r) => r.status === status && r.filed === filed).length;
+  const summary = (filed) =>
+    `${count("reproduces", filed)} reproduce, ${count("no-longer", filed)} no longer reproduce, ` +
+    `${count("manual", filed)} manual, ${count("harness", filed)} harness failed`;
+  console.log(summary(false));
+  const anyFiled = results.some((r) => r.filed);
+  if (anyFiled) {
+    console.log(`filed: ${summary(true)}`);
+    if (count("no-longer", true)) {
+      console.log("filed bugs that no longer reproduce are probably fixed");
+    }
+  }
+  const total = (status) => count(status) + count(status, true);
+  return total("harness") ? 2 : total("no-longer") ? 1 : 0;
+}
+
+// A filed reproducer's result line says so, and names its issue.
+function filedLabel(filed, repro) {
+  if (!filed) return "";
+  if (!repro.issue) return " (filed)";
+  return ` (filed #${repro.issue}${repro.existing ? ", existing" : ""})`;
 }
 
 function readdirSyncDirs(dir) {
@@ -750,6 +854,235 @@ function readdirSyncDirs(dir) {
     .filter((d) => d.isDirectory())
     .map((d) => d.name)
     .sort();
+}
+
+// ----------------------------------------------------------------------- file
+
+// BUGS-TO-REPORT.md is a preamble, a `---` line, and then entries separated by
+// `---` lines. An entry runs from its `## ` title to the line before the next
+// `---` (or to the end of the file). The file is handled as lines that keep their
+// own endings, so what is not changed is written back byte for byte.
+const bare = (line) => line.replace(/\r?\n$/, "");
+const FILED_MARK = /^\*FILED #([1-9]\d*)\*$/;
+const CAPTURED_MARK = /^\*CAPTURED IN (?:EXISTING )?\\?#([1-9]\d*)\*$/;
+const TWINPROJ_NAME = /`([a-z0-9]+(?:-[a-z0-9]+)*)\.twinproj`/g;
+const BUGS_FOLDER = /\bbugs\/([a-z0-9]+(?:-[a-z0-9]+)*)\//g;
+const issueUrl = (n) => `https://github.com/twinbasic/twinbasic/issues/${n}`;
+
+/** The queue file's lines and entries: each entry's index range and title. */
+function parseQueue(text) {
+  const lines = text.split(/(?<=\n)/);
+  const seps = [];
+  lines.forEach((line, i) => {
+    if (bare(line) === "---") seps.push(i);
+  });
+  if (!seps.length) throw new Fail(`${rel(QUEUE)} has no "---" line after its preamble`);
+  const entries = seps.map((sep, k) => {
+    const end = k + 1 < seps.length ? seps[k + 1] : lines.length;
+    let from = sep + 1;
+    while (from < end && bare(lines[from]) === "") from++;
+    let to = end;
+    while (to > from && bare(lines[to - 1]) === "") to--;
+    if (from >= end || !bare(lines[from]).startsWith("## ")) {
+      throw new Fail(`${rel(QUEUE)}: the entry after line ${sep + 1} does not begin with a "## " title`);
+    }
+    return { k, sep, end, from, to, title: bare(lines[from]) };
+  });
+  const seen = new Set();
+  for (const e of entries) {
+    if (seen.has(e.title)) throw new Fail(`${rel(QUEUE)}: two entries have the title ${e.title}`);
+    seen.add(e.title);
+  }
+  return { lines, entries, eol: text.includes("\r\n") ? "\r\n" : "\n" };
+}
+
+/** The index of the first line under an entry's title that is not blank, or -1. */
+function lineUnderTitle(lines, entry) {
+  let i = entry.from + 1;
+  while (i < entry.to && bare(lines[i]) === "") i++;
+  return i < entry.to ? i : -1;
+}
+
+/**
+ * The mark line under an entry's title: null if it has none, `{ bad }` if it cannot
+ * be read, else its index, issue and whether it is "existing". A `*DEFERRED ...*`
+ * line is the owner's note that the entry is held on purpose: it is not a mark
+ * `file --marked` acts on, and is skipped without a word.
+ */
+function markOf(lines, entry) {
+  const i = lineUnderTitle(lines, entry);
+  if (i < 0) return null;
+  const line = bare(lines[i]).trimEnd();
+  if (!/^\*(FILED|CAPTURED)/.test(line)) return null;
+  const filed = FILED_MARK.exec(line);
+  const captured = CAPTURED_MARK.exec(line);
+  const m = filed ?? captured;
+  return m ? { index: i, issue: Number(m[1]), existing: !filed } : { bad: line };
+}
+
+/**
+ * The entries whose body names `<slug>.twinproj`. An entry whose reproducer is not
+ * an attachment (it names two files in the installation instead) has no such name,
+ * and says which reproducer is its own only in its closing comment, as bugs/<slug>/:
+ * when no entry names the project, the entries that name that folder are the answer.
+ */
+function entriesNaming(queue, slug) {
+  const naming = (needle) =>
+    queue.entries.filter((e) => queue.lines.slice(e.from, e.to).some((line) => line.includes(needle)));
+  const byProject = naming(`\`${slug}.twinproj\``);
+  return byProject.length ? byProject : naming(`bugs/${slug}/`);
+}
+
+/** The reproducers (folders under bugs/) an entry names: by `<slug>.twinproj`, else by bugs/<slug>/ in its comment. */
+function reproducersNamed(queue, entry) {
+  const found = (re) => {
+    const names = new Set();
+    for (const line of queue.lines.slice(entry.from, entry.to)) {
+      for (const m of line.matchAll(re)) if (m[1] !== FILED && existsSync(path.join(BUGS, m[1]))) names.add(m[1]);
+    }
+    return names;
+  };
+  const byProject = found(TWINPROJ_NAME);
+  return byProject.size ? byProject : found(BUGS_FOLDER);
+}
+
+/** The lines of an entry as the report holds them: its title down, without its mark line and the blank after it. */
+function reportLines(queue, entry) {
+  const body = queue.lines.slice(entry.from, entry.to).map(bare);
+  const mark = markOf(queue.lines, entry);
+  // A filing mark goes, and so does a DEFERRED line when an entry is filed by hand.
+  const at = mark && !mark.bad ? mark.index : lineUnderTitle(queue.lines, entry);
+  const drop = at >= 0 && (mark ? !mark.bad : /^\*DEFERRED\b/.test(bare(queue.lines[at])));
+  if (drop) body.splice(at - entry.from, body[at - entry.from + 1] === "" ? 2 : 1);
+  return body;
+}
+
+/** The file's lines without the entry and one `---` beside it, so one `---` still divides the entries either side. */
+function withoutEntry(queue, entry) {
+  const out = queue.lines.slice();
+  if (entry.end < out.length) {
+    // the blank line, the entry, the blank line and the `---` after it
+    out.splice(entry.sep + 1, entry.end - entry.sep);
+  } else {
+    // the last entry: its own `---` goes too, unless it is the preamble's
+    out.splice(entry.k === 0 ? entry.sep + 1 : entry.sep);
+    while (out.length > 1 && bare(out[out.length - 1]) === "") out.pop();
+    if (out.length && !/\n$/.test(out[out.length - 1])) out[out.length - 1] += queue.eol;
+  }
+  return out.join("");
+}
+
+/**
+ * Everything filing `slug` as `issue` needs, checked, and nothing written: the
+ * report, the file's text without the entry, and the paths. `original` is the
+ * file as read, which says whether exactly one entry names the slug; `text` is
+ * what is left of it after the entries filed before this one.
+ */
+function prepareFiling(slug, issue, existing, original, text) {
+  const queued = path.join(BUGS, slug);
+  const filed = path.join(FILED_DIR, slug);
+  if (existsSync(filed)) throw new Fail(`${rel(filed)} already exists`);
+  if (!existsSync(queued)) throw new Fail(`no such reproducer: ${rel(queued)}`);
+  loadRepro(slug);
+  const named = entriesNaming(original, slug);
+  if (named.length !== 1) {
+    const what = named.length ? `${named.length} entries name` : "no entry names";
+    throw new Fail(`${what} \`${slug}.twinproj\` in ${rel(QUEUE)}${named.map((e) => `\n  ${e.title}`).join("")}`);
+  }
+  const current = parseQueue(text);
+  const entry = current.entries.find((e) => e.title === named[0].title);
+  const head = existing
+    ? `Covered by the existing issue [twinbasic/twinbasic#${issue}](${issueUrl(issue)}).`
+    : `Filed as [twinbasic/twinbasic#${issue}](${issueUrl(issue)}).`;
+  const report = `${[head, "", ...reportLines(current, entry)].join(current.eol)}${current.eol}`;
+  return { slug, issue, existing, queued, filed, report, text: withoutEntry(current, entry), title: entry.title };
+}
+
+/** Moves the reproducer, writes REPORT.md and repro.json's issue, and rewrites the queue file. */
+function carryOutFiling(plan) {
+  mkdirSync(FILED_DIR, { recursive: true });
+  renameSync(plan.queued, plan.filed);
+  writeFileSync(path.join(plan.filed, "REPORT.md"), plan.report);
+  const file = path.join(plan.filed, "repro.json");
+  const raw = readFileSync(file, "utf8");
+  const json = JSON.parse(raw.replace(/^﻿/, ""));
+  json.issue = plan.issue;
+  if (plan.existing) json.existing = true;
+  else delete json.existing;
+  const out = `${JSON.stringify(json, null, 2)}\n`;
+  writeFileSync(file, raw.includes("\r\n") ? out.replaceAll("\n", "\r\n") : out);
+  writeFileSync(QUEUE, plan.text);
+}
+
+const filingLine = (plan) =>
+  `filed ${plan.slug} as ${plan.existing ? "existing issue " : "issue "}#${plan.issue}: ${rel(plan.queued)} -> ${rel(plan.filed)}/ with REPORT.md`;
+
+function readQueue() {
+  if (!existsSync(QUEUE)) throw new Fail(`no ${rel(QUEUE)}`);
+  const text = readFileSync(QUEUE, "utf8");
+  return { text, queue: parseQueue(text) };
+}
+
+/** `file <slug> <issue> [--existing]` */
+function fileOne(slug, issueNumber, existing) {
+  const queued = path.join(BUGS, slug);
+  const filed = path.join(FILED_DIR, slug);
+  if (existsSync(filed)) throw new Fail(`${rel(filed)} already exists`);
+  if (!existsSync(queued)) throw new Fail(`no such reproducer: ${rel(queued)}`);
+  const { text, queue } = readQueue();
+  const plan = prepareFiling(slug, issueNumber, existing, queue, text);
+  carryOutFiling(plan);
+  console.log(filingLine(plan));
+}
+
+/** `file --marked`: every marked entry, or none of them. */
+function fileMarked() {
+  const { text, queue } = readQueue();
+  const problems = [];
+  const wanted = [];
+  for (const entry of queue.entries) {
+    const mark = markOf(queue.lines, entry);
+    if (!mark) continue;
+    if (mark.bad) {
+      problems.push(`${entry.title}\n  the mark cannot be read: ${mark.bad}`);
+      continue;
+    }
+    const names = reproducersNamed(queue, entry);
+    if (names.size !== 1) {
+      const what = names.size
+        ? `names ${names.size} reproducers: ${[...names].join(", ")}`
+        : "names no reproducer under bugs/";
+      problems.push(`${entry.title}\n  the entry ${what}, as \`<slug>.twinproj\` or bugs/<slug>/`);
+      continue;
+    }
+    wanted.push({ slug: [...names][0], ...mark });
+  }
+  const plans = [];
+  let left = text;
+  for (const w of wanted) {
+    try {
+      const plan = prepareFiling(w.slug, w.issue, w.existing, queue, left);
+      left = plan.text;
+      plans.push(plan);
+    } catch (e) {
+      if (!(e instanceof Fail)) throw e;
+      problems.push(`${w.slug}\n  ${e.message.split("\n").join("\n  ")}`);
+    }
+  }
+  if (problems.length) {
+    throw new Fail(
+      `nothing was filed: ${problems.length} marked ${problems.length === 1 ? "entry" : "entries"} cannot be filed\n${problems.join("\n")}`,
+    );
+  }
+  if (!plans.length) {
+    console.log(`no entry in ${rel(QUEUE)} carries a mark line`);
+    return;
+  }
+  for (const plan of plans) {
+    carryOutFiling(plan);
+    console.log(filingLine(plan));
+  }
+  console.log(`${plans.length} filed; ${parseQueue(left).entries.length} left in ${rel(QUEUE)}`);
 }
 
 // ----------------------------------------------------------------------- main
@@ -774,6 +1107,10 @@ async function main() {
     case "pack":
       requireReproducer(slug);
       console.log(pack(slug));
+      return 0;
+    case "file":
+      if (values.marked) fileMarked();
+      else fileOne(slug, issue, values.existing);
       return 0;
     case "compile":
     case "build": {
