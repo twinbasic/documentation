@@ -750,3 +750,39 @@ The run ends, as it does without the attribute, with no restart of the compiler.
 Severity: low; the IDE recovers, but the project is compiled again, and LLVM-compiled code run in the IDE is not recommended anyway. Without the attribute the run ends with no restart. In a built exe, with or without LLVM, `End` ends the program with exit code 0 (this project run with `tbrun --exe` on 995 exits 0). BETA 983 ignored the `End` and went on (fixed in 985 for built programs); this project's LLVM procedure is refused by 983 ("Unable to compile due to use of datatype that is not yet supported for LLVM compilation"), so that was not re-measured with it.
 
 <!-- No docs page states this (docs/LLVM/Getting-Started.md does not mention End); when fixed, nothing to update. Measured with scripts/bug_repro.mjs (run mode: tbrun exit 5, output "before End" then "restarting from MEMORY"; verify) on 995, and the exe with `run --exe` on 995; the 983 behaviour from tbrun and tbrun --exe on 2026-10-01. -->
+
+---
+
+## Builds running at the same time in one TEMP folder sometimes fail to write the type library
+
+*DEFERRED until after v1*
+
+**Describe the bug**
+When several twinBASIC IDEs build at the same time, and their `TEMP` is the same folder, which is the default for one user, a build now and then fails while writing the type library, with nothing wrong in the project. The same build passes when repeated, or when it runs alone. With a different `TEMP` folder for each IDE, the failure did not occur.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Unzip `concurrent-builds-shared-temp.zip` (it holds `concurrent-builds-shared-temp.twinproj`, an ordinary console project with an empty `Sub Main`) and copy the project into eight folders, one copy each.
+2. Open each copy in its own instance of the IDE, all eight running at once, with the default environment, so that every instance has the same `TEMP`.
+3. Press **Build** in all eight at about the same time, and repeat. About one build in 24 fails; the DEBUG CONSOLE of the one that failed shows:
+   ```
+   [BUILD] Starting...
+   [TYPELIB] failed to finalize typelibrary.  Disk error?
+   [LINKER] FAILED to create type library
+   [BUILD] failed
+   ```
+4. Control: start each instance with `TEMP` and `TMP` set to a folder of its own (for example from a Command Prompt, `set TEMP=C:\t\1` and `set TMP=C:\t\1`, then start the IDE from it). The failure does not occur.
+
+Measured with the documentation's build harness, which starts each IDE on its own port and presses Build through it, eight IDEs at once, over 192 builds each way: 8 failed with one `TEMP` for all eight, and 0 failed with a `TEMP` folder for each. With one or two IDEs at once, 0 of 120 failed. Distinct project names and project ids in each copy did not prevent it. The failing build is a different one each time.
+
+**Expected behavior**
+Each build writes its type library and succeeds, however many IDEs share the `TEMP` folder.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low; the build passes when repeated, and an IDE run by a person rarely builds at the same moment as another. It affects tools that build several projects at once. The compiler imports `GetTempFileNameW`, and its messages show that it writes the type library to a file and reads it back (`[TYPELIB] failed to read in generated type library file` is the message beside this one). A temporary file name that two processes both use would explain the counts; that is an inference, not observed. The temp folder is empty after the builds, so whatever is written there is deleted.
+
+<!-- Reproducer: bugs/concurrent-builds-shared-temp/ (mode manual: it needs several IDEs at once, which bug_repro cannot run). The measurement used the same console template with check_examples' two staging modules, not this reproducer itself: a Sonnet agent's 904 builds through tbbuild-style lanes, data in %TEMP%/claude/typelib-probe/results.jsonl (not kept), 2026-10-02, BETA 995 only; no 983 control. scripts/lib/tb-ide.mjs's launchIde gives every IDE %TEMP%/tbbuild-tmp-<port> since 7a716388, so no harness of this repository reproduces it today: to measure it again, pass TEMP and TMP to launchIde's env. When fixed, the comment in launchIde and WIP.ExamplesBuild.md's per-IDE temp folder note may say so; the folders can stay. -->
