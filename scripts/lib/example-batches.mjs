@@ -22,6 +22,16 @@ import {
   resourcePath,
   wrapFence,
 } from "./tb-fences.mjs";
+import {
+  RUN_DONE,
+  dispatcherText,
+  expectedOutput,
+  isRunFence,
+  judgeOutput,
+  parseRun,
+  partitionRun,
+  runRefusal,
+} from "./example-run.mjs";
 
 /** check_examples.mjs's defaults for `--jobs` and `--batch`, which the probes batch with. */
 export const DEFAULT_JOBS = 4;
@@ -1323,6 +1333,232 @@ export async function runProbes(say) {
     failures.push("report: a diagnostic naming nothing produced a name anyway");
   }
 
+  // `check_run`: which fences may be run, what a fence says it prints, the
+  // dispatcher that calls each run sample, and the reading of what the run wrote.
+  let runProbeCount = 0;
+  const expect = (ok, what) => {
+    runProbeCount++;
+    if (!ok) failures.push(what);
+  };
+  const rfence = (content, o = {}) => ({
+    rel: "R.md",
+    line: 10,
+    id: o.id ?? "R.md#1",
+    content,
+    slot: o.slot ?? "sub",
+    project: "console",
+    keys: new Map(o.keys ?? []),
+    flags: new Set(o.flags ?? [MARKER, RUN_MARKER]),
+    inferred: { names: [] },
+  });
+  // Refused: a fence that cannot be run, whatever it prints. The two that must
+  // NOT be refused name MsgBox in a comment and in a string, which are not calls.
+  for (const [name, f, refused] of [
+    ["a class", rfence("Debug.Print 1\n", { slot: "class" }), true],
+    ["a module", rfence("Public Sub S()\nEnd Sub\n", { slot: "module" }), true],
+    ["a MsgBox", rfence('MsgBox "hi"\n'), true],
+    ["a MsgBox with a result", rfence('Dim r As Long\nr = msgbox("hi", 4)\n'), true],
+    ["an InputBox", rfence('Dim s As String\ns = InputBox("name")\n'), true],
+    ["an End", rfence("Debug.Print 1\nEnd\n"), true],
+    ["an End with a comment", rfence("Debug.Print 1\n    End   ' stop\n"), true],
+    ["an End after Then", rfence("If x Then End\n"), true],
+    ["an expect-error", rfence("Debug.Print 1\n", { keys: [["expect-error", ""]] }), true],
+    ["a hidden fence", rfence("Dim x As Long\n", { flags: [MARKER, RUN_MARKER, HIDDEN_MARKER] }), true],
+    ["a MsgBox in a comment", rfence("' MsgBox is not called\nDebug.Print 1   ' not MsgBox\n"), false],
+    ["a MsgBox in a string", rfence('Debug.Print "MsgBox"\nDebug.Print "End"\n'), false],
+    [
+      "End If and End Select",
+      rfence("If True Then\n    Debug.Print 1\nEnd If\nSelect Case 1\nCase 1\nEnd Select\n"),
+      false,
+    ],
+    ["a plain statement sample", rfence('Debug.Print InStr(1, "abc", "b")   \' 2\n'), false],
+    ["a fence that is not run", rfence('MsgBox "hi"\n', { flags: [MARKER] }), false],
+  ]) {
+    expect(
+      !!runRefusal(f) === refused,
+      `run refusal: ${name} -> ${runRefusal(f)?.message ?? "accepted"}, want ${refused ? "refused" : "accepted"}`,
+    );
+  }
+  expect(
+    runRefusal(rfence("Debug.Print 1\n", { slot: "class" }))?.message ===
+      "check_run runs statement samples (slot=sub) only",
+    "run refusal: a non-sub slot does not say what check_run runs",
+  );
+
+  // What a fence says it prints, each line with its place on the page: the
+  // fence opens at page line 10, so its first line is page line 11.
+  const said = (content) => expectedOutput(rfence(content));
+  const shape = (e) => `${e.stated}:${e.lines.map((l) => `${l.line}=${l.text}`).join("|")}`;
+  for (const [name, content, want] of [
+    ["a trailing comment", 'Debug.Print InStr(1, "abc", "b")   \' 2\n', "true:11=2"],
+    ["two of three lines", "Debug.Print 1 ' one\nDebug.Print 2\nDebug.Print 3 '  three \n", "true:11=one|13=three"],
+    ["a quote inside a string", "Debug.Print \"it's\"   ' 5\n", "true:11=5"],
+    ["a quote inside a string, no comment", 'Debug.Print "it\'s"\nDebug.Print """\'"""\n', "false:"],
+    ["an escaped quote then a comment", 'Debug.Print "say ""hi\'""" \' ok\n', "true:11=ok"],
+    ["a comment that is not on a Debug.Print", "x = 1   ' not output\n' also not\nDebug.Print x\n", "false:"],
+    ["an Output block", "Debug.Print 1\nDebug.Print 2\n' Output:\n' 1\n'  2\n", "true:14=1|15= 2"],
+    ["an Output block, any case and indent", "    ' output:\n    '1\n    '\n", "true:12=1|13="],
+    ["an Output block ends at a line that is not a comment", "' Output:\n' a\n\n' not this\n", "true:12=a"],
+    ["an Output block beats trailing comments", "Debug.Print 1 ' no\n' Output:\n' yes\n", "true:13=yes"],
+    ["an empty Output block", "Debug.Print 1\n' Output:\n", "true:"],
+    ["no expectations", "Dim x As Long\nx = 1\nDebug.Print x\n", "false:"],
+    ["a comment that says Output but is not a header", "' Output: 5\nDebug.Print 5\n", "false:"],
+  ]) {
+    const got = shape(said(content));
+    expect(got === want, `expected output: ${name} -> ${got}, want ${want}`);
+  }
+  // ...and compared with what was printed, trimmed at both ends.
+  const sayOf = (content, output) => judgeOutput(said(content), output).map((p) => `${p.line}:${p.message}`);
+  for (const [name, content, output, want] of [
+    ["a match, sign space ignored", "Debug.Print 2 ' 2\n", [" 2"], ""],
+    [
+      "a mismatch at the page line",
+      "Debug.Print 1 ' 1\nDebug.Print 2 ' 3\n",
+      [" 1", " 2"],
+      '12:prints "2", the page says "3"',
+    ],
+    ["too few lines", "Debug.Print 1 ' 1\nDebug.Print 2 ' 2\n", [" 1"], "null:prints 1 line(s), the page states 2"],
+    ["too many lines", "Debug.Print 1 ' 1\n", [" 1", " 2"], "null:prints 2 line(s), the page states 1"],
+    ["nothing stated, anything printed", "Debug.Print 1\n", [" 1", " 2"], ""],
+    ["an Output block that is not met", "Debug.Print 7\n' Output:\n' 8\n", [" 7"], '13:prints "7", the page says "8"'],
+  ]) {
+    const got = sayOf(content, output).join(";");
+    expect(got === want, `judged output: ${name} -> ${got}, want ${want}`);
+  }
+
+  // The dispatcher: one block per run sample, numbered in order, calling the
+  // generated module's body between the markers.
+  const dispatch = dispatcherText(["tbx_aaa", "tbx_bbb"]);
+  const dLines = dispatch.split("\n").map((l) => l.trim());
+  expect(
+    dLines[0] === "Module tbxRun" && dLines[1] === "[RunAfterBuild]" && dLines[3] === "Debug.Cls",
+    "dispatcher: the header is not a RunAfterBuild Sub that starts with Debug.Cls",
+  );
+  expect(
+    ["begin 0", "begin 1", "end 0", "end 1"].every((m) => dLines.includes(`Debug.Print "[tbx-run] ${m}"`)) &&
+      dLines.includes("tbx_aaa.tbxBody") &&
+      dLines.includes("tbx_bbb.tbxBody") &&
+      dLines.indexOf("tbx_aaa.tbxBody") < dLines.indexOf("tbx_bbb.tbxBody"),
+    "dispatcher: two samples are not called in order between their markers",
+  );
+  expect(
+    dLines.filter((l) => l === "On Error Resume Next").length === 2 && dLines.at(-4) === `Debug.Print "${RUN_DONE}"`,
+    "dispatcher: each call is not guarded, or the done line is missing",
+  );
+  // The markers are what parseRun reads, so the dispatcher's own text is run
+  // through it: what it prints for a sample that returns is a match.
+  const marker = (s) => `[tbx-run] ${s}`;
+  const run3 = (lines) => parseRun(lines, 3);
+  const full = run3([
+    marker("begin 0"),
+    " 2",
+    marker("end 0"),
+    marker("begin 1"),
+    "a",
+    "b",
+    marker("error 5 Invalid procedure call or argument"),
+    marker("end 1"),
+    marker("begin 2"),
+    marker("end 2"),
+    marker("done"),
+  ]);
+  expect(
+    full.done && full.began === 3 && full.items[0].output.join() === " 2" && full.items[0].error === null,
+    "run output: a sample that returned was not read",
+  );
+  expect(
+    full.items[1].output.join() === "a,b" &&
+      full.items[1].error?.number === 5 &&
+      full.items[1].error.description === "Invalid procedure call or argument" &&
+      full.items[1].ended,
+    "run output: an error line was not attributed to the sample it follows",
+  );
+  expect(full.items[2].began && full.items[2].ended && !full.items[2].output.length, "run output: a silent sample");
+  const hung = run3([marker("begin 0"), "x", marker("end 0"), marker("begin 1"), "y"]);
+  expect(
+    !hung.done &&
+      hung.items[1].began &&
+      !hung.items[1].ended &&
+      !hung.items[2].began &&
+      hung.items[1].output.join() === "y",
+    "run output: a sample that began and did not return was not found, or the one after it was said to have begun",
+  );
+  const none = run3(["[BUILD] Starting...", "[LINKER] SUCCESS"]);
+  expect(!none.done && none.began === 0, "run output: a console with no marker said the run began");
+  expect(
+    run3([marker("begin 0"), marker("end 0"), "[DEBUGGER] Waiting for remaining forms to close..."]).items[0].output
+      .length === 0,
+    "run output: a line after a sample's end was attributed to it",
+  );
+
+  // A run fence's body is Public, to be called from the dispatcher, and that
+  // changes no line: the line map is as for a Private one.
+  const runFence = { ...fence, flags: new Set([MARKER, RUN_MARKER]) };
+  for (const base of [null, "Form"]) {
+    const { text, offset } = wrapFence(runFence, "sub", "tbx_probe", base);
+    const genLine = text.split("\n").findIndex((l) => l.trim() === "Dim b") + 1;
+    expect(
+      text.includes("    Public Sub tbxBody()") && fence.line + genLine - offset === 12,
+      `line map: a run fence's body is not Public with the same offset (${fence.line + genLine - offset})`,
+    );
+  }
+  expect(
+    wrapFence({ ...fence, flags: new Set([MARKER]) }, "sub", "tbx_probe").text.includes("    Private Sub tbxBody()"),
+    "wrapper: a sample that is not run lost its Private body",
+  );
+
+  // Batching: a run fence is built apart from every other sample, with its
+  // page's hidden context; a projname group holding one goes whole to the run
+  // batches, its class beside it, and only the run fence is called.
+  const sample = (id, o = {}) => ({
+    ...rfence("Debug.Print 1\n", {
+      id,
+      flags: o.run ? [MARKER, RUN_MARKER] : [MARKER],
+      keys: o.group ? [["projname", o.group]] : [],
+      slot: o.slot,
+    }),
+    rel: o.rel ?? "R.md",
+    ...(o.hidden ? { flags: new Set([HIDDEN_MARKER, MARKER]), slot: "module" } : {}),
+  });
+  const plainOne = sample("plain"),
+    runner = sample("runner", { run: true }),
+    ctx = sample("ctx", { hidden: true }),
+    cls = sample("cls", { group: "g", slot: "class" }),
+    grunner = sample("grunner", { group: "g", run: true }),
+    otherPage = sample("other", { rel: "O.md" });
+  const part = partitionRun([plainOne, runner, ctx, cls, grunner, otherPage]);
+  const ids = (list) => list.map((f) => f.id).join();
+  expect(ids(part.rest) === "plain,ctx,other", `run batching: the rest is ${ids(part.rest)}, want plain,ctx,other`);
+  expect(
+    ids(part.run) === "runner,ctx,cls,grunner",
+    `run batching: the run list is ${ids(part.run)}, want runner,ctx,cls,grunner`,
+  );
+  const runBatches = makeBatches(part.run);
+  const groupRun = runBatches.find((b) => b.fences.some((f) => f.id === "cls"));
+  expect(
+    runBatches.length === 2 &&
+      groupRun?.group === "g" &&
+      groupRun.fences.some((f) => f.id === "grunner") &&
+      !groupRun.fences.some((f) => f.id === "runner"),
+    "run batching: a group of a class and a run sample was not one run batch of its own",
+  );
+  expect(
+    ids(groupRun?.fences.filter(isRunFence) ?? []) === "grunner",
+    "run batching: the dispatcher would call the group's class",
+  );
+  expect(
+    !runBatches.some((b) => b.fences.some((f) => f.id === "plain" || f.id === "other")),
+    "run batching: a sample that is not run was built into a run batch",
+  );
+  expect(
+    runBatches.find((b) => b.fences.some((f) => f.id === "runner"))?.fences.some((f) => f.id === "ctx"),
+    "run batching: a page's hidden context did not travel with its run sample",
+  );
+  expect(
+    partitionRun([plainOne, otherPage]).run.length === 0,
+    "run batching: a selection with no run sample made run batches",
+  );
+
   // The markup must be invisible to the site. Verified against the REAL
   // pipeline -- createMarkdownIt plus the highlighter -- because a bare
   // markdown-it is a different renderer, which is the mistake WIP.md's
@@ -1357,11 +1593,12 @@ export async function runProbes(say) {
   // + 10 resource + 8 report + 6 markup + 15 canaries (5 of what a batch's rows say,
   // 7 of what runBatch does about a batch whose canary did not report, 3 of the
   // template built with no samples) + 7 of a failed build (wording, when to
-  // record it, one that passes when built again, a pair that fails only together).
+  // record it, one that passes when built again, a pair that fails only together)
+  // + the check_run probes, which count themselves.
   say(
-    `ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 97} probes: ` +
+    `ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 97 + runProbeCount} probes: ` +
       "classifier, markup, line mapping, batching, splitting, crash isolation, failed builds, canaries, concat, " +
-      "resources and the report",
+      "resources, the report and check_run",
   );
   return true;
 }

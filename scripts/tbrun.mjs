@@ -131,10 +131,8 @@ import {
   refuseTogether,
   withUsageError,
 } from "../lib/cli.mjs";
-import { click } from "./lib/tb-click.mjs";
 import { compilerExe, findIde } from "./lib/tb-install.mjs";
 import {
-  BUILD_FAILED,
   COMPILE_TIMEOUT,
   TARGETS,
   attachIde,
@@ -150,10 +148,11 @@ import {
   waitForCompile,
   wantShow,
 } from "./lib/tb-ide.mjs";
-import { keepClears, keptClears, readConsole } from "./lib/tb-ide-console.mjs";
+import { readConsole } from "./lib/tb-ide-console.mjs";
 import { sentinelIndex, wrapProbe } from "./lib/tb-probe.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
+import { captureRun, checkCapture, strip } from "./lib/tb-run.mjs";
 
 exitOnCrash();
 
@@ -474,53 +473,20 @@ let captured = null,
   erased = null,
   failure = null;
 try {
-  // (4) Keep what each clear erases, for the check after the run.
-  if (!(await keepClears(cdp))) {
-    throw new Error(
-      "no clearDebugConsole() in this IDE -- a probe's Debug.Cls could erase a " +
-        "failure unseen. Refusing rather than returning what it left as complete.",
-    );
-  }
-  // (2) a real press/release pair; element.click() is ignored.
-  await click(cdp, "buildIcon");
-
-  // (5) settle on the sentinel, or else a quiet period.
-  const started = Date.now();
-  let last = "",
-    lastChange = Date.now(),
-    seen = false;
-  while (Date.now() - started < timeoutMs) {
-    await new Promise((r) => setTimeout(r, 400));
-    const now = await readConsole(cdp);
-    if (now === null) {
-      throw new Error(
-        "no debugConsoleContent.dataNodes in this IDE -- the DEBUG CONSOLE " +
-          "was never created, or this build moved it. Refusing rather than " +
-          "falling back to scraping the pane, which silently truncates.",
-      );
-    }
-    if (now !== last) {
-      last = now;
-      lastChange = Date.now();
-      const lines = strip(now);
-      if (lines.length) seen = true;
-      if (wrap.wrapped && sentinelIndex(lines) >= 0) break;
-    } else if (seen && Date.now() - lastChange > quietMs) break;
-  }
-  captured = strip(last);
+  // (4) the clears are kept, (2) the build button is pressed, (5) and the wait
+  // settles on the sentinel, or else a quiet period: lib/tb-run.mjs.
+  const run = await captureRun(cdp, {
+    done: (lines) => wrap.wrapped && sentinelIndex(lines) >= 0,
+    quietMs,
+    timeoutMs,
+  });
+  captured = run.captured;
+  erased = run.erased;
   // --raw changes what is printed, never what is checked. BUILD_FAILED needs a
   // line that starts where the console's text does, and a line holding only a
   // timestamp is never blank, so every check reads without the column; under
   // --raw the lines printed are the same entries, read again with it.
-  shown = values.raw ? strip(last, await readConsole(cdp, { timestamps: true })) : captured;
-  const kept = await keptClears(cdp);
-  if (!kept) {
-    throw new Error(
-      "the IDE page no longer holds what the DEBUG CONSOLE's clears erased, so " +
-        "a failure they erased cannot be ruled out",
-    );
-  }
-  erased = kept.flatMap((text) => text.split("\n"));
+  shown = values.raw ? strip(run.last, await readConsole(cdp, { timestamps: true })) : captured;
   cdp.close();
 } catch (e) {
   failure = e.message;
@@ -537,7 +503,8 @@ if (failure) die(2, `tbrun: ${failure}`);
 // that fails code generation leaves the log too: the build succeeds, and then
 // nothing in the Sub runs, Debug.Cls included. BUILD_FAILED is buildProject's
 // list of failure lines, the code-generation one among them.
-if (captured.some((l) => BUILD_FAILED.test(l))) {
+const { started, buildFailed, lost } = checkCapture(captured, erased);
+if (buildFailed !== undefined) {
   die(
     2,
     "tbrun: the build or the probe's code generation failed, so the probe never ran. " +
@@ -552,9 +519,7 @@ if (captured.some((l) => BUILD_FAILED.test(l))) {
 // before then -- which tbrun returned as the whole output, exit 0 (measured,
 // BETA 983). A failure line among what the clears erased counts only after the
 // last Executing line: before it is the build's own log, which ended in success
-// or the probe would not have run.
-const started = erased.findLastIndex((l) => /^\[BUILD\] Executing '/.test(l));
-const lost = started < 0 ? undefined : erased.slice(started + 1).find((l) => BUILD_FAILED.test(l));
+// or the probe would not have run (checkCapture).
 if (lost) {
   die(
     2,
@@ -626,22 +591,6 @@ if (exeRun && exeRun.exitCode !== 0) die(6, `tbrun: the exe exited with code ${e
 process.exit(0);
 
 // ------------------------------------------------------------------ helpers
-
-// Trim blank lines off both ends. That is all this has to do: reading
-// dataNodes rather than the pane means the header, the ">" input prompt and
-// the timestamp column never arrive in the first place. Given `raw`,
-// the same console read with its timestamps, it returns the same entries from
-// that instead, since a line holding a timestamp is never blank.
-function strip(text, raw = null) {
-  if (!text) return [];
-  const lines = (s) => s.split("\n").map((l) => l.replace(/\r$/, ""));
-  const out = lines(text);
-  let from = 0,
-    to = out.length;
-  while (from < to && !out[from].trim()) from++;
-  while (to > from && !out[to - 1].trim()) to--;
-  return (raw === null ? out : lines(raw)).slice(from, to);
-}
 
 // --exe: the built exe, started as the IDE is, on a private desktop and inside
 // a kill-on-close job, so a window it opens -- a MsgBox -- is on no desktop

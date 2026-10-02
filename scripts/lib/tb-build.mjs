@@ -42,6 +42,7 @@ import {
   shutdownIdeAsync,
   waitForCompile,
 } from "./tb-ide.mjs";
+import { captureRun, checkCapture } from "./tb-run.mjs";
 
 /**
  * @param {object} o
@@ -61,18 +62,26 @@ import {
  *   with LLVM. It checks the licence and changes no setting; the project's
  *   own `compiler.buildOptions` is what asks for LLVM
  * @param {number} [o.buildTimeout] ms to wait for the build (default buildProject's)
+ * @param {{done?: (lines: string[]) => boolean, quietMs: number, timeoutMs: number} | null} [o.run]
+ *   after a clean compile, build the project and run its [RunAfterBuild] Sub
+ *   and capture what it writes (captureRun in lib/tb-run.mjs), in place of
+ *   `build`'s own wait, which ends before the Sub's output has arrived. The
+ *   Sub is expected to start with Debug.Cls. The capture is returned as `run`
  * @returns {Promise<{
  *   code: number, message: string, rows: string[], counts: number[], dialogs: string[],
  *   openedIn: string | null, arch: string, idePid: number | null, kept: boolean, crashFiles: string[],
  *   built: string | null, buildLog: string[],
+ *   run?: {captured: string[], last: string, erased: string[], timedOut: boolean},
  * }>} `code` is tbbuild's exit code: 0 clean, 1 the project has errors, 2 the IDE
  *   could not be started or attached or the licence refuses LLVM, 3 the compile
  *   never settled, 4 the project crashes the compiler, 5 the build failed after
- *   a clean compile. `message` is what tbbuild prints on stderr for 2 to 5 and
- *   is empty otherwise: for 5 the failing line of the log. `counts` is errors,
- *   warnings, hints, infos. `crashFiles` names, for 4, the files the compiler
- *   died parsing. `built` is the file a successful build wrote, and `buildLog`
- *   the console from the build's first line on.
+ *   a clean compile (with `run`, also a Sub that failed code generation, or a
+ *   failure a Debug.Cls erased after the run started). `message` is what tbbuild
+ *   prints on stderr for 2 to 5 and is empty otherwise: for 5 the failing line
+ *   of the log. `counts` is errors, warnings, hints, infos. `crashFiles` names,
+ *   for 4, the files the compiler died parsing. `built` is the file a
+ *   successful build wrote, and `buildLog` the console from the build's first
+ *   line on.
  */
 export async function compileProject({
   project,
@@ -85,6 +94,7 @@ export async function compileProject({
   build = false,
   llvm = false,
   buildTimeout,
+  run = null,
 }) {
   let handle = null;
   let c = null;
@@ -144,7 +154,23 @@ export async function compileProject({
 
     // The IDE does not build a project it flags with errors, so a build is asked
     // of a clean compile only. A warning does not stop one.
-    if (!build) return result(0, found);
+    if (!build && !run) return result(0, found);
+    // A run builds, and reads the console after the project's [RunAfterBuild]
+    // Sub has run, which buildProject returns too early to see.
+    if (run) {
+      let capture;
+      try {
+        capture = await captureRun(c, run);
+      } catch (e) {
+        return result(2, { ...found, message: e.message });
+      }
+      const { buildFailed, lost } = checkCapture(capture.captured, capture.erased);
+      const failure = buildFailed ?? lost;
+      if (failure !== undefined) {
+        return result(5, { ...found, message: failure, buildLog: capture.captured, run: capture });
+      }
+      return result(0, { ...found, run: capture });
+    }
     const built = await buildProject(c, { timeout: buildTimeout });
     if (!built.ok) return result(5, { ...found, message: built.message, buildLog: built.log });
     return result(0, { ...found, built: built.file, buildLog: built.log });

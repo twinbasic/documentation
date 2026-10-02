@@ -135,7 +135,7 @@ a fence at all.
 | token | meaning | default |
 |---|---|---|
 | `check_build` | compile this sample | --- |
-| `check_run` | compile it *and* run it, capturing Debug output. **Not implemented**; such a fence is compiled only, and the run says so | --- |
+| `check_run` | compile it, build it and run it, and compare what it prints with what the fence says it prints (a trailing comment on a `Debug.Print` line, or the comment lines under `' Output:`). Statement samples (`slot=sub`) only; `MsgBox`, `InputBox` and `End` are refused. See the dispatcher design below | --- |
 | `hidden` | context for the page's samples, compiled with them and rendered to nothing. Implies `check_build` | --- |
 | `slot=` | `file`, `module`, `sub`, `class` or `method` --- what to generate around it | inferred |
 | `inherits=` | the class the sample is code-behind *of*; forces the Class row | --- |
@@ -387,10 +387,13 @@ force two samples apart, and a rule that also tracked procedures would split bat
 costing a whole IDE startup --- for nothing.
 
 **`[RunAfterBuild]` is one per project.** `TB5114 encountered too many [RunAfterBuild]
-attributes. Only allowed one per-project.` So `check_run` cannot batch the naive way: either
-a project per sample, or one generated dispatcher that calls each sample's Sub in turn, with
-a marker line printed around each call so the output can be attributed and a sample that
-throws does not silently swallow the rest.
+attributes. Only allowed one per-project.` So `check_run` cannot batch the naive way. It
+uses one generated dispatcher per run batch (`Module tbxRun`, `lib/example-run.mjs`'s
+`dispatcherText`) that calls each sample's `tbxBody` in turn, with a marker line printed
+around each call so the output can be attributed and a sample that throws does not silently
+swallow the rest. **The caller's `On Error Resume Next` catches an error raised unhandled
+inside the callee** (measured, BETA 995: `InStr(0, "abc", "a")` in a sample's body printed
+`[tbx-run] error 5 Invalid procedure call or argument`, and the next sample ran).
 
 Two things a batch runner must do that a single-fence runner need not:
 
@@ -964,11 +967,10 @@ by grep.
 
 - Where does compile time stop being flat in fence count? 120 per project is the current
   default and 275 worked; the measured evidence does not say where the knee is.
-- `check_run` needs the dispatcher design above, plus the `MsgBox` screen, plus a decision
-  about what a sample's *output* is compared against. A sample that prints is a sample whose
-  printed value the page probably states, and that is the check worth having. Deliberately
-  not started --- see [What is left](#what-is-left-179-samples-and-no-lever) for why the
-  editorial pass comes first.
+- `check_run` is implemented (`lib/example-run.mjs`, `lib/tb-run.mjs`) but no fence in `docs/`
+  carries the marker yet. A sample states its output in its own text, as a trailing comment on a
+  `Debug.Print` line or as the comment lines under `' Output:`; which pages should carry one is
+  the editorial pass's question --- see [What is left](#what-is-left-179-samples-and-no-lever).
 - A `projname` is global, so two pages choosing `demo` would merge without saying so. Scoping
   it to the page would prevent that and would also prevent a group spanning pages, which a
   multi-page tutorial wants. Left global and documented; revisit if a collision happens.
@@ -1083,11 +1085,9 @@ because grouping puts the two definitions in *one* project rather than keeping t
 and `COLLIDES` does not track procedure names. The page also calls `SaveLongData` while
 declaring `SaveData`, which is a defect in the page rather than in the harness.
 
-**`check_run` waits for this work rather than the other way round.** No fence in `docs/`
-carries the marker, so it gates nothing today; and its open question --- what a sample's
-printed output is compared against --- is answered by pages that state a printed value, which
-is what the editorial pass produces. Building the dispatcher first would be building for
-candidates that do not exist yet.
+**`check_run` gates nothing yet.** No fence in `docs/` carries the marker. Its output
+comparison is only as useful as the pages that state a printed value, which is what the
+editorial pass produces.
 
 ## The excerpts: 25 to none
 

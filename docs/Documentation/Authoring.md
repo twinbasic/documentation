@@ -547,7 +547,7 @@ generated `Sub`. Three keys override it when it guesses wrong, and one flag asks
 | In the fence | Means |
 |---|---|
 | `check_build` | Compile this sample. |
-| `check_run` | Compile it and run it, capturing what it prints. *Not implemented yet --- such a fence is compiled only, and the run says so.* |
+| `check_run` | Compile it, build it and run it, then compare what it prints with what the page says it prints, as described below. Only a statement sample (`slot=sub`) can be run. A sample that raises an error, does not return, or prints something else is a finding. A sample that calls `MsgBox` or `InputBox`, or contains an `End` statement, is refused without being built. |
 | `hidden` | Context for the page's other samples that the reader never sees. Implies `check_build`. See below. |
 | `slot=file` / `slot=module` / `slot=sub` / `slot=class` / `slot=method` | What to generate around it, when the inference is wrong. `class` and `method` are the same two shapes inside a `Class` rather than a `Module`, for code-behind. The report always names the slot it used, so a wrong guess reads as a wrong guess. |
 | `inherits=<class>` | The sample is code-behind *of* something --- `inherits=Form`, `inherits=MDIForm`. The wrapper becomes a `Class` that inherits it, so `Me.Caption` resolves against the real type. |
@@ -557,6 +557,35 @@ generated `Sub`. Three keys override it when it guesses wrong, and one flag asks
 | `expect-error=<code>` | This sample is *meant* not to compile --- it is showing what goes wrong --- and the run fails if it compiles. |
 | `resource=<path>` | **On a fence in any language**, not just ` ```tb `. The fence's contents are written into the generated project at that project-relative path, so the page's samples can be compiled against it. For the compile-time attributes that read a project file --- see below. |
 | `inert=<reason>` | This fence is **not a program**, and saying so settles it: it is never compiled, never proposed, and counted under its reason instead of sitting in the backlog. See below. |
+
+A `check_run` sample states what it prints in one of two ways, and the checker reads
+the sample's own text, so the page needs nothing extra. A trailing comment on a
+`Debug.Print` line gives that line's output. A comment line that is exactly `' Output:`
+gives the whole output, one line per comment line below it. A sample that states
+nothing is still run, and must return without raising an error. When a sample states
+anything, it must print exactly as many lines as it states. Each line is compared with
+the spaces at both ends removed, because twinBASIC prints a space before a positive
+number.
+
+````markdown
+```tb check_run
+Debug.Print InStr(1, "abc", "b")   ' 2
+Debug.Print UCase("tb")            ' TB
+```
+````
+
+````markdown
+```tb check_run
+Dim i As Long
+For i = 1 To 3
+    Debug.Print i
+Next
+' Output:
+' 1
+' 2
+' 3
+```
+````
 
 ### Saying that a sample is not a program
 

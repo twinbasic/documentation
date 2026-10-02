@@ -8,8 +8,14 @@
 //     node scripts/check_examples.mjs --propose --apply  # ...and mark the ones that pass
 //     node scripts/check_examples.mjs --report survey.json  # group a saved survey
 //
-// Exit: 0 clean, 1 a sample does not compile, 2 the harness could not run (a refused
-// command line, no IDE, or a crash).
+// Exit: 0 clean, 1 a sample does not compile (or, for a `check_run` sample, does not
+// run as the page says), 2 the harness could not run (a refused command line, no IDE,
+// or a crash).
+//
+// A `check_run` sample is a statement sample that is built and run: its batch gets one
+// generated [RunAfterBuild] Sub that calls each sample in turn between marker lines,
+// and the lines the run writes to the DEBUG CONSOLE are attributed to samples by
+// those markers (lib/example-run.mjs; the capture is lib/tb-run.mjs).
 //
 // ------------------------------------------------------------------ why
 //
@@ -120,6 +126,18 @@ import {
   sectionOf,
   unresolvedName,
 } from "./lib/example-batches.mjs";
+import {
+  RUN_DONE,
+  RUN_FILE,
+  RUN_TAG,
+  dispatcherText,
+  expectedOutput,
+  isRunFence,
+  judgeOutput,
+  parseRun,
+  partitionRun,
+  runRefusal,
+} from "./lib/example-run.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
 import { wantShow } from "./lib/tb-ide.mjs";
 import { buildNumber, compilerExe, findIde, runCompiler } from "./lib/tb-install.mjs";
@@ -160,7 +178,12 @@ const { values } = withUsageError(
 const USAGE = `usage: node scripts/check_examples.mjs [options]
 
 Compiles the documentation's own twinBASIC code samples, every tb fence marked
-\`${MARKER}\`, and reports the ones the compiler refuses.
+\`${MARKER}\`, and reports the ones the compiler refuses. A statement sample
+(slot=sub) marked \`${RUN_MARKER}\` is also built and run, in every mode, and what it prints
+is compared with what the page says it prints: the trailing comment on a Debug.Print
+line, or the comment lines under a \`' Output:\` line. A sample that raises an error,
+does not return, or prints something else is a finding; one that calls MsgBox or
+InputBox, or contains End, or is not slot=sub, is refused without being built.
 
   --only <regex>   restrict to pages whose path matches
   --census         classify every tb fence and print the table; no compiler
@@ -186,8 +209,9 @@ Exit codes:
   0  every marked sample compiles, or none is marked; --report always, and --propose
      when it found only unmarked samples that fail (advisory)
   1  a marked sample does not compile, a marker is misused, a template does not
-     compile, the compiler crashed on a project, or --build or --llvm found a sample
-     that fails the build; the report names each
+     compile, the compiler crashed on a project, --build or --llvm found a sample
+     that fails the build, or a \`${RUN_MARKER}\` sample raised an error, did not return or
+     printed something other than the page says; the report names each
   2  the harness could not run: a refused command line, a failed self-test probe, no
      IDE or compiler, an unreadable --report file, a work folder it could not clear,
      an --llvm run on a Community or Personal licence, or a crash`;
@@ -432,6 +456,13 @@ function select(fences) {
       );
       continue;
     }
+    // A fence that asks to be RUN has to be one that can be: a statement
+    // sample, with nothing in it that waits for a person or ends the run.
+    const refusal = runRefusal(fence);
+    if (refusal) {
+      addFinding(fence, refusal.message, refusal.detail);
+      continue;
+    }
     // A class body with a `Sub Main` in it is no program: that Main is a method
     // of the class, never the startup object. It is usually two files written
     // as one fence, a class and the module that starts it.
@@ -571,6 +602,17 @@ function stageBatch(batch, work) {
   for (const c of CANARIES) {
     writeFileSync(path.join(dir, "Sources", c.file), c.text.replace(/\n/g, "\r\n"), "utf8");
   }
+  // A run batch gets the one [RunAfterBuild] Sub a project may have, calling
+  // each run sample's body in turn. The members of a group that are not run
+  // samples are staged above and get no call.
+  const runs = batch.run ? batch.fences.filter(isRunFence) : [];
+  if (runs.length) {
+    writeFileSync(
+      path.join(dir, "Sources", RUN_FILE),
+      dispatcherText(runs.map((f) => moduleName(f.id))).replace(/\n/g, "\r\n"),
+      "utf8",
+    );
+  }
 
   const proj = path.join(work, `b${index}.twinproj`);
   // Pure Windows paths: the compiler prefixes \\?\, which does not accept
@@ -581,7 +623,7 @@ function stageBatch(batch, work) {
   // reports, 999 on a tree holding an embedded package, which a resource= fence
   // staged under Packages/ would make -- so runCompiler reads the output.
   if (!pack.done) throw new Error(`packing failed${pack.why}:\n${pack.tail}`);
-  return { proj, dir, map };
+  return { proj, dir, map, runs };
 }
 
 // ------------------------------------------------------------------- building
@@ -595,16 +637,72 @@ const COMPILER = IDE ? compilerExe(IDE) : null;
 // between.
 let tidy = null;
 
+// How a run batch's wait ends (see buildStaged), in milliseconds.
+const RUN_QUIET_MS = 8000;
+const RUN_TIMEOUT_MS = 180000;
+
+// What each run sample did, by fence id, from the last build of a project that
+// held it: its share of the lines the dispatcher wrote, and the sample that
+// began and did not return, if there was one. A later build of a smaller
+// project replaces an earlier one's entry, as it does for `builtIds`.
+const runById = new Map();
+
+/**
+ * What is wrong with a run's capture as a whole, or null: the dispatcher wrote
+ * no marker, or stopped with every sample that began returned and some never
+ * reached. (A sample that began and did not return is the finding of that
+ * sample, not a fault of the capture.)
+ */
+function runProblem(staged, cap) {
+  const parsed = parseRun(cap.captured, staged.runs.length);
+  if (parsed.done) return null;
+  if (!parsed.began) {
+    return (
+      `the run wrote no ${RUN_TAG} line${cap.timedOut ? " before the timeout" : ""}, so the dispatcher never ran` +
+      (cap.captured.length ? `; the console held: ${cap.captured.slice(0, 3).join(" | ")}` : "")
+    );
+  }
+  if (!parsed.items.some((i) => i.began && !i.ended)) {
+    return "the run stopped before the dispatcher finished, with no sample left unreturned";
+  }
+  return null;
+}
+
+function recordRun(staged, cap) {
+  const parsed = parseRun(cap.captured, staged.runs.length);
+  const culprit = staged.runs[parsed.items.findIndex((i) => i.began && !i.ended)] ?? null;
+  for (const [i, fence] of staged.runs.entries()) {
+    runById.set(fence.id, { ...parsed.items[i], culprit, done: parsed.done });
+  }
+}
+
 /** Build one staged batch; returns per-fence errors, or a crash marker. */
 async function buildStaged(staged, port) {
-  const r = await compileProject({
-    project: staged.proj,
-    ide: IDE,
-    port,
-    show: wantShow({ show: values.show, hide: values.hide }),
-    build: BUILD,
-    llvm: LLVM,
-  });
+  // A run batch is built and its [RunAfterBuild] Sub is run, in every mode. The
+  // run is over when the dispatcher says it is done, or when the console has
+  // been quiet for RUN_QUIET_MS: long enough to outlast a pause in an LLVM
+  // build's log, since a quiet period that ends inside one reads as a run that
+  // never started.
+  const run = staged.runs.length
+    ? { done: (lines) => lines.some((l) => l.trim() === RUN_DONE), quietMs: RUN_QUIET_MS, timeoutMs: RUN_TIMEOUT_MS }
+    : null;
+  const compile = () =>
+    compileProject({
+      project: staged.proj,
+      ide: IDE,
+      port,
+      show: wantShow({ show: values.show, hide: values.hide }),
+      build: BUILD || !!run,
+      llvm: LLVM,
+      run,
+    });
+  let r = await compile();
+  // A run that wrote no marker at all, or stopped without finishing and without
+  // a sample that began and did not return, is read again once: nothing says
+  // which sample is to blame, and the IDE can read the console early.
+  const lost = (res) => (res.code === 0 && run ? runProblem(staged, res.run) : null);
+  if (lost(r)) r = await compile();
+  if (lost(r)) throw new Error(`${lost(r)} (${staged.proj})`);
 
   if (r.code === 4) return { crashed: true, detail: r.message, named: crashedIn(r.crashFiles, staged.map) };
   // A build that failed after a clean compile is isolated as a crash is: nothing
@@ -613,7 +711,8 @@ async function buildStaged(staged, port) {
   if (r.code !== 0 && r.code !== 1) {
     throw new Error(`tbbuild exited ${r.code} on ${staged.proj}\n${r.message}`);
   }
-  if (BUILD) {
+  if (run && r.code === 0) recordRun(staged, r.run);
+  if (BUILD || run) {
     for (const entry of staged.map.values()) (r.code === 0 ? builtIds : unbuiltIds).add(entry.fence.id);
     const first = r.rows.find((row) => row.startsWith("{ERROR}"));
     if (r.code === 1) say(`  not built: ${path.basename(staged.proj)} has errors, the first ${first}`);
@@ -957,22 +1056,33 @@ async function main() {
   // sample's own ("'Main' is ambiguous"), which a compile accepts; so a run that
   // builds gives such a unit a project of its own without the template's.
   const alone = BUILD ? (members) => members.some((f) => DECLARES_MAIN.test(f.content)) : null;
-  const errorPages = new Set(selected.filter(expectsError).map((f) => f.rel));
+  // A `check_run` sample is built apart from everything else, whatever the mode,
+  // since only a build runs [RunAfterBuild]: its batches get a dispatcher and
+  // are built and run. A `projname` group holding one goes there whole.
+  const { run: runList, rest: restList } = partitionRun(selected);
+  const errorPages = new Set(restList.filter(expectsError).map((f) => f.rel));
   const hiddenOfErrorPage = (f) => f.flags.has(HIDDEN_MARKER) && errorPages.has(f.rel);
-  const batches = BUILD
+  const restBatches = BUILD
     ? [
         ...makeBatches(
-          selected.filter((f) => !expectsError(f)),
+          restList.filter((f) => !expectsError(f)),
           { batchSize, jobs, alone },
         ),
         ...(errorPages.size
           ? makeBatches(
-              selected.filter((f) => expectsError(f) || hiddenOfErrorPage(f)),
+              restList.filter((f) => expectsError(f) || hiddenOfErrorPage(f)),
               { batchSize, jobs, alone },
             )
           : []),
       ]
-    : makeBatches(selected, { batchSize, jobs });
+    : makeBatches(restList, { batchSize, jobs });
+  // A run that builds always keeps a unit with its own `Sub Main` apart, as above.
+  const runBatches = makeBatches(runList, {
+    batchSize,
+    jobs,
+    alone: (members) => members.some((f) => DECLARES_MAIN.test(f.content)),
+  }).map((b) => ({ ...b, run: true }));
+  const batches = [...restBatches, ...runBatches];
   const work = path.join(tmpdir(), "tbexamples", String(basePort));
   try {
     rmSync(work, { recursive: true, force: true });
@@ -1003,15 +1113,9 @@ async function main() {
       (staged ? `, ${staged} staged file(s)` : ""),
   );
 
-  // Said out loud rather than passed over in silence: a sample asking to be RUN
-  // is only being compiled today, and a reader of this output would otherwise
-  // have no way to tell which of the two happened.
-  const wantRun = selected.filter((f) => f.flags.has(RUN_MARKER)).length;
+  const wantRun = selected.filter(isRunFence).length;
   if (wantRun) {
-    say(
-      `  note: ${wantRun} sample(s) ask for \`${RUN_MARKER}\`; execution is not ` +
-        `implemented yet, so they were compiled only`,
-    );
+    say(`  ${wantRun} sample(s) marked \`${RUN_MARKER}\` are built and run, in ${runBatches.length} project(s)`);
   }
 
   // Every lane's IDE records its projects in the user's recent list and saved
@@ -1092,7 +1196,10 @@ async function main() {
     // compiler down together with, carries no rows of its own -- one finding
     // names the rest -- but it is still not a pass.
     if (!diags.length) {
-      if (!blamed.has(fence.id)) passed.push(fence);
+      if (!blamed.has(fence.id)) {
+        passed.push(fence);
+        if (isRunFence(fence)) judgeRun(fence);
+      }
       continue;
     }
     findings.push({
@@ -1153,6 +1260,13 @@ async function main() {
         `${real} finding(s), ${secs}s` +
         (real ? "" : " -- clean"),
     );
+    if (wantRun) {
+      say(
+        `${runStats.ran} run sample(s) ran, ${runStats.matched} without a finding` +
+          (runStats.unrun ? `, ${runStats.unrun} compiled but not run` : ""),
+      );
+      for (const note of runNotes) say(note);
+    }
     // A project with errors is never built, so the build asked nothing of these.
     if (BUILD) {
       const unbuilt = samples.filter((f) => unbuiltIds.has(f.id) && !builtIds.has(f.id)).length;
@@ -1163,6 +1277,49 @@ async function main() {
   else rmSync(work, { recursive: true, force: true });
 
   process.exit(real ? 1 : 0);
+}
+
+// What the run samples did, for the summary line.
+const runStats = { ran: 0, matched: 0, unrun: 0 };
+const runNotes = [];
+
+/**
+ * Compare one run sample's output with what its text says it prints, and report
+ * what it raised or did not return. A sample that raised an error is reported
+ * for that alone: what it printed before it stopped is not its output.
+ */
+function judgeRun(fence) {
+  const out = runById.get(fence.id);
+  const where = (f) => `docs/${f.rel}:${f.line}`;
+  if (!out) {
+    // Compiled clean, but its project had errors elsewhere, so nothing in it was built.
+    runStats.unrun++;
+    return;
+  }
+  if (!out.began) {
+    runStats.unrun++;
+    runNotes.push(
+      `  note: ${where(fence)} (${fence.id}) was not run: ` +
+        (out.culprit ? `${where(out.culprit)} did not return` : "the run ended before it"),
+    );
+    return;
+  }
+  runStats.ran++;
+  const before = findings.length;
+  if (!out.ended) {
+    addFinding(
+      fence,
+      "did not return",
+      "the run saw this sample begin and never saw it end: a loop that does not finish, or a call that never comes back",
+    );
+  } else if (out.error) {
+    addFinding(fence, `raised error ${out.error.number}: ${out.error.description}`);
+  } else {
+    for (const p of judgeOutput(expectedOutput(fence), out.output)) {
+      addFinding(fence, p.message, p.detail, p.line ? { line: p.line } : {});
+    }
+  }
+  if (findings.length === before) runStats.matched++;
 }
 
 function reportFindings() {
