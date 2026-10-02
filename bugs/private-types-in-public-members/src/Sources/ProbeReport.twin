@@ -1,0 +1,6 @@
+' A public VB.Report event whose parameter type is a Private class: the handler cannot be written with the type the compiler names.
+Class ProbeReport
+    Private WithEvents rpt As VB.Report
+    Private Sub rpt_BeforePaintSection(ByVal Section As VB.ControlsSection)
+    End Sub
+End Class

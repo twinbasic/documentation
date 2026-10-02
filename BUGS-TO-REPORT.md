@@ -155,22 +155,19 @@ So it takes at least one existing entry and at least one slot with nothing in it
 
 ## Compiler crashes on an `Interface` named by an angle-bracket placeholder that has an `Extends` clause
 
-**Build:** BETA 995; BETA 983 at `twinBASIC_win32.dll+00141F7A`
-**Severity:** crash --- takes the compiler down, three restarts, then the IDE gives up.
+**Describe the bug**
+A source file holding an `Interface` whose name is an angle-bracket placeholder and that has an `Extends` clause crashes the compiler while it parses the file. The DEBUG CONSOLE shows `NATIVE EXCEPTION: ACCESS_VIOLATION {no-basic-code}` with `>>> thread 0004: ParsingFileStart, <that file>`, then `restarting from MEMORY`, three times over, and then the IDE gives up. The input is not real code (it is a syntax skeleton, the shape the documentation uses to show where an attribute goes), but a parser given nonsense should report a diagnostic, and this one dereferences something instead.
 
-This two-line file is the whole reproduction:
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `crash-placeholder-interface.twinproj` (attached as `crash-placeholder-interface.zip`). Its one source file, `Placeholder.twin`, is the whole reproduction:
+   ```
+   Interface <name> Extends <base-interface>
+   End Interface
+   ```
+2. See the compiler crash with `NATIVE EXCEPTION: ACCESS_VIOLATION {no-basic-code}` in the DEBUG CONSOLE, restart from memory three times, and then stop restarting.
 
-```
-Interface <name> Extends <base-interface>
-End Interface
-```
-
-The IDE's DEBUG CONSOLE reports `NATIVE EXCEPTION: ACCESS_VIOLATION {no-basic-code}` with
-`>>> thread 0004: ParsingFileStart, <that file>`, then `restarting from MEMORY`, three
-times over.
-
-**It takes a placeholder name and an `Extends` clause**, and what the clause names does not
-matter:
+It takes a placeholder name and an `Extends` clause, and what the clause names does not matter:
 
 | source | result |
 |---|---|
@@ -180,15 +177,17 @@ matter:
 | `Interface <name> Extends IBase` + `End Interface`, no `IBase` anywhere | **crash** |
 | the same, with `Interface IBase` or `Class IBase` declared in another file | **crash** |
 
-This entry used to say that it takes a placeholder in *both* positions; the last two rows,
-measured on 2026-09-24 with a project of its own each, say otherwise. The input is not real
-code --- it is a syntax skeleton, the shape `docs/Reference/Attributes.md` uses to show
-where an attribute goes --- but a parser meeting nonsense should diagnose it, and this one
-dereferences something instead.
+**Expected behavior**
+A syntax error (TB5182, as for the same line without the `Extends` clause), not a crash.
 
-**Found by** pointing `scripts/check_examples.mjs` at the documentation's own code samples;
-the skeleton is one of the 1,124 `tb` fences under `docs/`. A crash in a batch of samples
-costs the whole batch its result, which is why that tool isolates the sample on exit code 4.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Also on BETA 983, at `twinBASIC_win32.dll+00141F7A`. Severity: crash. It takes the compiler down, three restarts, then the IDE gives up. A crash in a batch of projects costs the whole batch its result, so a tool that compiles many files at once has to isolate the file that does it. An earlier version of this report said the crash needs a placeholder in both positions, the name and the base; the last two rows of the table, each measured with a project of its own, show the base can be a real name or missing entirely.
+
+<!-- Reproducer: bugs/crash-placeholder-interface/ (mode compile, expects tbbuild exit 4). Found by pointing scripts/check_examples.mjs at the documentation's own code samples: the skeleton is one of the `tb` fences under docs/ (the one in Reference/Attributes.md that shows where an attribute goes); that tool isolates the sample on exit code 4. The table rows were measured on 2026-09-24, each in a project of its own; the crash reproduced on 995 and 983 with bug_repro verify. -->
 
 ---
 
@@ -291,40 +290,30 @@ Silence on stdout and stderr: measured on BETA 983 first, and on BETA 995 by red
 
 ## Public members are typed with Private components, so a default project cannot use them
 
-**Build:** BETA 995
-**Severity:** documented APIs need the consumer to expose the package's internals; one
-event asks for a type it then refuses.
+**Describe the bug**
+Public members of the compiler packages are typed with `Private` classes, and `Public Enum`s sit inside `Private Module`s, so a project that references a package the ordinary way cannot name the types its documented members take. `VB.Report` shows it most sharply, because the compiler names the type in one diagnostic and rejects it in the next. Handling a documented public event requires opting into the package's private half by setting the library symbol to `*VB`.
 
-`VB.Report` shows it most sharply, because the compiler names the type in one diagnostic
-and rejects it in the next. In a project referencing the VB package the ordinary way:
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `private-types-in-public-members.twinproj` (attached as `private-types-in-public-members.zip`). It references the VB package the ordinary way, and its one source file, `ProbeReport.twin`, holds the whole bug:
+   ```
+   Class ProbeReport
+       Private WithEvents rpt As VB.Report
+       Private Sub rpt_BeforePaintSection(ByVal Section As VB.ControlsSection)
+       End Sub
+   End Class
+   ```
+2. See two errors:
+   ```
+   TB5018 unable to match this handler to its event member. The expected signature was:
+          Private Sub rpt_BeforePaintSection(ByVal Section As ControlsSection)
+   TB5079 Unrecognized datatype symbol 'ControlsSection'
+   ```
+3. Set the VB reference's library symbol to `*VB` and compile again: the handler compiles exactly as written.
 
-```
-Class ProbeReport
-    Private WithEvents rpt As VB.Report
-    Private Sub rpt_BeforePaintSection(ByVal Section As VB.ControlsSection)
-    End Sub
-End Class
-```
+`BeforePaintSection` is a public event whose parameter type is `Private Class ControlsSection` (`VB/Sources/SUPPORT/ControlsSection.twin:4`). The other spellings are worse than useless: `ByVal Section As Object` binds and compiles, while `Variant`, the bare name, and omitting the parameter all fail.
 
-```
-TB5018 unable to match this handler to its event member. The expected signature was:
-       Private Sub rpt_BeforePaintSection(ByVal Section As ControlsSection)
-TB5079 Unrecognized datatype symbol 'ControlsSection'
-```
-
-**The remedy is the asterisk**, and it works: with the library symbol set to `*VB`, the
-handler above compiles exactly as written. So this is not an unreachable type --- it is a
-*public* event whose parameter type is `Private Class ControlsSection`
-(`VB/Sources/SUPPORT/ControlsSection.twin:4`), which means handling a documented event
-requires opting into the package's private half. The other spellings are worse than useless:
-`ByVal Section As Object` binds and compiles, while `Variant`, the bare name, and omitting
-the parameter all fail.
-
-**The CustomControls package has the same shape across its whole style surface.** Every
-class in `CustomControlsPackage/Sources/zTemporarySupport.twin` is `Private` --- `Corner`,
-`Corners`, `Padding`, `FillColorPoint`, `FillColorPoints`, `Border`, `Borders`, `Line`,
-`Fill`, `TextRendering`, `Anchors`, `WindowsFormOptions` and the per-control `…State`
-classes --- while the members that hand them out are public:
+**The CustomControls package has the same shape across its whole style surface.** Every class in `CustomControlsPackage/Sources/zTemporarySupport.twin` is `Private` (`Corner`, `Corners`, `Padding`, `FillColorPoint`, `FillColorPoints`, `Border`, `Borders`, `Line`, `Fill`, `TextRendering`, `Anchors`, `WindowsFormOptions` and the per-control `...State` classes), while the members that hand them out are public:
 
 | member | declared | what a default project can do |
 |---|---|---|
@@ -333,148 +322,111 @@ classes --- while the members that hand them out are public:
 | `TextRendering.Outlines` | an array of `Border` | the same, and with no `SetSimpleBorder` equivalent to fall back on |
 | `Canvas.RuntimeUICCCanvasAddElement` | `(ByVal Me As Canvas, ByRef ElementDescriptor As Any)` | pass a record it declares itself, with the style members left `Nothing` |
 
-With `*CustomControlsPackage`, all of it works under the package qualifier:
-`New CustomControlsPackage.Border`, `Dim elems(0 To 2) As CustomControlsPackage.Border`,
-`Dim descriptor As CustomControlsPackage.ElementDescriptor`, and a complete
-`ICustomControl` implementation that sets `BackgroundFill` and `TextRenderingOptions` from
-`New CustomControlsPackage.Fill` / `.TextRendering`. Both `CustomControlsPackage.ElementDescriptor`
-and `CustomControlsPackage.UDTs.ElementDescriptor` resolve, although the UDT is declared
-`Public Type` inside `Private Class UDTs`.
+With `*CustomControlsPackage`, all of it works under the package qualifier: `New CustomControlsPackage.Border`, `Dim elems(0 To 2) As CustomControlsPackage.Border`, `Dim descriptor As CustomControlsPackage.ElementDescriptor`, and a complete `ICustomControl` implementation that sets `BackgroundFill` and `TextRenderingOptions` from `New CustomControlsPackage.Fill` / `.TextRendering`. Both `CustomControlsPackage.ElementDescriptor` and `CustomControlsPackage.UDTs.ElementDescriptor` resolve, although the UDT is declared `Public Type` inside `Private Class UDTs`.
 
-**Why this reads as an oversight rather than a policy.** The file is called
-`zTemporarySupport.twin`, and the package's own changelog dates the narrowing:
-*"v0.0.5.0, 15th September 2022 --- improved: made changes to ensure nothing within the
-package is being exposed unnecessarily."* Reducing the surface is reasonable; what it missed
-is that these particular classes are not internal --- they appear in the signatures of
-members that stayed public, so every consumer of those members is now required to import the
-package with an asterisk and qualify names that the package's own controls write bare.
-
-**Two more packages have the same shape, found the same way.** In both, a `Public Enum` sits
-inside a `Private Module`, so a consumer can name neither the enum nor its members --- and
-both enums are the argument type of a documented, public member:
+**Two more packages have the same shape.** In both, a `Public Enum` sits inside a `Private Module`, so a consumer can name neither the enum nor its members, and both enums are the argument type of a documented, public member:
 
 | package | declaration | what a default project cannot write |
 |---|---|---|
-| WinNativeCommonCtls | `Private Module ImageListConsts` → `Public Enum ImlDrawConstants` | `ImageList1.ListImages(1).Draw hDC, x, y, ImlDrawTransparent Or ImlDrawFocus` |
-| cefPackage | `Private Module _cef_log_severity_t` → `Enum CefLogSeverity` | `CefBrowser1.EnvironmentOptions.LogSeverity = CefLogWarning` |
+| WinNativeCommonCtls | `Private Module ImageListConsts` then `Public Enum ImlDrawConstants` | `ImageList1.ListImages(1).Draw hDC, x, y, ImlDrawTransparent Or ImlDrawFocus` |
+| cefPackage | `Private Module _cef_log_severity_t` then `Enum CefLogSeverity` | `CefBrowser1.EnvironmentOptions.LogSeverity = CefLogWarning` |
 
-Neither the bare member (`ImlDrawTransparent`), the enum name (`ImlDrawConstants.…`), nor the
-owning control as a qualifier (`ImageList.ImlDrawConstants.…`) resolves --- all three are
-`TB5079 Unrecognized symbol`. **The asterisk works**, as it does for the VB and
-CustomControls cases: with the library symbol set to `*WinNativeCommonCtls`,
-`WinNativeCommonCtls.ImlDrawTransparent` compiles, and the documentation now shows that form
-with a note. That is a workaround, not a fix --- a documented, user-facing enum should not
-require a project to expose the package's private half. **The VB package has it too**, from a different direction: the
-enums nested inside a control class, `MultiFrameDirectionConstants` in `MultiFrame` and
-`QRCodegenEccConstants` in `QRCode`, are equally unreachable, so
-`mfPanels.Direction = vbDirectionHorizontal` does not compile although it is what the
-property's own documentation says to write.
+Neither the bare member (`ImlDrawTransparent`), the enum name (`ImlDrawConstants.…`), nor the owning control as a qualifier (`ImageList.ImlDrawConstants.…`) resolves: all three are `TB5079 Unrecognized symbol`. The asterisk works here too: with the library symbol set to `*WinNativeCommonCtls`, `WinNativeCommonCtls.ImlDrawTransparent` compiles. The VB package has it from a different direction as well: the enums nested inside a control class, `MultiFrameDirectionConstants` in `MultiFrame` and `QRCodegenEccConstants` in `QRCode`, are equally unreachable, so `mfPanels.Direction = vbDirectionHorizontal` does not compile although it is what the property's own documentation says to write.
 
-**Why it went unnoticed:** none of the 32 sample projects the IDE ships exercises any of
-this from code. Exported and grepped, all of them: `ControlsSection` appears only as a
-designer `_className` in the two `.tbreport` files and no sample handles
-`BeforePaintSection`; `ElementDescriptor`, `ICustomControl`, `ICustomForm` and
-`RuntimeUICC*` appear nowhere at all; `Border` appears 971 times, every one a designer
-`_className` in a `.tbform`. No sample line sets `NormalState`, `HoverState` or any
-`.Fill.` from code.
+**Expected behavior**
+A type that appears in the signature of a public member is itself public, so a default project can write the handler, declare the `Border()`, and pass the enum, without importing the package's private half. If the types are meant to be internal, the members that hand them out should not be public.
 
-**Found by** `scripts/check_examples.mjs`, which compiles the documentation's own code
-samples. The pages documenting `New Border`, `Dim descriptor As ElementDescriptor` and a
-`ControlsSection` handler were all written from the packages' sources, and none of them
-compiled in a default project.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+The reproducer holds the `VB.Report` case; the CustomControls, WinNativeCommonCtls, cefPackage and MultiFrame / QRCode cases above need packages the reproducer does not reference, and were each measured on BETA 995. The VB.Report case reproduces identically on BETA 983. Severity: documented APIs need the consumer to expose the package's internals, and one event asks for a type it then refuses. The asterisk is a workaround, not a fix.
+
+This reads as an oversight rather than a policy. The file is called `zTemporarySupport.twin`, and the package's own changelog dates the narrowing: "v0.0.5.0, 15th September 2022 --- improved: made changes to ensure nothing within the package is being exposed unnecessarily." Reducing the surface is reasonable; what it missed is that these particular classes are not internal. They appear in the signatures of members that stayed public, so every consumer of those members is now required to import the package with an asterisk and qualify names that the package's own controls write bare.
+
+It went unnoticed because none of the 32 sample projects the IDE ships exercises any of this from code. Exported and grepped, all of them: `ControlsSection` appears only as a designer `_className` in the two `.tbreport` files and no sample handles `BeforePaintSection`; `ElementDescriptor`, `ICustomControl`, `ICustomForm` and `RuntimeUICC*` appear nowhere at all; `Border` appears 971 times, every one a designer `_className` in a `.tbform`. No sample line sets `NormalState`, `HoverState` or any `.Fill.` from code.
+
+<!-- Reproducer: bugs/private-types-in-public-members/ (mode compile, expects TB5018 and TB5079); verified on 995 and 983. Found by scripts/check_examples.mjs, which compiles the documentation's own code samples: the pages documenting `New Border`, `Dim descriptor As ElementDescriptor` and a `ControlsSection` handler were written from the packages' sources and none compiled in a default project. The checker's private-library templates (test/example-projects/vb-private, cc-private, cef-private, wnc-private) are the asterisk workaround; when the types become public, drop the templates and the notes in the docs that tell a reader to use the asterisk (the WinNativeCommonCtls ImageList pages, the CustomControls and CEF pages, VB MultiFrame and QRCode). -->
 
 ---
 
 ## `Err.Raise` rejects `HelpContext` as a named argument, while its three siblings work
 
-**Build:** BETA 995
-**Severity:** VBA-compatible code that names the fifth argument does not compile, and the
-diagnostic does not say which name was wrong.
+**Describe the bug**
+`Err.Raise` accepts `Source:=`, `Description:=` and `HelpFile:=` as named arguments, but not `HelpContext:=`. The error is `TB5090 unrecognized named argument`, and it does not say which name was wrong.
 
-```
-Dim myHelpFile As String, myHelpContext As Long
-Err.Raise vbObjectError + 894, Source:="MyApp.MyClass", _
-          Description:="Was not able to complete your task", _
-          HelpFile:=myHelpFile, HelpContext:=myHelpContext
-```
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `err-raise-helpcontext.twinproj` (attached as `err-raise-helpcontext.zip`). Its one source file, `Probe.twin`, holds the whole bug:
+   ```
+   Dim myHelpFile As String, myHelpContext As Long
+   Err.Raise vbObjectError + 894, Source:="MyApp.MyClass", _
+             Description:="Was not able to complete your task", _
+             HelpFile:=myHelpFile, HelpContext:=myHelpContext
+   ```
+2. See the project fail to compile with `TB5090 unrecognized named argument`.
 
-```
-TB5090 unrecognized named argument
-```
+What does work, each verified on its own: the same call with `Source:=`, `Description:=` and `HelpFile:=` named and the fifth argument dropped compiles, and so does the fully positional form `Err.Raise vbObjectError + 894, myObjectID, "...", myHelpFile, myHelpContext`. So the parameter exists and accepts a `Long`; only its name is unrecognised. `HelpContextID:=` is rejected as well, so this is not simply a different spelling to discover, and the compiler binary's only `HelpContextID` strings belong to project settings, not to a signature.
 
-**What does work**, each verified on its own: the same call with `Source:=`,
-`Description:=` and `HelpFile:=` named and the fifth argument dropped compiles, and so does
-the fully positional form `Err.Raise vbObjectError + 894, myObjectID, "...", myHelpFile,
-myHelpContext`. So the parameter exists and accepts a **Long**; only its *name* is
-unrecognised. `HelpContextID:=` is rejected as well, so this is not simply a different
-spelling to discover --- and the compiler binary's only `HelpContextID` strings belong to
-project settings, not to a signature.
+**Expected behavior**
+The call compiles. `HelpContext` is what VBA itself names that parameter. Read out of the VBA type library on the machine this was found on (`VBE7.DLL` 7.01.1158, VBA7.1, via `LoadTypeLibEx` and `ITypeInfo::GetNames` on `_ErrObject`), the method is `Raise(Number, Source, Description, HelpFile, HelpContext)`. All five names are exactly the ones the failing call uses, and the call is Microsoft's own `Err.Source` example, named arguments and all, so the code twinBASIC rejects is the code a VBA developer is most likely to have copied. Four of the five names are accepted here; only the fifth is not.
 
-**Why it matters:** `HelpContext` is what VBA itself names that parameter. Read out of the
-VBA type library on the machine this was found on --- `VBE7.DLL` 7.01.1158, VBA7.1, via
-`LoadTypeLibEx` and `ITypeInfo::GetNames` on `_ErrObject`:
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
 
-```
-Raise(Number, Source, Description, HelpFile, HelpContext)
-```
+**Additional context**
+Also on BETA 983, with the same TB5090. Severity: VBA-compatible code that names the fifth argument does not compile, and the diagnostic does not say which name was wrong.
 
-All five names are exactly the ones the failing call uses, and the call is Microsoft's own
-`Err.Source` example, named arguments and all --- so the code twinBASIC rejects is the code
-a VBA developer is most likely to have copied. Four of the five names are accepted here;
-only the fifth is not.
-
-**Found by** `scripts/check_examples.mjs` over `Reference/Default/VBA/ErrObject/Source.md`,
-whose sample was written in the named form. The page uses the positional form now.
+<!-- Reproducer: bugs/err-raise-helpcontext/ (mode compile, expects TB5090); verified on 995 and 983. Found by scripts/check_examples.mjs over Reference/Default/VBA/ErrObject/Source.md, whose sample was written in the named form; the page uses the positional form now. When fixed, the page can show the named form again. -->
 
 ---
 
 ## An interface member marked `[PreserveSig]` cannot be implemented by a class
 
-**Build:** BETA 995
-**Severity:** an interface the language lets you declare cannot be implemented at all, and
-the diagnostic asks for the signature that is already written.
+**Describe the bug**
+A class cannot implement an interface member that is marked `[PreserveSig]`. The compiler reports that it cannot match the implementation to the member, and prints as the expected signature exactly the one on the line the error is reported against, so whatever it compares is not what it prints.
 
-```
-[InterfaceId("11111111-0000-4000-8000-000000000004")]
-Interface IProbeD Extends IUnknown
-    [PreserveSig]
-    Function F() As Long
-End Interface
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `preservesig-implements.twinproj` (attached as `preservesig-implements.zip`). Its one source file, `Probe.twin`, holds the whole bug:
+   ```
+   [InterfaceId("11111111-0000-4000-8000-000000000004")]
+   Interface IProbeD Extends IUnknown
+       [PreserveSig]
+       Function F() As Long
+   End Interface
 
-Class ImplD
-    Implements IProbeD
-    Private Function IProbeD_F() As Long Implements IProbeD.F
-    End Function
-End Class
-```
+   Class ImplD
+       Implements IProbeD
+       Private Function IProbeD_F() As Long Implements IProbeD.F
+       End Function
+   End Class
+   ```
+2. See two errors:
+   ```
+   TB5004 unable to match this implementation to its interface member. The expected signature was: Private Function IProbeD_F() As Long
+   TB65535 Missing implementation of member Function F() As Long
+   ```
 
-```
-TB5004 unable to match this implementation to its interface member. The expected signature was: Private Function IProbeD_F() As Long
-TB65535 Missing implementation of member Function F() As Long
-```
+What was tried and does not help, each on its own:
+- the VB6-style name without the method-level `Implements IProbeD.F` clause gives `TB5018 unable to match this handler to its event member`, an event-handler message for an interface member, with the same expected signature;
+- `[PreserveSig]` on the implementing method as well gives `TB5155 This attribute is not supported in this context`.
 
-BETA 983 gave the second message as TB5000.
+What does not matter: a parameter, or a `Boolean` return (the case it was found in was `Function MyFunc(Arg1 As Variant) As Boolean`), or a `[TypeHint(...)]` on that parameter, which implements cleanly without `[PreserveSig]`. The same interface with the attribute removed implements cleanly. `[PreserveSig]` alone is the trigger.
 
-**The "expected" signature is character for character the one on the line the error is
-reported against.** Whatever the compiler is comparing, it is not what it prints.
+**Expected behavior**
+The implementation is accepted, as it is without the attribute. If `[PreserveSig]` members are not meant to be implemented in twinBASIC, a diagnostic saying so at the declaration.
 
-**What was tried and does not help**, each on its own:
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
 
-- the VB6-style name without the method-level `Implements IProbeD.F` clause --- `TB5018
-  unable to match this handler to its event member`, an *event-handler* message for an
-  interface member, with the same expected signature;
-- `[PreserveSig]` on the implementing method as well --- `TB5155 This attribute is not
-  supported in this context`.
+**Additional context**
+BETA 983 gives the second message as TB5000 instead of TB65535 (the reproducer, checked there, does not report TB65535). Severity: an interface the language lets you declare cannot be implemented at all, and the diagnostic asks for the signature that is already written.
 
-**What does not matter:** a parameter, or a **Boolean** return --- the case it was found in
-was `Function MyFunc(Arg1 As Variant) As Boolean` --- or a `[TypeHint(...)]` on that
-parameter, which implements cleanly without `[PreserveSig]`. The same interface with the
-attribute removed implements cleanly. `[PreserveSig]` alone is the trigger.
-
-**Found by** `scripts/check_examples.mjs` over `Reference/Core/Interface.md`, whose example
-declared `IFoo` with a `[PreserveSig]` member and then showed a class implementing it. The
-implementation had never compiled. The page's example no longer puts `[PreserveSig]` on a
-member it implements, and its description of the attribute says why.
+<!-- Reproducer: bugs/preservesig-implements/ (mode compile, expects TB5004 and TB65535); verified on 995, and on 983 it differs only in the second code. Found by scripts/check_examples.mjs over Reference/Core/Interface.md, whose example declared IFoo with a [PreserveSig] member and then showed a class implementing it; the example no longer puts [PreserveSig] on a member it implements, and its description of the attribute says why. -->
 
 ---
 
@@ -733,21 +685,23 @@ Also on BETA 983, where a copy of the HelloWorld sample's tree with `Settings` d
 
 ## Shifting a `Single`, `Double`, `Date`, `Boolean` or `String` compiles clean, then fails code generation
 
-**Build:** BETA 995
-**Severity:** the compiler accepts the expression with no diagnostic, and the procedure that
-contains it never runs.
+**Describe the bug**
+`<<` and `>>` on a `Single`, `Double`, `Date`, `Boolean` or `String` compile with no diagnostic, and code generation then fails for the procedure that holds the shift. The failure is reported only in the build log, as `[LINKER] compilation (codegen) error detected in '<module>.<procedure>' at line #<n>`, naming the shift's line.
 
-```
-Dim a As Single = 7.9
-Dim c As Integer = 1
-Debug.Print a << c
-```
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `shift-nonintegral.twinproj` (attached as `shift-nonintegral.zip`). Its source file `Probe.twin` holds the shift, and `Sub Main` calls it:
+   ```
+   Dim a As Single = 7.9
+   Dim c As Integer = 1
+   Debug.Print "before the shift"
+   Debug.Print a << c
+   ```
+2. See the problems panel show 0 errors, 0 warnings, 0 hints and 0 infos.
+3. Click **Build**.
+4. See the build fail: `[LINKER] compilation (codegen) error detected in 'Probe.Show' at line #7`, then `[LINKER] FAILED due to compilation errors`, and no output file.
 
-The problems panel shows no errors and the build reports `[LINKER] SUCCESS created output file`.
-When the procedure is called, the DEBUG CONSOLE shows `[LINKER] compilation (codegen) error
-detected in '<module>.<procedure>' at line #<n>`, naming the shift's line, and nothing in the
-procedure runs --- not even the statements before the shift. `On Error Resume Next` in the caller
-does not see it; the caller stops too.
+The same shift in a procedure that nothing calls builds clean. In a `[RunAfterBuild]` Sub the build reports `[LINKER] SUCCESS created output file`, and the error appears only when the procedure is called: `[LINKER] compilation (codegen) error detected in 'Probe.Go' at line #8`. Nothing in the procedure runs, not even the statements before the shift, and `On Error Resume Next` in the caller does not see it; the caller stops too.
 
 | left operand | `<<` and `>>` |
 |---|---|
@@ -756,11 +710,19 @@ does not see it; the caller stops too.
 | `Currency`, `Decimal` | builds, but works on the value: a `Currency` holding 7.9, shifted left by 1, is 15.8 |
 | a `Variant` holding any of the types above | builds, and multiplies or divides the value |
 
-Precedence reaches it too: `"x" & n << 2` parses as `("x" & n) << 2`, a `String` shift, and fails
-the same way. Either a diagnostic or a working shift is expected; the documentation had said
-floating-point operands are truncated before shifting.
+Precedence reaches it too: `"x" & n << 2` parses as `("x" & n) << 2`, a `String` shift, and fails the same way.
 
-**Found by** probing the operators' result types for `Reference/Operators.md`.
+**Expected behavior**
+Either a compile-time diagnostic at the shift, or a working shift. The documentation had said floating-point operands are truncated before shifting.
+
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+BETA 983 gives the same result for the reproducer: the build fails with the same codegen error. Severity: the compiler accepts the expression with no diagnostic, and the procedure that contains it never runs.
+
+<!-- Reproducer: bugs/shift-nonintegral/ (mode build, expects tbbuild exit 5 and "codegen" in the message); verified on 995 and 983. The first two failures, a reached procedure failing the build and a [RunAfterBuild] Sub building and then failing when called, were both measured on 2026-10-02 on 995 (tbbuild --build, and tbrun on a probe holding only the Single shift); the old entry described only the second. WIP.Harness.md (around the passage on [RunAfterBuild] and a shifted Single) records the second form; update it if this is fixed. Found by probing the operators' result types for Reference/Operators.md. -->
 
 ---
 
@@ -808,34 +770,41 @@ Severity: wrong values, with no diagnostic. Also on BETA 983, with the same resu
 
 ## Overloads on `Date` and `Double` resolve by declaration order, not by the argument's type
 
-**Build:** BETA 995
-**Severity:** the wrong overload runs, with no diagnostic.
+**Describe the bug**
+When a procedure is overloaded on `Date` and on `Double`, whichever of the two is declared first receives every call, whatever the type of the argument. No diagnostic is shown.
 
-```
-Private Function F(ByVal x As Date) As String
-    F = "Date"
-End Function
-Private Function F(ByVal x As Double) As String
-    F = "Double"
-End Function
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `date-double-overload.twinproj` (attached as `date-double-overload.zip`). Its source file `Probe.twin` declares the two overloads, `Date` first, and `Sub Main` calls `Probe.Show`:
+   ```
+   Private Function F(ByVal x As Date) As String
+       F = "Date"
+   End Function
+   Private Function F(ByVal x As Double) As String
+       F = "Double"
+   End Function
 
-Dim x As Double = 1.5
-Debug.Print F(x)        ' Date
-```
+   Dim x As Double = 1.5
+   Debug.Print F(x)        ' Date
+   ```
+2. Press F5 and read the DEBUG CONSOLE: `Show` calls `F` with a `Double` variable, a `Date` variable, a `Date` literal and `CDate(1)`, and all four print `Date`.
+3. Swap the two declarations and run again: all four print `Double`.
 
-Whichever of the two is declared first receives every call. With `Date` first, a `Double`
-argument reaches the `Date` overload; with `Double` first, a `Date` variable, `#1/2/2026#` and
-`CDate(1)` all reach the `Double` overload.
+Whichever of the two is declared first receives every call. With `Date` first, a `Double` argument reaches the `Date` overload; with `Double` first, a `Date` variable, `#1/2/2026#` and `CDate(1)` all reach the `Double` overload.
 
-**What does not reproduce it:** a `Date` overload beside a `String` one resolves correctly, and an
-overload set on `Byte`, `Integer`, `Long`, `LongLong`, `Single`, `Double`, `Currency`, `Decimal`,
-`Boolean`, `String` and `Variant` sends arguments of each of those types to their own overload.
-The compiler does tell the two types apart elsewhere: `TypeName` of a `Date` expression is
-`Date`, and a `Long` overload beside a `LongPtr` one is refused as a duplicate definition in a
-32-bit build, as it should be.
+What does not reproduce it: a `Date` overload beside a `String` one resolves correctly, and an overload set on `Byte`, `Integer`, `Long`, `LongLong`, `Single`, `Double`, `Currency`, `Decimal`, `Boolean`, `String` and `Variant` sends arguments of each of those types to their own overload. The compiler does tell the two types apart elsewhere: `TypeName` of a `Date` expression is `Date`, and a `Long` overload beside a `LongPtr` one is refused as a duplicate definition in a 32-bit build, as it should be.
 
-**Found by** the overload set used to detect the static type of arithmetic results while
-measuring the operators for `Reference/Operators.md`.
+**Expected behavior**
+Each call reaches the overload for its argument's type: `Double` for the `Double` variable and `Date` for the three `Date` arguments, whichever overload is declared first. `Date` and `Double` are stored alike but are different types, and the other types in the overload set above are told apart.
+
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Also on BETA 983, with the same result (the reproducer, `Date` first, prints `Date` four times). Severity: the wrong overload runs, with no diagnostic.
+
+<!-- Reproducer: bugs/date-double-overload/ (mode run, expects the `Double variable: Date` line); verified on 995 and 983, and the swapped order measured on 995 on 2026-10-02 with a scratch copy (four lines of `Double`, `TypeName` printing Date). Found by the overload set used to detect the static type of arithmetic results while measuring the operators for Reference/Operators.md. -->
 
 ---
 
@@ -1203,36 +1172,50 @@ What does not reproduce it: **Stop** at an ordinary break (a breakpoint or a ste
 
 ---
 
-## A `Static` declaration cannot initialise with a constructor that takes arguments
+## A `Static` in a Module procedure cannot be initialised with an argument constructor of a class declared later in the project
 
-**Build:** BETA 983 --- **not reproduced on a re-check**: a `Static s As Dog = New Dog("Rex")`,
-in a Module procedure, a Function, a Class method and a Property Get, with `Dog` a Private or a
-`[COMCreatable(False)]` class with a one-parameter `Sub New`, compiled and ran on BETA 983 and
-995 alike. What else the original case held is not recorded; find it before filing.
-**Severity:** a valid declaration does not compile; the workaround is a `Static` without an
-initialiser and a `Set` on first use.
+**Describe the bug**
+A `Static` variable in a Module procedure, initialised with `New` and a constructor that takes arguments, fails with TB5074 when the class is declared later in the project than the Module, in another file or further down the same file. With the class declared first, the same line compiles. `Dim` with the same initialiser compiles in both orders, so the declaration's position in the project changes whether a valid `Static` compiles.
 
-```
-Private Class Dog
-    Private m_Name As String
-    Public Sub New(ByVal Name As String)
-        m_Name = Name
-    End Sub
-End Class
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `static-ctor-args.twinproj` (attached as `static-ctor-args.zip`). The project lists `Probe.twin`, which holds the Module, before `ProbeDog.twin`, which holds the class:
+   ```
+   ' Probe.twin
+   Module Probe
+       Public Sub T()
+           Static s As Dog = New Dog("Rex")
+           Debug.Print s.GetName()
+       End Sub
+   End Module
 
-' in a procedure:
-Static s As Dog = New Dog("Rex")
-```
+   ' ProbeDog.twin
+   Private Class Dog
+       Private m_Name As String
+       Public Sub New(ByVal Name As String)
+           m_Name = Name
+       End Sub
+       Public Function GetName() As String
+           Return m_Name
+       End Function
+   End Class
+   ```
+2. See the project fail to compile with `TB5074 Could not bind to parameterized constructor of class 'Dog'. No compatible Sub New() method found`, at the `New`.
+3. Move the `Dog` class into `Probe.twin`, above the Module: the project compiles with no error.
 
-fails with TB5074, *Could not bind to parameterized constructor of class 'Dog'. No compatible
-Sub New() method found*, at the `New`.
+What does not reproduce it, each measured with the class declared later than the Module unless it says otherwise: `Dim s As Dog = New Dog("Rex")` compiles, and so does `Static s As Dog` with `Set s = New Dog("Rex")`; a `Static` with a constructor that takes no arguments compiles; the same `Static` in a method of a Class compiles; and the same `Static` with the class declared first compiles, in a Module procedure, a Function, a Class method and a Property Get, in one file or two, with the class `Private` or `[COMCreatable(False)]`. The failure holds for a `Private` class and a public `[COMCreatable(False)]` one, and with a second constructor beside the one that takes arguments.
 
-**What does not reproduce it:** the same initialiser on `Dim` (`Dim d As Dog = New Dog("Rex")`),
-and on a module-level `Private` or `Public`; a `Static` initialised with a constructor that takes
-no arguments (`Static c As Collection = New Collection`); and a `Static` of a value type
-(`Static n As Long = 5`). All compile and run.
+**Expected behavior**
+The declaration compiles whichever of the Module and the class comes first, as `Dim` does and as `Static` does when the class is first.
 
-**Found by** the fix pass for round 8's UC-59, measuring the forms `New.md` documents.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Also on BETA 983. Severity: a valid declaration does not compile, and which projects it affects depends on file order, so it appears and disappears as files are added. The workaround is a `Static` without an initialiser and a `Set` on first use, or declaring the class first. The order is the order of the files inside the `.twinproj`; the reproducer is packed with `Probe.twin` before `ProbeDog.twin`.
+
+<!-- Reproducer: bugs/static-ctor-args/ (mode compile, expects TB5074); verified on 995 and on 983. Rewritten 2026-10-02: the entry used to say it did not reproduce on 983 or 995, because every earlier probe declared the class before the module; the order was found when scripts/bug_repro.mjs packed a project differently from the IDE's own import (the IDE's `import` lists files in reverse alphabetical order, scripts/impexp.mjs in alphabetical order) and the same files gave opposite results. Measured with compile probes through tbbuild, in a project of its own for each case. The title changed because it no longer describes the bug; nothing under scripts/ or test/ refers to it. docs/Reference/Core/New.md states that `Static d As Dog = New Dog("Rex")` fails with TB5074 and tells the reader to use Set: that is true only when the class is declared later, so reword it when the entry is filed, and again when fixed. -->
 
 ---
 
@@ -1377,32 +1360,44 @@ Both keywords are new in BETA 990 and 992; BETA 987 refuses them (TB5182), and B
 
 ## An error in the body of a generic procedure names neither the type nor the call that caused it
 
-**Build:** BETA 995
-**Severity:** a diagnostic that points at correct code. In a project with many calls to a
-generic procedure, nothing says which call to fix.
+**Describe the bug**
+When a call to a generic procedure makes the procedure's body invalid for the type given, the error is reported in the body, twice, and names neither the type nor the line of the call. The diagnostic points at correct code. In a project with many calls to a generic procedure, nothing says which call to fix.
 
-```
-Module GenMax
-Public Function Max(Of T)(a As T, b As T) As T
-    If a > b Then
-        Return a
-    Else
-        Return b
-    End If
-End Function
-End Module
-```
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `generic-body-error.twinproj` (attached as `generic-body-error.zip`). Its one source file, `GenMax.twin`, holds the whole bug:
+   ```
+   Module GenMax
+   Public Function Max(Of T)(a As T, b As T) As T
+       If a > b Then
+           Return a
+       Else
+           Return b
+       End If
+   End Function
 
-With one call, `Set m = Max(Of Collection)(c1, c2)`, the project fails to compile with
-`TB5092 Missing argument 'Index'`, reported twice, both times at `[3,14]` of the module that
-holds `Max` --- the line with `>`. The message comes from `Collection`'s default member,
-`Item`. Neither error names `Collection`, and neither names the line of the call.
+   Public Sub Use()
+       Dim c1 As New Collection, c2 As New Collection
+       Dim m As Collection
+       Set m = Max(Of Collection)(c1, c2)
+   End Sub
+   End Module
+   ```
+2. See the project fail to compile with `TB5092 Missing argument 'Index'`, reported twice, both times at the line of `If a > b` in `Max`. The message comes from `Collection`'s default member, `Item`. Neither error names `Collection`, and neither names the line of the call.
 
-**What does not reproduce it:** calls with `Long`, `Double` and `String`, deduced or given
-with `(Of ...)`, which compile and return the larger value.
+What does not reproduce it: calls with `Long`, `Double` and `String`, deduced or given with `(Of ...)`, which compile and return the larger value.
 
-**Found by** probing round 9's UC-65 answer, whose `Max` uses `>` on a type parameter with
-nothing to say which types it accepts.
+**Expected behavior**
+A diagnostic that names the type argument and the call that supplied it. The `>` on a `Collection` is a legitimate error for this call, but it is the call that has to change, so that is where a person needs to be pointed.
+
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Also on BETA 983, with the same TB5092. Severity: a diagnostic that points at correct code. `Max` uses `>` on a type parameter with nothing to say which types it accepts, which is how the problem arises.
+
+<!-- Reproducer: bugs/generic-body-error/ (mode compile, expects TB5092); verified on 995 and 983. Found by probing round 9's UC-65 answer (the use-case evaluation corpus), whose Max uses `>` on a type parameter. -->
 
 ---
 
@@ -1649,25 +1644,22 @@ What does not reproduce it: a window given an id, or one window given none.
 
 ## `[PopulateFrom]` with no arguments crashes the compiler
 
-**Build:** BETA 995; first seen on BETA 987
-**Severity:** the compiler process dies while the project is being parsed, which
-`tbbuild` reports as a crash (its exit code 4), so a person who forgets the arguments is not
-told what is missing.
+**Describe the bug**
+An `Enum` marked `[PopulateFrom]` with no argument list crashes the compiler while the project is parsed. `tbbuild` reports it as a crash, `the compiler crashed 2x -- this project takes it down`, `last parsing: CrashProbe.twin`. A person who forgets the arguments is not told what is missing.
 
-The whole reproduction is one Enum:
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `populatefrom-no-args.twinproj` (attached as `populatefrom-no-args.zip`). Its one source file, `Probe.twin`, holds the whole bug:
+   ```
+   Public Module CrashProbe
+       [PopulateFrom]
+       Public Enum E
+       End Enum
+   End Module
+   ```
+2. See the compiler crash and restart while the project is parsed.
 
-```
-Public Module CrashProbe
-    [PopulateFrom]
-    Public Enum E
-    End Enum
-End Module
-```
-
-The Enum's body does not matter: the same crash comes with a member in it, and with the
-Enum inside a Class instead of a Module. The documented shape is five strings,
-`("json", "/Resources/PROBE/Strings.json", "events", "name", "id")`, and the other wrong
-shapes tried are handled:
+The body of the Enum does not matter: the same crash comes with a member in it, and with the Enum inside a Class instead of a Module. The documented shape is five strings, `("json", "/Resources/PROBE/Strings.json", "events", "name", "id")`, and the other wrong shapes tried are handled:
 
 | argument list | result |
 |---|---|
@@ -1676,57 +1668,58 @@ shapes tried are handled:
 | `("probe")`, on the reproduction above | TB5083 `unsupported data source` |
 | the documented five strings, with a resource that exists | compiles |
 
-So a missing argument list is the one wrong shape that is not checked.
+**Expected behavior**
+A diagnostic naming the missing arguments, as the other wrong argument lists get (TB5155 or TB5083), not a crash. A missing argument list is the one wrong shape that is not checked.
 
-**Observed** on 2026-09-30 in two ways. `scripts/sweep_attributes.mjs` builds every attribute
-at every declaration site in batches of 400 and halves a batch the compiler crashes on; each
-of the three Enum sites (an Enum with a member, an empty Enum, an Enum in a Class) was
-narrowed to one probe beside the three canaries the tool adds to every batch, which build
-clean without it. The four-line reproduction above was then built **exactly as written**, in
-a project holding only it and a two-line `Sub Main`, with no resources: `tbbuild` exits 4,
-`the compiler crashed 2x -- this project takes it down`, `last parsing: CrashProbe.twin`.
-The same project with `[PopulateFrom("probe")]` builds and reports the one TB5083 row. The
-rows for `(True)`, `(False)` and `(1)` come from the sweep's batches, not from that
-project.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+First seen on BETA 987; the reproducer crashes BETA 983 as well. Severity: the compiler process dies while the project is being parsed. The same project with `[PopulateFrom("probe")]` builds and reports the one TB5083 row. The rows for `(True)`, `(False)` and `(1)` come from a batch of probes, not from the reproducer.
+
+<!-- Reproducer: bugs/populatefrom-no-args/ (mode compile, expects tbbuild exit 4); verified on 995 and 983. Observed 2026-09-30 two ways: scripts/sweep_attributes.mjs builds every attribute at every declaration site in batches of 400 and halves a batch the compiler crashes on, and each of the three Enum sites (an Enum with a member, an empty Enum, an Enum in a Class) was narrowed to one probe beside the three canaries the tool adds to every batch, which build clean without it; the four-line reproduction was then built exactly as written, in a project holding only it and a two-line Sub Main, with no resources. The sweep tooling (scripts/sweep_attributes.mjs, its notes in WIP.Harness.md) meets the crash through the halving; when it is fixed, re-run the sweep for PopulateFrom and update whatever note records the crash. -->
 
 ---
 
 ## `As New` refuses a class whose only constructor has all-`Optional` arguments
 
-**Build:** BETA 995; BETA 983 accepts it and runs it
-**Severity:** code that compiled before BETA 993 stops compiling, and the two checks for "can
-this class be created without arguments" disagree.
+**Describe the bug**
+`Dim x As New C` fails with TB5121 when the only constructor of `C` has nothing but `Optional` arguments, so it can be called with none. The same class passes TB5135, the check for COM exposure: it compiles as a public class without `[COMCreatable(False)]`, so that check counts the constructor as one that takes no arguments. The two checks for "can this class be created without arguments" disagree.
 
-```
-Class COpt
-    Public V As Long
-    Public Sub New(Optional ByVal n As Long = 3)
-        V = n
-    End Sub
-End Class
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `asnew-optional-ctor.twinproj` (attached as `asnew-optional-ctor.zip`). Its one source file, `Probe.twin`, holds the whole bug:
+   ```
+   Class COpt
+       Public V As Long
+       Public Sub New(Optional ByVal n As Long = 3)
+           V = n
+       End Sub
+   End Class
 
-Module Probe
-    Public Sub T()
-        Dim x As New COpt
-        Debug.Print x.V
-    End Sub
-End Module
-```
+   Module Probe
+       Public Sub T()
+           Dim x As New COpt
+           Debug.Print x.V
+       End Sub
+   End Module
+   ```
+2. See the project fail to compile, on the `Dim`, with `TB5121 can't use this type with As-New syntax as it doesn't have a parameterless constructor`.
 
-fails on the `Dim` with TB5121 `can't use this type with As-New syntax as it doesn't have a
-parameterless constructor`. The same class satisfies TB5135, the check for COM exposure: it
-compiles as a public class without `[COMCreatable(False)]`, so that check counts the
-constructor as one that takes no arguments. On BETA 983 the reproduction compiles, and `x.V`
-prints `3`. TB5121 is the diagnostic BETA 993's notes describe ("classes with
-[COMCreatable(False)] set on them cannot be used as an As-New datatype"), corrected in 995.
+What does not reproduce it: a class with a `Class_Initialize` beside a `Sub New` that takes a required argument, or with a second `Sub New` with no parameters, is accepted. A class whose only `Sub New` takes a required argument is refused, `Private` or `[COMCreatable(False)]` alike, which is the diagnostic working as intended.
 
-**What does not reproduce it:** a class with a `Class_Initialize` beside a `Sub New` that takes
-a required argument, or with a second `Sub New` with no parameters, is accepted. A class whose
-only `Sub New` takes a required argument is refused, `Private` or `[COMCreatable(False)]`
-alike, which is the diagnostic working as intended.
+**Expected behavior**
+The project compiles, and `x.V` prints `3`, as it does on BETA 983. A constructor whose arguments are all `Optional` can be called without arguments, which is what `As New` needs.
 
-**Observed** on 2026-10-01 with compile probes through `tbbuild`, each case a project of its
-own, on BETA 995 and BETA 983; the run on 983 was a compiled EXE through `tbrun`.
+**Desktop (please complete the following information):**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+BETA 983 accepts the reproducer and runs it. TB5121 is the diagnostic BETA 993's notes describe ("classes with [COMCreatable(False)] set on them cannot be used as an As-New datatype"), corrected in 995. Severity: code that compiled before BETA 993 stops compiling.
+
+<!-- Reproducer: bugs/asnew-optional-ctor/ (mode compile, expects TB5121); on 983 it compiles clean, so verify there reports NO LONGER REPRODUCES, as it should. Observed on 2026-10-01 with compile probes through tbbuild, each case a project of its own, on BETA 995 and BETA 983; the run on 983 was a compiled EXE through tbrun. docs/Reference/Core/New.md states that a class whose only Sub New takes arguments, even if every argument is Optional, fails As New with TB5121; when this is fixed, that sentence is wrong for the Optional case. -->
 
 ---
 

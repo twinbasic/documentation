@@ -1,0 +1,6 @@
+' [PopulateFrom] with no argument list on an Enum: the compiler crashes while parsing this file.
+Public Module CrashProbe
+    [PopulateFrom]
+    Public Enum E
+    End Enum
+End Module

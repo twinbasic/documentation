@@ -1,0 +1,7 @@
+{
+  "mode": "build",
+  "expect": {
+    "exit": 5,
+    "message": "codegen"
+  }
+}

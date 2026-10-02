@@ -1,0 +1,7 @@
+Module Startup
+
+    Public Sub Main()
+        Probe.T
+    End Sub
+
+End Module

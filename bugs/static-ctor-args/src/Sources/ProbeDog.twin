@@ -1,0 +1,10 @@
+' A class whose only constructor takes an argument. It comes later in the project than the Module that uses it (Probe.twin).
+Private Class Dog
+    Private m_Name As String
+    Public Sub New(ByVal Name As String)
+        m_Name = Name
+    End Sub
+    Public Function GetName() As String
+        Return m_Name
+    End Function
+End Class

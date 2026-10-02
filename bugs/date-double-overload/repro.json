@@ -1,0 +1,6 @@
+{
+  "mode": "run",
+  "expect": {
+    "output": ["^Double variable: Date$"]
+  }
+}

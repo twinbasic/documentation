@@ -1,0 +1,7 @@
+Module Startup
+
+    Public Sub Main()
+        Probe.Show
+    End Sub
+
+End Module

@@ -1,0 +1,16 @@
+' The error is reported at line 4, "If a > b", for the call in Use; neither the type nor the call is named.
+Module GenMax
+Public Function Max(Of T)(a As T, b As T) As T
+    If a > b Then
+        Return a
+    Else
+        Return b
+    End If
+End Function
+
+Public Sub Use()
+    Dim c1 As New Collection, c2 As New Collection
+    Dim m As Collection
+    Set m = Max(Of Collection)(c1, c2)
+End Sub
+End Module

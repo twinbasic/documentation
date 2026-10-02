@@ -1,0 +1,18 @@
+' Overloads on Date and Double: the one declared first receives every call, whatever the argument's type.
+Module Probe
+    Private Function F(ByVal x As Date) As String
+        F = "Date"
+    End Function
+    Private Function F(ByVal x As Double) As String
+        F = "Double"
+    End Function
+
+    Public Sub Show()
+        Dim x As Double = 1.5
+        Dim d As Date = #1/2/2026#
+        Debug.Print "Double variable: " & F(x)
+        Debug.Print "Date variable: " & F(d)
+        Debug.Print "Date literal: " & F(#1/2/2026#)
+        Debug.Print "CDate(1): " & F(CDate(1))
+    End Sub
+End Module
