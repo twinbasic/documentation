@@ -155,6 +155,8 @@ So it takes at least one existing entry and at least one slot with nothing in it
 
 ## Compiler crashes on an `Interface` named by an angle-bracket placeholder that has an `Extends` clause
 
+*FILED #2453*
+
 **Describe the bug**
 A source file holding an `Interface` whose name is an angle-bracket placeholder and that has an `Extends` clause crashes the compiler while it parses the file. The DEBUG CONSOLE shows `NATIVE EXCEPTION: ACCESS_VIOLATION {no-basic-code}` with `>>> thread 0004: ParsingFileStart, <that file>`, then `restarting from MEMORY`, three times over, and then the IDE gives up. The input is not real code (it is a syntax skeleton, the shape the documentation uses to show where an attribute goes), but a parser given nonsense should report a diagnostic, and this one dereferences something instead.
 
@@ -252,14 +254,14 @@ Steps to reproduce the behavior:
 1. Open `build-and-exit-silent.twinproj` (attached as `build-and-exit-silent.zip`). Its only source file is `Sources\Startup.twin`:
    ```
    Module Startup
-
+   
        Public Sub Main()
        End Sub
-
+   
        Private Sub Unused()
            NoSuchProcedure
        End Sub
-
+   
    End Module
    ```
 2. See the IDE report 1 error, TB5079 `Unrecognized symbol 'NoSuchProcedure'`.
@@ -289,6 +291,8 @@ Silence on stdout and stderr: measured on BETA 983 first, and on BETA 995 by red
 ---
 
 ## Public members are typed with Private components, so a default project cannot use them
+
+*FILED #2454*
 
 **Describe the bug**
 Public members of the compiler packages are typed with `Private` classes, and `Public Enum`s sit inside `Private Module`s, so a project that references a package the ordinary way cannot name the types its documented members take. `VB.Report` shows it most sharply, because the compiler names the type in one diagnostic and rejects it in the next. Handling a documented public event requires opting into the package's private half by setting the library symbol to `*VB`.
@@ -353,6 +357,8 @@ It went unnoticed because none of the 32 sample projects the IDE ships exercises
 
 ## `Err.Raise` rejects `HelpContext` as a named argument, while its three siblings work
 
+*FILED #2455*
+
 **Describe the bug**
 `Err.Raise` accepts `Source:=`, `Description:=` and `HelpFile:=` as named arguments, but not `HelpContext:=`. The error is `TB5090 unrecognized named argument`, and it does not say which name was wrong.
 
@@ -397,7 +403,7 @@ Steps to reproduce the behavior:
        [PreserveSig]
        Function F() As Long
    End Interface
-
+   
    Class ImplD
        Implements IProbeD
        Private Function IProbeD_F() As Long Implements IProbeD.F
@@ -431,6 +437,8 @@ BETA 983 gives the second message as TB5000 instead of TB65535 (the reproducer, 
 ---
 
 ## `import` stops with exit code 999 on any folder inside `Packages`, so a project that embeds a package cannot be packed
+
+*CAPTURED IN EXISTING #841*
 
 **Describe the bug**
 `import`, the compiler executable's verb for packing a folder tree into a project file, stops partway through when the tree's top-level `Packages` folder contains a folder. It exits with code 999, writes no project file and leaves one already at the output path untouched. The last line printed is `IMPORTED FOLDER: <tree>\\Packages\`, with no `... DONE` and no `... FAILED`, and nothing reaches stderr. A package a project uses is embedded in it by default, as a folder of its own under `Packages`, so a project that embeds a package cannot be packed from its exported tree.
@@ -582,6 +590,8 @@ The same behaviour makes the VB package impossible to export without `--overwrit
 
 ## The IDE has written the same name twice into project files it ships
 
+*FILED #2435*
+
 **Describe the bug**
 Two of the 48 project and package files an installation ships hold one name more than once, with different contents: the VB package holds `Resources/MANIFEST/#1.xml` twice, and Sample 16, *twinBASIC IDE Addin (TODO Widgets demo)*, holds `.addins/WaynesTodoItemsData` eight times. A folder can hold only one file of a name, so unpacking keeps one copy. The eight copies in Sample 16 suggest that each save of the add-in's data added an entry instead of replacing the old one, which is a guess and not a measurement.
 
@@ -685,6 +695,8 @@ Also on BETA 983, where a copy of the HelloWorld sample's tree with `Settings` d
 
 ## Shifting a `Single`, `Double`, `Date`, `Boolean` or `String` compiles clean, then fails code generation
 
+*FILED #2436*
+
 **Describe the bug**
 `<<` and `>>` on a `Single`, `Double`, `Date`, `Boolean` or `String` compile with no diagnostic, and code generation then fails for the procedure that holds the shift. The failure is reported only in the build log, as `[LINKER] compilation (codegen) error detected in '<module>.<procedure>' at line #<n>`, naming the shift's line.
 
@@ -728,6 +740,8 @@ BETA 983 gives the same result for the reproducer: the build fails with the same
 
 ## A `Variant` shift multiplies a fractional value, and can return `Empty`
 
+*FILED #2437*
+
 **Describe the bug**
 A `Variant` holding a `Double`, `Currency` or `Decimal` of 7.9, shifted left by 1, gives 15.8: the value is multiplied by 2, not shifted. Shifted right by 1, the `Double` and the `Decimal` give 3, but the `Currency` gives 3.95. A `Variant` holding an `Integer` or a `Long` shifted left by a count as large as the type's width gives `Empty` rather than 0. There is no diagnostic.
 
@@ -770,6 +784,8 @@ Severity: wrong values, with no diagnostic. Also on BETA 983, with the same resu
 
 ## Overloads on `Date` and `Double` resolve by declaration order, not by the argument's type
 
+*FILED #2438*
+
 **Describe the bug**
 When a procedure is overloaded on `Date` and on `Double`, whichever of the two is declared first receives every call, whatever the type of the argument. No diagnostic is shown.
 
@@ -783,7 +799,7 @@ Steps to reproduce the behavior:
    Private Function F(ByVal x As Double) As String
        F = "Double"
    End Function
-
+   
    Dim x As Double = 1.5
    Debug.Print F(x)        ' Date
    ```
@@ -809,6 +825,8 @@ Also on BETA 983, with the same result (the reproducer, `Date` first, prints `Da
 ---
 
 ## `Boolean \ String` and `Boolean Mod String` convert the `String` to `Boolean`
+
+*FILED #2439*
 
 **Describe the bug**
 With a `Boolean` on the left and a `String` on the right, `\` and `Mod` convert the `String` to `Boolean` instead of to a number, so the result has the wrong value and the wrong type. There is no diagnostic.
@@ -844,6 +862,8 @@ What does not reproduce it: every other operator converts the `String` to a numb
 ---
 
 ## Export Project follows a directory junction in its folder and deletes what it points to
+
+*FILED #2456*
 
 **Describe the bug**
 **File → Export Project** empties its export folder before it writes, as the *Export Path* setting warns. It does not stop at a directory junction in that folder: it goes through the junction, deletes the files in the folder the junction points to, and then deletes the junction. Data outside the export folder is lost, and the only record is the Debug Console, with *Export Verbose* on.
@@ -930,6 +950,8 @@ A folder with no read-only file does not reproduce it: it is emptied and exporte
 
 ## Export Path refuses `${SourcePath}` alone, but not the same folder written as a path
 
+*FILED #2457*
+
 **Describe the bug**
 The Settings editor refuses `${SourcePath}` as the *Export Path*, because **File → Export Project** empties its folder and `${SourcePath}` is the folder that holds the project file. The check compares the text only: the same folder typed in full is accepted, and the compiler applies no check of its own. An export into the project's own folder deletes the project file.
 
@@ -960,6 +982,8 @@ The check is the `validate` function of `project.exportPath` in `ide/main.js`. I
 ---
 
 ## Export Project writes the compiler packages, which the project does not hold, and the command line cannot pack the result
+
+*CAPTURED IN \#841*
 
 **Describe the bug**
 **File → Export Project** writes a `Packages` folder holding the full source of the compiler packages the project uses: `VB`, `VBA`, `VBRUN` and `AppGlobalClassProject` for a project with the default references. That is 475 of the 477 files an export of a two-file project wrote. The project file does not hold them: a `.twinproj` the IDE saved holds only the packages the project embeds, and `twinBASIC_win32.exe export` of it writes only those.
@@ -1012,6 +1036,8 @@ What does not reproduce it: the command line's own `export`, which writes what t
 
 ## An out-of-range index raises `&H8002000B` or `&H80004005`, not VBA's error 9
 
+*FILED #2440*
+
 **Describe the bug**
 An array or `Collection` index that is out of range raises -2147352565 (`&H8002000B`, *Invalid index.*) or -2147467259 (`&H80004005`, *Unspecified error*). VBA raises error 9, *Subscript out of range*, so code that handles `Err.Number = 9` does not recognise the error. There is no diagnostic.
 
@@ -1048,6 +1074,8 @@ Also on BETA 983, in the IDE and in a compiled EXE alike. Severity: VBA code tha
 ---
 
 ## Reading `Forms` by index returns a broken reference, and the process then crashes
+
+*FILED #2458*
 
 **Describe the bug**
 In a loop over `Forms.Count`, `Set f = Forms(k)` with `f` declared `As Form`, followed by a read of `f.Name`, ends in an access violation (`0xC0000005`). As a compiled EXE the process exits with that code. Run in the IDE, the DEBUG CONSOLE reports `NATIVE EXCEPTION: ACCESS_VIOLATION` at the line that reads `f.Name`, and the run ends without returning.
@@ -1126,6 +1154,8 @@ What does not reproduce it: choosing **Ignore** without pressing a step key firs
 
 ## Stop at a run-time error ends only the procedure that raised it
 
+*FILED #2441*
+
 **Describe the bug**
 When a program raises an untrapped error in the debugger and the error panel opens, **Stop** (the panel's button, the toolbar's Stop, or **Run → End**) ends only the procedure that raised the error. The caller carries on running: statements after the call still execute. The program goes on running after the user asked it to stop. Three runs, the same each time.
 
@@ -1188,7 +1218,7 @@ Steps to reproduce the behavior:
            Debug.Print s.GetName()
        End Sub
    End Module
-
+   
    ' ProbeDog.twin
    Private Class Dog
        Private m_Name As String
@@ -1284,6 +1314,8 @@ What does not reproduce it: an **Apply** after the untick, followed by another a
 
 ## Embedding a package with no `Packages` folder puts the compiler in a crash loop
 
+*FILED #2442*
+
 **Describe the bug**
 A `.twinpack` whose tree has no `Packages` folder, imported through Settings → References → Available Packages → **Import from file...**, ticked and applied, makes the compiler crash on each restart: `restarting from FILE` four times about two seconds apart, and then the IDE reports "Compiler crash loop detected. Restarting in SAFE mode."
 
@@ -1314,6 +1346,8 @@ What does not reproduce it: a project with the same package already embedded und
 ---
 
 ## A call through a `FastCall` or `ThisCall` delegate is made as stdcall on win32
+
+*FILED #2443*
 
 **Describe the bug**
 On win32, a call through a delegate declared `FastCall` or `ThisCall` passes its arguments as stdcall does, whatever convention the delegate declares, and raises *Bad DLL definition. Stack corruption detected.* The delegate is unusable on win32: every call through it raises an error.
@@ -1375,7 +1409,7 @@ Steps to reproduce the behavior:
            Return b
        End If
    End Function
-
+   
    Public Sub Use()
        Dim c1 As New Collection, c2 As New Collection
        Dim m As Collection
@@ -1402,6 +1436,8 @@ Also on BETA 983, with the same TB5092. Severity: a diagnostic that points at co
 ---
 
 ## Text that continues a `Debug.Print` line is escaped twice in the DEBUG CONSOLE
+
+*FILED #2444*
 
 **Describe the bug**
 When a `Debug.Print` statement ends with `;`, the next `Debug.Print` continues the same line, and the DEBUG CONSOLE escapes that continued text twice: `&`, `<` and `>` show as `&amp;`, `&lt;` and `&gt;`. The text that opens the line comes out right.
@@ -1430,6 +1466,8 @@ Severity: cosmetic, but it changes what a program appears to print. Also on BETA
 ---
 
 ## An add-in's keyboard shortcut does not fire if it includes `{CTRL}` or `{ALT}`
+
+*FILED #2445*
 
 **Describe the bug**
 A shortcut an add-in registers with `Host.KeyboardShortcuts.Add` does not fire when its key string includes `{CTRL}` or `{ALT}`. The SDK's own example, `{CTRL}{SHIFT}d` in the description of `KeyboardShortcuts.Add`, cannot be used, and nothing says why. An add-in that registers
@@ -1487,6 +1525,8 @@ A smaller point for the same fix: `KeyboardShortcuts.Add` stores the string as g
 
 ## F1 and the fold icon toggle the signature help, then fail
 
+*FILED #2446*
+
 **Describe the bug**
 In the code editor's signature help, F1 and a click on the fold icon both toggle the help between expanded and collapsed, and then fail. Every F1 adds `command failed: "tbHelp_ToggleExpandSignatureHelp"` to the Debug Console, and every click on the icon throws an error in the page. The toggle works, so the error is the only symptom.
 
@@ -1515,6 +1555,8 @@ F1 was measured on BETA 995, in a run where an add-in that registers F1 was load
 ---
 
 ## Typing just after a file opens at a position puts the text at that position, in reverse
+
+*FILED #2447*
 
 **Describe the bug**
 For 700 ms after the code editor opens a file at a line and column (Go To Definition, a Find in Files result, an add-in's `Editors.Open`), the IDE puts the cursor back at that place whenever the compiler's decorations for the document arrive. Every edit brings new decorations, and each time the cursor goes back the 700 ms start again. So typing that starts inside the window, and goes on without a 0.7 s pause, puts each character at the opened position, in front of the one before it. Typed text goes to the wrong place and in the wrong order, and nothing shows that it happened.
@@ -1551,6 +1593,8 @@ BETA 995 was not measured: no lane exercises it. `parseDocumentDecorations` and 
 ---
 
 ## Hover says a `ByVal` parameter was auto-generated because `Option Explicit` is off
+
+*FILED #2448*
 
 **Describe the bug**
 In a project with `Option Explicit` on, hovering over a `ByVal` parameter of type `String`, `Variant`, `Object`, a class or tbIDE's `Host` shows a note that the variable was auto-generated because `Option Explicit` is off, and recommends turning it on. The option is on, and the parameter was declared by the user.
@@ -1601,6 +1645,8 @@ This was measured by sending `textDocument/hover` over the compiler's language s
 
 ## Every tool window given no id is the same window
 
+*FILED #2449*
+
 **Describe the bug**
 `Host.ToolWindows.Add` declares its id (`UniqueIdForPositionPersistance`) `Optional`, so leaving it out looks correct. But every tool window added without an id is the same window: the second `Add` returns the window the first one made, after emptying it, and both `ToolWindow` objects are bound to it. An add-in's windows overwrite each other, or another add-in's, and nothing says so.
 
@@ -1644,6 +1690,8 @@ What does not reproduce it: a window given an id, or one window given none.
 
 ## `[PopulateFrom]` with no arguments crashes the compiler
 
+*FILED #2450*
+
 **Describe the bug**
 An `Enum` marked `[PopulateFrom]` with no argument list crashes the compiler while the project is parsed. `tbbuild` reports it as a crash, `the compiler crashed 2x -- this project takes it down`, `last parsing: CrashProbe.twin`. A person who forgets the arguments is not told what is missing.
 
@@ -1684,6 +1732,8 @@ First seen on BETA 987; the reproducer crashes BETA 983 as well. Severity: the c
 
 ## `As New` refuses a class whose only constructor has all-`Optional` arguments
 
+*FILED #2459*
+
 **Describe the bug**
 `Dim x As New C` fails with TB5121 when the only constructor of `C` has nothing but `Optional` arguments, so it can be called with none. The same class passes TB5135, the check for COM exposure: it compiles as a public class without `[COMCreatable(False)]`, so that check counts the constructor as one that takes no arguments. The two checks for "can this class be created without arguments" disagree.
 
@@ -1697,7 +1747,7 @@ Steps to reproduce the behavior:
            V = n
        End Sub
    End Class
-
+   
    Module Probe
        Public Sub T()
            Dim x As New COpt
@@ -1724,6 +1774,8 @@ BETA 983 accepts the reproducer and runs it. TB5121 is the diagnostic BETA 993's
 ---
 
 ## `FileCopy` of an open file raises `&H80004005`, where VB6 raises 55 or copies it
+
+*FILED #2451*
 
 **Describe the bug**
 `FileCopy` of a file that is open raises -2147467259 (`&H80004005`, *Unspecified error*), whatever mode the file is open in. VB6 raises error 55, *File already open*, for a file open `For Append`, and copies a file open `For Input` without an error. Code that handles VB6's error 55 does not recognise the error, and a copy that VB6 makes is refused.
@@ -1755,6 +1807,8 @@ BETA 983 copied an open file with no error, in both modes (the project prints 0 
 ---
 
 ## `Err` after a handled `Err.Raise` in an LLVM-compiled procedure holds `&HEAEAEA01` and no text
+
+*FILED #2452*
 
 **Describe the bug**
 In a procedure compiled with LLVM, an `Err.Raise` that the procedure handles leaves `Err.Number` at -353703423 (`&HEAEAEA01`), with an empty `Err.Source` and the generic description *Application-defined or object-defined error*. The handler cannot tell which error it caught.
