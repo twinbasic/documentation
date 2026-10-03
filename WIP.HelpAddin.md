@@ -69,8 +69,8 @@ the compiler what a symbol is.** Each of those gaps shapes a stage below.
   (`main.js@961019`) the text `%APPDATA%\twinBASIC`, which the host expands in the IDE's
   own environment, creates `packages`, `themes`, `locale`, `addins\win32` and
   `addins\win64` in, and returns. The page keeps the path as `commonFolderRootPath` and
-  sends it with `RequestStartCompiler` and `RequestLoadAddins` (`main.js@1047705` and
-  `@1048667`). Measured on BETA 983 and 995 by
+  passes it to the compiler when it starts it and when it asks it to load the add-ins
+  (`main.js@1047705` and `@1048667`). Measured on BETA 983 and 995 by
   [test/addin/appdata.test.mjs](test/addin/appdata.test.mjs), with a probe add-in that
   prints the file it was loaded from: an IDE started with `APPDATA` naming a folder of the
   lane's own loaded the probe from `<APPDATA>\twinBASIC\addins\win32`, and not a second
@@ -101,8 +101,8 @@ the compiler what a symbol is.** Each of those gaps shapes a stage below.
   add-in in `addins\win64`: `[InFolder_win64.dll] Failed to load addin.  LoadLibrary()
   failed.` **An add-in that failed to load is still in the compiler's list**, as `Unknown
   Addin`, so a test looks for the name it expects rather than counting.
-- **Holding Shift while a project opens skips the add-ins.** The page sends
-  `RequestLoadAddins` only when `shiftKeyDown` is false, and otherwise writes `[IDE] SHIFT
+- **Holding Shift while a project opens skips the add-ins.** The page asks the compiler to
+  load them only when `shiftKeyDown` is false, and otherwise writes `[IDE] SHIFT
   KEY DETECTED: DISABLED LOADING OF ADDINS` to the DEBUG CONSOLE (`main.js@1048443`).
   `shiftKeyDown` follows the keymap's `tbMisc_ShiftKeyStateDown` and `...Up` actions, so a
   test that presses Shift must not do it while a project is opening.
@@ -273,8 +273,8 @@ Read at `main.js@1002292` (`toolWindowElementAddChild`) and `@1005960`
   match. Text from a file or the user must be escaped before it goes into such HTML; the
   published HtmlElementProperties page says so.
 - **Events.** A name the element has as a property or as `on<name>` gets a real
-  `addEventListener`, and a copy of the event goes back to the add-in over the compiler's
-  root socket, with `target` reduced to `{id, value}` (`copyEvent`). Any other name is
+  `addEventListener`, and a copy of the event goes back to the add-in through the
+  compiler, with `target` reduced to its `id` and `value` (`copyEvent`). Any other name is
   stored as a function on the element, or on the object at the end of the property path,
   under that name (`toolWindowElementSetPropertyCallback`) --- that function is what
   `raiseEvent` calls. `raiseEvent` climbs `parentNode` to the first node with a
@@ -345,9 +345,9 @@ BETA 983 and 995)**, measured by [test/addin/ideserver.test.mjs](test/addin/ides
 with files put in a lane's copy of the install:
 
 - The server is the page server, `bin\twinBASIC_win32.exe --ide=<pid>`, not the compiler:
-  it was the process listening on the page's port. The page is
-  `http://localhost:<port>/<passkey>/main.htm` with `<base href="/<passkey>/">`, the
-  passkey a GUID, and a relative URL is a path under `ide\`.
+  it was the process listening on the page's port. The page's URL starts its path with a
+  key the IDE makes for the run, a GUID, and the page's base URL points there, so a
+  relative URL is a path under `ide\`.
 - Fifteen files of the kinds the offline site is made of came back byte for byte: pages,
   stylesheets, scripts, images and fonts, in folders two deep, a name with a space in it,
   4 MB of JavaScript, and a file written after the IDE had started. A frame given the
@@ -357,7 +357,7 @@ with files put in a lane's copy of the install:
   query on this route; a fragment is not sent, and does no harm. `.html`, `.json`, `.jpg`,
   `.woff2`, `.mjs` and `.txt` come with no `Content-Type` --- the browser sniffs the page
   and it renders --- while `.htm`, `.css`, `.js`, `.svg`, `.png` and `.gif` get the usual
-  types. A folder is not a page, and nothing is served without the passkey.
+  types. A folder is not a page, and nothing is served without the key.
 - **A page served this way is on the IDE page's own origin**, so its script can reach the
   IDE's internals: the framed page read `typeof parent.openEditors` as `"object"`. Only our
   own pages, then, and `sandbox` on the frame if that matters.
@@ -373,7 +373,7 @@ have: writing into the install, which every new build replaces. Still deferred.
   source.
 - **The compiler knows, and names the package, the container and the kind (P5).** Measured
   on BETA 983 and 995 by [test/addin/symbols.test.mjs](test/addin/symbols.test.mjs), which puts each
-  question the way the IDE's own code does. Hover (`textDocument/hover`, `main.js@842393`)
+  question the way the IDE's own code does. Hover (`main.js@842393`)
   returns markdown: for a procedure, its declaration, then a heading naming where it is
   declared, then its `[Description]` text, which for a VBA function is several paragraphs:
 
@@ -396,22 +396,24 @@ have: writing into the install, which every new build replaces. Still deferred.
   instead, `TB-DEBUG CODEGEN SIZE: [NOT-READY]`; over a `ByVal` parameter of a class,
   `String`, `Variant` or `Object` it adds a wrong note about `Option Explicit`
   ([BUGS-TO-REPORT.md](BUGS-TO-REPORT.md)).
-- **Go To Definition names the package's own source.** `textDocument/definition`
-  (`@846297`) returns one `{uri, range}`. For `MsgBox` it is
-  `twinbasic:/SymbolsProbe/Packages/tbIDE/Packages/VBA/Sources/Interaction.twin`, the
-  declaration's lines, and the IDE's file system opens it. Each package's own references
-  sit under its `Packages` folder again, so in a project that references tbIDE, VBA is in
-  the tree twice, and definition named tbIDE's copy: the package is the name after the last
-  `Packages/`. The file is the module for a function, and for a class's member the file the
-  interface is in (`Collection.twin`, `ToolWindows.twin`). Nothing for `Debug.Print`.
-- **Signature help and completion say the same.** The completion request's `signatures[]`
-  (`textDocument/completion`, which the code editor's intellisense sends) have a `doc` that
-  starts with the same heading, for package procedures as for the project's own: P2 saw
-  `in AddinHost.Haystack` in the expanded signature help. `textDocument/lazyCompletion`
-  gives a completion's declaring file and line, the same as definition's.
-- **Only page script can ask.** The call is `lspSocket.request(method, params, callback)`.
-  A harness makes it over CDP; an add-in could only through an inline handler in HTML it
-  sets (P4), which [Open decisions](#open-decisions) keeps for probes.
+- **Go To Definition names the package's own source.** Definition (`@846297`) returns one
+  file and range. For `MsgBox` the file is
+  `twinbasic:/SymbolsProbe/Packages/tbIDE/Packages/VBA/Sources/Interaction.twin` and the
+  range the declaration's lines, and the IDE's file system opens the file. Each package's
+  own references sit under its `Packages` folder again, so in a project that references
+  tbIDE, VBA is in the tree twice, and definition named tbIDE's copy: the package is the
+  name after the last `Packages/`. The file is the module for a function, and for a class's
+  member the file the interface is in (`Collection.twin`, `ToolWindows.twin`). Nothing for
+  `Debug.Print`.
+- **Signature help and completion say the same.** The signatures that the completion
+  request returns (the request the code editor's intellisense sends) carry documentation
+  that starts with the same heading, for package procedures as for the project's own: P2
+  saw `in AddinHost.Haystack` in the expanded signature help. The request for a
+  completion's details gives its declaring file and line, the same as definition's.
+- **Only page script can ask.** The question is a call on the page's own socket to the
+  compiler, answered through a callback. A harness makes it over CDP; an add-in could only
+  through an inline handler in HTML it sets (P4), which [Open decisions](#open-decisions)
+  keeps for probes.
 
 ### Dialogs
 
@@ -715,7 +717,7 @@ WebView2 preferring light.
 | P10 | Does an environment variable set by the harness reach the add-in (`Environ$`)? **Answered, BETA 983: yes**, through the launcher, the IDE and the compiler the IDE starts. With `TB_ADDIN_TEST=1` in `launchIde`'s environment, `Environ$` and `GetEnvironmentVariableW` both returned `1` in the add-in, and a compiler started by the restart button returned it too; left out, both said it was unset. `WEBVIEW2_USER_DATA_FOLDER`, which `launchIde` always sets, arrived with the lane's port in it. | the side-effect switch |
 | P11 | Does the IDE write into its own install folder during a session? **Answered, BETA 983 and 995: no.** On 983 a compile, a compiler crash and a `tbrun` build-and-run left all 233 files byte-identical, mtimes included. On 995 the install (235 files) was byte-identical after exports, a `tbbuild` and two `tbrun` runs; `%APPDATA%` was not re-checked. | hardlinks or copies --- copies, for safety, at 380 ms |
 | P12 | Does `raiseEvent` from plain tool-window HTML throw? **Answered, BETA 983 and 995: yes** --- `TypeError: Cannot read properties of null (reading 'rootEventHandler')`, and the listener is not called. An inline handler that calls the listener `AddEventListener` stored on its parent, `this.parentNode.<name>(event)`, reaches the add-in. | how the pane's events are written |
-| P13 | Does the compiler's HTTP server serve any file placed under `ide\`? **Answered, BETA 983 and 995: yes**, and it is the page server, `twinBASIC_win32.exe --ide=<pid>`, not the compiler. Any file, byte for byte, below the page's passkey path, including one written after the IDE started; a frame with a relative `src` shows it on the IDE page's own origin. A query string makes a 404, and `.html` has no `Content-Type`. | an offline route --- it exists ([Offline](#ways-to-show-a-page)) |
+| P13 | Does the compiler's HTTP server serve any file placed under `ide\`? **Answered, BETA 983 and 995: yes**, and it is the page server, `twinBASIC_win32.exe --ide=<pid>`, not the compiler. Any file, byte for byte, below the page's own path, including one written after the IDE started; a frame with a relative `src` shows it on the IDE page's own origin. A query string makes a 404, and `.html` has no `Content-Type`. | an offline route --- it exists ([Offline](#ways-to-show-a-page)) |
 | P14 | What do `tbCreateCompilerAddin_v2` and `_v3` expect? **Answered, BETA 983 and 995: what `tbCreateCompilerAddin` does.** The loader looks for the plain name, then `_v2`, then `_v3`, and calls whichever it finds with the `Host` alone and asks the result for `IAddInV1`. The names are version stamps: the linker exports a function named `tbCreateCompilerAddin` as `tbCreateCompilerAddin_v3` alone, and an IDE that knows none of a DLL's names refuses it as `compiled for a newer version of the twinBASIC IDE`, as a patched `_v4` was. | nothing in the design --- the add-in declares `tbCreateCompilerAddin` as the package says; the tbIDE page has a NOTE |
 
 ### Stage 3: the symbol index, generated by the docs build
@@ -933,9 +935,9 @@ harness about a second against opening a new IDE.
    scanner would have to find the declaration of `c` and the type of `Host.ToolWindows`
    first. But only page script can ask, so the route is the choice: through the public API
    once upstream adds a call, with the add-in's own parser below until then; or through
-   `lspSocket` from an inline handler (P4), which the open decision on page internals rules
-   out for the shipped add-in. Either way the answer names an interface, which the index
-   maps to its class (Stage 3).
+   the page's socket from an inline handler (P4), which the open decision on page internals
+   rules out for the shipped add-in. Either way the answer names an interface, which the
+   index maps to its class (Stage 3).
 4. **Later:** hover help through `CodeEditor.AddMonacoWidget` after a pause (the cost of
    adding and removing widgets is not measured); offering only the packages the project
    references; the `[Description]` connection; offline use.
@@ -1000,11 +1002,12 @@ Recommended, and not yet confirmed:
 
 - **Page internals are for probes only.** The shipped add-in uses the public API and
   `ShellExecuteW`, and whatever the API lacks is requested upstream. P4 showed the route
-  exists: any inline handler can reach the page's globals, `openEditors`, `lspSocket` and
-  `hostAppObject` among them. `raiseEvent` in a list view's items is the exception, since
-  the IDE's own samples use it that way and it is the only way a list view reports a click.
-  P5 raises what the rule costs: through `lspSocket` the add-in would know the package and
-  interface of any name under the cursor today (Stage 4, increment 3).
+  exists: any inline handler can reach the page's globals, `openEditors`, the socket to the
+  compiler and `hostAppObject` among them. `raiseEvent` in a list view's items is the
+  exception, since the IDE's own samples use it that way and it is the only way a list view
+  reports a click.
+  P5 raises what the rule costs: through the page's socket the add-in would know the
+  package and interface of any name under the cursor today (Stage 4, increment 3).
 - **The site reads a `theme` query parameter**, so that a page in the help pane can match
   the IDE's theme (Stage 3, after P3). **Deferred** until the add-in works, at least in part
   (2026-09-25); decided then, not before.

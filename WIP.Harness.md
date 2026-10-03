@@ -940,9 +940,9 @@ IDE has gone, and the first delete failed. `removeTree` in `tb-ide-copy.mjs` ret
 to five seconds, and `removeIdeCopy` and the add-in runner both use it.
 
 **`loadedAddins(c)`** in `tb-ide-addins.mjs` is the check that the copy is what it claims to be.
-It asks the page's `root.getAddinsList`, which asks the compiler over its root socket
-(`RequestAddinsStateList`), so the answer is the compiler's own, not an inference from files
-on disk. It is the same list the Add-Ins menu shows.
+It asks the page's `root.getAddinsList`, which asks the compiler, so the answer is the
+compiler's own, not an inference from files on disk. It is the same list the Add-Ins menu
+shows.
 
 ## The IDE runs inside a job
 
