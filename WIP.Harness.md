@@ -252,6 +252,47 @@ The CDP client is [scripts/lib/tb-cdp.mjs](scripts/lib/tb-cdp.mjs) --- raw rathe
 puppeteer, because a pending `alert()` blocks the renderer and puppeteer's `connect()`
 handshake talks to the renderer, so it hangs on precisely the state you need to recover from.
 
+**How the wait for the compile ends.** Nothing in the IDE's window says that a compile has
+finished. So the harness used to wait for the window --- the compiler's status, the four
+counters and the Problems panel --- to read OPERATIONAL and stand still for five seconds,
+and those five seconds were nearly half of a `tbbuild` run. It now also watches the IDE
+page's own traffic through CDP, and stops once that traffic shows the compile has ended and
+the window agrees with it: the same four counts, and a row in the panel for each. Three rules
+keep that from ending a wait too soon:
+
+- a compile that had already ended when the wait began does not count, so a wait that follows
+  an Apply or an edit takes the compile after it, not the one before;
+- a compile is believed only once it has been the latest for 300 ms, because every keystroke
+  starts a compile of its own;
+- a compile from before the compiler restarted --- after a crash, a change of target or the
+  restart button --- never counts.
+
+A project whose traffic never shows a compile ending falls back to the five-second rule, and
+so does a page that a dialog has blocked. The reproducer `interface-extends-itself` is one
+such project: its compiler never reports a result at all.
+
+**The new wait was checked against the five-second rule** on the install's 32 samples and
+templates, with and without `--arch win64`; on the 26 of them that build without registering
+anything, with `--build` and with `--llvm`; on the 44 projects under `bugs/`; and through
+`bug_repro verify`, `examples.bat`, `addin-test.bat` and `ide-test.bat`, run from two
+checkouts. Apart from the two differences below, which were not the wait's doing, every exit
+code, count, diagnostic row and build result was the same, and no add-in wrote to the DEBUG
+CONSOLE in the three seconds after any wait of the add-in or IDE lanes ended. Each project
+takes about five seconds less: `tbbuild` on a one-file template went from 11 s to 6 s, and a
+full `examples.bat` from about 125 s to about 80 s (BETA 995).
+
+The two differences:
+
+- **`--llvm`, four projects at a time, left 4 of 52 builds hanging** --- three under the new
+  wait, one under the old: each build started and then reported nothing for 120 s. One at a
+  time, the same four built on both sides, twice. `examples.bat` already builds a failed batch
+  a second time for this reason; `tbbuild` does not.
+- **The `assert` lane of `ide-test.bat` failed all three times under the old code**, and
+  passes under the new code only by chance. The IDE ignores a click on the error panel's Stop
+  that comes as soon as the panel is drawn, though the click hits the button; a second later
+  it works. The new code passes with its early end switched off too, so it is watching the
+  page's traffic, not the wait, that moves the click late enough.
+
 **The mechanics are one library, [scripts/lib/tb-ide.mjs](scripts/lib/tb-ide.mjs)**:
 starting the IDE, attaching, waiting for the compile, reading the diagnostics and the DEBUG
 CONSOLE, clicking, building, and ending the process tree. `tbbuild` and `tbrun` are command lines
@@ -434,10 +475,11 @@ and its scripts come over plain HTTP, and a patched `main2.js` could be served -
 would not remove the WebView, it would only change what runs inside it. The thing you would
 want to delete is the thing that mints the connection.
 
-What the websockets *would* be good for, once an IDE is up, is replacing the poll-for-DOM-
-stability heuristic with `compilationStarted` plus a quiet period of `publishDiagnostics`,
-and taking structured diagnostics instead of scraped text. That is a robustness change, not
-a speed one, and the current reader is the IDE's own report walk, so it is not urgent.
+Watching the page's traffic is another matter: CDP shows it to the harness with no key, and
+the wait for a compile now ends on it (*How the wait for the compile ends*, above) instead of
+five seconds after the window stops changing. This paragraph once called that a robustness
+change rather than a speed one. It was both: those five seconds were nearly half of every
+run. The diagnostics still come from the IDE's own report walk.
 
 ### One project per IDE, and that is the scaling unit
 
@@ -450,11 +492,13 @@ project at a time and closing the previous one is part of that path.
 So the cold start is not overhead to be optimised away; it is the unit of work. `tbbuild`
 starting a fresh IDE per project is the design, not a convenience.
 
-**It costs less than it sounds like.** Measured on this box: **8 to 11 seconds per project,
-and flat in project size** --- a one-file project and the 32-probe exploratory project both
-land at about ten seconds, because what is being paid for is IDE startup and not
-compilation. That number was once guessed at "roughly 40 seconds" and is out by a factor
-of four: time it before quoting it.
+**It costs less than it sounds like.** Measured on this box: **6 to 8 seconds per project,
+and flat in project size** --- a one-file template and the template that carries the whole
+of VBCCR both land at about six seconds, because what is being paid for is IDE startup and
+not compilation. It was 8 to 11 seconds while the wait for the compile ended five seconds
+after the window stopped changing (*How the wait for the compile ends*, above). It was once
+guessed at "roughly 40 seconds", out by a factor of four even then: time it before quoting
+it.
 
 **Concurrency works and is the route to a fast probe suite.** Distinct `--port` values give
 distinct DevTools ports, WebView2 user-data folders, temp folders and private desktops, so instances do

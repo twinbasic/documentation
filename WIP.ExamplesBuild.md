@@ -40,7 +40,7 @@ and in a bare twinBASIC project that line does not compile at all.
 
 Stated first, because it is the constraint everything else bends around.
 
-- **Cost.** An IDE cold start is 8--11 s per project and flat in project size (WIP.md,
+- **Cost.** An IDE cold start is 6--8 s per project and flat in project size (WIP.md,
   measured). A normal `build.bat` is ~4 s.
 - **`npm install` must remain sufficient** to build the docs. A twinBASIC install is not on
   that path, and `dot.mjs`'s setup-failure behaviour exists to preserve exactly that.
@@ -362,7 +362,7 @@ produces a green run whose samples were compiled apart.
 
 **The residual is stated rather than closed:** two *ungrouped* samples still share a
 project and can still see each other. Nothing in twinBASIC hides a module's public members
-from the rest of a project, so the only complete fix is a project per sample, at 8--11 s
+from the rest of a project, so the only complete fix is a project per sample, at 6--8 s
 each. What removes the risk where it matters is that a real dependency is now written down.
 
 Collision rules, all forced by putting unrelated samples in one compilation unit:
@@ -420,7 +420,8 @@ Two things a batch runner must do that a single-fence runner need not:
   the whole bisect.
 - **A batch that reports nothing is not a clean batch: a canary rides in every one.**
   `waitForCompile` reads the IDE's window --- the status counters and the Problems panel of
-  the open project --- once the compiler status is OPERATIONAL and five one-second samples
+  the open project --- once the compiler status is OPERATIONAL and either the page's traffic
+  shows the compile has ended and the window agrees with it, or five one-second samples
   match. It waits for no build. An IDE under load can sit OPERATIONAL with an empty panel
   before it has published anything, and every sample of that batch then reads as compiling,
   with nothing to tell it from a batch that has no errors. `sweep_attributes` met it first,
