@@ -1,0 +1,20 @@
+' The project test/ide/watches.test.mjs runs. It stops at a breakpoint on the
+' line marked BREAK, on each of the loop's two passes, with watches on p, of a
+' user-defined type, and on p.X.
+Module Startup
+
+    Private Type Point
+        X As Long
+        Y As Long
+    End Type
+
+    Public Sub Main()
+        Dim p As Point
+        Dim i As Long
+        p.X = 7
+        For i = 1 To 2
+            Debug.Print "pass " & i ' BREAK
+        Next
+    End Sub
+
+End Module

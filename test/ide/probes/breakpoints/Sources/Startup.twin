@@ -1,0 +1,12 @@
+' The project test/ide/breakpoints.test.mjs runs. It sets a breakpoint on the
+' line marked BREAK, clears it, restarts the compiler and runs Main, which stops
+' there if the breakpoint is set and otherwise prints all three lines.
+Module Startup
+
+    Public Sub Main()
+        Debug.Print "main start"
+        Debug.Print "the breakpoint's line" ' BREAK
+        Debug.Print "main end"
+    End Sub
+
+End Module

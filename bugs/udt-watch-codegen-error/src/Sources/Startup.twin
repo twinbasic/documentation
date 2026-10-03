@@ -1,0 +1,20 @@
+' Put a breakpoint on the line marked BREAK (F9), press F5, and add a watch on p:
+' the watch fails, and the Debug Console reports a linker error, again at every
+' later stop while the watch is there. A watch on p.X works.
+Module Startup
+
+    Private Type Point
+        X As Long
+        Y As Long
+    End Type
+
+    Public Sub Main()
+        Dim p As Point
+        Dim i As Long
+        p.X = 7
+        For i = 1 To 2
+            Debug.Print "pass " & i ' BREAK
+        Next
+    End Sub
+
+End Module

@@ -1,0 +1,12 @@
+' The project test/ide/break-into.test.mjs runs. Main's loop spends nearly all
+' its time in DoEvents, so a break into it stops inside the VB package; the test
+' evaluates there.
+Module Startup
+
+    Public Sub Main()
+        Do
+            DoEvents
+        Loop
+    End Sub
+
+End Module

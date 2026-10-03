@@ -1245,3 +1245,131 @@ VB6 has no comparison: a project cannot declare an `Interface`, and the interfac
 
 <!-- Reproducer: bugs/new-on-interface/ (mode run, expects tbrun exit 5, the four lines above and the native exception); verified on 995. Probes from the narrowing are local scratch files, not in the repository. docs/Reference/Default/VBRUN/ErrorContext/index.md, ErrorCallstack/index.md and ErrorStackFrame/index.md carry a NOTE that no code can obtain these objects in BETA 995 ("code that uses them compiles, but nothing returns an object that implements them"); when this is fixed, check that wording, since `New` on them compiles today and returns an object that has no implementation. -->
 
+---
+
+## Clear All Breakpoints is undone by restarting the compiler, unless the project was saved in between
+
+**Describe the bug**
+Breakpoints removed with **Debug > Clear All Breakpoints** come back when the compiler restarts. After **Restart the compiler** on the toolbar the margin shows them again, as they were just before they were cleared, and the next run stops at them. A breakpoint removed with F9 stays removed, and saving the project between the two keeps the effect of **Clear All Breakpoints**.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `clear-all-breakpoints-restart.twinproj` (attached as `clear-all-breakpoints-restart.zip`) and open `Startup.twin`. `Main` prints three lines:
+   ```
+   Public Sub Main()
+       Debug.Print "main start"
+       Debug.Print "the breakpoint's line" ' BREAK
+       Debug.Print "main end"
+   End Sub
+   ```
+2. Put the cursor on the line marked `BREAK` and press F9. A breakpoint appears in the margin.
+3. Choose **Debug > Clear All Breakpoints** (Ctrl+Shift+F9). The breakpoint goes.
+4. Click **Restart the compiler** on the toolbar, and wait for the compile to end. The breakpoint is back in the margin.
+5. Press F5. The run stops at the breakpoint, having printed only `main start`.
+
+**Expected behavior**
+Breakpoints cleared with **Clear All Breakpoints** stay cleared, as a breakpoint removed with F9 does: after the restart the margin shows none, and F5 prints all three lines.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Also on BETA 987, identically.
+
+What does not reproduce it: removing the breakpoint with F9 instead, which stays removed across the restart; and saving the project (Ctrl+S) after **Clear All Breakpoints** and before the restart, which keeps them cleared. A breakpoint saved with the project survives a restart, as it should. Not tried: whether the IDE's other ways of starting a new compiler, such as switching between win32 and win64, do the same.
+
+Where it seems to come from, in BETA 995's `ide/main.js`: F9 records each change in `g_SessionFilesystemTransactions`, which the IDE replays into a new compiler and which a save empties; **Clear All Breakpoints** (`tbDebug_BreakpointsClear`) clears the breakpoints in the compiler and records nothing there, so the replay sets them again.
+
+Severity: breakpoints a person has removed stop the program again after a restart, with nothing to connect the two.
+
+<!-- Asserted by `ide-test.bat --only breakpoints` (test/ide/breakpoints.test.mjs: the fault, then F9, saving after Clear All, and a saved breakpoint across a restart); passes on BETA 995 and 987. The reproducer's Startup.twin is test/ide/probes/breakpoints/Sources/Startup.twin with a different header comment. When fixed: update that test and this entry. -->
+
+---
+
+## A watch on a variable of a user-defined type fails with a codegen error, and the Debug Console reports a linker error at every stop
+
+**Describe the bug**
+While the debugger is stopped, a watch on a variable of a user-defined type cannot be evaluated. **Watches** shows `(compile error: codegen error; check for compilation errors)`, of type `ERROR`, and the Debug Console prints `[LINKER] compilation (codegen) error detected in 'Startup.{temp_procedure}' at line #1`. The linker error comes again at every later stop while the watch exists, and `? p` in the Debug Console fails the same way. **Variables** shows the same variable and its fields without trouble, and a watch on one of its fields works.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `udt-watch-codegen-error.twinproj` (attached as `udt-watch-codegen-error.zip`). `Startup.twin` declares a type, and `Main` passes the line marked `BREAK` twice:
+   ```
+   Private Type Point
+       X As Long
+       Y As Long
+   End Type
+
+   Public Sub Main()
+       Dim p As Point
+       Dim i As Long
+       p.X = 7
+       For i = 1 To 2
+           Debug.Print "pass " & i ' BREAK
+       Next
+   End Sub
+   ```
+2. Put a breakpoint on the line marked `BREAK` (F9) and press F5. The run stops there, and **Variables** shows `p` as `{user defined type, 8 bytes}`, with `X` and `Y`.
+3. Add a watch on `p` (**Debug > Add Watch...**, or the plus sign in **Watches**). The watch shows `(compile error: codegen error; check for compilation errors)`, of type `ERROR`, and the Debug Console prints `[LINKER] compilation (codegen) error detected in 'Startup.{temp_procedure}' at line #1`.
+4. Press F5. The run stops at the breakpoint again, and the Debug Console prints the linker error again.
+5. Type `? p` in the Debug Console and press Enter. It fails with the same error, and the Debug Console prints the same linker line.
+
+**Expected behavior**
+The watch shows `p` as **Variables** does, `{user defined type, 8 bytes}` opening to its fields, as VBA's Watch window shows a variable of a user-defined type. An expression that cannot be shown, such as `? p`, which has no single value to print, is refused with a message about the expression. A linker error about generated code reads as though the project had failed to build, which it has not.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Also on BETA 987, identically.
+
+What does not reproduce it: a watch on a field, `p.X`, which shows `7`, of type `Variant [Long]`; and **Variables**, which shows `p` and its fields. That type suggests a watch is evaluated as a `Variant`, which cannot hold a value of a user-defined type. Seen with a `Private Type` declared in the module; other declarations of the type were not tried.
+
+Severity: a watch on a structure is unusable, and while it exists every stop adds a linker error to the Debug Console.
+
+<!-- Asserted by `ide-test.bat --only watches` (test/ide/watches.test.mjs: the watch on p, the watch on p.X, the next stop, and ? p); passes on BETA 995 and 987. The reproducer's Startup.twin is test/ide/probes/watches/Sources/Startup.twin with a different header comment. When fixed: update that test and this entry. -->
+
+---
+
+## After Break Into Code stops in DoEvents, evaluating anything ends the program with an access violation
+
+**Describe the bug**
+**Break Into Code** (Ctrl+Break), pressed while a program is in `DoEvents`, stops inside the VB package rather than in the program: the IDE opens the package's `IdleMessageLoopBreak.twin` at `IdleMessageLoopBreakpoint`, which **Call Stack** shows above the program's procedure. Evaluating anything at that stop ends the program with a native access violation: a line in the Debug Console, even `? 1`, or any watch, which the IDE evaluates at every stop. The IDE then stays in break mode, with the yellow arrow on the package's line and **Stop** and the step commands enabled, although the program has ended.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `break-in-doevents-evaluate-crash.twinproj` (attached as `break-in-doevents-evaluate-crash.zip`). `Main` loops on `DoEvents`:
+   ```
+   Public Sub Main()
+       Do
+           DoEvents
+       Loop
+   End Sub
+   ```
+2. Press F5, then Ctrl+Break (**Run > Break**). The IDE opens `IdleMessageLoopBreak.twin` under `Packages/VB/Sources/SUPPORT`, stopped in `IdleMessageLoopBreakpoint`, and **Call Stack** shows `IdleMessageLoopBreakpoint` above `Main`.
+3. Type `? 1` in the Debug Console and press Enter. The program ends, and the Debug Console prints:
+   ```
+   (runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)
+   0001 <time> NATIVE EXCEPTION: ACCESS_VIOLATION  {unknown} [$1EBD9288:twinBASIC_win32.dll+001D9288]
+   ```
+   The yellow arrow stays on the package's line, and **Stop** and the step commands stay enabled. **Restart the compiler** puts the IDE right.
+4. Add any watch, such as `1 + 1`, and repeat step 2. The program ends at the stop in the same way, with nothing typed.
+
+**Expected behavior**
+**Break Into Code** stops in the program, where F5 at the package's stop goes next: in `Main`, on the line after `DoEvents`. An expression evaluated at a stop is evaluated, or refused with a message, and the program stays stopped where it was.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Also on BETA 987, identically.
+
+What does not reproduce it: evaluating nothing at the first stop, after which F5 stops again at once, in `Main` on the line after `DoEvents` (`Loop`), where `? 1` prints `1`; and a break that lands in the program's own code rather than in `DoEvents`, where the Debug Console and watches work. A name that the package's procedure cannot see, such as a local of `Main`, ends the program as `? 1` does.
+
+Severity: high. Breaking into a loop that calls `DoEvents` is an everyday way to see what a program is doing, and a watch left over from earlier is enough to end the program at the stop.
+
+<!-- Asserted by `ide-test.bat --only break-into` (test/ide/break-into.test.mjs: the stop in the package and F5's second stop, ? 1 there, and a watch); passes on BETA 995 and 987. The lane clears the Debug Console after each crash it asserts, because tb-lane.mjs fails a lane whose console holds a NATIVE EXCEPTION line. The reproducer's Startup.twin is test/ide/probes/break-into/Sources/Startup.twin with a different header comment. When fixed: update that test and this entry. -->
+

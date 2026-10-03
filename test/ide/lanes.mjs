@@ -20,4 +20,7 @@ export default [
   { file: "debugger.test.mjs" },
   { file: "assert.test.mjs" },
   { file: "packages.test.mjs" },
+  { file: "breakpoints.test.mjs" },
+  { file: "watches.test.mjs" },
+  { file: "break-into.test.mjs" },
 ];

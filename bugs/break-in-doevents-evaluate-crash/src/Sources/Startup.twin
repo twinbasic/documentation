@@ -1,0 +1,12 @@
+' Press F5, then Break Into Code (Ctrl+Break): the loop spends nearly all its time
+' in DoEvents, and the debugger stops inside the VB package. Then type ? 1 in the
+' Debug Console: the program ends with an access violation.
+Module Startup
+
+    Public Sub Main()
+        Do
+            DoEvents
+        Loop
+    End Sub
+
+End Module
