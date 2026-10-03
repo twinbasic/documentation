@@ -458,22 +458,18 @@ The IDE is three processes, and their command lines say how they relate:
 |---|---|---|
 | `twinBASIC.exe` | `<project.twinproj>` | shell; hosts the WebView2, and the only one given the project |
 | `twinBASIC_win32.exe` | `--ide=<shell pid>` | serves `ide/` over HTTP on an ephemeral port |
-| `twinBASIC_win32_noDEP.exe` | `--compiler=<opaque token>` | the compiler; opens six websocket ports |
+| `twinBASIC_win32_noDEP.exe` | `--compiler=<opaque token>` | the compiler; the page talks to it over websockets |
 
-The page reaches the compiler at
-`ws://localhost:<port>/<passKey>/{root,language,fs,debugger}`, and `language` really is LSP
---- it pushes `textDocument/publishDiagnostics` with per-file `diagnostics` and error,
-warning, hint and info counts, alongside a `compilationStarted` event.
+The page's websockets carry everything the window shows about a compile, the diagnostics and
+their counts included.
 
-**But the port and the pass key are both minted inside the WebView.**
-`hostAppObject.CreateCompilerInstance(...)` returns the port, `GetCompilerPassKey(...)`
-returns a GUID, and both are WebView2 host objects --- reachable only from a page the shell
-has loaded. Starting the compiler directly is no way round it either: `--compiler=` is not a
-port but an opaque handle the shell hands it (`8591158` in one run, against compiler ports
-`61917-61922`). So a proxy between the WebView and the HTTP server is possible --- the page
-and its scripts come over plain HTTP, and a patched `main2.js` could be served --- but it
-would not remove the WebView, it would only change what runs inside it. The thing you would
-want to delete is the thing that mints the connection.
+**But what a connection needs, its address and its key, is minted inside the WebView**, by
+host objects the shell gives its page --- reachable only from a page the shell has loaded.
+Starting the compiler directly is no way round it either: `--compiler=` is not a port but
+an opaque handle the shell hands it. So a proxy between the WebView and the HTTP server is
+possible --- the page and its scripts come over plain HTTP, and a patched `main2.js` could
+be served --- but it would not remove the WebView, it would only change what runs inside it.
+The thing you would want to delete is the thing that mints the connection.
 
 Watching the page's traffic is another matter: CDP shows it to the harness with no key, and
 the wait for a compile now ends on it (*How the wait for the compile ends*, above) instead of
@@ -1340,11 +1336,11 @@ probe lanes:
   which turn out to be one window, as P9's lane first suggested.
 - [test/addin/symbols.test.mjs](test/addin/symbols.test.mjs), P5: no add-in. It opens the
   project in [test/addin/probes/symbols](test/addin/probes/symbols), which references tbIDE
-  and is never built, and asks the compiler's language socket about names in it: hover,
-  Go To Definition, signature help and a completion's details, each with the parameters the
-  IDE's own code sends. `lspSocket.request` answers through a callback, so each question is
-  one `Runtime.evaluate` of a promise. Positions are found in the source by text, so an edit
-  to the probe project does not shift them.
+  and is never built, and asks the compiler about names in it the way the IDE's own code
+  does: hover, Go To Definition, signature help and a completion's details, each with the
+  parameters the IDE's own code sends. The page's call answers through a callback, so each
+  question is one `Runtime.evaluate` of a promise. Positions are found in the source by
+  text, so an edit to the probe project does not shift them.
 - [test/addin/ideserver.test.mjs](test/addin/ideserver.test.mjs), P13: no add-in either. It
   writes fifteen files under `ide\p13\` in the lane's copy before the IDE starts, and one
   more after, then fetches each from the page, relative to its base URL, and compares a
