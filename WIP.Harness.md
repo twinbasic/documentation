@@ -1102,7 +1102,7 @@ view draws only the rows that fit, and a tool window is a shadow root that
 `document.querySelector` cannot see into, so the calls read `toolWindowsById`, a list
 view's `dataNodes` and `window.editor` rather than what is drawn.
 
-Seven things about it were learned, the first six on the samples:
+Eight things about it were learned, the first six on the samples:
 
 - **A click scrolls its target into view, and checks what is at the point before it
   clicks.** Sample 10's tool window is taller than it is shown. Its eleventh button had a
@@ -1110,7 +1110,11 @@ Seven things about it were learned, the first six on the samples:
   went to the window's resize handle and did nothing. `click` now calls `scrollIntoView`,
   finds the element at the centre point through every shadow root, and throws, naming both,
   when something else is there. It also throws when there is no such element, or the
-  element has no size, which is what a hidden tool window's elements have.
+  element has no size, which is what a hidden tool window's elements have. It scrolls only
+  a target that is partly hidden --- outside the viewport, or clipped by an ancestor --- or
+  whose centre is covered: scrolling every target to the centre, as it first did, scrolled
+  whatever held a target in full view, and in the code editor each click on the error panel
+  scrolled the code, by 110 to 158 px.
 - **A click waits for its target, up to five seconds.** What an add-in adds is in the page's
   data a moment before it is drawn. The first run of the Sample 15 scenario waited until
   the results list held both files' results, read from the list view's data, and clicked a
@@ -1156,6 +1160,23 @@ Seven things about it were learned, the first six on the samples:
   at 3:1. When the IDE is still revealing lines 10 s later, `openFile`, `setCursor` and
   `select` throw, naming the file and the place, rather than go on while the cursor can still
   move; `afterReveal` itself returns `false`. The IDE's side of it is in BUGS-TO-REPORT.md.
+- **A click checks where its press lands** (learned on the `assert` lane of
+  `ide-test.bat`). The page can change between the call that aims and the press, a few
+  milliseconds to a hundred later on a busy page. In an editor the debugger has just
+  opened, the error panel goes on moving after it is drawn: the file's decorations bring
+  code lenses above the failing line and push it down 48 px. The test clicked Stop as soon
+  as the panel was there, the press landed on the panel's header, and the run went on, which
+  looked for a long time like the IDE ignoring the click. So the call that aims also puts a
+  one-shot `pointerdown` listener on the window, in the capture phase, which records the
+  element the press lands on before the page's own handlers on it run, and `click` throws,
+  naming that element, when it is not in the target. A press in what the target's selector
+  finds by then also counts, so a target the page draws again in place is still hit. The
+  release is not checked, because a control may act on the press and close before it. A
+  press a window listener of the page's own stops first is not seen, and not reported.
+  Checked in a plain Chromium page through puppeteer: a target moved before the press
+  throws, naming what took its place, and one drawn again in place, one in a shadow root
+  and a double click do not. The `assert` lane itself now waits for the panel to stop
+  moving (`panelStill` in `test/ide/assert.test.mjs`).
 
 **The connection itself changed in three ways.** They were the gaps item 1 found in
 `tbbuild`, and they matter more once a harness clicks into dialogs on purpose:
