@@ -509,11 +509,11 @@ Private InternalCollection As New Collection
 
 [Enumerator]
 Public Property Get _NewEnum() As Variant
-    Return InternalCollection
+    Return InternalCollection.[_NewEnum]
 End Property
 ```
 
-This replaces VB6's hidden `VB_UserMemId = -4` procedure attribute, which twinBASIC still accepts for compatibility.
+This replaces VB6's hidden `VB_UserMemId = -4` procedure attribute, which twinBASIC still accepts for compatibility. [Custom Enumerators](../../Features/Language/Custom-Enumerators) describes the member's rules, and how a class can implement the enumerator itself.
 
 <!-- Applicability from the package census: ~10 uses in VB, VBRUN, WebView2,
      WinNativeCommonCtls and WinServicesLib, on a Function or a Property Get.
