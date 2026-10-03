@@ -467,7 +467,7 @@ The cause is one shape, every time: **two parts of the pattern can match the sam
 
 **The rewrite that works is to stop describing the structure between the delimiters.** Both regexes are `<(br|hr|...)\b([^>]*)>`, and the attribute handling happens afterwards in ordinary JavaScript, where it is easier to read and cannot backtrack at all. `[^>]*` and the `>` after it share no character, so there is no division to try. **Do not reintroduce a per-attribute sub-pattern in either one**: a per-attribute sub-pattern is what made them exponential.
 
-It gates on **exponential only**. recheck also reports polynomial blowup, and about a fifth of the patterns here are polynomial --- nearly all the ordinary `<tag[^>]*>` shape on bounded input. Failing those would mean fifty findings on day one, and a gate that fails on day one gets switched off. The `degN` a census prints is worth even less than that: measured on one pattern over three runs each, the native backend calls it degree 2 and the pure-JavaScript fallback calls it degree 3. Both agree on exponential-or-not, which is the only thing the gate rests on.
+It gates on **exponential only**. recheck also reports polynomial blowup, and about a fifth of the patterns here are polynomial --- nearly all the ordinary `<tag[^>]*>` shape on bounded input. Failing those would mean fifty findings on day one, and a gate that fails on day one gets switched off. The `degN` a census prints is worth even less than that: on one pattern, over three runs each, the native backend calls it degree 2 and the pure-JavaScript fallback calls it degree 3. Both agree on exponential-or-not, which is the only thing the gate rests on.
 
 Two sets of probes run inside the normal pass rather than behind `--self-test`, because a green line saying *no exponential regex* is otherwise indistinguishable from a gate that has stopped detecting them. Eight are regexes with known answers in both directions, including the three this repository actually shipped. Fourteen more cover the folding: eight constructions that must resolve to an exact pattern, and six that must be refused with a reason --- a folder that quietly resolves nothing moves every construction into the unresolved list and the run still passes.
 
@@ -931,7 +931,7 @@ staged copy: `compiler.debugOptions`, which the `[RunAfterBuild]` run is compile
 string, such as `"+llvm +optimize"`. A run that uses LLVM --- through either option, the
 tree's own settings or a procedure's `[CompilerOptions]` --- is refused when the IDE shows a
 Community or Personal licence. Neither of those compiles your code with LLVM, so the run would
-measure the default compiler.
+test the default compiler.
 
 **`--exe` also runs the exe the build wrote**, after the probe has run in the IDE. It
 starts the exe on a private desktop, as it starts the IDE, so a message box the exe opens
@@ -1121,7 +1121,7 @@ and keep running after the run.
 compiler loads the add-ins there as well as those in the install's own `addins` folders, but
 it takes that folder from the IDE, which builds its path from the `APPDATA` environment
 variable. Every IDE a lane starts has an `APPDATA` inside the lane's work folder, and a lane
-fails if its IDE's add-in folder turns out to be anywhere else.
+fails if its IDE's add-in folder is anywhere else.
 
 Exit codes: **0** every lane passed, and the registry is as it was found; **1** a lane failed, or the run was interrupted; **2** the harness could not run: a refused command line, no IDE, no matching lane, a registry it could not record, or a crash after which the registry was put back; **3** the registry or a work folder was not put back (see the lines above), at the end of a run or after a crash, which wins over a 1 because the registry is what to repair.
 

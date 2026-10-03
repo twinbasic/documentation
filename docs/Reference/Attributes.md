@@ -678,13 +678,13 @@ For an overview of the `Implements ... Via` mechanism itself, see [Implements Vi
 
 <!-- Applicability by probe, BETA 983, and by the attribute sweep, BETA 995,
      which gives the same answers; no package or sample uses this
-     attribute. The control and the effect below were measured on 983. Accepted on `Implements <Class> Via <field> = <expr>` and on
+     attribute. The control and the effect below were tested on 983. Accepted on `Implements <Class> Via <field> = <expr>` and on
      `Implements <Interface> Via <Class>`; rejected on a plain Implements
      statement (TB5155), on the Class (TB5182), on the Interface (TB5182), on
      an Inherits statement (TB5155) and on an Interface line in a CoClass
      (TB5182). The control is [WithDispatchForwarding] on the same Via
      statement, which draws TB5155 -- so the Via form is not simply accepting
-     any attribute. Effect measured as an A/B on one source with and without
+     any attribute. Effect tested as an A/B on one source with and without
      the attribute: a Friend member of the delegate called from a Module
      draws TB5027 with it and compiles without it, while the same member
      called from inside the class compiles either way, qualified with Me or

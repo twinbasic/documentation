@@ -906,6 +906,8 @@ Beyond word choice: prefer the active voice and the present tense (`returns`, no
 
 **Name the fault directly; never build up to it.** Setting up a contrast and then withholding the point is coy, and it makes the reader parse the sentence twice to get one fact out of it. Write *double-clicking it is obvious, and wrong* --- not *double-clicking it is the obvious shortcut, and it is the one that misleads*. Say what the thing is and what it does, in that order, in one clause. The same applies to *and that is the one that...*, *which is the one thing that...*, *which is precisely the...* and *therein lies the...*.
 
+**State what twinBASIC does; do not report having measured, probed or observed it.** The documentation is the authority on what twinBASIC does and speaks for the project, so it states behaviour as fact rather than as the result of an experiment. The same goes for *probed*, *observed*, *noticed*, *turns out* and *appears to*. Write *the comma form also turns LLVM on* --- not *measured on BETA 995, the comma form also turns LLVM on*. Where the build matters, say *in BETA 995* or *since BETA 984*. When a sentence really must say that a claim was checked, write *checked*, *tested*, *confirmed* or *verified*, never *measured*. *Measure* keeps its literal sense: a size, a duration, a unit of measurement, **TextWidth** measuring a string.
+
 ## Attribution
 
 Some reference pages are adapted from Microsoft's VBA-Docs, which is licensed CC-BY-4.0. Those pages set `vba_attribution: true` in their frontmatter, which renders an extra attribution line in the site footer.

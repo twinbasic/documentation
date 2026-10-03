@@ -114,7 +114,7 @@ Dim Meeting As Date = #3/17/2026 13:45:30#   ' March 17, 2026, 1:45:30 PM
 
 The date can be written month first with `/` or `-` between the parts (`#3/17/2026#`, `#3-17-2026#`), year first (`#2026-03-17#`, `#2026/3/17#`), or with an English month name (`#Mar 17, 2026#`, `#17 March 2026#`). The time can be 24-hour (`#13:45#`, `#13:45:30#`) or 12-hour with `AM` or `PM` in either case (`#1:45 PM#`, `#1:45 pm#`). A literal with both puts a space between the date and the time. A time on its own has the date part December 30, 1899.
 
-The compiler reads the parts in the same order whatever the regional format of the machine that compiles the project. These results were measured under English (United States) and under English (United Kingdom), whose short dates put the month and the day in opposite orders:
+The compiler reads the parts in the same order whatever the regional format of the machine that compiles the project. These results were checked under English (United States) and under English (United Kingdom), whose short dates put the month and the day in opposite orders:
 
 - `#1/2/2026#` is January 2, 2026, under both: the first number is always the month.
 - When the first number cannot be a month, the first two numbers are swapped: `#13/1/2026#` is January 13, 2026. So a day-first literal compiles without a diagnostic, and is read correctly only when its day is 13 or more.

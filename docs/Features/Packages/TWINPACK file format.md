@@ -79,7 +79,7 @@ Follows the common header for file entries:
 | +var   | 4                 | uint32    | `revisionCount` | Number of trailing revision entries. |
 | +var+4 | `revisionCount`×4 | uint32[]  | `revisions`     | Revision entries.  Absent when `revisionCount` is 0. |
 
-The `revisionCount` field is 0 for the vast majority of files, making the file body effectively just the contents followed by 4 zero bytes.  Non-zero counts have been observed in packages that embed other packages.
+The `revisionCount` field is 0 for the vast majority of files, making the file body effectively just the contents followed by 4 zero bytes.  Non-zero counts occur in packages that embed other packages.
 
 ## Field details
 
@@ -93,11 +93,11 @@ For files, `revision` is a 64-bit counter that starts at a low value and increme
 | Heavily edited file | `0x17D5`, `0x1AA0` |
 | Root and directories | `0x0000` |
 
-Only the low 16 bits have been observed to vary in real-world files; the upper 48 bits are always zero in practice.
+In practice only the low 16 bits vary; the upper 48 bits are always zero.
 
 ### flags
 
-A 32-bit bitmask describing file-system-level properties of the entry.  Every entry observed so far has `flags == 0`, but the IDE recognises the following bits:
+A 32-bit bitmask describing file-system-level properties of the entry.  In practice every entry has `flags == 0`, but the IDE recognises the following bits:
 
 | Bit value    | Name          | Meaning |
 |--------------|---------------|---------|
