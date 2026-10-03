@@ -1373,3 +1373,246 @@ Severity: high. Breaking into a loop that calls `DoEvents` is an everyday way to
 
 <!-- Asserted by `ide-test.bat --only break-into` (test/ide/break-into.test.mjs: the stop in the package and F5's second stop, ? 1 there, and a watch); passes on BETA 995 and 987. The lane clears the Debug Console after each crash it asserts, because tb-lane.mjs fails a lane whose console holds a NATIVE EXCEPTION line. The reproducer's Startup.twin is test/ide/probes/break-into/Sources/Startup.twin with a different header comment. When fixed: update that test and this entry. -->
 
+---
+
+## A system colour value with a nonzero second or third byte draws black since BETA 984, where VB6 takes the index from the low 16 bits
+
+**Describe the bug**
+Since BETA 984 (release note: "fixed: Circle/Line/PSet color value handling to match VB6's relaxed rules"), `Line`, `Circle` and `PSet` draw black for a colour whose top byte is `&H80` and whose second or third byte is not 0, such as `&H80FF000F` or `&H80010003`. The colour is read as a system colour only when the value minus `&H80000000` is 0 to 30, and any other `&H80` value draws black. VB6 takes the system colour index from the low 16 bits and ignores the bits in between, so it draws system colour 15 for `&H80FF000F` and system colour 3 for `&H80010003`. BETA 983 gave the same colours as VB6 for these two values. Observed by reading the pixel back with `GetPixel` from a form with `AutoRedraw` set.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `system-colour-extra-bytes-black.twinproj` (attached as `system-colour-extra-bytes-black.zip`). Its `Sub Main` loads `Form1`, sets `AutoRedraw`, `ScaleMode = vbPixels` and `BackColor = &H30201`, draws one point with `Form1.PSet (10, 10), Color` for each of three colours, and prints the pixel read back with `GetPixel`.
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   &H8000000F -> F0F0F0
+   &H80FF000F -> 000000
+   &H80010003 -> 000000
+   ```
+
+**Expected behavior**
+The colours VB6 draws, which BETA 983 drew as well:
+```
+&H8000000F -> F0F0F0
+&H80FF000F -> F0F0F0
+&H80010003 -> DBCDBF
+```
+`F0F0F0` is system colour 15 (`vbButtonFace`) and `DBCDBF` is system colour 3 (`vbInactiveTitleBar`) on the machine of the observation. The VB6 project, attached as `system-colour-extra-bytes-black-vb6.zip`, prints exactly these three lines.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low. A value like these is not what a `vbButtonFace`-style constant holds, and the colours of VB6 forms and controls are always the plain `&H8000000F` form. The effect is a different colour for a value that VB6 accepts.
+
+BETA 983 drew the same colours as VB6 for `&H80FF000F` and `&H80010003`, by passing the value to `OleTranslateColor`. It also raised error 5 for a value that is neither a system colour nor an RGB value with a top byte of 0, 1 or 2, and 984 fixed that: `-1`, `&HFF0000FF`, `&H7FFFFFFF` and the `&H01` palette forms now draw as VB6 draws them (the low 24 bits), as do a `Double` such as 255.7 (256) and a `String` such as `"255"`. Only the `&H80` top byte differs from VB6.
+
+The same difference exists for the high end of the index range: VB6 draws `&H80000019` to `&H8000001E` black, and twinBASIC draws the system colour of that index (`&H8000001D` gives `FF9933`, `&H8000001E` gives `F0F0F0`); this looks deliberate, since the source names `COLOR_MENUBAR` (30) as the limit. `&H80000100` draws black in both BETA 995 and VB6, and `C8C8C8` (index 0) in BETA 983.
+
+The change is `TranslateColor2` in the VB package's `Graphics.twin`, which `Line`, `Circle` and `PSet` call on `Color`: for a top byte of `&H80` it returns the system colour when the value minus `&H80000000` is 0 to 30 and 0 otherwise, and for any other value it returns the low 24 bits.
+
+<!-- Reproducer: bugs/system-colour-extra-bytes-black/ (mode run, expects the three lines above in twinBASIC); verified on 995, with 983 as the control (F0F0F0, F0F0F0, DBCDBF). The VB6 project is in bugs/system-colour-extra-bytes-black/vb6/ (`bug_repro.mjs vb6 system-colour-extra-bytes-black` prints the three lines above). The fuller sweep (about 45 colour values on 995, 983 and VB6) is in .claude/tooling-review-scratch/beta995-probes/s73/forms/ (c1.out995.txt, c1.out983.txt, c1.outvb6.txt), local scratch files that are not in the repository. Stated in docs/Reference/Core/Graphics-Methods.md, section "Colour values" (the first bullet and the NOTE after it): when fixed, delete the NOTE's two clauses about the index and the low 16 bits and say that VB6 and twinBASIC agree. -->
+
+---
+
+## Setting a colour property to a value that is not a colour stores it, and raises error 5 or nothing, where VB6 raises error 380 and keeps the old value
+
+**Describe the bug**
+Assigning a value that is not a colour to a form's colour property does not leave the property as it was. `Form.ForeColor = -1` and `Form.ForeColor = &H8000001F` raise error 5 (*Invalid procedure call or argument*) and still store the value, so `ForeColor` reads back `FFFFFFFF` and `8000001F` afterwards. `Form.BackColor = -1` and `Form.FillColor = -1` raise nothing and store the value. VB6 raises error 380 (*Invalid property value*) for all four assignments and keeps the colour the property had. Observed by assigning with `On Error Resume Next` and printing `Err.Number` and the value read back.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `forecolor-invalid-value-stored.twinproj` (attached as `forecolor-invalid-value-stored.zip`). Its `Sub Main` loads `Form1`, sets `ForeColor`, `BackColor` and `FillColor` to `vbGreen`, then assigns `-1` (and `&H8000001F` to `ForeColor`) under `On Error Resume Next` and prints the error number and the value read back.
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   ForeColor = -1: Err 5, reads FFFFFFFF
+   ForeColor = &H8000001F: Err 5, reads 8000001F
+   BackColor = -1: Err 0, reads FFFFFFFF
+   FillColor = -1: Err 0, reads FFFFFFFF
+   ```
+
+**Expected behavior**
+Error 380 for each assignment, and the old value kept, as VB6 does (the VB6 project, attached as `forecolor-invalid-value-stored-vb6.zip`, prints):
+```
+ForeColor = -1: Err 380, reads FF00
+ForeColor = &H8000001F: Err 380, reads FF00
+BackColor = -1: Err 380, reads FF00
+FillColor = -1: Err 380, reads FF00
+```
+`FF00` is `vbGreen`, which each property held before the assignment. A program that sets a colour from user input and handles the error then keeps the colour it had.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low. The error is raised for `ForeColor` and not for `BackColor` or `FillColor`, and the stored value is what a later `Line`, `Circle` or `PSet` then uses, so a handled error leaves the invalid colour in force.
+
+What was tried: the same four lines on BETA 983 print the same, so this is not a change of BETA 984. A value that is a valid colour, such as `&H100FF00` or `&H20000FF`, is accepted by `ForeColor` with no error, as in VB6. The colour properties of controls were not tried.
+
+<!-- Reproducer: bugs/forecolor-invalid-value-stored/ (mode run, expects the four lines above in twinBASIC); verified on 995 and 983. The VB6 project is in bugs/forecolor-invalid-value-stored/vb6/ (`bug_repro.mjs vb6 forecolor-invalid-value-stored` prints the four lines above). No documentation page states what an invalid colour assignment does; docs/Reference/Default/VB/Form/index.md describes ForeColor, BackColor and FillColor as an OLE_COLOR only. When fixed, nothing needs updating unless a page is written. -->
+
+---
+
+## `TextBox.Text` assigned in code is not limited by `MaxLength`, where VB6 truncates it
+
+**Describe the bug**
+With `MaxLength` set to 3, `Text1.Text = "abcdef"` stores all six characters and `Len(Text1.Text)` is 6. VB6 truncates the new text to `MaxLength` characters: `Text` reads `abc`. `SelText` is affected in the same way: with `Text` equal to `"ab"` and the caret at the end, assigning `SelText = "cdef"` leaves `abcdef` in twinBASIC and `abc` in VB6. The `Text` property setter of the VB package sends `WM_SETTEXT` to the edit control, and the whole string is stored. Observed by reading `Text` back.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `textbox-text-ignores-maxlength.twinproj` (attached as `textbox-text-ignores-maxlength.zip`). Its `Form1` holds one `TextBox`, `Text1`, and its `Sub Main` loads the form, sets `Text1.MaxLength = 3`, assigns `Text` and `SelText`, and prints what `Text` holds.
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   Text = "abcdef": [abcdef] Len 6
+   SelText = "cdef" after "ab": [abcdef] Len 6
+   ```
+
+**Expected behavior**
+The text is cut to `MaxLength` characters, as in VB6 (the VB6 project, attached as `textbox-text-ignores-maxlength-vb6.zip`, prints):
+```
+Text = "abcdef": [abc] Len 3
+SelText = "cdef" after "ab": [abc] Len 3
+```
+A program that relies on `MaxLength` to bound a field, for instance one that stores `Text` in a fixed-size record, gets a string longer than the limit.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low to medium. Typing into the box was not tried; the gap is the assignment in code.
+
+What was tried: BETA 983 prints the same two lines. Assigning the same long text a second time raises no `Change` event, in twinBASIC and in VB6.
+
+<!-- Reproducer: bugs/textbox-text-ignores-maxlength/ (mode run, expects the two lines above in twinBASIC); verified on 995 and 983. The VB6 project is in bugs/textbox-text-ignores-maxlength/vb6/ (`bug_repro.mjs vb6 textbox-text-ignores-maxlength` prints the two lines above). Stated in docs/Reference/Default/VB/TextBox/index.md, the MaxLength paragraph (the last two sentences, "Assigning Text in code is not limited by MaxLength ... VB6 truncates it"): when fixed, delete them. -->
+
+---
+
+## `StrConv` with `vbProperCase` leaves a word in lowercase when it follows an even number of separators
+
+**Describe the bug**
+`StrConv(s, vbProperCase)` capitalises the first letter of a word that follows one, three or five separator characters (space, tab, `vbCr`, `vbLf`, vertical tab, form feed, NUL), and a word at the start of the string. After two, four or six separators the word is left in lowercase, so every word after a `vbCrLf` in multi-line text stays lowercase, and so does the second word of `"a  b"` (two spaces). It is a regression: BETA 983 capitalised every word. Observed in a run of the reproducer project.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `proper-case-even-separators.twinproj` (attached as `proper-case-even-separators.zip`). Its one source file, `Startup.twin`, has a `Sub Main` that calls `StrConv` with `vbProperCase` on `"a b"`, `"a  b"`, `"a   b"` and `"a" & vbCrLf & "b"`.
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   one space:    [A B]
+   two spaces:   [A  b]
+   three spaces: [A   B]
+   vbCrLf:       [A<CRLF>b]
+   ```
+
+**Expected behavior**
+Every word is capitalised, whatever the number of separators before it: `[A  B]` and `[A<CRLF>B]`. VB6 does so (attached as `proper-case-even-separators-vb6.zip`, which prints `[A  B]` and `[A<CRLF>B]`), and so does BETA 983.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: medium. Text with a line break or with aligned columns comes out half capitalised, and nothing reports it.
+
+With `"a" & Space$(n) & "b" & Space$(n) & "c"`, n = 0 gives `Abc` and n = 1, 3 and 5 give every word capitalised; n = 2, 4 and 6 give `A`, then `b` and `c` in lowercase. A space followed by a tab counts as two separators, and `" a  b  c "` (one leading space) comes out as `" a  b  c "`, all lowercase. The result is the same with an explicit `LCID` of 1033. It looks as if each separator toggles a "capitalise the next letter" flag instead of setting it. BETA 983 and VB6 give the same result as each other for all of these.
+
+<!-- Reproducer: bugs/proper-case-even-separators/ (mode run, expects the four lines above); verified on 995, 983 gives `[A  B]` and `[A<CRLF>B]`. docs/Reference/Default/VBA/Strings/StrConv.md carries a WARNING about this ("BETA 995 has a defect in vbProperCase ..."); when fixed, replace it with a NOTE saying since which build. -->
+
+---
+
+## `LSet` on a `Long` variable compiles, and the build fails with a codegen error
+
+**Describe the bug**
+`LSet` is defined for a string or a user-defined type. A statement `LSet n = "ab"` with `n` declared `As Long` is accepted by the compiler without a diagnostic, and building the project then fails: the linker reports a code-generation error at the statement, and no exe is produced. Run from the IDE (F5), the project stops the same way. Observed in a build of the reproducer project.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `lset-long-codegen-error.twinproj` (attached as `lset-long-codegen-error.zip`). Its one source file, `Startup.twin`, is a `Sub Main` with `Dim n As Long` and `LSet n = "ab"`.
+2. Compile it: no errors, warnings or hints.
+3. Build it (Build, or F5) and read the DEBUG CONSOLE:
+   ```
+   [BUILD] Starting...
+   [LINKER] compilation (codegen) error detected in 'Startup.Mainrootmain' at line #5
+   [LINKER] FAILED due to compilation errors 'LsetLongCodegenError_win32.exe'
+   [BUILD] failed
+   ```
+
+**Expected behavior**
+A compile error on the `LSet` line, as for the neighbouring wrong operands: `LSet s = a` with `a` a user-defined type and `RSet a = b` with user-defined types are refused with TB5001 (*unable to convert type ... to String*), and `LSet a = s` with a string source and a user-defined type destination is refused with TB5249. VB6 refuses this statement at compile time with *LSet allowed only on strings and user-defined types* (attached as `lset-long-codegen-error-vb6.zip`, which does not build).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low. The error is reported, so nothing runs wrongly, but it points at no cause, and the compile step that the IDE shows while typing says the project is fine.
+
+Tried with a `Long` destination only. The same on BETA 983.
+
+<!-- Reproducer: bugs/lset-long-codegen-error/ (mode build, expects tbbuild exit 5 and "codegen" in the message); verified on 995 and 983. The BUGS tool's `vb6` command prints VB6's compile error and exits 1 for it, which is the comparison. No page states it: docs/Reference/Core/LSet.md says nothing about other destinations. -->
+
+---
+
+## `LSet` and `RSet` on an element of a `Variant` that holds an array change nothing
+
+**Describe the bug**
+`LSet v(0) = "zz"` and `RSet v(1) = "zz"` do nothing when `v` is a `Variant` that holds an array, whether the array came from `Array(...)` or from `ReDim v(0 To 1)` on the `Variant`. The statements raise no error, and the element keeps its value. The same statements on an element of an array declared `Dim w(0 To 1) As Variant` work. Observed in a run of the reproducer project.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `lset-variant-array-element-noop.twinproj` (attached as `lset-variant-array-element-noop.zip`). Its one source file, `Startup.twin`, has a `Sub Main` that assigns `v = Array("0123456789", "abcde")`, runs `LSet v(0) = "zz"` and `RSet v(1) = "zz"`, and does the same to the elements of `Dim w(0 To 1) As Variant`.
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   LSet v(0), v = Array(...):   [0123456789]
+   RSet v(1), v = Array(...):   [abcde]
+   LSet w(0), w(0 To 1) As Variant: [zz        ]
+   RSet w(1), w(0 To 1) As Variant: [   zz]
+   ```
+
+**Expected behavior**
+The elements of `v` change as those of `w` do: `[zz        ]` and `[   zz]`. VB6 does so (attached as `lset-variant-array-element-noop-vb6.zip`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low to medium. A statement that has no effect and no error is easy to miss.
+
+Tried: `ReDim v2(0 To 1)` on a `Variant`, then `LSet v2(0) = "zz"`, does the same. The `w` elements and `Dim a(0 To 2) As String` elements work. On BETA 983 the `v` lines read the same, and the `w` line for `LSet` reads `[zz23456789]`, because `LSet` did not yet fill with spaces there (fixed in BETA 984, which is a separate matter).
+
+<!-- Reproducer: bugs/lset-variant-array-element-noop/ (mode run, expects the four lines above); verified on 995, 983 gives the same `v` lines. docs/Reference/Core/LSet.md and RSet.md say the destination can be a Variant that holds a string and do not mention this; when fixed, nothing to change. -->
+
+---
+
+## `LSet` and `RSet` on a `Variant` destination raise 13 for `Null` and for an object, and pad a `Boolean` as `-1`
+
+**Describe the bug**
+When the destination of `LSet` or `RSet` is a `Variant`, three subtypes behave differently from VB6. A `Variant` holding `Null` raises error 13 (*Type mismatch*), where VB6 raises 94 (*Invalid use of Null*). A `Variant` holding an object, such as a `Collection`, raises error 13, where VB6 raises no error. A `Variant` holding `True` is aligned as the two characters `-1`: `RSet v = "ab"` leaves `[ab]` with `Len` 2, where VB6 aligns within `"True"` and leaves `[  ab]` with `Len` 4. Observed in a run of the reproducer project.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `lset-variant-destination-types.twinproj` (attached as `lset-variant-destination-types.zip`). Its one source file, `Startup.twin`, has a `Sub Main` under `On Error Resume Next` that runs `LSet v = "abc"` on a `Variant` holding `Null`, `LSet v = "abc"` on one holding `New Collection`, and `RSet v = "ab"` on one holding `True`.
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   LSet, destination Null:    error 13
+   LSet, destination Object:  error 13
+   RSet, destination True:    [ab] Len 2
+   ```
+
+**Expected behavior**
+`error 94` for `Null`, no error for the object, and `[  ab] Len 4` for `True`, as in VB6 (attached as `lset-variant-destination-types-vb6.zip`, which prints `error 94`, `error 0` and `[  ab] Len 4`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low. Programs rarely align into a `Variant` that holds `Null` or an object, and the error number matters only to a handler that tests for 94.
+
+A `Variant` holding an `Integer`, a `Long`, a `Double` or a `Date` is aligned within its text as in VB6, and one holding an error value or an array raises 13 in both. A `Null` source into a `String` destination raises 94 in both. The same results on BETA 983.
+
+<!-- Reproducer: bugs/lset-variant-destination-types/ (mode run, expects the three lines above); verified on 995 and 983. No page states these cases: docs/Reference/Core/LSet.md and RSet.md say that a Null source raises error 94 and that the destination can be a Variant that holds a string. -->
+

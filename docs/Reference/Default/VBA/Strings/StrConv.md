@@ -41,8 +41,8 @@ The *conversion* argument settings are:
 
 The following are valid word separators for proper casing: **Null** (`Chr$(0)`), horizontal tab (`Chr$(9)`), linefeed (`Chr$(10)`), vertical tab (`Chr$(11)`), form feed (`Chr$(12)`), carriage return (`Chr$(13)`), space (SBCS) (`Chr$(32)`). The actual value for a space varies by country/region for DBCS. No other character, such as a hyphen or an apostrophe, starts a word: `"mc-donald"` becomes `"Mc-donald"`.
 
-> [!NOTE]
-> In BETA 995, **vbProperCase** leaves a word in lowercase when it follows an even number of consecutive separators, such as two spaces or the carriage return and linefeed of **vbCrLf**: `StrConv("a  b", vbProperCase)` returns `"A  b"`. A word after one separator, or after three, is capitalised. BETA 983 capitalised every word, as Visual Basic 6 does.
+> [!WARNING]
+> BETA 995 has a defect in **vbProperCase**: it leaves a word in lowercase when the word follows an even number of consecutive separators, such as two spaces or the carriage return and linefeed of **vbCrLf**. `StrConv("a  b", vbProperCase)` returns `"A  b"`, where it should return `"A  B"`. A word after one separator, or after three, is capitalised. BETA 983 capitalised every word, as Visual Basic 6 does.
 
 If *string* is **Null**, **StrConv** returns **Null**.
 

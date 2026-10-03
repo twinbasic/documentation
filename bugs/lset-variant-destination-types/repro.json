@@ -1,0 +1,11 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^LSet, destination Null:    error 13$",
+      "^LSet, destination Object:  error 13$",
+      "^RSet, destination True:    \\[ab\\] Len 2$"
+    ]
+  }
+}

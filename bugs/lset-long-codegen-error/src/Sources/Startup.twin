@@ -1,0 +1,8 @@
+Module Startup
+
+    Public Sub Main()
+        Dim n As Long
+        LSet n = "ab"
+    End Sub
+
+End Module

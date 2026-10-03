@@ -1,0 +1,12 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^ForeColor = -1: Err 5, reads FFFFFFFF$",
+      "^ForeColor = &H8000001F: Err 5, reads 8000001F$",
+      "^BackColor = -1: Err 0, reads FFFFFFFF$",
+      "^FillColor = -1: Err 0, reads FFFFFFFF$"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+Module Startup
+
+    Public Sub Main()
+        Load Form1
+        Form1.ForeColor = vbGreen
+        Form1.BackColor = vbGreen
+        Form1.FillColor = vbGreen
+        On Error Resume Next
+        Form1.ForeColor = -1
+        Debug.Print "ForeColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.ForeColor): Err.Clear
+        Form1.ForeColor = &H8000001F
+        Debug.Print "ForeColor = &H8000001F: Err " & Err.Number & ", reads " & Hex$(Form1.ForeColor): Err.Clear
+        Form1.BackColor = -1
+        Debug.Print "BackColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.BackColor): Err.Clear
+        Form1.FillColor = -1
+        Debug.Print "FillColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.FillColor): Err.Clear
+        Unload Form1
+    End Sub
+
+End Module

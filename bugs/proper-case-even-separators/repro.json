@@ -1,0 +1,12 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^one space:    \\[A B\\]$",
+      "^two spaces:   \\[A  b\\]$",
+      "^three spaces: \\[A   B\\]$",
+      "^vbCrLf:       \\[A<CRLF>b\\]$"
+    ]
+  }
+}
