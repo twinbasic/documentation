@@ -1,0 +1,9 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^asked for 2, two connections present: fetched=1, cookies 1 and 0$"
+    ]
+  }
+}

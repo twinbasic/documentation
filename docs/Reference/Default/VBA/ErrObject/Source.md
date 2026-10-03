@@ -20,9 +20,12 @@ The **Source** property holds a string representing the object that generated th
 
 Use **Source** to provide information when handling code cannot handle an error generated in an accessed object. For example, when a call into an Automation server raises a `Division by zero` error, the server sets **Err.Number** to its error code for that error and sets **Source** to its programmatic ID.
 
-When generating an error from user code, **Source** is the application's programmatic ID. For class modules, **Source** should contain a name in the form *project.class*.
+When generating an error from user code, pass the source to [**Raise**](Raise). For class modules, **Source** should contain a name in the form *project.class*. Without a source argument, **Source** is an empty string.
 
-When an unexpected error occurs, the **Source** property is automatically filled in. For errors in a standard module, **Source** contains the project name. For errors in a class module, **Source** contains a name in *project.class* form.
+When an error occurs that twinBASIC raises itself, such as a division by zero, **Source** is an empty string too, in a standard module and in a class module alike.
+
+> [!NOTE]
+> In VBA, **Source** is filled in automatically with the name of the project, for an error that VBA raises and for **Raise** without a source argument. twinBASIC does not fill it in.
 
 ### Example
 

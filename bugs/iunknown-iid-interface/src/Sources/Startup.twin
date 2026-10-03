@@ -1,0 +1,25 @@
+' An Interface with IUnknown's interface identifier compiles, and a class can implement it.
+' Calling its method through a variable of that type ends in an ACCESS_VIOLATION.
+' With any other identifier on the interface, the same code runs to the end.
+[InterfaceId("00000000-0000-0000-C000-000000000046")]
+Private Interface IUnk
+    Sub Dummy()
+End Interface
+
+Private Class RC
+    Implements IUnk
+    Private Sub IUnk_Dummy() Implements IUnk.Dummy
+    End Sub
+End Class
+
+Module Startup
+
+    Public Sub Main()
+        Dim u As IUnk
+        Set u = New RC
+        Debug.Print "ok"
+        u.Dummy
+        Debug.Print "called"
+    End Sub
+
+End Module

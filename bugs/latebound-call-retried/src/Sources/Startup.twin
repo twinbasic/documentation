@@ -1,0 +1,54 @@
+Class Widget
+    Public Hits As Long
+    Public Gets As Long
+
+    Public Sub Hello()
+        Hits += 1
+    End Sub
+
+    Public Sub Boom(ByVal a As Long)
+        Hits += 1
+        Err.Raise 5
+    End Sub
+
+    Public Function BoomFn(ByVal a As Long) As Long
+        Hits += 1
+        Err.Raise 5
+    End Function
+
+    Public Property Get Prop() As Long
+        Gets += 1
+        Return 1
+    End Property
+    Public Property Let Prop(ByVal Value As Long)
+        Hits += 1
+        Err.Raise 5
+    End Property
+End Class
+
+Module Startup
+
+    Private Sub Show(ByVal label As String, ByVal w As Widget)
+        Debug.Print label & ": error " & Err.Number & ", ran " & w.Hits & " time(s), Property Get ran " & w.Gets
+        Err.Clear
+        w.Hits = 0
+        w.Gets = 0
+    End Sub
+
+    Public Sub Main()
+        Dim w As New Widget
+        Dim o As Object = w
+        On Error Resume Next
+        o.Hello 1
+        Show "o.Hello 1", w
+        o.Boom 1
+        Show "o.Boom 1", w
+        Dim x As Long = o.BoomFn(1)
+        Show "x = o.BoomFn(1)", w
+        o.Prop = 1
+        Show "o.Prop = 1", w
+        w.Boom 1
+        Show "w.Boom 1 (early bound)", w
+    End Sub
+
+End Module

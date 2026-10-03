@@ -1,0 +1,52 @@
+[InterfaceId("00020400-0000-0000-C000-000000000046")]
+Private Interface IDispatchCopy Extends stdole.IUnknown
+    Sub GetTypeInfoCount(ByRef pctinfo As Long)
+    Sub GetTypeInfo(ByVal iTInfo As Long, ByVal lcid As Long, ByRef ppTInfo As LongPtr)
+    Sub GetIDsOfNames(ByVal riid As LongPtr, ByVal rgszNames As LongPtr, ByVal cNames As Long, ByVal lcid As Long, ByVal rgDispId As LongPtr)
+    Sub Invoke(ByVal dispIdMember As Long, ByVal riid As LongPtr, ByVal lcid As Long, ByVal wFlags As Integer, ByVal pDispParams As LongPtr, ByVal pVarResult As LongPtr, ByVal pExcepInfo As LongPtr, ByVal puArgErr As LongPtr)
+End Interface
+
+NotDispatchable Class Recorder
+    Implements IDispatchCopy
+
+    Public Calls As Long
+
+    Private Sub IDispatchCopy_GetTypeInfoCount(ByRef pctinfo As Long) Implements IDispatchCopy.GetTypeInfoCount
+        pctinfo = 0
+    End Sub
+
+    Private Sub IDispatchCopy_GetTypeInfo(ByVal iTInfo As Long, ByVal lcid As Long, ByRef ppTInfo As LongPtr) Implements IDispatchCopy.GetTypeInfo
+        Err.ReturnHResult = &H80004001
+    End Sub
+
+    Private Sub IDispatchCopy_GetIDsOfNames(ByVal riid As LongPtr, ByVal rgszNames As LongPtr, ByVal cNames As Long, ByVal lcid As Long, ByVal rgDispId As LongPtr) Implements IDispatchCopy.GetIDsOfNames
+        Dim id As Long = 1
+        CopyMemory rgDispId, VarPtr(id), 4
+    End Sub
+
+    Private Sub IDispatchCopy_Invoke(ByVal dispIdMember As Long, ByVal riid As LongPtr, ByVal lcid As Long, ByVal wFlags As Integer, ByVal pDispParams As LongPtr, ByVal pVarResult As LongPtr, ByVal pExcepInfo As LongPtr, ByVal puArgErr As LongPtr) Implements IDispatchCopy.Invoke
+        Calls += 1
+        Debug.Print "    Invoke " & Calls & ": wFlags " & wFlags & ", result " & IIf(pVarResult = 0, "null", "supplied")
+        Err.ReturnHResult = &H80020003    ' DISP_E_MEMBERNOTFOUND
+    End Sub
+End Class
+
+Module Api
+    Public Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByVal Destination As LongPtr, ByVal Source As LongPtr, ByVal Length As LongPtr)
+End Module
+
+Module Startup
+
+    Public Sub Main()
+        Dim r As New Recorder
+        Dim o As Object = r
+        On Error Resume Next
+        CallByName o, "Anything", vbMethod
+        Debug.Print "CallByName: error " & Err.Number & ", Invoke called " & r.Calls & " time(s)"
+        Err.Clear
+        r.Calls = 0
+        o.Anything
+        Debug.Print "o.Anything: error " & Err.Number & ", Invoke called " & r.Calls & " time(s)"
+    End Sub
+
+End Module

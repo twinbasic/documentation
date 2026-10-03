@@ -787,3 +787,485 @@ Each build writes its type library and succeeds, however many IDEs share the `TE
 Severity: low; the build passes when repeated, and an IDE run by a person rarely builds at the same moment as another. It affects tools that build several projects at once. The compiler imports `GetTempFileNameW`, and its messages show that it writes the type library to a file and reads it back (`[TYPELIB] failed to read in generated type library file` is the message beside this one). A temporary file name that two processes both use would explain the counts; that is an inference, not observed. The temp folder is empty after the builds, so whatever is written there is deleted.
 
 <!-- Reproducer: bugs/concurrent-builds-shared-temp/ (mode manual: it needs several IDEs at once, which bug_repro cannot run). The measurement used the same console template with check_examples' two staging modules, not this reproducer itself: a Sonnet agent's 904 builds through tbbuild-style lanes, data in %TEMP%/claude/typelib-probe/results.jsonl (not kept), 2026-10-02, BETA 995 only; no 983 control. scripts/lib/tb-ide.mjs's launchIde gives every IDE %TEMP%/tbbuild-tmp-<port> since 7a716388, so no harness of this repository reproduces it today: to measure it again, pass TEMP and TMP to launchIde's env. When fixed, the comment in launchIde and WIP.ExamplesBuild.md's per-IDE temp folder note may say so; the folders can stay. -->
+
+---
+
+## An `Interface` declared with the identifier of `IUnknown` compiles, and calling its method ends in an access violation
+
+**Describe the bug**
+An `Interface` whose `[InterfaceId]` is the identifier of `IUnknown`, `00000000-0000-0000-C000-000000000046`, compiles without a diagnostic, and a class can implement it. Calling one of its methods through a variable of that type ends the run with `NATIVE EXCEPTION: ACCESS_VIOLATION`. The `Set` to the variable succeeds, but what it stores is the object's ordinary `IUnknown` pointer, whose method table is not the interface's.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `iunknown-iid-interface.twinproj` (attached as `iunknown-iid-interface.zip`). Its one source file, `Startup.twin`, holds the whole bug:
+   ```
+   [InterfaceId("00000000-0000-0000-C000-000000000046")]
+   Private Interface IUnk
+       Sub Dummy()
+   End Interface
+
+   Private Class RC
+       Implements IUnk
+       Private Sub IUnk_Dummy() Implements IUnk.Dummy
+       End Sub
+   End Class
+
+   Module Startup
+       Public Sub Main()
+           Dim u As IUnk
+           Set u = New RC
+           Debug.Print "ok"
+           u.Dummy
+           Debug.Print "called"
+       End Sub
+   End Module
+   ```
+2. Run the project in the IDE (F5).
+3. See `ok` in the DEBUG CONSOLE, and then `NATIVE EXCEPTION: ACCESS_VIOLATION /Startup.twin; Startup.Main LINE 000020`. `called` is never printed.
+
+**Expected behavior**
+The compiler refuses the declaration, because an interface cannot have the identifier of `IUnknown` and also have its own methods at the slots that follow `IUnknown`'s three. Failing that, the call works. A run that ends in a native access violation, with no diagnostic anywhere, is worse than either.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low; it takes a deliberate copy of `IUnknown`'s identifier, but the compiler accepts it silently and the failure is a crash.
+
+What was tried:
+- The same code with any other identifier on the interface runs to the end and prints `called`.
+- If the class does not implement the interface at all, `Set u = New RC` still succeeds, and `u.Dummy` returns with no error and no effect: the `Set` asks for `IUnknown`, which every class answers.
+- An interface with three `[PreserveSig]` members declared in `IUnknown`'s order, `QueryInterface`, `AddRef` and `Release`, behaves the same way: `Set` succeeds, and the calls go to the wrong slots (one `AddRef` returned 0, and the next call crashed).
+- `Interface IUnk Extends stdole.IUnknown` with that identifier compiles, and `u.AddRef` is then reported as `TB5027 Unrecognized member 'AddRef' on type 'IUnk'`, as it is for `stdole.IUnknown` itself, which has no members that twinBASIC code can call.
+
+<!-- Reproducer: bugs/iunknown-iid-interface/ (mode run, expects tbrun exit 5, the output `ok` and the native exception); verified on 995. Stated in docs/Reference/COM-Interfaces/IUnknown.md, section "Implementing it" (the paragraph that begins "A project's own Interface that carries the identifier of IUnknown also compiles"): when fixed, replace it with whatever the compiler now does (a diagnostic, or a working call). -->
+
+---
+
+## A late-bound call that passes arguments and fails is issued a second time, without them
+
+**Describe the bug**
+When a late-bound call that passes arguments fails, twinBASIC calls `Invoke` a second time, as a property read (`wFlags` 3) with no arguments. A `Sub` called with an argument it does not take therefore runs twice before error 13 is raised, a failed property assignment runs the property's `Property Get` afterwards, and the error the caller sees is replaced. Observed in a run of the reproducer project, and with `Invoke` implemented by a class that records its calls.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `latebound-call-retried.twinproj` (attached as `latebound-call-retried.zip`). Its one source file, `Startup.twin`, holds a class and `Sub Main`. `Widget` has `Sub Hello()`, which counts how often it runs, and a `Property Let Prop` that raises error 5 beside a `Property Get Prop` that counts how often it runs.
+2. Run it. `Main` calls `o.Hello 1` and `o.Prop = 1` through `Dim o As Object = New Widget`, with `On Error Resume Next`, and prints the error and the counts after each:
+   ```
+   o.Hello 1: error 13, ran 2 time(s), Property Get ran 0
+   o.Boom 1: error 5, ran 1 time(s), Property Get ran 0
+   x = o.BoomFn(1): error 5, ran 1 time(s), Property Get ran 0
+   o.Prop = 1: error -2147352567, ran 1 time(s), Property Get ran 1
+   w.Boom 1 (early bound): error 5, ran 1 time(s), Property Get ran 0
+   ```
+3. See `Hello` run twice, and `Property Get Prop` run after the `Property Let` that failed. The error from the assignment is `&H80020009` (`DISP_E_EXCEPTION`) where the `Property Let` raised 5.
+4. To see the second call, implement `IDispatch` in a `NotDispatchable` class (see `bugs/callbyname-membernotfound-retried/`, which has one, and whose `Invoke` can return another code) whose `Invoke` prints `wFlags`, `pDispParams.cArgs` and whether `pVarResult` is null, and returns a failure code. With `Fail3` returning `DISP_E_TYPEMISMATCH` and `Fail5` raising error 5:
+   ```
+   o.Fail3 1      Invoke flags=1 cArgs=1 result=null, then Invoke flags=3 cArgs=0 result=set
+   o.Fail3 = 5    Invoke flags=4 cArgs=1 result=null, then Invoke flags=3 cArgs=0 result=set
+   o.Fail5 = 5    Invoke flags=4 cArgs=1 result=null, then Invoke flags=3 cArgs=0 result=set
+   Set o.Fail1 = e   Invoke flags=8 cArgs=1 result=null, then Invoke flags=3 cArgs=0 result=set
+   ```
+
+**Expected behavior**
+One `Invoke` per late-bound call, as a raw `Invoke` does: calling `Invoke` directly with the same argument runs `Hello` once and returns `DISP_E_TYPEMISMATCH`. In VB6 the same two statements fail without running anything the callee counts: `o.Hello 1` raises error 450, *Wrong number of arguments or invalid property assignment*, with `Hello` run 0 times, and `o.Prop = 1` raises error 5 from the `Property Let` with the `Property Get` run 0 times. At the least a failed call must not run the callee again, and the error of the assignment must be the one the `Property Let` raised.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: a late-bound call with a wrong argument count has side effects twice, and a late-bound property assignment that fails calls the getter, which may be expensive or have effects of its own.
+
+What does not reproduce it: a statement with no arguments (`o.Fail3`, `o.Hello`, `x = o.Fail3`); a statement that raises from inside the callee (`o.Boom 1` and `x = o.BoomFn(1)` run once and keep error 5); `CallByName` with an argument, for every call type (one `Invoke`); a call that succeeds; early-bound calls. What does reproduce it: `o.Hello 1`, `o.Hello(1)`, `o.Hello 1, 2`, the same through a `Variant` holding the object, and `o.Fn 1` for a `Function` with no parameters (ran twice, error 13). An assignment is repeated whatever the failure was (`DISP_E_TYPEMISMATCH`, `DISP_E_MEMBERNOTFOUND`, `E_FAIL`, an error raised by the setter); a statement call is repeated after `DISP_E_TYPEMISMATCH`, but not after an error raised in the callee.
+
+The second call resembles VB's rule for `o.Member(args)` on a property that returns an object or a collection: read the property with no arguments, then apply the arguments to the result. It is applied after a failure of any call that has arguments. The single run of `Hello` in the raw `Invoke` case is also at odds with the COM contract, which gives `DISP_E_BADPARAMCOUNT` for too many arguments without running the member; it is left out of this entry.
+
+<!-- Reproducer: bugs/latebound-call-retried/ (mode run, expects the Hello and Prop lines above); verified on 995. VB6 side measured with the vbcases kit in s71/bugs/vb6 (o.Hello 1 -> 450 and Hits=0; o.Prop = 1 -> 5 and Gets=0). Stated in docs/Reference/COM-Interfaces/IDispatch.md, the second NOTE under "Errors from a late-bound call" (a call that fails inside Invoke can be made twice) and the first row of the table under "Classes written in twinBASIC" in the same page. When fixed, reduce that NOTE to the CallByName part (see callbyname-membernotfound-retried), or delete it, and remove the sentence about "a late-bound statement does this twice". The Property Get run and the replaced error number are not on the page yet. -->
+
+---
+
+## `CallByName` calls `Invoke` a second time, with no result, when the first call returns DISP_E_MEMBERNOTFOUND
+
+**Describe the bug**
+`CallByName` on an object whose `IDispatch.Invoke` returns `DISP_E_MEMBERNOTFOUND` calls `Invoke` twice: first with a result variant (`pVarResult` supplied), then again with the same identifier and flags and a null `pVarResult`. A late-bound statement for the same member, `o.Anything`, calls it once. Seen with a class that implements `IDispatch` itself and counts the calls.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `callbyname-membernotfound-retried.twinproj` (attached as `callbyname-membernotfound-retried.zip`). Its one source file, `Startup.twin`, declares a copy of `IDispatch` (the `stdole` one cannot be called) and a `NotDispatchable` class `Recorder` that implements it. Its `GetIDsOfNames` returns 1 for any name, and its `Invoke` prints its `wFlags`, says whether `pVarResult` is null, counts the call, and returns `DISP_E_MEMBERNOTFOUND` with `Err.ReturnHResult`.
+2. Run it. `Main` calls `CallByName o, "Anything", vbMethod` and then `o.Anything`, with `On Error Resume Next`, through `Dim o As Object = New Recorder`:
+   ```
+       Invoke 1: wFlags 1, result supplied
+       Invoke 2: wFlags 1, result null
+   CallByName: error 438, Invoke called 2 time(s)
+       Invoke 1: wFlags 1, result null
+   o.Anything: error 438, Invoke called 1 time(s)
+   ```
+
+**Expected behavior**
+One `Invoke` per `CallByName`, as for the statement form. A method that did its work and then reported `DISP_E_MEMBERNOTFOUND` (a scripting host whose members are resolved inside `Invoke` is an example) runs again, and a call with arguments and side effects is repeated.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low. It only shows with an `IDispatch` that returns `DISP_E_MEMBERNOTFOUND` after doing work.
+
+What does not reproduce it: `CallByName` with `vbGet` or `vbLet` against `DISP_E_TYPEMISMATCH`, `DISP_E_BADPARAMCOUNT`, `E_FAIL`, an error raised in `Invoke`, or success (one `Invoke` each); `Invoke` returning `DISP_E_MEMBERNOTFOUND` to a late-bound statement or to `x = o.Member` (one `Invoke` each). `vbGet`, `vbMethod` and `vbLet` all repeat after `DISP_E_MEMBERNOTFOUND`.
+
+A separate behaviour, in its own entry, repeats a failed late-bound statement that passes arguments as a property read: see the entry "A late-bound call that passes arguments and fails is issued a second time, without them". The two are not the same: that one is for calls with arguments and needs no `DISP_E_MEMBERNOTFOUND`, and this one is `CallByName` with or without arguments.
+
+<!-- Reproducer: bugs/callbyname-membernotfound-retried/ (mode run, expects the two count lines above); verified on 995. Stated in docs/Reference/COM-Interfaces/IDispatch.md, the second NOTE under "Errors from a late-bound call": its sentence "CallByName repeats a call that returned DISP_E_MEMBERNOTFOUND with a null pVarResult". When fixed, remove that sentence (the other half of the NOTE is the entry on late-bound calls with arguments). The flags 1/2/4 combinations come from the probe in s71/idispatch/tb6. -->
+
+---
+
+## A late-bound call to a member that does not exist raises &H80020006, and `CallByName` raises &H80004005, where VB6 raises 438
+
+**Describe the bug**
+Calling a member that an object does not have, through an `Object` variable, raises error `&H80020006` (`DISP_E_UNKNOWNNAME`, *Unknown name.*) instead of 438, *Object doesn't support this property or method*. `CallByName` with the same name raises `&H80004005`, *Unspecified error*. An `On Error` handler written for VB6 or VBA, which tests for 438, does not catch either. Observed in a run of the reproducer project.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `latebound-unknown-member-error.twinproj` (attached as `latebound-unknown-member-error.zip`). Its one source file, `Startup.twin`, holds a class `Widget` with a `Sub Hello()` and a `Sub Main` that calls members through `Object` variables, with `On Error Resume Next`.
+2. Run it and read the DEBUG CONSOLE:
+   ```
+   o.Nope -> error -2147352570 (80020006) [Unknown name.]
+   Collection.Nope -> error -2147352570 (80020006) [Unknown name.]
+   CallByName o, Nope -> error -2147467259 (80004005) [Unspecified error]
+   o.Hello (control) -> error 0 (0) []
+   ```
+
+**Expected behavior**
+Error 438 for all three, as in VB6 and VBA. The same cases in a VB6 project (a class, a `Variant` holding it, a `Collection`, a `Scripting.Dictionary`, and `CallByName` on each of them):
+```
+o.Nope (class) -> error 438 (1B6) [Object doesn't support this property or method]
+v.Nope (class in a Variant) -> error 438 (1B6) [Object doesn't support this property or method]
+Collection.Nope -> error 438 (1B6) [Object doesn't support this property or method]
+Dictionary.Nope -> error 438 (1B6) [Object doesn't support this property or method]
+CallByName class Nope -> error 438 (1B6) [Object doesn't support this property or method]
+CallByName Dictionary Nope -> error 438 (1B6) [Object doesn't support this property or method]
+CallByName Collection Nope -> error 438 (1B6) [Object doesn't support this property or method]
+```
+twinBASIC already maps `DISP_E_MEMBERNOTFOUND` from `Invoke` to 438; `DISP_E_UNKNOWNNAME` from `GetIDsOfNames`, which is the answer for a name the object does not have, should be mapped the same way, and `CallByName` should not turn it into `E_FAIL`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: code ported from VB6 or VBA that probes an object for a member with `On Error` and 438 stops working, and the message names a COM code instead of the problem.
+
+The twinBASIC class's `GetIDsOfNames` itself is right: it returns `DISP_E_UNKNOWNNAME` for a name it does not know, as the contract says; the conversion into a run-time error is what differs. The same `&H80020006` came from a twinBASIC class, a `Collection`, a `Scripting.Dictionary` and a `Scripting.FileSystemObject`, and a `Variant` holding an object; `CallByName` gave `&H80004005` for a twinBASIC class and a `Dictionary`. Other failures are mapped as VB6 does: a call that `Invoke` rejects with `DISP_E_MEMBERNOTFOUND` raises 438, and a `Nothing` object raises 91.
+
+<!-- Reproducer: bugs/latebound-unknown-member-error/ (mode run, expects the three lines above); verified on 995. VB6 output from the vbcases kit, s71/bugs/vb6 (VB6 6.0, Probe.exe). Stated in docs/Reference/COM-Interfaces/IDispatch.md, the first two rows of the table under "Errors from a late-bound call" and the first NOTE below it (In VBA an unknown member raises error 438); when fixed, delete the rows and the NOTE, and check docs/Reference/Default/VBA/Interaction/CallByName.md, which does not mention either code today, and anywhere else that lists the errors CallByName raises. -->
+
+---
+
+## Calling a method of `stdole.IDispatch` is a late-bound call by name and fails with &H80020006
+
+**Describe the bug**
+A variable declared `As stdole.IDispatch` does not call the four `IDispatch` methods through the interface. `d.GetTypeInfoCount count` is compiled as a late-bound call: the compiler accepts any arguments, whatever their number and type, and at run time the call looks `GetTypeInfoCount` up by name in the object, which does not have it, and raises `&H80020006` (*Unknown name.*). With no error handler the error ends the run (in the IDE's run, with no message). A call of `GetTypeInfo`, `GetIDsOfNames` or `Invoke` ends the run the same way when unhandled. Members of the object itself can be called through the variable, as through an `Object`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `stdole-idispatch-late-bound.twinproj` (attached as `stdole-idispatch-late-bound.zip`). Its one source file, `Startup.twin`, holds a class `Widget` with a `Sub Hello()` that counts its runs, and:
+   ```
+   Dim w As New Widget
+   Dim d As stdole.IDispatch = w
+   On Error Resume Next
+   d.Hello
+   d.GetTypeInfoCount count
+   d.GetTypeInfoCount "a", "b", "c"
+   d.NoSuchMethod
+   ```
+2. See no compile error, and this output (each line prints `Err.Number` after the statement):
+   ```
+   d.Hello: error 0, Hello ran 1 time(s)
+   d.GetTypeInfoCount: error -2147352570 (80020006) Unknown name.
+   d.GetTypeInfoCount "a", "b", "c": error -2147352570
+   d.NoSuchMethod: error -2147352570
+   ```
+3. Remove the `On Error Resume Next` line and run again: the output stops at the first `d.GetTypeInfoCount`, and the run ends with no message.
+
+**Expected behavior**
+The call goes through the interface: `GetTypeInfoCount` returns the count (1 for a twinBASIC class), and a wrong number or type of argument is a compile error, as for any other interface method. If `stdole.IDispatch` is meant to be an alias of `Object`, `d.GetTypeInfoCount` should still not compile, or the type should not list four methods that cannot be called. A project's own declaration of the interface, with the same `[InterfaceId]`, calls them correctly.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low, since a project can declare its own copy of the interface, but the failure is silent without a handler and the compiler gives no sign that the call is not what it appears to be.
+
+What was tried: `GetIDsOfNames` and `Invoke` with zero arguments, and `GetTypeInfo` with a null pointer, each end the run the same way; calls with arguments of the wrong type compile (`d.GetTypeInfoCount "a"`, `d.GetTypeInfo "a", "b", "c"`, `d.Invoke "a", "b", "c", "d", "e", "f", "g", "h"` all compile). An unhandled `Err.Raise 5` in the same harness ends the run the same way, so the silent end is how an unhandled error shows there, not a separate fault. Running the built exe with `--exe` was not possible on this machine (the harness could not start it).
+
+<!-- Reproducer: bugs/stdole-idispatch-late-bound/ (mode run, expects the Hello and GetTypeInfoCount lines above); verified on 995. Stated in docs/Reference/COM-Interfaces/IDispatch.md, "The stdole declaration". That paragraph says calling GetTypeInfoCount "ends the run" and that the arguments are not checked because twinBASIC has no type for them; the cause is that the call is late-bound, and the run ends only for lack of an error handler, so reword it now whether or not this is fixed. When fixed, say that stdole.IDispatch can be called, and drop the advice to declare a copy (the Declaration section's "The declaration in stdole is no use" sentence too). -->
+
+---
+
+## A twinBASIC class's `GetTypeInfo` with an `iTInfo` of 1 returns E_UNEXPECTED, not DISP_E_BADINDEX
+
+**Describe the bug**
+`IDispatch::GetTypeInfo` on an object of a twinBASIC class returns `E_UNEXPECTED` (`&H8000FFFF`) for any `iTInfo` other than 0. The object's `GetTypeInfoCount` returns 1, so 0 is the only valid index, and the contract gives `DISP_E_BADINDEX` for a bad one. Observed in a run of the reproducer project, calling the method through a project's own declaration of the interface.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `gettypeinfo-badindex.twinproj` (attached as `gettypeinfo-badindex.zip`). Its one source file, `Startup.twin`, declares a copy of `IDispatch` with the same `[InterfaceId]` (the `stdole` declaration cannot be called), a class `Widget` with one `Sub`, and a `Sub Main` that calls `GetTypeInfoCount` and `GetTypeInfo` on a `Widget` through the copy.
+2. Run it and read the DEBUG CONSOLE:
+   ```
+   GetTypeInfoCount = 1
+   GetTypeInfo(0): HRESULT 0, pointer returned True
+   GetTypeInfo(1): HRESULT 8000FFFF, error -2147418113, pointer returned False
+   GetTypeInfo(2): HRESULT 8000FFFF, error -2147418113, pointer returned False
+   GetTypeInfo(-1): HRESULT 8000FFFF, error -2147418113
+   ```
+
+**Expected behavior**
+`DISP_E_BADINDEX` (`&H8002000B`), which the `IDispatch::GetTypeInfo` documentation gives for an index that is not valid, for an index the object does not have. `E_UNEXPECTED` (*Catastrophic failure*) is the code for a call made at a time when the object cannot take it, and it reads as a fault in the object.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: minor. A caller that checks for `DISP_E_BADINDEX` to learn that an object has no more type information gets a different code; `GetTypeInfo(0)` and `GetTypeInfoCount` are right.
+
+<!-- Reproducer: bugs/gettypeinfo-badindex/ (mode run, expects the GetTypeInfo(0) and GetTypeInfo(1) lines above); verified on 995. Stated in docs/Reference/COM-Interfaces/IDispatch.md, the GetTypeInfo section ("For 1 it fails with E_UNEXPECTED ..., not with DISP_E_BADINDEX"); when fixed, say that it fails with DISP_E_BADINDEX. -->
+
+---
+
+## `Err.Raise` without a source or a description leaves `Source` empty, and the defaults are not VBA's
+
+**Describe the bug**
+`Err.Raise` called with only a number leaves `Err.Source` empty, where VBA and VB6 set it to the name of the project. It gives `Err.Description` an empty string for numbers such as 1, 95, 99 and 513, where VBA gives `Application-defined or object-defined error`, and `Automation error` for numbers from 1000 up, where VBA gives the same generic text. And an omitted argument no longer keeps the value an earlier `Err.Raise` left, which VBA-Docs describes for `Raise`. Observed in a run of the reproducer project, in the IDE and in a built exe alike.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `err-raise-defaults.twinproj` (attached as `err-raise-defaults.zip`) and run it (F5). Its `Sub Main` raises with `On Error Resume Next` and prints `[Err.Source] [Err.Description]` after each call, calling `Err.Clear` first except in the last case:
+   ```
+   Err.Raise 5
+   Err.Raise 1
+   Err.Raise 513
+   Err.Raise 1000
+   Err.Raise 1000, "A.Src", "B desc"
+   Err.Raise 5
+   ```
+2. See, beside what the same program prints when built in VB6:
+
+   | call | twinBASIC | VB6 |
+   |---|---|---|
+   | `Err.Raise 5` | `[] [Invalid procedure call or argument]` | `[Probe] [Invalid procedure call or argument]` |
+   | `Err.Raise 1` | `[] []` | `[Probe] [Application-defined or object-defined error]` |
+   | `Err.Raise 513` | `[] []` | `[Probe] [Application-defined or object-defined error]` |
+   | `Err.Raise 1000` | `[] [Automation error]` | `[Probe] [Application-defined or object-defined error]` |
+   | `Err.Raise 5` after a full `Err.Raise 1000, "A.Src", "B desc"`, no `Err.Clear` between | `[] [Invalid procedure call or argument]` | `[A.Src] [B desc]` |
+
+   The rule for the description, from a sweep of every number from 0 to 65537: a number with a built-in message (5, 11, 13 and 84 others, the ones `Error$` knows) gets that message, as in VBA. A number from 1 to 746 without one gets an empty string. A number from 747 up gets the Windows system message for that number when there is one (1001 gives `Recursion too deep; the stack overflowed.`, 15861 a licensing message) and `Automation error` when there is none. A negative number is looked up as an `HRESULT` the same way (`vbObjectError + 1` gives `Invalid advise flags`, `vbObjectError + 513` gives `An event was unable to invoke any of the subscribers`, `vbObjectError + 1000` gives `Automation error`). `Error$(n)` and the `Error n` statement give VBA's generic text for all of these.
+
+**Expected behavior**
+What VBA-Docs states for `Err.Raise`, which VB6 does as well: `Source` is the programmatic ID of the project when *source* is omitted; *description* is the message of the built-in error, or `Application-defined or object-defined error` when there is none; and an omitted argument is taken from the properties of `Err` when they still hold an earlier error's values. A program that reads `Err.Source` to find where an error came from, or tests `Err.Description <> ""`, behaves differently without any diagnostic.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low for a program that passes all the arguments; for one that does not, `Err.Source` and `Err.Description` are not what the VBA code it was ported from expects. The result is the same for an error raised in a method of a class and read by its caller, apart from an empty description, which arrives as `Application-defined or object-defined error` there. It is also the same in a built exe.
+
+Related and also different from VB6: `Err.Raise 65536` is accepted, and `Err.Number` is 65536, where VB6 raises error 5. `Err.Raise 0` raises error 5 in both. An explicit empty string for the source or the description gives an empty `Source` or `Description`, in VB6 as well. `Err.HelpContext` is 0 in twinBASIC, and VB6 sets it to 1000000 plus the number for a `Raise` without one (`1000005` for 5).
+
+<!-- Reproducer: bugs/err-raise-defaults/ (mode run, expects the five lines above in twinBASIC); verified on 995. VB6 side from the same program built with the vbcases kit (s71/raise-repro-vb6); the full sweep and the per-number lists are in s71/raise/ (out-tb-995.txt, out-vb6.txt, analyze.mjs). Stated in docs/Reference/Default/VBA/ErrObject/Raise.md (the table under *description* and the NOTE after it, plus the check_run sample), in Source.md (the NOTE) and in Description.md (the NOTE); docs/Reference/COM-Interfaces/IErrorInfo.md says GetSource returns an empty string and GetDescription the standard text when Raise gets neither. When fixed, delete those NOTEs and the table, restore the sentences about the project's programmatic ID, the generic message and the carried-over values, and rewrite the sample's expected output. docs/Reference/Default/VBRUN/ErrorContext/index.md says Source is the project name for errors raised inside a project; that is not what Err.Source holds and should be checked when this is fixed. -->
+
+---
+
+## The error information twinBASIC leaves in the thread's slot reads from `Err` as it is later, and stays there after the error is handled
+
+**Describe the bug**
+After an `Err.Raise` that is handled, the calling thread's `IErrorInfo` slot holds one object that reads its five values from `Err` each time a method of it is called, and nothing takes it out of the slot. After `Err.Clear` it returns empty strings, and after the next `Err.Raise` it returns the new error's values, where the COM contract has an `IErrorInfo` keep what was stored in it. And `GetErrorInfo` finds the object even when the error was handled in twinBASIC code that never reads the slot, where it should find the slot empty, so a later failure that carries no error information is described by whatever `Err` holds at that moment. Observed in a run of the reproducer project, which uses no class and no interface for the first symptom.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `err-info-live-view.twinproj` (attached as `err-info-live-view.zip`) and run it (F5). It declares `IErrorInfo` and `GetErrorInfo` and, under `On Error Resume Next`, prints:
+   ```
+   read at once: [My.Source] [My description]
+   after Err.Clear: [] []
+   Err after the call: -2147220270 [My description]
+   slot afterwards: [My.Source] [My description]
+   E_FAIL after the cleared error: -2147467259 [Unspecified error]
+   E_FAIL, slot emptied first: -2147467259 [Automation error]
+   ```
+2. The first two lines come from `Err.Raise vbObjectError + 1234, "My.Source", "My description"`, then `GetErrorInfo 0, info`, one read of `info.GetSource()` and `info.GetDescription()`, then `Err.Clear` and a second read of the same `info`. The second read returns empty strings.
+3. The third and fourth lines: a method of a class, called through an interface, raises the same error; the caller handles it and reads `Err`, then calls `GetErrorInfo`. It returns an object, with the values `Err` holds, although the caller already has the error in `Err` and nothing should be left to read (a second `GetErrorInfo` then returns `S_FALSE`).
+4. The last two lines: a method that fails with `Err.ReturnHResult = &H80004005` and sets no error information. When the call comes after a raised error that the program has cleared with `Err.Clear`, `Err.Description` is `Unspecified error`, the system text for an empty description; after the slot has been emptied with `GetErrorInfo`, it is `Automation error`, the text twinBASIC uses for a failure that carries no information.
+
+**Expected behavior**
+`IErrorInfo` holds the values it was given, as an object made with `CreateErrorInfo` does: a read after `Err.Clear` or after another error returns the first error's source and description. A handled error leaves the slot empty, as in VB6 (the same sequence, with an `Err.Raise 5` handled in the procedure, and with a raise in a class method handled by the caller, finds `GetErrorInfo` returning `S_FALSE` and no object), so that `Err.Description` of a later failure does not depend on what ran before. The failure with no information should always give the same description.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+The two symptoms are one bug because the object is the same: `ObjPtr` of what `GetErrorInfo` returns is identical after an `Err.Raise` handled in the same procedure, after a failed call through an interface, after a failure with `SetErrorInfo` plus `Err.ReturnHResult`, and after a call that handled its own error, and it is not `Err` itself. One object, installed in the slot whenever an error occurs or a failure is processed and reading `Err`, accounts for both. They can be fixed apart: a snapshot object would fix the first, and withdrawing the object once the error is delivered, the second.
+
+What does not reproduce it: a fresh thread (`GetErrorInfo` returns `S_FALSE`); a caller that makes the call through an interface whose methods are declared `[PreserveSig]` and reads the slot itself, where the first `GetErrorInfo` returns the values and the second returns `S_FALSE`; the second `GetErrorInfo` after the object has been read from the slot (it returns `S_FALSE`, so `GetErrorInfo` does empty the slot).
+Severity: low. The slot is not a documented twinBASIC interface, but a program that reads error information with the COM functions, or a library that does, sees values that change under it, and a program cannot rely on the description of a failure that came with no error information.
+
+<!-- Reproducer: bugs/err-info-live-view/ (mode run, expects the lines above); verified on 995. The VB6 slot results (empty after Err.Raise 5 in the procedure, after a raise in a class method handled by the caller, and after a class method that handled its own error) are from s71/liveview-vb6, built with the vbcases kit; the full set of probes (T1 to T10, with ObjPtr) is s71/liveview/. Stated in docs/Reference/COM-Interfaces/IErrorInfo.md: "Two things about the object matter to a caller that reads it" in *A method that raises an error*, and "The slot is not always empty" under *A failure with no error information*. When fixed, delete the second half of the first and rewrite the second paragraph; the table of Automation error and the `emptySlot` samples need no change except the sentence about a stale object. -->
+
+---
+
+## `IConnectionPoint.Advise(Nothing)` on a twinBASIC class's connection point ends in an access violation
+
+**Describe the bug**
+A class that declares an `Event` is a connectable object, and its connection point is reached through `IConnectionPointContainer`. Calling `Advise` on that connection point with a null sink raises a native `ACCESS_VIOLATION` and ends the run, instead of returning an error. It is the same crash whether the argument is `Nothing` or an unassigned `stdole.IUnknown` variable.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `advise-nothing-crashes.twinproj` (attached as `advise-nothing-crashes.zip`). Its one source file, `Startup.twin`, declares the project's own copies of `IConnectionPointContainer`, `IEnumConnectionPoints` and `IConnectionPoint` (`stdole` has none of them), a class with one event, and this:
+   ```
+   Private Class Source
+       Public Event Ping()
+   End Class
+
+   Public Sub Main()
+       Dim src As New Source
+       Dim container As IConnectionPointContainer = src
+       Dim points As IEnumConnectionPoints = container.EnumConnectionPoints()
+       Dim point As IConnectionPoint, fetched As Long
+       points.Next 1, point, fetched
+       Debug.Print "before"
+       Dim cookie As Long = point.Advise(Nothing)
+       Debug.Print "after " & cookie
+   End Sub
+   ```
+2. Run the project in the IDE (F5).
+3. See `before` in the DEBUG CONSOLE, and then `NATIVE EXCEPTION: ACCESS_VIOLATION /Startup.twin; Startup.Main LINE 000033 [...twinBASIC_win32.dll+00389F3E]`. `after` is never printed.
+
+**Expected behavior**
+`Advise` returns `E_POINTER`, which twinBASIC raises as run-time error `&H80004003` that `On Error` can handle. The Windows SDK page for [IConnectionPoint::Advise](https://learn.microsoft.com/en-us/windows/win32/api/ocidl/nf-ocidl-iconnectionpoint-advise) lists `E_POINTER` for "The value in *pUnkSink* or *pdwCookie* is not valid. For example, either pointer may be **NULL**."
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low in practice, since a program rarely advises a null sink, but a COM client written in any language can send one, and the connection point crashes the process that hosts the class instead of refusing the call.
+
+What was tried: an object that is not a sink gives an ordinary error (`E_NOINTERFACE`, `&H80004002`, see the entry about `Advise` and `Unadvise` error codes), so only a null pointer crashes. The address of the crash is the same in the standalone probe and in this project.
+
+<!-- Reproducer: bugs/advise-nothing-crashes/ (mode run, expects tbrun exit 5, the output `before` and the native exception); verified on 995. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, section Advise, the last bullet of "In twinBASIC" ("Passing Nothing ends the run with an access violation in BETA 995"): when fixed, replace it with the error it raises, and add Nothing to the example if it fits. -->
+
+---
+
+## `Advise` with a sink that lacks the outgoing interface fails with `E_NOINTERFACE`, and `Unadvise` with a cookie that names no connection succeeds
+
+**Describe the bug**
+On the connection point of a twinBASIC class that has an `Event`, two calls return a different code from the one the COM contract names. `Advise` with a sink that does not answer `QueryInterface` for the outgoing interface fails with `E_NOINTERFACE` (`&H80004002`), where the contract returns `CONNECT_E_CANNOTCONNECT` (`&H80040201`). `Unadvise` with a cookie that names no connection (0 and 99 were tried) succeeds silently and does nothing, where the contract returns an error.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `advise-unadvise-hresults.twinproj` (attached as `advise-unadvise-hresults.zip`). Its one source file, `Startup.twin`, declares the project's own copies of the connection-point interfaces (`stdole` has none of them), a class `Source` with one event, and a class `NotASink` with one field. `Sub Main` runs, with `On Error Resume Next`:
+   ```
+   cookie = point.Advise(sink)    ' sink is a NotASink
+   point.Unadvise 0
+   point.Unadvise 99
+   ```
+2. Run the project in the IDE (F5).
+3. See in the DEBUG CONSOLE:
+   ```
+   Advise, a sink without the outgoing interface: error=80004002
+   Unadvise 0: error=0
+   Unadvise 99: error=0
+   ```
+
+**Expected behavior**
+`Advise` fails with `CONNECT_E_CANNOTCONNECT`. The Windows SDK page for [IConnectionPoint::Advise](https://learn.microsoft.com/en-us/windows/win32/api/ocidl/nf-ocidl-iconnectionpoint-advise) lists it as "The sink does not support the interface required by this connection point", and says to implementers: "The connection point must query the *pUnkSink* pointer for the correct outgoing interface. If this query fails, this method must return CONNECT_E_CANNOTCONNECT." `Unadvise` reports the bad cookie: the page for [IConnectionPoint::Unadvise](https://learn.microsoft.com/en-us/windows/win32/api/ocidl/nf-ocidl-iconnectionpoint-unadvise) lists `E_POINTER` for "The value in *dwCookie* does not represent a valid connection". It is not `S_OK`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low. A client that tests for `CONNECT_E_CANNOTCONNECT` to tell a refused sink from other failures never sees it, and a client that releases a connection twice, or with a wrong cookie, is told it worked.
+
+What was tried: a sink that is an ordinary twinBASIC class gives the same `E_NOINTERFACE` whether it has no members or implements `IDispatch` (the outgoing interface's identifier is generated for each build, so a twinBASIC class cannot answer for it). Nothing is connected afterwards, and no event reaches the sink. Calling `Unadvise` a second time with the cookie of the failed `Advise`, which is 0, also returns without an error.
+<!-- Reproducer: bugs/advise-unadvise-hresults/ (mode run, expects tbrun exit 0 and the three lines above); verified on 995. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, sections Advise (the second bullet of "In twinBASIC") and Unadvise (the sentence "In twinBASIC a cookie that names no connection...") and the last example, whose comments show 80004002 and 0: when fixed, change those. When the page is updated, state the code twinBASIC returns for a bad cookie. -->
+
+---
+
+## The `IEnumConnectionPoints` of a twinBASIC class raises `E_FAIL` at the end of the list, and `Skip` and `Clone` raise `E_NOTIMPL`
+
+**Describe the bug**
+The enumerator that `IConnectionPointContainer.EnumConnectionPoints` returns for a class with an `Event` does not follow the `IEnum` contract. `Next` raises `E_FAIL` when no item is left, and when more items are asked for than remain, where `S_FALSE` is expected. `Skip` and `Clone` both raise `E_NOTIMPL`. `Reset`, and `Next` with exactly one item left, work.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `enum-connection-points-contract.twinproj` (attached as `enum-connection-points-contract.zip`). Its one source file, `Startup.twin`, declares the project's own copies of `IConnectionPointContainer` and `IEnumConnectionPoints` (`stdole` has neither) and a class with one event. `Sub Main` gets the enumerator and calls it with `On Error Resume Next`:
+   ```
+   points.Next 1, item, fetched      ' the one point
+   points.Next 1, item, fetched      ' at the end
+   points.Reset
+   points.Next 2, item, fetched      ' two asked for, one left
+   points.Reset
+   points.Skip 1
+   Dim copy As IEnumConnectionPoints = points.Clone()
+   ```
+2. Run the project in the IDE (F5).
+3. See in the DEBUG CONSOLE:
+   ```
+   Next 1, one point: error=0 LastHresult=0 fetched=1
+   Next 1, at the end: error=80004005 LastHresult=0 fetched=0
+   Next 2, one point: error=80004005 LastHresult=0 fetched=0
+   Skip 1: error=80004001 LastHresult=0 fetched=0
+   Clone: error=80004001 LastHresult=0 fetched=0
+   ```
+
+**Expected behavior**
+The enumerator follows the contract, as the Windows SDK pages state it. [IEnumConnectionPoints::Next](https://learn.microsoft.com/en-us/windows/win32/api/ocidl/nf-ocidl-ienumconnectionpoints-next): "If there are fewer than the requested number of items left in the sequence, this method retrieves the remaining elements", *pcFetched* is the number retrieved, and "If the method retrieves the number of items requested, the return value is S_OK. Otherwise, it is S_FALSE." So the second call returns `S_FALSE` with 0 items and the third returns `S_FALSE` with 1. [Skip](https://learn.microsoft.com/en-us/windows/win32/api/ocidl/nf-ocidl-ienumconnectionpoints-skip) returns `S_OK`, or `S_FALSE` when it could not skip as many as asked. [Clone](https://learn.microsoft.com/en-us/windows/win32/api/ocidl/nf-ocidl-ienumconnectionpoints-clone) returns a new enumerator with the same state, and lists `E_INVALIDARG`, `E_OUTOFMEMORY`, `E_UNEXPECTED` and `S_OK`, not `E_NOTIMPL`. The sibling `IEnumConnections` of the same connection points does return `S_FALSE` at its end and implements `Skip` and `Clone`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low for twinBASIC code, which knows there is one connection point, but a client written for the contract, such as a C++ loop that runs while `Next` returns `S_OK` and treats any failure as fatal, gets an error where it expects the end of the list.
+
+What was tried: a class with one event has exactly one connection point, so `Next 1` returning it and `Reset` followed by another `Next` both work. Reading `LastHresult` after the failing call gives 0, because the call raised its error instead of returning a success code. The same calls from a probe that passed raw pointers instead of typed variables gave the same codes.
+
+<!-- Reproducer: bugs/enum-connection-points-contract/ (mode run, expects tbrun exit 0 and the four error codes above); verified on 995. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, section "The enumerators" (the IEnumConnectionPoints column of the table, and the closing paragraph), and in the last example, whose comment says Next raises E_FAIL: when fixed, change both, and the sentence in the declarations section that says the enumerators of the page return one item per call whatever the count asked for. -->
+
+---
+
+## `IEnumConnections.Next` returns one item when asked for two with two connections present
+
+**Describe the bug**
+The enumerator that `IConnectionPoint.EnumConnections` returns for a twinBASIC class's connection point returns at most one item per `Next` call, whatever the count asked for. With two sinks connected, `Next 2` fills one `CONNECTDATA`, reports `pcFetched` as 1, and leaves the second element of the array untouched.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `enum-connections-one-item.twinproj` (attached as `enum-connections-one-item.zip`). Its one source file, `Startup.twin`, declares the project's own copies of the connection-point interfaces (`stdole` has none of them), a class `Source` with one event, and a class `Listener` with a `WithEvents` variable of type `Source`. `Sub Main` attaches two listeners to one source, takes the connection point, and asks for both connections at once:
+   ```
+   Dim items(0 To 1) As CONNECTDATA
+   Dim connections As IEnumConnections = point.EnumConnections()
+   connections.Next 2, items(0), fetched
+   Debug.Print "asked for 2, two connections present: fetched=" & fetched & ", cookies " & items(0).dwCookie & " and " & items(1).dwCookie
+   ```
+2. Run the project in the IDE (F5).
+3. See `asked for 2, two connections present: fetched=1, cookies 1 and 0`.
+
+**Expected behavior**
+`fetched` is 2 and the cookies are 1 and 2. The Windows SDK page for [IEnumConnections::Next](https://learn.microsoft.com/en-us/windows/win32/api/ocidl/nf-ocidl-ienumconnections-next) says *cConnections* is "The number of items to be retrieved. If there are fewer than the requested number of items left in the sequence, this method retrieves the remaining elements", *pcFetched* is "The number of items that were retrieved", and the return value is `S_OK` "If the method retrieves the number of items requested". A caller that passes an array and a count, as the page says it may, loses every connection after the first, and does not know it, because the call returns `S_OK`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low; the interface is mostly read one item at a time, which works, and the call at the end of the list is correct. It matters to a client that reads in blocks.
+
+What was tried: `Next 3` with two connections returns 1 item as well. `Next 1` called repeatedly returns the items in turn, and returns `S_FALSE` with 0 items at the end. `Skip` and `Clone` work, and a null *pcFetched* is accepted for a request of 1. `IEnumConnectionPoints`, the sibling enumerator, has a different fault (see the entry about its `E_FAIL`), so the two are separate.
+
+<!-- Reproducer: bugs/enum-connections-one-item/ (mode run, expects tbrun exit 0 and the line above); verified on 995. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, section "The enumerators" (the IEnumConnections column of the table, and the closing paragraph) and the sentence after the declarations that says the enumerators return one item per call: when fixed, change them. -->

@@ -1,0 +1,28 @@
+Class Widget
+    Public Hits As Long
+    Public Sub Hello()
+        Hits += 1
+    End Sub
+End Class
+
+Module Startup
+
+    Public Sub Main()
+        Dim w As New Widget
+        Dim d As stdole.IDispatch = w
+        On Error Resume Next
+        d.Hello
+        Debug.Print "d.Hello: error " & Err.Number & ", Hello ran " & w.Hits & " time(s)"
+        Err.Clear
+        Dim count As Long
+        d.GetTypeInfoCount count
+        Debug.Print "d.GetTypeInfoCount: error " & Err.Number & " (" & Hex(Err.Number) & ") " & Err.Description
+        Err.Clear
+        d.GetTypeInfoCount "a", "b", "c"
+        Debug.Print "d.GetTypeInfoCount ""a"", ""b"", ""c"": error " & Err.Number
+        Err.Clear
+        d.NoSuchMethod
+        Debug.Print "d.NoSuchMethod: error " & Err.Number
+    End Sub
+
+End Module

@@ -1,0 +1,10 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 5,
+    "output": [
+      "^before$",
+      "NATIVE EXCEPTION: ACCESS_VIOLATION"
+    ]
+  }
+}

@@ -1,0 +1,55 @@
+' Advise with a sink that does not support the outgoing interface fails with E_NOINTERFACE,
+' where CONNECT_E_CANNOTCONNECT (&H80040201) is expected. Unadvise with a cookie that names
+' no connection succeeds, where an error is expected.
+[InterfaceId("B196B284-BAB4-101A-B69C-00AA00341D07")]
+Private Interface IConnectionPointContainer Extends stdole.IUnknown
+    Function EnumConnectionPoints() As IEnumConnectionPoints
+End Interface
+
+[InterfaceId("B196B285-BAB4-101A-B69C-00AA00341D07")]
+Private Interface IEnumConnectionPoints Extends stdole.IUnknown
+    Sub Next(ByVal cConnections As Long, ByRef ppCP As IConnectionPoint, ByRef pcFetched As Long)
+End Interface
+
+[InterfaceId("B196B286-BAB4-101A-B69C-00AA00341D07")]
+Private Interface IConnectionPoint Extends stdole.IUnknown
+    Sub GetConnectionInterface(ByVal piid As LongPtr)
+    Function GetConnectionPointContainer() As IConnectionPointContainer
+    Function Advise(ByVal pUnkSink As stdole.IUnknown) As Long
+    Sub Unadvise(ByVal dwCookie As Long)
+End Interface
+
+Private Class Source
+    Public Event Ping()
+End Class
+
+Private Class NotASink
+    Public Value As Long
+End Class
+
+Module Startup
+
+    Private Sub Report(ByVal What As String)
+        Debug.Print What & ": error=" & Hex$(Err.Number)
+        Err.Clear
+    End Sub
+
+    Public Sub Main()
+        Dim src As New Source
+        Dim container As IConnectionPointContainer = src
+        Dim points As IEnumConnectionPoints = container.EnumConnectionPoints()
+        Dim point As IConnectionPoint, fetched As Long
+        points.Next 1, point, fetched
+
+        Dim sink As New NotASink
+        Dim cookie As Long
+        On Error Resume Next
+        cookie = point.Advise(sink)
+        Report "Advise, a sink without the outgoing interface"
+        point.Unadvise 0
+        Report "Unadvise 0"
+        point.Unadvise 99
+        Report "Unadvise 99"
+    End Sub
+
+End Module

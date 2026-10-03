@@ -16,7 +16,7 @@ Lets a caller find a member of an object by name and call it, without knowing th
 
 **IDispatch** derives from **IUnknown** and has the interface identifier `00020400-0000-0000-C000-000000000046`. It adds four methods. Each returns an **HRESULT**, which twinBASIC hides as it does for any interface method: a failure code raises a run-time error, and a success code other than `S_OK` is read with [**Err.LastHresult**](../../tB/Modules/ErrObject/LastHresult).
 
-Every twinBASIC class has an **IDispatch** implementation that the compiler writes, so a program seldom needs the interface itself. A program needs it to call an object's **GetIDsOfNames** or **Invoke** directly, and to write a class that supplies its own member lookup. The declaration in **stdole** is no use for either; a project declares its own copy, with the same interface identifier. A copy needs the three structures the methods pass.
+Every twinBASIC class has an **IDispatch** implementation that the compiler writes, so a program seldom needs the interface itself. A program needs it to call an object's **GetIDsOfNames** or **Invoke** directly, and to write a class that supplies its own member lookup. The declaration in **stdole** cannot call them (see [The stdole declaration](#the-stdole-declaration)); a project declares its own copy, with the same interface identifier. A copy needs the three structures the methods pass.
 
 ```tb check_build projname=com-idispatch slot=file
 Module DispatchTypes
@@ -292,7 +292,7 @@ An implementation has these constraints:
 
 ## The stdole declaration
 
-**stdole.IDispatch** has the four methods, but it cannot be called. Its parameters are unsigned integers and pointers to structures, which twinBASIC has no type for, and the compiler accepts any argument for them without checking: a call that passes strings compiles. Calling **GetTypeInfoCount** ends the run in BETA 995. Use a project's own declaration, as above.
+A variable declared **As stdole.IDispatch** does not reach the four methods. A call through it is compiled as a late-bound call by name, the same as a call through an **Object** variable: `d.GetTypeInfoCount n` compiles with any arguments, and raises `&H80020006` (*Unknown name*) when it runs, because the object has no member of that name. A member the object does have, such as `d.Answer`, is called as it would be through **Object**. Use a project's own declaration, as above.
 
 ## COMExtensible
 
