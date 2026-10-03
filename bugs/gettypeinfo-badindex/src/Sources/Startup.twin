@@ -1,0 +1,38 @@
+[InterfaceId("00020400-0000-0000-C000-000000000046")]
+Private Interface IDispatchCopy Extends stdole.IUnknown
+    Sub GetTypeInfoCount(ByRef pctinfo As Long)
+    Sub GetTypeInfo(ByVal iTInfo As Long, ByVal lcid As Long, ByRef ppTInfo As LongPtr)
+    Sub GetIDsOfNames(ByVal riid As LongPtr, ByVal rgszNames As LongPtr, ByVal cNames As Long, ByVal lcid As Long, ByVal rgDispId As LongPtr)
+    Sub Invoke(ByVal dispIdMember As Long, ByVal riid As LongPtr, ByVal lcid As Long, ByVal wFlags As Integer, ByVal pDispParams As LongPtr, ByVal pVarResult As LongPtr, ByVal pExcepInfo As LongPtr, ByVal puArgErr As LongPtr)
+End Interface
+
+Class Widget
+    Public Sub Hello()
+    End Sub
+End Class
+
+Module Startup
+
+    Public Sub Main()
+        Dim d As IDispatchCopy = New Widget
+        Dim count As Long
+        d.GetTypeInfoCount count
+        Debug.Print "GetTypeInfoCount = " & count
+        Dim ti As LongPtr
+        On Error Resume Next
+        d.GetTypeInfo 0, 0, ti
+        Debug.Print "GetTypeInfo(0): HRESULT " & Hex(Err.LastHresult) & ", pointer returned " & (ti <> 0)
+        Err.Clear
+        ti = 0
+        d.GetTypeInfo 1, 0, ti
+        Debug.Print "GetTypeInfo(1): HRESULT " & Hex(Err.LastHresult) & ", error " & Err.Number & ", pointer returned " & (ti <> 0)
+        Err.Clear
+        ti = 0
+        d.GetTypeInfo 2, 0, ti
+        Debug.Print "GetTypeInfo(2): HRESULT " & Hex(Err.LastHresult) & ", error " & Err.Number & ", pointer returned " & (ti <> 0)
+        Err.Clear
+        d.GetTypeInfo -1, 0, ti
+        Debug.Print "GetTypeInfo(-1): HRESULT " & Hex(Err.LastHresult) & ", error " & Err.Number
+    End Sub
+
+End Module

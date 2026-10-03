@@ -4,6 +4,7 @@
 //     node scripts/bug_repro.mjs new <slug> "<entry title>"
 //     node scripts/bug_repro.mjs pack <slug>
 //     node scripts/bug_repro.mjs compile|build|run <slug> [options]
+//     node scripts/bug_repro.mjs vb6 <slug> [--vb6 <VB6.EXE>] [--timeout S] [--keep]
 //     node scripts/bug_repro.mjs verify [slug ...] [options]
 //     node scripts/bug_repro.mjs file <slug> <issue> [--existing]
 //     node scripts/bug_repro.mjs file --marked
@@ -42,12 +43,15 @@
 //
 // ------------------------------------------------------------- what it relies on
 //
-//  1. THE ZIP IS WRITTEN HERE, in Node. Compress-Archive is PowerShell and 7-Zip
-//     is not on PATH; Git Bash's `tar -a` writes a tar archive under the .zip
-//     name and exits 0. A single-entry zip is a local header, the deflated
-//     bytes, a central directory entry and the end record, and zlib.crc32 is the
-//     checksum, so no dependency is needed. The entry's time is the .twinproj's
-//     own, so packing an unchanged source tree twice writes the same zip.
+//  1. THE ZIP IS WRITTEN IN NODE (scripts/lib/zip.mjs). Compress-Archive is
+//     PowerShell and 7-Zip is not on PATH; Git Bash's `tar -a` writes a tar
+//     archive under the .zip name and exits 0. Each entry's time is its file's
+//     own, so packing an unchanged source tree twice writes the same zip. A
+//     reproducer that has a VB6 project beside the twinBASIC one, in
+//     bugs/<slug>/vb6/, gets a second zip, <slug>-vb6.zip, of that folder's
+//     sources, written the same way; `vb6` builds the project in a temp copy
+//     (scripts/lib/vb6.mjs, runRepro) and prints the out.txt it writes. VB6.EXE
+//     is only ever started from there, with an argument array and no shell.
 //  2. impexp EXITS 6 WHEN IT WARNS. `import` that finished with a warning is
 //     still a pack, so 0 and 6 are both success, and its output is printed.
 //  3. AN IDE THAT RUNS MANY REPRODUCERS OWNS THE REGISTRY TIDY ONCE. Under
@@ -82,7 +86,6 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import zlib from "node:zlib";
 import {
   CliError,
   choiceOption,
@@ -97,30 +100,52 @@ import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { keptIdeLines, summaryLine, TARGETS } from "./lib/tb-ide.mjs";
 import { compilerExe, findIde } from "./lib/tb-install.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
+import {
+  NO_VB6,
+  REPRO_OUT,
+  REPRO_PROJECT,
+  findVb6,
+  reproFiles,
+  reproProblem,
+  reproZipFiles,
+  runRepro,
+} from "./lib/vb6.mjs";
+import { fileEntry, zipFiles } from "./lib/zip.mjs";
 
 let tidy = null;
 exitOnCrash(() => finishTidy(tidy));
 
-const USAGE = `usage: node scripts/bug_repro.mjs <command> [slug ...] [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--llvm] [--exe] [--jobs N] [--keep] [--show|--hide] [--template <name>] [--existing] [--marked] [-h, --help]
+const USAGE = `usage: node scripts/bug_repro.mjs <command> [slug ...] [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--llvm] [--exe] [--jobs N] [--keep] [--show|--hide] [--template <name>] [--with-vb6] [--vb6 <VB6.EXE>] [--existing] [--marked] [-h, --help]
 
 Reproducer projects for the entries of BUGS-TO-REPORT.md, under bugs/<slug>/, or
 under bugs/filed/<slug>/ once the entry has been filed upstream.
 <slug> is kebab-case: lowercase letters and digits joined by single hyphens, and
 is never "filed".
 
+A reproducer may also have a VB6 project in vb6/, to show what VB6 does. It holds
+sources only (Probe.vbp and its .bas, .cls and .frm files), builds Probe.exe, and
+writes what it finds to out.txt beside the exe, handling every error itself.
+
 Commands:
   new <slug> "<title>"  create bugs/<slug>/src/ from the console template, with a
                         project of the slug's name and a Startup module, and
                         bugs/<slug>/repro.json with "mode": "manual"; with
-                        --template, from that template's Settings and Sources
+                        --template, from that template's Settings and Sources;
+                        with --with-vb6, also bugs/<slug>/vb6/, from the VB6
+                        template under test/repro-templates/vb6/
   pack <slug>           pack src/ into <slug>.twinproj with scripts/impexp.mjs, and
                         write <slug>.zip, the file a GitHub issue accepts, with the
-                        files repro.json's "attach" names
+                        files repro.json's "attach" names; when vb6/ exists, also
+                        write <slug>-vb6.zip, holding its source files only
   compile <slug>        pack, then compile the project in the IDE (tbbuild) and
                         print its diagnostics
   build <slug>          pack, then compile and build it (tbbuild --build)
   run <slug>            run a copy of src/ whose [RunAfterBuild] probe calls Sub
                         Main, and print what it writes to the DEBUG CONSOLE (tbrun)
+  vb6 <slug>            build vb6/ with VB6 in a copy under the temp folder (never
+                        in the repository), run Probe.exe, and print out.txt. A
+                        project that calls MsgBox or InputBox is refused. Needs
+                        VB6; no IDE
   verify [slug ...]     run what each repro.json says, for the named reproducers or
                         all of bugs/* and bugs/filed/*, and report per reproducer
                         whether it reproduces; a filed one is labelled with its
@@ -141,16 +166,21 @@ Options:
                     the first of the lanes' ports
   --arch <target>   win32 or win64 (default win32); compile, build and run
   --timeout <secs>  as tbbuild's and tbrun's; with a cli reproducer, the time
-                    limit on the compiler executable
+                    limit on the compiler executable; with vb6, the limit on
+                    Probe.exe (default 30)
   --llvm            build with LLVM; build and run
   --exe             run also runs the built exe and prints what it writes; run
   --jobs <n>        reproducers to run at once, on ports base, base+1, ... (default
                     1); verify
-  --keep            leave the IDE running; its pid is printed; compile, build, run
+  --keep            leave the IDE running; its pid is printed; compile, build, run.
+                    With vb6, keep the work folder and print where it is
   --show, --hide    show the IDE on the desktop, or keep it on a private one
                     (default: hidden, unless TBBUILD_SHOW is set)
   --template <name> new: the project to start from, console (the default) or a
                     folder of test/repro-templates/, such as webview2-form
+  --with-vb6        new: also create vb6/ from the VB6 template
+  --vb6 <path>      vb6: VB6.EXE (default: $VB6_EXE, else VB98\\VB6.EXE under
+                    Program Files (x86) or Program Files)
   --existing        file: the issue was already open, and covers this bug; recorded
                     as "existing" in repro.json
   --marked          file: take the issue and the slug from the entries' marks
@@ -160,35 +190,40 @@ Exit codes:
   0  done: a project that compiled, built or ran as it should; with verify, every
      reproducer that can be run on its own still reproduces; with file, filed
   1  a finding: the project has errors, or its build failed after a clean compile;
-     with verify, at least one reproducer no longer reproduces
+     with vb6, VB6 refused the project; with verify, at least one reproducer no
+     longer reproduces
   2  a refused command line (a slug that is not kebab-case or is "filed", a
      reproducer that does not exist or is in both bugs/ and bugs/filed/, an option
-     that does not apply to the command), a repro.json that is not valid, no IDE, a
-     project that could not be packed, a harness that failed, or a crash; with
+     that does not apply to the command), a repro.json that is not valid, no IDE (or,
+     with vb6, no VB6), a project that could not be packed, a harness that failed,
+     or a crash; with vb6, a reproducer with no vb6/ folder, a VB6 project that has
+     no Probe.vbp or calls MsgBox or InputBox, or VB6 failing to build it; with
      verify, a lane's harness failed; with file, an entry that is missing,
      ambiguous or marked unreadably, or a bugs/filed/<slug> that is already there
      (nothing is changed)
   3  new: bugs/<slug> or bugs/filed/<slug> already exists
   4  the compile never settled
   5  the project crashes the compiler
-  6  run: the probe printed nothing
+  6  run, vb6: the probe printed nothing (vb6: no out.txt, or an empty one)
   7  run: the probe ended before it returned
-  8  run --exe: the exe exited with a code other than 0, or was still running after
-     --timeout`;
+  8  run --exe, vb6: the exe exited with a code other than 0, or was still running
+     after --timeout`;
 
 const usageError = { format: (err) => `${err.message}\n${USAGE}` };
 
 // What each command takes besides -h; anything else given is refused.
 const APPLIES = {
-  new: ["template"],
+  new: ["template", "withVb6"],
   pack: [],
   compile: ["ide", "port", "arch", "timeout", "keep", "show", "hide"],
   build: ["ide", "port", "arch", "timeout", "keep", "show", "hide", "llvm"],
   run: ["ide", "port", "arch", "timeout", "keep", "show", "hide", "llvm", "exe"],
+  vb6: ["vb6", "timeout", "keep"],
   verify: ["ide", "port", "timeout", "jobs", "show", "hide"],
   file: ["existing", "marked"],
 };
-const FLAG = (key) => `--${key}`;
+// parseCli keys an option by its camelCase name (`--with-vb6` is `withVb6`).
+const FLAG = (key) => `--${key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`;
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 // The folder under bugs/ that holds the reproducers of filed entries, so not a slug.
@@ -209,6 +244,8 @@ const { values, positionals } = withUsageError(
         show: { type: "boolean", default: false },
         hide: { type: "boolean", default: false },
         template: { type: "string" },
+        "with-vb6": { type: "boolean", default: false },
+        vb6: { type: "string" },
         existing: { type: "boolean", default: false },
         marked: { type: "boolean", default: false },
         help: { type: "boolean", short: "h", default: false },
@@ -343,6 +380,8 @@ const where = (slug) => {
     repro: path.join(dir, "repro.json"),
     twinproj: path.join(dir, `${slug}.twinproj`),
     zip: path.join(dir, `${slug}.zip`),
+    vb6: path.join(dir, "vb6"),
+    vb6zip: path.join(dir, `${slug}-vb6.zip`),
   };
 };
 const rel = (file) => path.relative(REPO_ROOT, file).replaceAll("\\", "/");
@@ -402,16 +441,27 @@ function setKey(text, key, value, file = TEMPLATE) {
   return text.replace(re, (_, head) => `${head}${JSON.stringify(value)}`);
 }
 
+// The VB6 project `new --with-vb6` starts a reproducer's vb6/ from: Probe.vbp and
+// Module1.bas, whose Sub Main opens out.txt, prints one line under an error handler
+// and closes. It has no Settings and Sources, so it is never one of the templates
+// `--template` takes.
+const VB6_TEMPLATE = path.join(REPO_ROOT, "test", "repro-templates", "vb6");
+
 // `template` is null for the console template, else a folder of
-// test/repro-templates/, whose Sources/ are copied as they are.
-function newReproducer(slug, entryTitle, template = null) {
+// test/repro-templates/, whose Sources/ are copied as they are. `withVb6` also
+// makes vb6/.
+function newReproducer(slug, entryTitle, template = null, withVb6 = false) {
   for (const dir of [path.join(BUGS, slug), path.join(FILED_DIR, slug)]) {
     if (existsSync(dir)) throw new Fail(`${rel(dir)} already exists`, 3);
   }
   const p = where(slug);
   const from = template ? path.join(reproTemplatesDir(), template, "Settings") : TEMPLATE;
   if (!existsSync(from)) throw new Fail(`no template project at ${rel(from)}`);
+  if (withVb6 && !existsSync(path.join(VB6_TEMPLATE, `${REPRO_PROJECT}.vbp`))) {
+    throw new Fail(`no VB6 template project at ${rel(VB6_TEMPLATE)}`);
+  }
   const name = pascal(slug);
+  const vb6Note = withVb6 ? " and vb6/" : "";
   let settings = readFileSync(from, "utf8");
   settings = setKey(settings, "project.name", name, from);
   settings = setKey(settings, "project.appTitle", name, from);
@@ -423,9 +473,10 @@ function newReproducer(slug, entryTitle, template = null) {
     cpSync(path.join(reproTemplatesDir(), template, "Sources"), path.join(p.src, "Sources"), { recursive: true });
     const steps = "Describe what a person does to see the bug, or set mode to compile, build, run or cli.";
     writeFileSync(p.repro, `${JSON.stringify({ mode: "manual", steps }, null, 2)}\n`);
+    if (withVb6) cpSync(VB6_TEMPLATE, p.vb6, { recursive: true });
     console.log(
-      `created ${rel(p.dir)}/ (project ${name}, from template ${template}): edit src/Sources, then pack; ` +
-        "repro.json is manual until set",
+      `created ${rel(p.dir)}/ (project ${name}, from template ${template}): ` +
+        `edit src/Sources${vb6Note}, then pack; repro.json is manual until set`,
     );
     return;
   }
@@ -434,76 +485,17 @@ function newReproducer(slug, entryTitle, template = null) {
   writeFileSync(path.join(p.src, "Sources", "Startup.twin"), STARTUP);
   const steps = "Describe what a person does to see the bug, or set mode to compile, build, run or cli.";
   writeFileSync(p.repro, `${JSON.stringify({ mode: "manual", steps }, null, 2)}\n`);
-  console.log(`created ${rel(p.dir)}/ (project ${name}): edit src/Sources, then pack; repro.json is manual until set`);
+  if (withVb6) cpSync(VB6_TEMPLATE, p.vb6, { recursive: true });
+  console.log(
+    `created ${rel(p.dir)}/ (project ${name}): edit src/Sources${vb6Note}, then pack; repro.json is manual until set`,
+  );
 }
 
-// ------------------------------------------------------------------------ zip
-
-/**
- * A zip file, as the bytes: for each file a local header and the deflated data,
- * then a central directory entry for each and the end record. Each file is
- * `{ name, data, mtime }`, and keeps its own modified time.
- */
-function zipFiles(files) {
-  const UTF8 = 0x0800;
-  const locals = [];
-  const centrals = [];
-  let offset = 0;
-  for (const { name, data, mtime } of files) {
-    const compressed = zlib.deflateRawSync(data, { level: 9 });
-    const crc = zlib.crc32(data);
-    const nameBytes = Buffer.from(name, "utf8");
-    const time = (mtime.getHours() << 11) | (mtime.getMinutes() << 5) | (mtime.getSeconds() >> 1);
-    const date = ((Math.max(mtime.getFullYear(), 1980) - 1980) << 9) | ((mtime.getMonth() + 1) << 5) | mtime.getDate();
-
-    const local = Buffer.alloc(30);
-    local.writeUInt32LE(0x04034b50, 0);
-    local.writeUInt16LE(20, 4); // version needed: deflate
-    local.writeUInt16LE(UTF8, 6);
-    local.writeUInt16LE(8, 8); // method: deflate
-    local.writeUInt16LE(time, 10);
-    local.writeUInt16LE(date, 12);
-    local.writeUInt32LE(crc, 14);
-    local.writeUInt32LE(compressed.length, 18);
-    local.writeUInt32LE(data.length, 22);
-    local.writeUInt16LE(nameBytes.length, 26);
-    // extra field length (28) stays 0
-
-    const central = Buffer.alloc(46);
-    central.writeUInt32LE(0x02014b50, 0);
-    central.writeUInt16LE(20, 4); // version made by
-    central.writeUInt16LE(20, 6); // version needed
-    central.writeUInt16LE(UTF8, 8);
-    central.writeUInt16LE(8, 10);
-    central.writeUInt16LE(time, 12);
-    central.writeUInt16LE(date, 14);
-    central.writeUInt32LE(crc, 16);
-    central.writeUInt32LE(compressed.length, 20);
-    central.writeUInt32LE(data.length, 24);
-    central.writeUInt16LE(nameBytes.length, 28);
-    // extra, comment, disk, internal and external attributes (30-41) stay 0
-    central.writeUInt32LE(offset, 42); // offset of the local header
-
-    locals.push(local, nameBytes, compressed);
-    centrals.push(central, nameBytes);
-    offset += local.length + nameBytes.length + compressed.length;
-  }
-  const directory = Buffer.concat(centrals);
-  const end = Buffer.alloc(22);
-  end.writeUInt32LE(0x06054b50, 0);
-  end.writeUInt16LE(files.length, 8); // entries on this disk
-  end.writeUInt16LE(files.length, 10); // entries in all
-  end.writeUInt32LE(directory.length, 12);
-  end.writeUInt32LE(offset, 16);
-
-  return Buffer.concat([...locals, directory, end]);
-}
-
-const fileEntry = (name, file) => ({ name, data: readFileSync(file), mtime: statSync(file).mtime });
+// ------------------------------------------------------------------------ pack
 
 // Packs src/ into the .twinproj with impexp, then zips it with the files
-// repro.json's `attach` names. Returns what impexp printed, which the caller
-// prints or not.
+// repro.json's `attach` names; with a vb6/ folder, also zips its sources into
+// <slug>-vb6.zip. Returns what impexp printed, which the caller prints or not.
 function pack(slug) {
   const p = where(slug);
   if (!existsSync(path.join(p.src, "Settings"))) throw new Fail(`no ${rel(p.src)}/Settings: nothing to pack`);
@@ -522,7 +514,16 @@ function pack(slug) {
   const files = [fileEntry(`${slug}.twinproj`, p.twinproj), ...attach.map((a) => fileEntry(a, path.join(p.dir, a)))];
   writeFileSync(p.zip, zipFiles(files));
   const also = attach.length ? `, with ${attach.join(", ")}` : "";
-  return `${said}packed ${rel(p.twinproj)} and ${rel(p.zip)}${also}`;
+  let packed = `${said}packed ${rel(p.twinproj)} and ${rel(p.zip)}${also}`;
+  if (existsSync(p.vb6)) {
+    const problem = vb6Problem(slug);
+    if (problem) throw new Fail(`${rel(p.vb6)}/ ${problem}`);
+    const sources = reproZipFiles(p.vb6);
+    writeFileSync(p.vb6zip, zipFiles(sources));
+    const { others } = reproFiles(p.vb6);
+    packed += `\npacked ${rel(p.vb6zip)} (${sources.length} source files${others.length ? `; left out: ${others.join(", ")}` : ""})`;
+  }
+  return packed;
 }
 
 // ------------------------------------------------------------ repro.json
@@ -568,7 +569,7 @@ function loadRepro(slug) {
     bad("mode", `${mode} needs a project, and there is no ${rel(p.src)}/Settings`);
   if ("attach" in json) {
     if (!hasSrc) bad("attach", `goes into ${slug}.zip, which pack writes only from ${rel(p.src)}/`);
-    const own = [`${slug}.twinproj`, `${slug}.zip`, "repro.json", "REPORT.md"];
+    const own = [`${slug}.twinproj`, `${slug}.zip`, `${slug}-vb6.zip`, "repro.json", "REPORT.md"];
     if (!Array.isArray(json.attach) || !json.attach.length) {
       bad("attach", "must be a list of paths, relative to the reproducer's folder");
     }
@@ -579,10 +580,17 @@ function loadRepro(slug) {
         bad(key, "must be a relative path with forward slashes, inside the reproducer's folder");
       }
       if (own.includes(a)) bad(key, `names ${a}, which is not an attachment`);
+      if (a.startsWith("vb6/")) bad(key, `names ${a}, which goes into ${slug}-vb6.zip with the rest of vb6/`);
       if (json.attach.indexOf(a) !== i) bad(key, `names ${a} twice`);
       const file = path.join(p.dir, a);
       if (!existsSync(file) || !statSync(file).isFile()) bad(key, `names ${a}, which is not a file in ${rel(p.dir)}/`);
     });
+  }
+  // A VB6 project in vb6/ is packed into <slug>-vb6.zip and is built by `vb6`; it has no key
+  // of its own, and is checked here so that a broken one is found whatever the command.
+  if (existsSync(p.vb6)) {
+    const why = vb6Problem(slug);
+    if (why) throw new Fail(`${rel(p.vb6)}/ ${why}`);
   }
   if ("issue" in json && !(Number.isInteger(json.issue) && json.issue > 0)) {
     bad("issue", "must be a positive whole number, the number of a twinbasic/twinbasic issue");
@@ -649,6 +657,13 @@ function loadRepro(slug) {
   if (!Object.keys(e).length) bad("expect", "is empty: say what a reproduction looks like");
   out.expect = expect;
   return out;
+}
+
+/** Why bugs/<slug>/vb6/ cannot be packed or built, or null: it is not a folder, has no Probe.vbp, or calls MsgBox or InputBox. */
+function vb6Problem(slug) {
+  const { vb6 } = where(slug);
+  if (!statSync(vb6).isDirectory()) return "is not a folder";
+  return reproProblem(vb6);
 }
 
 // --------------------------------------------------------- running the tools
@@ -826,6 +841,45 @@ function printBuild(r) {
 function printRun(r) {
   if (r.stdout) process.stdout.write(r.stdout.endsWith("\n") ? r.stdout : `${r.stdout}\n`);
   if (r.stderr.trim()) process.stderr.write(r.stderr.endsWith("\n") ? r.stderr : `${r.stderr}\n`);
+}
+
+/**
+ * `vb6 <slug>`: builds bugs/<slug>/vb6/ in a copy under the temp folder, runs
+ * Probe.exe and prints the out.txt it wrote. Returns the exit code.
+ */
+async function runVb6(slug) {
+  requireReproducer(slug, { project: false });
+  const p = where(slug);
+  if (!existsSync(p.vb6)) throw new Fail(`${rel(p.dir)}/ has no vb6/ folder: nothing to build`);
+  const why = vb6Problem(slug);
+  if (why) throw new Fail(`${rel(p.vb6)}/ ${why}`);
+  const exe = findVb6(values.vb6);
+  if (!exe) throw new Fail(values.vb6 ? `no such file: ${values.vb6}\n${NO_VB6}` : NO_VB6);
+  let r;
+  try {
+    r = await runRepro(exe, p.vb6, { timeoutMs: (timeout ?? 30) * 1000, keep: values.keep });
+  } catch (e) {
+    throw new Fail(`vb6: ${e.message}`);
+  }
+  if (values.keep) console.error(`vb6: work folder kept in ${r.work}`);
+  if (!r.built) {
+    process.stderr.write(`${r.log.trim() || "VB6 did not build the project, and wrote no log"}\n`);
+    return 1;
+  }
+  for (const line of r.lines) console.log(line);
+  if (r.timedOut) {
+    console.error(`vb6: ${REPRO_PROJECT}.exe was still running after ${timeout ?? 30} s and was ended`);
+    return 8;
+  }
+  if (!r.lines.length) {
+    console.error(`vb6: ${REPRO_PROJECT}.exe wrote no ${REPRO_OUT}, or an empty one`);
+    return 6;
+  }
+  if (r.status !== 0) {
+    console.error(`vb6: ${REPRO_PROJECT}.exe exited with code ${r.status}`);
+    return 8;
+  }
+  return 0;
 }
 
 // A reproducer is a folder with src/Settings; for verify, one with a repro.json
@@ -1232,8 +1286,10 @@ async function main() {
   };
   switch (command) {
     case "new":
-      newReproducer(slug, title, template);
+      newReproducer(slug, title, template, values.withVb6);
       return 0;
+    case "vb6":
+      return runVb6(slug);
     case "pack":
       requireReproducer(slug);
       console.log(pack(slug));

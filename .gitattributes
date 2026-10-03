@@ -21,3 +21,7 @@ wisdom/extract/workflow.mjs text eol=lf
 # from its source tree, and the two must agree in every checkout.
 bugs/** -text
 *.twinproj binary
+
+# The VB6 template `bug_repro.mjs new --with-vb6` copies into a reproducer's vb6/
+# is CRLF in every checkout, as the bugs/** files it becomes are, and VB6 needs it.
+test/repro-templates/vb6/** -text

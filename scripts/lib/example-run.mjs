@@ -33,7 +33,7 @@ export const isRunFence = (f) => !!f.flags?.has(RUN_MARKER) && !f.flags.has(HIDD
 // `Else` or a colon. Read from logicalLines, whose comments and string contents
 // are already gone, so `' End` and `"End"` are not matches.
 const ENDS_RUN = /(?:^|:|\bThen|\bElse)\s*End$/i;
-const PROMPTS = /\b(MsgBox|InputBox)\b/i;
+export const PROMPTS = /\b(MsgBox|InputBox)\b/i;
 
 /**
  * Why a run fence's own text cannot be run, or null.

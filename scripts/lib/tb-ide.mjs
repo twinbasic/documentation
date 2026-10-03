@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 import { attach } from "./tb-cdp.mjs";
 import { click } from "./tb-click.mjs";
 import { consoleMark, keepClears, keptClears, linesSince, readConsole } from "./tb-ide-console.mjs";
+import { watchCompiles } from "./tb-wire.mjs";
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -371,6 +372,12 @@ export function waitForExit(pid, timeoutMs) {
  * launchIde's single argument never provokes. Such a page is marked
  * `c.pageBlocked`, and waitForCompile passes that on, so the failure names the
  * likely cause; `--show` puts the dialog where a person can read it.
+ *
+ * `c.wire` follows the page's compiles from its own traffic, through CDP's
+ * Network domain (tb-wire.mjs), so that waitForCompile can tell when a compile
+ * has ended without waiting for the status bar to stay still. A page that did
+ * not answer `Page.enable` would not answer `Network.enable` either, and it
+ * gets none.
  */
 export async function attachIde(port, { tries = 60 } = {}) {
   for (let i = 0; i < tries; i++) {
@@ -395,6 +402,16 @@ export async function attachIde(port, { tries = 60 } = {}) {
       await c.send("Page.enable");
     } catch {
       c.pageBlocked = true;
+    }
+    c.wire = null;
+    if (!c.pageBlocked) {
+      const wire = watchCompiles(c);
+      try {
+        await c.send("Network.enable");
+        c.wire = wire;
+      } catch {
+        /* waitForCompile falls back to the status bar alone */
+      }
     }
     return c;
   }
@@ -481,6 +498,20 @@ const BUILD_STATE_JS = `JSON.stringify({
   h: document.getElementById("hintCount")?.textContent ?? "",
   i: document.getElementById("infoCount")?.textContent ?? "",
   p: typeof projectFilePath !== "undefined" ? projectFilePath : null,
+  // The files waitForCompile waits for c.wire to see: every .twin file outside
+  // References (1) and Packages (7), which the compiler reports none for.
+  src: (() => {
+    if (typeof fs === "undefined" || !fs || !fs.tree || !fs.tree.rootFolder) return null;
+    const root = fs.tree.rootFolder;
+    if (!root.entries || !Object.keys(root.entries).length) return null;
+    const out = [];
+    root.enumerateContent(true, (n) => {
+      if (n.isFolder) return n.specialItemId === 1 || n.specialItemId === 7 ? -2 : true;
+      if (String(n.name).toLowerCase().endsWith(".twin")) out.push("twinbasic:" + n.getFullPath());
+      return true;
+    });
+    return out;
+  })(),
   crash: ${CRASH_JS},
   rows: (() => {
     const out = [];
@@ -589,6 +620,12 @@ export async function awaitCrashName(c, crash, { timeout = 5000 } = {}) {
  */
 export const COMPILE_TIMEOUT = 180 * 1000;
 
+// How long a compile that the wire saw end must stay the latest one before
+// waitForCompile believes it. Every keystroke starts a compile a few ms after
+// it, so a wait that begins just after an edit could otherwise take the compile
+// before the edit's for the answer.
+const EARLY_QUIET_MS = 300;
+
 /**
  * Wait for the project to open and its compile to settle.
  *
@@ -599,6 +636,14 @@ export const COMPILE_TIMEOUT = 180 * 1000;
  * sampling happens to catch it, which is why BUILD_STATE_JS reads the console
  * too, and that is what actually decides a crash.
  *
+ * The wait ends when the sample has stood still for five seconds, or sooner
+ * when `c.wire` has seen the compile end and the sample agrees with it: the
+ * same counts, and a row for each. A compile the wire had already seen end
+ * when the wait began does not count. A wait that follows an action --- an
+ * Apply, an edit --- could otherwise begin before the action's compile and
+ * take the one before it, so it waits for a newer compile, or for the sample
+ * to stand still.
+ *
  * @param {object} c                  a tb-cdp connection
  * @param {object} o
  * @param {string} o.project          the project the IDE was started on. It is
@@ -607,21 +652,38 @@ export const COMPILE_TIMEOUT = 180 * 1000;
  *   never reported open.
  * @param {number} o.timeout          milliseconds
  * @returns {Promise<{loaded: boolean, crash: object | null, drops: number, last: string | null,
- *                    blocked: boolean}>}
+ *                    blocked: boolean, early: boolean}>}
  *   `last` is the final sample, as the JSON string readBuildState returned;
- *   `blocked` is attachIde's `pageBlocked`
+ *   `blocked` is attachIde's `pageBlocked`; `early` is true when `c.wire` saw
+ *   the compile end and the sample agreed with it, and false when the sample
+ *   stood still for five seconds instead
  */
 export async function waitForCompile(c, { project, timeout }) {
   const want = normPath(path.resolve(project));
   const t0 = Date.now();
+  const wire = c.wire ?? null;
+  const before = wire?.mark();
   let last = null,
-    stable = 0,
+    stableSince = 0,
     loaded = false,
     seenUp = false,
     drops = 0,
-    crash = null;
+    crash = null,
+    agreed = null,
+    early = false;
+  // Samples come once a second, as they always have, and only those count a
+  // drop of the status: a sample taken early, because the wire saw a compile
+  // end, could otherwise count one flap twice. Standing still is measured in
+  // time, not in samples, for the same reason.
+  let due = t0 + 1000;
+  let next = due;
   while (Date.now() - t0 < timeout) {
-    await sleep(1000);
+    const ms = Math.max(0, next - Date.now());
+    await (wire ? wire.changed(ms) : sleep(ms));
+    const now = Date.now();
+    const scheduled = now >= due;
+    if (scheduled) due = now + 1000;
+    next = due;
     let s;
     try {
       s = await readBuildState(c);
@@ -641,13 +703,35 @@ export async function waitForCompile(c, { project, timeout }) {
     }
     const up = v.st === "tB Services: OPERATIONAL";
     if (up) seenUp = true;
-    else if (seenUp && ++drops >= 2) break;
-    if (up && s === last) {
-      if (++stable >= 5) break;
-    } else stable = 0;
+    else if (seenUp && scheduled && ++drops >= 2) break;
+    if (wire) {
+      // The wire's compile ends with its last source file, and the sample must
+      // show the same counts before it is believed: the page draws a little
+      // behind its traffic. Then the compile must still be the latest after
+      // EARLY_QUIET_MS, since each keystroke starts a compile of its own.
+      wire.expect(v.src);
+      let w = up ? wire.check(v.src) : null;
+      if (w && before.done && w.seq <= before.seq) w = null;
+      const counts = [v.e, v.w, v.h, v.i].map(Number);
+      const total = w ? w.counts.reduce((a, b) => a + b, 0) : -1;
+      if (w && w.counts.every((n, k) => n === counts[k]) && v.rows.length === total) {
+        if (agreed?.seq !== w.seq) agreed = { seq: w.seq, at: now };
+        else if (now - agreed.at >= EARLY_QUIET_MS) {
+          last = s;
+          early = true;
+          break;
+        }
+        next = Math.min(next, agreed.at + EARLY_QUIET_MS);
+      } else {
+        agreed = null;
+        if (w && now - w.at < 2000) next = Math.min(next, now + 50);
+      }
+    }
+    if (!up || s !== last) stableSince = now;
+    else if (now - stableSince >= 5000) break;
     last = s;
   }
-  return { loaded, crash, drops, last, blocked: !!c.pageBlocked };
+  return { loaded, crash, drops, last, blocked: !!c.pageBlocked, early };
 }
 
 /**

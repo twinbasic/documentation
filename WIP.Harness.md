@@ -252,6 +252,47 @@ The CDP client is [scripts/lib/tb-cdp.mjs](scripts/lib/tb-cdp.mjs) --- raw rathe
 puppeteer, because a pending `alert()` blocks the renderer and puppeteer's `connect()`
 handshake talks to the renderer, so it hangs on precisely the state you need to recover from.
 
+**How the wait for the compile ends.** Nothing in the IDE's window says that a compile has
+finished. So the harness used to wait for the window --- the compiler's status, the four
+counters and the Problems panel --- to read OPERATIONAL and stand still for five seconds,
+and those five seconds were nearly half of a `tbbuild` run. It now also watches the IDE
+page's own traffic through CDP, and stops once that traffic shows the compile has ended and
+the window agrees with it: the same four counts, and a row in the panel for each. Three rules
+keep that from ending a wait too soon:
+
+- a compile that had already ended when the wait began does not count, so a wait that follows
+  an Apply or an edit takes the compile after it, not the one before;
+- a compile is believed only once it has been the latest for 300 ms, because every keystroke
+  starts a compile of its own;
+- a compile from before the compiler restarted --- after a crash, a change of target or the
+  restart button --- never counts.
+
+A project whose traffic never shows a compile ending falls back to the five-second rule, and
+so does a page that a dialog has blocked. The reproducer `interface-extends-itself` is one
+such project: its compiler never reports a result at all.
+
+**The new wait was checked against the five-second rule** on the install's 32 samples and
+templates, with and without `--arch win64`; on the 26 of them that build without registering
+anything, with `--build` and with `--llvm`; on the 44 projects under `bugs/`; and through
+`bug_repro verify`, `examples.bat`, `addin-test.bat` and `ide-test.bat`, run from two
+checkouts. Apart from the two differences below, which were not the wait's doing, every exit
+code, count, diagnostic row and build result was the same, and no add-in wrote to the DEBUG
+CONSOLE in the three seconds after any wait of the add-in or IDE lanes ended. Each project
+takes about five seconds less: `tbbuild` on a one-file template went from 11 s to 6 s, and a
+full `examples.bat` from about 125 s to about 80 s (BETA 995).
+
+The two differences:
+
+- **`--llvm`, four projects at a time, left 4 of 52 builds hanging** --- three under the new
+  wait, one under the old: each build started and then reported nothing for 120 s. One at a
+  time, the same four built on both sides, twice. `examples.bat` already builds a failed batch
+  a second time for this reason; `tbbuild` does not.
+- **The `assert` lane of `ide-test.bat` failed all three times under the old code**, and
+  passes under the new code only by chance. The IDE ignores a click on the error panel's Stop
+  that comes as soon as the panel is drawn, though the click hits the button; a second later
+  it works. The new code passes with its early end switched off too, so it is watching the
+  page's traffic, not the wait, that moves the click late enough.
+
 **The mechanics are one library, [scripts/lib/tb-ide.mjs](scripts/lib/tb-ide.mjs)**:
 starting the IDE, attaching, waiting for the compile, reading the diagnostics and the DEBUG
 CONSOLE, clicking, building, and ending the process tree. `tbbuild` and `tbrun` are command lines
@@ -417,27 +458,24 @@ The IDE is three processes, and their command lines say how they relate:
 |---|---|---|
 | `twinBASIC.exe` | `<project.twinproj>` | shell; hosts the WebView2, and the only one given the project |
 | `twinBASIC_win32.exe` | `--ide=<shell pid>` | serves `ide/` over HTTP on an ephemeral port |
-| `twinBASIC_win32_noDEP.exe` | `--compiler=<opaque token>` | the compiler; opens six websocket ports |
+| `twinBASIC_win32_noDEP.exe` | `--compiler=<opaque token>` | the compiler; the page talks to it over websockets |
 
-The page reaches the compiler at
-`ws://localhost:<port>/<passKey>/{root,language,fs,debugger}`, and `language` really is LSP
---- it pushes `textDocument/publishDiagnostics` with per-file `diagnostics` and error,
-warning, hint and info counts, alongside a `compilationStarted` event.
+The page's websockets carry everything the window shows about a compile, the diagnostics and
+their counts included.
 
-**But the port and the pass key are both minted inside the WebView.**
-`hostAppObject.CreateCompilerInstance(...)` returns the port, `GetCompilerPassKey(...)`
-returns a GUID, and both are WebView2 host objects --- reachable only from a page the shell
-has loaded. Starting the compiler directly is no way round it either: `--compiler=` is not a
-port but an opaque handle the shell hands it (`8591158` in one run, against compiler ports
-`61917-61922`). So a proxy between the WebView and the HTTP server is possible --- the page
-and its scripts come over plain HTTP, and a patched `main2.js` could be served --- but it
-would not remove the WebView, it would only change what runs inside it. The thing you would
-want to delete is the thing that mints the connection.
+**But what a connection needs, its address and its key, is minted inside the WebView**, by
+host objects the shell gives its page --- reachable only from a page the shell has loaded.
+Starting the compiler directly is no way round it either: `--compiler=` is not a port but
+an opaque handle the shell hands it. So a proxy between the WebView and the HTTP server is
+possible --- the page and its scripts come over plain HTTP, and a patched `main2.js` could
+be served --- but it would not remove the WebView, it would only change what runs inside it.
+The thing you would want to delete is the thing that mints the connection.
 
-What the websockets *would* be good for, once an IDE is up, is replacing the poll-for-DOM-
-stability heuristic with `compilationStarted` plus a quiet period of `publishDiagnostics`,
-and taking structured diagnostics instead of scraped text. That is a robustness change, not
-a speed one, and the current reader is the IDE's own report walk, so it is not urgent.
+Watching the page's traffic is another matter: CDP shows it to the harness with no key, and
+the wait for a compile now ends on it (*How the wait for the compile ends*, above) instead of
+five seconds after the window stops changing. This paragraph once called that a robustness
+change rather than a speed one. It was both: those five seconds were nearly half of every
+run. The diagnostics still come from the IDE's own report walk.
 
 ### One project per IDE, and that is the scaling unit
 
@@ -450,11 +488,13 @@ project at a time and closing the previous one is part of that path.
 So the cold start is not overhead to be optimised away; it is the unit of work. `tbbuild`
 starting a fresh IDE per project is the design, not a convenience.
 
-**It costs less than it sounds like.** Measured on this box: **8 to 11 seconds per project,
-and flat in project size** --- a one-file project and the 32-probe exploratory project both
-land at about ten seconds, because what is being paid for is IDE startup and not
-compilation. That number was once guessed at "roughly 40 seconds" and is out by a factor
-of four: time it before quoting it.
+**It costs less than it sounds like.** Measured on this box: **6 to 8 seconds per project,
+and flat in project size** --- a one-file template and the template that carries the whole
+of VBCCR both land at about six seconds, because what is being paid for is IDE startup and
+not compilation. It was 8 to 11 seconds while the wait for the compile ended five seconds
+after the window stopped changing (*How the wait for the compile ends*, above). It was once
+guessed at "roughly 40 seconds", out by a factor of four even then: time it before quoting
+it.
 
 **Concurrency works and is the route to a fast probe suite.** Distinct `--port` values give
 distinct DevTools ports, WebView2 user-data folders, temp folders and private desktops, so instances do
@@ -900,9 +940,9 @@ IDE has gone, and the first delete failed. `removeTree` in `tb-ide-copy.mjs` ret
 to five seconds, and `removeIdeCopy` and the add-in runner both use it.
 
 **`loadedAddins(c)`** in `tb-ide-addins.mjs` is the check that the copy is what it claims to be.
-It asks the page's `root.getAddinsList`, which asks the compiler over its root socket
-(`RequestAddinsStateList`), so the answer is the compiler's own, not an inference from files
-on disk. It is the same list the Add-Ins menu shows.
+It asks the page's `root.getAddinsList`, which asks the compiler, so the answer is the
+compiler's own, not an inference from files on disk. It is the same list the Add-Ins menu
+shows.
 
 ## The IDE runs inside a job
 
@@ -1062,7 +1102,7 @@ view draws only the rows that fit, and a tool window is a shadow root that
 `document.querySelector` cannot see into, so the calls read `toolWindowsById`, a list
 view's `dataNodes` and `window.editor` rather than what is drawn.
 
-Seven things about it were learned, the first six on the samples:
+Eight things about it were learned, the first six on the samples:
 
 - **A click scrolls its target into view, and checks what is at the point before it
   clicks.** Sample 10's tool window is taller than it is shown. Its eleventh button had a
@@ -1070,7 +1110,11 @@ Seven things about it were learned, the first six on the samples:
   went to the window's resize handle and did nothing. `click` now calls `scrollIntoView`,
   finds the element at the centre point through every shadow root, and throws, naming both,
   when something else is there. It also throws when there is no such element, or the
-  element has no size, which is what a hidden tool window's elements have.
+  element has no size, which is what a hidden tool window's elements have. It scrolls only
+  a target that is partly hidden --- outside the viewport, or clipped by an ancestor --- or
+  whose centre is covered: scrolling every target to the centre, as it first did, scrolled
+  whatever held a target in full view, and in the code editor each click on the error panel
+  scrolled the code, by 110 to 158 px.
 - **A click waits for its target, up to five seconds.** What an add-in adds is in the page's
   data a moment before it is drawn. The first run of the Sample 15 scenario waited until
   the results list held both files' results, read from the list view's data, and clicked a
@@ -1116,6 +1160,23 @@ Seven things about it were learned, the first six on the samples:
   at 3:1. When the IDE is still revealing lines 10 s later, `openFile`, `setCursor` and
   `select` throw, naming the file and the place, rather than go on while the cursor can still
   move; `afterReveal` itself returns `false`. The IDE's side of it is in BUGS-TO-REPORT.md.
+- **A click checks where its press lands** (learned on the `assert` lane of
+  `ide-test.bat`). The page can change between the call that aims and the press, a few
+  milliseconds to a hundred later on a busy page. In an editor the debugger has just
+  opened, the error panel goes on moving after it is drawn: the file's decorations bring
+  code lenses above the failing line and push it down 48 px. The test clicked Stop as soon
+  as the panel was there, the press landed on the panel's header, and the run went on, which
+  looked for a long time like the IDE ignoring the click. So the call that aims also puts a
+  one-shot `pointerdown` listener on the window, in the capture phase, which records the
+  element the press lands on before the page's own handlers on it run, and `click` throws,
+  naming that element, when it is not in the target. A press in what the target's selector
+  finds by then also counts, so a target the page draws again in place is still hit. The
+  release is not checked, because a control may act on the press and close before it. A
+  press a window listener of the page's own stops first is not seen, and not reported.
+  Checked in a plain Chromium page through puppeteer: a target moved before the press
+  throws, naming what took its place, and one drawn again in place, one in a shadow root
+  and a double click do not. The `assert` lane itself now waits for the panel to stop
+  moving (`panelStill` in `test/ide/assert.test.mjs`).
 
 **The connection itself changed in three ways.** They were the gaps item 1 found in
 `tbbuild`, and they matter more once a harness clicks into dialogs on purpose:
@@ -1296,11 +1357,11 @@ probe lanes:
   which turn out to be one window, as P9's lane first suggested.
 - [test/addin/symbols.test.mjs](test/addin/symbols.test.mjs), P5: no add-in. It opens the
   project in [test/addin/probes/symbols](test/addin/probes/symbols), which references tbIDE
-  and is never built, and asks the compiler's language socket about names in it: hover,
-  Go To Definition, signature help and a completion's details, each with the parameters the
-  IDE's own code sends. `lspSocket.request` answers through a callback, so each question is
-  one `Runtime.evaluate` of a promise. Positions are found in the source by text, so an edit
-  to the probe project does not shift them.
+  and is never built, and asks the compiler about names in it the way the IDE's own code
+  does: hover, Go To Definition, signature help and a completion's details, each with the
+  parameters the IDE's own code sends. The page's call answers through a callback, so each
+  question is one `Runtime.evaluate` of a promise. Positions are found in the source by
+  text, so an edit to the probe project does not shift them.
 - [test/addin/ideserver.test.mjs](test/addin/ideserver.test.mjs), P13: no add-in either. It
   writes fifteen files under `ide\p13\` in the lane's copy before the IDE starts, and one
   more after, then fetches each from the page, relative to its base URL, and compares a

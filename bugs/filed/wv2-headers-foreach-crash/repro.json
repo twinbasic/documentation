@@ -9,5 +9,6 @@
     "absent": [
       "^after For Each$"
     ]
-  }
+  },
+  "issue": 2460
 }

@@ -1,0 +1,13 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^Next 1, at the end: error=80004005 ",
+      "^Next 2, one point: error=80004005 ",
+      "^Skip 1: error=80004001 ",
+      "^Clone: error=80004001 "
+    ]
+  },
+  "issue": 2462
+}

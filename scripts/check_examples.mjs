@@ -26,7 +26,7 @@
 //
 // This is the tool that asks the compiler. It is NEVER part of build.bat,
 // check.bat, test.bat or either CI workflow, for three reasons that are not
-// going to change: an IDE cold start is 8-11 s where a whole site build is ~4 s;
+// going to change: an IDE cold start is 6-8 s where a whole site build is ~4 s;
 // `npm install` has to remain sufficient to build the docs, and a twinBASIC
 // install is not on that path; and CI has no Windows box, no private desktop
 // and no CDP-reachable WebView2. It is `examples.bat`, run by a person, the same

@@ -16,7 +16,7 @@ import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
-import { click, waitFor } from "../../scripts/lib/tb-operate.mjs";
+import { afterReveal, click, waitFor } from "../../scripts/lib/tb-operate.mjs";
 import { scenario } from "../addin/scenario.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -28,6 +28,8 @@ const STATE_JS = `(() => ({
   running: !!context.codeExecuting.value,
   panel: [...document.querySelectorAll(".errorWidgetButton")].map((b) => b.textContent.trim()),
 }))()`;
+// Resolves once the page has drawn two more frames.
+const TWO_FRAMES_JS = "new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))";
 const BEFORE = ["Executing 'Main'...", "main start", "test start"];
 const AFTER = ["test after assert", "All PadLeft tests passed."];
 
@@ -44,6 +46,18 @@ scenario("the debugger at a failed assertion", (lane) => {
     assert.ok(await waitFor(c, async () => (await state()).panel.length, { timeout: 60 * 1000 }), "no error panel");
     assert.deepEqual(await printed(), BEFORE);
   }
+  // In an editor the stop has just opened, the panel goes on moving after it
+  // is drawn: the file's decorations bring code lenses above the failing line,
+  // which push the panel down 48 px, and when they come within 700 ms of the
+  // IDE's last reveal of the line, it reveals the line again (main.js, BETA
+  // 995). A click aimed before then lands on the panel's header and stops
+  // nothing. So wait for the decorations, then for the reveals to end, then two
+  // frames, since the editor draws what they changed a frame or more later.
+  async function panelStill() {
+    assert.ok(await waitFor(c, () => c.evaluate("!awaitingDocumentDecorations")), "the file's decorations never came");
+    assert.ok(await afterReveal(c), "the IDE was still revealing the failing line 10 s later");
+    await c.evaluate(TWO_FRAMES_JS, { awaitPromise: true });
+  }
   async function stopped() {
     assert.ok(await waitFor(c, async () => !(await state()).running), "the run did not stop");
     // The program's lines, without the time taken and the debugger's own line.
@@ -56,6 +70,7 @@ scenario("the debugger at a failed assertion", (lane) => {
 
   test("the panel's Stop ends only the assertion: the test and the runner go on", async () => {
     await runToFailure();
+    await panelStill();
     await click(c, { css: ".errorWidgetButton", text: "Stop" });
     assert.deepEqual(await stopped(), [...BEFORE, ...AFTER]);
   });

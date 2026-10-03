@@ -223,11 +223,12 @@ export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_
 //
 // waitForCompile reads the IDE's own window: the status bar's counters and the
 // Problems panel for the project it has open, once the tB Services indicator
-// reads OPERATIONAL and the sample has been the same for five seconds. That is
-// the IDE's live analysis, not a build, and an IDE under load can sit
-// OPERATIONAL with an empty panel before it has published anything. A batch
-// read then reports every sample clean -- and with no reason to doubt it, since
-// a project with no errors looks exactly the same.
+// reads OPERATIONAL and either the page's traffic shows the compile has ended
+// and the sample agrees with it, or the sample has been the same for five
+// seconds. That is the IDE's live analysis, not a build, and an IDE under load
+// can sit OPERATIONAL with an empty panel before it has published anything. A
+// batch read then reports every sample clean -- and with no reason to doubt
+// it, since a project with no errors looks exactly the same.
 //
 // So every batch carries a file whose diagnostic is KNOWN, and a batch that
 // does not report it is not believed. The same idea as sweep_attributes.mjs's

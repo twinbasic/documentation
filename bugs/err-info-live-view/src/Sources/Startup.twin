@@ -1,0 +1,68 @@
+[InterfaceId("1CF2B120-547D-101B-8E65-08002B2BD119")]
+Private Interface IErrorInfo Extends stdole.IUnknown
+    Sub GetGUID(ByVal pGUID As LongPtr)
+    Function GetSource() As String
+    Function GetDescription() As String
+End Interface
+
+[InterfaceId("11111111-2222-3333-4444-555555555503")]
+Private Interface IWorker Extends stdole.IUnknown
+    Sub RaiseFull()
+    Sub ReturnFailure()
+End Interface
+
+Private Class Worker
+    Implements IWorker
+
+    Private Sub RaiseFull() Implements IWorker.RaiseFull
+        Err.Raise vbObjectError + 1234, "My.Source", "My description"
+    End Sub
+
+    Private Sub ReturnFailure() Implements IWorker.ReturnFailure
+        Err.ReturnHResult = &H80004005   ' E_FAIL, and no error information
+    End Sub
+End Class
+
+Module Startup
+
+    Private Declare PtrSafe Function GetErrorInfo Lib "oleaut32" ( _
+        ByVal dwReserved As Long, ByRef pperrinfo As IErrorInfo) As Long
+
+    Private Function Slot() As String
+        Dim info As IErrorInfo
+        Dim hr As Long = GetErrorInfo(0, info)
+        If info Is Nothing Then Return "empty (" & hr & ")"
+        Return "[" & info.GetSource() & "] [" & info.GetDescription() & "]"
+    End Function
+
+    Public Sub Main()
+        On Error Resume Next
+        Dim w As IWorker = New Worker
+
+        ' 1. The object holds what Err held when it is read, not when it was made.
+        Dim info As IErrorInfo
+        Err.Raise vbObjectError + 1234, "My.Source", "My description"
+        GetErrorInfo 0, info
+        Debug.Print "read at once: [" & info.GetSource() & "] [" & info.GetDescription() & "]"
+        Err.Clear
+        Debug.Print "after Err.Clear: [" & info.GetSource() & "] [" & info.GetDescription() & "]"
+
+        ' 2. A caller has handled the error, and the slot still holds an object.
+        Err.Clear
+        w.RaiseFull
+        Debug.Print "Err after the call: " & Err.Number & " [" & Err.Description & "]"
+        Debug.Print "slot afterwards: " & Slot()
+
+        ' 3. So a later failure that carries no information is described by Err.
+        Err.Clear
+        w.RaiseFull
+        Err.Clear
+        w.ReturnFailure
+        Debug.Print "E_FAIL after the cleared error: " & Err.Number & " [" & Err.Description & "]"
+        Dim ignore As String = Slot()
+        Err.Clear
+        w.ReturnFailure
+        Debug.Print "E_FAIL, slot emptied first: " & Err.Number & " [" & Err.Description & "]"
+    End Sub
+
+End Module

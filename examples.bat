@@ -14,7 +14,7 @@ rem   * it needs a twinBASIC install, and `npm install` has to remain
 rem     sufficient to build the docs;
 rem   * it needs Windows, a private desktop and a CDP-reachable WebView2, none
 rem     of which exists on the CI box;
-rem   * an IDE cold start is 8-11 s where a whole site build is ~4 s.
+rem   * an IDE cold start is 6-8 s where a whole site build is ~4 s.
 rem
 rem It is run by a person, deliberately -- the same deal sweep_a11y.mjs makes.
 rem Arguments are passed straight through, so the useful ones are:

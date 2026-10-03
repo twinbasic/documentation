@@ -40,7 +40,7 @@ and in a bare twinBASIC project that line does not compile at all.
 
 Stated first, because it is the constraint everything else bends around.
 
-- **Cost.** An IDE cold start is 8--11 s per project and flat in project size (WIP.md,
+- **Cost.** An IDE cold start is 6--8 s per project and flat in project size (WIP.md,
   measured). A normal `build.bat` is ~4 s.
 - **`npm install` must remain sufficient** to build the docs. A twinBASIC install is not on
   that path, and `dot.mjs`'s setup-failure behaviour exists to preserve exactly that.
@@ -362,7 +362,7 @@ produces a green run whose samples were compiled apart.
 
 **The residual is stated rather than closed:** two *ungrouped* samples still share a
 project and can still see each other. Nothing in twinBASIC hides a module's public members
-from the rest of a project, so the only complete fix is a project per sample, at 8--11 s
+from the rest of a project, so the only complete fix is a project per sample, at 6--8 s
 each. What removes the risk where it matters is that a real dependency is now written down.
 
 Collision rules, all forced by putting unrelated samples in one compilation unit:
@@ -402,6 +402,33 @@ only by an error the callee did not handle (measured: `InStr(0, "abc", "a")` unh
 sample's body printed `[tbx-run] error 5 Invalid procedure call or argument`, and the next
 sample ran), and `Resume tbxNext<n>` clears it before the next call.
 
+**`node scripts/vb6run.mjs --docs` compares the same fences with VB6.** It reads the
+`check_run` fences through `collectFences` and `joinConcatGroups`, refuses them with
+`runRefusal`, and judges what VB6 prints with `expectedOutput` and `judgeOutput`, so the
+comparison is the one `check_run` makes, against a second implementation. A fence of a
+`projname=` group is built as a project of its own (class and module names collide between
+groups, so groups are never batched together): the group's other fences, gathered by name as
+`checkGroups` gathers them, are its files, each `slot=file` fence translated into VB6
+components by `translateTwinFile` --- every `Class` block a `.cls` with VB6's class header,
+every `Module` block a `.bas`, and what is outside both one more `.bas` --- and each run
+fence is a module in it. Nothing else is translated: an `Interface`, an attribute line or a
+generic stays where it is and VB6 refuses it, so a group whose files do not build ends with
+every run fence `not VB6`, at the first error's page line. Each component keeps the fence's
+line numbers, with the other components' lines blank, and a class's line is the file's less
+two as a module's is (checked against a real error in a class, a module and the top level).
+The dispatcher opens the output file before each sample and closes it after, so
+`Class_Terminate` of an object released when the sample's `Sub` ends prints into it. Most
+twinBASIC syntax is not VB6, and a compile error there is the state `not VB6`, which is
+information; a `differs` is what the tool is for. What building in VB6 taught
+(`scripts/lib/vb6.mjs`, which has the list): `Debug.Print` writes nothing in a compiled exe,
+so each one is rewritten to `Print #511,`, and the comma stays on a bare `Debug.Print`
+because `Print #511` without it is a syntax error; the project is built with
+`Unattended=-1` so that a box VB6 would show goes to the event log; VB6 numbers a module's
+lines from 0 and not counting `Attribute` lines, so a compile error's line is the file's
+less two; and `Err.Source` of an error raised in the exe is the project name, which is why
+`ErrObject/Raise.md` differs. `Close` with no argument in a sample also closes the file the
+output goes to, so the sample's next `Debug.Print` raises error 52.
+
 Two things a batch runner must do that a single-fence runner need not:
 
 - **Keep a source map.** Errors return against a generated file and line; the report names
@@ -420,7 +447,8 @@ Two things a batch runner must do that a single-fence runner need not:
   the whole bisect.
 - **A batch that reports nothing is not a clean batch: a canary rides in every one.**
   `waitForCompile` reads the IDE's window --- the status counters and the Problems panel of
-  the open project --- once the compiler status is OPERATIONAL and five one-second samples
+  the open project --- once the compiler status is OPERATIONAL and either the page's traffic
+  shows the compile has ended and the window agrees with it, or five one-second samples
   match. It waits for no build. An IDE under load can sit OPERATIONAL with an empty panel
   before it has published anything, and every sample of that batch then reads as compiling,
   with nothing to tell it from a batch that has no errors. `sweep_attributes` met it first,

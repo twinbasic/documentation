@@ -26,10 +26,10 @@
 //
 // Only invocations that stop while reading the command line belong here. Each
 // runs as a child process, all of them at once, each with a time limit, in an
-// empty folder of its own and with TB_IDE and PUPPETEER_EXECUTABLE_PATH naming
-// files that do not exist. So a case that gets past the command line fails on
-// a message of a different kind rather than starting a twinBASIC IDE or a
-// browser, and a default path relative to the working folder, such as
+// empty folder of its own and with TB_IDE, PUPPETEER_EXECUTABLE_PATH and VB6_EXE
+// naming files that do not exist. So a case that gets past the command line fails
+// on a message of a different kind rather than starting a twinBASIC IDE, a
+// browser or VB6, and a default path relative to the working folder, such as
 // tbdocs's `docs`, finds nothing. No tree, no browser, no install; about a
 // second.
 
@@ -755,6 +755,7 @@ try {
     ...process.env,
     TB_IDE: path.join(scratch, "no-ide", "twinBASIC.exe"),
     PUPPETEER_EXECUTABLE_PATH: path.join(scratch, "no-browser", "chrome.exe"),
+    VB6_EXE: path.join(scratch, "no-vb6", "VB6.EXE"),
   };
   delete env.TBBUILD_SHOW;
   const results = new Array(CASES.length);
