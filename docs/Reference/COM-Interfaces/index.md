@@ -14,4 +14,8 @@ A twinBASIC class implements a COM interface with [**Implements**](../../tB/Core
 
 ## Interfaces
 
+- [**IUnknown**](IUnknown) -- the base of every interface: asks an object for another interface, and counts its references; what **Set**, **Is** and **TypeOf** use
+- [**IDispatch**](IDispatch) -- finds a member by name and calls it; what an **Object** variable and [**CallByName**](../../tB/Modules/Interaction/CallByName) use
 - [**IEnumVARIANT**](IEnumVARIANT) -- enumerates a sequence of **Variant** values; what [**For Each**](../../tB/Core/For-Each-Next) uses to go through an object
+- [**IErrorInfo**](IErrorInfo) and **ISupportErrorInfo** -- describe the error a method failed with; how **Err** is filled after a failed call
+- [**IConnectionPoint**](IConnectionPoint) and **IConnectionPointContainer** -- connect an event sink to an object; what [**WithEvents**](../../tB/Core/WithEvents) uses
