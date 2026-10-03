@@ -562,6 +562,12 @@ bad("scripts/tbrun.mjs", ["no-such-dir", "--quiet", "1.5"], thenUsage(NOT_WHOLE(
   );
   bad(tool, ["new", "Bad_Slug", "title"], thenUsage(slugMessage("Bad_Slug"), tool));
   bad(tool, ["new", "no-such-bug", " "], thenUsage("the entry's title is empty", tool));
+  bad(
+    tool,
+    ["new", "no-such-bug", "title", "--template", "no-such-template"],
+    thenUsage("--template expects console or webview2-form, got: no-such-template", tool),
+  );
+  bad(tool, ["pack", "no-such-bug", "--template", "console"], thenUsage("--template does not apply to pack", tool));
   bad(tool, ["pack", "-x"], thenUsage("unknown option: -x", tool));
   bad(tool, ["pack", "bad--slug"], thenUsage(slugMessage("bad--slug"), tool));
   bad(tool, ["compile"], thenUsage("compile needs a slug", tool));

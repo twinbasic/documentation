@@ -101,7 +101,7 @@ import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 let tidy = null;
 exitOnCrash(() => finishTidy(tidy));
 
-const USAGE = `usage: node scripts/bug_repro.mjs <command> [slug ...] [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--llvm] [--exe] [--jobs N] [--keep] [--show|--hide] [--existing] [--marked] [-h, --help]
+const USAGE = `usage: node scripts/bug_repro.mjs <command> [slug ...] [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--llvm] [--exe] [--jobs N] [--keep] [--show|--hide] [--template <name>] [--existing] [--marked] [-h, --help]
 
 Reproducer projects for the entries of BUGS-TO-REPORT.md, under bugs/<slug>/, or
 under bugs/filed/<slug>/ once the entry has been filed upstream.
@@ -111,7 +111,8 @@ is never "filed".
 Commands:
   new <slug> "<title>"  create bugs/<slug>/src/ from the console template, with a
                         project of the slug's name and a Startup module, and
-                        bugs/<slug>/repro.json with "mode": "manual"
+                        bugs/<slug>/repro.json with "mode": "manual"; with
+                        --template, from that template's Settings and Sources
   pack <slug>           pack src/ into <slug>.twinproj with scripts/impexp.mjs, and
                         write <slug>.zip, the file a GitHub issue accepts, with the
                         files repro.json's "attach" names
@@ -148,6 +149,8 @@ Options:
   --keep            leave the IDE running; its pid is printed; compile, build, run
   --show, --hide    show the IDE on the desktop, or keep it on a private one
                     (default: hidden, unless TBBUILD_SHOW is set)
+  --template <name> new: the project to start from, console (the default) or a
+                    folder of test/repro-templates/, such as webview2-form
   --existing        file: the issue was already open, and covers this bug; recorded
                     as "existing" in repro.json
   --marked          file: take the issue and the slug from the entries' marks
@@ -177,7 +180,7 @@ const usageError = { format: (err) => `${err.message}\n${USAGE}` };
 
 // What each command takes besides -h; anything else given is refused.
 const APPLIES = {
-  new: [],
+  new: ["template"],
   pack: [],
   compile: ["ide", "port", "arch", "timeout", "keep", "show", "hide"],
   build: ["ide", "port", "arch", "timeout", "keep", "show", "hide", "llvm"],
@@ -205,6 +208,7 @@ const { values, positionals } = withUsageError(
         keep: { type: "boolean", default: false },
         show: { type: "boolean", default: false },
         hide: { type: "boolean", default: false },
+        template: { type: "string" },
         existing: { type: "boolean", default: false },
         marked: { type: "boolean", default: false },
         help: { type: "boolean", short: "h", default: false },
@@ -220,7 +224,7 @@ const [command, ...args] = positionals;
 if (!command) die(2, USAGE);
 
 // Everything on the command line is read before anything starts.
-const { port, arch, timeout, jobs, slugs, title, issue } = withUsageError(() => {
+const { port, arch, timeout, jobs, template, slugs, title, issue } = withUsageError(() => {
   if (!(command in APPLIES)) throw new CliError("unknown-command", `unknown command: ${command}`);
   for (const key of Object.keys(values)) {
     if (key === "help" || !values[key] || APPLIES[command].includes(key)) continue;
@@ -234,6 +238,10 @@ const { port, arch, timeout, jobs, slugs, title, issue } = withUsageError(() => 
     arch: values.arch === undefined ? undefined : choiceOption(values.arch, { option: "--arch", choices: TARGETS }),
     timeout: values.timeout === undefined ? undefined : numberOption(values.timeout, { option: "--timeout", above: 0 }),
     jobs: numberOption(values.jobs ?? "1", { option: "--jobs", integer: true, min: 1 }),
+    template:
+      values.template === undefined || values.template === "console"
+        ? null
+        : choiceOption(values.template, { option: "--template", choices: ["console", ...reproTemplates()] }),
   };
   if (read.port + read.jobs - 1 > 65535) {
     throw new CliError("bad-number", `--port ${read.port} with --jobs ${read.jobs} runs past port 65535`);
@@ -294,6 +302,22 @@ const { port, arch, timeout, jobs, slugs, title, issue } = withUsageError(() => 
 
 const BUGS = path.join(REPO_ROOT, "bugs");
 const TEMPLATE = path.join(REPO_ROOT, "test", "example-projects", "console", "Settings");
+
+// The templates new --template takes besides console: each folder of
+// test/repro-templates/ that holds a Settings file and a Sources/ folder. A
+// function rather than a constant, since the command line is read above.
+function reproTemplatesDir() {
+  return path.join(REPO_ROOT, "test", "repro-templates");
+}
+function reproTemplates() {
+  const dir = reproTemplatesDir();
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name)
+    .filter((n) => existsSync(path.join(dir, n, "Settings")) && existsSync(path.join(dir, n, "Sources")))
+    .sort();
+}
 const IMPEXP = path.join(REPO_ROOT, "scripts", "impexp.mjs");
 const TBBUILD = path.join(REPO_ROOT, "scripts", "tbbuild.mjs");
 const TBRUN = path.join(REPO_ROOT, "scripts", "tbrun.mjs");
@@ -333,12 +357,28 @@ class Fail extends Error {
 
 const crlf = (lines) => lines.join("\r\n");
 const STARTUP = crlf(["Module Startup", "", "    Public Sub Main()", "    End Sub", "", "End Module", ""]);
+// The probe that runs Main inside the IDE. The harness starts the IDE with
+// WEBVIEW2_USER_DATA_FOLDER and WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS
+// (tb-ide.mjs), so that it can be driven over DevTools, and code run in the IDE
+// inherits them. WebView2 lets them override what a WebView2 control asks for,
+// so a reproducer's control would join the IDE's own browser with other options
+// and fail to start (8007139F, ERROR_INVALID_STATE; measured, BETA 995). The
+// probe clears both for the length of Main, and an IDE started by hand has
+// neither.
 const PROBE = crlf([
   "Module TbRunProbe",
+  '    Private Declare PtrSafe Function SetEnvironmentVariableW Lib "kernel32" ( _',
+  "        ByVal lpName As LongPtr, ByVal lpValue As LongPtr) As Long",
   "    [RunAfterBuild]",
   "    Public Sub RunRepro()",
   "        Debug.Cls",
+  '        Dim folder As String = Environ$("WEBVIEW2_USER_DATA_FOLDER")',
+  '        Dim args As String = Environ$("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS")',
+  '        SetEnvironmentVariableW StrPtr("WEBVIEW2_USER_DATA_FOLDER"), 0',
+  '        SetEnvironmentVariableW StrPtr("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"), 0',
   "        Main",
+  '        If Len(folder) Then SetEnvironmentVariableW StrPtr("WEBVIEW2_USER_DATA_FOLDER"), StrPtr(folder)',
+  '        If Len(args) Then SetEnvironmentVariableW StrPtr("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"), StrPtr(args)',
   "    End Sub",
   "End Module",
   "",
@@ -356,24 +396,39 @@ function pascal(slug) {
 
 // Rewrites the string value of one key of the template's Settings. A key the
 // template does not have is an error, because it means the template changed.
-function setKey(text, key, value) {
+function setKey(text, key, value, file = TEMPLATE) {
   const re = new RegExp(`("${key.replaceAll(".", "\\.")}"\\s*:\\s*)"(?:[^"\\\\]|\\\\.)*"`);
-  if (!re.test(text)) throw new Fail(`${rel(TEMPLATE)} has no "${key}" to set`);
+  if (!re.test(text)) throw new Fail(`${rel(file)} has no "${key}" to set`);
   return text.replace(re, (_, head) => `${head}${JSON.stringify(value)}`);
 }
 
-function newReproducer(slug, entryTitle) {
+// `template` is null for the console template, else a folder of
+// test/repro-templates/, whose Sources/ are copied as they are.
+function newReproducer(slug, entryTitle, template = null) {
   for (const dir of [path.join(BUGS, slug), path.join(FILED_DIR, slug)]) {
     if (existsSync(dir)) throw new Fail(`${rel(dir)} already exists`, 3);
   }
   const p = where(slug);
-  if (!existsSync(TEMPLATE)) throw new Fail(`no template project at ${rel(TEMPLATE)}`);
+  const from = template ? path.join(reproTemplatesDir(), template, "Settings") : TEMPLATE;
+  if (!existsSync(from)) throw new Fail(`no template project at ${rel(from)}`);
   const name = pascal(slug);
-  let settings = readFileSync(TEMPLATE, "utf8");
-  settings = setKey(settings, "project.name", name);
-  settings = setKey(settings, "project.appTitle", name);
-  settings = setKey(settings, "project.description", `Reproduces: ${entryTitle}`);
-  settings = setKey(settings, "project.id", `{${randomUUID().toUpperCase()}}`);
+  let settings = readFileSync(from, "utf8");
+  settings = setKey(settings, "project.name", name, from);
+  settings = setKey(settings, "project.appTitle", name, from);
+  settings = setKey(settings, "project.description", `Reproduces: ${entryTitle}`, from);
+  settings = setKey(settings, "project.id", `{${randomUUID().toUpperCase()}}`, from);
+  if (template) {
+    mkdirSync(p.src, { recursive: true });
+    writeFileSync(path.join(p.src, "Settings"), settings);
+    cpSync(path.join(reproTemplatesDir(), template, "Sources"), path.join(p.src, "Sources"), { recursive: true });
+    const steps = "Describe what a person does to see the bug, or set mode to compile, build, run or cli.";
+    writeFileSync(p.repro, `${JSON.stringify({ mode: "manual", steps }, null, 2)}\n`);
+    console.log(
+      `created ${rel(p.dir)}/ (project ${name}, from template ${template}): edit src/Sources, then pack; ` +
+        "repro.json is manual until set",
+    );
+    return;
+  }
   mkdirSync(path.join(p.src, "Sources"), { recursive: true });
   writeFileSync(path.join(p.src, "Settings"), settings);
   writeFileSync(path.join(p.src, "Sources", "Startup.twin"), STARTUP);
@@ -1177,7 +1232,7 @@ async function main() {
   };
   switch (command) {
     case "new":
-      newReproducer(slug, title);
+      newReproducer(slug, title, template);
       return 0;
     case "pack":
       requireReproducer(slug);

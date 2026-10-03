@@ -1,0 +1,27 @@
+' A form holding one WebView2 control. Once the control is ready it opens
+' about:blank, and when that navigation completes the form closes, so a run of
+' the project ends by itself. Put the code that reproduces a bug in the
+' handlers, and keep the close, or the run waits for a person to close the form.
+
+[FormDesignerId("7B247400-0000-4000-9000-7B2474000F01")]
+[PredeclaredId]
+Class Form1
+
+    Private Sub WebView21_Ready() Handles WebView21.Ready
+        Debug.Print "WebView21 ready"
+        WebView21.Navigate "about:blank"
+    End Sub
+
+    Private Sub WebView21_NavigationStarting(ByVal Uri As String, ByVal IsUserInitiated As Boolean, _
+            ByVal IsRedirected As Boolean, ByVal RequestHeaders As WebView2RequestHeaders, _
+            Cancel As Boolean) Handles WebView21.NavigationStarting
+        Debug.Print "NavigationStarting " & Uri
+    End Sub
+
+    Private Sub WebView21_NavigationComplete(ByVal IsSuccess As Boolean, ByVal WebErrorStatus As Long) _
+            Handles WebView21.NavigationComplete
+        Debug.Print "NavigationComplete " & IsSuccess
+        Me.Close
+    End Sub
+
+End Class
