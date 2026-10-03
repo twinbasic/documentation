@@ -50,7 +50,8 @@
 //     reproducer that has a VB6 project beside the twinBASIC one, in
 //     bugs/<slug>/vb6/, gets a second zip, <slug>-vb6.zip, of that folder's
 //     sources, written the same way; `vb6` builds the project in a temp copy
-//     (scripts/lib/vb6.mjs, runRepro) and prints the out.txt it writes. VB6.EXE
+//     (scripts/lib/vb6.mjs, runRepro), runs its exe on a private desktop, as
+//     tbrun --exe does, and prints the out.txt it writes. VB6.EXE
 //     is only ever started from there, with an argument array and no shell.
 //  2. impexp EXITS 6 WHEN IT WARNS. `import` that finished with a warning is
 //     still a pack, so 0 and 6 are both success, and its output is printed.
@@ -143,9 +144,9 @@ Commands:
   run <slug>            run a copy of src/ whose [RunAfterBuild] probe calls Sub
                         Main, and print what it writes to the DEBUG CONSOLE (tbrun)
   vb6 <slug>            build vb6/ with VB6 in a copy under the temp folder (never
-                        in the repository), run Probe.exe, and print out.txt. A
-                        project that calls MsgBox or InputBox is refused. Needs
-                        VB6; no IDE
+                        in the repository), run Probe.exe on a private desktop,
+                        and print out.txt. A project may have forms. A project
+                        that calls MsgBox or InputBox is refused. Needs VB6; no IDE
   verify [slug ...]     run what each repro.json says, for the named reproducers or
                         all of bugs/* and bugs/filed/*, and report per reproducer
                         whether it reproduces; a filed one is labelled with its

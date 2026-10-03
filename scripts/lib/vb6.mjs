@@ -52,6 +52,13 @@
 //     keeps one in bugs/<slug>/vb6/ and builds it in a temp copy with the same `/make`
 //     and the same Unattended Execution (runRepro): Probe.vbp builds Probe.exe, which
 //     writes out.txt beside itself and handles its own errors.
+//  9. VB6 REFUSES UNATTENDED EXECUTION FOR A PROJECT WITH A FORM: "Unattended Project
+//     Cannot be visible at runtime", and no exe. A reproducer whose project names a
+//     form, a user control, a property page, a user document or a designer is built
+//     without it, so a box its exe shows is a real window. That is why runRepro starts
+//     every reproducer's exe as tbrun starts an exe, on a private desktop inside a
+//     kill-on-close job: a box there is on no desktop anyone uses, and the time limit
+//     ends the exe waiting on it.
 //
 // The probes for the rewrite and the translation are in vb6Probes() at the end.
 
@@ -69,6 +76,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PROMPTS, RUN_DONE, RUN_TAG, parseRun } from "./example-run.mjs";
+import { killTree, launchOnDesktop } from "./tb-ide.mjs";
 import { logicalLines } from "./twin-api.mjs";
 import { fileEntry, readZip, zipFiles } from "./zip.mjs";
 
@@ -610,7 +618,9 @@ export async function runExe(
 // sources only. It is built in a copy under the OS temp folder, so no exe or
 // output ever lands in the repository, and the copy's project gets Unattended
 // Execution, as the generated project of vb6run does: a message box, or an error
-// the program did not handle, goes to the event log in place of the desktop.
+// the program did not handle, goes to the event log in place of the desktop. A
+// project with a form cannot have it (see 9 at the top), and every reproducer's
+// exe runs on a private desktop.
 
 /** The project, exe and output of a reproducer's VB6 project. */
 export const REPRO_PROJECT = "Probe";
@@ -660,16 +670,61 @@ export function reproZipFiles(dir) {
 }
 
 /**
- * The text of a project file with `Unattended=-1`, in the general section, before
- * any `[Section]`. A line it already has is replaced.
+ * Whether a project file names a component VB6 can show: a form (an MDI form is a
+ * `Form=` line too), a user control, a property page, a user document or a
+ * designer. VB6 will not build such a project with `Unattended=-1`.
  */
-export function unattended(vbp) {
+export const hasVisibleComponent = (vbp) =>
+  /^[ \t]*(?:Form|UserControl|PropertyPage|UserDocument|Designer)[ \t]*=/im.test(String(vbp));
+
+/**
+ * The text of a project file with `Unattended=-1`, in the general section, before
+ * any `[Section]`. A line it already has is replaced. With `on` false, the line
+ * is only removed.
+ */
+export function unattended(vbp, on = true) {
   const lines = String(vbp).split(/\r?\n/);
   if (lines[lines.length - 1] === "") lines.pop();
   const kept = lines.filter((l) => !/^\s*Unattended\s*=/i.test(l));
   const section = kept.findIndex((l) => /^\s*\[/.test(l));
-  kept.splice(section < 0 ? kept.length : section, 0, "Unattended=-1");
+  if (on) kept.splice(section < 0 ? kept.length : section, 0, "Unattended=-1");
   return `${kept.join("\r\n")}\r\n`;
+}
+
+/**
+ * Run a reproducer's built exe on a private desktop, inside a kill-on-close job,
+ * for at most `timeoutMs`, and read the out.txt it wrote.
+ *
+ * @returns {Promise<{lines: string[], status: number|null, timedOut: boolean}>}
+ */
+async function runReproExe(work, timeoutMs) {
+  const outPath = path.join(work, REPRO_OUT);
+  rmSync(outPath, { force: true });
+  let run;
+  try {
+    run = await launchOnDesktop({
+      exe: path.join(work, `${REPRO_PROJECT}.exe`),
+      desktop: `bugrepro-vb6-${process.pid}`,
+      env: process.env,
+    });
+  } catch (e) {
+    throw new Error(`could not run the built exe on a private desktop: ${e.message}`);
+  }
+  let timer;
+  const timedOut = await Promise.race([
+    run.exited.then(() => false),
+    new Promise((r) => {
+      timer = setTimeout(() => r(true), timeoutMs);
+    }),
+  ]);
+  clearTimeout(timer);
+  if (timedOut) {
+    killTree(run.pid);
+    run.launcher.kill();
+  }
+  const status = await run.exited;
+  const lines = existsSync(outPath) ? splitLines(decodeAnsi(readFileSync(outPath))) : [];
+  return { lines, status: timedOut ? null : status, timedOut };
 }
 
 /**
@@ -684,20 +739,15 @@ export async function runRepro(vb6, dir, { timeoutMs = 30000, keep = false } = {
   try {
     for (const name of reproFiles(dir).sources) copyFileSync(path.join(dir, name), path.join(work, name));
     const vbp = path.join(work, `${REPRO_PROJECT}.vbp`);
-    writeFileSync(vbp, encodeAnsi(unattended(decodeAnsi(readFileSync(vbp)))));
+    const text = decodeAnsi(readFileSync(vbp));
+    writeFileSync(vbp, encodeAnsi(unattended(text, !hasVisibleComponent(text))));
     const made = await make(vb6, work, { project: REPRO_PROJECT });
     if (made.timedOut || made.error) {
       throw new Error(`VB6 did not finish building${made.error ? `: ${made.error}` : " in time"}\n${made.log}`);
     }
     const result = { built: made.built, log: made.log, lines: [], status: null, timedOut: false, work, kept: keep };
     if (!made.built) return result;
-    const ran = await runExe(work, {
-      timeoutMs: Math.min(timeoutMs, 2147483647),
-      project: REPRO_PROJECT,
-      outName: REPRO_OUT,
-      args: [],
-    });
-    if (ran.error) throw new Error(`could not run the built exe: ${ran.error}`);
+    const ran = await runReproExe(work, Math.min(timeoutMs, 2147483647));
     return { ...result, lines: ran.lines, status: ran.status, timedOut: ran.timedOut };
   } finally {
     if (!keep) rmSync(work, { recursive: true, force: true });
@@ -1106,6 +1156,20 @@ function reproProbes() {
     "a project with no section gets it at the end, and one with Unattended has it once",
     unattended('Type=Exe\nUnattended=0\nName="P"\n') === 'Type=Exe\r\nName="P"\r\nUnattended=-1\r\n',
     JSON.stringify(unattended('Type=Exe\nUnattended=0\nName="P"\n')),
+  );
+  check(
+    "with on false, Unattended is only removed",
+    unattended("Type=Exe\nUnattended=-1\nForm=Form1.frm\n", false) === "Type=Exe\r\nForm=Form1.frm\r\n",
+    JSON.stringify(unattended("Type=Exe\nUnattended=-1\nForm=Form1.frm\n", false)),
+  );
+  check(
+    "a form, a user control and a designer are visible components, a module and a class are not",
+    hasVisibleComponent("Type=Exe\r\nForm=Form1.frm\r\n") &&
+      hasVisibleComponent("UserControl=Ctl.ctl\r\n") &&
+      hasVisibleComponent("Designer=DataEnv.Dsr\r\n") &&
+      !hasVisibleComponent('Type=Exe\r\nModule=Module1; Module1.bas\r\nClass=C; C.cls\r\nStartup="Sub Main"\r\n') &&
+      !hasVisibleComponent("[MS Transaction Server]\r\nFormatted=1\r\n"),
+    "",
   );
   return out;
 }
