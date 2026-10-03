@@ -18,6 +18,7 @@ The reference is organized into three layers: the language constructs the compil
 - [**Data Types**](Reference/Data-Types) -- storage size, range, and suffix for every intrinsic type (**Boolean** through **Variant**)
 - [**Compiler Constants**](Reference/Compiler-Constants) -- the `#If` symbols the compiler recognises
 - [**Attributes**](../tB/Core/Attributes) -- `[Description(...)]`, `[COMCreatable(...)]`, and the rest of the attribute syntax
+- [**COM Interfaces**](Reference/COM-Interfaces/) -- the standard COM interfaces twinBASIC code implements or calls, such as **IEnumVARIANT**
 - [**twinBASIC Additions**](Reference/twinBASIC-Additions) -- curated list of language and runtime additions beyond standard VBA
 
 **Controls and glossary:**

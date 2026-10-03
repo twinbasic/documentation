@@ -343,7 +343,7 @@ parts:
         
 
   - title: Reference Section
-    subtitle: Controls, enumerations, twinBASIC's additions, and the glossary
+    subtitle: Controls, enumerations, COM interfaces, twinBASIC's additions, and the glossary
     outline_closed: true
     chapters:
       - title: Controls
@@ -351,6 +351,10 @@ parts:
         outline_closed: true
       - title: Enumerations
         landing_page: /Reference/Enumerations
+        outline_closed: true
+      - title: COM Interfaces
+        landing_page: /Reference/COM-Interfaces/
+        page: /Reference/COM-Interfaces/
         outline_closed: true
       - title: twinBASIC Additions
         landing_page: /Reference/twinBASIC-Additions

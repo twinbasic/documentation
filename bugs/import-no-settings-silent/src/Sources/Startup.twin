@@ -1,0 +1,7 @@
+' An ordinary project. Nothing to run: import of its Sources folder alone, which has no Settings file, fails without a reason.
+Module Startup
+
+    Public Sub Main()
+    End Sub
+
+End Module

@@ -457,7 +457,7 @@ compilation. That number was once guessed at "roughly 40 seconds" and is out by 
 of four: time it before quoting it.
 
 **Concurrency works and is the route to a fast probe suite.** Distinct `--port` values give
-distinct DevTools ports, WebView2 user-data folders and private desktops, so instances do
+distinct DevTools ports, WebView2 user-data folders, temp folders and private desktops, so instances do
 not collide. Three projects: **26 s sequentially, 10 s in parallel**, with each run
 reporting its own diagnostics and no bleed between them.
 
@@ -522,7 +522,8 @@ Four smaller things it knows, each of which cost a run:
   library`, `[BUILD] failed`. `tbrun` returned exactly that as the probe's output, with exit 0,
   twice in round 8's fix pass --- five runs going at once on ports 9740--9744, and both passed
   when repeated. It now exits 2 on a `[BUILD] failed` or `[LINKER] FAILED` line, which the
-  probe's own `Debug.Cls` would have erased. What made the type library fail was not isolated.
+  probe's own `Debug.Cls` would have erased. The type library failed because the IDEs shared
+  one temp folder; `launchIde` now gives each its own (see WIP.ExamplesBuild.md).
   Since the tooling review's C16 it exits 2 on any line `buildProject`'s `BUILD_FAILED`
   matches, which adds `[BUILD] ERROR` and `[LINKER] compilation (codegen) error`. The second
   was measured: a `[RunAfterBuild]` Sub that shifts a `Single` (BUGS-TO-REPORT.md) builds with
@@ -548,6 +549,20 @@ Four smaller things it knows, each of which cost a run:
   remedies (rerun the second, isolate the probe for the first), and `check_examples` already
   isolated a sample on `tbbuild`'s 4. `tbrun` exits 3 for no output at all, and 2 for a
   compile that never settled, which `tbbuild` reports as 3.
+- **`tbrun` exits 5 when the probe ended before it returned.** The quiet period cannot see
+  it: on BETA 995, `Err.Raise` with no handler in a `+llvm` procedure ends the run with
+  nothing in the console, and `tbrun` exited 0 with the output up to there. `End` does the
+  same, and so does an unhandled error in plain code, in the same time as a probe that
+  returns (20.7-21.9 s over three runs on BETA 995, against 18.6-20.4 s; one earlier 30 s
+  run came with a 25 s clean run beside it). `lib/tb-probe.mjs`'s `wrapProbe` moves the
+  attribute, blanked to spaces so diagnostics keep their positions, to a Sub appended to the
+  same module, so a Private probe Sub can still be called; that Sub prints a sentinel after
+  the call. A probe that leaves a form loaded returned too: the IDE then prints `[DEBUGGER]
+  Waiting for remaining forms to close...` after the sentinel, which `sentinelIndex` allows
+  and `tbrun` prints (measured on BETA 983 and 995). `check_twin_parsers` has fixtures for both.
+- **`tbrun --exe` exits 6 when the exe exited with a code other than 0**, or was still
+  running at `--timeout` and was ended. A run that would exit 5 exits 5 first, since the
+  IDE's run is the one `--exe` follows.
 
 A reader of the console that is not `tbrun` should **compare the whole console before and
 after, not read on from an index**: new text can be appended to an entry that is still open.
@@ -570,8 +585,8 @@ IDE escapes that continued text twice** ([BUGS-TO-REPORT.md](BUGS-TO-REPORT.md))
 printing `&`, `<` or `>` after a `Debug.Print ...;` reads them back as `&amp;`, `&lt;` and
 `&gt;`, which is also what the console shows.
 
-It settles on a quiet period rather than a sentinel, so no probe has to print a marker the
-script knows about. Distinct `--port` values let probes run concurrently, exactly as
+It settles on the wrapper's sentinel, or else on a quiet period, so no probe has to print a
+marker of its own. Distinct `--port` values let probes run concurrently, exactly as
 `tbbuild`'s do.
 
 **Two things make that safe, and both had to be built.** The workspace and `project.id`
@@ -588,6 +603,32 @@ outstanding. The sweep is a before/after snapshot diff restricted to processes t
 on an image allowlist, *and* windowless --- a new one that has a window is reported and left
 alone, since that cannot be told from a copy the user opened. `--no-reap` turns it off, and
 concurrent runs driving the same server should use it and sweep once at the end.
+
+### Measuring LLVM
+
+`tbrun --llvm` sets `compiler.debugOptions` and `compiler.buildOptions` to `+llvm` in the
+staged Settings; `--compiler-options` sets any other string. Measured on BETA 995 with no
+per-procedure attributes, one probe in four variants of Settings: **`debugOptions` is what
+the `[RunAfterBuild]` run is compiled with.** With `+llvm` there, `Debug.Assert`'s condition
+was evaluated 0 times and a 200-million-step loop took 516 ms; with it only in
+`buildOptions`, 1 time and 672 ms, as with neither. (`+llvm` alone is not
+`+llvm +optimize`, which took the same loop to 62 ms as a procedure attribute.)
+
+**The licence is in the status bar's `compilerLicence`:** one of `COMMUNITY EDITION`,
+`PERSONAL EDITION`, `PROFESSIONAL EDITION`, `ULTIMATE EDITION`, and `tB Licence: ...`
+until the IDE knows (`ide/main.js`, BETA 995). The licence key is in HKCU, so a lane IDE
+sees the user's. `tbrun` refuses an LLVM run on the first two, which compile no user code
+with LLVM; it cannot be tested with a real Community licence here, only through a fault.
+
+**`--exe` runs the exe on a private desktop**, through `launchOnDesktop`, the part of
+`launchIde` that calls `tb-launch.ps1`, which reports the program's exit code on a
+second line (`exit <n>`) once it ends. Nothing reaches the exe's standard output: the
+launcher creates it with no inherited handles. So `TbRun.Out` writes UTF-8 to the file
+`TBRUN_OUT` names, and to standard output only when there is none. Measured on BETA 995:
+`App.IsInIDE` is True in a `[RunAfterBuild]` run and False in the exe, the exit code from
+`ExitProcess 7` comes back as 7, a hung exe is ended at `--timeout` with nothing left
+running, and **the exe never evaluates `Debug.Assert`, with or without LLVM**, as VB6 drops
+`Debug` statements from a compiled program.
 
 ### Building for win64
 

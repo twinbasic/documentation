@@ -1,0 +1,15 @@
+{
+  "mode": "cli",
+  "cli": [
+    "import",
+    "{tmp}\\ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff.twinproj",
+    "{src}\\"
+  ],
+  "expect": {
+    "exit": 0,
+    "output": [
+      "ERROR: failed to create output file: .*(check permissions and storage space)",
+      "^... FAILED"
+    ]
+  }
+}

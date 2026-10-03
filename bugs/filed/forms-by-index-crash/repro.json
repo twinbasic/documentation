@@ -1,0 +1,8 @@
+{
+  "mode": "run",
+  "exe": true,
+  "expect": {
+    "exit": 6
+  },
+  "issue": 2458
+}

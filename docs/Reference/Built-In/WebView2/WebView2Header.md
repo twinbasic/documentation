@@ -10,6 +10,9 @@ has_toc: false
 
 A single HTTP header --- a name / value pair. **WebView2Header** is the element type produced by iterating a [**WebView2HeadersCollection**](WebView2HeadersCollection), which in turn comes from a [**WebView2RequestHeaders**](WebView2RequestHeaders) or [**WebView2ResponseHeaders**](WebView2ResponseHeaders) collection.
 
+> [!WARNING]
+> In BETA 995, the `For Each` loop below ends the program with an access violation. See [**WebView2HeadersCollection**](WebView2HeadersCollection) for the cause and what to use instead.
+
 ```tb check_build
 Private Sub WebView21_WebResourceRequested( _
         ByVal Request As WebView2Request, _

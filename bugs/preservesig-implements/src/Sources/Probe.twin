@@ -1,0 +1,12 @@
+' An interface member marked [PreserveSig] cannot be implemented: the "expected" signature is the one already written.
+[InterfaceId("11111111-0000-4000-8000-000000000004")]
+Interface IProbeD Extends IUnknown
+    [PreserveSig]
+    Function F() As Long
+End Interface
+
+Class ImplD
+    Implements IProbeD
+    Private Function IProbeD_F() As Long Implements IProbeD.F
+    End Function
+End Class

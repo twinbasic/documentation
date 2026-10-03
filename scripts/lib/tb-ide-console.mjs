@@ -35,7 +35,7 @@
 // An entry's text is stored escaped: an add-in's PrintText of "<b>&copy=1"
 // is stored as "&lt;b&gt;&amp;copy=1" (measured, BETA 983), so decoding gives
 // back exactly what was printed, markup and ampersands included. Except for
-// the IDE's own bug (BUGS-TO-REPORT.md): text that continues a line left open
+// the IDE's own bug (twinbasic/twinbasic#2444): text that continues a line left open
 // by `Debug.Print ...;` is escaped twice, so the console shows "&amp;" for
 // "&", and so does this reader. It returns what the console shows.
 //

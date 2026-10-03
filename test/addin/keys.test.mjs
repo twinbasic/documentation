@@ -5,8 +5,8 @@
 //
 // Each test states what BETA 983 and 995 do. If one fails after an IDE update, the
 // IDE has changed: update P1 and P2 in WIP.HelpAddin.md, the NOTE on
-// docs/Reference/Built-In/tbIDE/KeyboardShortcuts.md and the entry in
-// BUGS-TO-REPORT.md, and then this file.
+// docs/Reference/Built-In/tbIDE/KeyboardShortcuts.md and the filed reports in
+// bugs/filed/ (twinbasic/twinbasic#2445, #2446), and then this file.
 //
 // Run it with addin-test.bat, which gives it a lane; on its own it is skipped.
 
@@ -164,7 +164,7 @@ scenario("P1 and P2: add-in keyboard shortcuts", (lane) => {
     const lines = (await linesSince(c, mark)).filter(Boolean);
     assert.deepEqual(fired, ["f1"]);
     assert.equal(await c.evaluate("sigHelpIsExpanded"), !expanded, "F1 did not toggle signature help");
-    // toggleSigHelp() dereferences the event it is not given (BUGS-TO-REPORT.md).
+    // toggleSigHelp() dereferences the event it is not given (twinbasic/twinbasic#2446).
     assert.ok(
       lines.includes('command failed: "tbHelp_ToggleExpandSignatureHelp"'),
       `the IDE no longer reports the toggle failing: ${JSON.stringify(lines)}`,

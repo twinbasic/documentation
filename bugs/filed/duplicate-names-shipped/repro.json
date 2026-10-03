@@ -1,0 +1,15 @@
+{
+  "mode": "cli",
+  "cli": [
+    ["export", "{ide}\\packages\\{F50B82D0-DCAB-43FE-9631-11959D4A4728}_VB\\package.twinproj", "{tmp}\\out1\\"],
+    ["export", "{ide}\\projects\\Sample 16.    twinBASIC IDE Addin (TODO Widgets demo)\\projectName.twinproj", "{tmp}\\out2\\"]
+  ],
+  "expect": {
+    "exit": 0,
+    "output": [
+      "ERROR: output file already exists and --overwrite not set: .*\\\\out1\\\\Resources\\\\MANIFEST\\\\#1\\.xml",
+      "(?:^.*ERROR: output file already exists and --overwrite not set: .*\\\\out2\\\\\\.addins\\\\WaynesTodoItemsData\\r?\\n){7}"
+    ]
+  },
+  "issue": 2435
+}

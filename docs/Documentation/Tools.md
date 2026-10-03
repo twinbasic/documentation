@@ -182,11 +182,11 @@ One invocation of [`check_examples.mjs`](#check-examples), with every flag passe
 
     node scripts/check_examples.mjs [flags]
 
-Compiles the documentation's own twinBASIC code samples --- every ` ```tb ` fence marked `check_build` --- and reports the ones the compiler refuses, against the line in the page they came from. [Authoring Pages](Authoring#checking-that-a-sample-compiles) is the page for marking a sample and for what a pull request that changes one shows; this entry is about running the tool.
+Compiles the documentation's own twinBASIC code samples --- every ` ```tb ` fence marked `check_build` --- and reports the ones the compiler refuses, against the line in the page they came from. A sample also marked `check_run` is run, and what it prints is checked against what the page says it prints. [Authoring Pages](Authoring#checking-that-a-sample-compiles) is the page for marking a sample and for what a pull request that changes one shows; this entry is about running the tool.
 
 **It is not one of the gates, and it must not become one.** It is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows, for three reasons that are not going to change: it needs a twinBASIC install, where `npm install` has to remain sufficient to build the docs; it needs Windows, a private desktop and a CDP-reachable WebView2, none of which exists on the CI box; and an IDE cold start is 8 to 11 seconds against a whole site build's four. It is run by a person, deliberately, which is the same arrangement [`sweep_a11y.mjs`](#sweep-a11y) already has.
 
-Exit codes: those of [`check_examples.mjs`](#check-examples), returned as they are: **0** clean, **1** a sample does not compile, **2** the harness failed.
+Exit codes: those of [`check_examples.mjs`](#check-examples), returned as they are: **0** clean, **1** a sample does not compile, or does not run as its page says, **2** the harness failed.
 
 ### addin-test.bat
 {: #addin-testbat }
@@ -467,7 +467,7 @@ The cause is one shape, every time: **two parts of the pattern can match the sam
 
 **The rewrite that works is to stop describing the structure between the delimiters.** Both regexes are `<(br|hr|...)\b([^>]*)>`, and the attribute handling happens afterwards in ordinary JavaScript, where it is easier to read and cannot backtrack at all. `[^>]*` and the `>` after it share no character, so there is no division to try. **Do not reintroduce a per-attribute sub-pattern in either one**: a per-attribute sub-pattern is what made them exponential.
 
-It gates on **exponential only**. recheck also reports polynomial blowup, and about a fifth of the patterns here are polynomial --- nearly all the ordinary `<tag[^>]*>` shape on bounded input. Failing those would mean fifty findings on day one, and a gate that fails on day one gets switched off. The `degN` a census prints is worth even less than that: measured on one pattern over three runs each, the native backend calls it degree 2 and the pure-JavaScript fallback calls it degree 3. Both agree on exponential-or-not, which is the only thing the gate rests on.
+It gates on **exponential only**. recheck also reports polynomial blowup, and about a fifth of the patterns here are polynomial --- nearly all the ordinary `<tag[^>]*>` shape on bounded input. Failing those would mean fifty findings on day one, and a gate that fails on day one gets switched off. The `degN` a census prints is worth even less than that: on one pattern, over three runs each, the native backend calls it degree 2 and the pure-JavaScript fallback calls it degree 3. Both agree on exponential-or-not, which is the only thing the gate rests on.
 
 Two sets of probes run inside the normal pass rather than behind `--self-test`, because a green line saying *no exponential regex* is otherwise indistinguishable from a gate that has stopped detecting them. Eight are regexes with known answers in both directions, including the three this repository actually shipped. Fourteen more cover the folding: eight constructions that must resolve to an exact pattern, and six that must be refused with a reason --- a folder that quietly resolves nothing moves every construction into the unresolved list and the run still passes.
 
@@ -588,7 +588,7 @@ Exit codes: **0** every test passed, **1** a test failed.
 
     node --test test/example-batches.test.mjs
 
-Runs the probes of [`check_examples.mjs`](#check-examples) under Node's own test runner. They live in `scripts/lib/example-batches.mjs`, beside what they test: how samples are packed into projects, how a batch whose build crashed the compiler is cut down to the samples that crash it, the canary every batch carries, and the fence classifier. `check_examples.mjs` runs them before every run too, but it needs a twinBASIC install, so it runs only by hand and never in CI. The probes need no IDE: crash isolation is driven through a fake lane whose builds crash on the samples a probe chooses. No browser, no built tree, well under a second.
+Runs the probes of [`check_examples.mjs`](#check-examples) under Node's own test runner. They live in `scripts/lib/example-batches.mjs`, beside what they test: how samples are packed into projects, how a batch whose build crashed the compiler is cut down to the samples that crash it, the canary every batch carries, the fence classifier, and how a `check_run` sample is refused, read for what it says it prints, called and judged. `check_examples.mjs` runs them before every run too, but it needs a twinBASIC install, so it runs only by hand and never in CI. The probes need no IDE: crash isolation is driven through a fake lane whose builds crash on the samples a probe chooses. No browser, no built tree, well under a second.
 
 Exit codes: **0** every test passed, **1** a test failed.
 
@@ -810,8 +810,8 @@ Exit codes: **0** the trees match; **1** the trees differ; **2** a refused comma
 {: #tbbuild }
 
     node scripts/tbbuild.mjs <project.twinproj> [--ide <twinBASIC.exe>] [--port N]
-                             [--arch win32|win64] [--timeout S] [--json] [--keep]
-                             [--show|--hide]
+                             [--arch win32|win64] [--timeout S] [--build | --llvm]
+                             [--json] [--keep] [--show|--hide]
 
 Compiles a `.twinproj` and prints its diagnostics, with no IDE window to click through. This is how a claim the documentation makes about the language gets checked against the compiler rather than against memory: write a one-module project that uses the construct in the position you are asking about, run this, and read what comes back. Windows only, and no part of the site build.
 
@@ -820,12 +820,16 @@ twinBASIC has no command-line build. The compiler executable's whole surface is 
 | Flag | Effect |
 |---|---|
 | `--ide <path>` | Path to `twinBASIC.exe`. Default: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` folder on `%USERPROFILE%\Desktop`, which is where the IDE's own zip says to unpack it. **No install path is hardcoded anywhere in this tooling** --- an install path contains a username --- so an install kept elsewhere needs one of those two. |
-| `--port <n>` | DevTools port. Default 9333. It also names the WebView2 user-data folder and the private desktop, which is what makes concurrent instances possible. A port another IDE already holds --- another run's, or another session's --- is refused after ten seconds, rather than attached to. |
+| `--port <n>` | DevTools port. Default 9333. It also names the WebView2 user-data folder, the IDE's temp folder (`%TEMP%\tbbuild-tmp-<n>`, its `TEMP` and `TMP`) and the private desktop, which is what makes concurrent instances possible: IDEs building at once in one temp folder fail now and then to write the type library. A port another IDE already holds --- another run's, or another session's --- is refused after ten seconds, rather than attached to. |
 | `--arch <target>` | The target to compile for, `win32` or `win64`. Default `win32`. The diagnostics can differ between the two, because `#If Win64` and the size of `LongPtr` change what compiles. The target is set on every run, because the IDE opens a project in whatever target it last used for that project. Switching restarts the compiler, which then compiles the project again, so a switch adds a few seconds. When the target is not `win32`, or the IDE remembered another one for the project, the report starts with a `target:` line. |
 | `--timeout <secs>` | Give up waiting for the compile to settle. Default 180. |
-| `--json` | Emit one JSON object --- the target, counts, diagnostic rows, and the text of any alert the IDE opened, which is dismissed so the compile can go on --- instead of lines of text. |
-| `--keep` | Leave the IDE running afterwards. The IDE's registry entries for the project are then left as they are, because the IDE is still writing them. |
+| `--build` | After a compile with no errors, build the project, as the toolbar's Build button does, and print `built: <file>` after the summary line. The project is exported and packed again first (see below), so the given file is never changed. |
+| `--llvm` | Build with LLVM: `--build`, with the project's compiler options set to `+llvm`. It is refused, with exit 2, on a Community or Personal licence, which would build with the default compiler and say nothing. Without it, `--build` is the control for an `--llvm` run. |
+| `--json` | Emit one JSON object --- the target, counts, diagnostic rows, the text of any alert the IDE opened, which is dismissed so the compile can go on, and `built` (the file a build wrote, or null) and `buildLog` --- instead of lines of text. |
+| `--keep` | Leave the IDE running afterwards, and print its pid as `ide-pid: <n>`, followed by the `taskkill` command that ends it and every process it started, as cmd and PowerShell spell it and as Git Bash does (`//PID`). The IDE's registry entries for the project are then left as they are, because the IDE is still writing them. |
 | `--show` / `--hide` | Put the IDE on your own desktop where you can watch it, or on a private one where it cannot take focus. Hidden is the default unless `TBBUILD_SHOW` is set to something other than `0`, `false` or `no`; the two flags override that for one invocation. |
+
+**A compile does not generate code, and a build does.** The compiler's front end accepts a construct that its LLVM code generation refuses ("a feature used in your code is not yet supported with the LLVM compiler"), so a clean compile says nothing about an LLVM build. `--build` and `--llvm` press Build after the compile and read the build log. The default build path of a packed project opens a *Save* dialog that a private desktop hides, so either flag first exports the project into `%TEMP%\tbbuild\<port>\src`, packs a copy with an explicit build path under `%TEMP%\tbbuild\<port>\out` and a project id of its own, and opens that copy. A project with compile errors is not built: the report is the compile's, with exit 1. A build that fails, or that ends the compiler with a native exception, prints the build log on stdout and the failing line on stderr, and exits 5. A `[RunAfterBuild]` procedure runs during the build, and the log it would erase with `Debug.Cls` is kept and read all the same.
 
 **It runs the IDE on a private Windows desktop, and that is not decoration.** The IDE calls `HostForceFocus()` from its own `window.onload`, so it takes the keyboard whatever window style it starts with --- `start /min` was tried and the window still came to the front. A process on another desktop has no foreground to take, and the compile does not care whether anything is on screen. Hidden by default has one real cost. A wedged IDE on a private desktop is invisible to the person debugging it, and the only way to see anything is to run it again visible. Export `TBBUILD_SHOW=1` for a session you are working through interactively, and leave it unset for unattended runs.
 
@@ -835,9 +839,9 @@ twinBASIC has no command-line build. The compiler executable's whole surface is 
 
 **It leaves the IDE's own settings as it found them.** Every IDE it starts writes to the same registry keys as your own IDE: a saved state for the project (open tabs, watch expressions, Debug Console history), a place at the top of the recent-projects list, and, when the run switches the target, the target the IDE remembers for the project. Once the IDE has exited, `tbbuild` puts all three back. An entry the run created is deleted, and a project that already had one --- one of your own --- gets its old state, its old place in the list and its old target back. The `.twinproj` file association is restored too, if the IDE changed it. When [`check_examples.mjs`](#check-examples) or [`sweep_attributes.mjs`](#sweep-attributes) builds many projects, it does this once for all its lanes instead.
 
-Six files under `scripts/lib/` belong to it and are never run directly. `tb-build.mjs` is `tbbuild` without its command line: `compileProject` opens a project in the IDE and returns its diagnostics as an array, which is how `check_examples.mjs` and `sweep_attributes.mjs` build many projects without starting a process for each. It never exits the process and never tidies the registry, so its caller owns both. `tb-ide.mjs` holds the mechanics `tb-build.mjs` and `tbrun.mjs` share: starting the IDE, attaching to it, waiting for the compile, and reading the diagnostics. `tb-ide-console.mjs` reads the IDE's DEBUG CONSOLE, which is where `tbrun` finds what a probe printed. `tb-registry.mjs` records and restores the registry entries described above, through .NET's registry API by way of PowerShell, because `reg.exe` mangles any path holding a character outside the console code page; [`check_tb_registry.mjs`](#check-tb-registry) is its self-test. `tb-cdp.mjs` is a minimal CDP client over Node's global `WebSocket`, raw rather than puppeteer because a pending `alert()` blocks the renderer and puppeteer's `connect()` handshake talks to the renderer --- so it hangs on precisely the state you need to recover from. Every call it makes has a time limit, so a blocked page ends a run with a message rather than holding it forever. `tb-launch.ps1` holds the Win32 calls Node cannot make without a native FFI addon: `CreateDesktop` and `CreateProcess` with `STARTUPINFO.lpDesktop` for the private desktop, and the job object described above. It is the only PowerShell file under `scripts/`, and it is not executed as a file: `tb-ide.mjs` reads the text and passes it through `-EncodedCommand`, so the execution policy never comes into it and nobody has to be told to bypass one.
+Seven files under `scripts/lib/` belong to it and are never run directly. `tb-build.mjs` is `tbbuild` without its command line: `compileProject` opens a project in the IDE and returns its diagnostics as an array, which is how `check_examples.mjs` and `sweep_attributes.mjs` build many projects without starting a process for each. It never exits the process and never tidies the registry, so its caller owns both. `tb-ide.mjs` holds the mechanics `tb-build.mjs` and `tbrun.mjs` share: starting the IDE, attaching to it, waiting for the compile, and reading the diagnostics. `tb-ide-console.mjs` reads the IDE's DEBUG CONSOLE, which is where `tbrun` finds what a probe printed. `tb-run.mjs` presses Build and reads that console until a `[RunAfterBuild]` Sub has finished, and checks what was erased for a failed build; `tbrun` and `check_examples.mjs`'s `check_run` capture a run with it, so they capture it the same way. `tb-registry.mjs` records and restores the registry entries described above, through .NET's registry API by way of PowerShell, because `reg.exe` mangles any path holding a character outside the console code page; [`check_tb_registry.mjs`](#check-tb-registry) is its self-test. `tb-cdp.mjs` is a minimal CDP client over Node's global `WebSocket`, raw rather than puppeteer because a pending `alert()` blocks the renderer and puppeteer's `connect()` handshake talks to the renderer --- so it hangs on precisely the state you need to recover from. Every call it makes has a time limit, so a blocked page ends a run with a message rather than holding it forever. `tb-launch.ps1` holds the Win32 calls Node cannot make without a native FFI addon: `CreateDesktop` and `CreateProcess` with `STARTUPINFO.lpDesktop` for the private desktop, and the job object described above. It is the only PowerShell file under `scripts/`, and it is not executed as a file: `tb-ide.mjs` reads the text and passes it through `-EncodedCommand`, so the execution policy never comes into it and nobody has to be told to bypass one.
 
-Exit codes: **0** the project compiled without errors; **1** the project has errors; **2** a refused command line (a path that is not a `.twinproj` included), no IDE, an IDE that did not start or expose a debug port, or a crash; **3** the compile never settled: the IDE did not report the project open, or its diagnostics did not match its status bar; **4** the project crashes the compiler.
+Exit codes: **0** the project compiled without errors; **1** the project has errors; **2** a refused command line (a path that is not a `.twinproj` included), no IDE, an IDE that did not start or expose a debug port, a project that could not be exported or packed, an `--llvm` run on a Community or Personal licence, or a crash; **3** the compile never settled: the IDE did not report the project open, or its diagnostics did not match its status bar; **4** the project crashes the compiler; **5** the build failed after a clean compile.
 
 ### tbrun.mjs
 {: #tbrun }
@@ -845,6 +849,7 @@ Exit codes: **0** the project compiled without errors; **1** the project has err
     node scripts/tbrun.mjs <source-dir> [--port N] [--arch win32|win64] [--timeout S]
                            [--quiet MS] [--json] [--raw] [--keep] [--no-reap]
                            [--reap-images a,b] [--show|--hide]
+                           [--llvm | --compiler-options S] [--exe]
 
 Builds a probe project and captures what it writes to the IDE's
 [Debug Console](../../tB/IDE/Project/DebugConsole). Where [`tbbuild.mjs`](#tbbuild) answers
@@ -886,6 +891,20 @@ code generation is a failed run as well. Its error line is written before the pr
 statement, so the probe's `Debug.Cls` erases it, and the probe stops at the call. `tbrun`
 keeps what each clear erases, so it names that line and prints the output up to the call.
 
+**A probe that ends before it returns is a failed run, exit 5**, with what it printed
+printed all the same. `End` ends a probe that way, and so does an error raised with no
+handler in a procedure compiled with LLVM, which ends the run without a report. In the
+staged copy, `tbrun` moves the `[RunAfterBuild]` attribute to a Sub it adds to the same
+module, which calls the probe's Sub and then prints a line of its own. That line is missing
+when the probe did not return, and it is never printed. A probe that leaves a form loaded
+has returned too: the IDE prints `[DEBUGGER] Waiting for remaining forms to close...` after
+that line, and `tbrun` prints it. The attribute is replaced with
+spaces, so the line and column numbers in a diagnostic are still the ones in your file.
+`tbrun` warns when it cannot add the wrapper --- the Sub is in a class, takes parameters, or
+is one of several marked --- and the check is then off. A probe that stays silent for longer
+than `--quiet` while it works also ends the wait without that line, so raise `--quiet` for a
+slow one.
+
 **The capture is complete however much a probe prints**, so there is no reason to keep one
 short. `tbrun` reads the console's backing array rather than the pane, which is a virtualised
 list view holding only the rows that fit --- reading that instead returns the last ten or so
@@ -905,15 +924,36 @@ they are 4, **vbArchWin32** and `x86`.
 console shows. The IDE does this, not the probe; `Debug.Print "A"; "&"`, in one statement,
 comes back as `A&`.
 
+**`--llvm` compiles the whole probe with [LLVM](../../LLVM/)**, with no
+`[CompilerOptions("+llvm")]` on each procedure. It sets the project's compiler options in the
+staged copy: `compiler.debugOptions`, which the `[RunAfterBuild]` run is compiled with, and
+`compiler.buildOptions`, which the exe is. `--compiler-options` sets both to any other
+string, such as `"+llvm +optimize"`. A run that uses LLVM --- through either option, the
+tree's own settings or a procedure's `[CompilerOptions]` --- is refused when the IDE shows a
+Community or Personal licence. Neither of those compiles your code with LLVM, so the run would
+test the default compiler.
+
+**`--exe` also runs the exe the build wrote**, after the probe has run in the IDE. It
+starts the exe on a private desktop, as it starts the IDE, so a message box the exe opens
+appears on no desktop you use. It also ends the exe at `--timeout`. The exe runs its
+`Sub Main`, not the `[RunAfterBuild]` Sub, so a probe for both gives the tree a `Main` that
+calls the probe, and leaves out the template's own module with an empty `Main`. A built exe
+writes nothing with `Debug.Print`, so the probe prints with `TbRun.Out`, from a module `tbrun`
+adds to the staged copy. `TbRun.Out` writes to the Debug Console in the IDE, and to a file
+`tbrun` reads in the exe. The exe's lines and its exit code follow the probe's output.
+
 | Flag | Effect |
 |---|---|
 | `--port <n>` | DevTools port for the IDE. Default 9346. Distinct ports let probes run concurrently --- the staging directory and the project id are keyed to it, so two runs never share a workspace. A port another IDE holds is refused, as for `tbbuild`. |
 | `--arch <target>` | The target to build for, `win32` or `win64`. Default `win32`, set on every run, as for `tbbuild`. A `win64` probe runs as a 64-bit process. |
 | `--timeout <secs>` | Give up waiting for console output. Default 120. |
-| `--quiet <ms>` | How long the console must stop changing before the output counts as complete. Default 2500. There is no sentinel string to match, so any probe works without telling the script anything. Raise it well above the default for a probe that drives an out-of-process server, which can take longer than that to start. |
+| `--quiet <ms>` | How long the console must stop changing before the output counts as complete, when the probe has not returned. Default 2500. Raise it well above the default for a probe that drives an out-of-process server, which can take longer than that to start. |
+| `--llvm` | Compile the whole probe, and the exe, with LLVM. The same as `--compiler-options +llvm`. |
+| `--compiler-options <s>` | The project's compiler options, for the run and the exe. |
+| `--exe` | Also run the built exe, and print what it writes with `TbRun.Out` and its exit code. |
 | `--raw` | Keep the console's timestamp column, which is otherwise stripped. |
-| `--json` | One object with the path of the built file, the target, the captured lines, the IDE pid and anything reaped. |
-| `--keep` | Leave the IDE running. Implies `--no-reap`, and leaves the IDE's registry entries for the probe as they are. |
+| `--json` | One object with the path of the built file, the target, the captured lines, whether the probe returned, the licence an LLVM run checked, the exe's run, the IDE pid and anything reaped. |
+| `--keep` | Leave the IDE running, and print its pid as `ide-pid: <n>` (with `--json`, `idePid`), followed by the `taskkill` command that ends it and every process it started, as cmd and PowerShell spell it and as Git Bash does (`//PID`). Implies `--no-reap`, and leaves the IDE's registry entries for the probe as they are. |
 | `--no-reap` | Do not harvest automation servers the probe left behind. |
 | `--reap-images <a,b>` | Replace the harvested image list. Default is the Office suite. |
 | `--show` / `--hide` | As for [`tbbuild.mjs`](#tbbuild): your own desktop or a private one, with `TBBUILD_SHOW` setting the default. |
@@ -947,7 +987,77 @@ behind. That includes the target the IDE remembers for each project, which a `wi
 writes. **A probe builds for the target `--arch` names**, whatever the IDE remembers, so a
 kept IDE switched to `win64` does not make later runs on the same port build 64-bit.
 
-Exit codes: **0** the probe ran and its output was captured; **1** the project has compile errors (the diagnostics are printed); **2** a refused command line (a source folder that is missing or has no `Settings` file included), no IDE or compiler, an IDE that did not start, a compile that never settled, a build that failed after a clean compile, a probe that never ran or stopped at a procedure that failed code generation, or a crash; **3** no output: the console held none before the timeout, or the probe printed none after its last `Debug.Cls`; **4** the compiler crashed, or restarted twice, while compiling the project.
+Exit codes: **0** the probe ran and its output was captured; **1** the project has compile errors (the diagnostics are printed); **2** a refused command line (a source folder that is missing or has no `Settings` file included), no IDE or compiler, an IDE that did not start, a compile that never settled, a build that failed after a clean compile, a probe that never ran or stopped at a procedure that failed code generation, an LLVM run on a Community or Personal licence, an `--exe` run with no exe built, or a crash; **3** no output: the console held none before the timeout, or the probe printed none after its last `Debug.Cls`; **4** the compiler crashed, or restarted twice, while compiling the project; **5** the probe ended before it returned, its output printed all the same; **6** under `--exe`, the exe exited with a code other than 0, or was still running after `--timeout` and was ended, its output and exit code printed all the same. A run that would exit 5 exits 5 whatever the exe did.
+
+### bug_repro.mjs
+{: #bug-repro }
+
+    node scripts/bug_repro.mjs new <slug> "<entry title>" [--template <name>]
+    node scripts/bug_repro.mjs pack <slug>
+    node scripts/bug_repro.mjs compile|build|run <slug> [--ide <twinBASIC.exe>] [--port N]
+                               [--arch win32|win64] [--timeout S] [--llvm] [--exe] [--keep] [--show|--hide]
+    node scripts/bug_repro.mjs verify [slug ...] [--ide <twinBASIC.exe>] [--port N] [--timeout S]
+                               [--jobs N] [--show|--hide]
+    node scripts/bug_repro.mjs file <slug> <issue> [--existing]
+    node scripts/bug_repro.mjs file --marked
+
+Keeps the reproducer projects of `BUGS-TO-REPORT.md` --- one folder, `bugs/<slug>/`, for each
+entry, or `bugs/filed/<slug>/` once the entry has been filed upstream --- and puts them in
+front of the compiler. A slug is kebab-case, lowercase letters and digits joined by single
+hyphens, and anything else is refused, as is `filed`. A slug that exists in both places is an
+error, exit 2. Like [`tbbuild.mjs`](#tbbuild)
+and [`tbrun.mjs`](#tbrun), which it runs, it needs a twinBASIC install and Windows. It is
+outside every gate and outside CI, and `verify` is run by a person only.
+
+| Command | Effect |
+|---|---|
+| `new <slug> "<title>"` | Creates `bugs/<slug>/src/` from the console template under `test/example-projects/`, with the project named after the slug in PascalCase, a fresh project id, the description `Reproduces: <title>` and a `Startup` module holding an empty `Sub Main`. Also writes `bugs/<slug>/repro.json` with `"mode": "manual"`. Refused, with exit 3, when `bugs/<slug>` exists. `--template <name>` starts from a folder of `test/repro-templates/` instead: its `Settings`, with the same four keys rewritten, and its `Sources/` as they are. `webview2-form` is a form holding one WebView2 control, which opens `about:blank` when the control is ready and closes when that navigation completes, shown modally by `Sub Main`. |
+| `pack <slug>` | Runs `node scripts/impexp.mjs import` on `src/`, to `<slug>.twinproj`, and then writes `<slug>.zip` holding that file and the files `repro.json`'s `attach` names. The zip is written by the script itself, so neither PowerShell nor 7-Zip is needed. An `impexp` exit of 0 or 6 counts as a pack, and its output is printed. |
+| `compile <slug>` | Packs, then compiles the project with `tbbuild --json` and prints its diagnostics. |
+| `build <slug>` | Packs, then compiles and builds it with `tbbuild --build`, or `--llvm` when that is given. A build that fails prints the build log and the failing line. |
+| `run <slug>` | Copies `src/` to `%TEMP%\bugrepro\<port>\<slug>`, adds a `TbRunProbe` module whose `[RunAfterBuild]` Sub calls `Debug.Cls` and then `Main`, runs `tbrun` on the copy and prints what it captured. The Sub clears `WEBVIEW2_USER_DATA_FOLDER` and `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` while `Main` runs: the harness starts the IDE with both, and WebView2 lets them override what a WebView2 control in the project asks for, so the control would fail to start inside the IDE's process. The tree under `bugs/` is not changed. With `--exe` no probe module is added: `tbrun` runs `Sub Main` in the built exe. |
+| `verify [slug ...]` | Reads `repro.json` for each named reproducer, or every one under `bugs/` and `bugs/filed/`, runs what it says and reports one line each. A filed reproducer's line is labelled with its issue, such as `(filed #2453)`, and the summary counts the filed ones on a line of their own. |
+| `file <slug> <issue>` | Moves the entry that names `` `<slug>.twinproj` `` out of `BUGS-TO-REPORT.md`, together with one `---` beside it, into `bugs/filed/<slug>/REPORT.md`, whose first line links the issue (`--existing`: "Covered by the existing issue ..." when an existing issue already covered the bug) and which holds no mark line. Then moves `bugs/<slug>/` to `bugs/filed/<slug>/` and records `issue` (and `existing`) in its `repro.json`. An entry whose reproducer is not an attachment names `bugs/<slug>/` in its closing comment instead. Refused, with exit 2 and nothing changed, when no entry or more than one names the slug, `bugs/<slug>` is missing, or `bugs/filed/<slug>` exists. |
+| `file --marked` | Does that for every entry with a mark line directly under its title: `*FILED #<n>*`, `*CAPTURED IN EXISTING #<n>*` or `*CAPTURED IN \#<n>*`, the issue and the slug taken from the entry. A line such as `*DEFERRED until after v1*` is not a mark, and the entry is skipped. If a mark cannot be read, or a slug cannot be settled, the entries concerned are printed and nothing at all is filed, exit 2. One line is printed for each entry filed. Takes neither a slug nor an issue. |
+
+The options of `compile`, `build` and `run` are those of `tbbuild` and `tbrun` of the same
+name, and are passed to them: `--ide`, `--port` (default 9440), `--arch`, `--timeout`,
+`--keep` and `--show` / `--hide`, with `--llvm` for `build` and `run`, and `--exe` for `run`.
+An option that does not apply to a command is refused, not ignored.
+
+**`repro.json` says how to ask the compiler about a reproducer.** It is committed with the
+reproducer and is not part of the `.twinproj`. A key it does not have, or a value of the
+wrong type, is refused with exit 2, naming the file and the key, before anything runs.
+
+| Key | Meaning |
+|---|---|
+| `mode` | `compile`, `build`, `run`, `cli` or `manual`. `manual` is a reproducer that cannot be automated, such as one that needs a click in the IDE. A `cli` or `manual` reproducer may have no `src/`, when the bug is in files the installation ships; `verify` then runs it without packing, and `{project}` and `{src}` are refused. |
+| `arch` | Optional. `win32` (default) or `win64`. |
+| `llvm` | Optional, `build` and `run`. `true` builds with LLVM. |
+| `exe` | Optional, `run` only. `true` also runs the built exe, as `run --exe` does: no probe module is added, `Sub Main` runs in the exe, and an exe that exits with a code other than 0 is `tbrun`'s exit 6. `Debug.Print` writes nothing in an exe, so what `expect.output` can match is only what `TbRun.Out` wrote; a bug that crashes the exe is expected as `"exit": 6`. |
+| `expect.exit` | The exit code of `tbbuild` or `tbrun` as they print it, not this tool's mapped code; for `cli`, the compiler executable's. |
+| `expect.diagnostics` | `compile`. Diagnostic codes, such as `TB5182`, that must all be reported. |
+| `expect.noDiagnostics` | `compile`. `true` expects no error, warning, hint or information. |
+| `expect.message` | `build`. A regular expression the message `tbbuild` prints on standard error must match. |
+| `expect.output` | `run` and `cli`. Regular expressions, each of which must match the output. They are matched line by line, so `^` and `$` hold at each line. |
+| `expect.absent` | `run` and `cli`. Regular expressions, none of which may match the output, such as an `ERROR` line the bug's fix would print. |
+| `cli` | `cli` mode. The arguments for the compiler executable, `bin\twinBASIC_win32.exe`, or a list of such lists, run in turn; their output is joined, and their exit code is the one they all gave, or the codes joined by commas, such as `0,999`. `{tmp}` stands for a new temp folder, deleted afterwards; `{project}` for a copy of the packed `.twinproj` in it, and `{src}` for a copy of `src/`, so a command that writes either never touches the committed reproducer; `{ide}` for the folder of the IDE that `--ide` names or that is found, so a file the installation ships can be named without a user name. Give an output folder with backslashes and a trailing one, as `export` requires. |
+| `steps` | `manual`. What a person does to see the bug. `verify` prints it. |
+| `attach` | Optional. Files besides the project that the issue needs, such as a `.twinpack`: paths relative to the reproducer's folder, with forward slashes. `pack` adds each to `<slug>.zip`. |
+| `issue` | Optional. A positive whole number, the number of the `twinbasic/twinbasic` issue the bug was filed as. `file` writes it. |
+| `existing` | Optional, with `issue` only. `true` when the issue was not filed for this bug but already covered it. `file --existing` writes it. |
+
+A `verify` line is one of four things. **reproduces**: everything `expect` names is as
+expected. **NO LONGER REPRODUCES**: it ran, and something expected is not so; the bug may
+be fixed in this build, and the entry may be ready to retire; for a filed bug it is the signal
+that a fix has been released. **manual**: not automatable,
+and `steps` is printed. **harness failed**: the tool could not do its job, as for a
+`tbbuild` or `tbrun` exit of 2, or a compile that never settled; that says nothing about
+the bug unless `expect.exit` names it. Reproducers run one at a time. `--jobs N` runs N at
+once, each in the IDE on its own port, from `--port` up. `verify` tidies the IDE's registry
+entries once for all of them, as [`check_examples.mjs`](#check-examples) does.
+
+Exit codes: **0** done --- a project that compiled, built or ran as it should, or, for `verify`, every reproducer that can be run on its own still reproduces; **1** a finding: the project has errors, or its build failed after a clean compile, or, for `verify`, at least one reproducer no longer reproduces; **2** a refused command line, a `repro.json` that is not valid, no IDE, a project that could not be packed, a harness that failed, or a crash; for `verify`, a lane's harness failed; for `file`, an entry that is missing, ambiguous or marked unreadably, or a `bugs/filed/<slug>` already there, with nothing changed; **3** `new` found `bugs/<slug>` or `bugs/filed/<slug>` already there; **4** the compile never settled; **5** the project crashes the compiler; **6** `run`: the probe printed nothing; **7** `run`: the probe ended before it returned; **8** `run --exe`: the exe exited with a code other than 0, or was still running after `--timeout`.
 
 ### addin_test.mjs
 {: #addin-test }
@@ -1011,7 +1121,7 @@ and keep running after the run.
 compiler loads the add-ins there as well as those in the install's own `addins` folders, but
 it takes that folder from the IDE, which builds its path from the `APPDATA` environment
 variable. Every IDE a lane starts has an `APPDATA` inside the lane's work folder, and a lane
-fails if its IDE's add-in folder turns out to be anywhere else.
+fails if its IDE's add-in folder is anywhere else.
 
 Exit codes: **0** every lane passed, and the registry is as it was found; **1** a lane failed, or the run was interrupted; **2** the harness could not run: a refused command line, no IDE, no matching lane, a registry it could not record, or a crash after which the registry was put back; **3** the registry or a work folder was not put back (see the lines above), at the end of a run or after a crash, which wins over a 1 because the registry is what to repair.
 
@@ -1068,7 +1178,8 @@ Exit codes: **0** every assertion held, **1** an assertion failed, **2** the tes
 
     node scripts/check_examples.mjs [--only <regex>] [--census] [--propose [--apply]]
                                     [--report <file>] [--jobs N] [--port N] [--batch N]
-                                    [--ide <path>] [--keep] [--verbose] [--json]
+                                    [--ide <path>] [--build | --llvm] [--keep] [--verbose]
+                                    [--json]
 
 Compiles the documentation's own code samples. A ` ```tb ` fence is something
 [`check_code_regions.mjs`](#check-code-regions) protects the *contents* of and nothing ever
@@ -1111,6 +1222,8 @@ reports.
 | `--port <n>` | Base DevTools port. Default 9480; lane *n* uses base + *n*. |
 | `--batch <n>` | Upper bound on samples per generated project. Default 120. The batcher packs fewer than this when there are lanes to fill. |
 | `--ide <path>` | `twinBASIC.exe`. Default: `$TB_IDE`, else the newest `twinBASIC_IDE_BETA_<n>` on the Desktop. |
+| `--build` | Also build each project that compiles without errors. A project whose build fails is cut down, as a crash is, to the samples that fail it. A project whose compile has errors is not built: the run names its first error, and ends by counting its samples as "compiled but not built". |
+| `--llvm` | Build with LLVM (implies `--build`): each project's compiler options are set to `+llvm`. It needs a Professional or Ultimate licence and exits 2 without one. A plain `--build` run is its control: a sample that fails only under `--llvm` is one LLVM cannot generate code for. |
 | `--keep` | Leave the generated projects on disk and print where. |
 | `--verbose` | Report warnings as well as errors. Only errors ever fail the run. |
 | `--json` | One object on stdout; every report line moves to stderr. |
@@ -1142,6 +1255,13 @@ the batch crashes by itself. The samples it needs are then searched for as a set
 of them are reported. The cost is paid only on failure. The finding names the sample, or
 the set, and points at `BUGS-TO-REPORT.md`.
 
+**A sample can compile and still fail the build.** The front end accepts constructs that code generation refuses, so `--build` presses Build on each project that compiled without errors, and `--llvm` does the same with LLVM switched on. A build can fail once and pass when repeated, so a project whose build fails is built once more, and only a second failure counts. `tbbuild` reports a failed build as exit 5 and names no sample, so the project is cut by halving, with the crash machinery and its costs, until one sample is left or the samples a failure needs together are found. The finding says "fails the build", and its second line says "the LLVM build" under `--llvm` and "the build" otherwise. The canary described below is a warning, so it does not stop a project from building. A build also refuses three things a compile accepts, so a run that builds batches around them: an `expect-error` sample is batched apart from the samples that should build; a sample, or a group, that declares its own `Sub Main` gets a project of its own without the template's `Main`, because two make the startup object ambiguous; and two samples that export one `[DllExport]` name are kept in different projects.
+
+**A sample can be run.** A statement sample marked `check_run` is built and run in every mode, and what it prints is compared with what the page says it prints: a trailing comment on a `Debug.Print` line, or the comment lines under an `' Output:` line ([Authoring Pages](Authoring#checking-that-a-sample-compiles) has the markup). A project may have only one `[RunAfterBuild]` Sub (TB5114), so run samples are batched apart from the rest, and each run batch gets one generated `Module tbxRun` whose `[RunAfterBuild]` Sub calls each sample's body in turn. It prints a marker line before and after each call, and an `On Error GoTo` handler around each call keeps one sample's error from ending the rest. The handler is reached only by an error the sample does not handle itself, so a sample can demonstrate an error under its own `On Error Resume Next` and print `Err.Number`. A check of `Err.Number` after the call could not tell the two apart, because a procedure that handles an error with `On Error Resume Next` returns with `Err` still set, in VB6 and in twinBASIC alike. The run's console output is captured as [`tbrun.mjs`](#tbrun) captures it and split by those markers, so each line is charged to the sample that printed it. A sample that raises an error, does not return, or prints something other than the page says is a finding at the page line that states the value. A run sample that is not `slot=sub`, is marked `expect-error`, or calls `MsgBox` or `InputBox` or contains an `End` statement is refused without being built: a message box waits for a click on a desktop nobody sees, and `End` ends every sample after it.
+
+    FAIL  docs/Reference/Default/VBA/Strings/InStr.md:77  (Reference/Default/VBA/Strings/InStr.md#3)
+            prints "3", the page says "7"
+
 **A batch can report nothing when it should report something.** `tbbuild` does not wait for a build: it reads the IDE's own window, the status bar and the Problems panel for the project the IDE has open, once the compiler's status reads OPERATIONAL and has stopped changing. An IDE under load can be OPERATIONAL with an empty panel before it has published its diagnostics, and a batch read then reports every sample as compiling, which looks exactly like a batch with nothing wrong. So every batch carries a canary: a module holding a `#Warning` directive, whose warning (`TB0005`) is known. A read with no errors in it must report the canary, or it is not believed. The module carries `[EnforceWarnings(TB0005)]`, so a project setting that ignores the warning, or turns it into an error, does not change it. The warning is reported whatever else the batch holds: unterminated blocks, stray `End` statements, broken classes and many undefined names in other files do not hide it. It is a warning rather than an error so that a batch with nothing wrong still builds clean. A batch that crashes the compiler reports nothing at all and is isolated as a crash; its canary is never read.
 
 The canary proves only that the IDE published something, not that it published everything: a read that includes the canary but not a sample's later diagnostics would still pass that sample. So a read that holds real errors needs no canary --- the IDE was plainly not silent --- and is taken as read, whatever the canary did. Real errors here are errors in the batch's samples, and errors outside every sample that the template does not draw by itself; a template's own errors do not count, or a template that always draws one would switch the canary off for every batch built from it. A canary missing beside real errors has never been seen, and is printed as a note if it happens. A read with no errors and no canary is built once more, because a read that came too early says nothing about the batch. If it is silent again, the batch is split in half repeatedly, as for a crash, until each part reports the canary or errors of its own. A single unit --- one sample, or a group compiled as one program --- that is still silent stops the run with exit code 2 and its name, because its clean result cannot be trusted and it is not blamed for errors nobody saw. The template built with no samples, which is how the tool learns the errors a template draws by itself, follows the same rule: it needs its canary only if it has no errors, is read again when it is silent, and stops the run when it is silent twice.
@@ -1164,15 +1284,17 @@ isolates it, after one build of the template with nothing in it decides whether 
 the template's own rather than any sample's. A split never cuts a `projname` group in half,
 and never separates a page's `hidden` context from the samples that need it.
 
-Three files under `scripts/lib/` belong to it. `tb-fences.mjs` is the half that needs no
+Four files under `scripts/lib/` belong to it. `tb-fences.mjs` is the half that needs no
 compiler --- fence extraction, the markup, and the classifier --- and is where a new key or
 a new slot goes. `example-batches.mjs` packs samples into batches and cuts a crashed batch
 down, and holds the probes, which run before every run and in
-[`example-batches.test.mjs`](#example-batches-test). `tb-install.mjs` finds the IDE and the
+[`example-batches.test.mjs`](#example-batches-test). `example-run.mjs` is what `check_run`
+needs without an IDE: which samples may be run, what a sample says it prints, the generated
+dispatcher, and the reading of the run's markers. `tb-install.mjs` finds the IDE and the
 compiler beside it, and is shared with the two IDE-driving tools so the three cannot come to
 disagree about where an install is.
 
-Exit codes: **0** every marked sample compiles, or none is marked (`--report` always, and `--propose` when it found only unmarked samples that fail, which is advisory); **1** a marked sample does not compile, a marker is misused, a template does not compile, or the compiler crashed on a project (the report names each); **2** the harness could not run: a refused command line, a failed self-test probe, no IDE or compiler, an unreadable `--report` file, a work folder it could not clear, or a crash.
+Exit codes: **0** every marked sample compiles, or none is marked (`--report` always, and `--propose` when it found only unmarked samples that fail, which is advisory); **1** a marked sample does not compile, a marker is misused, a template does not compile, the compiler crashed on a project, `--build` or `--llvm` found a sample that fails the build, or a `check_run` sample raised an error, did not return or printed something other than the page says (the report names each); **2** the harness could not run: a refused command line, a failed self-test probe, no IDE or compiler, an unreadable `--report` file, a work folder it could not clear, an `--llvm` run on a Community or Personal licence, or a crash.
 
 ### gen_attribute_probes.mjs
 {: #gen-attribute-probes }

@@ -57,7 +57,7 @@ export function compilerExe(ide) {
  * The exit code cannot say so. `import` and `export` exit 0 on every failure
  * they report themselves, and `import` exits 999 with no result line at all
  * when the tree has a folder inside its top-level `Packages` -- any project
- * that embeds a package (BUGS-TO-REPORT.md). A last line of `... DONE` is the
+ * that embeds a package (twinbasic/twinbasic#841). A last line of `... DONE` is the
  * only success, so that is the test, whatever the exit status. Not
  * execFileSync: it throws on a non-zero exit, so a 999 escaped as an exception
  * before the output was ever read, and tbrun reported it as compile errors.

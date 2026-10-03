@@ -1,0 +1,7 @@
+' A project with a folder inside Packages. Nothing to run: import of this tree stops with exit code 999.
+Module Startup
+
+    Public Sub Main()
+    End Sub
+
+End Module

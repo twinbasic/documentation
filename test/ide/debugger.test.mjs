@@ -6,8 +6,9 @@
 // shows how far it got.
 //
 // Each test states what BETA 983 and 995 do. If one fails after an IDE update,
-// the IDE has changed: update the Traps on docs/IDE/Menu/Debug.md and the two
-// debugger entries in BUGS-TO-REPORT.md, and then this file.
+// the IDE has changed: update the Traps on docs/IDE/Menu/Debug.md and the
+// debugger entry in BUGS-TO-REPORT.md and twinbasic/twinbasic#2441's report in
+// bugs/filed/, and then this file.
 //
 // Run it with ide-test.bat, which gives it a lane; on its own it is skipped.
 

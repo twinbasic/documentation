@@ -30,15 +30,17 @@ import { runCompiler } from "./tb-install.mjs";
  * @param {string} o.compiler  the compiler executable (tb-install's compilerExe)
  * @param {object | ((original: object) => object)} [o.settings]  settings to
  *   set in the copy, or a function from the tree's own settings to them
+ * @param {(stage: string) => void} [o.prepare]  changes the copy before it is packed
  * @returns {{original: object, settings: object}} the tree's settings, and the copy's
  */
-export function stageProject({ src, stage, project, compiler, settings = {} }) {
+export function stageProject({ src, stage, project, compiler, settings = {}, prepare }) {
   rmSync(stage, { recursive: true, force: true });
   cpSync(src, stage, { recursive: true });
   const file = path.join(stage, "Settings");
   const original = JSON.parse(readFileSync(file, "utf8"));
   const staged = { ...original, ...(typeof settings === "function" ? settings(original) : settings) };
   writeFileSync(file, JSON.stringify(staged, null, "\t"), "utf8");
+  prepare?.(stage);
 
   // import's exit code does not say whether it worked -- 0 on the failures it
   // reports, 999 on a tree holding an embedded package -- so runCompiler reads
@@ -53,9 +55,10 @@ export function stageProject({ src, stage, project, compiler, settings = {} }) {
  *
  * Every harness id starts 7B247, and the digit after that is the role: 0 is
  * tbrun's probe, 1 an add-in being built, 2 the project an add-in test opens,
- * and 4 and 5 are check_examples' template and batches, which it numbers
- * itself. The last six hex digits are the lane's DevTools port, which is what
- * already has to differ between runs going on at once.
+ * 3 the project tbbuild stages for --build or --llvm, and 4 and 5 are
+ * check_examples' template and batches, which it numbers itself. The last six
+ * hex digits are the lane's DevTools port, which is what already has to differ
+ * between runs going on at once.
  */
 export const laneProjectId = (role, port) =>
   `{7B247${role}00-0000-4000-9000-7B247${role}${port.toString(16).padStart(6, "0")}}`;

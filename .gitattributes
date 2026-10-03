@@ -16,3 +16,8 @@
 # Wisdom extract script is passed to it by path, so a CRLF checkout of it
 # cannot be run.
 wisdom/extract/workflow.mjs text eol=lf
+
+# A bug's reproducer is checked out byte for byte: its .twinproj is packed
+# from its source tree, and the two must agree in every checkout.
+bugs/** -text
+*.twinproj binary

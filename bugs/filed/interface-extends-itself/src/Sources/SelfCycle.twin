@@ -1,0 +1,3 @@
+' An interface that extends itself. Expected: a circular-reference error, as for a class.
+Interface IA Extends IA
+End Interface

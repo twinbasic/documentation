@@ -48,6 +48,8 @@ The **For…Each** block is entered if there is at least one element in *group*.
 
 The **For...Each...Next** statement cannot be used with an array of user-defined types because a **Variant** can't contain a user-defined type.
 
+An object of a class can be the *group* when the class has a member marked [**[Enumerator]**](Attributes#enumerator) that supplies an enumerator. See [Custom Enumerators](../../Features/Language/Custom-Enumerators) for how to write one.
+
 ### Example
 
 This example uses the **For Each...Next** statement to search the **Text** property of all elements in a collection for the existence of the string "Hello". In the example, *MyObject* is a text-related object and is an element of the collection *MyCollection*. Both are generic names used for illustration purposes only.

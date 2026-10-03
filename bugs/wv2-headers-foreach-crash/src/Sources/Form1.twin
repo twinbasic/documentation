@@ -1,0 +1,32 @@
+' For Each over the request headers that NavigationStarting receives crashes
+' with an access violation in WebView2HeadersCollection.Next: For Each passes
+' Next a null pCeltFetched, and Next assigns to it without testing it.
+' Without the For Each, the form opens about:blank and closes, and Main returns.
+
+[FormDesignerId("7B247400-0000-4000-9000-7B2474000F01")]
+[PredeclaredId]
+Class Form1
+
+    Private Sub WebView21_Ready() Handles WebView21.Ready
+        Debug.Print "WebView21 ready"
+        WebView21.Navigate "about:blank"
+    End Sub
+
+    Private Sub WebView21_NavigationStarting(ByVal Uri As String, ByVal IsUserInitiated As Boolean, _
+            ByVal IsRedirected As Boolean, ByVal RequestHeaders As WebView2RequestHeaders, _
+            Cancel As Boolean) Handles WebView21.NavigationStarting
+        Debug.Print "NavigationStarting " & Uri
+        Dim h As WebView2Header
+        For Each h In RequestHeaders
+            Debug.Print h.Name & ": " & h.Value
+        Next
+        Debug.Print "after For Each"
+    End Sub
+
+    Private Sub WebView21_NavigationComplete(ByVal IsSuccess As Boolean, ByVal WebErrorStatus As Long) _
+            Handles WebView21.NavigationComplete
+        Debug.Print "NavigationComplete " & IsSuccess
+        Me.Close
+    End Sub
+
+End Class

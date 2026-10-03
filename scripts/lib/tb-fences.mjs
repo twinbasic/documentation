@@ -642,7 +642,8 @@ export function moduleName(id) {
  *     pageLine = fence.line + generatedLine - offset
  *
  * Everything generated is Private, because two samples in one project must not
- * see each other's names: eleven pages declare a `MyString`.
+ * see each other's names: eleven pages declare a `MyString`. The one exception
+ * is the body Sub of a `check_run` sample.
  */
 export function wrapFence(fence, slot, name, base = null) {
   const header = `' ${fence.rel}:${fence.line}  (${fence.id})`;
@@ -670,8 +671,12 @@ export function wrapFence(fence, slot, name, base = null) {
   if (slot === "module" || slot === "class") {
     return { text: `${header}\n${open}\n${body}\nEnd ${container}\n`, offset: 2 + extra };
   }
+  // A `check_run` sample's body is called from the generated dispatcher, in
+  // another module, so it is Public. The line count is the same as Private's,
+  // so the offset does not change.
+  const access = slot === "sub" && fence.flags?.has(RUN_MARKER) ? "Public" : "Private";
   return {
-    text: `${header}\n${open}\n    Private Sub tbxBody()\n${body}\n    End Sub\nEnd ${container}\n`,
+    text: `${header}\n${open}\n    ${access} Sub tbxBody()\n${body}\n    End Sub\nEnd ${container}\n`,
     offset: 3 + extra,
   };
 }

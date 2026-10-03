@@ -1,0 +1,4 @@
+{
+  "mode": "manual",
+  "steps": "Needs several IDEs building at once, which bug_repro cannot run.\n1. Unzip concurrent-builds-shared-temp.zip and copy the project into eight folders.\n2. Open each copy in its own IDE, all eight at once, with the default environment, so that all share one TEMP.\n3. Press Build in all eight at about the same time, and repeat. About one build in 24 fails with [TYPELIB] failed to finalize typelibrary.  Disk error? then [LINKER] FAILED to create type library and [BUILD] failed.\n4. Control: give each IDE a TEMP and TMP of its own; no build fails.\nMeasured on BETA 995 through the documentation's harness with TEMP shared (8 of 192 failed) and per IDE (0 of 192). launchIde gives each IDE its own TEMP today, so pass TEMP and TMP in launchIde's env to measure it again."
+}

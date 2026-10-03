@@ -1,0 +1,8 @@
+' Put the cursor inside the parentheses of FindTheNeedle( and press Ctrl+Space to show the signature help.
+Module Main
+    Public Sub Main()
+        Dim needle As Long
+        needle = FindTheNeedle(3)
+        Debug.Print needle
+    End Sub
+End Module

@@ -1,0 +1,3 @@
+' An Interface named by an angle-bracket placeholder, with an Extends clause: the compiler crashes while parsing this file.
+Interface <name> Extends <base-interface>
+End Interface

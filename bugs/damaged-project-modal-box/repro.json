@@ -1,0 +1,4 @@
+{
+  "mode": "manual",
+  "steps": "Not automatable, and not run unattended: the compiler executable opens a modal message box on the desktop of whoever runs it, and waits until it is closed. 1. Pack the project (node scripts/bug_repro.mjs pack damaged-project-modal-box). 2. Make a damaged copy: change the first byte of the .twinproj, or cut it off halfway, or write any short text file with the name garbage.twinproj. 3. Run: bin\\twinBASIC_win32.exe export <full path>\\garbage.twinproj <full path>\\out\\ and see a message box (invalid header, or invalid file format) and no further output until it is closed. 4. Close the box: export prints WARNING: failed to parse project file, file may be corrupt, then ... DONE, and exits 0. settings and readme wait on the box the same way."
+}

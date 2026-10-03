@@ -27,3 +27,7 @@ indexer/.packages/
 # (~190 MB). The subset .woff2 it produces ARE committed, under
 # docs/assets/fonts/ -- only the archives are throwaway.
 /.font-cache/
+
+# A bug reproducer's zip is only for attaching to its GitHub issue (see
+# BUGS-TO-REPORT.md); the .twinproj beside it is committed.
+/bugs/**/*.zip

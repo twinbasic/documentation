@@ -7,7 +7,7 @@
 # for the same reason: there is no argument quoting to get wrong.
 #
 #   TBBUILD_EXE      the executable
-#   TBBUILD_ARG      its single argument
+#   TBBUILD_ARG      its single argument, or empty for none
 #   TBBUILD_DESKTOP  desktop name to create
 #   TBBUILD_JOB      "0" for no job -- a --keep IDE, which must outlive the run
 #
@@ -120,6 +120,12 @@ public static class TbLaunch {
   [DllImport("kernel32.dll", SetLastError = true)]
   static extern bool TerminateProcess(IntPtr process, uint exitCode);
 
+  [DllImport("kernel32.dll", SetLastError = true)]
+  static extern uint WaitForSingleObject(IntPtr handle, uint ms);
+
+  [DllImport("kernel32.dll", SetLastError = true)]
+  static extern bool GetExitCodeProcess(IntPtr process, out int exitCode);
+
   // The error of the call just made, with its text. Nothing may come between
   // that call and this one.
   static Exception Failed(string what) {
@@ -171,6 +177,15 @@ public static class TbLaunch {
   public static void Resume(PROCESS_INFORMATION pi) {
     ResumeThread(pi.hThread);
   }
+
+  // Waits for the process to end, through the handle CreateProcess returned,
+  // which stays valid however soon it ends; returns its exit code.
+  public static int Wait(PROCESS_INFORMATION pi) {
+    WaitForSingleObject(pi.hProcess, 0xFFFFFFFF);
+    int code;
+    if (!GetExitCodeProcess(pi.hProcess, out code)) throw Failed("GetExitCodeProcess");
+    return code;
+  }
 }
 '@
 
@@ -188,7 +203,8 @@ if ($useJob) { $job = [TbLaunch]::KillOnCloseJob() }
 # appends a trailing space -- parseCommandLine() in ide/main2.js reads that as an
 # empty second file argument and refuses the launch with "Bad command line
 # syntax."
-$cmd = '"' + $exe + '" "' + $arg + '"'
+$cmd = '"' + $exe + '"'
+if ($arg) { $cmd += ' "' + $arg + '"' }
 
 # CREATE_SUSPENDED (0x4): the IDE goes into the job before it runs a single
 # instruction, so there is no moment in which it could start a child outside.
@@ -204,4 +220,6 @@ if ($useJob) {
 
 Write-Output $pi.dwProcessId
 
-try { (Get-Process -Id $pi.dwProcessId).WaitForExit() } catch { }
+# The process's exit code, on a line of its own once it ends: tbrun's --exe
+# reads it for the probe's exe.
+Write-Output ("exit " + [TbLaunch]::Wait($pi))

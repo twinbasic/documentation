@@ -6,8 +6,8 @@
 //
 // Each test states what BETA 983 and 995 do. If one fails after an IDE update, the
 // IDE has changed: update the NOTE under "Running the tests" in
-// Testing-with-Assert.md and the "Stop at a run-time error" entry in
-// BUGS-TO-REPORT.md, and then this file.
+// Testing-with-Assert.md and the filed report of
+// twinbasic/twinbasic#2441 in bugs/filed/, and then this file.
 //
 // Run it with ide-test.bat, which gives it a lane; on its own it is skipped.
 

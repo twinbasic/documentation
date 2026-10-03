@@ -1,0 +1,9 @@
+' Shifting a Single compiles clean; code generation then fails for this procedure, which never runs.
+Module Probe
+    Public Sub Show()
+        Dim a As Single = 7.9
+        Dim c As Integer = 1
+        Debug.Print "before the shift"
+        Debug.Print a << c
+    End Sub
+End Module

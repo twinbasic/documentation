@@ -1,0 +1,3 @@
+' With PairCycleB.twin: two interfaces that extend each other, across two files.
+Interface IC Extends IB
+End Interface

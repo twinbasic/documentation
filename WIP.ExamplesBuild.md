@@ -135,7 +135,7 @@ a fence at all.
 | token | meaning | default |
 |---|---|---|
 | `check_build` | compile this sample | --- |
-| `check_run` | compile it *and* run it, capturing Debug output. **Not implemented**; such a fence is compiled only, and the run says so | --- |
+| `check_run` | compile it, build it and run it, and compare what it prints with what the fence says it prints (a trailing comment on a `Debug.Print` line, or the comment lines under `' Output:`). Statement samples (`slot=sub`) only; `MsgBox`, `InputBox` and `End` are refused. See the dispatcher design below | --- |
 | `hidden` | context for the page's samples, compiled with them and rendered to nothing. Implies `check_build` | --- |
 | `slot=` | `file`, `module`, `sub`, `class` or `method` --- what to generate around it | inferred |
 | `inherits=` | the class the sample is code-behind *of*; forces the Class row | --- |
@@ -387,10 +387,20 @@ force two samples apart, and a rule that also tracked procedures would split bat
 costing a whole IDE startup --- for nothing.
 
 **`[RunAfterBuild]` is one per project.** `TB5114 encountered too many [RunAfterBuild]
-attributes. Only allowed one per-project.` So `check_run` cannot batch the naive way: either
-a project per sample, or one generated dispatcher that calls each sample's Sub in turn, with
-a marker line printed around each call so the output can be attributed and a sample that
-throws does not silently swallow the rest.
+attributes. Only allowed one per-project.` So `check_run` cannot batch the naive way. It
+uses one generated dispatcher per run batch (`Module tbxRun`, `lib/example-run.mjs`'s
+`dispatcherText`) that calls each sample's `tbxBody` in turn, with a marker line printed
+around each call so the output can be attributed and a sample that throws does not silently
+swallow the rest. **Each call has an `On Error GoTo` handler of its own, not `On Error
+Resume Next` and a test of `Err.Number` after the call.** A procedure that handles an error
+with `On Error Resume Next` and returns, by `End Sub` or `Exit Sub`, leaves `Err` set for its
+caller, in VB6 and in twinBASIC alike; only a `Resume` from an `On Error GoTo` handler, or
+any `On Error` statement, clears it (measured, VB6 against BETA 995, identical; kit
+`s69/errpersist/`). So the first dispatcher reported InStr.md's sample that demonstrates
+error 5 under its own `On Error Resume Next` as raising it. The caller's handler is reached
+only by an error the callee did not handle (measured: `InStr(0, "abc", "a")` unhandled in a
+sample's body printed `[tbx-run] error 5 Invalid procedure call or argument`, and the next
+sample ran), and `Resume tbxNext<n>` clears it before the next call.
 
 Two things a batch runner must do that a single-fence runner need not:
 
@@ -536,6 +546,75 @@ a sample the full gate passes --- and it was read as a real false pass. `checkGr
 quiet about it deliberately, on the grounds that the filter is the caller's own doing. It now
 says so as an advisory finding. **A narrowed run's results are not a full run's, and the tool
 has to be the thing that says which.**
+
+### `--build` and `--llvm`: what a compile does not ask
+
+**A compile asks the front end; code generation runs in a build.** A sample can compile
+clean and still fail the build, and under LLVM the IDE reports "a feature used in your code
+is not yet supported with the LLVM compiler". `--build` presses Build on each project whose
+compile has no errors, through `compileProject`'s `build` option, and `--llvm` (which implies
+`--build`) writes `+llvm` into each batch's `compiler.buildOptions` and
+`compiler.debugOptions`. A plain `--build` run is the control for an `--llvm` one: a sample
+that fails only the second is one LLVM cannot generate code for.
+
+- **A failed build is a crash, for isolation.** `compileProject` returns code 5 and
+  `buildStaged` turns it into `{ crashed: true, buildFailed: true, named: <empty set> }`.
+  Nothing in a build log names a sample, so `runBatch` halves the batch, and `together`
+  finds a set that fails only in combination. The notes and findings are worded by kind:
+  "fails the build", and a second line naming "the LLVM build" under `--llvm` and "the
+  build" otherwise, with the advice to record it in `BUGS-TO-REPORT.md` if it is the
+  compiler's fault. The lane's `llvm` field chooses the wording.
+- **The canary does not stop a build.** `[EnforceWarnings(TB0005)]` keeps its `#Warning` a
+  warning whatever the project's settings say, and a warning does not stop the IDE building:
+  a probe with the canary module beside it builds and runs (tbrun, exit 0, BETA 995).
+- **A project with compile errors is compiled and not built.** The run ends by counting
+  the samples that only ever sat in such a project: "N sample(s) in batches with errors were
+  compiled but not built". A sample counts as built if any project that held it, a smaller
+  one from isolating a larger included, was built.
+- **`--llvm` needs a Professional or Ultimate licence.** `llvmLicence` in `tb-ide.mjs`,
+  shared with `tbrun`, reads the status bar's licence once the compile has settled, and
+  `compileProject` returns code 2 for a Community or Personal one.
+- **A build that ends the compiler writes no failure line.** A native exception during an
+  LLVM build (`NATIVE EXCEPTION: ACCESS_VIOLATION`, then "restarting from MEMORY") leaves
+  the log without a success or a failure line, so `buildProject` treats the exception line
+  as a failure; before that it waited out its whole timeout.
+- **A `[RunAfterBuild]` that calls `Debug.Cls` would erase the build log.** `buildProject`
+  wraps the page's `clearDebugConsole` (`keepClears`, as `tbrun` does) and reads what each
+  clear after its mark erased in front of the console, so Tools.md's own tbrun sample builds.
+- **A failed build is believed when it repeats.** `buildTwiceOnFailure` builds a failed
+  batch again before halving, and every part the halving builds the same way: a build can
+  fail once and pass when repeated, as one that reported nothing for 120 s did in a full
+  `--llvm` run (BETA 995).
+- **Each IDE has a temp folder of its own**, `%TEMP%\tbbuild-tmp-<port>`, set as its `TEMP`
+  and `TMP` by `launchIde`. IDEs building at once in one temp folder fail now and then with
+  `[TYPELIB] failed to finalize typelibrary.  Disk error?` and `[LINKER] FAILED to create
+  type library`, on samples that build clean alone: 8 of 192 builds, eight at once, against
+  0 of 192 with a folder each (BETA 995). With the folders, a full `--build` run and a full
+  `--llvm` run retried no type-library failure. The compiler imports `GetTempFileNameW`, and
+  writes the type library to a file it then reads back; a name two processes both take fits
+  the counts, but is not proved.
+- **A project with errors says which.** `not built: b<n>.twinproj has errors, the first ...`
+  prints when a compile has errors, and the run ends counting the samples never built.
+- **A build adds three collision rules a compile does not have**, each measured on BETA 995
+  as a false finding in the first full `--build` run:
+  - **`expect-error` samples are batched apart.** One such sample (Option.md, TB5079) left
+    the 129 samples beside it unbuilt, since a project with an error is not built.
+  - **A unit declaring its own `Sub Main` gets a project of its own, without `tbxMain`.**
+    Two Mains compile, but binding the startup object fails the build ("'Main' is
+    ambiguous"), as `tbxMain.twin`'s header says. `makeBatches`' `alone` picks the unit,
+    the batch carries `noMain`, and `stageBatch` leaves out `tbxMain.twin`. HelpFile,
+    PrevInstance, Project-Types and the two WinServicesLib groups failed this way.
+  - **A `[DllExport]` name counts among a sample's names.** Two samples exporting
+    `MyExportedFunction` (API-Declarations, Classes-and-Modules) compile together, and the
+    linker refuses them ("duplicate [DLLExport] functions detected"); as names, the batcher
+    keeps them apart.
+- **A marked `Sub Main` in a class slot is a finding**, in a compile as in a build. It is a
+  method of the class, never the startup object, so the sample is no program: usually a
+  class and the module that starts it, written as one fence. A compile passes it and a
+  build fails with no startup object, so `select` refuses it before batching. Split it, with
+  the startup Main in a fence of its own. The class slot may come from `inherits=` or from
+  the inference: a top-level `WithEvents` field is TB5182 in a module, whether `Private`,
+  `Dim` or `Public` (measured on BETA 995).
 
 ## Traps already paid for
 
@@ -895,11 +974,10 @@ by grep.
 
 - Where does compile time stop being flat in fence count? 120 per project is the current
   default and 275 worked; the measured evidence does not say where the knee is.
-- `check_run` needs the dispatcher design above, plus the `MsgBox` screen, plus a decision
-  about what a sample's *output* is compared against. A sample that prints is a sample whose
-  printed value the page probably states, and that is the check worth having. Deliberately
-  not started --- see [What is left](#what-is-left-179-samples-and-no-lever) for why the
-  editorial pass comes first.
+- `check_run` is implemented (`lib/example-run.mjs`, `lib/tb-run.mjs`) but no fence in `docs/`
+  carries the marker yet. A sample states its output in its own text, as a trailing comment on a
+  `Debug.Print` line or as the comment lines under `' Output:`; which pages should carry one is
+  the editorial pass's question --- see [What is left](#what-is-left-179-samples-and-no-lever).
 - A `projname` is global, so two pages choosing `demo` would merge without saying so. Scoping
   it to the page would prevent that and would also prevent a group spanning pages, which a
   multi-page tutorial wants. Left global and documented; revisit if a collision happens.
@@ -1014,11 +1092,9 @@ because grouping puts the two definitions in *one* project rather than keeping t
 and `COLLIDES` does not track procedure names. The page also calls `SaveLongData` while
 declaring `SaveData`, which is a defect in the page rather than in the harness.
 
-**`check_run` waits for this work rather than the other way round.** No fence in `docs/`
-carries the marker, so it gates nothing today; and its open question --- what a sample's
-printed output is compared against --- is answered by pages that state a printed value, which
-is what the editorial pass produces. Building the dispatcher first would be building for
-candidates that do not exist yet.
+**`check_run` gates nothing yet.** No fence in `docs/` carries the marker. Its output
+comparison is only as useful as the pages that state a printed value, which is what the
+editorial pass produces.
 
 ## The excerpts: 25 to none
 

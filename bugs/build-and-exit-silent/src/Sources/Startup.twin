@@ -1,0 +1,11 @@
+' Unused has an error (TB5079). twinBASIC.exe --buildAndExit32 exits 0 on this project; make Main call Unused and it never exits.
+Module Startup
+
+    Public Sub Main()
+    End Sub
+
+    Private Sub Unused()
+        NoSuchProcedure
+    End Sub
+
+End Module

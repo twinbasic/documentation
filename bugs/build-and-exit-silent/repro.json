@@ -1,0 +1,4 @@
+{
+  "mode": "manual",
+  "steps": "Not automatable: --buildAndExit32 is a switch of the IDE executable twinBASIC.exe, which opens a window. 1. Pack the project (node scripts/bug_repro.mjs pack build-and-exit-silent) or unzip build-and-exit-silent.zip. 2. Open it in the IDE: 1 error, TB5079 at Startup.twin line 8. 3. Run: twinBASIC.exe --buildAndExit32 <full path>\\build-and-exit-silent.twinproj. 4. See it exit 0 after a few seconds with Build\\BuildAndExitSilent_win32.exe written, and nothing about the build on stdout or stderr. 5. Edit Main to call Unused, pack again and repeat: the command never exits and writes no .exe. End the hung IDE by its pid, never by image name."
+}

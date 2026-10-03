@@ -1,0 +1,7 @@
+' A Static in a Module procedure, initialised with a constructor that takes an argument, of a class declared later in the project: TB5074 at the New.
+Module Probe
+    Public Sub T()
+        Static s As Dog = New Dog("Rex")
+        Debug.Print s.GetName()
+    End Sub
+End Module

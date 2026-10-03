@@ -509,11 +509,11 @@ Private InternalCollection As New Collection
 
 [Enumerator]
 Public Property Get _NewEnum() As Variant
-    Return InternalCollection
+    Return InternalCollection.[_NewEnum]
 End Property
 ```
 
-This replaces VB6's hidden `VB_UserMemId = -4` procedure attribute, which twinBASIC still accepts for compatibility.
+This replaces VB6's hidden `VB_UserMemId = -4` procedure attribute, which twinBASIC still accepts for compatibility. [Custom Enumerators](../../Features/Language/Custom-Enumerators) describes the member's rules, and how a class can implement the enumerator itself.
 
 <!-- Applicability from the package census: ~10 uses in VB, VBRUN, WebView2,
      WinNativeCommonCtls and WinServicesLib, on a Function or a Property Get.
@@ -678,13 +678,13 @@ For an overview of the `Implements ... Via` mechanism itself, see [Implements Vi
 
 <!-- Applicability by probe, BETA 983, and by the attribute sweep, BETA 995,
      which gives the same answers; no package or sample uses this
-     attribute. The control and the effect below were measured on 983. Accepted on `Implements <Class> Via <field> = <expr>` and on
+     attribute. The control and the effect below were tested on 983. Accepted on `Implements <Class> Via <field> = <expr>` and on
      `Implements <Interface> Via <Class>`; rejected on a plain Implements
      statement (TB5155), on the Class (TB5182), on the Interface (TB5182), on
      an Inherits statement (TB5155) and on an Interface line in a CoClass
      (TB5182). The control is [WithDispatchForwarding] on the same Via
      statement, which draws TB5155 -- so the Via form is not simply accepting
-     any attribute. Effect measured as an A/B on one source with and without
+     any attribute. Effect tested as an A/B on one source with and without
      the attribute: a Friend member of the delegate called from a Module
      draws TB5027 with it and compiles without it, while the same member
      called from inside the class compiles either way, qualified with Me or

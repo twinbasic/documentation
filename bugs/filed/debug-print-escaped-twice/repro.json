@@ -1,0 +1,12 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^A&amp;$",
+      "^a < b and c &gt; d$",
+      "^B&$"
+    ]
+  },
+  "issue": 2444
+}

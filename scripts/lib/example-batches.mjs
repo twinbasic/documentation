@@ -22,6 +22,16 @@ import {
   resourcePath,
   wrapFence,
 } from "./tb-fences.mjs";
+import {
+  RUN_DONE,
+  dispatcherText,
+  expectedOutput,
+  isRunFence,
+  judgeOutput,
+  parseRun,
+  partitionRun,
+  runRefusal,
+} from "./example-run.mjs";
 
 /** check_examples.mjs's defaults for `--jobs` and `--batch`, which the probes batch with. */
 export const DEFAULT_JOBS = 4;
@@ -83,7 +93,13 @@ function unitKey(fence) {
   return fence.keys.get("projname") ? `@${fence.keys.get("projname")}` : `#${fence.id}`;
 }
 
-export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_JOBS } = {}) {
+/**
+ * `alone`, given a unit's fences, says whether the unit is to be built in a
+ * project of its own with no template Main (`noMain` on the batch): a run that
+ * builds passes one for a unit declaring its own `Sub Main`, because a build,
+ * unlike a compile, fails on two.
+ */
+export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_JOBS, alone = null } = {}) {
   // A `hidden` fence is not a unit of its own: it is the PAGE's context, and
   // it joins every project that holds a sample from that page. So a page can
   // carry the declarations its samples assume -- the class its prose describes
@@ -156,7 +172,9 @@ export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_
       // author can actually reason about: what compiles is what they grouped,
       // plus the template. It costs one project per group, and groups are
       // written by hand, so there are never many.
-      if (key.startsWith("@")) {
+      // A unit `alone` picks gets one too, built without the template's Main.
+      const solo = !!alone?.(members);
+      if (key.startsWith("@") || solo) {
         const own = new Set(names);
         for (const rel of pages) for (const n of hiddenNamesFor(rel)) own.add(n);
         batches.push({
@@ -164,7 +182,8 @@ export function makeBatches(fences, { batchSize = DEFAULT_BATCH, jobs = DEFAULT_
           fences: [...members],
           names: own,
           pages,
-          group: key.slice(1),
+          ...(key.startsWith("@") ? { group: key.slice(1) } : {}),
+          ...(solo ? { noMain: true } : {}),
         });
         continue;
       }
@@ -382,7 +401,11 @@ function ownRowsOf(project, lane) {
           );
         }
         const rows = result.crashed
-          ? [`the ${project} template crashes the compiler with no samples in it`]
+          ? [
+              result.buildFailed
+                ? `the ${project} template fails the build with no samples in it`
+                : `the ${project} template crashes the compiler with no samples in it`,
+            ]
           : [...(result.unattributed ?? []), ...(result.unreadable ?? [])];
         if (rows.length) {
           lane.note(
@@ -460,18 +483,26 @@ async function split(batch, lane, why) {
  * with nothing in `crashed` -- its crash needed several samples too -- and
  * whether a part crashed is what decides the next step.
  */
-async function isolateCrash(batch, named, lane) {
-  const where = `a compiler crash in ${batch.fences.length} sample(s) [${batch.project}]`;
+async function isolateCrash(batch, named, lane, failed = false, detail = "") {
+  const where = `${failed ? "a failed build" : "a compiler crash"} in ${batch.fences.length} sample(s) [${batch.project}]`;
   let parts = takeOut(batch, named);
   if (parts) lane.note(`  ${where}: building the sample it died parsing on its own`);
   else if ((parts = splitBatch(batch))) lane.note(`  ${where}: splitting to find it`);
   else {
     const { rep, ids, rest } = leafOf(batch);
-    lane.finding(
-      rep,
-      "crashes the twinBASIC compiler" + rest,
-      "the compiler dies parsing this sample; record it in BUGS-TO-REPORT.md",
-    );
+    if (failed) {
+      lane.finding(
+        rep,
+        "fails the build" + rest,
+        `${buildName(lane)} fails on this sample${detail ? ` (${detail})` : ""}; record it in BUGS-TO-REPORT.md if it is the compiler's fault`,
+      );
+    } else {
+      lane.finding(
+        rep,
+        "crashes the twinBASIC compiler" + rest,
+        "the compiler dies parsing this sample; record it in BUGS-TO-REPORT.md",
+      );
+    }
     // Named back to the caller, because a crashed sample produced no
     // diagnostics and would otherwise be counted as one that compiled -- the
     // same false-clean shape tbbuild's own crash check exists to close.
@@ -480,9 +511,36 @@ async function isolateCrash(batch, named, lane) {
   const subs = [];
   for (const part of parts) subs.push(await runBatch(part, lane));
   if (subs.some((s) => s.fromCrash)) return { ...merge(subs), fromCrash: true };
-  lane.note("  neither part crashes on its own: looking for the samples it needs together");
-  return { ...merge([...subs, await together(batch, ...parts, lane)]), fromCrash: true };
+  lane.note(
+    `  neither part ${failed ? "fails the build" : "crashes"} on its own: looking for the samples it needs together`,
+  );
+  return { ...merge([...subs, await together(batch, ...parts, lane, failed)]), fromCrash: true };
 }
+
+/**
+ * Build a batch, and build it once more if the build failed after a clean
+ * compile.
+ *
+ * A build can fail once and pass when repeated: one that reported nothing for
+ * 120 s, once in a full --llvm run (BETA 995). Lanes whose IDEs shared a temp
+ * folder failed with "[LINKER] FAILED to create type library" too, which
+ * launchIde's folder per IDE prevents. A failure is believed only if the same
+ * batch fails twice running, and so is each part the halving that follows builds.
+ */
+async function buildTwiceOnFailure(batch, lane) {
+  const first = await lane.build(batch);
+  if (!first.crashed || !first.buildFailed) return first;
+  lane.note(
+    `  a failed build in ${batch.fences.length} sample(s) [${batch.project}] (${first.detail}): building it again`,
+  );
+  return lane.build(batch);
+}
+
+/**
+ * What the lane's build is called in a finding: LLVM is the point of an --llvm
+ * run, and the plain build is its control.
+ */
+const buildName = (lane) => (lane.llvm ? "the LLVM build" : "the build");
 
 /**
  * The samples a crash needs when it needs several: `a` and `b` each built
@@ -498,7 +556,7 @@ async function isolateCrash(batch, named, lane) {
  * Every member built clean in `a` or `b`, so each has its own result. They are
  * blamed rather than passed, because together they take the compiler down.
  */
-async function together(batch, a, b, lane) {
+async function together(batch, a, b, lane, failed = false) {
   const { hidden } = unitsOf(batch);
   const crashes = async (units) => !!(await lane.build(batchOf(batch, units, hidden))).crashed;
   const partners = async (fixed, pool) => {
@@ -519,14 +577,24 @@ async function together(batch, a, b, lane) {
     .flat()
     .filter((f) => !f.flags.has(HIDDEN_MARKER) && !f.isResource);
   const [rep, ...others] = members;
-  lane.finding(
-    rep,
-    `crashes the twinBASIC compiler when built with ${others.length} other ` +
-      `sample(s), though none of the ${members.length} does on its own`,
-    `the others: ${others.map((f) => `${f.rel}:${f.line}`).join(", ")}` +
-      (found ? "" : "; no smaller set that crashes was found") +
-      " -- record it in BUGS-TO-REPORT.md",
-  );
+  const theOthers = `the others: ${others.map((f) => `${f.rel}:${f.line}`).join(", ")}`;
+  if (failed) {
+    lane.finding(
+      rep,
+      `fails the build when built with ${others.length} other ` +
+        `sample(s), though none of the ${members.length} does on its own`,
+      theOthers +
+        (found ? "" : "; no smaller set that fails was found") +
+        `; ${buildName(lane)} fails on them together -- record it in BUGS-TO-REPORT.md if it is the compiler's fault`,
+    );
+  } else {
+    lane.finding(
+      rep,
+      `crashes the twinBASIC compiler when built with ${others.length} other ` +
+        `sample(s), though none of the ${members.length} does on its own`,
+      theOthers + (found ? "" : "; no smaller set that crashes was found") + " -- record it in BUGS-TO-REPORT.md",
+    );
+  }
   return { ...blank(), blamed: members.map((f) => f.id) };
 }
 
@@ -543,8 +611,8 @@ async function together(batch, a, b, lane) {
  * compiling while the run fails with a row naming no page.
  */
 export async function runBatch(batch, lane) {
-  let result = await lane.build(batch);
-  if (result.crashed) return isolateCrash(batch, result.named, lane);
+  let result = await buildTwiceOnFailure(batch, lane);
+  if (result.crashed) return isolateCrash(batch, result.named, lane, !!result.buildFailed, result.detail);
 
   // The canary is needed only by a read that holds no error: that is the read
   // an IDE that published nothing returns, and it looks exactly like a clean
@@ -558,8 +626,8 @@ export async function runBatch(batch, lane) {
       `  the canary did not report in ${batch.fences.length} sample(s) [${batch.project}] ` +
         `(${result.canaryProblem}), and nothing else did: building it again`,
     );
-    result = await lane.build(batch);
-    if (result.crashed) return isolateCrash(batch, result.named, lane);
+    result = await buildTwiceOnFailure(batch, lane);
+    if (result.crashed) return isolateCrash(batch, result.named, lane, !!result.buildFailed, result.detail);
     if (result.canaryProblem && !(await heard(result, batch.project, lane))) {
       // Twice silent: either the IDE keeps reading early under this load, or a
       // sample in the batch hides the diagnostics of the rest. Halving finds
@@ -868,6 +936,13 @@ export async function runProbes(say) {
   // definitions its tests need, and a page's hidden context left in the other
   // half takes away the declarations it exists to supply -- and the hidden
   // fences sit at the END of batch.fences, where a plain slice drops them.
+  // A unit `alone` picks is a project of its own, marked to leave out the
+  // template's Main; the rest batch as before.
+  const solo = makeBatches([fake("s1"), fake("s2"), fake("s3")], { alone: (m) => m.some((f) => f.id === "s2") });
+  const soloShape = solo.map((b) => `${b.fences.map((f) => f.id)}${b.noMain ? "!" : ""}`).join(" ");
+  if (soloShape !== "s2! s1,s3" && soloShape !== "s1,s3 s2!") {
+    failures.push(`batching: a unit alone picks -> ${soloShape}, want s2 alone and marked`);
+  }
   const soleGroup = makeBatches([fake("g1", "g"), fake("g2", "g")])[0];
   if (splitBatch(soleGroup) !== null) failures.push("split: a projname group was cut in half");
   const mixed = makeBatches([
@@ -935,10 +1010,19 @@ export async function runProbes(say) {
         lane.builds++;
         const c = crash(new Set(b.fences.map((f) => f.id)));
         return c
-          ? { crashed: true, named: new Set(c.named ?? []) }
+          ? {
+              crashed: true,
+              buildFailed: !!c.failed,
+              detail: c.failed ? "[BUILD] FAILED boom" : undefined,
+              named: new Set(c.named ?? []),
+            }
           : { perFence: new Map(), unreadable: [], unattributed: [] };
       },
-      finding: (fence) => lane.found.push(fence.id),
+      said: [],
+      finding: (fence, message, detail) => {
+        lane.found.push(fence.id);
+        lane.said.push([message, detail]);
+      },
       note: () => {},
     };
     return lane;
@@ -967,6 +1051,48 @@ export async function runProbes(say) {
   const cheap = fakeLane((ids) => when("c")(ids) && naming("c")(ids));
   await runBatch(five, cheap);
   if (cheap.builds !== 3) failures.push(`isolation: a named crash took ${cheap.builds} builds, want 3`);
+  // A build that fails after a clean compile names no sample, so it is halved to
+  // the one that fails it, and reported in the build's words -- the LLVM build
+  // under --llvm, the build without it -- never as a compiler crash.
+  const failsBuild = (...need) => fakeLane((ids) => when(...need)(ids) && { failed: true });
+  const lone = failsBuild("d");
+  lone.llvm = true;
+  const loneResult = await runBatch(five, lone);
+  const loneSaid = lone.said[0] ?? [];
+  if (`${loneResult.crashed} / ${lone.found}` !== "d / d") {
+    failures.push(`failed build: a sample that fails alone -> ${loneResult.crashed} / ${lone.found}, want d / d`);
+  }
+  if (loneSaid[0] !== "fails the build" || !loneSaid[1]?.includes("the LLVM build fails on this sample")) {
+    failures.push(`failed build: an --llvm finding was worded ${JSON.stringify(loneSaid)}`);
+  }
+  if (!loneSaid[1]?.includes("([BUILD] FAILED boom)")) {
+    failures.push("failed build: the finding does not quote the build's failing line");
+  }
+  if (!loneSaid[1]?.includes("BUGS-TO-REPORT.md if it is the compiler's fault")) {
+    failures.push("failed build: the finding does not say when to record it");
+  }
+  const control = failsBuild("d");
+  await runBatch(five, control);
+  if (!control.said[0]?.[1]?.startsWith("the build fails on this sample")) {
+    failures.push(`failed build: a plain build's finding was worded ${JSON.stringify(control.said[0])}`);
+  }
+  // A failure that does not repeat is no finding: the batch is built again.
+  let calls = 0;
+  const flaky = fakeLane(() => ++calls === 1 && { failed: true });
+  const flakyResult = await runBatch(five, flaky);
+  if (flaky.found.length || flakyResult.crashed.length || flaky.builds !== 2) {
+    failures.push(
+      `failed build: one that passed when built again -> ${flaky.found} / ${flakyResult.crashed} in ${flaky.builds} builds`,
+    );
+  }
+  const pair = failsBuild("b", "d");
+  const pairResult = await runBatch(five, pair);
+  if (
+    `${[...pairResult.blamed].sort()}` !== "b,d" ||
+    !pair.said[0]?.[0].startsWith("fails the build when built with 1 other sample(s)")
+  ) {
+    failures.push(`failed build: two samples that fail only together -> ${JSON.stringify(pair.said[0])}`);
+  }
   // The canaries: what a batch's rows say about them, and what runBatch does when
   // they are not there. A batch with no rows at all is the one that matters, since
   // it is what an IDE that read its diagnostics early returns.
@@ -1207,6 +1333,241 @@ export async function runProbes(say) {
     failures.push("report: a diagnostic naming nothing produced a name anyway");
   }
 
+  // `check_run`: which fences may be run, what a fence says it prints, the
+  // dispatcher that calls each run sample, and the reading of what the run wrote.
+  let runProbeCount = 0;
+  const expect = (ok, what) => {
+    runProbeCount++;
+    if (!ok) failures.push(what);
+  };
+  const rfence = (content, o = {}) => ({
+    rel: "R.md",
+    line: 10,
+    id: o.id ?? "R.md#1",
+    content,
+    slot: o.slot ?? "sub",
+    project: "console",
+    keys: new Map(o.keys ?? []),
+    flags: new Set(o.flags ?? [MARKER, RUN_MARKER]),
+    inferred: { names: [] },
+  });
+  // Refused: a fence that cannot be run, whatever it prints. The two that must
+  // NOT be refused name MsgBox in a comment and in a string, which are not calls.
+  for (const [name, f, refused] of [
+    ["a class", rfence("Debug.Print 1\n", { slot: "class" }), true],
+    ["a module", rfence("Public Sub S()\nEnd Sub\n", { slot: "module" }), true],
+    ["a MsgBox", rfence('MsgBox "hi"\n'), true],
+    ["a MsgBox with a result", rfence('Dim r As Long\nr = msgbox("hi", 4)\n'), true],
+    ["an InputBox", rfence('Dim s As String\ns = InputBox("name")\n'), true],
+    ["an End", rfence("Debug.Print 1\nEnd\n"), true],
+    ["an End with a comment", rfence("Debug.Print 1\n    End   ' stop\n"), true],
+    ["an End after Then", rfence("If x Then End\n"), true],
+    ["an expect-error", rfence("Debug.Print 1\n", { keys: [["expect-error", ""]] }), true],
+    ["a hidden fence", rfence("Dim x As Long\n", { flags: [MARKER, RUN_MARKER, HIDDEN_MARKER] }), true],
+    ["a MsgBox in a comment", rfence("' MsgBox is not called\nDebug.Print 1   ' not MsgBox\n"), false],
+    ["a MsgBox in a string", rfence('Debug.Print "MsgBox"\nDebug.Print "End"\n'), false],
+    [
+      "End If and End Select",
+      rfence("If True Then\n    Debug.Print 1\nEnd If\nSelect Case 1\nCase 1\nEnd Select\n"),
+      false,
+    ],
+    ["a plain statement sample", rfence('Debug.Print InStr(1, "abc", "b")   \' 2\n'), false],
+    ["a fence that is not run", rfence('MsgBox "hi"\n', { flags: [MARKER] }), false],
+  ]) {
+    expect(
+      !!runRefusal(f) === refused,
+      `run refusal: ${name} -> ${runRefusal(f)?.message ?? "accepted"}, want ${refused ? "refused" : "accepted"}`,
+    );
+  }
+  expect(
+    runRefusal(rfence("Debug.Print 1\n", { slot: "class" }))?.message ===
+      "check_run runs statement samples (slot=sub) only",
+    "run refusal: a non-sub slot does not say what check_run runs",
+  );
+
+  // What a fence says it prints, each line with its place on the page: the
+  // fence opens at page line 10, so its first line is page line 11.
+  const said = (content) => expectedOutput(rfence(content));
+  const shape = (e) => `${e.stated}:${e.lines.map((l) => `${l.line}=${l.text}`).join("|")}`;
+  for (const [name, content, want] of [
+    ["a trailing comment", 'Debug.Print InStr(1, "abc", "b")   \' 2\n', "true:11=2"],
+    ["two of three lines", "Debug.Print 1 ' one\nDebug.Print 2\nDebug.Print 3 '  three \n", "true:11=one|13=three"],
+    ["a quote inside a string", "Debug.Print \"it's\"   ' 5\n", "true:11=5"],
+    ["a quote inside a string, no comment", 'Debug.Print "it\'s"\nDebug.Print """\'"""\n', "false:"],
+    ["an escaped quote then a comment", 'Debug.Print "say ""hi\'""" \' ok\n', "true:11=ok"],
+    ["a comment that is not on a Debug.Print", "x = 1   ' not output\n' also not\nDebug.Print x\n", "false:"],
+    ["an Output block", "Debug.Print 1\nDebug.Print 2\n' Output:\n' 1\n'  2\n", "true:14=1|15= 2"],
+    ["an Output block, any case and indent", "    ' output:\n    '1\n    '\n", "true:12=1|13="],
+    ["an Output block ends at a line that is not a comment", "' Output:\n' a\n\n' not this\n", "true:12=a"],
+    ["an Output block beats trailing comments", "Debug.Print 1 ' no\n' Output:\n' yes\n", "true:13=yes"],
+    ["an empty Output block", "Debug.Print 1\n' Output:\n", "true:"],
+    ["no expectations", "Dim x As Long\nx = 1\nDebug.Print x\n", "false:"],
+    ["a comment that says Output but is not a header", "' Output: 5\nDebug.Print 5\n", "false:"],
+  ]) {
+    const got = shape(said(content));
+    expect(got === want, `expected output: ${name} -> ${got}, want ${want}`);
+  }
+  // ...and compared with what was printed, trimmed at both ends.
+  const sayOf = (content, output) => judgeOutput(said(content), output).map((p) => `${p.line}:${p.message}`);
+  for (const [name, content, output, want] of [
+    ["a match, sign space ignored", "Debug.Print 2 ' 2\n", [" 2"], ""],
+    [
+      "a mismatch at the page line",
+      "Debug.Print 1 ' 1\nDebug.Print 2 ' 3\n",
+      [" 1", " 2"],
+      '12:prints "2", the page says "3"',
+    ],
+    ["too few lines", "Debug.Print 1 ' 1\nDebug.Print 2 ' 2\n", [" 1"], "null:prints 1 line(s), the page states 2"],
+    ["too many lines", "Debug.Print 1 ' 1\n", [" 1", " 2"], "null:prints 2 line(s), the page states 1"],
+    ["nothing stated, anything printed", "Debug.Print 1\n", [" 1", " 2"], ""],
+    ["an Output block that is not met", "Debug.Print 7\n' Output:\n' 8\n", [" 7"], '13:prints "7", the page says "8"'],
+  ]) {
+    const got = sayOf(content, output).join(";");
+    expect(got === want, `judged output: ${name} -> ${got}, want ${want}`);
+  }
+
+  // The dispatcher: one block per run sample, numbered in order, calling the
+  // generated module's body between the markers.
+  const dispatch = dispatcherText(["tbx_aaa", "tbx_bbb"]);
+  const dLines = dispatch.split("\n").map((l) => l.trim());
+  expect(
+    dLines[0] === "Module tbxRun" && dLines[1] === "[RunAfterBuild]" && dLines[3] === "Debug.Cls",
+    "dispatcher: the header is not a RunAfterBuild Sub that starts with Debug.Cls",
+  );
+  expect(
+    ["begin 0", "begin 1", "end 0", "end 1"].every((m) => dLines.includes(`Debug.Print "[tbx-run] ${m}"`)) &&
+      dLines.includes("tbx_aaa.tbxBody") &&
+      dLines.includes("tbx_bbb.tbxBody") &&
+      dLines.indexOf("tbx_aaa.tbxBody") < dLines.indexOf("tbx_bbb.tbxBody"),
+    "dispatcher: two samples are not called in order between their markers",
+  );
+  expect(
+    [0, 1].every(
+      (i) =>
+        dLines.indexOf(`On Error GoTo tbxError${i}`) < dLines.indexOf(`tbx_${i ? "bbb" : "aaa"}.tbxBody`) &&
+        dLines.indexOf(`On Error GoTo tbxError${i}`) >= 0 &&
+        dLines.includes(`tbxError${i}:`) &&
+        dLines.includes(`Resume tbxNext${i}`) &&
+        dLines.includes(`tbxNext${i}:`),
+    ) &&
+      !dLines.includes("On Error Resume Next") &&
+      dLines.at(-4) === `Debug.Print "${RUN_DONE}"`,
+    "dispatcher: each call does not have a handler of its own (On Error GoTo, label, Resume), or the done line is missing",
+  );
+  // The markers are what parseRun reads, so the dispatcher's own text is run
+  // through it: what it prints for a sample that returns is a match.
+  const marker = (s) => `[tbx-run] ${s}`;
+  const run3 = (lines) => parseRun(lines, 3);
+  const full = run3([
+    marker("begin 0"),
+    " 2",
+    marker("end 0"),
+    marker("begin 1"),
+    "a",
+    "b",
+    marker("error 5 Invalid procedure call or argument"),
+    marker("end 1"),
+    marker("begin 2"),
+    marker("end 2"),
+    marker("done"),
+  ]);
+  expect(
+    full.done && full.began === 3 && full.items[0].output.join() === " 2" && full.items[0].error === null,
+    "run output: a sample that returned was not read",
+  );
+  expect(
+    full.items[1].output.join() === "a,b" &&
+      full.items[1].error?.number === 5 &&
+      full.items[1].error.description === "Invalid procedure call or argument" &&
+      full.items[1].ended,
+    "run output: an error line was not attributed to the sample it follows",
+  );
+  expect(full.items[2].began && full.items[2].ended && !full.items[2].output.length, "run output: a silent sample");
+  const hung = run3([marker("begin 0"), "x", marker("end 0"), marker("begin 1"), "y"]);
+  expect(
+    !hung.done &&
+      hung.items[1].began &&
+      !hung.items[1].ended &&
+      !hung.items[2].began &&
+      hung.items[1].output.join() === "y",
+    "run output: a sample that began and did not return was not found, or the one after it was said to have begun",
+  );
+  const none = run3(["[BUILD] Starting...", "[LINKER] SUCCESS"]);
+  expect(!none.done && none.began === 0, "run output: a console with no marker said the run began");
+  expect(
+    run3([marker("begin 0"), marker("end 0"), "[DEBUGGER] Waiting for remaining forms to close..."]).items[0].output
+      .length === 0,
+    "run output: a line after a sample's end was attributed to it",
+  );
+
+  // A run fence's body is Public, to be called from the dispatcher, and that
+  // changes no line: the line map is as for a Private one.
+  const runFence = { ...fence, flags: new Set([MARKER, RUN_MARKER]) };
+  for (const base of [null, "Form"]) {
+    const { text, offset } = wrapFence(runFence, "sub", "tbx_probe", base);
+    const genLine = text.split("\n").findIndex((l) => l.trim() === "Dim b") + 1;
+    expect(
+      text.includes("    Public Sub tbxBody()") && fence.line + genLine - offset === 12,
+      `line map: a run fence's body is not Public with the same offset (${fence.line + genLine - offset})`,
+    );
+  }
+  expect(
+    wrapFence({ ...fence, flags: new Set([MARKER]) }, "sub", "tbx_probe").text.includes("    Private Sub tbxBody()"),
+    "wrapper: a sample that is not run lost its Private body",
+  );
+
+  // Batching: a run fence is built apart from every other sample, with its
+  // page's hidden context; a projname group holding one goes whole to the run
+  // batches, its class beside it, and only the run fence is called.
+  const sample = (id, o = {}) => ({
+    ...rfence("Debug.Print 1\n", {
+      id,
+      flags: o.run ? [MARKER, RUN_MARKER] : [MARKER],
+      keys: o.group ? [["projname", o.group]] : [],
+      slot: o.slot,
+    }),
+    rel: o.rel ?? "R.md",
+    ...(o.hidden ? { flags: new Set([HIDDEN_MARKER, MARKER]), slot: "module" } : {}),
+  });
+  const plainOne = sample("plain"),
+    runner = sample("runner", { run: true }),
+    ctx = sample("ctx", { hidden: true }),
+    cls = sample("cls", { group: "g", slot: "class" }),
+    grunner = sample("grunner", { group: "g", run: true }),
+    otherPage = sample("other", { rel: "O.md" });
+  const part = partitionRun([plainOne, runner, ctx, cls, grunner, otherPage]);
+  const ids = (list) => list.map((f) => f.id).join();
+  expect(ids(part.rest) === "plain,ctx,other", `run batching: the rest is ${ids(part.rest)}, want plain,ctx,other`);
+  expect(
+    ids(part.run) === "runner,ctx,cls,grunner",
+    `run batching: the run list is ${ids(part.run)}, want runner,ctx,cls,grunner`,
+  );
+  const runBatches = makeBatches(part.run);
+  const groupRun = runBatches.find((b) => b.fences.some((f) => f.id === "cls"));
+  expect(
+    runBatches.length === 2 &&
+      groupRun?.group === "g" &&
+      groupRun.fences.some((f) => f.id === "grunner") &&
+      !groupRun.fences.some((f) => f.id === "runner"),
+    "run batching: a group of a class and a run sample was not one run batch of its own",
+  );
+  expect(
+    ids(groupRun?.fences.filter(isRunFence) ?? []) === "grunner",
+    "run batching: the dispatcher would call the group's class",
+  );
+  expect(
+    !runBatches.some((b) => b.fences.some((f) => f.id === "plain" || f.id === "other")),
+    "run batching: a sample that is not run was built into a run batch",
+  );
+  expect(
+    runBatches.find((b) => b.fences.some((f) => f.id === "runner"))?.fences.some((f) => f.id === "ctx"),
+    "run batching: a page's hidden context did not travel with its run sample",
+  );
+  expect(
+    partitionRun([plainOne, otherPage]).run.length === 0,
+    "run batching: a selection with no run sample made run batches",
+  );
+
   // The markup must be invisible to the site. Verified against the REAL
   // pipeline -- createMarkdownIt plus the highlighter -- because a bare
   // markdown-it is a different renderer, which is the mistake WIP.md's
@@ -1236,15 +1597,17 @@ export async function runProbes(say) {
     for (const f of failures) say(`FAIL  probe: ${f}`);
     return false;
   }
-  // 10 line-map (5 slots x 2 bases) + 4 wrapper container + 7 batching
-  // + 5 splitting + 5 taking out + 3 crash report + 7 isolation + 9 concat
+  // 10 line-map (5 slots x 2 bases) + 4 wrapper container + 8 batching
+  // (1 of a unit built alone) + 5 splitting + 5 taking out + 3 crash report + 7 isolation + 9 concat
   // + 10 resource + 8 report + 6 markup + 15 canaries (5 of what a batch's rows say,
   // 7 of what runBatch does about a batch whose canary did not report, 3 of the
-  // template built with no samples).
+  // template built with no samples) + 7 of a failed build (wording, when to
+  // record it, one that passes when built again, a pair that fails only together)
+  // + the check_run probes, which count themselves.
   say(
-    `ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 89} probes: ` +
-      "classifier, markup, line mapping, batching, splitting, crash isolation, canaries, concat, " +
-      "resources and the report",
+    `ok    ${CLASSIFIER_PROBES.length + INFO_PROBES.length + 97 + runProbeCount} probes: ` +
+      "classifier, markup, line mapping, batching, splitting, crash isolation, failed builds, canaries, concat, " +
+      "resources, the report and check_run",
   );
   return true;
 }

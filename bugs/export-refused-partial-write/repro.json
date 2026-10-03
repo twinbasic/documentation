@@ -1,0 +1,12 @@
+{
+  "mode": "cli",
+  "cli": ["export", "{project}", "{tmp}\\"],
+  "expect": {
+    "exit": 0,
+    "output": [
+      "ERROR: output file already exists and --overwrite not set: .*export-refused-partial-write\\.twinproj",
+      "DONE: .*\\\\Settings$",
+      "^\\.\\.\\. FAILED"
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+' An ordinary, valid project. Nothing to run: a copy of its .twinproj with the first byte changed, or cut off halfway, is the damaged file.
+Module Startup
+
+    Public Sub Main()
+    End Sub
+
+End Module

@@ -1,0 +1,21 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Package TWINPACK",
+	"project.description": "A package of one function, DocProbeVersion, for a bug report.",
+	"project.id": "{7B247500-0000-4000-9000-7B2475000004}",
+	"project.licence": "MIT",
+	"project.name": "DocProbePkg",
+	"project.optionExplicit": true,
+	"project.packageVisibility": "PUBLIC",
+	"project.references": [],
+	"project.versionBuild": 0,
+	"project.versionMajor": 1,
+	"project.versionMinor": 0,
+	"project.versionRevision": 0,
+	"project.warnings": {
+		"errors": [],
+		"ignored": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

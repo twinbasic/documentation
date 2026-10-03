@@ -9,13 +9,13 @@
 // twinBASIC project without the IDE in front of you", for the history.
 
 import { execFile, execFileSync, spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { attach } from "./tb-cdp.mjs";
 import { click } from "./tb-click.mjs";
-import { consoleMark, linesSince } from "./tb-ide-console.mjs";
+import { consoleMark, keepClears, keptClears, linesSince, readConsole } from "./tb-ide-console.mjs";
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -136,10 +136,23 @@ export async function launchIde({ exe, project, port, show = false, keep = false
   }
   const exeWin = exe.split("/").join("\\");
   const target = path.resolve(project).split("/").join("\\");
+  // Each IDE has a temp folder of its own, emptied at each launch on its port.
+  // Builds sharing one fail now and then with `[TYPELIB] failed to finalize
+  // typelibrary.  Disk error?`: 0 in 192 with a folder per IDE, 8 in 192 with
+  // one for all eight at once (BETA 995).
+  const ideTemp = path.join(process.env.TEMP, `tbbuild-tmp-${port}`);
+  try {
+    rmSync(ideTemp, { recursive: true, force: true });
+  } catch {
+    // a file still held open: the IDE gets the folder as it is
+  }
+  mkdirSync(ideTemp, { recursive: true });
   // Node leaves out of a child's environment any variable whose value is
   // undefined, so `env` can remove one as well as set it.
   const fullEnv = {
     ...process.env,
+    TEMP: ideTemp,
+    TMP: ideTemp,
     WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port} --remote-allow-origins=*`,
     WEBVIEW2_USER_DATA_FOLDER: `${process.env.TEMP}/tbbuild-wv2-${port}`,
     [ADDIN_TEST_ENV]: "1",
@@ -180,6 +193,40 @@ export async function launchIde({ exe, project, port, show = false, keep = false
   // anything could attach to it, because the launcher died with tbbuild and
   // took the job with it. With the launcher detached from Node instead,
   // PowerShell exited at once, without a pid and without a word on stderr.
+  try {
+    const { pid, launcher } = await launchOnDesktop({
+      exe: exeWin,
+      arg: target,
+      desktop: `tbbuild-${port}`,
+      job: !keep,
+      env: fullEnv,
+    });
+    return { pid, launcher };
+  } catch (e) {
+    throw new Error(
+      `could not start the IDE on a private desktop:\n${e.message}\n(--show runs it on your own desktop instead)`,
+    );
+  }
+}
+
+/**
+ * Start a program on a private desktop, inside a kill-on-close job, through
+ * lib/tb-launch.ps1. launchIde starts the IDE this way, and tbrun's --exe the
+ * probe's exe, so that neither can show a window on the user's desktop.
+ *
+ * @param {object} o
+ * @param {string} o.exe      the program, a Windows path
+ * @param {string} [o.arg]    its one argument; none when empty
+ * @param {string} o.desktop  the private desktop's name
+ * @param {boolean} [o.job]   false for no job, for a program that is to outlive
+ *                            this Node process
+ * @param {object} o.env      its whole environment
+ * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess, exited: Promise<number | null>}>}
+ *   `exited` settles with the program's exit code when it ends, or null when
+ *   the launcher ended without one -- killed, or failed. Throws, with the
+ *   launcher's error, when the program did not start.
+ */
+export async function launchOnDesktop({ exe, arg = "", desktop, job = true, env }) {
   const script = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "tb-launch.ps1"), "utf8");
   const ps = spawn(
     "powershell",
@@ -187,34 +234,46 @@ export async function launchIde({ exe, project, port, show = false, keep = false
     {
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
-      env: {
-        ...fullEnv,
-        TBBUILD_EXE: exeWin,
-        TBBUILD_ARG: target,
-        TBBUILD_DESKTOP: `tbbuild-${port}`,
-        TBBUILD_JOB: keep ? "0" : "1",
-      },
+      env: { ...env, TBBUILD_EXE: exe, TBBUILD_ARG: arg, TBBUILD_DESKTOP: desktop, TBBUILD_JOB: job ? "1" : "0" },
     },
   );
-  let err = "";
+  let err = "",
+    out = "";
   ps.stderr.on("data", (d) => {
     err += d;
   });
+  ps.stdout.on("data", (d) => {
+    out += d;
+  });
+  // "close" rather than "exit": the exit line can still be in the pipe at "exit".
+  const ended = new Promise((res) => ps.on("close", res));
   const pid = await new Promise((res) => {
-    let buf = "";
-    ps.stdout.on("data", (d) => {
-      buf += d;
-      const m = /^\s*(\d+)\s*$/m.exec(buf);
+    ps.stdout.on("data", () => {
+      const m = /^\s*(\d+)\s*$/m.exec(out);
       if (m) res(Number(m[1]));
     });
-    ps.on("exit", () => res(null));
+    ended.then(() => res(null));
   });
-  if (!pid) {
-    throw new Error(
-      `could not start the IDE on a private desktop:\n${err.trim()}\n` + "(--show runs it on your own desktop instead)",
-    );
-  }
-  return { pid, launcher: ps };
+  if (!pid) throw new Error(err.trim());
+  const exited = ended.then(() => {
+    const m = /^exit (-?\d+)\s*$/m.exec(out);
+    return m ? Number(m[1]) : null;
+  });
+  return { pid, launcher: ps, exited };
+}
+
+/**
+ * What a tool prints under --keep: the kept IDE's pid, and the commands that end
+ * it with every process it started (/T takes the compiler and the rest of its
+ * tree), in each shell's spelling; Git Bash would read /PID as a path.
+ */
+export function keptIdeLines(pid) {
+  return [
+    `ide-pid: ${pid}`,
+    "to end the IDE and every process it started:",
+    `  cmd or PowerShell:  taskkill /PID ${pid} /T /F`,
+    `  Git Bash:           taskkill //PID ${pid} //T //F`,
+  ];
 }
 
 /**
@@ -774,7 +833,68 @@ export async function awaitNewCompiler(c, before, { why = "restarting it", timeo
 // ...", "[BUILD] failed" and "[LINKER] compilation (codegen) error ...".
 const BUILD_START = "[BUILD] Starting...";
 const BUILD_OK = /^\[LINKER\] SUCCESS created output file '(.+)'$/;
-export const BUILD_FAILED = /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[LINKER\] compilation \(codegen\) error/;
+// The last is LLVM's refusal of a procedure, which has no bracketed prefix:
+// "LLVM compilation error in 'Probe.Stopper': Unable to compile due to use of
+// datatype that is not yet supported for LLVM compilation" (BETA 983).
+export const BUILD_FAILED =
+  /^\[(?:LINKER|BUILD)\] (?:FAILED|ERROR|failed)\b|^\[LINKER\] compilation \(codegen\) error|^LLVM compilation error in /;
+// A compiler that crashes while building -- measured under LLVM, BETA 995 --
+// writes "<n> <time> NATIVE EXCEPTION: ..." and then restarts, and the build
+// never reports again. The line carries the console's own prefix, so it is not
+// anchored.
+const BUILD_CRASHED = /\bNATIVE EXCEPTION:/;
+
+/**
+ * Whether the IDE's licence lets a project compile user code with LLVM.
+ *
+ * A Community licence ignores the LLVM settings and a Personal one applies them
+ * only to the built-in packages (docs/LLVM/Getting-Started.md), so on either an
+ * LLVM run measures the default compiler and says nothing. The status bar's
+ * compilerLicence holds one of four "<NAME> EDITION" strings once the IDE knows
+ * (ide/main.js, BETA 995), and "tB Licence: ..." until then, so it is polled.
+ *
+ * @param {object} c                  a tb-cdp connection
+ * @param {object} [o]
+ * @param {number} [o.timeout]        milliseconds to wait for the licence (default 15000)
+ * @returns {Promise<{licence: string | null, refusal: string | null}>} `refusal`
+ *   is null when LLVM may be used, and otherwise the sentence saying why not
+ */
+export async function llvmLicence(c, { timeout = 15 * 1000 } = {}) {
+  let licence = null;
+  const until = Date.now() + timeout;
+  while (Date.now() < until) {
+    licence = await c
+      .evaluate("typeof compilerLicence === 'undefined' || !compilerLicence ? null : compilerLicence.innerText")
+      .catch(() => null);
+    if (/ EDITION$/.test(licence ?? "")) break;
+    licence = null;
+    await sleep(250);
+  }
+  if (!licence)
+    return { licence, refusal: "the IDE never showed its licence, so an LLVM run could not be checked for one." };
+  if (/^(?:COMMUNITY|PERSONAL) /.test(licence)) {
+    return {
+      licence,
+      refusal:
+        `this IDE has a ${licence.toLowerCase()} licence, which does not compile user code with LLVM, ` +
+        "so the run would measure the default compiler. An LLVM run needs a Professional or Ultimate licence.",
+    };
+  }
+  return { licence, refusal: null };
+}
+
+/**
+ * The console's lines since `mark`, with what any clear since then erased put
+ * back in front: the first clear's record from the mark's entry count on, each
+ * later record whole, then the console as it is. `clearsBefore` is how many
+ * clears were on record at the mark, or null when no record is kept.
+ */
+async function buildLines(c, mark, clearsBefore) {
+  const kept = clearsBefore === null ? [] : ((await keptClears(c)) ?? []).slice(clearsBefore);
+  if (!kept.length) return linesSince(c, mark);
+  const split = (text) => text.split("\n").map((l) => l.trim());
+  return [...split(kept[0]).slice(mark.n), ...kept.slice(1).flatMap(split), ...split((await readConsole(c)) ?? "")];
+}
 
 /**
  * Build the open project, as the toolbar's Build button does, and wait for the
@@ -800,6 +920,11 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
       message: "no debugConsoleContent.dataNodes in this IDE, " + "so the build log cannot be read",
     };
   }
+  // A [RunAfterBuild] procedure runs during the build, and its Debug.Cls would
+  // erase the log being read; what each clear erases is kept, and the clears
+  // already on record before this build are not this build's.
+  const keeping = await keepClears(c).catch(() => false);
+  const clearsBefore = keeping ? ((await keptClears(c)) ?? []).length : 0;
   try {
     await click(c, "buildIcon");
   } catch (e) {
@@ -810,7 +935,7 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
     failedAt = 0;
   while (Date.now() - t0 < timeout) {
     await sleep(250);
-    const lines = await linesSince(c, mark);
+    const lines = await buildLines(c, mark, keeping ? clearsBefore : null);
     const start = lines.indexOf(BUILD_START);
     if (start < 0) continue;
     log = lines.slice(start);
@@ -820,9 +945,10 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
     // failed to use project.iconForm setting", and whether a build goes on
     // after that one has not been seen -- so one decides only after two
     // seconds with no success line after it.
-    if (!failedAt && log.some((l) => BUILD_FAILED.test(l))) failedAt = Date.now();
+    const failed = (l) => BUILD_FAILED.test(l) || BUILD_CRASHED.test(l);
+    if (!failedAt && log.some(failed)) failedAt = Date.now();
     if (failedAt && Date.now() - failedAt > 2000) {
-      return { ok: false, message: log.find((l) => BUILD_FAILED.test(l)), log };
+      return { ok: false, message: log.find(failed), log };
     }
   }
   return {

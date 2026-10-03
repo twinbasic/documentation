@@ -116,30 +116,39 @@ When **True**, each event fires directly on the IOCP worker thread that received
 
 #### Example
 
-This example sets **FreeThreadingEvents** to **True** to host the server in a console application without requiring a message loop.
+This example sets **FreeThreadingEvents** to **True** to host the server in a console application without requiring a message loop. A **WithEvents** field must be in a class, so the server is held by a class, which the startup module creates.
 
 ```tb check_build
-Private WithEvents server As NamedPipeServer
+Class PipeHost
+    Private WithEvents server As NamedPipeServer
 
-Sub Main()
-    Set server = New NamedPipeServer
-    server.PipeName = "MyService"
-    server.FreeThreadingEvents = True   ' events fire on the IOCP worker thread
-    server.Start
+    Public Sub Run()
+        Set server = New NamedPipeServer
+        server.PipeName = "MyService"
+        server.FreeThreadingEvents = True   ' events fire on the IOCP worker thread
+        server.Start
 
-    ' No ManualMessageLoopEnter needed; block here however is appropriate.
-    Sleep 10000
-    server.Stop
-End Sub
+        ' No ManualMessageLoopEnter needed; block here however is appropriate.
+        Sleep 10000
+        server.Stop
+    End Sub
 
-Private Sub server_ClientMessageReceived( _
-        Connection As NamedPipeServerConnection, _
-        ByRef Cookie As Variant, _
-        ByRef Data() As Byte)
-    ' This handler executes on the IOCP worker thread.
-    ' Shared state accessed here requires external synchronisation.
-    Connection.AsyncWrite Data
-End Sub
+    Private Sub server_ClientMessageReceived( _
+            Connection As NamedPipeServerConnection, _
+            ByRef Cookie As Variant, _
+            ByRef Data() As Byte)
+        ' This handler executes on the IOCP worker thread.
+        ' Shared state accessed here requires external synchronisation.
+        Connection.AsyncWrite Data
+    End Sub
+End Class
+
+Module Startup
+    Sub Main()
+        Dim host As New PipeHost
+        host.Run
+    End Sub
+End Module
 ```
 
 ### MessageBufferSize

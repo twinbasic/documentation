@@ -1,0 +1,6 @@
+' The package of the report: one function, DocProbeVersion, which returns 1.
+Module DocProbe
+    Public Function DocProbeVersion() As Long
+        Return 1
+    End Function
+End Module

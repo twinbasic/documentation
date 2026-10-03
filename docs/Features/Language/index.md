@@ -30,3 +30,4 @@ twinBASIC introduces numerous enhancements to VBx language syntax, including new
 - [Handler Methods](Handlers) - **Handles** and **Implements** syntax
 - [Module Organization](Module-Organization) - Code placement flexibility
 - [Comments](Comments) - New code comment syntax
+- [Custom Enumerators](Custom-Enumerators) - **For Each** over a class, with **[Enumerator]** and **IEnumVARIANT**

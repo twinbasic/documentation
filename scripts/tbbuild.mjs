@@ -12,6 +12,15 @@
 //                         target the IDE remembers for its path, so the
 //                         target is set on every run, win32 included.
 //       --timeout <secs>  give up waiting for the compile (default 180)
+//       --build           after a compile with no errors, build the project, as
+//                         the toolbar's Build button does, and report the
+//                         build log. The project is exported and packed again
+//                         first, with an explicit build path in a private
+//                         folder, so the given .twinproj is never changed
+//       --llvm            build with LLVM: --build, with the project's compiler
+//                         options set to +llvm. Refused on a Community or
+//                         Personal licence, which would build with the default
+//                         compiler
 //       --json            emit one JSON object instead of text
 //       --keep            leave the IDE running afterwards. The IDE's pid is
 //                         then printed as `ide-pid: N` (and is always in --json
@@ -25,7 +34,7 @@
 //
 // Exit codes: 0 clean, 1 the project has errors, 2 the harness could not run (a
 // refused command line included) or crashed, 3 the compile never settled,
-// 4 the project crashes the compiler.
+// 4 the project crashes the compiler, 5 the build failed after a clean compile.
 //
 // ---------------------------------------------------------------- why this
 //
@@ -53,10 +62,12 @@
 // scripts/gen_attribute_probes.mjs -- but it does not know anything about
 // them. See WIP.Harness.md, "Compiling a twinBASIC project without the IDE in
 // front of you".
-import { existsSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   choiceOption,
+  die,
   exitOnCrash,
   numberOption,
   parseCli,
@@ -64,24 +75,34 @@ import {
   refuseTogether,
   withUsageError,
 } from "../lib/cli.mjs";
-import { findIde } from "./lib/tb-install.mjs";
+import { compilerExe, findIde, runCompiler } from "./lib/tb-install.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
-import { COMPILE_TIMEOUT, TARGETS, summaryLine, wantShow } from "./lib/tb-ide.mjs";
+import { COMPILE_TIMEOUT, keptIdeLines, TARGETS, summaryLine, wantShow } from "./lib/tb-ide.mjs";
+import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
 exitOnCrash();
 
-const USAGE = `usage: node scripts/tbbuild.mjs <project.twinproj> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--json] [--keep] [--show|--hide] [-h, --help]
+const USAGE = `usage: node scripts/tbbuild.mjs <project.twinproj> [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--build | --llvm] [--json] [--keep] [--show|--hide] [-h, --help]
 
 Compiles a packed .twinproj in the twinBASIC IDE and prints its diagnostics.
+With --build or --llvm it then builds the project.
 
   --ide <path>      twinBASIC.exe (default: $TB_IDE, else the newest
                     twinBASIC_IDE_BETA_* on the Desktop)
   --port <n>        DevTools port to start the IDE on (default 9333)
   --arch <target>   win32 or win64 (default win32)
   --timeout <secs>  give up waiting for the compile (default 180)
+  --build           after a compile with no errors, build the project and print
+                    \`built: <file>\`; the project is exported and packed again
+                    with a build path in a private folder, and the given file is
+                    not changed
+  --llvm            build with LLVM, as --build with the project's compiler
+                    options set to +llvm; refused on a Community or Personal
+                    licence. Without it, --build is the control for an --llvm run
   --json            emit one JSON object instead of text
-  --keep            leave the IDE running; its pid is printed as \`ide-pid: N\`
+  --keep            leave the IDE running; its pid is printed as \`ide-pid: N\`,
+                    with the taskkill command that ends it
   --show, --hide    show the IDE on the desktop, or keep it on a private one
                     (default: hidden, unless TBBUILD_SHOW is set)
   -h, --help        print this text and exit
@@ -90,10 +111,13 @@ Exit codes:
   0  the project compiled without errors
   1  the project has errors
   2  a refused command line (a path that is not a .twinproj included), no IDE, an IDE
-     that did not start or expose a debug port, or a crash
+     that did not start or expose a debug port, a project that could not be exported
+     or packed, an --llvm run on a Community or Personal licence, or a crash
   3  the compile never settled: the IDE did not report the project open, or its
      diagnostics did not match its status bar
-  4  the project crashes the compiler`;
+  4  the project crashes the compiler
+  5  the build failed after a clean compile; the build log is printed on stdout and
+     the failing line on stderr`;
 
 function usage() {
   console.error(USAGE);
@@ -110,6 +134,8 @@ const { values, positionals } = withUsageError(
         port: { type: "string" },
         arch: { type: "string" },
         timeout: { type: "string" },
+        build: { type: "boolean", default: false },
+        llvm: { type: "boolean", default: false },
         json: { type: "boolean", default: false },
         keep: { type: "boolean", default: false },
         show: { type: "boolean", default: false },
@@ -141,6 +167,9 @@ const { port, arch, timeout } = withUsageError(() => {
 const IDE = findIde(values.ide);
 const asJson = values.json;
 const keep = values.keep;
+// --llvm is a build, so the one switch the rest of the file reads is `build`.
+const llvm = values.llvm;
+const build = values.build || llvm;
 const show = wantShow({ show: values.show, hide: values.hide });
 
 const proj = positionals[0];
@@ -189,7 +218,48 @@ let tidy = null;
 // back. Not under --keep, because a kept IDE is still writing; and not when
 // another process owns the tidy (startTidy then returns null), as a tool that
 // runs many builds does for every lane.
-if (!keep) tidy = startTidy({ paths: [path.resolve(proj)] });
+// A build stages the project first, so what the IDE opens, and so what the tidy
+// sweeps, is the folder under the temp directory and not the given path.
+let target = path.resolve(proj);
+let work = null;
+if (build) {
+  // Keyed to --port, as tbrun's is: the port is what already differs between
+  // runs going on at once.
+  work = path.join(tmpdir(), "tbbuild", String(port));
+  rmSync(work, { recursive: true, force: true });
+  const out = path.join(work, "out");
+  mkdirSync(out, { recursive: true });
+  const compiler = compilerExe(IDE);
+  if (!existsSync(compiler)) die(2, `no compiler beside the IDE at ${compiler}`);
+  target = path.join(work, "tbbuild-probe.twinproj");
+  // The IDE opens a project in place, and a build writes where the project's
+  // buildPath says. The packed project's is the template's, whose Save dialog a
+  // private desktop hides, so the project is exported, given an explicit file and
+  // a project id of its own, and packed again (lib/tb-project.mjs).
+  // Backslashes throughout and a trailing one on the folder: `export` prefixes
+  // \\?\ to what it is given and cannot create or find a folder named with
+  // forward slashes. Its exit code does not say whether it worked: runCompiler.
+  const src = path.join(work, "src");
+  const exported = runCompiler(compiler, ["export", path.resolve(proj), src + path.sep, "--overwrite"]);
+  if (!exported.done) die(2, `exporting ${proj} failed${exported.why}:\n${exported.tail}`);
+  // Under --llvm the options are the run's and the exe's alike, as tbrun's are.
+  try {
+    stageProject({
+      src,
+      stage: path.join(work, "stage"),
+      project: target,
+      compiler,
+      settings: {
+        "project.buildPath": path.join(out, "${ProjectName}_${Architecture}.${FileExtension}"),
+        "project.id": laneProjectId(3, port),
+        ...(llvm ? { "compiler.debugOptions": "+llvm", "compiler.buildOptions": "+llvm" } : {}),
+      },
+    });
+  } catch (e) {
+    die(2, e.message);
+  }
+}
+if (!keep) tidy = startTidy(work ? { prefixes: [work] } : { paths: [target] });
 
 // compileProject ends its IDE before it returns, unless --keep, so the tidy comes
 // after the IDE has gone. Tidies whether or not an IDE was started, as tbrun
@@ -198,12 +268,17 @@ if (!keep) tidy = startTidy({ paths: [path.resolve(proj)] });
 // tidy does not rely on that.
 let r;
 try {
-  r = await compileProject({ project: proj, ide: IDE, port, arch, timeout, show, keep });
+  r = await compileProject({ project: work ? target : proj, ide: IDE, port, arch, timeout, show, keep, build, llvm });
 } finally {
   finishTidy(tidy);
 }
 
 if (r.code >= 2) {
+  // A failed build reports the log it read, on stdout, as the diagnostics are.
+  if (r.code === 5) {
+    if (asJson) console.log(JSON.stringify(jsonReport(r), null, 2));
+    else for (const line of r.buildLog) console.log(line);
+  }
   if (r.message) console.error(r.message);
   process.exit(r.code);
 }
@@ -213,26 +288,25 @@ const { rows, counts, dialogs, openedIn } = r;
 // under --keep, where this process leaves the IDE running and something else has
 // to end it: killing by image name instead takes out every concurrent run's IDE,
 // and the user's own open IDE with it.
+function jsonReport(res) {
+  return {
+    project: proj,
+    arch,
+    openedIn: res.openedIn,
+    errors: res.counts[0],
+    warnings: res.counts[1],
+    hints: res.counts[2],
+    infos: res.counts[3],
+    idePid: res.idePid,
+    kept: keep,
+    diagnostics: res.rows,
+    dialogs: res.dialogs,
+    built: res.built,
+    buildLog: res.buildLog,
+  };
+}
 if (asJson) {
-  console.log(
-    JSON.stringify(
-      {
-        project: proj,
-        arch,
-        openedIn,
-        errors: counts[0],
-        warnings: counts[1],
-        hints: counts[2],
-        infos: counts[3],
-        idePid: r.idePid,
-        kept: keep,
-        diagnostics: rows,
-        dialogs,
-      },
-      null,
-      2,
-    ),
-  );
+  console.log(JSON.stringify(jsonReport(r), null, 2));
 } else {
   // Said only when either target is not the default, so the usual report is
   // unchanged, and the summary stays the last line. A project opens in win32
@@ -244,9 +318,10 @@ if (asJson) {
   }
   for (const row of rows) console.log(row);
   console.log(summaryLine(counts));
+  if (r.built) console.log(`built: ${r.built}`);
   if (dialogs.length) console.log("dialogs:", JSON.stringify(dialogs));
   // Only under --keep, where the pid is still alive and therefore actionable.
-  if (keep && r.idePid) console.log(`ide-pid: ${r.idePid}`);
+  if (keep && r.idePid) for (const l of keptIdeLines(r.idePid)) console.log(l);
 }
 
 process.exit(r.code);

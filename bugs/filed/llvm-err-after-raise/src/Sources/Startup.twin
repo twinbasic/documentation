@@ -1,0 +1,23 @@
+' Err after a handled Err.Raise in an LLVM-compiled procedure holds &HEAEAEA01 and no text.
+' Needs an LLVM licence (Ultimate): LlvmRaise is compiled with LLVM by its [CompilerOptions("+llvm")].
+Module Startup
+
+    [CompilerOptions("+llvm")]
+    Private Sub LlvmRaise()
+        On Error Resume Next
+        Err.Raise 5, "MySrc", "my text"
+        Debug.Print "LLVM:  "; Err.Number; " / "; Err.Source; " / "; Err.Description      ' expected 5 / MySrc / my text
+    End Sub
+
+    Private Sub PlainRaise()
+        On Error Resume Next
+        Err.Raise 5, "MySrc", "my text"
+        Debug.Print "plain: "; Err.Number; " / "; Err.Source; " / "; Err.Description
+    End Sub
+
+    Public Sub Main()
+        PlainRaise
+        LlvmRaise
+    End Sub
+
+End Module

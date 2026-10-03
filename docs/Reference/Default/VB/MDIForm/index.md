@@ -22,12 +22,16 @@ End Sub
 Private Sub mnuWindowCascade_Click()
     Arrange vbCascade
 End Sub
+```
 
+```tb check_build inherits=Form
 ' In a child form (Form1) marked MDIChild = True:
 Private Sub Form_Load()
     Caption = "Untitled"
 End Sub
+```
 
+```tb check_build
 ' In a startup module:
 Sub Main()
     MDIForm1.Show

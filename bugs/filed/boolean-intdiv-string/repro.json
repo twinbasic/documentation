@@ -1,0 +1,13 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^b \\\\ \"2\"\\s+= True Boolean$",
+      "^b Mod \"2\" = False Boolean$",
+      "^b \\\\ s\\s+= True Boolean$",
+      "^b Mod s\\s+= False Boolean$"
+    ]
+  },
+  "issue": 2439
+}
