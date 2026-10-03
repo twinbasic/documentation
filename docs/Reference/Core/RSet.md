@@ -20,8 +20,12 @@ Syntax:
 
 If *stringvar* is longer than *string*, **RSet** replaces any leftover characters in *stringvar* with spaces, back to its beginning.
 
+If *string* is longer than *stringvar*, **RSet** places only the leftmost characters, up to the length of *stringvar*, in *stringvar*. The rightmost characters of *string* are the ones dropped, as with [**LSet**](LSet).
+
+**RSet** never changes the length of *stringvar*, so a *stringvar* of zero length stays empty. *stringvar* can be a variable-length string, a fixed-length string, or a **Variant** that holds a string. A *string* that is **Null** raises error 94.
+
 > [!NOTE]
-> **RSet** can't be used with user-defined types.
+> **RSet** can't be used with user-defined types. The compiler refuses the statement.
 
 ### Example
 
@@ -31,6 +35,24 @@ This example uses the **RSet** statement to right-align a string within a string
 Dim MyString
 MyString = "0123456789"   ' Initialize string.
 RSet MyString = "Right->" ' MyString contains "   Right->".
+```
+
+This example shows the padding, the truncation, a fixed-length string and an empty destination.
+
+```tb check_run
+Dim s As String
+Dim fixed As String * 5
+s = "0123456789"
+RSet s = "ab"
+Debug.Print "[" & s & "]"        ' [        ab]
+RSet s = "abcdefghijklm"
+Debug.Print "[" & s & "]"        ' [abcdefghij]
+fixed = "01234"
+RSet fixed = "ab"
+Debug.Print "[" & fixed & "]"    ' [   ab]
+s = ""
+RSet s = "abc"
+Debug.Print Len(s)               ' 0
 ```
 
 ### See Also
