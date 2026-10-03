@@ -602,6 +602,24 @@ bad("scripts/tbrun.mjs", ["no-such-dir", "--quiet", "1.5"], thenUsage(NOT_WHOLE(
   );
   bad(tool, ["run", "no-such-bug"], "no such reproducer: bugs/no-such-bug (no src/Settings)\n");
   bad(tool, ["verify", "no-such-bug"], "no such reproducer: bugs/no-such-bug (no src/Settings and no repro.json)\n");
+  // The VB6 side of a reproducer: `vb6` builds vb6/ and needs no IDE, and `new --with-vb6` makes it.
+  // The refusals come before VB6 is looked for, so none of these needs VB6 or a vb6/ folder.
+  bad(tool, ["vb6"], thenUsage("vb6 needs a slug", tool));
+  bad(tool, ["vb6", "no-such-bug", "other"], thenUsage("unexpected argument: other", tool));
+  bad(tool, ["vb6", "Bad_Slug"], thenUsage(slugMessage("Bad_Slug"), tool));
+  bad(tool, ["vb6", "filed"], thenUsage(FILED_MESSAGE, tool));
+  bad(tool, ["vb6", "no-such-bug", "--timeout", "0"], thenUsage(NOT_ABOVE_ZERO("--timeout", 0), tool));
+  bad(tool, ["vb6", "no-such-bug", "--vb6="], thenUsage("--vb6 needs a non-empty value", tool));
+  bad(tool, ["vb6", "no-such-bug", "--llvm"], thenUsage("--llvm does not apply to vb6", tool));
+  bad(tool, ["vb6", "no-such-bug", "--ide", "x"], thenUsage("--ide does not apply to vb6", tool));
+  bad(tool, ["vb6", "no-such-bug", "--show"], thenUsage("--show does not apply to vb6", tool));
+  bad(tool, ["vb6", "no-such-bug", "--with-vb6"], thenUsage("--with-vb6 does not apply to vb6", tool));
+  bad(tool, ["pack", "no-such-bug", "--vb6", "x"], thenUsage("--vb6 does not apply to pack", tool));
+  bad(tool, ["run", "no-such-bug", "--vb6", "x"], thenUsage("--vb6 does not apply to run", tool));
+  bad(tool, ["verify", "--vb6", "x"], thenUsage("--vb6 does not apply to verify", tool));
+  bad(tool, ["pack", "no-such-bug", "--with-vb6"], thenUsage("--with-vb6 does not apply to pack", tool));
+  bad(tool, ["new", "no-such-bug", "title", "--vb6", "x"], thenUsage("--vb6 does not apply to new", tool));
+  bad(tool, ["vb6", "no-such-bug"], "no such reproducer: bugs/no-such-bug (no src/Settings and no repro.json)\n");
   // `file` moves things, so these are the refusals only: every one is decided from the
   // command line or from a reproducer that does not exist, before anything is read or written.
   const fileNeeds = "file needs a slug and an issue number: file <slug> <issue>";

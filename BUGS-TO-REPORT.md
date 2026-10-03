@@ -86,16 +86,19 @@ kebab-case name for the bug, and its **To Reproduce** names the project file:
 | `bugs/<slug>/src/` | the project's exported source tree: `Settings`, `Sources/` and the rest | yes, byte for byte |
 | `bugs/<slug>/<slug>.twinproj` | the project file, packed from `src/` | yes |
 | `bugs/<slug>/<slug>.zip` | the `.twinproj` zipped, because a GitHub issue does not accept a `.twinproj` attachment, with any file `repro.json`'s `attach` names, such as a `.twinpack` | no |
+| `bugs/<slug>/vb6/` | optional: a VB6 project, to show what VB6 does where the entry compares it with twinBASIC: `Probe.vbp` and its `.bas`, `.cls` and `.frm` files, sources only, never an exe or an output | yes, byte for byte |
+| `bugs/<slug>/<slug>-vb6.zip` | the source files of `vb6/` zipped, to attach beside the other zip; written only when `vb6/` exists | no |
 
 `scripts/bug_repro.mjs` makes and checks them (the tool's page is
 [Tools and Scripts](docs/Documentation/Tools.md#bug-repro)):
 
 ```sh
 node scripts/bug_repro.mjs new <slug> "<entry title>"   # bugs/<slug>/src/ and repro.json
-node scripts/bug_repro.mjs pack <slug>                  # src/ -> <slug>.twinproj -> <slug>.zip
+node scripts/bug_repro.mjs pack <slug>                  # src/ -> <slug>.twinproj -> <slug>.zip; vb6/ -> <slug>-vb6.zip
 node scripts/bug_repro.mjs compile <slug>               # compile it in the IDE, print the diagnostics
 node scripts/bug_repro.mjs build <slug>                 # and build it
 node scripts/bug_repro.mjs run <slug>                   # run Sub Main, print the DEBUG CONSOLE
+node scripts/bug_repro.mjs vb6 <slug>                   # build vb6/ with VB6, run it, print out.txt
 node scripts/bug_repro.mjs verify [<slug> ...]          # does each entry still reproduce?
 node scripts/bug_repro.mjs file <slug> <issue>          # move a filed entry out of the queue
 node scripts/bug_repro.mjs file --marked                # the same for every marked entry
@@ -118,7 +121,19 @@ code of `tbbuild`, the diagnostic codes, or a regular expression the output must
 may be fixed on this build) or `manual`, which prints the `steps` it holds. It needs a
 twinBASIC install, and is run by a person, never by a gate or by CI.
 
-Attach the `.zip` to the issue. When the entry is filed, its folder moves to
+**A VB6 comparison is a project of its own in `vb6/`**, made by `new <slug> "<entry title>" --with-vb6`
+from the template in `test/repro-templates/vb6/`. By convention `Probe.vbp` builds `Probe.exe`,
+and `Sub Main` writes what it finds to `out.txt` beside the exe, with every error handled: an
+unhandled error or a `MsgBox` in a compiled exe opens a modal box on the desktop of whoever runs
+it, so `pack` and `vb6` refuse a project whose sources call `MsgBox` or `InputBox`. `vb6 <slug>`
+builds it in a copy under the temp folder, so no exe or output lands in `bugs/`, with VB6's
+Unattended Execution option, and prints `out.txt`. It needs VB6 (`--vb6 <path>` or `VB6_EXE`) and no
+IDE, and is run by a person. VB6 is only ever started by this tool, never from a shell: in a shell
+`/make` is rewritten as a path, and VB6 answers with a modal box. An entry that quotes VB6's output
+says that the project is attached as `<slug>-vb6.zip`. One project may serve two entries; it then
+lives in one reproducer's folder, and both entries name its zip.
+
+Attach the `.zip`, and the `-vb6.zip` when there is one, to the issue. When the entry is filed, its folder moves to
 `bugs/filed/<slug>/`; see [Filed bugs](#filed-bugs).
 
 ## Filed bugs
@@ -938,7 +953,7 @@ Steps to reproduce the behavior:
    ```
 
 **Expected behavior**
-Error 438 for all three, as in VB6 and VBA. The same cases in a VB6 project (a class, a `Variant` holding it, a `Collection`, a `Scripting.Dictionary`, and `CallByName` on each of them):
+Error 438 for all three, as in VB6 and VBA. The same cases in a VB6 project (a class, a `Variant` holding it, a `Collection`, a `Scripting.Dictionary`, and `CallByName` on each of them), attached as `latebound-unknown-member-error-vb6.zip`:
 ```
 o.Nope (class) -> error 438 (1B6) [Object doesn't support this property or method]
 v.Nope (class in a Variant) -> error 438 (1B6) [Object doesn't support this property or method]
@@ -1052,7 +1067,7 @@ Steps to reproduce the behavior:
    Err.Raise 1000, "A.Src", "B desc"
    Err.Raise 5
    ```
-2. See, beside what the same program prints when built in VB6:
+2. See, beside what the same program prints when built in VB6 (the VB6 project is attached as `err-raise-defaults-vb6.zip`):
 
    | call | twinBASIC | VB6 |
    |---|---|---|
@@ -1235,7 +1250,7 @@ Severity: low for twinBASIC code, which knows there is one connection point, but
 
 What was tried: a class with one event has exactly one connection point, so `Next 1` returning it and `Reset` followed by another `Next` both work. Reading `LastHresult` after the failing call gives 0, because the call raised its error instead of returning a success code. The same calls from a probe that passed raw pointers instead of typed variables gave the same codes.
 
-VB6 comparison: the VB6 project is in `bugs/enum-connections-one-item/vb6/` (it covers both entries). VB6 cannot declare these interfaces, so it calls them through the vtable with `DispCallFunc` on raw pointers. It was built with VB6 SP6 and run, and writes `out.txt` beside the exe. Its output for this entry's calls is `Next 1, one point: hr=00000000 fetched=1`, `Next 1, at the end: hr=00000001 fetched=0`, `Next 2, one point: hr=00000001 fetched=1`, `Skip 1: hr=00000000`, `Clone: hr=00000000`, against twinBASIC's `80004005`, `80004005`, `80004001` and `80004001` for the last four.
+VB6 comparison: the VB6 project is attached as `enum-connections-one-item-vb6.zip` (one project covers this report and the one about the connections of a single point). VB6 cannot declare these interfaces, so it calls them through the vtable with `DispCallFunc` on raw pointers. It was built with VB6 SP6 and run, and writes `out.txt` beside the exe. Its output for this entry's calls is `Next 1, one point: hr=00000000 fetched=1`, `Next 1, at the end: hr=00000001 fetched=0`, `Next 2, one point: hr=00000001 fetched=1`, `Skip 1: hr=00000000`, `Clone: hr=00000000`, against twinBASIC's `80004005`, `80004005`, `80004001` and `80004001` for the last four.
 
 <!-- Reproducer: bugs/enum-connection-points-contract/ (mode run, expects tbrun exit 0 and the four error codes above); verified on 995. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, section "The enumerators" (the IEnumConnectionPoints column of the table, and the closing paragraph), and in the last example, whose comment says Next raises E_FAIL: when fixed, change both, and the sentence in the declarations section that says the enumerators of the page return one item per call whatever the count asked for. -->
 
@@ -1270,6 +1285,6 @@ Severity: low; the interface is mostly read one item at a time, which works, and
 
 What was tried: `Next 3` with two connections returns 1 item as well. `Next 1` called repeatedly returns the items in turn, and returns `S_FALSE` with 0 items at the end. `Skip` and `Clone` work, and a null *pcFetched* is accepted for a request of 1. `IEnumConnectionPoints`, the sibling enumerator, has a different fault (see the entry about its `E_FAIL`), so the two are separate.
 
-VB6 comparison: the VB6 project is in `bugs/enum-connections-one-item/vb6/`. VB6 cannot declare these interfaces, so it calls them through the vtable with `DispCallFunc` on raw pointers: a `Source` class with one `Event`, two `Holder` classes each with a `WithEvents` variable set to the one source, then the same calls. It was built with VB6 SP6 and run, and writes `out.txt` beside the exe. Its output for the call of this entry is `Next 2, two connections: hr=00000000 fetched=2, cookies 4685276 4686156`, against twinBASIC's `fetched=1, cookies 1 and 0`. The other calls match twinBASIC: `Skip 1` and `Clone` return `S_OK`, a null *pcFetched* is accepted for `Next 1`, and `Next 1` at the end returns `S_FALSE` with fetched=0. VB6's cookies are large values, not 1 and 2, so only the count and the two distinct non-zero cookies are the expectation, not the values 1 and 2.
+VB6 comparison: the VB6 project is attached as `enum-connections-one-item-vb6.zip` (one project covers this report and the one about the connection points of a class). VB6 cannot declare these interfaces, so it calls them through the vtable with `DispCallFunc` on raw pointers: a `Source` class with one `Event`, two `Holder` classes each with a `WithEvents` variable set to the one source, then the same calls. It was built with VB6 SP6 and run, and writes `out.txt` beside the exe. Its output for the call of this entry is `Next 2, two connections: hr=00000000 fetched=2, cookies 4685276 4686156`, against twinBASIC's `fetched=1, cookies 1 and 0`. The other calls match twinBASIC: `Skip 1` and `Clone` return `S_OK`, a null *pcFetched* is accepted for `Next 1`, and `Next 1` at the end returns `S_FALSE` with fetched=0. VB6's cookies are large values, not 1 and 2, so only the count and the two distinct non-zero cookies are the expectation, not the values 1 and 2.
 
 <!-- Reproducer: bugs/enum-connections-one-item/ (mode run, expects tbrun exit 0 and the line above); verified on 995. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, section "The enumerators" (the IEnumConnections column of the table, and the closing paragraph) and the sentence after the declarations that says the enumerators return one item per call: when fixed, change them. -->

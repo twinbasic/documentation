@@ -48,14 +48,29 @@
 //     fence's line less one. The output file is open whenever sample code runs,
 //     so a Class_Terminate that prints, run as the sample's Sub ends, is captured.
 //
+//  8. A BUG REPRODUCER'S VB6 PROJECT IS BUILT AS A PROJECT, NOT AS SAMPLES. bug_repro.mjs
+//     keeps one in bugs/<slug>/vb6/ and builds it in a temp copy with the same `/make`
+//     and the same Unattended Execution (runRepro): Probe.vbp builds Probe.exe, which
+//     writes out.txt beside itself and handles its own errors.
+//
 // The probes for the rewrite and the translation are in vb6Probes() at the end.
 
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { RUN_DONE, RUN_TAG, parseRun } from "./example-run.mjs";
+import { PROMPTS, RUN_DONE, RUN_TAG, parseRun } from "./example-run.mjs";
 import { logicalLines } from "./twin-api.mjs";
+import { fileEntry, readZip, zipFiles } from "./zip.mjs";
 
 // ------------------------------------------------------------------- finding
 
@@ -560,24 +575,133 @@ export function runLimited(exe, args, { cwd, timeoutMs }) {
  *
  * @returns {Promise<{built: boolean, log: string, timedOut: boolean, error?: string}>}
  */
-export async function make(vb6, dir, { timeoutMs = 120000 } = {}) {
-  const r = await runLimited(vb6, ["/make", `${PROJECT}.vbp`, "/out", MAKE_LOG], { cwd: dir, timeoutMs });
+export async function make(vb6, dir, { timeoutMs = 120000, project = PROJECT } = {}) {
+  const r = await runLimited(vb6, ["/make", `${project}.vbp`, "/out", MAKE_LOG], { cwd: dir, timeoutMs });
   const logPath = path.join(dir, MAKE_LOG);
   const log = existsSync(logPath) ? decodeAnsi(readFileSync(logPath)) : "";
-  return { built: existsSync(path.join(dir, `${PROJECT}.exe`)), log, timedOut: r.timedOut, error: r.error };
+  return { built: existsSync(path.join(dir, `${project}.exe`)), log, timedOut: r.timedOut, error: r.error };
 }
 
 /**
- * Run the built exe from sample number `start`, and read what it wrote.
+ * Run the built exe from sample number `start`, and read what it wrote. The
+ * generated project is `vb6run.exe`, which writes `vb6run.out` and takes `start`
+ * as its command line; a reproducer's is `project: "Probe"`, which writes
+ * `outName` and takes `args` (none by default).
  *
  * @returns {Promise<{lines: string[], status: number|null, timedOut: boolean, error?: string}>}
  */
-export async function runExe(dir, { start = 0, timeoutMs = 30000 } = {}) {
-  const outPath = path.join(dir, OUT_NAME);
+export async function runExe(
+  dir,
+  { start = 0, timeoutMs = 30000, project = PROJECT, outName = OUT_NAME, args = [String(start)] } = {},
+) {
+  const outPath = path.join(dir, outName);
   rmSync(outPath, { force: true });
-  const r = await runLimited(path.join(dir, `${PROJECT}.exe`), [String(start)], { cwd: dir, timeoutMs });
+  const r = await runLimited(path.join(dir, `${project}.exe`), args, { cwd: dir, timeoutMs });
   const lines = existsSync(outPath) ? splitLines(decodeAnsi(readFileSync(outPath))) : [];
   return { lines, status: r.status, timedOut: r.timedOut, error: r.error };
+}
+
+// ------------------------------------------------------- a reproducer's project
+
+// scripts/bug_repro.mjs keeps a VB6 project beside a bug's twinBASIC one, in
+// bugs/<slug>/vb6/, to show what VB6 does where the bug report says twinBASIC
+// differs. The convention: it builds `Probe.exe` from `Probe.vbp`, and writes what
+// it finds to `out.txt` beside the exe, with every error handled. The folder holds
+// sources only. It is built in a copy under the OS temp folder, so no exe or
+// output ever lands in the repository, and the copy's project gets Unattended
+// Execution, as the generated project of vb6run does: a message box, or an error
+// the program did not handle, goes to the event log in place of the desktop.
+
+/** The project, exe and output of a reproducer's VB6 project. */
+export const REPRO_PROJECT = "Probe";
+export const REPRO_OUT = "out.txt";
+
+/** The files of a VB6 project that are sources: the project, its modules, classes and forms (`.frx` is a form's binary part). */
+export const REPRO_SOURCE_EXTENSIONS = [".vbp", ".bas", ".cls", ".frm", ".frx"];
+
+/**
+ * The files in a reproducer's vb6/ folder, by name: the sources, and the others
+ * (an exe, an output, a log, a folder), which are never zipped or built.
+ */
+export function reproFiles(dir) {
+  const sources = [];
+  const others = [];
+  for (const e of readdirSync(dir, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
+    const source = e.isFile() && REPRO_SOURCE_EXTENSIONS.includes(path.extname(e.name).toLowerCase());
+    (source ? sources : others).push(e.name);
+  }
+  return { sources, others };
+}
+
+/**
+ * What stops a reproducer's VB6 project from being built and run, or null: no
+ * `Probe.vbp`, or a source that calls `MsgBox` or `InputBox`, which would open a
+ * modal box on the desktop of whoever runs it (the check vb6run makes on a
+ * sample). Comments and string contents are not read.
+ */
+export function reproProblem(dir) {
+  const { sources } = reproFiles(dir);
+  if (!sources.includes(`${REPRO_PROJECT}.vbp`)) return `has no ${REPRO_PROJECT}.vbp`;
+  for (const name of sources) {
+    if (/\.(?:vbp|frx)$/i.test(name)) continue;
+    for (const { text, line } of logicalLines(decodeAnsi(readFileSync(path.join(dir, name))))) {
+      const prompt = PROMPTS.exec(text);
+      if (prompt) {
+        return `${name}, line ${line} calls ${prompt[1]}, which opens a modal box on the desktop of whoever runs the exe`;
+      }
+    }
+  }
+  return null;
+}
+
+/** The files of a reproducer's VB6 zip, as zipFiles takes them: its sources, flat, in name order. */
+export function reproZipFiles(dir) {
+  return reproFiles(dir).sources.map((name) => fileEntry(name, path.join(dir, name)));
+}
+
+/**
+ * The text of a project file with `Unattended=-1`, in the general section, before
+ * any `[Section]`. A line it already has is replaced.
+ */
+export function unattended(vbp) {
+  const lines = String(vbp).split(/\r?\n/);
+  if (lines[lines.length - 1] === "") lines.pop();
+  const kept = lines.filter((l) => !/^\s*Unattended\s*=/i.test(l));
+  const section = kept.findIndex((l) => /^\s*\[/.test(l));
+  kept.splice(section < 0 ? kept.length : section, 0, "Unattended=-1");
+  return `${kept.join("\r\n")}\r\n`;
+}
+
+/**
+ * Build and run the VB6 project in `dir` (a reproducer's vb6/ folder), in a copy
+ * of its sources under the OS temp folder, which is removed unless `keep`.
+ *
+ * @returns {Promise<{built: boolean, log: string, lines: string[], status: number|null, timedOut: boolean, work: string, kept: boolean}>}
+ *   `lines` is what out.txt held; a VB6 that did not finish building throws
+ */
+export async function runRepro(vb6, dir, { timeoutMs = 30000, keep = false } = {}) {
+  const work = mkdtempSync(path.join(tmpdir(), "bugrepro-vb6-"));
+  try {
+    for (const name of reproFiles(dir).sources) copyFileSync(path.join(dir, name), path.join(work, name));
+    const vbp = path.join(work, `${REPRO_PROJECT}.vbp`);
+    writeFileSync(vbp, encodeAnsi(unattended(decodeAnsi(readFileSync(vbp)))));
+    const made = await make(vb6, work, { project: REPRO_PROJECT });
+    if (made.timedOut || made.error) {
+      throw new Error(`VB6 did not finish building${made.error ? `: ${made.error}` : " in time"}\n${made.log}`);
+    }
+    const result = { built: made.built, log: made.log, lines: [], status: null, timedOut: false, work, kept: keep };
+    if (!made.built) return result;
+    const ran = await runExe(work, {
+      timeoutMs: Math.min(timeoutMs, 2147483647),
+      project: REPRO_PROJECT,
+      outName: REPRO_OUT,
+      args: [],
+    });
+    if (ran.error) throw new Error(`could not run the built exe: ${ran.error}`);
+    return { ...result, lines: ran.lines, status: ran.status, timedOut: ran.timedOut };
+  } finally {
+    if (!keep) rmSync(work, { recursive: true, force: true });
+  }
 }
 
 // ------------------------------------------------------------------ the build
@@ -898,6 +1022,90 @@ export function vb6Probes() {
   check(
     "the project lists a class as Class= and a module as Module=",
     proj.includes("Class=Foo; Foo.cls\r\n") && proj.includes("Module=Util; Util.bas\r\n"),
+  );
+  out.push(...reproProbes());
+  return out;
+}
+
+/**
+ * Probes for a reproducer's VB6 project (bug_repro.mjs): which files go into its
+ * zip, what refuses it, and the project file the build copy gets. They write a
+ * folder under the OS temp folder and remove it.
+ *
+ * @returns {{name: string, ok: boolean, detail?: string}[]}
+ */
+function reproProbes() {
+  const out = [];
+  const check = (name, ok, detail) => out.push({ name: `vb6 reproducer: ${name}`, ok, detail });
+  const dir = mkdtempSync(path.join(tmpdir(), "vb6-repro-probe-"));
+  const put = (name, text) => writeFileSync(path.join(dir, name), text);
+  try {
+    put("Probe.vbp", 'Type=Exe\r\nModule=Module1; Module1.bas\r\nStartup="Sub Main"\r\nExeName32="Probe.exe"\r\n');
+    put(
+      "Module1.bas",
+      'Attribute VB_Name = "Module1"\r\nSub Main()\r\n    \' MsgBox is only mentioned\r\n    x = "InputBox"\r\nEnd Sub\r\n',
+    );
+    put("Widget.cls", "VERSION 1.0 CLASS\r\nBEGIN\r\nEND\r\n");
+    put("Form1.frm", "VERSION 5.00\r\n");
+    put("Form1.frx", "binary");
+    // What a build or a run leaves behind, and what an editor does, none of which is a source.
+    for (const name of ["Probe.exe", "out.txt", "make.log", "Probe.vbw", "notes.md", "Module1.bas.bak"]) put(name, "x");
+    mkdirSync(path.join(dir, "Sub.bas"));
+    const want = ["Form1.frm", "Form1.frx", "Module1.bas", "Probe.vbp", "Widget.cls"];
+    const files = reproFiles(dir);
+    check("only sources are listed, by name", files.sources.join(" ") === want.join(" "), files.sources.join(" "));
+    check(
+      "an exe, an output, a log, a folder and an editor's files are not",
+      ["Probe.exe", "out.txt", "make.log", "Probe.vbw", "notes.md", "Module1.bas.bak", "Sub.bas"].every((n) =>
+        files.others.includes(n),
+      ),
+      files.others.join(" "),
+    );
+    const zipped = readZip(zipFiles(reproZipFiles(dir)));
+    check(
+      "the zip holds the sources and nothing else, flat",
+      zipped.map((f) => f.name).join(" ") === want.join(" "),
+      zipped.map((f) => f.name).join(" "),
+    );
+    check(
+      "the zip holds each file's own bytes",
+      zipped.every((f) => f.data.equals(readFileSync(path.join(dir, f.name)))),
+    );
+    check("a project with Probe.vbp and no prompt is accepted", reproProblem(dir) === null, String(reproProblem(dir)));
+    put("Module1.bas", 'Sub Main()\r\n    msgbox "x"\r\nEnd Sub\r\n');
+    check(
+      "MsgBox in a module refuses the project, whatever its case",
+      /^Module1\.bas, line 2 calls msgbox/.test(reproProblem(dir) ?? ""),
+      String(reproProblem(dir)),
+    );
+    put("Module1.bas", "Sub Main()\r\nEnd Sub\r\n");
+    put("Widget.cls", 'VERSION 1.0 CLASS\r\nBEGIN\r\nEND\r\nSub F()\r\n    x = InputBox("a")\r\nEnd Sub\r\n');
+    check(
+      "InputBox in a class refuses it too",
+      /^Widget\.cls, line 5 calls InputBox/.test(reproProblem(dir) ?? ""),
+      String(reproProblem(dir)),
+    );
+    put("Widget.cls", "VERSION 1.0 CLASS\r\nBEGIN\r\nEND\r\n");
+    check("a class with only its header is accepted", reproProblem(dir) === null, String(reproProblem(dir)));
+    rmSync(path.join(dir, "Probe.vbp"));
+    check(
+      "a folder with no Probe.vbp is refused",
+      reproProblem(dir) === `has no ${REPRO_PROJECT}.vbp`,
+      String(reproProblem(dir)),
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  const vbp = 'Type=Exe\r\nName="Probe"\r\n\r\n[MS Transaction Server]\r\nAutoRefresh=1\r\n';
+  check(
+    "Unattended goes before the first section",
+    unattended(vbp) === 'Type=Exe\r\nName="Probe"\r\n\r\nUnattended=-1\r\n[MS Transaction Server]\r\nAutoRefresh=1\r\n',
+    JSON.stringify(unattended(vbp)),
+  );
+  check(
+    "a project with no section gets it at the end, and one with Unattended has it once",
+    unattended('Type=Exe\nUnattended=0\nName="P"\n') === 'Type=Exe\r\nName="P"\r\nUnattended=-1\r\n',
+    JSON.stringify(unattended('Type=Exe\nUnattended=0\nName="P"\n')),
   );
   return out;
 }
