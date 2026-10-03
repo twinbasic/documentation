@@ -60,7 +60,7 @@ A name can have several entries, and many do: `Add` is a method of a dozen class
 - [Date](../../tB/Core/Date), [Declare](../../tB/Core/Declare), [Deftype](../../tB/Core/Deftype), [DeleteSetting](../../tB/Core/DeleteSetting), [Dim](../../tB/Core/Dim), [Do-Loop](../../tB/Core/Do-Loop)
 - [End](../../tB/Core/End), [Enum](../../tB/Core/Enum), [Erase](../../tB/Core/Erase), [Error](../../tB/Core/Error), [Event](../../tB/Core/Event), [Exit](../../tB/Core/Exit)
 - [FileCopy](../../tB/Core/FileCopy), [For-Next](../../tB/Core/For-Next), [For-Each-Next](../../tB/Core/For-Each-Next), [Function](../../tB/Core/Function)
-- [Get](../../tB/Core/Get), [GetSetting](../../tB/Core/GetSetting), [GoSub-Return](../../tB/Core/GoSub-Return), [GoTo](../../tB/Core/GoTo)
+- [Get](../../tB/Core/Get), [GetSetting](../../tB/Core/GetSetting), [GoSub-Return](../../tB/Core/GoSub-Return), [GoTo](../../tB/Core/GoTo), [Graphics-Methods](../../tB/Core/Graphics-Methods) for `Line`, `Circle`, `PSet` and `Scale`
 - [If-Then-Else](../../tB/Core/If-Then-Else), [Implements](../../tB/Core/Implements), [Input](../../tB/Core/Input), [Interface](../../tB/Core/Interface), [Is](../../tB/Core/Is)
 - [Kill](../../tB/Core/Kill)
 - [LBound](../../tB/Core/LBound), [Let](../../tB/Core/Let), [Line-Input](../../tB/Core/Line-Input), [Load](../../tB/Core/Load), [Lock](../../tB/Core/Lock), [LSet](../../tB/Core/LSet)

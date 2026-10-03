@@ -453,6 +453,8 @@ Draws a circle, ellipse, or elliptical arc on the drawing surface.
 
 Syntax: *object*.**Circle** [ **Step** ] ( *X*, *Y* ), *Radius* [, *Color* [, *Start* [, *End* [, *Aspect* ] ] ] ]
 
+The compiler turns this syntax into a call with a flags argument; see [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#circle).
+
 *X*, *Y*
 : *required* Coordinates of the centre in [**ScaleMode**](#scalemode) units. **Single**. When prefixed with **Step**, they are interpreted relative to [**CurrentX**](#currentx) / [**CurrentY**](#currenty).
 
@@ -493,6 +495,8 @@ Syntax: *object*.**Drag** [ *Action* ]
 Draws a straight line, a rectangle outline, or a filled rectangle.
 
 Syntax: *object*.**Line** [ [ **Step** ] ( *X1*, *Y1* ) ] **-** [ **Step** ] ( *X2*, *Y2* ) [, *Color* [, **B** [**F**] ] ]
+
+The compiler turns this syntax into a call with a flags argument; see [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#line).
 
 *X1*, *Y1*
 : *optional* Start coordinates. **Single**. If omitted, the line starts at [**CurrentX**](#currentx) / [**CurrentY**](#currenty). **Step** makes them relative to the current pen position.
@@ -582,6 +586,8 @@ Sets a single pixel.
 
 Syntax: *object*.**PSet** [ **Step** ] ( *X*, *Y* ) [, *Color* ]
 
+The compiler turns this syntax into a call with a flags argument; see [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#pset).
+
 *X*, *Y*
 : *required* Coordinates in [**ScaleMode**](#scalemode) units. **Step** makes them relative to [**CurrentX**](#currentx) / [**CurrentY**](#currenty).
 
@@ -603,6 +609,8 @@ Syntax: *object*.**Refresh**
 Defines a user coordinate system for the surface. Calling **Scale** with no arguments resets [**ScaleMode**](#scalemode) to **vbTwips**.
 
 Syntax: *object*.**Scale** [ ( *X1*, *Y1* ) **-** ( *X2*, *Y2* ) ]
+
+The compiler turns this syntax into a call with a flags argument; see [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#scale).
 
 *X1*, *Y1*
 : *required* (with the second pair) The coordinate that maps to the top-left corner --- sets [**ScaleLeft**](#scaleleft) and [**ScaleTop**](#scaletop).

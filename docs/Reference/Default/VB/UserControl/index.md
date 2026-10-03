@@ -597,6 +597,8 @@ Draws a circle, ellipse, or arc on the control using [**ForeColor**](#forecolor)
 
 Syntax: *object*.**Circle** [ **Step** ] ( *X*, *Y* ), *Radius* [, [ *Color* ] [, [ *Start* ] [, [ *End* ] [, *Aspect* ] ] ] ]
 
+The compiler turns this syntax into a call with a flags argument; see [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#circle).
+
 *X*, *Y*
 : *required* The centre, in [**ScaleMode**](#scalemode) units. **Step** makes the centre relative to ([**CurrentX**](#currentx), [**CurrentY**](#currenty)).
 
@@ -638,6 +640,8 @@ Returns the `IUnknown` enumerator backing `For Each` over the **UserControl**'s 
 Draws a line, or a rectangle, on the control using [**ForeColor**](#forecolor) (or an explicit colour) and [**DrawWidth**](#drawwidth)/[**DrawStyle**](#drawstyle).
 
 Syntax: *object*.**Line** [ [ **Step** ] ( *X1*, *Y1* ) ] -[ **Step** ] ( *X2*, *Y2* ) [, [ *Color* ] [, **B** [ **F** ] ] ]
+
+The compiler turns this syntax into a call with a flags argument; see [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#line).
 
 *X1*, *Y1*
 : *optional* The start point, in [**ScaleMode**](#scalemode) units. **Step** makes the point relative to ([**CurrentX**](#currentx), [**CurrentY**](#currenty)). When omitted, drawing begins from the current pen position.
@@ -728,6 +732,8 @@ Sets a single pixel on the control to a specified colour.
 
 Syntax: *object*.**PSet** [ **Step** ] ( *X*, *Y* ) [, *Color* ]
 
+The compiler turns this syntax into a call with a flags argument; see [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#pset).
+
 *X*, *Y*
 : *required* The pixel position, in [**ScaleMode**](#scalemode) units. **Step** makes the position relative to ([**CurrentX**](#currentx), [**CurrentY**](#currenty)).
 
@@ -744,9 +750,11 @@ Syntax: *object*.**Refresh**
 ### Scale
 {: .no_toc }
 
-Sets the control's logical drawing rectangle in a single call by assigning [**ScaleLeft**](#scaleleft), [**ScaleTop**](#scaletop), [**ScaleWidth**](#scalewidth), and [**ScaleHeight**](#scaleheight). Switches [**ScaleMode**](#scalemode) to **vbUser**. Calling **Scale** with no arguments resets the rectangle to a 1-to-1 mapping with the client area in pixels.
+Sets the control's logical drawing rectangle in a single call by assigning [**ScaleLeft**](#scaleleft), [**ScaleTop**](#scaletop), [**ScaleWidth**](#scalewidth), and [**ScaleHeight**](#scaleheight). Switches [**ScaleMode**](#scalemode) to **vbUser**. Calling **Scale** with no arguments resets [**ScaleMode**](#scalemode) to **vbTwips**, with [**ScaleLeft**](#scaleleft) and [**ScaleTop**](#scaletop) at 0.
 
 Syntax: *object*.**Scale** [ ( *X1*, *Y1* )-( *X2*, *Y2* ) ]
+
+The compiler turns this syntax into a call with a flags argument; see [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#scale).
 
 *X1*, *Y1*
 : *optional* The logical coordinate at the top-left corner.

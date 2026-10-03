@@ -334,7 +334,7 @@ A [procedure](#procedure) that must be explicitly called by another procedure. I
 
 ## graphics method
 
-A method that operates on an object such as a **Form**, **PictureBox**, or **Printer**, and performs run-time drawing operations such as animation or simulation. Graphics methods include **Circle**, **Cls**, **Line**, **PaintPicture**, **Point**, **Print**, and **PSet**.
+A method that operates on an object such as a **Form**, **PictureBox**, or **Printer**, and performs run-time drawing operations such as animation or simulation. Graphics methods include **Circle**, **Cls**, **Line**, **PaintPicture**, **Point**, **Print**, and **PSet**. The drawing syntax of **Circle**, **Line**, **PSet** and **Scale** is described on the [Line, Circle, PSet, Scale](../tB/Core/Graphics-Methods) page.
 
 ## host application
 
