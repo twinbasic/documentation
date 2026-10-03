@@ -5,7 +5,7 @@
 	"project.buildType": "Standard EXE",
 	"project.description": "Reproduces: For Each over WebView2 request or response headers crashes in WebView2HeadersCollection.Next",
 	"project.exportPathIsV2": true,
-	"project.id": "{F52ACF0B-3950-42B6-8CDA-258B51C455D6}",
+	"project.id": "{6BD10F28-52EF-443F-AAE0-C288FDBC31CB}",
 	"project.name": "Wv2HeadersForeachCrash",
 	"project.optionExplicit": true,
 	"project.references": [

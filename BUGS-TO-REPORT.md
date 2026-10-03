@@ -102,7 +102,8 @@ node scripts/bug_repro.mjs file --marked                # the same for every mar
 ```
 
 `new` starts the project from the console template, with an empty `Sub Main` in a `Startup`
-module; edit `src/Sources/`, then `pack`. What `pack` does is the importer, then a zip of the
+module, or with `--template <name>` from a folder of `test/repro-templates/`, such as
+`webview2-form`, a form holding one WebView2 control; edit `src/Sources/`, then `pack`. What `pack` does is the importer, then a zip of the
 file it writes and of the files `attach` names, which the tool does itself:
 
 ```sh
@@ -792,22 +793,34 @@ Severity: low; the build passes when repeated, and an IDE run by a person rarely
 ## For Each over WebView2 request or response headers crashes in WebView2HeadersCollection.Next
 
 **Describe the bug**
-`For Each` over a `WebView2RequestHeaders` or `WebView2ResponseHeaders` object, or over a `WebView2HeadersCollection`, crashes with an access violation in `WebView2HeadersCollection.Next`. `For Each` calls `IEnumVARIANT::Next` with `pCeltFetched` set to a null pointer, which the interface allows, and the package's `Next` assigns to `pCeltFetched` without testing it. The DEBUG CONSOLE shows `NATIVE EXCEPTION: ACCESS_VIOLATION /WebView2HeadersCollection.twin; WebView2HeadersCollection.Next`.
+`For Each` over the `WebView2RequestHeaders` that `NavigationStarting` receives crashes with an access violation in `WebView2HeadersCollection.Next`. `WebView2ResponseHeaders` returns the same enumerator from its `_NewEnum`, so `For Each` over response headers reaches the same code (not run). `For Each` calls `IEnumVARIANT::Next` with `pCeltFetched` set to a null pointer, which the interface allows, and the package's `Next` assigns to `pCeltFetched` without testing it. The DEBUG CONSOLE shows `NATIVE EXCEPTION: ACCESS_VIOLATION /WebView2HeadersCollection.twin; WebView2HeadersCollection.Next`.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Open `wv2-headers-foreach-crash.twinproj` (attached as `wv2-headers-foreach-crash.zip`). It references the WebView2 package. The package's iterator interface `ICoreWebView2HttpHeadersCollectionIterator` is Private, so the project declares a copy with the same IID and passes a fake iterator holding two headers to `New WebView2HeadersCollection(...)`. A class `Holder` returns that collection from its `[Enumerator]` member, as `WebView2RequestHeaders._NewEnum` does.
-2. Run the project (F5). `Sub Main` first calls the collection's `Next` directly through `IEnumVARIANT`, with a `pCeltFetched` variable, three times, then runs `For Each x In h` over a `Holder`.
-3. See the direct calls return both headers and then the end, then `before For Each`, and then the access violation in `WebView2HeadersCollection.Next`. `after For Each` is never printed.
+1. Open `wv2-headers-foreach-crash.twinproj` (attached as `wv2-headers-foreach-crash.zip`). It references the WebView2 package and has one form, `Form1`, with one WebView2 control, `WebView21`. `Sub Main` shows the form modally. When the control is ready it navigates to `about:blank`, and its `NavigationStarting` handler goes through the request headers:
+   ```
+   Private Sub WebView21_NavigationStarting(ByVal Uri As String, ByVal IsUserInitiated As Boolean, _
+           ByVal IsRedirected As Boolean, ByVal RequestHeaders As WebView2RequestHeaders, _
+           Cancel As Boolean) Handles WebView21.NavigationStarting
+       Debug.Print "NavigationStarting " & Uri
+       Dim h As WebView2Header
+       For Each h In RequestHeaders
+           Debug.Print h.Name & ": " & h.Value
+       Next
+       Debug.Print "after For Each"
+   End Sub
+   ```
+2. Run the project (F5).
+3. See `NavigationStarting about:blank` in the DEBUG CONSOLE, and then `NATIVE EXCEPTION: ACCESS_VIOLATION /WebView2HeadersCollection.twin; WebView2HeadersCollection.Next`. `after For Each` is never printed.
 
 **Expected behavior**
-`For Each` yields both headers, as the direct calls do. The package's own pages show `For Each h In RequestHeaders` in a `NavigationStarting` handler. `Next` should assign to `pCeltFetched` only when its address is not zero, for example `If VarPtr(pCeltFetched) <> 0 Then pCeltFetched = 1`, in both places it assigns it.
+`For Each` yields each header, and the loop ends. The package's documentation shows this loop in a `NavigationStarting` handler. `Next` should assign to `pCeltFetched` only when its address is not zero, for example `If VarPtr(pCeltFetched) <> 0 Then pCeltFetched = 1`, in both places it assigns it.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
 **Additional context**
-Severity: medium; `For Each` is the documented way to read the headers, and it ends the program. Calling `Next` directly with a variable for `pCeltFetched` works. The same project crashes the same way on BETA 983. Not run with a real WebView2 control: the request headers of `NavigationStarting` reach the same `WebView2HeadersCollection.Next` through `WebView2RequestHeaders._NewEnum`, so the crash there is inferred from the package source, not observed. The same null `pCeltFetched` from `For Each` was measured with an enumerator written in a project: an unguarded assignment fails with an access violation there too. `Reset`, which `For Each` calls first, returns `E_NOTIMPL` here, and `For Each` goes on to call `Next` regardless.
+Severity: medium; `For Each` is the documented way to read the headers, and it ends the program. Without the `For Each`, the same project navigates, closes the form and returns. The same project crashes the same way on BETA 983. Calling `Next` directly, through a copy of `IEnumVARIANT` with a variable for `pCeltFetched`, returns the headers and then the end; the crash needs the null pointer that `For Each` passes. The same null `pCeltFetched` from `For Each` was measured with an enumerator written in a project: an unguarded assignment fails with an access violation there too. `Reset`, which `For Each` calls first, returns `E_NOTIMPL` here, and `For Each` goes on to call `Next` regardless.
 
-<!-- Reproducer: bugs/wv2-headers-foreach-crash/ (run mode: exit 5, the ACCESS_VIOLATION line, no "after For Each"); verified on 995 and 983 with bug_repro verify, 2026-10-03. The package source is WebView2Package's Sources/Classes/WebView2HeadersCollection.twin (export of the 995 install). Pages under docs/Reference/Built-In/WebView2/ that show For Each over headers: index.md, WebView2Header.md, WebView2HeadersCollection.md, WebView2RequestHeaders.md, WebView2ResponseHeaders.md; none carries a note yet. docs/Features/Language/Custom-Enumerators.md states the null pCeltFetched rule. When fixed, nothing to update unless a note was added to those pages. -->
+<!-- Reproducer: bugs/wv2-headers-foreach-crash/, made with `bug_repro new --template webview2-form` (run mode: exit 5, the ACCESS_VIOLATION line, no "after For Each"); verified on 995 and 983 with bug_repro verify, 2026-10-03. Run in the harness, the control would not start (8007139F) until bug_repro's probe cleared the WEBVIEW2_* variables tb-ide.mjs gives the IDE; an IDE started by hand needs nothing. The direct-Next control was a fake iterator fed to New WebView2HeadersCollection, kept in the kit (s69/wv2-fake-repro/). The package source is WebView2Package's Sources/Classes/WebView2HeadersCollection.twin (export of the 995 install). Pages under docs/Reference/Built-In/WebView2/ that show For Each over headers: index.md, WebView2Header.md, WebView2HeadersCollection.md, WebView2RequestHeaders.md, WebView2ResponseHeaders.md; none carries a note yet. docs/Features/Language/Custom-Enumerators.md states the null pCeltFetched rule. When fixed, nothing to update unless a note was added to those pages. -->

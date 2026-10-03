@@ -3,8 +3,7 @@
   "expect": {
     "exit": 5,
     "output": [
-      "^direct Next 2: fetched 1 Name1: Value1$",
-      "^before For Each$",
+      "^NavigationStarting about:blank$",
       "ACCESS_VIOLATION .*WebView2HeadersCollection\\.Next"
     ],
     "absent": [
