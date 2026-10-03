@@ -786,3 +786,28 @@ Each build writes its type library and succeeds, however many IDEs share the `TE
 Severity: low; the build passes when repeated, and an IDE run by a person rarely builds at the same moment as another. It affects tools that build several projects at once. The compiler imports `GetTempFileNameW`, and its messages show that it writes the type library to a file and reads it back (`[TYPELIB] failed to read in generated type library file` is the message beside this one). A temporary file name that two processes both use would explain the counts; that is an inference, not observed. The temp folder is empty after the builds, so whatever is written there is deleted.
 
 <!-- Reproducer: bugs/concurrent-builds-shared-temp/ (mode manual: it needs several IDEs at once, which bug_repro cannot run). The measurement used the same console template with check_examples' two staging modules, not this reproducer itself: a Sonnet agent's 904 builds through tbbuild-style lanes, data in %TEMP%/claude/typelib-probe/results.jsonl (not kept), 2026-10-02, BETA 995 only; no 983 control. scripts/lib/tb-ide.mjs's launchIde gives every IDE %TEMP%/tbbuild-tmp-<port> since 7a716388, so no harness of this repository reproduces it today: to measure it again, pass TEMP and TMP to launchIde's env. When fixed, the comment in launchIde and WIP.ExamplesBuild.md's per-IDE temp folder note may say so; the folders can stay. -->
+
+---
+
+## For Each over WebView2 request or response headers crashes in WebView2HeadersCollection.Next
+
+**Describe the bug**
+`For Each` over a `WebView2RequestHeaders` or `WebView2ResponseHeaders` object, or over a `WebView2HeadersCollection`, crashes with an access violation in `WebView2HeadersCollection.Next`. `For Each` calls `IEnumVARIANT::Next` with `pCeltFetched` set to a null pointer, which the interface allows, and the package's `Next` assigns to `pCeltFetched` without testing it. The DEBUG CONSOLE shows `NATIVE EXCEPTION: ACCESS_VIOLATION /WebView2HeadersCollection.twin; WebView2HeadersCollection.Next`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `wv2-headers-foreach-crash.twinproj` (attached as `wv2-headers-foreach-crash.zip`). It references the WebView2 package. The package's iterator interface `ICoreWebView2HttpHeadersCollectionIterator` is Private, so the project declares a copy with the same IID and passes a fake iterator holding two headers to `New WebView2HeadersCollection(...)`. A class `Holder` returns that collection from its `[Enumerator]` member, as `WebView2RequestHeaders._NewEnum` does.
+2. Run the project (F5). `Sub Main` first calls the collection's `Next` directly through `IEnumVARIANT`, with a `pCeltFetched` variable, three times, then runs `For Each x In h` over a `Holder`.
+3. See the direct calls return both headers and then the end, then `before For Each`, and then the access violation in `WebView2HeadersCollection.Next`. `after For Each` is never printed.
+
+**Expected behavior**
+`For Each` yields both headers, as the direct calls do. The package's own pages show `For Each h In RequestHeaders` in a `NavigationStarting` handler. `Next` should assign to `pCeltFetched` only when its address is not zero, for example `If VarPtr(pCeltFetched) <> 0 Then pCeltFetched = 1`, in both places it assigns it.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: medium; `For Each` is the documented way to read the headers, and it ends the program. Calling `Next` directly with a variable for `pCeltFetched` works. The same project crashes the same way on BETA 983. Not run with a real WebView2 control: the request headers of `NavigationStarting` reach the same `WebView2HeadersCollection.Next` through `WebView2RequestHeaders._NewEnum`, so the crash there is inferred from the package source, not observed. The same null `pCeltFetched` from `For Each` was measured with an enumerator written in a project: an unguarded assignment fails with an access violation there too. `Reset`, which `For Each` calls first, returns `E_NOTIMPL` here, and `For Each` goes on to call `Next` regardless.
+
+<!-- Reproducer: bugs/wv2-headers-foreach-crash/ (run mode: exit 5, the ACCESS_VIOLATION line, no "after For Each"); verified on 995 and 983 with bug_repro verify, 2026-10-03. The package source is WebView2Package's Sources/Classes/WebView2HeadersCollection.twin (export of the 995 install). Pages under docs/Reference/Built-In/WebView2/ that show For Each over headers: index.md, WebView2Header.md, WebView2HeadersCollection.md, WebView2RequestHeaders.md, WebView2ResponseHeaders.md; none carries a note yet. docs/Features/Language/Custom-Enumerators.md states the null pCeltFetched rule. When fixed, nothing to update unless a note was added to those pages. -->
