@@ -922,7 +922,7 @@ Three severities, used distinctly:
 - `> [!IMPORTANT]` --- requirements that affect correctness, such as admin rights, threading constraints, or ordering.
 - `> [!WARNING]` --- operations that can corrupt state or lose data.
 
-A known defect in twinBASIC follows the same scale. A defect that silently gives a wrong result --- a function that returns the wrong value and raises no error --- is a `> [!WARNING]` until a fixed build is released, because nothing tells the reader that their data is wrong. A defect the reader cannot miss, such as an error raised or a statement the compiler refuses, is a `> [!NOTE]`. Either callout names the build it applies to, and once a fixed build is out it becomes a `> [!NOTE]` saying since which build the behaviour is correct.
+A known defect in twinBASIC follows the same scale. A defect that silently gives a wrong result --- a function that returns the wrong value and raises no error --- is a `> [!WARNING]` until a fixed build is released, because nothing tells the reader that their data is wrong. A defect that crashes the program is a `> [!WARNING]` too, because whatever it had not saved is lost. So is a defect whose error hides a silent part, such as a procedure that runs twice before the error is raised. A defect the reader cannot miss and that loses nothing, such as an error raised or a statement the compiler refuses, is a `> [!NOTE]`. Either callout names the build it applies to, and once a fixed build is out it becomes a `> [!NOTE]` saying since which build the behaviour is correct.
 
 Use one callout per concern, and reserve them for genuine notes --- plain "why this is useful" prose should stay a plain paragraph.
 
