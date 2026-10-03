@@ -127,7 +127,10 @@ In twinBASIC:
 - Cookies start at 1 for each source object and increase by one for every connection made. A cookie is not used again after its connection ends.
 - A sink that does not answer for the outgoing interface fails with `E_NOINTERFACE` (`&H80004002`), where the COM contract names `CONNECT_E_CANNOTCONNECT`. An object of an ordinary twinBASIC class is such a sink, even when the class implements **IDispatch**, and so is a class declared **NotDispatchable** that implements it. A twinBASIC class cannot answer for the identifier, because the identifier of a class's event interface changes with every build and so cannot be declared. A sink that works is the object twinBASIC creates for a **WithEvents** variable, which **EnumConnections** returns (see the example).
 - A sink that is already connected to the point is not connected a second time. **Advise** raises no error, returns 0, and adds nothing.
-- Passing **Nothing** ends the run with an access violation in BETA 995. The COM contract returns `E_POINTER`.
+- Passing **Nothing** is a defect in BETA 995, described in the warning below.
+
+> [!WARNING]
+> BETA 995 has a defect: **Advise** with **Nothing** as the sink ends the program with an access violation, and any unsaved data is lost. The COM contract returns `E_POINTER`. Test the sink for **Nothing** before calling **Advise**.
 
 ### Unadvise
 {: .no_toc }

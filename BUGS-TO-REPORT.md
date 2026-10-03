@@ -854,7 +854,7 @@ What was tried:
 - An interface with three `[PreserveSig]` members declared in `IUnknown`'s order, `QueryInterface`, `AddRef` and `Release`, behaves the same way: `Set` succeeds, and the calls go to the wrong slots (one `AddRef` returned 0, and the next call crashed).
 - `Interface IUnk Extends stdole.IUnknown` with that identifier compiles, and `u.AddRef` is then reported as `TB5027 Unrecognized member 'AddRef' on type 'IUnk'`, as it is for `stdole.IUnknown` itself, which has no members that twinBASIC code can call.
 
-<!-- Reproducer: bugs/iunknown-iid-interface/ (mode run, expects tbrun exit 5, the output `ok` and the native exception); verified on 995. Stated in docs/Reference/COM-Interfaces/IUnknown.md, section "Implementing it" (the paragraph that begins "A project's own Interface that carries the identifier of IUnknown also compiles"): when fixed, replace it with whatever the compiler now does (a diagnostic, or a working call). -->
+<!-- Reproducer: bugs/iunknown-iid-interface/ (mode run, expects tbrun exit 5, the output `ok` and the native exception); verified on 995. Stated in docs/Reference/COM-Interfaces/IUnknown.md, section "Implementing it" (the WARNING, which names BETA 995, after the paragraph that begins "A project's own Interface that carries the identifier of IUnknown also compiles"): when fixed, replace it with a NOTE saying since which build and what the compiler now does (a diagnostic, or a working call). -->
 
 ---
 
@@ -897,7 +897,7 @@ What does not reproduce it: a statement with no arguments (`o.Fail3`, `o.Hello`,
 
 The second call resembles VB's rule for `o.Member(args)` on a property that returns an object or a collection: read the property with no arguments, then apply the arguments to the result. It is applied after a failure of any call that has arguments. The single run of `Hello` in the raw `Invoke` case is also at odds with the COM contract, which gives `DISP_E_BADPARAMCOUNT` for too many arguments without running the member; it is left out of this entry.
 
-<!-- Reproducer: bugs/latebound-call-retried/ (mode run, expects the Hello and Prop lines above); verified on 995. VB6 side in bugs/latebound-call-retried/vb6/ (o.Hello 1 -> 450 and Hits=0; o.Prop = 1 -> 5 and Gets=0). Stated in docs/Reference/COM-Interfaces/IDispatch.md, the second NOTE under "Errors from a late-bound call" (a call that fails inside Invoke can be made twice) and the first row of the table under "Classes written in twinBASIC" in the same page. When fixed, reduce that NOTE to the CallByName part (see callbyname-membernotfound-retried), or delete it, and remove the sentence about "a late-bound statement does this twice". The Property Get run and the replaced error number are not on the page yet. -->
+<!-- Reproducer: bugs/latebound-call-retried/ (mode run, expects the Hello and Prop lines above); verified on 995. VB6 side in bugs/latebound-call-retried/vb6/ (o.Hello 1 -> 450 and Hits=0; o.Prop = 1 -> 5 and Gets=0). Stated in docs/Reference/COM-Interfaces/IDispatch.md, the second callout under "Errors from a late-bound call", a WARNING naming BETA 995 (a call that fails inside Invoke can be made twice) and the first row of the table under "Classes written in twinBASIC" in the same page. When fixed, reduce that NOTE to the CallByName part (see callbyname-membernotfound-retried), or delete it, and remove the sentence about "a late-bound statement does this twice". The Property Get run and the replaced error number are not on the page yet. -->
 
 ---
 
@@ -932,7 +932,7 @@ What does not reproduce it: `CallByName` with `vbGet` or `vbLet` against `DISP_E
 
 A separate behaviour, in its own entry, repeats a failed late-bound statement that passes arguments as a property read: see the entry "A late-bound call that passes arguments and fails is issued a second time, without them". The two are not the same: that one is for calls with arguments and needs no `DISP_E_MEMBERNOTFOUND`, and this one is `CallByName` with or without arguments.
 
-<!-- Reproducer: bugs/callbyname-membernotfound-retried/ (mode run, expects the two count lines above); verified on 995. Stated in docs/Reference/COM-Interfaces/IDispatch.md, the second NOTE under "Errors from a late-bound call": its sentence "CallByName repeats a call that returned DISP_E_MEMBERNOTFOUND with a null pVarResult". When fixed, remove that sentence (the other half of the NOTE is the entry on late-bound calls with arguments). The flags 1/2/4 combinations come from the probe in s71/idispatch/tb6, a local scratch file that is not in the repository. -->
+<!-- Reproducer: bugs/callbyname-membernotfound-retried/ (mode run, expects the two count lines above); verified on 995. Stated in docs/Reference/COM-Interfaces/IDispatch.md, the second callout under "Errors from a late-bound call", a WARNING naming BETA 995: its sentence "CallByName repeats a call that returned DISP_E_MEMBERNOTFOUND with a null pVarResult". When fixed, remove that sentence (the other half of the NOTE is the entry on late-bound calls with arguments). The flags 1/2/4 combinations come from the probe in s71/idispatch/tb6, a local scratch file that is not in the repository. -->
 
 ---
 
@@ -1171,7 +1171,7 @@ Severity: low in practice, since a program rarely advises a null sink, but a COM
 
 What was tried: an object that is not a sink gives an ordinary error (`E_NOINTERFACE`, `&H80004002`, see the entry about `Advise` and `Unadvise` error codes), so only a null pointer crashes. The address of the crash is the same in the standalone probe and in this project.
 
-<!-- Reproducer: bugs/advise-nothing-crashes/ (mode run, expects tbrun exit 5, the output `before` and the native exception); verified on 995. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, section Advise, the last bullet of "In twinBASIC" ("Passing Nothing ends the run with an access violation in BETA 995"): when fixed, replace it with the error it raises, and add Nothing to the example if it fits. -->
+<!-- Reproducer: bugs/advise-nothing-crashes/ (mode run, expects tbrun exit 5, the output `before` and the native exception); verified on 995. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, section Advise, the last bullet of "In twinBASIC" and the WARNING after it, which names BETA 995 ("Advise with Nothing as the sink ends the program with an access violation"): when fixed, replace the WARNING with a NOTE saying since which build and what error it raises, and add Nothing to the example if it fits. -->
 
 ---
 
@@ -1451,7 +1451,7 @@ Severity: low. The error is raised for `ForeColor` and not for `BackColor` or `F
 
 What was tried: the same four lines on BETA 983 print the same, so this is not a change of BETA 984. A value that is a valid colour, such as `&H100FF00` or `&H20000FF`, is accepted by `ForeColor` with no error, as in VB6. The colour properties of controls were not tried.
 
-<!-- Reproducer: bugs/forecolor-invalid-value-stored/ (mode run, expects the four lines above in twinBASIC); verified on 995 and 983. The VB6 project is in bugs/forecolor-invalid-value-stored/vb6/ (`bug_repro.mjs vb6 forecolor-invalid-value-stored` prints the four lines above). No documentation page states what an invalid colour assignment does; docs/Reference/Default/VB/Form/index.md describes ForeColor, BackColor and FillColor as an OLE_COLOR only. When fixed, nothing needs updating unless a page is written. -->
+<!-- Reproducer: bugs/forecolor-invalid-value-stored/ (mode run, expects the four lines above in twinBASIC); verified on 995 and 983. The VB6 project is in bugs/forecolor-invalid-value-stored/vb6/ (`bug_repro.mjs vb6 forecolor-invalid-value-stored` prints the four lines above). Stated in docs/Reference/Default/VB/Form/index.md, in a WARNING naming BETA 995 under each of ForeColor, BackColor and FillColor; the entry tested the Form only, so the pages of the other surfaces and controls (PictureBox, Printer, UserControl, TextBox and the rest) carry none. When fixed, replace each WARNING with a NOTE saying since which build. -->
 
 ---
 
@@ -1583,7 +1583,7 @@ Severity: low to medium. A statement that has no effect and no error is easy to 
 
 Tried: `ReDim v2(0 To 1)` on a `Variant`, then `LSet v2(0) = "zz"`, does the same. The `w` elements and `Dim a(0 To 2) As String` elements work. On BETA 983 the `v` lines read the same, and the `w` line for `LSet` reads `[zz23456789]`, because `LSet` did not yet fill with spaces there (fixed in BETA 984, which is a separate matter).
 
-<!-- Reproducer: bugs/lset-variant-array-element-noop/ (mode run, expects the four lines above); verified on 995, 983 gives the same `v` lines. docs/Reference/Core/LSet.md and RSet.md say the destination can be a Variant that holds a string and do not mention this; when fixed, nothing to change. -->
+<!-- Reproducer: bugs/lset-variant-array-element-noop/ (mode run, expects the four lines above); verified on 995, 983 gives the same `v` lines. docs/Reference/Core/LSet.md and RSet.md each carry a WARNING naming BETA 995 for this, after the paragraph that says the destination can be a Variant that holds a string; when fixed, replace each with a NOTE saying since which build. -->
 
 ---
 

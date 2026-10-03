@@ -24,6 +24,9 @@ If *string* is longer than *stringvar*, **RSet** places only the leftmost charac
 
 **RSet** never changes the length of *stringvar*, so a *stringvar* of zero length stays empty. *stringvar* can be a variable-length string, a fixed-length string, or a **Variant** that holds a string. A *string* that is **Null** raises error 94.
 
+> [!WARNING]
+> BETA 995 has a defect: **RSet** on an element of a **Variant** that holds an array, such as `RSet v(1) = "zz"` with `v = Array("0123456789", "abcde")` or a **Variant** that was given its bounds with **ReDim**, changes nothing and raises no error. VB6 changes the element. An element of an array declared `Dim w(0 To 1) As Variant` works. To change an element of a **Variant** array, copy it to a **String** variable, use **RSet** on the variable and assign the variable back.
+
 > [!NOTE]
 > **RSet** can't be used with user-defined types. The compiler refuses the statement.
 

@@ -31,6 +31,9 @@ If *string* is longer than *stringvar*, **LSet** places only the leftmost charac
 
 **LSet** never changes the length of *stringvar*, so a *stringvar* of zero length stays empty. *stringvar* can be a variable-length string, a fixed-length string, or a **Variant** that holds a string. A *string* that is **Null** raises error 94.
 
+> [!WARNING]
+> BETA 995 has a defect: **LSet** on an element of a **Variant** that holds an array, such as `LSet v(0) = "zz"` with `v = Array("0123456789", "abcde")` or a **Variant** that was given its bounds with **ReDim**, changes nothing and raises no error. VB6 changes the element. An element of an array declared `Dim w(0 To 1) As Variant` works. To change an element of a **Variant** array, copy it to a **String** variable, use **LSet** on the variable and assign the variable back.
+
 > [!NOTE]
 > Since BETA 984, **LSet** fills the leftover characters with spaces as described above. In BETA 983 and earlier it left the old characters of *stringvar* in place, so `LSet s = "ab"` on `"0123456789"` gave `"ab23456789"`.
 
