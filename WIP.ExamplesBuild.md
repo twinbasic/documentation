@@ -402,6 +402,22 @@ only by an error the callee did not handle (measured: `InStr(0, "abc", "a")` unh
 sample's body printed `[tbx-run] error 5 Invalid procedure call or argument`, and the next
 sample ran), and `Resume tbxNext<n>` clears it before the next call.
 
+**`node scripts/vb6run.mjs --docs` compares the same fences with VB6.** It reads the
+`check_run` fences through `collectFences` and `joinConcatGroups`, refuses them with
+`runRefusal`, and judges what VB6 prints with `expectedOutput` and `judgeOutput`, so the
+comparison is the one `check_run` makes, against a second implementation. A fence of a
+`projname=` group is skipped, since it needs the other fences' declarations. Most
+twinBASIC syntax is not VB6, and a compile error there is the state `not VB6`, which is
+information; a `differs` is what the tool is for. What building in VB6 taught
+(`scripts/lib/vb6.mjs`, which has the list): `Debug.Print` writes nothing in a compiled exe,
+so each one is rewritten to `Print #511,`, and the comma stays on a bare `Debug.Print`
+because `Print #511` without it is a syntax error; the project is built with
+`Unattended=-1` so that a box VB6 would show goes to the event log; VB6 numbers a module's
+lines from 0 and not counting `Attribute` lines, so a compile error's line is the file's
+less two; and `Err.Source` of an error raised in the exe is the project name, which is why
+`ErrObject/Raise.md` differs. `Close` with no argument in a sample also closes the file the
+output goes to, so the sample's next `Debug.Print` raises error 52.
+
 Two things a batch runner must do that a single-fence runner need not:
 
 - **Keep a source map.** Errors return against a generated file and line; the report names

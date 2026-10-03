@@ -105,6 +105,13 @@ const CASES = [
   { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch", "win64"], exit: 2, stderr: /^not a directory: .*no-such-dir\ntbrun takes an exported source tree / },
   { tool: "scripts/bug_repro.mjs", args: [], exit: 2, stderr: /^usage: node scripts\/bug_repro\.mjs / },
   { tool: "scripts/bug_repro.mjs", args: ["compile", "--help", "--bogus"], exit: 0, stdout: /^usage: node scripts\/bug_repro\.mjs / },
+  { tool: "scripts/vb6run.mjs", args: [], exit: 2, stderr: /^give a file to run, or --docs\nusage: node scripts\/vb6run\.mjs / },
+  { tool: "scripts/vb6run.mjs", args: ["x.bas", "--help"], exit: 0, stdout: /^usage: node scripts\/vb6run\.mjs / },
+  { tool: "scripts/vb6run.mjs", args: ["--docs", "x.bas"], exit: 2, stderr: /^--docs takes no file\nusage: node scripts\/vb6run\.mjs / },
+  { tool: "scripts/vb6run.mjs", args: ["--vb6"], exit: 2, stderr: /^--vb6 needs a value\nusage: node scripts\/vb6run\.mjs / },
+  { tool: "scripts/vb6run.mjs", args: ["--docs", "--timeout"], exit: 2, stderr: /^--timeout needs a value\nusage: node scripts\/vb6run\.mjs / },
+  { tool: "scripts/vb6run.mjs", args: ["no-such-file.bas"], exit: 2, stderr: "cannot read no-such-file.bas: no such file\n" },
+  { tool: "scripts/vb6run.mjs", args: ["--docs", "--vb6", "no-such/VB6.EXE"], exit: 2, stderr: /^no such file: no-such\/VB6\.EXE\nno VB6 found: pass --vb6 / },
   { tool: "scripts/addin_test.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/addin_test\.mjs / },
   { tool: "scripts/addin_test.mjs", args: ["--ide"], exit: 2, stderr: "--ide needs a value\n" },
   { tool: "scripts/addin_test.mjs", args: ["--ide", ""], exit: 2, stderr: "--ide needs a non-empty value\n" },
@@ -363,6 +370,7 @@ const HELP_TOOLS = {
   "scripts/sweep_attributes.mjs": null,
   "scripts/tbbuild.mjs": null,
   "scripts/tbrun.mjs": null,
+  "scripts/vb6run.mjs": null,
 };
 const literal = (text) => text.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 for (const [tool, start] of Object.entries(HELP_TOOLS)) {
@@ -435,6 +443,7 @@ const REFUSALS = {
   "scripts/sweep_attributes.mjs": ["out"],
   "scripts/tbbuild.mjs": ["ide"],
   "scripts/tbrun.mjs": ["ide"],
+  "scripts/vb6run.mjs": ["vb6"],
 };
 // The cases whose folder must stay empty, as for a help request: a refusal
 // starts no IDE or browser and writes nothing, and a tool that read the flag as
@@ -623,6 +632,24 @@ bad("scripts/tbrun.mjs", ["no-such-dir", "--quiet", "1.5"], thenUsage(NOT_WHOLE(
   bad(tool, ["compile", "no-such-bug", "--marked"], thenUsage("--marked does not apply to compile", tool));
   bad(tool, ["verify", "--existing"], thenUsage("--existing does not apply to verify", tool));
   bad(tool, ["file", "no-such-bug", "12"], "no such reproducer: bugs/no-such-bug\n");
+}
+
+// vb6run reads its command line before it reads its file or looks for VB6, and
+// follows the message with its usage.
+{
+  const tool = "scripts/vb6run.mjs";
+  const NOT_SECONDS = (v) => `--timeout expects a number greater than 0 and at most 2147483, got: ${v}`;
+  bad(tool, ["x.bas", "--timeout", "0"], thenUsage(NOT_SECONDS(0), tool));
+  bad(tool, ["x.bas", "--timeout=-1"], thenUsage(NOT_SECONDS(-1), tool));
+  bad(tool, ["x.bas", "--timeout", "abc"], thenUsage(NOT_SECONDS("abc"), tool));
+  bad(tool, ["x.bas", "--only", "x"], thenUsage("--only applies to --docs", tool));
+  bad(tool, ["--docs", "--only="], thenUsage("--only needs a non-empty value", tool));
+  bad(
+    tool,
+    ["--docs", "--only", "("],
+    new RegExp(`^${literal("--only expects a regular expression, got: ( (")}.+\\)\\nusage: node ${literal(tool)} `),
+  );
+  bad(tool, ["x.bas", "y.bas"], thenUsage("unexpected argument: y.bas", tool));
 }
 
 bad("scripts/addin_test.mjs", ["--only", "("], REGEX_REASON("--only", "("));
