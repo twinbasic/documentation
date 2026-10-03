@@ -7,7 +7,7 @@ permalink: /Features/Language/Custom-Enumerators
 
 # Custom Enumerators
 
-A class becomes usable with [**For Each**](../../tB/Core/For-Each-Next) when one of its members supplies an enumerator: an object that implements the COM interface **IEnumVARIANT**. The member is marked with the [**[Enumerator]**](../../tB/Core/Attributes#enumerator) attribute. It can return the enumerator of an object that already has one, such as a [**Collection**](../../tB/Modules/Collection/), or an enumerator the class implements itself. [Writing an enumerator](#writing-an-enumerator) shows a class that produces its own items, with no collection behind it.
+A class becomes usable with [**For Each**](../../tB/Core/For-Each-Next) when one of its members supplies an enumerator: an object that implements the COM interface [**IEnumVARIANT**](../../Reference/COM-Interfaces/IEnumVARIANT). The member is marked with the [**[Enumerator]**](../../tB/Core/Attributes#enumerator) attribute. It can return the enumerator of an object that already has one, such as a [**Collection**](../../tB/Modules/Collection/), or an enumerator the class implements itself. [Writing an enumerator](#writing-an-enumerator) shows a class that produces its own items, with no collection behind it.
 
 ## Returning a Collection's enumerator
 
@@ -73,7 +73,7 @@ End Interface
 
 - It calls **Reset** first, then **Next** once per item, always with *celt* = 1. **Skip** and **Clone** are never called, so they can return `E_NOTIMPL`.
 - It passes *pCeltFetched* as a null pointer. Assigning to it then fails with an access violation, so test its address with [**VarPtr**](../../tB/Modules/Information/VarPtr) first.
-- **Next** ends the loop by returning `S_FALSE` (1) through [**Err.ReturnHResult**](../../tB/Modules/ErrObject/ReturnHResult). Without it the loop never ends: **For Each** cannot see the count of 0, and calls **Next** again for as long as it returns `S_OK`.
+- **Next** ends the loop by returning `S_FALSE` (1) through [**Err.ReturnHResult**](../../tB/Modules/ErrObject/ReturnHResult). Without it the loop never ends: **For Each** cannot see the count of 0, and calls **Next** again for as long as it returns `S_OK`. An item written together with `S_FALSE` is dropped, so the call that writes the last item returns `S_OK`, and the call after it `S_FALSE`.
 - An error raised in **Next** ends the loop and reaches the error handler of the procedure running the **For Each**, with its number and description.
 
 ```tb check_build projname=enum-range slot=file
@@ -148,12 +148,13 @@ Next
 ' 5
 ```
 
-This **Next** returns one item per call, which is all **For Each** asks for. Native code that calls the enumerator directly may ask for several items at once, and an enumerator meant for such callers must handle a *celt* above 1 as the **IEnumVARIANT** contract describes.
+This **Next** returns one item per call, which is all **For Each** asks for. Native code that calls the enumerator directly may ask for several items at once, and an enumerator meant for such callers must handle a *celt* above 1. [**IEnumVARIANT**](../../Reference/COM-Interfaces/IEnumVARIANT) describes the whole contract, the declaration that allows it, and an enumerator that implements it.
 
 ## See Also
 
 - [For Each...Next](../../tB/Core/For-Each-Next) statement
 - [Enumerator](../../tB/Core/Attributes#enumerator) attribute
+- [IEnumVARIANT](../../Reference/COM-Interfaces/IEnumVARIANT) interface
 - [Interfaces and CoClasses](Interfaces-CoClasses) -- declaring an interface in twinBASIC
 - [Implements](../../tB/Core/Implements) statement
 - [Collection](../../tB/Modules/Collection/) class
