@@ -272,7 +272,7 @@ When **True**, the user can scroll, select, and copy text but cannot modify it. 
 ### MaxLength
 {: .no_toc }
 
-The maximum number of characters the user can type into the control. **Long**, default `0` --- when zero, the OS imposes its own limit (typically 32 767 characters for single-line, much larger for multi-line). Setting **MaxLength** below the current text length does not truncate what is already there, but blocks further typing until the user deletes enough characters.
+The maximum number of characters the user can type into the control. **Long**, default `0` --- when zero, the OS imposes its own limit (typically 32 767 characters for single-line, much larger for multi-line). Setting **MaxLength** below the current text length does not truncate what is already there, but blocks further typing until the user deletes enough characters. Assigning [**Text**](#text) in code is not limited by **MaxLength**: the whole string is stored. VB6 truncates it to **MaxLength** characters.
 
 ### MouseIcon
 {: .no_toc }
@@ -352,6 +352,8 @@ The zero-based position of the start of the selection, or the caret position whe
 
 The text currently selected. Assigning a string replaces the selection with that string and positions the caret immediately after the inserted text. **String**.
 
+The replacement is made by assigning [**Text**](#text), so it raises [**Change**](#change) once when the text changes and not at all when the new text is identical to the old. VB6 also raises the event when the replacement leaves the text unchanged.
+
 ### TabFocusAutoSelect
 {: .no_toc }
 
@@ -379,7 +381,7 @@ The text shown in the control. **String**. **Default property.**
 
 Syntax: *object*.**Text** [ = *string* ]
 
-Assigning a value that differs from the current one raises a [**Change**](#change) event and refreshes the display. Assigning the same value is a no-op. In multi-line mode, line breaks are stored using the platform's native newline encoding (`vbCrLf` on Windows).
+Assigning a value that differs from the current one raises one [**Change**](#change) event and refreshes the display. The comparison is case-sensitive, so changing `"abc"` to `"ABC"` raises the event. Assigning the same value, an empty string to an empty text box included, is a no-op and raises no event. Before BETA 984 an assignment raised **Change** twice. In multi-line mode, line breaks are stored using the platform's native newline encoding (`vbCrLf` on Windows).
 
 ### TextHint
 {: .no_toc }
@@ -523,7 +525,7 @@ Syntax: *object*.**ZOrder** [ *Position* ]
 ### Change
 {: .no_toc }
 
-Raised whenever [**Text**](#text) changes --- either through user input or by code assigning a new value. Not raised during [**Initialize**](#initialize); the very first text load from the serialized form does not produce a **Change** event. **Default-designer event.**
+Raised whenever [**Text**](#text) changes --- either through user input or by code assigning a new value. An assignment raises it once, including one made in a form's **Load** event. Not raised during [**Initialize**](#initialize); the very first text load from the serialized form does not produce a **Change** event. **Default-designer event.**
 
 Syntax: *object*\_**Change**( )
 

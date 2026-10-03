@@ -462,7 +462,7 @@ The compiler turns this syntax into a call with a flags argument; see [Line, Cir
 : *required* The radius along the X axis. **Single**.
 
 *Color*
-: *optional* An **OLE_COLOR** for the outline. Defaults to [**ForeColor**](#forecolor).
+: *optional* An **OLE_COLOR** for the outline. Defaults to [**ForeColor**](#forecolor). See [colour values](../../../Core/Graphics-Methods#colour-values) for how the value is read.
 
 *Start*, *End*
 : *optional* Start and end angles in radians (0 to 2π). Negative values are interpreted as full radians and connect the arc end-point to the centre with a chord. Omitted draws a full circle.
@@ -505,7 +505,7 @@ The compiler turns this syntax into a call with a flags argument; see [Line, Cir
 : *required* End coordinates. **Single**. **Step** makes them relative to the start point.
 
 *Color*
-: *optional* An **OLE_COLOR** for the line. Defaults to [**ForeColor**](#forecolor).
+: *optional* An **OLE_COLOR** for the line. Defaults to [**ForeColor**](#forecolor). See [colour values](../../../Core/Graphics-Methods#colour-values) for how the value is read.
 
 *B*
 : *optional* When present, draws a rectangle whose opposite corners are *(X1, Y1)* and *(X2, Y2)* instead of a line. Without **F**, the interior is filled with [**FillColor**](#fillcolor) in the current [**FillStyle**](#fillstyle); **vbFSTransparent** leaves it unfilled.
@@ -592,7 +592,7 @@ The compiler turns this syntax into a call with a flags argument; see [Line, Cir
 : *required* Coordinates in [**ScaleMode**](#scalemode) units. **Step** makes them relative to [**CurrentX**](#currentx) / [**CurrentY**](#currenty).
 
 *Color*
-: *optional* An **OLE_COLOR**. Defaults to [**ForeColor**](#forecolor).
+: *optional* An **OLE_COLOR**. Defaults to [**ForeColor**](#forecolor). See [colour values](../../../Core/Graphics-Methods#colour-values) for how the value is read.
 
 [**CurrentX**](#currentx) / [**CurrentY**](#currenty) are left at the set point.
 

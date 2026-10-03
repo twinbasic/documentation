@@ -606,7 +606,7 @@ The compiler turns this syntax into a call with a flags argument; see [Line, Cir
 : *required* A **Single** giving the radius in **ScaleMode** units.
 
 *Color*
-: *optional* An **OLE_COLOR** for the outline; defaults to [**ForeColor**](#forecolor).
+: *optional* An **OLE_COLOR** for the outline; defaults to [**ForeColor**](#forecolor). See [colour values](../../../Core/Graphics-Methods#colour-values) for how the value is read.
 
 *Start*, *End*
 : *optional* Angles in radians, used to draw an arc rather than a full circle.
@@ -650,7 +650,7 @@ The compiler turns this syntax into a call with a flags argument; see [Line, Cir
 : *required* The end point, in **ScaleMode** units. **Step** makes the point relative to (*X1*, *Y1*).
 
 *Color*
-: *optional* An **OLE_COLOR** for the line; defaults to [**ForeColor**](#forecolor).
+: *optional* An **OLE_COLOR** for the line; defaults to [**ForeColor**](#forecolor). See [colour values](../../../Core/Graphics-Methods#colour-values) for how the value is read.
 
 **B**
 : *optional* Draw a rectangle whose opposite corners are (*X1*, *Y1*) and (*X2*, *Y2*) instead of a line. Without **F**, the interior is filled with [**FillColor**](#fillcolor) in the current [**FillStyle**](#fillstyle); **vbFSTransparent** leaves it unfilled.
@@ -738,7 +738,7 @@ The compiler turns this syntax into a call with a flags argument; see [Line, Cir
 : *required* The pixel position, in [**ScaleMode**](#scalemode) units. **Step** makes the position relative to ([**CurrentX**](#currentx), [**CurrentY**](#currenty)).
 
 *Color*
-: *optional* An **OLE_COLOR**; defaults to [**ForeColor**](#forecolor).
+: *optional* An **OLE_COLOR**; defaults to [**ForeColor**](#forecolor). See [colour values](../../../Core/Graphics-Methods#colour-values) for how the value is read.
 
 ### Refresh
 {: .no_toc }

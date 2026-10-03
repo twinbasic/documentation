@@ -138,6 +138,18 @@ For example, after `Form1.PSet (100, 100)` followed by `Form1.PSet Step(3, 4)`, 
 
 The full description of each method on each class is in that class's own section: [**Line**](../Packages/VB/Form/#line), [**Circle**](../Packages/VB/Form/#circle), [**PSet**](../Packages/VB/Form/#pset) and [**Scale**](../Packages/VB/Form/#scale) on **Form**, and the same sections on the other five.
 
+## Colour values
+
+The built-in surfaces read *Color* as a **Long**. When *Color* is left out they read [**ForeColor**](../Packages/VB/Form/#forecolor) in the same way. A **Double** or **String** argument is converted to **Long** first, as for any **Long** parameter: `255.7` draws as 256, `"255"` draws as 255, a value beyond the **Long** range raises error 6, and a **String** that is not a number raises error 13. The top byte of the **Long** then decides what the value means:
+
+- **&H80**: a system colour. A value from `&H80000000` to `&H8000001E` draws the current system colour of that index, as **GetSysColor** returns it, so `vbButtonFace` (`&H8000000F`) draws in the colour of a button face. Any other value with `&H80` as its top byte, such as `&H8000001F` or `&H80010003`, draws black.
+- **Any other top byte**: an RGB colour held in the low 24 bits as `&HBBGGRR`. The top byte is ignored, so `-1` and `&H7FFFFFFF` draw white, `&H1000000` draws black and `&H10000FF` draws red. No such value raises an error.
+
+The line of a **Line** and the fill of **BF** use the same rule, as does the circle of **Circle** and the point of **PSet**. Since BETA 984 an out-of-range value draws instead of raising an error: in BETA 983, a value such as `-1`, a top byte other than 0, 1, 2 or `&H80`, or a system colour index above 30 raised error 5.
+
+> [!NOTE]
+> VB6 treats a system colour differently in two ways. It draws `&H80000019` to `&H8000001E` black, where twinBASIC draws the system colour of that index, and it takes the index from the low 16 bits of the value, so that `&H80010003` draws system colour 3 where twinBASIC draws black. The rest of the rule, including the truncation of every other value to 24 bits, is the same.
+
 ## Example
 
 This example is a class that is not a drawing surface. **Plotter** implements **Line**, **Circle** and **PSet** as ordinary methods that print what they receive, so the program shows the *Flags* value and the arguments that each form of the syntax produces.
