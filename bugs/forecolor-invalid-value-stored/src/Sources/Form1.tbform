@@ -78,6 +78,48 @@
 		},
 		"__lastUpdateMarker": 2061908507,
 		"_className": "Form",
-		"_clsid": "{33AD4F38-6699-11CF-B70C-00AA0060D393}"
+		"_clsid": "{33AD4F38-6699-11CF-B70C-00AA0060D393}",
+		"_children": [
+			{
+				"Index": -1,
+				"Name": "PictureBox1",
+				"Left": 20,
+				"Top": 20,
+				"Width": 100,
+				"Height": 30,
+				"_className": "PictureBox",
+				"_clsid": "{33AD4ED0-6699-11CF-B70C-00AA0060D393}"
+			},
+			{
+				"Index": -1,
+				"Name": "Label1",
+				"Left": 20,
+				"Top": 60,
+				"Width": 100,
+				"Height": 30,
+				"_className": "Label",
+				"_clsid": "{33AD4ED8-6699-11CF-B70C-00AA0060D393}"
+			},
+			{
+				"Index": -1,
+				"Name": "TextBox1",
+				"Left": 20,
+				"Top": 100,
+				"Width": 100,
+				"Height": 30,
+				"_className": "TextBox",
+				"_clsid": "{33AD4EE0-6699-11CF-B70C-00AA0060D393}"
+			},
+			{
+				"Index": -1,
+				"Name": "CommandButton1",
+				"Left": 20,
+				"Top": 140,
+				"Width": 100,
+				"Height": 30,
+				"_className": "CommandButton",
+				"_clsid": "{33AD4EF0-6699-11CF-B70C-00AA0060D393}"
+			}
+		]
 	}
 ]

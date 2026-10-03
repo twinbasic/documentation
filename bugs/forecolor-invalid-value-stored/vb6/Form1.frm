@@ -10,6 +10,35 @@ Begin VB.Form Form1
    ScaleWidth      =   4000
    StartUpPosition =   3  'Windows Default
    Visible         =   0   'False
+   Begin VB.CommandButton CommandButton1
+      Height          =   255
+      Left            =   240
+      TabIndex        =   3
+      Top             =   1800
+      Width           =   855
+   End
+   Begin VB.TextBox TextBox1
+      Height          =   255
+      Left            =   240
+      TabIndex        =   2
+      Top             =   1320
+      Width           =   855
+   End
+   Begin VB.Label Label1
+      Height          =   255
+      Left            =   240
+      Top             =   840
+      Width           =   855
+   End
+   Begin VB.PictureBox PictureBox1
+      Height          =   255
+      Left            =   240
+      ScaleHeight     =   195
+      ScaleWidth      =   795
+      TabIndex        =   0
+      Top             =   360
+      Width           =   855
+   End
 End
 Attribute VB_Name = "Form1"
 Attribute VB_GlobalNameSpace = False

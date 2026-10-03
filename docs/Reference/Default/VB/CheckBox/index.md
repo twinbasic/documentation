@@ -80,6 +80,9 @@ Determines how the control's border is drawn by the OS. A member of [**Appearanc
 
 The background colour, as an **OLE_COLOR**. Defaults to the system 3-D face colour.
 
+> [!WARNING]
+> BETA 995 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+
 ### Caption
 {: .no_toc }
 
@@ -141,6 +144,9 @@ The **StdFont** used to render [**Caption**](#caption). The convenience properti
 {: .no_toc }
 
 The text colour for the caption, as an **OLE_COLOR**. Defaults to the system button-text colour.
+
+> [!WARNING]
+> BETA 995 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
 
 ### Height
 {: .no_toc }

@@ -5,18 +5,49 @@ Option Explicit
 
 Private Sub Cases()
     Load Form1
-    Form1.ForeColor = vbGreen
-    Form1.BackColor = vbGreen
-    Form1.FillColor = vbGreen
     On Error Resume Next
+    Form1.ForeColor = vbGreen
     Form1.ForeColor = -1
-    Print #9, "ForeColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.ForeColor): Err.Clear
+    Print #9, "Form.ForeColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.ForeColor): Err.Clear
+    Form1.ForeColor = vbGreen
     Form1.ForeColor = &H8000001F
-    Print #9, "ForeColor = &H8000001F: Err " & Err.Number & ", reads " & Hex$(Form1.ForeColor): Err.Clear
+    Print #9, "Form.ForeColor = &H8000001F: Err " & Err.Number & ", reads " & Hex$(Form1.ForeColor): Err.Clear
+    Form1.BackColor = vbGreen
     Form1.BackColor = -1
-    Print #9, "BackColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.BackColor): Err.Clear
+    Print #9, "Form.BackColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.BackColor): Err.Clear
+    Form1.FillColor = vbGreen
     Form1.FillColor = -1
-    Print #9, "FillColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.FillColor): Err.Clear
+    Print #9, "Form.FillColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.FillColor): Err.Clear
+    Form1.PictureBox1.ForeColor = vbGreen
+    Form1.PictureBox1.ForeColor = -1
+    Print #9, "PictureBox.ForeColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.PictureBox1.ForeColor): Err.Clear
+    Form1.PictureBox1.BackColor = vbGreen
+    Form1.PictureBox1.BackColor = -1
+    Print #9, "PictureBox.BackColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.PictureBox1.BackColor): Err.Clear
+    Form1.PictureBox1.FillColor = vbGreen
+    Form1.PictureBox1.FillColor = -1
+    Print #9, "PictureBox.FillColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.PictureBox1.FillColor): Err.Clear
+    Form1.Label1.ForeColor = vbGreen
+    Form1.Label1.ForeColor = -1
+    Print #9, "Label.ForeColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.Label1.ForeColor): Err.Clear
+    Form1.Label1.BackColor = vbGreen
+    Form1.Label1.BackColor = -1
+    Print #9, "Label.BackColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.Label1.BackColor): Err.Clear
+    Form1.TextBox1.ForeColor = vbGreen
+    Form1.TextBox1.ForeColor = -1
+    Print #9, "TextBox.ForeColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.TextBox1.ForeColor): Err.Clear
+    Form1.TextBox1.BackColor = vbGreen
+    Form1.TextBox1.BackColor = -1
+    Print #9, "TextBox.BackColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.TextBox1.BackColor): Err.Clear
+    Form1.CommandButton1.BackColor = vbGreen
+    Form1.CommandButton1.BackColor = -1
+    Print #9, "CommandButton.BackColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.CommandButton1.BackColor): Err.Clear
+    Printer.ForeColor = vbGreen
+    Printer.ForeColor = -1
+    Print #9, "Printer.ForeColor = -1: Err " & Err.Number & ", reads " & Hex$(Printer.ForeColor): Err.Clear
+    Printer.FillColor = vbGreen
+    Printer.FillColor = -1
+    Print #9, "Printer.FillColor = -1: Err " & Err.Number & ", reads " & Hex$(Printer.FillColor): Err.Clear
     Unload Form1
 End Sub
 
