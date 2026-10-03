@@ -406,7 +406,18 @@ sample ran), and `Resume tbxNext<n>` clears it before the next call.
 `check_run` fences through `collectFences` and `joinConcatGroups`, refuses them with
 `runRefusal`, and judges what VB6 prints with `expectedOutput` and `judgeOutput`, so the
 comparison is the one `check_run` makes, against a second implementation. A fence of a
-`projname=` group is skipped, since it needs the other fences' declarations. Most
+`projname=` group is built as a project of its own (class and module names collide between
+groups, so groups are never batched together): the group's other fences, gathered by name as
+`checkGroups` gathers them, are its files, each `slot=file` fence translated into VB6
+components by `translateTwinFile` --- every `Class` block a `.cls` with VB6's class header,
+every `Module` block a `.bas`, and what is outside both one more `.bas` --- and each run
+fence is a module in it. Nothing else is translated: an `Interface`, an attribute line or a
+generic stays where it is and VB6 refuses it, so a group whose files do not build ends with
+every run fence `not VB6`, at the first error's page line. Each component keeps the fence's
+line numbers, with the other components' lines blank, and a class's line is the file's less
+two as a module's is (checked against a real error in a class, a module and the top level).
+The dispatcher opens the output file before each sample and closes it after, so
+`Class_Terminate` of an object released when the sample's `Sub` ends prints into it. Most
 twinBASIC syntax is not VB6, and a compile error there is the state `not VB6`, which is
 information; a `differs` is what the tool is for. What building in VB6 taught
 (`scripts/lib/vb6.mjs`, which has the list): `Debug.Print` writes nothing in a compiled exe,

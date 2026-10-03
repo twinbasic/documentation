@@ -33,16 +33,18 @@ import {
 import { DOCS_DIR } from "../lib/repo-paths.mjs";
 import { expectedOutput, isRunFence, judgeOutput, runFenceProblem, runRefusal } from "./lib/example-run.mjs";
 import { joinConcatGroups } from "./lib/example-batches.mjs";
-import { classify, collectFences, partOf } from "./lib/tb-fences.mjs";
+import { HIDDEN_MARKER, classify, collectFences, partOf } from "./lib/tb-fences.mjs";
 import {
   NO_VB6,
   USER_MODULE,
   buildBatch,
+  declarationsModule,
   declaresMain,
   findVb6,
   makeWorkDir,
   moduleFor,
   runBatch,
+  translateTwinFile,
 } from "./lib/vb6.mjs";
 
 exitOnCrash();
@@ -68,13 +70,16 @@ generated Sub Main opens, because Debug.Print writes nothing in a compiled exe.
               mapped back to the file, and a run-time error, as
               "[vb6] error <n>: <description>", go to stderr.
 --docs        build the documentation's check_run fences in VB6 and compare what
-              each prints with what its page says twinBASIC prints. A fence of a
-              projname= group is skipped, since it needs the other fences'
-              declarations. Each fence ends as one of: same, differs (the lines
-              that differ, page against VB6), not VB6 (VB6 refuses to compile it;
-              most twinBASIC syntax ends here, and it is informational), error (a
+              each prints with what its page says twinBASIC prints. The run
+              fences of a projname= group are built in a project of its own with
+              the group's other fences, each slot=file fence translated into
+              VB6 classes (.cls) and modules (.bas); a construct VB6 has no form
+              for is left as it is, and VB6 refuses it. Each fence ends as one of:
+              same, differs (the lines that differ, page against VB6), not VB6
+              (VB6 refuses to compile it, or the files of its group; most
+              twinBASIC syntax ends here, and it is informational), error (a
               run-time error, or it did not return), refused (the sample cannot
-              be run), skipped
+              be run)
 --only <re>   with --docs, the pages whose path under docs/ matches this regular
               expression
 --vb6 <path>  VB6.EXE (default: $VB6_EXE, else VB98\\VB6.EXE under Program Files
@@ -203,22 +208,32 @@ async function sample() {
 const PROMOTE_TO_CLASS = { module: "class", sub: "method" };
 
 async function docs() {
-  const fences = joinConcatGroups(await collectFences(DOCS_DIR)).filter(
-    (f) => isRunFence(f) && (!only || only.test(f.rel)),
-  );
+  const all = joinConcatGroups(await collectFences(DOCS_DIR));
+  const fences = all.filter((f) => isRunFence(f) && (!only || only.test(f.rel)));
   const results = fences.map((fence) => ({ fence, state: null, detail: [] }));
   const where = (f, line = f.line) => `docs/${f.rel.split(path.sep).join("/")}:${line}`;
 
-  // Which fences are built at all.
-  const todo = [];
+  // A line VB6 reported in a component or a sample, as a line of its fence and of the page.
+  const locate = (fence, fenceLine) => {
+    const page = (fence.concatParts ? partOf(fence.concatParts, fenceLine)?.pageLine : null) ?? fence.line + fenceLine;
+    const text = (fence.content.split(/\r?\n/)[fenceLine - 1] ?? "").trim();
+    return { page, text: text ? `: ${text}` : "" };
+  };
+  const notVb6 = (r, fence, e, delta) => {
+    r.state = "not VB6";
+    if (e.line === null) {
+      r.detail.push(e.message);
+      return;
+    }
+    const at = locate(fence, Math.max(1, e.line + delta));
+    r.detail.push(`${e.message} (${where(fence, at.page)})${at.text}`);
+  };
+
+  // Which fences are built at all. A fence that is in a projname group is built with the group.
+  const plain = [];
+  const groups = new Map();
   for (const r of results) {
     const f = r.fence;
-    const group = f.keys.get("projname");
-    if (group) {
-      r.state = "skipped";
-      r.detail.push(`needs its project (projname=${group})`);
-      continue;
-    }
     const stated = f.keys.get("slot");
     f.base = f.keys.get("inherits") ?? null;
     f.slot = stated ?? classify(f.content).slot;
@@ -229,69 +244,119 @@ async function docs() {
       r.detail.push(refusal.message);
       continue;
     }
-    r.module = moduleFor(f.content, { name: `tbxM${todo.length}` });
-    todo.push(r);
+    const group = f.keys.get("projname");
+    if (!group) {
+      plain.push(r);
+    } else {
+      if (!groups.has(group)) groups.set(group, []);
+      groups.get(group).push(r);
+    }
   }
 
-  if (todo.length) {
+  // The samples of a unit are built as modules of one project and run, and each is judged.
+  const judge = async (unit, dir, built) => {
+    for (const r of unit) {
+      const e = built.refused.get(r.module.name);
+      if (e) notVb6(r, r.fence, e, r.module.lineDelta);
+    }
+    const ran = unit.filter((r) => !r.state);
+    if (!ran.length) return;
+    const run = await runBatch(dir, ran.length, { timeoutMs });
+    ran.forEach((r, i) => {
+      const item = run.items[i];
+      const f = r.fence;
+      if (run.hung.includes(i)) {
+        r.state = "error";
+        r.detail.push(`did not return within ${timeoutMs / 1000} s`);
+      } else if (!item.began) {
+        r.state = "error";
+        r.detail.push("was not run: the run ended before it");
+      } else if (item.error) {
+        r.state = "error";
+        r.detail.push(`raised error ${item.error.number}: ${item.error.description}`);
+      } else {
+        const expected = expectedOutput(f);
+        const problems = judgeOutput(expected, item.output);
+        r.output = item.output;
+        if (!expected.stated) {
+          r.state = "ran";
+          r.detail.push("the page states no output to compare");
+        } else if (problems.length) {
+          r.state = "differs";
+          for (const p of problems) {
+            r.detail.push(p.line ? `${where(f, p.line)}: ${p.message}` : `${p.message}\n${p.detail ?? ""}`.trim());
+          }
+        } else {
+          r.state = "same";
+        }
+      }
+    });
+  };
+
+  if (plain.length) {
+    plain.forEach((r, i) => {
+      r.module = moduleFor(r.fence.content, { name: `tbxM${i}` });
+    });
+    const dir = path.join(work, "plain");
     const built = await buildBatch(
       vb6,
-      work,
-      todo.map((r) => r.module),
+      dir,
+      plain.map((r) => r.module),
       { timeoutMs: 120000 },
     );
-    for (const r of todo) {
-      const e = built.refused.get(r.module.name);
-      if (!e) continue;
-      const f = r.fence;
-      // VB6's line, read as a line of the fence, and then of the page.
-      const body = e.line === null ? null : Math.max(1, e.line + r.module.lineDelta);
-      const page =
-        body === null ? null : ((f.concatParts ? partOf(f.concatParts, body)?.pageLine : null) ?? f.line + body);
-      r.state = "not VB6";
-      const text = body === null ? "" : (f.content.split(/\r?\n/)[body - 1] ?? "").trim();
-      r.detail.push(page === null ? e.message : `${e.message} (${where(f, page)})${text ? `: ${text}` : ""}`);
-    }
-    const ran = todo.filter((r) => !r.state);
-    if (ran.length) {
-      const run = await runBatch(work, ran.length, { timeoutMs });
-      ran.forEach((r, i) => {
-        const item = run.items[i];
-        const f = r.fence;
-        if (run.hung.includes(i)) {
-          r.state = "error";
-          r.detail.push(`did not return within ${timeoutMs / 1000} s`);
-        } else if (!item.began) {
-          r.state = "error";
-          r.detail.push("was not run: the run ended before it");
-        } else if (item.error) {
-          r.state = "error";
-          r.detail.push(`raised error ${item.error.number}: ${item.error.description}`);
-        } else {
-          const expected = expectedOutput(f);
-          const problems = judgeOutput(expected, item.output);
-          r.output = item.output;
-          if (!expected.stated) {
-            r.state = "ran";
-            r.detail.push("the page states no output to compare");
-          } else if (problems.length) {
-            r.state = "differs";
-            for (const p of problems) {
-              r.detail.push(p.line ? `${where(f, p.line)}: ${p.message}` : `${p.message}\n${p.detail ?? ""}`.trim());
-            }
-          } else {
-            r.state = "same";
-          }
-        }
-      });
-    }
+    await judge(plain, dir, built);
   }
 
-  const STATES = ["same", "differs", "not VB6", "error", "refused", "skipped", "ran"];
+  // A projname group is one program: the fences of that name, on any page, that are not run fences
+  // are its files, built into a project of its own, and the run fences are modules in it. A group
+  // is never batched with another, because class and module names collide between groups.
+  let n = 0;
+  for (const [name, unit] of groups) {
+    const dir = path.join(work, `group-${++n}`);
+    const support = [];
+    let problem = null;
+    all
+      .filter((f) => f.keys.get("projname") === name && !f.flags.has(HIDDEN_MARKER) && !f.isResource && !isRunFence(f))
+      .forEach((f, k) => {
+        const slot = f.keys.get("slot") ?? classify(f.content).slot;
+        if (slot === "file") {
+          for (const c of translateTwinFile(f.content, { topName: `tbxTop${k}` })) support.push({ ...c, fence: f });
+        } else if (slot === "module") {
+          support.push({ ...declarationsModule(f.content, `tbxTop${k}`), fence: f });
+        } else {
+          problem ??= `${where(f)} is slot=${slot}, which the group cannot take into VB6`;
+        }
+      });
+    if (problem) {
+      for (const r of unit) {
+        r.state = "refused";
+        r.detail.push(problem);
+      }
+      continue;
+    }
+    unit.forEach((r, i) => {
+      r.module = moduleFor(r.fence.content, { name: `tbxM${i}` });
+    });
+    const built = await buildBatch(
+      vb6,
+      dir,
+      unit.map((r) => r.module),
+      { timeoutMs: 120000, support },
+    );
+    if (built.supportError) {
+      // Nothing in the group can be built: every run fence ends as the error in its files does.
+      const { component, line, message } = built.supportError;
+      for (const r of unit) notVb6(r, component.fence, { line, message }, component.lineDelta);
+      continue;
+    }
+    await judge(unit, dir, built);
+  }
+
+  const STATES = ["same", "differs", "not VB6", "error", "refused", "ran"];
   const counts = Object.fromEntries(STATES.map((s) => [s, results.filter((r) => r.state === s).length]));
   const summary =
     `vb6run: ${results.length} check_run fence(s): ${counts.same} same, ${counts.differs} differs, ` +
-    `${counts["not VB6"]} not VB6, ${counts.error} error, ${counts.refused} refused, ${counts.skipped} skipped` +
+    `${counts["not VB6"]} not VB6, ${counts.error} error, ${counts.refused} refused` +
     (counts.ran ? `, ${counts.ran} ran with nothing to compare` : "");
   const bad = counts.differs + counts.error;
 

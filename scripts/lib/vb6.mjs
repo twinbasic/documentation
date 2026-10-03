@@ -40,7 +40,15 @@
 //     samples is built, the module the log names is dropped, and the rest is built
 //     again, until a project builds.
 //
-// The probes for the rewrite are in vb6Probes() at the end.
+//  7. A GROUP OF FENCES IS A PROJECT OF ITS OWN. A projname= group's files are
+//     translated into VB6 classes and modules (translateTwinFile) and its run
+//     fences are modules beside them. Each component keeps the fence's line
+//     numbers, the other components' lines blank, so VB6's line, which counts
+//     from 0 and skips the Attribute lines and the form header of a class, is the
+//     fence's line less one. The output file is open whenever sample code runs,
+//     so a Class_Terminate that prints, run as the sample's Sub ends, is captured.
+//
+// The probes for the rewrite and the translation are in vb6Probes() at the end.
 
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -281,6 +289,127 @@ export function moduleFor(src, { name, whole = false } = {}) {
   };
 }
 
+// ----------------------------------------------------- twinBASIC file to VB6
+
+/**
+ * The header VB6 writes at the top of a class module in a Standard EXE. The
+ * first four lines are the form file's, and VB6 never counts them or the
+ * `Attribute` lines in a line number.
+ */
+export const classHeader = (name) => [
+  "VERSION 1.0 CLASS",
+  "BEGIN",
+  "  MultiUse = -1  'True",
+  "END",
+  `Attribute VB_Name = "${name}"`,
+  "Attribute VB_GlobalNameSpace = False",
+  "Attribute VB_Creatable = False",
+  "Attribute VB_PredeclaredId = False",
+  "Attribute VB_Exposed = False",
+];
+
+// What to add to the line of a VB6 error in a class module to get the line of the text it
+// was made from: see translateTwinFile.
+const CLASS_LINE_DELTA = 1;
+
+// A block's opening and closing line, as a logical line has them (comments gone, strings
+// blanked). The name has to be the whole of what follows, so `Class Foo(Of T)` is not an
+// opener: it stays in the file's top level, where VB6 refuses it, and so does a stray
+// `End Class`. Public, Private and Friend before the keyword are accepted and dropped.
+const BLOCK_OPEN = /^\s*(?:(?:Public|Private|Friend)\s+)?(Class|Module)\s+([A-Za-z_][A-Za-z0-9_]*)\s*$/i;
+const BLOCK_CLOSE = /^\s*End\s+(Class|Module)\s*$/i;
+
+/**
+ * The blocks of a twinBASIC file that have a VB6 form: every `Class <Name>` and
+ * `Module <Name>` up to its `End`, found outside comments and strings.
+ *
+ * @returns {{kind: "cls"|"bas", name: string, from: number, to: number}[]}
+ *   `from` and `to` are the lines, counted from 1, of the opening and closing line
+ */
+export function findBlocks(text) {
+  const blocks = [];
+  let open = null;
+  for (const { text: line, line: at } of logicalLines(text)) {
+    if (!open) {
+      const m = BLOCK_OPEN.exec(line);
+      if (m) open = { kind: m[1].toLowerCase() === "class" ? "cls" : "bas", name: m[2], from: at };
+    } else {
+      const m = BLOCK_CLOSE.exec(line);
+      if (m && (m[1].toLowerCase() === "class") === (open.kind === "cls")) {
+        blocks.push({ ...open, to: at });
+        open = null;
+      }
+    }
+  }
+  return blocks;
+}
+
+/**
+ * VB6 components for the text of a twinBASIC file.
+ *
+ * Each block is a component of its own, a `.cls` for a Class and a `.bas` for a
+ * Module, with its opening and closing line left out. What is outside every
+ * block (Declare, Type, Enum, Const, procedures) is one more `.bas`, named
+ * `topName`, when anything but blank lines and comments is there. Nothing else
+ * is translated: a construct VB6 has no form for (an Interface, a CoClass, a
+ * generic, an attribute line) stays where it is, and VB6 refuses it.
+ *
+ * Every component has the lines of the text, one for one, with the other
+ * components' lines blank, so a line VB6 reports is a line of the text:
+ * `lineDelta` is what to add to VB6's line to get it. `Debug.Print` is
+ * rewritten, as in moduleFor.
+ *
+ * @returns {{name: string, kind: "cls"|"bas", text: string, lineDelta: number}[]}
+ */
+export function translateTwinFile(src, { topName }) {
+  const lines = rewriteDebugPrint(src).text.replace(/\n+$/, "").split("\n");
+  const blocks = findBlocks(src);
+  const owner = new Array(lines.length + 1).fill(-1); // by line, from 1
+  blocks.forEach((b, i) => {
+    for (let l = b.from; l <= Math.min(b.to, lines.length); l++) owner[l] = i;
+  });
+  const components = [];
+  // `from`..`to` of a block are its own lines, kept apart from the rest: they are dropped, as
+  // lines, by being left blank.
+  const shape = (keep, upTo, header) => {
+    const body = [];
+    for (let l = 1; l <= upTo; l++) body.push(keep(l) ? lines[l - 1] : "");
+    return crlf(`${[...header, ...body].join("\n")}\n`);
+  };
+  blocks.forEach((b, i) => {
+    const keep = (l) => owner[l] === i && l !== b.from && l !== b.to;
+    const header = b.kind === "cls" ? classHeader(b.name) : [`Attribute VB_Name = "${b.name}"`];
+    components.push({
+      name: b.name,
+      kind: b.kind,
+      text: shape(keep, b.to - 1, header),
+      lineDelta: b.kind === "cls" ? CLASS_LINE_DELTA : 1,
+    });
+  });
+  const keepTop = (l) => owner[l] === -1;
+  const top = lines.filter((_, k) => keepTop(k + 1));
+  const topCode = logicalLines(top.join("\n")).some(({ text }) => text.trim() !== "");
+  if (topCode) {
+    components.push({
+      name: topName,
+      kind: "bas",
+      text: shape(keepTop, lines.length, [`Attribute VB_Name = "${topName}"`]),
+      lineDelta: 1,
+    });
+  }
+  return components;
+}
+
+/**
+ * One `.bas` for text that is a module's declarations and procedures, with the
+ * lines of the text kept (a VB6 line less one is the text's), and `Debug.Print`
+ * rewritten.
+ */
+export function declarationsModule(src, name) {
+  const body = rewriteDebugPrint(src).text.replace(/\n+$/, "");
+  return { name, kind: "bas", text: crlf(`Attribute VB_Name = "${name}"\n${body}\n`), lineDelta: 1 };
+}
+
 /**
  * The generated `Sub Main`: for each module in turn it writes a begin marker,
  * calls the module's procedure under an `On Error GoTo` handler of its own, and
@@ -342,12 +471,14 @@ export function harnessText(calls) {
 }
 
 /** The project file. `Unattended=-1` is why a box VB6 would show is written to the event log instead. */
-export function projectText(moduleNames) {
+export function projectText(components) {
   return crlf(
     [
       "Type=Exe",
       `Module=${HARNESS}; ${HARNESS}.bas`,
-      ...moduleNames.map((n) => `Module=${n}; ${n}.bas`),
+      ...components.map((c) =>
+        c.kind === "cls" ? `Class=${c.name}; ${c.name}.cls` : `Module=${c.name}; ${c.name}.bas`,
+      ),
       'Startup="Sub Main"',
       `ExeName32="${PROJECT}.exe"`,
       'Command32=""',
@@ -377,14 +508,18 @@ export const makeWorkDir = () => mkdtempSync(path.join(tmpdir(), "vb6run-"));
  * Write the project for these generated modules into `dir`, replacing what was
  * there from an earlier build.
  *
- * @param {{name: string, text: string, call: string}[]} modules
+ * @param {{name: string, text: string, call: string}[]} modules  the samples, which the
+ *   generated Main calls in order
+ * @param {{name: string, kind: "cls"|"bas", text: string}[]} support  components the
+ *   samples use, built into the project and never called
  */
-export function writeProject(dir, modules) {
+export function writeProject(dir, modules, support = []) {
   mkdirSync(dir, { recursive: true });
   for (const f of [MAKE_LOG, `${PROJECT}.exe`, OUT_NAME]) rmSync(path.join(dir, f), { force: true });
   writeFileSync(path.join(dir, `${HARNESS}.bas`), encodeAnsi(harnessText(modules.map((m) => m.call))));
-  for (const m of modules) writeFileSync(path.join(dir, `${m.name}.bas`), encodeAnsi(m.text));
-  writeFileSync(path.join(dir, `${PROJECT}.vbp`), encodeAnsi(projectText(modules.map((m) => m.name))));
+  const all = [...support, ...modules];
+  for (const m of all) writeFileSync(path.join(dir, `${m.name}.${m.kind ?? "bas"}`), encodeAnsi(m.text));
+  writeFileSync(path.join(dir, `${PROJECT}.vbp`), encodeAnsi(projectText(all)));
 }
 
 // ------------------------------------------------------------------- spawning
@@ -461,7 +596,7 @@ export function parseMakeLog(log, names) {
   const m = /Error in File '([^']*)', Line (\d+) : ([^\n]*)/i.exec(text);
   if (!m) return { module: null, line: null, message: text.split("\n")[0] ?? "" };
   const file = m[1].slice(Math.max(m[1].lastIndexOf("\\"), m[1].lastIndexOf("/")) + 1);
-  const base = file.replace(/\.bas$/i, "").toLowerCase();
+  const base = file.replace(/\.(?:bas|cls)$/i, "").toLowerCase();
   return {
     module: names.find((n) => n.toLowerCase() === base) ?? null,
     line: Number(m[2]),
@@ -475,33 +610,48 @@ export function parseMakeLog(log, names) {
  *
  * @param {string} vb6
  * @param {string} dir
+ * With `support`, components the samples use (a group's classes and modules),
+ * an error in one of them cannot be dropped: nothing in the group can be built,
+ * and the result carries it as `supportError`.
+ *
  * @param {{name: string, text: string, call: string}[]} modules
- * @returns {Promise<{built: boolean, modules: object[], refused: Map<string, {line: number|null, message: string, log: string}>, log: string}>}
+ * @returns {Promise<{built: boolean, modules: object[], refused: Map<string, {line: number|null, message: string, log: string}>, supportError: null | {component: object, line: number|null, message: string}, log: string}>}
  *   `refused` maps a dropped module's name to VB6's first error; `modules` is what built
  */
-export async function buildBatch(vb6, dir, modules, { timeoutMs } = {}) {
+export async function buildBatch(vb6, dir, modules, { timeoutMs, support = [] } = {}) {
   let active = [...modules];
   const refused = new Map();
   for (;;) {
-    writeProject(dir, active);
+    writeProject(dir, active, support);
     const r = await make(vb6, dir, { timeoutMs });
-    if (r.built) return { built: true, modules: active, refused, log: r.log };
+    if (r.built) return { built: true, modules: active, refused, supportError: null, log: r.log };
     if (r.timedOut || r.error) {
       throw new Error(`VB6 did not finish building${r.error ? `: ${r.error}` : " in time"}\n${r.log}`);
     }
     const err = parseMakeLog(
       r.log,
-      active.map((m) => m.name),
+      [...support, ...active].map((m) => m.name),
     );
     if (/[\\/]tbxHarness\.bas'/i.test(r.log)) throw new Error(`the generated Sub Main does not build:\n${r.log}`);
+    const component = support.find((m) => m.name === err.module);
+    if (component) {
+      return {
+        built: false,
+        modules: [],
+        refused,
+        supportError: { component, line: err.line, message: err.message },
+        log: r.log,
+      };
+    }
     // A log that names no module of the project: with one module left it is that one's, and
     // otherwise nothing says which to drop, so the build cannot go on.
-    const culprit = active.find((m) => m.name === err.module) ?? (active.length === 1 ? active[0] : null);
+    const culprit =
+      active.find((m) => m.name === err.module) ?? (active.length === 1 && !support.length ? active[0] : null);
     if (!culprit)
       throw new Error(`VB6 could not build the project, and its log names no sample:\n${r.log || "(empty log)"}`);
     refused.set(culprit.name, { line: err.line, message: err.message, log: r.log });
     active = active.filter((m) => m !== culprit);
-    if (!active.length) return { built: false, modules: [], refused, log: r.log };
+    if (!active.length) return { built: false, modules: [], refused, supportError: null, log: r.log };
   }
 }
 
@@ -659,5 +809,95 @@ export function vb6Probes() {
       !declaresMain('\' Sub Main()\nx = "Sub Main()"') &&
       !declaresMain("Sub MainMenu()\nEnd Sub"),
   });
+
+  // The translation of a twinBASIC file into VB6 components.
+  const tr = (src) => translateTwinFile(src, { topName: "tbxTop0" });
+  const shape = (cs) => cs.map((c) => `${c.name}.${c.kind}`).join(" ");
+  const lines = (c) => c.text.split("\r\n");
+  const check = (name, ok, detail) => out.push({ name: `vb6 translate: ${name}`, ok, detail });
+
+  const cls = tr("Class Foo\n    Public X As Long\n    Debug.Print 1\nEnd Class\n");
+  check("a class block is a .cls with the VB6 class header", shape(cls) === "Foo.cls", shape(cls));
+  check(
+    "the header is VB6's, and the Class and End Class lines are blank",
+    JSON.stringify(lines(cls[0]).slice(0, 11)) ===
+      JSON.stringify([...classHeader("Foo"), "", "    Public X As Long"]) &&
+      lines(cls[0])[11] === `    ${P}, 1` &&
+      lines(cls[0])[12] === "",
+    JSON.stringify(lines(cls[0])),
+  );
+  check(
+    "the class header text",
+    classHeader("Foo").join("|") ===
+      'VERSION 1.0 CLASS|BEGIN|  MultiUse = -1  \'True|END|Attribute VB_Name = "Foo"|Attribute VB_GlobalNameSpace = False|Attribute VB_Creatable = False|Attribute VB_PredeclaredId = False|Attribute VB_Exposed = False',
+  );
+  const mod = tr("Module Util\n    Public Function F() As Long\n    End Function\nEnd Module");
+  check(
+    "a module block is a .bas named by it, with one Attribute line",
+    shape(mod) === "Util.bas" && lines(mod[0])[0] === 'Attribute VB_Name = "Util"' && lines(mod[0])[1] === "",
+    JSON.stringify(lines(mod[0])),
+  );
+  const top = tr("Public Const A As Long = 1\nClass Foo\nEnd Class\nPublic Function F() As Long\nEnd Function\n");
+  check("the file's top level is one .bas, after the blocks", shape(top) === "Foo.cls tbxTop0.bas", shape(top));
+  check(
+    "the top level keeps the line numbers: the block's lines are blank in it",
+    JSON.stringify(lines(top[1]).slice(1, 6)) ===
+      JSON.stringify(["Public Const A As Long = 1", "", "", "Public Function F() As Long", "End Function"]),
+    JSON.stringify(lines(top[1])),
+  );
+  check(
+    "Public, Private and Friend before Class and Module are accepted",
+    shape(
+      tr(
+        "Public Class A\nEnd Class\nPrivate Class B\nEnd Class\nFriend Module C\nEnd Module\nPrivate Module D\nEnd Module",
+      ),
+    ) === "A.cls B.cls C.bas D.bas",
+  );
+  const strc = tr('Class A\n    Debug.Print "End Class"\n    \' End Class\n    x = 1\nEnd Class\nClass B\nEnd Class');
+  check(
+    "End Class in a string or a comment does not end a block",
+    shape(strc) === "A.cls B.cls" &&
+      lines(strc[0]).some((l) => l.includes("x = 1")) &&
+      !lines(strc[1]).some((l) => l.includes("x = 1")),
+    shape(strc),
+  );
+  const opener = tr('Debug.Print "Class A"\n\' Class B\nx = 1');
+  check("Class in a string or a comment opens nothing", shape(opener) === "tbxTop0.bas", shape(opener));
+  const generic = tr("Class Box(Of T)\nEnd Class");
+  check(
+    "a generic class is not a block: VB6 refuses it where it stands",
+    shape(generic) === "tbxTop0.bas",
+    shape(generic),
+  );
+  const unclosed = tr("Class A\n    x = 1");
+  check("a class that is never closed is not a block", shape(unclosed) === "tbxTop0.bas", shape(unclosed));
+  const wrongEnd = tr("Class A\nEnd Module\nEnd Class");
+  check("End Module does not close a Class", shape(wrongEnd) === "A.cls", shape(wrongEnd));
+  const commentsOnly = tr("' only a comment\n\nClass A\nEnd Class");
+  check("a top level with only comments is no component", shape(commentsOnly) === "A.cls", shape(commentsOnly));
+  const iface = tr('[InterfaceId("x")]\nInterface I\nEnd Interface\nClass A\nEnd Class');
+  check(
+    "an Interface stays in the top level",
+    shape(iface) === "A.cls tbxTop0.bas" && lines(iface[1]).includes("Interface I"),
+    shape(iface),
+  );
+  check(
+    "a block's lines map back: the line delta is 1 for a class, a module and the top level",
+    cls[0].lineDelta === 1 && mod[0].lineDelta === 1 && top[1].lineDelta === 1,
+  );
+  const decl = declarationsModule("Public Const A = 1\nDebug.Print 2", "tbxTop2");
+  check(
+    "declarations are one .bas, Debug.Print rewritten",
+    decl.kind === "bas" && lines(decl)[2] === `${P}, 2`,
+    JSON.stringify(lines(decl)),
+  );
+  const proj = projectText([
+    { name: "Foo", kind: "cls" },
+    { name: "Util", kind: "bas" },
+  ]);
+  check(
+    "the project lists a class as Class= and a module as Module=",
+    proj.includes("Class=Foo; Foo.cls\r\n") && proj.includes("Module=Util; Util.bas\r\n"),
+  );
   return out;
 }
