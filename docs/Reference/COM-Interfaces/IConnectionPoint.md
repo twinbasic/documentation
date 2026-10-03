@@ -141,7 +141,10 @@ Syntax: *object*.**Unadvise** *dwCookie*
 
 The connection point releases the reference it held to the sink, and the source stops calling it. An event that the source raises afterwards does not reach that sink.
 
-In twinBASIC a cookie that names no connection, 0 included, raises no error, where the COM contract reports one. A **WithEvents** variable whose connection was ended with **Unadvise** can still be set to **Nothing** without an error.
+> [!WARNING]
+> BETA 995 has a defect: **Unadvise** with a cookie that names no connection, 0 included, succeeds and does nothing, where the COM contract returns an error (`E_POINTER`). A caller that releases a connection twice, or with a wrong cookie, is told that it worked.
+
+A **WithEvents** variable whose connection was ended with **Unadvise** can still be set to **Nothing** without an error.
 
 ### EnumConnections
 {: .no_toc }

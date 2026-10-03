@@ -20,8 +20,8 @@ The **Description** setting consists of a short description of the error. Use th
 
 When generating a user-defined error, assign a short description of the error to the **Description** property. If **Description** isn't filled in and the value of [**Number**](Number) corresponds to a built-in run-time error, the string returned by the [**Error**](../Conversion/Error) function is placed in **Description** when the error is generated.
 
-> [!NOTE]
-> For a number that has no built-in message, VBA places `Application-defined or object-defined error` in **Description**. twinBASIC places an empty string, a Windows system message or `Automation error`, depending on the number. [**Raise**](Raise) has the table.
+> [!WARNING]
+> BETA 995 has a defect: for a number that has no built-in message, **Raise** without a *description* leaves **Description** as an empty string, a Windows system message or `Automation error`, depending on the number, and raises no error. VBA and VB6 place `Application-defined or object-defined error` there. [**Raise**](Raise) has the table.
 
 ### Example
 

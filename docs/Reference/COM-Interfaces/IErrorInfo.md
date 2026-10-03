@@ -181,7 +181,10 @@ The object that **GetErrorInfo** returns then holds what the method gave **Raise
 - **GetHelpFile** and **GetHelpContext** return *helpfile* and *helpcontext*, and an empty string and 0 when they were omitted.
 - **GetGUID** fails with `E_NOTIMPL` (`&H80004001`): a raised error has no interface identifier.
 
-Two things about the object matter to a caller that reads it. **GetErrorInfo** empties the slot as COM requires, so a second read returns `Nothing`. And the object does not copy the values: it reads them from the **Err** object when a method is called. [**Err.Clear**](../../tB/Modules/ErrObject/Clear) empties **Err**, and an object read after it returns empty strings and 0. Read the five properties before calling anything else that clears **Err**.
+**GetErrorInfo** empties the slot as COM requires, so a second read returns `Nothing`.
+
+> [!WARNING]
+> BETA 995 has a defect: the object does not keep the values it was given, and no error tells the caller. It reads them from the **Err** object each time a method is called. [**Err.Clear**](../../tB/Modules/ErrObject/Clear) empties **Err**, so an object read after it returns empty strings and 0, and the next error changes the values to its own. COM requires an **IErrorInfo** to keep what was stored in it. Read the five properties before calling anything else that clears **Err** or raises an error.
 
 A method that handles an error itself, with [**On Error**](../../tB/Core/On-Error), still leaves the values in **Err** and a returned **IErrorInfo** that shows them, although it returns `S_OK`. A caller reads the slot only after a failure code.
 
@@ -225,7 +228,8 @@ A method can return a failure **HRESULT** without calling **SetErrorInfo**, and 
 | `&H80070005` (`E_ACCESSDENIED`) | -2147024891 | `Automation error` |
 | `&H8FFF0001` (no meaning) | -1879113727 | `Automation error` |
 
-The slot is not always empty. A failed call can leave an object in it that reads from **Err**, and when **Err** has been cleared in between, that object has an empty description. **Description** is then the standard text of the code: `Unspecified error` for `E_FAIL`, `Invalid procedure call or argument` for `&H800A0005` and `Access is denied.`, in the language of the system, for `E_ACCESSDENIED`. A program that must tell failures apart reads **Number** and does not rely on **Description** for a code that arrived without information.
+> [!WARNING]
+> BETA 995 has a defect: the slot is not always empty, and no error tells the caller. A handled error leaves in it an object that reads from **Err**, even when the error was handled in twinBASIC code that never read the slot. VB6 leaves the slot empty. When **Err** has been cleared in between, that object has an empty description, so **Description** of a failure that arrived without information is the standard text of the code: `Unspecified error` for `E_FAIL`, `Invalid procedure call or argument` for `&H800A0005` and `Access is denied.`, in the language of the system, for `E_ACCESSDENIED`. A program that must tell failures apart reads **Number** and does not rely on **Description** for a code that arrived without information.
 
 ### A method that sets error information itself
 

@@ -272,7 +272,10 @@ When **True**, the user can scroll, select, and copy text but cannot modify it. 
 ### MaxLength
 {: .no_toc }
 
-The maximum number of characters the user can type into the control. **Long**, default `0` --- when zero, the OS imposes its own limit (typically 32 767 characters for single-line, much larger for multi-line). Setting **MaxLength** below the current text length does not truncate what is already there, but blocks further typing until the user deletes enough characters. Assigning [**Text**](#text) in code is not limited by **MaxLength**: the whole string is stored. VB6 truncates it to **MaxLength** characters.
+The maximum number of characters the user can type into the control. **Long**, default `0` --- when zero, the OS imposes its own limit (typically 32 767 characters for single-line, much larger for multi-line). Setting **MaxLength** below the current text length does not truncate what is already there, but blocks further typing until the user deletes enough characters.
+
+> [!WARNING]
+> BETA 995 has a defect: assigning [**Text**](#text) in code is not limited by **MaxLength**. The whole string is stored, and no error is raised. VB6 truncates the string to **MaxLength** characters. Truncate the string in code before assigning it, with **Left$**.
 
 ### MouseIcon
 {: .no_toc }

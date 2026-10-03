@@ -147,8 +147,11 @@ The built-in surfaces read *Color* as a **Long**. When *Color* is left out they 
 
 The line of a **Line** and the fill of **BF** use the same rule, as does the circle of **Circle** and the point of **PSet**. Since BETA 984 an out-of-range value draws instead of raising an error: in BETA 983, a value such as `-1`, a top byte other than 0, 1, 2 or `&H80`, or a system colour index above 30 raised error 5.
 
+> [!WARNING]
+> BETA 995 has a defect in system colours. VB6 takes the system colour index from the low 16 bits of the value, so that `&H80010003` draws system colour 3 and `&H80FF000F` draws system colour 15. BETA 995 draws both black, without raising an error, because it reads the value as a system colour only when it lies between `&H80000000` and `&H8000001E`. BETA 983 drew them as VB6 does. Pass a system colour as one of the `vb` constants, such as `vbButtonFace`, or as `&H800000nn` with nothing in the second and third bytes.
+
 > [!NOTE]
-> VB6 treats a system colour differently in two ways. It draws `&H80000019` to `&H8000001E` black, where twinBASIC draws the system colour of that index, and it takes the index from the low 16 bits of the value, so that `&H80010003` draws system colour 3 where twinBASIC draws black. The rest of the rule, including the truncation of every other value to 24 bits, is the same.
+> VB6 draws `&H80000019` to `&H8000001E` black, where twinBASIC draws the system colour of that index. The rest of the rule, including the truncation of every other value to 24 bits, is the same.
 
 ## Example
 
