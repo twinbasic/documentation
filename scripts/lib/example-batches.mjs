@@ -8,6 +8,9 @@
 // run. The lane that stages and builds for real stays in check_examples.mjs,
 // with everything else that reads the command line.
 
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { REPO_ROOT } from "../../lib/repo-paths.mjs";
 import {
   BODY_SLOTS,
   CONCAT_KEY,
@@ -24,6 +27,7 @@ import {
 } from "./tb-fences.mjs";
 import {
   RUN_DONE,
+  UNLOAD_SUB,
   dispatcherText,
   expectedOutput,
   isRunFence,
@@ -36,6 +40,51 @@ import {
 /** check_examples.mjs's defaults for `--jobs` and `--batch`, which the probes batch with. */
 export const DEFAULT_JOBS = 4;
 export const DEFAULT_BATCH = 120;
+
+// ------------------------------------------------------------------ templates
+
+/**
+ * Which template a template is a delta of.
+ *
+ * A template is not a whole exported tree, which would repeat a stage set that
+ * is mostly the same list in every copy.
+ * A template named here holds only the files that DIFFER from its base:
+ * `vb-private` is a Settings with one reference rewritten, `cef` and
+ * `webview2` are one stage file each, and `form` is a real Form1 and the
+ * console's stage set less its stand-in for that form.
+ *
+ * The relation lives in the tool rather than in the tree on purpose. The
+ * alternative was a marker file in the template directory, and a template
+ * directory is an exported twinBASIC project that the compiler's `import` verb
+ * has to accept -- so a stray file there is a thing to test rather than a thing
+ * to declare.
+ */
+export const TEMPLATE_BASE = {
+  "vb-private": "console",
+  "cc-private": "packages",
+  "wnc-private": "packages",
+  "cef-private": "cef",
+  implicit: "console",
+  form: "console",
+  cef: "packages",
+  webview2: "packages",
+};
+
+/** A template and everything it inherits from, base first. */
+export function templateChain(name) {
+  const chain = [];
+  for (let n = name, guard = 0; n; n = TEMPLATE_BASE[n]) {
+    if (guard++ > 8) throw new Error(`template inheritance cycle at ${name}`);
+    chain.unshift(n);
+  }
+  return chain;
+}
+
+/** Does this template resolve to a project with a Settings anywhere in its chain? */
+export function templateResolves(templatesDir, name) {
+  if (!existsSync(path.join(templatesDir, name))) return false;
+  return templateChain(name).some((n) => existsSync(path.join(templatesDir, n, "Settings")));
+}
 
 /**
  * Join every `concat_group` into one fence before anything else looks at them.
@@ -1451,9 +1500,22 @@ export async function runProbes(say) {
         dLines.includes(`Resume tbxNext${i}`) &&
         dLines.includes(`tbxNext${i}:`),
     ) &&
-      !dLines.includes("On Error Resume Next") &&
-      dLines.at(-4) === `Debug.Print "${RUN_DONE}"`,
+      dLines[dLines.indexOf(`Debug.Print "${RUN_DONE}"`) + 1] === "End Sub" &&
+      // The only `On Error Resume Next` is the unload Sub's own, after the Sub that runs the samples.
+      dLines.indexOf("On Error Resume Next") > dLines.indexOf(`Debug.Print "${RUN_DONE}"`),
     "dispatcher: each call does not have a handler of its own (On Error GoTo, label, Resume), or the done line is missing",
+  );
+  // Each sample's forms are unloaded before its end marker, so a form it left loaded neither keeps
+  // the run waiting (`[DEBUGGER] Waiting for remaining forms to close...`) nor reaches the next sample.
+  expect(
+    [0, 1].every((i) => {
+      const call = dLines.indexOf(`tbx_${i ? "bbb" : "aaa"}.tbxBody`);
+      const unload = dLines.indexOf(UNLOAD_SUB, call);
+      return unload > call && unload < dLines.indexOf(`Debug.Print "[tbx-run] end ${i}"`);
+    }) &&
+      dLines.includes(`Private Sub ${UNLOAD_SUB}()`) &&
+      dLines.includes("Unload Forms(i)"),
+    "dispatcher: a form a sample left loaded is not unloaded before the sample's end marker",
   );
   // The markers are what parseRun reads, so the dispatcher's own text is run
   // through it: what it prints for a sample that returns is a match.
@@ -1567,6 +1629,102 @@ export async function runProbes(say) {
   expect(
     partitionRun([plainOne, otherPage]).run.length === 0,
     "run batching: a selection with no run sample made run batches",
+  );
+
+  // `project=form`: a run fence is built in a project made from the `form` template, apart from the
+  // fences of every other template, and a projname group whose fences say it keeps that template.
+  const inForm = (f) => ({ ...f, project: "form" });
+  const formRunner = inForm(sample("formrunner", { run: true, rel: "F.md" })),
+    formCtx = inForm(sample("formctx", { hidden: true, rel: "F.md" })),
+    formFile = inForm(sample("formfile", { group: "gf", slot: "module", rel: "F.md" })),
+    formGroupRunner = inForm(sample("formgrunner", { group: "gf", run: true, rel: "F.md" }));
+  const formSel = [runner, formRunner, formCtx, formFile, formGroupRunner];
+  const formPart = partitionRun(formSel);
+  const formBatches = makeBatches(formPart.run);
+  const batchOf = (id) => formBatches.find((b) => b.fences.some((f) => f.id === id));
+  expect(
+    ids(formPart.run) === "runner,formrunner,formctx,formfile,formgrunner",
+    `form batching: the run list is ${ids(formPart.run)}`,
+  );
+  expect(
+    batchOf("formrunner")?.project === "form" &&
+      batchOf("runner")?.project === "console" &&
+      batchOf("formrunner") !== batchOf("runner") &&
+      !batchOf("formrunner").fences.some((f) => f.id === "runner"),
+    "form batching: a project=form run fence shared a project with a console one, or lost its template",
+  );
+  expect(
+    batchOf("formgrunner")?.project === "form" &&
+      batchOf("formgrunner").group === "gf" &&
+      batchOf("formgrunner").fences.some((f) => f.id === "formfile") &&
+      ids(batchOf("formgrunner").fences.filter(isRunFence)) === "formgrunner",
+    "form batching: a projname group of a module and a run fence in the form template was not one form project of its own",
+  );
+  expect(
+    batchOf("formrunner").fences.some((f) => f.id === "formctx"),
+    "form batching: a page's hidden context did not travel into its form project",
+  );
+
+  // The templates, read from the tree: a name in TEMPLATE_BASE has a directory and a base that
+  // resolves, `form` is a delta over `console`, and its stage set is console's less the Form1 stand-in.
+  const templates = path.join(REPO_ROOT, "test", "example-projects");
+  expect(
+    Object.entries(TEMPLATE_BASE).every(
+      ([name, base]) => existsSync(path.join(templates, name)) && templateResolves(templates, base),
+    ),
+    "templates: a template named in TEMPLATE_BASE has no directory, or a base that does not resolve",
+  );
+  expect(
+    templateChain("form").join() === "console,form" &&
+      templateChain("cef-private").join() === "packages,cef,cef-private" &&
+      templateChain("console").join() === "console",
+    `templates: chains are ${templateChain("form")} / ${templateChain("cef-private")} / ${templateChain("console")}`,
+  );
+  expect(
+    templateResolves(templates, "form") && !templateResolves(templates, "no-such-template"),
+    "templates: `form` does not resolve, or a name with no directory does",
+  );
+  let cycleThrown = false;
+  TEMPLATE_BASE["probe-a"] = "probe-b";
+  TEMPLATE_BASE["probe-b"] = "probe-a";
+  try {
+    templateChain("probe-a");
+  } catch {
+    cycleThrown = true;
+  } finally {
+    delete TEMPLATE_BASE["probe-a"];
+    delete TEMPLATE_BASE["probe-b"];
+  }
+  expect(cycleThrown, "templates: a cycle in TEMPLATE_BASE did not throw");
+  const readTemplate = (name, file) => readFileSync(path.join(templates, name, "Sources", file), "utf8");
+  // The declarations of a stage set: its lines that are neither blank nor a comment.
+  const declarationsOf = (text) => text.split(/\r?\n/).filter((l) => l.trim() && !l.trim().startsWith("'"));
+  const consoleStage = declarationsOf(readTemplate("console", "tbxStage.twin"));
+  const formStage = declarationsOf(readTemplate("form", "tbxStage.twin"));
+  const standIn = "    Public Form1 As Form";
+  expect(
+    consoleStage.filter((l) => l === standIn).length === 1 &&
+      !formStage.includes(standIn) &&
+      consoleStage.filter((l) => l !== standIn).join("\n") === formStage.join("\n"),
+    "templates: the form template's stage set is not the console's less `Public Form1 As Form`",
+  );
+  const formClass = readTemplate("form", "Form1.twin");
+  const formDesigner = JSON.parse(readTemplate("form", "Form1.tbform"));
+  const classId = /\[FormDesignerId\("([0-9A-F-]+)"\)\]/i.exec(formClass)?.[1];
+  expect(
+    classId &&
+      formDesigner.length === 1 &&
+      formDesigner[0].FormDesignerId === `{${classId}}` &&
+      formDesigner[0].Name === "Form1" &&
+      /^\s*Class Form1\s*$/m.test(formClass) &&
+      /\[PredeclaredId\]/.test(formClass),
+    "templates: Form1.twin and Form1.tbform do not name one designer id, or Form1 is not a predeclared class",
+  );
+  // An empty `_children` array makes the compiler report TB5247 (no designer found for the form): an
+  // empty form has no `_children` key at all.
+  expect(
+    !("_children" in formDesigner[0]),
+    "templates: Form1.tbform has a `_children` key, and an empty array fails with TB5247",
   );
 
   // The markup must be invisible to the site. Verified against the REAL

@@ -60,6 +60,12 @@
 //     kill-on-close job: a box there is on no desktop anyone uses, and the time limit
 //     ends the exe waiting on it.
 //
+// 10. A `project=form` FENCE GETS A BLANK Form1.frm, WITHOUT UNATTENDED EXECUTION (9),
+//     AND ITS EXE RUNS ON A PRIVATE DESKTOP. A form a sample leaves loaded keeps the exe
+//     running after Main returns, so the generated Main unloads every form after each
+//     sample, as the twinBASIC dispatcher does. A twinBASIC `Declare PtrSafe` is not VB6:
+//     declaresForVb6 drops PtrSafe and reads LongPtr as Long.
+//
 // The probes for the rewrite and the translation are in vb6Probes() at the end.
 
 import { execFileSync, spawn } from "node:child_process";
@@ -315,6 +321,29 @@ export function moduleFor(src, { name, whole = false } = {}) {
 
 // ----------------------------------------------------- twinBASIC file to VB6
 
+// The first line of a Declare statement, up to where PtrSafe would stand.
+const DECLARE_START = /^(\s*(?:(?:Public|Private)\s+)?Declare\s+)PtrSafe\s+/i;
+
+/**
+ * A text with its API declarations as VB6 reads them: a `Declare` statement loses `PtrSafe`,
+ * which VB6 does not know, and its `LongPtr` is `Long`, which is what a pointer is in a
+ * 32-bit exe. The lines stay where they were, so a line number still names the same line.
+ * Nothing else is touched, and a `Declare` with no `PtrSafe` is left as it is.
+ */
+export function declaresForVb6(src) {
+  let continued = false;
+  return String(src)
+    .split("\n")
+    .map((line) => {
+      const start = DECLARE_START.test(line);
+      if (!start && !continued) return line;
+      const out = line.replace(DECLARE_START, "$1").replace(/\bLongPtr\b/gi, "Long");
+      continued = /_\s*\r?$/.test(out);
+      return out;
+    })
+    .join("\n");
+}
+
 /**
  * The header VB6 writes at the top of a class module in a Standard EXE. The
  * first four lines are the form file's, and VB6 never counts them or the
@@ -386,7 +415,7 @@ export function findBlocks(text) {
  * @returns {{name: string, kind: "cls"|"bas", text: string, lineDelta: number}[]}
  */
 export function translateTwinFile(src, { topName }) {
-  const lines = rewriteDebugPrint(src).text.replace(/\n+$/, "").split("\n");
+  const lines = declaresForVb6(rewriteDebugPrint(src).text).replace(/\n+$/, "").split("\n");
   const blocks = findBlocks(src);
   const owner = new Array(lines.length + 1).fill(-1); // by line, from 1
   blocks.forEach((b, i) => {
@@ -430,7 +459,7 @@ export function translateTwinFile(src, { topName }) {
  * rewritten.
  */
 export function declarationsModule(src, name) {
-  const body = rewriteDebugPrint(src).text.replace(/\n+$/, "");
+  const body = declaresForVb6(rewriteDebugPrint(src).text).replace(/\n+$/, "");
   return { name, kind: "bas", text: crlf(`Attribute VB_Name = "${name}"\n${body}\n`), lineDelta: 1 };
 }
 
@@ -464,6 +493,16 @@ export function harnessText(calls) {
     `    Close #${OUT_FILE}`,
     "End Sub",
     "",
+    // A form a sample left loaded keeps the exe running after Main returns, so
+    // each sample's forms are unloaded when it ends, as the twinBASIC dispatcher does.
+    "Private Sub tbxUnloadForms()",
+    "    Dim i As Long",
+    "    On Error Resume Next",
+    "    For i = Forms.Count - 1 To 0 Step -1",
+    "        Unload Forms(i)",
+    "    Next i",
+    "End Sub",
+    "",
     "Sub Main()",
     "    Dim tbxStart As Long, tbxNum As Long, tbxDesc As String",
     "    tbxStart = Val(Command$)",
@@ -485,6 +524,7 @@ export function harnessText(calls) {
       `    Resume tbxNext${i}`,
       `tbxNext${i}:`,
       "    On Error GoTo 0",
+      "    tbxUnloadForms",
       `    If tbxNum <> 0 Then tbxMark "${RUN_TAG} error " & tbxNum & " " & tbxDesc`,
       `    tbxMark "${RUN_TAG} end ${i}"`,
       `tbxSkip${i}:`,
@@ -494,15 +534,55 @@ export function harnessText(calls) {
   return crlf(out.join("\n"));
 }
 
-/** The project file. `Unattended=-1` is why a box VB6 would show is written to the event log instead. */
+/**
+ * A blank form: the VB6 side of twinBASIC's `form` template (test/example-projects/form),
+ * whose Form1 is an empty form of 300 by 300 pixels with a predeclared instance. A
+ * `project=form` fence is built into a project that has this component, as
+ * `{name: "Form1", kind: "frm", text: FORM1}`.
+ */
+export const FORM1_NAME = "Form1";
+export const FORM1 = crlf(
+  [
+    "VERSION 5.00",
+    "Begin VB.Form Form1",
+    '   Caption         =   "Form1"',
+    "   ClientHeight    =   4500",
+    "   ClientLeft      =   60",
+    "   ClientTop       =   345",
+    "   ClientWidth     =   4500",
+    '   LinkTopic       =   "Form1"',
+    "   ScaleHeight     =   4500",
+    "   ScaleWidth      =   4500",
+    "   StartUpPosition =   3  'Windows Default",
+    "   Visible         =   0   'False",
+    "End",
+    'Attribute VB_Name = "Form1"',
+    "Attribute VB_GlobalNameSpace = False",
+    "Attribute VB_Creatable = False",
+    "Attribute VB_PredeclaredId = True",
+    "Attribute VB_Exposed = False",
+    "Option Explicit",
+    "",
+  ].join("\n"),
+);
+
+/** The project's components that are forms, which VB6 will not build with Unattended Execution. */
+export const hasForm = (components) => components.some((c) => c.kind === "frm");
+
+/**
+ * The project file. `Unattended=-1` is why a box VB6 would show is written to the event log
+ * instead; a project with a form cannot have it (see 9 at the top), and is run on a private
+ * desktop for the same reason a reproducer is.
+ */
 export function projectText(components) {
   return crlf(
     [
       "Type=Exe",
+      ...components.filter((c) => c.kind === "frm").map((c) => `Form=${c.name}.frm`),
       `Module=${HARNESS}; ${HARNESS}.bas`,
-      ...components.map((c) =>
-        c.kind === "cls" ? `Class=${c.name}; ${c.name}.cls` : `Module=${c.name}; ${c.name}.bas`,
-      ),
+      ...components
+        .filter((c) => c.kind !== "frm")
+        .map((c) => (c.kind === "cls" ? `Class=${c.name}; ${c.name}.cls` : `Module=${c.name}; ${c.name}.bas`)),
       'Startup="Sub Main"',
       `ExeName32="${PROJECT}.exe"`,
       'Command32=""',
@@ -514,7 +594,7 @@ export function projectText(components) {
       "RevisionVer=0",
       "AutoIncrementVer=0",
       "StartMode=0",
-      "Unattended=-1",
+      ...(hasForm(components) ? [] : ["Unattended=-1"]),
       "Retained=0",
       "CompilationType=0",
       "OptimizationType=0",
@@ -580,6 +660,36 @@ export function runLimited(exe, args, { cwd, timeoutMs }) {
 }
 
 /**
+ * Run `exe` with one argument on a private desktop, inside a kill-on-close job, for at most
+ * `timeoutMs`, for a project with a form: a window or a box the exe shows is then on a
+ * desktop nobody uses. It ends as runLimited's does, by its pid.
+ *
+ * @returns {Promise<{status: number|null, timedOut: boolean, error?: string}>}
+ */
+async function runOnDesktop(exe, arg, { timeoutMs }) {
+  let run;
+  try {
+    run = await launchOnDesktop({ exe, arg, desktop: `vb6run-${process.pid}`, env: { ...process.env } });
+  } catch (e) {
+    return { status: null, timedOut: false, error: `could not run the built exe on a private desktop: ${e.message}` };
+  }
+  let timer;
+  const timedOut = await Promise.race([
+    run.exited.then(() => false),
+    new Promise((r) => {
+      timer = setTimeout(() => r(true), timeoutMs);
+    }),
+  ]);
+  clearTimeout(timer);
+  if (timedOut) {
+    killTree(run.pid);
+    run.launcher.kill();
+  }
+  const status = await run.exited;
+  return { status: timedOut ? null : status, timedOut };
+}
+
+/**
  * Build the project in `dir` with `VB6.EXE /make`.
  *
  * @returns {Promise<{built: boolean, log: string, timedOut: boolean, error?: string}>}
@@ -601,11 +711,13 @@ export async function make(vb6, dir, { timeoutMs = 120000, project = PROJECT } =
  */
 export async function runExe(
   dir,
-  { start = 0, timeoutMs = 30000, project = PROJECT, outName = OUT_NAME, args = [String(start)] } = {},
+  { start = 0, timeoutMs = 30000, project = PROJECT, outName = OUT_NAME, args = [String(start)], desktop = false } = {},
 ) {
   const outPath = path.join(dir, outName);
   rmSync(outPath, { force: true });
-  const r = await runLimited(path.join(dir, `${project}.exe`), args, { cwd: dir, timeoutMs });
+  const r = desktop
+    ? await runOnDesktop(path.join(dir, `${project}.exe`), args.join(" "), { timeoutMs })
+    : await runLimited(path.join(dir, `${project}.exe`), args, { cwd: dir, timeoutMs });
   const lines = existsSync(outPath) ? splitLines(decodeAnsi(readFileSync(outPath))) : [];
   return { lines, status: r.status, timedOut: r.timedOut, error: r.error };
 }
@@ -775,7 +887,7 @@ export function parseMakeLog(log, names) {
   const m = /Error in File '([^']*)', Line (\d+) : ([^\n]*)/i.exec(text);
   if (!m) return { module: null, line: null, message: text.split("\n")[0] ?? "" };
   const file = m[1].slice(Math.max(m[1].lastIndexOf("\\"), m[1].lastIndexOf("/")) + 1);
-  const base = file.replace(/\.(?:bas|cls)$/i, "").toLowerCase();
+  const base = file.replace(/\.(?:bas|cls|frm)$/i, "").toLowerCase();
   return {
     module: names.find((n) => n.toLowerCase() === base) ?? null,
     line: Number(m[2]),
@@ -825,7 +937,8 @@ export async function buildBatch(vb6, dir, modules, { timeoutMs, support = [] } 
     // A log that names no module of the project: with one module left it is that one's, and
     // otherwise nothing says which to drop, so the build cannot go on.
     const culprit =
-      active.find((m) => m.name === err.module) ?? (active.length === 1 && !support.length ? active[0] : null);
+      active.find((m) => m.name === err.module) ??
+      (active.length === 1 && support.every((c) => c.kind === "frm") ? active[0] : null);
     if (!culprit)
       throw new Error(`VB6 could not build the project, and its log names no sample:\n${r.log || "(empty log)"}`);
     refused.set(culprit.name, { line: err.line, message: err.message, log: r.log });
@@ -838,15 +951,17 @@ export async function buildBatch(vb6, dir, modules, { timeoutMs, support = [] } 
  * Run a built batch, sample by sample, and go on after one that does not return.
  *
  * @param {number} count  samples in the built project
+ * @param {{timeoutMs?: number, desktop?: boolean}} o  `desktop` runs the exe on a private
+ *   desktop, for a project with a form
  * @returns {Promise<{items: ReturnType<typeof parseRun>["items"], hung: number[]}>}
  *   `hung` lists the samples that began and never ended
  */
-export async function runBatch(dir, count, { timeoutMs } = {}) {
+export async function runBatch(dir, count, { timeoutMs, desktop = false } = {}) {
   const items = Array.from({ length: count }, () => ({ began: false, ended: false, output: [], error: null }));
   const hung = [];
   let start = 0;
   while (start < count) {
-    const r = await runExe(dir, { start, timeoutMs });
+    const r = await runExe(dir, { start, timeoutMs, desktop });
     if (r.error) throw new Error(`could not run the built exe: ${r.error}`);
     const parsed = parseRun(r.lines, count);
     parsed.items.forEach((it, i) => {
@@ -1077,6 +1192,56 @@ export function vb6Probes() {
   check(
     "the project lists a class as Class= and a module as Module=",
     proj.includes("Class=Foo; Foo.cls\r\n") && proj.includes("Module=Util; Util.bas\r\n"),
+  );
+  check("a project with no form is built with Unattended Execution", proj.includes("Unattended=-1\r\n"));
+  // `project=form`: a blank Form1.frm beside the samples, and no Unattended Execution, which VB6
+  // refuses for a project that has a form.
+  const formProj = projectText([
+    { name: FORM1_NAME, kind: "frm", text: FORM1 },
+    { name: "Util", kind: "bas" },
+  ]);
+  check(
+    "a form is listed as Form=, and the project is not unattended",
+    formProj.includes("Form=Form1.frm\r\n") &&
+      !formProj.includes("Unattended") &&
+      !formProj.includes("Module=Form1") &&
+      formProj.includes("Module=Util; Util.bas\r\n"),
+    JSON.stringify(formProj),
+  );
+  check(
+    "the blank form is a Form1 with a predeclared instance",
+    FORM1.startsWith("VERSION 5.00\r\nBegin VB.Form Form1\r\n") &&
+      /Attribute VB_PredeclaredId = True\r\n/.test(FORM1) &&
+      !/(?<!\r)\n/.test(FORM1),
+  );
+  // Each sample's forms are unloaded before its end marker, as the twinBASIC dispatcher does, because
+  // a form left loaded keeps the exe running after Main returns.
+  const harness = harnessText(["a.Body", "b.Body"]).split("\r\n");
+  check(
+    "the harness unloads a sample's forms before the sample's end marker",
+    [0, 1].every((i) => {
+      const call = harness.indexOf(`    ${i ? "b" : "a"}.Body`);
+      const unload = harness.indexOf("    tbxUnloadForms", call);
+      return unload > call && unload < harness.findIndex((l) => l.includes(`end ${i}"`));
+    }) && harness.includes("        Unload Forms(i)"),
+  );
+  const declared = declaresForVb6(
+    'Public Declare PtrSafe Function GetPixel Lib "gdi32" (ByVal hdc As LongPtr, ByVal x As Long) As Long\n' +
+      'Private Declare PtrSafe Function F Lib "k" (ByVal a As LongPtr, _\n    ByVal b As LongPtr) As LongPtr\n' +
+      'Declare Function G Lib "k" (ByVal a As LongPtr) As Long\n' +
+      "Dim p As LongPtr\n",
+  ).split("\n");
+  check(
+    "a PtrSafe Declare loses PtrSafe and reads LongPtr as Long, across a continuation",
+    declared[0] === 'Public Declare Function GetPixel Lib "gdi32" (ByVal hdc As Long, ByVal x As Long) As Long' &&
+      declared[1] === 'Private Declare Function F Lib "k" (ByVal a As Long, _' &&
+      declared[2] === "    ByVal b As Long) As Long",
+    JSON.stringify(declared),
+  );
+  check(
+    "a Declare with no PtrSafe, and any other line, is left as it is",
+    declared[3] === 'Declare Function G Lib "k" (ByVal a As LongPtr) As Long' && declared[4] === "Dim p As LongPtr",
+    JSON.stringify(declared),
   );
   out.push(...reproProbes());
   return out;

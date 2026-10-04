@@ -1,0 +1,149 @@
+' The stage set: the control instances the documentation's samples assume.
+'
+' This is the `console` template's file, the same list, with ONE line fewer:
+' `Public Form1 As Form`. The `form` template has a real Form1 (Form1.twin and
+' Form1.tbform), and a stand-in beside it would be a second Form1 at project
+' scope for `Load Form1` to choose between. test/example-batches.test.mjs checks
+' that this file is console's file less that line, so the two cannot drift apart.
+'
+' A sample that says `Text1.Text = "hi"` is form code-behind. It is complete as
+' documentation -- the reader has a form with a TextBox on it -- and it cannot
+' compile on its own, because the designer, not the code, is what declares
+' Text1. Declaring those instances here lets the compiler check what the sample
+' is actually asserting: that the member exists, that it takes those arguments,
+' that the types line up.
+'
+' Every name here was measured, not guessed: it is an identifier that appears in
+' a `tb` fence under docs/ in the position of a control instance. The list is
+' the tool's one deliberate fiction, so it stays explicit and greppable -- an
+' inference rule over "a name ending in a digit" would also have declared Var1,
+' Arg1, Line2, SQLITE3, VBA7 and MySub1, none of which is a control.
+'
+' Public, not Private: the samples are generated into their own modules and have
+' to see these from there.
+
+Module tbxStage
+
+    Public Form2 As Form
+    Public Form3 As Form
+    Public MDIForm1 As MDIForm
+    Public UserForm1 As Form
+    Public UserForm2 As Form
+
+    Public Text1 As TextBox
+    Public Text2 As TextBox
+    Public TextBox1 As TextBox
+
+    Public Label1 As Label
+    Public Timer1 As Timer
+    Public Command1 As CommandButton
+    Public Frame1 As Frame
+    Public Picture1 As PictureBox
+    Public Picture2 As PictureBox
+    Public PictureBox1 As PictureBox
+
+    ' The VB control instances the reference pages put on their forms. Each is
+    ' named after the page that assumes it -- ListBox/index.md says List1, and
+    ' the three file-system controls share Drive1 / Dir1 / File1 because the
+    ' pages show them wired to each other.
+    Public List1 As ListBox
+    Public Combo1 As ComboBox
+    Public Check1 As CheckBox
+    Public Drive1 As DriveListBox
+    Public Dir1 As DirListBox
+    Public File1 As FileListBox
+    Public Data1 As Data
+    Public OLE1 As OLE
+
+    ' QRCode/index.md's control instance.
+    Public QRCode1 As QRCode
+
+    ' The DataObject pages' samples enumerate a drag-and-drop payload, which in
+    ' real code arrives as an OLEDrag handler's `Data` parameter. Declaring it
+    ' shadows nothing: `Data1 As Data` above still resolves the VB control class
+    ' of the same name, which the compiler was asked directly.
+    Public Data As DataObject
+
+    ' The same, where the page uses a descriptive name rather than a numbered one.
+    Public picCanvas As PictureBox
+    Public hsbVolume As HScrollBar
+    Public vsbLevel As VScrollBar
+    Public lblStatus As Label
+    Public lblCoords As Label
+    Public lblClock As Label
+    Public cmdOK As CommandButton
+    Public optHTML As OptionButton
+    Public mnuFileSave As Menu
+    Public imgLogo As Image
+    Public linUnderHeading As Line
+    Public shpPanel As Shape
+    Public mfPanels As MultiFrame
+
+    ' UserControl code-behind reaches two intrinsic objects the way form
+    ' code-behind reaches Me: the control itself, and its container's ambient
+    ' properties. Both are declared here for the same reason Text1 is -- the
+    ' designer, not the code, is what brings them into scope.
+    Public UserControl As UserControl
+    Public Ambient As AmbientProperties
+
+    ' The rest of the VB reference's forms, named as each page names them. Every
+    ' one is a control instance a page's sample assumes the reader has placed,
+    ' and the type is the one that page is about -- fraLeft is a Frame because
+    ' MultiFrame's sample docks Frames into a strip, dlgOptions is a Form because
+    ' Form/index.md shows `dlgOptions.Show vbModal, Me`.
+    Public cboFonts As ComboBox
+    Public chkInPrint As CheckBox
+    Public cmdCancel As CommandButton
+    Public cmdContinue As CommandButton
+    Public cmdSave As CommandButton
+    Public dlgOptions As Form
+    Public fraCenter As Frame
+    Public fraExtra As Frame
+    Public fraLeft As Frame
+    Public fraOutput As Frame
+    Public fraRight As Frame
+    Public hsbZoom As HScrollBar
+    Public vsbVolume As VScrollBar
+    Public lblBox As Label
+    Public lblCount As Label
+    Public lblHelp As Label
+    Public lblLevel As Label
+    Public lblName As Label
+    Public lblResult As Label
+    Public lblUnits As Label
+    Public lblVolume As Label
+    Public optCtoF As OptionButton
+    Public optMarkdown As OptionButton
+    Public optPlain As OptionButton
+    Public optTerms As OptionButton
+    Public picLogo As PictureBox
+    Public tmrAnimate As Timer
+    Public tmrStartup As Timer
+    Public txtCaption As TextBox
+    Public txtEditor As TextBox
+    Public txtInput As TextBox
+    Public txtName As TextBox
+    Public txtPassword As TextBox
+    Public txtTitle As TextBox
+
+    ' The Menu page's menu items, including the separator: a Menu is a control
+    ' like any other here, and a separator is one whose Caption is "-".
+    Public mnuContext As Menu
+    Public mnuFileNew As Menu
+    Public mnuFilePrint As Menu
+    Public mnuFileSaveAs As Menu
+    Public mnuFileSep1 As Menu
+    Public mnuRecent As Menu
+    Public mnuViewToolbar As Menu
+
+    ' MyObject is the VBA reference's generic placeholder for "some object
+    ' reference", and eight pages use it -- For-Each-Next, Is, IsNot, Set, With,
+    ' Err.Raise, IsObject and GetObject. It is declared once here rather than by
+    ' each page, because a module-level name declared by two pages is ambiguous
+    ' in any project that holds both of them, and nothing separates two batches
+    ' over a name that is not a type. MyLabel is With.md's label, on the same
+    ' terms as lblStatus above.
+    Public MyObject As Object
+    Public MyLabel As Label
+
+End Module

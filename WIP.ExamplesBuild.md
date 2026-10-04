@@ -290,6 +290,39 @@ already consumes. Two exist:
 |---|---|---|
 | `console` | stdole, VB (Forms), AppGlobalClassObject | everything by default |
 | `packages` | the above plus all eleven other shipped packages | `Reference/Built-In/` and the package tutorials |
+| `form` | `console`, a delta | a `check_run` sample that needs a real form: drawing, `Cls`, `Print`, `Scale`, a form property. Never inferred: a fence says `project=form` |
+
+(The table is the two whole templates. The deltas over them --- `vb-private`, `cc-private`,
+`wnc-private`, `cef-private`, `implicit`, `cef`, `webview2` --- are `TEMPLATE_BASE` in
+`scripts/lib/example-batches.mjs`, with `form`.)
+
+**`form` is `console` plus a real `Form1`**: `Sources/Form1.twin` (a predeclared class with the
+`FormDesignerId` attribute) and `Sources/Form1.tbform` (its designer file), and its own
+`tbxStage.twin`, which is console's less the line `Public Form1 As Form`. A form made with
+`New Form` in code has no designer file and cannot be drawn on (`Load` raises 361, `AutoRedraw`
+raises -2147467259), so the form has to be a file of the project. Four facts about it, all
+measured on BETA 995:
+
+- **An empty form has no `_children` key.** `"_children": []` in `Form1.tbform` fails the build with
+  `TB5247 unable to find matching form designer JSON via FormDesignerId`, and `Form1` is then
+  unrecognised everywhere.
+- **The stand-in makes no difference to `Load Form1`.** With `Public Form1 As Form` in the stage
+  beside a real `Form1` class, `Form1` reaches the class's predeclared instance
+  (`TypeName(Form1)` is `Form1`, `Load Form1` and `AutoRedraw` work), and the stand-in stays
+  `Nothing`. In the `console` template, with no class, `Form1` is the stand-in and is `Nothing` at
+  run time. The `form` stage drops the line anyway, so that no second `Form1` exists at project
+  scope. A probe holds the two stage sets to "console's less that line", which is the only
+  thing that keeps the lists from drifting apart.
+- **Fences for `form` go in a run project of their own.** Batches are grouped by template, so a
+  `project=form` run fence is never packed with a `console` one; a `projname=` group whose fences
+  all say `project=form` is one form project (`checkGroups` refuses a group of two templates, so
+  the `slot=file` module fence that declares `GetPixel` says `project=form` too).
+- **The dispatcher unloads every form each sample leaves loaded.** A loaded form ends the
+  run with `[DEBUGGER] Waiting for remaining forms to close...` and keeps it waiting, and the next
+  sample finds the form with what the last one drew (a second sample's `GetPixel` on a form the
+  first had drawn on read red before it drew anything). `tbxRun` therefore calls `tbxUnloadForms`
+  after each sample and before its end marker; a sample that forgets `Unload Form1` costs nothing,
+  and the samples share no form. The VB6 harness does the same.
 
 **`project.references` is a plain JSON array, and a hand-written entry works.** Measured:
 an entry composed by hand from a package's own `Settings` --- id, name, version,
@@ -428,6 +461,18 @@ lines from 0 and not counting `Attribute` lines, so a compile error's line is th
 less two; and `Err.Source` of an error raised in the exe is the project name, which is why
 `ErrObject/Raise.md` differs. `Close` with no argument in a sample also closes the file the
 output goes to, so the sample's next `Debug.Print` raises error 52.
+
+**A `project=form` fence is built in VB6 with a blank `Form1.frm`.** The project then has a
+`Form=Form1.frm` line and no `Unattended=-1`, which VB6 refuses for a project with a form, so
+its exe is run on a private desktop (`runOnDesktop`, as a reproducer's is) and the time limit ends
+one that waits on a box. A `projname=` group takes the form when any of its fences says
+`project=form`; plain fences that say it are one project of their own. The harness unloads each
+sample's forms before the end marker, as the twinBASIC dispatcher does, because a loaded form keeps a
+VB6 exe running after `Main` returns. `Declare PtrSafe` is not VB6: `declaresForVb6` drops `PtrSafe`
+and reads `LongPtr` as `Long` on a Declare statement's lines (and its continuations) and touches
+nothing else, which is what lets the documentation's `GetPixel` module build. Checked on BETA 995
+and in VB6: both form samples print what the pages say (`Graphics-Methods.md`'s three lines, and
+the Form page's `True`).
 
 Two things a batch runner must do that a single-fence runner need not:
 
