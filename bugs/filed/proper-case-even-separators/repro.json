@@ -8,5 +8,6 @@
       "^three spaces: \\[A   B\\]$",
       "^vbCrLf:       \\[A<CRLF>b\\]$"
     ]
-  }
+  },
+  "issue": 2464
 }
