@@ -73,6 +73,12 @@ export async function attach(port, match = "main.htm", { timeout = 30 * 1000 } =
 
   const send = (method, params = {}, { timeout: ms = timeout } = {}) =>
     new Promise((res, rej) => {
+      // A WebSocket that is closing or closed discards what it is sent and does
+      // not throw, so the call would wait out its whole timeout.
+      if (ws.readyState !== WebSocket.OPEN) {
+        rej(new Error("the DevTools connection is closed"));
+        return;
+      }
       const i = ++id;
       const timer = setTimeout(() => {
         pending.delete(i);
