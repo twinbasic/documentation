@@ -619,6 +619,15 @@ heading moves its id, an installed add-in keeps the old URL, and the link check 
 follows links made inside the site, so nothing else would notice. The failure message
 leads with the usual fix, pinning the old id on the reworded heading.
 
+**The help add-in's copy of the index** ([builder/addin-index.mjs](builder/addin-index.mjs)):
+`add-in/Resources/SYMBOLS/symbols.json` is committed so that the add-in builds from its
+tree as it is, and a build of `docs` rewrites it whenever it differs from the index the
+build wrote, under the guards' write rules (not CI, not `--serve`, not `--dry-run`). A
+difference is reported, never a failure: a stale copy is an older index, not a broken one.
+The comparison is byte for byte, which is why `.gitattributes` checks `add-in/Resources/`
+out `-text`: a CRLF checkout of the copy would differ from the LF the build writes on every
+build.
+
 `scripts/check_symbol_index.mjs` is the gate on all three pieces, in `test.bat` and both
 CI workflows: forty-six probes on fixtures, no tree, no install. The scanner's probes are
 the traps the packages' `.twin` sources contain; the derivation's are each a rule the real

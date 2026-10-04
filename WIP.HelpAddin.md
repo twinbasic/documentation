@@ -469,9 +469,9 @@ the copy, so a probe kept inside it would be packed into the add-in's project.
 
 **The symbol index is committed there**, as `Resources/SYMBOLS/symbols.json`, which the add-in
 reads as a resource, so the tree builds as it is. It is a copy of the docs build's
-`docs/_site/tB/symbols.json`, and nothing refreshes it: copy the build's file over it when
-the index changes (a page added, a heading reworded) and commit it with the pages, as
-`builder/package-api.json` is. Built without it, the add-in loads and says `no index` in its
+`tB/symbols.json`, and a local build rewrites it whenever the index changes (a page added, a
+heading reworded), to be committed with the pages
+([builder/addin-index.mjs](builder/addin-index.mjs)). Built without it, the add-in loads and says `no index` in its
 loaded line.
 
 ### Stage 1: testing add-ins by machine

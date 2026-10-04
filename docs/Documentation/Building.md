@@ -157,7 +157,8 @@ each gate's probes and a line per gate; every probe passes on a clean tree.
 Two more things are normal and read as alarming. A page-count **rise** rewrites
 `builder/page-baseline.json` and says so in the log --- that is the guard accepting new
 work, and the changed file belongs in your commit. A new heading on a reference page does
-the same to `builder/symbol-baseline.json`, for the [symbol index](#the-symbol-index). And `git status` after a build can show
+the same to `builder/symbol-baseline.json`, for the [symbol index](#the-symbol-index), and to
+the help add-in's copy of the index. And `git status` after a build can show
 a regenerated diagram `.svg` or `gantt.svg`; both are committed artifacts, so a diff there
 means the build genuinely produced something different.
 
@@ -398,6 +399,15 @@ heading. New URLs need nothing --- an ordinary local build adds them to the
 list and says so, and the changed file is committed with the pages. It writes
 under the same three restrictions as the page-count guard above, and
 `check_tree_fresh.mjs` skips it for the same reason.
+
+The help add-in in `add-in/` embeds a committed copy of the index,
+`add-in/Resources/SYMBOLS/symbols.json`, so that it builds from its tree as it is. A local
+build rewrites that copy whenever its own index differs and says so:
+
+    add-in index updated: add-in/Resources/SYMBOLS/symbols.json (commit it)
+
+Commit it with the pages that changed it. CI and `--serve` only say that it differs. A copy
+one build behind is never a failure: the add-in then has an older index, not a broken one.
 
 A page in a package folder that gives no entry at all is reported by name after
 the summary. Its title names nothing the package declares --- most often
