@@ -205,6 +205,37 @@ p.PSet Step(1, 2), 5
 ' PSet F=3 (1,2) C=5
 ```
 
+### Reading back what a surface drew
+
+This example draws on **Form1**, a form with no controls, and reads single pixels back to show what a negative angle does. **Point** is not implemented in twinBASIC (see [**Point**](../Packages/VB/Form/#point)), which is why the example reads pixels with the Windows **GetPixel** function, declared in a module of its own.
+
+```tb check_build projname=graphics-pixels project=form slot=file
+Module PixelReader
+    Public Declare PtrSafe Function GetPixel Lib "gdi32" (ByVal hdc As LongPtr, ByVal x As Long, ByVal y As Long) As Long
+End Module
+```
+
+The pixel at (100, 75) is half-way along the radius from the centre (100, 100) to the 12 o'clock position, an angle of pi/2. It is red when *Start* and *End* are negative, because a negative angle draws the radius to that end of the arc, and it is not red when they are positive. The last call has an angle below -2 pi, which raises error 5.
+
+```tb check_run projname=graphics-pixels project=form
+Const Pi As Double = 3.14159265358979
+Load Form1
+Form1.ScaleMode = vbPixels
+Form1.AutoRedraw = True
+Form1.BackColor = vbWhite
+
+Form1.Circle (100, 100), 50, vbRed, Pi / 4, Pi / 2
+Debug.Print GetPixel(Form1.hDC, 100, 75) = vbRed    ' False
+
+Form1.Cls
+Form1.Circle (100, 100), 50, vbRed, -Pi / 4, -Pi / 2
+Debug.Print GetPixel(Form1.hDC, 100, 75) = vbRed    ' True
+
+On Error Resume Next
+Form1.Circle (100, 100), 50, vbRed, -7, 1
+Debug.Print Err.Number                              ' 5
+```
+
 ## See Also
 
 - [**Form**](../Packages/VB/Form/#line) class -- the **Line**, **Circle**, **PSet** and **Scale** methods

@@ -539,6 +539,27 @@ The compiler turns this syntax into a call with a flags argument; see [Line, Cir
 > [!WARNING]
 > BETA 995 does not check a positive *Start* or *End*: an angle above 2 pi raises no error and draws as if 2 pi had been subtracted, where VB6 raises error 5. See [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#what-the-built-in-surfaces-do-with-the-flags).
 
+This example draws a filled pie slice on **Form1** and reads a pixel inside it. **Point** is not implemented in twinBASIC (see [**Point**](#point)), so the example reads the pixel with the Windows **GetPixel** function, declared in a module of its own.
+
+```tb check_build projname=form-circle-pixel project=form slot=file
+Module PixelReader
+    Public Declare PtrSafe Function GetPixel Lib "gdi32" (ByVal hdc As LongPtr, ByVal x As Long, ByVal y As Long) As Long
+End Module
+```
+
+```tb check_run projname=form-circle-pixel project=form
+Const Pi As Double = 3.14159265358979
+Load Form1
+Form1.ScaleMode = vbPixels
+Form1.AutoRedraw = True
+Form1.BackColor = vbWhite
+Form1.FillStyle = vbFSSolid
+Form1.FillColor = vbRed
+Form1.Circle (100, 100), 50, vbBlue, -Pi / 4, -Pi / 2
+Debug.Print GetPixel(Form1.hDC, 110, 77) = vbRed   ' True
+Unload Form1
+```
+
 ### Cls
 {: .no_toc }
 
