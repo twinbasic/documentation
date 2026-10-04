@@ -60,7 +60,9 @@ How the four duties above fit it:
   the narrowed steps.
 - **Expected behavior** says what should happen instead, and why: what VBA or VB6 does,
   what the documentation says, or what the IDE does in the neighbouring case.
-- **Screenshots** is left out when there are none.
+- **Screenshots** is left out when there are none. A graphical defect's section names its
+  `images/<name>-compare.png` and says what each panel shows; the file is dragged into the
+  issue there, since a path in the text does not reach GitHub.
 - **Desktop** gives the build as `BETA <n>`, the build it was last reproduced on.
 - **Additional context** gives what did not reproduce it, the severity, and the builds it
   was checked on besides the one above.
@@ -88,6 +90,12 @@ kebab-case name for the bug, and its **To Reproduce** names the project file:
 | `bugs/<slug>/<slug>.zip` | the `.twinproj` zipped, because a GitHub issue does not accept a `.twinproj` attachment, with any file `repro.json`'s `attach` names, such as a `.twinpack` | no |
 | `bugs/<slug>/vb6/` | optional: a VB6 project, to show what VB6 does where the entry compares it with twinBASIC: `Probe.vbp` and its `.bas`, `.cls`, `.frm` and `.ctl` files (with their `.frx` and `.ctx`), sources only, never an exe or an output | yes, byte for byte |
 | `bugs/<slug>/<slug>-vb6.zip` | the source files of `vb6/` zipped, to attach beside the other zip; written only when `vb6/` exists | no |
+| `bugs/<slug>/images/` | optional: the pictures of a graphical defect, `<name>-tb.png` (from `run`), `<name>-vb6.png` (from `vb6`) and `<name>-compare.png`, which shows both and their difference; the zip holds them all | yes |
+
+**A graphical defect carries pictures.** Its `repro.json` names them under `images`, the
+`PngDump` modules from `test/repro-templates/png/` save them (`new --with-images` copies them),
+and its report shows `-compare.png`: what twinBASIC drew beside what VB6 drew, the pixels that
+differ in red. `expect.imagesDiffer` lets `verify` judge by them.
 
 `scripts/bug_repro.mjs` makes and checks them (the tool's page is
 [Tools and Scripts](docs/Documentation/Tools.md#bug-repro)):

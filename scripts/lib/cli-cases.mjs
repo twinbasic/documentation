@@ -618,6 +618,10 @@ bad("scripts/tbrun.mjs", ["no-such-dir", "--quiet", "1.5"], thenUsage(NOT_WHOLE(
   bad(tool, ["run", "no-such-bug", "--vb6", "x"], thenUsage("--vb6 does not apply to run", tool));
   bad(tool, ["verify", "--vb6", "x"], thenUsage("--vb6 does not apply to verify", tool));
   bad(tool, ["pack", "no-such-bug", "--with-vb6"], thenUsage("--with-vb6 does not apply to pack", tool));
+  bad(tool, ["pack", "no-such-bug", "--with-images"], thenUsage("--with-images does not apply to pack", tool));
+  bad(tool, ["run", "no-such-bug", "--with-images"], thenUsage("--with-images does not apply to run", tool));
+  bad(tool, ["vb6", "no-such-bug", "--with-images"], thenUsage("--with-images does not apply to vb6", tool));
+  bad(tool, ["verify", "--with-images"], thenUsage("--with-images does not apply to verify", tool));
   bad(tool, ["new", "no-such-bug", "title", "--vb6", "x"], thenUsage("--vb6 does not apply to new", tool));
   bad(tool, ["vb6", "no-such-bug"], "no such reproducer: bugs/no-such-bug (no src/Settings and no repro.json)\n");
   // `file` moves things, so these are the refusals only: every one is decided from the

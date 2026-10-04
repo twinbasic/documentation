@@ -75,6 +75,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { PROMPTS, RUN_DONE, RUN_TAG, parseRun } from "./example-run.mjs";
 import { killTree, launchOnDesktop } from "./tb-ide.mjs";
 import { logicalLines } from "./twin-api.mjs";
@@ -696,11 +697,12 @@ export function unattended(vbp, on = true) {
 
 /**
  * Run a reproducer's built exe on a private desktop, inside a kill-on-close job,
- * for at most `timeoutMs`, and read the out.txt it wrote.
+ * for at most `timeoutMs`, and read the out.txt it wrote. `env` adds variables to the exe's
+ * environment, which is the caller's otherwise.
  *
  * @returns {Promise<{lines: string[], status: number|null, timedOut: boolean}>}
  */
-async function runReproExe(work, timeoutMs) {
+async function runReproExe(work, timeoutMs, env = {}) {
   const outPath = path.join(work, REPRO_OUT);
   rmSync(outPath, { force: true });
   let run;
@@ -708,7 +710,7 @@ async function runReproExe(work, timeoutMs) {
     run = await launchOnDesktop({
       exe: path.join(work, `${REPRO_PROJECT}.exe`),
       desktop: `bugrepro-vb6-${process.pid}`,
-      env: process.env,
+      env: { ...process.env, ...env },
     });
   } catch (e) {
     throw new Error(`could not run the built exe on a private desktop: ${e.message}`);
@@ -737,7 +739,7 @@ async function runReproExe(work, timeoutMs) {
  * @returns {Promise<{built: boolean, log: string, lines: string[], status: number|null, timedOut: boolean, work: string, kept: boolean}>}
  *   `lines` is what out.txt held; a VB6 that did not finish building throws
  */
-export async function runRepro(vb6, dir, { timeoutMs = 30000, keep = false } = {}) {
+export async function runRepro(vb6, dir, { timeoutMs = 30000, keep = false, env = {} } = {}) {
   const work = mkdtempSync(path.join(tmpdir(), "bugrepro-vb6-"));
   try {
     for (const name of reproFiles(dir).sources) copyFileSync(path.join(dir, name), path.join(work, name));
@@ -750,7 +752,7 @@ export async function runRepro(vb6, dir, { timeoutMs = 30000, keep = false } = {
     }
     const result = { built: made.built, log: made.log, lines: [], status: null, timedOut: false, work, kept: keep };
     if (!made.built) return result;
-    const ran = await runReproExe(work, Math.min(timeoutMs, 2147483647));
+    const ran = await runReproExe(work, Math.min(timeoutMs, 2147483647), env);
     return { ...result, lines: ran.lines, status: ran.status, timedOut: ran.timedOut };
   } finally {
     if (!keep) rmSync(work, { recursive: true, force: true });
@@ -1143,6 +1145,16 @@ function reproProbes() {
     );
     put("Widget.cls", "VERSION 1.0 CLASS\r\nBEGIN\r\nEND\r\n");
     check("a class with only its header is accepted", reproProblem(dir) === null, String(reproProblem(dir)));
+    // The picture module that bug_repro new --with-images copies into vb6/ is a source like any other, and
+    // must not call a prompt.
+    const pngDump = fileURLToPath(new URL("../../test/repro-templates/png/PngDump.bas", import.meta.url));
+    copyFileSync(pngDump, path.join(dir, "PngDump.bas"));
+    check(
+      "PngDump.bas, the picture module of --with-images, passes",
+      reproProblem(dir) === null,
+      String(reproProblem(dir)),
+    );
+    rmSync(path.join(dir, "PngDump.bas"));
     put("UC1.ctl", "VERSION 5.00\r\nBegin VB.UserControl UC1\r\nEnd\r\nSub F()\r\n    MsgBox 1\r\nEnd Sub\r\n");
     check(
       "MsgBox in a user control refuses it too",

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Reproducer projects for the entries of BUGS-TO-REPORT.md, under bugs/<slug>/.
 //
-//     node scripts/bug_repro.mjs new <slug> "<entry title>"
+//     node scripts/bug_repro.mjs new <slug> "<entry title>" [--with-vb6] [--with-images]
 //     node scripts/bug_repro.mjs pack <slug>
 //     node scripts/bug_repro.mjs compile|build|run <slug> [options]
 //     node scripts/bug_repro.mjs vb6 <slug> [--vb6 <VB6.EXE>] [--timeout S] [--keep]
@@ -53,6 +53,13 @@
 //     (scripts/lib/vb6.mjs, runRepro), runs its exe on a private desktop, as
 //     tbrun --exe does, and prints the out.txt it writes. VB6.EXE
 //     is only ever started from there, with an argument array and no shell.
+//     A graphical defect carries pictures: repro.json's `images` names them, the
+//     PngDump modules (test/repro-templates/png/) save each as <name>.png in the
+//     folder BUGREPRO_IMAGES names, `run` and `vb6` keep them in
+//     bugs/<slug>/images/ as <name>-tb.png and <name>-vb6.png, and
+//     <name>-compare.png (lib/repro-images.mjs, lib/png.mjs) shows both and their
+//     difference. `verify` can judge by them (expect.imagesDiffer), and stages its
+//     pictures in the temp folder, so it never changes the tree.
 //  2. impexp EXITS 6 WHEN IT WARNS. `import` that finished with a warning is
 //     still a pack, so 0 and 6 are both success, and its output is printed.
 //  3. AN IDE THAT RUNS MANY REPRODUCERS OWNS THE REGISTRY TIDY ONCE. Under
@@ -108,7 +115,25 @@ import {
 } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
 import { keptIdeLines, killTree, launchOnDesktop, summaryLine, TARGETS } from "./lib/tb-ide.mjs";
-import { compilerExe, findIde } from "./lib/tb-install.mjs";
+import {
+  BETA_FILE,
+  IMAGES_DIR,
+  IMAGES_ENV,
+  ImageError,
+  PNG_TEMPLATES,
+  PNGDUMP_BAS,
+  PNGDUMP_TWIN,
+  collectImages,
+  compareWithKept,
+  copyImageTemplates,
+  imageFile,
+  imageSourceCheck,
+  imageZipEntries,
+  imagesDifferProblems,
+  imagesKeyProblem,
+  writeComparison,
+} from "./lib/repro-images.mjs";
+import { buildNumber, compilerExe, findIde } from "./lib/tb-install.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import {
   NO_VB6,
@@ -125,7 +150,7 @@ import { fileEntry, zipFiles } from "./lib/zip.mjs";
 let tidy = null;
 exitOnCrash(() => finishTidy(tidy));
 
-const USAGE = `usage: node scripts/bug_repro.mjs <command> [slug ...] [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--llvm] [--exe] [--jobs N] [--keep] [--show|--hide] [--template <name>] [--with-vb6] [--vb6 <VB6.EXE>] [--existing] [--marked] [-h, --help]
+const USAGE = `usage: node scripts/bug_repro.mjs <command> [slug ...] [--ide <twinBASIC.exe>] [--port N] [--arch win32|win64] [--timeout S] [--llvm] [--exe] [--jobs N] [--keep] [--show|--hide] [--template <name>] [--with-vb6] [--with-images] [--vb6 <VB6.EXE>] [--existing] [--marked] [-h, --help]
 
 Reproducer projects for the entries of BUGS-TO-REPORT.md, under bugs/<slug>/, or
 under bugs/filed/<slug>/ once the entry has been filed upstream.
@@ -137,31 +162,47 @@ sources only (Probe.vbp and its .bas, .cls, .frm and .ctl files, with their
 .frx and .ctx), builds Probe.exe, and writes what it finds to out.txt beside the
 exe, handling every error itself.
 
+A graphical defect also carries pictures. repro.json's "images" lists their names; the
+PngDump modules (PngDump.twin in src/Sources/, PngDump.bas in vb6/) save each as <name>.png
+in the folder named by the BUGREPRO_IMAGES environment variable, which run and vb6 set. They
+are kept in images/ as <name>-tb.png (run) and <name>-vb6.png (vb6), and when both exist
+<name>-compare.png shows twinBASIC, VB6 and their difference: the picture for the issue.
+
 Commands:
   new <slug> "<title>"  create bugs/<slug>/src/ from the console template, with a
                         project of the slug's name and a Startup module, and
                         bugs/<slug>/repro.json with "mode": "manual"; with
                         --template, from that template's Settings and Sources;
                         with --with-vb6, also bugs/<slug>/vb6/, from the VB6
-                        template under test/repro-templates/vb6/
+                        template under test/repro-templates/vb6/; with
+                        --with-images, also the PngDump modules from
+                        test/repro-templates/png/, and "images": ["main"] in repro.json
   pack <slug>           pack src/ into <slug>.twinproj with scripts/impexp.mjs, and
                         write <slug>.zip, the file a GitHub issue accepts, with the
-                        files repro.json's "attach" names; when vb6/ exists, also
-                        write <slug>-vb6.zip, holding its source files only
+                        files repro.json's "attach" names and the files of images/;
+                        when vb6/ exists, also write <slug>-vb6.zip, holding its
+                        source files only; print the -compare.png pictures that go
+                        into the issue
   compile <slug>        pack, then compile the project in the IDE (tbbuild) and
                         print its diagnostics
   build <slug>          pack, then compile and build it (tbbuild --build)
   run <slug>            run a copy of src/ whose [RunAfterBuild] probe calls Sub
-                        Main, and print what it writes to the DEBUG CONSOLE (tbrun)
+                        Main, and print what it writes to the DEBUG CONSOLE (tbrun);
+                        with "images" in repro.json, keep each picture as
+                        images/<name>-tb.png
   vb6 <slug>            build vb6/ with VB6 in a copy under the temp folder (never
                         in the repository), run Probe.exe on a private desktop,
                         and print out.txt. A project may have forms. A project
-                        that calls MsgBox or InputBox is refused. Needs VB6; no IDE
+                        that calls MsgBox or InputBox is refused. Needs VB6; no IDE.
+                        With "images" in repro.json, keep each picture as
+                        images/<name>-vb6.png
   verify [slug ...]     run what each repro.json says, for the named reproducers or
                         all of bugs/* and bugs/filed/*, and report per reproducer
                         whether it reproduces; a filed one is labelled with its
                         issue, and one that no longer reproduces is probably fixed.
-                        Needs a twinBASIC install; run by a person only
+                        Needs a twinBASIC install; run by a person only. A run-mode
+                        reproducer with expect.imagesDiffer compares its fresh
+                        pictures (kept in the temp folder) with images/<name>-vb6.png
   file <slug> <issue>   move the entry whose reproducer is <slug> out of
                         BUGS-TO-REPORT.md into bugs/filed/<slug>/REPORT.md, move
                         bugs/<slug>/ to bugs/filed/<slug>/, and record the issue in
@@ -192,6 +233,7 @@ Options:
   --template <name> new: the project to start from, console (the default) or a
                     folder of test/repro-templates/, such as webview2-form
   --with-vb6        new: also create vb6/ from the VB6 template
+  --with-images     new: also copy the PngDump modules, and list "main" under images
   --vb6 <path>      vb6: VB6.EXE (default: $VB6_EXE, else VB98\\VB6.EXE under
                     Program Files (x86) or Program Files)
   --existing        file: the issue was already open, and covers this bug; recorded
@@ -220,13 +262,15 @@ Exit codes:
   6  run, vb6: the probe printed nothing (vb6: no out.txt, or an empty one)
   7  run: the probe ended before it returned
   8  run --exe, vb6: the exe exited with a code other than 0, or was still running
-     after --timeout`;
+     after --timeout
+  9  run, vb6: a picture that repro.json's "images" names was not written, or could
+     not be read`;
 
 const usageError = { format: (err) => `${err.message}\n${USAGE}` };
 
 // What each command takes besides -h; anything else given is refused.
 const APPLIES = {
-  new: ["template", "withVb6"],
+  new: ["template", "withVb6", "withImages"],
   pack: [],
   compile: ["ide", "port", "arch", "timeout", "keep", "show", "hide"],
   build: ["ide", "port", "arch", "timeout", "keep", "show", "hide", "llvm"],
@@ -258,6 +302,7 @@ const { values, positionals } = withUsageError(
         hide: { type: "boolean", default: false },
         template: { type: "string" },
         "with-vb6": { type: "boolean", default: false },
+        "with-images": { type: "boolean", default: false },
         vb6: { type: "string" },
         existing: { type: "boolean", default: false },
         marked: { type: "boolean", default: false },
@@ -350,7 +395,9 @@ const { port, arch, timeout, jobs, template, slugs, title, issue } = withUsageEr
 
 // ------------------------------------------------------------------ the files
 
-const BUGS = path.join(REPO_ROOT, "bugs");
+// BUG_REPRO_BUGS names another folder to hold the reproducers, so that test/png.test.mjs can run
+// `new` and `verify` over fixtures without touching bugs/. Nothing else sets it.
+const BUGS = process.env.BUG_REPRO_BUGS ? path.resolve(process.env.BUG_REPRO_BUGS) : path.join(REPO_ROOT, "bugs");
 const TEMPLATE = path.join(REPO_ROOT, "test", "example-projects", "console", "Settings");
 
 // The templates new --template takes besides console: each folder of
@@ -463,7 +510,7 @@ const VB6_TEMPLATE = path.join(REPO_ROOT, "test", "repro-templates", "vb6");
 // `template` is null for the console template, else a folder of
 // test/repro-templates/, whose Sources/ are copied as they are. `withVb6` also
 // makes vb6/.
-function newReproducer(slug, entryTitle, template = null, withVb6 = false) {
+function newReproducer(slug, entryTitle, template = null, withVb6 = false, withImages = false) {
   for (const dir of [path.join(BUGS, slug), path.join(FILED_DIR, slug)]) {
     if (existsSync(dir)) throw new Fail(`${rel(dir)} already exists`, 3);
   }
@@ -473,6 +520,10 @@ function newReproducer(slug, entryTitle, template = null, withVb6 = false) {
   if (withVb6 && !existsSync(path.join(VB6_TEMPLATE, `${REPRO_PROJECT}.vbp`))) {
     throw new Fail(`no VB6 template project at ${rel(VB6_TEMPLATE)}`);
   }
+  for (const file of withImages ? [PNGDUMP_TWIN, ...(withVb6 ? [PNGDUMP_BAS] : [])] : []) {
+    if (!existsSync(path.join(PNG_TEMPLATES, file)))
+      throw new Fail(`no picture module at ${rel(PNG_TEMPLATES)}/${file}`);
+  }
   const name = pascal(slug);
   const vb6Note = withVb6 ? " and vb6/" : "";
   let settings = readFileSync(from, "utf8");
@@ -480,28 +531,29 @@ function newReproducer(slug, entryTitle, template = null, withVb6 = false) {
   settings = setKey(settings, "project.appTitle", name, from);
   settings = setKey(settings, "project.description", `Reproduces: ${entryTitle}`, from);
   settings = setKey(settings, "project.id", `{${randomUUID().toUpperCase()}}`, from);
-  if (template) {
-    mkdirSync(p.src, { recursive: true });
-    writeFileSync(path.join(p.src, "Settings"), settings);
-    cpSync(path.join(reproTemplatesDir(), template, "Sources"), path.join(p.src, "Sources"), { recursive: true });
-    const steps = "Describe what a person does to see the bug, or set mode to compile, build, run or cli.";
-    writeFileSync(p.repro, `${JSON.stringify({ mode: "manual", steps }, null, 2)}\n`);
-    if (withVb6) cpSync(VB6_TEMPLATE, p.vb6, { recursive: true });
-    console.log(
-      `created ${rel(p.dir)}/ (project ${name}, from template ${template}): ` +
-        `edit src/Sources${vb6Note}, then pack; repro.json is manual until set`,
-    );
-    return;
-  }
-  mkdirSync(path.join(p.src, "Sources"), { recursive: true });
+  mkdirSync(p.src, { recursive: true });
   writeFileSync(path.join(p.src, "Settings"), settings);
-  writeFileSync(path.join(p.src, "Sources", "Startup.twin"), STARTUP);
+  if (template) {
+    cpSync(path.join(reproTemplatesDir(), template, "Sources"), path.join(p.src, "Sources"), { recursive: true });
+  } else {
+    mkdirSync(path.join(p.src, "Sources"), { recursive: true });
+    writeFileSync(path.join(p.src, "Sources", "Startup.twin"), STARTUP);
+  }
   const steps = "Describe what a person does to see the bug, or set mode to compile, build, run or cli.";
-  writeFileSync(p.repro, `${JSON.stringify({ mode: "manual", steps }, null, 2)}\n`);
+  const repro = { mode: "manual", steps, ...(withImages ? { images: ["main"] } : {}) };
+  writeFileSync(p.repro, `${JSON.stringify(repro, null, 2)}\n`);
   if (withVb6) cpSync(VB6_TEMPLATE, p.vb6, { recursive: true });
+  if (withImages) copyImageTemplates(p.dir, { withVb6 });
   console.log(
-    `created ${rel(p.dir)}/ (project ${name}): edit src/Sources${vb6Note}, then pack; repro.json is manual until set`,
+    `created ${rel(p.dir)}/ (project ${name}${template ? `, from template ${template}` : ""}): ` +
+      `edit src/Sources${vb6Note}, then pack; repro.json is manual until set`,
   );
+  if (withImages) {
+    console.log(
+      `pictures: src/Sources/${PNGDUMP_TWIN}${withVb6 ? ` and vb6/${PNGDUMP_BAS}` : ""} save what a surface shows; ` +
+        `call PngDump.Surface Form1, "main" (or PngDump.Window for a control with no hDC), then run${withVb6 ? " and vb6" : ""}`,
+    );
+  }
 }
 
 // ------------------------------------------------------------------------ pack
@@ -512,7 +564,8 @@ function newReproducer(slug, entryTitle, template = null, withVb6 = false) {
 function pack(slug) {
   const p = where(slug);
   if (!existsSync(path.join(p.src, "Settings"))) throw new Fail(`no ${rel(p.src)}/Settings: nothing to pack`);
-  const attach = existsSync(p.repro) ? (loadRepro(slug).attach ?? []) : [];
+  const repro = existsSync(p.repro) ? loadRepro(slug) : {};
+  const attach = repro.attach ?? [];
   const r = spawnSync(process.execPath, [IMPEXP, "import", p.twinproj, p.src, "--overwrite"], {
     encoding: "utf8",
     cwd: REPO_ROOT,
@@ -524,10 +577,23 @@ function pack(slug) {
       `impexp import ${r.error ? `failed (${r.error.message})` : `exited ${r.status}`}:\n${said.trimEnd()}`,
     );
   }
-  const files = [fileEntry(`${slug}.twinproj`, p.twinproj), ...attach.map((a) => fileEntry(a, path.join(p.dir, a)))];
+  const pictures = imageZipEntries(p.dir);
+  const files = [
+    fileEntry(`${slug}.twinproj`, p.twinproj),
+    ...attach.map((a) => fileEntry(a, path.join(p.dir, a))),
+    ...pictures,
+  ];
   writeFileSync(p.zip, zipFiles(files));
-  const also = attach.length ? `, with ${attach.join(", ")}` : "";
+  const withs = [...attach, ...(pictures.length ? [`${pictures.length} files of ${IMAGES_DIR}/`] : [])];
+  const also = withs.length ? `, with ${withs.join(", ")}` : "";
   let packed = `${said}packed ${rel(p.twinproj)} and ${rel(p.zip)}${also}`;
+  // The pictures that go into the issue itself, beside the zip that holds the rest.
+  for (const name of repro.images ?? []) {
+    const compare = imageFile(path.join(p.dir, IMAGES_DIR), name, "compare");
+    packed += existsSync(compare)
+      ? `\npicture for the issue: ${rel(compare)}`
+      : `\nno ${rel(compare)} yet: it is written when run has made ${name}-tb.png and vb6 has made ${name}-vb6.png`;
+  }
   if (existsSync(p.vb6)) {
     const problem = vb6Problem(slug);
     if (problem) throw new Fail(`${rel(p.vb6)}/ ${problem}`);
@@ -542,11 +608,13 @@ function pack(slug) {
 // ------------------------------------------------------------ repro.json
 
 const MODES = ["compile", "build", "run", "cli", "manual"];
+// The warnings loadRepro has printed, so that a reproducer read by several commands warns once.
+const warned = new Set();
 // What `expect` may hold in each mode.
 const EXPECT_KEYS = {
   compile: ["exit", "diagnostics", "noDiagnostics"],
   build: ["exit", "message"],
-  run: ["exit", "output", "absent"],
+  run: ["exit", "output", "absent", "imagesDiffer"],
   cli: ["exit", "output", "absent"],
 };
 
@@ -554,8 +622,11 @@ const EXPECT_KEYS = {
  * Reads and strictly checks bugs/<slug>/repro.json. A fault is a Fail that names
  * the file and the key. Returns the file's content with each regular expression
  * compiled (`expect.output` as RegExp objects, `expect.message` as one).
+ *
+ * `makingPictures` is for `run` and `vb6`, which make the pictures: the VB6 picture that
+ * `expect.imagesDiffer` compares with need not be there yet, since `vb6` is what writes it.
  */
-function loadRepro(slug) {
+function loadRepro(slug, { makingPictures = false } = {}) {
   const file = where(slug).repro;
   const name = rel(file);
   const bad = (key, why) => {
@@ -570,7 +641,7 @@ function loadRepro(slug) {
   }
   const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
   if (!isObject(json)) return bad("", "must be a JSON object");
-  const keys = ["mode", "arch", "llvm", "exe", "expect", "cli", "steps", "attach", "issue", "existing"];
+  const keys = ["mode", "arch", "llvm", "exe", "expect", "cli", "steps", "attach", "images", "issue", "existing"];
   for (const key of Object.keys(json)) if (!keys.includes(key)) bad(key, "is not a key repro.json has");
   if (!MODES.includes(json.mode)) bad("mode", `must be one of ${MODES.join(", ")}`);
   const { mode } = json;
@@ -594,6 +665,8 @@ function loadRepro(slug) {
       }
       if (own.includes(a)) bad(key, `names ${a}, which is not an attachment`);
       if (a.startsWith("vb6/")) bad(key, `names ${a}, which goes into ${slug}-vb6.zip with the rest of vb6/`);
+      if (a.startsWith(`${IMAGES_DIR}/`))
+        bad(key, `names ${a}, which goes into ${slug}.zip with the rest of ${IMAGES_DIR}/`);
       if (json.attach.indexOf(a) !== i) bad(key, `names ${a} twice`);
       const file = path.join(p.dir, a);
       if (!existsSync(file) || !statSync(file).isFile()) bad(key, `names ${a}, which is not a file in ${rel(p.dir)}/`);
@@ -604,6 +677,21 @@ function loadRepro(slug) {
   if (existsSync(p.vb6)) {
     const why = vb6Problem(slug);
     if (why) throw new Fail(`${rel(p.vb6)}/ ${why}`);
+  }
+  // `images` names the pictures a run and a vb6 build keep in images/. The modules that draw them
+  // must be in the project, which is an error; a copy that has drifted from the template only warns.
+  if ("images" in json) {
+    if (!["run", "manual"].includes(mode)) bad("images", "applies to the run and manual modes only");
+    if (!hasSrc) bad("images", `names pictures that ${rel(p.src)}/Settings should draw, and it is not there`);
+    const problem = imagesKeyProblem(json.images);
+    if (problem) bad(problem.key, problem.why);
+    const { errors, warnings } = imageSourceCheck(p.dir);
+    if (errors.length) bad("images", errors.join("; "));
+    for (const warning of warnings) {
+      const said = `warning: ${name}: ${warning}`;
+      if (!warned.has(said)) console.error(said);
+      warned.add(said);
+    }
   }
   if ("issue" in json && !(Number.isInteger(json.issue) && json.issue > 0)) {
     bad("issue", "must be a positive whole number, the number of a twinbasic/twinbasic issue");
@@ -641,7 +729,7 @@ function loadRepro(slug) {
   if (!isObject(json.expect)) bad("expect", "is required, an object, for every mode but manual");
   const e = json.expect;
   for (const key of Object.keys(e)) {
-    if (!["exit", "diagnostics", "noDiagnostics", "output", "absent", "message"].includes(key)) {
+    if (!["exit", "diagnostics", "noDiagnostics", "output", "absent", "message", "imagesDiffer"].includes(key)) {
       bad(`expect.${key}`, "is not a key expect has");
     }
     if (!EXPECT_KEYS[mode].includes(key)) bad(`expect.${key}`, `does not apply to the ${mode} mode`);
@@ -667,6 +755,16 @@ function loadRepro(slug) {
     expect[key] = e[key].map((text, i) => regex(`expect.${key}[${i}]`, text));
   }
   if ("message" in e) expect.message = regex("expect.message", e.message);
+  if ("imagesDiffer" in e) {
+    if (typeof e.imagesDiffer !== "boolean") bad("expect.imagesDiffer", "must be true or false");
+    if (!("images" in json)) bad("expect.imagesDiffer", "needs an images list in repro.json, which names the pictures");
+    for (const picture of makingPictures ? [] : json.images) {
+      const kept = imageFile(path.join(p.dir, IMAGES_DIR), picture, "vb6");
+      if (!existsSync(kept)) {
+        bad("expect.imagesDiffer", `needs ${rel(kept)}, the VB6 picture to compare with: vb6 makes it`);
+      }
+    }
+  }
   if (!Object.keys(e).length) bad("expect", "is empty: say what a reproduction looks like");
   out.expect = expect;
   return out;
@@ -694,11 +792,11 @@ function findTools(ide) {
 
 // A tool run as a child, with its output collected. A tool that outlives its
 // time limit is ended with its process tree, by pid.
-function runNode(scriptArgs, limitMs) {
+function runNode(scriptArgs, limitMs, env = {}) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, scriptArgs, {
       cwd: REPO_ROOT,
-      env: process.env,
+      env: { ...process.env, ...env },
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
     });
@@ -754,21 +852,88 @@ async function compileOrBuild(slug, o) {
   return { ...r, json, message: r.stderr.trim(), output: r.stdout };
 }
 
-/** tbrun on a staged copy of src/, with the probe module added unless --exe runs Sub Main in the exe. */
+/**
+ * tbrun on a staged copy of src/, with the probe module added unless --exe runs Sub Main in the exe.
+ *
+ * With `o.images`, the names of the pictures the probe draws, an empty folder beside the stage is
+ * named in BUGREPRO_IMAGES in tbrun's environment, which the IDE and, under --exe, the exe inherit
+ * from it (launchIde and runExe both start from process.env). The result's `imagesDir` is that
+ * folder, which the caller removes; it is beside the stage, not in it, because the stage is
+ * the project and is imported whole.
+ */
 async function runProbe(slug, o) {
   const p = where(slug);
   const stage = path.join(tmpdir(), "bugrepro", String(o.port), slug);
+  const imagesDir = o.images ? `${stage}.images` : null;
   rmSync(stage, { recursive: true, force: true });
+  if (imagesDir) {
+    rmSync(imagesDir, { recursive: true, force: true });
+    mkdirSync(imagesDir, { recursive: true });
+  }
   try {
     cpSync(p.src, stage, { recursive: true });
     mkdirSync(path.join(stage, "Sources"), { recursive: true });
     if (!o.exe) writeFileSync(path.join(stage, "Sources", "TbRunProbe.twin"), PROBE);
     const flags = [...ideFlags(o), ...(o.llvm ? ["--llvm"] : []), ...(o.exe ? ["--exe"] : [])];
-    const r = await runNode([TBRUN, stage, ...flags], limitFor(o.timeout, 120));
-    return { ...r, json: null, message: r.stderr.trim(), output: r.stdout };
+    const env = imagesDir ? { [IMAGES_ENV]: imagesDir } : {};
+    const r = await runNode([TBRUN, stage, ...flags], limitFor(o.timeout, 120), env);
+    return { ...r, json: null, message: r.stderr.trim(), output: r.stdout, imagesDir };
+  } catch (e) {
+    if (imagesDir) rmSync(imagesDir, { recursive: true, force: true });
+    throw e;
   } finally {
     rmSync(stage, { recursive: true, force: true });
   }
+}
+
+/**
+ * The names under "images" in a reproducer's repro.json, checked as loadRepro checks them, or
+ * null when it has none. A repro.json that cannot be read is not this function's to report: the
+ * commands that need the rest of it say so.
+ */
+function reproImages(slug) {
+  const { repro } = where(slug);
+  if (!existsSync(repro)) return null;
+  try {
+    if (!("images" in JSON.parse(readFileSync(repro, "utf8").replace(/^\u{FEFF}/u, "")))) return null;
+  } catch {
+    return null;
+  }
+  return loadRepro(slug, { makingPictures: true }).images;
+}
+
+/**
+ * After `run`: keeps each picture the probe wrote as images/<name>-tb.png, notes the beta that drew it
+ * for the comparison's label, and writes <name>-compare.png where the VB6 picture is already there.
+ * Prints a line a picture. Returns 0, or 9 when a picture is missing or cannot be read.
+ */
+function keepRunImages(slug, names, fromDir, ide) {
+  const dir = path.join(where(slug).dir, IMAGES_DIR);
+  const { found, missing } = collectImages(fromDir, dir, names, "tb");
+  const beta = buildNumber(findIde(ide));
+  if (found.length) {
+    if (beta) writeFileSync(path.join(dir, BETA_FILE), `${beta}\n`);
+    else rmSync(path.join(dir, BETA_FILE), { force: true });
+  }
+  let code = 0;
+  for (const name of missing) {
+    console.error(
+      `image ${name}: the probe wrote no ${name}.png: call PngDump.Surface or PngDump.Window with that name`,
+    );
+    code = 9;
+  }
+  for (const name of found) {
+    console.log(`image ${name}: kept as ${rel(imageFile(dir, name, "tb"))}`);
+    try {
+      const compared = writeComparison(dir, name, beta);
+      if (compared) console.log(`${compared.line} (${rel(compared.file)})`);
+    } catch (e) {
+      if (!(e instanceof ImageError)) throw e;
+      console.error(`image ${name}: ${e.message}`);
+      code = 9;
+    }
+  }
+  return code;
 }
 
 /**
@@ -909,9 +1074,25 @@ async function runVb6(slug) {
   if (why) throw new Fail(`${rel(p.vb6)}/ ${why}`);
   const exe = findVb6(values.vb6);
   if (!exe) throw new Fail(values.vb6 ? `no such file: ${values.vb6}\n${NO_VB6}` : NO_VB6);
+  // The pictures Probe.exe draws are written to a folder of ours, named in BUGREPRO_IMAGES.
+  const names = reproImages(slug);
+  const imagesDir = names ? mkdtempSync(path.join(tmpdir(), "bugrepro-vb6-images-")) : null;
+  try {
+    return await buildAndRunVb6(slug, exe, names, imagesDir);
+  } finally {
+    if (imagesDir) rmSync(imagesDir, { recursive: true, force: true });
+  }
+}
+
+async function buildAndRunVb6(slug, exe, names, imagesDir) {
+  const p = where(slug);
   let r;
   try {
-    r = await runRepro(exe, p.vb6, { timeoutMs: (timeout ?? 30) * 1000, keep: values.keep });
+    r = await runRepro(exe, p.vb6, {
+      timeoutMs: (timeout ?? 30) * 1000,
+      keep: values.keep,
+      env: imagesDir ? { [IMAGES_ENV]: imagesDir } : {},
+    });
   } catch (e) {
     throw new Fail(`vb6: ${e.message}`);
   }
@@ -933,7 +1114,36 @@ async function runVb6(slug) {
     console.error(`vb6: ${REPRO_PROJECT}.exe exited with code ${r.status}`);
     return 8;
   }
-  return 0;
+  return names ? keepVb6Images(slug, names, imagesDir) : 0;
+}
+
+/**
+ * After `vb6`: keeps each picture Probe.exe wrote as images/<name>-vb6.png, and writes
+ * <name>-compare.png where the twinBASIC picture is already there, labelled with the beta that
+ * `run` recorded. Prints a line a picture. Returns 0, or 9 when a picture is missing or unreadable.
+ */
+function keepVb6Images(slug, names, fromDir) {
+  const dir = path.join(where(slug).dir, IMAGES_DIR);
+  const { found, missing } = collectImages(fromDir, dir, names, "vb6");
+  let code = 0;
+  for (const name of missing) {
+    console.error(
+      `image ${name}: Probe.exe wrote no ${name}.png: call PngDump.Surface or PngDump.Window with that name`,
+    );
+    code = 9;
+  }
+  for (const name of found) {
+    console.log(`image ${name}: kept as ${rel(imageFile(dir, name, "vb6"))}`);
+    try {
+      const compared = writeComparison(dir, name);
+      if (compared) console.log(`${compared.line} (${rel(compared.file)})`);
+    } catch (e) {
+      if (!(e instanceof ImageError)) throw e;
+      console.error(`image ${name}: ${e.message}`);
+      code = 9;
+    }
+  }
+  return code;
 }
 
 // A reproducer is a folder with src/Settings; for verify, one with a repro.json
@@ -965,6 +1175,7 @@ function mismatches(repro, r) {
   for (const re of e.output ?? []) if (!re.test(r.output)) problems.push(`the output does not match /${re.source}/`);
   for (const re of e.absent ?? []) if (re.test(r.output)) problems.push(`the output matches /${re.source}/`);
   if (e.message && !e.message.test(r.message)) problems.push(`the message does not match /${e.message.source}/`);
+  if ("imagesDiffer" in e) problems.push(...imagesDifferProblems(e.imagesDiffer, r.images ?? []));
   return problems;
 }
 
@@ -972,13 +1183,17 @@ function mismatches(repro, r) {
 async function verifyOne(slug, repro, lane) {
   if (repro.mode === "manual") return { slug, status: "manual", detail: repro.steps ?? "(no steps recorded)" };
   const o = { ide: values.ide, port: lane, arch: repro.arch, timeout, show: values.show, hide: values.hide };
+  // The pictures of a run that is judged by them are staged in the temp folder, and never kept in the tree.
+  let imagesDir = null;
   try {
     if (existsSync(path.join(where(slug).src, "Settings"))) pack(slug);
     let r;
     let table;
     if (repro.mode === "cli") r = await runCli(slug, repro, o);
     else if (repro.mode === "run") {
-      r = await runProbe(slug, { ...o, llvm: repro.llvm, exe: repro.exe });
+      const judged = "imagesDiffer" in repro.expect;
+      r = await runProbe(slug, { ...o, llvm: repro.llvm, exe: repro.exe, images: judged ? repro.images : null });
+      imagesDir = r.imagesDir;
       table = TBRUN_EXIT;
     } else {
       r = await compileOrBuild(slug, { ...o, build: repro.mode === "build", llvm: repro.llvm });
@@ -993,6 +1208,14 @@ async function verifyOne(slug, repro, lane) {
       const said = (r.message || r.stdout || "no output").trim().split("\n").slice(-3).join(" | ");
       return { slug, status: "harness", detail: `exit ${r.code}: ${said}` };
     }
+    if (imagesDir) {
+      try {
+        r = { ...r, images: compareWithKept(imagesDir, path.join(where(slug).dir, IMAGES_DIR), repro.images) };
+      } catch (e) {
+        if (!(e instanceof ImageError)) throw e;
+        return { slug, status: "harness", detail: e.message };
+      }
+    }
     const problems = mismatches(repro, r);
     return problems.length
       ? { slug, status: "no-longer", detail: problems.join("; ") }
@@ -1000,6 +1223,8 @@ async function verifyOne(slug, repro, lane) {
   } catch (e) {
     if (!(e instanceof Fail)) throw e;
     return { slug, status: "harness", detail: e.message.split("\n").join(" | ") };
+  } finally {
+    if (imagesDir) rmSync(imagesDir, { recursive: true, force: true });
   }
 }
 
@@ -1243,7 +1468,7 @@ function carryOutFiling(plan) {
   writeFileSync(path.join(plan.filed, "REPORT.md"), plan.report);
   const file = path.join(plan.filed, "repro.json");
   const raw = readFileSync(file, "utf8");
-  const json = JSON.parse(raw.replace(/^﻿/, ""));
+  const json = JSON.parse(raw.replace(/^\u{FEFF}/u, ""));
   json.issue = plan.issue;
   if (plan.existing) json.existing = true;
   else delete json.existing;
@@ -1340,7 +1565,7 @@ async function main() {
   };
   switch (command) {
     case "new":
-      newReproducer(slug, title, template, values.withVb6);
+      newReproducer(slug, title, template, values.withVb6, values.withImages);
       return 0;
     case "vb6":
       return runVb6(slug);
@@ -1365,10 +1590,17 @@ async function main() {
     case "run": {
       requireReproducer(slug);
       findTools(o.ide);
-      const r = await runProbe(slug, o);
-      printRun(r);
-      if (r.timedOut) throw new Fail("tbrun outlived its time limit and was ended");
-      return mapped(TBRUN_EXIT, r.code);
+      const names = reproImages(slug);
+      const r = await runProbe(slug, { ...o, images: names });
+      try {
+        printRun(r);
+        if (r.timedOut) throw new Fail("tbrun outlived its time limit and was ended");
+        const code = mapped(TBRUN_EXIT, r.code);
+        // A probe that did not finish has no pictures worth keeping, and its own exit code is the finding.
+        return names && code === 0 ? keepRunImages(slug, names, r.imagesDir, o.ide) : code;
+      } finally {
+        if (r.imagesDir) rmSync(r.imagesDir, { recursive: true, force: true });
+      }
     }
     default:
       return verify();
