@@ -263,7 +263,7 @@ Exit codes:
   6  run, vb6: the probe printed nothing (vb6: no out.txt, or an empty one)
   7  run: the probe ended before it returned
   8  run --exe, vb6: the exe exited with a code other than 0, or was still running
-     after --timeout
+     after --timeout; vb6: or the event log records that the exe faulted
   9  run, vb6: a picture that repro.json's "images" names was not written, or could
      not be read`;
 
@@ -1114,6 +1114,15 @@ async function buildAndRunVb6(slug, exe, names, imagesDir) {
     return 6;
   }
   if (r.status !== 0) {
+  // A VB6 exe that faults exits with code 0; the event log's record is what says it faulted.
+  if (r.fault) {
+    const { code, module, offset } = r.fault;
+    console.error(
+      `vb6: ${REPRO_PROJECT}.exe ended with exception 0x${code} in ${module} at offset 0x${offset} ` +
+        `(the Application event log's record; its exit code was ${r.status})`,
+    );
+    return 8;
+  }
     console.error(`vb6: ${REPRO_PROJECT}.exe exited with code ${r.status}`);
     return 8;
   }

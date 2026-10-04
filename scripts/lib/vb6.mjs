@@ -66,6 +66,14 @@
 //     sample, as the twinBASIC dispatcher does. A twinBASIC `Declare PtrSafe` is not VB6:
 //     declaresForVb6 drops PtrSafe and reads LongPtr as Long.
 //
+// 11. A VB6 EXE THAT DIES OF AN ACCESS VIOLATION EXITS WITH CODE 0. Windows Error
+//     Reporting writes an "Application Error" record (event 1000) to the Application log,
+//     naming the exe's path and the exception code, but GetExitCodeProcess reads 0, so the
+//     exit code says the run succeeded. runRepro looks for that record (recordedFault) and
+//     reports the fault beside the exit code. A reproducer is built in a folder of its own,
+//     so the path names one run. (A Probe.exe that called Advise with a null sink on a VB6
+//     class's connection point, 2026-10-04: c0000005 in MSVBVM60.DLL, exit code 0.)
+//
 // The probes for the rewrite and the translation are in vb6Probes() at the end.
 
 import { execFileSync, spawn } from "node:child_process";
@@ -807,20 +815,59 @@ export function unattended(vbp, on = true) {
   return `${kept.join("\r\n")}\r\n`;
 }
 
+const XML_ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
+
+/**
+ * The fault that Windows Error Reporting recorded in the Application log for `exe`, a
+ * full path, at or after `since` (a Date.now() value), or null when there is none or the
+ * log cannot be read. See 11 at the top: a VB6 exe that faults exits with code 0, and
+ * this record is what says it faulted.
+ *
+ * @returns {{code: string, module: string, offset: string} | null}
+ *   the exception code, the faulting module and the offset in it, in hex as the record has them
+ */
+export function recordedFault(exe, since) {
+  const ms = Math.max(0, Date.now() - since) + 5000;
+  const query = `*[System[Provider[@Name='Application Error'] and (EventID=1000) and TimeCreated[timediff(@SystemTime) <= ${ms}]]]`;
+  let xml;
+  try {
+    xml = execFileSync("wevtutil", ["qe", "Application", `/q:${query}`, "/f:xml"], {
+      encoding: "utf8",
+      windowsHide: true,
+    });
+  } catch {
+    return null;
+  }
+  const want = exe.toLowerCase();
+  for (const event of xml.split("</Event>")) {
+    // The record's data are unnamed, in a fixed order: the app's name, version and time stamp,
+    // the module's name, version and time stamp, the exception code, the offset, the process
+    // id, its start time, then the app's path.
+    const data = [...event.matchAll(/<Data>([^<]*)<\/Data>/g)].map((m) =>
+      m[1].replace(/&(amp|lt|gt|quot|apos);/g, (_, e) => XML_ENTITIES[e]),
+    );
+    if (data[10]?.toLowerCase() === want) return { code: data[6], module: data[3], offset: data[7] };
+  }
+  return null;
+}
+
 /**
  * Run a reproducer's built exe on a private desktop, inside a kill-on-close job,
  * for at most `timeoutMs`, and read the out.txt it wrote. `env` adds variables to the exe's
  * environment, which is the caller's otherwise.
  *
- * @returns {Promise<{lines: string[], status: number|null, timedOut: boolean}>}
+ * @returns {Promise<{lines: string[], status: number|null, timedOut: boolean, fault: {code: string, module: string, offset: string} | null}>}
+ *   `fault` is what recordedFault found for the exe, whatever its exit code
  */
 async function runReproExe(work, timeoutMs, env = {}) {
   const outPath = path.join(work, REPRO_OUT);
   rmSync(outPath, { force: true });
+  const exe = path.join(work, `${REPRO_PROJECT}.exe`);
+  const since = Date.now();
   let run;
   try {
     run = await launchOnDesktop({
-      exe: path.join(work, `${REPRO_PROJECT}.exe`),
+      exe,
       desktop: `bugrepro-vb6-${process.pid}`,
       env: { ...process.env, ...env },
     });
@@ -841,15 +888,17 @@ async function runReproExe(work, timeoutMs, env = {}) {
   }
   const status = await run.exited;
   const lines = existsSync(outPath) ? splitLines(decodeAnsi(readFileSync(outPath))) : [];
-  return { lines, status: timedOut ? null : status, timedOut };
+  const fault = timedOut ? null : recordedFault(exe, since);
+  return { lines, status: timedOut ? null : status, timedOut, fault };
 }
 
 /**
  * Build and run the VB6 project in `dir` (a reproducer's vb6/ folder), in a copy
  * of its sources under the OS temp folder, which is removed unless `keep`.
  *
- * @returns {Promise<{built: boolean, log: string, lines: string[], status: number|null, timedOut: boolean, work: string, kept: boolean}>}
- *   `lines` is what out.txt held; a VB6 that did not finish building throws
+ * @returns {Promise<{built: boolean, log: string, lines: string[], status: number|null, timedOut: boolean, fault: {code: string, module: string, offset: string} | null, work: string, kept: boolean}>}
+ *   `lines` is what out.txt held, `fault` the exe's fault from the event log (see 11 at the
+ *   top); a VB6 that did not finish building throws
  */
 export async function runRepro(vb6, dir, { timeoutMs = 30000, keep = false, env = {} } = {}) {
   const work = mkdtempSync(path.join(tmpdir(), "bugrepro-vb6-"));
@@ -862,10 +911,19 @@ export async function runRepro(vb6, dir, { timeoutMs = 30000, keep = false, env 
     if (made.timedOut || made.error) {
       throw new Error(`VB6 did not finish building${made.error ? `: ${made.error}` : " in time"}\n${made.log}`);
     }
-    const result = { built: made.built, log: made.log, lines: [], status: null, timedOut: false, work, kept: keep };
+    const result = {
+      built: made.built,
+      log: made.log,
+      lines: [],
+      status: null,
+      timedOut: false,
+      fault: null,
+      work,
+      kept: keep,
+    };
     if (!made.built) return result;
     const ran = await runReproExe(work, Math.min(timeoutMs, 2147483647), env);
-    return { ...result, lines: ran.lines, status: ran.status, timedOut: ran.timedOut };
+    return { ...result, lines: ran.lines, status: ran.status, timedOut: ran.timedOut, fault: ran.fault };
   } finally {
     if (!keep) rmSync(work, { recursive: true, force: true });
   }
