@@ -19,6 +19,8 @@ import { logicalLines } from "./twin-api.mjs";
 export const RUN_MODULE = "tbxRun";
 export const RUN_SUB = "tbxRunAll";
 export const RUN_FILE = "tbxRun.twin";
+/** The generated Sub that unloads every form a sample left loaded. */
+export const UNLOAD_SUB = "tbxUnloadForms";
 
 /** What a marker line starts with, and the line that says the dispatcher finished. */
 export const RUN_TAG = "[tbx-run]";
@@ -209,6 +211,13 @@ export function judgeOutput(expected, output) {
  * erases the IDE's own build log from the console, so what is left is the
  * dispatcher's.
  *
+ * After each call every form the sample left loaded is unloaded (`tbxUnloadForms`),
+ * before the sample's end marker. A project with a loaded form does not end: the
+ * run prints `[DEBUGGER] Waiting for remaining forms to close...` and waits, and
+ * the next sample would find the form with what the last one drew on it. A
+ * sample that forgets `Unload Form1` therefore costs nothing, and none sees
+ * another's form.
+ *
  * @param {string[]} modules  the generated module names, in the order the
  *   samples are numbered
  */
@@ -226,10 +235,24 @@ export function dispatcherText(modules) {
       `        Resume tbxNext${i}`,
       `tbxNext${i}:`,
       "        On Error GoTo 0",
+      `        ${UNLOAD_SUB}`,
       `        Debug.Print "${RUN_TAG} end ${i}"`,
     );
   });
-  out.push(`        Debug.Print "${RUN_DONE}"`, "    End Sub", "End Module", "");
+  out.push(
+    `        Debug.Print "${RUN_DONE}"`,
+    "    End Sub",
+    "",
+    `    Private Sub ${UNLOAD_SUB}()`,
+    "        Dim i As Long",
+    "        On Error Resume Next",
+    "        For i = Forms.Count - 1 To 0 Step -1",
+    "            Unload Forms(i)",
+    "        Next i",
+    "    End Sub",
+    "End Module",
+    "",
+  );
   return out.join("\n");
 }
 

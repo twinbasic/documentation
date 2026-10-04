@@ -1,0 +1,18 @@
+' Put a breakpoint on the line marked BREAK (F9) and press F5. In the Debug
+' Console, ? tot opens no IntelliSense list, typed or with Ctrl+Space; ?tot,
+' with no space, and tot alone open it with total in it.
+Module Startup
+
+    Public Sub Main()
+        Dim total As Long
+        Dim items As New Collection
+        total = 5
+        items.Add total
+        Touch total ' BREAK
+    End Sub
+
+    Private Sub Touch(ByVal n As Long)
+        Debug.Print "total " & n
+    End Sub
+
+End Module

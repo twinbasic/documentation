@@ -147,6 +147,9 @@ Syntax: *object*.**Duplex** [ = *value* ]
 
 The colour used to fill closed shapes drawn by [**Line**](#line) with **B** and without **F**, and by [**Circle**](#circle), as an **OLE_COLOR**. Default **0** (black). Honoured only when [**FillStyle**](#fillstyle) is not **vbFSTransparent**.
 
+> [!WARNING]
+> BETA 995 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so [**Circle**](#circle) and [**Line**](#line) then draw with it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+
 ### FillStyle
 {: .no_toc }
 
@@ -213,6 +216,9 @@ Shortcut for [**Font**](#font)`.Underline`. **Boolean**.
 {: .no_toc }
 
 The colour used by the drawing-method pen (lines, circles, points) and by [**Print**](#print) text. **OLE_COLOR**.
+
+> [!WARNING]
+> BETA 995 has a defect: assigning a value that is not a colour, such as `-1` or `&H8000001F`, raises error 5 and still stores the value, so a later read returns it and a handled error leaves the invalid colour in force. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
 
 ### hDC
 {: .no_toc }
@@ -348,6 +354,8 @@ Draws a circle, ellipse, or elliptical arc on the current page.
 
 Syntax: *object*.**Circle** [ **Step** ] ( *X*, *Y* ), *Radius* [, *Color* [, *Start* [, *End* [, *Aspect* ] ] ] ]
 
+The compiler turns this syntax into a call with a flags argument; see [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#circle).
+
 *X*, *Y*
 : *required* Coordinates of the centre in [**ScaleMode**](#scalemode) units. **Single**. **Step** makes them relative to [**CurrentX**](#currentx) / [**CurrentY**](#currenty).
 
@@ -355,13 +363,16 @@ Syntax: *object*.**Circle** [ **Step** ] ( *X*, *Y* ), *Radius* [, *Color* [, *S
 : *required* The radius along the X axis. **Single**.
 
 *Color*
-: *optional* An **OLE_COLOR** for the outline. Defaults to [**ForeColor**](#forecolor).
+: *optional* An **OLE_COLOR** for the outline. Defaults to [**ForeColor**](#forecolor). See [colour values](../../../Core/Graphics-Methods#colour-values) for how the value is read.
 
 *Start*, *End*
-: *optional* Start and end angles in radians (0 to 2π). Negative values connect the arc end-point to the centre with a chord. Omitted draws a full circle.
+: *optional* Angles in radians, from -2 pi to 2 pi, counter-clockwise from the 3 o'clock position. With either one given, an arc is drawn rather than a full circle. A negative angle is used as its absolute value, and the radius from the centre to that end of the arc is drawn as well. With both negative the shape is a pie, filled with [**FillColor**](#fillcolor) and [**FillStyle**](#fillstyle); an arc with one radius or none is not filled. A negative zero draws no radius, so a pie that starts at angle 0 is written with a *Start* of `-2 * pi`. A negative angle below -2 pi raises error 5.
 
 *Aspect*
 : *optional* The Y/X aspect ratio. **1.0** for a circle (default); other values give an ellipse.
+
+> [!WARNING]
+> BETA 995 does not check a positive *Start* or *End*: an angle above 2 pi raises no error and draws as if 2 pi had been subtracted, where VB6 raises error 5. See [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#what-the-built-in-surfaces-do-with-the-flags).
 
 If no job is in progress, **Circle** implicitly starts one.
 
@@ -386,6 +397,8 @@ Draws a straight line, a rectangle outline, or a filled rectangle.
 
 Syntax: *object*.**Line** [ [ **Step** ] ( *X1*, *Y1* ) ] **-** [ **Step** ] ( *X2*, *Y2* ) [, *Color* [, **B** [**F**] ] ]
 
+The compiler turns this syntax into a call with a flags argument; see [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#line).
+
 *X1*, *Y1*
 : *optional* Start coordinates. **Single**. If omitted, the line starts at [**CurrentX**](#currentx) / [**CurrentY**](#currenty). **Step** makes them relative to the pen.
 
@@ -393,7 +406,7 @@ Syntax: *object*.**Line** [ [ **Step** ] ( *X1*, *Y1* ) ] **-** [ **Step** ] ( *
 : *required* End coordinates. **Single**. **Step** makes them relative to the start point.
 
 *Color*
-: *optional* An **OLE_COLOR** for the line. Defaults to [**ForeColor**](#forecolor).
+: *optional* An **OLE_COLOR** for the line. Defaults to [**ForeColor**](#forecolor). See [colour values](../../../Core/Graphics-Methods#colour-values) for how the value is read.
 
 *B*
 : *optional* Draws a rectangle whose opposite corners are *(X1, Y1)* and *(X2, Y2)* instead of a line. Without **F**, the interior is filled with [**FillColor**](#fillcolor) in the current [**FillStyle**](#fillstyle); **vbFSTransparent** leaves it unfilled.
@@ -450,11 +463,13 @@ Sets a single pixel on the current page.
 
 Syntax: *object*.**PSet** [ **Step** ] ( *X*, *Y* ) [, *Color* ]
 
+The compiler turns this syntax into a call with a flags argument; see [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#pset).
+
 *X*, *Y*
 : *required* Coordinates in [**ScaleMode**](#scalemode) units. **Single**. **Step** makes them relative to [**CurrentX**](#currentx) / [**CurrentY**](#currenty).
 
 *Color*
-: *optional* An **OLE_COLOR**. Defaults to [**ForeColor**](#forecolor).
+: *optional* An **OLE_COLOR**. Defaults to [**ForeColor**](#forecolor). See [colour values](../../../Core/Graphics-Methods#colour-values) for how the value is read.
 
 If no job is in progress, **PSet** implicitly starts one.
 
@@ -464,6 +479,8 @@ If no job is in progress, **PSet** implicitly starts one.
 Defines a user coordinate system for the page. Calling **Scale** with no arguments resets [**ScaleMode**](#scalemode) to **vbTwips** and clears [**ScaleLeft**](#scaleleft) / [**ScaleTop**](#scaletop).
 
 Syntax: *object*.**Scale** [ ( *X1*, *Y1* ) **-** ( *X2*, *Y2* ) ]
+
+The compiler turns this syntax into a call with a flags argument; see [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#scale).
 
 *X1*, *Y1*
 : *required* (with the second pair) The coordinate that maps to the top-left corner --- sets [**ScaleLeft**](#scaleleft) and [**ScaleTop**](#scaletop).

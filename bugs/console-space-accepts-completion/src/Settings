@@ -1,0 +1,61 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "ConsoleSpaceAcceptsCompletion",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Standard EXE",
+	"project.description": "Reproduces: A space typed in the Debug Console accepts the IntelliSense list's selection, so `Print x` becomes `Printerx`",
+	"project.exportPathIsV2": true,
+	"project.id": "{75131106-A065-4B74-B917-60F5432B8FC7}",
+	"project.name": "ConsoleSpaceAcceptsCompletion",
+	"project.optionExplicit": true,
+	"project.references": [
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"symbolId": "stdole",
+			"versionMajor": 2,
+			"versionMinor": 0
+		},
+		{
+			"id": "{F50B82D0-DCAB-43FE-9631-11959D4A4728}",
+			"isCompilerPackage": true,
+			"licence": "MIT",
+			"name": "[COMPILER PACKAGE] twinBASIC - VB Compatibility Package (Forms)",
+			"path32": "",
+			"path64": "",
+			"publisher": "TWINBASIC-COMPILER",
+			"symbolId": "VB",
+			"versionBuild": 0,
+			"versionMajor": 0,
+			"versionMinor": 0,
+			"versionRevision": 31
+		},
+		{
+			"id": "{C192FB39-64CA-4D9B-B477-A5502F48EFCC}",
+			"isCompilerPackage": true,
+			"licence": "MIT",
+			"name": "[COMPILER PACKAGE] twinBASIC - App global class object",
+			"path32": "",
+			"path64": "",
+			"publisher": "TWINBASIC-COMPILER",
+			"symbolId": "AppGlobalClassProject",
+			"versionBuild": 0,
+			"versionMajor": 1,
+			"versionMinor": 0,
+			"versionRevision": 0
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.startupObject": "Sub Main",
+	"project.warnings": {
+		"errors": [],
+		"hints": [],
+		"ignored": [],
+		"info": [],
+		"warnings": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

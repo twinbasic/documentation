@@ -42,7 +42,8 @@
 // whole surface is six verbs -- export, import, settings, licence, changelog,
 // readme -- and none builds; the IDE executable does take `--buildAndExit32`
 // and `--buildAndExit64`, but those write nothing to stdout or stderr, exit 0
-// on a project the IDE flags, and do not exit at all when the build fails.
+// when the error is in code nothing calls, and do not exit at all for an error
+// the build reaches.
 //
 // The IDE's user interface, though, is a WebView2 page, and WebView2 honours
 // WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS. So the IDE can be started with a

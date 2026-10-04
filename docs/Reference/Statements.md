@@ -72,6 +72,8 @@ These statements are built into the language itself. They are understood by the 
 
 * [Let](../tB/Core/Let) -- assigns the value of an expression to a variable or property
 
+* [Line, Circle, PSet, Scale](../tB/Core/Graphics-Methods) -- the drawing syntax of these four methods, which the compiler turns into a call with a flags argument
+
 * [Line Input #](../tB/Core/Line-Input) -- reads a single line from an open sequential file into a string variable
 
 * [Load](../tB/Core/Load) -- loads an object (typically a form) into memory without showing it

@@ -149,6 +149,9 @@ When **False**, drawing primitives --- [**Cls**](#cls), [**Circle**](#circle), [
 
 The background colour of the form's client area, as an **OLE_COLOR**. Defaults to the system 3-D face colour. Used as the fill colour for [**Cls**](#cls) and as the canvas behind [**Picture**](#picture).
 
+> [!WARNING]
+> BETA 995 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+
 ### BorderStyle
 {: .no_toc }
 
@@ -240,6 +243,9 @@ Determines whether the form accepts user input. A disabled form ignores keyboard
 
 The fill colour for closed shapes drawn by [**Circle**](#circle) and the rectangle form of [**Line**](#line) without **F**. **OLE_COLOR**, default `0` (black). Used only when [**FillStyle**](#fillstyle) is not **vbFSTransparent**.
 
+> [!WARNING]
+> BETA 995 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so [**Circle**](#circle) and [**Line**](#line) then draw with it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+
 ### FillStyle
 {: .no_toc }
 
@@ -259,6 +265,9 @@ When **True** (default), text drawn on the form has a transparent background, le
 {: .no_toc }
 
 The pen colour used by [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), and the text drawn by [**Print**](#print). **OLE_COLOR**.
+
+> [!WARNING]
+> BETA 995 has a defect: assigning a value that is not a colour, such as `-1` or `&H8000001F`, raises error 5 and still stores the value, so a later read returns it and a handled error leaves the invalid colour in force. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
 
 ### hDC
 {: .no_toc }
@@ -510,6 +519,8 @@ Draws a circle, ellipse, or arc on the form using [**ForeColor**](#forecolor) fo
 
 Syntax: *object*.**Circle** [ **Step** ] ( *X*, *Y* ), *Radius* [, [ *Color* ] [, [ *Start* ] [, [ *End* ] [, *Aspect* ] ] ] ]
 
+The compiler turns this syntax into a call with a flags argument; see [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#circle).
+
 *X*, *Y*
 : *required* The centre, in [**ScaleMode**](#scalemode) units. **Step** makes the centre relative to ([**CurrentX**](#currentx), [**CurrentY**](#currenty)).
 
@@ -517,13 +528,37 @@ Syntax: *object*.**Circle** [ **Step** ] ( *X*, *Y* ), *Radius* [, [ *Color* ] [
 : *required* A **Single** giving the radius in **ScaleMode** units.
 
 *Color*
-: *optional* An **OLE_COLOR** for the outline; defaults to [**ForeColor**](#forecolor).
+: *optional* An **OLE_COLOR** for the outline; defaults to [**ForeColor**](#forecolor). See [colour values](../../../Core/Graphics-Methods#colour-values) for how the value is read.
 
 *Start*, *End*
-: *optional* Angles in radians, used to draw an arc rather than a full circle.
+: *optional* Angles in radians, from -2 pi to 2 pi, counter-clockwise from the 3 o'clock position. With either one given, an arc is drawn rather than a full circle. A negative angle is used as its absolute value, and the radius from the centre to that end of the arc is drawn as well. With both negative the shape is a pie, filled with [**FillColor**](#fillcolor) and [**FillStyle**](#fillstyle); an arc with one radius or none is not filled. A negative zero draws no radius, so a pie that starts at angle 0 is written with a *Start* of `-2 * pi`. A negative angle below -2 pi raises error 5.
 
 *Aspect*
 : *optional* Ratio of vertical to horizontal radius. `1.0` is circular; values away from `1.0` produce ellipses.
+
+> [!WARNING]
+> BETA 995 does not check a positive *Start* or *End*: an angle above 2 pi raises no error and draws as if 2 pi had been subtracted, where VB6 raises error 5. See [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#what-the-built-in-surfaces-do-with-the-flags).
+
+This example draws a filled pie slice on **Form1** and reads a pixel inside it. **Point** is not implemented in twinBASIC (see [**Point**](#point)), so the example reads the pixel with the Windows **GetPixel** function, declared in a module of its own.
+
+```tb check_build projname=form-circle-pixel project=form slot=file
+Module PixelReader
+    Public Declare PtrSafe Function GetPixel Lib "gdi32" (ByVal hdc As LongPtr, ByVal x As Long, ByVal y As Long) As Long
+End Module
+```
+
+```tb check_run projname=form-circle-pixel project=form
+Const Pi As Double = 3.14159265358979
+Load Form1
+Form1.ScaleMode = vbPixels
+Form1.AutoRedraw = True
+Form1.BackColor = vbWhite
+Form1.FillStyle = vbFSSolid
+Form1.FillColor = vbRed
+Form1.Circle (100, 100), 50, vbBlue, -Pi / 4, -Pi / 2
+Debug.Print GetPixel(Form1.hDC, 110, 77) = vbRed   ' True
+Unload Form1
+```
 
 ### Cls
 {: .no_toc }
@@ -553,6 +588,8 @@ Draws a line, or a rectangle, on the form using [**ForeColor**](#forecolor) (or 
 
 Syntax: *object*.**Line** [ [ **Step** ] ( *X1*, *Y1* ) ] -[ **Step** ] ( *X2*, *Y2* ) [, [ *Color* ] [, **B** [ **F** ] ] ]
 
+The compiler turns this syntax into a call with a flags argument; see [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#line).
+
 *X1*, *Y1*
 : *optional* The start point, in [**ScaleMode**](#scalemode) units. **Step** makes the point relative to ([**CurrentX**](#currentx), [**CurrentY**](#currenty)). When omitted, drawing begins from the current pen position.
 
@@ -560,7 +597,7 @@ Syntax: *object*.**Line** [ [ **Step** ] ( *X1*, *Y1* ) ] -[ **Step** ] ( *X2*, 
 : *required* The end point, in **ScaleMode** units. **Step** makes the point relative to (*X1*, *Y1*).
 
 *Color*
-: *optional* An **OLE_COLOR** for the line; defaults to [**ForeColor**](#forecolor).
+: *optional* An **OLE_COLOR** for the line; defaults to [**ForeColor**](#forecolor). See [colour values](../../../Core/Graphics-Methods#colour-values) for how the value is read.
 
 **B**
 : *optional* Draw a rectangle whose opposite corners are (*X1*, *Y1*) and (*X2*, *Y2*) instead of a line. Without **F**, the interior is filled with [**FillColor**](#fillcolor) in the current [**FillStyle**](#fillstyle); **vbFSTransparent** leaves it unfilled.
@@ -636,7 +673,7 @@ Syntax: *object*.**PopUpMenu** *Menu* [, *Flags* [, *X* [, *Y* [, *DefaultMenu* 
 {: .no_toc }
 
 > [!NOTE]
-> Reserved for compatibility with VB6; not currently implemented in twinBASIC. In VB6 this returns the **OLE_COLOR** of a single pixel of the drawing surface.
+> Not implemented in twinBASIC: **Point** returns 0 whatever the pixel, and the compiler gives warning TB0009 at each call. In VB6 it returns the **OLE_COLOR** of a single pixel of the drawing surface, or -1 for a point outside it. To read a pixel, call the Windows **GetPixel** function on the [**hDC**](#hdc), with the coordinates in pixels.
 
 Syntax: *object*.**Point**( *X*, *Y* )
 
@@ -677,11 +714,13 @@ Sets a single pixel on the form to a specified colour.
 
 Syntax: *object*.**PSet** [ **Step** ] ( *X*, *Y* ) [, *Color* ]
 
+The compiler turns this syntax into a call with a flags argument; see [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#pset).
+
 *X*, *Y*
 : *required* The pixel position, in [**ScaleMode**](#scalemode) units. **Step** makes the position relative to ([**CurrentX**](#currentx), [**CurrentY**](#currenty)).
 
 *Color*
-: *optional* An **OLE_COLOR**; defaults to [**ForeColor**](#forecolor).
+: *optional* An **OLE_COLOR**; defaults to [**ForeColor**](#forecolor). See [colour values](../../../Core/Graphics-Methods#colour-values) for how the value is read.
 
 ### Refresh
 {: .no_toc }
@@ -693,9 +732,11 @@ Syntax: *object*.**Refresh**
 ### Scale
 {: .no_toc }
 
-Sets the form's logical drawing rectangle in a single call by assigning [**ScaleLeft**](#scaleleft), [**ScaleTop**](#scaletop), [**ScaleWidth**](#scalewidth), and [**ScaleHeight**](#scaleheight). Switches [**ScaleMode**](#scalemode) to **vbUser**. Calling **Scale** with no arguments resets the rectangle to a 1-to-1 mapping with the client area in pixels.
+Sets the form's logical drawing rectangle in a single call by assigning [**ScaleLeft**](#scaleleft), [**ScaleTop**](#scaletop), [**ScaleWidth**](#scalewidth), and [**ScaleHeight**](#scaleheight). Switches [**ScaleMode**](#scalemode) to **vbUser**. Calling **Scale** with no arguments resets [**ScaleMode**](#scalemode) to **vbTwips**, with [**ScaleLeft**](#scaleleft) and [**ScaleTop**](#scaletop) at 0.
 
 Syntax: *object*.**Scale** [ ( *X1*, *Y1* )-( *X2*, *Y2* ) ]
+
+The compiler turns this syntax into a call with a flags argument; see [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#scale).
 
 *X1*, *Y1*
 : *optional* The logical coordinate at the top-left corner.

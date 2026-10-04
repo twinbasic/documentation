@@ -551,7 +551,7 @@ generated `Sub`. Three keys override it when it guesses wrong, and one flag asks
 | `hidden` | Context for the page's other samples that the reader never sees. Implies `check_build`. See below. |
 | `slot=file` / `slot=module` / `slot=sub` / `slot=class` / `slot=method` | What to generate around it, when the inference is wrong. `class` and `method` are the same two shapes inside a `Class` rather than a `Module`, for code-behind. The report always names the slot it used, so a wrong guess reads as a wrong guess. |
 | `inherits=<class>` | The sample is code-behind *of* something --- `inherits=Form`, `inherits=MDIForm`. The wrapper becomes a `Class` that inherits it, so `Me.Caption` resolves against the real type. |
-| `project=<name>` | Which template project to build into. The default follows the page: a page under `Reference/Built-In/` gets the one that references every package. |
+| `project=<name>` | Which template project to build into. The default follows the page: a page under `Reference/Built-In/` gets the one that references every package. `project=form` is for a `check_run` sample that needs a real form, to draw on or to read a property of: the project has an empty `Form1`, and the checker unloads every form a sample leaves loaded. Every fence of a `projname` group names the same project. |
 | `projname=<name>` | Build these samples **as one project**, for a page that presents one program in pieces --- a function in one fence and the tests for it in the next three. Every sample sharing the name is compiled together and nothing else is compiled with them. |
 | `concat_group=<name>` | Join these fences, in page order, into **one** piece of code before building it --- for a single construct shown in parts, such as a `Sub` or a `Class` introduced a section at a time. Implies `check_build`. See below. |
 | `expect-error=<code>` | This sample is *meant* not to compile --- it is showing what goes wrong --- and the run fails if it compiles. |
@@ -921,6 +921,8 @@ Three severities, used distinctly:
 - `> [!NOTE]` --- twinBASIC-versus-VBA deviations, behaviour clarifications, and useful caveats.
 - `> [!IMPORTANT]` --- requirements that affect correctness, such as admin rights, threading constraints, or ordering.
 - `> [!WARNING]` --- operations that can corrupt state or lose data.
+
+A known defect in twinBASIC follows the same scale. A defect that silently gives a wrong result --- a function that returns the wrong value and raises no error --- is a `> [!WARNING]` until a fixed build is released, because nothing tells the reader that their data is wrong. A defect that crashes the program is a `> [!WARNING]` too, because whatever it had not saved is lost. So is a defect whose error hides a silent part, such as a procedure that runs twice before the error is raised. A defect the reader cannot miss and that loses nothing, such as an error raised or a statement the compiler refuses, is a `> [!NOTE]`. Either callout names the build it applies to, and once a fixed build is out it becomes a `> [!NOTE]` saying since which build the behaviour is correct.
 
 Use one callout per concern, and reserve them for genuine notes --- plain "why this is useful" prose should stay a plain paragraph.
 

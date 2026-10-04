@@ -105,6 +105,7 @@
     "/tB/Core/Get",
     "/tB/Core/GoSub-Return",
     "/tB/Core/GoTo",
+    "/tB/Core/Graphics-Methods",
     "/tB/Core/Handles",
     "/tB/Core/If-Then-Else",
     "/tB/Core/Imp",

@@ -1,0 +1,4 @@
+{
+  "mode": "manual",
+  "steps": "1. Open console-completion-after-print.twinproj in the twinBASIC IDE, put a breakpoint on the line marked BREAK (F9) and press F5. The run stops there, with total and items, locals of Main, in scope.\n2. Click in the DEBUG CONSOLE's input and type ? tot.\n3. Expected: the IntelliSense list opens with total in it, as it does for ?tot. Actual: no list opens at any key, and Ctrl+Space at the end of the line opens none either.\n4. Replace the line with ?tot, with no space, or with tot alone: the list opens at the t, and offers total.\nThe same: Debug.Print tot opens no list; Touch tot, a Sub call's argument, opens it; ? items. opens it with the Collection's members.\nAsserted on BETA 995 and 987 by `ide-test.bat --only console-completion` (the project is test/ide/probes/console-completion)."
+}

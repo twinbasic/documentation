@@ -70,6 +70,13 @@ node --test test/render.test.mjs
 @rem No tree, no browser, well under a second.
 node --test test/strftime.test.mjs
 @if errorlevel 1 goto :fail
+@rem Unit tests for the pictures of a bug reproducer: scripts/lib/png.mjs
+@rem (PNG decoding, comparing and the side-by-side image), the files and
+@rem judgements behind repro.json's images and expect.imagesDiffer, and
+@rem bug_repro.mjs's own refusals, over fixtures. Starts no IDE and no VB6.
+@rem No tree, no browser, about 4 s.
+node --test test/png.test.mjs
+@if errorlevel 1 goto :fail
 @rem check_examples.mjs's probes: batching, crash isolation through a fake
 @rem lane, the canaries and the fence classifier. check_examples.mjs needs a
 @rem twinBASIC install, so it runs only by hand; its probes need none.

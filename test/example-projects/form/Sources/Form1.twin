@@ -1,0 +1,16 @@
+' A real, empty form for the samples that draw on one, or read or set a form's
+' own properties, and are run (see the `form` template in WIP.ExamplesBuild.md).
+'
+' Form1.tbform is its designer file, and the two name the same designer id. A form
+' created in code has no designer file, and cannot be drawn on: `Load` raises 361
+' and `AutoRedraw` raises -2147467259 -- so the form has to be a file of the project.
+
+[Description("")]
+[FormDesignerId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA01")]
+[PredeclaredId]
+Class Form1
+
+    Sub New()
+    End Sub
+
+End Class

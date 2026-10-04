@@ -1,0 +1,15 @@
+Module Startup
+
+    Public Sub Main()
+        Load Form1
+        Form1.Text1.MaxLength = 3
+        Form1.Text1.Text = "abcdef"
+        Debug.Print "Text = ""abcdef"": [" & Form1.Text1.Text & "] Len " & Len(Form1.Text1.Text)
+        Form1.Text1.Text = "ab"
+        Form1.Text1.SelStart = 2
+        Form1.Text1.SelText = "cdef"
+        Debug.Print "SelText = ""cdef"" after ""ab"": [" & Form1.Text1.Text & "] Len " & Len(Form1.Text1.Text)
+        Unload Form1
+    End Sub
+
+End Module

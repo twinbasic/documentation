@@ -1,0 +1,13 @@
+' Put a breakpoint on the line marked BREAK (F9), remove it with Debug > Clear All
+' Breakpoints, click the toolbar's Restart the compiler, and press F5: the run
+' stops at the breakpoint that was cleared. With no breakpoint, it prints all
+' three lines.
+Module Startup
+
+    Public Sub Main()
+        Debug.Print "main start"
+        Debug.Print "the breakpoint's line" ' BREAK
+        Debug.Print "main end"
+    End Sub
+
+End Module

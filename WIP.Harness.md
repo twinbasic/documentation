@@ -343,10 +343,12 @@ Two bugs came out of the move, and neither had been noticed:
 
 **Do not reach for `--buildAndExit32` instead.** It exists, it is real (`parseCommandLine()`
 reads it, and Personal Edition is refused by name), and it is useless unattended: **nothing
-is written to stdout or stderr, ever**, it exits 0 on a project the IDE flags, and when the
-build genuinely fails it does not exit at all --- it sits on a "Please wait…" dialog at 100%
-forever. Silent, falsely green, and hanging on the one case worth catching. Measured all
-three ways.
+is written to stdout or stderr, ever**, it exits 0 with the `.exe` written when the error is
+in code nothing calls, and for an error the build reaches --- an unknown procedure or type,
+an undeclared variable, no `Sub Main` --- it does not exit at all: it sits on a "Please
+wait…" dialog at 100% forever. Silent, falsely green, and hanging on the one case worth
+catching. Measured all three ways, on BETA 983 and 995 (the BUGS-TO-REPORT entry on
+`--buildAndExit32`).
 
 **It runs the IDE on a private Windows desktop, and that is not decoration.** A build tool
 that seizes the keyboard mid-sentence is a build tool nobody runs while working. No window
@@ -360,11 +362,22 @@ That is the one piece of the harness that cannot be JavaScript, because it is
 started running inside a job, the job object calls ([The IDE runs inside a
 job](#the-ide-runs-inside-a-job)) --- and Node has no FFI without a native addon.
 [scripts/lib/tb-launch.ps1](scripts/lib/tb-launch.ps1) holds those calls. It is **not run
-as a file**: `tb-ide.mjs` reads the text and passes it through
+as a file**: `tb-ide.mjs` reads the text and runs it through
 `-EncodedCommand`, so the default execution policy --- which refuses `.ps1` files on this
 machine, and which is the same policy [BOOKPLAN.md](BOOKPLAN.md) records blocking `npx.ps1`
 --- never comes into it, and no `-ExecutionPolicy Bypass` has to be recommended to anyone.
 Its inputs arrive as environment variables, so there is no argument quoting to get wrong.
+**The script itself arrives in one too** (`TBBUILD_SCRIPT`), and `-EncodedCommand` carries only a
+one-line bootstrap that takes it out of the environment, so the launched program does not
+inherit it, and runs it. The script went through `-EncodedCommand` whole until it grew past about
+12,000 characters: UTF-16 in base64 is 2.7 characters to each, a command line stops at 32,767,
+and every launch then failed with `spawn ENAMETOOLONG`. An environment variable stops at 32,767
+characters of its own; `launchOnDesktop` refuses a script over 30,000. The script also takes
+`TBBUILD_STDOUT` / `TBBUILD_STDERR` (files for the program's standard output and error),
+`TBBUILD_ARGS` (more of the command line, already quoted) and `TBBUILD_DIALOGS=close`, which
+polls the private desktop every 250 ms for visible `#32770` boxes belonging to the program or
+its job, prints each as `dialog <base64 of JSON {title, text}>` and presses its OK button:
+`bug_repro`'s `cli` mode uses all four for a compiler that opens a modal box on a damaged project.
 
 A launch that fails prints no pid, and its cause as one line on stderr, which `launchIde`
 reports. Two things used to hide the cause. With its streams redirected, PowerShell writes
@@ -1224,9 +1237,15 @@ anybody watches. A caller can still set the variable otherwise, or leave it out 
 `undefined` as its value: Node leaves such a variable out of a child's environment even
 when its own environment has it (measured).
 
-**Measured on BETA 983 (P10 in WIP.HelpAddin.md):** a probe add-in printed the variable
-from `Host_OnProjectLoaded`. Through `launchIde` it read `1`, from `Environ$` and from
-`GetEnvironmentVariableW` alike, and with the variable left out both said it was unset. The
+**Measured on BETA 983 and 995 (P10 in WIP.HelpAddin.md), and held by
+[test/addin/env.test.mjs](test/addin/env.test.mjs):** the EnvProbe add-in
+([probes/env](test/addin/probes/env)) prints the variable from `Host_OnProjectLoaded`.
+Through `launchIde` it read `1`, from `Environ$` and from
+`GetEnvironmentVariableW` alike, and with the variable left out (`env: { TB_ADDIN_TEST:
+undefined }` to `Lane.open`, after `closeProject`) `Environ$` was empty and the Win32 call
+said unset. The lane asserts all of that, and that the process id the add-in read is
+`compilerPid`'s, that a restart prints from a different process, and that it reads `1`
+again. The
 path it travels: `tb-launch.ps1` calls `CreateProcess` with no environment block of its own,
 so the IDE inherits the launcher's; the IDE starts the compiler, `twinBASIC_win32_noDEP.exe`,
 as a direct child; and the add-in runs inside the compiler's process --- the process id it
@@ -1398,6 +1417,19 @@ probe lanes:
   name, `_v2`, `_v3` as built, and `_v4`, none longer than the original, with NULs after
   it. The export table has one name, so its sorted order, which `GetProcAddress`
   searches, cannot change.
+- [test/addin/env.test.mjs](test/addin/env.test.mjs), P10: it builds the EnvProbe add-in
+  from [test/addin/probes/env](test/addin/probes/env), which prints one line as the project
+  loads: `Environ$("TB_ADDIN_TEST")`, the same through `GetEnvironmentVariableW` (`(unset)`
+  when absent) and its process id. The first test asserts `1` twice and that the id is the
+  compiler's; the second restarts the compiler with `Lane.restartCompiler` and asserts `1`
+  twice and a different id; the third is the control, `closeProject` and then `Lane.open`
+  with `env: { TB_ADDIN_TEST: undefined }`, and asserts an empty `Environ$` and `(unset)`.
+  The probe opens nothing, so running an IDE without the variable is safe. Two IDEs in one
+  lane need no change to the runner, and the second takes the same port once the first has
+  been ended.
+
+**Measured on BETA 995:** the eleven lanes, with the env lane (16 s alone) added, take
+1 min 43 s at the default two at a time.
 
 **Measured on BETA 983:**
 

@@ -1,0 +1,19 @@
+' The project test/ide/console-space.test.mjs runs. It stops at a breakpoint on
+' the line marked BREAK, with total, items and obj, locals of Main, in scope, and
+' types lines into the Debug Console key by key.
+Module Startup
+
+    Public Sub Main()
+        Dim total As Long
+        Dim items As New Collection
+        Dim obj As Object
+        total = 5
+        items.Add total
+        Touch total ' BREAK
+    End Sub
+
+    Private Sub Touch(ByVal n As Long)
+        Debug.Print "total " & n
+    End Sub
+
+End Module

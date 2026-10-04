@@ -1,0 +1,21 @@
+Module Startup
+
+    Public Sub Main()
+        Dim v As Variant
+        Dim w(0 To 1) As Variant
+
+        v = Array("0123456789", "abcde")
+        LSet v(0) = "zz"
+        RSet v(1) = "zz"
+        Debug.Print "LSet v(0), v = Array(...):   [" & v(0) & "]"
+        Debug.Print "RSet v(1), v = Array(...):   [" & v(1) & "]"
+
+        w(0) = "0123456789"
+        w(1) = "abcde"
+        LSet w(0) = "zz"
+        RSet w(1) = "zz"
+        Debug.Print "LSet w(0), w(0 To 1) As Variant: [" & w(0) & "]"
+        Debug.Print "RSet w(1), w(0 To 1) As Variant: [" & w(1) & "]"
+    End Sub
+
+End Module

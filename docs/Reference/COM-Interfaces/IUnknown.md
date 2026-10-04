@@ -128,7 +128,10 @@ The class's `Class_Terminate` procedure runs inside the **Release** that brings 
 
 A class never needs to implement **IUnknown**: the compiler gives every class an implementation, and an interface that extends **stdole.IUnknown** is satisfied without a body for those three methods.
 
-`Implements stdole.IUnknown` compiles, and the class works as before. A project's own **Interface** that carries the identifier of **IUnknown** also compiles, and a class can implement it, but the interface is unusable: **Set** to a variable of that type gives the object's ordinary **IUnknown** pointer, which has none of the interface's methods, and calling one ends in an access violation.
+`Implements stdole.IUnknown` compiles, and the class works as before. A project's own **Interface** that carries the identifier of **IUnknown** also compiles, and a class can implement it.
+
+> [!WARNING]
+> BETA 995 has a defect: that interface is unusable. **Set** to a variable of that type gives the object's ordinary **IUnknown** pointer, which has none of the interface's methods, and calling one ends the program with an access violation, and any unsaved data is lost. The compiler gives no diagnostic. Do not declare an **Interface** with the identifier of **IUnknown**; use `stdole.IUnknown`.
 
 ## Example
 

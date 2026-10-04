@@ -1,0 +1,18 @@
+' The project test/ide/console-completion.test.mjs runs. It stops at a breakpoint
+' on the line marked BREAK, with total and items, locals of Main, in scope, and
+' asks the Debug Console for completions of tot and of the members of items.
+Module Startup
+
+    Public Sub Main()
+        Dim total As Long
+        Dim items As New Collection
+        total = 5
+        items.Add total
+        Touch total ' BREAK
+    End Sub
+
+    Private Sub Touch(ByVal n As Long)
+        Debug.Print "total " & n
+    End Sub
+
+End Module

@@ -35,6 +35,8 @@ import { expectedOutput, isRunFence, judgeOutput, runFenceProblem, runRefusal } 
 import { joinConcatGroups } from "./lib/example-batches.mjs";
 import { HIDDEN_MARKER, classify, collectFences, partOf } from "./lib/tb-fences.mjs";
 import {
+  FORM1,
+  FORM1_NAME,
   NO_VB6,
   USER_MODULE,
   buildBatch,
@@ -74,7 +76,10 @@ generated Sub Main opens, because Debug.Print writes nothing in a compiled exe.
               fences of a projname= group are built in a project of its own with
               the group's other fences, each slot=file fence translated into
               VB6 classes (.cls) and modules (.bas); a construct VB6 has no form
-              for is left as it is, and VB6 refuses it. Each fence ends as one of:
+              for is left as it is, and VB6 refuses it. A fence that says
+              project=form is built with a blank Form1.frm (no Unattended
+              Execution, the exe run on a private desktop), and a Declare loses
+              PtrSafe and reads LongPtr as Long. Each fence ends as one of:
               same, differs (the lines that differ, page against VB6), not VB6
               (VB6 refuses to compile it, or the files of its group; most
               twinBASIC syntax ends here, and it is informational), error (a
@@ -254,14 +259,20 @@ async function docs() {
   }
 
   // The samples of a unit are built as modules of one project and run, and each is judged.
-  const judge = async (unit, dir, built) => {
+  // `project=form` is the twinBASIC `form` template: a real Form1, which VB6 gets as a blank
+  // Form1.frm. A project with a form is not built with Unattended Execution, and its exe is run
+  // on a private desktop (see vb6.mjs).
+  const wantsForm = (fence) => fence.keys.get("project") === "form";
+  const formSupport = { name: FORM1_NAME, kind: "frm", text: FORM1 };
+
+  const judge = async (unit, dir, built, { form = false } = {}) => {
     for (const r of unit) {
       const e = built.refused.get(r.module.name);
       if (e) notVb6(r, r.fence, e, r.module.lineDelta);
     }
     const ran = unit.filter((r) => !r.state);
     if (!ran.length) return;
-    const run = await runBatch(dir, ran.length, { timeoutMs });
+    const run = await runBatch(dir, ran.length, { timeoutMs, desktop: form });
     ran.forEach((r, i) => {
       const item = run.items[i];
       const f = r.fence;
@@ -293,18 +304,24 @@ async function docs() {
     });
   };
 
-  if (plain.length) {
-    plain.forEach((r, i) => {
+  // The plain samples are one project, and the ones that want a form another, the one with Form1.
+  for (const [label, form] of [
+    ["plain", false],
+    ["plain-form", true],
+  ]) {
+    const unit = plain.filter((r) => wantsForm(r.fence) === form);
+    if (!unit.length) continue;
+    unit.forEach((r, i) => {
       r.module = moduleFor(r.fence.content, { name: `tbxM${i}` });
     });
-    const dir = path.join(work, "plain");
+    const dir = path.join(work, label);
     const built = await buildBatch(
       vb6,
       dir,
-      plain.map((r) => r.module),
-      { timeoutMs: 120000 },
+      unit.map((r) => r.module),
+      { timeoutMs: 120000, support: form ? [formSupport] : [] },
     );
-    await judge(plain, dir, built);
+    await judge(unit, dir, built, { form });
   }
 
   // A projname group is one program: the fences of that name, on any page, that are not run fences
@@ -337,6 +354,9 @@ async function docs() {
     unit.forEach((r, i) => {
       r.module = moduleFor(r.fence.content, { name: `tbxM${i}` });
     });
+    // A group whose run fence says project=form, or any of whose files do, gets Form1.
+    const form = all.some((f) => f.keys.get("projname") === name && !f.isResource && wantsForm(f));
+    if (form) support.unshift(formSupport);
     const built = await buildBatch(
       vb6,
       dir,
@@ -349,7 +369,7 @@ async function docs() {
       for (const r of unit) notVb6(r, component.fence, { line, message }, component.lineDelta);
       continue;
     }
-    await judge(unit, dir, built);
+    await judge(unit, dir, built, { form });
   }
 
   const STATES = ["same", "differs", "not VB6", "error", "refused", "ran"];

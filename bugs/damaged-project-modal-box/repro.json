@@ -1,4 +1,25 @@
 {
-  "mode": "manual",
-  "steps": "Not automatable, and not run unattended: the compiler executable opens a modal message box on the desktop of whoever runs it, and waits until it is closed. 1. Pack the project (node scripts/bug_repro.mjs pack damaged-project-modal-box). 2. Make a damaged copy: change the first byte of the .twinproj, or cut it off halfway, or write any short text file with the name garbage.twinproj. 3. Run: bin\\twinBASIC_win32.exe export <full path>\\garbage.twinproj <full path>\\out\\ and see a message box (invalid header, or invalid file format) and no further output until it is closed. 4. Close the box: export prints WARNING: failed to parse project file, file may be corrupt, then ... DONE, and exits 0. settings and readme wait on the box the same way."
+  "mode": "cli",
+  "attach": ["garbage.twinproj", "empty.twinproj", "firstbyte.twinproj", "cut.twinproj"],
+  "cli": [
+    ["export", "{tmp}\\garbage.twinproj", "{tmp}\\out-garbage\\"],
+    ["settings", "{tmp}\\garbage.twinproj"],
+    ["readme", "{tmp}\\garbage.twinproj"],
+    ["export", "{tmp}\\firstbyte.twinproj", "{tmp}\\out-firstbyte\\"],
+    ["export", "{tmp}\\empty.twinproj", "{tmp}\\out-empty\\"],
+    ["export", "{tmp}\\cut.twinproj", "{tmp}\\out-cut\\"],
+    ["settings", "{tmp}\\cut.twinproj"]
+  ],
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^dialog: TWINBASIC ERROR: invalid file header",
+      "^dialog: bad file format: WARNING: failed to deserialize file system",
+      "^  WARNING: failed to parse project file, file may be corrupt",
+      "^  ERROR: failed to parse project file, file may be corrupt or inaccessible",
+      "^  ERROR: failed to find file, file may be corrupt",
+      "^\\[EXPORT\\]  DONE: .*\\\\Sources\\\\Startup\\.twin",
+      "^\\.\\.\\. DONE"
+    ]
+  }
 }

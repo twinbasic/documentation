@@ -1,0 +1,23 @@
+Module Startup
+
+    Public Sub Main()
+        Dim v As Variant
+        On Error Resume Next
+
+        v = Null
+        Err.Clear
+        LSet v = "abc"
+        Debug.Print "LSet, destination Null:    error " & Err.Number
+
+        v = New Collection
+        Err.Clear
+        LSet v = "abc"
+        Debug.Print "LSet, destination Object:  error " & Err.Number
+
+        v = True
+        Err.Clear
+        RSet v = "ab"
+        Debug.Print "RSet, destination True:    [" & v & "] Len " & Len(v)
+    End Sub
+
+End Module

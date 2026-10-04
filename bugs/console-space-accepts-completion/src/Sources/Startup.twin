@@ -1,0 +1,19 @@
+' Put a breakpoint on the line marked BREAK (F9) and press F5. In the Debug
+' Console, type Print total at an ordinary speed: the space after Print accepts
+' the IntelliSense list's first entry, and the line becomes Printertotal.
+Module Startup
+
+    Public Sub Main()
+        Dim total As Long
+        Dim items As New Collection
+        Dim obj As Object
+        total = 5
+        items.Add total
+        Touch total ' BREAK
+    End Sub
+
+    Private Sub Touch(ByVal n As Long)
+        Debug.Print "total " & n
+    End Sub
+
+End Module

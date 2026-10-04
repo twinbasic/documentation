@@ -60,7 +60,12 @@ How the four duties above fit it:
   the narrowed steps.
 - **Expected behavior** says what should happen instead, and why: what VBA or VB6 does,
   what the documentation says, or what the IDE does in the neighbouring case.
-- **Screenshots** is left out when there are none.
+- **Screenshots** is left out when there are none. A graphical defect's section says what
+  each panel of its comparison shows and embeds the picture, as
+  `![<what it shows>](bugs/<slug>/images/<name>-compare.png)`, so that it shows in this file;
+  `bug_repro.mjs file` rewrites the path to `images/<name>-compare.png` in `REPORT.md`. A
+  GitHub issue cannot reach a path in the repository, so when the entry is pasted into one,
+  the picture is dragged into the issue in place of that line.
 - **Desktop** gives the build as `BETA <n>`, the build it was last reproduced on.
 - **Additional context** gives what did not reproduce it, the severity, and the builds it
   was checked on besides the one above.
@@ -86,8 +91,15 @@ kebab-case name for the bug, and its **To Reproduce** names the project file:
 | `bugs/<slug>/src/` | the project's exported source tree: `Settings`, `Sources/` and the rest | yes, byte for byte |
 | `bugs/<slug>/<slug>.twinproj` | the project file, packed from `src/` | yes |
 | `bugs/<slug>/<slug>.zip` | the `.twinproj` zipped, because a GitHub issue does not accept a `.twinproj` attachment, with any file `repro.json`'s `attach` names, such as a `.twinpack` | no |
-| `bugs/<slug>/vb6/` | optional: a VB6 project, to show what VB6 does where the entry compares it with twinBASIC: `Probe.vbp` and its `.bas`, `.cls` and `.frm` files, sources only, never an exe or an output | yes, byte for byte |
+| `bugs/<slug>/vb6/` | optional: a VB6 project, to show what VB6 does where the entry compares it with twinBASIC: `Probe.vbp` and its `.bas`, `.cls`, `.frm` and `.ctl` files (with their `.frx` and `.ctx`), sources only, never an exe or an output | yes, byte for byte |
 | `bugs/<slug>/<slug>-vb6.zip` | the source files of `vb6/` zipped, to attach beside the other zip; written only when `vb6/` exists | no |
+| `bugs/<slug>/images/` | optional: the pictures of a graphical defect, `<name>-tb.png` (from `run`), `<name>-vb6.png` (from `vb6`) and `<name>-compare.png`, which shows both and their difference; the zip holds them all | yes |
+
+**A graphical defect carries pictures.** Its `repro.json` names them under `images`, the
+`PngDump` modules from `test/repro-templates/png/` save them (`new --with-images` copies them),
+and its entry embeds each `-compare.png` under **Screenshots**: what twinBASIC drew beside
+what VB6 drew, the pixels that differ in red. `test/png.test.mjs` fails when an entry or a filed
+`REPORT.md` does not embed one. `expect.imagesDiffer` lets `verify` judge by them.
 
 `scripts/bug_repro.mjs` makes and checks them (the tool's page is
 [Tools and Scripts](docs/Documentation/Tools.md#bug-repro)):
@@ -245,7 +257,7 @@ So exit 0 on a project with errors happens only for an error in code nothing cal
 
 Silence on stdout and stderr: measured on BETA 983 first, and on BETA 995 by redirecting the standard handles of the process to a file. The same redirection captures the compiler executable's own output (`twinBASIC_win32.exe settings <project>` wrote the whole `Settings` file), so the capture works.
 
-<!-- Manual in bugs/build-and-exit-silent/repro.json: the switch belongs to the IDE executable, which opens a window, so nothing here may run on the user's desktop. Measured with a scratch copy of scripts/lib/tb-launch.ps1 (private desktop, kill-on-close job, TBBUILD_CMD replacing the command line, standard handles redirected to a file), with scripts/lib/tb-registry.mjs startTidy and finishTidy around the run. Stated in scripts/tbbuild.mjs (header comment) and WIP.Harness.md, "Do not reach for --buildAndExit32 instead": when fixed, those two say the switch is unusable. The exit-0-on-errors claim there was stated for BETA 983 without a reproduction; it is true only for an error in code nothing calls, so correct it either way. -->
+<!-- Manual in bugs/build-and-exit-silent/repro.json: the switch belongs to the IDE executable, which opens a window, so nothing here may run on the user's desktop. Measured with a scratch copy of scripts/lib/tb-launch.ps1 (private desktop, kill-on-close job, TBBUILD_CMD replacing the command line, standard handles redirected to a file), with scripts/lib/tb-registry.mjs startTidy and finishTidy around the run. Stated in scripts/tbbuild.mjs (header comment) and WIP.Harness.md, "Do not reach for --buildAndExit32 instead": when fixed, those two say the switch is unusable. So do docs/Documentation/Tools.md (the tbbuild section) and docs/Features/Packages/Import-export tool.md ("Compiling from the command line"). All four say exit 0 only for an error in code nothing calls, and a hang for an error the build reaches. -->
 
 ---
 
@@ -344,31 +356,32 @@ What does not reproduce it: a long input path to `export`, and any output folder
 *DEFERRED until after v1*
 
 **Describe the bug**
-Given a file that is not a valid project, the compiler executable opens a modal message box (*invalid header* and *invalid file format* were both seen) and prints nothing more until it is closed. `export`, `settings` and `readme` each waited on the box indefinitely. Once the box is closed, `export` prints `WARNING: failed to parse project file, file may be corrupt`, then `... DONE`, and exits 0.
+Given a file that is not a valid project, the compiler executable opens a modal message box and prints nothing more until it is closed. `export`, `settings` and `readme` each wait on the box indefinitely. Once the box is closed, `export` prints `WARNING: failed to parse project file, file may be corrupt`, then `... DONE`, and exits 0; `settings` and `readme` print an `ERROR:` line, and exit 0 as well.
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Unzip `damaged-project-modal-box.zip` (it holds `damaged-project-modal-box.twinproj`, an ordinary valid project) and make damaged copies of it, in PowerShell: `$b = [IO.File]::ReadAllBytes("C:\p\damaged-project-modal-box.twinproj")`, then `$b[0] = $b[0] -bxor 0xFF; [IO.File]::WriteAllBytes("C:\p\firstbyte.twinproj", $b)` for one with its first byte changed, and `[IO.File]::WriteAllBytes("C:\p\cut.twinproj", $b[0..([int]($b.Length / 2))])` for one cut off halfway. A 20-byte text file named `garbage.twinproj`, or an empty file, is damaged enough too.
+1. Unzip `damaged-project-modal-box.zip`. It holds `damaged-project-modal-box.twinproj`, an ordinary valid project, and four damaged copies of it: `garbage.twinproj`, `empty.twinproj`, `firstbyte.twinproj` and `cut.twinproj`. They were made in PowerShell: `$b = [IO.File]::ReadAllBytes("C:\p\damaged-project-modal-box.twinproj")`, then `$b[0] = $b[0] -bxor 0xFF; [IO.File]::WriteAllBytes("C:\p\firstbyte.twinproj", $b)` for one with its first byte changed, and `[IO.File]::WriteAllBytes("C:\p\cut.twinproj", $b[0..([int]($b.Length / 2))])` for one cut off halfway. A 20-byte text file named `garbage.twinproj`, or an empty file, is damaged enough too.
 2. Run `twinBASIC_win32.exe export C:\p\garbage.twinproj C:\p\out\`, on a desktop someone is watching.
-3. See a message box and no further output. The command was still waiting when it was ended after 25 seconds.
-4. Close the box. See `WARNING: failed to parse project file, file may be corrupt`, then `... DONE`, and exit code 0. For the project cut off halfway it also writes the one file it could read, `Settings`.
-5. Run `settings` or `readme` on the same file: each waits on a box the same way.
+3. See a message box titled `TWINBASIC ERROR`, saying `invalid file header: bad file format`, and no output after the `exporting from ... to ...` line. The command is still waiting when it is ended after 20 seconds. The empty file and the one with its first byte changed give the same box.
+4. Close the box. See `WARNING: failed to parse project file, file may be corrupt`, then `... DONE`, and exit code 0, with no file written.
+5. Run `settings` or `readme` on the same file: each waits on the same box, prints nothing until it is closed, then prints `ERROR: failed to parse project file, file may be corrupt or inaccessible` and exits 0.
+6. Run `export` on the project cut off halfway. The box is titled `bad file format` and says `WARNING: failed to deserialize file system.  Some files might be lost or truncated.` Once it is closed, `export` writes the one file it could read, `Sources\Startup.twin`, prints `[EXPORT] DONE:` for it and then `... DONE`, with no warning, and exits 0. `settings` on it waits on the same box, then prints `ERROR: failed to find file, file may be corrupt`; `readme` waits, then prints nothing.
 
 **Expected behavior**
-No window opens from a command-line verb. The command prints the problem (`ERROR: failed to parse project file, file may be corrupt or inaccessible`, which it already prints when a folder is given where the project should be), ends `... FAILED`, and does not report `... DONE` for a file it could not read.
+No window opens from a command-line verb. The command prints the problem (`ERROR: failed to parse project file, file may be corrupt or inaccessible`, which it already prints when a folder is given where the project should be), ends `... FAILED`, does not report `... DONE` for a file it could not read, and exits with a code other than 0.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 983 (the 20-byte text file was also seen on BETA 995)
+ - twinBASIC compiler version: BETA 995
 
 **Additional context**
-Severity: an unattended `export`, `settings` or `readme` never finishes, and once the box is closed `export` reports success, so a script that tests for `... DONE` is fooled as well.
+Severity: an unattended `export`, `settings` or `readme` never finishes, and once the box is closed every one of them exits 0 and `export` reports success, so a script that tests the exit code or `... DONE` is fooled as well.
 
-All four kinds of damaged input were tried on BETA 983: a 20-byte text file, an empty file, a real project with its first byte changed, and one cut off halfway. On BETA 995 a run with a 20-second limit found `export` and `settings` on the 20-byte text file still waiting at the limit; the other inputs returned inside it, and whether each opened a box was not checked.
+All four kinds of damaged input open the box under all three commands, on BETA 995 and on BETA 983. The undamaged project exports at once, with no box. On BETA 983 `export` of the project cut off halfway wrote `Settings` rather than `Sources\Startup.twin`.
 
 What does not reproduce it: a folder given where the project should be. `settings` then prints `ERROR: failed to parse project file, file may be corrupt or inaccessible` and exits, with no box.
 
-<!-- Manual in bugs/damaged-project-modal-box/repro.json, and not to be run unattended: the box opens on the desktop of whoever runs the command (the probe that found it opened message boxes on the user's desktop three times on BETA 995 alone). No test or page states it. The command-line verbs are described on docs/Documentation/Tools.md (impexp) and in scripts/impexp.mjs, which does not open a box for a damaged file; check them when fixed. Found by probing the command line for the rewrite of the Import/Export Tool page; the boxes appeared on the desktop of the person at the machine, which is how their wording is known. Measured on BETA 983 with a 25 second limit, on BETA 995 with 20 (cli995/log2-995.txt). -->
+<!-- A cli reproducer in bugs/damaged-project-modal-box/repro.json, run on a private desktop by bug_repro, which reads each box and closes it (the probe that found it opened message boxes on the user's desktop three times on BETA 995 alone, which is why nothing runs these commands on a desktop anyone uses). No test or page states it. The command-line verbs are described on docs/Documentation/Tools.md (impexp) and in scripts/impexp.mjs, which does not open a box for a damaged file; check them when fixed. Found by probing the command line for the rewrite of the Import/Export Tool page; on BETA 983 the boxes appeared on the desktop of the person at the machine (25 second limit). On BETA 995 all fifteen runs (three commands, four damaged inputs and the undamaged control) were made on a private desktop inside a kill-on-close job, the box's title and text read from that desktop, and each run repeated with OK pressed after 3 seconds (kit beta995-probes/s74/damaged/results-995.md and harness.ps1, local scratch). -->
 
 ---
 
@@ -854,7 +867,7 @@ What was tried:
 - An interface with three `[PreserveSig]` members declared in `IUnknown`'s order, `QueryInterface`, `AddRef` and `Release`, behaves the same way: `Set` succeeds, and the calls go to the wrong slots (one `AddRef` returned 0, and the next call crashed).
 - `Interface IUnk Extends stdole.IUnknown` with that identifier compiles, and `u.AddRef` is then reported as `TB5027 Unrecognized member 'AddRef' on type 'IUnk'`, as it is for `stdole.IUnknown` itself, which has no members that twinBASIC code can call.
 
-<!-- Reproducer: bugs/iunknown-iid-interface/ (mode run, expects tbrun exit 5, the output `ok` and the native exception); verified on 995. Stated in docs/Reference/COM-Interfaces/IUnknown.md, section "Implementing it" (the paragraph that begins "A project's own Interface that carries the identifier of IUnknown also compiles"): when fixed, replace it with whatever the compiler now does (a diagnostic, or a working call). -->
+<!-- Reproducer: bugs/iunknown-iid-interface/ (mode run, expects tbrun exit 5, the output `ok` and the native exception); verified on 995. Stated in docs/Reference/COM-Interfaces/IUnknown.md, section "Implementing it" (the WARNING, which names BETA 995, after the paragraph that begins "A project's own Interface that carries the identifier of IUnknown also compiles"): when fixed, replace it with a NOTE saying since which build and what the compiler now does (a diagnostic, or a working call). -->
 
 ---
 
@@ -897,7 +910,7 @@ What does not reproduce it: a statement with no arguments (`o.Fail3`, `o.Hello`,
 
 The second call resembles VB's rule for `o.Member(args)` on a property that returns an object or a collection: read the property with no arguments, then apply the arguments to the result. It is applied after a failure of any call that has arguments. The single run of `Hello` in the raw `Invoke` case is also at odds with the COM contract, which gives `DISP_E_BADPARAMCOUNT` for too many arguments without running the member; it is left out of this entry.
 
-<!-- Reproducer: bugs/latebound-call-retried/ (mode run, expects the Hello and Prop lines above); verified on 995. VB6 side in bugs/latebound-call-retried/vb6/ (o.Hello 1 -> 450 and Hits=0; o.Prop = 1 -> 5 and Gets=0). Stated in docs/Reference/COM-Interfaces/IDispatch.md, the second NOTE under "Errors from a late-bound call" (a call that fails inside Invoke can be made twice) and the first row of the table under "Classes written in twinBASIC" in the same page. When fixed, reduce that NOTE to the CallByName part (see callbyname-membernotfound-retried), or delete it, and remove the sentence about "a late-bound statement does this twice". The Property Get run and the replaced error number are not on the page yet. -->
+<!-- Reproducer: bugs/latebound-call-retried/ (mode run, expects the Hello and Prop lines above); verified on 995. VB6 side in bugs/latebound-call-retried/vb6/ (o.Hello 1 -> 450 and Hits=0; o.Prop = 1 -> 5 and Gets=0). Stated in docs/Reference/COM-Interfaces/IDispatch.md, the second callout under "Errors from a late-bound call", a WARNING naming BETA 995 (a call that fails inside Invoke can be made twice) and the first row of the table under "Classes written in twinBASIC" in the same page. When fixed, reduce that NOTE to the CallByName part (see callbyname-membernotfound-retried), or delete it, and remove the sentence about "a late-bound statement does this twice". The Property Get run and the replaced error number are not on the page yet. -->
 
 ---
 
@@ -932,7 +945,7 @@ What does not reproduce it: `CallByName` with `vbGet` or `vbLet` against `DISP_E
 
 A separate behaviour, in its own entry, repeats a failed late-bound statement that passes arguments as a property read: see the entry "A late-bound call that passes arguments and fails is issued a second time, without them". The two are not the same: that one is for calls with arguments and needs no `DISP_E_MEMBERNOTFOUND`, and this one is `CallByName` with or without arguments.
 
-<!-- Reproducer: bugs/callbyname-membernotfound-retried/ (mode run, expects the two count lines above); verified on 995. Stated in docs/Reference/COM-Interfaces/IDispatch.md, the second NOTE under "Errors from a late-bound call": its sentence "CallByName repeats a call that returned DISP_E_MEMBERNOTFOUND with a null pVarResult". When fixed, remove that sentence (the other half of the NOTE is the entry on late-bound calls with arguments). The flags 1/2/4 combinations come from the probe in s71/idispatch/tb6, a local scratch file that is not in the repository. -->
+<!-- Reproducer: bugs/callbyname-membernotfound-retried/ (mode run, expects the two count lines above); verified on 995. Stated in docs/Reference/COM-Interfaces/IDispatch.md, the second callout under "Errors from a late-bound call", a WARNING naming BETA 995: its sentence "CallByName repeats a call that returned DISP_E_MEMBERNOTFOUND with a null pVarResult". When fixed, remove that sentence (the other half of the NOTE is the entry on late-bound calls with arguments). The flags 1/2/4 combinations come from the probe in s71/idispatch/tb6, a local scratch file that is not in the repository. -->
 
 ---
 
@@ -1091,7 +1104,7 @@ Severity: low for a program that passes all the arguments; for one that does not
 
 Related and also different from VB6: `Err.Raise 65536` is accepted, and `Err.Number` is 65536, where VB6 raises error 5. `Err.Raise 0` raises error 5 in both. An explicit empty string for the source or the description gives an empty `Source` or `Description`, in VB6 as well. `Err.HelpContext` is 0 in twinBASIC, and VB6 sets it to 1000000 plus the number for a `Raise` without one (`1000005` for 5).
 
-<!-- Reproducer: bugs/err-raise-defaults/ (mode run, expects the five lines above in twinBASIC); verified on 995. VB6 side from the same program, in bugs/err-raise-defaults/vb6/; the full sweep and the per-number lists are in s71/raise/ (out-tb-995.txt, out-vb6.txt, analyze.mjs), local scratch files that are not in the repository. Stated in docs/Reference/Default/VBA/ErrObject/Raise.md (the table under *description* and the NOTE after it, plus the check_run sample), in Source.md (the NOTE) and in Description.md (the NOTE); docs/Reference/COM-Interfaces/IErrorInfo.md says GetSource returns an empty string and GetDescription the standard text when Raise gets neither. When fixed, delete those NOTEs and the table, restore the sentences about the project's programmatic ID, the generic message and the carried-over values, and rewrite the sample's expected output. docs/Reference/Default/VBRUN/ErrorContext/index.md says Source is the project name for errors raised inside a project; that is not what Err.Source holds and should be checked when this is fixed. -->
+<!-- Reproducer: bugs/err-raise-defaults/ (mode run, expects the five lines above in twinBASIC); verified on 995. VB6 side from the same program, in bugs/err-raise-defaults/vb6/; the full sweep and the per-number lists are in s71/raise/ (out-tb-995.txt, out-vb6.txt, analyze.mjs), local scratch files that are not in the repository. Stated in docs/Reference/Default/VBA/ErrObject/Raise.md (the table under *description* and the WARNING after it, which names BETA 995, plus the check_run sample), in Source.md (the WARNING) and in Description.md (the WARNING); docs/Reference/COM-Interfaces/IErrorInfo.md says GetSource returns an empty string and GetDescription the standard text when Raise gets neither. When fixed, replace those WARNINGs with NOTEs saying since which build, delete the table, restore the sentences about the project's programmatic ID, the generic message and the carried-over values, and rewrite the sample's expected output. docs/Reference/Default/VBRUN/ErrorContext/index.md says Source is the project name for errors raised inside a project; that is not what Err.Source holds and should be checked when this is fixed. -->
 
 ---
 
@@ -1128,7 +1141,7 @@ The two symptoms are one bug because the object is the same: `ObjPtr` of what `G
 What does not reproduce it: a fresh thread (`GetErrorInfo` returns `S_FALSE`); a caller that makes the call through an interface whose methods are declared `[PreserveSig]` and reads the slot itself, where the first `GetErrorInfo` returns the values and the second returns `S_FALSE`; the second `GetErrorInfo` after the object has been read from the slot (it returns `S_FALSE`, so `GetErrorInfo` does empty the slot).
 Severity: low. The slot is not a documented twinBASIC interface, but a program that reads error information with the COM functions, or a library that does, sees values that change under it, and a program cannot rely on the description of a failure that came with no error information.
 
-<!-- Reproducer: bugs/err-info-live-view/ (mode run, expects the lines above); verified on 995. The VB6 slot results (empty after Err.Raise 5 in the procedure, after a raise in a class method handled by the caller, and after a class method that handled its own error) are from bugs/err-info-live-view/vb6/; the full set of probes (T1 to T10, with ObjPtr) is in s71/liveview/, a local scratch folder that is not in the repository. Stated in docs/Reference/COM-Interfaces/IErrorInfo.md: "Two things about the object matter to a caller that reads it" in *A method that raises an error*, and "The slot is not always empty" under *A failure with no error information*. When fixed, delete the second half of the first and rewrite the second paragraph; the table of Automation error and the `emptySlot` samples need no change except the sentence about a stale object. -->
+<!-- Reproducer: bugs/err-info-live-view/ (mode run, expects the lines above); verified on 995. The VB6 slot results (empty after Err.Raise 5 in the procedure, after a raise in a class method handled by the caller, and after a class method that handled its own error) are from bugs/err-info-live-view/vb6/; the full set of probes (T1 to T10, with ObjPtr) is in s71/liveview/, a local scratch folder that is not in the repository. Stated in docs/Reference/COM-Interfaces/IErrorInfo.md, in two WARNINGs that name BETA 995: the one after "**GetErrorInfo** empties the slot" in *A method that raises an error*, and the one that begins "the slot is not always empty" under *A failure with no error information*. When fixed, replace each with a NOTE saying since which build, or delete it; the table of Automation error and the `emptySlot` samples need no change except the sentence about a stale object. -->
 
 ---
 
@@ -1171,7 +1184,7 @@ Severity: low in practice, since a program rarely advises a null sink, but a COM
 
 What was tried: an object that is not a sink gives an ordinary error (`E_NOINTERFACE`, `&H80004002`, see the entry about `Advise` and `Unadvise` error codes), so only a null pointer crashes. The address of the crash is the same in the standalone probe and in this project.
 
-<!-- Reproducer: bugs/advise-nothing-crashes/ (mode run, expects tbrun exit 5, the output `before` and the native exception); verified on 995. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, section Advise, the last bullet of "In twinBASIC" ("Passing Nothing ends the run with an access violation in BETA 995"): when fixed, replace it with the error it raises, and add Nothing to the example if it fits. -->
+<!-- Reproducer: bugs/advise-nothing-crashes/ (mode run, expects tbrun exit 5, the output `before` and the native exception); verified on 995. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, section Advise, the last bullet of "In twinBASIC" and the WARNING after it, which names BETA 995 ("Advise with Nothing as the sink ends the program with an access violation"): when fixed, replace the WARNING with a NOTE saying since which build and what error it raises, and add Nothing to the example if it fits. -->
 
 ---
 
@@ -1207,7 +1220,7 @@ Steps to reproduce the behavior:
 Severity: low. A client that tests for `CONNECT_E_CANNOTCONNECT` to tell a refused sink from other failures never sees it, and a client that releases a connection twice, or with a wrong cookie, is told it worked.
 
 What was tried: a sink that is an ordinary twinBASIC class gives the same `E_NOINTERFACE` whether it has no members or implements `IDispatch` (the outgoing interface's identifier is generated for each build, so a twinBASIC class cannot answer for it). Nothing is connected afterwards, and no event reaches the sink. Calling `Unadvise` a second time with the cookie of the failed `Advise`, which is 0, also returns without an error.
-<!-- Reproducer: bugs/advise-unadvise-hresults/ (mode run, expects tbrun exit 0 and the three lines above); verified on 995. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, sections Advise (the second bullet of "In twinBASIC") and Unadvise (the sentence "In twinBASIC a cookie that names no connection...") and the last example, whose comments show 80004002 and 0: when fixed, change those. When the page is updated, state the code twinBASIC returns for a bad cookie. -->
+<!-- Reproducer: bugs/advise-unadvise-hresults/ (mode run, expects tbrun exit 0 and the three lines above); verified on 995. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, sections Advise (the second bullet of "In twinBASIC") and Unadvise (the WARNING, which names BETA 995, about a cookie that names no connection) and the last example, whose comments show 80004002 and 0: when fixed, replace the WARNING with a NOTE saying since which build, and change the rest. When the page is updated, state the code twinBASIC returns for a bad cookie. -->
 
 ---
 
@@ -1245,3 +1258,457 @@ VB6 has no comparison: a project cannot declare an `Interface`, and the interfac
 
 <!-- Reproducer: bugs/new-on-interface/ (mode run, expects tbrun exit 5, the four lines above and the native exception); verified on 995. Probes from the narrowing are local scratch files, not in the repository. docs/Reference/Default/VBRUN/ErrorContext/index.md, ErrorCallstack/index.md and ErrorStackFrame/index.md carry a NOTE that no code can obtain these objects in BETA 995 ("code that uses them compiles, but nothing returns an object that implements them"); when this is fixed, check that wording, since `New` on them compiles today and returns an object that has no implementation. -->
 
+---
+
+## Clear All Breakpoints is undone by restarting the compiler, unless the project was saved in between
+
+**Describe the bug**
+Breakpoints removed with **Debug > Clear All Breakpoints** come back when the compiler restarts. After **Restart the compiler** on the toolbar the margin shows them again, as they were just before they were cleared, and the next run stops at them. A breakpoint removed with F9 stays removed, and saving the project between the two keeps the effect of **Clear All Breakpoints**.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `clear-all-breakpoints-restart.twinproj` (attached as `clear-all-breakpoints-restart.zip`) and open `Startup.twin`. `Main` prints three lines:
+   ```
+   Public Sub Main()
+       Debug.Print "main start"
+       Debug.Print "the breakpoint's line" ' BREAK
+       Debug.Print "main end"
+   End Sub
+   ```
+2. Put the cursor on the line marked `BREAK` and press F9. A breakpoint appears in the margin.
+3. Choose **Debug > Clear All Breakpoints** (Ctrl+Shift+F9). The breakpoint goes.
+4. Click **Restart the compiler** on the toolbar, and wait for the compile to end. The breakpoint is back in the margin.
+5. Press F5. The run stops at the breakpoint, having printed only `main start`.
+
+**Expected behavior**
+Breakpoints cleared with **Clear All Breakpoints** stay cleared, as a breakpoint removed with F9 does: after the restart the margin shows none, and F5 prints all three lines.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Also on BETA 987, identically.
+
+What does not reproduce it: removing the breakpoint with F9 instead, which stays removed across the restart; and saving the project (Ctrl+S) after **Clear All Breakpoints** and before the restart, which keeps them cleared. A breakpoint saved with the project survives a restart, as it should. Not tried: whether the IDE's other ways of starting a new compiler, such as switching between win32 and win64, do the same.
+
+Where it seems to come from, in BETA 995's `ide/main.js`: F9 records each change in `g_SessionFilesystemTransactions`, which the IDE replays into a new compiler and which a save empties; **Clear All Breakpoints** (`tbDebug_BreakpointsClear`) clears the breakpoints in the compiler and records nothing there, so the replay sets them again.
+
+Severity: breakpoints a person has removed stop the program again after a restart, with nothing to connect the two.
+
+<!-- Asserted by `ide-test.bat --only breakpoints` (test/ide/breakpoints.test.mjs: the fault, then F9, saving after Clear All, and a saved breakpoint across a restart); passes on BETA 995 and 987. The reproducer's Startup.twin is test/ide/probes/breakpoints/Sources/Startup.twin with a different header comment. When fixed: update that test and this entry. -->
+
+---
+
+## A watch on a variable of a user-defined type fails with a codegen error, and the Debug Console reports a linker error at every stop
+
+**Describe the bug**
+While the debugger is stopped, a watch on a variable of a user-defined type cannot be evaluated. **Watches** shows `(compile error: codegen error; check for compilation errors)`, of type `ERROR`, and the Debug Console prints `[LINKER] compilation (codegen) error detected in 'Startup.{temp_procedure}' at line #1`. The linker error comes again at every later stop while the watch exists, and `? p` in the Debug Console fails the same way. **Variables** shows the same variable and its fields without trouble, and a watch on one of its fields works.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `udt-watch-codegen-error.twinproj` (attached as `udt-watch-codegen-error.zip`). `Startup.twin` declares a type, and `Main` passes the line marked `BREAK` twice:
+   ```
+   Private Type Point
+       X As Long
+       Y As Long
+   End Type
+
+   Public Sub Main()
+       Dim p As Point
+       Dim i As Long
+       p.X = 7
+       For i = 1 To 2
+           Debug.Print "pass " & i ' BREAK
+       Next
+   End Sub
+   ```
+2. Put a breakpoint on the line marked `BREAK` (F9) and press F5. The run stops there, and **Variables** shows `p` as `{user defined type, 8 bytes}`, with `X` and `Y`.
+3. Add a watch on `p` (**Debug > Add Watch...**, or the plus sign in **Watches**). The watch shows `(compile error: codegen error; check for compilation errors)`, of type `ERROR`, and the Debug Console prints `[LINKER] compilation (codegen) error detected in 'Startup.{temp_procedure}' at line #1`.
+4. Press F5. The run stops at the breakpoint again, and the Debug Console prints the linker error again.
+5. Type `? p` in the Debug Console and press Enter. It fails with the same error, and the Debug Console prints the same linker line.
+
+**Expected behavior**
+The watch shows `p` as **Variables** does, `{user defined type, 8 bytes}` opening to its fields, as VBA's Watch window shows a variable of a user-defined type. An expression that cannot be shown, such as `? p`, which has no single value to print, is refused with a message about the expression. A linker error about generated code reads as though the project had failed to build, which it has not.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Also on BETA 987, identically.
+
+What does not reproduce it: a watch on a field, `p.X`, which shows `7`, of type `Variant [Long]`; and **Variables**, which shows `p` and its fields. That type suggests a watch is evaluated as a `Variant`, which cannot hold a value of a user-defined type. Seen with a `Private Type` declared in the module; other declarations of the type were not tried.
+
+Severity: a watch on a structure is unusable, and while it exists every stop adds a linker error to the Debug Console.
+
+<!-- Asserted by `ide-test.bat --only watches` (test/ide/watches.test.mjs: the watch on p, the watch on p.X, the next stop, and ? p); passes on BETA 995 and 987. The reproducer's Startup.twin is test/ide/probes/watches/Sources/Startup.twin with a different header comment. When fixed: update that test and this entry. -->
+
+---
+
+## After Break Into Code stops in DoEvents, evaluating anything ends the program with an access violation
+
+**Describe the bug**
+**Break Into Code** (Ctrl+Break), pressed while a program is in `DoEvents`, stops inside the VB package rather than in the program: the IDE opens the package's `IdleMessageLoopBreak.twin` at `IdleMessageLoopBreakpoint`, which **Call Stack** shows above the program's procedure. Evaluating anything at that stop ends the program with a native access violation: a line in the Debug Console, even `? 1`, or any watch, which the IDE evaluates at every stop. The IDE then stays in break mode, with the yellow arrow on the package's line and **Stop** and the step commands enabled, although the program has ended.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `break-in-doevents-evaluate-crash.twinproj` (attached as `break-in-doevents-evaluate-crash.zip`). `Main` loops on `DoEvents`:
+   ```
+   Public Sub Main()
+       Do
+           DoEvents
+       Loop
+   End Sub
+   ```
+2. Press F5, then Ctrl+Break (**Run > Break**). The IDE opens `IdleMessageLoopBreak.twin` under `Packages/VB/Sources/SUPPORT`, stopped in `IdleMessageLoopBreakpoint`, and **Call Stack** shows `IdleMessageLoopBreakpoint` above `Main`.
+3. Type `? 1` in the Debug Console and press Enter. The program ends, and the Debug Console prints:
+   ```
+   (runtime error -2147467259: NATIVE EXCEPTION: ACCESS_VIOLATION)
+   0001 <time> NATIVE EXCEPTION: ACCESS_VIOLATION  {unknown} [$1EBD9288:twinBASIC_win32.dll+001D9288]
+   ```
+   The yellow arrow stays on the package's line, and **Stop** and the step commands stay enabled. **Restart the compiler** puts the IDE right.
+4. Add any watch, such as `1 + 1`, and repeat step 2. The program ends at the stop in the same way, with nothing typed.
+
+**Expected behavior**
+**Break Into Code** stops in the program, where F5 at the package's stop goes next: in `Main`, on the line after `DoEvents`. An expression evaluated at a stop is evaluated, or refused with a message, and the program stays stopped where it was.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Also on BETA 987, identically.
+
+What does not reproduce it: evaluating nothing at the first stop, after which F5 stops again at once, in `Main` on the line after `DoEvents` (`Loop`), where `? 1` prints `1`; and a break that lands in the program's own code rather than in `DoEvents`, where the Debug Console and watches work. A name that the package's procedure cannot see, such as a local of `Main`, ends the program as `? 1` does.
+
+Severity: high. Breaking into a loop that calls `DoEvents` is an everyday way to see what a program is doing, and a watch left over from earlier is enough to end the program at the stop.
+
+<!-- Asserted by `ide-test.bat --only break-into` (test/ide/break-into.test.mjs: the stop in the package and F5's second stop, ? 1 there, and a watch); passes on BETA 995 and 987. The lane clears the Debug Console after each crash it asserts, because tb-lane.mjs fails a lane whose console holds a NATIVE EXCEPTION line. The reproducer's Startup.twin is test/ide/probes/break-into/Sources/Startup.twin with a different header comment. When fixed: update that test and this entry. -->
+
+---
+
+## A system colour value with a nonzero second or third byte draws black since BETA 984, where VB6 takes the index from the low 16 bits
+
+**Describe the bug**
+Since BETA 984 (release note: "fixed: Circle/Line/PSet color value handling to match VB6's relaxed rules"), `Line`, `Circle` and `PSet` draw black for a colour whose top byte is `&H80` and whose second or third byte is not 0, such as `&H80FF000F` or `&H80010003`. The colour is read as a system colour only when the value minus `&H80000000` is 0 to 30, and any other `&H80` value draws black. VB6 takes the system colour index from the low 16 bits and ignores the bits in between, so it draws system colour 15 for `&H80FF000F` and system colour 3 for `&H80010003`. BETA 983 gave the same colours as VB6 for these two values. Observed by reading the pixel back with `GetPixel` from a form with `AutoRedraw` set.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `system-colour-extra-bytes-black.twinproj` (attached as `system-colour-extra-bytes-black.zip`). Its `Sub Main` loads `Form1`, sets `AutoRedraw`, `ScaleMode = vbPixels` and `BackColor = &H30201`, draws one point with `Form1.PSet (10, 10), Color` for each of three colours, and prints the pixel read back with `GetPixel`.
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   &H8000000F -> F0F0F0
+   &H80FF000F -> 000000
+   &H80010003 -> 000000
+   ```
+
+**Expected behavior**
+The colours VB6 draws, which BETA 983 drew as well:
+```
+&H8000000F -> F0F0F0
+&H80FF000F -> F0F0F0
+&H80010003 -> DBCDBF
+```
+`F0F0F0` is system colour 15 (`vbButtonFace`) and `DBCDBF` is system colour 3 (`vbInactiveTitleBar`) on the machine of the observation. The VB6 project, attached as `system-colour-extra-bytes-black-vb6.zip`, prints exactly these three lines.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low. A value like these is not what a `vbButtonFace`-style constant holds, and the colours of VB6 forms and controls are always the plain `&H8000000F` form. The effect is a different colour for a value that VB6 accepts.
+
+BETA 983 drew the same colours as VB6 for `&H80FF000F` and `&H80010003`, by passing the value to `OleTranslateColor`. It also raised error 5 for a value that is neither a system colour nor an RGB value with a top byte of 0, 1 or 2, and 984 fixed that: `-1`, `&HFF0000FF`, `&H7FFFFFFF` and the `&H01` palette forms now draw as VB6 draws them (the low 24 bits), as do a `Double` such as 255.7 (256) and a `String` such as `"255"`. Only the `&H80` top byte differs from VB6.
+
+The same difference exists for the high end of the index range: VB6 draws `&H80000019` to `&H8000001E` black, and twinBASIC draws the system colour of that index (`&H8000001D` gives `FF9933`, `&H8000001E` gives `F0F0F0`); this looks deliberate, since the source names `COLOR_MENUBAR` (30) as the limit. `&H80000100` draws black in both BETA 995 and VB6, and `C8C8C8` (index 0) in BETA 983.
+
+The change is `TranslateColor2` in the VB package's `Graphics.twin`, which `Line`, `Circle` and `PSet` call on `Color`: for a top byte of `&H80` it returns the system colour when the value minus `&H80000000` is 0 to 30 and 0 otherwise, and for any other value it returns the low 24 bits.
+
+<!-- Reproducer: bugs/system-colour-extra-bytes-black/ (mode run, expects the three lines above in twinBASIC); verified on 995, with 983 as the control (F0F0F0, F0F0F0, DBCDBF). The VB6 project is in bugs/system-colour-extra-bytes-black/vb6/ (`bug_repro.mjs vb6 system-colour-extra-bytes-black` prints the three lines above). The fuller sweep (about 45 colour values on 995, 983 and VB6) is in .claude/tooling-review-scratch/beta995-probes/s73/forms/ (c1.out995.txt, c1.out983.txt, c1.outvb6.txt), local scratch files that are not in the repository. Stated in docs/Reference/Core/Graphics-Methods.md, section "Colour values" (the first bullet and the WARNING after it, which names BETA 995; the NOTE below the WARNING is the deliberate difference for indexes 25 to 30): when fixed, replace the WARNING with a NOTE saying since which build twinBASIC takes the index from the low 16 bits, and change the bullet. -->
+
+---
+
+## Setting a colour property to a value that is not a colour stores it, and raises error 5 or nothing, where VB6 raises error 380 and keeps the old value
+
+**Describe the bug**
+Assigning a value that is not a colour to a colour property does not leave the property as it was, on a form, on a PictureBox or UserControl, on the Printer, and on every control tried. `Form.ForeColor = -1` and `Form.ForeColor = &H8000001F` raise error 5 (*Invalid procedure call or argument*) and still store the value, so `ForeColor` reads back `FFFFFFFF` and `8000001F` afterwards. `Form.BackColor = -1` and `Form.FillColor = -1` raise nothing and store the value. `ForeColor` raises error 5 on the surfaces that draw with a device context (Form, PictureBox, UserControl, Printer); every other colour property tried raises nothing, for `-1`, `&H8000001F` and `&HFF0000FF` alike. VB6 raises error 380 (*Invalid property value*) for every one of these assignments and keeps the colour the property had. Observed by assigning with `On Error Resume Next` and printing `Err.Number` and the value read back.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `forecolor-invalid-value-stored.twinproj` (attached as `forecolor-invalid-value-stored.zip`). Its `Sub Main` loads `Form1`, which holds a PictureBox, a Label, a TextBox, a CommandButton and a user control, UC1, whose `RunCases` assigns its own colour properties. For each property tried it sets `vbGreen`, then assigns `-1` (and `&H8000001F` to the form's `ForeColor`) under `On Error Resume Next` and prints the error number and the value read back. The Printer lines need a default printer; nothing is printed.
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   Form.ForeColor = -1: Err 5, reads FFFFFFFF
+   Form.ForeColor = &H8000001F: Err 5, reads 8000001F
+   Form.BackColor = -1: Err 0, reads FFFFFFFF
+   Form.FillColor = -1: Err 0, reads FFFFFFFF
+   PictureBox.ForeColor = -1: Err 5, reads FFFFFFFF
+   PictureBox.BackColor = -1: Err 0, reads FFFFFFFF
+   PictureBox.FillColor = -1: Err 0, reads FFFFFFFF
+   Label.ForeColor = -1: Err 0, reads FFFFFFFF
+   Label.BackColor = -1: Err 0, reads FFFFFFFF
+   TextBox.ForeColor = -1: Err 0, reads FFFFFFFF
+   TextBox.BackColor = -1: Err 0, reads FFFFFFFF
+   CommandButton.BackColor = -1: Err 0, reads FFFFFFFF
+   Printer.ForeColor = -1: Err 5, reads FFFFFFFF
+   Printer.FillColor = -1: Err 0, reads FFFFFFFF
+   UserControl.ForeColor = -1: Err 5, reads FFFFFFFF
+   UserControl.BackColor = -1: Err 0, reads FFFFFFFF
+   UserControl.FillColor = -1: Err 0, reads FFFFFFFF
+   ```
+
+**Expected behavior**
+Error 380 for each assignment, and the old value kept, as VB6 does (the VB6 project, attached as `forecolor-invalid-value-stored-vb6.zip`, prints):
+```
+Form.ForeColor = -1: Err 380, reads FF00
+Form.ForeColor = &H8000001F: Err 380, reads FF00
+Form.BackColor = -1: Err 380, reads FF00
+Form.FillColor = -1: Err 380, reads FF00
+PictureBox.ForeColor = -1: Err 380, reads FF00
+PictureBox.BackColor = -1: Err 380, reads FF00
+PictureBox.FillColor = -1: Err 380, reads FF00
+Label.ForeColor = -1: Err 380, reads FF00
+Label.BackColor = -1: Err 380, reads FF00
+TextBox.ForeColor = -1: Err 380, reads FF00
+TextBox.BackColor = -1: Err 380, reads FF00
+CommandButton.BackColor = -1: Err 380, reads FF00
+Printer.ForeColor = -1: Err 380, reads FF00
+Printer.FillColor = -1: Err 380, reads FF00
+UserControl.ForeColor = -1: Err 380, reads FF00
+UserControl.BackColor = -1: Err 380, reads FF00
+UserControl.FillColor = -1: Err 380, reads FF00
+```
+`FF00` is `vbGreen`, which each property held before the assignment. A program that sets a colour from user input and handles the error then keeps the colour it had.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low. `ForeColor` raises the error on the surfaces and the other properties do not, and the stored value is what a later `Line`, `Circle`, `PSet` or `Print` then uses (or what the control paints with), so a handled error leaves the invalid colour in force.
+
+What was tried: the same lines on BETA 983 print the same, so this is not a change of BETA 984. A value that is a valid colour, such as `&H100FF00` or `&H20000FF`, is accepted by `ForeColor` with no error, as in VB6. Besides the attached project, each of `-1`, `&H8000001F` and `&HFF0000FF` was assigned to every colour property of a UserControl (placed on the form), CheckBox, Frame, ListBox, Shape, ComboBox, DirListBox, DriveListBox, FileListBox, OptionButton and OLE in a project of its own, on BETA 995 and 983 and in VB6: the results are the same as above, error 5 for the UserControl's `ForeColor` and none for the rest in twinBASIC, error 380 and the old value kept in VB6. The twinBASIC-only controls behave the same (`QRCode.ForeColor` raises error 5, `CheckMark.BackColor` and `MultiFrame.BackColor` raise nothing), and so do `CommandButton.ForeColor` and the Data control's colours, which VB6 has no counterpart or no loadable project for. The package source explains the pattern: the colour properties are plain stored fields (`Public ForeColor As OLE_COLOR` and so on, in `GraphicsBase` for Form, PictureBox, UserControl, PropertyPage and Report, and declared again in each control), with nothing that validates the value; the error 5 comes from the `ForeColor` change handler of `GraphicsBase`, which runs after the value is stored.
+
+<!-- Reproducer: bugs/forecolor-invalid-value-stored/ (mode run, expects the seventeen lines above in twinBASIC); verified on 995 and 983. The VB6 project is in bugs/forecolor-invalid-value-stored/vb6/ (`bug_repro.mjs vb6 forecolor-invalid-value-stored` prints the seventeen lines above). The wider sweep (every colour property of the classes named under "What was tried", three values each, on 995, 983 and VB6) is in .claude/tooling-review-scratch/beta995-probes/s73/colours/ (c4.out995.txt, c4.out983.txt, c5.outvb6.txt, c6.Data.outvb6.txt, c3.out*.txt for the UserControl), local scratch files that are not in the repository. Stated in a WARNING naming BETA 995 under each of the colour properties on the pages under docs/Reference/Default/VB/ for: Form, PictureBox, UserControl, PropertyPage, Report, Printer, Label, TextBox, CommandButton, CheckBox, OptionButton, Frame, ListBox, ComboBox, DirListBox, DriveListBox, FileListBox, Shape, OLE (the VB6 comparison is in the WARNING) and Data, CheckMark, MultiFrame, QRCode (twinBASIC behaviour only; CommandButton.ForeColor likewise). PropertyPage and Report were not run: they inherit GraphicsBase, as Form does. MDIForm carries none: its BackColor assigns a separate field and its ForeColor and FillColor raise an unsupported-property error, and none was run. When fixed, replace each WARNING with a NOTE saying since which build. -->
+
+---
+
+## `TextBox.Text` assigned in code is not limited by `MaxLength`, where VB6 truncates it
+
+**Describe the bug**
+With `MaxLength` set to 3, `Text1.Text = "abcdef"` stores all six characters and `Len(Text1.Text)` is 6. VB6 truncates the new text to `MaxLength` characters: `Text` reads `abc`. `SelText` is affected in the same way: with `Text` equal to `"ab"` and the caret at the end, assigning `SelText = "cdef"` leaves `abcdef` in twinBASIC and `abc` in VB6. The `Text` property setter of the VB package sends `WM_SETTEXT` to the edit control, and the whole string is stored. Observed by reading `Text` back.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `textbox-text-ignores-maxlength.twinproj` (attached as `textbox-text-ignores-maxlength.zip`). Its `Form1` holds one `TextBox`, `Text1`, and its `Sub Main` loads the form, sets `Text1.MaxLength = 3`, assigns `Text` and `SelText`, and prints what `Text` holds.
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   Text = "abcdef": [abcdef] Len 6
+   SelText = "cdef" after "ab": [abcdef] Len 6
+   ```
+
+**Expected behavior**
+The text is cut to `MaxLength` characters, as in VB6 (the VB6 project, attached as `textbox-text-ignores-maxlength-vb6.zip`, prints):
+```
+Text = "abcdef": [abc] Len 3
+SelText = "cdef" after "ab": [abc] Len 3
+```
+A program that relies on `MaxLength` to bound a field, for instance one that stores `Text` in a fixed-size record, gets a string longer than the limit.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low to medium. Typing into the box was not tried; the gap is the assignment in code.
+
+What was tried: BETA 983 prints the same two lines. Assigning the same long text a second time raises no `Change` event, in twinBASIC and in VB6.
+
+<!-- Reproducer: bugs/textbox-text-ignores-maxlength/ (mode run, expects the two lines above in twinBASIC); verified on 995 and 983. The VB6 project is in bugs/textbox-text-ignores-maxlength/vb6/ (`bug_repro.mjs vb6 textbox-text-ignores-maxlength` prints the two lines above). Stated in docs/Reference/Default/VB/TextBox/index.md, the MaxLength section, in a WARNING that names BETA 995 ("assigning Text in code is not limited by MaxLength"): when fixed, replace it with a NOTE saying since which build Text is truncated. -->
+
+---
+
+## `LSet` on a `Long` variable compiles, and the build fails with a codegen error
+
+**Describe the bug**
+`LSet` is defined for a string or a user-defined type. A statement `LSet n = "ab"` with `n` declared `As Long` is accepted by the compiler without a diagnostic, and building the project then fails: the linker reports a code-generation error at the statement, and no exe is produced. Run from the IDE (F5), the project stops the same way. Observed in a build of the reproducer project.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `lset-long-codegen-error.twinproj` (attached as `lset-long-codegen-error.zip`). Its one source file, `Startup.twin`, is a `Sub Main` with `Dim n As Long` and `LSet n = "ab"`.
+2. Compile it: no errors, warnings or hints.
+3. Build it (Build, or F5) and read the DEBUG CONSOLE:
+   ```
+   [BUILD] Starting...
+   [LINKER] compilation (codegen) error detected in 'Startup.Mainrootmain' at line #5
+   [LINKER] FAILED due to compilation errors 'LsetLongCodegenError_win32.exe'
+   [BUILD] failed
+   ```
+
+**Expected behavior**
+A compile error on the `LSet` line, as for the neighbouring wrong operands: `LSet s = a` with `a` a user-defined type and `RSet a = b` with user-defined types are refused with TB5001 (*unable to convert type ... to String*), and `LSet a = s` with a string source and a user-defined type destination is refused with TB5249. VB6 refuses this statement at compile time with *LSet allowed only on strings and user-defined types* (attached as `lset-long-codegen-error-vb6.zip`, which does not build).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low. The error is reported, so nothing runs wrongly, but it points at no cause, and the compile step that the IDE shows while typing says the project is fine.
+
+Tried with a `Long` destination only. The same on BETA 983.
+
+<!-- Reproducer: bugs/lset-long-codegen-error/ (mode build, expects tbbuild exit 5 and "codegen" in the message); verified on 995 and 983. The BUGS tool's `vb6` command prints VB6's compile error and exits 1 for it, which is the comparison. No page states it: docs/Reference/Core/LSet.md says nothing about other destinations. -->
+
+---
+
+## `LSet` and `RSet` on an element of a `Variant` that holds an array change nothing
+
+**Describe the bug**
+`LSet v(0) = "zz"` and `RSet v(1) = "zz"` do nothing when `v` is a `Variant` that holds an array, whether the array came from `Array(...)` or from `ReDim v(0 To 1)` on the `Variant`. The statements raise no error, and the element keeps its value. The same statements on an element of an array declared `Dim w(0 To 1) As Variant` work. Observed in a run of the reproducer project.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `lset-variant-array-element-noop.twinproj` (attached as `lset-variant-array-element-noop.zip`). Its one source file, `Startup.twin`, has a `Sub Main` that assigns `v = Array("0123456789", "abcde")`, runs `LSet v(0) = "zz"` and `RSet v(1) = "zz"`, and does the same to the elements of `Dim w(0 To 1) As Variant`.
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   LSet v(0), v = Array(...):   [0123456789]
+   RSet v(1), v = Array(...):   [abcde]
+   LSet w(0), w(0 To 1) As Variant: [zz        ]
+   RSet w(1), w(0 To 1) As Variant: [   zz]
+   ```
+
+**Expected behavior**
+The elements of `v` change as those of `w` do: `[zz        ]` and `[   zz]`. VB6 does so (attached as `lset-variant-array-element-noop-vb6.zip`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low to medium. A statement that has no effect and no error is easy to miss.
+
+Tried: `ReDim v2(0 To 1)` on a `Variant`, then `LSet v2(0) = "zz"`, does the same. The `w` elements and `Dim a(0 To 2) As String` elements work. On BETA 983 the `v` lines read the same, and the `w` line for `LSet` reads `[zz23456789]`, because `LSet` did not yet fill with spaces there (fixed in BETA 984, which is a separate matter).
+
+<!-- Reproducer: bugs/lset-variant-array-element-noop/ (mode run, expects the four lines above); verified on 995, 983 gives the same `v` lines. docs/Reference/Core/LSet.md and RSet.md each carry a WARNING naming BETA 995 for this, after the paragraph that says the destination can be a Variant that holds a string; when fixed, replace each with a NOTE saying since which build. -->
+
+---
+
+## `LSet` and `RSet` on a `Variant` destination raise 13 for `Null` and for an object, and pad a `Boolean` as `-1`
+
+**Describe the bug**
+When the destination of `LSet` or `RSet` is a `Variant`, three subtypes behave differently from VB6. A `Variant` holding `Null` raises error 13 (*Type mismatch*), where VB6 raises 94 (*Invalid use of Null*). A `Variant` holding an object, such as a `Collection`, raises error 13, where VB6 raises no error. A `Variant` holding `True` is aligned as the two characters `-1`: `RSet v = "ab"` leaves `[ab]` with `Len` 2, where VB6 aligns within `"True"` and leaves `[  ab]` with `Len` 4. Observed in a run of the reproducer project.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `lset-variant-destination-types.twinproj` (attached as `lset-variant-destination-types.zip`). Its one source file, `Startup.twin`, has a `Sub Main` under `On Error Resume Next` that runs `LSet v = "abc"` on a `Variant` holding `Null`, `LSet v = "abc"` on one holding `New Collection`, and `RSet v = "ab"` on one holding `True`.
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   LSet, destination Null:    error 13
+   LSet, destination Object:  error 13
+   RSet, destination True:    [ab] Len 2
+   ```
+
+**Expected behavior**
+`error 94` for `Null`, no error for the object, and `[  ab] Len 4` for `True`, as in VB6 (attached as `lset-variant-destination-types-vb6.zip`, which prints `error 94`, `error 0` and `[  ab] Len 4`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Severity: low. Programs rarely align into a `Variant` that holds `Null` or an object, and the error number matters only to a handler that tests for 94.
+
+A `Variant` holding an `Integer`, a `Long`, a `Double` or a `Date` is aligned within its text as in VB6, and one holding an error value or an array raises 13 in both. A `Null` source into a `String` destination raises 94 in both. The same results on BETA 983.
+
+<!-- Reproducer: bugs/lset-variant-destination-types/ (mode run, expects the three lines above); verified on 995 and 983. No page states these cases: docs/Reference/Core/LSet.md and RSet.md say that a Null source raises error 94 and that the destination can be a Variant that holds a string. -->
+
+---
+
+## The Debug Console offers no completion for a name typed after `?` and a space
+
+**Describe the bug**
+The Debug Console's IntelliSense list offers no names after `?` and a space, the form a line in the console is usually typed in. With the run stopped at a breakpoint and `total`, a local, in scope, typing `? tot` opens no list at any key, and Ctrl+Space at the end of the line opens none either. Typed with no space, `?tot` opens the list at the `t`, and it offers `total`; so does `tot` at the start of the line. `Debug.Print tot` opens no list, as `? tot` does.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `console-completion-after-print.twinproj` (attached as `console-completion-after-print.zip`). In `Startup.twin`, `Main` has two locals and calls a private Sub on the line marked `BREAK`:
+   ```
+   Public Sub Main()
+       Dim total As Long
+       Dim items As New Collection
+       total = 5
+       items.Add total
+       Touch total ' BREAK
+   End Sub
+
+   Private Sub Touch(ByVal n As Long)
+       Debug.Print "total " & n
+   End Sub
+   ```
+2. Put a breakpoint on the line marked `BREAK` (F9) and press F5. The run stops there.
+3. Click in the Debug Console's input and type `? tot`. No list opens at any key. Press Ctrl+Space: no list opens.
+4. Clear the input and type `?tot`, with no space. The list opens at the `t`, and once the line reads `?tot` it offers only `total`. Typing `tot` alone does the same.
+
+**Expected behavior**
+`? tot` opens the list with `total` in it, as `?tot` and `tot` do: the space does not change which names can follow the `?`. A `?` and a space is how a line is usually typed in the Debug Console, as in VBA's Immediate window, so that is where the list is wanted most.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Also on BETA 987, identically.
+
+What does not reproduce it: `tot` after leading spaces, which opens the list with `total`; and a dot after `?` and a space, `? items.`, which opens the list with the `Collection`'s members, so only the names are missing there. With Ctrl+Space at the end of the line, `Touch tot`, an argument of a Sub call, opens the list with `total`, and `Call Tou` and `total = to` open none, so names are missing after `Call` and on the right of an assignment as well. Typed key by key, `Call Tou` goes wrong sooner, for a separate reason: the space after `Call` accepts the list's first entry, and the line becomes `CallByDispId()`. With no program running, Ctrl+Space gives the same results: `Mai` offers `Main`, and `? Mai` opens no list.
+
+Severity: low to moderate. Name completion does not work in the form the console is nearly always typed in, and leaving out the space after `?` is the only way round it.
+
+<!-- Asserted by `ide-test.bat --only console-completion` (test/ide/console-completion.test.mjs: ?tot, tot, tot after leading spaces and Touch tot offer total; ? tot, Debug.Print tot, Call Tou and total = to open no list; ? items. offers the Collection's members; with no program running, Mai offers Main and ? Mai opens no list); passes on BETA 995 and 987. The lane puts each line in the console's input and presses Ctrl+Space; typed key by key, ? tot, ?tot, tot, tot after leading spaces, Debug.Print tot and ? items. do the same, which was checked on BETA 995 and is not asserted. The reproducer's Startup.twin is test/ide/probes/console-completion/Sources/Startup.twin with a different header comment. When fixed: update that test and this entry. -->
+
+---
+
+## A space typed in the Debug Console accepts the IntelliSense list's selection, so `Print x` becomes `Printerx`
+
+**Describe the bug**
+While the Debug Console's IntelliSense list is open, a space typed in its input accepts the list's first entry: the entry is written over the word before the caret, and the space is lost. The console's list never offers keywords, so a keyword that starts a longer name is replaced by that name. With the run stopped at a breakpoint, typing `Print total` gives `Printertotal`, because at `Print` the list offers `Printer`, `PrinterObjectConstants` and others, but not `Print`. In the same way, `Call Touch(total)` becomes `CallByDispId(Touch(total))`, and `Set obj = items` becomes `SetAttr(obj = items)`. The console refuses all three lines.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `console-space-accepts-completion.twinproj` (attached as `console-space-accepts-completion.zip`). In `Startup.twin`, `Main` has three locals and calls a private Sub on the line marked `BREAK`:
+   ```
+   Public Sub Main()
+       Dim total As Long
+       Dim items As New Collection
+       Dim obj As Object
+       total = 5
+       items.Add total
+       Touch total ' BREAK
+   End Sub
+
+   Private Sub Touch(ByVal n As Long)
+       Debug.Print "total " & n
+   End Sub
+   ```
+2. Put a breakpoint on the line marked `BREAK` (F9) and press F5. The run stops there.
+3. Click in the Debug Console's input and type `Print total` at an ordinary speed. The list opens while `Print` is typed, the space after it turns the line into `Printer`, and the line ends as `Printertotal`. Press Enter: the console prints `(compile error: Unrecognized symbol 'Printertotal')`.
+4. Type `Call Touch(total)`: the space after `Call` writes `CallByDispId()`, with the caret between the parentheses, and the line ends as `CallByDispId(Touch(total))`. Type `Set obj = items`: it ends as `SetAttr(obj = items)`. Enter gives a compile error for each.
+5. Type `Print`, press Escape, and type ` total`: the line is `Print total`, and Enter prints `5`.
+
+**Expected behavior**
+Each line stays as it is typed, as it does in the code editor. The code editor's list offers the keywords, so at `Print` its first entry is `Print` itself, and the space after it is typed: typed the same way in a procedure, `Print total`, `Call Touch(total)` and `Set obj = items` stay as they are. In the console, `Print total` typed with Escape before the space prints `5`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Also on BETA 987, identically.
+
+What does not reproduce it: a word that is already the list's first entry, and not a procedure, keeps its space, so `total = 6` stays as it is. `? total` and `Debug.Print total` stay as they are. Escape before the space closes the list, and the space is then typed. With the IDE's IntelliSense mode set to LEGACY or MANUAL, the list does not open while the first word of a line is typed, and `Print total` and `Call Touch(total)` stay as they are.
+
+In the default mode, MODERN, the console asks for the list after every key and answers within a few milliseconds, so the list is open at the space whenever a line is typed at an ordinary speed. Every keyword that starts a longer name is replaced in the same way, and the others type as they are: `Do` becomes `DockModeConstants`, `For` becomes `FormArrangeConstants`, `On` becomes `OnErrorCatch`, `Get` becomes `GetAllSettings()` and `RaiseEvent` becomes `RaiseEventByName()`, while `Dim`, `End`, `Exit`, `With`, `Open`, `Close`, `ReDim`, `Stop` and `GoTo` stay. The same happens with no program running: `Print 1 + 1` becomes `Printer1 + 1`.
+
+Severity: moderate. `Print`, `Call` and `Set` begin lines that are often typed in the console, and each becomes a line the console refuses. The only ways round it are Escape before the space and another IntelliSense mode.
+
+<!-- Asserted by `ide-test.bat --only console-space` (test/ide/console-space.test.mjs: with the run stopped at BREAK and each line typed key by key, Print total becomes Printertotal, Call Touch(total) becomes CallByDispId(Touch(total)) and Set obj = items becomes SetAttr(obj = items), and the console refuses each; Print, Escape and then the rest give Print total, which prints 5; total = 6, ? total and Debug.Print total type as they are; with no program running, Print 1 + 1 becomes Printer1 + 1); passes on BETA 995 and 987. The lane waits after each key for the console's answer to it, as a person typing at an ordinary speed sees the list. Checked on BETA 995 and 987 and not asserted: the other keywords named above. Checked on BETA 995 and not asserted: the LEGACY and MANUAL modes, and the code editor. The reproducer's Startup.twin is test/ide/probes/console-space/Sources/Startup.twin with a different header comment. Related: "The Debug Console offers no completion for a name typed after `?` and a space", whose Additional context mentions this one. When fixed: update that test and this entry. -->

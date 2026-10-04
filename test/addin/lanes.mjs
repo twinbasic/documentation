@@ -21,8 +21,9 @@ export default [
   // Sample 15 saves all four of its option boxes whenever one is clicked.
   { file: "sample15.test.mjs", settings: ["GlobalSearchAddIn"] },
   // Stage 2 probes. Each finds what it needs in probes/<name>: an add-in it
-  // builds (keys, panes, appdata, arch, reload, entry) or a project it opens
-  // (symbols); ideserver needs neither.
+  // builds (keys, panes, appdata, arch, reload, entry, env) or a project it opens
+  // (symbols); ideserver needs neither. env's add-in prints the harness's
+  // environment variable and saves nothing.
   { file: "keys.test.mjs" },
   { file: "panes.test.mjs" },
   { file: "symbols.test.mjs" },
@@ -31,4 +32,5 @@ export default [
   { file: "arch.test.mjs" },
   { file: "reload.test.mjs" },
   { file: "entry.test.mjs" },
+  { file: "env.test.mjs" },
 ];

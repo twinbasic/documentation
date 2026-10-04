@@ -82,6 +82,14 @@ runs:
     - name: Unit-test the date formatter (test/strftime.test.mjs)
       shell: bash
       run: node --test test/strftime.test.mjs
+    # Unit tests for the pictures of a bug reproducer: PNG decoding, comparing
+    # and the side-by-side image (scripts/lib/png.mjs), the files behind
+    # repro.json's images and expect.imagesDiffer, and bug_repro.mjs's own
+    # refusals over fixtures. Starts no IDE and no VB6. No browser, no built
+    # tree, about 4 s.
+    - name: Unit-test the bug reproducers' pictures (test/png.test.mjs)
+      shell: bash
+      run: node --test test/png.test.mjs
     # check_examples.mjs's probes: batching, crash isolation through a fake
     # lane, the canaries and the fence classifier. check_examples.mjs needs a
     # twinBASIC install, which CI has not; its probes need none.

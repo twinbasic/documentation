@@ -1,0 +1,22 @@
+Module Startup
+
+    Private Declare PtrSafe Function GetPixel Lib "gdi32" (ByVal hdc As LongPtr, ByVal x As Long, ByVal y As Long) As Long
+
+    Private Sub Draw(ByVal Label As String, ByVal Color As Long)
+        Form1.Cls
+        Form1.PSet (10, 10), Color
+        Debug.Print Label & " -> " & Right$("000000" & Hex$(GetPixel(Form1.hDC, 10, 10)), 6)
+    End Sub
+
+    Public Sub Main()
+        Load Form1
+        Form1.AutoRedraw = True
+        Form1.ScaleMode = vbPixels
+        Form1.BackColor = &H30201
+        Draw "&H8000000F", &H8000000F
+        Draw "&H80FF000F", &H80FF000F
+        Draw "&H80010003", &H80010003
+        Unload Form1
+    End Sub
+
+End Module

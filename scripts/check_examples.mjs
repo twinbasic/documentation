@@ -124,6 +124,8 @@ import {
   runBatch,
   runProbes,
   sectionOf,
+  templateChain,
+  templateResolves,
   unresolvedName,
 } from "./lib/example-batches.mjs";
 import {
@@ -281,46 +283,9 @@ function defaultProject(rel) {
   return "console";
 }
 
-/**
- * Which template a template is a delta of.
- *
- * A template is not a whole exported tree, which would repeat a stage set that
- * is mostly the same list in every copy.
- * A template named here holds only the files that DIFFER from its base:
- * `vb-private` is a Settings with one reference rewritten, `cef` and
- * `webview2` are one stage file each.
- *
- * The relation lives in the tool rather than in the tree on purpose. The
- * alternative was a marker file in the template directory, and a template
- * directory is an exported twinBASIC project that the compiler's `import` verb
- * has to accept -- so a stray file there is a thing to test rather than a thing
- * to declare.
- */
-const TEMPLATE_BASE = {
-  "vb-private": "console",
-  "cc-private": "packages",
-  "wnc-private": "packages",
-  "cef-private": "cef",
-  implicit: "console",
-  cef: "packages",
-  webview2: "packages",
-};
-
-/** A template and everything it inherits from, base first. */
-function templateChain(name) {
-  const chain = [];
-  for (let n = name, guard = 0; n; n = TEMPLATE_BASE[n]) {
-    if (guard++ > 8) throw new Error(`template inheritance cycle at ${name}`);
-    chain.unshift(n);
-  }
-  return chain;
-}
-
-/** Does this template resolve to a project with a Settings anywhere in its chain? */
-function templateResolves(name) {
-  if (!existsSync(path.join(TEMPLATES, name))) return false;
-  return templateChain(name).some((n) => existsSync(path.join(TEMPLATES, n, "Settings")));
-}
+// Which template a template is a delta of, the chain of them, and whether a
+// name resolves to a project: lib/example-batches.mjs (TEMPLATE_BASE,
+// templateChain, templateResolves), where the probes read them.
 
 // What `inherits=` does to a slot that was inferred for a Module container. A
 // sample naming a base is class code-behind whatever the classifier thought,
@@ -448,7 +413,7 @@ function select(fences) {
       }
       continue;
     }
-    if (!templateResolves(fence.project)) {
+    if (!templateResolves(TEMPLATES, fence.project)) {
       addFinding(
         fence,
         `no such template project: ${fence.project}`,

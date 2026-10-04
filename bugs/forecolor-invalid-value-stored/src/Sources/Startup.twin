@@ -1,0 +1,52 @@
+Module Startup
+
+    Public Sub Main()
+        Load Form1
+        On Error Resume Next
+        Form1.ForeColor = vbGreen
+        Form1.ForeColor = -1
+        Debug.Print "Form.ForeColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.ForeColor): Err.Clear
+        Form1.ForeColor = vbGreen
+        Form1.ForeColor = &H8000001F
+        Debug.Print "Form.ForeColor = &H8000001F: Err " & Err.Number & ", reads " & Hex$(Form1.ForeColor): Err.Clear
+        Form1.BackColor = vbGreen
+        Form1.BackColor = -1
+        Debug.Print "Form.BackColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.BackColor): Err.Clear
+        Form1.FillColor = vbGreen
+        Form1.FillColor = -1
+        Debug.Print "Form.FillColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.FillColor): Err.Clear
+        Form1.PictureBox1.ForeColor = vbGreen
+        Form1.PictureBox1.ForeColor = -1
+        Debug.Print "PictureBox.ForeColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.PictureBox1.ForeColor): Err.Clear
+        Form1.PictureBox1.BackColor = vbGreen
+        Form1.PictureBox1.BackColor = -1
+        Debug.Print "PictureBox.BackColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.PictureBox1.BackColor): Err.Clear
+        Form1.PictureBox1.FillColor = vbGreen
+        Form1.PictureBox1.FillColor = -1
+        Debug.Print "PictureBox.FillColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.PictureBox1.FillColor): Err.Clear
+        Form1.Label1.ForeColor = vbGreen
+        Form1.Label1.ForeColor = -1
+        Debug.Print "Label.ForeColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.Label1.ForeColor): Err.Clear
+        Form1.Label1.BackColor = vbGreen
+        Form1.Label1.BackColor = -1
+        Debug.Print "Label.BackColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.Label1.BackColor): Err.Clear
+        Form1.TextBox1.ForeColor = vbGreen
+        Form1.TextBox1.ForeColor = -1
+        Debug.Print "TextBox.ForeColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.TextBox1.ForeColor): Err.Clear
+        Form1.TextBox1.BackColor = vbGreen
+        Form1.TextBox1.BackColor = -1
+        Debug.Print "TextBox.BackColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.TextBox1.BackColor): Err.Clear
+        Form1.CommandButton1.BackColor = vbGreen
+        Form1.CommandButton1.BackColor = -1
+        Debug.Print "CommandButton.BackColor = -1: Err " & Err.Number & ", reads " & Hex$(Form1.CommandButton1.BackColor): Err.Clear
+        Printer.ForeColor = vbGreen
+        Printer.ForeColor = -1
+        Debug.Print "Printer.ForeColor = -1: Err " & Err.Number & ", reads " & Hex$(Printer.ForeColor): Err.Clear
+        Printer.FillColor = vbGreen
+        Printer.FillColor = -1
+        Debug.Print "Printer.FillColor = -1: Err " & Err.Number & ", reads " & Hex$(Printer.FillColor): Err.Clear
+        Form1.UC1.RunCases
+        Unload Form1
+    End Sub
+
+End Module
