@@ -1115,8 +1115,9 @@ the compiler loads add-ins from. The last three check what the [Add Ins](../../t
 and [tbIDE package](../../tB/Packages/tbIDE/) pages say about loading: which folder each
 build target loads, what a compiler restart does to a loaded add-in, and which entry-point
 names the IDE accepts. They build add-ins for win64 as well as win32, restart the compiler,
-and patch a built DLL's export name. The ten lanes take about two and a half minutes
-together.
+and patch a built DLL's export name. One more checks that the environment variable the
+runner sets, which keeps an add-in under test from opening a browser, reaches the add-in,
+also after a compiler restart. The eleven lanes take under two minutes together.
 
 | Flag | Effect |
 |---|---|
