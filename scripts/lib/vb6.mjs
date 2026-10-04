@@ -69,9 +69,16 @@
 // 11. A VB6 EXE THAT DIES OF AN ACCESS VIOLATION EXITS WITH CODE 0. Windows Error
 //     Reporting writes an "Application Error" record (event 1000) to the Application log,
 //     naming the exe's path and the exception code, but GetExitCodeProcess reads 0, so the
-//     exit code says the run succeeded. runRepro looks for that record (recordedFault) and
-//     reports the fault beside the exit code. A reproducer is built in a folder of its own,
-//     so the path names one run. (A Probe.exe that called Advise with a null sink on a VB6
+//     exit code says the run succeeded. runRepro and runExe look for that record
+//     (recordedFault) and report the fault beside the exit code. Every build is in a
+//     folder of its own, so the path names one run. THE RECORD IS WRITTEN ONLY FOR AN EXE
+//     STARTED THROUGH tb-launch.ps1 (launchOnDesktop: runRepro, and runExe for a form
+//     project). The same exe spawned by Node directly faults with the same exit code 0 and
+//     leaves no record (2026-10-04, both for the Advise crash in MSVBVM60.DLL and for
+//     RtlMoveMemory from address 0 in ntdll.dll); Node's error mode, which a child
+//     inherits, is the likely cause. So runBatch also says which sample the exe ended in
+//     before the time limit: one that began, never ended, and was not ended by the time
+//     limit died there, record or not. (A Probe.exe that called Advise with a null sink on a VB6
 //     class's connection point, 2026-10-04: c0000005 in MSVBVM60.DLL, exit code 0.)
 //
 // The probes for the rewrite and the translation are in vb6Probes() at the end.
@@ -715,7 +722,8 @@ export async function make(vb6, dir, { timeoutMs = 120000, project = PROJECT } =
  * as its command line; a reproducer's is `project: "Probe"`, which writes
  * `outName` and takes `args` (none by default).
  *
- * @returns {Promise<{lines: string[], status: number|null, timedOut: boolean, error?: string}>}
+ * @returns {Promise<{lines: string[], status: number|null, timedOut: boolean, fault: {code: string, module: string, offset: string} | null, error?: string}>}
+ *   `fault` is what recordedFault found for the exe (see 11 at the top)
  */
 export async function runExe(
   dir,
@@ -723,11 +731,14 @@ export async function runExe(
 ) {
   const outPath = path.join(dir, outName);
   rmSync(outPath, { force: true });
+  const exe = path.join(dir, `${project}.exe`);
+  const since = Date.now();
   const r = desktop
-    ? await runOnDesktop(path.join(dir, `${project}.exe`), args.join(" "), { timeoutMs })
-    : await runLimited(path.join(dir, `${project}.exe`), args, { cwd: dir, timeoutMs });
+    ? await runOnDesktop(exe, args.join(" "), { timeoutMs })
+    : await runLimited(exe, args, { cwd: dir, timeoutMs });
   const lines = existsSync(outPath) ? splitLines(decodeAnsi(readFileSync(outPath))) : [];
-  return { lines, status: r.status, timedOut: r.timedOut, error: r.error };
+  const fault = r.timedOut || r.error ? null : recordedFault(exe, since);
+  return { lines, status: r.status, timedOut: r.timedOut, fault, error: r.error };
 }
 
 // ------------------------------------------------------- a reproducer's project
@@ -819,7 +830,7 @@ const XML_ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
 
 /**
  * The fault that Windows Error Reporting recorded in the Application log for `exe`, a
- * full path, at or after `since` (a Date.now() value), or null when there is none or the
+ * full path, at or after `since` (a Date.now() value taken before the exe started), or null when there is none or the
  * log cannot be read. See 11 at the top: a VB6 exe that faults exits with code 0, and
  * this record is what says it faulted.
  *
@@ -840,6 +851,10 @@ export function recordedFault(exe, since) {
   }
   const want = exe.toLowerCase();
   for (const event of xml.split("</Event>")) {
+    // The query's window reaches back before `since`, and runBatch runs one exe again after a
+    // sample that did not return: a record from before this run is another run's.
+    const at = /<TimeCreated SystemTime='([^']+)'/.exec(event);
+    if (!at || Date.parse(at[1]) < since) continue;
     // The record's data are unnamed, in a fixed order: the app's name, version and time stamp,
     // the module's name, version and time stamp, the exception code, the offset, the process
     // id, its start time, then the app's path.
@@ -850,6 +865,15 @@ export function recordedFault(exe, since) {
   }
   return null;
 }
+
+/** A fault from recordedFault, as a report says it. */
+export const faultText = ({ code, module, offset }) => `exception 0x${code} in ${module} at offset 0x${offset}`;
+
+/** What a report says of a sample in runBatch's `died`. */
+export const diedText = ({ status, fault }) =>
+  fault
+    ? `ended the exe with ${faultText(fault)}`
+    : `ended the exe, which exited with code ${status} and no fault in the event log`;
 
 /**
  * Run a reproducer's built exe on a private desktop, inside a kill-on-close job,
@@ -1011,12 +1035,16 @@ export async function buildBatch(vb6, dir, modules, { timeoutMs, support = [] } 
  * @param {number} count  samples in the built project
  * @param {{timeoutMs?: number, desktop?: boolean}} o  `desktop` runs the exe on a private
  *   desktop, for a project with a form
- * @returns {Promise<{items: ReturnType<typeof parseRun>["items"], hung: number[]}>}
- *   `hung` lists the samples that began and never ended
+ * @returns {Promise<{items: ReturnType<typeof parseRun>["items"], hung: number[], died: Map<number, {status: number|null, fault: {code: string, module: string, offset: string} | null}>}>}
+ *   `hung` lists the samples that began and never ended. `died` holds those of them
+ *   during which the exe ended by itself, before the time limit: its exit code, and the
+ *   fault the event log recorded, when there is one (see 11 at the top). The rest of
+ *   `hung` were still running at the time limit.
  */
 export async function runBatch(dir, count, { timeoutMs, desktop = false } = {}) {
   const items = Array.from({ length: count }, () => ({ began: false, ended: false, output: [], error: null }));
   const hung = [];
+  const died = new Map();
   let start = 0;
   while (start < count) {
     const r = await runExe(dir, { start, timeoutMs, desktop });
@@ -1028,15 +1056,21 @@ export async function runBatch(dir, count, { timeoutMs, desktop = false } = {}) 
     if (parsed.done) break;
     // The run stopped before it finished: the last sample to begin is the one it was in.
     const last = parsed.items.map((it) => it.began && !it.ended).lastIndexOf(true);
+    // An exe that ended before the time limit, in the middle of a sample, died in it.
+    const end = r.timedOut ? null : { status: r.status, fault: r.fault };
     if (last < start) {
       // Nothing began: the exe never got going (it was killed, or it died), and rerunning cannot help.
-      if (!parsed.items.some((it) => it.began)) hung.push(start);
+      if (!parsed.items.some((it) => it.began)) {
+        hung.push(start);
+        if (end) died.set(start, end);
+      }
       break;
     }
     hung.push(last);
+    if (end) died.set(last, end);
     start = last + 1;
   }
-  return { items, hung };
+  return { items, hung, died };
 }
 
 // -------------------------------------------------------------------- probes

@@ -42,6 +42,7 @@ import {
   buildBatch,
   declarationsModule,
   declaresMain,
+  diedText,
   findVb6,
   makeWorkDir,
   moduleFor,
@@ -83,8 +84,8 @@ generated Sub Main opens, because Debug.Print writes nothing in a compiled exe.
               same, differs (the lines that differ, page against VB6), not VB6
               (VB6 refuses to compile it, or the files of its group; most
               twinBASIC syntax ends here, and it is informational), error (a
-              run-time error, or it did not return), refused (the sample cannot
-              be run)
+              run-time error, the exe ended during it, or it did not return),
+              refused (the sample cannot be run)
 --only <re>   with --docs, the pages whose path under docs/ matches this regular
               expression
 --vb6 <path>  VB6.EXE (default: $VB6_EXE, else VB98\\VB6.EXE under Program Files
@@ -97,7 +98,10 @@ generated Sub Main opens, because Debug.Print writes nothing in a compiled exe.
 
 Exit codes:
   0  the sample ran; with --docs, no fence differs and none raised an error
-  1  a VB6 compile error, a run-time error, or a sample that did not return; with
+  1  a VB6 compile error, a run-time error, a sample during which the exe ended
+     (a VB6 exe that dies of a fault can exit with code 0; the fault the
+     Application event log records is named when there is one), or a sample that
+     did not return; with
      --docs, at least one fence differs or raised an error
   2  the harness could not run: a refused command line, a file that is missing, a
      sample that is refused, no VB6 (give --vb6 or set VB6_EXE), VB6 failing to
@@ -188,7 +192,12 @@ async function sample() {
   const item = run.items[0];
   result.output = item.output;
   let code = 0;
-  if (run.hung.length || !item.began) {
+  const died = run.died.get(0);
+  if (died) {
+    result.state = "crashed";
+    result.error = { message: `the sample ${diedText(died)}` };
+    code = 1;
+  } else if (run.hung.length || !item.began) {
     result.state = item.began ? "did not return" : "not run";
     result.error = { message: `${result.state} (time limit ${timeoutMs / 1000} s)` };
     code = 1;
@@ -276,7 +285,10 @@ async function docs() {
     ran.forEach((r, i) => {
       const item = run.items[i];
       const f = r.fence;
-      if (run.hung.includes(i)) {
+      if (run.died.has(i)) {
+        r.state = "error";
+        r.detail.push(diedText(run.died.get(i)));
+      } else if (run.hung.includes(i)) {
         r.state = "error";
         r.detail.push(`did not return within ${timeoutMs / 1000} s`);
       } else if (!item.began) {
