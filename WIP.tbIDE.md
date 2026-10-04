@@ -25,12 +25,12 @@ Module MainModule
 End Module
 ```
 
-The returned object must implement the [`AddIn`](#public-user-facing-surface) interface (a single read-only `Name` property, declared in `Addin.twin`). Every sample uses this exact `tbCreateCompilerAddin` skeleton — surface it on the index landing as the canonical entry point.
+The returned object must implement the [`AddIn`](#public-user-facing-surface) interface (a single read-only `Name` property, declared in `Addin.twin`). Every sample uses this exact `tbCreateCompilerAddin` skeleton. Show it on the index landing as the canonical entry point.
 
-Two things about loading were measured on BETA 983 and 995 (P9 and P14 in [WIP.HelpAddin.md](WIP.HelpAddin.md)), and the index page says both:
+Two facts about loading were measured on BETA 983 and 995 (P9 and P14 in [WIP.HelpAddin.md](WIP.HelpAddin.md)), and the index page states both:
 
 - **The linker exports `tbCreateCompilerAddin` as `tbCreateCompilerAddin_v3`**, and under no other name. The IDE's loader accepts `tbCreateCompilerAddin`, `_v2` and `_v3`, calls each the same way, and refuses a DLL with none of them as *compiled for a newer version of the twinBASIC IDE*. The suffix is a version stamp, not a different signature.
-- **A compiler restart does not release the object; it kills it.** The addin lives in the compiler's process, and the page ends that process with `taskkill /F` (`forceTerminate` in `main.js`) on every compiler restart --- the restart button, a switch of build target, a crash --- so `Class_Terminate` does not run, and a new instance is loaded from the DLL on disk. Closing the project calls `forceTerminate` as well *(read, not measured)*. This note used to say the object is released "when the addin is disabled or the IDE shuts down"; the Add-Ins menu's items cannot disable one *(reported)*, and the index page repeated the claim until the P9 lane showed `Class_Terminate` not running.
+- **A compiler restart does not release the object; it kills it.** The addin lives in the compiler's process. The page ends that process with `taskkill /F` (`forceTerminate` in `main.js`) on every compiler restart (the restart button, a switch of build target, a crash). So `Class_Terminate` does not run, and a new instance is loaded from the DLL on disk. Closing the project calls `forceTerminate` as well *(read, not measured)*. Never write that the object is released "when the addin is disabled or the IDE shuts down": the Add-Ins menu's items cannot disable an add-in *(reported)*.
 
 ## Public user-facing surface
 
@@ -73,13 +73,13 @@ Almost every `.twin` declares one or two `Public Interface I<X>V1 Extends stdole
 **Versioning is conveyed by interface chains.** Two cases visible in the source:
 
 - `IFileV1` → `IFileV2 Extends IFileV1` (V2 adds `ReadText(ReadTextFlags)`). The `File` CoClass declares `[Default] Interface IFileV2`. Document the V2 surface as the canonical `File` page; do not split V1 vs V2. (Mention in passing that `ReadText` is V2-only and consequently won't bind against very early IDE builds — though in practice every shipping IDE is V2+.)
-- `IHostV1` → `ItbHostEventsV1` → `ItbHostEventsV2 Extends V1` → `ItbHostEventsV3 Extends V2`. The `Host` CoClass declares `[Default, Source] Interface ItbHostEventsV3`. The new members on V2 / V3 (`OnChangedActiveEditor`, `OnChangedTheme`) are each tagged **`[AllowUnpopulatedVtableEntry]`**, which [Attributes](docs/Reference/Attributes.md#allowunpopulatedvtableentry) describes as marking a prototype that a class implementing the interface need not supply. This note, and the Host page after it, used to say the attribute lets a newer addin "still load against an older IDE"; nothing measured it, and P14 found the opposite mechanism in the loader: the linker stamps every addin's entry point `_v3`, and an IDE whose loader does not know a DLL's stamp refuses it. Every install from BETA 947 on knows `_v3`, so the claim could not be tested here either way.
+- `IHostV1` → `ItbHostEventsV1` → `ItbHostEventsV2 Extends V1` → `ItbHostEventsV3 Extends V2`. The `Host` CoClass declares `[Default, Source] Interface ItbHostEventsV3`. The new members on V2 / V3 (`OnChangedActiveEditor`, `OnChangedTheme`) are each tagged **`[AllowUnpopulatedVtableEntry]`**, which [Attributes](docs/Reference/Attributes.md#allowunpopulatedvtableentry) describes as marking a prototype that a class implementing the interface need not supply. Do not write that the attribute lets a newer addin "still load against an older IDE". Nothing measured it, and P14 found the opposite mechanism in the loader: the linker stamps every addin's entry point `_v3`, and an IDE whose loader does not know a DLL's stamp refuses it. Every install from BETA 947 on knows `_v3`, so the claim cannot be tested either way.
 
 Document all `Host` events together on the `Host.md` page (the per-version split is a compatibility detail, not a user-facing concept).
 
 ## `AddinTimer` is the only user-instantiable class
 
-Every other public symbol is a CoClass exposed *to* the addin by the IDE — the addin receives instances via `Host`, never constructs them. `AddinTimer` is the exception: it's a concrete `Class AddinTimer` (not a CoClass) and the addin instantiates it with `New AddinTimer`. Internally it wraps `SetTimer` / `KillTimer` with a private `TimerCallback`, exposes `Interval` (ms) + `Enabled`, and fires a `Timer` event.
+Every other public symbol is a CoClass the IDE exposes *to* the addin: the addin receives instances via `Host` and never constructs them. `AddinTimer` is the exception. It is a concrete `Class AddinTimer` (not a CoClass), and the addin instantiates it with `New AddinTimer`. Internally it wraps `SetTimer` / `KillTimer` with a private `TimerCallback`, exposes `Interval` (ms) + `Enabled`, and fires a `Timer` event.
 
 Sample 11's CPU-monitor demonstrates the typical pattern:
 
@@ -98,9 +98,9 @@ Private Sub myToolWindow_OnClose()
 End Sub
 ```
 
-The class uses the `Handles` syntax internally (`Private Sub Changed() Handles Enabled.OnPropertyLet, Interval.OnPropertyLet`) so any change to `Enabled` or `Interval` re-arms the underlying timer — surface this as *"set `Enabled = False` to stop, change `Interval` at any time"*, not as an implementation detail.
+The class uses the `Handles` syntax internally (`Private Sub Changed() Handles Enabled.OnPropertyLet, Interval.OnPropertyLet`), so any change to `Enabled` or `Interval` re-arms the underlying timer. Present this as *"set `Enabled = False` to stop, change `Interval` at any time"*, not as an implementation detail.
 
-`Class_Terminate` calls `KillTimer` so a dropped reference is sufficient to stop. Sample 15 demonstrates that direct Win32 `SetTimer` / `KillTimer` is also fine if `AddinTimer` doesn't fit — both patterns are valid; the package doesn't *require* the helper.
+`Class_Terminate` calls `KillTimer`, so dropping the reference stops the timer. Sample 15 shows that direct Win32 `SetTimer` / `KillTimer` is also fine if `AddinTimer` does not fit; the package does not require the helper.
 
 ## The HTML / DOM surface
 
@@ -130,7 +130,7 @@ The `HtmlEvent*` half of the quartet declares `Value` as **read-only Get** (vs `
 
 `Project.Evaluate(EvalString, Options)` runs an arbitrary expression in the project's context, as if the user typed it into the DEBUG CONSOLE. The `Options` parameter is `DebuggerEvaluateOptions` — currently a single-value enum (`NONE = 0`) declared on `IHostV1` itself, not on `IProjectV1`, which is an oddity worth noting. The return is `Variant`. Sample 10's `CurrentProjectKeyUp` handler shows it in action — entering `10.5 * 4` in a textbox and pressing Enter passes the string to `Evaluate` and pops up the result in a message box. Surface as *"this is the same engine that powers the DEBUG CONSOLE; it can call any `Public` symbol the user can see at run time"*.
 
-The reason `DebuggerEvaluateOptions` is declared on `IHostV1` rather than `IProjectV1` looks like a source-side oversight (the only consumer is `IProjectV1.Evaluate`) — surface the enum on the `Host.md` page (where it's declared) and link to it from the `Project.Evaluate` entry, rather than rationalising the layout.
+`DebuggerEvaluateOptions` on `IHostV1` rather than `IProjectV1` looks like a source-side oversight (the only consumer is `IProjectV1.Evaluate`). Document the enum on the `Host.md` page (where it is declared) and link to it from the `Project.Evaluate` entry; do not rationalise the layout.
 
 ## `Project.LoadMetaData` / `SaveMetaData`
 
@@ -211,9 +211,9 @@ Surface as the canonical safe-cast pattern on `CodeEditor.md`.
 
 The `keyString` argument is a literal key with optional `{CTRL}` / `{SHIFT}` / `{ALT}` prefixes, e.g. `"{CTRL}{SHIFT}d"` (the source-side `[Description]`'s example). The `Callback` is `AddressOf` an addin function; the function takes no arguments and returns nothing --- a `Private Sub` with no parameters, in the add-in's class, works (measured, BETA 983 and 995).
 
-**The source's own example does not fire.** No sample uses `KeyboardShortcuts.Add`, so it was measured instead: P1 and P2 in [WIP.HelpAddin.md](WIP.HelpAddin.md), with the lane `test/addin/keys.test.mjs`. In BETA 983 and 995 a shortcut with `{CTRL}` or `{ALT}` never fires when pressed, the prefixes must come in the order `{ctrl}{shift}{alt}`, a shortcut fires on key-up wherever the focus is in the IDE's window, and a key that types fires each time it is typed. The published page says all of that, with an example on Shift+F12; keep it in step with the lane.
+**The source's own example does not fire.** No sample uses `KeyboardShortcuts.Add`, so it was measured: P1 and P2 in [WIP.HelpAddin.md](WIP.HelpAddin.md), with the lane `test/addin/keys.test.mjs`. In BETA 983 and 995 a shortcut with `{CTRL}` or `{ALT}` never fires when pressed. The prefixes must come in the order `{ctrl}{shift}{alt}`. A shortcut fires on key-up wherever the focus is in the IDE's window, and a key that types fires each time it is typed. The published page says all of that, with an example on Shift+F12; keep it in step with the lane.
 
-**Do not describe callbacks as running "on the IDE's UI thread".** This file used to say to, and it is unmeasured and probably misleading: an add-in runs inside the compiler's process (P10), not in the IDE's page, which is a WebView2 process of its own. The KeyboardShortcuts page no longer says it. **The AddinTimer page still does**, three times, with "long-running work ... will block the UI thread" --- unverified; which thread runs an add-in's callbacks, and what a slow one holds up, is not known. Fix it when something measures it.
+**Do not describe callbacks as running "on the IDE's UI thread".** It is unmeasured and probably misleading: an add-in runs inside the compiler's process (P10), not in the IDE's page, which is a WebView2 process of its own. The KeyboardShortcuts page does not say it. **The AddinTimer page still does**, three times, with "long-running work ... will block the UI thread" --- unverified. Which thread runs an add-in's callbacks, and what a slow one holds up, is not known. Fix the AddinTimer page when something measures it.
 
 ## `Themes.ActiveThemeNameGroup` and `OnChangedTheme`
 

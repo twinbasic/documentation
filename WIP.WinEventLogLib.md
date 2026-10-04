@@ -34,7 +34,7 @@ Class-level decoration on `EventLog`: `[COMCreatable(False)]`, `[ClassId("4AEA12
 
 ## Canonical usage idiom — composition-delegation onto a service class
 
-The package's intended usage pattern — *not* obvious from the bare API — is composition-delegation:
+The package's intended usage pattern, not obvious from the bare API, is composition-delegation:
 
 ```tb
 Class TBSERVICE001
@@ -46,9 +46,9 @@ Class TBSERVICE001
 End Class
 ```
 
-The `Implements <Class> Via <field> = <expression>` form is twinBASIC's composition-delegation syntax (see [`docs/Features/Language/Delegation.md`](docs/Features/Language/Delegation.md) if/once that page exists, or the [`CustomControls` mixin pattern](docs/Reference/CustomControls/index.md) for an analogous use). The class declares it `Implements EventLog(Of …)` and gives the compiler a private field plus a constructor expression; the compiler then auto-forwards every `Public` member of `EventLog` (`LogSuccess`, `LogFailure`, `Register`) through that field. The result: a service class that *contains* an `EventLog` instance and exposes its logging methods as if they were its own.
+The `Implements <Class> Via <field> = <expression>` form is twinBASIC's composition-delegation syntax (no Features page covers it; see the [`CustomControls` mixin pattern](docs/Reference/Built-In/CustomControls/index.md) for an analogous use). The class declares `Implements EventLog(Of …)` and gives the compiler a private field plus a constructor expression. The compiler then forwards every `Public` member of `EventLog` (`LogSuccess`, `LogFailure`, `Register`) through that field. The result is a service class that *contains* an `EventLog` instance and exposes its logging methods as its own.
 
-Surface this on the `EventLog` page (and on the package index) as the **recommended pattern** for service / long-running classes. Spell out:
+Show this on the `EventLog` page (and on the package index) as the **recommended pattern** for service and long-running classes. Spell out:
 
 - The constructor expression evaluates *once* (the first time the delegating class is instantiated, per twinBASIC's `Implements ... Via` semantics).
 - The `T1` / `T2` type arguments must be identical at the `Implements` declaration and the constructor (the compiler enforces this).
@@ -93,10 +93,10 @@ Two things are happening here:
 
 So the round-trip is: JSON → compile-time enum population + message-table resource emission → registry entries that point Windows at the EXE → runtime `LogSuccess(EventId, CategoryId, …)` writes an event the Event Viewer can format using the embedded message-table strings.
 
-Surface this on the index page (under "Setting up message resources" or similar) with the JSON skeleton and the cross-reference to `[PopulateFrom]` (which is documented under `docs/Features/`, not in the reference set — link to that page if it exists, otherwise describe in-place).
+Put this on the index page (under "Setting up message resources" or similar) with the JSON skeleton and a cross-reference to `[PopulateFrom]` (documented in [Attributes](docs/Reference/Attributes.md), not in the package reference).
 
 The negative event-ID values in the JSON (`-1073610751`) are the standard Win32 event-ID encoding: the high bits encode severity (`0xC0000000` = Error), facility (`0x...`), and customer bit. Don't unpack this on the docs; just note that *"event IDs follow the Win32 documented encoding — see Microsoft's 'Event Identifiers' reference"*.
 
 ## Why `T1` / `T2` and not separate `EventIds` / `Categories` classes
 
-A class can only `Implements EventLog(Of T1, T2) Via …` *once*. If a service needs events from multiple unrelated message tables, it can compose multiple `EventLog` instances **as named fields** (no `Via`), accepting a small loss of ergonomics (calls become `MyEventLog.LogSuccess(…)` instead of `LogSuccess(…)`). Surface this as a one-line note on the index — most services share a single `MESSAGETABLE` module across all their classes, so the limitation rarely bites.
+A class can only `Implements EventLog(Of T1, T2) Via …` *once*. A service that needs events from several unrelated message tables can hold several `EventLog` instances **as named fields** (no `Via`). Calls then read `MyEventLog.LogSuccess(…)` instead of `LogSuccess(…)`. Add this as a one-line note on the index. Most services share one `MESSAGETABLE` module across all their classes, so the limit rarely matters.

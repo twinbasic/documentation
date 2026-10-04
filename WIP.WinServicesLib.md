@@ -18,13 +18,13 @@ Public user-facing surface (three concrete classes + one generic class + one int
 | `ServiceControlCodeConstants`   | Enum                  | `vbServiceControlStop`, `vbServiceControlPause`, `vbServiceControlContinue`, etc.                  |
 | `ServiceStatusConstants`        | Enum                  | `vbServiceStatusRunning`, `vbServiceStatusStartPending`, `vbServiceStatusStopped`, etc.            |
 
-The two private interfaces (`IServiceCreator`, `IServiceManagerInternal`) are pure implementation detail — same situation as `WinNamedPipesLib`'s `INamedPipe*Internal` interfaces. **No doc page**, and don't surface the underscored implementing members on the concrete classes either.
+The two private interfaces (`IServiceCreator`, `IServiceManagerInternal`) are pure implementation detail, like `WinNamedPipesLib`'s `INamedPipe*Internal` interfaces. **No doc page**, and do not show the underscored implementing members on the concrete classes either.
 
-The two `Private Module` declarations (`ServicesAPIs`, `ServicesConstants`) and the `Private Module ServicesHelper` are all internal — **no doc page**.
+The `Private Module` declarations (`ServicesAPIs`, `ServicesConstants`, `ServicesHelper`) are internal: **no doc page**.
 
 ## `Services` public members
 
-`[PredeclaredId]` Class. The compiler instantiates a singleton named `Services` at program start; user code calls `Services.X` directly without `New`. The class also doubles as an enumerable collection of the `ServiceManager` instances that have been configured (`For Each manager In Services`).
+`[PredeclaredId]` Class. The compiler instantiates a singleton named `Services` at program start; user code calls `Services.X` without `New`. The class is also an enumerable collection of the configured `ServiceManager` instances (`For Each manager In Services`).
 
 **Public methods**:
 
@@ -46,7 +46,7 @@ The two `Private Module` declarations (`ServicesAPIs`, `ServicesConstants`) and 
 
 ## `ServiceManager` public members
 
-`[COMCreatable(False)]`. User code never instantiates this directly — `Services.ConfigureNew()` returns it. The source-side constructor carries `[Description("For internal use. Dont create instances of ServiceManager manually, use Services.ConfigureNew instead")]` — surface that on the page intro.
+`[COMCreatable(False)]`. User code never instantiates this directly; `Services.ConfigureNew()` returns it. The source-side constructor has `[Description("For internal use. Dont create instances of ServiceManager manually, use Services.ConfigureNew instead")]`. Put that on the page intro.
 
 **Public field** (one):
 
@@ -71,7 +71,7 @@ The two `Private Module` declarations (`ServicesAPIs`, `ServicesConstants`) and 
 - `Sub ReportStatus(ByVal dwCurrentState As ServiceStatusConstants, Optional ByVal dwWin32ExitCode As Long = ERRORCODE_NO_ERROR, Optional ByVal dwWaitHint As Long = 0)` — *"This method informs the OS of the current state of the service."* The user's `EntryPoint` is **required** to call `ReportStatus(vbServiceStatusRunning)` once steady-state is reached and `ReportStatus(vbServiceStatusStopped)` once shut-down completes; long start-up sequences should also call `ReportStatus(vbServiceStatusStartPending, , <waitHint_ms>)` periodically to keep the SCM from killing the service. The `dwControlsAccepted` field of `SERVICE_STATUS` is filled automatically from the state and from `SupportsPausing` (Stop is always accepted except during `StartPending`; Pause/Continue is gated on `SupportsPausing`). The `dwCheckPoint` field auto-increments for pending states and resets on `Running`/`Stopped`.
 - `Sub ResyncStatus()` — re-applies the cached `SERVICE_STATUS` to the SCM via `SetServiceStatus`. Called automatically from `ReportStatus` and from the `SupportsPausing` setter. User code rarely needs to call this directly; mention it for completeness.
 
-The class also carries two methods that are technically `Public`-by-default (no modifier) but are invoked only by the OS dispatcher / the package's own trampoline — `ServiceEntryPoint(ByVal dwArgc As Long, ByVal lpszArgv As LongPtr)` and `ServiceControlHandlerCallback(ByVal dwControl As Long, ByVal dwEventType As Long, ByVal lpEventData As LongPtr)`. **Do not list these as user-facing methods**; mention them at the very end of the page under "Internal hooks" with a `> [!NOTE]` saying the OS / package infrastructure invokes them and user code never calls them.
+The class also has two methods that are `Public` by default (no modifier) but are invoked only by the OS dispatcher and the package's own trampoline: `ServiceEntryPoint(ByVal dwArgc As Long, ByVal lpszArgv As LongPtr)` and `ServiceControlHandlerCallback(ByVal dwControl As Long, ByVal dwEventType As Long, ByVal lpEventData As LongPtr)`. **Do not list these as user-facing methods.** Mention them at the very end of the page under "Internal hooks", with a `> [!NOTE]` saying the OS and package infrastructure invoke them and user code never calls them.
 
 ## `ServiceCreator(Of T)` public members
 
@@ -116,11 +116,11 @@ The constructor raises run-time error 5 with descriptive messages on three failu
 - `Sub StartupFailed(ByVal ServiceContext As ServiceManager)` — called if `RegisterServiceCtrlHandlerExW` failed (the control handler couldn't be hooked, e.g. the service was launched outside the SCM context). Typical implementation: log a failure event. Don't try to `ReportStatus` from here — the status handle is invalid.
 - `Sub ChangeState(ByVal ServiceContext As ServiceManager, ByVal dwControl As ServiceControlCodeConstants, ByVal dwEventType As Long, ByVal lpEventData As LongPtr)` — the control-code dispatcher. **Runs on the main (dispatcher) thread**, not on the service thread. Typical pattern: `Select Case dwControl` over `vbServiceControlStop` / `vbServiceControlShutdown` / `vbServiceControlPause` / `vbServiceControlContinue`, set shared `Public` flags (`IsStopping`, `IsPaused`), call `ServiceContext.ReportStatus` to acknowledge the transition, signal the service thread to react (e.g. `NamedPipeServer.ManualMessageLoopLeave()`). The `dwEventType` + `lpEventData` parameters carry the event-specific payload for the codes that need it (`SERVICE_CONTROL_DEVICEEVENT`, `SERVICE_CONTROL_POWEREVENT`, `SERVICE_CONTROL_SESSIONCHANGE`, `SERVICE_CONTROL_HARDWAREPROFILECHANGE` — see Microsoft's `HandlerEx` documentation for the data layouts).
 
-**The two-thread split is the single most important fact about the interface** — every page entry should reinforce it. The example uses `Public IsPaused As Boolean` + `Public IsStopping As Boolean` shared fields on the service class to ferry state between the two threads, which is the documented pattern.
+**The two-thread split is the most important fact about the interface**; every page entry should reinforce it. The example uses `Public IsPaused As Boolean` + `Public IsStopping As Boolean` shared fields on the service class to pass state between the two threads. That is the documented pattern.
 
 ## Enumerations
 
-Public enums (in `Public Module ServicesConstantsPublic`), one page each under `docs/Reference/WinServicesLib/Enumerations/`:
+Public enums (in `Public Module ServicesConstantsPublic`), one page each under `docs/Reference/Built-In/WinServicesLib/Enumerations/`:
 
 - `ServiceTypeConstants` — `tbServiceTypeAdapter`, `tbServiceTypeSystemDriver`, `tbServiceTypeKernelDriver`, `tbServiceTypeRecognizerDriver`, `tbServiceTypeOwnProcess`, `tbServiceTypeShareProcess`, `tbServiceTypeOwnProcessInteractive`, `tbServiceTypeShareProcessInteractive`. The driver values (`tbServiceTypeSystemDriver`, `tbServiceTypeKernelDriver`, `tbServiceTypeRecognizerDriver`, `tbServiceTypeAdapter`) are only meaningful when registering a kernel-mode driver — twinBASIC services compile to a user-mode EXE and should use `tbServiceTypeOwnProcess` (one service per EXE) or `tbServiceTypeShareProcess` (multiple services hosted in one EXE; the example uses this). The `Interactive` variants are kept for compatibility but Windows Vista and later disallow them; flag with a `> [!NOTE]`.
 - `ServiceStartConstants` — `tbServiceStartAuto`, `tbServiceStartBoot`, `tbServiceStartOnDemand`, `tbServiceStartDisabled`, `tbServiceStartDriverSystem`. `tbServiceStartBoot` and `tbServiceStartDriverSystem` only apply to kernel drivers.

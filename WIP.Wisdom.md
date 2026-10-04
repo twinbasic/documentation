@@ -7,10 +7,9 @@ documentation does not yet say, and drafts additions for human review. Plans in
 APIs, and the repository's npm packages through `lib/markdown.mjs`, which
 `extract/merger.mjs` reads `staging.md` with.
 
-Split out of [WIP.md](WIP.md) because Wisdom runs occasionally and its
-invocation detail has no business in the context of a session doing anything
-else. WIP.md keeps only the rule that Wisdom is an exception to; open this file
-when actually running the tool.
+Wisdom runs occasionally, so its invocation detail lives here and not in
+[WIP.md](WIP.md). WIP.md keeps only the rule that Wisdom is an exception to.
+Open this file when running the tool.
 
 ## Why its public page is allowed to name Claude
 
@@ -22,14 +21,12 @@ an editor and a terminal.
 public.** The tool has no manual mode to document --- Phase 3 *is* a set of
 Claude agents, and a page describing it without them would describe nothing. A
 reviewer applying the rule will read its "tell Claude: …" instructions as a
-scope violation and propose relocating the *public page* to a maintainer file.
-That has been considered and declined; leave `docs/Documentation/Wisdom.md`
-where it is. (This file is not that relocation: what moved here is WIP.md's own
-invocation notes, not the reader-facing page.)
+scope violation and propose moving the *public page* to a maintainer file.
+That is declined: leave `docs/Documentation/Wisdom.md` where it is.
 
 ## Phase 3 --- Extract invocation
 
-Phase 3 runs Claude agents over the processed thread `.md` files and drafts documentation additions. The default flow is **incremental**: only threads whose Discord-side content has actually changed since the last successful merge are re-extracted. Combined with the incremental `export` and `process` phases, the routine update is three commands with no flags:
+Phase 3 runs Claude agents over the processed thread `.md` files and drafts documentation additions. The default flow is **incremental**: only threads whose Discord-side content changed since the last successful merge are re-extracted. With the incremental `export` and `process` phases, the routine update is three commands with no flags:
 
 ```
 node wisdom/wisdom.mjs export
@@ -37,7 +34,7 @@ node wisdom/wisdom.mjs process
 node wisdom/wisdom.mjs extract
 ```
 
-The `extract` step itself is a three-stage flow that Claude orchestrates: prep → workflow → merge. The merge step grafts new findings into the long-lived `staging.md`, replacing matching sections in place and emitting `[REFINED?]` markers for findings whose prior version has been reviewed and removed --- so pending review work is never clobbered.
+The `extract` step is a three-stage flow that Claude runs: prep → workflow → merge. The merge step grafts new findings into the long-lived `staging.md`. It replaces matching sections in place, and emits `[REFINED?]` markers for findings whose prior version was reviewed and removed, so pending review work is never overwritten.
 
 1. **Prep**: `node wisdom/wisdom.mjs extract` filters threads against `wisdom/data/findings/extract-state.json` (the per-thread `last_message_id` + `message_count` watermark, advanced on each successful merge). Only changed threads survive the filter. Shared reference files (`package-summary.txt`, `page-index.json`) are written once; per-batch files contain thread file paths, per-thread file sizes, config, and a `mode` field (`incremental`, `since`, `all`, or `force`) consumed by the merge step.
    - If the filter is empty (no threads have changed), prep exits with `No new threads since the last successful merge` and the merge step is unnecessary.

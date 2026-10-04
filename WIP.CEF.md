@@ -13,7 +13,7 @@ Public user-facing surface (one control + one options class + two enums):
 | `CefLogSeverity`             | `Enum` (in `_cef_log_severity_t.twin`)| used by `CefEnvironmentOptions.LogSeverity`                                                   |
 | `cefPrintOrientation`        | `Enum` (in `BrowserOM.twin`)          | used by the `Orientation` parameter of `CefBrowser.PrintToPdf`                                |
 
-`CefBrowserBaseCtl` is `Private Class` but is where every public member is *declared* — `CefBrowser` itself adds nothing beyond inheriting from it. The page (`CefBrowser/index.md`, folder-style, parallel to `WebView2/`) describes the union; the base class is invisible to user code.
+`CefBrowserBaseCtl` is `Private Class`, but every public member is *declared* there; `CefBrowser` adds nothing beyond inheriting from it. The page (`CefBrowser/index.md`, folder-style, parallel to `WebView2/`) describes the union. User code never sees the base class.
 
 `CefBrowser` inherits from `VB.BaseControlRectDockable`, so its Properties listing folds in the dockable-rect surface (`Name`, `Left`, `Top`, `Width`, `Height`, `Anchors`, `Dock`, ...) the same way VB-package and CustomControls control pages do.
 
@@ -38,11 +38,11 @@ The `CefBrowser` public surface:
 
 `cefPrintOrientation` members: `cefPrintPortrait = 0`, `cefPrintLandscape = 1`.
 
-**WebView2-parity gap list** (called out on `CEF/index.md`, drawn from the sample-project examples where these are commented out as *"Sorry, this feature is not yet available in the CEF package"*):
+**WebView2-parity gap list** (called out on `CEF/index.md`; the sample projects comment these out as *"Sorry, this feature is not yet available in the CEF package"*):
 
 - Methods: `OpenTaskManagerWindow`, `AddObject` (host-object publication), the request-filter machinery (`AddWebResourceRequestedFilter`).
 - Events: `AcceleratorKeyPressed`, `PermissionRequested`, `WebResourceRequested`, `ProcessFailed`, `ScriptDialogOpening`, `UserContextMenu`, `SuspendCompleted`, `SuspendFailed`, `DownloadStarting`, `NewWindowRequested`.
 
-`CefBrowser.NavigationComplete` carries `IsSuccess` and `WebErrorStatus` parameters, but `OnNavigationComplete_UI` currently hard-codes `IsSuccess = True` and `WebErrorStatus = 0` with `FIXME` comments — noted on the event entry.
+`CefBrowser.NavigationComplete` has `IsSuccess` and `WebErrorStatus` parameters, but `OnNavigationComplete_UI` hard-codes `IsSuccess = True` and `WebErrorStatus = 0`, with `FIXME` comments. The event entry says so.
 
 **Multi-version source.** The same `.twin` sources compile against three CEF runtimes (v49 / v109 / v145) selected via the `CEF_VERSION` conditional-compilation argument on the project. At runtime, `CefBrowser.CefMajorVersion` returns the value picked at compile time. The user picks a runtime at deploy time by downloading the matching ZIP from `github.com/twinbasic/cef-runtimes` and extracting to `%LocalAppData%\twinBASIC_CEF_Runtime\`, or by overriding `CefBrowser.EnvironmentOptions.BrowserExecutableFolder` before / during the `Create` event. The runtime download + version-picking section lives on `CEF/index.md`.
