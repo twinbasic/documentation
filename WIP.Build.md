@@ -7,16 +7,20 @@ where their internals are](WIP.md#the-gates-and-where-their-internals-are).
 
 **Read this before adding a gate, changing one, or adding any rewrite over
 markdown source or rendered HTML.** Each gate here guards a failure that every
-other gate passes, and the recurring shape is a check that quietly stops
-checking --- which reports exactly what a healthy tree reports.
+other gate passes. The recurring shape is a check that quietly stops checking,
+which reports exactly what a healthy tree reports.
 
 ## The pipeline
 
-**Before adding a fan-out to the task graph, read [why a dep count of zero does not mean the submits have run](builder/PLAN-sab-pull-scheduler.md#a-dep-count-of-zero-does-not-mean-the-submits-have-run).** A worker posts its result and *then* decrements its successors' dependency counts in shared memory, so a barrier's count can reach zero while results are still queued and the `submit()` calls that merge them into build state have not run --- the shared counter orders the work, not the state. A dynamic barrier must therefore list every chunk task in its `expected`, even when its own `execute()` ignores the inputs; that list is the only thing the scheduler checks before it lets the barrier proceed. A barrier without the list drops pages from `search-data.json` on some builds, because the index is built by flattening a `new Array(N)` and `Array.prototype.flat()` skips holes without reporting anything: a race and a silent skip combine into one invisible failure. Every skip on the chunk-merge path therefore refuses to continue when a piece is missing --- see [where the completeness checks are](builder/PLAN-sab-pull-scheduler.md#where-the-completeness-checks-are). On this path, "the piece is missing" is a bug, not a case to handle.
+**Before adding a fan-out to the task graph, read [why a dep count of zero does not mean the submits have run](builder/PLAN-sab-pull-scheduler.md#a-dep-count-of-zero-does-not-mean-the-submits-have-run).** A worker posts its result and *then* decrements its successors' dependency counts in shared memory. A barrier's count can therefore reach zero while results are still queued and the `submit()` calls that merge them into build state have not run: the shared counter orders the work, not the state.
+
+A dynamic barrier must list every chunk task in its `expected`, even when its own `execute()` ignores the inputs. That list is the only thing the scheduler checks before it lets the barrier proceed. Without it, some builds drop pages from `search-data.json`: the index is built by flattening a `new Array(N)`, and `Array.prototype.flat()` skips holes without reporting anything. A race and a silent skip combine into one invisible failure.
+
+So every skip on the chunk-merge path refuses to continue when a piece is missing --- see [where the completeness checks are](builder/PLAN-sab-pull-scheduler.md#where-the-completeness-checks-are). On this path, "the piece is missing" is a bug, not a case to handle.
 
 **A sort key on this path must be total.** `discover()` fills `pages` from inside
 a `Promise.all`, so a page is pushed when its `readFile` resolves, not in
-`allFiles` order; `pages.sort(byName)` is stable and Jekyll's key is the
+`allFiles` order. `pages.sort(byName)` is stable and Jekyll's key is the
 *basename*, so a tie would keep that I/O completion order --- and over a hundred
 folder-style classes are all named `index.md`. Tied pages would reorder the
 chunking and make `search-data.json` differ between two builds of one commit.
@@ -24,65 +28,66 @@ chunking and make `search-data.json` differ between two builds of one commit.
 except for `BuildInfo.html` and `gantt.svg`, which record build timings and
 cannot be.
 
-**`scripts/compare_trees.mjs` is the check that relies on it.** It builds a
-commit and the working tree from two git worktrees and compares all three trees
-byte for byte, replacing those two regions and the PDF title page's build line,
-which also differs when the sides are different commits or were built on
-different days. Run it after any change to `builder/` that should leave the
-output alone; a change meant to alter the output is checked the same way, and
-what it reports should be the intended differences and nothing else. Build the
-working tree from a checkout, never in place: under `core.autocrlf` a file a
-tool has rewritten holds LF where a fresh checkout writes CRLF, so every file
-the build copies verbatim would differ.
+**`scripts/compare_trees.mjs` relies on that.** It builds a commit and the
+working tree from two git worktrees and compares all three trees byte for byte.
+It replaces those two regions and the PDF title page's build line, which also
+differs when the sides are different commits or were built on different days.
+Run it after any change to `builder/` that should leave the output alone. A
+change meant to alter the output is checked the same way: the report should show
+the intended differences and nothing else. Build the working tree from a
+checkout, never in place: under `core.autocrlf` a file a tool has rewritten holds
+LF where a fresh checkout writes CRLF, so every file the build copies verbatim
+would differ.
 
 ### A hung build times out and says where it hung
 
 Readers get this at [When a build stops instead of
 failing](docs/Documentation/Building.md), with a `--stall-timeout` row in
 `Tools.md`'s flag table and an entry in `Builder.md`'s failure-mode list. Keep
-those in step with any change here: a feature nobody can find is worth what an
-absent one is worth.
+those in step with any change here.
 
 **A task that a worker claims and never finishes wedges the whole graph in
 silence.** Its successors' dep counts never drop, `_remaining` never reaches
 zero, the scheduler's promise never settles, and the process sits there with its
-last log line on screen --- no error, no exit code, nothing to grep. Nothing in
-the SAB protocol can notice, because the scheduler is waiting on a message that
-is not coming.
+last log line on screen. Nothing in the SAB protocol can notice, because the
+scheduler is waiting on a message that is not coming.
 
-`Scheduler` watches for that: if no task completes for `--stall-timeout`
+`Scheduler` watches for that. If no task completes for `--stall-timeout`
 seconds (default **120**, `0` disables), it prints what was outstanding and
-fails the build. The default is deliberately generous --- the longest single task
-here is worker cold boot at ~1.6 s, so a loaded CI box may be an order of
-magnitude slower than the dev box without being called stalled.
+fails the build. The default is generous: the longest single task is worker cold
+boot at ~1.6 s, and a loaded CI box may be an order of magnitude slower than the
+dev box without being stalled.
 
-The report splits the outstanding tasks three ways, because listing them
-together buries the two names that matter under a dozen that do not:
+The report splits the outstanding tasks three ways, because one list buries the
+two names that matter under a dozen that do not:
 
 - **Claimed by a worker that never returned** --- the cause. For a `render:i` or
   `flush:i` chunk it also prints the chunk's source pages, via an optional
   `describe()` on the task def that nothing but this report reads. "render:33
   never returned" is not actionable; the six paths under it are, because the
   fault is nearly always one page's content.
-- **Runnable, but nothing picked it up** --- including the `F_PIN_TO_PRED` case,
-  which is worth spelling out: a pinned `flush:i` can only run on the lane its
-  `render:i` ran on, so when that lane is the wedged one the task is runnable and
-  permanently unrunnable at once. Unlabelled it reads as a second, unrelated
-  fault.
+- **Runnable, but nothing picked it up** --- including the `F_PIN_TO_PRED` case.
+  A pinned `flush:i` can only run on the lane its `render:i` ran on. When that
+  lane is the wedged one, the task is runnable and permanently unrunnable at
+  once; unlabelled, it reads as a second, unrelated fault.
 - **Blocked on a predecessor** --- the consequence, with the missing input names.
 
-Two details worth knowing. `Worker.terminate()` kills a thread spinning
-inside a regex, so the abort ends the process rather than adding a second hang.
-And under `--serve` the pool
-outlives a rebuild, so a wedged worker would poison every later build (the
-per-worker tasks wait on every lane); the stall error carries a `stalled` flag
-and `serve.mjs` replaces the whole pool when it sees one. Replacing just the
-wedged lane would mean identifying it, and the SAB records the lane a task
-*completed* on, not the one that claimed it.
+Two details:
 
-Folding `check.bat`'s gates into that same graph is designed in [builder/PLAN-checks.md](builder/PLAN-checks.md). Phase A, the link checker, is **implemented**: extraction runs inside `flush`, where both trees' final HTML is already in worker memory, so the build never writes ~270 MB out only to read it back and re-parse it. The `pick_a11y_sample.mjs --check` census and the axe scan's orchestration are follow-ons, seeded with measurements and open questions but not yet designed.
+- `Worker.terminate()` kills a thread spinning inside a regex, so the abort ends
+  the process rather than adding a second hang.
+- Under `--serve` the pool outlives a rebuild, so a wedged worker would poison
+  every later build (the per-worker tasks wait on every lane). The stall error
+  carries a `stalled` flag and `serve.mjs` replaces the whole pool when it sees
+  one. Replacing just the wedged lane would need to identify it, and the SAB
+  records the lane a task *completed* on, not the one that claimed it.
 
-Historical engineering notes from the Jekyll era --- the original build pipeline, the HTML-compress plugin, the per-phase optimisation passes that preceded the JS port, the migration notes, and the Phase 11 parity-update retrospective --- live in [WIP.OldJekyll.md](WIP.OldJekyll.md).
+[builder/PLAN-checks.md](builder/PLAN-checks.md) designs folding `check.bat`'s
+gates into the task graph. The link checker is in: extraction runs inside
+`flush`, where both trees' final HTML is already in worker memory, so the build
+never writes ~270 MB out only to read it back and re-parse it. The
+`pick_a11y_sample.mjs --check` census and the axe scan's orchestration are not
+yet designed; the plan holds measurements and open questions for them.
 
 ## Tooling policy
 
@@ -103,12 +108,13 @@ Two `.py` files stay, and neither is an oversight:
   of the same standalone tool. Porting it would delete a deliberate offering.
 - **`scripts/build_fonts.py`** stays because the JavaScript build of HarfBuzz it would
   use produces wrong CFF2 metrics --- a one-line build-configuration defect in harfbuzzjs,
-  documented with the evidence in [WIP.Fonts.md](WIP.Fonts.md).
+  documented with the evidence in [WIP.Fonts.md](WIP.Fonts.md), which also holds the full
+  account of the blocked JavaScript port.
 
 One `.ps1` exists for a third kind of reason. **`scripts/lib/tb-launch.ps1`** is Win32
 calls --- `CreateDesktop`, `CreateProcess` with `STARTUPINFO.lpDesktop`, and the job object
 the IDE runs in (`CreateJobObject`, `AssignProcessToJobObject`) --- which Node cannot make
-without a native FFI addon, and adding one for a handful of calls would mean
+without a native FFI addon. Adding one for a few calls would mean
 `npm install` no longer suffices to run the tooling. It is also not a script anyone runs:
 `scripts/lib/tb-ide.mjs` reads the text and passes it through `-EncodedCommand`, so it never meets the
 execution policy. See [Compiling a twinBASIC project without the IDE in front of
@@ -120,10 +126,6 @@ for, and neither adds a file: `scripts/tbrun.mjs` takes a process snapshot with
 keys through .NET, because `reg.exe` mangles names outside the console code page. See
 [What a run leaves in the registry](WIP.Harness.md#what-a-run-leaves-in-the-registry-and-putting-it-back).
 
-The full account of the JavaScript port of `build_fonts.py` --- what works, the harfbuzzjs
-build defect that blocks it, the evidence, the root cause in `hb-config.hh`, and what the
-port must check for when it happens --- is in [WIP.Fonts.md](WIP.Fonts.md).
-
 `lib/` — modules that every other tooling folder may import, and that import none of them.
 `builder/` may not import `scripts/`, so code that both need lives here;
 [lib/README.md](lib/README.md) states the rule, and `biome.jsonc` refuses an import that
@@ -133,10 +135,10 @@ breaks either one.
 
 `eval/` — use-case evaluation of the developer documentation. `build_corpus.mjs` mirrors the
 repository with every non-prose file stubbed unreadable, so "documentation only" is a property
-of the tree rather than an instruction; `site_search.mjs` replays the site's real lunr index
+of the tree rather than an instruction. `site_search.mjs` replays the site's real lunr index
 and query logic, because search and navigation fail on different pages. `usecases.md` is the
 catalogue, `protocol.md` is what an evaluator is given. **This asks whether the docs *work*,
-which is orthogonal to whether they are accurate** — most findings so far involve sentences
+which is orthogonal to whether they are accurate** — most findings involve sentences
 that are individually true. Mine this file for cases: it is substantially a catalogue of
 "this shipped broken and nobody noticed", and each entry is a use case waiting to be written.
 
@@ -146,34 +148,40 @@ that are individually true. Mine this file for cases: it is substantially a cata
 
 **The split is by what a gate interrogates, not by what it happens to open.** `check_axe_patch_equiv.mjs` loads a built page, but only because its probe needs some document to run inside --- what it tests is the axe source patch, and it would be worth running against an empty `docs/`. That is the test: a new gate belongs in `test.bat` if it would still mean something with no documentation in the tree.
 
-Older notes under `builder/PLAN-*.md` still place `check_publish_policy.mjs` and `check_axe_patch_equiv.mjs` in `check.bat`; both are in `test.bat`, and those notes are historical.
+Older notes under `builder/PLAN-*.md` still place `check_publish_policy.mjs` and `check_axe_patch_equiv.mjs` in `check.bat`. Both are in `test.bat`.
 
 **Both CI workflows run every one of these scripts as its own step, unconditionally** --- CI never invokes the `.bat` files. So the split changes what a *local* content edit has to pay for and nothing about what reaches `staging`; a tooling regression cannot get in by someone skipping `test.bat`.
 
-**The link and integrity check runs inside the build.** `build.bat` passes `--check-audit-index`, which implies `--check`, and the check walks the HTML on the worker lanes that produced it -- both trees' final strings are already decoded and in memory at `flush()`, so the ~270 MB the two trees weigh is never written out only to be read back. It also audits the tree index the build derives from its own records against what landed on disk -- the one direction the two-checker comparison structurally cannot see, since a spurious entry makes the oracle answer "exists" for a path that 404s in production. It catches broken intra-site links, missing pages, malformed `redirect_from` entries (the most common breakage when adding new pages or moving content between sections), duplicate ids, remote `<img src>`, badly nested tags, sitemap and search-index gaps, canonical mismatches, and (via a forbidden-prefix rule on the offline tree) any extracted link that still points at the live docs site after the offlinify rewrite. A clean `build.bat && check.bat` is the bar for "ready to commit".
+**The link and integrity check runs inside the build.** `build.bat` passes `--check-audit-index`, which implies `--check`. The check walks the HTML on the worker lanes that produced it: both trees' final strings are already decoded and in memory at `flush()`, so the ~270 MB the two trees weigh is never written out only to be read back. It also audits the tree index the build derives from its own records against what landed on disk --- the one direction the two-checker comparison structurally cannot see, since a spurious entry makes the oracle answer "exists" for a path that 404s in production.
 
-A failing check never aborts the build: a broken link still produces a site you want on disk to inspect. It sets the exit code to 1 instead, whether the check found link failures, integrity failures or both (the summary lines say which), and keeps 2 for a build that could not do its job: the same scheme `check_links.mjs` uses. A 2 means a refused command line, a stall or a crash.
+It catches broken intra-site links, missing pages, malformed `redirect_from` entries (the most common breakage when adding new pages or moving content between sections), duplicate ids, remote `<img src>`, badly nested tags, sitemap and search-index gaps, canonical mismatches, and (via a forbidden-prefix rule on the offline tree) any extracted link that still points at the live docs site after the offlinify rewrite. A clean `build.bat && check.bat` is the bar for "ready to commit".
 
-The remote-asset rule fails the run on any `<img src>` resolving off-box (`http://`, `https://`, or protocol-relative `//host`). In the build it is unconditional -- `checkRemoteAssets: true` on both trees in `builder/check.mjs`'s `TREES` -- and is *not* reachable by a flag: `tbdocs` rejects `--check-remote-assets` as an unknown argument. That name belongs to the standalone `scripts/check_links.mjs`, where it is opt-in. The PDF pass over `book.html` is informational, so enforcement comes from the `_site/` pass -- every page in the book is also in `_site/`, making it a superset. The check is deliberately scoped to `<img>` only; `<iframe>` is untouched.
+A failing check never aborts the build: a broken link still produces a site you want on disk to inspect. It sets the exit code to 1 instead, whether the check found link failures, integrity failures or both (the summary lines say which). It keeps 2 for a build that could not do its job: a refused command line, a stall or a crash. `check_links.mjs` uses the same scheme.
+
+The remote-asset rule fails the run on any `<img src>` resolving off-box (`http://`, `https://`, or protocol-relative `//host`). In the build it is unconditional --- `checkRemoteAssets: true` on both trees in `builder/check.mjs`'s `TREES` --- and *not* reachable by a flag: `tbdocs` rejects `--check-remote-assets` as an unknown argument. That name belongs to the standalone `scripts/check_links.mjs`, where it is opt-in. The PDF pass over `book.html` is informational, so enforcement comes from the `_site/` pass; every page in the book is also in `_site/`, making it a superset. The check is scoped to `<img>` only; `<iframe>` is untouched.
 
 ### The link check's two front ends, and the gate that catches divergence
 
-[scripts/check_links.mjs](scripts/check_links.mjs) is the tool for a tree the build did not produce -- a release zip, a bisect, someone else's artifact -- and both CI workflows run it, though not directly: the shared gates action invokes `check_links_diff.mjs --case fixture --a script --b index`, which calls the script in-process as its `script` side (only a `fused` side spawns, and it spawns `tbdocs`). In CI it is exercised only against fixtures, never against the real trees. Both front ends run the check in [builder/check.mjs](builder/check.mjs), over the pure core in [builder/link-check.mjs](builder/link-check.mjs); the script keeps only its command line, its walk and reads of the tree, and its report's summary lines. [builder/check-tree.mjs](builder/check-tree.mjs) is the build's alone.
+[scripts/check_links.mjs](scripts/check_links.mjs) is the tool for a tree the build did not produce --- a release zip, a bisect, someone else's artifact. Both CI workflows run it, though not directly: the shared gates action invokes `check_links_diff.mjs --case fixture --a script --b index`, which calls the script in-process as its `script` side (only a `fused` side spawns, and it spawns `tbdocs`). In CI it is exercised only against fixtures, never against the real trees.
 
-The two still read the tree differently -- the build from memory, through an index of what it wrote and in chunks across its workers -- and **a checker that silently checks less reports a clean pass.** [scripts/check_links_diff.mjs](scripts/check_links_diff.mjs) is the gate against that, and it plays the same role on this side that `check_a11y_fingerprint.mjs` plays on the axe side. Run it whenever `link-check.mjs`, `check.mjs` or `check_links.mjs` changes:
+Both front ends run the check in [builder/check.mjs](builder/check.mjs), over the pure core in [builder/link-check.mjs](builder/link-check.mjs). The script keeps only its command line, its walk and reads of the tree, and its report's summary lines. [builder/check-tree.mjs](builder/check-tree.mjs) is the build's alone.
+
+The two read the tree differently --- the build from memory, through an index of what it wrote and in chunks across its workers --- and **a checker that silently checks less reports a clean pass.** [scripts/check_links_diff.mjs](scripts/check_links_diff.mjs) is the gate against that, and it plays the same role on this side that `check_a11y_fingerprint.mjs` plays on the axe side. Run it whenever `link-check.mjs`, `check.mjs` or `check_links.mjs` changes:
 
 ```sh
 node scripts/check_links_diff.mjs --a script --b fused
 ```
 
-It diffs the two front ends' findings category by category across the real invocations -- `_site/` with sitemap + search + canonical, `_site-offline/` with the forbidden-prefix rule, `book.html` with the same rule (there it collects the links that leave the book for the website, reported as `OUT OF BOOK`), and a `--baseurl` tree checked with the matching base path. It is deliberately *not* in `check.bat`, and CI runs only its fixture cases --- `fixture` in the shared gates action, and `fixture-built` and `fixture-built-offline` against a `fused` side in `checks.yml` alone: the script side over the real trees costs ~3 s, which is the whole saving.
+It diffs the two front ends' findings category by category across the real invocations: `_site/` with sitemap + search + canonical, `_site-offline/` with the forbidden-prefix rule, `book.html` with the same rule (there it collects the links that leave the book for the website, reported as `OUT OF BOOK`), and a `--baseurl` tree checked with the matching base path.
+
+It is deliberately *not* in `check.bat`. CI runs only its fixture cases: `fixture` in the shared gates action, and `fixture-built` and `fixture-built-offline` against a `fused` side in `checks.yml` alone. The script side over the real trees costs ~3 s, which is the whole saving.
 
 Two further modes matter:
 
 - `--self-test` diffs the script against a deliberately corrupted side and fails unless the difference is reported. Everything else the harness prints reduces to "the two sides agreed", which is also what a harness comparing nothing says.
-- `tbdocs --src docs --check-audit-index` diffs the tree index the build derives from its own records against what actually landed on disk. This is the one failure mode the findings comparison structurally cannot see: a *missing* index entry turns a working link into a reported break, which is loud, but a *spurious* one masks a real break, and on a clean site nothing links to a path that does not exist, so nothing would ever notice.
+- `tbdocs --src docs --check-audit-index` diffs the tree index the build derives from its own records against what actually landed on disk. The findings comparison structurally cannot see this failure mode: a *missing* index entry turns a working link into a reported break, which is loud, but a *spurious* one masks a real break, and on a clean site nothing links to a path that does not exist.
 
-The harness carries synthetic cases for the same reason -- the real site is clean, so every real case compares empty against empty in eight of the nine categories. `fixture` is a hand-written tree, and `fixture-built` and `fixture-built-offline` are trees the build produces from `test/fixtures/check-src`, which is the only way the fused side is held to a fault. Each provokes faults of known kinds and asserts the count, so a fixture that stops provoking one fails loudly instead of quietly going back to empty-vs-empty.
+The harness carries synthetic cases for the same reason: the real site is clean, so every real case compares empty against empty in eight of the nine categories. `fixture` is a hand-written tree. `fixture-built` and `fixture-built-offline` are trees the build produces from `test/fixtures/check-src`, which is the only way the fused side is held to a fault. Each provokes faults of known kinds and asserts the count, so a fixture that stops provoking one fails loudly instead of quietly going back to empty-vs-empty.
 
 ### The publish allowlist
 
@@ -207,7 +215,7 @@ Unlike the link check, **a finding here aborts the build**. A broken link still
 leaves a tree worth inspecting; a tree with a private key in it is a tree nobody
 should be one `upload-pages-artifact` away from publishing.
 
-Three details of the policy are load-bearing:
+Three details of the policy are essential:
 
 - **`SOURCE_EXTENSIONS` and `BUILD_EXTENSIONS` are separate sets, and must stay
   separate.** The build emits `.xml` and `.json`; a contributor has no business
@@ -216,7 +224,7 @@ Three details of the policy are load-bearing:
   in the self-test, so the self-test asserts the disjointness directly.
 - **`.md` is deliberately absent from both.** A markdown file that reaches the
   check is one `discover` found no frontmatter block in, so it would be
-  served as raw markdown. The two causes that come to mind first are both handled upstream: a
+  served as raw markdown. The two likeliest causes are handled upstream: a
   **UTF-8 BOM** is stripped before parsing, and **malformed YAML** inside the
   block throws `Failed to parse frontmatter in <file>` from `discover.mjs`. What
   reaches here is a file with no block at all, or one where something precedes
@@ -225,12 +233,12 @@ Three details of the policy are load-bearing:
 - **`bundle_extra` is exempt by *path*, not by extension.** `_config.yml`
   declares `Features/Packages/downloads/impexp.py` and `impexp.mjs` with both
   ends spelled out, which is what makes them shippable. The same extension
-  anywhere else still fails --- otherwise declaring one entry would quietly bless
-  a whole type.
+  anywhere else still fails; otherwise declaring one entry would bless a whole
+  type.
 
 **A clean build says only that nothing in `docs/` is currently refused, which is
-also what an allowlist widened until it refuses nothing says.** The interesting
-assertion is the other one, and no build over a clean tree can make it, so
+also what an allowlist widened until it refuses nothing says.** No build over a
+clean tree can make the other assertion, so
 [scripts/check_publish_policy.mjs](scripts/check_publish_policy.mjs) makes it
 against named probes --- a `.bak`, a `.pem`, a `.docx`, a frontmatter-less `.md`,
 a `Thumbs.db` --- plus the reverse (a `.png`, a `.PNG`, a `.woff2`, `CNAME` must
@@ -243,9 +251,8 @@ node scripts/check_publish_policy.mjs
 ```
 
 **Adding a new asset type is a one-line edit to `publish-policy.mjs`, and that is
-the point** --- the cost is paid once, by the person who knows they are adding it,
-instead of being paid silently by whoever drops a key file into `docs/` three
-years from now.
+the point:** the cost is paid once, by the person who knows they are adding it,
+instead of silently by whoever drops a key file into `docs/` years from now.
 
 ### Never rewrite markdown source without knowing what is code
 
@@ -320,7 +327,7 @@ Three mechanisms exist, and a new rewrite must use one of them:
   sees code, because markdown-it gives code spans, fences and indented blocks
   token types of their own (`code_inline`, `fence`, `code_block`).
 
-**One gap is deliberate and stated rather than hidden:** the chain does not
+**One gap is deliberate:** the chain does not
 mask **indented** (4-space) code blocks or HTML blocks, since it calls `maskCode`
 without `indented: true` (which masks indented blocks; HTML blocks are never
 masked). `check_code_regions.mjs` *does* compare indented blocks, so a rewrite that
@@ -388,11 +395,11 @@ holds a single `book.html`. Exit codes are the script's: **2** when the tree is
 absent, **1** when it is older than `docs/`, `builder/` or `lib/`. The renderer that runs after it
 has no 1, so `book.bat`'s 1 means a stale tree (or a failed `npm install`) and nothing about the render.
 
-> **One batch detail that is easy to get wrong:** `%ERRORLEVEL%` inside a parenthesised `if errorlevel 1 (...)`
+> **Batch detail:** `%ERRORLEVEL%` inside a parenthesised `if errorlevel 1 (...)`
 > block expands when the block is **parsed**, not when it runs, so the value
 > captured there is the one from before the check. The guard uses
 > `goto :fail` and captures outside the block, which is the same shape
-> `test.bat` already uses, and for the same reason.
+> `test.bat` uses, and for the same reason.
 
 **Known false positive.** `DEFAULT_SOURCES` is `["docs", "builder", "lib"]` and
 does not distinguish code from notes, so editing a `builder/PLAN-*.md` or
@@ -439,7 +446,7 @@ node scripts/check_code_regions.mjs --verbose
 node scripts/check_code_regions.mjs --self-test
 ```
 
-Two details are load-bearing. **It imports the chain rather than reconstructing
+Two details are essential. **It imports the chain rather than reconstructing
 it**, so removing the mask from one rewrite changes what the gate runs and is
 caught --- a gate that exercised `maskCode` alone would pass. And **its probes
 ride along in the normal run**, because the corpus is clean: a sweep that finds
@@ -452,20 +459,33 @@ mask and confirm a probe fails.
 **The mirror fault needs probes of its own.** A rewrite that mistakes prose for
 code corrupts nothing --- the text is stashed and restored unchanged, so every
 region matches --- it simply never runs, and the sweep structurally cannot see
-that. The six admonition probes and two "chain leaves alone" probes assert it: an
+that. The case to hold in mind is a fence marker in the middle of a line:
+[Reference/Attributes.md](docs/Reference/Attributes.md)'s `[Description(...)]`
+sample builds a Markdown string out of twinBASIC string literals, two of which
+are triple-backtick markers. A scan that pairs an opening fence with the next
+marker *anywhere* closes the `tb` fence on the literal and mis-pairs every fence
+after it. The page's admonitions then render as the literal text `[!NOTE]` in a
+plain blockquote, and every other gate stays green: the region comparison
+matches, the links resolve and axe has no opinion about a blockquote.
+
+CommonMark closes a fence only on a line holding nothing but the fence character,
+repeated at least as often as in the opener --- a rule about lines, not something
+to express as one regex over a document. That is why `rewriteAdmonitions` asks
+`blockRegions`, with the site's parser, which lines are code. It sees a fence a
+definition list's `: ` makes, and leaves an admonition alone when its `[!TYPE]`
+line is in a region. A fence *inside* an admonition is a region too, and the
+rewrite still strips its `>` markers.
+
+The six admonition probes and two "chain leaves alone" probes assert this. An
 admonition must still be converted between two ordinary fences, beside a fence
 whose body holds a fence marker, after a tilde fence, after a fence closed by a
 longer run, after a line whose backtick info string keeps it from opening a fence,
 and before any fence, and must be left alone inside a fence the definition-list
-plugin makes. **Writing one
-correctly is not obvious**: a mis-paired fence opener swallows text only as far as
-the next fence marker, so a probe with no fence *after* the admonition passes
-against the very fault it was written to catch. The damage is always to the prose
-**between** two fences. `rewriteAdmonitions` asks `blockRegions` with the site's
-parser which lines are code, and leaves an admonition alone when its `[!TYPE]`
-line is in a region; a fence *inside* an admonition is a region too, and the
-rewrite still strips its `>` markers. The docs corpus holds no tilde fence, so the
-sweep could never find a fault there.
+plugin makes. **Writing one correctly is not obvious**: a mis-paired fence opener
+swallows text only as far as the next fence marker, so a probe with no fence
+*after* the admonition passes against the very fault it was written to catch. The
+damage is always to the prose **between** two fences. The docs corpus holds no
+tilde fence, so the sweep could never find a fault there.
 
 **Nothing else can see this class.** The link check, integrity check, publish
 allowlist, regex-safety gate and axe scan all pass on a tree with corrupted code
@@ -488,7 +508,7 @@ still clears a floor written for 836, and the build says nothing at all. The
 guard is `builder/page-baseline.json`, a committed artifact of the same kind as
 `inter-metrics.json`, holding the page and static-file counts:
 **a rise rewrites it and says so, a fall fails the build.** A tight floor is the
-wrong alternative --- it fires on every legitimate page removal, and a gate that
+wrong alternative: it fires on every legitimate page removal, and a gate that
 fires on ordinary work gets switched off. A rise costs nothing, so the number
 stays current by itself; only a fall wants a decision, and
 `--update-page-baseline` records it, in the same commit as the deletion.
@@ -507,10 +527,9 @@ and symbol guards share, and the second in
 - **The build writes a tracked file, so `check_tree_fresh.mjs` must not count
   it.** The write happens after the tree, so without `IGNORED_FILES` the next
   `check.bat` would call the tree it had just built stale, on exactly the builds
-  that added a page. That is not a special case: the script's sources are "the
-  inputs that decide the built bytes", and a baseline decides none of them. `dot`
-  and `vendorAssets` write into `docs/` and escape this only because they run
-  early.
+  that added a page. The script's sources are "the inputs that decide the built
+  bytes", and a baseline decides none of them. `dot` and `vendorAssets` write into
+  `docs/` and escape this only because they run early.
 - **Neither CI nor `--serve` may write.** A CI run that rewrote the file would
   record the drop it was asked to catch, so there a missing baseline is an error
   rather than a first run. `--serve` rebuilds on every save under `docs/`, so a
@@ -530,31 +549,6 @@ produces. One probe replays the loss of 37 pages; the two that look redundant
 (foreign source root, missing baseline under CI) each guard one of the rules
 above.
 
-### The mirror fault: a rewrite that does not fire
-
-The region comparison has a blind spot, which [the code-region
-gate](#the-code-region-gate) closes with probes of its own. A rewrite that
-mistakes prose for code corrupts nothing --- the text is stashed and restored
-unchanged, so every region matches --- it simply never runs. The case to hold in
-mind is a fence marker in the middle of a line:
-[Reference/Attributes.md](docs/Reference/Attributes.md)'s `[Description(...)]`
-sample builds a Markdown string out of twinBASIC string literals, two of which
-are triple-backtick markers. A scan that pairs an opening fence with the next
-marker *anywhere* closes the `tb` fence on the literal and mis-pairs every fence
-after it, so the page's admonitions render as the literal text `[!NOTE]` in a
-plain blockquote --- and every gate stays green, since the region comparison
-matches, the links resolve and axe has no opinion about a blockquote. CommonMark
-closes a fence only on a line holding nothing but the fence character, repeated at
-least as often as in the opener: a rule about lines, not something to express as
-one regex over a document. That is why `rewriteAdmonitions` asks `blockRegions`
-instead of scanning for fences itself.
-
-`rewriteAdmonitions` asks `blockRegions` with the site's parser, so it sees a fence
-a definition list's `: ` makes, and leaves an admonition alone when its `[!TYPE]`
-line is in a region. A fence *inside* an admonition is a region too, and the
-rewrite still strips its `>` markers. The probes that assert this direction are in
-[the code-region gate](#the-code-region-gate).
-
 ### The book-coverage warnings
 
 **A page no `_book.yml` entry selects is left out of the PDF without a word**
@@ -569,7 +563,7 @@ Two halves make it work, and the second is what makes the first worth having.
 `reason:`**, and `bookCoverage()` in `builder/book.mjs` warns about a page that is
 in neither. Every page has an entry one way or the other, so a warning is a
 decision nobody has made. Without the list the warning fires for dozens of pages
-on every build, which is a warning nobody reads after the first week.
+on every build, which is a warning nobody reads.
 
 It reports five things, all empty on a consistent manifest: a page in no entry, a page
 in the book and in `left_out:`, a book entry that selects no page, a `left_out:` entry
@@ -617,7 +611,7 @@ Three decisions about the build side, each with the alternative it rules out:
 
 **The drift guard is the page-count guard's shape applied to URLs**
 ([builder/symbol-baseline.mjs](builder/symbol-baseline.mjs)): `builder/symbol-baseline.json`
-lists every URL the index has published, one to a line; a build that loses one fails and
+lists every URL the index has published, one to a line. A build that loses one fails and
 names it; a build that adds one rewrites the list; CI, `--serve` and `--dry-run` never
 write; a source root other than `docs` is skipped; `--update-symbol-baseline` records a
 removal. It exists because **an anchor has no `redirect_from:`** --- a reworded member
@@ -720,8 +714,7 @@ Five shapes are recognised, each a form a count can take in prose:
 | section total | a wrapper's own section opening *"Five gates that ..."* |
 | back-reference | "four of the five", where the number matches the section's own total |
 
-**The section total is why the sweep is per section, and it is the one a first
-attempt misses.** A section can state the count where its only mention of the
+**The section total is why the sweep is per section.** A section can state the count where its only mention of the
 wrapper is the indented command under its heading, so nothing on that line names a
 wrapper and a line-by-line scan reports nothing. A section's subject is the
 wrapper in its heading, else the wrapper on the first command line beneath it ---
@@ -729,7 +722,7 @@ and **the kramdown attribute block has to be skipped to get there**
 (`{: #tests-of-the-toolchain }` sits between the two), or the rule silently skips
 the one section it exists for.
 
-Two judgement calls worth keeping:
+Two judgement calls:
 
 - **Only the *first* bare `N gates` in a wrapper's section counts as its
   total.** Later ones are legitimate subset claims. The cost runs the other
@@ -817,13 +810,13 @@ fail on day one against dozens of findings, and a gate that fails on day one get
 switched off. Exponential is the class that turns a content edit into an
 unbounded hang.
 
-**Never quote a `degN` from a census.** The two backends disagree on it --- the
-native agent says polynomial degree 2 where the pure-JavaScript fallback says
+**Never quote a `degN` from a census.** The two backends disagree on it ---
+the native agent says polynomial degree 2 where the pure-JavaScript fallback says
 degree 3 on the same pattern --- while agreeing on exponential-or-not, which is
 what the gate rests on, and on all eight classification probes. A degree is a
 ranking aid for reading a census, not a number to write into prose.
 
-Three implementation details are load-bearing:
+Three implementation details are essential:
 
 - **The self-test probes ride along inside the normal run**, not behind a
   `--self-test` nobody remembers. Eight classification probes, both directions:
@@ -835,8 +828,8 @@ Three implementation details are load-bearing:
   long-lived agent and feeds it requests one at a time, so awaiting several
   checks concurrently in a single process buys nothing --- measured at 42.5 s for
   concurrency 1 against 37.5 s for 16. Sharding across the CPUs, each shard its
-  own process and its own agent, is what brings the run from tens of seconds to
-  about ten; concurrency inside one process does not help.
+  own process and its own agent, brings the run from tens of seconds to
+  about ten.
 - **recheck 4.5.0 cannot find its own backend on Windows**, and the failure is
   quiet. It locates both `recheck-jar` and `recheck-<platform>-<arch>` by
   stripping `/package.json` with a forward-slash regex from a path Node returns
@@ -848,17 +841,15 @@ Three implementation details are load-bearing:
   line rather than just being slow. Both backends classify all eight probes
   identically, so the fallback is slower, not weaker.
 
-Honest limitation, which should not be papered over: a regex recheck cannot
-decide comes back `unknown`, and an unknown is an *unchecked* regex rather than a
-passing one (currently 0; `--census` prints them).
+Limitation: a regex recheck cannot decide comes back `unknown`, and an unknown is
+an *unchecked* regex rather than a passing one (currently 0; `--census` prints them).
 
 #### It reads constructed regexes too
 
 **Building a pattern out of shared fragments is the ordinary way to avoid writing
 a sub-pattern several times**, and a literals-only scan cannot see one --- so a gate
 whose coverage you leave by writing idiomatic JavaScript is not covering much.
-`check_gate_lists.mjs` builds all its patterns this way; a scan that only counted
-constructions would never say whether one was polynomial.
+`check_gate_lists.mjs` builds all its patterns this way.
 
 [scripts/lib/regex-fold.mjs](scripts/lib/regex-fold.mjs) folds a construction to
 the pattern it builds, where the source decides that: string and template
@@ -876,8 +867,7 @@ shape, recognised by body rather than by name, in the file or in a module it
 imports by a relative path, so no list of names is kept --- yields a fixed
 character sequence with no regex operator in it, whatever `x` holds. Those fold
 to a one-character placeholder and are tagged `modelled`, in the census and in
-any finding. The gap is stated rather than hidden: an escaped splice *inside a
-quantified alternation* could be ambiguous with a sibling branch in a way the
+any finding. The gap: an escaped splice *inside a quantified alternation* could be ambiguous with a sibling branch in a way the
 placeholder is not --- `(${esc}|a)+` is exponential when `esc` holds `a` and safe
 when it holds `x`. A fixed sequence cannot be a quantified atom by itself, so the
 surrounding pattern has to quantify a group containing it; none of the tree's
