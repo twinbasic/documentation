@@ -798,13 +798,13 @@ place, and click the compiler's restart button (P9). The lanes need not: a resta
 harness about a second against opening a new IDE.
 
 1. **F1 to a page. Built**, tested by [help.test.mjs](test/addin/help.test.mjs) on BETA
-   995. F1, or the toolbar's Help button, takes the selection or the name under the cursor
-   (below), looks it up in the embedded index and opens `https://docs.twinbasic.com` plus
-   the entry's `url` in the browser. A miss says `No help for '<name>'` and an empty spot
-   `No name at the cursor`, both through `ShowNotification`. Several pages give a
-   `ShowMessageBox` with one button per page, labelled `Container.Name`, and Cancel: `Add`
-   on an unknown object gives twelve and Cancel, and the IDE shows thirteen buttons without
-   complaint. The pane comes in increment 2.
+   995. F1 takes the selection or the name under the cursor (below) and looks it up in the
+   embedded index. One page is shown in the help pane (increment 2); a miss says
+   `No help for '<name>'` through `ShowNotification`; an empty spot puts the focus in the
+   pane's search box. Several pages fill the pane's results list, labelled
+   `Container.Name`, and leave the page as it was. Before the pane, they were a
+   `ShowMessageBox` with a button per page: `Add` on an unknown object gave twelve and
+   Cancel, and the IDE showed thirteen buttons without complaint.
 
    **The key is F1**: P1 and P2 do not rule it out. It fires wherever the focus
    is in the IDE's window. The one overlap is signature help: while it shows, F1 also expands
@@ -818,22 +818,48 @@ harness about a second against opening a new IDE.
    is on, and every scenario checks that line before it presses anything. An IDE build that
    stopped passing the variable on to the compiler then fails the run, instead of starting a
    browser on the private desktop.
-2. **The help pane.** Search over the index, results, and a page view --- an iframe, since
-   P3 passed, laid out inside a wrapper element because showing the window resets its
-   root's `display`. The results are a list view with `raiseEvent` in their HTML, as in
-   Sample 15, since `raiseEvent` works nowhere else (P12); escape every name that goes into
-   that HTML. Theme: read `Host.Themes.ActiveThemeNameGroup` at start, handle
-   `Host_OnChangedTheme` after, and pass a light or a dark stylesheet to
-   `ToolWindow.ApplyCss` for the pane's own controls, and the theme in the page's URL once
-   the site reads one (Stage 3). F1 pressed while the focus is in the page goes to the page,
-   not to the add-in, so a lookup from there goes through the pane's own search box.
+2. **The help pane. Built**, tested by the same lane on BETA 995. The tool window
+   `tbDocsHelpPane`, titled `TWINBASIC HELP`, holds a search box, an *Open in browser*
+   button, a results list and the page in an iframe (P3), laid out by a flex wrapper
+   inside the root, because showing the window resets the root's `display`. The toolbar's
+   Help button shows the pane with the focus in the search box.
+   - **Search** runs on every `keyup`: the entries whose name starts with the text, then
+     those that contain it, at most 100; text with a dot is matched against
+     `Container.Name`. Enter shows the first. A row shows the label and the entry's
+     `kind`.
+   - **The results** are a list view whose rows carry
+     `raiseEvent("onPick", event, true, <entry number>)`, as in Sample 15, since
+     `raiseEvent` works nowhere else (P12). Only the number goes into the handler, and the
+     label and kind are HTML-escaped.
+   - **Open in browser** opens the page the add-in last gave the frame, through
+     `OpenUrl`, so it honours the test switch. A link followed inside the frame is not
+     seen: the live site is on another origin, whose location the IDE's page cannot read.
+   - **Theme.** The pane's stylesheet, the resource `Resources/STYLESHEETS/pane.css` given
+     to `ApplyCss`, uses the IDE theme's own custom properties (`--themeGeneralPanelBackColor`,
+     `--themeToolWindowBodyForeColor`, ...). They are set on the IDE's document and
+     inherited by the shadow root, so a theme change needs no code and the add-in handles
+     no `Host_OnChangedTheme`. This departs from the plan's light and dark stylesheets. The
+     lane checks the background, which the window does not otherwise inherit: the window
+     already has the theme's text colour. The page itself still follows WebView2's colour
+     scheme until the site reads a theme (Stage 3).
+   - F1 pressed while the focus is in the page goes to the page, not to the add-in, so a
+     lookup from there goes through the search box.
 
    **The pane has an id of its own**, never none: every window given no id is the same
    window. **And it outlives the add-in.** Every compiler restart, which every switch of
    build target is, ends the add-in and loads a new instance, which gets the same window
-   back, emptied (P9). So the pane is built in `Host_OnProjectLoaded`, every time, and the
-   page it was showing is lost unless the add-in keeps its URL outside its own process ---
-   `Project.SaveMetaData`, say --- and reads it back there.
+   back, emptied (P9). So the pane is built in `Host_OnProjectLoaded`, every time. The
+   page it showed is kept with `SaveSetting "tbDocsHelp", "Pane", "Page"` (the site path,
+   add-in-wide), which the lane's `settings` entry restores, and is read back there; the
+   lane checks that a new frame comes back with it. `ToolWindow_OnClose` builds the pane
+   again, as Sample 15 does; nothing tests closing the pane.
+
+   **The lane serves the built site.** With the test switch on, the add-in takes its site
+   from `TB_DOCS_HELP_SITE`; [help.test.mjs](test/addin/help.test.mjs) serves `docs/_site`
+   on localhost with `builder/static-files.mjs`, the handler `tbdocs --serve` uses, so each
+   case loads the build's real page, and a 404 fails it. The frame is then same-site, and
+   `Page.getFrameTree` reads its URL. The offline tree cannot be used: a page served over
+   http cannot frame a `file://` URL. So the lane needs `build.bat` first.
 3. **Context: which `Add`?** P5 says the compiler can answer it: hover names `c.Add` as
    `VBA._Collection`'s and `Host.ToolWindows.Add` as `tbIDE.IToolWindowsV1`'s, where a line
    scanner would have to find the declaration of `c` and the type of `Host.ToolWindows`

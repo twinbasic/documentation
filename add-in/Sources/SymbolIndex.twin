@@ -8,6 +8,7 @@ Private Class SymbolIndex
     Private Written() As String        ' as the index writes it
     Private Packages() As String       ' "" for null
     Private Containers() As String     ' "" for null
+    Private Kinds() As String
     Private Urls() As String
     Private Size As Long
 
@@ -33,6 +34,11 @@ Private Class SymbolIndex
         Return Written(i)
     End Property
 
+    ' "method", "statement", ...: the kinds the Permanent Links page lists.
+    Public Property Get Kind(ByVal i As Long) As String
+        Return Kinds(i)
+    End Property
+
     ' Reads json, the whole index. Raises error 5 on anything that is not JSON
     ' of the expected shape.
     Public Sub Load(ByVal json As String)
@@ -44,6 +50,7 @@ Private Class SymbolIndex
         ReDim Written(4095)
         ReDim Packages(4095)
         ReDim Containers(4095)
+        ReDim Kinds(4095)
         ReDim Urls(4095)
 
         SkipSpace
@@ -107,6 +114,36 @@ Private Class SymbolIndex
         Return found
     End Function
 
+    ' The entries text names, for the help pane's search box: those that start
+    ' with it, then those that contain it, in the index's order, at most limit.
+    ' Text with a dot in it is matched against labels ("Collection.Add"),
+    ' otherwise against names. Case is ignored.
+    Public Function Search(ByVal text As String, ByVal limit As Long) As Collection
+        Dim found As New Collection
+        Dim needle As String = LCase$(Trim$(text))
+        If Len(needle) = 0 Then Return found
+        Dim dotted As Boolean = InStr(needle, ".") > 0
+        Dim later As New Collection
+        Dim i As Long
+        For i = 0 To Size - 1
+            Dim hay As String
+            If dotted Then hay = LCase$(Label(i)) Else hay = Names(i)
+            Dim at As Long = InStr(hay, needle)
+            If at = 1 Then
+                found.Add i
+                If found.Count >= limit Then Return found
+            ElseIf at > 1 And later.Count < limit Then
+                later.Add i
+            End If
+        Next
+        Dim j As Variant
+        For Each j In later
+            If found.Count >= limit Then Exit For
+            found.Add j
+        Next
+        Return found
+    End Function
+
     Private Sub ReadSymbols()
         Expect "["
         Do
@@ -121,7 +158,7 @@ Private Class SymbolIndex
     End Sub
 
     Private Sub ReadEntry()
-        Dim name As String, package As String, container As String, link As String
+        Dim name As String, package As String, container As String, kind As String, link As String
         Expect "{"
         Do
             SkipSpace
@@ -134,6 +171,7 @@ Private Class SymbolIndex
                 Case "name": name = ReadStringOrNull()
                 Case "package": package = ReadStringOrNull()
                 Case "container": container = ReadStringOrNull()
+                Case "kind": kind = ReadStringOrNull()
                 Case "url": link = ReadStringOrNull()
                 Case Else: SkipValue
             End Select
@@ -150,12 +188,14 @@ Private Class SymbolIndex
             ReDim Preserve Written(grown)
             ReDim Preserve Packages(grown)
             ReDim Preserve Containers(grown)
+            ReDim Preserve Kinds(grown)
             ReDim Preserve Urls(grown)
         End If
         Names(Size) = LCase$(name)
         Written(Size) = name
         Packages(Size) = package
         Containers(Size) = container
+        Kinds(Size) = kind
         Urls(Size) = link
         Size = Size + 1
     End Sub

@@ -974,6 +974,12 @@ The handler table is built from the imported `HANDLERS` constant:
 |---|---|---|
 | `runServe` | `(opts) → Promise<void>` | Long-lived dev server. Initial one-shot build, then HTTP + recursive watcher + SSE reload. The worker pool is constructed once and reused across rebuilds. Writes to `<srcRoot>/_serve/`. Skips the offline + PDF passes by default. |
 
+### `static-files.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `createStaticHandler` | `(destRoot, { transformHtml? }) → (req, res) => Promise<void>` | An HTTP handler serving the files under `destRoot` as GitHub Pages does: a folder's URL without its trailing slash redirects to the slash form, and a path with no extension also finds `<path>.html`. Nothing is cached. `transformHtml(html, file)`, when given, rewrites each `.html` file before it is sent: `serve.mjs` adds its reload script with it to every page but `book.html`. Logs a 404 or a 500 to stderr. |
+
 ### `command-line.mjs`
 
 | Symbol | Signature | Description |

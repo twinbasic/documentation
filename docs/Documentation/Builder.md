@@ -138,6 +138,7 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 | File | Role |
 |---|---|
 | [`serve.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/serve.mjs) | Long-lived dev server: HTTP, recursive watcher, SSE reload, persistent worker pool. |
+| [`static-files.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/static-files.mjs) | The static file handler `serve.mjs` answers with, serving folders as GitHub Pages does. The help add-in's test lane serves the built site with it too. |
 | [`gantt.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/gantt.mjs) | Inline SVG Gantt chart of the build timeline, and the section each task is charted in. Injected into the [Build Info](BuildInfo) page at the end of each build. |
 
 **Shared modules in `lib/`**
