@@ -1156,8 +1156,8 @@ names the IDE accepts. They build add-ins for win64 as well as win32, restart th
 and patch a built DLL's export name. One more checks that the environment variable the
 runner sets, which keeps an add-in under test from opening a browser, reaches the add-in,
 also after a compiler restart. The last lane tests the help add-in in `add-in/`, which opens
-the page for the name under the cursor; it builds the add-in with the symbol index of the last
-`build.bat`, so run that first. The twelve lanes take about two minutes together.
+the page for the name under the cursor, with the copy of the symbol index committed in
+`add-in/Resources/SYMBOLS/`. The twelve lanes take about two minutes together.
 
 | Flag | Effect |
 |---|---|

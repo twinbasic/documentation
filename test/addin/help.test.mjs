@@ -3,9 +3,8 @@
 // under the cursor. Under the harness the add-in starts no browser and prints
 // "open <url>" instead, which these tests read.
 //
-// The add-in is built with the symbol index of the last docs build,
-// docs/_site/tB/symbols.json, embedded as a resource: run build.bat first.
-// Each case is a line and column in helphost/Sources/Cases.twin, so a change
+// The add-in is built as committed, with its copy of the symbol index,
+// add-in/Resources/SYMBOLS/symbols.json, embedded as a resource. Each case is a line and column in helphost/Sources/Cases.twin, so a change
 // to that file is a change to this table.
 //
 // Run it with addin-test.bat, which gives it a lane; on its own it is skipped.
@@ -35,23 +34,10 @@ import { scenario } from "./scenario.mjs";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
 const ADDIN = path.join(ROOT, "add-in");
-const INDEX = path.join(ROOT, "docs", "_site", "tB", "symbols.json");
+const INDEX = path.join(ADDIN, "Resources", "SYMBOLS", "symbols.json");
 const HOST = path.join(HERE, "helphost");
 const FILE = "/HelpHost/Sources/Cases.twin";
 const SITE = "https://docs.twinbasic.com";
-
-// The add-in's tree with the index added, staged in the lane's work folder:
-// add-in/ itself holds no copy of it.
-function stageAddin(work) {
-  assert.ok(fs.existsSync(INDEX), `${INDEX} is missing: run build.bat first`);
-  const src = path.join(work, "help-src");
-  fs.rmSync(src, { recursive: true, force: true });
-  fs.cpSync(ADDIN, src, { recursive: true });
-  const res = path.join(src, "Resources", "SYMBOLS");
-  fs.mkdirSync(res, { recursive: true });
-  fs.copyFileSync(INDEX, path.join(res, "symbols.json"));
-  return src;
-}
 
 const addinLines = async (c, mark) => linesSince(c, mark, { prefix: "[tbDocsHelp] " });
 
@@ -87,7 +73,7 @@ scenario("the help add-in, increment 1: F1 to a page", (lane) => {
   let entries;
   before(async () => {
     entries = JSON.parse(fs.readFileSync(INDEX, "utf8")).symbols.length;
-    await lane.addAddin(stageAddin(lane.work));
+    await lane.addAddin(ADDIN);
     c = await lane.open(HOST);
     await openFile(c, FILE, { line: 5, column: 9 });
   });
