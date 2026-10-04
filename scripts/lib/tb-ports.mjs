@@ -5,49 +5,71 @@
 // that IDE and operate it, so launchIde refuses a port something listens on.
 // Checking first is not enough when two runs start together: each finds the
 // port free, and the slower one is refused once the faster one's IDE is up.
-// So a port is claimed with a lock file before it is checked, and the lock is
-// created with O_EXCL: of two runs that try the same port at once, exactly one
-// gets it, and the other moves on to the next.
+// So a port is claimed with a lock file before it is checked.
 //
 // The lock is %TEMP%\tb-ports\<port>.lock and holds the claiming process's pid.
 // A lock whose process has ended is stale and is taken over; the run removes
 // its own when it exits. A port a process outside these tools listens on has no
 // lock, which is why each claimed port is also checked by binding it.
+//
+// Runs claim one at a time: a claim holds the folder %TEMP%\tb-ports\claiming,
+// which creating either makes or fails on, for the milliseconds it takes. Lock
+// files alone race: a lock is created empty and its pid written after, and a
+// run that reads it in between takes it for stale, removes it and claims the
+// same port.
 
-import { mkdirSync, openSync, readFileSync, rmSync, writeSync, closeSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { portTaken } from "./tb-ide.mjs";
+import { portTaken, sleep } from "./tb-ide.mjs";
 import { alive } from "./tb-registry.mjs";
 
 const LOCKS = path.join(tmpdir(), "tb-ports");
+const CLAIMING = path.join(LOCKS, "claiming");
+// A claim takes milliseconds, so a claiming folder this old was left by a run
+// that ended during its claim.
+const CLAIMING_STALE_MS = 10_000;
 const claimed = new Set();
 let releaseOnExit = false;
 
 const lockFile = (port) => path.join(LOCKS, `${port}.lock`);
 
-// Creates the port's lock for this process; false when a live process holds it.
-function lock(port) {
-  for (let attempt = 0; attempt < 2; attempt++) {
+// Runs `fn` while no other run is claiming.
+async function oneAtATime(fn) {
+  for (;;) {
     try {
-      const fd = openSync(lockFile(port), "wx");
-      writeSync(fd, String(process.pid));
-      closeSync(fd);
-      return true;
+      mkdirSync(CLAIMING);
+      break;
     } catch (e) {
       if (e.code !== "EEXIST") throw e;
     }
-    let pid = 0;
     try {
-      pid = Number(readFileSync(lockFile(port), "utf8"));
+      if (Date.now() - statSync(CLAIMING).mtimeMs > CLAIMING_STALE_MS)
+        rmSync(CLAIMING, { recursive: true, force: true });
     } catch {
-      // removed since: try again
+      // removed since
     }
-    if (pid && pid !== process.pid && alive(pid)) return false;
-    // A lock left by a process that has ended: remove it and try once more.
-    rmSync(lockFile(port), { force: true });
+    await sleep(10);
   }
-  return false;
+  try {
+    return await fn();
+  } finally {
+    rmSync(CLAIMING, { recursive: true, force: true });
+  }
+}
+
+// Writes the port's lock for this process; false when a live process holds it.
+// Called only inside oneAtATime.
+function lock(port) {
+  let pid = 0;
+  try {
+    pid = Number(readFileSync(lockFile(port), "utf8"));
+  } catch {
+    // no lock
+  }
+  if (pid && pid !== process.pid && alive(pid)) return false;
+  writeFileSync(lockFile(port), String(process.pid));
+  return true;
 }
 
 function unlock(port) {
@@ -80,22 +102,24 @@ export async function claimPorts(count, { from, tries = 200 }) {
       for (const port of [...claimed]) unlock(port);
     });
   }
-  const ports = [];
-  for (let port = from; ports.length < count && port < from + tries && port <= 65535; port++) {
-    if (claimed.has(port) || !lock(port)) continue;
-    claimed.add(port);
-    if (await portTaken(port)) {
-      unlock(port);
-      continue;
+  return oneAtATime(async () => {
+    const ports = [];
+    for (let port = from; ports.length < count && port < from + tries && port <= 65535; port++) {
+      if (claimed.has(port) || !lock(port)) continue;
+      claimed.add(port);
+      if (await portTaken(port)) {
+        unlock(port);
+        continue;
+      }
+      ports.push(port);
     }
-    ports.push(port);
-  }
-  if (ports.length < count) {
-    for (const port of ports) unlock(port);
-    throw new Error(
-      `found ${ports.length} free DevTools port(s) of the ${count} needed in ${from}-${from + tries - 1}: ` +
-        "the rest are claimed by another run or in use. Pass a different --port.",
-    );
-  }
-  return ports;
+    if (ports.length < count) {
+      for (const port of ports) unlock(port);
+      throw new Error(
+        `found ${ports.length} free DevTools port(s) of the ${count} needed in ${from}-${from + tries - 1}: ` +
+          "the rest are claimed by another run or in use. Pass a different --port.",
+      );
+    }
+    return ports;
+  });
 }
