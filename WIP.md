@@ -139,7 +139,7 @@ runner](WIP.Harness.md#the-add-in-test-runner).
 
 ```sh
 addin-test.bat                     # every lane
-addin-test.bat --only sample15     # one lane; --port N moves the lanes' ports
+addin-test.bat --only sample15     # one lane; --port N moves where the lanes' ports start
 ```
 
 - **Never build or copy a test add-in into the real install's `addins\`, or into `%APPDATA%\twinBASIC\addins\`.** Either way it loads into the user's own IDE (measured for the second). A test add-in goes only into a lane's own folders: its copy of the install, where `addAddin` refuses anywhere else, or the `APPDATA` the lane gives every IDE it starts. That private `APPDATA` is also what keeps the user's own add-ins out of the test IDEs; never start a lane IDE without it.
@@ -148,7 +148,9 @@ addin-test.bat --only sample15     # one lane; --port N moves the lanes' ports
 
 **Testing the IDE itself** (the debugger, Export Project, the Packages dialog) is
 `ide-test.bat`, the same runner (`scripts/lib/lane-runner.mjs`) over `test/ide/lanes.mjs`,
-with base port 9660 against the add-in runner's 9560. Every rule above applies to it
+with base port 9660 against the add-in runner's 9560. Each run claims the first free ports from
+its base with a lock file in `%TEMP%\tb-ports` (`scripts/lib/tb-ports.mjs`), passing over one
+another run claimed or something listens on. Every rule above applies to it
 unchanged: the private `APPDATA`, `TB_ADDIN_TEST=1`, and ending an IDE by its pid. Its
 scenario files import `scenario` from `test/addin/scenario.mjs`.
 

@@ -23,7 +23,9 @@ Runs the IDE scenarios: every lane in test/ide/lanes.mjs, each in a process of
 its own with its own IDE copy, DevTools port and work folder.
 
   --only <regex>    only the lanes whose name matches
-  --port <n>        base DevTools port (default 9660); the lanes get n, n+1, ...
+  --port <n>        base DevTools port (default 9660); the lanes get the
+                    first free ports from n, passing over one another run
+                    has claimed or something listens on
   --jobs <n>        lanes at once (default 2)
   --timeout <secs>  a lane still running after this long is ended (default 600)
   --ide <path>      the twinBASIC.exe to copy (default: $TB_IDE, else the

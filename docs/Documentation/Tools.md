@@ -1175,7 +1175,7 @@ the page for the name under the cursor, with the copy of the symbol index commit
 | Flag | Effect |
 |---|---|
 | `--only <regex>` | Run only the lanes whose name matches. A lane's name is its file's name without `.test.mjs`. |
-| `--port <n>` | Base DevTools port. Default 9560; the lanes get *n*, *n*+1 and so on, and their work folders are keyed to their ports. A port another IDE holds is refused, as for `tbbuild`. |
+| `--port <n>` | Base DevTools port. Default 9560; the lanes get the first free ports from *n*, and their work folders are keyed to their ports. A port is free when nothing listens on it and no other run of these tools has claimed it: each run claims its ports with a lock file in `%TEMP%	b-ports`, so two runs started together never share one. |
 | `--jobs <n>` | Lanes at once. Default 2. |
 | `--timeout <secs>` | A lane still running after this long is ended and counted as failed. Default 600. |
 | `--ide <path>` | The `twinBASIC.exe` to copy, found as for [`tbbuild.mjs`](#tbbuild). |
@@ -1220,7 +1220,7 @@ same exit codes: each file listed in `test/ide/lanes.mjs` is one **lane**, run b
 [`ide-test.bat`](#ide-testbat) in a process of its own, with its own DevTools port, work
 folder and private copy of the twinBASIC install. Run on its own, a scenario skips itself.
 The two differences are the suite and the default base port, which is 9660 here, so that a
-run of each tool never takes the other's ports. A run whose `test/ide/lanes.mjs` lists no lane
+run of each tool starts on ports of its own. A run whose `test/ide/lanes.mjs` lists no lane
 matching `--only` is refused, as for `addin_test.mjs`.
 
 It leaves the registry as it found it, and checks, exactly as `addin_test.mjs` does. The rules
@@ -1246,7 +1246,8 @@ private desktop, as a lane's does, so it never appears or takes the focus.
 
 `--project` names the exported project to open, by default `test/addin/helphost`, the help
 lane's host. It is opened as a staged copy, so edits made in the IDE are not kept. `--port` is
-the IDE's DevTools port, 9590 by default. Closing the IDE, or Ctrl+C, puts back the IDE's
+where the search for the IDE's DevTools port starts, 9590 by default; it takes the first
+free one, as `addin_test.mjs` does. Closing the IDE, or Ctrl+C, puts back the IDE's
 registry entries and the add-in's saved settings (`tbDocsHelp`) as they were found, and deletes
 the copy.
 

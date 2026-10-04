@@ -482,7 +482,7 @@ export async function attachIde(port, { tries = 60 } = {}) {
 // binds 127.0.0.1, so binding it ourselves for a moment is the test. Resolves
 // to the bind's error code, or null when the port is free: a port Windows has
 // reserved refuses the bind with EACCES though nothing listens on it.
-const portTaken = (port) =>
+export const portTaken = (port) =>
   new Promise((resolve) => {
     const s = net.createServer();
     s.once("error", (e) => resolve(e.code ?? "an error"));

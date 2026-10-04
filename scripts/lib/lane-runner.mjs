@@ -12,7 +12,8 @@
 // Options, as each tool's usage text states them:
 //
 //       --only <regex>    only the lanes whose name matches
-//       --port <n>        base DevTools port; the lanes get n, n+1, ...
+//       --port <n>        base DevTools port; the lanes get the first free ones
+//                         from n (lib/tb-ports.mjs)
 //       --jobs <n>        lanes at once (default 2)
 //       --timeout <secs>  a lane still running after this long is ended (default 600)
 //       --ide <path>      the twinBASIC.exe to copy (default: $TB_IDE, else the
@@ -76,6 +77,7 @@ import { removeTree } from "./tb-ide-copy.mjs";
 import { wantShow } from "./tb-ide.mjs";
 import { buildNumber, findIde } from "./tb-install.mjs";
 import { LANE_ENV } from "./tb-lane.mjs";
+import { claimPorts } from "./tb-ports.mjs";
 import {
   alive,
   deleteSettings,
@@ -103,6 +105,17 @@ import {
  * @param {string} o.usage    the tool's whole usage text, printed by --help and on a refused command line
  * @param {string} o.subject  what a lane's scenario operates, as a noun in messages ("add-in")
  */
+// Ports as a short list: runs of consecutive ones as a range, "9560-9563, 9565".
+function portList(ports) {
+  const runs = [];
+  for (const p of ports) {
+    const last = runs.at(-1);
+    if (last && p === last[1] + 1) last[1] = p;
+    else runs.push([p, p]);
+  }
+  return runs.map(([a, b]) => (a === b ? `${a}` : `${a}-${b}`)).join(", ");
+}
+
 export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage: USAGE, subject }) {
   const { values } = withUsageError(() =>
     parseCli(process.argv.slice(2), {
@@ -152,12 +165,7 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
   const lanes = manifest
     .map((l) => ({ ...l, name: l.name ?? path.basename(l.file).replace(/\.test\.mjs$/, "") }))
     .filter((l) => !only || only.test(l.name))
-    .map((l, i) => ({
-      ...l,
-      settings: l.settings ?? [],
-      port: basePort + i,
-      work: path.join(tmpdir(), workDir, String(basePort + i)),
-    }));
+    .map((l) => ({ ...l, settings: l.settings ?? [] }));
   if (!lanes.length) die(2, `no lane in ${path.join(SUITE, "lanes.mjs")} matches ${only}`);
   for (const l of lanes) {
     if (!existsSync(path.join(SUITE, l.file))) die(2, `lane ${l.name}: no file ${path.join(SUITE, l.file)}`);
@@ -167,6 +175,19 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
       die(2, `lane ${l.name}: ${e.message}`);
     }
   }
+
+  // Each lane gets a port of its own, the first free ones from the base: a port
+  // another run has claimed, or that something listens on, is passed over.
+  let ports;
+  try {
+    ports = await claimPorts(lanes.length, { from: basePort });
+  } catch (e) {
+    die(2, e.message);
+  }
+  lanes.forEach((l, i) => {
+    l.port = ports[i];
+    l.work = path.join(tmpdir(), workDir, String(ports[i]));
+  });
 
   // ---------------------------------------------------------------- the registry
 
@@ -234,8 +255,8 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
   // ---------------------------------------------------------------- the lanes
 
   console.log(
-    `${tool}: BETA ${buildNumber(ide) ?? "?"}, ${lanes.length} lane(s) on ports ` +
-      `${basePort}-${basePort + lanes.length - 1}, ${Math.min(jobs, lanes.length)} at a time`,
+    `${tool}: BETA ${buildNumber(ide) ?? "?"}, ${lanes.length} lane(s) on ports ${portList(ports)}, ` +
+      `${Math.min(jobs, lanes.length)} at a time`,
   );
 
   process.on("SIGINT", () => {

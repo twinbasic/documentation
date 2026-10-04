@@ -35,6 +35,7 @@ import { removeTree } from "./lib/tb-ide-copy.mjs";
 import { shutdownIde } from "./lib/tb-ide.mjs";
 import { findIde } from "./lib/tb-install.mjs";
 import { Lane } from "./lib/tb-lane.mjs";
+import { claimPorts } from "./lib/tb-ports.mjs";
 import { alive, finishTidy, restoreKeys, settingsKey, snapshotKeys, startTidy } from "./lib/tb-registry.mjs";
 
 const SETTINGS = "tbDocsHelp";
@@ -54,7 +55,9 @@ build.bat first.
   --project <dir>  the exported project to open (default test/addin/helphost,
                    the help lane's host); it is opened as a staged copy, so
                    edits made in the IDE are not kept
-  --port <n>       the IDE's DevTools port (default 9590)
+  --port <n>       the IDE's DevTools port: the first free one from n (default
+                   9590), passing over one another run has claimed or
+                   something listens on
   --ide <path>     the twinBASIC.exe to copy (default: $TB_IDE, else the
                    newest twinBASIC_IDE_BETA_* on the Desktop)
   -h, --help       print this text and exit
@@ -78,7 +81,7 @@ const { values } = withUsageError(() =>
   }),
 );
 if (values.help) printHelpAndExit(USAGE);
-const port = withUsageError(() =>
+const firstPort = withUsageError(() =>
   numberOption(values.port ?? "9590", { option: "--port", integer: true, min: 1, max: 65535 }),
 );
 const project = path.resolve(values.project ?? HOST);
@@ -93,6 +96,12 @@ if (!ide || !existsSync(ide)) {
 }
 if (!existsSync(path.join(project, "Settings"))) die(2, `${project} is not an exported project: it has no Settings`);
 if (!existsSync(path.join(SITE, "tB", "symbols.json"))) die(2, `no built site in ${SITE}: run build.bat first`);
+let port;
+try {
+  [port] = await claimPorts(1, { from: firstPort });
+} catch (e) {
+  die(2, e.message);
+}
 
 const work = path.join(tmpdir(), "tbhelp-try", String(port));
 try {
