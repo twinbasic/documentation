@@ -322,8 +322,8 @@ scenario("P5: what the compiler says about the name under the cursor", (lane) =>
     assert.equal(whereIn(h), null, JSON.stringify(h));
   });
 
-  // The defect in BUGS-TO-REPORT.md, enum-member-description-hover. When it is
-  // fixed this fails: retire the entry, and make this test say what is right.
+  // The defect filed as twinbasic/twinbasic#2465 (bugs/filed/enum-member-description-hover/).
+  // When it is fixed this fails: make this test say what is right, and delete the folder.
   test("a [Description] on an enumeration's member is listed as a member of the enumeration, and not shown on the member", async () => {
     const shade = await hoverDescribed(c, "Debug.Print Shade.Light", "Shade");
     assert.match(shade, /\n - Description\("The light one\."\)/, JSON.stringify(shade));
