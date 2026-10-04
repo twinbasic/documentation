@@ -9,5 +9,6 @@
       "^Circle Start 7: Err 0$"
     ],
     "imagesDiffer": true
-  }
+  },
+  "issue": 2462
 }
