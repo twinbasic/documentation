@@ -37,7 +37,12 @@
   cursor: pointer;
 }
 
-#helpBrowser:hover,
+#helpBrowser:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+#helpBrowser:enabled:hover,
 #helpResults .hit:hover {
   background: var(--themeTreeItemHoverBackColor);
 }
@@ -60,6 +65,30 @@
 
 #helpResults .none {
   padding: 2px 8px;
+  opacity: 0.7;
+}
+
+/* A name the documentation has no page for: its declaration, description and
+   where it is declared, from the compiler's hover. */
+#helpSummary {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 12px;
+}
+
+#helpSummary .declaration {
+  margin: 0 0 10px;
+  font-family: Consolas, "Courier New", monospace;
+  white-space: pre-wrap;
+}
+
+#helpSummary .description {
+  margin: 0 0 10px;
+}
+
+#helpSummary .none,
+#helpSummary .where {
   opacity: 0.7;
 }
 

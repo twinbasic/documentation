@@ -1,0 +1,7 @@
+' A class of the project's own, which the compiler's hover places "in library
+' HelpHost": F1 on it shows its description, not a page.
+[Description("A gadget of the project's own.")]
+Class Gadget
+    Public Sub Spin()
+    End Sub
+End Class

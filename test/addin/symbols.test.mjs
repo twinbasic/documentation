@@ -55,6 +55,26 @@ const hover = async (c, text, word) =>
 const definition = (c, text, word) =>
   lsp(c, "textDocument/definition", { textDocument: doc, position: at(text, word) });
 
+// P15: the names of Described.twin, asked about without opening it, since hover
+// takes any file of the project.
+const DESCRIBED = readFileSync(path.join(PROJECT, "Sources", "Described.twin"), "utf8").split(/\r?\n/);
+function atDescribed(text, word) {
+  const line = DESCRIBED.findIndex((s) => s.includes(text));
+  assert.ok(line >= 0, `no line of Described.twin holds ${JSON.stringify(text)}`);
+  const re = new RegExp(`\\b${word}\\b`, "g");
+  re.lastIndex = DESCRIBED[line].indexOf(text);
+  const i = re.exec(DESCRIBED[line])?.index;
+  assert.ok(i !== undefined, `no ${word} in ${JSON.stringify(text)}`);
+  return { line, character: i + Math.floor(word.length / 2) };
+}
+const hoverDescribed = async (c, text, word) =>
+  (
+    await lsp(c, "textDocument/hover", {
+      textDocument: { uri: "twinbasic:/SymbolsProbe/Sources/Described.twin" },
+      position: atDescribed(text, word),
+    })
+  )?.contents.value ?? null;
+
 // The heading a procedure's documentation starts with names where it is
 // declared: "## **MsgBox** &nbsp; ... `in VBA.Interaction`".
 const declaredIn = (markdown) => /^## \*\*\w+\$?\*\*[^`\r\n]*`in ([\w.]+)`/m.exec(markdown ?? "")?.[1] ?? null;
@@ -261,5 +281,54 @@ scenario("P5: what the compiler says about the name under the cursor", (lane) =>
     // The same file as the definition's, without "twinbasic:", on the same line.
     assert.equal(`twinbasic:${r.uri}`, d.uri);
     assert.equal(r.line, d.range.start.line);
+  });
+
+  // P15. The help add-in shows this text for a name the documentation has no
+  // page for (ReadSummary in add-in/Sources/Declared.twin).
+  test("hover gives a name's [Description] after where it is declared, whatever kind of name it is", async () => {
+    const cases = [
+      ["Debug.Print AddTwo", "AddTwo", "SymbolsProbe.Described", "Adds two numbers and returns the sum."],
+      ["AddTwo(1, 2), WidgetCount", "WidgetCount", "SymbolsProbe.Described", "The number of widgets."],
+      ["WidgetCount, Counter", "Counter", "SymbolsProbe.Described", "The module's counter."],
+      ["Debug.Print Shade.Light", "Shade", "component SymbolsProbe.Described", "A colour."],
+      ["Dim p As Point", "Point", "component SymbolsProbe.Described", "A point."],
+      ["Dim w As New Widget", "Widget", "library SymbolsProbe", "A widget class."],
+      ["w.Resize", "Resize", "SymbolsProbe._Widget", "Changes the widget's size."],
+      ["Module Described", "Described", "library SymbolsProbe", "A module that holds the probe's procedures."],
+    ];
+    for (const [text, word, where, description] of cases) {
+      const h = await hoverDescribed(c, text, word);
+      assert.equal(whereIn(h), where, `${word} in ${text}: ${JSON.stringify(h)}`);
+      const after = h.slice(h.indexOf(`\`in ${where}\``));
+      assert.ok(after.includes(description), `${word} in ${text}: ${JSON.stringify(h)}`);
+    }
+  });
+
+  test("hover gives a type library's help string as a [Description]", async () => {
+    const h = await hoverDescribed(c, "d.Add", "Add");
+    assert.equal(declaredIn(h), "Scripting.IDictionary", JSON.stringify(h));
+    assert.match(h, /`in Scripting\.IDictionary`\s+Add a new key and item to the dictionary\.$/, JSON.stringify(h));
+  });
+
+  test("hover on a procedure with no [Description] gives the IDE's tip in its place", async () => {
+    const h = await hoverDescribed(c, "Counter, NoDescription", "NoDescription");
+    assert.equal(declaredIn(h), "SymbolsProbe.Described", JSON.stringify(h));
+    assert.match(h, /\n\*no further info available\. .*\[Description\(""\)\].*\*$/, JSON.stringify(h));
+  });
+
+  test("hover on a procedure's own name where it is declared gives code-generation details instead", async () => {
+    const h = await hoverDescribed(c, "Public Function AddTwo", "AddTwo");
+    assert.match(h, /TB-DEBUG CODEGEN SIZE/, JSON.stringify(h));
+    assert.equal(whereIn(h), null, JSON.stringify(h));
+  });
+
+  // The defect in BUGS-TO-REPORT.md, enum-member-description-hover. When it is
+  // fixed this fails: retire the entry, and make this test say what is right.
+  test("a [Description] on an enumeration's member is listed as a member of the enumeration, and not shown on the member", async () => {
+    const shade = await hoverDescribed(c, "Debug.Print Shade.Light", "Shade");
+    assert.match(shade, /\n - Description\("The light one\."\)/, JSON.stringify(shade));
+    const light = await hoverDescribed(c, "Shade.Light, p.X", "Light");
+    assert.equal(whereIn(light), "SymbolsProbe.Described.Shade", JSON.stringify(light));
+    assert.ok(!light.includes("The light one."), JSON.stringify(light));
   });
 });

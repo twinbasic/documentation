@@ -19,6 +19,15 @@
 			"versionMinor": 0
 		},
 		{
+			"id": "{420B2830-E718-11CF-893D-00A0C9054228}",
+			"lcid": 0,
+			"name": "Microsoft Scripting Runtime",
+			"path32": "C:\\Windows\\SysWOW64\\scrrun.dll",
+			"path64": "C:\\Windows\\System32\\scrrun.dll",
+			"versionMajor": 1,
+			"versionMinor": 0
+		},
+		{
 			"id": "{99DEC38C-75F6-4488-8EE7-2D52D83881D2}",
 			"isCompilerPackage": true,
 			"licence": "MIT",

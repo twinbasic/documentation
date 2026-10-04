@@ -23,6 +23,16 @@ Module Cases
     End Sub
 
     ' The project's own Beep, in place of VBA's.
+    [Description("Sounds the project's own tone.")]
     Public Sub Beep()
+    End Sub
+
+    Public Function Plain() As Long
+        Return 1
+    End Function
+
+    Public Sub Own()
+        Dim g As New Gadget
+        Debug.Print Plain(), g Is Nothing
     End Sub
 End Module

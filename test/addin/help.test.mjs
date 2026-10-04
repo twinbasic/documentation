@@ -74,6 +74,31 @@ const themeGroup = (c) =>
 const focusedId = (c) => inPane(c, "return root.activeElement?.id ?? null;");
 const searchValue = (c) => inPane(c, `return root.querySelector("#helpSearch")?.value ?? null;`);
 const results = async (c) => (await listViewItems(c, { toolWindow: PANE, css: "#helpResults" })).map((i) => i.text);
+// What shows in place of the page for a name with none: null while the page shows.
+const summary = (c) =>
+  inPane(
+    c,
+    `const s = root.querySelector("#helpSummary");
+  if (!s || s.style.display === "none") return null;
+  const text = (css) => s.querySelector(css)?.textContent ?? null;
+  return {
+    declaration: text(".declaration"),
+    description: text(".description"),
+    where: text(".where"),
+    frameHidden: root.querySelector("#helpPage").style.display === "none",
+    browserDisabled: root.querySelector("#helpBrowser").disabled,
+  };`,
+  );
+// Whether the frame shows, rather than a summary, with Open in browser enabled.
+const pageState = (c) =>
+  inPane(
+    c,
+    `return {
+    summary: root.querySelector("#helpSummary")?.style.display ?? null,
+    frame: root.querySelector("#helpPage")?.style.display ?? null,
+    browserDisabled: root.querySelector("#helpBrowser")?.disabled ?? null,
+  };`,
+  );
 
 async function at(c, line, column) {
   await setCursor(c, line, column);
@@ -95,22 +120,30 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
 
   // The frame shows `url` from the built site in the IDE's theme: the add-in
   // gave it that src with ?theme=, the page it loaded is the build's, not a
-  // 404, and the page applied the theme.
-  async function showsPage(url) {
+  // 404, and the page applied the theme. With `fresh`, the page is a new
+  // document: not the one markFrame marked.
+  async function showsPage(url, { fresh = false } = {}) {
     const group = await themeGroup(c);
     const [pagePath, fragment] = url.split("#");
     const want = `${origin}${pagePath}?theme=${group}${fragment ? `#${fragment}` : ""}`;
+    // The frame can have this src already, hidden behind a summary, so the
+    // page showing again is waited for too.
+    const shown = { summary: "none", frame: "", browserDisabled: false };
     const src = await waitFor(c, async (c) => {
       const s = await frameSrc(c);
-      return s === want && s;
+      return s === want && JSON.stringify(await pageState(c)) === JSON.stringify(shown) && s;
     });
     assert.equal(src ?? (await frameSrc(c)), want, "the frame's src");
     assert.ok((await toolWindow(c, PANE))?.visible, "the pane is not showing");
+    assert.deepEqual(await pageState(c), shown);
     const loaded = await waitFor(c, async (c) => {
       const f = await frameOf(c, origin);
       const loadedUrl = `${origin}${pagePath.replace(/\/$/, "")}?theme=${group}`;
       if (!f || f.url.replace(/\/\?/, "?") !== loadedUrl) return false;
-      return (await frameEval(c, origin, "document.readyState")) === "complete";
+      // A src set to the URL the frame already has reloads it, and a question
+      // put to the page being replaced fails: that is not loaded yet.
+      const ready = `document.readyState === "complete"${fresh ? " && !window.tbDocsTestMark" : ""}`;
+      return (await frameEval(c, origin, ready).catch(() => false)) === true;
     });
     assert.ok(loaded, `the frame did not load ${want}: ${JSON.stringify(await frameOf(c, origin))}`);
     if (fragment) assert.equal((await frameOf(c, origin)).urlFragment, `#${fragment}`);
@@ -123,11 +156,32 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     );
   }
 
+  // Marks the page the frame shows now, so that showsPage can tell a page F1
+  // loaded from it: F1 on the name whose page shows already loads it again,
+  // and the page before the reload looks loaded until the reload begins.
+  const markFrame = () => frameEval(c, origin, "window.tbDocsTestMark = true").catch(() => {});
+
+  // Press F1 at line:column, and expect `want` in place of the page, the frame
+  // hidden, Open in browser disabled, and nothing printed.
+  async function f1Summary(line, column, want) {
+    await at(c, line, column);
+    const mark = await consoleMark(c);
+    await pressKey(c, "F1");
+    const got = await waitFor(c, async (c) => {
+      const s = await summary(c);
+      return s?.declaration === want.declaration && s;
+    });
+    assert.deepEqual(got || (await summary(c)), { ...want, frameHidden: true, browserDisabled: true });
+    assert.ok((await toolWindow(c, PANE))?.visible, "the pane is not showing");
+    assert.deepEqual(await addinLines(c, mark), [], "the add-in printed something");
+  }
+
   // Press F1 (or run `act`), and expect `url` in the pane and nothing printed.
   async function f1Shows(url, act = () => pressKey(c, "F1")) {
     const mark = await consoleMark(c);
+    await markFrame();
     await act();
-    await showsPage(url);
+    await showsPage(url, { fresh: true });
     assert.deepEqual(await addinLines(c, mark), [], "the add-in printed something");
   }
 
@@ -214,16 +268,42 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.equal(await waitFor(c, async (c) => (await focusedId(c)) === "helpSearch" && "helpSearch"), "helpSearch");
   });
 
-  test("a name the project declares has no help, though a package has a page for it", async () => {
+  // P15: the compiler's hover gives a name's [Description]. A name declared
+  // where the documentation has no page shows that in place of the page.
+  test("a name the project declares shows its declaration and description, though a package has a page for it", async () => {
     // Cases.Beep, not VBA.Interaction.Beep.
-    const was = await frameSrc(c);
-    await at(c, 18, 10);
+    await f1Summary(18, 10, {
+      declaration: "Sub Beep ( )",
+      description: "Sounds the project's own tone.",
+      where: "Declared in HelpHost.Cases",
+    });
+  });
+
+  test("a procedure of the project with no [Description] shows its declaration", async () => {
+    await f1Summary(36, 22, {
+      declaration: "Function Plain ( ) As Long",
+      description: "No description.",
+      where: "Declared in HelpHost.Cases",
+    });
+  });
+
+  test("a class of the project shows its description, without its members", async () => {
+    await f1Summary(35, 24, {
+      declaration: "class Gadget",
+      description: "A gadget of the project's own.",
+      where: "Declared in HelpHost",
+    });
+  });
+
+  test("F1 on a procedure's own name where it is declared says so, and leaves the pane", async () => {
+    const was = await summary(c);
+    await at(c, 27, 17);
     await pressKey(c, "F1");
-    const text = "No help for 'Beep': it is declared in HelpHost.Cases";
+    const text = "No help for 'Beep': it is declared here";
     const shown = await waitFor(c, async (c) => (await notifications(c)).find((t) => t.trim() === text));
     assert.ok(shown, `notifications: ${JSON.stringify(await notifications(c))}`);
     await sleep(300);
-    assert.equal(await frameSrc(c), was);
+    assert.deepEqual(await summary(c), was);
   });
 
   test("a member of a late-bound object lists its pages, and a click shows one", async () => {

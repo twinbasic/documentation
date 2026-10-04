@@ -1,0 +1,51 @@
+' P15 in WIP.HelpAddin.md: what hover gives for names that carry a
+' [Description], for one that does not, and for members of a COM type library
+' with help strings (Scripting). symbols.test.mjs asks about each name where
+' UseThem uses it. Nothing builds or runs it.
+[Description("A module that holds the probe's procedures.")]
+Module Described
+    [Description("The number of widgets.")]
+    Public Const WidgetCount As Long = 3
+
+    [Description("The module's counter.")]
+    Public Counter As Long
+
+    [Description("Adds two numbers and returns the sum.")]
+    Public Function AddTwo(ByVal a As Long, ByVal b As Long) As Long
+        Return a + b
+    End Function
+
+    Public Function NoDescription() As Long
+        Return 1
+    End Function
+
+    [Description("A colour.")]
+    Public Enum Shade
+        [Description("The light one.")]
+        Light = 1
+        Dark = 2
+    End Enum
+
+    [Description("A point.")]
+    Public Type Point
+        X As Long
+        Y As Long
+    End Type
+
+    Public Sub UseThem()
+        Dim p As Point
+        Dim w As New Widget
+        Debug.Print AddTwo(1, 2), WidgetCount, Counter, NoDescription()
+        Debug.Print Shade.Light, p.X
+        w.Resize 3
+        Dim d As New Scripting.Dictionary
+        d.Add "k", 1
+    End Sub
+End Module
+
+[Description("A widget class.")]
+Class Widget
+    [Description("Changes the widget's size.")]
+    Public Sub Resize(ByVal n As Long)
+    End Sub
+End Class

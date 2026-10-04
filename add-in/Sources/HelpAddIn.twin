@@ -17,6 +17,8 @@ Private Class HelpAddIn
     Private ResultsElement As HtmlElement
     Private Results As Object               ' the list view widget
     Private Frame As HtmlElement
+    Private Summary As HtmlElement          ' shown in place of the frame (ShowSummary)
+    Private BrowserButton As HtmlElement
     Private ResultIds As Collection         ' the index entries in Results
     Private LastSearch As String
     Private PageUrl As String               ' the site path the frame was given
@@ -112,10 +114,9 @@ Private Class HelpAddIn
                     SearchBox.Properties.type = "search"
                     SearchBox.Properties.placeholder = "Search the documentation"
                     SearchBox.AddEventListener("keyup", AddressOf SearchKeyUp)
-                    With .ChildDomElements.Add("helpBrowser", "button")
-                        .Properties.innerText = "Open in browser"
-                        .AddEventListener("click", AddressOf BrowserClicked)
-                    End With
+                    Set BrowserButton = .ChildDomElements.Add("helpBrowser", "button")
+                    BrowserButton.Properties.innerText = "Open in browser"
+                    BrowserButton.AddEventListener("click", AddressOf BrowserClicked)
                 End With
                 Set ResultsElement = .ChildDomElements.Add("helpResults", "listview")
                 Set Results = ResultsElement.Properties.listview
@@ -123,6 +124,8 @@ Private Class HelpAddIn
                 Results.setShowScrollbarH(False)
                 Results.AddEventListener("onPick", AddressOf ResultPicked)
                 ResultsElement.Properties.style.display = "none"
+                Set Summary = .ChildDomElements.Add("helpSummary", "div")
+                Summary.Properties.style.display = "none"
                 Set Frame = .ChildDomElements.Add("helpPage", "iframe")
                 Set HoverSink = .ChildDomElements.Add("helpAsk", "div")
                 HoverSink.Properties.style.display = "none"
@@ -194,15 +197,19 @@ Private Class HelpAddIn
     ' Shows the page for word, or the choice of its pages. hover is the
     ' compiler's hover for it, or "": when hover names a package the index
     ' documents, only that package's entries count, and when it also names
-    ' word itself, only those declared where it says. A name declared in any
-    ' other package, the project's own included, has no help.
+    ' word itself, only those declared where it says. A name declared anywhere
+    ' else --- the project, another package, a type library --- has no page: the
+    ' pane shows its declaration and description instead (ShowSummary).
     Private Sub LookUp(ByVal word As String, ByVal hover As String)
         Dim ids As Collection
         Dim name As String, package As String, container As String
+        If AtDeclaration(hover) Then
+            Host.ShowNotification "No help for '" & word & "': it is declared here"
+            Exit Sub
+        End If
         If ReadHover(hover, name, package, container) Then
             If Not Index.Documents(package) Then
-                Host.ShowNotification "No help for '" & word & "': it is declared in " & package & _
-                    IIf(Len(container) > 0, "." & container, "")
+                ShowSummary hover
                 Exit Sub
             End If
             If SameName(name, LastSegment(word)) Then Set ids = Index.FindDeclared(name, package, container)
@@ -243,8 +250,28 @@ Private Class HelpAddIn
     Private Sub ShowPage(ByVal url As String)
         PageUrl = url
         Frame.Properties.src = FrameUrl(url)
+        Summary.Properties.style.display = "none"
+        Frame.Properties.style.display = ""
+        BrowserButton.Properties.disabled = False
         Pane.Visible = True
         SaveSetting SETTINGS_APP, "Pane", "Page", url
+    End Sub
+
+    ' Shows what the compiler's hover says about a name the documentation has
+    ' no page for, in place of the page: the declaration, its [Description] or
+    ' a type library's help string, and where it is declared. Open in browser
+    ' has no page to open meanwhile. The saved page stays, for after a restart.
+    Private Sub ShowSummary(ByVal hover As String)
+        Dim declaration As String, description As String, where As String
+        ReadSummary hover, declaration, description, where
+        Summary.Properties.innerHTML = "<pre class='declaration'>" & HtmlText(declaration) & "</pre>" & _
+            IIf(Len(description) > 0, "<p class='description'>" & HtmlText(description) & "</p>", _
+                "<p class='description none'>No description.</p>") & _
+            IIf(Len(where) > 0, "<p class='where'>Declared in " & HtmlText(where) & "</p>", "")
+        Frame.Properties.style.display = "none"
+        Summary.Properties.style.display = ""
+        BrowserButton.Properties.disabled = True
+        Pane.Visible = True
     End Sub
 
     ' Fills the list with the entries ids, or hides it when there is no search.

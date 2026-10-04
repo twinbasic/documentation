@@ -7,9 +7,12 @@
 '   an enumeration:         *enum* **VbMsgBoxStyle** ... `in component VBA.Constants`
 '   an enumeration's value: *enum-value* **vbOKOnly** ... `in VBA.Constants.VbMsgBoxStyle`
 '   a constant:             *constant* **vbCrLf As String** = ... `in VBA.Constants`
+'   a class or module of the project, or of a type library:
+'                           *class* **Widget** ... `in library DescProbe`
 '
-' A variable, a statement, a data type or a late-bound member gives none of
-' them, and nor does an empty answer.
+' A local variable, a statement, a data type or a late-bound member gives none
+' of them, and nor does an empty answer. Each form also gives the name's
+' [Description], or a type library's help string, which ReadSummary reads (P15).
 Module Declared
     ' Reads hover into the declared name, its package (the project name, as in
     ' "cefPackage") and its container (a module, an interface, an enumeration,
@@ -34,7 +37,7 @@ Module Declared
         Dim q As Long = InStr(p + 4, hover, "`")
         If q = 0 Then Return False
         Dim where As String = Mid$(hover, p + 4, q - p - 4)
-        If Left$(where, 8) = "package " Then
+        If Left$(where, 8) = "package " Or Left$(where, 8) = "library " Then
             package = Mid$(where, 9)
             Return Len(package) > 0 And InStr(package, ".") = 0
         End If
@@ -44,6 +47,84 @@ Module Declared
         package = parts(0)
         container = parts(UBound(parts))
         Return Len(package) > 0 And Len(container) > 0
+    End Function
+
+    ' Whether hover is the IDE's answer for a procedure's name where it is
+    ' declared: a block of code-generation details rather than the forms above.
+    Public Function AtDeclaration(ByVal hover As String) As Boolean
+        Return InStr(hover, "TB-DEBUG CODEGEN") > 0
+    End Function
+
+    ' Reads hover into what the help pane shows for a name the index does not
+    ' document: its declaration, its description, and where it is declared.
+    ' The declaration is the first line, or the lines before "___" for a
+    ' procedure or member; the description is the text after it, up to a list
+    ' such as **contains**, without the `in ...` line or a class's instance
+    ' size. The IDE's tip for a procedure with no [Description] gives "".
+    Public Sub ReadSummary(ByVal hover As String, ByRef declaration As String, ByRef description As String, _
+                           ByRef where As String)
+        declaration = ""
+        description = ""
+        where = ""
+        Dim lines() As String = Split(Replace(hover, vbCrLf, vbLf), vbLf)
+        Dim i As Long = 0
+        If Left$(LTrim$(lines(0)), 1) = "*" Then
+            declaration = Emphasis(WithoutWhere(lines(0)))
+            i = 1
+        Else
+            Do While i <= UBound(lines)
+                If Trim$(lines(i)) = "___" Then Exit Do
+                declaration = declaration & " " & lines(i)
+                i = i + 1
+            Loop
+        End If
+        declaration = Spaces(declaration)
+
+        Dim t As String
+        For i = i To UBound(lines)
+            t = Trim$(Replace(lines(i), "&nbsp;", " "))
+            If Left$(t, 2) = "**" Then Exit For
+            If Len(t) > 0 And t <> "___" And Left$(t, 1) <> "#" And Left$(t, 1) <> ">" And _
+               Left$(t, 14) <> "Instance Size:" Then
+                description = description & IIf(Len(description) > 0, " ", "") & t
+            End If
+        Next
+        If Left$(description, 26) = "*no further info available" Then description = ""
+
+        Dim p As Long = InStr(hover, "`in ")
+        If p > 0 Then
+            Dim q As Long = InStr(p + 4, hover, "`")
+            If q > 0 Then where = Mid$(hover, p + 4, q - p - 4)
+        End If
+        If Left$(where, 8) = "package " Or Left$(where, 8) = "library " Then where = Mid$(where, 9)
+        If Left$(where, 10) = "component " Then where = Mid$(where, 11)
+    End Sub
+
+    ' The line without its `in ...` code span.
+    Private Function WithoutWhere(ByVal line As String) As String
+        Dim p As Long = InStr(line, "`in ")
+        If p = 0 Then Return line
+        Dim q As Long = InStr(p + 4, line, "`")
+        If q = 0 Then Return Left$(line, p - 1)
+        Return Left$(line, p - 1) & Mid$(line, q + 1)
+    End Function
+
+    ' "*kind* **Name As Type**" as "kind Name As Type". Only the markup the
+    ' form puts there goes: a declaration such as String * 10 keeps its star.
+    Private Function Emphasis(ByVal line As String) As String
+        line = Replace(Trim$(line), "**", "")
+        If Left$(line, 1) <> "*" Then Return line
+        Dim q As Long = InStr(2, line, "*")
+        If q = 0 Then Return Mid$(line, 2)
+        Return Mid$(line, 2, q - 2) & Mid$(line, q + 1)
+    End Function
+
+    Private Function Spaces(ByVal text As String) As String
+        text = Replace(text, "&nbsp;", " ")
+        Do While InStr(text, "  ") > 0
+            text = Replace(text, "  ", " ")
+        Loop
+        Return Trim$(text)
     End Function
 
     ' Whether the hover's name is the name written: case is ignored, and so is
