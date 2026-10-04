@@ -652,7 +652,7 @@ Syntax: *object*.**PopUpMenu** *Menu* [, *Flags* [, *X* [, *Y* [, *DefaultMenu* 
 {: .no_toc }
 
 > [!NOTE]
-> Reserved for compatibility with VB6; not currently implemented in twinBASIC. In VB6 this returns the **OLE_COLOR** of a single pixel of the drawing surface.
+> Not implemented in twinBASIC: **Point** returns 0 whatever the pixel, and the compiler gives warning TB0009 at each call. In VB6 it returns the **OLE_COLOR** of a single pixel of the drawing surface, or -1 for a point outside it. To read a pixel, call the Windows **GetPixel** function on the [**hDC**](#hdc), with the coordinates in pixels.
 
 Syntax: *object*.**Point**( *X*, *Y* )
 
