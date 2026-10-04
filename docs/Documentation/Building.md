@@ -77,6 +77,7 @@ Each `.bat` opens with `@pushd "%~dp0"`, which is what lets it be invoked from a
       && node --test test/strftime.test.mjs \
       && node --test test/png.test.mjs \
       && node --test test/example-batches.test.mjs \
+      && node --test test/ports.test.mjs \
       && node scripts/check_regex_safety.mjs \
       && node scripts/check_code_regions.mjs \
       && node scripts/check_page_baseline.mjs \
