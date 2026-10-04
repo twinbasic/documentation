@@ -11,12 +11,12 @@
 // Run it with ide-test.bat, which gives it a lane; on its own it is skipped.
 
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
+import { launchOnDesktop } from "../../scripts/lib/tb-ide.mjs";
 import { compilerExe } from "../../scripts/lib/tb-install.mjs";
 import { messageBoxes, waitFor } from "../../scripts/lib/tb-operate.mjs";
 import { scenario } from "../addin/scenario.mjs";
@@ -106,14 +106,33 @@ scenario("Export Project", (lane) => {
     assert.deepEqual(boxes, []);
   });
 
-  test("the command line's import refuses the IDE's export, for its compiler packages", () => {
+  // On a private desktop, as every program a test starts: a plain spawn of the
+  // compiler executable would show on the user's.
+  test("the command line's import refuses the IDE's export, for its compiler packages", async () => {
     const out = path.join(root, "plain");
     const packed = path.join(root, "repacked.twinproj");
-    const r = spawnSync(compilerExe(lane.copy()), ["import", packed, `${out}\\`, "--overwrite"], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
+    const run = await launchOnDesktop({
+      exe: compilerExe(lane.copy()),
+      args: ["import", packed, `${out}\\`, "--overwrite"],
+      desktop: `ide-test-cli-${lane.port}`,
+      env: process.env,
+      stdout: path.join(root, "import.out"),
+      stderr: path.join(root, "import.err"),
+      dialogs: "close",
     });
-    assert.equal(r.status, 999);
+    let timer;
+    const timedOut = await Promise.race([
+      run.exited.then(() => false),
+      new Promise((r) => {
+        timer = setTimeout(() => r(true), 60 * 1000);
+      }),
+    ]);
+    clearTimeout(timer);
+    if (timedOut) run.launcher.kill();
+    const { code, dialogs } = await run.finished;
+    assert.equal(timedOut, false, "the import ran past 60 s");
+    assert.deepEqual(dialogs, []);
+    assert.equal(code, 999);
     assert.equal(existsSync(packed), false);
   });
 

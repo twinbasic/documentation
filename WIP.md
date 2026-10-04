@@ -144,6 +144,7 @@ addin-test.bat --only sample15     # one lane; --port N moves where the lanes' p
 
 - **Never build or copy a test add-in into the real install's `addins\`, or into `%APPDATA%\twinBASIC\addins\`.** Either way it loads into the user's own IDE (measured for the second). A test add-in goes only into a lane's own folders: its copy of the install, where `addAddin` refuses anywhere else, or the `APPDATA` the lane gives every IDE it starts. That private `APPDATA` is also what keeps the user's own add-ins out of the test IDEs; never start a lane IDE without it.
 - **A test never opens a real browser.** Every IDE the harness starts has `TB_ADDIN_TEST=1`, and an add-in under test prints `open <url>` to the DEBUG CONSOLE instead. Never start a test IDE with the variable removed unless its add-in opens nothing either way.
+- **A test never starts a program on the user's desktop.** An IDE goes through `launchIde`, and any other executable --- the compiler's command line included --- through `launchOnDesktop` (`scripts/lib/tb-ide.mjs`), which puts it on a private desktop and closes any dialog it opens. A plain `spawn` or `spawnSync` of a twinBASIC executable shows on the user's desktop. Only `try-help-addin` shows an IDE, and only the one it opens the project in.
 - **Name in `lanes.mjs` every application an add-in under test passes to `SaveSetting`**, or its settings stay changed after the run: `SaveSetting` writes the key the user's own copy of the add-in reads.
 
 **Testing the IDE itself** (the debugger, Export Project, the Packages dialog) is
