@@ -8,14 +8,14 @@ permalink: /Documentation/Development/Tools
 # Tools and Scripts
 {: .no_toc }
 
-One-line-per-tool reference for every executable in the documentation repository: the eight Windows batch wrappers at the repository root, the Node and Python scripts under `scripts/` (cross-platform except for [`tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE), the `tbdocs` orchestrator and its CLI flags, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper. Every Node tool answers `--help` or `-h` by printing its usage to standard output and exiting 0, without doing any of its work. A command line a tool cannot use is refused the same way by every Node tool: an unknown flag, a flag without its value or with an empty one, and an unexpected argument are reported on standard error and exit **2**. So is a crash. So is a value a tool cannot use, before it does any work: a number that is not one or is out of range (a fraction where a whole number is needed), a regular expression that does not compile, a URL that is not an absolute `http` or `https` one, a date that is not ISO 8601, a value outside a fixed set, and options that exclude each other. A tool that reads its command line through `lib/cli.mjs` and takes search terms, file names or folder names takes one that starts with a dash after `--`.
+One-line-per-tool reference for every executable in the documentation repository: the nine Windows batch wrappers at the repository root, the Node and Python scripts under `scripts/` (cross-platform except for [`tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE), the `tbdocs` orchestrator and its CLI flags, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper. Every Node tool answers `--help` or `-h` by printing its usage to standard output and exiting 0, without doing any of its work. A command line a tool cannot use is refused the same way by every Node tool: an unknown flag, a flag without its value or with an empty one, and an unexpected argument are reported on standard error and exit **2**. So is a crash. So is a value a tool cannot use, before it does any work: a number that is not one or is out of range (a fraction where a whole number is needed), a regular expression that does not compile, a URL that is not an absolute `http` or `https` one, a date that is not ISO 8601, a value outside a fixed set, and options that exclude each other. A tool that reads its command line through `lib/cli.mjs` and takes search terms, file names or folder names takes one that starts with a dash after `--`.
 
 * TOC goes here
 {:toc}
 ## Batch wrappers at the repository root
 {: #batch-wrappers }
 
-All eight sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. `examples.bat`, `addin-test.bat` and `ide-test.bat` are the exceptions to "each entry below gives the POSIX equivalent": they need a twinBASIC install and drive the IDE, so they are Windows-only, and neither is part of the site build. Four other tools are Windows-specific for the same reason and are likewise not part of it: [`scripts/tbbuild.mjs`](#tbbuild) and [`scripts/tbrun.mjs`](#tbrun), which drive the twinBASIC IDE, and [`census_attributes.mjs`](#census-attributes) and [`build_package_api.mjs`](#build-package-api), which unpack the packages of a twinBASIC install --- though those two are cross-platform when given an already-exported tree with `--exported`. Nothing else in the repository is: `tbdocs` and every gate in both wrappers is a Node script, and CI runs all of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
+All nine sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. `examples.bat`, `addin-test.bat`, `ide-test.bat` and `try-help-addin.bat` are the exceptions to "each entry below gives the POSIX equivalent": they need a twinBASIC install and drive the IDE, so they are Windows-only, and none is part of the site build. Four other tools are Windows-specific for the same reason and are likewise not part of it: [`scripts/tbbuild.mjs`](#tbbuild) and [`scripts/tbrun.mjs`](#tbrun), which drive the twinBASIC IDE, and [`census_attributes.mjs`](#census-attributes) and [`build_package_api.mjs`](#build-package-api), which unpack the packages of a twinBASIC install --- though those two are cross-platform when given an already-exported tree with `--exported`. Nothing else in the repository is: `tbdocs` and every gate in both wrappers is a Node script, and CI runs all of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
 
 ### build.bat
 
@@ -219,6 +219,19 @@ Tests the twinBASIC IDE itself by machine: it opens a project in an IDE, operate
 **It is not one of the gates either**, and for the reasons `examples.bat` is not: it needs a twinBASIC install, and it needs Windows, a private desktop and a CDP-reachable WebView2. It is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows.
 
 Exit codes: those of [`ide_test.mjs`](#ide-test), returned as they are: **0** every lane passed and the registry is as it was found, **1** a lane failed, **2** the harness failed, **3** the registry or a work folder was not put back.
+
+### try-help-addin.bat
+{: #try-help-addinbat }
+
+    try-help-addin.bat [flags]
+
+One invocation of [`try_help_addin.mjs`](#try-help-addin), with every flag passed straight through:
+
+    node scripts/try_help_addin.mjs [flags]
+
+Opens an IDE on your desktop with the help add-in built and loaded, to try it by hand, and puts the registry back once the IDE is closed. **It is not one of the gates**: it needs a twinBASIC install and Windows.
+
+Exit codes: those of [`try_help_addin.mjs`](#try-help-addin), returned as they are: **0** the IDE was closed and the registry is as it was found, **1** the add-in did not build or the project does not compile, **2** the tool could not run, **3** the registry or the work folder was not put back.
 
 ## CLI tools
 
@@ -1215,6 +1228,28 @@ of that tool apply here unchanged: every IDE it starts has a private `APPDATA` a
 `TB_ADDIN_TEST` set to `1`, and an IDE is ended by its process id and never by its image name.
 
 Exit codes: **0** every lane passed, and the registry is as it was found; **1** a lane failed, or the run was interrupted; **2** the harness could not run: a refused command line, no IDE, no matching lane, a registry it could not record, or a crash after which the registry was put back; **3** the registry or a work folder was not put back (see the lines above), at the end of a run or after a crash, which wins over a 1 because the registry is what to repair.
+
+### try_help_addin.mjs
+{: #try-help-addin }
+
+    node scripts/try_help_addin.mjs [--project <dir>] [--port N] [--ide <path>]
+
+Opens an IDE on your own desktop with the help add-in in `add-in/` built and loaded, to try it
+by hand, and waits until the IDE is closed. The IDE is set up as a lane of
+[`addin_test.mjs`](#addin-test) is: the add-in goes into a private copy of the twinBASIC install
+in the temp folder, never into the install's `addins\` or `%APPDATA%\twinBASIC\addins\`, and the
+IDE has a private `APPDATA`, so none of your own add-ins loads into it. `TB_ADDIN_TEST` is `1`,
+so *Open in browser* prints `open <url>` to the Debug Console and starts nothing. The pane's
+pages come from the built site, `docs/_site`, served on `localhost`, so run `build.bat` first.
+Unlike the lanes, the IDE is always on your desktop.
+
+`--project` names the exported project to open, by default `test/addin/helphost`, the help
+lane's host. It is opened as a staged copy, so edits made in the IDE are not kept. `--port` is
+the IDE's DevTools port, 9590 by default. Closing the IDE, or Ctrl+C, puts back the IDE's
+registry entries and the add-in's saved settings (`tbDocsHelp`) as they were found, and deletes
+the copy.
+
+Exit codes: **0** the IDE was closed, and the registry is as it was found; **1** the add-in did not build, or the project does not compile; **2** the tool could not run: a refused command line, no IDE, no built site, a registry it could not record, or a crash; **3** the registry or the work folder was not put back (see the lines above).
 
 ### check_tb_registry.mjs
 {: #check-tb-registry }

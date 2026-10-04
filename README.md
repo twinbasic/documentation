@@ -32,6 +32,7 @@ book.bat        # renders the PDF book; run build.bat first
 examples.bat    # compiles the twinBASIC code samples in the pages (Windows + a twinBASIC install)
 addin-test.bat  # tests IDE add-ins by operating an IDE (Windows + a twinBASIC install)
 ide-test.bat    # tests the IDE itself by operating it (Windows + a twinBASIC install)
+try-help-addin.bat  # opens an IDE with the help add-in, to try it by hand (Windows + a twinBASIC install)
 ```
 
 A clean `build.bat && check.bat` is the bar for "ready to commit"; add `test.bat` when the change touched anything outside `docs/`. Each wrapper names the gates it runs, in order, on [Tools and Scripts](https://docs.twinbasic.com/Documentation/Development/Tools). On Linux or macOS, run the `node` command inside each batch file directly --- they are thin wrappers. `examples.bat`, `addin-test.bat` and `ide-test.bat` are the exceptions to both: they drive the twinBASIC IDE, so they are Windows-only and deliberately outside every gate and outside CI.
