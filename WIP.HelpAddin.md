@@ -6,7 +6,7 @@ tests IDE add-ins by machine, which the add-in is developed against.
 
 **Status: Stages 1 and 2 are done, and Stage 3's index is built** --- `addin-test.bat`
 operates Samples 10 and 15 end to end and leaves the registry as it found it; all fourteen
-of Stage 2's questions are answered, twelve of them by eight probe lanes that fail when a
+of Stage 2's questions are answered, thirteen of them by nine probe lanes that fail when a
 later IDE build behaves differently; and every build publishes `tB/symbols.json`, 5,536
 names at 4,086 URLs, under a drift guard that fails the build when one of its URLs goes.
 Stage 3's embedded mode, a `theme` parameter the site would read, waits until the add-in
@@ -630,12 +630,16 @@ Everything after this stage is developed against it.
    read as one. `PrintText` stores its text escaped (`<b>` as `&lt;b&gt;`), so a URL comes
    back exactly as printed, `&` included.
 
-   **The probe stayed in scratch.** It was thirty lines: `Host_OnProjectLoaded` printing
-   `Environ$("TB_ADDIN_TEST")`, the same through `GetEnvironmentVariableW`, and its own process
-   id. What it measured matters only while the add-in depends on it, and the add-in checks it
-   itself from Stage 4 on (increment 1 below). `add-in/` holds the add-in's tree and nothing
-   else: `stageProject` copies the whole folder it is given and packs the copy, so a probe
-   kept inside it would be packed into the add-in's project.
+   **The probe is a lane.** It was thirty lines in scratch at first (`Host_OnProjectLoaded`
+   printing `Environ$("TB_ADDIN_TEST")`, the same through `GetEnvironmentVariableW`, and its
+   own process id), and nothing guarded the answer although the rule above depends on it.
+   It is now [test/addin/probes/env](test/addin/probes/env) with
+   [env.test.mjs](test/addin/env.test.mjs): the variable reads `1` both ways in the
+   compiler's process, again in the process a restart starts, and unset in an IDE started
+   without it. The add-in checks the variable itself from Stage 4 on (increment 1 below).
+   `add-in/` holds the add-in's tree and nothing else: `stageProject` copies the whole
+   folder it is given and packs the copy, so a probe kept inside it would be packed into
+   the add-in's project.
 7. **A runner.** Scenarios in JavaScript under `node:test`, one IDE per test project, lanes
    by `--port` as today. The add-in's pure twinBASIC logic --- word extraction, lookup --- is
    tested without loading any add-in: a test project holds those modules and a
@@ -695,11 +699,12 @@ offline route, and [appdata.test.mjs](test/addin/appdata.test.mjs) (P6) the lane
 `APPDATA` and the FAQ's answer on where add-ins go. [arch.test.mjs](test/addin/arch.test.mjs)
 (P7) holds up the Add Ins page's account of which folder loads when, and the win64 builds
 `buildAddin` now makes; [reload.test.mjs](test/addin/reload.test.mjs) (P8, P9) the account
-of a compiler restart on the tbIDE package page and the ToolWindows page; and
+of a compiler restart on the tbIDE package page and the ToolWindows page;
 [entry.test.mjs](test/addin/entry.test.mjs) (P14) the entry point's NOTE on the tbIDE
-package page. P9 turned up the shared id `""` of windows given none, and the test of it
+package page; and [env.test.mjs](test/addin/env.test.mjs) (P10) the rule that an add-in under
+test opens nothing, which reads `TB_ADDIN_TEST`. P9 turned up the shared id `""` of windows given none, and the test of it
 went in the panes lane, with the rest of what a tool window does. A probe that settles a
-question once, as P10's did, stays in scratch; so did the two P3 checks that need the
+question once stays in scratch; so did the two P3 checks that need the
 network or a changed WebView2, the live site in the frame and the colour scheme with
 WebView2 preferring light.
 
@@ -714,7 +719,7 @@ WebView2 preferring light.
 | P7 | Which bitness does the compiler start in, and does switching the build target restart it in the other one and load the other `addins` folder? **Answered, BETA 983 and 995: yes, and yes.** The target a project opens in picks the compiler --- win32 when the IDE remembers none, `twinBASIC_win64_noDEP.exe` for a project remembered as win64 --- and each compiler loads the folders of its own bitness alone, the install's and `%APPDATA%`'s. Switching the target of an open project restarts the compiler in the other bitness, and the new one loads the other folders: a 64-bit build of the probe in each win64 folder loaded, and ran 64-bit, once the project was switched to win64, and the 32-bit ones again after a switch back. | building and testing both bitnesses --- `buildAddin` builds either, and a shipped add-in needs both |
 | P8 | Is a loaded add-in DLL locked against being overwritten? **Answered, BETA 983 and 995: yes.** While its IDE runs, overwriting fails (`EBUSY`) and deleting fails (`EPERM`), though renaming works; the hold outlasts the compiler's exit by a few tens of milliseconds. The P9 lane checks all three again. | the rebuild loop --- the DLL is built outside `addins`, and copied in once the IDE has ended, or renamed aside first (P9) |
 | P9 | Does a compiler restart reload add-ins from disk? **Answered, BETA 983 and 995: yes.** A restart --- the restart button, a switch of build target, or the IDE's own after a crash --- removes every add-in's buttons and shortcuts, leaves its windows showing `(currently unavailable)`, kills the old compiler, so that no `Class_Terminate` runs, and starts a compiler that loads whatever file is in the folders then. With the loaded DLL renamed aside, a restart loaded nothing; with a new build put in its place, the next restart loaded it, about a second after the click, and it got its old windows back by their ids. | a rebuild loop without restarting the IDE --- it works: rename aside, copy in, restart |
-| P10 | Does an environment variable set by the harness reach the add-in (`Environ$`)? **Answered, BETA 983: yes**, through the launcher, the IDE and the compiler the IDE starts. With `TB_ADDIN_TEST=1` in `launchIde`'s environment, `Environ$` and `GetEnvironmentVariableW` both returned `1` in the add-in, and a compiler started by the restart button returned it too; left out, both said it was unset. `WEBVIEW2_USER_DATA_FOLDER`, which `launchIde` always sets, arrived with the lane's port in it. | the side-effect switch |
+| P10 | Does an environment variable set by the harness reach the add-in (`Environ$`)? **Answered, BETA 983 and 995: yes**, through the launcher, the IDE and the compiler the IDE starts. With `TB_ADDIN_TEST=1` in `launchIde`'s environment, `Environ$` and `GetEnvironmentVariableW` both returned `1` in the add-in, whose process id was the compiler's, and a compiler started by the restart button, a new process, returned it too; left out, `Environ$` was empty and the Win32 call said unset. Held by [test/addin/env.test.mjs](test/addin/env.test.mjs). `WEBVIEW2_USER_DATA_FOLDER`, which `launchIde` always sets, arrived with the lane's port in it. | the side-effect switch |
 | P11 | Does the IDE write into its own install folder during a session? **Answered, BETA 983 and 995: no.** On 983 a compile, a compiler crash and a `tbrun` build-and-run left all 233 files byte-identical, mtimes included. On 995 the install (235 files) was byte-identical after exports, a `tbbuild` and two `tbrun` runs; `%APPDATA%` was not re-checked. | hardlinks or copies --- copies, for safety, at 380 ms |
 | P12 | Does `raiseEvent` from plain tool-window HTML throw? **Answered, BETA 983 and 995: yes** --- `TypeError: Cannot read properties of null (reading 'rootEventHandler')`, and the listener is not called. An inline handler that calls the listener `AddEventListener` stored on its parent, `this.parentNode.<name>(event)`, reaches the add-in. | how the pane's events are written |
 | P13 | Does the compiler's HTTP server serve any file placed under `ide\`? **Answered, BETA 983 and 995: yes**, and it is the page server, `twinBASIC_win32.exe --ide=<pid>`, not the compiler. Any file, byte for byte, below the page's own path, including one written after the IDE started; a frame with a relative `src` shows it on the IDE page's own origin. A query string makes a 404, and `.html` has no `Content-Type`. | an offline route --- it exists ([Offline](#ways-to-show-a-page)) |

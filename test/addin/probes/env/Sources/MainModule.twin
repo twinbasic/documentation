@@ -1,0 +1,47 @@
+' P10 in WIP.HelpAddin.md: does the environment variable the harness sets reach
+' an add-in? env.test.mjs builds this add-in into the copy of the install its
+' lane makes. When it loads it prints one line to the DEBUG CONSOLE: the value of
+' TB_ADDIN_TEST as Environ$ reads it, as GetEnvironmentVariableW reads it
+' ("(unset)" when the variable is not there), and the id of the process the
+' add-in runs in, which is the compiler's. Every line it prints starts
+' "[EnvProbe]". It does nothing else, and opens nothing.
+Module MainModule
+    Private Declare PtrSafe Function GetCurrentProcessId Lib "kernel32" () As Long
+    Private Declare PtrSafe Function GetEnvironmentVariableW Lib "kernel32" (ByVal lpName As LongPtr, _
+        ByVal lpBuffer As LongPtr, ByVal nSize As Long) As Long
+
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New EnvProbeAddin(Host)
+    End Function
+
+    ' The variable as the Win32 API reads it, or "(unset)".
+    Public Function Win32Value(ByVal name As String) As String
+        Dim buf As String = String$(256, vbNullChar)
+        Dim n As Long = GetEnvironmentVariableW(StrPtr(name), StrPtr(buf), 256)
+        If n = 0 Or n > 255 Then Return "(unset)"
+        Return Left$(buf, n)
+    End Function
+
+    Public Function ProcessId() As Long
+        Return GetCurrentProcessId()
+    End Function
+End Module
+
+Private Class EnvProbeAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "EnvProbe AddIn"
+    End Property
+
+    Private Sub Host_OnProjectLoaded()
+        Host.DebugConsole.PrintText "[EnvProbe] Environ=" & Environ$("TB_ADDIN_TEST") & _
+            " GetEnvironmentVariableW=" & Win32Value("TB_ADDIN_TEST") & " pid=" & ProcessId()
+    End Sub
+End Class

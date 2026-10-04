@@ -1226,9 +1226,15 @@ anybody watches. A caller can still set the variable otherwise, or leave it out 
 `undefined` as its value: Node leaves such a variable out of a child's environment even
 when its own environment has it (measured).
 
-**Measured on BETA 983 (P10 in WIP.HelpAddin.md):** a probe add-in printed the variable
-from `Host_OnProjectLoaded`. Through `launchIde` it read `1`, from `Environ$` and from
-`GetEnvironmentVariableW` alike, and with the variable left out both said it was unset. The
+**Measured on BETA 983 and 995 (P10 in WIP.HelpAddin.md), and held by
+[test/addin/env.test.mjs](test/addin/env.test.mjs):** the EnvProbe add-in
+([probes/env](test/addin/probes/env)) prints the variable from `Host_OnProjectLoaded`.
+Through `launchIde` it read `1`, from `Environ$` and from
+`GetEnvironmentVariableW` alike, and with the variable left out (`env: { TB_ADDIN_TEST:
+undefined }` to `Lane.open`, after `closeProject`) `Environ$` was empty and the Win32 call
+said unset. The lane asserts all of that, and that the process id the add-in read is
+`compilerPid`'s, that a restart prints from a different process, and that it reads `1`
+again. The
 path it travels: `tb-launch.ps1` calls `CreateProcess` with no environment block of its own,
 so the IDE inherits the launcher's; the IDE starts the compiler, `twinBASIC_win32_noDEP.exe`,
 as a direct child; and the add-in runs inside the compiler's process --- the process id it
@@ -1400,6 +1406,19 @@ probe lanes:
   name, `_v2`, `_v3` as built, and `_v4`, none longer than the original, with NULs after
   it. The export table has one name, so its sorted order, which `GetProcAddress`
   searches, cannot change.
+- [test/addin/env.test.mjs](test/addin/env.test.mjs), P10: it builds the EnvProbe add-in
+  from [test/addin/probes/env](test/addin/probes/env), which prints one line as the project
+  loads: `Environ$("TB_ADDIN_TEST")`, the same through `GetEnvironmentVariableW` (`(unset)`
+  when absent) and its process id. The first test asserts `1` twice and that the id is the
+  compiler's; the second restarts the compiler with `Lane.restartCompiler` and asserts `1`
+  twice and a different id; the third is the control, `closeProject` and then `Lane.open`
+  with `env: { TB_ADDIN_TEST: undefined }`, and asserts an empty `Environ$` and `(unset)`.
+  The probe opens nothing, so running an IDE without the variable is safe. Two IDEs in one
+  lane need no change to the runner, and the second takes the same port once the first has
+  been ended.
+
+**Measured on BETA 995:** the eleven lanes, with the env lane (16 s alone) added, take
+1 min 43 s at the default two at a time.
 
 **Measured on BETA 983:**
 
