@@ -1686,3 +1686,50 @@ Severity: low to moderate. Name completion does not work in the form the console
 
 <!-- Asserted by `ide-test.bat --only console-completion` (test/ide/console-completion.test.mjs: ?tot, tot, tot after leading spaces and Touch tot offer total; ? tot, Debug.Print tot, Call Tou and total = to open no list; ? items. offers the Collection's members; with no program running, Mai offers Main and ? Mai opens no list); passes on BETA 995 and 987. The lane puts each line in the console's input and presses Ctrl+Space; typed key by key, ? tot, ?tot, tot, tot after leading spaces, Debug.Print tot and ? items. do the same, which was checked on BETA 995 and is not asserted. The reproducer's Startup.twin is test/ide/probes/console-completion/Sources/Startup.twin with a different header comment. When fixed: update that test and this entry. -->
 
+---
+
+## A space typed in the Debug Console accepts the IntelliSense list's selection, so `Print x` becomes `Printerx`
+
+**Describe the bug**
+While the Debug Console's IntelliSense list is open, a space typed in its input accepts the list's first entry: the entry is written over the word before the caret, and the space is lost. The console's list never offers keywords, so a keyword that starts a longer name is replaced by that name. With the run stopped at a breakpoint, typing `Print total` gives `Printertotal`, because at `Print` the list offers `Printer`, `PrinterObjectConstants` and others, but not `Print`. In the same way, `Call Touch(total)` becomes `CallByDispId(Touch(total))`, and `Set obj = items` becomes `SetAttr(obj = items)`. The console refuses all three lines.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `console-space-accepts-completion.twinproj` (attached as `console-space-accepts-completion.zip`). In `Startup.twin`, `Main` has three locals and calls a private Sub on the line marked `BREAK`:
+   ```
+   Public Sub Main()
+       Dim total As Long
+       Dim items As New Collection
+       Dim obj As Object
+       total = 5
+       items.Add total
+       Touch total ' BREAK
+   End Sub
+
+   Private Sub Touch(ByVal n As Long)
+       Debug.Print "total " & n
+   End Sub
+   ```
+2. Put a breakpoint on the line marked `BREAK` (F9) and press F5. The run stops there.
+3. Click in the Debug Console's input and type `Print total` at an ordinary speed. The list opens while `Print` is typed, the space after it turns the line into `Printer`, and the line ends as `Printertotal`. Press Enter: the console prints `(compile error: Unrecognized symbol 'Printertotal')`.
+4. Type `Call Touch(total)`: the space after `Call` writes `CallByDispId()`, with the caret between the parentheses, and the line ends as `CallByDispId(Touch(total))`. Type `Set obj = items`: it ends as `SetAttr(obj = items)`. Enter gives a compile error for each.
+5. Type `Print`, press Escape, and type ` total`: the line is `Print total`, and Enter prints `5`.
+
+**Expected behavior**
+Each line stays as it is typed, as it does in the code editor. The code editor's list offers the keywords, so at `Print` its first entry is `Print` itself, and the space after it is typed: typed the same way in a procedure, `Print total`, `Call Touch(total)` and `Set obj = items` stay as they are. In the console, `Print total` typed with Escape before the space prints `5`.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 995
+
+**Additional context**
+Also on BETA 987, identically.
+
+What does not reproduce it: a word that is already the list's first entry, and not a procedure, keeps its space, so `total = 6` stays as it is. `? total` and `Debug.Print total` stay as they are. Escape before the space closes the list, and the space is then typed. With the IDE's IntelliSense mode set to LEGACY or MANUAL, the list does not open while the first word of a line is typed, and `Print total` and `Call Touch(total)` stay as they are.
+
+In the default mode, MODERN, the console asks for the list after every key and answers within a few milliseconds, so the list is open at the space whenever a line is typed at an ordinary speed. Every keyword that starts a longer name is replaced in the same way, and the others type as they are: `Do` becomes `DockModeConstants`, `For` becomes `FormArrangeConstants`, `On` becomes `OnErrorCatch`, `Get` becomes `GetAllSettings()` and `RaiseEvent` becomes `RaiseEventByName()`, while `Dim`, `End`, `Exit`, `With`, `Open`, `Close`, `ReDim`, `Stop` and `GoTo` stay. The same happens with no program running: `Print 1 + 1` becomes `Printer1 + 1`.
+
+Severity: moderate. `Print`, `Call` and `Set` begin lines that are often typed in the console, and each becomes a line the console refuses. The only ways round it are Escape before the space and another IntelliSense mode.
+
+<!-- Asserted by `ide-test.bat --only console-space` (test/ide/console-space.test.mjs: with the run stopped at BREAK and each line typed key by key, Print total becomes Printertotal, Call Touch(total) becomes CallByDispId(Touch(total)) and Set obj = items becomes SetAttr(obj = items), and the console refuses each; Print, Escape and then the rest give Print total, which prints 5; total = 6, ? total and Debug.Print total type as they are; with no program running, Print 1 + 1 becomes Printer1 + 1); passes on BETA 995 and 987. The lane waits after each key for the console's answer to it, as a person typing at an ordinary speed sees the list. Checked on BETA 995 and 987 and not asserted: the other keywords named above. Checked on BETA 995 and not asserted: the LEGACY and MANUAL modes, and the code editor. The reproducer's Startup.twin is test/ide/probes/console-space/Sources/Startup.twin with a different header comment. Related: "The Debug Console offers no completion for a name typed after `?` and a space", whose Additional context mentions this one. When fixed: update that test and this entry. -->
+

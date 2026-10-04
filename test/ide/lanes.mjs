@@ -24,4 +24,5 @@ export default [
   { file: "watches.test.mjs" },
   { file: "break-into.test.mjs" },
   { file: "console-completion.test.mjs" },
+  { file: "console-space.test.mjs" },
 ];

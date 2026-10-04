@@ -1,0 +1,4 @@
+{
+  "mode": "manual",
+  "steps": "1. Open console-space-accepts-completion.twinproj in the twinBASIC IDE, put a breakpoint on the line marked BREAK (F9) and press F5. The run stops there, with total, items and obj, locals of Main, in scope.\n2. Click in the DEBUG CONSOLE's input and type Print total at an ordinary speed.\n3. Expected: the line stays Print total, and Enter prints 5. Actual: the IntelliSense list opens as Print is typed, and the space after it writes the list's first entry, Printer, over Print and is lost; the line becomes Printertotal, and Enter prints (compile error: Unrecognized symbol 'Printertotal').\n4. The same: Call Touch(total) becomes CallByDispId(Touch(total)), and Set obj = items becomes SetAttr(obj = items). Escape before the space keeps the line as typed.\nAsserted on BETA 995 and 987 by `ide-test.bat --only console-space` (the project is test/ide/probes/console-space)."
+}
