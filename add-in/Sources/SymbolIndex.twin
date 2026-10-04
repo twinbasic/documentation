@@ -1,8 +1,11 @@
 ' The documentation's symbol index, /tB/symbols.json, whose format the
 ' Permanent Links page documents: "symbols" is an array of
 ' { name, package, container, kind, url }, package and container null for the
-' language itself. Other top-level keys, and other keys in an entry, are
-' skipped, so a later format that adds some still loads.
+' language itself; "packages" maps each documented package's project name to
+' the name its pages use; "interfaces" maps a class's default interface, the
+' name the compiler gives the class's members by, to the class. Other
+' top-level keys, and other keys in an entry, are skipped, so a later format
+' that adds some still loads.
 Private Class SymbolIndex
     Private Names() As String          ' lowercased, for matching
     Private Written() As String        ' as the index writes it
@@ -11,6 +14,8 @@ Private Class SymbolIndex
     Private Kinds() As String
     Private Urls() As String
     Private Size As Long
+    Private PackageNames As Collection ' the keys of "packages"
+    Private Interfaces As Collection   ' "Package.Interface" -> "Package.Class"
 
     ' The parser's state: the whole file, the position in it (from 1), and
     ' where the next backslash is, so that a string with no escape in it is cut
@@ -52,6 +57,8 @@ Private Class SymbolIndex
         ReDim Containers(4095)
         ReDim Kinds(4095)
         ReDim Urls(4095)
+        Set PackageNames = New Collection
+        Set Interfaces = New Collection
 
         SkipSpace
         Expect "{"
@@ -62,7 +69,12 @@ Private Class SymbolIndex
             SkipSpace
             Expect ":"
             SkipSpace
-            If key = "symbols" Then ReadSymbols Else SkipValue
+            Select Case key
+                Case "symbols": ReadSymbols
+                Case "packages": ReadStringMap PackageNames
+                Case "interfaces": ReadStringMap Interfaces
+                Case Else: SkipValue
+            End Select
             SkipSpace
             If Peek() <> "," Then Exit Do
             Pos = Pos + 1
@@ -114,6 +126,57 @@ Private Class SymbolIndex
         Return found
     End Function
 
+    ' Whether the index documents package, a project name such as "VBA" or
+    ' "cefPackage". A name the compiler places anywhere else is the project's
+    ' own, or in a package the documentation does not cover.
+    Public Function Documents(ByVal package As String) As Boolean
+        Return PackageNames.Exists(package)
+    End Function
+
+    ' The entries for name declared where the compiler says: in package, and
+    ' in container, a module, a class's default interface ("_Collection",
+    ' "IToolWindowsV1"), an enumeration, or "" for a type of the package's own.
+    ' A container the index does not have gives the entries for name anywhere
+    ' in package: the compiler names a class's members by the interface that
+    ' declares them, which can be a base the index does not map.
+    Public Function FindDeclared(ByVal name As String, ByVal package As String, ByVal container As String) As Collection
+        Dim found As New Collection
+        Dim want As String = LCase$(name)
+        Dim pkg As String = LCase$(package)
+        Dim box As String = container
+        If Len(box) > 0 Then
+            If Interfaces.Exists(package & "." & box) Then
+                box = Interfaces(package & "." & box)
+                box = Mid$(box, InStr(box, ".") + 1)
+            ElseIf Left$(box, 1) = "_" Then
+                box = Mid$(box, 2)
+            End If
+        End If
+        box = LCase$(box)
+        Dim i As Long
+        For i = 0 To Size - 1
+            If Names(i) = want And LCase$(Packages(i)) = pkg Then
+                If LCase$(Containers(i)) = box Then found.Add i
+            End If
+        Next
+        If found.Count > 0 Then Return found
+        For i = 0 To Size - 1
+            If Names(i) = want And LCase$(Packages(i)) = pkg Then found.Add i
+        Next
+        Return found
+    End Function
+
+    ' The entries of ids that are in package, or ids itself when none is.
+    Public Function OnlyIn(ByVal ids As Collection, ByVal package As String) As Collection
+        Dim found As New Collection
+        Dim i As Variant
+        For Each i In ids
+            If LCase$(Packages(i)) = LCase$(package) Then found.Add i
+        Next
+        If found.Count > 0 Then Return found
+        Return ids
+    End Function
+
     ' The entries text names, for the help pane's search box: those that start
     ' with it, then those that contain it, in the index's order, at most limit.
     ' Text with a dot in it is matched against labels ("Collection.Add"),
@@ -155,6 +218,26 @@ Private Class SymbolIndex
             Pos = Pos + 1
         Loop
         Expect "]"
+    End Sub
+
+    ' An object of strings, into map: each value keyed by its key, which a
+    ' Collection compares ignoring case.
+    Private Sub ReadStringMap(ByVal map As Collection)
+        Expect "{"
+        Do
+            SkipSpace
+            If Peek() = "}" Then Exit Do
+            Dim key As String = ReadString()
+            SkipSpace
+            Expect ":"
+            SkipSpace
+            Dim value As String = ReadStringOrNull()
+            If Not map.Exists(key) Then map.Add value, key
+            SkipSpace
+            If Peek() <> "," Then Exit Do
+            Pos = Pos + 1
+        Loop
+        Expect "}"
     End Sub
 
     Private Sub ReadEntry()

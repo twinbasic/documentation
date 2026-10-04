@@ -362,8 +362,8 @@ have: writing into the install, which every new build replaces. Still deferred.
 
 - **The add-in API gives the editor's text, selection and cursor, and nothing about
   symbols.** Hence the add-in's own word extraction ([Stage
-  4](#stage-4-the-add-in-in-increments)) and, for context, its own parser of the project's
-  source.
+  4](#stage-4-the-add-in-in-increments)) and, for context, the compiler's hover asked
+  through the page (increment 3), with its own parser of the project's source deferred.
 - **The compiler knows, and names the package, the container and the kind (P5).** Measured
   on BETA 983 and 995 by [test/addin/symbols.test.mjs](test/addin/symbols.test.mjs), which puts each
   question the way the IDE's own code does. Hover (`main.js@842393`)
@@ -382,6 +382,19 @@ have: writing into the install, which every new build replaces. Still deferred.
   `Host.ToolWindows.Add` `in tbIDE.IToolWindowsV1`. Those are the classes' default
   interfaces, not the names the documentation's pages have; hover over the class itself
   says `*class* **Collection** ... in package VBA` and lists `*[default]* VBA._Collection`.
+  Other kinds have forms of their own, with `in` after the name on the first line: an
+  enumeration `*enum* **VbMsgBoxStyle** ... \`in component VBA.Constants\``, its value
+  `*enum-value* **vbOKOnly** = 0 ... \`in VBA.Constants.VbMsgBoxStyle\``, a constant
+  `*constant* **vbCrLf As String** = ...` then `` `in VBA.Constants` ``. A VB control's
+  member is named by its control's interface, `cb.Value` `in VB._CheckBox`, which the
+  `interfaces` map lacks, and a `PropertyBag`'s `ReadProperty` by an interface its default
+  one inherits, `in VBRUN.PropertyBag_VB5`. Some members name **another procedure**, the
+  one behind them: `Err.Number` is `GetErrNumber` `in VBA._HiddenModule`, `App.Path`
+  `GetAppPath` and `Screen.Width` `ScreenGetWidth`, both `in VB.HiddenModule2`. A member
+  inside `With` is named as it would be written in full, and a function called as a
+  statement, with or without parentheses or `Call`, as it is in an expression. A comment
+  gets the empty answer a statement gets. The symbols lane asserts the VBA and VBRUN forms, the help lane what the add-in
+  does with the VB and tbIDE ones.
   A variable gives its declaration, `*local variable* Dim c As Collection`. `Debug`,
   `Debug.Print` and a statement such as `Dim` give nothing, and a type such as `Long` a line
   about it. BETA 983 gives no hover for those three, and BETA 987 and 995 a hover whose text is
@@ -406,7 +419,7 @@ have: writing into the install, which every new build replaces. Still deferred.
 - **Only page script can ask.** The question is a call on the page's own socket to the
   compiler, answered through a callback. A harness makes it over CDP; an add-in could only
   through an inline handler in HTML it sets (P4), which [Open decisions](#open-decisions)
-  keeps for probes.
+  keeps for probes, except for the help add-in's hover (Stage 4, increment 3).
 
 ### Dialogs
 
@@ -785,10 +798,6 @@ has the complete list):
   its own rule. Giving that page a `/tB/` permalink, with the old one in `redirect_from:`,
   would. Deferred.
 - **The offline tree has no copy of the index**, since the offline route is deferred.
-- **Hover over a VB control's member is unmeasured.** P5 measured CoClasses; for a
-  `Class` such as `CheckBox`, whose members are inherited from private classes, hover may
-  name the declaring base class, which the `interfaces` map does not cover. A P5 case
-  settles it when increment 3 needs it.
 
 ### Stage 4: the add-in, in increments
 
@@ -860,14 +869,43 @@ harness about a second against opening a new IDE.
    case loads the build's real page, and a 404 fails it. The frame is then same-site, and
    `Page.getFrameTree` reads its URL. The offline tree cannot be used: a page served over
    http cannot frame a `file://` URL. So the lane needs `build.bat` first.
-3. **Context: which `Add`?** P5 says the compiler can answer it: hover names `c.Add` as
-   `VBA._Collection`'s and `Host.ToolWindows.Add` as `tbIDE.IToolWindowsV1`'s, where a line
-   scanner would have to find the declaration of `c` and the type of `Host.ToolWindows`
-   first. But only page script can ask, so the route is the choice: through the public API
-   once upstream adds a call, with the add-in's own parser below until then; or through
-   the page's socket from an inline handler (P4), which the open decision on page internals
-   rules out for the shipped add-in. Either way the answer names an interface, which the
-   index maps to its class (Stage 3).
+3. **Context: which `Add`? Built**, tested by the same lane on BETA 995. **The route is the
+   page's socket** (the owner, 2026-10-04): the add-in's own parser would have to be close
+   to a whole twinBASIC parser, so it waits, and the socket stands until upstream gives the
+   API a call for it. For the name under the cursor, F1 asks the compiler's hover about
+   the character the name starts from (`Words.NameColumn`); a selection is looked up as it
+   is, without asking.
+   - **The question** is an `<img src='data:,' onerror='...'>` set as the `innerHTML` of a
+     hidden `div` in the pane (P4). Its handler is `Resources/SCRIPTS/hover.js`, which
+     `CompilerHover.HoverQuestion` fills in with a question number, line and character
+     (numbers only) and escapes for the attribute. It asks `lspSocket` for
+     `textDocument/hover` on `twinbasic:` + the selected editor's `getFullPath()`, as the
+     IDE's own hover provider does, and answers by calling the function the add-in's
+     `AddEventListener("tbDocsHover", ...)` stored on that `div` (P12's direct call), with a
+     plain object `{ seq, status, value }`: `copyEvent` keeps its strings. **It answers
+     exactly once**: `ok` with the hover's markdown (possibly empty), `unavailable` when the
+     socket is not open, `timeout` after 3 s, `error` with the exception's text, which the
+     add-in prints. A request sent across a compiler restart never gets its callback, which
+     is why the timeout exists. An answer to an older question is dropped.
+   - **The answer** is read by `Declared.ReadHover` (the forms are in P5 under [What is
+     under the cursor](#what-is-under-the-cursor)) into a name, a package and a container.
+     A package the index does not document is the project's own, or an undocumented
+     package's: `No help for 'Beep': it is declared in HelpHost.Cases`, even though VBA
+     has a `Beep`. When the hover's name is the name written (case and a trailing `$`
+     ignored), the entries are those of that package and container, the container mapped
+     through the index's `interfaces` or with its leading `_` dropped
+     (`VB._CheckBox` is `CheckBox`), else those of that name anywhere in the package (an
+     interface the map lacks, such as `VBRUN.PropertyBag_VB5`). When it is not --- `App.Path`
+     is `GetAppPath in VB.HiddenModule2`, `Err.Number` `GetErrNumber in VBA._HiddenModule`
+     --- the plain lookup's entries are kept to the package, which still picks VB's `App`
+     over AppGlobalClassObject's and `ErrObject.Number` over every other `Number`. No answer
+     to read (a statement, `Debug.Print`, a comment, a late-bound `o.Add`) is the plain
+     lookup.
+   - **The fault run** (the question made to answer `unavailable` every time) failed the
+     cases that need the compiler: `c.Add`, `.Add` inside `With`, a CheckBox's `Value`,
+     `App.Path`, `Err.Number` and the project's `Beep`.
+   - The socket code is in files of its own, `CompilerHover.twin` and `hover.js`, without
+     comments, so that it can be replaced whole once the API has a call.
 4. **Later:** hover help through `CodeEditor.AddMonacoWidget` after a pause (the cost of
    adding and removing widgets is not measured); offering only the packages the project
    references; the `[Description]` connection; offline use.
@@ -907,7 +945,8 @@ lines and columns from 1, as Monaco does (the help lane's cases depend on it).
 through `SaveSetting` / `GetSetting` --- which is the shared registry tree, so the runner's
 registry restore has to include it.
 
-**The add-in's own parser**, the fallback for increment 3:
+**The add-in's own parser**, deferred (increment 3 takes the page's socket instead), and
+the route once the socket is gone, if the API never gains a call for it:
 
 - On `Host_OnProjectLoaded`, which runs again after every compiler restart, in a new
   instance of the add-in (P9), go through the virtual file system with `For Each` --- never
@@ -941,14 +980,14 @@ The add-in's code skeletons are written in Stage 4 against the compiler, with te
 
 Recommended, and not yet confirmed:
 
-- **Page internals are for probes only.** The shipped add-in uses the public API and
+- **Page internals are for probes only, with one exception the owner made**
+  (2026-10-04): increment 3 asks the compiler's hover through the page's socket, until the
+  API has a call for it. Otherwise the shipped add-in uses the public API and
   `ShellExecuteW`, and whatever the API lacks is requested upstream. P4 showed the route
   exists: any inline handler can reach the page's globals, `openEditors`, the socket to the
   compiler and `hostAppObject` among them. `raiseEvent` in a list view's items is the
-  exception, since the IDE's own samples use it that way and it is the only way a list view
-  reports a click.
-  P5 raises what the rule costs: through the page's socket the add-in would know the
-  package and interface of any name under the cursor today (Stage 4, increment 3).
+  other exception, since the IDE's own samples use it that way and it is the only way a
+  list view reports a click.
 - **The site reads a `theme` query parameter**, so that a page in the help pane can match
   the IDE's theme (Stage 3, after P3). **Deferred** until the add-in works, at least in part.
 - **Isolation starts with restoring the registry** (Stage 1, item 3), and a private

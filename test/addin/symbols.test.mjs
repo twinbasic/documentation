@@ -57,8 +57,10 @@ const definition = (c, text, word) =>
 
 // The heading a procedure's documentation starts with names where it is
 // declared: "## **MsgBox** &nbsp; ... `in VBA.Interaction`".
-const declaredIn = (markdown) => /^## \*\*\w+\*\*[^`\r\n]*`in ([\w.]+)`/m.exec(markdown ?? "")?.[1] ?? null;
+const declaredIn = (markdown) => /^## \*\*\w+\$?\*\*[^`\r\n]*`in ([\w.]+)`/m.exec(markdown ?? "")?.[1] ?? null;
 const firstLine = (markdown) => (markdown ?? "").split(/\r?\n/)[0];
+// The first "`in ...`" anywhere, whatever comes before it.
+const whereIn = (markdown) => /`in ([^`\r\n]+)`/.exec(markdown ?? "")?.[1] ?? null;
 
 // Signature help for the call whose argument list starts just after `after`
 // on the line holding `text`: the request the code editor makes when the
@@ -120,6 +122,38 @@ scenario("P5: what the compiler says about the name under the cursor", (lane) =>
     const toolWindow = await hover(c, "As ToolWindow", "ToolWindow");
     assert.match(toolWindow, /^\*class\* \*\*ToolWindow\*\* [^\r\n]*`in package tbIDE`/);
     assert.match(toolWindow, /\*\[default\]\* tbIDE\.IToolWindowV1\b/);
+  });
+
+  test("hover on an enumeration, its value and a constant names where each is declared in forms of their own", async () => {
+    // The add-in's Declared.ReadHover reads these forms.
+    const cases = [
+      ["Debug.Print vbOKOnly", "vbOKOnly", "*enum-value* **vbOKOnly** ", "VBA.Constants.VbMsgBoxStyle"],
+      ["Dim t As VbMsgBoxStyle", "VbMsgBoxStyle", "*enum* **VbMsgBoxStyle** ", "component VBA.Constants"],
+      ["vbCrLf, Err", "vbCrLf", "*constant* **vbCrLf As String** ", "VBA.Constants"],
+    ];
+    for (const [text, word, start, where] of cases) {
+      const h = await hover(c, text, word);
+      assert.ok(firstLine(h).startsWith(start), `${word}: ${JSON.stringify(h)}`);
+      assert.equal(whereIn(h), where, `${word}: ${JSON.stringify(h)}`);
+    }
+  });
+
+  test("hover can name the procedure behind a member, or an interface the class's default one inherits", async () => {
+    // Err.Number is VBA's hidden GetErrNumber (and, in the help lane's host,
+    // App.Path VB's GetAppPath); a PropertyBag's ReadProperty is on the
+    // interface PropertyBag_VB5, which the index's interfaces map lacks. A
+    // member inside With names its interface as c2.Add would.
+    const cases = [
+      ["Err.Number", "Number", "Function GetErrNumber (", "VBA._HiddenModule"],
+      ["pb.ReadProperty", "ReadProperty", "Function ReadProperty (", "VBRUN.PropertyBag_VB5"],
+      [".Add 2", "Add", "Sub Add (", "VBA._Collection"],
+      ['Left$("abc"', "Left", "Function Left$ (", "VBA.Strings"],
+    ];
+    for (const [text, word, kind, where] of cases) {
+      const h = await hover(c, text, word);
+      assert.ok(firstLine(h).startsWith(kind), `${word} in ${text}: ${JSON.stringify(h)}`);
+      assert.equal(declaredIn(h), where, `${word} in ${text}: ${JSON.stringify(h)}`);
+    }
   });
 
   test("hover on a variable gives its declaration, and on Debug.Print and a statement nothing", async () => {

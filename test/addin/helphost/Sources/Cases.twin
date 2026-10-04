@@ -9,4 +9,20 @@ Module Cases
         Close #1
         ' Host.ToolWindows.Add(name, id)
     End Sub
+
+    Public Sub Members(ByVal cb As CheckBox, ByVal Host As Host, ByVal o As Object)
+        Debug.Print cb.Value, App.Path, vbOKOnly, vbCrLf, Err.Number
+        Dim w As ToolWindow
+        Set w = Host.ToolWindows.Add("a", "b")
+        o.Add 1
+        Beep
+        Dim c2 As New Collection
+        With c2
+            .Add 2
+        End With
+    End Sub
+
+    ' The project's own Beep, in place of VBA's.
+    Public Sub Beep()
+    End Sub
 End Module

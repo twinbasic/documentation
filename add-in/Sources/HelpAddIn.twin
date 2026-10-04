@@ -1,8 +1,11 @@
 ' F1 shows the documentation page for the selection or for the name under the
 ' cursor in the help pane, a tool window with a search box, a list of results
 ' and the page in a frame. The toolbar's Help button shows the pane for a
-' search. Every line it prints to the DEBUG CONSOLE starts "[tbDocsHelp] ",
-' except "open <url>" (see OpenUrl).
+' search. For the name under the cursor the compiler is asked where it is
+' declared, through its hover (CompilerHover), so that c.Add finds
+' Collection.Add when c is a Collection; a selection is looked up as it is.
+' Every line it prints to the DEBUG CONSOLE starts "[tbDocsHelp] ", except
+' "open <url>" (see OpenUrl).
 Private Class HelpAddIn
     Implements AddIn
     Private WithEvents Host As Host
@@ -17,6 +20,9 @@ Private Class HelpAddIn
     Private ResultIds As Collection         ' the index entries in Results
     Private LastSearch As String
     Private PageUrl As String               ' the site path the frame was given
+    Private HoverSink As HtmlElement        ' where the compiler's answers come
+    Private AskSeq As Long                  ' the number of the last question
+    Private Asked As String                 ' its word, "" once answered
 
     Private Const BASE_URL As String = "https://docs.twinbasic.com"
     Private Const TAG As String = "[tbDocsHelp] "
@@ -101,6 +107,9 @@ Private Class HelpAddIn
                 Results.AddEventListener("onPick", AddressOf ResultPicked)
                 ResultsElement.Properties.style.display = "none"
                 Set Frame = .ChildDomElements.Add("helpPage", "iframe")
+                Set HoverSink = .ChildDomElements.Add("helpAsk", "div")
+                HoverSink.Properties.style.display = "none"
+                HoverSink.AddEventListener(HOVER_EVENT, AddressOf HoverAnswered)
             End With
         End With
         Set ResultIds = New Collection
@@ -127,7 +136,8 @@ Private Class HelpAddIn
 
     Private Sub ShowHelp()
         On Error GoTo Failed
-        Dim word As String = WordToLookUp()
+        Dim line As Long, character As Long
+        Dim word As String = WordToLookUp(line, character)
         If Len(word) = 0 Then
             ShowPaneForSearch
             Exit Sub
@@ -136,33 +146,81 @@ Private Class HelpAddIn
             Host.ShowNotification "No help: the add-in has no symbol index"
             Exit Sub
         End If
+        If line < 0 Then
+            LookUp word, ""
+        Else
+            ' The answer comes to HoverAnswered, always: an empty one when the
+            ' compiler cannot be asked or does not answer in time. A question
+            ' asked again before then replaces this one.
+            AskSeq = AskSeq + 1
+            Asked = word
+            HoverSink.Properties.innerHTML = HoverQuestion(AskSeq, line, character)
+        End If
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    Private Sub HoverAnswered(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        If CLng(eventInfo.seq) <> AskSeq Or Len(Asked) = 0 Then Exit Sub
+        Dim word As String = Asked
+        Asked = ""
+        Dim status As String = eventInfo.status
+        If status = "error" Then Host.DebugConsole.PrintText TAG & "hover failed: " & eventInfo.value
+        LookUp word, IIf(status = "ok", CStr(eventInfo.value), "")
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' Shows the page for word, or the choice of its pages. hover is the
+    ' compiler's hover for it, or "": when hover names a package the index
+    ' documents, only that package's entries count, and when it also names
+    ' word itself, only those declared where it says. A name declared in any
+    ' other package, the project's own included, has no help.
+    Private Sub LookUp(ByVal word As String, ByVal hover As String)
+        Dim ids As Collection
+        Dim name As String, package As String, container As String
+        If ReadHover(hover, name, package, container) Then
+            If Not Index.Documents(package) Then
+                Host.ShowNotification "No help for '" & word & "': it is declared in " & package & _
+                    IIf(Len(container) > 0, "." & container, "")
+                Exit Sub
+            End If
+            If SameName(name, LastSegment(word)) Then Set ids = Index.FindDeclared(name, package, container)
+            If ids Is Nothing Then
+                Set ids = Index.OnlyIn(Index.Find(word), package)
+            ElseIf ids.Count = 0 Then
+                Set ids = Index.OnlyIn(Index.Find(word), package)
+            End If
+        Else
+            Set ids = Index.Find(word)
+        End If
 
         ' One choice per page: members inherited from one declaring type share
         ' its page.
         Dim urls As New Collection
-        Dim ids As New Collection
+        Dim pages As New Collection
         Dim i As Variant
-        For Each i In Index.Find(word)
+        For Each i In ids
             If Not Contains(urls, Index.Url(i)) Then
                 urls.Add Index.Url(i)
-                ids.Add i
+                pages.Add i
             End If
         Next
 
-        Select Case ids.Count
+        Select Case pages.Count
             Case 0
                 Host.ShowNotification "No help for '" & word & "'"
             Case 1
-                ShowPage Index.Url(ids(1))
+                ShowPage Index.Url(pages(1))
             Case Else
                 SearchBox.Properties.value = word
                 LastSearch = word
-                ShowResults ids
+                ShowResults pages
                 Pane.Visible = True
         End Select
-        Exit Sub
-    Failed:
-        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
     End Sub
 
     Private Sub ShowPage(ByVal url As String)
@@ -214,8 +272,11 @@ Private Class HelpAddIn
         OpenUrl Host, SiteUrl() & IIf(Len(PageUrl) > 0, PageUrl, "/")
     End Sub
 
-    ' The selection when it is on one line, else the name under the cursor.
-    Private Function WordToLookUp() As String
+    ' The selection when it is on one line, line then -1; else the name under
+    ' the cursor, with line and character the place of its character there
+    ' that the compiler is asked about, both counted from 0, as it counts.
+    Private Function WordToLookUp(ByRef line As Long, ByRef character As Long) As String
+        line = -1
         If Host.ActiveEditors.Count = 0 Then Return ""
         Dim ed As Editor
         Set ed = Host.ActiveEditors(0)
@@ -228,7 +289,10 @@ Private Class HelpAddIn
             Dim selected As String = Trim$(code.SelectedText)
             If Len(selected) > 0 Then Return selected
         End If
-        Return NameAt(LineOf(code.Text, startLine), startColumn)
+        Dim text As String = LineOf(code.Text, startLine)
+        line = startLine - 1
+        character = NameColumn(text, startColumn) - 1
+        Return NameAt(text, startColumn)
     End Function
 
     Private Function Contains(ByVal items As Collection, ByVal value As String) As Boolean
@@ -239,12 +303,4 @@ Private Class HelpAddIn
         Return False
     End Function
 
-    ' text escaped for HTML, attributes included.
-    Private Function HtmlText(ByVal text As String) As String
-        text = Replace(text, "&", "&amp;")
-        text = Replace(text, "<", "&lt;")
-        text = Replace(text, ">", "&gt;")
-        text = Replace(text, """", "&quot;")
-        Return Replace(text, "'", "&#39;")
-    End Function
 End Class

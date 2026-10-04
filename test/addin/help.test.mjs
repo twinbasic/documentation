@@ -1,6 +1,8 @@
-// The help add-in, add-in/, increments 1 and 2 of Stage 4 in WIP.HelpAddin.md:
+// The help add-in, add-in/, increments 1 to 3 of Stage 4 in WIP.HelpAddin.md:
 // F1 shows the page for the selection or for the name under the cursor in the
-// help pane, whose search box and results list find any page of the index.
+// help pane, whose search box and results list find any page of the index;
+// for the name under the cursor, the compiler's hover says where it is
+// declared.
 //
 // The add-in is built as committed, with its copy of the symbol index,
 // add-in/Resources/SYMBOLS/symbols.json, embedded as a resource. The pane's
@@ -137,6 +139,9 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   });
 
   // [line, column, URL] in Cases.twin; the comment says what the cursor is on.
+  // The compiler's hover says where most of these are declared; the ones it
+  // says nothing about (Debug.Print, a statement, a comment) take the index's
+  // lookup alone.
   const CASES = [
     [5, 9, "/tB/Modules/Interaction/MsgBox", "the first letter of a name"],
     [5, 15, "/tB/Modules/Interaction/MsgBox", "just after a name"],
@@ -147,6 +152,17 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     [8, 9, "/tB/Core/Dim", "a statement"],
     [9, 9, "/tB/Core/Close", "a bare name: the statement wins over twelve methods"],
     [10, 28, "/tB/Packages/tbIDE/ToolWindows#add", "a chain in a comment: ToolWindows.Add"],
+    [4, 12, "/tB/Modules/Collection/Add", "c.Add, c a Collection: VBA._Collection's"],
+    [21, 15, "/tB/Modules/Collection/Add", ".Add inside With on a Collection"],
+    [16, 35, "/tB/Packages/tbIDE/ToolWindows#add", "Host.ToolWindows.Add: tbIDE.IToolWindowsV1's"],
+    [14, 25, "/tB/Packages/VB/CheckBox/#value", "a CheckBox's Value: VB._CheckBox's"],
+    [14, 42, "/tB/Modules/Constants/VbMsgBoxStyle", "an enumeration's value"],
+    [14, 52, "/tB/Modules/Constants/", "a constant"],
+    // Hover names another procedure for these, GetAppPath and GetErrNumber,
+    // but its package still picks VB's App from AppGlobalClassObject's, and
+    // ErrObject.Number from every other Number.
+    [14, 36, "/tB/Packages/VB/App/#path", "App.Path"],
+    [14, 64, "/tB/Modules/ErrObject/Number", "Err.Number"],
   ];
   for (const [line, column, url, what] of CASES) {
     test(`F1 on ${what} (${line}:${column})`, async () => {
@@ -179,9 +195,22 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.equal(await waitFor(c, async (c) => (await focusedId(c)) === "helpSearch" && "helpSearch"), "helpSearch");
   });
 
-  test("a member of an unknown object lists its pages, and a click shows one", async () => {
-    // c.Add: the add-in cannot tell what c is, so every page of an Add is listed.
-    await at(c, 4, 11);
+  test("a name the project declares has no help, though a package has a page for it", async () => {
+    // Cases.Beep, not VBA.Interaction.Beep.
+    const was = await frameSrc(c);
+    await at(c, 18, 10);
+    await pressKey(c, "F1");
+    const text = "No help for 'Beep': it is declared in HelpHost.Cases";
+    const shown = await waitFor(c, async (c) => (await notifications(c)).find((t) => t.trim() === text));
+    assert.ok(shown, `notifications: ${JSON.stringify(await notifications(c))}`);
+    await sleep(300);
+    assert.equal(await frameSrc(c), was);
+  });
+
+  test("a member of a late-bound object lists its pages, and a click shows one", async () => {
+    // o.Add, o As Object: the compiler cannot tell either, so every page of an
+    // Add is listed.
+    await at(c, 17, 12);
     const was = await frameSrc(c);
     await pressKey(c, "F1");
     const items = await waitFor(c, async (c) => {
@@ -190,7 +219,7 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     });
     assert.equal(items?.length, 12, JSON.stringify(items));
     assert.ok(items.includes("Collection.Addmethod") && items.includes("ToolWindows.Addmethod"), JSON.stringify(items));
-    assert.equal(await searchValue(c), "c.Add");
+    assert.equal(await searchValue(c), "o.Add");
     assert.equal(await frameSrc(c), was, "a list must not change the page");
     await f1Shows("/tB/Modules/Collection/Add", () =>
       click(c, { toolWindow: PANE, css: "#helpResults .hit .label", text: "Collection.Add" }),

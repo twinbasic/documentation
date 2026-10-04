@@ -1,0 +1,11 @@
+Module CompilerHover
+    Public Const HOVER_EVENT As String = "tbDocsHover"
+
+    Public Function HoverQuestion(ByVal seq As Long, ByVal line As Long, ByVal character As Long) As String
+        Dim js As String = StrConv(LoadResDataInternal("hover.js", "SCRIPTS"), VbStrConv.vbFromUTF8)
+        js = Replace(js, "$SEQ$", CStr(seq))
+        js = Replace(js, "$LINE$", CStr(line))
+        js = Replace(js, "$CHAR$", CStr(character))
+        Return "<img src='data:,' onerror='" & HtmlText(js) & "'>"
+    End Function
+End Module

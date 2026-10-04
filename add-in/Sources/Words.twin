@@ -24,17 +24,8 @@ Module Words
     ' takes that name. Anything else gives "".
     Public Function NameAt(ByVal lineText As String, ByVal column As Long) As String
         Dim n As Long = Len(lineText)
-        Dim c As Long = column
-        If c < 1 Then Return ""
-        If c > n Then
-            c = n
-            If c < 1 Then Return ""
-            If Not IsNameChar(Mid$(lineText, c, 1)) Then Return ""
-        ElseIf Not IsNameChar(Mid$(lineText, c, 1)) Then
-            If c = 1 Then Return ""
-            c = c - 1
-            If Not IsNameChar(Mid$(lineText, c, 1)) Then Return ""
-        End If
+        Dim c As Long = NameColumn(lineText, column)
+        If c = 0 Then Return ""
 
         Dim first As Long = c
         Do While first > 1
@@ -55,5 +46,34 @@ Module Words
             word = Mid$(word, 2)
         Loop
         Return word
+    End Function
+
+    ' The column, counted from 1, of the character of the name NameAt takes
+    ' at column: the one at the cursor, or the one before it. 0 for none.
+    Public Function NameColumn(ByVal lineText As String, ByVal column As Long) As Long
+        Dim n As Long = Len(lineText)
+        Dim c As Long = column
+        If c < 1 Or n = 0 Then Return 0
+        If c > n Then c = n + 1
+        If c <= n Then
+            If IsNameChar(Mid$(lineText, c, 1)) Then Return c
+        End If
+        If c = 1 Then Return 0
+        If IsNameChar(Mid$(lineText, c - 1, 1)) Then Return c - 1
+        Return 0
+    End Function
+
+    ' The last segment of a dotted name.
+    Public Function LastSegment(ByVal word As String) As String
+        Return Mid$(word, InStrRev(word, ".") + 1)
+    End Function
+
+    ' text escaped for HTML, attributes included.
+    Public Function HtmlText(ByVal text As String) As String
+        text = Replace(text, "&", "&amp;")
+        text = Replace(text, "<", "&lt;")
+        text = Replace(text, ">", "&gt;")
+        text = Replace(text, """", "&quot;")
+        Return Replace(text, "'", "&#39;")
     End Function
 End Module

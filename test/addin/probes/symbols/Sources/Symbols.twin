@@ -29,4 +29,15 @@ Module Symbols
         Dim d As Host
         Debug.Print h Is Nothing, count, col Is Nothing, o Is Nothing, IsEmpty(v), r Is Nothing, s, d Is Nothing
     End Sub
+
+    ' Names of other kinds, for the help add-in's increment 3.
+    Public Sub Probe3(ByVal pb As PropertyBag)
+        Debug.Print vbOKOnly, vbCrLf, Err.Number
+        Debug.Print Left$("abc", 1), pb.ReadProperty("x")
+        Dim t As VbMsgBoxStyle
+        Dim c2 As New Collection
+        With c2
+            .Add 2
+        End With
+    End Sub
 End Module
