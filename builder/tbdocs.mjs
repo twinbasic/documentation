@@ -62,7 +62,7 @@ import { resolveBookChapters } from "./book.mjs";
 import { loadData } from "./data.mjs";
 import { createMarkdownIt, buildLinkTables, serializeLinkTables } from "./render.mjs";
 import { loadHighlightTheme } from "./highlight-theme.mjs";
-import { buildInitConfig, renderSidebar } from "./template.mjs";
+import { NAV_SCRIPT_REL, buildInitConfig, navScript, renderFullNav, renderSidebar } from "./template.mjs";
 import {
   writePhase,
   prepareDestinations,
@@ -626,6 +626,7 @@ const TASKS = {
         ...enumerateVendoredThemeAssets(),
         "assets/css/tb-highlight.css",
         "assets/css/just-the-docs-combined.css",
+        NAV_SCRIPT_REL,
       ];
       const sitePaths = buildSitePathsSync(state.pages, state.staticFiles, excludePatterns, stubs, themeAssetRels);
       state.sitePaths = sitePaths;
@@ -851,12 +852,12 @@ const TASKS = {
     // copies that list. The chain prepPageDirs <- prepDest <- dispatch
     // <- markdownInit happens to order them today; naming the dependency
     // is what keeps that true.
-    expected: ["dot", "vendorAssets", "prepPageDirs", "highlighterInit"],
+    expected: ["nav", "dot", "vendorAssets", "prepPageDirs", "highlighterInit"],
     runOnMain: true,
     async execute({ dot: _dotSignal, highlighterInit: _highlightSignal }, ctx, state) {
       void _dotSignal; // dependency signal only; append already happened in dot.submit
       void _highlightSignal; // dependency signal only; highlightCss already written to state.site
-      const generatedAssets = [];
+      const generatedAssets = [{ rel: NAV_SCRIPT_REL, content: navScript(renderFullNav(state.site)) }];
       if (state.site.highlightCss) {
         generatedAssets.push({ rel: "assets/css/tb-highlight.css", content: state.site.highlightCss });
       }

@@ -15,7 +15,7 @@ import { templatePhase } from "./template.mjs";
 import { unpackShared } from "./sab-broadcast.mjs";
 import { deriveSearchEntries } from "./search.mjs";
 import { computeChunkSeo } from "./seo.mjs";
-import { deriveOfflinePage, deriveOfflinePageCached, sliceNavBlock, posixDirname } from "./offline-rewrite.mjs";
+import { deriveOfflinePage } from "./offline-rewrite.mjs";
 import { normalizeBaseurl } from "./url.mjs";
 
 import {
@@ -206,48 +206,9 @@ const handlers = {
         caches: { rawResolution: new Map(), seg: new Map(), result: new Map() },
       };
 
-      // PLAN-9 §5.3 (B7) nav-block cache: the just-the-docs sidebar in
-      // `<nav id="site-nav">...</nav>` is byte-identical across every page
-      // site-wide before rewrite (template.mjs's renderSidebar takes only
-      // `site`, not `page`; the per-page active highlight lives in a
-      // separate `<style id="jtd-nav-activation">` block emitted in
-      // <head>, not as inline class attributes on the nav anchors). The
-      // HTML rewrite pass spends ~200 ms per build re-running the per-
-      // match callback over that ~80kB block on each of 837 pages. The
-      // cache stashes the pre/post-rewrite nav slices once per
-      // **destination** dir (the URL rewrite is keyed by `fileSegs`,
-      // derived from `page.destPath`) and the per-page rewriter below
-      // substitutes them in instead of re-scanning.
-      //
-      // Asserted-premise design (§7.D11): each subsequent page checks that
-      // its pre-rewrite nav block matches the cached `input` byte-for-byte.
-      // On miss it falls back to the full rewrite with a warning -- the
-      // cache is purely an optimisation, never a correctness dependency.
       const writable = chunk.filter((p) => p.html !== undefined);
-      const byDir = new Map();
       for (const p of writable) {
-        const destDir = posixDirname(p.destPath);
-        let g = byDir.get(destDir);
-        if (!g) {
-          g = [];
-          byDir.set(destDir, g);
-        }
-        g.push(p);
-      }
-      const navCache = new Map();
-      for (const [destDir, group] of byDir) {
-        const first = group[0];
-        const input = sliceNavBlock(first.html);
-        if (input === null) continue;
-        const { html: rendered } = deriveOfflinePage(first, offlineState);
-        const output = sliceNavBlock(rendered);
-        if (output === null) continue;
-        navCache.set(destDir, { input, output });
-      }
-      offlineState.navCache = navCache;
-
-      for (const p of writable) {
-        const { html, misses } = deriveOfflinePageCached(p, offlineState);
+        const { html, misses } = deriveOfflinePage(p, offlineState);
         p.offlineHtml = html;
         p.offlineMisses = misses;
       }

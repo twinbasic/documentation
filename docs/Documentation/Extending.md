@@ -576,7 +576,7 @@ chunk = parseFromPayloadSAB(taskIdx)
 await renderPhase(chunk, env.site)              // markdown-it body render
 computeChunkSeo(chunk, ...)                     // per-page SEO fields
 await templatePhase(chunk, env.site, ...)       // layout wrap
-if (env.offlineBase) { … deriveOfflinePageCached per page … }
+if (env.offlineBase) { … deriveOfflinePage per page … }
 searchEntries = deriveSearchEntries(chunk, env.site)
 return { pages: chunk.map(…), searchEntries }
 ```

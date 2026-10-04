@@ -28,7 +28,16 @@ import * as acornWalk from "acorn-walk";
 
 import { WRITE_LIMIT, mkdirRec, runLimited, safeWrite, writeFileMkdirp } from "./write.mjs";
 
-import { offlineExcluded, deriveOfflineCss, deriveOfflineRedirect } from "./offline-rewrite.mjs";
+import {
+  offlineExcluded,
+  deriveOfflineCss,
+  deriveOfflineRedirect,
+  fileDirSegsFromRel,
+  posixDirname,
+  rewriteHtml,
+  warnMisses,
+} from "./offline-rewrite.mjs";
+import { NAV_SCRIPT_REL, navScript, renderFullNav } from "./template.mjs";
 import { normalizeBaseurl } from "./url.mjs";
 import { posix } from "./paths.mjs";
 
@@ -103,6 +112,8 @@ export async function writeOffline(
   subT?.lap("jtdPatch");
   await writeSearchDataJs(path.join(deps.offlineRoot, "assets/js/search-data.js"), auxStats?.search?.json ?? null);
   subT?.lap("searchDataJs");
+  await writeOfflineNavJs(site, deps);
+  subT?.lap("navJs");
 
   // PLAN-9 §5.7: per-branch timing. The three Promise.all branches
   // overlap, so each branch's reported duration is the await time
@@ -199,7 +210,8 @@ async function copyOfflineStatics(staticFiles, deps) {
 }
 
 // §5.5  copyOfflineThemeAssets -- mirror _site/assets/, rewrite CSS,
-// skip the patched JTD JS (step [3] already wrote it).
+// skip the patched JTD JS (step [3] already wrote it) and nav.js
+// (writeOfflineNavJs writes the offline one).
 async function copyOfflineThemeAssets(deps) {
   const { destRoot, offlineRoot, counters, staticDestRels } = deps;
   const themeRoot = path.join(destRoot, "assets");
@@ -209,6 +221,7 @@ async function copyOfflineThemeAssets(deps) {
 
   await runLimited(themeEntries, LIMIT, async (e) => {
     if (e.isJtdJs) return;
+    if (e.isNavJs) return;
     if (e.isCombinedCss) return;
     const relAsset = "assets/" + e.relUnderAssets;
     // Already written by copyOfflineStatics -- see staticDestRels above.
@@ -511,6 +524,23 @@ export function deriveOfflineJtdJs(src) {
   return { js: out, patches, warnings };
 }
 
+// The offline nav.js: the whole tree with its links made relative as a
+// page at the root has them. The script puts the page's OFFLINE_SITE_ROOT
+// in front of each.
+async function writeOfflineNavJs(site, deps) {
+  const { rewritten, misses, missed } = rewriteHtml(
+    renderFullNav(site),
+    posixDirname("index.html"),
+    fileDirSegsFromRel("index.html"),
+    deps.sitePaths,
+    deps.caches,
+    deps.baseurl,
+  );
+  if (misses) warnMisses(NAV_SCRIPT_REL, misses, missed);
+  deps.counters.unresolved += misses;
+  await writeFileMkdirp(path.join(deps.offlineRoot, NAV_SCRIPT_REL), navScript(rewritten));
+}
+
 // §6.10  writeSearchDataJs -- wrap the JSON as a window.SEARCH_DATA
 // assignment so a <script src=> can load it under file://.
 async function writeSearchDataJs(destPath, jsonBytes) {
@@ -552,6 +582,7 @@ async function collectThemeFiles(themeRoot) {
           isCss: childRel.endsWith(".css"),
           isCombinedCss: childRel === "css/just-the-docs-combined.css",
           isJtdJs: childRel === "js/just-the-docs.js",
+          isNavJs: `assets/${childRel}` === NAV_SCRIPT_REL,
         });
       }
     }

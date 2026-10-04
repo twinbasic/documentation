@@ -37,7 +37,7 @@ The pipeline passes three pieces of mutable state through every task: the `pages
 | `layoutDefault` | `discover` | `boolean` | `true` when frontmatter has no explicit `layout:` key. |
 | `imageScope` | `discover` | `boolean` | `true` when `srcRel` contains an `Images/` segment. Phase 3 uses this to validate image paths. |
 | `navPath` | `nav` | `string` | Slash-joined nav chain: `grand_parent / parent / title`. Set only on pages with a non-empty title. |
-| `navLevels` | `nav` | `object` | Positional indices in the sidebar tree. `templatePhase` uses this to generate per-page activation CSS. |
+| `navLevels` | `nav` | `object` | Positional indices in the sidebar tree. `templatePhase` uses this to generate per-page activation CSS and to choose the part of the nav tree the page holds. |
 | `breadcrumbs` | `nav` | `Page[]` | Ancestor chain from the root to the current page, nearest-first. |
 | `children` | `nav` | `Page[]` | Immediate child pages in nav order. |
 | `renderedContent` | `render:i` | `string` | HTML body produced by markdown-it. Set on the worker, merged back into the master page via the render delta. |
@@ -47,9 +47,9 @@ The pipeline passes three pieces of mutable state through every task: the `pages
 | `seoCanonical` | `render:i` (`computeChunkSeo`) | `string` | Absolute canonical URL. |
 | `seoIsHome` | `render:i` (`computeChunkSeo`) | `boolean` | `true` when the page's permalink is a known home-page URL. |
 | `html` | `render:i` (`templatePhase`) | `string` | Complete HTML document, ready to write to disk. Absent on `layout: book-combined` pages, which `writePdf` owns. |
-| `offlineHtml` | `render:i` (`deriveOfflinePageCached`) | `string\|undefined` | Pre-computed offline HTML for the page, with every absolute URL rewritten to a page-relative path. Set after `templatePhase` when `!skipOffline`. |
+| `offlineHtml` | `render:i` (`deriveOfflinePage`) | `string\|undefined` | Pre-computed offline HTML for the page, with every absolute URL rewritten to a page-relative path. Set after `templatePhase` when `!skipOffline`. |
 | `hasSvg` | `render:i` (`svgInlinePlugin`) | `boolean\|undefined` | `true` when the page contains at least one inlined SVG. `templatePhase` uses this to conditionally include the `svg-inline.js` script. |
-| `offlineMisses` | `render:i` (`deriveOfflinePageCached`) | `number\|undefined` | Count of URLs that could not be resolved during the per-page offline rewrite. Aggregated by `flushJoin`. |
+| `offlineMisses` | `render:i` (`deriveOfflinePage`) | `number\|undefined` | Count of URLs that could not be resolved during the per-page offline rewrite. Aggregated by `flushJoin`. |
 
 ### Site object (`site`)
 
@@ -206,7 +206,7 @@ nav.expected = ["discover"]
 nav.execute() → { sidebar }
 ```
 
-Calls `computeNav(state.pages, state.site.config)` from `nav.mjs`, then `renderSidebar(state.site)` from `template.mjs`. The nav-integrity check runs inside `computeNav` and throws on orphan or ambiguous `parent:` declarations. Returns the pre-rendered sidebar HTML for `dispatch` to fold into the shared payload.
+Calls `computeNav(state.pages, state.site.config)` from `nav.mjs`, then `renderSidebar(state.site)` from `template.mjs`. The nav-integrity check runs inside `computeNav` and throws on orphan or ambiguous `parent:` declarations. Returns the sidebar as the HTML around the nav tree and the tree itself, for `dispatch` to fold into the shared payload; each page renders its own part of the tree.
 
 ### `dot` (worker)
 
@@ -326,7 +326,7 @@ Handler (`render` in `cpu-worker.mjs`):
 2. `await renderPhase(chunk, env.site)` --- markdown-it body render.
 3. `computeChunkSeo(chunk, env.site.seoSiteTitle, env.site.config, env.site.markdown)` --- per-page SEO fields.
 4. `await templatePhase(chunk, env.site, env.initData)` --- just-the-docs layout wrap.
-5. When `env.offlineBase` is set: per-destination-directory, render the first page through `deriveOfflinePage` and slice the nav block via `sliceNavBlock`; cache the input/output nav slices keyed by directory; for each writable page, call `deriveOfflinePageCached` which substitutes the cached nav, runs the rewriter over the smaller string, and splices the output back in. Saves ~200 ms of repeated nav rewriting.
+5. When `env.offlineBase` is set: call `deriveOfflinePage` for each writable page.
 6. Store `{ destPath, html, offlineHtml, offlineMisses }` on the worker's `_pendingFlush` FIFO so the matching `flush:i` can drain it.
 7. `deriveSearchEntries(chunk, env.site)` --- per-section search entries, with any [index entries](Authoring#index-entries-for-the-site-search) the page's frontmatter or headings name. Trim `sourcePage` and the chunk-local `i` before returning (main reassigns global indices).
 
@@ -405,7 +405,7 @@ Aggregates per-chunk write stats. Unblocks `writeAux`, `writePdf` and `linkJoin`
 writeAssets.expected = ["dot", "vendorAssets", "prepPageDirs", "highlighterInit"]
 ```
 
-Calls `writePhase(state.pages, state.staticFiles, { destRoot, dryRun, generatedAssets, baseurl, skipPages: true })` from `write.mjs`. Copies vendored theme JS, copies project static files, writes generated CSS (`tb-highlight.css` from `state.site.highlightCss`). **Does not** write page HTML --- the per-chunk `flush:i` tasks already did that. The CSS baseurl rewrite (`url("/path")` → `url("<baseurl>/path")`) applies to both copy paths and to generated assets.
+Calls `writePhase(state.pages, state.staticFiles, { destRoot, dryRun, generatedAssets, baseurl, skipPages: true })` from `write.mjs`. Copies vendored theme JS, copies project static files, writes generated assets (`tb-highlight.css` from `state.site.highlightCss`, and `assets/js/nav.js`, the whole nav tree). **Does not** write page HTML --- the per-chunk `flush:i` tasks already did that. The CSS baseurl rewrite (`url("/path")` → `url("<baseurl>/path")`) applies to both copy paths and to generated assets.
 
 ### `searchData` (main)
 
@@ -445,7 +445,7 @@ Returns `{ redirectStats, sitemapStats, searchStats }` (the search stats pass th
 writeOffline.expected = ["writeAux", "writeAssets"]
 ```
 
-Calls `writeOffline(state.staticFiles, state.site, destRoot, { auxStats, sitePaths, profileOffline })` from `offline.mjs`. Per-page HTML is already rewritten and written to disk inside `render:i` / `flush:i`. This task handles the cross-cutting work: CSS `url()` rewriting, the `just-the-docs.js` AST patch (`deriveOfflineJtdJs`), the `search-data.js` wrapper (`deriveOfflineSearchDataJs`), theme assets, redirect stubs. Reads `sitePaths` from `state.sitePaths` (computed by `dispatch`).
+Calls `writeOffline(state.staticFiles, state.site, destRoot, { auxStats, sitePaths, profileOffline })` from `offline.mjs`. Per-page HTML is already rewritten and written to disk inside `render:i` / `flush:i`. This task handles the cross-cutting work: CSS `url()` rewriting, the `just-the-docs.js` AST patch (`deriveOfflineJtdJs`), the `search-data.js` wrapper (`deriveOfflineSearchDataJs`), the offline `nav.js` (the whole nav tree with its links relative to the site's root), theme assets, redirect stubs. Reads `sitePaths` from `state.sitePaths` (computed by `dispatch`).
 
 ### `writePdf` (main)
 
@@ -771,7 +771,9 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | `templatePhase` | `(pages, site, initData) → Promise<void>` | Wraps each page's `renderedContent` in the just-the-docs layout, runs `compressHtml`, stores the result in `page.html`. Skips `layout: book-combined`. |
 | `buildInitConfig` | `(site) → object` | Pre-renders the config-only chrome (SVG sprites, header, search footer, favicon, GA). Called by the `buildInit` task. |
 | `buildInitFn` | (alias of internal `buildInit`) | Available for harnesses; combines `buildInitConfig` + `renderSidebar` in one call. |
-| `renderSidebar` | `(site) → string` | Pre-renders the sidebar HTML. Called by the `nav` task; the output is folded into the shared payload by `dispatch`. |
+| `renderSidebar` | `(site) → { head, tail, tree, baseurl }` | Pre-renders the sidebar around its nav tree. Called by the `nav` task; the output is folded into the shared payload by `dispatch`, and `templatePhase` renders each page's part of the tree between `head` and `tail`. |
+| `renderFullNav` | `(site) → string` | The whole nav tree's list, compressed as a page is. |
+| `navScript` | `(navHtml) → string` | The text of `assets/js/nav.js`, which puts the whole tree in place of a page's part of it. |
 | `navActivationCss` | `(page) → string` | Per-page `<style id="jtd-nav-activation">` block. |
 | `injectAnchorHeadings` | `(html, headingsOut) → string` | Adds `<a class="anchor-heading">` next to every heading with an `id` outside `<code>` and `<pre>`, and pushes each heading onto `headingsOut` as it goes. The icon is deliberately `aria-hidden="true" tabindex="-1"`; the keyboard and screen-reader equivalent is the per-page `<details class="section-links">` block that `renderFooter` builds from `headingsOut`. |
 
@@ -887,8 +889,6 @@ Pure-compute rewrite helpers extracted from `offline.mjs` so they can be importe
 |---|---|---|
 | `buildSitePathsSync` | `(pages, staticFiles, excludePatterns, stubs, themeAssetRels) → Set<string>` | Builds the URL resolver's site-paths Set synchronously, from an explicit theme-asset list rather than traversing `_site/assets/`. Used by `dispatch`. |
 | `deriveOfflinePage` | `(page, state) → { html, misses }` | Rewrites one page's HTML for offline use: strips SEO metadata, rewrites every absolute URL to a page-relative path, injects the offline search setup script. |
-| `deriveOfflinePageCached` | `(page, deps) → { html, misses }` | Cached variant. Uses `state.navCache` to substitute the pre-rewritten sidebar nav block, avoiding a full regex pass over the ~80 KB sidebar on each page. |
-| `sliceNavBlock` | `(html) → { before, nav, after } \| null` | Splits a page's HTML into the segments before, within, and after the sidebar nav block. |
 | `deriveOfflineCss` | `(cssIn, themeRel, state) → { css, misses }` | Rewrites `url()` references in a CSS file to page-relative paths. |
 | `deriveOfflineRedirect` | `(stub, state) → string` | Rewrites a redirect stub's HTML for offline use. |
 | `offlineExcluded` | `(rel, patterns) → boolean` | Returns `true` when a site-relative path matches any `offline_exclude` glob from `_config.yml`. |

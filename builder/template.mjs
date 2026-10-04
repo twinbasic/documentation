@@ -95,7 +95,7 @@ function templatePage(page, site, init) {
     `  <div id="a11y-status" class="sr-only" aria-live="polite" aria-atomic="true"></div>\n` +
     init.svgSprites +
     `\n` +
-    init.sidebar +
+    renderPageSidebar(init.sidebar, page) +
     `\n` +
     `  <div class="main" id="page-top">\n` +
     init.header +
@@ -360,29 +360,71 @@ function buildSvgSprites(config) {
 
 // ---------- §5.4 sidebar + recursive nav ---------------------------------
 
+export const NAV_SCRIPT_REL = "assets/js/nav.js";
+
+// The sidebar is the same on every page but for the nav tree, so it is
+// rendered once as the parts around the tree. A page holds only the part
+// of the tree that shows when it opens: the top level, and the children of
+// the page and of each of its ancestors (`renderPageSidebar`). The whole
+// tree is in the shared /assets/js/nav.js (`navScript`), loaded right after
+// the nav, which puts it in place before the page's scripts run. The
+// part keeps every sibling of the expanded path, so the nth-child
+// selectors of `navActivationCss` find the same items in both.
 function renderSidebar(site) {
   const config = site.config;
   const baseurl = String(config.baseurl ?? "");
+  return {
+    head:
+      `  <div class="side-bar">\n` +
+      `    <div class="site-header" role="banner">\n` +
+      `      <a href="${escapeMarkupAndQuotes(relativeUrl("/", baseurl))}" class="site-title lh-tight">${renderSiteTitle(config)}</a>\n` +
+      `      <button id="menu-button" class="site-button btn-reset" aria-label="Toggle menu" aria-expanded="false" aria-controls="site-nav">\n` +
+      `        <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><use xlink:href="#svg-menu"></use></svg>\n` +
+      `      </button>\n` +
+      `    </div>\n` +
+      `    <nav aria-label="Main" id="site-nav" class="site-nav">`,
+    tail:
+      renderNavExternalLinks(config) +
+      `</nav>\n` +
+      `    <script src="${escapeMarkupAndQuotes(relativeUrl(`/${NAV_SCRIPT_REL}`, baseurl))}"></script>\n` +
+      // Upstream sidebar.html: when nav_footer_custom.html is empty
+      // (it is on this site), the else-branch emits the "Just the Docs"
+      // fallback footer. The site doesn't override nav_footer_custom.html,
+      // so the upstream default applies verbatim.
+      `    <footer class="site-footer" aria-label="Site">\n` +
+      `      This site uses <a href="https://github.com/just-the-docs/just-the-docs">Just the Docs</a>, a documentation theme originally for Jekyll.\n` +
+      `    </footer>\n` +
+      `  </div>`,
+    tree: site.navTree,
+    baseurl,
+  };
+}
+
+function renderPageSidebar(sidebar, page) {
+  const open = page.navLevels ? page.navLevels.slice(1) : [];
+  return sidebar.head + renderNavTree(sidebar.tree, [], sidebar.baseurl, open) + sidebar.tail;
+}
+
+/** The whole nav tree's first list, compressed as a page is. */
+export function renderFullNav(site) {
+  return compressHtml(renderNavTree(site.navTree, [], String(site.config.baseurl ?? "")).replace(/\n$/, ""));
+}
+
+/**
+ * /assets/js/nav.js: puts the whole tree in place of a page's part of it.
+ * `navHtml` is `renderFullNav`'s list; in the offline tree its links are
+ * relative to the site's root, and the page's `OFFLINE_SITE_ROOT` goes in
+ * front of each. The help add-in's pane hides the nav, so it is left alone
+ * there.
+ */
+export function navScript(navHtml) {
   return (
-    `  <div class="side-bar">\n` +
-    `    <div class="site-header" role="banner">\n` +
-    `      <a href="${escapeMarkupAndQuotes(relativeUrl("/", baseurl))}" class="site-title lh-tight">${renderSiteTitle(config)}</a>\n` +
-    `      <button id="menu-button" class="site-button btn-reset" aria-label="Toggle menu" aria-expanded="false" aria-controls="site-nav">\n` +
-    `        <svg viewBox="0 0 24 24" class="icon" aria-hidden="true"><use xlink:href="#svg-menu"></use></svg>\n` +
-    `      </button>\n` +
-    `    </div>\n` +
-    `    <nav aria-label="Main" id="site-nav" class="site-nav">` +
-    renderNavTree(site.navTree, [], baseurl) +
-    renderNavExternalLinks(config) +
-    `</nav>\n` +
-    // Upstream sidebar.html: when nav_footer_custom.html is empty
-    // (it is on this site), the else-branch emits the "Just the Docs"
-    // fallback footer. The site doesn't override nav_footer_custom.html,
-    // so the upstream default applies verbatim.
-    `    <footer class="site-footer" aria-label="Site">\n` +
-    `      This site uses <a href="https://github.com/just-the-docs/just-the-docs">Just the Docs</a>, a documentation theme originally for Jekyll.\n` +
-    `    </footer>\n` +
-    `  </div>`
+    `(function () {\n` +
+    `  var nav = document.getElementById("site-nav"), root = window.OFFLINE_SITE_ROOT || "";\n` +
+    `  if (!nav || !nav.firstElementChild || document.documentElement.hasAttribute("data-pane")) return;\n` +
+    `  var html = ${JSON.stringify(navHtml)};\n` +
+    `  nav.firstElementChild.outerHTML = root ? html.replace(/<a href="/g, '<a href="' + root) : html;\n` +
+    `})();\n`
   );
 }
 
@@ -417,10 +459,15 @@ function renderSiteTitle(config) {
 // included file's trailing newline (survives Liquid trim semantics --
 // see test in PLAN-4 §5.4 notes). Compress collapses to one space,
 // producing `</ul> </li>` rather than `</ul></li>`.
-function renderNavTree(nodes, ancestorTitles, baseurl) {
+//
+// `open`, when given, renders only part of the tree: the 1-based positions
+// of the path to expand, one per level (a page's `navLevels` after its
+// first entry). A node off the path keeps its expander but not its list.
+function renderNavTree(nodes, ancestorTitles, baseurl, open) {
   if (!nodes || nodes.length === 0) return `<ul class="nav-list"></ul>\n`;
   let out = `<ul class="nav-list">`;
-  for (const node of nodes) {
+  for (const [i, node] of nodes.entries()) {
+    const rest = !open ? undefined : open[0] === i + 1 ? open.slice(1) : null;
     out += `<li class="nav-list-item">`;
     if (ancestorTitles.includes(node.title)) {
       out += `<a href="${escapeMarkupAndQuotes(relativeUrl(node.url, baseurl))}" class="nav-list-link"> &#8734; </a>`;
@@ -435,8 +482,8 @@ function renderNavTree(nodes, ancestorTitles, baseurl) {
           ` </button>`;
       }
       out += `<a href="${escapeMarkupAndQuotes(relativeUrl(node.url, baseurl))}" class="nav-list-link">${String(node.title)}</a>`;
-      if (hasChildren) {
-        out += renderNavTree(node.children, [...ancestorTitles, node.title], baseurl);
+      if (hasChildren && rest !== null) {
+        out += renderNavTree(node.children, [...ancestorTitles, node.title], baseurl, rest);
       }
     }
     out += `</li>`;
