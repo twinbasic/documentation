@@ -344,31 +344,32 @@ What does not reproduce it: a long input path to `export`, and any output folder
 *DEFERRED until after v1*
 
 **Describe the bug**
-Given a file that is not a valid project, the compiler executable opens a modal message box (*invalid header* and *invalid file format* were both seen) and prints nothing more until it is closed. `export`, `settings` and `readme` each waited on the box indefinitely. Once the box is closed, `export` prints `WARNING: failed to parse project file, file may be corrupt`, then `... DONE`, and exits 0.
+Given a file that is not a valid project, the compiler executable opens a modal message box and prints nothing more until it is closed. `export`, `settings` and `readme` each wait on the box indefinitely. Once the box is closed, `export` prints `WARNING: failed to parse project file, file may be corrupt`, then `... DONE`, and exits 0; `settings` and `readme` print an `ERROR:` line, and exit 0 as well.
 
 **To Reproduce**
 Steps to reproduce the behavior:
 1. Unzip `damaged-project-modal-box.zip` (it holds `damaged-project-modal-box.twinproj`, an ordinary valid project) and make damaged copies of it, in PowerShell: `$b = [IO.File]::ReadAllBytes("C:\p\damaged-project-modal-box.twinproj")`, then `$b[0] = $b[0] -bxor 0xFF; [IO.File]::WriteAllBytes("C:\p\firstbyte.twinproj", $b)` for one with its first byte changed, and `[IO.File]::WriteAllBytes("C:\p\cut.twinproj", $b[0..([int]($b.Length / 2))])` for one cut off halfway. A 20-byte text file named `garbage.twinproj`, or an empty file, is damaged enough too.
 2. Run `twinBASIC_win32.exe export C:\p\garbage.twinproj C:\p\out\`, on a desktop someone is watching.
-3. See a message box and no further output. The command was still waiting when it was ended after 25 seconds.
-4. Close the box. See `WARNING: failed to parse project file, file may be corrupt`, then `... DONE`, and exit code 0. For the project cut off halfway it also writes the one file it could read, `Settings`.
-5. Run `settings` or `readme` on the same file: each waits on a box the same way.
+3. See a message box titled `TWINBASIC ERROR`, saying `invalid file header: bad file format`, and no output after the `exporting from ... to ...` line. The command is still waiting when it is ended after 20 seconds. The empty file and the one with its first byte changed give the same box.
+4. Close the box. See `WARNING: failed to parse project file, file may be corrupt`, then `... DONE`, and exit code 0, with no file written.
+5. Run `settings` or `readme` on the same file: each waits on the same box, prints nothing until it is closed, then prints `ERROR: failed to parse project file, file may be corrupt or inaccessible` and exits 0.
+6. Run `export` on the project cut off halfway. The box is titled `bad file format` and says `WARNING: failed to deserialize file system.  Some files might be lost or truncated.` Once it is closed, `export` writes the one file it could read, `Sources\Startup.twin`, prints `[EXPORT] DONE:` for it and then `... DONE`, with no warning, and exits 0. `settings` on it waits on the same box, then prints `ERROR: failed to find file, file may be corrupt`; `readme` waits, then prints nothing.
 
 **Expected behavior**
-No window opens from a command-line verb. The command prints the problem (`ERROR: failed to parse project file, file may be corrupt or inaccessible`, which it already prints when a folder is given where the project should be), ends `... FAILED`, and does not report `... DONE` for a file it could not read.
+No window opens from a command-line verb. The command prints the problem (`ERROR: failed to parse project file, file may be corrupt or inaccessible`, which it already prints when a folder is given where the project should be), ends `... FAILED`, does not report `... DONE` for a file it could not read, and exits with a code other than 0.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 983 (the 20-byte text file was also seen on BETA 995)
+ - twinBASIC compiler version: BETA 995
 
 **Additional context**
-Severity: an unattended `export`, `settings` or `readme` never finishes, and once the box is closed `export` reports success, so a script that tests for `... DONE` is fooled as well.
+Severity: an unattended `export`, `settings` or `readme` never finishes, and once the box is closed every one of them exits 0 and `export` reports success, so a script that tests the exit code or `... DONE` is fooled as well.
 
-All four kinds of damaged input were tried on BETA 983: a 20-byte text file, an empty file, a real project with its first byte changed, and one cut off halfway. On BETA 995 a run with a 20-second limit found `export` and `settings` on the 20-byte text file still waiting at the limit; the other inputs returned inside it, and whether each opened a box was not checked.
+All four kinds of damaged input open the box under all three commands, on BETA 995 and on BETA 983. The undamaged project exports at once, with no box. On BETA 983 `export` of the project cut off halfway wrote `Settings` rather than `Sources\Startup.twin`.
 
 What does not reproduce it: a folder given where the project should be. `settings` then prints `ERROR: failed to parse project file, file may be corrupt or inaccessible` and exits, with no box.
 
-<!-- Manual in bugs/damaged-project-modal-box/repro.json, and not to be run unattended: the box opens on the desktop of whoever runs the command (the probe that found it opened message boxes on the user's desktop three times on BETA 995 alone). No test or page states it. The command-line verbs are described on docs/Documentation/Tools.md (impexp) and in scripts/impexp.mjs, which does not open a box for a damaged file; check them when fixed. Found by probing the command line for the rewrite of the Import/Export Tool page; the boxes appeared on the desktop of the person at the machine, which is how their wording is known. Measured on BETA 983 with a 25 second limit, on BETA 995 with 20 (cli995/log2-995.txt). -->
+<!-- Manual in bugs/damaged-project-modal-box/repro.json, and not to be run unattended: the box opens on the desktop of whoever runs the command (the probe that found it opened message boxes on the user's desktop three times on BETA 995 alone). No test or page states it. The command-line verbs are described on docs/Documentation/Tools.md (impexp) and in scripts/impexp.mjs, which does not open a box for a damaged file; check them when fixed. Found by probing the command line for the rewrite of the Import/Export Tool page; on BETA 983 the boxes appeared on the desktop of the person at the machine (25 second limit). On BETA 995 all fifteen runs (three commands, four damaged inputs and the undamaged control) were made on a private desktop inside a kill-on-close job, the box's title and text read from that desktop, and each run repeated with OK pressed after 3 seconds (kit beta995-probes/s74/damaged/results-995.md and harness.ps1, local scratch). bug_repro has no mode that could do this, so the entry stays manual. -->
 
 ---
 
