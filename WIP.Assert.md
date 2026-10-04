@@ -32,6 +32,6 @@ The 15 members per module (identical signatures across all three):
 | `SequenceEquals(Expected, Actual, [FailMessage])`    | element-by-element comparison of two sequences / arrays      |
 | `NotSequenceEquals(Expected, Actual, [FailMessage])` | inverse of `SequenceEquals`                                  |
 
-Surface each member as if it were an ordinary `Sub` (e.g. `Sub AreEqual(Expected, Actual, [Message])`); the source-side `Lib "<assert{exact,strict,permissive}>"` / `Alias "#N"` / `PreserveSig` / `DeclareWide` decoration is internal pseudo-DLL plumbing and is **not** surfaced. Call out `[DebugOnly(True)]` (assertions compile out of release builds) and `[MustBeQualified(True)]` (callers must write the module name, e.g. `Strict.IsTrue(x)`).
+Show each member as an ordinary `Sub` (e.g. `Sub AreEqual(Expected, Actual, [Message])`). The source-side `Lib "<assert{exact,strict,permissive}>"` / `Alias "#N"` / `PreserveSig` / `DeclareWide` decoration is internal pseudo-DLL plumbing and is **not** shown. Call out `[DebugOnly(True)]` (assertions compile out of release builds) and `[MustBeQualified(True)]` (callers must write the module name, e.g. `Strict.IsTrue(x)`).
 
-Layout: one page per module, listing all 15 members inline under `## <Member>` headings (deep-linkable as `…/Strict#areequal`). Replicating 15 × 3 = 45 near-duplicate pages would add noise without value.
+Layout: one page per module, listing all 15 members inline under `## <Member>` headings (deep-linkable as `…/Strict#areequal`). Forty-five near-duplicate pages (15 × 3) would add noise without value.

@@ -26,7 +26,6 @@
 
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { compilerExe } from "./tb-install.mjs";
 import {
   attachIde,
   buildProject,
@@ -148,7 +147,6 @@ export async function buildAddin({
       src,
       stage: path.join(work, "addin-src"),
       project,
-      compiler: compilerExe(ide),
       settings: (original) => {
         dll = path.join(work, "out", `${original["project.name"]}.dll`);
         return { "project.buildPath": dll, "project.id": laneProjectId(1, port) };

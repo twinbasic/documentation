@@ -14,13 +14,13 @@ The user-facing surface is the `WebView2` control plus a small set of wrapper cl
 | `WebView2Response`          | response side of a `WebResourceRequested` event — StatusCode, ReasonPhrase, Headers, ContentBytes…   |
 | `WebView2ResponseHeaders`   | mutable response-header collection                                                                    |
 
-`WebView2EnvironmentOptions` is declared `Private Class`, **but** the `WebView2` control exposes it via `Public EnvironmentOptions As WebView2EnvironmentOptions = New WebView2EnvironmentOptions`. It is documented as a sub-page of the `WebView2` control class — its `Public` fields (`BrowserExecutableFolder`, `UserDataFolder`, `AdditionalBrowserArguments`, `Language`, `TargetCompatibleBrowserVersion`, `AllowSingleSignOnUsingOSPrimaryAccount`, `ExclusiveUserDataFolderAccess`, `EnableTrackingPrevention`) are user-set before / during the `Create` event.
+`WebView2EnvironmentOptions` is declared `Private Class`, **but** the `WebView2` control exposes it via `Public EnvironmentOptions As WebView2EnvironmentOptions = New WebView2EnvironmentOptions`. It is documented as a sub-page of the `WebView2` control class. Its `Public` fields (`BrowserExecutableFolder`, `UserDataFolder`, `AdditionalBrowserArguments`, `Language`, `TargetCompatibleBrowserVersion`, `AllowSingleSignOnUsingOSPrimaryAccount`, `ExclusiveUserDataFolderAccess`, `EnableTrackingPrevention`) are set by the user before or during the `Create` event.
 
-The `WebView2` control class uses the **folder-style** layout (`WebView2/index.md`) because of its size and to host the `EnvironmentOptions` sub-page.
+The `WebView2` control class uses the **folder-style** layout (`WebView2/index.md`), because of its size and to host the `EnvironmentOptions` sub-page.
 
-Enumerations (ten of them: `wv2PermissionKind`, `wv2PermissionState`, `wv2ErrorStatus`, `wv2KeyEventKind`, `wv2WebResourceContext`, `wv2ProcessFailedKind`, `wv2ScriptDialogKind`, `wv2HostResourceAccessKind`, `wv2PrintOrientation`, `wv2DefaultDownloadCornerAlign`) live under `WebView2/Enumerations/`. `COREWEBVIEW2_PHYSICAL_KEY_STATUS` is a public `Type` (used in the `AcceleratorKeyPressed` event arguments) and lives under `WebView2/Types/`.
+Enumerations (ten: `wv2PermissionKind`, `wv2PermissionState`, `wv2ErrorStatus`, `wv2KeyEventKind`, `wv2WebResourceContext`, `wv2ProcessFailedKind`, `wv2ScriptDialogKind`, `wv2HostResourceAccessKind`, `wv2PrintOrientation`, `wv2DefaultDownloadCornerAlign`) live under `WebView2/Enumerations/`. `COREWEBVIEW2_PHYSICAL_KEY_STATUS` is a public `Type` (used in the `AcceleratorKeyPressed` event arguments) and lives under `WebView2/Types/`.
 
-Pre-existing site cross-references:
+Site cross-references:
 
-- [`docs/Tutorials/WebView2/`](docs/Tutorials/WebView2) — task-oriented tutorial set; cross-link from / to the reference pages where useful.
-- [`docs/Reference/VBRUN/Constants/ControlTypeConstants.md`](docs/Reference/VBRUN/Constants/ControlTypeConstants.md) — lists `vbWebView2 = 18`.
+- [`docs/Tutorials/WebView2/`](docs/Tutorials/WebView2) — the task-oriented tutorial set. Cross-link between it and the reference pages where useful.
+- [`docs/Reference/Default/VBRUN/Constants/ControlTypeConstants.md`](docs/Reference/Default/VBRUN/Constants/ControlTypeConstants.md) — lists `vbWebView2 = 18`.

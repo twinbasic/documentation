@@ -2,9 +2,9 @@
 
 See [WIP.md](WIP.md) for the cross-package maintenance guide.
 
-A VB6-compatible replacement for **Microsoft Common Controls 6.0** (`MSCOMCTL.OCX`), written on top of the Win32 ComCtl32 controls (`COMCTL32.DLL` / `MSFTEDIT.DLL`). Ships eight controls that mirror the MSCOMCTL surface name-for-name where possible. First released v0.0.1.0 on 18-FEB-2023; independent of (but co-versioned with) the VB compatibility package.
+A VB6-compatible replacement for **Microsoft Common Controls 6.0** (`MSCOMCTL.OCX`), written on top of the Win32 ComCtl32 controls (`COMCTL32.DLL` / `MSFTEDIT.DLL`). Ships eight controls that mirror the MSCOMCTL surface name-for-name where possible. It is independent of, but co-versioned with, the VB compatibility package.
 
-Each control is a heavy `<Name>BaseCtl` (where every event / method / property is implemented, tagged `[COMCreatable(False)]` + `[EventsUseDispInterface]`) plus a thin `<Name>` leaf (`Inherits <Name>BaseCtl`, tagged `[WindowsControl("/miscellaneous/ICONS??/<Name>??.png")]`). The leaf adds only a `Class_BeforeFirstMethodAccess` that calls `[_HiddenModule].EnsureContainerIsLoaded(Me)` — same `<Name>BaseCtl` / `<Name>` leaf split that CEF and the VB controls use.
+Each control is a large `<Name>BaseCtl` (where every event / method / property is implemented, tagged `[COMCreatable(False)]` + `[EventsUseDispInterface]`) plus a thin `<Name>` leaf (`Inherits <Name>BaseCtl`, tagged `[WindowsControl("/miscellaneous/ICONS??/<Name>??.png")]`). The leaf adds only a `Class_BeforeFirstMethodAccess` that calls `[_HiddenModule].EnsureContainerIsLoaded(Me)`. CEF and the VB controls use the same `<Name>BaseCtl` / `<Name>` leaf split.
 
 Eight controls (one `.twin` per pair):
 
@@ -19,11 +19,11 @@ Eight controls (one `.twin` per pair):
 | `TreeView.twin`   | `VB.BaseControlFocusable`       | Hierarchical tree of `Node` objects — sorting, label-edit, checkboxes, image lists            |
 | `UpDown.twin`     | `VB.BaseControlFocusableNoFont` | Spin control (up / down arrows) — pure Increment / Min / Max / Value; no auto-buddy binding   |
 
-Every `<Name>BaseCtl` carries `[WithDispatchForwarding] Implements Control` (where `Control` is `Private Interface` in `Interfaces.twin`, marked `[COMExtensible]` — essentially an `Object` alias that makes the dispatch forwarding behave). They also implement a chorus of `VB.IWindowsControl`, `VB.IWindowElementEventsCommon`, `VB.IWindowElementEventsCommonControls`, `VB.IWindowElementEventsUC`, `VB.IWindowElementEventsAX` — these are the VB-package event-dispatch interfaces; do **not** surface them on the docs. Each control also implements one private `Tb<Name>Private` interface (declared `[ComImport(True)]` inside the same `.twin`) that the package's collection sub-objects use to refcount and reach internal state without taking a strong reference; **no doc page** for those.
+Every `<Name>BaseCtl` carries `[WithDispatchForwarding] Implements Control` (where `Control` is `Private Interface` in `Interfaces.twin`, marked `[COMExtensible]` — essentially an `Object` alias that makes the dispatch forwarding behave). They also implement `VB.IWindowsControl`, `VB.IWindowElementEventsCommon`, `VB.IWindowElementEventsCommonControls`, `VB.IWindowElementEventsUC` and `VB.IWindowElementEventsAX` — the VB-package event-dispatch interfaces. Do **not** show them in the docs. Each control also implements one private `Tb<Name>Private` interface (declared `[ComImport(True)]` inside the same `.twin`). The package's collection sub-objects use it to refcount and reach internal state without a strong reference. **No doc page** for those.
 
 ## Public user-facing surface
 
-The eight leaf classes `DTPicker`, `ImageList`, `ListView`, `MonthView`, `ProgressBar`, `Slider`, `TreeView`, `UpDown` are what user code references at design time (via `[WindowsControl(...)]`) and at run time (`Dim lv As ListView`). The `<Name>BaseCtl` base classes are the implementation half — `[COMCreatable(False)]` and not user-instantiable, but **the entire user-visible surface is declared on them**. Document on the leaf's name (`ListView.md`), describe the full surface, and don't surface the `<Name>BaseCtl` split.
+The eight leaf classes `DTPicker`, `ImageList`, `ListView`, `MonthView`, `ProgressBar`, `Slider`, `TreeView`, `UpDown` are what user code references at design time (via `[WindowsControl(...)]`) and at run time (`Dim lv As ListView`). The `<Name>BaseCtl` base classes are the implementation half: `[COMCreatable(False)]`, not user-instantiable, but **the entire user-visible surface is declared on them**. Document on the leaf's name (`ListView.md`), describe the full surface, and do not show the `<Name>BaseCtl` split.
 
 The package also surfaces eight sub-object classes — collection plus item:
 
@@ -49,7 +49,7 @@ Container cross-references (typed as the `<Name>BaseCtl` parent, since the contr
 
 ## Per-control highlights
 
-These are the points worth surfacing on each control's page that are *not* obvious from a flat property list:
+Points to put on each control's page that are *not* obvious from a flat property list:
 
 - **DTPicker** — the only control where most behaviour is in the calendar drop-down, not the inline display. The `Calendar*` colour properties (`CalendarBackColor`, `CalendarForeColor`, `CalendarTitleBackColor`, `CalendarTitleForeColor`, `CalendarTrailingForeColor`) act on the dropped-down month grid via `DTM_SETMCCOLOR`. `Format` (`DTPickerFormatConstants`) chooses between long-date / short-date / time / custom; when set to `dtpCustom`, the picker pulls `CustomFormat` (a `GetDateFormat`-style picture string). The control exposes `Year` / `Month` / `Week` / `Day` / `Hour` / `Minute` / `Second` accessors that decompose the current `Value`. `Value` is `Variant` — it can be `Null` (no date selected) when `CheckBox = True` and the user unchecks the box. Events `Format`, `FormatSize`, `CallbackKeyDown` fire when `Format = dtpCustom` and the format string contains a callback token.
 - **ImageList** — purely off-screen; `Visible` does nothing user-meaningful (it's a "store of pictures" control). The `ImageWidth` / `ImageHeight` properties are read/write **only while empty** — once any image is added, the setter raises run-time error 35611 (*"Property is read-only if image list contains images"*). `ColorDepth` is fixed at construction time. `MaskColor` + `UseMaskColor = True` makes the masked pixels transparent when rendered into a control that consumes the image list. `Overlay(Key1, Key2)` composes two list-images into a single `StdPicture`. Bound-count tracking: an `ImageList` cannot be modified (clear / remove) while any control has it bound as `Icons` / `SmallIcons` / `ColumnHeaderIcons` / `ImageList`, throwing error 35617.
@@ -84,7 +84,7 @@ Source-side spelling note: every enum is named `<Name>` (no `Public` modifier) b
 
 ## Module-level enums (under `Enumerations/`)
 
-Five `<Name>Consts.twin` modules in `SUPPORT/` carry Win32 SDK plumbing (message IDs, notification IDs, style flags, Win32 types like `NMHDR` / `SYSTEMTIME` / `LVCOLUMNW`) **plus** a small fraction of user-facing enums. The plumbing is unreachable by user code (mostly inside `Private Module …Consts`); the user-facing enums are split into a separate `Public Module` (TreeView's clean case) or coexist with the plumbing in an effectively-public bare `Module` (the rest). Either way, surface only the user-facing enums:
+Five `<Name>Consts.twin` modules in `SUPPORT/` hold Win32 SDK plumbing (message IDs, notification IDs, style flags, Win32 types like `NMHDR` / `SYSTEMTIME` / `LVCOLUMNW`) **plus** a few user-facing enums. User code cannot reach the plumbing (mostly inside `Private Module …Consts`). The user-facing enums are in a separate `Public Module` (TreeView) or share an effectively public bare `Module` with the plumbing (the rest). Either way, document only the user-facing enums:
 
 | Enum                          | Declared in / module                                       | Members                                                              |
 |-------------------------------|------------------------------------------------------------|----------------------------------------------------------------------|
@@ -99,7 +99,7 @@ Five `<Name>Consts.twin` modules in `SUPPORT/` carry Win32 SDK plumbing (message
 | `OrientationConstants`        | `Misc.twin` (`Private Module Miscellaneous`)               | `ccOrientationHorizontal = 0`, `ccOrientationVertical = 1` — used by both **Slider** and **UpDown** |
 | `ImlDrawConstants`            | `ImageListConsts.twin` (`Private Module ImageListConsts`)  | `ImlDrawNormal = 1`, `ImlDrawTransparent = 2`, `ImlDrawSelected = 4`, `ImlDrawFocus = 8`, `ImlDrawNoMask = 16` — flag combination; used as `[TypeHint(ImlDrawConstants)]` on `ListImage.Draw`'s `Style` parameter |
 
-For `OrientationConstants` and `ImlDrawConstants` (declared `Public Enum` inside a `Private Module`): the enclosing module is unreachable by name from user code, but the enum members are reachable because they're tagged through `[TypeHint]` on the consuming method's parameter and are also surfaced by the IDE's "implicit member visibility" — i.e. user code writes `Slider1.Orientation = ccOrientationVertical` and `ListImage.Draw(hdc, 0, 0, ImlDrawTransparent Or ImlDrawSelected)`. Document the enum and don't worry about qualification — the user's call site never needs `Module.Enum.Member` form.
+For `OrientationConstants` and `ImlDrawConstants` (declared `Public Enum` inside a `Private Module`): user code cannot name the enclosing module, but the enum members are reachable. `[TypeHint]` tags them on the consuming method's parameter, and the IDE's "implicit member visibility" shows them. User code writes `Slider1.Orientation = ccOrientationVertical` and `ListImage.Draw(hdc, 0, 0, ImlDrawTransparent Or ImlDrawSelected)`. Document the enum and don't worry about qualification — the user's call site never needs `Module.Enum.Member` form.
 
 The remaining `<Name>Consts.twin` modules (`ImageListConsts`, `ListViewConsts`, `ProgressBarConsts`, `TreeViewConsts.TreeViewConsts` (the private half), `UpDownConsts`, `SliderConsts`, `MonthViewConsts`, `DTPickerConsts` non-`DTPickerFormatConstants` content) are package-internal — Win32 message IDs, style flags, notification structures (`NMHDR`, `NMLISTVIEW`, `NMDATETIMECHANGE`, …) that the controls use to talk to ComCtl32 but that the user never references. **No doc pages** for those; do not document `LVMessages`, `TVMessages`, `MonthViewMessages`, `SliderMessages`, `UpDownMessages`, `DTPickerMessages` and the associated `*Notifications` / `*Styles` enums.
 
@@ -111,7 +111,7 @@ The remaining `<Name>Consts.twin` modules (`ImageListConsts`, `ListViewConsts`, 
 - `Private Interface Control` / `IScheduledCallback` / `ITwinBasicDesignerExtensions` (in `Interfaces.twin`) — internal interfaces. `Control` is the empty marker interface that `[WithDispatchForwarding]` resolves names through. No doc pages.
 - `Private Module Miscellaneous` (in `Misc.twin`) — `StrPtrSafe`, `CommonTreeViewGetNodeFromHandle`, `SyncBorderStyle` — internal helpers. `OrientationConstants` does surface from this module (see above) but the module itself doesn't get a doc page.
 - `Private Module ImagesHelper` (in `ImagesHelper.twin`) — `GetBitsPerPixelFromPic`. Internal helper. No doc page.
-- `Private Module ImageListConsts`, `ListViewConsts`, `ProgressBarConsts`, `TreeViewConsts` (the private half), and the bare `Module DTPickerConsts` / `MonthViewConsts` / `SliderConsts` / `UpDownConsts` (effectively public but Win32-plumbing-only) — covered above; no per-module doc page.
+- The `…Consts` modules (private, or the bare `Module DTPickerConsts` / `MonthViewConsts` / `SliderConsts` / `UpDownConsts`, which are effectively public but Win32 plumbing only) — see *Module-level enums*; no per-module doc page.
 
 ## `[Unimplemented]` and `[Hidden]` members to flag
 
@@ -124,7 +124,7 @@ The remaining `<Name>Consts.twin` modules (`ImageListConsts`, `ListViewConsts`, 
 
 Layout: folder-style for `ImageList/`, `ListView/`, `TreeView/` (each has 2–4 sub-object companions — `ListImage` + `ListImages`; `ListItem` + `ListItems` + `ColumnHeader` + `ColumnHeaders`; `Node` + `Nodes` — that are 1:1 with the container, same pattern as `CustomControls/WaynesButton/WaynesButtonState.md`). Single-file for the remaining five (`DTPicker.md`, `MonthView.md`, `ProgressBar.md`, `Slider.md`, `UpDown.md`). An `Enumerations/` folder holds the 10 module-level / shared enums; the 11 per-control nested enums fold onto their declaring control's page.
 
-## Pre-existing cross-references on the site
+## Cross-references on the site
 
-- [`docs/Reference/VBRUN/Constants/ControlTypeConstants.md`](docs/Reference/VBRUN/Constants/ControlTypeConstants.md) already lists every control's `vb<Name>` constant: `vbProgressBar = 21`, `vbTreeView = 22`, `vbSlider = 26`, `vbUpDown = 27`, `vbDTPicker = 28`, `vbMonthView = 29`, `vbListView = 30`, `vbImageList = 31`. Each control's reference page should link back to its constant.
-- [`docs/Reference/VBRUN/Constants/OLEDropConstants.md`](docs/Reference/VBRUN/Constants/OLEDropConstants.md) and the `OLEDragDrop` events are inherited surface — link the `OLEDropMode` entries to the constant.
+- [`docs/Reference/Default/VBRUN/Constants/ControlTypeConstants.md`](docs/Reference/Default/VBRUN/Constants/ControlTypeConstants.md) already lists every control's `vb<Name>` constant: `vbProgressBar = 21`, `vbTreeView = 22`, `vbSlider = 26`, `vbUpDown = 27`, `vbDTPicker = 28`, `vbMonthView = 29`, `vbListView = 30`, `vbImageList = 31`. Each control's reference page should link back to its constant.
+- [`docs/Reference/Default/VBRUN/Constants/OLEDropConstants.md`](docs/Reference/Default/VBRUN/Constants/OLEDropConstants.md) and the `OLEDragDrop` events are inherited surface — link the `OLEDropMode` entries to the constant.

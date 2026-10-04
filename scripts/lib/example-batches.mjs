@@ -55,9 +55,9 @@ export const DEFAULT_BATCH = 120;
  *
  * The relation lives in the tool rather than in the tree on purpose. The
  * alternative was a marker file in the template directory, and a template
- * directory is an exported twinBASIC project that the compiler's `import` verb
- * has to accept -- so a stray file there is a thing to test rather than a thing
- * to declare.
+ * directory is an exported twinBASIC project, which impexp packs whole -- every
+ * file in it but a .git folder goes into the batch's project -- so a stray file
+ * there is a thing to test rather than a thing to declare.
  */
 export const TEMPLATE_BASE = {
   "vb-private": "console",

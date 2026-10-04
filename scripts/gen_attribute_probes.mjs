@@ -30,7 +30,7 @@
 //
 // Then pack each tree and open the result in the IDE:
 //
-//     bin\twinBASIC_win32.exe import AttributeProbes.twinproj <out_dir> --overwrite
+//     node scripts/impexp.mjs import AttributeProbes.twinproj <out_dir> --overwrite
 //
 // Re-run after editing `Attributes.md`; the key cites the line each probe came
 // from.

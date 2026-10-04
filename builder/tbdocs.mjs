@@ -83,6 +83,7 @@ import { writePdf } from "./pdf.mjs";
 // htmlparser2 -- is imported dynamically by the tasks that need it, so a
 // build without --check pays nothing.
 import { deriveTreeRels } from "./check-tree.mjs";
+import { syncAddinIndex } from "./addin-index.mjs";
 import { checkPageBaseline } from "./page-baseline.mjs";
 import { checkSymbolBaseline } from "./symbol-baseline.mjs";
 import { deriveSymbolIndex, reportableGaps, serializeSymbolIndex, symbolPages, SYMBOL_INDEX_REL } from "./symbols.mjs";
@@ -912,9 +913,8 @@ const TASKS = {
       const pages = symbolPages(state.pages);
       const result = deriveSymbolIndex({ pages, api });
       const gaps = reportableGaps(result, pages, api);
-      if (!ctx.opts.dryRun) {
-        await writeFileMkdirp(path.join(ctx.destRoot, SYMBOL_INDEX_REL), serializeSymbolIndex(result, api));
-      }
+      const json = ctx.opts.dryRun ? "" : serializeSymbolIndex(result, api);
+      if (json) await writeFileMkdirp(path.join(ctx.destRoot, SYMBOL_INDEX_REL), json);
       if (ctx.opts.symbolGaps) {
         await fs.writeFile(ctx.opts.symbolGaps, `${JSON.stringify(gaps, null, 1)}\n`, "utf8");
       }
@@ -927,6 +927,8 @@ const TASKS = {
         // search.mjs), not written anywhere itself -- symbolIndex's own
         // file output is tB/symbols.json, above.
         symbols: result.symbols,
+        // The file's text, for the add-in's copy (addin-index.mjs).
+        json,
       };
     },
     submit() {},
@@ -1537,6 +1539,9 @@ export async function runBuild(opts) {
     });
     if (lost.text) process.stdout.write(lost.text);
     if (lost.failed) failBuild();
+
+    // The help add-in embeds a committed copy of the index -- see addin-index.mjs.
+    process.stdout.write(await syncAddinIndex({ src: guardedSrc, json: symbolStats.json, write: mayWrite }));
   }
 
   return { pages, staticFiles, site, destRoot };

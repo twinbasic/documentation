@@ -31,6 +31,10 @@
 //     (sweepArchitectureMemory says why), and a named project's is put back
 //     as it was, since a run can switch the target of the project it opens
 //     (restoreArchitectureMemory).
+//   * The IDE's theme, one entry of its GENERAL options, is put back as it
+//     was, and the other options are left as they are (restoreTheme): a
+//     scenario switches the theme, and the IDE saves it where the user's own
+//     IDE reads it.
 //
 // ONE PROCESS OWNS THIS PER RUN. check_examples and sweep_attributes build many
 // projects at once, in one process (lib/tb-build.mjs, which never tidies); each
@@ -470,44 +474,88 @@ const ARCH_MEMORY = "targetArchitectureMemory";
 /** A path as the harness compares those the IDE stores: backslashed and lower case. */
 export const norm = (p) => String(p).split("/").join("\\").toLowerCase();
 
-// The build targets the IDE remembers, as an object, or null when there is no
-// value or it is not a JSON object -- which is not the harness's to repair.
-function readArchitectureMemory(root) {
-  const now = request({ op: "readValue", key: `${root}\\IDESettings`, name: ARCH_MEMORY });
+// An IDESettings value holding a JSON object, as that object, or null when
+// there is no value or it is not a JSON object -- which is not the harness's
+// to repair.
+function readSettingObject(root, name) {
+  const now = request({ op: "readValue", key: `${root}\\IDESettings`, name });
   if (!now.exists) return null;
-  let memory;
+  let object;
   try {
-    memory = JSON.parse(now.data);
+    object = JSON.parse(now.data);
   } catch {
     return null;
   }
-  if (!memory || typeof memory !== "object" || Array.isArray(memory)) return null;
-  return { data: now.data, memory };
+  if (!object || typeof object !== "object" || Array.isArray(object)) return null;
+  return { data: now.data, object };
 }
 
-// Change the remembered build targets with `edit`, which is handed the object
-// and returns how many entries it changed. The object is edited here rather
-// than in PowerShell, and written back with JSON.stringify, which is how the
-// IDE writes it, so the other entries keep their exact text and order. The
-// write is refused if the value changed after it was read -- an IDE switching
-// a target of its own meanwhile -- and the edit is then made again on what is
-// there now.
-function editArchitectureMemory(root, edit) {
+// Change an IDESettings JSON value with `edit`, which is handed the object and
+// returns how many entries it changed. The object is edited here rather than
+// in PowerShell, and written back with JSON.stringify and the indent the IDE
+// writes that value with, so the other entries keep their exact text and
+// order. The write is refused if the value changed after it was read -- an IDE
+// saving it meanwhile -- and the edit is then made again on what is there now.
+function editSettingObject(root, name, edit, indent = undefined) {
   for (let attempt = 0; attempt < 3; attempt++) {
-    const now = readArchitectureMemory(root);
+    const now = readSettingObject(root, name);
     if (!now) return 0;
-    const changes = edit(now.memory);
+    const changes = edit(now.object);
     if (!changes) return 0;
     const w = request({
       op: "writeValueIf",
       key: `${root}\\IDESettings`,
-      name: ARCH_MEMORY,
+      name,
       expected: now.data,
-      data: JSON.stringify(now.memory),
+      data: JSON.stringify(now.object, undefined, indent),
     });
     if (w.written) return changes;
   }
-  throw new Error(`the IDE's ${ARCH_MEMORY} kept changing while it was being tidied`);
+  throw new Error(`the IDE's ${name} kept changing while it was being tidied`);
+}
+
+// The build targets the IDE remembers; it writes the value unindented.
+const readArchitectureMemory = (root) => {
+  const now = readSettingObject(root, ARCH_MEMORY);
+  return now && { data: now.data, memory: now.object };
+};
+const editArchitectureMemory = (root, edit) => editSettingObject(root, ARCH_MEMORY, edit);
+
+// The IDE's options, which it writes with JSON.stringify(options, undefined,
+// "\t"), and the one of them a run can change: the theme, which an add-in
+// scenario switches to see what an add-in does on a theme change.
+const OPTIONS = "GENERAL";
+const THEME = "colorTheme";
+
+/**
+ * Record the IDE's theme (colorTheme in its GENERAL options), for restoreTheme.
+ * The IDE saves the options whenever the theme changes, and every IDE of every
+ * install reads them, so a run that switches the theme switches the user's.
+ */
+export function snapshotTheme({ root = IDE_SETTINGS_KEY } = {}) {
+  const now = readSettingObject(root, OPTIONS);
+  return { root, options: !!now, had: !!now && THEME in now.object, value: now?.object[THEME] };
+}
+
+/**
+ * Put back the theme a snapshot recorded, leaving every other option as the
+ * IDE left it.
+ *
+ * @returns {number} 1 if it was written, else 0
+ */
+export function restoreTheme(snap) {
+  if (!snap?.options) return 0;
+  return editSettingObject(
+    snap.root,
+    OPTIONS,
+    (options) => {
+      if (snap.had ? options[THEME] === snap.value : !(THEME in options)) return 0;
+      if (snap.had) options[THEME] = snap.value;
+      else delete options[THEME];
+      return 1;
+    },
+    "\t",
+  );
 }
 
 /**
@@ -664,6 +712,12 @@ export function startTidy({ paths = [], prefixes = [], root = IDE_SETTINGS_KEY, 
   // After the sweep, so a named project inside a swept folder is not given back
   // an entry the sweep has just deleted.
   tidy.targets = snapshotTargets(paths, root);
+  try {
+    tidy.theme = snapshotTheme({ root });
+  } catch (e) {
+    console.error(`warning: the IDE's theme will not be put back after this run: ${e.message}`);
+    tidy.theme = null;
+  }
   return tidy;
 }
 
@@ -672,7 +726,7 @@ export function startTidy({ paths = [], prefixes = [], root = IDE_SETTINGS_KEY, 
  * the run has exited -- shutdownIde waits for that.
  *
  * @returns {{projectState: number, recentlyOpened: number, association: number,
- *            architecture: number | null} | null}
+ *            architecture: number | null, theme: number | null} | null}
  */
 export function finishTidy(tidy) {
   if (!tidy) return null;
@@ -697,7 +751,13 @@ export function finishTidy(tidy) {
   }
   const swept = sweepTargets(tidy.prefixes, tidy.root);
   const restored = restoreTargets(tidy.targets);
-  return { ...done, architecture: swept === null || restored === null ? null : swept + restored };
+  let theme = null;
+  try {
+    theme = restoreTheme(tidy.theme);
+  } catch (e) {
+    console.error(`warning: could not put back the IDE's theme: ${e.message}`);
+  }
+  return { ...done, architecture: swept === null || restored === null ? null : swept + restored, theme };
 }
 
 // Whether any value in a key snapshot names a path inside the temp folder.

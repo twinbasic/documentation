@@ -20,7 +20,6 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import http from "node:http";
 import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
@@ -28,6 +27,7 @@ import { sleep } from "../../scripts/lib/tb-ide.mjs";
 import { loadedAddins } from "../../scripts/lib/tb-ide-addins.mjs";
 import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
 import { click, clickAt, pressKey, toolWindow, waitFor } from "../../scripts/lib/tb-operate.mjs";
+import { frameEval, frameOf, serveLoopback } from "./pages.mjs";
 import { scenario } from "./scenario.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -51,70 +51,22 @@ const PAGES = {
   "/c.html": page("Fixture C", "<p>page C</p>"),
 };
 
-// Serve PAGES on one port of both loopback addresses, since the frame may
-// resolve localhost to either, recording every request. A port whose IPv6
-// side something else holds is given up for another, so that no request can
-// reach a stranger's server.
+// Serve PAGES on localhost, recording every request.
 async function servePages() {
   const requests = [];
-  const handler = (req, res) => {
+  const server = await serveLoopback((req, res) => {
     requests.push({ url: req.url, dest: req.headers["sec-fetch-dest"] });
     const body = PAGES[req.url.split("?")[0]];
     res.writeHead(body ? 200 : 404, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
     res.end(body ?? "");
-  };
-  const listen = (host, port) =>
-    new Promise((resolve, reject) => {
-      const s = http.createServer(handler);
-      s.once("error", reject);
-      s.listen(port, host, () => resolve(s));
-    });
-  for (let tries = 0; tries < 5; tries++) {
-    const v4 = await listen("127.0.0.1", 0);
-    const port = v4.address().port;
-    try {
-      const v6 = await listen("::1", port);
-      return {
-        port,
-        requests,
-        close: () => {
-          v4.close();
-          v6.close();
-        },
-      };
-    } catch (e) {
-      if (e.code === "EADDRNOTAVAIL" || e.code === "EAFNOSUPPORT") {
-        return { port, requests, close: () => v4.close() }; // no IPv6 loopback at all
-      }
-      v4.close();
-    }
-  }
-  throw new Error("no loopback port was free on both IPv4 and IPv6");
+  });
+  return { ...server, requests };
 }
 
 // ------------------------------------------------------------------ reading
 
 // The probe's lines in the DEBUG CONSOLE since a mark, without the prefix.
 const probeLines = (c, mark) => linesSince(c, mark, { prefix: "[PanesProbe] " });
-
-// The frame, and an expression evaluated in its document, in an isolated world
-// of the test's own so that nothing of the page's script is touched.
-async function frameOf(c, origin) {
-  const tree = await c.send("Page.getFrameTree");
-  return (tree.frameTree.childFrames ?? []).map((f) => f.frame).find((f) => f.url.startsWith(origin)) ?? null;
-}
-async function frameEval(c, origin, expression) {
-  const frame = await frameOf(c, origin);
-  if (!frame) throw new Error(`no frame on ${origin}`);
-  const { executionContextId } = await c.send("Page.createIsolatedWorld", {
-    frameId: frame.id,
-    worldName: "panes-test",
-  });
-  const r = await c.send("Runtime.evaluate", { expression, contextId: executionContextId, returnByValue: true });
-  if (r.exceptionDetails)
-    throw new Error(r.exceptionDetails.exception?.description ?? JSON.stringify(r.exceptionDetails));
-  return r.result.value;
-}
 
 // An element of the tool window, as a rectangle in the page's coordinates.
 const rectOf = (c, css) =>

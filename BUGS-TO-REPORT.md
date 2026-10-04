@@ -347,7 +347,7 @@ Every one of those runs ends `... FAILED` and exits 0. Exporting `WebView2Packag
 
 What does not reproduce it: a long input path to `export`, and any output folder short enough that no file path reaches 260 characters and no folder path 248.
 
-<!-- Automated: bugs/path-limit-260/repro.json is a cli reproducer, import to a 239-character file name in the temp folder (generated, 230 f characters plus .twinproj; the temp folder's own length adds to it, so it fails whatever TEMP is). It tests the file limit only; the export side needs an existing deep folder, which the cli mode cannot create, so it is in the steps above. Stated in WIP.Harness.md (the census trusting export's exit code, the path-length remark) and scripts/census_attributes.mjs; the census now tests for ... DONE. Measured on BETA 995, the file and folder rows with the HelloWorld sample and the reproducer's project, and the input path 303 characters long. Found by the attribute census pointed at a cache folder in a deep working directory: WebView2Package and the three cefPackage versions came back ... FAILED while the other twelve packages exported. When fixed, the census can drop its ... DONE test only if exit codes become reliable too. -->
+<!-- Automated: bugs/path-limit-260/repro.json is a cli reproducer, import to a 239-character file name in the temp folder (generated, 230 f characters plus .twinproj; the temp folder's own length adds to it, so it fails whatever TEMP is). It tests the file limit only; the export side needs an existing deep folder, which the cli mode cannot create, so it is in the steps above. Stated in WIP.Harness.md (why the tooling does not run the compiler's verbs); the census unpacks with impexp, in process. Measured on BETA 995, the file and folder rows with the HelloWorld sample and the reproducer's project, and the input path 303 characters long. Found by the attribute census pointed at a cache folder in a deep working directory: WebView2Package and the three cefPackage versions came back ... FAILED while the other twelve packages exported. -->
 
 ---
 
@@ -888,7 +888,7 @@ Steps to reproduce the behavior:
    w.Boom 1 (early bound): error 5, ran 1 time(s), Property Get ran 0
    ```
 3. See `Hello` run twice, and `Property Get Prop` run after the `Property Let` that failed. The error from the assignment is `&H80020009` (`DISP_E_EXCEPTION`) where the `Property Let` raised 5.
-4. To see the second call, implement `IDispatch` in a `NotDispatchable` class (see `bugs/callbyname-membernotfound-retried/`, which has one, and whose `Invoke` can return another code) whose `Invoke` prints `wFlags`, `pDispParams.cArgs` and whether `pVarResult` is null, and returns a failure code. With `Fail3` returning `DISP_E_TYPEMISMATCH` and `Fail5` raising error 5:
+4. To see the second call, implement `IDispatch` in a `NotDispatchable` class whose `Invoke` prints `wFlags`, `pDispParams.cArgs` and whether `pVarResult` is null, and returns a failure code. With `Fail3` returning `DISP_E_TYPEMISMATCH` and `Fail5` raising error 5:
    ```
    o.Fail3 1      Invoke flags=1 cArgs=1 result=null, then Invoke flags=3 cArgs=0 result=set
    o.Fail3 = 5    Invoke flags=4 cArgs=1 result=null, then Invoke flags=3 cArgs=0 result=set
@@ -911,41 +911,6 @@ What does not reproduce it: a statement with no arguments (`o.Fail3`, `o.Hello`,
 The second call resembles VB's rule for `o.Member(args)` on a property that returns an object or a collection: read the property with no arguments, then apply the arguments to the result. It is applied after a failure of any call that has arguments. The single run of `Hello` in the raw `Invoke` case is also at odds with the COM contract, which gives `DISP_E_BADPARAMCOUNT` for too many arguments without running the member; it is left out of this entry.
 
 <!-- Reproducer: bugs/latebound-call-retried/ (mode run, expects the Hello and Prop lines above); verified on 995. VB6 side in bugs/latebound-call-retried/vb6/ (o.Hello 1 -> 450 and Hits=0; o.Prop = 1 -> 5 and Gets=0). Stated in docs/Reference/COM-Interfaces/IDispatch.md, the second callout under "Errors from a late-bound call", a WARNING naming BETA 995 (a call that fails inside Invoke can be made twice) and the first row of the table under "Classes written in twinBASIC" in the same page. When fixed, reduce that NOTE to the CallByName part (see callbyname-membernotfound-retried), or delete it, and remove the sentence about "a late-bound statement does this twice". The Property Get run and the replaced error number are not on the page yet. -->
-
----
-
-## `CallByName` calls `Invoke` a second time, with no result, when the first call returns DISP_E_MEMBERNOTFOUND
-
-**Describe the bug**
-`CallByName` on an object whose `IDispatch.Invoke` returns `DISP_E_MEMBERNOTFOUND` calls `Invoke` twice: first with a result variant (`pVarResult` supplied), then again with the same identifier and flags and a null `pVarResult`. A late-bound statement for the same member, `o.Anything`, calls it once. Seen with a class that implements `IDispatch` itself and counts the calls.
-
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Open `callbyname-membernotfound-retried.twinproj` (attached as `callbyname-membernotfound-retried.zip`). Its one source file, `Startup.twin`, declares a copy of `IDispatch` (the `stdole` one cannot be called) and a `NotDispatchable` class `Recorder` that implements it. Its `GetIDsOfNames` returns 1 for any name, and its `Invoke` prints its `wFlags`, says whether `pVarResult` is null, counts the call, and returns `DISP_E_MEMBERNOTFOUND` with `Err.ReturnHResult`.
-2. Run it. `Main` calls `CallByName o, "Anything", vbMethod` and then `o.Anything`, with `On Error Resume Next`, through `Dim o As Object = New Recorder`:
-   ```
-       Invoke 1: wFlags 1, result supplied
-       Invoke 2: wFlags 1, result null
-   CallByName: error 438, Invoke called 2 time(s)
-       Invoke 1: wFlags 1, result null
-   o.Anything: error 438, Invoke called 1 time(s)
-   ```
-
-**Expected behavior**
-One `Invoke` per `CallByName`, as for the statement form. A method that did its work and then reported `DISP_E_MEMBERNOTFOUND` (a scripting host whose members are resolved inside `Invoke` is an example) runs again, and a call with arguments and side effects is repeated.
-
-**Desktop:**
- - OS: Windows 10 Pro 22H2 (build 19045)
- - twinBASIC compiler version: BETA 995
-
-**Additional context**
-Severity: low. It only shows with an `IDispatch` that returns `DISP_E_MEMBERNOTFOUND` after doing work.
-
-What does not reproduce it: `CallByName` with `vbGet` or `vbLet` against `DISP_E_TYPEMISMATCH`, `DISP_E_BADPARAMCOUNT`, `E_FAIL`, an error raised in `Invoke`, or success (one `Invoke` each); `Invoke` returning `DISP_E_MEMBERNOTFOUND` to a late-bound statement or to `x = o.Member` (one `Invoke` each). `vbGet`, `vbMethod` and `vbLet` all repeat after `DISP_E_MEMBERNOTFOUND`.
-
-A separate behaviour, in its own entry, repeats a failed late-bound statement that passes arguments as a property read: see the entry "A late-bound call that passes arguments and fails is issued a second time, without them". The two are not the same: that one is for calls with arguments and needs no `DISP_E_MEMBERNOTFOUND`, and this one is `CallByName` with or without arguments.
-
-<!-- Reproducer: bugs/callbyname-membernotfound-retried/ (mode run, expects the two count lines above); verified on 995. Stated in docs/Reference/COM-Interfaces/IDispatch.md, the second callout under "Errors from a late-bound call", a WARNING naming BETA 995: its sentence "CallByName repeats a call that returned DISP_E_MEMBERNOTFOUND with a null pVarResult". When fixed, remove that sentence (the other half of the NOTE is the entry on late-bound calls with arguments). The flags 1/2/4 combinations come from the probe in s71/idispatch/tb6, a local scratch file that is not in the repository. -->
 
 ---
 
@@ -1020,6 +985,12 @@ Steps to reproduce the behavior:
 **Expected behavior**
 The call goes through the interface: `GetTypeInfoCount` returns the count (1 for a twinBASIC class), and a wrong number or type of argument is a compile error, as for any other interface method. If `stdole.IDispatch` is meant to be an alias of `Object`, `d.GetTypeInfoCount` should still not compile, or the type should not list four methods that cannot be called. A project's own declaration of the interface, with the same `[InterfaceId]`, calls them correctly.
 
+VB6 refuses the declaration itself. The same program in VB6 (attached as `stdole-idispatch-late-bound-vb6.zip`), with a reference to OLE Automation, does not build:
+```
+Compile Error in File '...\Module1.bas', Line 16 : Function or interface marked as restricted, or the function uses an Automation type not supported in Visual Basic
+```
+`Dim d As IDispatch` is refused the same way. With `Dim d As Object` in its place, VB6 runs `d.Hello` and raises 438 for the other three statements, so twinBASIC's `stdole.IDispatch` behaves as VB6's `Object` does, apart from the error number (see the entry about `&H80020006` and 438).
+
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
@@ -1029,7 +1000,7 @@ Severity: low, since a project can declare its own copy of the interface, but th
 
 What was tried: `GetIDsOfNames` and `Invoke` with zero arguments, and `GetTypeInfo` with a null pointer, each end the run the same way; calls with arguments of the wrong type compile (`d.GetTypeInfoCount "a"`, `d.GetTypeInfo "a", "b", "c"`, `d.Invoke "a", "b", "c", "d", "e", "f", "g", "h"` all compile). An unhandled `Err.Raise 5` in the same harness ends the run the same way, so the silent end is how an unhandled error shows there, not a separate fault. Running the built exe with `--exe` was not possible on this machine (the harness could not start it).
 
-<!-- Reproducer: bugs/stdole-idispatch-late-bound/ (mode run, expects the Hello and GetTypeInfoCount lines above); verified on 995. Stated in docs/Reference/COM-Interfaces/IDispatch.md, "The stdole declaration". That paragraph says calling GetTypeInfoCount "ends the run" and that the arguments are not checked because twinBASIC has no type for them; the cause is that the call is late-bound, and the run ends only for lack of an error handler, so reword it now whether or not this is fixed. When fixed, say that stdole.IDispatch can be called, and drop the advice to declare a copy (the Declaration section's "The declaration in stdole is no use" sentence too). -->
+<!-- Reproducer: bugs/stdole-idispatch-late-bound/ (mode run, expects the Hello and GetTypeInfoCount lines above); verified on 995. VB6 side in bugs/stdole-idispatch-late-bound/vb6/ (VB6 6.0): the build is refused, so `vb6` exits 1 with the compile error above; that refusal is the result. The `As Object` variant was run in a scratch copy, not kept. Stated in docs/Reference/COM-Interfaces/IDispatch.md, "The stdole declaration". That paragraph says calling GetTypeInfoCount "ends the run" and that the arguments are not checked because twinBASIC has no type for them; the cause is that the call is late-bound, and the run ends only for lack of an error handler, so reword it now whether or not this is fixed. When fixed, say that stdole.IDispatch can be called, and drop the advice to declare a copy (the Declaration section's "The declaration in stdole is no use" sentence too). -->
 
 ---
 
@@ -1053,6 +1024,16 @@ Steps to reproduce the behavior:
 **Expected behavior**
 `DISP_E_BADINDEX` (`&H8002000B`), which the `IDispatch::GetTypeInfo` documentation gives for an index that is not valid, for an index the object does not have. `E_UNEXPECTED` (*Catastrophic failure*) is the code for a call made at a time when the object cannot take it, and it reads as a fault in the object.
 
+VB6 does not return `E_UNEXPECTED`. The same calls on a VB6 class, made through `DispCallFunc` (the VB6 project is attached as `gettypeinfo-badindex-vb6.zip`), return `TYPE_E_ELEMENTNOTFOUND` (`&H8002802B`) for every index but 0:
+```
+GetTypeInfoCount = 1 (HRESULT 0)
+GetTypeInfo(0): HRESULT 0, pointer returned True
+GetTypeInfo(1): HRESULT 8002802B, pointer returned False
+GetTypeInfo(2): HRESULT 8002802B, pointer returned False
+GetTypeInfo(-1): HRESULT 8002802B, pointer returned False
+```
+Either `DISP_E_BADINDEX` or VB6's `TYPE_E_ELEMENTNOTFOUND` says that the index names nothing; `E_UNEXPECTED` does not.
+
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
@@ -1060,7 +1041,7 @@ Steps to reproduce the behavior:
 **Additional context**
 Severity: minor. A caller that checks for `DISP_E_BADINDEX` to learn that an object has no more type information gets a different code; `GetTypeInfo(0)` and `GetTypeInfoCount` are right.
 
-<!-- Reproducer: bugs/gettypeinfo-badindex/ (mode run, expects the GetTypeInfo(0) and GetTypeInfo(1) lines above); verified on 995. Stated in docs/Reference/COM-Interfaces/IDispatch.md, the GetTypeInfo section ("For 1 it fails with E_UNEXPECTED ..., not with DISP_E_BADINDEX"); when fixed, say that it fails with DISP_E_BADINDEX. -->
+<!-- Reproducer: bugs/gettypeinfo-badindex/ (mode run, expects the GetTypeInfo(0) and GetTypeInfo(1) lines above); verified on 995. VB6 output from bugs/gettypeinfo-badindex/vb6/ (VB6 6.0, Probe.exe). Stated in docs/Reference/COM-Interfaces/IDispatch.md, the GetTypeInfo section ("For 1 it fails with E_UNEXPECTED ..., not with DISP_E_BADINDEX"); when fixed, say that it fails with DISP_E_BADINDEX. -->
 
 ---
 
@@ -1182,16 +1163,18 @@ Steps to reproduce the behavior:
 **Additional context**
 Severity: low in practice, since a program rarely advises a null sink, but a COM client written in any language can send one, and the connection point crashes the process that hosts the class instead of refusing the call.
 
-What was tried: an object that is not a sink gives an ordinary error (`E_NOINTERFACE`, `&H80004002`, see the entry about `Advise` and `Unadvise` error codes), so only a null pointer crashes. The address of the crash is the same in the standalone probe and in this project.
+What was tried: an object that is not a sink gives an ordinary error (`E_NOINTERFACE`, `&H80004002`), so only a null pointer crashes. The address of the crash is the same in the standalone probe and in this project.
 
-<!-- Reproducer: bugs/advise-nothing-crashes/ (mode run, expects tbrun exit 5, the output `before` and the native exception); verified on 995. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, section Advise, the last bullet of "In twinBASIC" and the WARNING after it, which names BETA 995 ("Advise with Nothing as the sink ends the program with an access violation"): when fixed, replace the WARNING with a NOTE saying since which build and what error it raises, and add Nothing to the example if it fits. -->
+VB6 crashes too. The same call on the connection point of a VB6 class with an event, made through `DispCallFunc` (the VB6 project is attached as `advise-nothing-crashes-vb6.zip`), ends the exe with an access violation (`0xC0000005` in `MSVBVM60.DLL`, in the Application event log) after it writes `before`. A fix therefore costs no compatibility: no program depends on the crash.
+
+<!-- Reproducer: bugs/advise-nothing-crashes/ (mode run, expects tbrun exit 5, the output `before` and the native exception); verified on 995. VB6 side in bugs/advise-nothing-crashes/vb6/ (VB6 6.0): out.txt ends at `before`, and `vb6` reports the crash. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, section Advise, the last bullet of "In twinBASIC" and the WARNING after it, which names BETA 995 ("Advise with Nothing as the sink ends the program with an access violation"): when fixed, replace the WARNING with a NOTE saying since which build and what error it raises, and add Nothing to the example if it fits. -->
 
 ---
 
-## `Advise` with a sink that lacks the outgoing interface fails with `E_NOINTERFACE`, and `Unadvise` with a cookie that names no connection succeeds
+## `Unadvise` with a cookie that names no connection succeeds, where VB6 returns CONNECT_E_NOCONNECTION
 
 **Describe the bug**
-On the connection point of a twinBASIC class that has an `Event`, two calls return a different code from the one the COM contract names. `Advise` with a sink that does not answer `QueryInterface` for the outgoing interface fails with `E_NOINTERFACE` (`&H80004002`), where the contract returns `CONNECT_E_CANNOTCONNECT` (`&H80040201`). `Unadvise` with a cookie that names no connection (0 and 99 were tried) succeeds silently and does nothing, where the contract returns an error.
+On the connection point of a twinBASIC class that has an `Event`, `Unadvise` with a cookie that names no connection (0 and 99 were tried) succeeds silently and does nothing. The COM contract returns an error, and VB6 returns `CONNECT_E_NOCONNECTION` (`&H80040200`).
 
 **To Reproduce**
 Steps to reproduce the behavior:
@@ -1210,17 +1193,26 @@ Steps to reproduce the behavior:
    ```
 
 **Expected behavior**
-`Advise` fails with `CONNECT_E_CANNOTCONNECT`. The Windows SDK page for [IConnectionPoint::Advise](https://learn.microsoft.com/en-us/windows/win32/api/ocidl/nf-ocidl-iconnectionpoint-advise) lists it as "The sink does not support the interface required by this connection point", and says to implementers: "The connection point must query the *pUnkSink* pointer for the correct outgoing interface. If this query fails, this method must return CONNECT_E_CANNOTCONNECT." `Unadvise` reports the bad cookie: the page for [IConnectionPoint::Unadvise](https://learn.microsoft.com/en-us/windows/win32/api/ocidl/nf-ocidl-iconnectionpoint-unadvise) lists `E_POINTER` for "The value in *dwCookie* does not represent a valid connection". It is not `S_OK`.
+`Unadvise` reports the bad cookie, as VB6 does. The page for [IConnectionPoint::Unadvise](https://learn.microsoft.com/en-us/windows/win32/api/ocidl/nf-ocidl-iconnectionpoint-unadvise) lists `E_POINTER` for "The value in *dwCookie* does not represent a valid connection", and `CONNECT_E_NOCONNECTION` is the code the `CONNECT_E_` range has for it. It is not `S_OK`.
+
+The same calls on the connection point of a VB6 class with an event, made through `DispCallFunc` (the VB6 project is attached as `advise-unadvise-hresults-vb6.zip`):
+```
+Advise, a sink without the outgoing interface: error=80004002
+  cookie=-1
+Unadvise 99: error=80040200
+before Unadvise 0
+```
+`Unadvise 0` comes last because it ends the VB6 exe with an access violation (`0xC0000005` in `MSVBVM60.DLL`). twinBASIC's 0 for that cookie is no worse than VB6's crash; the cookie 99 is the clean comparison.
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
  - twinBASIC compiler version: BETA 995
 
 **Additional context**
-Severity: low. A client that tests for `CONNECT_E_CANNOTCONNECT` to tell a refused sink from other failures never sees it, and a client that releases a connection twice, or with a wrong cookie, is told it worked.
+Severity: low. A client that releases a connection twice, or with a wrong cookie, is told it worked.
 
-What was tried: a sink that is an ordinary twinBASIC class gives the same `E_NOINTERFACE` whether it has no members or implements `IDispatch` (the outgoing interface's identifier is generated for each build, so a twinBASIC class cannot answer for it). Nothing is connected afterwards, and no event reaches the sink. Calling `Unadvise` a second time with the cookie of the failed `Advise`, which is 0, also returns without an error.
-<!-- Reproducer: bugs/advise-unadvise-hresults/ (mode run, expects tbrun exit 0 and the three lines above); verified on 995. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, sections Advise (the second bullet of "In twinBASIC") and Unadvise (the WARNING, which names BETA 995, about a cookie that names no connection) and the last example, whose comments show 80004002 and 0: when fixed, replace the WARNING with a NOTE saying since which build, and change the rest. When the page is updated, state the code twinBASIC returns for a bad cookie. -->
+`Advise` with a sink that does not answer `QueryInterface` for the outgoing interface fails with `E_NOINTERFACE` (`&H80004002`), where the Windows SDK page for [IConnectionPoint::Advise](https://learn.microsoft.com/en-us/windows/win32/api/ocidl/nf-ocidl-iconnectionpoint-advise) says the method "must return CONNECT_E_CANNOTCONNECT" (`&H80040201`). VB6 returns `E_NOINTERFACE` too, so that is not reported here; the reproducer prints it as a control. A sink that is an ordinary twinBASIC class gives the same `E_NOINTERFACE` whether it has no members or implements `IDispatch` (the outgoing interface's identifier is generated for each build, so a twinBASIC class cannot answer for it). Nothing is connected afterwards, and no event reaches the sink. Calling `Unadvise` a second time with the cookie of the failed `Advise`, which is 0, also returns without an error.
+<!-- Reproducer: bugs/advise-unadvise-hresults/ (mode run, expects tbrun exit 0 and the three lines above); verified on 995. VB6 side in bugs/advise-unadvise-hresults/vb6/ (VB6 6.0), the output above; it ends at `before Unadvise 0` because that call crashes the exe. Narrowed to Unadvise at the owner's word (2026-10-04), since VB6 also returns E_NOINTERFACE from Advise. Stated in docs/Reference/COM-Interfaces/IConnectionPoint.md, sections Advise (the second bullet of "In twinBASIC", which says VB6 returns E_NOINTERFACE too: no change when this is fixed) and Unadvise (the WARNING, which names BETA 995, about a cookie that names no connection) and the last example, whose comments show 80004002 and 0: when fixed, replace the WARNING with a NOTE saying since which build, and change the rest. When the page is updated, state the code twinBASIC returns for a bad cookie. -->
 
 ---
 

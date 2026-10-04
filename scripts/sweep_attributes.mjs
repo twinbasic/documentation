@@ -101,7 +101,8 @@ import {
 import { SITE_LIST, renderSite } from "./lib/attribute-sites.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
 import { sleep, wantShow } from "./lib/tb-ide.mjs";
-import { compilerExe, buildNumber, findIde, runCompiler } from "./lib/tb-install.mjs";
+import { buildNumber, findIde } from "./lib/tb-install.mjs";
+import { packTree } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import {
   CliError,
@@ -276,7 +277,6 @@ if (!values.dryRun && (!IDE || !existsSync(IDE))) {
       "pass --ide <twinBASIC.exe>, set TB_IDE, or unpack a twinBASIC_IDE_BETA_<n> folder on your Desktop",
   );
 }
-const COMPILER = IDE ? compilerExe(IDE) : null;
 const SHOW = wantShow({ show: values.show, hide: values.hide });
 
 // ------------------------------------------------------------ the universe
@@ -383,7 +383,7 @@ function stageBatch(probes, lane) {
   put("_ProbeMain.twin", MAIN_TWIN);
   put("_ProbeFactory.twin", PROBE_FACTORY_TWIN);
   put("_ProbeSupport.twin", SUPPORT_TWIN);
-  // `import` packs the whole tree, so what [CustomControl] and [PopulateFrom]
+  // The pack takes the whole tree, so what [CustomControl] and [PopulateFrom]
   // point at has to be in it before the pack.
   writeProbeResourcesSync(dir);
   const files = new Map();
@@ -392,9 +392,7 @@ function stageBatch(probes, lane) {
     files.set(`${p.tag}.twin`.toLowerCase(), p);
   }
   const proj = path.join(lane.work, `b${index}.twinproj`);
-  // Windows paths throughout: the compiler prefixes \\?\, which takes no forward slash.
-  const pack = runCompiler(COMPILER, ["import", proj.split("/").join("\\"), dir.split("/").join("\\"), "--overwrite"]);
-  if (!pack.done) throw new Error(`packing failed${pack.why}:\n${pack.tail}`);
+  packTree(proj, dir);
   return { proj, dir, files };
 }
 

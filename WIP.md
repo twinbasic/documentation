@@ -4,18 +4,17 @@ Static site (`just-the-docs` theme look-and-feel) deploying to `docs.twinbasic.c
 
 ## Which file to open
 
-This file is the contract: what a session needs before touching anything. The
-engineering casebook --- why a tool is built the way it is, what shipped broken,
-and the measurements behind each decision --- lives in siblings, and **none of
-them is loaded automatically.** Open the one covering what you are about to
-change.
+This file is the contract: what a session needs before touching anything. Its
+siblings say why a tool is built the way it is: the reason, and any measurement
+that still decides something. **None of them is loaded automatically.** Open the
+one covering what you are about to change.
 
 | About to | Read first |
 |---|---|
 | write or edit any page under `docs/` | [WIP.Authoring.md](WIP.Authoring.md) --- page template, frontmatter, cross-section linking tables, per-symbol workflow |
 | document a specific package | that package's own file, listed under [Package API notes](#package-api-notes) |
 | run or change the twinBASIC compiler harness | [WIP.Harness.md](WIP.Harness.md) --- `export`, the attribute census, `tbbuild`, `tbrun`, the add-in test runner |
-| change `builder/`, `scripts/`, or any gate | [WIP.Build.md](WIP.Build.md) --- the pipeline and every gate's failure history |
+| change `builder/`, `scripts/`, or any gate | [WIP.Build.md](WIP.Build.md) --- the pipeline and why each gate exists |
 | touch fonts, diagrams, or the PDF's type | [WIP.Typography.md](WIP.Typography.md), then [WIP.Fonts.md](WIP.Fonts.md) for the generator |
 | change the accessibility scan | [WIP.A11y.md](WIP.A11y.md) --- the axe scan, the sample, the fingerprint gate |
 | work on the sample-compiling harness | [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md) |
@@ -24,49 +23,33 @@ change.
 | run a use-case evaluation round | [eval/README.md](eval/README.md) --- start every evaluator with `eval/run_case.mjs`, **never as a subagent**: a subagent inherits this session's `CLAUDE.md`, and with it this file, which is the answer key the corpus withholds |
 
 The rule that decides where a new note belongs: **this file says what to do, a
-sibling says why it is done that way.** A measurement, a war story, or a "this
-shipped broken and nobody noticed" goes in a sibling. A rule you must follow
-goes here.
+sibling says why it is done that way.** A rule you must follow goes here. The
+reason for a rule, and a measurement that still decides something, go in a
+sibling. History goes nowhere: git keeps it.
 
 ## Status
 
-Reference documentation is **complete** for all thirteen packages, adapted from primary sources (Microsoft VBA-Docs CC-BY-4.0 for the runtime library, `.twin` source for the twinBASIC-specific packages). The CEF and WebView2 packages also carry a tutorial set.
+Reference documentation is **complete** for all thirteen packages: VBA, VBRUN, VB, WebView2, Assert, CustomControls, CEF, WinEventLogLib, WinNamedPipesLib, WinServicesLib, tbIDE, WinNativeCommonCtls and AppGlobalClassObject. It is adapted from primary sources: Microsoft VBA-Docs (CC-BY-4.0) for the runtime library, `.twin` source for the twinBASIC-specific packages. The CEF and WebView2 packages also carry a tutorial set.
 
-| Package                              | Reference   | Tutorials |
-|--------------------------------------|-------------|-----------|
-| VBA package                          | done        | —         |
-| VBRUN package                        | done        | —         |
-| VB package                           | done        | —         |
-| WebView2Package                      | done        | done      |
-| Assert package                       | done        | —         |
-| CustomControls / CustomControlsPackage | done      | —         |
-| cefPackage (CEF)                     | done        | done      |
-| WinEventLogLib                       | done        | —         |
-| WinNamedPipesLib                     | done        | —         |
-| WinServicesLib                       | done        | —         |
-| tbIDE                                | done        | —         |
-| WinNativeCommonCtls                  | done        | —         |
-| AppGlobalClassObject                 | done        | —         |
-
-The rest of this file is the maintenance guide for updating existing pages or adding new ones — high-level package surface notes, page templates, cross-section linking conventions, and the integrity check.
+The rest of this file is the maintenance guide for updating existing pages or adding new ones: package surface notes, page conventions, and the integrity check.
 
 ## Where things live
 
 > **Packages are nested one level deeper than a bare `docs/Reference/<Package>/`.**
-> `58a5e1c` split them into `docs/Reference/Default/` --- the three packages every
-> project references (`VB`, `VBA`, `VBRUN`) --- and `docs/Reference/Built-In/` --- the ten
+> They sit in `docs/Reference/Default/` --- the three packages every
+> project references (`VB`, `VBA`, `VBRUN`) --- or in `docs/Reference/Built-In/` --- the ten
 > that ship with the IDE but are referenced on demand (`AppGlobalClassObject`, `CEF`,
 > `CustomControls`, `TwinBasicAssertions`, `WebView2`, `WinEventLogLib`,
-> `WinNamedPipesLib`, `WinNativeCommonCtls`, `WinServicesLib`, `tbIDE`). `Core/` did
-> not move.
+> `WinNamedPipesLib`, `WinNativeCommonCtls`, `WinServicesLib`, `tbIDE`). `Core/` is not
+> nested.
 >
-> **The reorg moved files, not URLs.** Every `permalink:` is unchanged, so the
-> [Cross-section linking](WIP.Authoring.md#cross-section-linking) tables below are unaffected --- they
+> **The folder layout does not affect URLs.** Every `permalink:` is independent of it, so the
+> [Cross-section linking](WIP.Authoring.md#cross-section-linking) tables are unaffected --- they
 > resolve against the rendered URL, never the file path. Only the on-disk paths in this
 > section and in [Per-symbol workflow](WIP.Authoring.md#per-symbol-workflow) carry the prefix.
 >
-> Note also that the `Assert` package's folder is `Built-In/TwinBasicAssertions/`,
-> though its title, nav parent and permalinks all still say `Assert`.
+> The `Assert` package's folder is `Built-In/TwinBasicAssertions/`,
+> though its title, nav parent and permalinks all say `Assert`.
 
 - `docs/Reference/Core/` — language statements/keywords (`Dim`, `For-Next`, `Sub`, ...).
 - `docs/Reference/Default/<Package>/<Mod>/` — runtime library (VBA, VBRUN), grouped by modules.
@@ -82,23 +65,21 @@ The rest of this file is the maintenance guide for updating existing pages or ad
 - `docs/Reference/Built-In/WinNativeCommonCtls/` — Windows Native Common Controls compatibility package: a VB6-compatible Microsoft Common Controls 6.0 (`MSCOMCTL.OCX`) replacement, written on top of the Win32 ComCtl32 controls. Eight controls (**DTPicker**, **ImageList**, **ListView**, **MonthView**, **ProgressBar**, **Slider**, **TreeView**, **UpDown**), plus eight sub-object classes (**ListImages** / **ListImage**, **ListItems** / **ListItem**, **ColumnHeaders** / **ColumnHeader**, **Nodes** / **Node**) reached through container properties on the three collection-bearing controls, plus ~16 user-facing enumerations. Each control is a `<Name>BaseCtl` (`[COMCreatable(False)]`) plus a thin `<Name>` leaf tagged `[WindowsControl(...)]` — the same split VB-package and CEF use.
 - `docs/Reference/Built-In/AppGlobalClassObject/` — the `App` global object available in every twinBASIC project: the `_App` interface plus its property pages under `_App/` (`Build`, `Comments`, `CompanyName`, `EXEName`, …). 38 files.
 
-  > **This package published nothing at all until two causes were fixed**, and both
-  > leave a live rule. A blanket `**/_*/**` rule in `_config.yml`'s `exclude:`, there
-  > to drop `_Images`, swallowed all 37 pages under `_App/` --- the twinBASIC interface
-  > really is named `_App`, after the COM hidden-interface convention. It is scoped to
-  > `**/_Images/**` (plus `**/*.af`) now, so **never widen an exclude to a bare
-  > underscore prefix.** Separately `index.md` carried a UTF-8 BOM in front of the `---`,
-  > which hid the frontmatter, so `discover` filed it as a *static file* and served the raw
-  > markdown verbatim; `lib/frontmatter.mjs` strips a leading BOM before parsing now, and
-  > editors on Windows add one without being asked.
+  > **Two rules come from this package.** First, **never widen an `exclude:` entry in
+  > `_config.yml` to a bare underscore prefix.** The twinBASIC interface is named `_App`
+  > (the COM hidden-interface convention), so a blanket `**/_*/**` would drop all 37
+  > pages under `_App/`. The exclude is scoped to `**/_Images/**` (plus `**/*.af`).
+  > Second, a UTF-8 BOM in front of a page's `---` hides its frontmatter: `discover`
+  > would file the page as a *static file* and serve the raw markdown. Editors on
+  > Windows add a BOM unasked. `lib/frontmatter.mjs` strips a leading BOM before parsing.
 - `docs/Reference/Built-In/tbIDE/` — IDE Extensibility package (this is the **addin SDK**). The package is type-only — it ships **public interfaces + CoClasses** that an addin DLL binds to; every implementation behind them lives in the twinBASIC IDE itself. The user-facing surface is one entry-point factory (`tbCreateCompilerAddin`) plus 23 CoClasses grouped by role: the addin contract (`AddIn`), the root API (`Host`), the loaded `Project`, the editors collection (`Editor` / `CodeEditor` / `Editors`), the virtual file system (`FileSystem` / `FileSystemItem` / `Folder` / `File`), the in-IDE UI surface (`Toolbar` / `Toolbars` / `Button` / `ToolWindow` / `ToolWindows`), the HTML DOM inside a tool window (`HtmlElement` / `HtmlElements` / `HtmlElementProperty` / `HtmlElementProperties` / `HtmlEventProperty` / `HtmlEventProperties`), the `DebugConsole`, `KeyboardShortcuts`, `Themes`, and the single concrete user-instantiable helper class `AddinTimer`. Flat layout — one page per CoClass / Class plus the index landing.
 - `docs/Reference/Statements.md` — alphabetical index of language statements.
 - `docs/Reference/Procedures and Functions.md` — alphabetical index of procedures/functions.
-- `docs/LLVM/` — the LLVM section: compiling with the LLVM back end. A top-level section between Features and Reference Section in the nav, at `nav_order: 6` (Features moved to 5 to make room). `index.md` is the landing page and `Getting-Started.md` the only page so far, with its screenshots under `Images/`. Everything it describes arrived in **BETA 984**. Its language claims are measured on BETA 995 with `tbrun --llvm` and `--exe`: the comma, space and comma-space spellings of `[CompilerOptions]` all turn LLVM and `+optimize` on, `[CompilerOptions("")]` turns it off under project-wide LLVM, the long CPU-flag sample runs, and an error is lost between procedures when either the callee or the caller is LLVM-compiled. Its samples are marked `check_build`, which compiles them; `examples.bat --llvm` also builds them with LLVM.
+- `docs/LLVM/` — the LLVM section: compiling with the LLVM back end. A top-level section between Features and Reference Section in the nav, at `nav_order: 6` (Features is 5). `index.md` is the landing page and `Getting-Started.md` the only page so far, with its screenshots under `Images/`. Everything it describes arrived in **BETA 984**. Its language claims are measured on BETA 995 with `tbrun --llvm` and `--exe`: the comma, space and comma-space spellings of `[CompilerOptions]` all turn LLVM and `+optimize` on, `[CompilerOptions("")]` turns it off under project-wide LLVM, the long CPU-flag sample runs, and an error is lost between procedures when either the callee or the caller is LLVM-compiled. Its samples are marked `check_build`, which compiles them; `examples.bat --llvm` also builds them with LLVM.
 
   **A new top-level section needs four things besides its folder**, and nothing checks the first and the third: a `nav_order` between its neighbours; an entry in `docs/_book.yml` for every page, in a part or in `left_out:` with a reason, which the build warns about under its `pdf:` summary when one is missing; a line in *Where content lives* in `docs/Documentation/Authoring.md`; and the page-count rise that `build.bat` writes to `builder/page-baseline.json`, committed with the pages. The Challenges and Videos sections are in `left_out:`, and so are the IDE pages that are still screenshots and labels; the IDE part names its pages one by one, so a new IDE page warns until it goes into the part or into `left_out:`. A link from the book to a left-out page opens the website, and the pass over `book.html` lists it as `OUT OF BOOK`. A section index lists its topics by hand and sets `has_toc: false`, or the template appends a second, automatic list of its children.
 - Footer rendering — [builder/template.mjs](builder/template.mjs)'s `renderFooterCustom()` renders the copyright line and, when `vba_attribution: true` is set in a page's frontmatter, an additional CC-BY-4.0 attribution line beneath it.
-- Contributor authoring guide — [docs/Documentation/Authoring.md](docs/Documentation/Authoring.md) is the public "start here" page that distils this file's authoring conventions (page template, heading levels, formatting, plain-English prose, attribution policy, cross-section linking) for a new contributor. This file remains the exhaustive maintainer source of truth; keep the two in sync when a convention changes.
+- Contributor authoring guide --- see [Authoring a page](#authoring-a-page).
 
 ## Package API notes
 
@@ -120,30 +101,30 @@ The three "winlibs" packages — [WinServicesLib](WIP.WinServicesLib.md), [WinEv
 
 The package sources are not in this repository --- they are inside the
 `.twinproj` files an IDE install ships. Exported sources are the strongest
-available evidence for anything the documentation asserts about legal syntax,
-and for a question no shipped source demonstrates, something has to put the
-construct in front of the compiler. Four tools do that, and each finds the IDE
-itself: the newest `twinBASIC_IDE_BETA_<n>` on the Desktop, with `--ide` or
-`TB_IDE` overriding. **No install path is hardcoded anywhere in the tooling**,
-because an install path contains a username.
+evidence for anything the documentation asserts about legal syntax. For a
+question no shipped source answers, the construct has to go to the compiler.
+Four tools do that. Each finds the IDE itself: the newest
+`twinBASIC_IDE_BETA_<n>` on the Desktop, with `--ide` or `TB_IDE` overriding.
+**No install path is hardcoded anywhere in the tooling**, because an install
+path contains a username.
 
 ```sh
-"$TB/bin/twinBASIC_win32.exe" export "<some>.twinproj" "C:\out\dir\" --overwrite
+node scripts/impexp.mjs export <some>.twinproj <out-dir>   # a project's or package's sources
 node scripts/census_attributes.mjs --out census.md   # every attribute, by enclosing construct
 node scripts/sweep_attributes.mjs --out sweep.md --dump-results sweep.json   # every attribute at every site, 8 to 16 min
 node scripts/tbbuild.mjs C:/probe/Thing.twinproj     # does it compile
 node scripts/tbrun.mjs <exported-source-dir>         # what does it print
 ```
 
-- **Give the executable backslashed paths, and `export` a full path to the project.** `export` prefixes `\\?\` to its project path, so a relative one, or one with forward slashes, reports `input twinproj file does not exist`; and a folder named with forward slashes cannot be created or even found, even when it exists. With backslashes `export` creates every missing level of its output folder. Redirect stdin (`</dev/null`) when looping, or the executable consumes the loop's input and the second iteration never runs.
-- **`tbbuild` exit codes:** 0 clean, 1 the project has errors, 2 the harness failed, 3 the compile never settled, 4 the project crashes the compiler, 5 the build failed after a clean compile. `--json` returns one object, `--keep` leaves the IDE running. **`--build` and `--llvm` (which implies it) build the project after a clean compile**, because LLVM code generation runs in a build and the compile never asks it; they stage a copy with an explicit build path first (`%TEMP%\tbbuild\<port>\`), so the given `.twinproj` is untouched, and a plain `--build` is the control for an `--llvm` run. `--llvm` refuses a Community or Personal licence.
-- **It runs the IDE on a private Windows desktop**, so it cannot seize focus mid-sentence. Set `TBBUILD_SHOW=1` while working interactively and leave it unset for unattended runs --- a wedged IDE nobody can see is the failure that costs an afternoon.
-- **One project per IDE**, 6--8 seconds each and flat in project size. Reusing a live IDE for a second project wedges it, so the cold start is the unit of work, not overhead to optimise away. Concurrency is how to go faster: distinct `--port` values give distinct DevTools ports, user-data folders, temp folders (`%TEMP%\tbbuild-tmp-<port>`; IDEs building in one temp folder fail now and then to write the type library) and desktops.
-- **Keep a probe that might crash the compiler in a project of its own.** twinBASIC runs the compiler in the same process as user code, so one bad probe can take the run down and cost the other thirty their answer.
-- **`tbrun` takes an exported tree, not a `.twinproj`**, because it has to pin `project.buildPath` in its own staged copy --- a project still on the default template opens a native Save dialog that is invisible on the private desktop, and the build simply never happens while every health check says the IDE is fine. The probe is a module with a `[RunAfterBuild]` Sub, and must start with `Debug.Cls`. Its exit codes: 0 the probe ran and its output was captured, 1 the project has compile errors, 2 the harness failed or the build did after a clean compile, 3 no output, 4 the compiler crashed, as `tbbuild` reports it, 5 the probe ended before it returned (`End`, or an error raised with no handler in LLVM-compiled code, which ends the run silently), 6 with `--exe`, the exe exited with a code other than 0 or was still running at `--timeout`.
+- **Pack and unpack projects with `impexp`, never with the compiler executable's `import` or `export` verbs.** The tooling does both in process, through `packTree` and `unpackProject` in `scripts/lib/tb-project.mjs`; by hand it is `node scripts/impexp.mjs`. The compiler's `import` refuses a project that embeds a package (exit 999, twinbasic/twinbasic#841), and both verbs exit 0 after the failures they report. The reasons, and the path and stdin rules for anything that does run the executable (`bug_repro`'s `cli` mode), are in [WIP.Harness.md](WIP.Harness.md#getting-at-the-twin-sources).
+- **`tbbuild` exit codes:** 0 clean, 1 the project has errors, 2 the harness failed, 3 the compile never settled, 4 the project crashes the compiler, 5 the build failed after a clean compile. `--json` returns one object, `--keep` leaves the IDE running. **`--build` and `--llvm` (which implies it) build the project after a clean compile**, because LLVM code generation runs in a build and a compile never asks for it. They first stage a copy with an explicit build path (`%TEMP%\tbbuild\<port>\`), so the given `.twinproj` is untouched. A plain `--build` is the control for an `--llvm` run. `--llvm` refuses a Community or Personal licence.
+- **It runs the IDE on a private Windows desktop**, so it cannot seize focus. Set `TBBUILD_SHOW=1` while working interactively and leave it unset for unattended runs: a wedged IDE nobody can see is expensive to diagnose.
+- **One project per IDE**, 6--8 seconds each and flat in project size. Reusing a live IDE for a second project wedges it, so the cold start is the unit of work, not overhead to optimise away. Run concurrently to go faster: distinct `--port` values give distinct DevTools ports, user-data folders, temp folders (`%TEMP%\tbbuild-tmp-<port>`; IDEs building in one temp folder fail now and then to write the type library) and desktops.
+- **Keep a probe that might crash the compiler in a project of its own.** twinBASIC runs the compiler in the same process as user code, so one bad probe can take the run down and cost the other probes their answer.
+- **`tbrun` takes an exported tree, not a `.twinproj`**, because it has to pin `project.buildPath` in its own staged copy. A project still on the default template opens a native Save dialog that is invisible on the private desktop: the build never happens, while every health check says the IDE is fine. The probe is a module with a `[RunAfterBuild]` Sub, and must start with `Debug.Cls`. Its exit codes: 0 the probe ran and its output was captured, 1 the project has compile errors, 2 the harness failed or the build did after a clean compile, 3 no output, 4 the compiler crashed, as `tbbuild` reports it, 5 the probe ended before it returned (`End`, or an error raised with no handler in LLVM-compiled code, which ends the run silently), 6 with `--exe`, the exe exited with a code other than 0 or was still running at `--timeout`.
 - **Measuring LLVM: `tbrun --llvm`** (or `--compiler-options "<s>"`) compiles the whole probe with LLVM, by setting `compiler.debugOptions` --- what a `[RunAfterBuild]` run is compiled with; `compiler.buildOptions` alone does not reach it (BETA 995) --- and `compiler.buildOptions`, for the exe. It refuses a Community or Personal licence. `--exe` also runs the built exe on a private desktop; the exe runs `Sub Main` and prints with `TbRun.Out`, a module `tbrun` adds, because `Debug.Print` writes nothing in an exe.
 - **A census is evidence, not applicability.** The corpus not using an attribute somewhere does not mean the compiler refuses it there, and the reverse also holds. Only a probe settles that.
-- **The sweep is the probe for a whole attribute.** Before writing or changing an attribute's `Applicable to:` line, run `sweep_attributes.mjs --names <Name>` (a minute or a few; the once-per-project ones, `RunAfterBuild` and `RunBeforeStartupObject`, take several); it tries every declaration site, not only the ones already claimed. **Always pass `--out` and `--dump-results`**: a run piped through `tail` keeps one line of a report that took ten minutes. A clean build there means the compiler accepts the attribute, not that it does anything, and an Enum member cannot be tested at all (see [WIP.Harness.md](WIP.Harness.md#sweeping-every-attribute-at-every-site)).
+- **The sweep is the probe for a whole attribute.** Before writing or changing an attribute's `Applicable to:` line, run `sweep_attributes.mjs --names <Name>` (a minute or a few; the once-per-project ones, `RunAfterBuild` and `RunBeforeStartupObject`, take several); it tries every declaration site, not only the ones already claimed. **Always pass `--out` and `--dump-results`**: a run piped through `tail` keeps one line of a report that takes ten minutes. A clean build there means the compiler accepts the attribute, not that it does anything, and an Enum member cannot be tested at all (see [WIP.Harness.md](WIP.Harness.md#sweeping-every-attribute-at-every-site)).
 - **End an IDE by its pid, never by image name.** `taskkill /IM twinBASIC.exe` ends every other run's IDE, another session's included, and the user's own. `tbbuild --keep` prints the pid for this reason.
 
 Why each of those is true, what the WebView/CDP route costs, why the compiler's
@@ -158,18 +139,28 @@ runner](WIP.Harness.md#the-add-in-test-runner).
 
 ```sh
 addin-test.bat                     # every lane
-addin-test.bat --only sample15     # one lane; --port N moves the lanes' ports
+addin-test.bat --only sample15     # one lane; --port N moves where the lanes' ports start
 ```
 
-- **Never build or copy a test add-in into the real install's `addins\`, or into `%APPDATA%\twinBASIC\addins\`.** Either way it loads into the user's own IDE (P6 measured the second). A test add-in goes only into a lane's own folders: its copy of the install, where `addAddin` refuses anywhere else, or the `APPDATA` the lane gives every IDE it starts. That private `APPDATA` is also what keeps the user's own add-ins out of the test IDEs; never start a lane IDE without it.
+- **Never build or copy a test add-in into the real install's `addins\`, or into `%APPDATA%\twinBASIC\addins\`.** Either way it loads into the user's own IDE (measured for the second). A test add-in goes only into a lane's own folders: its copy of the install, where `addAddin` refuses anywhere else, or the `APPDATA` the lane gives every IDE it starts. That private `APPDATA` is also what keeps the user's own add-ins out of the test IDEs; never start a lane IDE without it.
 - **A test never opens a real browser.** Every IDE the harness starts has `TB_ADDIN_TEST=1`, and an add-in under test prints `open <url>` to the DEBUG CONSOLE instead. Never start a test IDE with the variable removed unless its add-in opens nothing either way.
+- **A test never starts a program on the user's desktop.** An IDE goes through `launchIde`, and any other executable --- the compiler's command line included --- through `launchOnDesktop` (`scripts/lib/tb-ide.mjs`), which puts it on a private desktop and closes any dialog it opens. A plain `spawn` or `spawnSync` of a twinBASIC executable shows on the user's desktop. Only `try-help-addin` shows an IDE, and only the one it opens the project in.
 - **Name in `lanes.mjs` every application an add-in under test passes to `SaveSetting`**, or its settings stay changed after the run: `SaveSetting` writes the key the user's own copy of the add-in reads.
 
 **Testing the IDE itself** (the debugger, Export Project, the Packages dialog) is
 `ide-test.bat`, the same runner (`scripts/lib/lane-runner.mjs`) over `test/ide/lanes.mjs`,
-with base port 9660 against the add-in runner's 9560. Every rule above applies to it
+with base port 9660 against the add-in runner's 9560. Each run claims the first free ports from
+its base with a lock file in `%TEMP%\tb-ports` (`scripts/lib/tb-ports.mjs`), passing over one
+another run claimed or something listens on. Every rule above applies to it
 unchanged: the private `APPDATA`, `TB_ADDIN_TEST=1`, and ending an IDE by its pid. Its
 scenario files import `scenario` from `test/addin/scenario.mjs`.
+
+**Trying the help add-in by hand** is `try-help-addin.bat` (`scripts/try_help_addin.mjs`):
+one IDE set up as a lane is (`Lane` from `scripts/lib/tb-lane.mjs`), on the user's desktop,
+DevTools port 9590, opened on `test/addin/helphost` with `docs/_site` served to the pane.
+It waits for the IDE to close, then puts the registry and `tbDocsHelp` back. The lanes stay
+on the private desktop by default (owner, 2026-10-04); only this tool shows its IDE, and only
+the one it opens the project in: the IDE that builds the add-in stays on a private desktop.
 
 ## Authoring a page
 
@@ -179,11 +170,11 @@ frontmatter keys, the attribution policy, the per-symbol workflow, the
 twinBASIC-vs-VBA deviations to flag, and the cross-section linking tables.
 
 Those tables are not optional guidance. Relative links resolve against the
-**rendered URL** --- the page's `permalink:` --- rather than the file path, and
-the URL prefixes are not uniform across packages: VBA pages sit one segment
-shallower than VBRUN pages, and folder-style classes one deeper than
-single-file ones. A cross-section link written by analogy with a neighbouring
-page is usually wrong, and the build's link check is what will tell you.
+**rendered URL** --- the page's `permalink:` --- not the file path. The URL
+prefixes are not uniform across packages: VBA pages sit one segment shallower
+than VBRUN pages, and folder-style classes one deeper than single-file ones. A
+cross-section link written by analogy with a neighbouring page is usually
+wrong, and the build's link check reports it.
 
 Three things are short enough to state here, because they decide whether a page
 is in the right place at all:
@@ -192,8 +183,9 @@ is in the right place at all:
 - **Attribution is per page, decided by content provenance, not by package membership.** Set `vba_attribution: true` only on a page actually derived from a specific VBA-Docs source page. A symbol merely existing in VBA is not sufficient.
 - **Link to the canonical location**, meaning the page's own `permalink:`, never to one of its `redirect_from` aliases.
 
-The public, contributor-facing distillation of the same conventions is
-[docs/Documentation/Authoring.md](docs/Documentation/Authoring.md). Keep the two
+The public "start here" page for a new contributor, [docs/Documentation/Authoring.md](docs/Documentation/Authoring.md),
+distils the same conventions (page template, heading levels, formatting,
+plain-English prose, attribution policy, cross-section linking). Keep the two
 in step when a convention changes; this file and its authoring sibling remain
 the exhaustive maintainer source of truth.
 
@@ -230,7 +222,7 @@ The vocabulary tables further down cover word choice. The rules in this subsecti
 
 8. **Name the fault directly; never build up to it.** Setting up a contrast and then withholding the point is coy, and it makes the reader parse the sentence twice to extract one fact. *Avoid:* "double-clicking it is the obvious shortcut, and it is the one that misleads"; "the specificity trap --- which is the one thing that reliably catches people out". *Use:* "double-clicking it is obvious, and wrong"; "the specificity trap: a rule that loses it applies in light mode and silently does not in dark". Say what the thing is and what it does, in that order, in one clause. The same applies to "and that is the one that…", "which is precisely the…" and "therein lies the…".
 
-9. **State what twinBASIC does; do not report having measured, probed or observed it.** The documentation is the authority on what twinBASIC does and speaks from inside the project, so its prose states behaviour as fact, not as the outcome of an experiment on someone else's product. The same goes for *probed*, *observed*, *noticed*, *turns out* and *appears to*, when they report what twinBASIC does. *Avoid:* "measured on BETA 995, the comma form also turns LLVM on"; "as measured, the crash needs a variable declared `As Form`"; "probed against the compiler, the attribute is accepted on..."; "the value observed is 0". *Use:* "the comma form also turns LLVM on"; "the crash needs a variable declared `As Form`" --- and where the build matters, "in BETA 995" or "since BETA 984". When a sentence really must say that a claim was checked, write *checked*, *tested*, *confirmed* or *verified*, never *measured*. *Measure* keeps its literal sense: a size, a duration, a unit of measurement, **TextWidth** measuring a string, a benchmark's timings. This applies to every page under `docs/`, the developer pages under `docs/Documentation/` included; the `WIP.*.md` files are an internal casebook and keep their own register.
+9. **State what twinBASIC does; do not report having measured, probed or observed it.** The documentation is the authority on what twinBASIC does and speaks from inside the project, so its prose states behaviour as fact, not as the outcome of an experiment on someone else's product. The same goes for *probed*, *observed*, *noticed*, *turns out* and *appears to*, when they report what twinBASIC does. *Avoid:* "measured on BETA 995, the comma form also turns LLVM on"; "as measured, the crash needs a variable declared `As Form`"; "probed against the compiler, the attribute is accepted on..."; "the value observed is 0". *Use:* "the comma form also turns LLVM on"; "the crash needs a variable declared `As Form`" --- and where the build matters, "in BETA 995" or "since BETA 984". When a sentence really must say that a claim was checked, write *checked*, *tested*, *confirmed* or *verified*, never *measured*. *Measure* keeps its literal sense: a size, a duration, a unit of measurement, **TextWidth** measuring a string, a benchmark's timings. This applies to every page under `docs/`, the developer pages under `docs/Documentation/` included; the `WIP.*.md` files are internal working notes and keep their own register.
 
 ### Replace
 
@@ -320,9 +312,9 @@ converts the dash like any other text. Measured: **zero literal `--` survives in
 anywhere in the built site**, in all three trees.
 
 > **Verify through `builder/`, never a bare markdown-it.** A plain `markdown-it` with
-> `typographer: true` leaves `--` in alt text untouched, so testing against the npm
-> dependency reproduces a wrong claim perfectly and tells you nothing about this site.
-> Render through the pipeline, or read the built HTML.
+> `typographer: true` leaves `--` in alt text untouched, so a test against the npm
+> dependency tells you nothing about this site. Render through the pipeline, or read
+> the built HTML.
 
 The source uses the ASCII forms; the rendered HTML uses the typographic characters. Literal `–` or `—` in `docs/` markdown source is forbidden — see the Don'ts at the end of this file. `scripts/convert_em_dash_separators.mjs` is the canonical normaliser if any literals slip back in.
 
@@ -340,8 +332,7 @@ alongside their licence files.
 | **Cascadia Mono** | all code, inline and block, web and PDF | `wght 200-700` | 67 KB + 77 KB italic |
 | **Source Serif 4** | PDF body text only | `wght 200-900` | 138 KB + 109 KB italic |
 
-Inter is the brand face: twinbasic.com has always named it first in its own
-stack, it just never shipped a `@font-face` to deliver it. Cascadia Mono is the
+Inter is the brand face: twinbasic.com names it first in its own stack. Cascadia Mono is the
 **ligature-free** cut of Microsoft's terminal font --- in a *language* reference
 the literal characters are the subject matter, so a face that draws `->` as one
 mark is working against the text, and any replacement must be ligature-free too.
@@ -368,11 +359,11 @@ Every diagram is Graphviz DOT --- sources under `docs/assets/images/dot/` for
 shared diagrams, `Images/` beside a page for one that belongs to it. The `.svg`
 is a build artifact.
 
-- **Edit the `.dot`, never the `.svg`**, and never set a diagram's `font-family` anywhere else. Graphviz sizes every box to the text *it* measured, and its WASM build has no font machinery at all --- it falls back to Times for any face it does not know. A face the layout never saw leaves labels painted outside their boxes, which is how 27 labels across three diagrams shipped that way, unreported, for months.
+- **Edit the `.dot`, never the `.svg`**, and never set a diagram's `font-family` anywhere else. Graphviz sizes every box to the text *it* measured, and its WASM build has no font machinery at all --- it falls back to Times for any face it does not know. A face the layout never saw leaves labels painted outside their boxes.
 - `node scripts/check_dot_fit.mjs` is the gate on exactly that, and runs inside `check.bat`. Run it after touching any diagram.
-- **Scale a diagram whole, or not at all.** Stretching an SVG up inflates its labels; shrinking the text alone unmoors the labels from their boxes. Both stylesheets learned this, from opposite directions.
+- **Scale a diagram whole, or not at all.** Stretching an SVG up inflates its labels; shrinking the text alone unmoors the labels from their boxes.
 - **A `@font-face` added to [docs/_sass/custom/_fonts.scss](docs/_sass/custom/_fonts.scss) needs its stack added to [docs/_sass/modules-dark.scss](docs/_sass/modules-dark.scss) as well**, and must stay inside the `emit-font-faces` mixin. The dark compilation re-emits its whole payload under two selectors at raised specificity: a face declared there would be invalid, and a stack left out there applies in light mode and silently does not in dark.
-- **Run the full a11y sweep after any change that moves type metrics.** An inline element's measured height is its font's content area, so `target-size` results move with the face. The thirteen-page sample stayed clean through the entire font migration and would have shipped a regression.
+- **Run the full a11y sweep after any change that moves type metrics.** An inline element's measured height is its font's content area, so `target-size` results move with the face. The thirteen-page sample can stay clean while the full sweep regresses.
 
 Why Graphviz needs Inter's widths patched into its Times table and what breaks
 that patch, why the web rule is `width: auto` and the PDF's is `zoom: 0.875`,
@@ -414,17 +405,15 @@ relocating it. The reasoning, and everything about running the tool, is in
 
 The site builds via [builder/](builder/), a custom Node.js static site generator (`tbdocs`). See [builder/PLAN.md](builder/PLAN.md) for the architecture overview, [builder/README.md](builder/README.md) for the quickstart, and the [tbdocs Internals](docs/Documentation/Builder.md) site page for the high-level tour.
 
-A task-graph scheduler / parallelisation pass is designed in [builder/PLAN-scheduler.md](builder/PLAN-scheduler.md) and has been implemented (Phases 0--4).
+The task-graph scheduler and parallelisation are described in [builder/PLAN-scheduler.md](builder/PLAN-scheduler.md).
 
 ### Compiling the reference's own code samples
 
-Two reference samples had shipped that do not compile --- one passing an icon key in a slot
-the same package's prose says is validated, one a `Sub` with no name. Every gate was green
-over them, because a `tb` fence is something `check_code_regions.mjs` protects the
-*contents* of and never evaluates.
+No build gate evaluates a `tb` fence: `check_code_regions.mjs` only protects its
+*contents* from rewrites. A sample that does not compile therefore passes every gate.
 
-`examples.bat` over [scripts/check_examples.mjs](scripts/check_examples.mjs) is what asks
-the compiler now. A sample opts in by carrying `check_build` in its fence info string; the
+`examples.bat` over [scripts/check_examples.mjs](scripts/check_examples.mjs) asks
+the compiler. A sample opts in by carrying `check_build` in its fence info string. The
 tool works out what to generate around it, packs many samples into one project, builds them
 through `tbbuild` on concurrent lanes, and reports each diagnostic against the line in the
 page it came from. **1,197 samples are marked, and the run takes about 110 seconds.**
@@ -440,18 +429,18 @@ line into its description** --- the contributor-facing statement is
 **[WIP.ExamplesBuild.md](WIP.ExamplesBuild.md) is the file for this** --- the markup, the
 slots, the template projects and their stage sets, the batching and bisect-on-crash rules,
 what actually collides inside one project, and what the first full run found. Two results
-from it belong here because they are about the harness rather than about the samples:
-`[RunAfterBuild]` is **one per project** (TB5114), which is what `check_run` has to be
-designed around; and **`tbbuild` used to report a clean build on a project that crashed the
-compiler**, which is fixed and is the reason to distrust any "it stopped changing, so it
-must be done" heuristic against this compiler.
+from it concern the harness rather than the samples:
+`[RunAfterBuild]` is **one per project** (TB5114), which `check_run` has to be
+designed around; and **`tbbuild` once reported a clean build on a project that crashed the
+compiler** (fixed). Distrust any "it stopped changing, so it must be done" heuristic
+against this compiler.
 
 ### A hung build times out
 
 A task a worker claims and never finishes wedges the whole graph in silence: its
 successors' dependency counts never drop, the scheduler's promise never settles,
 and the process sits there with its last log line on screen. `Scheduler` watches
-for it --- no task completing for `--stall-timeout` seconds (default **120**,
+for it. No task completing for `--stall-timeout` seconds (default **120**,
 `0` disables) prints what was outstanding, including the source pages behind a
 wedged `render:i` chunk, and fails the build. Readers get this at [When a build
 stops instead of failing](docs/Documentation/Building.md).
@@ -464,13 +453,14 @@ Why the report separates the wedged task from the merely blocked ones, and why
 
 - `build.bat` — runs `node builder\tbdocs.mjs --src docs --check-audit-index` (which implies `--check`) and produces three trees in one pass: the online copy at `_site/`, a `file://`-browsable copy at `_site-offline/`, and the sparse pagedjs source at `_site-pdf/`. The offline pass adds ~700 ms and the PDF pass adds ~150 ms on top of the ~2 s online build. Toggle `also_build_offline` / `also_build_pdf` in `_config.yml` (or pass `--no-offline` / `--no-pdf`) to skip a sibling output. `--check` adds ~1.7 s and runs the link + integrity check over the HTML while it is still in worker memory; `build.bat --no-check` gets a plain build.
 - `serve.bat` — runs `tbdocs --serve`: initial build, then a long-lived process with watcher, debounced rebuilds, and SSE-driven browser auto-reload. Writes to `docs/_serve/` (disjoint from `build.bat`'s `_site*/`) and skips the offline + PDF passes — so a one-off `build.bat` for the PDF or offline mirror doesn't disturb the live preview. Ctrl+C to stop.
-- `check.bat` — the gates that read the built site: a freshness check that refuses a stale tree (`scripts/check_tree_fresh.mjs`), the DOT diagram fit check (`scripts/check_dot_fit.mjs`), the a11y sample-coverage check (`scripts/pick_a11y_sample.mjs --check`), then the accessibility check (`scripts/check_a11y.mjs`). The link + integrity check moved into `build.bat`. ~37 s.
-- `test.bat` — the tests the *toolchain* has to pass: the publish-allowlist self-test (`scripts/check_publish_policy.mjs`), the gate-list check (`scripts/check_gate_lists.mjs`), the CI-workflow roster check (`scripts/check_ci_workflows.mjs`), the lint gate (`scripts/check_lint.mjs`), the site-search unit tests (`node --test test/search.test.mjs`), the markdown-plugin unit tests (`node --test test/render.test.mjs`), the date-formatter unit tests (`node --test test/strftime.test.mjs`), the bug-reproducer picture tests (`node --test test/png.test.mjs`), `check_examples.mjs`'s probes (`node --test test/example-batches.test.mjs`), the regex-safety gate (`scripts/check_regex_safety.mjs`), the code-region gate (`scripts/check_code_regions.mjs`), the page-count drift-guard probes (`scripts/check_page_baseline.mjs`), the book-coverage probes (`scripts/check_book_coverage.mjs`), the symbol-index probes (`scripts/check_symbol_index.mjs`), the twinBASIC-scanner probes (`scripts/check_twin_parsers.mjs`), the attribute-sweep probes (`scripts/check_attribute_sweep.mjs`), the command-line probes and cases (`scripts/check_cli.mjs`), the pdf-lib shim comparison (`scripts/check_pdf_shims_equiv.mjs`), the impexp parity check (`scripts/check_impexp_parity.mjs`), and the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`). ~23 s, of which the regex-safety gate is ~10 s and the impexp check ~4 s. See [What belongs in test.bat rather than check.bat](WIP.Build.md#what-belongs-in-testbat-rather-than-checkbat).
+- `check.bat` — the gates that read the built site: a freshness check that refuses a stale tree (`scripts/check_tree_fresh.mjs`), the DOT diagram fit check (`scripts/check_dot_fit.mjs`), the a11y sample-coverage check (`scripts/pick_a11y_sample.mjs --check`), then the accessibility check (`scripts/check_a11y.mjs`). The link + integrity check runs in `build.bat`. ~37 s.
+- `test.bat` — the tests the *toolchain* has to pass: the publish-allowlist self-test (`scripts/check_publish_policy.mjs`), the gate-list check (`scripts/check_gate_lists.mjs`), the CI-workflow roster check (`scripts/check_ci_workflows.mjs`), the lint gate (`scripts/check_lint.mjs`), the site-search unit tests (`node --test test/search.test.mjs`), the markdown-plugin unit tests (`node --test test/render.test.mjs`), the date-formatter unit tests (`node --test test/strftime.test.mjs`), the bug-reproducer picture tests (`node --test test/png.test.mjs`), `check_examples.mjs`'s probes (`node --test test/example-batches.test.mjs`), the port-claim unit tests (`node --test test/ports.test.mjs`), the regex-safety gate (`scripts/check_regex_safety.mjs`), the code-region gate (`scripts/check_code_regions.mjs`), the page-count drift-guard probes (`scripts/check_page_baseline.mjs`), the book-coverage probes (`scripts/check_book_coverage.mjs`), the symbol-index probes (`scripts/check_symbol_index.mjs`), the twinBASIC-scanner probes (`scripts/check_twin_parsers.mjs`), the attribute-sweep probes (`scripts/check_attribute_sweep.mjs`), the command-line probes and cases (`scripts/check_cli.mjs`), the pdf-lib shim comparison (`scripts/check_pdf_shims_equiv.mjs`), the impexp parity check (`scripts/check_impexp_parity.mjs`), and the axe source-patch verification (`scripts/check_axe_patch_equiv.mjs`). ~23 s, of which the regex-safety gate is ~10 s and the impexp check ~4 s. See [What belongs in test.bat rather than check.bat](WIP.Build.md#what-belongs-in-testbat-rather-than-checkbat).
 - `book.bat` — renders the PDF from `docs\_site-pdf\book.html` via `node book\render-book.mjs` into `docs\_pdf\twinBASIC Book.pdf`. Run `build.bat` first to populate `_site-pdf/`; `book.bat` refuses a tree older than its sources rather than rendering the previous book (see [The book refuses a stale source tree](WIP.Build.md#the-book-refuses-a-stale-source-tree)).
 
 - `examples.bat` — compiles the documentation's own twinBASIC code samples, every `tb` fence marked `check_build`, and reports the ones the compiler refuses against the line in the page they came from; a statement sample also marked `check_run` is built and run, and what it prints is checked against the page. Needs a twinBASIC install and Windows, so it is outside every gate and outside CI; ~110 s over the 1,197 samples marked (33 of them `check_run`). `--build` also builds each project that compiles clean, and `--llvm` builds it with LLVM (see [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md)). Two modes need no compiler at all: `--census` classifies every fence and says how many classifiable ones are still unmarked, and `--report <survey.json>` groups a saved `--propose --json` survey by diagnostic, section and unresolved name. `--propose` itself does compile. See [Compiling the reference's own code samples](#compiling-the-references-own-code-samples) and [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md).
-- `addin-test.bat` — tests IDE add-ins by operating an IDE: every lane in `test/addin/lanes.mjs` builds the add-ins it tests into a private copy of the install, opens a project and checks what the add-in does. Outside every gate and outside CI for the same reasons as `examples.bat`; ~105 s for the eleven lanes today (BETA 995): Samples 10 and 15, and the nine probe lanes behind Stage 2's answers in [WIP.HelpAddin.md](WIP.HelpAddin.md). Exit 0 every lane passed and the registry is as it was found, 1 a lane failed, 2 the harness failed, 3 the registry or a work folder was not put back. See [Driving the twinBASIC compiler](#driving-the-twinbasic-compiler) for its rules.
+- `addin-test.bat` — tests IDE add-ins by operating an IDE: every lane in `test/addin/lanes.mjs` builds the add-ins it tests into a private copy of the install, opens a project and checks what the add-in does. Outside every gate and outside CI for the same reasons as `examples.bat`; about two minutes for the twelve lanes today (BETA 995): Samples 10 and 15, the nine probe lanes behind Stage 2's answers in [WIP.HelpAddin.md](WIP.HelpAddin.md), and the help add-in in `add-in/`, built with its committed copy of the symbol index, `add-in/Resources/SYMBOLS/symbols.json`, which a local build rewrites whenever the index changes. The help lane serves the built `docs/_site` on localhost to the add-in's pane, so run `build.bat` first. Exit 0 every lane passed and the registry is as it was found, 1 a lane failed, 2 the harness failed, 3 the registry or a work folder was not put back. See [Driving the twinBASIC compiler](#driving-the-twinbasic-compiler) for its rules.
 - `ide-test.bat` --- the same runner for scenarios that operate the IDE itself rather than an add-in: every lane in `test/ide/lanes.mjs`, base port 9660. Same exit codes, same standing outside every gate and outside CI, same rules.
+- `try-help-addin.bat` --- opens one IDE on the user's desktop with the help add-in built and loaded, to try it by hand, and puts the registry back once it is closed (see [Driving the twinBASIC compiler](#driving-the-twinbasic-compiler)). Needs `build.bat` first. Exit 0 closed and put back, 1 the add-in or the project did not compile, 2 the tool could not run, 3 not put back.
 - `node scripts/bug_repro.mjs` --- the reproducer projects under `bugs/<slug>/` for the entries of [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md): `new`, `pack` (impexp, then the zip, written in Node), `compile`, `build` and `run` through `tbbuild` and `tbrun`, `vb6` (builds the optional `vb6/` VB6 project beside the twinBASIC one in a temp copy, runs its exe on a private desktop, and prints its `out.txt`; a project with a form or a user control is built without Unattended Execution, which VB6 refuses for it; `pack` zips its sources into `<slug>-vb6.zip`; VB6 is started only by `scripts/lib/vb6.mjs`, never from a shell; a graphical defect's `images` key makes `run` and `vb6` keep what the `PngDump` modules of `test/repro-templates/png/` draw as `images/<name>-tb.png` and `-vb6.png`, with a `-compare.png` of both, tested by `test/png.test.mjs`), `file` (moves a filed entry and its reproducer to `bugs/filed/<slug>/`; `file --marked` does every marked entry), and `verify`, which reads each `bugs/*/repro.json` and `bugs/filed/*/repro.json` and says whether the bug still reproduces on the newest beta. It has no wrapper. **`verify` is run by a person only**, never by a gate or CI: it needs a twinBASIC install, like `examples.bat`. Default port 9440, and `--jobs N` takes N ports from there. Its command-line cases are in `scripts/lib/cli-cases.mjs`, and need no IDE.
 - `node scripts/vb6run.mjs <file | ->` and `node scripts/vb6run.mjs --docs [--only <regex>]` --- build and run VB6 code, so that what a sample prints in twinBASIC can be compared with VB6: a stand-alone file of statements or a `.bas` module, or `--docs`, which builds the documentation's `check_run` fences in VB6 and says for each whether it prints what its page says (`same`, `differs`, `not VB6`, `error`, `refused`; a `projname=` group is built as a project of its own, its `slot=file` fences translated into VB6 `.cls` and `.bas` components). It has no wrapper and is outside every gate and outside CI: it needs VB6 (`--vb6`, `VB6_EXE`, or the standard install folder). **Never start `VB6.EXE` from a shell**: in Git Bash `/make` is rewritten as a path and VB6 answers with a modal box on the desktop; the tool spawns it from Node with an argument array, and a sample that calls `MsgBox` or `InputBox` or contains `End` is refused. Its `Debug.Print` rewrite and its file translation have probes in `test/example-batches.test.mjs`, and its command-line cases are in `scripts/lib/cli-cases.mjs`; both need no VB6. What it relies on is in [WIP.ExamplesBuild.md](WIP.ExamplesBuild.md).
 
@@ -484,9 +474,9 @@ After a batch of changes, verify the site builds clean and all links resolve:
 build.bat && check.bat
 ```
 
-On the dev box that is ~4 s of build against ~37 s of check, of which the axe scan is ~20 s. [builder/PLAN-checks.md](builder/PLAN-checks.md) records how the link checker got folded into the build's task graph, what it cost and what it saved; the axe follow-ons are designed there but not implemented.
+On the dev box that is ~4 s of build against ~37 s of check, of which the axe scan is ~20 s. [builder/PLAN-checks.md](builder/PLAN-checks.md) records how the link checker sits in the build's task graph and its cost; the axe follow-ons are designed there but not implemented.
 
-**If the change touched `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `test/`, the site's scripts in `docs/assets/js/`, a wrapper or a workflow, run `test.bat` as well** --- another ~23 s. Seventeen of its twenty gates cannot be affected by an edit under `docs/` at all. **Three can.** `check_lint.mjs` lints the site's two scripts in `docs/assets/js/` along with the tooling. `check_gate_lists.mjs` is the easy one to predict: it reads `README.md` and every page under `docs/Documentation/`, so an edit to any developer page that states a gate count can fail it. **`check_code_regions.mjs` is the one worth understanding**, and which half of it a content edit reaches is worth keeping straight. Its corpus sweep reads `DOCS_DIR`, which is `<repo>/docs`, and tokenises every markdown file in it, so a page that provokes a rewrite into *altering* a code region fails it --- that half is content-dependent. Its fixed probes are not: they run against their own sources whatever the tree holds, and they cover the **mirror** fault, where a rewrite silently stops firing. The sweep structurally cannot see that one, because text the rewrite skipped is masked and restored unchanged and every region still matches. So run `test.bat` after adding an unusual code construct --- a fence whose contents include a fence marker, a 4-space indented block, an admonition wrapping a fence --- and read the built page as well, because for the mirror fault the gate is asserting that the mask and the admonition scan still work rather than checking your page:
+**If the change touched `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/`, `test/`, the site's scripts in `docs/assets/js/`, a wrapper or a workflow, run `test.bat` as well** --- another ~23 s. Eighteen of its twenty-one gates cannot be affected by an edit under `docs/` at all. **Three can.** `check_lint.mjs` lints the site's two scripts in `docs/assets/js/` along with the tooling. `check_gate_lists.mjs` reads `README.md` and every page under `docs/Documentation/`, so an edit to any developer page that states a gate count can fail it. **`check_code_regions.mjs` has two halves, and a content edit reaches only one.** Its corpus sweep reads `DOCS_DIR`, which is `<repo>/docs`, and tokenises every markdown file in it, so a page that provokes a rewrite into *altering* a code region fails it --- that half is content-dependent. Its fixed probes are not: they run against their own sources whatever the tree holds, and they cover the **mirror** fault, where a rewrite silently stops firing. The sweep cannot see that fault, because text the rewrite skipped is masked and restored unchanged and every region still matches. So run `test.bat` after adding an unusual code construct --- a fence whose contents include a fence marker, a 4-space indented block, an admonition wrapping a fence --- and read the built page as well, because for the mirror fault the gate is asserting that the mask and the admonition scan still work rather than checking your page:
 
 ```sh
 build.bat && check.bat && test.bat
@@ -520,7 +510,7 @@ wrapper:
 | `test.bat` | `check_code_regions` | no source or HTML rewrite altered a code region, and the rewrites over rendered HTML leave a raw `<pre>` or `<code>` as written; a rewrite still fires on prose beside a fence (the mirror fault); `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes, and the block parse finds what the full parse finds; the count-name check skips code and names the file's line; `discover` warns about an unquoted frontmatter value that ends in `#`; the dash normaliser converts only prose |
 | `test.bat` | `check_regex_safety` | no regex in the tree can backtrack exponentially |
 | `test.bat` | `check_symbol_index` | the symbol index still places each kind of symbol, from fixtures |
-| `test.bat` | `check_twin_parsers` | every word of the shared modifier list reaches all three scanners of twinBASIC source; the census's declaration kinds and `parseTargets`' targets hold for the shapes each once misread |
+| `test.bat` | `check_twin_parsers` | every word of the shared modifier list reaches all three scanners of twinBASIC source; the census's declaration kinds and `parseTargets`' targets hold for the shapes each is known to misread |
 | `test.bat` | `check_attribute_sweep` | the sweep's site skeletons render and are each in a family of `Applicable to:` targets or listed as in none; its reading of a probe's diagnostics puts the refusals, the control's fold and a skeleton's own errors in the right states; every real `Applicable to:` line reads to its pinned targets; probes batch once each and never two of a once-per-project attribute; a cell missing a form is not reported refused; and the isolating runner, against a scripted fake in place of the IDE, finds a crash, a hang, a disturbed canary or a stray row and stops at each cap |
 | `test.bat` | `check_cli` | `lib/cli.mjs` parses as a strict `parseArgs` does, and also refuses an empty value unless the option allows one; every tool refuses an unknown flag, and every tool with a value option an empty value; each tool's recorded command-line errors still exit and print as recorded, run with an IDE and a browser that do not exist; every tool's `--help` and `-h` print its usage to stdout with exit 0 and start nothing, and each usage text ends in one `Exit codes:` block |
 | `test.bat` | `check_ci_workflows` | both CI workflows run every wrapper gate, with the same arguments and order, and build with `build.bat`'s flags |
@@ -529,6 +519,7 @@ wrapper:
 | `test.bat` | `test/render.test.mjs` | `builder/render.mjs`'s markdown-it plugins, one at a time, on inputs no page holds --- today the ellipsis plugin's dot counting. Run by `node --test` |
 | `test.bat` | `test/strftime.test.mjs` | `builder/strftime.mjs`'s `formatDate`, which no build calls because no page sets `last_modified_date`. Run by `node --test` |
 | `test.bat` | `test/example-batches.test.mjs` | `check_examples.mjs`'s probes, from `scripts/lib/example-batches.mjs`: batching, crash isolation through a fake lane, the canaries, the fence classifier and `check_run`'s refusals, expected output, dispatcher and marker reading, with no IDE. Run by `node --test` |
+| `test.bat` | `test/ports.test.mjs` | `scripts/lib/tb-ports.mjs` claims ports as the lane runners need: two claims at once are disjoint, a port in use and a live lock are passed over, a stale lock is taken over, a lock goes when its process exits. Run by `node --test` |
 | `test.bat` | `check_pdf_shims_equiv` | the book's pdf-lib shims write what stock pdf-lib writes: one document written by the gate and one built with `PDFDocument.create` are each saved both ways in child processes, and each pair of files is compared object by object with streams inflated and their cross-reference entries checked; every shim must run, and the members of pdf-lib the shims patch must be those its `PATCHES` lists, each run in one document or the other unless marked there as not reached |
 | `test.bat` | `check_impexp_parity` | `impexp.mjs` and `impexp.py` pass the same built-in tests, and one sequence of commands through each gives the exit code each command is there for, the same output and the same files. Without Python it reports itself skipped and passes, but fails when `CI=true` |
 | `test.bat` | `check_publish_policy`, `check_gate_lists`, `check_page_baseline`, `check_book_coverage`, `check_axe_patch_equiv` | the gates on the gates |
@@ -549,11 +540,10 @@ The nav integrity check ([builder/nav.mjs](builder/nav.mjs)) runs during COMPUTE
 - **Ambiguity** — multiple pages share the title declared in `parent:` and `grand_parent:` is either absent or insufficient to disambiguate. The page would silently appear under every matching parent.
 - **Orphan** — no page has the title declared in `parent:`. The page would silently disappear from the navigation sidebar.
 
-Each gate's failure history --- what it caught, what shipped green past it, and
-the rule that came out of it --- is [WIP.Build.md](WIP.Build.md). Two of those
-rules bind every session and are repeated under [Don'ts](#donts): never rewrite
-markdown source or rendered HTML without a code guard, and whitespace inside
-inline `<code>` is content.
+[WIP.Build.md](WIP.Build.md) says why each gate exists and what it must catch.
+Two of its rules bind every session and are repeated under [Don'ts](#donts):
+never rewrite markdown source or rendered HTML without a code guard, and
+whitespace inside inline `<code>` is content.
 
 ## Repository Use
 
@@ -582,7 +572,7 @@ they are.
 - Don't commit `.claude/` or `CLAUDE.md` — both gitignored. (`WIP.md` is committed; `CLAUDE.md` is just a local `@WIP.md` import shim.)
 - Don't touch `_site/` or `_site-offline/` (build outputs, gitignored).
 - **Don't walk `docs/` for its markdown with a private `readdir`.** Call `markdownFiles` from [lib/markdown-files.mjs](lib/markdown-files.mjs), which never enters the build's output trees. A walk that does enter them crashes whenever a running `serve.bat` rewrites `_serve`; see [The code-region gate](WIP.Build.md#the-code-region-gate). Any other walk of `docs/` decides what is an output tree with the same module's `isOutputTree`, as `check_tree_fresh.mjs` does, rather than a list of its own.
-- **Don't judge rendered styling by opening a built page as a `file://` URL in the in-app browser pane.** It does not apply the page's stylesheets, so everything renders unstyled and any conclusion about colour, spacing, layout or contrast drawn from it is worthless. Use `serve.bat`, which serves over HTTP at localhost and renders for real. The confusing part is that `file://` is fine *through puppeteer* -- `scripts/check_a11y.mjs`, `scripts/sweep_a11y.mjs` and the `perf/` rigs all load `_site-offline/` over `file://` and get correct computed styles, which is the entire reason the offline tree exists (see [Site integrity check](#site-integrity-check)). So: puppeteer for measuring, `serve.bat` for looking. Never the preview pane on a `file://` path.
+- **Don't judge rendered styling by opening a built page as a `file://` URL in the in-app browser pane.** It does not apply the page's stylesheets, so everything renders unstyled and any conclusion about colour, spacing, layout or contrast drawn from it is worthless. Use `serve.bat`, which serves over HTTP at localhost and renders for real. `file://` does work *through puppeteer* -- `scripts/check_a11y.mjs`, `scripts/sweep_a11y.mjs` and the `perf/` rigs all load `_site-offline/` over `file://` and get correct computed styles, which is the reason the offline tree exists (see [Site integrity check](#site-integrity-check)). So: puppeteer for measuring, `serve.bat` for looking. Never the preview pane on a `file://` path.
 - Don't write literal en-dash `–` or em-dash `—` in `docs/` markdown source. Use `--` (renders as en-dash) or `---` (renders as em-dash) — markdown-it's typographer does the conversion at build time. `scripts/convert_em_dash_separators.mjs` normalises any strays.
 - **Never write or edit a file with a shell heredoc.** No `cat > file <<'EOF'`, no
   `printf` into a file, no `sed -i` for a content edit. Use the file-writing and
@@ -591,22 +581,28 @@ they are.
   on the shell's own metacharacters, and fails late and partially, which is worse than
   not writing the file at all. The shell is for running things, not for authoring them.
 
-  **It fails silently, which is the part worth fearing.** A scratch classifier written
-  through `<<'EOF'` had every `"\\s+"` delivered as `"\s+"`, matched nothing, and reported
-  **444 unclassifiable fences against a true 32** --- a number that reads as a finding
-  about the corpus and was a finding about the quoting.
+  **It fails silently.** Through `<<'EOF'` a regex written `"\\s+"` is delivered as
+  `"\s+"`, matches nothing, and the tool reports a wrong count: a number that reads as
+  a finding about the corpus and is a finding about the quoting.
 
   **The file tools decode a `\u` escape of four hex digits** into the character it
-  names: a BOM, an em-dash and a replacement character all arrived raw, and only NUL was
+  names: a BOM, an em-dash and a replacement character arrive raw, and only NUL is
   left as written. A doubled backslash arrives doubled, which is a different string.
   Write the brace form, `\u{FEFF}`, which arrives intact (a regex needs the `u` flag
   for it), and check a file you have written for raw non-ASCII.
 - Don't push or force-push without explicit user request.
-- Don't leave a remote image URL in a finished page. A pasted `https://github.com/user-attachments/assets/...` link is fine to write --- [builder/vendor-assets.mjs](builder/vendor-assets.mjs) downloads it to `docs/assets/attachments/gh-<uuid>.<ext>` on the next local build and rewrites the render to point there; commit the downloaded file with the edit. Any other remote host has no such handling: download it yourself and commit it under the section's `Images/` folder. Remote images cost a network round trip per page view, break the `file://` offline mirror, and **abort the PDF book render** -- the forked paged.js in `book/lib/` dropped async image loading, so an image still in flight when the page-breaking pass runs raises instead of degrading. The build enforces this unconditionally (see [Site integrity check](#site-integrity-check)); `--check-remote-assets` is the standalone checker's flag, not a `tbdocs` one. The check is scoped to `<img>`; `<iframe>` is untouched, but the site no longer has any embeds. A video is authored as a marked link -- `[Title](https://www.youtube.com/watch?v=<id>){: .video }` -- which `videoLinkPlugin` ([builder/render.mjs](builder/render.mjs)) renders as a locally vendored poster frame linking out to the video page, styled by `.video-link` in `docs/_sass/custom/custom.scss`. That makes the site free of third-party requests entirely; don't reintroduce an embed or a hotlinked `img.youtube.com` thumbnail.
-- **Don't hand-edit a diagram's `.svg`, and don't change its `font-family` anywhere but the `.dot`.** The `.svg` is a build artifact; the next build overwrites it. More to the point, Graphviz sizes every box to the text *it* measured, so a face the layout never saw leaves labels hanging outside their boxes --- which is exactly how 27 labels shipped that way across three diagrams. Edit the `.dot`, rebuild, and let `node scripts/check_dot_fit.mjs` confirm it; see [Diagrams](WIP.Typography.md#diagrams).
+- **Use `gh` read-only.** Viewing, listing and searching are fine: `gh issue view`, `gh pr view`,
+  `gh run list`, `gh search`, `gh api` with GET. Anything that writes to GitHub is the owner's
+  alone, who has full authority over it: creating, editing, commenting on, closing or labelling
+  an issue or a pull request, `gh pr create` and `gh pr merge`, `gh release`, `gh workflow run`,
+  and `gh api` with any other method. A session prepares the text --- an entry's issue body, a
+  pull request's description --- and leaves posting it to the owner. Once the owner has filed an
+  entry, `bug_repro.mjs file <slug> <issue>` records it, which writes only to this repository.
+- Don't leave a remote image URL in a finished page. A pasted `https://github.com/user-attachments/assets/...` link is fine to write --- [builder/vendor-assets.mjs](builder/vendor-assets.mjs) downloads it to `docs/assets/attachments/gh-<uuid>.<ext>` on the next local build and rewrites the render to point there; commit the downloaded file with the edit. Any other remote host has no such handling: download it yourself and commit it under the section's `Images/` folder. Remote images cost a network round trip per page view, break the `file://` offline mirror, and **abort the PDF book render** -- the forked paged.js in `book/lib/` has no async image loading, so an image still pending when the page-breaking pass runs raises instead of degrading. The build enforces this unconditionally (see [Site integrity check](#site-integrity-check)); `--check-remote-assets` is the standalone checker's flag, not a `tbdocs` one. The check is scoped to `<img>`; `<iframe>` is untouched, but the site has no embeds. A video is authored as a marked link -- `[Title](https://www.youtube.com/watch?v=<id>){: .video }` -- which `videoLinkPlugin` ([builder/render.mjs](builder/render.mjs)) renders as a locally vendored poster frame linking out to the video page, styled by `.video-link` in `docs/_sass/custom/custom.scss`. That makes the site free of third-party requests entirely; don't reintroduce an embed or a hotlinked `img.youtube.com` thumbnail.
+- **Don't hand-edit a diagram's `.svg`, and don't change its `font-family` anywhere but the `.dot`.** The `.svg` is a build artifact; the next build overwrites it. Graphviz also sizes every box to the text *it* measured, so a face the layout never saw leaves labels hanging outside their boxes. Edit the `.dot`, rebuild, and let `node scripts/check_dot_fit.mjs` confirm it; see [Diagrams](WIP.Typography.md#diagrams).
 - **Don't add a `@font-face` to `docs/_sass/custom/_fonts.scss` without also adding the stack to `modules-dark.scss`,** and don't move the `@font-face` block out of the `emit-font-faces` mixin. The dark compilation re-emits its whole payload under two selectors at raised specificity: a face declared there would be invalid, and a stack left out there applies in light mode and silently does not in dark.
 - **Don't widen `SOURCE_EXTENSIONS` in [builder/publish-policy.mjs](builder/publish-policy.mjs) to make a build pass.** The build refusing a file is the gate working. Remove the file from `docs/`, or add a pattern to `exclude:` in `_config.yml`; widen the allowlist only when the type genuinely belongs on the published site, and never by folding `BUILD_EXTENSIONS` into it. See [The publish allowlist](WIP.Build.md#the-publish-allowlist).
-- **Don't add a rewrite over markdown source or rendered HTML without a code guard.** A pre-render source rewrite goes inside `applyPreRenderRewrites`, between `maskCode` and its `restore`; a rendered-HTML rewrite uses `replaceOutsideCode`, or a pattern led by `CODE_OR_PRE`, both from `builder/code-guard.mjs`. Four rewrites shipped without one and corrupted real code samples, including control-flow indentation in a language reference and six code spans in the published PDF. `node scripts/check_code_regions.mjs` is the gate. See [Never rewrite markdown source without knowing what is code](WIP.Build.md#never-rewrite-markdown-source-without-knowing-what-is-code).
+- **Don't add a rewrite over markdown source or rendered HTML without a code guard.** A pre-render source rewrite goes inside `applyPreRenderRewrites`, between `maskCode` and its `restore`; a rendered-HTML rewrite uses `replaceOutsideCode`, or a pattern led by `CODE_OR_PRE`, both from `builder/code-guard.mjs`. An unguarded rewrite corrupts real code samples: control-flow indentation in a language reference, code spans in the PDF. `node scripts/check_code_regions.mjs` is the gate. See [Never rewrite markdown source without knowing what is code](WIP.Build.md#never-rewrite-markdown-source-without-knowing-what-is-code).
 - Don't invent semantics — read the relevant primary source before paraphrasing (VBA-Docs for VBA-derived pages; the package's `.twin` sources for twinBASIC-specific ones).
 - Don't add boilerplate sections (Remarks, See Also) if the source has nothing meaningful for them.
 - **Never add `Co-Authored-By:` (or any "Co-authored by" / "Generated with Claude" / similar) trailers to commit messages.** Repository policy. Plain commit messages only.

@@ -1,12 +1,12 @@
 {
 	"configuration.inherits": "Defaults",
-	"project.appTitle": "CallbynameMembernotfoundRetried",
+	"project.appTitle": "EnumMemberDescriptionHover",
 	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
 	"project.buildType": "Standard EXE",
-	"project.description": "Reproduces: CallByName calls Invoke a second time when the first returns DISP_E_MEMBERNOTFOUND",
+	"project.description": "Reproduces: A member's `[Description]` is listed as a member of its enum in the hover, and is not shown on the member",
 	"project.exportPathIsV2": true,
-	"project.id": "{88C59DD2-CB35-44BA-820E-64E951AE34AF}",
-	"project.name": "CallbynameMembernotfoundRetried",
+	"project.id": "{A7CEE9B8-7276-4B81-9EE0-D69C43188CAE}",
+	"project.name": "EnumMemberDescriptionHover",
 	"project.optionExplicit": true,
 	"project.references": [
 		{

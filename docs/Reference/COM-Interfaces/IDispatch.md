@@ -231,7 +231,10 @@ The four [**VbCallType**](../../tB/Modules/Constants/VbCallType) values are the 
 > In VBA an unknown member raises error 438. In twinBASIC it raises `&H80020006`, so an error handler that tests for 438 does not catch it. This holds for objects of any origin: a twinBASIC class, a **Collection**, a **Dictionary** and a **FileSystemObject** all behave alike.
 
 > [!WARNING]
-> BETA 995 has a defect: a call that fails inside **Invoke** can be made twice, so its side effects happen twice and nothing says so. VB6 makes the call once. A failed property assignment is followed by a second **Invoke** with *wFlags* 3, and **CallByName** repeats a call that returned `DISP_E_MEMBERNOTFOUND` with a null *pVarResult*. A call with more arguments than a **Sub** takes runs the **Sub**, then fails with error 13, and a late-bound statement does this twice. Code that implements **Invoke** must not change state before it can still fail.
+> BETA 995 has a defect: a call that fails inside **Invoke** can be made twice, so its side effects happen twice and nothing says so. VB6 makes the call once. A failed property assignment is followed by a second **Invoke** with *wFlags* 3. A call with more arguments than a **Sub** takes runs the **Sub**, then fails with error 13, and a late-bound statement does this twice. Code that implements **Invoke** must not change state before it can still fail.
+
+> [!NOTE]
+> **CallByName** repeats a call that returned `DISP_E_MEMBERNOTFOUND`: a second **Invoke** with the same identifier and *wFlags* and a null *pVarResult*, for **VbMethod**, **VbGet** and **VbLet** alike. VB6 does the same. A late-bound statement makes the call once.
 
 ## Classes written in twinBASIC
 

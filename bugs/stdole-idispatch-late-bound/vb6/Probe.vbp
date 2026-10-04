@@ -1,0 +1,9 @@
+Type=Exe
+Reference=*\G{00020430-0000-0000-C000-000000000046}#2.0#0#C:\Windows\SysWOW64\stdole2.tlb#OLE Automation
+Module=Module1; Module1.bas
+Class=Widget; Widget.cls
+Startup="Sub Main"
+ExeName32="Probe.exe"
+Name="Probe"
+CompilationType=0
+OptimizationType=0

@@ -424,7 +424,7 @@ symbolIndex.execute() → { entries, urls, gaps, unplaced, symbols }
 
 Writes `tB/symbols.json`, the [symbol index](Building#the-symbol-index). Reads `builder/package-api.json` --- the build fails, naming `scripts/build_package_api.mjs`, if it is missing --- then calls `symbolPages(state.pages)`, `deriveSymbolIndex({ pages, api })` and `serializeSymbolIndex(...)` from `symbols.mjs`. `renderJoin` is the dependency that matters: an entry's anchor is the id the render gave its heading, read out of `renderedContent`, never computed a second time. ~50 ms over the reference's pages. With `--symbol-gaps <path>` it also writes `reportableGaps(...)` there as JSON.
 
-`urls` is every distinct URL in the index. `runBuild` hands it to `checkSymbolBaseline` from `symbol-baseline.mjs` after the check report, beside the page-count guard; `unplaced` names the package pages that gave no entry, which the summary prints. `checkReport` waits for this task, since `tB/symbols.json` is in the online tree's index and `--check-audit-index` must not look for it early. `symbols` -- the same array `deriveSymbolIndex` returned, each `{ name, container, url, ... }` -- passes through to `searchData`, which is the only other consumer; it is not written anywhere itself (that is `tB/symbols.json`, above).
+`urls` is every distinct URL in the index. `runBuild` hands it to `checkSymbolBaseline` from `symbol-baseline.mjs` after the check report, beside the page-count guard; `unplaced` names the package pages that gave no entry, which the summary prints. `checkReport` waits for this task, since `tB/symbols.json` is in the online tree's index and `--check-audit-index` must not look for it early. `symbols` -- the same array `deriveSymbolIndex` returned, each `{ name, container, url, ... }` -- passes through to `searchData`, which is the only other consumer; it is not written anywhere itself (that is `tB/symbols.json`, above). `json` is that file's text, which `runBuild` hands to `syncAddinIndex` from `addin-index.mjs` for the help add-in's copy.
 
 ### `writeAux` (main)
 
@@ -855,6 +855,13 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | `checkSymbolBaseline` | `({ src, urls, write, force, file }) → Promise<{ failed, text }>` | The symbol index's drift guard: fails on a URL `builder/symbol-baseline.json` has and `urls` does not, rewrites the file when `urls` adds one and `write` is set, and does nothing for a source root other than `docs`. |
 | `SYMBOL_BASELINE_PATH` | `URL` | `builder/symbol-baseline.json`. |
 
+### `addin-index.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `syncAddinIndex` | `({ src, json, write, file }) → Promise<string>` | Compares `json`, the `tB/symbols.json` this build wrote, with the help add-in's committed copy byte for byte, and rewrites the copy when they differ and `write` is set. Does nothing for a source root other than `GUARDED_SRC`, or when `json` is empty (`--dry-run`). Returns the line to print, `""` when the copy is current; a difference never fails the build. Called by `runBuild` after the symbol index's drift guard. |
+| `ADDIN_INDEX_REL` | `string` | `"add-in/Resources/SYMBOLS/symbols.json"`, the default `file` under the repository root. |
+
 ### `page-baseline.mjs`
 
 | Symbol | Signature | Description |
@@ -966,6 +973,12 @@ The handler table is built from the imported `HANDLERS` constant:
 | Symbol | Signature | Description |
 |---|---|---|
 | `runServe` | `(opts) → Promise<void>` | Long-lived dev server. Initial one-shot build, then HTTP + recursive watcher + SSE reload. The worker pool is constructed once and reused across rebuilds. Writes to `<srcRoot>/_serve/`. Skips the offline + PDF passes by default. |
+
+### `static-files.mjs`
+
+| Symbol | Signature | Description |
+|---|---|---|
+| `createStaticHandler` | `(destRoot, { transformHtml? }) → (req, res) => Promise<void>` | An HTTP handler serving the files under `destRoot` as GitHub Pages does: a folder's URL without its trailing slash redirects to the slash form, and a path with no extension also finds `<path>.html`. Nothing is cached. `transformHtml(html, file)`, when given, rewrites each `.html` file before it is sent: `serve.mjs` adds its reload script with it to every page but `book.html`. Logs a 404 or a 500 to stderr. |
 
 ### `command-line.mjs`
 

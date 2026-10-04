@@ -1,0 +1,38 @@
+Module Cases
+    Public Sub Main()
+        Dim c As New Collection
+        c.Add 1
+        MsgBox "x"
+        VBA.Interaction.MsgBox "y"
+        Debug.Print Len("abc")
+        Dim zzqHelpProbe As Long
+        Close #1
+        ' Host.ToolWindows.Add(name, id)
+    End Sub
+
+    Public Sub Members(ByVal cb As CheckBox, ByVal Host As Host, ByVal o As Object)
+        Debug.Print cb.Value, App.Path, vbOKOnly, vbCrLf, Err.Number
+        Dim w As ToolWindow
+        Set w = Host.ToolWindows.Add("a", "b")
+        o.Add 1
+        Beep
+        Dim c2 As New Collection
+        With c2
+            .Add 2
+        End With
+    End Sub
+
+    ' The project's own Beep, in place of VBA's.
+    [Description("Sounds the project's own tone.")]
+    Public Sub Beep()
+    End Sub
+
+    Public Function Plain() As Long
+        Return 1
+    End Function
+
+    Public Sub Own()
+        Dim g As New Gadget
+        Debug.Print Plain(), g Is Nothing
+    End Sub
+End Module

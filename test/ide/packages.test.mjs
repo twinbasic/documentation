@@ -21,7 +21,6 @@
 // Run it with ide-test.bat, which gives it a lane; on its own it is skipped.
 
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
 import { cpSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { before, test } from "node:test";
@@ -29,10 +28,10 @@ import { fileURLToPath } from "node:url";
 import { waitForCompile } from "../../scripts/lib/tb-ide.mjs";
 import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
 import { click, clickAt, openFile, waitFor } from "../../scripts/lib/tb-operate.mjs";
+import { packTree } from "../../scripts/lib/tb-project.mjs";
 import { scenario } from "../addin/scenario.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const REPO = path.resolve(HERE, "..", "..");
 const HOST = path.join(HERE, "probes", "packages", "host");
 const PKG = path.join(HERE, "probes", "packages", "DocProbePkg");
 
@@ -72,7 +71,7 @@ scenario("Import from file... in the Packages dialog", (lane) => {
 
   before(async () => {
     pack = path.join(lane.work, "DocProbePkg.twinpack");
-    execFileSync(process.execPath, [path.join(REPO, "scripts", "impexp.mjs"), "import", pack, PKG], { stdio: "pipe" });
+    packTree(pack, PKG);
     c = await lane.open(HOST);
   });
 
@@ -173,7 +172,7 @@ scenario("Replacing an embedded package", (lane) => {
     );
     writeFileSync(source, readFileSync(source, "utf8").replace("Return 1", `Return ${version}`));
     const out = `${tree}.twinpack`;
-    execFileSync(process.execPath, [path.join(REPO, "scripts", "impexp.mjs"), "import", out, tree], { stdio: "pipe" });
+    packTree(out, tree);
     return out;
   }
 

@@ -8,14 +8,14 @@ permalink: /Documentation/Development/Tools
 # Tools and Scripts
 {: .no_toc }
 
-One-line-per-tool reference for every executable in the documentation repository: the eight Windows batch wrappers at the repository root, the Node and Python scripts under `scripts/` (cross-platform except for [`tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE), the `tbdocs` orchestrator and its CLI flags, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper. Every Node tool answers `--help` or `-h` by printing its usage to standard output and exiting 0, without doing any of its work. A command line a tool cannot use is refused the same way by every Node tool: an unknown flag, a flag without its value or with an empty one, and an unexpected argument are reported on standard error and exit **2**. So is a crash. So is a value a tool cannot use, before it does any work: a number that is not one or is out of range (a fraction where a whole number is needed), a regular expression that does not compile, a URL that is not an absolute `http` or `https` one, a date that is not ISO 8601, a value outside a fixed set, and options that exclude each other. A tool that reads its command line through `lib/cli.mjs` and takes search terms, file names or folder names takes one that starts with a dash after `--`.
+One-line-per-tool reference for every executable in the documentation repository: the nine Windows batch wrappers at the repository root, the Node and Python scripts under `scripts/` (cross-platform except for [`tbbuild.mjs`](#tbbuild), which drives the twinBASIC IDE), the `tbdocs` orchestrator and its CLI flags, and the PDF render driver. If you are looking for the day-to-day workflow rather than a cheat sheet, the [Building and Deployment](Building) page is the gentler read; if you are modifying the build pipeline itself, the [tbdocs Internals](Builder) page goes one level deeper. Every Node tool answers `--help` or `-h` by printing its usage to standard output and exiting 0, without doing any of its work. A command line a tool cannot use is refused the same way by every Node tool: an unknown flag, a flag without its value or with an empty one, and an unexpected argument are reported on standard error and exit **2**. So is a crash. So is a value a tool cannot use, before it does any work: a number that is not one or is out of range (a fraction where a whole number is needed), a regular expression that does not compile, a URL that is not an absolute `http` or `https` one, a date that is not ISO 8601, a value outside a fixed set, and options that exclude each other. A tool that reads its command line through `lib/cli.mjs` and takes search terms, file names or folder names takes one that starts with a dash after `--`.
 
 * TOC goes here
 {:toc}
 ## Batch wrappers at the repository root
 {: #batch-wrappers }
 
-All eight sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. `examples.bat`, `addin-test.bat` and `ide-test.bat` are the exceptions to "each entry below gives the POSIX equivalent": they need a twinBASIC install and drive the IDE, so they are Windows-only, and neither is part of the site build. Four other tools are Windows-specific for the same reason and are likewise not part of it: [`scripts/tbbuild.mjs`](#tbbuild) and [`scripts/tbrun.mjs`](#tbrun), which drive the twinBASIC IDE, and [`census_attributes.mjs`](#census-attributes) and [`build_package_api.mjs`](#build-package-api), which run the twinBASIC compiler's `export` verb --- though those two are cross-platform when given an already-exported tree with `--exported`. Nothing else in the repository is: `tbdocs` and every gate in both wrappers is a Node script, and CI runs all of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
+All nine sit at the repository root, beside `package.json` --- not under `docs/`. Each uses `@pushd "%~dp0"` to run from that root regardless of where it is invoked from, and each entry below gives the POSIX equivalent of what it runs. Those equivalents have no `pushd` in front of them, so **run them from the repository root** --- `tbdocs`'s `--src docs`, [`check_publish_policy.mjs`](#check-publish-policy)'s default source root, and every path handed to [`render-book.mjs`](#bookrender-bookmjs) are all resolved against the working directory. `examples.bat`, `addin-test.bat`, `ide-test.bat` and `try-help-addin.bat` are the exceptions to "each entry below gives the POSIX equivalent": they need a twinBASIC install and drive the IDE, so they are Windows-only, and none is part of the site build. Four other tools are Windows-specific for the same reason and are likewise not part of it: [`scripts/tbbuild.mjs`](#tbbuild) and [`scripts/tbrun.mjs`](#tbrun), which drive the twinBASIC IDE, and [`census_attributes.mjs`](#census-attributes) and [`build_package_api.mjs`](#build-package-api), which unpack the packages of a twinBASIC install --- though those two are cross-platform when given an already-exported tree with `--exported`. Nothing else in the repository is: `tbdocs` and every gate in both wrappers is a Node script, and CI runs all of them on `ubuntu-latest` except [`check_tree_fresh.mjs`](#check-tree-fresh), which guards against a failure mode CI cannot have.
 
 ### build.bat
 
@@ -71,7 +71,7 @@ One of the four does not mean the same thing locally as it does in CI, on any pl
 
     test.bat
 
-The tests the toolchain has to pass. Twenty steps, each stopping the run if it fails:
+The tests the toolchain has to pass. Twenty-one steps, each stopping the run if it fails:
 
 1. [`scripts/check_publish_policy.mjs`](#check-publish-policy) --- verifies the publish allowlist still refuses the types it is meant to. Needs neither a browser nor a built tree, so it goes first.
 2. [`scripts/check_gate_lists.mjs`](#check-gate-lists) --- verifies the two gate lists on this page still match the wrappers that run them.
@@ -82,17 +82,18 @@ The tests the toolchain has to pass. Twenty steps, each stopping the run if it f
 7. [`test/strftime.test.mjs`](#strftime-test) --- unit tests for the footer's date formatter, which no build calls.
 8. [`test/png.test.mjs`](#png-test) --- unit tests for the pictures of a bug reproducer: PNG decoding, comparing and the side-by-side image, the files behind `images` and `expect.imagesDiffer`, and the refusals of `bug_repro.mjs` over fixtures.
 9. [`test/example-batches.test.mjs`](#example-batches-test) --- runs `check_examples.mjs`'s probes, which test how samples are batched and how a crashed batch is cut down, without an IDE.
-10. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
-11. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span, that the rewrites over rendered HTML leave a raw `<pre>` or `<code>` alone, and that `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes.
-12. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
-13. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
-14. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
-15. [`scripts/check_twin_parsers.mjs`](#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
-16. [`scripts/check_attribute_sweep.mjs`](#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
-17. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
-18. [`scripts/check_pdf_shims_equiv.mjs`](#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, and run.
-19. [`scripts/check_impexp_parity.mjs`](#check-impexp-parity) --- verifies the two editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI.
-20. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
+10. [`test/ports.test.mjs`](#ports-test) --- unit tests for how the harness claims the DevTools ports its IDEs use, without an IDE.
+11. [`scripts/check_regex_safety.mjs`](#check-regex-safety) --- refuses a regex that can backtrack exponentially, written as a literal or built from constants.
+12. [`scripts/check_code_regions.mjs`](#check-code-regions) --- verifies no pre-render rewrite alters the contents of a code fence or code span, that the rewrites over rendered HTML leave a raw `<pre>` or `<code>` alone, and that `lib/markdown.mjs` and `lib/frontmatter.mjs` pass their probes.
+13. [`scripts/check_page_baseline.mjs`](#check-page-baseline) --- verifies the page-count drift guard still refuses a fall.
+14. [`scripts/check_book_coverage.mjs`](#check-book-coverage) --- verifies the build still warns about a page `docs/_book.yml` does not mention.
+15. [`scripts/check_symbol_index.mjs`](#check-symbol-index) --- verifies the symbol index still places each kind of symbol, and its drift guard still refuses a lost URL.
+16. [`scripts/check_twin_parsers.mjs`](#check-twin-parsers) --- verifies the scanners of twinBASIC source and of the attribute reference still read the shapes each once misread.
+17. [`scripts/check_attribute_sweep.mjs`](#check-attribute-sweep) --- verifies the logic of the attribute sweep: its site skeletons, how it reads a probe's diagnostics, how it batches probes, and how it compares the answers with `Attributes.md`.
+18. [`scripts/check_cli.mjs`](#check-cli) --- verifies `lib/cli.mjs`, the command-line parser, and each tool's recorded command-line errors.
+19. [`scripts/check_pdf_shims_equiv.mjs`](#check-pdf-shims-equiv) --- verifies the book's pdf-lib shims write what stock pdf-lib writes, patch the members of pdf-lib it lists, and run.
+20. [`scripts/check_impexp_parity.mjs`](#check-impexp-parity) --- verifies the two editions of the impexp tool pass the same built-in tests, and exit, print and write the same for one sequence of commands. Without Python it reports itself skipped and passes, except in CI.
+21. [`scripts/check_axe_patch_equiv.mjs`](#check-axe-patch-equiv) --- verifies the vendored axe source patch still produces identical colour values.
 
 POSIX:
 
@@ -105,6 +106,7 @@ POSIX:
       && node --test test/strftime.test.mjs \
       && node --test test/png.test.mjs \
       && node --test test/example-batches.test.mjs \
+      && node --test test/ports.test.mjs \
       && node scripts/check_regex_safety.mjs \
       && node scripts/check_code_regions.mjs \
       && node scripts/check_page_baseline.mjs \
@@ -119,7 +121,7 @@ POSIX:
 
 Exit codes: **0** every step passed; otherwise the code of the step that stopped the run, as that step's entry gives it.
 
-**Seventeen of the twenty cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all twenty unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
+**Eighteen of the twenty-one cannot be affected by an edit confined to `docs/`**, which is why they are separate from `check.bat`. Run this one when the change touches `builder/`, `scripts/`, `lib/`, `book/`, `eval/`, `wisdom/` or `test/`, the site's scripts in `docs/assets/js/`, a wrapper, or a workflow. Both CI workflows run all twenty-one unconditionally, so skipping it locally cannot let a tooling regression reach `staging`.
 
 The three exceptions are [`check_code_regions.mjs`](#check-code-regions), [`check_gate_lists.mjs`](#check-gate-lists), which reads this page, and [`check_lint.mjs`](#check-lint), which lints the site's scripts in `docs/assets/js/`. The first is worth knowing in detail. Its corpus sweep tokenises every markdown file under `docs/`, so a page that provokes a rewrite into altering a code region fails it. Its fixed probes are a different matter: they run against their own sources whatever the tree holds, and they cover the *mirror* fault, where a rewrite silently stops firing. The sweep cannot see that one --- text the rewrite skipped is stashed and restored unchanged, so every region still matches. Add a page with an unusual code construct and run `test.bat`, but read the built page too.
 
@@ -219,6 +221,19 @@ Tests the twinBASIC IDE itself by machine: it opens a project in an IDE, operate
 **It is not one of the gates either**, and for the reasons `examples.bat` is not: it needs a twinBASIC install, and it needs Windows, a private desktop and a CDP-reachable WebView2. It is absent from `build.bat`, `check.bat`, `test.bat` and both CI workflows.
 
 Exit codes: those of [`ide_test.mjs`](#ide-test), returned as they are: **0** every lane passed and the registry is as it was found, **1** a lane failed, **2** the harness failed, **3** the registry or a work folder was not put back.
+
+### try-help-addin.bat
+{: #try-help-addinbat }
+
+    try-help-addin.bat [flags]
+
+One invocation of [`try_help_addin.mjs`](#try-help-addin), with every flag passed straight through:
+
+    node scripts/try_help_addin.mjs [flags]
+
+Opens an IDE on your desktop with the help add-in built and loaded, to try it by hand, and puts the registry back once the IDE is closed. **It is not one of the gates**: it needs a twinBASIC install and Windows.
+
+Exit codes: those of [`try_help_addin.mjs`](#try-help-addin), returned as they are: **0** the IDE was closed and the registry is as it was found, **1** the add-in did not build or the project does not compile, **2** the tool could not run, **3** the registry or the work folder was not put back.
 
 ## CLI tools
 
@@ -600,6 +615,15 @@ Exit codes: **0** every test passed, **1** a test failed.
     node --test test/example-batches.test.mjs
 
 Runs the probes of [`check_examples.mjs`](#check-examples) under Node's own test runner. They live in `scripts/lib/example-batches.mjs`, beside what they test: how samples are packed into projects, how a batch whose build crashed the compiler is cut down to the samples that crash it, the canary every batch carries, the fence classifier, and how a `check_run` sample is refused, read for what it says it prints, called and judged. `check_examples.mjs` runs them before every run too, but it needs a twinBASIC install, so it runs only by hand and never in CI. The probes need no IDE: crash isolation is driven through a fake lane whose builds crash on the samples a probe chooses. The same file also runs the probes of [`vb6run.mjs`](#vb6run), from `scripts/lib/vb6.mjs`: the `Debug.Print` rewrite on strings, comments, statement separators, single-line `If` and a bare `Debug.Print`, the generated modules, the reading of VB6's build log and the Windows-1252 encoding. It also holds the probes for a bug reproducer's VB6 project (see [`bug_repro.mjs`](#bug-repro)): which files go into its zip, what refuses a project (the `PngDump.bas` picture module among the sources that must pass), and the project file the build copy gets. They need no VB6. No browser, no built tree, well under a second.
+
+Exit codes: **0** every test passed, **1** a test failed.
+
+### ports.test.mjs
+{: #ports-test }
+
+    node --test test/ports.test.mjs
+
+Unit tests for `scripts/lib/tb-ports.mjs`, which claims the DevTools ports that [`addin_test.mjs`](#addin-test), [`ide_test.mjs`](#ide-test) and [`try_help_addin.mjs`](#try-help-addin) start their IDEs on. A port is claimed with a lock file in `tb-ports` under the system temp directory before it is checked, and runs claim one at a time, so two runs started together never get the same one. Four child processes claim three ports each at the same time, from a range where one port is in use, one has the lock of a process that has ended and one the lock of a live process, and each holds its ports until all have claimed. The test checks that the claims are disjoint, that they are exactly the free ports with the stale lock taken over, and that each lock is gone once its process exits. Two more tests ask for more free ports than the range holds, which is refused with the port found unlocked again, and claim past the unfinished claim of a run that ended. Starts no IDE. No browser, no built tree, about 2 s.
 
 Exit codes: **0** every test passed, **1** a test failed.
 
@@ -998,7 +1022,7 @@ behind. That includes the target the IDE remembers for each project, which a `wi
 writes. **A probe builds for the target `--arch` names**, whatever the IDE remembers, so a
 kept IDE switched to `win64` does not make later runs on the same port build 64-bit.
 
-Exit codes: **0** the probe ran and its output was captured; **1** the project has compile errors (the diagnostics are printed); **2** a refused command line (a source folder that is missing or has no `Settings` file included), no IDE or compiler, an IDE that did not start, a compile that never settled, a build that failed after a clean compile, a probe that never ran or stopped at a procedure that failed code generation, an LLVM run on a Community or Personal licence, an `--exe` run with no exe built, or a crash; **3** no output: the console held none before the timeout, or the probe printed none after its last `Debug.Cls`; **4** the compiler crashed, or restarted twice, while compiling the project; **5** the probe ended before it returned, its output printed all the same; **6** under `--exe`, the exe exited with a code other than 0, or was still running after `--timeout` and was ended, its output and exit code printed all the same. A run that would exit 5 exits 5 whatever the exe did.
+Exit codes: **0** the probe ran and its output was captured; **1** the project has compile errors (the diagnostics are printed); **2** a refused command line (a source folder that is missing or has no `Settings` file included), no IDE, an IDE that did not start, a compile that never settled, a build that failed after a clean compile, a probe that never ran or stopped at a procedure that failed code generation, an LLVM run on a Community or Personal licence, an `--exe` run with no exe built, or a crash; **3** no output: the console held none before the timeout, or the probe printed none after its last `Debug.Cls`; **4** the compiler crashed, or restarted twice, while compiling the project; **5** the probe ended before it returned, its output printed all the same; **6** under `--exe`, the exe exited with a code other than 0, or was still running after `--timeout` and was ended, its output and exit code printed all the same. A run that would exit 5 exits 5 whatever the exe did.
 
 ### bug_repro.mjs
 {: #bug-repro }
@@ -1024,7 +1048,7 @@ outside every gate and outside CI, and `verify` is run by a person only.
 | Command | Effect |
 |---|---|
 | `new <slug> "<title>"` | Creates `bugs/<slug>/src/` from the console template under `test/example-projects/`, with the project named after the slug in PascalCase, a fresh project id, the description `Reproduces: <title>` and a `Startup` module holding an empty `Sub Main`. Also writes `bugs/<slug>/repro.json` with `"mode": "manual"`. Refused, with exit 3, when `bugs/<slug>` exists. `--template <name>` starts from a folder of `test/repro-templates/` instead: its `Settings`, with the same four keys rewritten, and its `Sources/` as they are. `webview2-form` is a form holding one WebView2 control, which opens `about:blank` when the control is ready and closes when that navigation completes, shown modally by `Sub Main`. `--with-vb6` also creates `bugs/<slug>/vb6/` from the VB6 template in `test/repro-templates/vb6/`: `Probe.vbp` and `Module1.bas`, whose `Sub Main` opens `out.txt` beside the exe, prints one line under an error handler and closes. `--with-images` also copies `PngDump.twin` from `test/repro-templates/png/` into `src/Sources/` and, with `--with-vb6`, `PngDump.bas` into `vb6/` with its `Module=PngDump; PngDump.bas` line in `Probe.vbp`, and writes `"images": ["main"]` into `repro.json`. |
-| `pack <slug>` | Runs `node scripts/impexp.mjs import` on `src/`, to `<slug>.twinproj`, and then writes `<slug>.zip` holding that file and the files `repro.json`'s `attach` names. The zip is written by the script itself, so neither PowerShell nor 7-Zip is needed. An `impexp` exit of 0 or 6 counts as a pack, and its output is printed. When `bugs/<slug>/vb6/` exists, it also writes `<slug>-vb6.zip`, holding the source files of that folder (`.vbp`, `.bas`, `.cls`, `.frm`, `.frx`, `.ctl` and `.ctx`) and nothing else, so an exe or an output left there is not zipped; the files left out are named. A `vb6/` with no `Probe.vbp`, or whose sources call `MsgBox` or `InputBox`, is refused. The zip also holds every file of `images/`, and `pack` prints the path of each `<name>-compare.png`, the pictures to put in the issue. |
+| `pack <slug>` | Packs `src/` into `<slug>.twinproj` with [`impexp.mjs`](#impexp), called directly, and prints the lines that `impexp.mjs import` prints. It then writes `<slug>.zip` holding that file and the files `repro.json`'s `attach` names. The zip is written by the script itself, so neither PowerShell nor 7-Zip is needed. When `bugs/<slug>/vb6/` exists, it also writes `<slug>-vb6.zip`, holding the source files of that folder (`.vbp`, `.bas`, `.cls`, `.frm`, `.frx`, `.ctl` and `.ctx`) and nothing else, so an exe or an output left there is not zipped; the files left out are named. A `vb6/` with no `Probe.vbp`, or whose sources call `MsgBox` or `InputBox`, is refused. The zip also holds every file of `images/`, and `pack` prints the path of each `<name>-compare.png`, the pictures to put in the issue. |
 | `compile <slug>` | Packs, then compiles the project with `tbbuild --json` and prints its diagnostics. |
 | `build <slug>` | Packs, then compiles and builds it with `tbbuild --build`, or `--llvm` when that is given. A build that fails prints the build log and the failing line. |
 | `run <slug>` | Copies `src/` to `%TEMP%\bugrepro\<port>\<slug>`, adds a `TbRunProbe` module whose `[RunAfterBuild]` Sub calls `Debug.Cls` and then `Main`, runs `tbrun` on the copy and prints what it captured. The Sub clears `WEBVIEW2_USER_DATA_FOLDER` and `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` while `Main` runs: the harness starts the IDE with both, and WebView2 lets them override what a WebView2 control in the project asks for, so the control would fail to start inside the IDE's process. Apart from the pictures below, the tree under `bugs/` is not changed. With `--exe` no probe module is added: `tbrun` runs `Sub Main` in the built exe. With `images` in `repro.json`, `run` also gives `tbrun` an empty folder in `BUGREPRO_IMAGES`, which the IDE and, with `--exe`, the exe inherit, and when the run finishes keeps each picture as `images/<name>-tb.png`. A picture the probe did not write is a failure that names it, exit 9. |
@@ -1102,7 +1126,7 @@ the bug unless `expect.exit` names it. Reproducers run one at a time. `--jobs N`
 once, each in the IDE on its own port, from `--port` up. `verify` tidies the IDE's registry
 entries once for all of them, as [`check_examples.mjs`](#check-examples) does.
 
-Exit codes: **0** done --- a project that compiled, built or ran as it should, or, for `verify`, every reproducer that can be run on its own still reproduces; **1** a finding: the project has errors, or its build failed after a clean compile, or, for `vb6`, VB6 refused the project, or, for `verify`, at least one reproducer no longer reproduces; **2** a refused command line, a `repro.json` that is not valid, no IDE, a project that could not be packed, a harness that failed, or a crash; for `vb6`, no VB6, a reproducer with no `vb6/` folder, a project that has no `Probe.vbp` or calls `MsgBox` or `InputBox`, or VB6 failing to build it; for `verify`, a lane's harness failed; for `file`, an entry that is missing, ambiguous or marked unreadably, or a `bugs/filed/<slug>` already there, with nothing changed; **3** `new` found `bugs/<slug>` or `bugs/filed/<slug>` already there; **4** the compile never settled; **5** the project crashes the compiler; **6** `run`: the probe printed nothing; for `vb6`, the exe wrote no `out.txt`, or an empty one; **7** `run`: the probe ended before it returned; **8** `run --exe`, and `vb6`: the exe exited with a code other than 0, or was still running after `--timeout`; **9** `run` and `vb6`: a picture that `images` names was not written, or could not be read.
+Exit codes: **0** done --- a project that compiled, built or ran as it should, or, for `verify`, every reproducer that can be run on its own still reproduces; **1** a finding: the project has errors, or its build failed after a clean compile, or, for `vb6`, VB6 refused the project, or, for `verify`, at least one reproducer no longer reproduces; **2** a refused command line, a `repro.json` that is not valid, no IDE, a project that could not be packed, a harness that failed, or a crash; for `vb6`, no VB6, a reproducer with no `vb6/` folder, a project that has no `Probe.vbp` or calls `MsgBox` or `InputBox`, or VB6 failing to build it; for `verify`, a lane's harness failed; for `file`, an entry that is missing, ambiguous or marked unreadably, or a `bugs/filed/<slug>` already there, with nothing changed; **3** `new` found `bugs/<slug>` or `bugs/filed/<slug>` already there; **4** the compile never settled; **5** the project crashes the compiler; **6** `run`: the probe printed nothing; for `vb6`, the exe wrote no `out.txt`, or an empty one; **7** `run`: the probe ended before it returned; **8** `run --exe`, and `vb6`: the exe exited with a code other than 0, or was still running after `--timeout`, or, with `vb6`, the Application event log records that it faulted (a VB6 exe that dies of an access violation exits with code 0); **9** `run` and `vb6`: a picture that `images` names was not written, or could not be read.
 
 ### vb6run.mjs
 {: #vb6run }
@@ -1119,11 +1143,11 @@ Builds and runs Visual Basic 6 code, so that what a documented sample prints in 
 | Mode | Effect |
 |---|---|
 | `<file>` | A `.bas` module, or a text file of bare statements; `-` reads statements from standard input. A file that defines `Sub Main` is a whole module: it is built as written, its `Sub Main` is renamed so that the generated `Main` can start it, and it keeps its `Attribute VB_Name` line or is given one. Any other file is the body of a generated procedure. What the sample printed goes to standard output. A compile error is reported to standard error as VB6 reports it, with the line given as a line of the file, and a run-time error as `[vb6] error <n>: <description>`. |
-| `--docs` | Reads the documentation's `check_run` fences with the reader `check_examples.mjs` uses and builds each as a module of its own in a VB6 project; the fences that need no other fence share one project. The run fences of a `projname=` group are built in a project of their own, since class and module names collide between groups, together with the other fences of the group, each of which is a file. A `slot=file` fence is translated into VB6 components: every `Class <Name>` block becomes a class module and every `Module <Name>` block a standard module, `Public`, `Private` or `Friend` before the keyword being accepted, and anything outside those blocks (`Declare`, `Type`, `Enum`, `Const`, procedures) becomes one more standard module. Nothing else is translated. A construct VB6 has no form for, such as an `Interface`, a `CoClass`, a generic or an attribute line, stays where it is and VB6 refuses it, so each run fence of a group whose files do not build is `not VB6`, with the first error at its line in the page. Each of the run fences ends as `same` (VB6 prints what the page says twinBASIC prints), `differs` (the lines that differ, the page against VB6, with the page path and line), `not VB6` (VB6 refuses to compile it, with its first error; most twinBASIC syntax ends here, and it is informational), `error` (a run-time error, or it did not return), or `refused` (the sample cannot be run, for the reasons `check_run` gives). A fence that says `project=form` is built with a blank `Form1.frm`, which VB6 refuses to build with Unattended Execution, so such a project is built without it and its exe runs on a private desktop; each sample's forms are unloaded when it ends. On a `Declare` statement, `PtrSafe` is dropped and `LongPtr` is read as `Long`, because VB6 knows neither. A compile error stops VB6 at the first module that fails, so that module is dropped and the project is built again until it builds. A summary line gives the count of each. `--only <regex>` keeps the pages whose path under `docs/` matches. |
+| `--docs` | Reads the documentation's `check_run` fences with the reader `check_examples.mjs` uses and builds each as a module of its own in a VB6 project; the fences that need no other fence share one project. The run fences of a `projname=` group are built in a project of their own, since class and module names collide between groups, together with the other fences of the group, each of which is a file. A `slot=file` fence is translated into VB6 components: every `Class <Name>` block becomes a class module and every `Module <Name>` block a standard module, `Public`, `Private` or `Friend` before the keyword being accepted, and anything outside those blocks (`Declare`, `Type`, `Enum`, `Const`, procedures) becomes one more standard module. Nothing else is translated. A construct VB6 has no form for, such as an `Interface`, a `CoClass`, a generic or an attribute line, stays where it is and VB6 refuses it, so each run fence of a group whose files do not build is `not VB6`, with the first error at its line in the page. Each of the run fences ends as `same` (VB6 prints what the page says twinBASIC prints), `differs` (the lines that differ, the page against VB6, with the page path and line), `not VB6` (VB6 refuses to compile it, with its first error; most twinBASIC syntax ends here, and it is informational), `error` (a run-time error, the exe ended during it, or it did not return), or `refused` (the sample cannot be run, for the reasons `check_run` gives). A fence that says `project=form` is built with a blank `Form1.frm`, which VB6 refuses to build with Unattended Execution, so such a project is built without it and its exe runs on a private desktop; each sample's forms are unloaded when it ends. On a `Declare` statement, `PtrSafe` is dropped and `LongPtr` is read as `Long`, because VB6 knows neither. A compile error stops VB6 at the first module that fails, so that module is dropped and the project is built again until it builds. A summary line gives the count of each. `--only <regex>` keeps the pages whose path under `docs/` matches. |
 
 Other options: `--timeout S` is the time limit, in seconds, for each run of the built exe (default 30), and `--json` prints one JSON object in place of the text.
 
-Exit codes: **0** the sample ran, or, with `--docs`, no fence differs and none raised an error; **1** a VB6 compile error, a run-time error or a sample that did not return, or, with `--docs`, at least one fence that differs or raised an error; **2** the harness could not run --- a refused command line, a file that is missing, a sample that is refused, no VB6, VB6 failing to build, or a crash.
+Exit codes: **0** the sample ran, or, with `--docs`, no fence differs and none raised an error; **1** a VB6 compile error, a run-time error, a sample during which the exe ended (a VB6 exe that dies of an access violation can exit with code 0, so the exe ending before the time limit in the middle of a sample is what shows it; the fault the Application event log records is named when there is one) or a sample that did not return, or, with `--docs`, at least one fence that differs or raised an error; **2** the harness could not run --- a refused command line, a file that is missing, a sample that is refused, no VB6, VB6 failing to build, or a crash.
 
 ### addin_test.mjs
 {: #addin-test }
@@ -1140,14 +1164,14 @@ never loads into your own IDE, and two lanes never share one. The scenario build
 it tests into its copy, opens a project, and operates the IDE: it clicks, presses keys, types,
 and reads the add-ins' tool windows, message boxes, notifications, the code editor and the
 Debug Console. Two scenarios operate the IDE's own sample add-ins, Sample 10 and Sample 15
-(Global Search), end to end. The others are probes, and take what they need from
+(Global Search), end to end. The others but the last are probes, and take what they need from
 `test/addin/probes/`. Two build add-ins of their own and check what the tbIDE pages say about
 the IDE: which keyboard shortcuts fire, for the
 [KeyboardShortcuts](../../tB/Packages/tbIDE/KeyboardShortcuts) page, and what a tool window
 does with HTML and with a web page in an `iframe`, for the
 [HtmlElement](../../tB/Packages/tbIDE/HtmlElement) page and its neighbours. The panes lane
 serves the pages its frame shows from a server of its own on `localhost`. Three more answer
-questions the planned help add-in rests on: what the compiler says about the name under the
+questions the help add-in rests on: what the compiler says about the name under the
 cursor, which files the IDE's own web server serves from its `ide` folder, and which folders
 the compiler loads add-ins from. The last three check what the [Add Ins](../../tB/IDE/AddIns/)
 and [tbIDE package](../../tB/Packages/tbIDE/) pages say about loading: which folder each
@@ -1155,12 +1179,14 @@ build target loads, what a compiler restart does to a loaded add-in, and which e
 names the IDE accepts. They build add-ins for win64 as well as win32, restart the compiler,
 and patch a built DLL's export name. One more checks that the environment variable the
 runner sets, which keeps an add-in under test from opening a browser, reaches the add-in,
-also after a compiler restart. The eleven lanes take under two minutes together.
+also after a compiler restart. The last lane tests the help add-in in `add-in/`, which opens
+the page for the name under the cursor, with the copy of the symbol index committed in
+`add-in/Resources/SYMBOLS/`. The twelve lanes take about two minutes together.
 
 | Flag | Effect |
 |---|---|
 | `--only <regex>` | Run only the lanes whose name matches. A lane's name is its file's name without `.test.mjs`. |
-| `--port <n>` | Base DevTools port. Default 9560; the lanes get *n*, *n*+1 and so on, and their work folders are keyed to their ports. A port another IDE holds is refused, as for `tbbuild`. |
+| `--port <n>` | Base DevTools port. Default 9560; the lanes get the first free ports from *n*, and their work folders are keyed to their ports. A port is free when nothing listens on it and no other run of these tools has claimed it: each run claims its ports with a lock file in `%TEMP%	b-ports`, so two runs started together never share one. |
 | `--jobs <n>` | Lanes at once. Default 2. |
 | `--timeout <secs>` | A lane still running after this long is ended and counted as failed. Default 600. |
 | `--ide <path>` | The `twinBASIC.exe` to copy, found as for [`tbbuild.mjs`](#tbbuild). |
@@ -1205,7 +1231,7 @@ same exit codes: each file listed in `test/ide/lanes.mjs` is one **lane**, run b
 [`ide-test.bat`](#ide-testbat) in a process of its own, with its own DevTools port, work
 folder and private copy of the twinBASIC install. Run on its own, a scenario skips itself.
 The two differences are the suite and the default base port, which is 9660 here, so that a
-run of each tool never takes the other's ports. A run whose `test/ide/lanes.mjs` lists no lane
+run of each tool starts on ports of its own. A run whose `test/ide/lanes.mjs` lists no lane
 matching `--only` is refused, as for `addin_test.mjs`.
 
 It leaves the registry as it found it, and checks, exactly as `addin_test.mjs` does. The rules
@@ -1213,6 +1239,30 @@ of that tool apply here unchanged: every IDE it starts has a private `APPDATA` a
 `TB_ADDIN_TEST` set to `1`, and an IDE is ended by its process id and never by its image name.
 
 Exit codes: **0** every lane passed, and the registry is as it was found; **1** a lane failed, or the run was interrupted; **2** the harness could not run: a refused command line, no IDE, no matching lane, a registry it could not record, or a crash after which the registry was put back; **3** the registry or a work folder was not put back (see the lines above), at the end of a run or after a crash, which wins over a 1 because the registry is what to repair.
+
+### try_help_addin.mjs
+{: #try-help-addin }
+
+    node scripts/try_help_addin.mjs [--project <dir>] [--port N] [--ide <path>]
+
+Opens an IDE on your own desktop with the help add-in in `add-in/` built and loaded, to try it
+by hand, and waits until the IDE is closed. The IDE is set up as a lane of
+[`addin_test.mjs`](#addin-test) is: the add-in goes into a private copy of the twinBASIC install
+in the temp folder, never into the install's `addins\` or `%APPDATA%\twinBASIC\addins\`, and the
+IDE has a private `APPDATA`, so none of your own add-ins loads into it. `TB_ADDIN_TEST` is `1`,
+so *Open in browser* prints `open <url>` to the Debug Console and starts nothing. The pane's
+pages come from the built site, `docs/_site`, served on `localhost`, so run `build.bat` first.
+Unlike the lanes, the IDE is always on your desktop; the one that builds the add-in first runs on a
+private desktop, as a lane's does, so it never appears or takes the focus.
+
+`--project` names the exported project to open, by default `test/addin/helphost`, the help
+lane's host. It is opened as a staged copy, so edits made in the IDE are not kept. `--port` is
+where the search for the IDE's DevTools port starts, 9590 by default; it takes the first
+free one, as `addin_test.mjs` does. Closing the IDE, or Ctrl+C, puts back the IDE's
+registry entries and the add-in's saved settings (`tbDocsHelp`) as they were found, and deletes
+the copy.
+
+Exit codes: **0** the IDE was closed, and the registry is as it was found; **1** the add-in did not build, or the project does not compile; **2** the tool could not run: a refused command line, no IDE, no built site, a registry it could not record, or a crash; **3** the registry or the work folder was not put back (see the lines above).
 
 ### check_tb_registry.mjs
 {: #check-tb-registry }
@@ -1229,8 +1279,9 @@ restored, and a second restore writes nothing. The recent list gets two more che
 the IDE changes it on its own while a run's projects are on it: it fills a short list's empty
 slots with copies of the last entry, and a full list loses its oldest entry for each project
 a run opens. The copies must go and the lost entries come back. The build targets the IDE remembers are checked the same way: those under
-the run's folder go, and every other one stays, in its order and its exact text. So is the
-rule that a file association pointing into the temp folder when a run began --- at another
+the run's folder go, and every other one stays, in its order and its exact text. The IDE's
+theme, which an add-in scenario switches, comes back, and every other IDE option stays as it
+is. So is the rule that a file association pointing into the temp folder when a run began --- at another
 run's private copy of the IDE --- is left as it is rather than put back. It also checks that
 the module refuses to sweep outside the temp folder or restore a key near the root of the
 registry. It deletes the scratch key when it ends.
@@ -1365,7 +1416,7 @@ dispatcher, and the reading of the run's markers. `tb-install.mjs` finds the IDE
 compiler beside it, and is shared with the two IDE-driving tools so the three cannot come to
 disagree about where an install is.
 
-Exit codes: **0** every marked sample compiles, or none is marked (`--report` always, and `--propose` when it found only unmarked samples that fail, which is advisory); **1** a marked sample does not compile, a marker is misused, a template does not compile, the compiler crashed on a project, `--build` or `--llvm` found a sample that fails the build, or a `check_run` sample raised an error, did not return or printed something other than the page says (the report names each); **2** the harness could not run: a refused command line, a failed self-test probe, no IDE or compiler, an unreadable `--report` file, a work folder it could not clear, an `--llvm` run on a Community or Personal licence, or a crash.
+Exit codes: **0** every marked sample compiles, or none is marked (`--report` always, and `--propose` when it found only unmarked samples that fail, which is advisory); **1** a marked sample does not compile, a marker is misused, a template does not compile, the compiler crashed on a project, `--build` or `--llvm` found a sample that fails the build, or a `check_run` sample raised an error, did not return or printed something other than the page says (the report names each); **2** the harness could not run: a refused command line, a failed self-test probe, no IDE, an unreadable `--report` file, a work folder it could not clear, an `--llvm` run on a Community or Personal licence, or a crash.
 
 ### gen_attribute_probes.mjs
 {: #gen-attribute-probes }
@@ -1384,11 +1435,11 @@ Up to three trees come out, on two contracts that must not be mixed:
 
 Keeping the two contracts in separate projects is what makes either build readable: red in `AttributeProbes` is a defect, red in `AttributeExplore` is a result.
 
-It also writes a key naming the `Attributes.md` line each probe came from, beside the tree rather than inside it --- anything inside gets packed into the `.twinproj` and turns up as a stray project file. Pack a tree into a project with the compiler's own `import` verb before building it:
+It also writes a key naming the `Attributes.md` line each probe came from, beside the tree rather than inside it --- anything inside gets packed into the `.twinproj` and turns up as a stray project file. Pack a tree into a project with [`impexp.mjs`](#impexp) before building it:
 
-    twinBASIC_win32.exe import AttributeProbes.twinproj <out_dir> --overwrite
+    node scripts/impexp.mjs import AttributeProbes.twinproj <out_dir> --overwrite
 
-**That command's exit code is `0` after every failure it reports**, so a script that packs a tree and then builds it will happily compile the previous `.twinproj`. The one failure it does not report --- a tree holding an embedded package --- exits `999`. Test the last line of its output for `... DONE` instead; [Import/Export Tool](../../Features/Packages/Import-Export-Tool#checking-the-result) has the caveat in full and a batch-file form of the test. The standalone [`impexp.mjs`](#impexp) takes the same command, and its exit code does say whether it worked. Re-run the generator after editing `Attributes.md`.
+Its exit code says whether the pack worked. The compiler's own `import` verb takes the same command line, but **its exit code is `0` after every failure it reports**, so a script that packs a tree with it and then builds will happily compile the previous `.twinproj`. The one failure it does not report --- a tree holding an embedded package --- exits `999`. Test the last line of its output for `... DONE` instead; [Import/Export Tool](../../Features/Packages/Import-Export-Tool#checking-the-result) has the caveat in full and a batch-file form of the test. Re-run the generator after editing `Attributes.md`.
 
 Exit codes: **0** the probe project and the key were written, **2** a refused command line (no output directory included), or a crash.
 
@@ -1399,7 +1450,7 @@ Exit codes: **0** the probe project and the key were written, **2** a refused co
                                        [--refresh] [--samples] [--attr <name>]
                                        [--json] [--out <file>] [--dump-sites <file>] [--quiet]
 
-Reports, for every attribute the twinBASIC packages use, **which enclosing construct and which kind of declaration it decorates**. It exports each package of an IDE install with the compiler's own `export` verb, scans the `.twin` sources, and writes a Markdown or JSON report. No arguments are needed: it finds the newest `twinBASIC_IDE_BETA_*` the same way [`tbbuild.mjs`](#tbbuild) does, caches the export under the build number, and reuses it on later runs. It is not part of the site build and nothing calls it during one.
+Reports, for every attribute the twinBASIC packages use, **which enclosing construct and which kind of declaration it decorates**. It unpacks each package of an IDE install with [`impexp.mjs`](#impexp), called directly, scans the `.twin` sources, and writes a Markdown or JSON report. No arguments are needed: it finds the newest `twinBASIC_IDE_BETA_*` the same way [`tbbuild.mjs`](#tbbuild) does, caches the export under the build number, and reuses it on later runs. It is not part of the site build and nothing calls it during one.
 
 Against BETA 995 that is 661 files, 9,713 attribute sites and 55 distinct attributes.
 
@@ -1421,7 +1472,7 @@ Grouping is by enclosing construct *and* declaration keyword, because the keywor
 
 The report ends with what the scanner could not resolve, and **that section is expected to be empty**. A census that quietly buckets its own confusion publishes a wrong number with nothing to notice it by, so an unresolved site is reported as a scanner bug rather than absorbed. The scanner handles several things this corpus does that a simpler sweep gets wrong: attributes spanning lines (`[Description("..." & vbCrLf & _` accounts for 3.8% of all attribute lines), comma-separated lists, arguments containing commas, escaped identifiers that look exactly like attributes (`[_HiddenModule].Foo`, and Enum members genuinely named `[A4 Portrait]`), comments in four different positions, and block-tracking traps such as a UDT field called `Type As Long` or a module named `[_HiddenModule]`.
 
-Exit codes: **0** the report was produced, **2** a refused command line, no install, an install with no compiler or no package project, or a crash (a package that fails to export is left out of the census).
+Exit codes: **0** the report was produced, **2** a refused command line, no install, an install with no package project, or a crash (a package that fails to export is left out of the census).
 
 ### sweep_attributes.mjs
 {: #sweep-attributes }
@@ -1481,7 +1532,7 @@ Exit codes: **0** the report was produced and its self-checks held; **1** a self
 
 Standalone `.twinproj` / `.twinpack` unpacker and packer, with the compiler executable's own command line: the same six commands, the project file first, and `--overwrite` required to replace anything. `scripts/impexp.py` is the same tool, run as `python scripts/impexp.py ...`; the two editions print the same output and write byte-identical project files, which [`check_impexp_parity.mjs`](#check-impexp-parity) checks. Neither has dependencies; the Node edition needs Node 18+, the Python edition Python 3.6+. The exit code says what happened, so a caller need not read the output. `--self-test` needs nothing but the script, and adds a round trip of `indexer/sample.twinpack` when run from this repository.
 
-**Neither is build tooling.** They are published downloads: `_config.yml`'s `bundle_extra` copies both into `Features/Packages/downloads/`, and [Import/Export Tool](../../Features/Packages/Import-Export-Tool) offers them to readers as the two editions of one tool. That is why `impexp.py` is one of only two `.py` files in a repository whose tooling is otherwise all Node --- porting it would delete a deliberate offering rather than tidy anything up. The `bundle_extra` exemption is by exact path, so moving either file breaks the download; see [`check_publish_policy.mjs`](#check-publish-policy).
+**Neither is run by the site build.** They are published downloads: `_config.yml`'s `bundle_extra` copies both into `Features/Packages/downloads/`, and [Import/Export Tool](../../Features/Packages/Import-Export-Tool) offers them to readers as the two editions of one tool. That is why `impexp.py` is one of only two `.py` files in a repository whose tooling is otherwise all Node --- porting it would delete a deliberate offering rather than tidy anything up. The `bundle_extra` exemption is by exact path, so moving either file breaks the download; see [`check_publish_policy.mjs`](#check-publish-policy). The Node edition is also a library: `scripts/lib/tb-project.mjs` imports its `exportProject` and `importProject`, and the tools that unpack or pack a twinBASIC project call them directly, among them [`tbbuild.mjs`](#tbbuild), [`tbrun.mjs`](#tbrun), [`check_examples.mjs`](#check-examples), [`census_attributes.mjs`](#census-attributes) and [`bug_repro.mjs`](#bug-repro). The Python edition is only a download.
 
 Exit codes: the table in [Import/Export Tool](../../Features/Packages/Import-Export-Tool#checking-the-result) gives every code. This tool keeps its own codes, which the two editions share and which are not those of the other tools here.
 

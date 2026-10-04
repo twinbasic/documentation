@@ -2,9 +2,9 @@
 
 See [WIP.md](WIP.md) for the cross-package maintenance guide. Sister packages: [WinServicesLib](WIP.WinServicesLib.md), [WinEventLogLib](WIP.WinEventLogLib.md).
 
-An IOCP-based async pipe framework. Four user-facing classes — `NamedPipeServer` and `NamedPipeServerConnection` on the server side, `NamedPipeClientManager` and `NamedPipeClientConnection` on the client side. The Win32 API wrappers, the package-internal `OverlappedTypeConstants` enum, the IOCP helper module, and the four `INamedPipe*Internal` interfaces (each declared alongside its matching public class as a refcount / dispatch helper for the IOCP worker threads) are all plumbing and get no doc page.
+An IOCP-based async pipe framework. Four user-facing classes: `NamedPipeServer` and `NamedPipeServerConnection` on the server side, `NamedPipeClientManager` and `NamedPipeClientConnection` on the client side. The Win32 API wrappers, the package-internal `OverlappedTypeConstants` enum, the IOCP helper module, and the four `INamedPipe*Internal` interfaces (each declared beside its public class as a refcount / dispatch helper for the IOCP worker threads) are plumbing and get no doc page.
 
-The four classes are each tagged `[COMCreatable(False)]` — only the manager / server classes can be instantiated by user code (with `New`); the two `Connection` classes are constructed internally and handed back through events / return values.
+The four classes are each tagged `[COMCreatable(False)]`. Only the manager and server classes can be instantiated by user code (with `New`). The two `Connection` classes are constructed internally and passed back through events and return values.
 
 Public user-facing surface (four classes — two on each side):
 
@@ -32,7 +32,7 @@ Tagged `[COMCreatable(False)]`, `[InterfaceId(...)]`, `[EventInterfaceId(...)]`,
 - `ServerReady()` — fires once after `Start()` when every IOCP worker has joined.
 - `ClientConnected(Connection As NamedPipeServerConnection)` — a new client connection has completed.
 - `ClientDisconnected(Connection As NamedPipeServerConnection)` — the connection has dropped and every outstanding async operation has returned.
-- `ClientMessageReceived(Connection As NamedPipeServerConnection, ByRef Cookie As Variant, ByRef Data() As Byte)` — a message arrived. *Data* is a transient view over the IOCP read buffer (a hand-rolled `SAFEARRAY` whose backing memory is reused after the event); copy it if you need to keep it past the event handler.
+- `ClientMessageReceived(Connection As NamedPipeServerConnection, ByRef Cookie As Variant, ByRef Data() As Byte)` — a message arrived. *Data* is a transient view over the IOCP read buffer (a manually built `SAFEARRAY` whose backing memory is reused after the event). Copy it to keep it past the event handler.
 - `ClientMessageSent(Connection As NamedPipeServerConnection, ByRef Cookie As Variant)` — a previously-issued `AsyncWrite` has completed.
 
 **Public methods**:
@@ -40,8 +40,8 @@ Tagged `[COMCreatable(False)]`, `[InterfaceId(...)]`, `[EventInterfaceId(...)]`,
 - `Sub New()` — constructor; creates the hidden marshalling-window used for UI-thread event delivery.
 - `Public Sub Start()` — creates the IOCP completion port and `NumThreadsIOCP` worker threads, then issues the first connection listener. Idempotent: calling `Start()` while already started is a no-op.
 - `Public Sub Stop()` — cancels every outstanding I/O, joins the IOCP threads, closes pipe handles. Idempotent. Called automatically from `Class_Terminate`.
-- `Sub AsyncBroadcast(ByRef Data() As Byte, Optional ByRef Cookie As Variant = Empty)` — issues `AsyncWrite` against every currently-connected `NamedPipeServerConnection`.
-- `Public Sub ManualMessageLoopEnter()` / `Public Sub ManualMessageLoopLeave()` — drive a Win32 message loop manually (rare; only needed when the host process does not naturally pump messages — e.g. an unattended Windows service that wants the marshalled-event semantics rather than the free-threaded ones). `Leave` posts `WM_USER_QUITTING`, which `Enter` reads to break the loop.
+- `Sub AsyncBroadcast(ByRef Data() As Byte, Optional ByRef Cookie As Variant = Empty)` — issues `AsyncWrite` against every currently-connected `NamedPipeServerConnection`. Use it to push an update to all clients; the alternative is iterating the connections manually.
+- `Public Sub ManualMessageLoopEnter()` / `Public Sub ManualMessageLoopLeave()` — run a Win32 message loop manually. Rarely needed: only when the host process does not pump messages itself, e.g. an unattended Windows service that wants marshalled events rather than free-threaded ones. `Leave` posts `WM_USER_QUITTING`, which `Enter` reads to break the loop.
 
 ## `NamedPipeServerConnection` public members
 
@@ -118,9 +118,9 @@ Tagged `[COMCreatable(False)]`, `[InterfaceId(...)]`, `[ClassId(...)]`, `[EventI
 
 **Cookie pattern.** Every `AsyncRead` and `AsyncWrite` accepts an optional *Cookie* (`Variant`). Whatever the consumer passes in flows through the IOCP completion buffer and is handed back out on the matching `MessageReceived` / `MessageSent` event. This is the package's mechanism for correlating individual writes with their completion notifications when many are in flight.
 
-**`Data() As Byte` transience.** Inside `MessageReceived` / `ClientMessageReceived`, *Data* is **not** a real `Byte` array — it is a hand-rolled `SAFEARRAY` whose `pvData` field points at the IOCP overlapped buffer. The buffer is recycled back into a free-list at the end of the event handler. Copy the bytes out (`ReDim`-and-copy, or `CStrConv` for text payloads) if you need them after returning from the handler. The source uses `PutMemPtr(VarPtr(safeArrayPtr), VarPtr(safeArrayPsuedo))` and clears it afterwards — surface this lifetime caveat on every event-page entry that carries *Data*.
+**`Data() As Byte` transience.** Inside `MessageReceived` / `ClientMessageReceived`, *Data* is **not** a real `Byte` array. It is a manually built `SAFEARRAY` whose `pvData` field points at the IOCP overlapped buffer. The buffer is returned to a free-list at the end of the event handler. Copy the bytes out (`ReDim`-and-copy, or `CStrConv` for text payloads) to use them after the handler returns. The source uses `PutMemPtr(VarPtr(safeArrayPtr), VarPtr(safeArrayPsuedo))` and clears it afterwards. State this lifetime caveat on every event-page entry that has *Data*.
 
-**Hidden message window.** Each `NamedPipeServer` and `NamedPipeClientManager` instance creates an invisible `STATIC`-class window with a subclassed `WndProc`, used to marshal IOCP-thread completions back to the UI thread when `FreeThreadingEvents = False`. Mention this on each class's intro paragraph — it explains why the consumer's process must be pumping a message loop for the default event-delivery semantics to work, and why `ManualMessageLoopEnter` / `ManualMessageLoopLeave` exist on `NamedPipeServer` for service / console hosts.
+**Hidden message window.** Each `NamedPipeServer` and `NamedPipeClientManager` instance creates an invisible `STATIC`-class window with a subclassed `WndProc`. It marshals IOCP-thread completions back to the UI thread when `FreeThreadingEvents = False`. Say this in each class's intro paragraph. It explains why the consumer's process must pump a message loop for the default event delivery to work, and why `ManualMessageLoopEnter` / `ManualMessageLoopLeave` exist on `NamedPipeServer` for service and console hosts.
 
 ## Canonical service-host idiom — `ManualMessageLoopEnter` paired with `ChangeState`
 
@@ -176,9 +176,9 @@ Dim commandID As String = propertyBag.ReadProperty("CommandID")
 Two reasons this pattern matters and should be surfaced on the docs:
 
 1. **The transient-`Data()` problem is solved by `PropertyBag`.** Assigning to `PropertyBag.Contents` deep-copies the byte buffer; once the assignment returns, the original IOCP buffer can be recycled without invalidating the data. This is the cleanest answer to *"how do I keep the data past the event handler?"* — call out on every `MessageReceived` / `ClientMessageReceived` page entry as the recommended capture mechanism.
-2. **`PropertyBag` provides typed multi-field payloads** without the consumer having to design a wire protocol. Both sides agree on the property names (`"CommandID"`, `"ResponseCommandID"`, `"ResponseData"`, `"Data"`) and `PropertyBag` handles the encoding / decoding. Cross-link [`PropertyBag` reference](docs/Reference/VBRUN/PropertyBag/index.md) from the index landing.
+2. **`PropertyBag` provides typed multi-field payloads** without the consumer having to design a wire protocol. Both sides agree on the property names (`"CommandID"`, `"ResponseCommandID"`, `"ResponseData"`, `"Data"`) and `PropertyBag` handles the encoding / decoding. Cross-link [`PropertyBag` reference](docs/Reference/Default/VBRUN/PropertyBag/index.md) from the index landing.
 
-Surface as the **recommended** carrier; nothing in the package mandates it, raw `Byte()` works too, but every worked example uses `PropertyBag` and the integration story reads much more cleanly with it.
+Present it as the **recommended** carrier. The package does not mandate it and raw `Byte()` works too, but every worked example uses `PropertyBag`.
 
 ## Discovery loop — `FindNamedPipes`
 
@@ -192,8 +192,4 @@ For Each namePipeName In NamePipeClients.FindNamedPipes("WaynesPipe_*")
 Next
 ```
 
-Surface on the `NamedPipeClientManager.md` page (under the `FindNamedPipes` entry) as the recommended polling loop — the underlying `FindFirstFileW("\\.\pipe\…")` call is cheap enough to invoke every few seconds without measurable cost, and pipes appear / disappear too quickly for any event-driven discovery to be reliable. Don't claim there's no faster API; just say *"polling is the documented approach"*.
-
-## Service-side broadcast
-
-`AsyncBroadcast` (on `NamedPipeServer`) accepts a `Byte()` payload and issues `AsyncWrite` against every currently-connected `NamedPipeServerConnection`. Useful when the server has multiple concurrent connections and wants to push an update to all of them; the alternative is iterating the connections manually.
+Show this on the `NamedPipeClientManager.md` page (under the `FindNamedPipes` entry) as the recommended polling loop. The underlying `FindFirstFileW("\\.\pipe\…")` call is cheap enough to invoke every few seconds, and pipes appear and disappear too quickly for event-driven discovery to be reliable. Don't claim there is no faster API; say *"polling is the documented approach"*.

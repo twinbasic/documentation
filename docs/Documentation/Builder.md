@@ -129,6 +129,7 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 | [`counts.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/counts.mjs) | The registry behind `{{tbdocs:<name>}}` in prose. `deriveCounts(state)` computes every name from build state; `countPlugin` substitutes them as a core rule over the inline token stream, which is what makes code immune without a rule for it. `validateCountNames` rejects an unknown name on main before any worker renders, and `findSurvivingPlaceholder` rejects one that reached the output --- two checks because they fail differently. See [Authoring Pages](Authoring#counts). |
 | [`page-baseline.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/page-baseline.mjs) | The page-count drift guard, and the committed `page-baseline.json` it compares against. A rise rewrites the file, a fall fails the build, and neither CI nor `--serve` may write. See [Building and Deployment](Building#the-page-count-drift-guard). |
 | [`symbol-baseline.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/symbol-baseline.mjs) | The symbol index's drift guard, and the committed `symbol-baseline.json`, every URL `tB/symbols.json` has published. A new URL rewrites the file, a lost one fails the build. |
+| [`addin-index.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/addin-index.mjs) | The help add-in's committed copy of the index, `add-in/Resources/SYMBOLS/symbols.json`: a local build rewrites it when it differs from `tB/symbols.json`, and CI and `--serve` only say so. |
 | [`baseline.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/baseline.mjs) | The read, the write and the comparison the two drift guards share, and `GUARDED_SRC`, the one source tree they have figures for. |
 | [`publish-policy.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/publish-policy.mjs) | The allowlist of file types that may reach a published tree. Enforced twice, unconditionally: over the static-file inventory in `discover`, and over each tree's `deriveTreeRels` inventory in `dispatch`. A finding aborts the build. See [Drift guards](#drift-guards-and-failure-modes). |
 
@@ -137,6 +138,7 @@ Modules grouped by role. Each entry has one line; deep-dive in [Pipeline Stages]
 | File | Role |
 |---|---|
 | [`serve.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/serve.mjs) | Long-lived dev server: HTTP, recursive watcher, SSE reload, persistent worker pool. |
+| [`static-files.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/static-files.mjs) | The static file handler `serve.mjs` answers with, serving folders as GitHub Pages does. The help add-in's test lane serves the built site with it too. |
 | [`gantt.mjs`](https://github.com/twinbasic/documentation/blob/main/builder/gantt.mjs) | Inline SVG Gantt chart of the build timeline, and the section each task is charted in. Injected into the [Build Info](BuildInfo) page at the end of each build. |
 
 **Shared modules in `lib/`**
@@ -496,7 +498,7 @@ The fonts are committed artifacts, like the DOT renders: `scripts/build_fonts.py
 
 CSS files in either copy path get a baseurl rewrite (`url("/path")` → `url("<baseurl>/path")`) when the deployment baseurl is non-empty; the same transform applies to generated CSS so the `url("/favicon.png")` the SCSS entry point emits resolves correctly under sub-path deployments.
 
-The project JS is deliberately small. `theme-toggle.js` implements the three-state (system / light / dark) theme switch as a progressive enhancement over the no-JS `prefers-color-scheme` default: the correct palette renders even with scripting disabled, and the script only adds the manual override that persists a `data-theme` choice. `svg-inline.js` powers the click-to-zoom overlay and the download / copy controls on inlined diagrams.
+The project JS is deliberately small. `theme-toggle.js` implements the three-state (system / light / dark) theme switch as a progressive enhancement over the no-JS `prefers-color-scheme` default: the correct palette renders even with scripting disabled, and the script only adds the manual override that persists a `data-theme` choice. A page opened with `?theme=light` or `?theme=dark` takes that theme instead, as do the pages reached from it in the same tab, without changing the reader's stored choice; the IDE's help add-in passes the IDE's theme this way. It also passes `?pane=1`, which the same early script keeps for the tab and which hides the sidebar and the header, so that its narrow pane shows the page alone. `svg-inline.js` powers the click-to-zoom overlay and the download / copy controls on inlined diagrams.
 
 ## Project styling
 

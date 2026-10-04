@@ -33,4 +33,7 @@ export default [
   { file: "reload.test.mjs" },
   { file: "entry.test.mjs" },
   { file: "env.test.mjs" },
+  // The help add-in, add-in/ at the repository's root. It saves the page its
+  // pane shows.
+  { file: "help.test.mjs", settings: ["tbDocsHelp"] },
 ];

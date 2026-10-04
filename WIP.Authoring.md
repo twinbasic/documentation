@@ -1,7 +1,7 @@
 # twinBASIC Documentation --- Authoring a Page
 
-The page-writing contract, split out of [WIP.md](WIP.md) so a session that is
-not writing documentation does not carry it. **Read this before writing or
+The page-writing contract, kept apart from [WIP.md](WIP.md) so a session that is
+not writing documentation need not load it. **Read this before writing or
 editing any page under `docs/`.** WIP.md keeps the placement rules, the
 plain-English prose rules and the Don'ts; everything about the shape of a page
 is here.
@@ -70,7 +70,7 @@ This example...
 
 Formatting conventions:
 
-- Heading levels: the page title is `#` (a *chapter* -- a page may legitimately have more than one). Top-level sections (Example, See Also, ...) are `##`; subsections `###`. Do **not** skip `##` with the old `# Title` -> `### Example` "house style". That pattern (h1 straight to h3) exists on many older pages only to keep GitHub's raw-markdown view at a modest heading size; it is a heading-order defect on the built site. `headingLevelNormalizePlugin` in [builder/render.mjs](builder/render.mjs) repairs those legacy pages at build time (it raises `h3`->`h2` on any page that uses h1 and h3 but no h2), so existing pages are not being churned all at once -- but new content must use correct levels, and pages that already mix `##` and `###` are left untouched. A mixed page that skips a level is a real defect the normalizer will not save you from: five were found and fixed this way, and axe's `heading-order` rule now guards the sample against more.
+- Heading levels: the page title is `#` (a *chapter* -- a page may legitimately have more than one). Top-level sections (Example, See Also, ...) are `##`; subsections `###`. Do **not** skip `##` with the old `# Title` -> `### Example` "house style". That pattern (h1 straight to h3) exists on many older pages only to keep GitHub's raw-markdown view at a modest heading size; it is a heading-order defect on the built site. `headingLevelNormalizePlugin` in [builder/render.mjs](builder/render.mjs) repairs those legacy pages at build time (it raises `h3`->`h2` on any page that uses h1 and h3 but no h2), so existing pages need no mass edit -- but new content must use correct levels, and pages that already mix `##` and `###` are left untouched. A mixed page that skips a level is a real defect the normalizer does not repair; axe's `heading-order` rule guards the sample against it.
 - `**...**` for keywords/literal tokens; `*...*` for placeholders/arguments.
 - Code blocks use ` ```tb ` (highlighted via Shiki using the vendored `builder/twinbasic.tmLanguage.json` grammar).
 - Parameter lists use the deflist `term` + `: definition` indentation pattern (NOT the MS-style markdown table).
@@ -86,8 +86,8 @@ Three keys on a package's `index.md` are **provenance for the authoring pass**. 
 them reaches the HTML --- `grep -r indexed_from docs/_site` returns nothing, because nothing
 in `template.mjs` iterates frontmatter generically; every consumer reads a named field. The
 build reads one of them, `exclude_from_docs`, for one purpose: the symbol index's count of
-public symbols no page documents leaves those names out (`reportableGaps` in
-[builder/symbols.mjs](builder/symbols.mjs), and `--symbol-gaps` writes the list). Leave all
+public symbols that no page documents leaves those names out (`reportableGaps` in
+[builder/symbols.mjs](builder/symbols.mjs); `--symbol-gaps` writes the list). Leave all
 three in place.
 
 | Key | Means |
@@ -102,8 +102,7 @@ a documentation gap.** Without them a re-index cannot tell "not yet written" fro
 "deliberately omitted", which is the whole point of recording them.
 
 The six packages carrying `indexed_from` are `AppGlobalClassObject`, `CustomControls`,
-`TwinBasicAssertions`, `WinEventLogLib`, `WinNamedPipesLib` and `WinServicesLib`, all set by
-the 2026-06-04 pass: `9f406eb`, `05ed96b`, `77c6a03`, `4cd4f4b`, `3429b97`, `6a68815`.
+`TwinBasicAssertions`, `WinEventLogLib`, `WinNamedPipesLib` and `WinServicesLib`.
 `exclude_from_docs` is on three of them (`InternalStuff`; `EventLogHelperPrivate` +
 `EventLogAPIs`; `ServicesConstantsPublic`).
 
@@ -115,9 +114,9 @@ check was run against a build that no longer matches the package.
 > yet**, covering packages beyond the six above. If you are about to document a package
 > from scratch, ask first --- it may already be written and waiting to merge.
 
-One other inert key exists, and is a different thing: `has_children` on four pages is a
-just-the-docs leftover. tbdocs derives the nav tree itself and never reads it. Harmless, but
-it is theme residue rather than something anyone is meant to maintain.
+One other inert key is a different thing: `has_children` on four pages is a
+just-the-docs leftover. tbdocs derives the nav tree itself and never reads it. Nobody
+needs to maintain it.
 
 ### `symbols:` --- what a page documents, for the symbol index
 
@@ -302,10 +301,10 @@ claim that a permalink is referenced from source, not an obligation to update on
 other changes. A reviewer looking at a `Description` string and at a reference page for the
 same symbol will reach for that connection; there isn't one yet.
 
-Related: **`[Documentation(...)]` is not a twinBASIC attribute.** It does not exist. It was
-asserted in eight places, including a `tb` code sample teaching it, as the in-source consumer
-of the `/tB/` URL contract. The real attribute is `[Description(...)]`, which is not that.
-The IDE help system remains a genuine consumer of the permalinks.
+Related: **`[Documentation(...)]` is not a twinBASIC attribute.** It does not exist. Never
+present it, in prose or in a `tb` sample, as the in-source consumer of the `/tB/` URL
+contract. The real attribute is `[Description(...)]`, which is not that. The IDE help
+system remains a genuine consumer of the permalinks.
 
 ## Per-symbol workflow
 
@@ -322,7 +321,7 @@ The IDE help system remains a genuine consumer of the permalinks.
    - WinNativeCommonCtls → single-file (`DTPicker`, `MonthView`, `ProgressBar`, `Slider`, `UpDown`) or folder-style (`ImageList/`, `ListView/`, `TreeView/`) when the control has sub-object companions. Module-level enums under `Enumerations/`; per-control nested enums fold onto the declaring control's page.
    - Pick `<Mod>` from VBA's grouping (Information, Interaction, Strings, FileSystem, DateTime, Math, Financial, Conversion, ...) and the existing folders under `Reference/<Package>/`.
 2. **Flag tB deviations** with a `> [!NOTE]` callout (see next section).
-3. **Update the parent index** — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. If a new package is being added, also add a bullet to `docs/Reference/Built-In.md` (or `Default.md`) and bump the count on `docs/Reference/Packages.md` and `docs/Reference/index.md`. `Packages.md` itself only links to those two landing pages -- it does not enumerate packages, which is how `AppGlobalClassObject` went unlisted for months.
+3. **Update the parent index** — turn an unlinked bullet into a link with a short blurb. Match the existing style of the page. If a new package is being added, also add a bullet to `docs/Reference/Built-In.md` (or `Default.md`) and bump the count on `docs/Reference/Packages.md` and `docs/Reference/index.md`. `Packages.md` itself only links to those two landing pages -- it does not enumerate packages.
 4. **Add the page** to `Reference/Statements.md` or `Reference/Procedures and Functions.md` if it's a statement or callable and not already listed there.
 5. **Run the [site integrity check](WIP.md#site-integrity-check)** after the batch and before committing.
 
@@ -342,12 +341,11 @@ When in doubt about a tB-specific behavior, check `docs/Features/` and `docs/Ref
 
 **twinBASIC is in a long beta, so a superseded name is not history --- it is noise.**
 Document the current API and nothing else. A reader cannot use a name that no longer
-exists, cannot search for it, and has to carry two names in their head to read one snippet.
+exists, cannot search for it, and would have to keep two names in mind to read one snippet.
 
-Two CustomControls tutorials showed `Public Sub New(Serializer As SerializationInfo)` and
-`Deserialize()`, each with a NOTE underneath explaining that the framework actually names
-them `SerializeInfo` and `RuntimeUISrzDeserialize()`. Both pages now show the current names
-and carry no note; the snippets are shorter and the reader has one name per thing.
+Show the current name and no note about the old one. The CustomControls tutorials show
+`SerializeInfo` and `RuntimeUISrzDeserialize()`, not the superseded `SerializationInfo`
+and `Deserialize()` with a NOTE explaining the difference.
 
 Version-skew notes earn their place when a reader may be *on* the older version --- a
 behaviour that changed in a shipped BETA, where the page says which build changed it (see
@@ -368,22 +366,21 @@ reader's query `check_page_baseline` can never prefix-match. Measured:
 | `check_page_baseline` | **0** |
 | `check-page-baseline` | 420, as noise --- hyphens split, so it becomes three common words |
 
-`build_dot_metrics` was 0 as well. An evaluator issued seven queries including the gate's
-own filename and verbatim prose from its section, and never once saw it --- **the string a
-refused developer actually has in hand is the one that found nothing.**
+**The string a developer actually has in hand --- the bare script name --- is the one
+that finds nothing.**
 
-**The fix was to drop the directory prefix from the headings**, so the token becomes
+**So write each script's heading without the directory prefix**, so the token is
 `check_page_baseline.mjs` and the trailing wildcard reaches it. Nothing is lost from the
-page: each entry's anchor is pinned with `{: #... }` so no URL moved, and the synopsis
+page: each entry's anchor is pinned with `{: #... }` so no URL moves, and the synopsis
 block on the next line still shows the full `node scripts/<name>.mjs`. Every script name
-returns hits now, and the index grew by nothing.
+returns hits this way, and the index does not grow.
 
-**Two other fixes were measured and rejected, and both are worth not re-proposing.**
-Raising `search.heading_level` to 3 --- so each `###` becomes its own entry, which is what
-would give a script section its own title boost and its own anchor in the results ---
+**Two other fixes were measured and rejected; do not re-propose them.**
+Raising `search.heading_level` to 3 --- so each `###` becomes its own entry, which would
+give a script section its own title boost and its own anchor in the results ---
 **doubles the index, 3,742 entries to 7,524, and does not fix it**: the titles still carry
-the `scripts/` prefix, so the bare query still misses. That is a 3.4 MB payload every page
-already downloads, doubled, for nothing. Widening the tokeniser's separator to include
+the `scripts/` prefix, so the bare query still misses. That doubles a 3.4 MB payload every
+page already downloads, for nothing. Widening the tokeniser's separator to include
 `/`, `_` and `.` is the other obvious proposal; the `check-page-baseline` row above is
 what it would do to *every* path token on a site whose subject matter is `Debug.Print`
 and `_App`.

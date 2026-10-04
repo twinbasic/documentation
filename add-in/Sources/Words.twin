@@ -1,0 +1,79 @@
+' The name to look up, taken from a line of code and the cursor's column.
+Module Words
+    Private Function IsNameChar(ByVal ch As String) As Boolean
+        Select Case AscW(ch)
+            Case 48 To 57, 65 To 90, 95, 97 To 122   ' 0-9, A-Z, _, a-z
+                Return True
+        End Select
+        Return False
+    End Function
+
+    ' Line lineNumber of text, counted from 1, without its line break.
+    Public Function LineOf(ByVal text As String, ByVal lineNumber As Long) As String
+        Dim lines() As String = Split(text, vbLf)
+        If lineNumber < 1 Or lineNumber - 1 > UBound(lines) Then Return ""
+        Dim s As String = lines(lineNumber - 1)
+        If Right$(s, 1) = vbCr Then s = Left$(s, Len(s) - 1)
+        Return s
+    End Function
+
+    ' The dotted name at column, counted from 1, the cursor standing before
+    ' that character: the whole chain to its left and the rest of the current
+    ' segment to its right, so "Add" in "Host.ToolWindows.Add(x)" gives
+    ' "Host.ToolWindows.Add". A cursor just after a name, as after typing it,
+    ' takes that name. Anything else gives "".
+    Public Function NameAt(ByVal lineText As String, ByVal column As Long) As String
+        Dim n As Long = Len(lineText)
+        Dim c As Long = NameColumn(lineText, column)
+        If c = 0 Then Return ""
+
+        Dim first As Long = c
+        Do While first > 1
+            Dim ch As String = Mid$(lineText, first - 1, 1)
+            If ch <> "." And Not IsNameChar(ch) Then Exit Do
+            first = first - 1
+        Loop
+        Dim last As Long = c
+        Do While last < n
+            If Not IsNameChar(Mid$(lineText, last + 1, 1)) Then Exit Do
+            last = last + 1
+        Loop
+
+        ' A chain after a call or an index, ").Add", or inside a With, ".Add",
+        ' starts with a dot.
+        Dim word As String = Mid$(lineText, first, last - first + 1)
+        Do While Left$(word, 1) = "."
+            word = Mid$(word, 2)
+        Loop
+        Return word
+    End Function
+
+    ' The column, counted from 1, of the character of the name NameAt takes
+    ' at column: the one at the cursor, or the one before it. 0 for none.
+    Public Function NameColumn(ByVal lineText As String, ByVal column As Long) As Long
+        Dim n As Long = Len(lineText)
+        Dim c As Long = column
+        If c < 1 Or n = 0 Then Return 0
+        If c > n Then c = n + 1
+        If c <= n Then
+            If IsNameChar(Mid$(lineText, c, 1)) Then Return c
+        End If
+        If c = 1 Then Return 0
+        If IsNameChar(Mid$(lineText, c - 1, 1)) Then Return c - 1
+        Return 0
+    End Function
+
+    ' The last segment of a dotted name.
+    Public Function LastSegment(ByVal word As String) As String
+        Return Mid$(word, InStrRev(word, ".") + 1)
+    End Function
+
+    ' text escaped for HTML, attributes included.
+    Public Function HtmlText(ByVal text As String) As String
+        text = Replace(text, "&", "&amp;")
+        text = Replace(text, "<", "&lt;")
+        text = Replace(text, ">", "&gt;")
+        text = Replace(text, """", "&quot;")
+        Return Replace(text, "'", "&#39;")
+    End Function
+End Module

@@ -120,6 +120,10 @@ const CASES = [
   { tool: "scripts/ide_test.mjs", args: ["--ide"], exit: 2, stderr: "--ide needs a value\n" },
   { tool: "scripts/ide_test.mjs", args: ["--ide", ""], exit: 2, stderr: "--ide needs a non-empty value\n" },
   { tool: "scripts/ide_test.mjs", args: ["--ide", "no-such.exe"], exit: 2, stderr: /^no twinBASIC IDE found: pass --ide / },
+  { tool: "scripts/try_help_addin.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/try_help_addin\.mjs / },
+  { tool: "scripts/try_help_addin.mjs", args: ["--ide"], exit: 2, stderr: "--ide needs a value\n" },
+  { tool: "scripts/try_help_addin.mjs", args: ["--ide", ""], exit: 2, stderr: "--ide needs a non-empty value\n" },
+  { tool: "scripts/try_help_addin.mjs", args: ["--ide", "no-such.exe"], exit: 2, stderr: /^no twinBASIC IDE found: pass --ide / },
   { tool: "scripts/check_examples.mjs", args: ["--help"], exit: 0, stdout: /^usage: node scripts\/check_examples\.mjs \[options\]\n/ },
   { tool: "scripts/check_examples.mjs", args: ["--jobs", "0"], exit: 2, stderr: "check_examples: --jobs expects a whole number of at least 1, got: 0\n" },
   { tool: "scripts/check_examples.mjs", args: ["--batch", "1.5"], exit: 2, stderr: "check_examples: --batch expects a whole number of at least 1, got: 1.5\n" },
@@ -332,6 +336,7 @@ const HELP_TOOLS = {
   "eval/transcript.mjs": "Usage: node eval/transcript.mjs ",
   "scripts/addin_test.mjs": null,
   "scripts/ide_test.mjs": null,
+  "scripts/try_help_addin.mjs": null,
   "scripts/bug_repro.mjs": null,
   "scripts/build_dot_metrics.mjs": null,
   "scripts/build_package_api.mjs": null,
@@ -405,6 +410,7 @@ const REFUSALS = {
   "eval/transcript.mjs": [null],
   "scripts/addin_test.mjs": ["ide"],
   "scripts/ide_test.mjs": ["ide"],
+  "scripts/try_help_addin.mjs": ["ide"],
   "scripts/bug_repro.mjs": ["ide"],
   "scripts/build_dot_metrics.mjs": [null],
   "scripts/build_package_api.mjs": ["out"],
@@ -707,6 +713,9 @@ bad(
   "--timeout expects a number greater than 0 and at most 2147483, got: 2147484\n",
 );
 bad("scripts/ide_test.mjs", ["--show", "--hide"], "--show and --hide cannot be given together\n");
+
+bad("scripts/try_help_addin.mjs", ["--port", "0"], NOT_PORT(0) + "\n");
+bad("scripts/try_help_addin.mjs", ["--port=1.5"], NOT_PORT(1.5) + "\n");
 
 // check_examples prints "check_examples: " before the message.
 {

@@ -76,10 +76,10 @@ import {
   refuseTogether,
   withUsageError,
 } from "../lib/cli.mjs";
-import { compilerExe, findIde, runCompiler } from "./lib/tb-install.mjs";
+import { findIde } from "./lib/tb-install.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
 import { COMPILE_TIMEOUT, keptIdeLines, TARGETS, summaryLine, wantShow } from "./lib/tb-ide.mjs";
-import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
+import { laneProjectId, stageProject, unpackProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 
 exitOnCrash();
@@ -230,26 +230,25 @@ if (build) {
   rmSync(work, { recursive: true, force: true });
   const out = path.join(work, "out");
   mkdirSync(out, { recursive: true });
-  const compiler = compilerExe(IDE);
-  if (!existsSync(compiler)) die(2, `no compiler beside the IDE at ${compiler}`);
   target = path.join(work, "tbbuild-probe.twinproj");
   // The IDE opens a project in place, and a build writes where the project's
   // buildPath says. The packed project's is the template's, whose Save dialog a
   // private desktop hides, so the project is exported, given an explicit file and
-  // a project id of its own, and packed again (lib/tb-project.mjs).
-  // Backslashes throughout and a trailing one on the folder: `export` prefixes
-  // \\?\ to what it is given and cannot create or find a folder named with
-  // forward slashes. Its exit code does not say whether it worked: runCompiler.
+  // a project id of its own, and packed again (lib/tb-project.mjs). Both
+  // directions run in process, through impexp, and the folder it exports into
+  // is new: the work folder was emptied above.
   const src = path.join(work, "src");
-  const exported = runCompiler(compiler, ["export", path.resolve(proj), src + path.sep, "--overwrite"]);
-  if (!exported.done) die(2, `exporting ${proj} failed${exported.why}:\n${exported.tail}`);
+  try {
+    unpackProject(path.resolve(proj), src);
+  } catch (e) {
+    die(2, `exporting ${proj} failed:\n${e.message}`);
+  }
   // Under --llvm the options are the run's and the exe's alike, as tbrun's are.
   try {
     stageProject({
       src,
       stage: path.join(work, "stage"),
       project: target,
-      compiler,
       settings: {
         "project.buildPath": path.join(out, "${ProjectName}_${Architecture}.${FileExtension}"),
         "project.id": laneProjectId(3, port),

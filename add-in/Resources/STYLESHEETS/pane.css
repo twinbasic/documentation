@@ -1,0 +1,100 @@
+/* The help pane, inside its tool window's shadow root. The colours are the
+   IDE theme's own custom properties, which the IDE sets on its document and
+   which a shadow root inherits, so a change of theme needs no code. */
+
+#helpWrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  color: var(--themeToolWindowBodyForeColor);
+  background: var(--themeGeneralPanelBackColor);
+}
+
+#helpBar {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
+  padding: 6px;
+}
+
+#helpSearch,
+#helpBrowser {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: var(--themePropertySheetValueBorderColor);
+  padding: 3px 6px;
+}
+
+#helpSearch {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#helpBrowser {
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+#helpBrowser:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+#helpBrowser:enabled:hover,
+#helpResults .hit:hover {
+  background: var(--themeTreeItemHoverBackColor);
+}
+
+#helpResults {
+  flex: 0 0 35%;
+  min-height: 0;
+}
+
+#helpResults .hit {
+  padding: 2px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#helpResults .kind {
+  margin-left: 0.75em;
+  opacity: 0.7;
+}
+
+#helpResults .none {
+  padding: 2px 8px;
+  opacity: 0.7;
+}
+
+/* A name the documentation has no page for: its declaration, description and
+   where it is declared, from the compiler's hover. */
+#helpSummary {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 12px;
+}
+
+#helpSummary .declaration {
+  margin: 0 0 10px;
+  font-family: Consolas, "Courier New", monospace;
+  white-space: pre-wrap;
+}
+
+#helpSummary .description {
+  margin: 0 0 10px;
+}
+
+#helpSummary .none,
+#helpSummary .where {
+  opacity: 0.7;
+}
+
+#helpPage {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  border: 0;
+}

@@ -1,0 +1,401 @@
+' The documentation's symbol index, /tB/symbols.json, whose format the
+' Permanent Links page documents: "symbols" is an array of
+' { name, package, container, kind, url }, package and container null for the
+' language itself; "packages" maps each documented package's project name to
+' the name its pages use; "interfaces" maps a class's default interface, the
+' name the compiler gives the class's members by, to the class. Other
+' top-level keys, and other keys in an entry, are skipped, so a later format
+' that adds some still loads.
+Private Class SymbolIndex
+    Private Names() As String          ' lowercased, for matching
+    Private Written() As String        ' as the index writes it
+    Private Packages() As String       ' "" for null
+    Private Containers() As String     ' "" for null
+    Private Kinds() As String
+    Private Urls() As String
+    Private Size As Long
+    Private PackageNames As Collection ' the keys of "packages"
+    Private Interfaces As Collection   ' "Package.Interface" -> "Package.Class"
+
+    ' The parser's state: the whole file, the position in it (from 1), and
+    ' where the next backslash is, so that a string with no escape in it is cut
+    ' out in one piece.
+    Private Src As String
+    Private Pos As Long
+    Private NextBackslash As Long
+
+    Public Property Get Count() As Long
+        Return Size
+    End Property
+
+    Public Property Get Url(ByVal i As Long) As String
+        Return Urls(i)
+    End Property
+
+    ' "Container.Name", "Package.Name" or "Name", for a choice between pages.
+    Public Property Get Label(ByVal i As Long) As String
+        If Len(Containers(i)) > 0 Then Return Containers(i) & "." & Written(i)
+        If Len(Packages(i)) > 0 Then Return Packages(i) & "." & Written(i)
+        Return Written(i)
+    End Property
+
+    ' "method", "statement", ...: the kinds the Permanent Links page lists.
+    Public Property Get Kind(ByVal i As Long) As String
+        Return Kinds(i)
+    End Property
+
+    ' Reads json, the whole index. Raises error 5 on anything that is not JSON
+    ' of the expected shape.
+    Public Sub Load(ByVal json As String)
+        Src = json
+        Pos = 1
+        NextBackslash = 0
+        Size = 0
+        ReDim Names(4095)
+        ReDim Written(4095)
+        ReDim Packages(4095)
+        ReDim Containers(4095)
+        ReDim Kinds(4095)
+        ReDim Urls(4095)
+        Set PackageNames = New Collection
+        Set Interfaces = New Collection
+
+        SkipSpace
+        Expect "{"
+        Do
+            SkipSpace
+            If Peek() = "}" Then Exit Do
+            Dim key As String = ReadString()
+            SkipSpace
+            Expect ":"
+            SkipSpace
+            Select Case key
+                Case "symbols": ReadSymbols
+                Case "packages": ReadStringMap PackageNames
+                Case "interfaces": ReadStringMap Interfaces
+                Case Else: SkipValue
+            End Select
+            SkipSpace
+            If Peek() <> "," Then Exit Do
+            Pos = Pos + 1
+        Loop
+        Expect "}"
+        Src = ""
+    End Sub
+
+    ' The entries for word, a name or a dotted chain, best first:
+    ' - "Container.Name" or "Package.Name", when the last two segments are one;
+    ' - otherwise every entry named Name. A bare name that the language itself
+    '   documents (a statement, a keyword) gives only those; a qualified name
+    '   whose qualifier is not known (a variable, "Me") gives only members.
+    Public Function Find(ByVal word As String) As Collection
+        Dim found As New Collection
+        Dim segs() As String = Split(word, ".")
+        Dim last As Long = UBound(segs)
+        If last < 0 Then Return found
+        Dim name As String = LCase$(segs(last))
+        If Len(name) = 0 Then Return found
+        Dim i As Long
+
+        If last >= 1 Then
+            Dim qual As String = LCase$(segs(last - 1))
+            ' The compiler's names for default interfaces start with "_".
+            Dim bare As String = qual
+            If Left$(bare, 1) = "_" Then bare = Mid$(bare, 2)
+            For i = 0 To Size - 1
+                If Names(i) = name Then
+                    Dim c As String = LCase$(Containers(i))
+                    Dim p As String = LCase$(Packages(i))
+                    If c = qual Or c = bare Or p = qual Then found.Add i
+                End If
+            Next
+            If found.Count > 0 Then Return found
+        End If
+
+        Dim language As New Collection
+        For i = 0 To Size - 1
+            If Names(i) = name Then
+                If Len(Packages(i)) = 0 Then language.Add i Else found.Add i
+            End If
+        Next
+        If last >= 1 Then
+            If found.Count > 0 Then Return found
+            Return language
+        End If
+        If language.Count > 0 Then Return language
+        Return found
+    End Function
+
+    ' Whether the index documents package, a project name such as "VBA" or
+    ' "cefPackage". A name the compiler places anywhere else is the project's
+    ' own, or in a package the documentation does not cover.
+    Public Function Documents(ByVal package As String) As Boolean
+        Return PackageNames.Exists(package)
+    End Function
+
+    ' The entries for name declared where the compiler says: in package, and
+    ' in container, a module, a class's default interface ("_Collection",
+    ' "IToolWindowsV1"), an enumeration, or "" for a type of the package's own.
+    ' A container the index does not have gives the entries for name anywhere
+    ' in package: the compiler names a class's members by the interface that
+    ' declares them, which can be a base the index does not map.
+    Public Function FindDeclared(ByVal name As String, ByVal package As String, ByVal container As String) As Collection
+        Dim found As New Collection
+        Dim want As String = LCase$(name)
+        Dim pkg As String = LCase$(package)
+        Dim box As String = container
+        If Len(box) > 0 Then
+            If Interfaces.Exists(package & "." & box) Then
+                box = Interfaces(package & "." & box)
+                box = Mid$(box, InStr(box, ".") + 1)
+            ElseIf Left$(box, 1) = "_" Then
+                box = Mid$(box, 2)
+            End If
+        End If
+        box = LCase$(box)
+        Dim i As Long
+        For i = 0 To Size - 1
+            If Names(i) = want And LCase$(Packages(i)) = pkg Then
+                If LCase$(Containers(i)) = box Then found.Add i
+            End If
+        Next
+        If found.Count > 0 Then Return found
+        For i = 0 To Size - 1
+            If Names(i) = want And LCase$(Packages(i)) = pkg Then found.Add i
+        Next
+        Return found
+    End Function
+
+    ' The entries of ids that are in package, or ids itself when none is.
+    Public Function OnlyIn(ByVal ids As Collection, ByVal package As String) As Collection
+        Dim found As New Collection
+        Dim i As Variant
+        For Each i In ids
+            If LCase$(Packages(i)) = LCase$(package) Then found.Add i
+        Next
+        If found.Count > 0 Then Return found
+        Return ids
+    End Function
+
+    ' The entries text names, for the help pane's search box: those that start
+    ' with it, then those that contain it, in the index's order, at most limit.
+    ' Text with a dot in it is matched against labels ("Collection.Add"),
+    ' otherwise against names. Case is ignored.
+    Public Function Search(ByVal text As String, ByVal limit As Long) As Collection
+        Dim found As New Collection
+        Dim needle As String = LCase$(Trim$(text))
+        If Len(needle) = 0 Then Return found
+        Dim dotted As Boolean = InStr(needle, ".") > 0
+        Dim later As New Collection
+        Dim i As Long
+        For i = 0 To Size - 1
+            Dim hay As String
+            If dotted Then hay = LCase$(Label(i)) Else hay = Names(i)
+            Dim at As Long = InStr(hay, needle)
+            If at = 1 Then
+                found.Add i
+                If found.Count >= limit Then Return found
+            ElseIf at > 1 And later.Count < limit Then
+                later.Add i
+            End If
+        Next
+        Dim j As Variant
+        For Each j In later
+            If found.Count >= limit Then Exit For
+            found.Add j
+        Next
+        Return found
+    End Function
+
+    Private Sub ReadSymbols()
+        Expect "["
+        Do
+            SkipSpace
+            If Peek() = "]" Then Exit Do
+            ReadEntry
+            SkipSpace
+            If Peek() <> "," Then Exit Do
+            Pos = Pos + 1
+        Loop
+        Expect "]"
+    End Sub
+
+    ' An object of strings, into map: each value keyed by its key, which a
+    ' Collection compares ignoring case.
+    Private Sub ReadStringMap(ByVal map As Collection)
+        Expect "{"
+        Do
+            SkipSpace
+            If Peek() = "}" Then Exit Do
+            Dim key As String = ReadString()
+            SkipSpace
+            Expect ":"
+            SkipSpace
+            Dim value As String = ReadStringOrNull()
+            If Not map.Exists(key) Then map.Add value, key
+            SkipSpace
+            If Peek() <> "," Then Exit Do
+            Pos = Pos + 1
+        Loop
+        Expect "}"
+    End Sub
+
+    Private Sub ReadEntry()
+        Dim name As String, package As String, container As String, kind As String, link As String
+        Expect "{"
+        Do
+            SkipSpace
+            If Peek() = "}" Then Exit Do
+            Dim key As String = ReadString()
+            SkipSpace
+            Expect ":"
+            SkipSpace
+            Select Case key
+                Case "name": name = ReadStringOrNull()
+                Case "package": package = ReadStringOrNull()
+                Case "container": container = ReadStringOrNull()
+                Case "kind": kind = ReadStringOrNull()
+                Case "url": link = ReadStringOrNull()
+                Case Else: SkipValue
+            End Select
+            SkipSpace
+            If Peek() <> "," Then Exit Do
+            Pos = Pos + 1
+        Loop
+        Expect "}"
+        If Len(name) = 0 Or Len(link) = 0 Then Exit Sub
+
+        If Size > UBound(Names) Then
+            Dim grown As Long = 2 * (UBound(Names) + 1) - 1
+            ReDim Preserve Names(grown)
+            ReDim Preserve Written(grown)
+            ReDim Preserve Packages(grown)
+            ReDim Preserve Containers(grown)
+            ReDim Preserve Kinds(grown)
+            ReDim Preserve Urls(grown)
+        End If
+        Names(Size) = LCase$(name)
+        Written(Size) = name
+        Packages(Size) = package
+        Containers(Size) = container
+        Kinds(Size) = kind
+        Urls(Size) = link
+        Size = Size + 1
+    End Sub
+
+    Private Function Peek() As String
+        Return Mid$(Src, Pos, 1)
+    End Function
+
+    Private Sub Fail(ByVal what As String)
+        Err.Raise 5, "SymbolIndex", "symbols.json: " & what & " at offset " & (Pos - 1)
+    End Sub
+
+    Private Sub Expect(ByVal ch As String)
+        If Peek() <> ch Then Fail "expected '" & ch & "'"
+        Pos = Pos + 1
+    End Sub
+
+    Private Sub SkipSpace()
+        Do
+            Select Case Peek()
+                Case " ", vbTab, vbCr, vbLf
+                    Pos = Pos + 1
+                Case Else
+                    Exit Do
+            End Select
+        Loop
+    End Sub
+
+    Private Function ReadStringOrNull() As String
+        If Peek() = "n" Then
+            If Mid$(Src, Pos, 4) <> "null" Then Fail "expected a string or null"
+            Pos = Pos + 4
+            Return ""
+        End If
+        Return ReadString()
+    End Function
+
+    Private Function ReadString() As String
+        Expect """"
+        Dim closing As Long = InStr(Pos, Src, """")
+        If closing = 0 Then Fail "unterminated string"
+        If NextBackslash <> -1 And NextBackslash < Pos Then
+            NextBackslash = InStr(Pos, Src, "\")
+            If NextBackslash = 0 Then NextBackslash = -1
+        End If
+        If NextBackslash = -1 Or NextBackslash > closing Then
+            ReadString = Mid$(Src, Pos, closing - Pos)
+            Pos = closing + 1
+            Exit Function
+        End If
+
+        ' An escape: one character at a time.
+        Dim s As String
+        Do
+            Dim ch As String = Peek()
+            Select Case ch
+                Case ""
+                    Fail "unterminated string"
+                Case """"
+                    Pos = Pos + 1
+                    Return s
+                Case "\"
+                    Dim e As String = Mid$(Src, Pos + 1, 1)
+                    Pos = Pos + 2
+                    Select Case e
+                        Case """", "\", "/": s = s & e
+                        Case "b": s = s & vbBack
+                        Case "f": s = s & vbFormFeed
+                        Case "n": s = s & vbLf
+                        Case "r": s = s & vbCr
+                        Case "t": s = s & vbTab
+                        Case "u"
+                            s = s & ChrW$(CLng("&H" & Mid$(Src, Pos, 4)))
+                            Pos = Pos + 4
+                        Case Else
+                            Fail "bad escape"
+                    End Select
+                Case Else
+                    s = s & ch
+                    Pos = Pos + 1
+            End Select
+        Loop
+    End Function
+
+    Private Sub SkipValue()
+        Select Case Peek()
+            Case """"
+                ReadString
+            Case "{", "["
+                Dim closer As String = IIf(Peek() = "{", "}", "]")
+                Pos = Pos + 1
+                Do
+                    SkipSpace
+                    If Peek() = closer Then Exit Do
+                    If closer = "}" Then
+                        ReadString
+                        SkipSpace
+                        Expect ":"
+                        SkipSpace
+                    End If
+                    SkipValue
+                    SkipSpace
+                    If Peek() <> "," Then Exit Do
+                    Pos = Pos + 1
+                Loop
+                Expect closer
+            Case Else
+                ' A number, true, false or null.
+                Dim start As Long = Pos
+                Do
+                    Select Case Peek()
+                        Case "", ",", "}", "]", " ", vbTab, vbCr, vbLf
+                            Exit Do
+                    End Select
+                    Pos = Pos + 1
+                Loop
+                If Pos = start Then Fail "expected a value"
+        End Select
+    End Sub
+End Class

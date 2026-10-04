@@ -83,6 +83,12 @@ node --test test/png.test.mjs
 @rem No tree, no browser, well under a second.
 node --test test/example-batches.test.mjs
 @if errorlevel 1 goto :fail
+@rem Unit tests for scripts/lib/tb-ports.mjs, which claims the DevTools
+@rem ports the harness's IDEs use: two claims at once are disjoint, a port
+@rem in use and a live lock are passed over, a stale lock is taken over.
+@rem Starts no IDE. No tree, no browser, about 2 s.
+node --test test/ports.test.mjs
+@if errorlevel 1 goto :fail
 @rem A regex that backtracks exponentially is a hang waiting for the
 @rem right input, and nothing that reads the site can see it: the corpus
 @rem passes until some page happens to contain the trigger, and then the

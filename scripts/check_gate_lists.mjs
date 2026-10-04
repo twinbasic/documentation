@@ -93,7 +93,11 @@ const NUMBER_WORDS = [
   "zero", "one", "two", "three", "four", "five",
   "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
   "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty",
+  "twenty-one", "twenty-two", "twenty-three", "twenty-four", "twenty-five",
 ];
+// Longest first, so that "twenty-one" is not read as "twenty" where a word
+// boundary follows the number, as in "of the twenty-one".
+const NUMBER_ALTERNATION = [...NUMBER_WORDS].sort((a, b) => b.length - a.length).join("|");
 
 /** The body of a `### <name>` section: up to the next heading of any level. */
 function sectionBody(src, heading) {
@@ -162,7 +166,7 @@ function commandRuns(src, file) {
 /** The count a section claims in prose, as a number, or null if it makes none. */
 function statedCount(body) {
   // `steps?` because a one-gate wrapper would correctly write "One step".
-  const m = new RegExp(`\\b(${NUMBER_WORDS.join("|")})\\s+steps?\\b`, "i").exec(body);
+  const m = new RegExp(`\\b(${NUMBER_ALTERNATION})\\s+steps?\\b`, "i").exec(body);
   return m ? NUMBER_WORDS.indexOf(m[1].toLowerCase()) : null;
 }
 
@@ -185,7 +189,7 @@ function statedCount(body) {
 // sweep is per section, and a section's subject wrapper is the one named in
 // its heading or on the command line directly beneath it.
 
-const NUM = `(?:${NUMBER_WORDS.join("|")}|\\d+)`;
+const NUM = `(?:${NUMBER_ALTERNATION}|\\d+)`;
 const WRAP = "`?(check|test)\\.bat`?";
 // Deliberately not `checks?`: a count of checks is ordinary English in the
 // corpus ("Two checks enforce the registration", "two more checks"), not a
