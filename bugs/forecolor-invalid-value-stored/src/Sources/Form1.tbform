@@ -119,6 +119,16 @@
 				"Height": 30,
 				"_className": "CommandButton",
 				"_clsid": "{33AD4EF0-6699-11CF-B70C-00AA0060D393}"
+			},
+			{
+				"Index": -1,
+				"Name": "UC1",
+				"Left": 140,
+				"Top": 20,
+				"Width": 100,
+				"Height": 100,
+				"_className": "UC1",
+				"_clsid": "{EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA10}"
 			}
 		]
 	}

@@ -1,0 +1,21 @@
+[FormDesignerId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA11")]
+[ClassId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA10")]
+[InterfaceId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA12")]
+[EventInterfaceId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA13")]
+[COMControl]
+Public Class UC1
+
+    Public Sub RunCases()
+        On Error Resume Next
+        ForeColor = vbGreen
+        ForeColor = -1
+        Debug.Print "UserControl.ForeColor = -1: Err " & Err.Number & ", reads " & Hex$(ForeColor): Err.Clear
+        BackColor = vbGreen
+        BackColor = -1
+        Debug.Print "UserControl.BackColor = -1: Err " & Err.Number & ", reads " & Hex$(BackColor): Err.Clear
+        FillColor = vbGreen
+        FillColor = -1
+        Debug.Print "UserControl.FillColor = -1: Err " & Err.Number & ", reads " & Hex$(FillColor): Err.Clear
+    End Sub
+
+End Class

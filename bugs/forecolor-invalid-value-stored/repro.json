@@ -16,7 +16,10 @@
       "^TextBox\\.BackColor = -1: Err 0, reads FFFFFFFF$",
       "^CommandButton\\.BackColor = -1: Err 0, reads FFFFFFFF$",
       "^Printer\\.ForeColor = -1: Err 5, reads FFFFFFFF$",
-      "^Printer\\.FillColor = -1: Err 0, reads FFFFFFFF$"
+      "^Printer\\.FillColor = -1: Err 0, reads FFFFFFFF$",
+      "^UserControl\\.ForeColor = -1: Err 5, reads FFFFFFFF$",
+      "^UserControl\\.BackColor = -1: Err 0, reads FFFFFFFF$",
+      "^UserControl\\.FillColor = -1: Err 0, reads FFFFFFFF$"
     ]
   }
 }

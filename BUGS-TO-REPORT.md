@@ -86,7 +86,7 @@ kebab-case name for the bug, and its **To Reproduce** names the project file:
 | `bugs/<slug>/src/` | the project's exported source tree: `Settings`, `Sources/` and the rest | yes, byte for byte |
 | `bugs/<slug>/<slug>.twinproj` | the project file, packed from `src/` | yes |
 | `bugs/<slug>/<slug>.zip` | the `.twinproj` zipped, because a GitHub issue does not accept a `.twinproj` attachment, with any file `repro.json`'s `attach` names, such as a `.twinpack` | no |
-| `bugs/<slug>/vb6/` | optional: a VB6 project, to show what VB6 does where the entry compares it with twinBASIC: `Probe.vbp` and its `.bas`, `.cls` and `.frm` files, sources only, never an exe or an output | yes, byte for byte |
+| `bugs/<slug>/vb6/` | optional: a VB6 project, to show what VB6 does where the entry compares it with twinBASIC: `Probe.vbp` and its `.bas`, `.cls`, `.frm` and `.ctl` files (with their `.frx` and `.ctx`), sources only, never an exe or an output | yes, byte for byte |
 | `bugs/<slug>/<slug>-vb6.zip` | the source files of `vb6/` zipped, to attach beside the other zip; written only when `vb6/` exists | no |
 
 `scripts/bug_repro.mjs` makes and checks them (the tool's page is
@@ -1423,7 +1423,7 @@ Assigning a value that is not a colour to a colour property does not leave the p
 
 **To Reproduce**
 Steps to reproduce the behavior:
-1. Open `forecolor-invalid-value-stored.twinproj` (attached as `forecolor-invalid-value-stored.zip`). Its `Sub Main` loads `Form1`, which holds a PictureBox, a Label, a TextBox and a CommandButton. For each property tried it sets `vbGreen`, then assigns `-1` (and `&H8000001F` to the form's `ForeColor`) under `On Error Resume Next` and prints the error number and the value read back. The Printer lines need a default printer; nothing is printed.
+1. Open `forecolor-invalid-value-stored.twinproj` (attached as `forecolor-invalid-value-stored.zip`). Its `Sub Main` loads `Form1`, which holds a PictureBox, a Label, a TextBox, a CommandButton and a user control, UC1, whose `RunCases` assigns its own colour properties. For each property tried it sets `vbGreen`, then assigns `-1` (and `&H8000001F` to the form's `ForeColor`) under `On Error Resume Next` and prints the error number and the value read back. The Printer lines need a default printer; nothing is printed.
 2. Run it (F5) and read the DEBUG CONSOLE:
    ```
    Form.ForeColor = -1: Err 5, reads FFFFFFFF
@@ -1440,6 +1440,9 @@ Steps to reproduce the behavior:
    CommandButton.BackColor = -1: Err 0, reads FFFFFFFF
    Printer.ForeColor = -1: Err 5, reads FFFFFFFF
    Printer.FillColor = -1: Err 0, reads FFFFFFFF
+   UserControl.ForeColor = -1: Err 5, reads FFFFFFFF
+   UserControl.BackColor = -1: Err 0, reads FFFFFFFF
+   UserControl.FillColor = -1: Err 0, reads FFFFFFFF
    ```
 
 **Expected behavior**
@@ -1459,6 +1462,9 @@ TextBox.BackColor = -1: Err 380, reads FF00
 CommandButton.BackColor = -1: Err 380, reads FF00
 Printer.ForeColor = -1: Err 380, reads FF00
 Printer.FillColor = -1: Err 380, reads FF00
+UserControl.ForeColor = -1: Err 380, reads FF00
+UserControl.BackColor = -1: Err 380, reads FF00
+UserControl.FillColor = -1: Err 380, reads FF00
 ```
 `FF00` is `vbGreen`, which each property held before the assignment. A program that sets a colour from user input and handles the error then keeps the colour it had.
 
@@ -1471,7 +1477,7 @@ Severity: low. `ForeColor` raises the error on the surfaces and the other proper
 
 What was tried: the same lines on BETA 983 print the same, so this is not a change of BETA 984. A value that is a valid colour, such as `&H100FF00` or `&H20000FF`, is accepted by `ForeColor` with no error, as in VB6. Besides the attached project, each of `-1`, `&H8000001F` and `&HFF0000FF` was assigned to every colour property of a UserControl (placed on the form), CheckBox, Frame, ListBox, Shape, ComboBox, DirListBox, DriveListBox, FileListBox, OptionButton and OLE in a project of its own, on BETA 995 and 983 and in VB6: the results are the same as above, error 5 for the UserControl's `ForeColor` and none for the rest in twinBASIC, error 380 and the old value kept in VB6. The twinBASIC-only controls behave the same (`QRCode.ForeColor` raises error 5, `CheckMark.BackColor` and `MultiFrame.BackColor` raise nothing), and so do `CommandButton.ForeColor` and the Data control's colours, which VB6 has no counterpart or no loadable project for. The package source explains the pattern: the colour properties are plain stored fields (`Public ForeColor As OLE_COLOR` and so on, in `GraphicsBase` for Form, PictureBox, UserControl, PropertyPage and Report, and declared again in each control), with nothing that validates the value; the error 5 comes from the `ForeColor` change handler of `GraphicsBase`, which runs after the value is stored.
 
-<!-- Reproducer: bugs/forecolor-invalid-value-stored/ (mode run, expects the fourteen lines above in twinBASIC); verified on 995 and 983. The VB6 project is in bugs/forecolor-invalid-value-stored/vb6/ (`bug_repro.mjs vb6 forecolor-invalid-value-stored` prints the fourteen lines above). The wider sweep (every colour property of the classes named under "What was tried", three values each, on 995, 983 and VB6) is in .claude/tooling-review-scratch/beta995-probes/s73/colours/ (c4.out995.txt, c4.out983.txt, c5.outvb6.txt, c6.Data.outvb6.txt, c3.out*.txt for the UserControl), local scratch files that are not in the repository. Stated in a WARNING naming BETA 995 under each of the colour properties on the pages under docs/Reference/Default/VB/ for: Form, PictureBox, UserControl, PropertyPage, Report, Printer, Label, TextBox, CommandButton, CheckBox, OptionButton, Frame, ListBox, ComboBox, DirListBox, DriveListBox, FileListBox, Shape, OLE (the VB6 comparison is in the WARNING) and Data, CheckMark, MultiFrame, QRCode (twinBASIC behaviour only; CommandButton.ForeColor likewise). PropertyPage and Report were not run: they inherit GraphicsBase, as Form does. MDIForm carries none: its BackColor assigns a separate field and its ForeColor and FillColor raise an unsupported-property error, and none was run. When fixed, replace each WARNING with a NOTE saying since which build. -->
+<!-- Reproducer: bugs/forecolor-invalid-value-stored/ (mode run, expects the seventeen lines above in twinBASIC); verified on 995 and 983. The VB6 project is in bugs/forecolor-invalid-value-stored/vb6/ (`bug_repro.mjs vb6 forecolor-invalid-value-stored` prints the seventeen lines above). The wider sweep (every colour property of the classes named under "What was tried", three values each, on 995, 983 and VB6) is in .claude/tooling-review-scratch/beta995-probes/s73/colours/ (c4.out995.txt, c4.out983.txt, c5.outvb6.txt, c6.Data.outvb6.txt, c3.out*.txt for the UserControl), local scratch files that are not in the repository. Stated in a WARNING naming BETA 995 under each of the colour properties on the pages under docs/Reference/Default/VB/ for: Form, PictureBox, UserControl, PropertyPage, Report, Printer, Label, TextBox, CommandButton, CheckBox, OptionButton, Frame, ListBox, ComboBox, DirListBox, DriveListBox, FileListBox, Shape, OLE (the VB6 comparison is in the WARNING) and Data, CheckMark, MultiFrame, QRCode (twinBASIC behaviour only; CommandButton.ForeColor likewise). PropertyPage and Report were not run: they inherit GraphicsBase, as Form does. MDIForm carries none: its BackColor assigns a separate field and its ForeColor and FillColor raise an unsupported-property error, and none was run. When fixed, replace each WARNING with a NOTE saying since which build. -->
 
 ---
 

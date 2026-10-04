@@ -124,8 +124,9 @@ under bugs/filed/<slug>/ once the entry has been filed upstream.
 is never "filed".
 
 A reproducer may also have a VB6 project in vb6/, to show what VB6 does. It holds
-sources only (Probe.vbp and its .bas, .cls and .frm files), builds Probe.exe, and
-writes what it finds to out.txt beside the exe, handling every error itself.
+sources only (Probe.vbp and its .bas, .cls, .frm and .ctl files, with their
+.frx and .ctx), builds Probe.exe, and writes what it finds to out.txt beside the
+exe, handling every error itself.
 
 Commands:
   new <slug> "<title>"  create bugs/<slug>/src/ from the console template, with a

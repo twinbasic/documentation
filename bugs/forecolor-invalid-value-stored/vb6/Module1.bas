@@ -48,6 +48,7 @@ Private Sub Cases()
     Printer.FillColor = vbGreen
     Printer.FillColor = -1
     Print #9, "Printer.FillColor = -1: Err " & Err.Number & ", reads " & Hex$(Printer.FillColor): Err.Clear
+    Form1.UC1.RunCases
     Unload Form1
 End Sub
 

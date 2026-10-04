@@ -1,5 +1,6 @@
 Type=Exe
 Form=Form1.frm
+UserControl=UC1.ctl
 Module=Module1; Module1.bas
 Startup="Sub Main"
 ExeName32="Probe.exe"

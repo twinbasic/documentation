@@ -626,8 +626,11 @@ export async function runExe(
 export const REPRO_PROJECT = "Probe";
 export const REPRO_OUT = "out.txt";
 
-/** The files of a VB6 project that are sources: the project, its modules, classes and forms (`.frx` is a form's binary part). */
-export const REPRO_SOURCE_EXTENSIONS = [".vbp", ".bas", ".cls", ".frm", ".frx"];
+/**
+ * The files of a VB6 project that are sources: the project, its modules, classes,
+ * forms and user controls (`.frx` is a form's binary part, `.ctx` a user control's).
+ */
+export const REPRO_SOURCE_EXTENSIONS = [".vbp", ".bas", ".cls", ".frm", ".frx", ".ctl", ".ctx"];
 
 /**
  * The files in a reproducer's vb6/ folder, by name: the sources, and the others
@@ -653,7 +656,7 @@ export function reproProblem(dir) {
   const { sources } = reproFiles(dir);
   if (!sources.includes(`${REPRO_PROJECT}.vbp`)) return `has no ${REPRO_PROJECT}.vbp`;
   for (const name of sources) {
-    if (/\.(?:vbp|frx)$/i.test(name)) continue;
+    if (/\.(?:vbp|frx|ctx)$/i.test(name)) continue;
     for (const { text, line } of logicalLines(decodeAnsi(readFileSync(path.join(dir, name))))) {
       const prompt = PROMPTS.exec(text);
       if (prompt) {
@@ -1098,10 +1101,13 @@ function reproProbes() {
     put("Widget.cls", "VERSION 1.0 CLASS\r\nBEGIN\r\nEND\r\n");
     put("Form1.frm", "VERSION 5.00\r\n");
     put("Form1.frx", "binary");
+    put("UC1.ctl", "VERSION 5.00\r\n");
+    // A binary part that happens to spell a prompt: never read as code.
+    put("UC1.ctx", "MsgBox binary");
     // What a build or a run leaves behind, and what an editor does, none of which is a source.
     for (const name of ["Probe.exe", "out.txt", "make.log", "Probe.vbw", "notes.md", "Module1.bas.bak"]) put(name, "x");
     mkdirSync(path.join(dir, "Sub.bas"));
-    const want = ["Form1.frm", "Form1.frx", "Module1.bas", "Probe.vbp", "Widget.cls"];
+    const want = ["Form1.frm", "Form1.frx", "Module1.bas", "Probe.vbp", "UC1.ctl", "UC1.ctx", "Widget.cls"];
     const files = reproFiles(dir);
     check("only sources are listed, by name", files.sources.join(" ") === want.join(" "), files.sources.join(" "));
     check(
@@ -1137,6 +1143,13 @@ function reproProbes() {
     );
     put("Widget.cls", "VERSION 1.0 CLASS\r\nBEGIN\r\nEND\r\n");
     check("a class with only its header is accepted", reproProblem(dir) === null, String(reproProblem(dir)));
+    put("UC1.ctl", "VERSION 5.00\r\nBegin VB.UserControl UC1\r\nEnd\r\nSub F()\r\n    MsgBox 1\r\nEnd Sub\r\n");
+    check(
+      "MsgBox in a user control refuses it too",
+      /^UC1\.ctl, line 5 calls MsgBox/.test(reproProblem(dir) ?? ""),
+      String(reproProblem(dir)),
+    );
+    put("UC1.ctl", "VERSION 5.00\r\n");
     rmSync(path.join(dir, "Probe.vbp"));
     check(
       "a folder with no Probe.vbp is refused",

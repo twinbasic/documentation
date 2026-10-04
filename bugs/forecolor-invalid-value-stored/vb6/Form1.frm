@@ -10,6 +10,13 @@ Begin VB.Form Form1
    ScaleWidth      =   4000
    StartUpPosition =   3  'Windows Default
    Visible         =   0   'False
+   Begin Probe.UC1 UC1
+      Height          =   1215
+      Left            =   3360
+      TabIndex        =   7
+      Top             =   120
+      Width           =   1215
+   End
    Begin VB.CommandButton CommandButton1
       Height          =   255
       Left            =   240

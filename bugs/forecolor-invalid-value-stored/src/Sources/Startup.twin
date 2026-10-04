@@ -45,6 +45,7 @@ Module Startup
         Printer.FillColor = vbGreen
         Printer.FillColor = -1
         Debug.Print "Printer.FillColor = -1: Err " & Err.Number & ", reads " & Hex$(Printer.FillColor): Err.Clear
+        Form1.UC1.RunCases
         Unload Form1
     End Sub
 
