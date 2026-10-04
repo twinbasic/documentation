@@ -343,10 +343,12 @@ Two bugs came out of the move, and neither had been noticed:
 
 **Do not reach for `--buildAndExit32` instead.** It exists, it is real (`parseCommandLine()`
 reads it, and Personal Edition is refused by name), and it is useless unattended: **nothing
-is written to stdout or stderr, ever**, it exits 0 on a project the IDE flags, and when the
-build genuinely fails it does not exit at all --- it sits on a "Please wait…" dialog at 100%
-forever. Silent, falsely green, and hanging on the one case worth catching. Measured all
-three ways.
+is written to stdout or stderr, ever**, it exits 0 with the `.exe` written when the error is
+in code nothing calls, and for an error the build reaches --- an unknown procedure or type,
+an undeclared variable, no `Sub Main` --- it does not exit at all: it sits on a "Please
+wait…" dialog at 100% forever. Silent, falsely green, and hanging on the one case worth
+catching. Measured all three ways, on BETA 983 and 995 (the BUGS-TO-REPORT entry on
+`--buildAndExit32`).
 
 **It runs the IDE on a private Windows desktop, and that is not decoration.** A build tool
 that seizes the keyboard mid-sentence is a build tool nobody runs while working. No window
