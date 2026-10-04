@@ -1,0 +1,12 @@
+Module Cases
+    Public Sub Main()
+        Dim c As New Collection
+        c.Add 1
+        MsgBox "x"
+        VBA.Interaction.MsgBox "y"
+        Debug.Print Len("abc")
+        Dim zzqHelpProbe As Long
+        Close #1
+        ' Host.ToolWindows.Add(name, id)
+    End Sub
+End Module

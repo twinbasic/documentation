@@ -1,0 +1,33 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "HelpHost",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Standard EXE",
+	"project.description": "The project test/addin/help.test.mjs opens to press F1 in. Its lines are the scenario's cases, by line and column: change one and the scenario's table with it. scripts/lib/tb-lane.mjs stages a copy, with project.id and project.buildPath rewritten for the lane.",
+	"project.exportPathIsV2": true,
+	"project.id": "{D4EF6D85-EF9A-4CCB-8F0D-977A73EF5994}",
+	"project.name": "HelpHost",
+	"project.optionExplicit": true,
+	"project.references": [
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"symbolId": "stdole",
+			"versionMajor": 2,
+			"versionMinor": 0
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.startupObject": "Sub Main",
+	"project.warnings": {
+		"errors": [],
+		"hints": [],
+		"ignored": [],
+		"info": [],
+		"warnings": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

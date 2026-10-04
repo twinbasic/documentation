@@ -1,0 +1,119 @@
+' F1, or the toolbar's Help button, opens the documentation page for the
+' selection or for the name under the cursor. Every line it prints to the
+' DEBUG CONSOLE starts "[tbDocsHelp] ", except "open <url>" (see OpenUrl).
+Private Class HelpAddIn
+    Implements AddIn
+    Private WithEvents Host As Host
+    Private WithEvents HelpButton As Button
+    Private Index As SymbolIndex
+
+    Private Const BASE_URL As String = "https://docs.twinbasic.com"
+    Private Const TAG As String = "[tbDocsHelp] "
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "twinBASIC Documentation Help"
+    End Property
+
+    ' Runs again in a new instance after every compiler restart.
+    Private Sub Host_OnProjectLoaded()
+        Set HelpButton = Host.Toolbars(0).AddButton("tbDocsHelp", "Help")
+        Host.KeyboardShortcuts.Add "f1", AddressOf OnF1
+        Dim indexState As String = LoadIndex()
+        ' The scenarios wait for this line, and check the switch in it before
+        ' pressing anything.
+        Host.DebugConsole.PrintText TAG & "loaded, " & indexState & ", test switch " & _
+            IIf(TestSwitchOn(), "on", "off")
+    End Sub
+
+    Private Function LoadIndex() As String
+        On Error GoTo Failed
+        Dim data() As Byte = LoadResDataInternal("symbols.json", "SYMBOLS")
+        Set Index = New SymbolIndex
+        Index.Load StrConv(data, VbStrConv.vbFromUTF8)
+        Return "index " & Index.Count & " entries"
+    Failed:
+        Set Index = Nothing
+        Return "no index (" & Err.Description & ")"
+    End Function
+
+    Private Sub OnF1()
+        ShowHelp
+    End Sub
+
+    Private Sub HelpButton_OnClick()
+        ShowHelp
+    End Sub
+
+    Private Sub ShowHelp()
+        On Error GoTo Failed
+        Dim word As String = WordToLookUp()
+        If Len(word) = 0 Then
+            Host.ShowNotification "No name at the cursor"
+            Exit Sub
+        End If
+        If Index Is Nothing Then
+            Host.ShowNotification "No help: the add-in has no symbol index"
+            Exit Sub
+        End If
+
+        ' One choice per page: members inherited from one declaring type share
+        ' its page.
+        Dim urls As New Collection
+        Dim labels As New Collection
+        Dim i As Variant
+        For Each i In Index.Find(word)
+            If Not Contains(urls, Index.Url(i)) Then
+                urls.Add Index.Url(i)
+                labels.Add Index.Label(i)
+            End If
+        Next
+
+        Select Case urls.Count
+            Case 0
+                Host.ShowNotification "No help for '" & word & "'"
+            Case 1
+                OpenUrl Host, BASE_URL & urls(1)
+            Case Else
+                Dim buttons As String
+                Dim k As Long
+                For k = 1 To labels.Count
+                    buttons = buttons & labels(k) & "|"
+                Next
+                Dim answer As Long = Host.ShowMessageBox("Several pages document '" & word & _
+                    "'. Open which?", buttons & "Cancel", "twinBASIC Help")
+                If answer >= 0 And answer < urls.Count Then OpenUrl Host, BASE_URL & urls(answer + 1)
+        End Select
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    ' The selection when it is on one line, else the name under the cursor.
+    Private Function WordToLookUp() As String
+        If Host.ActiveEditors.Count = 0 Then Return ""
+        Dim ed As Editor
+        Set ed = Host.ActiveEditors(0)
+        If Not TypeOf ed Is CodeEditor Then Return ""
+        Dim code As CodeEditor
+        Set code = ed
+        Dim startLine As Long, startColumn As Long, endLine As Long, endColumn As Long
+        code.GetSelectionInfo startLine, startColumn, endLine, endColumn
+        If startLine = endLine And startColumn <> endColumn Then
+            Dim selected As String = Trim$(code.SelectedText)
+            If Len(selected) > 0 Then Return selected
+        End If
+        Return NameAt(LineOf(code.Text, startLine), startColumn)
+    End Function
+
+    Private Function Contains(ByVal items As Collection, ByVal value As String) As Boolean
+        Dim item As Variant
+        For Each item In items
+            If item = value Then Return True
+        Next
+        Return False
+    End Function
+End Class

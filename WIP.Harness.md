@@ -1289,8 +1289,8 @@ probe lanes:
   lane need no change to the runner, and the second takes the same port once the first has
   been ended.
 
-**Timing, BETA 995:** the eleven lanes take 1 min 43 s at the default two at a time (the env
-lane is 16 s alone). Typical lane costs (BETA 983): an add-in build about 10 s, a host IDE
+**Timing, BETA 995:** the twelve lanes take about two minutes at the default two at a time
+(the env lane is 16 s alone, the help lane 15 to 18 s, of which its sixteen cases are about 6 s). Typical lane costs (BETA 983): an add-in build about 10 s, a host IDE
 about 9 s, scenario 2 s; the keys lane 28 s (about 9 s of it pressing keys), panes 23 s,
 symbols and ideserver about 9 s each (they build nothing), appdata 18 s, arch 56 s (two builds
 and two switches of target), reload 47 s (two builds and two restarts), entry 19 s.

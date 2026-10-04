@@ -1,0 +1,42 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "tbDocsHelp",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Standard DLL",
+	"project.description": "The twinBASIC documentation help add-in: F1 opens the page for the name under the cursor. WIP.HelpAddin.md is its plan. The symbol index is embedded as Resources/SYMBOLS/symbols.json, copied from a docs build before the add-in is built.",
+	"project.exportPathIsV2": true,
+	"project.id": "{4581D804-116B-436E-B7AB-1E4417F9703C}",
+	"project.name": "tbDocsHelp",
+	"project.optionExplicit": true,
+	"project.references": [
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"versionMajor": 2,
+			"versionMinor": 0
+		},
+		{
+			"id": "{99DEC38C-75F6-4488-8EE7-2D52D83881D2}",
+			"isCompilerPackage": true,
+			"licence": "MIT",
+			"name": "[COMPILER PACKAGE] twinBASIC IDE Extensibility Package",
+			"path32": "",
+			"path64": "",
+			"publisher": "TWINBASIC-COMPILER",
+			"symbolId": "tbIDE",
+			"versionBuild": 0,
+			"versionMajor": 0,
+			"versionMinor": 0,
+			"versionRevision": 1
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.warnings": {
+		"errors": [],
+		"ignored": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

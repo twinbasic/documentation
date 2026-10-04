@@ -1140,14 +1140,14 @@ never loads into your own IDE, and two lanes never share one. The scenario build
 it tests into its copy, opens a project, and operates the IDE: it clicks, presses keys, types,
 and reads the add-ins' tool windows, message boxes, notifications, the code editor and the
 Debug Console. Two scenarios operate the IDE's own sample add-ins, Sample 10 and Sample 15
-(Global Search), end to end. The others are probes, and take what they need from
+(Global Search), end to end. The others but the last are probes, and take what they need from
 `test/addin/probes/`. Two build add-ins of their own and check what the tbIDE pages say about
 the IDE: which keyboard shortcuts fire, for the
 [KeyboardShortcuts](../../tB/Packages/tbIDE/KeyboardShortcuts) page, and what a tool window
 does with HTML and with a web page in an `iframe`, for the
 [HtmlElement](../../tB/Packages/tbIDE/HtmlElement) page and its neighbours. The panes lane
 serves the pages its frame shows from a server of its own on `localhost`. Three more answer
-questions the planned help add-in rests on: what the compiler says about the name under the
+questions the help add-in rests on: what the compiler says about the name under the
 cursor, which files the IDE's own web server serves from its `ide` folder, and which folders
 the compiler loads add-ins from. The last three check what the [Add Ins](../../tB/IDE/AddIns/)
 and [tbIDE package](../../tB/Packages/tbIDE/) pages say about loading: which folder each
@@ -1155,7 +1155,9 @@ build target loads, what a compiler restart does to a loaded add-in, and which e
 names the IDE accepts. They build add-ins for win64 as well as win32, restart the compiler,
 and patch a built DLL's export name. One more checks that the environment variable the
 runner sets, which keeps an add-in under test from opening a browser, reaches the add-in,
-also after a compiler restart. The eleven lanes take under two minutes together.
+also after a compiler restart. The last lane tests the help add-in in `add-in/`, which opens
+the page for the name under the cursor; it builds the add-in with the symbol index of the last
+`build.bat`, so run that first. The twelve lanes take about two minutes together.
 
 | Flag | Effect |
 |---|---|

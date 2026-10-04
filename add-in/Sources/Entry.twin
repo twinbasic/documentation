@@ -1,0 +1,29 @@
+' The entry point the compiler calls when it loads the add-in, and the one
+' place the add-in starts anything outside the IDE.
+Module Entry
+    Private Declare PtrSafe Function ShellExecuteW Lib "shell32" (ByVal hwnd As LongPtr, _
+        ByVal lpOperation As LongPtr, ByVal lpFile As LongPtr, ByVal lpParameters As LongPtr, _
+        ByVal lpDirectory As LongPtr, ByVal nShowCmd As Long) As LongPtr
+
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New HelpAddIn(Host)
+    End Function
+
+    ' TB_ADDIN_TEST, set and not empty, is the test harness's switch: nothing is
+    ' started outside the IDE while it is on.
+    Public Function TestSwitchOn() As Boolean
+        Return Len(Environ$("TB_ADDIN_TEST")) > 0
+    End Function
+
+    ' Opens url in the default browser. With the test switch on, prints
+    ' "open <url>" to the DEBUG CONSOLE instead, which the scenarios read.
+    Public Sub OpenUrl(ByVal Host As Host, ByVal url As String)
+        If TestSwitchOn() Then
+            Host.DebugConsole.PrintText "open " & url
+        Else
+            Const SW_SHOWNORMAL As Long = 1
+            ShellExecuteW 0, StrPtr("open"), StrPtr(url), 0, 0, SW_SHOWNORMAL
+        End If
+    End Sub
+End Module

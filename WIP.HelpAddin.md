@@ -4,7 +4,8 @@ See [WIP.md](WIP.md) for the maintenance guide. This file covers the planned twi
 add-in that shows the documentation for the symbol under the cursor, and the harness that
 tests IDE add-ins by machine, which the add-in is developed against.
 
-**Status.** Stages 1 to 3 stand; Stage 4, the add-in itself, is next (increment 1).
+**Status.** Stages 1 to 3 stand. Stage 4, the add-in itself in [add-in/](add-in/), has its
+increment 1 built and tested (F1 to a page); increment 2, the help pane, is next.
 
 - `addin-test.bat` operates Samples 10 and 15 end to end and leaves the registry as it found it.
 - All fourteen of Stage 2's questions are answered. Thirteen are held by nine probe lanes that
@@ -466,6 +467,12 @@ and stays outside `docs/`, where the publish allowlist would refuse it. `add-in/
 add-in's tree and nothing else: `stageProject` copies the whole folder it is given and packs
 the copy, so a probe kept inside it would be packed into the add-in's project.
 
+**The symbol index is not committed there.** The add-in reads it as the resource
+`Resources/SYMBOLS/symbols.json`, and whoever builds the add-in copies the docs build's
+`tB/symbols.json` into a staged copy of the tree first, as
+[help.test.mjs](test/addin/help.test.mjs)'s `stageAddin` does. Built without it, the add-in
+loads and says `no index` in its loaded line.
+
 ### Stage 1: testing add-ins by machine
 
 Built. Everything after this stage is developed against it. [WIP.Harness.md](WIP.Harness.md)
@@ -565,11 +572,13 @@ has the harness side of each item.
    is: it needs Windows and a twinBASIC install. `removeTree` retries a delete that an ending
    IDE still blocks, since on Node 24 `rmSync`'s own `maxRetries` does not.
 
-   **Not done:** the pure-logic tests of Stage 4's code (word extraction, lookup). A test
-   project holds those modules and a `[RunAfterBuild]` runner that prints one line per case,
-   and the JavaScript side checks the lines. They belong in a lane, built and run in the
-   lane's own copy rather than by `tbrun`: a `tbrun` started under the runner leaves its
-   registry entries to the runner, which sweeps only the lanes' folders.
+   **Stage 4's code is tested end to end**, through the editor: the help lane puts the
+   cursor or a selection on each case and reads what the add-in opened. Word extraction and
+   lookup have no tests of their own. If a case comes up that the editor cannot set up, a
+   test project would hold those modules and a `[RunAfterBuild]` runner printing one line
+   per case, built and run in a lane's own copy rather than by `tbrun`: a `tbrun` started
+   under the runner leaves its registry entries to the runner, which sweeps only the lanes'
+   folders.
 
 Stage 1's acceptance, met: both scenarios pass under `addin-test.bat`, and the whole
 registry, `IDESettings` included through hashes, is identical around the run.
@@ -787,9 +796,14 @@ loaded one without ending the IDE: rename the loaded DLL aside, put the new buil
 place, and click the compiler's restart button (P9). The lanes need not: a restart saves a
 harness about a second against opening a new IDE.
 
-1. **F1 to a page.** A toolbar button; the key; the name under the cursor; index lookup;
-   open the page in the browser or the pane. A miss says `No help for '<name>'` through
-   `ShowNotification`.
+1. **F1 to a page. Built**, tested by [help.test.mjs](test/addin/help.test.mjs) on BETA
+   995. F1, or the toolbar's Help button, takes the selection or the name under the cursor
+   (below), looks it up in the embedded index and opens `https://docs.twinbasic.com` plus
+   the entry's `url` in the browser. A miss says `No help for '<name>'` and an empty spot
+   `No name at the cursor`, both through `ShowNotification`. Several pages give a
+   `ShowMessageBox` with one button per page, labelled `Container.Name`, and Cancel: `Add`
+   on an unknown object gives twelve and Cancel, and the IDE shows thirteen buttons without
+   complaint. The pane comes in increment 2.
 
    **The key is F1**: P1 and P2 do not rule it out. It fires wherever the focus
    is in the IDE's window. The one overlap is signature help: while it shows, F1 also expands
@@ -833,24 +847,34 @@ harness about a second against opening a new IDE.
 
 **Lookup:**
 
-1. A selection is looked up exactly as selected.
-2. Otherwise take the dotted name under the cursor, and try it as `container.name` first.
-3. With several matches, a language keyword wins a bare name; otherwise offer the choice.
+1. A selection on one line is looked up exactly as selected.
+2. Otherwise take the dotted name under the cursor. Its last two segments are tried as
+   `Container.Name` and as `Package.Name` first (`VBA.Interaction.MsgBox`,
+   `VBA.Interaction`); a container written with the compiler's leading `_` matches without
+   it.
+3. Otherwise every entry with that name. For a bare name, the language's own entries
+   (package `null`) win: `Close` is the statement. For a qualified name whose qualifier
+   matched nothing (`c.Add`, `Me.Close`), only members count, since a statement cannot
+   follow a dot. Several pages left: offer the choice. Entries that share a URL
+   (`CodeEditor.Close` and `Editor.Close`) are one choice.
 
 **Word extraction.** Given the line and the cursor's column:
 
-1. If the character at the cursor is not `A-Z`, `a-z`, `0-9` or `_`, there is no word. A
-   `.` at the cursor sits between two segments, so it also gives no word.
+1. If the character at the cursor is not `A-Z`, `a-z`, `0-9` or `_`, take the one before
+   it instead, so that a cursor just after a name, as after typing it, takes that name. If
+   that one is not either, there is no word.
 2. Extend left over those characters **and `.`**, to take the whole dotted chain on the
    left.
 3. Extend right over those characters **without `.`**, stopping at the end of the current
    segment.
 
 With the cursor on `Add` in `Set w = Host.ToolWindows.Add(name, id)` this gives
-`Host.ToolWindows.Add`. Not handled in the first version: string literals and comments (the
-lookup misses; `File.ReadText(CommentsToWhitespace)` can blank comments out if needed),
-lines joined with `_`, and numbers (they miss the index). Whether `GetSelectionInfo` counts
-columns from 1 is untested.
+`Host.ToolWindows.Add`. A chain cut off on its left by `)` or by nothing, inside a `With`,
+starts with a dot, which is dropped: `.Add`. Not handled in the first version: string
+literals and comments are read like code, so a name in a comment finds its page and a word
+in a string usually misses (`File.ReadText(CommentsToWhitespace)` can blank comments out if
+needed); lines joined with `_`; numbers, which miss the index. `GetSelectionInfo` counts
+lines and columns from 1, as Monaco does (the help lane's cases depend on it).
 
 **Settings:** per project through `Project.SaveMetaData` / `LoadMetaData`, add-in-wide
 through `SaveSetting` / `GetSetting` --- which is the shared registry tree, so the runner's
