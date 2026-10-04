@@ -37,6 +37,9 @@
 //     that is not JSON left alone; and a named project's target that the run
 //     switched, saved under another spelling of its path, put back in its
 //     place, with an entry for a project that had none deleted;
+//   * the IDE's theme, colorTheme in its GENERAL options: put back, with
+//     every other option left as it is now; removed when the run set one
+//     where there was none; options that are not JSON left alone;
 //   * an association that named the temp folder when the run began, which is
 //     another run's IDE copy's and is left alone, against one that did not,
 //     which is put back;
@@ -291,6 +294,27 @@ try {
   setValues(SETTINGS, { [MEMORY]: JSON.stringify({ ...kept, [USER]: "win32" }) });
   assert.equal(R.finishTidy(named).architecture, 1);
   assert.equal(readValue(SETTINGS, MEMORY), JSON.stringify(kept), "finishTidy puts a named project's target back");
+
+  // ------------------------------------------------ the theme
+  // The IDE's options, written as the IDE writes them; a run switches the
+  // theme, and the user changes another option meanwhile, which is kept.
+  const asIde = (o) => JSON.stringify(o, undefined, "\t");
+  const options = { colorTheme: "Dark", fontSize: 14 };
+  setValues(SETTINGS, { GENERAL: asIde(options) });
+  const themed = R.startTidy({ root: ROOT, keys: [ASSOC] });
+  setValues(SETTINGS, { GENERAL: asIde({ colorTheme: "light", fontSize: 16 }) });
+  assert.equal(R.finishTidy(themed).theme, 1);
+  assert.equal(readValue(SETTINGS, "GENERAL"), asIde({ colorTheme: "Dark", fontSize: 16 }), "the theme comes back");
+  assert.equal(R.restoreTheme(themed.theme), 0, "a second restore writes nothing");
+  setValues(SETTINGS, { GENERAL: asIde({ fontSize: 14 }) });
+  const unset = R.snapshotTheme({ root: ROOT });
+  setValues(SETTINGS, { GENERAL: asIde({ fontSize: 14, colorTheme: "light" }) });
+  assert.equal(R.restoreTheme(unset), 1);
+  assert.equal(readValue(SETTINGS, "GENERAL"), asIde({ fontSize: 14 }), "a theme the run set where none was goes");
+  setValues(SETTINGS, { GENERAL: "{not json" });
+  assert.equal(R.restoreTheme(themed.theme), 0);
+  assert.equal(readValue(SETTINGS, "GENERAL"), "{not json", "options that are not JSON are left alone");
+  deleteValues(SETTINGS, ["GENERAL"]);
 
   // ------------------------------------------------ an association another run's copy held
   // startTidy and finishTidy, the whole tidy, on the scratch keys.

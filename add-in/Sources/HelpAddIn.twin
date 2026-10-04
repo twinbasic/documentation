@@ -78,6 +78,23 @@ Private Class HelpAddIn
         Return BASE_URL
     End Function
 
+    ' The frame's URL for a site path: the site reads ?theme= before its first
+    ' paint, so the page matches the IDE's theme rather than WebView2's colour
+    ' scheme. The parameter goes before any fragment.
+    Private Function FrameUrl(ByVal url As String) As String
+        Dim group As String = Host.Themes.ActiveThemeNameGroup
+        If group <> "light" And group <> "dark" Then Return SiteUrl() & url
+        Dim hash As Long = InStr(url, "#")
+        If hash = 0 Then hash = Len(url) + 1
+        Return SiteUrl() & Left$(url, hash - 1) & "?theme=" & group & Mid$(url, hash)
+    End Function
+
+    ' A theme change loads the page again with the new theme. The pane itself
+    ' follows the theme through the IDE's CSS variables (pane.css).
+    Private Sub Host_OnChangedTheme(ByVal ThemeName As String)
+        If Len(PageUrl) > 0 And Not Frame Is Nothing Then Frame.Properties.src = FrameUrl(PageUrl)
+    End Sub
+
     ' The pane's elements. Showing a tool window sets its root's display to
     ' block, so the flex layout is on a wrapper inside it.
     Private Sub BuildPane()
@@ -114,7 +131,7 @@ Private Class HelpAddIn
         End With
         Set ResultIds = New Collection
         LastSearch = ""
-        If Len(PageUrl) > 0 Then Frame.Properties.src = SiteUrl() & PageUrl
+        If Len(PageUrl) > 0 Then Frame.Properties.src = FrameUrl(PageUrl)
     End Sub
 
     Private Sub Pane_OnClose()
@@ -225,7 +242,7 @@ Private Class HelpAddIn
 
     Private Sub ShowPage(ByVal url As String)
         PageUrl = url
-        Frame.Properties.src = SiteUrl() & url
+        Frame.Properties.src = FrameUrl(url)
         Pane.Visible = True
         SaveSetting SETTINGS_APP, "Pane", "Page", url
     End Sub

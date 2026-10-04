@@ -498,7 +498,7 @@ The fonts are committed artifacts, like the DOT renders: `scripts/build_fonts.py
 
 CSS files in either copy path get a baseurl rewrite (`url("/path")` → `url("<baseurl>/path")`) when the deployment baseurl is non-empty; the same transform applies to generated CSS so the `url("/favicon.png")` the SCSS entry point emits resolves correctly under sub-path deployments.
 
-The project JS is deliberately small. `theme-toggle.js` implements the three-state (system / light / dark) theme switch as a progressive enhancement over the no-JS `prefers-color-scheme` default: the correct palette renders even with scripting disabled, and the script only adds the manual override that persists a `data-theme` choice. `svg-inline.js` powers the click-to-zoom overlay and the download / copy controls on inlined diagrams.
+The project JS is deliberately small. `theme-toggle.js` implements the three-state (system / light / dark) theme switch as a progressive enhancement over the no-JS `prefers-color-scheme` default: the correct palette renders even with scripting disabled, and the script only adds the manual override that persists a `data-theme` choice. A page opened with `?theme=light` or `?theme=dark` takes that theme instead, as do the pages reached from it in the same tab, without changing the reader's stored choice; the IDE's help add-in passes the IDE's theme this way. `svg-inline.js` powers the click-to-zoom overlay and the download / copy controls on inlined diagrams.
 
 ## Project styling
 

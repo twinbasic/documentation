@@ -60,6 +60,17 @@ const inPane = (c, body) =>
 })()`);
 
 const frameSrc = (c) => inPane(c, `return root.querySelector("#helpPage")?.getAttribute("src") ?? null;`);
+// "dark" or "light", from the IDE theme's panel colour rather than from the
+// API the add-in asks (Themes.ActiveThemeNameGroup).
+const themeGroup = (c) =>
+  c.evaluate(`(() => {
+  const probe = document.createElement("div");
+  probe.style.background = "var(--themeGeneralPanelBackColor)";
+  document.body.appendChild(probe);
+  const [r, g, b] = getComputedStyle(probe).backgroundColor.match(/\\d+/g).map(Number);
+  probe.remove();
+  return 0.299 * r + 0.587 * g + 0.114 * b < 128 ? "dark" : "light";
+})()`);
 const focusedId = (c) => inPane(c, "return root.activeElement?.id ?? null;");
 const searchValue = (c) => inPane(c, `return root.querySelector("#helpSearch")?.value ?? null;`);
 const results = async (c) => (await listViewItems(c, { toolWindow: PANE, css: "#helpResults" })).map((i) => i.text);
@@ -82,26 +93,34 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   let server;
   const served = []; // { path, status } for every request the site answered
 
-  // The frame shows `url` from the built site: the add-in gave it that src,
-  // and the page it loaded is the build's, not a 404.
+  // The frame shows `url` from the built site in the IDE's theme: the add-in
+  // gave it that src with ?theme=, the page it loaded is the build's, not a
+  // 404, and the page applied the theme.
   async function showsPage(url) {
-    const want = origin + url;
+    const group = await themeGroup(c);
+    const [pagePath, fragment] = url.split("#");
+    const want = `${origin}${pagePath}?theme=${group}${fragment ? `#${fragment}` : ""}`;
     const src = await waitFor(c, async (c) => {
       const s = await frameSrc(c);
       return s === want && s;
     });
     assert.equal(src ?? (await frameSrc(c)), want, "the frame's src");
     assert.ok((await toolWindow(c, PANE))?.visible, "the pane is not showing");
-    const [pagePath, fragment] = url.split("#");
     const loaded = await waitFor(c, async (c) => {
       const f = await frameOf(c, origin);
-      if (!f || f.url.replace(/\/$/, "") !== origin + pagePath.replace(/\/$/, "")) return false;
+      const loadedUrl = `${origin}${pagePath.replace(/\/$/, "")}?theme=${group}`;
+      if (!f || f.url.replace(/\/\?/, "?") !== loadedUrl) return false;
       return (await frameEval(c, origin, "document.readyState")) === "complete";
     });
-    assert.ok(loaded, `the frame did not load ${url}: ${JSON.stringify(await frameOf(c, origin))}`);
+    assert.ok(loaded, `the frame did not load ${want}: ${JSON.stringify(await frameOf(c, origin))}`);
     if (fragment) assert.equal((await frameOf(c, origin)).urlFragment, `#${fragment}`);
     const page = served.filter((r) => r.path.replace(/\/$/, "") === pagePath.replace(/\/$/, "")).at(-1);
     assert.equal(page?.status, 200, `${url} as served: ${JSON.stringify(page)}`);
+    assert.equal(
+      await frameEval(c, origin, `document.documentElement.getAttribute("data-theme")`),
+      group,
+      "the page's theme",
+    );
   }
 
   // Press F1 (or run `act`), and expect `url` in the pane and nothing printed.
@@ -278,6 +297,28 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.equal(colours.pane, colours.theme);
   });
 
+  // Through the IDE's own commands for its theme menu, which tell the compiler,
+  // and so the add-in, of the change (OnChangedTheme). The IDE saves the theme
+  // where the user's own IDE reads it; the run's registry tidy puts it back
+  // (restoreTheme in scripts/lib/tb-registry.mjs).
+  test("a theme change loads the page again in the new theme", async () => {
+    const page = "/tB/Modules/Interaction/MsgBox";
+    const was = await themeGroup(c);
+    const other = was === "dark" ? "light" : "dark";
+    const switchTo = (group) =>
+      c.evaluate(
+        `executeIdeCommand(${JSON.stringify(group === "dark" ? "tbTheme_SwitchToDarkMode" : "tbTheme_SwitchToLightMode")})`,
+      );
+    try {
+      await switchTo(other);
+      assert.equal(await themeGroup(c), other, "the IDE's theme did not change");
+      await showsPage(page);
+    } finally {
+      await switchTo(was);
+    }
+    await showsPage(page);
+  });
+
   test("a compiler restart empties the pane, and the add-in puts its page back", async () => {
     // The old frame is marked, so that the frame found after is the new pane's.
     await inPane(c, `root.querySelector("#helpPage").dataset.beforeRestart = "1";`);
@@ -290,7 +331,7 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
         `const f = root.querySelector("#helpPage"); return f && !f.dataset.beforeRestart && f.getAttribute("src");`,
       ),
     );
-    assert.equal(src, `${origin}/tB/Modules/Interaction/MsgBox`);
+    assert.equal(src, `${origin}/tB/Modules/Interaction/MsgBox?theme=${await themeGroup(c)}`);
   });
 
   return () => server?.close();

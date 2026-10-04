@@ -12,7 +12,8 @@ increment 1 built and tested (F1 to a page); increment 2, the help pane, is next
   fail when a later IDE build behaves differently.
 - Every build publishes `tB/symbols.json`, 5,536 names at 4,086 URLs, under a drift guard that
   fails the build when one of its URLs goes.
-- Stage 3's embedded mode, a `theme` parameter the site would read, waits until the add-in works.
+- The site reads a `theme` parameter, and the help pane passes the IDE's theme with it
+  (Stage 4, increment 2).
 
 Facts about the IDE are from **BETA 983**, and were re-checked on BETA 995 where the text says
 so. An offset like `main.js@611152` is a byte offset into the one-line `ide/main.js`. Offsets
@@ -310,9 +311,9 @@ Read at `main.js@1002292` (`toolWindowElementAddChild`) and `@1005960`
      WebView2 was told to prefer light (`--blink-settings=preferredColorScheme=1` added to
      its `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`) showed the framed page light, and its own
      page reported light, while the IDE's theme stayed dark. The site follows
-     `prefers-color-scheme` unless its own toggle has stored a choice, so **a page in the
-     pane matches the IDE only when Windows' app mode happens to agree** --- see Stage 3's
-     embedded mode.
+     `prefers-color-scheme` unless its own toggle has stored a choice, so **a page given no
+     theme matches the IDE only when Windows' app mode happens to agree**; the help pane
+     passes one (Stage 4, increment 2).
 
    **The live site works in the frame too** (checked in the lab, not a lane). The
    KeyboardShortcuts page on docs.twinbasic.com loaded in 0.9 s as a cross-site frame, with
@@ -346,7 +347,7 @@ with files put in a lane's copy of the install:
   4 MB of JavaScript, and a file written after the IDE had started. A frame given the
   relative `src` `p13/page.html` showed the page, with its stylesheet and script working.
 - Three things differ from a real web server. **A query string makes any request a 404**,
-  so `page.html?theme=dark` is not found, and Stage 3's `theme` parameter could not be a
+  so `page.html?theme=dark` is not found, and the site's `theme` parameter cannot be a
   query on this route; a fragment is not sent, and does no harm. `.html`, `.json`, `.jpg`,
   `.woff2`, `.mjs` and `.txt` come with no `Content-Type` --- the browser sniffs the page
   and it renders --- while `.htm`, `.css`, `.js`, `.svg`, `.png` and `.gif` get the usual
@@ -777,18 +778,12 @@ has the complete list):
 
 **Not done, and why:**
 
-- **An embedded mode for pages: P3 says the theme needs one.** The pages work in the pane
-  unmodified, but they follow Windows' app mode, not the IDE's theme, and the add-in cannot
-  reach into the frame to change that: the live site is cross-site, so neither its document
-  nor its storage is the IDE page's. The site can take the theme from its URL instead: a
-  `theme=dark|light` query parameter, read by the no-flash snippet in `renderHead`
-  ([builder/template.mjs](builder/template.mjs)) and set as `data-theme` without being
-  stored, so a reader's own choice on the site is left as it is. Hiding the header and
-  navigation is a separate, optional question, untested. **Deferred until the add-in works,
-  at least in part**: it changes what the published pages do, and it needs a test that the
-  parameter keeps working. It serves the live site only: the IDE's own server answers any URL
-  with a query string with a 404 (P13), so the offline route would need the theme some other
-  way.
+- **The rest of an embedded mode for pages.** The theme is done: the site reads a
+  `theme=dark|light` query parameter (Stage 4, increment 2), since the add-in cannot reach
+  into a cross-site frame. Hiding the header and navigation is a separate, optional
+  question, untested. The parameter serves the live site only: the IDE's own server answers
+  any URL with a query string with a 404 (P13), so the offline route would need the theme
+  some other way.
 - **Keywords with no page of their own** --- `ElseIf`, `Until`, `Step`, `To`, `In`,
   `ByVal`, `ByRef`, `Optional`, `As` --- are in the index only where a page's title gives
   them. Adding one is a `symbols:` line on the page that explains it, which is a content
@@ -846,11 +841,25 @@ harness about a second against opening a new IDE.
    - **Theme.** The pane's stylesheet, the resource `Resources/STYLESHEETS/pane.css` given
      to `ApplyCss`, uses the IDE theme's own custom properties (`--themeGeneralPanelBackColor`,
      `--themeToolWindowBodyForeColor`, ...). They are set on the IDE's document and
-     inherited by the shadow root, so a theme change needs no code and the add-in handles
-     no `Host_OnChangedTheme`. This departs from the plan's light and dark stylesheets. The
-     lane checks the background, which the window does not otherwise inherit: the window
-     already has the theme's text colour. The page itself still follows WebView2's colour
-     scheme until the site reads a theme (Stage 3).
+     inherited by the shadow root, so the pane needs no code for a theme change. This
+     departs from the plan's light and dark stylesheets. The lane checks the background,
+     which the window does not otherwise inherit: the window already has the theme's text
+     colour.
+   - **The page's theme** is the IDE's: the frame's URL carries `?theme=` and
+     `Themes.ActiveThemeNameGroup` (`FrameUrl`), before any fragment, and the site applies
+     it before its first paint and keeps it in `sessionStorage` for the pages reached from
+     it (the head script in `renderHead`, and `theme-toggle.js`), never in the reader's
+     `localStorage` choice; a click on the site's theme button replaces it. Without it the
+     page follows WebView2's colour scheme, which is Windows' app mode (P3).
+     `Host_OnChangedTheme` gives the frame its page again with the new theme, so a link
+     followed inside the frame is lost. *Open in browser* passes no theme. The lane works
+     out the IDE's group from its panel colour, not from the API, checks every page's
+     `data-theme`, and switches the theme with the IDE's own commands
+     (`executeIdeCommand("tbTheme_SwitchToLightMode")`, `...DarkMode`, `main.js` BETA 995),
+     which save it in `twinBASIC_IDE\IDESettings\GENERAL` (`colorTheme`), where the user's
+     own IDE reads it; the registry tidy puts that one entry back (`restoreTheme`). Fault
+     runs: without the handler only the theme-change case fails; with the site ignoring the
+     parameter every case that shows a page fails.
    - F1 pressed while the focus is in the page goes to the page, not to the add-in, so a
      lookup from there goes through the search box.
 
@@ -988,8 +997,6 @@ Recommended, and not yet confirmed:
   compiler and `hostAppObject` among them. `raiseEvent` in a list view's items is the
   other exception, since the IDE's own samples use it that way and it is the only way a
   list view reports a click.
-- **The site reads a `theme` query parameter**, so that a page in the help pane can match
-  the IDE's theme (Stage 3, after P3). **Deferred** until the add-in works, at least in part.
 - **Isolation starts with restoring the registry** (Stage 1, item 3), and a private
   `APPDATA` for every lane IDE (P6). A separate Windows account for test runs comes only if
   that proves not to be enough.

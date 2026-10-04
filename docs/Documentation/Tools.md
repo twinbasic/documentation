@@ -1266,8 +1266,9 @@ restored, and a second restore writes nothing. The recent list gets two more che
 the IDE changes it on its own while a run's projects are on it: it fills a short list's empty
 slots with copies of the last entry, and a full list loses its oldest entry for each project
 a run opens. The copies must go and the lost entries come back. The build targets the IDE remembers are checked the same way: those under
-the run's folder go, and every other one stays, in its order and its exact text. So is the
-rule that a file association pointing into the temp folder when a run began --- at another
+the run's folder go, and every other one stays, in its order and its exact text. The IDE's
+theme, which an add-in scenario switches, comes back, and every other IDE option stays as it
+is. So is the rule that a file association pointing into the temp folder when a run began --- at another
 run's private copy of the IDE --- is left as it is rather than put back. It also checks that
 the module refuses to sweep outside the temp folder or restore a key near the root of the
 registry. It deletes the scratch key when it ends.

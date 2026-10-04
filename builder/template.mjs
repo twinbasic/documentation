@@ -154,12 +154,19 @@ function renderHead(page, site, init) {
   // The `<meta IE=Edge>` is directly followed by `<script>` (no
   // whitespace) because head.html has `{%- comment -%}...{%- endcomment -%}`
   // between them that strips surrounding whitespace.
+  // The early script applies the theme before first paint: a `?theme=light`
+  // or `dark` in the URL, which the help add-in passes to match the IDE and
+  // which is kept in sessionStorage for the pages reached from it, else the
+  // reader's stored choice. theme-toggle.js reads the same two keys.
   const bu = String(site.config.baseurl ?? "");
   return (
     `<head>\n` +
     `  <meta charset="UTF-8">\n` +
     `  <meta http-equiv="X-UA-Compatible" content="IE=Edge"><script>\n` +
-    `    try { var t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); } catch (e) {}\n` +
+    `    (function () { var q = /[?&]theme=(light|dark)(?:&|$)/.exec(location.search), t = null;\n` +
+    `    try { if (q) sessionStorage.setItem('theme', q[1]); t = sessionStorage.getItem('theme') || localStorage.getItem('theme'); } catch (e) {}\n` +
+    `    if (q) t = q[1];\n` +
+    `    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); })();\n` +
     `  </script>\n` +
     `  <script type="text/javascript" src="${escapeMarkupAndQuotes(relativeUrl("/assets/js/theme-toggle.js", bu))}" defer></script>\n` +
     fontPreloads(bu) +

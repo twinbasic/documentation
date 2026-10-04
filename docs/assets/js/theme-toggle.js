@@ -12,8 +12,13 @@
 //     query keeps governing and re-resolves on OS change -- no matchMedia
 //     listener needed here).
 //
-// A matching inline no-flash snippet in <head> applies the stored override
-// before first paint; both MUST agree on the 'theme' storage key.
+//   - sessionStorage['theme'] = 'light' | 'dark' when a page of this tab was
+//     opened with ?theme=light or ?theme=dark (the help add-in passes the
+//     IDE's theme so). It wins over localStorage and is never written there;
+//     a click on the button replaces it with the reader's own choice.
+//
+// A matching inline no-flash snippet in <head> applies the override before
+// first paint; both MUST agree on the 'theme' storage key.
 (function () {
   var KEY = "theme";
   var ORDER = ["system", "light", "dark"];
@@ -37,7 +42,7 @@
 
   function currentChoice() {
     try {
-      var stored = localStorage.getItem(KEY);
+      var stored = sessionStorage.getItem(KEY) || localStorage.getItem(KEY);
       if (stored === "light" || stored === "dark") return stored;
     } catch (_e) {
       // localStorage unavailable (private mode) -- fall through to system.
@@ -45,18 +50,19 @@
     return "system";
   }
 
-  function apply(choice, announce) {
+  // `persist` stores the choice as the reader's own, in place of any ?theme=
+  // override; the first sync after load only mirrors what is stored.
+  function apply(choice, announce, persist) {
     if (choice === "system") {
       root.removeAttribute("data-theme");
-      try {
-        localStorage.removeItem(KEY);
-      } catch (_e) {
-        // ignore: the preference simply won't persist
-      }
     } else {
       root.setAttribute("data-theme", choice);
+    }
+    if (persist) {
       try {
-        localStorage.setItem(KEY, choice);
+        sessionStorage.removeItem(KEY);
+        if (choice === "system") localStorage.removeItem(KEY);
+        else localStorage.setItem(KEY, choice);
       } catch (_e) {
         // ignore: the preference simply won't persist
       }
@@ -68,11 +74,11 @@
   }
 
   // Sync the button to whatever the no-flash snippet already applied, then reveal.
-  apply(currentChoice(), false);
+  apply(currentChoice(), false, false);
   button.hidden = false;
 
   button.addEventListener("click", function () {
     var next = ORDER[(ORDER.indexOf(currentChoice()) + 1) % ORDER.length];
-    apply(next, true);
+    apply(next, true, true);
   });
 })();
