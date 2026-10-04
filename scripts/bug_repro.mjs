@@ -1109,11 +1109,6 @@ async function buildAndRunVb6(slug, exe, names, imagesDir) {
     console.error(`vb6: ${REPRO_PROJECT}.exe was still running after ${timeout ?? 30} s and was ended`);
     return 8;
   }
-  if (!r.lines.length) {
-    console.error(`vb6: ${REPRO_PROJECT}.exe wrote no ${REPRO_OUT}, or an empty one`);
-    return 6;
-  }
-  if (r.status !== 0) {
   // A VB6 exe that faults exits with code 0; the event log's record is what says it faulted.
   if (r.fault) {
     const { code, module, offset } = r.fault;
@@ -1123,6 +1118,11 @@ async function buildAndRunVb6(slug, exe, names, imagesDir) {
     );
     return 8;
   }
+  if (!r.lines.length) {
+    console.error(`vb6: ${REPRO_PROJECT}.exe wrote no ${REPRO_OUT}, or an empty one`);
+    return 6;
+  }
+  if (r.status !== 0) {
     console.error(`vb6: ${REPRO_PROJECT}.exe exited with code ${r.status}`);
     return 8;
   }
