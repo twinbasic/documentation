@@ -119,13 +119,14 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   const served = []; // { path, status } for every request the site answered
 
   // The frame shows `url` from the built site in the IDE's theme: the add-in
-  // gave it that src with ?theme=, the page it loaded is the build's, not a
-  // 404, and the page applied the theme. With `fresh`, the page is a new
-  // document: not the one markFrame marked.
+  // gave it that src with ?theme= and ?pane=1, the page it loaded is the
+  // build's, not a 404, and the page applied the theme and hid the site's
+  // navigation and header. With `fresh`, the page is a new document: not the
+  // one markFrame marked.
   async function showsPage(url, { fresh = false } = {}) {
     const group = await themeGroup(c);
     const [pagePath, fragment] = url.split("#");
-    const want = `${origin}${pagePath}?theme=${group}${fragment ? `#${fragment}` : ""}`;
+    const want = `${origin}${pagePath}?theme=${group}&pane=1${fragment ? `#${fragment}` : ""}`;
     // The frame can have this src already, hidden behind a summary, so the
     // page showing again is waited for too.
     const shown = { summary: "none", frame: "", browserDisabled: false };
@@ -138,7 +139,7 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.deepEqual(await pageState(c), shown);
     const loaded = await waitFor(c, async (c) => {
       const f = await frameOf(c, origin);
-      const loadedUrl = `${origin}${pagePath.replace(/\/$/, "")}?theme=${group}`;
+      const loadedUrl = `${origin}${pagePath.replace(/\/$/, "")}?theme=${group}&pane=1`;
       if (!f || f.url.replace(/\/\?/, "?") !== loadedUrl) return false;
       // A src set to the URL the frame already has reloads it, and a question
       // put to the page being replaced fails: that is not loaded yet.
@@ -154,7 +155,21 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       group,
       "the page's theme",
     );
+    assert.deepEqual(await paneChrome(), PANE_CHROME, "the site's chrome in the pane");
   }
+
+  // What the frame's page shows of the site's chrome: the pane hides the
+  // sidebar and the header, and keeps the breadcrumbs and the footer.
+  const PANE_CHROME = { sidebar: "none", header: "none", breadcrumbs: "block", footer: "block" };
+  const paneChrome = () =>
+    frameEval(
+      c,
+      origin,
+      `(() => {
+        const shown = (s) => { const e = document.querySelector(s); return e ? getComputedStyle(e).display : "missing"; };
+        return { sidebar: shown(".side-bar"), header: shown(".main-header"), breadcrumbs: shown(".breadcrumb-nav"), footer: shown("footer[role=contentinfo]") };
+      })()`,
+    );
 
   // Marks the page the frame shows now, so that showsPage can tell a page F1
   // loaded from it: F1 on the name whose page shows already loads it again,
@@ -411,7 +426,27 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
         `const f = root.querySelector("#helpPage"); return f && !f.dataset.beforeRestart && f.getAttribute("src");`,
       ),
     );
-    assert.equal(src, `${origin}/tB/Modules/Interaction/MsgBox?theme=${await themeGroup(c)}`);
+    assert.equal(src, `${origin}/tB/Modules/Interaction/MsgBox?theme=${await themeGroup(c)}&pane=1`);
+  });
+
+  // A page reached from the pane's page has no parameters of its own; the site
+  // keeps both for the tab.
+  test("a page reached by a link keeps the IDE's theme and the pane's layout", async () => {
+    await f1Shows("/tB/Modules/Interaction/MsgBox", () => at(c, 5, 9).then(() => pressKey(c, "F1")));
+    const next = "/tB/Modules/Strings/Len";
+    await frameEval(c, origin, `location.href = ${JSON.stringify(next)}`);
+    const loaded = await waitFor(c, async (c) => {
+      const f = await frameOf(c, origin);
+      if (f?.url !== `${origin}${next}`) return false;
+      return (await frameEval(c, origin, `document.readyState === "complete"`).catch(() => false)) === true;
+    });
+    assert.ok(loaded, `the frame did not load ${next}: ${JSON.stringify(await frameOf(c, origin))}`);
+    assert.equal(
+      await frameEval(c, origin, `document.documentElement.getAttribute("data-theme")`),
+      await themeGroup(c),
+      "the page's theme",
+    );
+    assert.deepEqual(await paneChrome(), PANE_CHROME, "the site's chrome in the pane");
   });
 
   return () => server?.close();

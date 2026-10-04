@@ -158,15 +158,20 @@ function renderHead(page, site, init) {
   // or `dark` in the URL, which the help add-in passes to match the IDE and
   // which is kept in sessionStorage for the pages reached from it, else the
   // reader's stored choice. theme-toggle.js reads the same two keys.
+  // It also marks the page for the help add-in's pane: `?pane=1`, kept in
+  // sessionStorage the same way, sets `data-pane`, and custom.scss then hides
+  // the site's navigation and header.
   const bu = String(site.config.baseurl ?? "");
   return (
     `<head>\n` +
     `  <meta charset="UTF-8">\n` +
     `  <meta http-equiv="X-UA-Compatible" content="IE=Edge"><script>\n` +
-    `    (function () { var q = /[?&]theme=(light|dark)(?:&|$)/.exec(location.search), t = null;\n` +
-    `    try { if (q) sessionStorage.setItem('theme', q[1]); t = sessionStorage.getItem('theme') || localStorage.getItem('theme'); } catch (e) {}\n` +
+    `    (function () { var q = /[?&]theme=(light|dark)(?:&|$)/.exec(location.search), p = /[?&]pane=1(?:&|$)/.test(location.search), t = null;\n` +
+    `    try { if (q) sessionStorage.setItem('theme', q[1]); t = sessionStorage.getItem('theme') || localStorage.getItem('theme');\n` +
+    `    if (p) sessionStorage.setItem('pane', '1'); else p = sessionStorage.getItem('pane') === '1'; } catch (e) {}\n` +
     `    if (q) t = q[1];\n` +
-    `    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); })();\n` +
+    `    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);\n` +
+    `    if (p) document.documentElement.setAttribute('data-pane', ''); })();\n` +
     `  </script>\n` +
     `  <script type="text/javascript" src="${escapeMarkupAndQuotes(relativeUrl("/assets/js/theme-toggle.js", bu))}" defer></script>\n` +
     fontPreloads(bu) +

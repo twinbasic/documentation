@@ -13,7 +13,8 @@ which `Add`, and a name with no page shown by its declaration and `[Description]
   fail when a later IDE build behaves differently.
 - Every build publishes `tB/symbols.json`, 5,536 names at 4,086 URLs, under a drift guard that
   fails the build when one of its URLs goes.
-- The site reads a `theme` parameter, and the help pane passes the IDE's theme with it
+- The site reads a `theme` parameter, and the help pane passes the IDE's theme with it, and
+  a `pane` parameter, with which a page shows without the site's navigation and header
   (Stage 4, increment 2).
 
 Facts about the IDE are from **BETA 983**, and were re-checked on BETA 995 where the text says
@@ -862,6 +863,19 @@ harness about a second against opening a new IDE.
      own IDE reads it; the registry tidy puts that one entry back (`restoreTheme`). Fault
      runs: without the handler only the theme-change case fails; with the site ignoring the
      parameter every case that shows a page fails.
+   - **The page shows without the site's chrome**: `FrameUrl` adds `pane=1` too, which the
+     head script keeps in `sessionStorage` as it keeps the theme and turns into `data-pane`
+     on the root. `custom.scss` then hides the sidebar and the header (search box,
+     auxiliary links, theme toggle) and centres the page; the breadcrumbs stay, and the
+     footer, which holds the attribution line. The rules are under `:root[data-pane]`, at
+     (0,2,0), because the dark compilation re-emits the header's `display: flex` at (0,4,1).
+     *Open in browser* passes neither parameter. Every `showsPage` checks the computed
+     `display` of the four, and a case follows a link inside the frame and checks that the
+     next page keeps the theme and the layout. Fault runs: the rules under `html[data-pane]`
+     failed every page case in the dark theme, with the sidebar back; the head script not
+     keeping `pane` failed only the link case. The lane's pane is narrower than the site's
+     `md` breakpoint, where the header is hidden anyway, so the wide layout was checked with
+     puppeteer over the offline tree at 500, 900 and 1400 px in both themes.
    - F1 pressed while the focus is in the page goes to the page, not to the add-in, so a
      lookup from there goes through the search box.
 

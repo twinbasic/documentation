@@ -622,3 +622,27 @@ div.highlight:focus-visible,
 .main-content :not(pre, figure) > code {
   white-space: pre-wrap;
 }
+
+// ── The help add-in's pane ────────────────────────────────────────────────
+//
+// A page opened with `?pane=1`, and the pages reached from it in the same
+// tab, have `data-pane` on the root (the early script in builder/template.mjs
+// sets it) and show the page alone: no sidebar, and no header with the search
+// box, the auxiliary links and the theme toggle. The add-in has a search of
+// its own and passes the IDE's theme. The breadcrumbs stay, and so does the
+// footer, which holds the attribution line.
+//
+// `:root[data-pane]` is (0,2,0), which puts every rule here above its dark
+// re-emission (see "The specificity trap" in Builder.md): the header is shown
+// by `html[data-theme="dark"] .side-bar + .main .main-header` at (0,4,1), and
+// hidden below at (0,5,0).
+:root[data-pane] {
+  .side-bar,
+  .side-bar + .main .main-header {
+    display: none;
+  }
+
+  .side-bar + .main {
+    margin-left: auto;
+  }
+}

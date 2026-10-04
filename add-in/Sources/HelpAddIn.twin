@@ -82,13 +82,15 @@ Private Class HelpAddIn
 
     ' The frame's URL for a site path: the site reads ?theme= before its first
     ' paint, so the page matches the IDE's theme rather than WebView2's colour
-    ' scheme. The parameter goes before any fragment.
+    ' scheme, and ?pane=1, so the page shows without the site's navigation and
+    ' header. The parameters go before any fragment.
     Private Function FrameUrl(ByVal url As String) As String
+        Dim query As String = "?pane=1"
         Dim group As String = Host.Themes.ActiveThemeNameGroup
-        If group <> "light" And group <> "dark" Then Return SiteUrl() & url
+        If group = "light" Or group = "dark" Then query = "?theme=" & group & "&pane=1"
         Dim hash As Long = InStr(url, "#")
         If hash = 0 Then hash = Len(url) + 1
-        Return SiteUrl() & Left$(url, hash - 1) & "?theme=" & group & Mid$(url, hash)
+        Return SiteUrl() & Left$(url, hash - 1) & query & Mid$(url, hash)
     End Function
 
     ' A theme change loads the page again with the new theme. The pane itself
