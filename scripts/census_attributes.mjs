@@ -119,8 +119,8 @@ declaration keyword and by enclosing construct.
 
 Exit codes:
   0  the report was produced
-  2  a refused command line, no install, an install with no compiler or no package
-     project, or a crash (a package that fails to export is left out of the census)`;
+  2  a refused command line, no install, an install with no package project, or a
+     crash (a package that fails to export is left out of the census)`;
 
 if (values.help) printHelpAndExit(USAGE);
 

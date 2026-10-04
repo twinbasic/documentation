@@ -975,8 +975,15 @@ export async function awaitNewCompiler(c, before, { why = "restarting it", timeo
 // "[LINKER] SUCCESS created output file '<path>'" or with one of some twenty
 // failure lines: "[LINKER] FAILED ...", "[BUILD] FAILED ...", "[BUILD] ERROR
 // ...", "[BUILD] failed" and "[LINKER] compilation (codegen) error ...".
+// A package writes "[BUILD] Creating TWINPACK file '<path>'" and then
+// "[BUILD] successful." (BETA 995); it fails with "[BUILD] FAILED to create
+// output file", "[BUILD] FAILED to write to output file" or "[BUILD] failed".
+// The success line is matched whole: "[BUILD] successfully built Fusion server
+// file" is another line.
 const BUILD_START = "[BUILD] Starting...";
 const BUILD_OK = /^\[LINKER\] SUCCESS created output file '(.+)'$/;
+const PACKAGE_FILE = /^\[BUILD\] Creating TWINPACK file '(.+)'$/;
+const PACKAGE_OK = "[BUILD] successful.";
 // The last is LLVM's refusal of a procedure, which has no bracketed prefix:
 // "LLVM compilation error in 'Probe.Stopper': Unable to compile due to use of
 // datatype that is not yet supported for LLVM compilation" (BETA 983).
@@ -1044,16 +1051,16 @@ async function buildLines(c, mark, clearsBefore) {
  * Build the open project, as the toolbar's Build button does, and wait for the
  * build log to say how it went.
  *
- * Only a binary is recognised, an EXE or a DLL, whose log ends with the
- * linker's SUCCESS line. What a package build writes has not been looked at,
- * and one would end in the timeout.
+ * A binary, an EXE or a DLL, has succeeded when its log shows the linker's
+ * SUCCESS line, and a package when its log names the TWINPACK file and then
+ * says the build was successful.
  *
  * @param {object} c                  a tb-cdp connection
  * @param {object} [o]
  * @param {number} [o.timeout]        milliseconds (default 120000)
  * @returns {Promise<{ok: boolean, file?: string, message?: string, log: string[]}>}
- *   `file` is the path the linker says it created; `log` is the console from
- *   the build's first line on
+ *   `file` is the path the log says the build created; `log` is the console
+ *   from the build's first line on
  */
 export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
   const mark = await consoleMark(c);
@@ -1085,6 +1092,8 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
     log = lines.slice(start);
     const ok = log.map((l) => BUILD_OK.exec(l)).find(Boolean);
     if (ok) return { ok: true, file: ok[1], log };
+    const pkg = log.findIndex((l) => PACKAGE_FILE.test(l));
+    if (pkg >= 0 && log.includes(PACKAGE_OK, pkg)) return { ok: true, file: PACKAGE_FILE.exec(log[pkg])[1], log };
     // Not every such line need end the build -- the strings include "[BUILD]
     // failed to use project.iconForm setting", and whether a build goes on
     // after that one has not been seen -- so one decides only after two

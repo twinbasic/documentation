@@ -19,11 +19,11 @@ concluding anything about twinBASIC syntax from a sweep of exported sources.
 ## Getting at the `.twin` sources
 
 "Read the package's `.twin` sources" is the rule everywhere below, and the sources are not
-in this repository. They are inside the `.twinproj` files an IDE install ships, and the
-compiler's `export` verb unpacks any of them without opening the IDE:
+in this repository. They are inside the `.twinproj` files an IDE install ships, and
+[scripts/impexp.mjs](scripts/impexp.mjs) unpacks any of them without opening the IDE:
 
 ```sh
-"$TB/bin/twinBASIC_win32.exe" export "<some>.twinproj" "C:\out\dir\" --overwrite
+node scripts/impexp.mjs export <some>.twinproj <out-dir>
 ```
 
 On BETA 983 and 995 alike that yields **820 `.twin` files**: 661 from the sixteen
@@ -31,7 +31,31 @@ packages under `packages/`, and 159 from the thirty-two sample and template proj
 `projects/` (`addins/` holds no `.twinproj`). The compiler accepts all of this code, which
 makes it the strongest available evidence for what is legal syntax.
 
-Two operational rules. **Use backslashes.** A folder named with forward slashes fails with
+The tooling unpacks and packs in process, through `unpackProject` and `packTree` in
+[scripts/lib/tb-project.mjs](scripts/lib/tb-project.mjs), which call impexp's
+`exportProject` and `importProject`: the census and `build_package_api`, `tbbuild --build`,
+`tbrun`, `check_examples`, `sweep_attributes`, and the add-in and IDE lanes. The compiler executable's `export` verb writes the same tree: on BETA 995 the two
+unpack the install's sixteen packages and thirty-two samples to identical trees, 1,633 files
+byte for byte.
+
+Only `bug_repro`'s `cli` mode, which runs a reproducer's own command line, and
+`test/ide/export.test.mjs` run the executable's `import` or `export`. The tooling does not,
+because:
+
+- `import` exits 999 and writes nothing on a tree whose top-level `Packages` folder holds a
+  folder, which is any project that embeds a package (twinbasic/twinbasic#841). The
+  install's Samples 8, 17 and 23 and the VBCCR template are such projects; Sample 23 then
+  fails its own build, because it has no `Sub Main`.
+- Both verbs exit 0 after every failure they report, and only a last line of `... DONE` says
+  one worked. impexp throws instead.
+- Neither verb writes a path of 260 characters or more (the path-limit entry in
+  [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md)). impexp does.
+- `import` packs a folder's files in reverse alphabetical order, and impexp in alphabetical
+  order. The order can decide what compiles (the `static-ctor-args` entry in
+  [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md)), so a tree packed by the two can compile
+  differently.
+
+Anything that runs the executable follows two rules. **Use backslashes.** A folder named with forward slashes fails with
 `output folder does not exist and could not be created` whether it exists or not, creates
 nothing, and still exits 0. Given backslashes, `export` creates every missing level (tested
 three deep, BETA 983 and 995). The project path must be a full one, because `export`
@@ -88,9 +112,9 @@ back empty. Sixteen documented attributes are used by no package. That is not a 
 the census offers no evidence for their `Applicable to:` lines, and a probe is the only
 check available.
 
-`export`'s exit code is 0 on failure, so the census tests the output for `... DONE` and does
-not scan a partial export as though it had finished (see the path-length entry in
-[BUGS-TO-REPORT.md](BUGS-TO-REPORT.md)).
+The census unpacks with impexp, which throws on a failure, so a partial export is never
+scanned as though it had finished: a package that fails is removed from the cache and left
+out of the census.
 
 **A census is evidence, not applicability, and the two disagree in both directions.** The
 corpus contains no use of `[Hidden]` on a whole `Class`, yet the compiler accepts one; it
@@ -939,7 +963,10 @@ output file '<path>'` or one of about twenty failure lines --- `[LINKER] FAILED 
 `[BUILD] FAILED ...`, `[BUILD] ERROR ...`, `[BUILD] failed`, `[LINKER] compilation (codegen)
 error ...`. An output file another process held open gave `[LINKER] FAILED to create output
 file '...' (error code 32)`, then `LOCKED BY:` and a line naming the process, then `[BUILD]
-failed`. Two details:
+failed`. A package writes `[BUILD] Creating TWINPACK file '<path>'` and then `[BUILD]
+successful.` (BETA 995), and its failures are `[BUILD] FAILED ...` and `[BUILD] failed` lines
+like a binary's. `buildProject` matches the success line whole, because `[BUILD] successfully
+built Fusion server file` is another line, and only after the TWINPACK line. Two details:
 
 - **Only lines added after the click count.** Nothing removes a console entry but a clear.
   So the entries from the pre-click count on are new, unless the first entry changed or the
@@ -950,8 +977,6 @@ failed`. Two details:
 - **A failure line waits two seconds for a success line after it.** The strings include
   `[BUILD] failed to use project.iconForm setting`, and whether a build goes on after that
   one has not been seen.
-
-What a package build writes has not been looked at; `buildProject` knows binaries only.
 
 **Either target, set on every build and checked in the file.** `buildAddin` takes `arch`,
 `win32` by default, and sets it with `setBuildTarget` as `tbrun`'s `--arch` does, even

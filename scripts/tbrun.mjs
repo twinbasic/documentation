@@ -131,7 +131,7 @@ import {
   refuseTogether,
   withUsageError,
 } from "../lib/cli.mjs";
-import { compilerExe, findIde } from "./lib/tb-install.mjs";
+import { findIde } from "./lib/tb-install.mjs";
 import {
   COMPILE_TIMEOUT,
   TARGETS,
@@ -188,7 +188,7 @@ Exit codes:
   0  the probe ran and its output was captured
   1  the project has compile errors; the diagnostics are printed
   2  a refused command line (a source folder that is missing or has no Settings file
-     included), no IDE or compiler, an IDE that did not start, a compile that never
+     included), no IDE, an IDE that did not start, a compile that never
      settled, a build that failed after a clean compile, a probe that never ran or
      stopped at a procedure that failed code generation, an --llvm run on a
      Community or Personal licence, an --exe run with no exe built, or a crash
@@ -252,7 +252,7 @@ if (!existsSync(srcDir) || !statSync(srcDir).isDirectory()) {
     `not a directory: ${srcDir}\n` +
       `tbrun takes an exported source tree (the folder holding Sources/ and Settings), ` +
       `because it has to pin the build path before packing. Export one with:\n` +
-      `  twinBASIC_win32.exe export <project.twinproj> <dir>\\ --overwrite`,
+      `  node scripts/impexp.mjs export <project.twinproj> <dir>`,
   );
 }
 
@@ -267,14 +267,12 @@ const REAP_IMAGES = ["excel", "winword", "powerpnt", "msaccess", "outlook", "one
 
 // ---------------------------------------------------------------- the IDE
 
-// One install packs the tree and builds it. --ide, then TB_IDE, then the
-// newest BETA on the Desktop, as for every other tool here.
+// One install builds the tree. --ide, then TB_IDE, then the newest BETA on the
+// Desktop, as for every other tool here.
 const ide = findIde(values.ide || undefined);
 if (!ide || !existsSync(ide)) {
   die(2, "no twinBASIC IDE found. Pass --ide <twinBASIC.exe> or set TB_IDE.");
 }
-const COMPILER = compilerExe(ide);
-if (!existsSync(COMPILER)) die(2, `no compiler beside the IDE at ${COMPILER}`);
 
 // ------------------------------------------------- pin the build output (1)
 
@@ -340,7 +338,6 @@ try {
     src: srcDir,
     stage,
     project: projPath,
-    compiler: COMPILER,
     settings: {
       "project.buildPath": buildPath,
       "project.id": laneProjectId(0, port),

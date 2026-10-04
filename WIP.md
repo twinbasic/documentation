@@ -109,14 +109,14 @@ Four tools do that. Each finds the IDE itself: the newest
 path contains a username.
 
 ```sh
-"$TB/bin/twinBASIC_win32.exe" export "<some>.twinproj" "C:\out\dir\" --overwrite
+node scripts/impexp.mjs export <some>.twinproj <out-dir>   # a project's or package's sources
 node scripts/census_attributes.mjs --out census.md   # every attribute, by enclosing construct
 node scripts/sweep_attributes.mjs --out sweep.md --dump-results sweep.json   # every attribute at every site, 8 to 16 min
 node scripts/tbbuild.mjs C:/probe/Thing.twinproj     # does it compile
 node scripts/tbrun.mjs <exported-source-dir>         # what does it print
 ```
 
-- **Give the executable backslashed paths, and `export` a full path to the project.** `export` prefixes `\\?\` to its project path, so a relative path, or one with forward slashes, reports `input twinproj file does not exist`. A folder named with forward slashes cannot be created or found, even when it exists. With backslashes, `export` creates every missing level of its output folder. Redirect stdin (`</dev/null`) when looping: otherwise the executable consumes the loop's input and the second iteration never runs.
+- **Pack and unpack projects with `impexp`, never with the compiler executable's `import` or `export` verbs.** The tooling does both in process, through `packTree` and `unpackProject` in `scripts/lib/tb-project.mjs`; by hand it is `node scripts/impexp.mjs`. The compiler's `import` refuses a project that embeds a package (exit 999, twinbasic/twinbasic#841), and both verbs exit 0 after the failures they report. The reasons, and the path and stdin rules for anything that does run the executable (`bug_repro`'s `cli` mode), are in [WIP.Harness.md](WIP.Harness.md#getting-at-the-twin-sources).
 - **`tbbuild` exit codes:** 0 clean, 1 the project has errors, 2 the harness failed, 3 the compile never settled, 4 the project crashes the compiler, 5 the build failed after a clean compile. `--json` returns one object, `--keep` leaves the IDE running. **`--build` and `--llvm` (which implies it) build the project after a clean compile**, because LLVM code generation runs in a build and a compile never asks for it. They first stage a copy with an explicit build path (`%TEMP%\tbbuild\<port>\`), so the given `.twinproj` is untouched. A plain `--build` is the control for an `--llvm` run. `--llvm` refuses a Community or Personal licence.
 - **It runs the IDE on a private Windows desktop**, so it cannot seize focus. Set `TBBUILD_SHOW=1` while working interactively and leave it unset for unattended runs: a wedged IDE nobody can see is expensive to diagnose.
 - **One project per IDE**, 6--8 seconds each and flat in project size. Reusing a live IDE for a second project wedges it, so the cold start is the unit of work, not overhead to optimise away. Run concurrently to go faster: distinct `--port` values give distinct DevTools ports, user-data folders, temp folders (`%TEMP%\tbbuild-tmp-<port>`; IDEs building in one temp folder fail now and then to write the type library) and desktops.

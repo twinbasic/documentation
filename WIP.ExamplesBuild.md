@@ -187,7 +187,7 @@ documenting it has samples whose symbols exist only if that file does. `WinEvent
 is the case: its `Class MyService` names `MESSAGETABLE.EVENTS.service_started`, which comes
 from the JSON the page prints two sections further down.
 
-`resource=<project-relative path>` on that ` ```json ` fence stages it. `import` packs a
+`resource=<project-relative path>` on that ` ```json ` fence stages it. impexp packs a
 `Resources/` tree into the `.twinproj`, the attribute reads it, and a module referring to
 `MESSAGETABLE.EVENTS.service_started` compiles with 0 errors, so the member names really are
 produced from the file. The JSON's shape --- which array, which field supplies the name,
@@ -299,7 +299,7 @@ updates it, which beats a sample that quietly stops demonstrating anything.
 ## Template projects
 
 Version-controlled exported trees under `test/example-projects/<name>/` --- a `Settings`
-file plus `Sources/`, exactly what `twinBASIC_win32.exe export` produces and what `tbrun`
+file plus `Sources/`, exactly what `node scripts/impexp.mjs export` produces and what `tbrun`
 already consumes. Three exist:
 
 | template | references | for |
@@ -316,7 +316,8 @@ already consumes. Three exist:
 base-first, delta-over, so a template holds only the files that *differ*: `vb-private` is
 one `Settings`, `cef` and `webview2` are one stage file each. The relation lives in the tool
 rather than in the tree on purpose: a template directory is an exported twinBASIC project
-that `import` has to accept, so a marker file in it would be one more thing to test.
+that impexp packs whole, so a marker file in it would go into every batch built on it: one
+more thing to test.
 
 **`project.references` is a plain JSON array, and a hand-written entry works.** An entry
 composed from a package's own `Settings` --- id, name, version, `symbolId`,
@@ -768,19 +769,11 @@ that fails only the second is one LLVM cannot generate code for.
   fails its first step, clearing that folder, with a bare `EPERM`. The harness says what the
   `EPERM` means; stop the `twinBASIC.exe` processes whose command line names a project under
   that folder (by pid, never by image name), or run on another `--port`.
-- **`export` needs the output folder to exist** (one level only), and stdin redirected
-  (`</dev/null`) when looping, or the executable eats the loop's input.
-- **Paths handed to the compiler must be pure Windows.** It prefixes `\\?\`, which does not
-  accept forward slashes: a `C:\Users\x/Desktop/...` mix fails with `input twinproj file
-  does not exist`.
-- **`import`'s exit code does not say whether it worked.** It is 0 on every failure the
-  compiler reports itself, and 999 with no result line at all on a tree with a folder inside
-  its top-level `Packages` --- any project that embeds a package; see
-  [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md). The output is the only test: a successful pack
-  ends `... DONE`. A caller that packs through `execFileSync` throws on the 999 before it
-  reads the output, and `tbrun` would report exit 1, *compile errors*. `runCompiler` in
-  `scripts/lib/tb-install.mjs` reads the output whatever the status. No template embeds a
-  package; only a `resource=` fence staged under `Packages/` would reach it here.
+- **Batches are packed in process by impexp** (`packTree` in `scripts/lib/tb-project.mjs`),
+  never by the compiler executable's `import`, which exits 999 with nothing written on a
+  tree holding an embedded package and 0 after the failures it reports;
+  [WIP.Harness.md](WIP.Harness.md#getting-at-the-twin-sources) has the reasons. A
+  `resource=` fence staged under `Packages/` packs like any other.
 - **Office examples leak one process per run, and it is not self-limiting.** Each
   `CreateObject` starts a *separate* `EXCEL.EXE`, calling `Quit` is not sufficient --- the
   process exits only once every COM reference is released --- and they sit on the user's

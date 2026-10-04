@@ -1,8 +1,8 @@
 // Staging an exported twinBASIC source tree as a project the harness can build.
 //
 // The harness never builds the tree it is given. It copies the tree, changes
-// settings in the copy, and packs the copy into a .twinproj with the compiler
-// executable's `import` verb. Two of those changes matter to every caller:
+// settings in the copy, and packs the copy into a .twinproj with impexp, in
+// process. Two of those changes matter to every caller:
 //
 //   * project.buildPath becomes an explicit file. The default
 //     `${SourcePath}\Build\...` template makes the IDE open a native Save
@@ -15,10 +15,52 @@
 //
 // Rewriting the caller's own tree would do both, but a harness that edits the
 // project it was pointed at is one nobody trusts with a real project.
+//
+// Not the compiler executable's `import` verb: it exits 999 with nothing
+// written on a tree holding an embedded package (twinbasic/twinbasic#841), and
+// 0 on every failure it reports. impexp also packs the files in alphabetical
+// order where the compiler packs them in reverse, and the order can decide
+// what compiles (the static-ctor-args entry in BUGS-TO-REPORT.md).
 
 import { cpSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { runCompiler } from "./tb-install.mjs";
+import { exportProject, importProject } from "../impexp.mjs";
+
+// What impexp refused, with its details, for an error message.
+const why = (e) => [e.message, ...(e.details ?? [])].join("\n");
+
+/**
+ * Pack a source tree into a project file, replacing the file.
+ *
+ * @returns {object} impexp's counts
+ */
+export function packTree(project, tree) {
+  try {
+    return importProject(project, tree, { overwrite: true });
+  } catch (e) {
+    throw new Error(`packing failed: ${why(e)}`);
+  }
+}
+
+/**
+ * Write a project's source into a folder, which should be new or empty.
+ *
+ * Export replaces the files it writes and leaves every other file there, and
+ * the next pack would put those back in, so a folder left holding one is an
+ * error rather than impexp's warning.
+ *
+ * @returns {object} impexp's counts
+ */
+export function unpackProject(project, folder) {
+  let r;
+  try {
+    r = exportProject(project, folder, { overwrite: true });
+  } catch (e) {
+    throw new Error(`unpacking failed: ${why(e)}`);
+  }
+  if (r.stale.length) throw new Error(`unpacking left files that are not in ${project}:\n${r.stale.join("\n")}`);
+  return r;
+}
 
 /**
  * Copy an exported source tree, change its settings, and pack it.
@@ -27,13 +69,12 @@ import { runCompiler } from "./tb-install.mjs";
  * @param {string} o.src       the exported tree: the folder holding Settings and Sources
  * @param {string} o.stage     where the copy goes; anything there is replaced
  * @param {string} o.project   the .twinproj to write
- * @param {string} o.compiler  the compiler executable (tb-install's compilerExe)
  * @param {object | ((original: object) => object)} [o.settings]  settings to
  *   set in the copy, or a function from the tree's own settings to them
  * @param {(stage: string) => void} [o.prepare]  changes the copy before it is packed
  * @returns {{original: object, settings: object}} the tree's settings, and the copy's
  */
-export function stageProject({ src, stage, project, compiler, settings = {}, prepare }) {
+export function stageProject({ src, stage, project, settings = {}, prepare }) {
   rmSync(stage, { recursive: true, force: true });
   cpSync(src, stage, { recursive: true });
   const file = path.join(stage, "Settings");
@@ -41,12 +82,7 @@ export function stageProject({ src, stage, project, compiler, settings = {}, pre
   const staged = { ...original, ...(typeof settings === "function" ? settings(original) : settings) };
   writeFileSync(file, JSON.stringify(staged, null, "\t"), "utf8");
   prepare?.(stage);
-
-  // import's exit code does not say whether it worked -- 0 on the failures it
-  // reports, 999 on a tree holding an embedded package -- so runCompiler reads
-  // the output instead.
-  const pack = runCompiler(compiler, ["import", project, stage, "--overwrite"]);
-  if (!pack.done) throw new Error(`packing failed${pack.why}:\n${pack.tail}`);
+  packTree(project, stage);
   return { original, settings: staged };
 }
 

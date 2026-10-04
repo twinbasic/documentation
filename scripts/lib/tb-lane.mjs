@@ -38,9 +38,8 @@ import {
   waitForCompile,
 } from "./tb-ide.mjs";
 import { checkAddinsRoot } from "./tb-ide-addins.mjs";
-import { compilerExe, runCompiler } from "./tb-install.mjs";
 import { restartCompiler } from "./tb-operate.mjs";
-import { laneProjectId, stageProject } from "./tb-project.mjs";
+import { laneProjectId, stageProject, unpackProject } from "./tb-project.mjs";
 
 /** The environment variable the runner hands a lane to its scenario file in. */
 export const LANE_ENV = "TB_ADDIN_LANE";
@@ -50,8 +49,6 @@ export function addinLane() {
   const raw = process.env[LANE_ENV];
   return raw ? new Lane(JSON.parse(raw)) : null;
 }
-
-const winPath = (p) => path.resolve(p).split("/").join("\\");
 
 export class Lane {
   /**
@@ -105,17 +102,14 @@ export class Lane {
     const files = readdirSync(dir).filter((f) => /\.twinproj$/i.test(f));
     if (files.length !== 1) throw new Error(`${dir} holds ${files.length} .twinproj files, not one`);
     const out = path.join(this.work, "samples", sample.replace(/[^A-Za-z0-9]+/g, "-"));
+    // The folder is the lane's own, and removed first, since unpackProject
+    // refuses a folder that holds files the project does not.
     rmSync(out, { recursive: true, force: true });
-    mkdirSync(out, { recursive: true });
-    // export wants backslashes, a full path to the project and a trailing
-    // separator on the folder (WIP.md, Driving the twinBASIC compiler).
-    const r = runCompiler(compilerExe(this.copy()), [
-      "export",
-      winPath(path.join(dir, files[0])),
-      `${winPath(out)}\\`,
-      "--overwrite",
-    ]);
-    if (!r.done) throw new Error(`exporting ${sample} failed${r.why}:\n${r.tail}`);
+    try {
+      unpackProject(path.join(dir, files[0]), out);
+    } catch (e) {
+      throw new Error(`exporting ${sample} failed:\n${e.message}`);
+    }
     return out;
   }
 
@@ -211,7 +205,6 @@ export class Lane {
       src,
       stage: path.join(this.work, "project-src"),
       project,
-      compiler: compilerExe(exe),
       settings: (original) => ({
         "project.buildPath": path.join(this.work, "out", `${original["project.name"]}.exe`),
         "project.id": laneProjectId(2, this.port),

@@ -21,6 +21,12 @@
 //
 // The exit code says why a command failed, and whether it warned; the usage
 // message lists the codes.
+//
+// It can also be imported as a module. exportProject and importProject do what
+// the two verbs do, with the same arguments and { overwrite }. Each returns
+// what the command line prints -- the counts, the skipped and added entries,
+// the warnings -- and throws where it reports an error: a Refusal, whose
+// reason names its exit code, has written nothing.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -259,7 +265,7 @@ function serialize(root) {
 
 // A refusal the command line reports as `ERROR:` lines, with nothing written.
 // Its reason is one of the EXIT keys below.
-class Refusal extends Error {
+export class Refusal extends Error {
   constructor(reason, message, details = []) {
     super(message);
     this.reason = reason;
@@ -351,7 +357,7 @@ function isSafeName(name) {
   return name !== "" && !/[\\/:*?"<>|\x00-\x1f]/.test(name) && !/[. ]$/.test(name);
 }
 
-function exportProject(projectPath, folder, { overwrite = false } = {}) {
+export function exportProject(projectPath, folder, { overwrite = false } = {}) {
   const root = readProject(projectPath);
 
   // Everything is checked before anything is written, so a refusal leaves the
@@ -521,7 +527,7 @@ function buildTree(dirPath, rel, self, skipped, added) {
   };
 }
 
-function importProject(projectPath, folder, { overwrite = false } = {}) {
+export function importProject(projectPath, folder, { overwrite = false } = {}) {
   // Everything is checked before the tree is read, so a refusal leaves the
   // project file exactly as it was.
   if (kindOf(folder) !== "folder") throw new Refusal("missing", `input folder does not exist: ${folder}`, HINT_IMPORT);
@@ -1079,4 +1085,16 @@ function main(argv) {
   }
 }
 
-process.exitCode = main(process.argv.slice(2));
+// The command line runs only when this file is run, not when it is imported.
+// Node loads the file it runs from its real path, so the comparison is between
+// real paths: process.argv[1] alone would not match when the file is run
+// through a symbolic link, and the command would silently do nothing.
+function isRun() {
+  try {
+    return fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+}
+
+if (isRun()) process.exitCode = main(process.argv.slice(2));

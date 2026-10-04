@@ -74,16 +74,7 @@
 // and the rest without it, a crash that names none bisects, O(log n) builds, and
 // one that needs several samples at once is reported with all of them.
 
-import {
-  cpSync,
-  existsSync,
-  mkdirSync,
-  promises as fs,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { cpSync, mkdirSync, promises as fs, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -142,7 +133,8 @@ import {
 } from "./lib/example-run.mjs";
 import { compileProject } from "./lib/tb-build.mjs";
 import { wantShow } from "./lib/tb-ide.mjs";
-import { buildNumber, compilerExe, findIde, runCompiler } from "./lib/tb-install.mjs";
+import { buildNumber, findIde } from "./lib/tb-install.mjs";
+import { packTree } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import { DOCS_DIR, REPO_ROOT } from "../lib/repo-paths.mjs";
 
@@ -215,7 +207,7 @@ Exit codes:
      that fails the build, or a \`${RUN_MARKER}\` sample raised an error, did not return or
      printed something other than the page says; the report names each
   2  the harness could not run: a refused command line, a failed self-test probe, no
-     IDE or compiler, an unreadable --report file, a work folder it could not clear,
+     IDE, an unreadable --report file, a work folder it could not clear,
      an --llvm run on a Community or Personal licence, or a crash`;
 
 if (values.help) printHelpAndExit(USAGE);
@@ -580,21 +572,16 @@ function stageBatch(batch, work) {
   }
 
   const proj = path.join(work, `b${index}.twinproj`);
-  // Pure Windows paths: the compiler prefixes \\?\, which does not accept
-  // forward slashes, and a mixed path fails with "input twinproj file does not
-  // exist" rather than with anything about separators.
-  const pack = runCompiler(COMPILER, ["import", proj.split("/").join("\\"), dir.split("/").join("\\"), "--overwrite"]);
-  // import's exit code does not say whether it worked -- 0 on the failures it
-  // reports, 999 on a tree holding an embedded package, which a resource= fence
-  // staged under Packages/ would make -- so runCompiler reads the output.
-  if (!pack.done) throw new Error(`packing failed${pack.why}:\n${pack.tail}`);
+  // The batch is packed in process by impexp (tb-project's packTree), which
+  // also packs a tree holding an embedded package, as a resource= fence staged
+  // under Packages/ makes.
+  packTree(proj, dir);
   return { proj, dir, map, runs };
 }
 
 // ------------------------------------------------------------------- building
 
 const IDE = findIde(values.ide);
-const COMPILER = IDE ? compilerExe(IDE) : null;
 
 // The registry tidy for the whole run (lib/tb-registry.mjs): taken in main()
 // before the first lane starts, finished once the last one has ended -- and
@@ -995,10 +982,6 @@ async function main() {
       "no twinBASIC IDE found: pass --ide <twinBASIC.exe>, set TB_IDE, " +
         "or unpack a twinBASIC_IDE_BETA_<n> folder on your Desktop",
     );
-    process.exit(2);
-  }
-  if (!existsSync(COMPILER)) {
-    console.error(`no compiler beside the IDE at ${COMPILER}`);
     process.exit(2);
   }
 
