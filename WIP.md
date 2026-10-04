@@ -156,7 +156,8 @@ scenario files import `scenario` from `test/addin/scenario.mjs`.
 one IDE set up as a lane is (`Lane` from `scripts/lib/tb-lane.mjs`), on the user's desktop,
 DevTools port 9590, opened on `test/addin/helphost` with `docs/_site` served to the pane.
 It waits for the IDE to close, then puts the registry and `tbDocsHelp` back. The lanes stay
-on the private desktop by default (owner, 2026-10-04); only this tool shows its IDE.
+on the private desktop by default (owner, 2026-10-04); only this tool shows its IDE, and only
+the one it opens the project in: the IDE that builds the add-in stays on a private desktop.
 
 ## Authoring a page
 

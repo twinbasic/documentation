@@ -1241,7 +1241,8 @@ in the temp folder, never into the install's `addins\` or `%APPDATA%\twinBASIC\a
 IDE has a private `APPDATA`, so none of your own add-ins loads into it. `TB_ADDIN_TEST` is `1`,
 so *Open in browser* prints `open <url>` to the Debug Console and starts nothing. The pane's
 pages come from the built site, `docs/_site`, served on `localhost`, so run `build.bat` first.
-Unlike the lanes, the IDE is always on your desktop.
+Unlike the lanes, the IDE is always on your desktop; the one that builds the add-in first runs on a
+private desktop, as a lane's does, so it never appears or takes the focus.
 
 `--project` names the exported project to open, by default `test/addin/helphost`, the help
 lane's host. It is opened as a staged copy, so edits made in the IDE are not kept. `--port` is

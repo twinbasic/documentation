@@ -21,7 +21,8 @@
 //     pane's pages come from the built site, docs/_site, served on localhost.
 //
 // Unlike the lanes, the IDE is always on the user's desktop: there is nothing
-// to try on a private one.
+// to try on a private one. The IDE that builds the add-in is not: it runs on a
+// private desktop, as a lane's does, so it cannot flash up or take the focus.
 
 import { existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -154,7 +155,7 @@ try {
   const origin = `http://localhost:${server.port}`;
   step = "build";
   console.log(`building ${path.relative(REPO_ROOT, ADDIN)} into a copy of ${ide}`);
-  await lane.addAddin(ADDIN);
+  await lane.addAddin(ADDIN, { show: false });
   if (!stopping) {
     step = "open";
     console.log(`opening ${project}`);
