@@ -362,11 +362,22 @@ That is the one piece of the harness that cannot be JavaScript, because it is
 started running inside a job, the job object calls ([The IDE runs inside a
 job](#the-ide-runs-inside-a-job)) --- and Node has no FFI without a native addon.
 [scripts/lib/tb-launch.ps1](scripts/lib/tb-launch.ps1) holds those calls. It is **not run
-as a file**: `tb-ide.mjs` reads the text and passes it through
+as a file**: `tb-ide.mjs` reads the text and runs it through
 `-EncodedCommand`, so the default execution policy --- which refuses `.ps1` files on this
 machine, and which is the same policy [BOOKPLAN.md](BOOKPLAN.md) records blocking `npx.ps1`
 --- never comes into it, and no `-ExecutionPolicy Bypass` has to be recommended to anyone.
 Its inputs arrive as environment variables, so there is no argument quoting to get wrong.
+**The script itself arrives in one too** (`TBBUILD_SCRIPT`), and `-EncodedCommand` carries only a
+one-line bootstrap that takes it out of the environment, so the launched program does not
+inherit it, and runs it. The script went through `-EncodedCommand` whole until it grew past about
+12,000 characters: UTF-16 in base64 is 2.7 characters to each, a command line stops at 32,767,
+and every launch then failed with `spawn ENAMETOOLONG`. An environment variable stops at 32,767
+characters of its own; `launchOnDesktop` refuses a script over 30,000. The script also takes
+`TBBUILD_STDOUT` / `TBBUILD_STDERR` (files for the program's standard output and error),
+`TBBUILD_ARGS` (more of the command line, already quoted) and `TBBUILD_DIALOGS=close`, which
+polls the private desktop every 250 ms for visible `#32770` boxes belonging to the program or
+its job, prints each as `dialog <base64 of JSON {title, text}>` and presses its OK button:
+`bug_repro`'s `cli` mode uses all four for a compiler that opens a modal box on a damaged project.
 
 A launch that fails prints no pid, and its cause as one line on stderr, which `launchIde`
 reports. Two things used to hide the cause. With its streams redirected, PowerShell writes

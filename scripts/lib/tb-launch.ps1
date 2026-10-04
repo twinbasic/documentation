@@ -11,6 +11,28 @@
 #   TBBUILD_DESKTOP  desktop name to create
 #   TBBUILD_JOB      "0" for no job -- a --keep IDE, which must outlive the run
 #
+# Optional, and without them nothing below changes:
+#
+#   TBBUILD_ARGS     more of the command line, already quoted, added after
+#                    TBBUILD_ARG: for a program that takes several arguments.
+#   TBBUILD_STDOUT   a file path: the process's standard output goes to that file.
+#   TBBUILD_STDERR   the same for standard error. When either is set the process
+#                    gets standard handles of its own: stdin is the null device,
+#                    and an output left unset is the null device too.
+#   TBBUILD_DIALOGS  "close": while the process runs, every 250 ms, look for
+#                    visible #32770 dialog boxes on the private desktop that
+#                    belong to the process or to anything in its job. Each one
+#                    seen for the first time is reported as a line
+#                    `dialog <base64 of UTF-8 JSON {"title":...,"text":...}>`,
+#                    text being its Static children's texts joined by a space,
+#                    and is then closed: BM_CLICK on its OK button, else on its
+#                    first button, else WM_CLOSE. A compiler that is given a
+#                    damaged project opens a modal message box and waits on it
+#                    for ever; on a private desktop nobody can answer it.
+#
+# The output is the pid on a line of its own, then any dialog lines, then
+# `exit <n>`.
+#
 # A launch that fails prints no pid, and its cause as one line on stderr.
 #
 # Why a desktop at all: the twinBASIC IDE calls HostForceFocus() from its own
@@ -60,10 +82,19 @@ $desktop = if ($env:TBBUILD_DESKTOP) { $env:TBBUILD_DESKTOP } else { "tbbuild" }
 # environment option that was entered".
 Add-Type -TypeDefinition @'
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Text;
 
 public static class TbLaunch {
+  [StructLayout(LayoutKind.Sequential)]
+  public struct SECURITY_ATTRIBUTES {
+    public int nLength; public IntPtr lpSecurityDescriptor; public int bInheritHandle;
+  }
+  public delegate bool EnumProc(IntPtr hwnd, IntPtr lParam);
+  public class Dialog { public string Title, Text; }
+
   [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
   public struct STARTUPINFO {
     public int cb; public string lpReserved; public string lpDesktop; public string lpTitle;
@@ -126,6 +157,43 @@ public static class TbLaunch {
   [DllImport("kernel32.dll", SetLastError = true)]
   static extern bool GetExitCodeProcess(IntPtr process, out int exitCode);
 
+  [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+  static extern IntPtr CreateFile(string name, uint access, uint share,
+    ref SECURITY_ATTRIBUTES sa, uint disp, uint flags, IntPtr tmpl);
+
+  [DllImport("kernel32.dll", SetLastError = true)]
+  static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
+
+  [DllImport("kernel32.dll", SetLastError = true)]
+  static extern bool IsProcessInJob(IntPtr process, IntPtr job, out bool result);
+
+  [DllImport("kernel32.dll", SetLastError = true)]
+  static extern bool CloseHandle(IntPtr h);
+
+  [DllImport("user32.dll", SetLastError = true)]
+  static extern bool EnumDesktopWindows(IntPtr desk, EnumProc cb, IntPtr lp);
+
+  [DllImport("user32.dll", SetLastError = true)]
+  static extern bool EnumChildWindows(IntPtr parent, EnumProc cb, IntPtr lp);
+
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+  static extern int GetClassName(IntPtr h, StringBuilder sb, int max);
+
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+  static extern int GetWindowText(IntPtr h, StringBuilder sb, int max);
+
+  [DllImport("user32.dll")]
+  static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+
+  [DllImport("user32.dll")]
+  static extern bool IsWindowVisible(IntPtr h);
+
+  [DllImport("user32.dll")]
+  static extern bool PostMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
+
+  [DllImport("user32.dll")]
+  static extern IntPtr GetDlgItem(IntPtr dlg, int id);
+
   // The error of the call just made, with its text. Nothing may come between
   // that call and this one.
   static Exception Failed(string what) {
@@ -186,6 +254,111 @@ public static class TbLaunch {
     if (!GetExitCodeProcess(pi.hProcess, out code)) throw Failed("GetExitCodeProcess");
     return code;
   }
+
+  // An inheritable handle: for writing, a file created or truncated, or the null
+  // device when the path is "NUL"; for reading, the null device.
+  public static IntPtr OpenInheritable(string path, bool write) {
+    SECURITY_ATTRIBUTES sa = new SECURITY_ATTRIBUTES();
+    sa.nLength = Marshal.SizeOf(sa);
+    sa.bInheritHandle = 1;
+    bool device = !write || path == "NUL";
+    // a device is opened with OPEN_EXISTING (3), a file with CREATE_ALWAYS (2)
+    IntPtr h = CreateFile(device ? "NUL" : path, write ? 0x40000000u : 0x80000000u, 3, ref sa,
+                          device ? 3u : 2u, 0x80, IntPtr.Zero);
+    if (h == new IntPtr(-1)) throw Failed("CreateFile " + (device ? "NUL" : path));
+    return h;
+  }
+
+  // Start with the standard handles given (STARTF_USESTDHANDLES). The handles
+  // must be inheritable, which makes CreateProcess inherit them.
+  public static PROCESS_INFORMATION StartWithHandles(string exe, string cmd, string cwd,
+                                                     string desktop, uint flags,
+                                                     IntPtr hIn, IntPtr hOut, IntPtr hErr) {
+    STARTUPINFO si = new STARTUPINFO();
+    si.cb = Marshal.SizeOf(si);
+    si.lpDesktop = desktop;
+    si.dwFlags = 0x100;
+    si.hStdInput = hIn;
+    si.hStdOutput = hOut;
+    si.hStdError = hErr;
+    PROCESS_INFORMATION pi;
+    if (!CreateProcess(exe, cmd, IntPtr.Zero, IntPtr.Zero, true, flags, IntPtr.Zero, cwd,
+                       ref si, out pi)) {
+      throw Failed("CreateProcess");
+    }
+    return pi;
+  }
+
+  // Waits up to ms; true when the process has ended, with its exit code.
+  public static bool WaitMs(PROCESS_INFORMATION pi, uint ms, out int code) {
+    code = 0;
+    if (WaitForSingleObject(pi.hProcess, ms) != 0) return false;
+    if (!GetExitCodeProcess(pi.hProcess, out code)) throw Failed("GetExitCodeProcess");
+    return true;
+  }
+
+  static string Cls(IntPtr h) {
+    StringBuilder sb = new StringBuilder(256); GetClassName(h, sb, 256); return sb.ToString();
+  }
+  static string Txt(IntPtr h) {
+    StringBuilder sb = new StringBuilder(4096); GetWindowText(h, sb, 4096); return sb.ToString();
+  }
+
+  // Whether a window's process is the launched one or is in its job (job is
+  // IntPtr.Zero when there is none).
+  static bool Belongs(IntPtr hwnd, uint pid, IntPtr job) {
+    uint owner;
+    GetWindowThreadProcessId(hwnd, out owner);
+    if (owner == pid) return true;
+    if (job == IntPtr.Zero) return false;
+    // PROCESS_QUERY_LIMITED_INFORMATION
+    IntPtr p = OpenProcess(0x1000, false, owner);
+    if (p == IntPtr.Zero) return false;
+    bool inJob;
+    bool ok = IsProcessInJob(p, job, out inJob);
+    CloseHandle(p);
+    return ok && inJob;
+  }
+
+  // The visible dialog boxes (#32770) on the desktop that belong to the launched
+  // process or to its job and are not in `seen`: each is read, then closed. A
+  // window is forgotten once it is gone, since window handles are reused.
+  public static List<Dialog> NewDialogs(IntPtr desk, IntPtr job, int pid, HashSet<long> seen) {
+    List<IntPtr> top = new List<IntPtr>();
+    EnumDesktopWindows(desk, delegate(IntPtr h, IntPtr l) { top.Add(h); return true; }, IntPtr.Zero);
+    HashSet<long> now = new HashSet<long>();
+    List<Dialog> found = new List<Dialog>();
+    foreach (IntPtr h in top) {
+      now.Add(h.ToInt64());
+      if (seen.Contains(h.ToInt64())) continue;
+      if (!IsWindowVisible(h) || Cls(h) != "#32770") continue;
+      if (!Belongs(h, (uint)pid, job)) continue;
+      List<string> texts = new List<string>();
+      IntPtr first = IntPtr.Zero;
+      EnumChildWindows(h, delegate(IntPtr c, IntPtr l) {
+        string cls = Cls(c);
+        if (cls == "Static") {
+          string t = Txt(c);
+          if (t.Length > 0) texts.Add(t);
+        } else if (cls == "Button" && first == IntPtr.Zero) {
+          first = c;
+        }
+        return true;
+      }, IntPtr.Zero);
+      Dialog d = new Dialog();
+      d.Title = Txt(h);
+      d.Text = string.Join(" ", texts.ToArray());
+      found.Add(d);
+      seen.Add(h.ToInt64());
+      // IDOK is control id 1.
+      IntPtr ok = GetDlgItem(h, 1);
+      IntPtr btn = (ok != IntPtr.Zero && Cls(ok) == "Button") ? ok : first;
+      if (btn != IntPtr.Zero) PostMessage(btn, 0xF5, IntPtr.Zero, IntPtr.Zero);  // BM_CLICK
+      else PostMessage(h, 0x10, IntPtr.Zero, IntPtr.Zero);                         // WM_CLOSE
+    }
+    seen.IntersectWith(now);
+    return found;
+  }
 }
 '@
 
@@ -205,11 +378,19 @@ if ($useJob) { $job = [TbLaunch]::KillOnCloseJob() }
 # syntax."
 $cmd = '"' + $exe + '"'
 if ($arg) { $cmd += ' "' + $arg + '"' }
+if ($env:TBBUILD_ARGS) { $cmd += ' ' + $env:TBBUILD_ARGS }
 
 # CREATE_SUSPENDED (0x4): the IDE goes into the job before it runs a single
 # instruction, so there is no moment in which it could start a child outside.
 $flags = if ($useJob) { 0x4 } else { 0 }
-$pi = [TbLaunch]::Start($exe, $cmd, [IO.Path]::GetDirectoryName($exe), $desktop, $flags)
+if ($env:TBBUILD_STDOUT -or $env:TBBUILD_STDERR) {
+  $hIn = [TbLaunch]::OpenInheritable("NUL", $false)
+  $hOut = [TbLaunch]::OpenInheritable($(if ($env:TBBUILD_STDOUT) { $env:TBBUILD_STDOUT } else { "NUL" }), $true)
+  $hErr = [TbLaunch]::OpenInheritable($(if ($env:TBBUILD_STDERR) { $env:TBBUILD_STDERR } else { "NUL" }), $true)
+  $pi = [TbLaunch]::StartWithHandles($exe, $cmd, [IO.Path]::GetDirectoryName($exe), $desktop, $flags, $hIn, $hOut, $hErr)
+} else {
+  $pi = [TbLaunch]::Start($exe, $cmd, [IO.Path]::GetDirectoryName($exe), $desktop, $flags)
+}
 if ($useJob) {
   # An IDE that cannot go into the job is ended, still suspended, rather than
   # resumed: the caller gets no pid from a failed launch, so an IDE resumed
@@ -222,4 +403,18 @@ Write-Output $pi.dwProcessId
 
 # The process's exit code, on a line of its own once it ends: tbrun's --exe
 # reads it for the probe's exe.
-Write-Output ("exit " + [TbLaunch]::Wait($pi))
+if ($env:TBBUILD_DIALOGS -eq "close") {
+  $jobHandle = if ($useJob) { $job } else { [IntPtr]::Zero }
+  $seen = New-Object 'System.Collections.Generic.HashSet[long]'
+  $code = 0
+  while ($true) {
+    foreach ($d in [TbLaunch]::NewDialogs($hDesk, $jobHandle, $pi.dwProcessId, $seen)) {
+      $json = ([ordered]@{ title = $d.Title; text = $d.Text } | ConvertTo-Json -Compress)
+      Write-Output ("dialog " + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json)))
+    }
+    if ([TbLaunch]::WaitMs($pi, 250, [ref]$code)) { break }
+  }
+  Write-Output ("exit " + $code)
+} else {
+  Write-Output ("exit " + [TbLaunch]::Wait($pi))
+}

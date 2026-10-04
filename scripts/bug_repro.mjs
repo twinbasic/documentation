@@ -70,6 +70,15 @@
 //     compares its exit code and output. Paths are given backslashed and in full:
 //     `export` prefixes \\?\ to its project path, and cannot find a folder named
 //     with forward slashes (WIP.md, "Driving the twinBASIC compiler").
+//  6. EACH `cli` COMMAND RUNS ON A PRIVATE DESKTOP, in a kill-on-close job, as
+//     the IDE does (scripts/lib/tb-launch.ps1), with its output in files. The
+//     compiler opens a modal message box for a damaged project and waits on it
+//     for ever; on the user's desktop that box is theirs to close, and on a
+//     private one nobody could. The launcher reads each box (title, text) and
+//     presses OK, and the output the reproducer's `expect` is matched against
+//     starts with one `dialog: <title>: <text>` line per box. `attach` files
+//     are copied into the command's temp folder, so {tmp}/<attach path> is a
+//     copy a command may damage further.
 import { spawn, spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import {
@@ -98,7 +107,7 @@ import {
   withUsageError,
 } from "../lib/cli.mjs";
 import { REPO_ROOT } from "../lib/repo-paths.mjs";
-import { keptIdeLines, summaryLine, TARGETS } from "./lib/tb-ide.mjs";
+import { keptIdeLines, killTree, launchOnDesktop, summaryLine, TARGETS } from "./lib/tb-ide.mjs";
 import { compilerExe, findIde } from "./lib/tb-install.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import {
@@ -168,8 +177,10 @@ Options:
                     the first of the lanes' ports
   --arch <target>   win32 or win64 (default win32); compile, build and run
   --timeout <secs>  as tbbuild's and tbrun's; with a cli reproducer, the time
-                    limit on the compiler executable; with vb6, the limit on
-                    Probe.exe (default 30)
+                    limit on each command of the compiler executable, which runs
+                    on a private desktop, and whose dialog boxes are read and
+                    closed (default 120); with vb6, the limit on Probe.exe
+                    (default 30)
   --llvm            build with LLVM; build and run
   --exe             run also runs the built exe and prints what it writes; run
   --jobs <n>        reproducers to run at once, on ports base, base+1, ... (default
@@ -764,8 +775,17 @@ async function runProbe(slug, o) {
  * The compiler executable, as a cli repro.json says: one command, or several in
  * turn in the one temp folder. Their output is joined, and their exit code is
  * the one they all gave, or the codes joined by commas when they differ.
+ *
+ * Each command runs on a private desktop, in a kill-on-close job, with its
+ * standard output and error in files (launchOnDesktop). The compiler opens a
+ * modal message box for some inputs, a damaged project among them, and waits for
+ * it to be closed: on the user's own desktop that is a box to dismiss by hand, on
+ * a private one nobody sees it. So the launcher records every dialog box the
+ * command opens and presses its OK button, which lets the command go on. A
+ * command's output is one `dialog: <title>: <text>` line per box, in the order
+ * they opened, then its standard output, then its standard error.
  */
-function runCli(slug, repro, o) {
+async function runCli(slug, repro, o) {
   const ide = findTools(o.ide);
   const exe = compilerExe(ide);
   if (!existsSync(exe)) throw new Fail(`no compiler beside the IDE at ${exe}`);
@@ -781,13 +801,19 @@ function runCli(slug, repro, o) {
       copyFileSync(p.twinproj, project);
       cpSync(p.src, src, { recursive: true });
     }
+    // The attachments, at their own relative paths: {tmp}/<attach path> is a copy.
+    for (const a of repro.attach ?? []) {
+      const to = path.join(scratch, ...a.split("/"));
+      mkdirSync(path.dirname(to), { recursive: true });
+      copyFileSync(path.join(p.dir, a), to);
+    }
     const commands = repro.cli.every(Array.isArray) ? repro.cli : [repro.cli];
     const limit = (o.timeout ?? 120) * 1000;
     const codes = [];
     let stdout = "";
     let stderr = "";
     let output = "";
-    for (const command of commands) {
+    for (const [n, command] of commands.entries()) {
       const argv = command.map((a) =>
         a
           .replaceAll("{project}", project)
@@ -795,21 +821,47 @@ function runCli(slug, repro, o) {
           .replaceAll("{tmp}", scratch)
           .replaceAll("{ide}", path.resolve(path.dirname(ide))),
       );
-      const r = spawnSync(exe, argv, {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
-        timeout: limit,
-        windowsHide: true,
-      });
-      if (r.error) {
-        throw new Fail(
-          r.error.code === "ETIMEDOUT" ? `the compiler executable ran past ${limit / 1000} s` : r.error.message,
-        );
+      // The scratch folder is deleted at the end, and holds these files.
+      const outFile = path.join(scratch, `.cli-${n}.out`);
+      const errFile = path.join(scratch, `.cli-${n}.err`);
+      let run;
+      try {
+        run = await launchOnDesktop({
+          exe,
+          args: argv,
+          desktop: `bugrepro-cli-${process.pid}`,
+          env: process.env,
+          stdout: outFile,
+          stderr: errFile,
+          dialogs: "close",
+        });
+      } catch (e) {
+        throw new Fail(`could not run the compiler executable on a private desktop: ${e.message}`);
       }
-      codes.push(r.status);
-      stdout += r.stdout ?? "";
-      stderr += r.stderr ?? "";
-      output += `${r.stdout ?? ""}${r.stderr ?? ""}`;
+      let timer;
+      const timedOut = await Promise.race([
+        run.exited.then(() => false),
+        new Promise((r) => {
+          timer = setTimeout(() => r(true), limit);
+        }),
+      ]);
+      clearTimeout(timer);
+      if (timedOut) {
+        // By pid with its tree; the launcher's end closes the job, which takes whatever the kill missed.
+        killTree(run.pid);
+        run.launcher.kill();
+      }
+      const { code, dialogs } = await run.finished;
+      if (timedOut) {
+        const boxes = dialogs.length ? `; it opened ${dialogs.map((d) => `"${d.title}"`).join(", ")}` : "";
+        throw new Fail(`the compiler executable ran past ${limit / 1000} s${boxes}`);
+      }
+      const read = (f) => (existsSync(f) ? readFileSync(f, "utf8") : "");
+      const said = dialogs.map((d) => `dialog: ${d.title}: ${d.text.replace(/\s*\r?\n\s*/g, " ")}\n`).join("");
+      codes.push(code);
+      stdout += read(outFile);
+      stderr += read(errFile);
+      output += `${said}${read(outFile)}${read(errFile)}`;
     }
     const code = codes.every((c) => c === codes[0]) ? codes[0] : codes.join(",");
     return { code, stdout, stderr, json: null, message: "", output };
@@ -924,7 +976,7 @@ async function verifyOne(slug, repro, lane) {
     if (existsSync(path.join(where(slug).src, "Settings"))) pack(slug);
     let r;
     let table;
-    if (repro.mode === "cli") r = runCli(slug, repro, o);
+    if (repro.mode === "cli") r = await runCli(slug, repro, o);
     else if (repro.mode === "run") {
       r = await runProbe(slug, { ...o, llvm: repro.llvm, exe: repro.exe });
       table = TBRUN_EXIT;

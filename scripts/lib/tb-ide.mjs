@@ -211,6 +211,23 @@ export async function launchIde({ exe, project, port, show = false, keep = false
 }
 
 /**
+ * One argument as it goes into a Windows command line, quoted the way the C
+ * runtime reads it back (and Node writes it): an argument with a space, a tab or
+ * a quote, or an empty one, is wrapped in quotes; the backslashes before a quote,
+ * and at the end of a wrapped argument, are doubled. `C:\out\` stays `C:\out\`,
+ * and `C:\my out\` becomes `"C:\my out\\"`, which is what keeps the closing quote
+ * from being escaped.
+ */
+export function quoteArg(a) {
+  if (a !== "" && !/[\s"]/.test(a)) return a;
+  return `"${a.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, "$1$1")}"`;
+}
+
+// What powershell runs for launchOnDesktop: the script in TBBUILD_SCRIPT, taken
+// out of the environment first.
+const BOOTSTRAP = "$s = $env:TBBUILD_SCRIPT; Remove-Item Env:TBBUILD_SCRIPT; & ([scriptblock]::Create($s))";
+
+/**
  * Start a program on a private desktop, inside a kill-on-close job, through
  * lib/tb-launch.ps1. launchIde starts the IDE this way, and tbrun's --exe the
  * probe's exe, so that neither can show a window on the user's desktop.
@@ -222,20 +239,53 @@ export async function launchIde({ exe, project, port, show = false, keep = false
  * @param {boolean} [o.job]   false for no job, for a program that is to outlive
  *                            this Node process
  * @param {object} o.env      its whole environment
- * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess, exited: Promise<number | null>}>}
+ * @param {string[]} [o.args] more arguments, after `arg`, for a program that takes
+ *                            several; quoted as the C runtime reads them
+ * @param {string} [o.stdout] a file path: the program's standard output goes there
+ * @param {string} [o.stderr] the same for standard error. With either, the program's
+ *                            standard input is the null device, and an output left
+ *                            out goes to the null device
+ * @param {"close"} [o.dialogs] look for dialog boxes the program (or anything in its
+ *                            job) opens on the desktop, record each, and close it
+ *                            by pressing OK, so that the program can go on
+ * @returns {Promise<{pid: number, launcher: import("node:child_process").ChildProcess, exited: Promise<number | null>, finished: Promise<{code: number | null, dialogs: {title: string, text: string}[]}>}>}
  *   `exited` settles with the program's exit code when it ends, or null when
- *   the launcher ended without one -- killed, or failed. Throws, with the
- *   launcher's error, when the program did not start.
+ *   the launcher ended without one -- killed, or failed. `finished` settles at
+ *   the same time with that code and the dialogs recorded, in the order they
+ *   opened (empty without `dialogs`). Throws, with the launcher's error, when
+ *   the program did not start.
  */
-export async function launchOnDesktop({ exe, arg = "", desktop, job = true, env }) {
+export async function launchOnDesktop({ exe, arg = "", args, desktop, job = true, env, stdout, stderr, dialogs }) {
   const script = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "tb-launch.ps1"), "utf8");
+  // -EncodedCommand is UTF-16 in base64, 2.7 characters to each of the script's,
+  // and a command line stops at 32,767: the script outgrew that at about 12,000
+  // characters (ENAMETOOLONG). So the script travels in an environment variable,
+  // which stops at 32,767 characters of its own, and the command is a bootstrap
+  // that takes it out of the environment, so that the program it launches does
+  // not inherit it, and runs it.
+  if (script.length > 30000) {
+    throw new Error(`tb-launch.ps1 is ${script.length} characters, and an environment variable stops at 32,767`);
+  }
   const ps = spawn(
     "powershell",
-    ["-NoProfile", "-NonInteractive", "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")],
+    ["-NoProfile", "-NonInteractive", "-EncodedCommand", Buffer.from(BOOTSTRAP, "utf16le").toString("base64")],
     {
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
-      env: { ...env, TBBUILD_EXE: exe, TBBUILD_ARG: arg, TBBUILD_DESKTOP: desktop, TBBUILD_JOB: job ? "1" : "0" },
+      // An option left out removes the variable, so that one in the caller's
+      // environment cannot switch it on.
+      env: {
+        ...env,
+        TBBUILD_SCRIPT: script,
+        TBBUILD_EXE: exe,
+        TBBUILD_ARG: arg,
+        TBBUILD_ARGS: args?.length ? args.map(quoteArg).join(" ") : undefined,
+        TBBUILD_DESKTOP: desktop,
+        TBBUILD_JOB: job ? "1" : "0",
+        TBBUILD_STDOUT: stdout || undefined,
+        TBBUILD_STDERR: stderr || undefined,
+        TBBUILD_DIALOGS: dialogs || undefined,
+      },
     },
   );
   let err = "",
@@ -256,11 +306,21 @@ export async function launchOnDesktop({ exe, arg = "", desktop, job = true, env 
     ended.then(() => res(null));
   });
   if (!pid) throw new Error(err.trim());
-  const exited = ended.then(() => {
+  const finished = ended.then(() => {
     const m = /^exit (-?\d+)\s*$/m.exec(out);
-    return m ? Number(m[1]) : null;
+    const found = [];
+    for (const d of out.matchAll(/^dialog ([A-Za-z0-9+/=]+)\s*$/gm)) {
+      try {
+        const { title, text } = JSON.parse(Buffer.from(d[1], "base64").toString("utf8"));
+        found.push({ title: String(title ?? ""), text: String(text ?? "") });
+      } catch {
+        // a line the launcher did not finish writing
+      }
+    }
+    return { code: m ? Number(m[1]) : null, dialogs: found };
   });
-  return { pid, launcher: ps, exited };
+  const exited = finished.then((f) => f.code);
+  return { pid, launcher: ps, exited, finished };
 }
 
 /**
