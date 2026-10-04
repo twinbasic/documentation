@@ -23,7 +23,8 @@
 //     `Applicable to:` line into gen_attribute_probes.mjs's targets.
 //   - wrapProbe (scripts/lib/tb-probe.mjs), which moves a tbrun probe's
 //     [RunAfterBuild] to a wrapper; a Sub it wraps wrongly runs the wrong code,
-//     and one it misses loses tbrun's check that the probe returned.
+//     one it misses loses tbrun's check that the probe returned, and a wrapper
+//     that does not set TbRun's flag sends TbRun.Out's lines past the console.
 //   - sentinelIndex (the same module), which reads that check from the console;
 //     a line the IDE prints after a return must not read as the probe ending.
 
@@ -31,7 +32,7 @@ import { exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/
 import { parseTargets } from "./lib/attributes-doc.mjs";
 import { createProbes } from "./lib/gate-probes.mjs";
 import { classify } from "./lib/tb-fences.mjs";
-import { SENTINEL, sentinelIndex, TBRUN_FILE, WRAPPER_SUB, wrapProbe } from "./lib/tb-probe.mjs";
+import { IDE_FLAG, SENTINEL, sentinelIndex, TBRUN_FILE, WRAPPER_SUB, wrapProbe } from "./lib/tb-probe.mjs";
 import { parseTwin } from "./lib/twin-api.mjs";
 import { MODIFIERS, declarationKind } from "./lib/twin-declarations.mjs";
 
@@ -190,9 +191,9 @@ for (const [what, text, want] of [
     const [before, after] = [text.split(eol), out.split(eol)];
     const attrs = after.filter((l) => /\[RunAfterBuild\]/.test(l)).length;
     const call = after.findIndex((l) => l.trim() === `Public Sub ${WRAPPER_SUB}()`);
-    // The wrapper is six lines, from its attribute to a blank line; without
+    // The wrapper is seven lines, from its attribute to a blank line; without
     // them, the file is the probe's with its attribute blanked.
-    const rest = after.filter((_, i) => i < call - 1 || i >= call + 5);
+    const rest = after.filter((_, i) => i < call - 1 || i >= call + 6);
     const kept =
       rest.length === before.length &&
       before.every((l, i) => rest[i] === l || rest[i] === l.replace("[RunAfterBuild]", " ".repeat(15)));
@@ -200,8 +201,9 @@ for (const [what, text, want] of [
     ok =
       kept &&
       attrs === 1 &&
-      after[call + 1].trim() === want &&
-      after[call + 2].trim() === `Debug.Print "${SENTINEL}"` &&
+      after[call + 1].trim() === `TbRun.${IDE_FLAG} = True` &&
+      after[call + 2].trim() === want &&
+      after[call + 3].trim() === `Debug.Print "${SENTINEL}"` &&
       endModule > call &&
       !after.slice(0, call).some((l) => l.includes(WRAPPER_SUB));
   }
@@ -212,6 +214,20 @@ check(
   !wrapProbe([{ name: "Mine.twin", text: "Module TbRun\nEnd Module\n" }]).files.some((f) => f.name === TBRUN_FILE),
   "",
 );
+{
+  // Nor a wrapper that sets a flag the tree's own module may not have.
+  const r = wrapProbe([
+    { name: "Mine.twin", text: "Module TbRun\nEnd Module\n" },
+    { name: "Probe.twin", text: probe("    [RunAfterBuild]\n    Sub Go()\n    End Sub") },
+  ]);
+  const after = r.files.find((f) => f.name === "Probe.twin")?.text.split("\n") ?? [];
+  const call = after.findIndex((l) => l.trim() === `Public Sub ${WRAPPER_SUB}()`);
+  check(
+    "wrapProbe: a tree with its own Module TbRun gets a wrapper that sets no flag",
+    r.wrapped?.sub === "Go" && call >= 0 && after[call + 1].trim() === "Go" && !after.some((l) => l.includes(IDE_FLAG)),
+    show({ wrapped: r.wrapped, why: r.why, out: after.join("\n") }),
+  );
+}
 
 // ---------------------------------------------------------------- sentinelIndex
 // What tbrun reads to tell a probe that returned from one that ended first.

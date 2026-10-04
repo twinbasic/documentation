@@ -13,13 +13,15 @@
 //     line and column a diagnostic names is still the caller's.
 //   * The TbRun module, whose Out writes a line where the run can read it: the
 //     DEBUG CONSOLE in the IDE, and standard output in a built exe, where
-//     Debug.Print writes nothing.
+//     Debug.Print writes nothing. The wrapper tells it which: it sets IDE_FLAG
+//     before it calls the probe, and a built exe never runs the wrapper.
 
 import { MODIFIERS } from "./twin-declarations.mjs";
 
 export const SENTINEL = "[tbrun] the probe returned";
 export const WRAPPER_SUB = "tbrun_RunProbe";
 export const TBRUN_FILE = "TbRun.twin";
+export const IDE_FLAG = "tbrun_InIDE";
 
 // Lines the IDE prints after the probe's own run has returned. A probe that
 // leaves a form loaded gets this one after SENTINEL (measured, BETA 983 and 995).
@@ -59,7 +61,9 @@ const TBRUN_MODULE_RE = /^[ \t]*(?:(?:Public|Private)[ \t]+)?Module[ \t]+TbRun\b
  */
 export function wrapProbe(files) {
   const out = [];
-  if (!files.some((f) => TBRUN_MODULE_RE.test(f.text))) out.push({ name: TBRUN_FILE, text: TBRUN_MODULE });
+  // A tree's own TbRun module is left as it is, and the wrapper sets no flag in it.
+  const ours = !files.some((f) => TBRUN_MODULE_RE.test(f.text));
+  if (ours) out.push({ name: TBRUN_FILE, text: TBRUN_MODULE });
   const none = (why) => ({ files: out, wrapped: null, why });
 
   const hits = files.flatMap((f) =>
@@ -103,6 +107,7 @@ export function wrapProbe(files) {
   const wrapper = [
     `${indent}[RunAfterBuild]`,
     `${indent}Public Sub ${WRAPPER_SUB}()`,
+    ...(ours ? [`${indent}    TbRun.${IDE_FLAG} = True`] : []),
     `${indent}    ${sub}`,
     `${indent}    Debug.Print "${SENTINEL}"`,
     `${indent}End Sub`,
@@ -119,17 +124,23 @@ export function wrapProbe(files) {
 // Project-Types.md), so there Out writes UTF-8: to the file TBRUN_OUT names, or
 // else to standard output. tbrun's --exe names a file, because it starts the
 // exe on a private desktop with no handles inherited, so no pipe reaches it.
+// Out tells the IDE from the exe by IDE_FLAG, not by App.IsInIDE: App exists
+// only in a project that references the VB package, and in any other this
+// module would not compile (TB5079, Unrecognized symbol 'App').
 const TBRUN_MODULE = `' Added by tbrun to the staged copy of a probe. TbRun.Out writes a line to the
 ' DEBUG CONSOLE in the IDE; in a built exe, as UTF-8, to the file the TBRUN_OUT
-' environment variable names, or else to standard output.
+' environment variable names, or else to standard output. tbrun's wrapper Sub
+' sets ${IDE_FLAG} before it calls the probe; a built exe runs Sub Main instead.
 Module TbRun
+
+    Public ${IDE_FLAG} As Boolean
 
     Private Declare PtrSafe Function GetStdHandle Lib "kernel32" (ByVal nStdHandle As Long) As LongPtr
     Private Declare PtrSafe Function WriteFile Lib "kernel32" (ByVal hFile As LongPtr, ByVal lpBuffer As LongPtr, ByVal nNumberOfBytesToWrite As Long, ByRef lpNumberOfBytesWritten As Long, ByVal lpOverlapped As LongPtr) As Long
     Private Declare PtrSafe Function WideCharToMultiByte Lib "kernel32" (ByVal CodePage As Long, ByVal dwFlags As Long, ByVal lpWideCharStr As LongPtr, ByVal cchWideChar As Long, ByVal lpMultiByteStr As LongPtr, ByVal cbMultiByte As Long, ByVal lpDefaultChar As LongPtr, ByVal lpUsedDefaultChar As LongPtr) As Long
 
     Public Sub Out(ByVal Text As String)
-        If App.IsInIDE Then
+        If ${IDE_FLAG} Then
             Debug.Print Text
             Exit Sub
         End If

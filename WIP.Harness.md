@@ -632,10 +632,19 @@ with LLVM; it cannot be tested with a real Community licence here, only through 
 second line (`exit <n>`) once it ends. Nothing reaches the exe's standard output: the
 launcher creates it with no inherited handles. So `TbRun.Out` writes UTF-8 to the file
 `TBRUN_OUT` names, and to standard output only when there is none. Measured on BETA 995:
-`App.IsInIDE` is True in a `[RunAfterBuild]` run and False in the exe, the exit code from
-`ExitProcess 7` comes back as 7, a hung exe is ended at `--timeout` with nothing left
-running, and **the exe never evaluates `Debug.Assert`, with or without LLVM**, as VB6 drops
-`Debug` statements from a compiled program.
+the exit code from `ExitProcess 7` comes back as 7, a hung exe is ended at `--timeout`
+with nothing left running, and **the exe never evaluates `Debug.Assert`, with or without
+LLVM**, as VB6 drops `Debug` statements from a compiled program.
+
+**`TbRun.Out` knows it is in the IDE because the wrapper says so.** The wrapper sets
+`TbRun.tbrun_InIDE` before it calls the probe; the exe runs `Sub Main`, never the wrapper.
+`App.IsInIDE` would say the same, but `App` exists only in a project that references the
+VB package: in any other, `TbRun` fails to compile (TB5079, `Unrecognized symbol 'App'`)
+and `tbrun` exits 1 on a probe that is fine (BETA 995, the install's Samples 6 and 8).
+Adding that reference to the staged copy would change what the probe's own names resolve
+to, and the VB6 idiom, a `Debug.Assert` whose condition sets a variable, fails under
+`--llvm`, because LLVM-compiled code skips `Debug.Assert` in the IDE too. A tree with a
+`TbRun` module of its own keeps it, and its wrapper sets no flag.
 
 ### Building for win64
 
