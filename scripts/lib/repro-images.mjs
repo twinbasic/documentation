@@ -249,6 +249,25 @@ export function imageZipEntries(dir) {
 }
 
 /**
+ * What keeps a reproducer's pictures from showing in its report, one line a picture: `text` is the
+ * entry in BUGS-TO-REPORT.md, or a filed REPORT.md, and `textDir` the folder its paths are read
+ * from. Each `<name>-compare.png` in `imagesDir` must be embedded as a markdown image, `![...](path)`,
+ * whose path reaches that file, and the file must exist. An empty list means every one shows.
+ */
+export function embedProblems(text, textDir, imagesDir, names) {
+  const embedded = new Set();
+  for (const m of String(text).matchAll(/!\[[^\]\n]*\]\(([^)\s]+)\)/g)) embedded.add(path.resolve(textDir, m[1]));
+  const problems = [];
+  for (const name of names) {
+    const file = path.resolve(imageFile(imagesDir, name, "compare"));
+    const shown = path.relative(textDir, file).split(path.sep).join("/");
+    if (!embedded.has(file)) problems.push(`${name}: no ![...](${shown}) embeds the picture`);
+    else if (!existsSync(file)) problems.push(`${name}: it embeds ${shown}, which does not exist`);
+  }
+  return problems;
+}
+
+/**
  * Copies the pictures a probe wrote, `<name>.png` in `fromDir`, to `<name>-<kind>.png` in `toDir`.
  * Returns the names it found and the names that are missing.
  */

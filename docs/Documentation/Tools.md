@@ -1060,7 +1060,11 @@ when both exist `<name>-compare.png` shows twinBASIC, VB6 and their difference s
 with the beta that drew the first named over it. A pixel that differs is pure red in the
 difference panel. Each command prints `image <name>: identical`, or how many pixels differ.
 `pack` puts every file of `images/` into `<slug>.zip` and prints the `-compare.png` paths,
-which are the pictures to put in the issue. A copy of either module that differs from the
+which are the pictures to put in the issue. The pictures are part of the report, so the entry in
+`BUGS-TO-REPORT.md` embeds each `-compare.png` under **Screenshots** as
+`![...](bugs/<slug>/images/<name>-compare.png)`: `pack` warns when it does not, `test/png.test.mjs`
+fails, and `file` rewrites the path to `images/<name>-compare.png` in `REPORT.md`, which sits
+beside the pictures. A copy of either module that differs from the
 template draws a warning and nothing more, because a filed reproducer stays as it was filed.
 `verify` never changes the tree: it keeps its pictures in the temp folder.
 

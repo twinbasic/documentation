@@ -10,7 +10,16 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
@@ -31,6 +40,7 @@ import {
   compareWithKept,
   comparisonLine,
   copyImageTemplates,
+  embedProblems,
   hasPngModule,
   ImageError,
   imageFile,
@@ -790,4 +800,81 @@ describe("bug_repro.mjs", () => {
       /"attach\[0\]" names images\/main-tb\.png, which goes into pic-attach\.zip/,
     );
   });
+});
+
+describe("embedProblems", () => {
+  const withPicture = () => {
+    const dir = folder();
+    mkdirSync(path.join(dir, "bugs", "x", "images"), { recursive: true });
+    writeFileSync(path.join(dir, "bugs", "x", "images", "main-compare.png"), encodePng(noise(2, 2)));
+    return dir;
+  };
+
+  test("a picture embedded by a path from the report's folder shows", () => {
+    const dir = withPicture();
+    const images = path.join(dir, "bugs", "x", "images");
+    assert.deepEqual(embedProblems("![a](bugs/x/images/main-compare.png)", dir, images, ["main"]), []);
+    assert.deepEqual(embedProblems("![](images/main-compare.png)", path.join(dir, "bugs", "x"), images, ["main"]), []);
+  });
+
+  test("a link, a code span or another picture is not an embedded picture", () => {
+    const dir = withPicture();
+    const images = path.join(dir, "bugs", "x", "images");
+    for (const text of [
+      "[a](bugs/x/images/main-compare.png)",
+      "`bugs/x/images/main-compare.png`",
+      "![a](bugs/x/images/main-tb.png)",
+      "![a](images/main-compare.png)",
+    ]) {
+      assert.deepEqual(embedProblems(text, dir, images, ["main"]), [
+        "main: no ![...](bugs/x/images/main-compare.png) embeds the picture",
+      ]);
+    }
+  });
+
+  test("an embedded picture whose file is missing is named, and so is each name not embedded", () => {
+    const dir = withPicture();
+    const images = path.join(dir, "bugs", "x", "images");
+    assert.deepEqual(embedProblems("![a](bugs/x/images/side-compare.png)", dir, images, ["main", "side"]), [
+      "main: no ![...](bugs/x/images/main-compare.png) embeds the picture",
+      "side: it embeds bugs/x/images/side-compare.png, which does not exist",
+    ]);
+  });
+});
+
+// The reports themselves: every reproducer whose repro.json names pictures shows each of them in
+// its entry of BUGS-TO-REPORT.md, or in its REPORT.md once filed. The pictures are part of the
+// report, so a reproducer that makes them and an entry that does not show them is a fault here.
+describe("the bug reports show their pictures", () => {
+  const queueText = normaliseEol(readFileSync(path.join(REPO_ROOT, "BUGS-TO-REPORT.md"), "utf8"));
+  const entries = queueText.split(/^---$/m).slice(1);
+  const reproducers = (base) =>
+    existsSync(base)
+      ? readdirSync(base, { withFileTypes: true })
+          .filter((e) => e.isDirectory() && existsSync(path.join(base, e.name, "repro.json")))
+          .map((e) => ({ slug: e.name, dir: path.join(base, e.name) }))
+      : [];
+  const bugsDir = path.join(REPO_ROOT, "bugs");
+  const all = [...reproducers(bugsDir).filter((r) => r.slug !== "filed"), ...reproducers(path.join(bugsDir, "filed"))];
+  const withImages = all
+    .map((r) => ({ ...r, images: JSON.parse(readFileSync(path.join(r.dir, "repro.json"), "utf8")).images }))
+    .filter((r) => Array.isArray(r.images));
+
+  test("at least one reproducer has pictures, so this check reads something", () => {
+    assert.ok(withImages.length > 0);
+  });
+
+  for (const r of withImages) {
+    test(`${path.relative(REPO_ROOT, r.dir).split(path.sep).join("/")} shows each picture in its report`, () => {
+      const images = path.join(r.dir, "images");
+      const report = path.join(r.dir, "REPORT.md");
+      if (existsSync(report)) {
+        assert.deepEqual(embedProblems(readFileSync(report, "utf8"), r.dir, images, r.images), []);
+        return;
+      }
+      const mine = entries.filter((e) => e.includes(`bugs/${r.slug}/`));
+      assert.equal(mine.length, 1, `one entry of BUGS-TO-REPORT.md names bugs/${r.slug}/`);
+      assert.deepEqual(embedProblems(mine[0], REPO_ROOT, images, r.images), []);
+    });
+  }
 });

@@ -126,6 +126,7 @@ import {
   collectImages,
   compareWithKept,
   copyImageTemplates,
+  embedProblems,
   imageFile,
   imageSourceCheck,
   imageZipEntries,
@@ -594,6 +595,8 @@ function pack(slug) {
       ? `\npicture for the issue: ${rel(compare)}`
       : `\nno ${rel(compare)} yet: it is written when run has made ${name}-tb.png and vb6 has made ${name}-vb6.png`;
   }
+  if (repro.images?.length)
+    for (const problem of reportEmbedProblems(slug, repro.images)) packed += `\nwarning: ${problem}`;
   if (existsSync(p.vb6)) {
     const problem = vb6Problem(slug);
     if (problem) throw new Fail(`${rel(p.vb6)}/ ${problem}`);
@@ -1457,8 +1460,32 @@ function prepareFiling(slug, issue, existing, original, text) {
   const head = existing
     ? `Covered by the existing issue [twinbasic/twinbasic#${issue}](${issueUrl(issue)}).`
     : `Filed as [twinbasic/twinbasic#${issue}](${issueUrl(issue)}).`;
-  const report = `${[head, "", ...reportLines(current, entry)].join(current.eol)}${current.eol}`;
+  // REPORT.md sits beside the pictures it embeds, so their paths lose bugs/<slug>/.
+  const lines = reportLines(current, entry).map((line) => line.replaceAll(`](bugs/${slug}/images/`, "](images/"));
+  const report = `${[head, "", ...lines].join(current.eol)}${current.eol}`;
   return { slug, issue, existing, queued, filed, report, text: withoutEntry(current, entry), title: entry.title };
+}
+
+/**
+ * What keeps a reproducer's pictures out of its report: its entry in the queue file, or the
+ * REPORT.md of a filed one, must embed each `<name>-compare.png` (lib/repro-images.mjs's
+ * embedProblems). Each line names the report.
+ */
+function reportEmbedProblems(slug, names) {
+  const p = where(slug);
+  const imagesDir = path.join(p.dir, IMAGES_DIR);
+  const report = path.join(p.dir, "REPORT.md");
+  if (existsSync(report)) {
+    return embedProblems(readFileSync(report, "utf8"), p.dir, imagesDir, names).map((x) => `${rel(report)}: ${x}`);
+  }
+  const { queue } = readQueue();
+  const named = entriesNaming(queue, slug);
+  if (named.length !== 1) {
+    const what = named.length ? `${named.length} entries name` : "no entry names";
+    return [`${rel(QUEUE)}: ${what} ${slug}, so whether it shows its pictures is not known`];
+  }
+  const text = queue.lines.slice(named[0].from, named[0].to).join("");
+  return embedProblems(text, REPO_ROOT, imagesDir, names).map((x) => `${rel(QUEUE)}, ${named[0].title}: ${x}`);
 }
 
 /** Moves the reproducer, writes REPORT.md and repro.json's issue, and rewrites the queue file. */

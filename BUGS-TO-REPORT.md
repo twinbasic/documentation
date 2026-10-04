@@ -60,9 +60,12 @@ How the four duties above fit it:
   the narrowed steps.
 - **Expected behavior** says what should happen instead, and why: what VBA or VB6 does,
   what the documentation says, or what the IDE does in the neighbouring case.
-- **Screenshots** is left out when there are none. A graphical defect's section names its
-  `images/<name>-compare.png` and says what each panel shows; the file is dragged into the
-  issue there, since a path in the text does not reach GitHub.
+- **Screenshots** is left out when there are none. A graphical defect's section says what
+  each panel of its comparison shows and embeds the picture, as
+  `![<what it shows>](bugs/<slug>/images/<name>-compare.png)`, so that it shows in this file;
+  `bug_repro.mjs file` rewrites the path to `images/<name>-compare.png` in `REPORT.md`. A
+  GitHub issue cannot reach a path in the repository, so when the entry is pasted into one,
+  the picture is dragged into the issue in place of that line.
 - **Desktop** gives the build as `BETA <n>`, the build it was last reproduced on.
 - **Additional context** gives what did not reproduce it, the severity, and the builds it
   was checked on besides the one above.
@@ -94,8 +97,9 @@ kebab-case name for the bug, and its **To Reproduce** names the project file:
 
 **A graphical defect carries pictures.** Its `repro.json` names them under `images`, the
 `PngDump` modules from `test/repro-templates/png/` save them (`new --with-images` copies them),
-and its report shows `-compare.png`: what twinBASIC drew beside what VB6 drew, the pixels that
-differ in red. `expect.imagesDiffer` lets `verify` judge by them.
+and its entry embeds each `-compare.png` under **Screenshots**: what twinBASIC drew beside
+what VB6 drew, the pixels that differ in red. `test/png.test.mjs` fails when an entry or a filed
+`REPORT.md` does not embed one. `expect.imagesDiffer` lets `verify` judge by them.
 
 `scripts/bug_repro.mjs` makes and checks them (the tool's page is
 [Tools and Scripts](docs/Documentation/Tools.md#bug-repro)):
@@ -1768,7 +1772,9 @@ Steps to reproduce the behavior:
 Error 5, and nothing drawn by the second call, as VB6 does. The VB6 project (attached as `circle-positive-angle-unchecked-vb6.zip`, the same code with the same `PngDump` module) prints `Circle Start 7: Err 5`, and its picture holds the pie alone.
 
 **Screenshots**
-`main-compare.png` (attached): what twinBASIC BETA 995 drew on the left, what VB6 drew in the middle, and on the right the 101 pixels that differ, in red over a grey copy of the VB6 picture.
+What twinBASIC BETA 995 drew on the left, what VB6 drew in the middle, and on the right the 101 pixels that differ, in red over a grey copy of the VB6 picture:
+
+![Circle drawn by twinBASIC BETA 995 and by VB6, and the pixels that differ](bugs/circle-positive-angle-unchecked/images/main-compare.png)
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)
