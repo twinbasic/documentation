@@ -1,0 +1,13 @@
+{
+  "mode": "run",
+  "images": [
+    "main"
+  ],
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^Circle Start 7: Err 0$"
+    ],
+    "imagesDiffer": true
+  }
+}

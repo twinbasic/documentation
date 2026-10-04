@@ -1,0 +1,25 @@
+Module Startup
+
+    Public Sub Main()
+        Dim n As Long
+        Load Form1
+        Form1.AutoRedraw = True
+        Form1.ScaleMode = vbPixels
+        Form1.BackColor = vbWhite
+        Form1.Width = Form1.Width + (260 - Form1.ScaleWidth) * Screen.TwipsPerPixelX
+        Form1.Height = Form1.Height + (130 - Form1.ScaleHeight) * Screen.TwipsPerPixelY
+        Form1.Cls
+        Debug.Print "Client area " & Form1.ScaleWidth & " x " & Form1.ScaleHeight & " pixels"
+        ' A valid pie, as the picture's context: a negative Start and End draw the radius lines.
+        Form1.Circle (65, 65), 50, vbBlue, -0.5, -2
+        ' A Start above 2 * pi: VB6 raises error 5 and draws nothing.
+        On Error Resume Next
+        Form1.Circle (195, 65), 50, vbRed, 7, 3
+        n = Err.Number
+        On Error GoTo 0
+        Debug.Print "Circle Start 7: Err " & n
+        PngDump.Surface Form1, "main"
+        Unload Form1
+    End Sub
+
+End Module
