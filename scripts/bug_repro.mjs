@@ -60,8 +60,9 @@
 //     <name>-compare.png (lib/repro-images.mjs, lib/png.mjs) shows both and their
 //     difference. `verify` can judge by them (expect.imagesDiffer), and stages its
 //     pictures in the temp folder, so it never changes the tree.
-//  2. impexp EXITS 6 WHEN IT WARNS. `import` that finished with a warning is
-//     still a pack, so 0 and 6 are both success, and its output is printed.
+//  2. THE PACK IS impexp RUN IN PROCESS (packTree, scripts/lib/tb-project.mjs).
+//     It throws where the command line would have refused, and returns the
+//     counts the command line prints, which `pack` prints as it does.
 //  3. AN IDE THAT RUNS MANY REPRODUCERS OWNS THE REGISTRY TIDY ONCE. Under
 //     `verify` this process calls startTidy for every lane, so the tbbuild and
 //     tbrun children (which find TB_REGISTRY_OWNER set) leave the registry alone,
@@ -76,7 +77,7 @@
 //     stdin from the null device and a time limit, on the packed project, and
 //     compares its exit code and output. Paths are given backslashed and in full:
 //     `export` prefixes \\?\ to its project path, and cannot find a folder named
-//     with forward slashes (WIP.md, "Driving the twinBASIC compiler").
+//     with forward slashes (WIP.Harness.md, "Getting at the `.twin` sources").
 //  6. EACH `cli` COMMAND RUNS ON A PRIVATE DESKTOP, in a kill-on-close job, as
 //     the IDE does (scripts/lib/tb-launch.ps1), with its output in files. The
 //     compiler opens a modal message box for a damaged project and waits on it
@@ -135,6 +136,7 @@ import {
   writeComparison,
 } from "./lib/repro-images.mjs";
 import { buildNumber, compilerExe, findIde } from "./lib/tb-install.mjs";
+import { packTree } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import {
   NO_VB6,
@@ -416,7 +418,6 @@ function reproTemplates() {
     .filter((n) => existsSync(path.join(dir, n, "Settings")) && existsSync(path.join(dir, n, "Sources")))
     .sort();
 }
-const IMPEXP = path.join(REPO_ROOT, "scripts", "impexp.mjs");
 const TBBUILD = path.join(REPO_ROOT, "scripts", "tbbuild.mjs");
 const TBRUN = path.join(REPO_ROOT, "scripts", "tbrun.mjs");
 
@@ -559,25 +560,29 @@ function newReproducer(slug, entryTitle, template = null, withVb6 = false, withI
 
 // ------------------------------------------------------------------------ pack
 
-// Packs src/ into the .twinproj with impexp, then zips it with the files
-// repro.json's `attach` names; with a vb6/ folder, also zips its sources into
-// <slug>-vb6.zip. Returns what impexp printed, which the caller prints or not.
+// Packs src/ into the .twinproj with impexp, in process, then zips it with the
+// files repro.json's `attach` names; with a vb6/ folder, also zips its sources
+// into <slug>-vb6.zip. Returns what impexp's command line prints for an import,
+// then what was zipped, which the caller prints or not.
 function pack(slug) {
   const p = where(slug);
   if (!existsSync(path.join(p.src, "Settings"))) throw new Fail(`no ${rel(p.src)}/Settings: nothing to pack`);
   const repro = existsSync(p.repro) ? loadRepro(slug) : {};
   const attach = repro.attach ?? [];
-  const r = spawnSync(process.execPath, [IMPEXP, "import", p.twinproj, p.src, "--overwrite"], {
-    encoding: "utf8",
-    cwd: REPO_ROOT,
-    windowsHide: true,
-  });
-  const said = `${r.stdout ?? ""}${r.stderr ?? ""}`;
-  if (r.error || (r.status !== 0 && r.status !== 6)) {
-    throw new Fail(
-      `impexp import ${r.error ? `failed (${r.error.message})` : `exited ${r.status}`}:\n${said.trimEnd()}`,
-    );
+  let counts;
+  try {
+    counts = packTree(p.twinproj, p.src);
+  } catch (e) {
+    throw new Fail(e.message);
   }
+  const plural = (n, noun) => `${n} ${noun}${n === 1 ? "" : "s"}`;
+  const said = `${[
+    `importing into "${p.twinproj}" from "${p.src}"...`,
+    ...counts.skipped.map((s) => `  skipped ${s.rel} (${s.why})`),
+    ...counts.added.map((a) => `  added ${a} (an empty folder the IDE expects)`),
+    `  ${plural(counts.files, "file")}, ${plural(counts.folders, "folder")}, ${counts.size} bytes`,
+    "... DONE",
+  ].join("\n")}\n`;
   const pictures = imageZipEntries(p.dir);
   const files = [
     fileEntry(`${slug}.twinproj`, p.twinproj),

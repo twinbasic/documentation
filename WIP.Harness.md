@@ -34,7 +34,8 @@ makes it the strongest available evidence for what is legal syntax.
 The tooling unpacks and packs in process, through `unpackProject` and `packTree` in
 [scripts/lib/tb-project.mjs](scripts/lib/tb-project.mjs), which call impexp's
 `exportProject` and `importProject`: the census and `build_package_api`, `tbbuild --build`,
-`tbrun`, `check_examples`, `sweep_attributes`, and the add-in and IDE lanes. The compiler executable's `export` verb writes the same tree: on BETA 995 the two
+`tbrun`, `check_examples`, `sweep_attributes`, `bug_repro`'s `pack`, and the add-in and IDE
+lanes. The compiler executable's `export` verb writes the same tree: on BETA 995 the two
 unpack the install's sixteen packages and thirty-two samples to identical trees, 1,633 files
 byte for byte.
 
