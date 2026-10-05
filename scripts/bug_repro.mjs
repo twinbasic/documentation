@@ -943,7 +943,10 @@ async function runProbe(slug, o) {
     cpSync(p.src, stage, { recursive: true });
     mkdirSync(path.join(stage, "Sources"), { recursive: true });
     if (!o.exe) writeFileSync(path.join(stage, "Sources", "TbRunProbe.twin"), PROBE);
-    const flags = [...ideFlags(o), ...(o.llvm ? ["--llvm"] : []), ...(o.exe ? ["--exe"] : [])];
+    // Always --allow-name-clash: tbrun refuses a probe whose module holds a procedure named like
+    // the module, because twinBASIC then does not run the [RunAfterBuild] Sub, and a reproducer
+    // exists to show a defect such as that one, so it must still run.
+    const flags = [...ideFlags(o), "--allow-name-clash", ...(o.llvm ? ["--llvm"] : []), ...(o.exe ? ["--exe"] : [])];
     const env = imagesDir ? { [IMAGES_ENV]: imagesDir } : {};
     const r = await runNode([TBRUN, stage, ...flags], limitFor(o.timeout, 120), env);
     return { ...r, json: null, message: r.stderr.trim(), output: r.stdout, imagesDir };

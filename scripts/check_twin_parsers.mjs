@@ -229,6 +229,47 @@ check(
   );
 }
 
+// A Sub or Function named like the hook's module, in that module: `clash` is its
+// name as written, and tbrun refuses the probe (BETA 997: the hook does not run).
+const hook = "    [RunAfterBuild]\n    Sub Go()\n    End Sub";
+const named = (text, files = []) => wrapProbe([...files, { name: "Probe.twin", text }]);
+for (const [what, text, want, files] of [
+  ["a Sub of the module's name", probe(`${hook}\n    Sub Probe()\n    End Sub`), "Probe"],
+  [
+    "a Private Function of the module's name",
+    probe(`${hook}\n    Private Function Probe() As Long\n    End Function`),
+    "Probe",
+  ],
+  ["the name in another letter case", probe(`${hook}\n    Public Sub PROBE()\n    End Sub`), "PROBE"],
+  ["a procedure before the hook", probe(`    Friend Sub probe()\n    End Sub\n${hook}`), "probe"],
+  ["a Sub that only starts with the module's name", probe(`${hook}\n    Sub ProbeHelper()\n    End Sub`), undefined],
+  ["a Sub that ends with the module's name", probe(`${hook}\n    Sub MyProbe()\n    End Sub`), undefined],
+  ["a comment line holding Sub Probe", probe(`${hook}\n    ' Sub Probe()\n    Sub Other()\n    End Sub`), undefined],
+  [
+    "the same name in another module of the file",
+    `${probe(hook)}Module Other\n    Sub Probe()\n    End Sub\nEnd Module\n`,
+    undefined,
+  ],
+  [
+    "the same name in another module before it",
+    `Module Other\n    Sub Probe()\n    End Sub\nEnd Module\n${probe(hook)}`,
+    undefined,
+  ],
+  [
+    "the same name in another file",
+    probe(hook),
+    undefined,
+    [{ name: "Other.twin", text: "Module Other\n    Sub Probe()\n    End Sub\nEnd Module\n" }],
+  ],
+]) {
+  const r = named(text, files);
+  check(
+    `wrapProbe: clash, ${what}`,
+    r.wrapped?.sub === "Go" && r.wrapped.clash === want,
+    show({ wrapped: r.wrapped, why: r.why }),
+  );
+}
+
 // ---------------------------------------------------------------- sentinelIndex
 // What tbrun reads to tell a probe that returned from one that ended first.
 const WAITING = "[DEBUGGER] Waiting for remaining forms to close...";

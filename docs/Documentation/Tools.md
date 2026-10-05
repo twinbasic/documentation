@@ -897,7 +897,7 @@ Exit codes: **0** the project compiled without errors; **1** the project has err
     node scripts/tbrun.mjs <source-dir> [--port N] [--arch win32|win64] [--timeout S]
                            [--quiet MS] [--json] [--raw] [--keep] [--no-reap]
                            [--reap-images a,b] [--show|--hide]
-                           [--llvm | --compiler-options S] [--exe]
+                           [--llvm | --compiler-options S] [--exe] [--allow-name-clash]
 
 Builds a probe project and captures what it writes to the IDE's
 [Debug Console](../../tB/IDE/Project/DebugConsole). Where [`tbbuild.mjs`](#tbbuild) answers
@@ -953,6 +953,12 @@ is one of several marked --- and the check is then off. A probe that stays silen
 than `--quiet` while it works also ends the wait without that line, so raise `--quiet` for a
 slow one.
 
+**A probe whose module holds a procedure named like the module is refused, exit 2**, before
+an IDE starts. In twinBASIC (BETA 997) the `[RunAfterBuild]` Sub of such a module does not run,
+whatever the letter case or modifiers of the procedure, and nothing says so, so the run would end
+as a probe that stopped early. Rename the module or the procedure. `--allow-name-clash` runs the
+probe anyway, which is what a reproducer of that defect needs.
+
 **The capture is complete however much a probe prints**, so there is no reason to keep one
 short. `tbrun` reads the console's backing array rather than the pane, which is a virtualised
 list view holding only the rows that fit --- reading that instead returns the last ten or so
@@ -999,6 +1005,7 @@ adds to the staged copy. `TbRun.Out` writes to the Debug Console in the IDE, and
 | `--llvm` | Compile the whole probe, and the exe, with LLVM. The same as `--compiler-options +llvm`. |
 | `--compiler-options <s>` | The project's compiler options, for the run and the exe. |
 | `--exe` | Also run the built exe, and print what it writes with `TbRun.Out` and its exit code. |
+| `--allow-name-clash` | Run a probe whose module holds a procedure named like the module, which is refused otherwise. twinBASIC does not run its `[RunAfterBuild]` Sub, so the run exits 5. |
 | `--raw` | Keep the console's timestamp column, which is otherwise stripped. |
 | `--json` | One object with the path of the built file, the target, the captured lines, whether the probe returned, the licence an LLVM run checked, the exe's run, the IDE pid and anything reaped. |
 | `--keep` | Leave the IDE running, and print its pid as `ide-pid: <n>` (with `--json`, `idePid`), followed by the `taskkill` command that ends it and every process it started, as cmd and PowerShell spell it and as Git Bash does (`//PID`). Implies `--no-reap`, and leaves the IDE's registry entries for the probe as they are. |
