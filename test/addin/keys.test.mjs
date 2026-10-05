@@ -5,8 +5,9 @@
 //
 // Each test states what BETA 983 and 995 do. If one fails after an IDE update, the
 // IDE has changed: update P1 and P2 in WIP.HelpAddin.md, the NOTE on
-// docs/Reference/Built-In/tbIDE/KeyboardShortcuts.md and the filed reports in
-// bugs/filed/ (twinbasic/twinbasic#2445, #2446), and then this file.
+// docs/Reference/Built-In/tbIDE/KeyboardShortcuts.md and the filed report in
+// bugs/filed/ (twinbasic/twinbasic#2445), and then this file. P2's last test
+// states what BETA 997 does: earlier builds report the toggle failing.
 //
 // Run it with addin-test.bat, which gives it a lane; on its own it is skipped.
 
@@ -146,7 +147,7 @@ scenario("P1 and P2: add-in keyboard shortcuts", (lane) => {
     await c.evaluate(`editor.getModel().setValue(${JSON.stringify(text)})`);
   });
 
-  test("P2: F1 while signature help shows toggles it, the IDE reports a failure, and the add-in fires", async () => {
+  test("P2: F1 while signature help shows toggles it, and the add-in fires", async () => {
     // Inside FindTheNeedle's parentheses. Typing the call instead would work
     // as well, since setCursor waits out the time in which the IDE can put the
     // cursor back where openFile put it (afterReveal in tb-operate.mjs).
@@ -164,10 +165,9 @@ scenario("P1 and P2: add-in keyboard shortcuts", (lane) => {
     const lines = (await linesSince(c, mark)).filter(Boolean);
     assert.deepEqual(fired, ["f1"]);
     assert.equal(await c.evaluate("sigHelpIsExpanded"), !expanded, "F1 did not toggle signature help");
-    // toggleSigHelp() dereferences the event it is not given (twinbasic/twinbasic#2446).
     assert.ok(
-      lines.includes('command failed: "tbHelp_ToggleExpandSignatureHelp"'),
-      `the IDE no longer reports the toggle failing: ${JSON.stringify(lines)}`,
+      !lines.some((l) => l.startsWith("command failed:")),
+      `the IDE reports a command failing: ${JSON.stringify(lines)}`,
     );
     await pressKey(c, "Escape");
   });

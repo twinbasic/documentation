@@ -85,9 +85,6 @@ Syntax: *object*.**Number**
 
 Many built-in errors use VBA's error numbers --- for example, `11` for *Division by zero*, `13` for *Type mismatch* and `91` for *Object variable or With block variable not set*. User-defined errors raised with **Err.Raise** typically add the **vbObjectError** offset to a small per-application code.
 
-> [!NOTE]
-> An array index or a **Collection** lookup that is out of range does not raise VBA's error `9`, *Subscript out of range*. An array index outside the array's bounds raises -2147352565 (`&H8002000B`), and a **Collection** member that does not exist raises -2147467259 (`&H80004005`). See [Error numbers that differ from VBA](../../../Modules/ErrObject/Number#error-numbers-that-differ-from-vba).
-
 ### Source
 
 Returns the name of the object or application that raised the error, as a **String**. Read-only.

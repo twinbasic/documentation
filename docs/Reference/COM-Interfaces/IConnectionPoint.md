@@ -83,7 +83,7 @@ Private Interface IEnumConnections Extends stdole.IUnknown
 End Interface
 ```
 
-*ppCP* and *rgcd* name the first element of the caller's array and nothing after it, which is enough to ask for one item at a time. The enumerators of this page return one item per call whatever the count asked for (see [The enumerators](#the-enumerators)).
+*ppCP* and *rgcd* name the first element of the caller's array and nothing after it, which is enough to ask for one item at a time (see [The enumerators](#the-enumerators)).
 
 The identifier of the outgoing interface of a class written in twinBASIC is not a fixed value, so a program never declares it. It reads the identifier from the connection point (see [Events in twinBASIC](#events-in-twinbasic)).
 
@@ -185,16 +185,11 @@ Raises `CONNECT_E_NOCONNECTION` (`&H80040200`) when the object has no outgoing i
 
 ## The enumerators
 
-**IEnumConnectionPoints** and **IEnumConnections** follow the pattern of [**IEnumVARIANT**](IEnumVARIANT): **Next**, **Skip**, **Reset** and **Clone**. In BETA 995 the two enumerators that twinBASIC supplies do not follow it in the same way, so a caller reads each one as described here. Both are read one item at a time, with *cConnections* of 1.
+**IEnumConnectionPoints** and **IEnumConnections** follow the pattern of [**IEnumVARIANT**](IEnumVARIANT): **Next**, **Skip**, **Reset** and **Clone**. The two enumerators that twinBASIC supplies follow it.
 
-| Method | **IEnumConnectionPoints** | **IEnumConnections** |
-|--------|---------------------------|----------------------|
-| **Next** | Returns one item and `S_OK`. When no item is left, raises `E_FAIL` (`&H80004005`) and sets *pcFetched* to 0, where the contract returns `S_FALSE`. Asking for more items than are left also raises `E_FAIL`. | Returns one item and `S_OK`, even when more were asked for and more are left. When no item is left, writes nothing, sets *pcFetched* to 0 and returns `S_FALSE`, so a loop ends when *pcFetched* is 0. A null *pcFetched* is accepted. |
-| **Skip** | Raises `E_NOTIMPL` (`&H80004001`). | Moves past the items. |
-| **Reset** | Moves back to the start. | Moves back to the start. |
-| **Clone** | Raises `E_NOTIMPL`. | Returns a new enumerator, which reads on its own. |
+**Next** returns the items asked for, or the items that are left when there are fewer, and sets *pcFetched* to the number it returned. When no item is left, it writes nothing, sets *pcFetched* to 0 and raises no error, so a loop ends when *pcFetched* is 0. For **IEnumConnections**, asking for two items when two connections exist returns both. **IEnumConnections** also accepts a null *pcFetched*.
 
-A caller that asks for several items at once from **IEnumConnections** therefore gets only the first, and must call again. A caller that reads **IEnumConnectionPoints** handles the error of the call that finds the end.
+**Skip** raises no error, and **Reset** moves back to the start. **Clone** of **IEnumConnectionPoints** returns an enumerator and raises no error; **Clone** of **IEnumConnections** returns a new enumerator, which reads on its own.
 
 ## Events in twinBASIC
 
@@ -309,7 +304,7 @@ Debug.Print ConnectionCount(point)
 ' 0
 ```
 
-A class with events has one connection point, and the container finds it again by the identifier it reports. The enumerator has no second item: its **Next** raises `E_FAIL`. A class with no events fails in **EnumConnectionPoints** with run-time error 445. An identifier that the object does not have, here that of **IUnknown**, raises `CONNECT_E_NOCONNECTION`:
+A class with events has one connection point, and the container finds it again by the identifier it reports. The enumerator has no second item: its **Next** raises no error and sets *fetched* to 0. A class with no events fails in **EnumConnectionPoints** with run-time error 445. An identifier that the object does not have, here that of **IUnknown**, raises `CONNECT_E_NOCONNECTION`:
 
 ```tb check_run projname=com-iconnpoint
 Dim c As New Counter
@@ -328,8 +323,7 @@ Debug.Print back Is container                              ' True
 
 On Error Resume Next
 points.Next 1, point, fetched
-Debug.Print Hex$(Err.Number)                               ' 80004005
-Err.Clear
+Debug.Print fetched                                        ' 0
 
 Dim other As GUID           ' the identifier of IUnknown
 other.Data4(0) = &HC0

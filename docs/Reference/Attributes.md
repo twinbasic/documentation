@@ -160,7 +160,7 @@ Syntax: **[COMCreatable** [ **( True** \| **False )** ] **]**
 
 Applicable to:  [**Class**](Class), [**CoClass**](CoClass)
 
-Indicates whether the class can be created through COM. It does not govern [**New**](New) inside the project: a `[COMCreatable(False)]` class is created with **New** as usual. A COM-creatable class needs a constructor that takes no arguments, so a class whose only `Sub New` takes arguments fails with TB5135 --- *error generating implicit default constructor ... (for COM exposure)* --- unless it is marked `[COMCreatable(False)]`, is **Private**, or has a constructor without arguments as well. The first two fixes leave the class with no constructor that takes no arguments, so it still cannot be declared [**As New**](New): that fails with TB5121. See [Parameterized Class Constructors](../../Features/Advanced/Classes-and-Modules#parameterized-class-constructors).
+Indicates whether the class can be created through COM. It does not govern [**New**](New) inside the project: a `[COMCreatable(False)]` class is created with **New** as usual. A COM-creatable class needs a constructor that takes no arguments, so a class whose only `Sub New` has required arguments fails with TB5135 --- *error generating implicit default constructor ... (for COM exposure)* --- unless it is marked `[COMCreatable(False)]`, is **Private**, or has a constructor without arguments as well. The first two fixes leave the class with no constructor that takes no arguments, so it still cannot be declared [**As New**](New): that fails with TB5121. See [Parameterized Class Constructors](../../Features/Advanced/Classes-and-Modules#parameterized-class-constructors).
 
 ## ComExport  (optional Bool)
 {: #comexport }

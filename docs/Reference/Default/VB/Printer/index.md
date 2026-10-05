@@ -366,13 +366,10 @@ The compiler turns this syntax into a call with a flags argument; see [Line, Cir
 : *optional* An **OLE_COLOR** for the outline. Defaults to [**ForeColor**](#forecolor). See [colour values](../../../Core/Graphics-Methods#colour-values) for how the value is read.
 
 *Start*, *End*
-: *optional* Angles in radians, from -2 pi to 2 pi, counter-clockwise from the 3 o'clock position. With either one given, an arc is drawn rather than a full circle. A negative angle is used as its absolute value, and the radius from the centre to that end of the arc is drawn as well. With both negative the shape is a pie, filled with [**FillColor**](#fillcolor) and [**FillStyle**](#fillstyle); an arc with one radius or none is not filled. A negative zero draws no radius, so a pie that starts at angle 0 is written with a *Start* of `-2 * pi`. A negative angle below -2 pi raises error 5.
+: *optional* Angles in radians, from -2 pi to 2 pi, counter-clockwise from the 3 o'clock position. With either one given, an arc is drawn rather than a full circle. A negative angle is used as its absolute value, and the radius from the centre to that end of the arc is drawn as well. With both negative the shape is a pie, filled with [**FillColor**](#fillcolor) and [**FillStyle**](#fillstyle); an arc with one radius or none is not filled. A negative zero draws no radius, so a pie that starts at angle 0 is written with a *Start* of `-2 * pi`. An angle, positive or negative, whose magnitude exceeds 2 pi raises error 5 and draws nothing.
 
 *Aspect*
 : *optional* The Y/X aspect ratio. **1.0** for a circle (default); other values give an ellipse.
-
-> [!WARNING]
-> BETA 995 does not check a positive *Start* or *End*: an angle above 2 pi raises no error and draws as if 2 pi had been subtracted, where VB6 raises error 5. See [Line, Circle, PSet, Scale](../../../Core/Graphics-Methods#what-the-built-in-surfaces-do-with-the-flags).
 
 If no job is in progress, **Circle** implicitly starts one.
 

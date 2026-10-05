@@ -40,11 +40,8 @@ These properties are cached references --- repeated reads return the same object
 [**Forms**](#forms) returns the application's collection of currently-loaded [**Form**](../Form/) instances --- every form that has been **Load**-ed or **Show**-n but not yet **Unload**-ed. The collection is live: it grows when a form is loaded and shrinks when one is unloaded. The collection supports three operations:
 
 - **Forms.Count** --- a **Long** giving the number of currently-loaded forms.
-- **Forms.Item(** *Index* **)** --- the [**Form**](../Form/) at zero-based *Index*, a **Long**. **Item** is the default member, so `Forms(0)` and `Forms.Item(0)` are equivalent. An index below 0, or equal to or greater than **Count**, raises run-time error -2147467259 (`&H80004005`), not error 9 (*Subscript out of range*) --- see [Error numbers that differ from VBA](../../../Modules/ErrObject/Number#error-numbers-that-differ-from-vba). A form's name is not an index: `Forms("Form2")` raises error 13 (*Type mismatch*).
+- **Forms.Item(** *Index* **)** --- the [**Form**](../Form/) at zero-based *Index*, a **Long**. **Item** is the default member, so `Forms(0)` and `Forms.Item(0)` are equivalent. An index below 0, or equal to or greater than **Count**, raises run-time error -2147467259 (`&H80004005`), not error 9 (*Subscript out of range*). A form's name is not an index: `Forms("Form2")` raises error 13 (*Type mismatch*).
 - **Forms.Add(** *Name* **)** --- creates a new instance of the form class named *Name*, adds it to the collection, and returns the new [**Form**](../Form/). The form is loaded but not shown.
-
-> [!WARNING]
-> In BETA 995, a form taken out of **Forms** by index is not reliably the form. `Forms(i)` can return a reference to another object, at an address just past the form's own, whose **Name** is an empty string, and the program can then stop with an access violation (`0xC0000005`). Which code does this depends on the expression around it, not on the index: `Set f = Forms(0)` with `f` declared `As Form`, followed by `f.Name` in a string expression, gives an empty **Name** in the IDE and as a compiled program alike, while `Forms(0).Name` is empty only in the IDE. `For Each` over **Forms** works, and so does `Set f = Forms(k)` when `f` is declared `As Object` or as the form's own class: reach a loaded form that way, with `For Each`, or by its class name.
 
 The collection also supports `For Each` enumeration:
 

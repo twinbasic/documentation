@@ -67,6 +67,18 @@ scenario("the debugger at a run-time error", (lane) => {
     c = await lane.open(PROJECT);
   });
 
+  // docs/IDE/Menu/Debug.md quotes this panel.
+  test("the panel names the error: its number, in hexadecimal as well, and its description", async () => {
+    await runToError();
+    const text = await c.evaluate(`document.querySelector(".errorWidget").innerText`);
+    await stopIfRunning();
+    assert.match(
+      text,
+      /^Run-time error 9 \(00000009\)\n\s*DESCRIPTION:\nSubscript out of range\n/,
+      JSON.stringify(text),
+    );
+  });
+
   test("F8 on the failing line runs it again: the error recurs and the mark stays", async () => {
     await runToError();
     await pressKey(c, "F8");

@@ -216,9 +216,10 @@ other 193 are refused at every site.
   one form able to pass never compiled is inconclusive, not refused, and the same holds for a
   run cut short.
 
-**It found a compiler crash the documentation never would:** a bare `[PopulateFrom]` on an
-Enum kills the compiler, at all three Enum sites; the tool isolated it by halving to one
-probe beside the canaries. It is in [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md).
+**It finds compiler crashes the documentation never would:** a crash in a batch is
+isolated by halving down to one probe beside the canaries, which is how a bare
+`[PopulateFrom]` on an Enum was found to kill the compiler (twinbasic/twinbasic#2450, fixed
+in BETA 997).
 
 **Read the report's "accepted at most sites" section before believing an acceptance.**
 `[Description]` is taken at 53 of 61 sites and `[Hidden]` and `[Restricted]` at 42: either

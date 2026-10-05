@@ -746,12 +746,10 @@ that fails only the second is one LLVM cannot generate code for.
   reads the DEBUG CONSOLE, which nothing removes an entry from, and exits 4 naming the file
   the compiler died parsing. **Treat any tooling that infers "finished" from "stopped
   changing" as suspect on this compiler.**
-- **A two-line syntax skeleton crashes the compiler**, and it is in the corpus:
-  `Interface <name> Extends <base-interface>` / `End Interface`, in
-  `Reference/Attributes.md`. The placeholder name does it, given any `Extends` clause:
-  `Extends IBase` crashes it too. Recorded in [BUGS-TO-REPORT.md](BUGS-TO-REPORT.md). The
-  classifier refuses a `<placeholder>` as a declaration name, so it takes an explicit
-  `slot=` to reach the compiler with one.
+- **The classifier refuses a `<placeholder>` as a declaration name**, so a syntax skeleton
+  such as `Interface <name> Extends <base-interface>` / `End Interface` (in
+  `Reference/Attributes.md`) takes an explicit `slot=` to reach the compiler. Through BETA
+  995 that skeleton crashed the compiler (twinbasic/twinbasic#2453, fixed in 997).
 - **`project.buildPath` must be an explicit file.** The default `${SourcePath}\Build\...`
   template opens a native Save dialog, which on the private desktop is invisible and
   unreachable, so the build silently never happens --- and the WebView2 renderer stays

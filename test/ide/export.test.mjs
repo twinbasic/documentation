@@ -73,7 +73,8 @@ scenario("Export Project", (lane) => {
     assert.ok(packages.includes("VBA"), `no Packages\\VBA among ${packages.join(", ")}`);
   });
 
-  test("a junction in the export folder is followed, and its target emptied", async () => {
+  test("a junction in the export folder is not followed, and its target is kept", async () => {
+    // BETA 995 and earlier emptied the target (twinbasic/twinbasic#2456, fixed in 997).
     const out = path.join(root, "junction");
     const outside = path.join(root, "outside");
     mkdirSync(out);
@@ -82,10 +83,10 @@ scenario("Export Project", (lane) => {
     symlinkSync(outside, path.join(out, "linked"), "junction");
     const lines = await exportTo(out);
     assert.ok(
-      lines.some((l) => /^DELETED: .*\\linked\\precious\.txt$/.test(l)),
-      "the export no longer deletes through the junction",
+      !lines.some((l) => /\\linked\\precious\.txt$/.test(l)),
+      `the export reaches through the junction: ${JSON.stringify(lines)}`,
     );
-    assert.deepEqual(filesUnder(outside), []);
+    assert.deepEqual(filesUnder(outside), ["precious.txt"]);
   });
 
   test("a read-only file stops the export part-way, and the IDE reports nothing", async () => {

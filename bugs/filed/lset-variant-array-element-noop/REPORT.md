@@ -28,4 +28,4 @@ Severity: low to medium. A statement that has no effect and no error is easy to 
 
 Tried: `ReDim v2(0 To 1)` on a `Variant`, then `LSet v2(0) = "zz"`, does the same. The `w` elements and `Dim a(0 To 2) As String` elements work. On BETA 983 the `v` lines read the same, and the `w` line for `LSet` reads `[zz23456789]`, because `LSet` did not yet fill with spaces there (fixed in BETA 984, which is a separate matter).
 
-<!-- Reproducer: bugs/lset-variant-array-element-noop/ (mode run, expects the four lines above); verified on 995, 983 gives the same `v` lines. docs/Reference/Core/LSet.md and RSet.md each carry a WARNING naming BETA 995 for this, after the paragraph that says the destination can be a Variant that holds a string; when fixed, replace each with a NOTE saying since which build. -->
+<!-- Reproducer: bugs/lset-variant-array-element-noop/ (mode run, expects the four lines above); verified on 995, 983 gives the same `v` lines. docs/Reference/Core/LSet.md and RSet.md each carry a WARNING naming BETA 995 for this, after the paragraph that says the destination can be a Variant that holds a string; when fixed, remove each. -->

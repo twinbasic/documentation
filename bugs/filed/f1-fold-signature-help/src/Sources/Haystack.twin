@@ -1,8 +1,0 @@
-' A haystack with a needle in it.
-Module Haystack
-    Public Function FindTheNeedle(ByVal n As Long) As Long
-        Dim needleCount As Long
-        needleCount = n * 2
-        Return needleCount
-    End Function
-End Module

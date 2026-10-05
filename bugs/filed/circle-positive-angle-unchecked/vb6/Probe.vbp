@@ -1,9 +1,0 @@
-Type=Exe
-Form=Form1.frm
-Module=Module1; Module1.bas
-Module=PngDump; PngDump.bas
-Startup="Sub Main"
-ExeName32="Probe.exe"
-Name="Probe"
-CompilationType=0
-OptimizationType=0

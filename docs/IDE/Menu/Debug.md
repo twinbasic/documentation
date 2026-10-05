@@ -54,11 +54,11 @@ End Sub
 
 The editor opens the module, highlights the whole failing line, `a(idx) = i * 10`, and puts a yellow arrow in the margin beside it. Under the line, an error panel shows:
 
-- **Run-time error -2147352565 (8002000B)**: the error number, then the same number in hexadecimal;
-- **DESCRIPTION:** and the error's description, here *Invalid index.*;
+- **Run-time error 9 (00000009)**: the error number, then the same number in hexadecimal;
+- **DESCRIPTION:** and the error's description, here *Subscript out of range*;
 - four buttons: **Try Again (Resume)**, **Ignore (Resume Next)**, **Stop** and **Search Online**.
 
-The number is the one `Err.Number` holds, and for some errors it is not the number VBA uses: see [Error numbers that differ from VBA](../../../Modules/ErrObject/Number#error-numbers-that-differ-from-vba). Nothing about the error is written to the [Debug Console](../DebugConsole). The panel's **×** only hides the panel.
+The number is the one `Err.Number` holds. Nothing about the error is written to the [Debug Console](../DebugConsole). The panel's **×** only hides the panel.
 
 The other panes show the state of the program at the failing line:
 
