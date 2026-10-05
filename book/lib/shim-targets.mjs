@@ -25,16 +25,42 @@ export function fingerprint(fn) {
   return createHash("sha256").update(Function.prototype.toString.call(fn)).digest("hex").slice(0, 12);
 }
 
+// Each call's roots and table, by the calling shim's URL, so that
+// scripts/check_pdf_shims_equiv.mjs can ask whether a member a shim patched is
+// in its table (tableCovers). Nothing else reads it.
+const registered = new Map();
+
+// A path such as 'PDFDict.prototype.get', followed from the roots: the object
+// that holds the member, which is undefined if the path leads nowhere, and the
+// member's name.
+function followPath(roots, path) {
+  const names = path.split(".");
+  const key = names.pop();
+  let holder = roots;
+  for (const name of names) holder = holder?.[name];
+  return { names, key, holder };
+}
+
+// Whether the table `shimUrl` gave checkTargets has an entry for `key` of
+// `holder`, whether a fingerprint or ABSENT. It is false for a shim that has
+// not called checkTargets.
+export function tableCovers(shimUrl, holder, key) {
+  const entry = registered.get(shimUrl);
+  if (!entry) return false;
+  return Object.keys(entry.targets).some((path) => {
+    const at = followPath(entry.roots, path);
+    return at.holder === holder && at.key === key;
+  });
+}
+
 // shimUrl is the shim's import.meta.url. roots holds the pdf-lib objects the
 // shim imports, by name; each key of targets is a path from one of them, such
 // as 'PDFDict.prototype.get', and each value is [arity, fingerprint] or ABSENT.
 export function checkTargets(shimUrl, roots, targets) {
+  registered.set(shimUrl, { roots, targets });
   const faults = [];
   for (const [path, expected] of Object.entries(targets)) {
-    const names = path.split(".");
-    const key = names.pop();
-    let holder = roots;
-    for (const name of names) holder = holder?.[name];
+    const { names, key, holder } = followPath(roots, path);
     if (Object(holder) !== holder) {
       faults.push(`${path}: ${names.join(".")} is missing`);
     } else if (expected === ABSENT) {
