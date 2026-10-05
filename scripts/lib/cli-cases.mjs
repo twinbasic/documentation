@@ -737,6 +737,7 @@ bad("scripts/try_help_addin.mjs", ["--port=1.5"], NOT_PORT(1.5) + "\n");
   bad(tool, ["--batch", "0"], say(NOT_COUNT("--batch", 0)));
   bad(tool, ["--port", "0"], say(NOT_PORT(0)));
   bad(tool, ["--port=65536"], say(NOT_PORT(65536)));
+  bad(tool, ["--port", "65534", "--jobs", "3"], say("--port 65534 with --jobs 3 needs ports up to 65536, past 65535"));
   bad(
     tool,
     ["--only", "("],
