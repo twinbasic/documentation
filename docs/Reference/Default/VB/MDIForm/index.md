@@ -157,6 +157,9 @@ When **True** (default), loading an MDI child class also shows it; when **False*
 
 The colour painted in the MDI client area, as an **OLE_COLOR**. Defaults to the system **vbApplicationWorkspace** colour. Used as the canvas behind [**Picture**](#picture) and behind every MDI child's title bar and outer border.
 
+> [!WARNING]
+> BETA 997 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+
 ### Caption
 {: .no_toc }
 

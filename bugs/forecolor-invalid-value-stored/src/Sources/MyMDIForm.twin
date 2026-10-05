@@ -1,0 +1,9 @@
+[Description("")]
+[FormDesignerId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA01")]
+[PredeclaredId]
+Class MyMDIForm
+
+    Sub New()
+    End Sub
+
+End Class
