@@ -1,4 +1,9 @@
 {
-  "mode": "manual",
-  "steps": "Needs several IDEs building at once, which bug_repro cannot run.\n1. Unzip concurrent-builds-shared-temp.zip and copy the project into eight folders.\n2. Open each copy in its own IDE, all eight at once, with the default environment, so that all share one TEMP.\n3. Press Build in all eight at about the same time, and repeat. About one build in 24 fails with [TYPELIB] failed to finalize typelibrary.  Disk error? then [LINKER] FAILED to create type library and [BUILD] failed.\n4. Control: give each IDE a TEMP and TMP of its own; no build fails.\nMeasured on BETA 995 through the documentation's harness with TEMP shared (8 of 192 failed) and per IDE (0 of 192). launchIde gives each IDE its own TEMP today, so pass TEMP and TMP in launchIde's env to measure it again."
+  "mode": "probe",
+  "probe": ["scripts/probe_shared_temp.mjs"],
+  "expect": {
+    "exit": 1,
+    "output": ["^[1-9]\\d* of \\d+ builds failed to write the type library \\(TEMP shared\\)$"]
+  },
+  "steps": "1. Unzip concurrent-builds-shared-temp.zip and copy the project into eight folders.\n2. Open each copy in its own IDE, all eight at once, with the default environment, so that all share one TEMP.\n3. Press Build in all eight at about the same time, and repeat. About one build in 24 fails with [TYPELIB] failed to finalize typelibrary.  Disk error? then [LINKER] FAILED to create type library and [BUILD] failed.\n4. Control: give each IDE a TEMP and TMP of its own; no build fails.\nscripts/probe_shared_temp.mjs does this with a TEMP shared by eight IDEs whose builds start together, and --control with a TEMP for each. On BETA 997, 3 of 8 builds failed in the first round shared, and 0 of 48 with a TEMP each."
 }

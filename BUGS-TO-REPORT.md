@@ -127,11 +127,15 @@ node scripts/impexp.mjs import bugs/<slug>/<slug>.twinproj bugs/<slug>/src --ove
 
 `bugs/<slug>/repro.json` says how to ask the compiler about the entry, and is committed with
 the reproducer: a `mode` of `compile`, `build`, `run`, `cli` (the compiler executable's own
-command line) or `manual`, and what a reproduction looks like in `expect`, such as the exit
-code of `tbbuild`, the diagnostic codes, or a regular expression the output must match.
-`verify` reads it for every entry and reports `reproduces`, `NO LONGER REPRODUCES` (the bug
-may be fixed on this build) or `manual`, which prints the `steps` it holds. It needs a
-twinBASIC install, and is run by a person, never by a gate or by CI.
+command line), `lane` (a lane of `ide-test.bat` or `addin-test.bat` and the tests in it that
+assert the bug), `probe` (a script under `scripts/`) or `manual`, and what a reproduction
+looks like in `expect`, such as the exit code of `tbbuild`, the diagnostic codes, or a
+regular expression the output must match. A bug that needs the IDE operated gets a lane
+test rather than `manual` steps, so that no entry needs a person at the IDE; `steps` still
+holds the recipe for the issue. `verify` reads it for every entry and reports `reproduces`,
+`NO LONGER REPRODUCES` (the bug may be fixed on this build) or `manual`, which prints the
+`steps` it holds. It needs a twinBASIC install, and is run by a person, never by a gate or
+by CI.
 
 **A VB6 comparison is a project of its own in `vb6/`**, made by `new <slug> "<entry title>" --with-vb6`
 from the template in `test/repro-templates/vb6/`. By convention `Probe.vbp` builds `Probe.exe`,
@@ -209,7 +213,7 @@ What does not reproduce it:
 
 So it takes at least one existing entry and at least one slot with nothing in it, which looks like each slot being read with the previous slot's value as its default. Once a duplicate is there, the next opened project keeps it: 18 copies of one project became 20 after one more open, with the new project on top. Both variants of step 2 (deleted slots, empty strings) were measured on BETA 995, ending with 21 values and 3 distinct projects.
 
-<!-- Manual in bugs/recent-projects-copies/repro.json because it changes the user's own registry. Stated in WIP.Harness.md (the recent-list tidy, which exists because of it) and scripts/lib/tb-registry.mjs; when fixed, the note there that a short list trips it can go. Measured 2026-09-23 on BETA 983 by reading the registry after tbbuild --keep opened a fixture project on a private desktop and the IDE was ended by its pid, and again on BETA 995 on 2026-10-01 (cli995/rec-995-*.txt). The harness trips it because every IDE a run starts opens a project: a run that began on a list of one entry once ended with seventeen copies of it. -->
+<!-- Lane mode in bugs/recent-projects-copies/repro.json: asserted by `ide-test.bat --only recent-projects-copies` (test/ide/recent-projects-copies.test.mjs), which passes on BETA 997; the test records the user's own list value by value and puts it back afterwards. Stated in WIP.Harness.md (the recent-list tidy, which exists because of it) and scripts/lib/tb-registry.mjs; when fixed, the note there that a short list trips it can go. Measured 2026-09-23 on BETA 983 by reading the registry after tbbuild --keep opened a fixture project on a private desktop and the IDE was ended by its pid, and again on BETA 995 on 2026-10-01 (cli995/rec-995-*.txt). The harness trips it because every IDE a run starts opens a project: a run that began on a list of one entry once ended with seventeen copies of it. -->
 
 ---
 
@@ -257,7 +261,7 @@ So exit 0 on a project with errors happens only for an error in code nothing cal
 
 Silence on stdout and stderr: measured on BETA 983 first, and on BETA 995 by redirecting the standard handles of the process to a file. The same redirection captures the compiler executable's own output (`twinBASIC_win32.exe settings <project>` wrote the whole `Settings` file), so the capture works.
 
-<!-- Manual in bugs/build-and-exit-silent/repro.json: the switch belongs to the IDE executable, which opens a window, so nothing here may run on the user's desktop. Measured with a scratch copy of scripts/lib/tb-launch.ps1 (private desktop, kill-on-close job, TBBUILD_CMD replacing the command line, standard handles redirected to a file), with scripts/lib/tb-registry.mjs startTidy and finishTidy around the run. Stated in scripts/tbbuild.mjs (header comment) and WIP.Harness.md, "Do not reach for --buildAndExit32 instead": when fixed, those two say the switch is unusable. So do docs/Documentation/Tools.md (the tbbuild section) and docs/Features/Packages/Import-export tool.md ("Compiling from the command line"). All four say exit 0 only for an error in code nothing calls, and a hang for an error the build reaches. -->
+<!-- Lane mode in bugs/build-and-exit-silent/repro.json: asserted by `ide-test.bat --only build-and-exit-silent` (test/ide/build-and-exit-silent.test.mjs, both cases, the IDE executable on a private desktop through launchOnDesktop), which passes on BETA 997. First measured with a scratch copy of scripts/lib/tb-launch.ps1 (private desktop, kill-on-close job, TBBUILD_CMD replacing the command line, standard handles redirected to a file), with scripts/lib/tb-registry.mjs startTidy and finishTidy around the run. Stated in scripts/tbbuild.mjs (header comment) and WIP.Harness.md, "Do not reach for --buildAndExit32 instead": when fixed, those two say the switch is unusable. So do docs/Documentation/Tools.md (the tbbuild section) and docs/Features/Packages/Import-export tool.md ("Compiling from the command line"). All four say exit 0 only for an error in code nothing calls, and a hang for an error the build reaches. -->
 
 ---
 
@@ -814,7 +818,7 @@ Each build writes its type library and succeeds, however many IDEs share the `TE
 **Additional context**
 Severity: low; the build passes when repeated, and an IDE run by a person rarely builds at the same moment as another. It affects tools that build several projects at once. The compiler imports `GetTempFileNameW`, and its messages show that it writes the type library to a file and reads it back (`[TYPELIB] failed to read in generated type library file` is the message beside this one). A temporary file name that two processes both use would explain the counts; that is an inference, not observed. The temp folder is empty after the builds, so whatever is written there is deleted.
 
-<!-- Reproducer: bugs/concurrent-builds-shared-temp/ (mode manual: it needs several IDEs at once, which bug_repro cannot run). The measurement used the same console template with check_examples' two staging modules, not this reproducer itself: a Sonnet agent's 904 builds through tbbuild-style lanes, data in %TEMP%/claude/typelib-probe/results.jsonl (not kept), 2026-10-02, BETA 995 only; no 983 control. scripts/lib/tb-ide.mjs's launchIde gives every IDE %TEMP%/tbbuild-tmp-<port> since 7a716388, so no harness of this repository reproduces it today: to measure it again, pass TEMP and TMP to launchIde's env. When fixed, the comment in launchIde and WIP.ExamplesBuild.md's per-IDE temp folder note may say so; the folders can stay. -->
+<!-- Reproducer: bugs/concurrent-builds-shared-temp/ (mode probe: scripts/probe_shared_temp.mjs builds it in eight IDEs at once with one TEMP, and with --control a TEMP each; on BETA 997, 3 of 8 failed in the first round shared, 0 of 48 with a TEMP each). The first measurement used the same console template with check_examples' two staging modules, not this reproducer itself: a Sonnet agent's 904 builds through tbbuild-style lanes, data in %TEMP%/claude/typelib-probe/results.jsonl (not kept), 2026-10-02, BETA 995 only; no 983 control. scripts/lib/tb-ide.mjs's launchIde gives every IDE %TEMP%/tbbuild-tmp-<port> since 7a716388, so no harness of this repository reproduces it today: to measure it again, pass TEMP and TMP to launchIde's env. When fixed, the comment in launchIde and WIP.ExamplesBuild.md's per-IDE temp folder note may say so; the folders can stay. -->
 
 ---
 
@@ -1770,7 +1774,7 @@ The workaround is step 5's: an inline handler that calls the function `AddEventL
 
 Severity: low. A workaround exists, but nothing tells the add-in's author why the listener is not called: the exception shows only in the IDE's own page.
 
-<!-- Reproducer: bugs/raiseevent-plain-html-typeerror/ (mode manual: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane). Asserted by `addin-test.bat --only panes` (test/addin/panes.test.mjs, "P12: raiseEvent from plain tool-window HTML throws, and the add-in hears nothing", and the direct call after it), which passes on BETA 995 and 997. The reproducer is a cut-down copy of that lane's PanesProbe add-in (test/addin/probes/panes), compiled clean on 997 by `bug_repro.mjs compile`, and not itself run in a lane. The raiseEvent source quoted is from BETA 997's ide/main.js. Stated in docs/Reference/Built-In/tbIDE/HtmlElement.md, the NOTE under "raiseEvent" (names BETA 997), and in WIP.HelpAddin.md (P12): when fixed, update that test and P12, and state in the NOTE what raiseEvent does in plain HTML, with no mention of the defect. -->
+<!-- Reproducer: bugs/raiseevent-plain-html-typeerror/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only panes` (test/addin/panes.test.mjs, "P12: raiseEvent from plain tool-window HTML throws, and the add-in hears nothing", and the direct call after it), which passes on BETA 995 and 997. The reproducer is a cut-down copy of that lane's PanesProbe add-in (test/addin/probes/panes), compiled clean on 997 by `bug_repro.mjs compile`, and not itself run in a lane. The raiseEvent source quoted is from BETA 997's ide/main.js. Stated in docs/Reference/Built-In/tbIDE/HtmlElement.md, the NOTE under "raiseEvent" (names BETA 997), and in WIP.HelpAddin.md (P12): when fixed, update that test and P12, and state in the NOTE what raiseEvent does in plain HTML, with no mention of the defect. -->
 
 ---
 
@@ -1813,4 +1817,4 @@ Only `onclick` was tried. The setter's test is on the name, so it applies to eve
 
 Severity: low. `AddEventListener` and inline handlers work, but an add-in that sets a handler property gets neither the handler nor an error.
 
-<!-- Reproducer: bugs/on-property-ignored/ (mode manual: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane). Asserted by `addin-test.bat --only panes` (test/addin/panes.test.mjs, 'P4: a property whose name starts with "on" is dropped, and the add-in is told nothing'), which passes on BETA 995 and 997. The reproducer is a cut-down copy of that lane's PanesProbe add-in (test/addin/probes/panes), compiled clean on 997 by `bug_repro.mjs compile`, and not itself run in a lane. The setter source quoted is from BETA 997's ide/main.js. Stated in docs/Reference/Built-In/tbIDE/HtmlElementProperties.md, the NOTE that begins "A property whose name starts with `on` is ignored" (names BETA 997), and in WIP.HelpAddin.md (P4): when fixed, update that test and P4, and remove the NOTE or replace it with what the setter now does. -->
+<!-- Reproducer: bugs/on-property-ignored/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only panes` (test/addin/panes.test.mjs, 'P4: a property whose name starts with "on" is dropped, and the add-in is told nothing'), which passes on BETA 995 and 997. The reproducer is a cut-down copy of that lane's PanesProbe add-in (test/addin/probes/panes), compiled clean on 997 by `bug_repro.mjs compile`, and not itself run in a lane. The setter source quoted is from BETA 997's ide/main.js. Stated in docs/Reference/Built-In/tbIDE/HtmlElementProperties.md, the NOTE that begins "A property whose name starts with `on` is ignored" (names BETA 997), and in WIP.HelpAddin.md (P4): when fixed, update that test and P4, and remove the NOTE or replace it with what the setter now does. -->

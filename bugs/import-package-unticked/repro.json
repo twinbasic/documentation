@@ -1,5 +1,11 @@
 {
-  "mode": "manual",
-  "attach": ["DocProbePkg.twinpack"],
+  "mode": "lane",
+  "lane": "ide:packages",
+  "tests": [
+    "the imported package is listed, but not ticked"
+  ],
+  "attach": [
+    "DocProbePkg.twinpack"
+  ],
   "steps": "1. Unzip import-package-unticked.zip (attached to the report; pack writes it), which holds import-package-unticked.twinproj and DocProbePkg.twinpack. Open the project in the twinBASIC IDE.\n2. Open Project Settings > References > Available Packages and press Import from file...; choose DocProbePkg.twinpack.\n3. DocProbePkg appears in the Available Packages list, unticked. The compiler has answered the importPackage request with success: true and body: { packageSymbol: \"DocProbePkg\" }, so the import worked. Expected: the package is ticked, as after the online import. Actual: nothing in the project can use it until it is ticked by hand.\nRe-measured on BETA 995 by `ide-test.bat --only packages` (first test; its probe is test/ide/probes/packages); BETA 983 by hand. The lane has no native file picker, so it answers the dialog's OpenPackage call itself; the click on the button is real."
 }

@@ -1,5 +1,12 @@
 {
-  "mode": "manual",
-  "attach": ["DocProbePkg-v1.twinpack", "DocProbePkg-v2.twinpack"],
+  "mode": "lane",
+  "lane": "ide:packages",
+  "tests": [
+    "one Apply after the untick, the import and the tick: no restart, no save, and v1 still runs"
+  ],
+  "attach": [
+    "DocProbePkg-v1.twinpack",
+    "DocProbePkg-v2.twinpack"
+  ],
   "steps": "Use a machine with no copy of DocProbePkg in %APPDATA%\\twinBASIC\\packages (a linked copy makes the bug go away).\n1. Unzip replace-embedded-package-one-apply.zip (attached; pack writes it), which holds replace-embedded-package-one-apply.twinproj, DocProbePkg-v1.twinpack and DocProbePkg-v2.twinpack, whose function DocProbeVersion returns 1 and 2. Open the project.\n2. Embed v1: Project Settings > References > Available Packages > Import from file... DocProbePkg-v1.twinpack, tick it, Apply. Replace the body of Main with Debug.Print \"DocProbeVersion=\" & DocProbeVersion(), and press F5: the DEBUG CONSOLE shows DocProbeVersion=1.\n3. Replace it with v2 under ONE Apply: in References untick DocProbePkg, then Available Packages > Import from file... DocProbePkg-v2.twinpack, tick it, and press Apply once.\n4. See, in the DEBUG CONSOLE, only [COMPILER] Project settings updated: no compiler restart and no save. Press F5: it prints DocProbeVersion=1. Expected: 2.\nControl: Apply after the untick, and again after the import and tick: each Apply restarts the compiler and saves, and F5 prints DocProbeVersion=2.\nRe-measured on BETA 995 by `ide-test.bat --only packages` (the second and third tests, with the control; probes in test/ide/probes/packages)."
 }

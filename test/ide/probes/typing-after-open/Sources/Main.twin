@@ -1,0 +1,8 @@
+' Find in Files for "Dim needleCount" and open the result: Haystack.twin opens at line 4, column 9.
+Module Main
+    Public Sub Main()
+        Dim needle As Long
+        needle = FindTheNeedle(3)
+        Debug.Print needle
+    End Sub
+End Module

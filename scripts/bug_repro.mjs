@@ -20,9 +20,12 @@
 // asked whether it still does.
 //
 // bugs/<slug>/repro.json says how to ask. `verify` reads it for every reproducer:
-// the mode (compile, build, run, cli or manual), the target, and what a
-// reproduction looks like (`expect`). Its keys are listed by loadRepro() below,
-// and the contributor-facing description is docs/Documentation/Tools.md.
+// the mode (compile, build, run, cli, lane, probe or manual), the target, and what
+// a reproduction looks like (`expect`). Its keys are listed by loadRepro() below,
+// and the contributor-facing description is docs/Documentation/Tools.md. A lane
+// reproducer names a lane of test/ide or test/addin and the tests in it that pass
+// while the bug is there; a probe reproducer names a script under scripts/ that
+// verify runs and judges by `expect`. Only a manual one needs a person.
 //
 // Exit codes: 0 done, 1 a finding, 2 the tool could not do its job, 3 and up its
 // own -- see USAGE. tbbuild's and tbrun's exit codes are mapped into that table by
@@ -104,6 +107,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import {
   CliError,
   choiceOption,
@@ -205,7 +209,11 @@ Commands:
                         issue, and one that no longer reproduces is probably fixed.
                         Needs a twinBASIC install; run by a person only. A run-mode
                         reproducer with expect.imagesDiffer compares its fresh
-                        pictures (kept in the temp folder) with images/<name>-vb6.png
+                        pictures (kept in the temp folder) with images/<name>-vb6.png.
+                        A lane reproducer ("lane": "ide:<lane>" or "addin:<lane>")
+                        reproduces when every test it names passes; its lanes run
+                        last, through ide_test or addin_test. A probe reproducer
+                        runs node <script> <args...> and is judged by its expect
   file <slug> <issue>   move the entry whose reproducer is <slug> out of
                         BUGS-TO-REPORT.md into bugs/filed/<slug>/REPORT.md, move
                         bugs/<slug>/ to bugs/filed/<slug>/, and record the issue in
@@ -615,16 +623,29 @@ function pack(slug) {
 
 // ------------------------------------------------------------ repro.json
 
-const MODES = ["compile", "build", "run", "cli", "manual"];
+const MODES = ["compile", "build", "run", "cli", "lane", "probe", "manual"];
 // The warnings loadRepro has printed, so that a reproducer read by several commands warns once.
 const warned = new Set();
-// What `expect` may hold in each mode.
+// What `expect` may hold in each mode. A lane reproducer has no `expect`: its tests are what it expects.
 const EXPECT_KEYS = {
   compile: ["exit", "diagnostics", "noDiagnostics"],
   build: ["exit", "message"],
   run: ["exit", "output", "absent", "imagesDiffer"],
   cli: ["exit", "output", "absent"],
+  probe: ["exit", "output", "absent"],
 };
+
+// The suites a lane reproducer names, as "<suite>:<lane>": the runner, and the
+// lanes it has, by the name its --only matches and its report prints.
+const SUITES = {
+  ide: { tool: "scripts/ide_test.mjs", lanes: "test/ide/lanes.mjs" },
+  addin: { tool: "scripts/addin_test.mjs", lanes: "test/addin/lanes.mjs" },
+};
+const laneNames = {};
+for (const [suite, { lanes }] of Object.entries(SUITES)) {
+  const list = (await import(pathToFileURL(path.join(REPO_ROOT, lanes)).href)).default;
+  laneNames[suite] = list.map((l) => l.name ?? path.basename(l.file, ".test.mjs"));
+}
 
 /**
  * Reads and strictly checks bugs/<slug>/repro.json. A fault is a Fail that names
@@ -649,15 +670,31 @@ function loadRepro(slug, { makingPictures = false } = {}) {
   }
   const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
   if (!isObject(json)) return bad("", "must be a JSON object");
-  const keys = ["mode", "arch", "llvm", "exe", "expect", "cli", "steps", "attach", "images", "issue", "existing"];
+  const keys = [
+    "mode",
+    "arch",
+    "llvm",
+    "exe",
+    "expect",
+    "cli",
+    "lane",
+    "tests",
+    "probe",
+    "steps",
+    "attach",
+    "images",
+    "issue",
+    "existing",
+  ];
   for (const key of Object.keys(json)) if (!keys.includes(key)) bad(key, "is not a key repro.json has");
   if (!MODES.includes(json.mode)) bad("mode", `must be one of ${MODES.join(", ")}`);
   const { mode } = json;
-  // A cli or manual reproducer may have no project of its own: a cli one can
-  // name the files an installation ships by {ide}.
+  // A cli, lane, probe or manual reproducer may have no project of its own: a cli
+  // one can name the files an installation ships by {ide}, and a lane or a probe
+  // brings its own.
   const p = where(slug);
   const hasSrc = existsSync(path.join(p.src, "Settings"));
-  if (!hasSrc && !["cli", "manual"].includes(mode))
+  if (!hasSrc && !["cli", "lane", "probe", "manual"].includes(mode))
     bad("mode", `${mode} needs a project, and there is no ${rel(p.src)}/Settings`);
   if ("attach" in json) {
     if (!hasSrc) bad("attach", `goes into ${slug}.zip, which pack writes only from ${rel(p.src)}/`);
@@ -728,13 +765,37 @@ function loadRepro(slug, { makingPictures = false } = {}) {
       }
     }
   } else if ("cli" in json) bad("cli", "applies to the cli mode only");
+  if (mode === "lane") {
+    const [suite, lane, ...rest] = typeof json.lane === "string" ? json.lane.split(":") : [];
+    if (!SUITES[suite] || !lane || rest.length) {
+      bad("lane", `must be "<suite>:<lane>", the suite one of ${Object.keys(SUITES).join(", ")}`);
+    }
+    if (!laneNames[suite].includes(lane)) bad("lane", `names ${lane}, which is not a lane of ${SUITES[suite].lanes}`);
+    const isTests =
+      Array.isArray(json.tests) && json.tests.length && json.tests.every((t) => typeof t === "string" && t);
+    if (!isTests) bad("tests", "must be a list of the lane's test names, each of which passes while the bug is there");
+  } else {
+    if ("lane" in json) bad("lane", "applies to the lane mode only");
+    if ("tests" in json) bad("tests", "applies to the lane mode only");
+  }
+  if (mode === "probe") {
+    const [script, ...args] = Array.isArray(json.probe) ? json.probe : [];
+    if (
+      typeof script !== "string" ||
+      !/^scripts\/[\w.-]+\.mjs$/.test(script) ||
+      !args.every((a) => typeof a === "string")
+    ) {
+      bad("probe", "must be a list: a script under scripts/ (scripts/<name>.mjs), then its arguments");
+    }
+    if (!existsSync(path.join(REPO_ROOT, script))) bad("probe", `names ${script}, which is not there`);
+  } else if ("probe" in json) bad("probe", "applies to the probe mode only");
 
   const out = { ...json, expect: undefined };
-  if (mode === "manual") {
-    if ("expect" in json) bad("expect", "does not apply to the manual mode");
+  if (mode === "manual" || mode === "lane") {
+    if ("expect" in json) bad("expect", `does not apply to the ${mode} mode`);
     return out;
   }
-  if (!isObject(json.expect)) bad("expect", "is required, an object, for every mode but manual");
+  if (!isObject(json.expect)) bad("expect", "is required, an object, for every mode but lane and manual");
   const e = json.expect;
   for (const key of Object.keys(e)) {
     if (!["exit", "diagnostics", "noDiagnostics", "output", "absent", "message", "imagesDiffer"].includes(key)) {
@@ -1203,10 +1264,11 @@ async function verifyOne(slug, repro, lane) {
   // The pictures of a run that is judged by them are staged in the temp folder, and never kept in the tree.
   let imagesDir = null;
   try {
-    if (existsSync(path.join(where(slug).src, "Settings"))) pack(slug);
+    if (repro.mode !== "probe" && existsSync(path.join(where(slug).src, "Settings"))) pack(slug);
     let r;
     let table;
     if (repro.mode === "cli") r = await runCli(slug, repro, o);
+    else if (repro.mode === "probe") r = await runProbeScript(repro);
     else if (repro.mode === "run") {
       const judged = "imagesDiffer" in repro.expect;
       r = await runProbe(slug, { ...o, llvm: repro.llvm, exe: repro.exe, images: judged ? repro.images : null });
@@ -1243,6 +1305,120 @@ async function verifyOne(slug, repro, lane) {
   } finally {
     if (imagesDir) rmSync(imagesDir, { recursive: true, force: true });
   }
+}
+
+// A probe reproducer: the script, run with node from the repository's root, with
+// --ide passed on when verify was given one. It starts what it needs itself, ends
+// it, and must end on its own; what it prints is judged by `expect`.
+function runProbeScript(repro) {
+  const [script, ...args] = repro.probe;
+  const argv = [path.join(REPO_ROOT, script), ...args, ...(values.ide ? ["--ide", values.ide] : [])];
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, argv, {
+      cwd: REPO_ROOT,
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    });
+    let output = "";
+    child.stdout.on("data", (d) => {
+      output += d;
+    });
+    child.stderr.on("data", (d) => {
+      output += d;
+    });
+    child.on("error", (e) => resolve({ code: null, output, message: `could not start ${script}: ${e.message}` }));
+    child.on("close", (code) => resolve({ code, output, stdout: output }));
+  });
+}
+
+// The spec reporter's marks for a test that passed and one that failed.
+const PASSED = "\u{2714}";
+const FAILED = "\u{2716}";
+
+/**
+ * Runs the lanes that lane reproducers name, each suite's once through its own
+ * runner, and judges each reproducer by its tests: it reproduces when every one
+ * passed. Returns one result per slug, as verifyOne does.
+ */
+async function verifyLanes(slugs, repros) {
+  const results = [];
+  for (const [suite, { tool }] of Object.entries(SUITES)) {
+    const mine = slugs.filter((s) => repros.get(s).lane.split(":")[0] === suite);
+    if (!mine.length) continue;
+    const lanes = [...new Set(mine.map((s) => repros.get(s).lane.split(":")[1]))];
+    const argv = [path.join(REPO_ROOT, tool), "--only", `^(${lanes.join("|")})$`];
+    if (values.ide) argv.push("--ide", values.ide);
+    if (values.show) argv.push("--show");
+    if (values.hide) argv.push("--hide");
+    console.log(`running ${tool} for ${lanes.join(", ")}`);
+    // The runner owns the registry for its lanes. verify's own tidy has ended by
+    // now, and the variable it left would make the runner refuse to start.
+    const env = { ...process.env };
+    delete env.TB_REGISTRY_OWNER;
+    const r = await new Promise((resolve) => {
+      const child = spawn(process.execPath, argv, {
+        cwd: REPO_ROOT,
+        env,
+        stdio: ["ignore", "pipe", "pipe"],
+        windowsHide: true,
+      });
+      let out = "";
+      child.stdout.on("data", (d) => {
+        out += d;
+      });
+      child.stderr.on("data", (d) => {
+        out += d;
+      });
+      child.on("error", (e) => resolve({ code: null, out: `${out}\ncould not start ${tool}: ${e.message}` }));
+      child.on("close", (code) => resolve({ code, out }));
+    });
+    // Kept whole, for a result that needs reading: the runner's report is long.
+    const log = path.join(tmpdir(), "bugrepro", `verify-${suite}.log`);
+    mkdirSync(path.dirname(log), { recursive: true });
+    writeFileSync(log, r.out);
+    const lines = r.out.split(/\r?\n/);
+    // A lane's report is the block from its "--- <name> (port <n>): ..." line to the next lane's.
+    const block = (lane) => {
+      const start = lines.findIndex((l) => l.startsWith(`--- ${lane} (port `));
+      if (start < 0) return null;
+      const end = lines.findIndex((l, i) => i > start && l.startsWith("--- "));
+      return lines.slice(start, end < 0 ? lines.length : end);
+    };
+    // The runner's 2 is its harness failing, and 3 the registry or a work folder
+    // not put back: either leaves no verdict to trust.
+    const broken = r.code === null || r.code >= 2;
+    const said = r.out.trim().split("\n").slice(-3).join(" | ");
+    for (const slug of mine) {
+      const repro = repros.get(slug);
+      const lane = repro.lane.split(":")[1];
+      const report = block(lane);
+      const res = (status, detail) =>
+        results.push({ slug, status, detail: status === "reproduces" ? detail : `${detail} (see ${log})` });
+      if (broken) {
+        res("harness", `${tool} exit ${r.code}: ${said}`);
+        continue;
+      }
+      if (!report) {
+        res("harness", `${tool} printed no report for the lane ${lane}`);
+        continue;
+      }
+      const mark = (test) => {
+        const found = report
+          .map((l) => l.trimStart())
+          .filter((l) => l.startsWith(`${PASSED} ${test} (`) || l.startsWith(`${FAILED} ${test} (`));
+        if (!found.length) return null;
+        return found.some((l) => l.startsWith(FAILED)) ? "failed" : "passed";
+      };
+      const marks = repro.tests.map((test) => ({ test, mark: mark(test) }));
+      const missing = marks.filter((m) => !m.mark);
+      const failed = marks.filter((m) => m.mark === "failed");
+      if (missing.length)
+        res("harness", `the lane ${lane} did not report ${missing.map((m) => `"${m.test}"`).join(", ")}`);
+      else if (failed.length) res("no-longer", `${repro.lane}: failed ${failed.map((m) => `"${m.test}"`).join(", ")}`);
+      else res("reproduces", `${repro.lane}: ${marks.length} test${marks.length === 1 ? "" : "s"} passed`);
+    }
+  }
+  return results;
 }
 
 const LABEL = {
@@ -1288,16 +1464,22 @@ async function verify() {
     });
   }
   const results = [];
-  const queue = [...all];
+  const report = (res) => {
+    const repro = repros.get(res.slug);
+    res.filed = where(res.slug).filed;
+    results.push(res);
+    console.log(
+      `${res.slug}${filedLabel(res.filed, repro)}: ${LABEL[res.status]}${res.detail ? ` -- ${res.detail}` : ""}`,
+    );
+  };
+  // Lane reproducers run last, through their suites' runners, which take their
+  // lanes' ports and own the registry while they run.
+  const byLane = all.filter((s) => repros.get(s).mode === "lane");
+  const queue = all.filter((s) => !byLane.includes(s));
   const lane = async (index) => {
     while (queue.length) {
       const slug = queue.shift();
-      const repro = repros.get(slug);
-      const res = { ...(await verifyOne(slug, repro, port + index)), filed: where(slug).filed };
-      results.push(res);
-      console.log(
-        `${slug}${filedLabel(res.filed, repro)}: ${LABEL[res.status]}${res.detail ? ` -- ${res.detail}` : ""}`,
-      );
+      report(await verifyOne(slug, repros.get(slug), port + index));
     }
   };
   try {
@@ -1306,6 +1488,7 @@ async function verify() {
     finishTidy(tidy);
     tidy = null;
   }
+  for (const res of await verifyLanes(byLane, repros)) report(res);
   const count = (status, filed = false) => results.filter((r) => r.status === status && r.filed === filed).length;
   const summary = (filed) =>
     `${count("reproduces", filed)} reproduce, ${count("no-longer", filed)} no longer reproduce, ` +

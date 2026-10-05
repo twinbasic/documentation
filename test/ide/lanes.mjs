@@ -25,4 +25,7 @@ export default [
   { file: "break-into.test.mjs" },
   { file: "console-completion.test.mjs" },
   { file: "console-space.test.mjs" },
+  { file: "build-and-exit-silent.test.mjs" },
+  { file: "recent-projects-copies.test.mjs" },
+  { file: "typing-after-open.test.mjs" },
 ];

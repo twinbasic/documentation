@@ -1111,18 +1111,21 @@ wrong type, is refused with exit 2, naming the file and the key, before anything
 
 | Key | Meaning |
 |---|---|
-| `mode` | `compile`, `build`, `run`, `cli` or `manual`. `manual` is a reproducer that cannot be automated, such as one that needs a click in the IDE. A `cli` or `manual` reproducer may have no `src/`, when the bug is in files the installation ships; `verify` then runs it without packing, and `{project}` and `{src}` are refused. |
+| `mode` | `compile`, `build`, `run`, `cli`, `lane`, `probe` or `manual`. `lane` is a bug that a lane of [`ide_test.mjs`](#ide-test) or [`addin_test.mjs`](#addin-test) asserts, such as one that needs a click in the IDE; `probe` is one that a script of its own measures, such as one that needs several IDEs at once; `manual` is a reproducer that only a person can run. A `cli`, `lane`, `probe` or `manual` reproducer may have no `src/`, when the bug is in files the installation ships or the lane brings its own project; `verify` then runs it without packing, and `{project}` and `{src}` are refused. |
+| `lane` | `lane` mode. `ide:<lane>` or `addin:<lane>`: the suite, and the lane's name as `--only` matches it. A lane the suite's `lanes.mjs` does not list is refused. |
+| `tests` | `lane` mode. The names of the lane's tests that pass while the bug is there, as the lane's report prints them. The reproducer reproduces when every one of them passes. |
+| `probe` | `probe` mode. A script under `scripts/`, then its arguments: `verify` runs `node <script> <arguments>` from the repository's root, adding `--ide` when it was given one, and judges the exit code and the output by `expect`. The script starts and ends what it needs itself, and must end on its own. |
 | `arch` | Optional. `win32` (default) or `win64`. |
 | `llvm` | Optional, `build` and `run`. `true` builds with LLVM. |
 | `exe` | Optional, `run` only. `true` also runs the built exe, as `run --exe` does: no probe module is added, `Sub Main` runs in the exe, and an exe that exits with a code other than 0 is `tbrun`'s exit 6. `Debug.Print` writes nothing in an exe, so what `expect.output` can match is only what `TbRun.Out` wrote; a bug that crashes the exe is expected as `"exit": 6`. |
-| `expect.exit` | The exit code of `tbbuild` or `tbrun` as they print it, not this tool's mapped code; for `cli`, the compiler executable's. |
+| `expect.exit` | The exit code of `tbbuild` or `tbrun` as they print it, not this tool's mapped code; for `cli`, the compiler executable's; for `probe`, the script's. |
 | `expect.diagnostics` | `compile`. Diagnostic codes, such as `TB5182`, that must all be reported. |
 | `expect.noDiagnostics` | `compile`. `true` expects no error, warning, hint or information. |
 | `expect.message` | `build`. A regular expression the message `tbbuild` prints on standard error must match. |
-| `expect.output` | `run` and `cli`. Regular expressions, each of which must match the output. They are matched line by line, so `^` and `$` hold at each line. |
-| `expect.absent` | `run` and `cli`. Regular expressions, none of which may match the output, such as an `ERROR` line the bug's fix would print. |
+| `expect.output` | `run`, `cli` and `probe`. Regular expressions, each of which must match the output. They are matched line by line, so `^` and `$` hold at each line. |
+| `expect.absent` | `run`, `cli` and `probe`. Regular expressions, none of which may match the output, such as an `ERROR` line the bug's fix would print. |
 | `cli` | `cli` mode. The arguments for the compiler executable, `bin\twinBASIC_win32.exe`, or a list of such lists, run in turn; their output is joined, and their exit code is the one they all gave, or the codes joined by commas, such as `0,999`. `{tmp}` stands for a new temp folder, deleted afterwards; `{project}` for a copy of the packed `.twinproj` in it, and `{src}` for a copy of `src/`, so a command that writes either never touches the committed reproducer; `{ide}` for the folder of the IDE that `--ide` names or that is found, so a file the installation ships can be named without a user name. Give an output folder with backslashes and a trailing one, as `export` requires. Each command runs on a private desktop, inside a job that ends everything it starts, with its standard output and error written to files; `--timeout` (default 120 seconds) is the limit on each. The compiler opens a modal message box for some inputs, such as a damaged project, and waits for it to be closed, and on a private desktop nobody could close it. So the tool reads every dialog box a command opens, and presses its OK button, which lets the command go on. A command's output begins with one line for each box, in the order they opened, `dialog: <title>: <text>` with the box's text on one line, then its standard output, then its standard error, and `expect.output` and `expect.absent` are matched against that. |
-| `steps` | `manual`. What a person does to see the bug. `verify` prints it. |
+| `steps` | What a person does to see the bug, for the issue. `verify` prints it for a `manual` reproducer. |
 | `images` | Optional, `run` and `manual`. A non-empty list of picture names, each of letters, digits, `-` and `_`, without repeats. The project needs a `PngDump.twin` under `src/Sources/` and, when there is a `vb6/`, a `vb6/PngDump.bas` and a `Module=PngDump; PngDump.bas` line in its `Probe.vbp`; without them the file is refused. |
 | `expect.imagesDiffer` | `run`, with `images`. `true` reproduces only when at least one picture of the fresh run differs from the committed `images/<name>-vb6.png`, a difference in size counting; `false` only when all of them match. `images/<name>-vb6.png` must exist for every name, and the file is refused when one does not. |
 | `attach` | Optional. Files besides the project that the issue needs, such as a `.twinpack`: paths relative to the reproducer's folder, with forward slashes. `pack` adds each to `<slug>.zip`. A `cli` command finds a copy of each in its temp folder, at the same relative path: `{tmp}\garbage.twinproj` for `garbage.twinproj`, so a command may damage or write to it. |
@@ -1135,11 +1138,42 @@ be fixed in this build, and the entry may be ready to retire; for a filed bug it
 that a fix has been released. **manual**: not automatable,
 and `steps` is printed. **harness failed**: the tool could not do its job, as for a
 `tbbuild` or `tbrun` exit of 2, or a compile that never settled; that says nothing about
-the bug unless `expect.exit` names it. Reproducers run one at a time. `--jobs N` runs N at
+the bug unless `expect.exit` names it; for a `lane` reproducer, the suite's runner exiting
+2 or 3, or a named test missing from the lane's report. A `lane` reproducer whose test
+failed is **NO LONGER REPRODUCES**, so read the lane's report before retiring the entry:
+a test can fail for another reason. Reproducers run one at a time. `--jobs N` runs N at
 once, each in the IDE on its own port, from `--port` up. `verify` tidies the IDE's registry
-entries once for all of them, as [`check_examples.mjs`](#check-examples) does.
+entries once for all of them, as [`check_examples.mjs`](#check-examples) does. The `lane`
+reproducers run last: each suite's runner once, with `--only` naming every lane they need,
+and the runner tidies the registry for its lanes.
 
 Exit codes: **0** done --- a project that compiled, built or ran as it should, or, for `verify`, every reproducer that can be run on its own still reproduces; **1** a finding: the project has errors, or its build failed after a clean compile, or, for `vb6`, VB6 refused the project, or, for `verify`, at least one reproducer no longer reproduces; **2** a refused command line, a `repro.json` that is not valid, no IDE, a project that could not be packed, a harness that failed, or a crash; for `vb6`, no VB6, a reproducer with no `vb6/` folder, a project that has no `Probe.vbp` or calls `MsgBox` or `InputBox`, or VB6 failing to build it; for `verify`, a lane's harness failed; for `file`, an entry that is missing, ambiguous or marked unreadably, or a `bugs/filed/<slug>` already there, with nothing changed; **3** `new` found `bugs/<slug>` or `bugs/filed/<slug>` already there; **4** the compile never settled; **5** the project crashes the compiler; **6** `run`: the probe printed nothing; for `vb6`, the exe wrote no `out.txt`, or an empty one; **7** `run`: the probe ended before it returned; **8** `run --exe`, and `vb6`: the exe exited with a code other than 0, or was still running after `--timeout`, or, with `vb6`, the Application event log records that it faulted (a VB6 exe that dies of an access violation exits with code 0); **9** `run` and `vb6`: a picture that `images` names was not written, or could not be read.
+
+### probe_shared_temp.mjs
+{: #probe-shared-temp }
+
+    node scripts/probe_shared_temp.mjs [--ides N] [--rounds R] [--control] [--all]
+                                       [--ide <twinBASIC.exe>] [--port N] [--timeout S]
+
+Counts the builds that fail to write the type library when several IDEs build at once in one `TEMP` folder. It is the measurement behind the entry of `BUGS-TO-REPORT.md` whose reproducer is `bugs/concurrent-builds-shared-temp/`: such a build ends with `[TYPELIB] failed to finalize typelibrary.  Disk error?`, then `[LINKER] FAILED to create type library` and `[BUILD] failed`. Like [`tbbuild.mjs`](#tbbuild), it needs a twinBASIC install and Windows, and it is outside every gate and outside CI.
+
+Each round starts `--ides` IDEs at once, each on its own port and each opening a copy of the reproducer's project, packed into a folder under `%TEMP%\tbprobe-shared-temp\` with an explicit build path. An IDE builds one project and is ended, because an IDE reused for a second project wedges. Every IDE compiles its project, then waits until all the others have compiled, so that Build is pressed in all of them at about the same moment. A build whose log holds a `[TYPELIB] failed` line or `FAILED to create type library` failed to write the type library. Any other failed build is not what the probe measures; it ends the probe with exit 2.
+
+[`tbbuild.mjs`](#tbbuild) gives every IDE a `TEMP` folder of its own, so no build of the harness shares one. The probe gives all its IDEs one folder, made for the run under `%TEMP%\tbprobe-shared-temp\` and deleted afterwards, through the `env` option of `launchIde`. With `--control` it leaves the harness's own folders in place, one for each IDE, which is the reproducer's control.
+
+| Flag | Effect |
+|---|---|
+| `--ides <n>` | IDEs at once. Default 8. |
+| `--rounds <r>` | Rounds, one build in each IDE. Default 24. |
+| `--control` | Give each IDE a `TEMP` folder of its own. No build is expected to fail. |
+| `--all` | Run every round. By default the probe stops after the round in which it first sees a type library fail, because one is enough to show the defect. |
+| `--ide <path>` | Path to `twinBASIC.exe`, found as for `tbbuild`. |
+| `--port <n>` | The first DevTools port to try. Default 9760. The IDEs take the first free ports from it. |
+| `--timeout <secs>` | The wait for a compile to settle, and again for a build. Default 180. |
+
+The output is one `round <k>: <n> failed` line for each round, the last console lines of every build that failed, and a last line of the form `<f> of <n> builds failed to write the type library (TEMP shared)`, or `(TEMP per IDE)` under `--control`. Other work on the machine, such as lanes of [`addin_test.mjs`](#addin-test) or [`ide_test.mjs`](#ide-test), loads the same processor, and a disturbed run is not comparable with a quiet one.
+
+Exit codes: **0** no build failed to write the type library; **1** at least one did, so the defect is there; **2** a refused command line, no IDE, no free ports, an IDE that did not start, a project that did not compile, a build that failed in some other way, or a crash.
 
 ### vb6run.mjs
 {: #vb6run }
