@@ -127,7 +127,7 @@ The other operators:
 | Operator | Result type |
 |:---------|:------------|
 | `/` | **Decimal** if either operand is **Decimal**; otherwise **Single** if one operand is **Single** and the other is **Byte**, **Integer**, **Boolean** or **Single**; otherwise **Double** |
-| `\`, `Mod` | **Decimal** if either operand is **Decimal**; otherwise **LongLong** if either is **LongLong**; otherwise **Byte** if both are **Byte**, **Integer** if both are **Byte**, **Integer** or **Boolean**, and **Long** in every other case. The operands are rounded to whole numbers first, and a value exactly halfway goes to the even neighbour: `6.5 \ 2` is 3 and `7.5 \ 2` is 4 |
+| `\`, `Mod` | **Decimal** if either operand is **Decimal**; otherwise **LongLong** if either is **LongLong**; otherwise **Byte** if both are **Byte**, **Integer** if both are **Byte**, **Integer** or **Boolean**, and **Long** in every other case, except that a **Boolean** on the left of a **String** gives a **Boolean**: the **String** is converted to **Boolean** first, so `True \ "2"` is **True** (`-1 \ -1` is 1) and `True Mod "2"` is **False**. The operands are rounded to whole numbers first, and a value exactly halfway goes to the even neighbour: `6.5 \ 2` is 3 and `7.5 \ 2` is 4 |
 | `^` | **Double**, whatever the operand types |
 | `&` | **String** |
 | unary `-` | the operand's own type, except **Integer** for a **Byte** or **Boolean** and **Double** for a **String** |

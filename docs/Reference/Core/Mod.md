@@ -26,7 +26,7 @@ Dim A As Long
 A = 19 Mod 6.7
 ```
 
-Usually, the data type of *result* is **Byte**, **Byte** variant, **Integer**, **Integer** variant, **Long**, **Variant** containing a **Long**, **LongLong**, or **Variant** containing a **LongLong**, regardless of whether *result* is a whole number. The type follows the same rules as for [the **\\** operator](IntegerDivide): a declared **Decimal** operand gives a **Decimal** *result*, still a whole number, and a **Decimal** held in a **Variant** gives a **Long**. See [Result types and promotion](../../Reference/Operators#result-types-and-promotion). Any fractional portion is truncated.
+Usually, the data type of *result* is **Byte**, **Byte** variant, **Integer**, **Integer** variant, **Long**, **Variant** containing a **Long**, **LongLong**, or **Variant** containing a **LongLong**, regardless of whether *result* is a whole number. The type follows the same rules as for [the **\\** operator](IntegerDivide), including its exception: a **Boolean** *number1* with a **String** *number2* gives a **Boolean**, so `True Mod "2"` is **False**. A declared **Decimal** operand gives a **Decimal** *result*, still a whole number, and a **Decimal** held in a **Variant** gives a **Long**. See [Result types and promotion](../../Reference/Operators#result-types-and-promotion). Any fractional portion is truncated.
 
 The *result* has the sign of *number1*: `-7 Mod 2` is -1, and `7 Mod -2` is 1.
 

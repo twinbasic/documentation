@@ -19,7 +19,11 @@ Steps to reproduce the behavior:
 2. See `-353703423 /  / Application-defined or object-defined error`. The project also calls the same procedure without the attribute, and that one prints `5 / MySrc / my text`.
 
 **Expected behavior**
-`5 / MySrc / my text`, as without the attribute.
+`5 / MySrc / my text`, as without the attribute. VB6 gives the same after `On Error Resume Next` and in an `On Error GoTo` handler (the project is attached as `llvm-err-after-raise-vb6.zip`):
+```
+plain:  5  / MySrc / my text
+GoTo:   5  / MySrc / my text
+```
 
 **Desktop:**
  - OS: Windows 10 Pro 22H2 (build 19045)

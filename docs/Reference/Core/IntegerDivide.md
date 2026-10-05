@@ -25,7 +25,7 @@ Syntax:
 
 Before division is performed, the numeric expressions are rounded to whole numbers. A value exactly halfway between two whole numbers is rounded to the even one, so `6.5 \ 2` is 3 and `7.5 \ 2` is 4.
 
-Usually, the data type of *result* is a **Byte**, **Byte** variant, **Integer**, **Integer** variant, **Long**, **Long** variant, **LongLong**, or **LongLong** variant, regardless of whether *result* is a whole number: **Byte** when both expressions are **Byte**, **Integer** when both are **Byte**, **Integer** or **Boolean**, **LongLong** when either is **LongLong**, and **Long** otherwise. A declared **Decimal** expression gives a **Decimal** *result*, still a whole number; a **Decimal** held in a **Variant** gives a **Long**. See [Result types and promotion](../../Reference/Operators#result-types-and-promotion).
+Usually, the data type of *result* is a **Byte**, **Byte** variant, **Integer**, **Integer** variant, **Long**, **Long** variant, **LongLong**, or **LongLong** variant, regardless of whether *result* is a whole number: **Byte** when both expressions are **Byte**, **Integer** when both are **Byte**, **Integer** or **Boolean**, **LongLong** when either is **LongLong**, and **Long** otherwise. A **Boolean** *number1* with a **String** *number2* is the exception: the **String** is converted to **Boolean**, and *result* is a **Boolean**, so `True \ "2"` is **True**. A **String** *number1* with a **Boolean** *number2* gives a **Long**. A declared **Decimal** expression gives a **Decimal** *result*, still a whole number; a **Decimal** held in a **Variant** gives a **Long**. See [Result types and promotion](../../Reference/Operators#result-types-and-promotion).
 
 Any fractional portion of the quotient is discarded, so the quotient is truncated toward zero: `-7 \ 2` is -3. However, if any expression is **Null**, *result* is **Null**. Any expression that is **Empty** is treated as 0.
 
@@ -56,6 +56,15 @@ Dim MyValue
 MyValue = 11 \ 4                ' Returns 2.
 MyValue = 9 \ 3                 ' Returns 3.
 MyValue = 100 \ 3               ' Returns 33.
+```
+
+A **Boolean** on the left of a **String** keeps the **Boolean** type, and the operands the other way round give a **Long**:
+
+```tb check_run
+Dim b As Boolean
+b = True
+Debug.Print TypeName(b \ "2"); " "; b \ "2"     ' Boolean True
+Debug.Print TypeName("2" \ b); " "; "2" \ b     ' Long -2
 ```
 
 ### See Also
