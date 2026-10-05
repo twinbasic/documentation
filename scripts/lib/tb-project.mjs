@@ -24,10 +24,29 @@
 
 import { cpSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { exportProject, importProject } from "../impexp.mjs";
+import { exportProject, importProject, readProject } from "../impexp.mjs";
 
 // What impexp refused, with its details, for an error message.
 const why = (e) => [e.message, ...(e.details ?? [])].join("\n");
+
+/**
+ * Read a project file's container and say what is wrong with it. Writes nothing.
+ *
+ * A project file the IDE cannot read -- empty, cut short, or not a project at
+ * all -- does not make it fail. The IDE answers with a message box, which nobody
+ * can see or answer on the private desktop the harness runs it on, and the run
+ * goes on to its deadline, where it can read as clean. So the file is read first,
+ * with the reader impexp unpacks a project with, before an IDE is started on it.
+ *
+ * @throws {Error} naming the file and what is wrong
+ */
+export function checkProject(project) {
+  try {
+    readProject(project);
+  } catch (e) {
+    throw new Error(why(e));
+  }
+}
 
 /**
  * Pack a source tree into a project file, replacing the file.

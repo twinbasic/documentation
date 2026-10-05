@@ -1,7 +1,8 @@
 // The recorded cases scripts/check_cli.mjs runs: invocations that stop while
 // a tool reads its command line, each with the exit code and the text printed
 // on each stream. check_cli.mjs's opening comment says what a case asserts and
-// which invocations belong here; this module only builds the list.
+// which invocations belong here; this module only builds the list. A case that
+// needs a file in its folder lists it in `files`, as `{ name: content }`.
 //
 // CASES is the hand-written table, then the cases generated from HELP_TOOLS
 // (--help and -h for every tool), REFUSALS (an unknown flag and an empty value
@@ -96,6 +97,11 @@ const CASES = [
   { tool: "scripts/tbbuild.mjs", args: ["x.twinproj", "--port", "0", "--help"], exit: 0, stdout: /^usage: node scripts\/tbbuild\.mjs / },
   { tool: "scripts/tbbuild.mjs", args: ["--bogus", "--keep", "x.twinproj"], exit: 2, stderr: /^unknown option: --bogus\nusage: node scripts\/tbbuild\.mjs / },
   { tool: "scripts/tbbuild.mjs", args: ["--keep", "x.twinproj"], exit: 2, stderr: "no such project: x.twinproj\n" },
+  // A project file that exists and cannot be read is refused from its container, before any IDE is
+  // looked for: the IDE would open a message box nobody can answer on its private desktop, and the run
+  // would end at the timeout reading as clean. `files` is written into the case's folder first.
+  { tool: "scripts/tbbuild.mjs", args: ["empty.twinproj"], files: { "empty.twinproj": "" }, exit: 2, stderr: "empty.twinproj is damaged or is not a project file: the file ends too soon\n" },
+  { tool: "scripts/tbbuild.mjs", args: ["garbage.twinproj"], files: { "garbage.twinproj": "garbage" }, exit: 2, stderr: "garbage.twinproj is damaged or is not a project file: Bad magic: 0x62726167, expected 0xEA0BA51C\n" },
   { tool: "scripts/tbrun.mjs", args: [], exit: 2, stderr: /^usage: node scripts\/tbrun\.mjs / },
   { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--help"], exit: 0, stdout: /^usage: node scripts\/tbrun\.mjs / },
   { tool: "scripts/tbrun.mjs", args: ["no-such-dir", "--arch", "win99"], exit: 2, stderr: /^--arch expects win32 or win64, got: win99\nusage: node scripts\/tbrun\.mjs / },

@@ -26,7 +26,10 @@
 // the two verbs do, with the same arguments and { overwrite }. Each returns
 // what the command line prints -- the counts, the skipped and added entries,
 // the warnings -- and throws where it reports an error: a Refusal, whose
-// reason names its exit code, has written nothing.
+// reason names its exit code, has written nothing. readProject(file) reads a
+// project file into its tree and writes nothing; it throws the Refusal the
+// verbs report for a file that is missing, is a folder, or is damaged or is
+// not a project at all.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -307,7 +310,7 @@ function listed(paths) {
   return shown;
 }
 
-function readProject(file) {
+export function readProject(file) {
   let data;
   try {
     data = fs.readFileSync(file);

@@ -24,17 +24,18 @@
 // so each has a case for both, and after each of them the folder it ran in must
 // still be empty: a help request starts no IDE or browser and writes nothing.
 //
-// Only invocations that stop while reading the command line belong here. Each
-// runs as a child process, all of them at once, each with a time limit, in an
-// empty folder of its own and with TB_IDE, PUPPETEER_EXECUTABLE_PATH and VB6_EXE
-// naming files that do not exist. So a case that gets past the command line fails
-// on a message of a different kind rather than starting a twinBASIC IDE, a
-// browser or VB6, and a default path relative to the working folder, such as
-// tbdocs's `docs`, finds nothing. No tree, no browser, no install; about a
-// second.
+// Only invocations that stop while reading the command line, or at the first
+// check of a file it names, belong here. Each runs as a child process, all of
+// them at once, each with a time limit, in an empty folder of its own and with
+// TB_IDE, PUPPETEER_EXECUTABLE_PATH and VB6_EXE naming files that do not exist.
+// So a case that gets past the command line fails on a message of a different
+// kind rather than starting a twinBASIC IDE, a browser or VB6, and a default
+// path relative to the working folder, such as tbdocs's `docs`, finds nothing.
+// A case that names a file it needs lists it in `files`, name and content, and
+// the folder holds just that. No tree, no browser, no install; about a second.
 
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { availableParallelism, tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -765,6 +766,8 @@ try {
       const i = next++;
       const cwd = path.join(scratch, `case-${i}`);
       await mkdir(cwd);
+      for (const [name, content] of Object.entries(CASES[i].files ?? {}))
+        await writeFile(path.join(cwd, name), content);
       results[i] = await runCase(CASES[i], cwd, env);
       if (asksForHelp(CASES[i]) || LEAVES_EMPTY.has(CASES[i])) results[i].left = await readdir(cwd);
     }

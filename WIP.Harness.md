@@ -246,8 +246,23 @@ override that, and one of the two is needed for an install kept anywhere else. *
 path is hardcoded**, here or anywhere in the tooling: an install path contains a username.
 
 `--json` gives the same thing as one object and `--keep` leaves the IDE running. Exit codes
-are 0 clean, 1 the project has errors, 2 the harness failed, 3 the compile never settled, 4
-the project crashes the compiler.
+are 0 clean, 1 the project has errors, 2 the harness failed or the project file cannot be read,
+3 the compile never settled, 4 the project crashes the compiler.
+
+**A project file the IDE cannot read is refused before an IDE starts.** `tbbuild` reads the
+container with impexp's reader (`checkProject`, in
+[scripts/lib/tb-project.mjs](scripts/lib/tb-project.mjs)) and exits 2 within a moment,
+naming the file and the fault. Without that, BETA 995 gave exit 0, a clean compile with no
+rows, after the whole `--timeout` (66 s at `--timeout 60`) for an empty file, a file cut off
+halfway and a file with its first byte changed, and exit 3 for a text file. The IDE answers
+such a file with a message box, which nobody can see or answer on the private desktop. The
+status bar never settles, and a wait that ends at its deadline is read as a compile with no
+diagnostics, because `waitForCompile` does not report that it ran out of time. Only the
+container is checked: a file that reads as a project and that the IDE still cannot load is
+not covered. `launchOnDesktop`'s `dialogs: "close"` can record a box, but only by pressing OK
+on it, `launchIde` does not ask for it, and the job it matches boxes against is absent under
+`--keep`. Making `waitForCompile` say that it ran out of time would cover every such wedge,
+and is not done.
 
 **`--show` / `--hide`, and `TBBUILD_SHOW` for a whole session.** Hidden is the default. Its
 cost shows only when something goes wrong: a wedged IDE on a private desktop is invisible to
