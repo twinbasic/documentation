@@ -1,0 +1,12 @@
+Module ModuleNamedLikeProject
+
+    Public Sub Main()
+    End Sub
+
+    [RunAfterBuild]
+    Public Sub Hello()
+        Debug.Cls
+        Debug.Print "RunAfterBuild ran"
+    End Sub
+
+End Module

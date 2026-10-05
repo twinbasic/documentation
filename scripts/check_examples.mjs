@@ -55,9 +55,9 @@
 //
 //   * one generated `Module tbx_<hash>` per fence, hashed from its id;
 //   * everything generated is Private -- eleven pages declare a `MyString`;
-//   * a generated module must not share a name with the project, or
-//     [RunAfterBuild]'s call becomes ambiguous and the IDE reports it at
-//     EXECUTION time, so the build is green and nothing runs.
+//   * a generated module must not be named like the project, in any letter
+//     case: the IDE then skips the [RunAfterBuild] Sub, even one in another
+//     module, and reports nothing, so the build is green and nothing runs.
 //
 // `Sub Main` is not one of them, though it was once listed as one. The template
 // brings a Main, and a sample may bring its own beside it: two `Public Sub

@@ -451,9 +451,14 @@ All are forced by putting unrelated samples in one compilation unit:
 - **`Sub Main` comes from the template, and a fence may bring its own as well.** Two
   `Public Sub Main`s in different modules compile, so the WinServicesLib `Module Startup`
   samples build as written. (A *build* adds a rule; see [`--build` and `--llvm`](#--build-and---llvm-what-a-compile-does-not-ask).)
-- **A generated module must not share a name with the project.** `project.name = "ProbeWS"`
-  beside `Module ProbeWS` makes `[RunAfterBuild]`'s `ProbeWS.ProbeWS.Probe` ambiguous, and
-  the IDE refuses it at *execution* time, so the build is green and nothing runs.
+- **No generated module may be named like the project, in any letter case.** With
+  `project.name = "ProbeWS"`, a `Module ProbeWS` or a `Module probews` stops the
+  `[RunAfterBuild]` Sub from running, even when it is empty and the Sub is in another module.
+  Nothing reports it: the build is green, and the DEBUG CONSOLE ends at `[BUILD] Executing
+  '<project>.<module>.<Sub>'...` (BETA 995 and 997; the BUGS-TO-REPORT.md entry with the
+  reproducer `bugs/module-named-like-project/`). The tool names each project `DocSamples<n>`
+  and every module it generates `tbx...`, so the two cannot meet; a sample that declared
+  `Module DocSamples3` would.
 
 **What collides is narrower than it looks, and guessing it wide is expensive.** Two
 generated modules may each declare `Public Function Foo`, `Public Type Rec` and `Public Const
