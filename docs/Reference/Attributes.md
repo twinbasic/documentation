@@ -953,6 +953,9 @@ Specifies a function that runs after your exe is built. There's `App.LastBuildPa
 
 Only one **[RunAfterBuild]** is allowed per project. A second one is a compile error.
 
+> [!WARNING]
+> BETA 995 and 997 have a defect: when a module has the project's name, in any letter case, the **[RunAfterBuild]** procedure does not run, and nothing says so. The build succeeds, and the DEBUG CONSOLE ends at its `[BUILD] Executing '...'` line. An empty module of that name stops it as well, when the procedure is in another module. VB6 refuses a module of the project's name. Do not give a module the project's name.
+
 ## RunBeforeStartupObject
 {: #runbeforestartupobject }
 
