@@ -338,7 +338,7 @@ if (!hasHook) {
 // [RunAfterBuild] run is compiled with, and compiler.buildOptions what the exe
 // is -- measured on BETA 995, where +llvm in the build options alone left the
 // run's Debug.Assert evaluated and its loop at the speed of the default.
-const compilerOptions = values.llvm ? "+llvm" : values["compiler-options"];
+const compilerOptions = values.llvm ? "+llvm" : values.compilerOptions;
 let wasTemplate = false,
   projectName = "",
   usesLlvm = false,
