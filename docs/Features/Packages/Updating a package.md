@@ -65,7 +65,7 @@ So the old copy has to be removed first:
 
 1. Open [Project Settings](../../tB/IDE/Project/Settings#library-references). Under **Library References**, on the **Enabled Libraries** tab, untick the package, and press **Apply Changes**. The IDE saves the project and restarts the compiler.
 2. Open Project Settings again. On the **Available Packages** tab, press **Import from file...** and choose the new `.twinpack` file.
-3. Tick the package in the **Available Packages** list. BETA 995 adds the imported package to the list but does not tick it.
+3. Tick the package in the **Available Packages** list. BETA 997 adds the imported package to the list but does not tick it.
 4. Press **Apply Changes** again. The project now uses the new build.
 
 > [!WARNING]
