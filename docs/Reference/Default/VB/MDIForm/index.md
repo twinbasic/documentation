@@ -93,7 +93,7 @@ An MDIForm always uses the sizable border style --- there is no [**BorderStyle**
 
 [**Opacity**](#opacity) and [**TransparencyKey**](#transparencykey) enable Windows' layered-window features for translucent forms and cut-out shapes.
 
-[**BackColor**](#backcolor) paints the MDI client area's background --- defaults to the system **vbApplicationWorkspace** colour rather than 3-D face. [**Picture**](#picture), when set, is drawn over **BackColor** as the client-area backdrop, scaled to fill the area for metafiles and centred at its natural size for bitmaps. [**PictureDpiScaling**](#picturedpiscaling) scales bitmaps by the current DPI factor before drawing. There is no on-screen drawing API on an MDIForm --- the [**Cls**](../Form/#cls), [**Circle**](../Form/#circle), [**Line**](../Form/#line), [**PSet**](../Form/#pset), [**PaintPicture**](../Form/#paintpicture), and **Print** members of the **Form** interface raise run-time error 438 (*Object doesn't support this property or method*) when called on an MDIForm.
+[**BackColor**](#backcolor) paints the MDI client area's background --- defaults to the system **vbApplicationWorkspace** colour rather than 3-D face. [**Picture**](#picture), when set, is drawn over **BackColor** as the client-area backdrop, scaled to fill the area for metafiles and centred at its natural size for bitmaps. [**PictureDpiScaling**](#picturedpiscaling) scales bitmaps by the current DPI factor before drawing. There is no on-screen drawing API on an MDIForm: it has none of the **Form**'s [**Cls**](../Form/#cls), [**Circle**](../Form/#circle), [**Line**](../Form/#line), [**PSet**](../Form/#pset), [**PaintPicture**](../Form/#paintpicture) and **Print** methods (see [Differences from Form](#differences-from-form)).
 
 A vertical and a horizontal scroll bar appear automatically when an MDI child is moved or sized so that its rectangle extends beyond the visible client area; this is fixed at design time through the **ScrollBars** property of the MDI parent and is not exposed at run time.
 
@@ -111,16 +111,18 @@ End Sub
 
 ## Differences from Form
 
-Because the MDIForm is a frame, not a drawing surface, the following members of the **Form** interface are *not* supported on it --- accessing them raises run-time error 380 (properties) or 438 (methods):
+Because the MDIForm is a frame, not a drawing surface, it does not have the following members of the **Form** interface. Used on the MDIForm's own class, as in `MDIForm1.ForeColor`, each is a compile error. Reached through a variable declared `As Form`, a property raises run-time error 380 (*Invalid property value*) and a method raises 438 (*Object doesn't support this property or method*). Reached through a variable declared `As Object`, each raises an error; in VB6 that error is 438.
 
 | Category                     | Members                                                                              |
 |------------------------------|--------------------------------------------------------------------------------------|
 | Drawing                      | **AutoRedraw**, **ClipControls**, **HasDC**, **hDC**, **Image**, **CurrentX**, **CurrentY**, **DrawMode**, **DrawStyle**, **DrawWidth**, **FillColor**, **FillStyle**, **ForeColor**, **FontTransparent**, **Cls**, **Circle**, **Line**, **PSet**, **PaintPicture** |
-| Font                         | **Font**, **FontName**, **FontSize**, **FontBold**, **FontItalic**, **FontStrikethru**, **FontUnderline**, **TextWidth** |
+| Font                         | **Font**, **FontName**, **FontSize**, **FontBold**, **FontItalic**, **FontStrikethru**, **FontUnderline**, **TextWidth**, **TextHeight** (returns `0` through a variable declared `As Form`) |
 | Geometry                     | **ScaleLeft**, **ScaleTop**, **ScaleMode**, **Scale**, **ScaleX**, **ScaleY** ([**ScaleWidth**](#scalewidth) and [**ScaleHeight**](#scaleheight) are supported but read-only) |
 | Window chrome                | **BorderStyle**, **ControlBox**, **MaxButton**, **MinButton**, **ShowInTaskbar**, **WhatsThisButton** |
-| Other                        | **KeyPreview** (and the [**Form**](../Form/)'s **KeyDown** / **KeyUp** / **KeyPress** events do not exist on **MDIForm**), **MDIChild**, **NegotiateMenus**, **Palette**, **PaletteMode**, **PrintForm**, **Point**, **Refresh** (raises 438 on an MDIForm even though it works on a regular Form) |
-| Behaviour quirk              | **TextHeight** returns `0` instead of raising. (VB6 bug retained for compatibility.) |
+| Other                        | **KeyPreview** (and the [**Form**](../Form/)'s **KeyDown** / **KeyUp** / **KeyPress** events do not exist on **MDIForm**), **MDIChild** (reads **False** through a variable declared `As Form`), **NegotiateMenus**, **Palette**, **PaletteMode** |
+
+> [!NOTE]
+> In twinBASIC, unlike VB6, an MDIForm also has [**Refresh**](#refresh), [**PrintForm**](#printform) and [**Point**](#point). **Print** on the MDIForm's own class compiles, and raises run-time error &H80004002 (*No such interface supported*). BETA 997 raises &H80020006 (*Unknown name*) in place of 438 for a member reached through `As Object`, and **CallByName** raises &H80004005.
 
 ## Properties
 
@@ -158,7 +160,7 @@ When **True** (default), loading an MDI child class also shows it; when **False*
 The colour painted in the MDI client area, as an **OLE_COLOR**. Defaults to the system **vbApplicationWorkspace** colour. Used as the canvas behind [**Picture**](#picture) and behind every MDI child's title bar and outer border.
 
 > [!WARNING]
-> BETA 997 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+> BETA 997 has a defect: assigning a value that is not a colour, such as `-1` or `&H8000001F`, stores the value, so a later read returns it. While the form is loaded and not yet shown the assignment raises no error; once it is shown it raises error 5, and a handled error leaves the invalid colour in force. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
 
 ### Caption
 {: .no_toc }
@@ -414,6 +416,14 @@ Initiates an OLE drag operation from the form, raising the [**OLEStartDrag**](#o
 
 Syntax: *object*.**OLEDrag**
 
+### Point
+{: .no_toc }
+
+> [!NOTE]
+> Not implemented: **Point** returns 0, and the compiler gives warning TB0009 at each call. VB6's MDIForm has no **Point** method.
+
+Syntax: *object*.**Point**( *X*, *Y* )
+
 ### PopUpMenu
 {: .no_toc }
 
@@ -432,6 +442,21 @@ Syntax: *object*.**PopUpMenu** *Menu* [, *Flags* [, *X* [, *Y* [, *DefaultMenu* 
 
 *DefaultMenu*
 : *optional* The **Menu** sub-item to render in bold as the default action.
+
+### PrintForm
+{: .no_toc }
+
+> [!NOTE]
+> Not implemented: the compiler gives warning TB0009 at each call, and the call raises no error. VB6's MDIForm has no **PrintForm** method.
+
+Syntax: *object*.**PrintForm**
+
+### Refresh
+{: .no_toc }
+
+Forces an immediate repaint of the form. VB6's MDIForm has no **Refresh** method.
+
+Syntax: *object*.**Refresh**
 
 ### SetFocus
 {: .no_toc }

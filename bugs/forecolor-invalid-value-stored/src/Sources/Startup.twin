@@ -54,6 +54,13 @@ Module Startup
         MyMDIForm.BackColor = vbGreen
         MyMDIForm.BackColor = &H8000001F
         Debug.Print "MDIForm.BackColor = &H8000001F: Err " & Err.Number & ", reads " & Hex$(MyMDIForm.BackColor): Err.Clear
+        MyMDIForm.Show
+        MyMDIForm.BackColor = vbGreen
+        MyMDIForm.BackColor = -1
+        Debug.Print "MDIForm (shown).BackColor = -1: Err " & Err.Number & ", reads " & Hex$(MyMDIForm.BackColor): Err.Clear
+        MyMDIForm.BackColor = vbGreen
+        MyMDIForm.BackColor = &H8000001F
+        Debug.Print "MDIForm (shown).BackColor = &H8000001F: Err " & Err.Number & ", reads " & Hex$(MyMDIForm.BackColor): Err.Clear
         Unload MyMDIForm
     End Sub
 

@@ -21,7 +21,9 @@
       "^UserControl\\.BackColor = -1: Err 0, reads FFFFFFFF$",
       "^UserControl\\.FillColor = -1: Err 0, reads FFFFFFFF$",
       "^MDIForm\\.BackColor = -1: Err 0, reads FFFFFFFF$",
-      "^MDIForm\\.BackColor = &H8000001F: Err 0, reads 8000001F$"
+      "^MDIForm\\.BackColor = &H8000001F: Err 0, reads 8000001F$",
+      "^MDIForm \\(shown\\)\\.BackColor = -1: Err 5, reads FFFFFFFF$",
+      "^MDIForm \\(shown\\)\\.BackColor = &H8000001F: Err 5, reads 8000001F$"
     ]
   }
 }
