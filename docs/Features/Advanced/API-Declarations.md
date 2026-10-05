@@ -147,7 +147,7 @@ End Function
 
 ## Support for Passing User-Defined Types ByVal
 
-Simple UDTs can now be passed ByVal in APIs, interfaces, and any other method. In VBx this previously required workarounds like passing each argument separately.
+Simple UDTs can be passed ByVal in APIs, interfaces, and any other method. In VB6 this requires workarounds such as passing each member separately.
 
 ```tb hidden
 ' Context for the two samples below: the Windows types they pass. A reader has

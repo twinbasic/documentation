@@ -34,9 +34,6 @@ If *string* is longer than *stringvar*, **LSet** places only the leftmost charac
 > [!WARNING]
 > BETA 995 has a defect: **LSet** on an element of a **Variant** that holds an array, such as `LSet v(0) = "zz"` with `v = Array("0123456789", "abcde")` or a **Variant** that was given its bounds with **ReDim**, changes nothing and raises no error. VB6 changes the element. An element of an array declared `Dim w(0 To 1) As Variant` works. To change an element of a **Variant** array, copy it to a **String** variable, use **LSet** on the variable and assign the variable back.
 
-> [!NOTE]
-> Since BETA 984, **LSet** fills the leftover characters with spaces as described above. In BETA 983 and earlier it left the old characters of *stringvar* in place, so `LSet s = "ab"` on `"0123456789"` gave `"ab23456789"`.
-
 When copying between user-defined types, **LSet** copies as many bytes as the smaller of the two types holds. If *varname1* is larger than *varname2*, its bytes beyond the end of the source keep their old values. Both types must be free of variable-length **String**, **Variant**, **Object** and dynamic-array fields; the compiler refuses the statement otherwise (error TB5249). Fixed-length **String** fields are allowed.
 
 > [!WARNING]

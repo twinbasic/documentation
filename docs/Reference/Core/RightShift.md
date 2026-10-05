@@ -30,9 +30,6 @@ Syntax:
 
 The data type of *result* matches the type of *number*, whatever the type of *count*; shifts do not follow the [promotion rules](../../Reference/Operators#result-types-and-promotion) of the arithmetic operators. The right shift of an **Integer**, **Long**, **LongLong** or **LongPtr** is *arithmetic*: vacated high-order bits are copies of the sign bit, so a negative *number* stays negative --- a **Long** holding -8, shifted right by 1, is -4, and one holding -7 also gives -4, rounding toward negative infinity where [**\\**](IntegerDivide) rounds toward zero. A **Byte** has no sign, and its vacated bits are filled with zero. Constants and variables give the same result. A shift by as many bits as the type holds, or more, yields `0`. A negative *count* raises no error, but gives no useful result.
 
-> [!NOTE]
-> Up to BETA 983, a variable was shifted *logically*, filling the vacated bits with zero, while constants were shifted arithmetically: a **Long** variable holding -8, shifted right by 1, gave 2147483644. BETA 984 made both arithmetic.
-
 > [!IMPORTANT]
 > Only the integral types are shifted bit by bit. With other types of *number*:
 >

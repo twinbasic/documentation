@@ -7,7 +7,7 @@ permalink: /Features/Language/Module-Organization
 
 # Module-Level Code Organization
 
-It's now possible to insert module-level code in between methods or properties. Where previously all `Declare` statements, `Enum`, `Type`, etc had to appear prior to the first `Sub/Function/Property`, the following would now be valid:
+Module-level code can appear in between methods or properties. `Declare` statements, `Enum`, `Type` and similar declarations need not come before the first `Sub/Function/Property`, as VB6 requires. The following is valid:
 
 ```tb check_build
 Private Const foo = "foo"

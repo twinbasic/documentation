@@ -390,7 +390,7 @@ The text shown in the control. **String**. **Default property.**
 
 Syntax: *object*.**Text** [ = *string* ]
 
-Assigning a value that differs from the current one raises one [**Change**](#change) event and refreshes the display. The comparison is case-sensitive, so changing `"abc"` to `"ABC"` raises the event. Assigning the same value, an empty string to an empty text box included, is a no-op and raises no event. Before BETA 984 an assignment raised **Change** twice. In multi-line mode, line breaks are stored using the platform's native newline encoding (`vbCrLf` on Windows).
+Assigning a value that differs from the current one raises one [**Change**](#change) event and refreshes the display. The comparison is case-sensitive, so changing `"abc"` to `"ABC"` raises the event. Assigning the same value, an empty string to an empty text box included, is a no-op and raises no event. In multi-line mode, line breaks are stored using the platform's native newline encoding (`vbCrLf` on Windows).
 
 ### TextHint
 {: .no_toc }
