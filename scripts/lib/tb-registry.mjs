@@ -44,6 +44,22 @@
 // tbbuild started from it would leave the registry alone too; the owner sweeps
 // once at the end.
 //
+// THE LAST RUN PUTS BACK FOR EVERY RUN. Two runs at once -- two ide_test, or a
+// tbrun beside a lane run -- cannot each put back on their own. An IDE keeps
+// the recent list in memory and writes all of it back when it opens a project,
+// so one run's IDE that is still open writes the other run's entries back after
+// that run removed them, and a put-back from the first run's record would undo
+// what the second run recorded. So the runs share one record, in
+// %TEMP%\tb-registry\<key>: the first run to start writes what it finds
+// (base.json: the recent list, the association keys, the theme), each run adds
+// its own folders and named projects (<pid>-<n>.json), and a run that ends while
+// another is still running only marks its own record finished. The last one to
+// end puts back for all of them, once no IDE of any of them is running. A
+// record whose process ended without finishing is the trace of a run that died:
+// the next run to start alone deletes what is under its folders, and nothing
+// else, since its record of the theme and the recent list may be days old.
+// Runs read and write the folder one at a time, holding its `busy` folder.
+//
 // The work is done by .NET's registry API through PowerShell, and not by
 // reg.exe. reg.exe prints value names in the console code page when its output
 // is piped, so a path with a character outside that code page -- an accented
@@ -55,6 +71,8 @@
 // rather than run as a file, so no execution policy is involved.
 
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -699,65 +717,203 @@ export function startTidy({ paths = [], prefixes = [], root = IDE_SETTINGS_KEY, 
   const owner = Number(process.env.TB_REGISTRY_OWNER);
   if (owner && owner !== process.pid && alive(owner)) return null;
   process.env.TB_REGISTRY_OWNER = String(process.pid);
-  let tidy;
+  const dir = stateDir(root, keys);
+  const tidy = { dir, file: path.join(dir, `${process.pid}-${++records}.json`), root };
   try {
-    if (prefixes.length) restoreProjects({ root, entries: [] }, { prefixes });
-    tidy = { projects: snapshotProjects(paths, { root }), keys: snapshotKeys(keys), prefixes, root };
-    tidy.keysInTemp = namesTempFolder(tidy.keys);
+    return oneAtATime(dir, () => {
+      const others = readRecords(dir);
+      const alone = !others.some((r) => r.live);
+      if (alone) {
+        const dead = [...new Set(others.flatMap((r) => r.prefixes ?? []))];
+        if (dead.length) {
+          restoreProjects({ root, entries: [] }, { prefixes: dead });
+          sweepTargets(dead, root);
+        }
+        for (const r of others) rmSync(r.file, { force: true });
+      }
+      if (alone || !existsSync(path.join(dir, BASE))) {
+        const base = { recent: snapshotProjects([], { root }).recent, keys: snapshotKeys(keys) };
+        base.keysInTemp = namesTempFolder(base.keys);
+        try {
+          base.theme = snapshotTheme({ root });
+        } catch (e) {
+          console.error(`warning: the IDE's theme will not be put back after this run: ${e.message}`);
+          base.theme = null;
+        }
+        writeFileSync(path.join(dir, BASE), JSON.stringify(base));
+      }
+      if (prefixes.length) restoreProjects({ root, entries: [] }, { prefixes });
+      const record = { pid: process.pid, started: Date.now(), prefixes, finished: false };
+      record.projects = snapshotProjects(paths, { root }).entries;
+      sweepTargets(prefixes, root);
+      // After the sweep, so a named project inside a swept folder is not given
+      // back an entry the sweep has just deleted.
+      record.targets = snapshotTargets(paths, root);
+      writeFileSync(tidy.file, JSON.stringify(record));
+      return tidy;
+    });
   } catch (e) {
     console.error(`warning: the IDE's registry entries will not be tidied after this run: ${e.message}`);
     return null;
   }
-  sweepTargets(prefixes, root);
-  // After the sweep, so a named project inside a swept folder is not given back
-  // an entry the sweep has just deleted.
-  tidy.targets = snapshotTargets(paths, root);
-  try {
-    tidy.theme = snapshotTheme({ root });
-  } catch (e) {
-    console.error(`warning: the IDE's theme will not be put back after this run: ${e.message}`);
-    tidy.theme = null;
-  }
-  return tidy;
 }
 
 /**
- * Put the registry back as startTidy found it. Call it only once every IDE of
- * the run has exited -- shutdownIde waits for that.
+ * Put the registry back as startTidy found it, for this run and for every run
+ * that ended while this one was running -- or, while another run is still
+ * running, leave that to the last of them. Call it only once every IDE of the
+ * run has exited -- shutdownIde waits for that. A second call returns what the
+ * first did.
  *
  * @returns {{projectState: number, recentlyOpened: number, association: number,
- *            architecture: number | null, theme: number | null} | null}
+ *            architecture: number | null, theme: number | null}
+ *           | {deferred: number[]} | null} what was written, or the pids of the
+ *           runs still running, one of which will put it back; null on a failure,
+ *           which is warned about
  */
 export function finishTidy(tidy) {
   if (!tidy) return null;
+  if (tidy.done !== undefined) return tidy.done;
+  try {
+    tidy.done = oneAtATime(tidy.dir, () => {
+      const all = readRecords(tidy.dir);
+      const waiting = all.filter((r) => r.live && r.file !== tidy.file);
+      const mine = all.find((r) => r.file === tidy.file);
+      if (mine) writeRecord({ ...mine, finished: true });
+      if (waiting.length) return { deferred: [...new Set(waiting.map((r) => r.pid))] };
+      const done = putBackAll(tidy, all);
+      if (done) {
+        for (const r of all) rmSync(r.file, { force: true });
+        rmSync(path.join(tidy.dir, BASE), { force: true });
+      }
+      return done;
+    });
+  } catch (e) {
+    console.error(`warning: could not tidy the IDE's registry entries after this run: ${e.message}`);
+    tidy.done = null;
+  }
+  return tidy.done;
+}
+
+// What finishTidy does as the last run: every run's folders swept, every
+// run's named projects put back -- the oldest record of a project is the one
+// made before any run touched it -- and the recent list, the association and
+// the theme as the first run found them. Null when the lists could not be put
+// back; the records are then kept, and the next run to start alone sweeps their
+// folders.
+function putBackAll(tidy, all) {
+  let base = null;
+  try {
+    base = JSON.parse(readFileSync(path.join(tidy.dir, BASE), "utf8"));
+  } catch {
+    // no record of how the first run found it: the folders are still swept
+  }
+  const prefixes = [...new Set(all.flatMap((r) => r.prefixes ?? []))];
+  const seen = new Set();
+  const entries = [];
+  for (const e of all.flatMap((r) => r.projects ?? [])) {
+    if (seen.has(norm(e.path))) continue;
+    seen.add(norm(e.path));
+    entries.push(e);
+  }
   let done;
   try {
-    const p = restoreProjects(tidy.projects, { prefixes: tidy.prefixes });
+    const p = restoreProjects({ root: tidy.root, entries, ...(base ? { recent: base.recent } : {}) }, { prefixes });
     // An association that named the temp folder when the run began belonged to
     // another run's copy of the IDE (tb-ide-copy.mjs), which will be deleted:
     // putting it back would point .twinproj files at nothing. It is left as
     // the IDEs set it, and the next IDE started from a real install points it
     // back at that install.
-    if (tidy.keysInTemp) {
+    if (base?.keysInTemp) {
       console.error(
         "note: the .twinproj association pointed into the temp folder when this " +
           "run began, at another run's copy of the IDE, so it is left as it is now",
       );
     }
-    done = { ...p, association: tidy.keysInTemp ? null : restoreKeys(tidy.keys) };
+    done = { ...p, association: !base || base.keysInTemp ? null : restoreKeys(base.keys) };
   } catch (e) {
     console.error(`warning: could not tidy the IDE's registry entries after this run: ${e.message}`);
     return null;
   }
-  const swept = sweepTargets(tidy.prefixes, tidy.root);
-  const restored = restoreTargets(tidy.targets);
+  const swept = sweepTargets(prefixes, tidy.root);
+  // Newest first, so the oldest record of a project is the one left in place.
+  let restored = 0;
+  for (const r of [...all].reverse()) {
+    const n = restoreTargets(r.targets);
+    restored = n === null || restored === null ? null : restored + n;
+  }
   let theme = null;
   try {
-    theme = restoreTheme(tidy.theme);
+    theme = restoreTheme(base?.theme);
   } catch (e) {
     console.error(`warning: could not put back the IDE's theme: ${e.message}`);
   }
   return { ...done, architecture: swept === null || restored === null ? null : swept + restored, theme };
+}
+
+const STATE = path.join(tmpdir(), "tb-registry");
+const BASE = "base.json";
+// A put-back is a few PowerShell starts, seconds at most, so a busy folder this
+// old was left by a run that ended while it held it.
+const BUSY_STALE_MS = 120_000;
+let records = 0;
+
+// The shared record's folder. The self-test's scratch keys get one of their
+// own, so it never joins a real run.
+function stateDir(root, keys) {
+  const key = createHash("sha1")
+    .update([root, ...keys].join("\0"))
+    .digest("hex")
+    .slice(0, 12);
+  return path.join(STATE, key);
+}
+
+// Runs fn while no other run reads or writes the shared record. Synchronous,
+// as startTidy and finishTidy are, so it waits with Atomics.wait.
+function oneAtATime(dir, fn) {
+  mkdirSync(dir, { recursive: true });
+  const busy = path.join(dir, "busy");
+  for (;;) {
+    try {
+      mkdirSync(busy);
+      break;
+    } catch (e) {
+      if (e.code !== "EEXIST") throw e;
+    }
+    try {
+      if (Date.now() - statSync(busy).mtimeMs > BUSY_STALE_MS) rmSync(busy, { recursive: true, force: true });
+    } catch {
+      // removed since
+    }
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+  }
+  try {
+    return fn();
+  } finally {
+    rmSync(busy, { recursive: true, force: true });
+  }
+}
+
+// Every run's record, oldest first, with the file it is in and whether its run
+// is still running: not finished, and its process alive. One that will not
+// parse was being written when its run died, and only its file is kept.
+function readRecords(dir) {
+  const out = [];
+  for (const name of readdirSync(dir)) {
+    if (!/^\d+-\d+\.json$/.test(name)) continue;
+    const file = path.join(dir, name);
+    try {
+      const r = JSON.parse(readFileSync(file, "utf8"));
+      out.push({ ...r, file, live: !r.finished && alive(r.pid) });
+    } catch {
+      out.push({ file, live: false, started: 0 });
+    }
+  }
+  return out.sort((a, b) => a.started - b.started);
+}
+
+function writeRecord({ file, live, ...record }) {
+  writeFileSync(file, JSON.stringify(record));
 }
 
 // Whether any value in a key snapshot names a path inside the temp folder.

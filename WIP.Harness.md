@@ -781,6 +781,22 @@ variable left set in a shell would switch tidying off for good. Under `--keep` n
 tidied, because the kept IDE is still writing. `shutdownIde` waits for the IDE's process to
 be gone before anything is tidied, because `taskkill` only asks.
 
+**The last of several runs puts back for all of them.** Two runs at once --- two `ide_test`,
+a `tbrun` beside a lane run, another session's --- cannot each put back on their own. An IDE
+holds the recent list in memory and writes all of it back when it opens a project, so a run
+whose IDE is still open writes the other run's entries back after that run removed them (two
+`ide_test` runs failed with exit 3 this way, each naming the other's lane folder). So the runs
+share one record in `%TEMP%\tb-registry\<key>`, read and written one run at a time under its
+`busy` folder: the first run to start records the recent list, the association and the theme
+(`base.json`); every run adds its folders and named projects (`<pid>-<n>.json`); a run that
+ends while another is running marks its record finished, puts nothing back and gets `{
+deferred: [pids] }` from `finishTidy`, which the lane runner reports instead of checking the
+lists; and the last run to end puts back for all, a named project from its oldest record. A
+record whose process died unfinished is swept by folder when the next run starts alone, and
+its record of the theme and recent list is dropped, since it may be days old.
+`check_tb_registry.mjs` plays out both. `tbbuild --keep` takes no part, so its IDE can still
+write the lists after the last run has put them back.
+
 **Why .NET through PowerShell and not `reg.exe`.** Node has no registry API. `reg.exe`
 prints value names in the console code page when its output is piped, so a path containing a
 character outside that code page (an accented user name in `%TEMP%` is enough) comes back
@@ -1215,6 +1231,8 @@ leave the registry alone, and `finishTidy` once the last has ended. Then it chec
 than trusts: no project-state or recent-list entry may name a lane's folder, a second sweep
 of the remembered build targets must find none, and the add-ins' settings must be as
 recorded. Any failure is exit code 3, which wins over a lane's failure (1): the registry is what to repair.
+While another harness run is still running, the lists and targets are that run's to put back
+and are not checked; the report line says which pid.
 
 **An add-in's own settings are the runner's too.** `SaveSetting` writes under
 `HKCU\Software\VB and VBA Program Settings\<app>`, the same key as any installed copy of the

@@ -40,7 +40,8 @@
 //     TB_REGISTRY_OWNER and leave it alone. Once every lane has ended it
 //     puts back the IDE's lists, the .twinproj association and the build
 //     targets the IDE remembers, then checks that nothing under the lanes'
-//     folders is left.
+//     folders is left -- unless another harness run is still running, which
+//     then puts back for both.
 //   * THE LANES' SETTINGS. SaveSetting writes under HKCU\Software\VB and VBA
 //     Program Settings\<app>, the same key as any installed copy of the
 //     program that saves it. A lane names the applications its program saves
@@ -374,15 +375,19 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
     // from what was recorded. Another session's IDE that is open meanwhile
     // can write its own copy of the recent list back, which is the one way an
     // entry could return (WIP.Harness.md).
+    // While another run is still running, the lists and the build targets are
+    // that run's to put back (lib/tb-registry.mjs), so they are not checked.
     const folders = lanes.map((l) => norm(l.work) + "\\");
     try {
-      const lists = ideLists();
-      const left = [...lists.projectState, ...lists.recentlyOpened].filter(
-        (p) => p && folders.some((f) => norm(p).startsWith(f)),
-      );
-      if (left.length) problems.push(`the IDE's lists still name the lanes' folders: ${left.join(", ")}`);
-      const targets = sweepArchitectureMemory(lanes.map((l) => l.work));
-      if (targets) problems.push(`${targets} build target(s) were still remembered for the lanes' folders`);
+      if (!tidied?.deferred) {
+        const lists = ideLists();
+        const left = [...lists.projectState, ...lists.recentlyOpened].filter(
+          (p) => p && folders.some((f) => norm(p).startsWith(f)),
+        );
+        if (left.length) problems.push(`the IDE's lists still name the lanes' folders: ${left.join(", ")}`);
+        const targets = sweepArchitectureMemory(lanes.map((l) => l.work));
+        if (targets) problems.push(`${targets} build target(s) were still remembered for the lanes' folders`);
+      }
       const settingsAfter = snapshotSettings();
       for (let i = 0; i < apps.length; i++) {
         if (JSON.stringify(settingsAfter[i]) !== JSON.stringify(settingsBefore[i])) {
@@ -421,7 +426,9 @@ export async function runLanes({ tool, suite: SUITE, workDir, defaultPort, usage
     const settingsNote = apps.length ? `, and the settings of ${apps.join(", ")} as found` : "";
     return problems.length
       ? `registry and work folders: ${problems.length} problem(s)\n  ${problems.join("\n  ")}`
-      : `registry: put back (${tidied.projectState} project-state, ${tidied.recentlyOpened} recent-list ` +
+      : tidied.deferred
+        ? `registry: left for the run still running to put back (pid ${tidied.deferred.join(", ")})${settingsNote}`
+        : `registry: put back (${tidied.projectState} project-state, ${tidied.recentlyOpened} recent-list ` +
           `and ${tidied.association ?? "no"} association writes); nothing names the lanes' folders${settingsNote}`;
   }
 
