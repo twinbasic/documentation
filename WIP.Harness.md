@@ -434,8 +434,8 @@ other thirty their run.
 
 ### Why it drives the WebView rather than the compiler directly
 
-The obvious improvement is to cut the browser out --- the compiler has websockets, so why go
-through a UI at all? **It cannot be done, and the reason is structural.**
+The obvious improvement is to cut the browser out: the compiler has websockets, so why go
+through a UI at all? **It can be done, and the harness does not do it yet.**
 
 The IDE is three processes, and their command lines say how they relate:
 
@@ -443,18 +443,20 @@ The IDE is three processes, and their command lines say how they relate:
 |---|---|---|
 | `twinBASIC.exe` | `<project.twinproj>` | shell; hosts the WebView2, and the only one given the project |
 | `twinBASIC_win32.exe` | `--ide=<shell pid>` | serves `ide/` over HTTP on an ephemeral port |
-| `twinBASIC_win32_noDEP.exe` | `--compiler=<opaque token>` | the compiler; the page talks to it over websockets |
+| `twinBASIC_win32_noDEP.exe` | `--compiler=<window handle>` | the compiler; the page talks to it over websockets |
 
 The page's websockets carry everything the window shows about a compile, the diagnostics and
 their counts included.
 
-**But what a connection needs, its address and its key, is minted inside the WebView**, by
-host objects the shell gives its page --- reachable only from a page the shell has loaded.
-Starting the compiler directly is no way round it either: `--compiler=` is not a port but
-an opaque handle the shell hands it. So a proxy between the WebView and the HTTP server is
-possible --- the page and its scripts come over plain HTTP, and a patched `main2.js` could
-be served --- but it would not remove the WebView, it would only change what runs inside it.
-The thing you would want to delete is the thing that mints the connection.
+**The compiler chooses its own address and key, and tells the process that started it.** So
+a program that starts a compiler itself can connect to it, and `--compiler=` need not name a
+real window for a compile or a build (BETA 995).
+
+What stands in the way is the work the page does over those connections. It loads the
+project, gives the compiler every package the project needs, answers what the compiler asks,
+and works out when a compile has finished. A client without the WebView has to do all of
+that itself, in a protocol that is the IDE's own and may change with any beta, while the IDE
+always speaks its own build's. So the harness drives the IDE.
 
 Watching the page's traffic is another matter: CDP shows it to the harness with no key, and
 the wait for a compile ends on it (*How the wait for the compile ends*, above). The
