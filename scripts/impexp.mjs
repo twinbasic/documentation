@@ -98,9 +98,8 @@ const GIT_NAME = ".git";
 
 // The folders the IDE writes into every project and package it exports, even
 // when they are empty. Git keeps no empty folder, so a tree cloned from a
-// repository lacks them, and the IDE's compiler crashes in a loop on a package
-// with no Packages folder once it is embedded. Import adds any that are
-// missing, to the project and to each package under its Packages folder.
+// repository lacks them. Import adds any that are missing, to the project and
+// to each package under its Packages folder.
 const STANDARD_FOLDERS = ["ImportedTypeLibraries", "Miscellaneous", "Packages", "Resources", "Sources"];
 
 const PROJECT_FILE = /\.(twinproj|twinpack)$/i;

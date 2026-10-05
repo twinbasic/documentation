@@ -1,5 +1,0 @@
-' The project the report imports DocProbePkg into. Main stays empty until the package is referenced.
-Module Startup
-    Public Sub Main()
-    End Sub
-End Module
