@@ -1,0 +1,30 @@
+' A Single that overflows raises no error: each way of overflowing one.
+Module Startup
+
+    Public Sub Main()
+        Dim sbig As Single = 3E+38!
+        Dim nbig As Single = -3E+38!
+        Dim tiny As Single = 1E-10!
+        Dim dbig As Double = 1E+300
+        Dim s As Single
+        Dim n As Long
+        Dim v As Variant
+        Dim vr As Variant
+        Dim lten As Long = 10
+        On Error Resume Next
+        s = 5!: Err.Clear: s = sbig + sbig: n = Err.Number: Debug.Print "Single +        Err=" & n & " s=" & s
+        s = 5!: Err.Clear: s = nbig - sbig: n = Err.Number: Debug.Print "Single -        Err=" & n & " s=" & s
+        s = 5!: Err.Clear: s = sbig * 10!: n = Err.Number: Debug.Print "Single *        Err=" & n & " s=" & s
+        s = 5!: Err.Clear: s = sbig / tiny: n = Err.Number: Debug.Print "Single /        Err=" & n & " s=" & s
+        s = 5!: Err.Clear: s = sbig * lten: n = Err.Number: Debug.Print "Single * Long   Err=" & n & " s=" & s
+        s = sbig: Err.Clear: s = s + sbig: n = Err.Number: Debug.Print "s = s + x       Err=" & n & " s=" & s
+        s = sbig: Err.Clear: s += sbig: n = Err.Number: Debug.Print "s += x          Err=" & n & " s=" & s
+        s = sbig: Err.Clear: s = s * 10!: n = Err.Number: Debug.Print "s = s * x       Err=" & n & " s=" & s
+        s = sbig: Err.Clear: s *= 10!: n = Err.Number: Debug.Print "s *= x          Err=" & n & " s=" & s
+        s = 5!: Err.Clear: s = CSng(dbig): n = Err.Number: Debug.Print "CSng(Double)    Err=" & n & " s=" & s
+        s = 5!: Err.Clear: s = sbig ^ 2!: n = Err.Number: Debug.Print "Single ^        Err=" & n & " s=" & s
+        v = sbig: vr = 5!: Err.Clear: vr = v * 10!: n = Err.Number: Debug.Print "Variant *       Err=" & n & " " & TypeName(vr)
+        v = sbig: vr = 5!: Err.Clear: vr = v + v: n = Err.Number: Debug.Print "Variant +       Err=" & n & " " & TypeName(vr)
+    End Sub
+
+End Module

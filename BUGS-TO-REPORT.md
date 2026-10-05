@@ -1874,3 +1874,115 @@ Only `onclick` was tried. The setter's test is on the name, so it applies to eve
 Severity: low. `AddEventListener` and inline handlers work, but an add-in that sets a handler property gets neither the handler nor an error.
 
 <!-- Reproducer: bugs/on-property-ignored/ (mode lane: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane, so `verify` runs the lane). Asserted by `addin-test.bat --only panes` (test/addin/panes.test.mjs, 'P4: a property whose name starts with "on" is dropped, and the add-in is told nothing'), which passes on BETA 995 and 997. The reproducer is a cut-down copy of that lane's PanesProbe add-in (test/addin/probes/panes), compiled clean on 997 by `bug_repro.mjs compile`, and not itself run in a lane. The setter source quoted is from BETA 997's ide/main.js. Stated in docs/Reference/Built-In/tbIDE/HtmlElementProperties.md, the NOTE that begins "A property whose name starts with `on` is ignored" (names BETA 997), and in WIP.HelpAddin.md (P4): when fixed, update that test and P4, and remove the NOTE or replace it with what the setter now does. -->
+
+---
+
+## LLVM-compiled code raises no error when a `Double` overflows, where it raises error 6 otherwise
+
+**Describe the bug**
+In a procedure compiled with LLVM, a `Double` addition, subtraction, multiplication or exponentiation whose result is too large for a `Double` raises no error: `Err.Number` stays 0 and the target holds infinity. The same statement in a procedure compiled without LLVM raises error 6 (*Overflow*), as VB6 does. A program that relies on error 6 to detect an overflow gets a silent `Inf` instead. No project setting and no other attribute is involved: the one difference is `[CompilerOptions("+llvm")]` on the procedure, or `tbrun --llvm` on the whole project. Observed in a run of the reproducer project.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `llvm-double-overflow-no-error.twinproj` (attached as `llvm-double-overflow-no-error.zip`). It needs an LLVM licence (Ultimate): `LlvmCases` is compiled with LLVM by its attribute. `PlainCases` holds the same statements without it. Each runs under `On Error Resume Next`, for example:
+   ```
+   [CompilerOptions("+llvm")]
+   Private Sub LlvmCases()
+       Dim big As Double = 1E+308
+       Dim r As Double
+       On Error Resume Next
+       r = 5#: Err.Clear: r = big * 10#
+       Debug.Print "LLVM   Double *   Err=" & Err.Number & " r=" & r
+   End Sub
+   ```
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   plain  Double *   Err=6 r=1.#INF
+   plain  Double +   Err=6 r=1.#INF
+   plain  Double ^   Err=6
+   plain  Double /   Err=6 r=1.#INF
+   plain  1# / 0#    Err=11 r=1.#INF
+   plain  Long +     Err=6 l=5
+   LLVM   Double *   Err=0 r=1.#INF
+   LLVM   Double +   Err=0 r=1.#INF
+   LLVM   Double ^   Err=0
+   LLVM   Double /   Err=6 r=5
+   LLVM   1# / 0#    Err=11 r=5
+   LLVM   Long +     Err=6 l=5
+   ```
+
+**Expected behavior**
+Error 6 in LLVM-compiled code for every `Double` overflow, as in the same code without LLVM and in VB6 (attached as `llvm-double-overflow-no-error-vb6.zip`, which prints `Err=6` for the multiplication, the addition, the exponentiation and the division, and `Err=11` for `1# / 0#`).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Also on BETA 995, identically, and on win32 and win64. Running the reproducer with `--llvm` compiles every procedure with LLVM and gives the `LLVM` results for both halves. With `[FloatingPointErrorChecks(True)]` on the LLVM procedure the multiplication still raises nothing.
+
+What does not reproduce it: a `Double` division that overflows (`1E+308 / 0.1`) raises 6, and so does `Exp(1000#)`, a `Long` overflow (`2147483647 + 1`) raises 6, and `1# / 0#` raises 11, all in LLVM-compiled code. So the overflow check is missing from the addition, subtraction, multiplication and `^` operators, not from the error path.
+
+A second difference shows in the same output. After a division that raises an error, LLVM-compiled code leaves the target unassigned: `r` is still 5 after `1# / 0#` (error 11) and after `1E+308 / 0.1` (error 6). Without LLVM the target is assigned infinity, `1.#INF`, and so it is in VB6 (`r=1.#INF` after each of its errors). Under `On Error Resume Next` the two builds then continue with different values.
+
+A `Single` addition, subtraction, multiplication or division that overflows raises no error without LLVM, where VB6 raises 6 (with LLVM the first three raise none either, and the division raises 6). That is a separate defect, with its own reproducer, in the entry "A `Single` that overflows raises no error, where VB6 raises error 6" (`bugs/single-overflow-no-error/`).
+
+Severity: a silent wrong result. An overflow that raises 6 in a debug run and no error in the LLVM-compiled build changes what a program computes, and nothing marks the difference.
+
+<!-- Reproducer: bugs/llvm-double-overflow-no-error/ (mode run: the LLVM procedure is compiled by its attribute, so `bug_repro.mjs run` needs no flag; expects the plain and LLVM lines above); verified on BETA 997 and 995 with `bug_repro.mjs run`, and on 997 with --llvm and --arch win64. VB6: `bug_repro.mjs vb6 llvm-double-overflow-no-error`. Not run in a built exe (Debug.Print writes nothing there). Originated in the p2 probes of 2026-10-06 (b_fpu_off). The docs/LLVM/Getting-Started.md section "Language support" carries a `> [!WARNING]` for it, naming BETA 997 (a silent wrong result, owner's rule); remove it once a fixed build is released. Related: the filed bugs/filed/llvm-err-after-raise (same page, a NOTE). The `Single` overflow without LLVM is its own entry, single-overflow-no-error. -->
+
+---
+
+## A `Single` that overflows raises no error, where VB6 raises error 6
+
+**Describe the bug**
+When a `Single` addition, subtraction, multiplication or division produces a result too large for a `Single`, twinBASIC raises no error and the target holds infinity: `s = sbig + sbig` with `sbig` at 3E+38 leaves `Err.Number` at 0 and `s` at `1.#INF`. VB6 raises error 6 (*Overflow*) for the same statement. The same holds for `+=` and `*=`, for `Single * Long` and for some `Single` constant expressions. A `Double` overflow raises 6, so a `Single` and a `Double` are treated differently. Observed in a run of the reproducer project.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `single-overflow-no-error.twinproj` (attached as `single-overflow-no-error.zip`). Its `Sub Main` runs each case under `On Error Resume Next`, for example:
+   ```
+   Dim sbig As Single = 3E+38!
+   Dim s As Single
+   On Error Resume Next
+   s = 5!: Err.Clear: s = sbig + sbig
+   Debug.Print "Single +        Err=" & Err.Number & " s=" & s
+   ```
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   Single +        Err=0 s=1.#INF
+   Single -        Err=0 s=-1.#INF
+   Single *        Err=0 s=1.#INF
+   Single /        Err=0 s=1.#INF
+   Single * Long   Err=0 s=1.#INF
+   s = s + x       Err=0 s=1.#INF
+   s += x          Err=0 s=1.#INF
+   s = s * x       Err=0 s=1.#INF
+   s *= x          Err=0 s=1.#INF
+   CSng(Double)    Err=6 s=5
+   Single ^        Err=6 s=5
+   Variant *       Err=0 Double
+   Variant +       Err=0 Double
+   ```
+
+**Expected behavior**
+Error 6 for every `Single` arithmetic result that does not fit a `Single`, as in VB6 (attached as `single-overflow-no-error-vb6.zip`, which prints `Err=6 s=1.#INF` for `+`, `-`, `*`, `/`, `Single * Long`, `s = s + x` and `s = s * x`). The target is `1.#INF` after the error in both, so only the error is missing.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Also on BETA 995, identically, and on win64 (which prints `inf` where win32 prints `1.#INF`). Compiled with LLVM, `+`, `-`, `*` and the compound forms are the same, and `/` raises 6, as in VB6.
+
+What matches VB6: a `Variant` holding a `Single` that overflows becomes a `Double` variant, with no error, in both (`Variant *`, `Variant +` above). `CSng` of a `Double` that is too large raises 6 in both. The result of `Single * Long` is a `Double` in both (`TypeName`), though twinBASIC stores it into a `Single` without an error.
+
+Where twinBASIC differs from VB6 in the other direction: `s = sbig ^ 2!` raises 6 in twinBASIC and gives `1.#INF` with no error in VB6, and so does assigning a `Double` that is too large to a `Single` (`s = 1E+300`: error 6 in twinBASIC, `1.#INF` with no error in VB6).
+
+A `Single` constant expression that overflows is refused by VB6 at compile time with *Overflow*. twinBASIC compiles some forms (`Const A As Single = 3E+38! * 10!`, and the `+`, `-` and `/` forms, in a project of their own) and refuses others with TB5002 (`^`, `CSng(1E+300)`, and `1E+300` assigned to a `Single`); which constants it refuses also changed with the other constants in the project, so that part is not in the reproducer.
+
+Severity: a silent wrong result. A `Single` overflow that ends the program or reaches a handler in VB6 gives `Inf` and carries on in twinBASIC.
+
+<!-- Reproducer: bugs/single-overflow-no-error/ (mode run; expects the `+`, `-`, `*`, `/`, `+=` and `CSng` lines above); verified on BETA 997 and 995 with `bug_repro.mjs run`, and on 997 with --llvm and --arch win64. VB6: `bug_repro.mjs vb6 single-overflow-no-error` (VB6 has no `+=`, so the file has `s = s + x`). The constant cases come from tbbuild on one-constant projects, and VB6's from `vb6run.mjs` on `Const` statements; neither is in the reproducer. Pages with wrong sentences: docs/Reference/Core/Divide.md line 31 ("A declared **Single** that overflows raises error 6"), and the sentence "A declared (non-**Variant**) result that overflows raises error 6" in Plus.md, Minus.md and Multiply.md, and docs/Reference/Operators.md line 135 ("A result that does not fit its type raises error 6"); each of Divide.md, Plus.md, Minus.md, Multiply.md and Operators.md (after its porting table) carries a `> [!WARNING]` naming BETA 997 (a silent wrong result, owner's rule); remove them once a fixed build is released. The variant rows (Plus.md line 54, Minus.md line 34, Multiply.md line 32, Divide.md line 31's second clause) and the result-type rows for Single and Long are right. Exponent.md says nothing about overflow. Related: llvm-double-overflow-no-error (the `Double` overflow under LLVM). -->
+
+

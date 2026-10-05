@@ -35,6 +35,9 @@ The data type of *result* is usually the same as that of the most precise expres
 
 A declared (non-**Variant**) result that overflows raises error 6, *Overflow*. If one or both expressions are **Null** expressions, *result* is **Null**. If an expression is **Empty**, it is treated as 0.
 
+> [!WARNING]
+> In twinBASIC BETA 997, a multiplication whose result is a declared **Single** raises no error when the result overflows: the **Single** holds infinity (`1.#INF`) instead. The compound form ***=** does the same. Declare the variable **Double** where an overflow must be caught.
+
 > [!NOTE]
 > The order of precision used by multiplication is not the same as the order of precision used by addition and subtraction.
 

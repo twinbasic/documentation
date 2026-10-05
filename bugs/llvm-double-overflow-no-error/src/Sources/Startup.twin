@@ -1,0 +1,44 @@
+' Double overflow raises no error in an LLVM-compiled procedure.
+' Needs an LLVM licence (Ultimate): LlvmCases is compiled with LLVM by its [CompilerOptions("+llvm")].
+' No project setting and no other attribute is involved.
+Module Startup
+
+    Private Sub PlainCases()
+        Dim big As Double = 1E+308
+        Dim z As Double = 0#
+        Dim lmax As Long = 2147483647
+        Dim r As Double
+        Dim l As Long
+        Dim n As Long
+        On Error Resume Next
+        r = 5#: Err.Clear: r = big * 10#: n = Err.Number: Debug.Print "plain  Double *   Err=" & n & " r=" & r
+        r = 5#: Err.Clear: r = big + big: n = Err.Number: Debug.Print "plain  Double +   Err=" & n & " r=" & r
+        r = 5#: Err.Clear: r = 10# ^ 400#: n = Err.Number: Debug.Print "plain  Double ^   Err=" & n
+        r = 5#: Err.Clear: r = big / 0.1: n = Err.Number: Debug.Print "plain  Double /   Err=" & n & " r=" & r
+        r = 5#: Err.Clear: r = 1# / z: n = Err.Number: Debug.Print "plain  1# / 0#    Err=" & n & " r=" & r
+        l = 5: Err.Clear: l = lmax + 1: n = Err.Number: Debug.Print "plain  Long +     Err=" & n & " l=" & l
+    End Sub
+
+    [CompilerOptions("+llvm")]
+    Private Sub LlvmCases()
+        Dim big As Double = 1E+308
+        Dim z As Double = 0#
+        Dim lmax As Long = 2147483647
+        Dim r As Double
+        Dim l As Long
+        Dim n As Long
+        On Error Resume Next
+        r = 5#: Err.Clear: r = big * 10#: n = Err.Number: Debug.Print "LLVM   Double *   Err=" & n & " r=" & r
+        r = 5#: Err.Clear: r = big + big: n = Err.Number: Debug.Print "LLVM   Double +   Err=" & n & " r=" & r
+        r = 5#: Err.Clear: r = 10# ^ 400#: n = Err.Number: Debug.Print "LLVM   Double ^   Err=" & n
+        r = 5#: Err.Clear: r = big / 0.1: n = Err.Number: Debug.Print "LLVM   Double /   Err=" & n & " r=" & r
+        r = 5#: Err.Clear: r = 1# / z: n = Err.Number: Debug.Print "LLVM   1# / 0#    Err=" & n & " r=" & r
+        l = 5: Err.Clear: l = lmax + 1: n = Err.Number: Debug.Print "LLVM   Long +     Err=" & n & " l=" & l
+    End Sub
+
+    Public Sub Main()
+        PlainCases
+        LlvmCases
+    End Sub
+
+End Module

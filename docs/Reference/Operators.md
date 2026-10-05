@@ -132,7 +132,7 @@ The other operators:
 | `&` | **String** |
 | unary `-` | the operand's own type, except **Integer** for a **Byte** or **Boolean** and **Double** for a **String** |
 
-A result that does not fit its type raises error 6, *Overflow*, with one exception described under [the **\\** operator](../tB/Core/IntegerDivide). Some combinations that matter when porting code:
+A result that does not fit its type raises error 6, *Overflow*. Some combinations that matter when porting code:
 
 | Expression | Result |
 |:-----------|:-------|
@@ -146,6 +146,9 @@ A result that does not fit its type raises error 6, *Overflow*, with one excepti
 | **Single** `+` **Long** | **Double** |
 | **Date** `+` **Integer** | **Date** |
 | **String** `+` **Integer** | **Double**: `"34" + 6` is 40 |
+
+> [!WARNING]
+> In twinBASIC BETA 997, an addition, subtraction, multiplication or division whose result is a declared **Single** raises no error when the result overflows: the **Single** holds infinity (`1.#INF`) instead. Declare the variable **Double** where an overflow must be caught. Code compiled with LLVM has a similar defect for **Double**; see [Language support](../LLVM/Getting-Started#language-support).
 
 ### Variant operands
 
