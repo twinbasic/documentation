@@ -193,7 +193,7 @@ Raises `CONNECT_E_NOCONNECTION` (`&H80040200`) when the object has no outgoing i
 
 ## Events in twinBASIC
 
-A class that declares [**Event**](../../tB/Core/Event) members is a connectable object, and the compiler writes all of its connection point support. What it does, in BETA 995:
+A class that declares [**Event**](../../tB/Core/Event) members is a connectable object, and the compiler writes all of its connection point support. What it does:
 
 - **Every class answers for IConnectionPointContainer.** **QueryInterface**, and a [**Set**](../../tB/Core/Set) to a variable of the container type, succeed for a class with no events as they do for a class with events.
 - **A class with events has one connection point**, however many events it declares. **EnumConnectionPoints** returns it and **FindConnectionPoint** finds it by its interface identifier.

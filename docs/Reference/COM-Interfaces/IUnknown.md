@@ -86,7 +86,7 @@ Calling **IUnknown** methods by hand is a low-level operation. A wrong slot numb
 
 ### Reference counts
 
-A twinBASIC object has one reference count, shared by every interface it is reached through. In BETA 995:
+A twinBASIC object has one reference count, shared by every interface it is reached through:
 
 | Operation | Effect on the count |
 |-----------|---------------------|
