@@ -127,9 +127,9 @@ node scripts/tbrun.mjs <exported-source-dir>         # what does it print
 - **The sweep is the probe for a whole attribute.** Before writing or changing an attribute's `Applicable to:` line, run `sweep_attributes.mjs --names <Name>` (a minute or a few; the once-per-project ones, `RunAfterBuild` and `RunBeforeStartupObject`, take several); it tries every declaration site, not only the ones already claimed. **Always pass `--out` and `--dump-results`**: a run piped through `tail` keeps one line of a report that takes ten minutes. A clean build there means the compiler accepts the attribute, not that it does anything, and an Enum member cannot be tested at all (see [WIP.Harness.md](WIP.Harness.md#sweeping-every-attribute-at-every-site)).
 - **End an IDE by its pid, never by image name.** `taskkill /IM twinBASIC.exe` ends every other run's IDE, another session's included, and the user's own. `tbbuild --keep` prints the pid for this reason.
 
-Why each of those is true, what the WebView/CDP route costs, why the compiler's
-own websockets cannot be driven instead, and the seven ways a sweep of this
-corpus returns a wrong answer: [WIP.Harness.md](WIP.Harness.md).
+Why each of those is true, what the WebView/CDP route costs, why the harness
+drives the IDE rather than the compiler's own websockets, and the seven ways a
+sweep of this corpus returns a wrong answer: [WIP.Harness.md](WIP.Harness.md).
 
 **Testing an IDE add-in** is `addin-test.bat`, run by a person as `examples.bat` is. Each
 lane in `test/addin/lanes.mjs` builds the add-ins it tests into a private copy of the
