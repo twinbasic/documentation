@@ -3,5 +3,6 @@
   "expect": {
     "exit": 5,
     "message": "codegen"
-  }
+  },
+  "issue": 2466
 }

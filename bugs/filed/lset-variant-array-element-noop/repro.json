@@ -8,5 +8,6 @@
       "^LSet w\\(0\\), w\\(0 To 1\\) As Variant: \\[zz        \\]$",
       "^RSet w\\(1\\), w\\(0 To 1\\) As Variant: \\[   zz\\]$"
     ]
-  }
+  },
+  "issue": 2467
 }
