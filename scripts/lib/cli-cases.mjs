@@ -858,6 +858,15 @@ bad("eval/nav_hops.mjs", ["Reference", "[a-"], REGEX_REASON("<url-regex>", "[a-"
     refuse(literal(docs), literal(`--repo ${path.join(docs, "Reference")}`)),
   );
   bad(tool, ["--repo", docs, "--dest", docs], refuse(literal(docs), literal(`--repo ${docs}`)));
+  // A --dest inside the mirrored tree is refused too, or the walk reads it back.
+  const inside = path.join(docs, "Reference", "corpus");
+  bad(
+    tool,
+    ["--repo", docs, "--dest", inside],
+    new RegExp(
+      `^refusing --dest ${literal(inside)}: it is inside ${literal(docs)}, which the corpus mirrors, so the mirror would copy itself\\n$`,
+    ),
+  );
 }
 
 // wisdom's command in these is never a real one, so that none can start an
