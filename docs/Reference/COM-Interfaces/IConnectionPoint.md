@@ -127,10 +127,10 @@ In twinBASIC:
 - Cookies start at 1 for each source object and increase by one for every connection made. A cookie is not used again after its connection ends.
 - A sink that does not answer for the outgoing interface fails with `E_NOINTERFACE` (`&H80004002`), where the COM contract names `CONNECT_E_CANNOTCONNECT`. VB6 returns `E_NOINTERFACE` too. An object of an ordinary twinBASIC class is such a sink, even when the class implements **IDispatch**, and so is a class declared **NotDispatchable** that implements it. A twinBASIC class cannot answer for the identifier, because the identifier of a class's event interface changes with every build and so cannot be declared. A sink that works is the object twinBASIC creates for a **WithEvents** variable, which **EnumConnections** returns (see the example).
 - A sink that is already connected to the point is not connected a second time. **Advise** raises no error, returns 0, and adds nothing.
-- Passing **Nothing** is a defect in BETA 995, described in the warning below.
+- Passing **Nothing** is a defect in BETA 997, described in the warning below.
 
 > [!WARNING]
-> BETA 995 has a defect: **Advise** with **Nothing** as the sink ends the program with an access violation, and any unsaved data is lost. The COM contract returns `E_POINTER`. VB6 ends with an access violation as well. Test the sink for **Nothing** before calling **Advise**.
+> BETA 997 has a defect: **Advise** with **Nothing** as the sink ends the program with an access violation, and any unsaved data is lost. The COM contract returns `E_POINTER`. VB6 ends with an access violation as well. Test the sink for **Nothing** before calling **Advise**.
 
 ### Unadvise
 {: .no_toc }
@@ -145,7 +145,7 @@ Syntax: *object*.**Unadvise** *dwCookie*
 The connection point releases the reference it held to the sink, and the source stops calling it. An event that the source raises afterwards does not reach that sink.
 
 > [!WARNING]
-> BETA 995 has a defect: **Unadvise** with a cookie that names no connection, 0 included, succeeds and does nothing, where the COM contract returns an error (`E_POINTER`). VB6 returns `CONNECT_E_NOCONNECTION` (`&H80040200`) for a cookie it never issued. A caller that releases a connection twice, or with a wrong cookie, is told that it worked.
+> BETA 997 has a defect: **Unadvise** with a cookie that names no connection, 0 included, succeeds and does nothing, where the COM contract returns an error (`E_POINTER`). VB6 returns `CONNECT_E_NOCONNECTION` (`&H80040200`) for a cookie it never issued. A caller that releases a connection twice, or with a wrong cookie, is told that it worked.
 
 A **WithEvents** variable whose connection was ended with **Unadvise** can still be set to **Nothing** without an error.
 

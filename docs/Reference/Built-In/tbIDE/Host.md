@@ -151,7 +151,7 @@ End Sub
 ### OnChangedActiveEditor
 {: .no_toc }
 
-Fires when the user switches the focused editor. The event is the right hook for refreshing any addin UI that depends on the current editor (e.g. a context-aware tool window). Available since IDE BETA 504+; older IDEs do not fire it.
+Fires when the user switches the focused editor. The event is the right hook for refreshing any addin UI that depends on the current editor (e.g. a context-aware tool window).
 
 Syntax: *host*_**OnChangedActiveEditor**(*EditorIdx* **As Long**, *Editor* **As** [**Editor**](Editor))
 

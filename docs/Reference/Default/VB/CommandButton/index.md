@@ -66,7 +66,7 @@ Determines how the control's border is drawn by the OS. A member of [**Appearanc
 The background colour, as an **OLE_COLOR**. Defaults to the system 3-D face colour. Honoured only when [**Style**](#style) is **vbButtonGraphical** --- the standard Win32 button always paints with the theme colour.
 
 > [!WARNING]
-> BETA 995 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+> BETA 997 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
 
 ### Cancel
 {: .no_toc }
@@ -131,7 +131,7 @@ The **StdFont** used to render [**Caption**](#caption). The convenience properti
 The text colour for the caption, as an **OLE_COLOR**. Defaults to the system button-text colour. Honoured only when [**Style**](#style) is **vbButtonGraphical**.
 
 > [!WARNING]
-> BETA 995 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. Check a colour that comes from user input before assigning it.
+> BETA 997 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. Check a colour that comes from user input before assigning it.
 
 ### Height
 {: .no_toc }

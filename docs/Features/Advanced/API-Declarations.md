@@ -40,9 +40,6 @@ A 64-bit build has only one calling convention. There, all four keywords are acc
 
 Name at most one convention. BETA 995 accepts two together without a diagnostic.
 
-> [!NOTE]
-> BETA 990 added **ThisCall** and **FastCall** in interface definitions, and BETA 992 everywhere else; earlier builds refuse them (TB5182).
-
 ### Examples
 
 An API declaration, here with **DeclareWide**:
@@ -103,7 +100,7 @@ End Class
 A callback passed to an API must use the convention the API calls it with. Declare a [**Delegate**](../../tB/Core/Delegate) with that convention, use it as the parameter type, and give the target procedure the same keyword. [**AddressOf**](../../tB/Core/AddressOf) of a procedure with a different convention is accepted with a warning only (TB0026).
 
 > [!NOTE]
-> In BETA 995, on a 32-bit build, a call made from twinBASIC code *through* a **ThisCall** or **FastCall** delegate passes its arguments as stdcall does, and fails with *Bad DLL definition*. Calling the procedure directly works. **CDecl** delegates are not affected, and neither is a 64-bit build.
+> In BETA 997, on a 32-bit build, a call made from twinBASIC code *through* a **ThisCall** or **FastCall** delegate passes its arguments as stdcall does, and fails with *Bad DLL definition*. Calling the procedure directly works. **CDecl** delegates are not affected, and neither is a 64-bit build.
 
 The following example performs a quicksort using the C runtime's [`qsort` function](https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/qsort), which calls its comparator with the cdecl convention:
 

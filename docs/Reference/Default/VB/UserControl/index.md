@@ -143,7 +143,7 @@ When **False**, drawing primitives --- [**Cls**](#cls), [**Circle**](#circle), [
 The background colour of the control's surface, as an **OLE_COLOR**. Defaults to the system 3-D face colour. Has no visible effect when [**BackStyle**](#backstyle) is **vbBFTransparent**.
 
 > [!WARNING]
-> BETA 995 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+> BETA 997 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so a later read returns it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
 
 ### BackStyle
 {: .no_toc }
@@ -282,7 +282,7 @@ The host's extender wrapper around this **UserControl**, as an **Object**. Read-
 The fill colour for closed shapes drawn by [**Circle**](#circle) and the rectangle form of [**Line**](#line) without **F**. **OLE_COLOR**, default `0` (black). Used only when [**FillStyle**](#fillstyle) is not **vbFSTransparent**.
 
 > [!WARNING]
-> BETA 995 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so [**Circle**](#circle) and [**Line**](#line) then draw with it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+> BETA 997 has a defect: assigning a value that is not a colour, such as `-1`, raises no error and stores the value, so [**Circle**](#circle) and [**Line**](#line) then draw with it. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
 
 ### FillStyle
 {: .no_toc }
@@ -340,7 +340,7 @@ Whether the control automatically resizes itself to fill the host's container ar
 The pen colour used by [**Circle**](#circle), [**Line**](#line), [**PSet**](#pset), and the text drawn by [**Print**](#print). **OLE_COLOR**.
 
 > [!WARNING]
-> BETA 995 has a defect: assigning a value that is not a colour, such as `-1` or `&H8000001F`, raises error 5 and still stores the value, so a later read returns it and a handled error leaves the invalid colour in force. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
+> BETA 997 has a defect: assigning a value that is not a colour, such as `-1` or `&H8000001F`, raises error 5 and still stores the value, so a later read returns it and a handled error leaves the invalid colour in force. VB6 raises error 380, *Invalid property value*, and keeps the old colour. Check a colour that comes from user input before assigning it.
 
 ### ForwardFocus
 {: .no_toc }

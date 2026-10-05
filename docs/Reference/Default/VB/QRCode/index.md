@@ -195,7 +195,7 @@ Determines whether the control accepts mouse input. A disabled **QRCode** still 
 The colour of the dark modules in the generated QR code, as an **OLE_COLOR**. Default **vbBlack**. The light modules are always transparent --- the control's parent shows through them, so place the **QRCode** over a contrasting background.
 
 > [!WARNING]
-> BETA 995 has a defect: assigning a value that is not a colour, such as `-1` or `&H8000001F`, raises error 5 and still stores the value, so a later read returns it and a handled error leaves the invalid colour in force. Check a colour that comes from user input before assigning it.
+> BETA 997 has a defect: assigning a value that is not a colour, such as `-1` or `&H8000001F`, raises error 5 and still stores the value, so a later read returns it and a handled error leaves the invalid colour in force. Check a colour that comes from user input before assigning it.
 
 ### Height
 {: .no_toc }

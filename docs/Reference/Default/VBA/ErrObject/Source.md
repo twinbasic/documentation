@@ -25,7 +25,7 @@ When generating an error from user code, pass the source to [**Raise**](Raise). 
 When an error occurs that twinBASIC raises itself, such as a division by zero, **Source** is an empty string too, in a standard module and in a class module alike.
 
 > [!WARNING]
-> BETA 995 has a defect: it does not fill in **Source**, and raises no error. VBA and VB6 fill it in automatically with the name of the project, for an error that the runtime raises and for **Raise** without a source argument. A program that reads **Err.Source** to find where an error came from gets an empty string.
+> BETA 997 has a defect: it does not fill in **Source**, and raises no error. VBA and VB6 fill it in automatically with the name of the project, for an error that the runtime raises and for **Raise** without a source argument. A program that reads **Err.Source** to find where an error came from gets an empty string.
 
 ### Example
 
