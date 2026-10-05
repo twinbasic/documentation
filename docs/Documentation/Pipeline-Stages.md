@@ -37,7 +37,7 @@ The pipeline passes three pieces of mutable state through every task: the `pages
 | `layoutDefault` | `discover` | `boolean` | `true` when frontmatter has no explicit `layout:` key. |
 | `imageScope` | `discover` | `boolean` | `true` when `srcRel` contains an `Images/` segment. Phase 3 uses this to validate image paths. |
 | `navPath` | `nav` | `string` | Slash-joined nav chain: `grand_parent / parent / title`. Set only on pages with a non-empty title. |
-| `navLevels` | `nav` | `object` | Positional indices in the sidebar tree. `templatePhase` uses this to generate per-page activation CSS and to choose the part of the nav tree the page holds. |
+| `navLevels` | `nav` | `object` | Positional indices in the sidebar tree. `templatePhase` uses this to generate per-page activation CSS, and `withPartialNav` to choose the part of the nav tree an offline page holds. |
 | `breadcrumbs` | `nav` | `Page[]` | Ancestor chain from the root to the current page, nearest-first. |
 | `children` | `nav` | `Page[]` | Immediate child pages in nav order. |
 | `renderedContent` | `render:i` | `string` | HTML body produced by markdown-it. Set on the worker, merged back into the master page via the render delta. |
@@ -206,7 +206,7 @@ nav.expected = ["discover"]
 nav.execute() → { sidebar }
 ```
 
-Calls `computeNav(state.pages, state.site.config)` from `nav.mjs`, then `renderSidebar(state.site)` from `template.mjs`. The nav-integrity check runs inside `computeNav` and throws on orphan or ambiguous `parent:` declarations. Returns the sidebar as the HTML around the nav tree and the tree itself, for `dispatch` to fold into the shared payload; each page renders its own part of the tree.
+Calls `computeNav(state.pages, state.site.config)` from `nav.mjs`, then `renderSidebar(state.site)` from `template.mjs`. The nav-integrity check runs inside `computeNav` and throws on orphan or ambiguous `parent:` declarations. Returns the pre-rendered sidebar HTML for `dispatch` to fold into the shared payload.
 
 ### `dot` (worker)
 
@@ -326,7 +326,7 @@ Handler (`render` in `cpu-worker.mjs`):
 2. `await renderPhase(chunk, env.site)` --- markdown-it body render.
 3. `computeChunkSeo(chunk, env.site.seoSiteTitle, env.site.config, env.site.markdown)` --- per-page SEO fields.
 4. `await templatePhase(chunk, env.site, env.initData)` --- just-the-docs layout wrap.
-5. When `env.offlineBase` is set: call `deriveOfflinePage` for each writable page.
+5. When `env.offlineBase` is set: for each writable page, call `withPartialNav` to cut the page's nav down to its part of the tree, then `deriveOfflinePage`.
 6. Store `{ destPath, html, offlineHtml, offlineMisses }` on the worker's `_pendingFlush` FIFO so the matching `flush:i` can drain it.
 7. `deriveSearchEntries(chunk, env.site)` --- per-section search entries, with any [index entries](Authoring#index-entries-for-the-site-search) the page's frontmatter or headings name. Trim `sourcePage` and the chunk-local `i` before returning (main reassigns global indices).
 
@@ -405,7 +405,7 @@ Aggregates per-chunk write stats. Unblocks `writeAux`, `writePdf` and `linkJoin`
 writeAssets.expected = ["dot", "vendorAssets", "prepPageDirs", "highlighterInit"]
 ```
 
-Calls `writePhase(state.pages, state.staticFiles, { destRoot, dryRun, generatedAssets, baseurl, skipPages: true })` from `write.mjs`. Copies vendored theme JS, copies project static files, writes generated assets (`tb-highlight.css` from `state.site.highlightCss`, and `assets/js/nav.js`, the whole nav tree). **Does not** write page HTML --- the per-chunk `flush:i` tasks already did that. The CSS baseurl rewrite (`url("/path")` → `url("<baseurl>/path")`) applies to both copy paths and to generated assets.
+Calls `writePhase(state.pages, state.staticFiles, { destRoot, dryRun, generatedAssets, baseurl, skipPages: true })` from `write.mjs`. Copies vendored theme JS, copies project static files, writes generated CSS (`tb-highlight.css` from `state.site.highlightCss`). **Does not** write page HTML --- the per-chunk `flush:i` tasks already did that. The CSS baseurl rewrite (`url("/path")` → `url("<baseurl>/path")`) applies to both copy paths and to generated assets.
 
 ### `searchData` (main)
 
@@ -771,9 +771,10 @@ For **renderer rules**, order inverts. Both image plugins capture the current `m
 | `templatePhase` | `(pages, site, initData) → Promise<void>` | Wraps each page's `renderedContent` in the just-the-docs layout, runs `compressHtml`, stores the result in `page.html`. Skips `layout: book-combined`. |
 | `buildInitConfig` | `(site) → object` | Pre-renders the config-only chrome (SVG sprites, header, search footer, favicon, GA). Called by the `buildInit` task. |
 | `buildInitFn` | (alias of internal `buildInit`) | Available for harnesses; combines `buildInitConfig` + `renderSidebar` in one call. |
-| `renderSidebar` | `(site) → { head, tail, tree, baseurl }` | Pre-renders the sidebar around its nav tree. Called by the `nav` task; the output is folded into the shared payload by `dispatch`, and `templatePhase` renders each page's part of the tree between `head` and `tail`. |
+| `renderSidebar` | `(site) → string` | Pre-renders the sidebar HTML. Called by the `nav` task; the output is folded into the shared payload by `dispatch`. |
 | `renderFullNav` | `(site) → string` | The whole nav tree's list, compressed as a page is. |
-| `navScript` | `(navHtml) → string` | The text of `assets/js/nav.js`, which puts the whole tree in place of a page's part of it. |
+| `withPartialNav` | `(html, page, site, fullNav) → string` | An offline page's HTML before its rewrite: the whole nav tree swapped for the page's part of it, and `nav.js` loaded after the nav. |
+| `navScript` | `(navHtml) → string` | The text of the offline tree's `assets/js/nav.js`, which puts the whole tree in place of a page's part of it. |
 | `navActivationCss` | `(page) → string` | Per-page `<style id="jtd-nav-activation">` block. |
 | `injectAnchorHeadings` | `(html, headingsOut) → string` | Adds `<a class="anchor-heading">` next to every heading with an `id` outside `<code>` and `<pre>`, and pushes each heading onto `headingsOut` as it goes. The icon is deliberately `aria-hidden="true" tabindex="-1"`; the keyboard and screen-reader equivalent is the per-page `<details class="section-links">` block that `renderFooter` builds from `headingsOut`. |
 

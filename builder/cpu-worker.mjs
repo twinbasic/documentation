@@ -11,7 +11,7 @@ import { regenerateDot } from "./dot.mjs";
 import { captureBuildInfo } from "./build-info.mjs";
 
 import { createMarkdownIt, renderPhase } from "./render.mjs";
-import { templatePhase } from "./template.mjs";
+import { renderFullNav, templatePhase, withPartialNav } from "./template.mjs";
 import { unpackShared } from "./sab-broadcast.mjs";
 import { deriveSearchEntries } from "./search.mjs";
 import { computeChunkSeo } from "./seo.mjs";
@@ -206,9 +206,12 @@ const handlers = {
         caches: { rawResolution: new Map(), seg: new Map(), result: new Map() },
       };
 
+      // An offline page holds only its part of the nav tree (withPartialNav).
+      env.fullNav ??= renderFullNav(env.site);
       const writable = chunk.filter((p) => p.html !== undefined);
       for (const p of writable) {
-        const { html, misses } = deriveOfflinePage(p, offlineState);
+        const offlinePage = { ...p, html: withPartialNav(p.html, p, env.site, env.fullNav) };
+        const { html, misses } = deriveOfflinePage(offlinePage, offlineState);
         p.offlineHtml = html;
         p.offlineMisses = misses;
       }

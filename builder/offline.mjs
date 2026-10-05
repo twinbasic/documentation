@@ -210,8 +210,7 @@ async function copyOfflineStatics(staticFiles, deps) {
 }
 
 // §5.5  copyOfflineThemeAssets -- mirror _site/assets/, rewrite CSS,
-// skip the patched JTD JS (step [3] already wrote it) and nav.js
-// (writeOfflineNavJs writes the offline one).
+// skip the patched JTD JS (step [3] already wrote it).
 async function copyOfflineThemeAssets(deps) {
   const { destRoot, offlineRoot, counters, staticDestRels } = deps;
   const themeRoot = path.join(destRoot, "assets");
@@ -221,7 +220,6 @@ async function copyOfflineThemeAssets(deps) {
 
   await runLimited(themeEntries, LIMIT, async (e) => {
     if (e.isJtdJs) return;
-    if (e.isNavJs) return;
     if (e.isCombinedCss) return;
     const relAsset = "assets/" + e.relUnderAssets;
     // Already written by copyOfflineStatics -- see staticDestRels above.
@@ -582,7 +580,6 @@ async function collectThemeFiles(themeRoot) {
           isCss: childRel.endsWith(".css"),
           isCombinedCss: childRel === "css/just-the-docs-combined.css",
           isJtdJs: childRel === "js/just-the-docs.js",
-          isNavJs: `assets/${childRel}` === NAV_SCRIPT_REL,
         });
       }
     }
