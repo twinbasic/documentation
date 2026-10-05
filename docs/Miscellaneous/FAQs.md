@@ -134,7 +134,9 @@ You can also create a post in the #bugs channel of the [twinBASIC Discord server
 <details>
 <summary markdown=span id="localization"><b>Is the twinBASIC IDE available in other languages?</b></summary>
 
-The IDE currently has basic support for localizing all of the front end UI, with translations supplied by members of the community. These can be obtained from [#langpacks on the tB Discord server](https://discord.com/channels/927638153546829845/1329533568376115282), there's currently around 10 including French, German, Italian, Portuguese, Russian, Chinese (Simplified), Chinese (Traditional), Japanese, Swedish, Hungarian, Greek, Catalan, Indonesian (Bahasa), and Malayalam. Others may have been posted since this was written; check the channel.
+Yes. The whole front-end UI can be localized, with translations supplied by members of the community. The IDE ships with language packs for Catalan, Chinese (Simplified), Chinese (Traditional), French, German, Greek, Hindi, Hungarian, Indonesian (Bahasa), Italian, Japanese, Malayalam, Polish, Portuguese (Brazil), Russian, Spanish, Swedish and Turkish, besides the base British English. Choose one under [**Window** > **Language**](tB/IDE/Project/Menu/Window#language).
+
+Each pack is a UTF-8 text file in the `locale` folder of the IDE, named by its IETF language tag (`pl-pl.lang`, `fr-fr.lang`); the folder's `README.txt` says how to write a new one. A string a pack does not translate is taken from the base pack, `en-gb.lang`. Translators share new and updated packs in [#langpacks on the tB Discord server](https://discord.com/channels/927638153546829845/1329533568376115282).
 
 Internal text such as the hover information does not yet support localization, but this is planned for the future.
 
