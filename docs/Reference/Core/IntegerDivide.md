@@ -31,8 +31,7 @@ Any fractional portion of the quotient is discarded, so the quotient is truncate
 
 Dividing by zero raises error 11, *Division by zero*.
 
-> [!WARNING]
-> Dividing the most negative **Integer** (-32,768) or **Long** (-2,147,483,648) by -1 does not raise error 6. It raises a native overflow exception that `On Error` does not handle, and the procedure stops at that line. The same division on **LongLong** returns the most negative **LongLong** unchanged, with no error. A **Variant** holding the **Integer** gives a **Long** 32,768.
+Dividing the most negative **Integer** (-32,768), **Long** (-2,147,483,648) or **LongLong** by -1 raises error 6, *Overflow*, because the quotient does not fit the type. It does so even where overflow checks are turned off, by the project setting or by [**IntegerOverflowChecks(False)**](Attributes#integeroverflowchecks). A **Variant** holding the **Integer** gives a **Long** 32,768 instead; one holding the **Long** or **LongLong** raises error 6.
 
 > [!NOTE]
 > **Decimal** can be a declared type in twinBASIC, and integer division keeps it: a declared **Decimal** on either side gives a **Decimal** *result*. In VBA, **Decimal** exists only inside a **Variant**. **LongLong** takes part in 32-bit builds as well; VBA has it only in 64-bit builds.
