@@ -1,8 +1,8 @@
 // Replace PDFContext.indirectObjects (Map<PDFRef, PDFObject>) with a
 // dense array keyed by objectNumber for the gen=0 path.
 //
-// Motivation. With fast-dict-array applied, the only remaining hot
-// Map.set in the process-phase heap profile is
+// Motivation. Once PDFDict is not Map-backed (fast-dict-onebuf), the
+// only remaining hot Map.set in the process-phase heap profile is
 // PDFContext.assign's `this.indirectObjects.set(ref, object)`:
 //
 //     $ node find-heap-callers.mjs <post-ship>.heapprofile set

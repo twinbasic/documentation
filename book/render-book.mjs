@@ -84,15 +84,10 @@ import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError }
 //     Mutations: in-place replace for existing keys, COW (copy
 //     range to tail, push new pair) for new keys or delete.
 //     PDFContext is a singleton -- one PDFDocument.load per
-//     process; a second distinct context throws. Subsumes
-//     fast-dict-array. Process-phase heap traffic drops from the
-//     Map-backed baseline of ~152 MB down to ~66 MB (-57%); -22%
-//     beyond fast-dict-array. See "One-buffer PDFDict" in
+//     process; a second distinct context throws. Process-phase heap
+//     traffic drops from the Map-backed baseline of ~152 MB to
+//     ~66 MB (-57%). See "One-buffer PDFDict" in
 //     perf/notes/08-pdf-lib.md.
-//
-//     The earlier dict-shape shims it replaced (fast-dict-array,
-//     fast-dict-iter, fast-parse-dict) were deleted; their measurements
-//     are in perf/notes/08-pdf-lib.md, and git history has the code.
 //   fast-parse-object -- replace PDFObjectParser.prototype.parseObject
 //     with a first-byte-dispatch version that gates the three
 //     matchKeyword (true / false / null) scans behind a byte check.
@@ -132,7 +127,7 @@ import { exitOnCrash, numberOption, parseCli, printHelpAndExit, withUsageError }
 //     in step with this shim.
 //   fast-indirect-objects -- replace PDFContext.indirectObjects
 //     (Map<PDFRef, PDFObject>) with a dense array indexed by
-//     objectNumber for the gen=0 path. With fast-dict-array applied,
+//     objectNumber for the gen=0 path. Once PDFDict is not Map-backed,
 //     PDFContext.assign's `this.indirectObjects.set(ref, object)` is
 //     the only hot Map.set left in the heap profile (~7 MB of set
 //     traffic from the parser's once-per-indirect-object assign).
