@@ -402,9 +402,14 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     await at(c, 17, 12);
     const was = await frameSrc(c);
     await pressKey(c, "F1");
+    // A list read as soon as it had items once held 3 of the 12, so wait until
+    // it has stopped changing for a second.
+    let list = "";
+    let since = 0;
     const items = await waitFor(c, async (c) => {
       const r = await results(c);
-      return r.length > 0 && r;
+      if (JSON.stringify(r) !== list) [list, since] = [JSON.stringify(r), Date.now()];
+      return r.length > 0 && Date.now() - since >= 1000 && r;
     });
     assert.equal(items?.length, 12, JSON.stringify(items));
     assert.ok(items.includes("Collection.Addmethod") && items.includes("ToolWindows.Addmethod"), JSON.stringify(items));
