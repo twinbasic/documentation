@@ -14,7 +14,7 @@ import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { attach } from "./tb-cdp.mjs";
-import { click } from "./tb-click.mjs";
+import { click, pagePicture } from "./tb-click.mjs";
 import { consoleMark, keepClears, keptClears, linesSince, readConsole } from "./tb-ide-console.mjs";
 import { watchCompiles } from "./tb-wire.mjs";
 
@@ -1048,6 +1048,46 @@ async function buildLines(c, mark, clearsBefore) {
 }
 
 /**
+ * Press the toolbar's Build button once the IDE will take the press.
+ *
+ * Two things in the IDE's page (ide/main.js) make an early press fail. The
+ * licence: tbBuild_Start waits about five seconds for `licenceIsSet`, which is
+ * reset on every connection to the compiler and set when the compiler answers
+ * the key's validation, and then writes "[BUILD] failed due to licence error"
+ * and builds nothing. And #appOverlay: a transparent element over the whole
+ * page, shown while `lockUICount` is above zero, which a modal dialog raises --
+ * the "Compiling..." and project-loading progress dialogs among them -- and an
+ * open menu; the click then finds the button's centre covered. So this waits
+ * up to `timeout` for the licence to be set and the overlay to be down. A
+ * licence still not set then throws, with a picture of the page; an overlay
+ * still up is left to click, whose error names what covers the button and
+ * saves a picture. An IDE without either global is taken to be ready.
+ *
+ * @param {object} c  a tb-cdp connection
+ * @param {object} [o]
+ * @param {number} [o.timeout]  milliseconds (default 60000)
+ */
+export async function pressBuild(c, { timeout = 60 * 1000 } = {}) {
+  const until = Date.now() + timeout;
+  let state;
+  for (;;) {
+    state = await c.evaluate(`({
+      licence: typeof licenceIsSet === "undefined" || licenceIsSet === true,
+      unlocked: typeof lockUICount === "undefined" || !(lockUICount > 0),
+    })`);
+    if ((state.licence && state.unlocked) || Date.now() >= until) break;
+    await sleep(100);
+  }
+  if (!state.licence) {
+    throw new Error(
+      `cannot build: the compiler had not answered the licence key's validation after ` +
+        `${Math.round(timeout / 1000)} s (licenceIsSet is still false)${await pagePicture(c)}`,
+    );
+  }
+  await click(c, "buildIcon");
+}
+
+/**
  * Build the open project, as the toolbar's Build button does, and wait for the
  * build log to say how it went.
  *
@@ -1077,7 +1117,7 @@ export async function buildProject(c, { timeout = 120 * 1000 } = {}) {
   const keeping = await keepClears(c).catch(() => false);
   const clearsBefore = keeping ? ((await keptClears(c)) ?? []).length : 0;
   try {
-    await click(c, "buildIcon");
+    await pressBuild(c);
   } catch (e) {
     return { ok: false, log: [], message: e.message };
   }

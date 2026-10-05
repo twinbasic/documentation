@@ -9,6 +9,9 @@
 // controls ignore a JavaScript click. `#buildIcon`, for one, is a plain DIV
 // wired through the IDE's pointer handling.
 
+import { mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
 // ------------------------------------------------------------------ finding
@@ -90,6 +93,36 @@ const SHOWN_JS = `(e) => {
 // The page global that holds a click's check on its press, from the call that
 // aims to the call that reads where the press landed.
 const PRESS = "__tbClickPress";
+
+// Where the page is saved when a click fails: what covers a target is often
+// plain in a picture and hard to put in words, and the IDE runs on a private
+// desktop nobody can look at.
+const PICTURES = path.join(tmpdir(), "tb-click");
+
+/**
+ * Save a picture of the page as it is now, for an error to name: a clause
+ * naming the file, or "" when the page could not be captured within five
+ * seconds. Never throws, so that a failure to capture never hides the failure
+ * it was taken for.
+ */
+export async function pagePicture(c) {
+  try {
+    const shot = c.send("Page.captureScreenshot", { format: "png" });
+    shot.catch(() => {});
+    const { data } = await Promise.race([
+      shot,
+      sleep(5000).then(() => {
+        throw new Error("timed out");
+      }),
+    ]);
+    mkdirSync(PICTURES, { recursive: true });
+    const file = path.join(PICTURES, `${new Date().toISOString().replace(/[:.]/g, "-")}-${process.pid}.png`);
+    writeFileSync(file, Buffer.from(data, "base64"));
+    return `; the page as it was is in ${file}`;
+  } catch {
+    return "";
+  }
+}
 
 /** A real left click at a point: the pointer moves there, presses and releases. */
 export async function clickAt(c, x, y, { clickCount = 1 } = {}) {
@@ -198,12 +231,13 @@ export async function click(c, target, { timeout = 5000, clickCount = 1 } = {}) 
       if (landed && !landed.hit) {
         throw new Error(
           `cannot click ${named(target)}: the press landed on ${landed.what}; ` +
-            "the target moved, or something covered it, between aiming and pressing",
+            "the target moved, or something covered it, between aiming and pressing" +
+            (await pagePicture(c)),
         );
       }
       return;
     }
-    if (Date.now() >= until) throw new Error(`cannot click ${named(target)}: ${p.error}`);
+    if (Date.now() >= until) throw new Error(`cannot click ${named(target)}: ${p.error}${await pagePicture(c)}`);
     await sleep(100);
   }
 }

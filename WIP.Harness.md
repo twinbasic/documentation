@@ -535,6 +535,19 @@ Rules it follows:
 
 - **`element.click()` on `#buildIcon` does nothing.** It is a plain DIV behind the IDE's own
   pointer handling and needs real `Input.dispatchMouseEvent` presses at its centre.
+- **Build is pressed through `pressBuild` (`tb-ide.mjs`), which waits up to 60 s for the
+  page globals `licenceIsSet` to be true and `lockUICount` to be 0.** `tbBuild_Start` waits
+  only about five seconds for the compiler to answer the licence key's validation, which
+  `afterSocketsAreConnected` resets on every compiler connection, and then writes "[BUILD]
+  failed due to licence error" and builds nothing. `#appOverlay` is a transparent element
+  over the whole page, shown while `lockUICount` is above zero: by every modal dialog, the
+  "Compiling..." and project-loading progress dialogs among them, and by an open menu. A press
+  then fails with "its centre is covered by #appOverlay" (both were seen once each in a full
+  `bug_repro verify`). A licence still unset after the wait throws; an overlay still up is
+  left to `click`, which names it.
+- **A click that fails saves a picture of the page** (`pagePicture` in `tb-click.mjs`, CDP
+  `Page.captureScreenshot`, which works on the private desktop) under `%TEMP%\tb-click\`, and
+  its error names the file.
 - **Read the console's backing array, not the pane.** The DEBUG CONSOLE is a
   `createListView()`, which keeps only the rows that fit in the DOM, so scraping its
   `innerText` returns the *tail* of a long probe and looks exactly like a complete capture
