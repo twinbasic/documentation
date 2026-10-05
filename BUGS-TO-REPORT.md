@@ -1684,3 +1684,133 @@ What reproduces it besides the plain case: the clash in another letter case, suc
 Severity: moderate. A `[RunAfterBuild]` Sub runs after the exe is built, for example to sign it, and here it is skipped while the build reports success. Nothing points at the module's name as the cause, so the project's owner has to find it by renaming modules.
 
 <!-- Reproducer: bugs/module-named-like-project/ (mode run, exe true; expects exit 5, the console's `[BUILD] Executing 'ModuleNamedLikeProject.ModuleNamedLikeProject.<Sub>'...` line, and no `RunAfterBuild ran`); verified on BETA 995 and 997 by `bug_repro.mjs verify`, with a copy whose module is named Runner as the control (exit 0, `RunAfterBuild ran`, verify says NO LONGER REPRODUCES). `bug_repro.mjs run` needs --exe by hand, because a project may hold one [RunAfterBuild] (TB5114) and this one's own is the subject; verify takes exe from repro.json. The harness wraps the Sub, so run's console names `tbrun_RunProbe`; a build in the IDE names the Sub itself. Steps 3 and 4 were checked on BETA 995 and 997 by building the reproducer, and a copy with the module named Runner, with `tbbuild --build --keep` and reading the DEBUG CONSOLE. The other-case and empty-module variants were checked on BETA 995 and 997 in scratch trees that are not in the reproducer. VB6: `bug_repro.mjs vb6 module-named-like-project` prints the refusal; the empty-module form was built in a scratch copy. docs/Reference/Attributes.md (#runafterbuild) carries a WARNING callout for this; once a fixed build is released, it becomes a NOTE saying since which build. WIP.ExamplesBuild.md (the bullet "No generated module may be named like the project") and scripts/check_examples.mjs (the comment on its three collision rules) state the rule for generated modules; they called the clash an ambiguous call that the IDE refuses at execution time, and were corrected with this entry. When fixed: say in both since which build the rule is no longer needed, or remove it. -->
+
+---
+
+## A declaration that names two calling conventions compiles without a diagnostic
+
+**Describe the bug**
+An API declaration, a procedure, a delegate or an interface member can name its calling convention after its name, and the compiler accepts two conventions on one declaration, in either order, with no error or warning. The call then uses one of them. In every pair tried on a `Declare`, `CDecl` is dropped and the other keyword is used, whichever comes first.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `two-calling-conventions-accepted.twinproj` (attached as `two-calling-conventions-accepted.zip`). Its `Startup.twin` declares `RtlUlongByteSwap`, which `ntdll` exports as fastcall on a 32-bit build (its one argument in ECX), under several conventions:
+   ```
+   Private Declare PtrSafe Function SwapFast FastCall Lib "ntdll" Alias "RtlUlongByteSwap" (ByVal Source As Long) As Long
+   Private Declare PtrSafe Function SwapCdecl CDecl Lib "ntdll" Alias "RtlUlongByteSwap" (ByVal Source As Long) As Long
+   Private Declare PtrSafe Function SwapFastCdecl FastCall CDecl Lib "ntdll" Alias "RtlUlongByteSwap" (ByVal Source As Long) As Long
+   Private Declare PtrSafe Function SwapCdeclFast CDecl FastCall Lib "ntdll" Alias "RtlUlongByteSwap" (ByVal Source As Long) As Long
+   Private Declare PtrSafe Function SwapThisCdecl ThisCall CDecl Lib "ntdll" Alias "RtlUlongByteSwap" (ByVal Source As Long) As Long
+   Private Declare PtrSafe Function SwapCdeclThis CDecl ThisCall Lib "ntdll" Alias "RtlUlongByteSwap" (ByVal Source As Long) As Long
+   ```
+   It also holds a delegate (`CDecl FastCall`), a procedure in a module (`CDecl ThisCall`) and an interface member (`ThisCall CDecl`), each naming two conventions. `Sub Main` prints the result of each `Declare` for `&H11223344`.
+2. Compile it. The Problems panel reports 0 errors and 0 warnings.
+3. Run it (win32). The DEBUG CONSOLE prints:
+   ```
+   FastCall:        44332211
+   FastCall CDecl:  44332211
+   CDecl FastCall:  44332211
+   ThisCall CDecl:  44332211
+   CDecl ThisCall:  44332211
+   CDecl:           1EEC6F00
+   ```
+   The last value changes from run to run: called as cdecl, the function swaps whatever ECX held. Every pair is called as fastcall or thiscall, which pass this one argument the same way.
+
+**Expected behavior**
+A declaration has one calling convention, so the second keyword is refused with an error that names it. As it is, nothing says which of the two the call uses, and when one of them is `CDecl`, it is dropped without a word.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Also on BETA 995, identically apart from the cdecl value.
+
+Only the `Declare` pairs are observed at run time. The delegate, the procedure and the interface member are only compiled, so which convention they use is not known. Not tried: `FastCall` with `ThisCall`, which this function cannot tell apart, and a 64-bit build, where the conventions have no effect.
+
+Severity: low. It takes a mistake to trigger it, but the mistake goes unreported, and a declaration meant as cdecl that names a second convention by accident calls the function the wrong way.
+
+<!-- Reproducer: bugs/two-calling-conventions-accepted/ (mode run, expects exit 0 and the four pair lines with 44332211); verified on BETA 995 and 997 by `bug_repro.mjs verify` and `run`, and `compile` reports no diagnostic on 997. Stated in docs/Features/Advanced/API-Declarations.md, section "Calling Conventions", the sentences after the table that begin "Name at most one convention" (they name BETA 997): when fixed, say that a second convention is an error, with no mention of the defect. -->
+
+---
+
+## `raiseEvent` in a tool window's own HTML throws a TypeError, and the add-in's listener is not called
+
+**Describe the bug**
+An add-in sets a tool window's HTML with an inline handler that calls `raiseEvent`, as the list-view items of Sample 15 do, and registers a listener for the event with `AddEventListener` on the parent element. Clicking the element does not call the listener, and the add-in is told nothing. The IDE's page throws `TypeError: Cannot read properties of null (reading 'rootEventHandler')`: `raiseEvent` goes up through `parentNode` looking for an element that has `rootEventHandler`, and in plain tool-window HTML no element has one, so it goes past the document.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `raiseevent-plain-html-typeerror.twinproj` (attached as `raiseevent-plain-html-typeerror.zip`). It is an add-in, and its tool window is built like this:
+   ```
+   With Pane.RootDomElement.ChildDomElements.Add("box", "div")
+       .AddEventListener("myEvent", AddressOf MyEvent)
+       .Properties.innerHTML = _
+           "<span id='raise' onclick='raiseEvent(""myEvent"", event, true, ""a"")'>[raise]</span> " & _
+           "<span id='direct' onclick='this.parentNode.myEvent(event)'>[direct]</span>"
+   End With
+   ```
+   `MyEvent` prints `myEvent from <id of the element clicked>` to the DEBUG CONSOLE.
+2. Build it (win32). Copy `Build\RaiseeventPlainHtmlTypeerror_win32.dll` into `%APPDATA%\twinBASIC\addins\win32\`, restart the IDE and open any project.
+3. Click the toolbar button **raiseEvent repro**. A tool window opens with **[raise]** and **[direct]**.
+4. Click **[raise]**. Nothing is printed, and the IDE's page has the uncaught `TypeError` above.
+5. Click **[direct]**. The DEBUG CONSOLE prints `myEvent from direct`.
+
+**Expected behavior**
+Step 4 prints `myEvent from raise`: `raiseEvent` calls the listener the div registered, as calling it directly does in step 5. If `raiseEvent` is meant only for list views and Monaco widgets, it stops at the document without throwing.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Also on BETA 995.
+
+The workaround is step 5's: an inline handler that calls the function `AddEventListener` stores on the element under the event's name.
+
+Severity: low. A workaround exists, but nothing tells the add-in's author why the listener is not called: the exception shows only in the IDE's own page.
+
+<!-- Reproducer: bugs/raiseevent-plain-html-typeerror/ (mode manual: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane). Asserted by `addin-test.bat --only panes` (test/addin/panes.test.mjs, "P12: raiseEvent from plain tool-window HTML throws, and the add-in hears nothing", and the direct call after it), which passes on BETA 995 and 997. The reproducer is a cut-down copy of that lane's PanesProbe add-in (test/addin/probes/panes), compiled clean on 997 by `bug_repro.mjs compile`, and not itself run in a lane. The raiseEvent source quoted is from BETA 997's ide/main.js. Stated in docs/Reference/Built-In/tbIDE/HtmlElement.md, the NOTE under "raiseEvent" (names BETA 997), and in WIP.HelpAddin.md (P12): when fixed, update that test and P12, and state in the NOTE what raiseEvent does in plain HTML, with no mention of the defect. -->
+
+---
+
+## Setting a property whose name starts with `on` through `HtmlElementProperties` does nothing, and raises no error
+
+**Describe the bug**
+An add-in that sets an event-handler property of a tool-window element through `HtmlElementProperties`, such as `.Properties.onclick = "..."`, gets no error, and the element has no handler: a click does nothing, and the element has neither an `onclick` property nor an `onclick` attribute. The same handler written inline in `innerHTML` runs. The IDE page's property setter skips any property whose last name starts with `on`, with an empty branch (`if(a.indexOf("on")==0){}`), and reports success.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `on-property-ignored.twinproj` (attached as `on-property-ignored.zip`). It is an add-in, and its tool window is built like this:
+   ```
+   With .Add("property", "div")
+       .Properties.innerText = "[property]"
+       On Error Resume Next
+       .Properties.onclick = "this.innerText = 'clicked'"
+       Host.DebugConsole.PrintText "onclick set, error " & Err.Number
+       On Error GoTo 0
+   End With
+   With .Add("inline", "div")
+       .Properties.innerHTML = "<span onclick=""this.innerText = 'clicked'"">[inline]</span>"
+   End With
+   ```
+2. Build it (win32). Copy `Build\OnPropertyIgnored_win32.dll` into `%APPDATA%\twinBASIC\addins\win32\`, restart the IDE and open any project.
+3. Click the toolbar button **on property repro**. A tool window opens with **[property]** and **[inline]**, and the DEBUG CONSOLE prints `onclick set, error 0`.
+4. Click **[property]**. Nothing happens.
+5. Click **[inline]**. Its text changes to `clicked`.
+
+**Expected behavior**
+Either the property is set, as every other property is, and step 4 changes the text; or, if handler properties are refused on purpose, the assignment raises an error that says so, and step 3 prints a nonzero error.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Also on BETA 995.
+
+Only `onclick` was tried. The setter's test is on the name, so it applies to every name that starts with `on`.
+
+Severity: low. `AddEventListener` and inline handlers work, but an add-in that sets a handler property gets neither the handler nor an error.
+
+<!-- Reproducer: bugs/on-property-ignored/ (mode manual: an add-in has to be built into an IDE's add-in folder, which nothing here may do outside a lane). Asserted by `addin-test.bat --only panes` (test/addin/panes.test.mjs, 'P4: a property whose name starts with "on" is dropped, and the add-in is told nothing'), which passes on BETA 995 and 997. The reproducer is a cut-down copy of that lane's PanesProbe add-in (test/addin/probes/panes), compiled clean on 997 by `bug_repro.mjs compile`, and not itself run in a lane. The setter source quoted is from BETA 997's ide/main.js. Stated in docs/Reference/Built-In/tbIDE/HtmlElementProperties.md, the NOTE that begins "A property whose name starts with `on` is ignored" (names BETA 997), and in WIP.HelpAddin.md (P4): when fixed, update that test and P4, and remove the NOTE or replace it with what the setter now does. -->

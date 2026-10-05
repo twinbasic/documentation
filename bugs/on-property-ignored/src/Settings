@@ -1,0 +1,46 @@
+{
+	"configuration.inherits": "Defaults",
+	"project.appTitle": "OnPropertyIgnored",
+	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
+	"project.buildType": "Standard DLL",
+	"project.description": "Reproduces: Setting a property whose name starts with `on` through `HtmlElementProperties` does nothing, and raises no error",
+	"project.exportPathIsV2": true,
+	"project.id": "{26B62393-7D96-4393-A9BC-FEAE2891D137}",
+	"project.name": "OnPropertyIgnored",
+	"project.optionExplicit": true,
+	"project.references": [
+		{
+			"id": "{00020430-0000-0000-C000-000000000046}",
+			"lcid": 0,
+			"name": "OLE Automation",
+			"path32": "C:\\Windows\\SysWOW64\\stdole2.tlb",
+			"path64": "C:\\Windows\\System32\\stdole2.tlb",
+			"symbolId": "stdole",
+			"versionMajor": 2,
+			"versionMinor": 0
+		},
+		{
+			"id": "{99DEC38C-75F6-4488-8EE7-2D52D83881D2}",
+			"isCompilerPackage": true,
+			"licence": "MIT",
+			"name": "[COMPILER PACKAGE] twinBASIC IDE Extensibility Package",
+			"path32": "",
+			"path64": "",
+			"publisher": "TWINBASIC-COMPILER",
+			"symbolId": "tbIDE",
+			"versionBuild": 0,
+			"versionMajor": 0,
+			"versionMinor": 0,
+			"versionRevision": 1
+		}
+	],
+	"project.settingsVersion": 1,
+	"project.warnings": {
+		"errors": [],
+		"hints": [],
+		"ignored": [],
+		"info": [],
+		"warnings": []
+	},
+	"runtime.useUnicodeStandardLibrary": true
+}

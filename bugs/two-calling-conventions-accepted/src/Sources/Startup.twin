@@ -1,0 +1,35 @@
+' Every declaration below names two calling conventions, and the project
+' compiles with no diagnostic. On a 32-bit build, ntdll exports
+' RtlUlongByteSwap as fastcall: it takes its argument in ECX.
+
+[InterfaceId("6B0C2F61-3D1E-4C8A-9F0B-2A7E5D4C3B21")]
+[OleAutomation(False)]
+Interface ITwo Extends IUnknown
+    Function Add ThisCall CDecl(ByVal Amount As Long) As Long
+End Interface
+
+Module Startup
+
+    Private Declare PtrSafe Function SwapFast FastCall Lib "ntdll" Alias "RtlUlongByteSwap" (ByVal Source As Long) As Long
+    Private Declare PtrSafe Function SwapCdecl CDecl Lib "ntdll" Alias "RtlUlongByteSwap" (ByVal Source As Long) As Long
+    Private Declare PtrSafe Function SwapFastCdecl FastCall CDecl Lib "ntdll" Alias "RtlUlongByteSwap" (ByVal Source As Long) As Long
+    Private Declare PtrSafe Function SwapCdeclFast CDecl FastCall Lib "ntdll" Alias "RtlUlongByteSwap" (ByVal Source As Long) As Long
+    Private Declare PtrSafe Function SwapThisCdecl ThisCall CDecl Lib "ntdll" Alias "RtlUlongByteSwap" (ByVal Source As Long) As Long
+    Private Declare PtrSafe Function SwapCdeclThis CDecl ThisCall Lib "ntdll" Alias "RtlUlongByteSwap" (ByVal Source As Long) As Long
+
+    Private Delegate Function TwoDelegate CDecl FastCall (ByVal x As Long) As Long
+
+    Public Function TwoProcedure CDecl ThisCall(ByVal x As Long) As Long
+        Return x
+    End Function
+
+    Public Sub Main()
+        Debug.Print "FastCall:        " & Hex$(SwapFast(&H11223344))
+        Debug.Print "FastCall CDecl:  " & Hex$(SwapFastCdecl(&H11223344))
+        Debug.Print "CDecl FastCall:  " & Hex$(SwapCdeclFast(&H11223344))
+        Debug.Print "ThisCall CDecl:  " & Hex$(SwapThisCdecl(&H11223344))
+        Debug.Print "CDecl ThisCall:  " & Hex$(SwapCdeclThis(&H11223344))
+        Debug.Print "CDecl:           " & Hex$(SwapCdecl(&H11223344))
+    End Sub
+
+End Module

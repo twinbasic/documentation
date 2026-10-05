@@ -1,0 +1,46 @@
+' An add-in. Once a project is open, its toolbar button "raiseEvent repro"
+' opens a tool window with two spans. Both are meant to call the listener
+' that AddEventListener registers as "myEvent" on their parent div:
+' "raise" through raiseEvent, as the list view items of Sample 15 do, and
+' "direct" by calling the function AddEventListener stored on the div.
+Module Startup
+    [DllExport]
+    Public Function tbCreateCompilerAddin(ByVal Host As Host) As AddIn
+        Return New ReproAddin(Host)
+    End Function
+End Module
+
+Private Class ReproAddin
+    Implements AddIn
+    Private WithEvents Host As Host
+    Private WithEvents ShowButton As Button
+    Private Pane As ToolWindow
+
+    Public Sub New(ByVal Host As Host)
+        Set Me.Host = Host
+    End Sub
+
+    Private Property Get AddIn_Name() As String
+        Return "raiseEvent repro"
+    End Property
+
+    Private Sub Host_OnProjectLoaded()
+        Set ShowButton = Host.Toolbars(0).AddButton("RaiseEventReproShow", "raiseEvent repro")
+    End Sub
+
+    Private Sub ShowButton_OnClick()
+        Set Pane = Host.ToolWindows.Add("raiseEvent repro", "RaiseEventReproPane")
+        Pane.Title = "RAISEEVENT REPRO"
+        With Pane.RootDomElement.ChildDomElements.Add("box", "div")
+            .AddEventListener("myEvent", AddressOf MyEvent)
+            .Properties.innerHTML = _
+                "<span id='raise' onclick='raiseEvent(""myEvent"", event, true, ""a"")'>[raise]</span> " & _
+                "<span id='direct' onclick='this.parentNode.myEvent(event)'>[direct]</span>"
+        End With
+        Pane.Visible = True
+    End Sub
+
+    Private Sub MyEvent(ByVal eventInfo As HtmlEventProperties)
+        Host.DebugConsole.PrintText "myEvent from " & eventInfo.target.id
+    End Sub
+End Class

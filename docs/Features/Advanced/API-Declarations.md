@@ -38,7 +38,7 @@ The four follow the Microsoft C/C++ conventions of the same names: `__stdcall`, 
 
 A 64-bit build has only one calling convention. There, all four keywords are accepted and have no effect.
 
-Name at most one convention. BETA 995 accepts two together without a diagnostic.
+Name at most one convention. BETA 997 accepts two together without a diagnostic, and on an API declaration it drops **CDecl** and uses the other one.
 
 ### Examples
 
