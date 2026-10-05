@@ -1,0 +1,464 @@
+' Serves the documentation from the archive the add-in embeds as
+' Resources/HELP/site.zip, on 127.0.0.1 at a port Windows picks, so the help
+' pane needs no network. The archive is the site's offline tree, written by
+' scripts/build_help_archive.mjs. A path is found as GitHub Pages finds it:
+' /a/b is a/b.html, or a redirect to /a/b/ when a/b/index.html exists, and the
+' query string is ignored. An entry the zip deflated is sent as it is, in a
+' gzip wrapper (Content-Encoding: gzip), so nothing is inflated here.
+'
+' It listens on 127.0.0.1 and names itself http://localhost:<port>: a frame
+' on 127.0.0.1 is missing from the IDE page's frame tree, where the help lane
+' looks for the pane's page, and one on localhost is not.
+'
+' The sockets belong to the thread that starts the server, the IDE's: Winsock
+' posts their events to a message-only window (WSAAsyncSelect), so no request
+' blocks the thread. Every reply closes its connection.
+Private Class HelpServer
+    Private Declare PtrSafe Function WSAStartup Lib "ws2_32" (ByVal wVersionRequested As Integer, ByRef lpWSAData As Any) As Long
+    Private Declare PtrSafe Function WSAGetLastError Lib "ws2_32" () As Long
+    Private Declare PtrSafe Function WSAAsyncSelect Lib "ws2_32" (ByVal s As LongPtr, ByVal hWnd As LongPtr, _
+        ByVal wMsg As Long, ByVal lEvent As Long) As Long
+    Private Declare PtrSafe Function OpenSocket Lib "ws2_32" Alias "socket" (ByVal af As Long, ByVal kind As Long, _
+        ByVal protocol As Long) As LongPtr
+    Private Declare PtrSafe Function BindSocket Lib "ws2_32" Alias "bind" (ByVal s As LongPtr, ByRef name As Any, _
+        ByVal nameLength As Long) As Long
+    Private Declare PtrSafe Function ListenOn Lib "ws2_32" Alias "listen" (ByVal s As LongPtr, ByVal backlog As Long) As Long
+    Private Declare PtrSafe Function GetSockName Lib "ws2_32" Alias "getsockname" (ByVal s As LongPtr, ByRef name As Any, _
+        ByRef nameLength As Long) As Long
+    Private Declare PtrSafe Function AcceptOn Lib "ws2_32" Alias "accept" (ByVal s As LongPtr, ByVal addr As LongPtr, _
+        ByVal addrLength As LongPtr) As LongPtr
+    Private Declare PtrSafe Function Recv Lib "ws2_32" Alias "recv" (ByVal s As LongPtr, ByRef buf As Any, _
+        ByVal length As Long, ByVal flags As Long) As Long
+    Private Declare PtrSafe Function Send Lib "ws2_32" Alias "send" (ByVal s As LongPtr, ByRef buf As Any, _
+        ByVal length As Long, ByVal flags As Long) As Long
+    Private Declare PtrSafe Function ShutdownSocket Lib "ws2_32" Alias "shutdown" (ByVal s As LongPtr, ByVal how As Long) As Long
+    Private Declare PtrSafe Function CloseSocket Lib "ws2_32" Alias "closesocket" (ByVal s As LongPtr) As Long
+    Private Declare PtrSafe Function CreateWindowExW Lib "user32" (ByVal dwExStyle As Long, ByVal lpClassName As LongPtr, _
+        ByVal lpWindowName As LongPtr, ByVal dwStyle As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, _
+        ByVal nHeight As Long, ByVal hWndParent As LongPtr, ByVal hMenu As LongPtr, ByVal hInstance As LongPtr, _
+        ByVal lpParam As LongPtr) As LongPtr
+    Private Declare PtrSafe Function DestroyWindow Lib "user32" (ByVal hWnd As LongPtr) As Long
+    #If Win64 Then
+        Private Declare PtrSafe Function SetWindowProc Lib "user32" Alias "SetWindowLongPtrW" (ByVal hWnd As LongPtr, _
+            ByVal nIndex As Long, ByVal dwNewLong As LongPtr) As LongPtr
+    #Else
+        Private Declare PtrSafe Function SetWindowProc Lib "user32" Alias "SetWindowLongW" (ByVal hWnd As LongPtr, _
+            ByVal nIndex As Long, ByVal dwNewLong As LongPtr) As LongPtr
+    #End If
+    Private Declare PtrSafe Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" (ByRef Destination As Any, _
+        ByRef Source As Any, ByVal Length As LongPtr)
+
+    Private Const FD_READ As Long = 1
+    Private Const FD_WRITE As Long = 2
+    Private Const FD_ACCEPT As Long = 8
+    Private Const FD_CLOSE As Long = 32
+    Private Const WSAEWOULDBLOCK As Long = 10035
+    Private Const INVALID_SOCKET As LongPtr = -1
+    Private Const SOCKET_ERROR As Long = -1
+    Private Const SD_SEND As Long = 1
+    Private Const HWND_MESSAGE As LongPtr = -3
+    Private Const GWLP_WNDPROC As Long = -4
+    Private Const MAX_REQUEST As Long = 16384   ' a request's head, at most
+    Private Const CHUNK As Long = 65536         ' sent at a time
+
+    ' A connection's state: reading its request, sending its reply, or sent and
+    ' waiting for the browser to close it.
+    Private Const READING As Long = 0
+    Private Const SENDING As Long = 1
+    Private Const SENT As Long = 2
+
+    Private Type Connection
+        Sock As LongPtr          ' 0 in a free slot
+        State As Long
+        Request As String        ' as received, one character a byte
+        Reply() As Byte
+        Done As Long             ' bytes of Reply sent
+    End Type
+
+    Private Zip() As Byte
+    Private Entries As Collection   ' an entry's number by its name
+    Private Names() As String
+    Private Method() As Long        ' 0 stored, 8 deflated
+    Private DataAt() As Long        ' where its data starts in Zip
+    Private Packed() As Long        ' its size in Zip
+    Private CentralAt() As Long     ' its central directory record, for the CRC and size
+
+    Private Listener As LongPtr
+    Private Window As LongPtr
+    Private Conns() As Connection
+    Private ConnCount As Long
+
+    ' "http://127.0.0.1:<port>" while serving, else "".
+    Public Origin As String
+    Public FileCount As Long
+
+    ' Starts serving and returns what it serves, for the DEBUG CONSOLE, or ""
+    ' when the add-in has no archive. Origin stays "" unless it is serving.
+    Public Function Start() As String
+        On Error GoTo NoArchive
+        Zip = LoadResDataInternal("site.zip", "HELP")
+        On Error GoTo Failed
+        If Not ReadDirectory() Then Err.Raise 5, , "site.zip is not an archive this add-in reads"
+        Dim wsa(1023) As Byte
+        If WSAStartup(&H202, wsa(0)) <> 0 Then Err.Raise 5, , "WSAStartup failed"
+        Listener = OpenSocket(2, 1, 6)   ' AF_INET, SOCK_STREAM, IPPROTO_TCP
+        If Listener = INVALID_SOCKET Then
+            Listener = 0
+            Fail "socket"
+        End If
+        Dim addr(15) As Byte              ' sockaddr_in for 127.0.0.1, port 0
+        addr(0) = 2
+        addr(4) = 127
+        addr(7) = 1
+        If BindSocket(Listener, addr(0), 16) <> 0 Then Fail "bind"
+        If ListenOn(Listener, 64) <> 0 Then Fail "listen"
+        Dim size As Long = 16
+        If GetSockName(Listener, addr(0), size) <> 0 Then Fail "getsockname"
+        Window = CreateWindowExW(0, StrPtr("STATIC"), 0, 0, 0, 0, 0, 0, HWND_MESSAGE, 0, 0, 0)
+        If Window = 0 Then Err.Raise 5, , "CreateWindowExW failed"
+        Set HelpServerWindow.Server = Me
+        HelpServerWindow.PreviousProc = SetWindowProc(Window, GWLP_WNDPROC, AddressOf HelpServerWindow.WndProc)
+        If WSAAsyncSelect(Listener, Window, HelpServerWindow.WM_SOCKET, FD_ACCEPT) <> 0 Then Fail "WSAAsyncSelect"
+        Origin = "http://localhost:" & (CLng(addr(2)) * 256 + addr(3))
+        Return "serving site.zip, " & FileCount & " files, at " & Origin
+    NoArchive:
+        Return ""
+    Failed:
+        Dim message As String = Err.Description
+        CloseAll
+        Return "not serving site.zip (" & message & ")"
+    End Function
+
+    Private Sub Fail(ByVal what As String)
+        Err.Raise 5, , what & " failed, Winsock error " & WSAGetLastError()
+    End Sub
+
+    Public Sub CloseAll()
+        Dim i As Long
+        For i = 0 To ConnCount - 1
+            If Conns(i).Sock <> 0 Then CloseSocket Conns(i).Sock
+        Next
+        ConnCount = 0
+        Erase Conns
+        If Listener <> 0 Then CloseSocket Listener
+        Listener = 0
+        If Window <> 0 Then DestroyWindow Window
+        Window = 0
+        If HelpServerWindow.Server Is Me Then Set HelpServerWindow.Server = Nothing
+        Origin = ""
+    End Sub
+
+    ' ---- the archive ----
+
+    ' Reads the central directory: no zip64, no data descriptors, the entries
+    ' as build_help_archive.mjs writes them.
+    Private Function ReadDirectory() As Boolean
+        Dim eocd As Long = UBound(Zip) + 1 - 22
+        Do While eocd >= 0
+            If U32(eocd) = &H06054B50 Then Exit Do
+            eocd = eocd - 1
+        Loop
+        If eocd < 0 Then Return False
+        Dim count As Long = U16(eocd + 10)
+        If count = 0 Then Return False
+        Dim at As Long = U32(eocd + 16)
+        ReDim Names(count - 1)
+        ReDim Method(count - 1)
+        ReDim DataAt(count - 1)
+        ReDim Packed(count - 1)
+        ReDim CentralAt(count - 1)
+        Set Entries = New Collection
+        Dim i As Long
+        For i = 0 To count - 1
+            If U32(at) <> &H02014B50 Then Return False
+            Dim nameLength As Long = U16(at + 28)
+            Dim header As Long = U32(at + 42)
+            If U32(header) <> &H04034B50 Then Return False
+            Names(i) = Utf8(at + 46, nameLength)
+            Method(i) = U16(at + 10)
+            If Method(i) <> 0 And Method(i) <> 8 Then Return False
+            Packed(i) = U32(at + 20)
+            CentralAt(i) = at
+            DataAt(i) = header + 30 + U16(header + 26) + U16(header + 28)
+            Entries.Add i, Names(i)
+            at = at + 46 + nameLength + U16(at + 30) + U16(at + 32)
+        Next
+        FileCount = count
+        Return True
+    End Function
+
+    Private Function U16(ByVal at As Long) As Long
+        Return Zip(at) Or CLng(Zip(at + 1)) * &H100&
+    End Function
+
+    ' Offsets and sizes only: an archive under 2 GB keeps them below &H80000000.
+    Private Function U32(ByVal at As Long) As Long
+        Return Zip(at) Or CLng(Zip(at + 1)) * &H100& Or CLng(Zip(at + 2)) * &H10000 Or CLng(Zip(at + 3)) * &H1000000
+    End Function
+
+    Private Function Utf8(ByVal at As Long, ByVal length As Long) As String
+        If length = 0 Then Return ""
+        Dim b() As Byte
+        ReDim b(length - 1)
+        CopyMemory b(0), Zip(at), length
+        Return StrConv(b, VbStrConv.vbFromUTF8)
+    End Function
+
+    Private Function Lookup(ByVal name As String) As Long
+        On Error GoTo Missing
+        Return Entries(name)
+    Missing:
+        Return -1
+    End Function
+
+    ' ---- the sockets ----
+
+    ' Called by HelpServerWindow.WndProc for each event Winsock posts.
+    Public Sub OnSocket(ByVal sock As LongPtr, ByVal events As Long, ByVal failure As Long)
+        Dim i As Long = -1
+        On Error GoTo Failed
+        If sock = Listener Then
+            If events = FD_ACCEPT And failure = 0 Then AcceptOne
+            Exit Sub
+        End If
+        i = Slot(sock)
+        If i < 0 Then Exit Sub
+        If failure <> 0 Then
+            Drop i
+            Exit Sub
+        End If
+        Select Case events
+            Case FD_READ
+                Receive i
+            Case FD_WRITE
+                Pump i
+            Case FD_CLOSE
+                Drop i
+        End Select
+        Exit Sub
+    Failed:
+        If i >= 0 Then Drop i
+    End Sub
+
+    Private Sub AcceptOne()
+        Dim s As LongPtr = AcceptOn(Listener, 0, 0)
+        If s = INVALID_SOCKET Then Exit Sub
+        If WSAAsyncSelect(s, Window, HelpServerWindow.WM_SOCKET, FD_READ Or FD_WRITE Or FD_CLOSE) <> 0 Then
+            CloseSocket s
+            Exit Sub
+        End If
+        Dim i As Long = Slot(0)
+        If i < 0 Then
+            i = ConnCount
+            ConnCount = ConnCount + 1
+            ReDim Preserve Conns(ConnCount - 1)
+        End If
+        Conns(i).Sock = s
+        Conns(i).State = READING
+        Conns(i).Request = ""
+        Conns(i).Done = 0
+    End Sub
+
+    Private Function Slot(ByVal sock As LongPtr) As Long
+        Dim i As Long
+        For i = 0 To ConnCount - 1
+            If Conns(i).Sock = sock Then Return i
+        Next
+        Return -1
+    End Function
+
+    Private Sub Drop(ByVal i As Long)
+        If Conns(i).Sock <> 0 Then CloseSocket Conns(i).Sock
+        Conns(i).Sock = 0
+        Conns(i).State = READING
+        Conns(i).Request = ""
+        Erase Conns(i).Reply
+        Conns(i).Done = 0
+    End Sub
+
+    Private Sub Receive(ByVal i As Long)
+        Dim buf(4095) As Byte
+        Dim n As Long = Recv(Conns(i).Sock, buf(0), 4096, 0)
+        If n = 0 Then
+            Drop i
+            Exit Sub
+        End If
+        If n < 0 Then
+            If WSAGetLastError() <> WSAEWOULDBLOCK Then Drop i
+            Exit Sub
+        End If
+        If Conns(i).State <> READING Then Exit Sub   ' anything after the request's head is ignored
+        Dim k As Long
+        For k = 0 To n - 1
+            Conns(i).Request = Conns(i).Request & ChrW$(buf(k))
+        Next
+        If InStr(Conns(i).Request, vbCrLf & vbCrLf) = 0 Then
+            If Len(Conns(i).Request) > MAX_REQUEST Then Drop i
+            Exit Sub
+        End If
+        Conns(i).Reply = Answer(Left$(Conns(i).Request, InStr(Conns(i).Request, vbCrLf) - 1))
+        Conns(i).Request = ""
+        Conns(i).State = SENDING
+        Pump i
+    End Sub
+
+    ' Sends what the socket takes; FD_WRITE calls it again for the rest. Once
+    ' all is sent, the browser closes the connection (FD_CLOSE).
+    Private Sub Pump(ByVal i As Long)
+        If Conns(i).State <> SENDING Then Exit Sub
+        Dim size As Long = UBound(Conns(i).Reply) + 1
+        Do While Conns(i).Done < size
+            Dim length As Long = size - Conns(i).Done
+            If length > CHUNK Then length = CHUNK
+            Dim n As Long = Send(Conns(i).Sock, Conns(i).Reply(Conns(i).Done), length, 0)
+            If n = SOCKET_ERROR Then
+                If WSAGetLastError() <> WSAEWOULDBLOCK Then Drop i
+                Exit Sub
+            End If
+            Conns(i).Done = Conns(i).Done + n
+        Loop
+        Erase Conns(i).Reply
+        Conns(i).State = SENT
+        ShutdownSocket Conns(i).Sock, SD_SEND
+    End Sub
+
+    ' ---- HTTP ----
+
+    Private Function Answer(ByVal requestLine As String) As Byte()
+        On Error GoTo BadRequest
+        Dim parts() As String = Split(requestLine, " ")
+        If UBound(parts) <> 2 Then GoTo BadRequest
+        If parts(0) <> "GET" And parts(0) <> "HEAD" Then Return Reply("405 Method Not Allowed", -1, False)
+        Dim headOnly As Boolean = parts(0) = "HEAD"
+        Dim target As String = parts(1)
+        Dim query As String
+        Dim q As Long = InStr(target, "?")
+        If q > 0 Then
+            query = Mid$(target, q)
+            target = Left$(target, q - 1)
+        End If
+        Dim path As String = Unescape(target)
+        If Left$(path, 1) <> "/" Or InStr(path, "..") > 0 Or InStr(path, "\") > 0 Then
+            Return Reply("404 Not Found", Lookup("404.html"), headOnly)
+        End If
+        Dim name As String = Mid$(path, 2)
+        If Len(name) = 0 Or Right$(name, 1) = "/" Then name = name & "index.html"
+        Dim i As Long = Lookup(name)
+        If i < 0 And InStr(Mid$(name, InStrRev(name, "/") + 1), ".") = 0 Then
+            i = Lookup(name & ".html")
+            If i < 0 And Lookup(name & "/index.html") >= 0 Then
+                Return Reply("301 Moved Permanently", -1, headOnly, target & "/" & query)
+            End If
+        End If
+        If i < 0 Then Return Reply("404 Not Found", Lookup("404.html"), headOnly)
+        Return Reply("200 OK", i, headOnly)
+    BadRequest:
+        Return Reply("400 Bad Request", -1, False)
+    End Function
+
+    ' The reply's bytes: the head and, unless headOnly, the entry's data, which
+    ' a deflated entry sends between a gzip header and its CRC32 and size.
+    Private Function Reply(ByVal status As String, ByVal entry As Long, ByVal headOnly As Boolean, _
+                           Optional ByVal location As String = "") As Byte()
+        Dim head As String = "HTTP/1.1 " & status & vbCrLf
+        Dim gzip As Boolean
+        Dim bodySize As Long
+        If entry >= 0 Then
+            gzip = Method(entry) = 8
+            bodySize = Packed(entry) + IIf(gzip, 18, 0)
+            head = head & "Content-Type: " & ContentType(Names(entry)) & vbCrLf
+            If gzip Then head = head & "Content-Encoding: gzip" & vbCrLf
+            head = head & "Cache-Control: max-age=3600" & vbCrLf
+        End If
+        If Len(location) > 0 Then head = head & "Location: " & location & vbCrLf
+        head = head & "Content-Length: " & bodySize & vbCrLf & "Connection: close" & vbCrLf & vbCrLf
+        Dim headLength As Long = Len(head)
+        Dim out() As Byte
+        ReDim out(headLength + IIf(headOnly, 0, bodySize) - 1)
+        Dim k As Long
+        For k = 1 To headLength
+            out(k - 1) = AscW(Mid$(head, k, 1)) And &HFF
+        Next
+        If headOnly Or entry < 0 Then Return out
+        Dim p As Long = headLength
+        If gzip Then
+            out(p) = &H1F
+            out(p + 1) = &H8B
+            out(p + 2) = 8
+            out(p + 9) = &HFF   ' flags, time and extra flags 0, OS unknown
+            p = p + 10
+        End If
+        If Packed(entry) > 0 Then CopyMemory out(p), Zip(DataAt(entry)), Packed(entry)
+        p = p + Packed(entry)
+        If gzip Then
+            CopyMemory out(p), Zip(CentralAt(entry) + 16), 4       ' CRC32
+            CopyMemory out(p + 4), Zip(CentralAt(entry) + 24), 4   ' uncompressed size
+        End If
+        Return out
+    End Function
+
+    ' A request path's %XX escapes decoded, as UTF-8.
+    Private Function Unescape(ByVal s As String) As String
+        If Len(s) = 0 Then Return ""
+        Dim b() As Byte
+        ReDim b(Len(s) - 1)
+        Dim n As Long, k As Long = 1
+        Do While k <= Len(s)
+            Dim c As String = Mid$(s, k, 1)
+            If c = "%" Then
+                b(n) = CByte("&H" & Mid$(s, k + 1, 2))
+                k = k + 3
+            Else
+                b(n) = AscW(c) And &HFF
+                k = k + 1
+            End If
+            n = n + 1
+        Loop
+        ReDim Preserve b(n - 1)
+        Return StrConv(b, VbStrConv.vbFromUTF8)
+    End Function
+
+    Private Function ContentType(ByVal name As String) As String
+        Select Case LCase$(Mid$(name, InStrRev(name, ".") + 1))
+            Case "html": Return "text/html; charset=utf-8"
+            Case "css": Return "text/css; charset=utf-8"
+            Case "js": Return "text/javascript; charset=utf-8"
+            Case "json": Return "application/json"
+            Case "svg": Return "image/svg+xml"
+            Case "png": Return "image/png"
+            Case "jpg", "jpeg": Return "image/jpeg"
+            Case "gif": Return "image/gif"
+            Case "webp": Return "image/webp"
+            Case "ico": Return "image/x-icon"
+            Case "woff2": Return "font/woff2"
+            Case "woff": Return "font/woff"
+            Case "txt", "dot": Return "text/plain; charset=utf-8"
+            Case "xml": Return "application/xml"
+            Case "pdf": Return "application/pdf"
+            Case "mp4": Return "video/mp4"
+            Case Else: Return "application/octet-stream"
+        End Select
+    End Function
+End Class
+
+' The procedure of HelpServer's message-only window: Winsock's events go to
+' the server, every other message to the window's own procedure.
+Module HelpServerWindow
+    Private Declare PtrSafe Function CallWindowProcW Lib "user32" (ByVal lpPrevWndFunc As LongPtr, ByVal hWnd As LongPtr, _
+        ByVal uMsg As Long, ByVal wParam As LongPtr, ByVal lParam As LongPtr) As LongPtr
+
+    Public Const WM_SOCKET As Long = &H8001&   ' WM_APP + 1
+    Public Server As HelpServer
+    Public PreviousProc As LongPtr
+
+    Public Function WndProc(ByVal hWnd As LongPtr, ByVal uMsg As Long, ByVal wParam As LongPtr, _
+                            ByVal lParam As LongPtr) As LongPtr
+        If uMsg = WM_SOCKET Then
+            If Not Server Is Nothing Then
+                Server.OnSocket wParam, CLng(lParam And &HFFFF&), CLng((lParam \ &H10000) And &HFFFF&)
+            End If
+            Return 0
+        End If
+        Return CallWindowProcW(PreviousProc, hWnd, uMsg, wParam, lParam)
+    End Function
+End Module

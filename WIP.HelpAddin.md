@@ -359,7 +359,8 @@ with files put in a lane's copy of the install:
   own pages, then, and `sandbox` on the frame if that matters.
 
 So the offline site would work copied into `ide\`, with one cost the live site does not
-have: writing into the install, which every new build replaces. Still deferred.
+have: writing into the install, which every new build replaces. The add-in serves the
+offline site itself instead (Stage 4, increment 5), so this route is not taken.
 
 ### What is under the cursor
 
@@ -784,9 +785,9 @@ has the complete list):
 - **The rest of an embedded mode for pages.** The theme is done: the site reads a
   `theme=dark|light` query parameter (Stage 4, increment 2), since the add-in cannot reach
   into a cross-site frame. Hiding the header and navigation is a separate, optional
-  question, untested. The parameter serves the live site only: the IDE's own server answers
-  any URL with a query string with a 404 (P13), so the offline route would need the theme
-  some other way.
+  question, untested. The IDE's own server answers any URL with a query string with a 404
+  (P13); the add-in's server (increment 5) ignores the query, so the parameter works
+  offline too.
 - **Keywords with no page of their own** --- `ElseIf`, `Until`, `Step`, `To`, `In`,
   `ByVal`, `ByRef`, `Optional`, `As` --- are in the index only where a page's title gives
   them. Adding one is a `symbols:` line on the page that explains it, which is a content
@@ -795,7 +796,8 @@ has the complete list):
   `/Reference/Data-Types`, outside `/tB/`, so the index cannot carry them without breaking
   its own rule. Giving that page a `/tB/` permalink, with the old one in `redirect_from:`,
   would. Deferred.
-- **The offline tree has no copy of the index**, since the offline route is deferred.
+- **The offline tree has no copy of the index.** The add-in embeds its own, and the help
+  archive (increment 5) is the offline tree as built.
 
 ### Stage 4: the add-in, in increments
 
@@ -950,9 +952,42 @@ harness about a second against opening a new IDE.
      right.
    - **The fault run** (`ShowPage` not putting the frame back) failed the four cases that
      show a page after a summary.
-5. **Later:** hover help through `CodeEditor.AddMonacoWidget` after a pause (the cost of
+5. **Offline help. Built**, tested by the lane `help-offline` on BETA 995, at the owner's
+   choice (2026-10-05): the add-in's own server, written in twinBASIC, serving one archive
+   embedded in the DLL. The owner's other choices: the archive is a resource; a separate
+   script makes it; the pane uses it when the DLL has it, and the live site otherwise; the
+   symbol index stays a resource of its own.
+   - **The archive** is `add-in/Resources/HELP/site.zip`, gitignored, written from
+     `docs/_site-offline` by `scripts/build_help_archive.mjs` (about 21 MB, 1,466 files;
+     the DLL builds with it for win32 and win64). An add-in built without it serves nothing
+     and uses the live site, as before. The offline tree is the one served: its links are
+     relative, so they work on any origin, and its pages hold only their part of the nav
+     tree.
+   - **No inflating in twinBASIC.** A deflated entry is sent as it is, between a 10-byte
+     gzip header and the CRC32 and size from the central directory, with
+     `Content-Encoding: gzip`; an image or font is stored and sent plain. So the format is
+     fixed by the script: no zip64, no data descriptors.
+   - **`HelpServer`** listens on 127.0.0.1 at a port Windows picks, on the add-in's own
+     thread: Winsock posts each socket's events to a message-only window
+     (`WSAAsyncSelect`), so there is no second thread. It reads the archive with
+     `LoadResDataInternal` once, at project load. A path is found as GitHub Pages finds it
+     (`/a/b` is `a/b.html`, or a 301 to `/a/b/` for a folder, keeping the query), the query
+     is ignored, and every reply closes its connection. It prints `serving site.zip, <n>
+     files, at <origin>`, which the lane reads, since the port changes with every compiler
+     restart.
+   - **The origin is `http://localhost:<port>`, not 127.0.0.1.** The IDE's page is on
+     localhost, so a frame on another localhost port is same-site and in its frame tree; a
+     frame on 127.0.0.1 is not there at all, and every case that reads the page failed.
+   - *Open in browser* still opens the live site.
+   - **The lane.** `help.test.mjs` runs twice: `help` builds a copy of `add-in/` without
+     `Resources/HELP`, whatever the working tree holds, and `help-offline` builds it with an
+     archive made by the script. A page's status is read from the page itself
+     (`PerformanceNavigationTiming.responseStatus`), so a 404 fails a case either way. An
+     offline-only case asks the server from Node: a page's gzip body and a stored image
+     byte for byte, a folder's 301, a 404 and `HEAD`.
+6. **Later:** hover help through `CodeEditor.AddMonacoWidget` after a pause (the cost of
    adding and removing widgets is not measured); offering only the packages the project
-   references; offline use.
+   references; how a user gets an add-in with the archive.
 
 **Lookup:**
 

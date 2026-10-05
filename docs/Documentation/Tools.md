@@ -802,6 +802,19 @@ It shares [`census_attributes.mjs`](#census-attributes)'s export and cache, and 
 
 Exit codes: **0** the file was written (with `--check`, it is up to date); **1** with `--check`, the file is stale; **2** a refused command line, no install, an export that failed, packages that declare different APIs under one name, or a crash.
 
+### build_help_archive.mjs
+{: #build-help-archive }
+
+    node scripts/build_help_archive.mjs [--src <dir>] [--out <file>]
+
+Writes the zip the IDE help add-in serves the documentation from. The add-in embeds `add-in/Resources/HELP/site.zip` in its DLL as a resource, and this tool builds that file from the built offline tree, `docs/_site-offline/` by default. Run [`build.bat`](#buildbat) first: the tool runs [`check_tree_fresh.mjs`](#check-tree-fresh) on the tree, as [`book.bat`](#bookbat) does, and refuses a tree older than its sources. The zip is not committed, because it is too large; `add-in/Resources/HELP/` is listed in `.gitignore`.
+
+The reader on the twinBASIC side does no inflating of its own, so the format is fixed. There is one entry per file and no directory entries. A name is relative to the tree root, uses forward slashes and is UTF-8, with general-purpose flag bit 11 set. Entries are sorted by name in code-unit order, so the same tree gives the same bytes. The DOS date and time are always 1980-01-01 00:00, the version made by and needed is 20, and there are no extra fields, no comments and no data descriptors: the CRC-32 and both sizes are in the local header and in the central directory. There is no zip64, so a tree of more than 65,535 files, or an archive of 4 GB, is refused. Files that are compressed already (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.ico`, `.woff2`, `.woff`, `.mp4`, `.zip`, `.pdf`) are stored. Every other file is deflated at level 9, and stored instead when the deflated data is not smaller than the file.
+
+After the file is written, the tool reads it back. It parses the end record and every central-directory entry, checks that each local header agrees with its entry (name, method, sizes, CRC-32), and inflates each deflated entry. It compares each entry's content and CRC-32 with the source file's bytes, and names any entry that differs. This check always runs. The file is written under a temporary name beside the target and renamed, so a failed run never leaves a half-written archive. The summary line gives the number of entries, the raw and zipped sizes in MB (with the part stored as it was), and the time.
+
+Exit codes: **0** the archive was written and verified; **1** the verification found a difference; **2** the tool could not do its job: a refused command line, a stale or missing tree, a tree too large for a zip without zip64, or a crash.
+
 ### convert_em_dash_separators.mjs
 {: #convert-em-dash-separators }
 
@@ -1179,9 +1192,12 @@ build target loads, what a compiler restart does to a loaded add-in, and which e
 names the IDE accepts. They build add-ins for win64 as well as win32, restart the compiler,
 and patch a built DLL's export name. One more checks that the environment variable the
 runner sets, which keeps an add-in under test from opening a browser, reaches the add-in,
-also after a compiler restart. The last lane tests the help add-in in `add-in/`, which opens
-the page for the name under the cursor, with the copy of the symbol index committed in
-`add-in/Resources/SYMBOLS/`. The twelve lanes take about two minutes together.
+also after a compiler restart. The last two lanes test the help add-in in `add-in/`, which
+opens the page for the name under the cursor, with the copy of the symbol index committed in
+`add-in/Resources/SYMBOLS/`: `help` with the pages from the built site, and `help-offline`
+with the pages from the add-in's own server, built with an archive that
+[`build_help_archive.mjs`](#build-help-archive) makes. The thirteen lanes take about two
+minutes together.
 
 | Flag | Effect |
 |---|---|

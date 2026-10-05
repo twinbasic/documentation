@@ -5,16 +5,21 @@
 // declared.
 //
 // The add-in is built as committed, with its copy of the symbol index,
-// add-in/Resources/SYMBOLS/symbols.json, embedded as a resource. The pane's
-// frame loads the built site, docs/_site, which this file serves on localhost
-// and gives the add-in as TB_DOCS_HELP_SITE: so every page a case reaches is a
-// page of the build, and nothing comes from the network. Run build.bat first.
+// add-in/Resources/SYMBOLS/symbols.json, embedded as a resource. This file
+// serves the built site, docs/_site, on localhost and gives the add-in it as
+// TB_DOCS_HELP_SITE, which Open in browser opens. The lane named help builds
+// the add-in without the help archive, so the pane's frame loads that site
+// too; the lane named help-offline builds it with an archive of the built
+// offline tree (scripts/build_help_archive.mjs), so the frame loads the
+// add-in's own server. Either way every page a case reaches is a page of the
+// build, and nothing comes from the network. Run build.bat first.
 // Each case is a line and column in helphost/Sources/Cases.twin, so a change to
 // that file is a change to this table.
 //
 // Run it with addin-test.bat, which gives it a lane; on its own it is skipped.
 
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { before, test } from "node:test";
@@ -44,6 +49,11 @@ const ROOT = path.resolve(HERE, "..", "..");
 const ADDIN = path.join(ROOT, "add-in");
 const INDEX = path.join(ADDIN, "Resources", "SYMBOLS", "symbols.json");
 const BUILT = path.join(ROOT, "docs", "_site");
+const BUILT_OFFLINE = path.join(ROOT, "docs", "_site-offline");
+const ARCHIVE_TOOL = path.join(ROOT, "scripts", "build_help_archive.mjs");
+// "serving site.zip, <n> files, at <origin>", which the add-in prints when it
+// has the archive.
+const SERVING = /^serving site\.zip, \d+ files, at (http:\/\/localhost:\d+)$/;
 const HOST = path.join(HERE, "helphost");
 const FILE = "/HelpHost/Sources/Cases.twin";
 const PANE = "tbDocsHelpPane";
@@ -114,9 +124,10 @@ async function emptySearch(c) {
 scenario("the help add-in: F1 and the help pane", (lane) => {
   let c;
   let entries;
-  let origin;
+  let origin; // the site this file serves
+  let pages; // where the frame's pages come from: origin, or the add-in's server
   let server;
-  const served = []; // { path, status } for every request the site answered
+  const offline = lane.name === "help-offline";
 
   // The frame shows `url` from the built site in the IDE's theme: the add-in
   // gave it that src with ?theme= and ?pane=1, the page it loaded is the
@@ -126,7 +137,7 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   async function showsPage(url, { fresh = false } = {}) {
     const group = await themeGroup(c);
     const [pagePath, fragment] = url.split("#");
-    const want = `${origin}${pagePath}?theme=${group}&pane=1${fragment ? `#${fragment}` : ""}`;
+    const want = `${pages}${pagePath}?theme=${group}&pane=1${fragment ? `#${fragment}` : ""}`;
     // The frame can have this src already, hidden behind a summary, so the
     // page showing again is waited for too.
     const shown = { summary: "none", frame: "", browserDisabled: false };
@@ -138,20 +149,26 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.ok((await toolWindow(c, PANE))?.visible, "the pane is not showing");
     assert.deepEqual(await pageState(c), shown);
     const loaded = await waitFor(c, async (c) => {
-      const f = await frameOf(c, origin);
-      const loadedUrl = `${origin}${pagePath.replace(/\/$/, "")}?theme=${group}&pane=1`;
+      const f = await frameOf(c, pages);
+      const loadedUrl = `${pages}${pagePath.replace(/\/$/, "")}?theme=${group}&pane=1`;
       if (!f || f.url.replace(/\/\?/, "?") !== loadedUrl) return false;
       // A src set to the URL the frame already has reloads it, and a question
       // put to the page being replaced fails: that is not loaded yet.
       const ready = `document.readyState === "complete"${fresh ? " && !window.tbDocsTestMark" : ""}`;
-      return (await frameEval(c, origin, ready).catch(() => false)) === true;
+      return (await frameEval(c, pages, ready).catch(() => false)) === true;
     });
-    assert.ok(loaded, `the frame did not load ${want}: ${JSON.stringify(await frameOf(c, origin))}`);
-    if (fragment) assert.equal((await frameOf(c, origin)).urlFragment, `#${fragment}`);
-    const page = served.filter((r) => r.path.replace(/\/$/, "") === pagePath.replace(/\/$/, "")).at(-1);
-    assert.equal(page?.status, 200, `${url} as served: ${JSON.stringify(page)}`);
+    if (!loaded) {
+      const frames = (await c.send("Page.getFrameTree")).frameTree.childFrames ?? [];
+      assert.fail(
+        `the frame did not load ${want}; the page's frames: ${JSON.stringify(frames.map((f) => f.frame.url))}`,
+      );
+    }
+    if (fragment) assert.equal((await frameOf(c, pages)).urlFragment, `#${fragment}`);
+    // The status the page itself came with, after any redirect to its folder.
+    const status = await frameEval(c, pages, `performance.getEntriesByType("navigation")[0]?.responseStatus`);
+    assert.equal(status, 200, `${url} as served`);
     assert.equal(
-      await frameEval(c, origin, `document.documentElement.getAttribute("data-theme")`),
+      await frameEval(c, pages, `document.documentElement.getAttribute("data-theme")`),
       group,
       "the page's theme",
     );
@@ -164,7 +181,7 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   const paneChrome = () =>
     frameEval(
       c,
-      origin,
+      pages,
       `(() => {
         const shown = (s) => { const e = document.querySelector(s); return e ? getComputedStyle(e).display : "missing"; };
         return { sidebar: shown(".side-bar"), header: shown(".main-header"), breadcrumbs: shown(".breadcrumb-nav"), footer: shown("footer[role=contentinfo]") };
@@ -174,7 +191,23 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   // Marks the page the frame shows now, so that showsPage can tell a page F1
   // loaded from it: F1 on the name whose page shows already loads it again,
   // and the page before the reload looks loaded until the reload begins.
-  const markFrame = () => frameEval(c, origin, "window.tbDocsTestMark = true").catch(() => {});
+  const markFrame = () => frameEval(c, pages, "window.tbDocsTestMark = true").catch(() => {});
+
+  // The frame's origin once the add-in has loaded after `mark`: the add-in's
+  // server, whose port changes with every start, or the site this file serves.
+  async function pagesOrigin(mark) {
+    const loaded = await waitFor(c, async (c) => (await addinLines(c, mark)).some((l) => l.startsWith("loaded")));
+    assert.ok(loaded, "the add-in never printed its loaded line");
+    const serving = (await addinLines(c, mark)).filter((l) => l.startsWith("serving") || l.startsWith("not serving"));
+    if (!offline) {
+      assert.deepEqual(serving, [], "the add-in built without the archive serves it");
+      return origin;
+    }
+    assert.equal(serving.length, 1, `the add-in's lines about the archive: ${JSON.stringify(serving)}`);
+    const m = serving[0].match(SERVING);
+    assert.ok(m, `the add-in does not serve the archive: ${serving[0]}`);
+    return m[1];
+  }
 
   // Press F1 at line:column, and expect `want` in place of the page, the frame
   // hidden, Open in browser disabled, and nothing printed.
@@ -203,14 +236,23 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   before(async () => {
     assert.ok(fs.existsSync(path.join(BUILT, "tB", "symbols.json")), `no built site in ${BUILT}: run build.bat`);
     entries = JSON.parse(fs.readFileSync(INDEX, "utf8")).symbols.length;
-    const files = createStaticHandler(BUILT);
-    server = await serveLoopback((req, res) => {
-      res.on("finish", () => served.push({ path: req.url.split(/[?#]/)[0], status: res.statusCode }));
-      return files(req, res);
-    });
+    server = await serveLoopback(createStaticHandler(BUILT));
     origin = `http://localhost:${server.port}`;
-    await lane.addAddin(ADDIN);
+    // The add-in as committed, with the archive only in the offline lane,
+    // whatever add-in/Resources/HELP holds in this working tree.
+    const src = path.join(lane.work, "help-src");
+    fs.rmSync(src, { recursive: true, force: true });
+    const skip = [path.join(ADDIN, "Build"), path.join(ADDIN, "Resources", "HELP")];
+    fs.cpSync(ADDIN, src, { recursive: true, filter: (f) => !skip.includes(f) });
+    if (offline) {
+      const r = spawnSync(process.execPath, [ARCHIVE_TOOL, "--out", path.join(src, "Resources", "HELP", "site.zip")], {
+        encoding: "utf8",
+      });
+      assert.equal(r.status, 0, `build_help_archive failed:\n${r.stdout}${r.stderr}`);
+    }
+    await lane.addAddin(src);
     c = await lane.open(HOST, { env: { TB_DOCS_HELP_SITE: origin } });
+    pages = await pagesOrigin(null);
     await openFile(c, FILE, { line: 5, column: 9 });
   });
 
@@ -224,6 +266,39 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.equal(pane?.title, "TWINBASIC HELP");
     assert.equal(pane.visible, false);
     assert.equal(await frameSrc(c), null, "a page in the frame before any was asked for");
+  });
+
+  // Asked from here, not from the pane: the server finds a path as GitHub
+  // Pages does, and sends each file as the offline tree has it.
+  test("the add-in's server answers as GitHub Pages does", { skip: !offline && "the help lane" }, async () => {
+    const get = (p, o = {}) => fetch(`${pages}${p}`, { redirect: "manual", signal: AbortSignal.timeout(10000), ...o });
+    const tree = (rel) => fs.readFileSync(path.join(BUILT_OFFLINE, rel));
+
+    let r = await get("/tB/Modules/Interaction/MsgBox?theme=dark&pane=1");
+    assert.equal(r.status, 200);
+    assert.equal(r.headers.get("content-type"), "text/html; charset=utf-8");
+    assert.equal(r.headers.get("content-encoding"), "gzip");
+    assert.ok(Buffer.from(await r.arrayBuffer()).equals(tree("tB/Modules/Interaction/MsgBox.html")));
+
+    r = await get("/Documentation/Images/af-vector-studio.png");
+    assert.equal(r.status, 200);
+    assert.equal(r.headers.get("content-type"), "image/png");
+    assert.equal(r.headers.get("content-encoding"), null);
+    assert.ok(Buffer.from(await r.arrayBuffer()).equals(tree("Documentation/Images/af-vector-studio.png")));
+
+    r = await get("/Features/Advanced?pane=1");
+    assert.equal(r.status, 301);
+    assert.equal(r.headers.get("location"), "/Features/Advanced/?pane=1");
+    await r.body?.cancel();
+    r = await get("/Features/Advanced/");
+    assert.ok(Buffer.from(await r.arrayBuffer()).equals(tree("Features/Advanced/index.html")));
+
+    r = await get("/no/such/page");
+    assert.equal(r.status, 404);
+    await r.body?.cancel();
+    r = await get("/tB/Modules/Interaction/MsgBox", { method: "HEAD" });
+    assert.equal(r.status, 200);
+    assert.ok(Number(r.headers.get("content-length")) > 0);
   });
 
   // [line, column, URL] in Cases.twin; the comment says what the cursor is on.
@@ -419,14 +494,14 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     await inPane(c, `root.querySelector("#helpPage").dataset.beforeRestart = "1";`);
     const mark = await consoleMark(c);
     await lane.restartCompiler();
-    assert.ok(await waitFor(c, async (c) => (await addinLines(c, mark)).some((l) => l.startsWith("loaded"))));
+    pages = await pagesOrigin(mark);
     const src = await waitFor(c, (c) =>
       inPane(
         c,
         `const f = root.querySelector("#helpPage"); return f && !f.dataset.beforeRestart && f.getAttribute("src");`,
       ),
     );
-    assert.equal(src, `${origin}/tB/Modules/Interaction/MsgBox?theme=${await themeGroup(c)}&pane=1`);
+    assert.equal(src, `${pages}/tB/Modules/Interaction/MsgBox?theme=${await themeGroup(c)}&pane=1`);
   });
 
   // A page reached from the pane's page has no parameters of its own; the site
@@ -434,15 +509,15 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   test("a page reached by a link keeps the IDE's theme and the pane's layout", async () => {
     await f1Shows("/tB/Modules/Interaction/MsgBox", () => at(c, 5, 9).then(() => pressKey(c, "F1")));
     const next = "/tB/Modules/Strings/Len";
-    await frameEval(c, origin, `location.href = ${JSON.stringify(next)}`);
+    await frameEval(c, pages, `location.href = ${JSON.stringify(next)}`);
     const loaded = await waitFor(c, async (c) => {
-      const f = await frameOf(c, origin);
-      if (f?.url !== `${origin}${next}`) return false;
-      return (await frameEval(c, origin, `document.readyState === "complete"`).catch(() => false)) === true;
+      const f = await frameOf(c, pages);
+      if (f?.url !== `${pages}${next}`) return false;
+      return (await frameEval(c, pages, `document.readyState === "complete"`).catch(() => false)) === true;
     });
-    assert.ok(loaded, `the frame did not load ${next}: ${JSON.stringify(await frameOf(c, origin))}`);
+    assert.ok(loaded, `the frame did not load ${next}: ${JSON.stringify(await frameOf(c, pages))}`);
     assert.equal(
-      await frameEval(c, origin, `document.documentElement.getAttribute("data-theme")`),
+      await frameEval(c, pages, `document.documentElement.getAttribute("data-theme")`),
       await themeGroup(c),
       "the page's theme",
     );

@@ -34,6 +34,8 @@ export default [
   { file: "entry.test.mjs" },
   { file: "env.test.mjs" },
   // The help add-in, add-in/ at the repository's root. It saves the page its
-  // pane shows.
+  // pane shows. The second lane builds it with the help archive, so its pane's
+  // pages come from the add-in's own server.
   { file: "help.test.mjs", settings: ["tbDocsHelp"] },
+  { file: "help.test.mjs", name: "help-offline", settings: ["tbDocsHelp"] },
 ];
