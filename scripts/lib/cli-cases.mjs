@@ -259,6 +259,7 @@ const CASES = [
   { tool: "eval/search_quality.mjs", args: ["--help=1"], exit: 2, stderr: "--help takes no value\n" },
   { tool: "eval/search_quality.mjs", args: ["-x"], exit: 2, stderr: "unknown option: -x\n" },
   { tool: "eval/search_quality.mjs", args: ["--site", "nowhere"], exit: 2, stderr: /^missing .*search-data\.json\nRun build\.bat / },
+  { tool: "eval/search_quality.mjs", args: ["--site", "nowhere", "--compare", "absent.json"], exit: 2, stderr: /^cannot read --compare .*absent\.json: ENOENT/ },
   { tool: "eval/search_quality.mjs", args: ["--site", "nowhere", "--sample", "abc"], exit: 2, stderr: "--sample expects a whole number of at least 1, got: abc\n" },
   { tool: "eval/search_quality.mjs", args: ["--site", "--help"], exit: 2, stderr: "--site needs a value\n" },
   { tool: "eval/search_quality.mjs", args: ["--site"], exit: 2, stderr: "--site needs a value\n" },
