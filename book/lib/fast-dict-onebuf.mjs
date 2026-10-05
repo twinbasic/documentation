@@ -18,7 +18,7 @@
 // onebuf-range.mjs's packing handles.
 //
 // PDFPageLeaf collapses to the same single-`d` field as plain PDFDict;
-// `normalized` and `autoNormalizeCTM` are gettters/setters that mask
+// `normalized` and `autoNormalizeCTM` are getters/setters that mask
 // in/out of `d`'s bits 23 and 24. Heap floor matches `_FastDict` (no
 // separate boolean property slots).
 //
@@ -45,9 +45,6 @@
 // singleton PDFContext (a second distinct context throws) -- is
 // onebuf-range.mjs's, shared with fast-array-onebuf. The buffer and the
 // context are this shim's own, so it loads without that one.
-//
-// Mutually exclusive with --fast-dict-double / --fast-dict-view /
-// --fast-dict-array.
 //
 // At load it checks that what it replaces is as in pdf-lib 1.17.1 (see
 // shim-targets.mjs), the constructors of PDFDict and its three subclasses
@@ -512,10 +509,4 @@ if (!PDFDict.prototype.__fastDictOnebufInstalled) {
   };
 
   PDFDict.prototype.__fastDictOnebufInstalled = true;
-  // Mark subsumed shims as installed.
-  PDFDict.prototype.__fastDictDoubleInstalled = true;
-  PDFDict.prototype.__fastDictViewInstalled = true;
-  PDFDict.prototype.__fastDictArrayInstalled = true;
-  PDFDict.prototype.__fastDictIterInstalled = true;
-  PDFObjectParser.prototype.__fastParseDictInstalled = true;
 }

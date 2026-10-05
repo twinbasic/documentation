@@ -5,13 +5,10 @@
 // PDFObject references directly. No encoding, no decode on read; the
 // hot path is `arrayMain[start + i]`.
 //
-// Phase 3 of fast-dict-encoded did the same range-view refactor on
-// PDFArray but used a Float64Array + encoded slots (mirroring its
-// dict shape). The encoded backing cost ~300 ms of decodeValue
-// dispatch during save (PDFArray.copyBytesInto iterates ~500 k
-// elements). This shim keeps the heap win (~19 MB on the book by
-// removing each PDFArray's per-instance `this.array = []`) without
-// paying the decode cost: slots are JS references, reads are direct.
+// The heap win (~19 MB on the book) comes from removing each
+// PDFArray's per-instance `this.array = []`. Slots are not encoded,
+// because PDFArray.copyBytesInto reads ~500 k elements during save and
+// a per-slot decode there costs more than the heap it saves.
 //
 // 40-bit packed Number layout (well within Number.MAX_SAFE_INTEGER):
 //   bits  0-23: start  (24 bits, max 16 M slots in arrayMain)
@@ -36,8 +33,7 @@
 // fast-dict-onebuf. The buffer and the context are this shim's own, so
 // it loads without that one.
 //
-// Composes with --fast-dict-onebuf. Mutually exclusive with
-// --fast-dict-encoded (which subsumes both via its own encoded shape).
+// Composes with --fast-dict-onebuf.
 //
 // At load it checks that what it replaces is as in pdf-lib 1.17.1 (see
 // shim-targets.mjs), PDFArray's constructor included, since no instance is
