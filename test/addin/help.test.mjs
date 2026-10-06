@@ -44,6 +44,7 @@ import {
   typeText,
   waitFor,
 } from "../../scripts/lib/tb-operate.mjs";
+import { hoverLink, hoverText, mouseAway, restMouse, widgets } from "./hover.mjs";
 import { frameEval, frameOf, serveLoopback } from "./pages.mjs";
 import { scenario } from "./scenario.mjs";
 
@@ -470,9 +471,10 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   test("the results list is as tall as its rows, up to 35% of the pane", async () => {
     await emptySearch(c);
     await typeText(c, "msgbo");
+    // The add-in fills the list before it shows it, so wait for both.
     const few = await waitFor(c, async (c) => {
       const r = await results(c);
-      return r.length > 0 && r[0] === "Interaction.MsgBoxfunction" && r.length;
+      return r.length > 0 && r[0] === "Interaction.MsgBoxfunction" && (await resultsBox(c)) && r.length;
     });
     let box = await resultsBox(c);
     assert.ok(
@@ -587,6 +589,121 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       "the page's theme",
     );
     assert.deepEqual(await paneChrome(), PANE_CHROME, "the site's chrome in the pane");
+  });
+
+  // Hover help: links at the cursor, in a widget, and under the mouse, in the
+  // IDE's own hover, while the pane's box is ticked.
+  const hoverBox = () => inPane(c, `return root.querySelector("#helpHover")?.checked ?? null;`);
+  const MSGBOX_LINK = "Help: Interaction.MsgBox function";
+  const LEN_LINK = "Help: Strings.Len function";
+
+  // The pane floats over the middle of the code editor, where the mouse has to
+  // rest and click: move it against the window's right edge.
+  const paneAside = () =>
+    c.evaluate(`(() => {
+  const s = toolWindowsById[${JSON.stringify(PANE)}].shadowDom.host.closest(".floatingPanel");
+  if (!s) return null;
+  s.style.left = (innerWidth - s.getBoundingClientRect().width - 4) + "px";
+  return s.getBoundingClientRect().left;
+})()`);
+
+  // The hover under the mouse at a place, once the IDE's own text is in it.
+  async function mouseHover(line, column, want = "in VBA.") {
+    await paneAside();
+    await restMouse(c, line, column);
+    return waitFor(c, async (c) => {
+      const t = await hoverText(c);
+      return t?.includes(want) && t;
+    });
+  }
+
+  test("hover help is off until its box is ticked", async () => {
+    assert.equal(await hoverBox(), false);
+    const mark = await consoleMark(c);
+    await at(c, 5, 9);
+    await sleep(1600);
+    assert.deepEqual((await widgets(c)).nodes, [], "a widget with the box unticked");
+    const t = await mouseHover(5, 9);
+    assert.ok(t && !t.includes("Help:"), `the mouse hover: ${JSON.stringify(t)}`);
+    assert.deepEqual(await addinLines(c, mark), []);
+  });
+
+  test("with the box ticked, the cursor resting on a name shows a link to its page", async () => {
+    await click(c, { toolWindow: PANE, css: "#helpHover" });
+    assert.equal(await hoverBox(), true);
+    const mark = await consoleMark(c);
+    await paneAside();
+    await at(c, 7, 21);
+    const t0 = Date.now();
+    const w = await waitFor(c, async (c) => {
+      const w = await widgets(c);
+      return w.nodes.length === 1 && w.nodes[0].link && w.nodes[0];
+    });
+    const waited = Date.now() - t0;
+    assert.ok(w, `no widget: ${JSON.stringify(await widgets(c))}`);
+    assert.equal(w.text, LEN_LINK);
+    assert.ok(waited >= 700, `the widget came after ${waited} ms, before the cursor had rested`);
+    await markFrame();
+    await clickAt(c, w.link.x, w.link.y);
+    await showsPage("/tB/Modules/Strings/Len", { fresh: true });
+    // Moving the cursor takes the widget away.
+    await at(c, 9, 9);
+    assert.ok(
+      await waitFor(c, async (c) => (await widgets(c)).nodes.length === 0, { timeout: 3000 }),
+      `the widget stayed: ${JSON.stringify(await widgets(c))}`,
+    );
+    assert.deepEqual(await addinLines(c, mark), []);
+  });
+
+  test("hover help shows nothing for a name with no page", async () => {
+    const mark = await consoleMark(c);
+    // The project's own Beep, which has a summary but no page.
+    await at(c, 18, 10);
+    await sleep(2000);
+    assert.deepEqual((await widgets(c)).nodes, [], "a widget for the project's own Beep");
+    const t = await mouseHover(18, 10, "Beep");
+    assert.ok(t && !t.includes("Help:"), `the mouse hover: ${JSON.stringify(t)}`);
+    assert.deepEqual(await addinLines(c, mark), []);
+  });
+
+  test("the mouse hover has the link below the compiler's text, and a click shows the page", async () => {
+    await at(c, 9, 9);
+    const mark = await consoleMark(c);
+    const t = await mouseHover(5, 9, MSGBOX_LINK);
+    assert.ok(t, `the mouse hover: ${JSON.stringify(await hoverText(c))}`);
+    assert.ok(t.indexOf("in VBA.") >= 0 && t.indexOf("in VBA.") < t.indexOf(MSGBOX_LINK), JSON.stringify(t));
+    assert.equal(t.split(MSGBOX_LINK).length, 2, `the link is there more than once: ${JSON.stringify(t)}`);
+    const link = await hoverLink(c, MSGBOX_LINK);
+    assert.ok(link?.top, `the link cannot be clicked: ${JSON.stringify(link)}`);
+    await markFrame();
+    await clickAt(c, link.x, link.y);
+    await showsPage("/tB/Modules/Interaction/MsgBox", { fresh: true });
+    await mouseAway(c);
+    assert.deepEqual(await openedUrls(c, { since: mark }), [], "the click opened a browser");
+    assert.deepEqual(await addinLines(c, mark), []);
+  });
+
+  test("after a compiler restart the box is still ticked and the mouse hover has the link once", async () => {
+    const mark = await consoleMark(c);
+    await lane.restartCompiler();
+    pages = await pagesOrigin(mark);
+    assert.ok(await waitFor(c, async () => (await hoverBox()) === true), "the box is not ticked after the restart");
+    await openFile(c, "/HelpHost/Sources/Cases.twin", { line: 9, column: 9 });
+    const t = await mouseHover(7, 21, LEN_LINK);
+    assert.ok(t, `the mouse hover: ${JSON.stringify(await hoverText(c))}`);
+    assert.equal(t.split(LEN_LINK).length, 2, `the link is there more than once: ${JSON.stringify(t)}`);
+    await mouseAway(c);
+  });
+
+  test("unticking the box turns hover help off", async () => {
+    await click(c, { toolWindow: PANE, css: "#helpHover" });
+    assert.equal(await hoverBox(), false);
+    await at(c, 7, 21);
+    await sleep(1600);
+    assert.deepEqual((await widgets(c)).nodes, [], "a widget with the box unticked");
+    const t = await mouseHover(7, 21);
+    assert.ok(t && !t.includes("Help:"), `the mouse hover: ${JSON.stringify(t)}`);
+    await mouseAway(c);
   });
 
   return () => server?.close();

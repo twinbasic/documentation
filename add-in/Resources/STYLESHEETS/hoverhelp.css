@@ -1,0 +1,15 @@
+/* Hover help's widget at the cursor, inside the widget's shadow root, in the
+   IDE theme's colours, as the pane is (pane.css). */
+.tbDocsHoverHelp {
+  padding: 2px 6px;
+  white-space: nowrap;
+  color: var(--themeToolWindowBodyForeColor);
+  background: var(--themeGeneralPanelBackColor);
+  border: 1px solid var(--themePropertySheetValueBorderColor);
+}
+
+.tbDocsHoverHelp a {
+  display: block;
+  color: inherit;
+  cursor: pointer;
+}

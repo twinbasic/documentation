@@ -5,7 +5,9 @@
 ' declared, through its hover (CompilerHover), so that c.Add finds
 ' Collection.Add when c is a Collection; a selection is looked up as it is.
 ' The pages come from the add-in's own server when it was built with the help
-' archive (HelpServer), and from the live site otherwise.
+' archive (HelpServer), and from the live site otherwise. The pane's Hover
+' help box turns on links to the pages at the cursor and under the mouse
+' (HoverHelp).
 ' Every line it prints to the DEBUG CONSOLE starts "[tbDocsHelp] ", except
 ' "open <url>" (see OpenUrl).
 Private Class HelpAddIn
@@ -28,6 +30,8 @@ Private Class HelpAddIn
     Private AskSeq As Long                  ' the number of the last question
     Private Asked As String                 ' its word, "" once answered
     Private Server As HelpServer            ' Nothing unless the add-in has the archive
+    Private WithEvents Hovering As HoverHelp ' Nothing without an index
+    Private HoverBox As HtmlElement         ' the pane's Hover help checkbox
 
     Private Const BASE_URL As String = "https://docs.twinbasic.com"
     Private Const TAG As String = "[tbDocsHelp] "
@@ -51,6 +55,7 @@ Private Class HelpAddIn
         Set HelpButton = Host.Toolbars(0).AddButton("tbDocsHelp", "Help")
         Host.KeyboardShortcuts.Add "f1", AddressOf OnF1
         Dim indexState As String = LoadIndex()
+        If Not Index Is Nothing Then Set Hovering = New HoverHelp(Host, Index, BASE_URL)
         StartServer
         PageUrl = GetSetting(SETTINGS_APP, "Pane", "Page", "")
         BuildPane
@@ -128,6 +133,9 @@ Private Class HelpAddIn
     ' The pane's elements. Showing a tool window sets its root's display to
     ' block, so the flex layout is on a wrapper inside it.
     Private Sub BuildPane()
+        ' Kept apart from the box: a property read straight after it is set
+        ' can still give the old value.
+        Dim hoverOn As Boolean = GetSetting(SETTINGS_APP, "Hover", "On", "0") = "1"
         Set Pane = Host.ToolWindows.Add("tbDocsHelp", PANE_ID)
         Pane.Title = "TWINBASIC HELP"
         Pane.ApplyCss StrConv(LoadResDataInternal("pane.css", "STYLESHEETS"), VbStrConv.vbFromUTF8)
@@ -148,6 +156,14 @@ Private Class HelpAddIn
                     Set BrowserButton = .ChildDomElements.Add("helpBrowser", "button")
                     BrowserButton.Properties.innerText = "Open in browser"
                     BrowserButton.AddEventListener("click", AddressOf BrowserClicked)
+                    With .ChildDomElements.Add("helpHoverLabel", "label")
+                        Set HoverBox = .ChildDomElements.Add("helpHover", "input")
+                        HoverBox.Properties.type = "checkbox"
+                        HoverBox.Properties.checked = hoverOn
+                        HoverBox.Properties.disabled = Hovering Is Nothing
+                        HoverBox.AddEventListener("change", AddressOf HoverToggled)
+                        .ChildDomElements.Add("helpHoverText", "span").Properties.innerText = "Hover help"
+                    End With
                 End With
                 Set ResultsElement = .ChildDomElements.Add("helpResults", "listview")
                 Set Results = ResultsElement.Properties.listview
@@ -160,11 +176,34 @@ Private Class HelpAddIn
                 Set HoverSink = .ChildDomElements.Add("helpAsk", "div")
                 HoverSink.Properties.style.display = "none"
                 HoverSink.AddEventListener(HOVER_EVENT, AddressOf HoverAnswered)
+                If Not Hovering Is Nothing Then
+                    Dim cursorSink As HtmlElement = .ChildDomElements.Add("helpAskCursor", "div")
+                    Dim mouseSink As HtmlElement = .ChildDomElements.Add("helpAskMouse", "div")
+                    cursorSink.Properties.style.display = "none"
+                    mouseSink.Properties.style.display = "none"
+                    Hovering.Attach cursorSink, mouseSink
+                    Hovering.Enabled = hoverOn
+                End If
             End With
         End With
         Set ResultIds = New Collection
         LastSearch = ""
         If Len(PageUrl) > 0 Then Frame.Properties.src = FrameUrl(PageUrl)
+    End Sub
+
+    ' Hover help is off until the box is ticked, and stays as it was left.
+    Private Sub HoverToggled(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        Dim isOn As Boolean = HoverBox.Properties.checked
+        SaveSetting SETTINGS_APP, "Hover", "On", IIf(isOn, "1", "0")
+        Hovering.Enabled = isOn
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    Private Sub Hovering_Pick(ByVal url As String)
+        ShowPage url
     End Sub
 
     Private Sub Pane_OnClose()
@@ -224,45 +263,20 @@ Private Class HelpAddIn
         Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
     End Sub
 
-    ' Shows the page for word, or the choice of its pages. hover is the
-    ' compiler's hover for it, or "": when hover names a package the index
-    ' documents, only that package's entries count, and when it also names
-    ' word itself, only those declared where it says. A name declared anywhere
-    ' else --- the project, another package, a type library --- has no page: the
-    ' pane shows its declaration and description instead (ShowSummary).
+    ' Shows the page for word, or the choice of its pages (SymbolIndex.Pages).
+    ' hover is the compiler's hover for it, or "". A name with no page because
+    ' it is declared outside the documented packages shows its declaration and
+    ' description instead (ShowSummary).
     Private Sub LookUp(ByVal word As String, ByVal hover As String)
-        Dim ids As Collection
-        Dim name As String, package As String, container As String
         If AtDeclaration(hover) Then
             Host.ShowNotification "No help for '" & word & "': it is declared here"
             Exit Sub
         End If
-        If ReadHover(hover, name, package, container) Then
-            If Not Index.Documents(package) Then
-                ShowSummary hover
-                Exit Sub
-            End If
-            If SameName(name, LastSegment(word)) Then Set ids = Index.FindDeclared(name, package, container)
-            If ids Is Nothing Then
-                Set ids = Index.OnlyIn(Index.Find(word), package)
-            ElseIf ids.Count = 0 Then
-                Set ids = Index.OnlyIn(Index.Find(word), package)
-            End If
-        Else
-            Set ids = Index.Find(word)
+        Dim pages As Collection = Index.Pages(word, hover)
+        If pages Is Nothing Then
+            ShowSummary hover
+            Exit Sub
         End If
-
-        ' One choice per page: members inherited from one declaring type share
-        ' its page.
-        Dim urls As New Collection
-        Dim pages As New Collection
-        Dim i As Variant
-        For Each i In ids
-            If Not Contains(urls, Index.Url(i)) Then
-                urls.Add Index.Url(i)
-                pages.Add i
-            End If
-        Next
 
         Select Case pages.Count
             Case 0
@@ -386,14 +400,6 @@ Private Class HelpAddIn
         line = startLine - 1
         character = NameColumn(text, startColumn) - 1
         Return NameAt(text, startColumn)
-    End Function
-
-    Private Function Contains(ByVal items As Collection, ByVal value As String) As Boolean
-        Dim item As Variant
-        For Each item In items
-            If item = value Then Return True
-        Next
-        Return False
     End Function
 
 End Class

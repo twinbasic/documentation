@@ -1,0 +1,245 @@
+' Hover help, while it is on: links to the pages of a name, at the cursor and
+' under the mouse. At the cursor, a widget is added at the name once the
+' cursor has rested on it for a second; the add-in has no cursor event, so a
+' timer asks where the cursor is. Under the mouse, a hover provider the page
+' runs (hoverhelp.js) adds the links below the compiler's text in the IDE's
+' own hover. A name with no page shows nothing, since the IDE's hover already
+' shows its declaration and description. A click on a link raises Pick.
+Private Class HoverHelp
+    Public Event Pick(ByVal url As String)
+
+    Private Host As Host
+    Private Index As SymbolIndex
+    Private Site As String                  ' the links' origin, which a click is known by
+    Private WithEvents Ticker As AddinTimer
+    Private CursorSink As HtmlElement       ' where the compiler's hover for the cursor comes
+    Private MouseSink As HtmlElement        ' where the page's hover provider asks
+    Private IsOn As Boolean
+
+    Private LastPlace As String             ' "path:line:column" at the last tick
+    Private Rested As Long                  ' ticks since the cursor came there
+    Private AskSeq As Long
+    Private Asked As String                 ' the word asked about, "" once answered
+    Private AskedLine As Long
+    Private AskedColumn As Long
+    Private Widget As HtmlElement
+    Private WidgetPages As Collection
+    Private LastError As String
+
+    Private Const TAG As String = "[tbDocsHelp] "
+    Private Const TICK_MS As Long = 250
+    Private Const REST_TICKS As Long = 4
+    Private Const MOST_LINKS As Long = 5
+    Private Const PICK_EVENT As String = "tbDocsPick"
+    Private Const MOUSE_EVENT As String = "tbDocsHoverHelp"
+
+    Public Sub New(ByVal Host As Host, ByVal Index As SymbolIndex, ByVal Site As String)
+        Set Me.Host = Host
+        Set Me.Index = Index
+        Me.Site = Site
+        Set Ticker = New AddinTimer
+        Ticker.Interval = TICK_MS
+        Ticker.Enabled = False
+    End Sub
+
+    ' The pane's two hidden elements the answers come to. The pane builds them
+    ' again whenever it is closed, so this is called each time, before Enabled.
+    Public Sub Attach(ByVal CursorSink As HtmlElement, ByVal MouseSink As HtmlElement)
+        Set Me.CursorSink = CursorSink
+        Set Me.MouseSink = MouseSink
+        CursorSink.AddEventListener(HOVER_EVENT, AddressOf CursorAnswered)
+        MouseSink.AddEventListener(MOUSE_EVENT, AddressOf MouseAsked)
+    End Sub
+
+    ' Turning it off removes the widget and the page's provider. Either way the
+    ' page's script runs, which also removes a provider an earlier instance of
+    ' the add-in left, from before a compiler restart.
+    Public Property Let Enabled(ByVal Value As Boolean)
+        IsOn = Value
+        Ticker.Enabled = Value
+        If Not Value Then Forget
+        Dim js As String = StrConv(LoadResDataInternal("hoverhelp.js", "SCRIPTS"), VbStrConv.vbFromUTF8)
+        js = Replace(js, "$ON$", IIf(Value, "true", "false"))
+        js = Replace(js, "$SITE$", Site)
+        MouseSink.Properties.innerHTML = PageScript(js)
+    End Property
+
+    Private Sub Class_Terminate()
+        If Not Ticker Is Nothing Then Ticker.Enabled = False
+    End Sub
+
+    ' ------------------------------------------------------------ at the cursor
+
+    Private Sub Ticker_Timer()
+        On Error GoTo Failed
+        Dim code As CodeEditor = ActiveCode()
+        If code Is Nothing Then
+            Forget
+            Exit Sub
+        End If
+        Dim sl As Long, sc As Long, el As Long, ec As Long
+        code.GetSelectionInfo sl, sc, el, ec
+        If sl <> el Or sc <> ec Then
+            Forget
+            Exit Sub
+        End If
+        Dim place As String = code.Path & ":" & sl & ":" & sc
+        If place <> LastPlace Then
+            Forget
+            LastPlace = place
+            Exit Sub
+        End If
+        Rested = Rested + 1
+        If Rested = REST_TICKS Then Ask code, sl, sc
+        Exit Sub
+    Failed:
+        Report
+        Forget
+    End Sub
+
+    Private Function ActiveCode() As CodeEditor
+        If Host.ActiveEditors.Count = 0 Then Return Nothing
+        Dim ed As Editor = Host.ActiveEditors(0)
+        If Not TypeOf ed Is CodeEditor Then Return Nothing
+        Dim code As CodeEditor
+        Set code = ed
+        Return code
+    End Function
+
+    ' Removes the widget and drops any question still unanswered.
+    Private Sub Forget()
+        LastPlace = ""
+        Rested = 0
+        Asked = ""
+        Set WidgetPages = Nothing
+        If Widget Is Nothing Then Exit Sub
+        On Error Resume Next
+        Widget.Remove
+        Set Widget = Nothing
+    End Sub
+
+    ' Asks the compiler about the name at the cursor, as F1 does. The answer
+    ' comes to CursorAnswered.
+    Private Sub Ask(ByVal code As CodeEditor, ByVal line As Long, ByVal column As Long)
+        Dim text As String = LineOf(code.Text, line)
+        Dim word As String = NameAt(text, column)
+        If Len(word) = 0 Then Exit Sub
+        AskSeq = AskSeq + 1
+        Asked = word
+        AskedLine = line
+        AskedColumn = NameColumn(text, column)
+        CursorSink.Properties.innerHTML = HoverQuestion(AskSeq, line - 1, AskedColumn - 1)
+    End Sub
+
+    Private Sub CursorAnswered(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        If CLng(eventInfo.seq) <> AskSeq Or Len(Asked) = 0 Then Exit Sub
+        Dim word As String = Asked
+        Asked = ""
+        Dim pages As Collection = Index.Pages(word, IIf(eventInfo.status = "ok", CStr(eventInfo.value), ""))
+        If pages Is Nothing Then Exit Sub
+        If pages.Count = 0 Then Exit Sub
+        Dim code As CodeEditor = ActiveCode()
+        If code Is Nothing Then Exit Sub
+
+        Dim html As String = "<div class='tbDocsHoverHelp'>"
+        Dim n As Long, i As Variant
+        For Each i In pages
+            n = n + 1
+            If n > MOST_LINKS Then Exit For
+            html = html & "<a href='#' onclick='raiseEvent(""" & PICK_EVENT & """, event, true, " & n & _
+                "); return false'>" & HtmlText(LinkText(i)) & "</a>"
+        Next
+        Set WidgetPages = pages
+        Set Widget = code.AddMonacoWidget(AskedLine, AskedColumn, html & "</div>", _
+            StrConv(LoadResDataInternal("hoverhelp.css", "STYLESHEETS"), VbStrConv.vbFromUTF8))
+        Widget.AddEventListener(PICK_EVENT, AddressOf WidgetPicked)
+        Exit Sub
+    Failed:
+        Report
+    End Sub
+
+    Private Sub WidgetPicked(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        If WidgetPages Is Nothing Then Exit Sub
+        RaiseEvent Pick(Index.Url(WidgetPages(CLng(eventInfo.customData0))))
+        Exit Sub
+    Failed:
+        Report
+    End Sub
+
+    ' ------------------------------------------------------------ under the mouse
+
+    ' The page's provider asks with the line under the mouse, the column, and
+    ' the compiler's hover there, and is answered with the links as markdown,
+    ' "" for none. A click on one of the links comes here too.
+    Private Sub MouseAsked(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        If eventInfo.kind = "open" Then
+            RaiseEvent Pick(CStr(eventInfo.path))
+            Exit Sub
+        End If
+        Dim seq As Long = CLng(eventInfo.seq)
+        Dim markdown As String
+        Dim word As String = NameAt(CStr(eventInfo.line), CLng(eventInfo.column))
+        If Len(word) > 0 Then
+            Dim pages As Collection = Index.Pages(word, CStr(eventInfo.hover))
+            If Not pages Is Nothing Then
+                Dim n As Long, i As Variant
+                For Each i In pages
+                    n = n + 1
+                    If n > MOST_LINKS Then Exit For
+                    If n > 1 Then markdown = markdown & vbLf & vbLf
+                    markdown = markdown & "[" & MarkdownText(LinkText(i)) & "](" & Site & UrlPath(Index.Url(i)) & ")"
+                Next
+            End If
+        End If
+        MouseSink.Properties.innerHTML = PageScript("window.tbDocsHoverHelp && window.tbDocsHoverHelp.answer(" & _
+            seq & ", " & JsString(markdown) & ")")
+        Exit Sub
+    Failed:
+        Report
+    End Sub
+
+    ' ------------------------------------------------------------ text
+
+    ' "Help: Interaction.MsgBox function", as the pane's results name a page.
+    Private Function LinkText(ByVal i As Long) As String
+        Return "Help: " & Index.Label(i) & " " & Index.Kind(i)
+    End Function
+
+    Private Function MarkdownText(ByVal text As String) As String
+        Dim c As Variant
+        text = Replace(text, "\", "\\")
+        For Each c In Array("`", "*", "_", "[", "]", "(", ")", "#", "<", ">", "!")
+            text = Replace(text, c, "\" & c)
+        Next
+        Return text
+    End Function
+
+    ' A site path as a link may hold it; the page decodes it again.
+    Private Function UrlPath(ByVal url As String) As String
+        url = Replace(url, "%", "%25")
+        url = Replace(url, " ", "%20")
+        url = Replace(url, "(", "%28")
+        Return Replace(url, ")", "%29")
+    End Function
+
+    Private Function JsString(ByVal text As String) As String
+        text = Replace(text, "\", "\\")
+        text = Replace(text, """", "\""")
+        text = Replace(text, vbCr, "\r")
+        text = Replace(text, vbLf, "\n")
+        text = Replace(text, ChrW$(&H2028), "\u2028")
+        text = Replace(text, ChrW$(&H2029), "\u2029")
+        Return """" & text & """"
+    End Function
+
+    ' Prints an error once, not once a tick.
+    Private Sub Report()
+        Dim message As String = "hover help error " & Err.Number & ": " & Err.Description
+        If message = LastError Then Exit Sub
+        LastError = message
+        Host.DebugConsole.PrintText TAG & message
+    End Sub
+End Class

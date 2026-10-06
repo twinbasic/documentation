@@ -998,22 +998,34 @@ harness about a second against opening a new IDE.
      (`PerformanceNavigationTiming.responseStatus`), so a 404 fails a case either way. An
      offline-only case asks the server from Node: a page's gzip body and a stored image
      byte for byte, a folder's 301, a 404 and `HEAD`.
-6. **Hover help**, the owner's choices (2026-10-06): both routes, behind one *Hover help*
-   checkbox in the pane, off by default and kept with `SaveSetting`. Each shows a link per
-   page the name has, labelled with the page's name, kind and package, as in *Help: MsgBox
-   function (VBA.Interaction)*; a click opens the pane at that page, as F1 does. A name with
-   no page shows nothing, since the IDE's hover already shows its declaration and
-   description.
+6. **Hover help. Built**, tested by the `help` and `help-offline` lanes on BETA 997, with
+   the owner's choices (2026-10-06): both routes, behind one *Hover help* checkbox in the
+   pane's bar, off by default and kept with `SaveSetting` (`Hover`, `On`). Each shows a link
+   per page the name has, at most five, labelled as the pane's results name a page, as in
+   *Help: Interaction.MsgBox function*; a click shows that page in the pane, as F1 does. A
+   name with no page shows nothing, since the IDE's hover already shows its declaration and
+   description. `SymbolIndex.Pages` is the lookup F1 and both routes share. `HoverHelp`
+   holds both routes and raises `Pick` with the page's path.
    - **At the cursor**, through the public API (P16): while the box is ticked, an
      `AddinTimer` polls `GetSelectionInfo` every 250 ms. When the cursor has stayed on a
-     name for a second with nothing selected, the name is looked up as F1 looks it up, and a
-     widget with the links is added at the name. It is removed when the cursor moves; the
-     IDE removes it when another file is shown.
-   - **Under the mouse**, through the page (P17): the add-in registers a hover provider for
-     `"*"`, so its links come after the compiler's text, through the pane as `hover.js` is
-     sent, disposing the one an earlier instance of the add-in left. The provider asks the
-     add-in, which answers with the links; a click on one is taken in the capture phase and
-     passed to the add-in.
+     name for four ticks with nothing selected, the compiler is asked about it through a
+     sink of its own (`helpAskCursor`), so that it never replaces an F1 question, and a
+     widget with the links is added at the name's first character (`hoverhelp.css`). A link
+     is `raiseEvent("tbDocsPick", ...)`, which a widget's root receives. The widget is
+     removed when the cursor moves or the file changes; the IDE also removes it when another
+     file is shown.
+   - **Under the mouse**, through the page (P17): `hoverhelp.js`, sent through a second sink
+     (`helpAskMouse`) every time the pane is built, disposes the provider and click listener
+     an earlier instance of the add-in left in `window.tbDocsHoverHelp`, and registers new
+     ones while the box is ticked. The provider asks the compiler's hover itself, passes the
+     line, the column and the hover to the add-in, and waits up to 4 s for the markdown it
+     answers with (`window.tbDocsHoverHelp.answer`). The links point at the live site; a
+     click on one whose `data-href` starts with it is taken in the capture phase and sent
+     to the add-in, which shows the page in the pane.
+   - **In the lanes**, the floating pane covers the middle of the code editor, so the cases
+     move it against the window's right edge before the mouse rests anywhere; and a hover
+     left open covers the toolbar, so each mouse case moves the mouse away at its end.
+     `test/addin/hover.mjs` holds the helpers both lanes use.
 7. **Later:** offering only the packages the project references; how a user gets an add-in
    with the archive.
 

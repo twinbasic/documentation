@@ -177,6 +177,41 @@ Private Class SymbolIndex
         Return ids
     End Function
 
+    ' The entries for word, one per page, since members inherited from one
+    ' declaring type share its page. hover is the compiler's hover for word,
+    ' or "": when it names a package the index documents, only that package's
+    ' entries count, and when it also names word itself, only those declared
+    ' where it says. Nothing when hover says word is declared right there, or
+    ' declared outside the documented packages --- the project, another
+    ' package, a type library --- which have no pages.
+    Public Function Pages(ByVal word As String, ByVal hover As String) As Collection
+        If AtDeclaration(hover) Then Return Nothing
+        Dim ids As Collection
+        Dim name As String, package As String, container As String
+        If ReadHover(hover, name, package, container) Then
+            If Not Documents(package) Then Return Nothing
+            If SameName(name, LastSegment(word)) Then Set ids = FindDeclared(name, package, container)
+            If ids Is Nothing Then
+                Set ids = OnlyIn(Find(word), package)
+            ElseIf ids.Count = 0 Then
+                Set ids = OnlyIn(Find(word), package)
+            End If
+        Else
+            Set ids = Find(word)
+        End If
+
+        Dim found As New Collection
+        Dim i As Variant, j As Variant, known As Boolean
+        For Each i In ids
+            known = False
+            For Each j In found
+                If Urls(j) = Urls(i) Then known = True: Exit For
+            Next
+            If Not known Then found.Add i
+        Next
+        Return found
+    End Function
+
     ' The entries text names, for the help pane's search box: those that start
     ' with it, then those that contain it, in the index's order, at most limit.
     ' Text with a dot in it is matched against labels ("Collection.Add"),

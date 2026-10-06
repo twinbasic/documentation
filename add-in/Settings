@@ -3,7 +3,7 @@
 	"project.appTitle": "tbDocsHelp",
 	"project.buildPath": "${SourcePath}\\Build\\${ProjectName}_${Architecture}.${FileExtension}",
 	"project.buildType": "Standard DLL",
-	"project.description": "The twinBASIC documentation help add-in: F1 shows the page for the name under the cursor in a help pane, which can also search the index. WIP.HelpAddin.md is its plan. The symbol index is embedded as Resources/SYMBOLS/symbols.json, a committed copy of a docs build's tB/symbols.json. With Resources/HELP/site.zip, which a local build of the documentation writes and git ignores, the pane's pages come from the add-in's own server instead of the live site.",
+	"project.description": "The twinBASIC documentation help add-in: F1 shows the page for the name under the cursor in a help pane, which can also search the index; its Hover help box adds links to a name's pages at the cursor and in the IDE's hover. WIP.HelpAddin.md is its plan. The symbol index is embedded as Resources/SYMBOLS/symbols.json, a committed copy of a docs build's tB/symbols.json. With Resources/HELP/site.zip, which a local build of the documentation writes and git ignores, the pane's pages come from the add-in's own server instead of the live site.",
 	"project.exportPathIsV2": true,
 	"project.id": "{4581D804-116B-436E-B7AB-1E4417F9703C}",
 	"project.name": "tbDocsHelp",

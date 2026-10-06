@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import { sleep } from "../../scripts/lib/tb-ide.mjs";
 import { consoleMark, linesSince, readConsole } from "../../scripts/lib/tb-ide-console.mjs";
 import { openFile, pressKey, setCursor, waitFor } from "../../scripts/lib/tb-operate.mjs";
+import { hoverText, pointOf, restMouse, widgets } from "./hover.mjs";
 import { scenario } from "./scenario.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -40,45 +41,6 @@ async function press(c, key, prefix) {
   const line = await said(c, mark, prefix);
   assert.ok(line, `${key}: the probe never said "${prefix}..."`);
   return line;
-}
-
-// The add-in widgets in the page: the page's own list, and each host element
-// with its text and where it is drawn.
-const widgets = (c) =>
-  c.evaluate(`(() => {
-  const nodes = [...document.querySelectorAll("[id^=addinWidgetId]")];
-  return {
-    active: Object.keys(activeAddinWidgets).length,
-    nodes: nodes.map((n) => {
-      const r = n.getBoundingClientRect();
-      return { text: n.shadowRoot?.textContent ?? "", top: r.top, height: r.height };
-    }),
-  };
-})()`);
-
-// Where a position in the code editor is drawn, in the page's coordinates.
-const pointOf = (c, line, column) =>
-  c.evaluate(`(() => {
-  const p = editor.getScrolledVisiblePosition({ lineNumber: ${line}, column: ${column} });
-  const r = editor.getDomNode().getBoundingClientRect();
-  return { x: r.left + p.left + 2, y: r.top + p.top + p.height / 2, top: r.top + p.top, height: p.height };
-})()`);
-
-// The text of the hover Monaco shows, or null when none shows.
-const hoverText = (c) =>
-  c.evaluate(`(() => {
-  const h = [...document.querySelectorAll(".monaco-hover")]
-    .find((e) => !e.classList.contains("hidden") && e.getBoundingClientRect().height > 0);
-  return h ? h.textContent : null;
-})()`);
-
-async function rest(c, line, column) {
-  // Away first, so that a hover already shown goes and the next one is new.
-  await c.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 5, y: 5 });
-  await waitFor(c, async (c) => (await hoverText(c)) === null, { timeout: 3000 });
-  const p = await pointOf(c, line, column);
-  await c.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: p.x, y: p.y });
-  await c.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: p.x + 1, y: p.y });
 }
 
 // A selector of "*" matches every language less closely than the IDE's own
@@ -156,14 +118,14 @@ scenario("P16 and P17: hover help through a widget and through the page", (lane)
 
   test("P17: a second hover provider adds its text to the IDE's hover", async () => {
     const alone = await (async () => {
-      await rest(c, 4, 20);
+      await restMouse(c, 4, 20);
       return waitFor(c, hoverText, { timeout: 5000 });
     })();
     console.log(`P17 the IDE's hover alone: ${JSON.stringify(alone)}`);
     assert.ok(alone, "the IDE showed no hover on FindTheNeedle");
 
     await register(c, `() => ({ contents: [{ value: "**Help:** probe sync" }] })`);
-    await rest(c, 4, 20);
+    await restMouse(c, 4, 20);
     const sync = await waitFor(c, async (c) => {
       const t = await hoverText(c);
       return t?.includes("probe sync") && t;
@@ -175,7 +137,7 @@ scenario("P16 and P17: hover help through a widget and through the page", (lane)
       c,
       `() => new Promise((r) => setTimeout(() => r({ contents: [{ value: "**Help:** probe later" }] }), 500))`,
     );
-    await rest(c, 4, 20);
+    await restMouse(c, 4, 20);
     const later = await waitFor(c, async (c) => {
       const t = await hoverText(c);
       return t?.includes("probe later") && t;
@@ -184,14 +146,14 @@ scenario("P16 and P17: hover help through a widget and through the page", (lane)
     assert.ok(later, `the promised text is not in the hover: ${JSON.stringify(await hoverText(c))}`);
 
     await c.evaluate("window.p17Provider.dispose(), true");
-    await rest(c, 4, 20);
+    await restMouse(c, 4, 20);
     const gone = await waitFor(c, hoverText, { timeout: 5000 });
     assert.ok(gone && !gone.includes("probe"), `the disposed provider still answers: ${JSON.stringify(gone)}`);
   });
 
   test("P17: a provider registered for every language shows after the IDE's", async () => {
     await register(c, `() => ({ contents: [{ value: "**Help:** probe below" }] })`, "*");
-    await rest(c, 4, 20);
+    await restMouse(c, 4, 20);
     const t = await waitFor(c, async (c) => {
       const t = await hoverText(c);
       return t?.includes("probe below") && t;
@@ -222,7 +184,7 @@ scenario("P16 and P17: hover help through a widget and through the page", (lane)
   return true;
 })()`);
     try {
-      await rest(c, 4, 20);
+      await restMouse(c, 4, 20);
       const link = await waitFor(c, (c) =>
         c.evaluate(`(() => {
   const a = [...document.querySelectorAll(".monaco-hover a")].find((a) => a.textContent.includes("probe link"));
