@@ -12,9 +12,9 @@
 // that nobody sees. OpenPackage puts the real hostAppObject back as it answers,
 // and every other read goes to the real HostReadFileDataBase64.
 //
-// Each test states what BETA 995 does, which is what BETA 983 did by hand. In
-// a lane, BETA 983's References page never finishes loading, so this file
-// cannot run against it. If a test fails after an IDE update,
+// Each test states what BETA 995 and 997 do; BETA 983 differs only in the
+// last, where twinbasic/twinbasic#2442 puts its compiler in a crash loop and
+// the IDE in Safe Mode. If a test fails after an IDE update,
 // the IDE has changed: update the matching entry in BUGS-TO-REPORT.md or bugs/filed/ and the
 // two Packages pages under docs/Features/Packages, and then this file.
 //
@@ -42,7 +42,40 @@ const REFERENCES_JS = `${CONFIG_JS}.configData["project.references"].map((r) => 
 // Every row of the References page, as text, to tell when the lists stop changing.
 const ALL_ROWS_JS = `[...document.querySelectorAll(".referencesListRow")].map((r) => r.parentElement.className + " " + r.textContent).join("\\n")`;
 // The compiler's requests still waiting for an answer.
-const WAITING_JS = `Object.keys(debugSocket.requestsAwaitingResponse).length`;
+// The sequence numbers of the compiler socket's requests still awaiting an
+// answer. Loading the References page is waited for by the requests sent after
+// it was opened: a request older than that may never be answered (BETA 983
+// leaves one from the IDE's start), and the page loads regardless.
+const WAITING_JS = `JSON.stringify(Object.keys(debugSocket.requestsAwaitingResponse))`;
+// The IDE keeps only the callback of a request awaiting its answer, so the
+// command of each request is recorded by sequence number as it is sent: a page
+// that never finishes loading is then reported by the requests left unanswered.
+const TRACK_JS = `(() => {
+  if (!debugSocket.__names) {
+    const names = (debugSocket.__names = {});
+    const request = debugSocket.request;
+    debugSocket.request = function (name) {
+      names[this.sequenceId] = name;
+      return request.apply(this, arguments);
+    };
+  }
+  return true;
+})()`;
+const NAMES_JS = `JSON.stringify(debugSocket.__names || {})`;
+
+// Open the Settings editor on the References page, and wait for it to load.
+async function openReferences(c) {
+  await c.evaluate(TRACK_JS);
+  const older = JSON.parse(await c.evaluate(WAITING_JS));
+  const newer = async () => JSON.parse(await c.evaluate(WAITING_JS)).filter((k) => !older.includes(k));
+  await c.evaluate(`executeIdeCommand("tbProject_ShowReferences"), null`);
+  assert.ok(await waitFor(c, (c) => c.evaluate(`!!${CONFIG_JS}`), { timeout: 20 * 1000 }), "no Settings editor");
+  if (!(await waitFor(c, async () => (await newer()).length === 0, { timeout: 60 * 1000 }))) {
+    const names = JSON.parse(await c.evaluate(NAMES_JS));
+    const unanswered = (await newer()).map((k) => names[k] ?? `request ${k}`);
+    assert.fail(`the References page never finished loading: unanswered ${unanswered.join(", ")}`);
+  }
+}
 
 // The picker and the file read, answered for one file; and the compiler's
 // answer to the import, recorded.
@@ -80,12 +113,7 @@ scenario("Import from file... in the Packages dialog", (lane) => {
   });
 
   test("the imported package is listed, but not ticked", async () => {
-    await c.evaluate(`executeIdeCommand("tbProject_ShowReferences"), null`);
-    assert.ok(await waitFor(c, (c) => c.evaluate(`!!${CONFIG_JS}`), { timeout: 20 * 1000 }), "no Settings editor");
-    assert.ok(
-      await waitFor(c, async () => (await c.evaluate(WAITING_JS)) === 0, { timeout: 60 * 1000 }),
-      "the References page never finished loading",
-    );
+    await openReferences(c);
     await click(c, { css: "div", text: "Available Packages" });
     await c.evaluate(stubsJs(pack, readFileSync(pack).toString("base64")));
     await click(c, { css: "div", text: "Import from file..." });
@@ -215,16 +243,6 @@ scenario("Replacing an embedded package", (lane) => {
     writeFileSync(bare, withoutPackagesFolder(readFileSync(v1)));
   });
 
-  // Open the Settings editor on the References page, and wait for it to load.
-  async function openReferences() {
-    await c.evaluate(`executeIdeCommand("tbProject_ShowReferences"), null`);
-    assert.ok(await waitFor(c, (c) => c.evaluate(`!!${CONFIG_JS}`), { timeout: 20 * 1000 }), "no Settings editor");
-    assert.ok(
-      await waitFor(c, async () => (await c.evaluate(WAITING_JS)) === 0, { timeout: 60 * 1000 }),
-      "the References page never finished loading",
-    );
-  }
-
   // Click the tick box of the row in `list` that names a package and is in
   // the state `ticked`, with a real click, as a person does. Available
   // Packages also lists TWINSERV's packages, which arrive by a request the
@@ -335,7 +353,7 @@ scenario("Replacing an embedded package", (lane) => {
     const host = path.join(lane.work, name);
     cpSync(HOST, host, { recursive: true });
     c = await lane.open(host, { folder: path.join(lane.work, `${name}-staged`) });
-    await openReferences();
+    await openReferences(c);
     await importFile(file);
     await tick(DESCRIPTION, { ticked: false, list: AVAILABLE });
     const applied = await apply();
@@ -358,11 +376,11 @@ scenario("Replacing an embedded package", (lane) => {
     applies.embed = applied;
 
     // Step 2: untick v1, import v2, tick v2.
-    await openReferences();
+    await openReferences(c);
     await tick("DocProbePkg", { ticked: true, list: INSTALLED });
     if (applyAfterUntick) {
       applies.untick = await apply({ errors: true });
-      await openReferences();
+      await openReferences(c);
     }
     await importFile(v2);
     await tick(DESCRIPTION, { ticked: false, list: AVAILABLE });
