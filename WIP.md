@@ -433,9 +433,9 @@ slots, the template projects and their stage sets, the batching and bisect-on-cr
 what actually collides inside one project, and what the first full run found. Two results
 from it concern the harness rather than the samples:
 `[RunAfterBuild]` is **one per project** (TB5114), which `check_run` has to be
-designed around; and **`tbbuild` once reported a clean build on a project that crashed the
-compiler** (fixed). Distrust any "it stopped changing, so it must be done" heuristic
-against this compiler.
+designed around; and **a project that crashes the compiler can look like a clean build**
+(`tbbuild` reads the DEBUG CONSOLE to catch it and exits 4). Distrust any "it stopped
+changing, so it must be done" heuristic against this compiler.
 
 ### A hung build times out
 

@@ -5,8 +5,9 @@ add-in that shows the documentation for the symbol under the cursor, and the har
 tests IDE add-ins by machine, which the add-in is developed against.
 
 **Status.** Stages 1 to 3 stand. Stage 4, the add-in itself in [add-in/](add-in/), has
-increments 1 to 4 built and tested: F1 to a page, the help pane, the compiler's hover to tell
-which `Add`, and a name with no page shown by its declaration and `[Description]`.
+increments 1 to 5 built and tested: F1 to a page, the help pane, the compiler's hover to tell
+which `Add`, a name with no page shown by its declaration and `[Description]`, and offline
+help served from an archive in the DLL.
 
 - `addin-test.bat` operates Samples 10 and 15 end to end and leaves the registry as it found it.
 - All fifteen of Stage 2's questions are answered. Fourteen are held by nine probe lanes that
@@ -612,8 +613,7 @@ registry, `IDESettings` included through hashes, is identical around the run.
 Most probes are a small add-in plus a scenario. P5, P11 and P13 need only CDP and the file
 system. Record every answer in this file with the build number it was measured on.
 
-All fifteen questions are answered, and the ten lanes (eight probe lanes and the two sample
-lanes) pass together in about 2 minutes 21 seconds at two at a time.
+All fifteen questions are answered.
 
 **A probe whose answer something else rests on becomes a lane**: its add-in in
 `test/addin/probes/<name>/`, its scenario beside the others, listed in `lanes.mjs`, with each
@@ -810,9 +810,7 @@ harness about a second against opening a new IDE.
    embedded index. One page is shown in the help pane (increment 2); a miss says
    `No help for '<name>'` through `ShowNotification`; an empty spot puts the focus in the
    pane's search box. Several pages fill the pane's results list, labelled
-   `Container.Name`, and leave the page as it was. Before the pane, they were a
-   `ShowMessageBox` with a button per page: `Add` on an unknown object gave twelve and
-   Cancel, and the IDE showed thirteen buttons without complaint.
+   `Container.Name`, and leave the page as it was.
 
    **The key is F1**: P1 and P2 do not rule it out. It fires wherever the focus
    is in the IDE's window. The one overlap is signature help: while it shows, F1 also expands
@@ -845,8 +843,8 @@ harness about a second against opening a new IDE.
    - **Theme.** The pane's stylesheet, the resource `Resources/STYLESHEETS/pane.css` given
      to `ApplyCss`, uses the IDE theme's own custom properties (`--themeGeneralPanelBackColor`,
      `--themeToolWindowBodyForeColor`, ...). They are set on the IDE's document and
-     inherited by the shadow root, so the pane needs no code for a theme change. This
-     departs from the plan's light and dark stylesheets. The lane checks the background,
+     inherited by the shadow root, so the pane needs no code for a theme change and no
+     separate light and dark stylesheets. The lane checks the background,
      which the window does not otherwise inherit: the window already has the theme's text
      colour.
    - **The page's theme** is the IDE's: the frame's URL carries `?theme=` and
@@ -1013,7 +1011,7 @@ harness about a second against opening a new IDE.
 
 With the cursor on `Add` in `Set w = Host.ToolWindows.Add(name, id)` this gives
 `Host.ToolWindows.Add`. A chain cut off on its left by `)` or by nothing, inside a `With`,
-starts with a dot, which is dropped: `.Add`. Not handled in the first version: string
+starts with a dot, which is dropped: `.Add`. Not handled: string
 literals and comments are read like code, so a name in a comment finds its page and a word
 in a string usually misses (`File.ReadText(CommentsToWhitespace)` can blank comments out if
 needed); lines joined with `_`; numbers, which miss the index. `GetSelectionInfo` counts

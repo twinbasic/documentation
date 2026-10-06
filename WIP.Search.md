@@ -11,9 +11,8 @@ Like WIP.md, this file is not rendered through tbdocs, so literal dashes are fin
 
 Everything needed to continue is in this file and in `eval/`.
 
-**Where it stands.** The design below is shipped. The user's verdict: search
-went from quite broken to at least semi-functional, and further work resumes
-later. No decision is open. The candidates are under "Next"; the user picks.
+**Where it stands.** The design below is shipped. No decision is open. The
+candidates for further work are under "Next"; the user picks.
 
 **The eval now** (`node eval/search_quality.mjs`, ground truth `intent-5`,
 10,327 queries): 98.2% at rank 1, 99.1% in the top 10.
@@ -105,8 +104,7 @@ page for words it doesn't contain. So authors mark index entries by hand
 
 **The user's criteria**, which govern every decision here:
 - A reader either finds what they want or doesn't. A small regression is
-  still a miss, and being better than the old index is not the bar: that
-  index was nearly useless.
+  still a miss, and being better than an earlier index is not the bar.
 - Judge by what a reader typing the query wants. For a bare name the order is
   type names and language elements first, then members, then enum constants
   and similar, then prose. The order is a priority, not a filter: lower
@@ -129,10 +127,10 @@ page for words it doesn't contain. So authors mark index entries by hand
   name-and-kind set leaves out `sub` and `member` rather than spelling a Sub
   as `method`).
 - Use Sonnet agents for mechanical and exploratory work.
-- Review every agent's work before committing it. Agents have produced false
+- Review every agent's work before committing it. Agents produce false
   explanations (see [X1t](#rejected-tier-specific-exact-fields-x1t)), a
-  lookbehind regex that would break the whole client on Safari before 16.4,
-  and a loading message that blanked on the second keystroke.
+  lookbehind regex that breaks the whole client on Safari before 16.4,
+  and a loading message that blanks on the second keystroke.
 
 **Tools.**
 - `node eval/search_quality.mjs --compare eval/search_baseline.json --worst 20`
@@ -325,10 +323,6 @@ The table compares the configurations tried against the first ground truth.
 | BM25 `b` 0.5 / 0.25 on V2 + split | | | | 90.4 / 90.3% | .757 / .751 | | | |
 | **recommended**: V2 + symbols (50) + smart dot split | 6,713 | 1,143 KB | **88.7%** | **97.9%** | **.929** | 98.1% | 97.9% | 80% |
 
-Against today, the recommended configuration made 6,590 queries better and 38
-worse, and left 1,384 unchanged. Its index build time in the browser was
-about 1.1 s against 1.0 s. Query latency was unchanged at about 0.03 ms.
-
 ### What the numbers showed
 
 - **h4 adds nothing.** From h3 to h4, no query changes rank.
@@ -420,7 +414,7 @@ In the client's `update()`, for each token the tokenizer produces:
 - **Asterisk guard.** Drop tokens made only of `*`. If nothing is left, show
   no results. A search for `*` or `**` otherwise throws inside lunr's query
   engine and search stops working. (Trimming query tokens, see "What
-  shipped", now subsumes this.)
+  shipped", subsumes this.)
 
 ### 4. Both copies of the client
 
@@ -453,12 +447,10 @@ drift apart silently.
 
 - **Stop words kept, so short common words crowd.** `VB` is a prefix of many
   `vbXxx` constant names in `names`; `Lock`, `Time$`, `Column`, `Index`
-  crowd the same way. Judged against the old index these looked like
-  regressions; that index was nearly useless, so its rank 1 was often not
-  what a reader wanted. Everything is judged by reader intent now; see
-  [Reader intent](#reader-intent-after-the-rollout).
-- **Operators (24 symbols)** were unsearchable under this design; solved by
-  exact names. See [Future work](#future-work).
+  crowd the same way. Everything is judged by reader intent, not by the
+  rank an earlier index gave; see [Reader intent](#reader-intent-after-the-rollout).
+- **Operators (24 symbols)** are unsearchable by their text under this design;
+  exact names find them. See [Future work](#future-work).
 - **Ground-truth bias.** Most queries are symbol names, so the numbers favour
   API lookup. The symbols field comes from the same data as the ground
   truth. The held-out check limits that concern, but does not remove it. The
@@ -672,8 +664,8 @@ fair test. Done with field boosts, as the `primary` field, it took tier-order
 violations to zero (see "What shipped, second round"). Don't rebuild X1t
 without a new idea.
 
-The agent that measured it blamed the CheckBox control's `names` field for
-"listing every member". **That's false.** Both entries' `names` are the
+**The CheckBox control's `names` field does not list every member**, as the
+X1t measurement blamed it for doing. Both entries' `names` are the
 single word `CheckBox`. The real difference: the CheckBox page's top entry
 (`/tB/Packages/VB/CheckBox/`) has **1 character** of content, while
 `DTPicker › CheckBox` has 467 characters that mention "checkbox" several
@@ -687,31 +679,29 @@ introduction.
 ### What shipped
 
 X1 + X2 + X3 as measured made 14 queries worse, so four corrections, each
-measured, were made before shipping:
+measured, are part of the shipped design:
 
-1. **X3's required terms.** The experiment required each raw whitespace word,
-   neither lowercased nor split like the index, so every capitalised or
-   hyphenated phrase silently fell back to the plain query. Lowercased
+1. **X3's required terms.** Requiring each raw whitespace word, neither
+   lowercased nor split like the index, makes every capitalised or
+   hyphenated phrase silently fall back to the plain query. Lowercased
    properly, `AddressOf operator` and `64-bit compilation` vanish, because
-   `operator*` can't match the stem `oper`. Shipped: each lunr token is
+   `operator*` can't match the stem `oper`. So each lunr token is
    required as its stem plus a trailing wildcard, with `usePipeline: false`.
 2. **X1's boost.** A clause alone on a field has its boost divided back out
    (see "How lunr behaves here"), which is why boosts 50–1000 measured the
-   same. Shipped: field boost 50 on `exact`; the other clauses name every
+   same. Field boost 50 on `exact`; the other clauses name every
    field but `exact` (otherwise `node*` matches `nodes_`); `exact` is queried
-   only for a one-word query (`error handling` had lost its answer to
-   `Error`); and `exactName()` drops a trailing `$`, so `Format`/`Format$`
-   isn't marked down as a longer field. (The `$` rule changed again: see the
-   second round.)
+   only for a one-word query (`error handling` loses its answer to
+   `Error` otherwise). How `exactName()` spells `$` and other non-word
+   characters is under the second round.
 3. **X2's boost is 5, not 20.** At 10 or 20 the `Folder` page outranks
    `Folder.Parent` and `Folder.Path`, which are documented on `FileSystemItem`.
 4. **Query tokens are trimmed as the index trims them** (`lunr.trimmer`). This
-   fixed 8 `Xxx$` qualified queries that X2 had made worse, found every bare
-   `Xxx$` function that was unfindable, and subsumes the asterisk guard,
+   keeps 8 `Xxx$` qualified queries that X2 would make worse, finds every bare
+   `Xxx$` function, and subsumes the asterisk guard,
    since an all-`*` token trims to nothing.
 
-Result: hit@1 89.0% → 93.5% on the intent ground truth, 0 queries worse and
-418 better. Both client copies were checked in a browser against
+Both client copies are checked in a browser against
 `eval/site_search.mjs`. `test/search.test.mjs`'s reader-intent guard covers
 the fields and the query.
 
@@ -729,8 +719,8 @@ The remaining failures sorted into four mechanisms, measured one at a time:
    `builder/search.mjs`), and the client indexes them as exact names at field
    boost 1000. Boost 200 left 9 names out of tier order; 500 left 2; 1000
    leaves none.
-2. **`#If`, `#Const`, `#Else` lost their `#`** to lunr's trimmer and matched
-   the `If` function. `exactName()` now spells every non-word character as
+2. **`#If`, `#Const`, `#Else` lose their `#`** to lunr's trimmer and match
+   the `If` function. `exactName()` spells every non-word character as
    `_` and its hex code (`#if` → `_23if_`), so they stay distinct. So do
    `Time$` against `Time` and `Error$` against the `Error` statement, and
    the 24 operators (`<>`, `&=`, `*`) become findable: the exact-name clause
@@ -880,25 +870,25 @@ client's clauses by pattern and the replica by behaviour; mutations (boost 50,
 plain words completing in `qualified`, no pairs, the REQUIRED clause scoring
 in or dropped off `qualified`) each fail it.
 
-The 7 stem collisions and the 2 entries with no `#shape` / `#timer` that were
-left are fixed in [Fixed: stem twins](#fixed-stem-twins) and
+The stem collisions and the entries with no `#shape` / `#timer` are handled in
+[Fixed: stem twins](#fixed-stem-twins) and
 [Fixed: a member heading taken for the page title](#fixed-a-member-heading-taken-for-the-page-title).
 
 ### Fixed: a member heading taken for the page title
 
-`extractSections` took *any* heading that read the same as the page's title,
-with no prose before the first heading, for the title: that entry got the
-page's URL and no prefix entry was made. On Shape and Timer the h1 is "Shape
-class" / "Timer class", so `### Shape` and `### Timer`, which document the
-Shape and Timer properties, became the page's entry, and no `#shape` /
-`#timer` entry existed (`Shape.Shape`, `Timer.Timer` found nothing). Now only
-the page's first heading can be the title.
+`extractSections` takes only the page's first heading for the title, when it
+reads the same as the page's title and has no prose before it: that entry gets
+the page's URL and no prefix entry is made. A later heading that reads the same
+is a member. On Shape and Timer the h1 is "Shape class" / "Timer class", so
+`### Shape` and `### Timer`, which document the Shape and Timer properties,
+keep their own entries (`#shape`, `#timer`), and `Shape.Shape` and
+`Timer.Timer` are found.
 
-It changed four pages' entries: Shape and Timer, and two prose pages whose h1
-differs from the title and whose second heading repeats it
-(`Features/Standard-Library/New-Functions`, `Challenges/1`). Those two now
-have an empty page entry beside the section, as 272 other pages already do
-(every page whose h1 differs from its title).
+The rule matters for four pages' entries: Shape and Timer, and two prose pages
+whose h1 differs from the title and whose second heading repeats it
+(`Features/Standard-Library/New-Functions`, `Challenges/1`). Those two have an
+empty page entry beside the section, as 272 other pages do (every page whose h1
+differs from its title).
 
 ### Fixed: stem twins
 
@@ -1264,7 +1254,7 @@ anchors outrank the Features pages for `inline assembly`.
   (`register COM dll`, `register dll`, `create dll`) and more variants:
   `inline initialization`, `field initialization`, `typedecl char[acter]`,
   `type char[acter]`. Capitals don't matter.
-- Left to the user, now decided: `user defined types` (and `user types`) →
+- Decided by the user: `user defined types` (and `user types`) →
   Type, then UDTs; `event handlers` → Handlers, then the Forms tutorial's
   handler step; `namespaces` → a new Glossary definition that links the
   relevant pages, then the Packages page; `twinpack` → Creating-TWINPACK, then
@@ -1395,9 +1385,9 @@ through exact names that spell non-word characters (`<>` → `_3c_3e_`). The
 causes, which still explain why operators need exact names:
 
 - **Content.** `stripHtml` leaves `<` and `>` as the entities `&lt;` and
-  `&gt;`, so the literal character never reaches the index. (Decoded per
-  token now, see "Fixed: entities in the index"; the trimming below still
-  applies.)
+  `&gt;`, so the literal character never reaches the index. (Entities are
+  decoded per token, see "Fixed: entities in the index"; the trimming below
+  still applies.)
 - **Trimming.** lunr's trimmer strips non-word characters from both ends of
   every token, in the index and in the query. An operator token trims to
   nothing.
