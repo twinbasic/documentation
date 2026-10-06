@@ -52,17 +52,17 @@
 //     statement`), less `sub` and `member`, which readers don't say (a Sub
 //     is a method to them). Any symbol of that name and kind counts.
 //     Operators, with no word character, are left out, as the bare-name
-//     set measures them (WIP.Search.md, "Fixed: kind words").
+//     set measures them (WIP.Search.md, "Ground truth sets").
 //
 // For all three, where a symbol's URL is a page, not a section of one, any
 // section of that page counts as well: `DefInt` is documented by the
 // Deftype page, and its section headed `DefBool, DefByte, DefInt, ...`
-// lands the reader on the same definition (WIP.Search.md, "Same-page
-// sections count").
+// lands the reader on the same definition (WIP.Search.md, "Ground truth
+// sets").
 //
 // Two more sets are derived from the build's search entries, and judge
 // multi-word queries, which the one-word symbol queries never type
-// (WIP.Search.md, "Probes: whole titles"):
+// (WIP.Search.md, "Ground truth sets"):
 //
 //   - Page titles: every page's own title of two or more words, typed as
 //     the reader sees it (`Return Syntax`, `Delegate Types`). Any entry of

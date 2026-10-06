@@ -678,7 +678,7 @@ describe("reader-intent guard: online client, offline client, eval replica", () 
       assert.match(src, /presence:\s*lunr\.Query\.presence\.REQUIRED/, `${label} doesn't require every word first`);
       assert.match(src, /usePipeline:\s*false/, `${label}'s required stems would be stemmed again`);
       // A plural kind word names a topic ("Delegate Types"), so it counts
-      // as a named word (WIP.Search.md, "Fixed: whole titles").
+      // as a named word (WIP.Search.md, "Query construction").
       assert.match(
         src,
         /KIND_WORDS\.(includes|indexOf)\(w\.toLowerCase\(\)\)/,
@@ -688,7 +688,7 @@ describe("reader-intent guard: online client, offline client, eval replica", () 
   });
 });
 
-// Qualified names (WIP.Search.md, "What shipped, fourth round"): only a
+// Qualified names (WIP.Search.md, "Qualified names and stem twins"): only a
 // qualified name reaches `qualified`, typed with a dot or as two adjacent
 // words, and there it outweighs a title naming its container.
 describe("qualified-name guard: online client, eval replica", () => {
@@ -800,7 +800,7 @@ describe("qualified-name guard: online client, eval replica", () => {
     assert.ok(urls("_HiddenModule Input").includes("/Input"));
   });
 
-  // Stem twins (WIP.Search.md, "Fixed: stem twins"): `Printer.Font` and
+  // Stem twins (WIP.Search.md, "Qualified names and stem twins"): `Printer.Font` and
   // `Printer.Fonts` stem alike, so `qualified` also holds each whole.
   test("all three fill `qualified` via qualifiedField(), and both queries match a whole name there", () => {
     for (const [label, src] of [
@@ -879,8 +879,7 @@ describe("qualified-name guard: online client, eval replica", () => {
   });
 });
 
-// Hand-marked index entries (WIP.Search.md, "What shipped, third round: the
-// index pilot"): the front matter's `index` / `index_also`, and the same on
+// Hand-marked index entries (WIP.Search.md, "Hand-marked index entries"): the front matter's `index` / `index_also`, and the same on
 // a heading, which render.mjs's searchIndexMarksPlugin lifts off it into
 // page.searchIndexMarks, keyed by the heading's id.
 describe("index marks: from the page to its entries", () => {
@@ -1185,8 +1184,8 @@ describe("index-term guard: online client, offline client, eval replica", () => 
 // lunr 2.3.9 keys token-set nodes for minimisation by TokenSet#toString(),
 // which runs each edge's label into its child's id, so two different nodes
 // can share a key and be merged: the index's token set then holds invented
-// words, and a wildcard query reaching one throws (WIP.Search.md, "Fixed:
-// lunr invented words"). All three copies install separated keys.
+// words, and a wildcard query reaching one throws (WIP.Search.md, "lunr
+// patches"). All three copies install separated keys.
 describe("token-set key guard: online client, offline client, eval replica", () => {
   const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
   const lunrPath = path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js");
@@ -1244,7 +1243,7 @@ describe("token-set key guard: online client, offline client, eval replica", () 
   });
 });
 
-// Whole titles (WIP.Search.md, "Fixed: whole titles"): a query of two or more
+// Whole titles (WIP.Search.md, "Whole titles"): a query of two or more
 // words that reads the same as a result's title, or its page title plus
 // title, scores three times as much, after lunr ranks.
 describe("whole-title guard: online client, eval replica", () => {
@@ -1336,7 +1335,7 @@ describe("whole-title guard: online client, eval replica", () => {
   });
 });
 
-// Entities (WIP.Search.md, "Fixed: entities in the index"): the search data
+// Entities (WIP.Search.md, "lunr patches"): the search data
 // keeps the page's HTML entities, which the results panel needs, so each
 // copy's tokenizer wrapper decodes them per token, after the split.
 describe("entity guard: online client, offline client, eval replica", () => {
@@ -1413,8 +1412,8 @@ describe("entity guard: online client, offline client, eval replica", () => {
 
 // lunr 2.3.9's Index#query gathers a REQUIRED clause's entries as a running
 // total of set unions, and each union copied both sets, so a short wildcard
-// word made a query quadratic (WIP.Search.md, "Fixed: slow multi-word
-// queries"). All three copies install a union that adds in place.
+// word made a query quadratic (WIP.Search.md, "lunr
+// patches"). All three copies install a union that adds in place.
 describe("set-union guard: online client, offline client, eval replica", () => {
   const read = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8");
   const lunrPath = path.join(REPO_ROOT, "builder/vendor/just-the-docs/assets/js/vendor/lunr.min.js");
@@ -1526,7 +1525,7 @@ describe("set-union guard: online client, offline client, eval replica", () => {
   });
 });
 
-// Kind words (WIP.Search.md, "Fixed: kind words"): a query naming one thing
+// Kind words (WIP.Search.md, "Kind words"): a query naming one thing
 // and its kind requires the kind word only while some entry found has that
 // name in its title or as its exact name; otherwise the all-words pass runs
 // again with the kind words optional.

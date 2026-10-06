@@ -19,16 +19,15 @@
 // per-chunk entries exist -- see `joinSymbolsToEntries` below and
 // WIP.Search.md's "Design" §2. They are two fields rather than one
 // `symbols` field because BM25 discounts a match inside a long field:
-// keeping bare names (client boost 100) separate from the longer
-// `Container.Name` forms (boost 50) measured better than one field at
-// any single boost.
+// keeping bare names separate from the longer `Container.Name` forms
+// measured better than one field at any single boost. The client's boosts
+// for them (and for the other fields) are in WIP.Search.md's "Index fields".
 //
 // Two more, `index` and `index_also`, are the hand-marked index entries:
 // terms an author names in a page's front matter or on a heading, for
 // jargon a reader looks up by a name the page's text may never use
 // (`conditional compilation` for the #If/#Const page). See
-// `attachIndexMarks` below and WIP.Search.md's "What shipped, third round:
-// the index pilot".
+// `attachIndexMarks` below and WIP.Search.md's "Hand-marked index entries".
 
 import path from "node:path";
 
