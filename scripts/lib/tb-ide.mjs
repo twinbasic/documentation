@@ -558,6 +558,11 @@ const BUILD_STATE_JS = `JSON.stringify({
   h: document.getElementById("hintCount")?.textContent ?? "",
   i: document.getElementById("infoCount")?.textContent ?? "",
   p: typeof projectFilePath !== "undefined" ? projectFilePath : null,
+  // Safe Mode: the IDE sets the build box to nocompile itself after four
+  // compiler restarts in a minute, and the compiler it then starts compiles
+  // nothing, so the status and the counts stand still as a settled compile does.
+  safe: typeof buildConfigSelector !== "undefined" && !!buildConfigSelector &&
+    buildConfigSelector.value === "nocompile",
   // The files waitForCompile waits for c.wire to see: every .twin file outside
   // References (1) and Packages (7), which the compiler reports none for.
   src: (() => {
@@ -711,9 +716,9 @@ const EARLY_QUIET_MS = 300;
  *   given: compared as typed, a relative path never matched, and the IDE was
  *   never reported open.
  * @param {number} o.timeout          milliseconds
- * @returns {Promise<{loaded: boolean, crash: object | null, drops: number, last: string | null,
- *                    blocked: boolean, early: boolean}>}
- *   `last` is the final sample, as the JSON string readBuildState returned;
+ * @returns {Promise<{loaded: boolean, crash: object | null, safe: boolean, drops: number,
+ *                    last: string | null, blocked: boolean, early: boolean}>}
+ *   `safe` is true when the IDE had fallen into Safe Mode; `last` is the final sample, as the JSON string readBuildState returned;
  *   `blocked` is attachIde's `pageBlocked`; `early` is true when `c.wire` saw
  *   the compile end and the sample agreed with it, and false when the sample
  *   stood still for five seconds instead
@@ -729,6 +734,7 @@ export async function waitForCompile(c, { project, timeout }) {
     seenUp = false,
     drops = 0,
     crash = null,
+    safe = false,
     agreed = null,
     early = false;
   // Samples come once a second, as they always have, and only those count a
@@ -761,6 +767,11 @@ export async function waitForCompile(c, { project, timeout }) {
       crash = await awaitCrashName(c, v.crash);
       break;
     }
+    if (v.safe) {
+      safe = true;
+      last = s;
+      break;
+    }
     const up = v.st === "tB Services: OPERATIONAL";
     if (up) seenUp = true;
     else if (seenUp && scheduled && ++drops >= 2) break;
@@ -791,7 +802,7 @@ export async function waitForCompile(c, { project, timeout }) {
     else if (now - stableSince >= 5000) break;
     last = s;
   }
-  return { loaded, crash, drops, last, blocked: !!c.pageBlocked, early };
+  return { loaded, crash, safe, drops, last, blocked: !!c.pageBlocked, early };
 }
 
 /**
@@ -807,7 +818,7 @@ export async function waitForCompile(c, { project, timeout }) {
  *   as the array `message` prints on its `last parsing:` line, the files the
  *   compiler died parsing.
  */
-export function compileOutcome({ loaded, crash, drops, last, blocked }, { name }) {
+export function compileOutcome({ loaded, crash, safe, drops, last, blocked }, { name }) {
   // A crash is reported by the file the compiler died parsing, because in a batch
   // of generated probes that name is the whole answer: it says which sample to
   // take out, and a caller bisecting the batch has somewhere to start.
@@ -820,6 +831,15 @@ export function compileOutcome({ loaded, crash, drops, last, blocked }, { name }
         (crash.files?.length ? `\nlast parsing: ${crash.files.join(", ")}` : "") +
         "\n(read the IDE's DEBUG CONSOLE with --keep for the exception detail)",
       crashFiles: crash.files ?? [],
+    };
+  }
+  if (safe) {
+    return {
+      ok: false,
+      code: 4,
+      message:
+        "the compiler crashed in a loop and the IDE fell into Safe Mode -- this project takes it down" +
+        "\n(read the IDE's DEBUG CONSOLE with --keep for the exception detail)",
     };
   }
   if (drops >= 2) {

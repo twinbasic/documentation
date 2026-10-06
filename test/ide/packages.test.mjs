@@ -25,7 +25,7 @@ import { cpSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { waitForCompile } from "../../scripts/lib/tb-ide.mjs";
+import { compileOutcome, waitForCompile } from "../../scripts/lib/tb-ide.mjs";
 import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
 import { click, clickAt, openFile, waitFor } from "../../scripts/lib/tb-operate.mjs";
 import { packTree } from "../../scripts/lib/tb-project.mjs";
@@ -305,8 +305,9 @@ scenario("Replacing an embedded package", (lane) => {
   // the package unticked, Main no longer compiles.
   async function settle({ errors = false } = {}) {
     const waited = await waitForCompile(c, { project: lane.project, timeout: 90 * 1000 });
-    assert.ok(waited.loaded && !waited.crash, `the compiler did not settle: ${JSON.stringify(waited)}`);
-    if (!errors) assert.match(waited.last, /"e":"0"/, `the compile has errors: ${waited.last}`);
+    const outcome = compileOutcome(waited, { name: lane.project });
+    assert.ok(outcome.ok, `the compiler did not settle: ${outcome.message}`);
+    if (!errors) assert.equal(outcome.counts[0], 0, `the compile has errors: ${outcome.rows.join("\n")}`);
   }
 
   // Start a run from the editor, as F5 does, and read the version the host
