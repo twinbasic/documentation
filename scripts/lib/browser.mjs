@@ -10,6 +10,7 @@
 // finally, so the folder is deleted on every exit path, including an
 // assertion that throws on purpose.
 
+import { existsSync } from "node:fs";
 import puppeteer from "puppeteer";
 
 // --no-sandbox: GitHub's ubuntu-24.04 runners carry the AppArmor restriction
@@ -20,7 +21,18 @@ import puppeteer from "puppeteer";
 // passes the same pair for the same reason.
 const LAUNCH_ARGS = ["--no-sandbox", "--disable-dev-shm-usage"];
 
-export function launchBrowser(opts = {}) {
+// puppeteer.launch creates the temporary profile folder before it looks for the
+// browser, so a launch refused for a missing browser leaves the folder behind.
+// The browser is looked for first, with puppeteer's own message.
+async function requireBrowser({ executablePath, channel }) {
+  if (executablePath || channel) return;
+  const found = await puppeteer.executablePath();
+  if (!existsSync(found))
+    throw new Error(`Tried to find the browser at the configured path (${found}), but no executable was found.`);
+}
+
+export async function launchBrowser(opts = {}) {
+  await requireBrowser(opts);
   return puppeteer.launch({ headless: true, args: LAUNCH_ARGS, ...opts });
 }
 
