@@ -829,7 +829,8 @@ harness about a second against opening a new IDE.
    button, a results list and the page in an iframe (P3), laid out by a flex wrapper
    inside the root, because showing the window resets the root's `display`. The toolbar's
    Help button shows the pane with the focus in the search box.
-   - **Search** runs on every `keyup`: the entries whose name starts with the text, then
+   - **Search** runs on every `input` and `keyup` (the box's clear button sends no key):
+     the entries whose name starts with the text, then
      those that contain it, at most 100; text with a dot is matched against
      `Container.Name`. Enter shows the first. A row shows the label and the entry's
      `kind`.
@@ -837,6 +838,14 @@ harness about a second against opening a new IDE.
      `raiseEvent("onPick", event, true, <entry number>)`, as in Sample 15, since
      `raiseEvent` works nowhere else (P12). Only the number goes into the handler, and the
      label and kind are HTML-escaped.
+   - **The list's height is set by the add-in**: the IDE's list view draws only the rows
+     in view, out of flow, under a host that must have a definite height, and gives that
+     host none of its own (`createScrollableContainer` in `main.js`). So `ShowResults` sets
+     it to the row count times `--helpRow`, and `pane.css` caps it at 35% of the pane. The
+     row height is whole pixels: the list view measures a row with `offsetHeight`, which
+     rounds, and rows of 22.75 px overflowed a list of seven by a pixel each, which showed
+     its scrollbar. The vertical scrollbar is left on the list view's default, shown only
+     when there is something to scroll.
    - **Open in browser** opens the page the add-in last gave the frame, through
      `OpenUrl`, so it honours the test switch. A link followed inside the frame is not
      seen: the live site is on another origin, whose location the IDE's page cannot read.

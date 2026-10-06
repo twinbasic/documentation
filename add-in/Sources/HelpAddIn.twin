@@ -141,6 +141,9 @@ Private Class HelpAddIn
                     Set SearchBox = .ChildDomElements.Add("helpSearch", "input")
                     SearchBox.Properties.type = "search"
                     SearchBox.Properties.placeholder = "Search the documentation"
+                    ' input also comes from the box's clear button, which
+                    ' sends no key.
+                    SearchBox.AddEventListener("input", AddressOf SearchChanged)
                     SearchBox.AddEventListener("keyup", AddressOf SearchKeyUp)
                     Set BrowserButton = .ChildDomElements.Add("helpBrowser", "button")
                     BrowserButton.Properties.innerText = "Open in browser"
@@ -148,7 +151,6 @@ Private Class HelpAddIn
                 End With
                 Set ResultsElement = .ChildDomElements.Add("helpResults", "listview")
                 Set Results = ResultsElement.Properties.listview
-                Results.setShowScrollbarV(True)
                 Results.setShowScrollbarH(False)
                 Results.AddEventListener("onPick", AddressOf ResultPicked)
                 ResultsElement.Properties.style.display = "none"
@@ -303,6 +305,8 @@ Private Class HelpAddIn
     End Sub
 
     ' Fills the list with the entries ids, or hides it when there is no search.
+    ' The list draws its rows out of flow, so it is given the height of its
+    ' rows, which pane.css caps.
     Private Sub ShowResults(ByVal ids As Collection)
         Set ResultIds = ids
         Results.clear()
@@ -313,20 +317,37 @@ Private Class HelpAddIn
                 CLng(i) & ")'><span class='label'>" & HtmlText(Index.Label(i)) & _
                 "</span><span class='kind'>" & HtmlText(Index.Kind(i)) & "</span></div>")
         Next
-        If ids.Count = 0 And Len(LastSearch) > 0 Then
+        Dim rows As Long = ids.Count
+        If rows = 0 And Len(LastSearch) > 0 Then
             Results.addItem("<div class='none'>No matches</div>")
+            rows = 1
         End If
-        ResultsElement.Properties.style.display = IIf(Len(LastSearch) > 0, "", "none")
+        ResultsElement.Properties.style.height = "calc(" & rows & " * var(--helpRow))"
+        ResultsElement.Properties.style.display = IIf(rows > 0, "", "none")
     End Sub
 
-    Private Sub SearchKeyUp(ByVal eventInfo As HtmlEventProperties)
-        On Error GoTo Failed
+    ' Searches again when the text has changed.
+    Private Sub SearchAgain()
         If Index Is Nothing Then Exit Sub
         Dim text As String = Trim$(SearchBox.Properties.value)
         If text <> LastSearch Then
             LastSearch = text
             ShowResults Index.Search(text, SEARCH_LIMIT)
         End If
+    End Sub
+
+    Private Sub SearchChanged(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        SearchAgain
+        Exit Sub
+    Failed:
+        Host.DebugConsole.PrintText TAG & "error " & Err.Number & ": " & Err.Description
+    End Sub
+
+    Private Sub SearchKeyUp(ByVal eventInfo As HtmlEventProperties)
+        On Error GoTo Failed
+        If Index Is Nothing Then Exit Sub
+        SearchAgain
         If eventInfo.key = "Enter" And ResultIds.Count > 0 Then ShowPage Index.Url(ResultIds(1))
         Exit Sub
     Failed:

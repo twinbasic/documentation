@@ -2,7 +2,13 @@
    IDE theme's own custom properties, which the IDE sets on its document and
    which a shadow root inherits, so a change of theme needs no code. */
 
+/* --helpRow is the height of one result row. The list view draws its rows
+   out of flow, so the add-in sets the list's height to its row count times
+   this (ShowResults), and max-height caps it. It is whole pixels because the
+   list view measures a row with offsetHeight, which rounds: rows of 22.75px
+   are 23 to it, and seven of them overflowed a list 159.25px tall. */
 #helpWrap {
+  --helpRow: 22px;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -48,14 +54,22 @@
 }
 
 #helpResults {
-  flex: 0 0 35%;
+  flex: 0 0 auto;
+  max-height: 35%;
   min-height: 0;
 }
 
-#helpResults .hit {
-  padding: 2px 8px;
-  cursor: pointer;
+#helpResults .hit,
+#helpResults .none {
+  box-sizing: border-box;
+  height: var(--helpRow);
+  line-height: var(--helpRow);
+  padding: 0 8px;
   white-space: nowrap;
+}
+
+#helpResults .hit {
+  cursor: pointer;
 }
 
 #helpResults .kind {
@@ -64,7 +78,6 @@
 }
 
 #helpResults .none {
-  padding: 2px 8px;
   opacity: 0.7;
 }
 

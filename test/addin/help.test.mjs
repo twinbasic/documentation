@@ -30,6 +30,8 @@ import { loadedAddins } from "../../scripts/lib/tb-ide-addins.mjs";
 import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
 import {
   click,
+  clickAt,
+  elementRect,
   listViewItems,
   notifications,
   openedUrls,
@@ -84,6 +86,23 @@ const themeGroup = (c) =>
 const focusedId = (c) => inPane(c, "return root.activeElement?.id ?? null;");
 const searchValue = (c) => inPane(c, `return root.querySelector("#helpSearch")?.value ?? null;`);
 const results = async (c) => (await listViewItems(c, { toolWindow: PANE, css: "#helpResults" })).map((i) => i.text);
+// The results list's height, one drawn row's, the whole pane's,
+// and whether the list's scrollbar shows; null while the list is hidden. The
+// list view keeps a hidden copy of a row to measure with, so the row is the
+// first one with a height.
+const resultsBox = (c) =>
+  inPane(
+    c,
+    `const l = root.querySelector("#helpResults");
+  if (!l || l.style.display === "none") return null;
+  const heights = [...l.querySelectorAll(".hit, .none")].map((e) => e.getBoundingClientRect().height);
+  return {
+    height: l.getBoundingClientRect().height,
+    row: heights.find((h) => h > 0) ?? null,
+    pane: root.querySelector("#helpWrap").getBoundingClientRect().height,
+    scrollbar: getComputedStyle(l.querySelector(".scrollBackV")).display !== "none",
+  };`,
+  );
 // What shows in place of the page for a name with none: null while the page shows.
 const summary = (c) =>
   inPane(
@@ -438,6 +457,41 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
       await waitFor(c, async (c) => (await results(c)).join() === "No matches"),
       JSON.stringify(await results(c)),
     );
+    const box = await resultsBox(c);
+    assert.ok(box?.row > 0 && Math.abs(box.height - box.row) < 1 && !box.scrollbar, JSON.stringify(box));
+  });
+
+  test("the results list is as tall as its rows, up to 35% of the pane", async () => {
+    await emptySearch(c);
+    await typeText(c, "msgbo");
+    const few = await waitFor(c, async (c) => {
+      const r = await results(c);
+      return r.length > 0 && r[0] === "Interaction.MsgBoxfunction" && r.length;
+    });
+    let box = await resultsBox(c);
+    assert.ok(
+      box.height < 0.3 * box.pane && Math.abs(box.height - few * box.row) < 1 && !box.scrollbar,
+      JSON.stringify({ few, box }),
+    );
+    // "a" finds the search's limit of 100, far more than 35% of the pane holds.
+    await emptySearch(c);
+    await typeText(c, "a");
+    box = await waitFor(c, async (c) => {
+      const b = await resultsBox(c);
+      return b && (await results(c)).length > 0 && b.scrollbar && b;
+    });
+    assert.ok(box && Math.abs(box.height - 0.35 * box.pane) < 1, JSON.stringify(box));
+  });
+
+  test("the search box's clear button hides the results", async () => {
+    await emptySearch(c);
+    await typeText(c, "zzqq");
+    assert.ok(await waitFor(c, async (c) => (await results(c)).join() === "No matches"));
+    // The clear button is drawn at the box's right end, inside its padding.
+    const r = await elementRect(c, { toolWindow: PANE, css: "#helpSearch" });
+    await clickAt(c, r.x + r.width - 14, r.y + r.height / 2);
+    assert.equal(await searchValue(c), "", "the click missed the clear button");
+    assert.ok(await waitFor(c, async (c) => (await resultsBox(c)) === null), JSON.stringify(await resultsBox(c)));
   });
 
   test("the toolbar's Help button puts the focus in the search box", async () => {
