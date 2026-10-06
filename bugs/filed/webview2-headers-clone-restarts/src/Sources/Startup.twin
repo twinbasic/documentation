@@ -1,0 +1,8 @@
+Module Startup
+
+    Public Sub Main()
+        Form1.Show vbModal
+        Debug.Print "Form1 closed"
+    End Sub
+
+End Module

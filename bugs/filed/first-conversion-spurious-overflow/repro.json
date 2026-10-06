@@ -1,0 +1,11 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^first  CLng\\(s\\): t=0 Err=6$",
+      "^second CLng\\(s\\): t=4 Err=0$"
+    ]
+  },
+  "issue": 2497
+}

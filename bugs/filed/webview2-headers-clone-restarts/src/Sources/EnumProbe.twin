@@ -1,0 +1,48 @@
+' IEnumVARIANT, declared here because the package's own declaration is private.
+[InterfaceId("00020404-0000-0000-C000-000000000046")]
+Interface IEnumVARIANTProbe Extends stdole.IUnknown
+    Type CArrayOfVariants
+        Elements(1) As Variant
+    End Type
+
+    Sub Next(ByVal celt As Long, ByRef rgVar As CArrayOfVariants, ByRef pCeltFetched As Long)
+    Sub Skip(ByVal celt As Long)
+    Sub Reset()
+    Function Clone() As stdole.IUnknown
+End Interface
+
+Module EnumProbe
+
+    Private Function NextName(ByVal e As IEnumVARIANTProbe) As String
+        Dim arr As IEnumVARIANTProbe.CArrayOfVariants
+        Dim fetched As Long
+        e.Next 1, arr, fetched
+        If fetched = 0 Then Return "(end)"
+        Dim hd As WebView2Header = arr.Elements(0)
+        Return hd.Name
+    End Function
+
+    Public Sub Run(ByVal Headers As WebView2RequestHeaders)
+        Dim h As WebView2Header
+        Dim names As String
+        For Each h In Headers
+            names &= " " & h.Name
+        Next
+        Debug.Print "For Each:" & names
+
+        Dim u As stdole.IUnknown = Headers._NewEnum()
+        Dim e As IEnumVARIANTProbe = u
+        Debug.Print "enumerator Next: " & NextName(e)
+        Dim c As IEnumVARIANTProbe = e.Clone()
+        Debug.Print "clone Next:      " & NextName(c)
+        Debug.Print "enumerator Next: " & NextName(e)
+
+        Set u = Headers._NewEnum()
+        Set e = u
+        e.Skip 2
+        Set c = e.Clone()
+        Debug.Print "after Skip 2, enumerator Next: " & NextName(e)
+        Debug.Print "after Skip 2, clone Next:      " & NextName(c)
+    End Sub
+
+End Module
