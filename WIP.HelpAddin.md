@@ -10,7 +10,7 @@ which `Add`, a name with no page shown by its declaration and `[Description]`, a
 help served from an archive in the DLL.
 
 - `addin-test.bat` operates Samples 10 and 15 end to end and leaves the registry as it found it.
-- All fifteen of Stage 2's questions are answered. Fourteen are held by nine probe lanes that
+- All seventeen of Stage 2's questions are answered. Sixteen are held by ten probe lanes that
   fail when a later IDE build behaves differently.
 - Every build publishes `tB/symbols.json`, 5,536 names at 4,086 URLs, under a drift guard that
   fails the build when one of its URLs goes.
@@ -25,7 +25,7 @@ one of three kinds:
 
 - stated plainly: read in the IDE's code or registry;
 - marked *(reported)*: from a static reading or a harvested finding, not re-checked;
-- marked with a probe number (**P1** to **P15**): only running the IDE can settle it.
+- marked with a probe number (**P1** to **P17**): only running the IDE can settle it.
   [Stage 2](#stage-2-probes-that-decide-the-design) lists them.
 
 ## Goals
@@ -613,7 +613,7 @@ registry, `IDESettings` included through hashes, is identical around the run.
 Most probes are a small add-in plus a scenario. P5, P11 and P13 need only CDP and the file
 system. Record every answer in this file with the build number it was measured on.
 
-All fifteen questions are answered.
+All seventeen questions are answered.
 
 **A probe whose answer something else rests on becomes a lane**: its add-in in
 `test/addin/probes/<name>/`, its scenario beside the others, listed in `lanes.mjs`, with each
@@ -637,6 +637,8 @@ run, and the failure says what to update. The lanes and what rests on each:
   package page.
 - [env.test.mjs](test/addin/env.test.mjs) (P10): the rule that an add-in under test opens
   nothing, which reads `TB_ADDIN_TEST`.
+- [widgets.test.mjs](test/addin/widgets.test.mjs) (P16, P17): increment 6's two routes to
+  hover help. It prints the P16 timings with the tests.
 
 A probe that settles a question once stays in scratch. So do the two P3 checks that need the
 network or a changed WebView2: the live site in the frame, and the colour scheme with
@@ -661,6 +663,8 @@ The table gives each answer in brief; the sections above have the detail.
 | P13 | Does the compiler's HTTP server serve any file placed under `ide\`? **Answered, BETA 983 and 995: yes**, and it is the page server, `twinBASIC_win32.exe --ide=<pid>`, not the compiler. A frame with a relative `src` shows the file on the IDE page's own origin. A query string makes a 404, and `.html` has no `Content-Type`. | an offline route --- it exists ([Offline](#ways-to-show-a-page)) |
 | P14 | What do `tbCreateCompilerAddin_v2` and `_v3` expect? **Answered, BETA 983 and 995: what `tbCreateCompilerAddin` does.** The names are version stamps: the linker exports a function named `tbCreateCompilerAddin` as `tbCreateCompilerAddin_v3` alone, and an IDE that knows none of a DLL's names refuses it as `compiled for a newer version of the twinBASIC IDE`, as a patched `_v4` was. | nothing in the design --- the add-in declares `tbCreateCompilerAddin` as the package says; the tbIDE page has a NOTE |
 | P15 | Does the compiler say anything about a name's `[Description]`, or a COM type library's help string? **Answered, BETA 995: hover gives it**, after the line naming where the name is declared, for a procedure, a member, a constant, a module variable, an enumeration, a `Type`, a class and a module, and a type library's member (`Scripting.IDictionary.Add`: "Add a new key and item to the dictionary."). Classes and modules, the project's and a type library's, are `in library <name>`. A procedure with none gets the IDE's tip, `*no further info available. Tip: use [Description("")] ...*`. On a procedure's name where it is declared, hover gives a block of code-generation details (`TB-DEBUG CODEGEN SIZE: [NOT-READY]`) instead. Signature help gives the same text. A member of an enumeration has none: a `[Description(...)]` line inside an `Enum` is not an attribute but a member of its own, named by a bracketed identifier, as VB6 allows (`Debug.Print Shade.[Description("The light one.")]` prints its value), so hover lists it as a member of the enumeration (twinbasic/twinbasic#2465, closed as not a bug). | Stage 4, increment 4: a name with no page shows its declaration and description from the hover; no parser of the project's source is needed |
+| P16 | What does hover help through the public API cost, and how long does a widget live? **Answered, BETA 997:** `GetSelectionInfo` takes 0.5 ms a call, reading `Text` of a 152-character file 0.3 ms, `AddMonacoWidget` 2.8 ms and `Remove` 0.6 ms; a 100 ms `AddinTimer` ticks every 110 ms. A widget with a column is drawn above its line (below when there is no room), stays when the cursor moves, and is removed by the IDE when another file is shown; `Remove` on it after that raises no error. An add-in has no cursor or mouse event (only `OnProjectLoaded`, `OnChangedActiveEditor`, `OnChangedTheme`, a tool window's `OnClose` and a button's `OnClick`), so it can only poll the cursor, and cannot see the mouse | Stage 4, increment 6: polling every 250 ms costs nothing worth counting |
+| P17 | Can the page's Monaco take a second hover provider for `twinbasic`, as the add-in would register it through the page? **Answered, BETA 997: yes.** Its text is shown in the IDE's own hover, above the compiler's, from a synchronous answer and from a promise answered 500 ms later, and goes once the provider is disposed. Registered for `"*"`, which matches less closely than the IDE's `"twinbasic"`, its text is shown below the compiler's. A link in it is drawn as `<a data-href="<url>" href="">`, and a click listener on the window in the capture phase receives the click, and with `preventDefault` and `stopPropagation` nothing is opened. The IDE's hover shows after 1,000 ms (`hover:{delay:1e3}`) and is off when the user turns off *showExtraInformationWhenHovering* | Stage 4, increment 6: the mouse route, the owner's second exception to page internals |
 
 ### Stage 3: the symbol index, generated by the docs build
 
@@ -994,9 +998,24 @@ harness about a second against opening a new IDE.
      (`PerformanceNavigationTiming.responseStatus`), so a 404 fails a case either way. An
      offline-only case asks the server from Node: a page's gzip body and a stored image
      byte for byte, a folder's 301, a 404 and `HEAD`.
-6. **Later:** hover help through `CodeEditor.AddMonacoWidget` after a pause (the cost of
-   adding and removing widgets is not measured); offering only the packages the project
-   references; how a user gets an add-in with the archive.
+6. **Hover help**, the owner's choices (2026-10-06): both routes, behind one *Hover help*
+   checkbox in the pane, off by default and kept with `SaveSetting`. Each shows a link per
+   page the name has, labelled with the page's name, kind and package, as in *Help: MsgBox
+   function (VBA.Interaction)*; a click opens the pane at that page, as F1 does. A name with
+   no page shows nothing, since the IDE's hover already shows its declaration and
+   description.
+   - **At the cursor**, through the public API (P16): while the box is ticked, an
+     `AddinTimer` polls `GetSelectionInfo` every 250 ms. When the cursor has stayed on a
+     name for a second with nothing selected, the name is looked up as F1 looks it up, and a
+     widget with the links is added at the name. It is removed when the cursor moves; the
+     IDE removes it when another file is shown.
+   - **Under the mouse**, through the page (P17): the add-in registers a hover provider for
+     `"*"`, so its links come after the compiler's text, through the pane as `hover.js` is
+     sent, disposing the one an earlier instance of the add-in left. The provider asks the
+     add-in, which answers with the links; a click on one is taken in the capture phase and
+     passed to the add-in.
+7. **Later:** offering only the packages the project references; how a user gets an add-in
+   with the archive.
 
 **Lookup:**
 
@@ -1068,13 +1087,14 @@ The add-in's code skeletons are written in Stage 4 against the compiler, with te
 
 Recommended, and not yet confirmed:
 
-- **Page internals are for probes only, with one exception the owner made**
-  (2026-10-04): increment 3 asks the compiler's hover through the page's socket, until the
-  API has a call for it. Otherwise the shipped add-in uses the public API and
+- **Page internals are for probes only, with two exceptions the owner made**: increment 3
+  asks the compiler's hover through the page's socket, until the API has a call for it
+  (2026-10-04), and increment 6's mouse route registers a Monaco hover provider through the
+  page (2026-10-06, P17). Otherwise the shipped add-in uses the public API and
   `ShellExecuteW`, and whatever the API lacks is requested upstream. P4 showed the route
   exists: any inline handler can reach the page's globals, `openEditors`, the socket to the
-  compiler and `hostAppObject` among them. `raiseEvent` in a list view's items is the
-  other exception, since the IDE's own samples use it that way and it is the only way a
+  compiler and `hostAppObject` among them. `raiseEvent` in a list view's items is
+  another exception, since the IDE's own samples use it that way and it is the only way a
   list view reports a click.
 - **Isolation starts with restoring the registry** (Stage 1, item 3), and a private
   `APPDATA` for every lane IDE (P6). A separate Windows account for test runs comes only if

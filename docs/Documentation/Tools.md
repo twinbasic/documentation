@@ -1261,12 +1261,14 @@ build target loads, what a compiler restart does to a loaded add-in, and which e
 names the IDE accepts. They build add-ins for win64 as well as win32, restart the compiler,
 and patch a built DLL's export name. One more checks that the environment variable the
 runner sets, which keeps an add-in under test from opening a browser, reaches the add-in,
-also after a compiler restart. The last two lanes test the help add-in in `add-in/`, which
+also after a compiler restart. Another times what the help add-in's hover help costs, a
+widget in the code editor and polling the cursor, and checks that a hover provider added
+through the page shows in the IDE's own hover. The last two lanes test the help add-in in `add-in/`, which
 opens the page for the name under the cursor, with the copy of the symbol index committed in
 `add-in/Resources/SYMBOLS/`: `help` with the pages from the built site, and `help-offline`
 with the pages from the add-in's own server, built with an archive of the built offline
 tree that the lane writes with the same [help archive](#the-help-archive) writer the build
-uses. The thirteen lanes take about two minutes together.
+uses. The fourteen lanes take about two minutes together.
 
 | Flag | Effect |
 |---|---|
