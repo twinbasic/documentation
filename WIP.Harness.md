@@ -603,8 +603,9 @@ Rules it follows:
   form loaded returns too: the IDE then prints `[DEBUGGER] Waiting for remaining forms to
   close...` after the sentinel, which `sentinelIndex` allows and `tbrun` prints (BETA 983
   and 995). `check_twin_parsers` has fixtures for both.
-- **`tbrun --exe` exits 6 when the exe exited with a code other than 0**, or was still
-  running at `--timeout` and was ended. A run that would exit 5 exits 5 first, since the
+- **`tbrun --exe` exits 6 when the exe exited with a code other than 0**, when the event
+  log records that it faulted, when it opened a box, or when it was still running at
+  `--timeout` and was ended. A run that would exit 5 exits 5 first, since the
   IDE's run is the one `--exe` follows.
 
 A reader of the console that is not `tbrun` should **compare the whole console before and
@@ -666,6 +667,16 @@ launcher creates it with no inherited handles. So `TbRun.Out` writes UTF-8 to th
 the exit code from `ExitProcess 7` comes back as 7, a hung exe is ended at `--timeout`
 with nothing left running, and **the exe never evaluates `Debug.Assert`, with or without
 LLVM**, as VB6 drops `Debug` statements from a compiled program.
+
+**An unhandled error in the exe opens a box and waits for it**, so `--exe` passes
+`dialogs: "close"`: the launcher records each box and presses OK. Without that the exe
+sat until `--timeout`. The box is the only sign of the error. In BETA 997 a plain exe
+shows *shutdown*, `Run-time error '5' <description>`, and exits with code 0 once the box
+is closed; an LLVM-compiled one shows *_TB_ERROR_HANDLER*, `unhandled error in
+Probe.Main`, with no number or description, and then dies of an access violation at
+address 0 (`0xC0000005`). `tbrun` also reads the Application log for a fault the exe
+ended on (`lib/win-fault.mjs`), since an exit code need not say it; the record is written
+because the launcher, not Node, starts the exe.
 
 **`TbRun.Out` knows it is in the IDE because the wrapper says so.** The wrapper sets
 `TbRun.tbrun_InIDE` before it calls the probe; the exe runs `Sub Main`, never the wrapper.

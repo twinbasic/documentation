@@ -147,6 +147,7 @@ import {
   REPRO_OUT,
   REPRO_PROJECT,
   findVb6,
+  oneLine,
   reproFiles,
   reproProblem,
   reproZipFiles,
@@ -273,7 +274,8 @@ Exit codes:
   6  run, vb6: the probe printed nothing (vb6: no out.txt, or an empty one)
   7  run: the probe ended before it returned
   8  run --exe, vb6: the exe exited with a code other than 0, or was still running
-     after --timeout; vb6: or the event log records that the exe faulted
+     after --timeout, or the event log records that the exe faulted, or it opened
+     a box; vb6: or the VB runtime logged an error for it
   9  run, vb6: a picture that repro.json's "images" names was not written, or could
      not be read`;
 
@@ -1185,6 +1187,14 @@ async function buildAndRunVb6(slug, exe, names, imagesDir) {
       `vb6: ${REPRO_PROJECT}.exe ended with exception 0x${code} in ${module} at offset 0x${offset} ` +
         `(the Application event log's record; its exit code was ${r.status})`,
     );
+    return 8;
+  }
+  // An unhandled error opens a box in an exe built without Unattended Execution, which the
+  // launcher closes, and is logged by the VB runtime in one built with it; both exit 0.
+  if (r.dialogs.length || r.logged.length) {
+    for (const d of r.dialogs)
+      console.error(`vb6: ${REPRO_PROJECT}.exe opened a box, closed: ${oneLine(`${d.title}: ${d.text}`)}`);
+    for (const m of r.logged) console.error(`vb6: the VB runtime logged for ${REPRO_PROJECT}.exe: ${oneLine(m)}`);
     return 8;
   }
   if (!r.lines.length) {

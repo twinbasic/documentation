@@ -24,7 +24,9 @@
 //                         compiler.buildOptions); an option string with +llvm
 //                         is refused on a Community or Personal licence
 //       --exe             run the built exe as well, on a private desktop, and
-//                         capture what it writes with TbRun.Out and its exit code
+//                         capture what it writes with TbRun.Out, its exit code,
+//                         the fault the event log records for it, and the boxes
+//                         it opens, each closed with OK
 //       --allow-name-clash  run a probe whose module holds a procedure named
 //                         like the module; twinBASIC does not run its
 //                         [RunAfterBuild] Sub, so tbrun refuses it otherwise
@@ -40,8 +42,9 @@
 // timeout, or the probe ran and printed none after its last Debug.Cls -- 4 the
 // compiler crashed, or restarted twice, while compiling the project -- 5 the
 // probe ended before it returned, its output printed all the same -- 6 with
-// --exe, the exe exited with a code other than 0, or was still running after
-// --timeout; its output and exit code printed all the same.
+// --exe, the exe exited with a code other than 0, the event log records that it
+// faulted, it opened a box, or it was still running after --timeout; its
+// output, exit code, fault and boxes printed all the same.
 //
 // ---------------------------------------------------------------- why
 //
@@ -158,6 +161,7 @@ import { sentinelIndex, wrapProbe } from "./lib/tb-probe.mjs";
 import { laneProjectId, stageProject } from "./lib/tb-project.mjs";
 import { finishTidy, startTidy } from "./lib/tb-registry.mjs";
 import { captureRun, checkCapture, strip } from "./lib/tb-run.mjs";
+import { faultText, recordedFault } from "./lib/win-fault.mjs";
 
 exitOnCrash();
 
@@ -186,7 +190,9 @@ writes to the DEBUG CONSOLE.
                       the project's compiler options, for the run and the exe;
                       +llvm is refused on a Community or Personal licence
   --exe               also run the built exe on a private desktop, and print
-                      what it writes with TbRun.Out and its exit code
+                      what it writes with TbRun.Out, its exit code, the fault
+                      the event log records for it, and the boxes it opens,
+                      each closed with OK
   --allow-name-clash  run a probe whose module holds a procedure named like the
                       module, which twinBASIC does not run (it is refused
                       without this option)
@@ -206,8 +212,10 @@ Exit codes:
   4  the compiler crashed, or restarted twice, while compiling the project
   5  the probe ended before it returned (End, or an error that ended the run); what
      it printed is printed all the same
-  6  --exe: the exe exited with a code other than 0, or was still running after
-     --timeout and was ended; its output and exit code are printed all the same`;
+  6  --exe: the exe exited with a code other than 0, the event log records that it
+     faulted, it opened a box (closed by tbrun, as an unhandled error opens one), or it
+     was still running after --timeout and was ended; its output, exit code, fault and
+     boxes are printed all the same`;
 
 const { values, positionals } = withUsageError(
   () =>
@@ -588,7 +596,11 @@ if (values.json) {
 } else {
   for (const l of shown) console.log(l);
   if (exeRun) {
-    console.log(`--- exe: ${exeRun.timedOut ? "still running after --timeout, ended" : `exit ${exeRun.exitCode}`}`);
+    console.log(
+      `--- exe: ${exeRun.timedOut ? "still running after --timeout, ended" : `exit ${exitText(exeRun.exitCode)}`}`,
+    );
+    if (exeRun.fault) console.log(`--- exe: ${faultText(exeRun.fault)}`);
+    for (const d of exeRun.dialogs) console.log(`--- exe: a box, closed: ${dialogText(d)}`);
     for (const l of exeRun.lines) console.log(l);
   }
   // Only under --keep, where the pid is still alive and therefore actionable.
@@ -603,7 +615,9 @@ if (returned === false) {
   );
 }
 if (exeRun?.timedOut) die(6, `tbrun: the exe was still running after --timeout, and was ended.`);
-if (exeRun && exeRun.exitCode !== 0) die(6, `tbrun: the exe exited with code ${exeRun.exitCode}.`);
+if (exeRun && exeRun.exitCode !== 0) die(6, `tbrun: the exe exited with code ${exitText(exeRun.exitCode)}.`);
+if (exeRun?.fault) die(6, `tbrun: the exe exited with code 0, and the event log records that it faulted.`);
+if (exeRun?.dialogs.length) die(6, `tbrun: the exe opened a box, which tbrun closed: an unhandled error opens one.`);
 // Explicitly: under --keep the launcher, and the pipes to it, live as long as the
 // IDE, and would keep this process waiting for it.
 process.exit(0);
@@ -615,6 +629,14 @@ process.exit(0);
 // anyone uses, and nothing it starts outlives it. It inherits no handles, and
 // Debug.Print writes nothing in an exe, so what it printed is what TbRun.Out
 // appended to the file TBRUN_OUT names.
+//
+// An unhandled error opens a box and waits for it, so the launcher closes every
+// box the exe opens and records it; without that the exe sat until --timeout.
+// The box is the only sign of the error: in BETA 997 a plain exe exits with
+// code 0 once it is closed ("shutdown", "Run-time error '5' ..."), and an
+// LLVM-compiled one ("_TB_ERROR_HANDLER", "unhandled error in Probe.Main")
+// then dies of an access violation. The event log's record of a fault is read
+// for the same reason: an exit code need not say it (lib/win-fault.mjs).
 async function runExe() {
   const file = builtFile();
   if (!file || !/\.exe$/i.test(file)) {
@@ -622,12 +644,14 @@ async function runExe() {
   }
   const outFile = path.join(work, "exe-out.txt");
   rmSync(outFile, { force: true });
+  const since = Date.now();
   let run;
   try {
     run = await launchOnDesktop({
       exe: file,
       desktop: `tbrun-exe-${port}`,
       env: { ...process.env, TBRUN_OUT: outFile },
+      dialogs: "close",
     });
   } catch (e) {
     die(2, `tbrun: could not start the exe on a private desktop: ${e.message}`);
@@ -644,9 +668,22 @@ async function runExe() {
     killTree(run.pid);
     run.launcher.kill();
   }
-  const exitCode = await run.exited;
+  const { code: exitCode, dialogs } = await run.finished;
   const text = existsSync(outFile) ? readFileSync(outFile, "utf8") : "";
-  return { file, exitCode: timedOut ? null : exitCode, timedOut, lines: strip(text) };
+  const fault = timedOut ? null : recordedFault(file, since);
+  return { file, exitCode: timedOut ? null : exitCode, timedOut, dialogs, fault, lines: strip(text) };
+}
+
+/** An exit code, with the hex of a code that is an NTSTATUS, such as 0xC0000005 for an access violation. */
+function exitText(code) {
+  return code !== null && (code < 0 || code > 0xffff)
+    ? `${code} (0x${(code >>> 0).toString(16).toUpperCase().padStart(8, "0")})`
+    : String(code);
+}
+
+/** A box the exe opened, on one line: its title and its text. */
+function dialogText({ title, text }) {
+  return `${title}: ${text.replace(/\s*\r?\n\s*/g, " ")}`;
 }
 
 // (6) End OUR IDE by pid, never by image name. The tree kill takes the probe exe
