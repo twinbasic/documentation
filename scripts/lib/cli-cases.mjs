@@ -812,6 +812,21 @@ bad("scripts/check_a11y_fingerprint.mjs", ["--baseline", "nope"], /^--baseline e
 bad("scripts/check_a11y_fingerprint.mjs", ["--candidate", "nope"], /^--candidate expects production, .+, got: nope\n$/);
 bad("scripts/check_a11y_fingerprint.mjs", ["--patches", "nope"], /^--patches expects .+, got: nope\n$/);
 bad("scripts/check_a11y_fingerprint.mjs", ["--patches=plain-color-fields,nope"], /^--patches expects .+, got: nope\n$/);
+bad(
+  "scripts/check_a11y_fingerprint.mjs",
+  ["--root-dir", ".", "--pages", "404.html"],
+  '--pages expects each page to start with "/", got: 404.html\n',
+);
+bad(
+  "scripts/check_a11y_fingerprint.mjs",
+  ["--root-dir", ".", "--pages", " , "],
+  "--pages expects a comma-separated list of pages, got:  , \n",
+);
+bad(
+  "scripts/check_a11y_fingerprint.mjs",
+  ["--root-dir", ".", "--pages", "/nope.html"],
+  /^--pages expects pages that exist under .+, got: \/nope\.html\n$/,
+);
 bad("scripts/check_axe_patch_equiv.mjs", ["--patch", "nope"], /^--patch expects .+, got: nope\n$/);
 bad("scripts/check_links_diff.mjs", ["--max-lines", "abc"], NOT_WHOLE("--max-lines", "abc") + "\n");
 bad("scripts/check_links_diff.mjs", ["--max-lines=-1"], NOT_WHOLE("--max-lines", -1) + "\n");

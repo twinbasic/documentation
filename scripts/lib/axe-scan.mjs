@@ -211,12 +211,19 @@ export const STATE_AUDITS = [
   },
 ];
 
-for (const { filePath, state } of STATE_AUDITS) {
-  if (!SAMPLE_PAGES.includes(filePath)) {
-    throw new Error(`STATE_AUDITS: ${filePath} is not in SAMPLE_PAGES, so --pages narrowing would drop it silently`);
-  }
-  if (!Object.hasOwn(PAGE_STATES, state)) {
-    throw new Error(`STATE_AUDITS: unknown state "${state}"`);
+/**
+ * Throws when a STATE_AUDITS entry names a page outside SAMPLE_PAGES or a
+ * state PAGE_STATES does not have. A function rather than a loop at module
+ * level, so that the tool importing this module decides where the throw ends.
+ */
+export function assertStateAudits() {
+  for (const { filePath, state } of STATE_AUDITS) {
+    if (!SAMPLE_PAGES.includes(filePath)) {
+      throw new Error(`STATE_AUDITS: ${filePath} is not in SAMPLE_PAGES, so --pages narrowing would drop it silently`);
+    }
+    if (!Object.hasOwn(PAGE_STATES, state)) {
+      throw new Error(`STATE_AUDITS: unknown state "${state}"`);
+    }
   }
 }
 
@@ -686,6 +693,7 @@ export function buildMatrix({
   viewports = Object.keys(VIEWPORTS),
   stateAudits = STATE_AUDITS,
 } = {}) {
+  assertStateAudits();
   // The backstop behind pick(), for a caller that builds a matrix without it.
   for (const theme of themes) {
     if (!THEMES.includes(theme)) {

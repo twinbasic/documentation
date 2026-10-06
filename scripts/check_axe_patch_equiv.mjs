@@ -29,7 +29,10 @@
 
 import { DEFAULT_ROOT_DIR, VIEWPORTS, gotoPage, newAuditPage, SOURCE_PATCHES, readAxeSource } from "./lib/axe-scan.mjs";
 import { withBrowser } from "./lib/browser.mjs";
-import { choiceOption, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+import { choiceOption, exitOnCrash, parseCli, printHelpAndExit, withUsageError } from "../lib/cli.mjs";
+
+// A crash exits 2, where 1 is a value that differs.
+exitOnCrash();
 
 const cli = withUsageError(() =>
   parseCli(process.argv.slice(2), {
