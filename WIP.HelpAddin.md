@@ -637,8 +637,8 @@ run, and the failure says what to update. The lanes and what rests on each:
   package page.
 - [env.test.mjs](test/addin/env.test.mjs) (P10): the rule that an add-in under test opens
   nothing, which reads `TB_ADDIN_TEST`.
-- [widgets.test.mjs](test/addin/widgets.test.mjs) (P16, P17): increment 6's two routes to
-  hover help. It prints the P16 timings with the tests.
+- [widgets.test.mjs](test/addin/widgets.test.mjs) (P16, P17): the two routes to hover help
+  increment 6 weighed; the mouse route is the one built. It prints the P16 timings with the tests.
 
 A probe that settles a question once stays in scratch. So do the two P3 checks that need the
 network or a changed WebView2: the live site in the frame, and the colour scheme with
@@ -999,22 +999,20 @@ harness about a second against opening a new IDE.
      offline-only case asks the server from Node: a page's gzip body and a stored image
      byte for byte, a folder's 301, a 404 and `HEAD`.
 6. **Hover help. Built**, tested by the `help` and `help-offline` lanes on BETA 997, with
-   the owner's choices (2026-10-06): both routes, behind one *Hover help* checkbox in the
-   pane's bar, off by default and kept with `SaveSetting` (`Hover`, `On`). Each shows a link
-   per page the name has, at most five, labelled as the pane's results name a page, as in
-   *Help: Interaction.MsgBox function*; a click shows that page in the pane, as F1 does. A
-   name with no page shows nothing, since the IDE's hover already shows its declaration and
-   description. `SymbolIndex.Pages` is the lookup F1 and both routes share. `HoverHelp`
-   holds both routes and raises `Pick` with the page's path.
-   - **At the cursor**, through the public API (P16): while the box is ticked, an
-     `AddinTimer` polls `GetSelectionInfo` every 250 ms. When the cursor has stayed on a
-     name for four ticks with nothing selected, the compiler is asked about it through a
-     sink of its own (`helpAskCursor`), so that it never replaces an F1 question, and a
-     widget with the links is added at the name's first character (`hoverhelp.css`). A link
-     is `raiseEvent("tbDocsPick", ...)`, which a widget's root receives. The widget is
-     removed when the cursor moves or the file changes; the IDE also removes it when another
-     file is shown.
-   - **Under the mouse**, through the page (P17): `hoverhelp.js`, sent through a second sink
+   the owner's choices (2026-10-06): links in the IDE's hover under the mouse, behind one
+   *Hover help* checkbox in the pane's bar, off by default and kept with `SaveSetting`
+   (`Hover`, `On`). It shows a link per page the name has, at most five, labelled with the
+   name, its kind and where it is, as in *Help: MsgBox function (VBA.Interaction)* (the
+   owner's wording, 2026-10-07; `SymbolIndex.Place`); a click shows that page in the pane,
+   as F1 does. A name with no page shows nothing, since the IDE's hover already shows its
+   declaration and description. `SymbolIndex.Pages` is the lookup F1 and hover help share.
+   `HoverHelp` raises `Pick` with the page's path.
+   - **At the cursor there is nothing** (owner, 2026-10-07). A widget above the line, added
+     through the public API once the cursor had rested on a name (P16), was built and then
+     removed: it covered the line above whenever typing paused on a name, did not look like
+     the IDE's own hover, and gave nothing the mouse hover and F1 do not. P16 says how to
+     build it again, should the page's provider ever stop working.
+   - **Under the mouse**, through the page (P17): `hoverhelp.js`, sent through a sink
      (`helpAskMouse`) every time the pane is built, disposes the provider and click listener
      an earlier instance of the add-in left in `window.tbDocsHoverHelp`, and registers new
      ones while the box is ticked. The provider is for `"twinbasic"`, so the links are the

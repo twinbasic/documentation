@@ -6,7 +6,7 @@
 ' Collection.Add when c is a Collection; a selection is looked up as it is.
 ' The pages come from the add-in's own server when it was built with the help
 ' archive (HelpServer), and from the live site otherwise. The pane's Hover
-' help box turns on links to the pages at the cursor and under the mouse
+' help box turns on links to the pages in the IDE's hover under the mouse
 ' (HoverHelp).
 ' Every line it prints to the DEBUG CONSOLE starts "[tbDocsHelp] ", except
 ' "open <url>" (see OpenUrl).
@@ -177,11 +177,9 @@ Private Class HelpAddIn
                 HoverSink.Properties.style.display = "none"
                 HoverSink.AddEventListener(HOVER_EVENT, AddressOf HoverAnswered)
                 If Not Hovering Is Nothing Then
-                    Dim cursorSink As HtmlElement = .ChildDomElements.Add("helpAskCursor", "div")
                     Dim mouseSink As HtmlElement = .ChildDomElements.Add("helpAskMouse", "div")
-                    cursorSink.Properties.style.display = "none"
                     mouseSink.Properties.style.display = "none"
-                    Hovering.Attach cursorSink, mouseSink
+                    Hovering.Attach mouseSink
                     Hovering.Enabled = hoverOn
                 End If
             End With

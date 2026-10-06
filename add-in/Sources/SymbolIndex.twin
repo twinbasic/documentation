@@ -39,6 +39,18 @@ Private Class SymbolIndex
         Return Written(i)
     End Property
 
+    ' The name as the index writes it.
+    Public Property Get Symbol(ByVal i As Long) As String
+        Return Written(i)
+    End Property
+
+    ' "Package.Container", "Package" or "Container", "" for the language itself.
+    Public Property Get Place(ByVal i As Long) As String
+        If Len(Containers(i)) = 0 Then Return Packages(i)
+        If Len(Packages(i)) = 0 Then Return Containers(i)
+        Return Packages(i) & "." & Containers(i)
+    End Property
+
     ' "method", "statement", ...: the kinds the Permanent Links page lists.
     Public Property Get Kind(ByVal i As Long) As String
         Return Kinds(i)
