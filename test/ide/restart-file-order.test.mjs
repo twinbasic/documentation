@@ -4,7 +4,8 @@
 // its own, so the layout of a build is the order of those constants' four bytes in the exe's .text
 // section: X1 Y1 F1 S1 when the project's files come in the order ClsX, ClsY, and Y1 X1 F1 S1 when they
 // come in the other. Only the classes that the referenced form keeps move; the form's F1 and Startup's S1
-// stay in the order that Main calls them.
+// stay in the order that Main calls them. Main also searches its own .text section for X1 and Y1 and
+// shows which comes first in a box; each build's exe is run, and what it says must agree with the file.
 //
 // The IDE reverses the order of the project's files each time the compiler restarts and each time the
 // build target changes, and Save writes the reversed order to the file. So the same unchanged project
@@ -33,7 +34,7 @@ import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { readProject } from "../../scripts/impexp.mjs";
-import { buildProject } from "../../scripts/lib/tb-ide.mjs";
+import { buildProject, killTree, launchOnDesktop } from "../../scripts/lib/tb-ide.mjs";
 import { waitFor } from "../../scripts/lib/tb-operate.mjs";
 import { scenario } from "../addin/scenario.mjs";
 
@@ -85,6 +86,37 @@ function layout(file) {
     .join(" ");
 }
 
+// What the exe says of its own layout. Its Main searches its .text section, as mapped in memory, for
+// the constants of X1 and Y1 and shows which comes first in a box, so that a reader of the report
+// needs no tool to see the order. The exe runs on a private desktop, and the launcher closes the box
+// and returns its text.
+async function selfReport(file) {
+  const run = await launchOnDesktop({
+    exe: file,
+    desktop: `rfo-${process.pid}`,
+    env: { ...process.env },
+    dialogs: "close",
+  });
+  let timer;
+  const finished = await Promise.race([
+    run.finished,
+    new Promise((r) => {
+      timer = setTimeout(() => r(null), 30 * 1000);
+    }),
+  ]);
+  clearTimeout(timer);
+  if (!finished) {
+    killTree(run.pid);
+    run.launcher.kill();
+    return assert.fail(`${file} was still running after 30 s`);
+  }
+  assert.equal(finished.dialogs.length, 1, `${file} opened ${finished.dialogs.length} boxes, not 1`);
+  const { text } = finished.dialogs[0];
+  const first = /: (X1|Y1) comes first\.$/.exec(text);
+  assert.ok(first, `${file} said: ${text}`);
+  return first[1];
+}
+
 // The paths of a project file's entries in the order the file holds them, a folder before its own
 // entries.
 function entries(folder, prefix = "") {
@@ -115,7 +147,11 @@ function session(c) {
       assert.equal(target, arch, `the build box says ${target}, not ${arch}`);
       const built = await buildProject(c);
       assert.ok(built.ok, `the build did not finish: ${built.message}`);
-      return layout(built.file);
+      const order = layout(built.file);
+      const said = await selfReport(built.file);
+      const first = order.indexOf("X1") < order.indexOf("Y1") ? "X1" : "Y1";
+      assert.equal(said, first, `the exe says ${said} comes first, and its file is laid out ${order}`);
+      return order;
     },
   };
 }

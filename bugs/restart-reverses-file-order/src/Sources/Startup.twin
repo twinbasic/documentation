@@ -1,13 +1,73 @@
 Module Startup
 
+    Private Declare PtrSafe Function GetModuleHandleW Lib "kernel32" (ByVal lpModuleName As LongPtr) As LongPtr
+    Private Declare PtrSafe Sub RtlMoveMemory Lib "kernel32" (ByRef Destination As Any, ByVal Source As LongPtr, ByVal Length As LongPtr)
+
     Public Sub Main()
         Dim t As Long
         t = FormF.F1()
-        t = t + S1()
+        t = t Xor S1()
+        MsgBox Layout(), , "restart-reverses-file-order"
     End Sub
 
     Public Function S1() As Long
         S1 = &H5A110001
+    End Function
+
+    ' Where the code of ClsX.X1 and ClsY.Y1 sits in this exe's .text section, found by searching the
+    ' section, as it is mapped in memory, for the constant each returns: X1 returns &H5A120001 and Y1
+    ' &H5A130001. The section's order in memory is its order in the file. Each constant is looked for
+    ' as two halves, so that this procedure's own code never holds its four bytes.
+    Private Function Layout() As String
+        Dim stage As String = "reading the PE headers"
+        On Error GoTo Failed
+        Dim text() As Byte
+        If Not TextSection(text) Then Return "This exe has no .text section."
+        stage = "searching .text"
+        Dim x As Long = FindMarker(text, &H5A12)
+        Dim y As Long = FindMarker(text, &H5A13)
+        If x < 0 Or y < 0 Then Return "The constant of X1 or Y1 is not in .text exactly once: X1 " & x & ", Y1 " & y & "."
+        Return "X1 (ClsX) is at .text+&H" & Hex$(x) & ", Y1 (ClsY) at .text+&H" & Hex$(y) & ": " & _
+            IIf(x < y, "X1 comes first.", "Y1 comes first.")
+    Failed:
+        Return "Error " & Err.Number & " (" & Err.Description & ") while " & stage & "."
+    End Function
+
+    ' A copy of this exe's .text section as it is mapped in memory, from its PE headers.
+    Private Function TextSection(ByRef text() As Byte) As Boolean
+        Dim base As LongPtr = GetModuleHandleW(0)
+        Dim pe As Long, sections As Integer, optionalHeader As Integer
+        RtlMoveMemory pe, base + &H3C, 4
+        RtlMoveMemory sections, base + pe + 6, 2
+        RtlMoveMemory optionalHeader, base + pe + 20, 2
+        Dim i As Long, header As LongPtr, name(7) As Byte, size As Long, address As Long
+        For i = 0 To sections - 1
+            header = base + pe + 24 + optionalHeader + 40 * i
+            RtlMoveMemory name(0), header, 8
+            If StrConv(name, vbUnicode) = ".text" & String$(3, 0) Then
+                RtlMoveMemory size, header + 8, 4
+                RtlMoveMemory address, header + 12, 4
+                ReDim text(size - 1)
+                RtlMoveMemory text(0), base + address, size
+                Return True
+            End If
+        Next
+        Return False
+    End Function
+
+    ' The offset of the only place in text that holds 01 00 then the two bytes of high, or -1 when
+    ' there is none or more than one.
+    Private Function FindMarker(ByRef text() As Byte, ByVal high As Long) As Long
+        Dim i As Long, found As Long = -1
+        For i = 0 To UBound(text) - 3
+            If text(i) = 1 Then
+                If text(i + 1) = 0 And text(i + 2) = (high And &HFF) And text(i + 3) = (high \ &H100) Then
+                    If found >= 0 Then Return -1
+                    found = i
+                End If
+            End If
+        Next
+        Return found
     End Function
 
 End Module
