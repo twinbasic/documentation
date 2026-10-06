@@ -778,7 +778,9 @@ Exit codes: **0** no accessibility violation was found, **1** the sweep found at
     python -m pip install "fonttools[woff]"
     python scripts/build_fonts.py
 
-Regenerates the subset webfonts under `docs/assets/fonts/` from pinned upstream releases (SHA-256 verified), pinning the optical-size axis and keeping `wght` variable. Development tooling only: the `.woff2` files are committed like the generated DOT SVGs, and `build.bat` needs neither Python nor a network connection --- though the PDF pass aborts if one of the faces it needs is missing from the source tree, naming this script. **Regenerating Inter means regenerating the diagram metrics too** --- see below. Changing a face rather than refreshing one reaches well beyond this script; [Changing a typeface](Builder#changing-a-typeface) lists every place the build names one.
+Regenerates the subset webfonts under `docs/assets/fonts/` from pinned upstream releases (SHA-256 verified), pinning the optical-size axis and keeping `wght` variable. Development tooling only: the `.woff2` files are committed like the generated DOT SVGs, and `build.bat` needs neither Python nor a network connection --- though the PDF pass aborts if one of the faces it needs is missing from the source tree, naming this script. **Regenerating Inter means regenerating the diagram metrics too** --- see below. Changing a face rather than refreshing one reaches well beyond this script; [Changing a typeface](Builder#changing-a-typeface) lists every place the build names one. The script takes no options except `-h` and `--help`, which print the usage and start nothing.
+
+Exit codes: **0** the faces were written; **1** a dependency is missing, an archive's SHA-256 differs from the pinned one, or a build step failed; **2** a refused command line.
 
 ### build_dot_metrics.mjs
 {: #build-dot-metrics }
