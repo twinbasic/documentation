@@ -1,0 +1,16 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^positional\\s+23456781$",
+      "^named, in order\\s+23456781$",
+      "^named, swapped\\s+4000000$",
+      "^right, named, swapped\\s+400$",
+      "^unsigned, named, swapped\\s+0$",
+      "^unknown names\\s+23456781$",
+      "^ByteSwap, unknown name\\s+78563412$",
+      "^own function, swapped\\s+23456781$"
+    ]
+  }
+}

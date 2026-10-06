@@ -63,6 +63,9 @@ The main feature not yet supported is passing an error up to the calling procedu
 > [!WARNING]
 > In twinBASIC BETA 997, a **Double** addition, subtraction, multiplication or exponentiation (`^`) that overflows raises no error in code compiled with LLVM: the result is infinity (`1.#INF`), where the same code compiled without LLVM raises error 6, *Overflow*, as VB6 does. [**FloatingPointErrorChecks(True)**](../tB/Core/Attributes#floatingpointerrorchecks) does not change this. A **Double** division that overflows, and a division by zero, still raise their errors. After either, under `On Error Resume Next`, the variable that was to receive the result keeps its old value; without LLVM it holds infinity.
 
+> [!WARNING]
+> In twinBASIC BETA 997, code compiled with LLVM rounds a **Single** or **Double** that is exactly halfway between two integers away from zero when it converts the value to an integer type: in [**CLng**](../tB/Modules/Conversion/CLng), **CInt** and **CLngLng** of a variable, in an assignment to an **Integer** or **Long**, and in the operands of [**\\**](../tB/Core/IntegerDivide). With a **Double** variable holding 2.5, `CLng(x)` is 3, and with -0.5 it is -1. Without LLVM the value is rounded to the even integer, 2 and 0, as VB6 does. A constant expression such as `CLng(2.5)`, a **Variant** argument, and [**Round**](../tB/Modules/Math/Round), **Int** and **Fix** are not affected.
+
 Code compiled with LLVM ignores [**Debug.Assert**](../tB/Modules/Debug#assert): the statement does not stop, and its condition is not evaluated.
 
 All other language features should work, in both 32-bit and 64-bit builds. Please [report](../FAQ#bug-reporting) any crash that LLVM causes, and any message saying "a feature used in your code is not yet supported with the LLVM compiler".

@@ -1,0 +1,15 @@
+' A module-level array Const declared after a procedure is not found by the procedures that follow it.
+Module Startup
+
+    Public Sub Main()
+    End Sub
+
+    Const Scalar As Long = 5
+    Const Arr() As Long = Array(1, 2, 3)
+
+    Public Sub UseIt()
+        Debug.Print Scalar
+        Debug.Print Arr(1)
+    End Sub
+
+End Module

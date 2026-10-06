@@ -39,6 +39,9 @@ The data type of *result* matches the type of *number*, whatever the type of *co
 >
 > Convert such a value with [**CLng**](../Modules/Conversion/CLng) or [**CLngLng**](../Modules/Conversion/CLngLng) before shifting it.
 
+> [!WARNING]
+> In twinBASIC BETA 997, code compiled with LLVM cuts the shift count to the size of the shifted **Byte** or **Integer** before shifting: for a **Byte**, a count of 256 becomes 0 and 257 becomes 1. So a **Byte** shifted by 256 is unchanged, where the result should be 0, as it is without LLVM. An **Integer** shifted by 65,536 or more behaves the same way. A **Long** or **LongLong** is not affected.
+
 ### Compound assignment
 
 `x >>= n` is the twinBASIC shorthand for `x = x >> n`. **\>>=** is a statement, not an expression --- it does not produce a value.

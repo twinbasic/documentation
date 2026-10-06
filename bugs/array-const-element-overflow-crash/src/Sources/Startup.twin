@@ -1,0 +1,9 @@
+' Crashes the compiler: an array Const whose element does not fit the element type.
+Module Startup
+
+    Const Big() As Long = Array(2147483648)
+
+    Public Sub Main()
+    End Sub
+
+End Module

@@ -1,0 +1,39 @@
+' A shift count is cut to the width of the shifted Byte or Integer in LLVM-compiled code.
+' Needs an LLVM licence (Ultimate): LlvmCases is compiled with LLVM by its [CompilerOptions("+llvm")].
+Module Startup
+
+    Private Sub PlainCases()
+        Dim b As Byte = &H81
+        Dim i As Integer = &H8001
+        Dim l As Long = &H80000001
+        Dim n As Long
+        n = 256: Debug.Print "plain  Byte    << 256    " & Hex$(b << n)
+        n = 257: Debug.Print "plain  Byte    >> 257    " & Hex$(b >> n)
+        n = 65536: Debug.Print "plain  Integer << 65536  " & Hex$(i << n)
+        n = 65537: Debug.Print "plain  Integer >> 65537  " & Hex$(i >> n)
+        n = 65536: Debug.Print "plain  Long    << 65536  " & Hex$(l << n)
+        n = -1: Debug.Print "plain  Long    << -1     " & Hex$(l << n)
+        n = -1: Debug.Print "plain  Long    >> -1     " & Hex$(l >> n)
+    End Sub
+
+    [CompilerOptions("+llvm")]
+    Private Sub LlvmCases()
+        Dim b As Byte = &H81
+        Dim i As Integer = &H8001
+        Dim l As Long = &H80000001
+        Dim n As Long
+        n = 256: Debug.Print "LLVM   Byte    << 256    " & Hex$(b << n)
+        n = 257: Debug.Print "LLVM   Byte    >> 257    " & Hex$(b >> n)
+        n = 65536: Debug.Print "LLVM   Integer << 65536  " & Hex$(i << n)
+        n = 65537: Debug.Print "LLVM   Integer >> 65537  " & Hex$(i >> n)
+        n = 65536: Debug.Print "LLVM   Long    << 65536  " & Hex$(l << n)
+        n = -1: Debug.Print "LLVM   Long    << -1     " & Hex$(l << n)
+        n = -1: Debug.Print "LLVM   Long    >> -1     " & Hex$(l >> n)
+    End Sub
+
+    Public Sub Main()
+        PlainCases
+        LlvmCases
+    End Sub
+
+End Module

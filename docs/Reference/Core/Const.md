@@ -76,6 +76,19 @@ Debug.Print UBound(Primes)      ' 4
 Debug.Print Total               ' 28
 ```
 
+> [!WARNING]
+> In twinBASIC BETA 997, two forms of module-level array constant crash the compiler, whether or not the constant is used, and the project can then be neither compiled nor run:
+>
+> - an element that does not fit the element type, such as `Const Big() As Long = Array(2147483648)`;
+> - an element taken from another array constant, such as `Const Second() As Long = Array(Primes(0))`.
+
+> [!NOTE]
+> In twinBASIC BETA 997, array constants also have these defects, each reported as an error:
+>
+> - In a module, an array constant declared after a procedure is compile error **TB5079**, *Unrecognized symbol*, in the procedures that follow it. The procedures before it see an empty array: reading an element raises error 9. Declare array constants above the module's first procedure.
+> - A **Public** array constant in a class compiles, but code outside the class cannot reach it: the use is compile error **TB5027**. A **Public** scalar constant in a class is compile error **TB5250**.
+> - Passing a module-level array constant to a **ParamArray** parameter compiles without a diagnostic, and then fails with a *codegen error*.
+
 > [!NOTE]
 > Array constants are a twinBASIC extension. In VBA and VB6, `Const Primes() As Long = Array(2, 3)` is a syntax error.
 

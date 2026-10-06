@@ -1985,4 +1985,318 @@ Severity: a silent wrong result. A `Single` overflow that ends the program or re
 
 <!-- Reproducer: bugs/single-overflow-no-error/ (mode run; expects the `+`, `-`, `*`, `/`, `+=` and `CSng` lines above); verified on BETA 997 and 995 with `bug_repro.mjs run`, and on 997 with --llvm and --arch win64. VB6: `bug_repro.mjs vb6 single-overflow-no-error` (VB6 has no `+=`, so the file has `s = s + x`). The constant cases come from tbbuild on one-constant projects, and VB6's from `vb6run.mjs` on `Const` statements; neither is in the reproducer. Pages with wrong sentences: docs/Reference/Core/Divide.md line 31 ("A declared **Single** that overflows raises error 6"), and the sentence "A declared (non-**Variant**) result that overflows raises error 6" in Plus.md, Minus.md and Multiply.md, and docs/Reference/Operators.md line 135 ("A result that does not fit its type raises error 6"); each of Divide.md, Plus.md, Minus.md, Multiply.md and Operators.md (after its porting table) carries a `> [!WARNING]` naming BETA 997 (a silent wrong result, owner's rule); remove them once a fixed build is released. The variant rows (Plus.md line 54, Minus.md line 34, Multiply.md line 32, Divide.md line 31's second clause) and the result-type rows for Single and Long are right. Exponent.md says nothing about overflow. Related: llvm-double-overflow-no-error (the `Double` overflow under LLVM). -->
 
+---
+
+## A module-level array `Const` with an element that does not fit its type crashes the compiler
+
+**Describe the bug**
+An array `Const` at module level whose element is too large for the element type takes the compiler down: `Const Big() As Long = Array(2147483648)`. The IDE's compile restarts the compiler, which crashes again, and the project can neither be compiled nor run. The crash happens whether or not the constant is used. Observed with `tbbuild`, which reports "the compiler crashed 3x".
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `array-const-element-overflow-crash.twinproj` (attached as `array-const-element-overflow-crash.zip`). Its one module is:
+   ```
+   Module Startup
+       Const Big() As Long = Array(2147483648)
+       Public Sub Main()
+       End Sub
+   End Module
+   ```
+2. Compile it. The compiler crashes.
+
+**Expected behavior**
+A compile error, as for a scalar constant: `Const K As Long = 2147483648` is refused with TB5002, and `Const Small() As Integer = Array(32768)` with TB5001.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+BETA 995 has no array constants: every array `Const` is refused there with TB5245, *array cannot be initialized here*. VB6 has no array constants either (`Const A() As Long = Array(1)` is a syntax error), so there is no VB6 project.
+
+What crashes, each in a module of its own, unused or used: `Array(2147483648)`, `Array(2147483648#)`, `Array(3000000000.5)` and `Array(1, 2147483648)` for `Long`; `Array(40000.5)` for `Integer`; `Array(300.5)` and `Array(-1.5)` for `Byte`; `Array(9223372036854775808#)` for `LongLong`. What does not: the same constant declared inside a procedure compiles clean; a `Single` or `Double` array with a huge element (`Array(1E+300)`) compiles; an `Integer` or `Byte` element that is an integer literal too large (`Array(32768)`) is the ordinary TB5001.
+
+A second crash seems to belong with this one, and it is not in the reproducer. A `Single` array `Const` whose element overflows, `Const A() As Single = Array(1E+39)`, compiles alone, but crashes the compiler when a later array `Const` of `Double` calls `Sqr`, `Timer` or `Rnd`, for example `Const B() As Double = Array(Sqr(4))` on the next line. The reverse order, `Abs` or `Len` in place of those, `Now` or `Date`, and a `Single` array of `Timer` do not crash. The cause is not established; it could be an overflow flag left by the first constant, which the second one's call then trips over.
+
+Severity: a compiler crash, and the project cannot be opened for compiling until the constant is removed.
+
+<!-- Reproducer: bugs/array-const-element-overflow-crash/ (mode compile, expects tbbuild exit 4); verified on BETA 997 by `bug_repro.mjs verify`; on 995 the same project gives TB5245, as every array Const does there. The Sqr/Timer/Rnd variant was checked with `tbbuild` on BETA 997 in scratch projects (beta997-probes c24_KJ_KTm and the t_* cases) and is not in the reproducer. docs/Reference/Core/Const.md (the "Array constants" section) carries a `> [!WARNING]` for it, naming BETA 997 (a crash, owner's rule), removed once a fixed build is released. -->
+
+---
+
+## A module-level array `Const` initialised from an element of another array `Const` crashes the compiler
+
+**Describe the bug**
+At module level, an array `Const` whose `Array(...)` list names an element of another array `Const` crashes the compiler: `Const A() As Long = Array(1, 2, 3)` followed by `Const B() As Long = Array(A(0))`. The compiler crashes again each time the IDE restarts it, so the project cannot be compiled or run. Observed with `tbbuild`, which reports "the compiler crashed 3x".
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `array-const-in-array-const-crash.twinproj` (attached as `array-const-in-array-const-crash.zip`). Its one module is:
+   ```
+   Module Startup
+       Const A() As Long = Array(1, 2, 3)
+       Const B() As Long = Array(A(0))
+       Public Sub Main()
+       End Sub
+   End Module
+   ```
+2. Compile it. The compiler crashes.
+
+**Expected behavior**
+Either `B` is `Array(1)`, as it is when the two constants are declared in a procedure, or the compiler refuses the element with an error, as it does for a scalar constant (`Const S As Long = A(0)` is TB5002).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+BETA 995 has no array constants: every array `Const` is refused there with TB5245. VB6 has none either, so there is no VB6 project.
+
+It crashes with `B` used or unused, with `Private` constants, with `Double` arrays, with the two in the opposite order, and when an array refers to its own element (`Const B() As Long = Array(1, B(0))`).
+
+What does not crash: the same two constants inside a procedure compile clean; an array whose element is a scalar `Const` compiles; `Array(A(0) + 1)` is an ordinary TB5001, *Type mismatch*.
+
+Severity: a compiler crash, and the project cannot be compiled until the constant is removed.
+
+<!-- Reproducer: bugs/array-const-in-array-const-crash/ (mode compile, expects tbbuild exit 4); verified on BETA 997 by `bug_repro.mjs verify`; on 995 the project gives TB5245. The variants above were checked with `tbbuild` on 997 in scratch projects. docs/Reference/Core/Const.md (the "Array constants" section) carries a `> [!WARNING]` for it, naming BETA 997 (a crash, owner's rule), removed once a fixed build is released. Related: array-const-element-overflow-crash. -->
+
+---
+
+## `ShiftRotateLeft`, `ShiftRotateRight`, `ShiftUnsignedRight` and `ByteSwap` ignore argument names and take their arguments by position
+
+**Describe the bug**
+The four new intrinsics of the VBA package (BETA 997) take their arguments by position and discard the names a call gives. `ShiftRotateLeft(ShiftAmount:=4, Number:=n)` uses 4 as the number and `n` as the shift amount, with no error, so the result is wrong. A name that matches no parameter, as in `ShiftRotateLeft(Foo:=n, Bar:=k)`, is accepted too. An ordinary procedure honours the names. Observed in a run of the reproducer project.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `math-intrinsics-ignore-argument-names.twinproj` (attached as `math-intrinsics-ignore-argument-names.zip`). Its `Sub Main` calls each intrinsic with a `Long` `n` of `&H12345678` and `k` of 4, in several forms.
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   positional                  23456781
+   named, in order             23456781
+   named, swapped              4000000
+   right, named, swapped       400
+   unsigned, named, swapped    0
+   unknown names               23456781
+   ByteSwap, unknown name      78563412
+   own function, swapped       23456781
+   ```
+
+**Expected behavior**
+The names select the parameters, as they do for any procedure (the last line, a function of the project with the same parameter names): `ShiftRotateLeft(ShiftAmount:=4, Number:=n)` is `23456781`, `ShiftRotateRight` of the same is `81234567` and `ShiftUnsignedRight` is `01234567`. A name that matches no parameter is a compile error, as it is in VB6 (*Named argument not found*).
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+The four intrinsics are new in BETA 997; BETA 995 does not know them (TB5079). VB6 has no equivalent functions, so there is no VB6 project; the VB6 behaviour quoted is for a named argument that matches no parameter.
+
+The declared parameters are `Number` and `ShiftAmount` (`ByteSwap` has `Number`). `Compilation.UnrollLoop Bogus:=4` is accepted in the same way. Calls that give the arguments in declaration order, with or without the names, work.
+
+Severity: a silent wrong result, but only for a call that names its arguments out of declaration order or misspells a name.
+
+<!-- Reproducer: bugs/math-intrinsics-ignore-argument-names/ (mode run, expects the eight lines above); verified on BETA 997 by `bug_repro.mjs verify`; not on 995 (the functions do not exist there). VB6 has no such function: `vb6run` gives *Sub or Function not defined* (beta997-probes/vb6, v1 to v3). docs/Reference/Default/VBA/Math/ShiftRotateLeft.md, ShiftRotateRight.md and ShiftUnsignedRight.md each carry a `> [!WARNING]` for it (ByteSwap.md none: with one argument, any name gives the right result), naming BETA 997 (a silent wrong result, owner's rule), removed once a fixed build is released. -->
+
+---
+
+## A module-level array `Const` declared after a procedure is not found by the procedures that follow it
+
+**Describe the bug**
+In a module, an array `Const` that is declared after a procedure cannot be used by the procedures declared after it: the use is TB5079, *Unrecognized symbol*. A scalar `Const` in the same place works. A procedure declared before the constant does see the name, and reads the array as empty: `Arr(1)` raises error 9 at run time. Observed in the compiler's diagnostics.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `array-const-after-procedure-not-found.twinproj` (attached as `array-const-after-procedure-not-found.zip`). Its module is:
+   ```
+   Module Startup
+       Public Sub Main()
+       End Sub
+       Const Scalar As Long = 5
+       Const Arr() As Long = Array(1, 2, 3)
+       Public Sub UseIt()
+           Debug.Print Scalar
+           Debug.Print Arr(1)
+       End Sub
+   End Module
+   ```
+2. Compile it. The only error is `TB5079 Unrecognized symbol 'Arr'` on the use in `UseIt`; `Scalar` is found.
+
+**Expected behavior**
+No error: the constant is visible to every procedure of the module wherever it is declared, as a scalar `Const` is.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+BETA 995 has no array constants (TB5245). VB6 has none either, so there is no VB6 project.
+
+Any procedure kind before the constant has the effect: a `Sub`, a `Function` and a `Property Get` were each checked. A declaration before the first procedure is fine, as are one after a `Dim`, an `Enum` or a `Type`. A `Public` array `Const` after a procedure is also unreachable from another module: `Startup.Arr(1)` is TB5027. Qualifying the name inside the module does not help. Classes are not affected: the order does not matter there.
+
+A procedure declared before the constant does find it, and then fails at run time. With `[RunAfterBuild] Public Sub Run()` first and `Const Arr() As Long = Array(1, 2, 3)` after it, `v = Arr(1)` under `On Error Resume Next` leaves `Err=9 Subscript out of range` and `v` unchanged.
+
+Severity: low, since the use is refused with an error; the run-time error 9 in an earlier procedure is a less obvious form of the same fault.
+
+<!-- Reproducer: bugs/array-const-after-procedure-not-found/ (mode compile, expects exit 1 and TB5079); verified on BETA 997 by `bug_repro.mjs verify`; on 995 TB5245. The earlier-procedure case (error 9), the Function, Property and cross-module cases were checked with tbbuild and tbrun on 997 in scratch projects, not in the reproducer. docs/Reference/Core/Const.md (the "Array constants" section) carries a `> [!NOTE]` for it, naming BETA 997: declare an array Const before the first procedure of its module; removed once a fixed build is released. -->
+
+---
+
+## A `Public` array `Const` in a class is accepted but cannot be reached from outside, where a `Public` scalar `Const` is refused
+
+**Describe the bug**
+A class may not have a `Public` constant: `Public Const Num As Long = 5` in a class is refused with TB5250, *Constants in a class cannot be Public*. For an array constant the declaration `Public Const Arr() As Long = Array(1, 2, 3)` is accepted without a diagnostic, and then `Arr` cannot be reached from outside the class: `obj.Arr(1)` is TB5027, *Unrecognized member*. The declaration is accepted and the constant is private in practice. Observed in the compiler's diagnostics.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `class-public-array-const-unreachable.twinproj` (attached as `class-public-array-const-unreachable.zip`). Class `WithArray` declares `Public Const Arr() As Long = Array(1, 2, 3)` and class `WithScalar` declares `Public Const Num As Long = 5`. `Sub Main` reads `a.Arr(1)` and `s.Num` from instances.
+2. Compile it. The diagnostics are:
+   ```
+   Startup.twin [7,21]: TB5027 Unrecognized member 'Arr' on type '_WithArray' [non-extensible object]
+   Startup.twin [8,21]: TB5027 Unrecognized member 'Num' on type '_WithScalar' [non-extensible object]
+   WithScalar.twin [3,18]: TB5250 Constants in a class cannot be Public
+   ```
+   The declaration in `WithArray` has no diagnostic of its own.
+
+**Expected behavior**
+The same refusal for both: TB5250 on the declaration of `Arr`, so that the cause is named at the declaration and not as an unrecognized member at each use.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+BETA 995 has no array constants (TB5245). VB6 has none either, so there is no VB6 project; a `Public Const` in a VB6 class is refused.
+
+Inside the class, the array constant reads correctly (`Arr(1)` in `WithArray.Show`). A `Private` array `Const` in a class works, and `Friend`, `Protected` and `Static` are accepted as well.
+
+Severity: low. The error appears at the use, with a message that does not mention the declaration.
+
+<!-- Reproducer: bugs/class-public-array-const-unreachable/ (mode compile, expects TB5027 and TB5250); verified on BETA 997 by `bug_repro.mjs verify`; on 995 TB5245. The VB6 remark is from knowledge of VB6, not run. docs/Reference/Core/Const.md (the "Array constants" section) carries a `> [!NOTE]` for it, naming BETA 997; removed once a fixed build is released. -->
+
+---
+
+## Passing a module-level array `Const` to a `ParamArray` compiles clean and then fails with a codegen error
+
+**Describe the bug**
+A module-level array `Const` passed as the argument of a `ParamArray` parameter compiles without a diagnostic, and the build then fails: the linker reports *compilation (codegen) error detected* at the call. The same constant passed to a parameter declared `a() As Long` is refused at compile time with TB5001, and to a `Variant` parameter with TB5077, so the `ParamArray` case slips through the check. Observed with `tbbuild --build`.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `array-const-paramarray-codegen-error.twinproj` (attached as `array-const-paramarray-codegen-error.zip`). Its module:
+   ```
+   Module Startup
+       Const Values() As Long = Array(10, 20, 30)
+       Public Sub Main()
+           Count Values
+       End Sub
+       Private Sub Count(ParamArray Items() As Variant)
+           Debug.Print UBound(Items)
+       End Sub
+   End Module
+   ```
+2. Compile it: no errors. Build it (or press F5).
+3. The build log reads `[LINKER] compilation (codegen) error detected in 'Startup.Mainrootmain' at line #7` and `[BUILD] failed`.
+
+**Expected behavior**
+A compile error at the call, as for the other whole-array uses of a constant array (TB5001 or TB5077). Documentation says the array "cannot be assigned to an array variable or a Variant, or passed as an array argument".
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+BETA 995 has no array constants (TB5245). VB6 has none either, so there is no VB6 project.
+
+With LLVM the same call gives *a feature used in your code is not yet supported with the LLVM compiler*.
+
+What does not reproduce it: the constant passed after another argument (`Count 1, Values`) fails the same way, but `Count Values(0)`, an element, builds clean, an ordinary array variable passed to a `ParamArray` builds clean, and a constant array declared inside the procedure builds clean.
+
+Severity: low. The build fails with a message that gives the line, but not the cause.
+
+<!-- Reproducer: bugs/array-const-paramarray-codegen-error/ (mode build, expects tbbuild exit 5 and "codegen" in the message); verified on BETA 997 by `bug_repro.mjs verify`; on 995 TB5245. The LLVM message is from the probe c15_paramarray run with `tbrun --llvm` on 997. The quoted documentation sentence is docs/Reference/Core/Const.md, "Array constants". That page carries a `> [!NOTE]` for it, naming BETA 997; removed once a fixed build is released. -->
+
+---
+
+## LLVM-compiled code rounds a `Single` or `Double` to an integer half away from zero, where VB6 and plain code round half to even
+
+**Describe the bug**
+In a procedure compiled with LLVM, `CLng`, `CInt` and `CLngLng` of a `Single` or `Double` variable, an assignment of one to a `Long` or `Integer`, and the operand conversion of `\` round a value exactly halfway between two integers away from zero: `CLng(2.5)` of a `Double` variable is 3 and `CLng(-0.5)` is -1. The same code without LLVM rounds to the even integer, 2 and 0, as VB6 does. A value that is not a tie rounds the same everywhere. Observed in a run of the reproducer project.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `llvm-conversion-rounds-half-away.twinproj` (attached as `llvm-conversion-rounds-half-away.zip`). It needs an LLVM licence (Ultimate): `LlvmCases` is compiled with LLVM by its `[CompilerOptions("+llvm")]`, and `PlainCases` holds the same statements without it. Each procedure converts 0.5, 2.5, 3.5, -0.5 and -2.5.
+2. Run it (F5). The DEBUG CONSOLE has one line per value and mode; for 2.5 and -0.5 they read:
+   ```
+   plain 2.5:  CLng(d)=2  CLng(s)=2  CInt(d)=2  CLngLng(d)=2  l=d:2  d\1=2  CLng(v)=2  Round=2
+   plain -0.5:  CLng(d)=0  CLng(s)=0  CInt(d)=0  CLngLng(d)=0  l=d:0  d\1=0  CLng(v)=0  Round=0
+   LLVM  2.5:  CLng(d)=3  CLng(s)=3  CInt(d)=3  CLngLng(d)=3  l=d:3  d\1=3  CLng(v)=2  Round=2
+   LLVM  -0.5:  CLng(d)=-1  CLng(s)=-1  CInt(d)=-1  CLngLng(d)=-1  l=d:-1  d\1=-1  CLng(v)=0  Round=0
+   ```
+
+**Expected behavior**
+The same result in both: round half to even, as in VB6 (attached as `llvm-conversion-rounds-half-away-vb6.zip`), which prints for the same values `CLng(d)=2` for 2.5 and `CLng(d)=0` for -0.5, `l=d:2`, `d\1=2`, `CLng(v)=2` and `Round=2`, `0` and `0`. VB6 has no `LongLong`, so that column is missing from its output.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Also on BETA 995, identically, and on win64.
+
+What does not differ in LLVM-compiled code: `CLng` of a `Variant` holding the `Double`, `Round`, `Int` and `Fix`, and conversions of a literal such as `CLng(2.5)` (folded to 2 by the compiler).
+
+A consequence: a value that rounds to zero in plain code can raise an error under LLVM. In a `Byte` conversion, `CByte(-0.5)` and `b = -0.5` (a `Double` variable) give 0 without LLVM and error 6, *Overflow*, with it, because the value becomes -1.
+
+Severity: a silent wrong result, at ties only, unless the rounding makes a conversion overflow.
+
+<!-- Reproducer: bugs/llvm-conversion-rounds-half-away/ (mode run: the LLVM procedure is compiled by its attribute, so `bug_repro.mjs run` needs no flag; expects the plain and LLVM lines above); verified on BETA 997 and 995 with `bug_repro.mjs run`, and on 997 with --arch win64. VB6: `bug_repro.mjs vb6 llvm-conversion-rounds-half-away`. The CByte case was run in a scratch project on 997. docs/LLVM/Getting-Started.md ("Language support") carries a `> [!WARNING]` for it, naming BETA 997 (a silent wrong result, owner's rule), removed once a fixed build is released. Related: llvm-double-overflow-no-error. -->
+
+---
+
+## In LLVM-compiled code a shift count is cut to the width of the shifted `Byte` or `Integer`
+
+**Describe the bug**
+In a procedure compiled with LLVM, the count of `<<` or `>>` is reduced to the width of the shifted type before the shift, for a `Byte` and an `Integer`: `b << 256` with `b` a `Byte` of `&H81` leaves `&H81`, and `b >> 257` gives `&H40`, because the count becomes 0 and 1. Without LLVM both give 0, as the documentation says: a shift by as many bits as the type holds, or more, yields 0. An `Integer` shifted by 65536 or more behaves the same way. A `Long` is not affected, as the count is itself a `Long`. Observed in a run of the reproducer project.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `llvm-shift-count-truncated.twinproj` (attached as `llvm-shift-count-truncated.zip`). It needs an LLVM licence (Ultimate): `LlvmCases` is compiled with LLVM by its `[CompilerOptions("+llvm")]`, and `PlainCases` holds the same statements without it.
+2. Run it (F5) and read the DEBUG CONSOLE:
+   ```
+   plain  Byte    << 256    0
+   plain  Byte    >> 257    0
+   plain  Integer << 65536  0
+   plain  Integer >> 65537  0
+   plain  Long    << 65536  0
+   plain  Long    << -1     80000000
+   plain  Long    >> -1     FFFFFFFF
+   LLVM   Byte    << 256    81
+   LLVM   Byte    >> 257    40
+   LLVM   Integer << 65536  8001
+   LLVM   Integer >> 65537  C000
+   LLVM   Long    << 65536  0
+   LLVM   Long    << -1     0
+   LLVM   Long    >> -1     0
+   ```
+
+**Expected behavior**
+0 for a `Byte` shifted by 8 or more, and for an `Integer` shifted by 16 or more, whatever the count, in LLVM-compiled code as without LLVM (docs/Reference/Core/LeftShift.md and RightShift.md: "A shift by as many bits as the type holds, or more, yields 0"). VB6 has no shift operators, so there is no VB6 project.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Also on BETA 995, identically, and on win64.
+
+Counts from 8 to 255 for a `Byte`, and 16 to 65535 for an `Integer`, give 0 in both modes. The difference starts where the count, taken modulo 256 or 65536, is below the width.
+
+A negative count also differs between the two modes, and the documentation calls the result of a negative count "no useful result". Without LLVM the count is reduced modulo 32 for every type (`1& << -1` is `&H80000000`, `&H80000001 >> -1` is `&HFFFFFFFF`); with LLVM a negative count gives 0 (a `Long`, `LongLong` or `Integer`; a `Byte` gives 0 too). Neither is documented, so that part is a difference, not a departure.
+
+Severity: a silent wrong result for a `Byte` shifted by 256 or more, or an `Integer` by 65536 or more. Counts that large are rare.
+
+<!-- Reproducer: bugs/llvm-shift-count-truncated/ (mode run: the LLVM procedure is compiled by its attribute; expects the Byte and Integer lines above); verified on BETA 997 and 995 with `bug_repro.mjs run`, and on 997 with --arch win64; the count table over Byte, Integer and Long is from a scratch run in both modes (beta997-probes cases7), and the Long and LongLong negative-count rows from probes/m03_values/diff_plain_vs_llvm.txt. docs/Reference/Core/LeftShift.md and RightShift.md each carry a `> [!WARNING]` for the Byte and Integer count (the documented rule is the one LLVM breaks), and docs/LLVM/Getting-Started.md ("Language support") may carry a `> [!NOTE]` for the negative count; naming BETA 997; removed once a fixed build is released. -->
+
+
 

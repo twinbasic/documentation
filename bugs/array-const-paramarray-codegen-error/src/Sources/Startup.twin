@@ -1,0 +1,14 @@
+' A module-level array Const passed to a ParamArray compiles clean, and the build fails with a codegen error.
+Module Startup
+
+    Const Values() As Long = Array(10, 20, 30)
+
+    Public Sub Main()
+        Count Values
+    End Sub
+
+    Private Sub Count(ParamArray Items() As Variant)
+        Debug.Print UBound(Items)
+    End Sub
+
+End Module

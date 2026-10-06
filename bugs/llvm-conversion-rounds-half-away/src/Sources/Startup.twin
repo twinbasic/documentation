@@ -1,0 +1,31 @@
+' Rounding a Single or Double to an integer: plain code rounds half to even, LLVM-compiled code half away from zero.
+' Needs an LLVM licence (Ultimate): LlvmCases is compiled with LLVM by its [CompilerOptions("+llvm")].
+Module Startup
+
+    Private Sub PlainCases()
+        Dim d As Double, s As Single, v As Variant, l As Long
+        Dim x As Variant
+        For Each x In Array(0.5, 2.5, 3.5, -0.5, -2.5)
+            d = x: s = x: v = d
+            l = d
+            Debug.Print "plain " & d & ":  CLng(d)=" & CLng(d) & "  CLng(s)=" & CLng(s) & "  CInt(d)=" & CInt(d) & "  CLngLng(d)=" & CLngLng(d) & "  l=d:" & l & "  d\1=" & (d \ 1) & "  CLng(v)=" & CLng(v) & "  Round=" & Round(d)
+        Next
+    End Sub
+
+    [CompilerOptions("+llvm")]
+    Private Sub LlvmCases()
+        Dim d As Double, s As Single, v As Variant, l As Long
+        Dim x As Variant
+        For Each x In Array(0.5, 2.5, 3.5, -0.5, -2.5)
+            d = x: s = x: v = d
+            l = d
+            Debug.Print "LLVM  " & d & ":  CLng(d)=" & CLng(d) & "  CLng(s)=" & CLng(s) & "  CInt(d)=" & CInt(d) & "  CLngLng(d)=" & CLngLng(d) & "  l=d:" & l & "  d\1=" & (d \ 1) & "  CLng(v)=" & CLng(v) & "  Round=" & Round(d)
+        Next
+    End Sub
+
+    Public Sub Main()
+        PlainCases
+        LlvmCases
+    End Sub
+
+End Module
