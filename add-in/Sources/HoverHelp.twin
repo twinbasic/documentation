@@ -2,8 +2,9 @@
 ' under the mouse. At the cursor, a widget is added at the name once the
 ' cursor has rested on it for a second; the add-in has no cursor event, so a
 ' timer asks where the cursor is. Under the mouse, a hover provider the page
-' runs (hoverhelp.js) adds the links below the compiler's text in the IDE's
-' own hover. A name with no page shows nothing, since the IDE's hover already
+' runs (hoverhelp.js) adds the links above the compiler's text in the IDE's
+' own hover, next to the name: Monaco hides a hover once the mouse is outside
+' the editor, and a long hover reaches past it. A name with no page shows nothing, since the IDE's hover already
 ' shows its declaration and description. A click on a link raises Pick.
 Private Class HoverHelp
     Public Event Pick(ByVal url As String)

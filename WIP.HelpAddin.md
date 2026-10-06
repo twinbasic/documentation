@@ -1017,7 +1017,13 @@ harness about a second against opening a new IDE.
    - **Under the mouse**, through the page (P17): `hoverhelp.js`, sent through a second sink
      (`helpAskMouse`) every time the pane is built, disposes the provider and click listener
      an earlier instance of the add-in left in `window.tbDocsHoverHelp`, and registers new
-     ones while the box is ticked. The provider asks the compiler's hover itself, passes the
+     ones while the box is ticked. The provider is for `"twinbasic"`, so the links are the
+     hover's first lines, next to the name. Below the compiler's text (a provider for
+     `"*"`) a long hover put them out of reach: the editor is created with
+     `fixedOverflowWidgets`, so a hover can reach past the editor's edge, and Monaco 0.35
+     hides it as soon as the mouse is outside the editor, on the hover or not (the owner's
+     report, 2026-10-06, on `Collection`; the owner chose the top over keeping Monaco from
+     seeing the mouse there, or capping the hover's height). The provider asks the compiler's hover itself, passes the
      line, the column and the hover to the add-in, and waits up to 4 s for the markdown it
      answers with (`window.tbDocsHoverHelp.answer`). The links point at the live site; a
      click on one whose `data-href` starts with it is taken in the capture phase and sent

@@ -8,7 +8,7 @@ if (old) {
 }
 if (on) {
   var pending = {}, seq = 0;
-  var provider = monaco.languages.registerHoverProvider("*", {
+  var provider = monaco.languages.registerHoverProvider("twinbasic", {
     provideHover: function (model, position) {
       var node;
       try {

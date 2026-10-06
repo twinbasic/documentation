@@ -594,7 +594,8 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
   // Hover help: links at the cursor, in a widget, and under the mouse, in the
   // IDE's own hover, while the pane's box is ticked.
   const hoverBox = () => inPane(c, `return root.querySelector("#helpHover")?.checked ?? null;`);
-  const MSGBOX_LINK = "Help: Interaction.MsgBox function";
+  // A class's hover lists its members, and is taller than the room below it.
+  const COLLECTION_LINK = "Help: VBA.Collection class";
   const LEN_LINK = "Help: Strings.Len function";
 
   // The pane floats over the middle of the code editor, where the mouse has to
@@ -666,18 +667,23 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     assert.deepEqual(await addinLines(c, mark), []);
   });
 
-  test("the mouse hover has the link below the compiler's text, and a click shows the page", async () => {
+  // Monaco hides a hover once the mouse leaves the editor, even onto the part
+  // of the hover that reaches past the editor's edge, so the link has to be
+  // inside the editor: it is the hover's first line.
+  test("the mouse hover has the link first, inside the editor, and a click shows the page", async () => {
     await at(c, 9, 9);
     const mark = await consoleMark(c);
-    const t = await mouseHover(5, 9, MSGBOX_LINK);
+    const t = await mouseHover(3, 22, COLLECTION_LINK);
     assert.ok(t, `the mouse hover: ${JSON.stringify(await hoverText(c))}`);
-    assert.ok(t.indexOf("in VBA.") >= 0 && t.indexOf("in VBA.") < t.indexOf(MSGBOX_LINK), JSON.stringify(t));
-    assert.equal(t.split(MSGBOX_LINK).length, 2, `the link is there more than once: ${JSON.stringify(t)}`);
-    const link = await hoverLink(c, MSGBOX_LINK);
+    assert.ok(t.startsWith(COLLECTION_LINK) && t.includes("in package VBA"), JSON.stringify(t));
+    assert.equal(t.split(COLLECTION_LINK).length, 2, `the link is there more than once: ${JSON.stringify(t)}`);
+    const link = await hoverLink(c, COLLECTION_LINK);
     assert.ok(link?.top, `the link cannot be clicked: ${JSON.stringify(link)}`);
+    const bottom = await c.evaluate("editor.getDomNode().getBoundingClientRect().bottom");
+    assert.ok(link.y < bottom, `the link is below the editor's edge (${bottom}): ${JSON.stringify(link)}`);
     await markFrame();
     await clickAt(c, link.x, link.y);
-    await showsPage("/tB/Modules/Interaction/MsgBox", { fresh: true });
+    await showsPage("/tB/Modules/Collection/", { fresh: true });
     await mouseAway(c);
     assert.deepEqual(await openedUrls(c, { since: mark }), [], "the click opened a browser");
     assert.deepEqual(await addinLines(c, mark), []);
