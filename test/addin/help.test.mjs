@@ -10,8 +10,8 @@
 // TB_DOCS_HELP_SITE, which Open in browser opens. The lane named help builds
 // the add-in without the help archive, so the pane's frame loads that site
 // too; the lane named help-offline builds it with an archive of the built
-// offline tree (scripts/build_help_archive.mjs), so the frame loads the
-// add-in's own server. Either way every page a case reaches is a page of the
+// offline tree (lib/help-archive.mjs, the writer a build uses too), so the frame
+// loads the add-in's own server. Either way every page a case reaches is a page of the
 // build, and nothing comes from the network. Run build.bat first.
 // Each case is a line and column in helphost/Sources/Cases.twin, so a change to
 // that file is a change to this table.
@@ -25,6 +25,7 @@ import path from "node:path";
 import { before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { createStaticHandler } from "../../builder/static-files.mjs";
+import { writeHelpArchive } from "../../lib/help-archive.mjs";
 import { sleep } from "../../scripts/lib/tb-ide.mjs";
 import { loadedAddins } from "../../scripts/lib/tb-ide-addins.mjs";
 import { consoleMark, linesSince } from "../../scripts/lib/tb-ide-console.mjs";
@@ -52,7 +53,7 @@ const ADDIN = path.join(ROOT, "add-in");
 const INDEX = path.join(ADDIN, "Resources", "SYMBOLS", "symbols.json");
 const BUILT = path.join(ROOT, "docs", "_site");
 const BUILT_OFFLINE = path.join(ROOT, "docs", "_site-offline");
-const ARCHIVE_TOOL = path.join(ROOT, "scripts", "build_help_archive.mjs");
+const FRESH_GATE = path.join(ROOT, "scripts", "check_tree_fresh.mjs");
 // "serving site.zip, <n> files, at <origin>", which the add-in prints when it
 // has the archive.
 const SERVING = /^serving site\.zip, \d+ files, at (http:\/\/localhost:\d+)$/;
@@ -264,10 +265,15 @@ scenario("the help add-in: F1 and the help pane", (lane) => {
     const skip = [path.join(ADDIN, "Build"), path.join(ADDIN, "Resources", "HELP")];
     fs.cpSync(ADDIN, src, { recursive: true, filter: (f) => !skip.includes(f) });
     if (offline) {
-      const r = spawnSync(process.execPath, [ARCHIVE_TOOL, "--out", path.join(src, "Resources", "HELP", "site.zip")], {
-        encoding: "utf8",
-      });
-      assert.equal(r.status, 0, `build_help_archive failed:\n${r.stdout}${r.stderr}`);
+      // A tree older than its sources is refused, so the lane never tests
+      // a previous build's pages.
+      const fresh = spawnSync(process.execPath, [FRESH_GATE, "--tree", BUILT_OFFLINE], { encoding: "utf8" });
+      assert.equal(fresh.status, 0, `${BUILT_OFFLINE} is stale or missing; run build.bat first:\n${fresh.stderr}`);
+      try {
+        await writeHelpArchive({ src: BUILT_OFFLINE, out: path.join(src, "Resources", "HELP", "site.zip") });
+      } catch (err) {
+        assert.fail(`writeHelpArchive failed: ${err.message}${err.problems ? `\n${err.problems.join("\n")}` : ""}`);
+      }
     }
     await lane.addAddin(src);
     c = await lane.open(HOST, { env: { TB_DOCS_HELP_SITE: origin } });

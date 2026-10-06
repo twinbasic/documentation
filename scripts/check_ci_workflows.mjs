@@ -12,7 +12,8 @@
 //      among check.bat's -- and that is allowed;
 //   2. the two workflows run the same gate steps, in the same order;
 //   3. each workflow's build passes every argument build.bat passes, and
-//      --no-fetch-assets, and nothing else unless ALLOWED records it.
+//      --no-fetch-assets and --no-help-archive, and nothing else unless
+//      ALLOWED records it.
 //
 // ALLOWED lists the recorded differences, each with where it is recorded. A
 // difference not on it is a finding, and so is an allowance that matches
@@ -87,6 +88,8 @@ const ALLOWED = {
   },
   requiredBuildFlags: {
     "--no-fetch-assets": "CI must never download an asset (vendor-assets.mjs)",
+    "--no-help-archive":
+      "CI has no use for the IDE help add-in's archive and must not spend time on it (help-archive-step.mjs)",
   },
 };
 

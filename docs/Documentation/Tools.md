@@ -25,11 +25,11 @@ POSIX:
 
     node builder/tbdocs.mjs --src docs --check-audit-index [extra tbdocs flags]
 
-Renders the documentation. Wraps `node builder/tbdocs.mjs --src docs --check-audit-index` and forwards extra arguments through `%*`. Produces `_site/`, `_site-offline/`, and `_site-pdf/`, modulo the `--no-offline` / `--no-pdf` flags and the `also_build_offline` / `also_build_pdf` keys in `_config.yml`. It returns [`tbdocs`](#tbdocs)'s exit code as it is.
+Renders the documentation. Wraps `node builder/tbdocs.mjs --src docs --check-audit-index` and forwards extra arguments through `%*`. Produces `_site/`, `_site-offline/`, and `_site-pdf/`, modulo the `--no-offline` / `--no-pdf` flags and the `also_build_offline` / `also_build_pdf` keys in `_config.yml`. A local build also ends by writing the [help archive](#the-help-archive), unless `--no-help-archive` is given. It returns [`tbdocs`](#tbdocs)'s exit code as it is.
 
 `--check-audit-index` is the part of that invocation most easily lost in transcription, and losing it is silent: it implies `--check`, so a bare `node builder/tbdocs.mjs --src docs` writes the same three trees, runs no link check at all, and reports success --- a check that never ran has nothing to report.
 
-There is no fixed build time worth quoting here, because every run prints its own (`Done in …`, with the page and static-file counts). What that number tracks is page count, core count, and which passes ran: the check, the offline mirror and the PDF tree are each part of the total, and `--no-check`, `--no-offline` and `--no-pdf` each remove one.
+There is no fixed build time worth quoting here, because every run prints its own (`Done in …`, with the page and static-file counts). What that number tracks is page count, core count, and which passes ran: the check, the offline mirror, the PDF tree and the help archive are each part of the total, and `--no-check`, `--no-offline`, `--no-pdf` and `--no-help-archive` each remove one.
 
 Exit codes: **0** nothing to report; **1** the build or its check found a problem: a link or integrity failure, a failed build step, a fall in the page count, or a symbol-index URL lost; **2** a refused command line, a build stopped by the stall watchdog, or a crash.
 
@@ -245,7 +245,7 @@ Entry point for the static site generator. Every caller adds flags to the bare `
 | Caller | Invocation |
 |---|---|
 | `build.bat` | `--src docs --check-audit-index` (plus anything passed through) |
-| `checks.yml` (PR checks) | `--src docs --no-fetch-assets --check-audit-index` |
+| `checks.yml` (PR checks) | `--src docs --no-fetch-assets --no-help-archive --check-audit-index` |
 | `tbdocs-gh-pages.yml` (deploy) | the same, plus `--url` and `--baseurl` from the Pages environment |
 
 Full invocation:
@@ -253,7 +253,8 @@ Full invocation:
     node builder/tbdocs.mjs [--src <path>] [--dest <path>]
                             [--baseurl <prefix>] [--url <origin>]
                             [--dry-run]
-                            [--no-offline] [--no-pdf] [--tolerate-missing-images]
+                            [--no-offline] [--no-pdf] [--no-help-archive]
+                            [--tolerate-missing-images]
                             [--fetch-assets] [--no-fetch-assets]
                             [--profile-offline]
                             [--check] [--no-check] [--check-audit-index]
@@ -274,6 +275,7 @@ Full invocation:
 | `--dry-run` | Skip every filesystem write. Useful for benchmarking or validating discovery / compute / render. |
 | `--no-offline` | Skip the offline tree pass. |
 | `--no-pdf` | Skip the PDF tree pass. |
+| `--no-help-archive` | Do not write the [help archive](#the-help-archive). CI passes it. |
 | `--tolerate-missing-images` | Downgrade Phase 8's missing-image error to a warning. Use when the source tree is mid-edit and may temporarily reference an image that does not yet exist. |
 | `--fetch-assets` / `--no-fetch-assets` | Force remote-asset vendoring on or off. Without either flag, the build downloads missing YouTube thumbnails and GitHub user-attachment images on a dev machine, and refuses to download anything when `$CI` is set --- a referenced but uncommitted asset is a hard build error there. See [Authoring Pages](Authoring#committing-downloaded-assets). |
 | `--profile-offline` | Print per-substep timing for the offline tree pass. |
@@ -291,6 +293,19 @@ Full invocation:
 A command-line error --- an unknown flag, an unexpected argument, a flag without its value or with an empty one (`--baseurl` alone accepts one, meaning the site root), a value a flag cannot use (a `--port` that is not a port number, a negative or non-numeric `--stall-timeout`, a `--url` that is not an absolute `http` or `https` URL), or a `--dest` the build refuses --- is reported on standard error before any work starts, so it is never read as a broken link.
 
 Exit codes: **0** nothing to report (with `--serve`, the server was stopped with Ctrl+C); **1** the build or its check found a problem: a link or integrity failure, a failed build step, a fall in the page count, or a symbol-index URL lost; **2** a refused command line (a `--dest` the build refuses included), a build stopped by the stall watchdog, with `--serve` a failed first build or a port in use, or a crash.
+
+#### The help archive
+{: #the-help-archive }
+
+A local build ends by writing the zip the IDE help add-in serves the documentation from. The add-in embeds `add-in/Resources/HELP/site.zip` in its DLL as a resource, and the build writes that file from the offline tree it has just written. It writes the archive last, after the build-time chart has been added to `BuildInfo.html` in both trees, so the archive holds the pages as they are on disk. The step prints one line:
+
+    help archive: add-in/Resources/HELP/site.zip, 1471 entries, 21.2 MB (1.2 s)
+
+The zip is not committed, because it is too large; `add-in/Resources/HELP/` is listed in `.gitignore`. Only a build of the documentation tree into `docs/_site-offline` writes it. A build of another source tree (the test fixtures, for one) or into another `--dest`, `--serve`, `--dry-run` and a build without an offline tree leave it alone, and so does `--no-help-archive`, which both CI workflows pass. A file the build cannot write, or an archive that does not match the tree, fails the build with exit code 1.
+
+The reader on the twinBASIC side does no inflating of its own, so the format is fixed. There is one entry per file and no directory entries. A name is relative to the tree root, uses forward slashes and is UTF-8, with general-purpose flag bit 11 set. Entries are sorted by name in code-unit order, so the same tree gives the same bytes. The DOS date and time are always 1980-01-01 00:00, the version made by and needed is 20, and there are no extra fields, no comments and no data descriptors: the CRC-32 and both sizes are in the local header and in the central directory. There is no zip64, so a tree of more than 65,535 files, or an archive of 4 GB, is refused. Files that are compressed already (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.ico`, `.woff2`, `.woff`, `.mp4`, `.zip`, `.pdf`) are stored. Every other file is deflated at level 9, and stored instead when the deflated data is not smaller than the file.
+
+After the file is written, the build reads it back. It parses the end record and every central-directory entry, checks that each local header agrees with its entry (name, method, sizes, CRC-32), and inflates each deflated entry. It compares each entry's content and CRC-32 with the source file's bytes, and names any entry that differs. This check always runs. The file is written under a temporary name beside the target and renamed, so a failed run never leaves a half-written archive. The writer is `lib/help-archive.mjs`.
 
 ### check_links.mjs
 {: #check-links }
@@ -804,19 +819,6 @@ It shares [`census_attributes.mjs`](#census-attributes)'s export and cache, and 
 
 Exit codes: **0** the file was written (with `--check`, it is up to date); **1** with `--check`, the file is stale; **2** a refused command line, no install, an export that failed, packages that declare different APIs under one name, or a crash.
 
-### build_help_archive.mjs
-{: #build-help-archive }
-
-    node scripts/build_help_archive.mjs [--src <dir>] [--out <file>]
-
-Writes the zip the IDE help add-in serves the documentation from. The add-in embeds `add-in/Resources/HELP/site.zip` in its DLL as a resource, and this tool builds that file from the built offline tree, `docs/_site-offline/` by default. Run [`build.bat`](#buildbat) first: the tool runs [`check_tree_fresh.mjs`](#check-tree-fresh) on the tree, as [`book.bat`](#bookbat) does, and refuses a tree older than its sources. The zip is not committed, because it is too large; `add-in/Resources/HELP/` is listed in `.gitignore`.
-
-The reader on the twinBASIC side does no inflating of its own, so the format is fixed. There is one entry per file and no directory entries. A name is relative to the tree root, uses forward slashes and is UTF-8, with general-purpose flag bit 11 set. Entries are sorted by name in code-unit order, so the same tree gives the same bytes. The DOS date and time are always 1980-01-01 00:00, the version made by and needed is 20, and there are no extra fields, no comments and no data descriptors: the CRC-32 and both sizes are in the local header and in the central directory. There is no zip64, so a tree of more than 65,535 files, or an archive of 4 GB, is refused. Files that are compressed already (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.ico`, `.woff2`, `.woff`, `.mp4`, `.zip`, `.pdf`) are stored. Every other file is deflated at level 9, and stored instead when the deflated data is not smaller than the file.
-
-After the file is written, the tool reads it back. It parses the end record and every central-directory entry, checks that each local header agrees with its entry (name, method, sizes, CRC-32), and inflates each deflated entry. It compares each entry's content and CRC-32 with the source file's bytes, and names any entry that differs. This check always runs. The file is written under a temporary name beside the target and renamed, so a failed run never leaves a half-written archive. The summary line gives the number of entries, the raw and zipped sizes in MB (with the part stored as it was), and the time.
-
-Exit codes: **0** the archive was written and verified; **1** the verification found a difference; **2** the tool could not do its job: a refused command line, a stale or missing tree, a tree too large for a zip without zip64, or a crash.
-
 ### convert_em_dash_separators.mjs
 {: #convert-em-dash-separators }
 
@@ -1262,9 +1264,9 @@ runner sets, which keeps an add-in under test from opening a browser, reaches th
 also after a compiler restart. The last two lanes test the help add-in in `add-in/`, which
 opens the page for the name under the cursor, with the copy of the symbol index committed in
 `add-in/Resources/SYMBOLS/`: `help` with the pages from the built site, and `help-offline`
-with the pages from the add-in's own server, built with an archive that
-[`build_help_archive.mjs`](#build-help-archive) makes. The thirteen lanes take about two
-minutes together.
+with the pages from the add-in's own server, built with an archive of the built offline
+tree that the lane writes with the same [help archive](#the-help-archive) writer the build
+uses. The thirteen lanes take about two minutes together.
 
 | Flag | Effect |
 |---|---|

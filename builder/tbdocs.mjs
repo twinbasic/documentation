@@ -2,7 +2,7 @@
 //
 // Usage: node builder/tbdocs.mjs [--src <path>] [--dest <path>]
 //        [--baseurl <prefix>] [--url <origin>] [--dry-run]
-//        [--no-offline] [--no-pdf] [--tolerate-missing-images]
+//        [--no-offline] [--no-pdf] [--no-help-archive] [--tolerate-missing-images]
 //        [--fetch-assets | --no-fetch-assets] [--profile-offline]
 //        [--check | --no-check] [--check-audit-index]
 //        [--check-findings <path>] [--serve] [--port <N>]
@@ -21,6 +21,10 @@
 // broken link still produces a site worth having on disk.
 // --check-audit-index additionally diffs the derived tree index against
 // what actually landed on disk; see builder/check.mjs.
+//
+// A build of the documentation tree ends by writing the IDE help add-in's
+// archive of the offline tree, add-in/Resources/HELP/site.zip
+// (builder/help-archive-step.mjs). --no-help-archive skips it; CI passes that.
 //
 // Default --src is "docs" relative to the current working directory.
 // Default --dest is "<src>/_site". --dry-run skips all filesystem writes.
@@ -84,6 +88,7 @@ import { writePdf } from "./pdf.mjs";
 // build without --check pays nothing.
 import { deriveTreeRels } from "./check-tree.mjs";
 import { syncAddinIndex } from "./addin-index.mjs";
+import { helpArchiveStep } from "./help-archive-step.mjs";
 import { checkPageBaseline } from "./page-baseline.mjs";
 import { checkSymbolBaseline } from "./symbol-baseline.mjs";
 import { deriveSymbolIndex, reportableGaps, serializeSymbolIndex, symbolPages, SYMBOL_INDEX_REL } from "./symbols.mjs";
@@ -1553,6 +1558,19 @@ export async function runBuild(opts) {
     // The help add-in embeds a committed copy of the index -- see addin-index.mjs.
     process.stdout.write(await syncAddinIndex({ src: guardedSrc, json: symbolStats.json, write: mayWrite }));
   }
+
+  // The help add-in's archive of the offline tree, last of all: the Gantt
+  // injection above has rewritten BuildInfo.html in it -- see help-archive-step.mjs.
+  const skipOfflineTree = opts.skipOffline ?? site.config.also_build_offline === false;
+  const archive = await helpArchiveStep({
+    src: guardedSrc,
+    offlineRoot: skipOfflineTree ? null : `${destRoot}-offline`,
+    serve: !!opts.serve,
+    dryRun: !!opts.dryRun,
+    disabled: !!opts.skipHelpArchive,
+  });
+  if (archive.text) process.stdout.write(archive.text);
+  if (archive.failed) failBuild();
 
   return { pages, staticFiles, site, destRoot };
 }

@@ -960,19 +960,22 @@ harness about a second against opening a new IDE.
      show a page after a summary.
 5. **Offline help. Built**, tested by the lane `help-offline` on BETA 995, at the owner's
    choice (2026-10-05): the add-in's own server, written in twinBASIC, serving one archive
-   embedded in the DLL. The owner's other choices: the archive is a resource; a separate
-   script makes it; the pane uses it when the DLL has it, and the live site otherwise; the
-   symbol index stays a resource of its own.
+   embedded in the DLL. The owner's other choices: the archive is a resource; the
+   documentation build makes it (owner, 2026-10-06); the pane uses
+   it when the DLL has it, and the live site otherwise; the symbol index stays a resource of
+   its own.
    - **The archive** is `add-in/Resources/HELP/site.zip`, gitignored, written from
-     `docs/_site-offline` by `scripts/build_help_archive.mjs` (about 21 MB, 1,466 files;
-     the DLL builds with it for win32 and win64). An add-in built without it serves nothing
+     `docs/_site-offline` by the last step of a local build of the documentation
+     (`builder/help-archive-step.mjs` over `lib/help-archive.mjs`; `--no-help-archive`
+     skips it, and CI passes that) (about 21 MB, 1,471 files; the DLL builds with it for
+     win32 and win64). An add-in built without it serves nothing
      and uses the live site, as before. The offline tree is the one served: its links are
      relative, so they work on any origin, and its pages hold only their part of the nav
      tree.
    - **No inflating in twinBASIC.** A deflated entry is sent as it is, between a 10-byte
      gzip header and the CRC32 and size from the central directory, with
      `Content-Encoding: gzip`; an image or font is stored and sent plain. So the format is
-     fixed by the script: no zip64, no data descriptors.
+     fixed by the writer: no zip64, no data descriptors.
    - **`HelpServer`** listens on 127.0.0.1 at a port Windows picks, on the add-in's own
      thread: Winsock posts each socket's events to a message-only window
      (`WSAAsyncSelect`), so there is no second thread. It reads the archive with
@@ -987,7 +990,7 @@ harness about a second against opening a new IDE.
    - *Open in browser* still opens the live site.
    - **The lane.** `help.test.mjs` runs twice: `help` builds a copy of `add-in/` without
      `Resources/HELP`, whatever the working tree holds, and `help-offline` builds it with an
-     archive made by the script. A page's status is read from the page itself
+     archive made by `writeHelpArchive`. A page's status is read from the page itself
      (`PerformanceNavigationTiming.responseStatus`), so a 404 fails a case either way. An
      offline-only case asks the server from Node: a page's gzip body and a stored image
      byte for byte, a folder's 301, a 404 and `HEAD`.
