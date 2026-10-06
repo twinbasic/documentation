@@ -1,0 +1,16 @@
+' An unhandled error in a built exe opens a box titled "shutdown", where VB6 titles it with
+' App.Title. Build the exe and run it. The project's title is ExeErrorBoxTitle.
+Module Startup
+
+    Public Sub Main()
+        Err.Raise 5, "MySrc", "my text"
+    End Sub
+
+    ' For scripts/bug_repro.mjs only: tbrun runs the exe after the IDE has run a [RunAfterBuild] Sub.
+    [RunAfterBuild]
+    Private Sub Built()
+        Debug.Cls
+        Debug.Print "built"
+    End Sub
+
+End Module

@@ -25,6 +25,9 @@ Syntax:
 
 Without an **On Error** statement, any run-time error that occurs is fatal; that is, an error message is displayed and execution stops.
 
+> [!NOTE]
+> In a built program, BETA 997 does not end the program after an unhandled error in an event procedure of a form, such as **Form_Load** or **Form_Activate**. It displays the error message, and once the message is closed the program goes on running: the form is shown and its later events run. VB6 ends the program. Until this is fixed, handle errors in a form's event procedures, and unload the form or end the program there when it cannot continue.
+
 An "enabled" error handler is one that is turned on by an **On Error** statement; an "active" error handler is an enabled handler that is in the process of handling an error. If an error occurs while an error handler is active (between the occurrence of the error and a [**Resume**](Resume), [**Exit Sub**](Exit), **Exit Function**, or **Exit Property** statement), the current procedure's error handler can't handle the error. Control returns to the calling procedure.
 
 If the calling procedure has an enabled error handler, it is activated to handle the error. If the calling procedure's error handler is also active, control passes back through previous calling procedures until an enabled, but inactive, error handler is found. If no inactive, enabled error handler is found, the error is fatal at the point at which it actually occurred.

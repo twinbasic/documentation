@@ -1,0 +1,8 @@
+Type=Exe
+Form=Form1.frm
+Startup="Form1"
+ExeName32="Probe.exe"
+Name="Probe"
+Title="FormEventErrorContinues"
+CompilationType=0
+OptimizationType=0

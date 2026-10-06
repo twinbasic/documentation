@@ -1,0 +1,20 @@
+[Description("")]
+[FormDesignerId("EAEAEAEA-EAEA-EAEA-EAEA-EAEAEAEAEA05")]
+[PredeclaredId]
+Class FormE
+
+    Sub New()
+    End Sub
+
+    ' No handler: VB6 shows the error and ends the program here.
+    Private Sub Form_Load()
+        Err.Raise 5, "MySrc", "my text in Form_Load"
+    End Sub
+
+    ' In a twinBASIC exe this still runs once the error's box is closed.
+    Private Sub Form_Activate()
+        MsgBox "Form_Activate ran after the error", , "FormEventErrorContinues"
+        Unload Me
+    End Sub
+
+End Class

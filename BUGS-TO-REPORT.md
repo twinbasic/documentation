@@ -1166,3 +1166,69 @@ The box shows the error, and the exe ends when it is closed, as it does for the 
 Severity: medium; a program that should report an error and end crashes instead, and the box does not say which error it was. An error the code causes itself, such as `z = 1 \ z` with `z` 0 (error 11), ends the same way. The same on BETA 987 and 995, and in win32 and win64 exes. An error that an LLVM-compiled procedure handles opens no box (but see #2452 for what `Err` then holds).
 
 <!-- No docs page states this; docs/LLVM/Getting-Started.md says only that a built program "stops as it does for an unhandled error", and stays as it is (owner, 2026-10-06). When fixed, nothing to update. Checked with scripts/bug_repro.mjs (run mode with "exe": tbrun exit 6, the exe's exit code and the box; verify) on 997, and with `run --exe` on win64 and on BETA 987 and 995; the division by zero with tbrun --exe on 997; the VB6 side with `bug_repro vb6` (exit 8, the VB runtime's record). -->
+
+---
+
+## The box for an unhandled error in a built exe is titled `shutdown`, not with the program's title
+
+**Describe the bug**
+In a built exe, the message box for an unhandled run-time error has the title `shutdown`. The project's title (`App.Title`) is not used, and neither is a title assigned to `App.Title` at run time.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `exe-error-box-title.twinproj` (attached as `exe-error-box-title.zip`). Its title, in the project settings, is `ExeErrorBoxTitle`.
+   ```
+   Public Sub Main()
+       Err.Raise 5, "MySrc", "my text"
+   End Sub
+   ```
+2. Build the project and run the exe.
+3. See a box titled `shutdown`, with the text `Run-time error '5'` and `my text`.
+
+**Expected behavior**
+The box is titled with the program's title, `ExeErrorBoxTitle`, as VB6 titles it with `App.Title`. The VB6 project is attached as `exe-error-box-title-vb6.zip`; its exe shows a box titled `ExeErrorBoxTitle` with the text `Run-time error '5':` and `my text`. (Its `Form1` is never shown; it is there because a VB6 project without a form may be built with Unattended Execution, which writes the error to the event log instead of showing a box.)
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Severity: low; the box does not say which program it comes from. The same when `App.Title` is assigned before the error, for an error raised in a form's event procedure, and on BETA 983 and 995. #2017 mentions the same title for an error raised in a COM interface implementation.
+
+<!-- No docs page states the title; when fixed, nothing to update. Checked with scripts/bug_repro.mjs (run mode with "exe": tbrun exit 6 and the box's title; verify) on 997, and with `run --exe` on BETA 983 and 995 (with a form, see form-event-error-continues); `App.Title` assigned at run time with `run --exe` on 997; the VB6 side with `bug_repro vb6` (exit 8, the box). -->
+
+---
+
+## An unhandled error in a form's event procedure does not end a built exe
+
+**Describe the bug**
+In a built exe, an unhandled run-time error in an event procedure of a form shows the error's box, and once the box is closed the program goes on running: the form is shown and its later events run. VB6 ends the program.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `form-event-error-continues.twinproj` (attached as `form-event-error-continues.zip`). `FormE` is the startup object.
+   ```
+   Private Sub Form_Load()
+       Err.Raise 5, "MySrc", "my text in Form_Load"
+   End Sub
+   
+   Private Sub Form_Activate()
+       MsgBox "Form_Activate ran after the error", , "FormEventErrorContinues"
+       Unload Me
+   End Sub
+   ```
+2. Build the project and run the exe.
+3. See the box for the error (`Run-time error '5'`, `my text in Form_Load`), and press OK.
+4. See a second box, `Form_Activate ran after the error`: the program went on running.
+
+**Expected behavior**
+The program ends when the error's box is closed, and `Form_Activate` never runs. The VB6 project is attached as `form-event-error-continues-vb6.zip`; its exe shows the error's box and ends, and the file it writes holds `Form_Load ran` alone.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Severity: medium; code goes on running after an error that the program did not handle, with whatever state the error left. The same for an error in `Form_Activate` (the form stays open), and on BETA 983 and 995. An unhandled error in `Sub Main` does end the exe, with exit code 0.
+
+<!-- docs/Reference/Core/On-Error.md carries a NOTE under "Without an On Error statement ... execution stops" (owner, 2026-10-06); when fixed, remove the NOTE. Checked with scripts/bug_repro.mjs (run mode with "exe": tbrun exit 6 and both boxes; verify) on 997, and the Form_Activate case with `run --exe` on BETA 983, 995 and 997; the VB6 sides of Form_Load and Form_Activate with `bug_repro vb6` (exit 8, the box, and the exe ended). -->
