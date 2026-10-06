@@ -1089,3 +1089,89 @@ In the default mode, MODERN, the console asks for the list after every key and a
 Severity: moderate. `Print`, `Call` and `Set` begin lines that are often typed in the console, and each becomes a line the console refuses. The only ways round it are Escape before the space and another IntelliSense mode.
 
 <!-- Asserted by `ide-test.bat --only console-space` (test/ide/console-space.test.mjs: with the run stopped at BREAK and each line typed key by key, Print total becomes Printertotal, Call Touch(total) becomes CallByDispId(Touch(total)) and Set obj = items becomes SetAttr(obj = items), and the console refuses each; Print, Escape and then the rest give Print total, which prints 5; total = 6, ? total and Debug.Print total type as they are; with no program running, Print 1 + 1 becomes Printer1 + 1); passes on BETA 995 and 987. The lane waits after each key for the console's answer to it, as a person typing at an ordinary speed sees the list. Checked on BETA 995 and 987 and not asserted: the other keywords named above. Checked on BETA 995 and not asserted: the LEGACY and MANUAL modes, and the code editor. The reproducer's Startup.twin is test/ide/probes/console-space/Sources/Startup.twin with a different header comment. Related: "The Debug Console offers no completion for a name typed after `?` and a space", whose Additional context mentions this one. When fixed: update that test and this entry. -->
+
+---
+
+## A build writes addresses from the compiler's own memory into the exe
+
+**Describe the bug**
+Two builds of one unchanged project are never byte for byte equal, and the difference is more than the PE time stamp and checksum. At the start of its `.data` section each exe holds a block of deflate-compressed data: a u32 compressed size, a u32 inflated size of 4,096, then a raw deflate stream. Decompressed, the blocks of two builds differ in two values that are addresses in the compiler process's memory: 4 bytes each in a win32 exe, and the low 5 or 6 bytes of a 64-bit value in a win64 exe. So the compiler writes values from its own memory into the exe, and every build gives a different file.
+
+Compression turns those 8 or 12 bytes into about 1,700 changed bytes of the stream, and changes its length by a few bytes. When the two lengths fall in different steps of the padding after the block (4 bytes in win32, 8 in win64), everything after the block moves by one step, and the exe differs in about 50 more bytes, 44 of them in `.text`, which holds addresses of that data. The padding is not cleared either: in win64 it holds leftover bytes, the top bytes of the two values.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `build-writes-compiler-addresses.twinproj` (attached as `build-writes-compiler-addresses.zip`), a console project with an empty `Sub Main`, with the build target win32.
+2. Press Build and copy the exe to another folder.
+3. Close the IDE, open the project again, press Build without changing anything, and copy that exe too.
+4. Compare the two files. Besides the PE time stamp and checksum, they differ in the block at the start of `.data`. Inflate both streams and compare the two 4,096-byte results: two values differ, at offsets `0x4` and `0xbb8` in win32, and `0xc` and `0xbb8` in win64. The values of one win64 pair:
+   ```
+   +0x00c  0x000001a5ea830968 / 0x0000024c70e7c6a8
+   +0xbb8  0x000001a5e13684f0 / 0x0000024c6774d070
+   ```
+5. Repeat with the build target win64.
+
+The documentation's build harness does steps 1 to 4 and prints each differing value: `node scripts/probe_build_twice.mjs`, with `--arch win64` for the win64 target. On BETA 997 the decompressed blocks differed in every pair: in 7 of 7 win32 pairs, in 6 or 7 bytes in two ranges, and in 2 of 2 win64 pairs, in 10 or 12 bytes in two ranges. Outside the time stamp, the checksum and the block, 5 of the 7 win32 pairs differed in nothing, 1 in a single byte after the block, and 1 in 54 bytes in 46 ranges, where the two streams fell in different steps of the padding.
+
+**Expected behavior**
+Nothing from the compiler's own memory ends up in the exe, and the padding after the block is zero, so two builds of this project differ only in the PE time stamp and the checksum that follows from it.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+The values are addresses in the compiler process. After a build with the IDE left open, a read-only query of the memory map of the IDE's child processes (`VirtualQueryEx`; nothing was read from their memory) found both values of that build's exe in committed, private, read-write memory of the compiler process: `twinBASIC_win64_noDEP.exe` for a win64 build, and `twinBASIC_win32_noDEP.exe` for a win32 build. In the IDE's other child processes, both values fell in free address space. For win64 this is conclusive: only 3 of 200,000 random values below 2^47 fell in that process's committed memory. For win32 it is weaker, since 20,497 of 200,000 random 32-bit values did too.
+
+A single byte after the block also differs now and then: `1c` against `18` in win32, and `38` against `30` in win64. It reads as a count of 7 or 6 pointer-sized items; what it counts is not known.
+
+What VB6 does (the project attached as `build-writes-compiler-addresses-vb6.zip`, a Standard EXE whose `Sub Main` is empty, built twice in one folder): its exes are not identical either. Outside the time stamp and the checksum, they differ in the time stamps of the nine resource directories when the two builds fall in different seconds, in two random 16-byte identifiers, and in one 4-byte value that has the form of a heap address (from 0x00673ed8 to 0x009841a8 over eight builds; not confirmed against VB6's memory). But VB6 compresses nothing, so its one value changes 3 bytes, and in eight builds its exes never changed size or layout.
+
+BETA 995 gives the same kinds of difference, on win32 and on win64.
+
+What did not reproduce it: nothing in the project is needed. The console project with an empty `Sub Main` shows it, so no class, form or setting is involved. The harness stages the project into the same folders, with the same build path, before each build, so no path is what differs.
+
+Severity: low. No difference in a running program was looked for. Builds are not reproducible: two builds of one project cannot be compared, cached or signed by hash, and now and then the code itself differs.
+
+<!-- Reproducer: bugs/build-writes-compiler-addresses/ (mode probe: scripts/probe_build_twice.mjs builds it twice, each build in an IDE of its own, and prints what differs; --arch win64 for the win64 target, and --vb6 builds its vb6/ project twice with VB6). On BETA 997 the decompressed blocks differed in 7 of 7 win32 pairs and 2 of 2 win64 pairs; on BETA 995, in 2 of 2 and 2 of 2. The memory-map query is not scripted: a read-only VirtualQueryEx walk of the IDE's child processes after a tbbuild --keep build, 2026-10-06, with the IDE then ended by its pid. Not part of this entry: the random 16-byte identifiers that a form or a used class adds to the exe, since VB6 writes such identifiers too; and the type library's id, which the build generates anew unless Use Project ID for type library ID is on (docs/IDE/Project Settings.md). No page of the documentation mentions the defect, so when it is fixed there is nothing to update besides this entry and its reproducer. -->
+
+---
+
+## The IDE reverses the order of a project's files at each compiler restart, target switch and Save, and the code of a build follows that order
+
+**Describe the bug**
+The code of a built exe follows the order of the project's files, and the IDE reverses that order each time the compiler is restarted (the toolbar's restart button) and each time the build target is switched. Save writes the reversed order to the project file. So an unchanged project builds to exes whose code sits in another order: open it, press Build, press the restart button, press Build again, and the two exes hold the same procedures in a different order.
+
+In the attached project, the classes `ClsX` and `ClsY`, which nothing references, are laid out with `ClsX`'s code before `ClsY`'s in the first exe and after it in the second. A second restart and Build lays the third exe out as the first. The order was read by searching each exe's `.text` section for the four bytes of the constant that each procedure returns.
+
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Open `restart-reverses-file-order.twinproj` (attached as `restart-reverses-file-order.zip`). It holds the module `Startup`, whose `Main` calls `FormF.F1()` and `S1()`, the form `FormF`, and the classes `ClsX` and `ClsY`, which nothing references. Each procedure returns a constant of its own: `X1` in `ClsX` returns `&H5A120001`, and `Y1` in `ClsY` returns `&H5A130001`.
+2. Press Build. The project opens for win32, so the exe is `Build\RestartReversesFileOrder_win32.exe`. Copy it to `first.exe`.
+3. Press the toolbar's restart button for the compiler, wait for the status bar to say `tB Services: OPERATIONAL`, press Build again, and copy the exe to `second.exe`.
+4. Search each exe for the bytes `01 00 12 5A` (`X1`) and `01 00 13 5A` (`Y1`), and compare where they sit. In `first.exe` the bytes of `X1` come before those of `Y1`, and in `second.exe` they come after them.
+5. Press the restart button and Build once more: the third exe is laid out as `first.exe`.
+6. Close the IDE without saving, open the project again, switch the build target to win64 in the toolbar's build configuration box, and Build. In that exe `Y1` comes before `X1`, though the project file lists `ClsX.twin` before `ClsY.twin`.
+7. Close the IDE, open the project again, and Save. The file Save writes holds the entries of every folder in the reverse order: its `Sources` lists `Startup.twin, FormF.twin, FormF.tbform, ClsY.twin, ClsX.twin`, where the attached file lists `ClsX.twin, ClsY.twin, FormF.tbform, FormF.twin, Startup.twin`.
+
+**Expected behavior**
+The build does not depend on the order of the project's files, so two builds of one unchanged project hold their code in the same order. If the order matters, the IDE keeps it stable: a compiler restart, a switch of the build target and Save leave the order of the project's files as it was.
+
+**Desktop:**
+ - OS: Windows 10 Pro 22H2 (build 19045)
+ - twinBASIC compiler version: BETA 997
+
+**Additional context**
+Checked on BETA 997 only, for win32 and win64. Every restart or switch reverses the order again, so a build is laid out in the order of the opened file after an even number of them, and in the reverse after an odd number. A new session builds in the order its file holds, so a Save also changes the first build of the next session. The file Save writes is reversed after none or two restarts and switches, and unchanged after one.
+
+What does not matter: two project files that differ only in the order of their entries build differently, with the same settings and the same revision numbers in both. Reversing only the top-level entries (`Settings`, `Sources`) changes nothing.
+
+In the minimal project, only the unreferenced classes that a referenced form keeps move. Without a referenced form the classes are not in the exe at all, and the order has no visible effect. A referenced class, or a referenced module function, does not keep them. Procedures that `Main` reaches stay in the order `Main` reaches them, and procedures of a module that nothing calls are not in the exe.
+
+No difference in behaviour is known, only in the layout: the two exes differ in `.text` and in about 340 bytes of `.rdata`. Whether a program can behave differently, for instance by creating objects in the order of the classes' files, was not tried.
+
+The same reversal makes the TB5074 of [#2492](https://github.com/twinbasic/twinbasic/issues/2492) come and go. That project lists `Probe.twin` before `ProbeDog.twin`, and in one session its compile reports TB5074 after the open, none after a switch to win64, TB5074 again after the switch back, and a restart does the same. A new session that opens the unchanged file starts with the error.
+
+Severity: low for a program, since no behavioural difference is known. A build depends on how many times the compiler was restarted in the session, so two exes of one unchanged project differ. A defect that depends on the order of the files, such as #2492, appears and disappears with each restart or switch, which makes it hard to reproduce and to test a fix for.
+
+<!-- Asserted by `ide-test.bat --only restart-file-order` (test/ide/restart-file-order.test.mjs, two scenarios. In one IDE: the first build lays the code out X1 Y1 F1 S1, after a restart Y1 X1 F1 S1, after a second restart X1 Y1 F1 S1 again, and Save then writes the entries of every folder in the reverse of the order they were opened in. In a second IDE, on the project opened afresh: a build for win32 gives X1 Y1 F1 S1 and, after a switch to win64, Y1 X1 F1 S1); passes on BETA 997, about 52 s a run. The reproducer's sources are those of test/ide/probes/restart-file-order, with another name, description and project id in Settings. The lane reads the order of the four constants in .text and never a hash of it, because two win32 builds of one order also differ in other bytes (see "A build writes addresses from the compiler's own memory into the exe"). It leaves 21 seconds between one restart or switch and the next, and checks the build box (buildConfigSelector) before each build, because four unexpected compiler restarts within a minute put the IDE into Safe Mode, where the box says nocompile; whether the restart button counts is not known. Checked on BETA 997 and not asserted: Save right after opening, each further switch reversing the order again, Save after one switch leaving the order unchanged, the first build after reopening a saved file, the TB5074 sequence of #2492 (bugs/filed/static-ctor-args), the .rdata difference, and the classes' absence without a referenced form. When fixed: update that test and this entry. -->

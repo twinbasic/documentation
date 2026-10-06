@@ -1,0 +1,11 @@
+{
+  "mode": "lane",
+  "lane": "ide:restart-file-order",
+  "tests": [
+    "after a compiler restart, a build lays the code out in the reverse order of the build before it",
+    "after a second restart, a build lays the code out in the order of the first build again",
+    "Save writes the project's files in the reverse of the order they were opened in",
+    "after a switch to win64, a build lays the code out in the reverse order of the build before it"
+  ],
+  "steps": "1. Open restart-reverses-file-order.twinproj in the twinBASIC IDE, which opens it for win32, and press Build. Copy Build\\RestartReversesFileOrder_win32.exe to first.exe.\n2. Press the toolbar's restart button for the compiler, wait for the status bar to say OPERATIONAL, press Build again, and copy the exe to second.exe.\n3. Find where the code of the classes ClsX and ClsY sits in each exe. Each procedure returns a constant of its own: X1 in ClsX returns &H5A120001, the bytes 01 00 12 5A, and Y1 in ClsY returns &H5A130001, the bytes 01 00 13 5A. Search each exe for the two byte sequences and compare their offsets.\n4. Expected: the two exes of one unchanged project hold their code in the same order. Actual: in first.exe the bytes of X1 come before those of Y1, and in second.exe after them.\n5. Press the restart button and build once more: the order of first.exe returns. A switch of the build target in the toolbar's build configuration box, and Save, reverse the order in the same way: a build after the switch to win64 has the bytes of Y1 before those of X1, and the file Save writes holds the project's files in the reverse of the order they were opened in.\nAsserted on BETA 997 by `ide-test.bat --only restart-file-order` (the project is test/ide/probes/restart-file-order)."
+}

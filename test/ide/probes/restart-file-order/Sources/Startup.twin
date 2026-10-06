@@ -1,0 +1,13 @@
+Module Startup
+
+    Public Sub Main()
+        Dim t As Long
+        t = FormF.F1()
+        t = t + S1()
+    End Sub
+
+    Public Function S1() As Long
+        S1 = &H5A110001
+    End Function
+
+End Module

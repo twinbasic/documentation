@@ -1,0 +1,7 @@
+Class ClsY
+
+    Public Function Y1() As Long
+        Y1 = &H5A130001
+    End Function
+
+End Class

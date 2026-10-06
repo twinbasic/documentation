@@ -1184,6 +1184,30 @@ The output is one `round <k>: <n> failed` line for each round, the last console 
 
 Exit codes: **0** no build failed to write the type library; **1** at least one did, so the defect is there; **2** a refused command line, no IDE, no free ports, an IDE that did not start, a project that did not compile, a build that failed in some other way, or a crash.
 
+### probe_build_twice.mjs
+{: #probe-build-twice }
+
+    node scripts/probe_build_twice.mjs [--arch win32|win64] [--ide <twinBASIC.exe>] [--port N]
+                                       [--timeout S] [--keep-files <dir>]
+    node scripts/probe_build_twice.mjs --vb6 [--timeout S] [--keep-files <dir>]
+
+Builds the project of `bugs/build-writes-compiler-addresses/` twice and compares the two exes. It is the measurement behind the entry of `BUGS-TO-REPORT.md` whose reproducer that is: two builds of one unchanged project are not byte for byte equal, and what differs is more than the PE time stamp and checksum. Each exe holds, at the start of its `.data` section, a block of deflate-compressed data: a u32 compressed size, a u32 inflated size of 4,096 and a raw deflate stream. Inflated, the blocks of two builds differ in two values that have the form of heap addresses: 4 bytes each in a win32 exe, and the low 6 bytes of a 64-bit value in a win64 exe. Like [`tbbuild.mjs`](#tbbuild), it needs a twinBASIC install and Windows, and it is outside every gate and outside CI.
+
+Each build is made in an IDE of its own, one after the other on one port, because an IDE reused for a second project wedges. Before each build the project is staged again, packed into a folder under `%TEMP%\tbprobe-build-twice\<port>\` with an explicit build path, in the same folders both times, so that no path can be what differs. The exe is copied out as soon as the build is done.
+
+The output has these parts, in order: the two sizes, and whether the section tables are the same; the PE time stamp and checksum of each file, which the linker sets and the comparison leaves out; the startup block, found by its header (a u32 compressed size, then a u32 inflated size that is a multiple of 1,024, at a 4-byte step of `.data`, then a stream that inflates), with the sizes of the two streams and their padding to the pointer size of the target; the bytes that differ outside the time stamp, the checksum and the block, by section, one line for each range with its bytes in both files; and the decompressed bytes of the block that differ, each range read as the little-endian value of the target's pointer size that holds it. The two blocks are lined up on the end of their padding, so that data which moved by one step because a stream is a few bytes longer is not counted as a difference, and the padding is compared on its own, aligned at its end. The last line is the summary, `the decompressed startup blocks of two builds differ in <n> bytes, in <k> ranges (<arch>)`, or `the decompressed startup blocks of two builds are equal (<arch>)`. A stream that does not inflate to exactly the size its header states, and an exe with no such block, end the probe with exit 2.
+
+| Flag | Effect |
+|---|---|
+| `--arch <a>` | `win32` or `win64`, the target to build for. Default `win32`. |
+| `--ide <path>` | Path to `twinBASIC.exe`, found as for `tbbuild`. |
+| `--port <n>` | The first DevTools port to try. Default 9800. The IDE takes the first free port from it. |
+| `--timeout <secs>` | The wait for a compile to settle, and again for a build. Default 180. |
+| `--keep-files <dir>` | Copy the two exes into `<dir>`, which is made if it is missing, as `<arch>-1.exe` and `<arch>-2.exe`. Nothing already in the folder is removed. |
+| `--vb6` | Build the `vb6/` project of the reproducer twice with VB6 in place of the twinBASIC project, and print every range that differs outside the time stamp and the checksum, by section. A VB6 exe has no deflate-compressed block. VB6 is found as for [`vb6run.mjs`](#vb6run) (`VB6_EXE`, else the standard install folders) and is started only through `scripts/lib/vb6.mjs`, never from a shell. The project is built with Unattended Execution, as `bug_repro.mjs vb6` builds it. Both builds are made in one folder, because VB6 stores the folder's name in the exe and two folders would show as a difference of their own. `--arch`, `--ide` and `--port` do not apply, and are refused with it. |
+
+Exit codes: **0** the compared bytes are equal, the two decompressed blocks or, with `--vb6`, the two files outside the time stamp and the checksum; **1** they differ, so the defect is there; **2** a refused command line, no IDE or no VB6, no free port, an IDE that did not start, a project that did not compile or build, a block that does not inflate to its stated size or is not there, or a crash.
+
 ### vb6run.mjs
 {: #vb6run }
 
