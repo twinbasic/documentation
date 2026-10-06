@@ -1,0 +1,9 @@
+{
+  "mode": "lane",
+  "lane": "addin:panes",
+  "tests": [
+    "P4: a property whose name starts with \"on\" is dropped, and the add-in is told nothing"
+  ],
+  "steps": "1. Open on-property-ignored.twinproj in the twinBASIC IDE and build it (win32). Copy Build\\OnPropertyIgnored_win32.dll into %APPDATA%\\twinBASIC\\addins\\win32\\, restart the IDE and open any project.\n2. Click the toolbar button on property repro. A tool window opens with [property] and [inline], and the DEBUG CONSOLE prints onclick set, error 0.\n3. Click [property]. Expected: its text changes to clicked, or step 2 raised an error. Actual: nothing happens; the element has no onclick handler and no onclick attribute.\n4. Control: click [inline]. Its text changes to clicked.\nAsserted on BETA 995 and 997 by `addin-test.bat --only panes` (P4, the PanesProbe add-in in test/addin/probes/panes, of which this project is a cut-down copy).",
+  "issue": 2478
+}

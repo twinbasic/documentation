@@ -1,0 +1,9 @@
+{
+  "mode": "compile",
+  "expect": {
+    "diagnostics": [
+      "TB5074"
+    ]
+  },
+  "issue": 2492
+}

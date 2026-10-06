@@ -1,0 +1,14 @@
+{
+  "mode": "run",
+  "exe": true,
+  "expect": {
+    "exit": 5,
+    "output": [
+      "^\\[BUILD\\] Executing 'ModuleNamedLikeProject\\.ModuleNamedLikeProject\\.\\w+'\\.\\.\\.$"
+    ],
+    "absent": [
+      "^RunAfterBuild ran$"
+    ]
+  },
+  "issue": 2494
+}

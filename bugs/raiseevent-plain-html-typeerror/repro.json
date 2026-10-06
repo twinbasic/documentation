@@ -1,8 +1,0 @@
-{
-  "mode": "lane",
-  "lane": "addin:panes",
-  "tests": [
-    "P12: raiseEvent from plain tool-window HTML throws, and the add-in hears nothing"
-  ],
-  "steps": "1. Open raiseevent-plain-html-typeerror.twinproj in the twinBASIC IDE and build it (win32). Copy Build\\RaiseeventPlainHtmlTypeerror_win32.dll into %APPDATA%\\twinBASIC\\addins\\win32\\, restart the IDE and open any project.\n2. Click the toolbar button raiseEvent repro. A tool window opens with [raise] and [direct].\n3. Click [raise]. Expected: the DEBUG CONSOLE prints myEvent from raise. Actual: nothing is printed, and the IDE's page has an uncaught TypeError: Cannot read properties of null (reading 'rootEventHandler').\n4. Control: click [direct]. The DEBUG CONSOLE prints myEvent from direct.\nAsserted on BETA 995 and 997 by `addin-test.bat --only panes` (P12, the PanesProbe add-in in test/addin/probes/panes, of which this project is a cut-down copy)."
-}

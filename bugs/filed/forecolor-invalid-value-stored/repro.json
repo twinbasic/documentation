@@ -1,0 +1,30 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^Form\\.ForeColor = -1: Err 5, reads FFFFFFFF$",
+      "^Form\\.ForeColor = &H8000001F: Err 5, reads 8000001F$",
+      "^Form\\.BackColor = -1: Err 0, reads FFFFFFFF$",
+      "^Form\\.FillColor = -1: Err 0, reads FFFFFFFF$",
+      "^PictureBox\\.ForeColor = -1: Err 5, reads FFFFFFFF$",
+      "^PictureBox\\.BackColor = -1: Err 0, reads FFFFFFFF$",
+      "^PictureBox\\.FillColor = -1: Err 0, reads FFFFFFFF$",
+      "^Label\\.ForeColor = -1: Err 0, reads FFFFFFFF$",
+      "^Label\\.BackColor = -1: Err 0, reads FFFFFFFF$",
+      "^TextBox\\.ForeColor = -1: Err 0, reads FFFFFFFF$",
+      "^TextBox\\.BackColor = -1: Err 0, reads FFFFFFFF$",
+      "^CommandButton\\.BackColor = -1: Err 0, reads FFFFFFFF$",
+      "^Printer\\.ForeColor = -1: Err 5, reads FFFFFFFF$",
+      "^Printer\\.FillColor = -1: Err 0, reads FFFFFFFF$",
+      "^UserControl\\.ForeColor = -1: Err 5, reads FFFFFFFF$",
+      "^UserControl\\.BackColor = -1: Err 0, reads FFFFFFFF$",
+      "^UserControl\\.FillColor = -1: Err 0, reads FFFFFFFF$",
+      "^MDIForm\\.BackColor = -1: Err 0, reads FFFFFFFF$",
+      "^MDIForm\\.BackColor = &H8000001F: Err 0, reads 8000001F$",
+      "^MDIForm \\(shown\\)\\.BackColor = -1: Err 5, reads FFFFFFFF$",
+      "^MDIForm \\(shown\\)\\.BackColor = &H8000001F: Err 5, reads 8000001F$"
+    ]
+  },
+  "issue": 2484
+}

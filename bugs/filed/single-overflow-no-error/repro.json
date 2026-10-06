@@ -1,0 +1,15 @@
+{
+  "mode": "run",
+  "expect": {
+    "exit": 0,
+    "output": [
+      "^Single \\+\\s+Err=0 s=1\\.#INF$",
+      "^Single -\\s+Err=0 s=-1\\.#INF$",
+      "^Single \\*\\s+Err=0 s=1\\.#INF$",
+      "^Single /\\s+Err=0 s=1\\.#INF$",
+      "^s \\+= x\\s+Err=0 s=1\\.#INF$",
+      "^CSng\\(Double\\)\\s+Err=6 s=5$"
+    ]
+  },
+  "issue": 2476
+}
