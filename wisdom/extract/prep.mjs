@@ -235,11 +235,16 @@ export async function runExtract(flags) {
       config,
       batches,
     };
-    writeFileSync(join(outDir, "extract-manifest.json"), JSON.stringify(manifest, null, 2));
+    const manifestPath = join(outDir, "extract-manifest.json");
+    writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
+    const relManifest = manifestPath
+      .split(sep)
+      .join("/")
+      .replace(/^.*?wisdom\//, "wisdom/");
     process.stderr.write(
       `[wisdom] ${batches.length} batches written (${BATCH_SIZE} threads each, ${allThreads.length} total)\n` +
-        `[wisdom] Manifest: wisdom/data/findings/extract-manifest.json\n` +
+        `[wisdom] Manifest: ${relManifest}\n` +
         `[wisdom] Invoke the extract workflow for each batch from Claude Code, then run ` +
         `'node wisdom/wisdom.mjs extract --merge' to graft the results into staging.md.\n`,
     );
