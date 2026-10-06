@@ -67,7 +67,7 @@ Syntax: *object*.**GetHeader** ( *name* ) **As String**
 ### GetHeaders
 {: .no_toc }
 
-Returns a [**WebView2HeadersCollection**](WebView2HeadersCollection) iterator restricted to the headers that match *name* --- useful for headers that may have multiple values.
+Returns a [**WebView2HeadersCollection**](WebView2HeadersCollection) enumerator restricted to the headers that match *name* --- useful for headers that may have multiple values. Each call returns a new enumerator that starts at the first matching header.
 
 Syntax: *object*.**GetHeaders** ( *name* ) **As WebView2HeadersCollection**
 
@@ -103,4 +103,4 @@ Private Sub WebView21_NavigationStarting( _
 End Sub
 ```
 
-The enumerator is forward-only and cannot be reset. See [**WebView2HeadersCollection**](WebView2HeadersCollection) for the iteration object.
+Each `For Each` loop starts at the first header. See [**WebView2HeadersCollection**](WebView2HeadersCollection) for the iteration object.
