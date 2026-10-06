@@ -182,6 +182,10 @@ const TASKS = {
       const config = yaml.load(text);
       if (ctx.opts.baseurl != null) config.baseurl = ctx.opts.baseurl;
       if (ctx.opts.url != null) config.url = ctx.opts.url;
+      // Every consumer joins these with a path that starts with "/", so a
+      // trailing slash or a missing leading one would double or lose a separator.
+      config.baseurl = normalizeBaseurl(config.baseurl);
+      config.url = String(config.url ?? "").replace(/\/+$/, "");
       return { config };
     },
     submit() {},

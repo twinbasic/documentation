@@ -53,6 +53,6 @@ export function absoluteUrl(url, config) {
   if (typeof url !== "string") return "";
   if (ABSOLUTE_URL.test(url)) return url;
   const rel = relativeUrl(url.startsWith("/") ? url : `/${url}`, normalizeBaseurl(config.baseurl));
-  const siteUrl = String(config.url ?? "");
+  const siteUrl = String(config.url ?? "").replace(/\/+$/, "");
   return siteUrl === "" ? rel : new URL(siteUrl + rel).href;
 }
