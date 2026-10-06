@@ -24,7 +24,7 @@
 //
 //   node scripts/check_ci_workflows.mjs
 //
-// Exit codes: 0 clean, 1 a finding, 2 a refused command line, a failed probe or a crash.
+// Exit codes: 0 clean, 1 a finding or a failed probe, 2 a refused command line or a crash.
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -44,8 +44,9 @@ arguments and in the same order.
 
 Exit codes:
   0  both workflows run every gate the wrappers run, and its own probes pass
-  1  a workflow differs from the wrappers: a finding is listed
-  2  the gate could not run: a refused command line, a failed probe, or a crash`;
+  1  a workflow differs from the wrappers: a finding is listed, or one of the
+     gate's own probes failed
+  2  the gate could not run: a refused command line, or a crash`;
 
 if (
   withUsageError(() =>
@@ -346,7 +347,7 @@ const probeFailures = runProbes();
 if (probeFailures.length) {
   console.error(`check_ci_workflows: ${probeFailures.length} of ${PROBES.length} probes failed:`);
   for (const f of probeFailures) console.error(`  ${f}`);
-  process.exit(2);
+  process.exit(1);
 }
 console.log(`check_ci_workflows: ${PROBES.length} probes, all pass`);
 

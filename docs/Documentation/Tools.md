@@ -488,9 +488,9 @@ It gates on **exponential only**. recheck also reports polynomial blowup, and ab
 
 Two sets of probes run inside the normal pass rather than behind `--self-test`, because a green line saying *no exponential regex* is otherwise indistinguishable from a gate that has stopped detecting them. Eight are regexes with known answers in both directions, including the three this repository actually shipped. Fourteen more cover the folding: eight constructions that must resolve to an exact pattern, and six that must be refused with a reason --- a folder that quietly resolves nothing moves every construction into the unresolved list and the run still passes.
 
-A failure of the gate itself is a 2 rather than a 1, because each of those leaves something unchecked; a 2 wins over a 1 when both happen in one run. That is the [convention for a gate's exit codes](Extending#conventions).
+A probe that comes back wrong is a 1, like a finding: the gate ran and its verdict cannot be trusted. A failure to do the job at all is a 2 rather than a 1, because each of those leaves something unchecked --- a file that would not parse, a regex that could not be analysed, a crash --- and a 2 wins over a 1 when both happen in one run. That is the [convention for a gate's exit codes](Extending#conventions).
 
-Exit codes: **0** no regex can backtrack exponentially (with `--self-test`, every probe was classified correctly); **1** a regex can backtrack exponentially; **2** the gate could not run, and 2 wins over 1: a refused command line, a file it could not parse, a regex it could not analyse, a probe that came back wrong (also `--self-test`), or a crash.
+Exit codes: **0** no regex can backtrack exponentially (with `--self-test`, every probe was classified correctly); **1** a regex can backtrack exponentially, or a probe came back wrong (also `--self-test`); **2** the gate could not run, and 2 wins over 1: a refused command line, a file it could not parse, a regex it could not analyse, or a crash.
 
 ### check_code_regions.mjs
 {: #check-code-regions }
@@ -549,7 +549,7 @@ The differences that are meant are listed in the script, each with where it is r
 
 Its probes ride along in every run: each plants one defect in a small synthetic set of wrappers, workflows and actions --- a missing gate, a step no wrapper runs, two gates swapped, changed arguments, a build flag lost or added, a gate missing from the shared action, a workflow that stops calling it --- and requires exactly the findings it should produce. Pure text: no browser, no built tree.
 
-Exit codes: **0** both workflows run every gate the wrappers run, and its own probes pass; **1** a workflow differs from the wrappers (a finding is listed); **2** the gate could not run: a refused command line, a failed probe, or a crash.
+Exit codes: **0** both workflows run every gate the wrappers run, and its own probes pass; **1** a workflow differs from the wrappers (a finding is listed), or one of its probes failed; **2** the gate could not run: a refused command line, or a crash.
 
 ### check_lint.mjs
 {: #check-lint }
