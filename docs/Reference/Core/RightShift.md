@@ -64,6 +64,8 @@ Value = Negative >> 1           ' Returns -1: the vacated bit is a copy of the s
 ### See Also
 
 - [**\<<** operator](LeftShift)
+- [ShiftUnsignedRight](../Modules/Math/ShiftUnsignedRight) -- shifts right filling with zeros, not with the sign bit
+- [ShiftRotateRight](../Modules/Math/ShiftRotateRight) -- rotates instead of discarding the bits shifted out
 - [**\\** operator](IntegerDivide)
 - [**And** operator](And)
 - [Operators](../../Reference/Operators)

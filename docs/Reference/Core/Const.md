@@ -49,6 +49,36 @@ When the constant type is not explicitly declared by using **As** *type*, the co
 
 Constants declared in a **Sub**, **Function**, or **Property** procedure are local to that procedure. A constant declared outside a procedure is defined throughout the module in which it is declared. Constants can be used anywhere an expression is allowed.
 
+## Array constants
+
+*(twinBASIC)* A constant can also be a one-dimensional array, whose elements are given with [**Array**](../Modules/Information/Array):
+
+> [ **Public** \| **Private** ] **Const** *constname* **(** [ [ *lower* **To** ] *upper* ] **)** **As** *type* **=** **Array(** *elementlist* **)**
+
+The **As** *type* clause is required. In a module or a class, *type* is **Byte**, **Integer**, **Long**, **LongLong**, **LongPtr**, **Single**, **Double**, **Currency**, **Date**, **Boolean** or an **Enum** type; any other type is compile error **TB5001**, *unsupported datatype for global Const - only scalar types are supported*. A constant declared in a procedure may also be an array of **String**, **Decimal** or **Variant**.
+
+Each element of *elementlist* is a constant expression, converted to *type* as an assignment would convert it: in a **Long** array, `2.5` becomes 2 and `"5"` becomes 5. Without bounds, the array starts at 0 and has one element for each item in *elementlist*; [**Option Base**](Option) does not change that. With bounds, the number of items must match them. `Array()` gives an empty array, whose **UBound** is -1.
+
+The elements are read as those of any array --- `Primes(2)`, with [**LBound**](../Modules/Information/LBound) and [**UBound**](../Modules/Information/UBound) for the bounds --- but the array cannot be changed or used as a whole:
+
+- Assigning to an element is compile error **TB5050**, *bad constant array accessor*.
+- **For Each** over the array is compile error **TB5109**; loop from **LBound** to **UBound** instead.
+- The array cannot be assigned to an array variable or a **Variant**, or passed as an array argument. To copy it, copy it element by element.
+- An element cannot be used in another constant expression: `Const First As Long = Primes(0)` is compile error **TB5002**.
+
+```tb check_run
+Const Primes() As Long = Array(2, 3, 5, 7, 11)
+Dim i As Long, Total As Long
+For i = LBound(Primes) To UBound(Primes)
+    Total += Primes(i)
+Next
+Debug.Print UBound(Primes)      ' 4
+Debug.Print Total               ' 28
+```
+
+> [!NOTE]
+> Array constants are a twinBASIC extension. In VBA and VB6, `Const Primes() As Long = Array(2, 3)` is a syntax error.
+
 
 ## Example
 

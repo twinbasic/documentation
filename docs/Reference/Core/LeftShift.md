@@ -66,6 +66,7 @@ Value = 1& << 20                ' Returns 1048576.
 ### See Also
 
 - [**\>>** operator](RightShift)
+- [ShiftRotateLeft](../Modules/Math/ShiftRotateLeft) -- rotates instead of discarding the bits shifted out
 - [**And** operator](And)
 - [**Or** operator](Or)
 - [Operators](../../Reference/Operators)

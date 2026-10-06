@@ -120,6 +120,20 @@ Sub FullyOptimizeMe()
 End Sub
 ```
 
+## Unrolling a loop
+
+Inside a procedure compiled with LLVM, [**UnrollLoop**](../tB/Modules/Compilation/UnrollLoop) asks LLVM to unroll one loop: to repeat its body several times in each iteration, so the loop tests its condition and jumps back less often. It must be the first statement in the loop's body, and may give the greatest number of repeats as a literal or a constant. It does not change what the loop does.
+
+```tb check_build
+Function Total(Values() As Long) As Long
+    Dim i As Long
+    For i = LBound(Values) To UBound(Values)
+        UnrollLoop 8
+        Total += Values(i)
+    Next
+End Function
+```
+
 ## CPU feature availability
 
 For each CPU feature, the table gives the first Intel and AMD CPUs to offer it, and the year from which all new Intel and AMD CPUs shipped with it. The last column is an estimate: some rare models, such as specialized CPUs for embedded use, may still have lacked the feature.

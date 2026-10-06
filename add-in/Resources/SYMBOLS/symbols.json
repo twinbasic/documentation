@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "api": 995,
+  "api": 997,
   "packages": {"VBA":"VBA","VBRUN":"VBRUN","VB":"VB","AppGlobalClassProject":"AppGlobalClassObject","cefPackage":"CEF","CustomControls":"CustomControls","CustomControlsPackage":"CustomControls","Assert":"Assert","WebView2Package":"WebView2","WinEventLogLib":"WinEventLogLib","WinNamedPipesLib":"WinNamedPipesLib","WinNativeCommonCtls":"WinNativeCommonCtls","WinServicesLib":"WinServicesLib","tbIDE":"tbIDE"},
   "interfaces": {"VBA._Collection":"VBA.Collection","VBA._ErrObject":"VBA.ErrObject","VBA.ITbExpressionService":"VBA.TbExpressionService","VBRUN._PropertyBag":"VBRUN.PropertyBag","VB._App":"VB.App","VB._Clipboard":"VB.Clipboard","VB._Screen":"VB.Screen","VB.VBGlobal":"VB.Global","AppGlobalClassProject._App":"AppGlobalClassProject.App","CustomControls._CustomControlTimer":"CustomControls.CustomControlTimer","CustomControls._CustomControlContext":"CustomControls.CustomControlContext","CustomControls._CustomFormContext":"CustomControls.CustomFormContext","CustomControls._CustomControlsCollection":"CustomControls.CustomControlsCollection","tbIDE.IAddInV1":"tbIDE.AddIn","tbIDE.IButtonV1":"tbIDE.Button","tbIDE.ICodeEditorV1":"tbIDE.CodeEditor","tbIDE.IDebugConsoleV1":"tbIDE.DebugConsole","tbIDE.IEditorV1":"tbIDE.Editor","tbIDE.IEditorsV1":"tbIDE.Editors","tbIDE.IFileV2":"tbIDE.File","tbIDE.IFileSystemV1":"tbIDE.FileSystem","tbIDE.IFileSystemItemV1":"tbIDE.FileSystemItem","tbIDE.IFolderV1":"tbIDE.Folder","tbIDE.IHostV1":"tbIDE.Host","tbIDE.IHtmlElementV1":"tbIDE.HtmlElement","tbIDE.IHtmlElementPropertiesV1":"tbIDE.HtmlElementProperties","tbIDE.IHtmlElementPropertyV1":"tbIDE.HtmlElementProperty","tbIDE.IHtmlElementsV1":"tbIDE.HtmlElements","tbIDE.IHtmlEventPropertiesV1":"tbIDE.HtmlEventProperties","tbIDE.IHtmlEventPropertyV1":"tbIDE.HtmlEventProperty","tbIDE.IKeyboardShortcutsV1":"tbIDE.KeyboardShortcuts","tbIDE.IProjectV1":"tbIDE.Project","tbIDE.IThemesV1":"tbIDE.Themes","tbIDE.IToolWindowV1":"tbIDE.ToolWindow","tbIDE.IToolWindowsV1":"tbIDE.ToolWindows","tbIDE.IToolbarV1":"tbIDE.Toolbar","tbIDE.IToolbarsV1":"tbIDE.Toolbars"},
   "symbols": [
@@ -238,6 +238,7 @@
     {"name":"CurrentProjectName","package":"VBA","container":"Compilation","kind":"function","url":"/tB/Modules/Compilation/CurrentProjectName"},
     {"name":"CurrentSourceFile","package":"VBA","container":"Compilation","kind":"function","url":"/tB/Modules/Compilation/CurrentSourceFile"},
     {"name":"ProcessorArchitecture","package":"VBA","container":"Compilation","kind":"function","url":"/tB/Modules/Compilation/ProcessorArchitecture"},
+    {"name":"UnrollLoop","package":"VBA","container":"Compilation","kind":"sub","url":"/tB/Modules/Compilation/UnrollLoop"},
     {"name":"Constants","package":"VBA","container":null,"kind":"module","url":"/tB/Modules/Constants/"},
     {"name":"vbBack","package":"VBA","container":"Constants","kind":"constant","url":"/tB/Modules/Constants/"},
     {"name":"vbCr","package":"VBA","container":"Constants","kind":"constant","url":"/tB/Modules/Constants/"},
@@ -609,6 +610,7 @@
     {"name":"Math","package":"VBA","container":null,"kind":"module","url":"/tB/Modules/Math/"},
     {"name":"Abs","package":"VBA","container":"Math","kind":"function","url":"/tB/Modules/Math/Abs"},
     {"name":"Atn","package":"VBA","container":"Math","kind":"function","url":"/tB/Modules/Math/Atn"},
+    {"name":"ByteSwap","package":"VBA","container":"Math","kind":"sub","url":"/tB/Modules/Math/ByteSwap"},
     {"name":"Cos","package":"VBA","container":"Math","kind":"function","url":"/tB/Modules/Math/Cos"},
     {"name":"Exp","package":"VBA","container":"Math","kind":"function","url":"/tB/Modules/Math/Exp"},
     {"name":"Log","package":"VBA","container":"Math","kind":"function","url":"/tB/Modules/Math/Log"},
@@ -616,6 +618,9 @@
     {"name":"Rnd","package":"VBA","container":"Math","kind":"function","url":"/tB/Modules/Math/Rnd"},
     {"name":"Round","package":"VBA","container":"Math","kind":"function","url":"/tB/Modules/Math/Round"},
     {"name":"Sgn","package":"VBA","container":"Math","kind":"function","url":"/tB/Modules/Math/Sgn"},
+    {"name":"ShiftRotateLeft","package":"VBA","container":"Math","kind":"sub","url":"/tB/Modules/Math/ShiftRotateLeft"},
+    {"name":"ShiftRotateRight","package":"VBA","container":"Math","kind":"sub","url":"/tB/Modules/Math/ShiftRotateRight"},
+    {"name":"ShiftUnsignedRight","package":"VBA","container":"Math","kind":"sub","url":"/tB/Modules/Math/ShiftUnsignedRight"},
     {"name":"Sin","package":"VBA","container":"Math","kind":"function","url":"/tB/Modules/Math/Sin"},
     {"name":"Sqr","package":"VBA","container":"Math","kind":"function","url":"/tB/Modules/Math/Sqr"},
     {"name":"Tan","package":"VBA","container":"Math","kind":"function","url":"/tB/Modules/Math/Tan"},

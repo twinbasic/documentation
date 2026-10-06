@@ -59,10 +59,21 @@ Dim Roll As Long
 Roll = Int((6 - 1 + 1) * Rnd + 1)    ' a die roll, 1..6
 ```
 
+## Bit manipulation
+
+*(twinBASIC)* Four functions work on the bits of an integral value --- a **Byte**, **Integer**, **Long**, **LongLong**, **LongPtr**, **Currency** or **Boolean** --- and return a value of the same type. [**ShiftRotateLeft**](ShiftRotateLeft) and [**ShiftRotateRight**](ShiftRotateRight) rotate the bits, so the bits shifted out at one end come back in at the other. [**ShiftUnsignedRight**](ShiftUnsignedRight) shifts right and fills with zeros, where the [**\>>**](../../Core/RightShift) operator copies the sign bit. [**ByteSwap**](ByteSwap) reverses the order of the bytes, converting between little-endian and big-endian order. With constant arguments, each is evaluated when the code is compiled, so each can be used in a **Const** declaration.
+
+```tb check_run
+Debug.Print Hex(ShiftRotateLeft(&H12345678, 8))     ' 34567812
+Debug.Print Hex(ShiftUnsignedRight(&HFFFFFFFF, 28))  ' F
+Debug.Print Hex(ByteSwap(&H12345678))               ' 78563412
+```
+
 ## Members
 
 - [Abs](Abs) -- returns the absolute value of a number
 - [Atn](Atn) -- returns the arctangent of a number, in radians
+- [ByteSwap](ByteSwap) -- reverses the order of the bytes in an integral value
 - [Cos](Cos) -- returns the cosine of an angle
 - [Exp](Exp) -- returns *e* raised to a power
 - [Log](Log) -- returns the natural (base-*e*) logarithm of a number
@@ -70,6 +81,9 @@ Roll = Int((6 - 1 + 1) * Rnd + 1)    ' a die roll, 1..6
 - [Rnd](Rnd) -- returns a pseudo-random number in the range `[0, 1)`
 - [Round](Round) -- rounds a number to a chosen number of decimal places, using banker's rounding
 - [Sgn](Sgn) -- returns the sign of a number
+- [ShiftRotateLeft](ShiftRotateLeft) -- rotates the bits of an integral value left
+- [ShiftRotateRight](ShiftRotateRight) -- rotates the bits of an integral value right
+- [ShiftUnsignedRight](ShiftUnsignedRight) -- shifts the bits of an integral value right, filling with zeros
 - [Sin](Sin) -- returns the sine of an angle
 - [Sqr](Sqr) -- returns the square root of a number
 - [Tan](Tan) -- returns the tangent of an angle
