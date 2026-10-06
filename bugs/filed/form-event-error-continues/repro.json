@@ -8,5 +8,6 @@
       "^--- exe: a box, closed: shutdown: Run-time error '5' my text in Form_Load$",
       "^--- exe: a box, closed: FormEventErrorContinues: Form_Activate ran after the error$"
     ]
-  }
+  },
+  "issue": 2500
 }

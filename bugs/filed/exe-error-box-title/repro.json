@@ -8,5 +8,6 @@
       "^--- exe: exit 0$",
       "^--- exe: a box, closed: shutdown: Run-time error '5' my text$"
     ]
-  }
+  },
+  "issue": 2501
 }

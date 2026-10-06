@@ -8,5 +8,6 @@
       "^Raise 1000: \\[\\] \\[Automation error\\]$",
       "^Raise 5 after a full Raise: \\[\\] \\[Invalid procedure call or argument\\]$"
     ]
-  }
+  },
+  "issue": 2504
 }

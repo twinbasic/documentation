@@ -9,5 +9,6 @@
       "^E_FAIL after the cleared error: -2147467259 \\[Unspecified error\\]$",
       "^E_FAIL, slot emptied first: -2147467259 \\[Automation error\\]$"
     ]
-  }
+  },
+  "issue": 2503
 }
